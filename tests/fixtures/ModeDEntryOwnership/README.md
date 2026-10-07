@@ -5,3 +5,5 @@
 替身仅覆盖外部风险服务、库存读取、Unity 类型、装备池、变异、路牌和 UI 边界，记录调用并允许注入异常；没有替换准入或启动实现。实际 Unity 场景调度、物品资源与玩家存档不在此夹具范围。生成目录保存生产源 SHA-256。
 
 经 `python tools/run_runtime_regressions.py --filter ModeDEntryOwnership` 运行。`BOSSRUSH_FIXTURE_OUT` 可将生成工程和构建产物写入独立验证目录。
+
+2026-10-06：未注册 ID（0 / -1）按已发布船票 500001 进入，正 ID 继续取运行期注册值；库存替身核对传入的真实白名单参数，旧 868 回退会让准入失败。

@@ -45,7 +45,7 @@ def main():
     assert body(integration, "internal bool IsIntegrationAmmoShop(StockShop shop)") == "returnbossRushIntegrationRuntime.IsIntegrationAmmoShop(shop);", "purchase routing must reach same shop owner"
     assert "bossRushIntegrationRuntime.CleanupAmmoShop();" in scene, "scene exit must clean the Integration-owned shop"
     assert "bossRushIntegrationRuntime.CleanupAmmoShopOnPlayerDeath(LogLootWarningLimited);" in loot, "player death must retain the logged cleanup entry"
-    assert body(utility, "private void ApplyBossStatMultiplier(") == "BossStatScaling.ApplyBossStatMultiplier(character,multiplier,config!=null?config.bossStatMultiplier:1f);", "host must pass nullable multiplier and current config fallback"
+    assert body(utility, "private void ApplyBossStatMultiplier(") == "BossStatScaling.ApplyBossStatMultiplier(character,multiplier,config!=null?config.bossStatMultiplier:1f,multiplier.HasValue||!isBoss?1f:GetBossHealthMultiplier());", "host must preserve explicit and non-boss scaling and apply configured boss health only once"
     assert "internal static class BossStatScaling" in scaling and "ModBehaviour.Instance" not in scaling, "stat scaling must remain stateless and consume explicit parameters"
     for field in ("sharedWait01s", "sharedWait05s", "sharedWait1s"):
         assert compact("private static WaitForSeconds " + field + " { get { return BossRushWaitCache." + field + "; } }") in compact(utility), "wait bridge must preserve shared identity: " + field

@@ -1,12 +1,14 @@
 using System;
 using UnityEngine;
 using ItemStatsSystem;
+using ItemStatsSystem.Stats;
 
 namespace BossRush
 {
     internal static class BossStatScaling
     {
-        internal static void ApplyBossStatMultiplier(CharacterMainControl character, float? multiplier, float defaultMultiplier)
+        internal static void ApplyBossStatMultiplier(CharacterMainControl character, float? multiplier, float defaultMultiplier,
+            float healthMultiplier = 1f)
         {
             if (character == null)
             {
@@ -20,7 +22,7 @@ namespace BossRush
             ModBehaviour.DevLog("[BossRush] ApplyBossStatMultiplier 开始: mult=" + mult);
 
             // 倍率为 1 时无需处理
-            if (Mathf.Approximately(mult, 1f))
+            if (Mathf.Approximately(mult, 1f) && Mathf.Approximately(healthMultiplier, 1f))
             {
                 ModBehaviour.DevLog("[BossRush] ApplyBossStatMultiplier: 倍率为 1，跳过");
                 return;
@@ -46,6 +48,13 @@ namespace BossRush
                     {
                         float oldHp = hpStat.BaseValue;
                         hpStat.BaseValue *= mult;
+                        if (!Mathf.Approximately(healthMultiplier, 1f))
+                        {
+                            // 最后乘整个生命值，后续装备与模式加成也保持相同比例。
+                            hpStat.RemoveAllModifiersFromSource(typeof(BossStatScaling));
+                            hpStat.AddModifier(new Modifier(ModifierType.PercentageMultiply,
+                                healthMultiplier - 1f, true, int.MaxValue, typeof(BossStatScaling)));
+                        }
                         ModBehaviour.DevLog("[BossRush] ApplyBossStatMultiplier: MaxHealth " + oldHp + " -> " + hpStat.BaseValue + " (x" + mult + ")");
                     }
                     else

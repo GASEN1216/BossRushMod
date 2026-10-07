@@ -19,7 +19,7 @@ internal static class Program
     private static ModBehaviour Host(bool awake = true)
     {
         Probe.Calls.Clear(); Probe.Logs.Clear(); Probe.Fault = null;
-        Probe.RiskAllowed = true; Probe.Naked = true; Probe.Ticket = 868;
+        Probe.RiskAllowed = true; Probe.Naked = true; Probe.Ticket = 500001;
         var host = new ModBehaviour();
         if (awake)
         {
@@ -55,6 +55,9 @@ internal static class Program
             && !host.modeDRuntime.modeDWaveCompletePending && host.modeDRuntime.modeDCurrentWaveEnemies.Count == 0,
             "real startup clears old wave state on the same runtime");
         Check(host.modeDRuntime.modeDEnemiesPerWave == 5, "real startup uses host configuration");
+
+        host = Host(); host.bossRushTicketTypeId = -1;
+        Check(host.TryStartModeD(), "uninitialized registration still permits the published 500001 ticket");
 
         host = Host(); host.bossRushTicketTypeId = 500001; Probe.Ticket = 500001;
         Check(host.TryStartModeD(), "inventory query preserves actual configured ticket ID");

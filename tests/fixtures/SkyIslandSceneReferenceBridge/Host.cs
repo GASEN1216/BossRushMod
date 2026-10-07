@@ -13,10 +13,13 @@ namespace System.Runtime.CompilerServices
 
 namespace Cysharp.Threading.Tasks
 {
-    public static class UniTask
+    public struct UniTask
     {
+        internal Task Inner;
+        public TaskAwaiter GetAwaiter() { return Inner.GetAwaiter(); }
+        public static UniTask CompletedTask { get { return new UniTask { Inner = Task.CompletedTask }; } }
         public static Task NextFrameTask = Task.CompletedTask;
-        public static Task NextFrame() { return NextFrameTask; }
+        public static UniTask NextFrame() { return new UniTask { Inner = NextFrameTask }; }
     }
     [AsyncMethodBuilder(typeof(FixtureTaskBuilder<>))]
     public struct UniTask<T>
@@ -43,6 +46,13 @@ namespace Cysharp.Threading.Tasks
 
 namespace UnityEngine
 {
+    public class AnimationCurve { }
+    public class AsyncOperation
+    {
+        public bool isDone = true;
+        public bool allowSceneActivation { get; set; }
+        public float progress = 1f;
+    }
     public static class Debug { public static void Log(string value) { } public static void LogWarning(string value) { } }
     public class GameObject
     {
@@ -59,6 +69,19 @@ namespace UnityEngine
         public Transform parent;
         public Transform(GameObject owner) { gameObject = owner; }
         public void SetParent(Transform value, bool worldPositionStays) { parent = value; gameObject.scene = value.gameObject.scene; }
+    }
+}
+
+namespace Duckov.UI
+{
+    public sealed class BlackScreen
+    {
+        public static BlackScreen Instance = new BlackScreen();
+        public static int Counter;
+        public static Cysharp.Threading.Tasks.UniTask ShowAndReturnTask(UnityEngine.AnimationCurve curve=null,float circle=0f,float duration=0.5f)
+        { Counter++; return Cysharp.Threading.Tasks.UniTask.CompletedTask; }
+        public static Cysharp.Threading.Tasks.UniTask HideAndReturnTask(UnityEngine.AnimationCurve curve=null,float circle=0f,float duration=0.5f)
+        { Counter--; return Cysharp.Threading.Tasks.UniTask.CompletedTask; }
     }
 }
 
@@ -162,6 +185,9 @@ public class SceneLoader
     public static void Finish() { IsSceneLoading = false; onFinishedLoadingScene?.Invoke(new SceneLoadingContext()); }
     public static readonly SceneLoader Instance = new SceneLoader();
     public static int LoadCalls;
+    public static bool ThrowAfterBlack;
+    public static UnityEngine.AsyncOperation PendingOperation;
+    public static bool MinimumTimePending, Clicked = true;
 
     /// <summary>
     /// 形状对齐官方 <c>LoadScene(SceneReference, SceneReference, bool, bool, bool, bool, MultiSceneLocation, bool, bool)</c>：
@@ -179,13 +205,25 @@ public class SceneLoader
         Duckov.Scenes.MultiSceneLocation location = default(Duckov.Scenes.MultiSceneLocation),
         bool saveToFile = true, bool hideTips = false)
     {
-        LoadCalls++;
-        for (int step = 0; step < 1000; step++)
-        {
-            if (LevelManager.LevelInited) return true;
-            await Cysharp.Threading.Tasks.UniTask.NextFrame();
-        }
-        return false;
+          LoadCalls++;
+          await Duckov.UI.BlackScreen.ShowAndReturnTask();
+          await Duckov.UI.BlackScreen.HideAndReturnTask();
+          UnityEngine.AsyncOperation loadSceneOperation = PendingOperation ?? new UnityEngine.AsyncOperation();
+          loadSceneOperation.allowSceneActivation = false;
+          while (loadSceneOperation.progress < 0.9f) await Cysharp.Threading.Tasks.UniTask.NextFrame();
+          while (MinimumTimePending) await Cysharp.Threading.Tasks.UniTask.NextFrame();
+          if (clickToConinue) while (!Clicked) await Cysharp.Threading.Tasks.UniTask.NextFrame();
+          await Duckov.UI.BlackScreen.ShowAndReturnTask();
+          bool completed = false;
+          if (ThrowAfterBlack) throw new InvalidOperationException("fixture initialization failure after black screen");
+          loadSceneOperation.allowSceneActivation = true;
+          for (int step = 0; step < 1000; step++)
+          {
+              if (LevelManager.LevelInited) { completed = true; break; }
+              await Cysharp.Threading.Tasks.UniTask.NextFrame();
+          }
+          await Duckov.UI.BlackScreen.HideAndReturnTask();
+          return completed;
     }
 }
 

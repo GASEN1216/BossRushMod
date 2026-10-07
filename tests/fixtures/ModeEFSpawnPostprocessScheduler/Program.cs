@@ -95,7 +95,7 @@ namespace BossRush
             var scheduler = new ModeEFSpawnPostprocessScheduler();
             scheduler.BindServices(
                 (c, plan) => { Events.Add("equipment:" + c.gameObject.Name); return --plan.Remaining <= 0; },
-                c => Events.Add("multiplier:" + c.gameObject.Name),
+                (c, boss) => Events.Add("multiplier:" + c.gameObject.Name),
                 (c, count) => Events.Add("loot:" + c.gameObject.Name + ":" + count),
                 plan => Events.Add("cleanup-plan"),
                 c => Events.Add("untrack:" + c.gameObject.Name));

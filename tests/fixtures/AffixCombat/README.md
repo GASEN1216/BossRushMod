@@ -2,6 +2,8 @@
 
 运行 `python tools/run_runtime_regressions.py --filter AffixCombat`，需要 .NET 8，不启动游戏。
 
+2026-10-06：逐字抽取 `RefreshDisplayNames` / `StampNameKV` 与键构造方法，经真实运行时订阅的选物事件驱动。覆盖旧名称按槽内实际档位补成分档本地化键、锁定位和未知词缀不变、重复查询无写入、浏览背包装备不激活战斗效果、中英切换、订阅幂等和卸载退订。词缀槽读取与 CustomDataCollection 是受控替身，不读任何玩家存档；官方详情 / 悬浮提示的像素与 Harmony 安装需实机确认。
+
 此外逐字抽取生产词缀资格与计价方法，验证空槽按数量收费、锁定少一颗熔石、稀有度附加费、极端价格饱和，以及读档自定义武器先补配再判断资格。物品组件/标签/KV 和重铸基础费用是受控宿主替身，价格计算与装备归类本身来自生产源码。
 
 直接链接完整 `AffixRuntimeService.cs`、`AffixRuntimeService_Effects.cs`、`AffixDefinitions.cs`、

@@ -16,8 +16,37 @@ namespace BossRush
                 c.CharacterItem.Slots.Rows[key] = new Slot { Content = new Item { TypeID = -2 } };
             return c;
         }
+        static void CompanionMapGate()
+        {
+            var host = new ModBehaviour();
+            string reason;
+            LevelManager.Instance = new LevelManager { IsRaidMap = true };
+            Check(PetNestModeGate.IsCompanionAllowed(host, out reason) && reason == null,
+                "ordinary raid accepts a deployed pet without any BossRush mode flag");
+            ModBehaviour.ModeG = true;
+            Check(PetNestModeGate.IsCompanionAllowed(host, out reason),
+                "Mode G now accepts the deployed companion");
+            ModBehaviour.ModeG = false; ModBehaviour.ModeH = true;
+            Check(!PetNestModeGate.IsCompanionAllowed(host, out reason) && reason == PetNestModeGate.ReasonModeH,
+                "spectator arena remains isolated");
+            ModBehaviour.ModeH = false; BossRushMapSelectionHelper.PendingModeH = true;
+            Check(!PetNestModeGate.IsCompanionAllowed(host, out reason), "pending spectator entry also excludes a companion");
+            BossRushMapSelectionHelper.PendingModeH = false; host.IsZombieModeActive = true;
+            Check(PetNestModeGate.IsCompanionAllowed(host, out reason),
+                "zombie run now accepts the deployed companion");
+            host.IsZombieModeActive = false; LevelManager.Instance.IsRaidMap = false;
+            Check(PetNestModeGate.IsCompanionAllowed(host, out reason), "non-Raid game maps also accept a companion");
+            LevelManager.Instance.IsBaseLevel = true;
+            Check(!PetNestModeGate.IsCompanionAllowed(host, out reason), "base does not create a second combat pet");
+            host.IsModeDActive = true;
+            Check(!PetNestModeGate.IsCompanionAllowed(host, out reason), "stale mode flag cannot create a combat pet in base");
+            Check(!PetNestModeGate.IsCompanionAllowed(null, out reason), "missing owner fails closed");
+            LevelManager.Instance = null;
+        }
+
         static async Task Main()
         {
+            CompanionMapGate();
             // Official Wiki examples: Speedy Ice 0.8, Deng 0.85, ordinary bosses 1, Prison 1.35.
             float last = 0;
             foreach (float source in new[] { 0.8f, 0.85f, 1f, 1.35f })
@@ -166,7 +195,16 @@ namespace BossRush
             Created.Add(item); return item;
         }
     }
-    static class ModBehaviour { public static void DevLog(string message) { } }
+    class LevelManager { public static LevelManager Instance; public bool IsRaidMap, IsBaseLevel; }
+    static class BossRushMapSelectionHelper { internal static bool PendingModeH; internal static bool HasPendingModeHEntryIntent() { return PendingModeH; } }
+    class ModBehaviour
+    {
+        public static bool ModeG, ModeH;
+        public bool IsActive, IsBossRushArenaActive, IsModeDActive, IsModeEActive, IsModeFActive, IsZombieModeActive;
+        public static bool IsModeGRunInProgressSafe() { return ModeG; }
+        public static bool IsModeHRunInProgressSafe() { return ModeH; }
+        public static void DevLog(string message) { }
+    }
     // Config doubles are identifiers only; actual content values remain guarded by their own suites.
     static class DragonDescendantConfig
     {

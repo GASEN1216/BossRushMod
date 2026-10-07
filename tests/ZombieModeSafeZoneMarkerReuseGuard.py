@@ -104,7 +104,7 @@ def main() -> int:
 
     spawn_required = [
         "PrepareZombieModeSpawnedEnemy(zombie, marker, ZombieModeTuning.NormalZombieForceTraceDistance);",
-        "PrepareZombieModeSpawnedEnemy(boss, bossMarker, 180f);",
+        "PrepareZombieModeSpawnedEnemy(boss, bossMarker, ZombieModeTuning.NormalZombieForceTraceDistance);",
         "SetZombieModeEnemyThreatSuppressed(enemy.gameObject, marker, true);",
     ]
     for snippet in spawn_required:

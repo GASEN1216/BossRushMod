@@ -28,7 +28,7 @@ namespace BossRush
         void Start_Integration()
         {
             LoadConfigFromFile();
-            Type modConfigType = FindModConfigType("ModConfig.ModBehaviour");
+            Type modConfigType = ModConfigAPI.FindLoadedType("ModConfig.ModBehaviour");
             if (modConfigType != null)
             {
                 SetupModConfig();
@@ -184,7 +184,7 @@ namespace BossRush
             CleanupIntegrationRuntimeStaticCaches();
             try
             {
-                Type modBehaviourType = FindModConfigType("ModConfig.ModBehaviour");
+                Type modBehaviourType = ModConfigAPI.FindLoadedType("ModConfig.ModBehaviour");
                 if (modBehaviourType != null)
                 {
                     MethodInfo removeDelegateMethod = modBehaviourType.GetMethod("RemoveOnOptionsChangedDelegate", BindingFlags.Public | BindingFlags.Static);

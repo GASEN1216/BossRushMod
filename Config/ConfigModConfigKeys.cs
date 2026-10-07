@@ -33,6 +33,7 @@ namespace BossRush
                    changedKey == ModName + "_LootBoxBlocksBullets" ||
                    changedKey == ModName + "_InfiniteHellBossesPerWave" ||
                    changedKey == ModName + "_BossStatMultiplier" ||
+                   changedKey == ModName + "_BossHealthPercent" ||
                    changedKey == ModName + "_milestoneRestBonusSeconds" ||
                    changedKey == ModName + "_EnableDragonDash" ||
                    changedKey == ModName + "_UseWolfModelForWildHorn" ||

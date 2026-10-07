@@ -26,6 +26,7 @@ namespace BossRush
         private bool _bootstrapped;
         private bool _baseMaintenancePending;
         private float _nextBaseMaintenanceTime;
+        private string _homecomingPetId;
 
         #endregion
 
@@ -125,6 +126,11 @@ namespace BossRush
                 // 回基地：把「本局重伤退场」复位为在巢待命
                 if (IsBaseScene())
                 {
+                    string returningPetId = PetNestCompanionRuntime.ActiveCompanionPetId;
+                    if (!string.IsNullOrEmpty(returningPetId)) _homecomingPetId = returningPetId;
+                    // 只把归巢经验身份留到存档就绪；旧战斗实体和在途生成当场回收。
+                    PetNestCompanionRuntime.CleanupOnce();
+                    PetNestBaseIdleSpawner.CleanupAll();
                     // 必须在任何读血脉目录的一步之前：会话重启后 enemyPresets 还是空的，
                     // 目录里一个官方血脉都没有（CR-2026-08-29-015）。
                     EnsureOfficialLineagesPrimed();
@@ -173,6 +179,10 @@ namespace BossRush
                     ShutdownIfEnabledTurnedOff();
                     return;
                 }
+                // 官方加载会先置 IsSceneLoading，再通知基地 sceneLoaded；后面的生命周期
+                // tick 会立即回收角色，因此必须先留下归巢结算身份。
+                string returningPetId = PetNestCompanionRuntime.ActiveCompanionPetId;
+                if (!string.IsNullOrEmpty(returningPetId)) _homecomingPetId = returningPetId;
                 PetNestDownedHandler.Tick();
                 // 场景判定每帧只做一次，两个分支共用
                 bool inBase = IsBaseScene();
@@ -239,6 +249,7 @@ namespace BossRush
 
                 _baseMaintenancePending = false;
                 _nextBaseMaintenanceTime = 0f;
+                _homecomingPetId = null;
                 _bootstrapped = false;
                 _owner = null;
             }
@@ -280,12 +291,13 @@ namespace BossRush
                 if (_baseMaintenancePending)
                 {
                     PetNestExpeditionService.ReconcileOrphanedExpeditionLocks();
-                    // 不要在这里加冷却：归巢经验是每次固定 +10（PetExpHomecoming），
+                    // 不要在这里加冷却：归巢经验每次固定取 PetExpHomecoming，
                     // 不随滞留时长累积，所以没有"久留后一次性暴涨"的泄漏可堵。
                     // 而 SettleRunHomecoming 的两条出口都会调 ResetRunKillBudget()，
                     // 跳过它会把本局击杀预算一起漏到下一局。入口已由 IsBaseLevel 把关。
                     PetNestProgressionService.SettleRunHomecoming(
-                        PetNestCompanionRuntime.ActiveCompanionPetId);
+                        _homecomingPetId);
+                    _homecomingPetId = null;
                     PetNestService.RestoreDownedPetsOnReturnToBase();
                     PetNestCompanionRuntime.CleanupOnce();
                     PetNestExpeditionService.SettleDueExpeditions();

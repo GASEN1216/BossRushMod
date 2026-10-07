@@ -93,7 +93,7 @@ def main() -> int:
         ("SpawnDragonKing(", "dragon king path must remain in shared spawn core"),
         ("SpawnPhantomWitch(", "phantom witch path must remain in shared spawn core"),
         ("EquipEnemyForModeD(character, waveIndex, currentPreset.baseHealth, isBoss);", "equipment path must keep existing condition target"),
-        ("ApplyBossStatMultiplier(character);", "boss multiplier path must keep existing condition target"),
+        ("ApplyBossStatMultiplier(character, isBoss);", "boss multiplier path must preserve the boss classification"),
         ("NormalizeDamageMultiplier(character);", "damage normalization must remain in spawn core"),
     ):
         result = require(text, needle, message)

@@ -217,13 +217,13 @@ namespace BossRush
             try
             {
                 int typeId = IntegrationRuntimeModule.BossRushTicketTypeId;
-                return typeId > 0 ? typeId : 868; // 默认回退到 868
+                return typeId > 0 ? typeId : BossRushItemIds.BossRushTicket;
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[BossRush] GetBossRushTicketTypeId 失败: " + e.Message);
             }
-            return 868; // 默认回退值
+            return BossRushItemIds.BossRushTicket;
         }
         
         /// <summary>

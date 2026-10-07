@@ -1,15 +1,9 @@
 // ============================================================================
 // PetNestModeGate.cs - 遗种巢随从进局的模式门控（实施计划 步骤 6）
 // ============================================================================
-// 首版门控表（设计提案 §5.4）：
-//   ✅ 标准三档 / Mode D 白手起家 / Mode E 划地为营 / Mode F 血猎追击
-//   ❌ Mode G 宿命回响 —— 三轴反制遥测只认玩家直伤，崽的伤害会侵蚀"总血贡献"
-//      分母语义，且宿敌叙事容不下第三者。**入口一刀切禁，不做局内特判**。
-//   ❌ 末日丧尸模式 —— 独立生命周期与独立奖励系统（ZombieMode/AGENTS.md 边界）。
-//   ❌ Mode H 百战留痕 —— 观战模式：玩家不下场，擂台由 arena isolation lease 独占并
-//      清空原生敌人，塞一只随从进去只会污染隔离核对。**实装期新增的保守判定，
-//      脑暴 §5.4 的门控表写于 Mode H 立项之前，`Needs owner confirmation`。**
-//   ✅ 基地 —— 自由活动（不走本门控，见基地闲逛崽）。
+// owner 明确范围：所有游戏地图与模式允许出战，唯一模式例外是 Mode H 鸭王杯。
+// 基地由独立闲逛 owner 生成非战斗实体；其余已初始化关卡不要求 IsRaidMap 或 BossRush 标志。
+// Mode G 只统计主角直伤，宠物击杀仍经已登记 Boss 死亡结案；丧尸计数只认本局敌人 marker。
 //
 // 硬约束（tests/PetNestModeGateGuard.py 守卫）：
 //   - **只经公开只读门面判定**，不得引用 ModeG / ZombieMode / ModeH 的内部符号
@@ -24,7 +18,7 @@ namespace BossRush
     /// <summary>随从进局的模式门控。唯一判定入口。</summary>
     internal static class PetNestModeGate
     {
-        /// <summary>禁入模式的稳定原因 id（面板与日志共用）。</summary>
+        /// <summary>历史诊断 id 保留兼容；G / 丧尸不再参与门控，唯一禁入模式为 H。</summary>
         internal const string ReasonModeG = "mode_g_banned";
         internal const string ReasonZombie = "zombie_mode_banned";
         internal const string ReasonModeH = "mode_h_banned";
@@ -45,29 +39,15 @@ namespace BossRush
 
             try
             {
-                // 一刀切禁入名单优先判定：命中即拒，不看是否有别的模式同时活跃
-                if (ModBehaviour.IsModeGRunInProgressSafe())
-                {
-                    blockReasonId = ReasonModeG;
-                    return false;
-                }
-                if (owner.IsZombieModeActive)
-                {
-                    blockReasonId = ReasonZombie;
-                    return false;
-                }
-                if (ModBehaviour.IsModeHRunInProgressSafe())
+                // 唯一禁入模式：看台与擂台由鸭王杯独占。
+                if (ModBehaviour.IsModeHRunInProgressSafe() || BossRushMapSelectionHelper.HasPendingModeHEntryIntent())
                 {
                     blockReasonId = ReasonModeH;
                     return false;
                 }
 
-                // 允许名单：标准三档 / 竞技场 / D / E / F
-                bool allowed = owner.IsActive
-                    || owner.IsBossRushArenaActive
-                    || owner.IsModeDActive
-                    || owner.IsModeEActive
-                    || owner.IsModeFActive;
+                // 基地走非战斗闲逛实体，其余游戏关卡一律允许，包括非 Raid 的自定义地图。
+                bool allowed = LevelManager.Instance != null && !LevelManager.Instance.IsBaseLevel;
 
                 if (!allowed)
                 {

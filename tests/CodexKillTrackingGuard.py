@@ -175,6 +175,8 @@ def main():
         return fail("OnGlobalHurt 只能给可计入图鉴的敌方 Boss 开表，杂兵与友军不得挤掉 Boss 起点")
     if hurt_body.index("ResolveBossKey(victim)") > hurt_body.index("_fightStart[id] = Time.time"):
         return fail("Boss 身份过滤必须早于写入计时表")
+    if hurt_body.index("_fightStart.ContainsKey(id)") > hurt_body.index("ResolveBossKey(victim)"):
+        return fail("已开表目标必须在组件身份查询前返回，不能每次后续命中都查组件")
 
     # ---- 6) 丧尸 marker 的 GetComponent 必须被模式门控 ----
     resolve_body = extract_method_body(collector, "ResolveBossKey")
@@ -191,12 +193,22 @@ def main():
     # 官方名单与运行时 isBoss 标记不完全相同（冰原掠夺者），目录里的官方 Boss 必须能收录。
     # 该兜底只能在丧尸 marker 分支之后，不能放宽到整个官方生物/展示目录。
     normalized_resolve = re.sub(r"\s+", " ", resolve_body).strip()
-    roster_return = "return victim.isBossCharacter || CodexOfficialBossRegistry.IsOfficialBoss(key) ? key : null;"
-    if roster_return not in normalized_resolve or "if (!victim.isBossCharacter) return null;" in normalized_resolve:
+    roster_gate = ("if (!victim.isBossCharacter && !CodexOfficialBossRegistry.IsOfficialBoss(key) "
+                   "&& !CodexBossCatalog.IsCustomBossKey(key)) return null;")
+    if roster_gate not in normalized_resolve or "if (!victim.isBossCharacter) return null;" in normalized_resolve:
         return fail("身份归属必须同时接纳运行时 Boss 和官方 Boss 名单，不能提前拒绝无 Boss 标记的名单条目")
     marker_return = "return marker.IsBoss ? CodexBossCatalog.BuildZombieBossKey(marker.BossKind) : null;"
-    if marker_return not in normalized_resolve or normalized_resolve.index(marker_return) > normalized_resolve.index(roster_return):
+    if marker_return not in normalized_resolve or normalized_resolve.index(marker_return) > normalized_resolve.index(roster_gate):
         return fail("丧尸 marker 必须先于官方 Boss 名单决定收录 key")
+    for controller, key in (("DragonKingAbilityController", "DragonKingConfig.BossNameKey"),
+                            ("DragonDescendantAbilityController", "DragonDescendantConfig.BOSS_NAME_KEY")):
+        identity_return = "if (victim.GetComponent<" + controller + ">() != null) return " + key + ";"
+        if identity_return not in normalized_resolve:
+            return fail("自定义 Boss 必须以现有控制器确认身份，避免第三方改写 preset 后误入图鉴: " + controller)
+        if normalized_resolve.index(identity_return) < normalized_resolve.index(roster_gate):
+            return fail("自定义控制器查询必须在 Boss 候选门控之后，不能让普通杂兵受击承担额外查询")
+    if not normalized_resolve.endswith("return key;"):
+        return fail("没有控制器覆盖时必须保留官方 Boss / 女巫 / 冠军之影的原有 key")
 
     # ---- 7) 过滤序的身份闸一条都不能少 ----
     dead_body = extract_method_body(collector, "OnGlobalDead")

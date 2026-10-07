@@ -104,6 +104,26 @@ internal static partial class Program
             catch (ArgumentException) { rejected = true; }
             Check(rejected, "never modify original resource");
         }
+        foreach (float multiplier in new[] { 0.1f, 1f, 2f })
+        {
+            Reset();
+            using (var world = new World("K3_Relay", () => multiplier))
+            {
+                world.Tick();
+                NearCombat(CharacterRandomPreset.Created[0].Health.MaxHealth, 1000f * multiplier,
+                    "encounter forwards the injected difficulty before official character creation");
+            }
+            var source = new CharacterRandomPreset { health = 45f };
+            var clone = source.Copy();
+            SkyIslandCombatPreset.Apply(clone, source, "K3_Relay", 0, SkyIslandEnemyTier.Chief, multiplier);
+            float expected = Math.Max(SkyIslandCombatBalance.For("K3_Relay", 0, SkyIslandEnemyTier.Chief).Health
+                * SkyIslandCombatBalance.Multiplier, SkyIslandCombatBalance.BossHealthFloor) * multiplier;
+            NearCombat(clone.health, expected, "configured boss health applies after the existing floor");
+            SkyIslandCombatPreset.Apply(clone, source, "K3_Relay", 0, SkyIslandEnemyTier.Chief, multiplier);
+            NearCombat(clone.health, expected, "configured boss health does not compound on preparation retry");
+            SkyIslandCombatPreset.Apply(clone, source, "C_02", 0, SkyIslandEnemyTier.Scav, multiplier);
+            NearCombat(clone.health, 67.5f, "boss health setting leaves ordinary patrols unchanged");
+        }
         Reset();
     }
 }

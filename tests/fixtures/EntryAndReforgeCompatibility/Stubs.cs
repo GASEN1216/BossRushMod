@@ -213,6 +213,13 @@ namespace BossRush
     public static class StoneOutpostSceneLease { public static bool IsResourceScene(Scene scene) { return false; } }
     public struct SceneRuntimeContext { public SceneRuntimeContext(Scene s, LoadSceneMode m) { } }
     public class Host { public void OnSceneLoaded(SceneRuntimeContext context) { } }
+    internal static class IntegrationRuntimeModule
+    {
+        internal static int TicketId;
+        internal static bool ThrowTicketQuery;
+        internal static int BossRushTicketTypeId
+        { get { if (ThrowTicketQuery) throw new InvalidOperationException("registration unavailable"); return TicketId; } }
+    }
     public partial class ModBehaviour
     {
         public static ModBehaviour Instance;

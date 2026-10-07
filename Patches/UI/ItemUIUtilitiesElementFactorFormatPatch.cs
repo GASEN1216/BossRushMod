@@ -54,6 +54,13 @@ namespace BossRush.Patches.UI
     [HarmonyPatch(typeof(ItemUIUtilities), "GetPropertyValueTextPair", new Type[] { typeof(Item) })]
     internal static class ItemUIUtilitiesElementFactorFormatPatch
     {
+        [HarmonyPrefix]
+        private static void Prefix(Item item)
+        {
+            // 复用既有物品提示入口，旧词缀只按当前查看的物品更新显示名。
+            AffixItemData.RefreshDisplayNames(item);
+        }
+
         [HarmonyPostfix]
         private static void Postfix(Item item, ref List<ValueTuple<string, string, Polarity>> __result)
         {

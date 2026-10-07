@@ -191,13 +191,21 @@ namespace BossRush
         internal static string GetModPath() { return ModPath; }
     }
 
-    internal static class SkyIslandSceneReferenceBridge
-    {
-        internal const string SceneId="BossRush_SkyIsland",ScenePath="Assets/SkyIsland/SkyIslandRaid.unity";
+      internal static class SkyIslandSceneReferenceBridge
+      {
+          internal const string SceneId="BossRush_SkyIsland",ScenePath="Assets/SkyIsland/SkyIslandRaid.unity";
+          internal static Eflatun.SceneReference.SceneReference SceneReference = new Eflatun.SceneReference.SceneReference();
+          internal static int VisualBegins, VisualEnds;
+          internal static bool PreserveTargetSnapshot;
+          internal static void BeginLoadVisuals(object owner,Eflatun.SceneReference.SceneReference target,bool preservePreviousTargetSnapshot=false)
+          { VisualBegins++; PreserveTargetSnapshot=preservePreviousTargetSnapshot; }
+          internal static Task EndLoadVisuals(object owner) { VisualEnds++; return Task.CompletedTask; }
+          internal static bool PendingLoad;
+          internal static bool HasPendingInitializationLoad(object owner) { return PendingLoad; }
         internal static bool EnsureRegistered(){return true;}
         // 初始化令牌替身：只记录真实租约的调用序列，语义与生产桥一致（重复 Begin 不同 owner 直接抛）。
         internal static object Owner; internal static int BoundScenes; internal static string Failure; internal static int Ends;
-        internal static void Reset(){Owner=null;BoundScenes=0;Failure=null;Ends=0;}
+          internal static void Reset(){Owner=null;BoundScenes=0;Failure=null;Ends=0;PendingLoad=false;VisualBegins=VisualEnds=0;}
         internal static void BeginInitialization(object owner)
         {
             if(owner==null) throw new ArgumentNullException("owner");

@@ -1,5 +1,7 @@
 # Mode G 生产流程回归
 
+2026-10-06 携崽扩展：新增非主角随从击杀已登记 Boss 的场景，生产死亡回调正常结案一次、末击不归到主角武器轴、主角直伤分母保持为 0；不把宠物伤害伪报成玩家直伤。
+
 运行：`python tools/run_runtime_regressions.py --filter ModeGCombat`，需要 .NET 8 SDK。
 
 真实生产逻辑：完整链接战斗遥测、直伤分类器、三轴判据与 Modifier 操作、运行状态、九波计划、确定性随机、八项契约和两份持久化类；逐字抽取波末结算、下一波弹药准备、HUD 目标格式和奖励计划。源文件 SHA-256 写入 `Build/runtime-regressions/ModeGCombat/source-sha256.txt`。

@@ -47,9 +47,14 @@ namespace BossRush
         public int matchIndex;
         public long amount;
         public int odds;
+        /// <summary>锁盘时冻结的真实赔付分数。旧档两者为 0，沿用旧版按赔率档结算。</summary>
+        public int payoutNumerator;
+        public int payoutDenominator;
         /// <summary>0 无 / 1 已扣押金 / 2 已结算 / 3 已退回。</summary>
         public int status;
         public long payout;
+        /// <summary>本场已结结果：0 旧档未记录 / 1 赢 / 2 输。小额赢注可按原规则取整返还 0，不能据此判负。</summary>
+        public int settlementResult;
         /// <summary>0 押钱 / 1 押背包物品（amount 是物品估值合计）。</summary>
         public int kind;
         /// <summary>押物品时押了哪几件（ModeHItemBetEntry.Encode）。</summary>
@@ -152,18 +157,18 @@ namespace BossRush
         /// </summary>
         internal static int PrizeQuality(List<ModeHItemBetEntry> entries)
         {
-            long weight = 0;
-            long weighted = 0;
+            decimal weight = 0;
+            decimal weighted = 0;
             for (int i = 0; entries != null && i < entries.Count; i++)
             {
                 ModeHItemBetEntry e = entries[i];
                 if (e == null || e.Value <= 0) continue;
                 int q = Math.Max(ModeHConfig.MinGameQuality, Math.Min(ModeHConfig.MaxGameQuality, e.Quality));
                 weight += e.Value;
-                weighted += e.Value * q;
+                weighted += (decimal)e.Value * q;
             }
             if (weight <= 0) return ModeHConfig.MinGameQuality;
-            long rounded = (weighted * 2 + weight) / (weight * 2);
+            decimal rounded = decimal.Floor((weighted * 2 + weight) / (weight * 2));
             return (int)Math.Max(ModeHConfig.MinGameQuality, Math.Min(ModeHConfig.MaxGameQuality, rounded));
         }
 
@@ -209,8 +214,57 @@ namespace BossRush
 
         private static CashBetJournal _journal;
 
-        /// <summary>玩家在选人页 / 结算页选的押注档（ModeHConfig.CashBetAmounts 的下标）。纯运行时：读档回到「不押」。</summary>
+        /// <summary>赛前选的押注档（ModeHConfig.CashBetAmounts 的下标，-1 为自选）。纯运行时：读档回到「不押」。</summary>
         internal static int StandingTier;
+        private static long _customStandingAmount;
+        internal const int CustomSliderSteps = 10000;
+        internal static bool IsCustomStandingBet { get { return StandingTier == -1; } }
+        internal static long MaximumStandingAmount
+        {
+            get { return Math.Max(0L, EconomyManager.Money); }
+        }
+
+        internal static void SelectCustomStandingAmount(long amount, int odds = ModeHConfig.MinOdds)
+        {
+            _customStandingAmount = Math.Max(0L, Math.Min(GetMaximumStandingAmount(MaximumStandingAmount, odds), amount));
+            StandingTier = -1;
+        }
+
+        /// <summary>赔付不超过当前余额；倍率不足 1 时本金仍不能超出钱包。</summary>
+        internal static long GetMaximumStandingAmount(long wallet, int odds)
+        {
+            int tier = Math.Max(ModeHConfig.MinOdds, Math.Min(ModeHConfig.MaxOdds, odds));
+            return MaximumStake(wallet, 1000 - ModeHConfig.CashBetHouseCutPermille, ResolveAssumedWinPermille(tier));
+        }
+
+        private static long MaximumStake(long wallet, int numerator, int denominator)
+        {
+            if (wallet <= 0 || numerator <= 0 || denominator <= 0) return 0;
+            decimal limit = decimal.Floor((decimal)wallet * denominator / numerator);
+            return (long)Math.Min(wallet, limit);
+        }
+
+        /// <summary>滑条只传 0..10000 的整数位置，金额换算不经过 float。</summary>
+        internal static long AmountAtProgress(long maximum, int progress)
+        {
+            if (maximum <= 0) return 0;
+            int step = Math.Max(0, Math.Min(CustomSliderSteps, progress));
+            return (long)decimal.Floor((decimal)maximum * step / CustomSliderSteps);
+        }
+
+        internal static int ProgressForAmount(long maximum, long amount)
+        {
+            if (maximum <= 0 || amount <= 0) return 0;
+            return (int)decimal.Floor((decimal)Math.Min(maximum, amount) * CustomSliderSteps / maximum);
+        }
+
+        /// <summary>仅统计 / 展示合计使用饱和；交易金额不靠截断掩盖溢出。</summary>
+        internal static long SaturatingAdd(long left, long right)
+        {
+            if (right > 0 && left > long.MaxValue - right) return long.MaxValue;
+            if (right < 0 && left < long.MinValue - right) return long.MinValue;
+            return left + right;
+        }
 
         /// <summary>官方钱包在不在（没有 EconomyManager 时不挂押钱选项）。</summary>
         internal static bool IsAvailable
@@ -223,6 +277,7 @@ namespace BossRush
         {
             get
             {
+                if (IsCustomStandingBet) return _customStandingAmount;
                 long[] amounts = ModeHConfig.CashBetAmounts;
                 int tier = StandingTier < 0 || StandingTier >= amounts.Length ? 0 : StandingTier;
                 return amounts[tier];
@@ -235,20 +290,50 @@ namespace BossRush
         /// </summary>
         internal static long ComputePayout(long stake, int odds)
         {
-            if (stake <= 0) return 0;
+            long payout;
+            return TryComputePayout(stake, odds, out payout) ? payout : long.MaxValue;
+        }
+
+        internal static bool TryComputePayout(long stake, int odds, out long payout)
+        {
             int tier = odds < ModeHConfig.MinOdds ? ModeHConfig.MinOdds : (odds > ModeHConfig.MaxOdds ? ModeHConfig.MaxOdds : odds);
             int assumed = ResolveAssumedWinPermille(tier);
-            long gross = stake * (1000 - ModeHConfig.CashBetHouseCutPermille) / assumed;
-            return gross / 10 * 10;
+            return TryComputePayout(stake, 1000 - ModeHConfig.CashBetHouseCutPermille, assumed, out payout);
+        }
+
+        private static bool TryComputePayout(long stake, int numerator, int denominator, out long payout)
+        {
+            payout = 0;
+            if (stake < 0 || numerator <= 0 || denominator <= 0) return false;
+            decimal gross = decimal.Floor((decimal)stake * numerator / denominator / 10m) * 10m;
+            if (gross > long.MaxValue) return false;
+            payout = (long)gross;
+            return true;
+        }
+
+        internal static bool TryComputeReservedPayout(ModeHCashBetRecord record, out long payout)
+        {
+            payout = 0;
+            if (record == null) return false;
+            return record.payoutNumerator > 0 && record.payoutDenominator > 0
+                ? TryComputePayout(record.amount, record.payoutNumerator, record.payoutDenominator, out payout)
+                : TryComputePayout(record.amount, record.odds, out payout);
+        }
+
+        internal static bool IsWinningRecord(ModeHCashBetRecord record)
+        {
+            return record != null && (record.settlementResult == 1
+                || (record.settlementResult == 0 && (record.itemSettlement == 1 || record.payout > 0)));
         }
 
         /// <summary>本档用来算赔付的假定胜率（‰）。</summary>
         internal static int ResolveAssumedWinPermille(int tier)
         {
+            tier = Math.Max(ModeHConfig.MinOdds, Math.Min(ModeHConfig.MaxOdds, tier));
             int table = ModeHConfig.CashBetAssumedWinPermilleByOdds[tier];
             ModeHCashBetRecord record = Current;
             if (record == null || record.tierBets[tier] < ModeHConfig.CashBetCalibrationMinSamples) return table;
-            long observed = record.tierWins[tier] * 1000 / Math.Max(1L, record.tierBets[tier]);
+            long observed = (long)Math.Min(1000m, (decimal)record.tierWins[tier] * 1000 / Math.Max(1L, record.tierBets[tier]));
             int assumed = (int)Math.Max(table, observed);
             // 全胜的档位也要给一点赔付：假定胜率封顶 990‰（赢了至少拿回押金的 92%，仍是亏）
             return Math.Min(990, Math.Max(1, assumed));
@@ -307,6 +392,7 @@ namespace BossRush
             int betSide = BetSideNone)
         {
             failureReasonId = null;
+            if (amount < 0) { failureReasonId = "cash_bet_invalid_amount"; return false; }
             if (amount <= 0) return true;
             try
             {
@@ -395,6 +481,7 @@ namespace BossRush
             }
             _journal = null;
             StandingTier = 0;
+            _customStandingAmount = 0;
         }
 
         private static CashBetJournal EnsureJournal()
@@ -449,14 +536,31 @@ namespace BossRush
                     failureReasonId = "cash_bet_not_enough_money";
                     return false;
                 }
+                int numerator = 1000 - ModeHConfig.CashBetHouseCutPermille;
+                int denominator = ResolveAssumedWinPermille(odds);
+                if (amount <= 0 || amount > MaximumStake(EconomyManager.Money, numerator, denominator))
+                {
+                    failureReasonId = "cash_bet_limit_changed";
+                    return false;
+                }
+                long expectedPayout;
+                if (!TryComputePayout(amount, numerator, denominator, out expectedPayout)
+                    || EconomyManager.Money - amount > long.MaxValue - expectedPayout)
+                {
+                    failureReasonId = "cash_bet_overflow";
+                    return false;
+                }
                 ModeHCashBetRecord candidate = previous.Clone();
                 candidate.runId = runId ?? string.Empty;
                 candidate.matchIndex = matchIndex;
                 candidate.amount = amount;
                 candidate.odds = odds;
+                candidate.payoutNumerator = numerator;
+                candidate.payoutDenominator = denominator;
                 candidate.betSide = NormalizeBetSide(betSide);
                 candidate.status = StatusReserved;
                 candidate.payout = 0;
+                candidate.settlementResult = 0;
                 candidate.kind = KindCash;
                 candidate.items = string.Empty;
                 candidate.charged = 0;
@@ -491,9 +595,18 @@ namespace BossRush
                 candidate.matchIndex = matchIndex;
                 candidate.amount = value;
                 candidate.odds = odds;
+                candidate.payoutNumerator = 1000 - ModeHConfig.CashBetHouseCutPermille;
+                candidate.payoutDenominator = ResolveAssumedWinPermille(odds);
+                long expectedPayout;
+                if (!TryComputePayout(value, candidate.payoutNumerator, candidate.payoutDenominator, out expectedPayout))
+                {
+                    failureReasonId = "cash_bet_overflow";
+                    return false;
+                }
                 candidate.betSide = NormalizeBetSide(betSide);
                 candidate.status = StatusReserved;
                 candidate.payout = 0;
+                candidate.settlementResult = 0;
                 candidate.kind = KindItems;
                 candidate.items = items ?? string.Empty;
                 candidate.charged = 0;
@@ -527,7 +640,9 @@ namespace BossRush
                     if (won)
                     {
                         List<ModeHItemBetEntry> entries = ModeHItemBetEntry.Decode(previous.items);
-                        long budget = Math.Max(0L, ComputePayout(previous.amount, previous.odds) - previous.amount);
+                        long expectedPayout;
+                        if (!TryComputeReservedPayout(previous, out expectedPayout)) return false;
+                        long budget = Math.Max(0L, expectedPayout - previous.amount);
                         long prizeValue;
                         string summary;
                         List<ModeHItemBetEntry> prizes = ModeHItemBetStake.PreparePrizePlan(budget,
@@ -600,8 +715,9 @@ namespace BossRush
                 string reason;
                 if (!CanMoveMoney(out reason)) return false;
                 int tier = Math.Max(ModeHConfig.MinOdds, Math.Min(ModeHConfig.MaxOdds, previous.odds));
-                // 赔付按「结算前」的统计算：本场结果不回头影响本场赔付
-                long gross = won ? ComputePayout(previous.amount, previous.odds) : 0;
+                // 新账本按锁盘时的分数结算；旧账本缺省时保留原有按档位结算方式。
+                long gross = 0;
+                if (won && !TryComputeReservedPayout(previous, out gross)) return false;
                 long delta = gross;
                 long charged = 0;
                 if (previous.kind == KindItems)
@@ -615,11 +731,12 @@ namespace BossRush
                 ModeHCashBetRecord candidate = previous.Clone();
                 candidate.status = StatusSettled;
                 candidate.payout = gross;
+                candidate.settlementResult = won ? 1 : 2;
                 candidate.charged = charged;
                 candidate.prizes = won && previous.kind == KindItems ? (prizes ?? string.Empty) : string.Empty;
                 candidate.prizeCash = won && previous.kind == KindItems ? delta : 0L;
-                candidate.tierBets[tier]++;
-                if (won) candidate.tierWins[tier]++;
+                if (candidate.tierBets[tier] < long.MaxValue) candidate.tierBets[tier]++;
+                if (won && candidate.tierWins[tier] < long.MaxValue) candidate.tierWins[tier]++;
                 AccumulateRunNet(candidate, previous, gross);
                 if (!Commit(previous, candidate, delta, out reason)) return false;
                 payout = gross;
@@ -641,7 +758,7 @@ namespace BossRush
                 }
                 int bit = previous.matchIndex > 0 && previous.matchIndex < 31 ? 1 << previous.matchIndex : 0;
                 if (bit == 0 || (candidate.netMatchMask & bit) != 0) return;
-                candidate.runNet += gross - previous.amount;
+                candidate.runNet = SaturatingAdd(candidate.runNet, gross - previous.amount);
                 candidate.netMatchMask |= bit;
             }
 
@@ -687,6 +804,11 @@ namespace BossRush
             {
                 failureReasonId = null;
                 long before = EconomyManager.Money;
+                if (before < 0 || delta == long.MinValue || (delta < 0 && before < -delta))
+                {
+                    failureReasonId = "cash_bet_not_enough_money";
+                    return false;
+                }
                 if (delta > 0 && before > long.MaxValue - delta)
                 {
                     failureReasonId = "cash_bet_overflow";
@@ -813,19 +935,21 @@ namespace BossRush
                 int value;
                 if (root.TryGetInt("matchIndex", out value)) record.matchIndex = value;
                 if (root.TryGetInt("odds", out value)) record.odds = value;
+                if (root.GetProperty("payoutNumerator") != null && !root.TryGetInt("payoutNumerator", out record.payoutNumerator)) return null;
+                if (root.GetProperty("payoutDenominator") != null && !root.TryGetInt("payoutDenominator", out record.payoutDenominator)) return null;
                 if (root.TryGetInt("status", out value)) record.status = value;
-                long big;
-                if (TryGetLong(root, "amount", out big)) record.amount = big;
-                if (TryGetLong(root, "payout", out big)) record.payout = big;
-                if (TryGetLong(root, "charged", out big)) record.charged = big;
-                if (TryGetLong(root, "prizeCash", out big)) record.prizeCash = big;
-                if (TryGetLong(root, "missingValue", out big)) record.missingValue = big;
+                if (root.GetProperty("settlementResult") != null && !root.TryGetInt("settlementResult", out record.settlementResult)) return null;
+                if (!ReadOptionalLong(root, "amount", out record.amount)
+                    || !ReadOptionalLong(root, "payout", out record.payout)
+                    || !ReadOptionalLong(root, "charged", out record.charged)
+                    || !ReadOptionalLong(root, "prizeCash", out record.prizeCash)
+                    || !ReadOptionalLong(root, "missingValue", out record.missingValue)) return null;
                 if (root.TryGetInt("itemSettlement", out value)) record.itemSettlement = value;
                 if (root.TryGetInt("combatStarted", out value)) record.combatStarted = value != 0 ? 1 : 0;
                 if (root.TryGetInt("betSide", out value)) record.betSide = NormalizeBetSide(value);
                 string netRunId;
                 if (root.TryGetString("netRunId", out netRunId)) record.netRunId = netRunId ?? string.Empty;
-                if (TryGetLong(root, "runNet", out big)) record.runNet = big;
+                if (!ReadOptionalLong(root, "runNet", out record.runNet)) return null;
                 if (root.TryGetInt("netMatchMask", out value)) record.netMatchMask = value;
                 string pending;
                 if (root.TryGetString("pendingItems", out pending)) record.pendingItems = pending ?? string.Empty;
@@ -837,14 +961,25 @@ namespace BossRush
                 string items;
                 if (root.TryGetString("items", out items)) record.items = items ?? string.Empty;
                 if (record.status < StatusNone || record.status > StatusRefunded || record.amount < 0
+                    || record.payout < 0 || record.charged < 0 || record.prizeCash < 0
+                    || record.settlementResult < 0 || record.settlementResult > 2
                     || record.kind < KindCash || record.kind > KindItems
                     || record.itemSettlement < 0 || record.itemSettlement > 2 || record.missingValue < 0) return null;
+                if ((record.payoutNumerator != 0 || record.payoutDenominator != 0)
+                    && (record.payoutNumerator <= 0 || record.payoutNumerator > 1000
+                        || record.payoutDenominator <= 0 || record.payoutDenominator > 1000)) return null;
                 if (!string.IsNullOrEmpty(record.pendingItems)
                     && (record.kind != KindItems || record.status != StatusReserved || record.itemSettlement == 0
                         || ModeHItemBetEntry.Decode(record.pendingItems).Count != record.pendingItems.Split(';').Length)) return null;
-                ReadTier(root, "tierBets", record.tierBets);
-                ReadTier(root, "tierWins", record.tierWins);
+                if (!ReadTier(root, "tierBets", record.tierBets) || !ReadTier(root, "tierWins", record.tierWins)) return null;
+                for (int i = 0; i < record.tierBets.Length; i++) if (record.tierWins[i] > record.tierBets[i]) return null;
                 return record;
+            }
+
+            private static bool ReadOptionalLong(BossRushJsonValue root, string key, out long value)
+            {
+                value = 0;
+                return root.GetProperty(key) == null || TryGetLong(root, key, out value);
             }
 
             private static bool TryGetLong(BossRushJsonValue root, string key, out long value)
@@ -855,16 +990,21 @@ namespace BossRush
                 return long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
             }
 
-            private static void ReadTier(BossRushJsonValue root, string key, long[] target)
+            private static bool ReadTier(BossRushJsonValue root, string key, long[] target)
             {
                 string text;
-                if (!root.TryGetString(key, out text) || string.IsNullOrEmpty(text)) return;
+                if (root.GetProperty(key) == null) return true;
+                if (!root.TryGetString(key, out text)) return false;
+                if (string.IsNullOrEmpty(text)) return true;
                 string[] parts = text.Split(',');
+                if (parts.Length > target.Length) return false;
                 for (int i = 0; i < parts.Length && i < target.Length; i++)
                 {
                     long v;
-                    if (long.TryParse(parts[i], NumberStyles.Integer, CultureInfo.InvariantCulture, out v) && v >= 0) target[i] = v;
+                    if (!long.TryParse(parts[i], NumberStyles.Integer, CultureInfo.InvariantCulture, out v) || v < 0) return false;
+                    target[i] = v;
                 }
+                return true;
             }
 
             private static string Encode(ModeHCashBetRecord record)
@@ -874,7 +1014,10 @@ namespace BossRush
                 SimpleJsonHelper.EscapeString(sb, record.runId ?? string.Empty);
                 sb.Append("\",\"matchIndex\":").Append(record.matchIndex.ToString(CultureInfo.InvariantCulture));
                 sb.Append(",\"odds\":").Append(record.odds.ToString(CultureInfo.InvariantCulture));
+                sb.Append(",\"payoutNumerator\":").Append(record.payoutNumerator.ToString(CultureInfo.InvariantCulture));
+                sb.Append(",\"payoutDenominator\":").Append(record.payoutDenominator.ToString(CultureInfo.InvariantCulture));
                 sb.Append(",\"status\":").Append(record.status.ToString(CultureInfo.InvariantCulture));
+                sb.Append(",\"settlementResult\":").Append(record.settlementResult.ToString(CultureInfo.InvariantCulture));
                 sb.Append(",\"amount\":\"").Append(record.amount.ToString(CultureInfo.InvariantCulture));
                 sb.Append("\",\"payout\":\"").Append(record.payout.ToString(CultureInfo.InvariantCulture));
                 sb.Append("\",\"charged\":\"").Append(record.charged.ToString(CultureInfo.InvariantCulture));

@@ -10,14 +10,14 @@ namespace BossRush
     internal sealed class ModeEFSpawnPostprocessScheduler
     {
         private Func<CharacterMainControl, SharedModeEnemyEquipmentMaterializationPlan, bool> materializeEquipmentStep;
-        private Action<CharacterMainControl> applyBossStatMultiplier;
+        private Action<CharacterMainControl, bool> applyBossStatMultiplier;
         private Action<CharacterMainControl, int> registerBossLoot;
         private Action<SharedModeEnemyEquipmentMaterializationPlan> cleanupEquipmentPlan;
         private Action<CharacterMainControl> clearBossLoot;
 
         internal void BindServices(
             Func<CharacterMainControl, SharedModeEnemyEquipmentMaterializationPlan, bool> materializeEquipmentStep,
-            Action<CharacterMainControl> applyBossStatMultiplier,
+            Action<CharacterMainControl, bool> applyBossStatMultiplier,
             Action<CharacterMainControl, int> registerBossLoot,
             Action<SharedModeEnemyEquipmentMaterializationPlan> cleanupEquipmentPlan,
             Action<CharacterMainControl> clearBossLoot)
@@ -233,7 +233,7 @@ namespace BossRush
 
                 if (!job.bossMultiplierApplied)
                 {
-                    applyBossStatMultiplier(character);
+                    applyBossStatMultiplier(character, job.context.isBoss);
                     job.bossMultiplierApplied = true;
                     job.profiler.Mark("BossMultiplier");
                     return false;

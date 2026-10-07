@@ -110,6 +110,7 @@ namespace BossRush
             return Probe.Naked;
         }
     }
+    internal static class BossRushItemIds { internal const int BossRushTicket = 500001; }
     public partial class ModBehaviour
     {
         public static ModBehaviour Instance;

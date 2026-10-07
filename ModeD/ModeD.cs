@@ -125,7 +125,7 @@ namespace BossRush
 
         private int GetBossRushTicketTypeId()
         {
-            return bossRushTicketTypeId > 0 ? bossRushTicketTypeId : 868;
+            return bossRushTicketTypeId > 0 ? bossRushTicketTypeId : BossRushItemIds.BossRushTicket;
         }
 
         private bool TryGetMainCharacterItem(out CharacterMainControl main, out Item characterItem)

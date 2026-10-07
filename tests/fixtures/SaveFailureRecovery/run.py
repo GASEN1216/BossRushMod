@@ -50,9 +50,16 @@ for name in names:
     assert match, name
     constants.append(match.group(0))
 bet = clean_source((ROOT / 'ModeH/ModeHRuntimeModule_BetFlow.cs').read_text(encoding='utf-8-sig'))
-extracted = 'using System; using System.Collections.Generic; using ItemStatsSystem; namespace BossRush {\n'
+extracted = 'using System; using System.Collections.Generic; using System.Globalization; using ItemStatsSystem; namespace BossRush {\n'
 extracted += 'static class ModeHConfig {\n' + '\n'.join(constants) + '\n}\n'
 extracted += 'partial class ModeHRuntimeModule {\n' + member(bet, 'private void SettleReservedBet(ModeHCashBetRecord record, bool won)') + '\n}\n'
+extracted += 'partial class ModeHRuntimeModule {\n'
+for signature in ('internal static string FormatMoney(long amount)',
+                  'internal static string FormatSignedMoney(long amount)',
+                  'internal static string FormatPayoutMultiplier(int odds)',
+                  'internal static string FormatPayoutMultiplier(ModeHCashBetRecord record)'):
+    extracted += member(bet, signature) + '\n'
+extracted += '}\n'
 host = clean_source((ROOT / 'ModeH/ModeHRuntimeModule.cs').read_text(encoding='utf-8-sig'))
 extracted += 'partial class ModeHRuntimeModule {\n' + member(bet, 'private void ReconcileCashBetOnRestore()') + '\n'
 extracted += member(bet, 'private bool TryResolveCashBetBeforeAbandon()') + '\n'

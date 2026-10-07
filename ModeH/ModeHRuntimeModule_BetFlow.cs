@@ -3,9 +3,9 @@
 // ============================================================================
 // 账本与赔付口径在 ModeHCashBetService.cs，押背包/穿戴物品的物品侧在 ModeHItemBetStake.cs；
 // 这里只把它们接进鸭王杯的页面与状态机：
-//   - 赛前双方对照页与赔率页下方一排「押注」：不押 / 1,000 / 5,000 / 20,000 / 押物品；
+//   - 赛前双方对照页与赔率页下方一排「押注」：不押 / 快捷金额 / 自选金额 / 押物品；
 //     押钱选的是「接下来每场押多少」，默认不押，读档回到不押；押物品可选背包、容器和穿戴物品，只管下一场；
-//   - 锁盘成功后扣押金或记下押上的物品（钱不够、东西不在就这一场不押，写一句原因，比赛照打），开盘动画结束才开战；
+//   - 自选金额按当前钱包与返还倍率设上限；锁盘复验后只扣本金，资金或押品不可用时记录原因，比赛照打；
 //   - 本场分出胜负时按赔率结算：押物品赢了东西留着、另发奖品（品质跟押上的东西走、总价值跟估值和赔率走），
 //     输了收走押上的东西；
 //   - **押注跟着这一场走**：技术中止、挂起、退游戏重进都不退，重打这一场时沿用、按重打的结果结算
@@ -32,7 +32,7 @@ namespace BossRush
         #region 页面：押注行
 
         /// <summary>
-        /// 页脚「押注」一排（钱包不在时不挂，§4.14）：押钱四档 + 押物品。选中档染主色；钱不够照挂，锁盘时再说明。
+        /// 页脚「押注」一排（钱包不在时不挂，§4.14）：押钱快捷档 + 自选金额 + 押物品。资金不可用时锁盘再说明。
         /// 这一场已经押上（中断后重打）时说明写「沿用」，下面选的只管之后几场。
         /// </summary>
         private void AppendCashBetRow(ModeHPageContent page)
@@ -70,6 +70,34 @@ namespace BossRush
             }
             row.Options.Add(new ModeHActionData
             {
+                Label = L10n.T("自选金额", "Custom amount"),
+                IsSelected = !itemsMode && ModeHCashBetService.IsCustomStandingBet,
+                OnClick = delegate
+                {
+                    if (_commandsClosed || _runState == null) return;
+                    ModeHCashBetService.SelectCustomStandingAmount(ModeHCashBetService.StandingAmount, ResolveStandingCashOdds());
+                    ModeHItemBetStake.ClearSelection();
+                    RouteUiForLifecycle(_runState.Lifecycle);
+                },
+            });
+            if (!itemsMode && ModeHCashBetService.IsCustomStandingBet)
+            {
+                int odds = ResolveStandingCashOdds();
+                ModeHCashBetService.SelectCustomStandingAmount(ModeHCashBetService.StandingAmount, odds);
+                long maximum = ModeHCashBetService.GetMaximumStandingAmount(ModeHCashBetService.MaximumStandingAmount, odds);
+                row.SliderMaximum = ModeHCashBetService.CustomSliderSteps;
+                row.SliderValue = ModeHCashBetService.ProgressForAmount(maximum, ModeHCashBetService.StandingAmount);
+                row.OnSliderChanged = delegate(int value)
+                {
+                    if (_commandsClosed || _runState == null) return;
+                    int currentOdds = ResolveStandingCashOdds();
+                    long limit = ModeHCashBetService.GetMaximumStandingAmount(ModeHCashBetService.MaximumStandingAmount, currentOdds);
+                    ModeHCashBetService.SelectCustomStandingAmount(ModeHCashBetService.AmountAtProgress(limit, value), currentOdds);
+                };
+                row.SliderCaption = DescribeCustomStandingBet;
+            }
+            row.Options.Add(new ModeHActionData
+            {
                 Label = itemsMode
                     ? L10n.T("押物品 · " + ModeHItemBetStake.SelectedCount + " 件", "Items · " + ModeHItemBetStake.SelectedCount)
                     : L10n.T("押物品", "Bet items"),
@@ -77,6 +105,24 @@ namespace BossRush
                 OnClick = OpenItemBetPicker,
             });
             page.OptionRows.Add(row);
+        }
+
+        private string DescribeCustomStandingBet()
+        {
+            long amount = ModeHCashBetService.StandingAmount;
+            int odds = ResolveStandingCashOdds();
+            long maximum = ModeHCashBetService.GetMaximumStandingAmount(ModeHCashBetService.MaximumStandingAmount, odds);
+            long payout = ModeHCashBetService.ComputePayout(amount, odds);
+            return L10n.T("投入 ", "Stake ") + FormatMoney(amount)
+                + L10n.T(" / 上限 ", " / Max ") + FormatMoney(maximum)
+                + L10n.T(" · 获胜返还 ", " · Return on win ") + FormatMoney(payout)
+                + L10n.T(" · 净收益 ", " · Net ") + FormatMoney(payout - amount);
+        }
+
+        private int ResolveStandingCashOdds()
+        {
+            return GroupModeEnabled ? ResolveGroupOdds(_groupBetOnRed)
+                : _currentOddsQuote != null ? _currentOddsQuote.Odds : ModeHConfig.MinOdds;
         }
 
         private void SelectStandingBet(int tier)
@@ -97,6 +143,8 @@ namespace BossRush
             {
                 return L10n.T(" · 押 " + ModeHItemBetStake.SelectedCount + " 件物品", " · Bet " + ModeHItemBetStake.SelectedCount + " item(s)");
             }
+            // 自选滑条只更新本行，按钮不保留拖动前的旧金额；精确金额显示在滑条读数。
+            if (ModeHCashBetService.IsCustomStandingBet) return L10n.T(" · 自选金额", " · Custom stake");
             long amount = ModeHCashBetService.StandingAmount;
             if (amount <= 0) return string.Empty;
             return L10n.T(" · 押 ", " · Bet ") + FormatMoney(amount);
@@ -107,10 +155,22 @@ namespace BossRush
             return amount.ToString("N0", CultureInfo.InvariantCulture);
         }
 
+        internal static string FormatSignedMoney(long amount)
+        {
+            return (amount >= 0 ? "+" : string.Empty) + FormatMoney(amount);
+        }
+
         internal static string FormatPayoutMultiplier(int odds)
         {
-            return "x" + (ModeHCashBetService.ComputePayout(1000000L, odds) / 1000000d)
+            return "x" + ((1000m - ModeHConfig.CashBetHouseCutPermille) / ModeHCashBetService.ResolveAssumedWinPermille(odds))
                 .ToString("0.00", CultureInfo.InvariantCulture);
+        }
+
+        internal static string FormatPayoutMultiplier(ModeHCashBetRecord record)
+        {
+            return record != null && record.payoutNumerator > 0 && record.payoutDenominator > 0
+                ? "x" + ((decimal)record.payoutNumerator / record.payoutDenominator).ToString("0.00", CultureInfo.InvariantCulture)
+                : FormatPayoutMultiplier(record != null ? record.odds : ModeHConfig.MinOdds);
         }
 
         /// <summary>「5,000」或「3 件物品（估值 12,345）」。</summary>
@@ -155,8 +215,8 @@ namespace BossRush
             string head = L10n.T("押注：", "Bet: ") + DescribeRecordStake(record) + L10n.T("　", "  ");
             if (record.kind == ModeHCashBetService.KindItems)
             {
-                if (record.itemSettlement == 1 || record.payout > 0) AppendPrizeIcons(page, record);
-                page.Lines.Add(head + (record.itemSettlement == 1 || record.payout > 0
+                if (ModeHCashBetService.IsWinningRecord(record)) AppendPrizeIcons(page, record);
+                page.Lines.Add(head + (ModeHCashBetService.IsWinningRecord(record)
                     ? L10n.T("押品保留", "stake kept")
                         + (record.prizeCash > 0 ? L10n.T("，零头折成 ", "; remainder paid as ") + FormatMoney(record.prizeCash) : string.Empty)
                     : L10n.T("输了，押上的东西归庄家", "lost: the house takes the items")
@@ -166,7 +226,7 @@ namespace BossRush
                             : string.Empty)));
                 return;
             }
-            page.Lines.Add(head + (record.payout > 0
+            page.Lines.Add(head + (ModeHCashBetService.IsWinningRecord(record)
                 ? L10n.T("赢了，拿回 ", "won, paid ") + FormatMoney(record.payout)
                 : L10n.T("输了，押金归庄家", "lost, the house keeps it")));
         }
@@ -352,7 +412,7 @@ namespace BossRush
             {
                 int bit = record.matchIndex > 0 && record.matchIndex < 31 ? 1 << record.matchIndex : 0;
                 if (bit != 0 && (counted & bit) != 0) continue; // 账本累计里已经有这一场
-                net += record.payout - record.amount;
+                net = ModeHCashBetService.SaturatingAdd(net, record.payout - record.amount);
             }
             return net;
         }
@@ -397,6 +457,13 @@ namespace BossRush
             if (!ModeHCashBetService.TryReserve(_runState.RunId, _runState.MatchIndex, odds, amount, out failure,
                     LockedGroupBetSide()))
             {
+                if (failure == "cash_bet_limit_changed")
+                {
+                    long limit = ModeHCashBetService.GetMaximumStandingAmount(ModeHCashBetService.MaximumStandingAmount, odds);
+                    NoteCashBetSkipped(L10n.T("本场最多可押 " + FormatMoney(limit) + "，这一场没押。",
+                        "The current maximum stake is " + FormatMoney(limit) + "; no bet this match."), failure);
+                    return;
+                }
                 NoteCashBetSkipped(failure == "cash_bet_not_enough_money"
                     ? L10n.T("钱不够 " + FormatMoney(amount) + "，这一场没押。", "Not enough money for " + FormatMoney(amount) + "; no bet this match.")
                     : L10n.T("这一场没押成（存档正忙或上一笔还没结清）。", "No bet this match (save busy or a previous bet is still open)."), failure);

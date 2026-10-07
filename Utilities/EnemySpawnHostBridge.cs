@@ -12,7 +12,7 @@ namespace BossRush
         private void BindSpawnPostprocessServices()
         {
             spawnPostprocess.BindServices(modeDItemPool.MaterializeNextSharedModeEnemyEquipmentPlanStep,
-                character => ApplyBossStatMultiplier(character),
+                (character, isBoss) => ApplyBossStatMultiplier(character, isBoss: isBoss),
                 (character, count) => wavesArenaRuntime.RegisterBossRandomLootTracking(character, count),
                 modeDItemPool.CleanupSharedModeEnemyEquipmentMaterializationPlan,
                 wavesArenaRuntime.ClearBossRandomLootTracking);
@@ -31,7 +31,7 @@ namespace BossRush
                 CleanupFailedPhantomWitchSpawn);
             enemySpawnRuntime.BindEquipmentServices(modeDRuntime.NormalizeDamageMultiplier,
                 modeDItemPool.EquipEnemyForModeD, modeDItemPool.CreateSharedModeEnemyEquipmentMaterializationPlan,
-                character => ApplyBossStatMultiplier(character),
+                (character, isBoss) => ApplyBossStatMultiplier(character, isBoss: isBoss),
                 (character, count) => wavesArenaRuntime.RegisterBossRandomLootTracking(character, count));
             enemySpawnRuntime.BindOwnedEnemyTracking(wavesArenaRuntime.IsDaXingXingPreset, () => wavesArenaRuntime.OwnedDaXingXing);
         }

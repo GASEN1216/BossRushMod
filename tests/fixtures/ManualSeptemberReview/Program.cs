@@ -45,6 +45,7 @@ class Program
         Delay();
         var current=CompleteSpawn();
         Check(current.Activated && PetNestBaseIdleSpawner.ActiveCount==1,"only B is active");
+        Check(!current.AllowCombat,"base cub uses the passive activation path");
         PetNestService.DeployedPet=null;
         PetNestBaseIdleSpawner.NotifyDeployedPetChanged();
         Check(current.Cleanups>0 && PetNestBaseIdleSpawner.ActiveCount==0,"clear seat recalls B immediately");
@@ -61,7 +62,7 @@ class Program
         PetNestBaseIdleSpawner.ResetStaticCaches();
 
         PetNestService.DeployedPet=Pet("raid-a");
-        PetNestCompanionRuntime.TrySpawnForScene(owner,7);
+        PetNestCompanionRuntime.OnSceneChanged(owner,7);
         Check(PetNestCompanionSpawner.Requests.Count==0,"sceneLoaded cannot spawn before official initialization");
         LevelManager.LevelInited=true;
         PetNestCompanionRuntime.TrySpawnForScene(owner,7);
@@ -69,10 +70,11 @@ class Program
         LevelManager.AfterInit=true;
         CharacterMainControl.Main.CharacterItem=new ItemStatsSystem.Item { BaseCapacity=2 };
         SceneLoader.IsSceneLoading=true;
-        PetNestCompanionRuntime.TrySpawnForScene(owner,7);
+        Time.unscaledTime+=PetNestCompanionRuntime.SpawnRetryWindowSeconds+1;
+        PetNestCompanionRuntime.TickSpawnRetry(owner,7);
         Check(PetNestCompanionSpawner.Requests.Count==0,"loading screen keeps cub creation pending");
         SceneLoader.IsSceneLoading=false;
-        PetNestCompanionRuntime.TrySpawnForScene(owner,7);
+        PetNestCompanionRuntime.TickSpawnRetry(owner,7);
         Check(PetNestCompanionSpawner.Requests.Count==1 && PetProxy.PetInventory==null,
             "independent cub backpack no longer waits for the official pet inventory");
         PetProxy.PetInventory=new ItemStatsSystem.Inventory { Capacity=2 };
@@ -93,12 +95,34 @@ class Program
         Check(PetNestCompanionSpawner.Requests.Count==1,"old raid finally cannot clear newer request ownership");
         current=CompleteSpawn();
         Check(current.Activated && PetNestCompanionRuntime.ActiveCompanionPetId=="raid-b","replacement raid cub owns the slot");
+        Check(current.AllowCombat,"raid cub preserves normal combat activation");
+        PetNestModeGate.Allowed=false;
+        PetNestCompanionRuntime.TickSpawnRetry(owner,7);
+        Check(current.Cleanups>0 && !PetNestCompanionRuntime.HasCompanion,"entering excluded mode recalls an active cub even after spawn retry closed");
+        PetNestModeGate.Allowed=true;
+        PetNestCompanionRuntime.TrySpawnForScene(owner,7);
+        CharacterMainControl.Main.Health.IsDead=true;
+        PetNestCompanionRuntime.TickSpawnRetry(owner,7);
+        old=CompleteSpawn();
+        Check(old.Cleanups>0 && !PetNestCompanionRuntime.HasCompanion,"player death cancels a pending cub before its async completion");
+        CharacterMainControl.Main.Health.IsDead=false;
+        PetNestCompanionRuntime.TrySpawnForScene(owner,7);
+        var formerPlayer=CharacterMainControl.Main;
+        CharacterMainControl.Main=new CharacterMainControl { CharacterItem=new ItemStatsSystem.Item { BaseCapacity=2 } };
+        old=CompleteSpawn();
+        Check(old.Cleanups>0 && !PetNestCompanionRuntime.HasCompanion,"a newly loaded player cannot activate the previous player's pending cub");
+        PetNestCompanionRuntime.TrySpawnForScene(owner,7);
+        current=CompleteSpawn();
+        CharacterMainControl.Main=formerPlayer;
+        PetNestCompanionRuntime.TickSpawnRetry(owner,7);
+        Check(current.Cleanups>0 && !PetNestCompanionRuntime.HasCompanion,"changing the live player recalls an already activated old companion");
         PetNestCompanionRuntime.CleanupOnce();
         PetNestCompanionRuntime.TrySpawnForScene(owner,7);
         PetNestService.DeployedPet=null;
         old=CompleteSpawn();
         Check(old.Cleanups>0 && !PetNestCompanionRuntime.HasCompanion,"seat revalidation rejects a late cub even without a notification");
         PetNestCompanionRuntime.ResetStaticCaches();
+        VerifyHomecomingAfterLoading(owner);
         VerifyCapacityOwnership();
         foreach(var task in UniTaskVoid.Pending) Check(task.IsCompleted && !task.IsFaulted,"all asynchronous requests finished without hidden exceptions");
 
@@ -147,6 +171,40 @@ class Program
             Check(maps==9,"all nine BossRush maps exercised");
         }
         Console.WriteLine("ManualSeptemberReview: PASS ("+checks+" assertions)");
+    }
+
+    static void VerifyHomecomingAfterLoading(ModBehaviour owner)
+    {
+        var module=new PetNestRuntimeModule(owner);
+        var pet=PetNestService.DeployedPet=Pet("homecoming");
+        LevelManager.Instance.IsBaseLevel=false;
+        SceneLoader.IsSceneLoading=false;
+        module.OnSceneLoaded(new SceneRuntimeContext());
+        var actor=CompleteSpawn();
+        Check(actor.Activated,"homecoming starts from a deployed production companion");
+        // 官方加载先置 IsSceneLoading，旧关卡仍会有 Update，然后才通知基地 sceneLoaded。
+        SceneLoader.IsSceneLoading=true;
+        module.OnUpdate(.016f,.016f);
+        Check(!PetNestCompanionRuntime.HasCompanion && actor.Cleanups>0,"loading immediately releases the old companion");
+        LevelManager.Instance.IsBaseLevel=true;
+        LevelManager.AfterInit=false;
+        module.OnSceneLoaded(new SceneRuntimeContext());
+        module.OnUpdate(.016f,.016f);
+        Check(pet.exp==0 && pet.careerCount==0,"homecoming waits for base initialization");
+        SceneLoader.IsSceneLoading=false;
+        LevelManager.AfterInit=true;
+        module.OnUpdate(.016f,.016f);
+        Check(pet.exp==PetNestTuning.PetExpHomecoming && pet.careerCount==1,
+            "loading cleanup must retain the returning cub for actual XP and career settlement");
+        Time.unscaledTime+=6;
+        module.OnUpdate(.016f,.016f);
+        Check(pet.exp==PetNestTuning.PetExpHomecoming && pet.careerCount==1,"base maintenance cannot settle homecoming twice");
+        PetNestBaseIdleSpawner.CleanupAll();
+        while(UniTask.Delays.Count>0)Delay();
+        PetNestCompanionRuntime.ResetStaticCaches();
+        LevelManager.Instance.IsBaseLevel=false;
+        PetNestHatchRevealView.Closed=0;
+        PetNestExpeditionRevealView.Closed=0;
     }
     // Unity 会递归驱动 yield return 的子 IEnumerator，不能丢弃 Current 后误判暂停通过。
     static bool AdvancePresentation(System.Collections.Generic.Stack<System.Collections.IEnumerator> stack)

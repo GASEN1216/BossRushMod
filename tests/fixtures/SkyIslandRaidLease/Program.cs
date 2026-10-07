@@ -37,6 +37,40 @@ internal static class Program
         lease.Release(()=>callbacks++);
         Check(bundle.Unloaded && callbacks==1 && SceneManager.Subscribers==0,"prepare failure cleanup releases without load");
 
+        lease=New();lease.BeginLoad();bundle=AssetBundle.Last;
+        SkyIslandSceneReferenceBridge.PendingLoad=true;SceneLoader.Finish(true);lease.Release(null);
+        Check(SkyIslandSceneReferenceBridge.Failure!=null,
+            "official entry failure explicitly aborts the native operation before the recovery fence waits on it");
+        Check(SkyIslandSceneReferenceBridge.VisualBegins==1 && SkyIslandSceneReferenceBridge.VisualEnds==1,
+            "failed official task completes its visual lease before exposing LoadFinished");
+        Check(!bundle.Unloaded,"cancelled loader retains bundle while native scene operation is still pending");
+        lease.PumpRelease();Check(!bundle.Unloaded,"recovery cannot bypass the native operation ownership fence");
+        SkyIslandSceneReferenceBridge.PendingLoad=false;lease.PumpRelease();
+        Check(bundle.Unloaded,"finished native operation permits normal resource cleanup");
+
+        lease=New();lease.BeginLoad();SceneLoader.Finish(true);bundle=AssetBundle.Last;
+        var session=new SkyIslandSession(lease);
+        session.TickReturn();
+        Check(SceneLoader.Returns==1,"failure before island sceneLoaded still dispatches a base recovery");
+        Check(session.Closed && !bundle.Unloaded,
+            "no-island recovery closes the session while its existing lease holds resources through the return");
+        SceneLoader.Finish();Time.unscaledTime=3;session.TickReturn();
+        Check(SceneLoader.Returns==1 && bundle.Unloaded && session.ReleaseCallbacks==1,
+            "successful no-island recovery cannot repeatedly reload the base without an island unload event");
+
+        lease=New();lease.BeginLoad();SceneLoader.Finish(true);bundle=AssetBundle.Last;
+        session=new SkyIslandSession(lease);session.TickReturn();
+        SkyIslandSceneReferenceBridge.PendingLoad=true;SceneLoader.Finish(true);Time.unscaledTime=3;
+        lease.PumpRelease();
+        Check(SceneLoader.Returns==1 && !bundle.Unloaded,"failed base return waits for its native operation");
+        SkyIslandSceneReferenceBridge.PendingLoad=false;lease.PumpRelease();
+        Check(SceneLoader.Returns==2 && !bundle.Unloaded,
+            "failed base return retries after native completion even when the island was already unloaded");
+        Check(SkyIslandSceneReferenceBridge.PreserveTargetSnapshot,
+            "retry must preserve the target character snapshot until a complete return succeeds");
+        SceneLoader.Finish();
+        Check(bundle.Unloaded && session.ReleaseCallbacks==1,"base retry success closes the retained recovery once");
+
         lease=New();lease.BeginLoad();bundle=AssetBundle.Last;callbacks=0;
         lease.Release(()=>callbacks++);
         Check(!bundle.Unloaded && callbacks==0,"host exit while loading retains bundle");

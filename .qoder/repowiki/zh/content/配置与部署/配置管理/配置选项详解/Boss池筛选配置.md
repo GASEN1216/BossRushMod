@@ -1,5 +1,10 @@
 # Boss池筛选配置
 
+## 2026-10-06 预设目录恢复
+
+焚天龙皇、幽灵女巫与龙裔统一以当前目录是否已有条目判断注册幂等性，目录清空或宿主重建后可重新登记，不再由上次的静态成功标记阻断。筛选仍走 Ctrl+F10 的现有 Boss 列表及原 `disabledBosses`，没有新增并行开关。
+
+
 <cite>
 **本文引用的文件**
 - [BossFilter.cs](file://BossFilter/BossFilter.cs)

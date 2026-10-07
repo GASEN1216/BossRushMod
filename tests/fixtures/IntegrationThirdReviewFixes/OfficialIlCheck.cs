@@ -9,6 +9,11 @@ using HarmonyLib;
 
 namespace BossRush
 {
+    // IL 接线探针不创建宠物，身份查询保持未上膛；防御行为由 ZombieBossCases 实跑。
+    internal static class PetNestCompanionAgent
+    {
+        internal static bool IsCompanionHealth(Health health) { return false; }
+    }
     // No gameplay objects are created: this process only validates the installed method's IL.
     public sealed class ModBehaviour
     {

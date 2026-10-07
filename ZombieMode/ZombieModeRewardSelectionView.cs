@@ -276,59 +276,13 @@ namespace BossRush
             }
 
             float sliderWidth = Mathf.Clamp(PanelWidth - 250f, 390f, 500f);
-            GameObject sliderObject = ZombieModeUIHelper.CreateRect("RestDurationSlider", restPanel.transform,
-                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-                new Vector2(-120f, -66f), new Vector2(sliderWidth, 24f), new Vector2(0.5f, 0.5f));
-            Slider slider = sliderObject.AddComponent<Slider>();
-            slider.minValue = 1f;
-            slider.maxValue = 20f;
-            slider.wholeNumbers = true;
-            slider.direction = Slider.Direction.LeftToRight;
-
-            // 滑块上皮（UC-13）：胶囊轨道 + Accent 填充 + 圆形手柄，悬停 / 按下三态分得开。
-            GameObject track = ZombieModeUIHelper.CreateRect("Track", sliderObject.transform,
-                new Vector2(0f, 0.5f), new Vector2(1f, 0.5f),
-                Vector2.zero, new Vector2(0f, 8f), new Vector2(0.5f, 0.5f));
-            Image trackImage = track.AddComponent<Image>();
-            trackImage.color = BossRushUIColors.Surface;
-            BossRushUI.ApplyPanelSkin(trackImage, 4, BossRushUISkinPart.ScrollHandle);
-
-            GameObject fillArea = ZombieModeUIHelper.CreateRect("FillArea", sliderObject.transform,
-                new Vector2(0f, 0.5f), new Vector2(1f, 0.5f),
-                Vector2.zero, new Vector2(-12f, 8f), new Vector2(0.5f, 0.5f));
-            GameObject fill = ZombieModeUIHelper.CreateRect("Fill", fillArea.transform,
-                new Vector2(0f, 0f), new Vector2(1f, 1f),
-                Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
-            Image fillImage = fill.AddComponent<Image>();
-            fillImage.color = BossRushUIColors.Accent;
-            BossRushUI.ApplyPanelSkin(fillImage, 4, BossRushUISkinPart.ScrollHandle);
-            slider.fillRect = fill.GetComponent<RectTransform>();
-
-            GameObject handleArea = ZombieModeUIHelper.CreateRect("HandleArea", sliderObject.transform,
-                Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-12f, 0f), new Vector2(0.5f, 0.5f));
-            GameObject handle = ZombieModeUIHelper.CreateRect("Handle", handleArea.transform,
-                new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
-                Vector2.zero, new Vector2(20f, 20f), new Vector2(0.5f, 0.5f));
-            Image handleImage = handle.AddComponent<Image>();
-            handleImage.color = Color.white;
-            BossRushUI.ApplyPanelSkin(handleImage, 10, BossRushUISkinPart.Button);
-            slider.handleRect = handle.GetComponent<RectTransform>();
-            slider.targetGraphic = handleImage;
-            ColorBlock handleColors = slider.colors;
-            handleColors.normalColor = BossRushUIColors.TextPrimary;
-            handleColors.highlightedColor = Color.Lerp(BossRushUIColors.TextPrimary, BossRushUIColors.Accent, 0.45f);
-            handleColors.pressedColor = BossRushUIColors.Accent;
-            handleColors.selectedColor = BossRushUIColors.TextPrimary;
-            handleColors.disabledColor = BossRushUI.GetDisabledColor(BossRushUIColors.TextPrimary);
-            handleColors.colorMultiplier = 1f;
-            handleColors.fadeDuration = 0.08f;
-            slider.colors = handleColors;
-            slider.value = Mathf.Clamp(Mathf.RoundToInt(pendingRestSeconds / 15f), 1, 20);
-            slider.onValueChanged.AddListener(delegate(float value)
-            {
-                pendingRestSeconds = Mathf.Clamp(Mathf.RoundToInt(value) * 15, 15, 300);
-                UpdatePendingRestDurationText();
-            });
+            BossRushUISlider.Create("RestDurationSlider", restPanel.transform,
+                new Vector2(0.5f, 1f), new Vector2(-120f, -66f), sliderWidth,
+                1, 20, Mathf.Clamp(Mathf.RoundToInt(pendingRestSeconds / 15f), 1, 20), delegate(float value)
+                {
+                    pendingRestSeconds = Mathf.Clamp(Mathf.RoundToInt(value) * 15, 15, 300);
+                    UpdatePendingRestDurationText();
+                });
 
             ZombieModeUIHelper.CreateText("RestMin", restPanel.transform,
                 string.Format(L10n.T("BossRush_ZombieMode_Reward_RestOption"), 15), 13,

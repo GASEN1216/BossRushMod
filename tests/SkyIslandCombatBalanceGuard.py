@@ -34,14 +34,14 @@ def check(root):
         assert preset in actual, "头目映射到不存在的原版参照：" + preset
 
     spawn = code["SkyIslandEncounters"].split("private async void Spawn(Encounter encounter)", 1)[1].split("private void ApplyIdentity(", 1)[0]
-    sequence = ["UnityEngine.Object.Instantiate(source)", "SkyIslandCombatPreset.Apply(clone, source, encounter.Id, i, tier)",
+    sequence = ["UnityEngine.Object.Instantiate(source)", "SkyIslandCombatPreset.Apply(clone, source, encounter.Id, i, tier, healthScale)",
                 "await clone.CreateCharacterAsync(", "SkyIslandEnemyTiers.ApplyAi(ai, tier, encounter.Manual)", "ApplyIdentity(created, encounter, i, tier)"]
     positions = [spawn.find(token) for token in sequence]
     assert all(p >= 0 for p in positions) and positions == sorted(positions), "必须先克隆、写属性，再创建角色、挂身份"
     assert spawn.count("SkyIslandCombatPreset.Apply(") == 1, "同一个生成位只准备一次属性"
     prelude = code["SkyIslandPreludeFlow"].split("private async void SpawnBoss(Vector3 position, int expectedGeneration)", 1)[1].split("private bool IsObjectiveGeneration(", 1)[0]
     sequence = ["UnityEngine.Object.Instantiate(source)",
-                'SkyIslandCombatPreset.Apply(clone, source, "K3_Relay", 0, SkyIslandEnemyTier.Chief)',
+                'SkyIslandCombatPreset.Apply(clone, source, "K3_Relay", 0, SkyIslandEnemyTier.Chief, owner.GetBossHealthMultiplier())',
                 "await clone.CreateCharacterAsync(", 'SkyIslandBossForge.TryApply(created, "K3_Relay", 0, context)']
     positions = [prelude.find(token) for token in sequence]
     assert all(p >= 0 for p in positions) and positions == sorted(positions), "序章头目也必须在创建前应用同一战斗基准"
@@ -57,6 +57,11 @@ def check(root):
     health_at = adapter.find("clone.health = (baseline != null ? baseline.Health : source.health) * factor;")
     floor_line = "if (SkyIslandEnemyArmoryRules.IsBossTier(tier)) clone.health = Math.Max(clone.health, SkyIslandCombatBalance.BossHealthFloor);"
     assert 0 <= health_at < adapter.find(floor_line) and adapter.count(floor_line) == 1, "专属 Boss 生命下限要在统一倍率之后取大一次"
+    scale_line = "if (SkyIslandEnemyArmoryRules.IsBossTier(tier)) clone.health *= bossHealthMultiplier;"
+    assert adapter.find(floor_line) < adapter.find(scale_line) and adapter.count(scale_line) == 1, "Boss 难度只能在既有基准保底之后应用一次，不能影响小兵"
+    assert "bossHealthMultiplier != null ? bossHealthMultiplier() : 1f" in code["SkyIslandEncounters"], "遭遇应在生成时读取注入的当前 Boss 难度"
+    session = clean_source((sky / "SkyIslandSession.cs").read_text(encoding="utf-8-sig"))
+    assert "OnStormDefeated, host.GetBossHealthMultiplier)" in session, "会话必须把现有 host 的难度查询注入遭遇"
     for field, factor in (("health", "factor"), ("damageMultiplier", "factor"), ("meleeDamageMultiplier", "factor"),
                           ("aiCombatFactor", "factor"), ("moveSpeedFactor", "sense"), ("bulletSpeedMultiplier", "sense"),
                           ("gunDistanceMultiplier", "sense"), ("nightVisionAbility", "sense"), ("sightDistance", "sense"),
@@ -79,7 +84,7 @@ def check(root):
         assert token in pool, "Boss 池口径缺失：" + why
     spawn = code["SkyIslandEncounters"].split("private async void Spawn(Encounter encounter)", 1)[1].split("private void ApplyIdentity(", 1)[0]
     order = ["SkyIslandEnemySources.ForBaseline(baseline, encounter.Id", "UnityEngine.Object.Instantiate(source)",
-             "SkyIslandCombatPreset.Apply(clone, source, encounter.Id, i, tier)",
+             "SkyIslandCombatPreset.Apply(clone, source, encounter.Id, i, tier, healthScale)",
              "if (baseline == null) SkyIslandMinionKit.UseScavLoot(clone, scavReference);", "await clone.CreateCharacterAsync("]
     positions = [spawn.find(token) for token in order]
     assert all(p >= 0 for p in positions) and positions == sorted(positions), "遭遇：先按参照取 Boss 底模、写属性、小兵换拾荒者掉落，再交官方创建"

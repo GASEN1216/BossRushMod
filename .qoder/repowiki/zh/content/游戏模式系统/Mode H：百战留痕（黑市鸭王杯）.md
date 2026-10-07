@@ -1,5 +1,9 @@
 # Mode H：百战留痕（黑市鸭王杯）
 
+2026-10-06 自选押注（COMPAT / SCHEMA+，L1/L2）：保留不押 / 1,000 / 5,000 / 20,000 快捷档，赛前增加「自选金额」，取消 20,000 固定上限。真实返还倍率为 `920 / 假定胜率‰`，最大本金为 `min(钱包, floor(钱包 × 假定胜率‰ / 920))`；例如余额 100,000、倍率 2，最多投入 50,000，锁盘只扣 50,000。滑条只使用 0..10000 整数进度，金额用 decimal 安全换算为 long，最右端精确取上限，小钱包也可选。读数显示投入、当前上限、获胜返还与净收益，拖动不重建页面。锁盘再验钱包、倍率和 long 容量，冻结本场赔付分子 / 分母；重进或校准变更不能改写已押本金和返还。原 8% 抽水及返还向下取整到 10 的规则保留，小额赢注返还 0 时仍记录为赢。UI 复用 `Common/UI/BossRushUISlider.cs`，丧尸休息时长同样复用原样式。游戏内指针、长金额布局与实际保存时序仍待 L3 验收。
+
+2026-10-06（COMPAT，L1/L2）：场景入场等待还需确认 A* 实例存在且扫描完成，再进行随机擂台选址。旧门只等主角、活动场景与官方 `AfterInit`，暂时无法查询导航会被选址直接判成无安全擂台而退票回家。复用现有 30 秒超时和两帧稳定判据，等待期间不获取租约、不反复选址、不改变保存或退款顺序；`ModeHSceneEntry` 覆盖扫描中保留入场请求、扫描完成后只开局一次。
+
 2026-09-30：模组 Boss 战力改为龙裔 1500、幻影女巫 500、焚天龙皇 2000（`ModeHGroupConfig`）。
 
 2026-09-29 第四轮（COMPAT，L1/L2）：龙裔在鸭王杯里用 `RefreshPlayerReference()` 把「玩家」引用换成 AI 锁定的对手，二阶段弹幕与燃烧弹朝对面放；龙皇阵营模式下有攻击循环 / 自定义射击心跳看门狗（`TickFactionLoopWatchdog`），循环被静默停掉时重开并打警告。
@@ -500,13 +504,13 @@ Intermission / TransferWindow / HallOfFame / Suspended`，**没有任何一条�
 
 **现行玩家侧押注只有这一种。** 起因：`PlayerStorage` 只在基地场景存在，鸭王杯在出击地图上打，下一节的真实仓库押品链在比赛里恒为 `slot_storage_unavailable`，赔率页的押品选择器因此整块不画（`RealStakeSelectorEnabled` 为假）。owner 拍板改押钱：看比赛输赢、按赔率抽水，长期让玩家的钱慢慢往下掉。
 
-- 档位 `ModeHConfig.CashBetAmounts = {0, 1000, 5000, 20000}` 加一颗「押物品」，默认不押、读档回到不押；在选人页、每场结算页、兜底赔率页的页脚一排选（`AppendCashBetRow`）。
+- 档位 `ModeHConfig.CashBetAmounts = {0, 1000, 5000, 20000}` 加「自选金额」和「押物品」，默认不押、读档回到不押；在每场双方对照页与赔率页选择（`AppendCashBetRow`）。快捷档仍受当前钱包 / 返还倍率的锁盘上限约束，选人页与结算页不提前选择下一场押注。
 - 赔付：赢了拿回 `押金 × (1000 − 80) ÷ 假定胜率‰`，向下取整到 10；假定胜率表 `CashBetAssumedWinPermilleByOdds`（x1…x5 = 850/700/550/420/300）。每档满 20 场后取 `max(表, 实际胜率)`，只会让赔付变少。
-- 资金：`ModeHCashBetService` 的账本是本槽 JSON 字符串存档 `BossRush_ModeHCashBet_v1`（`BossRushSlotJsonStore` + `BossRushSaveCoordinatorEngine`，现金快照同批落盘）；Reserved → Settled / Refunded 单向，结算与退回至多一次。赛季 DTO 不动（canonical digest 反射全部公有字段）。
+- 资金：`ModeHCashBetService` 的账本是本槽 JSON 字符串存档 `BossRush_ModeHCashBet_v1`（`BossRushSlotJsonStore` + `BossRushSaveCoordinatorEngine`，现金快照同批落盘）；Reserved → Settled / Refunded 单向，结算与退回至多一次。v3 内增加可选 `payoutNumerator` / `payoutDenominator` 保存锁盘真实赔付分数，旧档缺省为 0，按旧档位规则恢复；`settlementResult` 记录赢 / 输，避免 0 返还赢注显示为输。明确声明但解析失败的金额、倍率或结果会触发写屏障。赛季 DTO 不动（canonical digest 反射全部公有字段）。
 - 接线：锁盘落盘后下注（`ReserveStandingCashBet`，随后直接生成）；本场结算处结算（`SettleCashBetForMatch` → `SettleReservedBet`）；两处读档与开新赛季对账（`ReconcileCashBetOnRestore`）。
 - **押注跟着这一场走**（同日第二轮）：技术重试、恢复回落、挂起 / 关停 / 切图中止（`TryReturnRealStakeOnAbort`）都不退，重锁时经 `ModeHCashBetService.ReservedFor` 沿用挂着的那一笔、按重打结果结算；只有恢复页放弃赛季、开新赛季对到上一季、F3 清理才退。旧版一中断就整额退回，打输了强退重进等于免费重掷。
-- **押背包物品**（同日第二轮，第三轮去掉限制并改发奖品）：押注行「押物品」打开 `ModeHPage.ItemBet` 卡片栅格选背包里的东西，押什么、押几件都不限（只挡任务物品与估值为 0 的），估值 = 官方总价 × 0.5 的商人收购口径，只管下一场。物品侧 `ModeH/ModeHItemBetStake.cs` 是玩家资产访问白名单的一条：只读主角色背包，物品押上**不离开背包**；输了由 `ForfeitLocked` 收走仍在玩家身上的那几件，找不到的按估值从余额扣到 0 为止；赢了东西留着、另发奖品——品质 = 押品按估值加权的平均品质，总价值 = 「赔付 − 估值」，件数 = 押上件数（最多 6），从 `BossRushQualityItemPool` 挑、经 `ModeHRewardItemPool.TryInstantiate` 实例化，先固定奖品计划，再由 `SendToPlayerCharacterInventory(prize, true)` 不合并地入包，凑不满的折成钱。满包保留欠账，空位就绪后补发；当前押注完成之前不能覆盖成下一笔。读档只按 TypeID + 持久身份唯一认领，旧记录缺身份或身份重复都走缺失估值补偿。账本仍是同一本。
-- **可恢复实物结算（2026-09-25，SCHEMA+）**：原 key 不变，schemaVersion=2 接受 v1，新增 `itemSettlement` / `pendingItems` / `missingValue`，押品编码追加身份列。锁盘给物品 Variables 写 `BossRush_ModeHBetIdentity`，随主角物品树一起保存。结算先提交固定计划，再把实物与剩余义务同批保存，全部完成后才结清现金与统计；投递异常不抹掉欠账，已入包身份不重发，输局已收押品不再次扣缺失估值。放弃赛季不能清除已准备结算的义务；宿主每秒最多尝试一次补发，保存走原共享协调器。L2 故障、重启、同型号实例与旧账本回归见 `tests/fixtures/SaveFailureRecovery/README.md`，真实物品与切图仍待实机。
+- **押背包物品**（同日第二轮，第三轮去掉限制并改发奖品）：押注行「押物品」打开 `ModeHPage.ItemBet` 卡片栅格选背包里的东西，有效物品均可押，包括穿戴、容器及零估值物品，零估值不产生凭空利润，估值 = 官方总价 × 0.5 的商人收购口径，只管下一场。物品侧 `ModeH/ModeHItemBetStake.cs` 是玩家资产访问白名单的一条：只读主角色背包，物品押上**不离开背包**；输了由 `ForfeitLocked` 收走仍在玩家身上的那几件，找不到的按估值从余额扣到 0 为止；赢了东西留着、另发奖品——品质 = 押品按估值加权的平均品质，总价值 = 「赔付 − 估值」，件数 = 押上件数（最多 6），从 `BossRushQualityItemPool` 挑、经 `ModeHRewardItemPool.TryInstantiate` 实例化，先固定奖品计划，再由 `SendToPlayerCharacterInventory(prize, true)` 不合并地入包，凑不满的折成钱。满包保留欠账，空位就绪后补发；当前押注完成之前不能覆盖成下一笔。读档只按 TypeID + 持久身份唯一认领，旧记录缺身份或身份重复都走缺失估值补偿。账本仍是同一本。
+- **可恢复实物结算（2026-09-25，SCHEMA+）**：原 key 不变，当前 schemaVersion=3 接受 v1/v2，`itemSettlement` / `pendingItems` / `missingValue` 保存结算义务，`prizeItems` 保存完整奖品清单，押品编码追加身份列。锁盘给物品 Variables 写 `BossRush_ModeHBetIdentity`，随主角物品树一起保存。结算先提交固定计划，再把实物与剩余义务同批保存，全部完成后才结清现金与统计；投递异常不抹掉欠账，已入包身份不重发，输局已收押品不再次扣缺失估值。放弃赛季不能清除已准备结算的义务；宿主每秒最多尝试一次补发，保存走原共享协调器。L2 故障、重启、同型号实例与旧账本回归见 `tests/fixtures/SaveFailureRecovery/README.md`，真实物品与切图仍待实机。
 - ESC（同日第二轮）：页面动作可标 `IsCancel`（整备页与押物品页的「完成」、恢复壳的「稍后处理」），ESC 等于点它；没有返回语义的页不接 ESC，照常交给官方暂停菜单。
 - 守卫 `tests/ModeHCashBetGuard.py`、`tests/ModeHIsolationGuard.py`（`check_item_bet_stake`）；设计与回退见本地 `docs/design/鸭王杯押钱_2026-09-24.md`。
 

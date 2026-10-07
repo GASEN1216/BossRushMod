@@ -1,5 +1,7 @@
 # Mode H 入场时序隔离回归
 
+2026-10-06：增加导航扫描尚未完成的场景；即使官方主角与最终位置均就绪也不选址、不退款，A* 扫描完成且连续两帧稳定后仅接管一次。
+
 通过 `python tools/run_runtime_regressions.py --filter ModeHSceneEntry` 执行，不启动游戏、不读取玩家存档。
 
 每次构建逐字抽取当前生产 `OnSceneLoaded`、目标匹配、就绪调度/取消、两帧稳定判据、新赛季开局、续赛调度/完成和整个 Legacy custom 传送协程。只为独立宿主适配 `override` / `partial` 声明；续赛方法的返回声明由 UniTask 改为 Task，方法体不变。源码摘要写入 `Build/modeh-scene-entry/source-hashes.json`。

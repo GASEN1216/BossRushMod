@@ -49,6 +49,11 @@ def main():
         generated += member(forge, signature) + "\n"
     generated += "} public static partial class AffixItemData {\n"
     generated += member(item_data, "public static AffixEquipMask GetEquipMask(") + "\n}}"
+    generated += "\nnamespace BossRush { public static partial class AffixItemData {\n"
+    for signature in ("public static string NameKey(", "private static int ClampSlotIndex(",
+                      "public static bool StampNameKV(", "public static void RefreshDisplayNames("):
+        generated += member(item_data, signature) + "\n"
+    generated += "}}"
     # Keep the exact production scheduling, pause/cancel, cleanup and pulse geometry methods,
     # while excluding unrelated entry/lifecycle members that require the full game host.
     generated += "\nnamespace BossRush { internal sealed partial class ZombieModeRuntimeModule {\n"

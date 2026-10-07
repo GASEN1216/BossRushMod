@@ -123,9 +123,13 @@ internal static class Program
         Check(RunLoad(reference) == null && SceneLoader.LoadCalls == loads + 1,
             "a healthy initialization leaves the official wait untouched");
         SkyIslandSceneReferenceBridge.AbortInitialization(token, "天空岛缺少真实 SceneLocationsProvider");
+        SkyIslandSceneReferenceBridge.BeginLoadVisuals(token, reference);
         Exception cancelled = RunLoad(reference);
         Check(cancelled is OperationCanceledException && cancelled.Message.Contains("SceneLocationsProvider"),
             "abort turns the official LevelInited wait into an observable cancellation");
+        Check(Duckov.UI.BlackScreen.Counter == 1, "official failure leaves one unmatched black screen reference");
+        SkyIslandSceneReferenceBridge.EndLoadVisuals(token).GetAwaiter().GetResult();
+        Check(Duckov.UI.BlackScreen.Counter == 0, "failed island load releases its unmatched black screen reference");
         Check(RunLoad(foreignReference) == null, "cancellation never leaks into other maps' loads");
         int saves = LevelManager.SaveBeforeLoadCalls;
         manager.NotifySaveBeforeLoadScene(true);
@@ -138,6 +142,65 @@ internal static class Program
         Check(LevelManager.SaveBeforeLoadCalls == saves + 2, "official death still owns its own save");
         SkyIslandSceneReferenceBridge.EndInitialization(token);
         Check(RunLoad(reference) == null, "ending initialization restores the native wait");
+        SkyIslandSceneReferenceBridge.BeginInitialization(token);
+        SkyIslandSceneReferenceBridge.AbortInitialization(token, "cancelled before scene callback");
+        SkyIslandSceneReferenceBridge.BeginLoadVisuals(token, reference);
+        Check(RunLoad(reference) is OperationCanceledException, "cancellation is observed even before an initialization scene is bound");
+        SkyIslandSceneReferenceBridge.EndLoadVisuals(token).GetAwaiter().GetResult();
+        SkyIslandSceneReferenceBridge.EndInitialization(token);
+
+        SkyIslandSceneReferenceBridge.BeginInitialization(token);
+        SkyIslandSceneReferenceBridge.AbortInitialization(token, "cancelled while scene assets load");
+        SceneLoader.PendingOperation = new UnityEngine.AsyncOperation { progress = 0.2f, isDone = false, allowSceneActivation = false };
+        SkyIslandSceneReferenceBridge.BeginLoadVisuals(token, reference);
+        Check(RunLoad(reference) is OperationCanceledException, "early asset-loading loop observes cancellation before LevelInited");
+        Check(SceneLoader.PendingOperation.allowSceneActivation && SkyIslandSceneReferenceBridge.HasPendingInitializationLoad(token),
+            "cancelled native operation releases activation but retains ownership until it actually finishes");
+        SkyIslandSceneReferenceBridge.EndLoadVisuals(token).GetAwaiter().GetResult();
+        SceneLoader.PendingOperation.isDone = true;
+        Check(!SkyIslandSceneReferenceBridge.HasPendingInitializationLoad(token), "native operation completion releases the bundle safety fence");
+        SceneLoader.PendingOperation = null;
+        SkyIslandSceneReferenceBridge.EndInitialization(token);
+
+        // 官方 onBeforeSetSceneActive 可以抛异常；已到 0.9 且无需分帧时，旧桥甚至没有记录目标 operation。
+        SkyIslandSceneReferenceBridge.BeginInitialization(token);
+        SceneLoader.PendingOperation = new UnityEngine.AsyncOperation { progress = 0.9f, isDone = false };
+        SceneLoader.ThrowAfterBlack = true;
+        SkyIslandSceneReferenceBridge.BeginLoadVisuals(token, reference);
+        Check(RunLoad(reference) is InvalidOperationException, "official event failure exits before target activation");
+        SkyIslandSceneReferenceBridge.AbortInitialization(token, "official load failed before activation");
+        Check(SceneLoader.PendingOperation.allowSceneActivation && SkyIslandSceneReferenceBridge.HasPendingInitializationLoad(token),
+            "failed loader releases activation even when none of its NextFrame loops ran, retaining the native operation");
+        SkyIslandSceneReferenceBridge.EndLoadVisuals(token).GetAwaiter().GetResult();
+        SceneLoader.PendingOperation.isDone = true;
+        SceneLoader.PendingOperation = null;
+        SkyIslandSceneReferenceBridge.EndInitialization(token);
+
+        // 模拟返航加载在第二次 Show 后失败，同时别的 owner 已持有一层黑幕。
+        Duckov.UI.BlackScreen.ShowAndReturnTask().GetAwaiter().GetResult();
+        SceneLoader.ThrowAfterBlack = true;
+        SceneLoader.PendingOperation = new UnityEngine.AsyncOperation { progress = 0.9f, isDone = false };
+        SkyIslandSceneReferenceBridge.BeginLoadVisuals(token, foreignReference);
+        Check(RunLoad(foreignReference) is InvalidOperationException && Duckov.UI.BlackScreen.Counter == 2,
+            "failed return load keeps both the external reference and its own unfinished reference");
+        SkyIslandSceneReferenceBridge.EndLoadVisuals(token).GetAwaiter().GetResult();
+        Check(Duckov.UI.BlackScreen.Counter == 1, "return cleanup does not clear another owner's black screen");
+        Check(SceneLoader.PendingOperation.allowSceneActivation && SkyIslandSceneReferenceBridge.HasPendingInitializationLoad(token),
+            "failed base return also releases activation and retains its native operation without an initialization token");
+        SceneLoader.PendingOperation.isDone = true;
+        SceneLoader.PendingOperation = null;
+        SkyIslandSceneReferenceBridge.BeginLoadVisuals(token, foreignReference, true);
+        saves = LevelManager.SaveBeforeLoadCalls;
+        foreignManager.NotifySaveBeforeLoadScene(true);
+        Check(LevelManager.SaveBeforeLoadCalls == saves,
+            "base recovery retry preserves the prior snapshot instead of saving a partly restored target character");
+        manager.MainCharacter.Health.IsDead = false;
+        manager.NotifySaveBeforeLoadScene(true);
+        Check(LevelManager.SaveBeforeLoadCalls == saves + 1,
+            "base recovery retry still saves the original island character if departure never happened");
+        SkyIslandSceneReferenceBridge.EndLoadVisuals(token).GetAwaiter().GetResult();
+        Duckov.UI.BlackScreen.HideAndReturnTask().GetAwaiter().GetResult();
+        SceneLoader.ThrowAfterBlack = false;
         LevelManager.SetLevelInited(true);
         SceneManager.Active = other;
 
@@ -145,9 +208,13 @@ internal static class Program
         Check(reference.Path == sky.path && SceneInfoCollection.GetSceneInfo(SkyIslandSceneReferenceBridge.SceneId) != null,
             "shutdown keeps references alive until the owned scene is unloaded");
         SceneLoader.IsSceneLoading = true;
+        SkyIslandSceneReferenceBridge.BeginLoadVisuals(token, foreignReference);
         SceneManager.Unload(sky);
         Check(reference.Path == sky.path, "unload during official loading defers reference removal until completion");
         SceneLoader.Finish();
+        Check(SceneInfoCollection.GetSceneInfo(SkyIslandSceneReferenceBridge.SceneId) != null,
+            "bridge remains patched through the final awaited black-screen phase after scene-loading flag clears");
+        SkyIslandSceneReferenceBridge.EndLoadVisuals(token).GetAwaiter().GetResult();
         Check(SceneInfoCollection.GetSceneInfo(SkyIslandSceneReferenceBridge.SceneId) == null, "metadata patches removed at shutdown");
         Check(SceneGuidToPathMapProvider.Forward.Count == 1, "only owned map entry removed");
         Check(foreignReference.Path == other.path, "foreign map entry retained");

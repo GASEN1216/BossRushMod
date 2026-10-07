@@ -5,3 +5,5 @@
 直接链接生产 `PetNestGrowth.cs` 和 `PetNestTuning.cs`，逐次抽取生产中性化与专属装备换装方法，只把 `UniTask` 返回类型换成 `Task`。覆盖官方 Wiki 伤害样本顺序、初生与成年体型、异常数值、击杀经验、旧槽替换、缺资源返回 FallbackItem、插槽拒绝与异步期间场景消失。
 
 Unity 角色、物品和插槽用最小替身；Boss Config 替身只供身份分派。本夹具不证明实际装备模型挂点、子弹、AI 行为、血量刷新或渲染效果正确，这些需 Windows 构建与 owner 实机验收。
+
+2026-10-06：直接链接 `PetNestModeGate.cs`，验证普通／非 Raid 关卡、G 与丧尸允许出战，只有 H 禁入；基地不生成第二只及缺 owner 拒绝。关卡和模式状态是显式设置的替身；基地禁战子树另由 PetNestCompanionActivation 执行，跟随动画仍需实机。

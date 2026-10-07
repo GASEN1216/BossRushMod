@@ -68,7 +68,9 @@ internal static class Program
         var cost = BossRushMapSelectionHelper.CreateBossRushCost();
         Check(cost.money == 0L && cost.items.Length == 1 && cost.items[0].id == 500001 && cost.items[0].amount == 1L, "map cost must charge one registered ticket and no cash");
         Reset(); ResourceBundleLoader.CanLoad = false;
-        Check(BossRushMapSelectionHelper.GetBossRushTicketTypeId() == 868, "unregistered map ticket fallback changed");
+        Check(BossRushMapSelectionHelper.GetBossRushTicketTypeId() == BossRushItemIds.BossRushTicket, "unregistered map ticket must use the published content ID");
+        Check(BossRushMapSelectionHelper.CreateBossRushCost().items[0].id == BossRushItemIds.BossRushTicket,
+            "unregistered map cost must not charge the old template item");
         Check(!owner.EnsureBossRushTicketItemRegisteredForDynamicRegistry(), "failed ticket load returned true"); Sequence("load-ticket", "unload-null");
         Reset(); ResourceBundleLoader.Assets = new UnityEngine.Object[] { null, new AssetBundle(), new GameObject(), Prefab(91), Prefab(500001), Prefab(92) }; Probe.Events.Clear();
         Check(owner.EnsureBossRushTicketItemRegisteredForDynamicRegistry(), "ticket target not registered");

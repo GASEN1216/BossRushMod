@@ -710,7 +710,7 @@ namespace BossRush
                     refunded.Add(DescribeRecordStake(record));
             }
 
-            if (anyMoney) page.Lines.Add(L10n.T("押注输赢：", "Bet result: ") + (net >= 0 ? "+" : "-") + FormatMoney(Math.Abs(net)));
+            if (anyMoney) page.Lines.Add(L10n.T("押注输赢：", "Bet result: ") + FormatSignedMoney(net));
             if (gained.Count > 0) page.Lines.Add(L10n.T("得到：", "Gained: ") + string.Join(L10n.T("、", ", "), gained.ToArray()));
             if (lost.Count > 0) page.Lines.Add(L10n.T("失去：", "Lost: ") + string.Join(L10n.T("、", ", "), lost.ToArray()));
             if (refunded.Count > 0) page.Lines.Add(L10n.T("原样退回：", "Returned: ") + string.Join(L10n.T("、", ", "), refunded.ToArray()));
@@ -757,7 +757,7 @@ namespace BossRush
             string stake = DescribeRecordStake(record);
             if (record.kind == ModeHCashBetService.KindItems)
             {
-                bool won = record.itemSettlement == 1 || record.payout > 0;
+                bool won = ModeHCashBetService.IsWinningRecord(record);
                 if (record.status != ModeHCashBetService.StatusSettled)
                 {
                     return record.itemSettlement == 1
@@ -768,21 +768,21 @@ namespace BossRush
                 {
                     AppendPrizeIcons(page, record);
                     gained.AddRange(DescribeSummaryItems(ModeHItemBetEntry.Decode(record.prizeItems)));
-                    if (record.prizeCash > 0) { net += record.prizeCash; anyMoney = true; }
+                    if (record.prizeCash > 0) { net = ModeHCashBetService.SaturatingAdd(net, record.prizeCash); anyMoney = true; }
                     return L10n.T(" · 押 ", " · bet ") + stake + L10n.T("，押品保留并得奖品", ", kept it and won prizes");
                 }
                 lost.AddRange(DescribeSummaryItems(ModeHItemBetEntry.Decode(record.items)));
-                if (record.charged > 0) { net -= record.charged; anyMoney = true; }
+                if (record.charged > 0) { net = ModeHCashBetService.SaturatingAdd(net, -record.charged); anyMoney = true; }
                 return L10n.T(" · 押 ", " · bet ") + stake + L10n.T("，输掉", ", lost");
             }
             if (record.status != ModeHCashBetService.StatusSettled) return string.Empty;
             anyMoney = true;
-            if (record.payout > 0)
+            if (ModeHCashBetService.IsWinningRecord(record))
             {
-                net += record.payout - record.amount;
+                net = ModeHCashBetService.SaturatingAdd(net, record.payout - record.amount);
                 return L10n.T(" · 押 ", " · bet ") + stake + L10n.T("，拿回 ", ", paid ") + FormatMoney(record.payout);
             }
-            net -= record.amount;
+            net = ModeHCashBetService.SaturatingAdd(net, -record.amount);
             return L10n.T(" · 押 ", " · bet ") + stake + L10n.T("，输掉", ", lost");
         }
 
@@ -820,7 +820,7 @@ namespace BossRush
                     page.Lines.Add(L10n.T("原样退回：", "Returned: ") + string.Join(L10n.T("、", ", "), refunded.ToArray()));
                 List<string> forfeited = new List<string>();
                 foreach (ModeHCashBetRecord record in ModeHSessionSummary.AllBets())
-                    if (record != null && record.status == ModeHCashBetService.StatusSettled && record.payout == 0)
+                    if (record != null && record.status == ModeHCashBetService.StatusSettled && !ModeHCashBetService.IsWinningRecord(record))
                         forfeited.Add(DescribeRecordStake(record));
                 if (forfeited.Count > 0)
                     page.Lines.Add(L10n.T("已开战按输结清：", "Lost (match had started): ") + string.Join(L10n.T("、", ", "), forfeited.ToArray()));

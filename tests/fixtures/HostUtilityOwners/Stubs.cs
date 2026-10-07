@@ -93,6 +93,8 @@ namespace ItemStatsSystem
         private float value;
         public bool ThrowOnWrite;
         public Stat(float value) { this.value = value; }
+        public void RemoveAllModifiersFromSource(object source) { }
+        public void AddModifier(Stats.Modifier modifier) { value *= 1 + modifier.Value; }
         public float BaseValue { get { return value; } set { if (ThrowOnWrite) throw new InvalidOperationException("stat"); this.value = value; } }
     }
     public sealed class Item : UnityEngine.Object
@@ -113,6 +115,16 @@ namespace ItemStatsSystem
         public static Func<int, Item> Factory;
         public static Item InstantiateSync(int id)
         { Requested.Add(id); return Factory != null ? Factory(id) : new Item { TypeId = id }; }
+    }
+}
+
+namespace ItemStatsSystem.Stats
+{
+    public enum ModifierType { PercentageMultiply }
+    public sealed class Modifier
+    {
+        public float Value;
+        public Modifier(ModifierType type, float value, bool overrideOrder, int order, object source) { Value = value; }
     }
 }
 

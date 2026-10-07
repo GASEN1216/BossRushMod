@@ -22,7 +22,7 @@ namespace BossRush
             internal Owner()
             {
                 Scheduler.BindServices((c, p) => { Probe.Events.Add("materialize"); return true; },
-                    c => Probe.Events.Add("multiplier"), (c, n) => Probe.Events.Add("loot:" + n),
+                    (c, boss) => Probe.Events.Add("multiplier"), (c, n) => Probe.Events.Add("loot:" + n),
                     p => Probe.Events.Add("cleanup-plan"), c => Probe.Events.Add("untrack"));
                 Runtime = new EnemySpawnRuntime(Scheduler);
                 Runtime.BindPresetQueries(() => Presets, Roll, Roll, () => DescendantSpawned, () => KingSpawned);
@@ -39,7 +39,7 @@ namespace BossRush
                 Runtime.BindEquipmentServices(c => Probe.Events.Add("normalize"),
                     (c, wave, health, boss) => { Check(wave == 4 && health == 120 && boss, "equipment receives original spawn parameters"); Probe.Events.Add("equip"); },
                     (c, wave, health, boss) => { Probe.Events.Add("plan"); return new ModeDItemPool.SharedModeEnemyEquipmentMaterializationPlan(); },
-                    c => Probe.Events.Add("multiplier"), (c, count) => Probe.Events.Add("loot:" + count));
+                    (c, boss) => Probe.Events.Add("multiplier"), (c, count) => Probe.Events.Add("loot:" + count));
                 Runtime.BindOwnedEnemyTracking(p => p.name == "ape", () => Owned);
             }
             private EnemyPresetInfo Roll() { RandomCalls++; return Random.Count == 0 ? null : Random.Dequeue(); }

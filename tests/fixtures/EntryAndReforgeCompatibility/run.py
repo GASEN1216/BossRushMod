@@ -55,7 +55,7 @@ def main():
         "internal static void ConfirmInitialSpawnSelection(", "internal static BossRushMapConfig TakeInitialSpawnSelection(",
         "internal static void CancelUnstartedMapSelection(", "public static void ClearPendingMapEntry(",
         "public static void ClearPendingEntryFlowState(",
-        "public static void MarkTargetSceneLoadStarted(",
+        "public static void MarkTargetSceneLoadStarted(", "public static int GetBossRushTicketTypeId()",
         "public static void MarkEntryFlowFromMapSelectionUi(BossRushPendingEntryKind",
         "public static void MarkEntryFlowFromDirectTeleport(BossRushPendingEntryKind")]
     code += ["} internal static partial class BossRushMapEntrySelectionPatch {", extract(maps, "internal static void RecordSelection(MapSelectionEntry"), "}"]
@@ -72,7 +72,7 @@ def main():
     spawn = OUT / "InitialSpawn.cs"
     spawn.write_text(spawn_source.replace("using Cysharp.Threading.Tasks;", "using System.Threading.Tasks;").replace("UniTask<bool>", "Task<bool>"), encoding="utf-8")
     (OUT / "source-hashes.json").write_text(json.dumps(HASHES, indent=2), encoding="utf-8")
-    files = [generated, spawn, HERE / "Stubs.cs", HERE / "Program.cs", HERE / "InitialSpawnRegression.cs"]
+    files = [generated, spawn, ROOT / "Config/ConfigItemIds.cs", HERE / "Stubs.cs", HERE / "Program.cs", HERE / "InitialSpawnRegression.cs"]
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649;0414</NoWarn></PropertyGroup><ItemGroup>'
     project += "".join('<Compile Include="' + escape(str(p), {'"': '&quot;'}) + '" />' for p in files)
     project += "</ItemGroup></Project>"

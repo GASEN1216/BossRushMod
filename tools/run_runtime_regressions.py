@@ -11,6 +11,10 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT_FIXTURES = (
+    "BossHealthScaling",
+    "ModeECombatTargeting",
+    "PetNestCompanionActivation",
+    "SkyIslandRenderEntry",
     "DeathWraithPersistence",
     "ModeDEntryOwnership",
     "PetNestGrowth", "ModeHPreparedEquipment", "EntryAndReforgeCompatibility", "BackMountainMorph", "JeffQuestFlow", "SaveFailureRecovery", "F3MapTourJudges",

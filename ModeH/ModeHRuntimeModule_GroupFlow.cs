@@ -323,7 +323,7 @@ namespace BossRush
             ModeHCashBetRecord carried = RestoreCarriedGroupBetSide();
             page.Headline = L10n.T("押" + ModeHGroupTeamTags.TeamName(_groupBetOnRed) + "赢 · 返还倍率",
                 "Back " + ModeHGroupTeamTags.TeamName(_groupBetOnRed) + " · payout");
-            page.HeadlineValue = FormatPayoutMultiplier(carried != null ? carried.odds : ResolveGroupOdds(_groupBetOnRed));
+            page.HeadlineValue = carried != null ? FormatPayoutMultiplier(carried) : FormatPayoutMultiplier(ResolveGroupOdds(_groupBetOnRed));
 
             if (!IsGroupBetSideLocked(carried))
             {
@@ -1106,7 +1106,7 @@ namespace BossRush
                     ModeHCardData card = new ModeHCardData();
                     card.Title = L10n.T("第 " + rank + " 名", "#" + rank) + " · "
                         + L10n.T("押中 " + wins + " / " + matches + " 场", wins + " / " + matches + " called");
-                    card.Subtitle = L10n.T("净赚 ", "Net ") + (net >= 0 ? "+" : "-") + FormatMoney(Math.Abs(net));
+                    card.Subtitle = L10n.T("净赚 ", "Net ") + FormatSignedMoney(net);
                     List<string> body = new List<string>();
                     if (!string.IsNullOrEmpty(record.signatureCommandId))
                         body.Add(L10n.T("头号功臣：", "MVP: ") + ResolveOfficialBossName(record.signatureCommandId));

@@ -134,7 +134,7 @@ namespace BossRush
         private Action<CharacterMainControl> NormalizeDamageMultiplier;
         private Action<CharacterMainControl, int, float, bool> EquipEnemyForModeD;
         private Func<CharacterMainControl, int, float, bool, SharedModeEnemyEquipmentMaterializationPlan> CreateSharedModeEnemyEquipmentMaterializationPlan;
-        private Action<CharacterMainControl> ApplyBossStatMultiplier;
+        private Action<CharacterMainControl, bool> ApplyBossStatMultiplier;
         private Action<CharacterMainControl, int> RegisterBossRandomLootTracking;
         private Func<EnemyPresetInfo, bool> IsDaXingXingPreset;
         private Func<HashSet<CharacterMainControl>> ownedDaXingXing;
@@ -183,7 +183,7 @@ namespace BossRush
             Action<CharacterMainControl> normalize,
             Action<CharacterMainControl, int, float, bool> equip,
             Func<CharacterMainControl, int, float, bool, SharedModeEnemyEquipmentMaterializationPlan> createPlan,
-            Action<CharacterMainControl> applyMultiplier,
+            Action<CharacterMainControl, bool> applyMultiplier,
             Action<CharacterMainControl, int> registerLoot)
         {
             NormalizeDamageMultiplier = normalize;
@@ -664,7 +664,7 @@ namespace BossRush
                             // 应用全局 Boss 数值倍率
                             if (applyBossMultiplier)
                             {
-                                ApplyBossStatMultiplier(character);
+                                ApplyBossStatMultiplier(character, isBoss);
                             }
 
                             // Mode G 外部提交路径先冻结，全部槽位结案后由 run owner 批量激活。

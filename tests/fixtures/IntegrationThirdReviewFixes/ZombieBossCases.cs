@@ -7,6 +7,11 @@ using UnityEngine;
 
 namespace BossRush
 {
+    internal static class PetNestCompanionAgent
+    {
+        internal static Health CompanionHealth;
+        internal static bool IsCompanionHealth(Health health) { return health != null && health == CompanionHealth; }
+    }
     // 场景与身份是替身；护盾、减伤组合、Hurt 注入器和官方 Hurt 方法体来自生产文件。
     public static class ZombieModeZoneVisuals
     {
@@ -109,9 +114,11 @@ internal static class ZombieBossCases
         return health;
     }
 
-    private static float Hit(Health target, float damage, bool player = true)
+    private static float Hit(Health target, float damage, bool player = true, bool companion = false)
     {
         var attacker = new CharacterMainControl { IsMainCharacter = player };
+        attacker.Health = new GameObject().AddComponent<Health>();
+        BossRush.PetNestCompanionAgent.CompanionHealth = companion ? attacker.Health : null;
         LevelManager.Instance.MainCharacter = attacker;
         float observed = -1;
         Health.OnHurt = (h, info) => observed = info.finalDamage;
@@ -211,6 +218,9 @@ internal static class ZombieBossCases
             Hit(target, 30); Check(target.IsDead, "previous run marker ignored");
             target = Target(20, true, BossRush.ZombieModeBossKind.Hunter, 100);
             Hit(target, 30, false); Check(target.IsDead, "preserve existing main-player source boundary");
+            target = Target(20, true, BossRush.ZombieModeBossKind.Hunter, 100);
+            Near(Hit(target, 80, false, true), 0, "registered companion damage respects boss shields before lethal damage");
+            Check(!target.IsDead, "companion cannot bypass the boss shield");
 
             target = Target(20, false, BossRush.ZombieModeBossKind.Hunter);
             var elite = BossRush.ModBehaviour.Instance.Markers[target.Owner];
@@ -218,6 +228,11 @@ internal static class ZombieBossCases
             elite.EliteAffixes.Add(BossRush.ZombieModeEliteAffix.Stalwart);
             Near(Hit(target, 100), 10, "Stalwart reduces actual final damage before death");
             Near(target.CurrentHealth, 10, "ranged reduction cannot heal above pre-hit health");
+            target = Target(20, false, BossRush.ZombieModeBossKind.Hunter);
+            elite = BossRush.ModBehaviour.Instance.Markers[target.Owner];
+            elite.EnemyKind = BossRush.ZombieModeEnemyKind.Elite;
+            elite.EliteAffixes.Add(BossRush.ZombieModeEliteAffix.Stalwart);
+            Near(Hit(target, 100, false, true), 10, "companion ranged hit respects elite Stalwart before lethal test");
             target = Target(20, false, BossRush.ZombieModeBossKind.Hunter);
             elite = BossRush.ModBehaviour.Instance.Markers[target.Owner];
             elite.EnemyKind = BossRush.ZombieModeEnemyKind.Elite;

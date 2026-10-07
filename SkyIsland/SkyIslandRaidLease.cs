@@ -16,7 +16,7 @@ namespace BossRush
     {
         internal const string BundleRelativePath = "Assets/arenas/sky_island_raid";
         private AssetBundle bundle;
-        private bool releaseRequested, subscribed, loading, returning, initializing;
+        private bool releaseRequested, subscribed, loading, returning, initializing, returnFailed;
         private TimeOfDayConfig timeOfDay;
         private SkyIslandRaidRecovery recovery;
         private float retryAt;
@@ -130,6 +130,7 @@ namespace BossRush
             SkyIslandExplosionObstaclePatch.Arm(scene);
             try
             {
+                SkyIslandSceneReferenceBridge.BindInitializationScene(this, scene);
                 GameObject services = null, world = null;
                 foreach (GameObject candidate in scene.GetRootGameObjects())
                 {
@@ -137,7 +138,6 @@ namespace BossRush
                     else if (candidate.name == "SkyIslandWorld") world = candidate;
                 }
                 if (services == null || world == null) throw new InvalidOperationException("独立场景缺少地形或关卡根节点");
-                SkyIslandSceneReferenceBridge.BindInitializationScene(this, scene);
                 // 注入必须排在合同验证之前。官方 TimeOfDayConfig 是场景组件（见 Prepare 的注释），作者工程造不出；
                 // startBuffPrefabs 更是连字段都没进包（UnityPy 读回包内 LevelConfig：
                 // timeOfDayConfig = {FileID 0, PathID 0}，startBuffPrefabs 整个字段缺席）。
@@ -169,6 +169,7 @@ namespace BossRush
             loading = true;
             try
             {
+                SkyIslandSceneReferenceBridge.BeginLoadVisuals(this, SkyIslandSceneReferenceBridge.SceneReference);
                 // clickToConinue: true 与官方出击一致（`MapSelectionView.LoadTask`）：
                 // 读条结束后停在「点击继续」，玩家点了才真正进图。用 false 会把人直接甩进战斗区，
                 // 和原版任何一张地图的进入手感都不一样。
@@ -176,9 +177,11 @@ namespace BossRush
                     new MultiSceneLocation { SceneID = SkyIslandSceneReferenceBridge.SceneId, LocationName = "StartPoints/PlayerSpawn" },
                     clickToConinue: true, notifyEvacuation: false, saveToFile: true);
             }
-            catch (Exception e) { Error = e.Message; Debug.LogError("[SkyIsland] RAID_LOAD_FAILED " + e); ReleaseStuckOfficialLoadingFlag("load"); }
+            catch (Exception e) { Abort(e.Message); Error = e.Message; Debug.LogError("[SkyIsland] RAID_LOAD_FAILED " + e); ReleaseStuckOfficialLoadingFlag("load"); }
             finally
             {
+                try { await SkyIslandSceneReferenceBridge.EndLoadVisuals(this); }
+                catch (Exception e) { Debug.LogWarning("[SkyIsland] 入岛黑幕清理失败: " + e.Message); }
                 loading = false;
                 LoadFinished = true;
                 TryRelease();
@@ -188,6 +191,7 @@ namespace BossRush
         internal async void ReturnToBase(bool evacuated)
         {
             if (returning || loading || SceneLoader.IsSceneLoading || Time.unscaledTime < retryAt) return;
+            if (SkyIslandSceneReferenceBridge.HasPendingInitializationLoad(this)) return;
             returning = true;
             try
             {
@@ -217,11 +221,18 @@ namespace BossRush
                         Debug.LogWarning("[SkyIsland] 撤离结算画面失败，直接返航：" + e.Message);
                     }
                 }
+                SkyIslandSceneReferenceBridge.BeginLoadVisuals(this, GameplayDataSettings.SceneManagement.BaseScene, returnFailed);
                 await SceneLoader.Instance.LoadScene(GameplayDataSettings.SceneManagement.BaseScene,
                     curtain, clickToConinue: false, notifyEvacuation: evacuated, saveToFile: true);
+                returnFailed = false;
             }
-            catch (Exception e) { Error = e.Message; Debug.LogError("[SkyIsland] RAID_RETURN_FAILED " + e); ReleaseStuckOfficialLoadingFlag("return"); }
-            finally { returning = false; retryAt = Time.unscaledTime + 2f; TryRelease(); }
+            catch (Exception e) { returnFailed = true; Error = e.Message; Debug.LogError("[SkyIsland] RAID_RETURN_FAILED " + e); ReleaseStuckOfficialLoadingFlag("return"); }
+            finally
+            {
+                try { await SkyIslandSceneReferenceBridge.EndLoadVisuals(this); }
+                catch (Exception e) { Debug.LogWarning("[SkyIsland] 返航黑幕清理失败: " + e.Message); }
+                returning = false; retryAt = Time.unscaledTime + 2f; TryRelease();
+            }
         }
 
         /// <summary>
@@ -282,6 +293,9 @@ namespace BossRush
         internal void PumpRelease()
         {
             if (!releaseRequested || loading || returning || SceneLoader.IsSceneLoading) return;
+            if (SkyIslandSceneReferenceBridge.HasPendingInitializationLoad(this)) return;
+            // 返航的幕布可能已卸掉岛图；失败任务仍须重试，不能仅凭岛图不在就认定已回到基地。
+            if (returnFailed) { ReturnToBase(false); return; }
             Scene scene = SceneManager.GetSceneByPath(SkyIslandSceneReferenceBridge.ScenePath);
             if (scene.IsValid() && scene.isLoaded)
             {
@@ -295,7 +309,8 @@ namespace BossRush
         }
         private void TryRelease()
         {
-            if (!releaseRequested || loading || returning) return;
+            if (!releaseRequested || loading || returning || returnFailed) return;
+            if (SkyIslandSceneReferenceBridge.HasPendingInitializationLoad(this)) return;
             Scene scene = SceneManager.GetSceneByPath(SkyIslandSceneReferenceBridge.ScenePath);
             if (scene.IsValid() && scene.isLoaded) return;
             // 令牌必须在这里归还：漏还会让下一次进岛的 BeginInitialization 直接抛「上一段初始化尚未释放」。

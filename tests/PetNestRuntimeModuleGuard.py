@@ -153,9 +153,12 @@ def check_module(errors):
                           "未开开关的玩家不得付出全量预设扫描成本")
         if "_owner.EnsureEnemyPresetsReadyForGameplayCatalogs()" not in prime_body:
             errors.append("[目录时序] 预热必须经 owner 侧的幂等入口，不得自行重扫预设")
-    if not re.search(r"if \(IsBaseScene\(\)\)\s*\{\s*EnsureOfficialLineagesPrimed\(\);", code):
-        errors.append("[目录时序] 预热必须在回基地分支的最前面，"
-                      "晚于任何读血脉目录的一步就等于没修")
+    if not re.search(r"if \(IsBaseScene\(\)\)\s*\{\s*"
+                     r"string returningPetId = PetNestCompanionRuntime.ActiveCompanionPetId;\s*"
+                     r"if \(!string.IsNullOrEmpty\(returningPetId\)\) _homecomingPetId = returningPetId;\s*"
+                     r"PetNestCompanionRuntime.CleanupOnce\(\);\s*PetNestBaseIdleSpawner.CleanupAll\(\);\s*"
+                     r"EnsureOfficialLineagesPrimed\(\);", code):
+        errors.append("[目录时序] 回基地必须先保存归巢身份并回收旧实体，再预热目录；清理前缀不得读取血脉目录")
 
     if waves is not None and wave_module is not None and not (
             "wavesArenaRuntime.EnsureEnemyPresetsReadyForGameplayCatalogs()" in waves

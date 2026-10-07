@@ -78,6 +78,7 @@ namespace BossRush
 
                 for (int tier = 1; tier <= 3; tier++)
                 {
+                    map[AffixDefinitions.GetNameLocalizationKey(def.Id, tier)] = AffixDefinitions.GetDisplayName(def.Id, tier);
                     string key = AffixDefinitions.DescLocKeyPrefix + def.Id + "_T" + tier;
                     map[key] = AffixDefinitions.RenderDescription(def, tier);
                 }

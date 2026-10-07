@@ -2,6 +2,48 @@
 
 更早记录见 `archive/`；月度归档索引保留在本文件正文。
 
+## 2026-10-06 第二轮深审：征程重复报名、宠物全模式、押注全余额与晴岚黑屏（L1/L2）
+
+用户补充与最终实施见 [完整 17 项报告](docs/reports/reviews/2026-10-06-用户反馈审核与修复.md)。本节取代首轮对征程“未复现”、宠物 G／丧尸禁入、押注固定 20,000 和敲钟地图未知的结论。以下已修复项均未作 L3 声明。
+
+| ID | 级别 / 状态 / 分类 | 根因与修复证据 |
+| --- | --- | --- |
+| CR-2026-10-06-013 | P1 / Fixed / COMPAT | `Campaign/CampaignPersistence.cs:158` 恢复时先 Store 再首次订阅，订阅主动清缓存使已接受进度丢失。已改为先订阅再恢复；真实订阅旧代码转红，三类异常分别经独立写进程／读进程文件回归验证。 |
+| CR-2026-10-06-014 | P1 / Fixed / COMPAT | `Campaign/CampaignOfficialQuestClient.cs:103` 故障时仍 Ready，会拿默认空章节刷新 Jeff。读屏障或写故障时暂停投影，防止“报个名”重新可接；现装 Core／EasySave3 IL 契约与官方投影夹具通过。 |
+| CR-2026-10-06-015 | P1 / Fixed / COMPAT | `PetNest/PetNestCompanionSpawner.cs` staging 根 inactive 时未包含 inactive 子树，旧基地禁战可能拿不到 AI。包含 inactive 查询后在激活前停战斗树；真实 TryActivate／Agent 回归证明基地禁战、出击新实体正常 AI／伤害，并覆盖换队、换主角、死亡和长加载。 |
+| CR-2026-10-06-016 | P2 / Fixed / COMPAT | `MapSelection/BossRushMapSelectionHelper.cs:220` 地图费用仍残留 868 回退，首轮只修 Mode D 漏了此入口。两条入口回退共享发布常量 500001；真实地图费用与注册失败回归通过。 |
+| CR-2026-10-06-017 | P1 / Fixed / WIRE+ | `SkyIsland/SkyIslandSceneReferenceBridge.cs` 与 `SkyIslandRaidLease.cs` 在官方加载异常后漏 Hide，且早期分帧等待不观察取消。只补本租约黑幕引用计数，观察四处官方等待并释放目标 operation 的激活阻塞，资源和补丁延迟到各自真正完成再释放。真实 Harmony／现装 DLL／租约回归与两项反向验证通过。 |
+| CR-2026-10-06-018 | P1 / Fixed / SCHEMA+ | `ModeH/ModeHCashBetService.cs` 大额乘法、胜率、估值及累计有溢出风险，恢复会按变化后的分数赔付。decimal／long 安全计算，锁盘复验上限和扣款，新增可选冻结分子／分母／胜负结果；旧 v1/v2/v3 可读，小额零返还赢注和 long.MinValue 展示均正确。 |
+
+按用户裁决，宠物仅 H（含待入场）禁止；G 清场／Boss 结案沿用现有豁免，丧尸清场显式排除宠物身份，宠物攻击正常消费 Boss 防御；不把宠物计为敌人。押注只扣本金，上限为 min(余额, floor(余额÷本场真实返还倍率))，取消固定 20,000 上限，UI 用归一化整数进度，大额不经过 float。
+
+补充黑屏兼容：当前源与部署包 shader 判包通过；`SkyIslandRendering` 入场按 shader 去重校验 GBuffer，旧 Forward-only 包虽然 isSupported 也不会静默进入黑地形。天空岛“归航钟”没有女巫生成调用，敲钟写 Ending 后向钟守交付。
+
+验证：117 / 117 全量执行回归，734 / 735 全量守卫；唯一失败仍是首轮 CR-012 既有特效包缺三件搜刮箱网格。Windows 正式编译／部署通过，DLL SHA-256 `0F109A2031B81F4EA376AF862F72AEE86624DD44A851E46B61C6348F4B7F883C`，14 项 Dev 标识检查通过，未启动游戏／读取玩家存档。
+
+## 2026-10-06 玩家 16 项反馈审核（COMPAT / SCHEMA+，L1/L2）
+
+逐项结论、生产路径、故障边界与 UF-01～15 实机步骤见 [审核报告](docs/reports/reviews/2026-10-06-用户反馈审核与修复.md)。本轮未启动游戏、未读取或修改玩家存档。以下 Fixed 只表示代码与离线验证闭环，不表示 L3 已通过。
+
+| ID | 级别 / 状态 | 证据与修复 |
+| --- | --- | --- |
+| CR-2026-10-06-001 | P1 / Fixed / COMPAT | `ZombieMode/ZombieModeSpawner.cs` 的 Boss 全图点可落在追踪范围外；复用最近可达点、拥挤环和追踪距离，ZombieModeSpawnRuntime 覆盖。 |
+| CR-2026-10-06-002 | P1 / Fixed / COMPAT | `PetNest/PetNestModeGate.cs` 允许名单排除普通出击；增加通用 Raid，保留 G / 丧尸 / H 禁入，PetNestGrowth 覆盖。 |
+| CR-2026-10-06-003 | P1 / Fixed / COMPAT | 基地宠物未禁战；`PetNestCompanionSpawner.cs` 显示前停官方 AI 子树并复用跟随，基地调用显式 allowCombat:false，ManualSeptemberReview 覆盖。 |
+| CR-2026-10-06-004 | P1 / Fixed / COMPAT | `SkyIslandSession.cs` 与 `ModeHRuntimeModule_SceneFlow.cs` 在 A* 正扫描时立即扫描或选址，会触发返家；复用有界等待，导航未就绪不可提前接管。 |
+| CR-2026-10-06-005 | P1 / Fixed / COMPAT | `CampaignFinalBoss.cs` 把竞技场环境已激活误判成普通波次在战斗，挡住记名石；改为同时检查 IsActive，CampaignPlayability 覆盖。 |
+| CR-2026-10-06-006 | P1 / Fixed / COMPAT | `ModeD/ModeD.cs` 注册未就绪时把船票 ID 回退成 868；改用共享 500001 常量，ModeDEntryOwnership 覆盖。 |
+| CR-2026-10-06-007 | P1 / Fixed / COMPAT | 龙皇、女巫注册被旧 static 成功标记阻断，目录清空后无法补登记；改查当前目录，WavesArenaPresetWeight 覆盖三 Boss 重建。 |
+| CR-2026-10-06-008 | P2 / Fixed / COMPAT | 女巫基础预设查找缓存失败或销毁对象，迟到资源无法恢复；仅成功有效结果早返，执行回归覆盖迟到与 Unity 销毁语义。 |
+| CR-2026-10-06-009 | P2 / Fixed / COMPAT | `CodexKillCollector.cs` 仅用可变 nameKey 归档，第三方改名可把龙皇记成观测者；复用已有能力组件识别，普通杂兵轻门与后续命中 O(1) 保留，图鉴回归覆盖。 |
+| CR-2026-10-06-010 | P1 / Fixed / COMPAT | Mode E 猎犬友军恢复强追玩家，龙裔技能固定指主角；按友军身份禁强追、共用官方 AI 敌对目标，ModeECombatTargeting 覆盖。 |
+| CR-2026-10-06-011 | P2 / Fixed / COMPAT | `ModeDRuntimeModule_Waves.cs` 对已乘生命比例的 Value 求 Add 增量会二次缩放并让当前血量与上限不一致；改为每波 3% 整体乘算并回读上限，BossHealthScaling 覆盖 50/100/200。 |
+| CR-2026-10-06-012 | P2 / Deferred / OPERATIONAL | 本次未改动的 `Assets/ui/skyisland_fx` 只有两个材质、缺三件搜刮箱网格；当前守卫与 HEAD 相同，UnityPy 实读确认。需核对作者工程后重打，未以放宽守卫掩盖。 |
+
+首轮待确认项已重新调查：征程故障恢复重置见 CR-013／014；天空岛归航钟没有女巫生成步骤。“鸭王争霸赛”具体指 Mode E 或 H 仍需实际反馈。未接序章刷零号区守卫被当前前置／异步复核门反证。随机敌人 Mod 全面兼容性未实机测试。
+
+验证：115 / 115 执行回归；734 / 735 全量守卫，唯一失败 CR-012；Windows 正式编译通过，1148 源文件，正式 DLL 源与目标 SHA-256 `1875537F...97E2F93B` 一致，Dev 标识检查通过。详细完整哈希和测试边界见报告。
+
 ## 2026-09-30 天空岛整体生产审查（2026-10-01 全部 Fixed，L2；实机待验）
 
 当前候选未达到整体生产标准；确认 3 项 P1、8 项 P2，完整触发、源码证据、隔离反例、各方面判断和 PROD-SKY-01～09 实机清单见 [整体生产审查](docs/reports/sky-island/2026-09-30-天空岛整体生产标准审查.md)。没有修改生产代码、启动游戏或访问玩家存档，不沿用旧版本实机绿项。

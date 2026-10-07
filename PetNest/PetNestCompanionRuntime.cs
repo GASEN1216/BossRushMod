@@ -170,9 +170,28 @@ namespace BossRush
         /// </summary>
         internal static void TickSpawnRetry(ModBehaviour owner, int sceneGeneration)
         {
+            // 入场完成后仍做 O(1) 生命周期校验；主角死亡、换主角、切图或进入鸭王杯立即退场。
+            // 包括异步在途请求：CleanupOnce 的请求代数会拒绝迟到的旧角色。
+            if (_handle != null || _spawnInFlight)
+            {
+                string reason;
+                if (!IsCompanionWorldReady() || !PetNestModeGate.IsCompanionAllowed(owner, out reason)
+                    || (_handle != null && (_handle.Character == null
+                        || _handle.Agent == null || _handle.Agent.Master != CharacterMainControl.Main)))
+                {
+                    CleanupOnce();
+                    return;
+                }
+            }
             if (_retryDeadlineUnscaled <= 0f) return;
 
             float now = Time.unscaledTime;
+            if (SceneLoader.IsSceneLoading || !LevelManager.LevelInited || !LevelManager.AfterInit)
+            {
+                // 加载时间不消耗入场重试预算，大型地图或其它 Mod 延长加载也要等就绪后再尝试。
+                _retryDeadlineUnscaled = now + SpawnRetryWindowSeconds;
+                return;
+            }
             if (now > _retryDeadlineUnscaled)
             {
                 _retryDeadlineUnscaled = 0f;
@@ -299,8 +318,9 @@ namespace BossRush
 
         private static bool IsCompanionWorldReady()
         {
+            CharacterMainControl main = CharacterMainControl.Main;
             return !SceneLoader.IsSceneLoading && LevelManager.LevelInited && LevelManager.AfterInit
-                && CharacterMainControl.Main != null && CharacterMainControl.Main.CharacterItem != null;
+                && main != null && main.CharacterItem != null && main.Health != null && !main.Health.IsDead;
         }
 
         /// <summary>

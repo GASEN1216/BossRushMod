@@ -53,11 +53,6 @@ namespace BossRush
         private static CharacterRandomPreset cachedPhantomWitchBasePreset = null;
 
         /// <summary>
-        /// 是否已搜索过幽灵女巫基础预设
-        /// </summary>
-        private static bool phantomWitchBasePresetSearched = false;
-
-        /// <summary>
         /// 清理幽灵女巫相关的所有静态缓存（场景切换时调用）
         /// </summary>
         public static void ClearPhantomWitchStaticCache()
@@ -71,7 +66,6 @@ namespace BossRush
         private static void ResetPhantomWitchRuntimeModuleStaticCaches()
         {
             cachedPhantomWitchBasePreset = null;
-            phantomWitchBasePresetSearched = false;
             phantomWitchRegistered = false;
         }
 
@@ -642,13 +636,12 @@ namespace BossRush
         /// </summary>
         internal CharacterRandomPreset FindPhantomWitchBasePreset()
         {
-            if (phantomWitchBasePresetSearched)
+            if (cachedPhantomWitchBasePreset != null)
             {
                 return cachedPhantomWitchBasePreset;
             }
 
-            phantomWitchBasePresetSearched = true;
-
+            // 只缓存有效结果。首次请求可能早于资源载入，缺失不能封死本场后续召唤。
             try
             {
                 var allPresets = Resources.FindObjectsOfTypeAll<CharacterRandomPreset>();
@@ -785,10 +778,9 @@ namespace BossRush
         /// </summary>
         internal void RegisterPhantomWitchPreset()
         {
-            if (phantomWitchRegistered) return;
             if (!HasArenaEnemyPresetCatalog) return;
 
-            // 检查是否已存在
+            // 目录会随宿主 / 预设池重建，静态标志不能代表当前目录已登记。
             if (FindArenaEnemyPreset(PhantomWitchConfig.BossNameKey) != null)
             {
                 phantomWitchRegistered = true;

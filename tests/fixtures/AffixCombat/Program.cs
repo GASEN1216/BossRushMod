@@ -62,6 +62,7 @@ internal static class Program
     private static void Main()
     {
         ForgePricingAndEligibility();
+        AffixNameDisplay();
         RuntimeModifierTracking();
         CharacterMainControl player = Reset(AffixDefinitions.Id_DeathBurst);
         CharacterMainControl first = Enemy(1f), second = Enemy(), third = Enemy(), near = Enemy();
@@ -140,6 +141,39 @@ internal static class Program
         CheckZombieExplosions();
         Console.WriteLine("AffixCombat: " + (checks - failures) + " PASS / " + failures + " FAIL");
         if (failures > 0) Environment.Exit(1);
+    }
+
+    private static void AffixNameDisplay()
+    {
+        Reset();
+        AffixRuntimeService.EnsureRuntime();
+        Check(Duckov.UI.ItemUIUtilities.SubscriberCount == 1, "selection display hook is idempotent");
+        var legacy = Affixed(AffixDefinitions.Id_Thorns, AffixDefinitions.Id_Thorns, "future_affix");
+        legacy.Affixes[0] = new AffixSlotView { AffixId = AffixDefinitions.Id_Thorns, Tier = 3, Locked = true };
+        legacy.Affixes[1] = new AffixSlotView { AffixId = AffixDefinitions.Id_Thorns, Tier = 2 };
+        legacy.Variables.Values["AFX_NAME_1"] = "BossRush_AffixForge_Name_thorns";
+        legacy.Variables.Values["AFX_NAME_3"] = "future_name";
+        Duckov.UI.ItemUIUtilities.Select(legacy);
+        Check(legacy.Variables.GetString("AFX_NAME_1", null) == "BossRush_AffixForge_Name_thorns_T3"
+            && legacy.Variables.GetString("AFX_NAME_2", null) == "BossRush_AffixForge_Name_thorns_T2",
+            "legacy item names use each saved tier independently of slot position");
+        Check(legacy.Affixes[0].Locked && legacy.Affixes[0].Tier == 3
+            && legacy.Variables.GetString("AFX_NAME_3", null) == "future_name",
+            "display refresh preserves locked strength and unknown future affixes");
+        Check(AffixRuntimeService.ActiveAffixCount == 0, "viewing unequipped gear does not activate combat effects");
+        int writes = legacy.Variables.Writes;
+        Duckov.UI.ItemUIUtilities.Select(legacy);
+        Check(legacy.Variables.Writes == writes, "unchanged selection does not rewrite name data");
+        foreach (bool english in new[] { false, true })
+        {
+            L10n.English = english;
+            Check(AffixDefinitions.GetDisplayName(AffixDefinitions.Id_Thorns, 3)
+                == (english ? "Thorns Ⅲ" : "荆棘 Ⅲ"), "tiered names resolve language at use");
+        }
+        L10n.English = false;
+        AffixRuntimeService.ShutdownRuntime();
+        Check(Duckov.UI.ItemUIUtilities.SubscriberCount == 0, "shutdown releases selection display hook");
+        Duckov.UI.ItemUIUtilities.Select(null);
     }
 
     private static void RuntimeModifierTracking()

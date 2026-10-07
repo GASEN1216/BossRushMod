@@ -23,8 +23,10 @@ namespace BossRush
             if (!isEnraged) return;
             if (player == null) return;
 
-            // Mode E 同阵营不对玩家造成碰撞伤害；鸭王杯里碰到的主角只可能是看台观众
-            if (IsPlayerAlly() || (player.IsMainCharacter && ModeHRuntimeGates.IsModeHRunOwnerActive)) return;
+            // 碰撞对象可能不是 AI 当前追击目标，按实际受击者判敌后才允许击退或伤害。
+            // 鸭王杯里碰到的主角只可能是看台观众。
+            if (bossCharacter == null || !Team.IsEnemy(bossCharacter.Team, player.Team)
+                || (player.IsMainCharacter && ModeHRuntimeGates.IsModeHRunOwnerActive)) return;
 
             // 检查冷却
             if (Time.time - lastCollisionTime < COLLISION_COOLDOWN) return;

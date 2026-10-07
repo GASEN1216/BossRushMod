@@ -90,10 +90,11 @@ def check_item_bet_stake(code, errors):
             ("if (_forfeited) return _forfeitMissing;", "收走必须幂等（账本顺延时不能再收一遍）"),
             ("IsOnPlayer(item, character)", "只收走仍在玩家身上的"),
             ("item.StackCount = now - entry.Count;", "堆叠被合并变多时只扣回押上的数量"),
-            ("missing += entry.Value;", "找不到的按估值记账"),
         ]:
             if token not in body:
                 errors.append("[ItemBet] " + why)
+        if body.count("missing = ModeHCashBetService.SaturatingAdd(missing, entry.Value);") != 2:
+            errors.append("[ItemBet] 缺失物品与移出失败两条路径都必须安全累计估值")
     if "character.Inventory" not in code or "CharacterMainControl.Main" not in code:
         errors.append("[ItemBet] 候选只能来自主角色背包")
 

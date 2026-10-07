@@ -547,15 +547,10 @@ namespace BossRush
                         Stat maxHealthStat = characterItem.GetStat("MaxHealth");
                         if (maxHealthStat != null)
                         {
-                            float maxHp = maxHealthStat.Value;
-                            float newHp = maxHp * scale;
-
-                            // 计算需要增加的数值并添加 Modifier
-                            float hpDelta = newHp - maxHp;
-                            if (hpDelta > 0)
+                            // 按整体生命乘波次比例；从 Value 算 Add 增量会再次吃末尾的难度倍率。
+                            if (scale > 1f)
                             {
-                                // 使用 ModifierType.Add 添加加法修饰符
-                                Modifier modifier = new Modifier(ItemStatsSystem.Stats.ModifierType.Add, hpDelta, this);
+                                Modifier modifier = new Modifier(ItemStatsSystem.Stats.ModifierType.PercentageMultiply, scale - 1f, this);
                                 maxHealthStat.AddModifier(modifier);
                             }
 
@@ -563,7 +558,7 @@ namespace BossRush
                             Health health = character.Health;
                             if (health != null)
                             {
-                                health.CurrentHealth = newHp;
+                                health.CurrentHealth = health.MaxHealth;
                             }
                         }
                     }

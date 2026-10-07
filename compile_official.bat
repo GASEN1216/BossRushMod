@@ -141,6 +141,7 @@ echo(Common\Lifecycle\BossRushSlotJsonStore.cs
 echo(Common\Events\BossRushEventBus.cs
 echo(Common\Infrastructure\BossRushEagerReflectionCache.cs
 echo(Common\UI\BossRushUI.cs
+echo(Common\UI\BossRushUISlider.cs
 echo(Common\UI\BossRushUIAnimation.cs
 echo(Common\UI\BossRushUIFeel.cs
 echo(Common\UI\BossRushUIFoundation.cs

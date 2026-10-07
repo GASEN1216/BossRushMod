@@ -10,3 +10,5 @@
 只用聚合入口跑：`python tools/run_runtime_regressions.py --filter ModeHItemBetLedger`。
 
 2026-09-25：追加逐字抽取的账本 JSON 编解码回归，核对 schema 1/2 缺省兼容、schema 3 完整奖品清单在交付完成后仍保留、拒绝未来 schema；共享 JSON 解析与转义链接生产源码。
+
+2026-10-06：同步抽取 decimal 赔付、冻结本场返还分数、可选字段与严格 long 解析。动态上限、完整钱包事务、零返还赢注和跨重启冻结结果由 `SaveFailureRecovery` 直接链接生产服务执行。

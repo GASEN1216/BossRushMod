@@ -30,9 +30,17 @@ internal static class OfficialAssemblyContract
         internal OpCode Op;
         internal string Reference;
     }
-    private static List<Instruction> Instructions(PEReader pe, MetadataReader r,string type,string method)
+    private static int ParameterCount(MetadataReader r, MethodDefinition method)
     {
-        var m=r.GetMethodDefinition(Type(r,type).GetMethods().Single(h=>r.GetString(r.GetMethodDefinition(h).Name)==method));
+        var blob=r.GetBlobReader(method.Signature);
+        var header=blob.ReadSignatureHeader();
+        if(header.IsGeneric)blob.ReadCompressedInteger();
+        return blob.ReadCompressedInteger();
+    }
+    private static List<Instruction> Instructions(PEReader pe, MetadataReader r,string type,string method,int parameters=-1)
+    {
+        var m=r.GetMethodDefinition(Type(r,type).GetMethods().Single(h=>r.GetString(r.GetMethodDefinition(h).Name)==method
+            && (parameters<0 || ParameterCount(r,r.GetMethodDefinition(h))==parameters)));
         byte[] il=pe.GetMethodBody(m.RelativeVirtualAddress).GetILBytes();var result=new List<Instruction>();
         for(int i=0;i<il.Length;)
         {
@@ -48,9 +56,9 @@ internal static class OfficialAssemblyContract
         }
         return result;
     }
-    private static List<string> References(PEReader pe, MetadataReader r,string type,string method)
+    private static List<string> References(PEReader pe, MetadataReader r,string type,string method,int parameters=-1)
     {
-        var refs=Instructions(pe,r,type,method).Where(i=>i.Reference!=null).Select(i=>i.Reference).ToList();
+        var refs=Instructions(pe,r,type,method,parameters).Where(i=>i.Reference!=null).Select(i=>i.Reference).ToList();
         Console.WriteLine(type+"."+method+": "+string.Join(" -> ",refs));return refs;
     }
     private static void Require(bool ok,string label){if(!ok)throw new Exception("DLL contract: "+label);}
@@ -63,6 +71,15 @@ internal static class OfficialAssemblyContract
         using(var stream=File.OpenRead(Path.Combine(managed,"TeamSoda.Duckov.Core.dll")))using(var pe=new PEReader(stream))
         {
             var r=pe.GetMetadataReader();Console.WriteLine("Official Core MVID="+r.GetGuid(r.GetModuleDefinition().Mvid));
+            // 存档测试替身必须遵循现装 DLL：槽位选择先读磁盘缓存再发事件，SaveFile 只写缓存、不自动采集。
+            Ordered(References(pe,r,"SavesSystem","set_CurrentSlot"),"PlayerPrefs.SetInt","SavesSystem.CacheFile");
+            Ordered(References(pe,r,"SavesSystem","SetFile"),"cached","SavesSystem.set_CurrentSlot","Action.Invoke");
+            Ordered(References(pe,r,"SavesSystem","KeyExisits",1),"SavesSystem.CacheFile","SavesSystem.get_CurrentFilePath","ES3.KeyExists");
+            Ordered(References(pe,r,"SavesSystem","Load",1),"SavesSystem.CacheFile","ES3.KeyExists","ES3.Load");
+            Ordered(References(pe,r,"SavesSystem","Save",2),"SavesSystem.CacheFile","ES3.Save");
+            var physicalSave=References(pe,r,"SavesSystem","SaveFile");
+            Ordered(physicalSave,"SavesSystem.SetAsOldGame","ES3.StoreCachedFile");
+            Require(!physicalSave.Contains("SavesSystem.CollectSaveData"),"SaveFile does not collect pending Mod state automatically");
             var harvest=References(pe,r,"Crop","Harvest");Ordered(harvest,"Cost.Return","UniTaskExtensions.Forget","Crop.DestroyCrop");Require(harvest.Count(s=>s=="Cost.Return")==1,"one harvest delivery");
             string returnState=r.GetString(r.GetTypeDefinition(Type(r,"Cost").GetNestedTypes().Single(h=>r.GetString(r.GetTypeDefinition(h).Name).StartsWith("<Return>d__",StringComparison.Ordinal))).Name);
             var delivery=References(pe,r,returnState,"MoveNext");
@@ -107,6 +124,12 @@ internal static class OfficialAssemblyContract
         using(var stream=File.OpenRead(Path.Combine(managed,"ItemStatsSystem.dll")))using(var pe=new PEReader(stream))
         {
             var r=pe.GetMetadataReader();Ordered(References(pe,r,"UsageUtilities","Use"),"UsageBehavior.CanBeUsed","UsageBehavior.Use");
+        }
+        using(var stream=File.OpenRead(Path.Combine(managed,"EasySave3.dll")))using(var pe=new PEReader(stream))
+        {
+            var r=pe.GetMetadataReader();
+            Require(References(pe,r,"ES3File","CacheFile").Contains("ES3.LoadRawBytes"),"official cache reload reads physical file bytes");
+            Require(References(pe,r,"ES3File","Store").Contains("ES3File.Sync"),"official physical write synchronizes the cached file");
         }
         Console.WriteLine("Official quest/garden/use DLL contracts: PASS");
     }

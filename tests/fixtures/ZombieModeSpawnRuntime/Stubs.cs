@@ -77,7 +77,7 @@ namespace UnityEngine
         public static Vector3 operator -(Vector3 a,Vector3 b) { return new Vector3(a.x-b.x,a.y-b.y,a.z-b.z); }
         public static Vector3 operator *(Vector3 a,float b) { return new Vector3(a.x*b,a.y*b,a.z*b); }
     }
-    public static class Mathf { public static int Max(int a,int b) { return Math.Max(a,b); } public static float Max(float a,float b) { return Math.Max(a,b); } public static float Abs(float a) { return Math.Abs(a); } }
+    public static class Mathf { public static int Max(int a,int b) { return Math.Max(a,b); } public static float Max(float a,float b) { return Math.Max(a,b); } public static float Abs(float a) { return Math.Abs(a); } public static int Abs(int a) { return Math.Abs(a); } }
 }
 
 namespace Duckov.Buffs { public sealed class Buff { } }
@@ -117,13 +117,14 @@ namespace BossRush
 {
     public enum Teams { player, scav, wolf }
     public static class Team { public static bool IsEnemy(Teams player,Teams enemy) { return enemy==Teams.wolf; } }
-    public sealed class Health { public float MaxHealth=50; public void SetHealth(float value) { Probe.Trace.Add("heal"); } }
+    public sealed class Health { public CharacterMainControl Owner; public float MaxHealth=50; public CharacterMainControl TryGetCharacter() { return Owner; } public void SetHealth(float value) { Probe.Trace.Add("heal"); } }
     public sealed class CharacterMainControl : Component
     {
-        public static CharacterMainControl Main; public Teams Team; public bool dropBoxOnDead=true; public Health Health=new Health();
+        public static CharacterMainControl Main; public Teams Team; public bool IsMainCharacter, IsCompanion,dropBoxOnDead=true; public Health Health=new Health();
         public DamageReceiver mainDamageReceiver=new DamageReceiver();
         public readonly AICharacterController AI=new AICharacterController();
-        public CharacterMainControl(string name) { gameObject=new GameObject(name); gameObject.Components.Add(this); }
+        public CharacterMainControl(string name) { gameObject=new GameObject(name); gameObject.Components.Add(this); Health.Owner=this; }
+        public T GetComponent<T>() where T : Component { foreach(var component in gameObject.Components)if(component is T)return (T)component;return null; }
         public void SetTeam(Teams team) { Team=team; Probe.Trace.Add("team:"+team); }
     }
     public sealed class AICharacterController { public float forceTracePlayerDistance; public bool noticed; }
@@ -131,7 +132,10 @@ namespace BossRush
     public enum ZombieModeSpecialKind { None, Test }
     public enum ZombieModeEliteAffix { Test }
     public enum ZombieModeBossKind { Titan, Hunter }
-    public sealed class ZombieModeEnemyRuntimeMarker : Component { }
+    public sealed class ZombieModeEnemyRuntimeMarker : Component { public int RunId,PurificationPointValue=1; public bool IsBoss,DeathSettled,RemovedFromRuntime; public ZombieModeEnemyKind EnemyKind; }
+    public static class PetNestCompanionAgent { public static bool IsCompanionCharacter(CharacterMainControl c) { return c.IsCompanion; } }
+    public enum ZombieModeLifecyclePhase { None, Active }
+    public enum ZombieModeCombatPhase { None, Combat }
     public sealed class EnemyPresetInfo { public string name,displayName; public float baseHealth; }
     public sealed class EnemySpawnContext { public CharacterMainControl character; }
     public sealed class ZombieModeBossInstance
@@ -142,10 +146,16 @@ namespace BossRush
     }
     public sealed class ZombieModeRunState
     {
-        public int RunId=1,LivingNormalZombieCount,PendingNormalZombieSpawns,LivingZombieCount;
+        public int RunId=1,LivingNormalZombieCount,PendingNormalZombieSpawns,LivingZombieCount,NextSpawnPointIndex;
+        public int CurrentWaveKills,CurrentWaveKillTarget,CurrentWaveBossesRemaining;
+        public ZombieModeLifecyclePhase LifecyclePhase=ZombieModeLifecyclePhase.Active;
+        public ZombieModeCombatPhase CombatPhase=ZombieModeCombatPhase.Combat;
         public readonly List<ZombieModeBossInstance> CurrentWaveBossInstances=new List<ZombieModeBossInstance>();
+        public readonly List<ZombieModeSpawnPoint> SpawnPoints=new List<ZombieModeSpawnPoint>();
+        public readonly List<ZombieModeSpawnPoint> EffectiveSpawnPoints=new List<ZombieModeSpawnPoint>();
     }
-    public static class ZombieModeTuning { public const int MaxNormalZombieCount=20; public const float NormalZombieForceTraceDistance=120,NavMeshVirtualSpawnRadius=3,SpawnPointNavMeshSampleRadius=2,NavMeshLiftOffset=0.1f,SpawnPointMinPlayerDistance=12; }
+    public sealed class ZombieModeSpawnPoint { public Vector3 Position; }
+    public static class ZombieModeTuning { public const int MaxNormalZombieCount=20; public const float NormalZombieForceTraceDistance=120,NavMeshVirtualSpawnRadius=3,SpawnPointNavMeshSampleRadius=2,NavMeshLiftOffset=0.1f,SpawnPointMinPlayerDistance=12,BossSpreadMinDistance=8; }
     internal static partial class SpawnPositionHelper { public static bool PassesMinPlayerDistance(Vector3 point,float distance) { return (point-CharacterMainControl.Main.transform.position).sqrMagnitude>=distance*distance; } }
     public enum DamageTypes { normal }
     public struct DamageInfo
@@ -178,9 +188,34 @@ namespace BossRush
         private readonly ModBehaviour owner; private readonly ZombieModeRunState runState;
         internal bool Paused,Invalid,SuppressThreat;
         private readonly UnityEngine.AI.NavMeshPath zombieModeSpawnReachabilityPath=new UnityEngine.AI.NavMeshPath();
-        private bool TryGetZombieModeReliableSpawnPosition(out Vector3 position) { position=Vector3.zero; return false; }
+        internal bool VirtualSpawnAvailable;
+        internal Vector3 VirtualSpawnPosition;
+        private bool TryFindZombieModeVirtualSpawnAroundPlayer(Vector3 playerPos,out Vector3 position) { position=VirtualSpawnPosition; return VirtualSpawnAvailable; }
+        private bool TryFindZombieModeVirtualSpawnAroundPlayer(Vector3 playerPos,float distance,out Vector3 position) { return TryFindZombieModeVirtualSpawnAroundPlayer(playerPos,out position); }
+        private float GetZombieModeSpawnPointMinPlayerDistance() { return 18f; }
         internal bool Resolve(Vector3 position,bool virtualPoint,out Vector3 resolved) { return TryResolveZombieModeSpawnPoint(position,virtualPoint,out resolved); }
         internal ZombieModeRuntimeModule(ModBehaviour owner,ZombieModeRunState state) { this.owner=owner;runState=state; }
+        private readonly Dictionary<CharacterMainControl,ZombieModeEnemyRuntimeMarker> knownMarkers=new Dictionary<CharacterMainControl,ZombieModeEnemyRuntimeMarker>();
+        internal int CompletedWaves,DeathStarPoints;
+        internal void Kill(Health health,CharacterMainControl killer) { HandleZombieModeHealthDead(runState.RunId,health,new DamageInfo(killer)); }
+        internal bool PreserveDuringIsolation(CharacterMainControl c) { return ShouldSkipZombieModeOriginalCharacter(c); }
+        internal void TrackDeathCase(CharacterMainControl c,bool boss=false) { knownMarkers[c]=new ZombieModeEnemyRuntimeMarker { RunId=runState.RunId,IsBoss=boss }; }
+        private bool TryGetZombieModeKnownEnemyMarker(CharacterMainControl c,out ZombieModeEnemyRuntimeMarker marker) { return knownMarkers.TryGetValue(c,out marker); }
+        private void UnregisterZombieModeEnemyInstanceId(CharacterMainControl c) { knownMarkers.Remove(c); }
+        private void FailZombieModeActive(int runId) { }
+        private void TryHandleZombieModeSafeZonePlayerAttack(int id,DamageInfo info,CharacterMainControl c) { }
+        private void HandleZombieModeOptionHealthDead(int id,Health h,DamageInfo info,CharacterMainControl c,ZombieModeEnemyRuntimeMarker m) { }
+        private int GetZombieModeDeathStarCount(ZombieModeEnemyRuntimeMarker m) { return 1; }
+        private void SpawnZombieModeDeathStars(int id,Vector3 pos,int points,int count) { DeathStarPoints+=points*count; }
+        private void HandleZombieModeBossDefeated(int id,ZombieModeEnemyRuntimeMarker m,CharacterMainControl c) { runState.CurrentWaveBossesRemaining--; }
+        private void HandleZombieModeBossDeathEffects(int id,ZombieModeEnemyRuntimeMarker m,CharacterMainControl c) { }
+        private void TrySpawnZombieModeBossDrop(int id,ZombieModeEnemyRuntimeMarker m,Vector3 pos) { }
+        private void CompleteZombieModeWave(int id) { CompletedWaves++; }
+        private void PruneZombieModeRunOnlyEnemyRecords(int id) { }
+        private void HandleZombieModeEliteDeathEffects(int id,ZombieModeEnemyRuntimeMarker m,CharacterMainControl c) { }
+        private void HandleZombieModeSpecialDeathEffects(int id,ZombieModeEnemyRuntimeMarker m,CharacterMainControl c) { }
+        private void TrySpawnZombieModeEnemyDrop(int id,ZombieModeEnemyRuntimeMarker m,Vector3 pos) { }
+        private bool ShouldPreserveZombieModeOriginalCharacter(CharacterMainControl c) { return false; }
         private bool IsZombieModeRunValid(int runId) { return !Invalid && runState.RunId==runId; }
         private bool IsZombieModeRuntimePaused() { return Paused; }
         private ZombieModeEnemyKind RollZombieModeEnemyKind() { Probe.Trace.Add("roll-kind"); return ZombieModeEnemyKind.Special; }

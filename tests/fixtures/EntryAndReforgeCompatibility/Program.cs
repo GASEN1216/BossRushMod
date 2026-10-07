@@ -54,6 +54,17 @@ internal static class Program
     }
     private static void Entry()
     {
+        IntegrationRuntimeModule.TicketId = 0;
+        Check(BossRushMapSelectionHelper.GetBossRushTicketTypeId() == BossRushItemIds.BossRushTicket,
+            "map entry uses the registered content ID before ticket registration finishes");
+        IntegrationRuntimeModule.ThrowTicketQuery = true;
+        Check(BossRushMapSelectionHelper.GetBossRushTicketTypeId() == BossRushItemIds.BossRushTicket,
+            "map entry never charges the old template when registration query fails");
+        IntegrationRuntimeModule.ThrowTicketQuery = false;
+        IntegrationRuntimeModule.TicketId = 501234;
+        Check(BossRushMapSelectionHelper.GetBossRushTicketTypeId() == 501234,
+            "live registration remains the authoritative ticket ID");
+        IntegrationRuntimeModule.TicketId = 0;
         BossRushMapSelectionHelper.SetPendingMapEntryIndex(-1);
         BossRushMapEntrySelectionPatch.Select(new MapSelectionEntry());
         Check(!BossRushMapSelectionHelper.IsPendingTargetScene("arena"), "vanilla entry cannot arm BossRush");

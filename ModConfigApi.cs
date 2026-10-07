@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
@@ -12,6 +12,40 @@ namespace BossRush {
 public static class ModConfigAPI
 {
     public static string ModConfigName = "ModConfig";
+
+    /// <summary>
+    /// 通过反射查找 ModConfig 类型
+    /// </summary>
+    /// <param name="typeName">类型全名</param>
+    /// <returns>找到的类型，未找到返回 null</returns>
+    internal static Type FindLoadedType(string typeName)
+    {
+        try
+        {
+            Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            foreach (Assembly assembly in assemblies)
+            {
+                try
+                {
+                    Type type = assembly.GetType(typeName);
+                    if (type != null)
+                    {
+                        return type;
+                    }
+                }
+                catch
+                {
+                    continue;
+                }
+            }
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
 
     //Ensure this match the number of ModConfig.ModBehaviour.VERSION
     //这里确保版本号与ModConfig.ModBehaviour.VERSION匹配

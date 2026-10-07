@@ -95,7 +95,7 @@ def check(sources):
     ):
         require(token in prelude, PRELUDE + "：" + why + "（缺 " + token + "）")
     spawn = prelude.split("private async void SpawnBoss(", 1)[1].split("private bool IsObjectiveGeneration(", 1)[0]
-    prepare = 'SkyIslandCombatPreset.Apply(clone, source, "K3_Relay", 0, SkyIslandEnemyTier.Chief);'
+    prepare = 'SkyIslandCombatPreset.Apply(clone, source, "K3_Relay", 0, SkyIslandEnemyTier.Chief, owner.GetBossHealthMultiplier());'
     ordered(spawn, "clone = UnityEngine.Object.Instantiate(source);", prepare,
             PRELUDE + " 序章守必须先克隆，再按岛内 K3 档案准备基准")
     ordered(spawn, prepare, "await clone.CreateCharacterAsync(",
@@ -260,7 +260,7 @@ def main():
     sources = {path: (ROOT / path).read_text(encoding="utf-8-sig") for path in PATHS}
     errors = check(sources)
     probes = (
-        (PRELUDE, 'SkyIslandCombatPreset.Apply(clone, source, "K3_Relay", 0, SkyIslandEnemyTier.Chief);', ""),
+        (PRELUDE, 'SkyIslandCombatPreset.Apply(clone, source, "K3_Relay", 0, SkyIslandEnemyTier.Chief, owner.GetBossHealthMultiplier());', ""),
         (PRELUDE, "story.IsCurrentSlot && storyReady", "story.IsCurrentSlot"),
         (PRELUDE, "storyReady = false;", "storyReady = true;"),
         (GIVERS, "context.BundleDeployed = SkyIslandPreludeFlow.BundleDeployed;", "context.BundleDeployed = SkyIslandRaidLease.IsBundleDeployed();"),

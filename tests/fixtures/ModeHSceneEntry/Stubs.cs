@@ -50,6 +50,7 @@ public class CharacterMainControl : UnityEngine.Object
     public int PositionWrites; public void SetPosition(UnityEngine.Vector3 p) { transform.position=p;PositionWrites++; }
 }
 public static class LevelManager { public static bool LevelInited,AfterInit; }
+public class AstarPath { public static AstarPath active; public bool isScanning; }
 public class GameCamera { public static GameCamera Instance; public UnityEngine.Transform transform=new UnityEngine.Transform(); }
 public class SceneLoader
 {

@@ -576,6 +576,19 @@ namespace BossRush
             return L10n.T(def.NameCN, def.NameEN);
         }
 
+        /// <summary>装备上的词缀名称附带实际强度，供锻造、详情与本地化共用。</summary>
+        public static string GetDisplayName(string id, int tier)
+        {
+            return GetDisplayName(id) + " " + GetRomanNumeral(tier);
+        }
+
+        /// <summary>分档名称键；旧的不分档名称键仍保留供旧装备兼容。</summary>
+        public static string GetNameLocalizationKey(string id, int tier)
+        {
+            int clampedTier = tier < 1 ? 1 : tier > 3 ? 3 : tier;
+            return NameLocKeyPrefix + id + "_T" + clampedTier;
+        }
+
         /// <summary>词缀显示描述（已按当前语言渲染并填入档位数值）。未知 id 返回兜底文案。</summary>
         public static string GetDisplayDescription(string id, int tier)
         {

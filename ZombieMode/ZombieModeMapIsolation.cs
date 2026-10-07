@@ -145,6 +145,8 @@ namespace BossRush
                 return true;
             }
 
+            if (PetNestCompanionAgent.IsCompanionCharacter(character)) return true;
+
             if (character.GetComponent<ZombieModeEnemyRuntimeMarker>() != null)
             {
                 return true;

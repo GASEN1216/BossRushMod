@@ -155,11 +155,13 @@ namespace BossRush
                 if (!_store.IsStoreFaulted) return true;
                 if (slot < 0 || accepted == null || Decode(Encode(accepted)) == null) return false;
                 replacement = CreateStore();
+                // 首次订阅会丢弃既有缓存并通知下游复位，必须在接回 accepted 之前完成。
+                // 否则恢复键写失败时，会把刚接回的章节和 pending 再清空，重启又回到第一章。
+                if (_store.IsSubscribed) replacement.EnsureSubscribed();
                 replacement.LoadOrInit();
                 if (Saves.SavesSystem.CurrentSlot != slot || replacement.HasWriteBarrier || replacement.IsStoreFaulted)
                     return false;
                 if (!replacement.Store(accepted)) return false;
-                if (_store.IsSubscribed) replacement.EnsureSubscribed();
                 _store.ShutdownSubscription();
                 _store = replacement;
                 adopted = true;

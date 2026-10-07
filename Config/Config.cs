@@ -48,6 +48,8 @@ namespace BossRush
             public bool lootBoxBlocksBullets = false;
             public int infiniteHellBossesPerWave = 3;
             public float bossStatMultiplier = 1f;
+            /// <summary>Boss 生命比例，100 保持原值；仅在生成时应用。</summary>
+            public int bossHealthPercent = 100;
 
             /// <summary>每5波额外休息时间（秒），0=不额外休息</summary>
             public float milestoneRestBonusSeconds = 30f;
@@ -124,39 +126,6 @@ namespace BossRush
         #region 配置加载与保存
 
         /// <summary>
-        /// 通过反射查找 ModConfig 类型
-        /// </summary>
-        /// <param name="typeName">类型全名</param>
-        /// <returns>找到的类型，未找到返回 null</returns>
-        private Type FindModConfigType(string typeName)
-        {
-            try
-            {
-                Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
-                foreach (Assembly assembly in assemblies)
-                {
-                    try
-                    {
-                        Type type = assembly.GetType(typeName);
-                        if (type != null)
-                        {
-                            return type;
-                        }
-                    }
-                    catch
-                    {
-                        continue;
-                    }
-                }
-                return null;
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        /// <summary>
         /// 从本地文件加载配置
         /// </summary>
         private void LoadConfigFromFile()
@@ -187,6 +156,10 @@ namespace BossRush
                             {
                                 loaded.useLegacyBossLootProbabilities = true;
                             }
+
+                            if (json.IndexOf("\"bossHealthPercent\"", StringComparison.OrdinalIgnoreCase) < 0)
+                                loaded.bossHealthPercent = 100;
+                            loaded.bossHealthPercent = Mathf.Clamp(loaded.bossHealthPercent, 10, 200);
 
                             config = loaded;
                         }
@@ -245,7 +218,7 @@ namespace BossRush
         {
             try
             {
-                Type optionsManagerType = FindModConfigType("ModConfig.OptionsManager_Mod");
+                Type optionsManagerType = ModConfigAPI.FindLoadedType("ModConfig.OptionsManager_Mod");
                 if (optionsManagerType == null)
                 {
                     DevLog("[BossRush] ModConfig.OptionsManager_Mod 类型未找到");
@@ -313,6 +286,8 @@ namespace BossRush
                     config.lootBoxBlocksBullets = loadedCover;
 
                     MethodInfo intLoadMethod = loadMethod.MakeGenericMethod(typeof(int));
+                    config.bossHealthPercent = Mathf.Clamp((int)intLoadMethod.Invoke(null,
+                        new object[] { ModName + "_BossHealthPercent", config.bossHealthPercent }), 10, 200);
                     int currentHell = config.infiniteHellBossesPerWave;
                     object hellResult = intLoadMethod.Invoke(null, new object[] { hellBossKey, currentHell });
                     int loadedHell = (int)hellResult;
@@ -426,7 +401,7 @@ namespace BossRush
                     return false;
                 }
 
-                Type optionsManagerType = FindModConfigType("ModConfig.OptionsManager_Mod");
+                Type optionsManagerType = ModConfigAPI.FindLoadedType("ModConfig.OptionsManager_Mod");
                 if (optionsManagerType == null)
                 {
                     return false;
@@ -507,6 +482,13 @@ namespace BossRush
                     object bossStatResult = floatLoadMethod.Invoke(null, new object[] { bossStatKey, config.bossStatMultiplier });
                     float loadedBossStat = Mathf.Clamp((float)bossStatResult, 0.1f, 10f);
                     config.bossStatMultiplier = loadedBossStat;
+                    return true;
+                }
+
+                if (changedKey == ModName + "_BossHealthPercent")
+                {
+                    config.bossHealthPercent = Mathf.Clamp((int)loadMethod.MakeGenericMethod(typeof(int)).Invoke(null,
+                        new object[] { changedKey, config.bossHealthPercent }), 10, 200);
                     return true;
                 }
 
@@ -720,7 +702,7 @@ namespace BossRush
         {
             try
             {
-                Type modBehaviourType = FindModConfigType("ModConfig.ModBehaviour");
+                Type modBehaviourType = ModConfigAPI.FindLoadedType("ModConfig.ModBehaviour");
                 if (modBehaviourType == null)
                 {
                     DevLog("[BossRush] ModConfig.ModBehaviour 类型未找到，ModConfig 可能未安装");
@@ -951,6 +933,16 @@ namespace BossRush
                     DevLog("[BossRush] 注册Boss数值倍率配置项失败: " + ex.Message);
                 }
 
+                try
+                {
+                    config.bossHealthPercent = Mathf.Clamp(config.bossHealthPercent, 10, 200);
+                    if (addSliderMethod != null)
+                        addSliderMethod.Invoke(null, new object[] { ModName, ModName + "_BossHealthPercent",
+                            L10n.T("敌人难度：Boss生命比例(%，新生成生效)", "Enemy difficulty: Boss health (%, new spawns)"),
+                            typeof(int), config.bossHealthPercent, new Vector2(10f, 200f) });
+                }
+                catch (Exception ex) { DevLog("[BossRush] 注册 Boss 生命比例失败: " + ex.Message); }
+
                 // 无间炼狱每波 Boss 数量
                 try
                 {
@@ -1059,6 +1051,11 @@ namespace BossRush
         #endregion
         
         #region 配置访问方法
+
+        internal float GetBossHealthMultiplier()
+        {
+            return config != null ? Mathf.Clamp(config.bossHealthPercent, 10, 200) * 0.01f : 1f;
+        }
 
         private int ClampMutatorCount(int value)
         {

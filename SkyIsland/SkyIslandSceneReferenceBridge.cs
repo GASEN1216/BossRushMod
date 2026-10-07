@@ -5,6 +5,7 @@ using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using Cysharp.Threading.Tasks;
 using Duckov.Scenes;
+using Duckov.UI;
 using Eflatun.SceneReference;
 using HarmonyLib;
 using UnityEngine;
@@ -36,6 +37,13 @@ namespace BossRush
         private static object initializationOwner;
         private static int initializationSceneHandle;
         private static string initializationFailure;
+        private static AsyncOperation initializationOperation;
+        private static object initializationOperationOwner;
+        private static object visualLoadOwner;
+        private static SceneReference visualLoadTarget;
+        private static BlackScreen visualBlackScreen;
+        private static int visualBlackDebt;
+        private static bool preserveTargetSnapshot;
 
         internal static SceneReference SceneReference
         {
@@ -190,6 +198,8 @@ namespace BossRush
             initializationOwner = owner;
             initializationSceneHandle = 0;
             initializationFailure = null;
+            initializationOperation = null;
+            initializationOperationOwner = null;
             // 新的一趟出击会加载一个新的场景实例：旧句柄即使被复用也不能再当作天空岛。
             knownSceneHandle = 0;
         }
@@ -203,6 +213,9 @@ namespace BossRush
         {
             if (!ReferenceEquals(initializationOwner, owner)) return;
             if (initializationFailure == null) initializationFailure = reason ?? "天空岛初始化已取消";
+            // 官方事件 / 黑幕 await 也会抛出异常，此时已没有下一帧回调替我们解除激活阻塞。
+            if (initializationOperation != null && !initializationOperation.isDone)
+                initializationOperation.allowSceneActivation = true;
         }
 
         internal static void EndInitialization(object owner)
@@ -211,10 +224,109 @@ namespace BossRush
             initializationOwner = null;
             initializationSceneHandle = 0;
             initializationFailure = null;
+            initializationOperation = null;
+            initializationOperationOwner = null;
+        }
+
+        internal static bool HasPendingInitializationLoad(object owner)
+        {
+            return ReferenceEquals(initializationOperationOwner, owner) && initializationOperation != null && !initializationOperation.isDone;
+        }
+
+        private static UniTask LoaderNextFrame(SceneReference reference, AsyncOperation operation)
+        {
+            if (OwnsReference(reference) && initializationOwner != null)
+            {
+                if (operation != null) { initializationOperation = operation; initializationOperationOwner = initializationOwner; }
+                if (initializationFailure != null)
+                {
+                    // Unity 不支持取消场景 AsyncOperation；不放开激活，排在它后面的返航也会永久等待。
+                    if (operation != null && !operation.isDone) operation.allowSceneActivation = true;
+                    throw new OperationCanceledException(initializationFailure);
+                }
+            }
+            return UniTask.NextFrame();
+        }
+
+        private static void LoaderSetSceneActivation(AsyncOperation operation, bool allow, SceneReference reference)
+        {
+            // 在官方第一次关掉激活时就登记；目标已读到 0.9 时可能跳过所有早期 NextFrame。
+            if (TracksLoadVisuals(reference) || (OwnsReference(reference) && initializationOwner != null))
+            {
+                initializationOperation = operation;
+                initializationOperationOwner = TracksLoadVisuals(reference) ? visualLoadOwner : initializationOwner;
+            }
+            operation.allowSceneActivation = allow;
+        }
+
+        internal static void BeginLoadVisuals(object owner, SceneReference target, bool preservePreviousTargetSnapshot = false)
+        {
+            if (visualLoadOwner != null) throw new InvalidOperationException("上一段天空岛切图表现尚未释放");
+            visualLoadOwner = owner;
+            visualLoadTarget = target;
+            visualBlackScreen = null;
+            visualBlackDebt = 0;
+            preserveTargetSnapshot = preservePreviousTargetSnapshot;
+        }
+
+        /// <summary>只补偿本租约 SceneLoader 未配对的黑幕，保留其它调用者的引用计数。</summary>
+        internal static UniTask EndLoadVisuals(object owner)
+        {
+            if (!ReferenceEquals(visualLoadOwner, owner)) return UniTask.CompletedTask;
+            // 包括返航：官方任务已结束，却仍未激活的目标只能是异常遗留，必须放行 Unity 队列。
+            // 所属 owner 保留到 operation 真正完成，不能随黑幕租约清空。
+            if (HasPendingInitializationLoad(owner)) initializationOperation.allowSceneActivation = true;
+            int debt = visualBlackDebt;
+            BlackScreen screen = visualBlackScreen;
+            visualLoadOwner = null;
+            visualLoadTarget = null;
+            visualBlackScreen = null;
+            visualBlackDebt = 0;
+            preserveTargetSnapshot = false;
+            UniTask result = UniTask.CompletedTask;
+            if (screen != null && BlackScreen.Instance == screen)
+                while (debt-- > 0) result = BlackScreen.HideAndReturnTask();
+            if (shutdownRequested) Shutdown();
+            return result;
+        }
+
+        private static bool TracksLoadVisuals(SceneReference reference)
+        {
+            return visualLoadOwner != null && visualLoadTarget != null && reference != null
+                && string.Equals(reference.Guid, visualLoadTarget.Guid, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static UniTask LoaderShowBlack(AnimationCurve curve, float circle, float duration, SceneReference reference)
+        {
+            if (TracksLoadVisuals(reference) && BlackScreen.Instance != null)
+            {
+                if (visualBlackScreen != BlackScreen.Instance) visualBlackDebt = 0;
+                visualBlackScreen = BlackScreen.Instance;
+                visualBlackDebt++;
+            }
+            return BlackScreen.ShowAndReturnTask(curve, circle, duration);
+        }
+
+        private static UniTask LoaderHideBlack(AnimationCurve curve, float circle, float duration, SceneReference reference)
+        {
+            if (TracksLoadVisuals(reference) && visualBlackDebt > 0 && BlackScreen.Instance == visualBlackScreen)
+                visualBlackDebt--;
+            return BlackScreen.HideAndReturnTask(curve, circle, duration);
         }
 
         private static bool SaveBeforeLoadPrefix(LevelManager __instance)
         {
+            // 失败返航重试时，基地可能已激活却只恢复了半个角色；继续沿用离岛前的完整快照。
+            // 若尚未离开岛图，仍允许原岛上角色走官方保存。
+            if (__instance != null && preserveTargetSnapshot && visualLoadOwner != null && visualLoadTarget != null)
+            {
+                Scene target = visualLoadTarget.LoadedScene;
+                if (target.IsValid() && __instance.gameObject.scene.handle == target.handle)
+                {
+                    CharacterMainControl returningMain = __instance.MainCharacter;
+                    return returningMain != null && returningMain.Health != null && returningMain.Health.IsDead;
+                }
+            }
             // 初始化失败的角色尚未完成恢复，返航应继续读取出发前的官方快照。
             if (initializationFailure == null || initializationOwner == null || __instance == null ||
                 __instance.gameObject.scene.handle != initializationSceneHandle || !IsScene(__instance.gameObject.scene)) return true;
@@ -224,13 +336,16 @@ namespace BossRush
 
         private static bool LoaderLevelInitialized(SceneReference reference)
         {
-            if (OwnsReference(reference) && initializationOwner != null && initializationSceneHandle != 0)
+            if (OwnsReference(reference) && initializationOwner != null)
             {
-                Scene scene = reference.LoadedScene;
                 if (initializationFailure != null)
                     throw new OperationCanceledException(initializationFailure);
-                if (!scene.IsValid() || !scene.isLoaded || scene.handle != initializationSceneHandle)
-                    throw new OperationCanceledException("天空岛初始化所属场景已卸载");
+                if (initializationSceneHandle != 0)
+                {
+                    Scene scene = reference.LoadedScene;
+                    if (!scene.IsValid() || !scene.isLoaded || scene.handle != initializationSceneHandle)
+                        throw new OperationCanceledException("天空岛初始化所属场景已卸载");
+                }
             }
             return LevelManager.LevelInited;
         }
@@ -239,10 +354,65 @@ namespace BossRush
         {
             MethodInfo query = AccessTools.PropertyGetter(typeof(LevelManager), "LevelInited");
             MethodInfo replacement = RequireMethod(typeof(SkyIslandSceneReferenceBridge), "LoaderLevelInitialized", typeof(SceneReference));
+            MethodInfo show = RequireMethod(typeof(BlackScreen), "ShowAndReturnTask", typeof(AnimationCurve), typeof(float), typeof(float));
+            MethodInfo hide = RequireMethod(typeof(BlackScreen), "HideAndReturnTask", typeof(AnimationCurve), typeof(float), typeof(float));
+            MethodInfo nextFrame = RequireMethod(typeof(UniTask), "NextFrame");
+            MethodInfo cancellableFrame = RequireMethod(typeof(SkyIslandSceneReferenceBridge), "LoaderNextFrame", typeof(SceneReference), typeof(AsyncOperation));
+            MethodInfo activation = AccessTools.PropertySetter(typeof(AsyncOperation), "allowSceneActivation");
+            MethodInfo trackedActivation = RequireMethod(typeof(SkyIslandSceneReferenceBridge), "LoaderSetSceneActivation",
+                typeof(AsyncOperation), typeof(bool), typeof(SceneReference));
             FieldInfo reference = RequireField(__originalMethod.DeclaringType, "sceneReference");
+            FieldInfo operation = null;
+            foreach (FieldInfo field in __originalMethod.DeclaringType.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+            {
+                if (field.FieldType != typeof(AsyncOperation)) continue;
+                if (operation != null) throw new InvalidOperationException("官方场景异步加载字段不唯一");
+                operation = field;
+            }
+            if (operation == null) throw new InvalidOperationException("官方场景异步加载字段缺失");
             int replaced = 0;
+            int shows = 0, hides = 0, frames = 0;
+            int activations = 0;
             foreach (CodeInstruction instruction in instructions)
             {
+                if (instruction.Calls(activation))
+                {
+                    CodeInstruction activationFirst = new CodeInstruction(instruction);
+                    activationFirst.opcode = OpCodes.Ldarg_0;
+                    activationFirst.operand = null;
+                    yield return activationFirst;
+                    yield return new CodeInstruction(OpCodes.Ldfld, reference);
+                    yield return new CodeInstruction(OpCodes.Call, trackedActivation);
+                    activations++;
+                    continue;
+                }
+                if (instruction.Calls(nextFrame))
+                {
+                    CodeInstruction frameFirst = new CodeInstruction(instruction);
+                    frameFirst.opcode = OpCodes.Ldarg_0;
+                    frameFirst.operand = null;
+                    yield return frameFirst;
+                    yield return new CodeInstruction(OpCodes.Ldfld, reference);
+                    yield return new CodeInstruction(OpCodes.Ldarg_0);
+                    yield return new CodeInstruction(OpCodes.Ldfld, operation);
+                    yield return new CodeInstruction(OpCodes.Call, cancellableFrame);
+                    frames++;
+                    continue;
+                }
+                if (instruction.Calls(show) || instruction.Calls(hide))
+                {
+                    bool showing = instruction.Calls(show);
+                    MethodInfo visual = RequireMethod(typeof(SkyIslandSceneReferenceBridge), showing ? "LoaderShowBlack" : "LoaderHideBlack",
+                        typeof(AnimationCurve), typeof(float), typeof(float), typeof(SceneReference));
+                    CodeInstruction visualFirst = new CodeInstruction(instruction);
+                    visualFirst.opcode = OpCodes.Ldarg_0;
+                    visualFirst.operand = null;
+                    yield return visualFirst;
+                    yield return new CodeInstruction(OpCodes.Ldfld, reference);
+                    yield return new CodeInstruction(OpCodes.Call, visual);
+                    if (showing) shows++; else hides++;
+                    continue;
+                }
                 if (!instruction.Calls(query)) { yield return instruction; continue; }
                 // 保留原指令的跳转标签和异常块边界，只给这一次官方等待补充取消信号。
                 CodeInstruction first = new CodeInstruction(instruction);
@@ -254,6 +424,9 @@ namespace BossRush
                 replaced++;
             }
             if (replaced != 1) throw new InvalidOperationException("官方关卡初始化等待契约变化：匹配 " + replaced + " 处");
+            if (shows != 2 || hides != 2) throw new InvalidOperationException("官方场景黑幕配对契约变化");
+            if (frames != 4) throw new InvalidOperationException("官方场景分帧等待契约变化");
+            if (activations != 2) throw new InvalidOperationException("官方场景激活赋值契约变化");
         }
 
         private static bool ReferenceSafetyPrefix(SceneReference __instance, ref SceneReferenceUnsafeReason __result)
@@ -448,7 +621,8 @@ namespace BossRush
         {
             shutdownRequested = true;
             // 官方 async 状态机仍会读取 Name；未退出目标 Scene 前不能移除它正在使用的路径和前缀。
-            if (registered && (SceneLoader.IsSceneLoading || SceneManager.GetSceneByPath(ScenePath).isLoaded)) return;
+            if (registered && (visualLoadOwner != null || HasPendingInitializationLoad(initializationOperationOwner)
+                || SceneLoader.IsSceneLoading || SceneManager.GetSceneByPath(ScenePath).isLoaded)) return;
             CleanupRegistration();
         }
 
@@ -491,6 +665,13 @@ namespace BossRush
             initializationOwner = null;
             initializationSceneHandle = 0;
             initializationFailure = null;
+            initializationOperation = null;
+            initializationOperationOwner = null;
+            visualLoadOwner = null;
+            visualLoadTarget = null;
+            visualBlackScreen = null;
+            visualBlackDebt = 0;
+            preserveTargetSnapshot = false;
         }
     }
 }

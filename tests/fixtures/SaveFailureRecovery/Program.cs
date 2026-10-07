@@ -517,6 +517,208 @@ class Program
             "legacy ledger defaults the new optional fields");
     }
 
+    static void CustomCashAmount()
+    {
+        Reset();
+        Check(ModeHCashBetService.StandingAmount == 0, "custom cash choice starts with no bet");
+        ModeHCashBetService.SelectCustomStandingAmount(12599);
+        Check(ModeHCashBetService.StandingAmount == 12599 && ModeHCashBetService.IsCustomStandingBet,
+            "custom choice keeps integer cash without a 100-cash minimum step");
+        ModeHCashBetService.SelectCustomStandingAmount(long.MaxValue, 5);
+        Check(ModeHCashBetService.StandingAmount == 32608, "custom maximum follows balance and actual payout ratio beyond 20000");
+        ModeHCashBetService.SelectCustomStandingAmount(long.MinValue);
+        Check(ModeHCashBetService.StandingAmount == 0, "negative custom amount becomes no bet without overflow");
+        ModeHCashBetService.SelectCustomStandingAmount(12300);
+        string reason; long payout;
+        Check(ModeHCashBetService.TryReserve("custom", 1, 3, ModeHCashBetService.StandingAmount, out reason),
+            "custom amount reserves through the existing transaction");
+        Check(ModeHCashBetService.Current.amount == 12300 && EconomyManager.Money == 87700,
+            "custom amount is the actual deduction and stored principal");
+        ModeHCashBetService.SelectCustomStandingAmount(20000);
+        Check(ModeHCashBetService.Current.amount == 12300, "editing next-match stake cannot rewrite a reserved stake");
+        long expected = ModeHCashBetService.ComputePayout(12300, 3);
+        Check(ModeHCashBetService.TrySettle("custom", 1, true, 0, 0, string.Empty, out payout) && payout == expected,
+            "custom stake uses unchanged payout rules");
+        ModeHCashBetService.ResetStaticCaches();
+        Check(ModeHCashBetService.StandingAmount == 0, "custom selector resets on runtime cleanup");
+    }
+
+    static void SeedCashStats(long bets, long wins)
+    {
+        SavesSystem.Cache[BetKey] = "{\"schemaVersion\":3,\"tierBets\":\"0,0,0,0,0," + bets
+            + "\",\"tierWins\":\"0,0,0,0,0," + wins + "\"}";
+    }
+
+    static void ReloadCashJournal()
+    {
+        SavesSystem.IsSaving = true;
+        ModeHCashBetService.ResetStaticCaches();
+        SavesSystem.Cache = new Dictionary<string, object>(SavesSystem.Disk);
+        EconomyManager.Money = ((EconomyManager.SaveData)SavesSystem.Disk["EconomyData"]).money;
+        SavesSystem.IsSaving = false;
+        BossRushSaveFileThrottle.ResetStaticCaches();
+    }
+
+    static void LargeCashBets()
+    {
+        Reset(); SeedCashStats(1000, 460);
+        Check(ModeHCashBetService.GetMaximumStandingAmount(100000, 5) == 50000,
+            "100000 wallet with x2 return permits exactly 50000 stake");
+        ModeHCashBetService.SelectCustomStandingAmount(long.MaxValue, 5);
+        string reason; long payout;
+        Check(ModeHCashBetService.StandingAmount == 50000
+            && ModeHCashBetService.TryReserve("large", 1, 5, 50000, out reason, ModeHCashBetService.BetSideRed)
+            && EconomyManager.Money == 50000, "maximum stake deducts principal once, not principal times payout multiplier");
+        Check(!ModeHCashBetService.TryReserve("large", 1, 1, 1000, out reason, ModeHCashBetService.BetSideBlue)
+            && ModeHCashBetService.Current.betSide == ModeHCashBetService.BetSideRed,
+            "relocking or selecting another team cannot replace the reserved direction or debit again");
+        string saved = (string)SavesSystem.Disk[BetKey];
+        SavesSystem.Disk[BetKey] = saved.Replace("0,0,0,0,0,460", "0,0,0,0,0,990");
+        ReloadCashJournal();
+        Check(ModeHCashBetService.Current.payoutNumerator == 920 && ModeHCashBetService.Current.payoutDenominator == 460
+            && ModeHCashBetService.ResolveAssumedWinPermille(5) == 990,
+            "reloaded reservation retains exact quote despite changed calibration");
+        Check(ModeHRuntimeModule.FormatPayoutMultiplier(ModeHCashBetService.Current) == "x2.00"
+            && ModeHRuntimeModule.FormatPayoutMultiplier(5) == "x0.93",
+            "carried-bet display uses the frozen multiplier while new bets show current calibration");
+        Check(!ModeHCashBetService.TrySettle("other", 1, true, 0, 0, "", out payout)
+            && ModeHCashBetService.TrySettle("large", 1, true, 0, 0, "", out payout)
+            && payout == 100000 && EconomyManager.Money == 150000,
+            "win uses frozen payout and original match identity");
+        Check(!ModeHCashBetService.TrySettle("large", 1, true, 0, 0, "", out payout)
+            && EconomyManager.Money == 150000, "frozen payout is delivered at most once");
+
+        Reset(); SeedCashStats(1000, 460);
+        ModeHCashBetService.SelectCustomStandingAmount(50000, 5);
+        EconomyManager.Money = 90000;
+        Check(!ModeHCashBetService.TryReserve("changed", 1, 5, ModeHCashBetService.StandingAmount, out reason)
+            && reason == "cash_bet_limit_changed" && EconomyManager.Money == 90000,
+            "lock rereads changed wallet instead of silently deducting an outdated maximum");
+        Reset(); ModeHCashBetService.SelectCustomStandingAmount(90000, 1);
+        Check(!ModeHCashBetService.TryReserve("odds_changed", 1, 5, ModeHCashBetService.StandingAmount, out reason)
+            && reason == "cash_bet_limit_changed" && EconomyManager.Money == 100000,
+            "lock recomputes limit after payout odds change");
+
+        foreach (long wallet in new[] { 0L, 1L, 2L, 9L, 99L, 16777217L, long.MaxValue / 4, long.MaxValue })
+        {
+            Reset(); EconomyManager.Money = wallet;
+            long maximum = ModeHCashBetService.GetMaximumStandingAmount(wallet, 5);
+            Check(maximum >= 0 && maximum <= wallet && ModeHCashBetService.ComputePayout(maximum, 5) <= wallet,
+                "stake cap and payout remain within wallet across integer boundaries: " + wallet);
+            Check(ModeHCashBetService.AmountAtProgress(maximum, 0) == 0
+                && ModeHCashBetService.AmountAtProgress(maximum, 10000) == maximum,
+                "normalized slider endpoints preserve exact long amounts: " + wallet);
+            long previous = 0; bool monotonic = true;
+            for (int step = 1; step <= 10000; step++)
+            {
+                long current = ModeHCashBetService.AmountAtProgress(maximum, step);
+                if (current < previous || current > maximum) monotonic = false;
+                previous = current;
+            }
+            Check(monotonic, "normalized slider cannot wrap or exceed maximum: " + wallet);
+            if (wallet == long.MaxValue)
+                Check(!ModeHCashBetService.TryReserve("overflow", 1, 5, maximum, out reason)
+                    && reason == "cash_bet_overflow" && EconomyManager.Money == wallet,
+                    "unrepresentable winning wallet is rejected before debit or journal mutation");
+            else if (maximum > 0)
+            {
+                Check(ModeHCashBetService.TryReserve("boundary", 1, 5, maximum, out reason)
+                    && EconomyManager.Money == wallet - maximum, "integer stake debit remains exact: " + wallet);
+                Check(ModeHCashBetService.TrySettle("boundary", 1, false, 0, 0, "", out payout)
+                    && payout == 0 && EconomyManager.Money == wallet - maximum, "loss never deducts stake a second time");
+            }
+        }
+        Reset(); SeedCashStats(long.MaxValue, long.MaxValue); EconomyManager.Money = long.MaxValue;
+        Check(ModeHCashBetService.ResolveAssumedWinPermille(5) == 990
+            && ModeHCashBetService.GetMaximumStandingAmount(long.MaxValue, 5) == long.MaxValue,
+            "calibrated multiplier below one permits the whole wallet without overflow");
+        Check(ModeHCashBetService.TryReserve("whole", 1, 5, long.MaxValue, out reason)
+            && EconomyManager.Money == 0
+            && ModeHCashBetService.TrySettle("whole", 1, true, 0, 0, "", out payout)
+            && EconomyManager.Money == payout && ModeHCashBetService.Current.tierBets[5] == long.MaxValue,
+            "whole-long wallet can settle below-one multiplier and saturated stats do not wrap");
+        Check(!ModeHCashBetService.TryComputePayout(long.MaxValue, 1, out payout), "impossible payout reports overflow");
+        Check(ModeHItemBetEntry.PrizeQuality(new List<ModeHItemBetEntry> {
+            new ModeHItemBetEntry { Value = long.MaxValue, Quality = 3 },
+            new ModeHItemBetEntry { Value = long.MaxValue, Quality = 8 } }) == 6,
+            "large weighted item values retain correct prize quality");
+        Check(ModeHRuntimeModule.FormatSignedMoney(long.MinValue) == "-9,223,372,036,854,775,808"
+            && ModeHRuntimeModule.FormatSignedMoney(long.MaxValue) == "+9,223,372,036,854,775,807",
+            "session and hall-of-fame net formatting supports both signed long endpoints");
+        foreach (string field in new[] { "amount", "payout", "charged", "prizeCash", "missingValue", "runNet" })
+        {
+            Reset(); string corrupt = "{\"schemaVersion\":3,\"" + field + "\":\"92233720368547758080\"}";
+            SavesSystem.Cache[BetKey] = corrupt;
+            Check(!ModeHCashBetService.TryReserve("bad", 1, 5, 1000, out reason)
+                && EconomyManager.Money == 100000 && (string)SavesSystem.Cache[BetKey] == corrupt,
+                "declared invalid amount creates write barrier instead of becoming zero: " + field);
+        }
+    }
+
+    static void SmallBetsAndFrozenRecovery()
+    {
+        Reset(); EconomyManager.Money = 9;
+        long maximum = ModeHCashBetService.GetMaximumStandingAmount(9, 5);
+        string reason; long payout;
+        Check(maximum == 2 && ModeHCashBetService.TryReserve("small", 1, 5, maximum, out reason)
+            && EconomyManager.Money == 7, "small wallet can stake its exact two-cash maximum");
+        Check(ModeHCashBetService.TrySettle("small", 1, true, 0, 0, "", out payout)
+            && payout == 0 && EconomyManager.Money == 7 && ModeHCashBetService.Current.settlementResult == 1
+            && ModeHCashBetService.IsWinningRecord(ModeHCashBetService.Current),
+            "winning tiny bet retains original ten-cash rounding without being reported as a loss");
+        ReloadCashJournal();
+        Check(ModeHCashBetService.IsWinningRecord(ModeHCashBetService.Current)
+            && ModeHCashBetService.Current.tierWins[5] == 1,
+            "zero-return victory and calibration survive journal recovery");
+        Check(ModeHCashBetService.TryReserve("small", 2, 5, 1, out reason)
+            && ModeHCashBetService.Current.settlementResult == 0
+            && ModeHCashBetService.TrySettle("small", 2, false, 0, 0, "", out payout)
+            && ModeHCashBetService.Current.settlementResult == 2
+            && !ModeHCashBetService.IsWinningRecord(ModeHCashBetService.Current),
+            "next reservation clears the previous outcome and records a real tiny-bet loss");
+
+        for (int schema = 1; schema <= 3; schema++)
+        {
+            Reset(); EconomyManager.Money = 99500;
+            SavesSystem.Cache[BetKey] = "{\"schemaVersion\":" + schema
+                + ",\"runId\":\"old\",\"matchIndex\":1,\"odds\":3,\"status\":1,\"amount\":\"500\",\"kind\":0}";
+            Check(ModeHCashBetService.Current.payoutNumerator == 0 && ModeHCashBetService.Current.payoutDenominator == 0
+                && ModeHCashBetService.TrySettle("old", 1, true, 0, 0, "", out payout)
+                && payout == 830 && EconomyManager.Money == 100330,
+                "legacy reserved cash bet still settles once without frozen fields, schema=" + schema);
+        }
+
+        Reset(); SeedCashStats(1000, 460); Reserve(Add());
+        string saved = (string)SavesSystem.Disk[BetKey];
+        SavesSystem.Disk[BetKey] = saved.Replace("0,0,0,0,0,460", "0,0,0,0,0,990");
+        Restart(); Settle(true);
+        Check(ModeHCashBetService.Current.payout == 1000 && ModeHCashBetService.Current.itemSettlement == 1
+            && ModeHCashBetService.Current.payoutDenominator == 460,
+            "item prize plan after restart also honors the exact reserved payout fraction");
+
+        Reset();
+        Check(ModeHCashBetService.TryReserve("capacity", 1, 5, 1000, out reason), "reserve cash before wallet fills");
+        EconomyManager.Money = long.MaxValue;
+        Check(!ModeHCashBetService.TrySettle("capacity", 1, true, 0, 0, "", out payout)
+            && ModeHCashBetService.Current.status == ModeHCashBetService.StatusReserved
+            && EconomyManager.Money == long.MaxValue,
+            "later wallet growth cannot overflow, lose or mark a blocked payout complete");
+        EconomyManager.Money -= 10000;
+        Check(ModeHCashBetService.TrySettle("capacity", 1, true, 0, 0, "", out payout)
+            && payout == 3060 && EconomyManager.Money == long.MaxValue - 6940,
+            "freeing wallet capacity completes the original exact payout");
+
+        foreach (string fields in new[] { "\"payoutNumerator\":920", "\"payoutNumerator\":920,\"payoutDenominator\":0",
+            "\"payoutNumerator\":\"bad\",\"payoutDenominator\":460", "\"settlementResult\":99" })
+        {
+            Reset(); string corrupt = "{\"schemaVersion\":3," + fields + "}";
+            SavesSystem.Cache[BetKey] = corrupt;
+            Check(!ModeHCashBetService.TryReserve("bad", 1, 5, 1000, out reason)
+                && EconomyManager.Money == 100000 && (string)SavesSystem.Cache[BetKey] == corrupt,
+                "malformed declared quote or outcome keeps the journal write barrier");
+        }
+    }
+
     static void Schema()
     {
         Reset();
@@ -536,7 +738,7 @@ class Program
     {
         try
         {
-            DailyRollover(); WinAndRetries(); CrashBoundaries(); LossAndIdentity(); NestedStakeOwnership(); WarehouseNotifications(); CashRestoreReadiness(); CashBetSurvivesSpectatorExit(); StartedBetForfeit(); AbandonBetResolution(); BetSideAndSeasonNet(); Schema();
+            DailyRollover(); WinAndRetries(); CrashBoundaries(); LossAndIdentity(); NestedStakeOwnership(); WarehouseNotifications(); CashRestoreReadiness(); CashBetSurvivesSpectatorExit(); StartedBetForfeit(); AbandonBetResolution(); BetSideAndSeasonNet(); CustomCashAmount(); LargeCashBets(); SmallBetsAndFrozenRecovery(); Schema();
             Console.WriteLine("SaveFailureRecovery: PASS " + checks + " assertions (real services, stores and coordinators; in-memory host)");
             return 0;
         }

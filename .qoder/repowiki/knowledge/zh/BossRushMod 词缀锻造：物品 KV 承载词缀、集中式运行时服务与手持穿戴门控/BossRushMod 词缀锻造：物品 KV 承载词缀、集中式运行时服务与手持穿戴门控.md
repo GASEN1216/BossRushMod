@@ -78,6 +78,10 @@ source_files:
 `AFX_NAME_n` 设 `Display=true` 是为了借官方 `ItemDetailsDisplay` 免费显示词缀名
 （String 型 KV 会自动 `ToPlainText()` 转译，左列名走 `Var_<key>` 本地化）。
 
+2026-10-06：名称键新增 `_T1` / `_T2` / `_T3` 后缀，对应名称后的 Ⅰ / Ⅱ / Ⅲ；旧无后缀键继续注入。官方选物事件及既有物品提示补丁只对被查看的单件调用 `RefreshDisplayNames`，按已保存的 `(Id, tier)` 更新最多三个 `AFX_NAME_n`，同值不重写，不改变 `AFX_SLOT_n`、锁定位或开启装备效果。锻造界面和解锁确认复用同一分档名称渲染。
+
+荆棘的反弹基数是 `DamageInfo.finalDamage`，即本次经过玩家防御结算的承伤；反弹本身继续接受攻击者的物理防御结算。10% / 18% / 28% 及 0.35 秒冷却保持原值。
+
 行为参数**不进 KV**，由 `AffixDefinitions` 按 `(Id, tier)` 查表——改平衡数值不动存档。
 
 ### 3.2 行为面：集中式静态服务（否决了官方 Effect 挂件与 GunSettingExpend）

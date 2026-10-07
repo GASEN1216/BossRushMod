@@ -148,11 +148,14 @@ internal static class FinalBossRegression
         CharacterMainControl.Main = new CharacterMainControl { Health = new Health() };
         CampaignProgressService.Active = "ch6";
         CampaignProgressService.State = CampaignChapterState.ReadyToDeliver;
-        var owner = new ModBehaviour { Arena = true };
+        var owner = new ModBehaviour { Arena = true, bossRushArenaActive = true };
         ModBehaviour.Instance = owner;
         check(!owner.CanStartCampaignFinalBoss(), "ready chapter rejects final summon through actual interaction gate");
         CampaignProgressService.State = CampaignChapterState.ContractActive;
-        check(owner.CanStartCampaignFinalBoss(), "active final contract can summon");
+        check(owner.CanStartCampaignFinalBoss(), "active final contract can summon after entering the arena before starting waves");
+        owner.IsActive = true;
+        check(!owner.CanStartCampaignFinalBoss(), "started arena waves still prevent a simultaneous final showdown");
+        owner.IsActive = false;
         int sceneQueries = owner.ArenaQueryCount;
         check(owner.CanStartCampaignFinalBoss() && owner.ArenaQueryCount == sceneQueries,
             "same module scene generation reuses arena query");

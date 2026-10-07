@@ -23,6 +23,11 @@ namespace BossRush
     // 不能在 OnHurt 里补血：致命一击先发 OnDead，marker 已注销，护盾根本没有机会吸收。
     internal static class ZombieModeDamageRuntime
     {
+        internal static bool IsPlayerSideAttack(CharacterMainControl source)
+        {
+            return source != null && (source.IsMainCharacter || PetNestCompanionAgent.IsCompanionHealth(source.Health));
+        }
+
         internal static void ReduceFinalDamage(Health health, ref DamageInfo info)
         {
             ModBehaviour owner = ModBehaviour.Instance;
@@ -37,7 +42,7 @@ namespace BossRush
                 || marker.DeathSettled || marker.RemovedFromRuntime) return;
 
             owner.ApplyZombieModeEnemyDefense(health, ref info, marker);
-            if (info.fromCharacter.IsMainCharacter)
+            if (IsPlayerSideAttack(info.fromCharacter))
             {
                 float absorbed = 0f;
                 if (marker.IsBoss)

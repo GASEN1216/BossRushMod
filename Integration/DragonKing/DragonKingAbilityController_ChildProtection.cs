@@ -449,7 +449,7 @@ namespace BossRush
                     // 同步设置当前血量
                     if (descendant.Health != null)
                     {
-                        descendant.Health.SetHealth(newHealth);
+                        descendant.Health.SetHealth(descendant.Health.MaxHealth);
                     }
 
                     ModBehaviour.DevLog($"[DragonKing] 龙裔遗族血量降低至: {newHealth}");

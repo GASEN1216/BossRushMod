@@ -86,7 +86,8 @@ namespace BossRush
             AppendMatchSides(page);
             page.MatchNote = DescribeMatchNote();
             page.Headline = L10n.T("胜利返还倍率", "Win payout multiplier");
-            page.HeadlineValue = FormatPayoutMultiplier(_currentOddsQuote.Odds);
+            ModeHCashBetRecord carried = CarriedBetForCurrentMatch();
+            page.HeadlineValue = carried != null ? FormatPayoutMultiplier(carried) : FormatPayoutMultiplier(_currentOddsQuote.Odds);
             // 2026-09-29 owner：去掉「自己调整再开打」（战前调整）按钮及其入口，代码先注释保留。
             // page.Actions.Add(new ModeHActionData
             // {
@@ -235,7 +236,8 @@ namespace BossRush
 
             // 大字只放锁定赔率；双方公开分与筹码余额降到一行次级小字（UB-34）。当前下注看下面那排分段按钮
             page.Headline = L10n.T("锁定赔率", "Locked odds");
-            page.HeadlineValue = FormatPayoutMultiplier(_currentOddsQuote.Odds);
+            ModeHCashBetRecord carried = CarriedBetForCurrentMatch();
+            page.HeadlineValue = carried != null ? FormatPayoutMultiplier(carried) : FormatPayoutMultiplier(_currentOddsQuote.Odds);
             page.Body = L10n.T("我方公开分 ", "Player public score ") + _currentOddsQuote.PlayerPublicScore
                 + L10n.T("　敌方公开分 ", "  Enemy public score ") + _currentOddsQuote.EnemyPublicScore
                 + L10n.T("　筹码余额 ", "  Credits ") + _season.virtualStakeCredits;
@@ -265,7 +267,8 @@ namespace BossRush
                 page.MatchNote = DescribeMatchNote();
             }
             AppendCashBetRow(page);
-            if (_currentOddsQuote != null && ModeHCashBetService.StandingAmount > 0)
+            if (carried == null && !ModeHItemBetStake.HasSelection && _currentOddsQuote != null
+                && ModeHCashBetService.StandingAmount > 0 && !ModeHCashBetService.IsCustomStandingBet)
             {
                 page.Lines.Insert(0, L10n.T("这一场押 ", "This match: bet ") + FormatMoney(ModeHCashBetService.StandingAmount)
                     + L10n.T("，赢了拿回 ", "; a win pays ")

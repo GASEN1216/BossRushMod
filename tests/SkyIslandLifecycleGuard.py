@@ -49,7 +49,7 @@ def main():
                       'SkyIslandOutdoorDaylight.Apply(timeOfDay)',
                       'if (timeOfDay != null) UnityEngine.Object.Destroy(timeOfDay.gameObject)',
                       'Time.unscaledTime < retryAt', 'retryAt = Time.unscaledTime + 2f',
-                      'if (!releaseRequested || loading || returning) return',
+                      'if (!releaseRequested || loading || returning || returnFailed) return',
                       'if (scene.IsValid() && scene.isLoaded) return', 'bundle.Unload(true)',
                       'Action callback = completed; completed = null', 'recovery.Bind(this)',
                       'main.Health.IsDead) return', 'lease.PumpRelease()'],
@@ -89,6 +89,15 @@ def main():
     if 'session.Close(true, "runtime_shutdown")' in module:
         errors.append(f'{module_path}: 模块销毁仍写死 Close(true, "runtime_shutdown")，退游戏也会派发返航')
     session = sources['Session']
+    dispatch = session.split('private void DispatchReturnIfReady()', 1)[1].split('private void CancelPendingInitialization()', 1)[0]
+    if 'if (!entryScene.IsValid() && lease.IsReturning) Cleanup("entry_cancelled");' not in dispatch:
+        errors.append('没有岛图实例的失败返航必须收尾 Session，不能等待永远不会出现的岛图卸载事件')
+    lease = sources['RaidLease']
+    recovery = lease.split('internal void PumpRelease()', 1)[1].split('private void TryRelease()', 1)[0]
+    if 'if (returnFailed) { ReturnToBase(false); return; }' not in recovery:
+        errors.append('返航失败后即使岛图已卸载也必须由租约重试')
+    if 'BeginLoadVisuals(this, GameplayDataSettings.SceneManagement.BaseScene, returnFailed)' not in lease:
+        errors.append('失败返航重试必须保护已加载目标场景的旧角色快照')
     # 官方点击继续发生在目标场景激活之前；真实调用点必须使用租约时钟。
     root_wait = re.search(r'while\s*\(root\s*==\s*null\s*&&\s*lease\.Error\s*==\s*null\s*&&\s*assemblyError\s*==\s*null\s*&&\s*lease\.HasSceneLoadTimeRemaining\(ref\s+deadline\)\)', session)
     if root_wait is None:

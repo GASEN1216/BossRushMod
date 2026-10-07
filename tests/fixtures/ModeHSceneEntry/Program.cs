@@ -18,6 +18,7 @@ internal static class Program
     private static ModeHRuntimeModule Reset(string name="arena",string id="main")
     {
         BossRushInitialSpawn.Arrived=false;
+        AstarPath.active = new AstarPath();
         CharacterMainControl.Main=null;LevelManager.LevelInited=false;LevelManager.AfterInit=false;SceneLoader.IsSceneLoading=true;
         SceneLoader.Instance=new SceneLoader{Load=()=>Task.CompletedTask};
         MultiSceneCore.Instance=new MultiSceneCore{IsLoading=true};
@@ -127,6 +128,12 @@ internal static class Program
     }
     private static void ReadinessGates()
     {
+        var navigation=Reset();Ready(Target());AstarPath.active.isScanning=true;
+        navigation.OnSceneLoaded(new SceneRuntimeContext(Target()));Ticks(navigation,4);
+        Check(navigation.FreshStarted==0&&navigation.Aborts==0,"pending navigation scan waits before arena selection");
+        AstarPath.active.isScanning=false;Ticks(navigation,2);
+        Check(navigation.FreshStarted==1,"completed navigation scan allows the existing entry to continue");
+
         var nested=Reset();Ready(Target());MultiSceneCore.Instance.IsLoading=true;
         nested.OnSceneLoaded(new SceneRuntimeContext(Target()));Ticks(nested,3);
         Check(nested.FreshStarted==0,"subscene teleporter still owns position after level initialization");

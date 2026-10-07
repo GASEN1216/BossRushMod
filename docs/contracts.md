@@ -30,6 +30,7 @@ Breaking:
 - `lootBoxBlocksBullets`
 - `infiniteHellBossesPerWave`
 - `bossStatMultiplier`
+- `bossHealthPercent`（SCHEMA+，2026-10-06）：整数 10–200，默认 / 旧配置缺省 100；ModConfig 键 `BossRush_BossHealthPercent`。仅在新 Boss 生成时应用生命比例，保留旧全局倍率，普通敌人与玩家随从不消费；战役额外显式缩放不重复乘。
 - `modeDEnemiesPerWave`
 - `disabledBosses`
 - `bossInfiniteHellFactors`
@@ -346,6 +347,12 @@ v1 新字段缺省为未准备结算、无待交付项、缺失估值 0，下一
   `netRunId` / `runNet`（long 写成字符串）/ `netMatchMask`（bit = 场次号）在结清时与账本同批按季累计「拿回 − 押金」，
   名人堂群战「净赚」以它为准，换季从零起算，同一场只计一次。旧档缺省为 0 / 空，旧版本读到会忽略；
   修复前已结的场次账本里没有累计，名人堂只能用本次会话快照补。
+- 追加可选 `payoutNumerator` / `payoutDenominator` 与 `settlementResult`（2026-10-06，SCHEMA+，不升 `schemaVersion`）：
+  前两项在锁盘冻结实际返还分数，现金与物品结算、重进后的倍率显示均沿用；旧档两者缺省 0，继续按旧赔率档及校准规则恢复。
+  `settlementResult` 为 0 未记录 / 1 赢 / 2 输，旧档默认 0 并沿用原结果推断；新押注清零，结算与金额同批记录，
+  以支持小额赢注按原十位取整后返还 0。字段已声明但格式或范围非法时触发写屏障，不把坏金额静默读为 0。
+  自选金额取消 20,000 固定上限，按 `min(钱包, floor(钱包 × 假定胜率‰ / (1000 − 抽水‰)))` 确定最大本金，
+  锁盘复验当前钱包、赔率与 long 容量；只扣所选本金，保持原返还及退款口径。UI 只传 0..10000 整数进度，金额用 decimal / long 换算。
 
 结构守卫 `ModeHCashBetGuard` / `ModeHIsolationGuard`，故障恢复执行回归 `SaveFailureRecovery`。
 
@@ -548,8 +555,13 @@ Collider 必须删），蛋图标复用官方 fallback 物品。占位路径至�
 
 **掉落范围。** 挂接点是 `LootAndRewards.RegisterBossRandomLootTracking` 体内单行并联，
 覆盖标准三档 / Mode D / E / F，天然**不含** Mode G 托管路径（其 adapter 会
-`ClearBossRandomLootTracking`）与丧尸模式。随从进局门控另有一刀切禁入名单：
-Mode G、末日丧尸、Mode H（实装期新增的保守判定，`Needs owner confirmation`）。
+`ClearBossRandomLootTracking`）与丧尸模式。随从进局与掉蛋范围分开：
+所有游戏关卡和模式允许携崽，唯一模式例外是 Mode H 鸭王杯，不要求 `IsRaidMap`。
+Mode G 的宠物伤害不计入主角直伤／反制轴，Boss 死亡仍按已登记 Health 结案；
+丧尸的清场豁免宠物身份，敌人计数与掉分只认本局敌人 marker，宠物攻击照常消费 Boss 护盾和精英防御。
+基地继续由闲逛 owner 单独生成，激活前包含 inactive 子物体查找并停用官方 AI 子树，
+跟随复用 `DuckNpcMovement`，不会对其他 Mod 带来的商人主动索敌。
+出击创建独立的新角色并保留官方战斗 AI，主角换队通过实例事件同步；死亡、换主角、切图或进入 H 时取消在途生成并回收旧角色。
 
 远征奖励属于持久化债务：`cashGranted` 与 `grantedLootUnits` 是续发游标，
 `rewardsGranted` 仅在现金和全部物品单位送达后置位。基地 `LevelManager`、经济和物品资源

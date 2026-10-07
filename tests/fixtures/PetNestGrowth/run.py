@@ -44,7 +44,7 @@ def main():
         "namespace BossRush { static class PetNestCompanionSpawner {\n" + methods
         + "\ninternal static Task Equip(CharacterMainControl c, string key) { return EquipCustomBossGearAsync(c,key); }\n}}",
         encoding="utf-8")
-    linked = [ROOT / "PetNest/PetNestGrowth.cs", ROOT / "PetNest/PetNestTuning.cs"]
+    linked = [ROOT / "PetNest/PetNestGrowth.cs", ROOT / "PetNest/PetNestTuning.cs", ROOT / "PetNest/PetNestModeGate.cs"]
     files = linked + [OUT / "Production.cs", HERE / "Program.cs"]
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649</NoWarn></PropertyGroup><ItemGroup>'
     project += ''.join('<Compile Include="' + escape(str(p)) + '" />' for p in files)

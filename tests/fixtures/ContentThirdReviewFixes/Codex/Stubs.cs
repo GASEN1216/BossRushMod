@@ -7,10 +7,12 @@ enum Teams { player,wolf,scav,usec,bear,lab,middle,all }
 static class Team { public static bool IsEnemy(Teams selfTeam, Teams targetTeam) { return selfTeam != Teams.middle && (selfTeam == Teams.all || (targetTeam != Teams.middle && selfTeam != targetTeam)); } }
 class LevelManager { public static LevelManager Instance=new LevelManager(); public bool IsBaseLevel; }
 class CharacterRandomPreset { public string nameKey; }
-class CharacterMainControl { public bool IsMainCharacter,isBossCharacter;public Teams Team;public CharacterRandomPreset characterPreset; public object Component;public T GetComponent<T>() where T:class {return Component as T;} public int GetInstanceID(){return GetHashCode();} }
+class CharacterMainControl { public bool IsMainCharacter,isBossCharacter;public Teams Team;public CharacterRandomPreset characterPreset; public object Component; public int ComponentQueries; public T GetComponent<T>() where T:class {ComponentQueries++;return Component as T;} public int GetInstanceID(){return GetHashCode();} }
 class Health { public bool IsDead,IsMainCharacterHealth,IsCompanion;public CharacterMainControl Character;public CharacterMainControl TryGetCharacter(){return Character;}public int GetInstanceID(){return GetHashCode();} }
 struct DamageInfo { public CharacterMainControl fromCharacter;public float finalDamage; }
 namespace BossRush {
+ class DragonKingAbilityController { }
+ class DragonDescendantAbilityController { }
  enum ZombieModeBossKind { Titan,Hunter,Splitter,Shielder,Corruptor }
  class ZombieModeEnemyRuntimeMarker {public bool IsBoss;public ZombieModeBossKind BossKind;}
  class EnemyPresetInfo {public string name,displayName;}

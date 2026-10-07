@@ -10,7 +10,7 @@ namespace BossRush
     internal static class SkyIslandCombatPreset
     {
         internal static void Apply(CharacterRandomPreset clone, CharacterRandomPreset source,
-            string encounterId, int index, SkyIslandEnemyTier tier)
+            string encounterId, int index, SkyIslandEnemyTier tier, float bossHealthMultiplier = 1f)
         {
             if (clone == null || source == null || ReferenceEquals(clone, source))
                 throw new ArgumentException("天空岛属性只能应用到独立克隆");
@@ -21,6 +21,8 @@ namespace BossRush
             clone.health = (baseline != null ? baseline.Health : source.health) * factor;
             // 专属 Boss 血量保底（SkyIslandCombatBalance.BossHealthFloor）。
             if (SkyIslandEnemyArmoryRules.IsBossTier(tier)) clone.health = Math.Max(clone.health, SkyIslandCombatBalance.BossHealthFloor);
+            // 难度在既有 Boss 基准与保底之后乘一次；普通巡守和小兵继续使用原来的生命。
+            if (SkyIslandEnemyArmoryRules.IsBossTier(tier)) clone.health *= bossHealthMultiplier;
             clone.damageMultiplier = (baseline != null ? baseline.Damage : source.damageMultiplier) * factor;
             // 当前官方工厂直接读取 meleeDamageMultiplier，不以 setMeleeDamageMultiplier 决定是否读取。
             // 普通敌人保留独立近战基准；Boss Wiki 只列通用伤害，将它用作岛内两种攻击的基准。

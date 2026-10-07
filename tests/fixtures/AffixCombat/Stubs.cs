@@ -61,8 +61,18 @@ namespace UnityEngine
 }
 namespace ItemStatsSystem
 {
+    public sealed class CustomDataCollection
+    {
+        internal readonly Dictionary<string, string> Values = new Dictionary<string, string>();
+        internal readonly Dictionary<string, bool> Display = new Dictionary<string, bool>();
+        internal int Writes;
+        public string GetString(string key, string fallback) { string value; return Values.TryGetValue(key, out value) ? value : fallback; }
+        public void Set(string key, string value, bool create) { Values[key] = value; Writes++; }
+        public void SetDisplay(string key, bool show) { Display[key] = show; }
+    }
     public sealed class Item
     {
+        public readonly CustomDataCollection Variables = new CustomDataCollection();
         public int TypeID, Quality = 7, Capacity = 3, ForgeBaseCost = 100;
         public readonly TagCollection Tags = new TagCollection();
         public object Setting;
@@ -97,6 +107,16 @@ namespace ItemStatsSystem.Stats
     }
 }
 namespace Duckov.Buffs { public sealed class Buff { internal string Id; } }
+namespace Duckov.UI
+{
+    public static class ItemUIUtilities
+    {
+        public static event Action OnSelectionChanged;
+        public static Item SelectedItem;
+        internal static int SubscriberCount { get { return OnSelectionChanged == null ? 0 : OnSelectionChanged.GetInvocationList().Length; } }
+        internal static void Select(Item item) { SelectedItem = item; OnSelectionChanged?.Invoke(); }
+    }
+}
 public enum Teams { player, wolf }
 public enum ElementTypes { physics, fire, electricity }
 public enum ExplosionFxTypes { normal }
@@ -285,17 +305,18 @@ namespace BossRush
         public static bool RestoreRuntimeState(Item item)
         { item.Quality = 7; item.Setting = new ItemSetting_MeleeWeapon(); return true; }
     }
-    public static class L10n { public static string T(string zh, string en) { return zh; } }
+    public static class L10n { internal static bool English; public static string T(string zh, string en) { return English ? en : zh; } }
     internal static class BossRushUI { internal static bool Paused; internal static bool IsGamePaused() { return Paused; } }
     public struct AffixSlotView { public string AffixId; public int Tier; public bool Locked; public bool IsEmpty { get { return string.IsNullOrEmpty(AffixId); } } }
     public static partial class AffixItemData
     {
+        public const string PREFIX_NAME = "AFX_NAME_";
         public static bool IsAffixEligible(Item item) { return GetEquipMask(item) != AffixEquipMask.None; }
         public static int GetCapacity(Item item) { return item == null ? 0 : item.Capacity; }
         public static bool IsLocked(Item item, int slot) { return slot <= item.Affixes.Count && item.Affixes[slot - 1].Locked; }
         public static bool TryReadSlot(Item item, int slot, out AffixSlotView view)
         { view = slot <= item.Affixes.Count ? item.Affixes[slot - 1] : new AffixSlotView(); return true; }
-        public static bool HasAffixData(Item item) { return item.Affixes.Count > 0; }
+        public static bool HasAffixData(Item item) { return item != null && item.Affixes.Count > 0; }
         public static void ReadAllSlots(Item item, List<AffixSlotView> into) { into.AddRange(item.Affixes); }
     }
     internal static class AffixRuntimeTicker

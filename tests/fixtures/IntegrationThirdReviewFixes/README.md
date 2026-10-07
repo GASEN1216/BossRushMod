@@ -1,5 +1,7 @@
 # 第三轮 Integration 缺陷执行回归
 
+2026-10-06 携崽扩展：沿用原 Harmony 注入后的官方 Hurt 方法体，验证已登记宠物来源的攻击会被丧尸 Boss 护盾抵消且不会提前致死；未登记 NPC 来源保持原分支。宠物身份是显式设置的边界替身，实际 AI 激活由 PetNestCompanionActivation 单独覆盖。
+
 对应 CR-2026-09-06-012 / 013 / 014 / 016，分类 `COMPAT`。
 
 运行：`python tools/run_runtime_regressions.py --filter IntegrationThirdReviewFixes`。

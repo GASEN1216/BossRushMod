@@ -130,6 +130,22 @@ def main():
     if not re.search(r"if \(handle\.Activated\)\s*\{\s*return true;", code):
         errors.append("[激活] TryActivate 缺少 Activated 幂等早返")
 
+    # 基地复用同一生成链，但必须在激活角色前停用整个战斗 AI 子树。
+    idle = strip_cs_comments(read_petnest("PetNestBaseIdleSpawner.cs") or "")
+    if "out failureReasonId, allowCombat: false)" not in idle:
+        errors.append("[基地] 闲逛入口必须明确禁用战斗")
+    disable_pos = code.find("ai.gameObject.SetActive(false);")
+    activate_pos = code.find("handle.Character.gameObject.SetActive(true);")
+    if disable_pos < 0 or activate_pos < 0 or disable_pos >= activate_pos:
+        errors.append("[基地] 必须先停用 AI 子树，再激活角色")
+    for required in ("if (!allowCombat && ai != null)",
+                     "handle.Character.GetComponentInChildren<AICharacterController>(true)",
+                     "ai.gameObject == handle.Character.gameObject",
+                     "agent.Bind(handle.Character, master, allowCombat);",
+                     "movement.EnablePlayerFollow(master.transform);"):
+        if required not in code:
+            errors.append("[基地] 禁战与现有 NPC 跟随接线缺失: " + required)
+
     # 9. 血脉解析 fail-closed：找不到 nameKey 只返回 null，不回落同阵营强敌
     if "showName" in code:
         errors.append("[解析] 血脉解析禁止回落到 showName 同阵营强敌，必须 fail-closed")
@@ -142,8 +158,13 @@ def main():
         acode = strip_cs_comments(agent)
         if not re.search(r"_ai\.leader\s*=\s*_master\s*;", acode):
             errors.append("[跟随] 必须通过写 AICharacterController.leader 驱动跟随")
-        if re.search(r"_ai\.searchedEnemy\s*=", acode):
-            errors.append("[跟随] 禁止写 searchedEnemy：索敌作战交还原生行为树")
+        target_writes = re.findall(r"_ai\.searchedEnemy\s*=", acode)
+        if len(target_writes) != 1 or "!Team.IsEnemy(team, _ai.searchedEnemy.Team)" not in acode:
+            errors.append("[跟随] 仅允许阵营事件清理不再敌对的目标，其余索敌作战交还原生行为树")
+        for required in ("_teamOwner.OnTeamChanged += HandleMasterTeamChanged;",
+                         "_teamOwner.OnTeamChanged -= HandleMasterTeamChanged;"):
+            if required not in acode:
+                errors.append("[阵营] 缺少主角阵营事件的绑定/退订: " + required)
         if re.search(r"\.leaderAI\s*=", acode):
             errors.append("[跟随] 禁止写 leaderAI：会与成员双向同步目标")
         if "TeleportDistance = 40f" not in acode:

@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
 DROPS = Path("ZombieMode/ZombieModeDropsAndPerformance.cs")
@@ -19,7 +20,7 @@ def fail(message: str) -> int:
 def main() -> int:
     drops = DROPS.read_text(encoding="utf-8-sig")
     waves = WAVES.read_text(encoding="utf-8-sig")
-    spawner = SPAWNER.read_text(encoding="utf-8-sig")
+    spawner = clean_source(SPAWNER.read_text(encoding="utf-8-sig"))
     boss = BOSS.read_text(encoding="utf-8-sig")
     tuning = TUNING.read_text(encoding="utf-8-sig")
 
@@ -53,12 +54,17 @@ def main() -> int:
     if waves.find(cleanup_token, complete_index) >= 0:
         return fail("ordinary drop cleanup still runs at wave settlement")
 
+    boss_spawn = spawner[spawner.index("internal Vector3 GetZombieModeBossSpawnPosition("):]
+    boss_spawn = boss_spawn[:boss_spawn.index("private int GetZombieModeBossPointValue(")]
     for token in [
-        "TryResolveZombieModeSpawnPoint(candidate, runState.SpawnPoints[index].VirtualPoint",
+        "Vector3 candidate = GetZombieModeSpawnPosition();",
+        "TryFindZombieModeVirtualSpawnAroundPlayer(player.transform.position, out spreadPosition)",
         "return GetZombieModeSpawnPosition();",
     ]:
-        if token not in spawner:
+        if token not in boss_spawn:
             return fail("boss spawn point safety missing -> " + token)
+    if "PrepareZombieModeSpawnedEnemy(boss, bossMarker, ZombieModeTuning.NormalZombieForceTraceDistance);" not in spawner:
+        return fail("boss must retain the same player tracking range as normal zombies")
 
     for token in [
         "boss.SetPosition(target);",

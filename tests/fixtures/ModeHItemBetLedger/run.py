@@ -60,6 +60,10 @@ def main():
         code += const_line(service, line) + '\n'
     code += member(service, 'internal static int NormalizeBetSide(int side)') + '\n'
     code += member(service, 'internal static long ComputePayout(long stake, int odds)') + '\n'
+    code += member(service, 'internal static bool TryComputePayout(long stake, int odds, out long payout)') + '\n'
+    code += member(service, 'private static bool TryComputePayout(long stake, int numerator, int denominator, out long payout)') + '\n'
+    code += member(service, 'internal static bool TryComputeReservedPayout(ModeHCashBetRecord record, out long payout)') + '\n'
+    code += member(service, 'internal static long SaturatingAdd(long left, long right)') + '\n'
     code += member(service, 'internal static int ResolveAssumedWinPermille(int tier)') + '\n'
     # 生产里是 private 嵌套类；夹具里放成 internal 以便直接驱动（成员逐字照抄）
     code += 'internal sealed partial class CashBetJournal {\n'
@@ -73,7 +77,8 @@ def main():
             'private static int ReadCompatibleSchema(string json)',
             'private static ModeHCashBetRecord Decode(string json)',
             'private static bool TryGetLong(BossRushJsonValue root, string key, out long value)',
-            'private static void ReadTier(BossRushJsonValue root, string key, long[] target)',
+            'private static bool ReadOptionalLong(BossRushJsonValue root, string key, out long value)',
+            'private static bool ReadTier(BossRushJsonValue root, string key, long[] target)',
             'private static string Encode(ModeHCashBetRecord record)',
             'private static string JoinTier(long[] values)'):
         code += member(service, signature) + '\n'

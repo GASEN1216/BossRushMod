@@ -1,5 +1,17 @@
 # AI 协作文档收敛迁移记录
 
+## 2026-10-06 第二轮反馈裁决与证据更正（COMPAT / SCHEMA+ / WIRE+）
+
+用户明确仅鸭王杯禁止携崽，覆盖旧 G／丧尸禁入范围，契约和专题已按实际门控、清场与战斗接线更新。用户确认押注只扣本金、上限按余额÷真实倍率，撤销上轮固定 20,000 额度；赔付分数和结果为向后兼容可选字段。
+
+第二轮真实存储订阅和跨进程文件回归复现“报个名”重置，取代上轮仅正常保存路径的“未复现”结论。晴岚黑屏定位官方黑幕引用计数配对及早期取消缺口，补精确租约恢复和运行时 GBuffer 准入。天空岛归航钟没有女巫生成环节。历史首轮结论保留在修复台账，当前报告重写为最终实现。
+
+
+## 2026-10-06 用户反馈规则校正（COMPAT / SCHEMA+）
+
+`docs/contracts.md` 登记 Boss 生命比例可选配置与普通 Raid 宠物范围；`SkyIsland/AGENTS.md` 明确 1000 生命为 100% 设置时的基准保底，玩家设置的 10%–200% 在基准之后应用，数值从已有 owner 显式传入。相关专题同步实际代码，不将未复现的征程清空、未接序章刷怪或具体敲钟个案写成已确认缺陷。为保持宿主 partial 预算，原 ModConfig 类型查找实现迁入已有 API 类型并由所有旧调用点复用。
+
+
 ## 2026-10-01 docs 与资源改走私有仓库（SAFE / OPERATIONAL）
 
 按 owner 要求，根 `AGENTS.md` §3、§13 与 `docs/AGENTS.md` 把「`docs/`、多数 `Assets/`、`ArtSource/` 默认 local-only」改为「不进公开仓库，多机同步走私有仓库 `GASEN1216/BossRushMod-private`」，并写明 `private-sync.ps1 sync` 的推送已授权、不再为别的文档或资源新增 `.gitignore` 放行。守卫直接读的那几份仍留在公开仓库，CI 不受影响。`docs/guides/私有仓库同步.md` 补「另一台电脑拉代码编译测试」一节：只拉公开仓库也能编出 DLL，但部署会缺资源或带旧资源。同日按 owner 要求，`compile_dev.bat` 编译前自动跑 `private-sync.ps1 sync`：没有私有仓库或脚本就跳过，失败只警告、继续编译，`BOSSRUSH_SKIP_PRIVATE_SYNC=1` 可关；`compile_official.bat` 不变。

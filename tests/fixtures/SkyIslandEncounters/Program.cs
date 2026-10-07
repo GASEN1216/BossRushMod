@@ -18,7 +18,7 @@ internal static partial class Program
         internal int Attempts;
         internal int StormTrophies;
         internal readonly List<string> DefeatedIds = new List<string>();
-        internal World(string nearby)
+        internal World(string nearby, Func<float> healthMultiplier = null)
         {
             foreach (SkyIslandEncounterDefinition definition in SkyIslandContent.CreateFallback().Encounters)
             {
@@ -29,7 +29,7 @@ internal static partial class Program
             // 内容表由会话加载一次后传入；夹具走与生产同一条 Load 路径，保证 ContentSource 仍是真实结果。
             Encounters = new SkyIslandEncounters(Root, Player, new Pathfinding.GraphMask(), 1, SkyIslandContent.Load(), () => Valid,
                 id => Saved.Contains(id), id => { Attempts++; if (Accept) Saved.Add(id); }, (message, error) => { }, id => id,
-                (id, position) => { StormTrophies++; DefeatedIds.Add(id); });
+                (id, position) => { StormTrophies++; DefeatedIds.Add(id); }, healthMultiplier);
         }
         internal void Tick(float seconds = 1) { Time.time += seconds; Encounters.Tick(); }
         public void Dispose() { Valid = false; Encounters.Dispose(); }

@@ -430,17 +430,40 @@ namespace BossRush
                     return false;
                 }
 
-                item.Variables.Set(nameKey, AffixDefinitions.NameLocKeyPrefix + def.Id, true);
+                AffixSlotView view;
+                if (!TryReadSlot(item, slotIndex, out view) || view.IsEmpty) return false;
+                string localizedNameKey = AffixDefinitions.GetNameLocalizationKey(def.Id, view.Tier);
+                // UI 查询可多次到来；值不变时不重复发 CustomData.OnSetData。
+                if (!string.Equals(item.Variables.GetString(nameKey, null), localizedNameKey, StringComparison.Ordinal))
+                {
+                    item.Variables.Set(nameKey, localizedNameKey, true);
+                }
                 item.Variables.SetDisplay(nameKey, true);
                 return string.Equals(
                     item.Variables.GetString(nameKey, null),
-                    AffixDefinitions.NameLocKeyPrefix + def.Id,
+                    localizedNameKey,
                     StringComparison.Ordinal);
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[AffixItemData] 写入词缀展示名失败: " + e.Message);
                 return false;
+            }
+        }
+
+        /// <summary>仅刷新正在查看的单件装备，兼容旧名称 KV；不改词缀身份、档位与锁。</summary>
+        public static void RefreshDisplayNames(Item item)
+        {
+            if (!HasAffixData(item)) return;
+            int capacity = GetCapacity(item);
+            for (int slot = 1; slot <= capacity; slot++)
+            {
+                AffixSlotView view;
+                if (TryReadSlot(item, slot, out view) && !view.IsEmpty
+                    && AffixDefinitions.Find(view.AffixId) != null)
+                {
+                    StampNameKV(item, slot, view.AffixId);
+                }
             }
         }
 

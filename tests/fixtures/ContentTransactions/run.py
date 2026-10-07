@@ -3,6 +3,7 @@
 from pathlib import Path
 import hashlib
 import subprocess
+import tempfile
 import xml.sax.saxutils as xml
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -69,7 +70,7 @@ def main():
         "PetNestExpeditionService", "PetNestBackpackSnapshot", "PetNestBackpackRestoration",
         # 2026-09-20：孵化 roll 与显示名都要用炫彩调色板（纯数据、无 Unity 依赖）
         "PetNestChroma")]
-    paths = [ROOT / p for p in linked] + [HERE / "Program.cs", HERE / "Stubs.cs", HERE / "QuestDeliveryRegression.cs", OUT / "Extracted.cs"]
+    paths = [ROOT / p for p in linked] + [HERE / "Program.cs", HERE / "Stubs.cs", HERE / "QuestDeliveryRegression.cs", HERE / "CampaignDiskRegression.cs", OUT / "Extracted.cs"]
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649;0067</NoWarn></PropertyGroup><ItemGroup>'
     project += "".join('<Compile Include="' + xml.escape(str(p), {'"': '&quot;'}) + '" />' for p in paths)
     project += "</ItemGroup></Project>"
@@ -77,7 +78,22 @@ def main():
     (OUT / "source-hashes.txt").write_text("\n".join(
         hashlib.sha256(p.read_bytes()).hexdigest() + " " + str(p.relative_to(ROOT))
         for p in paths if p != OUT / "Extracted.cs") + "\nextracted " + hashlib.sha256(extracted.encode()).hexdigest(), encoding="utf-8")
-    return subprocess.call(["dotnet", "run", "--project", str(OUT / "ContentTransactions.csproj"), "--configuration", "Release"], cwd=ROOT)
+    code = subprocess.call(["dotnet", "run", "--project", str(OUT / "ContentTransactions.csproj"), "--configuration", "Release"], cwd=ROOT)
+    if code:
+        return code
+    target = subprocess.check_output(["dotnet", "msbuild", str(OUT / "ContentTransactions.csproj"),
+                                      "-property:Configuration=Release", "-getProperty:TargetPath"], cwd=ROOT, text=True).strip()
+    if not Path(target).is_file():
+        raise RuntimeError("Missing built target: " + target)
+    print("Campaign disk process target:", target, hashlib.sha256(Path(target).read_bytes()).hexdigest(), flush=True)
+    process_dir = Path(tempfile.mkdtemp(prefix="campaign-process-", dir=OUT))
+    for scenario in ("accepted", "readback", "completed"):
+        snapshot = process_dir / (scenario + ".json")
+        for action in ("write", "read"):
+            code = subprocess.call(["dotnet", target, "--campaign-disk-" + action, str(snapshot), scenario], cwd=ROOT)
+            if code:
+                return code
+    return 0
 
 
 if __name__ == "__main__":

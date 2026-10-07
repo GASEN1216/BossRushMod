@@ -86,6 +86,15 @@ internal static class Program
                 Check(ModeGAdaptiveCombat.IsDistanceAxisBroken(b.telemetry,ModeGDistanceVerdict.Close),"远距收尾破解");
             }
         });
+        Case("随从击杀已登记 Boss 正常结案但不伪造主角直伤",()=>{
+            using(var b=new Battle()) {
+                var companion=Character();
+                b.boss.Health.Hurt(new DamageInfo { fromCharacter=companion,damageValue=100,finalDamage=100,fromWeaponItemID=100 });
+                Check(b.deaths==1 && b.terminal==ModeGDirectDamageClass.NotScoreable,"随从末击结案且不归入主角武器轴");
+                Near(0,b.telemetry.TotalDirectDamage,"随从伤害不污染主角直伤分母");
+                UnityEngine.Object.Destroy(companion.gameObject);
+            }
+        });
         Case("贡献按护甲后伤害而非输入伤害",()=>{
             using(var b=new Battle()) {
                 b.Hit(500,5); Near(5,b.telemetry.TotalDirectDamage,"减伤后计数");

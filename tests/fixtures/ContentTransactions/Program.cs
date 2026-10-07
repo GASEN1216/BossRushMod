@@ -71,6 +71,50 @@ partial class Program
         return SavesSystem.Disk.TryGetValue(CampaignTuning.ProgressSaveKey, out raw)
             && UnityEngine.JsonUtility.FromJson<CampaignSaveData>((string)raw).chapters[0].state == 4;
     }
+    static void ReopenCampaignFromDisk()
+    {
+        // 丢弃 Mod 与官方全部内存缓存，只拿上一次物理写入的快照重建。
+        CampaignPersistence.ResetStaticCaches();
+        CampaignSaveCoordinator.ResetStaticCaches();
+        CampaignProgressService.ResetStaticCaches();
+        BossRushSaveFileThrottle.ResetStaticCaches();
+        SavesSystem.Cache = new System.Collections.Generic.Dictionary<string, object>(SavesSystem.Disk);
+        CampaignSaveCoordinator.EnsureSubscribed();
+        CampaignProgressService.EnsureInitialized();
+    }
+    static void CampaignRestartLifecycle()
+    {
+        Reset();
+        SavesSystem.CurrentSlot = 1;
+        CampaignSaveCoordinator.EnsureSubscribed();
+        Check(CampaignProgressService.TryAcceptContract("ch1"), "fresh slot accepts the first chapter");
+        ReopenCampaignFromDisk();
+        Check(CampaignProgressService.GetState("ch1") == CampaignChapterState.ContractActive
+            && !CampaignProgressService.TryAcceptContract("ch1"), "restart restores accepted chapter without accepting it twice");
+
+        LevelManager.Instance.IsBaseLevel = false;
+        Check(CampaignProgressService.NotifyObjectivesSatisfied("ch1"), "raid objective is staged for the next official save");
+        SavesSystem.Collect(); SavesSystem.SaveFile(false);
+        ReopenCampaignFromDisk();
+        Check(CampaignProgressService.GetState("ch1") == CampaignChapterState.ReadyToDeliver
+            && EconomyManager.Adds == 0, "official collection persists ready chapter across process cache loss without granting reward");
+
+        LevelManager.Instance.IsBaseLevel = true;
+        Check(CampaignProgressService.TryDeliver("ch1"), "restored ready chapter can be delivered at Jeff");
+        ReopenCampaignFromDisk();
+        Check(CampaignProgressService.GetState("ch1") == CampaignChapterState.Completed
+            && !CampaignProgressService.TryDeliver("ch1") && EconomyManager.Adds == 1,
+            "completed chapter remains completed after restart and cannot pay again");
+
+        Reset(); CampaignSaveCoordinator.EnsureSubscribed();
+        Check(CampaignProgressService.TryAcceptContract("ch1"), "exit fallback scenario accepts chapter");
+        LevelManager.Instance.IsBaseLevel = false;
+        CampaignProgressService.NotifyObjectivesSatisfied("ch1");
+        Check(CampaignSaveCoordinator.TryFlushOnHostDestroy(), "host exit flushes pending progress outside base");
+        ReopenCampaignFromDisk();
+        Check(CampaignProgressService.GetState("ch1") == CampaignChapterState.ReadyToDeliver,
+            "host exit snapshot survives restart without an official collection event");
+    }
     static void CampaignCash()
     {
         Reset();
@@ -497,10 +541,11 @@ partial class Program
         Check(CampaignProgressService.TryDeliverGuide(id, 0) && EconomyManager.Adds == 0 && CampaignGuideTable.IsCompleted(id),
             "zero-cash guide completes without touching money");
     }
-    static void Main()
+    static void Main(string[] args)
     {
+        if (RunCampaignDiskRegression(args)) return;
         QuestDeliveryTransactions();
-        CampaignGuideLifecycle(); GuideCash(); CampaignCash(); DailyCash(); OfficialStickySaving(); Condense(); Hatch(); PetNestAchievements(); Meals(); ExpeditionEggIdentity(); ShowcaseSnapshot();
+        CampaignRestartLifecycle(); CampaignGuideLifecycle(); GuideCash(); CampaignCash(); DailyCash(); OfficialStickySaving(); Condense(); Hatch(); PetNestAchievements(); Meals(); ExpeditionEggIdentity(); ShowcaseSnapshot();
         ManualChromaAndDurations();
         PityGuarantees();
         PetNestLifecycleRepairs();

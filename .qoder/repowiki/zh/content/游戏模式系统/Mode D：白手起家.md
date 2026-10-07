@@ -1,5 +1,9 @@
 # Mode D：白手起家
 
+2026-10-06 波次血量与难度叠加（COMPAT）：`ApplyModeDWaveScaling` 保留每波 3% 规则，用整体 `PercentageMultiply` 叠加并回读 `Health.MaxHealth` 同步满血。先按已经受 Boss 生命比例影响的 `Stat.Value` 算 Add 增量，会让增量再次吃末尾百分比，例如 50% 难度、第 2 波的 1000 基准 Boss 原会得到 507.5 上限却写入 515 当前血量；修正后两者均为 515。普通敌人仍只接受本来的波次倍率。
+
+2026-10-06 入场船票回退修复（COMPAT）：`GetBossRushTicketTypeId()` 在动态注册 ID 尚未就绪时使用共享 `BossRushItemIds.BossRushTicket`（500001），不再回退旧模板 868，避免合法船票被裸装检查当成杂物。仍要求装备槽、武器槽、主角背包与官方狗子背包满足原空装规则。正式入口本来已有加载等待，不能仅凭 0.5 秒延迟断言初始化竞态就是玩家报告的原因；`ModeDEntryOwnership` 覆盖未注册 ID 和已注册 ID 两条准入，真实地图与其他 Mod 自动发物仍需实机核对。
+
 2026-09-02 激活保护修正（COMPAT）：官方把角色挂到 MultiSceneCore 主场景父级，距离休眠却按
 relatedScene 子场景登记。`Utilities/SpawnedEnemyActivationHelper.cs` 现在按已加载场景索引
 只移除当前角色的登记，避免已刷狼群被重新关闭并卡波次；不改变原版敌人的休眠或波次结算规则。
@@ -394,3 +398,5 @@ Mode D 通过独立敌池、随机装备与全局掉落池，构建了“从零�
 2026-09-22 审计修复（COMPAT，CR-2026-09-22-049）：`ModeDRuntimeModule` 持有生成代次，开局、结束、切图和销毁都会失效旧请求。分帧刷怪队列在每次取共享队列项前验证 owner；单敌生成、成功/失败结案与自动下一波也持有同一代次，因此重开后同号波次不会接收旧任务。沿用既有自动休整 unscaled 计时。`ModeDAsyncOwnerGuard` 与 `AuditModeLifecycle` 验证接线和跨局同号隔离（L1/L2）；实际切图时序待 L3。
 
 2026-09-25 模块解耦（COMPAT）：[ModeDItemPool.cs](file://ModeD/ModeDItemPool.cs) 与配装、StarterKit、GlobalLoot partial 持有 D/E/F 共用的发装池、物化计划、品质分桶和全局掉落缓存；装配时绑定既有 Boss 候选目录、Legacy 配置、征程近战工具判据和丧尸候选排除判据。后两项仍在原随机分支位置求值。[ModeDRuntimeModule.cs](file://ModeD/ModeDRuntimeModule.cs) 持有 D 波次状态、敌人列表与协程句柄，敌池扫描、预设选择、自动下一波、路牌、刷怪、结算与启停主体均进入同一模块。裸装及玩家背包检查由 [ModeEntryInventory.cs](file://Utilities/ModeEntryInventory.cs) 承接；[ModeD.cs](file://ModeD/ModeD.cs) 保留跨模式入场协调与兼容桥。`CaptureValidity` 直接读取模块状态，D 与 Arena 的完整性计时仍沿用原共享时钟和调度槽位。隔离正式编译、Mode D 守卫与全量 69 项执行回归通过；波次结案回归直接链接生产模块，覆盖迟到任务、生成未结案、活敌及重复完成门，真实游戏仍待验收。
+
+2026-10-06 二次深审：地图选择费用查询也统一在注册未就绪／查询异常时回退 BossRushItemIds.BossRushTicket，和裸体准入使用同一发布常量；不再使用原版模板 868。

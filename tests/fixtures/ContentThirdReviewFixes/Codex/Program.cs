@@ -103,6 +103,7 @@ class Program
         CheckKillEligibility();
         CheckActualPlayerTeam();
         CheckOfficialRosterWithoutBossFlag();
+        CheckCustomBossIdentity();
         Console.WriteLine("Codex regression checks=" + checks);
     }
 
@@ -369,6 +370,34 @@ class Program
         long before = GC.GetAllocatedBytesForCurrentThread();
         for (int i = 0; i < 10000; i++) key = CodexBossCatalog.BuildZombieBossKey(ZombieModeBossKind.Titan);
         return GC.GetAllocatedBytesForCurrentThread() - before;
+    }
+
+    static void CheckCustomBossIdentity()
+    {
+        foreach (bool king in new[] { true, false })
+        {
+            Reset();
+            string expected = king ? DragonKingConfig.BossNameKey : DragonDescendantConfig.BOSS_NAME_KEY;
+            var victim = new CharacterMainControl { isBossCharacter = true, Team = Teams.wolf,
+                characterPreset = new CharacterRandomPreset { nameKey = "Cname_StormBoss1" },
+                Component = king ? (object)new DragonKingAbilityController() : new DragonDescendantAbilityController() };
+            var health = new Health { Character = victim };
+            var hit = new DamageInfo { fromCharacter = new CharacterMainControl { IsMainCharacter = true }, finalDamage = 10 };
+            UnityEngine.Time.time = 10;
+            CodexKillCollector.OnGlobalHurt(health, hit);
+            int queries = victim.ComponentQueries;
+            CodexKillCollector.OnGlobalHurt(health, hit);
+            Check(victim.ComponentQueries == queries, "tracked boss does not repeat component lookup on later hits");
+            victim.characterPreset = null;
+            UnityEngine.Time.time = 13;
+            health.IsDead = true;
+            CodexKillCollector.OnGlobalDead(health, hit);
+            Check(CodexPersistence.Current.Find(expected)?.Kills == 1
+                && CodexPersistence.Current.Find(expected).FastestKillSeconds == 3
+                && CodexPersistence.Current.Find("Cname_StormBoss1") == null,
+                "actual custom controller survives overwritten or missing preset identity");
+        }
+        Reset();
     }
 
     static void CheckCodec()

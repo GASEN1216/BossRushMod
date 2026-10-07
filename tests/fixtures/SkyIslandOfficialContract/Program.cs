@@ -106,7 +106,7 @@ internal static class Program
         return handle.Kind.ToString();
     }
 
-    private static List<string> ReadReferences(PEReader pe, MetadataReader reader, string typeName, string methodName)
+    private static List<string> ReadReferences(PEReader pe, MetadataReader reader, string typeName, string methodName, bool arithmetic = false)
     {
         TypeDefinitionHandle th = reader.TypeDefinitions.First(h => reader.GetString(reader.GetTypeDefinition(h).Name) == typeName);
         TypeDefinition type = reader.GetTypeDefinition(th);
@@ -133,6 +133,7 @@ internal static class Program
             }
             if (op.OperandType == OperandType.InlineMethod || op.OperandType == OperandType.InlineField)
                 result.Add(EntityName(reader, MetadataTokens.EntityHandle(BitConverter.ToInt32(bytes, i))));
+            if (arithmetic && (op == OpCodes.Add || op == OpCodes.Sub)) result.Add(op.Name);
             i += size;
         }
         return result;
@@ -163,6 +164,29 @@ internal static class Program
         {
             MetadataReader reader = pe.GetMetadataReader();
             Console.WriteLine("只读官方 DLL MVID=" + reader.GetGuid(reader.GetModuleDefinition().Mvid));
+            TypeDefinition loader = reader.GetTypeDefinition(reader.TypeDefinitions.Single(h => reader.GetString(reader.GetTypeDefinition(h).Name) == "SceneLoader"));
+            TypeDefinition loadState = reader.GetTypeDefinition(loader.GetNestedTypes().Single(h => reader.GetTypeDefinition(h).GetFields()
+                .Any(f => reader.GetString(reader.GetFieldDefinition(f).Name).Contains("loadSceneOperation"))));
+            List<string> load = ReadReferences(pe, reader, reader.GetString(loadState.Name), "MoveNext");
+            Check(load.Count(value => value == "BlackScreen.ShowAndReturnTask") == 2
+                && load.Count(value => value == "BlackScreen.HideAndReturnTask") == 2
+                && load.Count(value => value == "UniTask.NextFrame") == 4,
+                "现装 SceneLoader 有两对黑幕和四个可取消分帧等待");
+            Ordered(load, "BlackScreen.ShowAndReturnTask", "BlackScreen.HideAndReturnTask",
+                "BlackScreen.ShowAndReturnTask", "LevelManager.get_LevelInited", "BlackScreen.HideAndReturnTask");
+            int operations = 0;
+            foreach (FieldDefinitionHandle handle in loadState.GetFields())
+            {
+                BlobReader signature = reader.GetBlobReader(reader.GetFieldDefinition(handle).Signature);
+                signature.ReadSignatureHeader();
+                if (signature.ReadSignatureTypeCode() == SignatureTypeCode.TypeHandle
+                    && EntityName(reader, signature.ReadTypeHandle()) == "AsyncOperation") operations++;
+            }
+            Check(operations == 1, "现装 SceneLoader 只持有一个目标场景 AsyncOperation");
+            Check(load.Count(value => value == "AsyncOperation.set_allowSceneActivation") == 2,
+                "现装 SceneLoader 对目标场景激活赋值两次，登记点位于首次关闭激活时");
+            Ordered(ReadReferences(pe, reader, "BlackScreen", "LShowAndReturnTask", true), "taskCounter", "add", "taskCounter");
+            Ordered(ReadReferences(pe, reader, "BlackScreen", "LHideAndReturnTask", true), "taskCounter", "sub", "taskCounter");
             List<string> death = ReadReferences(pe, reader, StateMachine(reader, "CharacterDieTask"), "MoveNext");
             Ordered(death, "LevelManager.get_IsRaidMap", "RaidUtilities.NotifyDead", "LevelConfig.get_SaveCharacter",
                 "DeadBodyManager.RecordDeath", "ItemSavesUtilities.SaveAsLastDeadCharacter", "LevelConfig.get_SpawnTomb",

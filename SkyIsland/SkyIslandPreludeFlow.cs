@@ -532,7 +532,7 @@ namespace BossRush
                 clone.dropBoxOnDead = true;
                 clone.setActiveByPlayerDistance = false;
                 // 序章与岛内的守共用基准；Forge 只装身份、装备与招式，数值必须在官方创建前准备。
-                SkyIslandCombatPreset.Apply(clone, source, "K3_Relay", 0, SkyIslandEnemyTier.Chief);
+                SkyIslandCombatPreset.Apply(clone, source, "K3_Relay", 0, SkyIslandEnemyTier.Chief, owner.GetBossHealthMultiplier());
                 // 零号区这一位必掉品质 5–6 的枪，比岛上同名的那位更耐打，免得刚开档就能速推（owner 2026-10-01）。
                 clone.health *= SkyIslandCombatBalance.PreludeWardenHealthFactor;
                 position = GroundPoint(position);

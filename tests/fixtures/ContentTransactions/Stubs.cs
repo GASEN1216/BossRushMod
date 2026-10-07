@@ -42,7 +42,7 @@ namespace UnityEngine
 }
 namespace Saves
 {
-    static class SavesSystem
+    static partial class SavesSystem
     {
         public static bool IsSaving, StickSavingOnFailure;
         public static int CurrentSlot = 0, Writes, FailPhysical;
@@ -78,10 +78,12 @@ namespace Saves
             Writes++;
             Disk = new Dictionary<string, object>(Cache);
             History.Add(Disk);
+            SaveDiskIfRequested();
         }
         public static void Reset()
         {
             IsSaving = StickSavingOnFailure = false; CurrentSlot = 0; Writes = 0; FailPhysical = 0; FailKey = null;
+            DiskPath = null;
             Cache.Clear(); Disk.Clear(); History.Clear();
             FailReadAfterSaveKey = pendingReadFailure = null;
         }

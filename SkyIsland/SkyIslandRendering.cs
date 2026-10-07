@@ -15,6 +15,7 @@ namespace BossRush
             Shader shader = Shader.Find("SodaCraft/SodaCharacter");
             if (shader == null) throw new InvalidOperationException("官方模型着色器未就绪");
             var converted = new Dictionary<Material, Material>();
+            var verifiedShaders = new HashSet<Shader>();
             int textures = 0;
             foreach (MeshRenderer renderer in root.GetComponentsInChildren<MeshRenderer>(true))
             {
@@ -31,8 +32,7 @@ namespace BossRush
                         // 这里报错**九成不是显卡的锅**：URP 的变体剥离会在作者工程没指定 URP 资产时
                         // 把这三个着色器的变体全删掉，包照样构建成功，运行时才发现没有任何编译产物
                         // （CR-2026-09-10-004）。判包用 tools/verify_sky_island_bundle_shaders.py。
-                        if (!source.shader.isSupported)
-                            throw new InvalidOperationException("天空岛专用着色器不可用（多为场景包变体被剥离，也可能是显卡不支持）：" + shaderName);
+                        if (verifiedShaders.Add(source.shader)) ValidateWorldShader(source.shader);
                         if (source.HasProperty("_BaseMap") && source.GetTexture("_BaseMap") != null) textures++;
                         continue;
                     }
@@ -79,6 +79,17 @@ namespace BossRush
             }
             if (ground == 0 || walls == 0) throw new InvalidOperationException("天空岛地面或边界碰撞体缺失");
             Debug.Log("[SkyIsland] RENDER_READY materials=" + owned.Count + " textured=" + textures + " ground=" + ground + " walls=" + walls);
+        }
+
+        private static void ValidateWorldShader(Shader shader)
+        {
+            if (shader == null || !shader.isSupported)
+                throw new InvalidOperationException("天空岛专用着色器不可用，请更新完整资源包并检查图形支持");
+            var lightMode = new ShaderTagId("LightMode");
+            for (int i = 0; i < shader.passCount; i++)
+                if (shader.FindPassTagValue(i, lightMode).name == "UniversalGBuffer") return;
+            // 只有 Forward 的旧包同样会 isSupported=true，但官方 Deferred 不会绘制地形。
+            throw new InvalidOperationException("天空岛资源包缺少延迟渲染通道，请更新完整资源包：" + shader.name);
         }
 
         /// <summary>

@@ -183,9 +183,14 @@ namespace BossRush
                 // 会把仍在交战中的 Boss 起点整表冲掉。
                 CharacterMainControl victim = target.TryGetCharacter();
                 if (victim == null || !Team.IsEnemy(info.fromCharacter.Team, victim.Team)) return;
+                int id = target.GetInstanceID();
+                lock (_lock)
+                {
+                    // 已开表的目标不再重复解析组件身份，每次后续命中只做 O(1) 查询。
+                    if (_fightStart.ContainsKey(id)) return;
+                }
                 if (string.IsNullOrEmpty(ResolveBossKey(victim))) return;
 
-                int id = target.GetInstanceID();
                 lock (_lock)
                 {
                     // 只记玩家造成的**首次**伤害，后续伤害不刷新起点
@@ -284,15 +289,25 @@ namespace BossRush
                 }
             }
 
-            // 主路：官方/自定义 preset 的 nameKey。三个自定义 Boss 在所有生成路径
-            // 上都会被盖成 canonical key，因此这里不需要额外分支。
+            CharacterRandomPreset preset = victim.characterPreset;
+            string key = preset != null ? preset.nameKey : null;
+            // 杂兵先返回，额外的组件身份查询只落在 Boss 候选上。
+            if (!victim.isBossCharacter && !CodexOfficialBossRegistry.IsOfficialBoss(key)
+                && !CodexBossCatalog.IsCustomBossKey(key)) return null;
+
+            // 龙皇 / 龙裔的控制器属于实际实例，且在全局死亡回调时仍挂在角色上。
+            // 第三方随机预设可能改 nameKey；优先用已有组件避免把龙皇记成观测者。
+            // 实例字典会先在 OnDeadEvent 被清理，不能作为这里的身份来源。
+            if (victim.GetComponent<DragonKingAbilityController>() != null)
+                return DragonKingConfig.BossNameKey;
+            if (victim.GetComponent<DragonDescendantAbilityController>() != null)
+                return DragonDescendantConfig.BOSS_NAME_KEY;
+
+            // 官方 Boss、幽灵女巫与战役冠军之影保留各自 preset 的 nameKey。
             // 名单里的官方 Boss 也必须可收录：例如冰原掠夺者的官方 preset.isBoss=false，
             // 若只认运行时标记，目录虽有锁定卡却永远无法解锁，连带挡住全收集。
             // 只放行官方 Boss 名单，不把整个展示池里的普通精英都当 Boss。
-            CharacterRandomPreset preset = victim.characterPreset;
-            if (preset == null) return null;
-            string key = preset.nameKey;
-            return victim.isBossCharacter || CodexOfficialBossRegistry.IsOfficialBoss(key) ? key : null;
+            return key;
         }
 
         /// <summary>当前模式 id。只经公开门面读取，全程 no-throw。</summary>

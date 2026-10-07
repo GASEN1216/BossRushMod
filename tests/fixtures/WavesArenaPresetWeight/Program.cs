@@ -43,6 +43,9 @@ namespace BossRush
     {
         internal string name;
         internal float baseHealth;
+        internal string displayName;
+        internal int team, expReward;
+        internal float baseDamage, healthMultiplier, damageMultiplier;
     }
 
     internal sealed class ModBehaviour
@@ -67,7 +70,7 @@ namespace BossRush
         internal int InfiniteHellWaveIndex;
     }
 
-    internal static class Program
+    internal static partial class Program
     {
         private static void Check(bool condition, string reason)
         {
@@ -76,6 +79,7 @@ namespace BossRush
 
         private static void Main()
         {
+            CheckPresetRecovery();
             var owner = new ModBehaviour();
             var module = new WavesArenaRuntimeModule { owner = owner, MinBossBaseHealth = 100f, MaxBossBaseHealth = 100f };
             UnityEngine.Random.Reset(0.25f);

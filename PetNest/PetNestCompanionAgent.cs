@@ -5,7 +5,7 @@
 //   - 驱动幼体随从跟随玩家：写官方公开字段 AICharacterController.leader，
 //     由原生 Update（AICharacterController.cs:238）把 patrolPosition 同步成 leader
 //     位置，行为树 patrol 分支据此跟随。索敌与作战完全交还原生行为树，
-//     本组件不写 searchedEnemy，也不挂第二套战斗逻辑。
+//     仅在主角换队时清理已不敌对的旧目标，不挂第二套战斗逻辑。
 //   - >40m 传送兜底：patrol 只在 searchedEnemy == null 时跟随，崽追敌会跑远，
 //     因此沿用官方 PetAI.Update 的同款阈值与落点公式自写一份兜底。
 //   - 作为「玩家方随从」的身份标记：WavesArenaEnemyMaintenance 的清场豁免与
@@ -25,7 +25,7 @@ namespace BossRush
     ///
     /// 契约：
     /// - 跟随驱动只写 AICharacterController.leader（官方 public 字段），
-    ///   不写 searchedEnemy、不写 leaderAI（后者会双向同步目标，
+    ///   换队事件只清无效 searchedEnemy，不写 leaderAI（后者会双向同步目标，
     ///   见 ModeH/ModeHSpawnBridge.cs:44-46 的同款理由）；
     /// - 维护节流到 4Hz，热路径零分配；
     /// - 静态身份表在 OnDestroy 必然退表，避免死引用累积。
@@ -152,6 +152,8 @@ namespace BossRush
         private float _maintainTimer;
         private bool _identityRegistered;
         private bool _bound;
+        private bool _allowCombat;
+        private CharacterMainControl _teamOwner;
 
         /// <summary>
         /// 本只崽的跟随传送阈值（平方值，省掉每次维护的一次开方）。
@@ -184,16 +186,17 @@ namespace BossRush
         /// <summary>
         /// 绑定自身角色与主人。幂等：重复调用只刷新引用，不重复登记身份表。
         /// </summary>
-        internal void Bind(CharacterMainControl self, CharacterMainControl master)
+        internal void Bind(CharacterMainControl self, CharacterMainControl master, bool allowCombat = true)
         {
             _self = self;
-            _master = master;
+            BindMaster(master);
+            _allowCombat = allowCombat;
             _bound = true;
             _maintainTimer = 0f;
 
             try
             {
-                _ai = self != null ? self.GetComponentInChildren<AICharacterController>() : null;
+                _ai = allowCombat && self != null ? self.GetComponentInChildren<AICharacterController>() : null;
             }
             catch (Exception)
             {
@@ -211,6 +214,34 @@ namespace BossRush
 
             RegisterIdentity();
             Maintain();
+        }
+
+        private void BindMaster(CharacterMainControl master)
+        {
+            if (_teamOwner != master)
+            {
+                if (_teamOwner != null) _teamOwner.OnTeamChanged -= HandleMasterTeamChanged;
+                _teamOwner = master;
+                if (_teamOwner != null) _teamOwner.OnTeamChanged += HandleMasterTeamChanged;
+            }
+            _master = master;
+            if (_master != null) HandleMasterTeamChanged(_master.Team);
+        }
+
+        private void HandleMasterTeamChanged(Teams team)
+        {
+            try
+            {
+                if (_self == null) return;
+                if (_self.Team != team) _self.SetTeam(team);
+                // Mode E 入场、雇佣或退场可能在宠物生成之后改主角阵营，立即清掉已不敌对的旧目标。
+                if (_ai != null && _ai.searchedEnemy != null && !Team.IsEnemy(team, _ai.searchedEnemy.Team))
+                {
+                    _ai.searchedEnemy = null;
+                    _ai.noticed = false;
+                }
+            }
+            catch (Exception) { /* 角色正在回收，不打断阵营事件。 */ }
         }
 
         private void RegisterIdentity()
@@ -278,11 +309,11 @@ namespace BossRush
 
                 if (_master == null)
                 {
-                    _master = CharacterMainControl.Main;
+                    BindMaster(CharacterMainControl.Main);
                 }
                 if (_master == null) return;
 
-                if (_ai == null)
+                if (_allowCombat && _ai == null)
                 {
                     _ai = _self.GetComponentInChildren<AICharacterController>();
                 }
@@ -330,6 +361,8 @@ namespace BossRush
 
         private void OnDestroy()
         {
+            if (_teamOwner != null) _teamOwner.OnTeamChanged -= HandleMasterTeamChanged;
+            _teamOwner = null;
             UnregisterIdentity();
             _bound = false;
             _self = null;

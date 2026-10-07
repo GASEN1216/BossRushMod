@@ -64,6 +64,7 @@ namespace BossRush
         private readonly Func<string, string> describe;
         /// <summary>噬风（或它的回响）本体倒下：带上遭遇 id，由会话分流战利品。</summary>
         private readonly Action<string, Vector3> stormDefeated;
+        private readonly Func<float> bossHealthMultiplier;
         private bool closed;
         private float nextTick;
         /// <summary>头目 / 岛主招式控制器要的场景上下文（根节点、地面层、有效性、字幕通道），首次用到时建一次。</summary>
@@ -80,7 +81,8 @@ namespace BossRush
         /// <summary>内容表由会话加载一次后传入；同一次进岛不重复解析 World.json。</summary>
         internal SkyIslandEncounters(GameObject root, CharacterMainControl player, GraphMask mask, int groundMask,
             SkyIslandContentData content, Func<bool> valid, Func<string, bool> completed, Action<string> cleared,
-            Action<string, bool> report, Func<string, string> describe, Action<string, Vector3> onStormDefeated)
+            Action<string, bool> report, Func<string, string> describe, Action<string, Vector3> onStormDefeated,
+            Func<float> bossHealthMultiplier = null)
         {
             if (content == null) throw new ArgumentNullException("content");
             if (describe == null) throw new ArgumentNullException("describe");
@@ -88,6 +90,7 @@ namespace BossRush
             this.valid = valid; this.completed = completed; this.cleared = cleared; this.report = report;
             this.describe = describe;
             this.stormDefeated = onStormDefeated;
+            this.bossHealthMultiplier = bossHealthMultiplier;
             chatter = new SkyIslandChatter(SkyIslandChatter.EnemyCooldownMin, SkyIslandChatter.EnemyCooldownMax, valid);
             // 一次加载时缓存，不在每帧/每次遭遇扫描全局资源。底模全部是官方 Boss 预设（owner 2026-10-01，SkyIslandEnemySources）。
             SkyIslandEnemySources.Bosses();
@@ -465,7 +468,8 @@ namespace BossRush
                     try
                     {
                         // 在途 preset 仅由当前 async 栈拥有，场景退出无权提前销毁。
-                        SkyIslandCombatPreset.Apply(clone, source, encounter.Id, i, tier);
+                        float healthScale = bossHealthMultiplier != null ? bossHealthMultiplier() : 1f;
+                        SkyIslandCombatPreset.Apply(clone, source, encounter.Id, i, tier, healthScale);
                         // 小兵与精英：Boss 的行头与本事，拾荒者的掉落与经验（owner 2026-10-01）。
                         if (baseline == null) SkyIslandMinionKit.UseScavLoot(clone, scavReference);
                         created = await clone.CreateCharacterAsync(point, Vector3.forward, -1, null, false);

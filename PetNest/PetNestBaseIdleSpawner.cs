@@ -172,7 +172,7 @@ namespace BossRush
                 + new Vector3(1.6f + index * 1.1f, 0.5f, -1.4f - index * 0.6f);
 
             string failureReasonId;
-            if (!PetNestCompanionSpawner.TryActivate(handle, spawnPos, player, owner, pet, out failureReasonId))
+            if (!PetNestCompanionSpawner.TryActivate(handle, spawnPos, player, owner, pet, out failureReasonId, allowCombat: false))
             {
                 PetNestCompanionSpawner.CleanupOnce(handle);
                 return;

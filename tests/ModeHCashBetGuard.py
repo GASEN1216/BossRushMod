@@ -42,6 +42,8 @@ FILES = {
     "scene": "ModeH/ModeHRuntimeModule_SceneFlow.cs",
     "ui_flow": "ModeH/ModeHRuntimeModule_UiFlow.cs",
     "group": "ModeH/ModeHRuntimeModule_GroupFlow.cs",
+    "rows": "ModeH/ModeHUIPageRows.cs",
+    "slider": "Common/UI/BossRushUISlider.cs",
 }
 
 
@@ -135,14 +137,32 @@ def check(sources):
                     errors.append("[数值] x%d 押 %d 的期望拿回不小于押金（庄家没赢）" % (odds, amount))
 
     service = src["service"]
+    if const_int(service, "CustomSliderSteps") != 10000:
+        errors.append("[自选金额] 金额精确到整数，滑条必须使用独立的 10000 步进度")
+    forbid(service, "ModeHConfig.CashBetAmounts[ModeHConfig.CashBetAmounts.Length - 1]", "[自选金额] 不得沿用 20000 固定上限")
+    custom = body(service, "internal static void SelectCustomStandingAmount(")
+    need(custom, "Math.Max(0L, Math.Min(GetMaximumStandingAmount(MaximumStandingAmount, odds), amount));", "[自选金额] 金额按当前钱包及赔率限幅")
+    maximum = body(service, "private static long MaximumStake(")
+    need(maximum, "decimal.Floor((decimal)wallet * denominator / numerator)", "[自选金额] 上限必须按真实赔付分数计算，乘法不能在 long 上溢出")
+    need(maximum, "Math.Min(wallet, limit)", "[自选金额] 倍率小于 1 也不能超出钱包")
+    need(body(service, "internal static long AmountAtProgress("),
+         "decimal.Floor((decimal)maximum * step / CustomSliderSteps)", "[自选金额] 进度到金额的乘除必须保留大额精度")
+    need(src["bet"], "row.SliderMaximum = ModeHCashBetService.CustomSliderSteps;", "[自选金额] UI 不得把大额 long 直接传给 float 滑条")
+    need(src["bet"], "ModeHCashBetService.AmountAtProgress(limit, value)", "[自选金额] 拖动金额必须通过归一化进度换算")
+    need(src["bet"], "row.OnSliderChanged = delegate(int value)", "[自选金额] 页面必须接线实际金额选择")
+    need(src["rows"], 'BossRushUISlider.Create("ModeH_OptionSlider"', "[自选金额] 必须复用共享整数滑条")
+    need(src["slider"], "slider.wholeNumbers = true;", "[自选金额] 滑条必须为整数步进")
     # ---- 2. 校准只能让赔付变少 ----
     resolve = body(service, "internal static int ResolveAssumedWinPermille(int tier)")
     need(resolve, "Math.Max(table, observed)", "[校准] 假定胜率只能取表与实际胜率里较大的（赔付只降不升）")
     if "Math.Min(table" in resolve:
         errors.append("[校准] 假定胜率不得取较小值：实际胜率偏低时反而加赔会让押钱变成印钞机")
-    payout = body(service, "internal static long ComputePayout(long stake, int odds)")
+    payout = body(service, "internal static bool TryComputePayout(long stake, int odds, out long payout)")
     need(payout, "ResolveAssumedWinPermille(tier)", "[校准] 赔付必须用校准后的假定胜率")
-    need(payout, "(1000 - ModeHConfig.CashBetHouseCutPermille)", "[数值] 赔付必须扣抽水")
+    need(payout, "1000 - ModeHConfig.CashBetHouseCutPermille", "[数值] 赔付必须扣抽水")
+    exact_payout = body(service, "private static bool TryComputePayout(long stake, int numerator, int denominator, out long payout)")
+    need(exact_payout, "decimal.Floor((decimal)stake * numerator / denominator / 10m) * 10m;", "[数值] 大额赔付必须安全计算并保留取整口径")
+    need(exact_payout, "if (gross > long.MaxValue) return false;", "[数值] 不可表示的赔付不得当作 0 结清")
 
     # ---- 3. 资金顺序 ----
     commit = body(service, "private bool Commit(")
@@ -150,6 +170,7 @@ def check(sources):
                      "_store.Store(previous)", "_coordinator.RequestFlush("],
             "[顺序] 先排账本、再动钱、钱没变就撤回账本、最后同批落盘")
     need(commit, "EconomyManager.Pay(new Cost(-delta), true, false)", "[钱包] 押金只从账户余额扣，不碰背包现金物品")
+    need(commit, "delta == long.MinValue || (delta < 0 && before < -delta)", "[钱包] 排账前复核负金额及扣款下界")
     need(service, "BeforeCollectSaveData = CollectCash", "[落盘] 账本必须与现金快照同批落盘")
 
     # ---- 4. 至多一次 ----
@@ -158,11 +179,23 @@ def check(sources):
     need(settle, "previous.matchIndex != matchIndex", "[一次] 结算要对上这一场")
     need(settle, "string.Equals(previous.runId, runId, StringComparison.Ordinal)", "[一次] 结算要对上这一季")
     need(settle, "candidate.status = StatusSettled", "[一次] 结算后状态改成已结算")
+    need(settle, "candidate.settlementResult = won ? 1 : 2;", "[结果] 零返还赢注也必须冻结真实胜负")
+    need(body(service, "internal static bool IsWinningRecord("), "record.settlementResult == 1", "[结果] 赢输优先读取独立结果")
+    need(body(src["bet"], "private void AppendCashBetReportLine("), "ModeHCashBetService.IsWinningRecord(record)",
+         "[结果] 结算页不得把零返还赢注说成输")
+    need(body(src["ui_flow"], "private string DescribeSummaryBet("), "if (ModeHCashBetService.IsWinningRecord(record))",
+         "[结果] 本场总结不得只按返还金额判现金输赢")
+    forbid(src["ui_flow"] + src["group"], "Math.Abs(net)", "[净赚] long 最小值不得用绝对值导致页面抛错")
     refund = body(service, "internal bool TryRefund(string context, out long refunded)")
     need(refund, "previous.status != StatusReserved", "[一次] 只退回挂着的那一笔")
     # 签名尾部 2026-10-01 加了可选的 betSide，按前缀定位
     reserve = body(service, "internal bool TryReserve(string runId, int matchIndex, int odds, long amount, out string failureReasonId,")
     need(reserve, "previous.status == StatusReserved", "[一次] 上一笔没结清不得再押")
+    need(reserve, "amount > MaximumStake(EconomyManager.Money, numerator, denominator)", "[锁盘] 必须重新核对当前余额与实际赔付倍率")
+    need(reserve, "candidate.payoutNumerator = numerator;", "[锁盘] 冻结本场抽水后的分子")
+    need(reserve, "candidate.payoutDenominator = denominator;", "[锁盘] 冻结本场实际胜率分母")
+    need(reserve, "candidate.settlementResult = 0;", "[结果] 新押注不得继承上一场胜负")
+    need(settle, "TryComputeReservedPayout(previous, out gross)", "[结算] 使用账本冻结的赔付，恢复不能换赔率")
     reserve_items = body(service, "internal bool TryReserveItems(string runId, int matchIndex, int odds, long value, string items, out string failureReasonId,")
     need(reserve_items, "previous.status == StatusReserved", "[一次] 上一笔没结清不得再押物品")
 
@@ -231,12 +264,16 @@ def check(sources):
     ordered(page, ["ModeHCashBetRecord carried = RestoreCarriedGroupBetSide();", "if (!IsGroupBetSideLocked(carried))",
                    "if (left > 0 && carried == null)"],
             "[换边] 赛前页先恢复押注方向，再按需收起「押哪边赢」与「换一批」")
-    need(page, "FormatPayoutMultiplier(carried != null ? carried.odds : ResolveGroupOdds(_groupBetOnRed))",
-         "[换边] 沿用押注时页面倍率显示押注时那一档（结算按它赔）")
+    need(page, "carried != null ? FormatPayoutMultiplier(carried) : FormatPayoutMultiplier(ResolveGroupOdds(_groupBetOnRed))",
+         "[换边] 沿用押注时页面显示账本冻结的倍率")
     decode = body(service, "private static ModeHCashBetRecord Decode(string json)")
     encode = body(service, "private static string Encode(ModeHCashBetRecord record)")
     need(decode, 'root.TryGetInt("betSide", out value)', "[存档] 押注方向读档恢复（旧档缺省 0）")
     need(encode, 'sb.Append(",\\"betSide\\":")', "[存档] 押注方向随账本落盘")
+    for key in ("payoutNumerator", "payoutDenominator", "settlementResult"):
+        need(decode, 'root.TryGetInt("' + key + '", out record.' + key + ')', "[存档] 冻结倍率字段存在时必须合法")
+        need(encode, '\\"' + key + '\\":', "[存档] 冻结赔付分数随账本保存")
+    need(decode, 'ReadOptionalLong(root, "amount", out record.amount)', "[存档] 非法已声明金额不能默认为 0")
 
     # ---- 6d. 名人堂净赚按季累计 ----
     ordered(settle, ["candidate.status = StatusSettled;", "AccumulateRunNet(candidate, previous, gross);",
@@ -263,7 +300,8 @@ def check(sources):
                          "_coordinator.RequestFlush(out error, true)", "bool settled = TrySettle("],
             "[物品] 固定计划先入账，实物与剩余义务同存，再结清现金和统计")
     need(item_settle, "ModeHItemBetEntry.PrizeQuality(entries)", "[物品] 奖品品质跟押上的东西走")
-    need(item_settle, "ComputePayout(previous.amount, previous.odds) - previous.amount", "[物品] 奖品价值跟估值和赔率走")
+    need(item_settle, "TryComputeReservedPayout(previous, out expectedPayout)", "[物品] 奖品价值使用冻结赔付")
+    need(item_settle, "expectedPayout - previous.amount", "[物品] 奖品价值只取赔付减本金")
     need(item_settle, "if (previous.itemSettlement == 0)", "[物品] 已准备计划不得重掷")
     need(item_settle, "previous.itemSettlement == 1", "[物品] 重试只读已记录的输赢")
     need(item_settle, "candidate.missingValue = ModeHItemBetStake.ForfeitLocked();", "[物品] 缺失估值也必须可恢复")
@@ -296,6 +334,9 @@ def check(sources):
          "[页面] 每场开打前的看盘页要挂押注行")
     need(body(src["match_pages"], "private ModeHPageContent BuildOddsPageContent()"), "AppendCashBetRow(page);",
          "[页面] 赔率页要挂押注行")
+    for signature in ("private ModeHPageContent BuildBriefPageContent()", "private ModeHPageContent BuildOddsPageContent()"):
+        need(body(src["match_pages"], signature), "carried != null ? FormatPayoutMultiplier(carried)",
+             "[页面] 单挑重进也必须展示已锁本场的真实返还倍率")
     forbid(body(src["ui_flow"], "private void DecorateSettlementPage(ModeHPageContent page)"), "AppendCashBetRow(page);",
            "[页面] 结算页不得提前押尚未显示双方属性的下一场；押注只在赛前页")
     forbid(bet, "ModeHBetRevealView", "[页面] 赔率已在赛前展示，不再播放开盘动画")
@@ -306,6 +347,18 @@ def main():
     sources = dict((k, read(v)) for k, v in FILES.items())
     errors = check(sources)
     probes = [
+        ("service", "CustomSliderSteps = 10000;", "CustomSliderSteps = 2147483647;"),
+        ("service", "decimal.Floor((decimal)maximum * step / CustomSliderSteps)", "decimal.Floor((decimal)(maximum * step) / CustomSliderSteps)"),
+        ("service", "Math.Max(0L, Math.Min(GetMaximumStandingAmount(MaximumStandingAmount, odds), amount));", "amount;"),
+        ("service", "decimal.Floor((decimal)wallet * denominator / numerator)", "decimal.Floor((decimal)wallet)"),
+        ("service", "if (gross > long.MaxValue) return false;", ""),
+        ("service", "candidate.payoutDenominator = denominator;", "candidate.payoutDenominator = 0;"),
+        ("service", "TryComputeReservedPayout(previous, out gross)", "TryComputePayout(previous.amount, previous.odds, out gross)"),
+        ("service", "candidate.settlementResult = won ? 1 : 2;", "candidate.settlementResult = 0;"),
+        ("ui_flow", "            if (ModeHCashBetService.IsWinningRecord(record))\n", "            if (record.payout > 0)\n"),
+        ("group", "card.Subtitle = L10n.T(\"净赚 \", \"Net \") + FormatSignedMoney(net);",
+         "card.Subtitle = L10n.T(\"净赚 \", \"Net \") + FormatMoney(Math.Abs(net));"),
+        ("slider", "slider.wholeNumbers = true;", "slider.wholeNumbers = false;"),
         ("service", "Math.Max(table, observed)", "Math.Min(table, observed)"),
         ("config", "CashBetHouseCutPermille = 80;", "CashBetHouseCutPermille = 0;"),
         # 表里的胜率偏低（赔多了）离线证明不了——公式对任何表都保证按表算是亏的，偏差只能靠实机分档统计与自动校准；
@@ -348,12 +401,12 @@ def main():
         ("group", "            if (CarriedGroupBet() != null) return;", ""),
         ("group", "if (left > 0 && carried == null)", "if (left > 0)"),
         ("group", "            if (!IsGroupBetSideLocked(carried))\n", "            if (true)\n"),
-        ("group", "FormatPayoutMultiplier(carried != null ? carried.odds : ResolveGroupOdds(_groupBetOnRed))",
+        ("group", "carried != null ? FormatPayoutMultiplier(carried) : FormatPayoutMultiplier(ResolveGroupOdds(_groupBetOnRed))",
          "FormatPayoutMultiplier(ResolveGroupOdds(_groupBetOnRed))"),
-        ("bet", "out failure,\n                    LockedGroupBetSide()))\n            {\n                NoteCashBetSkipped(failure ==",
-         "out failure))\n            {\n                NoteCashBetSkipped(failure =="),
-        ("service", "                candidate.betSide = NormalizeBetSide(betSide);\n                candidate.status = StatusReserved;\n                candidate.payout = 0;\n                candidate.kind = KindCash;",
-         "                candidate.status = StatusReserved;\n                candidate.payout = 0;\n                candidate.kind = KindCash;"),
+        ("bet", "odds, amount, out failure,\n                    LockedGroupBetSide()))",
+         "odds, amount, out failure))"),
+        ("service", "                candidate.betSide = NormalizeBetSide(betSide);\n                candidate.status = StatusReserved;\n                candidate.payout = 0;\n                candidate.settlementResult = 0;\n                candidate.kind = KindCash;",
+         "                candidate.status = StatusReserved;\n                candidate.payout = 0;\n                candidate.settlementResult = 0;\n                candidate.kind = KindCash;"),
         ("service", 'if (root.TryGetInt("betSide", out value)) record.betSide = NormalizeBetSide(value);', ""),
         ("service", "                AccumulateRunNet(candidate, previous, gross);\n", ""),
         ("bet", "                        net = current.runNet;\n", ""),

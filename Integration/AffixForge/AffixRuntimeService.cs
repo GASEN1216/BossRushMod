@@ -7,11 +7,12 @@
 //   具体效果实现在同名 partial 文件 AffixRuntimeService_Effects.cs。
 //
 // 硬约束（AGENTS 4.6 / 4.12 + docs/architecture/事件订阅生命周期约定.md）：
-//   1. 只订这 6 个既有静态事件，零新增 Harmony patch、零新增反射绑定策略：
+//   1. 只订既有静态事件，零新增 Harmony patch、零新增反射绑定策略：
 //        结构事件（EnsureRuntime 时一次性挂上）
 //          CharacterMainControl.OnMainCharacterChangeHoldItemAgentEvent
 //          CharacterMainControl.OnMainCharacterSlotContentChangedEvent
 //          LevelManager.OnAfterLevelInitialized
+//          ItemUIUtilities.OnSelectionChanged（只更新选中物品的显示名，不激活效果）
 //        战斗事件（按 context 动态增删）
 //          Health.OnHurt / Health.OnDead / ItemAgent_Gun.OnMainCharacterShootEvent
 //      全部用【命名静态方法】订阅，禁止 lambda，每组配一个私有 bool 幂等守卫。
@@ -267,6 +268,7 @@ namespace BossRush
                 CharacterMainControl.OnMainCharacterChangeHoldItemAgentEvent += OnMainCharacterHoldItemChanged;
                 CharacterMainControl.OnMainCharacterSlotContentChangedEvent += OnMainCharacterSlotChanged;
                 LevelManager.OnAfterLevelInitialized += OnAfterLevelInitializedRebuild;
+                Duckov.UI.ItemUIUtilities.OnSelectionChanged += OnItemSelectionChanged;
                 _structuralSubscribed = true;
             }
             catch (Exception e)
@@ -287,6 +289,7 @@ namespace BossRush
                 CharacterMainControl.OnMainCharacterChangeHoldItemAgentEvent -= OnMainCharacterHoldItemChanged;
                 CharacterMainControl.OnMainCharacterSlotContentChangedEvent -= OnMainCharacterSlotChanged;
                 LevelManager.OnAfterLevelInitialized -= OnAfterLevelInitializedRebuild;
+                Duckov.UI.ItemUIUtilities.OnSelectionChanged -= OnItemSelectionChanged;
             }
             catch (Exception e)
             {
@@ -295,6 +298,12 @@ namespace BossRush
             }
 
             _structuralSubscribed = false;
+        }
+
+        /// <summary>官方选物事件只更新显示 KV，不收集背包物品为战斗 context。</summary>
+        private static void OnItemSelectionChanged()
+        {
+            AffixItemData.RefreshDisplayNames(Duckov.UI.ItemUIUtilities.SelectedItem);
         }
 
         /// <summary>手持物品变化。官方只在 IsMainCharacter 时才发此事件。</summary>

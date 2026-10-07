@@ -129,7 +129,8 @@ namespace BossRush
                 var ai = character.GetComponentInChildren<AICharacterController>();
                 if (ai != null)
                 {
-                    bool bloodhoundActive = MutatorManager.HasActiveMutator("enemy_bloodhound");
+                    bool bloodhoundActive = MutatorManager.HasActiveMutator("enemy_bloodhound")
+                        && (isModeFRun || runtimeFaction != modeEPlayerFaction);
                     ai.forceTracePlayerDistance = bloodhoundActive ? 99999f : 0f;
                     if (bloodhoundActive)
                     {

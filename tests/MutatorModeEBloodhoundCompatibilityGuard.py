@@ -1,5 +1,6 @@
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
 SOURCE = Path("ModeE/ModeEBattle.cs")
@@ -11,7 +12,7 @@ def fail(message: str) -> int:
 
 
 def main() -> int:
-    text = SOURCE.read_text(encoding="utf-8", errors="ignore")
+    text = clean_source(SOURCE.read_text(encoding="utf-8", errors="ignore"))
 
     marker = "var ai = character.GetComponentInChildren<AICharacterController>();"
     start = text.find(marker)
@@ -22,6 +23,7 @@ def main() -> int:
 
     required = [
         'MutatorManager.HasActiveMutator("enemy_bloodhound")',
+        "&& (isModeFRun || runtimeFaction != modeEPlayerFaction);",
         "ai.forceTracePlayerDistance = bloodhoundActive ? 99999f : 0f;",
         "ai.noticed = true;",
     ]

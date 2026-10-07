@@ -1,5 +1,6 @@
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
@@ -162,7 +163,7 @@ def main() -> int:
         "BossRush_ZombieMode_Reward_RestApply",
         "restEditorExpanded",
         "RestDurationSlider",
-        "slider.wholeNumbers = true;",
+        'BossRushUISlider.Create("RestDurationSlider", restPanel.transform,',
         "pendingRestSeconds",
         "UpdatePendingRestDurationText",
         # 面板用稳定的参考宽度（不拿物理像素当参考坐标）；2026-09-23 拆文件后是类常量 PanelWidth。
@@ -174,6 +175,10 @@ def main() -> int:
 
     if "GridLayoutGroup restLayout" in rewards:
         return fail("ZombieModeRewardCatalogGuard: rest editor regressed to the oversized 20-button grid")
+
+    slider = clean_source(Path("Common/UI/BossRushUISlider.cs").read_text(encoding="utf-8"))
+    if "slider.wholeNumbers = true;" not in slider:
+        return fail("ZombieModeRewardCatalogGuard: shared slider must preserve whole-number steps")
 
     if "ZombieMode\\ZombieModeNpcCatalog.cs" not in compile_text:
         return fail("ZombieModeRewardCatalogGuard: missing NPC catalog compile entry")

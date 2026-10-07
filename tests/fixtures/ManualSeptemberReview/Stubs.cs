@@ -194,22 +194,25 @@ namespace BossRush
     static class MapPointSceneResolver { public static string Active="sub"; public static string Resolve() { return Active; } }
     enum PetNestPetState { InNest,Deployed,Downed,OnExpedition }
     class PetNestTalentEntry { public string statKey; public bool percentage; public float value; }
-    class PetNestPetRecord { public string id,lineageKey; public int state,level; public List<PetNestTalentEntry> talents; }
+    class PetNestPetRecord { public string id,lineageKey; public int state,level,exp,careerCount; public List<PetNestTalentEntry> talents; }
     static class PetNestService
     {
         public static PetNestPetRecord DeployedPet;
-        public static PetNestPetRecord TryGetPet(string id) { return DeployedPet; }
+        public static PetNestPetRecord TryGetPet(string id) { return DeployedPet!=null && DeployedPet.id==id ? DeployedPet : null; }
         public static string GetPetDisplayName(PetNestPetRecord p) { return p.id; }
         public static void StageCommit() { }
+        public static List<PetNestPetRecord> Pets { get { return new List<PetNestPetRecord> { DeployedPet }; } }
+        public static bool Commit(out string reason) { reason=null;return true; }
+        public static void RestoreDownedPetsOnReturnToBase() { }
     }
-    static class PetNestCompanionAgent { public static bool IsCompanionHealth(Health h) { return h.IsCompanion; } public static bool IsCompanionCharacter(CharacterMainControl c) { return c.IsCompanion; } }
+    class PetNestCompanionAgent { public CharacterMainControl Master; public static bool IsCompanionHealth(Health h) { return h.IsCompanion; } public static bool IsCompanionCharacter(CharacterMainControl c) { return c.IsCompanion; } }
     class PetNestLineageInfo { public float ModelScale; public string DisplayName="lineage"; public string LineageKey="boss"; }
     static class PetNestLineageCatalog
     {
         public static IList<PetNestLineageInfo> All=new List<PetNestLineageInfo>();
         public static bool TryGet(string key,out PetNestLineageInfo info) { info=new PetNestLineageInfo();return true; }
     }
-    class PetNestCompanionHandle { public CharacterMainControl Character; public bool Activated; public int Cleanups; }
+    class PetNestCompanionHandle { public CharacterMainControl Character; public PetNestCompanionAgent Agent; public bool Activated, AllowCombat; public int Cleanups; }
     static class PetNestCompanionSpawner
     {
         internal static void RefreshProgression(PetNestCompanionHandle handle, PetNestPetRecord pet) { }
@@ -219,11 +222,11 @@ namespace BossRush
         public static CharacterRandomPreset ResolveCompanionSourcePreset(string s) { return new CharacterRandomPreset(); }
         public static Cysharp.Threading.Tasks.UniTask<PetNestCompanionHandle> CreateIsolatedAsync(CharacterRandomPreset s,string key,float scale,Vector3 p)
         { var t=new TaskCompletionSource<PetNestCompanionHandle>(); Requests.Enqueue(t); return new Cysharp.Threading.Tasks.UniTask<PetNestCompanionHandle> { Task=t.Task }; }
-        public static bool TryActivate(PetNestCompanionHandle h,Vector3 pos,CharacterMainControl p,ModBehaviour o,PetNestPetRecord pet,out string reason)
-        { reason=null;h.Activated=true;Activated++;return true; }
+        public static bool TryActivate(PetNestCompanionHandle h,Vector3 pos,CharacterMainControl p,ModBehaviour o,PetNestPetRecord pet,out string reason,bool allowCombat=true)
+        { reason=null;h.Agent=new PetNestCompanionAgent { Master=p };h.AllowCombat=allowCombat;h.Activated=true;Activated++;return true; }
         public static void CleanupOnce(PetNestCompanionHandle h) { if(h==null)return;h.Cleanups++;h.Activated=false;if(h.Character!=null)h.Character.Destroyed=true;h.Character=null; }
     }
-    static class PetNestTuning { public const int MaxBaseIdleCompanions=3,CompanionPetCapacityBonus=1,PetLevelsPerCapacityBonus=3; public const float BaseIdleSpawnIntervalSeconds=.1f; }
+    static class PetNestTuning { public const int MaxBaseIdleCompanions=3,CompanionPetCapacityBonus=1,PetLevelsPerCapacityBonus=3,PetMaxLevel=10,PetExpPerLevel=100,PetExpHomecoming=20; public const float BaseIdleSpawnIntervalSeconds=.1f; }
     static class PetNestModeGate { public const string ReasonQueryFailed="query"; public static bool Allowed=true; public static bool IsCompanionAllowed(ModBehaviour o,out string reason) { reason=null;return Allowed; } }
     static class PetNestLocalization { public static string DescribeFailure(string s) { return s; } }
     static class PetNestDownedHandler
@@ -232,8 +235,9 @@ namespace BossRush
         public static void EnsureHurtSubscribed() { }
         public static void ShutdownHurtSubscription() { }
         public static void CancelPendingDowned() { PendingCancellations++; }
+        public static void Tick() { }
     }
-    static class PetNestProgressionService { public static void EnsureKillTrackingSubscribed() { } public static void ShutdownKillTracking() { } }
+    static partial class PetNestProgressionService { public static void EnsureKillTrackingSubscribed() { } public static void ShutdownKillTracking() { } public static void ClearSceneKillDedup() { } private static void ResetRunKillBudget() { } }
     static class PetNestCompanionHudView { public static void EnsureCreated() { } public static void Destroy() { } }
     class PetNestPersonality { public int ExtraPetCapacity; public static PetNestPersonality Resolve(PetNestPetRecord p) { return new PetNestPersonality(); } }
     static class PetNestPersistenceAccess { public static bool BeginTransaction(out string reason) { reason=null;return true; } public static void AbortTransaction() { } }
@@ -271,7 +275,7 @@ namespace BossRush
         void CloseByPlayer() { Closed++; }
         public static int Music,Closed;
         static void SetText(Label t,string s) { t.text=s; }
-        static void Stop() { Closed++; }
+        public static void Stop() { Closed++; }
         void StopCoroutine(Coroutine c) { }
         string BuildResultTitle() { return "name"; }
         string BuildDetailText() { return "personality + talents + chroma"; }
@@ -284,6 +288,10 @@ namespace BossRush
     static class PetNestExpeditionService
     {
         public static int Revealed;
+        public static bool HasPendingRewardDebt { get { return false; } }
+        public static void ReconcileOrphanedExpeditionLocks() { }
+        public static void SettleDueExpeditions() { }
+        public static void TryGrantPendingRewards() { }
         public static bool MarkRevealed(PetNestExpeditionRecord record, out string reason) { reason = null; Revealed++; return true; }
     }
     partial class PetNestExpeditionRevealView
@@ -302,7 +310,8 @@ namespace BossRush
         static void SetText(Label target, string text) { target.text = text; }
         static string BuildCardTitle(PetNestExpeditionRecord record) { return record.id; }
         static string BuildCardDetail(PetNestExpeditionRecord record) { return "result"; }
-        static void Stop() { Closed++; }
+        public static void Stop() { Closed++; }
+        public static void PlayPending() { }
         public bool HasDetail { get { return !string.IsNullOrEmpty(_detailText.text); } }
         public IEnumerator Play() { return PlayRoutine(); }
         // 汇总屏与收尾是纯表现（收牌、写汇总、按钮变「关闭」），这里只记下走了哪条路

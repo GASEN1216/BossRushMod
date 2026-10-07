@@ -796,7 +796,6 @@ namespace BossRush
         /// </summary>
         internal void RegisterDragonKingPreset()
         {
-            if (dragonKingRegistered) return;
             if (!HasArenaEnemyPresetCatalog) return;
             
             // 检查是否已存在

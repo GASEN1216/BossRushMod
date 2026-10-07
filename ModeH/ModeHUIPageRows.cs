@@ -29,6 +29,10 @@ namespace BossRush
         public string Caption;
         /// <summary>true 排在页头下面，false 排在动作带上方。</summary>
         public bool AtTop;
+        public int SliderMaximum;
+        public int SliderValue;
+        public Action<int> OnSliderChanged;
+        public Func<string> SliderCaption;
     }
 
     internal static partial class ModeHUIPages
@@ -99,7 +103,8 @@ namespace BossRush
 
         private static float GetOptionRowHeight(ModeHOptionRow row)
         {
-            return OptionPillHeight + (string.IsNullOrEmpty(row.Caption) ? 0f : OptionCaptionHeight + 4f);
+            return OptionPillHeight + (string.IsNullOrEmpty(row.Caption) ? 0f : OptionCaptionHeight + 4f)
+                + (row.OnSliderChanged != null ? 70f : 0f);
         }
 
         /// <summary>一排：[标签] [分段…] 整体居中；说明行在下面居中。</summary>
@@ -173,6 +178,26 @@ namespace BossRush
                 rect.sizeDelta = new Vector2(widths[i] * scale, OptionPillHeight);
                 rect.anchoredPosition = new Vector2(x, 0f);
                 x += (widths[i] + OptionPillGap) * scale;
+            }
+
+            if (row.OnSliderChanged != null)
+            {
+                TextMeshProUGUI readout = ZombieModeUIHelper.CreateText("SliderValue", host,
+                    row.SliderCaption != null ? row.SliderCaption() : string.Empty, 16f,
+                    new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -OptionPillHeight - 52f),
+                    new Vector2(width, 26f), TextAlignmentOptions.Center, BossRushUIColors.TextPrimary);
+                BossRushUI.ApplyGameFont(readout);
+                readout.enableAutoSizing = true;
+                readout.fontSizeMin = 12f;
+                readout.fontSizeMax = 16f;
+                readout.enableWordWrapping = false;
+                BossRushUISlider.Create("ModeH_OptionSlider", host, new Vector2(0.5f, 1f),
+                    new Vector2(0f, -OptionPillHeight - 18f), Mathf.Min(560f, width - 48f),
+                    0, row.SliderMaximum, row.SliderValue, delegate(float value)
+                    {
+                        row.OnSliderChanged(Mathf.RoundToInt(value));
+                        if (readout != null && row.SliderCaption != null) readout.text = row.SliderCaption();
+                    });
             }
 
             if (string.IsNullOrEmpty(row.Caption)) return;

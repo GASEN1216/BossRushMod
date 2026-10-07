@@ -636,7 +636,7 @@ namespace BossRush
 
             if (row.NameText != null)
             {
-                row.NameText.text = AffixDefinitions.GetDisplayName(view.AffixId);
+                row.NameText.text = AffixDefinitions.GetDisplayName(view.AffixId, view.Tier);
                 row.NameText.color = GetRarityColor(definition.Rarity);
             }
 
@@ -1127,7 +1127,7 @@ namespace BossRush
             BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
             {
                 Title = L10n.T("解锁这条词缀？", "Unlock this affix?"),
-                Target = AffixDefinitions.GetDisplayName(view.AffixId),
+                Target = AffixDefinitions.GetDisplayName(view.AffixId, view.Tier),
                 Body = L10n.T("解锁后，下次「随机词缀」会把它一起重抽。",
                     "Once unlocked, the next Reroll Affixes rerolls it too."),
                 Warning = string.Format(L10n.T("锁定时花的 {0} 颗词缀熔石不退，想再锁要重新付。",

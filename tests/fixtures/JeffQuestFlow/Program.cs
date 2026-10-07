@@ -262,6 +262,27 @@ internal static class Program
             Check(quest.Tasks.All(t=>t.IsFinished()) && quest.Tasks.All(t=>t.Description.Contains("(done)") || t.Description.Contains("(handed in)")),"completed chapter stays complete after base objects disappear "+id);
         }
     }
+    private static void UnavailableCampaignFactsDoNotEraseProjection()
+    {
+        foreach(bool readFailure in new[]{true,false})
+        {
+            Reset();
+            const int id=590101;
+            CampaignProgressService.States["ch1"]=CampaignChapterState.Available;
+            manager.ActivateQuest(id,QuestGiverID.Jeff); Tick();
+            Quest accepted=Active(id);
+            Check(accepted!=null,"campaign projection exists before storage failure");
+            CampaignProgressService.States.Clear();
+            CampaignPersistence.HasWriteBarrier=readFailure;
+            CampaignPersistence.IsStoreFaulted=!readFailure;
+            Tick();
+            Check(Active(id)==accepted && !GameplayDataSettings.QuestCollection.Get(id).MeetsPrerequisit(),
+                "unavailable save facts neither erase the accepted quest nor offer chapter one");
+            CampaignProgressService.States["ch1"]=CampaignChapterState.ContractActive;
+            CampaignPersistence.HasWriteBarrier=CampaignPersistence.IsStoreFaulted=false; Tick();
+            Check(Active(id)==accepted,"recovered save facts keep the same official active quest");
+        }
+    }
     private sealed class OtherClient : IOfficialQuestClient
     {
         public string LogTag {get{return "test";}} public bool Ready{get;set;}=true; public int Slot{get{return SavesSystem.CurrentSlot;}}
@@ -313,5 +334,5 @@ internal static class Program
         core.Dispose(); Check(GameplayDataSettings.QuestCollection.Count==1 && foreign!=null,"cleanup retains foreign template");
         Check(manager.ActiveQuests.Count==0 && manager.HistoryQuests.Count==0,"cleanup removes all owned projections");
     }
-    public static void Main(string[] args) { OfficialAssemblyContract.Run(args[0]); AllGuides(); GatedGuidesDoNotBlockChain(); AcceptFailureIsVisibleAndRetryable(); Chapters(); RewardsAndSubmissions(); SharedOwnership(); Console.WriteLine("JeffQuestFlow: PASS "+checks+" assertions"); }
+    public static void Main(string[] args) { OfficialAssemblyContract.Run(args[0]); AllGuides(); GatedGuidesDoNotBlockChain(); AcceptFailureIsVisibleAndRetryable(); Chapters(); RewardsAndSubmissions(); UnavailableCampaignFactsDoNotEraseProjection(); SharedOwnership(); Console.WriteLine("JeffQuestFlow: PASS "+checks+" assertions"); }
 }

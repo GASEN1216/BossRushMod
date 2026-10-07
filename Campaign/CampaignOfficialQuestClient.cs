@@ -100,7 +100,8 @@ namespace BossRush
         {
             get
             {
-                try { return _module != null && _module.IsBootstrapped && _module.IsEnabled && CampaignPersistence.Current != null; }
+                try { return _module != null && _module.IsBootstrapped && _module.IsEnabled && CampaignPersistence.Current != null
+                    && !CampaignPersistence.HasWriteBarrier && !CampaignPersistence.IsStoreFaulted; }
                 catch (Exception) { return false; }
             }
         }

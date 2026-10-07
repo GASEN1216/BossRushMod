@@ -58,13 +58,23 @@ def main():
     code = 'using System; namespace BossRush { internal static class PreparedOdds {\n'
     code += member(odds.read_text(encoding='utf-8-sig'), 'internal static int ComputePreparedPowerEdge(') + '\n}}'
     (OUT / 'PreparedOdds.cs').write_text(code, encoding='utf-8')
-    files = linked + [OUT / 'PreparedOdds.cs', OUT / 'Reveal.cs', OUT / 'ExpeditionReveal.cs', OUT / 'Combat.cs', HERE / 'Program.cs', HERE / 'Stubs.cs']
+    module = ROOT / 'PetNest/PetNestRuntimeModule.cs'
+    progression = ROOT / 'PetNest/PetNestProgressionService.cs'
+    code = 'using System; using System.Collections.Generic; namespace BossRush { partial class PetNestRuntimeModule {\n'
+    code += '\n'.join(member(module.read_text(encoding='utf-8-sig'), signature) for signature in (
+        'public override void OnSceneLoaded(', 'public override void OnUpdate(',
+        'private void TickBaseMaintenance()', 'private static bool IsBaseScene()'))
+    code += '\n} static partial class PetNestProgressionService {\n'
+    code += '\n'.join(member(progression.read_text(encoding='utf-8-sig'), signature) for signature in (
+        'internal static void AddExp(', 'internal static void SettleRunHomecoming(')) + '\n}}'
+    (OUT / 'ModuleHomecoming.cs').write_text(code, encoding='utf-8')
+    files = linked + [OUT / 'ModuleHomecoming.cs', OUT / 'PreparedOdds.cs', OUT / 'Reveal.cs', OUT / 'ExpeditionReveal.cs', OUT / 'Combat.cs', HERE / 'Program.cs', HERE / 'Stubs.cs', HERE / 'HomecomingStubs.cs']
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649;0169;0414</NoWarn></PropertyGroup><ItemGroup>'
     project += ''.join('<Compile Include="' + escape(str(p), {'"': '&quot;'}) + '" />' for p in files)
     project += '</ItemGroup></Project>'
     (OUT / 'Regression.csproj').write_text(project, encoding='utf-8')
     (OUT / 'sources.json').write_text(json.dumps({str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
-        for p in linked + [source, expedition, combat, odds]}, indent=2), encoding='utf-8')
+        for p in linked + [source, expedition, combat, odds, module, progression]}, indent=2), encoding='utf-8')
     return subprocess.call(['dotnet', 'run', '--project', str(OUT / 'Regression.csproj'),
         '--configuration', 'Release', '--', str(OUT / 'maps.json')], cwd=ROOT)
 

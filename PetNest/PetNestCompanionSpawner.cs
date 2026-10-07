@@ -430,7 +430,8 @@ namespace BossRush
             CharacterMainControl master,
             ModBehaviour owner,
             PetNestPetRecord pet,
-            out string failureReasonId)
+            out string failureReasonId,
+            bool allowCombat = true)
         {
             failureReasonId = null;
             if (handle == null || handle.Character == null)
@@ -473,7 +474,16 @@ namespace BossRush
 
                 PetNestPersonalityProfile personality = PetNestPersonality.Resolve(pet);
 
-                AICharacterController ai = handle.Character.GetComponentInChildren<AICharacterController>();
+                // staging 角色根处于 inactive；必须包含未激活子物体，才能在显示前真正停用/清理 AI。
+                AICharacterController ai = handle.Character.GetComponentInChildren<AICharacterController>(true);
+                if (!allowCombat && ai != null)
+                {
+                    // 官方 Init 把整套 AI / 行为树放在角色子物体；基地停用整棵子树，
+                    // 仅清 searchedEnemy 或禁用 controller 仍会被独立行为树重新索敌。
+                    if (ai.gameObject == handle.Character.gameObject)
+                        throw new InvalidOperationException("Companion AI must be a child object");
+                    ai.gameObject.SetActive(false);
+                }
                 if (ai != null)
                 {
                     // 原版 spawner 路径会把 forceTracePlayerDistance 写成 9999f，
@@ -500,7 +510,14 @@ namespace BossRush
                 }
 
                 ApplyModelScale(handle);
-                agent.Bind(handle.Character, master);
+                agent.Bind(handle.Character, master, allowCombat);
+                if (!allowCombat)
+                {
+                    // 复用已有的官方 A* 非战斗跟随，不扫描商人、不改其它角色阵营。
+                    DuckNpcMovement movement = handle.Character.gameObject.AddComponent<DuckNpcMovement>();
+                    if (movement.Bind(handle.Character, spawnPos, 2f) && master != null)
+                        movement.EnablePlayerFollow(master.transform);
+                }
                 // 炫彩 / 异色光环：只有真的带色的崽才会创建对象（AGENTS 4.12）
                 AttachChromaAura(handle, pet);
                 PetNestBackpack.Attach(handle.Character, pet);

@@ -20,6 +20,7 @@ CONFIG_KEYS = [
     "_LootBoxBlocksBullets",
     "_InfiniteHellBossesPerWave",
     "_BossStatMultiplier",
+    "_BossHealthPercent",
     "_milestoneRestBonusSeconds",
     "_EnableDragonDash",
     "_UseWolfModelForWildHorn",

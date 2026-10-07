@@ -10,7 +10,7 @@ internal static class Program
     {
         Probe.Trace.Clear(); Assert(Probe.Yields.Count==0,"Previous asynchronous wait must be drained");
         UnityEngine.AI.NavMesh.Reset(); AstarPath.active=null;
-        CharacterMainControl.Main=new CharacterMainControl("player") { Team=Teams.player };
+        CharacterMainControl.Main=new CharacterMainControl("player") { Team=Teams.player, IsMainCharacter=true };
         host=new ModBehaviour(); state=new ZombieModeRunState(); return new ZombieModeRuntimeModule(host,state);
     }
     private static void Flags(SpawnRequest request,bool boss)
@@ -69,6 +69,7 @@ internal static class Program
         module.Paused=false; Probe.Frame(); request=host.Requests.Dequeue(); Probe.Trace.Clear();
         var boss=new CharacterMainControl("boss"); request.Complete(boss);
         Assert(task.Result==boss && state.LivingZombieCount==1 && state.LivingNormalZombieCount==0,"Boss success must update only the total living count");
+        Assert(boss.AI.forceTracePlayerDistance==ZombieModeTuning.NormalZombieForceTraceDistance,"Boss tracking uses the same range as the surrounding zombies");
         Assert(string.Join(",",Probe.Trace)=="boss-points,register:0:0,sanitize,team:scav,team:wolf,heal,target,boss-tuning,clock,clock,boss-runtime:1,safe:1,anchor","Boss lifecycle/configuration/ejection order changed");
         var instance=state.CurrentWaveBossInstances.Single();
         Assert(instance.Lifecycle.Alive && instance.Character==boss && instance.Lifecycle.LastReachableTime==12 && instance.Lifecycle.LastHurtTime==12,"Boss lifecycle must be initialized before runtime registration");
@@ -121,5 +122,34 @@ internal static class Program
         module.DealZombieModeAreaDamageToPlayer(1,source,Vector3.zero,4,4);
         Assert(receiver.Calls==2 && receiver.Last.buff==null && receiver.Last.buffChance==0,"Non-poison areas must retain their original damage without adding poison");
     }
-    public static void Main() { NormalOrder(); GateAndSlot(); PauseRetry(); BossOrder(); NavigationAndPoison(); Console.WriteLine("PASS ZombieModeSpawnRuntime"); }
+    private static void BossSpawnNearPlayer()
+    {
+        ModBehaviour host; ZombieModeRunState state; var module=New(out host,out state);
+        state.SpawnPoints.Add(new ZombieModeSpawnPoint { Position=new Vector3(400,0,0) });
+        state.SpawnPoints.Add(new ZombieModeSpawnPoint { Position=new Vector3(25,0,0) });
+        Assert(module.GetZombieModeBossSpawnPosition(0).x==25,"Boss prefers the nearest reachable map point instead of a remote point by index");
+        var firstBoss=new CharacterMainControl("first boss"); firstBoss.transform.position=new Vector3(25,0,0);
+        state.CurrentWaveBossInstances.Add(new ZombieModeBossInstance { Character=firstBoss });
+        module.VirtualSpawnAvailable=true; module.VirtualSpawnPosition=new Vector3(-24,0,0);
+        Assert(module.GetZombieModeBossSpawnPosition(1).x==-24,"Crowded boss point spreads using the existing reachable player ring");
+        module.VirtualSpawnAvailable=false;
+        Assert(module.GetZombieModeBossSpawnPosition(1).x==25,"Unavailable spread ring retains a reachable spawn instead of skipping the boss");
+    }
+    private static void CompanionIsolationAndKills()
+    {
+        ModBehaviour host; ZombieModeRunState state; var module=New(out host,out state);
+        var companion=new CharacterMainControl("companion") { Team=Teams.wolf,IsCompanion=true };
+        Assert(module.PreserveDuringIsolation(companion),"pet identity survives original-character isolation even before its owner faction synchronizes");
+        var unrelated=new CharacterMainControl("unrelated") { Team=Teams.wolf };
+        Assert(!module.PreserveDuringIsolation(unrelated),"hostile original character is still isolated");
+        state.LivingZombieCount=2;state.LivingNormalZombieCount=1;state.CurrentWaveKillTarget=1;
+        module.Kill(companion.Health,unrelated);
+        Assert(state.LivingZombieCount==2 && state.CurrentWaveKills==0 && module.DeathStarPoints==0,"companion death cannot consume enemy count or produce purification points");
+        module.TrackDeathCase(unrelated);module.Kill(unrelated.Health,companion);module.Kill(unrelated.Health,companion);
+        Assert(state.LivingZombieCount==1 && state.LivingNormalZombieCount==0 && state.CurrentWaveKills==1 && module.DeathStarPoints==1 && module.CompletedWaves==1,"pet kill advances a normal wave exactly once through its registered victim");
+        var boss=new CharacterMainControl("boss");state.CurrentWaveBossesRemaining=1;state.CurrentWaveKillTarget=0;
+        module.TrackDeathCase(boss,true);module.Kill(boss.Health,companion);module.Kill(boss.Health,companion);
+        Assert(state.LivingZombieCount==0 && state.CurrentWaveBossesRemaining==0 && state.CurrentWaveKills==1 && module.CompletedWaves==2,"pet boss kill resolves boss count exactly once without becoming a normal kill");
+    }
+    public static void Main() { NormalOrder(); GateAndSlot(); PauseRetry(); BossOrder(); NavigationAndPoison(); BossSpawnNearPlayer(); CompanionIsolationAndKills(); Console.WriteLine("PASS ZombieModeSpawnRuntime"); }
 }

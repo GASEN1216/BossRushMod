@@ -2,6 +2,12 @@
 
 通过 `python tools/run_runtime_regressions.py --filter ManualSeptemberReview` 执行。
 
+2026-10-06：生产基地 / 出击生成入口继续直接链接，激活替身在调用当刻记录 `allowCombat`，断言基地显式禁战、出击默认允许战斗；行为树与跟随表现由实际游戏验证。
+
+同轮携崽范围修订：覆盖超过 90 秒的加载仍保留入场机会、玩家死亡取消在途角色、替换主角拒绝旧请求、已入场后 H 接管与主角替换立即回收。真实激活和 AI 子树另由 PetNestCompanionActivation 验证；本夹具不会把激活替身当作战斗证据。
+
+同日独立复审：增加真实 `PetNestRuntimeModule.OnUpdate` / `OnSceneLoaded` / `TickBaseMaintenance` 与 `PetNestProgressionService.SettleRunHomecoming` / `AddExp`。顺序为成功出战 → 加载已开始但仍在旧关卡 Update → 角色被立即清理 → 基地未初始化 → 基地就绪后结算；核对实际经验与生涯次数，并再次维护确认不重复。旧实现先清 ActiveCompanionPetId，实跑在归巢经验断言转红；修复只在既有 Update 清理前保存归巢身份。`HomecomingStubs.cs` 仅替代无关基地业务，存储事务边界不在这个用例内，另由 ContentTransactions 覆盖。相关前后日志为 `Build/runtime-regressions/PetNestHomecoming-before.log` / `PetNestHomecoming-after.log`。
+
 2026-09-28 同步：生产随从已使用独立背包，生成仍等待 LevelInited / AfterInit / 切图结束及主角物品就绪，但不再等待官方 PetInventory。回归钉住官方宠物背包缺席时仍可生成，并以调用计数验证 CleanupOnce 会取消旧角色的待处理重伤事件。下方官方容量桥测试继续覆盖保留的 Dev 探针，不再表示生产背包实现；独立物品树与保存事务由 ContentTransactions 覆盖。
 
 2026-09-23 复查增补：直接链接 `PetNestPetProxyBridge.cs`，不再用空的容量桥替身。覆盖官方关卡和安全箱就绪前不得生成随从、官方背包即时从 2 格扩为 6 格、重复调用不叠加、按真实属性回收溢出、清理不误改尚存的新场景背包，以及旧 Unity 对象销毁后等待安全箱快照加载并恢复越界物品。Stat、Inventory、反射字段由宿主替身模拟；字段名、官方属性和 `SetCapacity` 行为已对照 `鸭科夫源码/`，实际游戏界面的格子与存档恢复仍待 L3。

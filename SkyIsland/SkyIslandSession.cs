@@ -273,6 +273,10 @@ namespace BossRush
             MeshFilter filter = nav.GetComponent<MeshFilter>();
             if (filter == null) throw new InvalidOperationException("天空岛导航网格缺失");
             navigation = new ArenaPrototypeNavigation();
+            // 其它关卡组件可能仍在扫描共享 A*；它结束后再接专属图，不能把短暂 busy 当装配失败返航。
+            deadline = Time.realtimeSinceStartup + 30;
+            while (global::AstarPath.active != null && global::AstarPath.active.isScanning && Time.realtimeSinceStartup < deadline)
+                yield return null;
             scan = navigation.BeginScan(filter.sharedMesh, origin);
             deadline = Time.realtimeSinceStartup + 30;
             while (scan.MoveNext())
@@ -332,7 +336,7 @@ namespace BossRush
             ambience = new SkyIslandAmbience(root);
             ambience.ApplyStory(story.Current);
             encounters = new SkyIslandEncounters(root, player, navigation.Mask, groundMask, content, IsSessionValid,
-                EncounterWasSaved, OnEncounterCleared, Status, EncounterLabel, OnStormDefeated);
+                EncounterWasSaved, OnEncounterCleared, Status, EncounterLabel, OnStormDefeated, host.GetBossHealthMultiplier);
             patrols = new SkyIslandPatrols(root, player, navigation.Mask, groundMask, origin, content, IsSessionValid, delegate { return story.Current; });
             raidSeed = unchecked(Environment.TickCount ^ (int)(Time.realtimeSinceStartup * 1000f));
             services = new SkyIslandServices(player, root, groundMask, raidSeed);
@@ -880,6 +884,8 @@ namespace BossRush
             // 存档把它们与已扣料的背包写进同一次落盘；等岛场景卸载再结算，中间强退会丢料不留记录（发版审查 A-02）。
             if (story != null) { if (moved) story.SettleRaidHeld(true); story.Tick(true); }
             lease.ReturnToBase(moved);
+            // 入岛场景从未出现时也不会收到它的 sceneUnloaded；返航已派发就交回租约收尾，避免不断重载基地。
+            if (!entryScene.IsValid() && lease.IsReturning) Cleanup("entry_cancelled");
         }
         private void CancelPendingInitialization()
         {

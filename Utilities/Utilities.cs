@@ -55,7 +55,8 @@ namespace BossRush
         /// </summary>
         /// <param name="character">目标角色</param>
         /// <param name="multiplier">倍率值（默认从 config.bossStatMultiplier 读取）</param>
-        private void ApplyBossStatMultiplier(CharacterMainControl character, float? multiplier = null)
-        { BossStatScaling.ApplyBossStatMultiplier(character, multiplier, config != null ? config.bossStatMultiplier : 1f); }
+        private void ApplyBossStatMultiplier(CharacterMainControl character, float? multiplier = null, bool isBoss = true)
+        { BossStatScaling.ApplyBossStatMultiplier(character, multiplier, config != null ? config.bossStatMultiplier : 1f,
+            multiplier.HasValue || !isBoss ? 1f : GetBossHealthMultiplier()); }
     }
 }

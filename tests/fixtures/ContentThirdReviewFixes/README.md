@@ -2,6 +2,8 @@
 
 运行：`python tools/run_runtime_regressions.py --filter ContentThirdReviewFixes`（需要 .NET 8 SDK）。
 
+2026-10-06：图鉴以真实 `CodexKillCollector` 验证龙皇 / 龙裔控制器优先于被第三方改写或删除的 preset，后续命中不重复做组件查询；计时和击杀仍归入自定义 Boss。控制器与 Unity GetComponent 为替身，此处不模拟第三方 Mod 的完整生成流程。
+
 覆盖 CR-2026-09-06-009、010、015。项目通过相对路径直接编译生产源码，C# 7.3；没有复制产品算法。日报链接完整 Service、Models、Codec、Tuning、SimpleJsonHelper 与共享 BossRushJsonValue，存储替身每次接收候选均经过真实编码再解码。旧档用没有扩展字段的 v1 JSON 字面量验证。
 
 - 日报：已知故障禁发物；预写故障、发后故障与恢复；断签、换期、同一期不同连续签到的同格位债务；原品质/seed/签到日/格位冻结；重载；Store 拒绝保持原状态；旧掩码已领不重复；零 seed 冻结；损坏欠奖拒收。

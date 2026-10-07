@@ -3,8 +3,8 @@
 PetNestModeGateGuard — 遗种巢随从进局的模式门控守卫（实施计划 步骤 6）。
 
 不变式：
-- 禁入名单成文且一刀切：Mode G、末日丧尸、Mode H 命中即拒，不做局内特判；
-- 允许名单：标准三档 / 竞技场 / Mode D / Mode E / Mode F；
+- 唯一禁入模式为 Mode H，所有其它已初始化游戏关卡均允许；
+- 基地使用独立非战斗闲逛 owner，不能再生成第二个战斗实体；
 - **只经公开只读门面判定**：不得引用 ModeG / ZombieMode / ModeH 的内部符号
   （ModeGRuntimeGates / ZombieModePhaseGuards / ModeHRuntimeGates / 各自 RunState /
   LifecyclePhase 等），只能用 ModBehaviour 上的 wrapper 与公开属性；
@@ -37,17 +37,11 @@ FORBIDDEN_INTERNAL_SYMBOLS = [
 ]
 
 REQUIRED_BANS = [
-    ("ModBehaviour.IsModeGRunInProgressSafe()", "Mode G 禁入"),
-    ("owner.IsZombieModeActive", "末日丧尸禁入"),
     ("ModBehaviour.IsModeHRunInProgressSafe()", "Mode H 禁入"),
 ]
 
 REQUIRED_ALLOWS = [
-    ("owner.IsActive", "标准档"),
-    ("owner.IsBossRushArenaActive", "竞技场"),
-    ("owner.IsModeDActive", "Mode D"),
-    ("owner.IsModeEActive", "Mode E"),
-    ("owner.IsModeFActive", "Mode F"),
+    ("LevelManager.Instance != null && !LevelManager.Instance.IsBaseLevel", "所有非基地游戏关卡"),
 ]
 
 
@@ -73,6 +67,9 @@ def main():
     for token, desc in REQUIRED_ALLOWS:
         if token not in code:
             errors.append("[允许] 缺少允许判定: " + desc + "（" + token + "）")
+    for forbidden in ("IsModeGRunInProgressSafe()", "owner.IsZombieModeActive", "LevelManager.Instance.IsRaidMap"):
+        if forbidden in code:
+            errors.append("[允许] 不得恢复旧模式或 Raid 白名单限制: " + forbidden)
 
     # 4. 禁入原因 id 成文
     for const in ["ReasonModeG", "ReasonZombie", "ReasonModeH",
@@ -81,8 +78,8 @@ def main():
             errors.append("[诊断] 缺少稳定原因常量: " + const)
 
     # 5. 禁入判定必须在允许名单之前（命中即拒，不做局内特判）
-    ban_pos = code.find("ModBehaviour.IsModeGRunInProgressSafe()")
-    allow_pos = code.find("bool allowed = owner.IsActive")
+    ban_pos = code.find("ModBehaviour.IsModeHRunInProgressSafe()")
+    allow_pos = code.find("bool allowed = LevelManager.Instance != null && !LevelManager.Instance.IsBaseLevel;")
     if ban_pos < 0 or allow_pos < 0:
         errors.append("[顺序] 无法定位禁入名单与允许名单")
     elif ban_pos > allow_pos:

@@ -550,7 +550,7 @@ namespace BossRush
                         boss.gameObject.name = "ZombieMode_Boss_" + kind.ToString() + "_Run" + runId;
                         ZombieModeEnemyRuntimeMarker bossMarker = RegisterZombieModeEnemyRuntimeShell(runId, boss, true, kind, GetZombieModeBossPointValue(kind));
                         owner.SanitizeBossRushZombieSpawn(boss, "ZombieModeBoss");
-                        PrepareZombieModeSpawnedEnemy(boss, bossMarker, 180f);
+                        PrepareZombieModeSpawnedEnemy(boss, bossMarker, ZombieModeTuning.NormalZombieForceTraceDistance);
                         ApplyZombieModeBossTuning(boss, kind, bossMarker);
                         runState.LivingZombieCount++;
 
@@ -660,19 +660,9 @@ namespace BossRush
 
         internal Vector3 GetZombieModeBossSpawnPosition(int bossIndex)
         {
-            if (runState.SpawnPoints.Count <= 0)
-            {
-                return GetZombieModeSpawnPosition();
-            }
-
-            int index = Mathf.Abs(runState.CurrentWave + bossIndex) % runState.SpawnPoints.Count;
-            Vector3 candidate = runState.SpawnPoints[index].Position;
-            Vector3 resolvedCandidate;
-            if (!TryResolveZombieModeSpawnPoint(candidate, runState.SpawnPoints[index].VirtualPoint, out resolvedCandidate))
-            {
-                return GetZombieModeSpawnPosition();
-            }
-            candidate = resolvedCandidate;
+            // 与普通丧尸共用最近可达落点；按全图点位下标选会把 Boss 放到地图另一端，
+            // 超过强制追踪范围后官方索敌清空目标，巡逻位移又会反复刷新解卡计时。
+            Vector3 candidate = GetZombieModeSpawnPosition();
             for (int i = 0; i < runState.CurrentWaveBossInstances.Count; i++)
             {
                 ZombieModeBossInstance existing = runState.CurrentWaveBossInstances[i];
@@ -685,6 +675,10 @@ namespace BossRush
                 delta.y = 0f;
                 if (delta.sqrMagnitude < ZombieModeTuning.BossSpreadMinDistance * ZombieModeTuning.BossSpreadMinDistance)
                 {
+                    CharacterMainControl player = CharacterMainControl.Main;
+                    Vector3 spreadPosition;
+                    if (player != null && TryFindZombieModeVirtualSpawnAroundPlayer(player.transform.position, out spreadPosition))
+                        return spreadPosition;
                     return GetZombieModeSpawnPosition();
                 }
             }
@@ -713,7 +707,8 @@ namespace BossRush
             }
 
             BossKindTuning tuning = ZombieModeTuning.GetBossKind(kind);
-            float healthMultiplier = tuning.HealthMultiplier * GetZombieModeBossHealthScale(runState.CurrentWave);
+            float healthMultiplier = tuning.HealthMultiplier * GetZombieModeBossHealthScale(runState.CurrentWave)
+                * owner.GetBossHealthMultiplier();
             float damageMultiplier = tuning.DamageMultiplier * GetZombieModeBossDamageScale(runState.CurrentWave);
             float scaleMultiplier = tuning.ScaleMultiplier;
             float speedMultiplier = tuning.SpeedMultiplier;

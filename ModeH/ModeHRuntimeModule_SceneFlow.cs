@@ -244,6 +244,9 @@ namespace BossRush
                     || SceneManager.GetActiveScene().handle != scene.handle) return false;
                 MultiSceneCore core = MultiSceneCore.Instance;
                 if (core != null && core.IsLoading) return false;
+                // 官方关卡已初始化不代表当前导航扫描已结束；沿用入场超时等待，
+                // 避免把暂时不可查询的导航误判成整张地图没有安全擂台。
+                if (global::AstarPath.active == null || global::AstarPath.active.isScanning) return false;
                 CharacterMainControl player = CharacterMainControl.Main;
                 return player != null && player.Health != null && !player.Health.IsDead;
             }

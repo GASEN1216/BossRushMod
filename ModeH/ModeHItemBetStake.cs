@@ -80,7 +80,7 @@ namespace BossRush
             try
             {
                 long raw = item.GetTotalRawValue();
-                return raw <= 0 ? 0 : raw * ModeHConfig.ItemBetValuePermille / 1000;
+                return raw <= 0 ? 0 : (long)((decimal)raw * ModeHConfig.ItemBetValuePermille / 1000);
             }
             catch (Exception)
             {
@@ -279,7 +279,7 @@ namespace BossRush
             {
                 PruneSelection();
                 long sum = 0;
-                for (int i = 0; i < _selected.Count; i++) sum += ValueOf(_selected[i]);
+                for (int i = 0; i < _selected.Count; i++) sum = ModeHCashBetService.SaturatingAdd(sum, ValueOf(_selected[i]));
                 return sum;
             }
         }
@@ -393,7 +393,7 @@ namespace BossRush
                         Quality = QualityOf(item), Name = NameOf(item),
                     };
                     _locked.Add(entry);
-                    value += entry.Value;
+                    value = checked(value + entry.Value);
                     entries.Add(new ModeHItemBetEntry
                     {
                         TypeId = entry.TypeId, Count = entry.Count, Value = entry.Value, Quality = entry.Quality, Name = entry.Name,
@@ -470,7 +470,7 @@ namespace BossRush
                 catch (Exception) { present = false; }
                 if (!present)
                 {
-                    missing += entry.Value;
+                    missing = ModeHCashBetService.SaturatingAdd(missing, entry.Value);
                     continue;
                 }
                 int now = CountOf(item);
@@ -484,7 +484,7 @@ namespace BossRush
                     }
                     int left = IsOnPlayer(item, character) ? CountOf(item) : 0;
                     int removed = Math.Max(0, Math.Min(entry.Count, now - left));
-                    missing += entry.Value * (entry.Count - removed) / entry.Count;
+                    missing = ModeHCashBetService.SaturatingAdd(missing, (long)((decimal)entry.Value * (entry.Count - removed) / entry.Count));
                     continue;
                 }
 
@@ -497,12 +497,12 @@ namespace BossRush
                 }
                 if (IsOnPlayer(item, character))
                 {
-                    missing += entry.Value;
+                    missing = ModeHCashBetService.SaturatingAdd(missing, entry.Value);
                     continue;
                 }
                 try { if (item != null && !item.IsBeingDestroyed) item.DestroyTree(); }
                 catch (Exception e) { ModBehaviour.DevLog("[ModeH] 清理已收走押品异常: " + e.Message); }
-                if (now < entry.Count) missing += entry.Value * (entry.Count - now) / entry.Count;
+                if (now < entry.Count) missing = ModeHCashBetService.SaturatingAdd(missing, (long)((decimal)entry.Value * (entry.Count - now) / entry.Count));
             }
             _forfeited = true;
             _forfeitMissing = missing;
@@ -586,7 +586,7 @@ namespace BossRush
         private static int PickPrizeTypeId(int quality, long target, long runSeed, string txKey, int slot)
         {
             int top = Math.Max(ModeHConfig.MinGameQuality, Math.Min(ModeHConfig.MaxGameQuality, quality));
-            long low = target * ModeHConfig.ItemBetPrizeBandLowPermille / 1000;
+            long low = (long)((decimal)target * ModeHConfig.ItemBetPrizeBandLowPermille / 1000);
             for (int q = top; q >= ModeHConfig.MinGameQuality; q--)
             {
                 int[] candidates = BossRushQualityItemPool.GetCandidates(q);
