@@ -237,6 +237,20 @@ export const INFOBOX: Record<string, Infobox> = {
     ],
     links: ['/bosses/dragon-king', '/equipment/flight-totem'],
   },
+  '/equipment/empty-magazine-mine': {
+    eyebrowZh: '图腾',
+    eyebrowEn: 'Totem',
+    rows: [
+      { zh: '品质', en: 'Rarity', vz: '5', tier: 5 },
+      { zh: '重量', en: 'Weight', vz: '0.5' },
+      { zh: '基础价值', en: 'Base value', vz: '16,000' },
+      { zh: '触发', en: 'Trigger', vz: '同枪至少开火 6 次后打空弹匣', ve: 'Fire the same gun at least 6 times, then empty its magazine' },
+      { zh: '引信 / 冷却', en: 'Fuse / Cooldown', vz: '1.5 秒 / 6 秒', ve: '1.5 s / 6 s' },
+      { zh: '伤害 / 半径', en: 'Damage / Radius', vz: '160 点物理效果伤害 / 4 米', ve: '160 physical effect damage / 4 m' },
+      { zh: '来源', en: 'Source', vz: '炸弹狂人专属掉落 20%（原版地图也可）', ve: '20% exclusive drop from Mad Bomber (vanilla maps included)' },
+      { zh: '物品 ID', en: 'Internal ID', vz: '500105' },
+    ],
+  },
   '/equipment/energy-shield': {
     eyebrowZh: '图腾',
     eyebrowEn: 'Totem',

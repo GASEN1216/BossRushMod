@@ -18,6 +18,7 @@ namespace BossRush
             EnergyShieldWeaponConfig.RegisterEquipmentConfigurator();
             FrostSpearWeaponConfig.RegisterEquipmentConfigurator();
             ThunderRingWeaponConfig.RegisterEquipmentConfigurator();
+            EmptyMagazineMineWeaponConfig.RegisterEquipmentConfigurator();
         }
     }
 }

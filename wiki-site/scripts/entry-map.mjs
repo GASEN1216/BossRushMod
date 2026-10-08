@@ -63,6 +63,7 @@ export const ENTRY_TO_PATH = {
   'equipment__sky_island_starworks_set': 'equipment/sky-island-starworks-gear.md',
   'equipment__sky_island_lords_gear':    'equipment/sky-island-lords-gear.md',
   'equipment__sky_island_chiefs_gear':   'equipment/sky-island-chiefs-gear.md',
+  'equipment__empty_magazine_mine': 'equipment/empty-magazine-mine.md',
   'item__overview':             'items/index.md',
   'item__key_items':            'items/key-items.md',
   'item__npc_items':            'items/npc-items.md',

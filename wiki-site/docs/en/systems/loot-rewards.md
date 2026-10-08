@@ -135,6 +135,18 @@ The Witch works the other way: Soulreaper's Requiem is an **independent extra ro
 appended to the loot crate without competing with anything else. Frostmourne's drop from the
 vanilla "???" Boss uses the same independent-extra mechanism.
 
+## Extra equipment drops from official Bosses
+
+### Mad Bomber's Empty-Mag Mine Box
+
+Defeating the official boss **Mad Bomber** gives an **independent 20% chance** to add an **Empty-Mag Mine Box** without replacing his normal loot. This also works during normal raids on vanilla maps; a BossRush run is not required.
+
+- **When a BossRush loot crate takes over the drop** — the Empty-Mag Mine Box goes into that Boss's reward crate.
+- **Infinite Hell** — the extra item drops on the ground where the Boss fell.
+- **Vanilla maps and modes that retain official corpse loot** — search the Boss's corpse loot container.
+
+The Empty-Mag Mine Box is not sold at Dingdang's Shop and is excluded from general random reward pools. Equip it in a totem slot, fire the same gun at least 6 times in one loading cycle, then empty its magazine to leave a delayed mine at your feet. See its equipment page for the full trigger rules.
+
 ## Extra progression drops from arena Bosses
 
 The above covers loot crates and exclusive gear. On top of that, **eligible Bosses in Standard BossRush, Infinite Hell, From Scratch, Faction War and Blood Hunt** run the

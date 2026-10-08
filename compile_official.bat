@@ -890,6 +890,12 @@ echo(Integration\NewWeapons\FrostSpear\FrostSpearRuntime.cs
 echo(Integration\NewWeapons\ThunderRing\ThunderRingConfig.cs
 echo(Integration\NewWeapons\ThunderRing\ThunderRingWeaponConfig.cs
 echo(Integration\NewWeapons\ThunderRing\ThunderRingRuntime.cs
+echo(Integration\NewWeapons\EmptyMagazineMine\EmptyMagazineMineConfig.cs
+echo(Integration\NewWeapons\EmptyMagazineMine\EmptyMagazineMineWeaponConfig.cs
+echo(Integration\NewWeapons\EmptyMagazineMine\EmptyMagazineMineRules.cs
+echo(Integration\NewWeapons\EmptyMagazineMine\EmptyMagazineMineRuntime.cs
+echo(Integration\NewWeapons\EmptyMagazineMine\EmptyMagazineMineFx.cs
+echo(Integration\NewWeapons\EmptyMagazineMine\EmptyMagazineMineIcon.cs
 echo(Integration\FlightTotem\FlightConfig.cs
 echo(Integration\FlightTotem\FlightTotemFactory.cs
 echo(Integration\FlightTotem\FlightTotemBootstrap.cs

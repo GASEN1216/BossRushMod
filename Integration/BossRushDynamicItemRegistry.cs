@@ -420,6 +420,11 @@ namespace BossRush
 
             Add(plans, new RegistrationPlan
             {
+                FallbackLoader = EnsureNewWeaponPlaceholder
+            }, BossRushItemIds.EmptyMagazineMine);
+
+            Add(plans, new RegistrationPlan
+            {
                 EquipmentBundles = new string[] { "frost_set" },
                 FallbackLoader = EnsureSetBonusPlaceholder
             }, 500053, 500054);

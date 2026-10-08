@@ -2,6 +2,20 @@
 
 更早记录见 `archive/`；月度归档索引保留在本文件正文。
 
+## 2026-10-08 空仓地雷盒全面复审（COMPAT / SAFE，L1/L2）
+
+| ID | 级别 / 状态 / 分类 | 根因与最小修复 |
+| --- | --- | --- |
+| CR-2026-10-08-002 | P2 / Fixed / COMPAT | ManualEquipmentRecovery 夹具未链接新增引用的 BossRushItemIds，导致 CS0103；补链接真实 Config/ConfigItemIds.cs，复跑 57 checks 通过。 |
+| CR-2026-10-08-003 | P2 / Fixed / COMPAT | 地雷只等待目标场景 LevelBeginInitializing 取消，官方旧场景黑幕渐变期间仍可引爆。订阅 SceneLoader.onStartedLoadingScene 即时取消，使用判据检查 IsSceneLoading，阻断回调中开始切图后的剩余目标。旧生产代码失败后补修，地雷回归扩为 17 场景 / 223 断言。 |
+| CR-2026-10-08-004 | P2 / Fixed / SAFE | 中英 Mod 简介仍写 37 / 20 件装备，和本轮 38 / 21 不一致。同步 WikiContent 源文并补全掉落专题与切图取消说明。 |
+
+全量守卫 738 / 738、执行回归 118 / 118、Windows 正式编译、Wiki 构建与 80 项导航检查通过；未发现剩余 confirmed issue，L3 尚未运行。证据与剩余实机步骤见 [全面复审记录](docs/reports/reviews/2026-10-08-空仓地雷盒全面复审.md)。
+
+## 2026-10-08 空仓地雷盒实现期复核（COMPAT，L1）
+
+CR-2026-10-08-001：P2 / Fixed。新图腾动态 prefab 使用 DontDestroyOnLoad 并留在 ItemAssetsCollection；初版却由 NewWeaponRuntime cleanup 销毁程序化 Sprite/Texture，同进程重新启用时复用旧 prefab 会继续引用失效图标。改由动态 prefab 上的组件拥有资源，用创建者 instanceId 保护共享图标，宿主 cleanup 不再释放它。当前代码审查与正式编译通过；实际热重载未做 L3，证据和验收步骤见 [交付记录](docs/reports/testing/2026-10-08-空仓地雷盒交付与验收.md)。
+
 ## 2026-10-07 Player.log 复现：二次传送与终章误清场（COMPAT，L1/L2）
 
 | ID | 级别 / 状态 / 分类 | 根因与最小修复 |

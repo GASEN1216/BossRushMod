@@ -20,6 +20,7 @@ CONFIGS = (
     ("Integration/NewWeapons/EnergyShield/EnergyShieldWeaponConfig.cs", "EnergyShieldWeaponConfig", "RegisterConfigurator"),
     ("Integration/NewWeapons/FrostSpear/FrostSpearWeaponConfig.cs", "FrostSpearWeaponConfig", "RegisterConfigurator"),
     ("Integration/NewWeapons/ThunderRing/ThunderRingWeaponConfig.cs", "ThunderRingWeaponConfig", "RegisterConfigurator"),
+    ("Integration/NewWeapons/EmptyMagazineMine/EmptyMagazineMineWeaponConfig.cs", "EmptyMagazineMineWeaponConfig", "RegisterConfigurator"),
 )
 
 

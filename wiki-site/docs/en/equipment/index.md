@@ -1,6 +1,6 @@
 # Equipment Overview
 
-There are **37 obtainable custom equipment pieces** (sets counted piece by piece): 20 regular pieces plus 17 Sky Islands wearable pieces. Regular gear comes from custom Bosses, extra official Boss drops and Dingdang's shop; island gear mainly comes from island lords and chiefs, and the prelude Warden can also drop a Galebreaker Hood.
+There are **38 obtainable custom equipment pieces** (sets counted piece by piece): 21 regular pieces plus 17 Sky Islands wearable pieces. Regular gear comes from custom Bosses, extra official Boss drops and Dingdang's shop; island gear mainly comes from island lords and chiefs, and the prelude Warden can also drop a Galebreaker Hood.
 
 The 5 new weapons from v2.2.0 and the Frost and Thunder sets from the same batch are **all obtainable now** (see below): each weapon drops at 20% from one official boss (vanilla maps included), or can be bought from Dingdang's Shop at Affinity 5.
 
@@ -10,6 +10,7 @@ The 5 new weapons from v2.2.0 and the Frost and Thunder sets from the same batch
 - **Dragon King Set** — Helmet + Armor (Dragon Lord) — **direct upgrade**
 - **Cloud Soar I** — Flight totem (Dragon Lord)
 - **Reverse Scale** — One-time lifesave totem (Dragon Lord)
+- **Empty-Mag Mine Box** — Exclusive 20% extra drop from Mad Bomber; fire at least 6 times, then empty the magazine to leave a delayed mine at your feet
 - **Inferno Emperor's Realm-Breaking Halberd** — Fire melee with 3-hit combo (Dragon Lord)
 - **Dragon's Breath** — Fire gun with burn DOT (Dragon Descendant)
 - **Skyburner Dragon Cannon** — 17 selectable ammo types (Dragon Lord, 1%)

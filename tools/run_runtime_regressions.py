@@ -35,6 +35,7 @@ SCRIPT_FIXTURES = (
     "SkyIslandValidationJudges", "F3AutotestJudges", "SpawnPositionPolicy", "EnemySpawnRuntime", "EnemyRecoveryRuntime", "RandomEventEffectsOwners", "ModeEFSpawnPreparation", "ModeEFEnemySpawnRuntime", "ModeEFSpawnPostprocessScheduler", "ModeEFVirtualSpawnerRegistry", "ModeEFMerchantCatalog", "FlightTotemRuntimeModule", "EquipmentBootstrapOwners", "AwenLootSweepRuntime", "WavesArenaPresetWeight", "BirthdayCakeGift",
 )
 PROJECT_FIXTURES = {
+    "EmptyMagazineMine": "EmptyMagazineMine.csproj",
     "ModeHCombatRelease": "ModeHCombatRelease.csproj",
     "ReviewSeptember": "ReviewSeptember.csproj",
     "ModeHReviewFixes": "Review.csproj",

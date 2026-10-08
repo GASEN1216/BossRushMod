@@ -1,17 +1,19 @@
 // ============================================================================
-// NewWeaponBossDropHandler.cs - P0 五把新武器的原版 Boss 额外掉落
+// NewWeaponBossDropHandler.cs - 新武器与空仓地雷盒的原版 Boss 额外掉落
 // ============================================================================
 // 模块说明：
 //   五把武器此前 100% 拿不到（不掉落、不出售、不作为奖励），Wiki 五页都挂着「开发预览」。
-//   本文件是「运气线」，稳定线是叮当商店（GoblinAffinityConfig.GetShopItems）。
+//   五把武器的「运气线」由本文件提供，稳定线是叮当商店（GoblinAffinityConfig.GetShopItems）。
 //   两条线的口径与 500053-500056 冰霜/雷霆套装 2026-09-06 转正时完全一致。
+//   空仓地雷盒仅从官方炸弹狂人额外掉落，不接叮当商店。
 //
-//   Boss → 武器一对一，按主题配：
+//   Boss → 装备一对一，按主题配：
 //     毒蛇匕首 ← Cname_Prison_Boss   监狱里的阴毒短刃
 //     召唤法杖 ← Cname_XING          空间 / 灵能路线
 //     能量盾   ← Cname_PMCLeader     正面硬抗的重装主题
 //     冰霜长矛 ← Cname_Snow_BigIce   冰系（与已给冰霜套装的 Cname_Boss_Blue 错开）
 //     雷电戒指 ← Cname_Boss_3Shot    电系（与已给雷霆套装的 Cname_StormBoss1..5 错开）
+//     空仓地雷盒 ← Cname_Grenade     炸弹狂人 / Mad Bomber（官方手雷技能主题）
 //
 //   接入点是 Harmony 的 CharacterMainControl.OnDead 前缀（Patches/Combat/CharacterOnDeadPatch.cs），
 //   不是 BossRush 奖励箱专用的 AddBossSpecialLootToLootboxCoroutine——所以原版地图里
@@ -43,6 +45,7 @@ namespace BossRush
         private const string PmcLeaderBossNameKey = "Cname_PMCLeader";
         private const string BigIceBossNameKey = "Cname_Snow_BigIce";
         private const string ThreeShotBossNameKey = "Cname_Boss_3Shot";
+        private const string GrenadeBossNameKey = "Cname_Grenade";
 
         /// <summary>单件掉率。与冰霜/雷霆套装件同档。</summary>
         private const float WeaponDropChance = 0.20f;
@@ -142,6 +145,10 @@ namespace BossRush
             else if (string.Equals(nameKey, ThreeShotBossNameKey, StringComparison.Ordinal))
             {
                 weaponId = NewWeaponIds.ThunderRingTypeId;
+            }
+            else if (string.Equals(nameKey, GrenadeBossNameKey, StringComparison.Ordinal))
+            {
+                weaponId = BossRushItemIds.EmptyMagazineMine;
             }
             else
             {

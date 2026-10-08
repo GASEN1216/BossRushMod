@@ -46,7 +46,8 @@ namespace BossRush
         private static readonly int[] TrackedTotemTypeIds =
         {
             NewWeaponIds.EnergyShieldTypeId,
-            NewWeaponIds.ThunderRingTypeId
+            NewWeaponIds.ThunderRingTypeId,
+            BossRushItemIds.EmptyMagazineMine
         };
 
         private static readonly bool[] totemEquipped = new bool[TrackedTotemTypeIds.Length];

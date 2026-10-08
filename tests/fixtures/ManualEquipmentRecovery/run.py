@@ -71,6 +71,7 @@ def main():
     extracted = OUT / 'Production.cs'
     extracted.write_text(generated, encoding='utf-8')
     sources = [extracted, HERE / 'Program.cs', HERE / 'Stubs.cs',
+               ROOT / 'Config/ConfigItemIds.cs',
                ROOT / 'Integration/NewWeapons/Common/NewWeaponIds.cs',
                ROOT / 'Integration/NewWeapons/Common/NewWeaponItemAttributes.cs']
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup><ItemGroup>'

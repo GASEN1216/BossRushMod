@@ -52,6 +52,8 @@ namespace BossRush
             // 雷电戒指 - 图腾槽位
             EnsureRegistered(NewWeaponIds.ThunderRingTypeId);
 
+            EnsureRegistered(BossRushItemIds.EmptyMagazineMine);
+
             initialized = true;
         }
 
@@ -108,6 +110,17 @@ namespace BossRush
                     "ThunderRing_Placeholder",
                     "BossRush_ThunderRing",
                     NewWeaponIds.ThunderRingBaseName,
+                    isMelee: false,
+                    tag: "Totem");
+            }
+
+            if (typeId == BossRushItemIds.EmptyMagazineMine)
+            {
+                return EnsureWeaponRegistered(
+                    BossRushItemIds.EmptyMagazineMine,
+                    "EmptyMagazineMine_Placeholder",
+                    "BossRush_EmptyMagazineMine",
+                    EmptyMagazineMineConfig.BaseName,
                     isMelee: false,
                     tag: "Totem");
             }
@@ -250,6 +263,8 @@ namespace BossRush
                     return FrostSpearWeaponConfig.TryConfigure(clone, baseName);
                 if (typeId == NewWeaponIds.ThunderRingTypeId)
                     return ThunderRingWeaponConfig.TryConfigure(clone, baseName);
+                if (typeId == BossRushItemIds.EmptyMagazineMine)
+                    return EmptyMagazineMineWeaponConfig.TryConfigure(clone, baseName);
             }
             catch (Exception e)
             {

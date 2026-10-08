@@ -114,6 +114,7 @@ namespace BossRush
                 NewWeaponIds.EnergyShieldTypeId,
                 NewWeaponIds.FrostSpearTypeId,
                 NewWeaponIds.ThunderRingTypeId,
+                BossRushItemIds.EmptyMagazineMine,
                 500053, 500054, 500055, 500056,
 
                 FactionFlagConfig.RANDOM_FLAG_TYPE_ID,

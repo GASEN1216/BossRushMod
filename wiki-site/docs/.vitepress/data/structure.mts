@@ -305,6 +305,16 @@ export const CATEGORIES: WikiCategory[] = [
         tagEn: 'Totem',
       },
       {
+        path: '/equipment/empty-magazine-mine',
+        zh: '空仓地雷盒',
+        en: 'Empty-Mag Mine Box',
+        icon: 'cat-equipment',
+        blurbZh: '打空弹匣，在脚下留下延时地雷',
+        blurbEn: 'Empty the magazine to leave a delayed mine at your feet',
+        tagZh: '图腾',
+        tagEn: 'Totem',
+      },
+      {
         path: '/equipment/halberd',
         zh: '焚皇断界戟',
         en: "Inferno Emperor's Realm-Breaking Halberd",

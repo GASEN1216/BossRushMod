@@ -5,10 +5,17 @@ import json
 import re
 import sys
 
+from cs_source_util import clean_source
+
 
 REGISTRY = Path("Config/LootBlacklistRegistry.cs")
 DATA_FILE = Path("Assets/Data/LootBlacklist.json")
 COMPILE = Path("compile_official.bat")
+
+# 新增常量从真实生产定义解析，防止守卫里的数字副本掩盖源码与 JSON 漂移。
+CONSTANT_SOURCES = {
+    "BossRushItemIds.EmptyMagazineMine": Path("Config/ConfigItemIds.cs"),
+}
 
 CONSTANT_VALUES = {
     # 2026-09 新增内容的九件物品（遗种巢 / 词缀锻造 / 图鉴 / 后山种子与出击餐）。
@@ -107,17 +114,30 @@ def fail(message: str) -> int:
     return 1
 
 
-def strip_comments(text: str) -> str:
-    text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
-    return re.sub(r"//.*", "", text)
+def read_source_constants():
+    values = {}
+    for key, path in CONSTANT_SOURCES.items():
+        if not path.exists():
+            raise ValueError(f"constant source is missing: {path}")
+        name = key.rsplit(".", 1)[1]
+        source = clean_source(path.read_text(encoding="utf-8-sig"))
+        matches = re.findall(r"\bpublic\s+const\s+int\s+" + re.escape(name)
+                             + r"\s*=\s*(\d+)\s*;", source)
+        if len(matches) != 1:
+            raise ValueError(f"expected one production declaration for {key} in {path}")
+        values[key] = int(matches[0])
+    return values
 
 
 def parse_fallback_ids(source: str):
+    source = clean_source(source)
     match = re.search(r"return\s+new\s+int\[\]\s*\{(?P<body>.*?)\};", source, re.S)
     if not match:
         raise ValueError("fallback int array not found")
 
-    body = strip_comments(match.group("body"))
+    body = match.group("body")
+    constants = dict(CONSTANT_VALUES)
+    constants.update(read_source_constants())
     ids = []
     for raw_token in body.split(","):
         token = raw_token.strip()
@@ -126,9 +146,9 @@ def parse_fallback_ids(source: str):
         if re.fullmatch(r"-?\d+", token):
             ids.append(int(token))
             continue
-        if token not in CONSTANT_VALUES:
+        if token not in constants:
             raise ValueError(f"unknown fallback constant: {token}")
-        ids.append(CONSTANT_VALUES[token])
+        ids.append(constants[token])
     return ids
 
 

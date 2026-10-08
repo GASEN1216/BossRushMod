@@ -110,5 +110,8 @@ namespace BossRush
         /// 卖价为 0，只有剧情用途（配置在 Integration/SkyIsland/SkyIslandNavInstrumentConfig.cs）。
         /// </summary>
         public const int SkyIslandNavInstrument = 500103;
+
+        /// <summary>空仓地雷盒：官方 Boss 专属图腾；500104 已在本地台账先登记。</summary>
+        public const int EmptyMagazineMine = 500105;
     }
 }
