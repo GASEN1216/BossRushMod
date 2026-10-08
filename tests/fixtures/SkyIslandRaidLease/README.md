@@ -9,3 +9,5 @@
 加载时钟回归直接执行生产租约：官方“点击继续”停留超过 120 秒或两小时仍可继续，点击后实际加载卡住仍超时，陈旧提示与取消状态不延长预算。提示文字与激活顺序已对照本机官方 `SceneLoader.LoadScene` DLL；Unity 加载、按钮与时钟仍为替身。
 
 运行：`python tools/run_runtime_regressions.py --filter SkyIslandRaidLease`。
+
+2026-10-08 入场恢复补充：完整链接 `SkyIslandSessionEntry`，原样抽取 Build 的场景读入 / 激活等待与预热驱动，以及生产 Safe / TickFault。验证 A* owner / data 延迟、既有扫描忙、错误即时取消、独立激活超时、可选步骤释放、预热 Current 与 Build 上层取消、owner 显式取消及二次释放幂等。租约覆盖失败提示只在成功回基地、黑幕后消费一次，重试保留首次原因。每次构建使用独立目录，只执行 MSBuild 返回的本次 TargetPath，并留存源文件与产物 SHA-256。Unity / UI / GPU 仍为边界替身，不证明实机画面和切图通过。

@@ -7,7 +7,7 @@ u"""天空岛物资池预热（CR-2026-09-14-014）：预热调用必须在进�
 现在会话在读条画面下（`navigationReady = true` 之前）按品质带分帧预热。
 
 钉住：
-1. 会话 `Build()` 协程里调用 `SkyIslandLootPools.Prewarm()` 并逐帧透传 `Current`，位置在 `lease.BeginLoad();` 之后、
+1. 会话 `Build()` 经 `PrewarmLootGuarded()` 调用 `SkyIslandLootPools.Prewarm()` 并逐帧透传 `Current`，位置在 `lease.BeginLoad();` 之后、
    `navigationReady = true;` 之前（装配期间官方关卡初始化还在等会话，读条画面还在）。
 2. 全仓只有这一个调用点；任何 `Update` / `LateUpdate` / `Tick` / `Frame` 方法体里都没有它。
 3. `Prewarm` 按 `SkyIslandLootTables.PrewarmBands()` 逐带建、已缓存跳过、**每建一个带让出一帧**；不清缓存（缓存复位口径不变，
@@ -28,11 +28,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from cs_source_util import clean_source  # noqa: E402
 
 SESSION = "SkyIsland/SkyIslandSession.cs"
+ENTRY = "SkyIsland/SkyIslandSessionEntry.cs"
 POOLS = "SkyIsland/SkyIslandLootPools.cs"
 TABLES = "SkyIsland/SkyIslandLootTables.cs"
 MODULE = "SkyIsland/SkyIslandRuntimeModule.cs"
 CASES = "DebugAndTools/F3GameplayValidationSkyIslandCases.cs"
-FIXED = [SESSION, POOLS, TABLES, MODULE, CASES]
+FIXED = [SESSION, ENTRY, POOLS, TABLES, MODULE, CASES]
 PER_FRAME = re.compile(r"(?:private|internal|public|protected)?\s*(?:static\s+)?void\s+(?:Update|LateUpdate|FixedUpdate|Tick|Frame|OnUpdate)\s*\(")
 
 
@@ -74,7 +75,7 @@ def check(sources):
     build = squash(body_of(src[SESSION], "private IEnumerator Build()") or "")
     if not build:
         errors.append(SESSION + " 找不到 Build() 协程")
-    call = build.find(squash("IEnumerator warm = SkyIslandLootPools.Prewarm();"))
+    call = build.find(squash("IEnumerator warm = PrewarmLootGuarded();"))
     drive = build.find(squash("while (warm.MoveNext()) yield return warm.Current;"))
     begin = build.find(squash("lease.BeginLoad();"))
     ready = build.find(squash("navigationReady = true;"))
@@ -82,6 +83,15 @@ def check(sources):
         errors.append("会话装配协程没有预热物资池（或没有逐帧透传 Prewarm 的 Current）")
     elif not (0 <= begin < call < drive < ready):
         errors.append("物资池预热必须在 lease.BeginLoad() 之后、navigationReady = true 之前（读条画面下、官方关卡初始化还在等会话）")
+
+    for token in ("entryPrewarm = warm;", "finally { ReleaseEntryPrewarm(); }"):
+        if squash(token) not in build:
+            errors.append("Build 驱动物资预热时必须登记并在取消时释放：" + token)
+    guarded = squash(body_of(src[ENTRY], "private IEnumerator PrewarmLootGuarded()") or "")
+    for token in ("warm = SkyIslandLootPools.Prewarm();", "more = warm.MoveNext();", "current = warm.Current;",
+                  "if (!more) yield break;", "yield return current;", "(warm as IDisposable)?.Dispose();"):
+        if squash(token) not in guarded:
+            errors.append("可恢复物资预热必须保留真实推进、Current 与释放：" + token)
 
     # ---- 2. 全仓唯一调用点，不在每帧路径上 ----
     total = 0
@@ -168,8 +178,10 @@ def main():
 
     update_anchor = "            if (hud != null) hud.Tick(Time.unscaledDeltaTime, HudSuppressed());\n"
     probes = [
+        (ENTRY, "yield return current;", "yield return null;"),
+        (ENTRY, "(warm as IDisposable)?.Dispose();", ""),
         # 预热挪进每帧路径（装配里删掉、Update 里加上）
-        (SESSION, "            IEnumerator warm = SkyIslandLootPools.Prewarm();\n            while (warm.MoveNext()) yield return warm.Current;\n", ""),
+        (SESSION, "            IEnumerator warm = PrewarmLootGuarded();\n            entryPrewarm = warm;\n            try { while (warm.MoveNext()) yield return warm.Current; }\n            finally { ReleaseEntryPrewarm(); }\n", ""),
         (SESSION, update_anchor, update_anchor + "            IEnumerator lateWarm = SkyIslandLootPools.Prewarm(); lateWarm.MoveNext();\n"),
         # 预热排到 navigationReady 之后（读条画面已经收起）
         (SESSION, "            navigationReady = true;\n", "            navigationReady = true;\n            IEnumerator warmLate = SkyIslandLootPools.Prewarm();\n            while (warmLate.MoveNext()) yield return warmLate.Current;\n"),
@@ -202,7 +214,7 @@ def main():
             at = text.find(before, first_update)
             altered[path] = text[:at] + after + text[at + len(before):]
             # 同时把装配里的调用删掉，模拟「挪进每帧路径」
-            altered[path] = altered[path].replace(probes[0][1], "", 1)
+            altered[path] = altered[path].replace(probes[2][1], "", 1)
         else:
             altered[path] = text.replace(before, after, 1)
         if not check(altered):

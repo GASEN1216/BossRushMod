@@ -282,7 +282,7 @@ namespace BossRush
         // 模块等待完成后，在宿主上启动原有场景 setup 协程。
         internal void StartBossRushDemoChallengeSetupForScene(Scene scene)
         {
-            StartCoroutine(SetupBossRushInDemoChallenge(scene));
+            bossRushIntegrationRuntime.StartArenaEntrySetup(scene, SetupBossRushInDemoChallenge(scene));
         }
 
         // 外部装备内容注册器使用的兼容入口；订阅 owner 与 delegate 都在 IntegrationRuntimeModule。

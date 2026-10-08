@@ -39,24 +39,28 @@ namespace BossRush
         internal SkyIslandAmbience(GameObject root)
         {
             if (root == null) throw new ArgumentNullException("root");
-            soundDirectory = Path.Combine(ModBehaviour.GetModPath(), "Assets", "Sounds", "SkyIsland");
-            // 正式构建不引用 FMOD：绑定官方音效入口及其 owner 的停止方法，不持有全局音源。
-            postSound = typeof(Duckov.AudioManager).GetMethod("PostCustomSFX", BindingFlags.Public | BindingFlags.Static,
-                null, new[] { typeof(string), typeof(GameObject), typeof(bool) }, null);
-            stopAll = typeof(Duckov.AudioObject).GetMethod("StopAll", BindingFlags.NonPublic | BindingFlags.Instance);
-            if (stopAll != null) stopImmediately = Enum.ToObject(stopAll.GetParameters()[0].ParameterType, 1);
-            Add(root, "POI_B", 0, new Color(1f, .82f, .50f), "wind_chimes.wav", 5f);
-            Add(root, "Search_D", (int)SkyIslandStoryFlag.WindBeacon, new Color(.45f, .90f, .78f), "island_wind.wav", 48f);
-            Add(root, "Search_G", (int)SkyIslandStoryFlag.StarLamp, new Color(.62f, .90f, 1f), null, 15f);
-            Add(root, "Search_S4", (int)SkyIslandStoryFlag.Telescope, new Color(.80f, .68f, 1f), null, 9f);
-            Add(root, "Search_C", (int)SkyIslandStoryFlag.PlantingDelivered, new Color(.98f, .70f, .52f), null, 65f);
-            Add(root, "Search_H", (int)SkyIslandStoryFlag.Ending, new Color(1f, .88f, .57f), null, 6f);
-            AddFrogPool(root);
-            // 场景常驻 BGM：登岛（落在登云码头）即起播并循环，Boss 曲结束后由协调器接回；没配曲目或文件缺失时什么也不做。
-            // 只在码头放（owner 2026-10-01：一直放太吵），离开码头由 SetDockMusic 释放，回到码头再接上。
-            bgmOwner = root;
-            musicOn = true;
-            BossBgmCoordinator.AcquireSceneBgm(BossBgmScenes.SkyIsland, bgmOwner);
+            try
+            {
+                soundDirectory = Path.Combine(ModBehaviour.GetModPath(), "Assets", "Sounds", "SkyIsland");
+                // 正式构建不引用 FMOD：绑定官方音效入口及其 owner 的停止方法，不持有全局音源。
+                postSound = typeof(Duckov.AudioManager).GetMethod("PostCustomSFX", BindingFlags.Public | BindingFlags.Static,
+                    null, new[] { typeof(string), typeof(GameObject), typeof(bool) }, null);
+                stopAll = typeof(Duckov.AudioObject).GetMethod("StopAll", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (stopAll != null) stopImmediately = Enum.ToObject(stopAll.GetParameters()[0].ParameterType, 1);
+                Add(root, "POI_B", 0, new Color(1f, .82f, .50f), "wind_chimes.wav", 5f);
+                Add(root, "Search_D", (int)SkyIslandStoryFlag.WindBeacon, new Color(.45f, .90f, .78f), "island_wind.wav", 48f);
+                Add(root, "Search_G", (int)SkyIslandStoryFlag.StarLamp, new Color(.62f, .90f, 1f), null, 15f);
+                Add(root, "Search_S4", (int)SkyIslandStoryFlag.Telescope, new Color(.80f, .68f, 1f), null, 9f);
+                Add(root, "Search_C", (int)SkyIslandStoryFlag.PlantingDelivered, new Color(.98f, .70f, .52f), null, 65f);
+                Add(root, "Search_H", (int)SkyIslandStoryFlag.Ending, new Color(1f, .88f, .57f), null, 6f);
+                AddFrogPool(root);
+                // 场景常驻 BGM：登岛（落在登云码头）即起播并循环，Boss 曲结束后由协调器接回；没配曲目或文件缺失时什么也不做。
+                // 只在码头放（owner 2026-10-01：一直放太吵），离开码头由 SetDockMusic 释放，回到码头再接上。
+                bgmOwner = root;
+                musicOn = true;
+                BossBgmCoordinator.AcquireSceneBgm(BossBgmScenes.SkyIsland, bgmOwner);
+            }
+            catch { Dispose(); throw; }
         }
 
         /// <summary>
@@ -109,6 +113,8 @@ namespace BossRush
             rotor.transform.SetParent(owned.transform, false);
             var device = new Device { Root = owned, Rotor = rotor.transform, Flag = required,
                 Ambient = ambient, Speed = speed, Phase = devices.Count * 1.37f, NextSound = Time.time + 2 + devices.Count };
+            // 构造后立刻登记，后续任何表现装配抛错都能由 Dispose 回收半成品。
+            devices.Add(device);
             device.Light = owned.AddComponent<Light>();
             device.Light.type = LightType.Point;
             device.Light.shadows = LightShadows.None;
@@ -138,7 +144,6 @@ namespace BossRush
                 Line(rotor.transform, color, points, true);
             }
             owned.SetActive(false);
-            devices.Add(device);
         }
 
         private static void Line(Transform parent, Color color, Vector3[] points, bool loop)

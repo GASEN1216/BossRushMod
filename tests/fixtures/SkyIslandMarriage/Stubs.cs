@@ -191,6 +191,7 @@ namespace BossRush
     internal sealed partial class SkyIslandSession : MonoBehaviour
     {
         internal SkyIslandResidents residents; internal GameObject root; internal CharacterMainControl player;
+        internal bool residentsFailed;
         internal SkyIslandWorldStory worldStory; internal SkyIslandStoryService story; internal bool Valid;
         internal SkyIslandEncounters encounters; internal int Announcements;
         internal void Announce(string message, bool warning) { Announcements++; }

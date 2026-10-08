@@ -188,10 +188,12 @@ namespace BossRush
                 try { more = steps.MoveNext(); current = more ? steps.Current : null; }
                 catch (Exception e)
                 {
+                    string notice = SkyIslandStoryRules.WithDetail(L10n.T("天空岛没能建起来：", "Sky Islands setup failed"), e.Message);
+                    RememberReturnReason("build_failed: " + e.Message, notice);
                     CancelPendingInitialization();
                     // 异常原文是给维护者的中文诊断：完整异常进日志，提示条经 WithDetail，英文界面只给双语前缀。
                     Debug.LogWarning("[SkyIsland] setup failed: " + e);
-                    Status(SkyIslandStoryRules.WithDetail(L10n.T("天空岛没能建起来：", "Sky Islands setup failed"), e.Message), true);
+                    Status(notice, true);
                     Close(true, "build_failed"); yield break;
                 }
                 if (!more) yield break;
@@ -204,9 +206,12 @@ namespace BossRush
             // 不再复用试验场那块「屏幕正上方的裸文字」：那是原型期的调试文本，
             // 常驻四行长句会一直抢视线焦点，而且 90 px 的框实测装不下（中文 4 行 / 英文 6 行）。
             // 天空岛自己的 HUD 把常驻部分收成右侧一张小卡，区域名改成进出时的一次性大标题。
-            hud = new SkyIslandHud(host.transform);
-            hud.SetLandingHint(L10n.T("地图键看全岛 · 站进撤离环 3 秒返航",
-                "Map key: see the isles · stand in an extraction ring 3s to return"));
+            EntryStep("hud", delegate
+            {
+                hud = new SkyIslandHud(host.transform);
+                hud.SetLandingHint(L10n.T("地图键看全岛 · 站进撤离环 3 秒返航",
+                    "Map key: see the isles · stand in an extraction ring 3s to return"));
+            }, delegate { var failed = hud; hud = null; if (failed != null) failed.Dispose(); });
             Status(L10n.T("正在加载晴岚群岛…", "Loading the Qinglan Archipelago…"), false);
             // 基地场景的组件不留成字段：出图即成已销毁引用。取到就交给租约克隆（CR-2026-09-10-003）。
             TimeOfDayConfig timeOfDayTemplate = LevelConfig.Instance.timeOfDayConfig;
@@ -232,6 +237,7 @@ namespace BossRush
             if (lease.Error != null) throw new InvalidOperationException(lease.Error);
             if (root == null) throw new TimeoutException("独立天空岛场景未能就绪");
             // sceneLoaded 先于官方 SetActiveScene；协程不能依靠 UniTask continuation 与 Update 的偶然顺序。
+            deadline = Time.realtimeSinceStartup + 120f;
             while ((SceneManager.GetActiveScene().handle != entryScene.handle || GameCamera.Instance == null ||
                 GameCamera.Instance.renderCamera == null) && lease.Error == null && Time.realtimeSinceStartup < deadline)
                 yield return null;
@@ -241,7 +247,7 @@ namespace BossRush
             // 官方地图的分区灰显：场景一就绪就按存档里的到访位刷一次。
             // 放在装配最前面，是为了不给玩家留「刚落地时整张图都是彩色」的窗口——
             // 场景包里的分区图层默认可见（失败开放），这里负责立刻关掉没去过的。
-            mapFog.Apply(story.Current.visitedRegions);
+            EntryStep("map_fog", delegate { mapFog.Apply(story.Current.visitedRegions); }, mapFog.Dispose);
             root.transform.position = origin;
             if (root.transform.localScale != Vector3.one || root.transform.rotation != Quaternion.identity)
                 throw new InvalidOperationException("天空岛场景根节点变换未归一化");
@@ -255,8 +261,8 @@ namespace BossRush
             IndexGroundRegions();
             lighting = new SkyIslandLighting();
             lighting.Apply(root);
-            streetLamps = new SkyIslandStreetLamps();
-            streetLamps.Apply(root);
+            EntryStep("street_lamps", delegate { streetLamps = new SkyIslandStreetLamps(); streetLamps.Apply(root); },
+                delegate { var failed = streetLamps; streetLamps = null; if (failed != null) failed.Dispose(); });
             root.SetActive(true);
             Physics.SyncTransforms();
             // CR-2026-09-10-006：地形不可见的现场取证。激活当帧 `isVisible` 还没被剔除结果更新过，
@@ -274,9 +280,8 @@ namespace BossRush
             if (filter == null) throw new InvalidOperationException("天空岛导航网格缺失");
             navigation = new ArenaPrototypeNavigation();
             // 其它关卡组件可能仍在扫描共享 A*；它结束后再接专属图，不能把短暂 busy 当装配失败返航。
-            deadline = Time.realtimeSinceStartup + 30;
-            while (global::AstarPath.active != null && global::AstarPath.active.isScanning && Time.realtimeSinceStartup < deadline)
-                yield return null;
+            IEnumerator navigationWait = WaitForNavigationOwner();
+            while (navigationWait.MoveNext()) yield return navigationWait.Current;
             scan = navigation.BeginScan(filter.sharedMesh, origin);
             deadline = Time.realtimeSinceStartup + 30;
             while (scan.MoveNext())
@@ -287,8 +292,10 @@ namespace BossRush
             scan.Dispose();
             scan = null;
             // 物资池趁读条预热，每个品质带占一帧（CR-2026-09-14-014）：懒建时第一次走近远航 / 星工档箱子会卡一下。
-            IEnumerator warm = SkyIslandLootPools.Prewarm();
-            while (warm.MoveNext()) yield return warm.Current;
+            IEnumerator warm = PrewarmLootGuarded();
+            entryPrewarm = warm;
+            try { while (warm.MoveNext()) yield return warm.Current; }
+            finally { ReleaseEntryPrewarm(); }
             // 导航扫描跨了很多帧，相机已经剔除过若干次：这一次的 `visible` 才是可信的。
             SkyIslandRendering.LogDiagnostics(root, groundLayer, wallLayer, "post_scan");
             int nodes = navigation.CountWalkableNodes();
@@ -333,8 +340,8 @@ namespace BossRush
             moved = ready = true;
             enteredAt = Time.unscaledTime;
             worldStory = new SkyIslandWorldStory(this, story, root);
-            ambience = new SkyIslandAmbience(root);
-            ambience.ApplyStory(story.Current);
+            EntryStep("ambience", delegate { ambience = new SkyIslandAmbience(root); ambience.ApplyStory(story.Current); },
+                delegate { var failed = ambience; ambience = null; if (failed != null) failed.Dispose(); });
             encounters = new SkyIslandEncounters(root, player, navigation.Mask, groundMask, content, IsSessionValid,
                 EncounterWasSaved, OnEncounterCleared, Status, EncounterLabel, OnStormDefeated, host.GetBossHealthMultiplier);
             patrols = new SkyIslandPatrols(root, player, navigation.Mask, groundMask, origin, content, IsSessionValid, delegate { return story.Current; });
@@ -363,9 +370,10 @@ namespace BossRush
                 scavenging = new SkyIslandScavenging(root, player, groundMask, raidSeed, IsSessionValid,
                     Status, bounty.ReportScavenged);
             });
-            residents = new SkyIslandResidents();
-            residents.Start(root, navigation, IsSessionValid, worldStory.Talk);
+            EntryStep("residents", delegate { residents = new SkyIslandResidents(); residents.Start(root, navigation, IsSessionValid, worldStory.Talk); },
+                delegate { residentsFailed = true; var failed = residents; residents = null; if (failed != null) failed.Dispose(); });
             SkyIslandGuideInteractable.Attach(root, this);
+            if (rendering.CompatibilityMode) Status(L10n.T("天空岛已启用兼容显示", "Sky Islands compatibility rendering enabled"), false);
             // 就绪不再另发一条「已就绪 · 地图键查阅全岛 · 当前目标」：落地大标题（带一次性操作提示）
             // 与右侧目标卡已经把这两件事说完了，再补一条等于同一句话在同一秒出现三遍。
             Debug.Log("[SkyIsland] ENTER_PASS scene=" + entryScene.path + " nodes=" + nodes +
@@ -845,6 +853,7 @@ namespace BossRush
         internal void Close(bool restorePlayer, string reason)
         {
             if (closed) return;
+            RememberReturnReason(reason);
             if (restorePlayer && loadStarted && !deathPending)
             {
                 returnRequested = returning = true;
@@ -890,6 +899,7 @@ namespace BossRush
         private void CancelPendingInitialization()
         {
             navigationReady = true;
+            ReleaseEntryPrewarm();
             // 取消要传到官方加载等待，不能只停自己的协程。
             if (lease != null) lease.Abort("天空岛会话已取消初始化");
             LevelManager.UnregisterWaitForInitialization(this);
@@ -903,6 +913,7 @@ namespace BossRush
             closed = true;
             ready = false;
             StopAllCoroutines();
+            ReleaseEntryPrewarm();
             LevelManager.UnregisterWaitForInitialization(this);
             if (subscribed)
             {
@@ -940,12 +951,12 @@ namespace BossRush
             streetLamps = null;
             Safe("lighting", delegate { if (lighting != null) lighting.Dispose(); });
             Safe("materials", delegate { if (rendering != null) rendering.Dispose(); });
-            if (hud != null) hud.Dispose();
+            Safe("hud", delegate { if (hud != null) hud.Dispose(); });
             hud = null;
             if (returnInputBlock != null) Destroy(returnInputBlock);
             Debug.Log("[SkyIsland] CLEANUP reason=" + reason + " searches=" + searched.Count +
                 " looted=" + (scavenging == null ? 0 : scavenging.OpenedPoints) +
-                " bounties=" + bounty.CompletedRounds);
+                " bounties=" + bounty.CompletedRounds + " firstReason=" + firstReturnReason);
             if (lease != null) lease.Release(delegate { if (this != null) Destroy(this); });
             else Destroy(this);
         }

@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parent.parent
 MODULE_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule.cs"
 MODULE_RUNTIME_HOOKS_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule_RuntimeHooks.cs"
 MODULE_MAP_OBJECTS_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule_MapObjects.cs"
+MODULE_ARENA_ENTRY_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule_ArenaEntry.cs"
 MODULE_TRAVEL_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule_Travel.cs"
 MODULE_INITIALIZATION_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule_Initialization.cs"
 MODULE_CODEX_BOOK_PATH = ROOT / "Integration/BossRushIntegrationRuntimeModule_CodexBook.cs"
@@ -77,11 +78,12 @@ def main():
     module_core = clean_source(MODULE_PATH.read_text(encoding="utf-8", errors="ignore"))
     module_runtime_hooks = clean_source(MODULE_RUNTIME_HOOKS_PATH.read_text(encoding="utf-8", errors="ignore"))
     module_map_objects = clean_source(MODULE_MAP_OBJECTS_PATH.read_text(encoding="utf-8", errors="ignore"))
+    module_arena_entry = clean_source(MODULE_ARENA_ENTRY_PATH.read_text(encoding="utf-8", errors="ignore"))
     module_travel = clean_source(MODULE_TRAVEL_PATH.read_text(encoding="utf-8", errors="ignore"))
     module_initialization = clean_source(MODULE_INITIALIZATION_PATH.read_text(encoding="utf-8", errors="ignore"))
     module_codex_book = clean_source(MODULE_CODEX_BOOK_PATH.read_text(encoding="utf-8", errors="ignore"))
     module_scene_lifecycle = clean_source(MODULE_SCENE_LIFECYCLE_PATH.read_text(encoding="utf-8", errors="ignore"))
-    module = module_core + "\n" + module_runtime_hooks + "\n" + module_map_objects + "\n" + module_travel + "\n" + module_initialization + "\n" + module_codex_book + "\n" + module_scene_lifecycle
+    module = module_core + "\n" + module_runtime_hooks + "\n" + module_map_objects + "\n" + module_travel + "\n" + module_initialization + "\n" + module_codex_book + "\n" + module_scene_lifecycle + "\n" + module_arena_entry
     host = clean_source(HOST_PATH.read_text(encoding="utf-8", errors="ignore"))
     codex_book_host = clean_source(CODEX_BOOK_HOST_PATH.read_text(encoding="utf-8", errors="ignore"))
     lifecycle = clean_source(LIFECYCLE_PATH.read_text(encoding="utf-8", errors="ignore"))
@@ -440,16 +442,34 @@ def main():
         if token not in simple_exit:
             return fail("simple exit behavior must remain module-owned -> " + token)
 
-    wait_for_level = method_body(module_map_objects, "internal System.Collections.IEnumerator WaitForLevelInitializedThenSetup_Integration(Scene scene)")
+    wait_bridge = method_body(module_map_objects, "internal System.Collections.IEnumerator WaitForLevelInitializedThenSetup_Integration(Scene scene)")
+    if "return BeginArenaEntryWait(scene);" not in wait_bridge:
+        return fail("level-ready entry must create a new module-owned arena request")
+    wait_for_level = method_body(module_arena_entry, "private IEnumerator WaitForArenaEntryReady(ArenaEntryRequest request)")
     if require_order(wait_for_level, [
-        "const float maxWait = 30f;", "const float interval = 0.1f;", "scene.isLoaded",
+        "const float maxWait = 30f;", "const float interval = 0.1f;", "request.Scene.isLoaded",
         "ReadSceneLoaderDoneWithWarning(\"WaitForLevelInitializedThenSetup\")",
         "ReadMainExistsWithWarning(\"WaitForLevelInitializedThenSetup\")",
         "ReadCameraExistsWithWarning(\"WaitForLevelInitializedThenSetup\")",
         "ReadLevelInitedWithWarning(\"WaitForLevelInitializedThenSetup\")",
-        "yield return new WaitForSeconds(interval);", "_owner.StartBossRushDemoChallengeSetupForScene(scene);",
+        "request.Ready = true;", "_owner.StartBossRushDemoChallengeSetupForScene(request.Scene);",
+        "yield break;", "yield return new WaitForSeconds(interval);", "CancelArenaEntry(request);",
     ], "WaitForLevelInitializedThenSetup_Integration"):
-        return fail("level-ready polling must preserve its condition order, wait, and original setup handoff")
+        return fail("level-ready polling must preserve readiness order, dispatch only when ready, and cancel on timeout")
+    subscribe_entry = method_body(module_arena_entry, "private void SubscribeArenaEntryEvents()")
+    cleanup_entry = method_body(module_arena_entry, "private void CleanupArenaEntry()")
+    for token in ("if (_arenaEntryEventsSubscribed) return;", "SceneLoader.onStartedLoadingScene += OnArenaEntrySceneLoading;",
+                  "SceneManager.sceneUnloaded += OnArenaEntrySceneUnloaded;", "_arenaEntryEventsSubscribed = true;"):
+        if token not in subscribe_entry:
+            return fail("arena entry event subscription must be idempotent -> " + token)
+    for token in ("CancelArenaEntry(_arenaEntryRequest);", "SceneLoader.onStartedLoadingScene -= OnArenaEntrySceneLoading;",
+                  "SceneManager.sceneUnloaded -= OnArenaEntrySceneUnloaded;", "_arenaEntryEventsSubscribed = false;"):
+        if token not in cleanup_entry:
+            return fail("arena entry cleanup must cancel tasks and release both subscriptions -> " + token)
+    if "SubscribeArenaEntryEvents();" not in method_body(module_core, "public override void OnAwake(ModBehaviour owner)") or "CleanupArenaEntry();" not in destroy:
+        return fail("arena entry lifecycle must attach in module Awake and release in module Destroy")
+    if "Integration/BossRushIntegrationRuntimeModule_ArenaEntry.cs" not in compile_text:
+        return fail("arena entry owner must be registered in the official source list")
     for signature, bridge in (
         ("private void SpawnBossRushMapObjects()", "bossRushIntegrationRuntime.SpawnBossRushMapObjects();"),
         ("private System.Collections.IEnumerator WaitForLevelInitializedThenSetup_Integration(Scene scene)", "return bossRushIntegrationRuntime.WaitForLevelInitializedThenSetup_Integration(scene);"),
@@ -458,8 +478,8 @@ def main():
         if not body or bridge not in body:
             return fail("original map host entrypoint must remain a thin module bridge -> " + signature)
     setup_bridge = method_body(map_host, "internal void StartBossRushDemoChallengeSetupForScene(Scene scene)")
-    if "StartCoroutine(SetupBossRushInDemoChallenge(scene));" not in setup_bridge:
-        return fail("level-ready module must hand off the setup coroutine through the narrow host bridge")
+    if "bossRushIntegrationRuntime.StartArenaEntrySetup(scene, SetupBossRushInDemoChallenge(scene));" not in setup_bridge:
+        return fail("level-ready module must hand off setup through the same arena request owner")
     for name in (
         "MapObjectCloneConfig", "GetMapCloneConfigs(", "CreateBossRushExit(",
         "DisableExitSmokeEffects(", "CreateSimpleExit(",

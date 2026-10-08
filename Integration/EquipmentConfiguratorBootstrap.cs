@@ -19,6 +19,7 @@ namespace BossRush
             FrostSpearWeaponConfig.RegisterEquipmentConfigurator();
             ThunderRingWeaponConfig.RegisterEquipmentConfigurator();
             EmptyMagazineMineWeaponConfig.RegisterEquipmentConfigurator();
+            PhantomWitchScytheWeaponConfig.RegisterEquipmentConfigurator();
         }
     }
 }

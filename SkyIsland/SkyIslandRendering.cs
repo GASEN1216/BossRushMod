@@ -9,13 +9,17 @@ namespace BossRush
     internal sealed class SkyIslandRendering : IDisposable
     {
         private readonly List<Material> owned = new List<Material>();
+        private readonly Dictionary<Material, Material> converted = new Dictionary<Material, Material>();
+        private static readonly string[] DoubleSidedFallbacks = { "SodaCraft/SodaLit_EdgeLight_Mask", "SodaCraft/SodaCharacter" };
+        private static readonly string[] ModelFallbacks = { "SodaCraft/SodaCharacter", "SodaCraft/SodaLit_EdgeLight_Mask" };
+        private static readonly string[] BaseMaps = { "_BaseMap", "_MainTex", "_BaseTex" };
+
+        internal bool CompatibilityMode { get; private set; }
 
         internal void Apply(GameObject root, int groundLayer, int wallLayer)
         {
-            Shader shader = Shader.Find("SodaCraft/SodaCharacter");
-            if (shader == null) throw new InvalidOperationException("官方模型着色器未就绪");
-            var converted = new Dictionary<Material, Material>();
-            var verifiedShaders = new HashSet<Shader>();
+            var verifiedShaders = new Dictionary<Shader, bool>();
+            var compatibilityLogged = new HashSet<Shader>();
             int textures = 0;
             foreach (MeshRenderer renderer in root.GetComponentsInChildren<MeshRenderer>(true))
             {
@@ -26,44 +30,63 @@ namespace BossRush
                     Material source = materials[i];
                     if (source == null) throw new InvalidOperationException("模型缺少材质：" + renderer.name);
                     string shaderName = source.shader == null ? null : source.shader.name;
-                    if (shaderName == "BossRush/SkyIsland/Environment" || shaderName == "BossRush/SkyIsland/Water" ||
-                        shaderName == "BossRush/SkyIsland/Cloud")
+                    bool worldShader = shaderName == "BossRush/SkyIsland/Environment" || shaderName == "BossRush/SkyIsland/Water" ||
+                        shaderName == "BossRush/SkyIsland/Cloud";
+                    if (worldShader && WorldShaderAvailable(source.shader, verifiedShaders))
                     {
-                        // 这里报错**九成不是显卡的锅**：URP 的变体剥离会在作者工程没指定 URP 资产时
-                        // 把这三个着色器的变体全删掉，包照样构建成功，运行时才发现没有任何编译产物
-                        // （CR-2026-09-10-004）。判包用 tools/verify_sky_island_bundle_shaders.py。
-                        if (verifiedShaders.Add(source.shader)) ValidateWorldShader(source.shader);
                         if (source.HasProperty("_BaseMap") && source.GetTexture("_BaseMap") != null) textures++;
                         continue;
                     }
                     Material material;
                     if (!converted.TryGetValue(source, out material))
                     {
-                        material = new Material(shader);
-                        material.name = "SkyIsland_" + source.name;
+                        // 岛面和水面有双面薄片；本机官方 Mask shader 的 Cull Off 保住两面的可见性。
+                        // 兼容材质只在作者 shader 不支持或缺 GBuffer 时使用，不替代完整包的判包流程。
+                        bool doubleSided = worldShader && shaderName != "BossRush/SkyIsland/Cloud";
+                        Shader fallback = FindCompatibleShader(doubleSided, verifiedShaders);
+                        material = new Material(fallback);
+                        material.name = worldShader ? source.name : "SkyIsland_" + source.name;
                         owned.Add(material);
                         Color tint = source.HasProperty("_BaseColor") ? source.GetColor("_BaseColor") :
-                            source.HasProperty("_Color") ? source.GetColor("_Color") : Color.white;
+                            source.HasProperty("_Color") ? source.GetColor("_Color") :
+                            source.HasProperty("_Tint") ? source.GetColor("_Tint") : Color.white;
                         if (material.HasProperty("_Tint")) material.SetColor("_Tint", tint);
                         if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", tint);
                         if (material.HasProperty("_Color")) material.SetColor("_Color", tint);
-                        string sourceMap = source.HasProperty("_BaseMap") && source.GetTexture("_BaseMap") != null ? "_BaseMap" :
-                            source.HasProperty("_MainTex") && source.GetTexture("_MainTex") != null ? "_MainTex" : null;
+                        string sourceMap = null;
+                        foreach (string candidate in BaseMaps)
+                            if (source.HasProperty(candidate) && source.GetTexture(candidate) != null) { sourceMap = candidate; break; }
                         if (sourceMap != null)
                         {
                             bool copied = false;
-                            foreach (string targetMap in new[] { "_BaseMap", "_MainTex", "_BaseTex" })
+                            foreach (string targetMap in BaseMaps)
                             {
                                 if (!material.HasProperty(targetMap)) continue;
-                                material.SetTexture(targetMap, source.GetTexture(sourceMap));
-                                material.SetTextureScale(targetMap, source.GetTextureScale(sourceMap));
-                                material.SetTextureOffset(targetMap, source.GetTextureOffset(sourceMap));
+                                CopyTexture(source, sourceMap, material, targetMap);
                                 copied = true;
                             }
                             if (!copied) throw new InvalidOperationException("官方着色器无已识别贴图字段，不能丢弃壁画：" + source.name);
                             textures++;
                         }
+                        if (source.HasProperty("_EmissionColor") && material.HasProperty("_EmissionColor"))
+                            material.SetColor("_EmissionColor", source.GetColor("_EmissionColor"));
+                        if (source.HasProperty("_EmissionMap") && source.GetTexture("_EmissionMap") != null && material.HasProperty("_EmissionMap"))
+                            CopyTexture(source, "_EmissionMap", material, "_EmissionMap");
+                        foreach (string property in new[] { "_Smoothness", "_Metallic" })
+                            if (source.HasProperty(property) && material.HasProperty(property)) material.SetFloat(property, source.GetFloat(property));
+                        // 官方独有的顶点色、遮罩与风噪声不属于作者的手绘贴图输入。
+                        if (material.HasProperty("_IgnoreVertexColor")) material.SetFloat("_IgnoreVertexColor", 1f);
+                        if (material.HasProperty("_IgnoreMask")) material.SetFloat("_IgnoreMask", 1f);
+                        if (material.HasProperty("_WindNoiseStrength")) material.SetFloat("_WindNoiseStrength", 0f);
+                        material.renderQueue = source.renderQueue;
                         converted.Add(source, material);
+                    }
+                    if (worldShader)
+                    {
+                        CompatibilityMode = true;
+                        if (compatibilityLogged.Add(source.shader))
+                            Debug.LogWarning("[SkyIsland] RENDER_COMPAT shader=" + shaderName + " fallback=" + material.shader.name
+                                + " supported=" + source.shader.isSupported + "（保留作者贴图，使用官方兼容显示）");
                     }
                     materials[i] = material;
                 }
@@ -81,15 +104,37 @@ namespace BossRush
             Debug.Log("[SkyIsland] RENDER_READY materials=" + owned.Count + " textured=" + textures + " ground=" + ground + " walls=" + walls);
         }
 
-        private static void ValidateWorldShader(Shader shader)
+        private static void CopyTexture(Material source, string sourceMap, Material target, string targetMap)
         {
-            if (shader == null || !shader.isSupported)
-                throw new InvalidOperationException("天空岛专用着色器不可用，请更新完整资源包并检查图形支持");
-            var lightMode = new ShaderTagId("LightMode");
-            for (int i = 0; i < shader.passCount; i++)
-                if (shader.FindPassTagValue(i, lightMode).name == "UniversalGBuffer") return;
-            // 只有 Forward 的旧包同样会 isSupported=true，但官方 Deferred 不会绘制地形。
-            throw new InvalidOperationException("天空岛资源包缺少延迟渲染通道，请更新完整资源包：" + shader.name);
+            target.SetTexture(targetMap, source.GetTexture(sourceMap));
+            target.SetTextureScale(targetMap, source.GetTextureScale(sourceMap));
+            target.SetTextureOffset(targetMap, source.GetTextureOffset(sourceMap));
+        }
+
+        private static Shader FindCompatibleShader(bool doubleSided, Dictionary<Shader, bool> verifiedShaders)
+        {
+            foreach (string name in doubleSided ? DoubleSidedFallbacks : ModelFallbacks)
+            {
+                Shader shader = Shader.Find(name);
+                if (WorldShaderAvailable(shader, verifiedShaders)) return shader;
+            }
+            throw new InvalidOperationException("天空岛专用与官方兼容着色器均不可用，请更新完整资源包并检查图形支持");
+        }
+
+        private static bool WorldShaderAvailable(Shader shader, Dictionary<Shader, bool> verifiedShaders)
+        {
+            if (shader == null) return false;
+            bool available;
+            if (verifiedShaders.TryGetValue(shader, out available)) return available;
+            available = false;
+            if (shader.isSupported)
+            {
+                var lightMode = new ShaderTagId("LightMode");
+                for (int i = 0; i < shader.passCount; i++)
+                    if (shader.FindPassTagValue(i, lightMode).name == "UniversalGBuffer") { available = true; break; }
+            }
+            verifiedShaders.Add(shader, available);
+            return available;
         }
 
         /// <summary>
@@ -147,6 +192,8 @@ namespace BossRush
         {
             foreach (Material material in owned) if (material != null) UnityEngine.Object.Destroy(material);
             owned.Clear();
+            converted.Clear();
+            CompatibilityMode = false;
         }
     }
 }

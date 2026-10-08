@@ -11,13 +11,14 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT_FIXTURES = (
+    "PhantomScytheLocalization",
     "SandstormCombatRuntime",
     "BossHealthScaling",
     "ModeECombatTargeting",
     "PetNestCompanionActivation",
     "SkyIslandRenderEntry",
     "DeathWraithPersistence",
-    "ModeDEntryOwnership",
+    "ModeDEntryOwnership", "LegacyArenaEntry",
     "PetNestGrowth", "ModeHPreparedEquipment", "EntryAndReforgeCompatibility", "BackMountainMorph", "JeffQuestFlow", "SaveFailureRecovery", "F3MapTourJudges",
     "RuntimeRegressionRunner", "HostDestroyOwnership", "ModeDestroyLifecycle", "ModuleOwnerCleanup",
     "HostMapArenaOwners", "HostUtilityOwners",

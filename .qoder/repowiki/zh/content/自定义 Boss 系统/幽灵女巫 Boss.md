@@ -421,3 +421,12 @@ Boss --> Weapon["PhantomWitchScytheWeaponConfig"]
 官方先调用女巫的实例死亡回调，再派发全局 `Health.OnDead`；实例回调会销毁并清空普通女巫的 runtime preset。女巫现于清理前向图鉴提供 owner 确认的稳定身份，冠军之影使用自己的既有 key。两个图鉴入口共用原有归属与实例去重，不改变死亡掉落、波次或能力清理顺序，也不增加扫描。执行回归覆盖实际清理顺序、一击、重复全局事件和第三方 preset 改名；游戏内表现仍待验收。
 
 女巫 Legacy 生成的 clone 实例名现与托管 G/H 一致为 `PhantomWitch_Preset`。既有清理依 nameKey 或此实例名识别所有权，冠军之影改变 nameKey 和第三方改名后仍能释放自己的副本，不误删原版共享 preset。
+
+
+## 2026-10-08 噬魂挽歌名称与装备配置接线（COMPAT）
+
+`phantomscyth_melee_item` 对应玩家反馈中的内部名；当前实际资源包中的 TypeID 为 500044，raw 名为 `PhantomScythe_Melee_Item`，正式显示名为「噬魂挽歌 / Soulreaper's Requiem」。它是幽灵女巫的正常专属近战掉落，现码额外掉落概率 50%，竞技场奖励箱由 defer owner 转交。单凭名称漏出不能认定坏档或非法物品。
+
+此前该武器只登记 ItemFactory 与实例恢复入口，但资源包实际走 EquipmentFactory，导致首次元数据查询可早于完整配置；本地化又只依赖配置末段，统一启动/语言刷新不会重新注入。现在 `EquipmentConfiguratorBootstrap` 登记其专属配置器并按 TypeID 过滤；共享 `PhantomWitchScytheLocalization` 挂进扩展本地化入口，配置器在模型/数值操作前先注入实际 raw key。保留 Item_500044、旧名字和 prefab 名，补大小写/反馈拼写别名，不改 TypeID、存档和资源身份。
+
+真实本地化、统一注入入口与配置入口顺序由 `tests/fixtures/PhantomScytheLocalization` 执行回归；Unity 物品/资源和其他组件为宿主替身，真实 UI、战斗与旧存档仍需实机验收。

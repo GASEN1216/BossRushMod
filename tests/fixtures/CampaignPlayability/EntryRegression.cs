@@ -40,8 +40,13 @@ namespace BossRush
         private void RemoveRigidbodyAndSetTrigger(GameObject sign) { }
         private void CreateTrashCanNextToSignpost(Vector3 point, Quaternion rotation, bool right) { }
     }
+    internal sealed class IntegrationRuntimeModule
+    {
+        internal void StartArenaEntryContinuation(IEnumerator routine) { }
+    }
     public partial class ModBehaviour
     {
+        private readonly IntegrationRuntimeModule bossRushIntegrationRuntime = new IntegrationRuntimeModule();
         internal Vector3 EntryTarget;
         internal BossRushMapConfig CurrentMap;
         internal readonly UIAndSignsRuntimeModule uiAndSignsRuntime;

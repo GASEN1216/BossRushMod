@@ -239,42 +239,7 @@ namespace BossRush
 
         internal System.Collections.IEnumerator WaitForLevelInitializedThenSetup_Integration(Scene scene)
         {
-            ModBehaviour.DevLog("[BossRush] WaitForLevelInitializedThenSetup: 开始等待地图完全初始化...");
-
-            // 等待条件：场景已加载、SceneLoader 不在加载中、CharacterMainControl.Main 和 GameCamera.Instance 均已存在
-            const float maxWait = 30f;
-            const float interval = 0.1f;
-            float elapsed = 0f;
-            int attempt = 0;
-
-            while (elapsed < maxWait)
-            {
-                attempt++;
-                bool sceneLoaded = scene.isLoaded;
-                bool sceneLoaderDone = ReadSceneLoaderDoneWithWarning("WaitForLevelInitializedThenSetup");
-                bool mainExists = ReadMainExistsWithWarning("WaitForLevelInitializedThenSetup");
-                bool cameraExists = ReadCameraExistsWithWarning("WaitForLevelInitializedThenSetup");
-                bool levelInited = ReadLevelInitedWithWarning("WaitForLevelInitializedThenSetup");
-
-                if (sceneLoaded && sceneLoaderDone && mainExists && cameraExists && levelInited)
-                {
-                    ModBehaviour.DevLog("[BossRush] WaitForLevelInitializedThenSetup: 地图初始化完成，第 " + attempt + " 次检查，elapsed=" + elapsed + "s");
-                    break;
-                }
-
-                if (attempt % 10 == 0)
-                {
-                    ModBehaviour.DevLog("[BossRush] WaitForLevelInitializedThenSetup: 第 " + attempt + " 次检查, sceneLoaded=" + sceneLoaded + ", sceneLoaderDone=" + sceneLoaderDone + ", mainExists=" + mainExists + ", cameraExists=" + cameraExists + ", levelInited=" + levelInited + ", elapsed=" + elapsed + "s");
-                }
-
-                yield return new WaitForSeconds(interval);
-                elapsed += interval;
-            }
-
-            ModBehaviour.DevLog("[BossRush] WaitForLevelInitializedThenSetup: 结束等待, elapsed=" + elapsed + "s");
-
-            // 执行原来的设置逻辑
-            _owner.StartBossRushDemoChallengeSetupForScene(scene);
+            return BeginArenaEntryWait(scene);
         }
 
         /// <summary>

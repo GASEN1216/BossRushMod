@@ -314,15 +314,19 @@ namespace BossRush
 
         internal SkyIslandHud(Transform owner)
         {
-            canvas = BossRushUI.CreateCanvasRoot("SkyIslandHud", BossRushUILayers.HudOverlay, false);
-            if (owner != null) canvas.transform.SetParent(owner, false);
-            rootGroup = canvas.gameObject.AddComponent<CanvasGroup>();
-            rootGroup.blocksRaycasts = false;
-            rootGroup.interactable = false;
-            BuildCard();
-            BuildBanner();
-            BuildCaption();
-            Apply();
+            try
+            {
+                canvas = BossRushUI.CreateCanvasRoot("SkyIslandHud", BossRushUILayers.HudOverlay, false);
+                if (owner != null) canvas.transform.SetParent(owner, false);
+                rootGroup = canvas.gameObject.AddComponent<CanvasGroup>();
+                rootGroup.blocksRaycasts = false;
+                rootGroup.interactable = false;
+                BuildCard();
+                BuildBanner();
+                BuildCaption();
+                Apply();
+            }
+            catch { Dispose(); throw; }
         }
 
         #region 构建

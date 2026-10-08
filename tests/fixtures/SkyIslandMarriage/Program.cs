@@ -53,6 +53,12 @@ internal static class Program
     { typeof(SkyIslandResidentInteractable).GetMethod("Update", BindingFlags.Instance|BindingFlags.NonPublic).Invoke(interaction, null); }
     private static void Givers()
     {
+        var pending = Session(false); pending.residents.SpawnFinished = false;
+        SkyIslandOfficialQuestGivers.EnsureDeviceFallback(pending);
+        Check(Board(pending) == null, "normal asynchronous resident startup still waits before device fallback");
+        pending.residentsFailed = true; pending.residents = null;
+        SkyIslandOfficialQuestGivers.EnsureDeviceFallback(pending);
+        Check(Board(pending) != null, "failed resident startup permits the existing device quest fallback");
         foreach (string id in new[] { "sky_weibai", "sky_fuzhou", "sky_bellkeeper" })
         {
             var current = Session(true);

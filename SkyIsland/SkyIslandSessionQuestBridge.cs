@@ -49,7 +49,7 @@ namespace BossRush
         }
 
         /// <summary>居民 owner 已经把整队生成完（成功与否都算）；在此之前不判「谁缺席」。只读。</summary>
-        internal bool ResidentsSettled { get { return residents != null && residents.SpawnFinished; } }
+        internal bool ResidentsSettled { get { return residentsFailed || (residents != null && residents.SpawnFinished); } }
 
         /// <summary>按标记名找岛上的装置交互体（`Search_B` 委托板等），给兜底给予者分组用。只读。</summary>
         internal InteractableBase FindDeviceInteractable(string marker)

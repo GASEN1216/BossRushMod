@@ -119,6 +119,11 @@ namespace Duckov.Scenes
 }
 namespace Duckov.UI
 {
+    public static class NotificationText
+    {
+        internal static readonly List<string> Messages = new List<string>();
+        public static void Push(string message) { Messages.Add(message); }
+    }
     public static class ClosureView
     {
         internal static int Shown;
@@ -156,7 +161,8 @@ public class LevelManager
     public void NotifyEvacuated(EvacuationInfo info) { Evacuations++; }
 }
 namespace Duckov.Buffs {public class Buff {}}
-public class AstarPath:UnityEngine.Component {public static AstarPath active;}
+public class AstarPath:UnityEngine.Component {public static AstarPath active;public object data;public bool isScanning;}
+public class GameCamera { public static GameCamera Instance; public object renderCamera; }
 public class TimeOfDayConfig:UnityEngine.MonoBehaviour {}
 public class LevelConfig:UnityEngine.Component {public TimeOfDayConfig timeOfDayConfig;public List<Duckov.Buffs.Buff> startBuffPrefabs;}
 public class Health {public bool IsDead;}
@@ -185,6 +191,11 @@ public class SceneLoader
 }
 namespace BossRush
 {
+    internal static class SkyIslandLootPools
+    {
+        internal static Func<System.Collections.IEnumerator> Factory;
+        internal static System.Collections.IEnumerator Prewarm() { return Factory(); }
+    }
     internal static class ModBehaviour
     {
         internal static string ModPath = System.Environment.CurrentDirectory;

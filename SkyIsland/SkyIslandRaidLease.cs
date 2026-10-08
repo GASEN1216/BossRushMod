@@ -21,10 +21,16 @@ namespace BossRush
         private SkyIslandRaidRecovery recovery;
         private float retryAt;
         private Action completed;
+        private string failureNotice;
         private System.Collections.IEnumerator preparation;
         internal bool LoadFinished { get; private set; }
         internal string Error { get; private set; }
         internal bool IsReturning { get { return returning; } }
+
+        internal void SetFailureNotice(string message)
+        {
+            if (failureNotice == null) failureNotice = message;
+        }
 
         /// <summary>官方在激活场景前等待玩家点击继续；这段人为等待不消耗加载超时预算。</summary>
         internal bool HasSceneLoadTimeRemaining(ref float deadline)
@@ -193,6 +199,7 @@ namespace BossRush
             if (returning || loading || SceneLoader.IsSceneLoading || Time.unscaledTime < retryAt) return;
             if (SkyIslandSceneReferenceBridge.HasPendingInitializationLoad(this)) return;
             returning = true;
+            bool baseReturned = false;
             try
             {
                 // 原生撤离事件、角色保存、幕布切图、基地角色重建按官方完整顺序执行。
@@ -225,12 +232,18 @@ namespace BossRush
                 await SceneLoader.Instance.LoadScene(GameplayDataSettings.SceneManagement.BaseScene,
                     curtain, clickToConinue: false, notifyEvacuation: evacuated, saveToFile: true);
                 returnFailed = false;
+                baseReturned = true;
             }
             catch (Exception e) { returnFailed = true; Error = e.Message; Debug.LogError("[SkyIsland] RAID_RETURN_FAILED " + e); ReleaseStuckOfficialLoadingFlag("return"); }
             finally
             {
                 try { await SkyIslandSceneReferenceBridge.EndLoadVisuals(this); }
                 catch (Exception e) { Debug.LogWarning("[SkyIsland] 返航黑幕清理失败: " + e.Message); }
+                if (baseReturned && failureNotice != null)
+                {
+                    try { NotificationText.Push(failureNotice); failureNotice = null; }
+                    catch (Exception e) { Debug.LogWarning("[SkyIsland] 返航失败原因提示未显示: " + e.Message); }
+                }
                 returning = false; retryAt = Time.unscaledTime + 2f; TryRelease();
             }
         }

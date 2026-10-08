@@ -152,7 +152,7 @@ namespace BossRush
                 if (startedModeE)
                 {
                     bool verifiedModeE = false;
-                    yield return StartCoroutine(WaitForModeEStartupVerification(result => verifiedModeE = result));
+                    yield return WaitForModeEStartupVerification(result => verifiedModeE = result);
                     if (verifiedModeE)
                     {
                         SpawnCommonNPCs("DEMO场景 Mode E 初始化完成");
@@ -336,7 +336,7 @@ namespace BossRush
             }
 
             TryCreateArenaDifficultyEntryPoint();
-            StartCoroutine(EnsureArenaEntryPointCreated());
+            bossRushIntegrationRuntime.StartArenaEntryContinuation(EnsureArenaEntryPointCreated());
 
             if (entryMode == BossRushEntryMode.ModeD)
             {

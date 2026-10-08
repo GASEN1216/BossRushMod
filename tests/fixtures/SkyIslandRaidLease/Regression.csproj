@@ -2,4 +2,5 @@
   <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><Nullable>disable</Nullable><ImplicitUsings>disable</ImplicitUsings></PropertyGroup>
   <ItemGroup><Compile Include="../../../SkyIsland/SkyIslandRaidLease.cs" Link="Production/SkyIslandRaidLease.cs" /></ItemGroup>
   <ItemGroup><Compile Include="$(SessionReturnSource)" Link="Production/SessionReturn.cs" /></ItemGroup>
+  <ItemGroup><Compile Include="../../../SkyIsland/SkyIslandSessionEntry.cs" Link="Production/SkyIslandSessionEntry.cs" /></ItemGroup>
 </Project>

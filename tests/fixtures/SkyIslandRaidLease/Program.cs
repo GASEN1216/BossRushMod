@@ -3,6 +3,7 @@ using System.IO;
 using BossRush;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using System.Collections;
 
 internal static class Program
 {
@@ -168,6 +169,91 @@ internal static class Program
         SceneLoader.LoadingComment="Waiting for scene loading operation...";Time.realtimeSinceStartup=121f;
         Check(!lease.HasSceneLoadTimeRemaining(ref deadline),"actual asset loading retains the original timeout");
         lease.Release(null);SceneLoader.Finish(true);
+        EntryRecoveryChecks();
         Console.WriteLine("PASS SkyIslandRaidLease: "+checks+" assertions (production lease with official loader and Unity substitutes)");
+    }
+
+    private sealed class FaultingWarm : IEnumerator, IDisposable
+    {
+        internal int Advances, Disposals;
+        internal object Token = new object();
+        public object Current { get { return Token; } }
+        public bool MoveNext() { if (++Advances == 1) return true; throw new Exception("pool fault"); }
+        public void Reset() { throw new NotSupportedException(); }
+        public void Dispose() { Disposals++; }
+    }
+
+    private static void EntryRecoveryChecks()
+    {
+        var lease = New(); var session = new SkyIslandSession(lease);
+        AstarPath.active = null;
+        IEnumerator wait = session.NavigationWait();
+        Check(wait.MoveNext(), "missing navigation owner waits instead of immediately rejecting the entry");
+        AstarPath.active = new GameObject("Astar").AddComponent<AstarPath>();
+        Check(wait.MoveNext(), "navigation data must be initialized before scanning");
+        AstarPath.active.data = new object(); AstarPath.active.isScanning = true;
+        Check(wait.MoveNext(), "an existing official scan retains its ownership until completion");
+        AstarPath.active.isScanning = false;
+        Check(!wait.MoveNext(), "dedicated scan may begin once owner and data are ready and idle");
+        AstarPath.active = null; wait = session.NavigationWait(); wait.MoveNext();
+        Time.realtimeSinceStartup = 31;
+        bool rejected = false;
+        try { wait.MoveNext(); } catch (TimeoutException) { rejected = true; }
+        Check(rejected, "missing navigation owner has a bounded 30 second wait");
+        Time.realtimeSinceStartup = 0; wait = session.NavigationWait(); wait.MoveNext(); lease.Abort("official init failed");
+        rejected = false;
+        try { wait.MoveNext(); } catch (InvalidOperationException e) { rejected = e.Message == "official init failed"; }
+        Check(rejected, "official initialization failure immediately interrupts navigation readiness wait");
+        lease.Release(null);
+
+        lease = New(); session = new SkyIslandSession(lease);
+        int released = 0;
+        session.Optional(() => { throw new Exception("optional fault"); }, () => released++);
+        session.Optional(() => { throw new Exception("same optional fault"); }, () => released++);
+        Check(released == 2 && session.FaultCount == 1, "optional step releases failed owners and logs each step once");
+        var warm = new FaultingWarm(); SkyIslandLootPools.Factory = () => warm;
+        wait = session.LootWarm();
+        Check(wait.MoveNext() && ReferenceEquals(wait.Current, warm.Token), "prewarm preserves production coroutine Current");
+        Check(!wait.MoveNext() && warm.Disposals == 1, "prewarm failure is recoverable and disposes its enumerator");
+        warm = new FaultingWarm(); SkyIslandLootPools.Factory = () => warm; wait = session.LootWarm(); wait.MoveNext();
+        ((IDisposable)wait).Dispose();
+        Check(warm.Disposals == 1, "cancelling entry promptly disposes unfinished pool prewarm");
+        warm = new FaultingWarm(); SkyIslandLootPools.Factory = () => warm; wait = session.BuildWarm(); wait.MoveNext();
+        ((IDisposable)wait).Dispose();
+        Check(warm.Disposals == 1, "disposing the actual Build prewarm driver releases its nested enumerator");
+        warm = new FaultingWarm(); SkyIslandLootPools.Factory = () => warm; wait = session.BuildWarm(); wait.MoveNext();
+        session.CancelEntry();
+        Check(warm.Disposals == 1, "session cancellation explicitly releases active prewarm without relying on Unity disposal");
+        ((IDisposable)wait).Dispose();
+        Check(warm.Disposals == 1, "late Build disposal after explicit cancellation cannot release the nested enumerator twice");
+        SkyIslandLootPools.Factory = () => { throw new Exception("pool construction failed"); };
+        Check(!session.LootWarm().MoveNext(), "prewarm factory failure remains recoverable");
+        lease.Release(null);
+
+        lease = New(); session = new SkyIslandSession(lease); GameCamera.Instance = null;
+        wait = session.EntryWait(); Check(wait.MoveNext(), "entry initially waits for its scene root");
+        Time.realtimeSinceStartup = 119; session.BindWorld();
+        Check(wait.MoveNext(), "scene activation receives its own budget after slow asset loading");
+        Time.realtimeSinceStartup = 150;
+        bool activationAlive;
+        try { activationAlive = wait.MoveNext(); }
+        catch (TimeoutException) { throw new Exception("camera activation budget expired before its own deadline"); }
+        Check(activationAlive, "camera activation is not charged against the expired asset loading budget");
+        GameCamera.Instance = new GameCamera { renderCamera = new object() };
+        Check(!wait.MoveNext(), "entry continues once active scene and official camera are ready");
+        lease.MarkInitialized(); SceneLoader.Finish(); SceneManager.UnloadRaid(); lease.Release(null);
+
+        lease = New(); lease.SetFailureNotice("original setup failure"); lease.SetFailureNotice("secondary cancellation");
+        Duckov.UI.NotificationText.Messages.Clear();
+        lease.ReturnToBase(false);
+        Check(Duckov.UI.NotificationText.Messages.Count == 0, "failure notice is not consumed under the return curtain");
+        SceneLoader.Finish(true); Time.unscaledTime = 3; lease.ReturnToBase(false);
+        Check(Duckov.UI.NotificationText.Messages.Count == 0, "failed base return preserves the original notice for retry");
+        SceneLoader.Finish();
+        Check(Duckov.UI.NotificationText.Messages.Count == 1 && Duckov.UI.NotificationText.Messages[0] == "original setup failure",
+            "successful base return shows the first failure after visual lease completion");
+        Time.unscaledTime = 6; lease.ReturnToBase(false); SceneLoader.Finish();
+        Check(Duckov.UI.NotificationText.Messages.Count == 1, "a consumed failure notice is never shown twice");
+        lease.Release(null);
     }
 }

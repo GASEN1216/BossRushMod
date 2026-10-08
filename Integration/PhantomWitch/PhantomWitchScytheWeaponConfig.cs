@@ -35,7 +35,6 @@ namespace BossRush
         private static readonly Vector3 DefaultSlashFxScale = new Vector3(1.8f, 1.8f, 1.8f);
         private static GameObject cachedFallbackSlashFx;
         private static GameObject cachedFallbackHitFx;
-        private static PhantomWitchScytheConfig cachedConfig;
 
         // 一次都没找到时的重扫节流（照 NewWeaponMeleeFx）：场上暂时没有别的近战武器可借（例如刚进图）时
         // 缓存一直是 null，每刀都会跑一遍 Resources.FindObjectsOfTypeAll；官方武器可能晚于首刀才加载，
@@ -81,8 +80,14 @@ namespace BossRush
             "BleedChance"
         };
 
+        public static void RegisterEquipmentConfigurator()
+        {
+            EquipmentFactory.RegisterConfigurator("PhantomWitchScytheWeaponConfig",
+                delegate(Item item, string baseName) { TryConfigure(item); });
+        }
+
         /// <summary>
-        /// 单参入口（由 CustomItemRuntimeStateHelper / ItemFactory 配置器调用）
+        /// 单参入口（由 EquipmentFactory / CustomItemRuntimeStateHelper / ItemFactory 调用）
         /// </summary>
         public static bool TryConfigure(Item item)
         {
@@ -99,12 +104,13 @@ namespace BossRush
         /// </summary>
         public static bool TryConfigure(Item item, string baseName)
         {
-            if (item == null || string.IsNullOrEmpty(baseName))
+            if (item == null || item.TypeID != PhantomWitchScytheIds.WeaponTypeId || string.IsNullOrEmpty(baseName))
             {
                 return false;
             }
 
-            if (!baseName.Equals(SCYTHE_BASE_NAME, StringComparison.OrdinalIgnoreCase))
+            if (!baseName.Equals(SCYTHE_BASE_NAME, StringComparison.OrdinalIgnoreCase)
+                && !baseName.Equals(PhantomWitchScytheIds.ModelBaseName, StringComparison.OrdinalIgnoreCase))
             {
                 return false;
             }
@@ -114,6 +120,8 @@ namespace BossRush
 
         private static bool TryConfigureInternal(Item item)
         {
+            // 名称先于模型和数值配置，其他组件异常也不应漏出内部资源名。
+            InjectLocalization(item);
             try
             {
                 ModBehaviour.DevLog("[PhantomWitchScythe] 开始配置幽灵女巫大镰...");
@@ -147,8 +155,7 @@ namespace BossRush
                         SCYTHE_BASE_NAME);
                 }
 
-                // 7. 注入本地化（多键）
-                InjectLocalization(item);
+                // 7. 同步物品价值
                 SyncItemValueFromRawValue(item);
 
                 // 8. 修复运动模糊（武器在挥动时不产生模糊拖影）
@@ -411,7 +418,6 @@ namespace BossRush
             cachedFallbackSlashFx = null;
             cachedFallbackHitFx = null;
             lastFailedScanTime = float.NegativeInfinity;
-            cachedConfig = null;
         }
 
         private static GameObject GetFallbackHitFx()
@@ -643,36 +649,7 @@ namespace BossRush
 
         private static void InjectLocalization(Item item)
         {
-            try
-            {
-                if (cachedConfig == null)
-                {
-                    cachedConfig = new PhantomWitchScytheConfig();
-                }
-
-                string displayName = L10n.T(cachedConfig.DisplayNameCN, cachedConfig.DisplayNameEN);
-                string description = L10n.T(cachedConfig.DescriptionCN, cachedConfig.DescriptionEN);
-
-                // 多键注入，确保游戏各处都能正确显示
-                string itemKey = "Item_" + item.TypeID;
-                LocalizationHelper.InjectLocalization(itemKey, displayName);
-                LocalizationHelper.InjectLocalization(itemKey + "_Desc", description);
-                LocalizationHelper.InjectLocalization("phantom_witch_scythe", displayName);
-                LocalizationHelper.InjectLocalization("phantom_witch_scythe_Desc", description);
-                LocalizationHelper.InjectLocalization(PhantomWitchConfig.ScytheNameCN, displayName);
-                LocalizationHelper.InjectLocalization(PhantomWitchConfig.ScytheNameEN, displayName);
-                // Unity Prefab 的 displayName 字段直接是 "PhantomScythe_Melee_Item"，
-                // 游戏 UI（物品名/描述/死亡日志）会用它当 key 去查本地化。
-                // 不注入就会在界面上显示为 *PhantomScythe_Melee_Item* 和 *PhantomScythe_Melee_Item_Desc*。
-                LocalizationHelper.InjectLocalization(PhantomWitchScytheIds.WeaponPrefabName, displayName);
-                LocalizationHelper.InjectLocalization(PhantomWitchScytheIds.WeaponPrefabName + "_Desc", description);
-
-                ModBehaviour.DevLog("[PhantomWitchScythe] 本地化注入完成");
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[PhantomWitchScythe] 本地化注入失败: " + e.Message);
-            }
+            PhantomWitchScytheLocalization.Inject(item);
         }
 
         // ========== 渲染修复 ==========

@@ -126,6 +126,7 @@ echo(Localization\LocalizationHelper.cs
 echo(Localization\LocalizationInjector.cs
 echo(Localization\LocalizationInjector_NpcUiAndItems.cs
 echo(Localization\EquipmentLocalization.cs
+echo(Localization\PhantomWitchScytheLocalization.cs
 echo(Localization\ModeHLocalization.cs
 echo(Localization\PetNestLocalization.cs
 echo(Localization\RandomEventsLocalization.cs
@@ -198,6 +199,7 @@ echo(SkyIsland\SkyIslandRendering.cs
 echo(SkyIsland\SkyIslandLighting.cs
 echo(SkyIsland\SkyIslandSearchPoint.cs
 echo(SkyIsland\SkyIslandSession.cs
+echo(SkyIsland\SkyIslandSessionEntry.cs
 echo(SkyIsland\SkyIslandControls.cs
 echo(SkyIsland\SkyIslandContent.cs
 echo(SkyIsland\SkyIslandChatterLines.cs
@@ -369,6 +371,7 @@ echo(Integration\IntegrationHostCompatibility.cs
 echo(Integration\DailyReport\DailyReportRuntimeModule_UI.cs
 echo(Integration\BossRushIntegrationRuntimeModule.cs
 echo(Integration\BossRushIntegrationRuntimeModule_MapObjects.cs
+echo(Integration\BossRushIntegrationRuntimeModule_ArenaEntry.cs
 echo(Integration\BossRushIntegrationRuntimeModule_DeferredBootstrap.cs
 echo(Integration\BossRushIntegrationRuntimeModule_ContentRegistration.cs
 echo(Integration\BossRushIntegrationRuntimeModule_SceneLifecycle.cs

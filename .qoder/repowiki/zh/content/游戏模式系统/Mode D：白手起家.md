@@ -1,5 +1,7 @@
 # Mode D：白手起家
 
+2026-10-08 入场归属修复（COMPAT，CR-2026-10-08-018）：DEMO 竞技场的就绪等待、完整 setup、Mode E 启动验证和路牌补建共用 `IntegrationRuntimeModule` 的 arena entry request。请求绑定原场景 handle 与就绪后的唯一主角；原图卸载、官方开始下一次加载、角色替换 / 死亡、后继请求与模块销毁会取消旧任务，30 秒等待超时也不再派发 setup。旧代码原图卸载后仍等待满 30 秒，再读取当前天空岛角色的裸装状态并误启动 Mode D；修复后每次协程恢复都检查原请求归属。`LegacyArenaEntry` 执行真实模式判定、完整 DEMO setup 与 Mode D 生命周期，旧生产源码在跨图迟到启动断言实跑转红；证据为 L1 / L2，具体玩家返航原因仍需对应日志或实机确认。
+
 2026-10-06 波次血量与难度叠加（COMPAT）：`ApplyModeDWaveScaling` 保留每波 3% 规则，用整体 `PercentageMultiply` 叠加并回读 `Health.MaxHealth` 同步满血。先按已经受 Boss 生命比例影响的 `Stat.Value` 算 Add 增量，会让增量再次吃末尾百分比，例如 50% 难度、第 2 波的 1000 基准 Boss 原会得到 507.5 上限却写入 515 当前血量；修正后两者均为 515。普通敌人仍只接受本来的波次倍率。
 
 2026-10-06 入场船票回退修复（COMPAT）：`GetBossRushTicketTypeId()` 在动态注册 ID 尚未就绪时使用共享 `BossRushItemIds.BossRushTicket`（500001），不再回退旧模板 868，避免合法船票被裸装检查当成杂物。仍要求装备槽、武器槽、主角背包与官方狗子背包满足原空装规则。正式入口本来已有加载等待，不能仅凭 0.5 秒延迟断言初始化竞态就是玩家报告的原因；`ModeDEntryOwnership` 覆盖未注册 ID 和已注册 ID 两条准入，真实地图与其他 Mod 自动发物仍需实机核对。

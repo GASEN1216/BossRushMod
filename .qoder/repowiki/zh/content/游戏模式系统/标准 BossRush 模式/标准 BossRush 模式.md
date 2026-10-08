@@ -1,5 +1,7 @@
 # 标准 BossRush 模式
 
+2026-10-08 DEMO 入场协程归属（COMPAT）：就绪等待只在场景、官方 loader、角色、相机与 LevelManager 全部就绪时派发；超时取消。`IntegrationRuntimeModule_ArenaEntry.cs` 持有原场景与角色绑定、后继请求替换、切图 / 卸载 / 销毁取消及任务释放。DEMO setup 每次恢复共用归属检查，Mode E 验证改为受 owner 递归驱动的子 IEnumerator，异步路牌补建也登记同一请求。普通子 IEnumerator 由显式栈推进并逆序释放；CustomYieldInstruction 与 Coroutine 保留 Unity 原生等待语义。Normal / D / E / F / G / H 的正常分支及取消路径由 `LegacyArenaEntry` 执行，实际 Unity 调度和地图画面仍需实机验收。
+
 > 2026-09-26 迁移注：波次、生成、清场、现金磁铁与 Tick 的宿主兼容入口合并到 `WavesArena.cs`；`BossRushEntryFlow.cs` 和 `WavesArenaEntryAndTeleport.cs` 继续承担跨模式入场协调。运行时状态和算法仍在既有 `WavesArenaRuntimeModule` partial，成员语义与初始化顺序不因文件归并改变。
 
 > 2026-10-07 入场与征程隔离：`ArenaActive` 只表示场景已被接管，官方 `AfterInit` 后仍可能执行 BossRush 二次传送。路牌按地图配置定位、垃圾桶按同一路牌坐标偏移；征程复用 `UIAndSignsRuntimeModule.SignInteract` 的真实可用实例作为生成门和场地锚点，要求其属于当前场景，随后在路牌旁投影地面生成报名石。雪图复用同一 owner 的隐形入口。不能提前按玩家原始出生点生成，也不随玩家后来移动改变位置。

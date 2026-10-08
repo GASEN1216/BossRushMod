@@ -62,6 +62,7 @@ namespace BossRush
             LocalizationInjector.InjectZombieModeLocalization();
             InjectModeFItemLocalization();
             EquipmentLocalization.InjectAllEquipmentLocalizations();
+            PhantomWitchScytheLocalization.Inject();
             NewWeaponPlaceholderRegistry.InjectLocalization();
             AstralStaffWeaponConfig.InjectLocalization();
             EmptyMagazineMineWeaponConfig.InjectLocalization();
