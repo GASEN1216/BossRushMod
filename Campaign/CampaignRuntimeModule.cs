@@ -64,9 +64,11 @@ namespace BossRush
         internal bool IsBootstrapped { get { return _bootstrapped; } }
 
         /// <summary>Dev 演练：立刻刷杰夫任务页的 Task 与头顶标记（平时由核心 0.25 秒一拍自动做）。</summary>
-        internal void SyncOfficialQuests()
+        internal void SyncOfficialQuests(bool clearPending = false)
         {
-            if (_questClient != null) _questClient.NotifyProgressChanged();
+            if (_questClient == null) return;
+            if (clearPending) _questClient.ClearPending();
+            _questClient.NotifyProgressChanged();
         }
 
         #endregion

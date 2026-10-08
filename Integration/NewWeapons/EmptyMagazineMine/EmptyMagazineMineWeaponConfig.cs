@@ -31,7 +31,11 @@ namespace BossRush
             // 官方重量只有只读 UnitSelfWeight，复用现有隐藏字段写入工具。
             ModeFItemConfigHelper.SetHiddenMember(item, "weight", EmptyMagazineMineConfig.ItemWeight);
             ModeFItemConfigHelper.ClearInheritedUsage(item);
-            UnityEngine.Sprite icon = EmptyMagazineMineIcon.GetSprite(item);
+            // 2026-10-08：图标改为生图资源（production_icons 生产包，与五把武器同一套美术管线）。
+            // 动态 prefab 跨 Mod 重载保留，由它拥有图标副本，避免生产包卸载后留下失效引用。
+            // 包缺失时仍使用同一个 owner 的程序化弹匣图。
+            UnityEngine.Sprite icon = EmptyMagazineMineIcon.GetSprite(item,
+                ProductionIconCache.Get("Assets/Items/empty_magazine_mine_icon.png"));
             if (icon != null) item.Icon = icon;
             InjectLocalization();
             return true;

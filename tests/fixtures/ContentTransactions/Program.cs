@@ -585,7 +585,7 @@ partial class Program
         if (args.Length == 0) HomecomingStoreRecovery();
         if (RunCampaignDiskRegression(args)) return;
         QuestDeliveryTransactions();
-        CampaignExplicitCodecRegression(); CampaignReadinessLifecycle(); CampaignRestartLifecycle(); CampaignGuideLifecycle(); GuideCash(); CampaignCash(); DailyCash(); OfficialStickySaving(); Condense(); Hatch(); PetNestAchievements(); Meals(); ExpeditionEggIdentity(); ShowcaseSnapshot();
+        CampaignResetTransactions(); CampaignExplicitCodecRegression(); CampaignReadinessLifecycle(); CampaignRestartLifecycle(); CampaignGuideLifecycle(); GuideCash(); CampaignCash(); DailyCash(); OfficialStickySaving(); Condense(); Hatch(); PetNestAchievements(); Meals(); ExpeditionEggIdentity(); ShowcaseSnapshot();
         ManualChromaAndDurations();
         PityGuarantees();
         PetNestLifecycleRepairs();

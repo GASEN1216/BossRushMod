@@ -8,6 +8,8 @@
 //   1) ModBehaviour.GetFilteredEnemyPresets() 的过滤池（自定义键留给下一步）；
 //   1b) **官方 Boss 名单**（CodexOfficialBossRegistry / Assets/Data/CodexOfficialBosses.json）
 //       里过滤池没给出的那些——这一步 2026-09-20 第三轮补上，见下方长注释；
+//       2026-10-08 owner 复核确认保留：口径「图鉴以 Boss 池为准」= 按池子的逻辑
+//       （出场池标记 / 分类 / 采集判据），**不是**「筛选器关掉就消失」；
 //   2) 三个自定义 Boss 常量（也在公共池注册，在这里统一分类）；
 //   3) 五个丧尸模式 Boss 的合成条目；
 //   4) **存档里已经出现过、但前三步都不含的历史条目**。
@@ -230,6 +232,10 @@ namespace BossRush
         ///
         /// fail-open：名单读不出来时 OfficialBossKeys 返回空表，这一步等于不存在，
         /// 目录退回旧口径，面板照开。
+        ///
+        /// 2026-10-08 owner 复核：口径「图鉴以 Boss 池为准」= 按池子的逻辑（出场池给出
+        /// IsInCurrentPool 标记，分类与采集判据照旧），**不是**「关掉筛选器格子消失」。
+        /// 本步保留；当天曾误删一次又按 owner 口径整段还原，回归会挡住再次误删。
         /// </summary>
         private static void AddOfficialRosterEntries(
             Dictionary<string, CodexBossInfo> byKey,

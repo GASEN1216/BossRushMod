@@ -32,6 +32,10 @@ internal static class Program
             Run("blast obeys current team, companions, occlusion and Health deduplication", FriendlyFireAndOcclusion);
             Run("equipment invalidation during damage stops the remaining targets", InvalidationDuringDamage);
             Run("backpack, NPC and base contexts remain inactive", InactiveContexts);
+            Run("registered item icon survives production bundle unload and repeated configuration", ProductionIconSurvivesReload);
+            Run("copied item component cannot destroy the prefab's shared icon", ClonedIconOwnership);
+            Run("a missing production bundle uses a visible owned fallback", MissingProductionIconFallback);
+            Run("failed Sprite copying releases its texture before fallback", FailedProductionCopyFallback);
             Cleanup();
             Console.WriteLine("EmptyMagazineMine: " + scenarios + " scenarios / " + assertions + " assertions PASS");
             return 0;
@@ -70,6 +74,12 @@ internal static class Program
         EmptyMagazineMineRuntime.Unsubscribe();
         // 每次用例都必经真实对象图销毁，不把 Unity 已销毁对象等于 null 只当成可选边界。
         GameObject.DestroyScene();
+        ProductionIconCache.ResetStaticCaches();
+        foreach (Texture2D texture in Texture2D.All) Expect(texture == null, "icon textures released by owner or bundle cleanup");
+        Texture2D.All.Clear();
+        Texture2D.CloneCalls = Sprite.CreateCalls = 0;
+        Sprite.FailNextCreate = false;
+        EquipmentFactory.Configurators.Clear();
         CharacterMainControl.Main = null;
         player = null;
         gun = null;
@@ -479,5 +489,116 @@ internal static class Program
         Fire(6);
         Expect(!EmptyMagazineMineRuntime.HasPendingMine, "base level has no deployed mine");
         Equal(0, Physics.OverlapCalls, "all inactive contexts avoid scans");
+    }
+
+    private static ItemStatsSystem.Item IconItem(string name)
+    {
+        return new GameObject(name).AddComponent<ItemStatsSystem.Item>();
+    }
+
+    private static Sprite ProductionIcon()
+    {
+        Texture2D texture = new Texture2D(512, 512, TextureFormat.BC7, false);
+        texture.Apply(false, true);
+        Sprite source = Sprite.Create(texture, new Rect(16, 32, 400, 320), new Vector2(0.3f, 0.7f), 100,
+            0, SpriteMeshType.FullRect, new Vector4 { x = 1, y = 2, z = 3, w = 4 });
+        ProductionIconCache.Source = source;
+        return source;
+    }
+
+    private static void ProductionIconSurvivesReload()
+    {
+        Cleanup();
+        Sprite source = ProductionIcon();
+        Texture2D sourceTexture = source.texture;
+        ItemStatsSystem.Item item = IconItem("persistent dynamic prefab");
+        EmptyMagazineMineWeaponConfig.RegisterEquipmentConfigurator();
+        EquipmentFactory.Configurators["EmptyMagazineMineWeaponConfig"](item, EmptyMagazineMineConfig.BaseName);
+        Equal("Assets/Items/empty_magazine_mine_icon.png", ProductionIconCache.LastPath, "configuration requests the shipped alias");
+        Sprite owned = item.Icon;
+        Expect(owned != null && !ReferenceEquals(owned, source), "configured item owns an independent Sprite");
+        Texture2D ownedTexture = owned.texture;
+        Expect(ownedTexture != null && !ReferenceEquals(ownedTexture, sourceTexture), "configured item owns an independent Texture");
+        Equal(TextureFormat.BC7, ownedTexture.format, "copy preserves compressed format");
+        Expect(!ownedTexture.isReadable, "copy does not enable Read/Write");
+        Equal(source.rect, owned.rect, "Sprite crop is preserved");
+        Equal(source.pivot, owned.pivot, "Sprite pivot is preserved");
+        Equal(source.pixelsPerUnit, owned.pixelsPerUnit, "Sprite scale is preserved");
+        Equal(source.border, owned.border, "Sprite borders are preserved");
+        Equal(1, Texture2D.CloneCalls, "configuration creates exactly one texture copy");
+        int spriteAllocations = Sprite.CreateCalls;
+        Expect(EmptyMagazineMineWeaponConfig.TryConfigure(item, EmptyMagazineMineConfig.BaseName), "same prefab reconfiguration succeeds");
+        Expect(ReferenceEquals(owned, item.Icon), "same owner reuses its Sprite");
+        Equal(1, Texture2D.CloneCalls, "reconfiguration does not copy texture again");
+        Equal(spriteAllocations, Sprite.CreateCalls, "reconfiguration does not allocate a Sprite again");
+
+        ProductionIconCache.ResetStaticCaches();
+        Expect(source == null && sourceTexture == null, "bundle cleanup destroys original Sprite and Texture");
+        Expect(owned != null && ownedTexture != null, "persistent prefab icon survives Mod resource cleanup");
+        Expect(EmptyMagazineMineWeaponConfig.TryConfigure(item, EmptyMagazineMineConfig.BaseName), "configuration tolerates the temporarily missing bundle");
+        Expect(ReferenceEquals(owned, item.Icon), "missing bundle cannot replace a live owned icon");
+        UObject.Destroy(item.gameObject);
+        Expect(owned == null && ownedTexture == null, "destroying the resource owner releases both copies");
+    }
+
+    private static void ClonedIconOwnership()
+    {
+        Cleanup();
+        ProductionIcon();
+        ItemStatsSystem.Item prefab = IconItem("icon prefab");
+        Expect(EmptyMagazineMineWeaponConfig.TryConfigure(prefab, EmptyMagazineMineConfig.BaseName), "prefab configures");
+        Sprite owned = prefab.Icon;
+        Texture2D ownedTexture = owned.texture;
+        ItemStatsSystem.Item clone = IconItem("spawned icon item");
+        clone.Icon = owned;
+        EmptyMagazineMineIcon originalComponent = prefab.GetComponent<EmptyMagazineMineIcon>();
+        EmptyMagazineMineIcon clonedComponent = clone.gameObject.AddComponent<EmptyMagazineMineIcon>();
+        // 对最不利的复制态施压：连私有资源引用和原 owner id 一起带过去，但组件实例 id 必须独立。
+        foreach (System.Reflection.FieldInfo field in typeof(EmptyMagazineMineIcon).GetFields(
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly))
+            field.SetValue(clonedComponent, field.GetValue(originalComponent));
+        Expect(EmptyMagazineMineWeaponConfig.TryConfigure(clone, EmptyMagazineMineConfig.BaseName), "spawned clone can be configured again");
+        Equal(1, Texture2D.CloneCalls, "clone reuses the existing icon reference");
+        UObject.Destroy(clone.gameObject);
+        Expect(owned != null && ownedTexture != null, "destroying a cloned component cannot free the prefab icon");
+        ProductionIconCache.ResetStaticCaches();
+        ItemStatsSystem.Item later = IconItem("item spawned after reload");
+        later.Icon = prefab.Icon;
+        Expect(later.Icon != null && later.Icon.texture != null, "later spawned item receives a live icon after source unload");
+        UObject.Destroy(later.gameObject);
+        UObject.Destroy(prefab.gameObject);
+        Expect(owned == null && ownedTexture == null, "the actual owner releases the final shared copy");
+    }
+
+    private static void MissingProductionIconFallback()
+    {
+        Cleanup();
+        ItemStatsSystem.Item item = IconItem("bundle absent fallback");
+        Expect(EmptyMagazineMineWeaponConfig.TryConfigure(item, EmptyMagazineMineConfig.BaseName), "configuration works without the optional production bundle");
+        Sprite icon = item.Icon;
+        Expect(icon != null && icon.texture != null, "fallback Sprite and Texture exist");
+        Texture2D texture = icon.texture;
+        Equal(128, texture.width, "fallback uses the existing procedural canvas");
+        Expect(Array.Exists(texture.Pixels, pixel => pixel.a > 0), "fallback contains visible pixels");
+        Expect(Array.Exists(texture.Pixels, pixel => pixel.a == 0), "fallback retains transparent background");
+        Equal(0, Texture2D.CloneCalls, "fallback does not try to copy a missing source");
+        Expect(EmptyMagazineMineWeaponConfig.TryConfigure(item, EmptyMagazineMineConfig.BaseName), "fallback reconfiguration succeeds");
+        Expect(ReferenceEquals(icon, item.Icon), "fallback owner reuses its asset");
+        UObject.Destroy(item.gameObject);
+        Expect(icon == null && texture == null, "fallback resources are released with their owner");
+    }
+
+    private static void FailedProductionCopyFallback()
+    {
+        Cleanup();
+        Sprite source = ProductionIcon();
+        ItemStatsSystem.Item item = IconItem("failed copy fallback");
+        Sprite.FailNextCreate = true;
+        Expect(EmptyMagazineMineWeaponConfig.TryConfigure(item, EmptyMagazineMineConfig.BaseName), "copy failure is contained by the fallback");
+        Expect(item.Icon != null && item.Icon.texture != null, "copy failure still returns a usable fallback");
+        Equal(TextureFormat.RGBA32, item.Icon.texture.format, "failed production copy chooses procedural texture");
+        Equal(3, Texture2D.All.Count, "source, failed copy and fallback were each allocated");
+        Expect(Texture2D.All[1] == null, "failed Sprite allocation releases the intermediate texture copy");
+        Expect(source != null && source.texture != null, "copy failure does not destroy borrowed production assets");
     }
 }

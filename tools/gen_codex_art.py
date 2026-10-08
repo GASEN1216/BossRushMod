@@ -159,6 +159,18 @@ SPECS.append(("Assets/Items/affix_forge_stone.png", 512,
 SPECS.append(("Assets/Items/codex_book.png", 512,
               icon("An ornate closed tome bound in deep red leather with gold corner fittings and a "
                    "golden duck-crown emblem embossed on the cover, a bookmark ribbon hanging out.")))
+# 2026-10-08：空仓地雷盒（500105）首次交付时只有运行时程序化图标，与五把武器的生图图标
+# 不同路；按 owner 要求补一张生图图标（同 icon() 色键管线），运行时优先用它、失败回落程序化图。
+# 同日 owner 反馈首版（锈蚀旧弹匣）不够好看：按武器图标画风（干净、高对比的画家风道具图）重出。
+SPECS.append(("Assets/Items/empty_magazine_mine_icon.png", 512,
+              icon("A stylish improvised mine built from an emptied rifle magazine: a compact "
+                   "olive-green painted steel magazine box holding a lively diagonal pose, "
+                   "crisp beveled armor edges with light chipped battle wear, two polished brass "
+                   "clamping straps with rivets, a glossy ruby-red detonator dome glowing softly "
+                   "at the center, a braided fuse cord curling from its side ending in one tiny "
+                   "ember spark, small black hazard chevrons painted below the lamp, a brass "
+                   "cartridge-shaped pressure cap seated on top, gleaming painterly highlights, "
+                   "deep olive green, warm brass and glowing ember red palette.")))
 for _aid, _desc in AFFIX.items():
     SPECS.append(("Assets/ui/AffixForge/affix_%s.png" % _aid, 256, icon(_desc)))
 for _eid, _desc in EVENTS.items():

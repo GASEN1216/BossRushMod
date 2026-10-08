@@ -6,7 +6,7 @@
 不要在夹具目录运行 `dotnet run`。
 
 直接链接完整生产 `EmptyMagazineMineRuntime.cs`、`EmptyMagazineMineRules.cs`、
-`EmptyMagazineMineConfig.cs` 和 `ConfigItemIds.cs`，从真实 `Subscribe()` 注册的事件驱动生产路径。
+`EmptyMagazineMineConfig.cs`、`EmptyMagazineMineIcon.cs`、`EmptyMagazineMineWeaponConfig.cs` 和 `ConfigItemIds.cs`，从真实 `Subscribe()` 注册的事件驱动生产路径。
 次数、末发判定、换弹与换手清理、冷却、取消、引信、伤害过滤和结算中失效没有替身实现。
 
 明确场景序列覆盖：至少六次真实开火后末发才布雷；五发弹匣不合格；霰弹弹丸不算额外开火；
@@ -21,10 +21,19 @@ Unity 对象、官方事件发布者、当前装备缓存、物理碰撞结果�
 装备缓存没有启用默认值，测试必须先发装备事件；枪在扣弹后才发一次射击事件，装填完成事件与开始动作事件独立。
 Team 替身保留官方当前阵营与 middle 语义，Health 只记录收到的伤害，不重造护甲公式。
 
-这份回归不证明 Unity 真实物理命中、预警圈渲染、声音、图标、伤害减免后的数值或游戏手感。
+这份回归不证明 Unity 真实物理命中、预警圈渲染、声音、图标的 GPU 渲染、伤害减免后的数值或游戏手感。
 它也不覆盖装备注册、掉落产出及共享装备缓存本身的实现；这些由对应接线检查与实机验收验证。
 
 2026-10-08 全面复审补充：官方 SceneLoader 先设置 IsSceneLoading 并广播开始事件，之后才渐变黑幕、卸旧场景和初始化目标场景。
 新增场景保留渐变期间的旧角色与敌人，验证立即取消、无事件通知时的状态门、伤害回调中开始切图阻断剩余目标，
 以及加载尝试结束但未初始化新场景时能恢复。另模拟旧 driver 延迟 OnDestroy 通知，确保不误清新地雷。
 旧生产源码先在 scene start immediately cancels mine before level init 断言失败，修复后再执行通过；不把原有直接 BeginLevel 的替身顺序当作官方切图顺序。
+
+2026-10-08 图标生命周期复审：执行完整生产配置器及图标 owner，从配置器注册回调取得图标，
+模拟 production bundle 同时销毁借用的 Sprite / Texture，验证持久 prefab 和随后出生的物品仍能引用有效副本；
+覆盖重复配置零重复分配、原图压缩格式 / Read/Write / rect / pivot / PPU / border 保留、
+原 owner 销毁释放资源、缺包程序化 fallback，以及 Sprite 创建失败时释放中间 Texture。
+克隆边界另用比 Unity 序列化更严格的复制态：复制组件所有私有资源引用与原 owner id，但赋予独立组件实例 id，
+确认销毁实例不能释放 prefab 的图标。此复制是受控故障输入，不声称 Unity 会序列化所有私有字段。
+Texture / Sprite 和 ProductionIconCache 是记录分配与销毁的宿主替身，不实现 BC7 编解码或真实 AssetBundle；
+共用工厂、隐藏属性和本地化由窄替身承接，图标选择、复制、fallback 与资源 owner 逻辑没有替身实现。

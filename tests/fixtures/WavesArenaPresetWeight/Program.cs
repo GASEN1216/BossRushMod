@@ -48,13 +48,13 @@ namespace BossRush
         internal float baseDamage, healthMultiplier, damageMultiplier;
     }
 
-    internal sealed class ModBehaviour
+    internal sealed partial class ModBehaviour
     {
-        internal readonly List<EnemyPresetInfo> Pool = new List<EnemyPresetInfo>();
+        internal List<EnemyPresetInfo> Pool = new List<EnemyPresetInfo>();
         internal readonly Dictionary<string, float> Factors = new Dictionary<string, float>();
         internal int FactorCalls;
 
-        internal List<EnemyPresetInfo> GetFilteredEnemyPresets() { return Pool; }
+        internal List<EnemyPresetInfo> GetFilteredEnemyPresets() { return Filter.GetFilteredEnemyPresets(); }
         internal float GetBossInfiniteHellFactor(string name)
         {
             FactorCalls++;
@@ -64,6 +64,7 @@ namespace BossRush
 
     internal sealed partial class WavesArenaRuntimeModule
     {
+        internal static bool EnemyPresetsInitialized;
         internal ModBehaviour owner;
         internal float MinBossBaseHealth;
         internal float MaxBossBaseHealth;
@@ -79,6 +80,7 @@ namespace BossRush
 
         private static void Main()
         {
+            CheckAwakePresetRecovery();
             CheckPresetRecovery();
             var owner = new ModBehaviour();
             var module = new WavesArenaRuntimeModule { owner = owner, MinBossBaseHealth = 100f, MaxBossBaseHealth = 100f };
@@ -90,6 +92,7 @@ namespace BossRush
             var high = new EnemyPresetInfo { name = "high", baseHealth = 500f };
             owner.Pool.Add(low);
             owner.Pool.Add(high);
+            owner.Filter.InvalidateFilteredPresetsCache();
             owner.Factors["low"] = 2f;
             owner.Factors["high"] = 1f;
             UnityEngine.Random.Reset(0.25f);

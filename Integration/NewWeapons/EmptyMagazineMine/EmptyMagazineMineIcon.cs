@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace BossRush
 {
-    /// <summary>与地面模型同色的弹匣图标。由动态 prefab 拥有，跨 Mod 热重载保持有效。</summary>
+    /// <summary>由动态 prefab 拥有生产图标副本或程序化兜底，跨 Mod 热重载保持有效。</summary>
     internal sealed class EmptyMagazineMineIcon : MonoBehaviour
     {
         private const int Size = 128;
@@ -12,16 +12,17 @@ namespace BossRush
         private Sprite sprite;
         private int resourceOwnerId;
 
-        internal static Sprite GetSprite(Item item)
+        internal static Sprite GetSprite(Item item, Sprite source = null)
         {
             EmptyMagazineMineIcon owner = item.GetComponent<EmptyMagazineMineIcon>();
             if (owner == null) owner = item.gameObject.AddComponent<EmptyMagazineMineIcon>();
-            return owner.EnsureSprite();
+            return owner.EnsureSprite(source);
         }
 
-        private Sprite EnsureSprite()
+        private Sprite EnsureSprite(Sprite source)
         {
             if (sprite != null) return sprite;
+            if (source != null && TryCopyProductionSprite(source)) return sprite;
             Texture2D created = null;
             try
             {
@@ -59,6 +60,34 @@ namespace BossRush
                 if (created != null) UnityEngine.Object.Destroy(created);
                 ModBehaviour.DevLog("[EmptyMagazineMine] 图标生成失败: " + e.Message);
                 return null;
+            }
+        }
+
+        private bool TryCopyProductionSprite(Sprite source)
+        {
+            Texture2D created = null;
+            try
+            {
+                // Instantiate 保留生产贴图的压缩格式，不要求开启 Read/Write，也不读回像素。
+                // 只复制一次；直接借用 Sprite 或只复制 Sprite 都会继续依赖原包的 Texture。
+                created = UnityEngine.Object.Instantiate(source.texture);
+                created.name = "EmptyMagazineMine_ProductionIcon";
+                created.hideFlags = HideFlags.DontSave;
+                Rect rect = source.rect;
+                Sprite result = Sprite.Create(created, rect,
+                    new Vector2(source.pivot.x / rect.width, source.pivot.y / rect.height),
+                    source.pixelsPerUnit, 0, SpriteMeshType.FullRect, source.border);
+                result.hideFlags = HideFlags.DontSave;
+                texture = created;
+                sprite = result;
+                resourceOwnerId = GetInstanceID();
+                return true;
+            }
+            catch (Exception e)
+            {
+                if (created != null) UnityEngine.Object.Destroy(created);
+                ModBehaviour.DevLog("[EmptyMagazineMine] 生产图标复制失败，使用程序化图标: " + e.Message);
+                return false;
             }
         }
 

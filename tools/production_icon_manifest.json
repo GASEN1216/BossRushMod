@@ -239,6 +239,10 @@
       "maxSize": 512
     },
     {
+      "path": "Assets/Items/empty_magazine_mine_icon.png",
+      "maxSize": 512
+    },
+    {
       "path": "Assets/Items/energy_shield_icon.png",
       "maxSize": 512
     },

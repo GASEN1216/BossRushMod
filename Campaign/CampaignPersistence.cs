@@ -97,6 +97,95 @@ namespace BossRush
 
         internal static string LastError { get { return _store.LastError; } }
 
+#if BOSSRUSH_DEV
+        /// <summary>
+        /// Dev 清空进度专用：显式从 ES3 文件读取当前槽，绕过官方 ES3 缓存。
+        /// 读取失败或被拒绝解码时返回 null，不抛。正式构建里整段不存在。
+        /// </summary>
+        internal static CampaignSaveData LoadRawFromDiskForDiagnostics()
+        {
+            try
+            {
+                string path = Saves.SavesSystem.CurrentFilePath;
+                if (string.IsNullOrEmpty(path)) return null;
+                ES3Settings settings = new ES3Settings(path, (ES3Settings)null) { location = ES3.Location.File };
+                if (!ES3.KeyExists(CampaignTuning.ProgressSaveKey, path, settings)) return null;
+                return Decode(ES3.Load<string>(CampaignTuning.ProgressSaveKey, path, settings));
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] Dev 读回战役存档失败: " + e.Message);
+                return null;
+            }
+        }
+
+        /// <summary>候选 store 只在物理写入并读回成功后接管；失败重新排入原快照，不能继续重试清空。</summary>
+        internal static bool DevResetToDefault(out string error)
+        {
+            error = null;
+            // 先读取才能建立未知版本 / 坏数据的写屏障，不能只查尚未初始化的标记。
+            CampaignSaveData current = Current;
+            if (current == null || !IsCurrentSlotReady) { error = "slot_not_ready"; return false; }
+            if (HasWriteBarrier || IsStoreFaulted) { error = "store_unavailable:" + LastError; return false; }
+            if (Saves.SavesSystem.IsSaving) { error = "save_in_progress"; return false; }
+            int slot = Saves.SavesSystem.CurrentSlot;
+            // 奖金 / 交付物仍在采集时先拒绝，避免替换掉它们配对的完成事实。
+            if (!CampaignSaveCoordinator.RequestImmediateFlush(out error)) return false;
+            if (Saves.SavesSystem.CurrentSlot != slot) { error = "slot_changed"; return false; }
+            // 前置采集可能接受更新的事实，回滚基线必须取已完成采集后的快照。
+            CampaignSaveData previous = CampaignProgressService.CloneSaveData(Current);
+            BossRushSlotJsonStore<CampaignSaveData> original = _store;
+            BossRushSlotJsonStore<CampaignSaveData> candidate = null;
+            bool committed = false;
+            try
+            {
+                candidate = CreateStore();
+                // 订阅必须在加载前完成，否则共享 store 会把已有候选当作 dormant 缓存丢弃。
+                if (original.IsSubscribed) candidate.EnsureSubscribed();
+                candidate.LoadOrInit();
+                if (candidate.HasWriteBarrier || candidate.IsStoreFaulted || Saves.SavesSystem.CurrentSlot != slot)
+                { error = "candidate_unavailable"; return false; }
+                if (!candidate.Store(CreateDefault())) { error = "store_rejected:" + candidate.LastError; return false; }
+                _store = candidate;
+                if (!CampaignSaveCoordinator.RequestImmediateFlush(out error)) return false;
+
+                CampaignSaveData readback = LoadRawFromDiskForDiagnostics();
+                if (readback == null || readback.chapters.Length != 0 || readback.grantedTokens.Length != 0
+                    || readback.unlockedClues.Length != 0 || readback.completedGuides.Length != 0
+                    || readback.acceptedGuides.Length != 0 || readback.experiencedGuides.Length != 0)
+                { error = "readback_not_default"; return false; }
+                committed = true;
+                original.ShutdownSubscription();
+                return true;
+            }
+            catch (Exception e)
+            {
+                error = "reset_threw:" + e.GetType().Name;
+                return false;
+            }
+            finally
+            {
+                if (!committed && candidate != null)
+                {
+                    candidate.ShutdownSubscription();
+                    if (ReferenceEquals(_store, candidate))
+                    {
+                        _store = original;
+                        if (Saves.SavesSystem.CurrentSlot == slot)
+                        {
+                            // 原 store 保留原快照且未继承候选的故障；即使补写再次失败，Tick 也只重试原进度。
+                            string rollbackError;
+                            if (!original.Store(previous)) error += ";rollback_pending:" + original.LastError;
+                            else if (!CampaignSaveCoordinator.RequestImmediateFlush(out rollbackError))
+                                error += ";rollback_pending:" + rollbackError;
+                        }
+                        else error += ";slot_changed";
+                    }
+                }
+            }
+        }
+#endif
+
         #endregion
 
         #region 订阅（幂等）

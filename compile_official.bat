@@ -106,6 +106,7 @@ echo(/reference:ItemStatsSystem.dll
 echo(/reference:UniTask.dll
 echo(/reference:Sirenix.OdinInspector.Attributes.dll
 echo(/reference:TeamSoda.Duckov.Core.dll
+echo(/reference:EasySave3.dll
 echo(/reference:TeamSoda.Duckov.Utilities.dll
 echo(/reference:AstarPathfindingProject.dll
 echo(/reference:PackageTools.dll
@@ -320,6 +321,7 @@ echo(DebugAndTools\ItemSpawner.cs
 echo(DebugAndTools\F3DebugCheatMenu.cs
 echo(DebugAndTools\F3DebugCheatMenuUi.cs
 echo(DebugAndTools\CampaignPetNestDebugControls.cs
+echo(DebugAndTools\CampaignProgressDebugControls.cs
 echo(DebugAndTools\F3DebugCheatMenuPlayerStats.cs
 echo(DebugAndTools\F3DebugCheatMenuActions.cs
 echo(DebugAndTools\F3GameplayValidationRunner.cs
@@ -1250,6 +1252,7 @@ echo(Campaign\CampaignRewardTable.cs
 echo(Campaign\CampaignObjectiveTracker.cs
 echo(Campaign\CampaignObjectiveCollector.cs
 echo(Campaign\CampaignProgressService.cs
+echo(Campaign\CampaignProgressDevReset.cs
 echo(Campaign\CampaignModeBridge.cs
 echo(Campaign\CampaignAssetCache.cs
 echo(Campaign\CampaignNoteBridge.cs

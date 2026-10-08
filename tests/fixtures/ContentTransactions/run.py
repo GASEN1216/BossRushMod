@@ -57,6 +57,7 @@ def main():
     linked = [
         "Campaign/CampaignProgressService.cs", "Campaign/CampaignModels.cs",
         "Campaign/CampaignPersistence.cs", "Campaign/CampaignSaveCoordinator.cs", "Campaign/CampaignGuideTable.cs",
+        "Campaign/CampaignProgressDevReset.cs",
         "Campaign/CampaignRuntimeModule.cs", "Campaign/CampaignFacilityUnlocks.cs",
         "Utilities/OfficialQuests/OfficialQuestBinding.cs", "Utilities/OfficialQuests/OfficialQuestItems.cs",
         "Utilities/OfficialQuests/OfficialQuestItemRules.cs", "SkyIsland/SkyIslandInventoryTransaction.cs",
@@ -75,8 +76,8 @@ def main():
         "PetNestExpeditionService", "PetNestBackpackSnapshot", "PetNestBackpackRestoration",
         # 2026-09-20：孵化 roll 与显示名都要用炫彩调色板（纯数据、无 Unity 依赖）
         "PetNestChroma")]
-    paths = [ROOT / p for p in linked] + [HERE / "Program.cs", HERE / "Stubs.cs", HERE / "QuestDeliveryRegression.cs", HERE / "CampaignDiskRegression.cs", HERE / "CampaignReadinessRegression.cs", OUT / "Extracted.cs"]
-    project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649;0067</NoWarn></PropertyGroup><ItemGroup>'
+    paths = [ROOT / p for p in linked] + [HERE / "Program.cs", HERE / "Stubs.cs", HERE / "QuestDeliveryRegression.cs", HERE / "CampaignDiskRegression.cs", HERE / "CampaignReadinessRegression.cs", HERE / "CampaignResetRegression.cs", OUT / "Extracted.cs"]
+    project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><DefineConstants>BOSSRUSH_DEV</DefineConstants><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649;0067</NoWarn></PropertyGroup><ItemGroup>'
     project += "".join('<Compile Include="' + xml.escape(str(p), {'"': '&quot;'}) + '" />' for p in paths)
     project += "</ItemGroup></Project>"
     (OUT / "ContentTransactions.csproj").write_text(project, encoding="utf-8")

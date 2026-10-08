@@ -23,6 +23,18 @@ namespace UnityEngine
         public override bool Equals(object other) { return this == other as Object; }
         public override int GetHashCode() { return instanceId; }
 
+        public static T Instantiate<T>(T source) where T : Object
+        {
+            Texture2D texture = source as Texture2D;
+            if (texture == null) throw new InvalidOperationException("fixture only clones textures");
+            Texture2D.CloneCalls++;
+            return new Texture2D(texture.width, texture.height, texture.format, false)
+            {
+                isReadable = texture.isReadable,
+                Pixels = texture.Pixels == null ? null : (Color32[])texture.Pixels.Clone()
+            } as T;
+        }
+
         public static void Destroy(Object value)
         {
             if (ReferenceEquals(value, null) || value.Destroyed) return;
@@ -49,6 +61,69 @@ namespace UnityEngine
         public T GetComponent<T>() where T : class { return gameObject.GetComponent<T>(); }
     }
     public class MonoBehaviour : Component { }
+    public enum HideFlags { DontSave }
+    public enum FilterMode { Bilinear }
+    public enum TextureWrapMode { Clamp }
+    public enum TextureFormat { RGBA32, BC7 }
+    public enum SpriteMeshType { FullRect }
+    public struct Color32
+    {
+        public byte r, g, b, a;
+        public Color32(byte r, byte g, byte b, byte a) { this.r = r; this.g = g; this.b = b; this.a = a; }
+    }
+    public struct Vector2
+    {
+        public float x, y;
+        public Vector2(float x, float y) { this.x = x; this.y = y; }
+    }
+    public struct Vector4 { public float x, y, z, w; }
+    public struct Rect
+    {
+        public float x, y, width, height;
+        public Rect(float x, float y, float width, float height)
+        { this.x = x; this.y = y; this.width = width; this.height = height; }
+    }
+    public sealed class Texture2D : Object
+    {
+        internal static int CloneCalls;
+        internal static readonly List<Texture2D> All = new List<Texture2D>();
+        public string name;
+        public HideFlags hideFlags;
+        public FilterMode filterMode;
+        public TextureWrapMode wrapMode;
+        public readonly int width, height;
+        public readonly TextureFormat format;
+        public bool isReadable = true;
+        internal Color32[] Pixels;
+        public Texture2D(int width, int height, TextureFormat format, bool mipmap)
+        { this.width = width; this.height = height; this.format = format; All.Add(this); }
+        public void SetPixels32(Color32[] pixels)
+        {
+            if (!isReadable) throw new InvalidOperationException("unreadable texture");
+            Pixels = (Color32[])pixels.Clone();
+        }
+        public void Apply(bool mipmaps, bool makeNoLongerReadable) { isReadable = !makeNoLongerReadable; }
+    }
+    public sealed class Sprite : Object
+    {
+        internal static int CreateCalls;
+        internal static bool FailNextCreate;
+        public Texture2D texture;
+        public Rect rect;
+        public Vector2 pivot;
+        public Vector4 border;
+        public float pixelsPerUnit;
+        public HideFlags hideFlags;
+        public static Sprite Create(Texture2D texture, Rect rect, Vector2 pivot, float ppu,
+            uint extrude = 0, SpriteMeshType mesh = SpriteMeshType.FullRect, Vector4 border = default(Vector4))
+        {
+            CreateCalls++;
+            if (FailNextCreate) { FailNextCreate = false; throw new InvalidOperationException("injected Sprite allocation failure"); }
+            if (texture == null) throw new InvalidOperationException("destroyed texture");
+            return new Sprite { texture = texture, rect = rect, pivot = new Vector2(pivot.x * rect.width, pivot.y * rect.height),
+                pixelsPerUnit = ppu, border = border };
+        }
+    }
     public sealed class GameObject : Object
     {
         internal static readonly List<GameObject> All = new List<GameObject>();
@@ -156,6 +231,14 @@ namespace Duckov.Utilities
     }
 }
 namespace ItemStatsSystem.Items { public sealed class Slot { } }
+namespace ItemStatsSystem
+{
+    public sealed class Item : MonoBehaviour
+    {
+        public Sprite Icon;
+        public string DisplayNameRaw;
+    }
+}
 public enum Teams { player, wolf, red, blue, middle, all }
 public static class Team
 {
@@ -276,6 +359,41 @@ public sealed class LevelManager
 }
 namespace BossRush
 {
+    internal sealed class NewWeaponTotemSpec
+    {
+        internal int TypeId;
+        internal string BaseName, LogPrefix, DisplayLabelCN, DisplayNameCN, DisplayNameEN, DescriptionCN, DescriptionEN;
+    }
+    internal static class EquipmentFactory
+    {
+        internal static readonly Dictionary<string, Action<ItemStatsSystem.Item, string>> Configurators =
+            new Dictionary<string, Action<ItemStatsSystem.Item, string>>();
+        internal static void RegisterConfigurator(string key, Action<ItemStatsSystem.Item, string> action) { Configurators[key] = action; }
+    }
+    internal static class NewWeaponConfiguratorCore
+    {
+        internal static bool ConfigureTotem(ItemStatsSystem.Item item, string baseName, NewWeaponTotemSpec spec)
+        { return item != null && baseName == spec.BaseName; }
+    }
+    internal static class ModeFItemConfigHelper
+    {
+        internal static void SetHiddenMember(ItemStatsSystem.Item item, string name, object value) { }
+        internal static void ClearInheritedUsage(ItemStatsSystem.Item item) { }
+    }
+    internal static class ProductionIconCache
+    {
+        internal static Sprite Source;
+        internal static string LastPath;
+        internal static Sprite Get(string path) { LastPath = path; return Source; }
+        internal static void ResetStaticCaches()
+        {
+            // AssetBundle.Unload(true) 会同时销毁被借出的 Sprite 与它依赖的 Texture。
+            if (Source != null) { UnityEngine.Object.Destroy(Source.texture); UnityEngine.Object.Destroy(Source); }
+            Source = null;
+        }
+    }
+    internal static class L10n { internal static string T(string cn, string en) { return cn; } }
+    internal static class LocalizationHelper { internal static void InjectLocalization(string key, string text) { } }
     public static class ModBehaviour
     {
         internal static bool Spectating;

@@ -165,16 +165,23 @@ namespace BossRush
     internal sealed class OfficialQuestRuntimeAdapter { internal readonly object Projection = new object(); }
     internal sealed class CampaignOfficialQuestClient
     {
+        internal static int Refreshes, ClearedPending;
         internal CampaignOfficialQuestClient(CampaignRuntimeModule module) { }
         internal void RegisterAll(object projection) { }
         internal void UnregisterAll() { }
-        internal void NotifyProgressChanged() { }
-        internal void ClearPending() { }
+        internal void NotifyProgressChanged() { Refreshes++; }
+        internal void ClearPending() { ClearedPending++; }
     }
     internal static class CampaignGuideFacts { internal static void ObserveAccepted(ModBehaviour owner) { } }
     internal static class CampaignHud { internal static void Tick() { } internal static void ResetStaticCaches() { } }
     internal static class CampaignObjectiveCollector { internal static void ResetStaticCaches() { } }
-    internal static class CampaignNoteBridge { internal static void ResetStaticCaches() { } }
+    internal static class CampaignNoteBridge
+    {
+        internal static int Refreshes;
+        internal static bool ThrowOnRefresh;
+        internal static void EnsureNotesRegistered() { Refreshes++; if (ThrowOnRefresh) throw new InvalidOperationException("injected notes refresh failure"); }
+        internal static void ResetStaticCaches() { }
+    }
     internal static class CampaignAssetCache { internal static void ResetStaticCaches() { } }
     internal static class CampaignBaseObjectives { internal static void ResetStaticCaches() { } }
 }

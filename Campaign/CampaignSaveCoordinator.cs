@@ -117,6 +117,18 @@ namespace BossRush
             _engine.RequestFlush(out error);
         }
 
+#if BOSSRUSH_DEV
+        /// <summary>
+        /// Dev 清空进度专用：绕过基地闸立即落盘（与 SkyIsland DevReset 同一条路）。
+        /// 只有「手动清空」这种要求当场生效、没有下一帧的入口才允许调它；
+        /// 仍经共享引擎，不破坏「本类是战役唯一物理落盘入口」的契约。
+        /// </summary>
+        internal static bool RequestImmediateFlush(out string error)
+        {
+            return _engine.RequestFlush(out error, true);
+        }
+#endif
+
         /// <summary>官方采集也会消费 pending；它只写缓存，物理保存义务必须留到真正写盘成功。</summary>
         internal static void NotifyPendingWriteFlushed() { _engine.NotifyPendingWriteFlushed(); }
 

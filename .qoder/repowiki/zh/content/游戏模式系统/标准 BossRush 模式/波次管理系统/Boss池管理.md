@@ -1,9 +1,21 @@
 # Boss池管理
 
+## 2026-10-08 基地预热后的自定义 Boss 补注册（COMPAT）
+
+本轮修复 Ctrl+F10 中缺少龙皇、龙裔、女巫的问题。基地图鉴与遗种巢会提前调用预设池初始化，而三个 Boss 模块可能尚未绑定 owner；此时早期注册被跳过，池子的已初始化状态又阻止后续扫描补回。三个 `RuntimeModuleHostBridge.OnAwake` 现在先绑定宿主，仅当池已初始化且本 Boss 尚不在池中时调用原注册方法，再作废筛选和玩法目录。玩家配置随后在 Start 阶段载入，由 `BossFilterRuntimeModule.OnStart` 统一重建筛选，恢复禁用名单和因子。未初始化的池仍由原初始化链注册，重复 Awake 不重复添加。
+
+`CustomBossArenaPresetAwakeRegistrationGuard` 核对三条接线，隔离执行回归覆盖提早预热、后绑定与筛选配置保留。L3 需在基地打开 Ctrl+F10，核对三 Boss 各一项及已保存禁用状态，再切图重查；缺项、重复项或禁用状态丢失均不合格。具体总数由当前官方内容和筛选条件决定，不把固定数量作为验收条件。
+
+实现：[龙皇桥](file://Integration/DragonKing/DragonKingRuntimeModuleHostBridge.cs)、[龙裔桥](file://Integration/DragonDescendant/DragonDescendantRuntimeModuleHostBridge.cs)、[女巫桥](file://Integration/PhantomWitch/PhantomWitchRuntimeModuleHostBridge.cs)、[预设初始化](file://WavesArena/WavesArenaRuntimeModule_EnemyPresets.cs)。
+
 <cite>
 **本文引用的文件**
 - [WavesArena.cs](file://WavesArena/WavesArena.cs)
 - [BossFilter.cs](file://BossFilter/BossFilter.cs)
+- [WavesArenaRuntimeModule_EnemyPresets.cs](file://WavesArena/WavesArenaRuntimeModule_EnemyPresets.cs)
+- [DragonKingRuntimeModuleHostBridge.cs](file://Integration/DragonKing/DragonKingRuntimeModuleHostBridge.cs)
+- [DragonDescendantRuntimeModuleHostBridge.cs](file://Integration/DragonDescendant/DragonDescendantRuntimeModuleHostBridge.cs)
+- [PhantomWitchRuntimeModuleHostBridge.cs](file://Integration/PhantomWitch/PhantomWitchRuntimeModuleHostBridge.cs)
 - [WavesArena.cs](file://WavesArena/WavesArena.cs)
 - [ModBehaviour.cs](file://ModBehaviour.cs)
 </cite>
@@ -54,6 +66,11 @@ C --> D["ModBehaviour<br/>特殊Boss处理 / 数值缩放"]
 - [ModBehaviour.cs:1212-1243](file://ModBehaviour.cs#L1212-L1243)
 
 ## 核心组件
+
+2026-10-08 启动时序修正：基地图鉴可以在 `OnAwake` 预热敌人池，此时三个自定义 Boss 模块虽已创建，内部 owner 尚未绑定，首次注册会被跳过。龙王、龙裔与幻影女巫现在在各自 `OnAwake` 完成绑定后检查当前池；已初始化且缺少自身条目时，补一次幂等注册并作废筛选与玩法目录。冷池仍由正常的 `InitializeEnemyPresets` 扫描和登记，不在内容模块里另开扫描。
+
+玩家配置在 `ModBehaviour.Start → StartIntegrationRuntime` 载入，晚于目录预热。因此 `BossFilterRuntimeModule.OnStart` 对非空池重新加载禁用名单及无间炼狱因子，并通过原来的失效通知更新血脉和图鉴目录；不能只在 Awake 重载默认配置，也不能仅清空筛选状态后等待玩家进入竞技场。`CustomBossArenaPresetAwakeRegistrationGuard` 检查调用顺序，`WavesArenaPresetWeight` 抽取生产方法执行先预热、后绑定、再载入配置的回归；真实地图出场与图鉴画面仍需游戏内验收。
+
 - 敌人预设初始化：InitializeEnemyPresets
   - 动态发现所有显示名称的敌人类型（通过 ObjectCache.GetCharacterPresets）。
   - 团队类型过滤：排除玩家与中立阵营，仅保留 baseHealth > 100f 的敌人。

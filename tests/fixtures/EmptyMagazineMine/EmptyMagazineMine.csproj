@@ -12,6 +12,8 @@
     <Compile Include="../../../Integration/NewWeapons/EmptyMagazineMine/EmptyMagazineMineRules.cs" />
     <Compile Include="../../../Integration/NewWeapons/EmptyMagazineMine/EmptyMagazineMineRuntime.cs" />
     <Compile Include="../../../Integration/NewWeapons/EmptyMagazineMine/EmptyMagazineMineConfig.cs" />
+    <Compile Include="../../../Integration/NewWeapons/EmptyMagazineMine/EmptyMagazineMineIcon.cs" />
+    <Compile Include="../../../Integration/NewWeapons/EmptyMagazineMine/EmptyMagazineMineWeaponConfig.cs" />
     <Compile Include="../../../Config/ConfigItemIds.cs" />
   </ItemGroup>
 </Project>

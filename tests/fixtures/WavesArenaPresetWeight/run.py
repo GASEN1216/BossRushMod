@@ -4,10 +4,13 @@ from pathlib import Path
 import hashlib
 import json
 import subprocess
+import sys
 
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
+sys.path.insert(0, str(ROOT / "tests"))
+from cs_source_util import clean_source
 SOURCE = ROOT / "WavesArena/WavesArenaRuntimeModule_EnemyPresets.cs"
 OUT = ROOT / "Build/runtime-regressions/WavesArenaPresetWeight"
 OUT.mkdir(parents=True, exist_ok=True)
@@ -35,23 +38,41 @@ extra_sources = {
     "PhantomWitchRuntimeModule": ROOT / "Integration/PhantomWitch/PhantomWitchBoss.cs",
 }
 recovery = ""
+bridge_sources = []
 for module, path in extra_sources.items():
-    content = path.read_text(encoding="utf-8-sig")
+    content = clean_source(path.read_text(encoding="utf-8-sig"))
     boss = module.removesuffix("RuntimeModule")
     signature = "internal void Register" + boss + "Preset()"
     assert content.count(signature) == 1
     recovery += "internal sealed partial class " + module + " {" + method(content, signature)
+    bridge = path.parent / (module + "HostBridge.cs")
+    bridge_sources.append(bridge)
+    recovery += method(clean_source(bridge.read_text(encoding="utf-8-sig")),
+                       "public override void OnAwake(ModBehaviour owner)")
     if boss == "PhantomWitch":
         recovery += method(content, "internal CharacterRandomPreset FindPhantomWitchBasePreset()")
     recovery += "}"
+filter_source = ROOT / "BossFilter/BossFilter.cs"
+filter_content = clean_source(filter_source.read_text(encoding="utf-8-sig"))
+recovery += "internal sealed partial class BossFilterRuntimeModule {"
+for signature in (
+    "public override void OnStart()",
+    "internal void InitializeBossPoolFilter()",
+    "public bool IsBossEnabled(string bossName)",
+    "public List<EnemyPresetInfo> GetFilteredEnemyPresets()",
+    "internal void InvalidateFilteredPresetsCache()",
+    "internal void ResetBossPoolFilterStateForEnemyPresetRefresh()",
+):
+    recovery += method(filter_content, signature)
+recovery += "}"
 (OUT / "Generated.cs").write_text(
-    "using System; using System.Collections.Generic; using UnityEngine; namespace BossRush {"
+    "using System; using System.Collections.Generic; using System.Linq; using UnityEngine; namespace BossRush {"
     "internal sealed partial class WavesArenaRuntimeModule {" + picker + "}" + recovery + "}",
     encoding="utf-8",
 )
 (OUT / "sources.json").write_text(json.dumps({
     str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
-    for path in [SOURCE] + list(extra_sources.values())
+    for path in [SOURCE, filter_source] + list(extra_sources.values()) + bridge_sources
 }, indent=2) + "\n", encoding="utf-8")
 (OUT / "Regression.csproj").write_text(
     '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType>'

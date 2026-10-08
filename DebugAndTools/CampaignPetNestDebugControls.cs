@@ -158,6 +158,8 @@ namespace BossRush
             }
             // 同页挂上天空岛进度区：宿主 partial 预算已满，不在 ModBehaviour 里另加一行（owner 2026-10-01）。
             SkyIslandProgressDebugControls.Build(parent, host, report);
+            // 同页挂上征程进度区（owner 2026-10-08）；同款自建面板，宿主仍不加行。
+            CampaignProgressDebugControls.Build(parent, host, report);
         }
 
         /// <summary>

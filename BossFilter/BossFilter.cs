@@ -33,6 +33,14 @@ namespace BossRush
         private readonly ModBehaviour owner;
         internal BossFilterRuntimeModule(ModBehaviour owner) { this.owner = owner; }
         public override string ModuleName { get { return "BossFilter"; } }
+        public override void OnStart()
+        {
+            // Awake 的目录预热早于本地配置载入，且自定义 Boss 此时才全部绑定。
+            // 宿主先加载配置再分发 OnStart，在这里统一恢复禁用名单、因子与目录。
+            if (owner.BossFilterEnemyPresets == null || owner.BossFilterEnemyPresets.Count == 0) return;
+            ResetBossPoolFilterStateForEnemyPresetRefresh();
+            InitializeBossPoolFilter();
+        }
         public override void OnDestroy() { DestroyBossPoolUI(); }
         internal Dictionary<string, bool> EnabledStates { get { return bossEnabledStates; } }
         internal bool IsInitialized { get { return bossPoolFilterInitialized; } }

@@ -47,6 +47,9 @@ namespace Saves
         private static bool saving;
         public static bool IsSaving { get { return saving; } set { saving = value; } }
         public static bool StickSavingOnFailure;
+        public static bool SkipNextPhysicalWrite;
+        public static Action AfterPhysicalSave;
+        public static string CurrentFilePath { get { return "fixture-slot-" + CurrentSlot; } }
         public static int CurrentSlot = 0, Writes, FailPhysical, Reads;
         public static string FailKey, FailReadAfterSaveKey;
         static string pendingReadFailure;
@@ -71,6 +74,7 @@ namespace Saves
         // Matches official SaveFile: persist cached keys; it does not collect live data.
         public static void SaveFile(bool writeSaveTime)
         {
+            if (SkipNextPhysicalWrite) { SkipNextPhysicalWrite = false; return; }
             if (FailPhysical > 0)
             {
                 FailPhysical--;
@@ -81,11 +85,13 @@ namespace Saves
             Disk = new Dictionary<string, object>(Cache);
             History.Add(Disk);
             SaveDiskIfRequested();
+            Action after = AfterPhysicalSave; AfterPhysicalSave = null; if (after != null) after();
         }
         public static void Reset()
         {
-            IsSaving = StickSavingOnFailure = false; CurrentSlot = 0; Writes = Reads = 0; FailPhysical = 0; FailKey = null;
+            IsSaving = StickSavingOnFailure = SkipNextPhysicalWrite = false; CurrentSlot = 0; Writes = Reads = 0; FailPhysical = 0; FailKey = null;
             DiskPath = null;
+            AfterPhysicalSave = null;
             Cache.Clear(); Disk.Clear(); History.Clear();
             FailReadAfterSaveKey = pendingReadFailure = null;
         }
@@ -364,6 +370,8 @@ namespace BossRush
         public bool CampaignEnabled = true;
         public bool IsCampaignConfiguredEnabled() { return CampaignEnabled; }
         public OfficialQuestRuntimeAdapter OfficialQuestRuntime = new OfficialQuestRuntimeAdapter();
+        public CampaignRuntimeModule CampaignRuntime;
+        public bool IsActive, IsModeDActive, IsModeEActive, IsModeFActive;
     }
     static class L10n { public static bool IsChinese { get { return false; } } public static string T(string cn, string en) { return en; } }
     static class PetNestLocalization { public static string DescribeFailure(string reason) { return reason; } }

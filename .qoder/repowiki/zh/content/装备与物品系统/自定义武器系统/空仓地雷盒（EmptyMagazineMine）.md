@@ -22,6 +22,12 @@
 
 ## 验证边界
 
+2026-10-08 本轮复核分别核对炸弹狂人额外掉落、图标更新和图腾功能。掉落仍沿用前述 `Cname_Grenade` 的 20% 专属链；功能沿用现有开火计数、冷却、引信与敌我过滤，没有调整本页数值。新增生图资源为 `Assets/Items/empty_magazine_mine_icon.png`，由 `tools/gen_codex_art.py` 的 `icon()` 色键管线生成 512×512 透明图，经 `tools/production_icon_manifest.json` 打入既有 `Assets/ui/production_icons` 包，部署继续走资源发布清单。当前画面是斜置绿色弹匣、黄铜卡箍与红色引信罩。
+
+配置器把生产 Sprite 交给 `EmptyMagazineMineIcon`，由动态 prefab 持有独立 Sprite 和压缩 Texture 副本；这样 Mod 重载卸载生产包时，仍保留的 prefab 不会引用已销毁资源。复制不要求开启 Read/Write，同 owner 重复配置复用副本；克隆物品的组件销毁不能释放原 owner 的共享图标，原 owner 销毁才释放两个资源。缺包或复制失败沿用程序化弹匣图。
+
+`EmptyMagazineMine` 执行回归链接生产配置器与图标 owner，覆盖源 Sprite/Texture 同时销毁、后续物品仍拿到有效图标、重复配置、克隆组件销毁、最终 owner 释放，以及缺包和复制失败回退。`CodexArtGenerationPropertyTest` 验证生成规格和像素处理；实际 production_icons 包另按发布验证检查 Sprite 别名、压缩、尺寸与清单一致性。这些证据仍不替代游戏里背包/地面拾取及热重载后的可见图标。
+
 玩家正文位于 `WikiContent/zh/equipment/equipment__empty_magazine_mine.md` 和对应英文页。目录登记为 `equipment__empty_magazine_mine`，在线路径为 `/equipment/empty-magazine-mine`，图标复用装备类目图标。
 
 代码接线、守卫与隔离回归分别提供 L1 / L2 证据。名称与图标显示、Boss 实际掉落、地雷位置和红光可读性、敌我过滤、遮挡与战斗手感仍需真实游戏进程确认，本文不把构建成功视为 L3 证据。
@@ -33,5 +39,6 @@
 - [触发规则](file://Integration/NewWeapons/EmptyMagazineMine/EmptyMagazineMineRules.cs)
 - [运行时](file://Integration/NewWeapons/EmptyMagazineMine/EmptyMagazineMineRuntime.cs)
 - [地雷表现](file://Integration/NewWeapons/EmptyMagazineMine/EmptyMagazineMineFx.cs)
+- [图标 owner](file://Integration/NewWeapons/EmptyMagazineMine/EmptyMagazineMineIcon.cs)
 - [Boss 专属掉落](file://Integration/NewWeapons/Common/NewWeaponBossDropHandler.cs)
 - [TypeID 常量](file://Config/ConfigItemIds.cs)

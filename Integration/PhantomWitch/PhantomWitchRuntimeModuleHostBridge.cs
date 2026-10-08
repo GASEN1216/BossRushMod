@@ -16,7 +16,15 @@ namespace BossRush
         public override void OnAwake(ModBehaviour owner)
         {
             this.owner = owner;
-            if (owner != null) owner.AttachPhantomWitchRuntimeModule(this);
+            if (owner == null) return;
+            owner.AttachPhantomWitchRuntimeModule(this);
+            // 基地目录可能在本模块绑定 owner 前预热 Boss 池；绑定后幂等补齐。
+            // 作废筛选与玩法目录；真实配置载入后由 BossFilter.OnStart 统一重建。
+            if (WavesArenaRuntimeModule.EnemyPresetsInitialized && FindArenaEnemyPreset(PhantomWitchConfig.BossNameKey) == null)
+            {
+                RegisterPhantomWitchPreset();
+                owner.ResetBossPoolFilterStateForArena();
+            }
         }
 
         public override void OnDestroy()
