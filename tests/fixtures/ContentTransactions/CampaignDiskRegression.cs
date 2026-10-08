@@ -15,6 +15,7 @@ partial class Program
         SavesSystem.CurrentSlot = 7;
         string scenario = args[2];
         bool finalAccepted = scenario == "final-accepted";
+        bool guideScenario = scenario.StartsWith("guide-", StringComparison.Ordinal);
         string chapterId = finalAccepted ? "ch6" : "ch1";
         bool collectedOnly = scenario == "collected" || scenario == "collect-failure";
         CampaignChapterState expected = collectedOnly ? CampaignChapterState.ReadyToDeliver
@@ -25,7 +26,18 @@ partial class Program
             // 真实 runtime 的 bootstrap：先订阅共享 store，再加载进度。
             CampaignSaveCoordinator.EnsureSubscribed();
             CampaignProgressService.EnsureInitialized();
-            if (finalAccepted)
+            if (guideScenario)
+            {
+                Check(CampaignProgressService.TryAcceptContract("ch1"), "guide restart keeps a chapter in the same production snapshot");
+                Check(CampaignPersistence.TryAdvanceGuide(CampaignGuideTable.ModeG, 1), "guide acceptance reaches the production store");
+                if (scenario != "guide-accepted")
+                    Check(CampaignPersistence.TryAdvanceGuide(CampaignGuideTable.ModeG, 2), "guide experience reaches the production store");
+                if (scenario == "guide-completed")
+                    Check(CampaignProgressService.TryDeliverGuide(CampaignGuideTable.ModeG, 3000), "guide delivery commits the production reward transaction");
+                SceneLoader.IsSceneLoading = true; LevelManager.LevelInited = false;
+                Check(CampaignSaveCoordinator.TryFlushOnHostDestroy(), "closing during loading persists the accepted guide snapshot");
+            }
+            else if (finalAccepted)
             {
                 CampaignSaveData previous = CampaignPersistence.CreateDefault();
                 previous.chapters = new CampaignChapterRecord[5];
@@ -66,7 +78,7 @@ partial class Program
                 else SavesSystem.FailKey = CampaignTuning.ProgressSaveKey;
                 Check(CampaignProgressService.TryAcceptContract("ch1"), "acceptance reaches the production pending store");
             }
-            if (!collectedOnly && !finalAccepted)
+            if (!collectedOnly && !finalAccepted && !guideScenario)
             {
                 Check(CampaignPersistence.IsSubscribed && CampaignPersistence.IsStoreFaulted,
                     "failure occurs on the same subscribed store used by the real runtime");
@@ -85,11 +97,15 @@ partial class Program
         }
         else if (args[0] == "--campaign-disk-read")
         {
+            SceneLoader.IsSceneLoading = true; LevelManager.LevelInited = false;
+            CampaignRuntimeModule runtime = new CampaignRuntimeModule();
+            runtime.OnAwake(ModBehaviour.Instance); runtime.OnStart();
+            CampaignProgressService.EnsureInitialized();
+            Check(!runtime.IsBootstrapped && SavesSystem.Reads == 0,
+                "fresh process does not cache defaults before official slot bytes arrive");
             SavesSystem.LoadCampaignDisk(args[1]);
-            // 提前只读初始化后再次走真实 bootstrap，重订阅必须重读同槽盘上事实。
-            CampaignProgressService.EnsureInitialized();
-            CampaignSaveCoordinator.EnsureSubscribed();
-            CampaignProgressService.EnsureInitialized();
+            SceneLoader.IsSceneLoading = false; LevelManager.LevelInited = true;
+            runtime.OnUpdate(0.1f, 0.1f);
             Check(CampaignProgressService.GetState(chapterId) == expected,
                 "a separate fresh process restores the recovered chapter using only the file bytes");
             Check(!CampaignProgressService.TryAcceptContract("ch1"), "Jeff cannot offer the first chapter again after recovered progress reload");
@@ -104,9 +120,20 @@ partial class Program
             if (scenario == "completed")
                 Check(!CampaignProgressService.TryDeliver("ch1") && EconomyManager.Money == 104000,
                     "fresh process neither loses the reward nor pays a completed chapter twice");
+            if (guideScenario)
+            {
+                Check(CampaignPersistence.IsGuideAccepted(CampaignGuideTable.ModeG)
+                    && CampaignPersistence.IsGuideExperienced(CampaignGuideTable.ModeG) == (scenario != "guide-accepted")
+                    && CampaignPersistence.IsGuideCompleted(CampaignGuideTable.ModeG) == (scenario == "guide-completed"),
+                    "fresh process restores the guide's exact accepted, experienced and delivered facts");
+                if (scenario == "guide-completed")
+                    Check(!CampaignProgressService.TryDeliverGuide(CampaignGuideTable.ModeG, 3000) && EconomyManager.Money == 103000,
+                        "restarting a completed guide cannot pay its reward again");
+            }
             SavesSystem.SetFile(8);
             Check(CampaignProgressService.GetState("ch1") == CampaignChapterState.Available,
                 "changing to an empty slot does not inherit the recovered chapter");
+            Check(!CampaignPersistence.IsGuideAccepted(CampaignGuideTable.ModeG), "changing slot does not inherit the completed guide");
         }
         else throw new InvalidOperationException("Unknown campaign disk fixture mode");
         Console.WriteLine("Campaign disk process PASS: " + scenario + " / " + args[0]);

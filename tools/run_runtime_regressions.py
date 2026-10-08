@@ -11,6 +11,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT_FIXTURES = (
+    "SandstormCombatRuntime",
     "BossHealthScaling",
     "ModeECombatTargeting",
     "PetNestCompanionActivation",
@@ -35,6 +36,7 @@ SCRIPT_FIXTURES = (
     "SkyIslandValidationJudges", "F3AutotestJudges", "SpawnPositionPolicy", "EnemySpawnRuntime", "EnemyRecoveryRuntime", "RandomEventEffectsOwners", "ModeEFSpawnPreparation", "ModeEFEnemySpawnRuntime", "ModeEFSpawnPostprocessScheduler", "ModeEFVirtualSpawnerRegistry", "ModeEFMerchantCatalog", "FlightTotemRuntimeModule", "EquipmentBootstrapOwners", "AwenLootSweepRuntime", "WavesArenaPresetWeight", "BirthdayCakeGift",
 )
 PROJECT_FIXTURES = {
+    "SandstormChampionPattern": "SandstormChampionPattern.csproj",
     "EmptyMagazineMine": "EmptyMagazineMine.csproj",
     "ModeHCombatRelease": "ModeHCombatRelease.csproj",
     "ReviewSeptember": "ReviewSeptember.csproj",

@@ -3,7 +3,7 @@
 // ============================================================================
 // 单 key JSON 整存的状态机（幂等订阅 / 槽位烙印 / 写屏障 / 回读核对 / pending 入队）
 // 自 2026-09-06 起只有一份实现：Common/Lifecycle/BossRushSlotJsonStore.cs。
-// 本文件只保留战役自己的绑定：DTO、存档 key、schema、JsonUtility 编解码、盖章、
+// 本文件只保留战役自己的绑定：DTO、存档 key、schema、共享 JSON 编解码、盖章、
 // 官方采集前置步骤（采集现金快照）、下游复位通知、token 发布，
 // 以及 CampaignPersistence.* 不变的调用面。
 //
@@ -56,7 +56,7 @@ namespace BossRush
 
         /// <summary>
         /// 当前 schema 版本。completedGuides 是可选扩展字段，保持 v1 以便旧战役档继续可读；
-        /// JsonUtility 缺字段时按空数组处理，不改变既有章节 / token 的语义。
+        /// 显式解码兼容旧版缺失引导数组；缺失章节数组另按已有交付 token 恢复。
         /// </summary>
         internal const int CurrentSchemaVersion = 1;
 
@@ -64,6 +64,7 @@ namespace BossRush
 
         private static BossRushSlotJsonStore<CampaignSaveData> _store = CreateStore();
         private static float _nextRecoveryAt;
+        private static int _loadedSlot = int.MinValue;
 
         private static BossRushSlotJsonStore<CampaignSaveData> CreateStore()
         {
@@ -116,13 +117,44 @@ namespace BossRush
 
         #region 加载 / 写入
 
-        /// <summary>当前缓存（未加载时先加载）。</summary>
-        internal static CampaignSaveData Current { get { return _store.Current; } }
+        /// <summary>
+        /// 与天空岛序章同一时机读取槽位事实：主菜单和关卡加载期间不把尚未就绪的空缓存当新档。
+        /// CurrentSlot 在主菜单就有值，它本身不能证明官方加载流程已经完成。
+        /// </summary>
+        internal static bool IsCurrentSlotReady
+        {
+            get
+            {
+                try
+                {
+                    return !SceneLoader.IsSceneLoading && !LevelManager.LevelInitializing
+                        && LevelManager.LevelInited && Saves.SavesSystem.CurrentSlot >= 0;
+                }
+                catch (Exception) { return false; }
+            }
+        }
+
+        /// <summary>首次读取等关卡就绪；已经装载的同槽快照在过图和退出期间继续有效。</summary>
+        internal static CampaignSaveData Current { get { return LoadOrInit(); } }
 
         /// <summary>加载或初始化。幂等：缓存命中且槽位一致时直接返回。</summary>
         internal static CampaignSaveData LoadOrInit()
         {
-            return _store.LoadOrInit();
+            int slot;
+            try { slot = Saves.SavesSystem.CurrentSlot; }
+            catch (Exception) { return null; }
+            if (_loadedSlot != slot && !IsCurrentSlotReady) return null;
+            bool firstLoad = _loadedSlot != slot;
+            CampaignSaveData data = _store.LoadOrInit();
+            if (data != null)
+            {
+                _loadedSlot = slot;
+                if (firstLoad)
+                    Debug.Log(CampaignTuning.LogPrefix + "CAMPAIGN_LOAD slot=" + slot + " chapters=" + data.chapters.Length
+                        + " guides=" + data.acceptedGuides.Length + "/" + data.experiencedGuides.Length + "/" + data.completedGuides.Length
+                        + " barrier=" + _store.HasWriteBarrier);
+            }
+            return data;
         }
 
         /// <summary>
@@ -131,7 +163,7 @@ namespace BossRush
         /// </summary>
         internal static bool Store(CampaignSaveData value)
         {
-            return _store.Store(value);
+            return IsCurrentSlotReady && _store.Store(value);
         }
 
         /// <summary>把 pending 写进 ES3 缓存。IsSaving 时返回 false 并保留 pending（由协调器重试）。</summary>
@@ -240,19 +272,35 @@ namespace BossRush
             value.lastUpdatedTicks = DateTime.UtcNow.Ticks;
         }
 
+        // 与天空岛序章相同：显式编码字段与章节对象，不依赖 Unity 的托管 DTO 序列化。
         private static string Encode(CampaignSaveData value)
         {
-            try
+            if (value == null) return null;
+            var writer = new BossRushJsonWriter();
+            writer.BeginObject().Int("schemaVersion", value.schemaVersion).BeginArray("chapters");
+            foreach (CampaignChapterRecord record in value.chapters ?? new CampaignChapterRecord[0])
             {
-                return JsonUtility.ToJson(value);
+                if (record == null) continue;
+                writer.BeginObject().Str("chapterId", record.chapterId).Int("state", record.state).EndObject();
             }
-            catch (Exception)
-            {
-                return null;
-            }
+            writer.EndArray();
+            WriteStrings(writer, "grantedTokens", value.grantedTokens);
+            WriteStrings(writer, "unlockedClues", value.unlockedClues);
+            WriteStrings(writer, "completedGuides", value.completedGuides);
+            WriteStrings(writer, "acceptedGuides", value.acceptedGuides);
+            WriteStrings(writer, "experiencedGuides", value.experiencedGuides);
+            string raw = writer.Long("lastUpdatedTicks", value.lastUpdatedTicks).EndObject().ToString();
+            if (Decode(raw) == null) throw new InvalidOperationException("campaign_payload_invalid");
+            return raw;
         }
 
-        /// <summary>顶层 schemaVersion 由共享节点解析器读；缺失或读不动返回 -1（进写屏障）。</summary>
+        private static void WriteStrings(BossRushJsonWriter writer, string key, string[] values)
+        {
+            writer.BeginArray(key);
+            foreach (string value in values ?? new string[0]) writer.ItemStr(value);
+            writer.EndArray();
+        }
+
         private static int ReadSchemaVersion(string raw)
         {
             BossRushJsonValue root = BossRushJsonParser.ParseOrNull(raw);
@@ -261,25 +309,54 @@ namespace BossRush
 
         private static CampaignSaveData Decode(string raw)
         {
-            try
+            BossRushJsonValue root = BossRushJsonParser.ParseOrNull(raw);
+            if (root == null || root.GetInt("schemaVersion", -1) != CurrentSchemaVersion) return null;
+            CampaignSaveData decoded = CreateDefault();
+            List<BossRushJsonValue> chapters;
+            BossRushJsonValue chapterValue = root.GetProperty("chapters");
+            if (chapterValue != null && chapterValue.Kind != BossRushJsonKind.Null)
             {
-                if (string.IsNullOrEmpty(raw)) return null;
-                CampaignSaveData decoded = JsonUtility.FromJson<CampaignSaveData>(raw);
-                if (decoded == null) return null;
+                if (!root.TryGetArray("chapters", out chapters)) return null;
+                var records = new List<CampaignChapterRecord>();
+                var ids = new HashSet<string>(StringComparer.Ordinal);
+                foreach (BossRushJsonValue entry in chapters)
+                {
+                    string id;
+                    int state;
+                    if (entry == null || !entry.TryGetString("chapterId", out id) || string.IsNullOrEmpty(id)
+                        || !entry.TryGetInt("state", out state) || !ids.Add(id)) return null;
+                    records.Add(new CampaignChapterRecord { chapterId = id, state = state });
+                }
+                decoded.chapters = records.ToArray();
+            }
+            if (!ReadStrings(root, "grantedTokens", out decoded.grantedTokens)
+                || !ReadStrings(root, "unlockedClues", out decoded.unlockedClues)
+                || !ReadStrings(root, "completedGuides", out decoded.completedGuides)
+                || !ReadStrings(root, "acceptedGuides", out decoded.acceptedGuides)
+                || !ReadStrings(root, "experiencedGuides", out decoded.experiencedGuides)) return null;
+            // 旧 Unity 编码在实档中漏掉 chapters，但交付 token 仍在；只恢复有已交付凭据的章节。
+            // 有章节数组的新旧正常档不走这条迁移，不凭线索、日志或下一章开放状态猜测未交付进度。
+            if (root.GetProperty("chapters") == null)
+            {
+                var recovered = new List<CampaignChapterRecord>();
+                for (int order = 1; order <= 6; order++)
+                    if (Array.IndexOf(decoded.grantedTokens, CampaignTuning.FacilityTokenPrefix + order) >= 0)
+                        recovered.Add(new CampaignChapterRecord { chapterId = "ch" + order, state = (int)CampaignChapterState.Completed });
+                decoded.chapters = recovered.ToArray();
+            }
+            if (root.GetProperty("lastUpdatedTicks") != null && !root.TryGetLong("lastUpdatedTicks", out decoded.lastUpdatedTicks)) return null;
+            return decoded;
+        }
 
-                // JsonUtility 对缺失数组给 null，下游一律按非 null 消费
-                if (decoded.chapters == null) decoded.chapters = new CampaignChapterRecord[0];
-                if (decoded.grantedTokens == null) decoded.grantedTokens = new string[0];
-                if (decoded.unlockedClues == null) decoded.unlockedClues = new string[0];
-                if (decoded.completedGuides == null) decoded.completedGuides = new string[0];
-                if (decoded.acceptedGuides == null) decoded.acceptedGuides = new string[0];
-                if (decoded.experiencedGuides == null) decoded.experiencedGuides = new string[0];
-                return decoded;
-            }
-            catch (Exception)
-            {
-                return null;
-            }
+        private static bool ReadStrings(BossRushJsonValue root, string key, out string[] values)
+        {
+            values = new string[0];
+            BossRushJsonValue field = root.GetProperty(key);
+            if (field == null || field.Kind == BossRushJsonKind.Null) return true; // 兼容旧 v1 缺字段或 null 数组。
+            List<string> parsed;
+            if (!root.TryGetStringList(key, out parsed)) return false;
+            values = parsed.ToArray();
+            return true;
         }
 
         /// <summary>官方存盘前的采集点：现金未就绪时本次不把 pending 交给 SavesSystem。</summary>
@@ -296,6 +373,7 @@ namespace BossRush
         private static void NotifySlotChangedDownstream()
         {
             _nextRecoveryAt = 0f;
+            _loadedSlot = int.MinValue;
             CampaignSaveCoordinator.NotifySlotChanged();
             CampaignFacilityUnlocks.ResetForSlotReload();
             CampaignProgressService.NotifySlotChanged();
@@ -332,6 +410,7 @@ namespace BossRush
         internal static void ResetStaticCaches()
         {
             _nextRecoveryAt = 0f;
+            _loadedSlot = int.MinValue;
             _store.ResetAll();
         }
 

@@ -5,6 +5,7 @@ using UnityEngine;
 
 namespace UnityEngine
 {
+    public struct Color { public Color(float r, float g, float b, float a) { } }
     public class GameObject { }
     public class Coroutine { }
 }
@@ -23,6 +24,8 @@ namespace ItemStatsSystem
     {
         public int TypeID, Quality, Value, MaxStackCount, StackCount;
         public string DisplayName = "fixture";
+        public string DisplayNameRaw;
+        public bool useSpriteForPickup;
         public float MaxDurability, Durability, DurabilityLoss, SavedReforgeBonus;
         public int ConfigureCalls, RestoreCalls;
         public bool ReforgeRestored, HasSetting, HasAgent;
@@ -100,6 +103,16 @@ namespace BossRush
     { public static bool TryConfigure(Item item, string name) { return ConfigAdapter.Configure(item, name, "FrostSpear"); } }
     static class SummonStaffWeaponConfig
     { public static bool TryConfigure(Item item, string name) { return ConfigAdapter.Configure(item, name, "SummonStaff"); } }
+    static partial class AstralStaffWeaponConfig
+    {
+        public static bool TryConfigure(Item item)
+        {
+            ConfigAdapter.Configure(item, "AstralStaff", "AstralStaff");
+            ApplyAttributes(item);
+            return true;
+        }
+        public static void PrepareRuntimeHoldAgentVisual(GameObject holdAgent) { }
+    }
     static class SummonStaffConfig { public const float TotalActionDuration = 1.2f; }
     class ActionBase
     {

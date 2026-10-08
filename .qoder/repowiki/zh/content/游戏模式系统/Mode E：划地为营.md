@@ -1,5 +1,9 @@
 # Mode E：划地为营
 
+## 2026-10-08 当前实现补记（COMPAT）
+
+普通 DEMO 竞技场加载不再调用整套 Mode E 启动预热；`WavesArena/BossRushEntryFlow.cs` 的 E/F 分支仍按需执行。修复发生在 `Integration/BossRushIntegration_StartAndScene.cs`，不改变 E/F 的入口或装备发放流程。此前对话记录的 1607.5 ms 是先前观察，本轮仅复核代码；可找到的最新 10-07 日志没有竞技场样本，不能据此宣称已测得提速。
+
 2026-10-06 目标边界修复（COMPAT，L1/L2）：嗜血猎犬在 Mode E 只对非玩家阵营保留强制追玩家，友军清为 0；官方 AI 该字段用固定 `Teams.player` 判敌对，玩家选择 BEAR 等阵营时不能仅靠相同实际阵营避免强追。Mode F 的猎犬行为保留。龙裔专属技能同龙皇 / 女巫一样读取官方 AI 当前仇恨目标（技能暂停时可用原目标），不会无目标时固定转向主角；同阵营与无目标拒绝，友方龙裔仍能对敌方放技能。`ModeECombatTargeting` 使用生产方法和官方 Team 判据验证以上边界。用户所称「鸭王争霸赛」若实际指 Mode H，正常看台已有中立、无敌和目标排除，尚未据代码复现全部攻击看台的情况。
 
 2026-09-25 核对：地图 spawner 扫描、10 米间距过滤、阵营分配、扁平化缓存与安全传送已迁入 [ModeEFSpawnPreparation.cs](file://Utilities/ModeEFSpawnPreparation.cs)。宿主创建一个实例并绑定 E/F；`ModeESpawnAllocation.cs` 只保留 Mode E 兼容入口。下文算法描述沿用，方法实体以共享服务为准；分配与场景缓存仍按原参数分别清理。

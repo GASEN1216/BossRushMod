@@ -61,12 +61,13 @@ namespace BossRush
         internal static void EnsureInitialized()
         {
             if (_initialized) return;
-            _initialized = true;
 
             try
             {
                 CampaignSaveData data = CampaignPersistence.Current;
+                if (data == null) return;
                 CampaignPersistence.PublishTokensToUnlockContract(data);
+                _initialized = true;
             }
             catch (Exception e)
             {

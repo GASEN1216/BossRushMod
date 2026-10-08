@@ -98,6 +98,8 @@ namespace BossRush
                 // 列表已有条目也补字典：上一次注册可能在 Add 后中断。
                 NoteIndex.SetNoteDynamic(note);
 
+                // 基地子场景可早于官方关卡初始化完成，不能用此时未读出的空事实反锁已有线索。
+                if (!CampaignPersistence.IsCurrentSlotReady) return;
                 bool ours = CampaignProgressService.IsClueUnlocked(def.ClueId);
                 bool theirs = NoteIndex.GetNoteUnlocked(key);
                 // 存档暂不可读时不能拿默认空集收回已取得线索。

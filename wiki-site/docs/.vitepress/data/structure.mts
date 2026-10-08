@@ -305,6 +305,16 @@ export const CATEGORIES: WikiCategory[] = [
         tagEn: 'Totem',
       },
       {
+        path: '/equipment/astral-staff',
+        zh: '星阙',
+        en: 'Astral Staff',
+        icon: 'eq-halberd',
+        blurbZh: '冠军专属光棍，三段棍势与重击',
+        blurbEn: 'Champion staff of light with three Focus finishers',
+        tagZh: '近战',
+        tagEn: 'Melee',
+      },
+      {
         path: '/equipment/empty-magazine-mine',
         zh: '空仓地雷盒',
         en: 'Empty-Mag Mine Box',

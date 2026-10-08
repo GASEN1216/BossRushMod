@@ -46,6 +46,13 @@ namespace BossRush
                 NewWeaponIds.SummonStaffTypeId,
                 item => SummonStaffWeaponConfig.TryConfigure(item, NewWeaponIds.SummonStaffBaseName),
                 "召唤法杖");
+            // 星阙没有模型：登记后手持补丁会给官方空代理补近战组件，再挂代码光棍
+            CustomItemRuntimeStateHelper.RegisterMeleeRuntimeConfiguredItem(
+                AstralStaffConfig.TypeId,
+                item => AstralStaffWeaponConfig.TryConfigure(item),
+                "星阙",
+                null,
+                AstralStaffWeaponConfig.PrepareRuntimeHoldAgentVisual);
         }
 
         // ====================================================================
@@ -84,6 +91,9 @@ namespace BossRush
                 // 5. 订阅冰霜长矛命中表现（减速仍由 ItemSetting_MeleeWeapon 的官方 Cold buff 提供，
                 //    这里只负责在命中处点一圈霜环）
                 FrostSpearRuntime.Subscribe();
+
+                // 6. 星阙运行时（棍势豆 / 蓄势 / 重击）。没拿在手上时每帧 O(1) 早返
+                AstralStaffController.EnsureCreated();
 
                 ModBehaviour.DevLog("[NewWeapons] 系统初始化完成");
             }
@@ -132,6 +142,10 @@ namespace BossRush
 
                 // 重置冰霜长矛的命中特效去重表（键是上一张图敌人的 InstanceID，留着没意义）
                 FrostSpearRuntime.ResetStaticCaches();
+
+                // 星阙：过图后主角重建，豆数与蓄势清零
+                AstralStaffController astral = AstralStaffController.Instance;
+                if (astral != null) astral.OnSceneChanged();
             }
             catch (Exception e)
             {
@@ -234,6 +248,7 @@ namespace BossRush
                 ThunderRingRuntime.Unsubscribe();
                 EmptyMagazineMineRuntime.Unsubscribe();
                 FrostSpearRuntime.Unsubscribe();
+                AstralStaffController.DestroyInstance();
 
                 // 2) 清理召唤法杖（先收场上的灵魂战士，再销毁管理器）
                 SummonStaffAction.CleanupAllSummonedAllies();
@@ -255,6 +270,10 @@ namespace BossRush
                 EnergyShieldWeaponConfig.ResetStaticCaches();
                 FrostSpearWeaponConfig.ResetStaticCaches();
                 ThunderRingWeaponConfig.ResetStaticCaches();
+                AstralStaffController.ResetStaticCaches();
+                AstralStaffWeaponConfig.ResetStaticCaches();
+                AstralStaffAttackPatch.ResetStaticCaches();
+                AstralStaffSound.ResetStaticCaches();
 
                 ModBehaviour.DevLog("[NewWeapons] 系统清理完成");
             }

@@ -21,6 +21,11 @@ namespace BossRush
         [HarmonyPrefix]
         public static void Prefix(CharacterMainControl __instance)
         {
+            // 沙暴召唤物仍执行官方死亡流程，但不进入任何额外战利品处理。
+            // 唯一 preset 身份覆盖异步创建期间，组件身份覆盖生成完成之后。
+            if (SandstormChampionMinionMarker.IsSummonedMinion(__instance))
+                return;
+
             // Mode G 额外死亡掉落抑制（加法分支）：
             // 先读静态 bool 快速早返，未激活时不建集合、不分配；
             // 激活后再做 staging preset/已登记 Character 引用身份 O(1) 查询。

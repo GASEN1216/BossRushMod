@@ -1,11 +1,10 @@
 // ============================================================================
 // CampaignFinalBoss.cs - 终章「冠军之影」决战编排
 // ============================================================================
-// 零新增 3D 资产：复用现有自定义 Boss 的公开生成 API，生成后叠三层改造——
-//   数值倍率（_owner.ApplyCampaignBossStatMultiplierForRuntime）+ 体型放大 + MaterialPropertyBlock 染色。
-// 官方 preset 在生成流程里已被克隆过一份，改 nameKey 只影响这一只，不污染 Boss 池。
+// 终章独占的沙暴冠军：三阶段冲刺、沙珠、旋风；模型与技能表现完全由代码生成。
+// 官方 preset 在生成流程里克隆，沿用冠军稳定名字键；星阙在开打前备好，死亡进官方掉落箱。
 //
-// 复用女巫的 isNonWaveSpawn，不写标准竞技场追踪；仍要求场上没有其它模式，
+// 不写标准竞技场追踪；仍要求场上没有其它模式，
 // 避免玩家同时承担两场战斗。生成编号负责拒收迟到结果。
 //
 // 【让路策略】
@@ -33,7 +32,7 @@ namespace BossRush
         /// 本场决战的编号。每次开战自增，每次收尾也自增——
         /// 异步生成期间玩家可能已经切场景/死亡，回来时这一场早就作废了。
         /// 生成协程回来后比对它，不一致就把生成出来的 Boss 销毁，
-        /// 否则会留下一只没人记账的强化女巫。
+        /// 否则会留下一只没人记账的沙暴冠军。
         /// </summary>
         private int campaignFinalBossRunId;
 
@@ -346,17 +345,12 @@ namespace BossRush
                 Vector3 position = ResolveCampaignFinalBossSpawnPosition();
                 CampaignFinalBossFx.PlaySummonBurst(position);   // 召唤爆发与生成并行，不改时序
 
-                // notifyBossRushOnFailure:false、isNonWaveSpawn:true —— 不读写标准竞技场的波次，
-                // 那会在没有波次的情况下推进它的状态机
-                // 体型倍率必须在生成时传入，不能生成后再改 localScale：
-                // localScale 会缩放碰撞体，而属性/AI 初始化会缓存碰撞器半径。
-                CharacterMainControl boss = await campaignOwner.SpawnPhantomWitch(
-                    position, false, false, PhantomWitchDeathPresentation.CampaignFinal,
-                    CampaignTuning.FinalBossScale, isNonWaveSpawn: true);
+                CharacterMainControl boss = await SandstormChampionBoss.SpawnAsync(
+                    campaignOwner, position, () => runId == campaignFinalBossRunId && campaignFinalBossActive);
 
                 // 生成是异步的：等待期间玩家可能已经切场景、死亡或开了别的模式，
                 // 那一场已经被收尾过了。此时绝不能把 Boss 认领回来——
-                // 它会变成一只没人记账的强化女巫留在场上。
+                // 它会变成一只没人记账的沙暴冠军留在场上。
                 if (runId != campaignFinalBossRunId)
                 {
                     ModBehaviour.DevLog(CampaignTuning.LogPrefix + "决战已在生成期间中止，销毁迟到的 Boss");
@@ -420,8 +414,7 @@ namespace BossRush
         #region 变体改造
 
         /// <summary>
-        /// 把普通幽灵女巫改造成「冠军之影」：数值倍率 + 体型放大 + 绯红染色 + 变体名。
-        /// 三层都是可失败的装饰，任一失败都不影响这场战斗能不能打完。
+        /// 沙暴冠军沿用征程数值倍率与稳定名称；外形和体型由生成流程负责。
         /// </summary>
         private void ApplyCampaignFinalBossVariant(CharacterMainControl boss)
         {
@@ -437,14 +430,7 @@ namespace BossRush
                 ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] 决战数值倍率失败: " + e.Message);
             }
 
-            // 2) 体型：已由 _owner.SpawnPhantomWitch 的 extraModelScale 在碰撞器缓存之前应用，
-            //    这里不再二次缩放（事后改 localScale 会让碰撞体与模型口径不一致）。
-
-            // 3) 影的外观：_Tint 属性块乘冷红（不碰 sharedMaterial、不碰捏脸部件）+ 跟随的烟缕与符文环，
-            //    失败各自吞掉（CampaignFinalBossFx，VA-26）
-            CampaignFinalBossFx.ApplyShadowLook(boss);
-
-            // 4) 变体名：生成流程已把 preset 克隆过一份，改它不会污染 Boss 池
+            // 稳定冠军 key 延续旧档图鉴与第六章目标，外形由独立粒子 owner 管理。
             try
             {
                 string nameKey = "BossRush_Campaign_FinalBoss_Name";
@@ -478,8 +464,6 @@ namespace BossRush
                 _owner.ShowMessage(L10n.T("冠军之影倒下了", "The Shadow of the Champion is down"));
 
                 CampaignObjectiveTracker.ReportFinalBossKill();
-                BossRushAudioManager.Instance?.StopBossBGM(
-                    BossBgmKeys.PhantomWitch, campaignFinalBossInstance);
                 BossRushAudioManager.Instance?.PlayStinger(BossBgmEvents.RunVictory);
             }
             catch (Exception e)
@@ -567,8 +551,6 @@ namespace BossRush
                         {
                             ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] 清理终章决战失败: " + e.Message);
                         }
-                        BossRushAudioManager.Instance?.StopBossBGM(
-                            BossBgmKeys.PhantomWitch, campaignFinalBossInstance);
                     }
                 }
             }

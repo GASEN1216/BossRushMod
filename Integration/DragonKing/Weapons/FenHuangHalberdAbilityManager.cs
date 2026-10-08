@@ -36,6 +36,9 @@ namespace BossRush
         private GameObject previewObject;
         private FenHuangLeapPreview previewController;
         private float nextCooldownBubbleTime = -999f;
+        private CharacterMainControl assetRequestCharacter;
+        private bool assetRequestStarted;
+        private int assetRequestGeneration;
 
         private static readonly Collider[] landingValidationBuffer = new Collider[8];
 
@@ -54,6 +57,8 @@ namespace BossRush
                 return;
             }
 
+            BindAssetRequestCharacter(CharacterMainControl.Main);
+            RequestHeldWeaponAssets();
             HandleLeapInput();
         }
 
@@ -95,29 +100,98 @@ namespace BossRush
         protected override void OnManagerInitialized()
         {
             FenHuangHalberdAction.SetConfig(configInstance);
-            FenHuangHalberdRuntime.EnsureDragonKingAssetsLoaded();
             LogIfVerbose("焚皇断界戟右键技能管理器已初始化");
         }
 
         protected override void OnDestroy()
         {
+            BindAssetRequestCharacter(null);
             StopPreview();
             base.OnDestroy();
         }
 
         public override void OnSceneChanged()
         {
+            BindAssetRequestCharacter(null);
+            assetRequestGeneration++;
+            assetRequestStarted = false;
             StopPreview();
             ClearPreviewCache();
-            FenHuangHalberdRuntime.EnsureDragonKingAssetsLoaded();
+            // 龙王特效包只在主玩家真拿着戟时异步预载（Update 门控）；切场景时同步重载会给每次换图加一次卡顿。
             base.OnSceneChanged();
         }
 
         public override void RebindToCharacter(CharacterMainControl character)
         {
+            BindAssetRequestCharacter(null);
             StopPreview();
             ClearPreviewCache();
             base.RebindToCharacter(character);
+        }
+
+        protected override void OnAfterDeactivate()
+        {
+            BindAssetRequestCharacter(null);
+            base.OnAfterDeactivate();
+        }
+
+        private void BindAssetRequestCharacter(CharacterMainControl character)
+        {
+            if (ReferenceEquals(assetRequestCharacter, character)) return;
+            if (!ReferenceEquals(assetRequestCharacter, null))
+                assetRequestCharacter.OnHoldAgentChanged -= OnAssetRequestHoldChanged;
+            assetRequestGeneration++;
+            assetRequestStarted = false;
+            assetRequestCharacter = character;
+            if (assetRequestCharacter != null)
+                assetRequestCharacter.OnHoldAgentChanged += OnAssetRequestHoldChanged;
+        }
+
+        private void OnAssetRequestHoldChanged(DuckovItemAgent agent)
+        {
+            assetRequestGeneration++;
+            assetRequestStarted = false;
+            RequestHeldWeaponAssets();
+        }
+
+        private void RequestHeldWeaponAssets()
+        {
+            CharacterMainControl player = assetRequestCharacter;
+            if (assetRequestStarted || !abilityEnabled || SceneLoader.IsSceneLoading
+                || player == null || player != CharacterMainControl.Main
+                || player.Health == null || player.Health.IsDead
+                || !ModBehaviour.CanRunGameplayRuntimeCached()
+                || !FenHuangHalberdRuntime.IsHoldingHalberd(player)
+                || DragonKingAssetManager.LoadFailedThisScene) return;
+            string modPath = ModBehaviour.GetModPath();
+            if (string.IsNullOrEmpty(modPath)) return;
+            assetRequestStarted = true;
+            PreloadHeldWeaponAssets(modPath, player, assetRequestGeneration).Forget();
+        }
+
+        private async Cysharp.Threading.Tasks.UniTaskVoid PreloadHeldWeaponAssets(
+            string modPath, CharacterMainControl player, int generation)
+        {
+            bool ready = false;
+            try
+            {
+                ready = await DragonKingAssetManager.PrepareForHeldWeapon(modPath,
+                    () => this == null || generation != assetRequestGeneration || !abilityEnabled
+                        || !ModBehaviour.CanRunGameplayRuntimeCached()
+                        || SceneLoader.IsSceneLoading || player == null || player != CharacterMainControl.Main
+                        || player.Health == null || player.Health.IsDead
+                        || !FenHuangHalberdRuntime.IsHoldingHalberd(player));
+            }
+            catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[FenHuangHalberd] 异步预载龙王资源失败: " + e.Message);
+            }
+            finally
+            {
+                // 暂停 / 运行时门控中断后，恢复时允许补齐；旧角色任务不能复位新请求。
+                if (this != null && generation == assetRequestGeneration)
+                    assetRequestStarted = ready || DragonKingAssetManager.LoadFailedThisScene;
+            }
         }
 
         private void HandleLeapInput()
@@ -225,8 +299,7 @@ namespace BossRush
                 return false;
             }
 
-            FenHuangHalberdRuntime.EnsureDragonKingAssetsLoaded();
-            return abilityAction.IsReady();
+            return FenHuangHalberdRuntime.EnsureDragonKingAssetsLoaded() && abilityAction.IsReady();
         }
 
         private void BeginPreview()

@@ -47,6 +47,7 @@ namespace BossRush
         /// 当有Boss实例时递增，销毁时递减，为0时才真正卸载
         /// </summary>
         private static int assetBundleRefCount = 0;
+        private static int assetGeneration;
 
         /// <summary>
         /// 动态创建的Material跟踪列表（防止内存泄漏）
@@ -116,6 +117,11 @@ namespace BossRush
         /// </summary>
         public static bool LoadAssetBundleSync(string modBasePath)
         {
+            return LoadAssetBundleSync(modBasePath, true);
+        }
+
+        private static bool LoadAssetBundleSync(string modBasePath, bool warmPools)
+        {
             if (loadedBundle != null)
             {
                 assetBundleRefCount++;
@@ -150,13 +156,64 @@ namespace BossRush
                 ModBehaviour.DevLog($"[DragonKing] AssetBundle加载成功，引用计数: {assetBundleRefCount}");
 
                 PreloadPrefabs();
-                WarmEffectPools();
+                if (warmPools) WarmEffectPools();
                 return true;
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog($"[DragonKing] [ERROR] 同步加载AssetBundle异常: {e.Message}");
                 return false;
+            }
+        }
+
+        /// <summary>手持武器 owner 可随时撤销预载；池扩容每帧最多 8 个，预算约 2 ms。</summary>
+        internal static async UniTask<bool> PrepareForHeldWeapon(string modBasePath, Func<bool> cancelled)
+        {
+            int epoch = assetGeneration;
+            Func<bool> stopped = () => epoch != assetGeneration || cancelled();
+            bool acquired = false;
+            System.Collections.IEnumerator load = ResourceBundleLoader.Prepare(
+                Path.Combine(modBasePath, DragonKingConfig.AssetBundlePath), true, stopped,
+                () => acquired = LoadAssetBundleSync(modBasePath, false));
+            try
+            {
+                if (loadedBundle == null)
+                {
+                    await load.ToUniTask();
+                }
+                if (stopped() || loadedBundle == null) return false;
+                int createdThisFrame = 0;
+                double frameStart = Time.realtimeSinceStartupAsDouble;
+                foreach (var pair in initialPoolSizes)
+                {
+                    if (!ShouldUseEffectPool(pair.Key)) continue;
+                    GameObject prefab = GetPrefab(pair.Key);
+                    if (prefab == null) continue;
+                    DragonKingEffectPoolInfo pool = GetOrCreateEffectPool(pair.Key);
+                    while (pool.TotalCreated < pair.Value)
+                    {
+                        if (stopped()) return false;
+                        DragonKingPooledEffect effect = CreateNewPooledEffect(pair.Key, prefab, Vector3.zero, Quaternion.identity);
+                        if (effect == null) break;
+                        pool.TotalCreated++;
+                        ReturnPooledEffectToPool(effect, pool);
+                        createdThisFrame++;
+                        if (createdThisFrame >= 8 || Time.realtimeSinceStartupAsDouble - frameStart >= 0.002)
+                        {
+                            await UniTask.Yield();
+                            if (stopped()) return false;
+                            createdThisFrame = 0;
+                            frameStart = Time.realtimeSinceStartupAsDouble;
+                        }
+                    }
+                }
+                return !stopped();
+            }
+            finally
+            {
+                (load as IDisposable)?.Dispose();
+                // 武器仅借用本场景缓存，不留下无人释放的 Boss 引用。
+                if (acquired && epoch == assetGeneration) ClearCache();
             }
         }
         
@@ -672,6 +729,7 @@ namespace BossRush
         /// <param name="unloadAllLoadedObjects">是否卸载所有已加载的对象</param>
         public static void UnloadAssetBundle(bool unloadAllLoadedObjects = false)
         {
+            assetGeneration++;
             DestroyEffectPools();
 
             if (loadedBundle != null)
@@ -714,6 +772,7 @@ namespace BossRush
         /// </summary>
         public static void ForceCleanup()
         {
+            assetGeneration++;
             DestroyEffectPools();
 
             if (loadedBundle != null)
@@ -987,6 +1046,8 @@ namespace BossRush
         }
 
         public static bool IsLoaded => loadedBundle != null;
+        /// <summary>本场景已尝试过且失败；ForceCleanup 会在切场景时复位，允许每场景重试一次。</summary>
+        public static bool LoadFailedThisScene => loadAttempted && !loadSucceeded;
         public static bool HasActiveReferences => assetBundleRefCount > 0;
         public static int ActiveReferenceCount => assetBundleRefCount;
     }

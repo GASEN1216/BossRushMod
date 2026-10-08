@@ -502,7 +502,8 @@
       "id": "CAMPAIGN",
       "title": "鸭王征程六章",
       "sources": [
-        "Campaign"
+        "Campaign",
+        "Integration/SandstormChampion"
       ],
       "automatic": [
         "DATA_CAMPAIGN_JSON",
@@ -529,8 +530,13 @@
         },
         {
           "id": "M_CAMPAIGN_04",
-          "steps": "接取后、目标完成后、交付后三处重启并换到另一专用测试槽。",
-          "expected": "进度和已领奖状态正确回读，跨槽不串；重复交付不重复给奖。"
+          "steps": "仅使用可丢弃专用测试槽，通过游戏界面验收，不打开、复制或修改任何玩家存档文件。M_CAMPAIGN_04-A：在基地 Jeff 接取章节后，从暂停菜单正常退出整个游戏，再启动并进入同槽，核对官方任务日志和 Jeff「进行中」页。M_CAMPAIGN_04-B：完成该章目标、返基地但先不交付，正常退出重开同槽，核对目标完成状态和交付按钮。M_CAMPAIGN_04-C：在 Jeff 交付，记下奖励及后山设施解锁，再正常退出重开，核对「已完成」页、后山和笔记线索。M_CAMPAIGN_04-G1/G2/G3：选一条可达的 Jeff 一次性引导，依次在刚接取、实际体验目标已达成但未交付、已交付后三个时点分别正常退出重开；每次在官方任务页核对状态，并在交付前后记录奖励。M_CAMPAIGN_04-S：切到另一可丢弃专用测试槽，再切回原槽核对上述事实。各时点由 owner 按步骤保存 M_CAMPAIGN_04-A.png、M_CAMPAIGN_04-B.png、M_CAMPAIGN_04-C.png、M_CAMPAIGN_04-G1.png、M_CAMPAIGN_04-G2.png、M_CAMPAIGN_04-G3.png、M_CAMPAIGN_04-S.png，对照官方任务日志、Jeff 任务页中部的目标与完成按钮及后山设施；截图由 owner 检查。",
+          "expected": "接取后仍进行中，不能重新接同章；待交付的已达成目标保留且仍可交付；完成后仍在已完成页，线索及设施解锁保留，第一章不重新出现，奖金和物品不重复发放。Jeff 引导的接取、已体验、已交付三态分别保留：已体验不自动变成交付，已交付不再次给奖。另一专用槽不继承原槽章节、引导或设施，切回后原槽事实仍在。任一状态倒退、任务消失、重复奖励或跨槽串进度均不合格；登记本步骤不代表 L3 已通过。"
+        },
+        {
+          "id": "M_CAMPAIGN_SANDSTORM_01",
+          "steps": "在专用测试档接第六章，于竞技场报名石开战；先保持距离观察五连冲与弹幕，再观察低于 50% 与 15% 转阶段的三连冲和一/二/三连冲。分别在空地、矮障碍旁和墙边走动，检查冠军实际追击。截图 M_CAMPAIGN_SANDSTORM_01.png，检查沙暴中玩家和预警可读性、沙尘精沙卫手中星阙。分别用普通枪械、星阙轻击及重击命中沙泡和沙鲨，检查泡泡当场消散、沙鲨扣血后击破，以及首次击破日志 bubble/shark；泡泡命中后仍继续飞行或造成伤害即失败；召小弟前后检查同一沙暴是否持续、喷弹是否继续。观察两个沙圈是否从 Boss 两侧出生后追踪玩家，若直接从玩家脚下或身边出生则失败；分别测试接触、躲满 3 秒和墙边受阻后成柱；接触和到时以外提前成柱、隔墙接触即失败。检查小/大沙柱半径 3.4/5.6 米和高度 12/24 米、成长与消散层次；M_CAMPAIGN_SANDSTORM_VFX：观察 Boss 头顶、沙柱中段、泡泡和贴地边界，截图 M_CAMPAIGN_SANDSTORM_VFX.png 由 owner 检查，不得出现悬空螺旋线、线框皇冠或泡泡轨道线；砂云须有实体层次且不能把玩家和地面危险边界遮没，以及沙卫加快追击后是否仍能正常出手。击杀沙卫检查地面与尸体箱；击败冠军拾取星阙；另测死亡、开其他模式和切图取消。",
+          "expected": "冠军实际移动追击，不持续原地空放招；不出现原版枪械或枪弹。第三阶段首次换侧后至少观察 15 秒，须持续完成不少于三轮一/二/三连冲，不能只换侧一次后永久站桩；有预警和收招，不穿墙/出界，沙暴不遮没玩家。沙卫手持代码光棍并攻击，死亡无物品、装备、尸体战利品箱；战斗取消后沙卫与弹幕全部清理。只在真实击杀冠军发放一件星阙，征程目标正常推进。"
         }
       ]
     },
@@ -1702,6 +1708,31 @@
           "id": "M_RESOURCE_SAMPLE",
           "steps": "Dev F3: run the existing full validation at base, or the existing read-only validation on Sky Islands. Keep the same position and camera for each 10-second window.",
           "expected": "resource-performance.json, manifest.json and summary.md have counters and explicit unavailable status; no state mutation from sampling. Compare identical scenes and camera settings."
+        }
+      ]
+    },
+    {
+      "id": "EQ_ASTRAL_STAFF",
+      "title": "星阙三段棍势光棍",
+      "sources": [
+        "Integration/NewWeapons/AstralStaff"
+      ],
+      "automatic": [
+        "ITEM_FACTORY_ALL"
+      ],
+      "wiki": [
+        "equipment__astral_staff"
+      ],
+      "manual": [
+        {
+          "id": "M_EQ_ASTRAL_STAFF_01",
+          "steps": "从冠军掉落获得星阙。左键单体/多目标轻击，右键分别蓄 1/2/3 豆松开；低体力、轻击收招时和墙边尝试重击。截图 M_EQ_ASTRAL_STAFF_01.png，检查手中细光芯、双螺纹、断环收束、三颗棍势提示及三豆落点。录制 M_EQ_ASTRAL_STAFF_01.mp4，比较横扫、两拍回旋和星陨节奏；空挥、打转阶段无敌冠军、击破沙泡与沙鲨，检查只有实际伤害才触发自定义强震停、弹体不供豆、群怪时仍看得清敌人。",
+          "expected": "每挥击最多计一次有效命中；三档重击范围、声效、光弧和停顿有区别，重击不穿墙伤人、不和轻击叠放；体力不足保豆。图标非白问号，手持无借来的模型，特效不遮住敌人和玩家。"
+        },
+        {
+          "id": "M_EQ_ASTRAL_STAFF_02",
+          "steps": "蓄势中换手、开背包、暂停、死亡和切图；再手持重试；NPC/仓库/背包闲置物品不操作。截图 M_EQ_ASTRAL_STAFF_02.png，检查背包/暂停界面上没有棍势提示。",
+          "expected": "换手、死亡、切图立即取消攻击和临时特效；官方界面隐藏提示且阻断输入；闲置不造武器特效、不预热，重新手持可以正常释放。"
         }
       ]
     }

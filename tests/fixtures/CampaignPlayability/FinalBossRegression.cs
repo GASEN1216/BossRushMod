@@ -184,7 +184,8 @@ namespace BossRush
     public partial class ModBehaviour
     {
         public static bool DevModeEnabled = true;
-        public bool Arena, NonWaveRequested;
+        public bool Arena, ChampionFactoryRequested;
+        public Func<bool> ChampionLease;
         public bool ModeBusy { get { return modeGActive; } set { modeGActive = value; } }
         public int ClearedLoot;
         public TaskCompletionSource<CharacterMainControl> SpawnResult;
@@ -192,15 +193,19 @@ namespace BossRush
         public int ArenaQueryCount;
         public bool IsCurrentSceneValidBossRushArena() { ArenaQueryCount++; return Arena; }
         private void ClearBossRandomLootTracking(CharacterMainControl boss) { ClearedLoot++; }
-        private void ApplyBossStatMultiplier(CharacterMainControl boss, float multiplier) { }
-        internal Task<CharacterMainControl> SpawnPhantomWitch(UnityEngine.Vector3 position, bool notify,
-            bool defer, PhantomWitchDeathPresentation presentation, float scale, bool isNonWaveSpawn = false)
-        {
-            NonWaveRequested = isNonWaveSpawn;
-            return SpawnResult.Task;
-        }
+        private void ApplyBossStatMultiplier(CharacterMainControl boss, float? multiplier = null) { }
         public Task BeginSpawn() { return campaignRuntime.BeginSpawn(); }
         public Task BeginPrologue() { return campaignRuntime.BeginPrologue(); }
+    }
+    internal static class SandstormChampionBoss
+    {
+        internal static Task<CharacterMainControl> SpawnAsync(ModBehaviour owner, UnityEngine.Vector3 position, Func<bool> isCurrent)
+        {
+            // 只替代 Unity Boss 工厂；迟到完成、场景取消和决战归属由提取的生产编排验证。
+            owner.ChampionFactoryRequested = true;
+            owner.ChampionLease = isCurrent;
+            return owner.SpawnResult.Task;
+        }
     }
     internal sealed class CampaignOfficialQuestClient { internal void ClearPending() { } internal void UnregisterAll() { } }
     internal static class CampaignSaveCoordinator
@@ -333,7 +338,7 @@ internal static class FinalBossRegression
         CharacterMainControl.Main.Health.IsDead = false;
 
         owner.StartCampaignFinalBoss();
-        check(owner.IsCampaignFinalBossActive && !owner.NonWaveRequested,
+        check(owner.IsCampaignFinalBossActive && !owner.ChampionFactoryRequested,
             "original host start bridge arms the module before the prologue wait");
         owner.CleanupCampaignFinalBoss(true);
         check(!owner.IsCampaignFinalBossActive && CampaignDialoguePlayer.ObservedToken.IsCancellationRequested,
@@ -344,7 +349,7 @@ internal static class FinalBossRegression
         check(!prologue.IsCompleted, "prologue waits for player dialogue");
         owner.CleanupCampaignFinalBoss(true);
         check(oldToken.IsCancellationRequested, "aborted showdown cancels dialogue wait");
-        check(prologue.Wait(2000) && !owner.NonWaveRequested, "cancelled prologue never starts factory");
+        check(prologue.Wait(2000) && !owner.ChampionFactoryRequested, "cancelled prologue never starts factory");
         check(CampaignFinalBossFx.SummonBursts == 0, "cancelled prologue never plays the summon burst");
         Task nextPrologue = owner.BeginPrologue();
         check(!CampaignDialoguePlayer.ObservedToken.IsCancellationRequested && !nextPrologue.IsCompleted,
@@ -372,9 +377,11 @@ internal static class FinalBossRegression
 
         var first = owner.SpawnResult = new TaskCompletionSource<CharacterMainControl>();
         Task firstRun = owner.BeginSpawn();
-        check(owner.NonWaveRequested && !firstRun.IsCompleted, "final boss uses non-wave spawn while awaiting factory");
+        check(owner.ChampionFactoryRequested && !firstRun.IsCompleted && owner.ChampionLease != null
+            && owner.ChampionLease(), "final boss starts dedicated champion factory with a live ownership lease");
         check(CampaignFinalBossFx.SummonBursts == 1, "summon burst plays once alongside the pending factory without delaying it");
         owner.CleanupCampaignFinalBoss(true);
+        check(!owner.ChampionLease(), "cleanup invalidates the production lease passed to champion factory");
         var late = Boss(); first.SetResult(late); firstRun.GetAwaiter().GetResult();
         check(late == null && !owner.FinalActive && owner.ClearedLoot == 1,
             "late spawn clears loot subscription and destroys owned character");

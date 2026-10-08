@@ -14,12 +14,19 @@ def main():
     progress = read('Campaign/CampaignProgressService.cs')
     facts = read('Campaign/CampaignGuideFacts.cs')
     loc = read('Localization/CampaignLocalization.cs')
+    encode = save.split('private static string Encode(', 1)[1].split('private static void WriteStrings(', 1)[0]
+    decode = save.split('private static CampaignSaveData Decode(', 1)[1].split('private static bool ReadStrings(', 1)[0]
+    strings = save.split('private static bool ReadStrings(', 1)[1].split('private static bool BeforeCollectSaveData(', 1)[0]
+    assert 'values = new string[0];' in strings, 'missing/null arrays need an empty default'
+    assert 'if (field == null || field.Kind == BossRushJsonKind.Null) return true;' in strings, 'old guide fields must remain optional'
+    assert 'if (!root.TryGetStringList(key, out parsed)) return false;' in strings, 'malformed guide arrays must not be accepted'
     for name in ('ModeD','ModeE','ModeF','ModeG','ModeH','Zombie','PetNest','RandomEvents','SkyIslandGear','Garden','Trophy','AffixForge','Reforge','DailyReport'):
         assert f'internal const string {name} =' in table, f'missing guide {name}'
         assert f'case CampaignGuideTable.{name}:' in facts, f'guide has no observable objective {name}'
     for field in ('acceptedGuides','experiencedGuides','completedGuides'):
         assert f'public string[] {field};' in save, f'missing persisted {field}'
-        assert f'if (decoded.{field} == null) decoded.{field} = new string[0];' in save, f'old saves miss {field} default'
+        assert f'WriteStrings(writer, "{field}", value.{field});' in encode, f'guide encoder drops {field}'
+        assert f'!ReadStrings(root, "{field}", out decoded.{field})' in decode, f'old saves miss {field} default or error propagation'
         assert f'(string[])source.{field}.Clone()' in progress, f'chapter transaction drops {field}'
     assert 'CampaignSaveData copy = CampaignProgressService.CloneSaveData(current);' in save
     assert 'if (!Store(copy)) return false;' in save

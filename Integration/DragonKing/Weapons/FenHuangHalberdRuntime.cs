@@ -37,24 +37,7 @@ namespace BossRush
 
         public static bool EnsureDragonKingAssetsLoaded()
         {
-            if (DragonKingAssetManager.IsLoaded)
-            {
-                return true;
-            }
-
-            try
-            {
-                string modPath = ModBehaviour.GetModPath();
-                if (!string.IsNullOrEmpty(modPath))
-                {
-                    return DragonKingAssetManager.LoadAssetBundleSync(modPath);
-                }
-            }
-            catch (System.Exception e)
-            {
-                ModBehaviour.DevLog("[FenHuangHalberd] 加载龙王资源失败: " + e.Message);
-            }
-
+            // 预览和技能入口只查询就绪状态，不抢占尚未完成的异步资源请求。
             return DragonKingAssetManager.IsLoaded;
         }
 

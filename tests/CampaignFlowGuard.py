@@ -55,7 +55,7 @@ def check():
     require("Campaign/CampaignObjectiveTracker.cs", "internal static void EnsureArmedFor(string mode)", "if (def.Objectives[i] == null || def.Objectives[i].IsBaseScope) continue;")
     final = "Campaign/CampaignFinalBoss.cs"
     require(final, "internal bool CanStartCampaignFinalBoss()", "return ShouldCampaignFinalBossAltarExist();")
-    require(final, "private async UniTask StartCampaignFinalBossAsync(", "CampaignTuning.FinalBossScale, isNonWaveSpawn: true);")
+    require(final, "private async UniTask StartCampaignFinalBossAsync(", "await SandstormChampionBoss.SpawnAsync( campaignOwner, position, () => runId == campaignFinalBossRunId && campaignFinalBossActive);")
     # 召唤石的几何与表现 2026-09-23 移到独立类型（VA-25）：部件仍共用缓存里那一份材质，退场走缩没 + 自然退场
     altar_fx = "Campaign/CampaignFinalBossFx.cs"
     require(altar_fx, "private static Renderer CreatePart(", "renderer.sharedMaterial = material;")

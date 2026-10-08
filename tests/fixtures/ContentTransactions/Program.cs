@@ -30,12 +30,14 @@ partial class Program
     {
         CampaignPersistence.ResetStaticCaches(); CampaignSaveCoordinator.NotifySlotChanged();
         CampaignProgressService.ResetStaticCaches(); DailyReportSaveCoordinator.ResetStaticCaches();
+        CampaignFacilityUnlocks.ResetStaticCaches();
         PetNestSaveCoordinator.ResetStaticCaches(); PetNestMuseumStats.ResetStaticCaches();
         BossRushSaveFileThrottle.ResetStaticCaches(); SavesSystem.Reset();
         EconomyManager.Instance = new EconomyManager(); EconomyManager.Money = 100000;
         EconomyManager.Adds = 0; EconomyManager.RejectAdd = EconomyManager.RejectPay = false;
         SavesSystem.Save("EconomyData", (EconomyManager.SaveData)EconomyManager.Instance.GenerateSaveData());
-        LevelManager.Instance.IsBaseLevel = true; UnityEngine.Time.frameCount++;
+        LevelManager.Instance = new LevelManager(); LevelManager.LevelInited = true;
+        LevelManager.LevelInitializing = SceneLoader.IsSceneLoading = false; UnityEngine.Time.frameCount++;
         CharacterMainControl.Main = new CharacterMainControl { CharacterItem = new Item { Inventory = new Inventory() } };
         PlayerStorage.Inventory = new Inventory(); PlayerStorage.Loading = false;
         PetProxy.PetInventory = null;
@@ -583,7 +585,7 @@ partial class Program
         if (args.Length == 0) HomecomingStoreRecovery();
         if (RunCampaignDiskRegression(args)) return;
         QuestDeliveryTransactions();
-        CampaignRestartLifecycle(); CampaignGuideLifecycle(); GuideCash(); CampaignCash(); DailyCash(); OfficialStickySaving(); Condense(); Hatch(); PetNestAchievements(); Meals(); ExpeditionEggIdentity(); ShowcaseSnapshot();
+        CampaignExplicitCodecRegression(); CampaignReadinessLifecycle(); CampaignRestartLifecycle(); CampaignGuideLifecycle(); GuideCash(); CampaignCash(); DailyCash(); OfficialStickySaving(); Condense(); Hatch(); PetNestAchievements(); Meals(); ExpeditionEggIdentity(); ShowcaseSnapshot();
         ManualChromaAndDurations();
         PityGuarantees();
         PetNestLifecycleRepairs();

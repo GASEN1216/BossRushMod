@@ -110,15 +110,25 @@ def main():
     ordered(body(final, "internal void CleanupCampaignFinalBoss("), "final cleanup",
             "OnDeadEvent.RemoveListener(OnCampaignFinalBossDead);", "if (destroyBoss)",
             "_owner.ClearCampaignBossRandomLootTrackingForRuntime(campaignFinalBossInstance);",
-            "UnityEngine.Object.Destroy(campaignFinalBossInstance.gameObject);", "StopBossBGM(",
+            "UnityEngine.Object.Destroy(campaignFinalBossInstance.gameObject);",
             "if (campaignFinalBossActive) CampaignDialoguePlayer.InvalidatePlayback();",
             "campaignFinalBossInstance = null;", "campaignFinalBossActive = false;",
             "campaignFinalBossRunId++;", "ResetCampaignFinalBossTracking();")
     ordered(body(final, "private async UniTask StartCampaignFinalBossAsync("), "spawn ownership",
-            "ModBehaviour campaignOwner = _owner;", "await campaignOwner.SpawnPhantomWitch(", "if (runId != campaignFinalBossRunId)",
+            "ModBehaviour campaignOwner = _owner;", "await SandstormChampionBoss.SpawnAsync(", "campaignOwner, position, () => runId == campaignFinalBossRunId && campaignFinalBossActive)", "if (runId != campaignFinalBossRunId)",
             "campaignOwner.ClearCampaignBossRandomLootTrackingForRuntime(boss);", "UnityEngine.Object.Destroy(boss.gameObject);",
             "campaignFinalBossSpawnResolved = true;", "ApplyCampaignFinalBossVariant(boss);",
             "OnDeadEvent.AddListener(OnCampaignFinalBossDead);")
+    # 沙暴冠军有独立 owner，音乐随其生命周期配对，不再由 Campaign 操作女巫实例。
+    champion = source("Integration/SandstormChampion/SandstormChampionAbilityController.cs")
+    check("PlayBossBGM(BossBgmKeys.PhantomWitch, _boss)" in body(champion, "internal void Initialize("),
+          "champion BGM start disconnected")
+    ordered(body(champion, "internal void StopBattle("), "champion cleanup",
+            "if (_stopped) return;", "_stopped = true;", "StopAllCoroutines();", "ClearHazards();")
+    check("StopBossBGM(BossBgmKeys.PhantomWitch, _boss)" in body(champion, "internal void StopBattle("),
+          "champion BGM cleanup disconnected")
+    check("BeforeCharacterSpawnLootOnDead -= OnBeforeSpawnLoot;" in body(champion, "internal void StopBattle("),
+          "champion loot listener not released")
     ordered(body(mode, "internal void TickCampaignModeBridge("), "tick sequence",
             "if (!_owner.IsCampaignConfiguredEnabled()) return;", "TickCampaignFinalBossAltar();", "TickCampaignFinalBossYield();",
             "if (campaignFinalBossActive)", "CampaignObjectiveTracker.Tick(deltaTime);", "ResolveCampaignCurrentMode();")

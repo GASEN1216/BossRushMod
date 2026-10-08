@@ -37,6 +37,6 @@ namespace BossRush
         internal bool HasCampaignBountyKillLatchForRuntime(int victimId) { return HasModeFPlayerBountyKillLatch(victimId); }
         internal bool ConsumeCampaignBountyKillLatchForRuntime(int victimId) { return ConsumeModeFPlayerBountyKillLatch(victimId); }
         internal void ClearCampaignBossRandomLootTrackingForRuntime(CharacterMainControl boss) { ClearBossRandomLootTracking(boss); }
-        internal void ApplyCampaignBossStatMultiplierForRuntime(CharacterMainControl boss, float multiplier) { ApplyBossStatMultiplier(boss, multiplier); }
+        internal void ApplyCampaignBossStatMultiplierForRuntime(CharacterMainControl boss, float? multiplier = null) { ApplyBossStatMultiplier(boss, multiplier); }
     }
 }

@@ -111,6 +111,11 @@ namespace BossRush
         /// </summary>
         public const int SkyIslandNavInstrument = 500103;
 
+        /// <summary>
+        /// 星阙：纯代码光棍近战（无模型、无 bundle），征程第六章「冠军之影」必掉。
+        /// 配置在 Integration/NewWeapons/AstralStaff/。
+        /// </summary>
+        public const int AstralStaff = 500104;
         /// <summary>空仓地雷盒：官方 Boss 专属图腾；500104 已在本地台账先登记。</summary>
         public const int EmptyMagazineMine = 500105;
     }

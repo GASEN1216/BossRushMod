@@ -408,6 +408,12 @@ namespace BossRush
                 FallbackLoader = delegate(int typeId) { return SkyIslandNavInstrumentConfig.EnsureRuntimeFallbackRegistrationShell(); }
             }, BossRushItemIds.SkyIslandNavInstrument);
 
+            // 星阙：纯代码光棍，没有任何 bundle，只走克隆兜底。
+            Add(plans, new RegistrationPlan
+            {
+                FallbackLoader = delegate(int typeId) { return AstralStaffWeaponConfig.EnsureRuntimeRegistration(); }
+            }, BossRushItemIds.AstralStaff);
+
             Add(plans, NewWeaponPlan("viperdagger_melee_model", "viperdagger_item"), NewWeaponIds.ViperDaggerTypeId);
             Add(plans, NewWeaponPlan("summonstaff_melee_model", "summonstaff_item"), NewWeaponIds.SummonStaffTypeId);
             Add(plans, NewWeaponPlan("energyshield_totem_model", "energyshield_item"), NewWeaponIds.EnergyShieldTypeId);

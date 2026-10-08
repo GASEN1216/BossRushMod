@@ -57,6 +57,7 @@ def main():
     linked = [
         "Campaign/CampaignProgressService.cs", "Campaign/CampaignModels.cs",
         "Campaign/CampaignPersistence.cs", "Campaign/CampaignSaveCoordinator.cs", "Campaign/CampaignGuideTable.cs",
+        "Campaign/CampaignRuntimeModule.cs", "Campaign/CampaignFacilityUnlocks.cs",
         "Utilities/OfficialQuests/OfficialQuestBinding.cs", "Utilities/OfficialQuests/OfficialQuestItems.cs",
         "Utilities/OfficialQuests/OfficialQuestItemRules.cs", "SkyIsland/SkyIslandInventoryTransaction.cs",
         "Integration/DailyReport/DailyReportSaveCoordinator.cs",
@@ -74,7 +75,7 @@ def main():
         "PetNestExpeditionService", "PetNestBackpackSnapshot", "PetNestBackpackRestoration",
         # 2026-09-20：孵化 roll 与显示名都要用炫彩调色板（纯数据、无 Unity 依赖）
         "PetNestChroma")]
-    paths = [ROOT / p for p in linked] + [HERE / "Program.cs", HERE / "Stubs.cs", HERE / "QuestDeliveryRegression.cs", HERE / "CampaignDiskRegression.cs", OUT / "Extracted.cs"]
+    paths = [ROOT / p for p in linked] + [HERE / "Program.cs", HERE / "Stubs.cs", HERE / "QuestDeliveryRegression.cs", HERE / "CampaignDiskRegression.cs", HERE / "CampaignReadinessRegression.cs", OUT / "Extracted.cs"]
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649;0067</NoWarn></PropertyGroup><ItemGroup>'
     project += "".join('<Compile Include="' + xml.escape(str(p), {'"': '&quot;'}) + '" />' for p in paths)
     project += "</ItemGroup></Project>"
@@ -91,7 +92,8 @@ def main():
         raise RuntimeError("Missing built target: " + target)
     print("Campaign disk process target:", target, hashlib.sha256(Path(target).read_bytes()).hexdigest(), flush=True)
     process_dir = Path(tempfile.mkdtemp(prefix="campaign-process-", dir=OUT))
-    for scenario in ("accepted", "readback", "completed", "collected", "collect-failure", "final-accepted"):
+    for scenario in ("accepted", "readback", "completed", "collected", "collect-failure", "final-accepted",
+                     "guide-accepted", "guide-experienced", "guide-completed"):
         snapshot = process_dir / (scenario + ".json")
         for action in ("write", "read"):
             code = subprocess.call(["dotnet", target, "--campaign-disk-" + action, str(snapshot), scenario], cwd=ROOT)

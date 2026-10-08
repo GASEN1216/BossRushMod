@@ -50,6 +50,8 @@ def main():
     manager = read('Integration/NewWeapons/SummonStaff/SummonStaffManager.cs')
     generated = 'using System; using System.Collections.Generic; using ItemStatsSystem; using UnityEngine;\nnamespace BossRush {\n'
     generated += 'static class NewWeaponRuntime {\n' + member(runtime, 'internal static void RegisterRuntimeConfigs(') + '\n}\n'
+    generated += 'static partial class AstralStaffWeaponConfig {\n' + member(
+        read('Integration/NewWeapons/AstralStaff/AstralStaffWeaponConfig.cs'), 'private static void ApplyAttributes(') + '\n}\n'
     generated += 'static class AffixForgeSystem {\n' + member(forge, 'public static bool CanAffixForge(') + '\n}\n'
     generated += 'static partial class AffixItemData {\n' + member(data, 'public static AffixEquipMask GetEquipMask(') + '\n}\n'
     generated += 'static partial class CustomItemRuntimeStateHelper {\n'
@@ -72,6 +74,7 @@ def main():
     extracted.write_text(generated, encoding='utf-8')
     sources = [extracted, HERE / 'Program.cs', HERE / 'Stubs.cs',
                ROOT / 'Config/ConfigItemIds.cs',
+               ROOT / 'Integration/NewWeapons/AstralStaff/AstralStaffConfig.cs',
                ROOT / 'Integration/NewWeapons/Common/NewWeaponIds.cs',
                ROOT / 'Integration/NewWeapons/Common/NewWeaponItemAttributes.cs']
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup><ItemGroup>'

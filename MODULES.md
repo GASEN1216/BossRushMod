@@ -43,6 +43,7 @@
 | `dragon-king` | 龙王 Boss 与武器 | `Integration/DragonKing/DragonKingBoss.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
 | `dragon-descendant` | 龙裔 Boss | `Integration/DragonDescendant/DragonDescendantBoss.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
 | `phantom-witch` | 幽灵女巫 Boss | `Integration/PhantomWitch/PhantomWitchBoss.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
+| `sandstorm-champion` | 第六章沙暴冠军 | `Integration/SandstormChampion/SandstormChampionBoss.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
 | `new-weapons` | 新武器 | `Integration/IntegrationHostCompatibility.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
 | `set-bonus` | 套装效果 | `Integration/Bonus/DragonSetBonus.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
 | `frostmourne` | 霜之哀伤 | `Integration/Frostmourne/FrostmourneBootstrap.cs` | `AGENTS.md`、`Integration/AGENTS.md` |

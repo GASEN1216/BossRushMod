@@ -27,7 +27,7 @@ namespace UnityEngine
         }
     }
     public class GameObject : Object { public readonly List<Object> Children = new List<Object>(); }
-    static class Debug { public static void LogWarning(string value) { } }
+    static class Debug { public static void LogWarning(string value) { } public static void Log(string value) { } }
     static class Time { public static int frameCount; public static float unscaledTime; }
     // 2026-09-23：遗种巢卡片数据带一张图（PetNestCardData.Icon，UA-10）；事务逻辑不碰它，替身只要能编译。
     class Sprite { }
@@ -47,7 +47,7 @@ namespace Saves
         private static bool saving;
         public static bool IsSaving { get { return saving; } set { saving = value; } }
         public static bool StickSavingOnFailure;
-        public static int CurrentSlot = 0, Writes, FailPhysical;
+        public static int CurrentSlot = 0, Writes, FailPhysical, Reads;
         public static string FailKey, FailReadAfterSaveKey;
         static string pendingReadFailure;
         public static Dictionary<string, object> Cache = new Dictionary<string, object>();
@@ -56,7 +56,7 @@ namespace Saves
         public static event Action OnCollectSaveData, OnSetFile, OnSaveDeleted;
         public static void Collect() { OnCollectSaveData?.Invoke(); }
         public static void SetFile(int slot) { CurrentSlot = slot; Cache.Clear(); OnSetFile?.Invoke(); }
-        public static bool KeyExisits(string key) { return Cache.ContainsKey(key); }
+        public static bool KeyExisits(string key) { Reads++; return Cache.ContainsKey(key); }
         public static T Load<T>(string key)
         {
             if (pendingReadFailure == key) { pendingReadFailure = null; throw new InvalidOperationException("injected readback failure"); }
@@ -84,7 +84,7 @@ namespace Saves
         }
         public static void Reset()
         {
-            IsSaving = StickSavingOnFailure = false; CurrentSlot = 0; Writes = 0; FailPhysical = 0; FailKey = null;
+            IsSaving = StickSavingOnFailure = false; CurrentSlot = 0; Writes = Reads = 0; FailPhysical = 0; FailKey = null;
             DiskPath = null;
             Cache.Clear(); Disk.Clear(); History.Clear();
             FailReadAfterSaveKey = pendingReadFailure = null;
@@ -109,7 +109,7 @@ namespace Duckov.Economy
 }
 namespace Duckov.UI { static class NotificationText { public static void Push(string value) { } } }
 enum ElementTypes { electricity, poison, ice }
-class LevelManager { public static LevelManager Instance = new LevelManager(); public static bool AfterInit = true; public bool IsBaseLevel = true; }
+class LevelManager { public static LevelManager Instance = new LevelManager(); public static bool AfterInit = true, LevelInited = true, LevelInitializing; public bool IsBaseLevel = true; }
 static class ItemUtilities
 {
     public static List<Item> Delivered = new List<Item>();
@@ -361,6 +361,9 @@ namespace BossRush
         public void ShowMessage(string text) { }
         public void CleanupCampaignFinalBoss(bool destroyBoss) { }
         public bool IsBackMountainConfiguredEnabled() { return true; }
+        public bool CampaignEnabled = true;
+        public bool IsCampaignConfiguredEnabled() { return CampaignEnabled; }
+        public OfficialQuestRuntimeAdapter OfficialQuestRuntime = new OfficialQuestRuntimeAdapter();
     }
     static class L10n { public static bool IsChinese { get { return false; } } public static string T(string cn, string en) { return en; } }
     static class PetNestLocalization { public static string DescribeFailure(string reason) { return reason; } }
@@ -400,7 +403,8 @@ namespace BossRush
     static class CampaignTuning
     {
         public const string LogPrefix = "Campaign", ProgressSaveKey = "BossRush_Campaign_Progress_v1";
-        public const int FirstChapter = 1;
+        public const int FirstChapter = 1, ChapterCount = 6;
+        public const string ModuleName = "Campaign", FacilityTokenPrefix = "BossRush_Campaign_Unlock_Ch";
     }
     static class CampaignContentCatalog
     {
@@ -417,15 +421,10 @@ namespace BossRush
         { foreach (CampaignChapterDef value in definitions) if (value.ChapterId == id) return value; return null; }
         public static CampaignChapterDef GetChapterByOrder(int order)
         { return order > 0 && order <= definitions.Length ? definitions[order - 1] : null; }
+        public static void ResetStaticCaches() { }
     }
-    static class CampaignFacilityUnlocks
-    {
-        public static bool TryGrant(string key) { return true; }
-        public static void ResetForSlotReload() { }
-        public static void LoadGrantedTokens(IEnumerable<string> keys) { }
-    }
-    static class CampaignObjectiveTracker { public static void ResetSession() { } }
-    static class CampaignDialoguePlayer { public static void InvalidatePlayback() { } }
+    static class CampaignObjectiveTracker { public static void ResetSession() { } public static void ResetStaticCaches() { } }
+    static class CampaignDialoguePlayer { public static void InvalidatePlayback() { } public static void ResetStaticCaches() { } }
     static class DailyReportTuning { public const string LogPrefix = "DailyReport"; }
     class DailyReportData
     {

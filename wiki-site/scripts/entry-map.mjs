@@ -49,6 +49,7 @@ export const ENTRY_TO_PATH = {
   'equipment__dragon_king_set': 'equipment/dragon-king-set.md',
   'equipment__flight_totem':    'equipment/flight-totem.md',
   'equipment__reverse_scale':   'equipment/reverse-scale.md',
+  'equipment__astral_staff':    'equipment/astral-staff.md',
   'equipment__halberd':         'equipment/halberd.md',
   'equipment__dragon_breath':   'equipment/dragon-breath.md',
   'equipment__dragon_cannon':   'equipment/dragon-cannon.md',

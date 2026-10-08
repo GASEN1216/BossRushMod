@@ -33,6 +33,14 @@ static class Program
         }
         foreach (int id in new[] { 500050, 500052, 123 })
             Check(!CustomItemRuntimeStateHelper.IsRuntimeConfiguredType(id), "utility/official IDs stay outside melee registration");
+        Check(CustomItemRuntimeStateHelper.IsRuntimeConfiguredType(BossRushItemIds.AstralStaff), "Astral Staff restore registration survives integration");
+        var astral = new Item { TypeID = BossRushItemIds.AstralStaff, MaxDurability = 100f, Durability = 17f,
+            DurabilityLoss = 0.1f, SavedReforgeBonus = 35f, ReforgeRestored = true };
+        Check(AffixForgeSystem.CanAffixForge(astral) && astral.Stats.Damage.BaseValue == 135f,
+            "Astral Staff restoration preserves saved reforge gain");
+        Check(astral.Durability == 17f && AffixForgeSystem.CanAffixForge(astral)
+            && astral.ConfigureCalls == 1 && astral.RestoreCalls == 1,
+            "Astral Staff repeated restoration neither repairs nor stacks");
         var armor = new Item { TypeID = 500054, Quality = 6 }; armor.Tags.Add("Armor");
         Check(AffixForgeSystem.CanAffixForge(armor), "armor remains forgeable without melee registration");
 

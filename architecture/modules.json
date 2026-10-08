@@ -1113,6 +1113,38 @@
       ]
     },
     {
+      "id": "sandstorm-champion",
+      "title": "第六章沙暴冠军",
+      "kind": "content",
+      "paths": [
+        "Integration/SandstormChampion/**/*.cs"
+      ],
+      "entry": "Integration/SandstormChampion/SandstormChampionBoss.cs",
+      "state_owner": "SandstormChampionController",
+      "public_api": [
+        "SandstormChampionBoss.SpawnAsync"
+      ],
+      "data": [],
+      "tests": [
+        "tests/CampaignRuntimeOwnershipGuard.py",
+        "tests/CampaignFlowGuard.py",
+        "tests/fixtures/CampaignPlayability"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/自定义 Boss 系统/沙暴冠军与星阙.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "Integration/AGENTS.md"
+      ],
+      "depends_on": [
+        "campaign",
+        "new-weapons",
+        "common",
+        "utilities"
+      ]
+    },
+    {
       "id": "new-weapons",
       "title": "新武器",
       "kind": "content",

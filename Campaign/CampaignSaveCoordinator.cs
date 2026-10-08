@@ -14,6 +14,7 @@
 using System;
 using Saves;
 using Duckov.Economy;
+using UnityEngine;
 
 namespace BossRush
 {
@@ -200,6 +201,7 @@ namespace BossRush
                     _cashSnapshotRequired = false;
                     _cashError = null;
                 }
+                Debug.Log(CampaignTuning.LogPrefix + "CAMPAIGN_SAVE_OK slot=" + SavesSystem.CurrentSlot);
             }
         }
 

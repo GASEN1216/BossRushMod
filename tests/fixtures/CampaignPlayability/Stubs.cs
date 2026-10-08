@@ -105,7 +105,7 @@ namespace BossRush
     internal static class ZombieModePhaseGuards { public static bool IsRunActive(int phase) { return phase == 1; } }
     internal static class L10n { internal static bool IsChinese; internal static string T(string cn, string en) { return IsChinese ? cn : en; } }
     internal static class CampaignAssetCache { internal static object GetChapterPoster(int order) { return null; } internal static void ResetStaticCaches() { } }
-    internal static class CampaignPersistence { internal static bool HasWriteBarrier, IsStoreFaulted; internal static void ResetStaticCaches() { } }
+    internal static class CampaignPersistence { internal static bool HasWriteBarrier, IsStoreFaulted; internal static bool IsCurrentSlotReady = true; internal static void ResetStaticCaches() { } }
 
     internal static class JsonDataRegistry
     {

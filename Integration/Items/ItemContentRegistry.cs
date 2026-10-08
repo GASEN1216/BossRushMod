@@ -37,6 +37,7 @@ namespace BossRush
             ItemFactory.RegisterConfigurator(FrostmourneIds.WeaponTypeId, OnFrostmourneLoaded);
             ItemFactory.RegisterConfigurator(PhantomWitchConfig.ReservedScytheTypeId, OnPhantomWitchScytheLoaded);
             NewWeaponItemConfigurators.RegisterAll();
+            ItemFactory.RegisterConfigurator(AstralStaffConfig.TypeId, item => AstralStaffWeaponConfig.TryConfigure(item));
             EquipmentConfiguratorBootstrap.RegisterAll();
         }
     }

@@ -237,6 +237,8 @@ namespace BossRush
             // 发布给跨系统契约。反过来的话，读档发生在订阅之前，
             // 后续换档不会收到 OnSetFile，A 档的解锁会泄漏到 B 档。
             CampaignSaveCoordinator.EnsureSubscribed();
+            // 序章也是等关卡就绪后才打开剧情存档；提前订阅保留换槽通知，但主菜单不读空缓存。
+            if (!CampaignPersistence.IsCurrentSlotReady) return;
             CampaignProgressService.EnsureInitialized();
 
             _bootstrapped = true;

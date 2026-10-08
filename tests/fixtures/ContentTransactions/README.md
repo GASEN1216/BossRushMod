@@ -1,5 +1,7 @@
 # 内容资产事务回归
 
+2026-10-08：首次读档对齐天空岛序章的关卡就绪时机。新增完整生产 `CampaignRuntimeModule` 与 `CampaignFacilityUnlocks`，在主菜单 Awake / Start / 场景回调 / Tick 后才向同槽提供官方缓存字节，不借换槽回调刷新；验证首次就绪前不读取或覆盖默认档、就绪后章节、线索、设施 token 与 Jeff 三态恢复。已加载同槽快照在过图期间仍可查询，宿主销毁在关卡就绪标记消失后仍保存 pending，包括键写故障恢复；切槽后不把旧快照写入新槽。独立写 / 读进程增加 Jeff 接取、已体验、已交付三种场景，每个读进程从未就绪的 Awake 开始，在文件字节到达后才 Tick；奖励不重复发放。Unity 关卡状态、官方缓存到达和任务 UI 注册为替身；真实 runtime、进度服务、门面、存档 store、恢复及物理保存协调器完整执行。所有文件只在 Build 下生成，不读写玩家存档。
+
 2026-10-07：新增官方 `Collect` 已消费征程 typed pending、但尚未物理写盘的退出路径（CR-2026-10-07-015）。真实共享 store 成功写键并回读后，经征程绑定通知共享 engine 保留物理保存义务。回归覆盖不调用官方 `SaveFile` 或它失败后直接关闭宿主，随后由独立读进程只用文件字节恢复待交付；同进程另验回基地 Tick 补盘，以及采集后切槽不得替旧槽写盘。另一个独立进程变体从前五章 Completed 测试前置快照出发，真实接取第六章后直接关闭，再验证全新进程保持 active=ch6、ContractActive 和前五章完成记录；章节内容和奖励数值由替身提供，但 ID / order 不再共用 ch1。移除征程的 `AfterPendingWriteFlushed` 绑定，在隔离副本会丢失待交付事实并转红。这些用例不模拟官方自己触发保存后留下的 sticky-saving 闩，也不承诺强杀进程前尚未写盘的数据可恢复。
 
 2026-10-06 二次复核：`CampaignDiskRegression.cs` 让真实共享 store 先订阅，再注入首个章节 key 写失败 / 回读失败 / 已交付 key 写失败，由常规协调器 Tick 恢复。旧顺序会在恢复订阅时清掉 accepted 快照，已实际转红。修复后每种场景启动一个写进程和一个独立读进程，只交换本次新目录中的物理文件；验证恢复后的章节与奖金存续、提前只读初始化后 bootstrap 重读、换槽隔离。文件只位于 `Build/content-transactions/campaign-process-*`；ES3 文件容器和 Unity JSON 使用测试适配器，生产进度、JSON 绑定、共享 store、订阅和协调器完整链接。现装宿主 IL 契约由 `JeffQuestFlow/OfficialAssemblyContract.cs` 核验。
@@ -43,3 +45,5 @@
 # 2026-10-07 归巢持久化恢复补充
 
 链接完整 PetNest Bundle、Codec、Service、SaveCoordinator 与共享存档引擎，并提取真实归巢结算和经验方法。对 SavesSystem 适配器分别注入 Save 和写后回读异常，实际生产 Store 置故障；不手工清故障位，驱动实际协调器 Tick 完成同槽重写、一致回读与 SaveFile 后，验证归巢候选可继续接受、保留先前击杀经验且重伤宠仅获一次奖励。未知 schema 屏障保持只读，换槽不重放旧 pending。测试不访问玩家存档，也不承诺没有已接受 pending 的编码故障或进程退出后的未入队奖励可以恢复。
+
+2026-10-08：CampaignExplicitCodecRegression 输入实际丢失 chapters 的脱敏 JSON，执行生产显式编解码、交付 token 恢复及第六章待交付状态保存/重读；同时拒绝缺 state、重复章节并覆盖 null 数组兼容。该用例不经过 JsonUtility 替身生成输入。

@@ -310,7 +310,7 @@ namespace BossRush
                         if (!deferArenaCommit)
                         {
                             PreCacheMapSpawnerPositions();
-                            ScheduleModeEStartupWarmup("OnSceneLoaded");
+                            // Mode E 预热由 SetupBossRushInDemoChallenge 的 E/F 分支启动，避免普通竞技场支付整套预热成本。
                             DisableAllSpawners();
                             StartCoroutine(ContinuousClearEnemiesUntilWaveStart());
                         }

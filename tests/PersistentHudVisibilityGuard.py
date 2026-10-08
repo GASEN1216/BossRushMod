@@ -57,6 +57,12 @@ REVERT_TO_VISIBLE = re.compile(r"\b(?:visible|shown)\s*=\s*true\b|\b(?:suppresse
 # 驱动方式：("call", 宿主文件, 调用片段, 宿主方法签名, 调用外层的块, 调用前的单行判空 if, 宿主里调用之前的 return 条数)
 #          或 ("unity", 类声明正则)。宿主那三项是按 2026-09-14 的生产代码记下的：宿主结构有意改了就一起改这里。
 PERSISTENT = (
+    ("Integration/NewWeapons/AstralStaff/AstralStaffFx.cs", "internal sealed class AstralStaffBeanHud",
+     "internal void Tick(CharacterMainControl player, float beans, float charge01, bool charging)",
+     "if (!visible) { HideAll(); return; }",
+     ("call", "Integration/NewWeapons/AstralStaff/AstralStaffController.cs", "hud.Tick(player, shown, chargeProgress, charging);",
+      "private void Update()", [], "if (hud != null)", 3),
+     "星阙世界空间棍势粒子提示"),
     ("RandomEvents/RandomEventHud.cs", None, "internal static void Tick(RandomEventDirector director)",
      "_canvas.enabled = visible;",
      ("call", "RandomEvents/RandomEventsRuntimeModule.cs", "RandomEventHud.Tick(_director);",
