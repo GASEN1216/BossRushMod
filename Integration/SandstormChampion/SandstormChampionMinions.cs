@@ -57,6 +57,8 @@ namespace BossRush
             }
         }
 
+        internal SandstormChampionController Controller { get { return _controller; } }
+
         internal bool IsWaveCurrent(int generation)
         {
             return generation == _generation && IsBattleCurrent && Time.time < _expiresAt;

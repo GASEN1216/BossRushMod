@@ -29,6 +29,8 @@ namespace BossRush
 
         private static Texture2D iconTexture;
         private static Sprite iconSprite;
+        // 借用生产包里的 Sprite（与 ItemFactory 同口径），借来的不归本类销毁。
+        private static bool iconBorrowed;
 
         // ====================================================================
         // 注册
@@ -207,7 +209,10 @@ namespace BossRush
                 if (soundKeyField != null) soundKeyField.SetValue(agent, "Default");
             }
             catch { /* 写不进去就用默认音效键 */ }
-            // 不挂官方 slashFx：轻击刀光由 AstralStaffAttackPatch 画金色光弧
+            // 轻击刀光由 AstralStaffAttackPatch 画金色光弧。slashFx 仍挂一个空占位：
+            // 第三方 VTModifiers 的 CA_Attack.OnStop 后缀不判空就改 meleeWeapon.slashFx 的缩放，
+            // 字段为空时每次收招都抛 NRE（2026-10-08 Player.log 实证，IL 偏移 0x32）。占位被官方实例化后当帧自毁。
+            agent.slashFx = AstralStaffSlashStub.GetTemplate();
         }
 
         private static void ApplyMeleeSetting(Item item)
@@ -300,9 +305,25 @@ namespace BossRush
             if (sprite != null) item.Icon = sprite;
         }
 
+        /// <summary>生图图标在 production_icons 包里的键（tools/gen_codex_art.py + production_icon_manifest.json）。</summary>
+        internal const string IconAssetPath = "Assets/Items/astral_staff_icon.png";
+
         internal static Sprite GetIconSprite()
         {
-            if (iconSprite != null && iconTexture != null) return iconSprite;
+            if (iconSprite != null && (iconTexture != null || iconBorrowed)) return iconSprite;
+            // 2026-10-08 owner「图好丑」：优先用生图图标，直接借用生产包里的 Sprite（与 ItemFactory 的 300 多个
+            // 图标同口径）。不复制贴图：包内贴图压缩且不可读，Instantiate 只得到空壳，实测图标空白。
+            // 包缺失时回落下面的程序化图。
+            Sprite production = null;
+            try { production = ProductionIconCache.Get(IconAssetPath); }
+            catch (Exception e) { ModBehaviour.DevLog(AstralStaffConfig.LogPrefix + " 生产图标读取失败: " + e.Message); }
+            if (production != null)
+            {
+                iconSprite = production;
+                iconTexture = null;
+                iconBorrowed = true;
+                return iconSprite;
+            }
             const int size = 256;
             Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
             texture.name = "AstralStaff_Icon";
@@ -345,8 +366,9 @@ namespace BossRush
             texture.SetPixels32(pixels);
             texture.Apply(false, true);
 
-            if (iconSprite != null) UnityEngine.Object.Destroy(iconSprite);
+            if (iconSprite != null && !iconBorrowed) UnityEngine.Object.Destroy(iconSprite);
             if (iconTexture != null) UnityEngine.Object.Destroy(iconTexture);
+            iconBorrowed = false;
             iconTexture = texture;
             iconSprite = Sprite.Create(texture, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f), 100f);
             iconSprite.name = "AstralStaff_IconSprite";
@@ -402,10 +424,47 @@ namespace BossRush
 
         internal static void ResetStaticCaches()
         {
-            if (iconSprite != null) UnityEngine.Object.Destroy(iconSprite);
+            // 借来的 Sprite 归生产包所有，由 ProductionIconCache 卸载时一并回收。
+            if (iconSprite != null && !iconBorrowed) UnityEngine.Object.Destroy(iconSprite);
             if (iconTexture != null) UnityEngine.Object.Destroy(iconTexture);
             iconSprite = null;
             iconTexture = null;
+            iconBorrowed = false;
+            AstralStaffSlashStub.ResetStaticCaches();
+        }
+    }
+
+    /// <summary>
+    /// 星阙的空 slashFx 占位：没有渲染器、没有逻辑。模板常驻且标记为模板；
+    /// 官方 CA_Attack 每次挥击 Instantiate 出来的副本没有这个标记（私有字段不随实例化复制），Awake 里立刻自毁。
+    /// </summary>
+    internal sealed class AstralStaffSlashStub : MonoBehaviour
+    {
+        private static GameObject template;
+        private bool _isTemplate;
+
+        internal static GameObject GetTemplate()
+        {
+            if (template != null) return template;
+            GameObject go = new GameObject("AstralStaff_SlashStub");
+            go.SetActive(false);
+            go.hideFlags = HideFlags.HideAndDontSave;
+            UnityEngine.Object.DontDestroyOnLoad(go);
+            go.AddComponent<AstralStaffSlashStub>()._isTemplate = true;
+            go.SetActive(true);
+            template = go;
+            return template;
+        }
+
+        private void Awake()
+        {
+            if (!_isTemplate) Destroy(gameObject);
+        }
+
+        internal static void ResetStaticCaches()
+        {
+            if (template != null) UnityEngine.Object.Destroy(template);
+            template = null;
         }
     }
 }

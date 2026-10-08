@@ -68,6 +68,14 @@ namespace BossRush
         public float Trail;
         /// <summary>&gt;0 时随机初始角并按 ±Spin 度/秒自转。</summary>
         public float Spin;
+        /// <summary>&gt;0 时改为沿 Direction 的锥形定向喷射，值为半顶角（度）；优先于 Radial / Upward。</summary>
+        public float Cone;
+        /// <summary>Cone 的喷射方向（世界空间，零向量时退回球形）。</summary>
+        public Vector3 Direction;
+        /// <summary>尺寸按先快后慢长大（冲击波、炸开的尘环）；默认是两头缓的 EaseInOut。</summary>
+        public bool FastGrow;
+        /// <summary>只从发射体表面出生（配负速度做「向心收拢」时，粒子不会从中心附近穿过去）。</summary>
+        public bool ShellOnly;
     }
 
     /// <summary>程序化特效共享工具。见文件头。</summary>
@@ -270,6 +278,56 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 单颗星芒闪光预设：出生即最亮、极短寿命内略放大并熄灭，用作命中 / 落点的「亮芯」。
+        /// 只有一颗粒子，不铺满画面。
+        /// </summary>
+        internal static BossRushFxBurst Glint(Color color, float size, float life)
+        {
+            BossRushFxBurst spec = new BossRushFxBurst();
+            spec.Shape = BossRushParticleShape.Star;
+            spec.Blend = BossRushFxBlend.Additive;
+            spec.Gain = GainHot;
+            spec.Count = 1;
+            spec.SizeMin = size;
+            spec.SizeMax = size;
+            spec.LifeMin = life;
+            spec.LifeMax = life;
+            spec.GrowTo = 1.35f;
+            spec.ShapeRadius = 0.001f;
+            spec.Spin = 25f;
+            spec.Core = new Color(1f, 1f, 1f, 1f);
+            spec.Main = new Color(color.r, color.g, color.b, 0.85f);
+            spec.End = new Color(color.r, color.g, color.b, 0f);
+            return spec;
+        }
+
+        /// <summary>
+        /// 单圈冲击波预设：一颗细环粒子从 startSize 长到 startSize×growTo 并淡出（growTo &lt; 1 时向内收拢）。
+        /// flat=true 贴地（地面冲击），否则朝镜头（空中命中）。
+        /// </summary>
+        internal static BossRushFxBurst Shockwave(Color color, float startSize, float growTo, float life, bool flat)
+        {
+            BossRushFxBurst spec = new BossRushFxBurst();
+            spec.Shape = BossRushParticleShape.Ring;
+            spec.Blend = BossRushFxBlend.Additive;
+            spec.Gain = GainBright;
+            spec.Count = 1;
+            spec.SizeMin = startSize;
+            spec.SizeMax = startSize;
+            spec.LifeMin = life;
+            spec.LifeMax = life;
+            spec.GrowTo = Mathf.Max(0.05f, growTo);
+            spec.ShapeRadius = 0.001f;
+            spec.FlatOnGround = flat;
+            // 向外撑开先快后慢；growTo < 1 是向内收拢的预告环，用两头缓的曲线。
+            spec.FastGrow = growTo > 1f;
+            spec.Core = new Color(1f, 1f, 1f, Mathf.Min(1f, color.a + 0.1f));
+            spec.Main = new Color(color.r, color.g, color.b, color.a);
+            spec.End = new Color(color.r, color.g, color.b, 0f);
+            return spec;
+        }
+
+        /// <summary>
         /// 在 position 放一次性粒子爆发，粒子死完自毁。材质不可用或 Count≤0 时什么都不建，返回 null。
         /// </summary>
         internal static ParticleSystem PlayBurst(Vector3 position, BossRushFxBurst spec)
@@ -314,8 +372,15 @@ namespace BossRush
             ParticleSystem.ShapeModule shape = ps.shape;
             shape.enabled = true;
             shape.radius = Mathf.Max(0.001f, spec.ShapeRadius);
-            shape.radiusThickness = 1f;
-            if (spec.Radial)
+            shape.radiusThickness = spec.ShellOnly ? 0f : 1f;
+            if (spec.Cone > 0f && spec.Direction.sqrMagnitude > 0.0001f)
+            {
+                // Cone 沿形状本地 +Z 发射；World 模拟下由根物体朝向决定世界方向
+                shape.shapeType = ParticleSystemShapeType.Cone;
+                shape.angle = Mathf.Clamp(spec.Cone, 1f, 89f);
+                go.transform.rotation = Quaternion.LookRotation(spec.Direction.normalized, Vector3.up);
+            }
+            else if (spec.Radial)
             {
                 // Circle 在形状本地 XY 平面内向外发射；绕 X 转 90° 放平到世界水平面
                 shape.shapeType = ParticleSystemShapeType.Circle;
@@ -341,7 +406,10 @@ namespace BossRush
             {
                 ParticleSystem.SizeOverLifetimeModule size = ps.sizeOverLifetime;
                 size.enabled = true;
-                size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 1f, 1f, spec.GrowTo));
+                AnimationCurve grow = spec.FastGrow
+                    ? new AnimationCurve(new Keyframe(0f, 1f, 0f, (spec.GrowTo - 1f) * 2.6f), new Keyframe(1f, spec.GrowTo, 0f, 0f))
+                    : AnimationCurve.EaseInOut(0f, 1f, 1f, spec.GrowTo);
+                size.size = new ParticleSystem.MinMaxCurve(1f, grow);
             }
 
             if (spec.Drag > 0f)

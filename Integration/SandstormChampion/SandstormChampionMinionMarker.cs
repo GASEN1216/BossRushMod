@@ -23,6 +23,7 @@ namespace BossRush
         private float _stuckSeconds;
         private Vector3 _lastPosition;
         private SandstormChampionBody _body;
+        private SandstormChampionMinionArts _arts;
 
         // 不建静态集合；创建返回前也凭独占 clone 身份挡住额外掉落。
         internal static bool IsSummonedMinion(CharacterMainControl character)
@@ -70,6 +71,7 @@ namespace BossRush
             _body.SetIntensity(0.25f);
             _lastPosition = transform.position;
             _nextAttackAt = Time.time + SandstormChampionConfig.MinionFirstAttackDelay;
+            _arts = new SandstormChampionMinionArts(this, _character, _owner != null ? _owner.Controller : null);
             _active = true;
         }
 
@@ -104,15 +106,28 @@ namespace BossRush
                 Despawn();
                 return;
             }
-            _character.SetAimPoint(player.transform.position + Vector3.up * 0.7f);
             _character.SetAdsInput(false);
             _character.SetRunInput(false);
+            // 重击进行中由 SandstormChampionMinionArts 驱动朝向与位移，普通追击和轻击暂停。
+            if (_arts != null && _arts.Running)
+            {
+                _path.StopMove();
+                _stuckSeconds = 0f;
+                _lastPosition = transform.position;
+                return;
+            }
+            _character.SetAimPoint(player.transform.position + Vector3.up * 0.7f);
             Vector3 towards = player.transform.position - transform.position;
             towards.y = 0f;
             float range = Mathf.Max(0.5f, melee.AttackRange - 0.25f);
             bool sight = !Physics.Linecast(transform.position + Vector3.up * 0.65f,
                 player.transform.position + Vector3.up * 0.65f, GameplayDataSettings.Layers.wallLayerMask,
                 QueryTriggerInteraction.Ignore);
+            if (_arts != null && _arts.TryStart(player, towards.magnitude, sight))
+            {
+                _path.StopMove();
+                return;
+            }
             if (towards.sqrMagnitude <= range * range && sight)
             {
                 _path.StopMove();
@@ -161,6 +176,8 @@ namespace BossRush
             if (_despawning) return;
             _despawning = true;
             _active = false;
+            if (_arts != null) _arts.Release();
+            _arts = null;
             if (_body != null) Destroy(_body.gameObject);
             _body = null;
             if (_character != null) _character.dropBoxOnDead = false;
@@ -186,6 +203,8 @@ namespace BossRush
         private void OnDestroy()
         {
             _active = false;
+            if (_arts != null) _arts.Release();
+            _arts = null;
             if (_body != null) Destroy(_body.gameObject);
             _body = null;
             _owner = null;

@@ -898,6 +898,8 @@ echo(Integration\NewWeapons\ThunderRing\ThunderRingRuntime.cs
 echo(Integration\NewWeapons\AstralStaff\AstralStaffConfig.cs
 echo(Integration\NewWeapons\AstralStaff\AstralStaffWeaponConfig.cs
 echo(Integration\NewWeapons\AstralStaff\AstralStaffFx.cs
+echo(Integration\NewWeapons\AstralStaff\AstralStaffFxShapes.cs
+echo(Integration\NewWeapons\AstralStaff\AstralStaffFxArts.cs
 echo(Integration\NewWeapons\AstralStaff\AstralStaffController.cs
 echo(Integration\NewWeapons\AstralStaff\AstralStaffAttackPatch.cs
 echo(Integration\SandstormChampion\SandstormChampionConfig.cs
@@ -906,6 +908,7 @@ echo(Integration\SandstormChampion\SandstormChampionAssetManager.cs
 echo(Integration\SandstormChampion\SandstormChampionVolume.cs
 echo(Integration\SandstormChampion\SandstormChampionMinions.cs
 echo(Integration\SandstormChampion\SandstormChampionMinionMarker.cs
+echo(Integration\SandstormChampion\SandstormChampionMinionArts.cs
 echo(Integration\SandstormChampion\SandstormChampionBody.cs
 echo(Integration\SandstormChampion\SandstormChampionHazards.cs
 echo(Integration\SandstormChampion\SandstormChampionBoss.cs

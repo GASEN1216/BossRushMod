@@ -385,6 +385,13 @@ namespace BossRush
         internal static Sprite Source;
         internal static string LastPath;
         internal static Sprite Get(string path) { LastPath = path; return Source; }
+        // 生产实现走 GPU 整块复制；替身沿用原来的克隆计数与失败注入。
+        internal static Texture2D CloneTexture(Texture2D source, string name)
+        {
+            Texture2D copy = UnityEngine.Object.Instantiate(source);
+            copy.name = name;
+            return copy;
+        }
         internal static void ResetStaticCaches()
         {
             // AssetBundle.Unload(true) 会同时销毁被借出的 Sprite 与它依赖的 Texture。

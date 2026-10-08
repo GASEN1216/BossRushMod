@@ -4,11 +4,12 @@
 // 组成：
 //   AstralStaffHandVisual —— 细芯、双螺纹与端部光印，香槟金为主、少量冷青辅色。
 //   AstralStaffBeanHud    —— 身后三颗棍势豆 + 蓄势时脚下的金环。
-//   AstralStaffRibbon     —— 横扫 / 回旋 / 冲击波用的弧形光带（程序网格，显出→淡出）。
-//   AstralStaffBeam       —— 星陨的巨型光棍、落点光柱、地裂纹（线条，淡出自毁）。
-//   AstralStaffFx         —— 一次性爆发与灯光闪烁的静态入口。
+//   AstralStaffRibbon / AstralStaffBeam —— 弧形光带与多层光线，见 AstralStaffFxShapes.cs。
+//   AstralStaffFx         —— 一次性爆发、命中四层（星芒 / 冲击环 / 斩痕 / 定向火花）、击杀星散、
+//                            弧外缘星屑与灯光闪烁的静态入口。
 //   AstralStaffSigil      —— 前摇的断环星纹收束与冲击后的符轮余韵。
-// 预算：手持 8 条线 + 32 粒上限；HUD 3 颗星豆 + 1 条细环 + 32 粒上限；
+// 手持光棍另有棍端星芒（1 粒）与两条挥击残光拖尾，只在棍端相对身体高速划动时出光。
+// 预算：手持 8 条线 + 2 条拖尾 + 33 粒上限；HUD 3 颗星豆 + 1 条细环 + 32 粒上限；
 // 同次攻击最多六个接触点，瞬时 owner 最多 64 个根对象，全部自毁或随换手立即撤销。
 // ============================================================================
 
@@ -17,12 +18,11 @@ using UnityEngine;
 
 namespace BossRush
 {
-    internal static class AstralStaffFx
+    internal static partial class AstralStaffFx
     {
         internal static GameObject CreateTransient(string name)
         {
-            AstralStaffController owner = AstralStaffController.Instance;
-            Transform root = owner != null ? owner.GetTransientFxRoot() : null;
+            Transform root = ResolveRoot();
             if (root == null) return null;
             GameObject go = new GameObject(name);
             go.transform.SetParent(root, false);
@@ -31,11 +31,20 @@ namespace BossRush
 
         internal static void PlayBurst(Vector3 position, BossRushFxBurst spec)
         {
-            AstralStaffController owner = AstralStaffController.Instance;
-            Transform root = owner != null ? owner.GetTransientFxRoot() : null;
+            Transform root = ResolveRoot();
             if (root == null) return;
             ParticleSystem burst = BossRushFxKit.PlayBurst(position, spec);
             if (burst != null) burst.transform.SetParent(root, true);
+        }
+
+        /// <summary>
+        /// 瞬时 owner 还剩多少空位（上限 64）。次要层（星屑、击杀余韵）先看余量，
+        /// 群怪多杀时把位置让给重击本体，避免落点主表现被吃掉。
+        /// </summary>
+        internal static bool HasRoom(int reserve)
+        {
+            Transform root = ResolveRoot();
+            return root != null && root.childCount + reserve < 64;
         }
 
         internal static Material Additive(BossRushParticleShape shape, float gain)
@@ -92,7 +101,11 @@ namespace BossRush
             catch { /* 表现失败不影响伤害 */ }
         }
 
-        /// <summary>只由确认伤害调用：极短交叉亮芯、沿来势压出的光痕、少量惯性碎屑。</summary>
+        /// <summary>
+        /// 只由确认伤害调用。四层、按先后读：星芒亮芯（一两帧最亮）→ 朝镜头撑开的细冲击环 →
+        /// 顺发力方向斜切的一道斩痕 → 沿来势锥形喷出、先快后慢的拉伸火花。tier 0 轻击，1–3 重击；
+        /// 三档在尺寸、亮度、火花数上拉开，二档起加冷青星屑悬停做余韵。全部一次性、随手持 owner 撤销。
+        /// </summary>
         internal static void PlayContact(Vector3 point, Vector3 direction, int tier)
         {
             try
@@ -100,27 +113,143 @@ namespace BossRush
                 direction.y = 0f;
                 if (direction.sqrMagnitude < 0.0001f) direction = Vector3.forward;
                 direction.Normalize();
+                int level = Mathf.Clamp(tier, 0, 3);
                 Vector3 side = Vector3.Cross(Vector3.up, direction);
-                float scale = 0.6f + 0.18f * Mathf.Clamp(tier, 0, 3);
+                float scale = 0.62f + 0.2f * level;
+
+                PlayBurst(point, BossRushFxKit.Glint(AstralStaffConfig.CoreWhite, 0.7f + 0.3f * level, 0.07f + 0.015f * level));
+                Color ring = AstralStaffConfig.Gold;
+                ring.a = 0.7f;
+                PlayBurst(point, BossRushFxKit.Shockwave(ring, 0.32f + 0.1f * level, 3.4f + 0.45f * level,
+                    0.13f + 0.025f * level, false));
+
                 Vector3 diagonal = (side * 0.86f + Vector3.up * 0.5f).normalized;
-                AstralStaffBeam.Create(new[] { point - diagonal * scale, point + diagonal * scale },
-                    0.022f, 0.12f, AstralStaffConfig.Gold, 0.018f, 0.12f, false);
-                AstralStaffBeam.Create(new[] { point - Vector3.up * scale * 0.45f, point + Vector3.up * scale * 0.45f },
-                    0.012f, 0.055f, AstralStaffConfig.Cyan, 0.016f, 0.1f, false);
-                AstralStaffBeam.Create(new[] { point - direction * scale * 0.2f, point + direction * scale * 0.85f },
-                    0.016f, 0.07f, AstralStaffConfig.Gold, 0.025f, 0.2f, false);
-                BossRushFxBurst sparks = BossRushFxKit.Sparks(AstralStaffConfig.Gold, 6 + tier * 2);
-                sparks.SizeMin = 0.028f;
-                sparks.SizeMax = 0.052f;
-                sparks.SpeedMin = 3f + tier;
-                sparks.SpeedMax = 6f + tier * 1.5f;
-                sparks.LifeMin = 0.12f;
-                sparks.LifeMax = 0.24f;
-                sparks.Stretch = 0.055f;
-                sparks.Drag = 8f;
+                AstralStaffBeam.Create(new[] { point - diagonal * scale, point + diagonal * scale * 1.15f },
+                    0.028f + 0.006f * level, 0.15f + 0.035f * level, AstralStaffConfig.Gold, 0.02f, 0.13f + 0.02f * level, false);
+
+                BossRushFxBurst sparks = BossRushFxKit.Sparks(AstralStaffConfig.Gold, 8 + level * 4);
+                sparks.Cone = 34f;
+                sparks.Direction = direction + Vector3.up * 0.3f;
+                sparks.SizeMin = 0.03f;
+                sparks.SizeMax = 0.06f;
+                sparks.SpeedMin = 6f + level * 1.5f;
+                sparks.SpeedMax = 11f + level * 2.5f;
+                sparks.LifeMin = 0.14f;
+                sparks.LifeMax = 0.3f;
+                sparks.Stretch = 0.06f;
+                sparks.Drag = 7f;
+                sparks.Gravity = 0.8f;
                 PlayBurst(point, sparks);
+
+                if (level >= 1 && HasRoom(24))
+                {
+                    BossRushFxBurst motes = BossRushFxKit.Sparks(AstralStaffConfig.Cyan, 2 + level * 2);
+                    motes.Shape = BossRushParticleShape.Star;
+                    motes.Stretch = 0f;
+                    motes.SizeMin = 0.06f;
+                    motes.SizeMax = 0.12f;
+                    motes.SpeedMin = 0.8f;
+                    motes.SpeedMax = 2.2f;
+                    motes.LifeMin = 0.35f;
+                    motes.LifeMax = 0.6f;
+                    motes.Drag = 3f;
+                    motes.Gravity = -0.1f;
+                    motes.GrowTo = 0.3f;
+                    motes.Spin = 120f;
+                    PlayBurst(point, motes);
+                }
             }
             catch { /* 命中表现失败不反向影响伤害与体力 */ }
+        }
+
+        /// <summary>
+        /// 击杀余韵「星散」：只由确认致死的伤害调用。大星芒 + 冷青冲击环 + 一捧缓缓上浮的星点与一闪暖光，
+        /// 和普通命中拉开层级，读得出「这一下打死了」。
+        /// </summary>
+        internal static void PlayKillBloom(Vector3 point, Vector3 direction)
+        {
+            try
+            {
+                if (!HasRoom(24)) return;
+                PlayBurst(point, BossRushFxKit.Glint(AstralStaffConfig.CoreWhite, 1.5f, 0.12f));
+                Color ring = AstralStaffConfig.Cyan;
+                ring.a = 0.65f;
+                PlayBurst(point, BossRushFxKit.Shockwave(ring, 0.5f, 5f, 0.3f, false));
+
+                BossRushFxBurst stars = BossRushFxKit.Sparks(AstralStaffConfig.Gold, 12);
+                stars.Shape = BossRushParticleShape.Star;
+                stars.Upward = true;
+                stars.Stretch = 0f;
+                stars.ShapeRadius = 0.3f;
+                stars.SizeMin = 0.07f;
+                stars.SizeMax = 0.14f;
+                stars.SpeedMin = 1.2f;
+                stars.SpeedMax = 3.2f;
+                stars.LifeMin = 0.55f;
+                stars.LifeMax = 0.95f;
+                stars.Drag = 2.2f;
+                stars.Gravity = -0.15f;
+                stars.GrowTo = 0.25f;
+                stars.Spin = 160f;
+                stars.End = AstralStaffConfig.CyanFade;
+                PlayBurst(point, stars);
+                PlayFlash(point + Vector3.up * 0.4f, AstralStaffConfig.Gold, 1.5f, 3.4f, 0.22f);
+            }
+            catch { /* 同上 */ }
+        }
+
+        /// <summary>
+        /// 沿挥击弧外缘撒一串星屑：每颗按弧的切向带一点初速、先快后慢、边缩边淡，
+        /// 让光弧有「被甩出去的余光」。一个发射器、手动 Emit，粒子死完由 Release 回收。
+        /// </summary>
+        internal static void PlayArcSparkle(Vector3 center, Vector3 direction, float degrees, float radius, int count)
+        {
+            GameObject go = null;
+            try
+            {
+                if (count <= 0) return;
+                go = CreateTransient("AstralStaff_ArcSparkle");
+                if (go == null) return;
+                direction.y = 0f;
+                if (direction.sqrMagnitude < 0.0001f) direction = Vector3.forward;
+                direction.Normalize();
+                ParticleSystem ps = BossRushFxKit.CreateEmitter("Motes", go.transform, Vector3.zero,
+                    Additive(BossRushParticleShape.GlowDot, BossRushFxKit.GainHot), count, true);
+                if (ps == null) { UnityEngine.Object.Destroy(go); return; }
+                ParticleSystem.ColorOverLifetimeModule color = ps.colorOverLifetime;
+                color.enabled = true;
+                color.color = BossRushFxKit.FadeGradient(AstralStaffConfig.CoreWhite, AstralStaffConfig.Gold, AstralStaffConfig.CyanFade, 0f);
+                ParticleSystem.SizeOverLifetimeModule size = ps.sizeOverLifetime;
+                size.enabled = true;
+                size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0.15f));
+                ParticleSystem.LimitVelocityOverLifetimeModule limit = ps.limitVelocityOverLifetime;
+                limit.enabled = true;
+                limit.limit = new ParticleSystem.MinMaxCurve(1000f);
+                limit.drag = new ParticleSystem.MinMaxCurve(3.5f);
+                limit.multiplyDragByParticleSize = false;
+                limit.multiplyDragByParticleVelocity = false;
+                ps.Play();
+
+                float sign = degrees < 0f ? -1f : 1f;
+                ParticleSystem.EmitParams emit = new ParticleSystem.EmitParams();
+                for (int i = 0; i < count; i++)
+                {
+                    float t = count > 1 ? i / (float)(count - 1) : 0.5f;
+                    float angle = -degrees * 0.5f + degrees * t + UnityEngine.Random.Range(-4f, 4f);
+                    Vector3 radial = Quaternion.Euler(0f, angle, 0f) * direction;
+                    Vector3 tangent = Vector3.Cross(Vector3.up, radial) * sign;
+                    emit.position = center + radial * (radius * UnityEngine.Random.Range(0.82f, 1.04f))
+                        + Vector3.up * UnityEngine.Random.Range(-0.12f, 0.18f);
+                    emit.velocity = tangent * UnityEngine.Random.Range(1.6f, 3.8f) + radial * 0.7f
+                        + Vector3.up * UnityEngine.Random.Range(0.2f, 1.1f);
+                    emit.startSize = UnityEngine.Random.Range(0.03f, 0.065f);
+                    emit.startLifetime = UnityEngine.Random.Range(0.22f, 0.48f);
+                    emit.startColor = Color.white;
+                    ps.Emit(emit, 1);
+                }
+                BossRushFxKit.Release(go, 0f, 1f, false);
+            }
+            catch { if (go != null) UnityEngine.Object.Destroy(go); }
         }
 
         /// <summary>有厚薄变化的双层光轨；亮线只占外缘，不用铺满整片扇形。</summary>
@@ -139,6 +268,7 @@ namespace BossRush
             echo.a = 0.28f;
             AstralStaffRibbon.Play(center - Vector3.up * 0.05f, direction, degrees * 0.9f, radius - 0.3f, radius - 0.25f,
                 echo, reveal * 1.15f, 0.015f, fade * 1.4f, 0.4f, 0f, follow);
+            PlayArcSparkle(center, direction, degrees, radius, Mathf.Clamp(Mathf.RoundToInt(Mathf.Abs(degrees) / 14f), 6, 26));
         }
 
         /// <summary>沙尘：贴地扩散的暖色烟。</summary>
@@ -330,6 +460,14 @@ namespace BossRush
         private readonly LineRenderer[] _filigree = new LineRenderer[2];
         private readonly LineRenderer[] _caps = new LineRenderer[3];
         private ParticleSystem _motes;
+        private ParticleSystem _tipStar;
+        private readonly ParticleSystem.Particle[] _tipParticle = new ParticleSystem.Particle[1];
+        private TrailRenderer _swingTrail;
+        private TrailRenderer _swingHaze;
+        private Vector3 _lastFront;
+        private Vector3 _lastHolder;
+        private bool _trailPrimed;
+        private float _trailHold;
         private Light _light;
         private Vector3 _axis = Vector3.up;
         private bool _axisResolved;
@@ -405,6 +543,24 @@ namespace BossRush
                 _motes.Play();
             }
 
+            // 棍端一颗缓转的星芒：静止时也有一个明确的「光源」焦点，不只是一根亮线。
+            Material star = AstralStaffFx.Additive(BossRushParticleShape.Star, BossRushFxKit.GainHot);
+            _tipStar = BossRushFxKit.CreateEmitter("TipStar", _root, Vector3.zero, star, 1, true);
+            if (_tipStar != null)
+            {
+                ParticleSystem.EmissionModule emission = _tipStar.emission;
+                emission.enabled = false;
+                _tipStar.Play();
+            }
+
+            // 挥击残光：两条拖尾只在棍端相对身体高速划动时出光（官方轻击动画、回旋），走路不拖影。
+            // 拖尾跟游戏时间走，顿帧时整条弧停在半空，正是命中那一下最好看的画面。
+            _swingHaze = CreateSwingTrail("SwingHaze", strip, 0.26f, 0.2f,
+                new Color(0.95f, 0.73f, 0.36f, 0.32f), new Color(0.42f, 0.7f, 0.77f, 0f));
+            _swingTrail = CreateSwingTrail("SwingEdge", strip, 0.07f, 0.12f,
+                new Color(1f, 0.97f, 0.88f, 0.95f), new Color(0.95f, 0.73f, 0.36f, 0f));
+            _trailPrimed = false;
+
             GameObject lightGo = new GameObject("Glow");
             lightGo.transform.SetParent(_root, false);
             _light = lightGo.AddComponent<Light>();
@@ -413,6 +569,83 @@ namespace BossRush
             _light.range = 1.8f;
             _light.intensity = 0.32f;
             _light.shadows = LightShadows.None;
+        }
+
+        private TrailRenderer CreateSwingTrail(string name, Material material, float width, float time, Color head, Color tail)
+        {
+            GameObject go = new GameObject(name);
+            go.transform.SetParent(_root, false);
+            TrailRenderer trail = go.AddComponent<TrailRenderer>();
+            trail.sharedMaterial = material;
+            trail.time = time;
+            trail.minVertexDistance = 0.035f;
+            trail.widthMultiplier = width;
+            trail.widthCurve = new AnimationCurve(new Keyframe(0f, 1f), new Keyframe(0.35f, 0.7f), new Keyframe(1f, 0f));
+            Gradient gradient = new Gradient();
+            gradient.SetKeys(
+                new[] { new GradientColorKey(head, 0f), new GradientColorKey(tail, 1f) },
+                new[] { new GradientAlphaKey(head.a, 0f), new GradientAlphaKey(head.a * 0.45f, 0.4f), new GradientAlphaKey(0f, 1f) });
+            trail.colorGradient = gradient;
+            trail.numCapVertices = 2;
+            trail.alignment = LineAlignment.View;
+            trail.textureMode = LineTextureMode.Stretch;
+            trail.autodestruct = false;
+            trail.emitting = false;
+            trail.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            trail.receiveShadows = false;
+            trail.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+            trail.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
+            trail.motionVectorGenerationMode = MotionVectorGenerationMode.ForceNoMotion;
+            return trail;
+        }
+
+        /// <summary>
+        /// 拖尾出光门：棍端相对持有者的速度超过阈值（挥击）或重击涌动中才发射，短暂保持避免断续。
+        /// 第一帧 / 重新激活时只记位置，不拿旧位置算速度。
+        /// </summary>
+        private void UpdateSwingTrails(Vector3 front, CharacterMainControl holder)
+        {
+            if (_swingTrail == null || _swingHaze == null) return;
+            Vector3 holderPos = holder != null ? holder.transform.position : front;
+            _swingTrail.transform.position = front;
+            _swingHaze.transform.position = front;
+            float dt = Time.deltaTime;
+            bool emit = false;
+            if (_trailPrimed && dt > 0.0001f)
+            {
+                Vector3 relative = (front - _lastFront) - (holderPos - _lastHolder);
+                float speed = relative.magnitude / dt;
+                if (speed > 7f || _surge > 0.55f) _trailHold = 0.06f;
+                else _trailHold -= dt;
+                emit = _trailHold > 0f;
+            }
+            else if (!_trailPrimed)
+            {
+                _swingTrail.Clear();
+                _swingHaze.Clear();
+                _trailHold = 0f;
+            }
+            _trailPrimed = true;
+            _lastFront = front;
+            _lastHolder = holderPos;
+            if (_swingTrail.emitting != emit) _swingTrail.emitting = emit;
+            if (_swingHaze.emitting != emit) _swingHaze.emitting = emit;
+        }
+
+        private void UpdateTipStar(Vector3 front, float focus, float luminance)
+        {
+            if (_tipStar == null) return;
+            ParticleSystem.Particle p = _tipParticle[0];
+            p.position = front;
+            p.startSize = (0.2f + 0.05f * Mathf.Sin(_time * 4.1f) + _surge * 0.32f + focus * 0.08f) * luminance;
+            p.rotation = _time * 38f;
+            Color color = Color.Lerp(AstralStaffConfig.Gold, AstralStaffConfig.CoreWhite, 0.45f + _surge * 0.55f);
+            color.a = (0.7f + _surge * 0.3f) * luminance;
+            p.startColor = color;
+            p.startLifetime = 10f;
+            p.remainingLifetime = 10f;
+            _tipParticle[0] = p;
+            _tipStar.SetParticles(_tipParticle, 1);
         }
 
         private static void ApplyTaper(LineRenderer line)
@@ -451,6 +684,7 @@ namespace BossRush
                 _charging = false;
                 _surge = 0f;
                 _surgeTarget = 0f;
+                _trailPrimed = false;
                 if (current == this) current = null;
                 return;
             }
@@ -553,6 +787,8 @@ namespace BossRush
                 _light.transform.position = front;
                 _light.intensity = (0.32f + _surge * 0.8f + focus * 0.18f) * pulse * luminance;
             }
+            UpdateTipStar(front, focus, luminance);
+            UpdateSwingTrails(front, holder);
         }
 
         private static void SetLine(LineRenderer line, Vector3 a, Vector3 b)
@@ -765,271 +1001,6 @@ namespace BossRush
                 _swirl.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
                 _swirl.gameObject.SetActive(false);
             }
-        }
-    }
-
-    // ========================================================================
-    // 弧形光带（横扫 / 回旋 / 冲击波）
-    // ========================================================================
-
-    /// <summary>
-    /// 一条贴着地面（或略高于地面）的扇形 / 环形光带。显出阶段沿弧方向推进，之后整体淡出并自毁。
-    /// 网格只建一次，动画只改顶点色；自毁时销毁网格。
-    /// </summary>
-    internal sealed class AstralStaffRibbon : MonoBehaviour
-    {
-        private const int Segments = 40;
-
-        private Mesh _mesh;
-        private Color[] _colors;
-        private float[] _segT;
-        private Color _color;
-        private float _reveal;
-        private float _hold;
-        private float _fade;
-        private float _t;
-        private float _innerAlpha;
-        private float _growFrom;
-        private bool _grow;
-        private Transform _follow;
-
-        /// <summary>
-        /// center：圆心；forward：扇形中线方向；sweep：总角度（度，负值反向推进）；
-        /// inner/outer：内外半径；reveal/hold/fade：三段时长（秒，按未缩放时间走，顿帧时光带照样展开）。
-        /// growFrom&gt;0 时半径从 growFrom 倍长到 1 倍（冲击波）。
-        /// </summary>
-        internal static AstralStaffRibbon Play(Vector3 center, Vector3 forward, float sweep, float inner, float outer,
-            Color color, float reveal, float hold, float fade, float innerAlpha, float growFrom, Transform follow)
-        {
-            GameObject go = null;
-            try
-            {
-                go = AstralStaffFx.CreateTransient("AstralStaff_Ribbon");
-                if (go == null) return null;
-                go.transform.position = center;
-                forward.y = 0f;
-                if (forward.sqrMagnitude < 0.0001f) forward = Vector3.forward;
-                go.transform.rotation = Quaternion.LookRotation(forward.normalized, Vector3.up);
-                AstralStaffRibbon ribbon = go.AddComponent<AstralStaffRibbon>();
-                ribbon.Init(sweep, inner, outer, color, reveal, hold, fade, innerAlpha, growFrom, follow);
-                return ribbon;
-            }
-            catch (Exception e)
-            {
-                if (go != null) Destroy(go);
-                ModBehaviour.DevLog(AstralStaffConfig.LogPrefix + " [WARNING] 光带失败: " + e.Message);
-                return null;
-            }
-        }
-
-        private void Init(float sweep, float inner, float outer, Color color, float reveal, float hold, float fade,
-            float innerAlpha, float growFrom, Transform follow)
-        {
-            _color = color;
-            _reveal = Mathf.Max(0.001f, reveal);
-            _hold = Mathf.Max(0f, hold);
-            _fade = Mathf.Max(0.01f, fade);
-            _innerAlpha = innerAlpha;
-            _growFrom = growFrom;
-            _grow = growFrom > 0f;
-            _follow = follow;
-
-            int vertexCount = (Segments + 1) * 2;
-            Vector3[] vertices = new Vector3[vertexCount];
-            Vector2[] uvs = new Vector2[vertexCount];
-            _colors = new Color[vertexCount];
-            _segT = new float[Segments + 1];
-            int[] triangles = new int[Segments * 6];
-            float start = -sweep * 0.5f;
-            for (int i = 0; i <= Segments; i++)
-            {
-                float t = i / (float)Segments;
-                _segT[i] = t;
-                float angle = (start + sweep * t) * Mathf.Deg2Rad;
-                Vector3 dir = new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle));
-                vertices[i * 2] = dir * inner;
-                vertices[i * 2 + 1] = dir * outer;
-                uvs[i * 2] = new Vector2(t, 0f);
-                uvs[i * 2 + 1] = new Vector2(t, 1f);
-            }
-            for (int i = 0; i < Segments; i++)
-            {
-                int v = i * 2;
-                int k = i * 6;
-                triangles[k] = v;
-                triangles[k + 1] = v + 1;
-                triangles[k + 2] = v + 2;
-                triangles[k + 3] = v + 1;
-                triangles[k + 4] = v + 3;
-                triangles[k + 5] = v + 2;
-            }
-
-            _mesh = new Mesh();
-            _mesh.name = "AstralStaff_RibbonMesh";
-            _mesh.MarkDynamic();
-            _mesh.vertices = vertices;
-            _mesh.uv = uvs;
-            _mesh.triangles = triangles;
-            _mesh.colors = _colors;
-            _mesh.RecalculateBounds();
-            Bounds bounds = _mesh.bounds;
-            bounds.Expand(outer);
-            _mesh.bounds = bounds;
-
-            MeshFilter filter = gameObject.AddComponent<MeshFilter>();
-            filter.sharedMesh = _mesh;
-            MeshRenderer renderer = gameObject.AddComponent<MeshRenderer>();
-            renderer.sharedMaterial = AstralStaffFx.Additive(BossRushParticleShape.TrailStrip, BossRushFxKit.GainBright);
-            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            renderer.receiveShadows = false;
-            renderer.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
-            renderer.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
-            renderer.motionVectorGenerationMode = MotionVectorGenerationMode.ForceNoMotion;
-            Apply();
-        }
-
-        private void Update()
-        {
-            if (BossRushUI.IsGamePaused()) return;
-            _t += Time.unscaledDeltaTime;
-            if (_follow != null)
-            {
-                Vector3 p = _follow.position;
-                transform.position = new Vector3(p.x, transform.position.y, p.z);
-            }
-            Apply();
-            if (_t >= _reveal + _hold + _fade) Destroy(gameObject);
-        }
-
-        private void Apply()
-        {
-            if (_mesh == null) return;
-            float revealT = Mathf.Clamp01(_t / _reveal);
-            float headT = 1f - (1f - revealT) * (1f - revealT);
-            float fadeK = 1f - Mathf.Clamp01((_t - _reveal - _hold) / _fade);
-            if (_grow)
-            {
-                float g = Mathf.Lerp(_growFrom, 1f, 1f - Mathf.Pow(1f - Mathf.Clamp01(_t / (_reveal + _hold + _fade)), 3f));
-                transform.localScale = new Vector3(g, 1f, g);
-            }
-            for (int i = 0; i < _segT.Length; i++)
-            {
-                float t = _segT[i];
-                // 刚扫过的位置最亮（刀锋），越往后越暗；头部之前不可见
-                float visible = _grow ? 1f : (t <= headT ? 1f : 0f);
-                float trail = _grow ? 1f : 0.08f + 0.92f * Mathf.Exp(-Mathf.Max(0f, headT - t) * 6f);
-                float edge = Mathf.Min(1f, Mathf.Min(t, 1f - t) * 8f + (_grow ? 1f : 0f));
-                float a = _color.a * visible * trail * fadeK * edge;
-                Color outer = new Color(_color.r, _color.g, _color.b, a);
-                Color inner = new Color(_color.r, _color.g, _color.b, a * _innerAlpha);
-                _colors[i * 2] = inner;
-                _colors[i * 2 + 1] = outer;
-            }
-            _mesh.colors = _colors;
-        }
-
-        private void OnDestroy()
-        {
-            if (_mesh != null) Destroy(_mesh);
-            _mesh = null;
-        }
-    }
-
-    // ========================================================================
-    // 线条特效（巨型光棍 / 光柱 / 地裂纹）
-    // ========================================================================
-
-    /// <summary>多层线条：白芯 + 主色辉光。淡出后自毁。位置可在生命期内由调用方逐帧改写。</summary>
-    internal sealed class AstralStaffBeam : MonoBehaviour
-    {
-        private LineRenderer _core;
-        private LineRenderer _glow;
-        private float _coreWidth;
-        private float _glowWidth;
-        private Color _coreColor;
-        private Color _glowColor;
-        private float _life;
-        private float _fade;
-        private float _t;
-        private bool _useGameTime;
-
-        internal static AstralStaffBeam Create(Vector3[] points, float coreWidth, float glowWidth, Color glowColor,
-            float life, float fade, bool flatOnGround, bool useGameTime = false)
-        {
-            GameObject go = null;
-            try
-            {
-                go = AstralStaffFx.CreateTransient("AstralStaff_Beam");
-                if (go == null) return null;
-                AstralStaffBeam beam = go.AddComponent<AstralStaffBeam>();
-                beam._useGameTime = useGameTime;
-                beam.Init(points, coreWidth, glowWidth, glowColor, life, fade, flatOnGround);
-                return beam;
-            }
-            catch (Exception e)
-            {
-                if (go != null) Destroy(go);
-                ModBehaviour.DevLog(AstralStaffConfig.LogPrefix + " [WARNING] 光线失败: " + e.Message);
-                return null;
-            }
-        }
-
-        private void Init(Vector3[] points, float coreWidth, float glowWidth, Color glowColor, float life, float fade, bool flat)
-        {
-            Material strip = AstralStaffFx.Additive(BossRushParticleShape.TrailStrip, BossRushFxKit.GainBright);
-            _coreWidth = coreWidth;
-            _glowWidth = glowWidth;
-            _glowColor = glowColor;
-            _coreColor = Color.Lerp(glowColor, AstralStaffConfig.CoreWhite, 0.6f);
-            _coreColor.a = Mathf.Min(0.85f, glowColor.a);
-            _life = Mathf.Max(0.01f, life);
-            _fade = Mathf.Max(0.01f, fade);
-            _glow = AstralStaffFx.CreateLine(transform, "Glow", strip, glowWidth, glowColor, true);
-            _core = AstralStaffFx.CreateLine(transform, "Core", strip, coreWidth, _coreColor, true);
-            if (flat)
-            {
-                _glow.alignment = LineAlignment.TransformZ;
-                _core.alignment = LineAlignment.TransformZ;
-                transform.rotation = Quaternion.Euler(90f, 0f, 0f);
-            }
-            SetPoints(points);
-            Apply(1f);
-        }
-
-        internal void SetPoints(Vector3[] points)
-        {
-            if (points == null || _core == null) return;
-            _core.positionCount = points.Length;
-            _glow.positionCount = points.Length;
-            _core.SetPositions(points);
-            _glow.SetPositions(points);
-        }
-
-        internal void SetWidthScale(float scale)
-        {
-            if (_core == null) return;
-            _core.widthMultiplier = _coreWidth * scale;
-            _glow.widthMultiplier = _glowWidth * scale;
-        }
-
-        private void Update()
-        {
-            if (BossRushUI.IsGamePaused()) return;
-            _t += _useGameTime ? Time.deltaTime : Time.unscaledDeltaTime;
-            float k = _t <= _life ? 1f : 1f - Mathf.Clamp01((_t - _life) / _fade);
-            Apply(k);
-            if (_t >= _life + _fade) Destroy(gameObject);
-        }
-
-        private void Apply(float k)
-        {
-            if (_core == null) return;
-            Color c = new Color(_coreColor.r, _coreColor.g, _coreColor.b, _coreColor.a * k);
-            Color g = new Color(_glowColor.r, _glowColor.g, _glowColor.b, _glowColor.a * k);
-            _core.startColor = c;
-            _core.endColor = c;
-            _glow.startColor = g;
-            _glow.endColor = g;
         }
     }
 }

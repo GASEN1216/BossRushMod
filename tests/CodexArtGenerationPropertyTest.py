@@ -109,10 +109,11 @@ class CodexArtGenerationTests(unittest.TestCase):
                          {"petnest_relic_nest", "bossrush_campaign_board", "bossrush_backmountain_showcase"})
         self.assertTrue(all(size == 256 and "Pure white hand-drawn" in prompt for _, size, prompt in buildings))
         self.assertEqual({path for path, _, _ in buildings}, art.WHITE_ICONS)
-        # 3 件物品图标（词缀熔石 / 图鉴书 / 空仓地雷盒）+ 成就图标 + 建筑图标
+        # 4 件物品图标（词缀熔石 / 图鉴书 / 空仓地雷盒 / 星阙）+ 成就图标 + 建筑图标
         self.assertEqual(len(art.SPECS),
                          len(art.BOSSES) + len(art.AFFIX) + len(art.EVENTS)
-                         + 3 + len(art.ACHIEVEMENTS) + len(art.BUILDINGS))
+                         + 4 + len(art.ACHIEVEMENTS) + len(art.BUILDINGS))
+        self.assertIn("Assets/Items/astral_staff_icon.png", {path for path, _, _ in art.SPECS})
 
     def test_filter_unions_paths_and_is_case_insensitive(self):
         selected = art.select_specs(["ASSETS\\ACHIEVEMENT\\", "petnest_relic_nest"])

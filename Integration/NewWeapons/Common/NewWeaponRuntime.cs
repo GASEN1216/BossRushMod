@@ -274,6 +274,7 @@ namespace BossRush
                 AstralStaffWeaponConfig.ResetStaticCaches();
                 AstralStaffAttackPatch.ResetStaticCaches();
                 AstralStaffSound.ResetStaticCaches();
+                AstralStaffFx.ResetScopedRoot();
 
                 ModBehaviour.DevLog("[NewWeapons] 系统清理完成");
             }

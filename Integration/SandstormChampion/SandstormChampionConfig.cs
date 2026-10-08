@@ -57,6 +57,21 @@ namespace BossRush
         internal const float DashDamage = 24f;
         internal const float DashDamageP2 = 32f;
         internal const float DashDamageP3 = 27f;
+        /// <summary>
+        /// 冲锋预判系数：前摇期间按玩家平滑速度 ×（剩余前摇 + 冲到所需时间）× 系数瞄准。
+        /// owner 2026-10-08 二次实测「冲刺还是太鸡肋」：三个阶段都预判，越往后越准。
+        /// </summary>
+        internal const float DashLeadP1 = 0.65f;
+        internal const float DashLeadP2 = 0.9f;
+        internal const float DashLeadP3 = 1.05f;
+        /// <summary>出手前这段时间锁定方向，预警带停止跟随，给玩家留出读招翻滚的窗口。</summary>
+        internal const float DashAimLockP1 = 0.14f;
+        internal const float DashAimLockP2 = 0.1f;
+        internal const float DashAimLockP3 = 0.07f;
+        /// <summary>末阶段冲锋穿墙，并在玩家仍在前方时以这个角速度（度/秒）微调方向。</summary>
+        internal const float PhaseDashSteerDegrees = 45f;
+        /// <summary>参与预判的玩家速度上限（米/秒），翻滚瞬间的高速不会把预判甩出场外。</summary>
+        internal const float DashLeadMaxSpeed = 8.5f;
 
         // ========== 沙珠 ==========
         internal const float OrbSpeed = 11f;
@@ -97,6 +112,27 @@ namespace BossRush
         internal const float MinionRepathSeconds = 0.16f;
         internal const float MinionFirstAttackDelay = 0.2f;
         internal const float MinionAttackCooldown = 0.68f;
+        // ========== 棍卫的星阙三档重击（owner 2026-10-08） ==========
+        // 每名棍卫活 9 秒：首招 0.9–1.6 秒后，之后每 2.8–4.2 秒随机一招；伤害为基值，同样乘冠军的伤害倍率。
+        internal const float MinionArtFirstDelayMin = 0.9f;
+        internal const float MinionArtFirstDelayMax = 1.6f;
+        internal const float MinionArtCooldownMin = 2.8f;
+        internal const float MinionArtCooldownMax = 4.2f;
+        internal const float MinionArtPush = 7f;
+        internal const float MinionSweepRadius = 3.3f;
+        internal const float MinionSweepHalfAngle = 100f;
+        internal const float MinionSweepWindup = 0.5f;
+        internal const float MinionSweepDamage = 13f;
+        internal const float MinionSpinRadius = 3.1f;
+        internal const float MinionSpinWindup = 0.55f;
+        internal const float MinionSpinBeat = 0.26f;
+        internal const float MinionSpinDamage = 8f;
+        internal const float MinionStarfallReach = 8.5f;
+        internal const float MinionStarfallLeap = 5f;
+        internal const float MinionStarfallWindup = 0.4f;
+        internal const float MinionStarfallAir = 0.32f;
+        internal const float MinionStarfallBlastRadius = 2.5f;
+        internal const float MinionStarfallDamage = 20f;
 
         // ========== 阶段转换 ==========
         internal const float TransitionSeconds = 1f;

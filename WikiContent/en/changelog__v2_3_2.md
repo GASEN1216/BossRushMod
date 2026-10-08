@@ -1,0 +1,36 @@
+## v2.3.2
+
+### Release Date
+- 2026-10-09
+- This update rebuilds the Chapter 6 finale of the Duck King Campaign, adds the Shadow of the Champion's signature weapon, the Astral Staff, and the Mad Bomber's exclusive drop, the Empty-Mag Mine Box, and fixes Campaign saves, Sky Islands entry and several display issues.
+
+### New
+
+- **Finale Boss rebuilt: Shadow of the Champion (sandstorm spirit)**: the Chapter 6 showdown is now a three-phase sandstorm spirit.
+  - Phase 1: five-dash chains, 21 breakable homing sand bubbles, and twin sand funnels. Phase 2 (below 50% health): three fast dashes, a 31-bubble circling barrage, and a homing full sandstorm.
+  - Phase 3 (below 15% health): the body fades away leaving only its eyes. It switches sides and dashes one, two, then three times; these dashes **pass through walls** and keep steering toward you. After each dash chain it rotates between twin sand funnels, an unseen circling bubble barrage, and a full sandstorm.
+  - Its dashes **lead your movement**: while it winds up, the ground warning turns to follow where you are heading and only locks in a moment before release. Roll as it locks.
+  - Leaving the arena around the sign-up stone enrages the champion; returning calms it.
+  - It summons sand guards wielding Astral Staffs, who randomly use all three Astral Staff heavy attacks, each telegraphed by a warm orange marker on the ground.
+- **Astral Staff (500104)**: a staff of light guaranteed from the Shadow of the Champion.
+  - Every two light hits that land build one Focus point (the third hit of a combo counts twice), and holding right-click charges more, up to three. Release right-click to unleash Meteor Sweep, Twin Dragon Spin or Starfall depending on your Focus.
+  - Dedicated sounds: a crisp chime that rises in pitch for the first and second points, a ringing "shing" at full Focus, a burst on release, and heavy impact sounds on hit.
+  - With no Focus or too little stamina, a hint appears above your head and your Focus is kept.
+- **Empty-Mag Mine Box (500105)**: a totem with a 20% bonus drop chance from the vanilla Boss Mad Bomber. Fire at least 6 shots from one magazine and empty it to leave a mine at your feet that explodes after 1.5 seconds.
+
+### Improved
+
+- **Full visual pass for the Shadow of the Champion and the Astral Staff**: a sand column rising from the ground on entry, glowing and flaring eyes, sand bursts when hit, an inhale-and-roar phase change, sand eruptions when funnels form, and a collapse with a rising golden stream on defeat. The Astral Staff's three heavy attacks escalate in layers, swings leave afterimage trails, hits show a star flash, shock ring, slash mark and sparks, and kills scatter stars.
+- **Faster map loading**: ordinary arena maps no longer preload Faction War resources, and the Inferno Emperor's Realm-Breaking Halberd only loads its effects when you actually hold it.
+- **The Astral Staff and the Empty-Mag Mine Box now have finished icons.**
+
+### Fixes
+
+- Fixed Duck King Campaign progress resetting after closing the game directly, and progress being lost when a save lacked chapter data; delivered chapters are restored from their records without paying rewards twice.
+- Fixed the Chapter 6 sign-up stone spawning before the arena teleport in the wrong place, and the champion being cleared by the pre-wave arena sweep.
+- Fixed the Boss pool warming up before the config loaded, which left the three mod Bosses' enabled state and multipliers ignored.
+- Fixed three Sky Islands entry issues: an old arena wait could start From Scratch on the islands after a map change; graphics cards that do not support the island shaders were refused entry (local vanilla materials are now used instead); and slow loading was mistaken for a failure and sent you back to base.
+- Fixed Soulreaper's Requiem sometimes showing its internal name.
+- Fixed the Astral Staff spamming errors in the log on every swing when used alongside another popular mod.
+- Fixed blank icons for the Astral Staff and the Empty-Mag Mine Box.
+- Fixed the Empty-Mag Mine Box still placing mines or dealing damage during a scene change.

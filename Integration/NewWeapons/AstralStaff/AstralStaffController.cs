@@ -16,7 +16,6 @@ using System.Collections.Generic;
 using System.Reflection;
 using Duckov.Utilities;
 using UnityEngine;
-using UnityEngine.EventSystems;
 
 namespace BossRush
 {
@@ -66,6 +65,8 @@ namespace BossRush
         private readonly HashSet<int> hitHealthIds = new HashSet<int>();
         private static bool hurtSubscribed;
         private static bool hitStopFailureReported;
+        private static bool tutorialShown;
+        private float nextHintTime;
 
         private static readonly object[] NoArgs = new object[0];
 
@@ -181,6 +182,7 @@ namespace BossRush
         {
             UnsubscribeHurt();
             hitStopFailureReported = false;
+            tutorialShown = false;
             Array.Clear(OverlapBuffer, 0, OverlapBuffer.Length);
         }
 
@@ -230,6 +232,12 @@ namespace BossRush
 
             if (activeAgent != player.CurrentHoldItemAgent) ResetState();
             activeAgent = player.CurrentHoldItemAgent;
+            if (!wasHolding && !tutorialShown)
+            {
+                tutorialShown = true;
+                Hint(player, L10n.T("星阙：左键打中攒星豆 · 按住右键蓄势 · 松开放重击",
+                    "Astral Staff: land hits to build Focus · hold RMB to charge · release to strike"));
+            }
             wasHolding = true;
 
             SuppressVanillaAds();
@@ -291,10 +299,24 @@ namespace BossRush
 
             if (released && pressTime >= 0f)
             {
+                bool wasCharging = charging;
                 pressTime = -1f;
                 charging = false;
                 chargeProgress = 0f;
-                if (beans >= 1) StartHeavy(player, beans);
+                if (beans >= 1)
+                {
+                    if (player.CurrentStamina < HeavyStamina(beans))
+                    {
+                        AstralStaffSound.PostFizzle(player);
+                        HintThrottled(player, L10n.T("体力不足，星豆保留", "Not enough stamina - Focus kept"));
+                    }
+                    else StartHeavy(player, beans);
+                }
+                else if (!wasCharging)
+                {
+                    HintThrottled(player, L10n.T("没有星豆：先用左键打中敌人，或按住右键蓄势",
+                        "No Focus yet: land light hits, or hold right-click to charge"));
+                }
             }
         }
 
@@ -311,6 +333,16 @@ namespace BossRush
                 AstralStaffSigil.Play(player.transform.position + Vector3.up * 1.25f, AimDirection(player),
                     0.4f + beans * 0.14f, beans, 0.12f, 0.22f, player.transform, true);
                 AstralStaffFx.PlayFlash(at, AstralStaffConfig.Gold, beans >= AstralStaffConfig.MaxBeans ? 0.9f : 0.5f, 2.2f, 0.16f);
+                if (beans >= AstralStaffConfig.MaxBeans)
+                {
+                    // 满势：脚下一圈金环撑开，背后星豆处一记星芒，读得出「三豆到了」。
+                    Color ring = AstralStaffConfig.Gold;
+                    ring.a = 0.6f;
+                    AstralStaffFx.PlayBurst(player.transform.position + Vector3.up * 0.06f,
+                        BossRushFxKit.Shockwave(ring, 0.8f, 4.2f, 0.35f, true));
+                    AstralStaffFx.PlayBurst(at, BossRushFxKit.Glint(AstralStaffConfig.CoreWhite, 0.9f, 0.14f));
+                }
+                // 攒豆音（参照《黑神话：悟空》棍势）：一豆、二豆是音高递进的清脆「叮」，三豆满是带余韵的「铮」。
                 AstralStaffSound.PostFocus(player, beans);
                 AstralStaffHandVisual hand = AstralStaffHandVisual.Current;
                 if (hand != null) hand.SetSurge(0.18f + 0.12f * beans);
@@ -333,29 +365,53 @@ namespace BossRush
             if (!self.wasHolding || !NewWeaponEquipState.IsHolding(AstralStaffConfig.TypeId)
                 || !Team.IsEnemy(player.Team, target.team)) return;
 
+            Vector3 aim = AimDirection(player);
+            // 三段连招的第三段是收尾重段：命中表现升一档、补一记相机冲量并把目标往前顶。
+            bool finisher = AstralStaffAttackPatch.CurrentComboStep == 2;
+            bool killed = target.IsDead;
             try
             {
                 if (self.lightImpactCount < AstralStaffConfig.MaxHitFxPerAttack)
                 {
-                    AstralStaffFx.PlayContact(info.damagePoint, AimDirection(player), 0);
+                    AstralStaffFx.PlayContact(info.damagePoint, aim, finisher ? 1 : 0);
+                    if (killed) AstralStaffFx.PlayKillBloom(info.damagePoint, aim);
                     self.lightImpactCount++;
                 }
             }
             catch { /* 同上 */ }
+            if (killed)
+            {
+                // 击杀多停一拍；官方 EnterBulletTime 取最大值，与本次挥击的顿帧不叠加。
+                try { GameManager.TimeScaleManager.EnterBulletTime(AstralStaffConfig.HitStopKill); }
+                catch (Exception e) { ReportHitStopFailure(e); }
+            }
+            else
+            {
+                self.AddKnockback(target.TryGetCharacter(), aim * (finisher
+                    ? AstralStaffConfig.LightFinisherKnockback : AstralStaffConfig.LightKnockback));
+            }
+            if (killed) AstralStaffSound.PostCustom(AstralStaffSound.KillFile);
 
             // 一次挥击打中几个敌人都只记一段
             if (self.creditedSwing == self.swingSerial) return;
             self.creditedSwing = self.swingSerial;
             // 多目标的一次挥击只触发一次顿帧；命中音由官方 HitMarker 的 Health 回调播放。
-            try { GameManager.TimeScaleManager.EnterBulletTime(AstralStaffConfig.HitStopLight); }
+            try
+            {
+                GameManager.TimeScaleManager.EnterBulletTime(finisher
+                    ? AstralStaffConfig.HitStopLightFinisher : AstralStaffConfig.HitStopLight);
+            }
             catch (Exception e) { ReportHitStopFailure(e); }
+            Shake(aim, finisher ? AstralStaffConfig.ShakeLightFinisher : AstralStaffConfig.ShakeLight, false);
+            AstralStaffSound.PostCustom(finisher ? AstralStaffSound.HitFinisherFile : AstralStaffSound.HitFile);
             AstralStaffHandVisual hand = AstralStaffHandVisual.Current;
-            if (hand != null) hand.SetSurge(0.35f);
+            if (hand != null) hand.SetSurge(finisher ? 0.55f : 0.35f);
             if (self.beans >= AstralStaffConfig.MaxBeans) return;
-            self.lightHits++;
+            self.lightHits += finisher ? 2 : 1;
             if (self.lightHits >= AstralStaffConfig.LightHitsPerBean)
             {
-                self.lightHits = 0;
+                // 收尾段记两段时可能溢出一段，余数留给下一豆。
+                self.lightHits -= AstralStaffConfig.LightHitsPerBean;
                 self.AddBean(player, false);
             }
         }
@@ -390,6 +446,9 @@ namespace BossRush
             if (PlayerGone(player) || player.CurrentStamina < HeavyStamina(level)) yield break;
             beans = 0;
             lightHits = 0;
+            // 出招那一下就要有「蓄满放出」的爆发声；三豆星陨更厚、更长。命中的重击声另由真实伤害触发。
+            AstralStaffSound.PostCustom(level >= AstralStaffConfig.MaxBeans
+                ? AstralStaffSound.ReleaseMaxFile : AstralStaffSound.ReleaseFile);
             if (level == 1) yield return RunSweep(player);
             else if (level == 2) yield return RunSpin(player);
             else yield return RunStarfall(player);
@@ -491,11 +550,10 @@ namespace BossRush
 
             if (PlayerGone(player)) yield break;
             Vector3 center = player.transform.position + Vector3.up * 0.9f;
-            float sweep = AstralStaffConfig.SweepHalfAngle * 2f;
             AstralStaffSound.PostSwing(player, 1);
-            AstralStaffFx.PlayStroke(center, dir, sweep, AstralStaffConfig.SweepRadius,
-                AstralStaffConfig.Gold, 0.085f, 0.24f);
-            AstralStaffFx.PlayDust(player.transform.position, 6, 1.2f);
+            AstralStaffSound.PostCustom(AstralStaffSound.SwingFile);
+            AstralStaffFx.PlaySweepArt(player.transform.position, dir, AstralStaffConfig.SweepRadius,
+                AstralStaffConfig.SweepHalfAngle, AstralStaffConfig.Gold);
 
             int hits = DealDamage(player, center, dir, AstralStaffConfig.SweepRadius, AstralStaffConfig.SweepHalfAngle,
                 0f, 0f, AstralStaffConfig.SweepDamageMultiplier, AstralStaffConfig.SweepKnockback, false, 1);
@@ -531,9 +589,8 @@ namespace BossRush
                 {
                     firstDone = true;
                     AstralStaffSound.PostSwing(player, 2);
-                    AstralStaffFx.PlayStroke(center, dir, 360f, AstralStaffConfig.SpinRadius,
-                        AstralStaffConfig.Gold, 0.095f, 0.22f, player.transform);
-                    AstralStaffFx.PlayDust(player.transform.position, 7, 1.3f);
+                    AstralStaffSound.PostCustom(AstralStaffSound.SwingFile);
+                    AstralStaffFx.PlaySpinArt(player.transform.position, dir, AstralStaffConfig.SpinRadius, false, player.transform);
                     int hits = DealDamage(player, center, dir, AstralStaffConfig.SpinRadius, 180f, 0f, 0f,
                         AstralStaffConfig.SpinDamageMultiplier, 4f, false, 2);
                     PlayImpactFeedback(dir, hits, 2);
@@ -545,10 +602,9 @@ namespace BossRush
                 {
                     secondDone = true;
                     AstralStaffSound.PostSwing(player, 2, true);
-                    AstralStaffFx.PlayStroke(center + Vector3.up * 0.12f, -dir, -360f, AstralStaffConfig.SpinRadius + 0.2f,
-                        AstralStaffConfig.Cyan, 0.075f, 0.32f, player.transform);
-                    AstralStaffRibbon.Play(player.transform.position + Vector3.up * 0.08f, dir, 360f, AstralStaffConfig.SpinRadius - 0.3f,
-                        AstralStaffConfig.SpinRadius - 0.23f, new Color(0.95f, 0.73f, 0.36f, 0.38f), 0.04f, 0.02f, 0.36f, 0.1f, 0.72f, null);
+                    AstralStaffSound.PostCustom(AstralStaffSound.SwingFile);
+                    // 第二段：青色反向回旋 + 龙身 + 向内收拢的青环（卷近）。
+                    AstralStaffFx.PlaySpinArt(player.transform.position, dir, AstralStaffConfig.SpinRadius, true, player.transform);
                     // 第二段把周围的敌人往里卷（负击退 = 拉近）
                     int hits = DealDamage(player, center, dir, AstralStaffConfig.SpinRadius + 0.2f, 180f, 0f, 0f,
                         AstralStaffConfig.SpinDamageMultiplier, -AstralStaffConfig.SpinPullSpeed, true, 2);
@@ -583,6 +639,16 @@ namespace BossRush
                 AstralStaffConfig.StarfallImpactTime + 0.18f, 0.35f, false, true);
 
             float leapSpeed = AstralStaffConfig.StarfallLeapDistance / AstralStaffConfig.StarfallLeapTime;
+            // 落点预告：预计落点一圈细环向内收拢，正好在砸下那一刻收进中心。
+            Vector3 predicted = FenHuangHalberdRuntime.SnapToGround(
+                start + dir * (AstralStaffConfig.StarfallLeapDistance + AstralStaffConfig.StarfallBlastOffset), start.y);
+            BossRushFxBurst landing = BossRushFxKit.Shockwave(new Color(0.95f, 0.73f, 0.36f, 0.5f),
+                AstralStaffConfig.StarfallBlastRadius * 2.4f, 0.18f, AstralStaffConfig.StarfallImpactTime, true);
+            AstralStaffFx.PlayBurst(predicted + Vector3.up * 0.06f, landing);
+            // 星陨：从落点斜上方坠下的一道流星，和光棍同一帧落地。
+            Vector3[] meteorPoints = new Vector3[2];
+            AstralStaffBeam meteor = null;
+            Vector3 sky = (Vector3.up * 3.2f - dir).normalized;
             float t = 0f;
             bool swingSound = false;
             while (t < AstralStaffConfig.StarfallImpactTime)
@@ -590,6 +656,7 @@ namespace BossRush
                 if (PlayerGone(player))
                 {
                     if (giant != null) Destroy(giant.gameObject);
+                    if (meteor != null) Destroy(meteor.gameObject);
                     yield break;
                 }
                 FaceAndPush(player, dir, t < AstralStaffConfig.StarfallLeapTime ? leapSpeed : 0f);
@@ -599,6 +666,7 @@ namespace BossRush
                 {
                     swingSound = true;
                     AstralStaffSound.PostSwing(player, 3);
+                    AstralStaffSound.PostCustom(AstralStaffSound.SwingFile);
                 }
                 // 先慢后极快：最后 30% 时间里转完大半个角度，砸下去才有分量
                 float swing = k < 0.7f ? Mathf.Lerp(0f, 35f, k / 0.7f) : Mathf.Lerp(35f, 180f, Mathf.Pow((k - 0.7f) / 0.3f, 2f));
@@ -613,9 +681,30 @@ namespace BossRush
                     giant.SetPoints(staffPoints);
                     giant.SetWidthScale(0.6f + 0.6f * k);
                 }
+                if (k >= 0.4f)
+                {
+                    float remainLeap = leapSpeed * Mathf.Max(0f, AstralStaffConfig.StarfallLeapTime - t);
+                    Vector3 target = player.transform.position + dir * (AstralStaffConfig.StarfallBlastOffset + remainLeap);
+                    float m = Mathf.Clamp01((k - 0.4f) / 0.6f);
+                    float fall = m * m * m;
+                    Vector3 head = target + Vector3.up * 0.3f + sky * Mathf.Lerp(18f, 0f, fall);
+                    meteorPoints[0] = head + sky * Mathf.Lerp(2.2f, 6.5f, m);
+                    meteorPoints[1] = head;
+                    if (meteor == null)
+                    {
+                        meteor = AstralStaffBeam.Create(meteorPoints, 0.05f, 0.34f, new Color(1f, 0.86f, 0.55f, 0.85f),
+                            AstralStaffConfig.StarfallImpactTime, 0.06f, false, true);
+                    }
+                    if (meteor != null)
+                    {
+                        meteor.SetPoints(meteorPoints);
+                        meteor.SetWidthScale(0.7f + 0.6f * m);
+                    }
+                }
                 t += Time.deltaTime;
                 yield return null;
             }
+            if (meteor != null) Destroy(meteor.gameObject);
 
             if (PlayerGone(player)) yield break;
             // 落地：一条全中 + 落点震开一圈
@@ -634,61 +723,11 @@ namespace BossRush
                 AstralStaffConfig.StarfallDamageMultiplier, AstralStaffConfig.StarfallKnockback, false, 3, blast);
 
             PlayImpactFeedback(dir, hits, 3);
-            PlayStarfallImpact(origin, blast, dir, hits > 0);
+            // 砸地本身就该有声：落地轰鸣不论是否打中都响（震屏与顿帧仍只给真实命中）。
+            AstralStaffSound.PostCustom(AstralStaffSound.SlamFile);
+            AstralStaffFx.PlayStarfallImpact(origin, blast, dir, hits > 0, AstralStaffConfig.StarfallBlastRadius);
 
             yield return Recovery(player, AstralStaffConfig.StarfallRecovery);
-        }
-
-        private static void PlayStarfallImpact(Vector3 origin, Vector3 blast, Vector3 dir, bool contact)
-        {
-            try
-            {
-                Vector3 ground = blast + Vector3.up * 0.06f;
-                // 冲击以外缘传播，落点仍看得见；大面积加色只会抹掉敌人的受击动作。
-                AstralStaffRibbon.Play(ground, dir, 360f, AstralStaffConfig.StarfallBlastRadius * 1.3f - 0.07f,
-                    AstralStaffConfig.StarfallBlastRadius * 1.3f, new Color(1f, 0.94f, 0.78f, 0.72f),
-                    0.025f, 0.015f, 0.4f, 0.15f, 0.16f, null);
-                AstralStaffRibbon.Play(ground + Vector3.up * 0.02f, dir, -360f, AstralStaffConfig.StarfallBlastRadius - 0.06f,
-                    AstralStaffConfig.StarfallBlastRadius, new Color(0.42f, 0.7f, 0.77f, 0.38f),
-                    0.025f, 0.02f, 0.6f, 0.2f, 0.2f, null);
-                AstralStaffSigil.Play(ground + Vector3.up * 0.015f, dir, 1.75f, 3, 0.015f, 0.42f);
-                // 短光柱与细长余痕有明确先后，避免一根宽白柱长时间遮住中心。
-                AstralStaffBeam.Create(new[] { ground, ground + Vector3.up * 4.8f }, 0.055f, 0.24f,
-                    new Color(0.95f, 0.73f, 0.36f, 0.68f), 0.035f, 0.2f, false);
-
-                // 地裂纹：从落点放射出去的折线，金色发光，慢慢熄
-                for (int i = 0; i < 6; i++)
-                {
-                    float angle = i * 60f + UnityEngine.Random.Range(-10f, 10f);
-                    Vector3 crackDir = Quaternion.Euler(0f, angle, 0f) * dir;
-                    Vector3[] pts = new Vector3[5];
-                    float length = UnityEngine.Random.Range(2.2f, 3.6f);
-                    Vector3 side = Vector3.Cross(Vector3.up, crackDir);
-                    for (int p = 0; p < pts.Length; p++)
-                    {
-                        float f = p / (float)(pts.Length - 1);
-                        float jitter = p == 0 ? 0f : UnityEngine.Random.Range(-0.3f, 0.3f);
-                        pts[p] = ground + crackDir * (length * f) + side * jitter;
-                    }
-                    AstralStaffBeam.Create(pts, 0.018f, 0.065f, new Color(0.8f, 0.52f, 0.22f, 0.62f), 0.16f, 0.65f, true);
-                }
-
-                // 一条砸痕：从人到落点
-                AstralStaffBeam.Create(new[] { origin + Vector3.up * 0.05f, ground }, 0.035f, 0.14f,
-                    new Color(0.95f, 0.73f, 0.36f, 0.64f), 0.07f, 0.5f, true);
-
-                BossRushFxBurst sparks = BossRushFxKit.Sparks(AstralStaffConfig.Gold, contact ? 24 : 14);
-                sparks.SpeedMin = 5f;
-                sparks.SpeedMax = 10f;
-                sparks.Stretch = 0.055f;
-                sparks.SizeMax = 0.065f;
-                sparks.Upward = true;
-                sparks.Gravity = 1.2f;
-                AstralStaffFx.PlayBurst(blast + Vector3.up * 0.3f, sparks);
-                AstralStaffFx.PlayDust(blast, 12, 1.8f);
-                AstralStaffFx.PlayFlash(blast + Vector3.up * 0.8f, AstralStaffConfig.Gold, contact ? 2f : 0.9f, 4.5f, 0.18f);
-            }
-            catch { /* 表现失败不影响伤害 */ }
         }
 
         private IEnumerator Recovery(CharacterMainControl player, float seconds)
@@ -711,13 +750,27 @@ namespace BossRush
         private static void PlayImpactFeedback(Vector3 dir, int hits, int tier)
         {
             if (hits <= 0) return;
+            if (tier < 3) AstralStaffSound.PostCustom(AstralStaffSound.HeavyHitFile);
             float stop = tier == 1 ? AstralStaffConfig.HitStopSweep
                 : tier == 2 ? AstralStaffConfig.HitStopSpin : AstralStaffConfig.HitStopStarfall;
             try { GameManager.TimeScaleManager.EnterBulletTime(stop); }
             catch (Exception e) { ReportHitStopFailure(e); }
-            Shake(dir, tier == 3 ? 0.24f : tier == 2 ? 0.075f : 0.09f, tier == 3);
+            Shake(dir, tier == 3 ? AstralStaffConfig.ShakeStarfall
+                : tier == 2 ? AstralStaffConfig.ShakeSpin : AstralStaffConfig.ShakeSweep, tier == 3);
             AstralStaffHandVisual hand = AstralStaffHandVisual.Current;
             if (hand != null) hand.SetSurge(tier == 3 ? 1f : 0.65f);
+        }
+
+        private static void Hint(CharacterMainControl player, string text)
+        {
+            try { if (player != null) player.PopText(text); } catch { /* 气泡不可用时静默 */ }
+        }
+
+        private void HintThrottled(CharacterMainControl player, string text)
+        {
+            if (Time.unscaledTime < nextHintTime) return;
+            nextHintTime = Time.unscaledTime + 1.6f;
+            Hint(player, text);
         }
 
         private static void ReportHitStopFailure(Exception error)
@@ -865,6 +918,14 @@ namespace BossRush
                 try { receiver.AddBuff(GameplayDataSettings.Buffs.Pain, player); } catch { /* 无 Pain buff 的目标 */ }
             }
             if (playContact) AstralStaffFx.PlayContact(point, flat, tier);
+            bool killed = receiver.useSimpleHealth ? simple.HealthValue <= 0f : health.IsDead;
+            if (killed)
+            {
+                if (playContact) AstralStaffFx.PlayKillBloom(point, flat);
+                AstralStaffSound.PostCustom(AstralStaffSound.KillFile);
+                try { GameManager.TimeScaleManager.EnterBulletTime(AstralStaffConfig.HitStopKill); }
+                catch (Exception e) { ReportHitStopFailure(e); }
+            }
             return true;
         }
 
@@ -995,13 +1056,10 @@ namespace BossRush
         {
             try { if (!InputManager.InputActived) return false; } catch { return false; }
             if (Time.timeScale <= 0f) return false;
+            // 打开背包 / 商店等官方界面时 ActiveView 非空，此时不蓄势、不出招。
+            // 不再看 EventSystem 的指针悬停：官方战斗输入本身不做这项判断，局内 HUD 元素挡在光标下时
+            // 会让右键蓄势与松手整段失效、重击中途被打断（2026-10-08 实测「攒不到豆」的嫌疑根因之一）。
             try { if (Duckov.UI.View.ActiveView != null) return false; } catch { return false; }
-            try
-            {
-                EventSystem eventSystem = EventSystem.current;
-                if (eventSystem != null && eventSystem.IsPointerOverGameObject()) return false;
-            }
-            catch { return false; } // UI 状态读失败按界面占用输入处理，防止点界面释放重击。
             return true;
         }
     }
@@ -1010,8 +1068,24 @@ namespace BossRush
     internal static class AstralStaffSound
     {
         internal const string Swing = "SFX/Combat/Melee/attack_default";
-        internal const string Bean = "UI/hover";
-        internal const string Full = "UI/confirm";
+
+        // 星阙专属程序化音效（tools/gen_astral_staff_sfx.py 生成，部署在 Assets/Sounds/NewWeapons）。
+        // 官方近战没有挂 hitFx 时命中只有 HitMarker 的「嗒」，没有打在身上的那一下；这里补上。
+        internal const string HitFile = "astral_hit.wav";
+        internal const string HitFinisherFile = "astral_hit_finisher.wav";
+        internal const string HeavyHitFile = "astral_heavy_hit.wav";
+        internal const string SlamFile = "astral_slam.wav";
+        internal const string KillFile = "astral_kill.wav";
+        internal const string SwingFile = "astral_swing.wav";
+        internal const string BeanFile = "astral_bean_1.wav";
+        internal const string Bean2File = "astral_bean_2.wav";
+        internal const string BeanFullFile = "astral_bean_full.wav";
+        internal const string ReleaseFile = "astral_release.wav";
+        internal const string ReleaseMaxFile = "astral_release_max.wav";
+        internal const string FizzleFile = "astral_fizzle.wav";
+
+        private static float lastCustomTime = -1f;
+        private static string lastCustomFile;
 
         private static MethodInfo postMethod;
         private static MethodInfo setPitchMethod;
@@ -1024,9 +1098,28 @@ namespace BossRush
             Post(Swing, at, pitch, tier == 3 ? 0.95f : second ? 0.82f : 0.72f);
         }
 
+        /// <summary>
+        /// 播放一条星阙专属音效。同一条音效同一帧（20 ms 内）只放一次：群怪多杀、多段同帧命中不叠成爆音。
+        /// 文件缺失时 NewWeaponFx.PlaySound 静默返回。
+        /// </summary>
+        internal static void PostCustom(string fileName)
+        {
+            float now = Time.unscaledTime;
+            if (fileName == lastCustomFile && now - lastCustomTime < 0.02f) return;
+            lastCustomFile = fileName;
+            lastCustomTime = now;
+            NewWeaponFx.PlaySound(fileName);
+        }
+
+        internal static void PostFizzle(CharacterMainControl at)
+        {
+            PostCustom(FizzleFile);
+        }
+
         internal static void PostFocus(CharacterMainControl at, int beans)
         {
-            Post(beans >= AstralStaffConfig.MaxBeans ? Full : Bean, at, 0.88f + beans * 0.11f, 0.55f);
+            // 不再叠官方 UI 悬停 / 确认音：界面音和棍势「叮」混在一起会显得廉价。
+            PostCustom(beans >= AstralStaffConfig.MaxBeans ? BeanFullFile : beans >= 2 ? Bean2File : BeanFile);
         }
 
         private static void Post(string eventName, CharacterMainControl at, float pitch, float volume)
@@ -1064,6 +1157,8 @@ namespace BossRush
             setPitchMethod = null;
             setVolumeMethod = null;
             resolved = false;
+            lastCustomTime = -1f;
+            lastCustomFile = null;
         }
     }
 }

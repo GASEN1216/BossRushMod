@@ -19,6 +19,9 @@ namespace BossRush
         private static int comboStep;
         private static float lastSwingTime = -10f;
 
+        /// <summary>当前轻击是三段连招的第几段（0..2，2 是收尾重段）；命中反馈按它分轻重。</summary>
+        internal static int CurrentComboStep { get { return comboStep; } }
+
         [HarmonyPrefix]
         public static bool Prefix(CA_Attack __instance, ref bool __result)
         {

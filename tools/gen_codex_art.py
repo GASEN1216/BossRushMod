@@ -171,6 +171,18 @@ SPECS.append(("Assets/Items/empty_magazine_mine_icon.png", 512,
                    "ember spark, small black hazard chevrons painted below the lamp, a brass "
                    "cartridge-shaped pressure cap seated on top, gleaming painterly highlights, "
                    "deep olive green, warm brass and glowing ember red palette.")))
+# 2026-10-08：星阙（500104）首发只有运行时程序化图标（几根加色光线 + 星点），owner 反馈「图好丑」；
+# 改走同一套生图图标管线，运行时优先读 production_icons，缺包时回落程序化图。
+SPECS.append(("Assets/Items/astral_staff_icon.png", 512,
+              icon("A legendary celestial fighting staff forged from solidified starlight, held in a "
+                   "bold diagonal pose from lower-left to upper-right: a slender shaft with a blazing "
+                   "white-gold glowing core, wrapped by two thin spiral filaments of champagne gold and "
+                   "pale cyan light, both ends capped with ornate gilded cloud-pattern ferrules in the "
+                   "style of a mythic Chinese monkey-king staff, each tip crowned by a sharp four-pointed "
+                   "star glint, a broken golden halo ring floating around the upper end, three small "
+                   "luminous golden focus orbs hovering beside the shaft, a few drifting sand-gold "
+                   "sparkles, crisp beveled metal highlights, majestic and premium, deep night-blue rim "
+                   "glow behind the gold, champagne gold, warm amber and pale celestial cyan palette.")))
 for _aid, _desc in AFFIX.items():
     SPECS.append(("Assets/ui/AffixForge/affix_%s.png" % _aid, 256, icon(_desc)))
 for _eid, _desc in EVENTS.items():

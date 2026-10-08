@@ -219,6 +219,10 @@
       "maxSize": 512
     },
     {
+      "path": "Assets/Items/astral_staff_icon.png",
+      "maxSize": 512
+    },
+    {
       "path": "Assets/Items/codex_book.png",
       "maxSize": 512
     },

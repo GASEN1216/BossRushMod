@@ -127,9 +127,14 @@ def main():
     ordered(cleanup, COMBAT + " 战斗 owner 清理", "_stopped = true;", "StopMotion();",
             "CancelNavigation();", "if (_minions != null) _minions.Shutdown();", "StopAllCoroutines();")
     combat_source = source(COMBAT)
-    check(len(re.findall(r"\b_boss\.SetPosition\(", combat_source)) == 1,
-          COMBAT + ": SetPosition 应仅用于第三阶段换侧")
+    # owner 2026-10-08：末阶段冲锋穿墙。SetPosition 只许出现在换侧与穿墙冲锋专用的 PhaseTo 两处。
+    check(len(re.findall(r"\b_boss\.SetPosition\(", combat_source)) == 2,
+          COMBAT + ": SetPosition 应仅用于第三阶段换侧与穿墙冲锋")
     require(COMBAT, "private IEnumerator Reposition()", "_boss.SetPosition(safe);")
+    require(COMBAT, "private void PhaseTo(", "_boss.SetPosition(position);")
+    require(COMBAT, "private IEnumerator Dashes(", "bool phasing = _phase == 3;",
+            "if (phasing) { if (!PhaseDashStep(ref direction, speed, !hit)) { strikeBlocked = true; break; } }",
+            "if (phasing) SettlePhaseDash();")
     require(COMBAT, "internal void Initialize(", "_fightRoutine = RunFight();")
     require(COMBAT, "private void Update()", "TickFight();")
     require(COMBAT, "private void TickFight()", "_fightRoutine.MoveNext()")
@@ -177,9 +182,18 @@ def main():
           PATTERN + ": 专家/大师/传奇阈值必须是严格小于 50% / 15%")
     pattern = body(PATTERN, "internal SandstormChampionAttack Next()")
     final = pattern[pattern.index("if (Phase == 3)"):pattern.index("if (Enraged)")]
+    # owner 2026-10-08（两次实测）：末阶段每组一/二/三冲后轮换双生沙卷、绕圈吐泡、大沙暴。
     check("SandstormChampionAttackKind.TeleportDashes" in final
-          and "Bubble" not in final and "Seed" not in final,
-          PATTERN + ": 末阶段只能换侧一/二/三冲，不新增吐泡或旋风")
+          and "SandstormChampionAttackKind.TwinTornadoSeeds" in final
+          and "SandstormChampionAttackKind.SpiralBubbles" in final
+          and "SandstormChampionAttackKind.HomingCycloneSeed" in final,
+          PATTERN + ": 末阶段应为换侧一/二/三冲 + 轮换三种技能")
+    dashes = body(COMBAT, "private IEnumerator Dashes(")
+    check("AimDash(from, speed, lead, windup - waited, out direction, out length);" in dashes
+          and "if (waited < lockAt)" in dashes and "_warning.Retarget(" in dashes,
+          COMBAT + ": 冲锋前摇须预判玩家走位、预警带跟随并在出手前锁定")
+    check("SandstormChampionConfig.DashLeadP1" in dashes,
+          COMBAT + ": 一阶段冲锋也要预判（owner 2026-10-08）")
 
     init = body(HAZARDS, "private void Init(SandstormChampionController owner, Vector3 direction,")
     ordered(init, HAZARDS + " 可击破泡/鲨的官方接收体",
@@ -265,6 +279,17 @@ def main():
     prefix = body(DEATH, "public static void Prefix(")
     check(prefix.startswith("if (SandstormChampionMinionMarker.IsSummonedMinion(__instance)) return;"),
           DEATH + ": 小弟必须在全部额外掉落 handler 之前早返，保留原版 void Prefix 协议")
+
+    # owner 2026-10-08：棍卫随机使出星阙三档重击。公平性与 owner 约束钉在结构上。
+    arts_path = "Integration/SandstormChampion/SandstormChampionMinionArts.cs"
+    strike = require(arts_path, "private bool Strike(", "if (player == null || BossSkillDamageRules.IsDodging(player)) return false;",
+                     "_controller.HurtPlayer(damage, to);")
+    ordered(strike, arts_path + " 棍卫重击先判翻滚与隔墙再结算", "BossSkillDamageRules.IsDodging(player)",
+            "Physics.Linecast(from, to, wall, QueryTriggerInteraction.Ignore)", "_controller.HurtPlayer(damage, to);")
+    for signature in ("private IEnumerator Sweep()", "private IEnumerator Spin()", "private IEnumerator Starfall()"):
+        check("Warning" in body(arts_path, signature), arts_path + " / " + signature + ": 每招都要有地面预警")
+    require(MARKER, "private void TickCombat()", "if (_arts != null && _arts.Running)", "_arts.TryStart(player, towards.magnitude, sight)")
+    require(MARKER, "internal void Despawn()", "if (_arts != null) _arts.Release();")
     print(f"SandstormChampionCombatGuard: PASS ({checks} assertions; structure only, no game physics proof)")
 
 

@@ -219,12 +219,13 @@ namespace BossRush
 
         #region 召唤爆发
 
-        private static readonly Color SummonRingColor = new Color(0.85f, 0.18f, 0.22f, 0.9f);
-        private static readonly Color SummonSmokeColor = new Color(0.30f, 0.05f, 0.08f, 0.5f);
+        private static readonly Color SummonRingColor = new Color(1f, 0.62f, 0.24f, 0.9f);
+        private static readonly Color SummonSmokeColor = new Color(0.62f, 0.48f, 0.3f, 0.5f);
 
         /// <summary>
-        /// Boss 出生点的召唤表现：一道半径 3 m 的绯红环带灯爆开 + 贴地卷开的暗红烟。
-        /// 与 Boss 生成并行，不等待、不改时序。
+        /// Boss 出生点的召唤表现（2026-10-08 随冠军之影改为沙暴形态换成砂金色系）：
+        /// 半径 3 m 的琥珀环带灯爆开、四周砂尘向出生点卷入、一股砂柱冲天，近处一震。
+        /// 与 Boss 生成并行，不等待、不改时序；沙身随后由 SandstormChampionBody 自地面长成。
         /// </summary>
         internal static void PlaySummonBurst(Vector3 position)
         {
@@ -238,6 +239,36 @@ namespace BossRush
                 smoke.LifeMin = 1.0f;
                 smoke.LifeMax = 1.4f;
                 BossRushFxKit.PlayBurst(position + Vector3.up * 0.15f, smoke);
+
+                BossRushFxBurst gather = BossRushFxKit.Dust(SandstormChampionConfig.Sand, 20);
+                gather.Radial = false;
+                gather.FlatOnGround = false;
+                gather.ShellOnly = true;
+                gather.ShapeRadius = 7f;
+                gather.SpeedMin = -6.6f;
+                gather.SpeedMax = -6.2f;
+                gather.Drag = 0f;
+                gather.LifeMin = 1f;
+                gather.LifeMax = 1.1f;
+                gather.FadeIn = 0.3f;
+                gather.GrowTo = 0.5f;
+                BossRushFxKit.PlayBurst(position + Vector3.up * 1.2f, gather);
+
+                BossRushFxBurst geyser = BossRushFxKit.Dust(SandstormChampionConfig.SandLight, 16);
+                geyser.Radial = false;
+                geyser.FlatOnGround = false;
+                geyser.Cone = 12f;
+                geyser.Direction = Vector3.up;
+                geyser.ShapeRadius = 0.8f;
+                geyser.SpeedMin = 9f;
+                geyser.SpeedMax = 17f;
+                geyser.Drag = 2.2f;
+                geyser.SizeMin = 1f;
+                geyser.SizeMax = 2f;
+                geyser.LifeMin = 1f;
+                geyser.LifeMax = 1.5f;
+                BossRushFxKit.PlayBurst(position, geyser);
+                SandstormChampionAssetManager.ShakeNear(position, 0.25f, 30f);
             }
             catch (Exception e)
             {

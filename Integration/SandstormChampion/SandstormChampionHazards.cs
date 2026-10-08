@@ -97,6 +97,22 @@ namespace BossRush
             return line;
         }
 
+        /// <summary>前摇期间改指向（冲锋预判）：重写两条带的端点与流动亮点的发射朝向。</summary>
+        internal void Retarget(Vector3 from, Vector3 to)
+        {
+            if (_flashing) return;
+            Vector3 a = from + Vector3.up * 0.07f;
+            Vector3 b = to + Vector3.up * 0.07f;
+            if (_band != null) { _band.SetPosition(0, a); _band.SetPosition(1, b); }
+            if (_core != null) { _core.SetPosition(0, a); _core.SetPosition(1, b); }
+            if (_flow != null)
+            {
+                Vector3 dir = b - a;
+                _flow.transform.position = a;
+                if (dir.sqrMagnitude > 0.001f) _flow.transform.rotation = Quaternion.LookRotation(dir.normalized, Vector3.up);
+            }
+        }
+
         /// <summary>出手：亮一下然后淡掉销毁。</summary>
         internal void Flash()
         {
@@ -353,6 +369,28 @@ namespace BossRush
                 BossRushFxBurst dust = BossRushFxKit.Dust(SandstormChampionConfig.Sand, hit ? 8 : 4);
                 dust.FlatOnGround = false;
                 BossRushFxKit.PlayBurst(transform.position, dust);
+                if (_bubble)
+                {
+                    // 薄膜破开：一圈很快撑开就散的细环，像肥皂泡那一下「啵」。
+                    Color film = new Color(0.98f, 0.9f, 0.72f, 0.6f);
+                    BossRushFxKit.PlayBurst(transform.position, BossRushFxKit.Shockwave(film, 0.9f, 2.2f, 0.16f, false));
+                }
+                else
+                {
+                    // 沙鲨散架：头部一记火星亮芯，砂身沿来向向前溃散。
+                    BossRushFxKit.PlayBurst(transform.position, BossRushFxKit.Glint(SandstormChampionConfig.Ember, 1.1f, 0.09f));
+                    BossRushFxBurst body = BossRushFxKit.Dust(SandstormChampionConfig.Sand, 10);
+                    body.Radial = false;
+                    body.FlatOnGround = false;
+                    body.Cone = 40f;
+                    body.Direction = _velocity.sqrMagnitude > 0.01f ? _velocity : transform.forward;
+                    body.SpeedMin = 2f;
+                    body.SpeedMax = 6f;
+                    body.Drag = 4f;
+                    body.SizeMin = 0.4f;
+                    body.SizeMax = 0.8f;
+                    BossRushFxKit.PlayBurst(transform.position, body);
+                }
             }
             catch { }
             if (gameObject.activeSelf) BossRushFxKit.Release(gameObject, 0.1f, 1f, false);
@@ -518,6 +556,10 @@ namespace BossRush
             dust.SpeedMin = 1.5f;
             dust.SpeedMax = 3f;
             BossRushFxKit.PlayBurst(transform.position, dust);
+            Color ring = SandstormChampionConfig.WarningColor;
+            ring.a = 0.6f;
+            BossRushFxKit.PlayBurst(transform.position + Vector3.up * 0.05f,
+                BossRushFxKit.Shockwave(ring, 0.8f, 3.5f, 0.3f, true));
             Destroy(gameObject);
         }
     }
@@ -534,6 +576,7 @@ namespace BossRush
         private float _armedAt;
         private float _nextVolley;
         private int _volleys;
+        private bool _erupted;
         private GameObject _warningRing;
         private SandstormGroundField _groundWarning;
         private SandstormChampionVolume _volume;
@@ -596,6 +639,11 @@ namespace BossRush
             if (_groundWarning != null) _groundWarning.SetStrength(Time.time < _armedAt ? 0.65f + growth * 0.35f : 0.72f);
             if (Time.time < _armedAt) return;
             Vector3 pos = transform.position;
+            if (!_erupted)
+            {
+                _erupted = true;
+                PlayEruption(pos);
+            }
             // 形成后的沙柱固定；追踪仅发生在之前的地面沙圈阶段。
             if (_volleys < (_cyclone ? 12 : 6) && Time.time >= _nextVolley)
             {
@@ -613,6 +661,56 @@ namespace BossRush
                 if (!BossSkillDamageRules.IsDodging(player))
                     _owner.HurtPlayer(SandstormChampionConfig.TornadoTickDamage, player.transform.position + Vector3.up);
             }
+        }
+
+        /// <summary>
+        /// 预警结束、沙柱真正成形的那一刻：脚下砂环炸开，碎砂块被掀上天再落下，一股砂尘顺柱心冲起，
+        /// 近处玩家感到一震。大沙暴按半径放大。只是表现，伤害仍由上面的计时判定。
+        /// </summary>
+        private void PlayEruption(Vector3 pos)
+        {
+            try
+            {
+                Color ring = SandstormChampionConfig.WarningColor;
+                ring.a = 0.7f;
+                SandstormChampionAssetManager.PlaySandBurst(pos, _radius, _cyclone ? 34 : 22, ring);
+                BossRushFxBurst chunks = BossRushFxKit.Dust(SandstormChampionConfig.SandDark, _cyclone ? 18 : 10);
+                chunks.Shape = BossRushParticleShape.Shard;
+                chunks.Radial = false;
+                chunks.FlatOnGround = false;
+                chunks.Upward = true;
+                chunks.ShapeRadius = _radius * 0.6f;
+                chunks.SpeedMin = 5f;
+                chunks.SpeedMax = 10f;
+                chunks.Gravity = 2.2f;
+                chunks.Drag = 0.8f;
+                chunks.SizeMin = 0.12f;
+                chunks.SizeMax = 0.3f;
+                chunks.LifeMin = 0.9f;
+                chunks.LifeMax = 1.4f;
+                chunks.GrowTo = 0.8f;
+                chunks.Spin = 360f;
+                chunks.FadeIn = 0f;
+                chunks.Core = new Color(0.7f, 0.55f, 0.34f, 1f);
+                chunks.Main = new Color(0.55f, 0.41f, 0.25f, 0.95f);
+                BossRushFxKit.PlayBurst(pos + Vector3.up * 0.2f, chunks);
+                BossRushFxBurst geyser = BossRushFxKit.Dust(SandstormChampionConfig.SandLight, _cyclone ? 20 : 12);
+                geyser.Radial = false;
+                geyser.FlatOnGround = false;
+                geyser.Cone = 14f;
+                geyser.Direction = Vector3.up;
+                geyser.ShapeRadius = _radius * 0.35f;
+                geyser.SpeedMin = 8f;
+                geyser.SpeedMax = 16f;
+                geyser.Drag = 2.5f;
+                geyser.SizeMin = 0.9f;
+                geyser.SizeMax = 1.8f;
+                geyser.LifeMin = 0.8f;
+                geyser.LifeMax = 1.3f;
+                BossRushFxKit.PlayBurst(pos, geyser);
+                SandstormChampionAssetManager.ShakeNear(pos, _cyclone ? 0.32f : 0.2f, _cyclone ? 24f : 16f);
+            }
+            catch { /* 表现失败不影响沙柱 */ }
         }
 
         internal void Dismiss()

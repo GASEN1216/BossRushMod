@@ -23,6 +23,7 @@ namespace BossRush
     internal sealed class SandstormChampionAttackPattern
     {
         private int _index;
+        private int _finalStorms;
         internal int Phase { get; private set; } = 1;
         internal int CompletedCycles { get; private set; }
         internal bool Enraged { get; private set; }
@@ -41,8 +42,20 @@ namespace BossRush
         {
             if (Phase == 3)
             {
+                // owner 2026-10-08（两次实测）：末阶段不能只剩冲锋。每组换侧一/二/三冲之后轮换放技能：
+                // 双生沙卷 → 隐身绕圈喷 31 泡 → 大沙暴，循环。
+                if (_index == 3)
+                {
+                    _index = 0;
+                    CompletedCycles++;
+                    switch (_finalStorms++ % 3)
+                    {
+                        case 0: return new SandstormChampionAttack(SandstormChampionAttackKind.TwinTornadoSeeds, 2);
+                        case 1: return new SandstormChampionAttack(SandstormChampionAttackKind.SpiralBubbles, 31);
+                        default: return new SandstormChampionAttack(SandstormChampionAttackKind.HomingCycloneSeed, 1);
+                    }
+                }
                 int count = ++_index;
-                if (_index == 3) { _index = 0; CompletedCycles++; }
                 return new SandstormChampionAttack(SandstormChampionAttackKind.TeleportDashes, count);
             }
             if (Enraged)

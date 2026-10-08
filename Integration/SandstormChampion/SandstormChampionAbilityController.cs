@@ -46,6 +46,10 @@ namespace BossRush
         private float _outsideSeconds;
         private Vector3 _arenaCenter;
         private Vector3 _lastDashDirection;
+        // 冲锋预判用的玩家水平速度：按位移差分并指数平滑，翻滚 / 走位抖动不会让预判乱跳。
+        private Vector3 _playerVelocity;
+        private Vector3 _lastPlayerPosition;
+        private bool _playerVelocityPrimed;
         private Modifier _bodyArmorModifier;
         private Modifier _headArmorModifier;
         private float _stormEndsAt;
@@ -58,6 +62,7 @@ namespace BossRush
         private IEnumerator _fightRoutine;
         private bool _reportedBubbleBreak;
         private bool _reportedSharkBreak;
+        private float _nextHurtFxTime;
 
         private bool HasPhaseTransition
         {
@@ -134,6 +139,7 @@ namespace BossRush
             {
                 boss.BeforeCharacterSpawnLootOnDead += OnBeforeSpawnLoot;
                 boss.Health.OnDeadEvent.AddListener(OnBossDead);
+                boss.Health.OnHurtEvent.AddListener(OnBossHurt);
                 _subscribed = true;
             }
             BossRushAudioManager.Instance?.PlayBossBGM(BossBgmKeys.PhantomWitch, _boss);
@@ -147,6 +153,7 @@ namespace BossRush
             if (_stopped) return;
             if (IsFighting)
             {
+                TrackPlayerVelocity();
                 TickFight();
                 if (_stopped) return;
                 UpdateEnrage();
@@ -314,10 +321,33 @@ namespace BossRush
                 _warning = SandstormDashWarning.Create(from, end, SandstormChampionConfig.ContactRadius * 2f, windup);
                 _owner?.PlaySoundEffect(DragonKingConfig.Sound_DashCharge);
                 Face(direction);
-                yield return WaitForFightSeconds(windup);
+                float lead = _phase == 3 ? SandstormChampionConfig.DashLeadP3
+                    : _phase == 2 ? SandstormChampionConfig.DashLeadP2 : SandstormChampionConfig.DashLeadP1;
+                if (lead > 0f)
+                {
+                    // 前摇期间持续预判玩家走位，预警带跟着转；出手前短暂锁定，留出读招翻滚的窗口。
+                    float lockAt = windup - (_phase == 3 ? SandstormChampionConfig.DashAimLockP3
+                        : _phase == 2 ? SandstormChampionConfig.DashAimLockP2 : SandstormChampionConfig.DashAimLockP1);
+                    float waited = 0f;
+                    while (waited < windup && IsFighting)
+                    {
+                        if (waited < lockAt)
+                        {
+                            AimDash(from, speed, lead, windup - waited, out direction, out length);
+                            if (_warning != null) _warning.Retarget(from, from + direction * length);
+                            Face(direction);
+                        }
+                        waited += Time.deltaTime;
+                        yield return null;
+                    }
+                }
+                else yield return WaitForFightSeconds(windup);
                 if (!IsFighting || HasPhaseTransition) yield break;
                 if (_warning != null) { _warning.Flash(); _warning = null; }
-                if (_body != null) _body.SetCharge(true);
+                if (_body != null) { _body.SetCharge(true); _body.Flare(0.55f); }
+                // 起步蹬地：脚下砂环炸开 + 近处轻震，冲锋有「发力」的那一下。
+                SandstormChampionAssetManager.PlaySandBurst(from, 1.8f, 12, SandstormChampionConfig.WarningColor);
+                SandstormChampionAssetManager.ShakeNear(from, 0.14f, 16f);
                 _lastDashDirection = direction;
                 _owner?.PlaySoundEffect(DragonKingConfig.Sound_DashBurst);
                 float distance = 0f;
@@ -325,10 +355,13 @@ namespace BossRush
                 float blocked = 0f;
                 bool hit = false;
                 bool strikeBlocked = false;
+                // 末阶段「沙暴无形」：冲锋直接穿过墙体与掩体（逐帧贴地重设位置），玩家仍在前方时还会微调方向。
+                bool phasing = _phase == 3;
                 while (distance < length && elapsed < length / speed + 0.3f && IsFighting && !HasPhaseTransition)
                 {
                     Vector3 previous = _boss.transform.position;
-                    if (!CommandMotion(direction * speed)) { strikeBlocked = true; break; }
+                    if (phasing) { if (!PhaseDashStep(ref direction, speed, !hit)) { strikeBlocked = true; break; } }
+                    else if (!CommandMotion(direction * speed)) { strikeBlocked = true; break; }
                     yield return null;
                     if (!IsFighting) break;
                     Vector3 actual = _boss.transform.position - previous;
@@ -351,11 +384,13 @@ namespace BossRush
                         hit = true;
                         HurtPlayer(_phase == 3 ? SandstormChampionConfig.DashDamageP3
                             : _phase == 2 ? SandstormChampionConfig.DashDamageP2 : SandstormChampionConfig.DashDamage, previous);
+                        PlayDashImpact(CharacterMainControl.Main.transform.position, direction);
                     }
                 }
                 StopMotion();
+                if (phasing) SettlePhaseDash();
                 if (_body != null) _body.SetCharge(false);
-                if (strikeBlocked)
+                if (strikeBlocked && !phasing)
                 {
                     // 一次撞墙就结束整组冲刺，立刻给低频寻路窗口，避免把余下冲锋全耗在同一堵墙上。
                     yield return Hover(0.45f);
@@ -363,6 +398,98 @@ namespace BossRush
                 }
                 yield return WaitForFightSeconds(_phase == 3 ? 0.06f : SandstormChampionConfig.DashRecover);
             }
+        }
+
+        /// <summary>
+        /// 冲锋预判：玩家当前位置 + 水平速度 ×（剩余前摇 + 冲到那里所需时间）× lead，速度有上限；
+        /// 长度仍按原规则带过冲并封顶。
+        /// </summary>
+        private void AimDash(Vector3 from, float speed, float lead, float remainingWindup,
+            out Vector3 direction, out float length)
+        {
+            CharacterMainControl player = CharacterMainControl.Main;
+            Vector3 target = player.transform.position;
+            Vector3 velocity = Vector3.ClampMagnitude(_playerVelocity, SandstormChampionConfig.DashLeadMaxSpeed);
+            Vector3 flat = target - from;
+            flat.y = 0f;
+            float travel = flat.magnitude / Mathf.Max(1f, speed);
+            Vector3 predicted = target + velocity * ((remainingWindup + travel) * lead);
+            direction = predicted - from;
+            direction.y = 0f;
+            float distance = direction.magnitude;
+            if (distance < 0.05f)
+            {
+                direction = flat.sqrMagnitude > 0.0025f ? flat.normalized : (_boss.transform.forward);
+                direction.y = 0f;
+                distance = flat.magnitude;
+            }
+            direction = direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector3.forward;
+            length = Mathf.Min(SandstormChampionConfig.DashMaxLength, distance + SandstormChampionConfig.DashOvershoot);
+        }
+
+        /// <summary>每帧按玩家位移差分出水平速度并做约 0.12 秒的指数平滑；切图 / 瞬移时重新起算。</summary>
+        private void TrackPlayerVelocity()
+        {
+            CharacterMainControl player = CharacterMainControl.Main;
+            float dt = Time.deltaTime;
+            if (player == null || dt <= 0f) return;
+            Vector3 position = player.transform.position;
+            if (_playerVelocityPrimed)
+            {
+                Vector3 measured = (position - _lastPlayerPosition) / dt;
+                measured.y = 0f;
+                if (measured.sqrMagnitude > 900f) measured = Vector3.zero; // 传送 / 换场的跳变不算速度
+                _playerVelocity = Vector3.Lerp(_playerVelocity, measured, 1f - Mathf.Exp(-dt / 0.12f));
+            }
+            _lastPlayerPosition = position;
+            _playerVelocityPrimed = true;
+        }
+
+        /// <summary>
+        /// 末阶段穿墙冲锋的一步：玩家仍在前方时按角速度上限微调方向，按地面高度逐帧重设位置（不经 ECM2 墙碰撞）。
+        /// 前方没有地面或高差过大（悬崖、楼层）时结束这一冲。
+        /// </summary>
+        private bool PhaseDashStep(ref Vector3 direction, float speed, bool steer)
+        {
+            float dt = Mathf.Min(Time.deltaTime, 0.05f);
+            if (dt <= 0f || _boss == null) return false;
+            Vector3 from = _boss.transform.position;
+            if (steer)
+            {
+                Vector3 toPlayer = CharacterMainControl.Main.transform.position - from;
+                toPlayer.y = 0f;
+                if (toPlayer.sqrMagnitude > 1f && Vector3.Dot(toPlayer.normalized, direction) > 0.2f)
+                    direction = Vector3.RotateTowards(direction, toPlayer.normalized,
+                        SandstormChampionConfig.PhaseDashSteerDegrees * Mathf.Deg2Rad * dt, 0f);
+            }
+            Vector3 next = from + direction * (speed * dt);
+            RaycastHit ground;
+            if (_groundMask == 0 || !Physics.Raycast(next + Vector3.up * 3f, Vector3.down, out ground, 8f,
+                _groundMask, QueryTriggerInteraction.Ignore) || Mathf.Abs(ground.point.y - from.y) > 2.5f) return false;
+            next.y = ground.point.y;
+            PhaseTo(next);
+            return true;
+        }
+
+        /// <summary>穿墙冲锋收尾：停在墙体 / 掩体里时吸附回与玩家连通的可走面，下一冲不会从墙里起步。</summary>
+        private void SettlePhaseDash()
+        {
+            if (!IsFighting) return;
+            Vector3 safe;
+            Vector3 at = _boss.transform.position;
+            if (!SpawnPositionHelper.TryResolveReachableFrom(at, CharacterMainControl.Main.transform.position, 3f,
+                SpawnPositionHelper.DefaultLiftOffset, out safe)) return;
+            Vector3 delta = safe - at;
+            delta.y = 0f;
+            if (delta.sqrMagnitude > 0.09f) PhaseTo(safe);
+        }
+
+        /// <summary>穿墙冲锋专用的位置重设（与 Reposition 换侧一起，是本模块仅有的两处 SetPosition）。</summary>
+        private void PhaseTo(Vector3 position)
+        {
+            _boss.SetPosition(position);
+            _blockedSeconds = 0f;
+            _lastMotionPosition = position;
         }
 
         private IEnumerator BubbleBelch(int count)
@@ -475,6 +602,7 @@ namespace BossRush
             // 原版转阶段是约一秒的无敌咆哮；已有沙暴按自己的寿命继续，不附加新星伤害。
             BossRushFxKit.PlayBurst(_boss.transform.position,
                 BossRushFxKit.Dust(SandstormChampionConfig.SandLight, 40));
+            PlayRoarInhale(_boss.transform.position);
             _novaWarning = SandstormChampionAssetManager.CreateNovaWarning(_boss.transform.position, SandstormChampionConfig.NovaRadius);
             yield return WaitForFightSeconds(SandstormChampionConfig.TransitionSeconds);
             if (_novaWarning != null) Destroy(_novaWarning);
@@ -485,6 +613,7 @@ namespace BossRush
             burst.SpeedMin = 6f;
             burst.SpeedMax = 10f;
             BossRushFxKit.PlayBurst(_boss.transform.position + Vector3.up, burst);
+            PlayRoarRelease(_boss.transform.position);
             if (_ambience == null) _ambience = SandstormAmbience.Create();
             if (_phase == 3 && _body != null) _body.SetEyesOnly(true);
         }
@@ -517,6 +646,147 @@ namespace BossRush
             FacePlayer();
             if (_body != null) _body.SetVisibility(1f);
             yield return WaitForFightSeconds(0.08f);
+        }
+
+        /// <summary>
+        /// 咆哮前的「吸气」：方圆数米的砂粒与火星向 Boss 收拢，眼光爆亮；与转阶段一秒无敌同起。
+        /// 只是表现，不改判定与时序。
+        /// </summary>
+        private void PlayRoarInhale(Vector3 at)
+        {
+            try
+            {
+                if (_body != null) _body.Flare(1f);
+                BossRushFxBurst grains = BossRushFxKit.Sparks(SandstormChampionConfig.EyeColor, 40);
+                grains.ShapeRadius = SandstormChampionConfig.NovaRadius;
+                grains.ShellOnly = true;
+                grains.SpeedMin = -7.5f;
+                grains.SpeedMax = -7f;
+                grains.LifeMin = 0.82f;
+                grains.LifeMax = 0.9f;
+                grains.Drag = 0f;
+                grains.Stretch = 0.05f;
+                grains.GrowTo = 1f;
+                grains.FadeIn = 0.25f;
+                BossRushFxKit.PlayBurst(at + Vector3.up * 1.4f, grains);
+                BossRushFxBurst veil = BossRushFxKit.Dust(SandstormChampionConfig.Sand, 18);
+                veil.Radial = false;
+                veil.FlatOnGround = false;
+                veil.ShapeRadius = SandstormChampionConfig.NovaRadius * 0.8f;
+                veil.ShellOnly = true;
+                veil.SpeedMin = -5.6f;
+                veil.SpeedMax = -5.2f;
+                veil.Drag = 0f;
+                veil.GrowTo = 0.4f;
+                veil.LifeMin = 0.9f;
+                veil.LifeMax = 1f;
+                veil.FadeIn = 0.3f;
+                BossRushFxKit.PlayBurst(at + Vector3.up * 1.2f, veil);
+                SandstormChampionAssetManager.ShakeNear(at, 0.1f, 25f);
+            }
+            catch { /* 表现失败不影响转阶段 */ }
+        }
+
+        /// <summary>咆哮释放：贴地砂环推到冲击圈外、眼位一记星芒、远近都能感到的一震。三阶段多一道砂身坍落。</summary>
+        private void PlayRoarRelease(Vector3 at)
+        {
+            try
+            {
+                if (_body != null) _body.Flare(1f);
+                Color ring = SandstormChampionConfig.Ember;
+                ring.a = 0.75f;
+                SandstormChampionAssetManager.PlaySandBurst(at, SandstormChampionConfig.NovaRadius, 36, ring);
+                BossRushFxKit.PlayBurst(at + Vector3.up * (2.25f * CampaignTuning.FinalBossScale),
+                    BossRushFxKit.Glint(SandstormChampionConfig.EyeColor, 3.2f, 0.22f));
+                if (_phase == 3)
+                {
+                    BossRushFxBurst fall = BossRushFxKit.Dust(SandstormChampionConfig.SandDark, 24);
+                    fall.Radial = false;
+                    fall.FlatOnGround = false;
+                    fall.ShapeRadius = 1.2f;
+                    fall.SpeedMin = 0.5f;
+                    fall.SpeedMax = 2f;
+                    fall.Gravity = 1.1f;
+                    fall.SizeMin = 0.9f;
+                    fall.SizeMax = 1.6f;
+                    fall.LifeMin = 0.9f;
+                    fall.LifeMax = 1.4f;
+                    BossRushFxKit.PlayBurst(at + Vector3.up * 2.4f, fall);
+                }
+                SandstormChampionAssetManager.ShakeNear(at, 0.38f, 32f);
+            }
+            catch { /* 同上 */ }
+        }
+
+        /// <summary>冲锋撞上玩家：一记顺冲锋方向喷出的砂浪 + 火星亮芯 + 重震。只在真实触发伤害的那一下播放。</summary>
+        private static void PlayDashImpact(Vector3 at, Vector3 direction)
+        {
+            try
+            {
+                Vector3 point = at + Vector3.up;
+                BossRushFxKit.PlayBurst(point, BossRushFxKit.Glint(SandstormChampionConfig.Ember, 1.6f, 0.1f));
+                BossRushFxBurst spray = BossRushFxKit.Dust(SandstormChampionConfig.Sand, 12);
+                spray.Radial = false;
+                spray.FlatOnGround = false;
+                spray.Cone = 30f;
+                spray.Direction = direction + Vector3.up * 0.35f;
+                spray.SpeedMin = 5f;
+                spray.SpeedMax = 10f;
+                spray.Drag = 4f;
+                spray.SizeMin = 0.5f;
+                spray.SizeMax = 0.9f;
+                BossRushFxKit.PlayBurst(point, spray);
+                BossRushFxBurst sparks = BossRushFxKit.Sparks(SandstormChampionConfig.Ember, 14);
+                sparks.Cone = 35f;
+                sparks.Direction = direction + Vector3.up * 0.3f;
+                sparks.SpeedMin = 7f;
+                sparks.SpeedMax = 13f;
+                sparks.Stretch = 0.06f;
+                BossRushFxKit.PlayBurst(point, sparks);
+                SandstormChampionAssetManager.ShakeNear(at, 0.3f, 4f);
+            }
+            catch { /* 同上 */ }
+        }
+
+        /// <summary>
+        /// Boss 受击：命中点炸开一小团砂与几粒火星，读得出「沙身被打散了一块」。
+        /// 每 0.07 秒最多一次，霰弹 / 群伤不会刷出一片烟。
+        /// </summary>
+        private void OnBossHurt(DamageInfo info)
+        {
+            if (_stopped || _boss == null || Time.time < _nextHurtFxTime) return;
+            _nextHurtFxTime = Time.time + 0.07f;
+            try
+            {
+                Vector3 point = info.damagePoint;
+                Vector3 center = _boss.transform.position + Vector3.up * 1.2f;
+                if (point.sqrMagnitude < 0.0001f || (point - center).sqrMagnitude > 16f) point = center;
+                Vector3 outward = point - center;
+                outward.y = 0f;
+                if (outward.sqrMagnitude < 0.01f) outward = -info.damageNormal;
+                BossRushFxBurst puff = BossRushFxKit.Dust(SandstormChampionConfig.SandLight, 5);
+                puff.Radial = false;
+                puff.FlatOnGround = false;
+                puff.SpeedMin = 1.5f;
+                puff.SpeedMax = 3.2f;
+                puff.SizeMin = 0.35f;
+                puff.SizeMax = 0.65f;
+                puff.LifeMin = 0.35f;
+                puff.LifeMax = 0.6f;
+                puff.Drag = 4f;
+                if (outward.sqrMagnitude > 0.01f)
+                {
+                    puff.Cone = 50f;
+                    puff.Direction = outward;
+                }
+                BossRushFxKit.PlayBurst(point, puff);
+                BossRushFxBurst grains = BossRushFxKit.Sparks(SandstormChampionConfig.EyeColor, 5);
+                grains.SpeedMin = 3f;
+                grains.SpeedMax = 6f;
+                grains.Gravity = 1f;
+                BossRushFxKit.PlayBurst(point, grains);
+            }
+            catch { /* 表现失败不影响伤害 */ }
         }
 
         private void SpawnOrb(Vector3 at, Vector3 direction, float speed, bool homing = true)
@@ -829,7 +1099,11 @@ namespace BossRush
             if (_subscribed && _boss != null)
             {
                 _boss.BeforeCharacterSpawnLootOnDead -= OnBeforeSpawnLoot;
-                if (_boss.Health != null) _boss.Health.OnDeadEvent.RemoveListener(OnBossDead);
+                if (_boss.Health != null)
+                {
+                    _boss.Health.OnDeadEvent.RemoveListener(OnBossDead);
+                    _boss.Health.OnHurtEvent.RemoveListener(OnBossHurt);
+                }
             }
             _subscribed = false;
         }

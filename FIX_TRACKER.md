@@ -2,6 +2,15 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+## 2026-10-09 冠军之影 / 星阙打磨与 v2.3.2（COMPAT，L1/L2，图标经 owner 实机确认）
+
+- 表现：冠军之影出场、眼光、受击、转阶段、沙柱成形与死亡全套特效；星阙三档重击分层（AstralStaffFxArts）、挥击拖尾、命中四层与击杀余韵；共享 BossRushFxKit 新增 Glint / Shockwave / 锥形喷射，默认值不改既有调用。
+- 玩法（owner 逐轮要求）：冲锋三阶段预判走位并跟随预警带；末阶段冲锋穿墙（PhaseTo，SetPosition 守卫改为 2 处）并轮换双生沙卷 / 绕圈泡 / 大沙暴；沙暴棍卫随机使出星阙三档重击（SandstormChampionMinionArts，翻滚免疫、隔墙不打、暖橙预警）。星阙轻击体力 7→5、两段一豆、蓄势 0.45 秒一豆，去掉 EventSystem 悬停门，松手失败有提示；12 条程序化棍势 / 打击音效（tools/gen_astral_staff_sfx.py）。
+- 修复：第三方 VTModifiers 的 CA_Attack.OnStop 后缀不判空改 meleeWeapon.slashFx 缩放（IL 实查），星阙每次收招 NRE → 挂自毁占位 AstralStaffSlashStub。生产包贴图不可读，Instantiate 只拷空壳导致星阙 / 空仓地雷盒图标空白 → 星阙借用包内 Sprite，地雷盒改 ProductionIconCache.CloneTexture（GPU 复制）。
+- 资源：星阙生图图标进 production_icons（IconsBuild sprites=348）；版本号 2.3.2，Wiki 新增 v2.3.2 更新日志。
+
+验证：全量守卫 743 / 743；SandstormCombatRuntime、SandstormChampionPattern、ManualEquipmentRecovery、CampaignPlayability、EmptyMagazineMine 回归通过；SandstormChampionCombatGuard 新增断言均做反向验证；Windows 正式构建 a1984ca4… 已部署 D 盘并逐文件核对 DLL、图标包与音效 SHA-256。owner 实机确认星阙图标显示；冲锋预判、穿墙、棍卫重击、音效听感与帧耗仍待实机。
+
 ## 2026-10-08 噬魂挽歌文本与本轮交付（COMPAT / WIRE+ / OPERATIONAL，L1/L2）
 
 CR-2026-10-08-021 已修复：噬魂挽歌（500044）接入装备工厂，文本走统一启动/语言变更注入，先于组件配置处理实际 raw key 与旧别名。资源包读回确认它是正常专属近战；反馈拼写不作为非法物品证据。28 项文本回归及 4 个行为 / 1 个守卫反向探针通过。

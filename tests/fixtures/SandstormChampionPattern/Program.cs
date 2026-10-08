@@ -52,8 +52,12 @@ internal static class Program
             Expect(pattern, SandstormChampionAttackKind.TeleportDashes, 1);
             Expect(pattern, SandstormChampionAttackKind.TeleportDashes, 2);
             Expect(pattern, SandstormChampionAttackKind.TeleportDashes, 3);
+            // owner 2026-10-08：末阶段每组冲锋后轮换双生沙卷、绕圈吐泡、大沙暴。
+            if (i % 3 == 0) Expect(pattern, SandstormChampionAttackKind.TwinTornadoSeeds, 2);
+            else if (i % 3 == 1) Expect(pattern, SandstormChampionAttackKind.SpiralBubbles, 31);
+            else Expect(pattern, SandstormChampionAttackKind.HomingCycloneSeed, 1);
         }
-        Check(pattern.CompletedCycles == before + 12, "final phase counts complete 1-2-3 loops");
+        Check(pattern.CompletedCycles == before + 12, "final phase counts complete 1-2-3 + skill loops");
         Expect(pattern, SandstormChampionAttackKind.TeleportDashes, 1);
         Check(!pattern.UpdateState(1f, true) && pattern.Phase == 3, "healing cannot reverse phase");
         Expect(pattern, SandstormChampionAttackKind.TeleportDashes, 2);

@@ -68,10 +68,10 @@ namespace BossRush
             Texture2D created = null;
             try
             {
-                // Instantiate 保留生产贴图的压缩格式，不要求开启 Read/Write，也不读回像素。
+                // 生产贴图压缩且不可读，Instantiate 只拷出空壳（2026-10-08 实测图标空白）；改为 GPU 整块复制。
                 // 只复制一次；直接借用 Sprite 或只复制 Sprite 都会继续依赖原包的 Texture。
-                created = UnityEngine.Object.Instantiate(source.texture);
-                created.name = "EmptyMagazineMine_ProductionIcon";
+                created = ProductionIconCache.CloneTexture(source.texture, "EmptyMagazineMine_ProductionIcon");
+                if (created == null) return false;
                 created.hideFlags = HideFlags.DontSave;
                 Rect rect = source.rect;
                 Sprite result = Sprite.Create(created, rect,
