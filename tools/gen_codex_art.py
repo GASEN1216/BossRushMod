@@ -159,6 +159,16 @@ SPECS.append(("Assets/Items/affix_forge_stone.png", 512,
 SPECS.append(("Assets/Items/codex_book.png", 512,
               icon("An ornate closed tome bound in deep red leather with gold corner fittings and a "
                    "golden duck-crown emblem embossed on the cover, a bookmark ribbon hanging out.")))
+SPECS.append(("Assets/Items/roll_call_ledger_icon.png", 512,
+              icon("A stern school dean's roll-call ledger: one thick closed navy-blue clothbound "
+                   "attendance book, turned to a bold three-quarter view with a clearly visible front "
+                   "cover, softly rounded corners and subtle worn edges, a cream paper label covering "
+                   "most of the cover with exactly three large vermilion-red check marks stacked "
+                   "vertically, each check mark stamped inside its own red circle, a thick cream-white "
+                   "page block, one short red bookmark ribbon peeking from the bottom, simple chunky "
+                   "cartoon proportions matching Escape from Duckov inventory objects, hand-painted "
+                   "soft three-dimensional shading, tidy and charmingly strict, navy blue, warm cream "
+                   "and vermilion red palette. No writing, no letters, no numbers, no loose objects.")))
 # 2026-10-08：空仓地雷盒（500105）首次交付时只有运行时程序化图标，与五把武器的生图图标
 # 不同路；按 owner 要求补一张生图图标（同 icon() 色键管线），运行时优先用它、失败回落程序化图。
 # 同日 owner 反馈首版（锈蚀旧弹匣）不够好看：按武器图标画风（干净、高对比的画家风道具图）重出。

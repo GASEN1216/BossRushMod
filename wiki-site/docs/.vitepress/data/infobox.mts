@@ -237,6 +237,21 @@ export const INFOBOX: Record<string, Infobox> = {
     ],
     links: ['/bosses/dragon-king', '/equipment/flight-totem'],
   },
+  '/equipment/roll-call-ledger': {
+    eyebrowZh: '图腾',
+    eyebrowEn: 'Totem',
+    rows: [
+      { zh: '品质', en: 'Rarity', vz: '5', tier: 5 },
+      { zh: '重量', en: 'Weight', vz: '0.3' },
+      { zh: '基础价值', en: 'Base value', vz: '20,000' },
+      { zh: '触发', en: 'Trigger', vz: '5 秒内直接命中 3 名不同敌人', ve: 'Directly hit 3 different enemies within 5 s' },
+      { zh: '冷却', en: 'Cooldown', vz: '6 秒', ve: '6 s' },
+      { zh: '追加伤害', en: 'Bonus damage', vz: '每人 20 + 自己的点名一击伤害 × 25%', ve: 'Per target: 20 + 25% of its own marking hit' },
+      { zh: '来源', en: 'Source', vz: '浮舟的航前杂货（天空岛登云码头，好感 3 级）', ve: "Fuzhou's Departure Supplies (Cloudrise Dock, Sky Islands, affinity Lv.3)" },
+      { zh: '物品 ID', en: 'Internal ID', vz: '500106' },
+    ],
+    links: ['/npcs/', '/systems/affinity-marriage'],
+  },
   '/equipment/empty-magazine-mine': {
     eyebrowZh: '图腾',
     eyebrowEn: 'Totem',

@@ -47,7 +47,8 @@ namespace BossRush
         {
             NewWeaponIds.EnergyShieldTypeId,
             NewWeaponIds.ThunderRingTypeId,
-            BossRushItemIds.EmptyMagazineMine
+            BossRushItemIds.EmptyMagazineMine,
+            BossRushItemIds.RollCallLedger
         };
 
         private static readonly bool[] totemEquipped = new bool[TrackedTotemTypeIds.Length];

@@ -70,7 +70,7 @@
   - 倒影一类分身用 `CreateDecoy`（`BakeMesh` 烤成静态网格挂在轻量接收体上），不 `Instantiate` 角色或模型：会连身上的 `Item` / `ItemAgent` 一起复制。
   - 官方 `Health.Hurt` 在出击图上只磨头盔（暴击）与身甲（非暴击），不磨面罩与耳机：穿这两槽专属装备的 Boss 由自己的控制器在 `Health.OnHurtEvent` 里调 `WearSoftPiece`（照头盔口径），`OnDestroy` 退订。
 - **主角穿戴只在一处读**：`SkyIslandFieldcraftBossGear` 按局内 owner 的节拍读主角装备槽，写进快照 `SkyIslandBossGearWorn`；招式控制器、剧情、搜刮箱与云蚋只读快照，不自己读槽，离岛与模块销毁时复位。要进剧情判据的（镜纹甲放行折翎）写 `SkyIslandStoryData` 的 `[NonSerialized]` 运行时字段，不加存档字段。
-- 独立出击关卡不保证有 `StockShopView`，岛上服务自带 UI；维修入列门照官方 `ItemRepairView.CanRepair`。每项居民服务都要有装置兜底，居民生成失败的那一趟服务也不断线。
+- 整备、苔药等岛上服务自带 UI，维修入列门照官方 `ItemRepairView.CanRepair`。浮舟航前杂货复用官方 LevelManager prefab 内的 `StockShopView` 与 `NPCShopSystem`；渡口 `Search_A` 原交互组挂通用商店，沿用浮舟好感门槛，会话销毁时关闭对应商店并移除子项。游戏版本变化导致官方 View 缺失时，通用商店保留缺失提示，不能据编译成功推定界面存在。每项居民服务都要有装置兜底，居民生成失败的那一趟服务也不断线。
 - `SkyIslandSession.cs` 主文件有行数上限，新批次的接线挂到 `SkyIslandWorldStory` 等 owner 上，不往主文件加；落脚点与坠落捞回在同一 partial 的 `SkyIslandSessionFooting.cs`。
 - **落脚点必须站得住**：地面探针只把净空的落点（`Blocked`，墙体层胶囊，口径同头目冲步落点）记成 `safePosition`；同一处连捞 3 次换成地标锚点并记一条带坐标的 `FALL_RESCUE_LOOP`。落点自己站不住时捞回去会再掉一次，人在原地弹球（2026-09-16 第八轮 F3 在 `EnemySpawn_C` 一步之内连捞 11 次，步骤还记 PASS）。捞回次数经 `RescueCount` 进 F3，一步之内 ≥3 次记红。
 

@@ -267,6 +267,10 @@
       "maxSize": 512
     },
     {
+      "path": "Assets/Items/roll_call_ledger_icon.png",
+      "maxSize": 512
+    },
+    {
       "path": "Assets/Items/sky_island_brass_scrap.png",
       "maxSize": 512
     },

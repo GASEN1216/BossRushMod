@@ -64,6 +64,54 @@ namespace BossRush
         public PermanentDuckNpcLine[] lines;
     }
 
+    /// <summary>可选商店配置；未配置或没有有效商品时不启用商店。</summary>
+    internal sealed class PermanentDuckNpcShopData
+    {
+        public string nameCn;
+        public string nameEn;
+        public int unlockLevel;
+        public readonly List<ShopItemEntry> items = new List<ShopItemEntry>();
+
+        internal static PermanentDuckNpcShopData Parse(BossRushJsonValue permanent, string blueprintId)
+        {
+            BossRushJsonValue node;
+            if (!permanent.TryGetObject("shop", out node)) return null;
+
+            PermanentDuckNpcShopData shop = new PermanentDuckNpcShopData();
+            List<BossRushJsonValue> entries;
+            if (!node.TryGetInt("unlockLevel", out shop.unlockLevel)
+                || shop.unlockLevel < 0 || shop.unlockLevel > 10
+                || !node.TryGetArray("items", out entries))
+            {
+                ModBehaviour.DevLog("[PermanentDuckNpc] 忽略无效商店配置: " + blueprintId);
+                return null;
+            }
+
+            node.TryGetString("nameCn", out shop.nameCn);
+            node.TryGetString("nameEn", out shop.nameEn);
+            HashSet<int> seen = new HashSet<int>();
+            for (int i = 0; i < entries.Count; i++)
+            {
+                BossRushJsonValue entry = entries[i];
+                int typeId, stock, requiredLevel;
+                if (entry == null || !entry.TryGetInt("typeId", out typeId) || typeId <= 0
+                    || !entry.TryGetInt("maxStock", out stock) || stock <= 0)
+                {
+                    ModBehaviour.DevLog("[PermanentDuckNpc] 忽略无效商店商品: " + blueprintId);
+                    continue;
+                }
+                if (!entry.TryGetInt("requiredLevel", out requiredLevel)) requiredLevel = shop.unlockLevel;
+                if (requiredLevel < shop.unlockLevel || requiredLevel > 10 || !seen.Add(typeId))
+                {
+                    ModBehaviour.DevLog("[PermanentDuckNpc] 忽略重复或等级无效的商品: " + blueprintId);
+                    continue;
+                }
+                shop.items.Add(new ShopItemEntry(typeId, requiredLevel, stock));
+            }
+            return shop.items.Count > 0 ? shop : null;
+        }
+    }
+
     /// <summary>永久捏脸 NPC 的扩展数据（蓝图里的 `permanent` 子对象）。</summary>
     internal sealed class PermanentDuckNpcData
     {
@@ -76,6 +124,9 @@ namespace BossRush
         public int[] positiveItemTypeIds;
         public int[] negativeItemTypeIds;
         public string[] positiveTags;
+
+        // —— 可选商店（旧蓝图缺省为 null，继续只提供社交与原有服务）——
+        public PermanentDuckNpcShopData shop;
 
         // —— 对话（按 category 分组，每组若干档）——
         private Dictionary<string, List<PermanentDuckNpcDialogueTier>> _dialogues;
@@ -249,6 +300,7 @@ namespace BossRush
 
             data._dialogues = ParseDialogues(node, blueprintId);
             data._marriedDialogues = ParseMarriedDialogues(node, blueprintId);
+            data.shop = PermanentDuckNpcShopData.Parse(node, blueprintId);
 
             return data;
         }

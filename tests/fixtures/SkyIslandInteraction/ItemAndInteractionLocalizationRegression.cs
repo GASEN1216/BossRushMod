@@ -11,7 +11,7 @@ internal partial class InteractableBase : Component
     protected string _overrideInteractNameKey;
     private string defaultInteractNameKey = "UI_Interact";
     protected Collider interactCollider;
-    protected Vector3 interactMarkerOffset;
+    internal Vector3 interactMarkerOffset;
     private float interactTime;
     internal float InteractTime { get { return interactTime; } }
     protected virtual void Awake() { }
@@ -29,14 +29,6 @@ namespace SodaCraft.Localizations
             string value;
             return key != null && LocalizationHelper.Texts.TryGetValue(key, out value) ? value : "*" + key + "*";
         }
-    }
-}
-
-namespace BossRush.Utils
-{
-    internal static class NPCInteractionGroupHelper
-    {
-        internal static void GetOrCreateGroupList(InteractableBase owner, string label) { }
     }
 }
 

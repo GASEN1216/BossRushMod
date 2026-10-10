@@ -115,6 +115,7 @@ namespace BossRush
                 NewWeaponIds.FrostSpearTypeId,
                 NewWeaponIds.ThunderRingTypeId,
                 BossRushItemIds.EmptyMagazineMine,
+                BossRushItemIds.RollCallLedger,
                 500053, 500054, 500055, 500056,
 
                 FactionFlagConfig.RANDOM_FLAG_TYPE_ID,

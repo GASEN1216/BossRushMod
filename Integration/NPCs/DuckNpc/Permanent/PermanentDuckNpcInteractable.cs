@@ -31,7 +31,7 @@ using BossRush.Utils;
 namespace BossRush
 {
     /// <summary>
-    /// 永久捏脸 NPC 的根交互（"聊天"）+ 子选项组（送礼 / 婚姻三件套）。
+    /// 永久捏脸 NPC 的根交互（"聊天"）+ 子选项组（送礼 / 可选商店 / 婚姻三件套）。
     /// </summary>
     internal sealed class PermanentDuckNpcInteractable : InteractableBase
     {
@@ -48,6 +48,7 @@ namespace BossRush
         private DuckNpcRuntimeMarker _marker;
 
         private NPCGiftInteractable _giftInteractable;
+        private NPCShopInteractable _shopInteractable;
         private NPCSpouseFollowInteractable _spouseFollowInteractable;
         private NPCDivorceInteractable _divorceInteractable;
         private NPCSpouseHomeInteractable _spouseHomeInteractable;
@@ -244,6 +245,15 @@ namespace BossRush
                     (NPCGiftInteractable component) => component.NpcId = npcId);
             }
 
+            INPCShopConfig shopConfig = AffinityManager.GetNPCConfig(npcId) as INPCShopConfig;
+            if (_shopInteractable == null && shopConfig != null && shopConfig.ShopEnabled)
+            {
+                // 即使尚未达到解锁等级也先装配：通用组件监听好感变化，当场解锁后即可显示。
+                _shopInteractable = NPCInteractionGroupHelper.AddSubInteractable(
+                    transform, "ShopOption", groupList,
+                    (NPCShopInteractable component) => component.NpcId = npcId);
+            }
+
             if (_spouseFollowInteractable == null)
             {
                 _spouseFollowInteractable = NPCInteractionGroupHelper.AddSubInteractable(
@@ -265,9 +275,6 @@ namespace BossRush
                     (NPCSpouseHomeInteractable component) => component.NpcId = npcId);
             }
 
-            // 注意：这里没有商店选项。PermanentDuckNpcAffinityConfig 不实现 INPCShopConfig，
-            // 即使挂了 NPCShopInteractable 也会自己 SetActive(false)。
-            // 将来要开服务时在这里加子选项，并让配置实现对应接口。
         }
 
         /// <summary>婚姻三件套的显隐。未婚时全部隐藏。</summary>

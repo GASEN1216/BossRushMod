@@ -53,6 +53,7 @@ namespace BossRush
             EnsureRegistered(NewWeaponIds.ThunderRingTypeId);
 
             EnsureRegistered(BossRushItemIds.EmptyMagazineMine);
+            EnsureRegistered(BossRushItemIds.RollCallLedger);
 
             initialized = true;
         }
@@ -121,6 +122,17 @@ namespace BossRush
                     "EmptyMagazineMine_Placeholder",
                     "BossRush_EmptyMagazineMine",
                     EmptyMagazineMineConfig.BaseName,
+                    isMelee: false,
+                    tag: "Totem");
+            }
+
+            if (typeId == BossRushItemIds.RollCallLedger)
+            {
+                return EnsureWeaponRegistered(
+                    BossRushItemIds.RollCallLedger,
+                    "RollCallLedger_Placeholder",
+                    "BossRush_RollCallLedger",
+                    RollCallLedgerConfig.BaseName,
                     isMelee: false,
                     tag: "Totem");
             }
@@ -265,6 +277,8 @@ namespace BossRush
                     return ThunderRingWeaponConfig.TryConfigure(clone, baseName);
                 if (typeId == BossRushItemIds.EmptyMagazineMine)
                     return EmptyMagazineMineWeaponConfig.TryConfigure(clone, baseName);
+                if (typeId == BossRushItemIds.RollCallLedger)
+                    return RollCallLedgerWeaponConfig.TryConfigure(clone, baseName);
             }
             catch (Exception e)
             {

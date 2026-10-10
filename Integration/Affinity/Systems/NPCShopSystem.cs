@@ -728,6 +728,21 @@ namespace BossRush
 
         private static void Cleanup()
         {
+            // owner 回收与打开失败也会到这里；先退订，避免官方 Close 回调重入。
+            isServiceActive = false;
+            UnregisterEvents();
+            try
+            {
+                var shopView = StockShopView.Instance;
+                if (currentShop != null && shopView != null && shopView.Target == currentShop && shopView.open)
+                {
+                    shopView.Close();
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[NPCShop] 关闭所属商店界面失败: " + e.Message);
+            }
             foreach (Item item in ownedDisplayItems)
             {
                 if (item == null || item.InInventory != null || item.PluggedIntoSlot != null) continue;

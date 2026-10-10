@@ -14,12 +14,49 @@
 
 using System;
 using System.Collections.Generic;
+using BossRush.Utils;
 using UnityEngine;
 
 namespace BossRush
 {
     internal sealed partial class SkyIslandWorldStory
     {
+        private NPCShopInteractable dockShop;
+        private List<InteractableBase> dockShopGroup;
+
+        /// <summary>浮舟缺席时仍可在渡口交易；与本人共用好感和商品配置，直接进入官方商店。</summary>
+        private void AttachDockShop()
+        {
+            if (disposed || dockShop != null) return;
+            InteractableBase device = session.FindDeviceInteractable("Search_A");
+            if (device == null) return;
+            try
+            {
+                dockShopGroup = NPCInteractionGroupHelper.PrepareGroupedInteractionOwner(device, "[SkyIslandShop]");
+                // 独立子选项不占故事面板的按钮预算；未解锁时由通用组件隐藏并监听好感变化。
+                dockShop = NPCInteractionGroupHelper.AddSubInteractable<NPCShopInteractable>(
+                    device.transform, "FuzhouShopOption", dockShopGroup,
+                    component => component.NpcId = "sky_fuzhou");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[SkyIslandShop] 渡口商店装配失败: " + e.Message);
+            }
+        }
+
+        private void DisposeDockShop()
+        {
+            NPCShopInteractable owned = dockShop;
+            dockShop = null;
+            if (dockShopGroup != null) dockShopGroup.Remove(owned);
+            dockShopGroup = null;
+            if (owned == null) return;
+            try { NPCShopSystem.CloseShopIfOwnedBy(owned.transform.parent); }
+            catch (Exception e) { ModBehaviour.DevLog("[SkyIslandShop] 渡口商店关闭失败: " + e.Message); }
+            owned.gameObject.SetActive(false);
+            UnityEngine.Object.Destroy(owned.gameObject);
+        }
+
         private string Repair()
         {
             SkyIslandServices services = session.Services;

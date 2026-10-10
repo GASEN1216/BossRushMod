@@ -39,6 +39,7 @@ SCRIPT_FIXTURES = (
 PROJECT_FIXTURES = {
     "SandstormChampionPattern": "SandstormChampionPattern.csproj",
     "EmptyMagazineMine": "EmptyMagazineMine.csproj",
+    "RollCallLedger": "RollCallLedger.csproj",
     "ModeHCombatRelease": "ModeHCombatRelease.csproj",
     "ReviewSeptember": "ReviewSeptember.csproj",
     "ModeHReviewFixes": "Review.csproj",

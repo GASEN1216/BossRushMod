@@ -118,5 +118,7 @@ namespace BossRush
         public const int AstralStaff = 500104;
         /// <summary>空仓地雷盒：官方 Boss 专属图腾；500104 已在本地台账先登记。</summary>
         public const int EmptyMagazineMine = 500105;
+        /// <summary>教导主任的点名册：轮流命中三名敌人触发集体追伤的图腾。</summary>
+        public const int RollCallLedger = 500106;
     }
 }

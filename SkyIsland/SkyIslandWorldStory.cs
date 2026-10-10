@@ -50,6 +50,7 @@ namespace BossRush
             pigeonCaptionAt = Time.time + PigeonCaptionDelay;
             // 头目 / 岛主 R1：首杀记手记 + 字幕（SkyIslandWorldStoryBosses.cs），Dispose 里退订。
             AttachBossEvents();
+            AttachDockShop();
         }
 
 
@@ -1164,6 +1165,7 @@ namespace BossRush
         public void Dispose()
         {
             disposed = true;
+            DisposeDockShop();
             DetachBossEvents();
             Hide();
             // reopen 捕获了 marker key、recorded 回调与说话人 Transform，会话结束后一并放开。

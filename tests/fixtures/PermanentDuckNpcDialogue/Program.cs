@@ -17,6 +17,19 @@ namespace UnityEngine
 
 namespace BossRush
 {
+    // 只提供配置器需要的身份/数据容器与全局等级上限，不模拟关系存档或商店界面。
+    internal sealed class DuckNpcBlueprint
+    {
+        internal string id;
+        internal PermanentDuckNpcData permanent;
+    }
+
+    internal static class AffinityManager
+    {
+        internal const int UNIFIED_MAX_POINTS = 10000;
+        internal const int UNIFIED_MAX_LEVEL = 10;
+    }
+
     /// <summary>语言可切：本回归的核心断言之一就是「切语言之后台词跟着变」。</summary>
     internal static class L10n
     {
@@ -259,6 +272,76 @@ internal static class Program
         Check(islanders == 6, "天空岛六位居民（含折翎与钟守）都要有 permanent 台词块，实得 " + islanders);
     }
 
+    private static void OptionalShopParsing()
+    {
+        PermanentDuckNpcData old = Parse(@"{ ""displayNameCn"": ""旧居民"" }");
+        var oldConfig = new PermanentDuckNpcAffinityConfig(new DuckNpcBlueprint { id = "old", permanent = old });
+        Check(old.shop == null && !oldConfig.ShopEnabled && oldConfig.GetShopItems().Count == 0,
+              "旧蓝图没有 shop 时不能意外开店");
+        Check(oldConfig.UnlocksByLevel.Count == 0, "未开店的居民不增加解锁提示");
+
+        var bad = Parse(@"{ ""shop"": { ""unlockLevel"": -1, ""items"": [{ ""typeId"": 123, ""maxStock"": 1 }] } }");
+        Check(bad.shop == null, "错误商店等级不能降格开放");
+        var empty = Parse(@"{ ""shop"": { ""unlockLevel"": 3, ""items"": [{ ""typeId"": 123, ""maxStock"": 0 }] } }");
+        Check(empty.shop == null, "无有效库存的商店应关闭");
+
+        var filtered = Parse(@"{ ""shop"": { ""unlockLevel"": 3, ""items"": [
+            { ""typeId"": 123, ""maxStock"": 1 },
+            { ""typeId"": 123, ""maxStock"": 2 },
+            { ""typeId"": 124, ""maxStock"": 1, ""requiredLevel"": 2 },
+            { ""typeId"": 125, ""maxStock"": 1, ""requiredLevel"": 11 }
+        ] } }");
+        Check(filtered.shop != null && filtered.shop.items.Count == 1,
+              "重复商品和早于商店解锁或越界的商品等级被跳过");
+        Check(filtered.shop.items[0].RequiredLevel == 3, "省略商品等级时继承商店等级");
+    }
+
+    private static void RealDataOptionalShops()
+    {
+        BossRushJsonValue root;
+        string error;
+        if (!BossRushJsonParser.TryParse(File.ReadAllText(Path.Combine("Assets", "Data", "DuckNpcs.json")), out root, out error))
+            throw new Exception(error);
+        List<BossRushJsonValue> rows;
+        if (!root.TryGetArray("npcs", out rows)) throw new Exception("missing npcs");
+        int shops = 0;
+        foreach (var row in rows)
+        {
+            string id;
+            if (!row.TryGetString("id", out id)) continue;
+            var data = PermanentDuckNpcData.Parse(row, id);
+            if (data == null) continue;
+            var config = new PermanentDuckNpcAffinityConfig(new DuckNpcBlueprint { id = id, permanent = data });
+            Check(config.NpcId == id, "商店继续使用原关系 ID: " + id);
+            if (id != "sky_fuzhou")
+            {
+                Check(!config.ShopEnabled && config.GetShopItems().Count == 0, id + " 未配置商店不能取得点名册库存");
+                continue;
+            }
+            shops++;
+            Check(config.ShopEnabled && config.ShopUnlockLevel == 3, "浮舟的商店在好感 3 级解锁");
+            var items = config.GetShopItems();
+            Check(items.Count == 1 && items[0].TypeID == BossRushItemIds.RollCallLedger,
+                  "浮舟只出售已登记的点名册 TypeID");
+            Check(items[0].RequiredLevel == 3 && items[0].MaxStock == 1,
+                  "点名册好感 3 级解锁且每次商店库存 1");
+            Check(items[0].BasePriceFactor == 1f && items[0].Possibility == 1f && config.GetDiscountForLevel(10) == 0f,
+                  "按 item.Value 原价确定供应，不隐含折扣或概率缺货");
+            items.Clear();
+            Check(config.GetShopItems().Count == 1, "消费者不能通过清空列表破坏蓝图库存");
+            L10n.Chinese = true;
+            Check(config.ShopName == "浮舟的航前杂货" && config.UnlocksByLevel[3][0] == "浮舟的航前杂货",
+                  "中文解锁条目只提供商店名，由好感 UI 统一添加解锁前缀");
+            L10n.Chinese = false;
+            Check(config.ShopName == "Fuzhou's Departure Supplies" && config.UnlocksByLevel[3][0] == "Fuzhou's Departure Supplies",
+                  "切英文后商店名和解锁条目即时更新，条目不重复添加解锁前缀");
+            Check(!string.IsNullOrEmpty(config.GetRelationshipDialogue("dialogue_greeting_married", 10)),
+                  "开店后原婚后台词仍可用");
+        }
+        L10n.Chinese = true;
+        Check(shops == 1, "真实蓝图必须有且仅有一名浮舟卖家");
+    }
+
     private static int Main()
     {
         try
@@ -269,6 +352,8 @@ internal static class Program
             TieredMarriedAndBubbles();
             MalformedLinesAreSkipped();
             RealDataSkyIslanders();
+            OptionalShopParsing();
+            RealDataOptionalShops();
         }
         catch (Exception e)
         {

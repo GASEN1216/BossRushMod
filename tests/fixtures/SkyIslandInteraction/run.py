@@ -81,6 +81,31 @@ def localization_sources():
     return "\n".join(chunks), [ROOT / path for path in paths]
 
 
+def dock_shop_sources():
+    """真实装配、Awake、事件门控与商店归属；仅场景引擎和外部服务由宿主替身提供。"""
+    paths = [ROOT / p for p in (
+        "Integration/Utils/NPCInteractionGroupHelper.cs",
+        "Integration/Affinity/Interactables/NPCShopInteractable.cs",
+        "Integration/Affinity/Interactables/NPCInteractableBase.cs",
+        "Integration/Affinity/Systems/NPCShopSystem.cs")]
+    group, shop, base, system = [p.read_text(encoding="utf-8-sig") for p in paths]
+    parts = ["namespace BossRush.Utils { internal static class NPCInteractionGroupHelper {\n"]
+    parts.extend(member(group, s) for s in (
+        "public static List<InteractableBase> PrepareGroupedInteractionOwner(",
+        "public static List<InteractableBase> GetOrCreateGroupList(",
+        "public static T AddSubInteractable<T>(", "private static InteractableBase FindGroupOwner("))
+    parts.append("}\n}\nnamespace BossRush {\n")
+    parts.append(member(shop, "public class NPCShopInteractable")
+                 .replace("public class NPCShopInteractable", "internal partial class NPCShopInteractable", 1))
+    parts.append("internal abstract partial class NPCInteractableBase {\n")
+    parts.extend(member(base, s) for s in ("public string NpcId", "protected override void Awake()"))
+    parts.append("}\ninternal static partial class NPCShopSystem {\n")
+    parts.extend(member(system, s) for s in ("public static bool IsShopUnlocked(",
+        "public static void CloseShopIfOwnedBy(", "private static bool IsCurrentShopOwnedBy("))
+    parts.append("}\n}\n")
+    return "\n".join(parts), paths
+
+
 def generate():
     sources = {}
     for name in ("SkyIslandStoryPresentation.cs", "SkyIslandWorldStory.cs", "SkyIslandWorldStoryServices.cs",
@@ -124,12 +149,15 @@ def generate():
     parts.extend(member(presentation, s) for s in panel_methods)
     parts.append(counted.group(0) + "\n" + "\n".join(look_fields) + "\n}\ninternal sealed partial class SkyIslandWorldStory {\n")
     parts.extend(member(world, s) for s in (
+        "internal SkyIslandWorldStory(", "public void Dispose()",
         "private string Refreshed(", "private void ServiceChoice(", "private string WithNextStep(",
         "private void Hint(", "private string NextStep()", "private void PuzzleChoices(",
         "private string PuzzleBody(", "internal void Hide()", "internal static string ResidentName("))
     parts.extend(member(world_services, s) for s in (
+        "private void AttachDockShop()", "private void DisposeDockShop()",
         "private string Repair()", "private string Heal()", "private string Meal()",
         "private void RepairChoice(", "private void HealChoice(", "private void MealChoice(", "private static string ServiceTag("))
+    parts.append("\n".join(re.findall(r"^        private [^;{}]*\bdockShop(?:Group)?\b[^;{}]*;", world_services, re.M)))
     parts.append("}\n" + member(service, "internal enum SkyIslandServiceReadiness") + "\ninternal sealed partial class SkyIslandServices {\n" + constants)
     parts.extend(member(service, s) for s in (
         "internal static int HealPriceFor(", "internal SkyIslandServiceReadiness HealReadiness(",
@@ -161,6 +189,8 @@ def generate():
                  + member(helper, "internal static bool UpdateOriginalHealthBarDisplayName(") + "\n}\n}\n")
     localization, localization_paths = localization_sources()
     parts.append(localization)
+    dock, dock_paths = dock_shop_sources()
+    parts.append(dock)
     OUT.mkdir(parents=True, exist_ok=True)
     generated = OUT / "Production.cs"
     generated.write_text("\n".join(parts), encoding="utf-8-sig")
@@ -171,9 +201,10 @@ def generate():
     hashes.update({p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in linked})
     hashes[helper_path.relative_to(ROOT).as_posix()] = hashlib.sha256(helper_path.read_bytes()).hexdigest()
     hashes.update({p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in localization_paths})
+    hashes.update({p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in dock_paths})
     (OUT / "source-hashes.json").write_text(json.dumps(hashes, indent=2), encoding="utf-8")
     return [generated, HERE / "Stubs.cs", HERE / "Host.cs", HERE / "Program.cs", HERE / "LocalizationRegression.cs",
-            HERE / "ItemAndInteractionLocalizationRegression.cs"] + linked
+            HERE / "ItemAndInteractionLocalizationRegression.cs", HERE / "DockShopRegression.cs"] + linked
 
 
 def main():

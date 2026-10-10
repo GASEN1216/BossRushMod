@@ -41,6 +41,7 @@ namespace BossRush
                 ItemFactory.RegisterConfigurator(NewWeaponIds.FrostSpearTypeId, ConfigureFrostSpear);
                 ItemFactory.RegisterConfigurator(NewWeaponIds.ThunderRingTypeId, ConfigureThunderRing);
                 ItemFactory.RegisterConfigurator(BossRushItemIds.EmptyMagazineMine, ConfigureEmptyMagazineMine);
+                ItemFactory.RegisterConfigurator(BossRushItemIds.RollCallLedger, ConfigureRollCallLedger);
             }
             catch (Exception e)
             {
@@ -76,6 +77,11 @@ namespace BossRush
         private static void ConfigureEmptyMagazineMine(Item itemPrefab)
         {
             EmptyMagazineMineWeaponConfig.TryConfigure(itemPrefab, EmptyMagazineMineConfig.BaseName);
+        }
+
+        private static void ConfigureRollCallLedger(Item itemPrefab)
+        {
+            RollCallLedgerWeaponConfig.TryConfigure(itemPrefab, RollCallLedgerConfig.BaseName);
         }
     }
 }

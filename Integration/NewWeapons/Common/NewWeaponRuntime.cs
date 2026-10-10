@@ -87,6 +87,7 @@ namespace BossRush
                 // 4. 订阅雷电戒指运行时事件
                 ThunderRingRuntime.Subscribe();
                 EmptyMagazineMineRuntime.Subscribe();
+                RollCallLedgerRuntime.Subscribe();
 
                 // 5. 订阅冰霜长矛命中表现（减速仍由 ItemSetting_MeleeWeapon 的官方 Cold buff 提供，
                 //    这里只负责在命中处点一圈霜环）
@@ -139,6 +140,7 @@ namespace BossRush
                 // 重置雷电戒指状态
                 ThunderRingRuntime.ResetStaticCaches();
                 EmptyMagazineMineRuntime.ResetStaticCaches();
+                RollCallLedgerRuntime.SetupForScene();
 
                 // 重置冰霜长矛的命中特效去重表（键是上一张图敌人的 InstanceID，留着没意义）
                 FrostSpearRuntime.ResetStaticCaches();
@@ -213,6 +215,8 @@ namespace BossRush
                 ThunderRingWeaponConfig.TryConfigure);
             TryConfigureLoaded(BossRushItemIds.EmptyMagazineMine, EmptyMagazineMineConfig.BaseName,
                 EmptyMagazineMineWeaponConfig.TryConfigure);
+            TryConfigureLoaded(BossRushItemIds.RollCallLedger, RollCallLedgerConfig.BaseName,
+                RollCallLedgerWeaponConfig.TryConfigure);
         }
 
         private static void TryConfigureLoaded(int typeId, string baseName, Func<Item, string, bool> configure)
@@ -247,6 +251,7 @@ namespace BossRush
                 EnergyShieldRuntime.Unsubscribe();
                 ThunderRingRuntime.Unsubscribe();
                 EmptyMagazineMineRuntime.Unsubscribe();
+                RollCallLedgerRuntime.Unsubscribe();
                 FrostSpearRuntime.Unsubscribe();
                 AstralStaffController.DestroyInstance();
 

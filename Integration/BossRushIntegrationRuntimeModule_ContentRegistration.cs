@@ -66,6 +66,7 @@ namespace BossRush
             NewWeaponPlaceholderRegistry.InjectLocalization();
             AstralStaffWeaponConfig.InjectLocalization();
             EmptyMagazineMineWeaponConfig.InjectLocalization();
+            RollCallLedgerWeaponConfig.InjectLocalization();
             _owner.InjectReverseScaleLocalizationFromRuntimeModule();
             LocalizationInjector.InjectWeddingBuildingLocalization();
             ModBehaviour.DevLog("[BossRush] extension localization injected");

@@ -919,6 +919,12 @@ echo(Integration\NewWeapons\EmptyMagazineMine\EmptyMagazineMineRules.cs
 echo(Integration\NewWeapons\EmptyMagazineMine\EmptyMagazineMineRuntime.cs
 echo(Integration\NewWeapons\EmptyMagazineMine\EmptyMagazineMineFx.cs
 echo(Integration\NewWeapons\EmptyMagazineMine\EmptyMagazineMineIcon.cs
+echo(Integration\NewWeapons\RollCallLedger\RollCallLedgerConfig.cs
+echo(Integration\NewWeapons\RollCallLedger\RollCallLedgerWeaponConfig.cs
+echo(Integration\NewWeapons\RollCallLedger\RollCallLedgerRules.cs
+echo(Integration\NewWeapons\RollCallLedger\RollCallLedgerRuntime.cs
+echo(Integration\NewWeapons\RollCallLedger\RollCallLedgerFx.cs
+echo(Integration\NewWeapons\RollCallLedger\RollCallLedgerIcon.cs
 echo(Integration\FlightTotem\FlightConfig.cs
 echo(Integration\FlightTotem\FlightTotemFactory.cs
 echo(Integration\FlightTotem\FlightTotemBootstrap.cs

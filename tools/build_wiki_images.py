@@ -90,6 +90,7 @@ ICON_FIGURES = [
     ("Items/codex_book.png",                     "icons/codex-book",     "鸭皇图鉴", "Duck King Codex"),
     ("Items/affix_forge_stone.png",              "icons/forge-stone",    "词缀熔石", "Affix Forge Stone"),
     ("Items/relic_egg.png",                      "icons/relic-egg",      "遗种蛋", "Relic Egg"),
+    ("Items/roll_call_ledger_icon.png",           "icons/eq-roll-call-ledger", "教导主任的点名册", "Headmaster's Roll-Call Ledger"),
 ]
 
 

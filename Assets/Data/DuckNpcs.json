@@ -424,6 +424,14 @@
       "permanent": {
         "displayNameCn": "浮舟",
         "displayNameEn": "Fuzhou",
+        "shop": {
+          "nameCn": "浮舟的航前杂货",
+          "nameEn": "Fuzhou's Departure Supplies",
+          "unlockLevel": 3,
+          "items": [
+            { "typeId": 500106, "requiredLevel": 3, "maxStock": 1 }
+          ]
+        },
         "dailyChatAffinity": 30,
         "positiveTags": [
           "Tool"
@@ -459,6 +467,10 @@
                 {
                   "cn": "绳结别松，船才能稳。手边缺浮木和残铜片。",
                   "en": "Keep the knots tight and the boat steady. I can use driftwood and brass scrap."
+                },
+                {
+                  "cn": "出航前总得把人点齐。我这儿有本旧点名册，熟到三级就卖给你。",
+                  "en": "Everyone must be accounted for before departure. Reach affinity level 3 with me and I can sell you an old roll-call ledger."
                 }
               ]
             },

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RollForward>Major</RollForward>
+    <LangVersion>7.3</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="Stubs.cs" />
+    <Compile Include="../../../Integration/NewWeapons/RollCallLedger/RollCallLedgerRules.cs" />
+    <Compile Include="../../../Integration/NewWeapons/RollCallLedger/RollCallLedgerRuntime.cs" />
+    <Compile Include="../../../Integration/NewWeapons/RollCallLedger/RollCallLedgerFx.cs" />
+    <Compile Include="../../../Integration/NewWeapons/RollCallLedger/RollCallLedgerConfig.cs" />
+    <Compile Include="../../../Config/ConfigItemIds.cs" />
+  </ItemGroup>
+</Project>

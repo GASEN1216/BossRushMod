@@ -68,6 +68,89 @@ internal static class Program
         NPCShopSystem.Sell(shop, sold, 5);
         Check(Cost.Cash == 15 && ItemUtilities.Returned == sold,
             "purification shop rejects selling and returns the sold item");
+        ShopLifecycle();
         Console.WriteLine("NPCShopPayment: PASS (" + assertions + " assertions)");
+    }
+
+    private static void ShopLifecycle()
+    {
+        StockShop.Entry entry;
+        StockShop shop = Shop(out entry);
+        var owner = new UnityEngine.Transform();
+        var childOwner = new UnityEngine.Transform { parent = owner };
+        NPCShopSystem.BeginTest(shop, NPCShopPaymentStrategy.Cash, 7, owner);
+        StockShopView view = StockShopView.Instance;
+        view.Target = shop;
+        view.open = view.InputBlocked = true;
+        ShopController controller = NPCShopSystem.ControllerForTest;
+        var display = new Item();
+        var inventoryItem = new Item { InInventory = new object() };
+        NPCShopSystem.OwnDisplayForTest(display);
+        NPCShopSystem.OwnDisplayForTest(inventoryItem);
+        view.Closing = delegate
+        {
+            Check(!NPCShopSystem.ActiveForTest && ManagedUIElement.CloseListeners == 0
+                && StockShop.PurchaseListeners == 0 && StockShop.SellListeners == 0,
+                "service and event listeners are released before closing the official view");
+            Check(!shop.Destroyed && !display.Destroyed,
+                "the view closes before its target and display items are destroyed");
+            NPCShopSystem.CloseShop();
+        };
+        NPCShopSystem.CloseShopIfOwnedBy(new UnityEngine.Transform());
+        Check(view.Closes == 0 && NPCShopSystem.ActiveForTest,
+            "disposing an unrelated owner preserves this active shop");
+        NPCShopSystem.CloseShopIfOwnedBy(childOwner);
+        Check(view.Closes == 1 && !view.open && !view.InputBlocked && controller.Farewells == 1,
+            "owner disposal closes the matching view once and releases input without reentry");
+        Check(shop == null && shop.Destroyed && shop.gameObject.Destroyed
+            && display == null && display.Destroyed && !inventoryItem.Destroyed,
+            "shop destruction cascades to components and only destroys detached display items");
+        NPCShopSystem.CloseShopIfOwnedBy(owner);
+        NPCShopSystem.ResetStaticCaches();
+        Check(view.Closes == 1, "repeated close and static reset remain idempotent");
+
+        shop = Shop(out entry);
+        NPCShopSystem.BeginTest(shop, NPCShopPaymentStrategy.Cash, 7, owner);
+        view = StockShopView.Instance;
+        view.Target = shop;
+        view.open = view.InputBlocked = true;
+        NPCShopSystem.ResetStaticCaches();
+        Check(view.Closes == 1 && !view.InputBlocked && !NPCShopSystem.ActiveForTest && shop == null,
+            "static reset closes the owned official view before destroying its shop");
+
+        shop = Shop(out entry);
+        NPCShopSystem.BeginTest(shop, NPCShopPaymentStrategy.Cash, 7, owner);
+        view = StockShopView.Instance;
+        view.Target = shop;
+        view.open = view.InputBlocked = true;
+        NPCShopSystem.CleanupForTest();
+        Check(view.Closes == 1 && !view.InputBlocked && !NPCShopSystem.ActiveForTest
+            && ManagedUIElement.CloseListeners == 0 && StockShop.PurchaseListeners == 0,
+            "direct cleanup also deactivates service and unsubscribes before closing");
+
+        shop = Shop(out entry);
+        NPCShopSystem.BeginTest(shop, NPCShopPaymentStrategy.Cash, 7, owner);
+        view = StockShopView.Instance;
+        var foreignShop = new StockShop();
+        view.Target = foreignShop;
+        view.open = view.InputBlocked = true;
+        NPCShopSystem.CloseShop();
+        Check(view.Closes == 0 && view.open && view.InputBlocked && !foreignShop.Destroyed && shop == null,
+            "cleanup leaves a view displaying another merchant open");
+
+        shop = Shop(out entry);
+        NPCShopSystem.BeginTest(shop, NPCShopPaymentStrategy.Cash, 7, owner);
+        view = StockShopView.Instance;
+        view.Target = shop;
+        view.open = false;
+        NPCShopSystem.CloseShop();
+        Check(view.Closes == 0 && shop == null, "an already closed matching view is not closed again");
+
+        shop = Shop(out entry);
+        NPCShopSystem.BeginTest(shop, NPCShopPaymentStrategy.Cash, 7, owner);
+        StockShopView.Instance = null;
+        NPCShopSystem.ResetStaticCaches();
+        Check(shop == null && !NPCShopSystem.ActiveForTest && ManagedUIElement.CloseListeners == 0,
+            "static reset also cleans up after the official UI scene has unloaded");
     }
 }

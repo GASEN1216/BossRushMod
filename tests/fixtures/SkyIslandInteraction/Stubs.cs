@@ -20,10 +20,12 @@ namespace UnityEngine
         public static void Destroy(Object obj)
         {
             if (ReferenceEquals(obj, null) || obj.Destroyed) return;
+            var lifecycle = obj as IFixtureLifecycle;
+            if (lifecycle != null) lifecycle.DestroyForFixture();
             obj.Destroyed = true;
             GameObject go = obj as GameObject;
             if (ReferenceEquals(go, null)) return;
-            foreach (Component c in go.Components) c.Destroyed = true;
+            foreach (Component c in go.Components) Destroy(c);
             foreach (Transform child in go.transform.Children.ToArray()) Destroy(child.gameObject);
         }
         public static void DestroyImmediate(Object obj) { Destroy(obj); }
@@ -34,12 +36,37 @@ namespace UnityEngine
         internal string name { get { return gameObject.name; } }
         internal Transform transform { get { return gameObject.transform; } }
         internal T GetComponent<T>() where T : Component { return gameObject.GetComponent<T>(); }
+        internal T[] GetComponents<T>() where T : Component { return gameObject.GetComponents<T>(); }
+        internal T GetComponentInParent<T>() where T : class
+        {
+            for (Transform current = transform; current != null; current = current.parent)
+                foreach (Component component in current.gameObject.Components)
+                    if (component is T && component != null) return component as T;
+            return null;
+        }
     }
     internal class GameObject : Object
     {
         internal string name;
         internal bool activeSelf = true;
-        internal void SetActive(bool value) { activeSelf = value; }
+        internal int layer;
+        internal bool activeInHierarchy { get { return activeSelf && (transform.parent == null || transform.parent.gameObject.activeInHierarchy); } }
+        internal void SetActive(bool value)
+        {
+            if (activeSelf == value) return;
+            activeSelf = value;
+            if (activeInHierarchy) ActivateForFixture();
+        }
+        private void ActivateForFixture()
+        {
+            foreach (Component component in Components.ToArray())
+            {
+                var lifecycle = component as IFixtureLifecycle;
+                if (lifecycle != null && component != null) lifecycle.EnableForFixture();
+            }
+            foreach (Transform child in transform.Children.ToArray())
+                if (child != null && child.gameObject.activeInHierarchy) child.gameObject.ActivateForFixture();
+        }
         internal Transform transform;
         internal readonly List<Component> Components = new List<Component>();
         internal GameObject(string name, params Type[] types)
@@ -48,13 +75,26 @@ namespace UnityEngine
             transform = new RectTransform { gameObject = this };
             Components.Add(transform);
         }
-        internal T AddComponent<T>() where T : Component, new()
-        { var c = new T { gameObject = this }; Components.Add(c); return c; }
+        internal T AddComponent<T>() where T : Component
+        {
+            var c = (T)Activator.CreateInstance(typeof(T), true);
+            c.gameObject = this;
+            Components.Add(c);
+            var lifecycle = c as IFixtureLifecycle;
+            if (activeInHierarchy && lifecycle != null) lifecycle.EnableForFixture();
+            return c;
+        }
         internal T GetComponent<T>() where T : Component
         {
             if (Destroyed) return null;
             foreach (var c in Components) if (c is T && !c.Destroyed) return (T)c;
             return null;
+        }
+        internal T[] GetComponents<T>() where T : Component
+        {
+            var found = new List<T>();
+            foreach (Component component in Components) if (component is T && component != null) found.Add((T)component);
+            return found.ToArray();
         }
     }
     internal class Transform : Component
@@ -62,10 +102,14 @@ namespace UnityEngine
         internal readonly List<Transform> Children = new List<Transform>();
         internal Transform parent;
         internal Vector3 position, localPosition, forward = Vector3.forward;
+        internal Quaternion localRotation;
+        internal Vector3 localScale;
         internal void SetParent(Transform value, bool worldPositionStays)
         { if (parent != null) parent.Children.Remove(this); parent = value; if (value != null) value.Children.Add(this); }
         internal Transform Find(string name)
         { foreach (var child in Children) if (child != null && child.name == name) return child; return null; }
+        internal bool IsChildOf(Transform ancestor)
+        { for (Transform current = this; current != null; current = current.parent) if (ReferenceEquals(current, ancestor)) return true; return false; }
     }
     internal class RectTransform : Transform
     {
@@ -87,6 +131,7 @@ namespace UnityEngine
         internal Vector3(float x, float y, float z) { this.x = x; this.y = y; this.z = z; }
         internal float sqrMagnitude { get { return x * x + y * y + z * z; } }
         internal static Vector3 zero { get { return new Vector3(); } }
+        internal static Vector3 one { get { return new Vector3(1, 1, 1); } }
         internal static Vector3 forward { get { return new Vector3(0, 0, 1); } }
         internal static Vector3 up { get { return new Vector3(0, 1, 0); } }
         public static Vector3 operator *(Vector3 a, float f) { return new Vector3(a.x * f, a.y * f, a.z * f); }
@@ -119,6 +164,9 @@ namespace UnityEngine
     internal static class Time { internal static float time; }
     internal static class Debug { internal static void LogWarning(string value) { } internal static void Log(string value) { } }
     internal class Collider : Component { internal bool enabled; }
+    internal class BoxCollider : Collider { internal bool isTrigger; internal Vector3 size; }
+    internal struct Quaternion { internal static Quaternion identity { get { return new Quaternion(); } } }
+    internal static class LayerMask { internal static int NameToLayer(string name) { return 7; } }
     internal class LineRenderer : Component
     {
         private Vector3[] vertices = new Vector3[0];
@@ -296,7 +344,12 @@ namespace BossRush
         { Closes++; LastClosed = root; UnityEngine.Object.Destroy(root); }
     }
     internal static class SkyIslandUiArt { internal static Sprite GetPanelBackground(Sprite banner) { return banner; } }
-    internal static class SkyIslandNoteBridge { internal static int Unlocks; internal static void Unlock(string key) { Unlocks++; } }
+    internal static class SkyIslandNoteBridge
+    {
+        internal static int Unlocks;
+        internal static void Unlock(string key) { Unlocks++; }
+        internal static void EnsureRegistered(SkyIslandStoryData data) { }
+    }
     internal static class ModBehaviour { internal static void DevLog(string text) { } }
     internal enum SkyIslandLootTier { Supply, Voyage, Starworks }
     internal static class SkyIslandLetters { internal static int CollectedCount(SkyIslandStoryData data) { return 0; } }

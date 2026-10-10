@@ -143,6 +143,15 @@ namespace BossRush
         /// </summary>
         internal static void Despawn(CharacterMainControl npc)
         {
+            // 先关闭此 NPC 持有的商店，再销毁官方角色；关系迁居也沿用此收口。
+            try
+            {
+                if (npc != null) NPCShopSystem.CloseShopIfOwnedBy(npc.transform);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(LogPrefix + " [WARNING] 关闭 NPC 商店失败: " + e.Message);
+            }
             DuckNpcFactory.Despawn(npc);
         }
     }

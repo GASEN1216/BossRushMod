@@ -26,6 +26,7 @@ internal static class Program
         PanelLooks();
         LocalizationRegression.Run(Check);
         ItemAndInteractionLocalizationRegression.Run(Check);
+        DockShopRegression.Run(Check);
         Check(HUDManager.Tokens.Count == 0 && ZombieModeUIHelper.Leases == 0, "all modal and HUD owners released");
         Console.WriteLine("PASS SkyIslandInteraction assertions=" + checks + " (production control flow; Unity, physics and audio substituted)");
     }

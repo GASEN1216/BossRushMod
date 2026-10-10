@@ -12,6 +12,8 @@ Three regular NPC companions have their own services and personality, alongside 
 
 The Qinglan Archipelago has six residents: Qinghe, Weibai, Fuzhou, Miantai, Zheling and the Silent Bell Keeper. All six support daily chat, gifts, affinity and marriage, using the existing level-10 affinity, Wedding Chapel, Diamond Ring and single-spouse rules. See Sky Islands · Qinglan Archipelago for their services, gift preferences, visits and quests. After a challenge, Zheling rests for that raid; you can continue building the relationship on your next visit. The locations below describe Dingdang, Yu Zhi and Awen.
 
+At affinity Lv.3, Fuzhou at Cloudrise Dock opens Fuzhou's Departure Supplies, selling the exclusive Headmaster's Roll-Call Ledger totem with one in stock for 20,000. You can still trade with Fuzhou after marriage. The dock workbench offers the same shop with the same affinity requirement.
+
 ## Affinity System
 
 Dingdang and Yu Zhi have a full Affinity system (Awen doesn't — he's all business):

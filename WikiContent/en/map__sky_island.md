@@ -149,6 +149,8 @@ Four of them offer a practical service; the other two are story branches:
 - **Qinghe (Windchime Market; her garden is on the Green Terraces) · Homecoming meal** — once you've returned her planting record, ask for one free meal per raid: higher maximum health and movement speed for that run. The health the raised cap adds is filled in, but actual wounds still need Miantai. If Qinghe herself is away from the island (after marrying her, for instance), the **terrace garden plot** serves the same meal.
 - **Zheling / the Silent Bell Keeper** — story branches: peace or a fight.
 
+At affinity Lv.3, Fuzhou opens Fuzhou's Departure Supplies, selling the exclusive Headmaster's Roll-Call Ledger totem with one in stock for 20,000. Trade with Fuzhou or select Shop at the Cloudrise Dock workbench; both require affinity Lv.3 with Fuzhou. The workbench remains available when he leaves the island after marriage or is otherwise absent.
+
 ### Lane contracts
 
 Take a contract from Weibai or the Windchime Market noticeboard:

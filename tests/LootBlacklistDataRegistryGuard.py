@@ -15,6 +15,7 @@ COMPILE = Path("compile_official.bat")
 # 新增常量从真实生产定义解析，防止守卫里的数字副本掩盖源码与 JSON 漂移。
 CONSTANT_SOURCES = {
     "BossRushItemIds.EmptyMagazineMine": Path("Config/ConfigItemIds.cs"),
+    "BossRushItemIds.RollCallLedger": Path("Config/ConfigItemIds.cs"),
 }
 
 CONSTANT_VALUES = {

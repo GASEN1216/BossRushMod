@@ -8,6 +8,7 @@ from pathlib import Path
 import json
 import re
 import sys
+from cs_source_util import clean_source
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -71,10 +72,6 @@ def read(path: Path) -> str:
     return path.read_text(encoding="utf-8-sig")
 
 
-BLOCK_COMMENT_RE = re.compile(r"/\*.*?\*/", re.S)
-LINE_COMMENT_RE = re.compile(r"//[^\n]*")
-
-
 def code_only(text: str) -> str:
     """去掉注释后的代码。
 
@@ -82,7 +79,7 @@ def code_only(text: str) -> str:
     （例如 DuckNpcMovement 的文件头详细写了为什么不用 AICharacterController）。
     对原文做正则会把这些说明本身判成违规，所以禁令类检查一律走 code_only()。
     """
-    return LINE_COMMENT_RE.sub("", BLOCK_COMMENT_RE.sub("", text))
+    return clean_source(text)
 
 
 def main() -> int:
@@ -292,13 +289,34 @@ def main() -> int:
         errors.append("剧情里程碑必须包含 10 级")
 
     # ------------------------------------------------------------------
-    # 13. 永久 NPC：配置不得实现 INPCShopConfig（本版服务只留接口不显示）
+    # 13. 永久 NPC：可选商店沿用通用接口、好感门控与同一 NPC id。
     # ------------------------------------------------------------------
     perm_config_code = code_only(read(PERM_CONFIG))
     if "INPCAffinityConfig" not in perm_config_code:
         errors.append("PermanentDuckNpcAffinityConfig 必须实现 INPCAffinityConfig")
     if "INPCRelationshipDialogueConfig" not in perm_config_code:
         errors.append("PermanentDuckNpcAffinityConfig 必须实现 INPCRelationshipDialogueConfig（婚后台词）")
+    config_header = re.search(r"class\s+PermanentDuckNpcAffinityConfig\s*:\s*([^{}]+)\{", perm_config_code)
+    if not config_header or not re.search(r"\bINPCShopConfig\b", config_header.group(1)):
+        errors.append("PermanentDuckNpcAffinityConfig 必须实现 INPCShopConfig（可选蓝图商店）")
+    config_compact = re.sub(r"\s+", "", perm_config_code)
+    if "publicboolShopEnabled{get{return_data!=null&&_data.shop!=null&&_data.shop.items.Count>0;}}" not in config_compact:
+        errors.append("永久 NPC 的 ShopEnabled 必须以蓝图有效库存为门控，旧蓝图不能自动开店")
+    interact_compact = re.sub(r"\s+", "", perm_interact_code)
+    group_method = re.search(r"privatevoidEnsureGroupedInteractionOptions\(\)\{(.*?)internalvoidRefreshMarriageOptionVisibility", interact_compact)
+    shop_branch = ('if(_shopInteractable==null&&shopConfig!=null&&shopConfig.ShopEnabled){'
+                   '_shopInteractable=NPCInteractionGroupHelper.AddSubInteractable('
+                   'transform,"ShopOption",groupList,(NPCShopInteractablecomponent)=>component.NpcId=npcId);}')
+    if not group_method or shop_branch not in group_method.group(1):
+        errors.append("永久 NPC 交互组必须按 ShopEnabled 幂等挂载 NPCShopInteractable，并在激活前设置原 npcId")
+    spawner_compact = re.sub(r"\s+", "", code_only(read(DUCK_DIR / "DuckNpcSpawner.cs")))
+    close_shop = spawner_compact.find("NPCShopSystem.CloseShopIfOwnedBy(npc.transform);")
+    despawn = spawner_compact.find("DuckNpcFactory.Despawn(npc);")
+    if close_shop < 0 or despawn < close_shop:
+        errors.append("DuckNpcSpawner.Despawn 必须在销毁角色前关闭该实例持有的商店")
+    data_compact = re.sub(r"\s+", "", code_only(read(PERM_DATA)))
+    if "data.shop=PermanentDuckNpcShopData.Parse(node,blueprintId);" not in data_compact:
+        errors.append("PermanentDuckNpcData.Parse 必须接通可选商店解析")
 
     # ------------------------------------------------------------------
     # 14. 婚姻系统 6 处泛化分支
@@ -415,8 +433,14 @@ def main() -> int:
                     if not node.get("en"):
                         unpaired.append(node.get("cn", ""))
                     return
+                # 可选商店的标题使用 nameCn/nameEn，与台词 cn/en 是两种双语形态。
+                # 必须检查成对非空，不能直接把整段 shop 排除出本地化校验。
+                if "nameCn" in node or "nameEn" in node:
+                    if any(not isinstance(node.get(key), str) or not node[key].strip()
+                           for key in ("nameCn", "nameEn")):
+                        errors.append("天空岛居民 " + npc_id + " 的商店名必须同时提供非空 nameCn/nameEn")
                 for key, value in node.items():
-                    if key == "displayNameCn":
+                    if key in ("displayNameCn", "nameCn", "nameEn"):
                         continue
                     scan(value)
 

@@ -315,6 +315,12 @@
       "src": "/images/icons/relic-egg.webp",
       "zh": "遗种蛋",
       "en": "Relic Egg"
+    },
+    {
+      "key": "eq-roll-call-ledger",
+      "src": "/images/icons/eq-roll-call-ledger.webp",
+      "zh": "教导主任的点名册",
+      "en": "Headmaster's Roll-Call Ledger"
     }
   ],
   "ui": [

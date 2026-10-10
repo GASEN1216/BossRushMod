@@ -2,6 +2,17 @@
 
 更早记录见 `archive/`；月度归档索引保留在本文件正文。
 
+## 2026-10-10 点名册获取与商店收口（COMPAT，L1/L2）
+
+- CR-2026-10-10-001，P1 / Fixed：先前把唯一获取途径接到普通玩家无法正常遇到的小满示例蓝图。商品迁至天空岛浮舟 sky_fuzhou，好感 3 级、售价 20000；Search_A 渡口工台追加同配置商店，兜底婚后离岛和居民生成失败。数据回归 666 条、婚姻 949 条、交互 949 条通过；删除装配/清理接线与错误 NPC ID 等 6 个隔离探针准确转红。
+- CR-2026-10-10-002，P2 / Fixed：NPCShopSystem.Cleanup 销毁店铺对象却未关闭官方 StockShopView，owner 回收或 runtime 清理后仍可能残留窗口与输入屏蔽。现先停服务、退订，再仅关闭显示当前店且仍打开的 View；NPCShopPayment 18 条通过，旧 Cleanup 与删 Target 归属检查均在隔离副本转红。
+
+743 项守卫、Windows 正式编译和 73 包部署哈希通过；13 个关键部署文件另行匹配。L3 待 RC-FZ-01～05，见[浮舟商店修正报告](docs/reports/testing/2026-10-10-点名册浮舟商店修正.md)。
+
+## 2026-10-09 小满商店升级提示（COMPAT，L1/L2）
+
+- CR-2026-10-09-001，P2 / Fixed：PermanentDuckNpcAffinityConfig.UnlocksByLevel 与 AffinityUIManager 都添加“解锁”/“Unlocked”前缀，导致好感升级横幅重复显示。配置改为仅返回 ShopName；中英文完整名称回归先确认旧实现失败，修正后 PermanentDuckNpcDialogue 666 checks 通过。正式编译部署完成；真实横幅与婚后购买待 RC-05 实机检查。见[点名册交付报告](docs/reports/testing/2026-10-09-点名册与小满商店交付.md)。
+
 ## 2026-10-08 噬魂挽歌内部名称显示（COMPAT，L1/L2）
 
 - CR-2026-10-08-021，P1 / Fixed：500044 专属包走 EquipmentFactory，旧装配只登记 ItemFactory 与实例恢复；文本位于配置末段，未接统一启动/语言刷新。首次查看可能漏出 PhantomScythe_Melee_Item，切语言保留旧文本。补装备配置器 TypeID 过滤、统一文本注入及实际 raw key/历史别名，先命名再配置组件；保留编号和资源身份。实际包字段已读回；28 项生产入口/文本断言、4 个行为与 1 个登记守卫反向探针通过。见[文本修复报告](docs/reports/testing/2026-10-08-噬魂挽歌内部名称显示修复.md)。

@@ -44,8 +44,10 @@ namespace BossRush
     {
         internal bool IsReady = true, HasPlantingDelivered = true;
         internal SkyIslandServices Services;
+        internal InteractableBase Device;
+        internal InteractableBase FindDeviceInteractable(string key) { return key == "Search_A" ? Device : null; }
     }
-    internal sealed class TestStory
+    internal sealed class SkyIslandStoryService
     {
         internal readonly SkyIslandStoryData Current = SkyIslandStoryRules.CreateDefault();
         internal bool AcceptRecord;
@@ -60,19 +62,28 @@ namespace BossRush
         }
     }
     internal sealed class TestDialogue { internal void Dispose() { } }
-    internal sealed class SkyIslandFieldcraft { internal SkyIslandGnats Gnats; }
+    internal sealed class SkyIslandFieldcraft { internal SkyIslandGnats Gnats; internal void Dispose() { } }
 
     internal sealed partial class SkyIslandWorldStory
     {
         internal readonly SkyIslandSession session;
-        internal readonly TestStory story = new TestStory();
+        internal readonly SkyIslandStoryService story;
         internal readonly SkyIslandStoryPresentation presentation = new SkyIslandStoryPresentation();
         private readonly SkyIslandPuzzleState puzzles = new SkyIslandPuzzleState();
         private readonly List<string> hiddenHints = new List<string>();
         private Action reopen;
         private TestDialogue dialogue;
         private SkyIslandFieldcraft fieldcraft;
-        internal SkyIslandWorldStory(SkyIslandSession session) { this.session = session; }
+        private readonly List<GameObject> feedback = new List<GameObject>();
+        private readonly GameObject root;
+        private bool disposed;
+        private float pigeonCaptionAt;
+        private const float PigeonCaptionDelay = 8f;
+        internal SkyIslandWorldStory(SkyIslandSession session) : this(session, new SkyIslandStoryService(), null) { }
+        private void AttachBossEvents() { }
+        private void DetachBossEvents() { }
+        private void ReleasePigeon() { }
+        internal void AttachDockShopForTest() { AttachDockShop(); }
         private string OverlookGuarded(string key) { return null; }
         internal void BindAudioForTest(SkyIslandGnats gnats) { fieldcraft = new SkyIslandFieldcraft { Gnats = gnats }; }
         internal void ShowHealForTest()

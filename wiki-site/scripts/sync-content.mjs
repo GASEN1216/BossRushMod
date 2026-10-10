@@ -70,6 +70,9 @@ for (const group of Object.values(IMAGES)) {
  *   'section-end'   —— 插在该小节末尾、下一个标题之前（适合总结性的画廊）
  */
 const IMAGE_PLACEMENT = {
+  equipment__roll_call_ledger: [
+    { at: 0, mode: 'section-end', kind: 'icon', keys: ['eq-roll-call-ledger'] },
+  ],
   system__codex: [
     // [2] = 「怎么打开」：讲在商店买书，旁边就给出书长什么样
     { at: 2, mode: 'section-end', kind: 'icon', keys: ['codex-book'] },

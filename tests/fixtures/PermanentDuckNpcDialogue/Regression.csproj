@@ -8,5 +8,13 @@
     <Compile Include="../../../Utilities/SimpleJsonHelper.cs" Link="Production/SimpleJsonHelper.cs" />
     <Compile Include="../../../Common/Data/BossRushJsonValue.cs" Link="Production/BossRushJsonValue.cs" />
     <Compile Include="../../../Integration/NPCs/DuckNpc/Permanent/PermanentDuckNpcData.cs" Link="Production/PermanentDuckNpcData.cs" />
+    <Compile Include="../../../Integration/Affinity/Core/INPCShopConfig.cs" Link="Production/INPCShopConfig.cs" />
+    <Compile Include="../../../Integration/Affinity/INPCAffinityConfig.cs" Link="Production/INPCAffinityConfig.cs" />
+    <Compile Include="../../../Integration/Affinity/Core/INPCGiftConfig.cs" Link="Production/INPCGiftConfig.cs" />
+    <Compile Include="../../../Integration/Affinity/Core/INPCDialogueConfig.cs" Link="Production/INPCDialogueConfig.cs" />
+    <Compile Include="../../../Integration/Affinity/Core/INPCRelationshipDialogueConfig.cs" Link="Production/INPCRelationshipDialogueConfig.cs" />
+    <Compile Include="../../../Integration/Affinity/Core/INPCGiftContainerConfig.cs" Link="Production/INPCGiftContainerConfig.cs" />
+    <Compile Include="../../../Integration/NPCs/DuckNpc/Permanent/PermanentDuckNpcAffinityConfig.cs" Link="Production/PermanentDuckNpcAffinityConfig.cs" />
+    <Compile Include="../../../Config/ConfigItemIds.cs" Link="Production/ConfigItemIds.cs" />
   </ItemGroup>
 </Project>

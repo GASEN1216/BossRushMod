@@ -315,6 +315,16 @@ export const CATEGORIES: WikiCategory[] = [
         tagEn: 'Melee',
       },
       {
+        path: '/equipment/roll-call-ledger',
+        zh: '教导主任的点名册',
+        en: "Headmaster's Roll-Call Ledger",
+        icon: 'eq-roll-call-ledger',
+        blurbZh: '轮流点名三名敌人，全员到齐一起追伤',
+        blurbEn: 'Call three different enemies to trigger a group strike',
+        tagZh: '图腾',
+        tagEn: 'Totem',
+      },
+      {
         path: '/equipment/empty-magazine-mine',
         zh: '空仓地雷盒',
         en: 'Empty-Mag Mine Box',

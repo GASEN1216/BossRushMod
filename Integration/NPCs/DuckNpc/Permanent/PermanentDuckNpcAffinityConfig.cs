@@ -11,16 +11,16 @@
 //   这里每个实例绑一条蓝图，所有文本从 PermanentDuckNpcData（即 JSON）来。
 //   新增第 N 只永久 NPC 的增量仍然是「往 JSON 加一条」。
 //
-//   实现的接口（与羽织一致，唯独不实现 INPCShopConfig）：
+//   实现的接口：
 //     INPCAffinityConfig            —— 唯一必须
 //     INPCGiftConfig                —— 送礼反应
 //     INPCDialogueConfig            —— 分级对话
 //     INPCRelationshipDialogueConfig—— 婚后台词
 //     INPCGiftContainerConfig       —— 礼物容器 UI 文案
+//     INPCShopConfig                —— 蓝图可选商店
 //
-//   **故意不实现 INPCShopConfig**：不实现时 NPCShopSystem.IsShopUnlocked 直接返回 false，
-//   NPCShopInteractable 自动 SetActive(false) —— 正好满足「专属服务留接口但先不显示」。
-//   将来要开商店，让本类补实现 INPCShopConfig 即可，蓝图加对应数据。
+//   只有 permanent.shop 含有效商品时启用商店；未配置的旧蓝图保持关闭。
+//   商店解锁、现金购买与婚后交易沿用 NPCShopSystem，不新增关系或库存存档。
 // ============================================================================
 
 using System;
@@ -37,7 +37,8 @@ namespace BossRush
         INPCGiftConfig,
         INPCDialogueConfig,
         INPCRelationshipDialogueConfig,
-        INPCGiftContainerConfig
+        INPCGiftContainerConfig,
+        INPCShopConfig
     {
         private readonly DuckNpcBlueprint _blueprint;
         private readonly PermanentDuckNpcData _data;
@@ -128,13 +129,17 @@ namespace BossRush
                 {
                     _unlocksByLevel = new Dictionary<int, string[]>();
                 }
+                if (ShopEnabled)
+                {
+                    // 升级横幅取用时解析语言，避免蓝图首次载入后把文案锁在旧语言。
+                    _unlocksByLevel[ShopUnlockLevel] = new[] { ShopName };
+                }
                 return _unlocksByLevel;
             }
         }
 
         /// <summary>
-        /// 折扣表。本版永久 NPC 不开商店/服务，因此为空。
-        /// 将来接服务时从蓝图读。
+        /// 永久 NPC 商店按物品原价出售，暂不附加好感折扣。
         /// </summary>
         public Dictionary<int, float> DiscountsByLevel
         {
@@ -147,6 +152,37 @@ namespace BossRush
                 return _discountsByLevel;
             }
         }
+
+        // ====================================================================
+        // INPCShopConfig：未配置商店的蓝图保持关闭，婚前婚后共用同一配置。
+        // ====================================================================
+
+        public bool ShopEnabled
+        {
+            get { return _data != null && _data.shop != null && _data.shop.items.Count > 0; }
+        }
+
+        public int ShopUnlockLevel
+        {
+            get { return ShopEnabled ? _data.shop.unlockLevel : int.MaxValue; }
+        }
+
+        public string ShopName
+        {
+            get
+            {
+                if (ShopEnabled && !string.IsNullOrEmpty(_data.shop.nameCn))
+                    return L10n.T(_data.shop.nameCn, _data.shop.nameEn);
+                return DisplayName + L10n.T("的商店", "'s Shop");
+            }
+        }
+
+        public List<ShopItemEntry> GetShopItems()
+        {
+            return ShopEnabled ? new List<ShopItemEntry>(_data.shop.items) : new List<ShopItemEntry>();
+        }
+
+        public float GetDiscountForLevel(int level) { return 0f; }
 
         // ====================================================================
         // INPCGiftConfig
