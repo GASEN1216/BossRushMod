@@ -7,3 +7,5 @@ FactoryResourceLoading 的真实协程通过递归驱动器测试：切换 scene
 入口：`python tools/run_runtime_regressions.py --filter ResourceProduction`。
 
 四建筑补充：逐字抽取 BuildingModelHelper.TryInstantiateBundle，验证缺文件、缺指定 prefab、成功转交、实例激活异常后的实例与包清理；Unity 替身不验证实际渲染或原生内存释放。
+
+2026-10-10：共享贴图复制 API 由 `tests/fixtures/TextureCopyStubs.cs` 补齐显式替身。ResourceProduction 执行生产 CloneTexture，覆盖不支持、复制参数、成功归属与异常释放；替身不验证真实 GPU 像素。

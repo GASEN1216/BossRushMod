@@ -95,7 +95,8 @@ namespace BossRush
 
             if (typeId == NewWeaponIds.EnergyShieldTypeId ||
                 typeId == NewWeaponIds.ThunderRingTypeId ||
-                typeId == BossRushItemIds.EmptyMagazineMine)
+                typeId == BossRushItemIds.EmptyMagazineMine ||
+                typeId == BossRushItemIds.ReloadMetronome)
             {
                 value = TotemValue;
                 isMelee = false;

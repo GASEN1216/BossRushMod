@@ -20,6 +20,7 @@ namespace BossRush
             ThunderRingWeaponConfig.RegisterEquipmentConfigurator();
             EmptyMagazineMineWeaponConfig.RegisterEquipmentConfigurator();
             RollCallLedgerWeaponConfig.RegisterEquipmentConfigurator();
+            ReloadMetronomeWeaponConfig.RegisterEquipmentConfigurator();
             PhantomWitchScytheWeaponConfig.RegisterEquipmentConfigurator();
         }
     }

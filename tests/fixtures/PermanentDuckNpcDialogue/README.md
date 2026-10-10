@@ -43,3 +43,5 @@ python tools/run_runtime_regressions.py --filter PermanentDuckNpc
 不证明译文读起来通顺、不出框、语气对——那要切英文进游戏看
 （`GameplayCoverage.json` 的 `M_SKY_ISLAND_09`，本轮追加「找晴禾 / 苇白聊天、送礼、婚后对白」）。
 商店断言验证生产解析与配置，不模拟官方 `StockShopView`、扣款或实机交互可见性；这些仍需游戏内验证。
+
+合并回归覆盖浮舟的点名册（500106、好感 3 级）与钟守的节拍器（500107、好感 5 级）共存，校验库存隔离、解锁提示和即时中英切换；贝壳结算仍由 ReloadMetronome 夹具覆盖。

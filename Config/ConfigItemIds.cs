@@ -120,5 +120,7 @@ namespace BossRush
         public const int EmptyMagazineMine = 500105;
         /// <summary>教导主任的点名册：轮流命中三名敌人触发集体追伤的图腾。</summary>
         public const int RollCallLedger = 500106;
+        /// <summary>钟守节拍器：无声钟守出售的整匣换弹节奏图腾。</summary>
+        public const int ReloadMetronome = 500107;
     }
 }

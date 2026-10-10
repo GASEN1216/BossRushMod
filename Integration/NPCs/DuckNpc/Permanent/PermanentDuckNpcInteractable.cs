@@ -245,6 +245,13 @@ namespace BossRush
                     (NPCGiftInteractable component) => component.NpcId = npcId);
             }
 
+            if (_shopInteractable == null && npcId == ReloadMetronomeConfig.VendorNpcId)
+            {
+                _shopInteractable = NPCInteractionGroupHelper.AddSubInteractable(
+                    transform, "ShopOption", groupList,
+                    (ReloadMetronomeShopInteractable component) => component.NpcId = npcId);
+            }
+
             INPCShopConfig shopConfig = AffinityManager.GetNPCConfig(npcId) as INPCShopConfig;
             if (_shopInteractable == null && shopConfig != null && shopConfig.ShopEnabled)
             {

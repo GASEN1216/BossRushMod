@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RollForward>Major</RollForward>
+    <LangVersion>7.3</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="Stubs.cs" />
+    <Compile Include="../../../Integration/NewWeapons/ReloadMetronome/ReloadMetronomeConfig.cs" />
+    <Compile Include="../../../Integration/NewWeapons/ReloadMetronome/ReloadMetronomeRules.cs" />
+    <Compile Include="../../../Integration/NewWeapons/ReloadMetronome/ReloadMetronomeRuntime.cs" />
+    <Compile Include="../../../Integration/NewWeapons/ReloadMetronome/ReloadMetronomePatches.cs" />
+    <Compile Include="../../../Integration/NewWeapons/ReloadMetronome/ReloadMetronomeShop.cs" />
+    <Compile Include="../../../Config/ConfigItemIds.cs" />
+  </ItemGroup>
+</Project>

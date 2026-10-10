@@ -76,6 +76,7 @@
     "Assets/ui/modeg_presentation",
     "Assets/ui/modeh_presentation",
     "Assets/ui/production_icons",
+    "Assets/ui/reload_metronome",
     "Assets/ui/skyisland_fx"
   ],
   "targetBundlePolicy": {

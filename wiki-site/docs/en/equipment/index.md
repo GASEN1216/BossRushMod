@@ -1,6 +1,8 @@
 # Equipment Overview
 
-There are **39 obtainable custom equipment pieces** (sets counted piece by piece): 22 regular pieces plus 17 Sky Islands wearable pieces. Regular gear comes from custom Bosses, extra official Boss drops and NPC shops; island gear mainly comes from island lords and chiefs, and the prelude Warden can also drop a Galebreaker Hood.
+- **Bell Keeper's Metronome**: Trade 20 seashells from your backpack with the Silent Bell Keeper at affinity level 5. Time a second reload press to finish early. Available at home after marriage.
+
+There are **40 obtainable custom equipment pieces** (sets counted piece by piece): 23 regular pieces plus 17 Sky Islands wearable pieces. Regular gear comes from custom Bosses, extra official Boss drops and NPC shops; island gear mainly comes from island lords and chiefs, and the prelude Warden can also drop a Galebreaker Hood.
 
 The 5 new weapons from v2.2.0 and the Frost and Thunder sets from the same batch are **all obtainable now** (see below): each weapon drops at 20% from one official boss (vanilla maps included), or can be bought from Dingdang's Shop at Affinity 5.
 

@@ -116,6 +116,7 @@ namespace BossRush
                 NewWeaponIds.ThunderRingTypeId,
                 BossRushItemIds.EmptyMagazineMine,
                 BossRushItemIds.RollCallLedger,
+                BossRushItemIds.ReloadMetronome,
                 500053, 500054, 500055, 500056,
 
                 FactionFlagConfig.RANDOM_FLAG_TYPE_ID,

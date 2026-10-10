@@ -141,6 +141,22 @@ static class Program
         ProductionIconCache.ResetStaticCaches();ProductionIconCache.ResetStaticCaches();
         Check(b.Unloads==1&&icon.Destroyed&&icon.texture.Destroyed,"idempotent bundle release");
         AssetBundle.Sync=null;Check(ProductionIconCache.AllowRawFallback,"missing bundle preserves fallback");
+        var sourceTexture = new Texture2D { width = 256, height = 128, mipmapCount = 3,
+            filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp, anisoLevel = 2 };
+        SystemInfo.copyTextureSupport = UnityEngine.Rendering.CopyTextureSupport.None;
+        Check(ProductionIconCache.CloneTexture(sourceTexture, "unsupported") == null, "unsupported GPU copy preserves fallback");
+        SystemInfo.copyTextureSupport = UnityEngine.Rendering.CopyTextureSupport.Basic;
+        var copy = ProductionIconCache.CloneTexture(sourceTexture, "owned-copy");
+        Check(copy != null && copy != sourceTexture && copy.CopiedFrom == sourceTexture && copy.name == "owned-copy",
+            "shared texture copier creates an independent owned target and requests GPU copy");
+        Check(copy.width == 256 && copy.height == 128 && copy.mipmapCount == 3 && copy.graphicsFormat == sourceTexture.graphicsFormat
+            && copy.filterMode == sourceTexture.filterMode && copy.wrapMode == sourceTexture.wrapMode && copy.anisoLevel == 2,
+            "GPU copy preserves dimensions format mip count and sampling settings");
+        Graphics.FailCopy = true;
+        Check(ProductionIconCache.CloneTexture(sourceTexture, "failed-copy") == null && Graphics.LastTarget.Destroyed && !sourceTexture.Destroyed,
+            "failed GPU copy releases only the new target and preserves the source");
+        Graphics.FailCopy = false;
+        UnityEngine.Object.Destroy(copy); UnityEngine.Object.Destroy(sourceTexture);
         var m=ResourcePerformanceMetrics.Summarize(new double[]{5,1,3,2,4},5,"ms","test");
         Check(m.p50==3&&m.p95==5&&m.mean==3,"nearest-rank quantiles");
         Check(ResourcePerformanceMetrics.Summarize(new double[]{double.NaN},1,"ms","test").status=="unavailable","NaN unavailable");

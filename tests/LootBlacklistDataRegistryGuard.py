@@ -16,6 +16,7 @@ COMPILE = Path("compile_official.bat")
 CONSTANT_SOURCES = {
     "BossRushItemIds.EmptyMagazineMine": Path("Config/ConfigItemIds.cs"),
     "BossRushItemIds.RollCallLedger": Path("Config/ConfigItemIds.cs"),
+    "BossRushItemIds.ReloadMetronome": Path("Config/ConfigItemIds.cs"),
 }
 
 CONSTANT_VALUES = {

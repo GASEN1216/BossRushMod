@@ -155,9 +155,10 @@ def generate():
         "private string PuzzleBody(", "internal void Hide()", "internal static string ResidentName("))
     parts.extend(member(world_services, s) for s in (
         "private void AttachDockShop()", "private void DisposeDockShop()",
+        "private void AttachDeviceShop<T>(", "private static void DisposeDeviceShop(",
         "private string Repair()", "private string Heal()", "private string Meal()",
         "private void RepairChoice(", "private void HealChoice(", "private void MealChoice(", "private static string ServiceTag("))
-    parts.append("\n".join(re.findall(r"^        private [^;{}]*\bdockShop(?:Group)?\b[^;{}]*;", world_services, re.M)))
+    parts.append("\n".join(re.findall(r"^        private [^;{}]*\b(?:dockShop|bellShop)(?:Group)?\b[^;{}]*;", world_services, re.M)))
     parts.append("}\n" + member(service, "internal enum SkyIslandServiceReadiness") + "\ninternal sealed partial class SkyIslandServices {\n" + constants)
     parts.extend(member(service, s) for s in (
         "internal static int HealPriceFor(", "internal SkyIslandServiceReadiness HealReadiness(",
@@ -197,6 +198,7 @@ def generate():
     linked = [ROOT / SKY / n for n in ("SkyIslandStoryRules.cs", "SkyIslandOfficialQuestTable.cs", "SkyIslandPuzzles.cs", "SkyIslandBounty.cs")]
     linked.append(ROOT / "Config/ConfigItemIds.cs")  # quest reward items use the shared TypeID constants
     linked.extend(ROOT / SKY / n for n in ("SkyIslandItemRules.cs", "SkyIslandPointText.cs"))
+    linked.append(ROOT / "Integration/NewWeapons/ReloadMetronome/ReloadMetronomeConfig.cs")
     hashes = {SKY + n: hashlib.sha256((ROOT / SKY / n).read_bytes()).hexdigest() for n in sources}
     hashes.update({p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in linked})
     hashes[helper_path.relative_to(ROOT).as_posix()] = hashlib.sha256(helper_path.read_bytes()).hexdigest()

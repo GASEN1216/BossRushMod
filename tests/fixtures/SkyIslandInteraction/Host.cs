@@ -44,8 +44,8 @@ namespace BossRush
     {
         internal bool IsReady = true, HasPlantingDelivered = true;
         internal SkyIslandServices Services;
-        internal InteractableBase Device;
-        internal InteractableBase FindDeviceInteractable(string key) { return key == "Search_A" ? Device : null; }
+        internal InteractableBase Device, BellDevice;
+        internal InteractableBase FindDeviceInteractable(string key) { return key == "Search_A" ? Device : key == "Search_H" ? BellDevice : null; }
     }
     internal sealed class SkyIslandStoryService
     {

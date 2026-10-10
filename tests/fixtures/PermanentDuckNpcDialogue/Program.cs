@@ -313,6 +313,26 @@ internal static class Program
             if (data == null) continue;
             var config = new PermanentDuckNpcAffinityConfig(new DuckNpcBlueprint { id = id, permanent = data });
             Check(config.NpcId == id, "商店继续使用原关系 ID: " + id);
+            if (id == "sky_bellkeeper")
+            {
+                shops++;
+                Check(config.ShopEnabled && config.ShopUnlockLevel == 5, "钟守旧物匣在好感 5 级解锁");
+                var keepsakes = config.GetShopItems();
+                Check(keepsakes.Count == 1 && keepsakes[0].TypeID == BossRushItemIds.ReloadMetronome
+                      && keepsakes[0].TypeID != BossRushItemIds.RollCallLedger,
+                      "钟守只提供节拍器，不能与点名册共用 TypeID");
+                Check(keepsakes[0].RequiredLevel == 5 && keepsakes[0].MaxStock == 1,
+                      "节拍器解锁等级和单件兑换保持一致");
+                L10n.Chinese = true;
+                Check(config.ShopName == "钟守的旧物匣" && config.UnlocksByLevel[5][0] == "钟守的旧物匣",
+                      "钟守中文解锁名来自蓝图");
+                L10n.Chinese = false;
+                Check(config.ShopName == "Bell Keeper's Keepsakes" && config.UnlocksByLevel[5][0] == "Bell Keeper's Keepsakes",
+                      "钟守商店与解锁提示随语言切换");
+                keepsakes.Clear();
+                Check(config.GetShopItems().Count == 1, "钟守库存副本不能修改蓝图");
+                continue;
+            }
             if (id != "sky_fuzhou")
             {
                 Check(!config.ShopEnabled && config.GetShopItems().Count == 0, id + " 未配置商店不能取得点名册库存");
@@ -339,7 +359,7 @@ internal static class Program
                   "开店后原婚后台词仍可用");
         }
         L10n.Chinese = true;
-        Check(shops == 1, "真实蓝图必须有且仅有一名浮舟卖家");
+        Check(shops == 2, "真实蓝图必须同时保留浮舟点名册和钟守节拍器，其他居民不开店");
     }
 
     private static int Main()

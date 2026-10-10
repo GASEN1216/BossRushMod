@@ -325,6 +325,16 @@ export const CATEGORIES: WikiCategory[] = [
         tagEn: 'Totem',
       },
       {
+        path: '/equipment/reload-metronome',
+        zh: '钟守节拍器',
+        en: "Bell Keeper's Metronome",
+        icon: 'cat-equipment',
+        blurbZh: '抓准换弹节拍，由钟守以贝壳兑换',
+        blurbEn: 'Time your reload; trade seashells with the Bell Keeper',
+        tagZh: '图腾',
+        tagEn: 'Totem',
+      },
+      {
         path: '/equipment/empty-magazine-mine',
         zh: '空仓地雷盒',
         en: 'Empty-Mag Mine Box',

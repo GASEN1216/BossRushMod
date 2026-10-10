@@ -44,9 +44,9 @@ python tools/run_guards.py --filter OfficialCompileList
 
 自定义物品 / 装备 TypeID 用 500xxx 区间，严格递增，不回填删掉的号。TypeID 会进存档键、掉落表、Wiki 与调试流程，复用会破坏存档。
 
-- 当前登记范围：`500001-500106`。
+- 当前登记范围：`500001-500107`。
 - 保留空洞：`500009`、`500047`，不回填。
-- 下一可用：`500107`。
+- 下一可用：`500108`。
 - 新增时同时更新本节、`docs/contracts.md` §1 与 `docs/reference/Bossrush使用物品ID表.md`（`TypeIdLedgerGuard` 交叉核对前两处），接线清单见 `Integration/AGENTS.md`。Boss、NPC、建筑的字符串 ID 不占这个序列。
 
 ### 4.4 `DisplayNameRaw` 必须配本地化注入
@@ -121,7 +121,7 @@ python tools/run_guards.py --filter OfficialCompileList
 
 ### 4.16 新增内容：可以加，但要接得上
 
-- 新内容与 `SCHEMA+` 可以自主实现；每件内容要有获取途径、用途和系统接线。细则见 `Integration/AGENTS.md`「原根规则 §4.16」。
+- 新内容与 `SCHEMA+` 可以自主实现；每件内容要有获取途径、用途和系统接线。后续商品不再放入叮当商店，按背景分配给已有可结婚自定义 NPC；细则见 `Integration/AGENTS.md`「新增物品 / 装备要接的地方」与「原根规则 §4.16」。
 - 存档扩展保留旧档默认值、掩码与版本，复用 `BossRushSaveCoordinatorEngine` 和 `BossRushSlotJsonStore`。
 - 资源重打前核对作者工程，贴图导入和头盔校准按 `Integration/AGENTS.md` 执行；作者工程路径由 `tools/unity_project_path.py` 解析。
 - 历史交付范围不是长期禁令；破坏性事项仍按 §10。

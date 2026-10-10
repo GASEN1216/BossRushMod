@@ -1509,6 +1509,36 @@
       ]
     },
     {
+      "id": "EQ_RELOAD_METRONOME",
+      "title": "钟守节拍器",
+      "sources": [
+        "Integration/NewWeapons/ReloadMetronome"
+      ],
+      "automatic": [
+        "ITEM_FACTORY_ALL"
+      ],
+      "wiki": [
+        "equipment__reload_metronome"
+      ],
+      "manual": [
+        {
+          "id": "M_EQ_RELOAD_METRONOME_01",
+          "steps": "装备图腾，用整匣换弹步枪射击后按 R（或自定义换弹键）；准星下方白色指针进入金色窗口时再按。分别试早按后连按、晚按、完全不按、自动换弹及逐发装填枪。截图 M_EQ_RELOAD_METRONOME_01.png，观察准星下方节拍条、弹匣与背包弹药。",
+          "expected": "合拍提前装填且只扣实际装入的弹药；每轮一次，按错/不按按原速，连按不能重试；逐发和短于0.75秒换弹无提示。重复装弹、免费弹药或延长原版换弹不合格。"
+        },
+        {
+          "id": "M_EQ_RELOAD_METRONOME_02",
+          "steps": "换弹中切枪、取消、卸下重戴、死亡、切图；打开背包/地图/暂停；重启检查名字、铜色摆锤图标与图腾槽。截图 M_EQ_RELOAD_METRONOME_02.png，观察准星与物品详情。",
+          "expected": "机会和提示及时清理，不跨枪或跨场景继承；菜单期间隐藏并不收按键，恢复正常；重启不退化FallbackItem，中英均可读。"
+        },
+        {
+          "id": "M_EQ_RELOAD_METRONOME_03",
+          "steps": "无声钟守好感4级与5级分别查看交互组；5级时携20贝壳在岛上兑换，并在钟守缺席时到钟庭装置打开同一旧物匣。婚后在基地向本人打开旧物匣，分别测试贝壳在背包/仓库、缺贝壳、背包满、取消与成功。截图 M_EQ_RELOAD_METRONOME_03.png，观察NPC交互组选项、兑换价、商品与贝壳总数。",
+          "expected": "4级隐藏，5级可买；岛上和婚后基地均为20枚背包贝壳换1件，仓库贝壳需先取出；失败或取消不扣贝壳，成功不重复给物；叮当商店不出现节拍器。"
+        }
+      ]
+    },
+    {
       "id": "EQ_EMPTY_MAGAZINE_MINE",
       "title": "空仓地雷盒",
       "sources": [

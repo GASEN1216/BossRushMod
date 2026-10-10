@@ -22,6 +22,7 @@ CONFIGS = (
     ("Integration/NewWeapons/ThunderRing/ThunderRingWeaponConfig.cs", "ThunderRingWeaponConfig", "RegisterConfigurator"),
     ("Integration/NewWeapons/EmptyMagazineMine/EmptyMagazineMineWeaponConfig.cs", "EmptyMagazineMineWeaponConfig", "RegisterConfigurator"),
     ("Integration/NewWeapons/RollCallLedger/RollCallLedgerWeaponConfig.cs", "RollCallLedgerWeaponConfig", "RegisterConfigurator"),
+    ("Integration/NewWeapons/ReloadMetronome/ReloadMetronomeWeaponConfig.cs", "ReloadMetronomeWeaponConfig", "RegisterConfigurator"),
     ("Integration/PhantomWitch/PhantomWitchScytheWeaponConfig.cs", "PhantomWitchScytheWeaponConfig", "RegisterConfigurator"),
 )
 

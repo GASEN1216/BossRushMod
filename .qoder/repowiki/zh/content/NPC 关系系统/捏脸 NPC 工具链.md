@@ -6,6 +6,10 @@
 
 `PermanentDuckNpcAffinityConfig` 实现 `INPCShopConfig`；根交互通过共享助手幂等创建 `NPCShopInteractable`，组件订阅现有好感事件并控制解锁显隐，仍走 `NPCShopSystem` 和官方商店界面。婚前婚后使用同一 NPC id 与商店配置，不修改关系存档；捏脸 NPC 回收前按实例关闭所属商店。`NPCShopSystem.Cleanup` 先停用服务并退订事件，再仅关闭 Target 对应当前店且仍打开的官方窗口；静态清理和打开失败共用此收口。天空岛渡口工台另挂同 ID 商店作为居民缺席兜底，由 WorldStory 的构造/Dispose 管理。`PermanentDuckNpcDialogue` 执行真实解析器和配置器，`DuckNpcInvariantGuard` 守卫通用接线；实机购买、动态解锁和婚后交易仍需验收。
 
+## 2026-10-10 钟守旧物匣（COMPAT）
+
+永久 NPC 配置沿用蓝图 `permanent.shop` 的 `INPCShopConfig`：浮舟现金商店与 `sky_bellkeeper` 旧物匣同时启用，其余未配置居民不出现空商店。`PermanentDuckNpcInteractable` 在通用现金商店装配前，为钟守本人交互组挂 `ReloadMetronomeShopInteractable`；好感显隐复用 `NPCShopInteractable`，商品面板用共享确认框，兑换使用 `SkyIslandInventoryTransaction`。岛上与婚后基地同一组件、同一 20 贝壳价格，只数背包。后续新增商品按背景分配，不再放入叮当商店。下文快照若称所有永久 NPC 均无商店，以本节与生产代码为准。
+
 ## 2026-09-26 天空岛六位关系身份补齐（COMPAT）
 
 六位实际居民晴禾、苇白、浮舟、眠苔、折翎、无声钟守全部使用永久 NPC 蓝图；后四位补全分档聊天、礼物偏好与婚后台词，身份 ID、外观与场景不变。`SkyIslandResidentInteractable.AttachPermanent` 改为按 `SkyIslandResidents.MarkerOf` 识别六位，普通生成、教堂恢复与随行恢复共用原交互组。关系仍写入既有 `NPCAffinity` 字典，不添加存档字段或迁移玩家数据。

@@ -25,7 +25,13 @@ namespace UnityEngine
         { return LastInstance = new GameObject { Parent = parent }; }
         public void SetActive(bool value) { if(FailActivation) throw new Exception("activation"); Active = value; }
     }
-    public class Texture2D : Object { }
+    public enum TextureWrapMode { Repeat, Clamp }
+    public partial class Texture2D : Object
+    {
+        public int width, height;
+        public TextureWrapMode wrapMode;
+        public Texture2D() { }
+    }
     public class Sprite : Object { public Texture2D texture; }
     public static class Time { public static double realtimeSinceStartupAsDouble; }
     public static class Debug { public static void LogWarning(string s) { } }

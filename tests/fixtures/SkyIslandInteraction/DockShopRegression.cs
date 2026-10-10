@@ -115,6 +115,13 @@ namespace BossRush
         }
     }
 
+    // 贝壳兑换本身由 ReloadMetronome 夹具执行；这里只隔离弹窗，保留真实商店显隐和生命周期。
+    internal sealed class ReloadMetronomeShopInteractable : NPCShopInteractable
+    {
+        internal static int ExchangesOpened;
+        protected override void DoInteract(CharacterMainControl character) { ExchangesOpened++; }
+    }
+
     internal static partial class NPCShopSystem
     {
         private static bool isServiceActive;
@@ -232,6 +239,34 @@ internal static class DockShopRegression
         world.Dispose(); world.Dispose();
         check(group.Count == 0 && shop.DestroyCalls == 1 && NPCShopSystem.Closes == 0,
             "cleanup after scene destruction removes stale group references once without reopening UI");
+        Reset();
+        AffinityManager.Configs.Add(ReloadMetronomeConfig.VendorNpcId,
+            new FixtureShopConfig { ShopEnabled = true, ShopUnlockLevel = ReloadMetronomeConfig.ShopUnlockLevel });
+        root = new GameObject("bell-court-without-resident");
+        device = Device(root);
+        var bellDevice = new GameObject("Search_H").AddComponent<InteractableBase>();
+        bellDevice.transform.SetParent(root.transform, false);
+        var bellGroup = BossRush.Utils.NPCInteractionGroupHelper.GetOrCreateGroupList(bellDevice, "test");
+        var storyOption = new GameObject("bell-story").AddComponent<InteractableBase>();
+        bellGroup.Add(storyOption);
+        world = new SkyIslandWorldStory(new SkyIslandSession { Device = device, BellDevice = bellDevice });
+        var bellChild = bellDevice.transform.Find("BellKeeperShopOption");
+        var bellShop = bellChild == null ? null : bellChild.GetComponent<ReloadMetronomeShopInteractable>();
+        check(bellShop != null && bellGroup.Contains(bellShop) && bellShop.IdAtAwake == ReloadMetronomeConfig.VendorNpcId,
+            "bell device adds the same shell exchange component before Awake without a resident");
+        AffinityManager.Change("sky_fuzhou", 5);
+        check(!bellShop.gameObject.activeSelf, "Fuzhou affinity cannot unlock bell exchange");
+        AffinityManager.Change(ReloadMetronomeConfig.VendorNpcId, 4);
+        check(!bellShop.gameObject.activeSelf, "bell device exchange stays hidden below affinity five");
+        AffinityManager.Change(ReloadMetronomeConfig.VendorNpcId, 5);
+        check(bellShop.InteractForTest() && ReloadMetronomeShopInteractable.ExchangesOpened == 1 && NPCShopSystem.Opens == 0,
+            "bell device opens the shell exchange instead of the cash shop");
+        world.AttachDockShopForTest();
+        check(bellGroup.Count == 2 && AffinityManager.ListenerCount == 4, "both device shops attach once with independent listeners");
+        world.Dispose(); world.Dispose();
+        check(bellShop == null && bellShop.InactiveAtDestroy && bellGroup.Count == 1 && bellGroup[0] == storyOption
+            && AffinityManager.ListenerCount == 0, "bell exchange disposal preserves story options and releases listeners");
+        UnityEngine.Object.Destroy(root); UnityEngine.Object.Destroy(storyOption.gameObject);
         Reset();
     }
 }

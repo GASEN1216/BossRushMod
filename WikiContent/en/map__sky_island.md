@@ -1,5 +1,7 @@
 ## Sky Islands · Qinglan Archipelago
 
+At affinity level 5, choose **Bell Keeper's Keepsakes** from the Silent Bell Keeper's interaction group to exchange 20 seashells from your backpack for a **Bell Keeper's Metronome**. The shop follows the Keeper home after marriage at the same price and currency. Take stored shells out of storage first; a failed delivery returns the shells.
+
 The Qinglan Archipelago is a standalone raid you launch from the base dock. Cross the village, terraces and root-wrapped isles above the cloud sea, restore the wind beacon and the star lamp, then reach the Homecoming Bell Court and light the shipping lanes again. A single run can be pure story, or it can be scavenging, contracts, and the storm that never quite blew over.
 
 ### Setting out

@@ -43,14 +43,16 @@ def main():
     if code:
         raise AssertionError("隔离基线未通过: " + output)
     probes = (
+        ("bell-device-unwired", "SkyIsland/SkyIslandWorldStoryServices.cs", '"Search_H", "BellKeeperShopOption"',
+         '"Missing_H", "BellKeeperShopOption"', "bell device adds the same shell exchange component"),
         ("constructor-unwired", "SkyIsland/SkyIslandWorldStory.cs", "            AttachDockShop();", "",
          "production constructor adds a reachable dock shop"),
         ("dispose-unwired", "SkyIsland/SkyIslandWorldStory.cs", "            DisposeDockShop();", "",
          "production Dispose destroys its shop option"),
-        ("wrong-npc-id", "SkyIsland/SkyIslandWorldStoryServices.cs", 'component => component.NpcId = "sky_fuzhou"',
-         'component => component.NpcId = "wrong_npc"', "dock NPC identity and group membership are ready before first Awake"),
+        ("wrong-npc-id", "SkyIsland/SkyIslandWorldStoryServices.cs", '"FuzhouShopOption", "sky_fuzhou"',
+         '"FuzhouShopOption", "wrong_npc"', "dock NPC identity and group membership are ready before first Awake"),
         ("stale-group-entry", "SkyIsland/SkyIslandWorldStoryServices.cs",
-         "            if (dockShopGroup != null) dockShopGroup.Remove(owned);", "",
+         "            if (group != null) group.Remove(owned);", "",
          "production Dispose destroys its shop option"),
         ("destroy-still-active", "SkyIsland/SkyIslandWorldStoryServices.cs", "            owned.gameObject.SetActive(false);", "",
          "production Dispose destroys its shop option"),

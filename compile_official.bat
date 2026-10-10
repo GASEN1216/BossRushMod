@@ -914,6 +914,15 @@ echo(Integration\SandstormChampion\SandstormChampionHazards.cs
 echo(Integration\SandstormChampion\SandstormChampionBoss.cs
 echo(Integration\SandstormChampion\SandstormChampionAbilityController.cs
 echo(Integration\NewWeapons\EmptyMagazineMine\EmptyMagazineMineConfig.cs
+echo(Integration\NewWeapons\ReloadMetronome\ReloadMetronomeConfig.cs
+echo(Integration\NewWeapons\ReloadMetronome\ReloadMetronomeRules.cs
+echo(Integration\NewWeapons\ReloadMetronome\ReloadMetronomeRuntime.cs
+echo(Integration\NewWeapons\ReloadMetronome\ReloadMetronomePatches.cs
+echo(Integration\NewWeapons\ReloadMetronome\ReloadMetronomeHud.cs
+echo(Integration\NewWeapons\ReloadMetronome\ReloadMetronomeWeaponConfig.cs
+echo(Integration\NewWeapons\ReloadMetronome\ReloadMetronomeIcon.cs
+echo(Integration\NewWeapons\ReloadMetronome\ReloadMetronomeAssets.cs
+echo(Integration\NewWeapons\ReloadMetronome\ReloadMetronomeShop.cs
 echo(Integration\NewWeapons\EmptyMagazineMine\EmptyMagazineMineWeaponConfig.cs
 echo(Integration\NewWeapons\EmptyMagazineMine\EmptyMagazineMineRules.cs
 echo(Integration\NewWeapons\EmptyMagazineMine\EmptyMagazineMineRuntime.cs

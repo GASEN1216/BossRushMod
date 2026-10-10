@@ -42,6 +42,7 @@ namespace BossRush
                 ItemFactory.RegisterConfigurator(NewWeaponIds.ThunderRingTypeId, ConfigureThunderRing);
                 ItemFactory.RegisterConfigurator(BossRushItemIds.EmptyMagazineMine, ConfigureEmptyMagazineMine);
                 ItemFactory.RegisterConfigurator(BossRushItemIds.RollCallLedger, ConfigureRollCallLedger);
+                ItemFactory.RegisterConfigurator(BossRushItemIds.ReloadMetronome, ConfigureReloadMetronome);
             }
             catch (Exception e)
             {
@@ -72,6 +73,11 @@ namespace BossRush
         private static void ConfigureThunderRing(Item itemPrefab)
         {
             ThunderRingWeaponConfig.TryConfigure(itemPrefab, NewWeaponIds.ThunderRingBaseName);
+        }
+
+        private static void ConfigureReloadMetronome(Item itemPrefab)
+        {
+            ReloadMetronomeWeaponConfig.TryConfigure(itemPrefab, ReloadMetronomeConfig.BaseName);
         }
 
         private static void ConfigureEmptyMagazineMine(Item itemPrefab)

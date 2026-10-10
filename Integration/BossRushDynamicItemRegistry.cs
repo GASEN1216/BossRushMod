@@ -428,6 +428,10 @@ namespace BossRush
             {
                 FallbackLoader = EnsureNewWeaponPlaceholder
             }, BossRushItemIds.EmptyMagazineMine);
+            Add(plans, new RegistrationPlan
+            {
+                FallbackLoader = EnsureNewWeaponPlaceholder
+            }, BossRushItemIds.ReloadMetronome);
 
             Add(plans, new RegistrationPlan
             {

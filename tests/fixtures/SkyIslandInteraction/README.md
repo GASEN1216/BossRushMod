@@ -13,3 +13,5 @@
 2026-10-10 渡口备用商店：`DockShopRegression` 逐字执行 `SkyIslandWorldStory` 构造和 `Dispose`、备用商店装配/清理、通用 `NPCInteractionGroupHelper`、`NPCInteractableBase.Awake`、`NPCShopInteractable`，以及 `NPCShopSystem` 的解锁和归属关闭判据。覆盖缺失渡口装置、保留原交互组成员、配置与入组先于 `Awake`、初始隐藏后靠浮舟好感事件解锁、其他 NPC 好感不干扰、重复装配和幂等清理、延迟激活场景、关闭正确的商店、销毁场景时组件假空与退订。好感等级/配置存储、父 NPC 查找、场景激活调度和实际商店 UI 是明确的宿主替身；这里的关闭断言只证明把关闭请求送到正确 owner，不证明官方商店窗口实际消失。
 
 该项反向验证运行 `python tests/fixtures/SkyIslandInteraction/negative_probes.py`，先在本机跑上面的聚合入口生成源码清单。脚本只修改 `Build/dock-shop-negative-*/` 下的隔离副本，经聚合入口实跑，要求删除构造接线、删除清理接线、错配 NPC ID、遗漏组成员移除、销毁前未失活、无条件关闭别家商店这 6 种破坏均红在指定行为断言。每次按字节恢复并校验 SHA-256，最后重跑全绿；JSON 与各轮日志保存在同一个隔离目录。
+
+2026-10-10 钟庭备用兑换：装配与清理复用上述装置商店方法，夹具追加 `Search_H` 与 `Search_A` 共存、钟守好感 5 级事件解锁、保留原剧情子项、重复装配与退订。具体贝壳弹窗由明确的组件替身隔离，真实兑换结算在 ReloadMetronome 夹具执行。反向脚本追加移除钟庭入口的探针。

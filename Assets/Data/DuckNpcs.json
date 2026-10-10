@@ -939,6 +939,14 @@
       "permanent": {
         "displayNameCn": "无声钟守",
         "displayNameEn": "Silent Bell Keeper",
+        "shop": {
+          "nameCn": "钟守的旧物匣",
+          "nameEn": "Bell Keeper's Keepsakes",
+          "unlockLevel": 5,
+          "items": [
+            { "typeId": 500107, "requiredLevel": 5, "maxStock": 1 }
+          ]
+        },
         "dailyChatAffinity": 30,
         "positiveTags": [],
         "positiveItemTypeIds": [

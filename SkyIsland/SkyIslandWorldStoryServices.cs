@@ -23,36 +23,52 @@ namespace BossRush
     {
         private NPCShopInteractable dockShop;
         private List<InteractableBase> dockShopGroup;
+        private NPCShopInteractable bellShop;
+        private List<InteractableBase> bellShopGroup;
 
-        /// <summary>浮舟缺席时仍可在渡口交易；与本人共用好感和商品配置，直接进入官方商店。</summary>
+        /// <summary>居民缺席时装置仍可交易；复用本人组件、好感门槛和会话清理。</summary>
         private void AttachDockShop()
         {
-            if (disposed || dockShop != null) return;
-            InteractableBase device = session.FindDeviceInteractable("Search_A");
+            AttachDeviceShop<NPCShopInteractable>("Search_A", "FuzhouShopOption", "sky_fuzhou",
+                ref dockShop, ref dockShopGroup);
+            AttachDeviceShop<ReloadMetronomeShopInteractable>("Search_H", "BellKeeperShopOption", ReloadMetronomeConfig.VendorNpcId,
+                ref bellShop, ref bellShopGroup);
+        }
+
+        private void AttachDeviceShop<T>(string key, string optionName, string npcId,
+            ref NPCShopInteractable shop, ref List<InteractableBase> group) where T : NPCShopInteractable
+        {
+            if (disposed || shop != null) return;
+            InteractableBase device = session.FindDeviceInteractable(key);
             if (device == null) return;
             try
             {
-                dockShopGroup = NPCInteractionGroupHelper.PrepareGroupedInteractionOwner(device, "[SkyIslandShop]");
+                group = NPCInteractionGroupHelper.PrepareGroupedInteractionOwner(device, "[SkyIslandShop]");
                 // 独立子选项不占故事面板的按钮预算；未解锁时由通用组件隐藏并监听好感变化。
-                dockShop = NPCInteractionGroupHelper.AddSubInteractable<NPCShopInteractable>(
-                    device.transform, "FuzhouShopOption", dockShopGroup,
-                    component => component.NpcId = "sky_fuzhou");
+                shop = NPCInteractionGroupHelper.AddSubInteractable<T>(
+                    device.transform, optionName, group, component => component.NpcId = npcId);
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[SkyIslandShop] 渡口商店装配失败: " + e.Message);
+                ModBehaviour.DevLog("[SkyIslandShop] 装置商店装配失败 " + key + ": " + e.Message);
             }
         }
 
         private void DisposeDockShop()
         {
-            NPCShopInteractable owned = dockShop;
-            dockShop = null;
-            if (dockShopGroup != null) dockShopGroup.Remove(owned);
-            dockShopGroup = null;
+            DisposeDeviceShop(ref dockShop, ref dockShopGroup);
+            DisposeDeviceShop(ref bellShop, ref bellShopGroup);
+        }
+
+        private static void DisposeDeviceShop(ref NPCShopInteractable shop, ref List<InteractableBase> group)
+        {
+            NPCShopInteractable owned = shop;
+            shop = null;
+            if (group != null) group.Remove(owned);
+            group = null;
             if (owned == null) return;
             try { NPCShopSystem.CloseShopIfOwnedBy(owned.transform.parent); }
-            catch (Exception e) { ModBehaviour.DevLog("[SkyIslandShop] 渡口商店关闭失败: " + e.Message); }
+            catch (Exception e) { ModBehaviour.DevLog("[SkyIslandShop] 装置商店关闭失败: " + e.Message); }
             owned.gameObject.SetActive(false);
             UnityEngine.Object.Destroy(owned.gameObject);
         }

@@ -11,7 +11,7 @@ metric = (ROOT/'DebugAndTools/ResourcePerformanceMetrics.cs').read_text(encoding
 helper = (ROOT/'Common/Buildings/BuildingModelHelper.cs').read_text(encoding='utf8')
 method = helper[helper.index('        internal static bool TryInstantiateBundle('):helper.index('        internal static Renderer[] CollectStarwishRenderableComponents(')]
 (OUT/'BuildingHelper.cs').write_text('using System; using UnityEngine; namespace BossRush { internal static class BuildingModelHelper {\n'+method+'\n}}',encoding='utf8')
-files = [OUT/'BuildingHelper.cs', HERE/'BuildingModels.cs', ROOT/'Utilities/ResourceBundleLoader.cs' ,ROOT/'Integration/FactoryResourceLoading.cs',ROOT/'Integration/ProductionIconCache.cs',HERE/'Stubs.cs',HERE/'Program.cs',OUT/'Metrics.cs']
+files = [OUT/'BuildingHelper.cs', HERE/'BuildingModels.cs', ROOT/'Utilities/ResourceBundleLoader.cs' ,ROOT/'Integration/FactoryResourceLoading.cs',ROOT/'Integration/ProductionIconCache.cs',HERE/'Stubs.cs',HERE.parent/'TextureCopyStubs.cs',HERE/'Program.cs',OUT/'Metrics.cs']
 project='<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup><ItemGroup>'
 project+=''.join('<Compile Include="'+escape(str(p))+'" />' for p in files)+'</ItemGroup></Project>'
 (OUT/'Regression.csproj').write_text(project,encoding='utf8')

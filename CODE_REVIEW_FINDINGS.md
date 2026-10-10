@@ -2,6 +2,17 @@
 
 更早记录见 `archive/`；月度归档索引保留在本文件正文。
 
+## 2026-10-10 提交前复核（COMPAT / SAFE / OPERATIONAL，L1/L2）
+
+- CR-2026-10-10-004，P1 / Fixed：钟守的商品原仅挂本人交互，`SkyIslandResidents.SpawnOneAsync` 会跳过婚后居民，缺席时岛内无法兑换。`SkyIslandWorldStoryServices` 现让 `Search_H` 复用同一 `ReloadMetronomeShopInteractable`，装配/清理与渡口商店共用方法，不增加 Tick。真实方法回归 955 项通过；断开钟庭入口的隔离探针准确转红，字节与 SHA-256 还原后通过。本人及婚后基地入口保持不变，实机可见性待验。
+- CR-2026-10-10-005，P2 / Fixed：AchievementIcons 与 ResourceProduction 的旧 Unity 替身缺少共享 `ProductionIconCache.CloneTexture` 使用的 GraphicsFormat / CopyTexture API，导致两组回归编译失败。仅补共享测试替身，新增不支持、尺寸/格式/mip/采样参数与异常释放断言；两组回归均通过，不改变生产复制逻辑，不代表真实 GPU 像素或耗时通过。
+
+- CR-2026-10-10-006，P2 / Fixed：已提交的点名册资源清单要求原图和正式包 alias，但本机两者均缺，导致 DailyReportArt 正式资源校验失败。复用 owner 指定作者工程原 PNG，以现有 IconsBuild 重建并只替换本地 production_icons；349 个 alias/Sprite 与压缩、预算、日报像素检查通过，旧包已备份。未部署实机，私有资源不进公开 commit。完整证据见[提交前审核报告](docs/reports/reviews/2026-10-10-提交前全面审核.md)。
+
+## 2026-10-10 节拍器生产图标持有（COMPAT，L1/L2）
+
+- CR-2026-10-10-003，P2 / Fixed：节拍器接入独立资源包时直接把包内 Sprite 交给持久物品 prefab，`ReloadMetronomeAssets.ResetStaticCaches()` 的 `Unload(true)` 会销毁其依赖贴图。已改为 `ReloadMetronomeIcon` 经 `ProductionIconCache.CloneTexture` 持有 GPU 副本，并以组件实例 ID 限定释放 owner；普通物品克隆销毁不释放副本。守卫删除实际 GPU 复制调用后按预期转红，按字节恢复、SHA-256 核对后通过。此项为交付前静态发现，热重载实机仍待验。
+
 ## 2026-10-10 点名册获取与商店收口（COMPAT，L1/L2）
 
 - CR-2026-10-10-001，P1 / Fixed：先前把唯一获取途径接到普通玩家无法正常遇到的小满示例蓝图。商品迁至天空岛浮舟 sky_fuzhou，好感 3 级、售价 20000；Search_A 渡口工台追加同配置商店，兜底婚后离岛和居民生成失败。数据回归 666 条、婚姻 949 条、交互 949 条通过；删除装配/清理接线与错误 NPC ID 等 6 个隔离探针准确转红。

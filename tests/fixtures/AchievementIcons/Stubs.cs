@@ -53,7 +53,7 @@ namespace UnityEngine
     public enum TextureWrapMode { Repeat, Clamp }
     public struct Rect { public Rect(float x, float y, float width, float height) { } }
     public struct Vector2 { public Vector2(float x, float y) { } }
-    public class Texture2D : Object
+    public partial class Texture2D : Object
     {
         public int width;
         public int height;

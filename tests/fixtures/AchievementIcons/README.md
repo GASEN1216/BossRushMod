@@ -9,3 +9,5 @@
 运行产物只放在仓库 `Build/achievement-icons/`。本夹具属于 L2 隔离回归，不能替代 Windows 正式编译和 L3 游戏内验证。旧 Bundle 的 `Unload(true)` 行为保持现有契约；`ClearCache()` 只直接销毁本加载器创建的资源。
 
 2026-09-20 补充：逐字抽取 `ItemFactory.GetSpriteFromFile` 与 `Shutdown`，验证重复配置只解码一次、路径分隔符共用缓存、已销毁缓存重载、解码拒绝/抛错与 Sprite 创建失败都立即清理。两条 PNG 生产路径均断言 `markNonReadable=true`。ItemFactory 的 Mod 路径与其他缓存字典为隔离替身，不覆盖游戏注册和 Bundle 加载；EquipmentHelperIcon 的转发由源码接线与正式编译核对。
+
+2026-10-10：共享贴图复制 API 由 `tests/fixtures/TextureCopyStubs.cs` 补齐显式替身。ResourceProduction 执行生产 CloneTexture，覆盖不支持、复制参数、成功归属与异常释放；替身不验证真实 GPU 像素。

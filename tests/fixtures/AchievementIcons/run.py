@@ -35,6 +35,7 @@ private static string GetModDirectory() { return ModBehaviour.GetModPath(); }
 ''' + method('public static Sprite GetSpriteFromFile(') + '\n' + method('public static void Shutdown()') + '\n}}', encoding='utf-8')
     paths = [ROOT / "Achievement/AchievementIconLoader.cs", ROOT / 'Integration/ProductionIconCache.cs', ROOT / 'Integration/RawImageLoader.cs', ROOT / 'MapSelection/MapThumbnailCache.cs', HERE / "Program.cs", HERE / "Stubs.cs", HERE / 'ResourceOwnershipTests.cs', extracted]
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup><ItemGroup>'
+    paths.append(HERE.parent / "TextureCopyStubs.cs")
     project += ''.join('<Compile Include="' + escape(str(path), {'"': '&quot;'}) + '" />' for path in paths)
     project += '</ItemGroup></Project>'
     path = OUT / "AchievementIcons.csproj"
