@@ -38,9 +38,19 @@ namespace UnityEngine
     public struct Vector3
     {
         public float x;
+        public Vector3 normalized { get { return this; } }
         public static float Distance(Vector3 a, Vector3 b) { return Math.Abs(a.x - b.x); }
     }
     public static class Debug { public static void LogWarning(string text) { } }
+    public static class Mathf { public static int Max(int a, int b) { return Math.Max(a, b); } }
+    public static class Random
+    {
+        internal static float Roll;
+        internal static int Reads;
+        public static float value { get { Reads++; return Roll; } }
+        public static Vector3 insideUnitSphere { get { return new Vector3 { x = 1f }; } }
+        public static float Range(float min, float max) { return min; }
+    }
 }
 namespace HarmonyLib
 {
@@ -50,12 +60,31 @@ namespace HarmonyLib
 }
 namespace ItemStatsSystem
 {
-    public class Item : UnityEngine.Object { public Inventory Inventory; public bool Delivered; }
+    public class Item : UnityEngine.Object
+    {
+        public Inventory Inventory;
+        public bool Delivered;
+        public int TypeID;
+        public float MaxDurability = 100f, Durability = 1f, DurabilityLoss = 3f;
+        internal static readonly List<Item> WorldDrops = new List<Item>();
+        internal UnityEngine.Vector3 DropPosition;
+        public void Drop(UnityEngine.Vector3 position, bool create, UnityEngine.Vector3 dir, float force)
+        { DropPosition = position; WorldDrops.Add(this); }
+        public void DestroyTree() { UnityEngine.Object.Destroy(this); }
+    }
     public class Inventory
     {
         internal static bool DeliveryAllowed = true;
         internal static int NotificationFault;
         public readonly List<Item> Content = new List<Item>();
+        public int Capacity;
+        public void SetCapacity(int capacity) { Capacity = capacity; }
+        public bool AddAndMerge(Item item, int start)
+        {
+            if (!DeliveryAllowed || Content.Count >= Capacity) return false;
+            Content.Add(item);
+            return true;
+        }
         public bool AddItem(Item item)
         {
             if (!DeliveryAllowed) return false;
@@ -72,7 +101,12 @@ namespace ItemStatsSystem
     {
         internal static bool Missing;
         public static int TryGetIDByName(string name, bool report) { return name == "SeaShell" ? 101 : -1; }
-        public static Item InstantiateSync(int id) { return Missing ? null : new Item(); }
+        internal static readonly List<Item> Created = new List<Item>();
+        public static Item InstantiateSync(int id)
+        {
+            if (Missing) return null;
+            var item = new Item { TypeID = id }; Created.Add(item); return item;
+        }
     }
 }
 namespace ItemStatsSystem.Items { public class Slot { } }
@@ -107,9 +141,11 @@ public class ItemAgent_Gun : DuckovItemAgent
     public bool IsReloading() { return Reloading; }
     public Progress GetReloadProgress() { return new Progress { current = Timer, total = ReloadTime, inProgress = Reloading }; }
 }
+public class CharacterRandomPreset { public string nameKey; }
 public class CharacterMainControl : UnityEngine.Component
 {
     public static CharacterMainControl Main;
+    public CharacterRandomPreset characterPreset;
     public bool IsMainCharacter = true;
     public Health Health = new Health { IsMainCharacterHealth = true };
     public DuckovItemAgent CurrentHoldItemAgent;
@@ -156,7 +192,20 @@ namespace BossRush
     }
     internal static class L10n { internal static string T(string cn, string en) { return en; } }
     internal static class LocalizationHelper { internal static void InjectLocalization(string key, string text) { } }
-    internal static class ModBehaviour { internal static void DevLog(string message) { } }
+    internal class ModBehaviour
+    {
+        internal static ModBehaviour Instance;
+        internal bool DeferLoot;
+        internal bool ShouldDeferExtraBossDropToModPath(CharacterMainControl boss) { return DeferLoot; }
+        internal static void DevLog(string message) { }
+    }
+    internal static class BossRushDynamicItemRegistry
+    {
+        internal static readonly HashSet<int> Registered = new HashSet<int>();
+        internal static bool EnsureAllowed = true;
+        internal static bool HasRegisteredPrefabWithoutEnsuring(int id) { return Registered.Contains(id); }
+        internal static void EnsureRegistered(int id) { if (EnsureAllowed) Registered.Add(id); }
+    }
     internal sealed class ReloadMetronomeHud : UnityEngine.Component
     {
         internal static int Created;

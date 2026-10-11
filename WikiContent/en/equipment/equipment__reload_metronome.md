@@ -4,6 +4,8 @@ The brass plate reads: A time to reload, a beat to fire. Turn the wait between m
 
 ### Where to get it
 
+Defeat the vanilla boss **Speedy** for a **20%** chance of one extra metronome, including on vanilla maps. This does not replace his normal loot; the ice variant and regular followers are excluded.
+
 Reach **affinity level 5** with the Silent Bell Keeper, then select **Bell Keeper's Keepsakes** from the interaction group. Exchange **20 seashells** for one metronome. Only shells in your backpack count; take stored shells out first. Failed item delivery returns the shells.
 
 The bell-court device offers the same keepsake exchange with the Keeper's affinity requirement and seashell price, even when he is absent. The shop follows the Keeper home after marriage, with the same item and seashell price. Each exchange delivers one item; reopen the shop to trade again. It is not sold by Dingdang and is excluded from random reward pools.

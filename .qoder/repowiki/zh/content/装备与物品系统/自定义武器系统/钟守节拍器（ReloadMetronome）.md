@@ -4,6 +4,8 @@
 
 ## 玩家路径
 
+急速团长（原版 `Cname_Speedy`）死亡 → 已有 OnDead 前缀 → `NewWeaponBossDropHandler` 精确匹配 → 共用 20% 掉率 → 一件 500107。原版地图写入官方尸体库存；竞技场与无间炼狱复用已有 pending 进箱 / 落地 / 撤销协议，死亡时只 roll 一次。急冻团长和普通随从不命中，不新增补丁、事件或轮询。原有 Boss 的专属装备映射不变，随机奖池黑名单保留。
+
 无声钟守（`sky_bellkeeper`）好感 5 级 → 永久 NPC 的 `ShopOption` → `ReloadMetronomeShopInteractable` → 共享单商品兑换弹窗 → 20 枚背包贝壳 → `SkyIslandInventoryTransaction.TryReserve` → 背包 `Inventory.AddItem`（满包失败返还，不落地）→ `Commit`。失败归还预留原件；相同组件随婚后本人在基地重建，货币与价格保持一致。旧物匣不依赖岛上可能缺失的 `StockShopView`。钟庭 `Search_H` 装置复用同一兑换组件，居民缺席或婚后离岛仍可买；装配与销毁复用 `SkyIslandWorldStoryServices` 的装置商店 helper，好感显隐仍是事件驱动，不增加 Tick。商品不进叮当商店或随机奖池。
 
 ## 生产调用链

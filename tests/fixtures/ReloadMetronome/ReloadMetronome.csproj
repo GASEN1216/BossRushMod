@@ -15,5 +15,7 @@
     <Compile Include="../../../Integration/NewWeapons/ReloadMetronome/ReloadMetronomePatches.cs" />
     <Compile Include="../../../Integration/NewWeapons/ReloadMetronome/ReloadMetronomeShop.cs" />
     <Compile Include="../../../Config/ConfigItemIds.cs" />
+    <Compile Include="../../../Integration/NewWeapons/Common/NewWeaponIds.cs" />
+    <Compile Include="../../../Integration/NewWeapons/Common/NewWeaponBossDropHandler.cs" />
   </ItemGroup>
 </Project>

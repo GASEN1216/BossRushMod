@@ -28,6 +28,14 @@ internal static class Program
         BossRushUI.Paused = BossRushUI.Hidden = false;
         NPCShopSystem.AffinityLevel = 5;
         ItemStatsSystem.ItemAssetsCollection.Missing = false;
+        ItemStatsSystem.ItemAssetsCollection.Created.Clear();
+        ItemStatsSystem.Item.WorldDrops.Clear();
+        NewWeaponBossDropHandler.ResetStaticCaches();
+        BossRushDynamicItemRegistry.Registered.Clear();
+        BossRushDynamicItemRegistry.EnsureAllowed = true;
+        ModBehaviour.Instance = null;
+        UnityEngine.Random.Roll = 0f;
+        UnityEngine.Random.Reads = 0;
         ItemStatsSystem.Inventory.DeliveryAllowed = true;
         ItemStatsSystem.Inventory.NotificationFault = 0;
         SkyIslandInventoryTransaction.OnReserve = null;
@@ -205,6 +213,98 @@ internal static class Program
         Check(BossRushConfirmDialog.Last == null, "affinity four cannot open shop");
     }
 
+    private static CharacterMainControl Boss(string nameKey)
+    {
+        var boss = new GameObject().Add<CharacterMainControl>();
+        boss.IsMainCharacter = false;
+        boss.characterPreset = new CharacterRandomPreset { nameKey = nameKey };
+        return boss;
+    }
+
+    private static void BossDrops()
+    {
+        Fresh();
+        NewWeaponBossDropHandler.TryHandleNewWeaponBossDeath(null);
+        NewWeaponBossDropHandler.TryHandleNewWeaponBossDeath(new GameObject().Add<CharacterMainControl>());
+        foreach (string key in new[] { null, "", "Cname_Speedy_Ice", "Cname_SpeedyChild", "Cname_Scav", "Cname_Speedy_custom" })
+            NewWeaponBossDropHandler.TryHandleNewWeaponBossDeath(Boss(key));
+        Check(UnityEngine.Random.Reads == 0 && ItemStatsSystem.ItemAssetsCollection.Created.Count == 0,
+            "non-target bosses and followers neither roll nor instantiate metronomes");
+
+        foreach (float roll in new[] { 0f, 0.199999f, 0.20f, 1f })
+        {
+            Fresh(); UnityEngine.Random.Roll = roll;
+            var boss = Boss("Cname_Speedy");
+            var originalLoot = new ItemStatsSystem.Item();
+            boss.CharacterItem.Inventory.Content.Add(originalLoot);
+            NewWeaponBossDropHandler.TryHandleNewWeaponBossDeath(boss);
+            var contents = boss.CharacterItem.Inventory.Content;
+            Check(contents.Count == (roll < 0.20f ? 2 : 1) && ReferenceEquals(contents[0], originalLoot),
+                "Speedy has a 20 percent extra drop without replacing original loot");
+            Check(UnityEngine.Random.Reads == 1, "exactly one loot roll on death");
+            if (roll < 0.20f)
+                Check(contents[1].TypeID == BossRushItemIds.ReloadMetronome && contents[1].Durability == 100f
+                    && contents[1].DurabilityLoss == 0f && boss.CharacterItem.Inventory.Capacity == 2,
+                    "registered metronome is delivered with capacity and durability restored");
+        }
+
+        Fresh(); ModBehaviour.Instance = new ModBehaviour { DeferLoot = true };
+        var deferred = Boss("Cname_Speedy");
+        NewWeaponBossDropHandler.TryHandleNewWeaponBossDeath(deferred);
+        Check(deferred.CharacterItem.Inventory.Content.Count == 0 && ItemStatsSystem.ItemAssetsCollection.Created.Count == 0,
+            "mod lootbox path defers creation instead of writing the discarded original inventory");
+        UnityEngine.Random.Roll = 1f;
+        NewWeaponBossDropHandler.TryConsumePendingBossRushLootboxDrop(deferred, null);
+        var box = new ItemStatsSystem.Inventory();
+        NewWeaponBossDropHandler.TryConsumePendingBossRushLootboxDrop(deferred, box);
+        NewWeaponBossDropHandler.TryConsumePendingAsWorldDrop(deferred, new Vector3());
+        NewWeaponBossDropHandler.TryConsumePendingBossRushLootboxDrop(deferred, box);
+        Check(box.Content.Count == 1 && box.Content[0].TypeID == BossRushItemIds.ReloadMetronome
+            && UnityEngine.Random.Reads == 1 && ItemStatsSystem.Item.WorldDrops.Count == 0,
+            "deferred loot keeps the death roll, survives a missing box and consumes once across channels");
+
+        Fresh(); ModBehaviour.Instance = new ModBehaviour { DeferLoot = true };
+        var world = Boss("Cname_Speedy");
+        NewWeaponBossDropHandler.TryHandleNewWeaponBossDeath(world);
+        UnityEngine.Random.Roll = 1f;
+        NewWeaponBossDropHandler.TryConsumePendingAsWorldDrop(world, new Vector3 { x = 42f });
+        NewWeaponBossDropHandler.TryConsumePendingAsWorldDrop(world, new Vector3());
+        Check(ItemStatsSystem.Item.WorldDrops.Count == 1
+            && ItemStatsSystem.Item.WorldDrops[0].TypeID == BossRushItemIds.ReloadMetronome
+            && ItemStatsSystem.Item.WorldDrops[0].DropPosition.x == 42f && UnityEngine.Random.Reads == 1,
+            "infinite hell consumes the same metronome once at the supplied world position");
+
+        foreach (bool cancel in new[] { true, false })
+        {
+            Fresh(); ModBehaviour.Instance = new ModBehaviour { DeferLoot = true };
+            var boss = Boss("Cname_Speedy");
+            NewWeaponBossDropHandler.TryHandleNewWeaponBossDeath(boss);
+            if (cancel) NewWeaponBossDropHandler.CancelPendingBossRushLootboxDrop(boss);
+            else NewWeaponBossDropHandler.ResetStaticCaches();
+            NewWeaponBossDropHandler.TryConsumePendingBossRushLootboxDrop(boss, new ItemStatsSystem.Inventory());
+            Check(ItemStatsSystem.ItemAssetsCollection.Created.Count == 0, "cancel and cleanup discard pending loot");
+        }
+
+        Fresh(); ItemStatsSystem.Inventory.DeliveryAllowed = false;
+        NewWeaponBossDropHandler.TryHandleNewWeaponBossDeath(Boss("Cname_Speedy"));
+        Check(ItemStatsSystem.ItemAssetsCollection.Created.Count == 1 && ItemStatsSystem.ItemAssetsCollection.Created[0] == null,
+            "failed inventory insertion destroys the undelivered reward");
+        Fresh(); BossRushDynamicItemRegistry.EnsureAllowed = false;
+        NewWeaponBossDropHandler.TryHandleNewWeaponBossDeath(Boss("Cname_Speedy"));
+        Check(ItemStatsSystem.ItemAssetsCollection.Created.Count == 0, "unregistered prefab cannot create a fallback drop");
+
+        string[] previousBosses = { "Cname_Prison_Boss", "Cname_XING", "Cname_PMCLeader", "Cname_Snow_BigIce", "Cname_Boss_3Shot", "Cname_Grenade" };
+        int[] previousDrops = { NewWeaponIds.ViperDaggerTypeId, NewWeaponIds.SummonStaffTypeId, NewWeaponIds.EnergyShieldTypeId,
+            NewWeaponIds.FrostSpearTypeId, NewWeaponIds.ThunderRingTypeId, BossRushItemIds.EmptyMagazineMine };
+        for (int i = 0; i < previousBosses.Length; i++)
+        {
+            Fresh(); var boss = Boss(previousBosses[i]);
+            NewWeaponBossDropHandler.TryHandleNewWeaponBossDeath(boss);
+            Check(boss.CharacterItem.Inventory.Content.Count == 1 && boss.CharacterItem.Inventory.Content[0].TypeID == previousDrops[i],
+                "existing dedicated boss drop mapping remains unchanged: " + previousBosses[i]);
+        }
+    }
+
     private static void IdleHotPath()
     {
         Fresh();
@@ -221,7 +321,7 @@ internal static class Program
 
     private static int Main()
     {
-        try { Timing(); Presentation(); Lifetime(); Shop(); IdleHotPath(); Console.WriteLine("ReloadMetronome: " + checks + " checks PASS"); return 0; }
+        try { Timing(); Presentation(); Lifetime(); Shop(); BossDrops(); IdleHotPath(); Console.WriteLine("ReloadMetronome: " + checks + " checks PASS"); return 0; }
         catch (Exception e) { Console.Error.WriteLine(e); return 1; }
         finally { ReloadMetronomeRuntime.Unsubscribe(); GameObject.DestroyScene(); }
     }

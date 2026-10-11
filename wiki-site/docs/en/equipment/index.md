@@ -1,6 +1,6 @@
 # Equipment Overview
 
-- **Bell Keeper's Metronome**: Trade 20 seashells from your backpack with the Silent Bell Keeper at affinity level 5. Time a second reload press to finish early. Available at home after marriage.
+- **Bell Keeper's Metronome**: A 20% extra drop from Speedy, or trade 20 seashells from your backpack with the Silent Bell Keeper at affinity level 5. Time a second reload press to finish early. Available at home after marriage.
 
 There are **40 obtainable custom equipment pieces** (sets counted piece by piece): 23 regular pieces plus 17 Sky Islands wearable pieces. Regular gear comes from custom Bosses, extra official Boss drops and NPC shops; island gear mainly comes from island lords and chiefs, and the prelude Warden can also drop a Galebreaker Hood.
 
