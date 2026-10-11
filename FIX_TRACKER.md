@@ -2,6 +2,12 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+## 2026-10-11 最近五次提交审查的四项修复（COMPAT / SAFE，L1/L2）
+
+CR-2026-10-11-001～004 已修复：冠军暂停保留动作，长帧分步消费完整移动时间并保留地面安全门；棍卫三档地面预警改用游戏时间，玩家默认光带保持原样；两段已闭环台账逐字存入 [2026-09 归档](archive/FIX_TRACKER_2026-09.md)，保留索引与原验证边界。新增 SandstormCombatTiming 链接真实冲锋、完整光带与棍卫招式，旧码先在 8 个场景转红，修复后通过。伤害、速度常量、招式表、颜色、网格、音效、资源及存档不变。
+
+最终验证：744 项守卫均有本轮通过证据（Python 3.13 全量 742 通过，两项 Shapely 几何检查改用匹配现有依赖的 Python 3.12 通过）；125/125 执行回归、新增计时 22 场景/226 检查、8 项隔离反向探针与 Windows 正式编译通过。DLL SHA-256 `f5f322d10e885384552afd668358e06bf555f163196a654ed62bfb36c9724b92` 已与本机游戏目标核对，74 包哈希一致；同步了目标目录落后的 production_icons，其旧包与 DLL 已备份在 `Build/recent-fixes-20261011/deployment-backup/`。源码快照、精确归档、反向探针与部署证据在同一 Build 目录。未启动游戏或访问玩家存档，L3 仍需在冲锋中暂停/恢复、棍卫前摇中拍照/恢复，以及实地低帧率下复验。每项触发条件与修复方向见 CODE_REVIEW_FINDINGS 同日条目。
+
 ## 2026-10-11 钟守节拍器原版 Boss 掉落续作（COMPAT，L1/L2）
 
 按 owner 已确认的范围，在 `NewWeaponBossDropHandler` 新增 `Cname_Speedy` → 500107 映射，共用 20% 额外掉率、原版库存追加与竞技场 / 无间炼狱 pending 消费；保留钟守好感 5 级、20 枚背包贝壳兑换。急冻团长和普通随从不命中。同步中英文物品说明、Wiki 源文与生成页及 repowiki；未增加每帧扫描、补丁或事件订阅。未发现新增 confirmed issue。
@@ -1160,104 +1166,17 @@ L1/L2：157 相关守卫、76 条隔离回归通过，6 个反向探针按字节
 
 <!-- BEGIN SYNTAX PROBE COMPILE LIST PARITY 2026-09-23 -->
 
-## 2026-09-23 离线语法探针漏检编译清单文件（OPERATIONAL）
+## 2026-09-23 离线语法探针漏检编译清单文件（已归档）
 
-**问题**：`tools/verify_syntax.py` 自带一套 `echo(...\.cs` 正则读 `compile_official.bat`，
-吃不下清单里残留的 `^` 续行写法（第 265-268 行：`echo(A.cs ^` 后面跟三行缩进路径）。
-cmd 会把这几行拼成一条 echo，写进响应文件后 csc 按空白切参数，**正式构建照常编译这四个文件**
-（`Build/bossrush.rsp` 第 191 行实测就是一行四个路径）；但探针把 `echo(...SkyIslandJournal.cs ^`
-整行丢掉，`DebugAndTools/SkyIsland/SkyIslandJournal.cs` 从来没被离线语法检查过，
-而且探针既不报错，也不显示 979 与 980 的差。`tools/gameplay_coverage.py` 的第三套正则更盲，
-只看见 976 个（那四个文件都漏），只是它用的域集合恰好被同目录其它文件覆盖，暂未产生后果。
-
-**修复**：
-
-- 新增 `tools/compile_list.py`，作为编译清单解析的唯一实现，规则与
-  `OfficialCompileListFileExistenceGuard` 原有正则逐字相同（实测两边同为 980 个源、零差集）。
-- `tools/verify_syntax.py`、`tests/OfficialCompileListFileExistenceGuard.py`、
-  `tools/gameplay_coverage.py` 全部改为 import 它，删掉各自的正则。
-- 探针在启动 csc 之前核对「写进响应文件的集合 == 清单集合」，不一致就点名漏检/多检文件并 FAIL。
-- 新增 `tests/SyntaxProbeCompileListParityGuard.py`：外部钉同一条等式，并用 AST 挡住
-  「探针重新长出自己的 `.cs` 正则」与「响应文件核对被摘掉」。
-- `compile_official.bat` 未改（保持 CRLF，那几行本来就能正确编译）。
-
-**验证**（证据级别 L2，未做 Windows 正式编译）：
-
-- 探针：修复前 979 源，修复后 980 源，`--with-bcl` 仍 PASS（语法层 CS1xxx 零错误）；
-  `SkyIslandJournal.cs` 首次被语法检查，无错误。
-- 全量守卫 656 PASS / 0 NEW-FAIL / 0 KNOWN-RED。
-- `gameplay_coverage` 换解析器后域集合不变（70 -> 70，零差集），四条相关守卫仍 PASS。
-- 反向验证（稀疏副本上做，每次按字节还原并核对 sha256，5/5 按预期转红）：
-  探针漏检一个文件 -> 新守卫点名 `SkyIslandJournal.cs`；探针重新自带 `.cs` 正则 -> 新守卫红；
-  摘掉 main() 里的核对 -> 新守卫红；共用正则退回看不见 `^` 续行 ->
-  `OfficialCompileListFileExistenceGuard` 兜底报 3 个 omitted；
-  在写 rsp 处插过滤 -> 探针自身 0.2 秒内 FAIL（csc 未被启动）。
+已闭环的完整原文见 [2026-09 月台账归档](archive/FIX_TRACKER_2026-09.md)，验证边界随原文保留。
 
 <!-- END SYNTAX PROBE COMPILE LIST PARITY 2026-09-23 -->
 
 <!-- BEGIN MANUAL 16 FIX 2026-09-23 -->
 
-## 2026-09-23 修复 20260922 人工实测 16 项（COMPAT / SCHEMA+ / WIRE+ / OPERATIONAL）
+## 2026-09-23 人工实测 16 项修复（已归档）
 
-对应 owner 清单 `docs/reports/testing/20260922人工实测发现的问题_修复记录.md`。无人值守交付，按「好玩优先」授权直接拍板的取舍与回退写在 [修复记录](docs/reports/testing/20260922人工实测发现的问题_修复记录.md)。
-
-### 各项修复
-
-- **1 冰霜套装**：霜冠校准表改为 `[24,30,24]` / y 0.29，包内实测 0.458 m 宽，小于鸭头 0.49 m。寒冰铠甲 prefab 子节点改为 `(58,64,38)` / y −0.035，盖住腹部。Unity 重打后只有 `frost_set` 变化。
-- **2 报箱 / 遗种巢**（CR-2026-09-23-005/006）：
-  - 发灰的原因是天空岛环境着色器在基地不受光；遗种巢缺碰撞的原因是建预制体时从来没补实体碰撞体。
-  - 新增 `BuildingModelHelper.PrepareBaseBuildingModel`，照许愿台的做法：材质换官方 SodaCharacter，并补实体 BoxCollider。
-  - 报箱的碰撞与许愿台同码，离线未找到缺碰撞的原因，记为 UNVERIFIED。
-- **3 词缀名消失**（CR-2026-09-23-001）：TMP Ellipsis 在第一行都放不下时整串清空。名字行按实测行高给足，新增守卫 `AffixForgeNameRowGuard`。
-- **4 日报**（CR-2026-09-23-002/003/004）：
-  - 图例只剩色块（同一 TMP 机制）→ 行高改 36，改为五项。
-  - 标题药丸灰方块（alpha 块在画布上挖了洞）→ 改画不透明图标。
-  - 战绩表露半行 → 两列排。
-  - 另外：圆形彩色徽章、去掉内框、报名放大、今日格高亮。
-  - 底图经 IconsBuild 重打进 `production_icons`，会话开始时红的 `DailyReportArtPropertyTest` 转绿。守卫新增兜底版面同源检查。
-- **5 船点多两个交互圈**（CR-2026-09-23-007）：鸭王杯 / 天空岛选项自己关世界标记，天空岛选项另外关交互碰撞体。
-- **6 Mode H**：
-  - 认证缓存去掉每次启动都会变的选档计数（CR-2026-09-23-010），加载页改成白话；
-  - 只剩一个选人页（立绘 + 白话），选完自动开打；场间只剩一个按钮；
-  - 开打时镜头跟随己方选手，Raid 图临时放宽战争迷雾（WIRE+）；
-  - 拍铃卡挪到状态卡下方并重做；
-  - 「人数区间」改为「场上敌人」（CR-2026-09-23-012）；
-  - 新增守卫 `ModeHOneClickFlowGuard`。
-- **7 / 10 / 11 / 12 遗种巢**：
-  - 卡片显示炫彩色块与异色标记，巢页写保底进度与捡漏背包格数；
-  - 点卡片即选中，支持批量放生（`TryReleasePets`，单个候选包，全放或全不放）；
-  - 共享按钮新建时不再从白色淡入（CR-2026-09-23-008，F-21 共享根因），同页重绘保住滚动位置；
-  - 「黑」的文字色压到 #858B95；
-  - 异色名字加流光。
-- **8 保底**（SCHEMA+）：10 枚必出炫彩、100 枚必出异色，计数存在巢数据的两个可选字段里，只在孵化事务里推进。执行回归 `PityGuarantees` 覆盖，并有反向探针。
-- **9 / 12 崽身特效**（CR-2026-09-23-017）：
-  - `PetNestAuraEffect` 重写，新增 `PetNestAuraRecipes` / `PetNestAuraTextures`：十色各有元素样式，赤色克隆官方火 AK 的龙息火焰；异色是双层金符文环、金星、光冠、呼吸点光；
-  - 按崽尺寸缩放，固定发射率，粒子上限 60 / 120；
-  - 新增守卫 `PetNestAuraEffectGuard`。
-- **13 阿稳扫箱**：旧箱静默寄快递，只弹一条横幅。只寄扫出来的物品，玩家自己塞进去的东西退回背包。失败时退回逐件交付。
-- **14 提价**：只动掉落专属、明显偏低的物品。遗种蛋 3,200 → 20,000，龙系五件与龙皇铳下限上调；商店商品不动。
-- **15 菜园**：
-  - 种子掉落不再受「Boss掉落随机化」开关影响（CR-2026-09-23-014）；
-  - 基地售货机上架三种种子；
-  - 起步种子各 2 颗，存档键 `BossRush_BackMountain_StarterSeeds_v1`（SCHEMA+）；
-  - 第四章文案改为「在基地吃一份」。
-- **16**：截图实为 Mode G 入场页。
-  - 徽记不再压字，契约卡加边框与选中态，未选契约时不能开战，取消按钮改为中性的「暂不挑战」；
-  - 中文「Resolve」统一改叫「决意」。
-
-### 验证
-
-- 全量守卫：**655 PASS / 0 FAIL**。
-- 全量执行回归：54 PASS。`AuditModeLifecycle` / `NpcAuditFixes` 写死 net10.0，本机只有 .NET 8 SDK（NETSDK1045）；临时换成 net8.0 后两组 PASS，runner 已按字节还原。
-- Windows 正式编译通过，DLL `117DC6097AD30DCA9890D995ED1471A3651EC27985D1D5FFEA41D8F2E59EB6F5` 已部署，游戏目录一致；`check_dll_identifiers --expect absent` PASS。
-- 资源：72 包发布校验 0 错误，部署 VerifyOnly 72 包一致。
-- Wiki 构建与 80 项导航通过。
-- 新增或修改的断言均做了反向验证。
-
-### 没做的
-
-- 没有启动游戏、没有读写存档，**无 L3**。实机清单共 15 步，见修复记录文末。
-- 作者工程与本仓库都未提交。工作区里另一会话的 `docs/contracts.md` 与两份设计提案未动。
+已闭环的完整原文见 [2026-09 月台账归档](archive/FIX_TRACKER_2026-09.md)，验证边界随原文保留。
 
 <!-- END MANUAL 16 FIX 2026-09-23 -->
 

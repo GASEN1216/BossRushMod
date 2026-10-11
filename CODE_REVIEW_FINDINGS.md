@@ -2,6 +2,17 @@
 
 更早记录见 `archive/`；月度归档索引保留在本文件正文。
 
+## 2026-10-11 最近五次提交审查修复（COMPAT / SAFE，L1/L2）
+
+| ID | 等级 / 状态 / 分类 | 修复与验证边界 |
+| --- | --- | --- |
+| CR-2026-10-11-001 | P2 / Fixed / COMPAT | 冠军有效战斗遇到零游戏帧时长时不推进 Update 内招式；暂停与拍照保留冲锋，失效 owner 仍清理。真实 Update / Dashes 暂停与恢复回归通过。 |
+| CR-2026-10-11-002 | P2 / Fixed / COMPAT | 穿墙冲锋以不超过 50 ms 的子步消费整帧时间，逐段验证地面；超时采用位移帧的已消费时间，途中取消停止剩余子步。120/60/30/20/10 FPS、交替长帧、断崖/高度、穿墙、翻滚与部分安全段伤害回归通过。 |
+| CR-2026-10-11-003 | P2 / Fixed / COMPAT | 棍卫三档地面光带显式启用游戏时间；玩家默认仍用未缩放时间，光带几何、颜色与寿命参数不变。完整生产光带与棍卫前摇回归覆盖拍照、慢动作、结束与销毁。 |
+| CR-2026-10-11-004 | P2 / Fixed / SAFE | 两个 2026-09-23 已闭环章节逐字追加到既有月归档，正文留索引；原文 SHA-256 与归档字节一致，1500 行上限未放宽。LedgerSizeGuard 通过。 |
+
+新增执行入口 `SandstormCombatTiming`，旧代码先有 8 个场景失败，修复后通过；原 SandstormCombatRuntime / SandstormChampionPattern 继续覆盖完整调度表。只增加普通分支与小步地面检查，不改伤害、招式数值、音效、资源、存档或 Harmony 目标。最终守卫、正式编译及回归证据见 FIX_TRACKER 同日条目；没有实机 L3，不以离线通过承诺观感或性能。
+
 ## 2026-10-10 提交前复核（COMPAT / SAFE / OPERATIONAL，L1/L2）
 
 - CR-2026-10-10-004，P1 / Fixed：钟守的商品原仅挂本人交互，`SkyIslandResidents.SpawnOneAsync` 会跳过婚后居民，缺席时岛内无法兑换。`SkyIslandWorldStoryServices` 现让 `Search_H` 复用同一 `ReloadMetronomeShopInteractable`，装配/清理与渡口商店共用方法，不增加 Tick。真实方法回归 955 项通过；断开钟庭入口的隔离探针准确转红，字节与 SHA-256 还原后通过。本人及婚后基地入口保持不变，实机可见性待验。

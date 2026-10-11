@@ -143,7 +143,7 @@ namespace BossRush
             {
                 // 地面预警：扇形从一侧推到另一侧，推满即出手。
                 AstralStaffRibbon.Play(feet + Vector3.up * 0.05f, dir, half * 2f, 0.4f, radius, Warning,
-                    windup, 0f, 0.12f, 0.55f, 0f, null);
+                    windup, 0f, 0.12f, 0.55f, 0f, null, useGameTime: true);
                 AstralStaffSigil.Play(feet + Vector3.up * 0.06f, dir, 0.9f, 1, windup, 0.15f, _self.transform);
             });
             AstralStaffSound.PostSwing(_self, 1);
@@ -170,7 +170,7 @@ namespace BossRush
             AstralStaffFx.WithRoot(_fxRoot, () =>
             {
                 AstralStaffRibbon.Play(feet + Vector3.up * 0.05f, dir, 360f, radius - 0.35f, radius, Warning,
-                    windup, 0f, 0.12f, 0.45f, 0f, null);
+                    windup, 0f, 0.12f, 0.45f, 0f, null, useGameTime: true);
                 AstralStaffSigil.Play(feet + Vector3.up * 0.06f, dir, 1.1f, 2, windup, 0.18f, _self.transform);
             });
             AstralStaffSound.PostSwing(_self, 2);
@@ -219,7 +219,7 @@ namespace BossRush
                 landing.Main = new Color(1f, 0.5f, 0.2f, 0.55f);
                 AstralStaffFx.PlayBurst(predicted + Vector3.up * 0.06f, landing);
                 AstralStaffRibbon.Play(predicted + Vector3.up * 0.05f, dir, 360f, blastRadius - 0.12f, blastRadius,
-                    Warning, windup + air, 0f, 0.12f, 0.2f, 0f, null);
+                    Warning, windup + air, 0f, 0.12f, 0.2f, 0f, null, useGameTime: true);
                 AstralStaffSigil.Play(start + Vector3.up * 1.2f, dir, 1.1f, 3, windup + air, 0.2f, _self.transform, true);
             });
             yield return Wait(windup, false);

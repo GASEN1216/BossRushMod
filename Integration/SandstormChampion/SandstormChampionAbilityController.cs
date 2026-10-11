@@ -153,6 +153,8 @@ namespace BossRush
             if (_stopped) return;
             if (IsFighting)
             {
+                // 普通暂停与拍照都会冻结游戏时间；保留当前迭代器，失效 owner 仍走下方清理。
+                if (Time.deltaTime <= 0f) return;
                 TrackPlayerVelocity();
                 TickFight();
                 if (_stopped) return;
@@ -360,6 +362,7 @@ namespace BossRush
                 while (distance < length && elapsed < length / speed + 0.3f && IsFighting && !HasPhaseTransition)
                 {
                     Vector3 previous = _boss.transform.position;
+                    float motionSeconds = Time.deltaTime;
                     if (phasing) { if (!PhaseDashStep(ref direction, speed, !hit)) { strikeBlocked = true; break; } }
                     else if (!CommandMotion(direction * speed)) { strikeBlocked = true; break; }
                     yield return null;
@@ -367,7 +370,8 @@ namespace BossRush
                     Vector3 actual = _boss.transform.position - previous;
                     actual.y = 0f;
                     distance += actual.magnitude;
-                    elapsed += Time.deltaTime;
+                    // 穿墙位移已在 yield 前完成，必须使用那一帧实际消费的时间。
+                    elapsed += phasing ? motionSeconds : Time.deltaTime;
                     blocked = actual.sqrMagnitude < 0.0004f ? blocked + Time.deltaTime : 0f;
                     // ECM2 会在墙前截停；不能在原地耗完五连冲，下一轮改走导航绕开掩体。
                     if (blocked >= 0.14f)
@@ -451,24 +455,33 @@ namespace BossRush
         /// </summary>
         private bool PhaseDashStep(ref Vector3 direction, float speed, bool steer)
         {
-            float dt = Mathf.Min(Time.deltaTime, 0.05f);
-            if (dt <= 0f || _boss == null) return false;
-            Vector3 from = _boss.transform.position;
-            if (steer)
+            float remaining = Time.deltaTime;
+            if (remaining <= 0f || _boss == null) return false;
+            bool moved = false;
+            // 长帧按小步消费完整游戏时间，保留逐段地面检查，不因帧率降低而减速。
+            while (remaining > 0f && IsFighting && !HasPhaseTransition)
             {
-                Vector3 toPlayer = CharacterMainControl.Main.transform.position - from;
-                toPlayer.y = 0f;
-                if (toPlayer.sqrMagnitude > 1f && Vector3.Dot(toPlayer.normalized, direction) > 0.2f)
-                    direction = Vector3.RotateTowards(direction, toPlayer.normalized,
-                        SandstormChampionConfig.PhaseDashSteerDegrees * Mathf.Deg2Rad * dt, 0f);
+                float dt = Mathf.Min(remaining, 0.05f);
+                Vector3 from = _boss.transform.position;
+                if (steer)
+                {
+                    Vector3 toPlayer = CharacterMainControl.Main.transform.position - from;
+                    toPlayer.y = 0f;
+                    if (toPlayer.sqrMagnitude > 1f && Vector3.Dot(toPlayer.normalized, direction) > 0.2f)
+                        direction = Vector3.RotateTowards(direction, toPlayer.normalized,
+                            SandstormChampionConfig.PhaseDashSteerDegrees * Mathf.Deg2Rad * dt, 0f);
+                }
+                Vector3 next = from + direction * (speed * dt);
+                RaycastHit ground;
+                // 已移动的安全段仍交给外层结算扫掠伤害，下帧从最后安全位置结束或重试。
+                if (_groundMask == 0 || !Physics.Raycast(next + Vector3.up * 3f, Vector3.down, out ground, 8f,
+                    _groundMask, QueryTriggerInteraction.Ignore) || Mathf.Abs(ground.point.y - from.y) > 2.5f) return moved;
+                next.y = ground.point.y;
+                PhaseTo(next);
+                moved = true;
+                remaining -= dt;
             }
-            Vector3 next = from + direction * (speed * dt);
-            RaycastHit ground;
-            if (_groundMask == 0 || !Physics.Raycast(next + Vector3.up * 3f, Vector3.down, out ground, 8f,
-                _groundMask, QueryTriggerInteraction.Ignore) || Mathf.Abs(ground.point.y - from.y) > 2.5f) return false;
-            next.y = ground.point.y;
-            PhaseTo(next);
-            return true;
+            return moved;
         }
 
         /// <summary>穿墙冲锋收尾：停在墙体 / 掩体里时吸附回与玩家连通的可走面，下一冲不会从墙里起步。</summary>

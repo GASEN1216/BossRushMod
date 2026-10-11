@@ -35,15 +35,17 @@ namespace BossRush
         private float _innerAlpha;
         private float _growFrom;
         private bool _grow;
+        private bool _useGameTime;
         private Transform _follow;
 
         /// <summary>
         /// center：圆心；forward：扇形中线方向；sweep：总角度（度，负值反向推进）；
         /// inner/outer：内外半径；reveal/hold/fade：三段时长（秒，按未缩放时间走，顿帧时光带照样展开）。
-        /// growFrom&gt;0 时半径从 growFrom 倍长到 1 倍（冲击波）。
+        /// growFrom&gt;0 时半径从 growFrom 倍长到 1 倍（冲击波）；敌方预警用 useGameTime 对齐出手。
         /// </summary>
         internal static AstralStaffRibbon Play(Vector3 center, Vector3 forward, float sweep, float inner, float outer,
-            Color color, float reveal, float hold, float fade, float innerAlpha, float growFrom, Transform follow)
+            Color color, float reveal, float hold, float fade, float innerAlpha, float growFrom, Transform follow,
+            bool useGameTime = false)
         {
             GameObject go = null;
             try
@@ -55,6 +57,7 @@ namespace BossRush
                 if (forward.sqrMagnitude < 0.0001f) forward = Vector3.forward;
                 go.transform.rotation = Quaternion.LookRotation(forward.normalized, Vector3.up);
                 AstralStaffRibbon ribbon = go.AddComponent<AstralStaffRibbon>();
+                ribbon._useGameTime = useGameTime;
                 ribbon.Init(sweep, inner, outer, color, reveal, hold, fade, innerAlpha, growFrom, follow);
                 return ribbon;
             }
@@ -135,7 +138,7 @@ namespace BossRush
         private void Update()
         {
             if (BossRushUI.IsGamePaused()) return;
-            _t += Time.unscaledDeltaTime;
+            _t += _useGameTime ? Time.deltaTime : Time.unscaledDeltaTime;
             if (_follow != null)
             {
                 Vector3 p = _follow.position;
