@@ -23,6 +23,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'Build/sky-island-python-deps'))
 sys.path.insert(0, str(ROOT / 'tools'))
+from sky_island_road_layout import source_text_sha256
 
 import numpy as np  # noqa: E402
 import shapely  # noqa: E402
@@ -845,7 +846,7 @@ def main():
         payload = {'schemaVersion': 1,
                    'source': {'layoutCanonicalSha256': __import__('sky_island_road_layout').digest(layout),
                               'roadPayloadHash': roads.get('payloadHash'),
-                              'runtimePlacementsSha256': hashlib.sha256(runtime_bytes).hexdigest(),
+                              'runtimePlacementsSha256': source_text_sha256(runtime_bytes),
                               'ledgerTriangles': int(len(T)),
                               'ledgerInstances': len(instances)},
                    'criteria': {'bodySlab': [BODY_LOW, BODY_HIGH], 'bands': COMPACT_BANDS, 'roadCurb': ROAD_CURB,

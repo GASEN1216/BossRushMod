@@ -22,6 +22,8 @@ from shapely.geometry import Point, LineString, Polygon, box
 from shapely.ops import unary_union
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'tools'))
+from sky_island_road_layout import matches_source_text_sha256
 LAYOUT = ROOT / 'ArtSource/SkyIsland/layout.json'
 ROADS = ROOT / 'ArtSource/SkyIsland/road_layout.json'
 EXPECTED_ISLANDS = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'S1', 'S2', 'S3', 'S4'}
@@ -366,7 +368,7 @@ def main():
     report = geometry(layout, roads)
     if not args.geometry_only:
         require(roads['layoutHash'] == fingerprint(layout), 'baked layout canonical hash stale')
-        require(roads['sourceLayoutSha256'] == hashlib.sha256(args.layout.read_bytes()).hexdigest(),
+        require(matches_source_text_sha256(args.layout.read_bytes(), roads['sourceLayoutSha256']),
                 'baked source layout file hash stale')
         require(roads['payloadHash'] == fingerprint({k: v for k, v in roads.items() if k != 'payloadHash'}),
                 'baked payload corrupted')

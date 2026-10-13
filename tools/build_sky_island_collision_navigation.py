@@ -12,6 +12,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 from shapely import Polygon,LineString,Point,MultiPoint,unary_union,set_precision,constrained_delaunay_triangles
 from sky_island_navigation import MeshBuilder,triangle_height
+from sky_island_road_layout import source_text_sha256
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--layout',type=Path,default=ROOT/'ArtSource/SkyIsland/layout.json')
 parser.add_argument('--footprints',type=Path,required=True)
@@ -163,7 +164,7 @@ for marker in layout['markers']:
   p=marker['position']
   if connected.distance(Point(p[0],p[2]))>.00003:
    raise RuntimeError('Required footing disconnected: '+marker['id'])
-report={'version':1,'sourceCollisionSha256':source['sourceCollisionSha256'],'sourceLayoutSha256':hashlib.sha256(args.layout.read_bytes()).hexdigest(),'navigation':out,'preciseSolids':sorted(precise_solids),'approachRefinements':refinements,'planarRegions':{k:v['height'] for k,v in islands.items()},'obstacleBuffer':.50+tolerance,'simplificationTolerance':tolerance,'sourceSolids':source['signatureSolids'],'connectedTriangles':len(seen),'blockedFootprints':{k:json.loads(__import__('shapely').to_geojson(v)) for k,v in blocked.items()}}
+report={'version':1,'sourceCollisionSha256':source['sourceCollisionSha256'],'sourceLayoutSha256':source_text_sha256(args.layout.read_bytes()),'navigation':out,'preciseSolids':sorted(precise_solids),'approachRefinements':refinements,'planarRegions':{k:v['height'] for k,v in islands.items()},'obstacleBuffer':.50+tolerance,'simplificationTolerance':tolerance,'sourceSolids':source['signatureSolids'],'connectedTriangles':len(seen),'blockedFootprints':{k:json.loads(__import__('shapely').to_geojson(v)) for k,v in blocked.items()}}
 args.output.parent.mkdir(parents=True,exist_ok=True)
 staging=args.output.with_suffix(args.output.suffix+'.candidate')
 staging.write_text(json.dumps(report,separators=(',',':')),encoding='utf-8')

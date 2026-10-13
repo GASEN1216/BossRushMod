@@ -32,6 +32,30 @@ def require(condition, code, detail):
     if not condition:
         raise AssertionError(code + ': ' + str(detail))
 
+def verify_source_text_fingerprints():
+    """Exercise the production source-byte policy even without the author project."""
+    sys.path.insert(0, str(ROOT / 'tools'))
+    from sky_island_road_layout import source_text_sha256, matches_source_text_sha256
+    lf = b'{\n "x": 1,\n "name": "\xe5\xb2\x9b",\n "literal": "\\r\\n"\n}\n'
+    crlf = lf.replace(b'\n', b'\r\n')
+    mixed = lf.replace(b'\n', b'\r\n', 1)
+    expected = hashlib.sha256(lf).hexdigest()
+    recorded = (expected, hashlib.sha256(crlf).hexdigest())
+    for current in (lf, crlf, mixed):
+        require(source_text_sha256(current) == expected, 'SOURCE_WRITER_LINE_ENDINGS', current)
+        require(all(matches_source_text_sha256(current, value) for value in recorded),
+                'LEGACY_SOURCE_LINE_ENDINGS', current)
+        require(matches_source_text_sha256(current, hashlib.sha256(current).hexdigest()),
+                'RAW_SOURCE_SIGNATURE', current)
+    for label, current in [('coordinate', lf.replace(b'"x": 1', b'"x": 2')),
+                           ('field', lf.replace(b'"x"', b'"z"')),
+                           ('whitespace', lf.replace(b'"x":', b'"x" :')),
+                           ('BOM', b'\xef\xbb\xbf' + lf),
+                           ('escaped_string', lf.replace(b'\\r\\n', b'\\n'))]:
+        require(current != lf and not any(matches_source_text_sha256(current, value) for value in recorded),
+                'SOURCE_CONTENT_MUTATION_ACCEPTED', label)
+    return {'lineEndingVariants': 3, 'legacySignatureForms': 2, 'contentMutationsRejected': 5}
+
 def clip_triangle(subject, clip):
     """Convex Sutherland-Hodgman intersection, independent of the solver."""
     polygon = list(subject)
@@ -241,7 +265,7 @@ def verify_fingerprints(project):
                  'VIS_A_GroundDetail_Wood', 'VIS_A_Geology'):
         objects[name] = memory_mesh(name, [])
     layout = {'islands': [{'id': 'A', 'height': 0.0}]}
-    layout_bytes = json.dumps(layout).encode('utf-8')
+    layout_bytes = (json.dumps(layout, indent=2) + '\n').encode('utf-8')
     assets = Path(project) / 'Assets/SkyIsland'
     layout_path = assets / 'sky_island_layout.json'
     policy_path = Path(project) / 'Assets/Editor/SkyIslandCollisionBuilder.cs'
@@ -272,7 +296,7 @@ def verify_fingerprints(project):
                 'sourceLayoutSha256': hashlib.sha256(layout_bytes).hexdigest(), 'connectedTriangles': 1,
                 'navigation': {'vertices': [[0, 0, 0], [1, 0, 0], [0, 0, 1]], 'triangles': [[0, 2, 1]]}}
 
-    def apply(rows, data, generator, writes, current_policy=None):
+    def apply(rows, data, generator, writes, current_policy=None, current_layout=None):
         sidecar_bytes = json.dumps(data).encode('utf-8')
         def read_text(path, *args, **kwargs):
             if path == SIDECAR:
@@ -282,7 +306,7 @@ def verify_fingerprints(project):
             return original_read_text(path, *args, **kwargs)
         def read_bytes(path):
             if path == layout_path:
-                return layout_bytes
+                return layout_bytes if current_layout is None else current_layout
             if path == SIDECAR:
                 return sidecar_bytes
             return original_read_bytes(path)
@@ -298,13 +322,23 @@ def verify_fingerprints(project):
     require(apply(objects, baseline, generator, writes) == baseline['navigation'], 'VALID_SOURCE_REJECTED', baseline)
     generator.create_object.assert_called_once()
     require(len(writes) == 1, 'VALID_NAV_COPY', writes)
+    # Existing Windows raw-byte signatures and new LF signatures both survive checkout.
+    from sky_island_road_layout import source_text_sha256
+    crlf = layout_bytes.replace(b'\n', b'\r\n')
+    for recorded in (hashlib.sha256(layout_bytes).hexdigest(), hashlib.sha256(crlf).hexdigest(), source_text_sha256(crlf)):
+        for current in (layout_bytes, crlf):
+            data = dict(baseline, sourceLayoutSha256=recorded)
+            generator, writes = Mock(), []
+            require(apply(objects, data, generator, writes, current_layout=current) == baseline['navigation'],
+                    'CHECKOUT_LINE_ENDINGS_REJECTED', (recorded, current == crlf))
+            require(len(writes) == 1, 'CHECKOUT_NAV_COPY', recorded)
     # Enumeration order must not change either the source set or its signature.
     production.validate_collision_sources(baseline, dict(reversed(list(objects.items()))), project)
     negatives = []
-    def reject(label, rows, expected, data=None, current_policy=None):
+    def reject(label, rows, expected, data=None, current_policy=None, current_layout=None):
         generator, writes = Mock(), []
         try:
-            apply(rows, baseline if data is None else data, generator, writes, current_policy)
+            apply(rows, baseline if data is None else data, generator, writes, current_policy, current_layout)
         except ValueError as error:
             require(expected in str(error), 'WRONG_FINGERPRINT_FAILURE', (label, str(error), expected))
         else:
@@ -312,6 +346,12 @@ def verify_fingerprints(project):
         require(not generator.mock_calls and not writes, 'STALE_NAV_MUTATED', label)
         negatives.append(label)
 
+    for label, changed in [('layout_coordinate', layout_bytes.replace(b'0.0', b'0.25', 1)),
+                           ('layout_field', layout_bytes.replace(b'"height"', b'"elevation"', 1)),
+                           ('layout_whitespace', layout_bytes.replace(b'"height":', b'"height" :', 1)),
+                           ('layout_BOM', b'\xef\xbb\xbf' + layout_bytes)]:
+        require(changed != layout_bytes, 'LAYOUT_MUTATION_ANCHOR', label)
+        reject(label, objects, 'Layout changed', current_layout=changed)
     changed = copy.deepcopy(objects)
     changed['VIS_A_NewStone'] = memory_mesh('VIS_A_NewStone', ['Sky_Rock'])
     reject('new_hard_mesh', changed, 'Solid source set changed')
@@ -348,7 +388,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--fingerprint-only', action='store_true', help='Only run in-memory production fingerprint regressions')
     args = parser.parse_args()
+    source_text_report = verify_source_text_fingerprints()
     sys.path.insert(0, str(ROOT / 'tools'))
+    from sky_island_road_layout import matches_source_text_sha256
     from unity_project_path import find_unity_project
     source_only = os.environ.get('BOSSRUSH_GUARD_SOURCE_ONLY') == '1'
     project = None if source_only else find_unity_project()
@@ -375,7 +417,8 @@ def main():
             sidecar = json.loads(SIDECAR.read_text(encoding='utf-8-sig'))
             layout = json.loads(LAYOUT.read_text(encoding='utf-8-sig'))
             require(sidecar.get('version') == 1, 'VERSION', sidecar.get('version'))
-            require(sidecar.get('sourceLayoutSha256') == before[LAYOUT], 'LAYOUT_FINGERPRINT', sidecar.get('sourceLayoutSha256'))
+            require(matches_source_text_sha256(LAYOUT.read_bytes(), sidecar.get('sourceLayoutSha256')),
+                    'LAYOUT_FINGERPRINT', sidecar.get('sourceLayoutSha256'))
             fingerprint = sidecar.get('sourceCollisionSha256', '')
             require(isinstance(fingerprint, str) and len(fingerprint) == 64
                     and all(c in string.hexdigits for c in fingerprint), 'COLLISION_FINGERPRINT_FORMAT', fingerprint)
@@ -416,6 +459,7 @@ def main():
         if source_only and report['status'] == 'PASS':
             report['status'] = 'PARTIAL'
         report['fingerprintRegression'] = fingerprint_report
+        report['sourceTextFingerprintRegression'] = source_text_report
     finally:
         for path, digest in before.items():
             require(hashlib.sha256(path.read_bytes()).hexdigest() == digest, 'SOURCE_BYTES_CHANGED', str(path))

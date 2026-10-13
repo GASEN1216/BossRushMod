@@ -4,6 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+from sky_island_road_layout import matches_source_text_sha256
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -97,7 +98,7 @@ def apply_navigation(generator, layout, assets):
         raise FileNotFoundError('Collision-aware navigation must be rebuilt before producing this map: ' + str(path))
     data = json.loads(path.read_text(encoding='utf-8'))
     layout_path = Path(assets) / 'sky_island_layout.json'
-    if hashlib.sha256(layout_path.read_bytes()).hexdigest() != data['sourceLayoutSha256']:
+    if not matches_source_text_sha256(layout_path.read_bytes(), data['sourceLayoutSha256']):
         raise ValueError('Layout changed; rebuild collision navigation')
     validate_collision_sources(data, bpy.data.objects, Path(assets).resolve().parent.parent)
     nav = data['navigation']

@@ -53,6 +53,7 @@ EXTERNAL_ARTIFACT_GUARDS = {
     "DailyReportArtPropertyTest.py",
     "SkyIslandFxBundleGuard.py", "SkyIslandCollisionNavigationPropertyTest.py",
     "SkyIslandShadowStabilityPropertyTest.py",
+    "SkyIslandFloraGeometryPropertyTest.py",
 }
 
 

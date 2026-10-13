@@ -12,6 +12,8 @@
 
 新增导航文件是作者阶段的可重复烘焙结果，不是玩家存档扩展。它记录设计布局 SHA-256、全部生产硬物（含桥梁）的几何指纹、岛区刚性物体的身体高度切片、交互接近处的精细修正和连通性。生成器从作者 SkyIslandCollisionBuilder.cs 当前材料和分组规则重新枚举硬物，名称集合新增、删除或硬软转换也必须使旧 sidecar 失效；岛区切片与全硬物签名使用不同名单，桥梁不能从失效检测中排除。平岛合并后重新三角化，桥面只合并同一平面；最终顶点必须小于 4095。生成器遇到布局或实体指纹过期会中止发布，不能静默回退到穿过实体的旧导航。
 
+2026-10-13 换行兼容：源布局与运行时摆放表的新 SHA-256 只把 CRLF 统一为 LF，由现有 `sky_island_road_layout.source_text_sha256` 计算。生产应用与属性测试通过同模块 `matches_source_text_sha256` 兼容既有原字节、统一 LF、统一 CRLF 的签名。不会重排 JSON 或去掉空白、BOM；字段、坐标、字符串和空白变化仍使证据过期。几何及道路 payload 的规范 JSON 指纹保持原规则，现有地图、导航和审计 JSON 不因 checkout 换行而重生成。
+
 修改实体模型后的顺序：
 1. 在同一作者工程执行 `tools/generate_sky_island.py -- --project <作者工程> --skip-render --prepare-navigation`，只导出 `ArtSource/SkyIsland/sky_island_collision_footprints.json`，不覆盖生产 FBX。可通过 Blender MCP 调用，后台运行仍须加 `--factory-startup --python-exit-code 1`。
 2. 在普通 Python 环境执行 `python tools/build_sky_island_collision_navigation.py --footprints <作者工程>/ArtSource/SkyIsland/sky_island_collision_footprints.json`；需要 Shapely 2.1，原子更新本仓库 `collision_navigation.json`。不满足预算、连通或必达标记时不得发布。

@@ -30,6 +30,19 @@ def digest(value):
                                     separators=(',', ':')).encode('utf-8')).hexdigest()
 
 
+def source_text_sha256(raw):
+    """Source-byte fingerprint with only checkout CRLF normalized to LF."""
+    return hashlib.sha256(raw.replace(b'\r\n', b'\n')).hexdigest()
+
+
+def matches_source_text_sha256(raw, expected):
+    """Accept existing raw/LF/CRLF signatures; preserve whitespace, BOM and content."""
+    lf = raw.replace(b'\r\n', b'\n')
+    return isinstance(expected, str) and expected in (
+        hashlib.sha256(raw).hexdigest(), source_text_sha256(raw),
+        hashlib.sha256(lf.replace(b'\n', b'\r\n')).hexdigest())
+
+
 def planning_entities(layout, actual_bounds):
     """Fresh records; never mutate the canonical author layout."""
     for obstacle in layout['obstacles']:
@@ -496,8 +509,8 @@ def main():
     baseline = json.loads(args.baseline.read_text(encoding='utf-8'))
     actual = json.loads(args.actual.read_text(encoding='utf-8'))
     data = bake(layout, baseline, actual)
-    data['sourceLayoutSha256'] = hashlib.sha256(args.layout.read_bytes()).hexdigest()
-    data['sourceLayoutHashPolicy'] = 'sha256_file_bytes; layoutHash uses canonical JSON'
+    data['sourceLayoutSha256'] = source_text_sha256(args.layout.read_bytes())
+    data['sourceLayoutHashPolicy'] = 'sha256_file_bytes_crlf_to_lf; layoutHash uses canonical JSON'
     data['sourceActualProbeSha256'] = hashlib.sha256(args.actual.read_bytes()).hexdigest()
     data['sourceReference'] = {'baseline': args.baseline.relative_to(ROOT).as_posix() if args.baseline.is_relative_to(ROOT) else args.baseline.name,
                                'actualProbe': args.actual.relative_to(ROOT).as_posix() if args.actual.is_relative_to(ROOT) else args.actual.name,

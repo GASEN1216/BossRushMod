@@ -56,7 +56,7 @@ def freshness(evidence, layout, roads, runtime_bytes, geometry):
         problems.append('STALE_LAYOUT')
     if source['roadPayloadHash'] != roads['payloadHash']:
         problems.append('STALE_ROADS')
-    if source['runtimePlacementsSha256'] != hashlib.sha256(runtime_bytes).hexdigest():
+    if not sky_island_road_layout.matches_source_text_sha256(runtime_bytes, source['runtimePlacementsSha256']):
         problems.append('STALE_RUNTIME_PLACEMENTS')
     geology = sum(row['triangles'] for name, row in geometry['visualMeshes'].items() if name.endswith('_Geology'))
     if source['ledgerTriangles'] + geology != geometry['totalVisualTriangles']:
