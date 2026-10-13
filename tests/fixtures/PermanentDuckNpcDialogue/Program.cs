@@ -341,14 +341,19 @@ internal static class Program
             shops++;
             Check(config.ShopEnabled && config.ShopUnlockLevel == 3, "浮舟的商店在好感 3 级解锁");
             var items = config.GetShopItems();
-            Check(items.Count == 1 && items[0].TypeID == BossRushItemIds.RollCallLedger,
-                  "浮舟只出售已登记的点名册 TypeID");
+            Check(items.Count == 2 && items[0].TypeID == BossRushItemIds.RollCallLedger
+                  && items[1].TypeID == BossRushItemIds.PassTheBomb
+                  && items[0].TypeID != items[1].TypeID,
+                  "浮舟同时出售独立 TypeID 的点名册与甩锅许可证");
             Check(items[0].RequiredLevel == 3 && items[0].MaxStock == 1,
                   "点名册好感 3 级解锁且每次商店库存 1");
             Check(items[0].BasePriceFactor == 1f && items[0].Possibility == 1f && config.GetDiscountForLevel(10) == 0f,
                   "按 item.Value 原价确定供应，不隐含折扣或概率缺货");
+            Check(items[1].RequiredLevel == 3 && items[1].MaxStock == 1
+                  && items[1].BasePriceFactor == 1f && items[1].Possibility == 1f,
+                  "甩锅许可证好感 3 级解锁、库存 1 且确定按原价供应");
             items.Clear();
-            Check(config.GetShopItems().Count == 1, "消费者不能通过清空列表破坏蓝图库存");
+            Check(config.GetShopItems().Count == 2, "消费者不能通过清空列表破坏两件蓝图库存");
             L10n.Chinese = true;
             Check(config.ShopName == "浮舟的航前杂货" && config.UnlocksByLevel[3][0] == "浮舟的航前杂货",
                   "中文解锁条目只提供商店名，由好感 UI 统一添加解锁前缀");
@@ -359,7 +364,7 @@ internal static class Program
                   "开店后原婚后台词仍可用");
         }
         L10n.Chinese = true;
-        Check(shops == 2, "真实蓝图必须同时保留浮舟点名册和钟守节拍器，其他居民不开店");
+        Check(shops == 2, "真实蓝图保留浮舟两件图腾与钟守节拍器，其他居民不开店");
     }
 
     private static int Main()

@@ -124,5 +124,7 @@ namespace BossRush
         public const int ReloadMetronome = 500107;
         /// <summary>回火液：重铸界面解除一条已固定属性的消耗品（叮当商店 / 好感 6 级赠礼）。</summary>
         public const int TemperingSolvent = 500108;
+        // 甩锅许可证（图腾）
+        public const int PassTheBomb = 500109;
     }
 }

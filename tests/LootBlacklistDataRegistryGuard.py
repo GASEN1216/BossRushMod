@@ -18,6 +18,7 @@ CONSTANT_SOURCES = {
     "BossRushItemIds.RollCallLedger": Path("Config/ConfigItemIds.cs"),
     "BossRushItemIds.ReloadMetronome": Path("Config/ConfigItemIds.cs"),
     "BossRushItemIds.TemperingSolvent": Path("Config/ConfigItemIds.cs"),
+    "BossRushItemIds.PassTheBomb": Path("Config/ConfigItemIds.cs"),
 }
 
 CONSTANT_VALUES = {

@@ -936,6 +936,12 @@ echo(Integration\NewWeapons\RollCallLedger\RollCallLedgerRules.cs
 echo(Integration\NewWeapons\RollCallLedger\RollCallLedgerRuntime.cs
 echo(Integration\NewWeapons\RollCallLedger\RollCallLedgerFx.cs
 echo(Integration\NewWeapons\RollCallLedger\RollCallLedgerIcon.cs
+echo(Integration\NewWeapons\PassTheBomb\PassTheBombConfig.cs
+echo(Integration\NewWeapons\PassTheBomb\PassTheBombWeaponConfig.cs
+echo(Integration\NewWeapons\PassTheBomb\PassTheBombIcon.cs
+echo(Integration\NewWeapons\PassTheBomb\PassTheBombRules.cs
+echo(Integration\NewWeapons\PassTheBomb\PassTheBombRuntime.cs
+echo(Integration\NewWeapons\PassTheBomb\PassTheBombFx.cs
 echo(Integration\FlightTotem\FlightConfig.cs
 echo(Integration\FlightTotem\FlightTotemFactory.cs
 echo(Integration\FlightTotem\FlightTotemBootstrap.cs

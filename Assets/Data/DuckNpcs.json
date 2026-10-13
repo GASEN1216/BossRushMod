@@ -429,7 +429,8 @@
           "nameEn": "Fuzhou's Departure Supplies",
           "unlockLevel": 3,
           "items": [
-            { "typeId": 500106, "requiredLevel": 3, "maxStock": 1 }
+            { "typeId": 500106, "requiredLevel": 3, "maxStock": 1 },
+            { "typeId": 500109, "requiredLevel": 3, "maxStock": 1 }
           ]
         },
         "dailyChatAffinity": 30,

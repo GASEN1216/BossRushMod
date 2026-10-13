@@ -21,7 +21,7 @@
    - 判定之前不能有一条无条件的 `return` 把它架空；
    - 显隐落点必须在判定之后，且中间不许把结果改回「显示」（`visible = true` / `suppressed = false` 一类）。
 2. 每帧入口真的被驱动：宿主方法里的调用点、它外面套了哪几层、之前有几条提前返回，都按清单逐条核对——
-   把调用挪进交战分支、在它前面加一条提前返回，这里都会红。Unity 消息（`Update`）则要求类型确实是 MonoBehaviour。
+   把调用挪进交战分支、在它前面加一条提前返回，这里都会红。Unity 消息（`Update` / `LateUpdate`）则要求类型确实是 MonoBehaviour。
 3. **全仓凡是引用 UI 层级常量的文件都必须归类**：常驻清单、排除清单（引用 HUD 层却不是常驻 HUD）、
    模态 / 主动打开清单，逐个写明理由。新加一块界面而忘了登记，这里当场红。
 4. **画布层级不许写字面量**：`Canvas.sortingOrder = 1200`、`CreateCanvasRoot("X", 1200, …)` 绕开了层级表，
@@ -57,6 +57,9 @@ REVERT_TO_VISIBLE = re.compile(r"\b(?:visible|shown)\s*=\s*true\b|\b(?:suppresse
 # 驱动方式：("call", 宿主文件, 调用片段, 宿主方法签名, 调用外层的块, 调用前的单行判空 if, 宿主里调用之前的 return 条数)
 #          或 ("unity", 类声明正则)。宿主那三项是按 2026-09-14 的生产代码记下的：宿主结构有意改了就一起改这里。
 PERSISTENT = (
+    ("Integration/NewWeapons/PassTheBomb/PassTheBombFx.cs", None, "private void LateUpdate()",
+     "canvas.enabled = visible;", ("unity", r"class PassTheBombFx\s*:\s*MonoBehaviour"),
+     "甩锅许可证：待爆期间跟随携带者的头顶倒计时"),
     ("Integration/NewWeapons/AstralStaff/AstralStaffFx.cs", "internal sealed class AstralStaffBeanHud",
      "internal void Tick(CharacterMainControl player, float beans, float charge01, bool charging)",
      "if (!visible) { HideAll(); return; }",
@@ -318,7 +321,7 @@ def check(read, layer_files, canvas_files, ongui_files):
         if drive[0] == "call":
             errors += host_errors(label, drive, read)
         elif not re.search(drive[1], source):
-            errors.append("%s 靠 Unity 的 Update 驱动，但 %s 里找不到 MonoBehaviour 声明" % (label, rel))
+            errors.append("%s 靠 Unity 的 Update / LateUpdate 驱动，但 %s 里找不到 MonoBehaviour 声明" % (label, rel))
 
     # Mode G 的服务并非注册模块，HUD 必须沿原宿主 tick 链逐层到达。
     for drive in MODEG_DRIVE_CHAIN:

@@ -2,7 +2,7 @@
 
 ## 2026-10-09 可选商店与浮舟航前杂货（SCHEMA+）
 
-永久 NPC 蓝图支持可选 `permanent.shop`：包含双语 `nameCn` / `nameEn`、`unlockLevel` 和商品 `items`（`typeId`、`requiredLevel`、`maxStock`）。未配置或没有有效商品时保持关闭；现有数据给天空岛登云码头的浮舟 `sky_fuzhou` 启用「浮舟的航前杂货 / Fuzhou's Departure Supplies」，好感 3 级出售教导主任的点名册，库存 1、价格因子 1，售价 20000。小满保留示例定位。新增物品应按主题分配给玩家可接触的 NPC，不能把支持通用接口误写成所有居民已有商店库存。
+永久 NPC 蓝图支持可选 `permanent.shop`：包含双语 `nameCn` / `nameEn`、`unlockLevel` 和商品 `items`（`typeId`、`requiredLevel`、`maxStock`）。未配置或没有有效商品时保持关闭；现有数据给天空岛登云码头的浮舟 `sky_fuzhou` 启用「浮舟的航前杂货 / Fuzhou's Departure Supplies」，好感 3 级出售教导主任的点名册（500106，20000）与甩锅许可证（500109，18000），各库存 1、价格因子 1；婚后基地与 `Search_A` 渡口工台共用配置。无声钟守另有好感 5 级的节拍器贝壳兑换，小满保留示例定位。新增物品应按主题分配给玩家可接触的 NPC，不能把支持通用接口误写成所有居民已有商店库存。
 
 `PermanentDuckNpcAffinityConfig` 实现 `INPCShopConfig`；根交互通过共享助手幂等创建 `NPCShopInteractable`，组件订阅现有好感事件并控制解锁显隐，仍走 `NPCShopSystem` 和官方商店界面。婚前婚后使用同一 NPC id 与商店配置，不修改关系存档；捏脸 NPC 回收前按实例关闭所属商店。`NPCShopSystem.Cleanup` 先停用服务并退订事件，再仅关闭 Target 对应当前店且仍打开的官方窗口；静态清理和打开失败共用此收口。天空岛渡口工台另挂同 ID 商店作为居民缺席兜底，由 WorldStory 的构造/Dispose 管理。`PermanentDuckNpcDialogue` 执行真实解析器和配置器，`DuckNpcInvariantGuard` 守卫通用接线；实机购买、动态解锁和婚后交易仍需验收。
 

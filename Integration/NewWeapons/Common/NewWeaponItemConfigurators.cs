@@ -43,6 +43,7 @@ namespace BossRush
                 ItemFactory.RegisterConfigurator(BossRushItemIds.EmptyMagazineMine, ConfigureEmptyMagazineMine);
                 ItemFactory.RegisterConfigurator(BossRushItemIds.RollCallLedger, ConfigureRollCallLedger);
                 ItemFactory.RegisterConfigurator(BossRushItemIds.ReloadMetronome, ConfigureReloadMetronome);
+                ItemFactory.RegisterConfigurator(BossRushItemIds.PassTheBomb, ConfigurePassTheBomb);
             }
             catch (Exception e)
             {
@@ -88,6 +89,11 @@ namespace BossRush
         private static void ConfigureRollCallLedger(Item itemPrefab)
         {
             RollCallLedgerWeaponConfig.TryConfigure(itemPrefab, RollCallLedgerConfig.BaseName);
+        }
+
+        private static void ConfigurePassTheBomb(Item itemPrefab)
+        {
+            PassTheBombWeaponConfig.TryConfigure(itemPrefab, PassTheBombConfig.BaseName);
         }
     }
 }

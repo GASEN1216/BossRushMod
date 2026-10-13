@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RollForward>Major</RollForward>
+    <LangVersion>7.3</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="RuntimeChecks.cs" />
+    <Compile Include="Stubs.cs" />
+    <Compile Include="../../../Integration/NewWeapons/PassTheBomb/PassTheBombRules.cs" />
+    <Compile Include="../../../Integration/NewWeapons/PassTheBomb/PassTheBombConfig.cs" />
+    <Compile Include="../../../Integration/NewWeapons/PassTheBomb/PassTheBombRuntime.cs" />
+    <Compile Include="../../../Integration/NewWeapons/PassTheBomb/PassTheBombFx.cs" />
+    <Compile Include="../../../Config/ConfigItemIds.cs" />
+  </ItemGroup>
+</Project>
