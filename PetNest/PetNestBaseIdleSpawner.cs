@@ -47,6 +47,18 @@ namespace BossRush
         /// <summary>当前在场的闲逛崽数量。</summary>
         internal static int ActiveCount { get { return _handles.Count; } }
 
+        /// <summary>基地喂食升级时只刷新实际交互的那只宠物，复用随从的成长表现。</summary>
+        internal static void RefreshProgression(CharacterMainControl character, PetNestPetRecord pet)
+        {
+            if (character == null || pet == null) return;
+            for (int i = 0; i < _handles.Count; i++)
+                if (_handles[i] != null && _handles[i].Character == character)
+                {
+                    PetNestCompanionSpawner.RefreshProgression(_handles[i], pet);
+                    return;
+                }
+        }
+
         #endregion
 
         #region 生成

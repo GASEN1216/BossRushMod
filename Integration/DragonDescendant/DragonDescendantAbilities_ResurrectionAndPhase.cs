@@ -22,6 +22,10 @@ namespace BossRush
         /// </summary>
         private void OnBossHurt(DamageInfo damageInfo)
         {
+            // 官方 Hurt 可能先结算死亡（对象随即停用），再派发 OnHurt；迟到回调不得再起冰减速或复活协程
+            // （玩家日志里「Coroutine couldn't be started ... BossRush_DragonDescendant is inactive」就是它）。
+            if (!isActiveAndEnabled || bossCharacter == null || bossHealth == null || bossHealth.IsDead) return;
+
             // 如果使用原版无敌机制，这里不需要手动恢复血量
             // 原版Health.Hurt()会在invincible=true时直接返回false
             // 但我们仍保留isInvulnerable标记用于额外保护

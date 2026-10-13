@@ -520,7 +520,15 @@ namespace BossRush
                 }
                 // 炫彩 / 异色光环：只有真的带色的崽才会创建对象（AGENTS 4.12）
                 AttachChromaAura(handle, pet);
-                PetNestBackpack.Attach(handle.Character, pet);
+                PetNestBackpack backpack = PetNestBackpack.Attach(handle.Character, pet);
+                if (pet != null)
+                {
+                    // 行动方式按崽的记录生效；「行动方式 / 喂食 / 摸摸」挂进崽身上现成的背包交互组
+                    PetNestBehaviour behaviour = PetNestCareService.Resolve(pet);
+                    agent.SetBehaviour(behaviour);
+                    PetNestCareService.InjectOptionLocalization(behaviour);
+                    PetNestCareService.AttachOptions(backpack, pet.id, handle.Character);
+                }
 
                 handle.Activated = true;
                 return true;

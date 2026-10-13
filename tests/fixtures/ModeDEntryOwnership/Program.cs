@@ -19,7 +19,7 @@ internal static class Program
     private static ModBehaviour Host(bool awake = true)
     {
         Probe.Calls.Clear(); Probe.Logs.Clear(); Probe.Fault = null;
-        Probe.RiskAllowed = true; Probe.Naked = true; Probe.Ticket = 500001;
+        Probe.RiskAllowed = true; Probe.Naked = true; Probe.Ticket = 500001; Probe.StarterFails = false;
         var host = new ModBehaviour();
         if (awake)
         {
@@ -80,16 +80,24 @@ internal static class Program
         Check(!host.TryStartModeD(), "inventory query failure is rejected by entry catch");
         Calls(EntryAllowed, "inventory query exception prevents startup");
 
+        // 2026-10-12：启动失败必须如实返回 false 并回滚，旧断言把「失败仍报成功、半激活」固化成了预期。
         host = Host(); Probe.Fault = "arena-reset";
-        Check(host.TryStartModeD(), "StartModeD internal catch preserves legacy true entry result");
-        Calls(EntryAllowed + ",arena-reset", "startup failure stays at the original first effect");
+        Check(!host.TryStartModeD(), "failure before activation reports false");
+        Calls(EntryAllowed + ",arena-reset,translate-text,message", "pre-activation failure explains itself and stops");
         Check(!host.modeDRuntime.IsActive, "failure before activation does not activate runtime");
 
         host = Host(); Probe.Fault = "starter";
-        Check(host.TryStartModeD(), "starter boundary exception remains caught by actual StartModeD");
-        Calls(EntryAllowed + ",arena-reset,recovery,config,config,items,enemies,pool,starter",
-            "starter failure does not roll mutators or set sign");
-        Check(host.modeDRuntime.IsActive, "legacy activation before starter boundary is preserved");
+        Check(!host.TryStartModeD(), "starter exception reports false");
+        Calls(EntryAllowed + ",arena-reset,recovery,config,config,items,enemies,pool,starter,recovery,translate-text,message",
+            "starter failure rolls back without mutators or sign, then explains");
+        Check(!host.modeDRuntime.IsActive && host.modeDRuntime.modeDWaveIndex == 0, "starter failure leaves no half-active runtime");
+
+        host = Host(); Probe.StarterFails = true;
+        Check(!host.TryStartModeD(), "starter kit that delivered no weapon reports false");
+        Check(!host.modeDRuntime.IsActive, "silent starter failure is rolled back too");
+        Probe.StarterFails = false; Probe.Calls.Clear();
+        Check(host.TryStartModeD() && host.modeDRuntime.IsActive, "same owner can retry after a rolled-back start");
+        Calls(EntryAllowed + "," + Startup, "retry runs the complete startup once");
 
         host = Host();
         var other = new ModBehaviour { modeERuntime = new ModeERuntimeModule { modeEActive = true } };

@@ -34,7 +34,7 @@ namespace BossRush
         }
 
         private void InitializeBossPoolFilter() { bossFilterRuntime.InitializeBossPoolFilter(); }
-        private void InvalidateFilteredPresetsCache() { bossFilterRuntime.InvalidateFilteredPresetsCache(); }
+        internal void InvalidateFilteredPresetsCache() { bossFilterRuntime.InvalidateFilteredPresetsCache(); }
         private void ResetBossPoolFilterStateForEnemyPresetRefresh() { bossFilterRuntime.ResetBossPoolFilterStateForEnemyPresetRefresh(); }
         private void CheckBossPoolWindowHotkey() { bossFilterRuntime.CheckBossPoolWindowHotkey(); }
         private void BossPoolLateUpdate() { bossFilterRuntime.BossPoolLateUpdate(); }

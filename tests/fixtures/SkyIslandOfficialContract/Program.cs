@@ -68,7 +68,10 @@ internal static class Program
         Reject(() => LevelManager.AfterInit = false, "官方尾段尚未完成拒绝");
         Reject(() => LevelManager.Instance.IsBaseLevel = true, "基地规则拒绝");
         Reject(() => LevelManager.Instance.IsRaidMap = false, "非 Raid 不能承担死亡契约");
-        Reject(() => LevelConfig.SpawnTomb = false, "缺少官方死亡掉落拒绝");
+        Reset();
+        LevelConfig.SpawnTomb = false;
+        Check(SkyIslandOfficialContract.Verify(sky, SceneId, out reason) && reason == null, "死亡不掉落（SpawnTomb=false）但角色保存正常时放行");
+        LevelConfig.SpawnTomb = true;
         Reject(() => LevelConfig.SaveCharacter = false, "角色保存关闭拒绝");
         Reject(() => LevelConfig.Instance.timeOfDayConfig = null, "时间配置空引用拒绝");
         Reject(() => LevelConfig.Instance.startBuffPrefabs = null, "起始 Buff 未装配拒绝");
@@ -134,6 +137,8 @@ internal static class Program
             if (op.OperandType == OperandType.InlineMethod || op.OperandType == OperandType.InlineField)
                 result.Add(EntityName(reader, MetadataTokens.EntityHandle(BitConverter.ToInt32(bytes, i))));
             if (arithmetic && (op == OpCodes.Add || op == OpCodes.Sub)) result.Add(op.Name);
+            if (op == OpCodes.Ldstr)
+                result.Add("str:" + reader.GetUserString(MetadataTokens.UserStringHandle(BitConverter.ToInt32(bytes, i) & 0x00FFFFFF)));
             i += size;
         }
         return result;
@@ -156,6 +161,8 @@ internal static class Program
         return reader.TypeDefinitions.Select(h => reader.GetString(reader.GetTypeDefinition(h).Name))
             .Single(name => name.StartsWith("<" + prefix + ">d__", StringComparison.Ordinal));
     }
+
+    private const string ModeHDoneMarker = "Done!";
 
     private static void VerifyGameAssembly(string path)
     {
@@ -204,6 +211,10 @@ internal static class Program
             List<string> init = ReadReferences(pe, reader, StateMachine(reader, "InitLevel"), "MoveNext");
             Ordered(init, "LevelManager.CreateMainCharacterAsync", "LevelManager.WaitForOtherInitialization", "LevelManager.HandleRaidInitialization",
                 "Health.SetHealth", "LevelManager.CreateMainCharacterMapElement", "CharacterMainControl.SetPosition");
+            // 鸭王杯就绪判据（ModeHRuntimeModule.OfficialInitDoneComment）：「Done!」写在最终落点之后、
+            // 派发 OnAfterLevelInitialized 与置 afterInit 之前。第三方订阅者抛异常时 afterInit 不会置位，只能认这个标记。
+            Ordered(init, "CharacterMainControl.SetPosition", "str:" + ModeHDoneMarker,
+                "LevelManager.set_LevelInitializingComment", "OnAfterLevelInitialized", "afterInit");
             List<string> create = ReadReferences(pe, reader, StateMachine(reader, "CreateMainCharacterAsync"), "MoveNext");
             Ordered(create, "LevelManager.LoadOrCreateCharacterItemInstance", "CharacterCreator.CreateCharacter",
                 "LevelManager.SetControllingCharacter", "CharacterMainControl.SetTeam", "InputManager.SwitchItemAgent");

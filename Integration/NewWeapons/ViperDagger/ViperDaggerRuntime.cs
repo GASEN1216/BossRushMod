@@ -172,6 +172,11 @@ namespace BossRush
                 {
                     burstDamage += accumulatedDamage * ViperDaggerConfig.BurstAccumulatedDamageRatio;
                 }
+                float maxHealth = targetHealth.MaxHealth;
+                if (maxHealth > 0f)
+                {
+                    burstDamage += Mathf.Min(maxHealth * ViperDaggerConfig.BurstMaxHealthRatio, ViperDaggerConfig.BurstMaxHealthCap);
+                }
                 if (burstDamage <= 0f) return;
 
                 // 构造爆发伤害信息

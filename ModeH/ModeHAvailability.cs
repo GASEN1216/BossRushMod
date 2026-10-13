@@ -55,6 +55,8 @@ namespace BossRush
         public const string ReasonCertificationFailed = "modeh_certification_failed";
         /// <summary>owner 引用缺失（宿主未就绪）。</summary>
         public const string ReasonOwnerMissing = "modeh_owner_missing";
+        /// <summary>旧入场的船票尚未实际退还，禁止新增一次扣票。</summary>
+        public const string ReasonTicketRefundPending = "modeh_ticket_refund_pending";
 
         #endregion
 
@@ -145,6 +147,8 @@ namespace BossRush
         /// </summary>
         public static string GetReasonLocalizationKey(string reasonId)
         {
+            if (reasonId == ReasonTicketRefundPending)
+                return ModeHConfig.LocalizationKeyPrefix + "Unavailable_TicketRefundOwed";
             if (IsLocalizedReason(reasonId))
             {
                 return ModeHConfig.LocalizationKeyPrefix + "Unavailable_" + reasonId;

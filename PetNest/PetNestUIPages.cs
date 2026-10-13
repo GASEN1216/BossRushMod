@@ -764,6 +764,22 @@ namespace BossRush
                 default: exp = PetNestTuning.PetExpExpeditionSurviveSafe; break;
             }
             string line = L10n.T("平安归来 +", "Safe return +") + exp + L10n.T(" 经验", " exp");
+            // 成功时带回什么（2026-10-12）：玩家反馈「出行不知道能带回来什么」，数值全部取结算用的同一份
+            int cashMin, cashMax;
+            PetNestExpeditionService.GetCashRange(tier, out cashMin, out cashMax);
+            line += "\n" + L10n.T("成功时：现金 ", "On success: cash ") + cashMin + "–" + cashMax
+                + L10n.T("，同血脉遗魂 ×", ", lineage souls ×") + PetNestExpeditionService.GetSoulReward(tier);
+            int lootQuality = PetNestExpeditionService.GetLootQuality(tier);
+            int lootCount = PetNestExpeditionService.GetLootCount(tier);
+            if (lootQuality > 0 && lootCount > 0)
+            {
+                line += L10n.T("，品质 ", ", ") + lootQuality + L10n.T(" 的战利品 ×", "-quality loot ×") + lootCount;
+            }
+            if (tier == PetNestRiskTier.Desperate)
+            {
+                line += L10n.T("，", ", ") + PetNestLocalization.FormatPercent(PetNestTuning.ExpeditionRelicEggChanceDesperate)
+                    + L10n.T(" 带回遗种蛋", " chance of a relic egg");
+            }
             if (tier == PetNestRiskTier.Safe)
             {
                 return line + "\n" + L10n.T("绝对安全，最坏只是空手而归。",
@@ -774,8 +790,8 @@ namespace BossRush
                 return line + "\n" + L10n.T("可能负伤留疤，但不会真死。",
                     "May come back scarred, but never dies.");
             }
-            return line + "\n" + L10n.T("真死：回不来就只剩纪念碑上的名字。",
-                "Real death: if it doesn't come back, only its name remains on the memorial.");
+            return line + "\n" + L10n.T("唯一会真死的一档：回不来就只剩纪念碑上的名字。",
+                "The only tier with real death: if it doesn't come back, only its name remains on the memorial.");
         }
 
         /// <summary>现实时长（小时）→ 「10 分钟」/「1 小时」这样的人话。</summary>
@@ -798,7 +814,7 @@ namespace BossRush
             card.Title = PetNestExpeditionService.DescribeDecoratedPetName(r);
             card.Subtitle = PetNestLocalization.DescribeDestination(r.destinationId)
                 + " · " + DescribeRisk(r.riskTier)
-                + " · " + T("DeathRateLabel") + " " + FormatPercent(r.deathRate);
+                + " · " + T("DeathRateLabel") + " " + FormatPercent(PetNestExpeditionService.EffectiveDeathRate(r));
             card.IsDanger = r.riskTier == (int)PetNestRiskTier.Desperate;
             card.Icon = ResolveLineagePortrait(r.petLineageKey);
 

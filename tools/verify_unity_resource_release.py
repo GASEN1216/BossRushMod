@@ -1,6 +1,7 @@
 """验证真实交付包的压缩、资源预算和重压前后载荷；不代替实机性能采样。"""
 from pathlib import Path
 import argparse
+import ast
 import gc
 import hashlib
 import json
@@ -9,6 +10,103 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 # 已安装/显式 PYTHONPATH 的运行时优先；旧检查目录可能留着另一 Python ABI 的扩展。
 sys.path.append(str(ROOT/'Build/equipment-inspection'))
+
+
+def inspect_sky_materials(env):
+    """沿 Renderer 的跨序列化文件 PPtr 读取真实材质依赖，不按旧纹理名猜依赖。"""
+    from UnityPy.classes import PPtr
+    from UnityPy.enums import TextureFormat
+    materials={}; errors=[]
+    def deref(obj, reference):
+        return PPtr(**reference, assetsfile=obj.assets_file).deref()
+    for obj in env.objects:
+        if obj.type.name != 'MeshRenderer': continue
+        data=obj.read_typetree()
+        for reference in data['m_Materials']:
+            try:
+                material=deref(obj, reference)
+                if material.type.name != 'Material': raise ValueError('not a Material')
+                key=(id(material.assets_file), material.path_id)
+                if key in materials:
+                    materials[key]['rendererSlots']+=1
+                    continue
+                value=material.read_typetree()
+                shader=deref(material, value['m_Shader']).read_typetree()
+                shader_name=shader.get('m_ParsedForm',{}).get('m_Name') or shader.get('m_Name')
+                entry={'name':value['m_Name'], 'shader':shader_name, 'rendererSlots':1, 'baseMap':None}
+                properties=value['m_SavedProperties']
+                entry['baseColor']=dict(properties['m_Colors']).get('_BaseColor')
+                base_map=dict(properties['m_TexEnvs']).get('_BaseMap')
+                if base_map and base_map['m_Texture']['m_PathID']:
+                    texture=deref(material, base_map['m_Texture'])
+                    if texture.type.name != 'Texture2D': raise ValueError('base map is not Texture2D')
+                    texture=texture.read()
+                    entry['baseMap']={'name':texture.m_Name, 'format':TextureFormat(texture.m_TextureFormat).name,
+                        'width':texture.m_Width, 'height':texture.m_Height, 'mips':texture.m_MipCount,
+                        'readable':texture.m_IsReadable}
+                materials[key]=entry
+            except Exception as exc:
+                errors.append('Renderer material dependency unresolved: '+str(exc))
+    return sorted(materials.values(), key=lambda m:m['name']), errors
+
+
+def sky_material_contract():
+    """复用生成元数据、已发布表面清单及 Tripo 原档/升级表，不另维护尺寸表。"""
+    source=ROOT/'ArtSource/SkyIsland'
+    definitions=json.loads((source/'Validation/sky_island_geometry.json').read_text(encoding='utf8'))['materials']
+    surfaces=json.loads((source/'surface_textures.json').read_text(encoding='utf8'))['textures']
+    upgrades=json.loads((source/'tripo_texture_upgrade.json').read_text(encoding='utf8'))['textures']
+    # 原导入器依赖 Blender；只读取其静态尺寸声明，不能 import 启动作者侧工作。
+    importer=ast.parse((ROOT/'tools/sky_island_tripo_import.py').read_text(encoding='utf8'))
+    declaration=next(node for node in importer.body if isinstance(node,ast.Assign)
+        and any(isinstance(target,ast.Name) and target.id=='TEXTURE_SIZE' for target in node.targets))
+    sizes={'tripo_'+name:(size,size) for name,size in ast.literal_eval(declaration.value).items()}
+    sizes.update({Path(value['file']).stem:(value['size'],value['size']) for value in surfaces.values()})
+    sizes.update({'tripo_'+name:tuple(value['size']) for name,value in upgrades.items()})
+    sizes.update({'sky_mural':(1024,1024), 'sky_cloth':(1024,1024)})
+    return definitions, sizes
+
+
+def validate_sky_materials(row):
+    errors=list(row.get('sky_material_errors',[]))
+    materials=row.get('sky_materials',[])
+    if not materials: return errors+['Scene renderer material dependencies missing']
+    if not any(material.get('shader')=='BossRush/SkyIsland/Environment' for material in materials):
+        errors.append('Scene environment renderer materials missing')
+    definitions,sizes=sky_material_contract()
+    for material in materials:
+        name=material['name']; definition=definitions.get(name)
+        if not isinstance(definition,dict):
+            errors.append('Scene material absent from geometry metadata: '+name)
+            continue
+        kind=definition.get('kind','')
+        shader='BossRush/SkyIsland/'+('Cloud' if kind=='cloud' or 'cloud' in name.lower()
+            else 'Water' if kind=='water' or 'water' in name.lower() else 'Environment')
+        if material.get('shader')!=shader: errors.append('Scene material shader contract: '+name)
+        texture=material.get('baseMap'); source=definition.get('texture')
+        if not source:
+            # Cloud/Water 的程序纹理由 shader 生成；Environment 不允许白图替代手绘图。
+            if shader.endswith('/Environment'): errors.append('Environment texture metadata missing: '+name)
+            if texture is not None: errors.append('Procedural material unexpectedly references texture: '+name)
+            continue
+        expected=Path(source).stem
+        if texture is None or texture.get('name')!=expected:
+            errors.append('Scene material base map dependency: '+name+' -> '+expected)
+            continue
+        width=texture['width']; height=texture['height']
+        dimensions=sizes.get(expected)
+        if dimensions is None or (width,height)!=dimensions:
+            errors.append('Scene material texture dimensions: '+name)
+        if not width or not height or width & (width-1) or height & (height-1):
+            errors.append('Scene material texture power-of-two dimensions: '+name)
+        if texture['format']!='BC7' or texture['readable']:
+            errors.append('Scene material texture BC7/readability: '+name)
+        if texture['mips']!=max(width,height).bit_length():
+            errors.append('Scene material texture mip chain: '+name)
+        color=material.get('baseColor') or {}
+        if any(abs(color.get(axis,0)-1)>.001 for axis in ('r','g','b','a')):
+            errors.append('Scene material base color must be white: '+name)
+    return errors
 
 
 def inspect(path):
@@ -46,6 +144,8 @@ def inspect(path):
             texture=d.m_RD.texture.read()
             row['sprites'].append({'name':d.m_Name,'texture':texture.m_Name,'width':texture.m_Width,'height':texture.m_Height,
                 'rectWidth':d.m_Rect.width,'rectHeight':d.m_Rect.height,'pixelsPerUnit':d.m_PixelsToUnits})
+    if path.name == 'sky_island_raid':
+        row['sky_materials'],row['sky_material_errors']=inspect_sky_materials(env)
     if path.name == 'production_icons':
         from daily_report_art_contract import DAILY_REPORT_ALIAS, measure_chrome, measure_source_drift
         if DAILY_REPORT_ALIAS in env.container:
@@ -108,10 +208,7 @@ def validate(row,name):
     if name=='sky_island_raid':
         nav=[m for m in row['meshes'] if m['name']=='SkyIslandNavigation']
         if len(nav)!=1 or not nav[0]['readable'] or not 0<nav[0]['vertices']<=4095: errors.append('Navigation contract')
-        names={'geology_handpainted_native','wood_handpainted_vanilla','sky_mural','stone_handpainted_vanilla',
-            'sky_cloth','grass_handpainted_vanilla','roof_handpainted_terracotta'}
-        targets=[t for t in row['textures'] if t['name'] in names]
-        if len(targets)!=7 or any(t['format']!='BC7' for t in targets): errors.append('Environment BC7 contract')
+        errors.extend(validate_sky_materials(row))
         if any(m['readable'] and m['name'].startswith('VIS_') and (m['vertices']>65535 or m['name'].endswith('_DriftBounds')) for m in row['meshes']):
             errors.append('Render-only meshes retain CPU copy')
     return errors

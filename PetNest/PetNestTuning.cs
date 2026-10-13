@@ -155,13 +155,32 @@ namespace BossRush
         /// 随从基础伤害倍率上限（旧名保留，不代表 DPS 占比）。实际伤害按来源 Boss 预制体的 damageMultiplier ×
         /// CompanionBossDamageScale 缩放，保留血脉之间的强弱差异；此值只做保险钳制。
         /// </summary>
-        internal const float CompanionDpsShareTarget = 0.28f;
+        internal const float CompanionDpsShareTarget = 0.8f;
 
-        /// <summary>Boss 伤害倍率映射到幼体的缩放系数（0.20 = 来源角色倍率的 20%，不是 DPS 占比）。</summary>
-        internal const float CompanionBossDamageScale = 0.20f;
+        /// <summary>
+        /// Boss 伤害倍率映射到幼体的系数：幼体倍率 = 系数 × √来源倍率（2026-10-12 起）。
+        /// 旧公式是「来源 × 0.20 再钳到 0.28」，常见 Boss（来源 1.35 以上）全被压在同一个上限，
+        /// 血脉差异只剩名字，叠了血量 Mod 的环境里几乎打不出伤害。开方保留强弱顺序、压缩极端值：
+        /// 来源 0.8 / 1.35 / 12 → 0.22 / 0.29 / 0.80（上限 CompanionDpsShareTarget）。
+        /// </summary>
+        internal const float CompanionBossDamageScale = 0.25f;
 
         /// <summary>来源倍率缺失或异常时的幼体伤害下限。</summary>
         internal const float CompanionDamageMinMultiplier = 0.12f;
+
+        /// <summary>主人在随从附近（米）击杀敌人时，随从拿同额战斗经验；弱崽不必抢最后一击也能成长。</summary>
+        internal const float PetExpShareRadius = 30f;
+
+        /// <summary>跟随档：主人或崽交战后保持开战的秒数，过后收手回到主人身边。</summary>
+        internal const float BehaviourEngageWindowSeconds = 10f;
+
+        /// <summary>回避档：每隔多少秒清一次已登记的负面状态（流血、中毒、灼烧等）。</summary>
+        internal const float AvoidCleanseIntervalSeconds = 5f;
+
+        /// <summary>喂一份食物给多少经验、回多少比例的生命，以及同一只崽的冷却（分钟，现实时间）。</summary>
+        internal const int FeedExp = 20;
+        internal const float FeedHealRatio = 0.10f;
+        internal const double FeedCooldownMinutes = 10d;
 
         /// <summary>幼体视觉缩放基准（只作用于 modelRoot，不动碰撞体）。</summary>
         internal const float DefaultCubModelScale = 0.62f;
@@ -206,8 +225,12 @@ namespace BossRush
 
         /// <summary>平安档死亡率。绝对安全，最多空手。</summary>
         internal const float DeathRateSafe = 0f;
-        /// <summary>风浪档死亡率。**出发前必须明示**。</summary>
-        internal const float DeathRateRough = 0.06f;
+        /// <summary>
+        /// 风浪档死亡率。2026-10-12 owner 拍板改为 0：卡面一直写「不会真死」，实际却有 6% 删档，
+        /// 玩家连丢两只后反馈「宠物到底是耗材还是伙伴」。风浪档只负伤留疤，真死只留给亡命档。
+        /// 出发时固化在记录里的旧值由 PetNestExpeditionService.EffectiveDeathRate 封顶到当前常量。
+        /// </summary>
+        internal const float DeathRateRough = 0f;
         /// <summary>亡命档死亡率（原 0.22f，降低以使期望收益为正）。**出发前必须明示**。</summary>
         internal const float DeathRateDesperate = 0.12f;
 

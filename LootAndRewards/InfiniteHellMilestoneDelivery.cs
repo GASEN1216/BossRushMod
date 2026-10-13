@@ -38,6 +38,32 @@ namespace BossRush
             return unit;
         }
 
+        /// <summary>
+        /// 把余额记入账户。返回 false 表示这次没记完、稍后重试（remaining 已扣掉实际到账的部分）。
+        /// 官方 Add 先写余额再广播；广播异常时按回读扣除已到账的部分。超过 long 可表示范围时饱和，不回绕为负数。
+        /// </summary>
+        internal static bool TryCreditAccount(ref long remaining)
+        {
+            if (remaining <= 0) return true;
+            if (EconomyManager.Instance == null) return false;
+            long before = Math.Max(0, EconomyManager.Money);
+            long credit = Math.Min(remaining, long.MaxValue - before);
+            if (credit > 0)
+            {
+                try
+                {
+                    if (!EconomyManager.Add(credit)) return false;
+                }
+                catch
+                {
+                    remaining -= Math.Min(credit, Math.Max(0, EconomyManager.Money - before));
+                    return false;
+                }
+            }
+            remaining = 0;
+            return true;
+        }
+
         private static long SaturatingAdd(long a, long b)
         {
             return a > long.MaxValue - b ? long.MaxValue : a + b;
@@ -105,27 +131,10 @@ namespace BossRush
                     if (accountRemaining > 0)
                         owner.ShowMessage(L10n.T("里程碑超量奖励已按完整标价折现，转入账户。", "Excess milestone rewards are converted at full item value and credited to your account."));
                 }
-                if (accountRemaining > 0)
+                if (accountRemaining > 0 && !TryCreditAccount(ref accountRemaining))
                 {
-                    if (EconomyManager.Instance == null) { retryAt = Time.unscaledTime + 1f; return; }
-                    long before = Math.Max(0, EconomyManager.Money);
-                    long credit = Math.Min(accountRemaining, long.MaxValue - before);
-                    if (credit > 0)
-                    {
-                        try
-                        {
-                            if (!EconomyManager.Add(credit)) { retryAt = Time.unscaledTime + 1f; return; }
-                        }
-                        catch
-                        {
-                            // 官方 Add 先写余额再广播；广播异常时按回读扣除已到账的部分。
-                            accountRemaining -= Math.Min(credit, Math.Max(0, EconomyManager.Money - before));
-                            retryAt = Time.unscaledTime + 1f;
-                            return;
-                        }
-                    }
-                    // 超过宿主 long 余额可表示范围时饱和，不允许回绕为负数。
-                    accountRemaining = 0;
+                    retryAt = Time.unscaledTime + 1f;
+                    return;
                 }
                 completedTier = activeTier;
                 activeTier = 0;

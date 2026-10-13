@@ -129,7 +129,8 @@ namespace BossRush
                         ExtraHint = data => data.SkyIslandRouteUnlocked ? null
                             : data.Has(SkyIslandStoryFlag.PreludeInstrumentRecovered) && (!instrumentSampled || holdsInstrument)
                                 ? L10n.T("交付的时候 Jeff 会把航向仪收走。", "Jeff takes the instrument when you hand it in.")
-                                : L10n.T("地图上圈出来的那一带，就是它掉下来的地方。", "The ring on your map is where it came down."),
+                                : L10n.T("地图上圈出来的那一带，就是它掉下来的地方。要普通出击去零号区，开着 BossRush 等模式时它不会出现。",
+                                    "The ring on your map is where it came down. Go on a normal raid to Ground Zero; it won't appear while BossRush or another mode is running."),
                     },
                 },
             };
@@ -211,7 +212,17 @@ namespace BossRush
 
             ClearJeff();
             if (scene.name == GroundZeroScene && ShouldRunObjective() && NoConflictingMode()) EnsureObjective();
-            else ClearObjective();
+            else
+            {
+                ClearObjective();
+                // 以前这里静默清掉守卫，玩家在 BossRush 里打再多也等不到它。每张图只说一次。
+                if (scene.name == GroundZeroScene && ShouldRunObjective() && !bossDead && conflictNoticeGeneration != generation)
+                {
+                    conflictNoticeGeneration = generation;
+                    Report(L10n.T("零号区正在跑别的模式，断风游猎这趟不会现身；普通出击再来。",
+                        "Another mode is running in Ground Zero, so the Galebreaker won't show up this time. Come back on a normal raid."), false);
+                }
+            }
             story.Tick(bossDead);
         }
 
@@ -257,6 +268,8 @@ namespace BossRush
                 return false;
             }
         }
+
+        private int conflictNoticeGeneration = -1;
 
         private bool NoConflictingMode()
         {
@@ -580,13 +593,15 @@ namespace BossRush
                 SceneManager.GetActiveScene().name == GroundZeroScene;
         }
 
-        private void OnBossDead()
+        private void OnBossDead(bool instrumentInBox)
         {
             bossDead = true;
             boss = null;
             nextInstrumentPoll = 0f;
-            Report(L10n.T("断风游猎倒下了。航向仪在它的箱子里。",
-                "The Galebreaker is down. The instrument is in its box."), false);
+            Report(instrumentInBox
+                ? L10n.T("断风游猎倒下了。航向仪在它的箱子里。", "The Galebreaker is down. The instrument is in its box.")
+                : L10n.T("断风游猎倒下了，但航向仪没掉进箱子。去它的残骸旁边再拆一具。",
+                    "The Galebreaker is down, but the instrument didn't land in its box. Salvage one from the wreck."), false);
         }
 
         /// <summary>
@@ -706,10 +721,10 @@ namespace BossRush
         private Health health;
         private CharacterMainControl boss;
         private CharacterRandomPreset preset;
-        private Action died;
-        private bool subscribed, lootSubscribed, dropped;
+        private Action<bool> died;
+        private bool subscribed, lootSubscribed, dropped, instrumentDelivered;
 
-        internal void Bind(CharacterMainControl character, CharacterRandomPreset ownedPreset, Action onDead)
+        internal void Bind(CharacterMainControl character, CharacterRandomPreset ownedPreset, Action<bool> onDead)
         {
             health = character == null ? null : character.Health;
             boss = character;
@@ -726,7 +741,7 @@ namespace BossRush
         {
             if (dropped) return;
             dropped = true;
-            try { SkyIslandNavInstrumentConfig.TryDropInto(boss); }
+            try { instrumentDelivered = SkyIslandNavInstrumentConfig.TryDropInto(boss); }
             catch (Exception e)
             {
                 // 掉落失败不阻断死亡结算：残骸那边还能再拆一具。
@@ -736,9 +751,9 @@ namespace BossRush
 
         private void OnDead(DamageInfo damage)
         {
-            Action callback = died;
+            Action<bool> callback = died;
             died = null;
-            if (callback != null) callback();
+            if (callback != null) callback(dropped && instrumentDelivered);
         }
 
         private void OnDestroy()

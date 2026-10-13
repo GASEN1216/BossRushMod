@@ -80,7 +80,7 @@ namespace BossRush
         /// </summary>
         public bool IsPlayerNaked()
         {
-            return IsPlayerNakedWithAllowedItems("ModeD", GetBossRushTicketTypeId(), -1, true);
+            return ModeDNakedEntryNotice.Check(this, GetBossRushTicketTypeId());
         }
         
         /// <summary>

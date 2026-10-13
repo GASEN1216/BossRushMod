@@ -454,6 +454,17 @@ namespace BossRush
                     string fullInventoryBanner = L10n.T("背包已满，冷淬液掉落在叮当脚边。", "Inventory full. The Cold Quench Fluid was dropped at Dingdang's feet.");
                     controller.TryGiveRewardItem(ColdQuenchFluidConfig.TYPE_ID, 1, successBanner, fullInventoryBanner);
                 }
+
+                // 好感 6 级一次性赠两瓶回火液；已过门槛的老玩家下一次聊天即补发（claimed key 防重复）。
+                if (currentLevel >= TemperingSolventConfig.GIFT_AFFINITY_LEVEL && controller != null
+                    && AffinityManager.CanWrite
+                    && !AffinityManager.HasClaimedReward(GoblinAffinityConfig.NPC_ID, TemperingSolventConfig.GIFT_REWARD_KEY)
+                    && controller.TryGiveRewardItem(TemperingSolventConfig.TYPE_ID, TemperingSolventConfig.GIFT_COUNT,
+                        L10n.T("叮当塞给你两瓶回火液：「锁错了就拿这个化开。」", "Dingdang hands you two bottles of Tempering Solvent: \"Locked the wrong stat? This melts it.\""),
+                        L10n.T("背包已满，回火液掉在叮当脚边。", "Inventory full. The Tempering Solvent was dropped at Dingdang's feet.")))
+                {
+                    AffinityManager.MarkRewardClaimed(GoblinAffinityConfig.NPC_ID, TemperingSolventConfig.GIFT_REWARD_KEY);
+                }
                 
                 // 无论是否已聊天，都从问候对话库随机选一条显示
                 string dialogue = NPCDialogueSystem.GetDialogue(GoblinAffinityConfig.NPC_ID, DialogueCategory.Greeting);

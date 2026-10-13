@@ -408,6 +408,12 @@ namespace BossRush
                 FallbackLoader = delegate(int typeId) { return SkyIslandNavInstrumentConfig.EnsureRuntimeFallbackRegistrationShell(); }
             }, BossRushItemIds.SkyIslandNavInstrument);
 
+            // 回火液：克隆冷淬液 prefab，零新增 bundle；漏登记时仓库里的回火液重启后会退化成官方 FallbackItem。
+            Add(plans, new RegistrationPlan
+            {
+                FallbackLoader = delegate(int typeId) { return TemperingSolventConfig.EnsureRuntimeRegistration(); }
+            }, BossRushItemIds.TemperingSolvent);
+
             // 星阙：纯代码光棍，没有任何 bundle，只走克隆兜底。
             Add(plans, new RegistrationPlan
             {

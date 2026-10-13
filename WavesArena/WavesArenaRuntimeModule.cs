@@ -101,26 +101,39 @@ namespace BossRush
         {
             if (EnemyPresets == null || EnemyPresets.Count <= 20) return;
 
+            // 过滤缓存的顺序可能还是洗牌前的，但启用成员没变；只借它判断资格。
+            // 按原池里的当前顺序收集启用项下标，关闭的 Boss 不占实际出场位置。
+            var filteredPresets = owner.GetFilteredEnemyPresets();
+            if (filteredPresets == null || filteredPresets.Count <= 20) return;
+            var enabledPresets = new HashSet<EnemyPresetInfo>(filteredPresets);
+            var enabledIndices = new List<int>(filteredPresets.Count);
+            for (int i = 0; i < EnemyPresets.Count; i++)
+            {
+                if (enabledPresets.Contains(EnemyPresets[i])) enabledIndices.Add(i);
+            }
+
             int swapCount = 0;
             int nextSwapTarget = 20; // 从第20位开始找可交换的普通Boss
 
-            for (int i = 0; i < 20 && i < EnemyPresets.Count; i++)
+            for (int i = 0; i < 20 && i < enabledIndices.Count; i++)
             {
-                if (!IsEarlyWaveExcludedBoss(EnemyPresets[i].name)) continue;
+                int sourceIndex = enabledIndices[i];
+                if (!IsEarlyWaveExcludedBoss(EnemyPresets[sourceIndex].name)) continue;
 
-                // 找一个第10位之后的普通Boss来交换
-                while (nextSwapTarget < EnemyPresets.Count &&
-                       IsEarlyWaveExcludedBoss(EnemyPresets[nextSwapTarget].name))
+                // 只从实际第21个及之后的启用普通 Boss 中找替换项。
+                while (nextSwapTarget < enabledIndices.Count &&
+                       IsEarlyWaveExcludedBoss(EnemyPresets[enabledIndices[nextSwapTarget]].name))
                 {
                     nextSwapTarget++;
                 }
 
-                if (nextSwapTarget >= EnemyPresets.Count) break; // 没有可交换的了
+                if (nextSwapTarget >= enabledIndices.Count) break; // 没有可交换的了
 
                 // 交换
-                var tmp = EnemyPresets[i];
-                EnemyPresets[i] = EnemyPresets[nextSwapTarget];
-                EnemyPresets[nextSwapTarget] = tmp;
+                int targetIndex = enabledIndices[nextSwapTarget];
+                var tmp = EnemyPresets[sourceIndex];
+                EnemyPresets[sourceIndex] = EnemyPresets[targetIndex];
+                EnemyPresets[targetIndex] = tmp;
                 nextSwapTarget++;
                 swapCount++;
             }

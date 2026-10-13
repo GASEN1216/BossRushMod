@@ -33,13 +33,13 @@ namespace BossRush
         private CharacterMainControl _assetOwner;
         private float _nextSaveTime;
 
-        internal static void Attach(CharacterMainControl character, PetNestPetRecord pet)
+        internal static PetNestBackpack Attach(CharacterMainControl character, PetNestPetRecord pet)
         {
-            if (character == null || pet == null || string.IsNullOrEmpty(pet.id)) return;
+            if (character == null || pet == null || string.IsNullOrEmpty(pet.id)) return null;
             // 未保存的旧容器仍拥有这些物品，不允许按旧磁盘记录再生成第二份。
             foreach (PetNestBackpack existing in Active)
                 if (existing != null && !existing._disposed && existing._slot == SavesSystem.CurrentSlot
-                    && existing._petId == pet.id) return;
+                    && existing._petId == pet.id) return null;
             GameObject root = new GameObject("PetNestBackpack");
             root.transform.SetParent(character.transform, false);
             SphereCollider collider = root.AddComponent<SphereCollider>();
@@ -54,6 +54,7 @@ namespace BossRush
             if (character.modelRoot != null) height = Mathf.Max(0.7f, character.modelRoot.localScale.y * 1.6f);
             backpack.interactMarkerOffset = new Vector3(0f, height, 0f);
             Active.Add(backpack);
+            return backpack;
         }
 
         protected override void Awake()

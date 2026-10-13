@@ -181,12 +181,18 @@ namespace BossRush
         public PetNestAdultSnapshot adultSnapshot;
         /// <summary>该崽的独立背包快照。SCHEMA+：旧档为空；官方 ItemTreeData JSON，随 Bundle_v2 保存。</summary>
         public string backpackJson;
+        /// <summary>出战行动方式（PetNestBehaviour：0 跟随 / 1 主动 / 2 回避）。SCHEMA+：旧档缺字段即跟随。</summary>
+        public int behaviour;
+        /// <summary>上次喂食的 UTC ticks（冷却用）。SCHEMA+：旧档为 0，随时可喂。</summary>
+        public long lastFeedUtcTicks;
 
         /// <summary>容器兜底，反序列化后必须调用。</summary>
         public void Normalize()
         {
             if (talents == null) talents = new List<PetNestTalentEntry>();
             if (scars == null) scars = new List<PetNestScarRecord>();
+            if (behaviour < 0 || behaviour > 2) behaviour = 0;
+            if (lastFeedUtcTicks < 0) lastFeedUtcTicks = 0;
             if (level < 1) level = 1;
             if (level > PetNestTuning.PetMaxLevel) level = PetNestTuning.PetMaxLevel;
             if (exp < 0) exp = 0;
@@ -219,6 +225,8 @@ namespace BossRush
             clone.expeditionCount = expeditionCount;
             clone.mergedOldScarCount = mergedOldScarCount;
             clone.backpackJson = backpackJson;
+            clone.behaviour = behaviour;
+            clone.lastFeedUtcTicks = lastFeedUtcTicks;
 
             clone.talents = new List<PetNestTalentEntry>(talents != null ? talents.Count : 0);
             if (talents != null)

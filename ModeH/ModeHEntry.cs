@@ -133,6 +133,7 @@ namespace BossRush
                     return false;
                 }
 
+                if (!ModeHTicketRefund.TryPrepareEntry(owner, out reasonId)) return false;
                 // 切图前原子冻结：kind + 目标 sceneName/sceneID + 单调递增 generation
                 int generation = BossRushMapSelectionHelper.FreezeModeHEntryIntent(map.SceneName, map.SceneId);
                 ModBehaviour.DevLog("[ModeH] 已冻结入场意图: scene=" + map.SceneName
@@ -167,8 +168,18 @@ namespace BossRush
         /// </summary>
         internal static void AbortAndRefund(ModBehaviour owner, string reasonId, bool exitScene)
         {
+            AbortAndRefund(owner, reasonId, exitScene, null);
+        }
+
+        /// <summary>同上；<paramref name="beforeExit"/> 在退票有了真实结果、离场之前调用（给玩家如实提示用）。</summary>
+        internal static void AbortAndRefund(ModBehaviour owner, string reasonId, bool exitScene, Action<ModeHRefundOutcome> beforeExit)
+        {
             ModBehaviour.DevLog("[ModeH] 入场中止并退款: " + (reasonId != null ? reasonId : "unknown"));
-            TryRefundPrepaidTicket();
+            ModeHRefundOutcome outcome = ModeHTicketRefund.Refund();
+            if (beforeExit != null)
+            {
+                try { beforeExit(outcome); } catch (Exception) { /* 提示失败不得影响离场 */ }
+            }
             if (exitScene && owner != null)
             {
                 owner.SafeExitFromModeH();
@@ -190,135 +201,12 @@ namespace BossRush
 
         #endregion
 
-        #region 唯一退款路径（玩家资产访问白名单第一条）
+        #region 唯一退款路径（实现迁至 ModeHTicketRefund，玩家资产访问白名单第一条）
 
-        /// <summary>
-        /// 退还本次入场预扣的一张 BossRush 船票。
-        ///
-        /// 这是 Mode H 中唯一允许触碰 CharacterMainControl.Main.CharacterItem.Inventory 的代码路径：
-        /// - 只允许 GetBossRushTicketTypeId() 这一个 typeId，每次入场至多一张；
-        /// - 不得触碰 PlayerStorage、玩家 ItemTreeData、仓库缓冲或任何其他 typeId；
-        /// - 必须先 ClearPendingEntryFlowState() 清除预扣所有权，防止重复回调发出两张票；
-        /// - 背包满时允许落地 fallback；发票失败时 DestroyTree() 清理临时 Item 并只记日志，
-        ///   不阻断离场（设计提案 §17.1）。
-        /// </summary>
+        /// <summary>退还本次入场预扣的一张船票；实现与约束见 <see cref="ModeHTicketRefund"/>。</summary>
         internal static bool TryRefundPrepaidTicket()
         {
-            bool hadPrepaid;
-            try
-            {
-                hadPrepaid = BossRushMapSelectionHelper.HasPendingPrepaidTicket();
-            }
-            catch (Exception)
-            {
-                hadPrepaid = false;
-            }
-
-            // 先清预扣所有权，再发票：重复触发的离场回调不会发出第二张票
-            CancelPendingEntry();
-
-            if (!hadPrepaid)
-            {
-                return false;
-            }
-
-            int typeId;
-            try
-            {
-                typeId = BossRushMapSelectionHelper.GetBossRushTicketTypeId();
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ModeH] [WARNING] 船票 typeId 解析失败: " + e.Message);
-                return false;
-            }
-            if (typeId <= 0)
-            {
-                ModBehaviour.DevLog("[ModeH] [WARNING] 船票 typeId 非法，放弃退款");
-                return false;
-            }
-
-            Item item = null;
-            try
-            {
-                item = ItemAssetsCollection.InstantiateSync(typeId);
-                CharacterMainControl player = CharacterMainControl.Main;
-                Inventory inventory = player != null && player.CharacterItem != null
-                    ? player.CharacterItem.Inventory
-                    : null;
-
-                if (item != null && TryCommitTicket(item, inventory, player))
-                {
-                    ModBehaviour.DevLog("[ModeH] 已退还入场船票");
-                    return true;
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ModeH] [WARNING] 入场船票退还异常: " + e.Message);
-            }
-
-            try
-            {
-                if (item != null) item.DestroyTree();
-            }
-            catch (Exception cleanupException)
-            {
-                ModBehaviour.DevLog("[ModeH] [WARNING] 退款失败后的物品清理异常: " + cleanupException.Message);
-            }
-            return false;
-        }
-
-        /// <summary>
-        /// 背包优先、满包落地。与 Mode G 的提交形状一致，但由 Mode H 自行实现，
-        /// 不复用 ModeGRewardTransaction 对象，也不回退到 PlayerStorage。
-        /// </summary>
-        private static bool TryCommitTicket(Item item, Inventory inventory, CharacterMainControl player)
-        {
-            if (item == null) return false;
-
-            if (inventory != null)
-            {
-                try
-                {
-                    if (inventory.AddAndMerge(item, 0)) return true;
-                }
-                catch (Exception e)
-                {
-                    ModBehaviour.DevLog("[ModeH] [WARNING] 船票写入背包异常，尝试落地: " + e.Message);
-                }
-            }
-
-            if (player == null) return false;
-
-            try
-            {
-                DuckovItemAgent pickup = item.Drop(
-                    player.transform.position + Vector3.up * 0.3f,
-                    true, Vector3.forward, 0f);
-                if (pickup != null)
-                {
-                    ModBehaviour.DevLog("[ModeH] 背包已满，船票已掉落在玩家脚下");
-                    return true;
-                }
-            }
-            catch (Exception dropException)
-            {
-                try
-                {
-                    if (item != null && item.ActiveAgent != null)
-                    {
-                        ModBehaviour.DevLog("[ModeH] 船票掉落回调异常，但拾取代理已生成: " + dropException.Message);
-                        return true;
-                    }
-                }
-                catch (Exception)
-                {
-                    // 归属核对失败按未提交处理
-                }
-                ModBehaviour.DevLog("[ModeH] [WARNING] 船票地面交付失败: " + dropException.Message);
-            }
-            return false;
+            return ModeHTicketRefund.Refund() == ModeHRefundOutcome.Refunded;
         }
 
         #endregion

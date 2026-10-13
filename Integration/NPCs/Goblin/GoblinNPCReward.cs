@@ -21,6 +21,8 @@ namespace BossRush
     /// </summary>
     public partial class GoblinNPCController
     {
+        private bool rewardDeliveryInProgress;
+
         /// <summary>
         /// 尝试赠送奖励物品给玩家
         /// </summary>
@@ -31,13 +33,17 @@ namespace BossRush
         /// <returns>是否成功赠送</returns>
         public bool TryGiveRewardItem(int typeId, int stackCount, string successBanner = null, string fullInventoryBanner = null)
         {
+            if (rewardDeliveryInProgress) return false;
+            rewardDeliveryInProgress = true;
+            Item rewardItem = null;
+            bool delivered = false;
             try
             {
                 // 确保物品资源已加载
                 EnsureRewardItemLoaded(typeId);
 
                 // 实例化物品
-                Item rewardItem = ItemAssetsCollection.InstantiateSync(typeId);
+                rewardItem = ItemAssetsCollection.InstantiateSync(typeId);
                 if (rewardItem == null)
                 {
                     ModBehaviour.DevLog("[GoblinNPC] [WARNING] 奖励物品实例化失败: typeId=" + typeId);
@@ -51,29 +57,32 @@ namespace BossRush
                     rewardItem.StackCount = Mathf.Clamp(stackCount, 1, maxStackCount);
                 }
 
-                // 尝试添加到玩家背包
                 CharacterMainControl player = CharacterMainControl.Main;
-                if (player != null && player.CharacterItem != null && player.CharacterItem.Inventory != null)
+                Inventory inventory = player != null && player.CharacterItem != null ? player.CharacterItem.Inventory : null;
+                bool dropped = false;
+                delivered = SkyIslandInventoryTransaction.TryDeliver(rewardItem, inventory, remaining =>
                 {
-                    bool added = player.CharacterItem.Inventory.AddAndMerge(rewardItem, 0);
-                    if (added)
+                    if (inventory != null)
                     {
-                        ShowRewardBanner(successBanner);
-                        ModBehaviour.DevLog("[GoblinNPC] 成功赠送物品: typeId=" + typeId + ", count=" + stackCount);
-                        return true;
+                        try { inventory.AddItem(remaining); }
+                        catch (Exception e) { ModBehaviour.DevLog("[GoblinNPC] 奖励入包通知异常: " + e.Message); }
+                        if (remaining.InInventory == inventory) return true;
                     }
-
-                    // 背包满，掉落在NPC脚边
-                    return DropRewardItemAtNpc(rewardItem, fullInventoryBanner);
-                }
-
-                // 玩家不存在，掉落在NPC脚边
-                return DropRewardItemAtNpc(rewardItem, fullInventoryBanner);
+                    dropped = DropRewardItemAtNpc(remaining, fullInventoryBanner);
+                    return dropped;
+                });
+                if (delivered && !dropped) ShowRewardBanner(successBanner);
+                return delivered;
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[GoblinNPC] [ERROR] 赠送奖励物品失败: " + e.Message);
                 return false;
+            }
+            finally
+            {
+                try { if (!delivered) SkyIslandInventoryTransaction.DestroyUnowned(rewardItem); }
+                finally { rewardDeliveryInProgress = false; }
             }
         }
 
@@ -82,6 +91,13 @@ namespace BossRush
         /// </summary>
         private static void EnsureRewardItemLoaded(int typeId)
         {
+            // 回火液是克隆冷淬液的运行时物品，没有自己的 bundle
+            if (typeId == TemperingSolventConfig.TYPE_ID)
+            {
+                TemperingSolventConfig.EnsureRuntimeRegistration();
+                return;
+            }
+
             // 自定义物品已经在初始化时加载，无需重复加载
             if (typeId <= 0 || ItemFactory.IsCustomItem(typeId))
             {
@@ -127,13 +143,15 @@ namespace BossRush
 
             // 计算掉落位置（NPC脚边稍微抬高）
             Vector3 dropPosition = transform.position + Vector3.up * 0.15f;
-            rewardItem.Drop(dropPosition, true, dropDirection.normalized, 0f);
+            try { rewardItem.Drop(dropPosition, true, dropDirection.normalized, 0f); }
+            catch (Exception e) { ModBehaviour.DevLog("[GoblinNPC] 奖励落地通知异常: " + e.Message); }
+            if (rewardItem == null || rewardItem.ActiveAgent == null) return false;
 
             // 显示提示
             string fallbackMessage = L10n.T("背包已满，奖励已掉落在叮当脚边。", "Inventory full. The reward was dropped at Dingdang's feet.");
             if (string.IsNullOrEmpty(fullInventoryBanner))
             {
-                NotificationText.Push(fallbackMessage);
+                ShowRewardBanner(fallbackMessage);
             }
             else
             {

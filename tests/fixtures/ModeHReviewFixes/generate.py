@@ -68,11 +68,21 @@ groups = {
     ],
     'ModeHInjuryAndScarSystem': [('ModeH/ModeHInjuryAndScarSystem.cs', 'public bool ResolveRestRecovery(')],
     'ModeHCombatTelemetry': [('ModeH/ModeHCombatTelemetry.cs', 'public bool HasRested(')],
+    'ModeHTicketRefund': [('ModeH/ModeHTicketRefund.cs', 'internal static void ResetStaticCaches()')],
 }
 parts = ['using System; using System.Collections.Generic; using ItemStatsSystem; namespace BossRush {']
 for name, methods in groups.items():
-    modifier = 'static ' if name in ('ModeHInventoryPersistenceBridge', 'ModeHTransferMarket') else ''
+    modifier = 'static ' if name in ('ModeHInventoryPersistenceBridge', 'ModeHTransferMarket', 'ModeHTicketRefund') else ''
     parts.append('internal ' + modifier + 'partial class ' + name + ' {')
+    if name == 'ModeHTicketRefund':
+        # This fixture exercises slot cleanup, not issuing assets; link its actual owner fields and reset.
+        path = 'ModeH/ModeHTicketRefund.cs'
+        source = (ROOT / path).read_text(encoding='utf-8-sig')
+        for field in ('_owedSlot', '_issuingRefund'):
+            declarations = re.findall(r'private static (?:int|bool) ' + re.escape(field) + r'(?: = [^;]+)?;', source)
+            assert len(declarations) == 1, 'missing/duplicate refund owner field: ' + field
+            parts.append(declarations[0])
+            hashes.append((path, field, hashlib.sha256(declarations[0].encode()).hexdigest()))
     parts += [method(path, signature) for path, signature in methods]
     if name == 'ModeHRuntimeModule':
         settlement = method('ModeH/ModeHRuntimeModule_CombatFlow.cs', 'private void BeginMatchSettlement()')

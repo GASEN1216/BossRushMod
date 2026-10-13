@@ -78,8 +78,12 @@ namespace BossRush
                     return Fail("官方关卡初始化尚未完成", out reason);
                 if (!level.IsRaidMap || level.IsBaseLevel)
                     return Fail("天空岛必须使用独立 Raid 规则", out reason);
-                if (!LevelConfig.SaveCharacter || !LevelConfig.SpawnTomb)
-                    return Fail("天空岛未开启官方角色保存与死亡掉落", out reason);
+                // 官方死亡流程里 SpawnTomb 只决定「墓碑箱 / 原地掉落」，存档只看 SaveCharacter。
+                // 「死亡不掉落」类 Mod 会把 SpawnTomb 改成 false，这是玩家选的死亡规则，不是坏图，照常放行。
+                if (!LevelConfig.SaveCharacter)
+                    return Fail("天空岛的官方角色保存被关闭（SaveCharacter=false），撤离和死亡都没法写回存档", out reason);
+                if (!LevelConfig.SpawnTomb)
+                    Debug.LogWarning("[SkyIsland] SpawnTomb=false（可能装了死亡不掉落类 Mod）：岛上死亡不生成墓碑，按该设置继续");
                 if (config.timeOfDayConfig == null || config.startBuffPrefabs == null)
                     return Fail("官方时间配置或起始 Buff 列表缺失", out reason);
                 if (level.CharacterCreator == null || level.InputManager == null || level.GameCamera == null

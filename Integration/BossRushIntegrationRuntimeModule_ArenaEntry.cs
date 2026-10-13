@@ -32,6 +32,7 @@ namespace BossRush
             if (_arenaEntryEventsSubscribed) return;
             SceneLoader.onStartedLoadingScene += OnArenaEntrySceneLoading;
             SceneManager.sceneUnloaded += OnArenaEntrySceneUnloaded;
+            Duckov.Economy.EconomyManager.OnCostPaid += OnArenaEntryCostPaid;
             _arenaEntryEventsSubscribed = true;
         }
 
@@ -41,7 +42,14 @@ namespace BossRush
             if (!_arenaEntryEventsSubscribed) return;
             SceneLoader.onStartedLoadingScene -= OnArenaEntrySceneLoading;
             SceneManager.sceneUnloaded -= OnArenaEntrySceneUnloaded;
+            Duckov.Economy.EconomyManager.OnCostPaid -= OnArenaEntryCostPaid;
             _arenaEntryEventsSubscribed = false;
+        }
+
+        private void OnArenaEntryCostPaid(Duckov.Economy.Cost cost)
+        {
+            try { BossRushMapSelectionHelper.NotePaidCost(cost); }
+            catch (Exception e) { ModBehaviour.DevLog("[BossRush] 记录地图界面付款失败: " + e.Message); }
         }
 
         private void OnArenaEntrySceneLoading(SceneLoadingContext context)

@@ -55,11 +55,15 @@ namespace BossRush
                 Check(current > last && current > 0.06f, "official bloodline rank retained and no old damage regression");
                 last = current;
             }
-            Check(Near(PetNestGrowth.BaseDamageMultiplier(.8f), .16f), "ice boss baseline");
-            Check(Near(PetNestGrowth.BaseDamageMultiplier(1.35f), .27f), "prison boss baseline");
-            Check(Near(PetNestGrowth.BaseDamageMultiplier(.3f), .12f), "custom low multiplier has useful floor");
+            // 2026-10-12：0.25 × √来源倍率，钳在 0.12–0.8；旧公式把 1.35 以上的血脉全压在 0.28。
+            Check(Near(PetNestGrowth.BaseDamageMultiplier(.8f), .2236f), "ice boss baseline");
+            Check(Near(PetNestGrowth.BaseDamageMultiplier(1.35f), .2905f), "prison boss baseline");
+            Check(Near(PetNestGrowth.BaseDamageMultiplier(.3f), .1369f), "custom low multiplier has useful floor");
+            Check(PetNestGrowth.BaseDamageMultiplier(4f) > PetNestGrowth.BaseDamageMultiplier(2f)
+                && PetNestGrowth.BaseDamageMultiplier(2f) > .28f, "strong bloodlines no longer flattened at the old 0.28 cap");
+            Check(Near(PetNestGrowth.BaseDamageMultiplier(12f), .8f), "extreme source multiplier capped");
             foreach (float x in new[] { -1f, 0f, float.NaN, float.PositiveInfinity, float.MaxValue })
-                Check(PetNestGrowth.BaseDamageMultiplier(x) >= .12f && PetNestGrowth.BaseDamageMultiplier(x) <= .28f,
+                Check(PetNestGrowth.BaseDamageMultiplier(x) >= .12f && PetNestGrowth.BaseDamageMultiplier(x) <= .8f,
                     "invalid and excessive multipliers bounded");
             for (int level = 2; level <= 10; level++)
                 Check(PetNestGrowth.ModelScale(.62f, level) > PetNestGrowth.ModelScale(.62f, level - 1), "visible growth each level");
@@ -72,12 +76,12 @@ namespace BossRush
             Check(PetNestTuning.PetExpHomecoming + PetNestTuning.PetExpCompanionKillRunCap == 100, "active raid can earn one level without changing old XP schema");
             var clone = new CharacterRandomPreset { nameKey = "official", damageMultiplier = 1.35f };
             PetNestCompanionSpawner.NeutralizeClonePreset(clone);
-            Check(Near(clone.damageMultiplier, .27f) && Near(clone.meleeDamageMultiplier, .27f), "production neutralization uses source damage");
+            Check(Near(clone.damageMultiplier, .2905f) && Near(clone.meleeDamageMultiplier, .2905f), "production neutralization uses source damage");
             Check(!clone.hasSkill && clone.exp == 0 && !clone.hasSoul && !clone.dropBoxOnDead
                 && clone.team == Teams.player && !clone.setActiveByPlayerDistance, "companion safety remains intact");
             clone = new CharacterRandomPreset { nameKey = DragonKingConfig.BossNameKey, damageMultiplier = 99f };
             PetNestCompanionSpawner.NeutralizeClonePreset(clone);
-            Check(Near(clone.damageMultiplier, .12f) && clone.health == DragonKingConfig.BaseHealth, "custom bloodline uses custom stats instead of red boss template");
+            Check(Near(clone.damageMultiplier, .1369f) && clone.health == DragonKingConfig.BaseHealth, "custom bloodline uses custom stats instead of red boss template");
             foreach (string key in new[] { DragonDescendantConfig.BOSS_NAME_KEY, DragonKingConfig.BossNameKey, PhantomWitchConfig.BossNameKey })
             {
                 ItemAssetsCollection.Reset();

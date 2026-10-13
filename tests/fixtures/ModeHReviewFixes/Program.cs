@@ -144,8 +144,14 @@ internal static class Program
         Check(ModeHArenaIsolationLease.Acquired == 1 && ModeHSpectatorLease.Acquired == 1, "both leases acquired");
         Check(BossRushMapSelectionHelper.Generation == 0, "resume intent cleared after arrival");
         ModeHProfilePersistence.Current = null; ModeHRuntimeGates.SlotGeneration++;
+        var owedSlot = typeof(ModeHTicketRefund).GetField("_owedSlot", BindingFlags.Static | BindingFlags.NonPublic);
+        var issuingRefund = typeof(ModeHTicketRefund).GetField("_issuingRefund", BindingFlags.Static | BindingFlags.NonPublic);
+        owedSlot.SetValue(null, 1); issuingRefund.SetValue(null, true);
+        BossRushMapSelectionHelper.Generation = 9;
         run.SwitchSlot();
         Check(run._runState == null && run._season == null && run.Released > 0, "empty new slot clears old season and runtime");
+        Check(BossRushMapSelectionHelper.Generation == 0 && (int)owedSlot.GetValue(null) == -1 && !(bool)issuingRefund.GetValue(null),
+            "actual slot restore clears old H entry and actual refund owner fields before new-slot recovery");
         var settled = Runtime(ModeHLifecycle.Suspended, 3);
         settled._season.matchReports.Add(new ModeHMatchReportDto { matchIndex = 3, reportStatus = (int)ModeHMatchReportStatus.SettledPendingArchive });
         Check(settled.Derive() == ModeHLifecycle.Intermission, "settled fact resumes to intermission without replaying fight");

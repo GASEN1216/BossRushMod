@@ -33,6 +33,8 @@ def main():
     methods = '\n'.join(member(source, signature) for signature in (
         'internal IEnumerator AddDragonDescendantLoot(Inventory inv)',
         'internal bool TryAddDragonKingLootItem(Inventory inv, int typeId, string itemName)',
+        'internal static int RollDragonDescendantLootTypeId(float roll, out string itemName)',
+        'private Item CreateDragonRewardItem(int typeId, string logPrefix)',
     ))
     extracted = OUT / 'DragonRewards.cs'
     extracted.write_text('using System; using System.Collections; using ItemStatsSystem; '

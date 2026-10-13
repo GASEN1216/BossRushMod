@@ -19,6 +19,7 @@ namespace BossRush {
  public static class BossRushItemIds {public const int BirthdayCake=500045;}
  public static class DiamondConfig {public const int TYPE_ID=500001;public static string GetDisplayName(){return L10n.T("钻石","Diamond");} }
  public static class ColdQuenchFluidConfig {public const int TYPE_ID=500002;public static string GetDisplayName(){return L10n.T("冷淬液","Cold Quench");} }
+ public static class TemperingSolventConfig {public const int TYPE_ID=500108,SHOP_UNLOCK_LEVEL=4,SHOP_MAX_STOCK=3;public static string GetDisplayName(){return L10n.T("回火液","Tempering Solvent");} }
  public static class DiamondRingConfig {public const int TYPE_ID=500003,AFFINITY_BONUS=500,UNLOCK_LEVEL=7;public static string GetDisplayName(){return L10n.T("戒指","Ring");} }
  public static class BrickStoneConfig {public const int TYPE_ID=500004;}
  public static class AffixForgeStoneConfig {public const int TYPE_ID=500060;public static string GetDisplayName(){return L10n.T("熔石","Stone");} }

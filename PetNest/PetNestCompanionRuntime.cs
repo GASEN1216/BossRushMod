@@ -77,6 +77,20 @@ namespace BossRush
             get { return _handle != null ? _handle.Character : null; }
         }
 
+        /// <summary>在场随从的维护组件（行动方式 / 交战通知用；不在场为 null）。</summary>
+        internal static PetNestCompanionAgent CompanionAgent
+        {
+            get { return _handle != null && _handle.Activated ? _handle.Agent : null; }
+        }
+
+        /// <summary>行动方式改了：在场的正是这只崽就立刻生效。</summary>
+        internal static void ApplyBehaviour(string petId, PetNestBehaviour behaviour)
+        {
+            PetNestCompanionAgent agent = CompanionAgent;
+            if (agent != null && string.Equals(ActiveCompanionPetId, petId, StringComparison.Ordinal))
+                agent.SetBehaviour(behaviour);
+        }
+
         #endregion
 
         #region 入场

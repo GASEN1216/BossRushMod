@@ -460,7 +460,7 @@ namespace BossRush
             SetText(_backTitle, PetNestLocalization.DescribeDestination(record.destinationId));
             SetText(_backTier, PetNestLocalization.DescribeRisk(record.riskTier)
                 + " · " + LocalizationHelper.GetLocalizedText(PetNestTuning.LocalizationPrefix + "DeathRateLabel")
-                + " " + PetNestLocalization.FormatPercent(record.deathRate));
+                + " " + PetNestLocalization.FormatPercent(PetNestExpeditionService.EffectiveDeathRate(record)));
             if (_backTier != null) _backTier.color = tier;
             if (_backBar != null) _backBar.color = tier;
             SetCardWidthScale(1f);
@@ -549,7 +549,7 @@ namespace BossRush
                 + " · " + PetNestLocalization.DescribeRisk(record.riskTier)
                 + " · " + LocalizationHelper.GetLocalizedText(
                     PetNestTuning.LocalizationPrefix + "DeathRateLabel")
-                + " " + PetNestLocalization.FormatPercent(record.deathRate);
+                + " " + PetNestLocalization.FormatPercent(PetNestExpeditionService.EffectiveDeathRate(record));
 
             if (record.outcomeCash > 0L)
             {

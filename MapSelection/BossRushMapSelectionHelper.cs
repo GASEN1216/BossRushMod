@@ -196,6 +196,9 @@ namespace BossRush
         private static string pendingModeHTargetSceneId = null;
         private static int pendingModeHSceneGeneration = 0;
         private static int modeHSceneGenerationCounter = 0;
+        // Cost 是值类型，但官方 LoadTask 保留同一个 items 数组；只认选中条目这笔付款。
+        private static Cost.ItemEntry[] pendingModeHCostItems;
+        private static int pendingModeHSlot = -1;
         
         // 是否已初始化 - 保留用于未来扩展
         #pragma warning disable CS0414
@@ -276,6 +279,7 @@ namespace BossRush
             pendingEntryFlowSource = BossRushEntryFlowSource.MapSelectionUi;
             pendingPrepaidTicketForCurrentEntry = false;
             pendingEntryKind = kind;
+            pendingModeHCostItems = null;
         }
 
         /// <summary>
@@ -304,12 +308,54 @@ namespace BossRush
 
         /// <summary>
         /// 目标 BossRush 场景已开始加载。
-        /// 若本次来自地图选择 UI，则视为船票已在 UI 确认阶段扣除。
+        /// 旧模式沿用地图 UI 预扣判定；Mode H 只消费已登记的实际付款回执。
         /// </summary>
         public static void MarkTargetSceneLoadStarted()
         {
+            if (pendingEntryKind == BossRushPendingEntryKind.ModeH) return;
             pendingPrepaidTicketForCurrentEntry =
                 pendingEntryFlowSource == BossRushEntryFlowSource.MapSelectionUi;
+        }
+
+        internal static void CaptureModeHPayment(Cost cost)
+        {
+            if (pendingEntryKind != BossRushPendingEntryKind.ModeH || pendingPrepaidTicketForCurrentEntry
+                || pendingModeHSceneGeneration <= 0 || pendingModeHSlot != Saves.SavesSystem.CurrentSlot) return;
+            pendingModeHCostItems = cost.items;
+        }
+
+        /// <summary>
+        /// 官方地图界面的付款回执（EconomyManager.OnCostPaid）。鸭王杯在这一刻就登记「已付票」：
+        /// 官方加载器拒绝加载时不会有任何目标场景回调，晚到目标场景才登记会让这张票无据可退。
+        /// 只认地图界面流程中、鸭王杯意图下、恰好一张船票且不收钱的那笔付款。
+        /// </summary>
+        internal static void NotePaidCost(Cost cost)
+        {
+            if (pendingEntryKind != BossRushPendingEntryKind.ModeH
+                || pendingEntryFlowSource != BossRushEntryFlowSource.MapSelectionUi
+                || pendingPrepaidTicketForCurrentEntry) return;
+            if (pendingModeHSceneGeneration <= 0 || pendingModeHSlot != Saves.SavesSystem.CurrentSlot
+                || pendingModeHCostItems == null || !ReferenceEquals(cost.items, pendingModeHCostItems)) return;
+            if (cost.money != 0L || cost.items == null || cost.items.Length != 1) return;
+            if (cost.items[0].id != GetBossRushTicketTypeId() || cost.items[0].amount != 1L) return;
+            pendingPrepaidTicketForCurrentEntry = true;
+        }
+
+        /// <summary>
+        /// 规划中的入场落到了意外场景：鸭王杯先按真实结果退票并告诉玩家，再清状态；其余模式维持原样。
+        /// </summary>
+        internal static void ClearPendingEntryFlowStateAfterUnexpectedScene(ModBehaviour owner)
+        {
+            if (pendingEntryKind == BossRushPendingEntryKind.ModeH)
+            {
+                ModeHEntry.AbortAndRefund(owner, "unexpected_scene", false, outcome =>
+                {
+                    if (owner != null && outcome != ModeHRefundOutcome.NotPaid)
+                        owner.ShowMessage(L10n.T(ModeHConfig.LocalizationKeyPrefix + (outcome == ModeHRefundOutcome.Refunded
+                            ? "Unavailable_TicketRefunded" : "Unavailable_TicketRefundOwed")));
+                });
+            }
+            ClearPendingEntryFlowState();
         }
 
         /// <summary>
@@ -317,7 +363,8 @@ namespace BossRush
         /// </summary>
         public static bool HasPendingPrepaidTicket()
         {
-            return pendingPrepaidTicketForCurrentEntry;
+            return pendingPrepaidTicketForCurrentEntry && (pendingEntryKind != BossRushPendingEntryKind.ModeH
+                || pendingModeHSlot == Saves.SavesSystem.CurrentSlot);
         }
 
         public static bool HasPendingModeGEntryIntent()
@@ -346,6 +393,9 @@ namespace BossRush
             pendingEntryKind = BossRushPendingEntryKind.ModeH;
             pendingModeHTargetSceneName = targetSceneName;
             pendingModeHTargetSceneId = targetSceneId;
+            pendingModeHSlot = Saves.SavesSystem.CurrentSlot;
+            pendingModeHCostItems = null;
+            pendingPrepaidTicketForCurrentEntry = false;
             modeHSceneGenerationCounter++;
             pendingModeHSceneGeneration = modeHSceneGenerationCounter;
             return pendingModeHSceneGeneration;
@@ -360,6 +410,7 @@ namespace BossRush
         {
             sceneGeneration = 0;
             if (pendingEntryKind != BossRushPendingEntryKind.ModeH) return false;
+            if (pendingModeHSlot != Saves.SavesSystem.CurrentSlot) return false;
             if (string.IsNullOrEmpty(pendingModeHTargetSceneName)) return false;
             if (!string.Equals(sceneName, pendingModeHTargetSceneName, StringComparison.Ordinal))
             {
@@ -392,6 +443,7 @@ namespace BossRush
         /// </summary>
         public static void ClearPendingEntryFlowState()
         {
+            bool wasModeH = pendingEntryKind == BossRushPendingEntryKind.ModeH;
             pendingInitialSpawn = false;
             pendingEntryFlowSource = BossRushEntryFlowSource.None;
             pendingPrepaidTicketForCurrentEntry = false;
@@ -399,6 +451,13 @@ namespace BossRush
             pendingModeHTargetSceneName = null;
             pendingModeHTargetSceneId = null;
             pendingModeHSceneGeneration = 0;
+            pendingModeHCostItems = null;
+            pendingModeHSlot = -1;
+            if (wasModeH)
+            {
+                ClearPendingMapEntry();
+                SetBossRushArenaPlanned(false);
+            }
         }
         
         /// <summary>
@@ -883,9 +942,18 @@ namespace BossRush
         {
             try
             {
+                ModBehaviour mod = ModBehaviour.Instance;
+                // 鸭王杯只能经地图界面付票进入；直接传送既不扣票、又会把意图改写成普通挑战。
+                // 界面打不开时留在基地，让玩家重试，不发不扣任何票。
+                if (pendingEntryKind == BossRushPendingEntryKind.ModeH)
+                {
+                    ModeHEntry.CancelPendingEntry();
+                    if (mod != null)
+                        mod.ShowMessage(L10n.T(ModeHConfig.LocalizationKeyPrefix + "Abort_MapSelectionUnavailable"));
+                    return;
+                }
                 MarkEntryFlowFromDirectTeleport(pendingEntryKind);
 
-                ModBehaviour mod = ModBehaviour.Instance;
                 if (mod != null)
                 {
                     mod.StartBossRush(null);
@@ -982,6 +1050,7 @@ namespace BossRush
                 if (marker != null && marker.entryIndex >= 0)
                 {
                     BossRushMapSelectionHelper.SetPendingMapEntryIndex(marker.entryIndex);
+                    BossRushMapSelectionHelper.CaptureModeHPayment(mapSelectionEntry.Cost);
                 }
                 else
                     BossRushMapSelectionHelper.CancelUnstartedMapSelection();

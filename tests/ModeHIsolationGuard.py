@@ -13,7 +13,7 @@ ModeHIsolationGuard — Mode H 隔离与玩家资产白名单守卫（设计提�
      持久身份、收走/交付的主角物品快照与账本同存，满包留欠账，不碰仓库；
 - 白名单以外的任何 Mode H 文件都不得出现 Inventory / PlayerStorage / ItemTreeData；
 - Mode H 不写旧模式状态（波次计数、Mode E/F/G/Zombie profile/loot/mutator、全局玩家生命）；
-- 退款路径必须先 ClearPendingEntryFlowState 再发票，失败时 DestroyTree；
+- 退款路径必须先清付款 owner 再发票；欠票阻止新付款，共享实际差额交付，失败只销毁无归属物品；
 - InputManager.ActiveInput 调用点必须有 instance 判空；
 - 退出后 IsModeHStandInActive 必须归零。
 """
@@ -31,6 +31,8 @@ MODEH_DIR = os.path.join(REPO_ROOT, "ModeH")
 # 白名单：文件名 -> 允许出现的玩家资产符号
 ASSET_WHITELIST = {
     "ModeHEntry.cs": {"Inventory"},
+    # 2026-10-12：退票实现从宿主 partial 原样迁出（ModeHEntry.TryRefundPrepaidTicket 只剩转发）
+    "ModeHTicketRefund.cs": {"Inventory"},
     "ModeHLoadoutKitApplicator.cs": {"Inventory"},
     "ModeHWarehouseStakeJournal.cs": {"Inventory", "PlayerStorage", "ItemTreeData"},
     # journal 的 partial 第二文件（为 1200 行预算拆出，类与语义完全相同），同等豁免
@@ -145,33 +147,58 @@ def main():
     check_item_bet_stake(strip_cs_comments(read_text(os.path.join(MODEH_DIR, "ModeHItemBetStake.cs")) or ""), errors)
 
     entry = read_text(os.path.join(MODEH_DIR, "ModeHEntry.cs"))
-    if entry is None:
-        errors.append("[File] 缺少 ModeH/ModeHEntry.cs")
+    refund_impl = read_text(os.path.join(MODEH_DIR, "ModeHTicketRefund.cs"))
+    if entry is None or refund_impl is None:
+        errors.append("[File] 缺少 ModeH/ModeHEntry.cs 或 ModeH/ModeHTicketRefund.cs")
     else:
-        code = strip_cs_comments(entry)
+        entry_code = strip_cs_comments(entry)
+        forward = re.search(r"internal static bool TryRefundPrepaidTicket\(\)[\s\S]*?\n        \}", entry_code)
+        if not forward or "ModeHTicketRefund.Refund()" not in forward.group(0):
+            errors.append("[Refund] ModeHEntry.TryRefundPrepaidTicket 必须转发到唯一实现 ModeHTicketRefund.Refund")
+        if "InstantiateSync" in entry_code:
+            errors.append("[Refund] ModeHEntry 不得再自行实例化船票")
+        code = strip_cs_comments(refund_impl)
         checks = [
-            (r"internal static bool TryRefundPrepaidTicket\(\)", "唯一退款入口"),
+            (r"internal static ModeHRefundOutcome Refund\(\)", "唯一退款入口"),
             (r"BossRushMapSelectionHelper\.GetBossRushTicketTypeId\(\)", "只允许船票 typeId"),
-            (r"item\.DestroyTree\(\)", "发票失败清理临时 Item"),
+            (r"SkyIslandInventoryTransaction\.DestroyUnowned\(item\)", "发票失败只清理无归属临时 Item"),
             (r"player\.CharacterItem\.Inventory", "只写玩家 Inventory"),
+            (r"SkyIslandInventoryTransaction\.TryDeliver\(item, inventory,", "合堆复用实际差额与回滚"),
+            (r"inventory\.AddItem\(item\);", "剩余原件不得再次合堆"),
+            (r"if \(item\.InInventory == inventory\) return true;", "通知异常以后核对真实入包归属"),
+            (r"internal static bool SettleBeforeEntry\(ModBehaviour owner\)", "入口必须消费结清结果"),
         ]
         for pattern, desc in checks:
             if not re.search(pattern, code):
                 errors.append("[Refund] 不满足: " + desc)
 
-        refund = re.search(r"internal static bool TryRefundPrepaidTicket\(\)[\s\S]*?\n        \}", code)
+        refund = re.search(r"internal static ModeHRefundOutcome Refund\(\)[\s\S]*?\n        \}", code)
         if refund:
             body = refund.group(0)
             clear_pos = body.find("CancelPendingEntry()")
-            instantiate_pos = body.find("InstantiateSync")
+            issue_pos = body.find("TryIssueOwedTicket()")
             if clear_pos < 0:
                 errors.append("[Refund] 必须先清除预扣所有权")
-            elif instantiate_pos >= 0 and clear_pos > instantiate_pos:
+            elif issue_pos < 0 or clear_pos > issue_pos:
                 errors.append("[Refund] 必须在实例化船票之前清除预扣所有权")
+        else:
+            errors.append("[Refund] 缺少 ModeHTicketRefund.Refund 实现")
 
         # 退款路径禁止碰仓库
         if "SendToPlayerStorage" in code or "PlayerStorage" in code:
             errors.append("[Refund] 退款路径不得触碰 PlayerStorage")
+        if "AddAndMerge" in code:
+            errors.append("[Refund] 剩余退款物品不得再次 AddAndMerge")
+        if "if (_issuingRefund || !HasOwedRefund) return false;" not in code:
+            errors.append("[Refund] 欠票交付必须防同步通知重入")
+        issue_owed = re.search(r"private static bool TryIssueOwedTicket\(\)[\s\S]*?\n        \}", code)
+        if not issue_owed or "if (!IssueTicket()) return false;" not in issue_owed.group(0):
+            errors.append("[Refund] 欠票 owner 必须调用唯一发票方法")
+        if "if (!ModeHTicketRefund.TryPrepareEntry(owner, out reasonId)) return false;" not in entry_code:
+            errors.append("[Refund] 付票入口必须消费唯一清欠 owner 的结果")
+        prepare = re.search(r"internal static bool TryPrepareEntry\([\s\S]*?\n        \}", code)
+        if not prepare or "if (SettleBeforeEntry(owner)) return true;" not in prepare.group(0):
+            errors.append("[Refund] 欠票未结清必须阻止新的付票入口")
 
         # 只允许一个 typeId：不得出现第二个 typeId 常量来源
         type_id_sources = re.findall(r"ItemAssetsCollection\.InstantiateSync\(([^)]+)\)", code)

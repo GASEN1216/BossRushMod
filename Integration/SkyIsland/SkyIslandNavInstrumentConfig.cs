@@ -210,20 +210,11 @@ namespace BossRush
             if (inventory == null) return false;
             Item instrument = TryCreate();
             if (instrument == null) return false;
-            try
-            {
-                EnsureExtraCapacity(inventory);
-                if (inventory.AddAndMerge(instrument, 0)) return true;
-                ModBehaviour.DevLog(LogPrefix + "头目库存放不下航向仪，本次不掉落（残骸处仍可再拆一具）");
-                DestroyQuietly(instrument);
-                return false;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(LogPrefix + "掉落失败: " + e.Message);
-                DestroyQuietly(instrument);
-                return false;
-            }
+            // 复用共享的额外掉落投递：满箱扩一格；官方入箱后广播抛错仍算已交付，只清理没挂上的实例。
+            // 旧实现在广播异常时把已经进箱的航向仪销毁了。
+            bool delivered = InteractableLootboxInventoryHelper.TryAddExtraItem(inventory, instrument);
+            if (!delivered) Debug.LogWarning(LogPrefix + "航向仪没能放进头目库存，本次不掉落（残骸处仍可再拆一具）");
+            return delivered;
         }
 
         /// <summary>直接发一具给玩家（残骸兜底）。放不进背包时由官方寄回仓库。</summary>
@@ -231,6 +222,7 @@ namespace BossRush
         {
             Item instrument = TryCreate();
             if (instrument == null) return false;
+            int instanceId = instrument.GetInstanceID();
             try
             {
                 ItemUtilities.SendToPlayer(instrument);
@@ -238,8 +230,11 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog(LogPrefix + "发放失败: " + e.Message);
-                DestroyQuietly(instrument);
+                // 官方先入包 / 进待领取缓冲，再广播；广播抛错时物品可能已经是玩家的了，不能销毁。
+                if (SkyIslandInventoryTransaction.HasOwner(instrument)
+                    || SkyIslandInventoryTransaction.HasBufferReceipt(instanceId, TYPE_ID)) return true;
+                Debug.LogWarning(LogPrefix + "发放失败: " + e.Message);
+                SkyIslandInventoryTransaction.DestroyUnowned(instrument);
                 return false;
             }
         }
@@ -305,20 +300,6 @@ namespace BossRush
             }
         }
 
-        private static void EnsureExtraCapacity(Inventory inventory)
-        {
-            if (inventory == null) return;
-            try
-            {
-                int contentCount = inventory.Content != null ? inventory.Content.Count : 0;
-                int required = Mathf.Max(inventory.Capacity, contentCount + 1);
-                if (required > inventory.Capacity) inventory.SetCapacity(required);
-            }
-            catch (Exception)
-            {
-                // 扩容失败时 AddAndMerge 会自己失败，届时按「不掉落」降级
-            }
-        }
 
         #endregion
 

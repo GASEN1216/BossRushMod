@@ -19,7 +19,7 @@ namespace BossRush
                 sourceMultiplier = 1f;
             return Math.Max(PetNestTuning.CompanionDamageMinMultiplier,
                 Math.Min(PetNestTuning.CompanionDpsShareTarget,
-                    sourceMultiplier * PetNestTuning.CompanionBossDamageScale));
+                    PetNestTuning.CompanionBossDamageScale * (float)Math.Sqrt(sourceMultiplier)));
         }
 
         internal static float ModelScale(float lineageScale, int level)

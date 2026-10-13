@@ -777,8 +777,8 @@ namespace BossRush
                 // 后果块底色是 DangerText（Danger 确认）：死亡率一行沿用它，真死说明单独改回黄字
                 Warning = "<size=20>" + LocalizationHelper.GetLocalizedText(PetNestTuning.LocalizationPrefix + "DeathRateLabel") + " "
                         + PetNestLocalization.FormatPercent(PetNestExpeditionService.GetDeathRate(tier)) + "</size>\n"
-                    + Colorize(L10n.T("亡命档是真死：回不来，就只剩纪念碑上的名字。出发后不能召回。",
-                        "Desperate runs kill for real: if it doesn't come back, only its name remains on the memorial. It can't be recalled."),
+                    + Colorize(L10n.T("亡命档是唯一会真死的一档：回不来，就只剩纪念碑上的名字。出发后不能召回；想稳妥就选风浪档，最多负伤。",
+                        "Desperate is the only tier that kills for real: if it doesn't come back, only its name remains on the memorial. It can't be recalled. Pick Rough instead and it can at worst get hurt."),
                         BossRushUIColors.WarningText),
                 ConfirmLabel = L10n.T("出发", "Depart"),
                 CancelLabel = L10n.T("再想想", "Not now"),

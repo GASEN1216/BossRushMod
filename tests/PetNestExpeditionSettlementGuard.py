@@ -6,8 +6,8 @@ PetNestExpeditionSettlementGuard — 天灾远征结算守卫（实施计划 步
 - **现实时间计时**：用 DateTime.UtcNow.Ticks，不用 GameClock
   （GameClock 离线不推进，关掉游戏远征就冻住）；
 - **回拨钳制**：剩余时间一律 max(0, returnTicks - now)，不得算出负倒计时；
-- **死亡率随出发记录固化**：出发时写进记录，结算与刻碑读的是同一个数字，
-  后续调数值不影响已出发的远征；
+- **死亡率随记录固化**：未结算远征允许按当前档常量向下封顶，结算前把实际概率写回记录；
+  已结算历史与纪念碑保持当时的概率；
 - **commit-before-reveal**：roll → 结果与 settled 标记先落档 → 翻牌只回放。
   因此本文件不 import 任何 View 符号，MarkRevealed 里不得出现任何 roll；
 - 结算幂等：已 settled 直接返回，不重复 roll、不重复发奖；
@@ -101,8 +101,15 @@ def main():
         body = settle.group(0)
         if "if (record.settled) return true;" not in body:
             errors.append("[幂等] 已结算的记录必须直接返回，不重复 roll")
-        if "record.deathRate" not in body:
-            errors.append("[明示] roll 必须用出发时固化的死亡率，不得重读常量")
+        # 2026-10-12：风浪档改为不死后，固化值只能被当前常量「封顶」（EffectiveDeathRate = min(固化, 当前)），
+        # 不得反过来抬高；roll 仍以出发时固化的值为起点。
+        if "EffectiveDeathRate(record)" not in body:
+            errors.append("[明示] roll 必须用出发时固化的死亡率（经 EffectiveDeathRate 封顶），不得直接重读常量")
+        effective = re.search(r"internal static float EffectiveDeathRate\(PetNestExpeditionRecord record\)[\s\S]*?\n        \}", code)
+        if not effective or "Math.Min(record.deathRate" not in effective.group(0):
+            errors.append("[明示] EffectiveDeathRate 只能把固化死亡率往下封顶")
+        if not effective or "if (record.settled) return record.deathRate;" not in effective.group(0):
+            errors.append("[历史概率] 已结算记录必须保留当时固化的概率，不再读当前常量")
         if "record.successRate" not in body:
             errors.append("[明示] roll 必须用出发时固化的成功率")
         if "record.settled = true;" not in body:
@@ -111,12 +118,15 @@ def main():
         # 前置检查必须在 roll / 改内存**之前**：roll 之后再发现写不下去，
         # 内存已经被改成"已结算"（真死路径还删了 PetRecord、刻了碑），回滚代价极大
         precheck_pos = body.find("PetNestPersistenceAccess.CanStoreAll")
-        roll_pos = body.find("UnityEngine.Random.value < record.deathRate")
+        roll_pos = body.find("UnityEngine.Random.value < EffectiveDeathRate(record)")
+        freeze_pos = body.find("record.deathRate = EffectiveDeathRate(record);")
         commit_pos = body.find("CommitBoth(out failureReasonId)")
         settled_pos = body.find("record.settled = true;")
         if precheck_pos < 0 or roll_pos < 0 or commit_pos < 0 or settled_pos < 0:
             errors.append("[顺序] 无法定位前置检查/roll/落档/settled 四个锚点")
         else:
+            if freeze_pos < 0 or freeze_pos > roll_pos:
+                errors.append("[历史概率] roll 前必须把本次实际死亡率固化进候选记录")
             if precheck_pos > roll_pos:
                 errors.append("[事务] CanStoreAll 前置检查必须在 roll 与改内存之前")
             if settled_pos > commit_pos:

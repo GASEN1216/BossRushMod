@@ -152,13 +152,16 @@ namespace BossRush
         {
             if (phase2Triggered) return;
             if (bossHealth == null) return;
+            // 一击把龙皇打到 1 血时「孩儿护我」先触发；此时再起二阶段，传送和收尾会把护盾、飞行和 AI 全部打乱
+            // （二阶段收尾撤无敌、开组件，龙皇可能在龙裔还活着时就被打死或卡在半空）。
+            if (childProtectionTriggered || isInChildProtection) return;
 
             float healthPercent = bossHealth.CurrentHealth / bossHealth.MaxHealth;
 
             if (healthPercent <= DragonKingConfig.Phase2HealthThreshold)
             {
                 phase2Triggered = true;
-                StartCoroutine(TriggerPhase2Transition());
+                phase2TransitionCoroutine = StartCoroutine(TriggerPhase2Transition());
             }
         }
 

@@ -436,3 +436,5 @@ owner 要求全面审查计划，并使新窗口可一次授权后完成全部�
 修正 NAVIGATION.md 将设计导航同时视为全部实体地面与发布导航的旧描述；记录完整岛面、硬质实体碰撞、软植被分组、碰撞导航 sidecar、指纹拒绝过期和新的预备/生成/PhysX 验证顺序。SkyIsland/AGENTS.md 只保留入口规则，不固定本轮资源统计。
 
 2026-09-30：补齐天空岛碰撞导航的来源合同。按生产问题 CR-2026-09-30-001 明确签名含桥梁且重枚举当前硬物名称集合，分开岛区高度切片与全硬物失效检测；同步 SkyIsland/AGENTS.md、NAVIGATION.md 和生产复核专题。源码 CI 保留几何判据，作者策略指纹部分缺制品时明确 PARTIAL，完整验证失败封闭。
+
+2026-10-12：`Integration/AGENTS.md`「后续新增商品不放进叮当商店」补记唯一例外 500108 回火液（owner 当轮点名放进叮当商店与好感奖励，与冷淬液成对）；根 `AGENTS.md` §4.3 TypeID 登记到 500108、下一可用 500109，`docs/reference/Bossrush使用物品ID表.md` 同时补登此前漏记的 500106 / 500107。`tests/modbehaviour_partial_budget.json` 的总行数按退票实现迁出 `ModeH/ModeHEntry.cs` 后的实测值下调到 19948。

@@ -12,6 +12,9 @@ namespace BossRush
         /// <summary>
         /// 无间炼狱单波完成：掉落现金、更新显示并准备下一波（LootAndRewards 分部实现）
         /// </summary>
+        /// <summary>单波现金最多铺几堆；超过的部分直接记账户，避免一次刷出几十件实物。</summary>
+        private const int InfiniteHellMaxCashPiles = 12;
+
         internal async void OnInfiniteHellWaveCompleted_LootAndRewards()
         {
             Func<bool> isCompletionCurrent = WavesArenaRuntimeModule.CaptureValidity(owner, false, true);
@@ -25,14 +28,15 @@ namespace BossRush
 
                 long cashThisWave = InfiniteHellWaveCashThisWave;
                 InfiniteHellWaveCashThisWave = 0L;
+                // 实际交出去之前都算欠账：落地失败的余额记账户，账户也记不进去就滚进下一波，不再凭空丢。
+                long cashRemaining = cashThisWave;
 
-                // 在路牌位置掉落 3 叠现金
+                // 在路牌位置掉落现金：每堆不超过官方堆叠上限（超出部分以前被 StackCount 截掉），
+                // 三等分的余数也不再丢弃；堆数有上限，放不下的余额直接记账户。
                 try
                 {
                     if (cashThisWave > 0)
                     {
-                        long perStack = cashThisWave / 3L;
-                        if (perStack < 1L) perStack = cashThisWave; // 波次奖励太低时全部塞一叠
 
                         // 从配置系统获取当前地图的默认位置作为兜底
                         Vector3 basePos = ModBehaviour.GetCurrentSceneDefaultPosition();
@@ -48,11 +52,16 @@ namespace BossRush
                             owner.LogLootWarningLimitedForArena("InfiniteHellCash_basePos", "定位无间炼狱现金掉落基准点失败", e);
                         }
 
-                        int stackCount = (cashThisWave >= perStack * 3L) ? 3 : 1;
-                        for (int i = 0; i < stackCount; i++)
+                        Item cashPrefab = null;
+                        try { cashPrefab = ItemAssetsCollection.GetPrefab(EconomyManager.CashItemID); }
+                        catch (Exception e) { owner.LogLootWarningLimitedForArena("InfiniteHellCash_prefab", "读取现金堆叠上限失败", e); }
+                        long stackLimit = cashPrefab != null && cashPrefab.MaxStackCount > 0 ? cashPrefab.MaxStackCount : int.MaxValue;
+                        long neededPiles = (cashThisWave + stackLimit - 1L) / stackLimit;
+                        int stackCount = (int)Math.Min(InfiniteHellMaxCashPiles, Math.Max(cashThisWave >= 3L ? 3L : 1L, neededPiles));
+                        long perStack = Math.Min(stackLimit, (cashThisWave + stackCount - 1L) / stackCount);
+                        for (int i = 0; i < stackCount && cashRemaining > 0; i++)
                         {
-                            long stackValue = (stackCount == 1) ? cashThisWave : perStack;
-                            if (stackValue <= 0) break;
+                            long stackValue = Math.Min(cashRemaining, perStack);
 
                             Item cashItem = null;
                             try
@@ -69,32 +78,59 @@ namespace BossRush
                                 break;
                             }
 
+                            bool dropped = false;
                             try
                             {
-                                cashItem.StackCount = (int)Mathf.Clamp(stackValue, 1, int.MaxValue);
-                            }
-                            catch (Exception e)
-                            {
-                                owner.LogLootWarningLimitedForArena("InfiniteHellCash_stack", "设置无间炼狱现金堆叠数失败", e);
-                            }
+                                try
+                                {
+                                    cashItem.StackCount = (int)Math.Min(stackValue, (long)int.MaxValue);
+                                }
+                                catch (Exception e)
+                                {
+                                    owner.LogLootWarningLimitedForArena("InfiniteHellCash_stack", "设置无间炼狱现金堆叠数失败", e);
+                                }
+                                // 以官方实际接受的堆叠数入账：被截断的部分留在余额里，不会凭空消失。
+                                long actual = Math.Max(0, Math.Min(stackValue, (long)cashItem.StackCount));
+                                if (actual <= 0) break;
 
-                            Vector3 offset = (stackCount == 1) ? Vector3.zero : (new Vector3(i - 1, 0f, 0f) * 0.3f);
-                            Vector3 dropPos = basePos + offset;
-
-                            try
-                            {
+                                Vector3 offset = new Vector3(i % 3 - 1, 0f, i / 3) * 0.3f;
+                                Vector3 dropPos = basePos + offset;
                                 cashItem.Drop(dropPos, true, UnityEngine.Random.insideUnitSphere.normalized, 45f);
+                                dropped = true;
+                                cashRemaining -= actual;
                             }
                             catch (Exception e)
                             {
                                 owner.LogLootWarningLimitedForArena("InfiniteHellCash_drop", "掉落无间炼狱现金失败", e);
                             }
+                            finally
+                            {
+                                if (!dropped)
+                                {
+                                    try { cashItem.DestroyTree(); } catch (Exception) { /* 未交付实例清理失败不阻断 */ }
+                                }
+                            }
+                            if (!dropped) break;
                         }
                     }
                 }
                 catch (Exception e)
                 {
                     ModBehaviour.DevLog("[BossRush] [WARNING] 无间炼狱单波现金奖励发放失败: " + e.Message);
+                }
+
+                // 落地之外的余额：先记账户（与里程碑同一口径），记不进去就并入下一波，绝不清零丢弃。
+                if (cashRemaining > 0)
+                {
+                    long toAccount = cashRemaining;
+                    if (!InfiniteHellMilestoneDelivery.TryCreditAccount(ref cashRemaining))
+                    {
+                        InfiniteHellWaveCashThisWave += cashRemaining;
+                        Debug.LogWarning("[BossRush] 无间炼狱现金这一波没发完，余额 " + cashRemaining + " 并入下一波");
+                    }
+                    if (toAccount > cashRemaining)
+                        owner.ShowMessage(L10n.T("这一波的现金太多，地上放不下的 " + (toAccount - cashRemaining) + " 已直接存入账户",
+                            "Too much cash for the floor this wave; " + (toAccount - cashRemaining) + " went straight into your account"));
                 }
 
                 // 只在无间炼狱下显示现金池文案

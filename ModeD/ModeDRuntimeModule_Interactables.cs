@@ -44,6 +44,16 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 路牌晚于 Mode D 启动才注入难度选项时，按 Mode D 重新布置这块路牌。只在首波开始前生效。
+        /// </summary>
+        internal static void ReapplySignAfterLateInject(BossRushSignInteractable signInteract)
+        {
+            ModeDRuntimeModule runtime = current;
+            if (runtime == null || signInteract == null || !runtime.modeDActive || runtime.modeDWaveIndex != 0) return;
+            runtime.SetupSignForModeD(signInteract);
+        }
+
+        /// <summary>
         /// 添加 Mode D 选项到路牌
         /// 注意：清空箱子选项已移至垃圾桶，此处仅添加"冲下一波"选项
         /// </summary>

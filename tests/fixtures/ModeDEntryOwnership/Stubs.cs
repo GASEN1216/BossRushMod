@@ -36,6 +36,7 @@ namespace UnityEngine
         public Component() { gameObject.Components.Add(this); }
     }
     public class Coroutine {}
+    public static class Debug { public static void LogWarning(string message) { BossRush.Probe.Logs.Add(message); } }
     public static class Mathf { public static int Clamp(int value, int low, int high) { return Math.Max(low, Math.Min(high, value)); } }
 }
 namespace UnityEngine.SceneManagement
@@ -50,7 +51,7 @@ namespace BossRush
         internal static readonly List<string> Calls = new List<string>();
         internal static readonly List<string> Logs = new List<string>();
         internal static string Fault;
-        internal static bool RiskAllowed, Naked;
+        internal static bool RiskAllowed, Naked, StarterFails;
         internal static int Ticket;
         internal static void Step(string name)
         {
@@ -78,7 +79,7 @@ namespace BossRush
         internal object FindTagByName(string value) { return null; }
         internal void InitializeModeDItemPools(Func<string, object> lookup) { Probe.Step("items"); }
         internal void EnsureModeDGlobalItemPool() { Probe.Step("pool"); }
-        internal void GivePlayerStarterKit() { Probe.Step("starter"); }
+        internal bool GivePlayerStarterKit() { Probe.Step("starter"); return !Probe.StarterFails; }
     }
     internal sealed partial class ModeDRuntimeModule
     {
@@ -109,6 +110,11 @@ namespace BossRush
                 throw new InvalidOperationException("production inventory arguments changed");
             return Probe.Naked;
         }
+    }
+    // 生产 ModeDNakedEntryNotice 在 InventoryEntryRegression 里真链接；这里只保留参数合同。
+    internal static class ModeDNakedEntryNotice
+    {
+        internal static bool Check(ModBehaviour host, int ticket) { return ModeEntryInventory.IsPlayerNakedWithAllowedItems("ModeD", ticket, -1, true); }
     }
     internal static class BossRushItemIds { internal const int BossRushTicket = 500001; }
     public partial class ModBehaviour

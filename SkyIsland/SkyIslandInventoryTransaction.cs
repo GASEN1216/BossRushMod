@@ -204,13 +204,27 @@ namespace BossRush
             if (item == null || player == null || player.CharacterItem == null) return false;
             Inventory pack = player.CharacterItem.Inventory;
             if (pack == null) return false;
+            return TryDeliver(item, pack, remaining =>
+            {
+                ItemUtilities.SendToPlayer(remaining, true, false);
+                return HasOwner(remaining);
+            });
+        }
+
+        /// <summary>
+        /// 共用合堆收据与回滚；调用方只决定剩余原件的交付位置，不再次合堆。
+        /// 回调仅在确认归属后返回 true，允许背包之外的现有落地策略，不访问仓库。
+        /// </summary>
+        internal static bool TryDeliver(Item item, Inventory pack, Func<Item, bool> deliverRemainder)
+        {
+            if (item == null || deliverRemainder == null) return false;
             int original = item.StackCount;
             var targets = new List<Item>();
             var before = new List<int>();
             var movedCounts = new List<int>();
             try
             {
-                if (item.Stackable)
+                if (item.Stackable && pack != null)
                 {
                     // 回调可改变 Content 长度，所以先定住本次候选表，不在外部回调后继续索引活列表。
                     for (int i = 0; i < pack.Content.Count; i++)
@@ -241,7 +255,7 @@ namespace BossRush
                     }
                 }
                 // 已逐堆合并过；这里禁止再次进入 Combine，才能根据这个原件的归属确认交付。
-                try { ItemUtilities.SendToPlayer(item, true, false); }
+                try { if (deliverRemainder(item)) return true; }
                 catch (Exception e)
                 {
                     if (HasOwner(item)) return true;

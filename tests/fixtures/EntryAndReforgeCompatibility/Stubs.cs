@@ -113,12 +113,13 @@ namespace Duckov.UI
     public class MapSelectionEntry
     {
         public bool ConditionsSatisfied = true;
-        public Cost Cost = new Cost();
+        public Duckov.Economy.Cost Cost = new Duckov.Economy.Cost();
         public BossRush.BossRushMapEntryClickHandler Marker;
         public T GetComponent<T>() where T : class { return Marker as T; }
     }
-    public class Cost { public bool Enough = true; }
 }
+namespace Duckov.Economy { public class Cost { public bool Enough = true; public ItemEntry[] items; public struct ItemEntry { public int id; public long amount; } } }
+namespace Saves { public static class SavesSystem { public static int CurrentSlot = 1; } }
 namespace ItemStatsSystem
 {
     public enum Polarity { Negative = -1, Neutral, Positive }
@@ -192,6 +193,8 @@ namespace BossRush
         private static BossRushPendingEntryKind pendingEntryKind;
         private static string pendingModeHTargetSceneName, pendingModeHTargetSceneId;
         private static int pendingModeHSceneGeneration;
+        private static int pendingModeHSlot = -1;
+        private static Duckov.Economy.Cost.ItemEntry[] pendingModeHCostItems;
         public static bool EnoughTickets = true, Planned;
         public static bool HasEnoughTickets() { return EnoughTickets; }
         private static void SetBossRushArenaPlanned(bool planned) { Planned=planned; }

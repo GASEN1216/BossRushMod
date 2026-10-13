@@ -1,5 +1,13 @@
 # Boss池管理
 
+## 2026-10-13 启用池的前期强 Boss 排序（COMPAT）
+
+标准挑战洗牌后，前期排除按当前原池中的启用成员下标处理，资格复用 BossFilter 的过滤结果，强 Boss 类别沿用 EarlyWaveExcludedBosses。关闭的 Boss 不占前 20 个实际出场位置，也不能成为交换目标；排序后作废旧过滤缓存，生成入口读取最终顺序。有足够的启用普通 Boss 时，龙皇、龙裔与四骑士进入第 21 个及之后的出场位置；不足时保留所有成员，不删 Boss、不补造替代项。无间炼狱保持原有随机权重与不限制强 Boss 的规则。
+
+该处理只在挑战启动时扫描一次原池，使用集合判成员并保存启用下标，没有新增每帧工作。AuditModeLifecycle 的 WaveOrdering 子项抽取真实启动、排序和缓存方法，验证关闭项混合池、多个强 Boss、成员守恒及无间炼狱例外；原样旧排序方法在独立副本上转红。真实 AI、生成位置和游戏内表现仍需实机验收。
+
+实现：[启动](file://WavesArena/WavesArenaRuntimeModule_Start.cs)、[排序](file://WavesArena/WavesArenaRuntimeModule.cs)、[回归](file://tests/fixtures/AuditModeLifecycle/WaveOrdering.cs)。
+
 ## 2026-10-08 基地预热后的自定义 Boss 补注册（COMPAT）
 
 本轮修复 Ctrl+F10 中缺少龙皇、龙裔、女巫的问题。基地图鉴与遗种巢会提前调用预设池初始化，而三个 Boss 模块可能尚未绑定 owner；此时早期注册被跳过，池子的已初始化状态又阻止后续扫描补回。三个 `RuntimeModuleHostBridge.OnAwake` 现在先绑定宿主，仅当池已初始化且本 Boss 尚不在池中时调用原注册方法，再作废筛选和玩法目录。玩家配置随后在 Start 阶段载入，由 `BossFilterRuntimeModule.OnStart` 统一重建筛选，恢复禁用名单和因子。未初始化的池仍由原初始化链注册，重复 Awake 不重复添加。

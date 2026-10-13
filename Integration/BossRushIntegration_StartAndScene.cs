@@ -348,7 +348,7 @@ namespace BossRush
                     {
                         bossRushArenaPlanned = false;
                         BossRushMapSelectionHelper.ClearPendingMapEntry();
-                        BossRushMapSelectionHelper.ClearPendingEntryFlowState();
+                        BossRushMapSelectionHelper.ClearPendingEntryFlowStateAfterUnexpectedScene(this);
                     }
                 }
                 else

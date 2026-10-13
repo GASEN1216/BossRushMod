@@ -16,6 +16,7 @@
 
 using System;
 using System.Collections.Generic;
+using Duckov.Buffs;
 using UnityEngine;
 
 namespace BossRush
@@ -155,6 +156,17 @@ namespace BossRush
         private bool _allowCombat;
         private CharacterMainControl _teamOwner;
 
+        // —— 行动方式（PetNestCompanionCare.cs）——
+        // 设定之前保持加行动方式前的老行为（主动），由生成器在 Bind 之后按崽的记录写入。
+        private PetNestBehaviour _behaviour = PetNestBehaviour.Active;
+        private float _engagedUntil;
+        private bool _aiSuspended;
+        private bool _ownsInvincible;
+        private float _nextCleanseAt;
+        private DuckNpcMovement _movement;
+        private bool _movementUnavailable;
+        private bool _aiNotSuspendable;
+
         /// <summary>
         /// 本只崽的跟随传送阈值（平方值，省掉每次维护的一次开方）。
         /// 默认是 <see cref="TeleportDistance"/>，由 <see cref="ApplyPersonality"/> 按性格覆盖。
@@ -163,6 +175,9 @@ namespace BossRush
 
         /// <summary>当前主人（玩家）。</summary>
         internal CharacterMainControl Master { get { return _master; } }
+
+        /// <summary>当前行动方式。</summary>
+        internal PetNestBehaviour Behaviour { get { return _behaviour; } }
 
         /// <summary>绑定的幼体角色。</summary>
         internal CharacterMainControl Self { get { return _self; } }
@@ -284,6 +299,155 @@ namespace BossRush
 
         #endregion
 
+        #region 行动方式
+
+        /// <summary>切换行动方式并立刻生效（只在局内可战斗时有意义；基地本来就不打）。</summary>
+        internal void SetBehaviour(PetNestBehaviour behaviour)
+        {
+            _behaviour = behaviour;
+            _engagedUntil = 0f;
+            _nextCleanseAt = 0f;
+            ApplyBehaviourState();
+        }
+
+        /// <summary>
+        /// 主人或崽卷入战斗（PetNestCareService.NotifyHurt 调）。跟随档在这一刻放开战斗、锁定这个敌人，
+        /// <see cref="PetNestTuning.BehaviourEngageWindowSeconds"/> 秒内没有新的交战就收手回到主人身边。
+        /// </summary>
+        internal void NotifyEngaged(CharacterMainControl enemy)
+        {
+            if (!_allowCombat || _behaviour != PetNestBehaviour.Follow || enemy == null) return;
+            _engagedUntil = Time.time + PetNestTuning.BehaviourEngageWindowSeconds;
+            ResumeAi();
+            try
+            {
+                if (_ai != null && enemy.mainDamageReceiver != null)
+                {
+                    _ai.searchedEnemy = enemy.mainDamageReceiver;
+                    _ai.noticed = true;
+                }
+            }
+            catch (Exception) { /* 目标已回收，交给行为树自己索敌 */ }
+        }
+
+        /// <summary>4Hz 维护里按行动方式收放战斗 AI、跟随、无敌与回避清理。未变化时只有几次 bool 比较。</summary>
+        private void ApplyBehaviourState()
+        {
+            if (!_allowCombat || _ai == null || _self == null) return;
+            bool wantAi = _behaviour == PetNestBehaviour.Active
+                || (_behaviour == PetNestBehaviour.Follow && Time.time < _engagedUntil);
+            // 跟随档若这张图没法挂寻路跟随，就退回老行为，免得崽原地站桩（40 米传送兜底仍在）
+            if (!wantAi && _behaviour == PetNestBehaviour.Follow && !EnsureMovement()) wantAi = true;
+            if (wantAi) ResumeAi();
+            else SuspendAi();
+
+            bool avoid = _behaviour == PetNestBehaviour.Avoid;
+            SetAvoidInvincible(avoid);
+            if (avoid && Time.time >= _nextCleanseAt)
+            {
+                _nextCleanseAt = Time.time + PetNestTuning.AvoidCleanseIntervalSeconds;
+                CleanseNegativeBuffs();
+            }
+        }
+
+        private bool EnsureMovement()
+        {
+            if (_movement != null) return true;
+            if (_movementUnavailable || _self == null) return false;
+            try
+            {
+                _movement = _self.GetComponent<DuckNpcMovement>();
+                if (_movement == null) _movement = _self.gameObject.AddComponent<DuckNpcMovement>();
+                if (!_movement.Bind(_self, _self.transform.position, 2f))
+                {
+                    Destroy(_movement);
+                    _movement = null;
+                    _movementUnavailable = true;
+                    return false;
+                }
+                _movement.enabled = false;
+                return true;
+            }
+            catch (Exception)
+            {
+                _movement = null;
+                _movementUnavailable = true;
+                return false;
+            }
+        }
+
+        /// <summary>停用整棵战斗 AI 子树（基地同款做法：只清目标会被行为树重新索敌），改由寻路跟随主人。</summary>
+        private void SuspendAi()
+        {
+            if (_aiSuspended || _aiNotSuspendable || _ai == null) return;
+            try
+            {
+                if (_ai.gameObject == _self.gameObject)
+                {
+                    // AI 挂在角色根上时停用它等于停用整只崽，只能放弃收手（回避档的无敌仍然生效）
+                    _aiNotSuspendable = true;
+                    return;
+                }
+                _ai.searchedEnemy = null;
+                _ai.noticed = false;
+                _self.Trigger(false, false, false);
+                _self.SetMoveInput(Vector2.zero);
+                _ai.gameObject.SetActive(false);
+                _aiSuspended = true;
+                if (EnsureMovement() && _master != null)
+                {
+                    _movement.enabled = true;
+                    _movement.EnablePlayerFollow(_master.transform);
+                }
+            }
+            catch (Exception) { /* 收手失败：下一次维护再试 */ }
+        }
+
+        private void ResumeAi()
+        {
+            if (!_aiSuspended || _ai == null) return;
+            try
+            {
+                if (_movement != null)
+                {
+                    _movement.DisablePlayerFollow();
+                    _movement.enabled = false;
+                }
+                // 停用前的目标可能早已失效，重启前清掉，让行为树从当前局面重新判断
+                _ai.searchedEnemy = null;
+                _ai.noticed = false;
+                _ai.gameObject.SetActive(true);
+                if (_master != null) _ai.leader = _master;
+                _aiSuspended = false;
+            }
+            catch (Exception) { /* 恢复失败：下一次维护再试 */ }
+        }
+
+        private void SetAvoidInvincible(bool on)
+        {
+            if (_health == null || on == _ownsInvincible) return;
+            try
+            {
+                // 只撤自己加的无敌：重伤退场那条路径有自己的无敌 owner（PetNestDownedHandler）
+                if (on && _health.Invincible) return;
+                _health.SetInvincible(on);
+                _ownsInvincible = on;
+            }
+            catch (Exception) { /* 无敌切换失败不打断维护 */ }
+        }
+
+        private void CleanseNegativeBuffs()
+        {
+            try
+            {
+                Buff.BuffExclusiveTags[] tags = PetNestCareService.AvoidCleansedTags;
+                for (int i = 0; i < tags.Length; i++) _self.RemoveBuffsByTag(tags[i], false);
+            }
+            catch (Exception) { /* 清理失败等下一轮 */ }
+        }
+
+        #endregion
+
         #region 维护
 
         private void Update()
@@ -325,6 +489,8 @@ namespace BossRush
                     _ai.leader = _master;
                 }
 
+                ApplyBehaviourState();
+
                 // 平方比较：避免每次维护一次开方（与 NPCFollowMovementBaseSqr 的仓库惯例一致）
                 Vector3 offset = _self.transform.position - _master.transform.position;
                 if (offset.sqrMagnitude > _teleportDistanceSqr)
@@ -364,6 +530,11 @@ namespace BossRush
             if (_teamOwner != null) _teamOwner.OnTeamChanged -= HandleMasterTeamChanged;
             _teamOwner = null;
             UnregisterIdentity();
+            if (_ownsInvincible && _health != null)
+            {
+                try { _health.SetInvincible(false); } catch (Exception) { /* 角色正在回收 */ }
+            }
+            _ownsInvincible = false;
             _bound = false;
             _self = null;
             _master = null;

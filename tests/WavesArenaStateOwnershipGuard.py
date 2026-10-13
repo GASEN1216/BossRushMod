@@ -392,8 +392,9 @@ def main():
         if method + "(" not in DRAGON_LOOT or "wavesArenaRuntime." + method + "(" not in SPECIAL_LOOT_BRIDGE:
             raise AssertionError("dragon reward producer and host bridge must both exist: " + method)
     for token in (
-        "EnsureDragonBossRewardPrefabLoaded(selectedTypeId, \"[DragonDescendant]\")",
-        "EnsureDragonBossRewardPrefabLoaded(typeId, \"[DragonKing]\")",
+        "CreateDragonRewardItem(selectedTypeId, \"[DragonDescendant]\")",
+        "CreateDragonRewardItem(typeId, \"[DragonKing]\")",
+        "EnsureDragonBossRewardPrefabLoaded(typeId, logPrefix)",
         "InteractableLootboxInventoryHelper.TryAddExtraItem(inv, newItem)",
         "AchievementTracker.OnCollectDragonDescendantLoot(selectedTypeId);",
         "AchievementTracker.OnCollectDragonKingLoot(typeId);",

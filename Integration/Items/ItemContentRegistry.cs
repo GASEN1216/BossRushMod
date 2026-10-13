@@ -6,6 +6,7 @@ namespace BossRush
         {
             AwenCourierTokenConfig.RegisterConfigurator();
             ColdQuenchFluidConfig.RegisterConfigurator();
+            TemperingSolventConfig.RegisterConfigurator();
             BrickStoneConfig.RegisterConfigurator();
             DiamondConfig.RegisterConfigurator();
             DiamondRingConfig.RegisterConfigurator();

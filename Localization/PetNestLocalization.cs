@@ -35,6 +35,8 @@ namespace BossRush
             RelicEggConfig.InjectLocalization();
             // 建筑与交互点的键（官方 Building_ 前缀，不带本模块前缀）
             InjectBuildingKeys();
+            // 复用宿主语言变化管线，现存宠物无需重新生成就能换照料选项的语言。
+            PetNestCareService.RefreshOptionLocalization();
         }
 
         private static void Add(Dictionary<string, string> map, string suffix, string cn, string en)

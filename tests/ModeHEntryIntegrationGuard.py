@@ -94,6 +94,19 @@ def main():
             if not re.search(pattern, code):
                 errors.append("[Helper] 不满足: " + desc)
 
+        note = method_body(code, "internal static void NotePaidCost(")
+        capture = method_body(code, "internal static void CaptureModeHPayment(")
+        target = method_body(code, "public static void MarkTargetSceneLoadStarted(")
+        for token in ("pendingModeHSlot != Saves.SavesSystem.CurrentSlot", "ReferenceEquals(cost.items, pendingModeHCostItems)"):
+            if token not in note: errors.append("[Payment] 收据缺少本次选择/槽绑定: " + token)
+        if "pendingModeHCostItems = cost.items;" not in capture:
+            errors.append("[Payment] 必须记录选中地图费用身份")
+        selection = method_body(code, "internal static void RecordSelection(")
+        if "BossRushMapSelectionHelper.CaptureModeHPayment(mapSelectionEntry.Cost);" not in selection:
+            errors.append("[Payment] 官方付款之前必须绑定选中条目的费用")
+        if "if (pendingEntryKind == BossRushPendingEntryKind.ModeH) return;" not in target:
+            errors.append("[Payment] Mode H 不得从目标场景回调推定已扣票")
+
         freeze = re.search(r"public static int FreezeModeHEntryIntent\([\s\S]{0,600}?\n        \}", code)
         if freeze and freeze.group(0).count("modeHSceneGenerationCounter++") != 1:
             errors.append("[Helper] 创建 intent 时 generation 必须只递增一次")
@@ -113,12 +126,13 @@ def main():
         elif "modeHSceneGenerationCounter++" in select_fn.group(0):
             errors.append("[Helper] 改选地图只重绑目标，不得创建第二个 generation")
 
-        clear = re.search(r"public static void ClearPendingEntryFlowState\(\)[\s\S]{0,700}?\n        \}", code)
+        clear = method_body(code, "public static void ClearPendingEntryFlowState(")
         if clear:
-            body = clear.group(0)
+            body = clear
             for field in ["pendingEntryKind = BossRushPendingEntryKind.None;",
                           "pendingModeHTargetSceneName = null;",
-                          "pendingModeHSceneGeneration = 0;"]:
+                          "pendingModeHSceneGeneration = 0;", "pendingModeHCostItems = null;",
+                          "pendingModeHSlot = -1;", "ClearPendingMapEntry();", "SetBossRushArenaPlanned(false);"]:
                 if field not in body:
                     errors.append("[Helper] 清理未覆盖: " + field)
 
@@ -214,7 +228,7 @@ def main():
                     REPO_ROOT, "ModeD/ModeDRuntimeModule_Lifecycle.cs")) or "")
                 entry = method_body(owner_code, "internal static bool TryStartModeD(ModBehaviour owner)")
                 ordered = ["ModeHRuntimeGates.IsLegacyModeEntryAllowed()", "owner.IsModeEActive",
-                           "owner.IsPlayerNaked()", "owner.StartModeD();", "return true;"]
+                           "owner.IsPlayerNaked()", "owner.StartModeD();", "runtime.lastStartSucceeded"]
                 positions = [entry.index(token) for token in ordered]
                 if positions != sorted(positions):
                     errors.append("[Legacy] Mode D owner must keep risk / Mode E / inventory / start order")

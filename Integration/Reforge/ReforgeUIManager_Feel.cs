@@ -299,9 +299,20 @@ namespace BossRush
 
             if (pendingLockEntry != null)
             {
-                coldQuenchHintText.text = L10n.T("再点一次同一行即可固定（消耗 1 瓶冷淬液）",
-                    "Click the same row again to lock it (uses 1 Cold Quench Fluid)");
+                coldQuenchHintText.text = pendingLockEntry.IsLocked
+                    ? L10n.T("再点一次同一行即可解除固定（消耗 1 瓶回火液）",
+                        "Click the same row again to unlock it (uses 1 Tempering Solvent)")
+                    : L10n.T("再点一次同一行即可固定（消耗 1 瓶冷淬液）",
+                        "Click the same row again to lock it (uses 1 Cold Quench Fluid)");
                 coldQuenchHintText.color = BossRushUIColors.Accent;
+                return;
+            }
+
+            if (HasLockedPropertyRow() && ItemFactory.GetItemCountInInventory(TemperingSolventConfig.TYPE_ID) > 0)
+            {
+                coldQuenchHintText.text = L10n.T("蓝色是已固定的属性，点两下可用回火液解除",
+                    "Blue stats are locked; click one twice to unlock it with Tempering Solvent");
+                coldQuenchHintText.color = BossRushUIColors.RarityRare;
                 return;
             }
 
@@ -311,6 +322,15 @@ namespace BossRush
                 : L10n.T("冷淬液可以固定属性，让重铸不再改变它",
                     "Cold Quench Fluid locks a stat so reforging leaves it alone");
             coldQuenchHintText.color = BossRushUIColors.TextSecondary;
+        }
+
+        private static bool HasLockedPropertyRow()
+        {
+            foreach (var kvp in propertyLockIcons)
+            {
+                if (kvp.Value != null && kvp.Value.IsLocked) return true;
+            }
+            return false;
         }
 
         private static void RefreshColdQuenchHint()

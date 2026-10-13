@@ -31,7 +31,7 @@ def check():
             "AfterPendingWriteFlushed = CampaignSaveCoordinator.NotifyPendingWriteFlushed,")
     require("Campaign/CampaignSaveCoordinator.cs", "internal static void NotifyPendingWriteFlushed()",
             "_engine.NotifyPendingWriteFlushed();")
-    require("ModeD/ModeDEquipment_StarterKit.cs", "internal void GivePlayerStarterKit()",
+    require("ModeD/ModeDEquipment_StarterKit.cs", "internal bool GivePlayerStarterKit()",
             "if (UnityEngine.Random.value > 0.6f || needsMeleeStarterKit()) { GiveRandomMeleeWeapon(main); }")
     require("ModeD/ModeD.cs", "private void BindModeDItemPoolQueries()",
             "() => modeDActive && IsCampaignConfiguredEnabled() && CampaignObjectiveTracker.NeedsMeleeStarterKit(),")

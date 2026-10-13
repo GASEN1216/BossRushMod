@@ -6,6 +6,8 @@
 
 入口：`python tools/run_runtime_regressions.py --filter AuditModeLifecycle`。所有结果仅 L2。
 
+WaveOrdering 子项逐字抽取真实 StartFirstWave、前期强 Boss 排序、强 Boss 集合与过滤缓存方法，覆盖关闭项不占前 20 个实际出场位、预热缓存刷新、普通 Boss 足够时龙皇不会成为第一波、多个强 Boss 的成员守恒、无间炼狱不限制强 Boss、重复启动与无可替换项。随机输入及启用资格查询、生成入口为可观测替身，不生成游戏角色。恢复原样旧排序方法时，关闭项混合池断言必须失败。
+
 2026-09-28 补齐支援弹新增拖尾的宿主表现依赖：`ProjectileVisualHost` 只提供 Color、奖励分类色、共享材质与
 TrailRenderer 的边界替身；生产 builder 与 `ZombieModeSupportProjectileTrailFx` 全类型仍逐字抽取。
 对子物体触发失活后，执行真实 OnDisable，核对 Clear 与 Destroy 后普通弹复用不残留拖尾；材质缺席时

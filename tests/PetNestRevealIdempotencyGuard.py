@@ -106,7 +106,8 @@ def check_expedition_specific(errors):
     if "PetNestExpeditionService.GetPendingReveals()" not in code:
         errors.append("[翻牌] 待翻记录必须来自 GetPendingReveals()")
     # 死亡率刻在牌面上
-    if "record.deathRate" not in code:
+    # 2026-10-12：牌面显示结算真正用的那个值（出发时固化、被当前档常量封顶）
+    if "EffectiveDeathRate(record)" not in code:
         errors.append("[明示] 翻牌必须显示出发时固化的死亡率")
     # 2026-09-24 UI 共识对照审查 A-40（CR-2026-09-24-002）：播放中「跳过」/ ESC 跳到一屏结果汇总，再由「关闭」收起。
     # 旧版跳过把剩下的记录标成已翻就直接关窗，哪只阵亡、负伤一张都没显示。

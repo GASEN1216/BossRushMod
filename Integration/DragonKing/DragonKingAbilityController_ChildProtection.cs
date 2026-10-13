@@ -394,7 +394,15 @@ namespace BossRush
                     waitTime += Time.deltaTime;
                     yield return null;
                 }
-                if (!isCurrent()) yield break;
+                if (!isCurrent())
+                {
+                    // 召唤请求作废但龙皇还挂在半空、护盾还开着（例如宿命回响托管上下文失效）：
+                    // 以前直接退出，龙皇就永远悬着无敌——玩家看到的「龙皇不见了 / 飞走了」。按召唤失败同样收尾。
+                    requestActive = false;
+                    if (this != null && generation == childSpawnGeneration && isInChildProtection
+                        && bossHealth != null && !bossHealth.IsDead) TriggerLinkedDeath();
+                    yield break;
+                }
                 spawnedDescendant = spawnResult;
             }
             finally
@@ -496,6 +504,13 @@ namespace BossRush
                 // 再次检查状态（等待期间可能已结束）
                 if (!isInChildProtection || bossCharacter == null || bossHealth == null || bossHealth.IsDead) break;
 
+                // 龙裔被别的系统回收、或死亡事件没送到时，龙皇会一直悬空无敌；顺着发弹节拍补一次联动死亡。
+                if (spawnedDescendant == null || spawnedDescendant.Health == null || spawnedDescendant.Health.IsDead)
+                {
+                    TriggerLinkedDeath();
+                    break;
+                }
+
                 // 发射单个棱彩弹
                 FireChildProtectionBolt();
             }
@@ -554,8 +569,9 @@ namespace BossRush
         {
             try
             {
-                // Mode E / 鸭王杯：龙裔落在龙皇脚下附近（下面的后备方案），不去地图另一头的 BossRush 刷怪点
-                Vector3[] spawnPoints = IsFactionTargetMode() ? null : ModBehaviour.Instance?.GetCurrentSceneSpawnPoints();
+                // Mode E / 鸭王杯 / 宿命回响：龙裔落在龙皇脚下附近（下面的后备方案），不去地图另一头的 BossRush 刷怪点
+                Vector3[] spawnPoints = IsFactionTargetMode() || ModeGChildSpawnContext != null
+                    ? null : ModBehaviour.Instance?.GetCurrentSceneSpawnPoints();
                 if (spawnPoints != null && spawnPoints.Length > 0)
                 {
                     int index = UnityEngine.Random.Range(0, spawnPoints.Length);

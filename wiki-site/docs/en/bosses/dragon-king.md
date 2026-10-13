@@ -69,7 +69,7 @@ Do not ignore the "My child, protect me!" phase. Prioritize killing the Dragon D
 
 ## Drops
 
-On kill, **one item is chosen via weighted random** from these six (not six independent rolls):
+On kill, **one item is chosen via weighted random** from these six (not six independent rolls). Infinite Hell has no loot box, so the item drops on the ground where the Dragon King falls:
 
 - Reverse Scale (Totem): 39% drop rate
 - Cloud Soar I (Totem): 15% drop rate

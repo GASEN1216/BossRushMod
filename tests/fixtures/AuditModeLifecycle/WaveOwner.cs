@@ -32,11 +32,12 @@ namespace BossRush {
   public virtual void OnSceneLoaded(SceneRuntimeContext c){}
  }
  internal class InfiniteHellMilestoneDelivery { public void Tick(ModBehaviour o){} public void Enqueue(int t,UnityEngine.Vector3 v){} }
- public class ModBehaviour { public void StopCoroutine(UnityEngine.Coroutine c){} public void ClearModeDEnemyRecoveryState(){} public void ClearModeDMutators(string mode){} public void UnregisterEnemyRecoveryForArena(CharacterMainControl c){} public bool IsActive,IsModeDActive;public int ModeDWaveIndex;public void TickModeDIntegrity(float d){} public static void DevLog(string message){} }
+ public class ModBehaviour { public System.Collections.Generic.List<EnemyPresetInfo> FilteredPool; public System.Collections.Generic.List<EnemyPresetInfo> GetFilteredEnemyPresets(){return FilteredPool;} public void StopCoroutine(UnityEngine.Coroutine c){} public void ClearModeDEnemyRecoveryState(){} public void ClearModeDMutators(string mode){} public void UnregisterEnemyRecoveryForArena(CharacterMainControl c){} public bool IsActive,IsModeDActive;public int ModeDWaveIndex;public void TickModeDIntegrity(float d){} public static void DevLog(string message){} }
  static class Program {
   static void Check(bool b,string s){if(!b)throw new Exception(s);Console.WriteLine("PASS "+s);}
   static void Main(){
    var host=new ModBehaviour{IsActive=true};var module=new WavesArenaRuntimeModule();module.OnAwake(host);
+   host.FilteredPool=module.EnemyPresets;
    for(int i=0;i<22;i++)module.EnemyPresets.Add(new EnemyPresetInfo{name="normal"+i});
    module.EnemyPresets[1].name="DragonDescendant";
    module.EnsureEarlyWavesNoStrongBoss();

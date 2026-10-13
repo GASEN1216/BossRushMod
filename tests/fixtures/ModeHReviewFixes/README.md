@@ -1,5 +1,7 @@
 # Mode H 复审修复回归
 
+2026-10-13：换槽调用新增退票 owner 依赖后，逐字抽取真实 `ModeHTicketRefund.ResetStaticCaches` 与其两个私有字段声明；不使用清理成功替身。执行真实 `RestoreForSlotChange` 前注入旧意图、旧欠票槽及发票标记，断言换槽后全部归零。实际发票/交付由 `ModeEntryPaymentDelivery` 链接完整实现覆盖，本组只验证换槽职责。
+
 运行：`python tools/run_runtime_regressions.py --filter ModeHReviewFixes`。
 
 覆盖 CR-2026-09-04-022/024/025 与 CR-2026-09-05-001。协调器、节流器、规范树、摘要、DTO、run owner 和冻结状态机直接编译生产文件；每次构建从当前源码原样提取主流程方法及休息枚举段，摘要记录到 `Build/modeh-review-fixes/generated/source-hashes.txt`。生成源码与所有构建产物均留在 `Build/modeh-review-fixes/`。

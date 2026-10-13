@@ -8,12 +8,16 @@ SESSION = clean_source((ROOT / 'SkyIsland/SkyIslandSession.cs').read_text(encodi
 errors = []
 for token in ['level.gameObject.scene.handle != scene.handle', 'config.gameObject.scene.handle != scene.handle',
               'core.gameObject.scene.handle != scene.handle', '!level.IsRaidMap || level.IsBaseLevel',
-              '!LevelConfig.SaveCharacter || !LevelConfig.SpawnTomb', 'config.timeOfDayConfig == null',
+              'if (!LevelConfig.SaveCharacter)', 'config.timeOfDayConfig == null',
               'config.startBuffPrefabs == null', 'player.gameObject.scene.handle != scene.handle',
               'MultiSceneCore.ActiveSubSceneID', 'SceneLocationsProvider.GetProviderOfScene(scene)',
               'DeadBodyManager.Instance == null']:
     if token not in SOURCE:
         errors.append('独立场景合同缺少必要验证：' + token)
+# 2026-10-12：死亡不掉落类 Mod 会把 SpawnTomb 改成 false；它只管墓碑/掉落，不能当进岛硬门槛。
+import re as _re
+if _re.search(r'if\s*\([^)]*!LevelConfig\.SpawnTomb[^)]*\)\s*return\s+Fail', SOURCE):
+    errors.append('SpawnTomb=false 不得拒绝进岛（玩家装死亡不掉落 Mod 会被挡在岛外）')
 if 'SkyIslandOfficialContract.Verify(' not in SESSION:
     errors.append('正式天空岛会话未接官方独立场景验证')
 # CR-2026-09-08-005：激活前合同必须真的被调用，而且必须早于官方服务激活。

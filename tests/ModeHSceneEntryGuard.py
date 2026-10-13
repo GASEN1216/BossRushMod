@@ -22,10 +22,20 @@ def main():
     callback = body(scene, 'partial void OnSceneLoadedInternal(')
     assert 'ScheduleSceneReadyWait(context, sceneId, frozenGeneration, false);' in callback
     assert 'BeginSeasonSetup(context.SceneName, sceneId);' not in callback, 'sceneLoaded 不得同步取得租约'
+    setup = body(scene, 'private void BeginSeasonSetup(')
+    assert 'if (!BossRushMapSelectionHelper.HasPendingPrepaidTicket())' in setup, '新赛季必须认实际付票回执'
+    assert setup.index('HasPendingPrepaidTicket()') < setup.index('ModeHRuntimeGates.SetRunOwnerActive(true);'), '未付票不得取得 run owner'
     ready = body(scene, 'private static bool IsModeHSceneReady(')
     for token in ('SceneLoader.IsSceneLoading', 'LevelManager.LevelInited', 'LevelManager.AfterInit',
-                  'SceneManager.GetActiveScene().handle != scene.handle', 'core.IsLoading', '!player.Health.IsDead'):
+                  'SceneManager.GetActiveScene().handle != scene.handle', 'core.IsLoading', 'player.Health.IsDead',
+                  'global::AstarPath.active.isScanning'):
         assert token in ready, '缺官方就绪判据: ' + token
+    # 2026-10-12：第三方 OnAfterLevelInitialized 订阅者抛异常会让 afterInit 永远为 false；
+    # 只允许用官方在最终落点之后写入的完成标记替代，标记顺序由 SkyIslandOfficialContract 夹具对真实 DLL 钉住。
+    assert 'LevelManager.LevelInitializingComment' in ready and 'OfficialInitDoneComment' in ready, 'AfterInit 替代判据必须是官方完成标记'
+    assert 'internal const string OfficialInitDoneComment = "Done!";' in clean_source((ROOT / scene).read_text(encoding='utf-8-sig'))
+    wait_src = body(scene, 'private IEnumerator WaitForModeHSceneReady(')
+    assert 'FailSceneReadyWait(resume, "scene_not_ready:" + notReady);' in wait_src, '超时必须带出卡住的具体条件'
     wait = body(scene, 'private IEnumerator WaitForModeHSceneReady(')
     assert 'if (ready && readyLastFrame)' in wait, '必须跨帧确认官方传送结束'
     assert wait.index('if (request != _sceneReadyRequestSerial) yield break;') < wait.rindex('_sceneReadyRoutine = null;')

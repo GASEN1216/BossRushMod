@@ -120,6 +120,17 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 未结算远征的死亡率封顶到当前常量；已结算记录保留结算时固化的实际概率。
+        /// 风浪档改为不死之后，已经在路上的旧风浪远征也按不死结算（只会负伤），不批量改存档。
+        /// </summary>
+        internal static float EffectiveDeathRate(PetNestExpeditionRecord record)
+        {
+            if (record == null) return 0f;
+            if (record.settled) return record.deathRate;
+            return Math.Min(record.deathRate, GetDeathRate((PetNestRiskTier)record.riskTier));
+        }
+
         /// <summary>该档位的负伤概率（未阵亡时）。</summary>
         internal static float GetInjuryRate(PetNestRiskTier tier)
         {
@@ -442,8 +453,9 @@ namespace BossRush
                 }
                 PetNestPetRecord pet = PetNestService.TryGetPet(record.petId);
 
-                // —— roll ——（用出发时固化的概率，不重新读常量）
-                bool dead = pet != null && UnityEngine.Random.value < record.deathRate;
+                // —— roll ——（先固化本次实际概率，历史展示不再受后续常量变化影响）
+                record.deathRate = EffectiveDeathRate(record);
+                bool dead = pet != null && UnityEngine.Random.value < EffectiveDeathRate(record);
                 bool injured = false;
                 bool success = false;
                 if (!dead)
@@ -788,13 +800,19 @@ namespace BossRush
         {
             int min;
             int max;
+            GetCashRange(tier, out min, out max);
+            return UnityEngine.Random.Range(min, max + 1);
+        }
+
+        /// <summary>成功时的现金区间；出发卡面与结算共用一份。</summary>
+        internal static void GetCashRange(PetNestRiskTier tier, out int min, out int max)
+        {
             switch (tier)
             {
                 case PetNestRiskTier.Rough: min = 1200; max = 3600; break;
                 case PetNestRiskTier.Desperate: min = 4000; max = 12000; break;
                 default: min = 400; max = 1200; break;
             }
-            return UnityEngine.Random.Range(min, max + 1);
         }
 
         /// <summary>
@@ -855,7 +873,7 @@ namespace BossRush
             record.outcomeLootCounts.Add(count);
         }
 
-        private static int GetSoulReward(PetNestRiskTier tier)
+        internal static int GetSoulReward(PetNestRiskTier tier)
         {
             switch (tier)
             {
@@ -865,7 +883,7 @@ namespace BossRush
             }
         }
 
-        private static int GetLootQuality(PetNestRiskTier tier)
+        internal static int GetLootQuality(PetNestRiskTier tier)
         {
             switch (tier)
             {
@@ -875,7 +893,7 @@ namespace BossRush
             }
         }
 
-        private static int GetLootCount(PetNestRiskTier tier)
+        internal static int GetLootCount(PetNestRiskTier tier)
         {
             switch (tier)
             {

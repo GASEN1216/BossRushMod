@@ -49,7 +49,7 @@ public class CharacterMainControl : UnityEngine.Object
     public static CharacterMainControl Main; public Health Health=new Health(); public UnityEngine.Transform transform=new UnityEngine.Transform();
     public int PositionWrites; public void SetPosition(UnityEngine.Vector3 p) { transform.position=p;PositionWrites++; }
 }
-public static class LevelManager { public static bool LevelInited,AfterInit; }
+public static class LevelManager { public static bool LevelInited,AfterInit; public static string LevelInitializingComment=""; }
 public class AstarPath { public static AstarPath active; public bool isScanning; }
 public class GameCamera { public static GameCamera Instance; public UnityEngine.Transform transform=new UnityEngine.Transform(); }
 public class SceneLoader
@@ -96,7 +96,8 @@ namespace BossRush
     public class BossRushMapConfig { public Vector3? customSpawnPos; }
     public static class BossRushMapSelectionHelper
     {
-        public static int Generation; public static string Name,Id; public static bool Pending;
+        public static int Generation; public static string Name,Id; public static bool Pending, Paid = true;
+        public static bool HasPendingPrepaidTicket() { return Paid; }
         public static bool HasPendingModeHEntryIntent() { return Pending; }
         public static int GetPendingModeHSceneGeneration() { return Generation; }
         public static int Freeze(string name,string id) { Name=name;Id=id;Pending=true;return ++Generation; }

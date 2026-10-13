@@ -60,6 +60,7 @@ namespace UnityEngine
         internal object Wait;
         internal bool Done;
     }
+    public static class Debug { public static void LogWarning(string message) { } }
     public static class Mathf { public static int Clamp(int value, int lo, int hi) { return Math.Max(lo, Math.Min(value, hi)); } }
 }
 namespace UnityEngine.SceneManagement
@@ -97,6 +98,11 @@ public static class SceneLoader
 public static class LevelManager { public static bool LevelInited; }
 public class GameCamera { public static GameCamera Instance; }
 namespace ItemStatsSystem { public class Item { } }
+namespace Duckov.Economy
+{
+    public struct Cost { }
+    public static class EconomyManager { public static event System.Action<Cost> OnCostPaid { add { } remove { } } }
+}
 namespace BossRush
 {
     internal abstract class BossRushRuntimeModuleBase
@@ -133,7 +139,7 @@ namespace BossRush
         internal object FindTagByName(string name) { return null; }
         internal void InitializeModeDItemPools(Func<string, object> lookup) { }
         internal void EnsureModeDGlobalItemPool() { }
-        internal void GivePlayerStarterKit() { Probe.Touch("starter"); }
+        internal bool GivePlayerStarterKit() { Probe.Touch("starter"); return true; }
     }
     internal sealed partial class ModeDRuntimeModule
     {
@@ -154,6 +160,7 @@ namespace BossRush
     internal static class BossRushMapSelectionHelper
     {
         internal static bool HasPendingModeHEntryIntent() { return Probe.Entry == "H"; }
+        internal static void NotePaidCost(Duckov.Economy.Cost cost) { }
         internal static bool HasPendingPrepaidTicket() { return Probe.Entry == "F" || Probe.Entry == "G"; }
         internal static void ClearPendingEntryFlowState() { Probe.Touch("clear-entry"); }
     }

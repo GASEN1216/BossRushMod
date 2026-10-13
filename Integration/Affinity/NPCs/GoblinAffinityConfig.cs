@@ -105,9 +105,9 @@ namespace BossRush
                         // 而物品本体仍叫「冷淬液」，对不上号。
                         { 2, new[] { L10n.T("商店", "Shop"), DiamondConfig.GetDisplayName() } },
                         { 3, new[] { L10n.T("10%折扣", "10% Discount") } },
-                        { 4, new[] { ColdQuenchFluidConfig.GetDisplayName() } },
+                        { 4, new[] { ColdQuenchFluidConfig.GetDisplayName(), TemperingSolventConfig.GetDisplayName() } },
                         { 5, new[] { L10n.T("叮当的故事（上）", "Dingdang's Story (Part 1)") } },
-                        { 6, new[] { L10n.T("15%折扣", "15% Discount") } },
+                        { 6, new[] { L10n.T("15%折扣", "15% Discount"), TemperingSolventConfig.GetDisplayName() + L10n.T(" ×2（赠送）", " ×2 (gift)") } },
                         { 7, new[] { DiamondRingConfig.GetDisplayName() } },
                         { 10, new[] { L10n.T("叮当的故事（下）", "Dingdang's Story (Part 2)"), L10n.T("20%折扣", "20% Discount"), AffixForgeStoneConfig.GetDisplayName() } }
                     };
@@ -799,6 +799,7 @@ namespace BossRush
             {
                 new ShopItemEntry(DiamondConfig.TYPE_ID, DIAMOND_UNLOCK_LEVEL, 5),
                 new ShopItemEntry(ColdQuenchFluidConfig.TYPE_ID, COLD_QUENCH_UNLOCK_LEVEL, 5),
+                new ShopItemEntry(TemperingSolventConfig.TYPE_ID, TemperingSolventConfig.SHOP_UNLOCK_LEVEL, TemperingSolventConfig.SHOP_MAX_STOCK),
                 new ShopItemEntry(DiamondRingConfig.TYPE_ID, DiamondRingConfig.UNLOCK_LEVEL, 1),  // 钻石戒指，7级解锁，限量1个
                 // 词缀熔石：锻造的唯一消耗材料，游戏内 Wiki 承诺「哥布林商店（要好感度）」。
                 // 满级好感后才提供有限补货，前期熔石以 BossRush 掉落为主。

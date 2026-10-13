@@ -9,7 +9,7 @@ OUT.mkdir(parents=True, exist_ok=True)
 # 原样执行正式序章 SpawnBoss；只替换 Unity 边界，不复制数值或生成算法。
 prelude = (ROOT / 'SkyIsland/SkyIslandPreludeFlow.cs').read_text(encoding='utf-8-sig')
 signature = 'private async void SpawnBoss(Vector3 position, int expectedGeneration)'
-member = signature + prelude.split(signature, 1)[1].split('private void OnBossDead()', 1)[0]
+member = signature + prelude.split(signature, 1)[1].split('private void OnBossDead(bool instrumentInBox)', 1)[0]
 gate = 'private bool ShouldRunObjective()' + prelude.split('private bool ShouldRunObjective()', 1)[1].split('private void EnsureJeff()', 1)[0]
 scene_constant = 'private const string GroundZeroScene' + prelude.split('private const string GroundZeroScene', 1)[1].split(';', 1)[0] + ';'
 (OUT / 'PreludeSpawn.Extracted.cs').write_text(

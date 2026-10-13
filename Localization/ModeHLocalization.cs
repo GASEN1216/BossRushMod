@@ -661,6 +661,10 @@ namespace BossRush
             Add(map, "Unavailable_modeh_owner_missing", "模式没能启动，回基地再试",
                 "The mode failed to start. Head back to base and try again");
             Add(map, "Unavailable_TicketRefunded", "已退还船票", "Ticket refunded");
+            Add(map, "Unavailable_TicketNotCharged", "这次没有扣船票", "No ticket was charged");
+            Add(map, "Unavailable_TicketRefundOwed", "船票这次没退成，下次进鸭王杯入口时补给你",
+                "The ticket couldn't be returned right now; you'll get it at the Duck King Cup entrance next time");
+            Add(map, "Unavailable_TicketOwedReturned", "上次没退成的鸭王杯船票已补还", "Your unreturned Duck King Cup ticket has been given back");
 
             // 拍铃失败原因：key 由 ModeHCommandController.GetBellFailureLocalizationKey
             // 用 "BellFailed_" + failureReasonId 拼出，后缀必须与 TryRingBell 里的
@@ -689,6 +693,8 @@ namespace BossRush
             // 由 ModeHRuntimeModule.ResolveAbortMessageKey 归类到下面这几条，
             // 保证玩家被传回基地时永远看得到一句解释而不是静默（CR-2026-08-29-013）。
             Add(map, "Abort_Generic", "开局失败，已退回基地", "Setup failed; returned to base");
+            Add(map, "Abort_SceneNotReady", "地图迟迟没准备好，鸭王杯没能开局", "The map never finished getting ready, so the Duck King Cup couldn't start");
+            Add(map, "Abort_MapSelectionUnavailable", "地图界面没能打开，鸭王杯没出发，请再试一次", "The map screen failed to open, so the Duck King Cup didn't depart. Please try again");
             Add(map, "Abort_MapUnsupported", "这张地图缺少本模式的点位",
                 "This map lacks the mode's spawn points");
             Add(map, "Abort_Lease", "无法接管擂台场地，已退回基地",

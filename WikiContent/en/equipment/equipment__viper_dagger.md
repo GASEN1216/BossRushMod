@@ -2,7 +2,7 @@
 
 ### What Is It?
 
-A **poison-element short blade** that stacks venom layers on every hit. Single-hit damage is modest, but landing 5 consecutive hits detonates them. Part of that detonation is a share of the damage those 5 hits actually dealt, so the stronger the dagger, the harder it bursts. Built for close-quarters rapid strikes.
+A **poison-element short blade** that stacks venom layers on every hit. Single-hit damage is modest, but landing 5 consecutive hits detonates them. Part of that detonation is a share of the damage those 5 hits actually dealt, and another part scales with the target's max HP, so the stronger the dagger and the tougher the target, the harder it bursts. Built for close-quarters rapid strikes.
 
 - **Type**: Melee / **Quality**: 5 / **Element**: Poison
 - **Drop**: 20% from the Warden (works on vanilla maps too) / Dingdang's Shop (Affinity 5, stock 1)
@@ -19,7 +19,7 @@ Each melee hit applies **1 poison stack** to the target (max 5 layers):
 
 - Stacks **expire after 6 seconds** without a follow-up hit
 - Reaching **5 stacks** triggers **Toxic Burst** and clears all stacks
-- Burst damage = **35 flat** + **20% of the damage those 5 hits actually dealt to that target**
+- Burst damage = **35 flat** + **20% of the damage those 5 hits actually dealt to that target** + **5% of the target's max HP (capped at 400 per burst)**
 - The burst itself cannot crit, but its percentage part grows with your stats, affixes and set bonuses
 - Stacks and accumulated damage both reset after a burst, and the snowball starts again
 - Every hit also applies the vanilla Poison status (guaranteed), which is tracked separately from these stacks

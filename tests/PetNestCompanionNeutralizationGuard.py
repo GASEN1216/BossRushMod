@@ -158,9 +158,23 @@ def main():
         acode = strip_cs_comments(agent)
         if not re.search(r"_ai\.leader\s*=\s*_master\s*;", acode):
             errors.append("[跟随] 必须通过写 AICharacterController.leader 驱动跟随")
-        target_writes = re.findall(r"_ai\.searchedEnemy\s*=", acode)
-        if len(target_writes) != 1 or "!Team.IsEnemy(team, _ai.searchedEnemy.Team)" not in acode:
+        # 2026-10-12 行动方式：跟随档在主人交战时锁定那个敌人（NotifyEngaged），收手 / 重启 AI 前清旧目标
+        # （SuspendAi / ResumeAi）。除这三处与阵营事件之外，索敌作战仍全部交还原生行为树。
+        behaviour_methods = ("internal void NotifyEngaged(CharacterMainControl enemy)",
+                             "private void SuspendAi()", "private void ResumeAi()")
+        outside = acode
+        for signature in behaviour_methods:
+            m = re.search(re.escape(signature) + r"[\s\S]*?\n        \}", outside)
+            if not m:
+                errors.append("[跟随] 行动方式缺少方法: " + signature)
+                continue
+            outside = outside.replace(m.group(0), "")
+        target_writes = re.findall(r"_ai\.searchedEnemy\s*=", outside)
+        if len(target_writes) != 1 or "!Team.IsEnemy(team, _ai.searchedEnemy.Team)" not in outside:
             errors.append("[跟随] 仅允许阵营事件清理不再敌对的目标，其余索敌作战交还原生行为树")
+        engaged = re.search(r"internal void NotifyEngaged\(CharacterMainControl enemy\)[\s\S]*?\n        \}", acode)
+        if engaged and "_behaviour != PetNestBehaviour.Follow" not in engaged.group(0):
+            errors.append("[跟随] 只有跟随档会被主人交战拉进战斗，主动档仍交给原生行为树")
         for required in ("_teamOwner.OnTeamChanged += HandleMasterTeamChanged;",
                          "_teamOwner.OnTeamChanged -= HandleMasterTeamChanged;"):
             if required not in acode:

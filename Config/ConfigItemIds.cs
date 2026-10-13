@@ -122,5 +122,7 @@ namespace BossRush
         public const int RollCallLedger = 500106;
         /// <summary>钟守节拍器：无声钟守出售的整匣换弹节奏图腾。</summary>
         public const int ReloadMetronome = 500107;
+        /// <summary>回火液：重铸界面解除一条已固定属性的消耗品（叮当商店 / 好感 6 级赠礼）。</summary>
+        public const int TemperingSolvent = 500108;
     }
 }

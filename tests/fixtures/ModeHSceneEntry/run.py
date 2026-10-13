@@ -44,6 +44,9 @@ def main():
         'private bool TryHandleSeasonResumeScene(', 'private void CompleteSeasonResumeScene()',
         'private void CancelSeasonResume()')]
     code = ['using System; using System.Collections; using System.Collections.Generic; using System.Threading.Tasks; using UnityEngine; using UnityEngine.SceneManagement; using Duckov.Scenes; namespace BossRush { partial class ModeHRuntimeModule {']
+    marker = 'internal const string OfficialInitDoneComment = "Done!";'
+    assert (ROOT / scene).read_text(encoding='utf-8-sig').count(marker) == 1, 'production Done! marker constant changed'
+    code.append(marker)
     for path, signature in methods:
         method = extract(path, signature, hashes)
         # Only declaration syntax adapts to the fixture host; every production method body is verbatim.

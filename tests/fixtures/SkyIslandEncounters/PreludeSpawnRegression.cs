@@ -93,14 +93,14 @@ namespace BossRush
         { UnityEngine.SceneManagement.SceneManager.Name = GroundZeroScene; owner = new DifficultyOwner { Scale = scale }; SpawnBoss(new Vector3(), generation); }
         private CharacterRandomPreset FindPreset() { return CharacterRandomPreset.Source; }
         private Vector3 GroundPoint(Vector3 position) { return position; }
-        private void OnBossDead() { }
+        private void OnBossDead(bool instrumentInBox) { }
         private void Report(string message, bool error) { }
     }
 
     internal sealed class SkyIslandPreludeBossOwner : MonoBehaviour
     {
         internal CharacterRandomPreset OwnedPreset;
-        internal void Bind(CharacterMainControl character, CharacterRandomPreset preset, Action onDead)
+        internal void Bind(CharacterMainControl character, CharacterRandomPreset preset, Action<bool> onDead)
         { OwnedPreset = preset; }
     }
 }

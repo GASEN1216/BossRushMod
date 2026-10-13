@@ -60,10 +60,22 @@ If an egg's bloodline can no longer be identified after a game update, the syste
 
 ### Deployment slot
 - **One cub per run.** Set it as "deployed" in the nest; it does **not** take an inventory slot.
-- The system spawns it beside you on entry. It follows you and finds its own targets.
+- The system spawns it beside you on entry. It acts according to the **behavior** you set (see below).
 - Its damage is a bonus on top. It earns its keep with pressure and finishing blows; the source preset's base multiplier keeps bloodlines distinct before the companion safety cap.
 
 The cub only scales its visual root, never its collider. At level 1 its body is **62%** of the official base model (**64%** for the Dragon Lord). Each level adds **5%** of its hatch size, reaching about **90%** of the base model at level 10 (**93%** for the Dragon Lord).
+
+### Behavior, feeding and petting
+Walk up to your deployed cub; besides "Backpack", its interaction group has three more entries:
+
+- **Behavior** (tap to cycle; saved on the cub, new cubs and old saves default to Follow):
+  - **Follow**: tags along and never starts a fight. It joins in once you hit an enemy or an enemy hits you or it, then breaks off and returns **10 seconds** after combat ends.
+  - **Aggressive**: engages any enemy it sees (the behavior before this option existed).
+  - **Evasive**: never fights, stays close, **takes no damage**, and every **5 seconds** shakes off bleeding, poison, nausea, pain, burning, shock, freeze and stun. Good for using it as a pack mule.
+- **Feed**: picks the **cheapest food** in your pack for **+20 experience** and **10%** health. **10-minute** cooldown per cub (real time). Multi-use foods are skipped so a whole item is never eaten at once.
+- **Pet**: a short reaction that depends on its temperament; no stats.
+
+The HUD status line shows level, experience toward the next level and the current behavior.
 
 ### Cub backpack
 Every cub has its own backpack: **4 slots** to start, with more from levels, endowments and the Lazy temperament. In the base or on a raid, walk up to your deployed cub and choose **Backpack** above its head to use the official inventory grid. Contents stay with that cub across maps, deployment changes and knockouts. Empty it before releasing the cub or sending it on an expedition. The nest page shows how many slots the cub has.
@@ -97,8 +109,8 @@ Matching the cub's bloodline element to the destination adds `12` percentage poi
 The tier sets the payout, the risk and the wait all at once (the wait is real time):
 
 - **Safe**: **10 minutes**, low reward, **0%** death rate. Completely safe; the worst case is coming home empty-handed. +15 experience on return
-- **Rough**: **30 minutes**, medium reward, about **6%** death rate. The cub may come back wounded. +30 experience on return
-- **Desperate**: **60 minutes**, high reward, about **12%** death rate. You are betting a life on rare output. +60 experience on return
+- **Rough**: **30 minutes**, medium reward, **never fatal**, about 25% chance to come back wounded. +30 experience on return
+- **Desperate**: **60 minutes**, high reward, about **12%** death rate, **the only tier with real death**. You are betting a life on rare output. +60 experience on return
 
 ::: tip
 Per minute waited, Safe gives 1.5 experience and Rough and Desperate give 1 each if the cub survives. Desperate does not level it faster and carries a risk of permanent death. Choose Safe for steady growth; Desperate offers more loot and a chance at a Relic Egg.
@@ -109,7 +121,7 @@ Successful trips also roll an extra item: **one quality-3 item** for Rough, or *
 After a Desperate trip survives and succeeds, it has a further `20%` chance to award a Relic Egg of that bloodline. This is not the overall egg chance per departure.
 Returning empty-handed still awards survival experience; dying awards neither experience nor loot.
 
-**The death rate is written on the button before you commit**, and it is frozen into that departure; later balance changes never alter a trip already under way.
+**The death rate is written on the button before you commit**, and it is frozen into that departure; later changes can only lower it (when Rough stopped being lethal, Rough trips already under way settled as non-lethal too). The card also lists the cash range, souls, and loot quality and count on success.
 
 ### Countdown and settlement
 - The countdown runs on **real time**: it keeps ticking while the game is closed.
@@ -129,10 +141,11 @@ Cubs grow by working with you, capping at level 10 ("Adult"), after which they s
 
 - **Experience**:
   - Deploying a cub and coming home alive: **+20** (a cub carried out wounded still counts; the scar is already the price)
-  - Each of its own kills: **4**, plus **1 per 100 actual max health** of the victim (up to **16** total per kill), capped at **80** kill experience per run
+  - Each kill by the cub, **or by you within 30 m of it**: **4**, plus **1 per 100 actual max health** of the victim (up to **16** total per kill), capped at **80** kill experience per run. Weak cubs no longer need the last hit to grow
+  - Feeding: **+20** (once every 10 minutes per cub)
   - Surviving a Disaster Expedition, by tier: Safe **+15**, Rough **+30**, Desperate **+60**
 - **100 experience per level**, capped at level 10.
-- **Bloodline baseline** — 20% of the source boss character damage multiplier, bounded to 0.12-0.28. This is a character stat, not a share of final damage or DPS: weapons, fire rate and AI still matter. Custom bloodlines use their boss's base health and signature equipment.
+- **Bloodline baseline** — 0.25 × the square root of the source boss character damage multiplier, bounded to 0.12-0.8 (sources 0.8 / 1.35 / 12 give about 0.22 / 0.29 / 0.80; older versions flattened every bloodline above 1.35 to 0.28). This is a character stat, not a share of final damage or DPS: weapons, fire rate and AI still matter. Custom bloodlines use their boss's base health and signature equipment.
 - **Combat growth** — each level above level 1 adds +6% max health and +8% to both gun and melee damage multipliers. At level 10, level bonuses total +54% max health and +72% to each damage multiplier, applied alongside endowments, temperament and scars.
 - **Mid-raid growth** — a committed level-up immediately updates combat bonuses and visual size, preserving the current health fraction. The nest detail page shows the health, damage and size bonuses provided by levels.
 - **Backpack growth** — +1 cub-backpack slot at levels 3 / 6 / 9, so +3 at max, stacking with the base slots, endowment slots and temperament slots.

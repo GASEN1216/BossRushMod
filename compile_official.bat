@@ -546,6 +546,7 @@ echo(ModeD\ModeDRuntimeModule_AutoNext.cs
 echo(ModeD\ModeDRuntimeModule_WaveResolution.cs
 echo(ModeD\ModeDRuntimeModule_Waves.cs
 echo(ModeD\ModeDRuntimeModule_Lifecycle.cs
+echo(ModeD\ModeDNakedEntryNotice.cs
 echo(Utilities\ModeEntryInventory.cs
 echo(ModeD\ModeDEquipment.cs
 echo(ModeD\ModeDEquipment_StarterKit.cs
@@ -637,6 +638,7 @@ echo(ModeH\ModeHKitPreferenceLedger.cs
 echo(ModeH\ModeHSessionSummary.cs
 echo(ModeH\ModeHEncounterPlanner.cs
 echo(ModeH\ModeHEntry.cs
+echo(ModeH\ModeHTicketRefund.cs
 echo(ModeH\ModeHEventRouter.cs
 echo(ModeH\ModeHHallOfFamePersistence.cs
 echo(ModeH\ModeHHarmonyPatches.cs
@@ -1008,6 +1010,7 @@ echo(Integration\NPCs\DuckNpc\DuckNpcDebugProbe.cs
 echo(Integration\Reforge\GoblinReforgeInteractable.cs
 echo(Integration\Reforge\PropertyLockSystem.cs
 echo(Integration\Reforge\ColdQuenchFluidConfig.cs
+echo(Integration\Reforge\TemperingSolventConfig.cs
 echo(Integration\Reforge\ReforgeSystem.cs
 echo(Integration\Reforge\ReforgeSystem_ApplyAndResults.cs
 echo(Integration\Reforge\ReforgeUIManager.cs
@@ -1181,6 +1184,7 @@ echo(PetNest\PetNestRenameModal.cs
 echo(PetNest\PetNestProgressionService.cs
 echo(PetNest\PetNestRuntimeModule.cs
 echo(PetNest\PetNestCompanionAgent.cs
+echo(PetNest\PetNestCompanionCare.cs
 echo(PetNest\PetNestCompanionSpawner.cs
 echo(PetNest\PetNestPetProxyBridge.cs
 echo(PetNest\PetNestDebugProbe.cs

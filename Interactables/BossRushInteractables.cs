@@ -755,6 +755,10 @@ namespace BossRush
 
                 ModBehaviour.DevLog("[BossRush] BossRushSignInteractable: 已注入 3 个难度子选项（含无间炼狱）");
 
+                // 路牌晚于白手起家启动才 Start 时，上面刚注入的难度选项会盖掉 Mode D 的布置，
+                // 玩家就会在白手起家里看到「选难度」。此时按 Mode D 重新布置一次（幂等）。
+                ModeDRuntimeModule.ReapplySignAfterLateInject(this);
+
                 // Mode G 不再注入旧路牌的独立难度选项。
                 // 它沿用 Mode F 的自动分流：地图选择/传送前冻结 Mode G 意图，
                 // 进入已选地图后由统一入口打开 ModeGInteractable 确认页。

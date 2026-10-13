@@ -19,11 +19,11 @@ internal static class Program
     {
         BossRushInitialSpawn.Arrived=false;
         AstarPath.active = new AstarPath();
-        CharacterMainControl.Main=null;LevelManager.LevelInited=false;LevelManager.AfterInit=false;SceneLoader.IsSceneLoading=true;
+        CharacterMainControl.Main=null;LevelManager.LevelInited=false;LevelManager.AfterInit=false;LevelManager.LevelInitializingComment="";SceneLoader.IsSceneLoading=true;
         SceneLoader.Instance=new SceneLoader{Load=()=>Task.CompletedTask};
         MultiSceneCore.Instance=new MultiSceneCore{IsLoading=true};
         SceneManager.Active=new Scene{name="loading",handle=1,isLoaded=true};
-        BossRushMapSelectionHelper.Pending=false;BossRushMapSelectionHelper.Generation=0;
+        BossRushMapSelectionHelper.Pending=false;BossRushMapSelectionHelper.Generation=0;BossRushMapSelectionHelper.Paid=true;
         ModeHRuntimeGates.SlotGeneration=1;ModeHRuntimeGates.Active=false;
         ModeHArenaIsolationLease.Acquired=ModeHSpectatorLease.Acquired=0;
         BossRushUI.Paused=false;Time.unscaledDeltaTime=.1f;
@@ -66,6 +66,17 @@ internal static class Program
         Check(ModeHArenaIsolationLease.Acquired==1&&ModeHSpectatorLease.Acquired==1,"exactly one lease pair");
         r._owner.Legacy(Ordinary);Ticks(r,3);
         Check(At(Stand)&&r._owner.LegacySetups==0,"consumed intent remains protected by live H owner");
+
+        // 2026-10-12：第三方 OnAfterLevelInitialized 订阅者抛异常时 afterInit 永远不置位；
+        // 官方在最终落点之后写入的「Done!」足以证明搬人已完成，不能因此卡满 30 秒再退票。
+        r=Reset(name,id);target=Target(name);
+        r.OnSceneLoaded(new SceneRuntimeContext(target));
+        CharacterMainControl.Main=new CharacterMainControl();LevelManager.LevelInited=true;
+        SceneLoader.IsSceneLoading=false;SceneManager.Active=target;MultiSceneCore.Instance.IsLoading=false;
+        LevelManager.LevelInitializingComment="Setting character position...";
+        Ticks(r,3);Check(r.FreshStarted==0,"intermediate init comment is not completion: "+name);
+        CharacterMainControl.Main.SetPosition(Ordinary);LevelManager.LevelInitializingComment="Done!";
+        Ticks(r,2);Check(r.FreshStarted==1&&r.Aborts==0,"official Done! marker admits entry when AfterInit is stuck: "+name);
     }
     private static void LegacyOrdering()
     {
@@ -128,6 +139,10 @@ internal static class Program
     }
     private static void ReadinessGates()
     {
+        var unpaid=Reset();BossRushMapSelectionHelper.Paid=false;Ready(Target());
+        unpaid.OnSceneLoaded(new SceneRuntimeContext(Target()));Ticks(unpaid,2);
+        Check(unpaid.FreshStarted==0&&unpaid.Aborts==1&&ModeHArenaIsolationLease.Acquired==0,
+            "fresh target without actual payment receipt cannot acquire run or leases");
         var navigation=Reset();Ready(Target());AstarPath.active.isScanning=true;
         navigation.OnSceneLoaded(new SceneRuntimeContext(Target()));Ticks(navigation,4);
         Check(navigation.FreshStarted==0&&navigation.Aborts==0,"pending navigation scan waits before arena selection");

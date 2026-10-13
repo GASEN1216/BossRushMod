@@ -43,6 +43,15 @@ See Affinity & Marriage for details.
 
 ---
 
+## Tempering Solvent
+
+The antidote to Cold Quench Fluid: in the Reforge screen, click a **locked** stat twice (locked stats show in blue while you carry it) to unlock it. The value stays.
+
+- **Source**: Dingdang's shop (Affinity Lv.4, stock 3) / 2 bottles gifted once at Dingdang Affinity Lv.6
+- **Use**: each bottle unlocks one stat
+
+---
+
 ## Calming Drops
 
 Clears treatable debuffs such as bleeding, fractures and poison. Herbal fragrance included.

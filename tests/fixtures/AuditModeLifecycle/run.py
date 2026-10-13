@@ -472,6 +472,19 @@ internal sealed partial class ZombieModeRuntimeModule {
 }'''
 execute('hud_runtime',[HERE/'HudRuntime.cs'],hud_fixture)
 mode_d_destroy = '\n'.join(member(ROOT/'ModeD/ModeDRuntimeModule_Lifecycle.cs', sig) for sig in ['private void CleanupModeDRuntimeOnDestroy()', 'private void CleanupModeDWaveEnemiesOnExit()'])
+wave_ordering = '\n'.join(member(ROOT / path, signature) for path, signature in [
+    ('WavesArena/WavesArenaRuntimeModule_Start.cs', 'public void StartFirstWave()'),
+    ('WavesArena/WavesArenaRuntimeModule.cs', 'internal void EnsureEarlyWavesNoStrongBoss()'),
+    ('WavesArena/WavesArenaRuntimeModule.cs', 'private bool IsEarlyWaveExcludedBoss('),
+])
+wave_ordering += declaration(ROOT/'WavesArena/WavesArenaRuntimeModule.cs', 'internal static readonly HashSet<string> EarlyWaveExcludedBosses')
+filter_ordering = '\n'.join(member(ROOT/'BossFilter/BossFilter.cs', signature) for signature in [
+    'public List<EnemyPresetInfo> GetFilteredEnemyPresets()', 'internal void InvalidateFilteredPresetsCache()',
+])
+execute('wave_ordering', [HERE/'WaveOrdering.cs'],
+        'using System; using System.Collections.Generic; using System.Linq; using UnityEngine; namespace BossRush {'
+        'partial class WavesArenaRuntimeModule {' + wave_ordering + '}'
+        'partial class BossFilterRuntimeModule {' + filter_ordering + '}}')
 execute('wave_owner',[HERE/'WaveOwner.cs',ROOT/'WavesArena/WavesArenaRuntimeModule.cs',ROOT/'ModeD/ModeDRuntimeModule.cs',ROOT/'ModeD/ModeDRuntimeModule_WaveResolution.cs'], 'using System; namespace BossRush { internal sealed partial class ModeDRuntimeModule {'+mode_d_destroy+'}}')
 execute('milestone',[HERE/'Milestone.cs',ROOT/'LootAndRewards/InfiniteHellMilestoneDelivery.cs'])
 f3=ROOT/'DebugAndTools/F3GameplayValidationAutotestStory.cs'

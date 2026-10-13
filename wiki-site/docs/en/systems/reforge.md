@@ -59,6 +59,11 @@ Dingdang also runs a separate service called **Affix Forging**: reforging change
 - Dingdang's shop: available for purchase once Affinity requirement is met.
 - Married Dingdang: gifted through daily chat.
 
+## Unlocking with Tempering Solvent
+- Locked the wrong stat? Carry **Tempering Solvent** and locked stats turn from gold to **blue** in the Reforge screen. Click one twice (the second click confirms) to spend 1 bottle and unlock it. The value stays and the stat can be reforged again.
+- One bottle per stat; if the bottle can't be taken, the stat is locked again so nothing is wasted.
+- Source: Dingdang's shop from Affinity Lv.4 (stock 3, refreshed each visit); Dingdang gives **2 bottles once at Affinity Lv.6**, and players already past Lv.6 receive them the next time they chat with him.
+
 ## Reforge Data Persistence
 - Reforge results are permanently saved on the equipment.
 - Supported reforged stats are automatically restored after scene changes or save/load.

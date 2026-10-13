@@ -57,6 +57,10 @@ namespace BossRush
                             EnsureEarlyWavesNoStrongBoss();
                         }
 
+                        // 出场实际读的是 Boss 池的过滤缓存；不让它失效，上面的洗牌一次也没生效过，
+                        // 龙裔 / 龙皇 / 幽灵女巫这些追加在末尾的 Boss 就永远压在最后一波（玩家：普通模式见不到龙皇）。
+                        owner.InvalidateFilteredPresetsCache();
+
                         ModBehaviour.DevLog("[BossRush] 已随机打乱本次 BossRush 的敌人出场顺序");
                     }
                 }

@@ -32,6 +32,8 @@ namespace BossRush
         internal float HealthRatio;
         internal int ScarCount;
         internal int Level;
+        internal int Exp;
+        internal int Behaviour;
         internal bool Downed;
         internal bool Chinese;
 
@@ -41,6 +43,8 @@ namespace BossRush
                 && Mathf.Approximately(HealthRatio, other.HealthRatio)
                 && ScarCount == other.ScarCount
                 && Level == other.Level
+                && Exp == other.Exp
+                && Behaviour == other.Behaviour
                 && Downed == other.Downed
                 && Chinese == other.Chinese;
         }
@@ -197,6 +201,10 @@ namespace BossRush
                 TextAlignmentOptions.Left, BossRushUIColors.TextSecondary);
             _statusText.rectTransform.pivot = new Vector2(0f, 1f);
             BossRushUI.ApplyGameFont(_statusText);
+            // 状态行加了经验与行动方式，英文最长一档会超出 206 宽：自动缩到 11 号，不让 TMP 省略号把整行吞掉
+            _statusText.enableAutoSizing = true;
+            _statusText.fontSizeMin = 11f;
+            _statusText.fontSizeMax = 14f;
 
             LayoutText(false);
             _panel.SetActive(false);
@@ -270,6 +278,8 @@ namespace BossRush
                 {
                     model.ScarCount = (pet.scars != null ? pet.scars.Count : 0) + pet.mergedOldScarCount;
                     model.Level = pet.level;
+                    model.Exp = pet.exp;
+                    model.Behaviour = pet.behaviour;
                     model.Downed = pet.state == (int)PetNestPetState.Downed;
                 }
             }
@@ -380,7 +390,13 @@ namespace BossRush
             }
             // 血量交给血条，文字只留等级与战痕（UA-01：「血量 72%」4Hz 跳数读起来吃力）。
             // 等级摆在最前：养成的回报现在真的作用在属性上，局内得看得见它长到几级了
+            // 经验进度与行动方式（2026-10-12）：带出去打一架长了多少、它现在会不会主动开打，都要看得见
             string text = "Lv" + model.Level;
+            if (model.Level < PetNestTuning.PetMaxLevel)
+            {
+                text += " " + model.Exp + "/" + PetNestTuning.PetExpPerLevel;
+            }
+            text += " · " + PetNestCareService.Describe((PetNestBehaviour)Mathf.Clamp(model.Behaviour, 0, 2));
             if (model.ScarCount > 0)
             {
                 text += " · " + L10n.T("战痕", "Scars") + " " + model.ScarCount;

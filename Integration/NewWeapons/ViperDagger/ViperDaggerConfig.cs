@@ -19,8 +19,8 @@ namespace BossRush
         // ========== 本地化 ==========
         public const string DisplayNameCN = "毒蛇匕首";
         public const string DisplayNameEN = "Viper Dagger";
-        public const string DescriptionCN = "在蛇毒里泡过的短刃，扎一下上一层毒，叠满5层就炸。\n<color=#7CFC00>【蛇毒注入】</color>命中敌人叠加中毒，最多5层。\n<color=#ADFF2F>【毒性爆发】</color>叠满5层立即引爆，造成35点毒属性伤害，外加这5次命中实际伤害的20%，并清空层数。爆发伤害不吃暴击。\n<color=#BBBBBB>来源：典狱长 掉落 20% / 叮当的小店（好感 5 级）</color>";
-        public const string DescriptionEN = "A short blade steeped in snake venom. Every hit adds a stack of poison; at 5 stacks, it pops.\n<color=#7CFC00>[Venom Injection]</color> Hits apply poison, stacking up to 5.\n<color=#ADFF2F>[Toxic Burst]</color> The 5th stack detonates for 35 poison damage plus 20% of the damage those 5 hits actually dealt, then clears all stacks. The burst itself cannot crit.\n<color=#BBBBBB>Source: 20% drop from Warden / Dingdang's Shop (Affinity 5)</color>";
+        public const string DescriptionCN = "在蛇毒里泡过的短刃，扎一下上一层毒，叠满5层就炸。\n<color=#7CFC00>【蛇毒注入】</color>命中敌人叠加中毒，最多5层。\n<color=#ADFF2F>【毒性爆发】</color>叠满5层立即引爆，造成35点毒属性伤害，外加这5次命中实际伤害的20%与目标最大生命的5%（这一项单次最多400），并清空层数。爆发伤害不吃暴击。\n<color=#BBBBBB>来源：典狱长 掉落 20% / 叮当的小店（好感 5 级）</color>";
+        public const string DescriptionEN = "A short blade steeped in snake venom. Every hit adds a stack of poison; at 5 stacks, it pops.\n<color=#7CFC00>[Venom Injection]</color> Hits apply poison, stacking up to 5.\n<color=#ADFF2F>[Toxic Burst]</color> The 5th stack detonates for 35 poison damage plus 20% of the damage those 5 hits actually dealt and 5% of the target's max HP (that part capped at 400 per burst), then clears all stacks. The burst itself cannot crit.\n<color=#BBBBBB>Source: 20% drop from Warden / Dingdang's Shop (Affinity 5)</color>";
 
         // ========== 物品属性 ==========
         public const int ItemQuality = 5;
@@ -64,6 +64,17 @@ namespace BossRush
         ///   与「1.4 米贴脸、22 面板」的高风险定位相称；不设上限，因为它本就被玩家自己的输出封顶。
         /// </summary>
         public const float BurstAccumulatedDamageRatio = 0.20f;
+
+        /// <summary>
+        /// 满层爆发的厚血项：目标最大生命的比例（2026-10-12 owner 拍板，玩家反馈「小怪 5 刀没砍完就死，
+        /// 几百上千血的 Boss 又不够看」）。对 100 血小怪只多 5 点，对 3000 血 Boss 多 150；
+        /// 叠了血量 Mod（老兵三倍血等）的环境里上限 <see cref="BurstMaxHealthCap"/> 防止变成秒杀器。
+        /// 回退办法：本常量设为 0f。
+        /// </summary>
+        public const float BurstMaxHealthRatio = 0.05f;
+
+        /// <summary>厚血项的单次上限。</summary>
+        public const float BurstMaxHealthCap = 400f;
 
         /// <summary>
         /// 毒素持续时间（秒），每次命中刷新

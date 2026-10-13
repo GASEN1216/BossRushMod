@@ -67,59 +67,127 @@ namespace BossRush
         }
 
 
+        /// <summary>龙裔遗族专属掉落抽签：龙息10%、龙头30%、龙甲60%。箱子与无间炼狱落地共用。</summary>
+        internal static int RollDragonDescendantLootTypeId(float roll, out string itemName)
+        {
+            if (roll < DragonDescendantConfig.DROP_CHANCE_WEAPON)
+            {
+                itemName = "龙息";
+                return DragonDescendantConfig.DRAGON_BREATH_TYPE_ID;
+            }
+            if (roll < DragonDescendantConfig.DROP_CHANCE_WEAPON + DragonDescendantConfig.DROP_CHANCE_HELM)
+            {
+                itemName = "龙头";
+                return DragonDescendantConfig.DRAGON_HELM_TYPE_ID;
+            }
+            itemName = "龙甲";
+            return DragonDescendantConfig.DRAGON_ARMOR_TYPE_ID;
+        }
+
+        /// <summary>
+        /// 龙王专属掉落抽签。共享掉落格：飞行图腾15%、龙王之冕15%、龙王鳞铠15%、焚皇断界戟15%、焚天龙铳1%、逆鳞39%。
+        /// </summary>
+        internal static int RollDragonKingLootTypeId(float roll, out string itemName)
+        {
+            float threshold1 = DragonKingConfig.DROP_CHANCE_FLIGHT_TOTEM;           // 0.15
+            float threshold2 = threshold1 + DragonKingConfig.DROP_CHANCE_CROWN;      // 0.30
+            float threshold3 = threshold2 + DragonKingConfig.DROP_CHANCE_ARMOR;      // 0.45
+            float threshold4 = threshold3 + DragonKingConfig.DROP_CHANCE_HALBERD;    // 0.60
+            float threshold5 = threshold4 + DragonKingConfig.DROP_CHANCE_BOSS_GUN;   // 0.61
+
+            if (roll < threshold1) { itemName = "腾云驾雾 I"; return DragonKingConfig.DRAGON_KING_LOOT_TYPE_ID; }
+            if (roll < threshold2) { itemName = "龙王之冕"; return DragonKingConfig.DRAGON_KING_HELM_TYPE_ID; }
+            if (roll < threshold3) { itemName = "龙王鳞铠"; return DragonKingConfig.DRAGON_KING_ARMOR_TYPE_ID; }
+            if (roll < threshold4) { itemName = "焚皇断界戟"; return DragonKingConfig.FEN_HUANG_HALBERD_TYPE_ID; }
+            if (roll < threshold5) { itemName = DragonKingBossGunConfig.WeaponNameCN; return DragonKingBossGunConfig.WeaponTypeId; }
+            itemName = "逆鳞";
+            return DragonKingConfig.REVERSE_SCALE_TYPE_ID;
+        }
+
+        /// <summary>创建一件满耐久的龙系奖励（龙息额外配置武器属性）；失败返回 null。</summary>
+        private Item CreateDragonRewardItem(int typeId, string logPrefix)
+        {
+            if (!EnsureDragonBossRewardPrefabLoaded(typeId, logPrefix)) return null;
+            Item newItem = ItemAssetsCollection.InstantiateSync(typeId);
+            if (newItem == null)
+            {
+                ModBehaviour.DevLog(logPrefix + " 创建奖励实例失败: TypeID=" + typeId);
+                return null;
+            }
+            float maxDurability = newItem.MaxDurability;
+            if (maxDurability > 0f)
+            {
+                newItem.Durability = maxDurability;
+                newItem.DurabilityLoss = 0f;
+            }
+            if (typeId == DragonDescendantConfig.DRAGON_BREATH_TYPE_ID)
+            {
+                DragonBreathWeaponConfig.ConfigureWeapon(newItem);
+                ModBehaviour.DevLog(logPrefix + " 已配置龙息武器属性");
+            }
+            return newItem;
+        }
+
+        /// <summary>
+        /// 无间炼狱没有奖励箱，龙皇 / 龙裔的专属掉落以前因此整份丢失（玩家：打无间炼狱龙皇什么都不掉）。
+        /// 这里按同一张掉落表抽一件，落在 Boss 尸体处，成就记录与进箱路径一致。
+        /// </summary>
+        internal void DropDragonExclusiveLootIntoWorld(CharacterMainControl bossMain)
+        {
+            if (bossMain == null) return;
+            bool descendant = IsDragonDescendantBoss(bossMain);
+            if (!descendant && !IsDragonKingBoss(bossMain)) return;
+            string prefix = descendant ? "[DragonDescendant]" : "[DragonKing]";
+            string itemName;
+            int typeId = descendant
+                ? RollDragonDescendantLootTypeId(UnityEngine.Random.Range(0f, 1f), out itemName)
+                : RollDragonKingLootTypeId(UnityEngine.Random.Range(0f, 1f), out itemName);
+            Item item = null;
+            try
+            {
+                item = CreateDragonRewardItem(typeId, prefix);
+                if (item == null) return;
+                Vector3 position = bossMain.transform.position + Vector3.up * 0.1f;
+                item.Drop(position, true, UnityEngine.Random.insideUnitSphere.normalized, UnityEngine.Random.Range(30f, 60f));
+                item = null;
+                ModBehaviour.DevLog(prefix + " 无间炼狱专属掉落（世界掉落）: " + itemName + " TypeID=" + typeId);
+                if (descendant)
+                {
+                    AchievementTracker.OnCollectDragonDescendantLoot(typeId);
+                    CheckDragonDescendantCollectionAchievement();
+                }
+                else
+                {
+                    AchievementTracker.OnCollectDragonKingLoot(typeId);
+                    CheckDragonKingCollectionAchievement();
+                }
+            }
+            catch (Exception e)
+            {
+                LogLootWarningLimited("InfiniteHellDragonDrop", "无间炼狱龙系专属掉落失败", e);
+            }
+            finally
+            {
+                if (item != null)
+                {
+                    try { item.DestroyTree(); } catch (Exception) { /* 未交付实例清理失败不阻断 */ }
+                }
+            }
+        }
+
         internal IEnumerator AddDragonDescendantLoot(Inventory inv)
         {
             // 按概率随机选择掉落物品：龙息10%、龙头30%、龙甲60%
             float roll = UnityEngine.Random.Range(0f, 1f);
-            int selectedTypeId;
             string itemName;
-
-            if (roll < DragonDescendantConfig.DROP_CHANCE_WEAPON)
-            {
-                selectedTypeId = DragonDescendantConfig.DRAGON_BREATH_TYPE_ID;
-                itemName = "龙息";
-            }
-            else if (roll < DragonDescendantConfig.DROP_CHANCE_WEAPON + DragonDescendantConfig.DROP_CHANCE_HELM)
-            {
-                selectedTypeId = DragonDescendantConfig.DRAGON_HELM_TYPE_ID;
-                itemName = "龙头";
-            }
-            else
-            {
-                selectedTypeId = DragonDescendantConfig.DRAGON_ARMOR_TYPE_ID;
-                itemName = "龙甲";
-            }
+            int selectedTypeId = RollDragonDescendantLootTypeId(roll, out itemName);
 
             ModBehaviour.DevLog("[DragonDescendant] 随机选择龙套装掉落: " + itemName + " (TypeID=" + selectedTypeId + ", roll=" + roll.ToString("F3") + ")");
 
             try
             {
-                if (!EnsureDragonBossRewardPrefabLoaded(selectedTypeId, "[DragonDescendant]"))
-                {
-                    yield break;
-                }
-
-                Item newItem = ItemAssetsCollection.InstantiateSync(selectedTypeId);
-                if (newItem == null)
-                {
-                    ModBehaviour.DevLog("[DragonDescendant] 创建龙套装实例失败: TypeID=" + selectedTypeId);
-                    yield break;
-                }
-
-                // 确保耐久度为满
-                float maxDurability = newItem.MaxDurability;
-                if (maxDurability > 0)
-                {
-                    newItem.Durability = maxDurability;
-                    newItem.DurabilityLoss = 0f;
-                }
-
-                // 如果是龙息武器，需要配置武器属性
-                if (selectedTypeId == DragonDescendantConfig.DRAGON_BREATH_TYPE_ID)
-                {
-                    DragonBreathWeaponConfig.ConfigureWeapon(newItem);
-                    ModBehaviour.DevLog("[DragonDescendant] 已配置龙息武器属性");
-                }
+                Item newItem = CreateDragonRewardItem(selectedTypeId, "[DragonDescendant]");
+                if (newItem == null) yield break;
 
                 if (!InteractableLootboxInventoryHelper.TryAddExtraItem(inv, newItem)) yield break;
                 ModBehaviour.DevLog("[DragonDescendant] 已将 " + itemName + " 添加到掉落箱");
@@ -151,51 +219,8 @@ namespace BossRush
         {
             // 按概率随机选择掉落物品
             float roll = UnityEngine.Random.Range(0f, 1f);
-            int selectedTypeId;
             string itemName;
-
-            float threshold1 = DragonKingConfig.DROP_CHANCE_FLIGHT_TOTEM;           // 0.15
-            float threshold2 = threshold1 + DragonKingConfig.DROP_CHANCE_CROWN;      // 0.30
-            float threshold3 = threshold2 + DragonKingConfig.DROP_CHANCE_ARMOR;      // 0.45
-            float threshold4 = threshold3 + DragonKingConfig.DROP_CHANCE_HALBERD;    // 0.60
-            float threshold5 = threshold4 + DragonKingConfig.DROP_CHANCE_BOSS_GUN;   // 0.61
-
-            if (roll < threshold1)
-            {
-                // 15% 飞行图腾
-                selectedTypeId = DragonKingConfig.DRAGON_KING_LOOT_TYPE_ID;
-                itemName = "腾云驾雾 I";
-            }
-            else if (roll < threshold2)
-            {
-                // 15% 龙王之冕
-                selectedTypeId = DragonKingConfig.DRAGON_KING_HELM_TYPE_ID;
-                itemName = "龙王之冕";
-            }
-            else if (roll < threshold3)
-            {
-                // 15% 龙王鳞铠
-                selectedTypeId = DragonKingConfig.DRAGON_KING_ARMOR_TYPE_ID;
-                itemName = "龙王鳞铠";
-            }
-            else if (roll < threshold4)
-            {
-                // 15% 焚皇断界戟
-                selectedTypeId = DragonKingConfig.FEN_HUANG_HALBERD_TYPE_ID;
-                itemName = "焚皇断界戟";
-            }
-            else if (roll < threshold5)
-            {
-                // 1% 焚天龙铳
-                selectedTypeId = DragonKingBossGunConfig.WeaponTypeId;
-                itemName = DragonKingBossGunConfig.WeaponNameCN;
-            }
-            else
-            {
-                // 39% 逆鳞
-                selectedTypeId = DragonKingConfig.REVERSE_SCALE_TYPE_ID;
-                itemName = "逆鳞";
-            }
+            int selectedTypeId = RollDragonKingLootTypeId(roll, out itemName);
 
             ModBehaviour.DevLog("[DragonKing] 随机选择龙王掉落: " + itemName + " (TypeID=" + selectedTypeId + ", roll=" + roll.ToString("F3") + ")");
 
@@ -218,24 +243,8 @@ namespace BossRush
         {
             try
             {
-                if (!EnsureDragonBossRewardPrefabLoaded(typeId, "[DragonKing]"))
-                {
-                    return false;
-                }
-
-                Item newItem = ItemAssetsCollection.InstantiateSync(typeId);
-                if (newItem == null)
-                {
-                    ModBehaviour.DevLog("[DragonKing] 创建掉落物实例失败: TypeID=" + typeId);
-                    return false;
-                }
-
-                float maxDurability = newItem.MaxDurability;
-                if (maxDurability > 0f)
-                {
-                    newItem.Durability = maxDurability;
-                    newItem.DurabilityLoss = 0f;
-                }
+                Item newItem = CreateDragonRewardItem(typeId, "[DragonKing]");
+                if (newItem == null) return false;
 
                 if (!InteractableLootboxInventoryHelper.TryAddExtraItem(inv, newItem)) return false;
                 ModBehaviour.DevLog("[DragonKing] 已将 " + itemName + " 添加到掉落箱");

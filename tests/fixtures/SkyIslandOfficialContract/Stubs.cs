@@ -2,6 +2,7 @@ using System.Collections.Generic;
 
 namespace UnityEngine
 {
+    public static class Debug { public static void LogWarning(string message) { } }
     public struct Vector3
     {
         public float x, y, z;

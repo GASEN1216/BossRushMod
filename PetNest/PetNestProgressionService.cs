@@ -200,6 +200,15 @@ namespace BossRush
             _countedVictims.Clear();
         }
 
+        private static bool IsSharedMasterKill(Health victimHealth, CharacterMainControl killer, CharacterMainControl companion)
+        {
+            if (killer != CharacterMainControl.Main) return false;
+            CharacterMainControl victim = victimHealth.TryGetCharacter();
+            if (victim == null || victim == companion || !Team.IsEnemy(companion.Team, victim.Team)) return false;
+            float radius = PetNestTuning.PetExpShareRadius;
+            return (victim.transform.position - companion.transform.position).sqrMagnitude <= radius * radius;
+        }
+
         /// <summary>
         /// 全局死亡回调。零分配早返链：没有随从、已达单局封顶、凶手不是随从、
         /// 死的就是随从自己，四种情况直接返回。
@@ -214,7 +223,10 @@ namespace BossRush
             {
                 CharacterMainControl companion = PetNestCompanionRuntime.CompanionCharacter;
                 if (companion == null) return;
-                if (info.fromCharacter == null || info.fromCharacter != companion) return;
+                if (info.fromCharacter == null) return;
+                // 崽自己补刀之外，主人在崽附近击杀敌人也算一起打的（2026-10-12）：
+                // 低伤害的崽很难抢到最后一击，以前「带出去打了一架经验没变化」就是这个原因。
+                if (info.fromCharacter != companion && !IsSharedMasterKill(health, info.fromCharacter, companion)) return;
                 // 随从自己倒下不算战功
                 if (PetNestCompanionAgent.IsCompanionHealth(health)) return;
                 // 去重判定必须排在开事务**之前**：开事务要深拷贝整包状态，

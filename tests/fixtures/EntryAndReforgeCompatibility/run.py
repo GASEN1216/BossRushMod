@@ -31,7 +31,7 @@ def main():
     core = "Integration/Reforge/ReforgeSystem.cs"
     apply = "Integration/Reforge/ReforgeSystem_ApplyAndResults.cs"
     maps = "MapSelection/BossRushMapSelectionHelper.cs"
-    code = ["using System; using System.Collections.Generic; using UnityEngine; using UnityEngine.SceneManagement; using Duckov.Scenes; using Duckov.UI; using UnityEngine.EventSystems; using ItemStatsSystem; using ItemStatsSystem.Stats; namespace BossRush { public static partial class ReforgeSystem {"]
+    code = ["using System; using System.Collections.Generic; using UnityEngine; using UnityEngine.SceneManagement; using Duckov.Scenes; using Duckov.UI; using Duckov.Economy; using UnityEngine.EventSystems; using ItemStatsSystem; using ItemStatsSystem.Stats; namespace BossRush { public static partial class ReforgeSystem {"]
     source = (ROOT / core).read_text(encoding="utf-8-sig")
     code += re.findall(r"(?:public|private) const float \w+ = [^;]+;", source)
     code += [extract(core, sig) for sig in (
@@ -55,6 +55,7 @@ def main():
         "internal static void ConfirmInitialSpawnSelection(", "internal static BossRushMapConfig TakeInitialSpawnSelection(",
         "internal static void CancelUnstartedMapSelection(", "public static void ClearPendingMapEntry(",
         "public static void ClearPendingEntryFlowState(",
+        "internal static void CaptureModeHPayment(",
         "public static void MarkTargetSceneLoadStarted(", "public static int GetBossRushTicketTypeId()",
         "public static void MarkEntryFlowFromMapSelectionUi(BossRushPendingEntryKind",
         "public static void MarkEntryFlowFromDirectTeleport(BossRushPendingEntryKind")]

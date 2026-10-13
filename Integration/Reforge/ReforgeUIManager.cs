@@ -23,7 +23,7 @@ namespace BossRush
     ///   第一次点：进入待确认——行底 Accent 淡色，数值后面追加「再点一次固定」，UI/pop；2 秒内再点同一行才扣。
     ///   固定成功：数值变 RarityLegendary，行底金色闪一下，UI/confirm。
     /// 只给数值那一个 TMP 上色：第一次改色前记下官方原色，清理时还原（官方 Setup 已经重写过颜色就不动）。
-    /// 扣费与锁定的业务路径与旧版逐行相同；待确认的计时由 ReforgeUIManager 管，切换物品、关闭界面时清掉。
+    /// 扣费与锁定共用材料预留事务；待确认的计时由 ReforgeUIManager 管，切换物品、关闭界面时清掉。
     /// </summary>
     public class PropertyEntryInteractable : MonoBehaviour, IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler
     {
@@ -36,6 +36,8 @@ namespace BossRush
         internal ReforgeRowFx Fx { get; set; }
         public bool IsLocked { get; set; }
         public bool CanLock { get; set; }  // 是否可以固定（有冷淬液）
+        /// <summary>已固定且身上有回火液：行显示为蓝色，点两下消耗一瓶解除固定（数值保留）。</summary>
+        public bool CanUnlock { get; set; }
 
         private bool hovered;
         private bool pending;
@@ -44,12 +46,17 @@ namespace BossRush
         private Color appliedValueColor;
         private string pendingBaseText;
         private string pendingShownText;
+        private bool applyingPropertyChange;
 
         public void OnPointerClick(PointerEventData eventData)
         {
-            if (IsLocked || !CanLock) return;
-
             if (TargetItem == null) return;
+            if (IsLocked)
+            {
+                if (CanUnlock) HandleUnlockClick();
+                return;
+            }
+            if (!CanLock) return;
 
             // 第一步：进入待确认，不扣任何东西（防误点）
             if (!ReforgeUIManager.IsPropertyLockPending(this))
@@ -62,23 +69,7 @@ namespace BossRush
             ReforgeUIManager.CancelPendingPropertyLock();
             ModBehaviour.DevLog("[PropertyEntry] 点击固定属性: " + PropertyKey);
 
-            // 检查冷淬液数量
-            int fluidCount = ItemFactory.GetItemCountInInventory(ColdQuenchFluidConfig.TYPE_ID);
-            if (fluidCount <= 0) return;
-
-            // 先写固定标记、成功后再扣冷淬液；扣不掉就撤回固定。
-            // 旧顺序是先扣后锁：锁定失败（已固定、物品变量不可写等）时冷淬液白白没了。
-            if (!PropertyLockSystem.LockProperty(TargetItem, PropertyKey, PropType))
-            {
-                ModBehaviour.DevLog("[PropertyEntry] 固定属性失败，不扣冷淬液: " + PropertyKey);
-                return;
-            }
-            if (!ItemFactory.ConsumeItem(ColdQuenchFluidConfig.TYPE_ID, 1))
-            {
-                PropertyLockSystem.UnlockProperty(TargetItem, PropertyKey, PropType);
-                ModBehaviour.DevLog("[PropertyEntry] 消耗冷淬液失败，已撤回固定: " + PropertyKey);
-                return;
-            }
+            if (!TryChangeLockWithMaterial(true, ColdQuenchFluidConfig.TYPE_ID)) return;
 
             ModBehaviour.DevLog("[PropertyEntry] 属性已固定: " + PropertyKey);
             IsLocked = true;
@@ -90,6 +81,58 @@ namespace BossRush
 
             // 通知UI刷新
             ReforgeUIManager.NotifyPropertyLocked();
+        }
+
+        /// <summary>
+        /// 回火液解除固定：与固定同样两步确认，共用材料预留与提交。
+        /// </summary>
+        private void HandleUnlockClick()
+        {
+            if (!ReforgeUIManager.IsPropertyLockPending(this))
+            {
+                ReforgeUIManager.BeginPropertyLockPending(this);
+                return;
+            }
+
+            ReforgeUIManager.CancelPendingPropertyLock();
+            if (!TryChangeLockWithMaterial(false, TemperingSolventConfig.TYPE_ID)) return;
+
+            ModBehaviour.DevLog("[PropertyEntry] 属性已解除固定: " + PropertyKey);
+            IsLocked = false;
+            CanUnlock = false;
+            CanLock = ItemFactory.GetItemCountInInventory(ColdQuenchFluidConfig.TYPE_ID) > 0;
+            ApplyVisualState();
+            ReforgeUIManager.PlayPropertyLockedFeedback(this);
+            // 刷新整页：回火液数量变了，其余蓝色行可能要变回金色
+            ReforgeUIManager.NotifyPropertyLocked();
+        }
+
+        private bool TryChangeLockWithMaterial(bool locked, int materialTypeId)
+        {
+            Item target = TargetItem;
+            string key = PropertyKey;
+            PropertyType type = PropType;
+            if (applyingPropertyChange || target == null || target.Variables == null
+                || string.IsNullOrEmpty(key) || PropertyLockSystem.IsPropertyLocked(target, key, type) == locked) return false;
+            applyingPropertyChange = true;
+            try
+            {
+                SkyIslandInventoryTransaction material;
+                if (!SkyIslandInventoryTransaction.TryReserve(CharacterMainControl.Main,
+                    new[] { new SkyIslandIngredient(materialTypeId, 1) }, out material)) return false;
+                using (material)
+                {
+                    // 库存通知可能使官方对象池条目换绑，不能把原先的点击应用到另一件装备。
+                    if (TargetItem != target || PropertyKey != key || PropType != type) return false;
+                    bool changed = locked ? PropertyLockSystem.LockProperty(target, key, type)
+                        : PropertyLockSystem.UnlockProperty(target, key, type);
+                    // 变量已写入后的通知也可能抛错，以实际标记为准，不再反向写回已完成的结果。
+                    if (!changed && PropertyLockSystem.IsPropertyLocked(target, key, type) != locked) return false;
+                    material.Commit();
+                    return true;
+                }
+            }
+            finally { applyingPropertyChange = false; }
         }
 
         public void OnPointerEnter(PointerEventData eventData)
@@ -122,7 +165,8 @@ namespace BossRush
             {
                 pendingBaseText = ValueText.text;
                 pendingShownText = pendingBaseText + " <size=75%><color=" + IntegrationUIFeedback.AccentHex + ">"
-                    + L10n.T("再点一次固定", "Click again to lock") + "</color></size>";
+                    + (IsLocked ? L10n.T("再点一次解除", "Click again to unlock") : L10n.T("再点一次固定", "Click again to lock"))
+                    + "</color></size>";
                 ValueText.text = pendingShownText;
             }
             ApplyVisualState();
@@ -148,6 +192,15 @@ namespace BossRush
         public void ApplyVisualState()
         {
             ReforgeRowFx fx = Fx;
+            if (IsLocked && CanUnlock)
+            {
+                // 持有回火液时已固定行改成蓝色，表示「点得动」；悬停 / 待确认加亮。
+                Color unlockColor = BossRushUIColors.RarityRare;
+                SetValueColor(unlockColor);
+                if (fx != null) fx.SetState(unlockColor, pending || hovered ? 1f : 0.9f, unlockColor, pending ? 0.18f : hovered ? 0.08f : 0f);
+                return;
+            }
+
             if (IsLocked)
             {
                 SetValueColor(BossRushUIColors.RarityLegendary);

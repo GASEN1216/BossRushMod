@@ -147,6 +147,7 @@ namespace BossRush
                     // （里程碑现金用的就是这条，见 LootAndRewardsInfiniteHell）。
                     // 必须排在 FinalizeBossRushLootboxPathTracking 之前——后者会撤销 pending。
                     owner.DropPendingExtraLootIntoWorld(bossMain);
+                    DropDragonExclusiveLootIntoWorld(bossMain);
                     owner.TryDropBackMountainSeedIntoWorldForArena(bossMain);
                     FinalizeBossRushLootboxPathTracking(bossMain);
                     return;

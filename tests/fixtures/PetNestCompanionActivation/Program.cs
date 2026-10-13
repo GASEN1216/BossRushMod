@@ -67,7 +67,8 @@ namespace UnityEngine
         public static Vector3 operator -(Vector3 a,Vector3 b) { return new Vector3(a.x-b.x,a.y-b.y,a.z-b.z); }
         public static Vector3 operator *(Vector3 a,float b) { return new Vector3(a.x*b,a.y*b,a.z*b); }
     }
-    static class Time { public static float deltaTime; }
+    static class Time { public static float deltaTime, time; }
+    struct Vector2 { public float x,y; public static Vector2 zero { get { return new Vector2(); } } }
     static class Mathf { public static bool Approximately(float a,float b) { return Math.Abs(a-b)<.0001f; } public static float Clamp01(float x) { return Math.Max(0,Math.Min(1,x)); } }
 }
 namespace ItemStatsSystem
@@ -76,6 +77,10 @@ namespace ItemStatsSystem
     class Item { public readonly Dictionary<string,Stat> Stats=new Dictionary<string,Stat>(); public Stat GetStat(string key) { return Stats[key]; } }
 }
 class Health : Component { public float CurrentHealth=1,MaxHealth=100; public bool Invincible; public void SetInvincible(bool b) { Invincible=b; } public void SetHealth(float hp) { CurrentHealth=Math.Min(hp,MaxHealth); } }
+namespace Duckov.Buffs
+{
+    class Buff { public enum BuffExclusiveTags { NotExclusive, Bleeding, Poison, Nauseous, Pain, Burning, Electric, Freeze, Stun } }
+}
 class DamageReceiver { public Teams Team; }
 class CharacterRandomPreset : UnityEngine.Object { }
 class CharacterMainControl : Component
@@ -86,6 +91,11 @@ class CharacterMainControl : Component
     public int TeamSubscribers { get { return OnTeamChanged==null?0:OnTeamChanged.GetInvocationList().Length; } }
     public void SetTeam(Teams team) { Team=team;OnTeamChanged?.Invoke(team); }
     public void SetPosition(Vector3 position) { transform.position=position; }
+    public DamageReceiver mainDamageReceiver=new DamageReceiver();
+    public readonly List<Duckov.Buffs.Buff.BuffExclusiveTags> RemovedTags=new List<Duckov.Buffs.Buff.BuffExclusiveTags>();
+    public void Trigger(bool a,bool b,bool c) { }
+    public void SetMoveInput(Vector2 v) { }
+    public void RemoveBuffsByTag(Duckov.Buffs.Buff.BuffExclusiveTags tag,bool one) { RemovedTags.Add(tag); }
 }
 class AICharacterController : MonoBehaviour
 {
@@ -95,14 +105,23 @@ class AICharacterController : MonoBehaviour
 namespace BossRush
 {
     class ModBehaviour { public static void DevLog(string s) { } public void SanitizeBossRushZombieSpawn(CharacterMainControl c,string s) { } }
-    class PetNestPetRecord { public int level=1; }
+    class PetNestPetRecord { public int level=1; public string id="pet"; public int behaviour; }
+    // 生产枚举在 PetNestCompanionCare.cs（依赖官方 UI，夹具不链接）；数值必须一致，见下方断言。
+    enum PetNestBehaviour { Follow=0, Active=1, Avoid=2 }
+    static class PetNestCareService
+    {
+        public static readonly Duckov.Buffs.Buff.BuffExclusiveTags[] AvoidCleansedTags={ Duckov.Buffs.Buff.BuffExclusiveTags.Bleeding, Duckov.Buffs.Buff.BuffExclusiveTags.Poison };
+        public static PetNestBehaviour Resolve(PetNestPetRecord p) { return (PetNestBehaviour)p.behaviour; }
+        public static void InjectOptionLocalization(PetNestBehaviour b) { }
+        public static void AttachOptions(PetNestBackpack host,string id,CharacterMainControl companion) { }
+    }
     class PetNestPersonalityProfile { public float FollowTeleportDistance=40,SightDistanceMultiplier=1,TraceTargetChance=.5f; }
     static class PetNestPersonality { public static PetNestPersonalityProfile Resolve(PetNestPetRecord p) { return new PetNestPersonalityProfile(); } }
     static class PetNestGrowth { public static float ModelScale(float f,int level) { return f; } }
-    static class PetNestTuning { public const float CompanionDpsShareTarget=.28f; }
+    static class PetNestTuning { public const float CompanionDpsShareTarget=.28f, BehaviourEngageWindowSeconds=10f, AvoidCleanseIntervalSeconds=5f; }
     class PetNestAuraEffect : Component { }
-    class PetNestBackpack : Component { public static void Attach(CharacterMainControl c,PetNestPetRecord p) { } public void Dispose(bool value) { } }
-    class DuckNpcMovement : Component { public Transform Follow; public bool Bind(CharacterMainControl c,Vector3 p,float radius) { return true; } public void EnablePlayerFollow(Transform target) { Follow=target; } }
+    class PetNestBackpack : Component { public static PetNestBackpack Attach(CharacterMainControl c,PetNestPetRecord p) { return null; } public void Dispose(bool value) { } }
+    class DuckNpcMovement : Component { public bool enabled=true; public Transform Follow; public bool Bind(CharacterMainControl c,Vector3 p,float radius) { return true; } public void EnablePlayerFollow(Transform target) { Follow=target; } public void DisablePlayerFollow() { Follow=null; } }
     internal static partial class PetNestCompanionSpawner
     {
         private static void ApplyModelScale(PetNestCompanionHandle h) { }
@@ -141,11 +160,30 @@ static class Program
         Check(master.TeamSubscribers==1,"one owner subscription per entity");
         PetNestCompanionSpawner.CleanupOnce(idle);PetNestCompanionSpawner.CleanupOnce(idle);
         Check(idleAi==null && master.TeamSubscribers==0 && !PetNestCompanionAgent.IsCompanionArmed,"base cleanup releases subtree, identity and team subscription once");
+        // 2026-10-12 行动方式：旧档 / 新崽缺省是「跟随」——不主动开打，AI 子树收起、寻路跟随主人。
+        var follower=Staged();var followerAi=follower.Character.GetComponentInChildren<AICharacterController>(true);
+        Check(PetNestCompanionSpawner.TryActivate(follower,Vector3.zero,master,new ModBehaviour(),new PetNestPetRecord(),out reason),"default-follow raid entity activates");
+        Check(!followerAi.gameObject.activeSelf && followerAi.searchedEnemy==null,"follow mode keeps combat AI parked until the owner fights");
+        var followMove=follower.Character.GetComponent<DuckNpcMovement>();
+        Check(followMove!=null && followMove.enabled && followMove.Follow==master.transform,"follow mode walks after the owner");
+        var foe=Character(Teams.wolf);Time.time=100f;
+        follower.Agent.NotifyEngaged(foe);
+        Check(followerAi.gameObject.activeSelf && followerAi.searchedEnemy==foe.mainDamageReceiver && !followMove.enabled,"owner combat wakes the companion onto that enemy");
+        Time.time=111f;follower.Agent.SetBehaviour(PetNestBehaviour.Follow);
+        Check(!followerAi.gameObject.activeSelf && followMove.enabled,"after the engage window it disengages and follows again");
+        follower.Agent.SetBehaviour(PetNestBehaviour.Avoid);
+        Check(!followerAi.gameObject.activeSelf && follower.Health.Invincible && follower.Character.RemovedTags.Count==2,"avoid mode never fights, is invincible and cleanses listed debuffs");
+        follower.Agent.NotifyEngaged(foe);
+        Check(!followerAi.gameObject.activeSelf,"avoid mode ignores owner combat");
+        follower.Agent.SetBehaviour(PetNestBehaviour.Active);
+        Check(followerAi.gameObject.activeSelf && !followMove.enabled && !follower.Health.Invincible,"active mode restores combat AI and drops only its own invincibility");
+        Check((int)PetNestBehaviour.Follow==0 && (int)PetNestBehaviour.Active==1 && (int)PetNestBehaviour.Avoid==2,"saved behaviour values stable");
+        PetNestCompanionSpawner.CleanupOnce(follower);
         var fighter=Staged();var ai=fighter.Character.GetComponentInChildren<AICharacterController>(true);
-        Check(PetNestCompanionSpawner.TryActivate(fighter,Vector3.zero,master,new ModBehaviour(),new PetNestPetRecord(),out reason),"new raid entity activates");
+        Check(PetNestCompanionSpawner.TryActivate(fighter,Vector3.zero,master,new ModBehaviour(),new PetNestPetRecord { behaviour=1 },out reason),"new raid entity activates");
         Check(ai.gameObject.activeInHierarchy && ai.enabled && ai.leader==master,"raid AI is live and follows owner despite earlier base disable");
         Check(ai.searchedEnemy==null && ai.forceTracePlayerDistance==0,"raid clears inherited target and forced player pursuit");
-        Check(fighter.Character.GetComponent<DuckNpcMovement>()==null,"raid uses combat AI without passive movement override");
+        Check(fighter.Character.GetComponent<DuckNpcMovement>()==null,"active mode uses combat AI without passive movement override");
         Check(Math.Abs(fighter.Character.CharacterItem.GetStat("GunDamageMultiplier").BaseValue-.28f)<.0001f
             && Math.Abs(fighter.Character.CharacterItem.GetStat("MeleeDamageMultiplier").BaseValue-.28f)<.0001f,"production gun and melee damage remain nonzero at companion balance");
         Check(fighter.Health.CurrentHealth==fighter.Health.MaxHealth && !fighter.Health.Invincible,"combat health is full and damageable");

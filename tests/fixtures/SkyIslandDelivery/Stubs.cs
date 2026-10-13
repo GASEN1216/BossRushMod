@@ -48,7 +48,7 @@ public static class PlayerStorage
 namespace ItemStatsSystem.Data { public sealed class ItemTreeData { public int rootInstanceID; public int RootTypeID; } }
 namespace ItemStatsSystem
 {
-    public sealed class Item : UnityEngine.Object
+    public sealed partial class Item : UnityEngine.Object
     {
         private static int nextId = 10;
         public int TypeID, Id = nextId++, MaxStackCount = 99;
@@ -129,7 +129,7 @@ namespace BossRush
         internal int TypeId, Count;
         internal SkyIslandIngredient(int id, int count) { TypeId = id; Count = count; }
     }
-    public static class ItemFactory
+    public static partial class ItemFactory
     {
         public static int GetItemCountInInventory(int id)
         {

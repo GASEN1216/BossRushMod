@@ -325,7 +325,7 @@ namespace BossRush
             get { return IsPaused && IsLiveReceiver(savedSearchedEnemy) ? savedSearchedEnemy : null; }
         }
 
-        private static bool IsLiveReceiver(DamageReceiver receiver)
+        internal static bool IsLiveReceiver(DamageReceiver receiver)
         {
             try { return receiver != null && receiver.health != null && !receiver.health.IsDead; }
             catch (Exception) { return false; }
@@ -513,7 +513,8 @@ namespace BossRush
                     cachedAI.defaultWeaponOut = savedDefaultWeaponOut;
 
                     // 恢复目标追踪
-                    if (playerCharacter != null && playerCharacter.mainDamageReceiver != null)
+                    // 传进来的目标可能已经倒了（龙裔复活 / 换阶段时对手刚死）：死目标写回去 AI 就不会再索敌。
+                    if (playerCharacter != null && IsLiveReceiver(playerCharacter.mainDamageReceiver))
                     {
                         cachedAI.searchedEnemy = playerCharacter.mainDamageReceiver;
                         cachedAI.noticed = true;

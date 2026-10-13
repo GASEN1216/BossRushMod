@@ -41,22 +41,28 @@ namespace BossRush
         /// <remarks>
         /// 发放顺序：武器 → 弹药 → 护甲 → 头盔 → 近战 → 医疗品 → 图腾 → 面具 → 背包
         /// </remarks>
-        internal void GivePlayerStarterKit()
+        /// <returns>必给的开局武器是否已发出；可选装备失败不影响结果。</returns>
+        internal bool GivePlayerStarterKit()
         {
+            lastGivenWeapon = null;
             try
             {
                 CharacterMainControl main = CharacterMainControl.Main;
                 if (main == null)
                 {
                     ModBehaviour.DevLog("[ModeD] [ERROR] GivePlayerStarterKit: 未找到玩家");
-                    return;
+                    return false;
                 }
 
                 ModBehaviour.DevLog("[ModeD] 给玩家发放开局装备...");
 
-                // 1. 发放随机武器（必给，配件随机 0-100%）
-                lastGivenWeapon = null;
+                // 1. 发放随机武器（必给，配件随机 0-100%）。武器是第一件，失败时还没发过任何东西，无需回收。
                 GiveRandomWeapon(main);
+                if (lastGivenWeapon == null)
+                {
+                    ModBehaviour.DevLog("[ModeD] [ERROR] GivePlayerStarterKit: 开局武器没发出去");
+                    return false;
+                }
 
                 // 填满弹夹
                 if (lastGivenWeapon != null)
@@ -109,10 +115,12 @@ namespace BossRush
                 }
 
                 ModBehaviour.DevLog("[ModeD] 开局装备发放完成");
+                return true;
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[ModeD] [ERROR] GivePlayerStarterKit 失败: " + e.Message);
+                return lastGivenWeapon != null;
             }
         }
 
@@ -121,6 +129,7 @@ namespace BossRush
         /// </summary>
         private void GiveRandomWeapon(CharacterMainControl character)
         {
+            Item weapon = null;
             try
             {
                 if (modeDWeaponPool.Count == 0)
@@ -132,33 +141,46 @@ namespace BossRush
                 // 优先选择低品质（1-3级）武器
                 int weaponId = GetRandomItemByQuality(modeDWeaponPool, 1, 3);
 
-                Item weapon = ItemAssetsCollection.InstantiateSync(weaponId);
+                weapon = ItemAssetsCollection.InstantiateSync(weaponId);
                 if (weapon == null)
                 {
                     ModBehaviour.DevLog("[ModeD] 无法创建武器 ID=" + weaponId);
                     return;
                 }
 
-                // 保存武器引用，用于后续给弹药
-                lastGivenWeapon = weapon;
-
                 // 配件完全随机：每个槽位独立判断是否安装（50%概率）
                 TryAddRandomAttachmentsFullRandom(weapon);
 
                 // 尝试装备到主武器槽
                 bool equipped = character.CharacterItem.TryPlug(weapon, true, null, 0);
-                if (!equipped)
+                if (!equipped && !IsStarterWeaponOnPlayer(weapon, character))
                 {
                     // 放入背包
                     ItemUtilities.SendToPlayerCharacterInventory(weapon, false);
                 }
 
+                // TryPlug / 入包的末尾通知可能抛异常；实例化或 API 返回都不能代替实际玩家归属。
+                if (!IsStarterWeaponOnPlayer(weapon, character)) return;
+                lastGivenWeapon = weapon;
+
                 ModBehaviour.DevLog("[ModeD] 发放武器: " + weapon.DisplayName);
             }
             catch (Exception e)
             {
+                if (IsStarterWeaponOnPlayer(weapon, character)) lastGivenWeapon = weapon;
                 ModBehaviour.DevLog("[ModeD] [ERROR] GiveRandomWeapon 失败: " + e.Message);
             }
+            finally
+            {
+                if (lastGivenWeapon != weapon) SkyIslandInventoryTransaction.DestroyUnowned(weapon);
+            }
+        }
+
+        private static bool IsStarterWeaponOnPlayer(Item weapon, CharacterMainControl character)
+        {
+            if (weapon == null || weapon.IsBeingDestroyed || character == null || character.CharacterItem == null) return false;
+            try { return ReferenceEquals(weapon.GetCharacterItem(), character.CharacterItem); }
+            catch (Exception) { return false; }
         }
 
         /// <summary>

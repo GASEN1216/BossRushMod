@@ -45,7 +45,9 @@ namespace BossRush
 
                 ModBehaviour.DevLog("[ModeD] 检测到裸体入场，启动 Mode D");
                 owner.StartModeD();
-                return true;
+                // 启动内部吞异常；成功与否以本实例这一次启动的结论为准，不能再恒报 true。
+                ModeDRuntimeModule runtime = current;
+                return runtime != null && runtime.owner == owner && runtime.lastStartSucceeded;
             }
             catch (Exception e)
             {
@@ -54,9 +56,13 @@ namespace BossRush
             }
         }
 
+        /// <summary>最近一次 StartModeD 是否完成了必需的准备（开局武器已发）。</summary>
+        internal bool lastStartSucceeded;
+
         internal void StartModeD()
         {
             ModeDRuntimeModule.Invalidate(owner);
+            lastStartSucceeded = false;
             try
             {
                 ModBehaviour.DevLog("[ModeD] 启动 Mode D 模式");
@@ -89,8 +95,9 @@ namespace BossRush
                 // 前置构建全局掉落池（避免战斗中首次调用时卡顿）
                 ItemPool.EnsureModeDGlobalItemPool();
 
-                // 给玩家发放开局装备
-                ItemPool.GivePlayerStarterKit();
+                // 给玩家发放开局装备；连武器都没发出去时本局无法进行，按启动失败回滚。
+                if (!ItemPool.GivePlayerStarterKit())
+                    throw new InvalidOperationException("starter_kit_not_delivered");
 
                 // 抽取并应用本局变异词条（首波敌人由路牌触发，此处先于任何刷怪）
                 owner.TryRollMutatorsForArena("ModeD");
@@ -100,12 +107,25 @@ namespace BossRush
 
                 // 初始状态保持为生小鸡（EntryAndDifficulty），波次开始时再切换到加油状态
 
+                lastStartSucceeded = true;
                 owner.ShowMessage(L10n.T("白手起家模式已激活！通过路牌开始挑战！", "From Scratch mode activated! Start the challenge via the signpost!"));
                 owner.ShowBigBanner(L10n.T("欢迎来到 <color=red>白手起家</color>！", "Welcome to <color=red>From Scratch</color>!"));
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[ModeD] [ERROR] StartModeD 失败: " + e.Message);
+                if (!lastStartSucceeded)
+                {
+                    // 半激活比没激活更糟：撤掉本局运行态（波次、敌人、词条），留在普通挑战并说明原因。
+                    CleanupModeDRuntimeOnDestroy();
+                    Debug.LogWarning("[ModeD] 白手起家启动失败，已回滚: " + e.Message);
+                    try
+                    {
+                        owner.ShowMessage(L10n.T("白手起家没能开起来，这局按普通挑战进行；回基地后可以再试",
+                            "From Scratch failed to start, so this run plays as a normal challenge. You can retry from the base"));
+                    }
+                    catch { /* 提示失败不影响回滚 */ }
+                }
             }
         }
 

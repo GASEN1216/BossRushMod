@@ -16,6 +16,7 @@ namespace BossRush
             LocalizationInjector.InjectNurseNPCLocalization();
             AwenCourierTokenConfig.InjectLocalization();
             LocalizationInjector.InjectColdQuenchFluidLocalization();
+            TemperingSolventConfig.InjectLocalization();
             LocalizationInjector.InjectBrickStoneLocalization();
             LocalizationInjector.InjectDiamondLocalization();
             LocalizationInjector.InjectDiamondRingLocalization();

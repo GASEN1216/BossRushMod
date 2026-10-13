@@ -140,6 +140,8 @@ namespace BossRush
             try
             {
                 if (health == null) return;
+                // 跟随档的交战判定搭这条已有订阅（只在带崽时存在），非跟随档第一行就早返
+                PetNestCareService.NotifyHurt(health, damageInfo);
                 if (!PetNestCompanionAgent.IsCompanionHealth(health)) return;
                 _lastAttackerName = ResolveKillerName(damageInfo.fromCharacter);
             }

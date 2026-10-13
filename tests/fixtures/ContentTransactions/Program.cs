@@ -589,10 +589,61 @@ partial class Program
         ManualChromaAndDurations();
         PityGuarantees();
         PetNestLifecycleRepairs();
+        PetNestCarePersistenceCompatibility();
         PetNestBackpackPersistence();
         PetNestBackpackTreeRoundTrip();
         PetNestBackpackOwnedRestoration();
         Console.WriteLine("ContentTransactions: " + checks + " assertions passed");
+    }
+
+    static void PetNestCarePersistenceCompatibility()
+    {
+        Reset(); PrepareNest();
+        string error;
+        Check(PetNestPersistenceAccess.BeginTransaction(out error), "care candidate opens through actual Bundle persistence");
+        PetNestPersistenceAccess.Expedition.records.Add(new PetNestExpeditionRecord { id = "rejected-care" });
+        SetPrivate(PetNestPersistence.Bundle, "_storeFaulted", true);
+        Check(!PetNestService.StageCommit() && !PetNestPersistenceAccess.IsTransactionActive
+            && PetNestExpeditionService.Records.Count == 0,
+            "actual StageCommit rejection discards candidate and releases transaction owner");
+        SetPrivate(PetNestPersistence.Bundle, "_storeFaulted", false);
+        Check(PetNestPersistenceAccess.BeginTransaction(out error), "next care action can open after rejected StageCommit");
+        PetNestPersistenceAccess.AbortTransaction();
+
+        Reset(); PrepareNest();
+        var pet = new PetNestPetRecord { id = "rough-care", lineageKey = "test",
+            state = (int)PetNestPetState.OnExpedition, lockedByExpeditionId = "rough-trip" };
+        pet.Normalize();
+        var bundle = PetNestPersistence.Bundle.Current;
+        bundle.nest.pets.Add(pet);
+        var trip = new PetNestExpeditionRecord { id = "rough-trip", petId = pet.id, petLineageKey = "test",
+            destinationId = PetNestTuning.DestinationStormSea, riskTier = (int)PetNestRiskTier.Rough,
+            returnTicks = 0, deathRate = .06f, successRate = 0 };
+        trip.Normalize(); bundle.expedition.records.Add(trip);
+        Check(PetNestExpeditionService.TrySettle(trip, out error), "legacy in-flight Rough settles through formal service");
+        var settled = PetNestExpeditionService.Records[0];
+        Check(settled.settled && !settled.outcomeDead && settled.deathRate == 0f
+            && PetNestService.TryGetPet(pet.id) != null,
+            "formal settlement freezes protected Rough probability before marking settled");
+        var reloaded = PetNestCodec.DecodeBundle(BossRushJsonParser.ParseOrNull(
+            PetNestCodec.EncodeBundle(PetNestPersistence.Bundle.Current)));
+        Check(reloaded.expedition.records[0].deathRate == 0f
+            && PetNestExpeditionService.EffectiveDeathRate(reloaded.expedition.records[0]) == 0f,
+            "protected settlement probability survives actual Bundle codec round trip");
+
+        Reset(); PrepareNest();
+        var historical = new PetNestExpeditionRecord { id = "historical-rough", petId = "gone",
+            petLineageKey = "test", riskTier = (int)PetNestRiskTier.Rough, deathRate = .06f,
+            settled = true, outcomeDead = true };
+        historical.Normalize(); PetNestPersistence.Bundle.Current.expedition.records.Add(historical);
+        Check(PetNestExpeditionService.TrySettle(historical, out error)
+            && PetNestExpeditionService.EffectiveDeathRate(historical) == .06f && PetNestService.PetCount == 0,
+            "formal replay retains historical 6 percent death without recreating deleted pet");
+        reloaded = PetNestCodec.DecodeBundle(BossRushJsonParser.ParseOrNull(
+            PetNestCodec.EncodeBundle(PetNestPersistence.Bundle.Current)));
+        Check(reloaded.expedition.records[0].outcomeDead
+            && PetNestExpeditionService.EffectiveDeathRate(reloaded.expedition.records[0]) == .06f,
+            "historical outcome and probability survive actual Bundle codec round trip");
     }
 
     static void HomecomingStoreRecovery()

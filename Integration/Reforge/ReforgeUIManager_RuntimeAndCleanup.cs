@@ -721,6 +721,7 @@ namespace BossRush
                 // 获取冷淬液数量（决定是否可以固定）
                 int fluidCount = ItemFactory.GetItemCountInInventory(ColdQuenchFluidConfig.TYPE_ID);
                 bool canLock = fluidCount > 0;
+                bool canUnlock = ItemFactory.GetItemCountInInventory(TemperingSolventConfig.TYPE_ID) > 0;
 
                 ModBehaviour.DevLog("[ReforgeUI] 冷淬液数量: " + fluidCount + ", 可固定: " + canLock);
 
@@ -777,7 +778,7 @@ namespace BossRush
                     if (!ReforgeSystem.IsPropertySupportedForReforge(key, propType)) continue;
 
                     // 为属性条目添加交互功能
-                    SetupPropertyEntryInteraction(child, key, propType, canLock);
+                    SetupPropertyEntryInteraction(child, key, propType, canLock, canUnlock);
                     addedCount++;
                 }
 
@@ -793,7 +794,7 @@ namespace BossRush
         /// 为属性条目设置交互功能：点两下固定（UD-24）。
         /// 常态左侧 Accent 细条表示能点，悬停 / 待确认有行底淡色，已固定数值为 RarityLegendary；只给数值那个 TMP 上色。
         /// </summary>
-        private static void SetupPropertyEntryInteraction(Transform propertyEntry, string propertyKey, PropertyType propType, bool canLock)
+        private static void SetupPropertyEntryInteraction(Transform propertyEntry, string propertyKey, PropertyType propType, bool canLock, bool canUnlock)
         {
             try
             {
@@ -839,6 +840,7 @@ namespace BossRush
                 interactable.Fx = ReforgeRowFx.Ensure(propertyEntry);
                 interactable.IsLocked = isLocked;
                 interactable.CanLock = canLock && !isLocked;  // 有冷淬液且未固定才能固定
+                interactable.CanUnlock = canUnlock && isLocked;  // 有回火液且已固定才能解除（行显示为蓝色）
 
                 // 初始化外观（细条 / 数值色）
                 interactable.ApplyVisualState();

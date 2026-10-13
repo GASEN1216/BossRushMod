@@ -58,6 +58,7 @@ The config option `useLegacyBossLootProbabilities` controls the quality distribu
 
 #### Per-Wave Cash
 - Each Boss kill grants cash = Boss max health × 10.
+- The cash drops in several piles by the signpost, each within the game's stack limit; anything beyond 12 piles in one wave goes straight into your account instead of being lost.
 - Example: a Boss with 1000 health drops 10,000 cash on kill.
 - Cash pickups within 2 meters of the player automatically fly in; outside that radius you still need to move closer.
 

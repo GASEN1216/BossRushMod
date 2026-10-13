@@ -28,17 +28,28 @@ def main():
     bad=copy.deepcopy(modeg);bad['textures'][0].update(width=512,height=512)
     assert validate(bad,'modeg_presentation'), 'Mode G builder dimension contract must not drift'
     sky=copy.deepcopy(row)
-    sky['textures']=[dict(row['textures'][0],name=name,format='BC7') for name in
-        ['geology_handpainted_native','wood_handpainted_vanilla','sky_mural','stone_handpainted_vanilla',
-         'sky_cloth','grass_handpainted_vanilla','roof_handpainted_terracotta']]
+    sky['textures']=[dict(row['textures'][0],name='geologysand_handpainted_mat',format='BC7',width=1024,height=1024,mips=11)]
+    sky['sky_materials']=[{'name':'Sky_GeologySand','shader':'BossRush/SkyIsland/Environment',
+        'baseMap':copy.deepcopy(sky['textures'][0]),'baseColor':dict(r=1,g=1,b=1,a=1),'rendererSlots':1}]
     sky['meshes']=[{'name':'SkyIslandNavigation','triangles':1,'vertices':4095,'readable':True}]
     assert not validate(sky,'sky_island_raid')
     for changes in [{'vertices':4096},{'vertices':0},{'readable':False},{'name':'NavigationGone'}]:
         bad=copy.deepcopy(sky);bad['meshes'][0].update(changes)
         assert validate(bad,'sky_island_raid'),changes
     for fmt in ['RGB24','RGBA32','DXT1']:
-        bad=copy.deepcopy(sky);bad['textures'][0]['format']=fmt
+        bad=copy.deepcopy(sky);bad['sky_materials'][0]['baseMap']['format']=fmt
         assert validate(bad,'sky_island_raid'),fmt
+    for field,value in [('width',512),('height',1023),('mips',1),('readable',True),('name','wrong_dependency')]:
+        bad=copy.deepcopy(sky);bad['sky_materials'][0]['baseMap'][field]=value
+        assert validate(bad,'sky_island_raid'),(field,value)
+    for field,value in [('baseMap',None),('shader','Hidden/InternalErrorShader'),('baseColor',dict(r=.5,g=1,b=1,a=1)),
+                        ('name','UnknownEnvironmentMaterial')]:
+        bad=copy.deepcopy(sky);bad['sky_materials'][0][field]=value
+        if field=='shader': bad['sky_materials'].append(copy.deepcopy(sky['sky_materials'][0]))
+        assert validate(bad,'sky_island_raid'),(field,value)
+    bad=copy.deepcopy(sky);bad['sky_materials']=[];assert validate(bad,'sky_island_raid')
+    bad=copy.deepcopy(sky);bad['sky_material_errors']=['Renderer material dependency unresolved']
+    assert validate(bad,'sky_island_raid')
     bad=copy.deepcopy(sky);bad['meshes'].append({'name':'VIS_B_Leaf','vertices':65536,'triangles':1,'readable':True})
     assert validate(bad,'sky_island_raid')
     for name,texture in [('birthday_cake','BirthdayCake'),('bossrush_ticket','BossRushTicket2')]:

@@ -324,6 +324,8 @@ namespace BossRush
         /// </summary>
         private void RestoreForSlotChange()
         {
+            if (BossRushMapSelectionHelper.HasPendingModeHEntryIntent()) ModeHEntry.CancelPendingEntry();
+            ModeHTicketRefund.ResetStaticCaches();
             // 只回收运行期对象，不经过会返还真实押品的 shutdown。
             _commandsClosed = true;
             CancelSeasonResume();
@@ -547,6 +549,7 @@ namespace BossRush
             // 形态与 PetNest / 日报 / Mode G 的销毁路径一致。
             ModeHSaveFlushCoordinator.ShutdownSubscription();
             ModeHRuntimeGates.ResetStaticCaches();
+            ModeHTicketRefund.ResetStaticCaches();
             ModeHSaveFlushCoordinator.ResetStaticCaches();
             ModeHContentCatalog.ResetStaticCaches();
             ModeHProfileRegistry.ResetStaticCaches();

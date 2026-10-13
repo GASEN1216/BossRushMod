@@ -71,6 +71,7 @@ namespace BossRush
         /// 是否已触发二阶段转换
         /// </summary>
         private bool phase2Triggered = false;
+        private Coroutine phase2TransitionCoroutine;
 
         /// <summary>
         /// Boss角色引用
@@ -1106,7 +1107,27 @@ namespace BossRush
             if (ai == null)
                 return false; // AI不可用，不攻击
 
+            // 对手已倒但 searchedEnemy 还挂着时，原先这里照样算「有目标」：攻击循环拿死目标空转、心跳照刷，
+            // 看门狗永远不触发，表现就是擂台上龙皇卡着不开枪。清掉死目标，逼官方 AI 重新索敌。
+            if (ai.searchedEnemy != null && !BossAIController.IsLiveReceiver(ai.searchedEnemy))
+                ai.searchedEnemy = null;
             return ai.searchedEnemy != null || aiController.PausedTarget != null;
+        }
+
+        /// <summary>二阶段转换协程被打断时补完它的收尾：现身、撤无敌、恢复组件与碰撞、进入二阶段。</summary>
+        private void FinishInterruptedPhase2Transition()
+        {
+            try
+            {
+                SetBossVisible(true);
+                if (bossCharacter != null) bossCharacter.enabled = true;
+                if (collisionDetector != null) collisionDetector.enabled = true;
+                CurrentPhase = DragonKingPhase.Phase2;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[DragonKing] [WARNING] 补完二阶段转换失败: " + e.Message);
+            }
         }
 
         /// <summary>
@@ -1186,9 +1207,13 @@ namespace BossRush
 
             // 停止所有协程（包括AttackLoop、MoveLance、TrackingProjectileCore等）
             StopAllCoroutines();
+            phase2TransitionCoroutine = null;
 
             // 清理所有活跃特效和弹幕
             CleanupAllEffects();
+
+            // 二阶段转换被截断时龙皇停在「隐身 + 无敌 + 角色组件关闭」：补完转换收尾，别让他永久消失。
+            if (CurrentPhase == DragonKingPhase.Transitioning) FinishInterruptedPhase2Transition();
 
             // 恢复AI行为（防止Boss卡在暂停状态）
             ResumeBossMovementAndShooting();

@@ -68,13 +68,24 @@ def main() -> int:
     if "BossRushDynamicItemRegistry.EnsureRegistered(typeId);" not in ensure_block:
         return fail("drop fallback helper must call BossRushDynamicItemRegistry.EnsureRegistered(typeId)")
 
+    # 2026-10-12：箱子与无间炼狱落地共用 CreateDragonRewardItem；预载兜底收在它里面，且必须早于实例化。
+    create_block = extract_block(loot_text, "private Item CreateDragonRewardItem(int typeId, string logPrefix)")
+    ensure_call = "EnsureDragonBossRewardPrefabLoaded(typeId, logPrefix)"
+    if ensure_call not in create_block or "InstantiateSync(typeId)" not in create_block \
+            or create_block.index(ensure_call) > create_block.index("InstantiateSync(typeId)"):
+        return fail("shared dragon reward factory must ensure prefab before InstantiateSync")
+
     descendant_block = extract_block(loot_text, "internal IEnumerator AddDragonDescendantLoot(Inventory inv)")
-    if "EnsureDragonBossRewardPrefabLoaded(selectedTypeId, \"[DragonDescendant]\")" not in descendant_block:
+    if "CreateDragonRewardItem(selectedTypeId, \"[DragonDescendant]\")" not in descendant_block:
         return fail("dragon descendant drop path must ensure prefab before InstantiateSync")
 
     king_block = extract_block(loot_text, "internal bool TryAddDragonKingLootItem(Inventory inv, int typeId, string itemName)")
-    if "EnsureDragonBossRewardPrefabLoaded(typeId, \"[DragonKing]\")" not in king_block:
+    if "CreateDragonRewardItem(typeId, \"[DragonKing]\")" not in king_block:
         return fail("dragon king drop path must ensure prefab before InstantiateSync")
+
+    world_block = extract_block(loot_text, "internal void DropDragonExclusiveLootIntoWorld(CharacterMainControl bossMain)")
+    if "CreateDragonRewardItem(typeId, prefix)" not in world_block:
+        return fail("infinite hell dragon world drop must reuse the shared reward factory")
 
     print("DragonBossRewardContentPreloadGuard: PASS")
     return 0

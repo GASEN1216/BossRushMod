@@ -210,7 +210,8 @@ namespace BossRush
         public static void RestoreDownedPetsOnReturnToBase()
         { foreach(var pet in AuthoritativePets) if(pet.state==(int)PetNestPetState.Downed)pet.state=(int)PetNestPetState.Deployed; }
     }
-    class PetNestCompanionAgent { public CharacterMainControl Master; public static bool IsCompanionHealth(Health h) { return h.IsCompanion; } public static bool IsCompanionCharacter(CharacterMainControl c) { return c.IsCompanion; } }
+    enum PetNestBehaviour { Follow, Active, Avoid }
+    class PetNestCompanionAgent { public CharacterMainControl Master; public PetNestBehaviour Behaviour; public void SetBehaviour(PetNestBehaviour b) { Behaviour=b; } public static bool IsCompanionHealth(Health h) { return h.IsCompanion; } public static bool IsCompanionCharacter(CharacterMainControl c) { return c.IsCompanion; } }
     class PetNestLineageInfo { public float ModelScale; public string DisplayName="lineage"; public string LineageKey="boss"; }
     static class PetNestLineageCatalog
     {

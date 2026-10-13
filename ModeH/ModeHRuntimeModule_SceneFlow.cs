@@ -192,11 +192,12 @@ namespace BossRush
             yield return null;
             float elapsed = 0f;
             bool readyLastFrame = false;
+            string notReady = "scene_unloaded";
             while (IsSceneReadyRequestCurrent(context.SceneName, sceneId, intentGeneration,
                 resume, request, sceneGeneration, slotGeneration, ownerToken))
             {
                 if (!context.Scene.IsValid() || !context.Scene.isLoaded) break;
-                bool ready = IsModeHSceneReady(context.Scene);
+                bool ready = IsModeHSceneReady(context.Scene, out notReady);
                 if (ready && readyLastFrame)
                 {
                     _sceneReadyRoutine = null;
@@ -220,7 +221,8 @@ namespace BossRush
                 || !BossRushMapSelectionHelper.TryMatchModeHSceneIntent(
                     context.SceneName, sceneId, out currentIntent)
                 || currentIntent != intentGeneration) yield break;
-            FailSceneReadyWait(resume, "scene_not_ready");
+            // 带上最后一个没满足的条件，正式版日志才能看出是哪一项卡了 30 秒。
+            FailSceneReadyWait(resume, "scene_not_ready:" + notReady);
         }
 
         private bool IsSceneReadyRequestCurrent(string sceneName, string sceneId, int intentGeneration,
@@ -235,20 +237,32 @@ namespace BossRush
             return !resume || IsSeasonResumeRequestCurrent(ownerToken, slotGeneration, intentGeneration);
         }
 
-        private static bool IsModeHSceneReady(Scene scene)
+        /// <summary>
+        /// 官方 InitLevel 在最终 SetPosition 之后写入的完成标记（IL 已核实，SkyIslandOfficialContract 夹具钉住顺序）。
+        /// 它之后才派发 OnAfterLevelInitialized 并置 afterInit；任一第三方订阅者抛异常，afterInit 就永远是 false。
+        /// </summary>
+        internal const string OfficialInitDoneComment = "Done!";
+
+        private static bool IsModeHSceneReady(Scene scene, out string notReady)
         {
+            notReady = "exception";
             try
             {
-                // 官方 LevelInited 后还会等待 0.25 秒再 SetPosition，只有 AfterInit 在那之后。
-                if (SceneLoader.IsSceneLoading || !LevelManager.LevelInited || !LevelManager.AfterInit
-                    || SceneManager.GetActiveScene().handle != scene.handle) return false;
+                if (SceneLoader.IsSceneLoading) { notReady = "scene_loading"; return false; }
+                if (!LevelManager.LevelInited) { notReady = "level_inited"; return false; }
+                // 官方 LevelInited 后还会等待 0.25 秒再 SetPosition，只有 AfterInit / 完成标记在那之后。
+                if (!LevelManager.AfterInit && !string.Equals(LevelManager.LevelInitializingComment,
+                        OfficialInitDoneComment, StringComparison.Ordinal)) { notReady = "after_init"; return false; }
+                if (SceneManager.GetActiveScene().handle != scene.handle) { notReady = "scene_handle"; return false; }
                 MultiSceneCore core = MultiSceneCore.Instance;
-                if (core != null && core.IsLoading) return false;
+                if (core != null && core.IsLoading) { notReady = "multiscene_loading"; return false; }
                 // 官方关卡已初始化不代表当前导航扫描已结束；沿用入场超时等待，
                 // 避免把暂时不可查询的导航误判成整张地图没有安全擂台。
-                if (global::AstarPath.active == null || global::AstarPath.active.isScanning) return false;
+                if (global::AstarPath.active == null || global::AstarPath.active.isScanning) { notReady = "astar"; return false; }
                 CharacterMainControl player = CharacterMainControl.Main;
-                return player != null && player.Health != null && !player.Health.IsDead;
+                if (player == null || player.Health == null || player.Health.IsDead) { notReady = "player"; return false; }
+                notReady = null;
+                return true;
             }
             catch (Exception) { return false; }
         }
@@ -332,6 +346,11 @@ namespace BossRush
         {
             try
             {
+                if (!BossRushMapSelectionHelper.HasPendingPrepaidTicket())
+                {
+                    AbortSetup("entry_payment_unconfirmed", false);
+                    return;
+                }
                 if (!ModeHMapSupportRegistry.TryGetMap(sceneName, out _map) || _map == null)
                 {
                     AbortSetup("map_unsupported", false);
@@ -776,7 +795,8 @@ namespace BossRush
         /// </summary>
         private void AbortSetup(string reasonId, bool leasesTaken)
         {
-            ModBehaviour.DevLog("[ModeH] 开局中止: " + (reasonId ?? "unknown"));
+            // 正式构建没有 DevLog；中止原因必须进玩家日志，否则反馈「被送回家」时无从查起。
+            ModBehaviour.CriticalLog("[ModeH] 开局中止: " + (reasonId ?? "unknown"));
             _lastExitReasonId = reasonId;
 
             bool mustExitScene = leasesTaken
@@ -795,11 +815,9 @@ namespace BossRush
             _map = null;
             ModeHRuntimeGates.SetRunOwnerActive(false);
 
-            // 玩家带着船票专程进了图，被无声传回基地是不可接受的：
-            // 先给一句解释 + 退票告知，再执行退款离场（CR-2026-08-29-013）。
-            ShowAbortMessage(reasonId);
-
-            try { ModeHEntry.AbortAndRefund(_owner, reasonId, mustExitScene); }
+            // 玩家带着船票专程进了图，被无声传回基地是不可接受的（CR-2026-08-29-013）：
+            // 先退票拿到真实结果，再按结果解释（已退 / 没扣 / 欠着下次补），最后离场。
+            try { ModeHEntry.AbortAndRefund(_owner, reasonId, mustExitScene, outcome => ShowAbortMessage(reasonId, outcome)); }
             catch (Exception e) { LogFailure("abort_refund", e); }
         }
 
@@ -834,14 +852,16 @@ namespace BossRush
             }
         }
 
-        /// <summary>开局中止的玩家可见提示：一句归类文案 + 退票告知。失败不阻断退款。</summary>
-        private void ShowAbortMessage(string reasonId)
+        /// <summary>开局中止的玩家可见提示：一句归类文案 + 按真实退票结果的告知。失败不阻断退款。</summary>
+        private void ShowAbortMessage(string reasonId, ModeHRefundOutcome outcome)
         {
             try
             {
                 if (_owner == null) return;
+                string ticketKey = outcome == ModeHRefundOutcome.Refunded ? "Unavailable_TicketRefunded"
+                    : outcome == ModeHRefundOutcome.Owed ? "Unavailable_TicketRefundOwed" : "Unavailable_TicketNotCharged";
                 string text = L10n.T(ModeHConfig.LocalizationKeyPrefix + ResolveAbortMessageKey(reasonId))
-                    + " " + L10n.T(ModeHConfig.LocalizationKeyPrefix + "Unavailable_TicketRefunded");
+                    + " " + L10n.T(ModeHConfig.LocalizationKeyPrefix + ticketKey);
                 _owner.ShowMessage(text);
             }
             catch (Exception)
@@ -859,6 +879,10 @@ namespace BossRush
         {
             if (string.IsNullOrEmpty(reasonId)) return "Abort_Generic";
 
+            if (reasonId.IndexOf("scene_not_ready", StringComparison.Ordinal) >= 0)
+            {
+                return "Abort_SceneNotReady";
+            }
             if (reasonId.IndexOf("map_unsupported", StringComparison.Ordinal) >= 0)
             {
                 return "Abort_MapUnsupported";

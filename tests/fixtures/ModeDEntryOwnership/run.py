@@ -77,7 +77,7 @@ def main():
         + "\n".join(member(source, s) for s in ("public bool IsPlayerNaked()", "private int GetBossRushTicketTypeId()"))
         + "\n" + "\n".join(member(entry, s) for s in ("private enum BossRushEntryMode", "private BossRushEntryMode DetermineBossRushEntryMode(string context)"))
         + "\n} }", encoding="utf-8")
-    inventory_paths = [ROOT / "Utilities/ModeEntryInventory.cs", ROOT / "Config/ConfigItemIds.cs", inventory_bridge, HERE / "InventoryEntryRegression.cs"]
+    inventory_paths = [ROOT / "Utilities/ModeEntryInventory.cs", ROOT / "ModeD/ModeDNakedEntryNotice.cs", ROOT / "Config/ConfigItemIds.cs", inventory_bridge, HERE / "InventoryEntryRegression.cs"]
     inventory_project = OUT / "InventoryEntry.csproj"
     inventory_project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType>'
         '<TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems>'
