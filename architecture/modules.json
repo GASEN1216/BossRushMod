@@ -729,6 +729,7 @@
         "Integration/*.cs",
         "Integration/Config/**/*.cs",
         "Integration/Constants/**/*.cs",
+        "Integration/Coop/**/*.cs",
         "Integration/Utils/**/*.cs",
         "Integration/UI/**/*.cs",
         "Integration/Dialogue/**/*.cs"
