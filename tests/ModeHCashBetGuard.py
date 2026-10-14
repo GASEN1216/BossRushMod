@@ -274,7 +274,7 @@ def check(sources):
          "[换边] 沿用押注的这一场不能「换一批」")
     page = body(group, "private ModeHPageContent BuildGroupPageContent()")
     ordered(page, ["ModeHCashBetRecord carried = RestoreCarriedGroupBetSide();", "if (!IsGroupBetSideLocked(carried))",
-                   "if (left > 0 && carried == null)"],
+                   "if (left > 0 && carried == null && !CoopRosterLocked)"],
             "[换边] 赛前页先恢复押注方向，再按需收起「押哪边赢」与「换一批」")
     need(page, "carried != null ? FormatPayoutMultiplier(carried) : FormatPayoutMultiplier(ResolveGroupOdds(_groupBetOnRed))",
          "[换边] 沿用押注时页面显示账本冻结的倍率")
@@ -416,7 +416,7 @@ def main():
         ("group", "            RestoreCarriedGroupBetSide(); // 沿用押注", "            // 沿用押注"),
         ("group", "            if (IsGroupBetSideLocked(CarriedGroupBet())) return;", ""),
         ("group", "            if (CarriedGroupBet() != null) return;", ""),
-        ("group", "if (left > 0 && carried == null)", "if (left > 0)"),
+        ("group", "if (left > 0 && carried == null && !CoopRosterLocked)", "if (left > 0 && !CoopRosterLocked)"),
         ("group", "            if (!IsGroupBetSideLocked(carried))\n", "            if (true)\n"),
         ("group", "carried != null ? FormatPayoutMultiplier(carried) : FormatPayoutMultiplier(ResolveGroupOdds(_groupBetOnRed))",
          "FormatPayoutMultiplier(ResolveGroupOdds(_groupBetOnRed))"),

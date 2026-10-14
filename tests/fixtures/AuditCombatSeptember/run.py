@@ -5,7 +5,7 @@ import html
 import json
 import os
 import re
-import subprocess
+import sys
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
@@ -53,6 +53,10 @@ def main():
     field_start = wraith_fields.index("private List<WraithInfo> _deathWraithListCache;")
     field_end = wraith_fields.index(";", wraith_fields.index("private const float DEATH_WRAITH_SAVE_DELAY", field_start)) + 1
     replacements = {
+        "Realm": {
+            "REALM_FIELDS": "\n".join(re.findall(r"private\s+(?:static\s+)?(?:readonly\s+)?(?:Collider\[\]|HashSet<int>)\s+(?:damageHitBuffer|processedReceiverIds)\s*=[^;]+;", realm)),
+            "REALM_METHODS": methods("Integration/PhantomWitch/PhantomWitchScytheAction.cs", ["private void DealRealmDamage()", "private int QueryRealmTargets(", "private bool IsEnemyReceiver("])
+        },
         "Fire": {"FIRE_METHOD": member("Integration/Bonus/DragonSetBonus.cs", "private void OnDragonSetHurt(")},
         "Flight": {
             "BASE_METHOD": member(base, "protected override void OnUpdateAction("),
@@ -60,7 +64,11 @@ def main():
             "FLIGHT_POLICY": re.search(r"protected override bool ContinueUpdatingWhenStaminaDepleted[^;]+;", source(flight)).group(0),
             "FLIGHT_METHODS": methods(flight, ["protected override void OnAbilityUpdate(", "protected override bool ShouldAutoConsumeStamina(", "protected override void OnStaminaDepleted(", "private void UpdateFlight(", "private void UpdateFlightPlatform("])
         },
-        "Child": {"CHILD_METHODS": methods(child, ["private IEnumerator SpawnDescendantForProtection(", "private async void SpawnDescendantAsync(", "private void ReleaseChild("])},
+        "Child": {
+            "CHILD_METHODS": methods(child, ["private IEnumerator SpawnDescendantForProtection(", "private async void SpawnDescendantAsync(", "private void ReleaseChild("])
+                + member("Integration/DragonKing/DragonKingAbilityController_SpecialAttacks.cs", "internal bool HasCombatAuthority"),
+            "ENTITY_AUTHORITY": member("Utilities/CoopAiPredictionHealthProtection.cs", "internal static bool HasEntityAuthority(")
+        },
         "Pool": {"POOL_METHODS": methods(pool, ["internal static void RequestFireExplosionEffectWarmup(", "private static async UniTaskVoid WarmFireExplosionEffectPoolAsync(", "internal static void ClearFireExplosionEffectPool("]).replace("async UniTaskVoid", "async Task")},
         "Mark": {},
         "Wraith": {
@@ -115,18 +123,14 @@ def main():
                 includes.append('<Reference Include="' + dll + '"><HintPath>' + html.escape(str(managed / (dll + ".dll"))) + '</HintPath></Reference>')
         project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup><ItemGroup>' + ''.join(includes) + '</ItemGroup></Project>'
         (target / "Probe.csproj").write_text(project, encoding="utf-8")
-        build = subprocess.run(["dotnet", "build", str(target / "Probe.csproj"), "-c", "Release", "--nologo", "-o", str(target / "bin"), "-p:BaseIntermediateOutputPath=" + str(target / "obj") + "/"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8")
-        (target / "build.log").write_text(build.stdout + build.stderr, encoding="utf-8")
-        if build.returncode:
-            print(build.stdout + build.stderr)
-            return build.returncode
-        run = subprocess.run(["dotnet", str(target / "bin/Probe.dll")], cwd=ROOT, capture_output=True, text=True, encoding="utf-8")
-        (target / "result.log").write_text(run.stdout + run.stderr, encoding="utf-8")
-        print(name + ": " + ("PASS" if run.returncode == 0 else "FAIL"))
-        results[name] = {"passed": run.returncode == 0, "output": run.stdout + run.stderr}
-        if run.returncode:
-            print(run.stdout + run.stderr)
-            return run.returncode
+        sys.path.insert(0, str(ROOT / "tools"))
+        from run_runtime_regressions import run_project_fixture
+        result, output = run_project_fixture(target / "Probe.csproj", target, ROOT)
+        (target / "result.log").write_text(output, encoding="utf-8")
+        print(name + ": " + ("PASS" if result == 0 else "FAIL") + "\n" + output)
+        results[name] = {"passed": result == 0, "output": output}
+        if result:
+            return result
     (OUT / "source-hashes.json").write_text(json.dumps(HASHES, indent=2), encoding="utf-8")
     (OUT / "results.json").write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
     return 0

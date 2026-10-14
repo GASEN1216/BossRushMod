@@ -135,9 +135,11 @@ public static class ItemUtilities
 public enum DamageTypes { normal, realDamage }
 public struct DamageInfo
 {
-    public CharacterMainControl fromCharacter; public bool isFromBuffOrEffect;
+    public CharacterMainControl fromCharacter; public bool isFromBuffOrEffect, isExplosion;
     public float damageValue, finalDamage; public DamageTypes damageType;
     public int fromWeaponItemID; public Vector3 damagePoint;
+    public int crit;
+    public DamageInfo(CharacterMainControl source) { this=default(DamageInfo); fromCharacter=source; }
 }
 public class CharacterRandomPreset : UnityEngine.Object { }
 public class CharacterMainControl : UnityEngine.Object
@@ -209,7 +211,8 @@ namespace BossRush
         public static ModBehaviour Instance = new ModBehaviour();
         public static void DevLog(string message) { }
         public void ShowMessage(string message) { }
-        public void ReportModeGBossKillAchievement(int t, string b, bool f) { }
+        internal int AchievementReports;
+        public void ReportModeGBossKillAchievement(int t, string b, bool f) { AchievementReports++; }
         public bool TryStartModeGRewardMaterialization_LootAndRewards(int[] ids,Inventory inventory,
             Action<int,Item,bool> perItem,Action<int,int,int> completed,out string reason)
         { reason="fixture does not start Unity components"; return false; }
@@ -218,6 +221,14 @@ namespace BossRush
     }
     internal sealed partial class ModeGEntryRuntime
     {
+        private static ModeGEntryRuntime coopOwner;
+        private ModeGRuntimeModule modeGRuntime;
+        internal static int PublishedDamage, PublishedDeaths;
+        internal static bool HasLeft(string id) { return false; }
+        internal static void UseRuntime(ModeGRuntimeModule runtime)
+        { coopOwner = runtime == null ? null : new ModeGEntryRuntime { modeGRuntime=runtime }; PublishedDamage=0;PublishedDeaths=0; }
+        internal static void PublishCoopCombat(Health health, DamageInfo info, bool dead)
+        { if(dead)PublishedDeaths++;else PublishedDamage++; }
         internal static bool SelectFormation(Vector3[] source,int count,ModeGPlanVariant variant,out Vector3[] selected)
         { return TrySelectModeGFormation(source,new Vector3(),0,count,variant,ModeGWavePlan.GetFormationSpec(variant),false,out selected); }
     }
@@ -250,7 +261,20 @@ namespace BossRush
         internal static string GetAmmoDisplayName(int id) { return id.ToString(); }
         internal static string ComposeBanAttributionLine(string name,int share) { return name; }
     }
-    internal static class ModeGDeathRouting { internal static void HandleVictory(ModeGRuntimeModule module) { } }
+    internal static class ModeGDeathRouting
+    {
+        internal static void HandleVictory(ModeGRuntimeModule module) { }
+        internal static void HandlePlayerDeath(ModeGRuntimeModule module, Health health, DamageInfo info) { }
+    }
+    internal static partial class BossRushCoop
+    {
+        internal static readonly List<BossRushCoopPlayer> Players=new List<BossRushCoopPlayer>();
+        internal static readonly Dictionary<string,CharacterMainControl> Entities=new Dictionary<string,CharacterMainControl>();
+        internal static CharacterMainControl FindEntity(string id)
+        { CharacterMainControl value; return id!=null && Entities.TryGetValue(id,out value) ? value : null; }
+    }
+    internal sealed class BossRushCoopPlayer
+    { internal string Id,AssetId;internal bool IsLocal;internal CharacterMainControl Character;internal bool IsAlive {get{return Character!=null&&Character.Health!=null&&!Character.Health.IsDead;}} }
     // 生产里是 token 预先转成的富文本开标签（ModeGHUD.cs）；夹具不带 BossRushUIColors / ColorUtility，只需同名字段。
     internal static class ModeGRichText
     {
@@ -263,12 +287,31 @@ namespace BossRush
     }
     internal sealed partial class ModeGRuntimeModule
     {
+        private string coopRunAsset,coopRunRoom; private bool coopAssetBound;
+        private readonly Dictionary<string,string> coopParticipantAssets=new Dictionary<string,string>(StringComparer.Ordinal);
+        private bool _disposed, _ended, _firstWaveCombatStarted;
+        internal bool CanContinueWorld {get{return CanContinueRun();}}
+        internal int AssetEnds; internal bool StartupDisarmed;
+        internal void FreezeAsset() { FreezeCoopAsset(); }
+        private void DisarmStartupRefund() { StartupDisarmed=true; }
+        internal void End(ModeGExitReason reason) { if(_state.exitReason==ModeGExitReason.None)AssetEnds++;_state.exitReason=reason; }
         private readonly ModeGRunState _state;
         private readonly ModeGCombatTelemetry _telemetry;
         private readonly ModeGAdaptiveCombat _adaptive;
         private readonly ModBehaviour _host = ModBehaviour.Instance;
+        private int coopGuestWave;
+        private long coopAppliedOrder;
+        private long coopAdmissionBaseline,coopRequestedAdmissionBaseline;private bool coopAdmissionReady,coopRunWasClient,coopEntryActorsKnown;private int coopEntryWave;
+        private readonly HashSet<int> coopEntryActors=new HashSet<int>();
+        private readonly Dictionary<int,CharacterMainControl> coopBosses = new Dictionary<int,CharacterMainControl>();
+        private readonly HashSet<long> coopCombatApplied = new HashSet<long>();
+        internal int CoopBossDeaths;
         public ModeGRuntimeModule(ModeGRunState state,ModeGCombatTelemetry telemetry,ModeGAdaptiveCombat adaptive)
         { _state=state; _telemetry=telemetry; _adaptive=adaptive; }
+        internal void BindCoopBoss(int id, CharacterMainControl boss)
+        { coopGuestWave=_state.waveEpoch; coopBosses[id]=boss; }
+        private void HandleBossDead(Health health,DamageInfo info)
+        { CoopBossDeaths++; _state.UnregisterTrackedBoss(health); }
         public void Settle(ModeGDistanceVerdict distance,ModeGDirectDamageClass terminal)
         { _activeDistanceVerdict=distance; _lastTerminalFamily=terminal; SettleCurrentWave(); }
         public static float SpawnWait(float elapsed,float previous,float now,bool wasPaused,bool paused)

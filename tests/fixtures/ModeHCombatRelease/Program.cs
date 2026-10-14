@@ -308,3 +308,5 @@ namespace BossRush
         }
     }
 }
+
+namespace BossRush { internal static class BossRushCoop { internal static bool IsPlayer(CharacterMainControl c) { return c != null && c.IsMainCharacter; } } }

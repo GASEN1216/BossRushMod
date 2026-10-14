@@ -62,6 +62,7 @@ namespace UnityEngine
     }
     public struct Vector3
     {
+        public static Vector3 Lerp(Vector3 a,Vector3 b,float t) { return a+(b-a)*Math.Max(0f,Math.Min(1f,t)); }
         public float x, y, z;
         public Vector3(float x, float y, float z) { this.x = x; this.y = y; this.z = z; }
         public static Vector3 zero { get { return new Vector3(); } }
@@ -166,6 +167,11 @@ namespace BossRush
         private bool _stopped;
         private Vector3 _lastDashDirection,_lastMotionPosition,_reportPosition;
         private Vector3 _playerVelocity=Vector3.zero;
+        private Vector3 _lastPlayerPosition;
+        private bool _playerVelocityPrimed;
+        private CharacterMainControl _velocityPlayer;
+        internal Vector3 SampledVelocity { get { return _playerVelocity; } }
+        internal void Sample(float dt) { Time.deltaTime=dt;SamplePlayerVelocity(); }
         private float _blockedSeconds,_moveDistance,_moveAttemptSeconds;
         private float _stormEndsAt=0f;
         private float _nextMoveReport=float.MaxValue;
@@ -218,4 +224,23 @@ namespace BossRush
     internal struct BossRushFxBurst { internal Color Main; }
     internal static class BossRushFxKit { internal const float GainBright=1;internal static BossRushFxBurst Shockwave(Color c,float a,float b,float d,bool f){return new BossRushFxBurst();} }
     internal static class BossRushUI { internal static bool Paused;internal static bool IsGamePaused(){return Paused;} }
+}
+
+// In-process roster fixture: executes production geometry for arbitrary participant counts; no transport is simulated.
+namespace BossRush
+{
+    internal sealed class BossRushCoopPlayer { internal bool IsAlive; internal CharacterMainControl Character; }
+    internal static class BossRushCoop
+    {
+        internal static bool IsConnected;
+        internal static BossRushCoopPlayer[] Players = new BossRushCoopPlayer[0];
+        internal static CharacterMainControl GetCombatTarget(Vector3 origin) { return CharacterMainControl.Main; }
+    }
+    internal sealed partial class SandstormChampionController
+    {
+        internal readonly List<CharacterMainControl> HitTargets = new List<CharacterMainControl>();
+        private CharacterMainControl CombatPlayer { get { return CharacterMainControl.Main; } }
+        internal void HurtPlayer(CharacterMainControl player, float damage, Vector3 at)
+        { HitTargets.Add(player); HurtPlayer(damage, at); }
+    }
 }

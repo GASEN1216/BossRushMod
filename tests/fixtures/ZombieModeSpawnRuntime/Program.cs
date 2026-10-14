@@ -8,6 +8,7 @@ internal static class Program
     private static void Assert(bool value,string message) { if(!value) throw new InvalidOperationException(message); }
     private static ZombieModeRuntimeModule New(out ModBehaviour host,out ZombieModeRunState state)
     {
+        BossRushCoop.IsConnected = false; BossRushCoop.Players.Clear();
         Probe.Trace.Clear(); Assert(Probe.Yields.Count==0,"Previous asynchronous wait must be drained");
         UnityEngine.AI.NavMesh.Reset(); AstarPath.active=null;
         CharacterMainControl.Main=new CharacterMainControl("player") { Team=Teams.player, IsMainCharacter=true };
@@ -151,5 +152,33 @@ internal static class Program
         module.TrackDeathCase(boss,true);module.Kill(boss.Health,companion);module.Kill(boss.Health,companion);
         Assert(state.LivingZombieCount==0 && state.CurrentWaveBossesRemaining==0 && state.CurrentWaveKills==1 && module.CompletedWaves==2,"pet boss kill resolves boss count exactly once without becoming a normal kill");
     }
-    public static void Main() { NormalOrder(); GateAndSlot(); PauseRetry(); BossOrder(); NavigationAndPoison(); BossSpawnNearPlayer(); CompanionIsolationAndKills(); Console.WriteLine("PASS ZombieModeSpawnRuntime"); }
+    private static void CoopInitializationNavigation()
+    {
+        ModBehaviour host; ZombieModeRunState state; var module = New(out host, out state);
+        BossRushCoop.IsConnected = true; BossRushCoop.IsHost = true;
+        var hostPeer = new BossRushCoopPlayer { Id = "host", Character = CharacterMainControl.Main };
+        var guest = new BossRushCoopPlayer { Id = "guest", Character = new CharacterMainControl("guest") };
+        BossRushCoop.Players.Add(hostPeer); BossRushCoop.Players.Add(guest);
+        state.LifecyclePhase = ZombieModeLifecyclePhase.InitializingRun;
+        host.CachedPoints = new[] { new Vector3(24, 0, 0), new Vector3(-24, 0, 0) };
+        Assert(module.CollectZombieModeSpawnPoints(1) && state.SpawnPoints.Count == 2,
+            "Co-op initialization must collect real reachable cached map points before the starter admission table exists");
+        hostPeer.Character.Health.IsDead = true;
+        Assert(module.CollectZombieModeSpawnPoints(1) && state.SpawnPoints.Count == 2,
+            "Dead host still initializes navigation from its real living guest before starter choice");
+        state.LifecyclePhase = ZombieModeLifecyclePhase.Active;
+        Vector3 resolved;
+        Assert(!module.Resolve(new Vector3(24, 0, 0), false, out resolved),
+            "Active combat cannot borrow an unadmitted room member as its spawn anchor");
+        module.Admit(guest);
+        Assert(module.Resolve(new Vector3(24, 0, 0), false, out resolved),
+            "Admitted original guest supplies the active combat navigation anchor");
+        guest.AssetId = "replacement";
+        Assert(!module.Resolve(new Vector3(24, 0, 0), false, out resolved),
+            "Replacement asset cannot inherit the original admitted combat anchor");
+        state.LifecyclePhase = ZombieModeLifecyclePhase.InitializingRun; guest.Character.Health.IsDead = true;
+        Assert(!module.CollectZombieModeSpawnPoints(1), "All dead room members cannot manufacture a navigation anchor");
+        BossRushCoop.IsConnected = false; BossRushCoop.IsHost = false; BossRushCoop.Players.Clear();
+    }
+    public static void Main() { NormalOrder(); GateAndSlot(); PauseRetry(); BossOrder(); NavigationAndPoison(); BossSpawnNearPlayer(); CompanionIsolationAndKills(); CoopInitializationNavigation(); Console.WriteLine("PASS ZombieModeSpawnRuntime"); }
 }

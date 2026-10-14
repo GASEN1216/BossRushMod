@@ -2,7 +2,9 @@
 """Compile current production transaction code against in-memory game adapters."""
 from pathlib import Path
 import hashlib
+import re
 import subprocess
+import sys
 import tempfile
 import xml.sax.saxutils as xml
 
@@ -52,6 +54,15 @@ def main():
     extracted += "internal static partial class PetNestProgressionService {\n"
     for signature in ("internal static void AddExp(", "internal static bool SettleRunHomecoming(", "private static void ResetRunKillBudget()"):
         extracted += method("PetNest/PetNestProgressionService.cs", signature) + "\n"
+    extracted += "}\ninternal sealed partial class CampaignRuntimeModule {\n"
+    final_path = ROOT / "Campaign/CampaignFinalBoss.cs"
+    final = final_path.read_text(encoding="utf-8-sig")
+    for field in ("campaignFinalBossActive", "campaignFinalScopeBound", "campaignFinalScopeRoom"):
+        declarations = re.findall(r"private\s+(?:bool|string)\s+[^;{}]*\b" + field + r"\b[^;{}]*;", final)
+        assert len(declarations) == 1, field
+        extracted += declarations[0] + "\n"
+    for signature in ("private void CaptureCampaignFinalScope()", "private bool IsCampaignFinalScopeValid()", "private void TickCampaignFinalScope()"):
+        extracted += method("Campaign/CampaignFinalBoss.cs", signature) + "\n"
     extracted += "}}"
     (OUT / "Extracted.cs").write_text(extracted, encoding="utf-8")
     linked = [
@@ -83,12 +94,16 @@ def main():
     (OUT / "ContentTransactions.csproj").write_text(project, encoding="utf-8")
     (OUT / "source-hashes.txt").write_text("\n".join(
         hashlib.sha256(p.read_bytes()).hexdigest() + " " + str(p.relative_to(ROOT))
-        for p in paths if p != OUT / "Extracted.cs") + "\nextracted " + hashlib.sha256(extracted.encode()).hexdigest(), encoding="utf-8")
-    code = subprocess.call(["dotnet", "run", "--project", str(OUT / "ContentTransactions.csproj"), "--configuration", "Release"], cwd=ROOT)
+        for p in paths + [final_path] if p != OUT / "Extracted.cs") + "\nextracted " + hashlib.sha256(extracted.encode()).hexdigest(), encoding="utf-8")
+    sys.path.insert(0, str(ROOT / "tools"))
+    from run_runtime_regressions import run_project_fixture
+    code, output = run_project_fixture(OUT / "ContentTransactions.csproj", OUT / "execution", ROOT)
+    print(output, flush=True)
+    (OUT / "result.log").write_text(output, encoding="utf-8")
     if code:
         return code
-    target = subprocess.check_output(["dotnet", "msbuild", str(OUT / "ContentTransactions.csproj"),
-                                      "-property:Configuration=Release", "-getProperty:TargetPath"], cwd=ROOT, text=True).strip()
+    target = next(line.removeprefix("Execute fresh TargetPath: ") for line in output.splitlines()
+                  if line.startswith("Execute fresh TargetPath: "))
     if not Path(target).is_file():
         raise RuntimeError("Missing built target: " + target)
     print("Campaign disk process target:", target, hashlib.sha256(Path(target).read_bytes()).hexdigest(), flush=True)

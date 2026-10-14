@@ -14,9 +14,11 @@ def main():
     assert 'SkyIslandContentData content' in source, 'Encounters must take the content table as a constructor input'
     session = clean_source((ROOT / 'SkyIsland/SkyIslandSession.cs').read_text(encoding='utf-8'))
     assert session.count('SkyIslandContent.Load()') == 1, 'Session owns the single content load'
-    assert 'groundMask, content, IsSessionValid' in session, 'Session must pass its content table to the encounter owner'
+    assert 'groundMask, content, IsWorldSessionValid' in session, 'Session must pass its content table and world lifetime to the encounter owner'
+    coop = clean_source((ROOT / 'SkyIsland/SkyIslandSessionCoop.cs').read_text(encoding='utf-8'))
+    assert 'BossRushCoop.AnyPlayerAlive' in coop and ': IsSessionValid()' in coop, 'Coop world lifetime must include living guests and preserve offline validity'
     for token in ('content.Encounters', 'clone.dropBoxOnDead = true',
-                  'if (completed(encounter.Id))', 'SkyIslandEnemyRecord[]', 'actor.Died',
+                  'if (completed(encounter.Id) || BossRushCoop.IsConnected)', 'SkyIslandEnemyRecord[]', 'actor.Died',
                   'life.OwnPreset(clone)', 'life.Bind(created, actor)', 'if (!retained && created != null)',
                   'Destroy(preset, 0.1f)', 'SkyIslandResidents.ApplyBattleFace', 'created.SetTeam(Teams.wolf)'):
         assert token in source, 'SkyIslandEncounters missing required owner binding: ' + token

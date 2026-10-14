@@ -88,6 +88,7 @@ namespace BossRush
         private bool _relayWindowOpen, _enemySpawningPending;
         private ModeHErrorSwapPhase _swapPhase;
         private CharacterMainControl _playerBody, _controlledFighter;
+        private string _coopControlLease;
         private bool _playerStateCaptured, _playerOriginalInvincible;
         private Teams _playerOriginalTeam;
         private Vector3 _playerOriginalPosition;

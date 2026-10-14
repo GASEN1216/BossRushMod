@@ -364,7 +364,7 @@ def check_crate():
     assert 'box.Inventory.SetCapacity(InventoryCapacity)' in crate, \
         'fallbackCapacity only applies on the fallback path; capacity must be set explicitly'
     # owner 2026-10-01：搜刮点箱子交互名「搜集」、去掉尸体箱预制体的「搬起」；只在激活前改，只对搜刮点。
-    assert 'string name, out string error, bool searchCache = false)' in crate, 'Build must default to the official crate'
+    assert 'string name, out string error, bool searchCache = false, bool sharedWorld = false)' in crate, 'Build must default to the official private earned crate'
     assert 'if (searchCache) PrepareSearchCache(box);' in build, 'Search-cache preparation must be opt-in'
     assert build.index('PrepareSearchCache(box)') < build.index('SetParent(parent, true)'), \
         'Carry interaction and the name key must be changed while the clone is still inactive (before Awake / Start)'
@@ -384,7 +384,7 @@ def check_crate():
         'Search name must be bilingual and resolved at use time'
     for earned in ('internal static bool Create(', 'internal static bool CreateWithGoods('):
         body = crate.split(earned, 1)[1].split('\n        }', 1)[0]
-        assert 'Build(parent, position, 0f, name, out error);' in body, earned + ' must keep the official earned crate'
+        assert 'Build(parent, position, 0f, name, out error, false, sharedWorld);' in body, earned + ' must keep the official earned crate and opt into shared inventory explicitly'
 
 
 def check_scavenging():
@@ -511,7 +511,7 @@ def check_storm_boss():
         'Boss death subscription must be paired'
     assert 'SkyIslandRewardCrate.Create' in boss, 'Trophy must reuse the shared crate builder'
     # Boss 战利品与委托谢礼是赚来的，必须开保底。
-    assert 'TrophyItemCount, true)' in boss, 'Boss trophy must request the guaranteed top band'
+    assert 'TrophyItemCount, true, true)' in boss, 'Boss trophy must request the guaranteed top band and authoritative shared inventory'
     services = source('SkyIslandServices.cs')
     assert 'BountyRewardItemCount, true)' in services, 'Bounty reward must request the guaranteed top band'
     # 剧情事实挂在本体死亡上：否则杀了 Boss 留着随从离岛，下次还能再刷一次战利品。

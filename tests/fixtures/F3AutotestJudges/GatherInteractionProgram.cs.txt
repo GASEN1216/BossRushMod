@@ -1,0 +1,188 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Globalization;
+using UnityEngine;
+
+namespace UnityEngine
+{
+    internal struct Vector3
+    {
+        internal float x, y, z;
+        internal Vector3(float a, float b, float c) { x = a; y = b; z = c; }
+        internal static float Distance(Vector3 a, Vector3 b)
+        { return (float)Math.Sqrt((a.x-b.x)*(a.x-b.x)+(a.y-b.y)*(a.y-b.y)+(a.z-b.z)*(a.z-b.z)); }
+        public static Vector3 operator -(Vector3 a, Vector3 b) { return new Vector3(a.x-b.x,a.y-b.y,a.z-b.z); }
+        internal float sqrMagnitude { get { return x*x+y*y+z*z; } }
+    }
+    internal class Transform { internal Vector3 position; }
+    internal class Object
+    {
+        internal bool Destroyed;
+        public static bool operator ==(Object a, Object b)
+        { return (ReferenceEquals(a, null) || a.Destroyed) ? ReferenceEquals(b, null) || b.Destroyed : !ReferenceEquals(b, null) && !b.Destroyed && ReferenceEquals(a, b); }
+        public static bool operator !=(Object a, Object b) { return !(a == b); }
+        public override bool Equals(object value) { return ReferenceEquals(this, value); }
+        public override int GetHashCode() { return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(this); }
+    }
+    internal static class Time { internal static float realtimeSinceStartup; }
+    internal static class Debug { internal static void Log(string line) { Console.WriteLine(line); } }
+}
+namespace Dialogues { internal static class DialogueManager { internal static bool IsDialogueActive; } }
+internal class InteractableBase : UnityEngine.Object
+{
+    internal string name = "SkyIslandGather_B1";
+    internal Transform transform = new Transform();
+    internal bool Interacting;
+    internal float InteractTime = 1.5f, StartedAt;
+}
+internal class CharacterMainControl
+{
+    internal static CharacterMainControl Main;
+    internal Transform transform = new Transform();
+    internal bool AllowStart = true, Claim = true, Interrupt, DestroyAtClaim;
+    internal int Calls, PackCount;
+    internal InteractableBase Current;
+    internal void Interact(InteractableBase point)
+    {
+        Calls++;
+        if (!AllowStart) return;
+        Current = point;
+        point.Interacting = true;
+        point.StartedAt = Time.realtimeSinceStartup;
+    }
+    internal void Tick()
+    {
+        if (Current == null || !Current.Interacting) return;
+        float elapsed = Time.realtimeSinceStartup - Current.StartedAt;
+        if (Interrupt && elapsed > .2f) { Current.Interacting = false; return; }
+        if (elapsed < Current.InteractTime) return;
+        Current.Interacting = false;
+        if (Claim) BossRush.SkyIslandFieldcraft.Current.AdmitForTest();
+    }
+}
+namespace BossRush
+{
+    internal sealed class BossRushCoopPlayer { internal string AssetId="asset"; internal bool IsAlive=true; internal CharacterMainControl Character; }
+    internal static class BossRushCoop
+    {
+        internal static BossRushCoopPlayer Player;
+        internal static BossRushCoopPlayer FindPlayer(string id) { return id=="player" ? Player : null; }
+    }
+    internal sealed class CoopPersonalDelivery<T>
+    {
+        internal int Count;
+        internal void Deliver(string player, string eventId, T value, string asset)
+        { Count++; CharacterMainControl.Main.PackCount++; }
+    }
+    internal sealed class SkyIslandGathering
+    {
+        internal InteractableBase Target;
+        internal bool TryGetPosition(string id, out Vector3 position) { position=Target.transform.position; return id=="B1"; }
+        internal void MarkHarvested(string id)
+        { Target.name="SkyIslandGatherFading"; if (CharacterMainControl.Main.DestroyAtClaim) Target.Destroyed=true; }
+    }
+    internal sealed partial class SkyIslandFieldcraft
+    {
+        internal static SkyIslandFieldcraft Current;
+        private readonly Dictionary<string,string> coopGatherClaims=new Dictionary<string,string>(StringComparer.Ordinal);
+        private readonly Dictionary<string,GatherRequest> coopGatherReceipts=new Dictionary<string,GatherRequest>(StringComparer.Ordinal);
+        private readonly CoopPersonalDelivery<GatherRequest> coopHarvestDelivery=new CoopPersonalDelivery<GatherRequest>();
+        private SkyIslandGathering gathering;
+        private float nextCoopGatherState;
+        private string TravelId { get { return "travel"; } }
+        internal static void Reset(InteractableBase target)
+        {
+            Current=new SkyIslandFieldcraft { gathering=new SkyIslandGathering { Target=target } };
+            BossRushCoop.Player=new BossRushCoopPlayer { Character=CharacterMainControl.Main };
+        }
+        internal void AdmitForTest() { AdmitHarvest("player",new GatherRequest { Id="B1",AssetId="asset",TravelId="travel" }); }
+    }
+    internal class F3AutotestStepRecord
+    { internal readonly List<string> Notes = new List<string>(); internal readonly List<string> Assertions = new List<string>(); }
+    internal class SkyIslandSession
+    {
+        internal bool AllowTeleport = true, IgnoreTeleport, UnsafeFallback;
+        internal int Teleports;
+        internal Transform ActualTarget;
+        internal bool DevAutotestTeleport(Transform target, float x, float z, out string reason)
+        {
+            ActualTarget = target; Teleports++;
+            reason = AllowTeleport ? null : "target_ground_missing";
+            if (!AllowTeleport) return false;
+            if (!IgnoreTeleport) CharacterMainControl.Main.transform.position = new Vector3(target.position.x + (UnsafeFallback ? 3f : 0f), target.position.y+.1f, target.position.z);
+            return true;
+        }
+    }
+    internal sealed partial class F3GameplayValidationRunner
+    {
+        internal SkyIslandSession Session;
+        internal InteractableBase Target;
+        private sealed class State { internal bool StepFailed; }
+        private State _autotest = new State();
+        private SkyIslandSession SkyIslandSessionOrNull() { return Session; }
+        private InteractableBase ResolveAutotestInteractable(string target) { return Target; }
+        private static void CloseAutotestPanels() { }
+        private static bool AutotestPanelOpen() { return false; }
+        private static IEnumerator WaitAutotestReal(float seconds) { yield break; }
+        private static string AutotestAssertion(string name, string result, string reason, string metrics) { return result+":"+reason; }
+        private void AutotestFail(F3AutotestStepRecord record, string action, string reason, string metrics, bool critical)
+        { record.Assertions.Add("FAIL:"+reason); _autotest.StepFailed |= critical; }
+        internal IEnumerator Run(F3AutotestStepRecord record, string target) { return AutotestInteract(record, target.Split(':')); }
+        internal bool Prepare(F3AutotestStepRecord record) { return PrepareAutotestGatherInteraction(record, Target, CharacterMainControl.Main); }
+    }
+}
+internal static class GatherInteractionProgram
+{
+    private static int checks;
+    private static void Check(bool value, string reason) { checks++; if (!value) throw new Exception(reason); }
+    private static BossRush.F3GameplayValidationRunner Runner()
+    {
+        Time.realtimeSinceStartup = 0f;
+        CharacterMainControl.Main = new CharacterMainControl { transform = new Transform { position = new Vector3(2f,.15f,0f) } };
+        var runner = new BossRush.F3GameplayValidationRunner
+        { Session = new BossRush.SkyIslandSession(), Target = new InteractableBase { transform = new Transform { position = new Vector3(8f,.05f,0f) } } };
+        BossRush.SkyIslandFieldcraft.Reset(runner.Target);
+        return runner;
+    }
+    private static void Drive(IEnumerator operation)
+    {
+        while (operation.MoveNext())
+        {
+            IEnumerator nested = operation.Current as IEnumerator;
+            if (nested != null) Drive(nested);
+            Time.realtimeSinceStartup += .1f;
+            CharacterMainControl.Main.Tick();
+            if (Time.realtimeSinceStartup > 30f) throw new Exception("unbounded operation");
+        }
+    }
+    private static bool Failed(BossRush.F3AutotestStepRecord r, string token) { return r.Assertions.Exists(x => x.Contains(token)); }
+    private static int Main()
+    {
+        var r = Runner(); var rec = new BossRush.F3AutotestStepRecord();
+        Check(Vector3.Distance(CharacterMainControl.Main.transform.position,r.Target.transform.position)>6f,"original marker premise must be rejected");
+        BossRush.SkyIslandFieldcraft.Current.AdmitForTest();
+        Check(CharacterMainControl.Main.PackCount==0 && r.Target.name=="SkyIslandGather_B1","real production AdmitHarvest rejects original marker premise");
+        Drive(r.Run(rec,"gather:B1"));
+        Check(r.Session.ActualTarget==r.Target.transform && r.Session.Teleports==1,"approach must use actual target, not anchor");
+        Check(CharacterMainControl.Main.Calls==1 && CharacterMainControl.Main.PackCount==1,"actual interaction must reach mutable host admission");
+        Check(rec.Assertions.Count==0 && rec.Notes.Exists(x=>x.Contains("gather_claim_observed")),"observe claim before quantity assertion");
+        r=Runner(); r.Session.IgnoreTeleport=true; rec=new BossRush.F3AutotestStepRecord(); Drive(r.Run(rec,"gather:B1"));
+        Check(Failed(rec,"gather_legal_position_not_near_target") && CharacterMainControl.Main.Calls==0,"fake-success teleport cannot admit distant interaction");
+        r=Runner(); r.Session.AllowTeleport=false; rec=new BossRush.F3AutotestStepRecord(); Drive(r.Run(rec,"gather:B1"));
+        Check(Failed(rec,"gather_approach_failed") && CharacterMainControl.Main.Calls==0,"invalid ground must not interact");
+        r=Runner(); r.Session.UnsafeFallback=true; rec=new BossRush.F3AutotestStepRecord(); Drive(r.Run(rec,"gather:B1"));
+        Check(Failed(rec,"gather_legal_position_not_near_target"),"legal fallback beyond approach bound is rejected");
+        r=Runner(); CharacterMainControl.Main.AllowStart=false; rec=new BossRush.F3AutotestStepRecord(); Drive(r.Run(rec,"gather:B1"));
+        Check(Failed(rec,"gather_interaction_not_started"),"busy or rejected official action cannot pass");
+        r=Runner(); CharacterMainControl.Main.Interrupt=true; rec=new BossRush.F3AutotestStepRecord(); Drive(r.Run(rec,"gather:B1"));
+        Check(Failed(rec,"gather_not_claimed_after_interact") && CharacterMainControl.Main.PackCount==0,"stopped action is not completed gather");
+        r=Runner(); CharacterMainControl.Main.Claim=false; rec=new BossRush.F3AutotestStepRecord(); Drive(r.Run(rec,"gather:B1"));
+        Check(Failed(rec,"gather_not_claimed_after_interact"),"unacknowledged delivery remains failure");
+        r=Runner(); CharacterMainControl.Main.DestroyAtClaim=true; rec=new BossRush.F3AutotestStepRecord(); Drive(r.Run(rec,"gather:B1"));
+        Check(rec.Assertions.Count==0 && CharacterMainControl.Main.PackCount==1,"Unity destroyed target after actual claim is handled");
+        r=Runner(); rec=new BossRush.F3AutotestStepRecord(); Drive(r.Run(rec,"pigeon"));
+        Check(r.Session.Teleports==0,"ordinary story interactions retain their own prerequisites");
+        Console.WriteLine("PASS: "+checks+" production gather interaction assertions"); return 0;
+    }
+}

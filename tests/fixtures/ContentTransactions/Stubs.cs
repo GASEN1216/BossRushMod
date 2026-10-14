@@ -431,7 +431,13 @@ namespace BossRush
         { return order > 0 && order <= definitions.Length ? definitions[order - 1] : null; }
         public static void ResetStaticCaches() { }
     }
-    static class CampaignObjectiveTracker { public static void ResetSession() { } public static void ResetStaticCaches() { } }
+    static class CampaignObjectiveTracker
+    {
+        internal static int ContractInvalidations;
+        public static void InvalidateContractIdentity() { ContractInvalidations++; }
+        public static void ResetSession() { }
+        public static void ResetStaticCaches() { }
+    }
     static class CampaignDialoguePlayer { public static void InvalidatePlayback() { } public static void ResetStaticCaches() { } }
     static class DailyReportTuning { public const string LogPrefix = "DailyReport"; }
     class DailyReportData
@@ -564,3 +570,31 @@ namespace HarmonyLib
     [AttributeUsage(AttributeTargets.Method)] public sealed class HarmonyPrefix : Attribute { }
 }
 class CA_UseItem { public CharacterMainControl characterController; }
+
+// Mutable network seam for real terminal-scope methods; save transaction cases reset to offline.
+namespace BossRush
+{
+    internal static partial class BossRushCoop
+    {
+        internal static bool IsConnected, Host;
+        internal static string RunId;
+        internal static bool IsHost { get { return IsConnected && Host; } }
+        internal static bool IsClient { get { return IsConnected && !Host; } }
+    }
+}
+
+namespace BossRush
+{
+    // 本夹具只验证原有单机存档事务，网络消息验证由 CoopProtocol 独立生产链接夹具覆盖。
+    internal sealed partial class CampaignRuntimeModule
+    {
+        private static CampaignRuntimeModule coopOwner;
+        private OfflineCampaignChannel coopFacts, coopWorld;
+        private void InitializeCoopCampaign() { }
+    }
+    internal sealed class OfflineCampaignChannel
+    {
+        internal void Tick(float delta) { }
+        internal void Dispose() { }
+    }
+}

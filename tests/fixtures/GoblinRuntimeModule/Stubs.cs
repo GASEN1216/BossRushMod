@@ -134,7 +134,11 @@ namespace UnityEngine.SceneManagement
 namespace BossRush
 {
     using UnityEngine;
-
+    internal static class CoopNpcWorld
+    {
+        internal static bool MaySpawn { get { return BossRushCoop.HasWorldAuthority; } }
+        internal static void Track(string id, string kind, UnityEngine.GameObject value) { }
+    }
     internal interface IBossRushRuntimeModule { }
     internal abstract class BossRushRuntimeModuleBase : IBossRushRuntimeModule
     {

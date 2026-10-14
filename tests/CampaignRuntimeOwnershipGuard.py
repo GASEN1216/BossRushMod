@@ -115,7 +115,7 @@ def main():
             "campaignFinalBossInstance = null;", "campaignFinalBossActive = false;",
             "campaignFinalBossRunId++;", "ResetCampaignFinalBossTracking();")
     ordered(body(final, "private async UniTask StartCampaignFinalBossAsync("), "spawn ownership",
-            "ModBehaviour campaignOwner = _owner;", "await SandstormChampionBoss.SpawnAsync(", "campaignOwner, position, () => runId == campaignFinalBossRunId && campaignFinalBossActive)", "if (runId != campaignFinalBossRunId)",
+            "ModBehaviour campaignOwner = _owner;", "await SandstormChampionBoss.SpawnAsync(", "campaignOwner, position, () => runId == campaignFinalBossRunId && campaignFinalBossActive && IsCampaignFinalScopeValid())", "if (runId != campaignFinalBossRunId || !IsCampaignFinalScopeValid())",
             "campaignOwner.ClearCampaignBossRandomLootTrackingForRuntime(boss);", "UnityEngine.Object.Destroy(boss.gameObject);",
             "campaignFinalBossSpawnResolved = true;", "ApplyCampaignFinalBossVariant(boss);",
             "OnDeadEvent.AddListener(OnCampaignFinalBossDead);")

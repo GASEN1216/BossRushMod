@@ -186,7 +186,7 @@ namespace BossRush
     {
         private ModBehaviour owner;
         private static WavesArenaRuntimeModule current;
-        private int waveGeneration;
+        private int waveGeneration;private string coopArenaProjectionRoom;private void RetireLostCoopArenaProjection() {}
         private object milestoneDelivery;
         private EnemyRecoveryMonitor enemyRecoveryMonitor;
         internal MonoBehaviour CurrentBoss;
@@ -202,4 +202,16 @@ namespace BossRush
         internal void RegisterBossRandomLootTracking(CharacterMainControl c,int count)
         { if(count!=3) throw new Exception("original loot count"); Probe.Events.Add("loot"); }
     }
+}
+
+namespace BossRush {
+ internal static partial class BossRushCoop {
+ internal static bool IsPlayer(CharacterMainControl value) { return object.ReferenceEquals(value, CharacterMainControl.Main); }
+ internal static CharacterMainControl GetCombatTarget(UnityEngine.Vector3 origin) { return CharacterMainControl.Main; }
+ }
+ internal sealed partial class WavesArenaRuntimeModule {
+ private CoopGameplayChannel<object> coopChannel;
+ private CoopPersonalDelivery<object> coopPersonal;
+ private void InitializeCoopArena() { }
+ }
 }

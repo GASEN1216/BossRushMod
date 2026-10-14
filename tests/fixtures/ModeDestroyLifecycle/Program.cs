@@ -27,6 +27,15 @@ namespace BossRush
                     mode + " never-started destroy leaves another owner's state intact");
                 Check(!Probe.Events.Any(x => x.Contains("ERROR") || x.Contains("WARNING")), mode + " dormant destroy performs no unbound cleanup");
             }
+            // 原客端投影退出时允许回收它的旧实体；新房间仍是客端。
+            BossRushCoop.IsConnected=true;BossRushCoop.IsHost=false;
+            var retiringHost=Host();var retiringD=new ModeDRuntimeModule();retiringD.OnAwake(retiringHost);var oldD=new CharacterMainControl();retiringD.modeDActive=true;retiringD.modeDCurrentWaveEnemies.Add(oldD);
+            typeof(ModeDRuntimeModule).GetField("coopProjectionRetiring",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).SetValue(retiringD,true);retiringD.OnDestroy();Check(oldD==null&&!oldD.dropBoxOnDead,"D native cleanup retires old projection even while next room is client");
+            retiringHost=Host();var retiringRegistry=new ModeEFEnemyRegistry();var retiringE=new ModeERuntimeModule();retiringE.Bind(retiringRegistry);retiringE.OnAwake(retiringHost);var oldE=new CharacterMainControl();retiringE.Seed(oldE);
+            typeof(ModeERuntimeModule).GetField("coopProjectionRetiring",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).SetValue(retiringE,true);retiringE.EndModeE(false);Check(oldE==null&&!oldE.dropBoxOnDead,"E native End retires projected replica in another connected client room");
+            retiringHost=Host();retiringRegistry=new ModeEFEnemyRegistry();retiringE=new ModeERuntimeModule();retiringE.Bind(retiringRegistry);retiringE.OnAwake(retiringHost);var retiringF=new ModeFRuntimeModule();retiringF.Bind(retiringE,retiringRegistry);retiringF.OnAwake(retiringHost);var oldF=new CharacterMainControl();retiringF.Seed(oldF,new ModeFFortificationMarker());
+            typeof(ModeFRuntimeModule).GetField("coopProjectionRetiring",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).SetValue(retiringF,true);retiringF.ExitModeF(false);Check(oldF!=null&&!oldF.gameObject.activeSelf&&!oldF.dropBoxOnDead,"F native Exit deactivates projected replica without loot in next client room");retiringF.OnDestroy();Check(oldF==null,"F owned deferred projected replica is reclaimed on shutdown");
+            BossRushCoop.IsConnected=false;BossRushCoop.IsHost=false;
             var host = Host(); var d = new ModeDRuntimeModule(); d.OnAwake(host);
             var enemy = new CharacterMainControl(); var task = host.OwnCoroutine();
             d.modeDActive = true; d.modeDWaveIndex = 9; d.modeDWaveCompletePending = true;

@@ -40,7 +40,7 @@ def main():
     generated.write_text(code + "}}", encoding="utf-8")
     production = [ROOT / "Integration/BossRushIntegrationRuntimeModule_ArenaEntry.cs",
                   ROOT / "ModeD/ModeDRuntimeModule.cs", ROOT / "ModeD/ModeDRuntimeModule_Lifecycle.cs"]
-    paths = production + [generated, HERE / "Program.cs", HERE / "Stubs.cs"]
+    paths = [ROOT / "tests/fixtures/CoopOfflineStubs.cs"] + production + [generated, HERE / "Program.cs", HERE / "Stubs.cs"]
     project = OUT / "Regression.csproj"
     project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType>'
                        '<TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion>'

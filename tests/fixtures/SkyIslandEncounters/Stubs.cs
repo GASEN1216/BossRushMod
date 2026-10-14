@@ -198,6 +198,11 @@ public class CharacterRandomPreset : UnityEngine.Object
 }
 namespace BossRush
 {
+    internal static partial class BossRushCoop
+    {
+        internal static CharacterMainControl GetCombatTarget(UnityEngine.Vector3 origin) { return CharacterMainControl.Main; }
+        internal static bool RequestAiRegistration(CharacterMainControl character) { return false; }
+    }
     internal static class ModBehaviour
     {
         internal static string GetModPath() { return Environment.CurrentDirectory; }

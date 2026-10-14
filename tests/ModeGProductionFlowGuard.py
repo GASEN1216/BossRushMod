@@ -21,10 +21,12 @@ def body(path, signature):
 
 def main():
     checks = [
+        ("IdleCoopBootstrap", "ModeG/ModeGRuntimeModule_PublicApiAndShutdown.cs", "public override void OnAwake(ModBehaviour owner)",
+         r"if \(owner != null\) owner\.GetModeGEntryRuntimeForHost\(\)\.EnsureCoop\(\);"),
         ("LethalBeforeUnregister", "ModeG/ModeGCombatTelemetry.cs", "private void HandleOnDead(",
          r"RecordDirectDamage\(health, info\);\s*if \(_onBossDeadCallback != null\) _onBossDeadCallback\(health, info\);"),
         ("NoLethalDoubleCount", "ModeG/ModeGCombatTelemetry.cs", "private void HandleOnHurt(",
-         r"if \(health.IsDead\) return;\s*RecordDirectDamage\(health, info\);"),
+         r"if \(health.IsDead\) return;\s*ModeGEntryRuntime\.PublishCoopCombat\(health, info, false\);\s*RecordDirectDamage\(health, info\);"),
         ("SettledDamage", "ModeG/ModeGCombatTelemetry.cs", "private void RecordDirectDamage(",
          r"float amount = info\.finalDamage;\s*if \(amount <= 0f \|\| float.IsNaN\(amount\) \|\| float.IsInfinity\(amount\)\) return;"),
         ("SharedValidity", "ModeG/ModeGCombatTelemetry.cs", "public bool IsWaveScoreValid",
@@ -49,6 +51,11 @@ def main():
          r"\s*elapsed = AdvanceSpawnWait\(elapsed, lastSample, now, wasPaused, paused\);\s*lastSample = now;\s*wasPaused = paused;"),
     ]
     failures = []
+    registration = body("ModBehaviourRuntimeModules.cs", "private void RegisterRuntimeModules()")
+    if "EnsureCoop(" in registration or "GetModeGEntryRuntimeForHost(" in registration:
+        failures.append("Mode G must register its channels after ordered module OnAwake, not while building the module list")
+    if registration.find("BossRushCoop.RegisterModules(runtimeModuleHost);") > registration.find("runtimeModuleHost.Register(new ModeGRuntimeModule());"):
+        failures.append("Coop module must precede the Mode G shell in registration order")
     for name, path, signature, pattern in checks:
         if not re.search(pattern, body(path, signature)):
             failures.append(name + ": " + path)

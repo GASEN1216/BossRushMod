@@ -263,8 +263,8 @@ def check(sources):
             "回响遗存：先退开尸体箱的交互间距，再装回响遗存表里的东西")
     for token in ("DropTrophy(", "SkyIslandRewardCrate.Create(", "SkyIslandLootTier.Starworks"):
         forbid(drop, token, "回响遗存不发星工遗存（不抽官方物资池）")
-    goods = need_body(CRATE, "internal static bool CreateWithGoods(Transform parent, Vector3 position, string name, SkyIslandYield[] goods)", "回响遗存建箱")
-    ordered(goods, ["Build(parent, position, 0f, name, out error);", "AddGoods(box,", "if (added == 0)", "Destroy(box.gameObject);", "return false;", "return true;"],
+    goods = need_body(CRATE, "internal static bool CreateWithGoods(Transform parent, Vector3 position, string name, SkyIslandYield[] goods, bool sharedWorld = false)", "回响遗存建箱")
+    ordered(goods, ["Build(parent, position, 0f, name, out error, false, sharedWorld);", "AddGoods(box,", "if (added == 0)", "Destroy(box.gameObject);", "return false;", "return true;"],
             "回响遗存建箱复用共享建箱器，一件都没装进去就收回空箱")
     add_goods = need_body(CRATE, "private static int AddGoods(InteractableLootbox box, int typeId, int count)", "回响遗存装箱")
     ordered(add_goods, ["ItemAssetsCollection.GetPrefab(typeId) == null", "ItemAssetsCollection.InstantiateSync(typeId)", "item.TypeID != typeId"],

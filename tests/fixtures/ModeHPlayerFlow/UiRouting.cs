@@ -32,6 +32,7 @@ namespace BossRush
     }
     internal partial class UiRouting
     {
+        private bool RouteCoopGuestPage(ModeHLifecycle phase) { return false; }
         private bool _commandsClosed, _deferPageRoutes, _showItemBetPicker, _replayCardEntrance;
         private string _pageFailureText;
         private int _sceneGeneration = 1;

@@ -257,6 +257,8 @@ namespace BossRush
     internal static class ZombieTideBeaconConfig { internal static void EnsureRuntimeFallbackRegistrationShell() { Probe.Add("beacon"); } }
     internal static class PortableSafeZoneDeviceConfig { internal static void EnsureRuntimeFallbackRegistrationShell() { Probe.Add("safe-zone"); } }
     internal static class PeaceCharmRuntime { internal static void InitializeRuntime() { Probe.Add("peace"); } }
+    internal static class BossRushCoop { internal const bool IsClient = false, IsConnected = false; }
+    internal static class MutatorCoopRuntimeModule { internal static void NotifyRolled(string mode) { } }
     internal static class MutatorManager
     {
         internal static int Count; internal static string Mode; internal static bool Throw;
@@ -303,3 +305,6 @@ namespace BossRush.Utils
     }
     internal static class AssetBundleUnloadHelper { internal static void TryUnload(AssetBundle bundle, string tag) { Probe.Add(bundle != null ? "unload-ticket" : "unload-null"); } }
 }
+
+// Offline facade: this fixture exercises single-player production paths only.
+namespace BossRush { internal static class CoopNpcWorld { internal const bool MaySpawn=true; internal static void Track(string id,string kind,UnityEngine.GameObject obj) { } internal static bool ReserveLocalFollow(string id,bool follow) { return true; } } internal static class BossRushCoopFxRuntimeModule { internal static void TrackBoss(CharacterMainControl c,string k) { } } }

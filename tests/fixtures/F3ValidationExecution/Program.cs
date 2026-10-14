@@ -67,6 +67,9 @@ internal static class Program
 
     private static void Main()
     {
+        SceneTransitions.Run(Check);
+        EntryPreparation.Run(Check);
+        GChildProtection.Run(Check);
         cleanup.Clear();
         using (var stack = new ValidationCoroutineStack(Parent(false)))
         {
@@ -164,6 +167,7 @@ internal static class Program
 
         SkyIslandShell();
         PerformanceWindows.Run(Check);
+        ExtractionFlows.Run(Check);
         Console.WriteLine("PASS: " + assertions + " assertions; production coroutine stack, main and Sky Island case wrappers, no Unity smoke");
     }
 

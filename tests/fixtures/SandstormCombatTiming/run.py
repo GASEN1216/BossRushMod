@@ -2,6 +2,8 @@
 from pathlib import Path
 import sys
 import tempfile
+import hashlib
+import json
 from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -31,8 +33,11 @@ def main():
                       "private void AimDash(", "private IEnumerator WaitForFightSeconds(",
                       "private static float DistanceToSegment("):
         generated += method(source, signature) + "\n"
+    # 原方法只改入口名，便于与 Update 的调用计数替身同时验证真实速度采样。
+    generated += method(source,"private void TrackPlayerVelocity()").replace("TrackPlayerVelocity()","SamplePlayerVelocity()",1)+"\n"
     generated += "}}"
     (run / "Production.cs").write_text(generated, encoding="utf-8")
+    (run / "production-sha256.json").write_text(json.dumps({"Integration/SandstormChampion/SandstormChampionAbilityController.cs":hashlib.sha256((ROOT/"Integration/SandstormChampion/SandstormChampionAbilityController.cs").read_bytes()).hexdigest()},indent=2),encoding="utf-8")
     files = [run / "Production.cs", Path(__file__).with_name("Program.cs"), Path(__file__).with_name("Stubs.cs"),
              ROOT / "Integration/SandstormChampion/SandstormChampionConfig.cs",
              ROOT / "Integration/SandstormChampion/SandstormChampionMinionArts.cs",

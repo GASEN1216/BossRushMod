@@ -7,6 +7,7 @@
     <NoWarn>0649</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../CoopOfflineStubs.cs" Link="Fixture/CoopOfflineStubs.cs" />
     <Compile Include="../../../Integration/NPCs/Goblin/GoblinNPC.cs" />
     <Compile Include="../../../Build/runtime-regressions/GoblinRuntimeModule/Host.cs" />
     <Compile Include="Stubs.cs" />

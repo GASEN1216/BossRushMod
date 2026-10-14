@@ -2,6 +2,12 @@
 
 运行：`python tools/run_runtime_regressions.py --filter ContentThirdReviewFixes`（需要 .NET 8 SDK）。
 
+2026-10-13 联机独立复审：真实 `CodexKillCollector` 在房主击杀时冻结模式、场景与 UTC 发生时间；切回基地、切换模式并延迟到下一天交付后，客端仍记录原事实。该组直接执行生产采集器与 `ApplyCoopKill`，消息投递边界为替身，跨进程收发由联机基础夹具与主审实机探针覆盖。
+
+同日 `DragonSpawn` 逐字提取完整生产 `SpawnDragonDescendant`、`Initialize` 和 `CleanupCancelledDragonDescendant`，仅把 UniTask 返回载体换成可控 Task。执行 50 项断言：工厂返回激活/未激活角色、延期激活、延期后模式结束/同图重载/宿主替换、工厂和装备晚续作、孩儿护我及随机乱入。能力初始化的生产 `StartCoroutine` 真正执行，替身在 inactive 对象上启动时明确失败；检查成功返回必须非 null，避免 Unity 销毁对象等于 null 让成功条件恒真。销毁替身连带销毁组件，取消路径执行生产清理。恢复旧 Initialize 在激活之前的顺序后执行转红、按字节及 SHA-256 恢复再通过。工厂、装备、伤害事件、资源预缓存、音乐和 Unity 调度为边界替身，这里不能证明真实燃烧弹、物理或网络表现。
+
+同日 `CaptureTiming` 逐字提取完整生产 `CaptureAutotestShot`，38 项断言覆盖等待帧末期间发生 TMP/相机/圆环/行坐标更新、四种编码与预算计数、浮层在等待期间出现、截图抛错、临时纹理销毁。探针收集与屏幕像素分别读取可变化的帧号，必须相符，不能在 `WaitForEndOfFrame` 前收集；预置上一张分析后，本张被遮挡或失败必须清空，后续断言不能使用旧帧。两个独立副本分别恢复旧时序及去掉 LastShot 清空，执行回归确实转红，按字节恢复再通过；时序副本还使修改后的 F3AutotestOrchestratorGuard 转红。TMP、相机、纹理/编码与取色判据是边界替身，回归仅验证生产编排与状态寿命，不能证明渲染颜色或圆环实际可见度；真实截图仍须游戏进程复测。
+
 2026-10-06：图鉴以真实 `CodexKillCollector` 验证龙皇 / 龙裔控制器优先于被第三方改写或删除的 preset，后续命中不重复做组件查询；计时和击杀仍归入自定义 Boss。控制器与 Unity GetComponent 为替身，此处不模拟第三方 Mod 的完整生成流程。
 
 覆盖 CR-2026-09-06-009、010、015。项目通过相对路径直接编译生产源码，C# 7.3；没有复制产品算法。日报链接完整 Service、Models、Codec、Tuning、SimpleJsonHelper 与共享 BossRushJsonValue，存储替身每次接收候选均经过真实编码再解码。旧档用没有扩展字段的 v1 JSON 字面量验证。

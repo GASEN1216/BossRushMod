@@ -5,6 +5,7 @@ using BossRush;
 internal static class Time
 {
     internal static double realtimeSinceStartupAsDouble;
+    internal static float realtimeSinceStartup { get { return (float)realtimeSinceStartupAsDouble; } }
     internal static float unscaledDeltaTime;
 }
 internal static class Mathf
@@ -15,9 +16,10 @@ internal static class Mathf
 }
 internal static class SceneManager
 {
-    internal struct Scene { internal int handle; }
+    internal struct Scene { internal int handle; internal string name; }
     internal static int Handle;
-    internal static Scene GetActiveScene() { return new Scene { handle = Handle }; }
+    internal static string Name = "Arena";
+    internal static Scene GetActiveScene() { return new Scene { handle = Handle, name = Name }; }
 }
 namespace BossRush
 {

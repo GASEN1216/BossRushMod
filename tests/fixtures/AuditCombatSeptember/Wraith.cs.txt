@@ -43,6 +43,8 @@ struct Quaternion { public static Quaternion identity => new Quaternion(); }
 struct Scene { public int handle; }
 static class SceneManager { public static int Handle = 10; public static Scene GetActiveScene() => new Scene { handle = Handle }; }
 static class SavesSystem { public static int CurrentSlot = 0; }
+// 原夹具验证单机异步生成租约；联网世界 owner 在 DeathWraithCoop 独立夹具执行。
+static class BossRushCoop { public static bool IsConnected => false; }
 static class UniTask { public static Task Yield() => ModBehaviour.Instance.Flow.Steps[3].Task; }
 class Item : UnityEngine.Object
 {
@@ -122,6 +124,11 @@ class ModBehaviour : UnityEngine.Object
 }
 class DeathWraithRuntimeModule
 {
+    private sealed class CoopWraithSpawn { public bool Spawning,Dead;public CharacterMainControl Character;public WraithInfo Info; }
+    private void QueueCoopDeathWraith(uint raid,Vector3 position) { throw new Exception("offline fixture unexpectedly entered network flow"); }
+    private bool IsCoopWraithSpawnCurrent(CoopWraithSpawn entry) { return false; }
+    private void RegisterCoopWraith(CoopWraithSpawn entry,CharacterMainControl actor) { throw new Exception("offline fixture cannot own a network actor"); }
+    private void ClearCoopWraithWorld() { }
     private readonly ModBehaviour owner;
     private int deathWraithSpawnGeneration;
     private HashSet<uint> spawningWraithRaidIds = new HashSet<uint>();

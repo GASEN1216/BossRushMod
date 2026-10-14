@@ -63,7 +63,10 @@ def main():
 
     seed = read("Integration/BackMountain/BackMountainSeedDrops.cs")
     assert "internal sealed partial class BackMountainRuntimeModule" in seed and "partial class ModBehaviour" not in seed
-    ordered(body(seed, "private Item TryRollBackMountainSeed("), ["_owner.IsBackMountainConfiguredEnabled()", "BackMountainUnlocks.IsFacilityUnlocked", "ResolveBackMountainSeedTypeId", "if (seedTypeId <= 0)", "UnityEngine.Random.value", "BackMountainItems.EnsureRuntimeRegistration", "ItemAssetsCollection.InstantiateSync"], "seed gate/roll")
+    ordered(body(seed, "private Item TryRollBackMountainSeed("), ["_owner.IsBackMountainConfiguredEnabled()", "CoopPersonalProgressRuntimeModule.AnyGardenUnlocked", "ResolveBackMountainSeedTypeId", "if (seedTypeId <= 0)", "UnityEngine.Random.value", "BackMountainItems.EnsureRuntimeRegistration", "ItemAssetsCollection.InstantiateSync"], "seed gate/roll")
+    progress = read("Integration/CoopPersonalProgressRuntimeModule.cs")
+    assert "BackMountainUnlocks.IsFacilityUnlocked(BackMountainFacility.Garden)" in body(progress, "internal static bool AnyGardenUnlocked"), "offline personal garden gate lost"
+    assert "player.IsConnected" in body(progress, "internal static bool AnyGardenUnlocked"), "disconnected garden eligibility cannot unlock shared drops"
     assert "private const float BackMountainSeedDropChance = 0.25f;" in seed
     seed_host = read("Integration/IntegrationHostCompatibility.cs")
     for name, args in (("TryAddBackMountainSeedLoot", "inv, bossMain"), ("TryAddBackMountainSeedToCharacterItem", "bossMain"), ("TryDropBackMountainSeedIntoWorld", "bossMain")):

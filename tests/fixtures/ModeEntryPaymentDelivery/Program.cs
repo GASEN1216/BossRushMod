@@ -18,7 +18,8 @@ internal static class Probe
         Created = Dropped = 0; TicketMaxStack = 1; SavesSystem.CurrentSlot = 1;
         SceneLoader.IsSceneLoading = false; ItemAssetsCollection.Last = null;
         ModBehaviour.Instance = new ModBehaviour();
-        BossRushMapSelectionHelper.ClearPendingEntryFlowState(); ModeHTicketRefund.ResetStaticCaches();
+        BossRushCoop.Asset = "asset"; UnityEngine.Time.unscaledTime = 0;
+        BossRushMapSelectionHelper.ResetStaticCaches(); ModeHTicketRefund.ResetStaticCaches();
         Item character = new Item { IsCharacter = true };
         character.Inventory = new Inventory { Master = character };
         CharacterMainControl.Main = new CharacterMainControl { CharacterItem = character };
@@ -124,6 +125,28 @@ internal static class Probe
         if (string.IsNullOrEmpty(only) || only == "refund") RefundDelivery();
         if (string.IsNullOrEmpty(only) || only == "stack") StackRefund();
         if (string.IsNullOrEmpty(only) || only == "receipt") Receipt();
+        if (string.IsNullOrEmpty(only) || only == "asset") PrepaidAsset();
         Console.WriteLine("PASS: " + checks + " assertions; real D starter, H entry/receipt/refund, shared inventory transaction and official Combine; L2 only");
+    }
+    private static void PrepaidAsset()
+    {
+        Reset(); BossRushMapSelectionHelper.MarkEntryFlowFromMapSelectionUi(BossRushPendingEntryKind.None);
+        BossRushMapSelectionHelper.MarkTargetSceneLoadStarted();
+        SavesSystem.CurrentSlot = 2; BossRushMapSelectionHelper.ClearPendingEntryFlowState();
+        BossRushMapSelectionHelper.TickPrepaidAssetRefunds();
+        Check(TicketCount == 0, "old prepaid ticket cannot refund into another slot");
+        SavesSystem.CurrentSlot = 1; Pack.Reject = RejectDrop = true; UnityEngine.Time.unscaledTime = 2;
+        BossRushMapSelectionHelper.TickPrepaidAssetRefunds();
+        Check(TicketCount == 0 && ItemAssetsCollection.Last == null, "failed inventory/drop attempt retains debt and destroys only unowned ticket: count=" + TicketCount + ", created=" + Created + ", destroyed=" + (!ReferenceEquals(ItemAssetsCollection.Last,null) && ItemAssetsCollection.Last.Destroyed));
+        Pack.Reject = RejectDrop = false; UnityEngine.Time.unscaledTime = 4;
+        BossRushMapSelectionHelper.TickPrepaidAssetRefunds();
+        Check(TicketCount == 1, "returning to original asset retries actual ticket delivery");
+        UnityEngine.Time.unscaledTime = 6; BossRushMapSelectionHelper.TickPrepaidAssetRefunds();
+        Check(TicketCount == 1, "confirmed refund is not repeated");
+        Reset(); BossRushMapSelectionHelper.MarkEntryFlowFromMapSelectionUi(BossRushPendingEntryKind.None);
+        BossRushMapSelectionHelper.MarkTargetSceneLoadStarted(); SavesSystem.CurrentSlot = 2;
+        BossRushMapSelectionHelper.ClearPendingEntryFlowState(); SavesSystem.CurrentSlot = 1; BossRushCoop.Asset = "replacement";
+        BossRushMapSelectionHelper.TickPrepaidAssetRefunds();
+        Check(TicketCount == 0, "replacement save in same slot cannot inherit old ticket debt");
     }
 }

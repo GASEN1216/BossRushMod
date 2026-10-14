@@ -74,7 +74,7 @@ def main():
         'internal static bool BeginTransaction(', 'internal static bool CommitTransaction(',
         'internal static void AbortTransaction()')) + '\n}}'
     (OUT / 'ModuleHomecoming.cs').write_text(code, encoding='utf-8')
-    files = linked + [OUT / 'ModuleHomecoming.cs', OUT / 'PreparedOdds.cs', OUT / 'Reveal.cs', OUT / 'ExpeditionReveal.cs', OUT / 'Combat.cs', HERE / 'Program.cs', HERE / 'Stubs.cs', HERE / 'HomecomingStubs.cs']
+    files = linked + [ROOT / 'tests/fixtures/CoopOfflineStubs.cs', OUT / 'ModuleHomecoming.cs', OUT / 'PreparedOdds.cs', OUT / 'Reveal.cs', OUT / 'ExpeditionReveal.cs', OUT / 'Combat.cs', HERE / 'Program.cs', HERE / 'Stubs.cs', HERE / 'HomecomingStubs.cs']
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649;0169;0414</NoWarn></PropertyGroup><ItemGroup>'
     project += ''.join('<Compile Include="' + escape(str(p), {'"': '&quot;'}) + '" />' for p in files)
     project += '</ItemGroup></Project>'

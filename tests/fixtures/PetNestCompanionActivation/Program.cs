@@ -199,3 +199,6 @@ static class Program
         Console.WriteLine("PASS PetNestCompanionActivation "+checks+" assertions");
     }
 }
+
+// Offline facade: this fixture exercises single-player production paths only.
+namespace BossRush { internal static class BossRushCoop { internal const bool IsClient=false, IsConnected=false; } }

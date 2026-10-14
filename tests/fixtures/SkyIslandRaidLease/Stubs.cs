@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-namespace Cysharp.Threading.Tasks { }
+namespace Cysharp.Threading.Tasks { public static class UniTask { public static Task Yield() { return Task.Delay(1); } } }
 namespace BossRush
 {
     // Official scene/lease contract fixture; asynchronous native requests are tested in ResourceProduction.
@@ -85,6 +85,7 @@ namespace UnityEngine.SceneManagement
     internal class SceneState { internal bool Loaded; internal string Path; internal GameObject[] Roots; }
     public struct Scene
     {
+        public string name { get { return isLoaded ? "SkyIslandRaid" : "Base"; } }
         public int handle { get { return State == null ? 0 : State.GetHashCode(); } }
         internal SceneState State;
         public string path { get { return State == null ? null : State.Path; } }
@@ -156,6 +157,7 @@ public struct EvacuationInfo
 }
 public class LevelManager
 {
+    public static bool AfterInit = true;
     public static LevelManager Instance = new LevelManager();
     internal static int Evacuations;
     public void NotifyEvacuated(EvacuationInfo info) { Evacuations++; }
@@ -164,7 +166,7 @@ namespace Duckov.Buffs {public class Buff {}}
 public class AstarPath:UnityEngine.Component {public static AstarPath active;public object data;public bool isScanning;}
 public class GameCamera { public static GameCamera Instance; public object renderCamera; }
 public class TimeOfDayConfig:UnityEngine.MonoBehaviour {}
-public class LevelConfig:UnityEngine.Component {public TimeOfDayConfig timeOfDayConfig;public List<Duckov.Buffs.Buff> startBuffPrefabs;}
+public class LevelConfig:UnityEngine.Component {public static LevelConfig Instance;public TimeOfDayConfig timeOfDayConfig;public List<Duckov.Buffs.Buff> startBuffPrefabs;}
 public class Health {public bool IsDead;}
 public class CharacterMainControl {public static CharacterMainControl Main;public Health Health=new Health();}
 public class SceneLoader
@@ -172,10 +174,11 @@ public class SceneLoader
     public static SceneLoader Instance=new SceneLoader();public static bool IsSceneLoading;
     public static string LoadingComment;
     internal static TaskCompletionSource<bool> Pending;
+    internal static bool CompletedVote;
     internal static int Loads,Returns;
     internal static bool LastEvacuated;
     public Task LoadScene(string id,Duckov.Scenes.MultiSceneLocation location,bool clickToConinue,bool notifyEvacuation,bool saveToFile)
-    {Loads++;IsSceneLoading=true;Pending=new TaskCompletionSource<bool>();return Pending.Task;}
+    {Loads++;if(CompletedVote)return Task.CompletedTask;IsSceneLoading=true;Pending=new TaskCompletionSource<bool>();return Pending.Task;}
     internal static Eflatun.SceneReference.SceneReference LastCurtain;
     // 与官方同形：返航走 SceneReference 重载，第二个参数才是幕布覆盖。
     public Task LoadScene(Eflatun.SceneReference.SceneReference sceneReference,
@@ -191,15 +194,17 @@ public class SceneLoader
 }
 namespace BossRush
 {
+    internal static class SceneRuntimeGate { internal static bool IsBaseHubSceneName(string name) { return name == "Base"; } }
     internal static class SkyIslandLootPools
     {
         internal static Func<System.Collections.IEnumerator> Factory;
         internal static System.Collections.IEnumerator Prewarm() { return Factory(); }
     }
-    internal static class ModBehaviour
+    internal class ModBehaviour:UnityEngine.Component
     {
         internal static string ModPath = System.Environment.CurrentDirectory;
         internal static string GetModPath() { return ModPath; }
+        public T GetComponent<T>() where T:UnityEngine.Component { return gameObject.GetComponent<T>(); }
     }
 
       internal static class SkyIslandSceneReferenceBridge

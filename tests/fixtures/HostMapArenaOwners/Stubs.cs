@@ -133,3 +133,7 @@ namespace BossRush
         }
     }
 }
+
+namespace BossRush { internal sealed partial class WavesArenaRuntimeModule {
+ internal bool RequestCoopArena(string action, int value = 0, bool flag = false) { return false; }
+} }

@@ -32,9 +32,10 @@ namespace ItemStatsSystem
         public Stat GetStat(string key) { Stat stat; return Stats.TryGetValue(key, out stat) ? stat : null; }
     }
 }
-public class CharacterMainControl { public Item CharacterItem; }
+public class CharacterMainControl { public static CharacterMainControl Main; public Item CharacterItem; }
 namespace BossRush
 {
+    internal static class BossRushCoop { internal static bool HasWorldAuthority = true; internal static bool IsPlayer(CharacterMainControl character) { return character == CharacterMainControl.Main; } }
     public static class ZombieModeStatNames
     {
         public const string WalkSpeed = "WalkSpeed", RunSpeed = "RunSpeed", GunDamageMultiplier = "GunDamageMultiplier", MeleeDamageMultiplier = "MeleeDamageMultiplier";

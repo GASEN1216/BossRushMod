@@ -19,7 +19,7 @@ import sys
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO_ROOT, "tests"))
 
-from petnest_guard_util import read_petnest, read_text, repo_path, report, strip_cs_comments  # noqa: E402
+from petnest_guard_util import read_petnest, read_text, repo_path, report, strip_cs_comments, method_body  # noqa: E402
 
 GUARD = "PetNestMuseumStatsGuard"
 
@@ -114,11 +114,11 @@ def check_idle_spawner(errors):
     code = strip_cs_comments(text)
 
     # 只在基地
-    refresh = re.search(r"internal static void RefreshForScene\(ModBehaviour owner, int sceneGeneration, bool isBaseScene\)[\s\S]{0,900}?\n        \}", code)
+    refresh = method_body(code, "internal static void RefreshForScene(ModBehaviour owner, int sceneGeneration, bool isBaseScene)")
     if refresh is None:
         errors.append("[门控] 缺少 RefreshForScene(ModBehaviour, int, bool)")
     else:
-        body = refresh.group(0)
+        body = refresh
         if "if (!isBaseScene)" not in body:
             errors.append("[门控] 非基地场景必须直接清空并返回")
         if "CleanupAll();" not in body:

@@ -4,6 +4,46 @@ using System.Threading.Tasks;
 using ItemStatsSystem;
 using UnityEngine;
 
+namespace BossRush
+{
+    internal static class CoopAiPredictionHealthProtection {internal static void MarkReplica(CharacterMainControl value) { }}
+    internal sealed partial class ModeGEntryRuntime
+    {
+        internal void AuditUseOwner() { coopOwner=this;BossRushCoop.AuditEntryOwners[BossRushCoop.Current]=this; }
+        internal void AuditDeliver(string player,string id,ModeGCoopCombat fact) { DeliverOrdered(player,id,fact); }
+        internal bool AuditHasDebt { get { return coopCombat.HasPendingDeliveries; } }
+        internal bool AuditPending { get { coopOwner=this;return PendingCoopCombat; } }
+        internal void AuditDepart(string player) { ExecuteCoopCommand(new CoopGameplayCommand{Action="leave",PlayerId=player}); }
+        internal void AuditFinish(ModeGRuntimeModule run) { coopOwner=this;FinishCoopRun(run); }
+        internal void AuditReplaceRun(ModeGRuntimeModule run) { modeGRuntime=run;CaptureCoopWorld(); }
+        internal void AuditRetry(float dt) { coopCombat.Tick(dt); }
+        internal bool AuditApply(ModeGCoopCombat fact) { return ApplyCoopCombat(fact); }
+        internal void AuditRequestAdmission(ulong run) { coop.Request("admitted",0,run.ToString("x")+":"+modeGRuntime.CoopRequestedAdmissionBaseline); }
+        internal void AuditWorld(ModeGCoopWorld world) {ApplyCoopWorld(world);}
+    }
+    internal sealed class AuditPacket {internal string Sender,Target,Topic,Json;}
+    internal sealed partial class TestPeer { internal readonly HashSet<string> ReadyKeys = new HashSet<string>(); }
+    internal static partial class BossRushCoop
+    {
+        internal static readonly List<AuditPacket> AuditWire=new List<AuditPacket>();
+        internal static readonly Dictionary<TestPeer,ModeGEntryRuntime> AuditEntryOwners=new Dictionary<TestPeer,ModeGEntryRuntime>();
+        internal static void AuditSelectNativeOwner(TestPeer peer) {ModeGEntryRuntime entry;if(AuditEntryOwners.TryGetValue(peer,out entry))entry.AuditUseOwner();}
+        internal static bool AuditDropAdmission,AuditDropAdmitted,AuditDropCombat;
+        internal static bool AuditShouldDrop<T>(T value)
+        {
+            var receipt=(object)value as CoopPersonalReceipt;
+            if(AuditDropAdmission&&receipt!=null
+                &&BossRushCoopJson.FromJson<ModeGCoopCombat>(receipt.Payload).Admission)return true;
+            if(AuditDropCombat&&receipt!=null){var fact=BossRushCoopJson.FromJson<ModeGCoopCombat>(receipt.Payload);if(!fact.Admission&&!fact.AdmissionDenied)return true;}
+            return AuditDropAdmitted&&((object)value as CoopGameplayCommand)?.Action=="admitted";
+        }
+        internal static IEnumerable<BossRushCoopPlayer> Players {get{foreach(var p in Peers)yield return FindPlayer(p.Id);}}
+        internal static CharacterMainControl FindEntity(string id) {return null;}
+        internal static CharacterMainControl FindAi(int id) {return null;}
+        internal static void MarkSceneReady(string key) { Current.ReadyKeys.Add(key); }
+    }
+}
+
 namespace UnityEngine
 {
     public class Object
@@ -59,6 +99,7 @@ namespace UnityEngine
         public static float Sin(float a) { return (float)Math.Sin(a); }
     }
     public enum KeyCode { None = 0, F4 = 285 }
+    public static class Time { internal static float realtimeSinceStartup; }
     public static class Input
     {
         public static bool Pressed;
@@ -75,7 +116,13 @@ namespace UnityEngine.SceneManagement
     }
 }
 public enum Teams { middle, wolf }
-public struct DamageInfo { }
+public enum DamageTypes { normal, realDamage }
+public struct DamageInfo
+{
+    public CharacterMainControl fromCharacter;public int fromWeaponItemID,crit;public DamageTypes damageType;
+    public float damageValue,finalDamage;public bool isExplosion,isFromBuffOrEffect;public Vector3 damagePoint;
+    public DamageInfo(CharacterMainControl source):this(){fromCharacter=source;}
+}
 public class CharacterRandomPreset : UnityEngine.Object
 {
     public string nameKey;
@@ -143,6 +190,9 @@ namespace BossRush
         internal static int RefundCount(int id) { int value; Refunds.TryGetValue(id, out value); return value; }
         internal static void Reset()
         {
+            BossRushCoop.Current = new TestPeer { Id = "offline", Host = true, Connected = false };
+            BossRushCoop.Runtime = new BossRushCoopRuntimeModule();
+            BossRushCoop.Peers.Clear(); BossRushCoop.Peers.Add(BossRushCoop.Current); BossRushCoop.Wire.Clear();
             ModeGRunContext.Unbind(ModeGRunContext.Current);
             Events.Clear(); Refunds.Clear(); ModeGRuntimeModule.Created.Clear();
             InitOk = StartOk = RefundOk = true; HudThrow = false;
@@ -172,6 +222,7 @@ namespace BossRush
         internal Config config = new Config();
         internal Item Ticket, Relic, Flag, Transponder;
         internal bool ConsumeTicketWorks = true, ConsumeRelicWorks = true;
+        internal readonly List<int> Consumed = new List<int>();
         internal List<EnemyPresetInfo> Pool;
         internal Dictionary<string, CharacterRandomPreset> cachedCharacterPresets;
         internal Vector3[] Points;
@@ -209,11 +260,12 @@ namespace BossRush
         private bool TryConsumeModeEntryItem(Item item, string mode, string label)
         {
             Harness.Events.Add("consume:" + item.TypeID);
+            Consumed.Add(item.TypeID);
             if (item.TypeID == 9001) return ConsumeTicketWorks;
             return ConsumeRelicWorks;
         }
         private int GetBossRushTicketTypeId() { return 9001; }
-        private void ShowMessage(string value) { Harness.Events.Add("message"); }
+        public void ShowMessage(string value) { Harness.Events.Add("message"); }
         private void ShowBigBanner(string value) { Harness.Events.Add("banner"); }
         private void InitializeEnemyPresets() { Harness.Events.Add("pool-init"); }
         private void InitializeBossPoolFilter() { Harness.Events.Add("pool-filter"); }
@@ -260,17 +312,52 @@ namespace BossRush
         private void ClearEnemiesForBossRush() { Harness.Events.Add("clear-enemies"); }
     }
     internal class Config { internal int modeGAbandonHotkey = (int)KeyCode.F4; }
-    internal abstract class RuntimeBase { public virtual void OnUpdate(float delta, float unscaled) { } }
-    internal sealed partial class ModeGRuntimeModule : RuntimeBase
+    internal sealed partial class ModeGRuntimeModule : BossRushRuntimeModuleBase
     {
         internal static readonly List<ModeGRuntimeModule> Created = new List<ModeGRuntimeModule>();
         internal ModeGRunState State;
         internal ModBehaviour Host;
-        internal bool Disposed, RefundTicket, RefundRelic;
+        internal ModeGEntryPreview Preview;
+        private ModeGRunState _state {get{return State;}}
+        private ModeGEntryPreview _preview {get{return Preview;}}
+        private ModBehaviour _host {get{return Host;}}
+        private bool _startupRefundSettled,_startupTicketRefundable,_startupRelicRefundable;
+        private string coopRunAsset,coopRunRoom;private bool coopAssetBound;
+        private readonly Dictionary<string,string> coopParticipantAssets=new Dictionary<string,string>(StringComparer.Ordinal);
+        private readonly Dictionary<int,CharacterMainControl> coopBosses=new Dictionary<int,CharacterMainControl>();
+        private readonly HashSet<long> coopCombatApplied=new HashSet<long>();
+        private long coopAppliedOrder,coopAdmissionBaseline,coopRequestedAdmissionBaseline;private bool coopAdmissionReady,coopRunWasClient,coopEntryActorsKnown;private int coopGuestWave,coopEntryWave;
+        private readonly HashSet<int> coopEntryActors=new HashSet<int>();
+        private ModeGCoopWorld coopWorld;private ModeGSpawnTransaction _spawnTransaction;
+        private bool _firstWaveCombatStarted,_waveSettlementPending,coopWaveTelemetryReady;
+        internal bool CoopPersonalDefeated {get;private set;}
+        private ModeGCombatTelemetry _telemetry;private ModeGAdaptiveCombat _adaptive;
+        internal int AuditDamageCalls {get{return _telemetry==null?0:_telemetry.Calls;}}
+        internal int AuditBossDeaths;
+        internal void AuditBindBoss(int id) {coopGuestWave=State.waveEpoch;coopBosses[id]=new CharacterMainControl();}
+        private void HandleBossDead(Health health,DamageInfo info) {AuditBossDeaths++;}
+        internal void ApplyCoopWorld(ModeGCoopWorld world) {coopWorld=world;}
+        internal void AuditGuestDrive(ModeGCoopWorld world)
+        {
+            coopWorld=world;coopGuestWave=State.waveEpoch=world.Wave;_spawnTransaction=new ModeGSpawnTransaction(State);
+            State.TrySetWaveSlotPlan(world.Expected);for(int i=0;i<world.Expected;i++)_spawnTransaction.MarkExhausted(i);
+            State.combatPhase=ModeGCombatPhase.Spawning;DriveCoopGuest();
+        }
+        private void BeginCoopGuestWave(ModeGCoopWorld world) {throw new InvalidOperationException("Guest wave preparation outside this isolated drive case");}
+        private void SettleCurrentWave() {Harness.Events.Add("guest-settle");}
+        private void TickAmmoViolationAnnounce() { }
+        internal ModeGCoopWorld CaptureCoopWorld()
+        { return new ModeGCoopWorld { Id = State.runId, Seed = State.runSeed, Counter = State.sessionCounter,
+            Format = (int)Preview.runFormat, SceneName = Preview.sceneName, SceneId = Preview.sceneId,
+            Verification = Preview.verificationRevision, Signatures = Preview.signatureRotation,
+            Active = true, Wave=State.waveEpoch,Phase=(int)State.combatPhase,Expected = 1, Actors = new ModeGCoopActor[0] }; }
+        internal bool Disposed;
+        internal bool RefundTicket {get{return _startupTicketRefundable;}set{_startupTicketRefundable=value;}}
+        internal bool RefundRelic {get{return _startupRelicRefundable;}set{_startupRelicRefundable=value;}}
         internal int DisposeCalls, TickCalls;
         internal ModeGRuntimeModule() { Created.Add(this); Harness.Events.Add("new-core"); }
         internal bool Initialize(ModeGRunState state, ModeGEntryPreview preview)
-        { State = state; Host = ModBehaviour.Instance; Harness.Events.Add("initialize"); return Harness.InitOk; }
+        { State = state; Preview = preview; Host = ModBehaviour.Instance;_telemetry=new ModeGCombatTelemetry();_adaptive=new ModeGAdaptiveCombat();FreezeCoopAsset();Harness.Events.Add("initialize"); return Harness.InitOk; }
         internal void ArmStartupRefund(bool ticket, bool relic)
         {
             if (!ReferenceEquals(ModeGRunContext.CurrentModule, this) || !ReferenceEquals(ModeGRunContext.Current, State) || !State.IsStarting)
@@ -286,11 +373,10 @@ namespace BossRush
         internal void End(ModeGExitReason reason)
         {
             Harness.Events.Add("end:" + reason);
-            if (RefundTicket) Host.TryRefundModeGStartupItem(Host.GetModeGTicketTypeId(), "ticket");
-            if (RefundRelic) Host.TryRefundModeGStartupItem(FateEchoRelicConfig.TYPE_ID, "relic");
-            RefundTicket = RefundRelic = false;
+            RefundStartupPaymentOnTechnicalFailure(reason);
             State.exitReason = reason;
             State.TryAdvanceLifecycle(ModeGLifecyclePhase.Exiting); State.TryAdvanceLifecycle(ModeGLifecyclePhase.None);
+            ModeGEntryRuntime.FinishCoopRun(this);
         }
         internal void Dispose() { DisposeCalls++; Disposed = true; Harness.Events.Add("core-dispose"); }
         private void DriveCore(float delta) { TickCalls++; Harness.Events.Add("core-tick"); }
@@ -379,17 +465,19 @@ namespace BossRush
     internal static class BossRushUI { internal static bool Hidden, Paused; internal static bool IsOfficialHudHidden() { return Hidden; } internal static bool IsGamePaused() { return Paused; } }
     internal static class ModeGInteractable { internal static void CloseActiveConfirmation() { Harness.Events.Add("confirm-close"); } }
     internal static class ModeGLateCleanupSink { internal static bool HasPendingLeases; }
-    internal static class ModeGCombatTelemetry { internal static void ConsumePendingAchievementReports(ModeGRunState state) { Harness.Events.Add("drain-reports"); } }
+    internal class ModeGCombatTelemetry {internal int Calls;internal void BeginWave(CharacterMainControl player,float max){ }internal void AcceptCoopDamage(Health health,DamageInfo info){Calls++;}internal static void ConsumePendingAchievementReports(ModeGRunState state) { Harness.Events.Add("drain-reports"); } }
+    internal static class ModeGDeathRouting {internal static void HandlePlayerDeath(ModeGRuntimeModule run,Health health,DamageInfo info){run.End(ModeGExitReason.PlayerDeath);}}
     internal static class ModeGCleanupController { internal static void PrepareHostDestroyInternal(ModeGRunState state) { Harness.Events.Add("prepare-destroy"); } }
     internal class ModeGWavePlan
     {
+        internal const int WaveCount = 9;
         internal class WaveSlot { internal bool isNemesisWave; }
         internal struct FormationSpec { internal float playerMinDistance, bossPairMinDistance; internal FormationSpec(float a, float b) { playerMinDistance = a; bossPairMinDistance = b; } }
         internal static FormationSpec GetFormationSpec(ModeGPlanVariant variant) { return new FormationSpec(10, 5); }
     }
     internal static class SpawnPositionHelper { internal static bool TrySnapToGround(Vector3 input, out Vector3 grounded) { grounded = input; return true; } }
     internal class BossRushSignInteractable : UnityEngine.Object { internal void AddAmmoRefillOption() { Harness.Events.Add("ammo-refill"); } }
-    internal static class ModeGAdaptiveCombat { internal static string GetTemperamentDisplayName(ModeGNemesisTemperament value) { return value.ToString(); } }
+    internal class ModeGAdaptiveCombat {internal void RestoreAllModifiers(){}internal static string GetTemperamentDisplayName(ModeGNemesisTemperament value) { return value.ToString(); } }
     internal static class ModeGManagedCharacterService { internal static bool HasModeGPlayerAuthoredBuff(CharacterMainControl character) { return false; } }
     internal class ModeGRewardCandidate { internal int TypeId; internal ModeGRewardCandidate(int id, int price, int stack) { TypeId = id; } }
 }

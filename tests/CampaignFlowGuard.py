@@ -55,7 +55,10 @@ def check():
     require("Campaign/CampaignObjectiveTracker.cs", "internal static void EnsureArmedFor(string mode)", "if (def.Objectives[i] == null || def.Objectives[i].IsBaseScope) continue;")
     final = "Campaign/CampaignFinalBoss.cs"
     require(final, "internal bool CanStartCampaignFinalBoss()", "return ShouldCampaignFinalBossAltarExist();")
-    require(final, "private async UniTask StartCampaignFinalBossAsync(", "await SandstormChampionBoss.SpawnAsync( campaignOwner, position, () => runId == campaignFinalBossRunId && campaignFinalBossActive);")
+    require(final, "private async UniTask StartCampaignFinalBossAsync(", "await SandstormChampionBoss.SpawnAsync( campaignOwner, position, () => runId == campaignFinalBossRunId && campaignFinalBossActive && IsCampaignFinalScopeValid());")
+    require(final, "internal void StartCampaignFinalBoss()", "CaptureCampaignFinalScope();")
+    for statement in ("campaignFinalScopeConnected != BossRushCoop.IsConnected", "campaignFinalScopeHost != BossRushCoop.IsHost", "campaignFinalScopeLost = true;"):
+        require(final, "private bool IsCampaignFinalScopeValid()", statement)
     # 召唤石的几何与表现 2026-09-23 移到独立类型（VA-25）：部件仍共用缓存里那一份材质，退场走缩没 + 自然退场
     altar_fx = "Campaign/CampaignFinalBossFx.cs"
     require(altar_fx, "private static Renderer CreatePart(", "renderer.sharedMaterial = material;")
@@ -83,10 +86,20 @@ def check():
         ("Utilities/PlayerLifecycleRuntimeHooks.cs", "internal void RegisterPlayerLifecycleRuntimeEvents()", "Health.OnHurt += CampaignObjectiveCollector.OnGlobalHurt;"),
         ("WavesArena/WavesArenaRuntimeModule_VictoryRewards.cs", "internal async void OnAllEnemiesDefeated_LootAndRewards()", "owner.NotifyCampaignStandardCleared();"),
         ("ModeD/ModeDRuntimeModule_Waves.cs", "internal void OnModeDWaveComplete()", "NotifyCampaignModeDWaveComplete(modeDWaveIndex);"),
-        ("ModeF/ModeFExtraction.cs", "internal void OnModeFExtractionSuccess()", "NotifyCampaignModeFExtracted();"),
+        ("ModeF/ModeFRuntimeModule_Coop.cs", "private bool ApplyCoopModeFPersonal(", "if (!CampaignObjectiveTracker.ReportExtractionLease(ledger.Campaign)) return false;"),
         ("ZombieMode/ZombieModeRuntimeModule_Extraction.cs", "private void CompleteZombieModeExtractionSuccess(", "owner.NotifyCampaignZombieExtracted();"),
     ):
         require(path, signature, statement)
+    require("ModeF/ModeFRuntimeModule_Coop.cs", "private bool ApplyCoopModeFPersonal(",
+            "if (!CampaignObjectiveTracker.ObserveExtractionLeaseKill(ledger.Campaign, receipt.Kills, receipt.VictimMarks > 0)) return false;")
+    require("ModeF/ModeFRuntimeModule_Coop.cs", "private void PreserveCoopModeFLocalLedger()",
+            "CampaignObjectiveTracker.CaptureExtractionLease(CampaignContentCatalog.ModeModeF)")
+    require("ZombieMode/ZombieModeRuntimeModule_Coop.cs", "internal void RememberCoopZombieWallet()",
+            "CampaignObjectiveTracker.CaptureExtractionLease(CampaignContentCatalog.ModeZombie)")
+    require("ZombieMode/ZombieModeRuntimeModule_Coop.cs", "private bool ApplyCoopZombiePersonal(",
+            "CampaignObjectiveTracker.ObserveExtractionLeaseWave(wallet.Campaign, wallet.MaxWave);")
+    require("ZombieMode/ZombieModeRuntimeModule_Coop.cs", "private bool ApplyCoopZombiePersonal(",
+            "if (!CampaignObjectiveTracker.ReportExtractionLease(wallet.Campaign)) return false;")
     return errors
 
 

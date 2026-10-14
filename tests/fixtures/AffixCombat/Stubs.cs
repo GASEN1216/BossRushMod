@@ -237,6 +237,8 @@ public sealed class ExplosionManager
 }
 namespace BossRush
 {
+    // 本夹具只执行既有离线路径；联机词条执行另见 MutatorCoop。
+    internal static class MutatorCoopRuntimeModule { internal static bool TryHandleEnemyKilled(Health h, DamageInfo d) { return false; } }
     public sealed partial class ModBehaviour : UnityEngine.Object
     {
         public static ModBehaviour Instance;

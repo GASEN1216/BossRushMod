@@ -64,7 +64,7 @@ def main():
     require(mod, "public bool IsModeFPreparationPhase", "Mode F preparation phase must be exposed to boss AI")
     require(phantom, "inst.IsModeEActive || inst.IsModeFActive", "Phantom Witch must inspect Mode F target context")
     require(phantom, "inst.IsModeEActive || inst.IsModeFPreparationPhase", "Phantom Witch must suppress player fallback in Mode F preparation")
-    require(phantom, "inst.IsModeFPreparationPhase && target == CharacterMainControl.Main", "Phantom Witch must reject direct player targets during Mode F preparation")
+    require(phantom, "inst.IsModeFPreparationPhase && BossRushCoop.IsPlayer(target)", "Phantom Witch must reject every room player's direct target during Mode F preparation")
     require(phantom, "? null", "Phantom Witch exception fallback must not target player during Mode F preparation")
     require(phantom_scheduler, "inst.IsModeEActive || inst.IsModeFPreparationPhase", "Phantom Witch attack loop must wait during Mode F preparation instead of treating missing target as player death")
 

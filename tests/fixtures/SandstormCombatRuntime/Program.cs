@@ -226,3 +226,6 @@ public class Health : UnityEngine.Object
 }
 public class DamageInfo { public bool isExplosion; public float damageValue, critRate, critDamageFactor = 1f; public int crit; public CharacterMainControl fromCharacter; public DamageReceiver toDamageReceiver; }
 public class LevelManager { public static LevelManager Instance = new LevelManager(); public CharacterMainControl ControllingCharacter; }
+
+// Offline facade: this fixture exercises single-player production paths only.
+namespace BossRush { internal sealed class BossRushCoopPlayer { internal CharacterMainControl Character; } internal static class BossRushCoop { internal const bool IsConnected=false; internal static readonly BossRushCoopPlayer[] Players=new BossRushCoopPlayer[0]; } internal static class BossRushCoopFxRuntimeModule { internal static void TrackHazard(UnityEngine.Component c,int k,bool v) { } } partial class SandstormChampionController { private CharacterMainControl CombatPlayer { get { return CharacterMainControl.Main; } } } partial class SandstormOrb { private bool _networkReplica; private void OnReplicaHurt(DamageInfo d) { } } }

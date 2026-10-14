@@ -47,8 +47,11 @@ def main():
     if auto.count('if (!isAutoNextCurrent()) yield break;') != 2:
         raise AssertionError('auto-next-wave must stop during wait and before final shared state mutation')
     lifecycle = read('ModeD/ModeDRuntimeModule_Lifecycle.cs')
-    for method in ('internal void StartModeD()', 'internal void EndModeD()'):
-        require(body(lifecycle, method), '{ ModeDRuntimeModule.Invalidate(owner);', 'entry and cleanup must invalidate previous run: ' + method)
+    start = body(lifecycle, 'internal void StartModeD()')
+    require(start, '{ if (BossRushCoop.IsConnected && modeDActive) { lastStartSucceeded = RetryCoopModeDEntry(); return; } ModeDRuntimeModule.Invalidate(owner);',
+            'repeated co-op entry must preserve world generation; a new run must invalidate its previous owner')
+    require(body(lifecycle, 'internal void EndModeD()'), '{ ModeDRuntimeModule.Invalidate(owner);',
+            'cleanup must invalidate previous run')
     runtime = read('ModeD/ModeDRuntimeModule.cs')
     capture = body(runtime, 'internal static System.Func<bool> CaptureValidity(')
     require(capture, 'int wave = runtime.modeDWaveIndex;', 'Mode D captured wave must come from the module owner')

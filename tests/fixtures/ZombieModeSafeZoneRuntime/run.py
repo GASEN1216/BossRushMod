@@ -3,6 +3,7 @@ from pathlib import Path
 import hashlib
 import json
 import subprocess
+import sys
 from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -64,7 +65,9 @@ def main():
     full_sources = [ROOT / "ZombieMode/ZombieModeSafeZoneController.cs", ROOT / "ZombieMode/ZombieModeTuning.cs"]
     for path in full_sources:
         read(path.relative_to(ROOT).as_posix())
-    sources = [generated, *full_sources, HERE / "Program.cs", HERE / "Stubs.cs"]
+    codec = [ROOT / path for path in ("Common/Coop/BossRushCoopJson.cs", "Common/Data/BossRushJsonValue.cs", "Utilities/SimpleJsonHelper.cs")]
+    for path in codec: read(path.relative_to(ROOT).as_posix())
+    sources = [generated, *full_sources, *codec, HERE / "Program.cs", HERE / "Stubs.cs", HERE.parent / "CoopOfflineStubs.cs"]
     includes = "".join('<Compile Include="' + escape(str(path), {'"': '&quot;'}) + '" />' for path in sources)
     project = OUT / "Regression.csproj"
     project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType>'
@@ -72,7 +75,11 @@ def main():
                        '<EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649</NoWarn>'
                        '</PropertyGroup><ItemGroup>' + includes + '</ItemGroup></Project>', encoding="utf-8")
     (OUT / "production-sha256.json").write_text(json.dumps(hashes, indent=2), encoding="utf-8")
-    return subprocess.call(["dotnet", "run", "--project", str(project), "--configuration", "Release"], cwd=ROOT)
+    sys.path.insert(0, str(ROOT / "tools"))
+    from run_runtime_regressions import run_project_fixture
+    code, output = run_project_fixture(project, OUT / "runs", ROOT)
+    print(output)
+    return code
 
 
 if __name__ == "__main__":

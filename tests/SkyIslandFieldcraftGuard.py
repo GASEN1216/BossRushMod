@@ -295,7 +295,10 @@ def main():
                    "Debug.LogWarning("], "读条时长写进官方私有字段后必须读回核对（改名时有声）")
     ordered(need_body(gathering, "private void OnGathered(Spot spot)", "采集完成"),
             # 2026-09-23 审美审查 UE-05：交互体与触发器本帧摘掉，光斑、点光与字交给 0.4 秒淡出再销毁根（不再当帧整块 Destroy）。
-            ["if (!harvest(spot.Node)) return;", "spot.Harvested = true;", "UnityEngine.Object.Destroy(point);",
+            ["if (!harvest(spot.Node)) return;", "MarkHarvested(spot.Node.Id);"],
+            "离线采集先发出个人产出再关闭共享节点")
+    ordered(need_body(gathering, "internal void MarkHarvested(string id)", "共享节点认领"),
+            ["spot.Harvested = true;", "UnityEngine.Object.Destroy(point);",
              "UnityEngine.Object.Destroy(trigger);", "SkyIslandFadeAway.Begin(gathered, HarvestFade, Vector3.zero);"],
             "先发出产出、再标记采过、最后收掉交互体（光斑与点光淡出后再销毁）")
     if 'InteractionGroupLabel { get { return "[SkyIslandGather]"; } }' not in gathering:

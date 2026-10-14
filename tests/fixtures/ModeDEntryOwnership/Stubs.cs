@@ -139,3 +139,13 @@ namespace BossRush
         internal void StopCoroutine(UnityEngine.Coroutine coroutine) {}
     }
 }
+
+namespace BossRush { internal sealed partial class ModeDRuntimeModule {
+ private CoopGameplayChannel<object> coopChannel;
+ private string coopEpoch, coopDeliveredEpoch;
+ private bool RetryCoopModeDEntry() { return false; }
+ private bool TryCommitCoopModeDStarter() { return false; }
+ private void RefreshCoopModeDParticipants() { }
+} }
+
+namespace BossRush { internal sealed partial class ModeDRuntimeModule { private bool coopProjectionRetiring;private CoopPersonalDelivery<object> coopPersonal; private void InitializeCoopModeD() { } private void TickCoopModeD(float delta) { } } }

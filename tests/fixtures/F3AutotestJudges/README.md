@@ -44,3 +44,12 @@
 
 Unity 侧那一半只能在 Dev 构建里实机跑：截图取像素（亮度样本从哪来、元素矩形算得对不对）、场景里的物体与灯、官方对话 / 地图 / 图鉴接口、背包与金钱记账、
 写入门的真实判定（专用测试档、Runner 状态）、真实 ES3 落盘与崩溃后回基地的恢复时序。夹具只证明「拿到这些输入之后」判据、编码与报告的行为。
+
+
+## 2026-10-13 Dev 真实交互前提回归
+
+`run.py` 另逐字抽取 `F3GameplayValidationAutotestBosses.cs` 的 `AutotestInteract` / `PrepareAutotestGatherInteraction`，以及 `SkyIslandFieldcraftCoop.cs` 的真实 `GatherRequest` / `AdmitHarvest`，显式构建并执行本次 fresh TargetPath，输出 SHA-256。动作仍走 `CharacterMainControl.Interact`；采集许可后背包数量由独立实机断言判断。
+
+13 条断言覆盖原锚点位置距真实点超过 6 米被生产许可拒绝、实际采集体合法近点、传送假成功但距离仍远、缺地面、绕障落点超过近点界、官方动作未开始、动作中断、读条完成后仍未获生产许可，以及实际许可后交互体销毁。宿主替身仅控制物理传送/时钟/动作进展/网络玩家事实与交付记录；生产许可判断逐字执行，不用恒真 authority 或成功发物替身。物理、原生 Harmony、真实库存和网络收据仍要 L3。关闭近点调用的 Build 副本破坏实跑转红，按字节恢复后重跑为绿，证据在 `Build/coop-independent-audit/world-round7-dev-prerequisites/`。
+
+信鸽 `SKY_AUTO_REAL_PIGEON_LETTER` 在专用档通过既有 `clear_nearby` 真实伤害清静，再 `wait_quiet` 后走真实交互；这是 assisted 前提准备，生产战斗门保留。新档未解锁航线的船步骤保持 SKIP；Session fallback 进入不作为船入口 PASS。

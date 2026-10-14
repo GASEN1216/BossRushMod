@@ -55,3 +55,4 @@ namespace BossRush {
   }
  }
 }
+namespace BossRush { partial class WavesArenaRuntimeModule { private bool RequestCoopArena(string action, int value=0, bool flag=false) { return false; } private void BeginCoopArenaRun() { } } }

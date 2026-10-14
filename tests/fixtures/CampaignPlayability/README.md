@@ -1,5 +1,7 @@
 # 战役目标与终章生命周期回归
 
+2026-10-13：抽取真实 F3 `RunCampaignFinalBoss`，并沿真实终章生成/死亡/清理 owner 执行。受控官方 Hurt 边界在无敌和加载中返回 false；时间、工厂和物理仍为替身。覆盖正常入场期间零次伤害、解除无敌后唯一 Hurt 到达一次真实死亡回调、无敌不结束超时失败、切图/首领销毁/owner 结束使等待作废，以及 Hurt 返回 false 的明确失败。原实机用例在沙暴冠军正常 1.1 秒入场无敌期间立即 Hurt，未读返回值，造成计数 0；本次补的是实际前置条件，保留死亡表现和 BGM 释放的原判据。个人剧情事实同时覆盖房主本机死亡不重武装、旧房间/旧场景事实不推进当前任务。
+
 2026-10-08：终章生成改接独立 SandstormChampionBoss 工厂。夹具只替代 Unity 工厂为可延迟 Task，并记录生产传入的 ownership lease，实际执行生产 runId 闭包，确认清理前为真、清理后为假；不把替身字段误称为非波次证明。冠军战斗、死亡入箱与视觉仍需 L1 接线审核和 L3 验收。
 
 2026-10-07 报名石再次复现：夹具抽取完整真实 `SetupBossRushInDemoChallenge` 与真实普通/雪图路牌创建方法，直接链接 Campaign 宿主桥，证明官方 AfterInit 已真但 BossRush 二次传送及路牌尚未生成时不创建石头。默认出生点与真实路牌配置点刻意相距数百米；玩家后来走开，报名石仍围绕路牌生成。另覆盖显式自定义牌位置、雪图隐形交互点、牌失活/销毁/跨场景拒绝与单实例。几何执行生产 `TryFindAroundPlayer`、`TrySampleNavMesh`、`TryRaycastSnapPreserveXZ`、`PassesMinPlayerDistance`，NavMesh 适配器返回失败，Physics 适配器对受控水平地面求交；断言可见牌的受控 +0.8 米 pivot 输入确实被投回地面。模式检测、路牌模型工厂、垃圾桶/NPC/清场表现为替身，不模拟 Unity 渲染或实地图可达性。夹具逐次生成生产来源 SHA-256；此前只等官方初始化的实现须在“official AfterInit cannot create the altar before BossRush's real second teleport and roadsign creation”断言转红。
@@ -17,3 +19,5 @@ Mode F 闩回归直接链接生产 `ModeFRuntimeModule_BountyLatch.cs` 与战役
 每次运行从当前 `CampaignFinalBoss.cs` 抽取真实状态、只读属性、启动、门禁、场景缓存、独白到生成、生成、死亡和清理方法，放入实际 `CampaignRuntimeModule` owner；从 `CampaignRuntimeModule.cs` 抽取真实 `OnSceneLoaded` 与 `OnDestroy`，并直接链接整份 `CampaignRuntimeModuleHostBridge.cs`。从 `CampaignDialoguePlayer.cs` 抽取取消方法，仅把异步载体 UniTask 换成 Task。覆盖旧宿主入口落到同一模块、独立宿主状态隔离、场景代数失效、取消独白不生成、后继对话使用新 token、工厂迟到成功回收、旧请求异常不取消新请求、让路退订、场景销毁后可重打、已排队的重复死亡回调只完成一次。卸载用例在真实 `OnDestroy` 清空模块 owner 后继续完成旧工厂，验证异步入口捕获的原宿主仍先回收掉落再销毁迟到 Boss。对象替身模拟 Unity 已销毁等于 null 和 GameObject 销毁连带组件；测试必须经过这条销毁路径。来源 SHA-256 写入 `Build/campaign-playability/production-source-sha256.json`。
 
 替身提供官方事件输入、武器标签、模式字段、图鉴列表/字典、持久化接收端与可控 Boss 工厂。独白等待为可取消 Task；实际对白、官方 UI 与 UniTask player loop 由 `SkyIslandDialogue` 的共享管理器回归另行覆盖。此夹具不模拟战斗、物理落点、渲染、原生输入、玩家存档和奖金落盘。近战实际配装调用点由 `CampaignFlowGuard` 验证，物品工厂成功率须 L3。L2 证明这些输入能驱动生产目标/编排，不能代替实机入口、战斗手感和帧耗采样。奖金与持久化由 `ContentTransactions` 覆盖。
+
+2026-10-13：执行真实 ExtractionLease 与原契约接受修订，验证旧局 F 标记击杀、Zombie 波次和撤离不污染新 Armed，资产返回、放弃重接、写失败、重复与连续收据；实际世界事实与个人击杀证据取 max，不能叠加。终章还抽取原 connected/role/room 的 Capture/IsValid 方法，执行 Stop、新房间、重连、场景重新建立与无 COOP。网络与保存接收端可变，不能据此证明真实多端到达、官方任务 UI 或落盘成功。

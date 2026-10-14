@@ -4,6 +4,7 @@
     <LangVersion>7.3</LangVersion><Nullable>disable</Nullable><ImplicitUsings>disable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../CoopOfflineStubs.cs" Link="Fixture/CoopOfflineStubs.cs" />
     <Compile Include="$(MarriageGeneratedSource)" />
     <Compile Include="../../../Integration/Dialogue/DialogueActorFactory.cs" Link="Production/DialogueActorFactory.cs" />
     <Compile Include="../../../SkyIsland/SkyIslandResidentInteractable.cs" Link="Production/SkyIslandResidentInteractable.cs" />

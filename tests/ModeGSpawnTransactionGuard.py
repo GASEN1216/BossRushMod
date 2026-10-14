@@ -12,7 +12,8 @@ ModeGSpawnTransactionGuard — Mode G 生成事务守卫（规格 §20 第 13 �
 - 唯一改变 Health.Hurt 准入/事务深度的补丁仍是 BossRushHealthHurtContextPatch；
   仅额外允许精确路径/类名的 SetBonusDamageObservation 只读贡献观察补丁与既有的
   ModeEHiredBossKillAttributionPatch 击杀归属 transpiler，
-  不允许第二个事务补丁、第三个 Hurt 补丁或借观察补丁改写伤害/返回值；
+  联机工事补丁只能拦截客户端无 Character 的工事镜像，把命中提交房主一次；
+  不允许第二个角色事务补丁或借观察补丁改写角色伤害/返回值；
 - __state 配对：BossLethalHealthProtectionPatch Prefix ref bool __state 与
   Finalizer bool __state 成对。
 """
@@ -33,6 +34,9 @@ HURT_OWNERS = {
     # 丧尸模式致死前减伤的 transpiler（2026-09-27 从共享上下文补丁拆出，失配只拆自己）。
     # 不改准入 / 事务深度 / 返回值，只在官方 finalDamage 累加后调用 ZombieModeDamageRuntime。
     "ZombieMode/ZombieModeDamageRuntime.cs": "ZombieModeHealthHurtDamagePatch",
+    "ModeF/ModeFRuntimeModule_CoopFortifications.cs": "CoopFortificationReplicaHurtPatch",
+    # 只保存客户端明确 AI 的精确 Hurt 上下文；保护在既有生命 setter 链消费。
+    "Utilities/CoopAiPredictionHealthProtection.cs": "CoopAiPredictionHealthHurtPatch",
 }
 HURT_PATCH_RE = re.compile(
     r'\[HarmonyPatch\s*\(\s*typeof\s*\(\s*(?:global::)?Health\s*\)\s*,\s*'
@@ -86,7 +90,7 @@ def collect_hurt_patch_sources(errors, repo_root=REPO_ROOT):
 
 
 def validate_hurt_patch_owners(sources, errors):
-    """允许的是两个不同职责的精确身份，绝不是把总数预算由 1 放宽成 2。"""
+    """每个路径登记精确补丁职责；角色事务与无角色工事镜像必须分开约束。"""
     for path in sorted(set(sources) - set(HURT_OWNERS)):
         errors.append("[HurtPatchOwner] 未授权的 Health.Hurt patch: " + path)
     for path, owner in HURT_OWNERS.items():
@@ -97,6 +101,31 @@ def validate_hurt_patch_owners(sources, errors):
         declaration = re.compile(r"\)\]\s*(?:public|internal)\s+static\s+class\s+" + owner + r"\b")
         if len(matches) != 1 or not declaration.search(text, matches[0].start()):
             errors.append("[HurtPatchOwner] {} 必须只声明精确补丁 {}（当前 {} 处）".format(path, owner, len(matches)))
+
+    fortification = code_without_comments(sources.get("ModeF/ModeFRuntimeModule_CoopFortifications.cs", ""))
+    start = fortification.find("private static bool Prefix(Health __instance, DamageInfo damageInfo)")
+    replica = fortification[start:] if start >= 0 else ""
+    required = ("if (!BossRushCoop.IsClient || __instance == null) return true;",
+                "if (__instance.TryGetCharacter() != null) return true;",
+                "if (marker == null || !marker.NetworkReplica) return true;",
+                "if (marker.NetworkHit != null) marker.NetworkHit(damageInfo);", "return false;")
+    if not all(fragment in replica for fragment in required):
+        errors.append("[CoopFortificationScope] 只能拦截客户端无角色的工事镜像，角色伤害继续原有管线")
+    if re.search(r"\.(?:Hurt|SetHealth|AddHealth)\s*\(|\b__result\b|\bref\s+(?:DamageInfo|Health)\b", replica):
+        errors.append("[CoopFortificationScope] 镜像命中补丁不能扣血或改写伤害")
+
+    prediction = code_without_comments(sources.get("Utilities/CoopAiPredictionHealthProtection.cs", ""))
+    begin = prediction.find("internal static class CoopAiPredictionHealthHurtPatch")
+    end = prediction.find("internal sealed class CoopAiPredictionHealthRuntimeModule", begin)
+    context = prediction[begin:end] if begin >= 0 and end > begin else ""
+    required = ("private static void Prefix(Health __instance, DamageInfo damageInfo, out Health __state)",
+                "__state = CoopAiPredictionHealthProtection.Begin(__instance, damageInfo.fromCharacter);",
+                "private static Exception Finalizer(Exception __exception, Health __state)",
+                "CoopAiPredictionHealthProtection.End(__state); return __exception;")
+    if not all(token in context for token in required):
+        errors.append("[CoopPredictionContext] 预测观察必须保留原 Hurt 准入/伤害并用逐调用精确 Health 清理")
+    if re.search(r"\b__result\b|\bref\s+(?:DamageInfo|Health)\b|\[Harmony(?:Postfix|Transpiler)\]|\.(?:Hurt|SetHealth|AddHealth)\s*\(", context):
+        errors.append("[CoopPredictionContext] 上下文观察不得改写伤害、准入、生命或返回值")
 
     observer = code_without_comments(sources.get("Integration/Bonus/SetBonusDamageObservation.cs", ""))
     if not observer:

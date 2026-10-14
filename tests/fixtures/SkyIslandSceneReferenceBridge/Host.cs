@@ -287,6 +287,15 @@ namespace Duckov.Scenes
 
 namespace BossRush
 {
+    internal static class BossRushCoop { internal static bool IsClient; }
+    // 只替代原生到达接收端；真实 prefix 与真实 Harmony 安装来自完整生产桥接文件。
+    internal sealed class SkyIslandCoopRuntime
+    {
+        internal static SkyIslandCoopRuntime Current;
+        internal int NativeArrivals, LoaderCallsBeforeArrival;
+        internal void PrepareNativeArrival()
+        { NativeArrivals++; LoaderCallsBeforeArrival = SceneLoader.LoadCalls; }
+    }
     public static class ModBehaviour { public static readonly List<string> Errors = new List<string>(); public static void CriticalLog(string key, string text) { Errors.Add(text); } }
     public static class L10n { public static string T(string zh, string en) { return zh; } }
     public static class LocalizationHelper { public static void InjectLocalization(string key, string value) { } }

@@ -28,12 +28,19 @@ for token in ['BossRushDynamicItemRegistry.GetPublishedTypeIds()', 'ItemAssetsCo
     if token not in items:
         errors.append('动态物品用例缺少真实工厂/身份/清理约束: ' + token)
 for token in ['CollectZombieModePurificationPoint(runId, 3, null, null)',
-              'zombieModeRunState.PurificationPoints != pointsBeforePickup + 3',
+              'runState.PurificationPoints != pointsBeforePickup + 3',
               'StartZombieModeExtractionFromUi(runId)', 'area.onCountDownSucceed', 'succeed.Invoke();',
               'first - before == points && second == first && !IsZombieModeActive',
-              'IsRuntimeReady(BaseSceneNameForValidation())', 'finally { _host.ValidationSafeCleanup(); }']:
+              'IsRuntimeReady(BaseSceneNameForValidation())', 'finally { try { _host.ValidationSafeCleanup(); } finally { RestoreModeDValidationEntry(); } }']:
     if token not in zombie:
         errors.append('丧尸撤离用例缺少生产事件/结算/终态断言: ' + token)
+for token in ['while (runState.PurificationPoints != pointsBeforePickup + 3',
+              'while (IsZombieModeActive && Time.realtimeSinceStartup < deadline',
+              'asset != BossRushCoop.LocalAssetId || slot != Saves.SavesSystem.CurrentSlot',
+              'PrepareZombieValidationEntry(out reason)', 'StartZombieValidationEntry(out reason)',
+              'TryClickAutotestClosureContinue();']:
+    if token not in zombie:
+        errors.append('丧尸撤离必须等待真实个人收据/结算/入口并恢复原装备: ' + token)
 if zombie.count('succeed.Invoke();') != 2:
     errors.append('丧尸撤离必须检查重复事件不能再次结算')
 for error in errors:

@@ -35,7 +35,7 @@ class Program
         {
             var evt = new RandomEventTempo(id);
             var owner = new ModBehaviour(); var player = Character(); var enemy = Character();
-            RandomEventEffectHelpers.Player = player; owner.Enemies.Add(enemy);
+            CharacterMainControl.Main = player; RandomEventEffectHelpers.Player = player; owner.Enemies.Add(enemy);
             var ctx = new RandomEventContext { Owner = owner, Scope = new RuntimeScope() };
             Check(evt.OnTrigger(ctx), "registered event can really attach its effects");
             Check(evt.ConsumesRunBudget, "combat effects consume quota");
@@ -52,6 +52,47 @@ class Program
             ctx.Scope = new RuntimeScope();
             Check(!evt.OnTrigger(ctx), "missing required player stat rejects partial gameplay");
             ctx.Scope.Clear("TriggerFailed"); Clear(player);
+        }
+        BossRushCoop.HasWorldAuthority = false;
+        foreach (RandomEventId id in new[] { RandomEventId.WildChase, RandomEventId.MeleeCarnival, RandomEventId.HeavySteps })
+        for (int member = 0; member < 16; member++)
+        {
+            var evt = new RandomEventTempo(id); var owner = new ModBehaviour();
+            var player = Character(); var enemy = Character(); CharacterMainControl.Main = player;
+            RandomEventEffectHelpers.Player = player; owner.Enemies.Add(enemy);
+            var ctx = new RandomEventContext { Owner = owner, Scope = new RuntimeScope() };
+            Check(evt.OnTrigger(ctx), "every participant receives tempo effect");
+            Expected(player, id); Clear(enemy);
+            evt.OnTick(ctx, 3f); Expected(player, id); Clear(enemy);
+            evt.OnCleanup(ctx, RandomEventEndReason.SceneChanged); Clear(player);
+        }
+        foreach (bool authority in new[] { true, false })
+        foreach (RandomEventId id in new[] { RandomEventId.WildChase, RandomEventId.MeleeCarnival, RandomEventId.HeavySteps })
+        {
+            BossRushCoop.HasWorldAuthority = authority;
+            var evt = new RandomEventTempo(id); var owner = new ModBehaviour();
+            var first = Character(); CharacterMainControl.Main = first;
+            var ctx = new RandomEventContext { Owner = owner, Scope = new RuntimeScope() };
+            Check(evt.OnTrigger(ctx), "original owner receives both temporary modifiers");
+            var respawned = Character(); CharacterMainControl.Main = respawned;
+            evt.OnTick(ctx, 3f); Expected(respawned, id); Clear(first);
+            evt.OnTick(ctx, 3f); Expected(respawned, id);
+            var previousItem = new CharacterMainControl { CharacterItem = respawned.CharacterItem };
+            respawned.CharacterItem = Character().CharacterItem;
+            evt.OnTick(ctx, 3f); Expected(respawned, id); Clear(previousItem);
+            var incomplete = Character(); CharacterMainControl.Main = incomplete;
+            string missing = id == RandomEventId.WildChase ? "RunSpeed" : id == RandomEventId.MeleeCarnival ? "GunDamageMultiplier" : "MeleeDamageMultiplier";
+            incomplete.CharacterItem.Stats.Remove(missing);
+            evt.OnTick(ctx, 3f); Clear(incomplete); Clear(respawned);
+            incomplete.CharacterItem.Stats.Add(missing, new Stat());
+            evt.OnTick(ctx, 3f); Expected(incomplete, id);
+            evt.OnTick(ctx, 3f); Expected(incomplete, id);
+            CharacterMainControl.Main = null;
+            evt.OnTick(ctx, 3f); Clear(incomplete);
+            CharacterMainControl.Main = first;
+            evt.OnTick(ctx, 3f); Expected(first, id);
+            evt.OnCleanup(ctx, RandomEventEndReason.RunEnded); evt.OnCleanup(ctx, RandomEventEndReason.RunEnded);
+            Clear(first); Clear(respawned); Clear(previousItem); Clear(incomplete);
         }
         Console.WriteLine("RandomEventTempo: PASS (" + checks + " assertions)");
     }

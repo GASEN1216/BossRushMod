@@ -116,6 +116,23 @@ internal static class Program
         SceneManager.Active = sky;
         var manager = new LevelManager("SkyLevelManager");
         manager.MainCharacter = new CharacterMainControl();
+        var guestRuntime = new SkyIslandCoopRuntime();
+        SkyIslandCoopRuntime.Current = guestRuntime;
+        BossRushCoop.IsClient = true;
+        int callsBeforeArrival = SceneLoader.LoadCalls;
+        Check(RunLoad(reference) == null && guestRuntime.NativeArrivals == 1
+            && guestRuntime.LoaderCallsBeforeArrival == callsBeforeArrival,
+            "actual Harmony prefix prepares native client arrival before the official loader body");
+        Check(RunLoad(foreignReference) == null && guestRuntime.NativeArrivals == 1,
+            "native arrival preparation never intercepts a foreign scene reference");
+        BossRushCoop.IsClient = false;
+        Check(RunLoad(reference) == null && guestRuntime.NativeArrivals == 1,
+            "host and standalone official loads keep their existing arrival path");
+        BossRushCoop.IsClient = true;
+        SkyIslandCoopRuntime.Current = null;
+        Check(RunLoad(reference) == null && guestRuntime.NativeArrivals == 1,
+            "missing coop owner does not fabricate a native arrival");
+        BossRushCoop.IsClient = false;
         int loads = SceneLoader.LoadCalls;
         object token = new object();
         SkyIslandSceneReferenceBridge.BeginInitialization(token);

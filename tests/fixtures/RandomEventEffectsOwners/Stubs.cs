@@ -23,6 +23,7 @@ namespace UnityEngine
  {
   public readonly List<Component> Components=new List<Component>();public Transform transform;public bool activeSelf;
   public GameObject(string label="object"){name=label;transform=new Transform{gameObject=this};Components.Add(transform);}
+  public T GetComponent<T>() where T:Component { foreach(var c in Components) if(c is T) return (T)c; return null; }
   public void SetActive(bool value){activeSelf=value;Probe.Add("active:"+name);}
  }
  public struct Vector3
@@ -144,4 +145,11 @@ namespace BossRush
   internal static void SpawnAirdropMarker(Vector3 p,GameObject c,float duration){Probe.Add("marker");}
   internal static void PlayAirdropLanding(Vector3 p){Probe.Add("landing");}
  }
+}
+
+public class InteractableLootbox : UnityEngine.Component { }
+namespace BossRush
+{
+ internal static class BossRushCoop { internal static bool IsPlayer(CharacterMainControl character) { return character == CharacterMainControl.Main; } internal static bool RequestAiRegistration(CharacterMainControl character) { return false; } internal static bool IsHost; internal static bool RegisterWorldLoot(InteractableLootbox box) { throw new InvalidOperationException("Offline fixture"); } }
+ internal sealed partial class RandomEventsRuntimeModule { internal static void PublishCoopFx(int kind, UnityEngine.Vector3 position, int index, float duration = 0f) { } }
 }

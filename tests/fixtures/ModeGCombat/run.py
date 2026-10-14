@@ -2,6 +2,7 @@
 from pathlib import Path
 import hashlib
 import subprocess
+import sys
 from xml.sax.saxutils import escape
 
 HERE = Path(__file__).resolve().parent
@@ -55,11 +56,24 @@ def main():
     generated += runtime[begin:end]
     for signature in ("private void SettleCurrentWave()", "private void PrepareNextAmmoBanIfNeeded()",
                       "private void PublishAmmoBan(", "private int GetAmmoThreatSharePercent(",
-                      "private static float AdvanceSpawnWait("):
+                      "private static float AdvanceSpawnWait(", "private bool CanContinueRun()"):
         generated += member(runtime, signature) + "\n"
     api = sources["ModeGRuntimeModule_PublicApiAndShutdown.cs"]
     generated += member(api, "public ModeGContractProgress BuildContractProgress()") + "\n"
-    generated += member(api, "private void FillObjective(") + "\n}\n}\n"
+    generated += member(api, "private void FillObjective(") + "\n"
+    # 收据接收与个人评分链接真实生产方法；网络角色索引仍由宿主替身提供。
+    generated += member(sources["ModeGCoopRuntime.cs"], "internal bool ApplyCoopCombat(") + "\n}\n"
+    generated += "internal sealed partial class ModeGEntryRuntime {\n"
+    generated += member(sources["ModeGCoopRuntime.cs"], "internal static bool CanApplyPersonalCombat") + "\n}\n"
+    generated += "internal sealed partial class ModeGRuntimeModule {\n"
+    for signature in ("internal bool CoopPersonalDefeated", "private void FreezeCoopAsset()", "internal bool CoopAnyParticipantAlive()", "internal bool IsCoopAssetCurrent", "internal bool CheckCoopAsset()"):
+        generated += member(sources["ModeGCoopRuntime.cs"], signature) + "\n"
+    generated += "}\n"
+    generated += member(sources["ModeGCoopRuntime.cs"], "internal sealed class ModeGCoopCombat") + "\n}\n"
+    generated += "namespace BossRush {\n" + member(sources["ModeGCoopRuntime.cs"], "internal sealed class ModeGCoopActor") + "\n" + member(sources["ModeGCoopRuntime.cs"], "internal sealed class ModeGCoopParticipant") + "\n" + member(sources["ModeGCoopRuntime.cs"], "internal sealed class ModeGCoopWorld") + "\ninternal sealed partial class ModeGRuntimeModule {\n"
+    for signature in ("internal long CoopRequestedAdmissionBaseline", "internal bool CoopRunWasClient", "internal bool CoopRunHasWorldAuthority", "internal void FreezeCoopAdmission("):
+        generated += member(sources["ModeGCoopRuntime.cs"], signature) + "\n"
+    generated += "}}\n"
     extracted = OUT / "ProductionExtracted.cs"
     extracted.write_text(generated, encoding="utf-8")
     files = [ROOT / "ModeG" / name for name in (
@@ -67,7 +81,7 @@ def main():
         "ModeGDeterministicRandom.cs", "ModeGAvailability.cs", "ModeGFateContract.cs",
         "ModeGProfilePersistence.cs", "ModeGNemesisPersistence.cs", "ModeGWeaponScoringCompatibilityMatrix.cs",
         "ModeGRewardTransaction.cs",
-    )] + [HERE / "Stubs.cs", HERE / "Program.cs", extracted]
+    )] + [HERE / "Stubs.cs", HERE / "Program.cs", extracted, ROOT / "tests/fixtures/CoopOfflineStubs.cs"]
     (OUT / "source-sha256.txt").write_text("\n".join(
         name + " " + hashlib.sha256((ROOT / "ModeG" / name).read_bytes()).hexdigest()
         for name in sorted(sources)) + "\nLootAndRewards/VictoryRewardShadowCrateController.cs "
@@ -79,7 +93,11 @@ def main():
     project += '</ItemGroup></Project>'
     path = OUT / "ModeGCombat.csproj"
     path.write_text(project, encoding="utf-8")
-    return subprocess.call(["dotnet", "run", "--project", str(path), "--configuration", "Release"], cwd=ROOT)
+    sys.path.insert(0, str(ROOT / "tools"))
+    from run_runtime_regressions import run_project_fixture
+    code, output = run_project_fixture(path, OUT / "runs", ROOT)
+    print(output)
+    return code
 
 
 if __name__ == "__main__":

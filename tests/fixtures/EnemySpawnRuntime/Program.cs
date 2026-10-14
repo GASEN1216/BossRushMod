@@ -69,7 +69,8 @@ namespace BossRush
         private static void Check(bool value, string message)
         { assertions++; if (!value) throw new Exception(message + " / " + string.Join(",", Probe.Events)); }
         private static void Reset()
-        { Probe.Events.Clear(); Probe.YieldGate = null; EnemySpawnRuntime.ManagedBossSpawnDispatcher = null; }
+        { Probe.Events.Clear(); Probe.YieldGate = null; EnemySpawnRuntime.ManagedBossSpawnDispatcher = null;
+            BossRushCoop.IsConnected=BossRushCoop.IsHost=false;BossRushCoop.RunId=string.Empty;UnityEngine.SceneManagement.SceneManager.Handle=1; }
         private static void Main()
         {
             Reset(); var owner = new Owner(); var preset = owner.Add("ape");
@@ -106,6 +107,28 @@ namespace BossRush
                 Check(commits == 0 && owner.RandomCalls == 0 && !Probe.Events.Contains("normalize") && !Probe.Events.Contains("equip")
                     && !Probe.Events.Contains("mutator") && !Probe.Events.Contains("loot:3"),
                     "disposed real gate prevents event commit, loot, mutation and retry random roll F=" + modeF);
+            }
+
+            foreach(bool modeF in new[]{false,true})foreach(string change in new[]{"stop","room","role","same-scene"})
+            {
+                Reset();BossRushCoop.IsConnected=BossRushCoop.IsHost=true;BossRushCoop.RunId="original";
+                owner=new Owner();preset=owner.Add("late-scope-"+change);
+                var host=new ModBehaviour();var e=new ModeERuntimeModule();var f=new ModeFRuntimeModule();
+                e.OnAwake(host);f.OnAwake(host);host.F=f;
+                int token=modeF?f.Begin():e.Begin();
+                Func<bool> productionGate=()=>e.IsModeEOrModeFSpawnSessionStillValid(modeF?token:0,17,modeF?0:token,17);
+                var creation=new TaskCompletionSource<CharacterMainControl>();owner.Presets[preset.name].PendingCreation=creation.Task;
+                int commits=0;
+                pending=owner.Runtime.SpawnEnemyCoreInternalAsync(preset,new Vector3(),true,productionGate,
+                    waveIndex:4,onCommit:c=>{commits++;return true;}).AsTask();
+                Check(!pending.IsCompleted&&productionGate(),"original E/F scope starts actual enemy factory F="+modeF+" "+change);
+                if(change=="stop")BossRushCoop.IsConnected=false;
+                else if(change=="room")BossRushCoop.RunId="new-room";
+                else if(change=="role")BossRushCoop.IsHost=false;
+                else UnityEngine.SceneManagement.SceneManager.Handle=2;
+                var late=new CharacterMainControl(preset.name);creation.SetResult(late);result=pending.Result;
+                Check(!result.success&&late==null&&commits==0&&!Probe.Events.Contains("equip")&&!Probe.Events.Contains("mutator")&&!Probe.Events.Contains("loot:3"),
+                    "actual shared enemy core rejects scope loss before next mode cleanup F="+modeF+" "+change);
             }
 
             Reset(); owner = new Owner(); preset = owner.Add("deferred");

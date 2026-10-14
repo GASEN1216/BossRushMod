@@ -15,7 +15,7 @@ public sealed class CharacterRandomPreset {}
 public sealed class CharacterMainControl:UnityEngine.Object { public static CharacterMainControl Main; public Health Health=new Health(); public bool dropBoxOnDead; public UnityEngine.GameObject gameObject=new UnityEngine.GameObject(); public CharacterMainControl(){gameObject.Components.Add(this);gameObject.Components.Add(Health);} }
 namespace BossRush {
  // This fixture links only the arena generation owner; loot event cleanup has its own guard.
- internal sealed partial class WavesArenaRuntimeModule { private void ReleaseBossRandomLootTrackingOnDestroy() {} }
+ internal sealed partial class WavesArenaRuntimeModule { private string coopArenaProjectionRoom;private void RetireLostCoopArenaProjection() {} private void ReleaseBossRandomLootTrackingOnDestroy() {} }
  public class EnemyPresetInfo { public string name; }
  internal sealed class ModeDItemPool {}
  internal sealed partial class ModeDRuntimeModule {
@@ -31,7 +31,7 @@ namespace BossRush {
   public virtual void OnDestroy(){}
   public virtual void OnSceneLoaded(SceneRuntimeContext c){}
  }
- internal class InfiniteHellMilestoneDelivery { public void Tick(ModBehaviour o){} public void Enqueue(int t,UnityEngine.Vector3 v){} }
+ internal class InfiniteHellMilestoneDelivery { public void Tick(ModBehaviour o){} public void Enqueue(int t,UnityEngine.Vector3 v,int copies=1){} }
  public class ModBehaviour { public System.Collections.Generic.List<EnemyPresetInfo> FilteredPool; public System.Collections.Generic.List<EnemyPresetInfo> GetFilteredEnemyPresets(){return FilteredPool;} public void StopCoroutine(UnityEngine.Coroutine c){} public void ClearModeDEnemyRecoveryState(){} public void ClearModeDMutators(string mode){} public void UnregisterEnemyRecoveryForArena(CharacterMainControl c){} public bool IsActive,IsModeDActive;public int ModeDWaveIndex;public void TickModeDIntegrity(float d){} public static void DevLog(string message){} }
  static class Program {
   static void Check(bool b,string s){if(!b)throw new Exception(s);Console.WriteLine("PASS "+s);}
@@ -71,4 +71,9 @@ namespace BossRush {
    nextD=ModeDRuntimeModule.CaptureValidity(host,true);modeD.OnDestroy();Check(!nextD(),"Mode D runtime destruction invalidates queued work");
   }
  }
+}
+namespace BossRush {
+ // Offline generation-owner tests leave optional room state absent.
+ internal sealed partial class WavesArenaRuntimeModule { internal bool HasLivingCoopArenaParticipant() { return BossRushCoop.AnyPlayerAlive; } private CoopGameplayChannel<object> coopChannel; private CoopPersonalDelivery<object> coopPersonal; private int CoopEntryMode; private int CoopArenaRewardCopies { get { return 1; } } private void TickCoopArenaVictoryCopies() { } private void InitializeCoopArena() { } }
+ internal sealed partial class ModeDRuntimeModule { private bool coopProjectionRetiring; private CoopGameplayChannel<object> coopChannel; private CoopPersonalDelivery<object> coopPersonal; private void InitializeCoopModeD() { } private void TickCoopModeD(float delta) { } }
 }

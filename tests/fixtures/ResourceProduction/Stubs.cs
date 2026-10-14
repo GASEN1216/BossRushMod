@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 namespace UnityEngine
 {
+    public struct Vector3 { public float x,y,z; }
+    public struct Quaternion { public float x,y,z,w; }
+    public static class Application { public static string persistentDataPath; }
     public class Object
     {
         public string name;
@@ -34,7 +37,7 @@ namespace UnityEngine
     }
     public class Sprite : Object { public Texture2D texture; }
     public static class Time { public static double realtimeSinceStartupAsDouble; }
-    public static class Debug { public static void LogWarning(string s) { } }
+    public static class Debug { public static void LogWarning(string s) { } public static void LogError(string s) { throw new Exception(s); } }
     public class AsyncOperation
     {
         public bool isDone;
@@ -68,6 +71,17 @@ namespace UnityEngine
 }
 namespace BossRush
 {
+    internal sealed partial class F3GameplayValidationRunner
+    {
+        internal string _runId="report";
+        internal bool _reportWriteFailed;
+        internal sealed class Autotest { internal string RunDir; }
+        private Autotest _autotest;
+        private void WriteAutotestReport() { throw new Exception("unexpected autotest branch"); }
+        internal ResourcePerformanceReport Report { get { return resourcePerformance; } }
+        internal string Manifest(string json) { return AddResourcePerformanceManifest(json); }
+        internal void WriteReport() { WriteResourcePerformanceReport(); }
+    }
     public class ModBehaviour : UnityEngine.Object
     {
         internal static string Root;

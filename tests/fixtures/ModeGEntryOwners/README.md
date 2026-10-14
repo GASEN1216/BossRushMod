@@ -11,3 +11,11 @@
 该夹具提供 L2 证据，不能代替 Unity 主线程调度、真实资源/背包交付、AI、HUD 视觉或游戏帧耗的 L3 验收。
 
 2026-09-28：竞技场准备新增禁止普通路牌 / 补弹创建的执行断言；垃圾桶仅随普通路牌创建，因此 Mode G 不再出现这些对象。
+
+2026-10-13 装配追加：AssemblyOrder 逐字提取并执行完整 production RegisterModules 和 RuntimeModuleHost，真实 Common Co-op OnAwake 建立门面后，再执行真实 G OnAwake 绑定稳定 owner；频道、消费者注册、消息 codec 为生产实现。其它模块生命周期是记录替身，门面和 G 的实际先后顺序不得被替身提前填值掩盖。当前 233 条断言通过；稀疏副本把 G 初始化放回注册期会在真实“Coop runtime must be registered before consumers”异常处失败。
+
+2026-10-13 准入追加：移除外层恒真 ApplyCoopCombat 替身，逐字执行真实外层 Apply / DeliverOrdered / Pending / Finish，以及实际资产冻结、准入、内层 Apply 和完整 DriveCoopGuest。实际频道、PersonalDelivery 和 codec 编码后穿过受控队列；丢包注入解开真实嵌套收据，不只检查顶层 DTO。各模拟原生进程在消息回调时恢复对应静态 owner。
+
+290 条断言包括未资格旧事实、补票、Start 后 admitted 命令在途的新伤害、基线丢失/重试、重复/错误基线、后续缺序号、晚加入资产首次冻结、旧局债务不挡新局、原 owner 终局墓碑、未知旧局不确认、迟到旧波次及本波已死 AI、切槽付款前拒绝、过期快照下已付款后的可靠 denied 和 120 秒准入超时。退款执行真实 RefundStartupPaymentOnTechnicalFailure、DisarmStartupRefund 和原入口退款转发；End 的总体清理/状态推进依然是受控依赖，未声称完整生产 End 已在此夹具执行。客端完整 Drive 的用例已显式准备真实 SpawnTransaction 的槽位状态；BeginCoopGuestWave、真实原生角色和资源工厂仍为外围依赖，未通过恒有 Boss 避开缺失 AI。
+
+新房间和房主新 run 的快照通过真实 ApplyCoopWorld 结束旧核心，再由真实 Tick/付款入口进入新局；空 RunId 握手保留旧核心。ModeGCombat 另执行真实 CanContinueRun、资产/房间判据和冻结角色属性，验证原客端断线后门面即使返回单机世界权限，也不能获得本局生成权限；原无 COOP 单机仍正常。

@@ -27,6 +27,7 @@ namespace UnityEngine
     public static class Random { public static float value; }
     public static class Debug { public static void LogWarning(object text) { } public static void LogError(object text) { } }
     public static class Application { public static bool isPlaying = true; }
+    public static class Time { public static float unscaledTime; }
     public static class Mathf { public static int Min(int a, int b) { return Math.Min(a, b); } }
 }
 namespace Saves { public static class SavesSystem { public static int CurrentSlot = 1; } }
@@ -151,6 +152,7 @@ namespace Duckov.UI
 }
 namespace BossRush
 {
+    internal static class BossRushCoop { internal static string Asset = "asset"; internal static string LocalAssetId { get { return Asset + "-" + Saves.SavesSystem.CurrentSlot; } } }
     internal struct SkyIslandIngredient { internal int TypeId, Count; }
     internal enum BossRushPendingEntryKind { None, ModeG, ModeH }
     public enum ModeHAvailabilityStatus { Available, Unavailable }

@@ -1,0 +1,81 @@
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+using Duckov.Buffs;
+namespace UnityEngine
+{
+    class GameObject { }
+    class Transform { public Vector3 position; }
+    struct Vector3
+    {
+        public float x,y,z; public float sqrMagnitude {get{return x*x+y*y+z*z;}}
+        public Vector3 normalized {get{return this;}}
+        public static Vector3 operator -(Vector3 a,Vector3 b){return new Vector3{x=a.x-b.x,y=a.y-b.y,z=a.z-b.z};}
+    }
+    class Collider { public DamageReceiver Receiver; }
+    static class Physics
+    {
+        internal static Collider[] Results; internal static int NonAlloc,Full;
+        public static int OverlapSphereNonAlloc(Vector3 origin,float radius,Collider[] buffer,int mask)
+        {NonAlloc++;int n=Math.Min(buffer.Length,Results.Length);Array.Copy(Results,buffer,n);return n;}
+        public static Collider[] OverlapSphere(Vector3 origin,float radius,int mask){Full++;return (Collider[])Results.Clone();}
+    }
+}
+namespace Duckov.Buffs {class Buff {}}
+class CharacterMainControl {public int Team;public GameObject gameObject=new GameObject();public int Buffs;public void AddBuff(Buff b,CharacterMainControl source,int id){Buffs++;}}
+static class Team {public static bool IsEnemy(int a,int b){return a!=b;}}
+class Health {public bool IsDead;public CharacterMainControl Character;public CharacterMainControl TryGetCharacter(){return Character;}}
+enum DamageTypes {normal}
+enum ElementTypes {ghost}
+class DamageInfo
+{
+    public CharacterMainControl source;public DamageInfo(CharacterMainControl c){source=c;}
+    public DamageTypes damageType;public float damageValue;public Vector3 damagePoint,damageNormal;public int fromWeaponItemID,crit;public bool isFromBuffOrEffect;public float Ghost;
+    public void AddElementFactor(ElementTypes type,float v){Ghost=v;}
+}
+class DamageReceiver
+{
+    static int next;int id=++next;public int Team;public Health health=new Health();public Transform transform=new Transform();public int Hits;public DamageInfo Last;
+    public int GetInstanceID(){return id;}public void Hurt(DamageInfo damage){Hits++;Last=damage;}
+}
+namespace BossRush
+{
+    static class ModBehaviour {internal static void DevLog(string s){throw new Exception(s);}}
+    static class PhantomWitchScytheIds {internal const int WeaponTypeId=500044;}
+    static class PhantomWitchAssetManager {internal static Buff GetCurseBuff(){return new Buff();}}
+    static class PhantomWitchCurseSweatVfx {internal static void TryAttach(GameObject g){}}
+    static class FenHuangHalberdRuntime {internal static int DamageReceiverLayerMask=1;internal static DamageReceiver TryGetDamageReceiver(Collider c){return c.Receiver;}}
+    sealed class ModeGTelemetrySuppressionScope:IDisposable {internal static IDisposable Enter(Health h){return new ModeGTelemetrySuppressionScope();}public void Dispose(){}}
+    class PhantomWitchCurseRealmRuntime
+    {
+        /* REALM_FIELDS */
+        private Vector3 realmOrigin;private CharacterMainControl caster;private float overrideRadius=4,overrideDamagePerTick=22;
+        internal void Pulse(CharacterMainControl owner){caster=owner;DealRealmDamage();}
+        /* REALM_METHODS */
+    }
+}
+class Program
+{
+    static int checks;static void Check(bool ok,string message){checks++;if(!ok)throw new Exception(message);}
+    static DamageReceiver Receiver(int team,bool character=true){return new DamageReceiver{Team=team,health=new Health{Character=character?new CharacterMainControl{Team=team}:null}};}
+    static void Main()
+    {
+        var guest=new CharacterMainControl{Team=1};var realm=new BossRush.PhantomWitchCurseRealmRuntime();
+        var receivers=new List<DamageReceiver>();var colliders=new List<Collider>();
+        for(int i=0;i<90;i++){var target=Receiver(2);receivers.Add(target);colliders.Add(new Collider{Receiver=target});colliders.Add(new Collider{Receiver=target});}
+        var friendly=Receiver(1);colliders.Insert(0,new Collider{Receiver=friendly});
+        var prop=Receiver(2,false);colliders.Insert(0,new Collider{Receiver=prop});
+        var far=Receiver(2);far.transform.position=new Vector3{x=10};colliders.Insert(0,new Collider{Receiver=far});
+        var dead=Receiver(2);dead.health.IsDead=true;colliders.Insert(0,new Collider{Receiver=dead});
+        Physics.Results=colliders.ToArray();realm.Pulse(guest);
+        foreach(var receiver in receivers)Check(receiver.Hits==1&&receiver.health.Character.Buffs==1,"complete dense query damages every enemy once despite duplicate colliders");
+        Check(friendly.Hits==0&&prop.Hits==0&&far.Hits==0&&dead.Hits==0,"actual team character distance and death filters preserved");
+        Check(receivers[89].Last.source==guest&&receivers[89].Last.damageValue==22&&receivers[89].Last.Ghost==1&&receivers[89].Last.isFromBuffOrEffect,"guest weapon retains actual personal damage attribution and tuning");
+        int oldQueries=Physics.NonAlloc;realm.Pulse(guest);Check(Physics.NonAlloc==oldQueries+1&&receivers[89].Hits==2,"grown buffer is reused on the next damage interval");
+        Physics.Results=new Collider[1050];for(int i=0;i<1049;i++)Physics.Results[i]=new Collider{Receiver=prop};var last=Receiver(2);Physics.Results[1049]=new Collider{Receiver=last};
+        realm.Pulse(guest);Check(Physics.Full==1&&last.Hits==1&&last.health.Character.Buffs==1,"complete allocating fallback keeps enemies beyond retained buffer capacity");
+        for(int i=0;i<16;i++){var player=new CharacterMainControl{Team=1};new BossRush.PhantomWitchCurseRealmRuntime().Pulse(player);Check(last.Last.source==player,"each of sixteen local casters owns its realm hit");}
+        oldQueries=Physics.NonAlloc;realm.Pulse(null);Check(Physics.NonAlloc==oldQueries,"destroyed caster exits without physics queries");
+        Console.WriteLine("Realm: PASS "+checks+" production damage/query assertions");
+    }
+}

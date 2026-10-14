@@ -59,6 +59,66 @@ def main():
     sys.path.insert(0, str(root / 'tools'))
     sys.path.insert(0, str(root / 'tests'))
     from cs_source_util import clean_source
+    dragon_out = root / 'Build/content-third-review-fixes/DragonSpawn'
+    dragon_out.mkdir(parents=True, exist_ok=True)
+    dragon_code = 'using System; using System.Collections; using System.Threading.Tasks; using UnityEngine; using Cysharp.Threading.Tasks; namespace BossRush {\n'
+    dragon_hashes = {}
+    for path, cls, signatures in (
+        ('Integration/DragonDescendant/DragonDescendantBoss.cs', 'DragonDescendantRuntimeModule',
+         ('public async UniTask<CharacterMainControl> SpawnDragonDescendant(',)),
+        ('Integration/DragonDescendant/DragonDescendantBoss_RuntimeAndCleanup.cs', 'DragonDescendantRuntimeModule',
+         ('internal void CleanupCancelledDragonDescendant(',)),
+        ('Integration/DragonDescendant/DragonDescendantAbilities.cs', 'DragonDescendantAbilityController',
+         ('public void Initialize(', 'internal bool HasCombatAuthority')),
+        ('Integration/DragonDescendant/DragonDescendantAbilities_ProjectilesAndGrenades.cs', 'DragonDescendantAbilityController',
+         ('private void OnBossShoot(', 'private IEnumerator GrenadeTimerCoroutine()')),
+        ('Integration/DragonDescendant/DragonDescendantAbilities_ResurrectionAndPhase.cs', 'DragonDescendantAbilityController',
+         ('internal bool ShouldClampLethalHealthDuringHurt()',)),
+    ):
+        raw = (root / path).read_bytes()
+        dragon_hashes[path] = hashlib.sha256(raw).hexdigest()
+        source = clean_source(raw.decode('utf-8-sig'))
+        dragon_code += 'partial class ' + cls + ' {\n'
+        for signature in signatures:
+            assert source.count(signature) == 1, signature
+            start = source.index(signature)
+            end = source.index('{', start) + 1
+            depth = 1
+            while depth:
+                depth += (source[end] == '{') - (source[end] == '}')
+                end += 1
+            # Only the awaitable carrier changes; the complete production method body is retained.
+            dragon_code += source[start:end].replace('async UniTask<CharacterMainControl>', 'async Task<CharacterMainControl>') + '\n'
+        dragon_code += '}\n'
+    lease_path = 'Integration/DragonKing/DragonKingCoopContactRuntimeModule.cs'
+    lease_raw = (root / lease_path).read_bytes()
+    dragon_hashes[lease_path] = hashlib.sha256(lease_raw).hexdigest()
+    lease_source = clean_source(lease_raw.decode('utf-8-sig'))
+    start = lease_source.index('internal sealed class CoopBossCreationLease')
+    end = lease_source.index('{', start) + 1
+    depth = 1
+    while depth:
+        depth += (lease_source[end] == '{') - (lease_source[end] == '}')
+        end += 1
+    dragon_code += lease_source[start:end] + '\n'
+    (dragon_out / 'ExtractedDragonSpawn.cs').write_text(dragon_code + '}\n', encoding='utf-8')
+    (dragon_out / 'production-source-hashes.json').write_text(json.dumps(dragon_hashes, indent=2), encoding='utf-8')
+    capture_path = 'DebugAndTools/F3GameplayValidationAutotestCapture.cs'
+    capture_raw = (root / capture_path).read_bytes()
+    # Explicitly expose this Dev-only method to the fixture, without enabling unrelated Dev files.
+    capture_source = clean_source(capture_raw.decode('utf-8-sig').replace('#if BOSSRUSH_DEV', ''))
+    signature = 'private IEnumerator CaptureAutotestShot('
+    assert capture_source.count(signature) == 1, signature
+    start = capture_source.index(signature)
+    end = capture_source.index('{', start) + 1
+    depth = 1
+    while depth:
+        depth += (capture_source[end] == '{') - (capture_source[end] == '}')
+        end += 1
+    capture_out = root / 'Build/content-third-review-fixes/CaptureTiming'
+    capture_out.mkdir(parents=True, exist_ok=True)
+    (capture_out / 'ExtractedCapture.cs').write_text('using System; using System.Collections; using System.Collections.Generic; using System.IO; using UnityEngine; namespace BossRush { partial class F3GameplayValidationRunner {\n' + capture_source[start:end] + '\n}}', encoding='utf-8')
+    (capture_out / 'production-source-hashes.json').write_text(json.dumps({capture_path: hashlib.sha256(capture_raw).hexdigest()}, indent=2), encoding='utf-8')
     witch_out = root / 'Build/content-third-review-fixes/Codex'
     witch_out.mkdir(parents=True, exist_ok=True)
     witch_sources = (
@@ -106,7 +166,7 @@ def main():
     (witch_out / 'witch-death-source-hashes.json').write_text(json.dumps(hashes, indent=2), encoding='utf-8')
     from run_runtime_regressions import run_project_fixture
     failures = []
-    for name in ("DailyReport", "Codex"):
+    for name in ("DailyReport", "Codex", "DragonSpawn", "CaptureTiming"):
         code, output = run_project_fixture(HERE / name / (name + ".csproj"),
             root / 'Build/content-third-review-fixes' / name / 'runs', HERE)
         print(output)

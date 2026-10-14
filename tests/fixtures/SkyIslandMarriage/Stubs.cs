@@ -3,6 +3,19 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 
+namespace BossRush
+{
+    // 原单机婚姻夹具只隔离可选联机入口；联机世界行为由 CoopSpouses 执行生产代码验证。
+    internal static class CoopNpcWorld
+    {
+        internal static GameObject FindLocalSpouse(string npc) { return null; }
+        internal static void ReleaseLocalSpouse(string npc) { }
+        internal static void DeferLocalSpouseRelease(float seconds) { }
+    }
+    internal sealed partial class SkyIslandSession
+    { private bool RequestCoopChallenge(string id) { return false; } }
+}
+
 namespace UnityEngine.SceneManagement
 {
     public struct Scene

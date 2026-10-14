@@ -109,11 +109,13 @@ namespace BossRush
         public readonly DamageReceiver mainDamageReceiver = new DamageReceiver();
         public int Teleports;
         public bool ThrowOnSetPosition, HealOnTeleport;
+        public Action BeforeSetPosition;
         public CharacterMainControl(string name, Vector3 position)
         { this.name = name; var go = new GameObject { name = name }; go.Add(this); transform.position = position; }
         public void SetPosition(Vector3 position)
         {
             Teleports++;
+            if (BeforeSetPosition != null) BeforeSetPosition();
             if (ThrowOnSetPosition) throw new Exception("SetPosition failed");
             transform.position = position;
             if (HealOnTeleport) Health.CurrentHealth = Health.MaxHealth;
@@ -150,4 +152,14 @@ namespace BossRush
         internal MonoBehaviour CurrentBoss;
     }
     internal static class ModBehaviour { internal static void DevLog(string text) { } }
+    internal sealed class CoopAiPredictionReplicaMarker : Component
+    { internal bool Replica, AuthorityBound; internal string AuthorityRun; }
+    internal static class BossRushCoop
+    {
+        internal static bool IsConnected, Host;
+        internal static bool IsHost { get { return IsConnected && Host; } set { Host = value; } }
+        internal static string RunId;
+        internal static bool HasWorldAuthority { get { return !IsConnected || IsHost; } }
+        internal static CharacterMainControl GetCombatTarget(Vector3 origin) { return CharacterMainControl.Main; }
+    }
 }

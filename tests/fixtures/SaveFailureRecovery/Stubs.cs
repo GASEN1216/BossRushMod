@@ -335,6 +335,8 @@ namespace BossRush
     class RuntimeModule { public virtual void OnStart() { } }
     partial class ModeHRuntimeModule : RuntimeModule
     {
+        private OfflineCoopLedger _coopLedger;
+        private sealed class OfflineCoopLedger { internal bool Owns(string run, int match) { return false; } }
         private ModeHRunState _runState;
         private ModeHSeasonDto _season;
         public bool LevelReady;

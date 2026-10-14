@@ -142,3 +142,5 @@ namespace BossRush
         }
     }
 }
+
+namespace BossRush { internal sealed partial class ModeEFMerchantRuntime { private bool coopReplica; } }

@@ -7,9 +7,18 @@ using System.Collections.Generic;
 namespace BossRush
 {
     // DispatchReturnIfReady 原样抽取生产方法；只替代会话其余 UI / 物理清理，资源仍走真实租约。
-    internal sealed partial class SkyIslandSession
+    internal sealed partial class SkyIslandSession:MonoBehaviour
     {
         private SkyIslandRaidLease lease;
+        private ModBehaviour host;private Action<string,bool> report;private bool coopJoining;
+        internal int Starts,Subscriptions;internal bool PreparedBeforeScheduling;
+        public SkyIslandSession() { }
+        private void Subscribe() { Subscriptions++; }
+        private IEnumerator BuildGuarded() { yield break; }
+        private void StartCoroutine(IEnumerator routine) { Starts++;PreparedBeforeScheduling=SkyIslandOutdoorDaylight.Last!=null; }
+        internal void BeginJoinedLoad() { lease.BeginLoad(); }
+        internal bool JoinedLoadFinished { get { return lease.LoadFinished; } }
+        internal void ReleaseJoined() { lease.Release(null);lease.PumpRelease(); }
         private Scene entryScene;
         private bool moved, closed;
         private StoryBoundary story;

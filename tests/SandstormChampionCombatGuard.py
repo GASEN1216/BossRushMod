@@ -283,9 +283,9 @@ def main():
     # owner 2026-10-08：棍卫随机使出星阙三档重击。公平性与 owner 约束钉在结构上。
     arts_path = "Integration/SandstormChampion/SandstormChampionMinionArts.cs"
     strike = require(arts_path, "private bool Strike(", "if (player == null || BossSkillDamageRules.IsDodging(player)) return false;",
-                     "_controller.HurtPlayer(damage, to);")
+                     "_controller.HurtPlayer(player, damage, to);")
     ordered(strike, arts_path + " 棍卫重击先判翻滚与隔墙再结算", "BossSkillDamageRules.IsDodging(player)",
-            "Physics.Linecast(from, to, wall, QueryTriggerInteraction.Ignore)", "_controller.HurtPlayer(damage, to);")
+            "Physics.Linecast(from, to, wall, QueryTriggerInteraction.Ignore)", "_controller.HurtPlayer(player, damage, to);")
     for signature in ("private IEnumerator Sweep()", "private IEnumerator Spin()", "private IEnumerator Starfall()"):
         check("Warning" in body(arts_path, signature), arts_path + " / " + signature + ": 每招都要有地面预警")
     require(MARKER, "private void TickCombat()", "if (_arts != null && _arts.Running)", "_arts.TryStart(player, towards.magnitude, sight)")

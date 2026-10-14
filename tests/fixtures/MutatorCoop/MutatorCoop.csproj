@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><RollForward>Major</RollForward>
+    <LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" /><Compile Include="Stubs.cs" />
+    <Compile Include="../../../Integration/Mutators/MutatorDefinitions.cs" />
+    <Compile Include="../../../Integration/Mutators/MutatorManager.cs" />
+    <Compile Include="../../../Integration/Mutators/MutatorManager_Coop.cs" />
+    <Compile Include="../../../Integration/Mutators/MutatorCoopRuntimeModule.cs" />
+    <Compile Include="../../../Integration/Mutators/MutatorModeFlow.cs" />
+  </ItemGroup>
+</Project>

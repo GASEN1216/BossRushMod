@@ -9,3 +9,5 @@ FactoryResourceLoading 的真实协程通过递归驱动器测试：切换 scene
 四建筑补充：逐字抽取 BuildingModelHelper.TryInstantiateBundle，验证缺文件、缺指定 prefab、成功转交、实例激活异常后的实例与包清理；Unity 替身不验证实际渲染或原生内存释放。
 
 2026-10-10：共享贴图复制 API 由 `tests/fixtures/TextureCopyStubs.cs` 补齐显式替身。ResourceProduction 执行生产 CloneTexture，覆盖不支持、复制参数、成功归属与异常释放；替身不验证真实 GPU 像素。
+
+2026-10-13：逐字提取实际 ResourcePerformanceWindow / Report、WriteResourcePerformanceReport 和 AddResourcePerformanceManifest，链接生产 BossRushCoopJson 与共享解析器，执行实际报告文件及两种 manifest 的写出。验证嵌套窗口、真实纯判据算出的 CPU 样本与分位数、明确 unavailable 的 GPU、完整 LoadRecord 数组、世界位置 / 相机四元数及 read_only。受控路径位于本次 TargetPath 附近；报告 runner 生命周期和 Unity 引擎采样是替身，不把构造样本称作实测性能。写出嵌套报告被改为空 JSON 时，副本回归在实际窗口断言转红。使用显式构建的 fresh TargetPath 和 SHA-256。

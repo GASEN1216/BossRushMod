@@ -16,6 +16,7 @@ namespace Duckov.Rules
 }
 namespace BossRush
 {
+    static class BossRushCoop { internal static bool IsConnected; }
     sealed class WraithInfo { public uint raidID; public bool valid = true; }
     partial class DeathWraithRuntimeModule
     {
@@ -26,7 +27,7 @@ namespace BossRush
         internal int Pending { get { return _deathWraithPendingAppends.Count + _deathWraithPendingRemovals.Count; } }
         internal readonly List<uint> Removed = new List<uint>();
         internal string Key { get { return DEATH_WRAITH_LIST_SAVE_KEY; } }
-        private void ClearDeathWraithState_DeathWraith() { Removed.Clear(); }
+        private void ClearDeathWraithState_DeathWraith(bool preserveCoopWorld = false) { Removed.Clear(); }
         private void DestroyActiveWraithByRaidId_DeathWraith(uint id, string reason) { Removed.Add(id); }
         private static void DevLog(string message) { }
     }

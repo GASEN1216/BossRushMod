@@ -27,6 +27,7 @@ internal static class ModBehaviour
 {
     internal static void DevLog(string message) { }
 }
+internal static class BossRushCoop { internal static bool IsConnected; }
 
 internal static class Program
 {
@@ -60,6 +61,23 @@ internal static class Program
         zombie.Release(); confirm.Release();
         Check(BossRushUIKit.ModalInputLeaseCount == 0 && Time.timeScale == 0.7f,
             "duplicate release is idempotent");
+        BossRushCoop.IsConnected = true;
+        var partyToken = new GameObject();
+        var partyLease = BossRushUIKit.ClaimModalInput(partyToken, "PartyDialogue");
+        Check(Time.timeScale == 0.7f && partyToken.Disabled && BossRushUIKit.IsModalInputPaused,
+            "connected dialog locks its own input while the party world continues");
+        Time.timeScale = 0.5f;
+        BossRushUIKit.EnforceModalInputPause();
+        Check(Time.timeScale == 0.5f, "connected enforcement preserves the world's independent time scale");
+        partyLease.Release();
+        Check(Time.timeScale == 0.5f && partyToken.Reactivated, "connected release does not overwrite world time scale");
+        BossRushCoop.IsConnected = false;
+        var joining = BossRushUIKit.ClaimModalInput(new GameObject(), "Joining");
+        Check(Time.timeScale == 0f, "offline dialog still pauses");
+        BossRushCoop.IsConnected = true;
+        BossRushUIKit.EnforceModalInputPause();
+        Check(Time.timeScale == 0.5f, "joining a party releases an existing offline world pause");
+        joining.Release();
         Console.WriteLine("SharedModalInput regression PASS: " + checks + " checks");
     }
 }

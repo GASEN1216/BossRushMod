@@ -3,6 +3,7 @@ from pathlib import Path
 import hashlib
 import json
 import subprocess
+import sys
 from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -36,10 +37,20 @@ def main():
                   'internal bool TryGetZombieModeReliableSpawnPosition(',
                   'internal bool TryGetNearestZombieModeMapSpawnPositionToPlayer(',
                   'internal Vector3 GetZombieModeBossSpawnPosition(']
+    signatures += ['internal bool CollectZombieModeSpawnPoints(', 'private void ResetZombieModeSpawnPointDedupGrid(',
+                   'private void TryPopulateZombieModeSpawnPointsFromCachedOriginalSpawnerPositions(',
+                   'private void AddZombieModeSpawnPointArray(', 'private void AddZombieModeSpawnPoint(',
+                   'private bool HasZombieModeDuplicateSpawnPoint(', 'private void RegisterZombieModeSpawnPointDedupCell(',
+                   'private static long GetZombieModeSpawnPointDedupCellKey(']
     damage_path = ROOT / 'ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs'
     damage_raw = damage_path.read_bytes()
     production = 'using System; using System.Collections.Generic; using Pathfinding; using UnityEngine; using UnityEngine.AI; using Duckov.Buffs; using Cysharp.Threading.Tasks;\nnamespace BossRush { internal sealed partial class ZombieModeRuntimeModule {\n'
     production += '\n'.join(member(text, signature) for signature in signatures)
+    coop_path = ROOT / 'ZombieMode/ZombieModeRuntimeModule_Coop.cs'
+    coop_text = coop_path.read_text(encoding='utf-8-sig')
+    for signature in ('private static string CoopZombieParticipantKey(', 'private bool IsCoopZombieParticipant(',
+                      'private CharacterMainControl GetCoopZombieCombatTarget(', 'private CharacterMainControl GetCoopZombieSpawnAnchor('):
+        production += '\n' + member(coop_text, signature)
     wave_path = ROOT / 'ZombieMode/ZombieModeRuntimeModule_WaveController.cs'
     production += '\n' + member(wave_path.read_text(encoding='utf-8-sig'), 'private void HandleZombieModeHealthDead(')
     isolation_path = ROOT / 'ZombieMode/ZombieModeMapIsolation.cs'
@@ -58,12 +69,16 @@ def main():
     generated = OUT / 'Production.cs'
     generated.write_text(production, encoding='utf-8')
     (OUT / 'production-sha256.json').write_text(json.dumps({str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
-                                                         for p in (path, damage_path, helper_path, wave_path, isolation_path)}, indent=2), encoding='utf-8')
-    sources = [generated, HERE / 'Program.cs', HERE / 'Stubs.cs']
+                                                         for p in (path, damage_path, helper_path, wave_path, isolation_path, coop_path)}, indent=2), encoding='utf-8')
+    sources = [generated, HERE / 'Program.cs', HERE / 'Stubs.cs', HERE.parent / 'CoopOfflineStubs.cs']
     includes = ''.join('<Compile Include="' + escape(str(path), {'"': '&quot;'}) + '" />' for path in sources)
     project = OUT / 'Regression.csproj'
     project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649</NoWarn></PropertyGroup><ItemGroup>' + includes + '</ItemGroup></Project>', encoding='utf-8')
-    return subprocess.call(['dotnet', 'run', '--project', str(project), '--configuration', 'Release'], cwd=ROOT)
+    sys.path.insert(0, str(ROOT / 'tools'))
+    from run_runtime_regressions import run_project_fixture
+    code, output = run_project_fixture(project, OUT / 'runs', ROOT)
+    print(output)
+    return code
 
 
 if __name__ == '__main__':

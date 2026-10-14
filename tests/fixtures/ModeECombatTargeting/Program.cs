@@ -10,6 +10,8 @@ namespace BossRush
         public static CharacterMainControl Main;
         public Teams Team; public bool IsMainCharacter; public Health Health;
         public AICharacterController aiCharacterController = new AICharacterController();
+        internal CoopAiPredictionReplicaMarker Marker;
+        public T GetComponent<T>() where T : class { return Marker as T; }
         public DamageReceiver Receiver { get { return new DamageReceiver { health = Health }; } }
         public CharacterMainControl(Teams team, bool main = false) { Team = team; IsMainCharacter = main; Health = new Health { Owner = this }; }
         public T GetComponentInChildren<T>(bool inactive = false) where T : class { return aiCharacterController as T; }
@@ -18,7 +20,16 @@ namespace BossRush
     class ModBehaviour { public static ModBehaviour Instance; public bool IsModeEActive; internal static void DevLog(string text) { } }
     static class ModeHRuntimeGates { internal static bool IsModeHRunOwnerActive; }
     static class MutatorManager { internal static bool Bloodhound; internal static bool HasActiveMutator(string key) { return Bloodhound; } }
-    partial class DragonDescendantAbilities
+    // Mutable host seams; HasEntityAuthority and the controller property are extracted from production.
+    static class BossRushCoop
+    {
+        internal static bool Connected, Host;
+        internal static string RunId;
+        internal static bool IsHost { get { return Connected && Host; } }
+        internal static bool HasWorldAuthority { get { return !Connected || IsHost; } }
+    }
+    class CoopAiPredictionReplicaMarker { internal bool Replica, AuthorityBound; internal string AuthorityRun; }
+    partial class DragonDescendantAbilityController
     {
         private CharacterMainControl bossCharacter, playerCharacter;
         private AiOwner aiController;
@@ -29,7 +40,7 @@ namespace BossRush
         private void PlayCollisionSound() { CollisionSounds++; }
         private void ApplyKnockback(CharacterMainControl target) { Knockbacks++; }
         private void ApplyCollisionDamage(CharacterMainControl target) { CollisionDamage++; }
-        internal DragonDescendantAbilities(CharacterMainControl boss, AiOwner controller) { bossCharacter = boss; aiController = controller; }
+        internal DragonDescendantAbilityController(CharacterMainControl boss, AiOwner controller) { bossCharacter = boss; aiController = controller; }
         internal CharacterMainControl Resolve() { RefreshPlayerReference(); return IsPlayerAlly() ? null : playerCharacter; }
     }
     static class Program
@@ -43,7 +54,7 @@ namespace BossRush
             var boss = new CharacterMainControl(Teams.bear);
             var enemy = new CharacterMainControl(Teams.wolf);
             var owner = new AiOwner { AI = boss.aiCharacterController };
-            var abilities = new DragonDescendantAbilities(boss, owner);
+            var abilities = new DragonDescendantAbilityController(boss, owner);
             owner.AI.searchedEnemy = enemy.Receiver;
             Check(abilities.Resolve() == enemy, "allied descendant casts at its actual enemy instead of disabling all skills");
             Time.time = 10;
@@ -83,6 +94,25 @@ namespace BossRush
             MutatorManager.Bloodhound = false;
             BloodhoundSetup.Apply(boss, false, Teams.wolf, Teams.bear);
             Check(boss.aiCharacterController.forceTracePlayerDistance == 0, "ordinary faction AI has no forced player chase");
+            boss.Team = Teams.wolf;
+            foreach (string boundary in new[] { "stop", "room", "role", "replica" })
+            {
+                BossRushCoop.Connected = true; BossRushCoop.Host = boundary != "replica"; BossRushCoop.RunId = "original";
+                boss.Marker = new CoopAiPredictionReplicaMarker { AuthorityBound = true, AuthorityRun = "original", Replica = boundary == "replica" };
+                Check(abilities.HasCombatAuthority == (boundary != "replica"), "production original entity admission " + boundary);
+                if (boundary == "stop" || boundary == "replica") BossRushCoop.Connected = false;
+                else if (boundary == "room") BossRushCoop.RunId = "successor";
+                else BossRushCoop.Host = false;
+                int sounds = abilities.CollisionSounds, pushes = abilities.Knockbacks, hits = abilities.CollisionDamage;
+                Time.time += 1;
+                abilities.OnCollisionWithPlayer(player);
+                Check(!abilities.HasCombatAuthority && abilities.CollisionSounds == sounds && abilities.Knockbacks == pushes && abilities.CollisionDamage == hits,
+                    "collision refuses old entity after " + boundary);
+            }
+            BossRushCoop.Connected = false; BossRushCoop.Host = false; BossRushCoop.RunId = null;
+            var fresh = new DragonDescendantAbilityController(new CharacterMainControl(Teams.wolf), owner);
+            fresh.OnCollisionWithPlayer(player);
+            Check(fresh.HasCombatAuthority && fresh.Knockbacks == 1 && fresh.CollisionDamage == 1, "fresh solo collision keeps gameplay");
             Console.WriteLine("PASS ModeECombatTargeting " + checks + " assertions");
         }
     }

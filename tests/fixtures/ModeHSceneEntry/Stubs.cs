@@ -170,6 +170,9 @@ namespace BossRush
     }
     internal partial class ModeHRuntimeModule
     {
+        private void BindCoopWorldAsset() { }
+        private void ReleaseCoopProjection() {}
+
         private bool _waitingForBetReveal; private string _draftPrimaryProfileId, _draftRelayProfileId; private int _draftRefreshCount;
         private const float SceneReadyTimeoutSeconds=30f;
         private Coroutine _sceneReadyRoutine; private int _sceneReadyRequestSerial,_sceneReadyIntentGeneration;
@@ -204,3 +207,5 @@ namespace BossRush
         private void ReconcileCashBetOnRestore() { } // 押钱账本对账（ModeHCashBetGuard 守接线）
     }
 }
+
+namespace BossRush { internal static class BossRushCoop { internal static bool IsClient { get { return false; } } } }

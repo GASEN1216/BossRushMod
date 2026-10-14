@@ -77,7 +77,12 @@ namespace UnityEngine
         public static Vector3 operator -(Vector3 a,Vector3 b) { return new Vector3(a.x-b.x,a.y-b.y,a.z-b.z); }
         public static Vector3 operator *(Vector3 a,float b) { return new Vector3(a.x*b,a.y*b,a.z*b); }
     }
-    public static class Mathf { public static int Max(int a,int b) { return Math.Max(a,b); } public static float Max(float a,float b) { return Math.Max(a,b); } public static float Abs(float a) { return Math.Abs(a); } public static int Abs(int a) { return Math.Abs(a); } }
+    public static class Mathf { public static int FloorToInt(float value) { return (int)Math.Floor(value); } public static int Max(int a,int b) { return Math.Max(a,b); } public static float Max(float a,float b) { return Math.Max(a,b); } public static float Abs(float a) { return Math.Abs(a); } public static int Abs(int a) { return Math.Abs(a); } }
+}
+namespace UnityEngine.SceneManagement
+{
+    public struct Scene { public string name; }
+    public static class SceneManager { public static Scene GetActiveScene() { return new Scene { name = "Arena" }; } }
 }
 
 namespace Duckov.Buffs { public sealed class Buff { } }
@@ -115,9 +120,19 @@ namespace UnityEngine.AI
 
 namespace BossRush
 {
+    internal static partial class BossRushCoop
+    {
+        internal static readonly List<BossRushCoopPlayer> Players = new List<BossRushCoopPlayer>();
+        internal static CharacterMainControl GetCombatTarget(Vector3 position)
+        { return Players.Find(p => p.IsConnected && p.IsAlive)?.Character; }
+        internal static bool IsPlayer(CharacterMainControl character) { return character != null && character.IsMainCharacter; }
+    }
+    internal sealed class BossRushCoopPlayer
+    { internal string Id, AssetId = "original"; internal bool IsConnected = true; internal CharacterMainControl Character;
+        internal bool IsAlive { get { return Character != null && !Character.Health.IsDead; } } }
     public enum Teams { player, scav, wolf }
     public static class Team { public static bool IsEnemy(Teams player,Teams enemy) { return enemy==Teams.wolf; } }
-    public sealed class Health { public CharacterMainControl Owner; public float MaxHealth=50; public CharacterMainControl TryGetCharacter() { return Owner; } public void SetHealth(float value) { Probe.Trace.Add("heal"); } }
+    public sealed class Health { public bool IsDead; public CharacterMainControl Owner; public float MaxHealth=50; public CharacterMainControl TryGetCharacter() { return Owner; } public void SetHealth(float value) { Probe.Trace.Add("heal"); } }
     public sealed class CharacterMainControl : Component
     {
         public static CharacterMainControl Main; public Teams Team; public bool IsMainCharacter, IsCompanion,dropBoxOnDead=true; public Health Health=new Health();
@@ -134,7 +149,7 @@ namespace BossRush
     public enum ZombieModeBossKind { Titan, Hunter }
     public sealed class ZombieModeEnemyRuntimeMarker : Component { public int RunId,PurificationPointValue=1; public bool IsBoss,DeathSettled,RemovedFromRuntime; public ZombieModeEnemyKind EnemyKind; }
     public static class PetNestCompanionAgent { public static bool IsCompanionCharacter(CharacterMainControl c) { return c.IsCompanion; } }
-    public enum ZombieModeLifecyclePhase { None, Active }
+    public enum ZombieModeLifecyclePhase { None, InitializingRun, Active }
     public enum ZombieModeCombatPhase { None, Combat }
     public sealed class EnemyPresetInfo { public string name,displayName; public float baseHealth; }
     public sealed class EnemySpawnContext { public CharacterMainControl character; }
@@ -153,10 +168,17 @@ namespace BossRush
         public readonly List<ZombieModeBossInstance> CurrentWaveBossInstances=new List<ZombieModeBossInstance>();
         public readonly List<ZombieModeSpawnPoint> SpawnPoints=new List<ZombieModeSpawnPoint>();
         public readonly List<ZombieModeSpawnPoint> EffectiveSpawnPoints=new List<ZombieModeSpawnPoint>();
+        public ZombieModeMapProfile MapProfile;
     }
-    public sealed class ZombieModeSpawnPoint { public Vector3 Position; }
-    public static class ZombieModeTuning { public const int MaxNormalZombieCount=20; public const float NormalZombieForceTraceDistance=120,NavMeshVirtualSpawnRadius=3,SpawnPointNavMeshSampleRadius=2,NavMeshLiftOffset=0.1f,SpawnPointMinPlayerDistance=12,BossSpreadMinDistance=8; }
-    internal static partial class SpawnPositionHelper { public static bool PassesMinPlayerDistance(Vector3 point,float distance) { return (point-CharacterMainControl.Main.transform.position).sqrMagnitude>=distance*distance; } }
+    public sealed class ZombieModeMapProfile { public Vector3[] StaticSpawnPoints; public bool AllowVirtualSpawnPoints = true; }
+    public sealed class ZombieModeSpawnPoint { public Vector3 Position; public ZombieModeSpawnPoint() { } public ZombieModeSpawnPoint(Vector3 point, bool virtualPoint) { Position = point; } }
+    public static class ZombieModeTuning { public const int MaxNormalZombieCount=20; public const float SpawnPointDuplicateDistance = 1f, NormalZombieForceTraceDistance=120,NavMeshVirtualSpawnRadius=3,SpawnPointNavMeshSampleRadius=2,NavMeshLiftOffset=0.1f,SpawnPointMinPlayerDistance=12,BossSpreadMinDistance=8; }
+    internal static partial class SpawnPositionHelper
+    {
+        public static bool PassesMinPlayerDistance(Vector3 point,float distance) { return (point-CharacterMainControl.Main.transform.position).sqrMagnitude>=distance*distance; }
+        public static Vector3[] BuildRingPoints(Vector3 origin, int count, float radius, float max, float lift)
+        { return new[] { origin + new Vector3(radius, 0, 0) }; }
+    }
     public enum DamageTypes { normal }
     public struct DamageInfo
     {
@@ -171,6 +193,10 @@ namespace BossRush
     }
     public sealed class ModBehaviour
     {
+        internal Vector3[] CachedPoints;
+        internal void PreCacheMapSpawnerPositions() { }
+        internal Vector3[] GetZombieModeCachedSpawnerPositionsForRuntimeModule() { return CachedPoints; }
+        internal string GetZombieModeCachedSpawnerSceneNameForRuntimeModule() { return "Arena"; }
         public readonly Queue<SpawnRequest> Requests=new Queue<SpawnRequest>();
         public static void DevLog(string text) { }
         public void EnsureCharacterPresetsCacheReady() { Probe.Trace.Add("ensure"); }
@@ -188,6 +214,11 @@ namespace BossRush
         private readonly ModBehaviour owner; private readonly ZombieModeRunState runState;
         internal bool Paused,Invalid,SuppressThreat;
         private readonly UnityEngine.AI.NavMeshPath zombieModeSpawnReachabilityPath=new UnityEngine.AI.NavMeshPath();
+        private readonly Dictionary<long, List<ZombieModeSpawnPoint>> zombieModeSpawnPointDedupGrid = new Dictionary<long, List<ZombieModeSpawnPoint>>();
+        private float zombieModeSpawnPointDedupCellSize = 1f;
+        private readonly Dictionary<string, string> coopZombieParticipants = new Dictionary<string, string>();
+        private readonly HashSet<string> coopZombieStarterReady = new HashSet<string>();
+        internal void Admit(BossRushCoopPlayer peer) { coopZombieParticipants[peer.Id] = peer.AssetId; coopZombieStarterReady.Add(peer.Id + ":" + peer.AssetId); }
         internal bool VirtualSpawnAvailable;
         internal Vector3 VirtualSpawnPosition;
         private bool TryFindZombieModeVirtualSpawnAroundPlayer(Vector3 playerPos,out Vector3 position) { position=VirtualSpawnPosition; return VirtualSpawnAvailable; }

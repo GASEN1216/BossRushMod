@@ -19,6 +19,7 @@ ModeGPerformanceGuard — Mode G 性能守卫（规格 §20 第 28 条）。
 import os
 import re
 import sys
+from cs_source_util import clean_source
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TELEMETRY = os.path.join(REPO_ROOT, "ModeG", "ModeGCombatTelemetry.cs")
@@ -60,10 +61,15 @@ def main():
              "OnHurt 契约注释（O(1)/零分配/不 GetComponent）"),
             ("OnHurtEarlyReturns",
              r"private void HandleOnHurt\(Health health, DamageInfo info\)"
-             r"[\s\S]{0,200}?if \(_state == null \|\| !_state\.IsCombatActive\) return;"
-             r"[\s\S]{0,80}?if \(health == null\) return;"
-             r"[\s\S]{0,80}?if \(!_state\.IsRegisteredBossHealth\(health\)\) return;",
-             "HandleOnHurt 三级早返（未激活/空/未登记）"),
+             r"\s*\{\s*if \(BossRushCoop\.IsClient\) return;"
+             r"\s*try\s*\{\s*if \(_state == null \|\| !_state\.IsCombatActive\) return;"
+             r"\s*if \(health == null\) return;"
+             r"\s*if \(!_state\.IsRegisteredBossHealth\(health\)\) return;",
+             "HandleOnHurt 客户过滤后，紧接未激活/空/未登记 O(1) 三级早返；房主个人资格不截断世界事件"),
+            ("PersonalDamageGate",
+             r"private void RecordDirectDamage\(Health health, DamageInfo info\)\s*\{\s*"
+             r"if \(!ModeGEntryRuntime\.CanApplyPersonalCombat\) return;",
+             "个人资格在个人伤害入口 O(1) 门控，共享世界事实仍发布"),
             ("CapacityConstants",
              r"public const int AmmoCacheCapacity = 32;"
              r"[\s\S]*?public const int ProjectileThreatCountCap = 32;"
@@ -79,7 +85,7 @@ def main():
              "遥测字典按容量预分配"),
         ]
         for name, pattern, desc in checks:
-            if not re.search(pattern, telemetry):
+            if not re.search(pattern, clean_source(telemetry) if name == "OnHurtEarlyReturns" else telemetry):
                 errors.append("[{}] 不满足: {}".format(name, desc))
 
         # HandleOnHurt 方法体内禁重查符号（热路径零分配）

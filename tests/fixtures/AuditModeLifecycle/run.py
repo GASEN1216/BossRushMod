@@ -5,6 +5,8 @@ HERE=Path(__file__).resolve().parent
 OUT=Path(os.environ.get('BOSSRUSH_FIXTURE_OUTPUT', str(ROOT/'Build/runtime-regressions/AuditModeLifecycle')))
 sys.path.insert(0,str(ROOT/'tests'))
 from cs_source_util import clean_source
+sys.path.insert(0, str(ROOT / 'tools'))
+from run_runtime_regressions import run_project_fixture
 
 def member(path, marker):
     raw=path.read_text(encoding='utf-8-sig')
@@ -50,7 +52,8 @@ def execute(name, files, generated=''):
     incl=''.join('<Compile Include="'+xml.sax.saxutils.escape(str(p),{'"':'&quot;'})+'"/>' for p in files)
     project=out/'Regression.csproj'
     project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup><ItemGroup>'+incl+'</ItemGroup></Project>',encoding='utf-8')
-    code=subprocess.call(['dotnet','run','--project',str(project),'--configuration','Release','--',str(ROOT)],cwd=ROOT)
+    code, output = run_project_fixture(project, out / 'runs', ROOT)
+    print(output)
     if code: raise SystemExit(code)
 
 transfer_module=ROOT/'ZombieMode/ZombieModeRuntimeModule.cs'
@@ -125,6 +128,7 @@ public sealed class ZombieModeEntryTransaction {
  public readonly List<ItemTreeData> InventoryTransferredInboxItems = new List<ItemTreeData>();
 }
 internal sealed partial class ZombieModeRuntimeModule {
+ private bool IsCoopZombieLocalAssetCurrent() { return true; }
  private ModBehaviour owner; private ZombieModeRunState runState; private ZombieModeEntryTransaction entryTransaction;
 '''+enemy_module_fields+'''
  internal bool WasIndexedAtLastRunOnlyRegistration; internal Action LastRunOnlyCleanup; internal int RunOnlyRegistrationCount;
@@ -163,7 +167,7 @@ public partial class ModBehaviour {
 execute('transfer',[HERE/'Transfer.cs',ROOT/'Utilities/RunScopedRegistry.cs'],transfer)
 source=ROOT/'ZombieMode/ZombieModeRewardTriggerEffects.cs'
 execute('projectile',[HERE/'Projectile.cs',HERE/'ProjectileVisualHost.cs'],
-    'using UnityEngine; using ItemStatsSystem; using Duckov.Utilities; namespace BossRush { internal sealed partial class ZombieModeRuntimeModule {'+member(source,'private bool TrySpawnZombieModePlayerSupportProjectile(')+'}'+type_block(source,'internal sealed class ZombieModeSupportProjectileTrailFx')+'}')
+    'using UnityEngine; using ItemStatsSystem; using Duckov.Utilities; namespace BossRush { internal sealed partial class ZombieModeRuntimeModule { private bool IsCoopZombieLocalAssetCurrent() { return true; }'+member(source,'private bool TrySpawnZombieModePlayerSupportProjectile(')+'}'+type_block(source,'internal sealed class ZombieModeSupportProjectileTrailFx')+'}')
 prod=ROOT/'ModeH/ModeHProductionCertification.cs'
 writer='using System.Collections.Generic; namespace BossRush { internal sealed class ProductionStatusWriter {'+member(prod,'private void AppendEntryStatus(')+' internal void Capture(List<ModeHCommandCertificationStatusDto>s,string k,string e){AppendEntryStatus(s,k,e);} }}'
 execute('report',[HERE/'Report.cs']+[ROOT/p for p in ['Common/Data/BossRushJsonValue.cs','Common/Data/JsonDataRegistry.cs','Utilities/SimpleJsonHelper.cs','ModeH/ModeHConfig.cs','ModeH/ModeHStateModel.cs','ModeH/ModeHStateDtos.cs','ModeH/ModeHContentModels.cs','ModeH/ModeHCanonicalDigest.cs','ModeH/ModeHContentCatalog.cs','ModeH/ModeHContentCatalogParsers.cs','ModeH/ModeHCommandCompatibilityRegistry.cs']],writer)
@@ -171,15 +175,17 @@ methods='\n'.join(member(prod,m) for m in ['private async Cysharp.Threading.Task
 methods=methods.replace('Cysharp.Threading.Tasks.UniTask<ModeHSpawnHandle>','System.Threading.Tasks.Task<ModeHSpawnHandle>')
 execute('ownership',[HERE/'Ownership.cs'],'using System; using UnityEngine; namespace BossRush { public partial class CertificationOwner {'+methods+'}}')
 merchant=member(ROOT/'Utilities/ModeEFMerchantRuntime.cs','internal async UniTaskVoid SpawnModeEMerchant(').replace('async UniTaskVoid','async System.Threading.Tasks.Task')
+coal=member(ROOT/'ModeE/ModeEPetSpawner.cs','private static async UniTaskVoid SpawnPetAsync(').replace('async UniTaskVoid','async System.Threading.Tasks.Task')
 merchant_owner_methods = []
 for mode, lifecycle, entry, signatures in [
-    ('E', 'ModeE/ModeERuntimeModule.cs', 'ModeE/ModeEStartup.cs', ['private int BeginModeESession()', 'private void InvalidateModeESession()', 'internal bool IsModeESessionStillValid(', 'internal bool IsModeEOrModeFSpawnSessionStillValid(']),
-    ('F', 'ModeF/ModeFRuntimeModule.cs', 'ModeF/ModeFEntry.cs', ['private int BeginModeFSession()', 'private void InvalidateModeFSession()', 'internal bool IsModeFSessionStillValid(']),
+    ('E', 'ModeE/ModeERuntimeModule.cs', 'ModeE/ModeEStartup.cs', ['private int BeginModeESession()', 'private void InvalidateModeESession()', 'internal bool IsModeESessionStillValid(', 'private bool IsModeESessionOwnerCurrent()', 'internal bool IsModeEOrModeFSpawnSessionStillValid(']),
+    ('F', 'ModeF/ModeFRuntimeModule.cs', 'ModeF/ModeFEntry.cs', ['private int BeginModeFSession()', 'private void InvalidateModeFSession()', 'internal bool IsModeFSessionStillValid(', 'private bool IsModeFSessionOwnerCurrent()']),
 ]:
     methods = '\n'.join(member(ROOT/lifecycle, sig) for sig in ['public override void OnAwake(', 'public override void OnDestroy()'])
     methods += '\n' + '\n'.join(member(ROOT/entry, sig) for sig in signatures)
+    methods += '\n' + '\n'.join(declaration(ROOT/entry, 'private '+kind+' mode'+mode+'Session'+suffix) for kind,suffix in [('bool','Connected'),('string','Room'),('int','SceneHandle')])
     merchant_owner_methods.append('internal sealed partial class Mode'+mode+'RuntimeModule {'+methods+'}')
-execute('merchant_owner',[HERE/'MerchantOwner.cs'],'using System; using UnityEngine; namespace BossRush { internal sealed partial class ModeEFMerchantRuntime {'+merchant+'}'+''.join(merchant_owner_methods)+'}')
+execute('merchant_owner',[ROOT/'tests/fixtures/CoopOfflineStubs.cs',HERE/'MerchantOwner.cs'],'using System; using UnityEngine; namespace BossRush { internal sealed partial class ModeEFMerchantRuntime {'+merchant+'} internal static partial class ModeEPetSpawner {'+coal+'}'+''.join(merchant_owner_methods)+'}')
 merchant_lifecycle='\n'.join(member(ROOT/'Utilities/ModeEFMerchantRuntime.cs', signature) for signature in ['internal void CleanupModeEMerchant()', 'private System.Collections.IEnumerator CacheAllModeFShopItemInstancesAsync()'])
 execute('merchant_shared_lifecycle',[HERE/'MerchantSharedLifecycle.cs', ROOT/'Utilities/RunScopedRegistry.cs'],'using System; using System.Collections.Generic; using UnityEngine; using Duckov.Economy; using ItemStatsSystem; namespace BossRush { internal sealed partial class ModeEFMerchantRuntime {'+merchant_lifecycle+'}}')
 respawn=member(ROOT/'ModeF/ModeFRespawn.cs','private async UniTaskVoid RespawnModeFBossAsync(').replace('async UniTaskVoid','async System.Threading.Tasks.Task')
@@ -210,6 +216,7 @@ internal enum ZombieModeLifecyclePhase { None, Active }
 internal static class ZombieModePhaseGuards { internal static bool IsRunActive(ZombieModeLifecyclePhase phase) { return phase == ZombieModeLifecyclePhase.Active; } }
 internal sealed class ZombieModeRunState { internal int RunId = 1; internal ZombieModeLifecyclePhase LifecyclePhase = ZombieModeLifecyclePhase.Active; }
 internal sealed partial class ZombieModeRuntimeModule {
+ private bool IsCoopZombieLocalAssetCurrent() { return true; }
  private ModBehaviour owner; private ZombieModeRunState runState;
  private float runtimePausedDuration; private float runtimePauseStartTime = -1f; private int runtimePauseRunId;
  internal ZombieModeRuntimeModule(ModBehaviour owner, ZombieModeRunState runState) { this.owner = owner; this.runState = runState; }
@@ -217,7 +224,7 @@ internal sealed partial class ZombieModeRuntimeModule {
 public partial class ModBehaviour { private ZombieModeRuntimeModule zombieModeRuntimeModule;
 '''+host_methods+'''\n}
 }'''
-execute('pause_clock',[HERE/'PauseClock.cs'],pause)
+execute('pause_clock',[ROOT/'tests/fixtures/CoopOfflineStubs.cs',HERE/'PauseClock.cs'],pause)
 duration_module=ROOT/'ZombieMode/ZombieModeRuntimeModule.cs'
 duration_host=ROOT/'ZombieMode/ZombieModeRewardHostBridge.cs'
 duration_bridge=ROOT/'ZombieMode/ZombieModeEntryHostBridge.cs'
@@ -252,6 +259,7 @@ internal sealed class ZombieModeRunState {
 }
 internal static class ZombieModeTuning { internal const float PreparationCountdownSeconds = 45f; }
 internal sealed partial class ZombieModeRuntimeModule {
+ private bool IsCoopZombieLocalAssetCurrent() { return true; }
  private ModBehaviour owner; private ZombieModeRunState runState;
  internal ZombieModeRuntimeModule(ModBehaviour owner, ZombieModeRunState runState) { this.owner = owner; this.runState = runState; }
 '''+duration_module_members+'''
@@ -347,6 +355,7 @@ using UnityEngine;
 namespace BossRush {
 '''+member(models,'public enum ZombieModeRunOnlyObjectKind')+'\n'+member(models,'public sealed class ZombieModeRunOnlyRecord')+'''
 internal sealed partial class ZombieModeRuntimeModule {
+ private bool IsCoopZombieLocalAssetCurrent() { return true; }
  private static int nextRunId; private ModBehaviour owner; private ZombieModeRunState runState;
  internal static int TestNextRunId { get { return nextRunId; } set { nextRunId = value; } }
  internal ZombieModeRuntimeModule(ModBehaviour owner, ZombieModeRunState runState) { this.owner = owner; this.runState = runState; }
@@ -375,6 +384,10 @@ internal sealed class ZombieModeRunState {
 }
 internal sealed class CountDownArea { internal Action<CountDownArea> onCountDownStopped; internal Action onCountDownSucceed; }
 internal static class ExtractionTrace { internal static readonly List<string> Events = new List<string>(); }
+// The original settlement fixture executes offline; optional room receipts are absent.
+internal static partial class BossRushCoop { internal static readonly BossRushCoopPlayer[] Players = new BossRushCoopPlayer[0]; }
+internal sealed class BossRushCoopPlayer { internal string Id, AssetId; internal bool IsAlive; }
+internal sealed class CoopZombiePersonal { internal int Run, Amount; internal string Kind; }
 internal static class L10n { internal static string T(string value) { return value; } internal static string T(string chinese, string english) { return chinese; } }
 internal static class NotificationText { internal static void Push(string value) { ExtractionTrace.Events.Add("notification:" + value); } }
 internal static class EconomyManager {
@@ -387,7 +400,13 @@ public partial class ModBehaviour {
  internal static void DevLog(string text) { }
 }
 internal sealed partial class ZombieModeRuntimeModule {
+ private bool IsCoopZombieLocalAssetCurrent() { return true; }
  private readonly ModBehaviour owner; private readonly ZombieModeRunState runState;
+ private bool coopZombieExtractionPending; private CoopPersonalDelivery<CoopZombiePersonal> coopZombiePersonal;
+ private readonly Dictionary<string,string> coopZombieParticipants = new Dictionary<string,string>();
+ private readonly Dictionary<string,int> coopZombiePointsIssued = new Dictionary<string,int>();
+ private bool IsCoopZombieParticipant(BossRushCoopPlayer player) { return false; }
+ private bool CoopZombieAllInsideExtraction(CountDownArea area) { return false; }
  internal ZombieModeRuntimeModule(ModBehaviour owner, ZombieModeRunState runState) { this.owner = owner; this.runState = runState; }
  internal bool IsZombieModeRunValid(int runId) { return runId > 0 && runState.RunId == runId; }
  private void TryReleaseZombieModeExtractionCountdownUi() { ExtractionTrace.Events.Add("release-countdown"); }
@@ -430,7 +449,7 @@ internal static class Program {
  }
 }
 }'''
-execute('extraction_settlement',[],extraction_fixture)
+execute('extraction_settlement',[ROOT/'tests/fixtures/CoopOfflineStubs.cs'],extraction_fixture)
 hud_module=ROOT/'ZombieMode/ZombieModeRuntimeModule_Hud.cs'
 hud_constants='\n'.join(declaration(hud_module,m) for m in [
     'private const float ZombieModeHudRefreshInterval =',
@@ -453,6 +472,7 @@ using UnityEngine;
 namespace BossRush {
 '''+hud_state+'''
 internal sealed partial class ZombieModeRuntimeModule {
+ private bool IsCoopZombieLocalAssetCurrent() { return true; }
  private ModBehaviour owner; private readonly int activeRunId;
 '''+hud_field+'\n'+hud_constants+'''
  internal Action LastRunOnlyCleanup;
@@ -485,7 +505,7 @@ execute('wave_ordering', [HERE/'WaveOrdering.cs'],
         'using System; using System.Collections.Generic; using System.Linq; using UnityEngine; namespace BossRush {'
         'partial class WavesArenaRuntimeModule {' + wave_ordering + '}'
         'partial class BossFilterRuntimeModule {' + filter_ordering + '}}')
-execute('wave_owner',[HERE/'WaveOwner.cs',ROOT/'WavesArena/WavesArenaRuntimeModule.cs',ROOT/'ModeD/ModeDRuntimeModule.cs',ROOT/'ModeD/ModeDRuntimeModule_WaveResolution.cs'], 'using System; namespace BossRush { internal sealed partial class ModeDRuntimeModule {'+mode_d_destroy+'}}')
+execute('wave_owner',[ROOT/'tests/fixtures/CoopOfflineStubs.cs',HERE/'WaveOwner.cs',ROOT/'WavesArena/WavesArenaRuntimeModule.cs',ROOT/'ModeD/ModeDRuntimeModule.cs',ROOT/'ModeD/ModeDRuntimeModule_WaveResolution.cs'], 'using System; namespace BossRush { internal sealed partial class ModeDRuntimeModule {'+mode_d_destroy+'}}')
 execute('milestone',[HERE/'Milestone.cs',ROOT/'LootAndRewards/InfiniteHellMilestoneDelivery.cs'])
 f3=ROOT/'DebugAndTools/F3GameplayValidationAutotestStory.cs'
 f3methods='\n'.join(member(f3,m) for m in ['private static bool TryReclaimAutotestItems(', 'private bool ClearAutotestSnapshotKey()'])

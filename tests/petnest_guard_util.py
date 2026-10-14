@@ -23,6 +23,20 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PETNEST_DIR = os.path.join(REPO_ROOT, "PetNest")
 
 
+def method_body(code, signature):
+    """Extract a stripped C# method without assuming a fixed character budget."""
+    start = code.find(signature)
+    if start < 0:
+        return None
+    opening = code.index("{", start)
+    depth = 0
+    for end in range(opening, len(code)):
+        depth += (code[end] == "{") - (code[end] == "}")
+        if depth == 0:
+            return code[opening:end + 1]
+    return None
+
+
 def read_text(path):
     """读文件；不存在返回 None。"""
     if not os.path.exists(path):

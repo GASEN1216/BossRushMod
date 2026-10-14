@@ -29,13 +29,42 @@ class Program {
   pending.Prepared.SetResult(new ManagedBossPrepareResult{Character=rejected,Handle=rejectedHandle});
   Require(rejected.Destroyed&&!rejectedHandle.Activated&&commits==1,"cancelled Mode G proxy was activated or not released");
   Console.WriteLine("PASS PhaseProxy commit-before-activation and cancelled prepare cleanup");
+  foreach(string invalidation in new[]{"stop","room","role","replica"}){
+   BossRushCoop.Connected=true;BossRushCoop.Host=invalidation!="replica";BossRushCoop.RunId="original";
+   var frozen=new DragonKingAbilityController();ModBehaviour.Instance=new ModBehaviour();var factory=ModBehaviour.Instance;
+   frozen.Boss.Marker=new CoopAiPredictionReplicaMarker{AuthorityBound=true,AuthorityRun="original",Replica=invalidation=="replica"};
+   var pendingChild=frozen.Begin();Time.deltaTime=0.02f;
+   bool yielded=pendingChild.MoveNext();
+   Require(yielded==(invalidation!="replica"),"original role admission "+invalidation);
+   if(invalidation=="replica"){
+    BossRushCoop.Connected=false;
+    Require(factory.RequestCalls==0&&frozen.Child==null&&!frozen.HasCombatAuthority,"replica upgraded after Stop or requested a child");
+    continue;
+   }
+   if(invalidation=="stop"||invalidation=="replica")BossRushCoop.Connected=false;
+   else if(invalidation=="room")BossRushCoop.RunId="successor";
+   else BossRushCoop.Host=false;
+   var stale=new CharacterMainControl();factory.Request.SetResult(stale);
+   if(yielded)Require(!pendingChild.MoveNext(),"revoked request remained active "+invalidation);
+   Require(stale.Destroyed&&frozen.Child==null&&stale.Health.OnDeadEvent.Listeners==0,
+    "late child adopted after entity authority loss "+invalidation);
+  }
+  BossRushCoop.Connected=false;BossRushCoop.Host=false;BossRushCoop.RunId=null;
+  var solo=new DragonKingAbilityController();ModBehaviour.Instance=new ModBehaviour();var soloChild=new CharacterMainControl();
+  ModBehaviour.Instance.Request.SetResult(soloChild);
+  Require(!solo.Begin().MoveNext()&&solo.Child==soloChild,"fresh single-player child protection disabled");
+  Console.WriteLine("PASS production entity authority rejects Stop/new room/role/replica continuations and preserves fresh solo");
  }
 }
 namespace BossRush {
  public struct Vector3{} public static class Time{public static float deltaTime;}
  public class DeathEvent{public int Listeners;public void AddListener(Action<object> f){Listeners++;}}
  public class Health{public bool IsDead;public DeathEvent OnDeadEvent=new DeathEvent();}
- public class CharacterMainControl{public bool Destroyed;public Health Health=new Health();}
+ public class CharacterMainControl{public bool Destroyed;public Health Health=new Health();internal CoopAiPredictionReplicaMarker Marker;public T GetComponent<T>() where T:class{return Marker as T;}}
+ // Network and component lookup are controlled host boundaries; authority is the extracted production method.
+ internal static class BossRushCoop{internal static bool Connected,Host;internal static string RunId;internal static bool IsHost=>Connected&&Host;internal static bool HasWorldAuthority=>!Connected||IsHost;}
+ internal class CoopAiPredictionReplicaMarker{internal bool Replica,AuthorityBound;internal string AuthorityRun;}
+ internal static class CoopAiPredictionHealthProtection{/* ENTITY_AUTHORITY */}
  public enum ManagedBossRole{PhaseProxy} public enum ManagedBossCleanupReason{OwnerInvalid,SpawnRejected}
  public enum ManagedBossOwner{Legacy,ModeG,ModeH}
  public class ManagedBossSpawnContext{
@@ -51,8 +80,8 @@ namespace BossRush {
  public class ManagedBossPrepareResult{public ManagedBossRuntimeHandle Handle;public CharacterMainControl Character;}
  public static class DragonDescendantConfig{public const string BOSS_NAME_KEY="dragon";}
  public class ModBehaviour {
-  public static ModBehaviour Instance; public TaskCompletionSource<CharacterMainControl> Request=new TaskCompletionSource<CharacterMainControl>();
-  public Task<CharacterMainControl> SpawnDragonDescendant(Vector3 p,bool isChildProtectionSummon,bool notifyBossRushOnFailure,Func<bool> isActiveCheck){return Request.Task;}
+  public static ModBehaviour Instance; public TaskCompletionSource<CharacterMainControl> Request=new TaskCompletionSource<CharacterMainControl>();public int RequestCalls;
+  public Task<CharacterMainControl> SpawnDragonDescendant(Vector3 p,bool isChildProtectionSummon,bool notifyBossRushOnFailure,Func<bool> isActiveCheck){RequestCalls++;return Request.Task;}
   public TaskCompletionSource<ManagedBossPrepareResult> Prepared=new TaskCompletionSource<ManagedBossPrepareResult>();
   public Task<ManagedBossPrepareResult> PrepareManagedDragonDescendantAsync(Vector3 p,ManagedBossSpawnContext c){return Prepared.Task;}
   public static bool IsManagedOwnerValid(ManagedBossSpawnContext c){return c==null||c.IsOwnerValid==null||c.IsOwnerValid();}
@@ -62,7 +91,7 @@ namespace BossRush {
  public class DragonKingAbilityController {
   private int childSpawnGeneration;internal ManagedBossSpawnContext ModeGChildSpawnContext;private ManagedBossRuntimeHandle managedChildHandle;private bool managedChildCommitted;
   private CharacterMainControl spawnedDescendant;private CharacterMainControl bossCharacter=new CharacterMainControl();private Health bossHealth=new Health();private bool isInChildProtection=true;
-  private object childProtectionBoltCoroutine;public CharacterMainControl Child=>spawnedDescendant;public int Deaths;
+  private object childProtectionBoltCoroutine;public CharacterMainControl Child=>spawnedDescendant;public CharacterMainControl Boss=>bossCharacter;public int Deaths;
   public IEnumerator Begin(){return SpawnDescendantForProtection();}private Vector3 GetRandomSpawnPoint(){return new Vector3();}
   private void TriggerLinkedDeath(){Deaths++;bossHealth.IsDead=true;}private void ApplyDescendantStatReduction(CharacterMainControl c){}private void ShowDescendantDialogue(){}private void OnDescendantDeath(object d){}
   private IEnumerator ChildProtectionBoltLoop(){yield break;}private object StartCoroutine(IEnumerator e){return e;}

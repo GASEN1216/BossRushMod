@@ -13,8 +13,10 @@ Judges 的代码部分（剥掉注释与字符串字面量之后）一旦出现 
 """
 from pathlib import Path
 import hashlib
+import json
 import subprocess
 import sys
+from xml.sax.saxutils import escape
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
@@ -28,6 +30,48 @@ sys.path.insert(0, str(ROOT / 'tests'))
 from cs_source_util import clean_source  # noqa: E402  共享的注释剥离状态机（不用正则）
 sys.path.insert(0, str(ROOT / 'tests/fixtures'))
 from sky_island_asset_collectors import generate_asset_collectors
+sys.path.insert(0, str(ROOT / 'tools'))
+from run_runtime_regressions import run_project_fixture
+
+
+def member(source, signature):
+    assert source.count(signature) == 1, signature
+    start = source.index(signature)
+    opening = source.index('{', start)
+    depth = 0
+    for end in range(opening, len(source)):
+        depth += (source[end] == '{') - (source[end] == '}')
+        if depth == 0:
+            return source[start:end + 1]
+    raise AssertionError(signature)
+
+
+def run_gather_interaction():
+    """Execute actual Dev approach/coroutine and actual host AdmitHarvest, with variable host/physics boundaries."""
+    source_path = ROOT / 'DebugAndTools/F3GameplayValidationAutotestBosses.cs'
+    coop_path = ROOT / 'SkyIsland/SkyIslandFieldcraftCoop.cs'
+    source = clean_source(source_path.read_text(encoding='utf-8-sig'))
+    coop = clean_source(coop_path.read_text(encoding='utf-8-sig'))
+    generated = 'using System; using System.Collections; using System.Globalization; using UnityEngine; using Dialogues;\nnamespace BossRush { internal sealed partial class F3GameplayValidationRunner {\n'
+    generated += member(source, 'private IEnumerator AutotestInteract(') + '\n'
+    generated += member(source, 'private bool PrepareAutotestGatherInteraction(') + '\n}}\n'
+    generated += 'namespace BossRush { internal sealed partial class SkyIslandFieldcraft {\n'
+    generated += member(coop, 'private sealed class GatherRequest') + '\n'
+    generated += member(coop, 'private void AdmitHarvest(') + '\n}}\n'
+    folder = OUT / 'gather-interaction'
+    folder.mkdir(parents=True, exist_ok=True)
+    production = folder / 'Production.cs'
+    production.write_text(generated, encoding='utf-8')
+    program = HERE / 'GatherInteractionProgram.cs.txt'
+    project = folder / 'GatherInteraction.csproj'
+    project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><UseSharedCompilation>false</UseSharedCompilation></PropertyGroup><ItemGroup>'
+                       + ''.join('<Compile Include="' + escape(str(path)) + '" />' for path in [production, program])
+                       + '</ItemGroup></Project>', encoding='utf-8')
+    (folder / 'sources.json').write_text(json.dumps({str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
+                                                   for path in [source_path, coop_path, production, program]}, indent=2) + '\n', encoding='utf-8')
+    code, log = run_project_fixture(project, folder / 'execution', ROOT)
+    print(log)
+    return code
 
 
 def unwrap_dev(text, name):
@@ -131,11 +175,8 @@ if __name__ == '__main__':
     (gen / 'SkyIslandStoryServiceAutotest.cs').write_text(story, encoding='utf-8')
     (gen / 'source.sha256').write_text(
         hashlib.sha256((judges_src + '\0' + models_src + '\0' + story_src).encode('utf-8')).hexdigest(), encoding='utf-8')
-    build = subprocess.run([
-        'dotnet', 'build', str(HERE / 'Regression.csproj'), '--configuration', 'Release',
-        '--output', str(OUT / 'bin'),
-        '-p:BaseIntermediateOutputPath=' + str(OUT / 'obj') + '/',
-    ], cwd=ROOT)
-    if build.returncode:
-        raise SystemExit(build.returncode)
-    raise SystemExit(subprocess.run(['dotnet', str(OUT / 'bin' / 'Regression.dll'), str(ROOT)], cwd=ROOT).returncode)
+    code, log = run_project_fixture(HERE / 'Regression.csproj', OUT / 'execution', ROOT)
+    print(log)
+    if code:
+        raise SystemExit(code)
+    raise SystemExit(run_gather_interaction())

@@ -388,8 +388,9 @@ def check(src):
     capture = parsed.get(CAPTURE)
     ordered(errors, capture.body("CaptureAutotestShot") if capture else None,
             ("EnsureAutotestOverlaysHidden(out blocking)", "yield return new WaitForEndOfFrame();", "EnsureAutotestOverlaysHidden(out blocking)",
+             "CollectAutotestTextProbes(", "CollectAutotestWorldProbes(", "CollectAutotestRowRects()",
              "ScreenCapture.CaptureScreenshotAsTexture()"),
-            "截图前（等帧末之前与之后各一次）确认调试浮层不在屏幕上，再在帧末取像素")
+            "截图前（等帧末之前与之后各一次）确认调试浮层不在屏幕上，坐标探针与像素在同一帧末取得")
     if capture is None or '"F3DebugCheatMenu"' not in capture.clean:
         errors.append("截图前要确认不在屏幕上的浮层里必须有 F3 菜单（F3DebugCheatMenu）")
     for rel in AUTOTEST_FILES:

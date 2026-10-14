@@ -41,6 +41,52 @@ partial class Program
         Check(parse(lostChapters).lastUpdatedTicks == 639270239882546286L, "long timestamp preserves all digits");
     }
 
+    static void CampaignFinalScopeLifecycle()
+    {
+        foreach (string change in new[] { "stop-host", "stop-client", "room", "role" })
+        {
+            Reset();
+            BossRushCoop.IsConnected = true; BossRushCoop.Host = change != "stop-client"; BossRushCoop.RunId = "original";
+            var runtime = new CampaignRuntimeModule(); runtime.OnAwake(ModBehaviour.Instance);
+            runtime.BeginFinalScopeForTest();
+            int cleanups = runtime.FinalScopeCleanups;
+            if (change.StartsWith("stop")) BossRushCoop.IsConnected = false;
+            else if (change == "room") BossRushCoop.RunId = "successor";
+            else BossRushCoop.Host = false;
+            runtime.OnUpdate(0.1f, 0.1f);
+            Check(runtime.FinalScopeCleanups == cleanups + 1 && !runtime.FinalScopeActive
+                && runtime.FinalScopeDestroyed == (change != "stop-client"),
+                "actual runtime tick retires the frozen terminal scope on " + change);
+            BossRushCoop.IsConnected = BossRushCoop.Host = true; BossRushCoop.RunId = "original";
+            runtime.OnUpdate(0.1f, 0.1f);
+            Check(runtime.FinalScopeLost && runtime.FinalScopeCleanups == cleanups + 1,
+                "retired terminal scope cannot revive after reconnect " + change);
+            runtime.OnDestroy();
+        }
+        Reset(); BossRushCoop.IsConnected = BossRushCoop.Host = true; BossRushCoop.RunId = "original";
+        var handshake = new CampaignRuntimeModule(); handshake.OnAwake(ModBehaviour.Instance); handshake.BeginFinalScopeForTest();
+        int before = handshake.FinalScopeCleanups;
+        BossRushCoop.RunId = null; handshake.OnUpdate(0.1f, 0.1f);
+        BossRushCoop.RunId = "original"; handshake.OnUpdate(0.1f, 0.1f);
+        Check(handshake.FinalScopeActive && handshake.FinalScopeCleanups == before,
+            "same room empty handshake preserves a running terminal scope");
+        handshake.OnDestroy();
+        Reset(); BossRushCoop.IsConnected = BossRushCoop.Host = true;
+        var pending = new CampaignRuntimeModule(); pending.OnAwake(ModBehaviour.Instance); pending.BeginFinalScopeForTest();
+        BossRushCoop.RunId = "first-room"; pending.OnUpdate(0.1f, 0.1f);
+        Check(pending.FinalScopeActive && !pending.FinalScopeLost, "first nonempty room binds an initially empty handshake");
+        BossRushCoop.RunId = "next-room"; pending.OnUpdate(0.1f, 0.1f);
+        Check(!pending.FinalScopeActive && pending.FinalScopeLost, "bound first room refuses a successor room");
+        pending.OnSceneLoaded(new SceneRuntimeContext());
+        Check(!pending.FinalScopeBound && !pending.FinalScopeLost, "real scene callback resets terminal scope for a new scene");
+        pending.OnDestroy();
+        Reset();
+        var solo = new CampaignRuntimeModule(); solo.OnAwake(ModBehaviour.Instance); solo.BeginFinalScopeForTest();
+        before = solo.FinalScopeCleanups; solo.OnUpdate(0.1f, 0.1f);
+        Check(solo.FinalScopeActive && solo.FinalScopeCleanups == before, "fresh solo terminal scope remains active");
+        solo.OnDestroy(); Reset();
+    }
+
     // Official loading owns the cache bytes; deliberately deliver them after Mod Awake in the same slot.
     // The production runtime, progress service, persistence facade, store and coordinator remain linked.
     static void CampaignReadinessLifecycle()
@@ -156,10 +202,17 @@ namespace BossRush
         public virtual void OnUpdate(float deltaTime, float unscaledDeltaTime) { }
         public virtual void OnDestroy() { }
     }
-    // Unity presentation, fight ownership and official registration are outside this persistence fixture.
+    // Presentation/destruction is recorded; scope fields/methods are extracted unchanged from CampaignFinalBoss.
     internal sealed partial class CampaignRuntimeModule
     {
-        private void CleanupCampaignFinalBoss(bool destroyBoss) { }
+        internal int FinalScopeCleanups;
+        internal bool FinalScopeDestroyed;
+        internal bool FinalScopeActive { get { return campaignFinalBossActive; } }
+        internal bool FinalScopeLost { get { return campaignFinalScopeLost; } }
+        internal bool FinalScopeBound { get { return campaignFinalScopeBound; } }
+        internal void BeginFinalScopeForTest() { CaptureCampaignFinalScope(); campaignFinalBossActive = true; }
+        private void CleanupCampaignFinalBoss(bool destroyBoss)
+        { FinalScopeCleanups++; FinalScopeDestroyed = destroyBoss; campaignFinalBossActive = false; }
         private void TickCampaignModeBridge(float deltaTime) { }
     }
     internal sealed class OfficialQuestRuntimeAdapter { internal readonly object Projection = new object(); }

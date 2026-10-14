@@ -48,6 +48,9 @@ def main():
     code += [extract("Integration/Reforge/ReforgeUIManager_Feel.cs", "private static void QueueReforgeReveal(")]
     code += [extract("Integration/Reforge/ReforgeUIManager_ComparisonAndState.cs", "private static string GetReforgeBoundLabelMarkup(")]
     code += ["} public static partial class BossRushMapSelectionHelper {"]
+    asset = extract("MapSelection/BossRushMapEntryAssetLease.cs", "public static partial class BossRushMapSelectionHelper")
+    # This entry-selection fixture executes the real identity freeze/defer logic. Refund delivery is covered in ModeEntryPaymentDelivery.
+    code += [asset[asset.index("{")+1:asset.index("internal static void TickPrepaidAssetRefunds()")]]
     code += [extract(maps, sig) for sig in ("public static string GetPendingTargetSubSceneName(",
         "public static string GetPendingMainSceneName(", "internal static bool IsPendingTargetScene(",
         "internal static bool ShouldIgnoreAuxiliarySceneLoad(",

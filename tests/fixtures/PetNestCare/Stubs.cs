@@ -144,3 +144,8 @@ namespace BossRush
     // Compatibility double only lets the pre-fix executable expose ConsumeItem's actual failure contract.
     internal static class ItemFactory{public static bool ConsumeItem(int type,int count){try{var bag=CharacterMainControl.Main.CharacterItem.Inventory;var food=bag.Content.Last(x=>x!=null&&x.TypeID==type);if(food.StackCount>count)food.StackCount-=count;else bag.RemoveItem(food);return true;}catch{return false;}}}
 }
+namespace BossRush {
+ // Explicit offline care fixture: no deployment request or transport is executed.
+ internal static class BossRushCoop { public static bool IsClient { get { return false; } } }
+ internal static class PetNestCoopRuntimeModule { internal static void RequestLocalDeployment(PetNestPetRecord pet) { } }
+}

@@ -142,6 +142,7 @@ namespace BossRush
         public void ShowMessage(string message) { Messages++; }
         public bool IsModeFActive { get { return ModeF != null && ModeF.modeFActive; } }
         public bool IsModeFSessionStillValid(int token, int scene) { return ModeF != null && ModeF.IsModeFSessionStillValid(token, scene); }
+        internal int CurrentModeFSessionToken { get { return ModeF.CurrentToken; } }
     }
     internal static class L10n { internal static string T(string a, string b) { return b; } }
     internal static class DragonBreathBuffHandler { internal static void Cleanup() { Probe.Events.Add("dragon-cleanup"); } }
@@ -232,6 +233,7 @@ namespace BossRush
     }
     internal sealed partial class ModeFRuntimeModule : BossRushRuntimeModuleBase
     {
+        internal int CurrentToken { get { return modeFState.RuntimeSessionToken; } }
         private ModBehaviour owner;
         private bool modeFRuntimeDestroyed, modeFCleanupPending;
         internal bool modeFActive;
@@ -315,4 +317,18 @@ namespace BossRush
         private void ApplyModeFBossMoveSpeedModifier(CharacterMainControl c, float amount) { }
         private AICharacterController GetModeFBossAIController(CharacterMainControl c) { return null; }
     }
+}
+
+namespace BossRush {
+ internal static partial class BossRushCoop { internal static bool IsPlayer(CharacterMainControl value) { return object.ReferenceEquals(value, CharacterMainControl.Main); } }
+ internal sealed partial class ModeDRuntimeModule { private bool coopProjectionRetiring; private CoopGameplayChannel<object> coopChannel; private CoopPersonalDelivery<object> coopPersonal; private void InitializeCoopModeD() { } }
+ internal sealed partial class ModeERuntimeModule { private bool coopProjectionRetiring; private CoopGameplayChannel<object> coopChannel; private CoopPersonalDelivery<object> coopPersonal; private void InitializeCoopModeE() { } }
+ internal sealed partial class ModeFRuntimeModule { private bool coopProjectionRetiring; private CoopGameplayChannel<object> coopChannel; private CoopPersonalDelivery<object> coopPersonal; private void InitializeCoopModeF() { } }
+}
+
+namespace BossRush { internal sealed partial class ModeDRuntimeModule { private void TickCoopModeD(float delta) { } } }
+namespace BossRush {
+ // Original single-player teardown fixture has no connected pending receipts.
+ internal sealed partial class ModeERuntimeModule { private static ModeERuntimeModule coopCoalOwner; private void CleanupCoopCoal() { } private System.IDisposable coopUtilitySmokeChannel; private void CleanupCoopUtilities() { } }
+ internal sealed partial class ModeFRuntimeModule { private void CleanupCoopFortificationTransactions() { } }
 }

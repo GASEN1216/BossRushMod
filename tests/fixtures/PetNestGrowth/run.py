@@ -2,7 +2,6 @@
 from pathlib import Path
 import hashlib
 import json
-import subprocess
 import sys
 from xml.sax.saxutils import escape
 
@@ -51,7 +50,11 @@ def main():
     (OUT / "Regression.csproj").write_text(project + '</ItemGroup></Project>', encoding="utf-8")
     (OUT / "sources.json").write_text(json.dumps({str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
         for p in linked + [spawner]}, indent=2), encoding="utf-8")
-    return subprocess.call(["dotnet", "run", "--project", str(OUT / "Regression.csproj"), "--configuration", "Release"], cwd=ROOT)
+    sys.path.insert(0, str(ROOT / 'tools'))
+    from run_runtime_regressions import run_project_fixture
+    result, output = run_project_fixture(OUT / 'Regression.csproj', OUT, ROOT)
+    print(output)
+    return result
 
 
 if __name__ == "__main__":

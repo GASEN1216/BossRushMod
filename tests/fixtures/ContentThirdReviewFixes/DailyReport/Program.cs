@@ -286,3 +286,6 @@ partial class Program
         Console.WriteLine("DailyReport regression checks=" + checks);
     }
 }
+
+// Offline facade: this fixture exercises single-player production paths only.
+namespace BossRush { internal static class BossRushCoop { internal const bool IsClient=false, IsHost=false, IsConnected=false; } internal static class CoopPersonalProgressRuntimeModule { internal static void Dead(Health h,DamageInfo d) { } internal static void Hurt(Health h,DamageInfo d) { } } }

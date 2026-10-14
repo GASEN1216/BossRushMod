@@ -18,5 +18,19 @@ for event in ('WildChase', 'MeleeCarnival', 'HeavySteps'):
     assert catalog.count(f'new RandomEventTempo(RandomEventId.{event})') == 1, event + ' 必须入池一次'
 assert 'ctx.Scope.RegisterCleanup(ClearModifiers);' in tempo, '触发失败也必须回收临时属性'
 assert 'RuntimeStatModifierTracker.RemoveAll(_records, "RandomEventTempo");' in tempo, '事件结束必须移除属性'
-assert '_playerModifiers != 2' in tempo, '必须确认两项真实属性挂载成功'
+def body(source, signature):
+    assert source.count(signature) == 1, '方法缺失或重复: ' + signature
+    start = source.index('{', source.index(signature)); end, depth = start + 1, 1
+    while depth:
+        depth += (source[end] == '{') - (source[end] == '}'); end += 1
+    return re.sub(r'\s+', '', source[start + 1:end - 1])
+
+trigger = body(tempo, 'internal override bool OnTrigger(')
+refresh = body(tempo, 'private bool RefreshPlayer(')
+tick = body(tempo, 'internal override void OnTick(')
+assert 'if(!RefreshPlayer())returnfalse;' in trigger, '触发必须确认两项真实玩家属性挂载成功'
+assert 'if(_playerModifiers==2)returntrue;' in refresh, '必须确认两项真实属性挂载成功'
+assert 'RuntimeStatModifierTracker.RemoveAll(_playerRecords,"RandomEventTempopartialplayer");returnfalse;' in refresh, '缺失任一属性时必须撤销半成品'
+assert 'RefreshPlayer();' in tick, '重生或物品换绑必须重新接入本机临时属性'
+assert 'RuntimeStatModifierTracker.RemoveAll(_playerRecords, "RandomEventTempo player");' in tempo, '个人属性必须成对清理'
 print('RandomEventDistributionGuard: PASS')

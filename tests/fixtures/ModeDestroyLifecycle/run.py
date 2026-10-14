@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import subprocess
+import sys
 from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -31,13 +32,13 @@ groups = {
     },
     'ModeERuntimeModule': {
         'ModeE/ModeERuntimeModule.cs': ['public override void OnAwake(', 'public override void OnDestroy()'],
-        'ModeE/ModeEStartup.cs': ['private System.Collections.IEnumerator PrepareModeEStartupCoroutine(', 'private bool TryRunModeEStartupWarmupStep(', 'private void ClearModeEStartupWarmupCoroutine(', 'internal void ScheduleModeEStartupWarmup(', 'internal void StopModeEStartupWarmupIfPending()', 'private int BeginModeESession()', 'private void InvalidateModeESession()', 'internal void ResetModeESharedRuntimeState(', 'internal bool IsModeESessionStillValid(', 'internal bool IsModeEOrModeFSpawnSessionStillValid('],
+        'ModeE/ModeEStartup.cs': ['private System.Collections.IEnumerator PrepareModeEStartupCoroutine(', 'private bool TryRunModeEStartupWarmupStep(', 'private void ClearModeEStartupWarmupCoroutine(', 'internal void ScheduleModeEStartupWarmup(', 'internal void StopModeEStartupWarmupIfPending()', 'private int BeginModeESession()', 'private void InvalidateModeESession()', 'internal void ResetModeESharedRuntimeState(', 'internal bool IsModeESessionStillValid(', 'private bool IsModeESessionOwnerCurrent()', 'internal bool IsModeEOrModeFSpawnSessionStillValid('],
         'ModeE/ModeELifecycle.cs': ['public void EndModeE('],
         'ModeE/ModeEBattle_ScalingAndRuntime.cs': ['private void RemoveModeEPlayerScalingModifiers()', 'internal void RemoveModeEScalingModifiers(', 'private void CleanupModeEEnemyRuntimeState('],
     },
     'ModeFRuntimeModule': {
         'ModeF/ModeFRuntimeModule.cs': ['public override void OnAwake(', 'public override void OnDestroy()'],
-        'ModeF/ModeFEntry.cs': ['private int BeginModeFSession()', 'private void InvalidateModeFSession()', 'internal bool IsModeFSessionStillValid('],
+        'ModeF/ModeFEntry.cs': ['private int BeginModeFSession()', 'private void InvalidateModeFSession()', 'internal bool IsModeFSessionStillValid(', 'private bool IsModeFSessionOwnerCurrent()'],
         'ModeF/ModeFPhases.cs': ['internal void ExitModeF(', 'private void CleanupModeFPlayerMaxHealthGrowth()', 'private void RetireModeFActiveBossAtExit(', 'private System.Collections.IEnumerator DestroyModeFExitBossDeferred(', 'private void CleanupModeFDeferredExitBossObjects()'],
         'ModeF/ModeFRespawn.cs': ['private void UnregisterModeFBossDeath(', 'private void UnregisterModeFBossLoot(', 'private void CleanupModeESharedRuntimeForModeFBoss(', 'private void CleanupModeFBossRuntimeState(', 'private void ResetModeESharedRuntimeAfterModeF()'],
         'ModeF/ModeFBounty.cs': ['private void RemoveModeFBossGrowthModifiers('],
@@ -48,17 +49,27 @@ groups = {
 generated = ['using System; using System.Collections.Generic; using UnityEngine; using UnityEngine.Events; using ItemStatsSystem; namespace BossRush {']
 for owner, sources in groups.items():
     generated.append('internal sealed partial class ' + owner + ' {')
+    if owner in ('ModeERuntimeModule','ModeFRuntimeModule'):
+        mode=owner[4];entry='ModeE/ModeEStartup.cs' if mode=='E' else 'ModeF/ModeFEntry.cs'
+        raw=(ROOT/entry).read_text(encoding='utf-8-sig')
+        for kind,suffix in [('bool','Connected'),('string','Room'),('int','SceneHandle')]:
+            start=raw.index('private '+kind+' mode'+mode+'Session'+suffix)
+            generated.append(raw[start:raw.index(';',start)+1])
     for source, signatures in sources.items():
         generated.extend(member(source, signature) for signature in signatures)
     generated.append('}')
 generated.append('}')
 (OUT / 'Generated.cs').write_text('\n'.join(generated), encoding='utf-8')
 production = [ROOT / p for p in ['ModeD/ModeDRuntimeModule.cs', 'ModeF/ModeFModels.cs', 'Utilities/ModeEFEnemyRegistry.cs', 'Utilities/RunScopedRegistry.cs']]
-sources = production + [HERE / 'Stubs.cs', HERE / 'Program.cs', OUT / 'Generated.cs']
+sources = [ROOT / "tests/fixtures/CoopOfflineStubs.cs"] + production + [HERE / 'Stubs.cs', HERE / 'Program.cs', OUT / 'Generated.cs']
 for path in production:
     hashes[str(path.relative_to(ROOT))] = hashlib.sha256(path.read_bytes()).hexdigest()
 includes = ''.join('<Compile Include="' + escape(str(p), {'"': '&quot;'}) + '"/>' for p in sources)
 project = OUT / 'Regression.csproj'
 project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649;0414</NoWarn></PropertyGroup><ItemGroup>' + includes + '</ItemGroup></Project>', encoding='utf-8')
 (OUT / 'production-sha256.json').write_text(json.dumps(hashes, indent=2), encoding='utf-8')
-raise SystemExit(subprocess.call(['dotnet', 'run', '--project', str(project), '--configuration', 'Release'], cwd=ROOT))
+sys.path.insert(0,str(ROOT/'tools'))
+from run_runtime_regressions import run_project_fixture
+code,output=run_project_fixture(project,OUT/'runs',ROOT)
+print(output)
+raise SystemExit(code)

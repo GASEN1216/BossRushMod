@@ -105,3 +105,6 @@ namespace BossRush {
  static class CodexSaveCoordinator {internal static void RequestFlush(){}}
  static class BossRushAchievementManager {internal static HashSet<string> Unlocked=new HashSet<string>();internal static void Initialize(){}internal static bool TryUnlock(string id){return Unlocked.Add(id);}}
 }
+
+// Offline facade: this fixture exercises single-player production paths only.
+namespace BossRush { internal static class BossRushCoop { internal static bool IsClient, IsHost; internal static bool IsPlayer(CharacterMainControl c) { return c!=null && c.IsMainCharacter; } internal static string GetPlayerId(CharacterMainControl c) { return c!=null ? "killer" : null; } } internal static class CoopPersonalProgressRuntimeModule { internal static string Owner,Key,Mode,Scene; internal static float Seconds; internal static void CodexKill(string owner,string key,float seconds,string mode,string scene) { Owner=owner;Key=key;Seconds=seconds;Mode=mode;Scene=scene; } } internal static class BossRushCoopFxRuntimeModule { internal static void TrackBoss(CharacterMainControl c,string k) { } } }

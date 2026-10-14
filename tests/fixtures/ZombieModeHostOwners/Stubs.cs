@@ -74,6 +74,11 @@ namespace BossRush
     }
     internal sealed partial class ZombieModeRuntimeModule
     {
+        private static ZombieModeRuntimeModule coopZombieOwner;
+        private IDisposable coopZombieWorld, coopZombiePersonal;
+        internal void RememberCoopZombieWallet() { Trace.Add("wallet:" + runState.RunId); }
+        private void InitializeCoopZombie() { }
+        private void CleanupCoopZombie() { }
         internal IEnumerator TargetRoutine;
         internal void RollbackZombieModeInventoryTransfer() { Trace.Add("rollback:" + runState.LifecyclePhase); }
         internal void RefundZombieModeInvitationIfNeeded() { Trace.Add("invitation"); }

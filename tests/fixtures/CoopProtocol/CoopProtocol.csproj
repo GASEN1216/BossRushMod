@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><RollForward>Major</RollForward>
+    <LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" /><Compile Include="Stubs.cs" />
+    <Compile Include="../../../Common/Coop/BossRushCoopProtocol.cs" />
+    <Compile Include="../../../Utilities/CoopGameplayChannel.cs" />
+    <Compile Include="../../../Utilities/CoopPersonalDelivery.cs" />
+  <Compile Include="../../../Common/Coop/BossRushCoopJson.cs" /><Compile Include="../../../Common/Data/BossRushJsonValue.cs" /><Compile Include="../../../Utilities/SimpleJsonHelper.cs" /></ItemGroup>
+</Project>

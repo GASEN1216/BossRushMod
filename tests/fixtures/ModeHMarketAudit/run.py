@@ -74,6 +74,7 @@ control_extracted='using System; using UnityEngine; namespace BossRush { interna
 control_extracted+='\n'.join(method(control,signature) for signature in control_methods)+'\n}}'
 (PROD/'CombatControlMethods.cs').write_text(control_extracted,encoding='utf-8')
 (OUT/'CombatControlAudit.cs').write_bytes((HERE/'CombatControlAudit.cs').read_bytes())
+(PROD/'CoopOfflineStubs.cs').write_bytes((HERE.parent/'CoopOfflineStubs.cs').read_bytes())
 (OUT/'combat-control-source-sha256.txt').write_text(hashlib.sha256(control.encode()).hexdigest()+'  ModeH/ModeHCombatControl.cs\n',encoding='utf-8')
 (OUT/'source-sha256.txt').write_text('\n'.join(hashlib.sha256((PROD/n).read_bytes()).hexdigest()+'  ModeH/'+n for n in files),encoding='utf-8')
 (OUT/'Fixture.csproj').write_text('''<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649;0414</NoWarn></PropertyGroup><ItemGroup><Compile Include="Production/*.cs"/><Compile Include="Harness.cs"/><Compile Include="ContentAudit.cs"/><Compile Include="MatchRulesAudit.cs"/><Compile Include="CombatControlAudit.cs"/></ItemGroup></Project>''',encoding='utf-8')

@@ -65,6 +65,8 @@ public sealed class DuckNpcBlueprint
     public bool AllowsScene(string scene) { return scene == "Base" || scene == "B" || scene == "C"; }
 }
 public static class AffinityManager { public static bool Married; public static bool IsMarriedToPlayer(string id) { return Married; } }
+// This fixture exercises the original single-player spawn lifecycle only.
+public static class BossRushCoop { public const bool IsConnected = false; }
 public static class NPCAffinityInteractionHelper { public static void ApplyDailyDecayOnSpawn(string id, string prefix) { } }
 public static class PermanentDuckNpcRegistry
 {

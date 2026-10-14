@@ -30,6 +30,8 @@ internal static class Program
         CharacterMainControl.Main=new CharacterMainControl();
         CharacterMainControl.Main.transform.position=new Vector3(0,0,23);
         AstralStaffFx.Root=null;
+        BossRushCoop.IsConnected=false;
+        BossRushCoop.Players=new BossRushCoopPlayer[0];
     }
     private static SandstormChampionController Begin(int phase=3, int count=1)
     {
@@ -128,6 +130,41 @@ internal static class Program
         UnityEngine.Object.Destroy(ribbon.gameObject);
         Check(ribbon==null&&mesh==null,"owner cancellation releases ribbon and mesh");
     }
+    private static void RoomArea()
+    {
+        var controller=Begin();
+        var marker=new GameObject("guard").AddComponent<SandstormChampionMinionMarker>();
+        var arts=new SandstormChampionMinionArts(marker,new CharacterMainControl(),controller);
+        var participants=new List<BossRushCoopPlayer>();
+        for(int i=0;i<12;i++)
+        {
+            var player=new CharacterMainControl();player.transform.position=new Vector3((i%3-1)*.5f,0,1+i*.2f);
+            participants.Add(new BossRushCoopPlayer { IsAlive=true,Character=player });
+        }
+        foreach(Vector3 excluded in new[]{new Vector3(0,0,8),new Vector3(0,3,1),new Vector3(0,0,-2)})
+        { var player=new CharacterMainControl();player.transform.position=excluded;participants.Add(new BossRushCoopPlayer { IsAlive=true,Character=player }); }
+        var dead=new CharacterMainControl();dead.transform.position=Vector3.forward;
+        participants.Add(new BossRushCoopPlayer { IsAlive=false,Character=dead });
+        BossRushCoop.IsConnected=true;BossRushCoop.Players=participants.ToArray();
+        MethodInfo strike=typeof(SandstormChampionMinionArts).GetMethod("StrikeArea",BindingFlags.NonPublic|BindingFlags.Instance);
+        object[] args={Vector3.zero,Vector3.forward,5f,60f,7f,Vector3.zero,1,false};
+        Check((bool)strike.Invoke(arts,args),"room sweep reports contact");
+        Check(controller.Hits==12&&controller.HitTargets.Count==12,"every eligible participant is hit once without a two-player ceiling");
+        for(int i=0;i<12;i++)Check(controller.HitTargets[i]==participants[i].Character,"damage retains individual target owner");
+        BossSkillDamageRules.Dodging=true;Check(!(bool)strike.Invoke(arts,args)&&controller.Hits==12,"room-wide dodge exclusion");
+        BossSkillDamageRules.Dodging=false;Physics.Wall=true;
+        Check(!(bool)strike.Invoke(arts,args)&&controller.Hits==12,"wall blocks all room sweep targets");
+    }
+    private static void RoomDash()
+    {
+        var participants=new List<BossRushCoopPlayer>();
+        for(int i=0;i<12;i++)
+        { var player=new CharacterMainControl();player.transform.position=new Vector3(0,0,6+i*2);participants.Add(new BossRushCoopPlayer { IsAlive=true,Character=player }); }
+        BossRushCoop.IsConnected=true;BossRushCoop.Players=participants.ToArray();
+        var c=Begin();Until(c,()=>c.Finished,.1f);
+        Check(c.Hits==12&&c.HitTargets.Count==12,"swept charge reaches all room participants once");
+        Check(new HashSet<CharacterMainControl>(c.HitTargets).Count==12,"substeps never double-hit one participant");
+    }
     private static int Main()
     {
         Case("menu pause and resume",()=>Pause(true));
@@ -169,6 +206,19 @@ internal static class Program
         foreach(string method in new[]{"Sweep","Spin","Starfall"})
         { string action=method;Case("minion "+action+" warning",()=>MinionWarnings(action)); }
         Case("player ribbon compatibility",PlayerVisual);
+        Case("room minion area target ownership",RoomArea);
+        Case("room dash single hit per participant",RoomDash);
+        Case("velocity belongs to one combat target",()=>
+        {
+            var c=Begin();var first=CharacterMainControl.Main;c.Sample(0.1f);
+            first.transform.position+=new Vector3(1,0,0);c.Sample(0.1f);
+            Check(c.SampledVelocity.x>0,"same target's actual movement produces lead velocity");
+            var replacement=new CharacterMainControl();replacement.transform.position=first.transform.position+new Vector3(1,0,0);
+            CharacterMainControl.Main=replacement;c.Sample(0.1f);
+            Near(c.SampledVelocity.sqrMagnitude,0,"target replacement cannot turn two player positions into movement");
+            replacement.transform.position+=new Vector3(0,0,1);c.Sample(0.1f);
+            Check(c.SampledVelocity.z>0 && c.SampledVelocity.x==0,"new target movement is sampled independently");
+        });
         GameObject.ClearScene();
         Console.WriteLine("SandstormCombatTiming: "+checks+" checks / "+failures+" failed cases");
         return failures==0?0:1;

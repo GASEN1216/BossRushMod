@@ -248,3 +248,5 @@ namespace BossRush
         private void OnSceneLoadedIntegrationRuntime(Scene scene, LoadSceneMode mode) { Callbacks++; }
     }
 }
+
+namespace BossRush { internal static class BossRushCoop { internal static string LocalAssetId { get { return "asset-" + Saves.SavesSystem.CurrentSlot; } } } }

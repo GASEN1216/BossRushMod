@@ -3,7 +3,7 @@ from pathlib import Path
 import hashlib
 import json
 import re
-import subprocess
+import sys
 from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -45,7 +45,11 @@ def main():
                        '<EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649</NoWarn>'
                        '</PropertyGroup><ItemGroup>' + includes + '</ItemGroup></Project>', encoding='utf-8')
     (OUT / 'production-sha256.json').write_text(json.dumps(hashes, indent=2), encoding='utf-8')
-    return subprocess.call(['dotnet', 'run', '--project', str(project), '--configuration', 'Release'], cwd=ROOT)
+    sys.path.insert(0, str(ROOT / 'tools'))
+    from run_runtime_regressions import run_project_fixture
+    result, output = run_project_fixture(project, OUT, ROOT)
+    print(output)
+    return result
 
 
 if __name__ == '__main__':

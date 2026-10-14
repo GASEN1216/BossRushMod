@@ -178,6 +178,8 @@ namespace BossRush
         public static bool EnsureRuntimeRegistration(int id) { return Registered; }
     }
     public enum BackMountainFacility { Garden }
+    internal static class CoopPersonalProgressRuntimeModule
+    { internal static bool AnyGardenUnlocked { get { return BackMountainUnlocks.IsFacilityUnlocked(BackMountainFacility.Garden); } } }
     public static class BackMountainUnlocks
     {
         public static bool Unlocked = true;
@@ -200,3 +202,7 @@ namespace BossRush
         public static void OnCollectDragonKingLoot(int id) { Collections++; }
     }
 }
+
+namespace BossRush { internal static partial class BossRushCoop {
+ internal static bool RegisterWorldLoot(InteractableLootbox value) { return true; }
+} }

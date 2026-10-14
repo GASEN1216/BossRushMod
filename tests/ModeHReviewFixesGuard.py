@@ -2,6 +2,7 @@
 """Mode H 2026-09-05: durable progression, legacy matching, explicit session recovery."""
 from pathlib import Path
 import re
+from cs_source_util import clean_source
 
 ROOT = Path(__file__).resolve().parents[1]
 FILES = [
@@ -9,6 +10,7 @@ FILES = [
     'ModeHRuntimeModule_MatchFlow.cs', 'ModeHRuntimeModule_SceneFlow.cs',
     'ModeHRuntimeModule_CombatFlow.cs', 'ModeHRuntimeModule_SettlementFlow.cs',
     'ModeHSaveFlushCoordinator.cs', 'ModeHInventoryPersistenceBridge.cs', 'ModeHWarehouseStakeJournal.cs',
+    'ModeHRuntimeModule_Coop.cs',
 ]
 
 def check(source):
@@ -28,7 +30,9 @@ def check(source):
     need('ModeHSaveFlushCoordinator.cs', r'RequestSeasonWrite\(ModeHSeasonDto season, out string error, bool requireDurable\).*?FlushBatch\(out error, requireDurable\)', 'explicit durability must reach physical writer')
     need('ModeHRuntimeModule.cs', r'_season = season;\s*_restoredSeasonPending = true;', 'restore full season but pause gameplay')
     need('ModeHRuntimeModule_MatchFlow.cs', r'if \(_restoredSeasonPending \|\| _resumeScenePending\) return;', 'loaded combat must not tick before resume')
-    need('ModeHRuntimeModule.cs', r'private void RestoreForSlotChange\(\).*?CancelSeasonResume\(\).*?ReleaseRuntimeObjects\(\).*?_season = null;', 'slot changes must discard old owner and season')
+    need('ModeHRuntimeModule.cs', r'private void RestoreForSlotChange\(\).*?if \(RetainCoopWorldOnSlotChange\(\)\) return;.*?CancelSeasonResume\(\).*?ReleaseRuntimeObjects\(\).*?_season = null;', 'host co-op world survives slot change; other owners discard old season')
+    need('ModeHRuntimeModule_Coop.cs', r'private bool RetainCoopWorldOnSlotChange\(\)\s*\{\s*if \(!BossRushCoop.IsHost \|\| !HasActiveRun \|\| !GroupModeEnabled \|\| _coopProjection\) return false;', 'only an active host group world can retain its old owner')
+    need('ModeHRuntimeModule_UiFlow.cs', r'if \(_coopProjection\) return false;\s*if \(_season == null\) return false;\s*if \(!IsCoopWorldPersonalAssetCurrent\) return true;', 'retained world never writes its old season into a different personal asset')
     need('ModeHRuntimeModule_UiFlow.cs', r'Suspended \|\| _restoredSeasonPending', 'saved active lifecycle needs a resume action')
     need('ModeHRuntimeModule_SceneFlow.cs', r'if \(TryHandleSeasonResumeScene\(context\)\) return;', 'resume scene must bypass new-season creation')
     for field in ('gameBuildSignature','modBuildSignature','contentCatalogSignature'):
@@ -43,7 +47,7 @@ def check(source):
     return errors
 
 def main():
-    source = {name: (ROOT / 'ModeH' / name).read_text(encoding='utf-8-sig') for name in FILES}
+    source = {name: clean_source((ROOT / 'ModeH' / name).read_text(encoding='utf-8-sig')) for name in FILES}
     errors = check(source)
     mutations = [
         ('ModeHRuntimeModule_MatchFlow.cs', 'TryPersistSeason("loadout_locked", true)', 'TryPersistSeason("loadout_locked")'),
@@ -52,6 +56,8 @@ def main():
         ('ModeHRuntimeModule_MatchFlow.cs', 'if (_restoredSeasonPending || _resumeScenePending) return;', ''),
         ('ModeHRuntimeModule_Recovery.cs', '_runState.OwnerToken == ownerToken', 'true'),
         ('ModeHInventoryPersistenceBridge.cs', 'HasRestoreData(expected)', 'HasRestoreData(null)'),
+        ('ModeHRuntimeModule.cs', 'if (RetainCoopWorldOnSlotChange()) return;', ''),
+        ('ModeHRuntimeModule_UiFlow.cs', 'if (!IsCoopWorldPersonalAssetCurrent) return true;', ''),
     ]
     for file, before, after in mutations:
         if before not in source[file]:
@@ -61,7 +67,7 @@ def main():
         if not check(mutated): errors.append('regression mutation escaped: ' + file + ' / ' + before)
     if errors:
         print('\n'.join(errors)); return 1
-    print('ModeHReviewFixesGuard: PASS (durable/legacy/recovery invariants; 6 rejected regression mutations)')
+    print('ModeHReviewFixesGuard: PASS (durable/legacy/recovery and co-op owner invariants; 8 rejected regression mutations)')
     return 0
 
 if __name__ == '__main__':

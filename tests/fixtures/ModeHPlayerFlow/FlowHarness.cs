@@ -112,6 +112,7 @@ namespace BossRush
     }
     internal partial class ModeHRuntimeModule
     {
+
         internal ModBehaviour _owner;
         internal bool _shutdownCompleted, _commandsClosed, _certificationFromF3, _lastCertificationUsedCache;
         internal RunState _runState;

@@ -116,7 +116,7 @@ def main():
         if "Destroy(gameObject)" in code:
             errors.append("runner 不得因 F3 页关闭自行销毁")
 
-        scenes = Path("DebugAndTools/F3GameplayValidationScenes.cs").read_text(encoding="utf-8")
+        scenes = clean_source(Path("DebugAndTools/F3GameplayValidationScenes.cs").read_text(encoding="utf-8"))
         runner = RUNNER.read_text(encoding="utf-8")
         stages = Path("DebugAndTools/F3GameplayValidationStages.cs").read_text(encoding="utf-8")
         for token in ("SceneLoader.Instance.LoadBaseScene(null, true)",
@@ -125,10 +125,77 @@ def main():
                       "LevelManager.AfterInit", "player.gameObject.activeInHierarchy",
                       "!player.Health.IsDead", "manager.GameCamera.isActiveAndEnabled",
                       "SceneManager.GetActiveScene().name, expectedScene",
-                      "while (!IsRuntimeReady(expectedScene)",
-                      "_operationSucceeded = IsRuntimeReady(expectedScene)"):
+                      "int previousSceneHandle = SceneManager.GetActiveScene().handle;",
+                      "while ((SceneManager.GetActiveScene().handle == previousSceneHandle || !IsRuntimeReady(expectedScene))",
+                      "_operationSucceeded = sceneChanged && IsRuntimeReady(expectedScene)",
+                      '"scene_instance_did_not_change"'):
             if token not in scenes:
                 errors.append("过图不能只凭加载任务完成报 PASS，缺少: " + token)
+        if scenes.count("if (returnToBase) TryClickAutotestClosureContinue();") != 2:
+            errors.append("返基地的原生任务等待与场景就绪等待均须驱动真实结算继续按钮")
+        for signature in ("private IEnumerator RunModeD()", "private IEnumerator RunModeDMultiWave()"):
+            entry = method_body(clean_source(code), signature) or ""
+            if "PrepareModeDValidationEntry(out entryReason)" not in entry or "_host.TryStartModeD()" not in entry or "RestoreModeDValidationEntry();" not in entry:
+                errors.append("Mode D 验收必须保存原物、准备裸装、走真实玩家入口并 finally 归还: " + signature)
+            if "_host.StartModeD();" in entry:
+                errors.append("Mode D 验收不能绕过玩家裸装入口: " + signature)
+        for signature, mode in (("private IEnumerator RunModeE()", "E"), ("private IEnumerator RunModeF()", "F"),
+                                ("private IEnumerator RunModeEExtraction()", "E"), ("private IEnumerator RunModeFBounty()", "F"),
+                                ("private IEnumerator RunModeFExtraction()", "F")):
+            entry = method_body(clean_source(code), signature) or ""
+            for token in ("PrepareModeEFValidationEntry(", "_host.TryStartMode" + mode + "()", "RestoreModeDValidationEntry();"):
+                if token not in entry:
+                    errors.append("E/F 验收必须保管原物、发测试费用、走真实个人入口并 finally 归还: " + signature + " " + token)
+            if "ValidationStartMode" + mode + "()" in entry:
+                errors.append("E/F 验收不得绕过真实个人费用入口: " + signature)
+        raw_modes = Path("DebugAndTools/F3GameplayValidationModes.cs").read_text(encoding="utf-8-sig")
+        if "using ItemStatsSystem;" not in clean_source(raw_modes):
+            errors.append("原物租约需要真实 ItemStatsSystem 扩展命名空间，不能用实例 DestroyTree 替身掩盖")
+        preparation = method_body(clean_source(raw_modes), "internal static bool TryPrepare(") or ""
+        for token in ("if (!ModBehaviour.DevModeEnabled || !dedicated)",
+                      'new GameObject("BossRushValidation_EntryEscrow")',
+                      "UnityEngine.Object.DontDestroyOnLoad(escrow);",
+                      "escrow.AddComponent<ItemStatsSystem.Inventory>()",
+                      "inventory.SetCapacity(System.Math.Max(1, originals.Count));",
+                      "new F3ModeDLoadoutLease(originalRoot, inventory, escrow, originalAsset, originalSlot)",
+                      "isNaked() && lease.IsEntryOwnerCurrent()"):
+            if token not in preparation:
+                errors.append("专用档原物保管必须使用跨场景独立官方 Inventory: " + token)
+        if "PlayerStorage.Inventory" in preparation:
+            errors.append("竞技场没有基地仓库，验收准备不能要求 PlayerStorage.Inventory 存在")
+        restoration = method_body(clean_source(raw_modes), "internal bool TryRestore()") or ""
+        release = method_body(restoration, "if (restored)") or ""
+        for token in ("foreach (ItemStatsSystem.Item remaining in storage.Content) if (remaining != null) return false;",
+                      "UnityEngine.Object.Destroy(escrowObject);"):
+            if token not in release:
+                errors.append("原物全部归还且 escrow 为空后才能销毁载体: " + token)
+        if "if (root == null" in restoration or restoration.count("UnityEngine.Object.Destroy(escrowObject);") != 1:
+            errors.append("死亡后旧 root 销毁不能阻断原资产新角色归还，载体也不能提前销毁")
+        payment = method_body(raw_modes, "internal bool TryPayFee(") or ""
+        for token in ("ItemUtilities.FindAllBelongsToPlayer", "if (loans.Contains(item)) continue;", "item.Detach();", "finally", "TryRestoreFeeObjects()"):
+            if token not in payment:
+                errors.append("官方费用扫描不能消费验收保管的原物: " + token)
+        f_extract = method_body(clean_source(deep), "private IEnumerator RunModeFExtraction()") or ""
+        if "if (!triggered || !resolved) break;" in f_extract or f_extract.count("ModeFSuccessfulExtractionCountForValidation != completedBefore") < 2:
+            errors.append("F 撤离必须逐帧重新观测异步收据，不能在最初未结算时结束")
+        f_trigger = method_body(clean_source(modef), "internal bool DebugTriggerModeFExtractionForValidation(") or ""
+        if "if (BossRushCoop.IsConnected)" not in f_trigger or "CharacterMainControl.Main.SetPosition(coopExtractionPosition);" not in f_trigger or "IsCoopModeFLocalAdmitted()" not in f_trigger:
+            errors.append("F 联机验收必须移动获准本地玩家进入实际撤离圈，不能调用已停用监听")
+        zombie = Path("DebugAndTools/F3GameplayValidationZombie.cs").read_text(encoding="utf-8-sig")
+        z_start = method_body(clean_source(zombie), "internal bool ValidationStartZombie(") or ""
+        for token in ("TryBeginMapSelectionShell()", "ConfigureZombieModePendingCashInvestment(0L", "CommitZombieModeEntryResourcesShell", "SelectZombieModeStarterLoadout"):
+            if token not in z_start:
+                errors.append("丧尸验收必须实际提交个人入场费用并选择流派: " + token)
+        z_extract = method_body(clean_source(zombie), "internal IEnumerator ValidationCompleteZombieExtraction(") or ""
+        for token in ("!coopZombieStarterChosen", "while (!CoopZombieAllInsideExtraction(area)", "while (IsZombieModeActive", "CharacterMainControl.Main.SetPosition(area.transform.position);", "asset != BossRushCoop.LocalAssetId", "slot != Saves.SavesSystem.CurrentSlot"):
+            if token not in z_extract:
+                errors.append("丧尸撤离验收必须等待真实全员同圈和个人结算且固定原资产: " + token)
+        protection = method_body(clean_source(code), "private void TryDamageModeGChildProtector(") or ""
+        for token in ("controller.IsInChildProtection", "_modeGChildProtectorField.GetValue(controller)",
+                      "child.Health.Invincible", "Team.IsEnemy(Teams.player, child.Team)",
+                      "ApplyValidationDamage(child, CharacterMainControl.Main)"):
+            if token not in protection:
+                errors.append("Mode G 验收护卫辅助必须只伤实际敌对且可受伤的专属召唤物: " + token)
         if 'LoadScene(null, "SCENE_RETURN_BASE", returnToBase: true)' not in runner:
             errors.append("F3 返基地必须走完整 LoadBaseScene 入口")
         if "LoadScene(BaseSceneNameForValidation()" in runner or "WaitSceneSettled" in code:
@@ -139,7 +206,8 @@ def main():
             errors.append("场内用例必须在创建/启动玩法协程前恢复并确认竞技场")
         if '"base_runtime_not_ready"' not in runner or '"arena_runtime_not_ready"' not in stages:
             errors.append("场景未就绪时应跳过依赖用例，不能继续制造模式 FAIL/PASS")
-        if "new DamageInfo(player)" not in runner or "damage.damageCreator" in runner:
+        final_case = method_body(clean_source(code), "private IEnumerator RunCampaignFinalBoss()") or ""
+        if "new DamageInfo(player)" not in final_case or "damage.damageCreator" in final_case:
             errors.append("终章验收必须显式调用官方 DamageInfo 构造器初始化元素列表，不能引用不存在的字段")
         modeh = Path("ModeH/ModeHRuntimeModule_SceneFlow.cs").read_text(encoding="utf-8")
         reset = modeh.split("internal void ForceResetStateForValidation()", 1)[-1].split("private IEnumerator DriveCertification", 1)[0]

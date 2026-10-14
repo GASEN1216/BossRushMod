@@ -43,8 +43,9 @@ def main():
             'public bool TryUseZombieModeNurseService(',
         ],
         'ZombieModeRuntimeModule_RewardCatalogAndSelection.cs': [
-            'public bool SpendZombieModePurificationPoints(', 'internal void RefundZombieModePurificationPoints(',
+            'public bool SpendZombieModePurificationPoints(',
         ],
+        'ZombieModeRuntimeModule_Coop.cs': ['internal void RefundZombieModePurificationPoints('],
         'ZombieModeRewardRuntimeModifiers.cs': [
             'private void EnsureZombieModeOptionPlayerHealthListener()', 'private void UnregisterZombieModeOptionPlayerHealthListener()',
         ],

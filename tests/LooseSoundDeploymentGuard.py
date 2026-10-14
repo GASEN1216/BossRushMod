@@ -22,6 +22,7 @@ Achievement、DragonKing、Goblin、Nurse、items、lottery 另外六个。
 只断言「脚本会去拷」与「缺了会告警」。
 """
 from pathlib import Path
+import os
 import re
 import sys
 
@@ -38,12 +39,16 @@ SKIP_DIRS = {"Build", "鸭科夫源码", "tests", ".git", "node_modules", "wiki-
 
 def collect_folders():
     folders = {}
-    for path in ROOT.rglob("*.cs"):
-        if any(part in SKIP_DIRS for part in path.relative_to(ROOT).parts[:-1]):
-            continue
-        text = path.read_text(encoding="utf-8-sig", errors="replace")
-        for match in list(COMBINE.finditer(text)) + list(SLASHED.finditer(text)):
-            folders.setdefault(match.group(1), path.relative_to(ROOT).as_posix())
+    # 先剪枝再遍历；Build 中的隔离游戏与回归副本不属于被检查源码。
+    for directory, children, files in os.walk(ROOT):
+        children[:] = [name for name in children if name not in SKIP_DIRS]
+        for name in files:
+            if not Path(name).match("*.cs"):
+                continue
+            path = Path(directory) / name
+            text = path.read_text(encoding="utf-8-sig", errors="replace")
+            for match in list(COMBINE.finditer(text)) + list(SLASHED.finditer(text)):
+                folders.setdefault(match.group(1), path.relative_to(ROOT).as_posix())
     return folders
 
 

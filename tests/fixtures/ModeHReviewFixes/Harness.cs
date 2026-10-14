@@ -99,6 +99,12 @@ namespace BossRush
     internal static class ModeHSessionSummary { public static int Discards; public static void Discard() { Discards++; } }
     internal partial class ModeHRuntimeModule
     {
+        private bool _coopProjection;
+        private bool RetainCoopWorldOnSlotChange() { return false; }
+        private void BindCoopWorldAsset() { }
+        private bool IsCoopWorldPersonalAssetCurrent { get { return true; } }
+        private bool CanUseCoopNativePersonalSeason { get { return true; } }
+
         public ModeHSeasonDto _season;
         public ModeHRunState _runState;
         public ModeHMatchReportDto _lastSettlementReport;

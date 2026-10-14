@@ -51,6 +51,7 @@ namespace BossRush
         private static void Reset()
         {
             Time.time = 0; Time.deltaTime = 0; Physics.Probes = 0; NavMesh.Probes = 0;
+            BossRushCoop.IsConnected = BossRushCoop.IsHost = false; BossRushCoop.RunId = string.Empty;
             Physics.Ground = pos => pos.x >= 5 ? (Vector3?)new Vector3(pos.x, 0, pos.z) : null;
             NavMesh.Ground = pos => null;
             CharacterMainControl.Main = new CharacterMainControl("player", new Vector3());
@@ -157,6 +158,55 @@ namespace BossRush
             Check(delayed.MoveNext() && ((WaitForSeconds)delayed.Current).Seconds == 2.5f, "delayed validation yields original duration");
             UnityEngine.Object.Destroy(enemy.gameObject); int before = Physics.Probes;
             Check(!delayed.MoveNext() && Physics.Probes == before, "destroyed delayed-validation target exits without probing");
+
+            Reset(); owner = new Owner { DActive = true }; enemy = Enemy("stopped replica", -5);
+            enemy.gameObject.Add(new CoopAiPredictionReplicaMarker { Replica = true });
+            owner.D.Add(enemy); owner.Runtime.RegisterEnemyRecoveryAnchor(enemy, new Vector3(0, 5, 0));
+            owner.Runtime.ValidateAndFixBossPosition(enemy); owner.Tick(12);
+            Check(BossRushCoop.HasWorldAuthority && Physics.Probes == 0 && enemy.Teleports == 0,
+                "actual entity authority rejects former client replica despite offline world authority and active mode");
+            Check(!owner.Runtime.DelayedBossPositionValidation(enemy, 1).MoveNext(),
+                "known replica never schedules delayed world validation");
+
+            foreach (string change in new[] { "stop", "room", "role" })
+            {
+                Reset(); owner = new Owner { FActive = true }; enemy = Enemy("old host " + change, -5);
+                BossRushCoop.IsConnected = BossRushCoop.IsHost = true; BossRushCoop.RunId = "original";
+                enemy.gameObject.Add(new CoopAiPredictionReplicaMarker { AuthorityBound = true, AuthorityRun = "original" });
+                owner.Runtime.RegisterEnemyRecoveryAnchor(enemy, new Vector3(0, 5, 0));
+                delayed = owner.Runtime.DelayedBossPositionValidation(enemy, 2);
+                Check(delayed.MoveNext(), "original host delayed validation starts before " + change);
+                if (change == "stop") BossRushCoop.IsConnected = false;
+                else if (change == "room") BossRushCoop.RunId = "new";
+                else BossRushCoop.IsHost = false;
+                Check(!delayed.MoveNext() && Physics.Probes == 0 && enemy.Teleports == 0 && owner.FActive,
+                    "delayed actual validation rejects " + change + " while original mode is still active");
+                owner.Runtime.MonitorEnemyRecovery(enemy, CharacterMainControl.Main);
+                Check(Physics.Probes == 0 && enemy.Teleports == 0, "periodic actual monitor rejects old actor after " + change);
+            }
+
+            Reset(); owner = new Owner { DActive = true }; enemy = Enemy("new solo", -5);
+            owner.Runtime.RegisterEnemyRecoveryAnchor(enemy, new Vector3(0, 5, 0));
+            owner.Runtime.ValidateAndFixBossPosition(enemy);
+            Check(enemy.Teleports == 1, "new unmarked single-player actor keeps original recovery gameplay");
+
+            Reset(); owner = new Owner { DActive = true }; enemy = Enemy("commit changed room", -5);
+            BossRushCoop.IsConnected = BossRushCoop.IsHost = true; BossRushCoop.RunId = "original";
+            enemy.gameObject.Add(new CoopAiPredictionReplicaMarker { AuthorityBound = true, AuthorityRun = "original" });
+            owner.Runtime.RegisterEnemyRecoveryAnchor(enemy, new Vector3(0, 5, 0));
+            Physics.Ground = pos => { BossRushCoop.RunId = "replacement"; return new Vector3(pos.x, 0, pos.z); };
+            owner.Runtime.ValidateAndFixBossPosition(enemy);
+            Check(enemy.Teleports == 0 && enemy.transform.position.y == -5,
+                "actual movement commit rechecks original entity after fallible geometry callback");
+
+            Reset(); owner = new Owner { DActive = true }; enemy = Enemy("fallback lost role", -5);
+            BossRushCoop.IsConnected = BossRushCoop.IsHost = true; BossRushCoop.RunId = "original";
+            enemy.gameObject.Add(new CoopAiPredictionReplicaMarker { AuthorityBound = true, AuthorityRun = "original" });
+            owner.Runtime.RegisterEnemyRecoveryAnchor(enemy, new Vector3(0, 5, 0));
+            enemy.ThrowOnSetPosition = true; enemy.BeforeSetPosition = () => BossRushCoop.IsConnected = false;
+            owner.Runtime.ValidateAndFixBossPosition(enemy);
+            Check(enemy.Teleports == 1 && enemy.transform.position.y == -5,
+                "SetPosition exception after StopNetwork cannot fall back to moving old world actor");
             Console.WriteLine("EnemyRecoveryRuntime: PASS " + assertions + " assertions");
         }
     }

@@ -51,3 +51,5 @@
 链接完整 PetNest Bundle、Codec、Service、SaveCoordinator 与共享存档引擎，并提取真实归巢结算和经验方法。对 SavesSystem 适配器分别注入 Save 和写后回读异常，实际生产 Store 置故障；不手工清故障位，驱动实际协调器 Tick 完成同槽重写、一致回读与 SaveFile 后，验证归巢候选可继续接受、保留先前击杀经验且重伤宠仅获一次奖励。未知 schema 屏障保持只读，换槽不重放旧 pending。测试不访问玩家存档，也不承诺没有已接受 pending 的编码故障或进程退出后的未入队奖励可以恢复。
 
 2026-10-08：CampaignExplicitCodecRegression 输入实际丢失 chapters 的脱敏 JSON，执行生产显式编解码、交付 token 恢复及第六章待交付状态保存/重读；同时拒绝缺 state、重复章节并覆盖 null 数组兼容。该用例不经过 JsonUtility 替身生成输入。
+
+2026-10-13：终章 scope 字段及 Capture/IsValid/Tick 方法逐字从 CampaignFinalBoss 抽取，真实 CampaignRuntimeModule.OnUpdate/OnSceneLoaded 调用它们。网络连接、主客角色及房间可变；覆盖主客断线、换房、角色变化、失效后重连不复活、空握手保持、首次非空房间绑定、场景回调复位及新单机。清理落点只记录调用和 destroyBoss 参数，终章工厂、实际销毁及表现仍由 CampaignPlayability/L3 承担。主回归及跨进程磁盘用例执行同一本次独立构建的 fresh TargetPath，记录其 SHA-256。

@@ -56,11 +56,11 @@ def check_runtime(errors):
     code = strip_cs_comments(text)
 
     # 零常驻：席位为空先返回
-    spawn = re.search(r"internal static void TrySpawnForScene\(ModBehaviour owner, int sceneGeneration\)[\s\S]{0,1800}?\n        \}", code)
+    spawn = method_body(code, "internal static void TrySpawnForScene(ModBehaviour owner, int sceneGeneration)")
     if spawn is None:
         errors.append("[入场] 缺少 TrySpawnForScene(ModBehaviour, int)")
     else:
-        body = spawn.group(0)
+        body = spawn
         gate_pos = body.find("PetNestModeGate.IsCompanionAllowed(")
         slot_pos = body.find("PetNestService.DeployedPet")
         if slot_pos < 0:
@@ -112,8 +112,11 @@ def check_runtime(errors):
     spawner = strip_cs_comments(read_petnest("PetNestCompanionSpawner.cs") or "")
     activate = method_body(spawner, "internal static bool TryActivate(") or ""
     dispose = method_body(spawner, "internal static void CleanupOnce(PetNestCompanionHandle handle)") or ""
-    if "PetNestBackpack.Attach(handle.Character, pet);" not in activate:
+    if "attachPersonalInterfaces ? PetNestBackpack.Attach(handle.Character, pet) : null;" not in activate:
         errors.append("[独立背包] TryActivate 必须按实际崽绑定背包")
+    coop = strip_cs_comments(read_petnest("PetNestCoopRuntimeModule.cs") or "")
+    if "master, owner, entry.Pet, out reason, !entry.Base, false)" not in coop:
+        errors.append("[独立背包] 远端主人实例不得绑定房主个人背包")
     if "backpack.Dispose(true);" not in dispose:
         errors.append("[独立背包] 回收随从前必须封存背包")
 

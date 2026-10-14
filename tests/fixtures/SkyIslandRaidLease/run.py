@@ -19,7 +19,9 @@ method=session[session.index(start):session.index(end)]
 sys.path.insert(0, str(ROOT/'tests/fixtures/ModeDEntryOwnership'))
 from run import member
 tick=(ROOT/'SkyIsland/SkyIslandSessionTick.cs').read_text(encoding='utf-8-sig')
-method += member(session, 'private static void Safe(') + member(tick, 'private void TickFault(')
+coop_session = (ROOT / 'SkyIsland/SkyIslandSessionCoop.cs').read_text(encoding='utf-8-sig')
+method += member(coop_session, 'private static void Safe(') + member(tick, 'private void TickFault(')
+method += member(coop_session, 'internal static void EnterCoopArrival(')
 a=session.index('            loadStarted = true;', session.index('private IEnumerator Build()'))
 b=session.index('            // 官方地图的分区灰显', a)
 method += 'private System.Collections.IEnumerator WaitForEntryActivation() {\n' + session[a:b] + '\n}'
@@ -29,7 +31,7 @@ method += 'private System.Collections.IEnumerator DriveEntryPrewarm() {\n' + ses
 extracted=OUT/'SessionReturn.cs'
 extracted.write_text('using System; using System.Collections; using UnityEngine; using UnityEngine.SceneManagement; namespace BossRush { internal sealed partial class SkyIslandSession {\n'+method+'\n}}', encoding='utf-8')
 (OUT/'session-return-source.json').write_text(json.dumps({'source':'SkyIsland/SkyIslandSession.cs','method_sha256':hashlib.sha256(method.encode('utf-8')).hexdigest()},indent=2),encoding='utf-8')
-sources = [ROOT/'SkyIsland'/name for name in ('SkyIslandSession.cs','SkyIslandSessionEntry.cs','SkyIslandSessionTick.cs','SkyIslandRaidLease.cs')]
+sources = [ROOT/'SkyIsland'/name for name in ('SkyIslandSession.cs','SkyIslandSessionEntry.cs','SkyIslandSessionTick.cs','SkyIslandRaidLease.cs','SkyIslandSessionCoop.cs')]
 (OUT/'production-sha256.json').write_text(json.dumps({str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in sources},indent=2),encoding='utf-8')
 result=subprocess.run(['dotnet','build',str(HERE/'Regression.csproj'),'--configuration','Release','--output',str(OUT/'bin'),'-p:BaseIntermediateOutputPath='+str(OUT/'obj')+os.sep, '-p:SessionReturnSource='+str(extracted),'-target:Build','-getProperty:TargetPath,TargetFramework'],cwd=ROOT,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
 output=result.stdout.decode('utf-8',errors='replace'); print(output)

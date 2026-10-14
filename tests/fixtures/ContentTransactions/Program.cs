@@ -28,6 +28,7 @@ partial class Program
     }
     static void Reset()
     {
+        BossRushCoop.IsConnected = BossRushCoop.Host = false; BossRushCoop.RunId = null;
         CampaignPersistence.ResetStaticCaches(); CampaignSaveCoordinator.NotifySlotChanged();
         CampaignProgressService.ResetStaticCaches(); DailyReportSaveCoordinator.ResetStaticCaches();
         CampaignFacilityUnlocks.ResetStaticCaches();
@@ -51,6 +52,7 @@ partial class Program
         PlayerStorage.Instance = new PlayerStorage();
         ItemAssetsCollection.FailInstantiate = false; UnityEngine.Random.value = 0;
         ItemAssetsCollection.MissingPrefabId = ItemAssetsCollection.InstantiateCalls = 0;
+        CampaignObjectiveTracker.ContractInvalidations = 0;
         PetNestBaseIdleSpawner.DeployNotifications = PetNestCompanionRuntime.Cleanups = 0;
         PetNestUIPages.DepartCardRequests = 0;
         BackMountainBossMorphService.Reject = BackMountainBossMorphService.Throw = false; BackMountainBossMorphService.Started = 0;
@@ -148,6 +150,10 @@ partial class Program
     {
         Reset();
         Check(CampaignProgressService.TryAcceptContract("ch1"), "campaign accepts available contract");
+        Check(CampaignObjectiveTracker.ContractInvalidations == 1, "successful actual contract acceptance advances original extraction identity");
+        Check(!CampaignProgressService.TryAcceptContract("ch1") && CampaignObjectiveTracker.ContractInvalidations == 1, "rejected duplicate acceptance cannot change extraction identity");
+        Check(CampaignProgressService.TryAbandonContract() && CampaignObjectiveTracker.ContractInvalidations == 2, "successful actual abandonment revokes original extraction lease");
+        Check(CampaignProgressService.TryAcceptContract("ch1") && CampaignObjectiveTracker.ContractInvalidations == 3, "reaccepting the same actual chapter gets a new extraction identity");
         SetPrivate(typeof(CampaignPersistence), "_storeFaulted", true);
         Check(!CampaignProgressService.NotifyObjectivesSatisfied("ch1"), "terminal event reports failed enqueue");
         CampaignObjectiveTracker.ResetSession();
@@ -585,7 +591,7 @@ partial class Program
         if (args.Length == 0) HomecomingStoreRecovery();
         if (RunCampaignDiskRegression(args)) return;
         QuestDeliveryTransactions();
-        CampaignResetTransactions(); CampaignExplicitCodecRegression(); CampaignReadinessLifecycle(); CampaignRestartLifecycle(); CampaignGuideLifecycle(); GuideCash(); CampaignCash(); DailyCash(); OfficialStickySaving(); Condense(); Hatch(); PetNestAchievements(); Meals(); ExpeditionEggIdentity(); ShowcaseSnapshot();
+        CampaignResetTransactions(); CampaignExplicitCodecRegression(); CampaignReadinessLifecycle(); CampaignFinalScopeLifecycle(); CampaignRestartLifecycle(); CampaignGuideLifecycle(); GuideCash(); CampaignCash(); DailyCash(); OfficialStickySaving(); Condense(); Hatch(); PetNestAchievements(); Meals(); ExpeditionEggIdentity(); ShowcaseSnapshot();
         ManualChromaAndDurations();
         PityGuarantees();
         PetNestLifecycleRepairs();

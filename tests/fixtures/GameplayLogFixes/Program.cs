@@ -120,6 +120,7 @@ namespace BossRush
         private bool _shutdownCompleted;
         internal bool ConsistentAtRestore;
         private void EnsureLevelReadySubscription() { }
+        private void InitializeCoop() { } // 此夹具只验证单机读档顺序。
         private void RestoreFromSaveIfPresent() { ConsistentAtRestore = ModeHWarehouseStakeJournal.IsSlotConsistent; }
         private void ReconcileCashBetOnRestore() { }
         private void LogFailure(string step, Exception error) { throw new Exception(step, error); }

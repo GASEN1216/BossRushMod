@@ -6,4 +6,6 @@ Unity、场景与 UniTask 调度是隔离替身；加载器保留现装宿主的
 
 这是 L2 逻辑与 Harmony 接点证据；真实画面、Unity 原生场景队列与玩家输入仍须实机验证。
 
+2026-10-13：补齐新的原版联机到达 owner 边界，原有黑幕/激活/保存/清理断言保留。经真实 Harmony 调用官方形状的加载器，确认仅本人是客端且目标为本模块引用时，在加载器方法体之前调用 PrepareNativeArrival；外图、房主/单机和缺 runtime 不触发。这里记录实际调用和顺序，不模拟 runtime 内的租约准备；真实租约由 SkyIslandRaidLease 单独执行。运行记录完整生产桥源码和本次 exe 的 SHA-256。
+
 2026-10-06 独立深审新增：加载替身按官方顺序实际设置两次 allowSceneActivation，覆盖目标已到 0.9、跳过全部早期 NextFrame、第二次黑幕后事件抛错。生产桥必须在首次关闭激活时登记 operation，在任务异常结束后放行原生队列，且入岛与返航均保留 pending owner。失败返航重试只抑制目标场景的新角色保存，原岛上角色与死亡保存保持原生路径。现装 DLL 的两个 setter 调用由 OfficialContract 校验。

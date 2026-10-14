@@ -12,7 +12,7 @@ namespace BossRush
     public static class B48Probe
     {
         public static void Main(string[] args)
-        { Run(args[0]); }
+        { Run(args.Length > 0 ? args[0] : System.IO.Directory.GetCurrentDirectory()); }
         public static void Run(string root)
         {
             ModBehaviour.AuditRoot = root;

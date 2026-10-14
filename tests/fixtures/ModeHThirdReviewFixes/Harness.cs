@@ -126,6 +126,9 @@ namespace BossRush
     internal class FakeSpawn { public void RollbackAll() { } }
     internal partial class ModeHRuntimeModule
     {
+        private bool _coopProjection;
+        private bool IsCoopWorldPersonalAssetCurrent { get { return true; } }
+
         public ModeHSeasonDto _season;
         public ModeHRunState _runState;
         public bool _commandsClosed, _seasonDirty, _resumeNeedsMatchReset;

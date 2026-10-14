@@ -15,6 +15,7 @@ internal static class Program
     {
         SceneManager.Reset();SceneLoader.Loads=SceneLoader.Returns=0;SceneLoader.IsSceneLoading=false;Time.unscaledTime=0;
         SceneLoader.LoadingComment=null;Time.realtimeSinceStartup=0;
+        SceneLoader.CompletedVote=false;BossRushCoop.IsConnected=false;BossRushCoop.IsHost=false;
         CharacterMainControl.Main=new CharacterMainControl();AssetBundle.ScenePath=SkyIslandSceneReferenceBridge.ScenePath;
         SkyIslandSceneReferenceBridge.Reset();SkyIslandOfficialContract.ActivationAllowed=true;SkyIslandOfficialContract.Calls=0;
         SkyIslandOfficialContract.ConfiguredAtCall=false;
@@ -33,6 +34,37 @@ internal static class Program
         Directory.CreateDirectory(Path.GetDirectoryName(Path.Combine(modPath,SkyIslandRaidLease.BundleRelativePath)));
         File.WriteAllText(Path.Combine(modPath,SkyIslandRaidLease.BundleRelativePath),"fixture");
         ModBehaviour.ModPath=modPath;
+        SceneManager.Reset();SkyIslandSceneReferenceBridge.Reset();SceneLoader.IsSceneLoading=false;
+        BossRushCoop.IsConnected=true;BossRushCoop.IsHost=false;
+        var arrivalTemplate=new GameObject("ArrivalWeather").AddComponent<TimeOfDayConfig>();
+        LevelConfig.Instance=new GameObject("BaseConfig").AddComponent<LevelConfig>();LevelConfig.Instance.timeOfDayConfig=arrivalTemplate;
+        var arrivalOwner=new GameObject("Owner").AddComponent<ModBehaviour>();
+        SkyIslandSession.EnterCoopArrival(arrivalOwner,null);var arrival=arrivalOwner.GetComponent<SkyIslandSession>();var arrivalBundle=AssetBundle.Last;
+        Check(arrival.PreparedBeforeScheduling && SkyIslandOutdoorDaylight.Last!=arrivalTemplate,"real native arrival prepares the persistent weather before scheduling any coroutine");
+        SkyIslandSession.EnterCoopArrival(arrivalOwner,null);
+        Check(arrival.Starts==1 && arrival.Subscriptions==1 && AssetBundle.Last==arrivalBundle,"duplicate native arrival does not acquire a second real lease");
+        UnityEngine.Object.Destroy(arrivalTemplate.gameObject);SceneLoader.Loads=0;arrival.BeginJoinedLoad();
+        Check(SceneLoader.Loads==0 && SkyIslandOutdoorDaylight.Last!=null,"base unload preserves latejoin weather and guest does not start another official load");
+        SceneLoader.Instance.LoadScene(SkyIslandSceneReferenceBridge.SceneReference);
+        SceneManager.LoadRaid();SceneLoader.Finish();
+        Check(System.Threading.SpinWait.SpinUntil(()=>arrival.JoinedLoadFinished,1000),"latejoin lease finishes only after the native target scene is ready");
+        arrival.ReleaseJoined();SceneManager.UnloadRaid();SceneLoader.Finish();
+        SceneManager.Reset();SkyIslandSceneReferenceBridge.Reset();LevelConfig.Instance=null;
+        var failureOwner=new GameObject("FailureOwner").AddComponent<ModBehaviour>();bool prepareFailed=false;
+        try { SkyIslandSession.EnterCoopArrival(failureOwner,null); } catch(NullReferenceException) { prepareFailed=true; }
+        Check(prepareFailed && failureOwner.GetComponent<SkyIslandSession>().Closed && SceneManager.Subscribers==0,"native arrival preparation failure cleans the acquired session and lease");
+        var voted=New();BossRushCoop.IsConnected=true;BossRushCoop.IsHost=true;SceneLoader.CompletedVote=true;
+        voted.BeginLoad();System.Threading.Thread.Sleep(20);
+        Check(SceneLoader.Loads==1 && !voted.LoadFinished,"completed native vote task cannot release the actual scene-load fence");
+        SceneManager.LoadRaid();
+        Check(System.Threading.SpinWait.SpinUntil(()=>voted.LoadFinished,1000),"host fence releases only after the real target scene and official services are ready");
+        voted.Release(null);voted.PumpRelease();SceneManager.UnloadRaid();SceneLoader.Finish();
+        var guest=New();BossRushCoop.IsConnected=true;BossRushCoop.IsHost=false;
+        guest.BeginLoad();System.Threading.Thread.Sleep(20);
+        Check(SceneLoader.Loads==0 && !guest.LoadFinished,"guest arms its resource lease without starting a second native scene vote");
+        SceneManager.LoadRaid();
+        Check(System.Threading.SpinWait.SpinUntil(()=>guest.LoadFinished,1000),"guest waits for the actual shared target scene");
+        guest.Release(null);guest.PumpRelease();SceneManager.UnloadRaid();SceneLoader.Finish();
         Check(SkyIslandRaidLease.IsBundleDeployed(),"deployed bundle is detected before any entry is offered");
         var lease=New();int callbacks=0;AssetBundle bundle=AssetBundle.Last;
         lease.Release(()=>callbacks++);

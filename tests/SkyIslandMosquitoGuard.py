@@ -123,7 +123,7 @@ def main():
         return float(match.group(1))
 
     gnats_raw = read(SKY + "SkyIslandGnats.cs")
-    gnats = clean_source(gnats_raw)
+    gnats = clean_source(gnats_raw + "\n" + read(SKY + "SkyIslandGnatsCoop.cs"))
     gnats_s = squash(gnats)
     rules_raw = read(SKY + "SkyIslandMosquitoRules.cs")
     rules = clean_source(rules_raw)
@@ -342,7 +342,8 @@ def main():
                 errors.append("%s 的效果 %s 在 UseConsumable 里没有分支：用了没用" % (name, buff))
             if not re.search(r"SkyIslandFieldBuff\.%s\)return gnats\.\w+\(" % buff, use_against):
                 errors.append("%s 的效果 %s 没有转给蚊群 owner" % (name, buff))
-            if not re.search(r"SkyIslandFieldBuff\.%s\)return gnats != null && gnats\.\w+;" % buff, can_use):
+            availability = "if(buff == SkyIslandFieldBuff.Fan)return gnats != null && !gnats.CoopUsePending && gnats.FanReady;" if buff == "Fan" else None
+            if (availability and squash(availability) not in can_use) or (not availability and not re.search(r"SkyIslandFieldBuff\.%s\)return gnats != null && gnats\.\w+;" % buff, can_use)):
                 errors.append("%s 的效果 %s 在 CanUse 里没问蚊群 owner（不成立时会白吃一件）" % (name, buff))
         else:
             errors.append("批次四物品 %s 的形态 %s 不认识：新形态要在这里说清楚它在岛上拿来做什么" % (name, kind))
@@ -361,10 +362,10 @@ def main():
     require(fieldcraft_s, "if (gnats != null) gnats.Frame(now, Time.deltaTime, CharacterMainControl.Main);", "蚊群要逐帧推进（冲刺按帧走）")
     require(fieldcraft_s, "if (gnats != null) gnats.Dispose();", "局内 owner 销毁时要带走蚊群")
     sample = need_body(gnats, "internal void Sample(", "蚊群采样")
-    for token in ("bool enemiesNear = !session.CanOpenStoryPanel(out reason);", "Scatter(position, now, windLevel, enemiesNear, inSmoke, incense);",
+    for token in ("bool enemiesNear = coopSamplingRemote ? coopRemoteEnvironment.Enemies : !session.CanOpenStoryPanel(out reason);", "Scatter(position, now, windLevel, enemiesNear, inSmoke, incense);",
                   "Vector3 local = root.InverseTransformPoint(position);", "InSmoke = inSmoke", "Incense = incense", "EnemiesNear = enemiesNear",
                   "WaterEdgeDistance = SkyIslandMosquitoRules.WaterEdgeDistance(local.x, local.z)",
-                  "FrogsReleased = story != null ? SkyIslandMosquitoRules.FrogsReleased(story.Current) : 0",
+                  "FrogsReleased = coopSamplingRemote ? coopRemoteEnvironment.Frogs : story != null ? SkyIslandMosquitoRules.FrogsReleased(story.Current) : 0",
                   "IslandCore = SkyIslandMosquitoRules.IsIslandCore(region, local.x, local.z)", "Lantern = lanternLit", "NearLamp = nearLamp",
                   "NearZapper = NearestZapper(position, SkyIslandMosquitoRules.ZapperLureRadius) != null",
                   "float weight = SkyIslandMosquitoRules.SpawnWeight(site);", "SkyIslandMosquitoRules.RoomFor(alive,"):
@@ -492,9 +493,16 @@ def main():
         errors.append("云蚋 1–3 下打死，蒲扇扑落与灭蚊灯电落都要一下打死")
     if not number(rules, "MaxDash") <= 3 or not 20 <= number(rules, "DashSpeed") <= 25:
         errors.append("侧闪冲刺至多 3 米、速度 20–25 m/s")
-    for token in ("ItemAssetsCollection", "SkyIslandLootPools", "InstantiateItem", ".Drop(", "OnDeadEvent.AddListener"):
+    for token in ("ItemAssetsCollection", "SkyIslandLootPools", "InstantiateItem", ".Drop("):
         if token in gnats:
             errors.append("云蚋被打死不掉东西（出现了 %s）" % token)
+    # 联机死亡回调只负责把驱蚋计数交给真实击杀者，依然禁止任何物品产出路径。
+    require(need_body(gnats, "private void OnDead(DamageInfo info)", "联机云蚋死亡"),
+            "if (owner != null) owner.OnCoopGnatKilled(key, info);", "死亡只能转交个人驱蚋事实")
+    require(need_body(gnats, "private void RegisterCoopGnat(Gnat gnat)", "注册联机云蚋"),
+            "if (BossRushCoop.IsHost)", "仅房主监听真实共享云蚋死亡")
+    require(need_body(gnats, "private void Unsubscribe()", "退订云蚋死亡"),
+            "receiver.OnDeadEvent.RemoveListener(OnDead);", "命名死亡订阅必须精确退订")
 
     # ---- 5. 蚊群目标与弹道钩子 ----
     require(gnats_s, 'receiverLayer = LayerMask.NameToLayer("DamageReceiver");', "云蚋要放在伤害接收体层")

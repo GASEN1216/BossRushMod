@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import subprocess
+import sys
 from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -60,7 +61,7 @@ def main():
     generated.write_text("namespace BossRush { public partial class ModBehaviour {\n"
                          + "\n".join(member(source, s) for s in signatures) + "\n} }\n", encoding="utf-8")
     production = [ROOT / "ModeD/ModeDRuntimeModule.cs", ROOT / "ModeD/ModeDRuntimeModule_Lifecycle.cs"]
-    paths = production + [generated, HERE / "Program.cs", HERE / "Stubs.cs"]
+    paths = [ROOT / "tests/fixtures/CoopOfflineStubs.cs"] + production + [generated, HERE / "Program.cs", HERE / "Stubs.cs"]
     project = OUT / "Regression.csproj"
     project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType>'
                        '<TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion>'
@@ -70,7 +71,10 @@ def main():
                        + '</ItemGroup></Project>', encoding="utf-8")
     (OUT / "production-sha256.json").write_text(json.dumps({str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
                                                            for p in production + [host]}, indent=2), encoding="utf-8")
-    result = subprocess.call(["dotnet", "run", "--project", str(project), "--configuration", "Release"], cwd=ROOT)
+    sys.path.insert(0, str(ROOT / "tools"))
+    from run_runtime_regressions import run_project_fixture
+    result, output = run_project_fixture(project, OUT / "runs", ROOT)
+    print(output)
     entry = (ROOT / "WavesArena/BossRushEntryFlow.cs").read_text(encoding="utf-8-sig")
     inventory_bridge = OUT / "InventoryEntryBridges.cs"
     inventory_bridge.write_text("using System; using UnityEngine.SceneManagement; using ItemStatsSystem; namespace BossRush { public partial class ModBehaviour {\n"
@@ -86,7 +90,8 @@ def main():
         + '</ItemGroup></Project>', encoding="utf-8")
     (OUT / "inventory-production-sha256.json").write_text(json.dumps({str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
         for p in [host, ROOT / "WavesArena/BossRushEntryFlow.cs", ROOT / "Utilities/ModeEntryInventory.cs", ROOT / "Config/ConfigItemIds.cs"]}, indent=2), encoding="utf-8")
-    inventory_result = subprocess.call(["dotnet", "run", "--project", str(inventory_project), "--configuration", "Release"], cwd=ROOT)
+    inventory_result, output = run_project_fixture(inventory_project, OUT / "inventory-runs", ROOT)
+    print(output)
     return inventory_result or result
 
 

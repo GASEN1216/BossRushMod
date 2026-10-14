@@ -86,7 +86,7 @@ namespace UnityEngine
         { LastRayOrigin = origin; hit = new RaycastHit { point = new Vector3(origin.x,GroundY,origin.z) }; return GroundAvailable && origin.y >= GroundY && origin.y-GroundY <= distance; }
     }
     public class BoxCollider : Component { public bool isTrigger; public Vector3 size, center; }
-    public static class Time { public static float unscaledTime; }
+    public static class Time { public static float unscaledTime, realtimeSinceStartup; }
     public class WaitForSeconds { public WaitForSeconds(float value) { } }
 }
 namespace UnityEngine.AI
@@ -110,6 +110,7 @@ namespace UnityEngine.SceneManagement
 {
     public struct Scene
     {
+        public bool isLoaded { get { return true; } }
         public int handle; public string name;
         public static bool operator ==(Scene a,Scene b) { return a.handle==b.handle; }
         public static bool operator !=(Scene a,Scene b) { return !(a==b); }
@@ -232,14 +233,19 @@ namespace BossRush
         private void ApplyCampaignFinalBossVariant(CharacterMainControl boss) { }
         internal Task BeginSpawn()
         {
+            CaptureCampaignFinalScope();
             campaignFinalBossActive = true;
             return StartCampaignFinalBossAsync(++campaignFinalBossRunId);
         }
         internal Task BeginPrologue()
         {
+            CaptureCampaignFinalScope();
             campaignFinalBossActive = true;
             return StartCampaignFinalBossPrologueThenSpawnAsync(++campaignFinalBossRunId);
         }
+        internal void CaptureScopeForTest() { CaptureCampaignFinalScope(); }
+        internal bool ScopeForTest { get { return IsCampaignFinalScopeValid(); } }
+        internal void TickScopeForTest() { TickCampaignFinalScope(); }
     }
 }
 
@@ -254,6 +260,18 @@ internal static class FinalBossRegression
 
     internal static void Run(Action<bool, string> check)
     {
+        BossRushCoop.IsConnected=true;BossRushCoop.IsHost=false;BossRushCoop.RunId="campaign-old";
+        var scopeOwner=new ModBehaviour();scopeOwner.CampaignRuntime.CaptureScopeForTest();
+        BossRushCoop.RunId="";check(scopeOwner.CampaignRuntime.ScopeForTest,"final world keeps same-room empty handshake");
+        BossRushCoop.RunId="campaign-old";BossRushCoop.IsConnected=false;
+        check(!scopeOwner.CampaignRuntime.ScopeForTest,"client final world cannot become standalone after Stop");
+        BossRushCoop.IsConnected=true;BossRushCoop.IsHost=true;BossRushCoop.RunId="campaign-new";
+        check(!scopeOwner.CampaignRuntime.ScopeForTest,"old final world never resurrects after joining as new host");
+        scopeOwner.CampaignRuntime.OnSceneLoaded(new SceneRuntimeContext());
+        check(scopeOwner.CampaignRuntime.ScopeForTest,"actual new scene permits new final world identity");
+        scopeOwner.CampaignRuntime.CaptureScopeForTest();BossRushCoop.RunId="campaign-other";
+        check(!scopeOwner.CampaignRuntime.ScopeForTest,"another nonempty room cancels final world even if host role is unchanged");
+        BossRushCoop.IsConnected=false;BossRushCoop.IsHost=false;BossRushCoop.RunId="";
         EntryRegression.Run(check);
         CharacterMainControl.Main = new CharacterMainControl { Health = new Health() };
         CampaignProgressService.Active = "ch6";

@@ -97,8 +97,8 @@ def main():
              "Spawning/批量激活中死亡 → TechnicalLoss 禁推进"),
             ("CountedDeadOrder",
              r"if \(!_spawnTransaction\.MarkKilled\(health\)\) return;\s*"
-             r"_totalBossKills\+\+;",
-             "正常死亡先 MarkKilled 结案（countedDead 顺序）再后续路由"),
+              r"if \(IsCoopAssetCurrent && !CoopPersonalDefeated && \(!BossRushCoop\.IsConnected \|\| BossRushCoop\.GetPlayerId\(info\.fromCharacter\) == BossRushCoop\.LocalPlayerId\)\) _totalBossKills\+\+;",
+             "正常死亡先 MarkKilled 结案，再给原资产仍在场的本人累计击杀"),
             ("TechnicalCleanupReason",
              r"handle\.CleanupOnce\(ManagedBossCleanupReason\.TechnicalLoss\);",
              "技术丢失按 TechnicalLoss 原因清理 handle"),

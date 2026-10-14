@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
 TRACKER = Path("Achievement/AchievementTracker.cs")
@@ -114,6 +115,10 @@ def main() -> int:
             return result
     if "ResetAchievementBossKillTracking();" not in runtime:
         return fail("achievement runtime cleanup must clear boss kill tracking")
+    kill_once = extract_block(clean_source(triggers), "internal bool CheckBossKillAchievementsOnce(")
+    for snippet in ["if (achievementCountedBossKills.Contains(bossMain))", "achievementCountedBossKills.Add(bossMain);"]:
+        if snippet not in kill_once:
+            return fail("Boss instance kill counting must retain both duplicate rejection and registration: " + snippet)
 
     dragon_death = extract_block(dragon_king, "private void OnDragonKingDeath(")
     waves_death = extract_block(waves, "internal void HandleBossDeath(")
@@ -125,7 +130,7 @@ def main() -> int:
         return fail("DragonKing death still directly increments achievement kills")
     if "owner.CheckBossKillAchievementsOnceForArena(bossMain);" not in waves_death:
         return fail("generic BossRush death must use achievement kill de-dup helper")
-    if "return CheckBossKillAchievementsOnce(boss);" not in WAVES_HOST.read_text(encoding="utf-8"):
+    if "return CheckBossKillAchievementsOnce(boss, bossType);" not in clean_source(WAVES_HOST.read_text(encoding="utf-8")):
         return fail("arena achievement bridge must call the original de-dup helper")
     if "CheckBossKillAchievements(bossType);" in waves_death:
         return fail("generic BossRush death still directly increments achievement kills")

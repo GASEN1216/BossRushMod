@@ -1,5 +1,7 @@
 """真实 Harmony + 生产天空岛桥接执行回归，Unity/场景API为隔离替身；不访问玩家存档。"""
 from pathlib import Path
+import hashlib
+import json
 import os
 import shutil
 import subprocess
@@ -31,4 +33,7 @@ if __name__ == "__main__":
     code = subprocess.call(["dotnet", str(compiler), "@" + str(response)], cwd=ROOT)
     if code:
         raise SystemExit(code)
+    source = ROOT / "SkyIsland/SkyIslandSceneReferenceBridge.cs"
+    (OUT / "production-sha256.json").write_text(json.dumps({str(source): hashlib.sha256(source.read_bytes()).hexdigest()}, indent=2), encoding="utf-8")
+    print("Target:", exe, "SHA256:", hashlib.sha256(exe.read_bytes()).hexdigest(), flush=True)
     raise SystemExit(subprocess.call([str(exe)], cwd=OUT))

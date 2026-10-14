@@ -40,7 +40,7 @@ def main():
     extracted.write_text('using System; using System.Collections; using ItemStatsSystem; '
                          'namespace BossRush { internal sealed partial class WavesArenaRuntimeModule {\n' + methods + '\n} }',
                          encoding='utf-8')
-    sources = [ROOT / 'Utilities/InteractableLootboxInventoryHelper.cs',
+    sources = [ROOT / "tests/fixtures/CoopOfflineStubs.cs", ROOT / 'Utilities/InteractableLootboxInventoryHelper.cs',
                ROOT / 'Integration/BackMountain/BackMountainSeedDrops.cs',
                materialize_host(ROOT, OUT / "SeedHost.cs", "BackMountainSeedDropsHostBridge", "using ItemStatsSystem;"),
                HERE / 'Program.cs', HERE / 'Stubs.cs', extracted]

@@ -3,6 +3,7 @@ from pathlib import Path
 import hashlib
 import json
 import subprocess
+import sys
 import xml.sax.saxutils as xml
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -54,7 +55,11 @@ def main():
     hashes = {p: hashlib.sha256((ROOT / p).read_bytes()).hexdigest() for p in paths}
     hashes["extracted"] = hashlib.sha256(code.encode()).hexdigest()
     (OUT / "source-hashes.json").write_text(json.dumps(hashes, indent=2), encoding="utf-8")
-    return subprocess.call(["dotnet", "run", "--project", str(OUT / "Regression.csproj"), "-c", "Release"], cwd=ROOT)
+    sys.path.insert(0, str(ROOT / "tools"))
+    from run_runtime_regressions import run_project_fixture
+    result, output = run_project_fixture(OUT / "Regression.csproj", OUT, ROOT)
+    print(output)
+    return result
 
 
 if __name__ == "__main__":

@@ -32,7 +32,7 @@ for filename, name, scene_id, order, point, custom, sign in maps:
     if order is not None:
         record["sortOrder"] = order
     (data / filename).write_text(json.dumps(record), encoding="utf-8")
-sources = production + [HERE / "Stubs.cs", HERE / "Program.cs"]
+sources = [ROOT / "tests/fixtures/CoopOfflineStubs.cs"] + production + [HERE / "Stubs.cs", HERE / "Program.cs"]
 includes = "".join('<Compile Include="' + escape(str(p), {'"': '&quot;'}) + '" />' for p in sources)
 project = OUT / "Regression.csproj"
 project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType>'

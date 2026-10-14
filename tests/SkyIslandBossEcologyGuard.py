@@ -51,6 +51,7 @@ PATHS = {
     "fieldcraft_gear": SKY + "SkyIslandFieldcraftBossGear.cs",
     "fieldcraft": SKY + "SkyIslandFieldcraft.cs",
     "gnats": SKY + "SkyIslandGnats.cs",
+    "gnats_coop": SKY + "SkyIslandGnatsCoop.cs",
     "gnats_lure": SKY + "SkyIslandGnatsLure.cs",
     "reward_crate": SKY + "SkyIslandRewardCrate.cs",
     "letters": SKY + "SkyIslandLetters.cs",
@@ -404,7 +405,9 @@ def check(raw):
     require(errors, body_of(code["fieldcraft"], "public void Dispose()"), "DisposeBossGear();", "离岛摘掉断风套加成与星标")
     require(errors, body_of(code["fieldcraft"], "private bool Harvest(SkyIslandGatherNode node)"), "WithSickleBonus(node,", "蓑衣农装割青穗草多一份")
     require(errors, code["reward_crate"], "SkyIslandBossRules.HunterIslandExtraRoll(", "悬根猎装翻箱出特产的机会翻倍")
-    require(errors, body_of(code["gnats"], "private bool Steer("), "!SkyIslandBossGearWorn.MossgauzeMask", "苔纱面罩：身边云蚋不躲枪口")
+    require(errors, body_of(code["gnats"], "private bool Steer("), "!CoopTargetMask(player)", "苔纱面罩：云蚋按当前目标玩家的面罩决定是否躲枪口")
+    require(errors, body_of(code["gnats_coop"], "private bool CoopTargetMask("), "state.Mask", "远端目标必须读取其自己的穿戴报告")
+    require(errors, body_of(code["gnats_coop"], "private bool CoopTargetMask("), "SkyIslandBossGearWorn.MossgauzeMask", "单机面罩仍走本人的穿戴快照")
     require(errors, body_of(code["gnats"], "private Vector3 Cruise("), "LureOverridesZappers(now) ? null : NearestLure(gnat.Position)",
             "笛声压着的这几秒云蚋不理灭蚊灯")
     require(errors, body_of(code["gnats"], "internal void Sample("), "if (HostileLureActive) enemiesNear = false;", "笛声压着的这几秒附近有敌人也不散群")
@@ -496,7 +499,7 @@ def reverse_probes(raw):
         ("props", "skin.BakeMesh(mesh, true);", "UnityEngine.Object.Instantiate(skin.gameObject);", "倒影改成克隆角色"),
         ("story_rules", "!source.wearsMirrorArmor && ", "", "镜纹甲不放行折翎"),
         ("story_rules", ", wearsMirrorArmor = wearsMirrorArmor", "", "候选状态漏拷运行时字段"),
-        ("gnats", "!SkyIslandBossGearWorn.MossgauzeMask", "true", "苔纱面罩不挡躲闪"),
+        ("gnats", "!CoopTargetMask(player)", "true", "苔纱面罩不挡躲闪"),
         ("fieldcraft_gear", 'headset = TypeIn(item, "Headset");', "", "穿戴快照漏读耳机槽"),
         ("stargazer", "SkyIslandBossRules.TelegraphSeconds(", "SkyIslandBossRules.EscapeSpeed(", "观星手的预警不过静听耳罩"),
         ("forge", "CreateExplosion(origin, radius, damage, fx, shake, false);", "CreateExplosion(origin, radius, damage, fx, shake, true);", "Boss 范围伤害改成会炸自己人"),

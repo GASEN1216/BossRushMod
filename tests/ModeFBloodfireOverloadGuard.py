@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
 MODELS = Path("ModeF/ModeFModels.cs")
@@ -48,7 +49,7 @@ def require(text: str, needle: str, message: str) -> int | None:
 
 def main() -> int:
     models = MODELS.read_text(encoding="utf-8")
-    phases = PHASES.read_text(encoding="utf-8")
+    phases = clean_source(PHASES.read_text(encoding="utf-8"))
     bounty = BOUNTY.read_text(encoding="utf-8")
     ui = UI.read_text(encoding="utf-8")
     # 命火过载的常量与流程住在 ModeFBloodfire.cs，击杀气泡文本住在 ModeFUI_KillRewardBubble.cs。
@@ -200,8 +201,8 @@ def main() -> int:
         result = require(status_hud, needle, message)
         if result is not None:
             return result
-    result = require(phases, "ModeFStatusHud.Tick(modeFState, MODEF_BLOODFIRE_MAX_CHARGE);",
-                     "Mode F tick must drive the status HUD with the host charge cap")
+    result = require(phases, "ModeFStatusHud.Tick(IsCoopModeFLocalAdmitted() ? modeFState : null, MODEF_BLOODFIRE_MAX_CHARGE);",
+                     "Mode F tick must drive admission-aware HUD visibility with the host charge cap")
     if result is not None:
         return result
 

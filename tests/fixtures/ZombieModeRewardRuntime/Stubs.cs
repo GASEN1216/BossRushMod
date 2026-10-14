@@ -185,3 +185,6 @@ namespace BossRush
         internal int SnapshotCount { get { return zombieModeProjectileSpreadSnapshots.Count; } }
     }
 }
+
+// This original fixture executes offline; slot/network semantics are tested in ZombieCoopFlow.
+namespace BossRush { internal sealed partial class ZombieModeRuntimeModule { private bool IsCoopZombieLocalAssetCurrent() { return true; } } }

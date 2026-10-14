@@ -84,6 +84,11 @@ namespace BossRush
     }
     internal sealed partial class ZombieModeRuntimeModule
     {
+        // 此夹具走单机选装；真实联机钱包/合同由 ZombieCoopFlow 执行。
+        internal void RememberCoopZombieWallet() { }
+        private bool coopZombieStarterChosen;
+        private void SendCoopZombieCommand(string action, int value = 0, string text = null, bool flag = false) { throw new InvalidOperationException("Offline fixture"); }
+        private void DeliverCoopZombiePoints(int amount) { throw new InvalidOperationException("Offline fixture"); }
         private readonly ModBehaviour owner; private readonly ZombieModeRunState runState;
         internal ZombieModeRuntimeModule(ModBehaviour owner,ZombieModeRunState state) { this.owner=owner;runState=state; }
         private bool IsZombieModeRunValid(int runId) { return runState.RunId==runId; }
@@ -102,3 +107,6 @@ namespace BossRush
         private void RestoreZombieModeOriginalExtractionPoints() { Probe.Trace.Add("restore-extraction"); }
     }
 }
+
+// This original fixture executes offline; slot/network semantics are tested in ZombieCoopFlow.
+namespace BossRush { internal sealed partial class ZombieModeRuntimeModule { private bool IsCoopZombieLocalAssetCurrent() { return true; } } }

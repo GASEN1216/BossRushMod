@@ -75,7 +75,8 @@ static class Program
     }
     static void Main(string[] args)
     {
-        ModBehaviour.Root=args[0]; Directory.CreateDirectory(args[0]);
+        ModBehaviour.Root=args.Length>0?args[0]:Path.Combine(AppContext.BaseDirectory,"data");
+        args=new[]{ModBehaviour.Root};Directory.CreateDirectory(args[0]);Application.persistentDataPath=args[0];
         BuildingModels.Run();
         string path=Path.Combine(args[0],"fixture"); File.WriteAllText(path,"fixture");
         int consumed=0;
@@ -166,6 +167,32 @@ static class Program
             Check(!ResourcePerformanceMetrics.IsComplete(10,600,flags[0],flags[1],flags[2],out reason),"interrupted windows fail");
         Check(!ResourcePerformanceMetrics.IsComplete(9.999,600,false,true,false,out reason),"short window fails");
         FactoryTransitions(path);
+        ReportSerialization();
         Console.WriteLine("ResourceProduction PASS: native late completion, disposal, timeout, failure, aliases/ownership, metric judges");
+    }
+    static void ReportSerialization()
+    {
+        var runner=new F3GameplayValidationRunner();
+        var cpu=ResourcePerformanceMetrics.Summarize(new double[]{1.25,3.75,8.5},3,"ms","CPU recorder");
+        var unavailable=ResourcePerformanceMetrics.Summarize(new double[0],0,"ms","GPU recorder");
+        var sample=new ResourcePerformanceWindow {caseId="RESOURCE_COOP",scene="隔离基地",frames=600,windowSeconds=10.125,fps=59.25,
+            position=new Vector3 {x=12.5f,y=1.25f,z=-2.75f},cameraRotation=new Quaternion {w=1},
+            cpuFrameTime=cpu,gpuFrameTime=unavailable,status="complete",assetBundleLoads=new[]{new ResourceBundleLoader.LoadRecord
+                {path="Assets/ui/测试",phase="assets",status="cancelled",startedSeconds=1.25,endedSeconds=5.5,cancelled=true}}};
+        runner.Report.windows.Add(sample);runner.Report.runId=runner._runId;runner.WriteReport();
+        string path=Path.Combine(Application.persistentDataPath,"BossRushTestReports",runner._runId);
+        string json=File.ReadAllText(Path.Combine(path,"resource-performance.json"));
+        var restored=BossRushCoopJson.FromJson<ResourcePerformanceReport>(json);
+        Check(!runner._reportWriteFailed&&restored!=null&&restored.windows!=null&&restored.windows.Count==1,"report retains actual nested sample windows");
+        var actual=restored.windows[0];
+        Check(actual.cpuFrameTime!=null&&actual.cpuFrameTime.status=="available"&&actual.cpuFrameTime.p95==8.5&&actual.cpuFrameTime.samples==3,"report retains exact nested measured CPU metrics");
+        Check(actual.gpuFrameTime!=null&&actual.gpuFrameTime.status=="unavailable"&&actual.gpuFrameTime.p95==-1&&actual.gpuFrameTime.samples==0,"unavailable GPU metrics remain explicit and cannot appear as zero measurement");
+        Check(actual.assetBundleLoads!=null&&actual.assetBundleLoads.Length==1&&actual.assetBundleLoads[0].path=="Assets/ui/测试"&&actual.assetBundleLoads[0].endedSeconds==5.5&&actual.assetBundleLoads[0].cancelled,"report retains complete nested asset load history");
+        Check(actual.position.x==12.5f&&actual.position.z==-2.75f&&actual.cameraRotation.w==1&&restored.read_only,"report retains actual camera/world vectors and read-only status");
+        foreach(string manifest in new[]{File.ReadAllText(Path.Combine(path,"manifest.json")),runner.Manifest("{\"read_only\":true}")})
+        {
+            BossRushJsonValue root;string error;
+            Check(BossRushJsonParser.TryParse(manifest,out root,out error)&&root.GetProperty("resourcePerformance").GetProperty("windows").Items.Count==1,"both manifest writers retain complete nested report");
+        }
     }
 }

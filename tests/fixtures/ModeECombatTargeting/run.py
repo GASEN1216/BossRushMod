@@ -2,7 +2,6 @@
 from pathlib import Path
 import hashlib
 import json
-import subprocess
 import sys
 from xml.sax.saxutils import escape
 
@@ -31,12 +30,15 @@ def main():
     collision = ROOT / "Integration/DragonDescendant/DragonDescendantAbilities_CollisionAndIce.cs"
     battle = ROOT / "ModeE/ModeEBattle.cs"
     source = clean_source(controller.read_text(encoding="utf-8-sig"))
-    generated = "using System; namespace BossRush { partial class DragonDescendantAbilities {\n"
+    generated = "using System; namespace BossRush { partial class DragonDescendantAbilityController {\n"
     generated += "\n".join(member(source, signature) for signature in (
         "private bool UsesArenaOpponent()", "private bool IsPlayerAlly()", "private void RefreshPlayerReference()",
-        "private CharacterMainControl ResolveArenaOpponent(bool allowMainCharacter)"))
+        "private CharacterMainControl ResolveArenaOpponent(bool allowMainCharacter)", "internal bool HasCombatAuthority"))
     generated += "\n" + member(clean_source(collision.read_text(encoding="utf-8-sig")),
                               "public void OnCollisionWithPlayer(CharacterMainControl player)")
+    authority = ROOT / "Utilities/CoopAiPredictionHealthProtection.cs"
+    generated += "}\nstatic class CoopAiPredictionHealthProtection {\n" + member(
+        clean_source(authority.read_text(encoding="utf-8-sig")), "internal static bool HasEntityAuthority(")
     generated += "}\nstatic class BloodhoundSetup { internal static void Apply(CharacterMainControl character, bool isModeFRun, Teams runtimeFaction, Teams modeEPlayerFaction) {\n"
     spawn = clean_source(battle.read_text(encoding="utf-8-sig"))
     start = spawn.index("var ai = character.GetComponentInChildren<AICharacterController>();")
@@ -52,8 +54,13 @@ def main():
                       + ''.join('<Compile Include="' + escape(str(p)) + '" />' for p in paths)
                       + '</ItemGroup></Project>', encoding="utf-8")
     (OUT / "sources.json").write_text(json.dumps({str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
-                                                for p in [controller, collision, battle] + linked}, indent=2), encoding="utf-8")
-    return subprocess.call(["dotnet", "run", "--project", str(project), "--configuration", "Release"], cwd=ROOT)
+                                                for p in [controller, collision, battle, authority, output, HERE / "Program.cs"] + linked}, indent=2), encoding="utf-8")
+    sys.path.insert(0, str(ROOT / "tools"))
+    from run_runtime_regressions import run_project_fixture
+    code, log = run_project_fixture(project, OUT / "execution", ROOT)
+    print(log)
+    (OUT / "result.log").write_text(log, encoding="utf-8")
+    return code
 
 
 if __name__ == "__main__":

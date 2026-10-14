@@ -43,8 +43,9 @@ def main():
         "private void OnCampaignFinalBossDead(DamageInfo damageInfo)",
         "internal void TickCampaignFinalBossYield()", "internal void CleanupCampaignFinalBoss(bool destroyBoss)",
         "private void ResetCampaignFinalBossTracking()",
+        "private void CaptureCampaignFinalScope()", "private bool IsCampaignFinalScopeValid()", "private void TickCampaignFinalScope()",
     ))
-    fields = '\n'.join(re.findall(r'^        private (?:CharacterMainControl|bool|int|GameObject|float) campaign\w+(?: = -1)?;', boss, re.M))
+    fields = '\n'.join(re.findall(r'^        private (?:CharacterMainControl|bool|int|GameObject|float|string) campaign\w+(?:, campaign\w+)*(?: = -1)?;', boss, re.M))
     properties = extract_methods(boss, (
         "internal bool IsCampaignFinalBossActive", "internal int CampaignFinalBossDeathPresentationCount",
         "internal CharacterMainControl CampaignFinalBossInstanceForValidation",
@@ -62,6 +63,8 @@ def main():
         "public override void OnSceneLoaded(SceneRuntimeContext context)",
         "public override void OnDestroy()",
     ))
+    coop = clean_source((ROOT / "Campaign/CampaignRuntimeModule_Coop.cs").read_text(encoding="utf-8-sig"))
+    lifecycle += extract_methods(coop, ("private bool ApplyCoopCampaignFact(",))
     extracted = OUT / "FinalBossProduction.cs"
     extracted.write_text("using System; using System.Threading; using System.Threading.Tasks; using UnityEngine; "
                          + "namespace BossRush { internal sealed partial class CampaignRuntimeModule {"
@@ -86,7 +89,13 @@ def main():
                               + "namespace BossRush { public partial class ModBehaviour {" + entry_enum + entry
                               + "} internal sealed partial class UIAndSignsRuntimeModule {" + signs
                               + "} internal static partial class SpawnPositionHelper {" + geometry_constants + geometry + "}}", encoding="utf-8")
-    sources = [ROOT / name for name in (
+    f3_path = ROOT / "DebugAndTools/F3GameplayValidationDepth.cs"
+    # Preserve the current Dev case body exactly; clocks, spawning and official Hurt are controlled boundaries.
+    f3 = extract_methods(f3_path.read_text(encoding="utf-8-sig"), ("private IEnumerator RunCampaignFinalBoss()",))
+    f3_extracted = OUT / "F3FinalBossProduction.cs"
+    f3_extracted.write_text("using System; using System.Collections; using System.Diagnostics; using UnityEngine; "
+                           + "namespace BossRush { internal sealed partial class F3GameplayValidationRunner {" + f3 + "}}", encoding="utf-8")
+    sources = [ROOT / "tests/fixtures/CoopOfflineStubs.cs"] + [ROOT / name for name in (
         "Campaign/CampaignModels.cs", "Campaign/CampaignTuning.cs",
         "Campaign/CampaignQuestTable.cs", "Campaign/CampaignBaseObjectives.cs",
         "Campaign/CampaignContentCatalog.cs", "Campaign/CampaignObjectiveTracker.cs",
@@ -96,10 +105,11 @@ def main():
         "ModeF/ModeFRuntimeModule_BountyLatch.cs",
         "Common/Data/BossRushJsonValue.cs", "Utilities/SimpleJsonHelper.cs",
         "ModeH/ModeHCanonicalDigest.cs", "ModeH/ModeHSeedStream.cs",
-    )] + [HERE / "Program.cs", HERE / "Stubs.cs", HERE / "FinalBossRegression.cs", HERE / "EntryRegression.cs", extracted, entry_extracted]
+    )] + [HERE / "Program.cs", HERE / "Stubs.cs", HERE / "FinalBossRegression.cs", HERE / "EntryRegression.cs", HERE / "F3FinalBossRegression.cs", extracted, entry_extracted, f3_extracted]
     production = [p for p in sources if p.is_relative_to(ROOT) and not p.is_relative_to(HERE) and p != extracted]
     production += [ROOT / "Campaign/CampaignFinalBoss.cs", ROOT / "Campaign/CampaignDialoguePlayer.cs", ROOT / "Campaign/CampaignRuntimeModule.cs"]
     production += [ROOT / "WavesArena/BossRushEntryFlow.cs", ROOT / "UIAndSigns/UIAndSigns.cs", ROOT / "Utilities/SpawnPositionHelper.cs"]
+    production += [f3_path, ROOT / "Campaign/CampaignRuntimeModule_Coop.cs"]
     (OUT / "production-source-sha256.json").write_text(json.dumps({str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in production}, indent=2), encoding="utf-8")
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType>'
     project += '<TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion>'

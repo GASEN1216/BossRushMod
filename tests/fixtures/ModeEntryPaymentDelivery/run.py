@@ -29,7 +29,9 @@ def main():
     maps = source("MapSelection/BossRushMapSelectionHelper.cs")
     d = source("ModeD/ModeDEquipment_StarterKit.cs")
     h = source("ModeH/ModeHEntry.cs")
-    code = ["using System; using System.Linq; using UnityEngine; using ItemStatsSystem; using Duckov.Economy; using Duckov.UI; using Object = UnityEngine.Object; namespace BossRush { partial class BossRushMapSelectionHelper {"]
+    code = ["using System; using System.Linq; using System.Collections.Generic; using UnityEngine; using ItemStatsSystem; using Duckov.Economy; using Duckov.UI; using Object = UnityEngine.Object; namespace BossRush { partial class BossRushMapSelectionHelper {"]
+    asset = member(source("MapSelection/BossRushMapEntryAssetLease.cs"), "public static partial class BossRushMapSelectionHelper")
+    code.append(asset[asset.index("{")+1:asset.rindex("}")])
     code += [member(maps, s) for s in (
         "private enum BossRushEntryFlowSource", "public static void MarkEntryFlowFromMapSelectionUi(BossRushPendingEntryKind kind)",
         "public static void MarkEntryFlowFromDirectTeleport(BossRushPendingEntryKind kind)",

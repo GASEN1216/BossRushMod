@@ -146,10 +146,71 @@ internal static class Program
         CampaignObjectiveTracker.EnsureArmedFor("standard");
         Check(!CampaignObjectiveTracker.IsArmed, "ready-to-deliver chapter cannot rearm");
         CheckBridges();
+        CheckExtractionLeases();
         CheckNotes();
         CheckQuestTable();
         FinalBossRegression.Run(Check);
+        F3FinalBossRegression.Run(Check);
         Console.WriteLine("CampaignPlayability: PASS (" + checks + " checks)");
+    }
+
+    private static void CheckExtractionLeases()
+    {
+        CampaignObjectiveTracker.ResetStaticCaches();
+        BossRushCoop.IsConnected = true; BossRushCoop.LocalAssetId = "original-asset";
+        Arm("ch4");
+        var old = CampaignObjectiveTracker.CaptureExtractionLease(CampaignContentCatalog.ModeModeF);
+        Check(old != null, "Mode F original armed contract is captured");
+        for (int i = 0; i < 3; i++) CampaignObjectiveTracker.ReportPlayerKill(false, true, true);
+        CampaignObjectiveTracker.ResetSession(); CampaignObjectiveTracker.EnsureArmedFor(CampaignContentCatalog.ModeModeF);
+        CampaignObjectiveTracker.ReportPlayerKill(false, true, true);
+        var newRun = CampaignObjectiveTracker.Progress[0];
+        CampaignProgressService.Reject = true;
+        Check(!CampaignObjectiveTracker.ReportExtractionLease(old), "old extraction write rejection remains retryable");
+        Check(newRun.Current == 1 && CampaignProgressService.Notifications == 0, "old extraction does not manufacture new-run bounty progress");
+        CampaignProgressService.Reject = false;
+        Check(CampaignObjectiveTracker.ReportExtractionLease(old) && CampaignProgressService.Notifications == 1, "old completed bounty contract survives new run and asynchronous reward receipt");
+        Check(CampaignObjectiveTracker.ReportExtractionLease(old) && CampaignProgressService.Notifications == 1, "duplicate old extraction does not report twice");
+        Check(newRun.Current == 1, "successful old settlement keeps current-run objective objects untouched");
+        Arm("ch5");
+        old = CampaignObjectiveTracker.CaptureExtractionLease(CampaignContentCatalog.ModeZombie);
+        CampaignObjectiveTracker.ReportWaveReached(5); CampaignObjectiveTracker.ResetSession();
+        BossRushCoop.LocalAssetId = "other-asset";
+        Check(!CampaignObjectiveTracker.ReportExtractionLease(old) && CampaignProgressService.Notifications == 0, "old zombie extraction cannot write another asset");
+        BossRushCoop.LocalAssetId = "original-asset";
+        Check(CampaignObjectiveTracker.ReportExtractionLease(old) && CampaignProgressService.Notifications == 1, "returning to original asset permits its completed zombie contract settlement");
+        Arm("ch5");
+        old = CampaignObjectiveTracker.CaptureExtractionLease(CampaignContentCatalog.ModeZombie);
+        CampaignObjectiveTracker.ReportWaveReached(5); CampaignObjectiveTracker.InvalidateContractIdentity();
+        CampaignObjectiveTracker.ResetSession(); CampaignObjectiveTracker.EnsureArmedFor(CampaignContentCatalog.ModeZombie);
+        Check(CampaignObjectiveTracker.ReportExtractionLease(old) && CampaignProgressService.Notifications == 0, "abandoned or reaccepted same chapter cannot inherit an old extraction");
+        Check(CampaignObjectiveTracker.Progress[0].Current == 0, "cancelled original contract leaves newly armed chapter progress unchanged");
+        Arm("ch5"); old = CampaignObjectiveTracker.CaptureExtractionLease(CampaignContentCatalog.ModeZombie);
+        CampaignObjectiveTracker.ReportWaveReached(4); CampaignObjectiveTracker.ResetSession();
+        Check(CampaignObjectiveTracker.ReportExtractionLease(old) && CampaignProgressService.Notifications == 0, "extracting before original wave gate cannot gain qualification later");
+        Arm("ch4"); old = CampaignObjectiveTracker.CaptureExtractionLease(CampaignContentCatalog.ModeModeF);
+        CampaignObjectiveTracker.ReportPlayerKill(false, true, false); CampaignObjectiveTracker.ResetSession();
+        Check(CampaignObjectiveTracker.ReportExtractionLease(old) && CampaignProgressService.Notifications == 0, "unmarked original kills cannot be converted into bounty qualification");
+        Arm("ch5"); old = CampaignObjectiveTracker.CaptureExtractionLease(CampaignContentCatalog.ModeZombie);
+        CampaignObjectiveTracker.ReportWaveReached(5); CampaignProgressService.Active = "ch6";
+        Check(CampaignObjectiveTracker.ReportExtractionLease(old) && CampaignProgressService.Notifications == 0, "old extraction cannot write a different active chapter");
+        Check(CampaignObjectiveTracker.ReportExtractionLease(null), "no original task creates no campaign debt");
+        Arm("ch4"); old = CampaignObjectiveTracker.CaptureExtractionLease(CampaignContentCatalog.ModeModeF);
+        CampaignObjectiveTracker.ReportPlayerKill(false, true, true);
+        Check(CampaignObjectiveTracker.ObserveExtractionLeaseKill(old, 1, true) && old.Objectives[0].Current == 1, "world fact and same personal kill receipt do not double count a marked kill");
+        CampaignObjectiveTracker.ResetSession(); CampaignObjectiveTracker.EnsureArmedFor(CampaignContentCatalog.ModeModeF);
+        Check(!CampaignObjectiveTracker.ObserveExtractionLeaseKill(old, 3, true), "out-of-order personal kill cannot skip the original receipt sequence");
+        Check(CampaignObjectiveTracker.ObserveExtractionLeaseKill(old, 2, false) && old.Objectives[0].Current == 1, "late unmarked original kill adds no bounty qualification");
+        Check(CampaignObjectiveTracker.ObserveExtractionLeaseKill(old, 2, true) && old.Objectives[0].Current == 1, "replayed kill sequence cannot change its original mark decision");
+        Check(CampaignObjectiveTracker.ObserveExtractionLeaseKill(old, 3, true) && CampaignObjectiveTracker.ObserveExtractionLeaseKill(old, 4, true), "late continuous original marked kill receipts retain their qualification");
+        Check(CampaignObjectiveTracker.ReportExtractionLease(old) && CampaignProgressService.Notifications == 1 && CampaignObjectiveTracker.Progress[0].Current == 0, "old actual marked-kill receipts finish only their original contract without current scene world facts");
+        Arm("ch5"); old = CampaignObjectiveTracker.CaptureExtractionLease(CampaignContentCatalog.ModeZombie);
+        CampaignObjectiveTracker.ResetSession(); CampaignObjectiveTracker.EnsureArmedFor(CampaignContentCatalog.ModeZombie);
+        CampaignObjectiveTracker.ObserveExtractionLeaseWave(old, 5);
+        Check(CampaignObjectiveTracker.ReportExtractionLease(old) && CampaignProgressService.Notifications == 1 && CampaignObjectiveTracker.Progress[0].Current == 0, "frozen original five-wave evidence settles only the old zombie contract");
+        BossRushCoop.IsConnected = false;
+        Check(CampaignObjectiveTracker.CaptureExtractionLease(CampaignContentCatalog.ModeZombie) == null, "solo uses the original extraction notification path");
+        CampaignObjectiveTracker.ResetStaticCaches();
     }
 
     private static void CheckQuestTable()
@@ -287,9 +348,19 @@ internal static class Program
         Player.Health.IsDead = true;
         owner.TickCampaignModeBridge(1f);
         Check(!CampaignObjectiveTracker.IsArmed, "death disarms tracking before mode flags clear");
+        BossRushCoop.IsConnected=true;BossRushCoop.IsHost=true;BossRushCoop.AnyPlayerAlive=true;
+        owner.TickCampaignModeBridge(600f);
+        Check(!CampaignObjectiveTracker.IsArmed && owner.ResolveCampaignCurrentMode()==null,"living guest cannot keep dead host's personal contract armed");
+        Check(owner.CampaignRuntime.ApplyFactForTest(new CoopCampaignFact { Kind="wave",Mode=CampaignContentCatalog.ModeModeD,Wave=5,RunId=BossRushCoop.RunId,SceneGeneration=BossRushCoop.SceneGeneration }) && !CampaignObjectiveTracker.IsArmed,"dead local owner acknowledges shared fact without rearming a personal contract");
         Player.Health.IsDead = false;
         owner.TickCampaignModeBridge(1f);
         Check(CampaignObjectiveTracker.Progress[0].Current == 5, "same mode rearm reobserves its current wave");
+        int before=CampaignObjectiveTracker.Progress[1].Current;
+        Check(owner.CampaignRuntime.ApplyFactForTest(new CoopCampaignFact { Kind="kill",Melee=true,Mode=CampaignContentCatalog.ModeModeD,RunId=BossRushCoop.RunId,SceneGeneration=BossRushCoop.SceneGeneration-1 }) && CampaignObjectiveTracker.Progress[1].Current==before,"former scene's delayed kill cannot advance current personal objectives");
+        Check(owner.CampaignRuntime.ApplyFactForTest(new CoopCampaignFact { Kind="kill",Melee=true,Mode=CampaignContentCatalog.ModeModeD,RunId="former-room",SceneGeneration=BossRushCoop.SceneGeneration }) && CampaignObjectiveTracker.Progress[1].Current==before,"former room's fact cannot advance current chapter");
+        owner.CampaignRuntime.ApplyFactForTest(new CoopCampaignFact { Kind="kill",Melee=true,Mode=CampaignContentCatalog.ModeModeD,RunId=BossRushCoop.RunId,SceneGeneration=BossRushCoop.SceneGeneration });
+        Check(CampaignObjectiveTracker.Progress[1].Current==before+1,"current scene's authenticated fact advances only local armed chapter");
+        BossRushCoop.IsConnected=BossRushCoop.IsHost=false;
         Arm("ch1"); owner = ModBehaviour.Instance; owner.modeGActive = true;
         owner.TickCampaignModeBridge(1f);
         Check(owner.ResolveCampaignCurrentMode() == null, "Mode G cannot masquerade as standard");

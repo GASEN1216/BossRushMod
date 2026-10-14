@@ -3,6 +3,15 @@ using System.Collections.Generic;
 using UnityEngine;
 using Pathfinding;
 
+namespace BossRush
+{
+    // 本夹具运行单机伤害路径；联网归属由 CoopProtocol / ZombieCoopFlow 验证。
+    internal static class BossRushCoop
+    {
+        internal static bool IsPlayer(CharacterMainControl character) { return character != null && character.IsMainCharacter; }
+    }
+}
+
 namespace UnityEngine
 {
     public class Object

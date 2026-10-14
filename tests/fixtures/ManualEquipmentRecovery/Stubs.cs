@@ -148,3 +148,10 @@ namespace BossRush
         public void HoldChanged(CharacterMainControl player) { OnHoldItemChanged(player, null); }
     }
 }
+namespace BossRush {
+ // Explicit offline facade: these request-lifetime checks do not exercise transport.
+ internal static class BossRushCoop { public static bool IsClient { get { return false; } } public static bool IsHost { get { return false; } } public static string RunId { get { return string.Empty; } } public static int SceneGeneration { get { return 0; } } public static string GetPlayerId(CharacterMainControl player) { return null; } public static BossRushCoopPlayer FindPlayer(string id) { return null; } }
+ internal sealed class BossRushCoopPlayer { public bool IsAlive { get { return false; } } }
+ internal static class BossRushCoopContentRuntimeModule { internal static bool RequestSummon(int kind) { return false; } internal static bool IsSummonOwnerCurrent(CharacterMainControl player,string asset) { return false; } }
+ partial class SummonStaffAction { private CharacterMainControl coopOwner; private string coopRun,coopAsset; private int coopScene; }
+}

@@ -21,6 +21,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO_ROOT, "tests"))
 
 from petnest_guard_util import (  # noqa: E402
+    method_body,
     PETNEST_DIR,
     read_petnest,
     read_text,
@@ -125,11 +126,11 @@ def check_handler(errors):
     code = strip_cs_comments(text)
 
     # 登记与执行分离
-    notify = re.search(r"internal static void NotifyLethalClamped\(Health health\)[\s\S]{0,900}?\n        \}", code)
+    notify = method_body(code, "internal static void NotifyLethalClamped(Health health)")
     if notify is None:
         errors.append("[登记] 缺少 NotifyLethalClamped(Health)")
     else:
-        body = notify.group(0)
+        body = notify
         if "health.SetInvincible(true)" not in body:
             errors.append("[短无敌] 钳血后必须同帧上短无敌，挡住连击")
         for forbidden in ["Destroy(", "CleanupOnce(", "SavesSystem"]:

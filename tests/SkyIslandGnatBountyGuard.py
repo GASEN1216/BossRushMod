@@ -84,6 +84,7 @@ def forbid(haystack, needle, why):
 
 bounty = read(BOUNTY)
 gnats = read(GNATS)
+gnats_coop = read('SkyIsland/SkyIslandGnatsCoop.cs')
 session = read(SESSION)
 partial = read(PARTIAL)
 rules = read(RULES)
@@ -125,8 +126,14 @@ if 'NameEn' in names and re.search(r'[一-鿿]', names['NameEn']):
 # ---- 2. 计数侧：只有被打下来才算，退出局不算 ----
 remove = body(gnats, 'private void Remove(int index, bool killed, float now, Quaternion view)', GNATS)
 require(remove, 'if (!killed) return;', '散开（跑远、大风、进烟）不算击杀')
-require(remove, 'if (session != null && session.Bounty != null) session.Bounty.ReportGnatCulled();',
-        '击杀要上报给委托，且要对空会话与空委托宽容')
+require(remove, 'if (!BossRushCoop.IsConnected && session != null && session.Bounty != null) session.Bounty.ReportGnatCulled();',
+        '单机击杀要上报，联机原生死亡不能误计房主或重复计数')
+coop_kill = body(gnats_coop, 'internal void OnCoopGnatKilled(', 'SkyIslandGnatsCoop')
+require(coop_kill, 'BossRushCoop.GetPlayerId(info.fromCharacter)', '联机击杀按真实伤害来源归本人')
+require(coop_kill, 'coopGnatPersonal.Deliver(player, key,', '击杀通过个人收据递送给击杀者')
+coop_apply = body(gnats_coop, 'private bool ApplyCoopPersonal(', 'SkyIslandGnatsCoop')
+require(coop_apply, 'if (data.Kind == 2) { if (session.Bounty == null) return false; session.Bounty.ReportGnatCulled(); return true; }',
+        '个人收据才能推进联网委托，暂缺委托时等待重发')
 if remove.count('ReportGnatCulled') != 1:
     errors.append('Remove 里上报了不止一次，会把一只算成多只')
 dispose = body(gnats, 'public void Dispose()', GNATS)

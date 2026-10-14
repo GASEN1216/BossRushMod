@@ -144,8 +144,8 @@ def check(sources):
     if unused:
         errors.append("这些段没有任何标记（报告里恒为 0，读起来像「这一段不花时间」）：" + ",".join(unused))
     update = squash(body_of(clean_source(sources[SESSION]), "private void Update()") or "")
-    if "TickSubsystems();" not in update:
-        errors.append("会话 Update 必须调用 TickSubsystems()：遭遇到环境音这几段的分段标记在它里面")
+    if update.count("TickSubsystems();") != 2 or "if(BossRushCoop.IsConnected)TickSubsystems();" not in update:
+        errors.append("会话 Update 的普通推进与联机个人对话期间都必须调用 TickSubsystems()：世界继续推进且分段标记不中断")
     if starts != 1 or not update.strip().startswith(squash("if (closed) return; SkyIslandFrameProfile.Start();")):
         errors.append("SkyIslandFrameProfile.Start() 全仓只许一处，就在会话 Update 开头（实际 %d 处）" % starts)
 
@@ -220,7 +220,7 @@ def main():
         (PROFILE, '"ground_probe", "hud_refresh"', '"ground_probe"'),
         (PROFILE, "#else\n            frames = null;\n            return false;\n#endif", "#endif"),
         (SESSION_TICK, "            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Encounters);\n", ""),
-        (SESSION, "            TickSubsystems();\n", ""),
+        (SESSION, "            TickSubsystems();\n", "            return;\n"),
         (FIELDCRAFT, "            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Gnats);\n", ""),
         (WORLD, "            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Pigeon);\n", "            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Hud);\n"),
         (SESSION, "            SkyIslandFrameProfile.Start();\n", ""),

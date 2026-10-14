@@ -62,7 +62,7 @@ def main():
     require(prepare, "SummonStaffAction.PreparePreset();", "preset preparation missing")
     require(body(manager, "protected override void OnDestroy()"), "OnMainCharacterChangeHoldItemAgentEvent -= OnHoldItemChanged;", "hold event cleanup missing")
     action = source("Integration/NewWeapons/SummonStaff/SummonStaffAction.cs")
-    spawn = body(action, "private async UniTaskVoid SpawnAlliesAsync(")
+    spawn = body(action, "private async UniTask SpawnAlliesAsync(")
     assert "FindPreset(" not in spawn, "first-click spawn cannot scan presets"
     require(spawn, "await UniTask.NextFrame();", "allies must be created in distinct frames")
     require(body(action, "protected override bool IsReadyInternal()"), "if (cachedPreset == null) return false;", "cast must await preset preparation")

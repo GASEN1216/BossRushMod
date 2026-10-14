@@ -107,6 +107,7 @@ class Program
         CheckWitchDeathOrdering();
         CheckDragonDeathOrdering();
         CheckCustomBossRuntimePresetCleanup();
+        CheckCoopDelayedContext();
         Console.WriteLine("Codex regression checks=" + checks);
     }
 
@@ -193,6 +194,26 @@ class Program
         Check(CodexOfficialBossRegistry.IsOfficialCreature("Cname_Bear")
             && CodexPersistence.Current.Find("Cname_Bear") == null,
             "official non-boss creatures do not gain kill eligibility from the display roster");
+    }
+
+    static void CheckCoopDelayedContext()
+    {
+        Reset();BossRushCoop.IsHost=true;
+        ModBehaviour.Instance.IsModeDActive=true;CodexSceneNames.Captured="original-coop-map";
+        Kill("Cname_StormBoss1");
+        Check(CodexPersistence.Current.Find("Cname_StormBoss1")==null && CoopPersonalProgressRuntimeModule.Owner=="killer"
+            && CoopPersonalProgressRuntimeModule.Mode==CodexTuning.ModeIdModeD && CoopPersonalProgressRuntimeModule.Scene=="original-coop-map",
+            "host kill captures original player's map and mode before personal delivery");
+        BossRushCoop.IsHost=false;BossRushCoop.IsClient=true;ModBehaviour.Instance.IsModeDActive=false;
+        LevelManager.Instance.IsBaseLevel=true;CodexSceneNames.Captured="current-base";
+        long originalTicks=DateTime.UtcNow.AddDays(-1).Ticks;
+        Check(CodexKillCollector.ApplyCoopKill(CoopPersonalProgressRuntimeModule.Key,CoopPersonalProgressRuntimeModule.Seconds,
+            CoopPersonalProgressRuntimeModule.Mode,CoopPersonalProgressRuntimeModule.Scene,originalTicks),"delayed host-authorized personal kill can apply after return to base");
+        var entry=CodexPersistence.Current.Find("Cname_StormBoss1");
+        Check(entry.FirstMode==CodexTuning.ModeIdModeD && entry.FirstScene=="original-coop-map",
+            "late receipt retains first-kill source context and cannot record the receiving base");
+        Check(entry.FirstKillTicks==originalTicks,"late receipt retains actual first-kill timestamp instead of receipt time");
+        BossRushCoop.IsClient=false;LevelManager.Instance.IsBaseLevel=false;CodexSceneNames.Captured="Level_GroundZero_Main";Reset();
     }
 
     static void CheckActualPlayerTeam()

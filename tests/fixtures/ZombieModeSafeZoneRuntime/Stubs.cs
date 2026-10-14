@@ -143,6 +143,13 @@ public sealed class ItemAgent_Gun
 
 namespace BossRush
 {
+    internal static partial class BossRushCoop
+    {
+        internal static IEnumerable<BossRushCoopPlayer> Players { get { return new BossRushCoopPlayer[0]; } }
+        internal static CharacterMainControl GetCombatTarget(UnityEngine.Vector3 position) { return CharacterMainControl.Main; }
+    }
+    internal sealed class BossRushCoopPlayer { internal bool IsAlive; internal CharacterMainControl Character; }
+    internal sealed class CoopZombieArea { public UnityEngine.Vector3 Origin; public float Radius, Strength; }
     internal static class ModBehaviour { public static void DevLog(string text) { } }
     internal static class SpawnPositionHelper
     {
@@ -177,6 +184,9 @@ namespace BossRush
     }
     internal sealed partial class ZombieModeRuntimeModule
     {
+        private CharacterMainControl coopZombieCommandPlayer;
+        private void SendCoopZombieCommand(string action, int value = 0, string text = null, bool flag = false) { throw new InvalidOperationException("Offline fixture"); }
+        private bool CoopZombieAllPlayersInsideSafeZone() { throw new InvalidOperationException("Offline fixture"); }
         private bool TryResolveZombieModeSpawnPoint(UnityEngine.Vector3 point,bool virtualPoint,out UnityEngine.Vector3 result,float navMeshSampleRadius=-1f)
         {
             result=SpawnPositionHelper.Succeed ? SpawnPositionHelper.Resolved : point;
@@ -192,3 +202,13 @@ namespace BossRush
         private void UpdateZombieModeSafeZoneVisual() { Probe.Trace.Add("visual:" + runState.RunId); }
     }
 }
+namespace UnityEngine
+{
+    internal static class JsonUtility
+    {
+        internal static string ToJson(object value) { throw new System.InvalidOperationException("Offline fixture"); }
+    }
+}
+
+// This original fixture executes offline; slot/network semantics are tested in ZombieCoopFlow.
+namespace BossRush { internal sealed partial class ZombieModeRuntimeModule { private static CharacterMainControl GetCoopZombieTarget(UnityEngine.Vector3 position) { return CharacterMainControl.Main; } } }

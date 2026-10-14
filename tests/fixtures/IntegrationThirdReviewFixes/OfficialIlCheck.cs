@@ -107,3 +107,12 @@ internal static class OfficialIlCheck
         return 0;
     }
 }
+
+namespace BossRush
+{
+    // 仅为离线 IL 合同提供单机玩家判定，不初始化真实游戏对象或联机服务。
+    internal static class BossRushCoop
+    {
+        internal static bool IsPlayer(CharacterMainControl character) { return character != null && character.IsMainCharacter; }
+    }
+}

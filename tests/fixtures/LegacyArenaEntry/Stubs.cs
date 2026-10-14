@@ -297,3 +297,16 @@ internal static class Scheduler
     }
     internal static void Reset() { foreach(Coroutine c in Running.ToArray())Stop(c); }
 }
+
+namespace BossRush {
+ internal sealed partial class ModeDRuntimeModule {
+ private CoopGameplayChannel<object> coopChannel; private CoopPersonalDelivery<object> coopPersonal;
+ private bool coopProjectionRetiring; private string coopEpoch,coopDeliveredEpoch;
+ private bool RetryCoopModeDEntry() { return false; }
+ private bool TryCommitCoopModeDStarter() { return false; }
+ private void RefreshCoopModeDParticipants() { }
+ private void InitializeCoopModeD() { } private void TickCoopModeD(float delta) { }
+ }
+ internal sealed class CoopArenaEntryAdapter { internal int CoopEntryMode; internal void SetCoopEntryMode(int mode) { CoopEntryMode = mode; } internal System.Collections.IEnumerator SetupCoopClientEntry(UnityEngine.SceneManagement.Scene scene, System.Action entry, System.Action continuation, System.Action rescue) { yield break; } internal void TryCreateArenaRescueTeleport(System.Action rescue) { try { rescue(); } catch { } } }
+ public partial class ModBehaviour { private readonly CoopArenaEntryAdapter wavesArenaRuntime = new CoopArenaEntryAdapter(); }
+}

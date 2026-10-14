@@ -32,6 +32,7 @@ public class CharacterMainControl : UnityEngine.Object
     public readonly UnityEngine.Transform transform = new UnityEngine.Transform();
     public static CharacterMainControl Main;
     public Health Health;
+    public object mainDamageReceiver;
     public Teams Team;
     public bool IsMainCharacter;
     public bool isBossCharacter;
@@ -51,16 +52,33 @@ public class Health : UnityEngine.Object
 {
     public bool IsMainCharacterHealth;
     public bool IsDead;
+    public bool Invincible, AcceptHurt = true;
+    public float MaxHealth = 100f;
+    public int HurtCalls;
     public DeathEvent OnDeadEvent;
     public CharacterMainControl Character;
     public CharacterMainControl TryGetCharacter() { return Character; }
+    // 官方边界：无敌、加载中或拒绝伤害时返回 false；真实终章死亡编排仍由生产事件监听执行。
+    public bool Hurt(DamageInfo damage)
+    {
+        HurtCalls++;
+        if (Invincible || SceneLoader.IsSceneLoading || IsDead || !AcceptHurt) return false;
+        IsDead = true;
+        OnDeadEvent.Invoke();
+        return true;
+    }
 }
 
 public struct DamageInfo
 {
     public float finalDamage;
+    public float damageValue;
+    public bool ignoreArmor;
+    public object toDamageReceiver;
+    public UnityEngine.Vector3 damagePoint;
     public int fromWeaponItemID;
     public CharacterMainControl fromCharacter;
+    public DamageInfo(CharacterMainControl player) : this() { fromCharacter = player; }
 }
 
 namespace BossRush
@@ -128,6 +146,7 @@ namespace BossRush
         internal static HashSet<string> Clues = new HashSet<string>();
         internal static bool IsClueUnlocked(string id) { return Clues.Contains(id); }
         internal static CampaignChapterState GetState(string id) { return State; }
+        internal static string GetActiveChapterId() { return Active; }
         internal static CampaignChapterDef GetActiveChapterDef() { return CampaignContentCatalog.GetChapter(Active); }
         internal static bool NotifyObjectivesSatisfied(string chapter)
         {
@@ -154,4 +173,24 @@ namespace Duckov.NoteIndexs
         public static bool GetNoteUnlocked(string key) { return Instance != null && Instance.UnlockedNotes.Contains(key); }
         public static void SetNoteUnlocked(string key) { if (Instance != null) Instance.UnlockedNotes.Add(key); }
     }
+}
+
+namespace BossRush {
+ internal sealed class CoopCampaignFact { public string Kind,Mode,RunId; public bool Melee,Boss,Bounty; public int Wave,SceneGeneration; }
+ internal sealed partial class CampaignRuntimeModule {
+ private static CampaignRuntimeModule coopOwner;
+ private CoopPersonalDelivery<CoopCampaignFact> coopFacts;
+ private CoopGameplayChannel<object> coopWorld;
+ private bool coopRemoteFinalAdmission;
+ private void InitializeCoopCampaign() { }
+ private bool DeliverCoopCampaignFact(string id, CoopCampaignFact fact) { return false; }
+ internal bool ApplyFactForTest(CoopCampaignFact fact) { return ApplyCoopCampaignFact(fact); }
+ }
+}
+
+namespace BossRush {
+ internal static partial class BossRushCoop { internal static bool IsPlayer(CharacterMainControl value) { return object.ReferenceEquals(value, CharacterMainControl.Main); } }
+ internal sealed partial class CampaignRuntimeModule { internal static bool ReportCoopCampaignKill(CharacterMainControl victim,bool melee,bool boss,bool bounty) { return false; } }
+ internal sealed class CoopArenaEntryAdapter { internal int CoopEntryMode; internal void SetCoopEntryMode(int mode) { CoopEntryMode = mode; } internal System.Collections.IEnumerator SetupCoopClientEntry(UnityEngine.SceneManagement.Scene scene, System.Action entry, System.Action continuation, System.Action rescue) { yield break; } internal void TryCreateArenaRescueTeleport(System.Action rescue) { try { rescue(); } catch { } } }
+ public partial class ModBehaviour { private readonly CoopArenaEntryAdapter wavesArenaRuntime = new CoopArenaEntryAdapter(); }
 }

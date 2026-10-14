@@ -11,6 +11,11 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT_FIXTURES = (
+    "DragonKingCoopWorld",
+    "WaylayerEscrow",
+    "ModeFCoop",
+    "ModeECoopEpoch",
+    "ArenaCoop", "CoopAiPrediction", "CoopContent", "CoopSpouses", "CoopWorldRuntime", "DeathWraithCoop", "RandomEventsCoop", "SkyIslandCoopCommands", "ZombieCoopFlow", "ModeHCoop", "CoopInstalledApi",
     "PhantomScytheLocalization",
     "SandstormCombatRuntime", "SandstormCombatTiming",
     "BossHealthScaling",
@@ -37,6 +42,11 @@ SCRIPT_FIXTURES = (
     "SkyIslandValidationJudges", "F3AutotestJudges", "SpawnPositionPolicy", "EnemySpawnRuntime", "EnemyRecoveryRuntime", "RandomEventEffectsOwners", "ModeEFSpawnPreparation", "ModeEFEnemySpawnRuntime", "ModeEFSpawnPostprocessScheduler", "ModeEFVirtualSpawnerRegistry", "ModeEFMerchantCatalog", "FlightTotemRuntimeModule", "EquipmentBootstrapOwners", "AwenLootSweepRuntime", "WavesArenaPresetWeight", "BirthdayCakeGift",
 )
 PROJECT_FIXTURES = {
+    "CoopJson": "CoopJson.csproj",
+    "CoopSession": "CoopSession.csproj",
+    "CoopProtocol": "CoopProtocol.csproj",
+    "MutatorCoop": "MutatorCoop.csproj",
+    "CoopPersonalProgress": "CoopPersonalProgress.csproj",
     "SandstormChampionPattern": "SandstormChampionPattern.csproj",
     "EmptyMagazineMine": "EmptyMagazineMine.csproj",
     "RollCallLedger": "RollCallLedger.csproj",

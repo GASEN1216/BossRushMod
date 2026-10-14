@@ -5,6 +5,16 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using UnityEngine;
 
+namespace BossRush
+{
+    internal static class PetNestCoopRuntimeModule
+    {
+        internal static void RequestLocalDeployment(PetNestPetRecord pet) { }
+        internal static void PublishLocalCompanion(PetNestCompanionHandle handle, PetNestPetRecord pet) { }
+        internal static void ReleaseLocalCompanion() { }
+    }
+}
+
 namespace Cysharp.Threading.Tasks
 {
     [AsyncMethodBuilder(typeof(TaskBuilder))]

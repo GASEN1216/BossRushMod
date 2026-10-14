@@ -92,8 +92,8 @@ namespace UnityEngine
 }
 namespace UnityEngine.SceneManagement
 {
-    public struct Scene { public int buildIndex; }
-    public static class SceneManager { public static Scene GetActiveScene() { return new Scene { buildIndex = 17 }; } }
+    public struct Scene { public int buildIndex, handle; }
+    public static class SceneManager { public static int Handle=1; public static Scene GetActiveScene() { return new Scene { buildIndex = 17, handle=Handle }; } }
 }
 namespace BossRush
 {
@@ -142,6 +142,7 @@ namespace BossRush
         internal ModeFRuntimeModule F;
         internal bool IsModeFActive { get { return F != null && F.modeFActive; } }
         internal bool IsModeFSessionStillValid(int token, int scene) { return F != null && F.IsModeFSessionStillValid(token, scene); }
+        internal int CurrentModeFSessionToken { get { return F.CurrentToken; } }
         internal static bool DevModeEnabled { get { return false; } }
         internal static bool ModeEFSpawnProfilingEnabled { get { return false; } }
         internal static void DevLog(string text) { }
