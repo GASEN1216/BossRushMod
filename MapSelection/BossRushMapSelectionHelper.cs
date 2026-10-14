@@ -47,7 +47,7 @@ namespace BossRush
     /// BossRush 地图选择 UI 辅助类
     /// 注：地图配置已统一到 BossRushMapConfig，此类仅负责 UI 交互
     /// </summary>
-    public static class BossRushMapSelectionHelper
+    public static partial class BossRushMapSelectionHelper
     {
         private enum BossRushEntryFlowSource
         {
@@ -275,6 +275,7 @@ namespace BossRush
         /// <summary>标记本次启动来自地图选择 UI，并冻结显式入场意图类别。</summary>
         public static void MarkEntryFlowFromMapSelectionUi(BossRushPendingEntryKind kind)
         {
+            FreezeEntryAssetLease();
             pendingInitialSpawn = false;
             pendingEntryFlowSource = BossRushEntryFlowSource.MapSelectionUi;
             pendingPrepaidTicketForCurrentEntry = false;
@@ -300,6 +301,7 @@ namespace BossRush
         /// <summary>标记本次启动来自直接传送路径，并冻结显式入场意图类别。</summary>
         public static void MarkEntryFlowFromDirectTeleport(BossRushPendingEntryKind kind)
         {
+            FreezeEntryAssetLease();
             pendingInitialSpawn = false;
             pendingEntryFlowSource = BossRushEntryFlowSource.DirectTeleport;
             pendingPrepaidTicketForCurrentEntry = false;
@@ -312,6 +314,7 @@ namespace BossRush
         /// </summary>
         public static void MarkTargetSceneLoadStarted()
         {
+            if (!IsPendingEntryAssetCurrent()) return;
             if (pendingEntryKind == BossRushPendingEntryKind.ModeH) return;
             pendingPrepaidTicketForCurrentEntry =
                 pendingEntryFlowSource == BossRushEntryFlowSource.MapSelectionUi;
@@ -363,13 +366,13 @@ namespace BossRush
         /// </summary>
         public static bool HasPendingPrepaidTicket()
         {
-            return pendingPrepaidTicketForCurrentEntry && (pendingEntryKind != BossRushPendingEntryKind.ModeH
+            return IsPendingEntryAssetCurrent() && pendingPrepaidTicketForCurrentEntry && (pendingEntryKind != BossRushPendingEntryKind.ModeH
                 || pendingModeHSlot == Saves.SavesSystem.CurrentSlot);
         }
 
         public static bool HasPendingModeGEntryIntent()
         {
-            return pendingEntryKind == BossRushPendingEntryKind.ModeG;
+            return IsPendingEntryAssetCurrent() && pendingEntryKind == BossRushPendingEntryKind.ModeG;
         }
 
         /// <summary>当前冻结的显式入场意图类别。</summary>
@@ -390,6 +393,7 @@ namespace BossRush
         /// </summary>
         public static int FreezeModeHEntryIntent(string targetSceneName, string targetSceneId)
         {
+            FreezeEntryAssetLease();
             pendingEntryKind = BossRushPendingEntryKind.ModeH;
             pendingModeHTargetSceneName = targetSceneName;
             pendingModeHTargetSceneId = targetSceneId;
@@ -443,6 +447,7 @@ namespace BossRush
         /// </summary>
         public static void ClearPendingEntryFlowState()
         {
+            DeferWrongAssetPrepaidTicket();
             bool wasModeH = pendingEntryKind == BossRushPendingEntryKind.ModeH;
             pendingInitialSpawn = false;
             pendingEntryFlowSource = BossRushEntryFlowSource.None;

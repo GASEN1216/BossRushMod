@@ -319,8 +319,13 @@ namespace BossRush
 
             try
             {
+                // 客端只消费房主鉴权、个人频道已去重的 Boss 类型事实；不要求死亡 AI 镜像仍存在。
                 if (bossMain == null)
-                    return false;
+                {
+                    if (string.IsNullOrEmpty(bossTypeOverride)) return false;
+                    CheckBossKillAchievements(bossTypeOverride);
+                    return true;
+                }
 
                 if (achievementCountedBossKills.Contains(bossMain))
                     return false;

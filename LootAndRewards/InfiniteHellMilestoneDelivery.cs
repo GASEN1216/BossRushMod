@@ -25,6 +25,7 @@ namespace BossRush
         private float retryAt;
         private Vector3 position;
         private bool converted;
+        private readonly System.Collections.Generic.Dictionary<int, int> participantCopies = new System.Collections.Generic.Dictionary<int, int>();
 
         internal static long SaturatingReward(int tier, long unit)
         {
@@ -69,8 +70,10 @@ namespace BossRush
             return a > long.MaxValue - b ? long.MaxValue : a + b;
         }
 
-        internal void Enqueue(int tier, Vector3 dropPosition)
+        internal void Enqueue(int tier, Vector3 dropPosition, int copies = 1)
         {
+            if (tier <= 0 || copies <= 0 || participantCopies.ContainsKey(tier)) return;
+            participantCopies.Add(tier, copies);
             requestedTier = Math.Max(requestedTier, tier);
             position = dropPosition;
         }
@@ -91,8 +94,10 @@ namespace BossRush
                     if (crownValue <= 0 || cash.MaxStackCount <= 0)
                     { retryAt = Time.unscaledTime + 1f; return; }
                     activeTier = completedTier + 1;
-                    crownsRemaining = SaturatingReward(activeTier, 1);
-                    cashRemaining = SaturatingReward(activeTier, 10000000);
+                    int copies;
+                    if (!participantCopies.TryGetValue(activeTier, out copies)) copies = 1;
+                    crownsRemaining = SaturatingReward(activeTier, copies);
+                    cashRemaining = SaturatingReward(activeTier, 10000000L * copies);
                     cashPerPile = Math.Max(1, cashRemaining / PhysicalCashPiles);
                     cashStackLimit = cash.MaxStackCount;
                     crownDrops = (int)Math.Min(PhysicalCrowns, crownsRemaining);

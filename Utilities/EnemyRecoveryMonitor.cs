@@ -231,6 +231,7 @@ namespace BossRush
 
         internal void UpdateEnemyRecoveryMonitor()
         {
+            if (!BossRushCoop.HasWorldAuthority) return;
             try
             {
                 // Mode G 门控（加法分支）：no-throw 读取 Mode G 运行状态，
@@ -258,7 +259,7 @@ namespace BossRush
                 }
                 enemyRecoveryCheckTimer = 0f;
 
-                CharacterMainControl player = CharacterMainControl.Main;
+                CharacterMainControl player = BossRushCoop.IsConnected ? BossRushCoop.GetCombatTarget(Vector3.zero) : CharacterMainControl.Main;
                 if (player == null)
                 {
                     return;
@@ -330,6 +331,8 @@ namespace BossRush
 
         internal void MonitorEnemyRecovery(CharacterMainControl enemy, CharacterMainControl player, Component zombieMarker = null)
         {
+            if (!CoopAiPredictionHealthProtection.HasEntityAuthority(enemy)) return;
+            if (BossRushCoop.IsConnected && enemy != null) player = BossRushCoop.GetCombatTarget(enemy.transform.position);
             if (enemy == null)
             {
                 return;
@@ -532,6 +535,7 @@ namespace BossRush
             out Vector3 recoveredPos)
         {
             recoveredPos = Vector3.zero;
+            if (!CoopAiPredictionHealthProtection.HasEntityAuthority(enemy)) return false;
 
             try
             {
@@ -561,11 +565,13 @@ namespace BossRush
 
                 try
                 {
+                    if (!CoopAiPredictionHealthProtection.HasEntityAuthority(enemy)) return false;
                     enemy.SetPosition(targetPos);
                 }
                 catch (Exception setPositionEx)
                 {
                     ModBehaviour.DevLog("[EnemyRecovery] [WARNING] SetPosition 恢复敌人失败，改用 transform.position: " + setPositionEx.Message);
+                    if (!CoopAiPredictionHealthProtection.HasEntityAuthority(enemy)) return false;
                     enemy.transform.position = targetPos;
                 }
 
@@ -918,7 +924,7 @@ namespace BossRush
         }
         internal void ValidateAndFixBossPosition(CharacterMainControl boss)
         {
-            if (boss == null) return;
+            if (!CoopAiPredictionHealthProtection.HasEntityAuthority(boss)) return;
 
             try
             {
@@ -990,7 +996,7 @@ namespace BossRush
 
         internal IEnumerator DelayedBossPositionValidation(CharacterMainControl boss, float delay)
         {
-            if (boss == null) yield break;
+            if (!CoopAiPredictionHealthProtection.HasEntityAuthority(boss)) yield break;
 
             yield return new WaitForSeconds(delay);
 

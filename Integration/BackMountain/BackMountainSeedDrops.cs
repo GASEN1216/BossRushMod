@@ -35,6 +35,7 @@ namespace BossRush
         /// </summary>
         internal void TryAddBackMountainSeedLoot(Inventory inv, CharacterMainControl bossMain)
         {
+            if (!CoopAiPredictionHealthProtection.HasEntityAuthority(bossMain)) return;
             try
             {
                 if (inv == null || bossMain == null) return;
@@ -73,6 +74,7 @@ namespace BossRush
         /// <summary>无间炼狱：没有任何掉落箱，种子落在 Boss 尸体处（与其它额外掉落的世界投放同口径）。</summary>
         internal void TryDropBackMountainSeedIntoWorld(CharacterMainControl bossMain)
         {
+            if (!CoopAiPredictionHealthProtection.HasEntityAuthority(bossMain)) return;
             Item seed = null;
             try
             {
@@ -106,7 +108,7 @@ namespace BossRush
         {
             if (bossMain == null) return null;
             if (!_owner.IsBackMountainConfiguredEnabled()) return null;
-            if (!BackMountainUnlocks.IsFacilityUnlocked(BackMountainFacility.Garden)) return null;
+            if (!CoopPersonalProgressRuntimeModule.AnyGardenUnlocked) return null;
 
             int seedTypeId = ResolveBackMountainSeedTypeId(bossMain);
             if (seedTypeId <= 0) return null;

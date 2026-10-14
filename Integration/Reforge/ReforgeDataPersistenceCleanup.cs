@@ -8,6 +8,25 @@ namespace BossRush
 {
     public static partial class ReforgeDataPersistence
     {
+        /// <summary>网络完整快照替换前撤销旧实例的重铸，包括变成零的差值。</summary>
+        internal static void PrepareNetworkRestore(Item item)
+        {
+            if (item == null || item.Variables == null) return;
+            var remove = new List<CustomData>();
+            foreach (CustomData variable in item.Variables)
+            {
+                PropertyType type;
+                string key;
+                if (variable != null && TryParseReforgeDataKey(variable.Key, out type, out key))
+                {
+                    ResetPropertyToPrefabValue(item, key, type);
+                    remove.Add(variable);
+                }
+            }
+            foreach (CustomData variable in remove) item.Variables.Remove(variable);
+            UnmarkRestored(item);
+        }
+
         private static bool TryParseReforgeDataKey(string variableKey, out PropertyType propertyType, out string propertyKey)
         {
             propertyType = PropertyType.Modifier;

@@ -14,6 +14,7 @@ namespace BossRush
         {
             audioRuntime.BindRuntimeQueries(() => playerCharacter, () => info.path);
             runtimeModuleHost.Register(new ArchitectureSentinelRuntimeModule());
+            BossRushCoop.RegisterModules(runtimeModuleHost);
 
             // 官方任务投影核心单实例纪律：先存字段，再把**同一个引用**注册给 host。
             // 必须排在天空岛与征程之前：两者在自己的 OnAwake 里向它登记任务定义，

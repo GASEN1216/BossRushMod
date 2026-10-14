@@ -22,7 +22,7 @@ namespace BossRush
     /// <summary>
     /// 霜之哀伤右键技能动作 — 亡灵召唤
     /// </summary>
-    public class FrostmourneAction : EquipmentAbilityAction
+    public partial class FrostmourneAction : EquipmentAbilityAction
     {
         private static readonly float[] SummonAngleOffsets = new float[]
         {
@@ -59,6 +59,7 @@ namespace BossRush
 
         // 已召唤的僵尸列表（用于清理）
         private static readonly List<CharacterMainControl> summonedZombies = new List<CharacterMainControl>();
+        private static readonly Dictionary<CharacterMainControl, CharacterMainControl> summonOwners = new Dictionary<CharacterMainControl, CharacterMainControl>();
 
         private static readonly Collider[] spawnCheckBuffer = new Collider[16];
         private static int cachedWallMask = -1;
@@ -105,7 +106,9 @@ namespace BossRush
             {
                 spawningStarted = true;
                 int spawnRequestId = activeSpawnRequestId;
-                SpawnZombiesAsync(spawnRequestId).Forget();
+                if (BossRushCoop.IsClient)
+                { BossRushCoopContentRuntimeModule.RequestSummon(2); spawningComplete = true; }
+                else SpawnZombiesAsync(spawnRequestId).Forget();
             }
 
             if (spawningComplete || actionElapsedTime >= FrostmourneConfig.TotalActionDuration)
@@ -130,11 +133,11 @@ namespace BossRush
         /// <summary>
         /// 异步生成 5 只僵尸
         /// </summary>
-        private async UniTaskVoid SpawnZombiesAsync(int spawnRequestId)
+        private async UniTask SpawnZombiesAsync(int spawnRequestId)
         {
             try
             {
-                CharacterMainControl player = CharacterMainControl.Main;
+                CharacterMainControl player = coopOwner != null ? coopOwner : CharacterMainControl.Main;
                 if (player == null)
                 {
                     LogIfVerbose("玩家角色为空，取消召唤");
@@ -156,7 +159,7 @@ namespace BossRush
 
                 // 清理之前已死亡的僵尸引用
                 CleanupDeadZombies();
-                int availableSlots = Mathf.Max(0, FrostmourneConfig.SummonCount - summonedZombies.Count);
+                int availableSlots = Mathf.Max(0, FrostmourneConfig.SummonCount - GetCountForOwner(player));
                 if (availableSlots <= 0)
                 {
                     LogIfVerbose("当前亡灵数量已满，本次不再追加召唤");
@@ -164,7 +167,7 @@ namespace BossRush
                 }
 
                 List<Vector3> reservedSpawnPositions = CollectReservedZombieSpawnPositions();
-                int summonStartSlotIndex = summonedZombies.Count;
+                int summonStartSlotIndex = GetCountForOwner(player);
 
                 // 仅补齐缺额，保证场上同时最多 5 只亡灵
                 for (int i = 0; i < availableSlots; i++)
@@ -237,6 +240,9 @@ namespace BossRush
 
                             // 记录到列表
                             summonedZombies.Add(zombie);
+                            summonOwners[zombie] = player;
+                            BossRushCoopContentRuntimeModule.TrackSummon(zombie, player);
+                            BossRushCoop.RequestAiRegistration(zombie);
                             reservedSpawnPositions.Add(zombie.transform.position);
                             RefreshSummonedZombieFollowerSlots(player);
                             successfulSummons++;
@@ -269,7 +275,7 @@ namespace BossRush
 
                 // 显示召唤成功气泡
                 CleanupDeadZombies();
-                int currentCount = summonedZombies.Count;
+                int currentCount = GetCountForOwner(player);
                 ShowSummonSuccessBubble(player, currentCount, successfulSummons);
             }
             catch (Exception e)
@@ -370,10 +376,13 @@ namespace BossRush
                 return false;
             }
 
-            if (!isActiveAndEnabled || player == null || CharacterMainControl.Main != player)
+            if (!isActiveAndEnabled || player == null || (coopOwner == null && CharacterMainControl.Main != player))
             {
                 return false;
             }
+            if (coopOwner != null && (!BossRushCoop.IsHost || coopRun != BossRushCoop.RunId || coopScene != BossRushCoop.SceneGeneration
+                || !BossRushCoopContentRuntimeModule.IsSummonOwnerCurrent(player, coopAsset) || player.CurrentHoldItemAgent == null
+                || player.CurrentHoldItemAgent.Item == null || player.CurrentHoldItemAgent.Item.TypeID != FrostmourneIds.WeaponTypeId)) return false;
 
             if (player.Health != null && player.Health.IsDead)
             {
@@ -530,13 +539,14 @@ namespace BossRush
         /// </summary>
         internal static int GetActiveSummonedZombieCount()
         {
+            if (BossRushCoop.IsClient) return BossRushCoopContentRuntimeModule.LocalSummonCount(2);
             CleanupDeadZombies();
             CharacterMainControl player = CharacterMainControl.Main;
             if (player != null)
             {
                 RefreshSummonedZombieFollowerSlots(player);
             }
-            return summonedZombies.Count;
+            return GetCountForOwner(player);
         }
 
         internal static bool IsSummonCapReached()
@@ -551,6 +561,7 @@ namespace BossRush
                 return;
             }
 
+            int slot = 0;
             for (int i = 0; i < summonedZombies.Count; i++)
             {
                 CharacterMainControl zombie = summonedZombies[i];
@@ -558,6 +569,8 @@ namespace BossRush
                 {
                     continue;
                 }
+                CharacterMainControl summoner;
+                if (!summonOwners.TryGetValue(zombie, out summoner) || summoner != player) continue;
 
                 FrostmourneZombieFollower follower = zombie.GetComponent<FrostmourneZombieFollower>();
                 if (follower == null)
@@ -565,7 +578,7 @@ namespace BossRush
                     follower = zombie.gameObject.AddComponent<FrostmourneZombieFollower>();
                 }
 
-                follower.Initialize(player, i);
+                follower.Initialize(player, slot++);
             }
         }
 
@@ -581,6 +594,7 @@ namespace BossRush
                     (zombie.Health != null && zombie.Health.IsDead))
                 {
                     summonedZombies.RemoveAt(i);
+                    if (!ReferenceEquals(zombie, null)) summonOwners.Remove(zombie);
                 }
             }
         }
@@ -655,6 +669,24 @@ namespace BossRush
                 catch { }
             }
             summonedZombies.Clear();
+            summonOwners.Clear();
+        }
+        internal static void ResetStaticCaches()
+        {
+            CleanupAllSummonedZombies();
+            ResetPresetCache();
+        }
+        internal static int GetCountForOwner(CharacterMainControl player)
+        {
+            BossRushCoopContentRuntimeModule.PruneSummonOwners();
+            CleanupDeadZombies();
+            int count = 0;
+            foreach (CharacterMainControl zombie in summonedZombies)
+            {
+                CharacterMainControl summoner;
+                if (summonOwners.TryGetValue(zombie, out summoner) && summoner == player && BossRushCoopContentRuntimeModule.IsSummonOwnedBy(zombie, player)) count++;
+            }
+            return count;
         }
     }
 

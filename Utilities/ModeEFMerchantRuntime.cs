@@ -45,6 +45,22 @@ namespace BossRush
         }
 
         internal List<StockShop> Shops { get { return modeEMerchantShops; } }
+        internal string CoopEntity { get { return BossRushCoop.GetEntityId(modeEMerchantNPC); } }
+        private bool coopReplica;
+
+        internal void BindCoopEntity(string entity)
+        {
+            if (!BossRushCoop.IsClient) return;
+            CharacterMainControl character = BossRushCoop.FindEntity(entity);
+            if (character == modeEMerchantNPC) return;
+            if (character == null && !string.IsNullOrEmpty(entity)) return; // AI 快照可能晚于模式快照。
+            CleanupModeEMerchant();
+            if (character == null) return;
+            CoopAiPredictionHealthProtection.MarkReplica(character);
+            modeEMerchantNPC = character;
+            coopReplica = true;
+            BuildModeEMerchantShop(character.gameObject);
+        }
 
         // ====================================================================
         // Mode E 神秘商人字段
@@ -79,10 +95,23 @@ namespace BossRush
             int modeESessionRelatedScene = -1)
         {
             CharacterMainControl spawnedCharacter = null;
+            bool requestConnected = BossRushCoop.IsConnected;
+            bool requestHost = BossRushCoop.IsHost;
+            string requestRoom = BossRushCoop.RunId;
+            int requestSceneHandle = UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle;
             Func<bool> isRequestCurrent = () =>
             {
                 try
                 {
+                    if (BossRushCoop.IsConnected != requestConnected ||
+                        requestConnected && BossRushCoop.IsHost != requestHost ||
+                        UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle != requestSceneHandle) return false;
+                    string currentRoom = BossRushCoop.RunId;
+                    if (requestConnected && !string.IsNullOrEmpty(currentRoom))
+                    {
+                        if (string.IsNullOrEmpty(requestRoom)) requestRoom = currentRoom;
+                        else if (!string.Equals(requestRoom, currentRoom, StringComparison.Ordinal)) return false;
+                    }
                     return policy.IsSpawnSessionValid(
                         modeFSessionToken, modeFRelatedScene, modeESessionToken, modeESessionRelatedScene);
                 }
@@ -94,6 +123,7 @@ namespace BossRush
             };
             try
             {
+                if (BossRushCoop.IsClient) return;
                 if (!isRequestCurrent()) return;
 
                 if (modeESessionToken > 0 &&
@@ -180,6 +210,8 @@ namespace BossRush
                 // 验证阵营有效性后再设置（policy.PlayerFaction() 默认为 Teams.player）
                 character.SetTeam(policy.PlayerFaction());
                 modeEMerchantNPC = character;
+                coopReplica = false;
+                BossRushCoop.RequestAiRegistration(character);
 
                 // 设置商人生命值为 999999
                 policy.SetMerchantHealth(character);
@@ -224,7 +256,7 @@ namespace BossRush
                 {
                     npcGo = modeEMerchantNPC.gameObject;
                 }
-                if (npcGo != null)
+                if (npcGo != null && !coopReplica)
                 {
                     npcGo.SetActive(false);
                     UnityEngine.Object.Destroy(npcGo);
@@ -732,7 +764,7 @@ namespace BossRush
                 {
                     try
                     {
-                        if (modeEMerchantNPC.gameObject != null)
+                        if (!coopReplica && modeEMerchantNPC.gameObject != null)
                         {
                             UnityEngine.Object.Destroy(modeEMerchantNPC.gameObject);
                         }
@@ -740,6 +772,7 @@ namespace BossRush
                     catch { }
                     modeEMerchantNPC = null;
                 }
+                coopReplica = false;
 
                 ModBehaviour.DevLog("[ModeE] 神秘商人已清理");
             }

@@ -43,6 +43,10 @@ namespace BossRush
         private bool spawningComplete;
         private int activeSpawnRequestId;
         private bool keepPendingSpawnOnStop;
+        private CharacterMainControl coopOwner;
+        private string coopRun;
+        private string coopAsset;
+        private int coopScene;
 
         // 缓存的预设
         private static CharacterRandomPreset cachedPreset;
@@ -50,6 +54,7 @@ namespace BossRush
 
         // 已召唤的友军列表
         private static readonly List<CharacterMainControl> summonedAllies = new List<CharacterMainControl>();
+        private static readonly Dictionary<CharacterMainControl, CharacterMainControl> summonOwners = new Dictionary<CharacterMainControl, CharacterMainControl>();
 
         public static void SetConfig(SummonStaffConfig config)
         {
@@ -71,7 +76,7 @@ namespace BossRush
         {
             if (cachedPreset == null) return false;
             CleanupDeadAllies();
-            if (summonedAllies.Count >= SummonStaffConfig.SummonCount)
+            if ((BossRushCoop.IsClient ? BossRushCoopContentRuntimeModule.LocalSummonCount(1) : GetCountForOwner(CharacterMainControl.Main)) >= SummonStaffConfig.SummonCount)
             {
                 return false;
             }
@@ -93,7 +98,9 @@ namespace BossRush
             {
                 spawningStarted = true;
                 int requestId = activeSpawnRequestId;
-                SpawnAlliesAsync(requestId).Forget();
+                if (BossRushCoop.IsClient)
+                { BossRushCoopContentRuntimeModule.RequestSummon(1); spawningComplete = true; }
+                else SpawnAlliesAsync(requestId).Forget();
             }
 
             if (spawningComplete || actionElapsedTime >= SummonStaffConfig.TotalActionDuration)
@@ -127,11 +134,19 @@ namespace BossRush
         /// <summary>
         /// 异步生成友军
         /// </summary>
-        private async UniTaskVoid SpawnAlliesAsync(int requestId)
+        internal async UniTask SpawnForCoop(CharacterMainControl player)
+        {
+            coopOwner = player; coopRun = BossRushCoop.RunId; coopScene = BossRushCoop.SceneGeneration;
+            coopAsset = BossRushCoop.FindPlayer(BossRushCoop.GetPlayerId(player))?.AssetId;
+            PreparePreset(); activeSpawnRequestId++; spawningStarted = true;
+            await SpawnAlliesAsync(activeSpawnRequestId);
+        }
+
+        private async UniTask SpawnAlliesAsync(int requestId)
         {
             try
             {
-                CharacterMainControl player = CharacterMainControl.Main;
+                CharacterMainControl player = coopOwner != null ? coopOwner : CharacterMainControl.Main;
                 if (player == null) return;
 
                 CharacterRandomPreset preset = cachedPreset;
@@ -148,7 +163,7 @@ namespace BossRush
                 int sceneIndex = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
 
                 CleanupDeadAllies();
-                int availableSlots = Mathf.Max(0, SummonStaffConfig.SummonCount - summonedAllies.Count);
+                int availableSlots = Mathf.Max(0, SummonStaffConfig.SummonCount - GetCountForOwner(player));
                 if (availableSlots <= 0) return;
 
                 int successCount = 0;
@@ -194,6 +209,9 @@ namespace BossRush
                         lifetime.Initialize(SummonStaffConfig.SummonLifetime, ally, player);
 
                         summonedAllies.Add(ally);
+                        summonOwners[ally] = player;
+                        BossRushCoopContentRuntimeModule.TrackSummon(ally, player);
+                        BossRushCoop.RequestAiRegistration(ally);
                         successCount++;
 
                         // 表现层：每只灵魂战士落地一圈紫环（配色取自描述文案的 #BA68C8）
@@ -302,8 +320,10 @@ namespace BossRush
         {
             if (this == null || requestId != activeSpawnRequestId || !spawningStarted)
                 return false;
-            if (!isActiveAndEnabled || player == null || CharacterMainControl.Main != player)
+            if (!isActiveAndEnabled || player == null || (coopOwner == null && CharacterMainControl.Main != player))
                 return false;
+            if (coopOwner != null && (!BossRushCoop.IsHost || coopRun != BossRushCoop.RunId || coopScene != BossRushCoop.SceneGeneration
+                || !BossRushCoopContentRuntimeModule.IsSummonOwnerCurrent(player, coopAsset))) return false;
             if (player.Health != null && player.Health.IsDead)
                 return false;
             if (!ModBehaviour.CanRunGameplayRuntimeCached()) return false;
@@ -414,6 +434,7 @@ namespace BossRush
                     (ally.Health != null && ally.Health.IsDead))
                 {
                     summonedAllies.RemoveAt(i);
+                    if (!ReferenceEquals(ally, null)) summonOwners.Remove(ally);
                 }
             }
         }
@@ -425,6 +446,11 @@ namespace BossRush
         {
             cachedPreset = null;
             presetSearchAttempted = false;
+        }
+        internal static void ResetStaticCaches()
+        {
+            CleanupAllSummonedAllies();
+            ResetPresetCache();
         }
 
         /// <summary>
@@ -444,6 +470,19 @@ namespace BossRush
                 catch  { /* best-effort fallback intentionally ignored */ }
             }
             summonedAllies.Clear();
+            summonOwners.Clear();
+        }
+        internal static int GetCountForOwner(CharacterMainControl player)
+        {
+            BossRushCoopContentRuntimeModule.PruneSummonOwners();
+            CleanupDeadAllies();
+            int count = 0;
+            foreach (CharacterMainControl ally in summonedAllies)
+            {
+                CharacterMainControl summoner;
+                if (summonOwners.TryGetValue(ally, out summoner) && summoner == player && BossRushCoopContentRuntimeModule.IsSummonOwnedBy(ally, player)) count++;
+            }
+            return count;
         }
     }
 

@@ -863,6 +863,16 @@ namespace BossRush
             if (amount > today.MaxSingleHit) today.MaxSingleHit = amount;
         }
 
+        internal static void ReportCoopDamageDealt(float amount, float peak)
+        {
+            if (amount <= 0f || float.IsNaN(amount) || float.IsInfinity(amount)
+                || peak < 0f || float.IsNaN(peak) || float.IsInfinity(peak)) return;
+            DailyReportStats today = TryGetTodayStats();
+            if (today == null) return;
+            today.DamageDealt = (float)Math.Min(float.MaxValue, (double)today.DamageDealt + amount);
+            if (peak > today.MaxSingleHit) today.MaxSingleHit = peak;
+        }
+
         /// <summary>累计承受的伤害。</summary>
         internal static void ReportDamageTaken(float amount)
         {

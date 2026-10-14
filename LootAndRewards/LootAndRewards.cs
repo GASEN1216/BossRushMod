@@ -368,11 +368,6 @@ namespace BossRush
         {
             return wavesArenaRuntime.ComputeLegacyBossLootBonusFactor(maxHealth, killDuration);
         }
-        private static float ComputeBossKillSpeedFactor(float maxHealth, float killDuration)
-        {
-            return WavesArenaRuntimeModule.ComputeBossKillSpeedFactor(maxHealth, killDuration);
-        }
-
         #endregion
 
         #region LootAndRewardsInfiniteHell
@@ -479,6 +474,7 @@ namespace BossRush
             {
                 // 检查是否是BossRush期间的玩家死亡
                 if (!IsActive) return;
+                if (BossRushCoop.IsConnected && (!BossRushCoop.HasWorldAuthority || wavesArenaRuntime.HasLivingCoopArenaParticipant())) return;
 
                 var character = deadHealth.GetComponent<CharacterMainControl>();
                 if (character == null) return;
@@ -494,7 +490,7 @@ namespace BossRush
                     isPlayer = (character == CharacterMainControl.Main);
                 }
 
-                if (!isPlayer) return;
+                if (!isPlayer && !BossRushCoop.IsPlayer(character)) return;
 
                 DevLog("[BossRush] 检测到玩家死亡，不再掉落物品，直接结束BossRush");
 

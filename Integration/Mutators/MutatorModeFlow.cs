@@ -30,6 +30,7 @@ namespace BossRush
         {
             try
             {
+                if (BossRushCoop.IsClient) return;
                 if (!enabled) return;
 
                 CharacterMainControl player = CharacterMainControl.Main;
@@ -38,6 +39,7 @@ namespace BossRush
                 int count = Mathf.Clamp(requestedCount, minimumCount, maximumCount);
                 MutatorManager.RollAndApply(player, count, null, modeTag);
                 MutatorUI.ShowBanner();
+                MutatorCoopRuntimeModule.NotifyRolled(modeTag);
 
                 ModBehaviour.DevLog("[" + (string.IsNullOrEmpty(modeTag) ? "Mutator" : modeTag) +
                        "] 已抽取并应用 " + count + " 条变异词条");

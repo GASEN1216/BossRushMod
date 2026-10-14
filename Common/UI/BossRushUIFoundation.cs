@@ -15,6 +15,7 @@ namespace BossRush
         private static float _modalPreviousTimeScale = 1f;
         private static bool _modalPreviousCursorVisible;
         private static CursorLockMode _modalPreviousCursorLockState;
+        private static bool _modalChangedTimeScale;
 
         internal static bool IsModalInputPaused
         {
@@ -62,7 +63,9 @@ namespace BossRush
                 _modalPreviousCursorVisible = Cursor.visible;
                 _modalPreviousCursorLockState = Cursor.lockState;
 
-                Time.timeScale = 0f;
+                // 联机模态只占用本机输入；世界时钟仍由房主推进。
+                _modalChangedTimeScale = !BossRushCoop.IsConnected;
+                if (_modalChangedTimeScale) Time.timeScale = 0f;
                 Cursor.visible = true;
                 Cursor.lockState = CursorLockMode.None;
             }
@@ -92,7 +95,12 @@ namespace BossRush
                 return;
             }
 
-            Time.timeScale = 0f;
+            if (_modalChangedTimeScale && !BossRushCoop.IsConnected) Time.timeScale = 0f;
+            else if (_modalChangedTimeScale)
+            {
+                Time.timeScale = _modalPreviousTimeScale;
+                _modalChangedTimeScale = false;
+            }
             Cursor.visible = true;
             Cursor.lockState = CursorLockMode.None;
         }
@@ -123,7 +131,8 @@ namespace BossRush
                 return;
             }
 
-            Time.timeScale = _modalPreviousTimeScale;
+            if (_modalChangedTimeScale) Time.timeScale = _modalPreviousTimeScale;
+            _modalChangedTimeScale = false;
             Cursor.visible = _modalPreviousCursorVisible;
             Cursor.lockState = _modalPreviousCursorLockState;
         }

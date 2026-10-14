@@ -83,6 +83,7 @@ namespace BossRush
         /// </summary>
         internal static void OnGlobalDead(Health target, DamageInfo info)
         {
+            if (BossRushCoop.IsConnected) { CoopPersonalProgressRuntimeModule.Dead(target, info); return; }
             if (!IsActive()) return;
             try
             {
@@ -114,6 +115,7 @@ namespace BossRush
         /// </summary>
         internal static void OnGlobalHurt(Health target, DamageInfo info)
         {
+            if (BossRushCoop.IsConnected) { CoopPersonalProgressRuntimeModule.Hurt(target, info); return; }
             if (!IsActive()) return;
             try
             {

@@ -53,6 +53,35 @@ namespace BossRush
     /// <summary>装备词缀 KV 的读写门面。全部方法 no-throw。</summary>
     public static class AffixItemData
     {
+        /// <summary>网络快照完整替换词缀；已有 UI 订阅的条目只写默认值，不移除。</summary>
+        internal static void ApplyNetworkSnapshot(Item item, IList<BossRushCoopItemVariable> snapshot)
+        {
+            if (item == null || item.Variables == null || snapshot == null) return;
+            foreach (CustomData entry in item.Variables)
+            {
+                if (entry == null || !IsAffixVariableKey(entry.Key)) continue;
+                if (entry.DataType == CustomDataType.String) entry.SetString(string.Empty);
+                else if (entry.DataType == CustomDataType.Bool) entry.SetBool(false);
+                else if (entry.DataType == CustomDataType.Int) entry.SetInt(0);
+            }
+            foreach (BossRushCoopItemVariable variable in snapshot)
+                if (IsAffixVariableKey(variable.key))
+                    item.Variables.SetRaw(variable.key, (CustomDataType)variable.type,
+                        Convert.FromBase64String(variable.raw), true, variable.display);
+        }
+
+        internal static bool IsValidNetworkVariable(string key, CustomDataType type, bool display)
+        {
+            if (key == KEY_VERSION || key == KEY_CAPACITY) return type == CustomDataType.Int && !display;
+            for (int slot = 1; slot <= AffixDefinitions.MaxSlots; slot++)
+            {
+                if (key == SlotKey(slot)) return type == CustomDataType.String && !display;
+                if (key == NameKey(slot)) return type == CustomDataType.String && display;
+                if (key == LockKey(slot)) return type == CustomDataType.Bool && !display;
+            }
+            return false;
+        }
+
         #region 键名
 
         /// <summary>schema 版本键（Int，Display=false）。存在即代表这件装备被词缀锻造过。</summary>

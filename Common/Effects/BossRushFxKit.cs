@@ -29,6 +29,7 @@ using UnityEngine;
 namespace BossRush
 {
     /// <summary>一次性粒子爆发的参数。用 <see cref="BossRushFxKit.Sparks"/> 等预设起步再改字段。</summary>
+    [System.Serializable]
     internal struct BossRushFxBurst
     {
         /// <summary>贴图形状。</summary>

@@ -93,7 +93,7 @@ namespace BossRush
 
         private static void CollectBossDeath(Health target, DamageInfo info, string knownBossKey)
         {
-
+            if (BossRushCoop.IsClient) return;
             try
             {
                 // 2) 空目标
@@ -116,10 +116,10 @@ namespace BossRush
                 if (ModBehaviour.IsModeHRunInProgressSafe()) return;
 
                 // 3) 排玩家死亡（玩家自己倒下不进图鉴）
-                if (target.IsMainCharacterHealth) return;
+                if (target.IsMainCharacterHealth || BossRushCoop.IsPlayer(target.TryGetCharacter())) return;
 
                 // 4) 只记主角亲手击杀：随从、雇佣兵、环境伤害都不算
-                if (info.fromCharacter == null || !info.fromCharacter.IsMainCharacter)
+                if (info.fromCharacter == null || !(info.fromCharacter.IsMainCharacter || BossRushCoop.IsPlayer(info.fromCharacter)))
                 {
                     return;
                 }
@@ -164,7 +164,9 @@ namespace BossRush
                             ? CodexTuning.MinimumFightSeconds : elapsed;
                 }
 
-                RecordKill(key, seconds);
+                if (BossRushCoop.IsHost) CoopPersonalProgressRuntimeModule.CodexKill(BossRushCoop.GetPlayerId(info.fromCharacter), key, seconds,
+                    ResolveCurrentModeId(), CodexSceneNames.Capture());
+                else RecordKill(key, seconds);
             }
             catch (Exception)
             {
@@ -178,6 +180,7 @@ namespace BossRush
         internal static void OnGlobalHurt(Health target, DamageInfo info)
         {
             if (!IsActive()) return;
+            if (BossRushCoop.IsClient) return;
 
             try
             {
@@ -187,7 +190,7 @@ namespace BossRush
                 // Mode H 的击杀不进图鉴，配套的最快击杀计时也不能开表——
                 // 否则计时条目只进不出，会白占 MaxFightStartTracked 的额度。
                 if (ModBehaviour.IsModeHRunInProgressSafe()) return;
-                if (info.fromCharacter == null || !info.fromCharacter.IsMainCharacter) return;
+                if (info.fromCharacter == null || !(info.fromCharacter.IsMainCharacter || BossRushCoop.IsPlayer(info.fromCharacter))) return;
                 if (target.IsMainCharacterHealth) return;
                 if (info.finalDamage <= 0f) return;
                 if (PetNestCompanionAgent.IsCompanionHealth(target) || IsBaseLevelSafe()) return;
@@ -357,7 +360,7 @@ namespace BossRush
         /// BossRushSaveCoordinatorEngine.FlushBatch。
         /// fightSeconds &lt;= 0 表示本次没有有效计时，不参与最快击杀。
         /// </summary>
-        private static void RecordKill(string key, float fightSeconds)
+        private static void RecordKill(string key, float fightSeconds, string sourceMode = null, string sourceScene = null, long sourceTicks = 0)
         {
             CodexData data = CodexPersistence.Current;
             if (data == null || CodexPersistence.HasWriteBarrier || CodexPersistence.IsStoreFaulted) return;
@@ -373,11 +376,11 @@ namespace BossRush
             if (entry.Kills < int.MaxValue) entry.Kills++;
             if (firstUnlock)
             {
-                entry.FirstKillTicks = DateTime.UtcNow.Ticks;
-                entry.FirstMode = ResolveCurrentModeId();
+                entry.FirstKillTicks = sourceTicks > 0 ? sourceTicks : DateTime.UtcNow.Ticks;
+                entry.FirstMode = sourceMode ?? ResolveCurrentModeId();
                 // 初见场景：记场景 id，显示时才翻成当前语言的地图名（CodexSceneNames）。
                 // 这里只做一次 O(1) 取值，且只在首次解锁那一击上，不在热路径。
-                entry.FirstScene = CodexSceneNames.Capture();
+                entry.FirstScene = sourceScene ?? CodexSceneNames.Capture();
             }
 
             if (fightSeconds > 0f
@@ -397,6 +400,17 @@ namespace BossRush
             if (firstUnlock) CodexBossCatalog.SynchronizeHistoricalEntries(data);
 
             CodexMilestones.Evaluate(data, fightSeconds);
+        }
+
+        internal static bool ApplyCoopKill(string key, float seconds, string mode, string scene, long ticks = 0)
+        {
+            if (!IsActive() || string.IsNullOrEmpty(key) || CodexPersistence.Current == null
+                || CodexPersistence.HasWriteBarrier || CodexPersistence.IsStoreFaulted) return false;
+            CodexEntry previous = CodexPersistence.Current.Find(key);
+            int kills = previous == null ? 0 : previous.Kills;
+            RecordKill(key, seconds, mode, scene, ticks);
+            CodexEntry current = CodexPersistence.Current.Find(key);
+            return current != null && (kills == int.MaxValue || current.Kills > kills);
         }
 
         /// <summary>是否在基地场景。no-throw。</summary>

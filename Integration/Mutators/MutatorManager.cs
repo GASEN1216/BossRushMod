@@ -20,7 +20,7 @@ namespace BossRush
     /// <summary>
     /// 变异词条核心管理器（静态单例模式）
     /// </summary>
-    public static class MutatorManager
+    public static partial class MutatorManager
     {
         // ═══════════════════════════════════════════
         // 当前局状态
@@ -70,6 +70,7 @@ namespace BossRush
         /// <param name="modeTag">当前模式标签，用于过滤只在特定模式生效的词条</param>
         public static void RollAndApply(CharacterMainControl player, int count = 2, int? seed = null, string modeTag = null)
         {
+            if (BossRushCoop.IsClient) return;
             // 先清理上一局残留（防御性）
             RemoveAll();
 
@@ -109,6 +110,7 @@ namespace BossRush
 
             // 创建上下文
             _currentContext = new MutatorContext { Player = player };
+            coopPlayerItem = player.CharacterItem;
 
             // 逐条应用
             for (int i = 0; i < _activeMutators.Count; i++)
@@ -184,6 +186,7 @@ namespace BossRush
 
             _activeMutators.Clear();
             _currentContext = null;
+            coopPlayerItem = null;
 
             // 4. 强制重置所有全局修改器（双保险）
             BleedRateMultiplier = 1.0f;
@@ -201,6 +204,7 @@ namespace BossRush
         /// </summary>
         public static void ApplyToEnemy(CharacterMainControl enemy)
         {
+            if (!BossRushCoop.HasWorldAuthority) return;
             if (!IsActive) return;
             if (enemy == null) return;
             if (_currentContext == null) return;
@@ -217,6 +221,7 @@ namespace BossRush
                     ModBehaviour.DevLog("[Mutator] ApplyToEnemy 回调失败: " + e.Message);
                 }
             }
+            MutatorCoopRuntimeModule.TrackEnemy(enemy);
         }
 
         /// <summary>
@@ -258,6 +263,7 @@ namespace BossRush
         /// </summary>
         private static void TrySubscribeEnemyKilled()
         {
+            if (BossRushCoop.IsClient) return;
             if (_enemyKilledSubscribed) return;
             if (_currentContext == null) return;
             if (_currentContext.EnemyKilledCallbacks.Count == 0) return;
@@ -284,6 +290,7 @@ namespace BossRush
         {
             try
             {
+                if (MutatorCoopRuntimeModule.TryHandleEnemyKilled(deadHealth, damageInfo)) return;
                 if (!IsActive || _currentContext == null) return;
                 if (_currentContext.EnemyKilledCallbacks.Count == 0) return;
                 if (deadHealth == null) return;
@@ -367,6 +374,7 @@ namespace BossRush
         /// <param name="aliveBosses">当前存活的 Boss 列表（可为 null）</param>
         public static void TickBossRegen(float deltaTime, List<MonoBehaviour> aliveBosses)
         {
+            if (!BossRushCoop.HasWorldAuthority) return;
             if (!BossRegenEnabled) return;
             if (aliveBosses == null || aliveBosses.Count == 0) return;
 

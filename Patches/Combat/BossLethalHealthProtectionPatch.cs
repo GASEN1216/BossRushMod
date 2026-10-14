@@ -152,6 +152,8 @@ namespace BossRush
                 return;
             }
 
+            if (CoopAiPredictionHealthProtection.TryClamp(__instance, ref value)) return;
+
             if (TryClampReverseScale(__instance, ref value))
             {
                 return;

@@ -51,6 +51,15 @@ namespace BossRush
         /// </summary>
         public List<Action<CharacterMainControl, UnityEngine.Vector3>> EnemyKilledCallbacks
             = new List<Action<CharacterMainControl, UnityEngine.Vector3>>();
+
+        internal readonly List<Action<CharacterMainControl, UnityEngine.Vector3>> PersonalEnemyKilledCallbacks
+            = new List<Action<CharacterMainControl, UnityEngine.Vector3>>();
+
+        internal void RegisterPersonalKill(Action<CharacterMainControl, UnityEngine.Vector3> callback)
+        {
+            EnemyKilledCallbacks.Add(callback);
+            PersonalEnemyKilledCallbacks.Add(callback);
+        }
     }
 
     /// <summary>
@@ -803,7 +812,7 @@ namespace BossRush
                 OnApply = ctx =>
                 {
                     // 注册到死亡回调，由 MutatorManager 统一订阅 Health.OnDead（玩家击杀才触发）
-                    ctx.EnemyKilledCallbacks.Add((dead, pos) =>
+                    ctx.RegisterPersonalKill((dead, pos) =>
                     {
                         CharacterMainControl player = ctx.Player;
                         if (player == null || player.Health == null) return;
@@ -839,7 +848,7 @@ namespace BossRush
 
                     // 只走 MutatorManager 已经筛过的"玩家直接归因击杀"回调；
                     // 回血直接调用 Health.AddHealth，故意不再吃一层 HealGain。
-                    ctx.EnemyKilledCallbacks.Add((dead, pos) =>
+                    ctx.RegisterPersonalKill((dead, pos) =>
                     {
                         CharacterMainControl player = ctx.Player;
                         if (player == null || player.Health == null) return;
