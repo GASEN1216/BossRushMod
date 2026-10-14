@@ -46,6 +46,7 @@ namespace BossRush
             }
 
             int clicksAtStart = _sceneClicksFed;
+            int previousSceneHandle = SceneManager.GetActiveScene().handle;
             UniTask task;
             try
             {
@@ -63,7 +64,12 @@ namespace BossRush
             // 「点击继续」由 Update 里的 FeedSceneContinueClickWhenWaiting 统一喂（LoadBaseScene 恒开点击门），这里只数本次喂了几下。
             deadline = Time.realtimeSinceStartup + SceneTimeoutSeconds;
             while (task.Status == UniTaskStatus.Pending && Time.realtimeSinceStartup < deadline)
+            {
+#if BOSSRUSH_DEV
+                if (returnToBase) TryClickAutotestClosureContinue();
+#endif
                 yield return null;
+            }
             _lastSceneClicksFed = _sceneClicksFed - clicksAtStart;
             if (task.Status == UniTaskStatus.Pending)
             {
@@ -81,13 +87,25 @@ namespace BossRush
                 yield break;
             }
 
-            while (!IsRuntimeReady(expectedScene) && Time.realtimeSinceStartup < deadline)
+            // 原版联机加载入口会在提交投票后立即返回 CompletedTask；此时仍可能是旧图。
+            // 包括同图重载在内，必须观察到新的实际场景实例，再核对完整运行时。
+            while ((SceneManager.GetActiveScene().handle == previousSceneHandle || !IsRuntimeReady(expectedScene))
+                && Time.realtimeSinceStartup < deadline)
+            {
+#if BOSSRUSH_DEV
+                if (returnToBase) TryClickAutotestClosureContinue();
+#endif
                 yield return null;
-            _operationSucceeded = IsRuntimeReady(expectedScene);
-            if (!_operationSucceeded) _operationReason = "scene_loaded_but_runtime_not_ready";
+            }
+            _lastSceneClicksFed = _sceneClicksFed - clicksAtStart;
+            bool sceneChanged = SceneManager.GetActiveScene().handle != previousSceneHandle;
+            _operationSucceeded = sceneChanged && IsRuntimeReady(expectedScene);
+            if (!_operationSucceeded) _operationReason = sceneChanged
+                ? "scene_loaded_but_runtime_not_ready" : "scene_instance_did_not_change";
             Record(caseId, _operationSucceeded ? "PASS" : "FAIL", sw.ElapsedMilliseconds,
                 DescribeSceneReadiness(expectedScene) + ",click_to_continue=" + clickToContinue
-                    + ",clicks_fed=" + _lastSceneClicksFed, _operationReason);
+                    + ",clicks_fed=" + _lastSceneClicksFed + ",previous_handle=" + previousSceneHandle
+                    + ",current_handle=" + SceneManager.GetActiveScene().handle, _operationReason);
         }
 
         private bool FeedSceneContinueClick()

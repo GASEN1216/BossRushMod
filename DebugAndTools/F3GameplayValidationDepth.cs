@@ -21,6 +21,75 @@ namespace BossRush
 {
     internal sealed partial class F3GameplayValidationRunner
     {
+        private IEnumerator RunCampaignFinalBoss()
+        {
+            Stopwatch sw = Stopwatch.StartNew();
+            if (!_host.DebugStartCampaignFinalBossForValidation())
+            {
+                Record("CAMPAIGN_FINAL_BOSS", "FAIL", sw.ElapsedMilliseconds, string.Empty, "start_rejected");
+                yield break;
+            }
+            float deadline = Time.realtimeSinceStartup + CaseTimeoutSeconds;
+            while (_host.CampaignFinalBossInstanceForValidation == null
+                && Time.realtimeSinceStartup < deadline && !ShouldAbort()) yield return null;
+            CharacterMainControl boss = _host.CampaignFinalBossInstanceForValidation;
+            if (boss == null || boss.Health == null)
+            {
+                Record("CAMPAIGN_FINAL_BOSS", "FAIL", sw.ElapsedMilliseconds, string.Empty, "spawn_timeout");
+                _host.ValidationSafeCleanup();
+                yield break;
+            }
+            // 沙暴冠军保留正常的入场无敌；沿真实战斗时序等到可伤害，再检查官方 Hurt 是否接收。
+            // 首领销毁、切图或终章 owner 结束都使本次演练失效，不能攻击下一场的角色。
+            while (_host.IsCampaignFinalBossActive && boss != null && boss.Health != null
+                && boss.Health.Invincible && !SceneLoader.IsSceneLoading
+                && Time.realtimeSinceStartup < deadline && !ShouldAbort()) yield return null;
+            if (!_host.IsCampaignFinalBossActive || boss == null || boss.Health == null
+                || boss.Health.Invincible || SceneLoader.IsSceneLoading || ShouldAbort())
+            {
+                Record("CAMPAIGN_FINAL_BOSS", "FAIL", sw.ElapsedMilliseconds,
+                    "active=" + _host.IsCampaignFinalBossActive + ",loading=" + SceneLoader.IsSceneLoading,
+                    "boss_not_damage_ready");
+                _host.ValidationSafeCleanup();
+                yield break;
+            }
+            bool hurtAccepted = false;
+            try
+            {
+                CharacterMainControl player = CharacterMainControl.Main;
+                // DamageInfo 是 struct；无参 new 不调用带可选参数的构造器，
+                // elementFactors 会保持 null，官方 Health.Hurt 访问 Count 时抛异常。
+                DamageInfo damage = new DamageInfo(player);
+                damage.damageValue = boss.Health.MaxHealth * 20f;
+                damage.ignoreArmor = true;
+                damage.toDamageReceiver = boss.mainDamageReceiver;
+                damage.damagePoint = boss.transform.position;
+                hurtAccepted = boss.Health.Hurt(damage);
+            }
+            catch (Exception e)
+            {
+                Record("CAMPAIGN_FINAL_BOSS", "FAIL", sw.ElapsedMilliseconds, string.Empty, e.ToString());
+                _host.ValidationSafeCleanup();
+                yield break;
+            }
+            if (!hurtAccepted)
+            {
+                Record("CAMPAIGN_FINAL_BOSS", "FAIL", sw.ElapsedMilliseconds,
+                    "hurt_accepted=false,invincible=" + boss.Health.Invincible
+                        + ",loading=" + SceneLoader.IsSceneLoading, "official_hurt_rejected");
+                _host.ValidationSafeCleanup();
+                yield break;
+            }
+            yield return WaitSeconds(2f);
+            bool once = _host.CampaignFinalBossDeathPresentationCount == 1;
+            bool clean = !_host.IsCampaignFinalBossActive && BossBgmCoordinator.ActiveOwnerLeaseCount == 0;
+            Record("CAMPAIGN_FINAL_BOSS", once && clean ? "PASS" : "FAIL", sw.ElapsedMilliseconds,
+                "hurt_accepted=" + hurtAccepted + ",death_presentations=" + _host.CampaignFinalBossDeathPresentationCount
+                    + ",bgm_owners=" + BossBgmCoordinator.ActiveOwnerLeaseCount,
+                once && clean ? string.Empty : "duplicate_presentation_or_cleanup_failed");
+            _host.ValidationSafeCleanup();
+        }
+
         /// <summary>
         /// 5/7 阶段：模式深度流程。五项全自动驱动，逐项隔离——单项红不拖垮整套。
         /// 每项后跟一次场地清洁校验，避免上一项的残留把下一项染红。
@@ -71,8 +140,13 @@ namespace BossRush
 
             try
             {
-                _host.StartModeD();
-                if (!_host.IsModeDActive || !_host.ModeDStartNextWave())
+                string entryReason;
+                if (!PrepareModeDValidationEntry(out entryReason))
+                {
+                    Record("MODE_D_MULTI_WAVE", "FAIL", sw.ElapsedMilliseconds, string.Empty, entryReason);
+                    yield break;
+                }
+                if (!_host.TryStartModeD() || !_host.IsModeDActive || !_host.ModeDStartNextWave())
                 {
                     Record("MODE_D_MULTI_WAVE", "FAIL", sw.ElapsedMilliseconds,
                         "active=" + _host.IsModeDActive, "first_wave_start_rejected");
@@ -146,6 +220,7 @@ namespace BossRush
             {
                 try { _host.ValidationSafeCleanup(); }
                 catch (Exception e) { ModBehaviour.DevLog("[Validation] Mode D 多波清理失败: " + e.Message); }
+                finally { RestoreModeDValidationEntry(); }
             }
         }
     }

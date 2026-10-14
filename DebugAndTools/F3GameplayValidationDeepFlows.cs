@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // F3GameplayValidationDeepFlows.cs - 深度玩法链与过场点击门用例
 // ============================================================================
 // 模块说明：
@@ -36,10 +36,11 @@ namespace BossRush
             Stopwatch sw = Stopwatch.StartNew();
             try
             {
-                if (!_host.ValidationStartModeF() || !_host.IsModeFActive)
+                string entryReason;
+                if (!PrepareModeEFValidationEntry(true, out entryReason) || !_host.TryStartModeF() || !_host.IsModeFActive)
                 {
                     Record("MODE_F_BOUNTY", "FAIL", sw.ElapsedMilliseconds,
-                        "active=" + _host.IsModeFActive, "mode_f_start_rejected");
+                        "active=" + _host.IsModeFActive, entryReason ?? "mode_f_start_rejected");
                     yield break;
                 }
 
@@ -74,6 +75,7 @@ namespace BossRush
             {
                 try { _host.ValidationSafeCleanup(); }
                 catch (Exception e) { ModBehaviour.DevLog("[Validation] Mode F 赏金清理失败: " + e.Message); }
+                finally { RestoreModeDValidationEntry(); }
             }
         }
 
@@ -86,10 +88,11 @@ namespace BossRush
             Stopwatch sw = Stopwatch.StartNew();
             try
             {
-                if (!_host.ValidationStartModeF() || !_host.IsModeFActive)
+                string entryReason;
+                if (!PrepareModeEFValidationEntry(true, out entryReason) || !_host.TryStartModeF() || !_host.IsModeFActive)
                 {
                     Record("MODE_F_EXTRACTION", "FAIL", sw.ElapsedMilliseconds,
-                        "active=" + _host.IsModeFActive, "mode_f_start_rejected");
+                        "active=" + _host.IsModeFActive, entryReason ?? "mode_f_start_rejected");
                     yield break;
                 }
 
@@ -142,8 +145,12 @@ namespace BossRush
                 deadline = Time.realtimeSinceStartup + SceneTimeoutSeconds;
                 while (Time.realtimeSinceStartup < deadline && !ShouldAbort())
                 {
-                    if (IsRuntimeReady(BaseSceneNameForValidation())) { returnedToBase = true; break; }
-                    if (!triggered || !resolved) break;
+                    resolved = _host.ModeFSuccessfulExtractionCountForValidation != completedBefore;
+                    if (resolved && IsRuntimeReady(BaseSceneNameForValidation())) { returnedToBase = true; break; }
+                    if (!triggered) break;
+#if BOSSRUSH_DEV
+                    TryClickAutotestClosureContinue();
+#endif
                     yield return null;
                 }
 
@@ -159,6 +166,7 @@ namespace BossRush
             {
                 try { _host.ValidationSafeCleanup(); }
                 catch (Exception e) { ModBehaviour.DevLog("[Validation] Mode F 撤离清理失败: " + e.Message); }
+                finally { RestoreModeDValidationEntry(); }
             }
         }
 
@@ -171,10 +179,11 @@ namespace BossRush
             Stopwatch sw = Stopwatch.StartNew();
             try
             {
-                if (!_host.ValidationStartModeE() || !_host.IsModeEActive)
+                string entryReason;
+                if (!PrepareModeEFValidationEntry(false, out entryReason) || !_host.TryStartModeE() || !_host.IsModeEActive)
                 {
                     Record("MODE_E_EXTRACTION", "FAIL", sw.ElapsedMilliseconds,
-                        "active=" + _host.IsModeEActive, "mode_e_start_rejected");
+                        "active=" + _host.IsModeEActive, entryReason ?? "mode_e_start_rejected");
                     yield break;
                 }
 
@@ -192,6 +201,7 @@ namespace BossRush
             {
                 try { _host.ValidationSafeCleanup(); }
                 catch (Exception e) { ModBehaviour.DevLog("[Validation] Mode E 收尾清理失败: " + e.Message); }
+                finally { RestoreModeDValidationEntry(); }
             }
         }
 

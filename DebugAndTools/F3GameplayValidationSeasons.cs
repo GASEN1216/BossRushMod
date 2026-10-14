@@ -45,6 +45,7 @@ namespace BossRush
                         foreach (CharacterMainControl boss in bosses)
                         {
                             if (ShouldAbort() || !state.IsCombatActive) break;
+                            TryDamageModeGChildProtector(boss);
                             if (IsLiveCharacter(boss)) ApplyValidationDamage(boss, CharacterMainControl.Main);
                             yield return null;
                         }
@@ -240,6 +241,23 @@ namespace BossRush
         {
             return character != null && character.gameObject.activeInHierarchy
                 && character.Health != null && !character.Health.IsDead;
+        }
+
+        private static readonly System.Reflection.FieldInfo _modeGChildProtectorField =
+            typeof(DragonKingAbilityController).GetField("spawnedDescendant",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+        private void TryDamageModeGChildProtector(CharacterMainControl boss)
+        {
+            if (!IsLiveCharacter(boss) || _modeGChildProtectorField == null) return;
+            DragonKingAbilityController controller = boss.GetComponent<DragonKingAbilityController>();
+            if (controller == null || !controller.IsInChildProtection) return;
+            CharacterMainControl child = _modeGChildProtectorField.GetValue(controller) as CharacterMainControl;
+            if (!IsLiveCharacter(child) || child.Health.Invincible || !Team.IsEnemy(Teams.player, child.Team)) return;
+            float before = child.Health.CurrentHealth;
+            ApplyValidationDamage(child, CharacterMainControl.Main);
+            WriteRaw("MODE_G_CHILD_PROTECTOR_ASSIST | before=" + before + " | after=" + child.Health.CurrentHealth
+                + " | dead=" + child.Health.IsDead);
         }
 
         private static void ApplyValidationDamage(CharacterMainControl target, CharacterMainControl attacker)

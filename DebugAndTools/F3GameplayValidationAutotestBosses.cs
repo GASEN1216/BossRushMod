@@ -15,12 +15,88 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 using ItemStatsSystem;
+using Dialogues;
 using UnityEngine;
 
 namespace BossRush
 {
     internal sealed partial class F3GameplayValidationRunner
     {
+        #region 真实交互前提
+
+        private IEnumerator AutotestInteract(F3AutotestStepRecord record, string[] args)
+        {
+            string target = string.Join(":", args);
+            InteractableBase interactable = ResolveAutotestInteractable(target);
+            if (interactable == null && (target.StartsWith("resident:", StringComparison.Ordinal) || target == "pigeon"))
+            {
+                // 居民不在岛上不是缺陷（已婚离岛由婚姻系统接管，SKY_RESIDENTS 分辨两种情况）；这一趟没有信鸽也不是（SKY_LETTER_PIGEON 判）。
+                // 这一步记 SKIP，后面的动作不再做。
+                record.Assertions.Add(AutotestAssertion("action:interact", "SKIP", "target_not_present_this_raid:" + target, null));
+                _autotest.StepFailed = true;
+                yield break;
+            }
+            if (interactable == null) { AutotestFail(record, "action:interact", "target_not_found", target, true); yield break; }
+            CloseAutotestPanels();
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (player == null) { AutotestFail(record, "action:interact", "player_missing", target, true); yield break; }
+            bool gathering = target.StartsWith("gather:", StringComparison.Ordinal);
+            if (gathering && !PrepareAutotestGatherInteraction(record, interactable, player)) yield break;
+            bool threw = false;
+            try { player.Interact(interactable); }
+            catch (Exception e)
+            {
+                threw = true;
+                AutotestFail(record, "action:interact", "interact_threw:" + e.GetType().Name, target, true);
+            }
+            if (threw) yield break;
+            bool started = false;
+            float until = Time.realtimeSinceStartup + 1.5f;
+            while (Time.realtimeSinceStartup < until && interactable != null)
+            {
+                if (interactable.Interacting) { started = true; break; }
+                if (AutotestPanelOpen() || DialogueManager.IsDialogueActive) break;
+                yield return null;
+            }
+            float interactTime = interactable == null ? 0f : interactable.InteractTime;
+            until = Time.realtimeSinceStartup + interactTime + 5f;
+            while (interactable != null && interactable.Interacting && Time.realtimeSinceStartup < until) yield return null;
+            record.Notes.Add("interact=" + target + ",started=" + started + ",interact_time=" + interactTime.ToString("F2", CultureInfo.InvariantCulture));
+            if (gathering)
+            {
+                if (!started)
+                { AutotestFail(record, "action:interact", "gather_interaction_not_started", target, true); yield break; }
+                // 读条停止也可能是被动作打断；只认生产采集许可把交互体改名 / 销毁的实际状态。
+                until = Time.realtimeSinceStartup + 8f;
+                while (interactable != null && interactable.name.StartsWith("SkyIslandGather_", StringComparison.Ordinal)
+                    && Time.realtimeSinceStartup < until) yield return null;
+                if (interactable != null && interactable.name.StartsWith("SkyIslandGather_", StringComparison.Ordinal))
+                { AutotestFail(record, "action:interact", "gather_not_claimed_after_interact", target, true); yield break; }
+                record.Notes.Add("gather_claim_observed=" + target + "; inventory_delta_is_separately_asserted");
+            }
+            yield return WaitAutotestReal(0.6f);
+        }
+
+        /// <summary>Dev 用例靠近实际采集体；锚点旁并不保证满足房主的采集距离许可。</summary>
+        private bool PrepareAutotestGatherInteraction(F3AutotestStepRecord record, InteractableBase interactable, CharacterMainControl player)
+        {
+            SkyIslandSession session = SkyIslandSessionOrNull();
+            float before = Vector3.Distance(player.transform.position, interactable.transform.position);
+            string reason = null;
+            if (session == null || !session.DevAutotestTeleport(interactable.transform, 0f, 0f, out reason))
+            { AutotestFail(record, "action:interact", "gather_approach_failed", session == null ? "no_island_session" : reason, true); return false; }
+            float after = Vector3.Distance(player.transform.position, interactable.transform.position);
+            string metrics = "target=" + interactable.name + ",distance_before_m=" + before.ToString("F3", CultureInfo.InvariantCulture)
+                + ",distance_after_m=" + after.ToString("F3", CultureInfo.InvariantCulture) + ",assisted=true";
+            record.Notes.Add(metrics);
+            Debug.Log("[AUTOTEST_GATHER_APPROACH] " + metrics);
+            if (after > 2f)
+            { AutotestFail(record, "action:interact", "gather_legal_position_not_near_target", metrics, true); return false; }
+            return true;
+        }
+
+        #endregion
+
         #region 头目 / 岛主
 
         private const float AutotestBossSearchRadius = 120f;

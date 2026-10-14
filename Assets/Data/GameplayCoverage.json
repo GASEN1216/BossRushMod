@@ -1691,6 +1691,7 @@
         "FINAL_CLEAN_STATE",
         "FINAL_LEAK_DELTA",
         "FINAL_SAVE_READBACK",
+        "MODE_ENTRY_LOADOUT_RESTORE",
         "SCENE_CLICK_GATE",
         "SCENE_CLICK_GATE_ENTER",
         "SCENE_CLICK_GATE_READY",
@@ -1798,6 +1799,50 @@
           "id": "M_EQ_ROLL_CALL_LEDGER_03",
           "steps": "经基地船点进入天空岛，在登云码头找到浮舟，升到好感3级后按交互键打开航前杂货，购买并佩戴点名册；切中英文、重进游戏。截图 M_EQ_ROLL_CALL_LEDGER_03.png，看商店中的册子图标、售价和物品详情。",
           "expected": "3级解锁、库存1、售价20000，名称与图标正确、图腾槽可装备、重启不成为FallbackItem；不出现在叮当商店与通用随机奖池。"
+        }
+      ]
+    },
+    {
+      "id": "COOP_ROOM",
+      "title": "完整房间联机兼容",
+      "sources": [
+        "Common/Coop/BossRushCoopRuntimeModule.cs",
+        "Integration/Coop/BossRushCoopContentRuntimeModule.cs",
+        "Utilities/CoopGameplayChannel.cs",
+        "Utilities/CoopPersonalDelivery.cs"
+      ],
+      "wiki": [],
+      "automatic": [],
+      "manual": [
+        {
+          "id": "M_COOP_ROOM16",
+          "steps": "安装相同 BossRush 与原版 COOP v1.3.6，Steam 房间人数设为 16，按人数逐步加入，进入竞技场并依次通过各模式入口。",
+          "expected": "各端同一波次、同一批敌人和箱子，个人装备、货币、成长与永久解锁独立。任一端重复刷怪、重复结算或显示不同阶段即不合格。"
+        },
+        {
+          "id": "M_COOP_REJOIN",
+          "steps": "战斗中让一名非房主玩家断线后重连，再切换场景；在其退出前触发一次个人奖励。",
+          "expected": "已确认奖励不重复，未确认奖励重发；失去连接的角色不阻塞存活者，重连者取得当前世界快照。"
+        },
+        {
+          "id": "M_COOP_SKY_TRAVEL",
+          "steps": "全队经天空岛入口投票进入，观察最后一人加载完成之前及完成之后的地图、敌人和箱子。",
+          "expected": "未完成真实加载不得提前进入跑图；相同地形与搜刮点，只有房主生成战斗与箱内物品。"
+        },
+        {
+          "id": "M_COOP_H_CONTROL",
+            "steps": "先记录真实可达的旧版 ERROR 入口及 Dev 环境；当前尚未证实此入口，缺少前置时本步骤标为 NOT_EXECUTED。具备入口后由非房主操控，移动、瞄准、射击、换弹再退出或断线；正式默认群战拍铃不触发 ERROR。",
+          "expected": "仅租约所属玩家操控目标；其它客户端看到同一移动与命中；退出立即停止输入并归还 AI，镜头与原身体状态还原。"
+        },
+        {
+          "id": "M_COOP_WRAITH",
+          "steps": "各成员在验收存档留下不同装备的亡魂，再共同进入其地图，重复加载墓箱，由另一成员击杀后重进。",
+          "expected": "每条个人记录只生成一个亡魂，装备与姓名归属正确；击杀仅清理原存档记录，重复收据不多次清理，换图不遗留旧实体。"
+        },
+        {
+          "id": "M_COOP_ITEMS_PETS",
+          "steps": "给各成员配置不同重铸/词条装备和出战宠物，施放技能、换装、共享箱转交物品并过图。",
+          "expected": "数值与表现一致，无重铸叠加；每人宠物归属、背包、经验和重伤记录独立，过图无旧实体遗留。"
         }
       ]
     }

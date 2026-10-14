@@ -238,6 +238,8 @@
       ],
       "budget": 45,
       "actions": [
+        "clear_nearby:45:15",
+        "wait_quiet:10",
         "interact:pigeon",
         "wait_panel:4",
         "shot:pigeon_letter:ui",

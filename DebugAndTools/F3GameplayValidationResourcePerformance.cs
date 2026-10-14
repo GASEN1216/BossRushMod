@@ -211,7 +211,7 @@ namespace BossRush
         private string AddResourcePerformanceManifest(string json)
         {
             int end = json.LastIndexOf('}');
-            return json.Substring(0, end) + ",\n\"resourcePerformance\":" + JsonUtility.ToJson(resourcePerformance, true) + "\n}";
+            return json.Substring(0, end) + ",\n\"resourcePerformance\":" + BossRushCoopJson.ToJson(resourcePerformance) + "\n}";
         }
 
         private string ResourcePerformanceSummary()
@@ -230,7 +230,7 @@ namespace BossRush
             try
             {
                 Directory.CreateDirectory(directory);
-                string json = JsonUtility.ToJson(resourcePerformance, true);
+                string json = BossRushCoopJson.ToJson(resourcePerformance);
                 File.WriteAllText(Path.Combine(directory, "resource-performance.json"), json);
                 if (_autotest != null && !string.IsNullOrEmpty(_autotest.RunDir)) WriteAutotestReport();
                 else

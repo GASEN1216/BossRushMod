@@ -105,6 +105,7 @@ namespace BossRush
         {
             var shot = new F3AutotestShot { Name = string.IsNullOrEmpty(name) ? "shot" : name, Kind = kind == "world" ? "world" : "ui" };
             record.Shots.Add(shot);
+            _autotest.LastShot = null;
             string blocking = null;
             float until = Time.realtimeSinceStartup + 10f;
             while (!EnsureAutotestOverlaysHidden(out blocking) && Time.realtimeSinceStartup < until) yield return null;
@@ -115,14 +116,6 @@ namespace BossRush
                 _autotest.Info.ShotsSkipped++;
                 yield break;
             }
-            var texts = new List<AutotestTextProbe>();
-            var overflowing = new List<string>();
-            var truncated = new List<string>();
-            var truncatedEarly = new List<string>();
-            int inspected = CollectAutotestTextProbes(canvasFilter, contrastPaths, texts, overflowing, truncated, truncatedEarly);
-            List<AutotestWorldProbe> worlds = CollectAutotestWorldProbes(worldTargets);
-            List<Rect> rows = CollectAutotestRowRects();
-
             yield return new WaitForEndOfFrame();
 
             if (!EnsureAutotestOverlaysHidden(out blocking))
@@ -132,6 +125,14 @@ namespace BossRush
                 _autotest.Info.ShotsSkipped++;
                 yield break;
             }
+            // TMP 字形、HUD 动画和相机 LateUpdate 都要结束后再取坐标，确保探针与这一帧截图对应。
+            var texts = new List<AutotestTextProbe>();
+            var overflowing = new List<string>();
+            var truncated = new List<string>();
+            var truncatedEarly = new List<string>();
+            int inspected = CollectAutotestTextProbes(canvasFilter, contrastPaths, texts, overflowing, truncated, truncatedEarly);
+            List<AutotestWorldProbe> worlds = CollectAutotestWorldProbes(worldTargets);
+            List<Rect> rows = CollectAutotestRowRects();
             Texture2D texture = null, half = null;
             // 这一张在本步里的时刻：连拍判「0.15 秒提亮、0.5 秒内落回」这类时长要用（第五轮 manifest 没有逐张时间）。
             long atMs = AutotestStepElapsedMs(record);

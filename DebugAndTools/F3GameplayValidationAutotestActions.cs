@@ -319,45 +319,6 @@ namespace BossRush
             yield return WaitAutotestReal(ArgFloat(args, 3, 1.5f));
         }
 
-        private IEnumerator AutotestInteract(F3AutotestStepRecord record, string[] args)
-        {
-            string target = string.Join(":", args);
-            InteractableBase interactable = ResolveAutotestInteractable(target);
-            if (interactable == null && (target.StartsWith("resident:", StringComparison.Ordinal) || target == "pigeon"))
-            {
-                // 居民不在岛上不是缺陷（已婚离岛由婚姻系统接管，SKY_RESIDENTS 分辨两种情况）；这一趟没有信鸽也不是（SKY_LETTER_PIGEON 判）。
-                // 这一步记 SKIP，后面的动作不再做。
-                record.Assertions.Add(AutotestAssertion("action:interact", "SKIP", "target_not_present_this_raid:" + target, null));
-                _autotest.StepFailed = true;
-                yield break;
-            }
-            if (interactable == null) { AutotestFail(record, "action:interact", "target_not_found", target, true); yield break; }
-            CloseAutotestPanels();
-            CharacterMainControl player = CharacterMainControl.Main;
-            if (player == null) { AutotestFail(record, "action:interact", "player_missing", target, true); yield break; }
-            bool threw = false;
-            try { player.Interact(interactable); }
-            catch (Exception e)
-            {
-                threw = true;
-                AutotestFail(record, "action:interact", "interact_threw:" + e.GetType().Name, target, true);
-            }
-            if (threw) yield break;
-            bool started = false;
-            float until = Time.realtimeSinceStartup + 1.5f;
-            while (Time.realtimeSinceStartup < until && interactable != null)
-            {
-                if (interactable.Interacting) { started = true; break; }
-                if (AutotestPanelOpen() || DialogueManager.IsDialogueActive) break;
-                yield return null;
-            }
-            float interactTime = interactable == null ? 0f : interactable.InteractTime;
-            until = Time.realtimeSinceStartup + interactTime + 5f;
-            while (interactable != null && interactable.Interacting && Time.realtimeSinceStartup < until) yield return null;
-            record.Notes.Add("interact=" + target + ",started=" + started + ",interact_time=" + interactTime.ToString("F2", CultureInfo.InvariantCulture));
-            yield return WaitAutotestReal(0.6f);
-        }
-
         private InteractableBase ResolveAutotestInteractable(string target)
         {
             if (target == "departure") return FindAutotestDeparture();

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -264,32 +264,11 @@ namespace BossRush
         }
 
         internal bool ValidationStartZombie(out string reason)
-        {
-            reason = null;
-            try
-            {
-                Scene scene = SceneManager.GetActiveScene();
-                int runId = BeginZombieModeRunShell(scene.buildIndex, scene.name);
-                zombieModeRunState.LifecyclePhase = ZombieModeLifecyclePhase.InitializingRun;
-                zombieModeRunState.CombatPhase = ZombieModeCombatPhase.None;
-                zombieModeRunState.PurificationPoints = ZOMBIE_MODE_INITIAL_PURIFICATION_POINTS;
-                if (!InitializeZombieModeRunAfterMapLoaded(runId))
-                {
-                    reason = "initialize_failed";
-                    DebugResetZombieModeShell();
-                    return false;
-                }
-                SelectZombieModeStarterLoadout(runId, ZombieModeStarterLoadout.Gunner);
-                return true;
-            }
-            catch (Exception e)
-            {
-                reason = e.GetType().Name + ":" + e.Message;
-                try { DebugResetZombieModeShell(); }
-                catch (Exception cleanupError) { DevLog("[Validation] Zombie 失败回滚异常: " + cleanupError.Message); }
-                return false;
-            }
-        }
+        { return zombieModeRuntimeModule.ValidationStartZombie(out reason); }
+
+        internal IEnumerator ValidationCompleteZombieExtraction(Action<bool, string, string> completed)
+        { return zombieModeRuntimeModule.ValidationCompleteZombieExtraction(completed); }
+
     }
 
     internal sealed partial class F3GameplayValidationRunner : MonoBehaviour
@@ -608,52 +587,6 @@ namespace BossRush
             if (_dirtyStreak >= 2) _fatalAbort = true;
         }
 
-
-        private IEnumerator RunCampaignFinalBoss()
-        {
-            Stopwatch sw = Stopwatch.StartNew();
-            if (!_host.DebugStartCampaignFinalBossForValidation())
-            {
-                Record("CAMPAIGN_FINAL_BOSS", "FAIL", sw.ElapsedMilliseconds, string.Empty, "start_rejected");
-                yield break;
-            }
-            float deadline = Time.realtimeSinceStartup + CaseTimeoutSeconds;
-            while (_host.CampaignFinalBossInstanceForValidation == null
-                && Time.realtimeSinceStartup < deadline && !ShouldAbort()) yield return null;
-            CharacterMainControl boss = _host.CampaignFinalBossInstanceForValidation;
-            if (boss == null || boss.Health == null)
-            {
-                Record("CAMPAIGN_FINAL_BOSS", "FAIL", sw.ElapsedMilliseconds, string.Empty, "spawn_timeout");
-                _host.ValidationSafeCleanup();
-                yield break;
-            }
-            try
-            {
-                CharacterMainControl player = CharacterMainControl.Main;
-                // DamageInfo 是 struct；无参 new 不调用带可选参数的构造器，
-                // elementFactors 会保持 null，官方 Health.Hurt 访问 Count 时抛异常。
-                DamageInfo damage = new DamageInfo(player);
-                damage.damageValue = boss.Health.MaxHealth * 20f;
-                damage.ignoreArmor = true;
-                damage.toDamageReceiver = boss.mainDamageReceiver;
-                damage.damagePoint = boss.transform.position;
-                boss.Health.Hurt(damage);
-            }
-            catch (Exception e)
-            {
-                Record("CAMPAIGN_FINAL_BOSS", "FAIL", sw.ElapsedMilliseconds, string.Empty, e.ToString());
-                _host.ValidationSafeCleanup();
-                yield break;
-            }
-            yield return WaitSeconds(2f);
-            bool once = _host.CampaignFinalBossDeathPresentationCount == 1;
-            bool clean = !_host.IsCampaignFinalBossActive && BossBgmCoordinator.ActiveOwnerLeaseCount == 0;
-            Record("CAMPAIGN_FINAL_BOSS", once && clean ? "PASS" : "FAIL", sw.ElapsedMilliseconds,
-                "death_presentations=" + _host.CampaignFinalBossDeathPresentationCount
-                    + ",bgm_owners=" + BossBgmCoordinator.ActiveOwnerLeaseCount,
-                once && clean ? string.Empty : "duplicate_presentation_or_cleanup_failed");
-            _host.ValidationSafeCleanup();
-        }
 
         private bool ValidateCampaignJson(out string metrics, out string reason)
         {
