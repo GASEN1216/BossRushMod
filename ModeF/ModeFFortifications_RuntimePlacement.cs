@@ -11,13 +11,15 @@ namespace BossRush
 {
     internal sealed partial class ModeFRuntimeModule
     {
-        private bool PlaceModeFortification(FortificationType type, Vector3 position, Quaternion rotation, GameObject existingPreview = null)
+        private bool PlaceModeFortification(FortificationType type, Vector3 position, Quaternion rotation, GameObject existingPreview = null,
+            CharacterMainControl explicitOwner = null, bool networkReplica = false, int networkId = 0)
         {
+            if (BossRushCoop.IsClient && !networkReplica) return false;
             GameObject fortObj = existingPreview;
             bool reusedPreview = fortObj != null;
             try
             {
-                CharacterMainControl player = CharacterMainControl.Main;
+                CharacterMainControl player = explicitOwner != null ? explicitOwner : CharacterMainControl.Main;
                 if (player == null)
                 {
                     return false;
@@ -89,6 +91,13 @@ namespace BossRush
                 marker.Type = type;
                 marker.Owner = player;
                 marker.OwnerCharacterId = player.GetInstanceID();
+                marker.CoopOwnerId = BossRushCoop.GetPlayerId(player);
+                marker.NetworkReplica = networkReplica;
+                if (networkReplica)
+                {
+                    marker.FortificationId = networkId;
+                    marker.NetworkHit = damage => ReportCoopFortificationHit(marker, damage);
+                }
                 marker.MaxHealth = maxHealth;
                 marker.LastKnownHealth = maxHealth;
                 marker.IsDestroyed = false;
@@ -169,7 +178,7 @@ namespace BossRush
                     ModBehaviour.DevLog("[ModeF] [HALF] " + typeName + GetModeFFortificationColliderDebugText(fortObj));
                 }
                 ClearFortPlacementPreviewMaterialCache();
-                ShowModeFRewardBubble(typeName + L10n.T("已部署", " deployed"));
+                if (!networkReplica && player == CharacterMainControl.Main) ShowModeFRewardBubble(typeName + L10n.T("已部署", " deployed"));
                 return true;
             }
             catch (Exception e)

@@ -257,6 +257,7 @@ namespace BossRush
 
                 Vector3 playerPos = player.transform.position;
                 UnityEngine.Object.Instantiate(smokeVfxPrefab, playerPos, Quaternion.identity);
+                PublishCoopUtilitySmoke(playerPos);
                 ModBehaviour.DevLog("[ModeE] 已在玩家位置实例化原版烟雾效果(FowSmoke)");
             }
             catch (Exception e)

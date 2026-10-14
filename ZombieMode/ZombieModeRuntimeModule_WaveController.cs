@@ -88,12 +88,12 @@ namespace BossRush
         private void TryHandleZombieModeSafeZonePlayerAttack(int runId, DamageInfo damageInfo, CharacterMainControl victim)
         {
             if (damageInfo.fromCharacter == null ||
-                !damageInfo.fromCharacter.IsMainCharacter ||
+                !(BossRushCoop.IsConnected ? BossRushCoop.IsPlayer(damageInfo.fromCharacter) : damageInfo.fromCharacter.IsMainCharacter) ||
                 damageInfo.isFromBuffOrEffect ||
                 !IsZombieModeSafeZoneCancellingWeapon(damageInfo) ||
                 victim == null ||
                 !AnyZombieModeSafeZoneActive ||
-                !IsZombieModePlayerInsideActiveSafeZone() ||
+                (BossRushCoop.IsConnected ? !IsZombieModePositionInsideActiveSafeZone(damageInfo.fromCharacter.transform.position) : !IsZombieModePlayerInsideActiveSafeZone()) ||
                 !ZombieModePhaseGuards.AllowsSafeZone(runState.CombatPhase))
             {
                 return;
@@ -148,12 +148,14 @@ namespace BossRush
             }
 
             CharacterMainControl character = health.TryGetCharacter();
-            if (character != null && character.IsMainCharacter)
+            if (character != null && (BossRushCoop.IsConnected ? BossRushCoop.IsPlayer(character) : character.IsMainCharacter))
             {
+                if (BossRushCoop.IsConnected && (!BossRushCoop.HasWorldAuthority || BossRushCoop.AnyPlayerAlive)) return;
                 FailZombieModeActive(runId);
                 return;
             }
 
+            if (!BossRushCoop.HasWorldAuthority) return;
             // O(1) HashSet 早返；非丧尸模式敌人死亡直接 ignore（审查 §3.1）。
             ZombieModeEnemyRuntimeMarker marker;
             if (character == null || !TryGetZombieModeKnownEnemyMarker(character, out marker))
@@ -874,7 +876,8 @@ namespace BossRush
 
             if (created <= 0)
             {
-                runState.PurificationPoints += totalValue;
+                if (BossRushCoop.IsConnected) DeliverCoopZombiePoints(totalValue);
+                else runState.PurificationPoints += totalValue;
             }
         }
 

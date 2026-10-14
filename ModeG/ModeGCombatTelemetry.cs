@@ -366,6 +366,7 @@ namespace BossRush
 
         private void HandleOnHurt(Health health, DamageInfo info)
         {
+            if (BossRushCoop.IsClient) return;
             try
             {
                 // 快路径：未激活/非登记 Boss 立即早返（exact Health 字典 O(1)）
@@ -374,6 +375,7 @@ namespace BossRush
                 if (!_state.IsRegisteredBossHealth(health)) return;
                 // 官方死亡事件先于 OnHurt；致命伤已在 HandleOnDead 结算。
                 if (health.IsDead) return;
+                ModeGEntryRuntime.PublishCoopCombat(health, info, false);
                 RecordDirectDamage(health, info);
             }
             catch
@@ -382,8 +384,14 @@ namespace BossRush
             }
         }
 
+        internal void AcceptCoopDamage(Health health, DamageInfo info)
+        {
+            if (BossRushCoop.IsClient && _state != null && _state.IsRegisteredBossHealth(health)) RecordDirectDamage(health, info);
+        }
+
         private void RecordDirectDamage(Health health, DamageInfo info)
         {
+            if (!ModeGEntryRuntime.CanApplyPersonalCombat) return;
             try
             {
                 if (_state == null || !_state.IsCombatActive || !IsWaveScoreValid) return;
@@ -433,6 +441,7 @@ namespace BossRush
 
         private void HandleOnShoot(ItemAgent_Gun gun)
         {
+            if (!ModeGEntryRuntime.CanApplyPersonalCombat) return;
             try
             {
                 if (_state == null || !_state.IsActive) return;
@@ -513,11 +522,13 @@ namespace BossRush
 
         private void HandleOnDead(Health health, DamageInfo info)
         {
+            if (BossRushCoop.IsClient) return;
             try
             {
                 // run owner：只处理已登记 Boss；玩家死亡路由在 ModeGDeathRouting（独立订阅）
                 if (_state == null || health == null) return;
                 if (!_state.IsRegisteredBossHealth(health)) return;
+                ModeGEntryRuntime.PublishCoopCombat(health, info, true);
                 // 回调会注销 exact Health，必须先记致命一击；后续 OnHurt 不再重复记账。
                 RecordDirectDamage(health, info);
                 if (_onBossDeadCallback != null) _onBossDeadCallback(health, info);
@@ -724,6 +735,7 @@ namespace BossRush
             public int token;
             public string bossType;
             public bool wasFlawlessAtDeath;
+            public string assetId;
         }
 
         private static readonly object _reportLock = new object();
@@ -740,7 +752,8 @@ namespace BossRush
                 {
                     token = token,
                     bossType = bossType ?? string.Empty,
-                    wasFlawlessAtDeath = wasFlawlessAtDeath
+                    wasFlawlessAtDeath = wasFlawlessAtDeath,
+                    assetId = BossRushCoop.LocalAssetId
                 });
             }
         }
@@ -756,8 +769,14 @@ namespace BossRush
                 lock (_reportLock)
                 {
                     if (_pendingReports.Count == 0) return;
-                    drained = new List<PendingAchievementReport>(_pendingReports);
-                    _pendingReports.Clear();
+                    drained = new List<PendingAchievementReport>();
+                    for (int i = _pendingReports.Count - 1; i >= 0; i--)
+                    {
+                        PendingAchievementReport report = _pendingReports[i];
+                        if (report.assetId != BossRushCoop.LocalAssetId) continue;
+                        drained.Add(report);
+                        _pendingReports.RemoveAt(i);
+                    }
                 }
 
                 ModBehaviour host = ModBehaviour.Instance;

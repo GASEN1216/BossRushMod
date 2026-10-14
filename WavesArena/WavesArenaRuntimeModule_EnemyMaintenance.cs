@@ -9,6 +9,7 @@ namespace BossRush
     {
         internal void ForceKillAllEnemies()
         {
+            if (!BossRushCoop.HasWorldAuthority) return;
             try
             {
                 RefreshCharacterCache();
@@ -21,7 +22,8 @@ namespace BossRush
                 }
 
                 CharacterMainControl main = null;
-                try { main = CharacterMainControl.Main; } catch {}
+                try { main = CharacterMainControl.Main; }
+                catch (Exception e) { ModBehaviour.DevLog("[BossRush] ForceKillAllEnemies 主玩家读取失败: " + e.Message); }
 
                 int killedCount = 0;
 
@@ -35,8 +37,8 @@ namespace BossRush
                         if (main != null && c == main) isMain = true;
                         else isMain = CharacterMainControlExtensions.IsMainCharacter(c);
                     }
-                    catch {}
-                    if (isMain) continue;
+                    catch (Exception e) { ModBehaviour.DevLog("[BossRush] ForceKillAllEnemies 玩家身份读取失败: " + e.Message); }
+                    if (isMain || BossRushCoop.IsPlayer(c)) continue;
 
                     if (owner.IsDeathWraithCharacterForArena(c))
                     {
@@ -127,6 +129,7 @@ namespace BossRush
         {
             // 征程从对白起就占用竞技场；工厂在途时尚无可按实例过滤的 Boss。
             if (owner.IsCampaignFinalBossActive) return;
+            if (!BossRushCoop.HasWorldAuthority) return;
 
             try
             {
@@ -178,7 +181,7 @@ namespace BossRush
                     }
                     catch {}
 
-                    if (isMain)
+                    if (isMain || BossRushCoop.IsPlayer(c))
                     {
                         continue;
                     }

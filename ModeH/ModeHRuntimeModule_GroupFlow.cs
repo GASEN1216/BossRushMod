@@ -114,6 +114,7 @@ namespace BossRush
         /// <summary>「换一批」：两队一起重抽，同一张页原地换内容（不播入场动画，免得闪一下）。</summary>
         private void RerollGroupRoster()
         {
+            if (RequestCoopReroll()) return;
             if (_commandsClosed || _runState == null || !IsGroupRosterPhase()) return;
             if (CarriedGroupBet() != null) return; // 沿用押注的这一场不能换阵容（赔率是押注时定的）
             ModeHGroupRoster roster = EnsureGroupRoster();
@@ -127,6 +128,7 @@ namespace BossRush
 
         private void SelectGroupBetSide(bool red)
         {
+            if (CoopLocalReady) return;
             if (_commandsClosed || _runState == null || !IsGroupRosterPhase() || _groupBetOnRed == red) return;
             if (IsGroupBetSideLocked(CarriedGroupBet())) return; // 沿用押注：押哪边已定，不能换边
             _groupBetOnRed = red;
@@ -136,6 +138,7 @@ namespace BossRush
         /// <summary>「开打」：第 1 场顺带签完名单进首场，再沿原自动链锁盘、生成。</summary>
         private void StartGroupMatch()
         {
+            if (RequestCoopStart()) return;
             if (_commandsClosed || _runState == null || !IsGroupRosterPhase() || !IsGroupRosterReadyForCurrentMatch()) return;
             if (_runState.Lifecycle != ModeHLifecycle.Drafting)
             {
@@ -309,7 +312,7 @@ namespace BossRush
                 });
                 return page;
             }
-            EnsureMatchPlan();
+            if (!_coopProjection) EnsureMatchPlan();
             page.PlayerSideTitle = ModeHGroupTeamTags.TeamName(false);
             page.EnemySideTitle = ModeHGroupTeamTags.TeamName(true);
             page.TeamColorSides = true;
@@ -344,7 +347,7 @@ namespace BossRush
             AppendCashBetRow(page);
 
             int left = ModeHGroupConfig.RerollsPerMatch - roster.RerollsUsed;
-            if (left > 0 && carried == null)
+            if (left > 0 && carried == null && !CoopRosterLocked)
             {
                 page.Actions.Add(new ModeHActionData
                 {
@@ -358,6 +361,7 @@ namespace BossRush
                 IsPrimary = true,
                 OnClick = StartGroupMatch,
             });
+            DecorateCoopBetPage(page);
             return page;
         }
 
@@ -426,13 +430,13 @@ namespace BossRush
             locked.planDigest = plan.planDigest;
             locked.loadoutDigest = plan.planDigest ?? string.Empty;
             locked.lockedStateSequence = _runState.StateSequence;
-            if (!ModeHRealStakeService.TryLockForMatch(
+            if (IsCoopWorldPersonalAssetCurrent && !ModeHRealStakeService.TryLockForMatch(
                     _runState.RunId, _runState.MatchIndex, _runState.RunSeed, out failureReasonId))
             {
                 ModeHVirtualStakeController.RestoreReservation(_season, snapshot);
                 return false;
             }
-            locked.realStakeSelected = ModeHRealStakeService.HasLockedStakeForMatch(_runState.RunId, _runState.MatchIndex);
+            locked.realStakeSelected = IsCoopWorldPersonalAssetCurrent && ModeHRealStakeService.HasLockedStakeForMatch(_runState.RunId, _runState.MatchIndex);
             _groupLockedBetOnRed = _groupBetOnRed;
             _season.preMatchSnapshot = snapshot;
             _season.currentLoadoutLock = locked;
@@ -655,7 +659,7 @@ namespace BossRush
                 yield break;
             }
             if (_spectatorLease != null) _spectatorLease.StartAcceptingBell();
-            ModeHCashBetService.TryMarkCombatStarted(_runState.RunId, _runState.MatchIndex);
+            if (IsCoopWorldPersonalAssetCurrent) ModeHCashBetService.TryMarkCombatStarted(_runState.RunId, _runState.MatchIndex);
             TryPersistSeason("match_fighting");
         }
 
@@ -894,7 +898,8 @@ namespace BossRush
                 ModeHLoadoutLockDto locked = _season.currentLoadoutLock;
                 int odds = locked != null ? locked.lockedOdds : ModeHConfig.MinOdds;
                 bool betRed = _groupLockedBetOnRed;
-                bool won = !battle.Surrendered && battle.Winner == (betRed
+                bool won = (!BossRushCoop.IsConnected || (IsCoopFunded(BossRushCoop.LocalPlayerId) && !_coopExited.Contains(BossRushCoop.LocalPlayerId)))
+                    && !battle.Surrendered && !_coopForfeited.Contains(BossRushCoop.LocalPlayerId) && battle.Winner == (betRed
                     ? ModeHGroupBattle.WinnerRed : ModeHGroupBattle.WinnerBlue);
                 ModeHMatchOutcome outcome = won ? ModeHMatchOutcome.PlayerVictory : ModeHMatchOutcome.PlayerDefeat;
 
@@ -925,7 +930,7 @@ namespace BossRush
 
                 ModeHVirtualStakeController.Settle(_season, _season.preMatchSnapshot, report, odds, won);
                 string realStakeFailure;
-                if (!ModeHRealStakeService.TrySettleMatch(
+                if (IsCoopWorldPersonalAssetCurrent && !ModeHRealStakeService.TrySettleMatch(
                         _runState.RunSeed, _runState.MatchIndex, won, odds, out realStakeFailure))
                 {
                     ModBehaviour.CriticalLog("[ModeH] [WARNING] 真实押品结算未完成，已保留 journal 交恢复流程: "
@@ -954,6 +959,7 @@ namespace BossRush
                     return;
                 }
                 SettleCashBetForMatch(won);
+                PublishCoopResult(battle);
                 ReleaseCombatRuntimeObjects();
                 if (TryTransition(ModeHLifecycle.MatchSettling, ModeHLifecycle.Intermission, "settlement_committed"))
                     TryPersistSeason("intermission");

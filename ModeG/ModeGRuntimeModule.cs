@@ -120,6 +120,7 @@ namespace BossRush
                 if (_host == null) return false;
                 _state = state;
                 _preview = preview;
+                FreezeCoopAsset();
 
                 _snapshot = _host.CreateModeGBossSnapshot();
                 if (_snapshot == null || _snapshot.officialKeys.Count == 0)
@@ -192,7 +193,7 @@ namespace BossRush
 
                 // 托管 Boss 分流接线（任务 #7 追加契约：只赋值，不改 EnemySpawnCore.cs）
                 _dispatcherRef = _host.DispatchModeGManagedBossSpawnAsync;
-                ModBehaviour.ManagedBossSpawnDispatcher = _dispatcherRef;
+                if (CoopRunHasWorldAuthority) ModBehaviour.ManagedBossSpawnDispatcher = _dispatcherRef;
 
                 _initialized = true;
                 return true;
@@ -231,7 +232,7 @@ namespace BossRush
 
                 try { _host.BeginModeGAchievementSession(); } catch { /* no-throw */ }
 
-                SpawnWaveAsync(0).Forget();
+                if (CoopRunHasWorldAuthority) SpawnWaveAsync(0).Forget();
                 return true;
             }
             catch (Exception e)
@@ -248,15 +249,21 @@ namespace BossRush
         private bool CanContinueRun()
         {
             return !_disposed && !_ended && _state != null && !_state.spawnLeasesInvalidated
+                && (!CoopRunWasClient || BossRushCoop.IsConnected)
+                && (CoopRunWasClient || CoopRunHasWorldAuthority)
+                && (string.IsNullOrEmpty(coopRunRoom) || string.IsNullOrEmpty(BossRushCoop.RunId) || coopRunRoom == BossRushCoop.RunId)
+                && (IsCoopAssetCurrent || BossRushCoop.IsHost)
                 && (_state.IsStarting || _state.IsActive);
         }
 
         private async UniTaskVoid SpawnWaveAsync(int waveIndex)
         {
+            if (!CoopRunHasWorldAuthority) return;
             if (_waveSpawnInFlight || !CanContinueRun()) return;
             _waveSpawnInFlight = true;
             try
             {
+                if (!await WaitForCoopCombatReceipts()) { End(ModeGExitReason.TechnicalIntegrityLoss); return; }
                 ModeGWavePlan.WaveSlot wave = _wavePlan.GetWave(waveIndex);
                 if (wave == null) { End(ModeGExitReason.TechnicalIntegrityLoss); return; }
 
@@ -327,7 +334,7 @@ namespace BossRush
                 }
                 else if (axis == ModeGCounterAxis.Attribute)
                 {
-                    if (_adaptive.ApplyAttributeLock(CharacterMainControl.Main, _telemetry))
+                    if (IsCoopAssetCurrent && !CoopPersonalDefeated && _adaptive.ApplyAttributeLock(CharacterMainControl.Main, _telemetry))
                     {
                         _attributeLockCount++;
                         _axisAttemptAttribute++;
@@ -426,6 +433,7 @@ namespace BossRush
                 }
 
                 // 全槽结案后同帧批量激活。任一已提交 handle 激活失败都视为技术完整性丢失。
+                if (!await WaitForCoopWave()) { End(ModeGExitReason.TechnicalIntegrityLoss); return; }
                 if (!EnsureCommittedBossTeams())
                 {
                     End(ModeGExitReason.TechnicalIntegrityLoss);
@@ -459,7 +467,7 @@ namespace BossRush
                 {
                     if (_healthScratch[i] != null) aggregateMaxHealth += _healthScratch[i].MaxHealth;
                 }
-                _telemetry.BeginWave(CharacterMainControl.Main, aggregateMaxHealth);
+                _telemetry.BeginWave(IsCoopAssetCurrent && !CoopPersonalDefeated ? CharacterMainControl.Main : null, aggregateMaxHealth);
                 if (isAmmoSamplingWave && _telemetry.ShotSequence != spawningGuardShotSequence)
                 {
                     _telemetry.InvalidateAmmoSample();
@@ -769,7 +777,7 @@ namespace BossRush
                     return;
                 }
                 if (!_spawnTransaction.MarkKilled(health)) return;
-                _totalBossKills++;
+                if (IsCoopAssetCurrent && !CoopPersonalDefeated && (!BossRushCoop.IsConnected || BossRushCoop.GetPlayerId(info.fromCharacter) == BossRushCoop.LocalPlayerId)) _totalBossKills++;
                 if (_spawnTransaction.ActiveBossCount == 0)
                 {
                     _lastTerminalFamily = _telemetry != null
@@ -832,8 +840,9 @@ namespace BossRush
                     int token = unchecked((int)ModeGDeterministicRandom.Fnv1a64(
                         (bossType ?? "Normal") + "|" + _state.waveEpoch
                         + "|" + (health != null ? health.GetInstanceID() : 0)));
-                    ModeGCombatTelemetry.EnqueueAchievementReport(
-                        token, bossType ?? "Normal", !AchievementTracker.HasTakenDamage);
+                    if (IsCoopAssetCurrent && !CoopPersonalDefeated)
+                        ModeGCombatTelemetry.EnqueueAchievementReport(
+                            token, bossType ?? "Normal", !AchievementTracker.HasTakenDamage);
                 }
                 catch { /* no-throw */ }
 
@@ -922,6 +931,7 @@ namespace BossRush
 
         private void CheckNemesisDefeat(Health health, DamageInfo info)
         {
+            if (!IsCoopAssetCurrent || CoopPersonalDefeated) return;
             try
             {
                 ModeGWavePlan.WaveSlot wave = _wavePlan.GetWave(_state.waveEpoch);
@@ -1096,17 +1106,27 @@ namespace BossRush
         private void DriveCore(float deltaTime)
         {
             if (_disposed || _state == null || _ended) return;
+            if (!CheckCoopAsset()) return;
             int frame = UnityEngine.Time.frameCount;
             if (frame == _lastDrivenFrame) return;
             _lastDrivenFrame = frame;
+            if (CoopRunWasClient) { DriveCoopGuest(); return; }
 
             try
             {
                 if (_state.IsActive)
                 {
+                    if (BossRushCoop.IsHost && !CoopAnyParticipantAlive())
+                    {
+                        if (IsCoopAssetCurrent && !CoopPersonalDefeated && CharacterMainControl.Main != null)
+                            RecordCoopPersonalDefeat(CharacterMainControl.Main, default(DamageInfo));
+                        _state.TryLockBattleResult(ModeGBattleResult.Defeat);
+                        End(ModeGExitReason.PlayerDeath);
+                        return;
+                    }
                     // 玩家死亡兜底轮询（主路由为独立 OnDead 订阅；CAS 幂等）
                     CharacterMainControl player = CharacterMainControl.Main;
-                    if (player != null && player.Health != null && player.Health.IsDead)
+                    if (player != null && player.Health != null && player.Health.IsDead && (!BossRushCoop.IsConnected || !BossRushCoop.AnyPlayerAlive))
                     {
                         ModeGDeathRouting.HandlePlayerDeath(this, player.Health, default(DamageInfo));
                         return;
@@ -1169,21 +1189,6 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[ModeG] [ERROR] DriveCore 异常: " + e.Message);
             }
-        }
-
-        private void ApplyRevengeToSurvivor()
-        {
-            try
-            {
-                _characterScratch.Clear();
-                _state.CollectTrackedBosses(_characterScratch);
-                if (_characterScratch.Count > 0 && _characterScratch[0] != null)
-                {
-                    _adaptive.ApplyRevengeBuff(_characterScratch[0]);
-                    _host.ShowMessage(L10n.T("幸存 Boss 获得复仇强化！", "The survivor gains Revenge!"));
-                }
-            }
-            catch { /* no-throw */ }
         }
 
         #endregion

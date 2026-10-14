@@ -25,6 +25,7 @@ namespace BossRush
 
         internal void ConfigureBossRushMode(int bossesPerWave, bool useInfiniteHell)
         {
+            if (RequestCoopArena("configure", bossesPerWave, useInfiniteHell)) return;
             // [DEBUG] 记录传入参数
             ModBehaviour.DevLog("[BossRush] ConfigureBossRushMode 调用: 传入 bossesPerWave=" + bossesPerWave + ", useInfiniteHell=" + useInfiniteHell + ", 当前 this.bossesPerWave=" + BossesPerWave);
 

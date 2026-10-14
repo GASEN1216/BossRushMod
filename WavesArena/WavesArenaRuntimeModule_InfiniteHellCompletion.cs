@@ -17,6 +17,7 @@ namespace BossRush
 
         internal async void OnInfiniteHellWaveCompleted_LootAndRewards()
         {
+            if (!BossRushCoop.HasWorldAuthority) return;
             Func<bool> isCompletionCurrent = WavesArenaRuntimeModule.CaptureValidity(owner, false, true);
             try
             {
@@ -24,9 +25,13 @@ namespace BossRush
                 InfiniteHellWaveIndex++;
 
                 // 检查无间炼狱波次成就
-                owner.CheckInfiniteHellAchievementsForArena(InfiniteHellWaveIndex);
+                if (BossRushCoop.IsConnected) DeliverCoopArenaFact("hell", InfiniteHellWaveIndex);
+                else owner.CheckInfiniteHellAchievementsForArena(InfiniteHellWaveIndex);
 
                 long cashThisWave = InfiniteHellWaveCashThisWave;
+                int copies = CoopArenaRewardCopies;
+                if (BossRushCoop.IsConnected)
+                    cashThisWave = copies <= 0 ? 0 : cashThisWave > long.MaxValue / copies ? long.MaxValue : cashThisWave * copies;
                 InfiniteHellWaveCashThisWave = 0L;
                 // 实际交出去之前都算欠账：落地失败的余额记账户，账户也记不进去就滚进下一波，不再凭空丢。
                 long cashRemaining = cashThisWave;
@@ -56,9 +61,9 @@ namespace BossRush
                         try { cashPrefab = ItemAssetsCollection.GetPrefab(EconomyManager.CashItemID); }
                         catch (Exception e) { owner.LogLootWarningLimitedForArena("InfiniteHellCash_prefab", "读取现金堆叠上限失败", e); }
                         long stackLimit = cashPrefab != null && cashPrefab.MaxStackCount > 0 ? cashPrefab.MaxStackCount : int.MaxValue;
-                        long neededPiles = (cashThisWave + stackLimit - 1L) / stackLimit;
+                        long neededPiles = cashThisWave / stackLimit + (cashThisWave % stackLimit > 0 ? 1L : 0L);
                         int stackCount = (int)Math.Min(InfiniteHellMaxCashPiles, Math.Max(cashThisWave >= 3L ? 3L : 1L, neededPiles));
-                        long perStack = Math.Min(stackLimit, (cashThisWave + stackCount - 1L) / stackCount);
+                        long perStack = Math.Min(stackLimit, cashThisWave / stackCount + (cashThisWave % stackCount > 0 ? 1L : 0L));
                         for (int i = 0; i < stackCount && cashRemaining > 0; i++)
                         {
                             long stackValue = Math.Min(cashRemaining, perStack);
@@ -174,6 +179,8 @@ namespace BossRush
                 {
                     if (InfiniteHellWaveIndex > 0 && InfiniteHellWaveIndex % 5 == 0)
                     {
+                        for (int rewardIndex = 0; rewardIndex < copies; rewardIndex++)
+                        {
                         int rewardTypeId = GetRandomInfiniteHellHighQualityRewardTypeID();
                         if (rewardTypeId <= 0)
                         {
@@ -210,7 +217,7 @@ namespace BossRush
 
                                 try
                                 {
-                                    reward5.Drop(basePos, true, UnityEngine.Random.insideUnitSphere.normalized, 45f);
+                                    reward5.Drop(basePos + new Vector3(rewardIndex * 0.35f, 0, 0), true, UnityEngine.Random.insideUnitSphere.normalized, 45f);
                                 }
                                 catch (Exception e)
                                 {
@@ -221,6 +228,7 @@ namespace BossRush
                             {
                                 owner.LogLootWarningLimitedForArena("InfiniteHellWave5_inner", "准备无间炼狱 5 波奖励失败", e);
                             }
+                        }
                         }
                     }
                 }

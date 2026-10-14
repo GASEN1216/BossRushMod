@@ -35,6 +35,32 @@ namespace BossRush
         /// 否则会留下一只没人记账的沙暴冠军。
         /// </summary>
         private int campaignFinalBossRunId;
+        private bool campaignFinalScopeBound, campaignFinalScopeConnected, campaignFinalScopeHost, campaignFinalScopeLost;
+        private string campaignFinalScopeRoom;
+
+        private void CaptureCampaignFinalScope()
+        {
+            campaignFinalScopeBound = true; campaignFinalScopeLost = false;
+            campaignFinalScopeConnected = BossRushCoop.IsConnected; campaignFinalScopeHost = BossRushCoop.IsHost;
+            campaignFinalScopeRoom = BossRushCoop.RunId;
+        }
+        private bool IsCampaignFinalScopeValid()
+        {
+            if (!campaignFinalScopeBound) return true;
+            if (campaignFinalScopeLost) return false;
+            if (campaignFinalScopeConnected != BossRushCoop.IsConnected
+                || campaignFinalScopeConnected && campaignFinalScopeHost != BossRushCoop.IsHost
+                || campaignFinalScopeConnected && !string.IsNullOrEmpty(campaignFinalScopeRoom) && !string.IsNullOrEmpty(BossRushCoop.RunId)
+                    && !string.Equals(campaignFinalScopeRoom, BossRushCoop.RunId, StringComparison.Ordinal)) campaignFinalScopeLost = true;
+            else if (campaignFinalScopeConnected && string.IsNullOrEmpty(campaignFinalScopeRoom) && !string.IsNullOrEmpty(BossRushCoop.RunId))
+                campaignFinalScopeRoom = BossRushCoop.RunId;
+            return !campaignFinalScopeLost;
+        }
+        private void TickCampaignFinalScope()
+        {
+            if (!IsCampaignFinalScopeValid() && campaignFinalBossActive)
+                CleanupCampaignFinalBoss(!campaignFinalScopeConnected || campaignFinalScopeHost);
+        }
 
         /// <summary>
         /// 生成流程是否已出结果（拿到实例或确认失败）。
@@ -263,7 +289,11 @@ namespace BossRush
         {
             try
             {
-                if (!CanStartCampaignFinalBoss()) return;
+                if (!IsCampaignFinalScopeValid()) return;
+                if (!CanStartCampaignFinalBoss() && !coopRemoteFinalAdmission) return;
+                if (!BossRushCoop.SessionReady) return;
+                if (coopWorld != null && coopWorld.Request("final-start")) return;
+                CaptureCampaignFinalScope();
                 campaignFinalBossActive = true;
                 campaignFinalBossSpawnResolved = false;
                 int runId = ++campaignFinalBossRunId;
@@ -325,7 +355,8 @@ namespace BossRush
 
         internal bool DebugStartCampaignFinalBossForValidation()
         {
-            if (!ModBehaviour.DevModeEnabled || campaignFinalBossActive || !IsCampaignArenaSceneCached()) return false;
+            if (!ModBehaviour.DevModeEnabled || campaignFinalBossActive || !IsCampaignArenaSceneCached() || !IsCampaignFinalScopeValid()) return false;
+            CaptureCampaignFinalScope();
             campaignFinalBossDeathPresentationCount = 0;
             campaignFinalBossActive = true;
             campaignFinalBossSpawnResolved = false;
@@ -336,6 +367,7 @@ namespace BossRush
 
         private async UniTask StartCampaignFinalBossAsync(int runId)
         {
+            if (!BossRushCoop.HasWorldAuthority || !IsCampaignFinalScopeValid()) return;
             // 卸载会清掉模块的 _owner；迟到生成仍需原宿主回收掉落追踪，再销毁 Boss。
             ModBehaviour campaignOwner = _owner;
             try
@@ -346,12 +378,12 @@ namespace BossRush
                 CampaignFinalBossFx.PlaySummonBurst(position);   // 召唤爆发与生成并行，不改时序
 
                 CharacterMainControl boss = await SandstormChampionBoss.SpawnAsync(
-                    campaignOwner, position, () => runId == campaignFinalBossRunId && campaignFinalBossActive);
+                    campaignOwner, position, () => runId == campaignFinalBossRunId && campaignFinalBossActive && IsCampaignFinalScopeValid());
 
                 // 生成是异步的：等待期间玩家可能已经切场景、死亡或开了别的模式，
                 // 那一场已经被收尾过了。此时绝不能把 Boss 认领回来——
                 // 它会变成一只没人记账的沙暴冠军留在场上。
-                if (runId != campaignFinalBossRunId)
+                if (runId != campaignFinalBossRunId || !IsCampaignFinalScopeValid())
                 {
                     ModBehaviour.DevLog(CampaignTuning.LogPrefix + "决战已在生成期间中止，销毁迟到的 Boss");
                     if (boss != null)
@@ -454,6 +486,7 @@ namespace BossRush
         /// <summary>决战 Boss 死亡：上报目标并收尾。</summary>
         private void OnCampaignFinalBossDead(DamageInfo damageInfo)
         {
+            if (!BossRushCoop.HasWorldAuthority) return;
             // 同一帧的重复死亡回调只允许第一个取得表现 owner。
             if (!campaignFinalBossActive) return;
             campaignFinalBossActive = false;
@@ -463,7 +496,8 @@ namespace BossRush
                 ModBehaviour.DevLog(CampaignTuning.LogPrefix + "冠军之影已被击败");
                 _owner.ShowMessage(L10n.T("冠军之影倒下了", "The Shadow of the Champion is down"));
 
-                CampaignObjectiveTracker.ReportFinalBossKill();
+                if (!DeliverCoopCampaignFact("final-boss:" + campaignFinalBossRunId, new CoopCampaignFact { Kind = "final" }))
+                    CampaignObjectiveTracker.ReportFinalBossKill();
                 BossRushAudioManager.Instance?.PlayStinger(BossBgmEvents.RunVictory);
             }
             catch (Exception e)
@@ -487,11 +521,13 @@ namespace BossRush
         /// </summary>
         internal void TickCampaignFinalBossYield()
         {
+            TickCampaignFinalScope();
+            if (!BossRushCoop.HasWorldAuthority) return;
             if (!campaignFinalBossActive) return;
             try
             {
                 CharacterMainControl main = CharacterMainControl.Main;
-                if (main == null || main.Health == null || main.Health.IsDead)
+                if (BossRushCoop.IsConnected ? !BossRushCoop.AnyPlayerAlive : main == null || main.Health == null || main.Health.IsDead)
                 {
                     CleanupCampaignFinalBoss(true);
                     return;
@@ -544,8 +580,11 @@ namespace BossRush
                     {
                         try
                         {
-                            _owner.ClearCampaignBossRandomLootTrackingForRuntime(campaignFinalBossInstance);
-                            UnityEngine.Object.Destroy(campaignFinalBossInstance.gameObject);
+                            if (BossRushCoop.HasWorldAuthority)
+                            {
+                                _owner.ClearCampaignBossRandomLootTrackingForRuntime(campaignFinalBossInstance);
+                                UnityEngine.Object.Destroy(campaignFinalBossInstance.gameObject);
+                            }
                         }
                         catch (Exception e)
                         {

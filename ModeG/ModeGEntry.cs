@@ -253,6 +253,17 @@ namespace BossRush
         /// </summary>
         public bool TryStartModeG()
         {
+            if (IsCoopParticipantAssetRejected())
+            {
+                ShowMessage(L10n.T("本局资格属于原存档，请切回原存档或等待下一局。", "This run belongs to your original save. Return to that save or wait for the next run."));
+                return false;
+            }
+            if (IsCoopRunClosedForLocalAsset())
+            {
+                ShowMessage(L10n.T("本人的本局挑战已结束，请等待下一局。", "Your current challenge has ended. Wait for the next run."));
+                return false;
+            }
+            if (QueueCoopEntry()) return true;
             // Mode H 真实资产风险门（加法分支，设计提案 §24.3）：
             // 只在存在未终结真实资产事务或风险未知时拒绝；no-throw，
             // 新档/无 journal 时同步 ready 且不阻断，旧模式行为逐字不变。
@@ -536,6 +547,7 @@ namespace BossRush
             ModeGRunState state = null;
             try
             {
+                preview = FreezeCoopPreview(preview);
                 string playerGuid = GetPlayerGuid();
                 long timestamp = DateTime.UtcNow.Ticks;
 
@@ -546,6 +558,7 @@ namespace BossRush
                     ulong idState = preview.runSeed ^ (ulong)timestamp;
                     runId = ModeGDeterministicRandom.SplitMix64Next(ref idState);
                 }
+                if (BossRushCoop.IsClient && coopLatest != null) runId = coopLatest.Id;
 
                 state = new ModeGRunState(runId, preview.runSeed, playerGuid, timestamp, preview.sessionCounter);
 
@@ -609,6 +622,7 @@ namespace BossRush
                 modeGHUD = new ModeGHUD(modeGRuntime);
 
                 modeGActive = true;
+                NotifyCoopAdmission();
                 ConsumeModeGEntryPreview();
 
                 ShowBigBanner(L10n.T(
@@ -655,6 +669,7 @@ namespace BossRush
         /// </summary>
         internal void UpdateModeG(float deltaTime)
         {
+            TickCoopEntry(deltaTime);
             if (!modeGActive || modeGRuntime == null) return;
 
             try
@@ -853,6 +868,7 @@ namespace BossRush
         /// </summary>
         public static void PrepareHostDestroy()
         {
+            ModeGEntryRuntime.DisposeCoopOwner();
             try
             {
                 if (System.Threading.Interlocked.Exchange(ref _prepareHostDestroyState, 1) != 0)

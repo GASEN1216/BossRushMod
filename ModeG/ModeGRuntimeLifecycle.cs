@@ -29,7 +29,9 @@ namespace BossRush
         {
             try
             {
-                if (_state == null || _ended) return;
+                if (_state == null || _ended || !CheckCoopAsset()) return;
+                if (CoopRunWasClient) return;
+                if (BossRushCoop.IsHost) ModeGEntryRuntime.PublishCoopPlayerDeath(health, info);
                 CharacterMainControl main = CharacterMainControl.Main;
                 if (main == null || !ReferenceEquals(health, main.Health)) return;
                 ModeGDeathRouting.HandlePlayerDeath(this, health, info);

@@ -55,12 +55,21 @@ namespace BossRush
         {
             this.modeEHost = owner;
             modeERuntimeDestroyed = false;
+            InitializeCoopModeE();
         }
 
         public override void OnDestroy()
         {
             if (modeERuntimeDestroyed) return;
             modeERuntimeDestroyed = true;
+            CleanupCoopCoal();
+            CleanupCoopUtilities();
+            if (coopUtilitySmokeChannel != null) coopUtilitySmokeChannel.Dispose();
+            coopUtilitySmokeChannel = null;
+            if (coopCoalOwner == this) coopCoalOwner = null;
+            if (coopChannel != null) coopChannel.Dispose();
+            if (coopPersonal != null) coopPersonal.Dispose();
+            coopChannel = null; coopPersonal = null;
             InvalidateModeESession();
             // 场景预热早于 BeginSession，也归此 owner 回收，不能借机清其它模式的状态。
             StopModeEStartupWarmupIfPending();

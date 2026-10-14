@@ -58,6 +58,7 @@ namespace BossRush
             {
                 return true;
             }
+            if (BossRushCoop.IsClient && !BossRushCoop.SessionReady) return false;
 
             if (!inst.IsModeEActive)
             {
@@ -123,6 +124,7 @@ namespace BossRush
                 }
 
                 int typeId = item.TypeID;
+                if (ModeERuntimeModule.RequestCoopRespawnItem(typeId)) return;
 
                 if (typeId == RespawnItemConfig.TAUNT_SMOKE_TYPE_ID)
                 {

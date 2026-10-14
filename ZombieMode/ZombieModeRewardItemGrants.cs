@@ -410,6 +410,7 @@ namespace BossRush
 
         internal void SettleZombieModeFailureInsuranceShell(int runId)
         {
+            if (!IsCoopZombieLocalAssetCurrent()) return;
             if (runId <= 0 || runState.RunId != runId)
             {
                 return;
@@ -540,6 +541,7 @@ namespace BossRush
         }
         internal bool TryGiveZombieModeWaveClearHealingItem()
         {
+            if (!IsCoopZombieLocalAssetCurrent()) return false;
             return TryGiveRandomItemByTags(ZombieModeRewardTagHealing, 1, ZombieModeTuning.StarterMaxQuality);
         }
 

@@ -7,6 +7,7 @@ namespace BossRush
     {
         internal void OnEnemyDiedWithDamageInfo(Health deadHealth, DamageInfo damageInfo)
         {
+            if (!BossRushCoop.HasWorldAuthority) return;
             try
             {
                 // Mode D 有独立的敌人死亡处理（RegisterModeDEnemyDeath），不走普通模式逻辑
@@ -142,6 +143,7 @@ namespace BossRush
 
         internal void HandleBossDeath(CharacterMainControl bossMain, DamageInfo damageInfo)
         {
+            if (!BossRushCoop.HasWorldAuthority) return;
             try
             {
                 if (!owner.IsActive || bossMain == null)
@@ -158,7 +160,8 @@ namespace BossRush
                 owner.UnregisterEnemyRecoveryForArena(bossMain);
 
                 // 识别 Boss 类型并触发成就（同一角色实例只计一次，避免专用死亡回调和通用死亡流重复计数）
-                owner.CheckBossKillAchievementsOnceForArena(bossMain);
+                if (!BossRushCoop.IsConnected) owner.CheckBossKillAchievementsOnceForArena(bossMain);
+                ReportCoopArenaBoss(bossMain);
 
                 // ── 本波成员校验：这条线以下全是波次记账，非本波 Boss 一律不得越过 ──
                 //
@@ -363,6 +366,7 @@ namespace BossRush
         /// </summary>
         internal void ProceedAfterWaveFinished()
         {
+            if (!BossRushCoop.HasWorldAuthority) return;
             try
             {
                 // 通知快递员 Boss 战结束

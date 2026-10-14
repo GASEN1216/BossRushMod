@@ -36,7 +36,7 @@ namespace BossRush
 
             // 官方点与地图画像点都与玩家不连通时（例如玩家出生在独立导航区），
             // 用共享回退环在玩家周围补点；每个点仍须过同一可达性判据。
-            CharacterMainControl collectPlayer = CharacterMainControl.Main;
+            CharacterMainControl collectPlayer = BossRushCoop.IsConnected ? GetCoopZombieSpawnAnchor(Vector3.zero) : CharacterMainControl.Main;
             if (runState.SpawnPoints.Count <= 0 && collectPlayer != null &&
                 (runState.MapProfile == null || runState.MapProfile.AllowVirtualSpawnPoints))
             {
@@ -170,7 +170,7 @@ namespace BossRush
 
             if (runState.SpawnPoints.Count <= 0)
             {
-                CharacterMainControl main = CharacterMainControl.Main;
+                CharacterMainControl main = BossRushCoop.IsConnected ? GetCoopZombieSpawnAnchor(Vector3.zero) : CharacterMainControl.Main;
                 return main != null ? main.transform.position : Vector3.zero;
             }
 
@@ -184,7 +184,7 @@ namespace BossRush
                 return true;
             }
 
-            CharacterMainControl main = CharacterMainControl.Main;
+            CharacterMainControl main = BossRushCoop.IsConnected ? GetCoopZombieSpawnAnchor(Vector3.zero) : CharacterMainControl.Main;
             if (main != null && TryFindZombieModeVirtualSpawnAroundPlayer(main.transform.position, out position))
             {
                 return true;
@@ -214,7 +214,7 @@ namespace BossRush
                 return false;
             }
 
-            CharacterMainControl main = CharacterMainControl.Main;
+            CharacterMainControl main = BossRushCoop.IsConnected ? GetCoopZombieSpawnAnchor(Vector3.zero) : CharacterMainControl.Main;
             Vector3 playerPos = main != null ? main.transform.position : Vector3.zero;
             float preferredMinDistance = GetZombieModeSpawnPointMinPlayerDistance();
             float preferredMinDistanceSqr = preferredMinDistance * preferredMinDistance;
@@ -316,7 +316,7 @@ namespace BossRush
         private bool TryResolveZombieModeSpawnPoint(Vector3 position, bool virtualPoint, out Vector3 resolved, float navMeshSampleRadius = -1f)
         {
             resolved = Vector3.zero;
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = BossRushCoop.IsConnected ? GetCoopZombieSpawnAnchor(position) : CharacterMainControl.Main;
             if (player == null)
             {
                 return false;
@@ -633,7 +633,7 @@ namespace BossRush
                     return;
                 }
 
-                CharacterMainControl main = CharacterMainControl.Main;
+                CharacterMainControl main = BossRushCoop.IsConnected ? GetCoopZombieCombatTarget(Vector3.zero) : CharacterMainControl.Main;
                 if (main != null)
                 {
                     SetZombieModeEnemyTargetToMainPlayer(ai);
@@ -675,7 +675,7 @@ namespace BossRush
                 delta.y = 0f;
                 if (delta.sqrMagnitude < ZombieModeTuning.BossSpreadMinDistance * ZombieModeTuning.BossSpreadMinDistance)
                 {
-                    CharacterMainControl player = CharacterMainControl.Main;
+                    CharacterMainControl player = BossRushCoop.IsConnected ? GetCoopZombieCombatTarget(candidate) : CharacterMainControl.Main;
                     Vector3 spreadPosition;
                     if (player != null && TryFindZombieModeVirtualSpawnAroundPlayer(player.transform.position, out spreadPosition))
                         return spreadPosition;

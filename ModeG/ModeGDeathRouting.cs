@@ -35,6 +35,14 @@ namespace BossRush
             ModeGRunState state = module.State;
             CharacterMainControl player = CharacterMainControl.Main;
             if (player == null || !ReferenceEquals(health, player.Health)) return;
+            if (BossRushCoop.IsHost && !module.IsCoopAssetCurrent)
+            {
+                if (!module.CoopAnyParticipantAlive() && state.TryLockBattleResult(ModeGBattleResult.Defeat))
+                    module.End(ModeGExitReason.PlayerDeath);
+                return;
+            }
+            if (BossRushCoop.IsHost && module.CoopAnyParticipantAlive() && !state.IsRewarding)
+            { module.RecordCoopPersonalDefeat(player, info); return; }
 
             try
             {
@@ -53,7 +61,8 @@ namespace BossRush
 
                 state.combatPhase = ModeGCombatPhase.Defeat;
                 state.lastStandActive = false;
-                ModeGRecapPanel.NemesisAttribution attribution = AttributeDefeatToNemesis(module, state, player, info);
+                ModeGRecapPanel.NemesisAttribution attribution = module.CoopPersonalDefeated
+                    ? new ModeGRecapPanel.NemesisAttribution() : AttributeDefeatToNemesis(module, state, player, info);
 
                 // 必须在 RecordRun 之前取旧最佳波次：RecordRun 会把本局并入 profile，
                 // 之后再读会让 recap 的「新纪录」每局都成立
@@ -105,6 +114,10 @@ namespace BossRush
         /// 失败宿敌归因：击杀者为已登记 Boss 时写入/升级宿敌记录。
         /// 返回归因结果供失败横幅/recap 预告（Rank 读取内存提交后的持久值，§15）。
         /// </summary>
+        internal static ModeGRecapPanel.NemesisAttribution AttributeCoopDefeat(ModeGRuntimeModule module,
+            ModeGRunState state, CharacterMainControl player, DamageInfo info)
+        { return AttributeDefeatToNemesis(module, state, player, info); }
+
         private static ModeGRecapPanel.NemesisAttribution AttributeDefeatToNemesis(
             ModeGRuntimeModule module,
             ModeGRunState state,
@@ -179,6 +192,8 @@ namespace BossRush
 
         internal static void HandleVictory(ModeGRuntimeModule module)
         {
+            if (BossRushCoop.IsHost && module != null && module.CoopPersonalDefeated)
+            { module.State.TryLockBattleResult(ModeGBattleResult.Victory); module.End(ModeGExitReason.Victory); return; }
             if (module == null || !IsWaveVictoryReady(module.State)) return;
 
             ModeGRunState state = module.State;

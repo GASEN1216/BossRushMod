@@ -140,7 +140,7 @@ namespace BossRush
                 return true;
             }
 
-            if (character.IsMainCharacter || character.Team == Teams.player)
+            if (character.IsMainCharacter || BossRushCoop.IsPlayer(character) || character.Team == Teams.player)
             {
                 return true;
             }

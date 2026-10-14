@@ -993,6 +993,11 @@ namespace BossRush
         }
         private void EnterHallOfFame()
         {
+            if (!CanUseCoopNativePersonalSeason)
+            {
+                TryTransition(ModeHLifecycle.Intermission, ModeHLifecycle.HallOfFame, "coop_world_completed");
+                return;
+            }
             ModeHHallOfFameRecordDto record = BuildHallOfFameRecord();
             if (record == null)
             {

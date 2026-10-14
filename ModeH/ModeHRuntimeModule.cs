@@ -77,6 +77,7 @@ namespace BossRush
             try
             {
                 _owner = owner;
+                InitializeCoop();
                 _shutdownCompleted = false;
                 ModeHSaveFlushCoordinator.EnsureSubscribed();
                 EnsureLevelReadySubscription();
@@ -126,6 +127,7 @@ namespace BossRush
         {
             try
             {
+                if (BossRushCoop.IsClient) { ReleaseCoopProjection(); _sceneGeneration++; return; }
                 _sceneGeneration++;
                 if (_runState != null)
                 {
@@ -158,6 +160,8 @@ namespace BossRush
                 {
                     LogFailure("update_save_tick", e);
                 }
+                TickCoop(unscaledDeltaTime);
+                if (BossRushCoop.IsClient) return;
                 OnUpdateInternal(deltaTime, unscaledDeltaTime);
             }
             catch (Exception e)
@@ -181,6 +185,7 @@ namespace BossRush
             {
                 // 先退订官方事件，再走 shutdown：宿主销毁后 LevelManager 不得再回调进来
                 ShutdownLevelReadySubscription();
+                ShutdownCoop();
                 ShutdownRuntime(ModeHExitReason.ModDestroyed, "host_destroy");
                 // 幂等兜底：即使 shutdown 早退，也必须在宿主销毁路径上清空全部静态缓存
                 ModeHRuntimeModule.ResetModeHStaticCaches();
@@ -326,6 +331,7 @@ namespace BossRush
         {
             if (BossRushMapSelectionHelper.HasPendingModeHEntryIntent()) ModeHEntry.CancelPendingEntry();
             ModeHTicketRefund.ResetStaticCaches();
+            if (RetainCoopWorldOnSlotChange()) return;
             // 只回收运行期对象，不经过会返还真实押品的 shutdown。
             _commandsClosed = true;
             CancelSeasonResume();
@@ -373,6 +379,7 @@ namespace BossRush
             _runState = ModeHRunState.FromDto(season.runState);
             if (_runState != null)
             {
+                BindCoopWorldAsset();
                 _season = season;
                 _restoredSeasonPending = true;
                 _runState.RestoreEventTokens(season.appliedEventTokenIds);
@@ -465,6 +472,8 @@ namespace BossRush
         /// </summary>
         internal void ShutdownRuntime(ModeHExitReason reason, string reasonId)
         {
+            if (_coopProjection) { ReleaseCoopProjection(); return; }
+            RestoreCoopSpectators();
             if (_shutdownCompleted) return;
             _shutdownCompleted = true;
             CancelSeasonResume();

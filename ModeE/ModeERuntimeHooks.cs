@@ -4,9 +4,15 @@ namespace BossRush
     {
         internal void TickModeERuntime(float deltaTime)
         {
+            if (coopChannel != null) TickCoopModeE(deltaTime);
+            if (!BossRushCoop.HasWorldAuthority)
+            {
+                if (modeEActive && IsCoopModeELocalAdmitted()) UpdateModeEPlayerNameTag();
+                return;
+            }
             if (modeEActive)
             {
-                UpdateModeEPlayerNameTag();
+                if (IsCoopModeELocalAdmitted()) UpdateModeEPlayerNameTag();
 
                 modeEIntegrityTimer += deltaTime;
                 if (modeEIntegrityTimer >= ModBehaviour.WaveIntegrityCheckInterval)

@@ -105,6 +105,7 @@ namespace BossRush
             }
 
             CleanupZombieModeRunOnlyState(reason, true);
+            if (zombieModeRuntimeModule != null) zombieModeRuntimeModule.RememberCoopZombieWallet();
             zombieModeRunState.ClearRuntime();
             zombieModeRunState.LifecyclePhase = ZombieModeLifecyclePhase.None;
             pendingZombieModeEntry = false;

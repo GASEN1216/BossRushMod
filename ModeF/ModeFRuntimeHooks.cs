@@ -4,6 +4,8 @@ namespace BossRush
     {
         internal void TickModeFRuntime(float deltaTime)
         {
+            if (coopChannel != null) TickCoopModeF(deltaTime);
+            if (!BossRushCoop.HasWorldAuthority) { TickCoopModeFPersonal(deltaTime); return; }
             if (modeFActive)
             {
                 TickModeF(deltaTime);

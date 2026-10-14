@@ -63,7 +63,7 @@ namespace BossRush
         internal void ProceedAfterWaveFinished() { wavesArenaRuntime.ProceedAfterWaveFinished(); }
         private void OnBossSpawnFailed(EnemyPresetInfo preset) { wavesArenaRuntime.OnBossSpawnFailed(preset); }
         internal void UnregisterEnemyRecoveryForArena(CharacterMainControl boss) { UnregisterEnemyRecovery(boss); }
-        internal bool CheckBossKillAchievementsOnceForArena(CharacterMainControl boss) { return CheckBossKillAchievementsOnce(boss); }
+        internal bool CheckBossKillAchievementsOnceForArena(CharacterMainControl boss, string bossType = null) { return CheckBossKillAchievementsOnce(boss, bossType); }
         internal bool ArenaUsesInteractBetweenWaves { get { return config != null && config.useInteractBetweenWaves; } }
 
         private void InitializeEnemyPresets() { wavesArenaRuntime.InitializeEnemyPresets(); }

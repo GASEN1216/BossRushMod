@@ -67,9 +67,17 @@ namespace BossRush
             }
         }
 
+        private bool modeESessionConnected, modeESessionHost;
+        private string modeESessionRoom;
+        private int modeESessionSceneHandle;
+
         private int BeginModeESession()
         {
             modeECleanupPending = true;
+            modeESessionConnected = BossRushCoop.IsConnected;
+            modeESessionHost = BossRushCoop.IsHost;
+            modeESessionRoom = BossRushCoop.RunId;
+            modeESessionSceneHandle = UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle;
             modeESessionToken = ++modeESessionSerial;
             return modeESessionToken;
         }
@@ -127,7 +135,19 @@ namespace BossRush
 
             return modeEActive &&
                    modeESessionToken == sessionToken &&
+                   IsModeESessionOwnerCurrent() &&
                    UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex == relatedScene;
+        }
+
+        private bool IsModeESessionOwnerCurrent()
+        {
+            if (BossRushCoop.IsConnected != modeESessionConnected ||
+                modeESessionConnected && BossRushCoop.IsHost != modeESessionHost ||
+                UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle != modeESessionSceneHandle) return false;
+            string currentRoom = BossRushCoop.RunId;
+            if (!modeESessionConnected || string.IsNullOrEmpty(currentRoom)) return true;
+            if (string.IsNullOrEmpty(modeESessionRoom)) modeESessionRoom = currentRoom;
+            return string.Equals(modeESessionRoom, currentRoom, StringComparison.Ordinal);
         }
 
         internal bool IsModeEOrModeFSpawnSessionStillValid(
@@ -148,7 +168,9 @@ namespace BossRush
                 return IsModeESessionStillValid(modeESessionToken, modeESessionRelatedScene);
             }
 
-            return modeEActive || modeEHost.IsModeFActive;
+            return modeEActive && IsModeESessionOwnerCurrent() ||
+                modeEHost.IsModeFActive && modeEHost.IsModeFSessionStillValid(modeEHost.CurrentModeFSessionToken,
+                    UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
         }
 
         /// <summary>
@@ -815,6 +837,9 @@ namespace BossRush
         /// </summary>
         public bool TryStartModeE()
         {
+            if (BossRushCoop.IsConnected && !BossRushCoop.SessionReady) return false;
+            if (BossRushCoop.IsClient && modeEActive) return RetryCoopModeEAdmission();
+            if (coopChannel != null && coopChannel.Request("enter")) return true;
             // Mode H 真实资产风险门（加法分支，设计提案 §24.3）：
             // 只在存在未终结真实资产事务或风险未知时拒绝；no-throw，
             // 新档/无 journal 时同步 ready 且不阻断，旧模式行为逐字不变。
@@ -950,6 +975,9 @@ namespace BossRush
         /// </summary>
         internal bool StartModeE(Teams faction)
         {
+            if (!BossRushCoop.HasWorldAuthority || !BossRushCoop.SessionReady) return false;
+            coopEpoch = Guid.NewGuid().ToString("N");
+            BeginCoopModeEParticipants();
             ModeEStartupProfiler profiler = new ModeEStartupProfiler("StartModeE", faction.ToString());
             try
             {
@@ -1030,6 +1058,8 @@ namespace BossRush
 
                 // 发放初始装备（复用 Mode D 的 Starter Kit）
                 equipment.GivePlayerStarterKit();
+
+                coopPersonalEpoch = BossRushCoop.LocalAssetId + ":" + coopEpoch;
 
                 // 零度挑战地图：额外发放保暖装备（头盔 ID:1312 + 护甲 ID:1307）
                 ModeEGiveColdWeatherGear();

@@ -93,6 +93,8 @@ namespace BossRush
 
         private void CleanupModeELotteryAndHiringRuntime()
         {
+            ClearCoopModeEHires();
+            CleanupCoopUtilities();
             if (modeEBossHireBalanceSubscribed)
             {
                 ModeEShellBalanceChanged -= OnModeEBossHireShellBalanceChanged;
@@ -558,12 +560,15 @@ namespace BossRush
                 MODE_E_BOSS_HIRE_MAX_BASE_PRICE);
         }
 
-        private int GetCurrentModeEBossHirePrice(ModeEBossHireState state)
+        private int GetCurrentModeEBossHirePrice(ModeEBossHireState state, CharacterMainControl owner = null)
         {
             long price = state != null
                 ? Mathf.Max(1, state.BasePrice)
                 : MODE_E_BOSS_HIRE_REFERENCE_PRICE;
-            int aliveHireCount = modeEHiredBosses.Count;
+            CharacterMainControl player = owner != null ? owner : CharacterMainControl.Main;
+            int aliveHireCount = 0;
+            foreach (ModeEBossHireState hired in modeEHiredBosses.Values)
+                if (hired != null && hired.Owner == player && hired.Character != null && hired.Character.Health != null && !hired.Character.Health.IsDead) aliveHireCount++;
             for (int i = 0; i < aliveHireCount; i++)
             {
                 if (price > int.MaxValue / 2L)
@@ -676,6 +681,7 @@ namespace BossRush
 
         internal bool TryHireModeEBoss(CharacterMainControl character)
         {
+            if (BossRushCoop.IsClient) return RequestCoopModeEHire(character);
             ModeEBossHireState state;
             if (!CanInteractWithModeEBossHireOffer(character) ||
                 !modeEBossHireOffers.TryGetValue(character, out state))
@@ -948,7 +954,12 @@ namespace BossRush
             int count = modeEBossHireStateScratch.Count;
             for (int i = 0; i < count; i++)
             {
-                modeEBossHireStateScratch[i].Follower.InitializeForModeE(player, i, count);
+                ModeEBossHireState state = modeEBossHireStateScratch[i];
+                CharacterMainControl master = state.Owner != null ? state.Owner : player;
+                int slot = 0, ownCount = 0;
+                for (int j = 0; j < count; j++)
+                    if (modeEBossHireStateScratch[j].Owner == master) { if (j < i) slot++; ownCount++; }
+                state.Follower.InitializeForModeE(master, slot, Mathf.Max(1, ownCount));
             }
             modeEBossHireStateScratch.Clear();
         }

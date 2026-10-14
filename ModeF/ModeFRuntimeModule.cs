@@ -80,12 +80,16 @@ namespace BossRush
         {
             this.owner = owner;
             modeFRuntimeDestroyed = false;
+            InitializeCoopModeF();
         }
 
         public override void OnDestroy()
         {
             if (modeFRuntimeDestroyed) return;
             modeFRuntimeDestroyed = true;
+            if (coopChannel != null) coopChannel.Dispose();
+            if (coopPersonal != null) coopPersonal.Dispose();
+            coopChannel = null; coopPersonal = null;
             InvalidateModeFSession();
             if (!object.ReferenceEquals(owner, null)) ExitModeF(false);
             CleanupModeFDeferredExitBossObjects();

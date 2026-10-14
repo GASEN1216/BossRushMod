@@ -428,6 +428,7 @@ namespace BossRush
         /// </summary>
         private void ReserveStandingCashBet()
         {
+            if (BossRushCoop.IsConnected && !CoopLocalReady) return;
             if (_season == null || _runState == null || _season.currentLoadoutLock == null) return;
             _cashBetSkipNote = null;
             _cashBetSkipMatchIndex = -1;
@@ -504,6 +505,7 @@ namespace BossRush
         private void SettleCashBetForMatch(bool won)
         {
             if (_runState == null) return;
+            if (!IsCoopWorldPersonalAssetCurrent) return;
             SettleReservedBet(CarriedBetForCurrentMatch(), won);
         }
 
@@ -594,6 +596,7 @@ namespace BossRush
             {
                 ModeHCashBetRecord record = ModeHCashBetService.Current;
                 if (record == null || record.status != ModeHCashBetService.StatusReserved) return;
+                if (_coopLedger != null && _coopLedger.Owns(record.runId, record.matchIndex)) return;
                 if (record.kind == ModeHCashBetService.KindItems && record.itemSettlement != 0)
                 {
                     SettleReservedBet(record, record.itemSettlement == 1);

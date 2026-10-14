@@ -15,6 +15,7 @@ namespace BossRush
         /// </summary>
         private void StartBossRush_WavesArena(BossRushInteractable interactionSource = null)
         {
+            if (wavesArenaRuntime.RequestCoopArena("enter")) return;
             // Mode G 门控（加法分支）：最终入口先拒绝 IsModeGEntryBlocked，
             // 覆盖 public wrapper/F9/direct/MapSelection fallback 全部路径。
             // 查询默认 false、no-throw；Mode G 未运行且无隔离 lease 时条件恒 false，后续逻辑逐字不变。

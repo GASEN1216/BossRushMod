@@ -247,6 +247,7 @@ namespace BossRush
 
                 if (!WriteState(chapterId, CampaignChapterState.ContractActive)) return false;
 
+                CampaignObjectiveTracker.InvalidateContractIdentity();
                 CampaignObjectiveTracker.ResetSession();
                 ModBehaviour.DevLog(CampaignTuning.LogPrefix + "已接取契约: " + chapterId);
                 return true;
@@ -272,6 +273,7 @@ namespace BossRush
                 if (!WriteState(active, CampaignChapterState.Available)) return false;
                 _readyToDeliverChapterId = null;
 
+                CampaignObjectiveTracker.InvalidateContractIdentity();
                 CampaignObjectiveTracker.ResetSession();
                 ModBehaviour.DevLog(CampaignTuning.LogPrefix + "已放弃契约: " + active);
                 return true;

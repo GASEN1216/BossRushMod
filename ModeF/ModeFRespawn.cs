@@ -541,6 +541,7 @@ namespace BossRush
 
         private void OnModeFBossDied(CharacterMainControl deadBoss, DamageInfo damageInfo, string sourceTag = null)
         {
+            if (!BossRushCoop.HasWorldAuthority) return;
             int deadBossId = 0;
             bool replacementRequired = false;
             try
@@ -582,7 +583,7 @@ namespace BossRush
                     false,
                     clearLootResolutionState: !preserveLootResolutionState);
 
-                bool killedByPlayer = killer == CharacterMainControl.Main;
+                bool killedByPlayer = BossRushCoop.IsConnected ? BossRushCoop.IsPlayer(killer) : killer == CharacterMainControl.Main;
                 bool killedByTrackedBoss = IsTrackedModeFBoss(killer);
                 bool hasDeathPos = false;
                 Vector3 deathPosition = Vector3.zero;
@@ -614,7 +615,8 @@ namespace BossRush
 
                 if (killedByPlayer)
                 {
-                    OnModeFBossKilledByPlayer(deadBoss);
+                    if (BossRushCoop.IsHost) DeliverCoopModeFKill(deadBoss, killer);
+                    else OnModeFBossKilledByPlayer(deadBoss);
                     if (deadBossMarks > 0)
                     {
                         AddBountyBossExtraLoot(deadBoss, deadBossMarks);

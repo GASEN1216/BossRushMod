@@ -361,6 +361,7 @@ namespace BossRush
                 string runId = ComposeRunId(sceneName, _sceneGeneration);
                 long runSeed = ComposeRunSeed(runId);
                 _runState = new ModeHRunState(runId, runSeed, sceneName, _sceneGeneration);
+                BindCoopWorldAsset();
                 // 每局从已登记的真实刷怪点中抽取可走的擂台位置。抽取在场景
                 // ready 后执行，NavMesh 不可用或没有可达组合时安全退出。
                 ModeHSupportedMap runMap;

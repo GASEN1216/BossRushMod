@@ -81,6 +81,7 @@ namespace BossRush
             try
             {
                 _owner = owner;
+                InitializeCoopCampaign();
                 _bootstrapped = false;
                 EnsureBootstrapped();
             }
@@ -113,6 +114,7 @@ namespace BossRush
             {
                 _sceneGeneration++;
                 CampaignObjectiveTracker.ResetSession();
+                campaignFinalScopeBound = campaignFinalScopeLost = false;
                 CampaignDialoguePlayer.InvalidatePlayback();
                 if (_questClient != null) _questClient.ClearPending();
 
@@ -145,6 +147,9 @@ namespace BossRush
         /// </summary>
         public override void OnUpdate(float deltaTime, float unscaledDeltaTime)
         {
+            TickCampaignFinalScope();
+            if (coopFacts != null) coopFacts.Tick(unscaledDeltaTime);
+            if (coopWorld != null) coopWorld.Tick(unscaledDeltaTime);
             if (!_bootstrapped)
             {
                 // 开关运行时可变：关掉再打开必须当帧复活，否则要等到下次切场景。
@@ -177,6 +182,11 @@ namespace BossRush
         /// <summary>host 销毁：清静态缓存并回到未装载态。</summary>
         public override void OnDestroy()
         {
+            if (coopFacts != null) coopFacts.Dispose();
+            if (coopWorld != null) coopWorld.Dispose();
+            coopWorld = null;
+            coopFacts = null;
+            if (coopOwner == this) coopOwner = null;
             try
             {
                 if (_owner != null) CleanupCampaignFinalBoss(true);

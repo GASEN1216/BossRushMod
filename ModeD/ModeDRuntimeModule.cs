@@ -74,6 +74,7 @@ namespace BossRush
         {
             this.owner = owner;
             current = this;
+            InitializeCoopModeD();
         }
 
         public override void OnUpdate(float deltaTime, float unscaledDeltaTime)
@@ -83,12 +84,17 @@ namespace BossRush
                 return;
             }
 
-            TickModeDIntegrity(deltaTime);
+            if (coopChannel != null) TickCoopModeD(unscaledDeltaTime);
+            if (BossRushCoop.HasWorldAuthority) TickModeDIntegrity(deltaTime);
         }
 
         public override void OnDestroy()
         {
             generation++;
+            if (coopChannel != null) coopChannel.Dispose();
+            if (coopPersonal != null) coopPersonal.Dispose();
+            coopPersonal = null;
+            coopChannel = null;
             CleanupModeDRuntimeOnDestroy();
             if (current == this) current = null;
             owner = null;

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
@@ -73,6 +74,9 @@ namespace BossRush
         public FortificationType Type;
         public CharacterMainControl Owner;
         public int OwnerCharacterId;
+        internal string CoopOwnerId;
+        internal bool NetworkReplica;
+        internal Action<DamageInfo> NetworkHit;
         public float MaxHealth;
         public float LastKnownHealth;
         public float NextDamageLogTime;

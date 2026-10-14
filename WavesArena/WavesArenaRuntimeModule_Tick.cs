@@ -6,6 +6,8 @@ namespace BossRush
     {
         internal bool TickWavesArenaRuntime(float deltaTime)
         {
+            RetireLostCoopArenaProjection();
+            if (!BossRushCoop.HasWorldAuthority) return false;
             // Mode G 门控（加法分支）：Mode G Starting/Active/Rewarding/Exiting 时
             // 冻结并清零 Legacy 波次倒计时，绝不调用 SpawnNextEnemy（含波次完整性自检路径）。
             // 查询 no-throw、默认 false；未运行时本分支不命中，后续逻辑逐字不变。

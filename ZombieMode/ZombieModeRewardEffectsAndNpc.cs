@@ -30,6 +30,7 @@ namespace BossRush
 
         internal bool ApplyZombieModeReward(ZombieModeRewardType rewardType)
         {
+            if (!IsCoopZombieLocalAssetCurrent()) return false;
             bool bossNode = runState.CurrentRewardNode != null && runState.CurrentRewardNode.BossNode;
             switch (rewardType)
             {

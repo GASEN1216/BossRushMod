@@ -495,6 +495,7 @@ namespace BossRush
                 DamageReceiver current = ai.searchedEnemy;
                 if (!force && current != null && current.health != null && !current.health.IsDead
                     && Team.IsEnemy(character.Team, current.Team)
+                    && !BossRushCoop.IsPlayer(current.health.TryGetCharacter())
                     && !ReferenceEquals(current, CharacterMainControl.Main != null ? CharacterMainControl.Main.mainDamageReceiver : null)) return;
                 ai.searchedEnemy = target;
                 ai.noticed = true;

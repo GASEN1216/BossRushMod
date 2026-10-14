@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Duckov.UI;
@@ -115,6 +115,7 @@ namespace BossRush
         /// </summary>
         internal void SpawnFinalExtractionPoint()
         {
+            if (!BossRushCoop.HasWorldAuthority) return;
             try
             {
                 if (modeFState.ExtractionPointSpawned)
@@ -125,6 +126,7 @@ namespace BossRush
 
                 // 选择撤离点位置（从刷怪点中选一个）
                 Vector3 extractionPos = FindModeFExtractionPoint();
+                coopExtractionPosition = extractionPos;
 
                 ModeExtractionPointRequest request = new ModeExtractionPointRequest();
                 request.ObjectName = "ModeF_ExtractionPoint";
@@ -138,6 +140,7 @@ namespace BossRush
                 };
                 request.OnSucceed = delegate
                 {
+                    if (BossRushCoop.IsConnected) return; // 房间撤离由全体存活者同圈计时负责。
                     if (!modeFActive || modeFState.ActiveExtractionArea == null || modeFState.ExtractionResolved)
                     {
                         return;
@@ -157,6 +160,11 @@ namespace BossRush
                 }
 
                 CountDownArea countDown = result.CountDownArea;
+                if (BossRushCoop.IsConnected)
+                {
+                    countDown.onCountDownSucceed.RemoveAllListeners();
+                    countDown.enabled = false;
+                }
                 modeFState.ActiveExtractionArea = countDown;
                 modeFState.ExtractionPointSpawned = true;
 
@@ -208,6 +216,14 @@ namespace BossRush
                 reason = "extraction_point_not_spawned";
                 return false;
             }
+            if (BossRushCoop.IsConnected)
+            {
+                // 联机官方倒计时已停用；移动真实本地玩家进圈，由生产全员同圈计时完成。
+                if (!IsCoopModeFLocalAdmitted() || CharacterMainControl.Main == null)
+                { reason = "local_personal_admission_missing"; return false; }
+                CharacterMainControl.Main.SetPosition(coopExtractionPosition);
+                return true;
+            }
             if (modeFState.ActiveExtractionArea.onCountDownSucceed == null)
             {
                 reason = "count_down_event_missing";
@@ -240,21 +256,21 @@ namespace BossRush
                     return;
                 }
 
-                int marks = modeFState.PlayerBountyMarks;
+                int marks = coopModeFPrepaidBountyRewards >= 0 ? 0 : modeFState.PlayerBountyMarks;
                 int storedUtilityRewards = DeliverModeFPendingUtilityRewardsToStorage();
                 ModBehaviour.DevLog("[ModeF] 撤离成功！玩家印记: " + marks);
 
                 // 通知战役契约（未启用时零成本早返）。必须在 ExitModeF 之前：
                 // 退出会把 modeFActive 置回 false，之后武装判定就认不出这是 Mode F 了。
-                owner.NotifyCampaignModeFExtracted();
+                if (coopModeFPrepaidBountyRewards < 0) owner.NotifyCampaignModeFExtracted();
                 if (storedUtilityRewards > 0)
                 {
                     ModBehaviour.DevLog("[ModeF] 撤离结算：已将 " + storedUtilityRewards + " 个待发工事补给送入寄存/缓冲");
                 }
 
-                if (marks > 0)
+                if (marks > 0 || coopModeFPrepaidBountyRewards > 0)
                 {
-                    int storageRewards = 0;
+                    int storageRewards = Math.Max(0, coopModeFPrepaidBountyRewards);
                     int failedRewards = 0;
                     int prePushCount = GetModeFStorageNotificationQueueCount();
                     for (int i = 0; i < marks; i++)

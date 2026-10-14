@@ -218,6 +218,7 @@ namespace BossRush
 
         public static void ConfirmZombieModeMapEntry(int index)
         {
+            if (BossRushCoop.IsClient && ZombieModeRuntimeModule.RequestCoopZombieMapEntry(index)) return;
             if (!pendingZombieEntryFromMapSelection ||
                 index < 0 ||
                 pendingZombieCashPromptOpen ||

@@ -5,6 +5,21 @@ namespace BossRush
 {
     internal sealed partial class ModeGRuntimeModule
     {
+        private void ApplyRevengeToSurvivor()
+        {
+            try
+            {
+                _characterScratch.Clear();
+                _state.CollectTrackedBosses(_characterScratch);
+                if (_characterScratch.Count > 0 && _characterScratch[0] != null)
+                {
+                    _adaptive.ApplyRevengeBuff(_characterScratch[0]);
+                    _host.ShowMessage(L10n.T("幸存 Boss 获得复仇强化！", "The survivor gains Revenge!"));
+                }
+            }
+            catch { /* no-throw */ }
+        }
+
         #region Public API（DeathRouting / HUD / SpawnTransaction 消费）
 
         public ModeGRunState State { get { return _state; } }
@@ -299,6 +314,12 @@ namespace BossRush
 
         #region Module Lifecycle Hooks（BossRushRuntimeModuleBase）
 
+        public override void OnAwake(ModBehaviour owner)
+        {
+            // Host 先按注册顺序唤醒 Coop；注册列表本身尚未安装网络门面。
+            if (owner != null) owner.GetModeGEntryRuntimeForHost().EnsureCoop();
+        }
+
         // 说明：本模块不实现 OnSceneLoaded。host 注册的是独立空壳实例（BossRushRuntimeModuleRegistration），
         // 真实 run 实例由 ModeGEntry 自行创建且从不注册，因此 host 的场景回调永远打在 _state==null 的
         // 空壳上，任何实现体都不可达。带局切图的终局与清理由
@@ -358,7 +379,7 @@ namespace BossRush
                 // 局内终局即消费 pending 成就 report：必须早于下方 EndModeGAchievementSession，
                 // 否则 Report 入口按 session 已关闭直接早返，本局击杀成就永久丢失。
                 // drain 语义天然幂等，PrepareHostDestroy 的二次消费只会拿到空队列。
-                try { ModeGCombatTelemetry.ConsumePendingAchievementReports(_state); }
+                try { if (IsCoopAssetCurrent) ModeGCombatTelemetry.ConsumePendingAchievementReports(_state); }
                 catch { /* 成就上报失败不得阻断终局清理 */ }
 
                 try
@@ -415,6 +436,7 @@ namespace BossRush
 
                 ModBehaviour.DevLog("[ModeG] run 结束 reason=" + reason
                     + " result=" + _state.battleResult + " wave=" + (_state.waveEpoch + 1));
+                ModeGEntryRuntime.FinishCoopRun(this);
             }
             catch (Exception e)
             {

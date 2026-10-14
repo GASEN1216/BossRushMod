@@ -227,7 +227,7 @@ namespace BossRush
 
                 // 强制设置 AI 仇恨到玩家
                 // 设置 forceTracePlayerDistance 为较大值，确保远距离生成的敌人也会追踪玩家
-                var main = CharacterMainControl.Main;
+                var main = BossRushCoop.IsConnected ? BossRushCoop.GetCombatTarget(position) : CharacterMainControl.Main;
                 if (main != null)
                 {
                     var ai = character.GetComponentInChildren<AICharacterController>();

@@ -49,6 +49,7 @@ namespace BossRush
                     continue;
                 }
 
+                BossRushCoop.RegisterWorldLoot(lootbox);
                 ClearZombieModeLootboxInventory(lootbox);
                 RefillZombieModeLootboxInventory(runId, lootbox, 1, 4, 1, Mathf.Clamp(3 + runState.PollutionTier, 3, 6), false);
                 LockZombieModeContainerUntilStarterChoice(runId, lootbox);
@@ -348,6 +349,7 @@ namespace BossRush
                     return null;
                 }
 
+                if (!BossRushCoop.HasWorldAuthority) return null;
                 InteractableLootbox lootbox = UnityEngine.Object.Instantiate(prefab, position + Vector3.up * 0.05f, Quaternion.identity);
                 if (lootbox == null || lootbox.gameObject == null)
                 {
@@ -357,6 +359,7 @@ namespace BossRush
                 lootbox.gameObject.name = "ZombieMode_BossLootbox_" + bossKind.ToString();
                 TryCreateZombieModeLootboxLocalInventory(lootbox);
                 ClearZombieModeLootboxInventory(lootbox);
+                BossRushCoop.RegisterWorldLoot(lootbox);
                 RefillZombieModeLootboxInventory(runId, lootbox, minItems, maxItems, minQuality, maxQuality, true);
                 try { MultiSceneCore.MoveToActiveWithScene(lootbox.gameObject, SceneManager.GetActiveScene().buildIndex); } catch (Exception e) { ModBehaviour.DevLog("[ZombieMode] MoveToActiveWithScene 失败: " + e.Message); }
                 try { owner.ApplyLootBoxCoverSetting(lootbox, true); } catch (Exception e) { ModBehaviour.DevLog("[ZombieMode] ApplyLootBoxCoverSetting 失败: " + e.Message); }

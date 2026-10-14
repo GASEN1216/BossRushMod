@@ -237,7 +237,7 @@ namespace BossRush
                 return;
             }
 
-            CharacterMainControl main = CharacterMainControl.Main;
+            CharacterMainControl main = GetCoopZombieTarget(ai.transform.position);
             if (main == null || main.mainDamageReceiver == null)
             {
                 ai.searchedEnemy = null;
@@ -253,6 +253,11 @@ namespace BossRush
 
         internal void RefreshZombieModeGravityWellTargets(int runId, Vector3 origin, float radius, float pullStrength)
         {
+            if (BossRushCoop.IsClient)
+            {
+                SendCoopZombieCommand("gravity", 0, BossRushCoopJson.ToJson(new CoopZombieArea { Origin = origin, Radius = radius, Strength = pullStrength }));
+                return;
+            }
             if (!IsZombieModeRunValid(runId))
             {
                 return;
@@ -262,7 +267,7 @@ namespace BossRush
                 return;
             }
 
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = coopZombieCommandPlayer ?? CharacterMainControl.Main;
             DamageReceiver playerDamageReceiver = player != null ? player.mainDamageReceiver : null;
             float radiusSqr = radius * radius;
             const float minPullDistance = 0.4f;

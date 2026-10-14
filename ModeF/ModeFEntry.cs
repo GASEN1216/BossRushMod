@@ -10,11 +10,18 @@ namespace BossRush
 
         /// <summary>Mode F 会话序号，防止上一局的异步对象晚到并污染新局。</summary>
         private int modeFSessionSerial = 0;
+        private bool modeFSessionConnected, modeFSessionHost;
+        private string modeFSessionRoom;
+        private int modeFSessionSceneHandle;
         internal int CurrentModeFSessionToken { get { return modeFState.RuntimeSessionToken; } }
 
         private int BeginModeFSession()
         {
             modeFCleanupPending = true;
+            modeFSessionConnected = BossRushCoop.IsConnected;
+            modeFSessionHost = BossRushCoop.IsHost;
+            modeFSessionRoom = BossRushCoop.RunId;
+            modeFSessionSceneHandle = UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle;
             modeFState.RuntimeSessionToken = ++modeFSessionSerial;
             return modeFState.RuntimeSessionToken;
         }
@@ -35,7 +42,19 @@ namespace BossRush
             return modeFActive &&
                    modeFState.IsActive &&
                    modeFState.RuntimeSessionToken == sessionToken &&
+                   IsModeFSessionOwnerCurrent() &&
                    UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex == relatedScene;
+        }
+
+        private bool IsModeFSessionOwnerCurrent()
+        {
+            if (BossRushCoop.IsConnected != modeFSessionConnected ||
+                modeFSessionConnected && BossRushCoop.IsHost != modeFSessionHost ||
+                UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle != modeFSessionSceneHandle) return false;
+            string currentRoom = BossRushCoop.RunId;
+            if (!modeFSessionConnected || string.IsNullOrEmpty(currentRoom)) return true;
+            if (string.IsNullOrEmpty(modeFSessionRoom)) modeFSessionRoom = currentRoom;
+            return string.Equals(modeFSessionRoom, currentRoom, StringComparison.Ordinal);
         }
 
         /// <summary>
@@ -69,6 +88,9 @@ namespace BossRush
         /// </summary>
         public bool TryStartModeF()
         {
+            if (!BossRushCoop.SessionReady) return false;
+            if (BossRushCoop.IsClient && modeFActive) return RetryCoopModeFAdmission();
+            if (coopChannel != null && coopChannel.Request("enter")) return true;
             // Mode H 真实资产风险门（加法分支，设计提案 §24.3）：
             // 只在存在未终结真实资产事务或风险未知时拒绝；no-throw，
             // 新档/无 journal 时同步 ready 且不阻断，旧模式行为逐字不变。
@@ -284,6 +306,7 @@ namespace BossRush
         /// </summary>
         internal bool StartModeF()
         {
+            if (!BossRushCoop.HasWorldAuthority || !BossRushCoop.SessionReady) return false;
             ModeEFSpawnProfiler profiler = new ModeEFSpawnProfiler("StartModeF");
             try
             {
@@ -294,6 +317,7 @@ namespace BossRush
                     return false;
                 }
 
+                BeginCoopModeF();
                 ModBehaviour.DevLog("[ModeF] 启动 Mode F 血猎追击模式");
 
                 // 清理可能从无间炼狱残留的状态，避免 InfiniteHellCashMagnet/UI 提示误激活
@@ -331,6 +355,8 @@ namespace BossRush
 
                 // 发放初始装备（复用 Mode D 的 Starter Kit）
                 equipment.GivePlayerStarterKit();
+                coopStartedEpoch = BossRushCoop.LocalAssetId + ":" + coopEpoch;
+                PreserveCoopModeFLocalLedger();
 
                 // 零度挑战地图：额外发放保暖装备
                 modeE.ModeEGiveColdWeatherGear();

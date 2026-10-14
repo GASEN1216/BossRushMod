@@ -665,6 +665,14 @@ namespace BossRush
                 FortificationType type = modeFPlacementType;
                 GameObject previewObject = modeFPlacementPreview;
 
+                if (BossRushCoop.IsClient)
+                {
+                    if (!RequestCoopFortification("place", type, position, rotation, 0, itemTypeId)) return;
+                    // 官方使用流程已扣本人的包；沿同一事务重试，房主确认失败才退回。
+                    CancelFortPlacementPreviewAfterCoopRequest();
+                    return;
+                }
+
                 modeFPlacementPreview = null;
                 modeFPlacementActive = false;
                 modeFPlacementItemTypeId = 0;

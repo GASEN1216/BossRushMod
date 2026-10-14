@@ -155,12 +155,16 @@ namespace BossRush
         internal static void EnqueueMilestone(ModBehaviour expectedOwner, int tier, UnityEngine.Vector3 position)
         {
             if (current != null && current.owner == expectedOwner && current.milestoneDelivery != null)
-                current.milestoneDelivery.Enqueue(tier, position);
+                current.milestoneDelivery.Enqueue(tier, position, current.CoopArenaRewardCopies);
         }
 
         public override void OnUpdate(float deltaTime, float unscaledDeltaTime)
         {
-            if (milestoneDelivery != null) milestoneDelivery.Tick(owner);
+            RetireLostCoopArenaProjection();
+            if (coopChannel != null) coopChannel.Tick(unscaledDeltaTime);
+            if (coopPersonal != null) coopPersonal.Tick(unscaledDeltaTime);
+            TickCoopArenaVictoryCopies();
+            if (BossRushCoop.HasWorldAuthority && milestoneDelivery != null) milestoneDelivery.Tick(owner);
         }
 
 
@@ -174,15 +178,17 @@ namespace BossRush
             CharacterMainControl player = CharacterMainControl.Main;
             return () => runtime.owner != null && runtime.owner == expectedOwner
                 && current == runtime && runtime.waveGeneration == generation
+                && (runtime.coopArenaProjectionRoom == null || (BossRushCoop.IsClient && runtime.coopArenaProjectionRoom == BossRushCoop.RunId))
                 && UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle == sceneHandle
-                && player != null && CharacterMainControl.Main == player
-                && player.Health != null && !player.Health.IsDead
+                && (BossRushCoop.IsConnected ? runtime.HasLivingCoopArenaParticipant()
+                    : player != null && CharacterMainControl.Main == player && player.Health != null && !player.Health.IsDead)
                 && (!requireActive || expectedOwner.IsActive);
         }
 
         public override void OnSceneLoaded(SceneRuntimeContext context)
         {
             waveGeneration++;
+            CoopEntryMode = 0;
             milestoneDelivery = null;
         }
 
@@ -195,11 +201,16 @@ namespace BossRush
         {
             this.owner = owner;
             current = this;
+            InitializeCoopArena();
         }
 
         public override void OnDestroy()
         {
             waveGeneration++;
+            if (coopChannel != null) coopChannel.Dispose();
+            if (coopPersonal != null) coopPersonal.Dispose();
+            coopChannel = null;
+            coopPersonal = null;
             ReleaseBossRandomLootTrackingOnDestroy();
             if (current == this) current = null;
             milestoneDelivery = null;

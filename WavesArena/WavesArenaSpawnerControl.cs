@@ -20,6 +20,7 @@ namespace BossRush
         /// </summary>
         internal void DisableAllSpawners()
         {
+            if (!BossRushCoop.HasWorldAuthority) return;
             if (SpawnersDisabled)
             {
                 return;
@@ -143,6 +144,7 @@ namespace BossRush
         /// </summary>
         internal void TryFixStuckWaveIfNoBossAlive()
         {
+            if (!BossRushCoop.HasWorldAuthority) return;
             try
             {
                 if (!owner.IsActive)

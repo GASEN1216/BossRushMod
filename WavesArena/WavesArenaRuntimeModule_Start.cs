@@ -7,6 +7,7 @@ namespace BossRush
     {
         public void StartFirstWave()
         {
+            if (RequestCoopArena("first")) return;
             // [DEBUG] 记录当前状态
             ModBehaviour.DevLog("[BossRush] StartFirstWave 调用: IsActive=" + owner.IsActive + ", bossesPerWave=" + BossesPerWave + ", infiniteHellMode=" + InfiniteHellMode);
 
@@ -76,6 +77,7 @@ namespace BossRush
                 owner.ShowMessage(L10n.T("开始BossRush挑战！", "BossRush challenge started!"));
                 owner.SetBossRushRuntimeActiveForArena(true);
                 WavesArenaRuntimeModule.ResetMilestones(owner);
+                BeginCoopArenaRun();
 
                 // 抽取并应用本局变异词条（必须在生成第一个敌人之前，敌人增益才能作用到首波）
                 owner.TryRollMutatorsForArena(InfiniteHellMode ? "InfiniteHell" : "BossRush");

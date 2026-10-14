@@ -33,6 +33,7 @@ namespace BossRush
 
         internal bool CanUseZombieModeBeacon()
         {
+            if (coopZombieCommandPlayer == null && !IsCoopZombieLocalAssetCurrent()) return false;
             if (!IsZombieModeActive)
             {
                 return false;
@@ -45,6 +46,7 @@ namespace BossRush
 
         internal bool CanUseZombieModePortableSafeZoneDevice()
         {
+            if (coopZombieCommandPlayer == null && !IsCoopZombieLocalAssetCurrent()) return false;
             return IsZombieModeActive &&
                    !runState.BeaconChanneling &&
                    !runState.ExtractionChanneling &&
@@ -76,6 +78,7 @@ namespace BossRush
                 return false;
             }
 
+            if (BossRushCoop.IsClient) { SendCoopZombieCommand("portable"); return true; }
             if (runState.CombatPhase == ZombieModeCombatPhase.Combat)
             {
                 CreateZombieModeSafeZone(runState.RunId, false, true, true);
@@ -111,6 +114,7 @@ namespace BossRush
                 return false;
             }
 
+            if (BossRushCoop.IsClient) { SendCoopZombieCommand("beacon"); return true; }
             runState.BeaconChanneling = true;
             runState.BeaconChannelStartTime = Time.unscaledTime;
             owner.StartZombieModeCoroutineForRuntimeModule(ZombieModeBeaconChannelCoroutine(runState.RunId), runState.RunId);
@@ -175,6 +179,7 @@ namespace BossRush
 
         internal void ContinueZombieModeAfterExtractionOpportunity(int runId)
         {
+            if (BossRushCoop.IsClient) { SendCoopZombieCommand("continue"); return; }
             if (!IsZombieModeRunValid(runId) || runState.CombatPhase != ZombieModeCombatPhase.ExtractionOpportunity)
             {
                 return;
@@ -203,6 +208,7 @@ namespace BossRush
         /// </summary>
         internal string StartZombieModeExtractionFromUi(int runId)
         {
+            if (BossRushCoop.IsClient) { SendCoopZombieCommand("extract"); return null; }
             if (!IsZombieModeRunValid(runId))
             {
                 return null;
@@ -250,6 +256,21 @@ namespace BossRush
                 return;
             }
 
+            if (BossRushCoop.IsConnected)
+            {
+                if (!BossRushCoop.HasWorldAuthority || coopZombieExtractionPending) return;
+                if (!CoopZombieAllInsideExtraction(runState.ActiveExtractionArea)) return;
+                runState.ExtractionSuccessHandled = true;
+                coopZombieExtractionPending = true;
+                foreach (BossRushCoopPlayer player in BossRushCoop.Players)
+                    if (IsCoopZombieParticipant(player) && player.IsAlive)
+                    {
+                        int issued; coopZombiePointsIssued.TryGetValue(player.Id + ":" + coopZombieParticipants[player.Id], out issued);
+                        coopZombiePersonal.Deliver(player.Id, runId + ":extract:",
+                            new CoopZombiePersonal { Run = runId, Kind = "extract", Amount = issued }, coopZombieParticipants[player.Id]);
+                    }
+                return;
+            }
             if (!SettleZombieModeExtractionCashShell())
             {
                 runState.ExtractionChanneling = false;
@@ -286,6 +307,7 @@ namespace BossRush
 
         private bool SettleZombieModeExtractionCashShell()
         {
+            if (!IsCoopZombieLocalAssetCurrent()) return false;
             if (runState.PurificationPoints <= 0)
             {
                 return true;
@@ -296,8 +318,9 @@ namespace BossRush
             {
                 if (EconomyManager.Add(cashGain))
                 {
-                    NotificationText.Push(string.Format(L10n.T("BossRush_ZombieMode_Notify_ExtractionCash"), cashGain.ToString("N0")));
                     runState.PurificationPoints = 0;
+                    try { NotificationText.Push(string.Format(L10n.T("BossRush_ZombieMode_Notify_ExtractionCash"), cashGain.ToString("N0"))); }
+                    catch (System.Exception e) { ModBehaviour.DevLog("[ZombieMode] 净化点已结算，通知显示失败: " + e.Message); }
                     return true;
                 }
             }
@@ -325,7 +348,7 @@ namespace BossRush
                     yield break;
                 }
 
-                if (!IsPlayerInsideZombieModeExtractionArea(area))
+                if (!CoopZombieAllInsideExtraction(area))
                 {
                     runState.ExtractionChanneling = false;
                     TryReleaseZombieModeExtractionCountdownUi();
@@ -393,6 +416,7 @@ namespace BossRush
                 return;
             }
 
+            if (BossRushCoop.IsConnected) result.CountDownArea.onCountDownSucceed.RemoveAllListeners();
             ZombieModeExtractionController controller = result.GameObject.GetComponent<ZombieModeExtractionController>();
             if (controller == null)
             {
@@ -636,7 +660,7 @@ namespace BossRush
                 ResetZombieModeSafeZoneForReplacement(runId, clearBoundServices);
             }
 
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = coopZombieCommandPlayer ?? GetCoopZombieCombatTarget(runState.ActiveSafeZoneCenter);
             Vector3 position = player != null ? player.transform.position : Vector3.zero;
             position = ValidateZombieModeSafeZonePosition(position);
             // 共享 disk mesh 替代 CreatePrimitive(Cylinder)（审查 §3.3）。

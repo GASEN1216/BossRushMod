@@ -40,6 +40,88 @@ namespace BossRush
         /// <summary>本局已达成并上报过，避免重复通知。</summary>
         private static bool _notified;
 
+        // 接取/放弃会改变契约身份；换槽保留各资产的身份，回原槽仍可结算其旧收据。
+        private static readonly Dictionary<string, long> contractRevisions = new Dictionary<string, long>(StringComparer.Ordinal);
+
+        internal sealed class ExtractionLease
+        {
+            internal string Chapter, Mode, Asset;
+            internal long ContractRevision;
+            internal CampaignObjectiveProgress[] Objectives;
+            internal bool Reported;
+            internal int KillReceipts, MarkedKillReceipts;
+        }
+
+        internal static void InvalidateContractIdentity()
+        {
+            string asset = BossRushCoop.LocalAssetId;
+            if (string.IsNullOrEmpty(asset)) return;
+            long revision;
+            contractRevisions.TryGetValue(asset, out revision);
+            contractRevisions[asset] = revision + 1;
+        }
+
+        /// <summary>只供已获准的个人撤离收据使用；保留原局进度对象，不复制新局计数。</summary>
+        internal static ExtractionLease CaptureExtractionLease(string mode)
+        {
+            if (!BossRushCoop.IsConnected || string.IsNullOrEmpty(BossRushCoop.LocalAssetId)) return null;
+            EnsureArmedFor(mode);
+            if (!IsArmed || _notified || _armedMode != mode) return null;
+            long revision;
+            contractRevisions.TryGetValue(BossRushCoop.LocalAssetId, out revision);
+            return new ExtractionLease { Chapter = _armedChapterId, Mode = mode, Asset = BossRushCoop.LocalAssetId,
+                ContractRevision = revision, Objectives = _progress.ToArray() };
+        }
+
+        /// <summary>null 或已取消原契约没有欠账；跨资产/写入失败等待重试，不改当前武装进度。</summary>
+        internal static bool ReportExtractionLease(ExtractionLease value)
+        {
+            if (value == null || value.Reported) return true;
+            if (value.Asset != BossRushCoop.LocalAssetId) return false;
+            long revision;
+            contractRevisions.TryGetValue(value.Asset, out revision);
+            if (revision != value.ContractRevision || CampaignProgressService.GetActiveChapterId() != value.Chapter) return true;
+            if (CampaignProgressService.GetState(value.Chapter) == CampaignChapterState.ReadyToDeliver) { value.Reported = true; return true; }
+            if (CampaignProgressService.GetState(value.Chapter) != CampaignChapterState.ContractActive) return true;
+            foreach (CampaignObjectiveProgress objective in value.Objectives)
+            {
+                if (objective == null || objective.Def == null) return true;
+                if (objective.Def.Kind == CampaignObjectiveKind.ModeExtract
+                    || objective.Def.Kind == CampaignObjectiveKind.NoDamageUntilWave && !objective.Failed)
+                    objective.Current = Math.Max(objective.Current, objective.Def.Threshold);
+            }
+            foreach (CampaignObjectiveProgress objective in value.Objectives)
+                if (!objective.IsSatisfied) return true;
+            if (!CampaignProgressService.NotifyObjectivesSatisfied(value.Chapter)) return false;
+            value.Reported = true;
+            return true;
+        }
+
+        /// <summary>原局个人连续击杀收据是同一真实击杀的另一条证据；取下界，不能与世界事实叠加。</summary>
+        internal static bool ObserveExtractionLeaseKill(ExtractionLease value, int sequence, bool marked)
+        {
+            if (value == null || value.Reported) return true;
+            if (value.Asset != BossRushCoop.LocalAssetId) return false;
+            if (value.Mode != CampaignContentCatalog.ModeModeF) return true;
+            if (sequence <= value.KillReceipts) return true;
+            if (sequence != value.KillReceipts + 1) return false;
+            value.KillReceipts = sequence;
+            if (marked) value.MarkedKillReceipts++;
+            foreach (CampaignObjectiveProgress objective in value.Objectives)
+                if (objective != null && objective.Def != null && objective.Def.Kind == CampaignObjectiveKind.BountyKills)
+                    objective.Current = Math.Max(objective.Current, Math.Min(value.MarkedKillReceipts, objective.Def.Threshold));
+            return true;
+        }
+
+        /// <summary>只接原运行已经观察到的权威波次，不借用当前新运行的波次。</summary>
+        internal static void ObserveExtractionLeaseWave(ExtractionLease value, int wave)
+        {
+            if (value == null || value.Reported || value.Asset != BossRushCoop.LocalAssetId || value.Mode != CampaignContentCatalog.ModeZombie) return;
+            foreach (CampaignObjectiveProgress objective in value.Objectives)
+                if (objective != null && objective.Def != null && objective.Def.Kind == CampaignObjectiveKind.ReachWave)
+                    objective.Current = Math.Max(objective.Current, Math.Min(wave, objective.Def.Threshold));
+        }
+
         #endregion
 
         #region 只读
@@ -381,6 +463,7 @@ namespace BossRush
         internal static void ResetStaticCaches()
         {
             ResetSession();
+            contractRevisions.Clear();
         }
 
         #endregion

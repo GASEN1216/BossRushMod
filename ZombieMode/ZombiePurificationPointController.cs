@@ -77,7 +77,9 @@ namespace BossRush
             pointTransform.localScale = baseScale * pulse;
             pointTransform.Rotate(Vector3.up, 120f * Time.deltaTime, Space.World);
 
+            CharacterMainControl coopTarget = BossRushCoop.IsConnected ? ZombieModeRuntimeModule.GetCoopZombieTarget(pointTransform.position) : null;
             Transform playerTransform = GetCachedPlayerTransform();
+            if (BossRushCoop.IsConnected) playerTransform = coopTarget != null ? coopTarget.transform : null;
             bool inMagnet = false;
             if (playerTransform != null)
             {
@@ -363,6 +365,7 @@ namespace BossRush
 
         public void CollectZombieModePurificationPoint(int runId, int value, GameObject pointObject, ZombiePurificationStar starRecord)
         {
+            if (!BossRushCoop.HasWorldAuthority) return;
             if (starRecord != null && starRecord.Settled)
             {
                 return;
@@ -386,7 +389,8 @@ namespace BossRush
                 return;
             }
 
-            runState.PurificationPoints += Mathf.Max(1, value);
+            if (BossRushCoop.IsConnected) DeliverCoopZombiePoints(Mathf.Max(1, value));
+            else runState.PurificationPoints += Mathf.Max(1, value);
         }
     }
 }

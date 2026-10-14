@@ -303,6 +303,7 @@ namespace BossRush
 
         internal bool CommitModeGArenaEntry(ModeGEntryPreview preview)
         {
+            if (BossRushCoop.IsClient) return IsModeGEntryPreviewValidForCurrentScene(preview);
             try
             {
                 if (!IsModeGEntryPreviewValidForCurrentScene(preview)) return false;

@@ -351,6 +351,7 @@ namespace BossRush
         private void OnBellPressed()
         {
             if (_commandsClosed || _runState == null) return;
+            PrepareCoopBellOperator();
             if (_groupBattle != null && _runState.Lifecycle == ModeHLifecycle.MatchFighting
                 && (_spectatorLease == null || _spectatorLease.IsBellAccepting)) { OnGroupBellPressed(); return; }
             if (_runState.Lifecycle != ModeHLifecycle.MatchFighting || _combatControl == null) return;
@@ -374,6 +375,7 @@ namespace BossRush
         /// <summary>观战 HUD 的投降按钮：确认后把本场记为玩家主动弃赛，沿用统一结算与押注流程。</summary>
         private void OnSurrenderPressed()
         {
+            if (BossRushCoop.IsConnected) { RequestCoopForfeit(); return; }
             if (_commandsClosed || _runState == null || (_combatTelemetry == null && _groupBattle == null)
                 || _runState.Lifecycle != ModeHLifecycle.MatchFighting) return;
             BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
@@ -401,6 +403,7 @@ namespace BossRush
         /// <summary>观战 HUD 的退出按钮：离开当前场景并保留赛季恢复记录。</summary>
         private void OnSpectatorExitPressed()
         {
+            if (BossRushCoop.IsConnected) { ExitCoopSpectator(); return; }
             if (_commandsClosed || _runState == null
                 || (_runState.Lifecycle != ModeHLifecycle.MatchFighting
                     && _runState.Lifecycle != ModeHLifecycle.RelayPending)) return;

@@ -21,6 +21,7 @@ namespace BossRush
         /// </summary>
         internal async void OnAllEnemiesDefeated_LootAndRewards()
         {
+            if (!BossRushCoop.HasWorldAuthority) return;
             // 防止在非竞技场场景（例如中途撤离回家后）误触发通关流程
             try
             {
@@ -40,6 +41,7 @@ namespace BossRush
                 ModBehaviour.DevLog("[BossRush] [WARNING] OnAllEnemiesDefeated 场景校验失败，继续按通关流程收尾: " + e.Message);
             }
 
+            if (!TryBeginCoopArenaVictory()) return;
             owner.SetBossRushRuntimeActiveForArena(false);
             // 注意：胜利后保持 bossRushArenaActive = true，确保大兴兴清理逻辑持续运行
             // 直到玩家离开 DEMO 场景，防止玩家走到左边触发原版大兴兴 Boss
@@ -49,10 +51,11 @@ namespace BossRush
             owner.UnsubscribeArenaBossDeathsForArena();
 
             // 触发通关成就检查
-            owner.CheckClearAchievementsForArena();
+            if (BossRushCoop.IsConnected) DeliverCoopArenaFact("clear");
+            else owner.CheckClearAchievementsForArena();
 
             // 通知快递员 BossRush 通关
-            owner.NotifyCourierBossRushCompleted();
+            if (!BossRushCoop.IsConnected) owner.NotifyCourierBossRushCompleted();
 
             // 通知战役契约（未启用时零成本早返）
             owner.NotifyCampaignStandardCleared();
@@ -92,6 +95,7 @@ namespace BossRush
                 );
 
                 owner.ShowBigBanner(banner);
+                QueueCoopArenaVictoryCopies(rewardHighCount);
                 StartVictoryRewardShadowCrate_LootAndRewards(rewardHighCount);
             }
             catch (Exception e)
@@ -612,6 +616,7 @@ namespace BossRush
                     ModBehaviour.DevLog("[BossRush] [WARNING] SpawnDifficultyRewardLootbox: 创建独立奖励箱库存失败: " + e.Message);
                 }
 
+                BossRushCoop.RegisterWorldLoot(lootbox);
                 // 根据配置决定是否让通关奖励箱作为子弹掩体
                 try
                 {

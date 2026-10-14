@@ -114,38 +114,48 @@ namespace BossRush
         /// </summary>
         internal void TickModeF(float deltaTime)
         {
+            ModeFStatusHud.Tick(IsCoopModeFLocalAdmitted() ? modeFState : null, MODEF_BLOODFIRE_MAX_CHARGE);
             if (!modeFActive || !modeFState.IsActive) return;
 
             try
             {
                 // 检查玩家是否死亡
                 CharacterMainControl player = CharacterMainControl.Main;
+                bool localAdmitted = IsCoopModeFLocalAdmitted();
+                if (!localAdmitted) player = null;
                 if (player == null || player.Health == null || player.Health.IsDead)
                 {
-                    OnModeFPlayerDeath();
-                    return;
+                    if (localAdmitted) OnModeFPlayerDeath();
+                    if (!BossRushCoop.IsConnected || !CoopModeFAnyParticipantAlive()) return;
+                    player = null;
                 }
 
                 // 推进阶段计时
                 modeFState.PhaseElapsed += deltaTime;
 
-                TickModeFBloodfireOverload(deltaTime);
+                if (IsCoopModeFLocalAdmitted()) TickModeFBloodfireOverload(deltaTime);
 
                 // 持续掉血
-                ApplyModeFBleedDamage(player, deltaTime);
-                UpdateModeFPlayerNameTag();
-                if (Time.frameCount % 120 == 0)
+                if (player != null)
+                {
+                    modeFPlayerDeathHandled = false;
+                    ApplyModeFBleedDamage(player, deltaTime);
+                }
+                if (IsCoopModeFLocalAdmitted()) UpdateModeFPlayerNameTag();
+                if (IsCoopModeFLocalAdmitted() && Time.frameCount % 120 == 0)
                 {
                     UpdateModeFPendingUtilityRewards();
                 }
 
                 RefreshModeFBountyLeaderIfDirty();
-                UpdateModeFBountyRadarUI();
+                if (IsCoopModeFLocalAdmitted()) UpdateModeFBountyRadarUI();
                 // 阶段 / 剩余时间 / 命火常驻状态卡（取代旧的每 15 秒一条状态横幅，审美审查 UB-06）
-                ModeFStatusHud.Tick(modeFState, MODEF_BLOODFIRE_MAX_CHARGE);
-                UpdateModeFFortificationHighlights();
-                UpdateFortPlacementMode();
-                UpdateModeFRepairSelection();
+                if (IsCoopModeFLocalAdmitted())
+                {
+                    UpdateModeFFortificationHighlights();
+                    UpdateFortPlacementMode();
+                    UpdateModeFRepairSelection();
+                }
 
                 if (modeFState.CurrentPhase != ModeFPhase.Preparation)
                 {
@@ -519,6 +529,7 @@ namespace BossRush
         /// </summary>
         private void OnModeFPlayerDeath()
         {
+            if (TryHandleCoopModeFPersonalDeath()) return;
             if (modeFPlayerDeathHandled) return;
             modeFPlayerDeathHandled = true;
 
@@ -734,6 +745,7 @@ namespace BossRush
 
         private void RetireModeFActiveBossAtExit(CharacterMainControl boss)
         {
+            if (!BossRushCoop.HasWorldAuthority && !coopProjectionRetiring) return;
             if (object.ReferenceEquals(boss, null))
             {
                 return;
@@ -846,6 +858,7 @@ namespace BossRush
 
         private void ApplyModeFPhasePressure()
         {
+            if (!BossRushCoop.HasWorldAuthority) return;
             for (int i = 0; i < modeFState.ActiveBosses.Count; i++)
             {
                 ApplyModeFPressureToBoss(modeFState.ActiveBosses[i]);
@@ -996,7 +1009,7 @@ namespace BossRush
                     return FindModeFBountyPriorityTarget(boss);
                 case ModeFPhase.HuntStorm:
                 case ModeFPhase.Extraction:
-                    CharacterMainControl player = CharacterMainControl.Main;
+                    CharacterMainControl player = BossRushCoop.IsConnected ? BossRushCoop.GetCombatTarget(boss.transform.position) : CharacterMainControl.Main;
                     if (IsModeFValidCombatTarget(boss, player))
                     {
                         return player;
@@ -1010,7 +1023,7 @@ namespace BossRush
         private CharacterMainControl FindModeFBountyPriorityTarget(CharacterMainControl boss)
         {
             CharacterMainControl player = CharacterMainControl.Main;
-            int playerMarks = modeFState.PlayerBountyMarks;
+            int playerMarks = GetCoopModeFPlayerMarks(player);
 
             if (!modeFBountyLeaderDirty)
             {
@@ -1039,6 +1052,8 @@ namespace BossRush
                 bestTarget = player;
                 bestMarks = playerMarks;
             }
+
+            FindCoopModeFBountyPlayer(boss, ref bestTarget, ref bestMarks);
 
             for (int i = 0; i < modeFState.ActiveBosses.Count; i++)
             {
@@ -1083,7 +1098,7 @@ namespace BossRush
                 return false;
             }
 
-            if (!candidate.IsMainCharacter &&
+            if (!candidate.IsMainCharacter && !BossRushCoop.IsPlayer(candidate) &&
                 candidate.Team == boss.Team &&
                 candidate.Team != Teams.all &&
                 boss.Team != Teams.all)

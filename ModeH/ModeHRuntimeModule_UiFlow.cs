@@ -154,7 +154,9 @@ namespace BossRush
 
         private bool TryPersistSeason(string reasonId, bool requireDurable)
         {
+            if (_coopProjection) return false;
             if (_season == null) return false;
+            if (!IsCoopWorldPersonalAssetCurrent) return true;
             try
             {
                 ProjectRunStateIntoSeason();
@@ -192,6 +194,8 @@ namespace BossRush
             if (_commandsClosed) return;
             EnsureUi();
             if (_ui == null) return;
+
+            if (RouteCoopGuestPage(lifecycle)) return;
 
             // 离开恢复通道时收起恢复壳。DriveRecovery 会把 Recovering 推回同一场看盘，
             // 壳不收起来就会盖在新页面上（恢复壳不占模态输入，不收也不会锁死，但会挡视线）。

@@ -20,6 +20,7 @@ namespace BossRush
         /// <returns>是否成功开始下一波（false 表示仍有敌人存活等条件不满足）</returns>
         internal bool ModeDStartNextWave()
         {
+            if (coopChannel != null && coopChannel.Request("next")) return true;
             try
             {
                 if (!modeDActive)
@@ -47,9 +48,11 @@ namespace BossRush
                     modeDAutoNextWaveCoroutine = null;
                 }
 
-                if (modeDWaveIndex <= 0)
+                if (modeDWaveIndex <= 0 && (!BossRushCoop.IsConnected
+                    || coopDeliveredEpoch == coopEpoch + ":" + BossRushCoop.LocalAssetId))
                 {
                     owner.BeginAchievementSessionForArena("ModeD");
+                    coopAchievementEpoch = coopEpoch + ":" + BossRushCoop.LocalAssetId;
                 }
 
                 owner.SetBossRushRuntimeActiveForArena(true);
@@ -68,6 +71,7 @@ namespace BossRush
                 }
 
                 modeDWaveIndex++;
+                CaptureCoopModeDWaveParticipants();
                 // 重置波次完成标志，允许下一波完成时触发
                 modeDWaveCompletePending = false;
                 // 重置生成计数
@@ -142,7 +146,7 @@ namespace BossRush
             // 初始化部分（无 yield）
             modeDCurrentWaveEnemies.Clear();
 
-            CharacterMainControl playerMain = CharacterMainControl.Main;
+            CharacterMainControl playerMain = BossRushCoop.IsConnected ? BossRushCoop.GetCombatTarget(Vector3.zero) : CharacterMainControl.Main;
             if (playerMain == null)
             {
                 ModBehaviour.DevLog("[ModeD] [ERROR] 未找到玩家");
@@ -413,7 +417,7 @@ namespace BossRush
                         // 强制设置 AI 仇恨到玩家
                         try
                         {
-                            CharacterMainControl playerMain = CharacterMainControl.Main;
+                            CharacterMainControl playerMain = BossRushCoop.IsConnected ? BossRushCoop.GetCombatTarget(position) : CharacterMainControl.Main;
                             if (playerMain != null && playerMain.mainDamageReceiver != null)
                             {
                                 AICharacterController ai = character.GetComponentInChildren<AICharacterController>();
@@ -597,6 +601,7 @@ namespace BossRush
         /// </summary>
         private void OnModeDEnemyDeath(CharacterMainControl enemy)
         {
+            if (!BossRushCoop.HasWorldAuthority) return;
             // 日志单独隔离，避免 enemy 为 null 时影响后续关键操作
             try
             {
@@ -705,6 +710,7 @@ namespace BossRush
         /// </summary>
         internal void OnModeDWaveComplete()
         {
+            if (!BossRushCoop.HasWorldAuthority) return;
             try
             {
                 // 防止重复触发（敌人死亡事件和自检可能同时触发）
@@ -720,12 +726,13 @@ namespace BossRush
                 owner.NotifyCampaignModeDWaveComplete(modeDWaveIndex);
 
                 // Mode D 完成10波视为"通关"，触发成就检查
-                if (modeDWaveIndex >= 5)
+                if (BossRushCoop.IsConnected) DeliverCoopModeDWaveComplete();
+                if (!BossRushCoop.IsConnected && modeDWaveIndex >= 5)
                 {
                     owner.CheckModeDFlawlessAchievementForRuntime();
                 }
 
-                if (modeDWaveIndex >= 10)
+                if (!BossRushCoop.IsConnected && modeDWaveIndex >= 10)
                 {
                     owner.CheckModeDClearAchievementsForRuntime();
                 }

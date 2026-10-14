@@ -81,7 +81,7 @@ namespace BossRush
                 return false;
             }
 
-            if (marker.OwnerCharacterId != player.GetInstanceID())
+            if (!IsCoopFortificationOwner(marker, player))
             {
                 return false;
             }
@@ -123,7 +123,7 @@ namespace BossRush
                         continue;
                     }
 
-                    if (marker.OwnerCharacterId != playerId)
+                    if (!IsCoopFortificationOwner(marker, player))
                     {
                         continue;
                     }
@@ -162,6 +162,10 @@ namespace BossRush
                 }
 
                 HighlightModeFFortification(target, true);
+
+                if (BossRushCoop.IsClient)
+                    return RequestCoopFortification("repair", target.Type, target.transform.position, target.transform.rotation,
+                        target.FortificationId, EmergencyRepairSprayConfig.TYPE_ID);
 
                 Health health = target.BoundHealth;
                 float healAmount = target.MaxHealth * FORT_REPAIR_PERCENT;
@@ -389,30 +393,8 @@ namespace BossRush
                     return;
                 }
 
-                GiveModeFItem(
-                    FoldableCoverPackConfig.TYPE_ID,
-                    L10n.T("折叠掩体包", "Foldable Cover Pack"));
-
-                if (killCount % 3 == 0)
-                {
-                    GiveModeFItem(
-                        EmergencyRepairSprayConfig.TYPE_ID,
-                        L10n.T("应急维修喷剂", "Emergency Repair Spray"));
-                }
-
-                if (killCount % 10 == 0)
-                {
-                    GiveModeFItem(
-                        ReinforcedRoadblockPackConfig.TYPE_ID,
-                        L10n.T("加固路障包", "Reinforced Roadblock Pack"));
-                }
-
-                if (killCount % 20 == 0)
-                {
-                    GiveModeFItem(
-                        BarbedWirePackConfig.TYPE_ID,
-                        L10n.T("阻滞铁丝网包", "Barbed Wire Pack"));
-                }
+                foreach (int typeId in GetModeFKillRewardTypeIds(killCount))
+                    GiveModeFItem(typeId, GetModeFUtilityItemDisplayName(typeId));
             }
             catch (Exception e)
             {
@@ -420,62 +402,56 @@ namespace BossRush
             }
         }
 
+        private static List<int> GetModeFKillRewardTypeIds(int killCount)
+        {
+            var rewards = new List<int> { FoldableCoverPackConfig.TYPE_ID };
+            if (killCount % 3 == 0) rewards.Add(EmergencyRepairSprayConfig.TYPE_ID);
+            if (killCount % 10 == 0) rewards.Add(ReinforcedRoadblockPackConfig.TYPE_ID);
+            if (killCount % 20 == 0) rewards.Add(BarbedWirePackConfig.TYPE_ID);
+            return rewards;
+        }
+
         internal bool TryGiveItemToPlayerOrDrop(int typeId, string displayName, bool showRewardBubble = true, bool allowWorldDrop = true)
         {
+            CharacterMainControl player = CharacterMainControl.Main;
+            Item root = player != null ? player.CharacterItem : null;
+            Inventory pack = root != null ? root.Inventory : null;
+            string asset = BossRushCoop.LocalAssetId;
             Item item = null;
             try
             {
                 item = ItemAssetsCollection.InstantiateSync(typeId);
-                if (item == null)
+                if (item == null || CharacterMainControl.Main != player || player == null || player.CharacterItem != root
+                    || asset != BossRushCoop.LocalAssetId) return false;
+                bool sent = SkyIslandInventoryTransaction.TryDeliver(item, pack, remaining =>
                 {
-                    ModBehaviour.DevLog("[ModeF] [WARNING] 无法实例化物品: typeId=" + typeId);
-                    return false;
-                }
-
-                bool sent = false;
-                try
-                {
-                    sent = ItemUtilities.SendToPlayerCharacterInventory(item, false);
-                }
-                catch { }
-
-                if (!sent)
-                {
-                    if (allowWorldDrop)
+                    if (pack != null)
                     {
-                        CharacterMainControl player = CharacterMainControl.Main;
-                        if (player != null)
-                        {
-                            item.Drop(player.transform.position + Vector3.up * 0.3f, true, UnityEngine.Random.insideUnitSphere.normalized, 20f);
-                            sent = true;
-                        }
+                        try { pack.AddItem(remaining); }
+                        catch (Exception e) { ModBehaviour.DevLog("[ModeF] 发物入包通知失败: " + e.Message); }
+                        if (remaining.InInventory == pack) return true;
                     }
-                }
-
-                if (!sent)
-                {
-                    try { item.DestroyTree(); } catch { }
-                    return false;
-                }
-
-                if (sent && showRewardBubble)
-                {
-                    ShowModeFRewardBubble(displayName + L10n.T("已到账", " received"));
-                }
-                return sent;
-            }
-            catch
-            {
-                try
-                {
-                    if (item != null)
+                    if (!allowWorldDrop) return false;
+                    try
                     {
-                        item.DestroyTree();
+                        DuckovItemAgent pickup = remaining.Drop(player.transform.position + Vector3.up * 0.3f,
+                            true, UnityEngine.Random.insideUnitSphere.normalized, 20f);
+                        return pickup != null && remaining.ActiveAgent == pickup;
                     }
-                }
-                catch { }
-                return false;
+                    catch (Exception e)
+                    {
+                        ModBehaviour.DevLog("[ModeF] 发物落地通知失败: " + e.Message);
+                        return remaining.ActiveAgent != null;
+                    }
+                });
+                if (!sent) return false;
+                if (showRewardBubble)
+                    try { ShowModeFRewardBubble(displayName + L10n.T("已到账", " received")); }
+                    catch (Exception e) { ModBehaviour.DevLog("[ModeF] 物品已交付，气泡显示失败: " + e.Message); }
+                return true;
             }
+            catch (Exception e) { ModBehaviour.DevLog("[ModeF] 发物事务失败: " + e.Message); return false; }
+            finally { SkyIslandInventoryTransaction.DestroyUnowned(item); }
         }
 
         private void GiveModeFItem(int typeId, string displayName)
@@ -522,6 +498,7 @@ namespace BossRush
 
         private void CleanupAllModeFortifications()
         {
+            CleanupCoopFortificationTransactions();
             try
             {
                 // 防御性退还：如果清理时仍在放置模式，退还物品

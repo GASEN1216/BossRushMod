@@ -8,6 +8,9 @@ namespace BossRush
         // 准入只读显式宿主；保留 Awake 前调用也经过原风险门和异常边界的语义。
         internal static bool TryStartModeD(ModBehaviour owner)
         {
+            if (BossRushCoop.IsConnected && !BossRushCoop.SessionReady) return false;
+            if (BossRushCoop.IsConnected && current != null && current.owner == owner && current.modeDActive)
+                return current.RetryCoopModeDEntry();
             // Mode H 真实资产风险门（加法分支，设计提案 §24.3）：
             // 只在存在未终结真实资产事务或风险未知时拒绝；no-throw，
             // 新档/无 journal 时同步 ready 且不阻断，旧模式行为逐字不变。
@@ -61,7 +64,11 @@ namespace BossRush
 
         internal void StartModeD()
         {
+            if (BossRushCoop.IsConnected && modeDActive) { lastStartSucceeded = RetryCoopModeDEntry(); return; }
             ModeDRuntimeModule.Invalidate(owner);
+            if (coopChannel != null && coopChannel.Request("start")) return;
+            if (!BossRushCoop.SessionReady) return;
+            coopEpoch = System.Guid.NewGuid().ToString("N");
             lastStartSucceeded = false;
             try
             {
@@ -96,8 +103,10 @@ namespace BossRush
                 ItemPool.EnsureModeDGlobalItemPool();
 
                 // 给玩家发放开局装备；连武器都没发出去时本局无法进行，按启动失败回滚。
-                if (!ItemPool.GivePlayerStarterKit())
+                if (!(BossRushCoop.IsConnected ? TryCommitCoopModeDStarter() : ItemPool.GivePlayerStarterKit()))
                     throw new InvalidOperationException("starter_kit_not_delivered");
+                coopDeliveredEpoch = coopEpoch + ":" + BossRushCoop.LocalAssetId;
+                RefreshCoopModeDParticipants();
 
                 // 抽取并应用本局变异词条（首波敌人由路牌触发，此处先于任何刷怪）
                 owner.TryRollMutatorsForArena("ModeD");
@@ -203,6 +212,7 @@ namespace BossRush
             {
                 CharacterMainControl enemy = modeDCurrentWaveEnemies[i];
                 if (enemy == null) continue;
+                if (!BossRushCoop.HasWorldAuthority && !coopProjectionRetiring) continue;
                 try
                 {
                     if (!object.ReferenceEquals(owner, null)) owner.UnregisterEnemyRecoveryForArena(enemy);

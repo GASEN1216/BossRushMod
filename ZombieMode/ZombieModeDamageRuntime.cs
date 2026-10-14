@@ -25,7 +25,7 @@ namespace BossRush
     {
         internal static bool IsPlayerSideAttack(CharacterMainControl source)
         {
-            return source != null && (source.IsMainCharacter || PetNestCompanionAgent.IsCompanionHealth(source.Health));
+            return source != null && ((source.IsMainCharacter || BossRushCoop.IsPlayer(source)) || PetNestCompanionAgent.IsCompanionHealth(source.Health));
         }
 
         internal static void ReduceFinalDamage(Health health, ref DamageInfo info)

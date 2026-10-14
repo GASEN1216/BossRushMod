@@ -25,6 +25,7 @@ namespace BossRush
             }
 
             runState.CombatPhase = ZombieModeCombatPhase.RewardSelection;
+            if (!BeginCoopZombiePersonalRewardNode()) return;
             EnsureZombieModeRewardNode(bossNode);
             // 同一节点内的刷新 / 追加选择 / 休息时长：面板原地重排，不重建遮罩与输入租约（审美审查 UC-08）。
             ShowZombieModeRewardSelectionPresentationForRuntimeModule(runId, restEditorExpanded);
@@ -1078,6 +1079,9 @@ namespace BossRush
                 return;
             }
 
+            if (BossRushCoop.IsConnected)
+                SendCoopZombieCommand("reward-world", selectedNode.RemainingSelections, rewardType.ToString());
+
             if (bonusSelection)
             {
                 selectedNode.RemainingSelections = Mathf.Max(1, selectedNode.RemainingSelections - 1);
@@ -1090,6 +1094,12 @@ namespace BossRush
             runState.FreeRefreshesRemainingCurrentNode = 0;
             runState.PaidRefreshIndexCurrentNode = 0;
             ClearZombieModeRewardShell();
+            if (BossRushCoop.IsConnected)
+            {
+                coopZombieCompletedRewardWave = runState.CurrentWave;
+                SendCoopZombieCommand("reward-done", runState.CurrentWave);
+                return;
+            }
             if (extractionOpportunity)
             {
                 owner.BeginZombieModeExtractionOpportunityForRewardRuntimeModule(runId);
@@ -1156,6 +1166,7 @@ namespace BossRush
 
         public bool SpendZombieModePurificationPoints(int cost, string reason)
         {
+            if (!IsCoopZombieLocalAssetCurrent()) return false;
             cost = Mathf.Max(0, cost);
             if (cost <= 0)
             {
@@ -1175,16 +1186,5 @@ namespace BossRush
             return true;
         }
 
-        internal void RefundZombieModePurificationPoints(int amount, string reason)
-        {
-            amount = Mathf.Max(0, amount);
-            if (amount <= 0)
-            {
-                return;
-            }
-
-            runState.PurificationPoints += amount;
-            ModBehaviour.DevLog("[ZombieMode] Refund purification points: +" + amount + ", reason=" + reason);
-        }
     }
 }

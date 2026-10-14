@@ -241,7 +241,7 @@ namespace BossRush
         private static bool ShouldPreserveNativeCharacter(
             CharacterMainControl character, CharacterMainControl player)
         {
-            if (character == null || object.ReferenceEquals(character, player)) return true;
+            if (character == null || object.ReferenceEquals(character, player) || BossRushCoop.IsPlayer(character)) return true;
             try
             {
                 if (character.IsMainCharacter || character.Team == Teams.player) return true;

@@ -124,7 +124,14 @@ namespace BossRush
 
             // 提前检测 Mode E / Mode F / Mode D 条件（Mode E > Mode F > Mode D）
             // 必须在禁用 spawner 之前检测，因为 Mode E 需要先扫描 CharacterSpawnerRoot 位置
+            if (BossRushCoop.IsClient)
+            {
+                yield return wavesArenaRuntime.SetupCoopClientEntry(scene, TryCreateArenaDifficultyEntryPoint,
+                    () => bossRushIntegrationRuntime.StartArenaEntryContinuation(EnsureArenaEntryPointCreated()), CreateRescueTeleportBubble);
+                yield break;
+            }
             BossRushEntryMode entryMode = DetermineBossRushEntryMode("SetupBossRushInDemoChallenge");
+            wavesArenaRuntime.SetCoopEntryMode((int)entryMode + 1);
 
             // Mode E 提前分支：先扫描刷怪点，再禁用spawner和清理敌人，跳过路牌/气泡/快递员
             if (entryMode == BossRushEntryMode.ModeH)
@@ -327,13 +334,7 @@ namespace BossRush
                 DevLog("[BossRush] 传送玩家到 BossRush 难度入口附近失败: " + e.Message);
             }
 
-            try
-            {
-                CreateRescueTeleportBubble();
-            }
-            catch
-            {
-            }
+            wavesArenaRuntime.TryCreateArenaRescueTeleport(CreateRescueTeleportBubble);
 
             TryCreateArenaDifficultyEntryPoint();
             bossRushIntegrationRuntime.StartArenaEntryContinuation(EnsureArenaEntryPointCreated());

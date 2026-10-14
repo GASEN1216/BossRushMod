@@ -24,7 +24,6 @@ namespace BossRush
         private float runtimePauseStartTime = -1f;
         private int runtimePauseRunId;
         private static int nextRunId;
-        private const int InitialPurificationPoints = 0;
         private const int ZombieModePreparationDurationMinimumSeconds = 15;
         private const int ZombieModePreparationDurationMaximumSeconds = 300;
         private static readonly int[] ZombieModePreparationDurationOptions =
@@ -47,6 +46,7 @@ namespace BossRush
             // 邀请函补上（CR-2026-09-11-019）。订阅幂等，OnDestroy 成对退订。
             ZombieModeEntryDebt.Attach();
             if (owner != null) owner.AttachZombieModeRuntimeModule(this);
+            InitializeCoopZombie();
         }
 
         internal ZombieModeRunState RunState { get { return runState; } }
@@ -87,6 +87,7 @@ namespace BossRush
                 return;
             }
 
+            if (!BossRushCoop.HasWorldAuthority) return;
             owner.TickZombieModeWaveControllerForRuntimeModule(deltaTime);
             TickZombieModeDropsAndPerformance(deltaTime);
             owner.TickZombieModeBossControllerForRuntimeModule(deltaTime);
@@ -110,6 +111,7 @@ namespace BossRush
 
         internal bool IsZombieModeRuntimePaused()
         {
+            if (BossRushCoop.IsConnected) return false;
             return ZombieModeUIHelper.IsModalInputPaused || IsZombieModeGamePaused() || CameraMode.Active;
         }
 
@@ -186,9 +188,7 @@ namespace BossRush
             }
 
             pendingEntry = true;
-            entryTransaction.Reset();
-            runState.PendingCashInvestment = 0L;
-            runState.ConfirmedCashInvested = 0L;
+            ResetCoopZombieEntryTransaction();
             runState.LifecyclePhase = ZombieModeLifecyclePhase.SelectingMap;
             return true;
         }
@@ -338,6 +338,7 @@ namespace BossRush
         internal bool CommitZombieModeEntryResourcesShell(out ZombieModeFailureReason reason)
         {
             reason = ZombieModeFailureReason.None;
+            if (!IsCoopZombieLocalAssetCurrent()) { reason = ZombieModeFailureReason.Unknown; return false; }
 
             // 再扣之前先把上一次入场失败欠下的现金/邀请函还清：这里经济一定可用（正准备扣款），
             // 是除官方「经济加载完成」之外最自然的一个结账点（CR-2026-09-11-019）。
@@ -403,6 +404,7 @@ namespace BossRush
 
         internal void RefundZombieModeCashIfNeeded()
         {
+            if (QueueCoopZombieWrongAssetRefund()) return;
             if (!ShouldRollbackZombieModeEntryResources() || !entryTransaction.CashTemporarilyHeld) return;
             if (!ZombieModeEntryDebt.RefundCash(entryTransaction.CashWithheldAmount)) return;
             entryTransaction.CashTemporarilyHeld = false;
@@ -573,6 +575,7 @@ namespace BossRush
         internal int BeginZombieModeRunShell(int sceneBuildIndex, string sceneName)
         {
             int runId = ++nextRunId;
+            ResetCoopZombieRun(runId);
             long pendingCashInvestment = runState.PendingCashInvestment;
             long confirmedCashInvested = runState.ConfirmedCashInvested;
             if (confirmedCashInvested <= 0L && entryTransaction.CashTemporarilyHeld)
@@ -967,6 +970,7 @@ namespace BossRush
 
         internal bool GrantZombieModeBeacon(int runId)
         {
+            if (!IsCoopZombieLocalAssetCurrent()) return false;
             if (!IsZombieModeRunValid(runId))
             {
                 return false;
@@ -993,6 +997,7 @@ namespace BossRush
 
         internal void FinalizeZombieModeEntryResources()
         {
+            if (!IsCoopZombieLocalAssetCurrent()) return;
             runState.ZombieModeResourcesCommitted = true;
             runState.EntryResourcesFinalized = true;
             entryTransaction.EntryResourcesFinalized = true;
@@ -1001,6 +1006,7 @@ namespace BossRush
 
         internal void RefundZombieModeInvitationIfNeeded()
         {
+            if (QueueCoopZombieWrongAssetRefund()) return;
             if (!ShouldRollbackZombieModeEntryResources() || !entryTransaction.InvitationTemporarilyHeld) return;
             if (!ZombieModeEntryDebt.RefundInvitation()) return;
             entryTransaction.InvitationTemporarilyHeld = false;
@@ -1179,6 +1185,7 @@ namespace BossRush
 
         public override void OnDestroy()
         {
+            CleanupCoopZombie();
             ZombieModeEntryDebt.ResetStaticCaches();
             ZombieModeBossVisuals.ResetStaticCaches();
             ModBehaviour currentOwner = owner;

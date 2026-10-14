@@ -45,6 +45,14 @@ namespace BossRush
 
         private void UpdateZombieModeSafeZonePlayerPresence()
         {
+            if (BossRushCoop.IsConnected)
+            {
+                bool allInside = BossRushCoop.AnyPlayerAlive;
+                foreach (BossRushCoopPlayer player in BossRushCoop.Players)
+                    if (player.IsAlive && !IsZombieModePositionInsideActiveSafeZone(player.Character.transform.position)) { allInside = false; break; }
+                runState.PlayerInsideSafeZone = allInside;
+                return;
+            }
             runState.PlayerInsideSafeZone = IsZombieModePlayerInsideActiveSafeZone();
         }
 
@@ -142,7 +150,7 @@ namespace BossRush
         internal bool ShouldSuppressZombieModeEnemyAggroForSafeZone()
         {
             return AnyZombieModeSafeZoneActive &&
-                   IsZombieModePlayerInsideActiveSafeZone() &&
+                   (BossRushCoop.IsConnected ? CoopZombieAllPlayersInsideSafeZone() : IsZombieModePlayerInsideActiveSafeZone()) &&
                    ZombieModePhaseGuards.AllowsSafeZone(runState.CombatPhase);
         }
 

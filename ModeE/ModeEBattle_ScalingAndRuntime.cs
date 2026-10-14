@@ -526,6 +526,7 @@ namespace BossRush
         /// </summary>
         internal void OnModeEEnemyDeath(CharacterMainControl enemy, DamageInfo damageInfo)
         {
+            if (!BossRushCoop.HasWorldAuthority) return;
             ModeEShellRewardSnapshot rewardSnapshot = new ModeEShellRewardSnapshot();
             try
             {
@@ -539,7 +540,8 @@ namespace BossRush
                 CharacterMainControl killer = null;
                 try { killer = damageInfo.fromCharacter; } catch { }
 
-                bool killedByPlayer = killer == CharacterMainControl.Main;
+                if (BossRushCoop.IsHost) DeliverCoopModeEDeath(enemy, rewardSnapshot);
+                bool killedByPlayer = !BossRushCoop.IsConnected && killer == CharacterMainControl.Main;
                 bool killedEnemyBossForPlayer = killedByPlayer && enemyFaction != modeEPlayerFaction;
                 if (killedEnemyBossForPlayer)
                 {
@@ -580,7 +582,7 @@ namespace BossRush
                 modeEPendingScalingFactions.Add(enemyFaction);
 
                 // 累计击杀计数，每10次自动发放挑衅烟雾弹
-                CheckRespawnItemAutoGrant();
+                if (!BossRushCoop.IsConnected) CheckRespawnItemAutoGrant();
                 modeEHost.RegisterModeEFBossDeathForSweepToken();
 
                 // 敌方阵营 Boss 保留原掉落内容，但要补挂 BossRush 箱子交互与追踪标记。
@@ -605,7 +607,7 @@ namespace BossRush
             finally
             {
                 // 原有 cleanup、死亡计数、重刷与掉落追踪先完成；奖励异常不得阻断死亡链。
-                SettleModeEShellRewardNoThrow(rewardSnapshot);
+                if (!BossRushCoop.IsConnected) SettleModeEShellRewardNoThrow(rewardSnapshot);
             }
         }
 

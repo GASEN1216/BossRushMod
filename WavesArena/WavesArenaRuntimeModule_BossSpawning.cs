@@ -27,6 +27,7 @@ namespace BossRush
         /// </summary>
         internal void SpawnNextEnemy()
         {
+            if (!BossRushCoop.HasWorldAuthority) return;
             // [DEBUG] 记录当前状态
             ModBehaviour.DevLog("[BossRush] SpawnNextEnemy 调用: BossesPerWave=" + BossesPerWave + ", CurrentEnemyIndex=" + CurrentEnemyIndex + ", TotalEnemies=" + TotalEnemies);
 
@@ -77,11 +78,12 @@ namespace BossRush
             }
 
             ModBehaviour.DevLog("[BossRush] 生成第 " + (CurrentEnemyIndex + 1) + "/" + TotalEnemies + " 波: " + preset.displayName);
+            CaptureCoopArenaWaveParticipants();
 
             try
             {
                 // 获取玩家
-                CharacterMainControl playerMain = CharacterMainControl.Main;
+                CharacterMainControl playerMain = BossRushCoop.IsConnected ? BossRushCoop.GetCombatTarget(Vector3.zero) : CharacterMainControl.Main;
                 if (playerMain == null)
                 {
                     ModBehaviour.DevLog("[BossRush] [ERROR] 玩家未找到，无法生成敌人");

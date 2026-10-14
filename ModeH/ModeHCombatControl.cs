@@ -97,6 +97,9 @@ namespace BossRush
         /// 2 秒 deadline 回滚后 _swapPhase 回到 None，开始条件立刻重新成立。
         /// </summary>
         private bool _errorSwapAttempted;
+        private string _coopOperatorId;
+        private string _coopControlLease;
+        internal void SetCoopOperator(string playerId) { _coopOperatorId = playerId; }
 
         private int _matchIndex;
         private long _runSeed;
@@ -170,6 +173,7 @@ namespace BossRush
             _errorCheckDone = false;
             _errorTriggered = false;
             _errorSwapAttempted = false;
+            _coopOperatorId = null;
             // 目标缓存与节流都属于本场状态：不清会让新一场的第一次重申
             // 沿用上一场已销毁的敌军引用
             _fireTargetAccumulator = 0f;
@@ -645,7 +649,19 @@ namespace BossRush
 
             // 步骤 2：调用原版控制权切换。StartAction 有优先级仲裁，可能返回 false，
             // 由 2 秒 deadline 兜底；返回 false 也继续等待，不立刻判失败。
-            try { _playerBody.ControlOtherCharacter(_controlledFighter, -1f); }
+            try
+            {
+                if (BossRushCoop.IsConnected)
+                {
+                    BossRushCoop.RequestAiRegistration(_controlledFighter);
+                    _coopControlLease = BossRushCoop.BeginControlLease(
+                        string.IsNullOrEmpty(_coopOperatorId) ? BossRushCoop.LocalPlayerId : _coopOperatorId,
+                        BossRushCoop.GetEntityId(_controlledFighter));
+                    if (string.IsNullOrEmpty(_coopControlLease))
+                    { failureReasonId = "error_swap_missing_reference"; RestoreErrorSwap(); return false; }
+                }
+                else _playerBody.ControlOtherCharacter(_controlledFighter, -1f);
+            }
             catch (Exception e)
             {
                 failureReasonId = "error_swap_control_exception:" + e.GetType().Name;
@@ -666,7 +682,7 @@ namespace BossRush
             if (_swapPhase == ModeHErrorSwapPhase.AwaitingControl)
             {
                 _swapDeadlineRemaining -= deltaTime;
-                if (IsControllingCharacter(_controlledFighter))
+                if (HasFighterControl())
                 {
                     CompleteSwapHandover();
                     return;
@@ -689,7 +705,7 @@ namespace BossRush
             if (_controlledFighter == null
                 || (_telemetry != null && _controlledParticipant != null
                     && _telemetry.IsDown(_controlledParticipant.ProfileId))
-                || !IsControllingCharacter(_controlledFighter))
+                || !HasFighterControl())
             {
                 RestoreErrorSwap();
             }
@@ -737,6 +753,8 @@ namespace BossRush
         public void RestoreErrorSwap()
         {
             if (_swapPhase == ModeHErrorSwapPhase.None && !_playerStateCaptured) return;
+            if (!string.IsNullOrEmpty(_coopControlLease))
+            { BossRushCoop.EndControlLease(_coopControlLease); _coopControlLease = null; }
 
             // 1) 停止表演驱动
             _standInPerformer.Stop();
@@ -811,6 +829,11 @@ namespace BossRush
                 _playerStateCaptured = false;
                 return false;
             }
+        }
+
+        private bool HasFighterControl()
+        {
+            return BossRushCoop.IsConnected ? BossRushCoop.HasControlLease(_coopControlLease) : IsControllingCharacter(_controlledFighter);
         }
 
         private static bool IsControllingCharacter(CharacterMainControl target)

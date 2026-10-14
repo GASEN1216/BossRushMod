@@ -180,6 +180,7 @@ namespace BossRush
                 Vector3 position = bossMain.transform.position + Vector3.up * 0.1f;
                 Quaternion rotation = bossMain.transform.rotation;
 
+                if (!BossRushCoop.HasWorldAuthority) return;
                 InteractableLootbox lootbox = UnityEngine.Object.Instantiate(prefab, position, rotation);
                 lootbox.needInspect = true;
 
@@ -221,6 +222,7 @@ namespace BossRush
 
                 }
 
+                BossRushCoop.RegisterWorldLoot(lootbox);
                 try
                 {
                     MultiSceneCore.MoveToActiveWithScene(lootbox.gameObject, SceneManager.GetActiveScene().buildIndex);

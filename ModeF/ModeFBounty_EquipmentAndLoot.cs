@@ -600,16 +600,28 @@ namespace BossRush
                     }
                 }
 
-                if (modeFState.PlayerBountyMarks > maxMarks)
+                if (!BossRushCoop.IsConnected && modeFState.PlayerBountyMarks > maxMarks)
                 {
                     maxMarks = modeFState.PlayerBountyMarks;
                     newLeader = null;
                 }
 
+                if (BossRushCoop.IsConnected)
+                {
+                    foreach (BossRushCoopPlayer participant in BossRushCoop.Players)
+                    {
+                        int participantMarks = GetCoopModeFPlayerMarks(participant.Character);
+                        if (participant.IsAlive && participantMarks > maxMarks)
+                        {
+                            maxMarks = participantMarks; newLeader = participant.Character;
+                        }
+                    }
+                }
+
                 CharacterMainControl mainPlayer = CharacterMainControl.Main;
                 if (preferredLeader == mainPlayer && modeFState.PlayerBountyMarks == maxMarks && maxMarks > 0)
                 {
-                    newLeader = null;
+                    if (!BossRushCoop.IsConnected) newLeader = null;
                 }
                 else if (preferredLeader != null && preferredLeader != mainPlayer)
                 {

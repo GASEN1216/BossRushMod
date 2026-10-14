@@ -50,7 +50,9 @@ namespace BossRush
                 {
                     // 决战进行中：目标追踪已由 StartCampaignFinalBoss 武装，
                     // 这里只驱动计时，不要再走模式识别（会把 mode 判成 null 而清掉追踪）
-                    CampaignObjectiveTracker.Tick(deltaTime);
+                    CharacterMainControl local = CharacterMainControl.Main;
+                    if (local != null && local.Health != null && !local.Health.IsDead) CampaignObjectiveTracker.Tick(deltaTime);
+                    else CampaignObjectiveTracker.ResetSession();
                     return;
                 }
 
@@ -107,10 +109,20 @@ namespace BossRush
             {
                 CharacterMainControl main = CharacterMainControl.Main;
                 if (main == null || main.Health == null || main.Health.IsDead) return null;
+                return ResolveCampaignWorldMode();
+            }
+            catch (Exception) { return null; }
+        }
+
+        private string ResolveCampaignWorldMode()
+        {
+            try
+            {
                 if (_owner.CampaignModeGActiveForRuntime) return null;
                 if (_owner.CampaignModeEActiveForRuntime) return CampaignContentCatalog.ModeModeE;
                 if (_owner.CampaignModeFActiveForRuntime) return CampaignContentCatalog.ModeModeF;
                 if (_owner.CampaignModeDActiveForRuntime) return CampaignContentCatalog.ModeModeD;
+                if (campaignFinalBossActive) return CampaignContentCatalog.ModeFinal;
 
                 // 用丧尸模式自己的权威判据（IsZombieModeActive 用的就是它），
                 // 而不是 LifecyclePhase != None：后者从 SelectingMap 就为真，
@@ -232,6 +244,7 @@ namespace BossRush
             {
                 // 无间炼狱不算标准通关
                 if (_owner.CampaignInfiniteHellForRuntime) return;
+                if (DeliverCoopCampaignFact("standard-clear", new CoopCampaignFact { Kind = "standard", Mode = CampaignContentCatalog.ModeStandard })) return;
                 CampaignObjectiveTracker.EnsureArmedFor(CampaignContentCatalog.ModeStandard);
                 CampaignObjectiveTracker.ReportStandardClear();
             }
@@ -247,6 +260,7 @@ namespace BossRush
             if (!_owner.IsCampaignConfiguredEnabled()) return;
             try
             {
+                if (DeliverCoopCampaignFact("mode-d-wave:" + waveIndex, new CoopCampaignFact { Kind = "wave", Mode = CampaignContentCatalog.ModeModeD, Wave = waveIndex })) return;
                 CampaignObjectiveTracker.EnsureArmedFor(CampaignContentCatalog.ModeModeD);
                 CampaignObjectiveTracker.ReportWaveReached(waveIndex);
             }

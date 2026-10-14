@@ -37,11 +37,19 @@ namespace BossRush
         /// </summary>
         public static void SpawnPet()
         {
+            if (ModeERuntimeModule.RequestMerchantCoal()) return;
             var inst = ModBehaviour.Instance;
             int modeFSessionToken = inst != null ? inst.CurrentModeFSessionToken : 0;
             int modeESessionToken = inst != null ? inst.CurrentModeESessionToken : 0;
             int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
             SpawnPetAsync(modeFSessionToken, relatedScene, modeESessionToken, relatedScene).Forget();
+        }
+        internal static void SpawnForPlayer(CharacterMainControl player)
+        {
+            var inst = ModBehaviour.Instance;
+            if (inst == null || player == null || !BossRushCoop.IsHost) return;
+            int scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
+            SpawnPetAsync(inst.CurrentModeFSessionToken, scene, inst.CurrentModeESessionToken, scene, player).Forget();
         }
 
         /// <summary>
@@ -122,12 +130,14 @@ namespace BossRush
             int modeFSessionToken,
             int modeFRelatedScene,
             int modeESessionToken,
-            int modeESessionRelatedScene)
+            int modeESessionRelatedScene, CharacterMainControl explicitOwner = null)
         {
             try
             {
                 // 获取玩家位置
-                CharacterMainControl player = CharacterMainControl.Main;
+                CharacterMainControl player = explicitOwner != null ? explicitOwner : CharacterMainControl.Main;
+                string coopRun = BossRushCoop.RunId;
+                int coopScene = BossRushCoop.SceneGeneration;
                 if (player == null)
                 {
                     ModBehaviour.DevLog("[ModeE] [WARNING] 召唤煤球：玩家为空");
@@ -188,7 +198,10 @@ namespace BossRush
 
                 // 设置煤球为玩家阵营
                 var inst2 = ModBehaviour.Instance;
-                if (inst2 == null ||
+                if (inst2 == null || (BossRushCoop.IsConnected &&
+                    (coopRun != BossRushCoop.RunId || coopScene != BossRushCoop.SceneGeneration
+                    || !BossRushCoop.IsHost || player.Health == null || player.Health.IsDead
+                    || BossRushCoop.FindPlayer(BossRushCoop.GetPlayerId(player))?.Character != player)) ||
                     !inst2.IsModeEOrModeFSpawnSessionStillValid(
                         modeFSessionToken,
                         modeFRelatedScene,
@@ -221,6 +234,11 @@ namespace BossRush
                 // 原版游戏使用位置哈希作为 requireItemUsed 的存储键，
                 // 相同位置生成的NPC会共享状态，导致第一次雇佣后后续不再需要消耗物品
                 ResetPetHireInteractable(coalballCharacter.gameObject);
+                if (BossRushCoop.IsConnected)
+                {
+                    BossRushCoop.RequestAiRegistration(coalballCharacter);
+                    ModeERuntimeModule.TrackMerchantCoal(coalballCharacter);
+                }
 
                 ModBehaviour.DevLog("[ModeE] 煤球召唤成功");
                 NotificationText.Push(L10n.T("煤球已召唤！", "Coalball summoned!"));

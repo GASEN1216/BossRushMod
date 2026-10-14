@@ -164,6 +164,7 @@ namespace BossRush
 
                 for (int i = modeEEndCleanupEnemyScratch.Count - 1; i >= 0; i--)
                 {
+                    if (!BossRushCoop.HasWorldAuthority && !coopProjectionRetiring) continue;
                     try
                     {
                         CharacterMainControl enemy = modeEEndCleanupEnemyScratch[i];

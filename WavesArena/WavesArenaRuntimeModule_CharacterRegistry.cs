@@ -107,6 +107,7 @@ namespace BossRush
 
         internal void TryCleanNonBossRushDaXingXing()
         {
+            if (!BossRushCoop.HasWorldAuthority) return;
             try
             {
                 // [性能优化] 使用缓存的角色列表，避免每次都调用 FindObjectsOfType
@@ -183,7 +184,7 @@ namespace BossRush
                     }
                     catch {}
 
-                    if (isMain)
+                    if (isMain || BossRushCoop.IsPlayer(c))
                     {
                         continue;
                     }

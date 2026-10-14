@@ -28,6 +28,7 @@ namespace BossRush
 
         public void SelectZombieModeStarterLoadout(int runId, ZombieModeStarterLoadout loadout)
         {
+            if (!IsCoopZombieLocalAssetCurrent()) return;
             if (!IsZombieModeRunValid(runId) || runState.LifecyclePhase != ZombieModeLifecyclePhase.WaitingStarterChoice)
             {
                 return;
@@ -41,6 +42,13 @@ namespace BossRush
 
             runState.StarterLoadout = loadout;
             FinalizeZombieModeEntryResources();
+            if (BossRushCoop.IsConnected)
+            {
+                coopZombieStarterChosen = true;
+                RememberCoopZombieWallet();
+                SendCoopZombieCommand("starter");
+                return;
+            }
             runState.LifecyclePhase = ZombieModeLifecyclePhase.Active;
             runState.CombatPhase = ZombieModeCombatPhase.InitialPreparation;
             UnlockZombieModeContainersForActiveRun(runId);

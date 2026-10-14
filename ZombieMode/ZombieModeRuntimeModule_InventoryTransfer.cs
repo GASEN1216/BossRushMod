@@ -7,8 +7,10 @@ namespace BossRush
 {
     internal sealed partial class ZombieModeRuntimeModule
     {
+        private const int InitialPurificationPoints = 0;
         internal bool PrepareZombieModeInventoryTransfer(int runId)
         {
+            if (!IsCoopZombieLocalAssetCurrent()) return false;
             if (!IsZombieModeRunValid(runId))
             {
                 return false;
@@ -106,6 +108,7 @@ namespace BossRush
 
         internal void RollbackZombieModeInventoryTransfer()
         {
+            if (!IsCoopZombieLocalAssetCurrent()) return;
             // 反向迭代清理走 RunScopedRegistry.ForEachReverse（审查 §1.3）。
             RunScopedRegistry.ForEachReverse(
                 entryTransaction.InventoryTransferredItems,

@@ -12,7 +12,7 @@ namespace BossRush
         private bool modeGActive { get { return modeGEntryRuntime != null && modeGEntryRuntime.IsRunActiveForHost; } }
         private ModeGRuntimeModule modeGRuntime { get { return modeGEntryRuntime != null ? modeGEntryRuntime.CurrentRunForHost : null; } }
 
-        private ModeGEntryRuntime GetModeGEntryRuntimeForHost()
+        internal ModeGEntryRuntime GetModeGEntryRuntimeForHost()
         {
             if (modeGEntryRuntime != null) return modeGEntryRuntime;
             ModeGEntryRuntime runtime = new ModeGEntryRuntime();
