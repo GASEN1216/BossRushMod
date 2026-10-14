@@ -73,6 +73,7 @@ namespace BossRush
             try
             {
                 _owner = owner;
+                InitializeCoop();
                 _bootstrapped = false;
                 EnsureBootstrapped();
             }
@@ -104,7 +105,7 @@ namespace BossRush
             try
             {
                 _sceneGeneration++;
-                if (!IsEnabled)
+                if (!IsEnabled && !BossRushCoop.IsClient)
                 {
                     ShutdownIfEnabledTurnedOff();
                     return;
@@ -129,6 +130,7 @@ namespace BossRush
         /// </summary>
         public override void OnUpdate(float deltaTime, float unscaledDeltaTime)
         {
+            TickCoop(unscaledDeltaTime);
             if (!_bootstrapped)
             {
                 // 开关是运行时可变的：关掉再打开时必须当帧复活，否则要等下次切场景才活过来。
@@ -138,7 +140,7 @@ namespace BossRush
             }
             try
             {
-                if (!IsEnabled)
+                if (!IsEnabled && !BossRushCoop.IsClient)
                 {
                     ShutdownIfEnabledTurnedOff();
                     return;
@@ -178,6 +180,8 @@ namespace BossRush
             {
                 LogFailure("destroy", e);
             }
+            // 血月的局末死亡事实先经原有 OnCleanup 投递，再释放收据通道。
+            ShutdownCoop();
             _director = null;
             _bootstrapped = false;
             _owner = null;
@@ -194,7 +198,7 @@ namespace BossRush
         internal void EnsureBootstrapped()
         {
             if (_bootstrapped) return;
-            if (!IsEnabled) return;
+            if (!IsEnabled && !BossRushCoop.IsClient) return;
 
             _director = new RandomEventDirector(_owner);
             _bootstrapped = true;

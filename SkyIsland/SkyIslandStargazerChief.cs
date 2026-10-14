@@ -68,7 +68,7 @@ namespace BossRush
                     "The stargazer's lens shatters. It can no longer mark you.", false);
             }
             if (marking || Time.time < cooldownUntil || !LensWorking) return;
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = BossRushCoop.GetCombatTarget(boss.transform.position);
             if (player == null || player.Health == null || player.Health.IsDead) return;
             float distance = Vector3.Distance(boss.transform.position, player.transform.position);
             if (distance > SkyIslandBossRules.MarkRange || distance < SkyIslandBossRules.MarkCloseRange) return;
@@ -128,7 +128,7 @@ namespace BossRush
                 if (!SkyIslandBossForge.SnapToGround(player.transform.position, context, 0f, out locked)) locked = player.transform.position;
                 SkyIslandBossForge.PlaceRing(markRing, context.Root, locked);
                 // 戴着静听耳罩的玩家早一点听见（SkyIslandBossGearWorn，头目 R3）：锁定只会更长，逃圈判据仍按不戴的算。
-                float lockSeconds = SkyIslandBossRules.TelegraphSeconds(SkyIslandBossRules.MarkLockSeconds, SkyIslandBossGearWorn.Earmuffs);
+                float lockSeconds = SkyIslandBossRules.TelegraphSeconds(SkyIslandBossRules.MarkLockSeconds, SkyIslandBossGearWorn.WorldEarmuffs);
                 started = Time.time;
                 while (Time.time - started < lockSeconds && !Aborted())
                 {

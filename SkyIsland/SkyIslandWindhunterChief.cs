@@ -141,7 +141,7 @@ namespace BossRush
         /// <summary>连续贴身的秒数：进了冲步下限就累加，离开就清零。按 <see cref="TickInterval"/> 的节拍加，不用每帧。</summary>
         private void TickCloseQuarters()
         {
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = BossRushCoop.GetCombatTarget(boss.transform.position);
             if (player == null) { closeSeconds = 0f; return; }
             Vector3 offset = player.transform.position - boss.transform.position;
             offset.y = 0f;
@@ -155,7 +155,7 @@ namespace BossRush
         /// </summary>
         private IEnumerator DisengageRoutine()
         {
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = BossRushCoop.GetCombatTarget(boss.transform.position);
             if (player == null || player.Health == null || player.Health.IsDead) { closeSeconds = 0f; yield break; }
             Vector3 away = boss.transform.position - player.transform.position;
             away.y = 0f;
@@ -200,7 +200,7 @@ namespace BossRush
 
         private void TryStartLunge()
         {
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = BossRushCoop.GetCombatTarget(boss.transform.position);
             if (player == null || player.Health == null || player.Health.IsDead) return;
             Vector3 offset = player.transform.position - boss.transform.position;
             offset.y = 0f;
@@ -304,7 +304,7 @@ namespace BossRush
 
             // 戴着静听耳罩的玩家早一点听见（SkyIslandBossGearWorn，头目 R3）：预警只会更长，逃圈判据仍按不戴的算。
             float telegraph = SkyIslandBossRules.TelegraphSeconds(
-                SkyIslandBossRules.LungeTelegraphFor(variant, TelegraphPieceBroken()), SkyIslandBossGearWorn.Earmuffs);
+                SkyIslandBossRules.LungeTelegraphFor(variant, TelegraphPieceBroken()), SkyIslandBossGearWorn.WorldEarmuffs);
             float started = Time.time;
             while (Time.time - started < telegraph && !Aborted())
             {
@@ -371,7 +371,7 @@ namespace BossRush
 
         private void ResumeAi()
         {
-            try { if (aiControl != null && aiControl.IsPaused) aiControl.Resume(CharacterMainControl.Main); }
+            try { if (aiControl != null && aiControl.IsPaused) aiControl.Resume(BossRushCoop.GetCombatTarget(boss.transform.position)); }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 断风游猎恢复失败：" + e.Message); }
         }
 

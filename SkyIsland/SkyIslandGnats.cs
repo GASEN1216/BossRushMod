@@ -64,6 +64,7 @@ namespace BossRush
             internal Vector3 Position, Wander, LeaveDirection, LastStep;
             internal float Phase, BiteReadyAt, BiteShownUntil, WanderUntil, LeaveUntil, OrbitAngle;
             internal bool Leaving;
+            internal string CoopKey;
             /// <summary>
             /// 上一次写进 TrailRenderer 的尾迹档位：-1 冲刺尾迹、0–<see cref="SkyIslandMosquitoRules.WakeSteps"/> 巡航尾迹（见 ApplyWake）。
             /// 建出来时是哨兵 <see cref="WakeLevelUnset"/>，保证第一次 ApplyWake 一定写一遍——
@@ -80,6 +81,7 @@ namespace BossRush
             /// <summary>电弧的白芯（与 Arc 共用顶点，细一号、加色）：外缘淡蓝、芯白，VB-29.2。</summary>
             internal LineRenderer ArcCore;
             internal float Until, NextPulse, ArcUntil;
+            internal string PlayerId;
         }
 
         private sealed class Splat
@@ -142,6 +144,7 @@ namespace BossRush
                 buzzEmitter.transform.SetParent(root, false);
             }
             Current = this;
+            SubscribeCoopGnats();
         }
 
         internal int Alive { get { return alive; } }
@@ -157,6 +160,7 @@ namespace BossRush
             get
             {
                 if (!Usable) return false;
+                if (BossRushCoop.IsClient) return !CoopUsePending && coopZapperCount < zappers.Length;
                 for (int i = 0; i < zappers.Length; i++) if (zappers[i] == null) return true;
                 return false;
             }
@@ -176,6 +180,8 @@ namespace BossRush
         /// </summary>
         internal void Frame(float now, float dt, CharacterMainControl player)
         {
+            TickCoopGnats();
+            if (BossRushCoop.IsClient) { FrameCoopReplicas(now, player); return; }
             if (!Usable || player == null || !HasFrameWork()) return;
             try
             {
@@ -199,7 +205,11 @@ namespace BossRush
                     }
                     if (dt > 0f)
                     {
-                        moved |= Steer(gnat, player, playerPosition, muzzleVec, aimVec, now, dt, frame);
+                        CharacterMainControl target = BossRushCoop.GetCombatTarget(gnat.Position) ?? player;
+                        SetCoopTargetTraits(target);
+                        if (target != player) { ReadAim(target, out muzzle, out aim); muzzleVec = ToVec(muzzle); aimVec = ToVec(aim); }
+                        else if (BossRushCoop.IsConnected) { ReadAim(player, out muzzle, out aim); muzzleVec = ToVec(muzzle); aimVec = ToVec(aim); }
+                        moved |= Steer(gnat, target, target.transform.position, muzzleVec, aimVec, now, dt, frame);
                     }
                     if (gnat.Leaving && now >= gnat.LeaveUntil)
                     {
@@ -220,6 +230,7 @@ namespace BossRush
                 TickSplats(now, view);
                 if (fanArc != null && fanArc.enabled && now >= fanArcUntil) fanArc.enabled = false;
                 TickBuzz(nearest, now);
+                if (BossRushCoop.IsConnected) SetCoopTargetTraits(CharacterMainControl.Main);
             }
             catch (Exception e)
             {
@@ -246,7 +257,7 @@ namespace BossRush
             motor.Dazzled = lantern && (gnat.Position - playerPosition).sqrMagnitude <= dazzle * dazzle;
             motor.Tick(dt);
             // 主角戴着蚋笛翁的苔纱面罩（SkyIslandBossGearWorn）：云蚋认不出你在瞄它，不躲枪口。
-            if (!gnat.Leaving && !SkyIslandBossGearWorn.MossgauzeMask) motor.OnAim(ToVec(gnat.Position), muzzle, aim, frame, this);
+            if (!gnat.Leaving && !CoopTargetMask(player)) motor.OnAim(ToVec(gnat.Position), muzzle, aim, frame, this);
             Vector3 step = ToVector(motor.Step(dt));
             if (step.sqrMagnitude <= 0f && (gnat.Leaving || motor.CanAct)) step = Cruise(gnat, playerPosition, now, dt);
             float cap = SkyIslandMosquitoRules.DashSpeed * dt;
@@ -323,7 +334,7 @@ namespace BossRush
             bite.damagePoint = neck;
             bite.damageNormal = Vector3.up;
             health.Hurt(bite);
-            bitesSinceSample++;
+            ReportCoopBite(player);
         }
 
         private void Animate(Gnat gnat, float now, Quaternion view, float distanceSqr)
@@ -392,6 +403,13 @@ namespace BossRush
             bool nearLamp, float elapsed)
         {
             if (!Usable || player == null) return;
+            if (!coopSamplingRemote)
+            {
+                RefreshVeil(Time.time);
+                TickItch(player, Time.time, elapsed);
+                ReportCoopEnvironment(isNight, windLevel, region, incense, lanternLit, inSmoke, nearLamp);
+                if (BossRushCoop.IsClient) return;
+            }
             try
             {
                 float now = Time.time;
@@ -399,11 +417,9 @@ namespace BossRush
                 lantern = lanternLit;
                 Vector3 position = player.transform.position;
                 string reason;
-                bool enemiesNear = !session.CanOpenStoryPanel(out reason);
+                bool enemiesNear = coopSamplingRemote ? coopRemoteEnvironment.Enemies : !session.CanOpenStoryPanel(out reason);
                 // 蚋笛翁吹笛的那几秒（SkyIslandGnatsLure.cs）附近有敌人也不散：吹笛的本身就是敌人。
                 if (HostileLureActive) enemiesNear = false;
-                RefreshVeil(now);
-                TickItch(player, now, elapsed);
                 Scatter(position, now, windLevel, enemiesNear, inSmoke, incense);
                 if (now < nextSpawnCheck) return;
                 nextSpawnCheck = now + SkyIslandMosquitoRules.SpawnCheckSeconds;
@@ -413,7 +429,7 @@ namespace BossRush
                 {
                     Night = night, WindLevel = windLevel, InSmoke = inSmoke, Incense = incense, EnemiesNear = enemiesNear,
                     WaterEdgeDistance = SkyIslandMosquitoRules.WaterEdgeDistance(local.x, local.z),
-                    FrogsReleased = story != null ? SkyIslandMosquitoRules.FrogsReleased(story.Current) : 0,
+                    FrogsReleased = coopSamplingRemote ? coopRemoteEnvironment.Frogs : story != null ? SkyIslandMosquitoRules.FrogsReleased(story.Current) : 0,
                     IslandCore = SkyIslandMosquitoRules.IsIslandCore(region, local.x, local.z),
                     Lantern = lanternLit, NearLamp = nearLamp, NearZapper = NearestZapper(position, SkyIslandMosquitoRules.ZapperLureRadius) != null
                 };
@@ -462,6 +478,11 @@ namespace BossRush
             {
                 Gnat gnat = gnats[i];
                 if (gnat == null) continue;
+                if (BossRushCoop.IsConnected)
+                {
+                    CharacterMainControl nearest = BossRushCoop.GetCombatTarget(gnat.Position);
+                    if (nearest != null && (nearest.transform.position - position).sqrMagnitude > 0.01f) continue;
+                }
                 if ((gnat.Position - position).sqrMagnitude > despawn * despawn)
                 {
                     Remove(i, false, now, Quaternion.identity);
@@ -491,6 +512,7 @@ namespace BossRush
 
         private bool Spawn(Vector3 at, float now)
         {
+            if (BossRushCoop.IsClient && !coopCreatingReplica) return false;
             int slot = -1;
             for (int i = 0; i < gnats.Length && slot < 0; i++) if (gnats[i] == null) slot = i;
             if (slot < 0) return false;
@@ -550,6 +572,7 @@ namespace BossRush
                     OrbitAngle = (float)(random.NextDouble() * Math.PI * 2.0)
                 };
                 alive++;
+                RegisterCoopGnat(gnats[slot]);
                 return true;
             }
             catch (Exception e)
@@ -612,7 +635,7 @@ namespace BossRush
             if (gnat.Root != null) UnityEngine.Object.Destroy(gnat.Root);
             if (!killed) return;
             ShowSplat(gnat.Position, now, view);
-            if (session != null && session.Bounty != null) session.Bounty.ReportGnatCulled();
+            if (!BossRushCoop.IsConnected && session != null && session.Bounty != null) session.Bounty.ReportGnatCulled();
         }
 
         #endregion
@@ -680,32 +703,6 @@ namespace BossRush
 
         #region 开枪、蒲扇与灭蚊灯
 
-        /// <summary>
-        /// 玩家的弹生成时（`SkyIslandGnatProjectilePatch`）：只看主角自己的直线弹，逐只登记给躲闪状态机。异常一律吞在这里，不进官方开枪流程。
-        /// </summary>
-        internal void OnProjectile(Projectile projectile, ProjectileContext context)
-        {
-            if (!Usable || alive == 0 || projectile == null) return;
-            try
-            {
-                CharacterMainControl main = CharacterMainControl.Main;
-                bool mine = main != null && context.fromCharacter == main;
-                if (!SkyIslandMosquitoRules.ShouldTrackProjectile(mine, context.gravity, context.explosionRange)) return;
-                Vector3 origin = context.firstFrameCheck ? context.firstFrameCheckStartPoint : projectile.transform.position;
-                var shot = new SkyIslandGnatShot(ToVec(origin), ToVec(context.direction), context.speed, context.distance, projectile.radius);
-                int frame = Time.frameCount;
-                for (int i = 0; i < gnats.Length; i++)
-                {
-                    Gnat gnat = gnats[i];
-                    if (gnat == null || gnat.Leaving || gnat.Root == null || !gnat.Root.activeSelf) continue;
-                    gnat.Motor.OnShot(ToVec(gnat.Position), shot, frame, this);
-                }
-            }
-            catch (Exception e)
-            {
-                Fail("projectile", e);
-            }
-        }
 
         /// <summary>
         /// 药烟蒲扇扇一下：扇面近处的扑落，远处的扇退并晕一小会儿。**近身、瞬时**——灭蚊灯管的是一片地方、一段时间。
@@ -713,6 +710,7 @@ namespace BossRush
         internal bool SwingFan(CharacterMainControl player, out string message)
         {
             message = SkyIslandMosquitoRules.FanResting;
+            if (!BossRushCoop.HasWorldAuthority) return false;
             if (!FanReady || player == null) return false;
             float now = Time.time;
             fanReadyAt = now + SkyIslandMosquitoRules.FanCooldownSeconds;
@@ -747,6 +745,7 @@ namespace BossRush
         internal bool DeployZapper(CharacterMainControl player, out string message)
         {
             message = SkyIslandMosquitoRules.ZapperLimit;
+            if (!BossRushCoop.HasWorldAuthority) return false;
             if (!CanDeployZapper || player == null) return false;
             int slot = -1;
             for (int i = 0; i < zappers.Length && slot < 0; i++) if (zappers[i] == null) slot = i;
@@ -787,7 +786,9 @@ namespace BossRush
                 SkyIslandImpactFx.Taper(arcCore, 0.035f, 0.3f);
                 arcCore.sortingOrder = SortingOrder + 1;
                 arcCore.enabled = false;
-                zappers[slot] = new Zapper { Root = go, Glow = glow, Arc = arc, ArcCore = arcCore, Until = now + SkyIslandMosquitoRules.ZapperBurnSeconds, NextPulse = now + 0.3f };
+                zappers[slot] = new Zapper { Root = go, Glow = glow, Arc = arc, ArcCore = arcCore, PlayerId = BossRushCoop.GetPlayerId(player),
+                    Until = now + SkyIslandMosquitoRules.ZapperBurnSeconds, NextPulse = now + 0.3f };
+                SkyIslandCoopWorldEffects.Track(cage); SkyIslandCoopWorldEffects.Track(arc); SkyIslandCoopWorldEffects.Track(arcCore); SkyIslandCoopWorldEffects.Track(glow);
                 message = SkyIslandMosquitoRules.ZapperLit;
                 if (story != null) story.LogTiming("zapper", slot.ToString());
                 return true;
@@ -846,7 +847,8 @@ namespace BossRush
                 zapper.ArcUntil = now + 0.12f;
                 // 击中点迸 4 粒电火花（加色、拉伸、≤ 0.12 m），按脉冲节拍发一次，不进每帧路径。
                 SkyIslandImpactFx.Sparks(root, target.Position, new Color(0.62f, 0.86f, 1f, 1f), 4);
-                HurtGnat(target, SkyIslandMosquitoRules.ZapperDamage, player);
+                BossRushCoopPlayer placer = BossRushCoop.FindPlayer(zapper.PlayerId);
+                HurtGnat(target, SkyIslandMosquitoRules.ZapperDamage, placer != null ? placer.Character : player);
             }
         }
 
@@ -1024,6 +1026,7 @@ namespace BossRush
             line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             line.receiveShadows = false;
             line.sortingOrder = SortingOrder;
+            SkyIslandCoopWorldEffects.Track(line);
             return line;
         }
 
@@ -1149,6 +1152,7 @@ namespace BossRush
         {
             if (disposed) return;
             disposed = true;
+            DisposeCoopGnats();
             if (Current == this) Current = null;
             try { RuntimeStatModifierTracker.RemoveAll(itchRecords, ModifierContext); }
             catch (Exception e) { Debug.LogWarning("[SkyIslandGnats] 摘除痒失败：" + e.Message); }

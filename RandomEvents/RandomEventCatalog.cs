@@ -115,7 +115,7 @@ namespace BossRush
         {
             try
             {
-                CharacterMainControl player = CharacterMainControl.Main;
+                CharacterMainControl player = BossRushCoop.IsHost ? BossRushCoop.GetCombatTarget(Vector3.zero) : CharacterMainControl.Main;
                 if (player == null || player.Health == null || player.Health.IsDead)
                 {
                     return null;
@@ -399,7 +399,7 @@ namespace BossRush
                 owner.PlayRandomEventStinger(RandomEventsTuning.BloodMoonStingerKey);
                 owner.ShowRandomEventBanner(L10n.T("血月当空：敌人变得狂暴", "Blood Moon: enemies turn frenzied"));
 
-                if (!_deathSubscribed)
+                if (!_deathSubscribed && BossRushCoop.HasWorldAuthority)
                 {
                     Health.OnDead += OnSacrificeDead;
                     _deathSubscribed = true;
@@ -465,6 +465,7 @@ namespace BossRush
         /// </summary>
         private void RefreshEnemyModifiers(ModBehaviour owner)
         {
+            if (!BossRushCoop.HasWorldAuthority) return;
             try
             {
                 owner.CollectEventBuffTargets(_collectBuffer);
@@ -532,7 +533,7 @@ namespace BossRush
                 }
                 while (_sacrificePending > 0)
                 {
-                    if (!Duckov.Economy.EconomyManager.Add(RandomEventsTuning.BloodMoonCashPerKill)) break;
+                    if (!RandomEventsRuntimeModule.DeliverBloodMoonCash(RandomEventsTuning.BloodMoonCashPerKill)) break;
                     _sacrificePending--;
                 }
             }
@@ -1003,6 +1004,7 @@ namespace BossRush
     /// </summary>
     internal sealed class RandomEventWanderingMerchant : RandomEventBase
     {
+        internal string CoopEntity { get { return BossRushCoop.GetEntityId(_merchant); } }
         private CharacterMainControl _merchant;
         private StockShop _shop;
         private bool _cleanedUp = true;

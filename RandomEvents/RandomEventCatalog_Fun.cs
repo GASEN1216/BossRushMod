@@ -80,7 +80,7 @@ namespace BossRush
             int count = Mathf.Max(1, RandomEventsTuning.FeintSoundCount);
             for (int i = 0; i < count; i++)
             {
-                CharacterMainControl player = CharacterMainControl.Main;
+                CharacterMainControl player = RandomEventEffectHelpers.ResolveAlivePlayer();
                 if (player == null || owner == null)
                 {
                     yield break;
@@ -95,6 +95,7 @@ namespace BossRush
 
                 owner.MakeRandomEventAiSound(p, RandomEventsTuning.FeintSoundRadius, SoundTypes.unknowNoise);
                 _emitted++;
+                RandomEventsRuntimeModule.PublishCoopFx(2, p, 0);
                 owner.PopRandomEventText(
                     L10n.T("咕嘎?", "Quack?"),
                     p + Vector3.up * 1.2f,
@@ -197,7 +198,7 @@ namespace BossRush
             int bursts = Mathf.Max(1, RandomEventsTuning.FireworksBurstCount);
             for (int i = 0; i < bursts; i++)
             {
-                CharacterMainControl player = CharacterMainControl.Main;
+                CharacterMainControl player = RandomEventEffectHelpers.ResolveAlivePlayer();
                 if (player == null || owner == null)
                 {
                     yield break;
@@ -213,6 +214,7 @@ namespace BossRush
                 // 程序化烟花（VA-22）：白芯 → 稀有度色 → 暗透明的拖尾火花，每 3 发一盏短闪光；
                 // 零伤害、零碰撞查询、不震屏，不再借官方爆炸火球与「★」飘字。
                 RandomEventFx.PlayFirework(p, i);
+                RandomEventsRuntimeModule.PublishCoopFx(1, p, i);
                 _burstsPlayed++;
 
                 yield return new WaitForSeconds(RandomEventsTuning.FireworksIntervalSeconds);

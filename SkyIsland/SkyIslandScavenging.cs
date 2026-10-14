@@ -212,7 +212,8 @@ namespace BossRush
             {
                 Point point = points[i];
                 if (!point.Placed || point.Built || point.Failed) continue;
-                float distance = (point.Position - origin).sqrMagnitude;
+                CharacterMainControl nearby = BossRushCoop.HasWorldAuthority ? BossRushCoop.GetCombatTarget(point.Position) : player;
+                float distance = (point.Position - (nearby != null ? nearby.transform.position : origin)).sqrMagnitude;
                 if (distance < bestDistance) { bestDistance = distance; best = point; }
             }
             // 一次只建一个：入区瞬间不集中做实例化与物品创建。
@@ -236,7 +237,7 @@ namespace BossRush
             // 3–7 格：保底一格岛上特产，其余按档次类别牌抽武器 / 子弹 / 装备 / 物资（owner 2026-10-01）；地上的箱子不开保底品质带。
             string contents;
             int added = SkyIslandRewardCrate.FillScavenge(box, point.Anchor, raidSeed, out contents);
-            if (added == 0 && !poolWarned && report != null)
+            if (added == 0 && BossRushCoop.HasWorldAuthority && !poolWarned && report != null)
             {
                 poolWarned = true;
                 report(L10n.T("岛上的物资表现在是空的，这个搜刮点没出东西",

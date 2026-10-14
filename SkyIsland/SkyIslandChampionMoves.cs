@@ -83,7 +83,7 @@ namespace BossRush
 
         private void TryCast()
         {
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = BossRushCoop.GetCombatTarget(boss.transform.position);
             if (player == null || player.Health == null || player.Health.IsDead) return;
             Vector3 flat = player.transform.position - boss.transform.position;
             flat.y = 0f;
@@ -124,7 +124,7 @@ namespace BossRush
                 Announce("折翎把刀横在路上：刀光沿着一条线由近到远砍下来，横着让开，别顺着线往后退。",
                     "Zheling lays his blade across the road: the cuts fall along a line, near to far. Sidestep; don't back away down the line.", true);
             }
-            float telegraph = SkyIslandBossRules.TelegraphSeconds(CutTelegraph, SkyIslandBossGearWorn.Earmuffs);
+            float telegraph = SkyIslandBossRules.TelegraphSeconds(CutTelegraph, SkyIslandBossGearWorn.WorldEarmuffs);
             float started = Time.time;
             while (lines.Count > 0 && Time.time - started < telegraph && !Aborted())
             {
@@ -169,7 +169,7 @@ namespace BossRush
             try
             {
                 if (aiControl != null && aiControl.IsPaused && health != null && !health.IsDead)
-                    aiControl.Resume(CharacterMainControl.Main);
+                    aiControl.Resume(BossRushCoop.GetCombatTarget(boss.transform.position));
             }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 折翎恢复失败：" + e.Message); }
         }
@@ -306,7 +306,7 @@ namespace BossRush
 
         private void TryCast()
         {
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = BossRushCoop.GetCombatTarget(boss.transform.position);
             if (player == null || player.Health == null || player.Health.IsDead) return;
             if (FlatDistance(player.transform.position, boss.transform.position) > StrikeRange)
             {
@@ -329,7 +329,7 @@ namespace BossRush
                 Announce("守钟装置要报时了：近响罩它身边一圈，远响罩内外两圈之间。近响时出圈，远响时钻进内圈或退到外圈外；躲到墙后也行。",
                     "The bell engine is striking the hour. The near strike covers the ring around it; the far strike covers the band between the inner and outer rings. Leave the ring for a near strike; for a far strike, get inside the inner ring or past the outer one. A wall also blocks it.", true);
             }
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = BossRushCoop.GetCombatTarget(boss.transform.position);
             // 第一响挑罩得住玩家的那一种，之后近远交替。
             bool far = player != null && FlatDistance(player.transform.position, center) > NearRadius;
             int count = hurt ? BeatsHurt : Beats;
@@ -386,7 +386,7 @@ namespace BossRush
                 Announce("远响：两道圈之间要挨钟声，钻进内圈或者退出外圈。",
                     "Far strike: the band between the two rings gets hit. Duck inside the inner ring or step out past the outer one.", true);
             }
-            float telegraph = SkyIslandBossRules.TelegraphSeconds(far ? FarTelegraph : NearTelegraph, SkyIslandBossGearWorn.Earmuffs);
+            float telegraph = SkyIslandBossRules.TelegraphSeconds(far ? FarTelegraph : NearTelegraph, SkyIslandBossGearWorn.WorldEarmuffs);
             float started = Time.time;
             while (Time.time - started < telegraph && !Aborted())
             {
@@ -410,7 +410,14 @@ namespace BossRush
                     else
                     {
                         SkyIslandBossForge.Detonate(boss, center, NearRadius, NearDamage, false, shake, NearTint);
-                        if (Caught(center, 0f, NearRadius)) slow.Apply(CharacterMainControl.Main, TollSlow, TollSlowSeconds);
+                        if (BossRushCoop.IsConnected)
+                        {
+                            foreach (BossRushCoopPlayer member in BossRushCoop.Players)
+                                if (member.IsAlive && Caught(member.Character, center, 0f, NearRadius))
+                                    slow.Apply(member.Character, TollSlow, TollSlowSeconds);
+                        }
+                        else if (Caught(CharacterMainControl.Main, center, 0f, NearRadius))
+                            slow.Apply(CharacterMainControl.Main, TollSlow, TollSlowSeconds);
                     }
                     SkyIslandBossSfx.Play(context.Root, SkyIslandBossCue.Toll, center);
                 }
@@ -424,9 +431,26 @@ namespace BossRush
         /// <summary>远响结算：环带里、没被墙挡住的主角在脚下吃一个小半径的官方爆炸并耳鸣；余波画到外圈。</summary>
         private void StrikeFar(Vector3 center, float shake)
         {
-            CharacterMainControl player = CharacterMainControl.Main;
-            if (Caught(center, FarInner, FarOuter))
+            bool hit = false;
+            if (BossRushCoop.IsConnected)
             {
+                foreach (BossRushCoopPlayer member in BossRushCoop.Players)
+                {
+                    CharacterMainControl player = member.Character;
+                    if (!member.IsAlive || !Caught(player, center, FarInner, FarOuter)) continue;
+                    // 每人一次直接交给官方接收体；同处一圈的人不能互相吃到重复的脚下爆炸。
+                    DamageInfo damage = new DamageInfo(boss);
+                    damage.damageValue = FarDamage; damage.damagePoint = player.transform.position;
+                    damage.isExplosion = true; damage.isFromBuffOrEffect = true; damage.fromWeaponItemID = 0;
+                    if (player.mainDamageReceiver != null) player.mainDamageReceiver.Hurt(damage);
+                    slow.Apply(player, TollSlow, TollSlowSeconds);
+                    hit = true;
+                }
+                if (shake > 0f) SkyIslandImpactFx.Shake(center, hit ? shake : shake * 0.5f);
+            }
+            else if (Caught(CharacterMainControl.Main, center, FarInner, FarOuter))
+            {
+                CharacterMainControl player = CharacterMainControl.Main;
                 SkyIslandBossForge.Detonate(boss, player.transform.position, FarHitRadius, FarDamage, false, shake, FarTint);
                 slow.Apply(player, TollSlow, TollSlowSeconds);
             }
@@ -435,9 +459,8 @@ namespace BossRush
         }
 
         /// <summary>主角站在 [inner, outer] 的环带里（inner 为 0 即整个圆盘）、高度差不大、且与圆心之间没有墙。</summary>
-        private static bool Caught(Vector3 center, float inner, float outer)
+        private static bool Caught(CharacterMainControl player, Vector3 center, float inner, float outer)
         {
-            CharacterMainControl player = CharacterMainControl.Main;
             if (player == null || player.Health == null || player.Health.IsDead) return false;
             Vector3 feet = player.transform.position;
             float distance = FlatDistance(feet, center);
@@ -476,7 +499,7 @@ namespace BossRush
             try
             {
                 if (aiControl != null && aiControl.IsPaused && health != null && !health.IsDead)
-                    aiControl.Resume(CharacterMainControl.Main);
+                    aiControl.Resume(BossRushCoop.GetCombatTarget(boss.transform.position));
             }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 守钟装置恢复失败：" + e.Message); }
         }

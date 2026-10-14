@@ -434,6 +434,7 @@ namespace BossRush
             float duration = Mathf.Max(0.05f, seconds);
             float t = 0f;
             RandomEventFx.SpawnAirdropMarker(groundPos, crate, duration);
+            PublishCoopFx(4, groundPos, 0, duration);
             while (t < duration)
             {
                 if (crate == null)
@@ -452,10 +453,12 @@ namespace BossRush
             }
 
             crate.transform.position = groundPos;
+            if (BossRushCoop.IsHost) BossRushCoop.RegisterWorldLoot(crate.GetComponent<InteractableLootbox>());
 
             try
             {
                 RandomEventFx.PlayAirdropLanding(groundPos);
+                PublishCoopFx(3, groundPos, 0);
                 MakeRandomEventAiSound(
                     groundPos,
                     RandomEventsTuning.AirdropLandingSoundRadius,

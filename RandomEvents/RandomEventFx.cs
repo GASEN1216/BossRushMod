@@ -204,11 +204,11 @@ namespace BossRush
         /// <summary>
         /// 下落期间在落点放一个呼吸的琥珀色圈：半径随下落从 2.2 m 收到 1.2 m，箱子被销毁或下落时长走完就淡出自毁。
         /// </summary>
-        internal static void SpawnAirdropMarker(Vector3 groundPosition, GameObject crate, float fallSeconds)
+        internal static void SpawnAirdropMarker(Vector3 groundPosition, GameObject crate, float fallSeconds, Transform visualOwner = null)
         {
             try
             {
-                RandomEventAirdropMarker.Create(groundPosition, crate, fallSeconds, AirdropMarkerAlpha);
+                RandomEventAirdropMarker.Create(groundPosition, crate, fallSeconds, AirdropMarkerAlpha, visualOwner);
             }
             catch (Exception e)
             {
@@ -283,7 +283,7 @@ namespace BossRush
         private float _age;
         private float _fadeOut = -1f;
 
-        internal static void Create(Vector3 groundPosition, GameObject crate, float fallSeconds, float alpha)
+        internal static void Create(Vector3 groundPosition, GameObject crate, float fallSeconds, float alpha, Transform visualOwner = null)
         {
             Sprite ringSprite = BossRushProceduralSprites.GetRingSprite();
             Material ringMaterial = BossRushFxKit.GetSpriteMaterial(ringSprite, BossRushFxBlend.Alpha, BossRushFxKit.GainSoft);
@@ -291,6 +291,7 @@ namespace BossRush
 
             GameObject root = new GameObject("RandomEventAirdropMarker");
             root.transform.position = groundPosition + Vector3.up * GroundLift;
+            if (visualOwner != null) root.transform.SetParent(visualOwner, true);
             RandomEventAirdropMarker marker = root.AddComponent<RandomEventAirdropMarker>();
             marker._crate = crate;
             marker._fallSeconds = Mathf.Max(0.05f, fallSeconds);

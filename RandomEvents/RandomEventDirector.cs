@@ -29,7 +29,7 @@ using UnityEngine.SceneManagement;
 namespace BossRush
 {
     /// <summary>随机事件调度器。每个 ModBehaviour 只有一个实例，由运行时模块持有。</summary>
-    internal sealed class RandomEventDirector
+    internal sealed partial class RandomEventDirector
     {
         #region 状态
 
@@ -145,6 +145,8 @@ namespace BossRush
         /// </summary>
         internal void Tick(float deltaTime)
         {
+            if (!ValidateCoopRun()) return;
+            if (BossRushCoop.IsClient) { TickCoopProjection(deltaTime); return; }
             float dt = deltaTime;
             if (dt < 0f) dt = 0f;
             if (dt > RandomEventsTuning.MaxDeltaPerFrame) dt = RandomEventsTuning.MaxDeltaPerFrame;
@@ -335,6 +337,7 @@ namespace BossRush
             try
             {
                 _runSignature = signature;
+                if (signature != 0) CaptureCoopRun();
                 _generation++;
 
                 // 无论哪种边缘，先把在跑的事件按「局结束」收干净
@@ -460,7 +463,7 @@ namespace BossRush
         {
             try
             {
-                CharacterMainControl player = CharacterMainControl.Main;
+                CharacterMainControl player = RandomEventEffectHelpers.ResolveAlivePlayer();
                 if (player == null) return false;
                 if (player.Health == null) return false;
                 return !player.Health.IsDead;
@@ -632,6 +635,8 @@ namespace BossRush
         internal bool TryForceTrigger(RandomEventId id, out string failReason)
         {
             failReason = null;
+            if (!ValidateCoopRun()) { failReason = "coop_run_ended"; return false; }
+            if (BossRushCoop.IsClient) { failReason = "coop_host_only"; return false; }
             RandomEventContext ctx = null;
             try
             {

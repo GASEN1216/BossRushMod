@@ -162,6 +162,14 @@ namespace BossRush
         {
             string reason;
             if (!CanEnter(owner, out reason)) { status(reason, true); return; }
+            if (BossRushCoop.IsConnected && SkyIslandCoopRuntime.Current != null)
+            { SkyIslandCoopRuntime.Current.Enter(status); return; }
+            EnterPrepared(owner, status);
+        }
+
+        internal static void EnterPrepared(ModBehaviour owner, Action<string, bool> status)
+        {
+            if (owner == null || owner.GetComponent<SkyIslandSession>() != null) return;
             SkyIslandSession session = owner.gameObject.AddComponent<SkyIslandSession>();
             session.host = owner;
             session.report = status;
@@ -172,6 +180,7 @@ namespace BossRush
         private void Subscribe()
         {
             if (subscribed) return;
+            SubscribeCoop();
             SceneLoader.onStartedLoadingScene += OnStartedLoading;
             SceneManager.sceneLoaded += OnSceneLoaded;
             SceneManager.sceneUnloaded += OnSceneUnloaded;
@@ -183,6 +192,7 @@ namespace BossRush
             IEnumerator steps = Build();
             while (!closed)
             {
+                if (!IsCoopSessionScopeValid()) { Cleanup("coop_session_lost"); break; }
                 bool more;
                 object current;
                 try { more = steps.MoveNext(); current = more ? steps.Current : null; }
@@ -219,9 +229,14 @@ namespace BossRush
             content = SkyIslandContent.Load();
             story = new SkyIslandStoryService(); story.Open();
             story.RaidHeldCosts = true;
-            lease = new SkyIslandRaidLease();
-            lease.BeginPrepare(ModBehaviour.GetModPath(), timeOfDayTemplate);
-            while (lease.StepPreparation()) yield return null;
+            if (!coopJoining)
+            {
+                lease = new SkyIslandRaidLease();
+                lease.BeginPrepare(ModBehaviour.GetModPath(), timeOfDayTemplate);
+                while (lease.StepPreparation()) yield return null;
+            }
+            IEnumerator preparePeers = WaitForCoopScene("sky.prepare");
+            while (preparePeers.MoveNext()) yield return preparePeers.Current;
             loadStarted = true;
             lease.BeginLoad();
             float deadline = Time.realtimeSinceStartup + 120;
@@ -326,6 +341,8 @@ namespace BossRush
                 throw new InvalidOperationException(contractError);
             }
             lease.MarkInitialized();
+            IEnumerator readyPeers = WaitForCoopScene(SkyIslandSceneReferenceBridge.SceneId + ":sky.runtime");
+            while (readyPeers.MoveNext()) yield return readyPeers.Current;
             if (returnRequested)
             {
                 LevelManager.UnregisterWaitForInitialization(this);
@@ -342,10 +359,11 @@ namespace BossRush
             worldStory = new SkyIslandWorldStory(this, story, root);
             EntryStep("ambience", delegate { ambience = new SkyIslandAmbience(root); ambience.ApplyStory(story.Current); },
                 delegate { var failed = ambience; ambience = null; if (failed != null) failed.Dispose(); });
-            encounters = new SkyIslandEncounters(root, player, navigation.Mask, groundMask, content, IsSessionValid,
+            encounters = new SkyIslandEncounters(root, player, navigation.Mask, groundMask, content, IsWorldSessionValid,
                 EncounterWasSaved, OnEncounterCleared, Status, EncounterLabel, OnStormDefeated, host.GetBossHealthMultiplier);
-            patrols = new SkyIslandPatrols(root, player, navigation.Mask, groundMask, origin, content, IsSessionValid, delegate { return story.Current; });
-            raidSeed = unchecked(Environment.TickCount ^ (int)(Time.realtimeSinceStartup * 1000f));
+            patrols = new SkyIslandPatrols(root, player, navigation.Mask, groundMask, origin, content, IsWorldSessionValid, delegate { return story.Current; });
+            raidSeed = BossRushCoop.IsConnected && SkyIslandCoopRuntime.Current != null ? SkyIslandCoopRuntime.Current.Seed
+                : unchecked(Environment.TickCount ^ (int)(Time.realtimeSinceStartup * 1000f));
             services = new SkyIslandServices(player, root, groundMask, raidSeed);
             // 撤离点的地面标识。半径就是 ExtractionRadius，圈内即判定内。
             // 纯表现层，单独持有 owner：画不出来不拖垮旅程，玩家仍可正常撤离。
@@ -384,7 +402,7 @@ namespace BossRush
 
         public bool HasInitialized() { return navigationReady || closed; }
         private bool IsSessionValid()
-        { return this != null && !closed && ready && !returning && !deathPending && root != null && player != null && player == CharacterMainControl.Main && !SceneLoader.IsSceneLoading; }
+        { return IsCoopSessionScopeValid() && this != null && !closed && ready && !returning && !deathPending && root != null && player != null && player == CharacterMainControl.Main && !SceneLoader.IsSceneLoading; }
 
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
@@ -564,6 +582,7 @@ namespace BossRush
 
         internal bool CanChangeLighting { get { return !closed && ready && lighting != null; } }
         internal bool IsReady { get { return IsSessionValid(); } }
+        internal bool IsWorldReady { get { return IsWorldSessionValid(); } }
         internal string StorySummary
         { get { return story == null ? L10n.T("正在准备群岛记录", "Preparing archipelago records") : story.Summary; } }
         internal string LightingPresetName { get { return lighting == null ? L10n.T("晴昼", "Daylight") : lighting.PresetName; } }
@@ -658,8 +677,9 @@ namespace BossRush
             // 淡入淡出只吃 unscaled 时间：剧情面板把 timeScale 压到 0 时显隐过渡照常走完。
             if (hud != null) hud.Tick(Time.unscaledDeltaTime, HudSuppressed());
             SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Hud);
+            if (!IsCoopSessionScopeValid()) { Cleanup("coop_session_lost"); return; }
             if (returnRequested) { DispatchReturnIfReady(); return; }
-            if (!ready) return;
+            if (!ready) { if (IsWorldSessionValid()) TickCoopWorldWhileDead(); return; }
             try { if (worldStory != null) worldStory.Tick(); } catch (Exception e) { TickFault("world_story", e); }
             SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.StoryRest);
             if (player == null || player != CharacterMainControl.Main || root == null || !entryScene.isLoaded)
@@ -670,6 +690,7 @@ namespace BossRush
             { Close(true, "mode_changed"); return; }
             if (worldStory != null && worldStory.Visible)
             {
+                if (BossRushCoop.IsConnected) TickSubsystems();
                 airborneSince = -1;
                 // 与官方界面同口径：剧情面板开着时撤离读条冻结而不是清零。
                 // 读条走游戏时间，面板把 timeScale 压到 0，这里既不推进也不清零 extractionHeld。
@@ -799,18 +820,6 @@ namespace BossRush
             return chipsText;
         }
 
-        private static Transform Nearest(List<Transform> markers, Vector3 point)
-        {
-            Transform result = null;
-            float distance = float.MaxValue;
-            foreach (Transform marker in markers)
-            {
-                if (marker == null) continue;
-                float value = (marker.position - point).sqrMagnitude;
-                if (value < distance) { distance = value; result = marker; }
-            }
-            return result;
-        }
         // 地名与对手名（LandmarkLabel / RegionLabel / EncounterLabel）原样挪进了 SkyIslandSessionLabels.cs。
         private void OnStartedLoading(SceneLoadingContext context)
         {
@@ -911,6 +920,7 @@ namespace BossRush
         {
             if (closed) return;
             closed = true;
+            DisposeCoop();
             ready = false;
             StopAllCoroutines();
             ReleaseEntryPrewarm();
@@ -1059,6 +1069,7 @@ namespace BossRush
         {
             string reason;
             if (!CanBeginStoryChallenge(id, out reason)) return false;
+            if (BossRushCoop.IsClient) return RequestCoopChallenge(id);
             return encounters.BeginChallenge(id);
         }
 
@@ -1179,15 +1190,6 @@ namespace BossRush
             if (hud != null && ready && !returnRequested) hud.Caption(message, error);
             else if (report != null) report(message, error);
             if (error) Debug.LogWarning("[SkyIsland] " + message); else Debug.Log("[SkyIsland] " + message);
-        }
-        private static int FirstLayer(int mask)
-        {
-            for (int i = 0; i < 32; i++) if ((mask & (1 << i)) != 0) return i;
-            return -1;
-        }
-        private static void Safe(string step, Action action)
-        {
-            try { action(); } catch (Exception e) { Debug.LogWarning("[SkyIsland] cleanup " + step + ": " + e.Message); }
         }
     }
 }

@@ -152,7 +152,7 @@ namespace BossRush
             for (int i = 0; i < spots.Count; i++)
             {
                 Spot spot = spots[i];
-                if (!spot.Placed || spot.Built) continue;
+                if (!spot.Placed || spot.Built || spot.Harvested) continue;
                 float distance = (spot.Position - origin).sqrMagnitude;
                 if (distance < bestDistance) { bestDistance = distance; best = spot; }
             }
@@ -242,6 +242,18 @@ namespace BossRush
             if (disposed || spot.Harvested || harvest == null) return;
             // 会话此刻无效（返航、死亡、换槽）时不发产出，交互体留着——这一趟本来也就结束了。
             if (!harvest(spot.Node)) return;
+            MarkHarvested(spot.Node.Id);
+        }
+
+        internal bool TryGetPosition(string id, out Vector3 position)
+        {
+            foreach (Spot spot in spots) if (spot.Node.Id == id && spot.Placed) { position = spot.Position; return true; }
+            position = Vector3.zero; return false;
+        }
+        internal void MarkHarvested(string id)
+        {
+            Spot spot = spots.Find(value => value.Node.Id == id);
+            if (disposed || spot == null || spot.Harvested) return;
             spot.Harvested = true;
             GameObject gathered = spot.Root;
             spot.Root = null;

@@ -100,7 +100,7 @@ namespace BossRush
 
         private void TryStartSwap()
         {
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = BossRushCoop.GetCombatTarget(boss.transform.position);
             if (player == null || player.Health == null || player.Health.IsDead) return;
             Vector3 at = player.transform.position;
             // 玩家离镜池远了就不翻：把它拉离镜池是这一招的解法之一。
@@ -143,7 +143,7 @@ namespace BossRush
 
             // 戴着静听耳罩的玩家早一点听见（SkyIslandBossGearWorn，头目 R3）：预警只会更长，逃圈判据仍按不戴的算。
             // catch 子句与带 catch 的 try 里都不能 yield（CS1631）：画圈在上面的 try 里做完，蓄力放在外面。
-            float telegraph = SkyIslandBossRules.TelegraphSeconds(SkyIslandBossRules.SwapTelegraph, SkyIslandBossGearWorn.Earmuffs);
+            float telegraph = SkyIslandBossRules.TelegraphSeconds(SkyIslandBossRules.SwapTelegraph, SkyIslandBossGearWorn.WorldEarmuffs);
             if (drawn)
                 yield return StartCoroutine(SkyIslandBossProps.ChargeRings(swapRings, SkyIslandBossRules.SwapRadius, telegraph, SwapTint, abortedCheck));
 
@@ -241,7 +241,7 @@ namespace BossRush
 
         private void ResumeAi()
         {
-            try { if (aiControl != null && aiControl.IsPaused) aiControl.Resume(CharacterMainControl.Main); }
+            try { if (aiControl != null && aiControl.IsPaused) aiControl.Resume(BossRushCoop.GetCombatTarget(boss.transform.position)); }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 镜中客恢复失败：" + e.Message); }
         }
 

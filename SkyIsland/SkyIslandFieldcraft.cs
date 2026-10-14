@@ -74,6 +74,7 @@ namespace BossRush
             // 本趟自己的种子：采集点每趟每处只采一次，产出只需要「这一趟之内确定」，不必借会话的搜刮种子。
             seed = unchecked(Environment.TickCount ^ (int)(Time.realtimeSinceStartup * 1000f) ^ 0x2F6B3D);
             gathering = new SkyIslandGathering(root, groundMask, Harvest);
+            SubscribeCoopHarvest();
             lightsLit = story != null ? SkyIslandLights.LitCount(story.Current) : SkyIslandLights.HearthMarkers.Length;
             PlaceFires();
             // 内容批次四：夜里的云蚋。装配失败只放弃蚊群，不拖垮采集、合成与夜风。
@@ -159,6 +160,7 @@ namespace BossRush
         private bool Harvest(SkyIslandGatherNode node)
         {
             if (disposed || inventoryBusy || node == null || !session.IsReady) return false;
+            if (BossRushCoop.IsConnected && !applyingCoopHarvest) { RequestCoopHarvest(node.Id); return false; }
             // 修好的地方长得更旺（菜畦、根环、铜脉、风眼、观星镜）：加成读这份存档，只加件数与附带门槛，不多抽随机数。
             SkyIslandStoryData data = story != null ? story.Current : null;
             SkyIslandYield[] yields;
@@ -417,7 +419,7 @@ namespace BossRush
             if (buff == SkyIslandFieldBuff.Recall) return session.RecallAvailable;
             // 内容批次四：灭蚊灯同时至多两盏、蒲扇扇过要缓一口气；都问蚊群 owner。不成立时按钮置灰，不白吃一件。
             if (buff == SkyIslandFieldBuff.Zapper) return gnats != null && gnats.CanDeployZapper;
-            if (buff == SkyIslandFieldBuff.Fan) return gnats != null && gnats.FanReady;
+            if (buff == SkyIslandFieldBuff.Fan) return gnats != null && !gnats.CoopUsePending && gnats.FanReady;
             // 药膏的防痒要赶在被叮之前抹上才有意义：只要蚊群 owner 活着就能抹（药膏本身还是回血药，不会白吃）。
             if (buff == SkyIslandFieldBuff.Soothe) return gnats != null && gnats.Usable;
             // 护符不叠加：已经系着一枚时按钮置灰，不吃掉第二枚。
@@ -766,6 +768,7 @@ namespace BossRush
 
         public void Dispose()
         {
+            DisposeCoopHarvest();
             if (disposed) return;
             disposed = true;
             if (Current == this) Current = null;

@@ -63,6 +63,8 @@ namespace BossRush
         private int phase;
         private float nextTick, nextSnareAt, snareArmedAt, snareExpiresAt, lastPlayerX, lastPlayerZ;
         private bool subscribed, finished, ambushing, snareTaut, hasPlayerSample;
+        private sealed class CoopSnareSample { internal CharacterMainControl Character; internal Vector3 Position; }
+        private readonly Dictionary<string, CoopSnareSample> coopSnareSamples = new Dictionary<string, CoopSnareSample>(StringComparer.Ordinal);
         private bool maskEquipped, cuirassEquipped, maskBrokenAnnounced, cuirassBrokenAnnounced;
         private bool snapAnnounced, tripAnnounced, ambushAnnounced;
 
@@ -113,10 +115,19 @@ namespace BossRush
             if (health.IsDead) return;
             TickBrokenGear();
             TickPhase();
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = BossRushCoop.GetCombatTarget(boss.transform.position);
             bool playerAlive = player != null && player.Health != null && !player.Health.IsDead;
             Vector3 at = playerAlive ? player.transform.position : Vector3.zero;
             TickSnare(now, player, playerAlive, at);
+            if (BossRushCoop.IsConnected)
+                foreach (BossRushCoopPlayer member in BossRushCoop.Players)
+                {
+                    if (!member.IsAlive) { coopSnareSamples.Remove(member.Id); continue; }
+                    CoopSnareSample sample;
+                    if (!coopSnareSamples.TryGetValue(member.Id, out sample))
+                    { sample = new CoopSnareSample(); coopSnareSamples[member.Id] = sample; }
+                    sample.Character = member.Character; sample.Position = member.Character.transform.position;
+                }
             // 记下这一拍玩家的位置：下一拍拿「上一拍 → 这一拍」的位移线段判定有没有跨过绊索。
             hasPlayerSample = playerAlive;
             lastPlayerX = at.x;
@@ -171,7 +182,7 @@ namespace BossRush
         {
             if (hollows.Count == 0) return -1;
             Vector3 self = boss.transform.position;
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = BossRushCoop.GetCombatTarget(boss.transform.position);
             Vector3 reference = player != null ? player.transform.position : self;
             float standSqr = SkyIslandBossRules.AmbushRadius * SkyIslandBossRules.AmbushRadius;
             int best = -1, fallback = 0;
@@ -209,7 +220,7 @@ namespace BossRush
             }
             // 面罩被打穿之后根洞亮得更久；戴着静听耳罩的玩家早一点听见（只会更长，逃圈判据仍按不戴的算）。
             float baseSeconds = maskEquipped && MaskBroken() ? SkyIslandBossRules.AmbushTelegraphMaskBroken : SkyIslandBossRules.AmbushTelegraph;
-            float telegraph = SkyIslandBossRules.TelegraphSeconds(baseSeconds, SkyIslandBossGearWorn.Earmuffs);
+            float telegraph = SkyIslandBossRules.TelegraphSeconds(baseSeconds, SkyIslandBossGearWorn.WorldEarmuffs);
             yield return StartCoroutine(SkyIslandBossProps.ChargeRings(ambushRings, SkyIslandBossRules.AmbushRadius, telegraph, AmbushTint, abortedCheck));
             if (!Aborted())
             {
@@ -238,7 +249,7 @@ namespace BossRush
 
         private void ResumeAi()
         {
-            try { if (aiControl != null && aiControl.IsPaused) aiControl.Resume(CharacterMainControl.Main); }
+            try { if (aiControl != null && aiControl.IsPaused) aiControl.Resume(BossRushCoop.GetCombatTarget(boss.transform.position)); }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 悬根猎首恢复失败：" + e.Message); }
         }
 
@@ -275,7 +286,20 @@ namespace BossRush
                     snareLine.startColor = SnareTautTint;
                     snareLine.endColor = SnareTautTint;
                 }
-                if (playerAlive && hasPlayerSample && SkyIslandBossRules.SnareTripped(snareFrom.x, snareFrom.z, snareTo.x, snareTo.z,
+                if (BossRushCoop.IsConnected)
+                {
+                    foreach (BossRushCoopPlayer member in BossRushCoop.Players)
+                    {
+                        CoopSnareSample previous;
+                        if (!member.IsAlive || !coopSnareSamples.TryGetValue(member.Id, out previous) || previous.Character != member.Character) continue;
+                        Vector3 feet = member.Character.transform.position;
+                        if (!SkyIslandBossRules.SnareTripped(snareFrom.x, snareFrom.z, snareTo.x, snareTo.z,
+                            previous.Position.x, previous.Position.z, feet.x, feet.z)) continue;
+                        Trip(member.Character, feet);
+                        break;
+                    }
+                }
+                else if (playerAlive && hasPlayerSample && SkyIslandBossRules.SnareTripped(snareFrom.x, snareFrom.z, snareTo.x, snareTo.z,
                         lastPlayerX, lastPlayerZ, at.x, at.z))
                     Trip(player, at);
                 return;
@@ -330,7 +354,7 @@ namespace BossRush
             snareTo = groundB;
             snareTaut = false;
             // 立好先松着，不许当场绊人；戴着静听耳罩的玩家早一点听见，绷紧只会更晚。
-            snareArmedAt = now + SkyIslandBossRules.TelegraphSeconds(SkyIslandBossRules.SnareArmSeconds, SkyIslandBossGearWorn.Earmuffs);
+            snareArmedAt = now + SkyIslandBossRules.TelegraphSeconds(SkyIslandBossRules.SnareArmSeconds, SkyIslandBossGearWorn.WorldEarmuffs);
             snareExpiresAt = now + SkyIslandBossRules.SnareLifetime;
         }
 
@@ -461,6 +485,7 @@ namespace BossRush
             for (int i = 0; i < hollowMarks.Count; i++) if (hollowMarks[i] != null) Destroy(hollowMarks[i]);
             hollowMarks.Clear();
             hollows.Clear();
+            coopSnareSamples.Clear();
         }
 
         private void OnDestroy()

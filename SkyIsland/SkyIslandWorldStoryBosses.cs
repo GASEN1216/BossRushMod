@@ -11,6 +11,7 @@
 // - 掉落与手记无关：掉落在官方建箱前由 SkyIslandBossLoot 定下，这里记不上手记也不补发任何东西。
 // ============================================================================
 
+using System;
 using UnityEngine;
 
 namespace BossRush
@@ -18,6 +19,25 @@ namespace BossRush
     internal sealed partial class SkyIslandWorldStory
     {
         private bool bossEventsAttached, mailbagLetterUsed;
+        [Serializable] private sealed class BossNote { public string ProfileId; public Vector3 Position; }
+        private CoopPersonalDelivery<BossNote> coopBossNotes;
+        private static SkyIslandWorldStory coopNoteOwner;
+        private long coopNoteSequence;
+        internal static void DeliverCoopBossNote(string playerId, SkyIslandBossProfile profile, Vector3 position)
+        {
+            if (coopNoteOwner == null || string.IsNullOrEmpty(playerId) || profile == null) return;
+            coopNoteOwner.coopBossNotes.Deliver(playerId, "note:" + (++coopNoteOwner.coopNoteSequence),
+                new BossNote { ProfileId = profile.Id, Position = position });
+        }
+        internal static void TickCoopBossNotes()
+        { if (coopNoteOwner != null && coopNoteOwner.coopBossNotes != null) coopNoteOwner.coopBossNotes.Tick(Time.unscaledDeltaTime); }
+        private bool ApplyCoopBossNote(BossNote note)
+        {
+            SkyIslandBossProfile profile = note == null ? null : SkyIslandBossRules.FindById(note.ProfileId);
+            if (disposed || story == null || profile == null || !story.CanWrite) return false;
+            OnBossDefeated(profile, note.Position);
+            return SkyIslandBossRules.Defeated(story.Current, profile);
+        }
 
         /// <summary>
         /// 原口径（有前置的信同趟连送，SkyIslandLetters.NextSameRaidFor）不给下一封时的补位：主角背着截信人的旧邮包、
@@ -37,6 +57,8 @@ namespace BossRush
         private void AttachBossEvents()
         {
             if (bossEventsAttached) return;
+            coopBossNotes = new CoopPersonalDelivery<BossNote>("sky.boss.note", ApplyCoopBossNote);
+            coopNoteOwner = this;
             SkyIslandBossForge.Defeated += OnBossDefeated;
             bossEventsAttached = true;
         }
@@ -46,6 +68,9 @@ namespace BossRush
             if (!bossEventsAttached) return;
             SkyIslandBossForge.Defeated -= OnBossDefeated;
             bossEventsAttached = false;
+            if (coopBossNotes != null) coopBossNotes.Dispose();
+            coopBossNotes = null;
+            if (ReferenceEquals(coopNoteOwner, this)) coopNoteOwner = null;
         }
 
         private void OnBossDefeated(SkyIslandBossProfile profile, Vector3 position)

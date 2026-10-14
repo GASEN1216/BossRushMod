@@ -63,7 +63,8 @@ namespace BossRush
             chatter = new SkyIslandChatter(SkyIslandChatter.ResidentCooldownMin,
                 SkyIslandChatter.ResidentCooldownMax, IsValid);
             PermanentDuckNpcModule.RegisterAllAffinityConfigs();
-            SpawnAllAsync().Forget();
+            if (BossRushCoop.IsClient) replicaDeadline = Time.unscaledTime + 20f;
+            else SpawnAllAsync().Forget();
         }
 
         /// <summary>
@@ -78,6 +79,7 @@ namespace BossRush
         internal void Tick(Vector3 playerPosition, SkyIslandStoryData story)
         {
             if (disposed || root == null || chatter == null) return;
+            if (BossRushCoop.IsClient) BindReplicas();
             RefreshLocalizedNames();
             // 暂停门与对话门同时也是气泡的静音门（SkyIslandChatter.Silenced 再判一次，这里只管脚步）。
             bool busy = DialogueManager.IsDialogueActive || BossRushUI.IsGamePaused();
@@ -165,6 +167,27 @@ namespace BossRush
         }
 
         private bool spawnFinished;
+        private float replicaDeadline, nextReplicaBind;
+        private void BindReplicas()
+        {
+            if (Time.unscaledTime < nextReplicaBind) return;
+            nextReplicaBind = Time.unscaledTime + 0.25f;
+            int readyCount = 0;
+            foreach (string id in Ids)
+            {
+                CharacterMainControl current;
+                if (owned.TryGetValue(id, out current) && current != null) { readyCount++; continue; }
+                CharacterMainControl npc = CoopNpcWorld.Find(id);
+                if (npc == null) continue;
+                NPCAffinityInteractionHelper.ApplyDailyDecayOnSpawn(id, "[SkyIslandResidents]");
+                npc.SetTeam(Teams.middle);
+                AttachStoryInteraction(npc, id, SkyIslandWorldStory.ResidentName(id));
+                owned[id] = npc;
+                if (hidden.Contains(id)) npc.gameObject.SetActive(false);
+                readyCount++;
+            }
+            spawnFinished = readyCount == Ids.Length || Time.unscaledTime >= replicaDeadline;
+        }
         /// <summary>整队生成流程已经跑完（成功与否都算）。官方任务给予者据此判断谁缺席、要不要挂装置兜底。只读。</summary>
         internal bool SpawnFinished { get { return spawnFinished; } }
 
@@ -173,7 +196,7 @@ namespace BossRush
             DuckNpcBlueprint blueprint;
             if (!DuckNpcRegistry.TryGet(id, out blueprint) || blueprint == null)
                 throw new InvalidOperationException("缺少居民蓝图 " + id);
-            if (blueprint.isPermanent && (AffinityManager.IsMarriedToPlayer(id)
+            if (blueprint.isPermanent && ((!BossRushCoop.IsConnected && AffinityManager.IsMarriedToPlayer(id))
                 || PermanentDuckNpcRegistry.GetInstance(id) != null)) return;
             Transform marker = root.transform.Find(markerName);
             if (marker == null) throw new InvalidOperationException("缺少居民落点 " + markerName);
@@ -188,7 +211,7 @@ namespace BossRush
             try
             {
                 // await 期间离岛、结婚或其他 owner 先登记时，只回收本请求刚创建的对象。
-                if (!IsValid() || (blueprint.isPermanent && (AffinityManager.IsMarriedToPlayer(id)
+                if (!IsValid() || (blueprint.isPermanent && ((!BossRushCoop.IsConnected && AffinityManager.IsMarriedToPlayer(id))
                     || PermanentDuckNpcRegistry.GetInstance(id) != null))) return;
                 // 生成可能跨帧；取落地时的语言，避免 await 期间切语言后新居民仍登记旧名字。
                 displayName = SkyIslandWorldStory.ResidentName(id);
@@ -344,8 +367,9 @@ namespace BossRush
             foreach (KeyValuePair<string, CharacterMainControl> pair in owned)
             {
                 CharacterMainControl npc = pair.Value;
+                if (BossRushCoop.IsClient) continue;
                 // 婚后角色由教堂/跟随服务接管，不能在离岛时销毁配偶的新 owner。
-                if (AffinityManager.IsMarriedToPlayer(pair.Key)) continue;
+                if (!BossRushCoop.IsConnected && AffinityManager.IsMarriedToPlayer(pair.Key)) continue;
                 if (PermanentDuckNpcRegistry.GetInstance(pair.Key) == npc)
                     PermanentDuckNpcRegistry.UnregisterInstance(pair.Key);
                 DuckNpcSpawner.Despawn(npc);

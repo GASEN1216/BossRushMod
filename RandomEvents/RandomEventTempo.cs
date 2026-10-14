@@ -8,6 +8,8 @@ namespace BossRush
     {
         private readonly RandomEventId _id;
         private readonly List<BossRushStatModifierRecord> _records = new List<BossRushStatModifierRecord>();
+        private readonly List<BossRushStatModifierRecord> _playerRecords = new List<BossRushStatModifierRecord>(2);
+        private CharacterMainControl _player;
         private readonly List<CharacterMainControl> _targets = new List<CharacterMainControl>();
         private readonly HashSet<CharacterMainControl> _tracked = new HashSet<CharacterMainControl>();
         private float _refresh;
@@ -40,14 +42,12 @@ namespace BossRush
             try
             {
                 ModBehaviour owner = RandomEventEffectHelpers.ResolveOwner(ctx);
-                CharacterMainControl player = RandomEventEffectHelpers.ResolveAlivePlayer();
+                CharacterMainControl player = CharacterMainControl.Main;
                 if (owner == null || player == null || ctx == null || ctx.Scope == null) return false;
                 ClearModifiers();
                 // 先登记撤销动作：任一后续步骤失败，调度器的 DiscardContext 同样能完整回滚。
                 ctx.Scope.RegisterCleanup(ClearModifiers);
-                _playerModifiers = Apply(player);
-                if (_playerModifiers != 2) return false;
-                _tracked.Add(player);
+                if (!RefreshPlayer()) return false;
                 RefreshEnemies(owner);
                 _refresh = RandomEventsTuning.TempoRefreshSeconds;
                 owner.ShowRandomEventBanner(DisplayName + L10n.T("：敌我同时", ": everyone ") + Description());
@@ -67,40 +67,55 @@ namespace BossRush
             return L10n.T("奔跑 -20%、近战 +20%，持续 24 秒", "gets -20% run speed, +20% melee damage for 24s");
         }
 
-        private int Apply(CharacterMainControl character)
+        private bool RefreshPlayer()
+        {
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (player != null && player == _player && _playerRecords.Count == 2
+                && ReferenceEquals(player.CharacterItem, _playerRecords[0].CharacterItem)) return true;
+            // 死亡重生或本机 CharacterItem 换绑时，只撤销本人的旧记录，再给新实体挂一次。
+            RuntimeStatModifierTracker.RemoveAll(_playerRecords, "RandomEventTempo player");
+            _player = player;
+            _playerModifiers = player != null ? Apply(player, _playerRecords) : 0;
+            if (_playerModifiers == 2) return true;
+            RuntimeStatModifierTracker.RemoveAll(_playerRecords, "RandomEventTempo partial player");
+            return false;
+        }
+
+        private int Apply(CharacterMainControl character, List<BossRushStatModifierRecord> records)
         {
             int applied = 0;
             if (_id == RandomEventId.WildChase)
             {
-                if (Add(character, ZombieModeStatNames.WalkSpeed, RandomEventsTuning.WildChaseMoveBonus)) applied++;
-                if (Add(character, ZombieModeStatNames.RunSpeed, RandomEventsTuning.WildChaseMoveBonus)) applied++;
+                if (Add(character, ZombieModeStatNames.WalkSpeed, RandomEventsTuning.WildChaseMoveBonus, records)) applied++;
+                if (Add(character, ZombieModeStatNames.RunSpeed, RandomEventsTuning.WildChaseMoveBonus, records)) applied++;
             }
             else if (_id == RandomEventId.MeleeCarnival)
             {
-                if (Add(character, ZombieModeStatNames.MeleeDamageMultiplier, RandomEventsTuning.MeleeCarnivalMeleeBonus)) applied++;
-                if (Add(character, ZombieModeStatNames.GunDamageMultiplier, RandomEventsTuning.MeleeCarnivalGunPenalty)) applied++;
+                if (Add(character, ZombieModeStatNames.MeleeDamageMultiplier, RandomEventsTuning.MeleeCarnivalMeleeBonus, records)) applied++;
+                if (Add(character, ZombieModeStatNames.GunDamageMultiplier, RandomEventsTuning.MeleeCarnivalGunPenalty, records)) applied++;
             }
             else
             {
-                if (Add(character, ZombieModeStatNames.RunSpeed, RandomEventsTuning.HeavyStepsMovePenalty)) applied++;
-                if (Add(character, ZombieModeStatNames.MeleeDamageMultiplier, RandomEventsTuning.HeavyStepsMeleeBonus)) applied++;
+                if (Add(character, ZombieModeStatNames.RunSpeed, RandomEventsTuning.HeavyStepsMovePenalty, records)) applied++;
+                if (Add(character, ZombieModeStatNames.MeleeDamageMultiplier, RandomEventsTuning.HeavyStepsMeleeBonus, records)) applied++;
             }
             return applied;
         }
 
-        private bool Add(CharacterMainControl character, string stat, float amount)
+        private bool Add(CharacterMainControl character, string stat, float amount, List<BossRushStatModifierRecord> records)
         {
-            return RuntimeStatModifierTracker.TryAdd(character, stat, amount, this, _records, "RandomEventTempo");
+            return RuntimeStatModifierTracker.TryAdd(character, stat, amount, this, records, "RandomEventTempo");
         }
 
         private void RefreshEnemies(ModBehaviour owner)
         {
+            if (!BossRushCoop.HasWorldAuthority) return;
             owner.CollectEventBuffTargets(_targets);
             for (int i = 0; i < _targets.Count; i++)
             {
                 CharacterMainControl target = _targets[i];
-                if (target == null || !_tracked.Add(target)) continue;
-                Apply(target);
+                if (target == null || BossRushCoop.IsPlayer(target) || !_tracked.Add(target)) continue;
+                Apply(target, _records);
             }
             _targets.Clear();
         }
@@ -112,6 +127,7 @@ namespace BossRush
                 _refresh -= deltaTime;
                 if (_refresh > 0f) return;
                 _refresh = RandomEventsTuning.TempoRefreshSeconds;
+                RefreshPlayer();
                 ModBehaviour owner = RandomEventEffectHelpers.ResolveOwner(ctx);
                 if (owner != null) RefreshEnemies(owner);
             }
@@ -120,14 +136,16 @@ namespace BossRush
 
         internal override RandomEventValidationOutcome GetValidationOutcome(out string metrics)
         {
-            metrics = "player_modifiers=" + _playerModifiers + ",tracked=" + _tracked.Count + ",modifiers=" + _records.Count;
-            return _playerModifiers == 2 && _records.Count >= 2
+            metrics = "player_modifiers=" + _playerModifiers + ",tracked=" + _tracked.Count + ",modifiers=" + (_records.Count + _playerRecords.Count);
+            return _playerModifiers == 2 && _playerRecords.Count == 2
                 ? RandomEventValidationOutcome.Passed : RandomEventValidationOutcome.Failed;
         }
 
         private void ClearModifiers()
         {
             RuntimeStatModifierTracker.RemoveAll(_records, "RandomEventTempo");
+            RuntimeStatModifierTracker.RemoveAll(_playerRecords, "RandomEventTempo player");
+            _player = null;
             _targets.Clear();
             _tracked.Clear();
             _playerModifiers = 0;

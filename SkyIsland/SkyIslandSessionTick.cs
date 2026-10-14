@@ -34,6 +34,7 @@ namespace BossRush
 
         private void TickSubsystems()
         {
+            try { TickCoop(); } catch (Exception e) { TickFault("coop", e); }
             try { if (patrols != null) patrols.Tick(); } catch (Exception e) { TickFault("patrols", e); }
             try { if (encounters != null) encounters.Tick(); } catch (Exception e) { TickFault("encounters", e); }
             SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Encounters);
@@ -67,7 +68,7 @@ namespace BossRush
             SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.StorySave);
             try
             {
-                if (gates != null) gates.Apply(story.Current);
+                if (gates != null) gates.Apply(CoopGateStory());
                 // 钟庭环与 BellExitIfUnlocked() 同一事实源：地上看得到的圈，就是站进去能走的圈。
                 if (extractionRings != null) extractionRings.Apply(BellExitIfUnlocked() != null);
                 if (extractionRings != null) extractionRings.ApplyBeacons(WindExitIfUnlocked() != null, StarExitIfUnlocked() != null);

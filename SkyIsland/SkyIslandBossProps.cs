@@ -30,23 +30,47 @@ namespace BossRush
         private readonly object source = new object();
         private readonly string context;
         private float applied, until = -1f;
+        private CharacterMainControl target;
+        private readonly string coopId = Guid.NewGuid().ToString("N");
+        private string remotePlayer;
+        private readonly bool individual;
+        private readonly Dictionary<CharacterMainControl, SkyIslandPlayerSlow> players = new Dictionary<CharacterMainControl, SkyIslandPlayerSlow>();
+        private readonly List<CharacterMainControl> expiredPlayers = new List<CharacterMainControl>();
 
-        internal SkyIslandPlayerSlow(string context) { this.context = context; }
+        internal SkyIslandPlayerSlow(string context) : this(context, false) { }
+        private SkyIslandPlayerSlow(string context, bool individual) { this.context = context; this.individual = individual; }
 
         /// <summary>现在挂着没有。</summary>
-        internal bool Active { get { return records.Count > 0; } }
+        internal bool Active { get { return records.Count > 0 || remotePlayer != null || players.Count > 0; } }
 
         /// <summary>挂上 <paramref name="percent"/>（负数，-0.4 即慢四成）；<paramref name="seconds"/> ≤ 0 表示一直挂到 <see cref="Release"/>。</summary>
         internal void Apply(CharacterMainControl player, float percent, float seconds)
         {
             if (player == null || percent >= 0f) return;
+            if (BossRushCoop.IsHost && !individual)
+            {
+                SkyIslandPlayerSlow effect;
+                if (!players.TryGetValue(player, out effect))
+                { effect = new SkyIslandPlayerSlow(context, true); players.Add(player, effect); }
+                effect.Apply(player, percent, seconds);
+                return;
+            }
             float now = Time.time;
-            if (Active && Mathf.Approximately(applied, percent))
+            if (Active && target == player && Mathf.Approximately(applied, percent))
             {
                 until = seconds > 0f ? Mathf.Max(until, now + seconds) : -1f;
+                if (remotePlayer != null) SkyIslandCoopWorldEffects.SendSlow(remotePlayer, coopId, percent, seconds);
                 return;
             }
             Release();
+            target = player;
+            string playerId = BossRushCoop.GetPlayerId(player);
+            if (BossRushCoop.IsHost && playerId != null && playerId != BossRushCoop.LocalPlayerId)
+            {
+                remotePlayer = playerId; applied = percent; until = seconds > 0f ? now + seconds : -1f;
+                SkyIslandCoopWorldEffects.SendSlow(playerId, coopId, percent, seconds);
+                return;
+            }
             bool any = RuntimeStatModifierTracker.TryAdd(player, ZombieModeStatNames.WalkSpeed, percent, source, records, context);
             any |= RuntimeStatModifierTracker.TryAdd(player, ZombieModeStatNames.RunSpeed, percent, source, records, context);
             if (!any) return;
@@ -57,11 +81,23 @@ namespace BossRush
         /// <summary>按时摘（控制器的节流推进里调）。</summary>
         internal void Tick(float now)
         {
+            expiredPlayers.Clear();
+            foreach (var pair in players)
+            {
+                pair.Value.Tick(now);
+                if (!pair.Value.Active) expiredPlayers.Add(pair.Key);
+            }
+            foreach (CharacterMainControl expired in expiredPlayers) players.Remove(expired);
             if (Active && until > 0f && now >= until) Release();
+            else if ((records.Count > 0 || remotePlayer != null) && (target == null || target.Health == null || target.Health.IsDead)) Release();
         }
 
         internal void Release()
         {
+            foreach (SkyIslandPlayerSlow effect in players.Values) effect.Release();
+            players.Clear(); expiredPlayers.Clear();
+            if (remotePlayer != null) SkyIslandCoopWorldEffects.SendSlow(remotePlayer, coopId, 0f, 0f);
+            remotePlayer = null; target = null;
             if (records.Count > 0) RuntimeStatModifierTracker.RemoveAll(records, context);
             applied = 0f;
             until = -1f;
@@ -128,6 +164,7 @@ namespace BossRush
                 IgnoreContact(collider, CharacterMainControl.Main);
                 IgnoreContact(collider, owner);
                 Physics.SyncTransforms();
+                SkyIslandCoopWorldEffects.TrackProp(receiver, owner);
             }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 接收体激活失败：" + e.Message); }
         }
@@ -185,6 +222,7 @@ namespace BossRush
                 }
                 if (parts == 0) throw new InvalidOperationException("角色模型上没有可烤的渲染器");
                 Activate(go, source);
+                SkyIslandCoopWorldEffects.TrackProp(go, source, true, tint);
                 return go;
             }
             catch (Exception e)
@@ -280,7 +318,7 @@ namespace BossRush
             try
             {
                 AICharacterController ai = character == null ? null : character.GetComponentInChildren<AICharacterController>();
-                CharacterMainControl main = CharacterMainControl.Main;
+                CharacterMainControl main = character != null ? BossRushCoop.GetCombatTarget(character.transform.position) : null;
                 if (ai == null || main == null || main.mainDamageReceiver == null) return;
                 ai.searchedEnemy = main.mainDamageReceiver;
                 ai.noticed = true;

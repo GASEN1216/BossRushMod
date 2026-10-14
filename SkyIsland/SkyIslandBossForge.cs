@@ -329,6 +329,12 @@ namespace BossRush
             if (profile != null) SkyIslandImpactFx.DefeatBurst(null, position, DefeatTint(profile));
             Action<SkyIslandBossProfile, Vector3> handler = Defeated;
             if (handler == null || profile == null) return;
+            if (BossRushCoop.IsConnected)
+            {
+                if (BossRushCoop.HasWorldAuthority) SkyIslandWorldStory.DeliverCoopBossNote(
+                    BossRushCoop.GetPlayerId(damage.fromCharacter), profile, position);
+                return;
+            }
             // 首杀只认主角击杀（CR-2026-09-29-112）：尸体箱与专属掉落照官方走，只是不记手记、不播首杀字幕。
             if (!KilledByMainCharacter(damage)) return;
             try { handler(profile, position); }
@@ -360,6 +366,7 @@ namespace BossRush
                 throw new InvalidOperationException("头目预警圈材质不可用");
             }
             line.gameObject.name = "SkyIslandBossRing";
+            SkyIslandCoopWorldEffects.Track(line);
             try { SkyIslandBossRingFx.Attach(line); }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 预警圈填充失败（只剩描边）：" + e.Message); }
             // 蓄力声：圈一画出来就响（同一帧画几圈只响一声），背对着 Boss 也听得见要来了。
@@ -433,6 +440,7 @@ namespace BossRush
             line.widthMultiplier = width;
             line.startColor = color;
             line.endColor = color;
+            SkyIslandCoopWorldEffects.Track(line);
             return line;
         }
 
@@ -469,6 +477,7 @@ namespace BossRush
                 light.range = 2.5f;
                 light.intensity = 0f;
                 light.shadows = LightShadows.None;
+                SkyIslandCoopWorldEffects.Track(light);
                 SkyIslandLightFade.FadeTo(light, 1.2f, 0.2f, false);
             }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 桩灯失败：" + e.Message); }

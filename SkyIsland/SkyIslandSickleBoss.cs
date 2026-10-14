@@ -104,7 +104,7 @@ namespace BossRush
                 return;
             }
             TickBrokenGear();
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = BossRushCoop.GetCombatTarget(boss.transform.position);
             bool playerAlive = player != null && player.Health != null && !player.Health.IsDead;
             TickMud(playerAlive ? player : null);
             float max = health.MaxHealth;
@@ -137,7 +137,7 @@ namespace BossRush
             Vector3 flat = new Vector3(target.x - boss.transform.position.x, 0f, target.z - boss.transform.position.z);
             Vector3 side = flat.sqrMagnitude > 0.01f ? Vector3.Cross(Vector3.up, flat.normalized) : Vector3.right;
             // 戴着静听耳罩的玩家早一点听见（SkyIslandBossGearWorn，头目 R3）：漫开只会更慢，逃圈判据仍按不戴的算。
-            float telegraph = SkyIslandBossRules.TelegraphSeconds(SkyIslandBossRules.MudTelegraph, SkyIslandBossGearWorn.Earmuffs);
+            float telegraph = SkyIslandBossRules.TelegraphSeconds(SkyIslandBossRules.MudTelegraph, SkyIslandBossGearWorn.WorldEarmuffs);
             float now = Time.time;
             // 中间那块压在脚下，两侧的沿着和它连线的垂直方向铺开：往前或往后走出泥。
             AddMudPatch(target, now, telegraph);
@@ -210,7 +210,6 @@ namespace BossRush
         {
             float now = Time.time;
             float reach = SkyIslandBossRules.MudRadius * SkyIslandBossRules.MudRadius;
-            Vector3 feet = player != null ? player.transform.position : Vector3.zero;
             bool inMud = false;
             for (int i = mudPatches.Count - 1; i >= 0; i--)
             {
@@ -222,19 +221,36 @@ namespace BossRush
                     mudPatches.RemoveAt(i);
                     continue;
                 }
-                if (player == null || inMud || now < patch.ActiveAt) continue;
-                float dx = feet.x - patch.Center.x, dz = feet.z - patch.Center.z;
-                if (dx * dx + dz * dz <= reach && Mathf.Abs(feet.y - patch.Center.y) <= MudHeightTolerance) inMud = true;
             }
-            if (inMud) slow.Apply(player, SkyIslandBossRules.MudSlow, MudSlowRefresh);
+            if (BossRushCoop.IsConnected)
+            {
+                foreach (BossRushCoopPlayer member in BossRushCoop.Players)
+                    if (member.IsAlive) inMud |= TickMudPlayer(member.Character, now, reach);
+            }
+            else inMud = TickMudPlayer(player, now, reach);
             slow.Tick(now);
             // 踩进泥里脚下溅几粒泥点（VB-22）：刚踩进去那一拍一定溅，之后每 3 拍再溅一次；按节拍走，不进每帧路径。
             if (inMud)
             {
-                if (mudTicks % MudSplashEveryTicks == 0) SkyIslandImpactFx.Splash(context.Root, feet, MudSplashColor, 4);
                 mudTicks++;
             }
             else mudTicks = 0;
+        }
+
+        private bool TickMudPlayer(CharacterMainControl player, float now, float reach)
+        {
+            if (player == null) return false;
+            Vector3 feet = player.transform.position;
+            foreach (MudPatch patch in mudPatches)
+            {
+                if (now < patch.ActiveAt) continue;
+                float dx = feet.x - patch.Center.x, dz = feet.z - patch.Center.z;
+                if (dx * dx + dz * dz > reach || Mathf.Abs(feet.y - patch.Center.y) > MudHeightTolerance) continue;
+                slow.Apply(player, SkyIslandBossRules.MudSlow, MudSlowRefresh);
+                if (mudTicks % MudSplashEveryTicks == 0) SkyIslandImpactFx.Splash(context.Root, feet, MudSplashColor, 4);
+                return true;
+            }
+            return false;
         }
 
         /// <summary>谷仓叫人（只在第一次开闸时）：遭遇 owner 把那一组还活着的人拉到谷仓门口并盯上主角。</summary>
@@ -299,7 +315,7 @@ namespace BossRush
 
             // 蓑衣甲被打空之后镰扫慢下来；戴着静听耳罩的玩家再早一点听见（只会更长，逃圈判据仍按不戴的算）。
             float baseSeconds = raincoatEquipped && RaincoatBroken() ? SkyIslandBossRules.SweepTelegraphBroken : SkyIslandBossRules.SweepTelegraph;
-            float telegraph = SkyIslandBossRules.TelegraphSeconds(baseSeconds, SkyIslandBossGearWorn.Earmuffs);
+            float telegraph = SkyIslandBossRules.TelegraphSeconds(baseSeconds, SkyIslandBossGearWorn.WorldEarmuffs);
             float started = Time.time;
             while (Time.time - started < telegraph && !Aborted())
             {
@@ -328,7 +344,7 @@ namespace BossRush
         private void ResumeSweepAi()
         {
             if (finished || boss == null || health == null || health.IsDead) return;
-            try { if (aiControl != null && aiControl.IsPaused) aiControl.Resume(CharacterMainControl.Main); }
+            try { if (aiControl != null && aiControl.IsPaused) aiControl.Resume(BossRushCoop.GetCombatTarget(boss.transform.position)); }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 穗镰镰扫恢复失败：" + e.Message); }
         }
 

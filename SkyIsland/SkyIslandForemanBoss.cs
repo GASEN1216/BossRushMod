@@ -193,8 +193,10 @@ namespace BossRush
                 SkyIslandBossForge.PylonLight(go.transform, PylonTint);
                 LineRenderer tether = SkyIslandBossForge.StraightLine(go.transform, "Tether", 0.07f, PylonTint);
                 go.SetActive(true);
+                SkyIslandCoopWorldEffects.Track(ring);
+                SkyIslandCoopWorldEffects.TrackProp(go, boss);
                 // 非触发球是官方弹道扫掠要的；它不该把人顶开或卡住（口径同云蚋，必须在 SetActive 之后调用）。
-                IgnoreContact(collider, CharacterMainControl.Main);
+                IgnoreContact(collider, BossRushCoop.GetCombatTarget(boss.transform.position));
                 IgnoreContact(collider, boss);
                 Pylon pylon = new Pylon { Root = go, Tether = tether, ExpiresAt = Time.time + SkyIslandBossRules.PylonLifetime };
                 return pylon;
@@ -305,7 +307,7 @@ namespace BossRush
 
         private void TryCastStarfire()
         {
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = BossRushCoop.GetCombatTarget(boss.transform.position);
             if (player == null || player.Health == null || player.Health.IsDead) return;
             Vector3 toPlayer = player.transform.position - boss.transform.position;
             float range = SkyIslandBossRules.StarfireRange;
@@ -345,7 +347,7 @@ namespace BossRush
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 星焰预警失败：" + e.Message); }
 
             // 戴着静听耳罩的玩家早一点听见（SkyIslandBossGearWorn，头目 R3）：预警只会更长，逃圈判据仍按不戴的算。
-            float telegraph = SkyIslandBossRules.TelegraphSeconds(SkyIslandBossRules.StarfireTelegraph, SkyIslandBossGearWorn.Earmuffs);
+            float telegraph = SkyIslandBossRules.TelegraphSeconds(SkyIslandBossRules.StarfireTelegraph, SkyIslandBossGearWorn.WorldEarmuffs);
             float started = Time.time;
             while (Time.time - started < telegraph && !Aborted())
             {
@@ -415,7 +417,7 @@ namespace BossRush
             RemoveModifier(physicsStat, ref overheatModifier);
             if (resume)
             {
-                try { if (aiControl != null && aiControl.IsPaused) aiControl.Resume(CharacterMainControl.Main); }
+                try { if (aiControl != null && aiControl.IsPaused) aiControl.Resume(BossRushCoop.GetCombatTarget(boss.transform.position)); }
                 catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 匠首恢复失败：" + e.Message); }
             }
             ShowOverheatGlow(false);
@@ -437,6 +439,7 @@ namespace BossRush
                     overheatGlow.transform.SetParent(boss.transform, false);
                     overheatGlow.transform.localPosition = new Vector3(0f, 1.2f, -0.35f);
                     overheatLight = overheatGlow.AddComponent<Light>();
+                    SkyIslandCoopWorldEffects.Track(overheatLight);
                     overheatLight.type = LightType.Point;
                     overheatLight.color = StarfireTint;
                     overheatLight.intensity = 0f;

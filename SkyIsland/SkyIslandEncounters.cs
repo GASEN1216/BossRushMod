@@ -15,7 +15,7 @@ namespace BossRush
     /// - 两者共用同一份持久 `clearedEncounters`；它对自动组只作为**剧情装置的前置证据**
     ///   （修风标 / 修星灯 / 校准观星镜），不再用于抑制生成。
     /// </summary>
-    internal sealed class SkyIslandEncounters : IDisposable
+    internal sealed partial class SkyIslandEncounters : IDisposable
     {
         private sealed class Encounter
         {
@@ -267,6 +267,7 @@ namespace BossRush
 
         internal bool BeginChallenge(string id)
         {
+            if (!BossRushCoop.HasWorldAuthority) return false;
             string reason;
             if (!CanBeginChallenge(id, out reason)) return false;
             Spawn(Find(id));
@@ -305,6 +306,7 @@ namespace BossRush
 
         internal void Tick()
         {
+            if (!BossRushCoop.HasWorldAuthority) return;
             // 节流排在委托之前：这一路每帧都进，而 0.25 秒的门 60 帧里挡掉 14/15，
             // 先判两个字段就不用每帧再走一次 IsSessionValid 委托（R-9「节流判断提前」）。
             // 顺序可换是因为 valid() 是纯查询（SkyIslandSession.IsSessionValid 只读状态）。
@@ -337,7 +339,7 @@ namespace BossRush
                     {
                         cleared(encounter.Id);
                         // 委托可能因写屏障/暂时失败未接受；保持物理清场事实并重复投递，不能重生敌群。
-                        if (completed(encounter.Id))
+                        if (completed(encounter.Id) || BossRushCoop.IsConnected)
                         {
                             encounter.Cleared = true;
                             report(L10n.T("航路已清理 · ", "Lane cleared · ") + describe(encounter.Id), false);
@@ -364,7 +366,8 @@ namespace BossRush
                 if ((encounter.Manual && !encounter.Started) || (encounter.Cleared && !NightLeadDue(encounter)) || Time.time < encounter.RetryAt) continue;
                 int missing = CountMissing(encounter);
                 if (missing == 0 || active + missing > MaxActiveActors) continue;
-                if ((player.transform.position - encounter.Marker.position).sqrMagnitude > AutoSpawnRange * AutoSpawnRange) continue;
+                CharacterMainControl nearby = BossRushCoop.GetCombatTarget(encounter.Marker.position) ?? player;
+                if ((nearby.transform.position - encounter.Marker.position).sqrMagnitude > AutoSpawnRange * AutoSpawnRange) continue;
                 Spawn(encounter);
                 break;
             }
@@ -443,6 +446,7 @@ namespace BossRush
 
         private async void Spawn(Encounter encounter)
         {
+            if (!BossRushCoop.HasWorldAuthority) return;
             encounter.Started = encounter.Spawning = true;
             try
             {
@@ -503,6 +507,7 @@ namespace BossRush
                             || created.GetComponent<SkyIslandBossVoice>() != null;
                         life.Bind(created, actor);
                         actor.Life = life;
+                        if (BossRushCoop.IsConnected) BossRushCoop.RequestAiRegistration(created);
                         encounter.SpawnFailures = 0;
                         retained = true;
                     }
@@ -691,6 +696,7 @@ namespace BossRush
             closed = true;
             if (chatter != null) chatter.Clear();
             if (bossContext != null) bossContext.Bark = null;
+            if (!BossRushCoop.HasWorldAuthority) return;
             foreach (Encounter encounter in encounters)
                 foreach (SkyIslandEnemyRecord actor in encounter.Actors)
                     if (actor.Life != null) { actor.Life.gameObject.SetActive(false); UnityEngine.Object.Destroy(actor.Life.gameObject); }

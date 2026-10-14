@@ -35,6 +35,8 @@ namespace BossRush
     {
         internal static int RootweavePieces, SicklePieces, WindbreakPieces;
         internal static bool Earmuffs, MossgauzeMask, MirrorPlate, Mailbag;
+        internal static bool WorldEarmuffs { get { return SkyIslandCoopWorldEffects.WorldEarmuffs; } }
+        internal static int WorldRootweavePieces { get { return SkyIslandCoopWorldEffects.WorldRootweavePieces; } }
 
         internal static void Reset()
         {

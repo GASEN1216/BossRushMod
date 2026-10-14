@@ -140,7 +140,7 @@ namespace BossRush
                 for (int i = 0; i < _owner.RandomEventCachedCharactersForRuntime.Count; i++)
                 {
                     CharacterMainControl c = _owner.RandomEventCachedCharactersForRuntime[i];
-                    if (c == null || c == main)
+                    if (c == null || c == main || BossRushCoop.IsPlayer(c))
                     {
                         continue;
                     }

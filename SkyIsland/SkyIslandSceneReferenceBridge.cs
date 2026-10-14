@@ -128,6 +128,8 @@ namespace BossRush
                 Patch(RequireMethod(typeof(LevelManager), "NotifySaveBeforeLoadScene", typeof(bool)), "SaveBeforeLoadPrefix");
                 MethodInfo loader = RequireMethod(typeof(SceneLoader), "LoadScene", typeof(SceneReference), typeof(SceneReference),
                     typeof(bool), typeof(bool), typeof(bool), typeof(bool), typeof(MultiSceneLocation), typeof(bool), typeof(bool));
+                harmony.Patch(loader, prefix: new HarmonyMethod(RequireMethod(typeof(SkyIslandSceneReferenceBridge),
+                    "CoopArrivalPrefix", typeof(SceneReference))));
                 var stateMachine = (AsyncStateMachineAttribute)Attribute.GetCustomAttribute(loader, typeof(AsyncStateMachineAttribute));
                 if (stateMachine == null) throw new InvalidOperationException("官方场景加载状态机契约缺失");
                 MethodInfo moveNext = RequireMethod(stateMachine.StateMachineType, "MoveNext");
@@ -434,6 +436,12 @@ namespace BossRush
             if (!OwnsReference(__instance)) return true;
             __result = SceneReferenceUnsafeReason.None;
             return false;
+        }
+
+        private static void CoopArrivalPrefix(SceneReference sceneReference)
+        {
+            if (OwnsReference(sceneReference) && BossRushCoop.IsClient && SkyIslandCoopRuntime.Current != null)
+                SkyIslandCoopRuntime.Current.PrepareNativeArrival();
         }
 
         private static bool SceneInfoPrefix(string sceneID, ref SceneInfoEntry __result)

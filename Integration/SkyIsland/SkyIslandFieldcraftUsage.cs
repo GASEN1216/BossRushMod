@@ -53,6 +53,8 @@ namespace BossRush
                 SkyIslandFieldcraft owner = SkyIslandFieldcraft.Current;
                 if (owner != null)
                 {
+                    if (BossRushCoop.IsClient && (Buff == SkyIslandFieldBuff.Zapper || Buff == SkyIslandFieldBuff.Fan))
+                    { applied = owner.QueueCoopGnatUse(Buff, item); return; }
                     applied = owner.UseConsumable(Buff);
                     if (applied) return;
                     // owner 已经给出具体失败原因（例如没有落灯地面），不要覆盖成“离岛”。

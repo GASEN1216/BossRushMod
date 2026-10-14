@@ -48,6 +48,7 @@ namespace BossRush
         internal bool CanSummonStormEcho(out string blocker)
         {
             blocker = null;
+            if (coopEchoCost != null) { blocker = L10n.T("正在等待房主确认引风", "Waiting for the host to confirm the echo"); return false; }
             if (!IsSessionValid() || story == null) return false;
             bool core = PackCount(BossRushItemIds.SkyIslandWindeaterCore) > 0;
             int crystals = PackCount(BossRushItemIds.SkyIslandQinglanWindcrystal);
@@ -73,6 +74,13 @@ namespace BossRush
                     return false;
                 }
                 // 预留会同步触发官方库存事件：那期间本趟可能已经结束，开战之前再核一次。
+                if (BossRushCoop.IsClient && IsSessionValid() && encounters != null)
+                {
+                    if (!RequestCoopEcho(crystal)) { message = SkyIslandStormEchoRules.StartFailed; return false; }
+                    crystal = null;
+                    message = L10n.T("正在等待房主确认引风", "Waiting for the host to confirm the echo");
+                    return true;
+                }
                 if (!IsSessionValid() || encounters == null || !encounters.BeginChallenge(SkyIslandStormEchoRules.EncounterId))
                 {
                     message = SkyIslandStormEchoRules.StartFailed;
@@ -109,7 +117,7 @@ namespace BossRush
                 groundMask, out drop)) drop = position;
             SkyIslandYield[] goods = SkyIslandStormEchoReward.For(
                 SkyIslandLootTables.CreateStream(raidSeed, SkyIslandStormEchoReward.Stream).NextDouble());
-            bool dropped = SkyIslandRewardCrate.CreateWithGoods(root.transform, drop, "SkyIslandStormEchoTrophy", goods);
+            bool dropped = SkyIslandRewardCrate.CreateWithGoods(root.transform, drop, "SkyIslandStormEchoTrophy", goods, true);
             if (story != null) story.LogTimingOnce("echo_defeated", SkyIslandStormEchoRules.EncounterId);
             Debug.Log("[SkyIsland] STORM_ECHO_DEFEATED trophy=" + dropped);
         }

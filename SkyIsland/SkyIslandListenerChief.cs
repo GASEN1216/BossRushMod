@@ -38,19 +38,21 @@ namespace BossRush
         private readonly List<Vector3> rockPoints = new List<Vector3>();
         private readonly List<LineRenderer> rockRings = new List<LineRenderer>();
         private int shots;
+        private long coopNoise;
+        private CharacterMainControl noiseSource;
         private float nextTick, rockReadyAt;
         private bool subscribed, hurtSubscribed, shootSubscribed, dropping, finished;
         private bool earmuffsEquipped, earmuffsBroken, halfAnnounced, firstRockfallAnnounced;
 
         /// <summary>只读，给 F3 与演练：已数的枪、这一轮要数满几枪、是否正在落石、静听耳罩是否还起作用。</summary>
         internal int Shots { get { return shots; } }
-        internal int ShotsNeeded { get { return SkyIslandBossRules.ShotsPerRockfallFor(SkyIslandBossGearWorn.Earmuffs); } }
+        internal int ShotsNeeded { get { return SkyIslandBossRules.ShotsPerRockfallFor(!BossRushCoop.IsConnected && SkyIslandBossGearWorn.Earmuffs); } }
         internal bool Dropping { get { return dropping; } }
         internal bool EarmuffsWorking { get { return earmuffsEquipped && boss != null && !EarmuffsBroken(); } }
 
 #if BOSSRUSH_DEV
         /// <summary>Dev 自动验收专用：不开枪直接往计数里加（离线造不出主角的枪声）。正式构建里不存在。</summary>
-        internal void DevFeedShots(int count) { if (count > 0) shots += count; }
+        internal void DevFeedShots(int count) { if (count > 0) { shots += count; coopNoise += count * 2L; } }
 #endif
 
         internal void Bind(CharacterMainControl character, SkyIslandBossProfile value, SkyIslandBossContext ctx)
@@ -78,7 +80,8 @@ namespace BossRush
             }
             if (!shootSubscribed)
             {
-                ItemAgent_Gun.OnMainCharacterShootEvent += OnPlayerShot;
+                if (BossRushCoop.IsConnected) SkyIslandCoopWorldEffects.PlayerGunNoise += OnCoopPlayerNoise;
+                else ItemAgent_Gun.OnMainCharacterShootEvent += OnPlayerShot;
                 shootSubscribed = true;
             }
         }
@@ -90,19 +93,21 @@ namespace BossRush
             if (Aborted()) return;
             TickBrokenGear();
             if (earmuffsBroken) return;
-            int needed = SkyIslandBossRules.ShotsPerRockfallFor(SkyIslandBossGearWorn.Earmuffs);
+            int needed = ShotsNeeded;
             if (!halfAnnounced && shots > 0 && shots * 2 >= needed)
             {
                 halfAnnounced = true;
                 Announce("听雨人侧着头在听你的枪声。", "The Rain Listener tilts its head, listening to your gunfire.", false);
             }
             if (dropping || shots < needed || Time.time < rockReadyAt) return;
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = BossRushCoop.IsConnected && noiseSource != null && noiseSource.Health != null && !noiseSource.Health.IsDead
+                ? noiseSource : BossRushCoop.GetCombatTarget(boss.transform.position);
             if (player == null || player.Health == null || player.Health.IsDead) return;
             // 数满了但人已经出了洞区：计数留着，回到洞口再开枪（或者只是站回去）就落。
             Vector3 feet = player.transform.position;
             if (!SkyIslandBossRules.InCave(feet.x, feet.z)) return;
             shots = 0;
+            coopNoise = 0;
             StartCoroutine(RockfallRoutine(feet));
         }
 
@@ -112,6 +117,14 @@ namespace BossRush
             if (finished || earmuffsBroken) return;
             CharacterMainControl player = CharacterMainControl.Main;
             if (player != null && SkyIslandBossRules.InCave(player.transform.position.x, player.transform.position.z)) shots++;
+        }
+
+        private void OnCoopPlayerNoise(CharacterMainControl player, long noise)
+        {
+            if (finished || earmuffsBroken || player == null || noise <= 0) return;
+            coopNoise += noise;
+            shots = (int)Math.Min(int.MaxValue, coopNoise / 2L);
+            noiseSource = player;
         }
 
         // ====================================================================
@@ -158,7 +171,7 @@ namespace BossRush
             }
 
             // 戴着静听耳罩的玩家早一点听见（SkyIslandBossGearWorn，头目 R3）：预警只会更长，逃圈判据仍按不戴的算。
-            float telegraph = SkyIslandBossRules.TelegraphSeconds(SkyIslandBossRules.RockfallTelegraph, SkyIslandBossGearWorn.Earmuffs);
+            float telegraph = SkyIslandBossRules.TelegraphSeconds(SkyIslandBossRules.RockfallTelegraph, SkyIslandBossGearWorn.WorldEarmuffs);
             yield return StartCoroutine(SkyIslandBossProps.ChargeRings(rockRings, SkyIslandBossRules.RockfallRadius, telegraph, RockTint, aborted));
             if (!Aborted())
             {
@@ -209,6 +222,7 @@ namespace BossRush
             if (shootSubscribed)
             {
                 ItemAgent_Gun.OnMainCharacterShootEvent -= OnPlayerShot;
+                SkyIslandCoopWorldEffects.PlayerGunNoise -= OnCoopPlayerNoise;
                 shootSubscribed = false;
             }
             Announce("静听耳罩被打穿了：听雨人再也听不见你的枪声。",
@@ -237,6 +251,7 @@ namespace BossRush
             if (shootSubscribed)
             {
                 ItemAgent_Gun.OnMainCharacterShootEvent -= OnPlayerShot;
+                SkyIslandCoopWorldEffects.PlayerGunNoise -= OnCoopPlayerNoise;
                 shootSubscribed = false;
             }
             ClearRocks();
@@ -254,6 +269,7 @@ namespace BossRush
             if (shootSubscribed)
             {
                 ItemAgent_Gun.OnMainCharacterShootEvent -= OnPlayerShot;
+                SkyIslandCoopWorldEffects.PlayerGunNoise -= OnCoopPlayerNoise;
                 shootSubscribed = false;
             }
             finished = true;

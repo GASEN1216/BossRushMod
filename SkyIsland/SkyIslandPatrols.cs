@@ -77,16 +77,18 @@ namespace BossRush
 
         internal void Tick()
         {
+            if (!BossRushCoop.HasWorldAuthority) return;
             if (closed || root == null || player == null || !valid() || BossRushUI.IsGamePaused()) return;
             float now = Time.unscaledTime;
             if (now < nextTick) return;
             nextTick = now + SkyIslandPatrolRules.TickInterval;
             tickCount++;
-            Vector3 at = player.transform.position;
+            Vector3 at = (BossRushCoop.GetCombatTarget(root.transform.position) ?? player).transform.position;
             // 远区只停用同一活体，保留装备、生命和单趟死亡状态；不销毁并重新满血补刷。
             for (int n = active.Count - 1; n >= 0; n--)
             {
                 int index = active[n]; Cell cell = cells[index];
+                at = (BossRushCoop.GetCombatTarget(cell.Character != null ? cell.Character.transform.position : Position(cell)) ?? player).transform.position;
                 if (cell.Character == null || cell.Character.Health == null || cell.Character.Health.IsDead)
                 { MarkDefeated(index, cell.SpawnGeneration); continue; }
                 float radius = SkyIslandPatrolRules.SuspensionRadius;
@@ -98,6 +100,7 @@ namespace BossRush
             for (int i = 0; i < cells.Length; i++)
             {
                 Cell cell = cells[i];
+                at = (BossRushCoop.GetCombatTarget(Position(cell)) ?? player).transform.position;
                 if (!schedule.IsSpawned(i) || schedule.IsActive(i) || schedule.IsDefeated(i)) continue;
                 if (cell.Character == null || cell.Character.Health == null || cell.Character.Health.IsDead)
                 { MarkDefeated(i, cell.SpawnGeneration); continue; }
@@ -124,6 +127,7 @@ namespace BossRush
             for (int i = 0; i < cells.Length; i++)
             {
                 Cell cell = cells[i];
+                at = (BossRushCoop.GetCombatTarget(Position(cell)) ?? player).transform.position;
                 if (!schedule.CanSpawn(i) || now < cell.NextRetry || !Allowed(cell) || !Nearby(cell, at)) continue;
                 float candidate = (Position(cell) - at).sqrMagnitude;
                 if (candidate < distance) { distance = candidate; nearest = i; }
@@ -195,6 +199,7 @@ namespace BossRush
 
         private async void Spawn(int index, int generation)
         {
+            if (!BossRushCoop.HasWorldAuthority) return;
             Cell cell = cells[index]; CharacterRandomPreset clone = null; CharacterMainControl created = null;
             bool retained = false, presetOwned = false;
             try
@@ -223,10 +228,12 @@ namespace BossRush
                 SkyIslandEnemyArmory.ArmPatrol(created, cell.Profile.Rank);
                 if (closed || root == null || !valid() || generation != schedule.Generation) return;
                 ConfigureNavigation(created);
-                bool activate = !BossRushUI.IsGamePaused() && Nearby(cell, player.transform.position) && Allowed(cell);
+                CharacterMainControl nearby = BossRushCoop.GetCombatTarget(Position(cell)) ?? player;
+                bool activate = !BossRushUI.IsGamePaused() && Nearby(cell, nearby.transform.position) && Allowed(cell);
                 if (!schedule.CompleteSpawn(index, generation, activate)) return;
                 cell.Character = created; cell.Life = life; cell.SpawnGeneration = generation;
                 life.Bind(this, index, generation, created.Health);
+                if (BossRushCoop.IsConnected) BossRushCoop.RequestAiRegistration(created);
                 created.gameObject.SetActive(activate && schedule.IsActive(index));
                 if (schedule.IsActive(index)) active.Add(index);
                 cell.Failures = 0; retained = true;
@@ -261,6 +268,17 @@ namespace BossRush
         internal bool HasLivingEnemiesWithin(Vector3 position, float radius)
         {
             float squared = radius * radius;
+            if (BossRushCoop.IsClient)
+            {
+                foreach (int id in coopActors)
+                {
+                    CharacterMainControl replica = BossRushCoop.FindAi(id);
+                    if (replica != null) CoopAiPredictionHealthProtection.MarkReplica(replica);
+                    if (replica != null && replica.Health != null && !replica.Health.IsDead && replica.gameObject.activeInHierarchy
+                        && (replica.transform.position - position).sqrMagnitude <= squared) return true;
+                }
+                return false;
+            }
             for (int n = 0; n < active.Count; n++)
             {
                 CharacterMainControl character = cells[active[n]].Character;
@@ -268,6 +286,19 @@ namespace BossRush
                     && (character.transform.position - position).sqrMagnitude <= squared) return true;
             }
             return false;
+        }
+
+        private int[] coopActors = new int[0];
+        internal void ApplyCoopActors(int[] ids) { coopActors = ids != null && ids.Length <= cells.Length ? ids : new int[0]; }
+        internal int[] CollectCoopActors()
+        {
+            var ids = new List<int>();
+            foreach (Cell cell in cells)
+            {
+                if (cell.Character == null || cell.Character.Health == null || cell.Character.Health.IsDead) continue;
+                int id = BossRushCoop.GetAiId(cell.Character); if (id != 0) ids.Add(id);
+            }
+            return ids.ToArray();
         }
 
         internal int PlannedFor(string region)

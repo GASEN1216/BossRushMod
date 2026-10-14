@@ -97,7 +97,7 @@ namespace BossRush
         /// 预制体自带的「搬起」（<see cref="PrepareSearchCache"/>）。Boss 战利品、委托谢礼、回响遗存这些「赚来的」箱子保持官方原样。
         /// </summary>
         internal static InteractableLootbox Build(Transform parent, Vector3 position, float yaw,
-            string name, out string error, bool searchCache = false)
+            string name, out string error, bool searchCache = false, bool sharedWorld = false)
         {
             error = null;
             GameObject staging = null;
@@ -147,6 +147,7 @@ namespace BossRush
                 box.Inventory.SetCapacity(InventoryCapacity);
                 // 组里只剩箱子自己时把交互组关掉：交互提示只有「搜集」一行，滚轮也无可切换。
                 if (searchCache && box.GetInteractableList().Count <= 1) box.interactableGroup = false;
+                if (BossRushCoop.IsConnected && (searchCache || sharedWorld)) BossRushCoop.RegisterWorldLoot(box);
                 return box;
             }
             catch (Exception e)
@@ -167,7 +168,7 @@ namespace BossRush
         /// 保底带为空时静默退回常规带。地上捡到的搜刮箱一律不开保底。
         /// </summary>
         internal static int Fill(InteractableLootbox box, SkyIslandLootTier tier, int raidSeed,
-            string streamId, int count, bool guaranteeTopBand = false)
+            string streamId, int count, bool guaranteeTopBand = false, bool sharedWorld = false)
         {
             if (box == null || box.Inventory == null || count <= 0) return 0;
             int[] pool = SkyIslandLootPools.Get(tier);
@@ -176,7 +177,8 @@ namespace BossRush
             // 岛上特产（SkyIslandItemRules.IslandExtraFor）：每箱至多多装一件，走独立随机流——原有 count 件的抽样结果一件不变。
             // 悬根猎装任两件（SkyIslandBossGearWorn，头目 R2）：同一个抽样数压一半，特产机会翻倍、不多抽随机数。
             int extra = SkyIslandItemRules.IslandExtraFor(tier, SkyIslandBossRules.HunterIslandExtraRoll(
-                SkyIslandLootTables.CreateStream(raidSeed, streamId + "#island").NextDouble(), SkyIslandBossGearWorn.RootweavePieces));
+                SkyIslandLootTables.CreateStream(raidSeed, streamId + "#island").NextDouble(),
+                RootweavePiecesFor(sharedWorld)));
             int total = extra != 0 ? count + 1 : count;
             int added = 0;
             for (int i = 0; i < total; i++)
@@ -210,6 +212,10 @@ namespace BossRush
             }
             return added;
         }
+
+        // 共享世界箱只生成一次库存，队伍套装效果取最强穿戴，不按人数叠乘；个人谢礼仍由本人穿戴决定。
+        private static int RootweavePiecesFor(bool sharedWorld)
+        { return sharedWorld ? SkyIslandBossGearWorn.WorldRootweavePieces : SkyIslandBossGearWorn.RootweavePieces; }
 
         /// <summary>
         /// 搜刮点箱子（只在未激活暂存阶段调用）：
@@ -262,6 +268,7 @@ namespace BossRush
         internal static int FillScavenge(InteractableLootbox box, SkyIslandLootAnchor anchor, int raidSeed, out string summary)
         {
             summary = string.Empty;
+            if (!BossRushCoop.HasWorldAuthority) return 0;
             if (box == null || box.Inventory == null || anchor == null) return 0;
             SkyIslandLootTier tier = anchor.Tier;
             int slots = SkyIslandLootTables.RollCount(tier, anchor.Region,
@@ -273,7 +280,7 @@ namespace BossRush
             int staple = SkyIslandItemRules.IslandStapleFor(tier, stapleStream.NextDouble(), stapleStream.NextDouble(), out stapleCount);
             if (AddStack(box, staple, stapleCount, log, "Island")) added++;
             int extra = SkyIslandItemRules.IslandExtraFor(tier, SkyIslandBossRules.HunterIslandExtraRoll(
-                SkyIslandLootTables.CreateStream(raidSeed, anchor.Id + "#island").NextDouble(), SkyIslandBossGearWorn.RootweavePieces));
+                SkyIslandLootTables.CreateStream(raidSeed, anchor.Id + "#island").NextDouble(), RootweavePiecesFor(true)));
             if (extra != 0 && AddStack(box, extra, 1, log, "Island")) added++;
             System.Random random = SkyIslandLootTables.CreateStream(raidSeed, anchor.Id);
             SkyIslandLootCategory[] categories = SkyIslandLootTables.DealCategories(tier,
@@ -338,16 +345,17 @@ namespace BossRush
         /// 旧写法把空箱也算建成，物资池暂时查不出东西时玩家交了单、拿到的是个空箱，委托却已经被消耗。
         /// </summary>
         internal static bool Create(Transform parent, Vector3 position, SkyIslandLootTier tier,
-            string name, string streamId, int raidSeed, int count, bool guaranteeTopBand = false)
+            string name, string streamId, int raidSeed, int count, bool guaranteeTopBand = false, bool sharedWorld = false)
         {
+            if (sharedWorld && !BossRushCoop.HasWorldAuthority) return false;
             string error;
-            InteractableLootbox box = Build(parent, position, 0f, name, out error);
+            InteractableLootbox box = Build(parent, position, 0f, name, out error, false, sharedWorld);
             if (box == null)
             {
                 Debug.LogWarning("[SkyIslandCrate] " + name + " 创建失败：" + error);
                 return false;
             }
-            int added = Fill(box, tier, raidSeed, streamId, count, guaranteeTopBand);
+            int added = Fill(box, tier, raidSeed, streamId, count, guaranteeTopBand, sharedWorld);
             if (added == 0)
             {
                 box.gameObject.SetActive(false);
@@ -364,11 +372,12 @@ namespace BossRush
         /// 物品全是登记过的天空岛物品。实例化前先问 prefab、回读 TypeID，与 <see cref="Fill"/> 同一条防线；
         /// 一件都没装进去就收回空箱并返回 false（口径同 <see cref="Create"/>）。
         /// </summary>
-        internal static bool CreateWithGoods(Transform parent, Vector3 position, string name, SkyIslandYield[] goods)
+        internal static bool CreateWithGoods(Transform parent, Vector3 position, string name, SkyIslandYield[] goods, bool sharedWorld = false)
         {
+            if (sharedWorld && !BossRushCoop.HasWorldAuthority) return false;
             if (goods == null || goods.Length == 0) return false;
             string error;
-            InteractableLootbox box = Build(parent, position, 0f, name, out error);
+            InteractableLootbox box = Build(parent, position, 0f, name, out error, false, sharedWorld);
             if (box == null)
             {
                 Debug.LogWarning("[SkyIslandCrate] " + name + " 创建失败：" + error);

@@ -10,6 +10,7 @@ namespace BossRush
     internal sealed class SkyIslandRuntimeModule : BossRushRuntimeModuleBase
     {
         private ModBehaviour owner;
+        private SkyIslandCoopRuntime coop;
         private SkyIslandPreludeFlow prelude;
         /// <summary>官方任务桥（天空岛客户端）：基地的 Jeff 序章与岛上三条主线都经它登记到共享投影核心，岛上会话不另起一份。</summary>
         private SkyIslandOfficialQuestBridge quests;
@@ -37,6 +38,7 @@ namespace BossRush
         public override void OnAwake(ModBehaviour host)
         {
             owner = host;
+            coop = new SkyIslandCoopRuntime(host);
             quests = new SkyIslandOfficialQuestBridge(host);
             prelude = new SkyIslandPreludeFlow(host, OnRouteOpened, quests);
             SkyIslandNoteBridge.EnsureRuntime();
@@ -118,6 +120,7 @@ namespace BossRush
         public override void OnUpdate(float deltaTime, float unscaledDeltaTime)
         {
             if (owner == null) return;
+            if (coop != null) coop.Tick();
             // 官方任务投影由 OfficialQuestRuntimeModule 无条件 Tick（不受「岛上会话存在就早退」影响），这里不再自己驱动。
             if (prelude != null) prelude.Tick();
             // 岛上不再有自绘地图，也就不需要任何输入处理：
@@ -198,6 +201,8 @@ namespace BossRush
 
         public override void OnDestroy()
         {
+            if (coop != null) coop.Dispose();
+            coop = null;
             if (subscribed)
             {
                 LevelManager.OnAfterLevelInitialized -= OnLevelReady;

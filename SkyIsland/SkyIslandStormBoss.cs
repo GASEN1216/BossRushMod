@@ -297,6 +297,7 @@ namespace BossRush
             light.range = RadiusForWave(0);
             light.shadows = LightShadows.None;
             warningLight = light;
+            SkyIslandCoopWorldEffects.Track(light);
             return go;
         }
 
@@ -314,6 +315,7 @@ namespace BossRush
                 ? SkyIslandGroundRing.Create(map, map.InverseTransformPoint(eyeOrigin) + Vector3.up * SkyIslandGroundRing.GroundLift)
                 : SkyIslandGroundRing.Create(null, eyeOrigin + Vector3.up * SkyIslandGroundRing.GroundLift);
             line.gameObject.name = "SkyIslandStormWarningRing";
+            SkyIslandCoopWorldEffects.Track(line);
             SetRing(line, RadiusForWave(0), 0f);
             return line;
         }
@@ -405,7 +407,7 @@ namespace BossRush
         internal static void DropTrophy(Transform parent, Vector3 position, int raidSeed)
         {
             SkyIslandRewardCrate.Create(parent, position, SkyIslandLootTier.Starworks,
-                "SkyIslandStormTrophy", "StormTrophy", raidSeed, TrophyItemCount, true);
+                "SkyIslandStormTrophy", "StormTrophy", raidSeed, TrophyItemCount, true, true);
         }
     }
 }

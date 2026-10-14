@@ -179,9 +179,13 @@ namespace BossRush
                 // clickToConinue: true 与官方出击一致（`MapSelectionView.LoadTask`）：
                 // 读条结束后停在「点击继续」，玩家点了才真正进图。用 false 会把人直接甩进战斗区，
                 // 和原版任何一张地图的进入手感都不一样。
-                await SceneLoader.Instance.LoadScene(SkyIslandSceneReferenceBridge.SceneId,
-                    new MultiSceneLocation { SceneID = SkyIslandSceneReferenceBridge.SceneId, LocationName = "StartPoints/PlayerSpawn" },
-                    clickToConinue: true, notifyEvacuation: false, saveToFile: true);
+                if (BossRushCoop.HasWorldAuthority)
+                    await SceneLoader.Instance.LoadScene(SkyIslandSceneReferenceBridge.SceneId,
+                        new MultiSceneLocation { SceneID = SkyIslandSceneReferenceBridge.SceneId, LocationName = "StartPoints/PlayerSpawn" },
+                        clickToConinue: true, notifyEvacuation: false, saveToFile: true);
+                // Co-op 的 LoadScene Prefix 会返回 CompletedTask 并开始投票。完成 await 不代表切图完成。
+                while (!releaseRequested && Error == null && (!IsRaidScene(SceneManager.GetActiveScene())
+                    || SceneLoader.IsSceneLoading || !LevelManager.AfterInit)) await UniTask.Yield();
             }
             catch (Exception e) { Abort(e.Message); Error = e.Message; Debug.LogError("[SkyIsland] RAID_LOAD_FAILED " + e); ReleaseStuckOfficialLoadingFlag("load"); }
             finally
@@ -231,6 +235,13 @@ namespace BossRush
                 SkyIslandSceneReferenceBridge.BeginLoadVisuals(this, GameplayDataSettings.SceneManagement.BaseScene, returnFailed);
                 await SceneLoader.Instance.LoadScene(GameplayDataSettings.SceneManagement.BaseScene,
                     curtain, clickToConinue: false, notifyEvacuation: evacuated, saveToFile: true);
+                float returnDeadline = Time.realtimeSinceStartup + 120f;
+                while (!SceneRuntimeGate.IsBaseHubSceneName(SceneManager.GetActiveScene().name)
+                    || SceneLoader.IsSceneLoading || !LevelManager.AfterInit)
+                {
+                    if (Time.realtimeSinceStartup > returnDeadline) throw new TimeoutException("天空岛返航投票或基地加载超时");
+                    await UniTask.Yield();
+                }
                 returnFailed = false;
                 baseReturned = true;
             }

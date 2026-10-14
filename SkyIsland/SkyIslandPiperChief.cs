@@ -81,7 +81,7 @@ namespace BossRush
             if (Aborted()) return;
             TickBrokenGear();
             if (channeling || maskBroken || Time.time < nextFluteAt) return;
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = BossRushCoop.GetCombatTarget(boss.transform.position);
             if (player == null || player.Health == null || player.Health.IsDead) return;
             float range = SkyIslandBossRules.FluteRange;
             if ((player.transform.position - boss.transform.position).sqrMagnitude > range * range) return;
@@ -116,7 +116,7 @@ namespace BossRush
             }
 
             // 戴着静听耳罩的玩家早一点听见（SkyIslandBossGearWorn，头目 R3）：打断窗口只会更长。
-            float channel = SkyIslandBossRules.TelegraphSeconds(SkyIslandBossRules.FluteChannel, SkyIslandBossGearWorn.Earmuffs);
+            float channel = SkyIslandBossRules.TelegraphSeconds(SkyIslandBossRules.FluteChannel, SkyIslandBossGearWorn.WorldEarmuffs);
             float startHealth = health.CurrentHealth;
             float started = Time.time;
             bool interrupted = false;
@@ -192,7 +192,7 @@ namespace BossRush
             channeling = false;
             nextFluteAt = Time.time + cooldown;
             if (finished || health == null || health.IsDead) return;
-            try { if (aiControl != null && aiControl.IsPaused) aiControl.Resume(CharacterMainControl.Main); }
+            try { if (aiControl != null && aiControl.IsPaused) aiControl.Resume(BossRushCoop.GetCombatTarget(boss.transform.position)); }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 蚋笛翁恢复失败：" + e.Message); }
         }
 

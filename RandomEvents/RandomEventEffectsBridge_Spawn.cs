@@ -371,6 +371,9 @@ namespace BossRush
                     }
                     catch (Exception) { }
 
+                    // 原生 Init 的自动登记保留；显式调用补齐晚创建 AI 的实体映射，底层幂等。
+                    BossRushCoop.RequestAiRegistration(duck);
+
                     if (onSpawned != null)
                     {
                         try { onSpawned(duck); }
@@ -512,6 +515,8 @@ namespace BossRush
                 }
                 catch (Exception) { }
 
+                BossRushCoop.RequestAiRegistration(character);
+
                 if (onSpawned != null)
                 {
                     try { onSpawned(character, shop); }
@@ -539,6 +544,7 @@ namespace BossRush
         /// </summary>
         private StockShop BuildRandomEventMerchantShop(GameObject npcGo)
         {
+            GameObject shopObj = null;
             try
             {
                 if (npcGo == null)
@@ -547,6 +553,12 @@ namespace BossRush
                 }
 
                 InteractableBase mainInteract = npcGo.GetComponentInChildren<InteractableBase>(true);
+                if (mainInteract == null && BossRushCoop.IsClient)
+                {
+                    // 原生 AI 镜像可能不带商人的地图交互组件，补本机店铺的接线锚点。
+                    mainInteract = npcGo.AddComponent<InteractableBase>();
+                    mainInteract.interactCollider = npcGo.AddComponent<BoxCollider>();
+                }
                 if (mainInteract == null)
                 {
                     ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人身上没有 InteractableBase，放弃注入商店");
@@ -568,7 +580,7 @@ namespace BossRush
                 }
                 catch (Exception) { }
 
-                GameObject shopObj = new GameObject("BossRushEventShop");
+                shopObj = new GameObject("BossRushEventShop");
                 // StockShop.Awake 会立刻按 merchantID 加载并订阅存档；先保持 inactive，
                 // 等身份、刷新周期与条目全部写完后再激活，不能让 Awake 看见默认字段。
                 shopObj.SetActive(false);
@@ -696,6 +708,7 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[ERROR] 构建商人商店失败: " + e.Message);
+                if (shopObj != null) UnityEngine.Object.Destroy(shopObj);
                 return null;
             }
         }
