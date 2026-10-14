@@ -46,6 +46,10 @@ namespace BossRush
 
         /// <summary>当前在场的闲逛崽数量。</summary>
         internal static int ActiveCount { get { return _handles.Count; } }
+        internal static PetNestCompanionHandle ActiveHandle
+        {
+            get { return _handles.Count > 0 && _handles[0] != null && _handles[0].Character != null ? _handles[0] : null; }
+        }
 
         /// <summary>基地喂食升级时只刷新实际交互的那只宠物，复用随从的成长表现。</summary>
         internal static void RefreshProgression(CharacterMainControl character, PetNestPetRecord pet)
@@ -81,6 +85,12 @@ namespace BossRush
                 return;
             }
             if (owner == null) return;
+            if (BossRushCoop.IsClient)
+            {
+                PetNestPetRecord selected = PetNestService.DeployedPet;
+                if (selected != null) PetNestCoopRuntimeModule.RequestLocalDeployment(selected);
+                return;
+            }
             if (_spawnInFlight && sceneGeneration == _sceneGeneration) return;
             if (_handles.Count > 0 && sceneGeneration == _sceneGeneration) return;
 
@@ -191,6 +201,7 @@ namespace BossRush
             }
 
             _handles.Add(handle);
+            PetNestCoopRuntimeModule.PublishLocalCompanion(handle, pet);
         }
 
         #endregion
@@ -225,6 +236,7 @@ namespace BossRush
         {
             try
             {
+                PetNestCoopRuntimeModule.ReleaseLocalCompanion();
                 CleanupAll();
                 if (_lastOwner == null || !_lastIsBaseScene) return;
                 RefreshForScene(_lastOwner, _sceneGeneration, true);

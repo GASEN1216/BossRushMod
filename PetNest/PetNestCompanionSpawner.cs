@@ -53,6 +53,7 @@ namespace BossRush
         internal bool Activated;
         /// <summary>CleanupOnce 幂等标记。</summary>
         internal bool CleanedUp;
+        internal bool NetworkReplica;
         /// <summary>炫彩 / 异色特效（普通崽为 null，零对象零成本）。</summary>
         internal PetNestAuraEffect Aura;
     }
@@ -431,7 +432,8 @@ namespace BossRush
             ModBehaviour owner,
             PetNestPetRecord pet,
             out string failureReasonId,
-            bool allowCombat = true)
+            bool allowCombat = true,
+            bool attachPersonalInterfaces = true)
         {
             failureReasonId = null;
             if (handle == null || handle.Character == null)
@@ -520,14 +522,14 @@ namespace BossRush
                 }
                 // 炫彩 / 异色光环：只有真的带色的崽才会创建对象（AGENTS 4.12）
                 AttachChromaAura(handle, pet);
-                PetNestBackpack backpack = PetNestBackpack.Attach(handle.Character, pet);
+                PetNestBackpack backpack = attachPersonalInterfaces ? PetNestBackpack.Attach(handle.Character, pet) : null;
                 if (pet != null)
                 {
                     // 行动方式按崽的记录生效；「行动方式 / 喂食 / 摸摸」挂进崽身上现成的背包交互组
                     PetNestBehaviour behaviour = PetNestCareService.Resolve(pet);
                     agent.SetBehaviour(behaviour);
                     PetNestCareService.InjectOptionLocalization(behaviour);
-                    PetNestCareService.AttachOptions(backpack, pet.id, handle.Character);
+                    if (attachPersonalInterfaces) PetNestCareService.AttachOptions(backpack, pet.id, handle.Character);
                 }
 
                 handle.Activated = true;
@@ -575,7 +577,7 @@ namespace BossRush
 
             try
             {
-                if (handle.Character != null && handle.Character.gameObject != null)
+                if (!handle.NetworkReplica && handle.Character != null && handle.Character.gameObject != null)
                 {
                     UnityEngine.Object.Destroy(handle.Character.gameObject);
                 }
@@ -590,6 +592,28 @@ namespace BossRush
             DestroyClone(handle.ClonePreset);
             handle.ClonePreset = null;
             handle.Activated = false;
+        }
+
+        internal static PetNestCompanionHandle AttachNetworkReplica(CharacterMainControl character, CharacterMainControl master,
+            PetNestPetRecord pet, float modelScale, bool personal)
+        {
+            if (character == null || pet == null) return null;
+            CoopAiPredictionHealthProtection.MarkReplica(character);
+            var handle = new PetNestCompanionHandle { Character = character, Health = character.Health,
+                LineageKey = pet.lineageKey, ModelScale = modelScale, NetworkReplica = true, Activated = true };
+            handle.Agent = character.GetComponent<PetNestCompanionAgent>();
+            if (handle.Agent == null) handle.Agent = character.gameObject.AddComponent<PetNestCompanionAgent>();
+            handle.Agent.ApplyPersonality(PetNestPersonality.Resolve(pet));
+            handle.Agent.Bind(character, master, false);
+            handle.Agent.SetBehaviour(PetNestCareService.Resolve(pet));
+            ApplyModelScale(handle);
+            AttachChromaAura(handle, pet);
+            if (personal)
+            {
+                PetNestBackpack backpack = PetNestBackpack.Attach(character, pet);
+                PetNestCareService.AttachOptions(backpack, pet.id, character);
+            }
+            return handle;
         }
 
         #region 炫彩 / 异色特效
@@ -698,8 +722,11 @@ namespace BossRush
             if (!PetNestLineageCatalog.TryGet(pet.lineageKey, out lineage) || lineage == null) return;
             float healthRatio = handle.Health != null && handle.Health.MaxHealth > 0f
                 ? Mathf.Clamp01(handle.Health.CurrentHealth / handle.Health.MaxHealth) : 0f;
-            ApplyPetModifiers(handle.Character, pet);
-            if (handle.Health != null) handle.Health.SetHealth(handle.Health.MaxHealth * healthRatio);
+            if (!handle.NetworkReplica)
+            {
+                ApplyPetModifiers(handle.Character, pet);
+                if (handle.Health != null) handle.Health.SetHealth(handle.Health.MaxHealth * healthRatio);
+            }
             handle.ModelScale = PetNestGrowth.ModelScale(lineage.ModelScale, pet.level);
             ApplyModelScale(handle);
             // 层数不变，只在真正升级时重建一次，让元素大小与新体型保持比例。

@@ -99,6 +99,7 @@ namespace BossRush
 
         public void SpawnCourierNPC()
         {
+            if (!CoopNpcWorld.MaySpawn) return;
             ModBehaviour.DevLog("[CourierNPC] 开始生成快递员...");
 
             // 如果已经存在，不重复生成
@@ -123,7 +124,11 @@ namespace BossRush
             bool isBossRushMode = owner.IsAnyBossRushLikeModeActive();
             ModBehaviour.DevLog("[CourierNPC] 模式检测: IsActive=" + owner.IsActive + ", IsModeDActive=" + owner.IsModeDActive + ", IsBossRushArenaActive=" + owner.IsBossRushArenaActive + ", IsModeEActive=" + owner.IsModeEActive + " => BossRush模式=" + isBossRushMode);
 
-            if (isBossRushMode)
+            if (CoopNpcWorld.ApplyingReplica && CoopNpcWorld.ReplicaPosition.HasValue)
+            {
+                spawnPos = CoopNpcWorld.ReplicaPosition.Value;
+            }
+            else if (isBossRushMode)
             {
                 if (owner.UsesArenaSupportNpcPlacement())
                 {
@@ -213,6 +218,7 @@ namespace BossRush
                 // 实例化预制体
                 courierNPCInstance = UnityEngine.Object.Instantiate(courierPrefab, spawnPos, Quaternion.identity);
                 courierNPCInstance.name = "CourierNPC_BossRush";
+                CoopNpcWorld.Track("courier_awen", "courier", courierNPCInstance);
                 ModBehaviour.DevLog("[CourierNPC] 预制体实例化成功");
 
                 // 确保所有子对象都激活

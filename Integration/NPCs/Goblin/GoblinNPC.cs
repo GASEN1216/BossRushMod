@@ -138,13 +138,14 @@ namespace BossRush
         /// <param name="forceSpawn">是否忽略普通模式刷新条件</param>
         internal void SpawnGoblinNPC(Vector3? overrideSpawnPos = null, bool stayStillOnSpawn = false, bool forceSpawn = false)
         {
+            if (!CoopNpcWorld.MaySpawn) return;
             ModBehaviour.DevLog("[GoblinNPC] 开始生成哥布林...");
             
             // 懒加载：在NPC生成时统一检查并应用每日好感度衰减
             NPCAffinityInteractionHelper.ApplyDailyDecayOnSpawn(GoblinAffinityConfig.NPC_ID, "[GoblinNPC]");
 
             // 已婚后不再参与普通地图刷新（仅婚礼教堂强制生成）
-            if (!forceSpawn && AffinityManager.IsMarriedToPlayer(GoblinAffinityConfig.NPC_ID))
+            if (!forceSpawn && !BossRushCoop.IsConnected && AffinityManager.IsMarriedToPlayer(GoblinAffinityConfig.NPC_ID))
             {
                 ModBehaviour.DevLog("[GoblinNPC] 已与玩家结婚，跳过普通地图刷新");
                 return;
@@ -203,6 +204,7 @@ namespace BossRush
                 // 实例化预制体
                 goblinNPCInstance = UnityEngine.Object.Instantiate(goblinPrefab, spawnPos, Quaternion.identity);
                 goblinNPCInstance.name = "GoblinNPC_BossRush";
+                CoopNpcWorld.Track(GoblinAffinityConfig.NPC_ID, "goblin", goblinNPCInstance);
                 ModBehaviour.DevLog("[GoblinNPC] 预制体实例化成功");
                 
                 // 确保所有子对象都激活

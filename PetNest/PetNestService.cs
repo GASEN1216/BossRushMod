@@ -20,6 +20,32 @@ namespace BossRush
     /// <summary>遗种巢领域服务。无实例，状态在 PetNestPersistence 的 store 里。</summary>
     internal static class PetNestService
     {
+        /// <summary>房主裁决的宠物战功只提交给本机拥有的同一只崽；不接受远端覆盖巢/背包记录。</summary>
+        internal static bool ApplyCoopOutcome(string petId, int experience, bool downed, string place, string killer)
+        {
+            if (!BossRushCoop.IsClient || experience < 0 || experience > PetNestTuning.PetExpCompanionKillRunCap) return false;
+            string error;
+            if (!BeginCandidate(out error)) return false;
+            try
+            {
+                PetNestPetRecord pet = TryGetPet(petId);
+                if (pet == null) { PetNestPersistenceAccess.AbortTransaction(); return false; }
+                PetNestProgressionService.AddExp(pet, experience);
+                if (downed && pet.state != (int)PetNestPetState.Downed)
+                {
+                    PetNestDownedHandler.AppendScar(pet, place, killer);
+                    pet.state = (int)PetNestPetState.Downed;
+                }
+                return StageCommit();
+            }
+            catch (Exception e)
+            {
+                PetNestPersistenceAccess.AbortTransaction();
+                ModBehaviour.DevLog("[PetNestCoop] 主人结算失败: " + e.Message);
+                return false;
+            }
+        }
+
         #region 巢访问
 
         /// <summary>当前巢数据（首次访问触发加载）。永不为 null。</summary>

@@ -470,10 +470,12 @@ namespace BossRush
             try
             {
                 if (_self == null) return;
+                // 客户端组件只登记身份/主人供交互与 HUD；位置、AI 和伤害由房主实例维护。
+                if (BossRushCoop.IsClient) return;
 
                 if (_master == null)
                 {
-                    BindMaster(CharacterMainControl.Main);
+                    if (!BossRushCoop.IsConnected) BindMaster(CharacterMainControl.Main);
                 }
                 if (_master == null) return;
 

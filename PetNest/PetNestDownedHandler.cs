@@ -52,6 +52,7 @@ namespace BossRush
         /// </summary>
         internal static void NotifyLethalClamped(Health health)
         {
+            if (PetNestCoopRuntimeModule.TryNotifyDowned(health)) return;
             try
             {
                 lock (_lock)

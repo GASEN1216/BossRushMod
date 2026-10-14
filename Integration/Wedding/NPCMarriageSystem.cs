@@ -63,7 +63,7 @@ namespace BossRush
                         || Npc == null || SceneLoader.IsSceneLoading
                         || Slot != Saves.SavesSystem.CurrentSlot
                         || SceneHandle != UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle
-                        || Host.GetSpouseInstance(NpcId) != Npc) return false;
+                        || (!BossRushCoop.IsConnected && Host.GetSpouseInstance(NpcId) != Npc)) return false;
                     string spouse = AffinityManager.GetCurrentSpouseNpcId();
                     return Married
                         ? spouse == NpcId && AffinityManager.IsMarriedToPlayer(NpcId) && !AffinityManager.IsSpouseFollowingPlayer(NpcId)
@@ -153,6 +153,7 @@ namespace BossRush
                 return;
             }
 
+            CoopNpcWorld.DeferLocalSpouseRelease(DIVORCE_RELOCATE_DELAY_SECONDS);
             MarriageOperation operation = BeginOperation(npcId, npcTransform, false);
             if (operation == null) return;
 
@@ -886,6 +887,8 @@ namespace BossRush
                 ModBehaviour mod = operation.Host;
 
                 Transform weddingNpc = mod.TrySpawnMarriedNpcAtWeddingPoint();
+                // 公共居民仍供其他人的个人剧情使用；本人婚后实体由独立 owner factory 迁居。
+                if (BossRushCoop.IsConnected) return;
                 if (weddingNpc != null)
                 {
                     ModBehaviour.DevLog("[Marriage] 已将配偶转移到婚礼教堂: " + npcId);

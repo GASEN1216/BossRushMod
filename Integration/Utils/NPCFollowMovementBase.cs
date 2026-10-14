@@ -32,6 +32,8 @@ namespace BossRush
             get { return followPlayerEnabled; }
         }
 
+        internal bool HasPlayerFollow { get { return followPlayerEnabled; } }
+
         protected Transform CurrentPlayerTransform
         {
             get { return playerTransform; }
@@ -130,8 +132,11 @@ namespace BossRush
         protected void RefreshFollowPlayerCharacter(bool force = false)
         {
             CharacterMainControl currentPlayer = null;
-
-            if (NPCPlayerLookupCache.TryGetPlayerCharacter(out currentPlayer))
+            // 联机房主可能明确绑定远端配偶；保留该目标，避免本地主角缓存把它改回房主。
+            if (BossRushCoop.IsHost && playerTransform != null)
+                currentPlayer = playerTransform.GetComponent<CharacterMainControl>();
+            if ((currentPlayer != null && BossRushCoop.IsPlayer(currentPlayer))
+                || NPCPlayerLookupCache.TryGetPlayerCharacter(out currentPlayer))
             {
                 if (force || playerCharacter != currentPlayer)
                 {

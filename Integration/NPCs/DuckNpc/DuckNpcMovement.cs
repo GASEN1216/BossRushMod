@@ -82,6 +82,7 @@ namespace BossRush
         /// 他们也能结婚，婚后开跟随要靠这个组件走路，所以组件照挂，只是不随便溜达。
         /// </summary>
         internal bool StayHomeUnlessFollowing { get; set; }
+        internal bool HasPlayerFollow { get { return _followTarget != null; } }
 
         internal bool Bind(CharacterMainControl character, Vector3 homePosition, float wanderRadius)
         {

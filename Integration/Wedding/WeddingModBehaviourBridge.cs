@@ -18,6 +18,7 @@ namespace BossRush
         private int spouseFollowRestoreRequestId = 0;
         private int permanentSpouseRestoreGeneration;
         private PermanentSpouseRestoreRequest permanentSpouseRestoreRequest;
+        private string coopSpouseMigrationScope;
 
         private sealed class PermanentSpouseRestoreRequest
         {
@@ -35,6 +36,43 @@ namespace BossRush
             }
 
             return RefreshWeddingBuildingPresence();
+        }
+
+        internal bool TryGetCoopSpouseHome(out Vector3 position)
+        {
+            position = Vector3.zero;
+            if (!ModBehaviour.IsBaseHubSceneName(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name) || !HasWeddingBuildingPlaced()) return false;
+            position = FindWeddingBuildingNPCPosition();
+            return position != Vector3.zero;
+        }
+
+        internal void RetireOfflineSpouseForCoop(string npcId)
+        {
+            if (!BossRushCoop.IsConnected || string.IsNullOrEmpty(npcId) || _owner == null) return;
+            string scope = BossRushCoop.RunId + ":" + BossRushCoop.SceneGeneration + ":" + BossRushCoop.LocalAssetId + ":" + npcId;
+            if (coopSpouseMigrationScope == scope) return;
+            coopSpouseMigrationScope = scope;
+            GameObject original = npcId == GoblinAffinityConfig.NPC_ID ? _owner.GetWeddingGoblinNpcInstance()
+                : npcId == NurseAffinityConfig.NPC_ID ? _owner.GetWeddingNurseNpcInstance()
+                : PermanentDuckNpcRegistry.GetInstance(npcId)?.gameObject;
+            if (original == null) return;
+            WeddingNpcResidentMarker marker = original.GetComponent<WeddingNpcResidentMarker>();
+            NPCFollowMovementBase common = original.GetComponent<NPCFollowMovementBase>();
+            DuckNpcMovement duck = original.GetComponent<DuckNpcMovement>();
+            bool oldSpouse = (marker != null && marker.NpcId == npcId) || (common != null && common.HasPlayerFollow) || (duck != null && duck.HasPlayerFollow);
+            if (!oldSpouse) return;
+            // 仅回收进入联机前的私人驻留/跟随实体；普通场景的公共居民沿用原生成条件重建。
+            if (npcId == GoblinAffinityConfig.NPC_ID)
+            { _owner.DestroyWeddingGoblinNpc(); _owner.SpawnWeddingGoblinNpc(null, false, false); }
+            else if (npcId == NurseAffinityConfig.NPC_ID)
+            { _owner.DestroyWeddingNurseNpc(); _owner.SpawnWeddingNurseNpc(null, false, false); }
+            else
+            {
+                CharacterMainControl character = original.GetComponent<CharacterMainControl>();
+                if (character != null) DuckNpcSpawner.Despawn(character);
+                PermanentDuckNpcRegistry.UnregisterInstance(npcId);
+                if (BossRushCoop.IsHost) NPCModuleRegistry.SpawnForCurrentScene(_owner, "Coop spouse migration");
+            }
         }
 
         public Transform GetWeddingNpcTransform()
@@ -67,6 +105,14 @@ namespace BossRush
                 if (weddingPosition == Vector3.zero)
                 {
                     return null;
+                }
+
+                if (BossRushCoop.IsConnected)
+                {
+                    CoopNpcWorld.RequestLocalSpouseHome(spouseNpcId, weddingPosition);
+                    GameObject personalSpouse = CoopNpcWorld.FindLocalSpouse(spouseNpcId);
+                    if (personalSpouse != null) { MarkWeddingNpcInstance(personalSpouse, spouseNpcId); RefreshSpouseInteractionOptions(personalSpouse); }
+                    return personalSpouse != null ? personalSpouse.transform : null;
                 }
 
                 GameObject spouseInstance = GetSpouseInstance(spouseNpcId);
@@ -135,7 +181,7 @@ namespace BossRush
                 return false;
             }
 
-            GameObject spouseInstance = GetSpouseInstance(npcId);
+            GameObject spouseInstance = BossRushCoop.IsConnected ? CoopNpcWorld.FindLocalSpouse(npcId) : GetSpouseInstance(npcId);
             return spouseInstance != null && IsSameNpcObject(npcTransform, spouseInstance);
         }
 
@@ -218,9 +264,11 @@ namespace BossRush
                 {
                     return false;
                 }
+                if (BossRushCoop.IsConnected && !CoopNpcWorld.RequestFollow(npcId, true))
+                { AffinityManager.SetSpouseFollowingPlayer(npcId, false); return false; }
 
                 InvalidatePermanentSpouseRestore();
-                PrepareSpouseInstanceForFollow(spouseInstance, npcId);
+                if (!BossRushCoop.IsConnected) PrepareSpouseInstanceForFollow(spouseInstance, npcId);
                 string followName = AffinityManager.GetNPCConfig(npcId)?.DisplayName ?? npcId;
                 _owner.ShowMessage(L10n.T(followName + "跟上来了。", followName + " is following you."));
                 return true;
@@ -288,6 +336,12 @@ namespace BossRush
                 if (AffinityManager.IsSpouseFollowingPlayer(npcId))
                 {
                     AffinityManager.SetSpouseFollowingPlayer(npcId, false);
+                }
+                if (BossRushCoop.IsConnected)
+                {
+                    CoopNpcWorld.RequestFollow(npcId, false);
+                    RefreshSpouseInteractionOptionsForNpc(npcId);
+                    return true;
                 }
 
                 GameObject spouseInstance = GetSpouseInstance(npcId);
@@ -423,6 +477,11 @@ namespace BossRush
                 }
 
                 string spouseNpcId = AffinityManager.GetCurrentSpouseNpcId();
+                if (BossRushCoop.IsConnected)
+                {
+                    GameObject personal = CoopNpcWorld.FindLocalSpouse(spouseNpcId);
+                    if (personal == null || !IsSameNpcObject(npcTransform, personal)) return false;
+                }
                 return !string.IsNullOrEmpty(spouseNpcId)
                     && string.Equals(marker.NpcId, spouseNpcId, StringComparison.Ordinal);
             }
@@ -439,6 +498,7 @@ namespace BossRush
             {
                 InvalidatePermanentSpouseRestore();
                 DestroyWeddingPlaceholder();
+                if (BossRushCoop.IsConnected) { CoopNpcWorld.ReleaseLocalSpouse(npcId); return; }
 
                 if (npcId == GoblinAffinityConfig.NPC_ID)
                 {
@@ -545,6 +605,7 @@ namespace BossRush
                     HandleSpouseFollowAffinityLoss(spouseNpcId);
                     return;
                 }
+                if (BossRushCoop.IsConnected) { CoopNpcWorld.RequestFollow(spouseNpcId, true); return; }
 
                 GameObject spouseInstance = GetSpouseInstance(spouseNpcId);
                 Vector3 restorePosition = Vector3.zero;
@@ -690,6 +751,11 @@ namespace BossRush
 
         internal GameObject GetSpouseInstance(string spouseNpcId)
         {
+            if (BossRushCoop.IsConnected)
+            {
+                GameObject personal = CoopNpcWorld.FindLocalSpouse(spouseNpcId);
+                if (personal != null) return personal;
+            }
             if (spouseNpcId == GoblinAffinityConfig.NPC_ID)
             {
                 return _owner.GetWeddingGoblinNpcInstance();
@@ -758,6 +824,7 @@ namespace BossRush
             {
                 return;
             }
+            if (BossRushCoop.IsConnected) { CoopNpcWorld.RequestFollow(npcId, true); return; }
 
             Transform playerTransform = GetPlayerTransform();
             if (playerTransform == null)

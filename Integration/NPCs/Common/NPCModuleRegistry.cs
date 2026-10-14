@@ -138,6 +138,7 @@ namespace BossRush
         public static int SpawnForCurrentScene(ModBehaviour mod, string context)
         {
             if (mod == null) return 0;
+            if (!CoopNpcWorld.MaySpawn) return 0;
 
             Initialize();
             string sceneName = SceneManager.GetActiveScene().name;

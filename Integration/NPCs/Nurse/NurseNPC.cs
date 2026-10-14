@@ -139,13 +139,14 @@ namespace BossRush
         /// <param name="forceSpawn">是否忽略普通模式刷新条件</param>
         internal void SpawnNurseNPC(Vector3? overrideSpawnPos = null, bool stayStillOnSpawn = false, bool forceSpawn = false)
         {
+            if (!CoopNpcWorld.MaySpawn) return;
             ModBehaviour.DevLog("[NurseNPC] 开始生成护士...");
             
             // 懒加载：在NPC生成时统一检查并应用每日好感度衰减
             NPCAffinityInteractionHelper.ApplyDailyDecayOnSpawn(NurseAffinityConfig.NPC_ID, "[NurseNPC]");
 
             // 已婚后不再参与普通地图刷新（仅婚礼教堂强制生成）
-            if (!forceSpawn && AffinityManager.IsMarriedToPlayer(NurseAffinityConfig.NPC_ID))
+            if (!forceSpawn && !BossRushCoop.IsConnected && AffinityManager.IsMarriedToPlayer(NurseAffinityConfig.NPC_ID))
             {
                 ModBehaviour.DevLog("[NurseNPC] 已与玩家结婚，跳过普通地图刷新");
                 return;
@@ -201,6 +202,7 @@ namespace BossRush
                 // 实例化护士
                 nurseNPCInstance = UnityEngine.Object.Instantiate(nursePrefab, spawnPos, Quaternion.identity);
                 nurseNPCInstance.name = "NurseNPC_YuZhi";
+                CoopNpcWorld.Track(NurseAffinityConfig.NPC_ID, "nurse", nurseNPCInstance);
 
                 // 确保实例及其子对象全部激活，避免模型子节点未激活导致“只有名字没有模型”
                 nurseNPCInstance.SetActive(true);

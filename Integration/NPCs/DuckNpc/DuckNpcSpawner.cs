@@ -52,8 +52,9 @@ namespace BossRush
         internal static async UniTask<CharacterMainControl> SpawnAsync(
             DuckNpcBlueprint blueprint,
             Vector3 position,
-            Vector3 facing)
+            Vector3 facing, bool networkReplica = false, bool trackWorld = true)
         {
+            if (!BossRushCoop.HasWorldAuthority && !networkReplica) return null;
             if (blueprint == null)
             {
                 return null;
@@ -70,6 +71,8 @@ namespace BossRush
             // 装备失败不算生成失败：一个没穿装备的 NPC 仍然可用，
             // 而把已经造好的角色因为一件头盔插不进去就销毁，是过度反应。
             await ApplyEquipmentAsync(npc, blueprint);
+
+            if (trackWorld) CoopNpcWorld.Track(blueprint.id, "duck", npc.gameObject);
 
             return npc;
         }

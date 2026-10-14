@@ -149,7 +149,7 @@ namespace BossRush
 
                 // 已婚 NPC 不在普通地图刷新（只在婚礼教堂由婚姻系统强制生成），
                 // 与羽织/叮当同一条规则。
-                if (AffinityManager.IsMarriedToPlayer(blueprint.id))
+                if (!BossRushCoop.IsConnected && AffinityManager.IsMarriedToPlayer(blueprint.id))
                 {
                     continue;
                 }
@@ -258,7 +258,7 @@ namespace BossRush
                         continue;
                     }
 
-                    if (AffinityManager.IsMarriedToPlayer(blueprint.id))
+                    if (!BossRushCoop.IsConnected && AffinityManager.IsMarriedToPlayer(blueprint.id))
                     {
                         continue;
                     }
@@ -309,7 +309,7 @@ namespace BossRush
             try
             {
                 // await 后重验 owner、世代和场景实例；失效对象只回收自身。
-                if (!IsSpawnRequestValid(request) || AffinityManager.IsMarriedToPlayer(blueprint.id)
+                if (!IsSpawnRequestValid(request) || (!BossRushCoop.IsConnected && AffinityManager.IsMarriedToPlayer(blueprint.id))
                     || PermanentDuckNpcRegistry.GetInstance(blueprint.id) != null)
                 {
                     return;

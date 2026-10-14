@@ -300,6 +300,11 @@ namespace BossRush
 
         private static void HealCompanion(CharacterMainControl companion)
         {
+            if (BossRushCoop.IsClient)
+            {
+                PetNestCoopRuntimeModule.RequestLocalDeployment(PetNestService.DeployedPet);
+                return;
+            }
             try
             {
                 Health health = companion != null ? companion.Health : null;

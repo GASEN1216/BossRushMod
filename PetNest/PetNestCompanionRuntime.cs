@@ -24,6 +24,8 @@ namespace BossRush
         #region 状态
 
         private static PetNestCompanionHandle _handle;
+        internal static PetNestCompanionHandle ActiveHandle { get { return HasCompanion ? _handle : null; } }
+        private static bool _networkBinding;
 
         internal static void RefreshProgression(PetNestPetRecord pet)
         {
@@ -133,6 +135,11 @@ namespace BossRush
             }
 
             PetNestLineageInfo lineage;
+            if (BossRushCoop.IsClient)
+            {
+                PetNestCoopRuntimeModule.RequestLocalDeployment(pet);
+                return;
+            }
             if (!PetNestLineageCatalog.TryGet(pet.lineageKey, out lineage) || lineage == null)
             {
                 _lastBlockReasonId = "lineage_unknown";
@@ -283,6 +290,7 @@ namespace BossRush
 
                 _handle = handle;
                 _deployedPetId = pet.id;
+                PetNestCoopRuntimeModule.PublishLocalCompanion(_handle, pet);
                 handle = null;
 
                 // 背包在 TryActivate 中绑定 pet.id，基地与出击共用官方格子 UI。
@@ -367,6 +375,17 @@ namespace BossRush
 
         #region 退场与清理
 
+        internal static void BindNetworkReplica(PetNestCompanionHandle handle, string petId)
+        {
+            if (!BossRushCoop.IsClient || handle == null || _handle == handle) return;
+            _networkBinding = true;
+            try { CleanupOnce(); }
+            finally { _networkBinding = false; }
+            _handle = handle;
+            _deployedPetId = petId;
+            PetNestCompanionHudView.EnsureCreated();
+        }
+
         /// <summary>
         /// 重伤退场：本局不再出场，崽状态置 Downed（回基地自动复位）。
         /// 战痕落档由 PetNestDownedHandler 承接（步骤 7）。
@@ -406,6 +425,7 @@ namespace BossRush
         /// </summary>
         internal static void CleanupOnce()
         {
+            if (!_networkBinding) PetNestCoopRuntimeModule.ReleaseLocalCompanion();
             // 清理也取消尚未返回的生成，避免取消出战、死亡或卸载后迟到激活。
             unchecked { _requestGeneration++; }
             _spawnInFlight = false;
