@@ -272,6 +272,8 @@ namespace BossRush
             return leashDelta.sqrMagnitude > leashDistanceSqr;
         }
 
+        internal bool HasCombatAuthority { get { return CoopAiPredictionHealthProtection.HasEntityAuthority(bossCharacter); } }
+
         // ========== 初始化 ==========
 
         /// <summary>
@@ -282,6 +284,8 @@ namespace BossRush
         public void Initialize(CharacterMainControl character, ModBehaviour.OriginalWeaponData weaponData = null)
         {
             bossCharacter = character;
+            if (BossRushCoop.IsClient) CoopAiPredictionHealthProtection.MarkReplica(character);
+            else CoopAiPredictionHealthProtection.TrackAuthority(character);
 
             // 保存原始武器完整属性（二阶段使用）
             originalWeaponData = weaponData;
@@ -315,7 +319,7 @@ namespace BossRush
             SubscribeToShootEvent();
 
             // 启动燃烧弹计时器
-            grenadeTimerCoroutine = StartCoroutine(GrenadeTimerCoroutine());
+            if (HasCombatAuthority) grenadeTimerCoroutine = StartCoroutine(GrenadeTimerCoroutine());
 
             // 性能优化：预缓存预制体（只在首次初始化时执行）
             PreCachePrefabs();
@@ -473,6 +477,7 @@ namespace BossRush
         {
             // [性能优化] 快速返回路径：Boss不存在时直接返回
             if (bossCharacter == null) return;
+            if (!HasCombatAuthority) { StopAllCoroutines(); return; }
 
             // 复活期间完全停止AI行为
             if (isResurrecting || aiPaused)

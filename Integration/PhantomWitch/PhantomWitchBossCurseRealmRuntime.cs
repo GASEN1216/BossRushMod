@@ -7,8 +7,8 @@ namespace BossRush
 {
     public sealed class PhantomWitchBossCurseRealmRuntime : MonoBehaviour
     {
-        private static readonly Collider[] damageHitBuffer = new Collider[32];
-        private static readonly HashSet<int> processedReceiverIds = new HashSet<int>();
+        private Collider[] damageHitBuffer = new Collider[32];
+        private readonly HashSet<int> processedReceiverIds = new HashSet<int>();
 
         private Vector3 origin;
         private float damagePerTick;
@@ -92,16 +92,12 @@ namespace BossRush
 
         private void DealRealmDamage()
         {
-            if (caster == null)
+            if (!CoopAiPredictionHealthProtection.HasEntityAuthority(caster) || caster == null)
             {
                 return;
             }
 
-            int hitCount = Physics.OverlapSphereNonAlloc(
-                origin,
-                Radius,
-                damageHitBuffer,
-                FenHuangHalberdRuntime.DamageReceiverLayerMask);
+            int hitCount = PhantomWitchAbilityController.QueryDamageReceivers(origin, Radius, ref damageHitBuffer);
 
             if (hitCount <= 0)
             {

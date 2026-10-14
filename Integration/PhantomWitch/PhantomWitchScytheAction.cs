@@ -142,8 +142,8 @@ namespace BossRush
     /// </summary>
     internal sealed class PhantomWitchCurseRealmRuntime : MonoBehaviour
     {
-        private static readonly Collider[] damageHitBuffer = new Collider[32];
-        private static readonly HashSet<int> processedReceiverIds = new HashSet<int>();
+        private Collider[] damageHitBuffer = new Collider[32];
+        private readonly HashSet<int> processedReceiverIds = new HashSet<int>();
 
         private Vector3 realmOrigin;
         private CharacterMainControl caster;
@@ -245,11 +245,8 @@ namespace BossRush
                 layerMask = ~0;
             }
 
-            int hitCount = Physics.OverlapSphereNonAlloc(
-                realmOrigin,
-                overrideRadius,
-                damageHitBuffer,
-                layerMask);
+            Collider[] hits;
+            int hitCount = QueryRealmTargets(layerMask, out hits);
 
             if (hitCount <= 0)
             {
@@ -261,7 +258,7 @@ namespace BossRush
 
             for (int i = 0; i < hitCount; i++)
             {
-                Collider col = damageHitBuffer[i];
+                Collider col = hits[i];
                 if (col == null)
                 {
                     continue;
@@ -334,6 +331,23 @@ namespace BossRush
                         ModBehaviour.DevLog("[PhantomWitchScythe] 领域施加诅咒失败: " + e.Message);
                     }
                 }
+            }
+        }
+
+        private int QueryRealmTargets(int layerMask, out Collider[] hits)
+        {
+            // 满缓冲并不表示范围里只有这些目标；多人、NPC 与同一角色的多个碰撞器都会占位。
+            // 通常复用无分配查询；密集场景增容，极密集时取完整结果，不能截断本人技能伤害。
+            for (;;)
+            {
+                int count = Physics.OverlapSphereNonAlloc(realmOrigin, overrideRadius, damageHitBuffer, layerMask);
+                if (count < damageHitBuffer.Length) { hits = damageHitBuffer; return count; }
+                if (damageHitBuffer.Length >= 1024)
+                {
+                    hits = Physics.OverlapSphere(realmOrigin, overrideRadius, layerMask);
+                    return hits.Length;
+                }
+                damageHitBuffer = new Collider[damageHitBuffer.Length * 2];
             }
         }
 

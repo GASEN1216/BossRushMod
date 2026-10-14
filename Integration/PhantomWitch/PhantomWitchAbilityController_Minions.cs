@@ -56,7 +56,7 @@ namespace BossRush
 
         private async UniTask SpawnMinion(int index, int totalCount, PhantomWitchMinionRole role)
         {
-            if (bossCharacter == null)
+            if (!CanContinueAttacking())
             {
                 pendingMinionRoles.Remove(role);
                 return;
@@ -100,7 +100,7 @@ namespace BossRush
                     return;
                 }
 
-                if (bossCharacter == null || CurrentPhase == PhantomWitchPhase.Dead)
+                if (!CanContinueAttacking())
                 {
                     CleanupSpawnedMinion(minion);
                     return;

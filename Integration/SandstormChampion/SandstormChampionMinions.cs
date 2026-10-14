@@ -15,6 +15,7 @@ namespace BossRush
         internal const float WaveLifetime = 9f;
         private readonly List<SandstormChampionMinionMarker> _minions = new List<SandstormChampionMinionMarker>(MaxMinions);
         private CharacterMainControl _boss;
+        private CharacterMainControl CombatPlayer { get { return BossRushCoop.GetCombatTarget(_boss != null ? _boss.transform.position : Vector3.zero); } }
         private SandstormChampionController _controller;
         private ModBehaviour _owner;
         private int _sceneHandle;
@@ -103,7 +104,7 @@ namespace BossRush
         private bool TryFindSpawnPosition(int index, int count, out Vector3 position)
         {
             position = Vector3.zero;
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = CombatPlayer;
             if (player == null || _boss == null) return false;
             Vector3 center = player.transform.position;
             Vector3 towardsBoss = _boss.transform.position - center;
@@ -212,7 +213,7 @@ namespace BossRush
                 await UniTask.Yield();
                 if (!IsWaveCurrent(generation) || character == null || character.Health.IsDead) return;
                 Vector3 reachable;
-                if (!SpawnPositionHelper.TryResolveReachableFrom(position, CharacterMainControl.Main.transform.position,
+                if (!SpawnPositionHelper.TryResolveReachableFrom(position, CombatPlayer.transform.position,
                     1.2f, SpawnPositionHelper.DefaultLiftOffset, out reachable)) return;
                 // 官方入口同步 ECM2 物理位置，避免地下 staging 的旧位置在首帧把角色拉回。
                 character.SetPosition(reachable);

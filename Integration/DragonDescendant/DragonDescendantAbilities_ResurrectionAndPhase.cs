@@ -24,7 +24,7 @@ namespace BossRush
         {
             // 官方 Hurt 可能先结算死亡（对象随即停用），再派发 OnHurt；迟到回调不得再起冰减速或复活协程
             // （玩家日志里「Coroutine couldn't be started ... BossRush_DragonDescendant is inactive」就是它）。
-            if (!isActiveAndEnabled || bossCharacter == null || bossHealth == null || bossHealth.IsDead) return;
+            if (!HasCombatAuthority || !isActiveAndEnabled || bossCharacter == null || bossHealth == null || bossHealth.IsDead) return;
 
             // 如果使用原版无敌机制，这里不需要手动恢复血量
             // 原版Health.Hurt()会在invincible=true时直接返回false
@@ -65,7 +65,7 @@ namespace BossRush
         /// </summary>
         internal bool ShouldClampLethalHealthDuringHurt()
         {
-            return bossCharacter != null &&
+            return HasCombatAuthority && bossCharacter != null &&
                    bossHealth != null &&
                    !hasResurrected &&
                    !isResurrecting &&
@@ -135,7 +135,7 @@ namespace BossRush
         /// </summary>
         private IEnumerator ResurrectionSequence()
         {
-            if (hasResurrected || isResurrecting) yield break;
+            if (!HasCombatAuthority || hasResurrected || isResurrecting) yield break;
 
             isResurrecting = true;
             isInvulnerable = true;
@@ -154,6 +154,7 @@ namespace BossRush
 
             // 显示对话气泡
             yield return StartCoroutine(ShowResurrectionDialogue());
+            if (!HasCombatAuthority) yield break;
 
             // 对话结束后，向八个方向投掷燃烧弹
             ThrowIncendiaryGrenadesInEightDirections();
@@ -334,7 +335,7 @@ namespace BossRush
         /// </summary>
         private void EnterEnragedState()
         {
-            if (isEnraged) return;
+            if (!HasCombatAuthority || isEnraged) return;
 
             isEnraged = true;
             ModBehaviour.DevLog("[DragonDescendant] 进入狂暴状态");

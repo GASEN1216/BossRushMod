@@ -21,6 +21,7 @@ namespace BossRush
         /// </summary>
         private void OnBossShoot(int shotsFired = 1)
         {
+            if (!HasCombatAuthority) return;
             bulletCounter += shotsFired;
 
             // 每10发子弹发射一次火箭弹
@@ -41,7 +42,7 @@ namespace BossRush
         {
             try
             {
-                if (bossCharacter == null || playerCharacter == null) return;
+                if (!HasCombatAuthority || bossCharacter == null || playerCharacter == null) return;
 
                 // Mode E 同阵营不攻击玩家
                 if (IsPlayerAlly()) return;
@@ -126,7 +127,7 @@ namespace BossRush
         /// <summary>延迟攻击与预警共用有效性门；死亡、停用、换阵营、脱战或切图后不能留下旧攻击。</summary>
         internal bool CanCompleteRocket(LevelManager level, int sceneHandle)
         {
-            return isActiveAndEnabled && bossCharacter != null && bossHealth != null && !bossHealth.IsDead &&
+            return HasCombatAuthority && isActiveAndEnabled && bossCharacter != null && bossHealth != null && !bossHealth.IsDead &&
                 playerCharacter != null && playerCharacter.Health != null && !playerCharacter.Health.IsDead &&
                 ReferenceEquals(playerCharacter, CharacterMainControl.Main) && !isResurrecting &&
                 !SceneLoader.IsSceneLoading && level != null && ReferenceEquals(level, LevelManager.Instance) &&
@@ -141,7 +142,7 @@ namespace BossRush
         /// </summary>
         private IEnumerator GrenadeTimerCoroutine()
         {
-            while (true)
+            while (HasCombatAuthority)
             {
                 // 根据状态选择间隔
                 float interval = isEnraged
@@ -150,6 +151,8 @@ namespace BossRush
 
                 // [性能优化] 使用缓存的WaitForSeconds
                 yield return GetCachedWaitForSeconds(interval);
+
+                if (!HasCombatAuthority) yield break;
 
                 // 复活期间不投掷
                 if (isResurrecting) continue;
@@ -189,7 +192,7 @@ namespace BossRush
         {
             try
             {
-                if (bossCharacter == null) return;
+                if (!HasCombatAuthority || bossCharacter == null) return;
 
                 // 更新玩家引用
                 RefreshPlayerReference();
@@ -221,6 +224,7 @@ namespace BossRush
         {
             try
             {
+                if (!HasCombatAuthority) return;
                 Vector3 startPos = bossCharacter.transform.position + Vector3.up * 1.5f;
 
                 // 只使用物品表确认过的官方燃烧弹技能。
@@ -304,6 +308,7 @@ namespace BossRush
         private IEnumerator DelayedFireExplosion(Vector3 position, float delay)
         {
             yield return GetCachedWaitForSeconds(delay);
+            if (!HasCombatAuthority) yield break;
 
             try
             {

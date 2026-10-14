@@ -159,6 +159,7 @@ namespace BossRush
 
     internal sealed class SandstormOrb : MonoBehaviour
     {
+        private bool _networkReplica;
         private SandstormChampionController _owner;
         private Vector3 _velocity;
         private float _life;
@@ -179,7 +180,7 @@ namespace BossRush
         internal bool IsDead { get { return _dead; } }
 
         internal static SandstormOrb Spawn(SandstormChampionController owner, Vector3 position, Vector3 direction,
-            float speedScale, bool homing = true)
+            float speedScale, bool homing = true, bool networkReplica = false)
         {
             GameObject go = null;
             try
@@ -188,10 +189,13 @@ namespace BossRush
                 go.SetActive(false);
                 go.transform.position = position;
                 SandstormOrb orb = go.AddComponent<SandstormOrb>();
+                orb._networkReplica = networkReplica;
                 orb.Init(owner, direction, speedScale, homing);
                 go.SetActive(true);
-                orb.IgnoreCharacterContact(CharacterMainControl.Main);
-                orb.IgnoreCharacterContact(owner.GetComponent<CharacterMainControl>());
+                foreach (BossRushCoopPlayer player in BossRushCoop.Players) orb.IgnoreCharacterContact(player.Character);
+                if (!BossRushCoop.IsConnected) orb.IgnoreCharacterContact(CharacterMainControl.Main);
+                if (owner != null) orb.IgnoreCharacterContact(owner.GetComponent<CharacterMainControl>());
+                BossRushCoopFxRuntimeModule.TrackHazard(orb, 1, homing);
                 return orb;
             }
             catch (Exception e)
@@ -228,11 +232,12 @@ namespace BossRush
             receiver.OnHurtEvent = new UnityEvent<DamageInfo>();
             receiver.OnDeadEvent = new UnityEvent<DamageInfo>();
             _health = gameObject.AddComponent<HealthSimpleBase>();
-            _health.team = owner.HazardTeam;
+            _health.team = owner != null ? owner.HazardTeam : Teams.wolf;
             _health.maxHealthValue = homing ? 1f : SandstormChampionConfig.SharkHealth;
             _health.dmgReceiver = receiver;
             receiver.simpleHealth = _health;
             _health.OnDeadEvent += OnShotDown;
+            if (_networkReplica) receiver.OnHurtEvent.AddListener(OnReplicaHurt);
             _subscribed = true;
 
             Material glow = BossRushFxKit.GetShapeMaterial(BossRushParticleShape.GlowDot, BossRushFxBlend.Additive, BossRushFxKit.GainHot);
@@ -307,6 +312,7 @@ namespace BossRush
             if (_dead) return;
             float dt = Time.deltaTime;
             _life += dt;
+            if (_networkReplica) { if (Time.time >= _nextShellAt) UpdateBubbleShell(); return; }
             if (Time.time >= _nextShellAt) UpdateBubbleShell();
             if (_life >= SandstormChampionConfig.OrbLifetime || _owner == null || !_owner.IsFighting)
             {
@@ -314,7 +320,7 @@ namespace BossRush
                 return;
             }
 
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = BossRushCoop.GetCombatTarget(transform.position);
             Vector3 pos = transform.position;
             if (player != null && Time.time < _homingUntil)
             {
@@ -339,7 +345,17 @@ namespace BossRush
             transform.position = pos + step;
             if (_velocity.sqrMagnitude > 0.001f) transform.rotation = Quaternion.LookRotation(_velocity.normalized, Vector3.up);
 
-            if (player != null)
+            if (BossRushCoop.IsConnected)
+            {
+                foreach (BossRushCoopPlayer participant in BossRushCoop.Players)
+                    if (participant.IsAlive && TryContactPlayer(participant.Character, pos, step)) break;
+            }
+            else if (player != null) TryContactPlayer(player, pos, step);
+        }
+
+        private bool TryContactPlayer(CharacterMainControl player, Vector3 pos, Vector3 step)
+        {
+            if (player != null && !_dead)
             {
                 Vector3 point = player.transform.position + Vector3.up;
                 float t = step.sqrMagnitude > 0.00001f ? Mathf.Clamp01(Vector3.Dot(point - pos, step) / step.sqrMagnitude) : 0f;
@@ -347,10 +363,12 @@ namespace BossRush
                 if (d.sqrMagnitude <= SandstormChampionConfig.OrbHitRadius * SandstormChampionConfig.OrbHitRadius
                     && !BossSkillDamageRules.IsDodging(player))
                 {
-                    _owner.HurtPlayer(_bubble ? SandstormChampionConfig.OrbDamage : SandstormChampionConfig.SharkDamage, transform.position);
+                    _owner.HurtPlayer(player, _bubble ? SandstormChampionConfig.OrbDamage : SandstormChampionConfig.SharkDamage, transform.position);
                     Pop(true);
+                    return true;
                 }
             }
+            return false;
         }
 
         internal void Pop(bool hit)
@@ -421,8 +439,17 @@ namespace BossRush
 
         private void OnShotDown(DamageInfo damageInfo)
         {
+            if (_networkReplica) { gameObject.SetActive(true); return; }
             if (!_dead && _owner != null) _owner.ReportOrbShotDown(_bubble);
             Pop(true);
+        }
+
+        private void OnReplicaHurt(DamageInfo damageInfo) { BossRushCoopFxRuntimeModule.SubmitHazardHit(this, damageInfo); }
+        internal void ApplyNetworkHit(CharacterMainControl player, float damage)
+        {
+            if (_networkReplica || _dead || _health == null) return;
+            DamageReceiver receiver = GetComponent<DamageReceiver>();
+            if (receiver != null) { DamageInfo info = new DamageInfo(player); info.damageValue = damage; receiver.Hurt(info); }
         }
 
         private void OnDestroy()
@@ -438,6 +465,7 @@ namespace BossRush
     /// <summary>贴地追踪沙圈：接触玩家或计时结束才凝成固定沙柱；墙体只阻挡，不提前引爆。</summary>
     internal sealed class SandstormCycloneSeed : MonoBehaviour
     {
+        private bool _networkReplica;
         private SandstormChampionController _owner;
         private bool _cyclone;
         private bool _dead;
@@ -446,7 +474,7 @@ namespace BossRush
         private SandstormGroundField _field;
         internal bool IsDead { get { return _dead; } }
 
-        internal static SandstormCycloneSeed Spawn(SandstormChampionController owner, Vector3 at, Vector3 target, bool cyclone)
+        internal static SandstormCycloneSeed Spawn(SandstormChampionController owner, Vector3 at, Vector3 target, bool cyclone, bool networkReplica = false)
         {
             GameObject go = new GameObject(cyclone ? "SandstormChampion_HomingSeed" : "SandstormChampion_TwinTrackingRing");
             try
@@ -454,7 +482,7 @@ namespace BossRush
                 // 双生圈与大圈都从施法者处起步，target 只用于朝向，绝不作为出生点。
                 Vector3 initial = GroundPoint(at);
                 Vector3 safe;
-                if (!SpawnPositionHelper.TryResolveReachableFrom(initial, CharacterMainControl.Main.transform.position,
+                if (!SpawnPositionHelper.TryResolveReachableFrom(initial, owner != null ? owner.transform.position : initial,
                     2f, 0.04f, out safe))
                 {
                     Destroy(go);
@@ -466,6 +494,7 @@ namespace BossRush
                 if (heading.sqrMagnitude > 0.01f) go.transform.rotation = Quaternion.LookRotation(heading, Vector3.up);
                 SandstormCycloneSeed seed = go.AddComponent<SandstormCycloneSeed>();
                 seed._owner = owner;
+                seed._networkReplica = networkReplica;
                 seed._cyclone = cyclone;
                 seed._wallMask = Duckov.Utilities.GameplayDataSettings.Layers.wallLayerMask;
                 seed._field = SandstormGroundField.Create(go.transform, SandstormChampionConfig.SeedContactRadius);
@@ -495,6 +524,7 @@ namespace BossRush
                     SandstormChampionAssetManager.ConfigureDustNoise(dust, 0.35f);
                     dust.Play();
                 }
+                BossRushCoopFxRuntimeModule.TrackHazard(seed, 2, cyclone);
                 return seed;
             }
             catch (Exception e)
@@ -508,8 +538,9 @@ namespace BossRush
         private void Update()
         {
             if (_dead) return;
+            if (_networkReplica) { _life += Time.deltaTime; if (_field != null) _field.SetStrength(0.75f + 0.18f * Mathf.Sin(_life * 6f)); return; }
             if (_owner == null || !_owner.IsFighting) { Destroy(gameObject); return; }
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = BossRushCoop.GetCombatTarget(transform.position);
             if (player == null) { Destroy(gameObject); return; }
             _life += Time.deltaTime;
             Vector3 from = transform.position;
@@ -566,6 +597,7 @@ namespace BossRush
 
     internal sealed class SandstormTornado : MonoBehaviour
     {
+        private bool _networkReplica;
         private SandstormChampionController _owner;
         private float _radius;
         private float _lifetime;
@@ -584,7 +616,7 @@ namespace BossRush
 
         internal bool IsDead { get { return _dead; } }
 
-        internal static SandstormTornado Spawn(SandstormChampionController owner, Vector3 position, bool cyclone)
+        internal static SandstormTornado Spawn(SandstormChampionController owner, Vector3 position, bool cyclone, bool networkReplica = false)
         {
             GameObject go = null;
             try
@@ -592,7 +624,9 @@ namespace BossRush
                 go = new GameObject(cyclone ? "SandstormChampion_Cyclone" : "SandstormChampion_Tornado");
                 go.transform.position = position;
                 SandstormTornado t = go.AddComponent<SandstormTornado>();
+                t._networkReplica = networkReplica;
                 t.Init(owner, cyclone);
+                BossRushCoopFxRuntimeModule.TrackHazard(t, 3, cyclone);
                 return t;
             }
             catch (Exception e)
@@ -625,13 +659,20 @@ namespace BossRush
             if (_dead) return;
             float dt = Time.deltaTime;
             _life += dt;
+            if (_networkReplica)
+            {
+                float envelope = Mathf.SmoothStep(0f, 1f, _life / SandstormChampionConfig.TornadoTelegraphSeconds);
+                if (_volume != null) _volume.SetEnvelope(envelope, envelope, _cyclone ? 1f : 0f);
+                if (_groundWarning != null) _groundWarning.SetStrength(Time.time < _armedAt ? 0.65f + envelope * 0.35f : 0.72f);
+                return;
+            }
             if (Time.time >= _armedAt + _lifetime || _owner == null || !_owner.IsFighting)
             {
                 Dismiss();
                 return;
             }
 
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = BossRushCoop.GetCombatTarget(transform.position);
             if (player == null) return;
             float growth = Mathf.SmoothStep(0f, 1f, _life / SandstormChampionConfig.TornadoTelegraphSeconds);
             float fade = Mathf.Clamp01((_armedAt + _lifetime - Time.time) / 1.2f);
@@ -652,15 +693,24 @@ namespace BossRush
                     : SandstormChampionConfig.TornadoVolleySeconds);
                 _owner.SpawnTornadoVolley(pos, _cyclone);
             }
-            Vector3 remaining = player.transform.position - pos;
-            float heightDifference = Mathf.Abs(remaining.y);
-            remaining.y = 0f;
-            if (remaining.sqrMagnitude <= _radius * _radius && heightDifference <= 2f && Time.time >= _nextTick)
+            if (Time.time >= _nextTick)
             {
                 _nextTick = Time.time + SandstormChampionConfig.TornadoTickSeconds;
-                if (!BossSkillDamageRules.IsDodging(player))
-                    _owner.HurtPlayer(SandstormChampionConfig.TornadoTickDamage, player.transform.position + Vector3.up);
+                if (BossRushCoop.IsConnected)
+                {
+                    foreach (BossRushCoopPlayer participant in BossRushCoop.Players)
+                        if (participant.IsAlive) TickPlayer(participant.Character, pos);
+                }
+                else TickPlayer(player, pos);
             }
+        }
+
+        private void TickPlayer(CharacterMainControl player, Vector3 pos)
+        {
+            Vector3 remaining = player.transform.position - pos;
+            float height = Mathf.Abs(remaining.y); remaining.y = 0f;
+            if (remaining.sqrMagnitude <= _radius * _radius && height <= 2f && !BossSkillDamageRules.IsDodging(player))
+                _owner.HurtPlayer(player, SandstormChampionConfig.TornadoTickDamage, player.transform.position + Vector3.up);
         }
 
         /// <summary>
@@ -814,7 +864,7 @@ namespace BossRush
         private void LateUpdate()
         {
             if (_released) return;
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = BossRushCoop.GetCombatTarget(transform.position);
             if (player != null) transform.position = player.transform.position;
             // 风向慢慢摆动，沙不总是一个方向吹
             _time += Time.deltaTime;

@@ -130,15 +130,18 @@ namespace BossRush
             }
         }
 
-        private async void TrySpawnStoredDeathWraithForRaid_DeathWraith(uint raidID, Vector3 spawnPos)
+        private async void TrySpawnStoredDeathWraithForRaid_DeathWraith(uint raidID, Vector3 spawnPos, CoopWraithSpawn coopSpawn = null)
         {
+            if (BossRushCoop.IsConnected && coopSpawn == null)
+            { QueueCoopDeathWraith(raidID, spawnPos); return; }
             CharacterMainControl spawnedWraith = null;
             bool ownsRequest = false;
             int generation = deathWraithSpawnGeneration;
             int sceneHandle = SceneManager.GetActiveScene().handle;
             int slot = SavesSystem.CurrentSlot;
             Func<bool> isCurrent = () => owner != null && ModBehaviour.Instance == owner && generation == deathWraithSpawnGeneration &&
-                IsDeathWraithSystemEnabled() && SceneManager.GetActiveScene().handle == sceneHandle && SavesSystem.CurrentSlot == slot;
+                IsDeathWraithSystemEnabled() && SceneManager.GetActiveScene().handle == sceneHandle &&
+                (coopSpawn != null ? IsCoopWraithSpawnCurrent(coopSpawn) : SavesSystem.CurrentSlot == slot);
             try
             {
                 if (!IsDeathWraithSystemEnabled())
@@ -146,18 +149,20 @@ namespace BossRush
                     return;
                 }
 
-                if (spawningWraithRaidIds.Contains(raidID) || activeWraithsByRaidId.ContainsKey(raidID))
+                if (coopSpawn != null ? coopSpawn.Spawning || coopSpawn.Character != null || coopSpawn.Dead
+                    : spawningWraithRaidIds.Contains(raidID) || activeWraithsByRaidId.ContainsKey(raidID))
                 {
                     return;
                 }
 
-                WraithInfo info = FindStoredDeathWraithInfoByRaidId_DeathWraith(raidID);
+                WraithInfo info = coopSpawn != null ? coopSpawn.Info : FindStoredDeathWraithInfoByRaidId_DeathWraith(raidID);
                 if (info == null || !info.valid)
                 {
                     return;
                 }
 
-                spawningWraithRaidIds.Add(raidID);
+                if (coopSpawn != null) coopSpawn.Spawning = true;
+                else spawningWraithRaidIds.Add(raidID);
                 ownsRequest = true;
                 DevLog("[DeathWraith] 开始生成与原版遗失物绑定的亡魂: raidID=" + raidID);
 
@@ -230,7 +235,8 @@ namespace BossRush
                 }
                 catch { }
 
-                RegisterActiveWraith_DeathWraith(raidID, wraith);
+                if (coopSpawn != null) RegisterCoopWraith(coopSpawn, wraith);
+                else RegisterActiveWraith_DeathWraith(raidID, wraith);
                 spawnedWraith = null;
 
                 DevLog("[DeathWraith] 亡魂生成成功: " + displayName + " tier=" + tier + " raidID=" + raidID);
@@ -248,6 +254,7 @@ namespace BossRush
 
                 if (ownsRequest && generation == deathWraithSpawnGeneration)
                     spawningWraithRaidIds.Remove(raidID);
+                if (coopSpawn != null) coopSpawn.Spawning = false;
             }
         }
 

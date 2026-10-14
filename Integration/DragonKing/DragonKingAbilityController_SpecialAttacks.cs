@@ -258,6 +258,8 @@ namespace BossRush
         {
             ApplyDamageToPlayer(DragonKingConfig.SunDanceDamagePerTick);
         }
+        internal void ApplySunBeamDamage(CharacterMainControl target)
+        { ApplyDamageToPlayer(DragonKingConfig.SunDanceDamagePerTick, target); }
 
 
         // ========== 永恒彩虹攻击 ==========
@@ -350,7 +352,7 @@ namespace BossRush
                     stars[i].transform.position = currentCenter + offset;
 
                     // 检测伤害
-                    if (CheckProjectileHit(stars[i].transform.position, DragonKingConfig.RainbowTrailDamage, hasTargetSnapshot, targetPos))
+                    if (CheckProjectileHit(stars[i].transform.position, DragonKingConfig.RainbowTrailDamage, hasTargetSnapshot, targetPos, true))
                     {
                         // 不销毁星星，只造成伤害
                     }
@@ -602,7 +604,21 @@ namespace BossRush
 
         private bool CheckLanceHit(GameObject lance, bool hasTargetSnapshot, CharacterMainControl targetCharacter, Vector3 playerPos)
         {
-            if (!hasTargetSnapshot || lance == null || targetCharacter == null || targetCharacter.Health == null || targetCharacter.Health.IsDead)
+            if (!CoopAiPredictionHealthProtection.HasEntityAuthority(bossCharacter)) return false;
+            if (BossRushCoop.IsConnected && !IsFactionTargetMode())
+            {
+                foreach (BossRushCoopPlayer member in BossRushCoop.Players)
+                    if (member.IsAlive && CheckLanceTarget(lance, member.Character,
+                        member.Character.transform.position + Vector3.up * DragonKingConfig.PlayerTargetHeightOffset)) return true;
+                return false;
+            }
+            return hasTargetSnapshot && CheckLanceTarget(lance, targetCharacter, playerPos);
+        }
+
+        private bool CheckLanceTarget(GameObject lance, CharacterMainControl targetCharacter, Vector3 playerPos)
+        {
+            if (lance == null || targetCharacter == null || targetCharacter.Health == null || targetCharacter.Health.IsDead
+                || BossSkillDamageRules.IsDodging(targetCharacter))
             {
                 return false;
             }
@@ -624,7 +640,7 @@ namespace BossRush
             // 近距离命中仍保留旧逻辑，避免改变玩家体感
             if (toPlayerSqr < lanceLengthSqr)
             {
-                ApplyDamageToPlayer(DragonKingConfig.EtherealLanceDamage);
+                ApplyDamageToPlayer(DragonKingConfig.EtherealLanceDamage, targetCharacter);
                 DragonKingFxShared.HitBurst(lancePos, LanceHitColor);
                 return true;
             }
@@ -639,7 +655,7 @@ namespace BossRush
             float toPlayerDistance = Mathf.Sqrt(toPlayerSqr);
             if (toPlayerDistance <= 0.001f)
             {
-                ApplyDamageToPlayer(DragonKingConfig.EtherealLanceDamage);
+                ApplyDamageToPlayer(DragonKingConfig.EtherealLanceDamage, targetCharacter);
                 DragonKingFxShared.HitBurst(lancePos, LanceHitColor);
                 return true;
             }
@@ -655,7 +671,7 @@ namespace BossRush
                 if (hit.collider.gameObject == targetCharacter.gameObject ||
                     hit.collider.transform.IsChildOf(targetCharacter.transform))
                 {
-                    ApplyDamageToPlayer(DragonKingConfig.EtherealLanceDamage);
+                    ApplyDamageToPlayer(DragonKingConfig.EtherealLanceDamage, targetCharacter);
                     DragonKingFxShared.HitBurst(hit.point, LanceHitColor);
                     return true;
                 }
@@ -757,7 +773,7 @@ namespace BossRush
         /// </summary>
         public void OnCollisionWithPlayer(CharacterMainControl player)
         {
-            if (player == null || bossCharacter == null) return;
+            if (!CoopAiPredictionHealthProtection.HasEntityAuthority(bossCharacter) || player == null || bossCharacter == null) return;
             if (CurrentPhase == DragonKingPhase.Dead) return;
 
             // 阶段转换时不触发碰撞伤害
@@ -767,9 +783,17 @@ namespace BossRush
             if (collisionDetector != null && !collisionDetector.enabled) return;
 
             // 检查冷却时间
-            if (Time.time - lastCollisionDamageTime < DragonKingConfig.CollisionCooldown) return;
-
-            lastCollisionDamageTime = Time.time;
+            if (BossRushCoop.IsConnected && !IsFactionTargetMode())
+            {
+                float previous;
+                if (coopCollisionDamageTimes.TryGetValue(player, out previous) && Time.time - previous < DragonKingConfig.CollisionCooldown) return;
+                coopCollisionDamageTimes[player] = Time.time;
+            }
+            else
+            {
+                if (Time.time - lastCollisionDamageTime < DragonKingConfig.CollisionCooldown) return;
+                lastCollisionDamageTime = Time.time;
+            }
 
             // 播放碰撞音效
             ModBehaviour.Instance?.PlaySoundEffect(DragonKingConfig.Sound_Hit);
@@ -781,6 +805,7 @@ namespace BossRush
             ApplyKnockback(player);
 
         }
+        private readonly Dictionary<CharacterMainControl, float> coopCollisionDamageTimes = new Dictionary<CharacterMainControl, float>();
 
         /// <summary>
         /// 应用碰撞伤害
@@ -841,6 +866,7 @@ namespace BossRush
         /// </summary>
         private void ApplyKnockback(CharacterMainControl player)
         {
+            if (!CoopAiPredictionHealthProtection.HasEntityAuthority(bossCharacter)) return;
             try
             {
                 if (player == null || bossCharacter == null) return;
@@ -852,6 +878,12 @@ namespace BossRush
 
                 // 应用击退力
                 float force = 8f;
+                if (BossRushCoop.IsConnected && !IsFactionTargetMode())
+                {
+                    DragonKingCoopContactRuntimeModule.Push(player, knockbackDir * force,
+                        coopContactId + ":" + (++coopContactSequence));
+                    return;
+                }
                 var rb = player.GetComponent<Rigidbody>();
                 if (rb != null)
                 {
@@ -864,6 +896,9 @@ namespace BossRush
             }
         }
 
+        private readonly string coopContactId = Guid.NewGuid().ToString("N");
+        private long coopContactSequence;
+
 
         /// <summary>
         /// 光束、身体碰撞这些「碰到才伤」的判定认谁：Mode E / 鸭王杯是 AI 当前在打的对手（伤害也结算到它身上），
@@ -873,9 +908,11 @@ namespace BossRush
         {
             get
             {
-                return IsFactionTargetMode() ? playerCharacter : CharacterMainControl.Main;
+                return IsFactionTargetMode() ? playerCharacter : BossRushCoop.GetCombatTarget(transform.position);
             }
         }
+
+        internal bool HasCombatAuthority { get { return CoopAiPredictionHealthProtection.HasEntityAuthority(bossCharacter); } }
 
         // 以太长矛两招在协程里每 0.1 秒 / 每波读一次目标位置。鸭王杯 / 划地为营里目标是 AI 仇恨对象，
         // 死了或被 Pause 清掉时 playerCharacter 会变空，旧写法直接读 transform 抛异常，预警线画了但矛不发（2026-09-29）。

@@ -131,6 +131,7 @@ namespace BossRush
         public override void OnAwake(ModBehaviour owner)
         {
             this.owner = owner;
+            InitializeCoopDeathWraith();
             if (owner != null)
             {
                 owner.AttachDeathWraithRuntimeModule_DeathWraith(this);
@@ -139,6 +140,7 @@ namespace BossRush
 
         public override void OnDestroy()
         {
+            DisposeCoopDeathWraith();
             UnsubscribeDeathWraithEvents_DeathWraith();
             ModBehaviour currentOwner = owner;
             owner = null;
@@ -308,7 +310,8 @@ namespace BossRush
 
         internal void OnSetFile_DeathWraith()
         {
-            ClearDeathWraithState_DeathWraith();
+            // 世界快照与清除收据已冻结原资产；个人切档不能删除其它成员已生成的亡魂。
+            ClearDeathWraithState_DeathWraith(BossRushCoop.IsConnected);
             // 切换存档槽：丢弃内存缓存，下次访问时从新槽位重新加载，避免跨槽串档。
             // 不在此 flush——OnSetFile 发生在切槽时，旧槽的内容应已通过官方存档点写过。
             _deathWraithListCache = null;

@@ -28,7 +28,7 @@ namespace BossRush
     {
         private const float PlayerRefUpdateInterval = 0.1f;
 
-        private static readonly Collider[] damageHitBuffer = new Collider[32];
+        private Collider[] damageHitBuffer = new Collider[32];
         private static readonly WaitForSeconds wait05s = new WaitForSeconds(0.5f);
         private static readonly WaitForSeconds wait1s = new WaitForSeconds(1.0f);
         private static readonly WaitForSeconds waitBlinkHide = new WaitForSeconds(PhantomWitchConfig.BlinkHideDuration);
@@ -250,6 +250,8 @@ namespace BossRush
             }
 
             bossHealth = bossCharacter.Health;
+            if (BossRushCoop.IsClient) CoopAiPredictionHealthProtection.MarkReplica(bossCharacter);
+            else CoopAiPredictionHealthProtection.TrackAuthority(bossCharacter);
             aiController = new BossAIController(bossCharacter, "PhantomWitch");
             aiController.EnsureInitialized();
 
@@ -294,7 +296,7 @@ namespace BossRush
 
         private void UpdatePlayerReference(bool force = false)
         {
-            if (!force && Time.time - lastPlayerRefUpdateTime < PlayerRefUpdateInterval)
+            if (!force && Time.time - lastPlayerRefUpdateTime < PlayerRefUpdateInterval && IsValidCombatTarget(playerCharacter))
             {
                 return;
             }
@@ -329,7 +331,7 @@ namespace BossRush
 
                         if (IsValidCombatTarget(target))
                         {
-                            if (inst.IsModeFPreparationPhase && target == CharacterMainControl.Main)
+                            if (inst.IsModeFPreparationPhase && BossRushCoop.IsPlayer(target))
                             {
                                 playerCharacter = null;
                                 return;
@@ -347,7 +349,7 @@ namespace BossRush
                     }
                 }
 
-                playerCharacter = CharacterMainControl.Main;
+                playerCharacter = BossRushCoop.GetCombatTarget(bossCharacter != null ? bossCharacter.transform.position : transform.position);
             }
             catch (Exception e)
             {
@@ -355,7 +357,7 @@ namespace BossRush
                 var inst = ModBehaviour.Instance;
                 playerCharacter = (inst != null && (inst.IsModeEActive || inst.IsModeFPreparationPhase || ModeHRuntimeGates.IsModeHRunOwnerActive))
                     ? null
-                    : CharacterMainControl.Main;
+                    : BossRushCoop.GetCombatTarget(bossCharacter != null ? bossCharacter.transform.position : transform.position);
             }
         }
 

@@ -20,7 +20,7 @@ namespace BossRush
         /// </summary>
         public void OnCollisionWithPlayer(CharacterMainControl player)
         {
-            if (!isEnraged) return;
+            if (!HasCombatAuthority || !isEnraged) return;
             if (player == null) return;
 
             // 碰撞对象可能不是 AI 当前追击目标，按实际受击者判敌后才允许击退或伤害。
@@ -175,7 +175,7 @@ namespace BossRush
         {
             try
             {
-                if (player == null) return;
+                if (!HasCombatAuthority || player == null) return;
                 if (BossSkillDamageRules.IsDodging(player)) return;
 
                 // 创建伤害信息（冲撞只在狂暴期出现，基线取二阶段倍率）

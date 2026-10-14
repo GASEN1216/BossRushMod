@@ -93,6 +93,30 @@ namespace BossRush
         private ParticleSystem dustEmitter;
         private bool isActive = false;
         private bool isPooled = false;
+        private bool waveConnected, waveHost, waveRevoked;
+        private string waveRoom, waveAsset;
+        private CharacterMainControl waveBody;
+        private int waveScene;
+
+        private void CaptureWaveScope()
+        {
+            waveRevoked = false;
+            waveConnected = BossRushCoop.IsConnected; waveHost = BossRushCoop.IsHost;
+            waveRoom = BossRushCoop.RunId; waveAsset = BossRushCoop.LocalAssetId; waveBody = CharacterMainControl.Main;
+            waveScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle;
+        }
+
+        private bool IsWaveScopeValid()
+        {
+            if (waveRevoked) return false;
+            if (waveConnected != BossRushCoop.IsConnected || waveConnected && waveHost != BossRushCoop.IsHost
+                || waveAsset != BossRushCoop.LocalAssetId || waveBody != CharacterMainControl.Main
+                || waveScene != UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle
+                || waveConnected && !string.IsNullOrEmpty(waveRoom) && !string.IsNullOrEmpty(BossRushCoop.RunId)
+                    && waveRoom != BossRushCoop.RunId) { waveRevoked = true; return false; }
+            if (waveConnected && string.IsNullOrEmpty(waveRoom) && !string.IsNullOrEmpty(BossRushCoop.RunId)) waveRoom = BossRushCoop.RunId;
+            return true;
+        }
         private Vector3 centerPosition;
         private CharacterMainControl playerCharacter;
         private Transform cachedPlayerTransform;
@@ -158,6 +182,7 @@ namespace BossRush
         /// </summary>
         public void StartShockwave(Vector3 center)
         {
+            CaptureWaveScope();
             EnsureWaveRingPool(waveCount);
             StopActiveCoroutines();
             DeactivateAllWaveRings();
@@ -220,6 +245,7 @@ namespace BossRush
         private void FindPlayer()
         {
             // Mode E / 鸭王杯：玩家在看台观战，冲击波不去击飞他（2026-09-29 日志：鸭王杯里「玩家被击退」）
+            // PlayAt 会在每端同步重播；移动由本人客户端执行，不能选到别人的网络镜像。
             playerCharacter = DragonKingAbilityController.IsFactionTargetMode() ? null : CharacterMainControl.Main;
             cachedPlayerTransform = playerCharacter != null ? playerCharacter.transform : null;
 
@@ -361,6 +387,7 @@ namespace BossRush
 
         private void Update()
         {
+            if (isActive && !IsWaveScopeValid()) { ReturnToPool(); return; }
             if (!isActive)
             {
                 return;
@@ -482,6 +509,7 @@ namespace BossRush
 
         private void KnockbackPlayer(Vector3 playerPos, Vector3 waveCenter)
         {
+            if (!IsWaveScopeValid()) return;
             if (playerCharacter == null)
             {
                 return;

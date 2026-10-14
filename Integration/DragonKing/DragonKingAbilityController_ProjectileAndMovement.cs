@@ -105,8 +105,29 @@ namespace BossRush
             return CheckProjectileHit(position, damage, true, targetPos);
         }
 
-        private bool CheckProjectileHit(Vector3 position, float damage, bool hasTargetPosition, Vector3 targetPos)
+        private bool CheckProjectileHit(Vector3 position, float damage, bool hasTargetPosition, Vector3 targetPos, bool hitAllPlayers = false)
         {
+            if (!CoopAiPredictionHealthProtection.HasEntityAuthority(bossCharacter)) return false;
+            if (BossRushCoop.IsConnected && !IsFactionTargetMode())
+            {
+                bool hit = false;
+                float reach = DragonKingConfig.ProjectileHitRadius * DragonKingConfig.ProjectileHitRadius;
+                foreach (BossRushCoopPlayer member in BossRushCoop.Players)
+                {
+                    if (!member.IsAlive || BossSkillDamageRules.IsDodging(member.Character)) continue;
+                    Vector3 aim = member.Character.transform.position + Vector3.up * DragonKingConfig.PlayerTargetHeightOffset;
+                    if ((position - aim).sqrMagnitude >= reach) continue;
+                    ApplyDamageToPlayer(damage, member.Character);
+                    hit = true;
+                    if (!hitAllPlayers) break;
+                }
+                if (hit)
+                {
+                    ModBehaviour.Instance?.PlaySoundEffect(DragonKingConfig.Sound_BoltHit);
+                    DragonKingFxShared.HitBurst(position, BoltHitColor);
+                }
+                return hit;
+            }
             if (!hasTargetPosition || playerCharacter == null || IsPlayerDead()) return false;
 
             // 翻滚中穿过弹幕不结算、弹体也不消耗，与官方 Projectile 的 Dashing 豁免一致
@@ -137,11 +158,15 @@ namespace BossRush
         /// </summary>
         private void ApplyDamageToPlayer(float damage)
         {
+            ApplyDamageToPlayer(damage, playerCharacter);
+        }
+        private void ApplyDamageToPlayer(float damage, CharacterMainControl target)
+        {
             // 玩家已死亡时跳过伤害，避免对不活跃对象操作
-            if (IsPlayerDead()) return;
+            if (!CoopAiPredictionHealthProtection.HasEntityAuthority(bossCharacter) || target == null || target.Health == null || target.Health.IsDead) return;
 
             // 翻滚无敌：技能弹、冲撞、长矛、光束都按官方口径豁免（BossSkillDamageRules）
-            if (BossSkillDamageRules.IsDodging(playerCharacter)) return;
+            if (BossSkillDamageRules.IsDodging(target)) return;
 
             try
             {
@@ -150,24 +175,24 @@ namespace BossRush
                 dmgInfo.damageValue = damage * BossSkillDamageRules.ResolveGunDamageScale(bossCharacter, DragonKingConfig.DamageMultiplier);
                 // 设置伤害点位置（玩家身体中心），这样伤害数字才能正确显示
                 // 使用配置中的常量
-                dmgInfo.damagePoint = playerCharacter.transform.position + Vector3.up * DragonKingConfig.DamagePointHeightOffset;
+                dmgInfo.damagePoint = target.transform.position + Vector3.up * DragonKingConfig.DamagePointHeightOffset;
                 dmgInfo.damageNormal = Vector3.up;
                 // 添加火元素伤害，让原版受伤系统显示伤害数字
                 dmgInfo.AddElementFactor(ElementTypes.fire, 1f);
-                playerCharacter.Health.Hurt(dmgInfo);
+                target.Health.Hurt(dmgInfo);
 
                 // 检测目标是否被这次伤害杀死
-                if (playerCharacter.Health.IsDead)
+                if (target.Health.IsDead)
                 {
                     var inst = ModBehaviour.Instance;
                     if (inst != null && (inst.IsModeEActive || ModeHRuntimeGates.IsModeHRunOwnerActive))
                     {
                         // 【Mode E】仇恨目标被击杀，清空引用等待AI搜索下一个目标
                         // 不调用 OnPlayerDeath，避免 StopAllCoroutines 永久终止攻击循环
-                        playerCharacter = null;
+                        if (playerCharacter == target) playerCharacter = null;
                         ModBehaviour.DevLog("[DragonKing] [Mode E] 仇恨目标已击杀，等待AI搜索下一个目标");
                     }
-                    else
+                    else if (!BossRushCoop.IsConnected || !BossRushCoop.AnyPlayerAlive)
                     {
                         // 非 Mode E：玩家死亡，一次性清理所有攻击
                         OnPlayerDeath();

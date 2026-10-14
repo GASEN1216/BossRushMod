@@ -75,7 +75,8 @@ namespace BossRush
             CharacterMainControl character = null;
             bool completed = false;
             int sceneHandle = UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle;
-            Func<bool> isCurrent = () => owner != null && ModBehaviour.Instance == owner &&
+            var creationLease = new CoopBossCreationLease();
+            Func<bool> isCurrent = () => creationLease.IsValid() && owner != null && ModBehaviour.Instance == owner &&
                 UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle == sceneHandle &&
                 (isActiveCheck == null || isActiveCheck());
             try
@@ -199,10 +200,6 @@ namespace BossRush
                 await EquipDragonDescendant(character);
                 if (!isCurrent()) return null;
 
-                // 添加能力控制器（传入原始武器完整属性）
-                dragonDescendantAbilities = character.gameObject.AddComponent<DragonDescendantAbilityController>();
-                dragonDescendantAbilities.Initialize(character, originalWeaponData);
-
                 if (deferActivationUntilNextFrame)
                 {
                     await UniTask.Yield();
@@ -213,6 +210,10 @@ namespace BossRush
                 character.gameObject.SetActive(true);
                 // 解除官方距离休眠：Mod 刷怪点可能远离玩家，否则 Boss 会被每帧关掉。
                 SpawnedEnemyActivationHelper.ReleaseFromPlayerDistanceSleep(character);
+
+                // Initialize 会立即启动燃烧弹计时协程，必须等延期激活检查通过、角色解除休眠后装配。
+                dragonDescendantAbilities = character.gameObject.AddComponent<DragonDescendantAbilityController>();
+                dragonDescendantAbilities.Initialize(character, originalWeaponData);
 
                 // 请求显示血条（必须在角色激活后调用）
                 if (character.Health != null)

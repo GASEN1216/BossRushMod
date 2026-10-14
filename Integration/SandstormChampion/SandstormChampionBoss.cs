@@ -14,12 +14,16 @@ namespace BossRush
 
         internal static async UniTask<CharacterMainControl> SpawnAsync(ModBehaviour owner, Vector3 position, Func<bool> isCurrent)
         {
+            var worldLease = new CoopBossCreationLease();
+            Func<bool> originalCurrent = isCurrent;
+            isCurrent = () => worldLease.IsValid() && originalCurrent != null && originalCurrent();
             CharacterMainControl boss = null;
             CharacterRandomPreset runtimePreset = null;
             Item reward = null;
             int sceneHandle = SceneManager.GetActiveScene().handle;
             try
             {
+                if (!IsCurrent(owner, sceneHandle, isCurrent)) throw new OperationCanceledException();
                 CharacterRandomPreset source = FindBasePreset();
                 if (source == null) throw new InvalidOperationException("champion_base_preset_unavailable");
                 // 在官方生成之前关掉底模的技能与自动掏枪，避免异步生成期间先释放原 Boss 技能。

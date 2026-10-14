@@ -623,6 +623,8 @@ namespace BossRush
 
             // 获取Health组件
             bossHealth = bossCharacter.Health;
+            if (BossRushCoop.IsClient) CoopAiPredictionHealthProtection.MarkReplica(bossCharacter);
+            else CoopAiPredictionHealthProtection.TrackAuthority(bossCharacter);
             if (bossHealth != null)
             {
                 bossHealth.OnHurtEvent.AddListener(OnBossHurt);
@@ -882,8 +884,8 @@ namespace BossRush
                 }
                 else
                 {
-                    // 非 Mode E：始终锁定玩家（原有逻辑）
-                    playerCharacter = CharacterMainControl.Main;
+                    // 房间内选择仍存活的玩家；阵营互战模式继续沿用 AI 仇恨。
+                    playerCharacter = BossRushCoop.GetCombatTarget(bossCharacter != null ? bossCharacter.transform.position : transform.position);
                 }
             }
             catch (Exception e)
@@ -1088,6 +1090,9 @@ namespace BossRush
 
         private bool IsPlayerDead()
         {
+            if (BossRushCoop.IsConnected && !IsFactionTargetMode()
+                && (playerCharacter == null || playerCharacter.Health == null || playerCharacter.Health.IsDead))
+                playerCharacter = BossRushCoop.GetCombatTarget(bossCharacter != null ? bossCharacter.transform.position : transform.position);
             return playerCharacter == null || playerCharacter.Health == null || playerCharacter.Health.IsDead;
         }
 
@@ -1227,6 +1232,7 @@ namespace BossRush
         /// </summary>
         private void OnDestroy()
         {
+            coopCollisionDamageTimes.Clear();
             // 取消订阅事件（防止内存泄漏）
             if (bossHealth != null)
             {
@@ -1366,6 +1372,11 @@ namespace BossRush
 
         private void Update()
         {
+            if (!CoopAiPredictionHealthProtection.HasEntityAuthority(bossCharacter))
+            {
+                if (CurrentPhase != DragonKingPhase.Dead) { OnPlayerDeath(); CurrentPhase = DragonKingPhase.Dead; }
+                return;
+            }
             UpdateTrackingProjectiles();
             UpdateActiveLances();
             TickFactionLoopWatchdog();

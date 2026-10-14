@@ -23,6 +23,7 @@ namespace BossRush
 
         private readonly SandstormChampionMinionMarker _marker;
         private readonly CharacterMainControl _self;
+        private CharacterMainControl CombatPlayer { get { return BossRushCoop.GetCombatTarget(_self != null ? _self.transform.position : Vector3.zero); } }
         private readonly SandstormChampionController _controller;
         private readonly Transform _fxRoot;
         private float _nextArtAt;
@@ -94,7 +95,7 @@ namespace BossRush
         {
             get
             {
-                CharacterMainControl player = CharacterMainControl.Main;
+                CharacterMainControl player = CombatPlayer;
                 return _marker != null && _marker.IsCombatActive && _controller != null && _controller.IsFighting
                     && player != null && player.Health != null && !player.Health.IsDead;
             }
@@ -102,11 +103,11 @@ namespace BossRush
 
         private Vector3 FacePlayer()
         {
-            Vector3 dir = CharacterMainControl.Main.transform.position - _self.transform.position;
+            Vector3 dir = CombatPlayer.transform.position - _self.transform.position;
             dir.y = 0f;
             dir = dir.sqrMagnitude > 0.0001f ? dir.normalized : _self.transform.forward;
             if (_self.movementControl != null) _self.movementControl.ForceTurnTo(dir);
-            _self.SetAimPoint(CharacterMainControl.Main.transform.position + Vector3.up * 0.7f);
+            _self.SetAimPoint(CombatPlayer.transform.position + Vector3.up * 0.7f);
             return dir;
         }
 
@@ -153,8 +154,8 @@ namespace BossRush
             AstralStaffFx.WithRoot(_fxRoot, () =>
                 AstralStaffFx.PlaySweepArt(feet, dir, radius, half, AstralStaffConfig.Gold));
             Surge(0.8f);
-            if (InSector(feet, dir, radius, half))
-                Strike(SandstormChampionConfig.MinionSweepDamage, dir * SandstormChampionConfig.MinionArtPush, 1);
+            StrikeArea(feet, dir, radius, half, SandstormChampionConfig.MinionSweepDamage,
+                dir * SandstormChampionConfig.MinionArtPush, 1, false);
             yield return Wait(0.25f, false);
         }
 
@@ -184,15 +185,9 @@ namespace BossRush
                 AstralStaffFx.WithRoot(_fxRoot, () =>
                     AstralStaffFx.PlaySpinArt(feet, dir, radius, second, _self.transform));
                 Surge(0.9f);
-                if (InSector(feet, dir, radius + (second ? 0.2f : 0f), 180f))
-                {
-                    Vector3 away = CharacterMainControl.Main.transform.position - feet;
-                    away.y = 0f;
-                    away = away.sqrMagnitude > 0.01f ? away.normalized : dir;
-                    // 第一段推开、第二段卷近
-                    Strike(SandstormChampionConfig.MinionSpinDamage,
-                        away * (second ? -SandstormChampionConfig.MinionArtPush : SandstormChampionConfig.MinionArtPush * 0.6f), 2);
-                }
+                StrikeArea(feet, dir, radius + (second ? 0.2f : 0f), 180f,
+                    SandstormChampionConfig.MinionSpinDamage,
+                    Vector3.forward * (second ? -SandstormChampionConfig.MinionArtPush : SandstormChampionConfig.MinionArtPush * 0.6f), 2, true);
                 yield return Wait(second ? 0.3f : SandstormChampionConfig.MinionSpinBeat, false);
             }
         }
@@ -203,7 +198,7 @@ namespace BossRush
         {
             Vector3 dir = FacePlayer();
             Vector3 start = _self.transform.position;
-            Vector3 player = CharacterMainControl.Main.transform.position;
+            Vector3 player = CombatPlayer.transform.position;
             Vector3 flat = player - start;
             flat.y = 0f;
             float leap = Mathf.Clamp(flat.magnitude - 1.2f, 0f, SandstormChampionConfig.MinionStarfallLeap);
@@ -238,14 +233,8 @@ namespace BossRush
             if (!Alive) yield break;
             Vector3 origin = _self.transform.position;
             Vector3 blast = origin + dir * 1.2f;
-            bool contact = false;
-            Vector3 toPlayer = CharacterMainControl.Main.transform.position - blast;
-            toPlayer.y = 0f;
-            if (toPlayer.magnitude <= blastRadius && Mathf.Abs(CharacterMainControl.Main.transform.position.y - blast.y) <= 2f)
-            {
-                Vector3 away = toPlayer.sqrMagnitude > 0.01f ? toPlayer.normalized : dir;
-                contact = Strike(SandstormChampionConfig.MinionStarfallDamage, away * SandstormChampionConfig.MinionArtPush * 1.3f, 3);
-            }
+            bool contact = StrikeArea(blast, dir, blastRadius, 180f, SandstormChampionConfig.MinionStarfallDamage,
+                Vector3.forward * SandstormChampionConfig.MinionArtPush * 1.3f, 3, true);
             AstralStaffFx.WithRoot(_fxRoot, () =>
                 AstralStaffFx.PlayStarfallImpact(origin, blast, dir, contact, blastRadius));
             SandstormChampionAssetManager.ShakeNear(blast, contact ? 0.3f : 0.14f, 14f);
@@ -254,9 +243,31 @@ namespace BossRush
 
         // ---------------- 判定与伤害 ----------------
 
-        private static bool InSector(Vector3 feet, Vector3 dir, float radius, float halfAngle)
+        private bool StrikeArea(Vector3 feet, Vector3 dir, float radius, float halfAngle, float damage, Vector3 push, int tier, bool radial)
         {
-            Vector3 target = CharacterMainControl.Main.transform.position;
+            bool hit = false;
+            if (BossRushCoop.IsConnected)
+            {
+                foreach (BossRushCoopPlayer participant in BossRushCoop.Players)
+                    if (participant.IsAlive) hit |= StrikeAreaPlayer(participant.Character, feet, dir, radius, halfAngle, damage, push, tier, radial);
+            }
+            else hit = StrikeAreaPlayer(CombatPlayer, feet, dir, radius, halfAngle, damage, push, tier, radial);
+            return hit;
+        }
+        private bool StrikeAreaPlayer(CharacterMainControl player, Vector3 feet, Vector3 dir, float radius, float halfAngle,
+            float damage, Vector3 push, int tier, bool radial)
+        {
+            if (player == null || !InSector(player, feet, dir, radius, halfAngle)) return false;
+            if (radial)
+            {
+                Vector3 away = player.transform.position - feet; away.y = 0f;
+                push = (away.sqrMagnitude > 0.01f ? away.normalized : dir) * push.z;
+            }
+            return Strike(player, damage, push, tier);
+        }
+        private bool InSector(CharacterMainControl player, Vector3 feet, Vector3 dir, float radius, float halfAngle)
+        {
+            Vector3 target = player.transform.position;
             if (Mathf.Abs(target.y - feet.y) > 2f) return false;
             Vector3 flat = target - feet;
             flat.y = 0f;
@@ -265,15 +276,14 @@ namespace BossRush
         }
 
         /// <summary>翻滚免疫、隔墙不打；命中时给接触表现、轻震与 0.14 秒的推 / 拉。</summary>
-        private bool Strike(float damage, Vector3 push, int tier)
+        private bool Strike(CharacterMainControl player, float damage, Vector3 push, int tier)
         {
-            CharacterMainControl player = CharacterMainControl.Main;
             if (player == null || BossSkillDamageRules.IsDodging(player)) return false;
             Vector3 from = _self.transform.position + Vector3.up * 0.9f;
             Vector3 to = player.transform.position + Vector3.up * 0.9f;
             int wall = GameplayDataSettings.Layers.wallLayerMask;
             if (wall != 0 && Physics.Linecast(from, to, wall, QueryTriggerInteraction.Ignore)) return false;
-            _controller.HurtPlayer(damage, to);
+            _controller.HurtPlayer(player, damage, to);
             Vector3 dir = to - from;
             AstralStaffFx.WithRoot(_fxRoot, () => AstralStaffFx.PlayContact(to, dir, tier));
             SandstormChampionAssetManager.ShakeNear(to, 0.12f + 0.05f * tier, 3f);

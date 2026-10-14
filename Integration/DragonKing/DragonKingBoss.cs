@@ -79,6 +79,7 @@ namespace BossRush
         public static void ClearDragonKingStaticCache()
         {
             DragonKingRuntimeModule.ResetDragonKingRuntimeModuleStaticCaches();
+            DragonKingLavaZone.ResetStaticCaches();
 
             // 强制清理资源管理器缓存（场景切换时使用）
             DragonKingAssetManager.ForceCleanup();
@@ -263,12 +264,14 @@ namespace BossRush
             CharacterMainControl character = null;
             bool completed = false;
             bool assetReferenceAdded = false;
+            var worldLease = new CoopBossCreationLease();
             int sceneHandle = UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle;
-            Func<bool> isCurrent = () => owner != null && ModBehaviour.Instance == owner &&
+            Func<bool> isCurrent = () => worldLease.IsValid() && owner != null && ModBehaviour.Instance == owner &&
                 UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle == sceneHandle &&
                 (isActiveCheck == null || isActiveCheck());
             try
             {
+                if (!isCurrent()) return null;
                 DevLog($"[DragonKing] 开始生成龙王Boss at {position}");
                 
                 // 查找基础敌人预设（复用???预设）
@@ -392,6 +395,7 @@ namespace BossRush
 
                 // 激活角色
                 character.gameObject.SetActive(true);
+                BossRushCoopFxRuntimeModule.TrackBoss(character, "dragon-king");
                 // 解除官方距离休眠：理由同 DragonDescendantBoss。
                 SpawnedEnemyActivationHelper.ReleaseFromPlayerDistanceSleep(character);
 

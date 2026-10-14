@@ -18,6 +18,7 @@ namespace BossRush
     {
         private void Update()
         {
+            if (bossCharacter != null && !CoopAiPredictionHealthProtection.HasEntityAuthority(bossCharacter)) { OnPlayerDeath(); return; }
             // 控制器在独立 GO 上，若 bossCharacter 被外部销毁则自行清理
             // Destroy 延迟到帧末执行，届时 Unity 自动调用 OnDestroy 完成资源释放
             if (bossCharacter == null)

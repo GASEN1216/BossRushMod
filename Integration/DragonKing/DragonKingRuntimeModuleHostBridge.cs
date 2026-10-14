@@ -30,6 +30,7 @@ namespace BossRush
         public override void OnDestroy()
         {
             CleanupTrackedDragonKingsOnArenaExit();
+            DragonKingLavaZone.ResetStaticCaches();
             DragonKingRuntimeModule.ResetDragonKingRuntimeModuleStaticCaches();
             if (dragonKingSetBonusRegistered && owner != null)
                 Health.OnHurt -= owner.OnDragonKingBossHurt;

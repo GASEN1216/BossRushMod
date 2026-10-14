@@ -374,7 +374,7 @@ namespace BossRush
             bool spawnCompleted = false;
             CharacterMainControl spawnResult = null;
             Func<bool> isCurrent = () => requestActive && this != null && generation == childSpawnGeneration &&
-                bossCharacter != null && bossHealth != null && !bossHealth.IsDead && isInChildProtection &&
+                HasCombatAuthority && bossCharacter != null && bossHealth != null && !bossHealth.IsDead && isInChildProtection &&
                 ModBehaviour.IsManagedOwnerValid(ModeGChildSpawnContext);
             try
             {

@@ -26,7 +26,7 @@ namespace BossRush
         {
             try
             {
-                if (bossCharacter == null) return;
+                if (!HasCombatAuthority || bossCharacter == null) return;
                 Vector3 feet = bossCharacter.transform.position;
                 BossRushFxKit.PlayBurst(feet, BossRushFxKit.Dust(Phase2DashDustColor, 10));
                 BossRushFxKit.PlayBurst(feet + Vector3.up * 0.4f, BossRushFxKit.Sparks(Phase2DashSparkColor, 14));
@@ -46,7 +46,7 @@ namespace BossRush
         {
             ModBehaviour.DevLog("[DragonDescendant] 开始二阶段行为循环");
 
-            while (isEnraged && bossCharacter != null)
+            while (HasCombatAuthority && isEnraged && bossCharacter != null)
             {
                 // 更新玩家引用
                 RefreshPlayerReference();
@@ -94,13 +94,13 @@ namespace BossRush
                 // 起手：原地扬尘 + 蓄力声，再冲出去（此前只靠跑动姿态提示，嘈杂场面里读不出来）
                 PlayPhase2DashCue();
                 yield return waitPhase2DashWindup;
-                if (!isEnraged || bossCharacter == null) yield break;
+                if (!HasCombatAuthority || !isEnraged || bossCharacter == null) yield break;
 
                 ModBehaviour.DevLog("[DragonDescendant] 阶段2：高速冲刺");
                 SetMoveability(10f);
 
                 float chargeTime = 0f;
-                while (chargeTime < 0.5f && isEnraged && bossCharacter != null)
+                while (HasCombatAuthority && chargeTime < 0.5f && isEnraged && bossCharacter != null)
                 {
                     // 更新玩家引用
                     RefreshPlayerReference();
@@ -217,7 +217,7 @@ namespace BossRush
 
             for (int i = 0; i < count; i++)
             {
-                if (!isEnraged || bossCharacter == null)
+                if (!HasCombatAuthority || !isEnraged || bossCharacter == null)
                 {
                     ModBehaviour.DevLog("[DragonDescendant] FireLinearBullets中断: isEnraged=" + isEnraged);
                     yield break;
@@ -259,7 +259,7 @@ namespace BossRush
 
             for (int i = 0; i < bulletCount; i++)
             {
-                if (!isEnraged || bossCharacter == null)
+                if (!HasCombatAuthority || !isEnraged || bossCharacter == null)
                 {
                     ModBehaviour.DevLog("[DragonDescendant] FireFanBulletsSweep中断: isEnraged=" + isEnraged +
                         ", bossCharacter=" + (bossCharacter != null));
@@ -298,7 +298,7 @@ namespace BossRush
         {
             try
             {
-                if (bossCharacter == null) return;
+                if (!HasCombatAuthority || bossCharacter == null) return;
                 if (LevelManager.Instance == null || LevelManager.Instance.BulletPool == null)
                 {
                     ModBehaviour.DevLog("[DragonDescendant] [WARNING] BulletPool不可用");
@@ -525,7 +525,7 @@ namespace BossRush
         {
             // 协程已经处理追逐逻辑，这里只做简单的状态维护
             var ai = aiController?.GetAI();
-            if (!isEnraged || bossCharacter == null || ai == null) return;
+            if (!HasCombatAuthority || !isEnraged || bossCharacter == null || ai == null) return;
 
             // Mode E 同阵营不追逐玩家
             if (IsPlayerAlly()) return;

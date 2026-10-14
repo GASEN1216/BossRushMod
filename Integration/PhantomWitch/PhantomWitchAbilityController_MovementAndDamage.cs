@@ -18,7 +18,7 @@ namespace BossRush
     {
         private bool CanContinueAttacking()
         {
-            return bossCharacter != null &&
+            return CoopAiPredictionHealthProtection.HasEntityAuthority(bossCharacter) && bossCharacter != null &&
                    bossHealth != null &&
                    !bossHealth.IsDead &&
                    CurrentPhase != PhantomWitchPhase.Dead;
@@ -374,7 +374,7 @@ namespace BossRush
             float forwardOffset,
             CharacterMainControl target)
         {
-            if (bossCharacter == null)
+            if (!CoopAiPredictionHealthProtection.HasEntityAuthority(bossCharacter) || bossCharacter == null)
             {
                 return 0;
             }
@@ -384,11 +384,7 @@ namespace BossRush
 
             Vector3 forward = ResolveAttackForward(target);
             Vector3 origin = bossCharacter.transform.position + forward * Mathf.Max(0f, forwardOffset);
-            int hitCount = Physics.OverlapSphereNonAlloc(
-                origin,
-                radius,
-                damageHitBuffer,
-                FenHuangHalberdRuntime.DamageReceiverLayerMask);
+            int hitCount = QueryDamageReceivers(origin, radius, ref damageHitBuffer);
 
             Buff curseBuff = applyCurse ? PhantomWitchAssetManager.GetCurseBuff() : null;
             processedReceiverIds.Clear();
@@ -586,6 +582,24 @@ namespace BossRush
             Vector3 lossyScale = bossCharacter.transform.lossyScale;
             float maxAxisScale = Mathf.Max(Mathf.Abs(lossyScale.x), Mathf.Abs(lossyScale.z));
             return Mathf.Clamp(maxAxisScale, 1f, PhantomWitchConfig.ScytheSweepVisualScaleCap);
+        }
+
+        internal static int QueryDamageReceivers(Vector3 origin, float radius, ref Collider[] buffer)
+        {
+            if (!BossRushCoop.HasWorldAuthority) return 0;
+            if (buffer == null || buffer.Length < 32) buffer = new Collider[32];
+            int count = Physics.OverlapSphereNonAlloc(origin, radius, buffer, FenHuangHalberdRuntime.DamageReceiverLayerMask);
+            while (count == buffer.Length && buffer.Length < 512)
+            {
+                buffer = new Collider[buffer.Length * 2];
+                count = Physics.OverlapSphereNonAlloc(origin, radius, buffer, FenHuangHalberdRuntime.DamageReceiverLayerMask);
+            }
+            if (count == buffer.Length)
+            {
+                buffer = Physics.OverlapSphere(origin, radius, FenHuangHalberdRuntime.DamageReceiverLayerMask);
+                count = buffer.Length;
+            }
+            return count;
         }
 
         private bool IsEnemyReceiver(DamageReceiver receiver)

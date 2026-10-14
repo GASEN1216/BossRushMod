@@ -29,6 +29,7 @@ namespace BossRush
         /// </summary>
         internal void OnWraithDied_DeathWraith(Health deadHealth, DamageInfo damageInfo)
         {
+            if (BossRushCoop.IsClient || HandleCoopWraithDeath(deadHealth)) return;
             try
             {
                 if (deadHealth == null)
@@ -65,8 +66,9 @@ namespace BossRush
         /// <summary>
         /// 场景切换时清理亡魂状态
         /// </summary>
-        internal void ClearDeathWraithState_DeathWraith()
+        internal void ClearDeathWraithState_DeathWraith(bool preserveCoopWorld = false)
         {
+            if (!preserveCoopWorld) ClearCoopWraithWorld();
             deathWraithSpawnGeneration++;
             ClearPendingDeathWraithInfo_DeathWraith();
             pendingDeadBodySpawnContexts.Clear();

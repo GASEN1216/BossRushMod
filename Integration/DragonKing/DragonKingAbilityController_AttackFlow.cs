@@ -46,7 +46,7 @@ namespace BossRush
                 ModBehaviour.DevLog($"[DragonKing] [DEBUG] 调试模式已启用，将只重复释放技能 {DragonKingConfig.DebugAttackType}");
             }
 
-            while (CurrentPhase != DragonKingPhase.Dead && bossCharacter != null)
+            while (CurrentPhase != DragonKingPhase.Dead && bossCharacter != null && HasCombatAuthority)
             {
                 attackLoopHeartbeat = Time.time;
                 // 阶段转换中或孩儿护我期间暂停攻击
@@ -67,7 +67,7 @@ namespace BossRush
                     continue;
                 }
 
-                if (playerCharacter == null || playerCharacter.Health == null || playerCharacter.Health.IsDead)
+                if (IsPlayerDead())
                 {
                     var inst = ModBehaviour.Instance;
                     if (inst != null && (inst.IsModeEActive || ModeHRuntimeGates.IsModeHRunOwnerActive))

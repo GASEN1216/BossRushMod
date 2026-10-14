@@ -12,6 +12,7 @@ namespace BossRush
     internal sealed class SandstormChampionController : MonoBehaviour
     {
         private CharacterMainControl _boss;
+        private CharacterMainControl CombatPlayer { get { return BossRushCoop.GetCombatTarget(_boss != null ? _boss.transform.position : Vector3.zero); } }
         private ModBehaviour _owner;
         private CharacterRandomPreset _preset;
         private Item _reward;
@@ -40,6 +41,7 @@ namespace BossRush
         private int _groundMask;
         private int _wallMask;
         private float _nextDamageTime;
+        private readonly Dictionary<CharacterMainControl, float> _playerDamageTimes = new Dictionary<CharacterMainControl, float>();
         private int _nextMinionCycle = 2;
         private bool _minionSummoning;
         private bool _enraged;
@@ -50,6 +52,7 @@ namespace BossRush
         private Vector3 _playerVelocity;
         private Vector3 _lastPlayerPosition;
         private bool _playerVelocityPrimed;
+        private CharacterMainControl _velocityPlayer;
         private Modifier _bodyArmorModifier;
         private Modifier _headArmorModifier;
         private float _stormEndsAt;
@@ -79,8 +82,8 @@ namespace BossRush
         {
             get
             {
-                CharacterMainControl player = CharacterMainControl.Main;
-                return !_stopped && _owner != null && _boss != null && _boss.Health != null && !_boss.Health.IsDead
+                CharacterMainControl player = CombatPlayer;
+                return CoopAiPredictionHealthProtection.HasEntityAuthority(_boss) && !_stopped && _owner != null && _boss != null && _boss.Health != null && !_boss.Health.IsDead
                     && player != null && player.Health != null && !player.Health.IsDead && !SceneLoader.IsSceneLoading
                     && _isCurrent != null && _isCurrent()
                     && UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle == _sceneHandle;
@@ -102,6 +105,8 @@ namespace BossRush
             float baseline, BossAIController ai, Func<bool> isCurrent, int sceneHandle, ModBehaviour owner)
         {
             _boss = boss;
+            if (BossRushCoop.IsClient) CoopAiPredictionHealthProtection.MarkReplica(boss);
+            else CoopAiPredictionHealthProtection.TrackAuthority(boss);
             _owner = owner;
             _preset = preset;
             _reward = reward;
@@ -288,10 +293,10 @@ namespace BossRush
             while (time < seconds && IsFighting && !HasPhaseTransition)
             {
                 Vector3 from = _boss.transform.position;
-                Vector3 to = from - CharacterMainControl.Main.transform.position;
+                Vector3 to = from - CombatPlayer.transform.position;
                 to.y = 0f;
                 if (to.sqrMagnitude < 0.01f) to = Vector3.forward;
-                Vector3 desired = CharacterMainControl.Main.transform.position + to.normalized * SandstormChampionConfig.HoverDistance;
+                Vector3 desired = CombatPlayer.transform.position + to.normalized * SandstormChampionConfig.HoverDistance;
                 MoveToward(desired, SandstormChampionConfig.HoverSpeed);
                 FacePlayer();
                 time += Time.deltaTime;
@@ -305,7 +310,7 @@ namespace BossRush
             for (int i = 0; i < count && IsFighting && !HasPhaseTransition; i++)
             {
                 Vector3 from = _boss.transform.position;
-                Vector3 direction = CharacterMainControl.Main.transform.position - from;
+                Vector3 direction = CombatPlayer.transform.position - from;
                 direction.y = 0f;
                 float length = Mathf.Min(SandstormChampionConfig.DashMaxLength,
                     direction.magnitude + SandstormChampionConfig.DashOvershoot);
@@ -356,6 +361,7 @@ namespace BossRush
                 float elapsed = 0f;
                 float blocked = 0f;
                 bool hit = false;
+                HashSet<CharacterMainControl> hitPlayers = BossRushCoop.IsConnected ? new HashSet<CharacterMainControl>() : null;
                 bool strikeBlocked = false;
                 // 末阶段「沙暴无形」：冲锋直接穿过墙体与掩体（逐帧贴地重设位置），玩家仍在前方时还会微调方向。
                 bool phasing = _phase == 3;
@@ -381,14 +387,27 @@ namespace BossRush
                         break;
                     }
                     // 用扫过的线段判命中，低帧率也不会穿过玩家却漏伤害。
-                    if (!hit && !BossSkillDamageRules.IsDodging(CharacterMainControl.Main)
-                        && DistanceToSegment(CharacterMainControl.Main.transform.position, previous, _boss.transform.position)
+                    if (hitPlayers != null)
+                    {
+                        foreach (BossRushCoopPlayer participant in BossRushCoop.Players)
+                        {
+                            CharacterMainControl player = participant.Character;
+                            if (!participant.IsAlive || hitPlayers.Contains(player) || BossSkillDamageRules.IsDodging(player)
+                                || DistanceToSegment(player.transform.position, previous, _boss.transform.position) > SandstormChampionConfig.ContactRadius) continue;
+                            hitPlayers.Add(player); hit = true;
+                            HurtPlayer(player, _phase == 3 ? SandstormChampionConfig.DashDamageP3
+                                : _phase == 2 ? SandstormChampionConfig.DashDamageP2 : SandstormChampionConfig.DashDamage, previous);
+                            PlayDashImpact(player.transform.position, direction);
+                        }
+                    }
+                    else if (!hit && !BossSkillDamageRules.IsDodging(CombatPlayer)
+                        && DistanceToSegment(CombatPlayer.transform.position, previous, _boss.transform.position)
                             <= SandstormChampionConfig.ContactRadius)
                     {
                         hit = true;
                         HurtPlayer(_phase == 3 ? SandstormChampionConfig.DashDamageP3
                             : _phase == 2 ? SandstormChampionConfig.DashDamageP2 : SandstormChampionConfig.DashDamage, previous);
-                        PlayDashImpact(CharacterMainControl.Main.transform.position, direction);
+                        PlayDashImpact(CombatPlayer.transform.position, direction);
                     }
                 }
                 StopMotion();
@@ -411,7 +430,7 @@ namespace BossRush
         private void AimDash(Vector3 from, float speed, float lead, float remainingWindup,
             out Vector3 direction, out float length)
         {
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = CombatPlayer;
             Vector3 target = player.transform.position;
             Vector3 velocity = Vector3.ClampMagnitude(_playerVelocity, SandstormChampionConfig.DashLeadMaxSpeed);
             Vector3 flat = target - from;
@@ -434,9 +453,11 @@ namespace BossRush
         /// <summary>每帧按玩家位移差分出水平速度并做约 0.12 秒的指数平滑；切图 / 瞬移时重新起算。</summary>
         private void TrackPlayerVelocity()
         {
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = CombatPlayer;
             float dt = Time.deltaTime;
             if (player == null || dt <= 0f) return;
+            if (_velocityPlayer != player)
+            { _velocityPlayer = player; _playerVelocityPrimed = false; _playerVelocity = Vector3.zero; }
             Vector3 position = player.transform.position;
             if (_playerVelocityPrimed)
             {
@@ -465,7 +486,7 @@ namespace BossRush
                 Vector3 from = _boss.transform.position;
                 if (steer)
                 {
-                    Vector3 toPlayer = CharacterMainControl.Main.transform.position - from;
+                    Vector3 toPlayer = CombatPlayer.transform.position - from;
                     toPlayer.y = 0f;
                     if (toPlayer.sqrMagnitude > 1f && Vector3.Dot(toPlayer.normalized, direction) > 0.2f)
                         direction = Vector3.RotateTowards(direction, toPlayer.normalized,
@@ -490,7 +511,7 @@ namespace BossRush
             if (!IsFighting) return;
             Vector3 safe;
             Vector3 at = _boss.transform.position;
-            if (!SpawnPositionHelper.TryResolveReachableFrom(at, CharacterMainControl.Main.transform.position, 3f,
+            if (!SpawnPositionHelper.TryResolveReachableFrom(at, CombatPlayer.transform.position, 3f,
                 SpawnPositionHelper.DefaultLiftOffset, out safe)) return;
             Vector3 delta = safe - at;
             delta.y = 0f;
@@ -512,7 +533,7 @@ namespace BossRush
             int emitted = 0;
             while (elapsed < duration && IsFighting && !HasPhaseTransition)
             {
-                Vector3 player = CharacterMainControl.Main.transform.position;
+                Vector3 player = CombatPlayer.transform.position;
                 Vector3 away = _boss.transform.position - player;
                 away.y = 0f;
                 if (away.sqrMagnitude < 0.01f) away = Vector3.forward;
@@ -532,7 +553,7 @@ namespace BossRush
             }
             if (IsFighting && !HasPhaseTransition)
                 while (emitted++ < count) SpawnOrb(_boss.transform.position + Vector3.up,
-                    CharacterMainControl.Main.transform.position - _boss.transform.position, 1f);
+                    CombatPlayer.transform.position - _boss.transform.position, 1f);
             StopMotion();
         }
 
@@ -541,13 +562,13 @@ namespace BossRush
             float duration = SandstormChampionConfig.SpiralBubbleSeconds;
             float elapsed = 0f;
             int emitted = 0;
-            Vector3 radial = _boss.transform.position - CharacterMainControl.Main.transform.position;
+            Vector3 radial = _boss.transform.position - CombatPlayer.transform.position;
             radial.y = 0f;
             if (radial.sqrMagnitude < 0.1f) radial = Vector3.forward;
             radial.Normalize();
             while (elapsed < duration && IsFighting && !HasPhaseTransition)
             {
-                Vector3 player = CharacterMainControl.Main.transform.position;
+                Vector3 player = CombatPlayer.transform.position;
                 Vector3 desired = player + Quaternion.Euler(0f, 360f * elapsed / duration, 0f)
                     * radial * SandstormChampionConfig.SpiralOrbitRadius;
                 MoveToward(desired, SandstormChampionConfig.SpiralOrbitSpeed);
@@ -555,7 +576,7 @@ namespace BossRush
                 // 每次用实际当前位置瞄准内侧玩家；理想轨道径向不代表受建筑阻挡后的实际发射方向。
                 while (emitted < count && elapsed >= emitted * duration / count)
                 {
-                    Vector3 inward = CharacterMainControl.Main.transform.position - _boss.transform.position;
+                    Vector3 inward = CombatPlayer.transform.position - _boss.transform.position;
                     SpawnOrb(_boss.transform.position + Vector3.up, inward, 1.1f);
                     emitted++;
                 }
@@ -564,7 +585,7 @@ namespace BossRush
             }
             if (IsFighting && !HasPhaseTransition)
                 while (emitted++ < count) SpawnOrb(_boss.transform.position + Vector3.up,
-                    CharacterMainControl.Main.transform.position - _boss.transform.position, 1.1f);
+                    CombatPlayer.transform.position - _boss.transform.position, 1.1f);
             StopMotion();
         }
 
@@ -574,7 +595,7 @@ namespace BossRush
             StopMotion();
             _boss.PopText(cyclone ? L10n.T("沙暴核心", "Sandstorm core") : L10n.T("双生沙卷", "Twin sand funnels"));
             _owner?.PlaySoundEffect(DragonKingConfig.Sound_RainbowSpawn);
-            Vector3 center = CharacterMainControl.Main.transform.position;
+            Vector3 center = CombatPlayer.transform.position;
             Vector3 radial = _boss.transform.position - center;
             radial.y = 0f;
             if (radial.sqrMagnitude < 0.01f) radial = Vector3.forward;
@@ -639,7 +660,7 @@ namespace BossRush
             if (_body != null) { _body.SetCharge(false); _body.SetVisibility(0.2f); }
             yield return WaitForFightSeconds(0.22f);
             if (!IsFighting) yield break;
-            Vector3 player = CharacterMainControl.Main.transform.position;
+            Vector3 player = CombatPlayer.transform.position;
             // 上次冲锋方向的反侧，而不是当前位置的反侧，避免玩家追跑使换侧方向翻转。
             Vector3 away = _lastDashDirection.sqrMagnitude > 0.01f
                 ? -_lastDashDirection : _boss.transform.position - player;
@@ -813,7 +834,7 @@ namespace BossRush
         internal void SpawnTornadoVolley(Vector3 at, bool cyclone)
         {
             if (!IsFighting) return;
-            Vector3 direction = CharacterMainControl.Main.transform.position - at;
+            Vector3 direction = CombatPlayer.transform.position - at;
             direction.y = 0f;
             if (direction.sqrMagnitude < 0.01f) direction = Vector3.forward;
             // 一柱每次一只可击破沙鲨，柱自身严格控制总数为 6 / 12；不受沙卫在场影响。
@@ -833,7 +854,7 @@ namespace BossRush
         {
             if (!IsFighting) return;
             Vector3 safe;
-            if (!SpawnPositionHelper.TryResolveReachableFrom(target, CharacterMainControl.Main.transform.position,
+            if (!SpawnPositionHelper.TryResolveReachableFrom(target, CombatPlayer.transform.position,
                 2f, 0.1f, out safe)) return;
             SpawnTornado(safe, cyclone);
             if (_ambience == null) _ambience = SandstormAmbience.Create();
@@ -858,7 +879,7 @@ namespace BossRush
 
         private void UpdateEnrage()
         {
-            Vector3 delta = CharacterMainControl.Main.transform.position - _arenaCenter;
+            Vector3 delta = CombatPlayer.transform.position - _arenaCenter;
             delta.y = 0f;
             bool previous = _enraged;
             if (delta.sqrMagnitude <= SandstormChampionConfig.ArenaReturnRadius * SandstormChampionConfig.ArenaReturnRadius)
@@ -892,13 +913,23 @@ namespace BossRush
         private void TickContactDamage()
         {
             if (_boss.Health.Invincible) return;
-            CharacterMainControl player = CharacterMainControl.Main;
+            if (BossRushCoop.IsConnected)
+            {
+                foreach (BossRushCoopPlayer participant in BossRushCoop.Players)
+                    if (participant.IsAlive) TickContactDamage(participant.Character);
+            }
+            else TickContactDamage(CombatPlayer);
+        }
+
+        private void TickContactDamage(CharacterMainControl player)
+        {
+            if (player == null) return;
             Vector3 delta = player.transform.position - _boss.transform.position;
             float height = Mathf.Abs(delta.y);
             delta.y = 0f;
             if (height <= 2f && delta.sqrMagnitude <= SandstormChampionConfig.ContactRadius * SandstormChampionConfig.ContactRadius
                 && !BossSkillDamageRules.IsDodging(player))
-                HurtPlayer(_phase == 3 ? SandstormChampionConfig.DashDamageP3
+                HurtPlayer(player, _phase == 3 ? SandstormChampionConfig.DashDamageP3
                     : _phase == 2 ? SandstormChampionConfig.DashDamageP2 : SandstormChampionConfig.DashDamage,
                     _boss.transform.position);
         }
@@ -1002,7 +1033,7 @@ namespace BossRush
 
         private void FacePlayer()
         {
-            if (IsFighting) Face(CharacterMainControl.Main.transform.position - _boss.transform.position);
+            if (IsFighting) Face(CombatPlayer.transform.position - _boss.transform.position);
         }
 
         private void Face(Vector3 direction)
@@ -1022,8 +1053,19 @@ namespace BossRush
 
         internal void HurtPlayer(float damage, Vector3 point)
         {
-            if (!IsFighting || damage <= 0f || Time.time < _nextDamageTime) return;
-            CharacterMainControl player = CharacterMainControl.Main;
+            HurtPlayer(BossRushCoop.GetCombatTarget(point), damage, point);
+        }
+
+        internal void HurtPlayer(CharacterMainControl player, float damage, Vector3 point)
+        {
+            if (!CoopAiPredictionHealthProtection.HasEntityAuthority(_boss) || !IsFighting || player == null || damage <= 0f) return;
+            float next;
+            if (BossRushCoop.IsConnected)
+            {
+                if (_playerDamageTimes.TryGetValue(player, out next) && Time.time < next) return;
+                _playerDamageTimes[player] = Time.time + SandstormChampionConfig.DamageGraceSeconds;
+            }
+            else if (Time.time < _nextDamageTime) return;
             if (!Team.IsEnemy(_boss.Team, player.Team) || player.mainDamageReceiver == null) return;
             _nextDamageTime = Time.time + SandstormChampionConfig.DamageGraceSeconds;
             DamageInfo info = new DamageInfo(_boss);
@@ -1072,6 +1114,7 @@ namespace BossRush
 
         private void ClearHazards()
         {
+            _playerDamageTimes.Clear();
             if (_warning != null) Destroy(_warning.gameObject);
             _warning = null;
             if (_novaWarning != null) Destroy(_novaWarning);

@@ -12,6 +12,7 @@ namespace BossRush
         internal const string NameKey = "BossRush_SandstormChampion_Minion";
         private SandstormChampionMinions _owner;
         private CharacterMainControl _character;
+        private CharacterMainControl CombatPlayer { get { return BossRushCoop.GetCombatTarget(_character != null ? _character.transform.position : transform.position); } }
         private CharacterRandomPreset _preset;
         private AI_PathControl _path;
         private Seeker _seeker;
@@ -94,7 +95,7 @@ namespace BossRush
 
         private void TickCombat()
         {
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = CombatPlayer;
             if (player == null || player.Health == null || player.Health.IsDead)
             {
                 Despawn();

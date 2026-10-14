@@ -17,6 +17,28 @@ namespace BossRush
 {
     internal sealed class SandstormChampionBody : MonoBehaviour
     {
+        private static readonly Dictionary<CharacterMainControl, SandstormChampionBody> coopBodies = new Dictionary<CharacterMainControl, SandstormChampionBody>();
+        internal static SandstormChampionBody FindForCoop(CharacterMainControl character)
+        {
+            SandstormChampionBody body;
+            return character != null && coopBodies.TryGetValue(character, out body) ? body : null;
+        }
+        internal static void ResetStaticCaches() { coopBodies.Clear(); }
+        private void OnDestroy()
+        {
+            SandstormChampionBody current;
+            if (!ReferenceEquals(_boss, null) && coopBodies.TryGetValue(_boss, out current) && current == this) coopBodies.Remove(_boss);
+        }
+        internal void WriteCoopState(BossRushCoopBossState state)
+        {
+            state.eyesOnly = _eyesOnly; state.charging = _charging;
+            state.intensity = _intensityTarget; state.visibility = _visibilityTarget;
+        }
+        internal void ReadCoopState(BossRushCoopBossState state)
+        {
+            SetEyesOnly(state.eyesOnly); SetCharge(state.charging);
+            SetIntensity(state.intensity); SetVisibility(state.visibility);
+        }
         private CharacterMainControl _boss;
         private readonly List<Renderer> _hidden = new List<Renderer>();
         private float _nextHideCheck;
@@ -50,6 +72,8 @@ namespace BossRush
             body._boss = boss;
             body._scale = Mathf.Max(0.5f, scale);
             body._minion = minion;
+            coopBodies[boss] = body;
+            BossRushCoopFxRuntimeModule.TrackBoss(boss, minion ? "sand-minion" : "sand");
             body.HideBaseRenderers();
             try { body.Build(); }
             catch (Exception e) { ModBehaviour.DevLog(SandstormChampionConfig.LogPrefix + "[WARNING] 外形构建失败: " + e.Message); }
