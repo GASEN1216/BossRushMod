@@ -2,12 +2,41 @@
 
 更早记录见 `archive/`；月度归档索引保留在本文件正文。
 
+
+## 2026-10-13 联机独立复审（COMPAT / WIRE+，L1/L2；L3 单独记载）
+
+覆盖 `codex/coop-full-compat` 相对 `f18ec695` 的全部工作区代码，包括未跟踪文件。下列为本轮已确认并修复的具体缺陷；Fixed 表示生产修复与相应回归闭环，不表示 2–16 人全玩法实机通过。完整原始失败、后续复验、源码和产物对应关系见 [独立验收报告](docs/reports/testing/2026-10-13-联机独立复审与实机验收.md)。
+
+| ID | 等级 / 状态 | 原因、玩家影响与修复 | 证据 |
+| --- | --- | --- | --- |
+| CR-2026-10-13-014 | P0 / Fixed | 动态 Mod DTO 经 Unity JsonUtility 在真实游戏漏 players / 嵌套物品数据，客端无法完成会话及玩法。联机消息及内层 JSON 统一真实字段 codec，复用现有解析器，完整保留 UInt64、官方物品字段和集合。 | 真实双端缺字段 → 真实 Mono JsonProbe2 92/0；CoopJson 和实际 codec 回归。 |
+| CR-2026-10-13-015 | P1 / Fixed | 原生 Direct 断线漏 ModApi 回调、重连旧 peer、hello/welcome 乱序可使身份/资产过期。按原生 peer 对账、单调握手、换槽立即 hello 和换房重置。 | CoopSession 实际运行时，5 反向探针；真实重连日志。 |
+| CR-2026-10-13-016 | P1 / Fixed | 同房重连空 RunId 清待交付及去重收据；旧控制授权/释放乱序复活旧租约。保留同房欠账，控制权采用版本与释放墓碑。 | CoopProtocol 真实递送 / 租约方法，旧码红、新码绿。 |
+| CR-2026-10-13-017 | P1 / Fixed | 世界箱大快照超消息大小上限、同位置冲突仅查 256 次，导致完整箱子丢同步。完整数据分片收齐后应用，按实际箱数探原生键。 | 2048 箱约 601 KB、895 箱首次超限；CoopWorldRuntime 2048 箱与 300 同位置箱、3 反向验证。 |
+| CR-2026-10-13-018 | P1 / Fixed | 房主换槽清其他人的亡魂、同 AI ID 新身体漏装配、空握手丢当前墓箱请求。区分个人/世界清理，绑定实际对象，保留同房在途记录。 | DeathWraithCoop / Persistence，完整 tomb 入口、16 主人、多条同位置不同 raid，真 codec。 |
+| CR-2026-10-13-019 | P1 / Fixed | 配偶旧帧恢复已离婚实体；宠物部署/释放乱序、换体漏绑定、重连重开经验预算。按主人资产与序号裁决，换体重绑，同房保留 XP 去重及预算。 | CoopSpouses / CoopContent，失败/乱序/重连/资产边界；真实 AI 另需 L3。 |
+| CR-2026-10-13-020 | P1 / Fixed | 截信人客人受害却扣房主背包；异步取消丢原物退款责任。改为受害者原资产预留、完整物品树入首领包后提交，取消/失败对原资产重试退款。图鉴延迟事实另冻结源模式/场景/时间。 | WaylayerEscrow、ContentThirdReviewFixes；完整事务与真实 codec。 |
+| CR-2026-10-13-021 | P1 / Fixed | D/E/F 准入、起始物实际交付及失败退款不完整；F 累计账本乱序、结算写当前槽。按实际交付确认，原资产欠账、累积幂等结算；中途 D 准入仅参加未完成波次。 | 模式域生产入口回归；夹具支付/库存/交付可失败。 |
+| CR-2026-10-13-022 | P1 / Fixed | G/H 房主个人死亡/换槽影响世界流程或旧个人结算；G 未开 UI 客人不注册通道。世界与个人义务分离，原参与资产保留，G 通道按正确生命周期常驻注册。 | ModeGEntryOwners / ModeHCoop；真实 round3 G 就绪超时与 round4 初始化异常均保留并逐轮修复。 |
+| CR-2026-10-13-023 | P1 / Fixed | 丧尸准备阶段按尚未领起始物的参赛名单寻找出生点，实机名单必空；房主先死也可能阻断活客人准备。初始化使用实际活队员，战斗仍按已准入集合。 | round3 CollectSpawnPoints=0 真实失败，ZombieCoopFlow 生产边界回归。 |
+| CR-2026-10-13-024 | P1 / Fixed | 天空岛原生迟加入缺旅行租约；旧快照/慢速反序恢复旧效果；征程个人死亡/旧场景事实混入当前进度。补实际原生入口、身份/版本与个人生存门。 | SkyIslandCoopCommands / RaidLease / SceneReferenceBridge，CampaignPlayability。 |
+| CR-2026-10-13-025 | P1 / Fixed | 多个 Boss 只认房主、远端镜像无法 AddForce、固定 32 接收体截断多人和 AI。逐角色裁决，本人生命 token 接收击退，查询扩容且保留完整兜底；换目标重新采样速度。 | DragonKingCoopWorld / AuditCombatSeptember / SandstormCombatTiming；16×4 与超过 512 接收体，真实生产裁决和 codec。 |
+| CR-2026-10-13-026 | P1 / Fixed / SAFE | 验证可能执行旧 bin；F3 同图提前判成功、H 未真付票、终章在官方无敌期间仅伤害一次、报告 DTO 漏字段。显式构建并执行本次 TargetPath；场景实际换 handle、真实付票/关闭按钮、检查实际 Hurt 与完整 JSON 报告。 | RuntimeRegressionRunner / GameplayValidation / CampaignPlayability / ResourceProduction；真实失败报告保留，不把流程修复当玩法通过。 |
+| CR-2026-10-13-027 | P1 / Fixed | 龙裔在未激活对象上 Initialize，实机无法启动手雷协程。初始化移到异步有效性检查、激活和解除距离休眠之后。 | round5 唯一 RUNTIME_ERRORS；DragonSpawn 50 条执行断言、旧顺序副本实红/按字节恢复再绿。 |
+| CR-2026-10-13-028 | P1 / Fixed | 玩法每帧重复 MarkSceneReady，原生按帧消费的消息队列被重复准备事实占用。首次立即发送，保留既有 hello 周期重报。 | round5 实际 30 秒收到 577 条 ready、房主转发 1112 条；CoopSession 16 人生产表、逐帧重复、周期重报、新代次共 5 条新增断言，旧码红/修后绿。低帧和全部历史丢包原因不只据此归因。 |
+| CR-2026-10-13-029 | P2 / Fixed / SAFE | F3 在帧末之前取文字/地圈坐标却使用帧末像素，失败截图还可能沿用上次 LastShot。取样与截图对齐帧末，每次先清旧分析；修复 D/E/F/H/Zombie 入场前提、真实支付隔离、撤离圈与异步结果等待。 | CaptureTiming 38、F3ValidationExecution 110；实际旧取样/旧缓存转红并恢复；Windows 编译另发现并修正 ItemTreeExtensions 命名空间缺失，夹具不再伪造 Item 实例 DestroyTree。 |
+| CR-2026-10-13-030 | P1 / Fixed | 全员死亡后客端仍把原生健康镜像算活人，阻止失败/返程。由房主发送真实存活事实，客端将其绑定原资产、代次和身体，并在房主断开或身份变化时失效。 | round6 真三端 host alive=0、guest 各 alive=2；CoopSession 40 条含真实外层 Player/Runtime/codec，旧码转红，Alive guard 4 项反向验证按字节恢复。 |
+| CR-2026-10-13-031 | P1 / Fixed / WIRE+ | 原版 COOP 的 Base 十秒授权在等待 Closure 期间过期，重复票决导致全死房间无法返程。延续同次原生批准、同房/资产/身体/本地源场景许可，换体、卸载、取消及换档清理；房主先走不撤销慢客许可。 | 真实安装 SceneNet IL / Harmony 回归；相同生产 helper 三端热装实际等待 15.879/77.608/77.593 秒、真实继续按钮、新 Base 活体与许可释放，证据 l3-base-return-round6。完整 DLL 实机复跑另记。 |
+| CR-2026-10-13-032 | P1 / Fixed | G 准入缺少实际付款后的房主确认，入场在途事实可能丢失，迟到旧波可能阻断顺序，错槽付款缺可靠拒绝退款。冻结实际入场基准，可靠确认或拒绝，保留所有有效新事实，旧波按严格顺序确认；原客端和房间约束覆盖异步续作。 | ModeGEntryOwners 290 条生产外层/核心/codec/真实退款断言，ModeGCombat 33 组；错误新槽在付款前拒绝，过期快照已付时原船票/信物各退一次。 |
+| CR-2026-10-13-033 | P1 / Fixed | E/F/Z 旧局个人收据可能丢失或写入新局/新合同；Zombie 世界成功快照提前标个人结清，且不同房主相同数字 run 覆盖旧钱包。按原房间、资产、局与原合同保留债务，E 每十杀原烟雾弹分别补发；Zombie 仅实际现金及合同完成后结清。 | E 84、F 108、Zombie 59 条生产执行边界，Campaign 原合同对象与接受版本冻结、真实观察及写失败重试；模式最新 10 项 guard+runtime 破坏转红/按字节恢复。 |
+| CR-2026-10-13-034 | P1 / Fixed | E/F 共享给物函数在入包、合堆或落地已提交后异常，仍可能重复给物或销毁已交付物。复用实际库存交付事务，以物品归属、合堆差额与落地 agent 确认提交，只销毁未交付实例。 | ModeECoopEpoch 真实 helper 与库存事务覆盖通知、合堆、Drop、bubble 异常及工厂期间换资产；旧路径执行转红，恢复后绿。 |
+| CR-2026-10-13-035 | P1 / Fixed | 断开 COOP 或换房后旧客端实体、模式投影及异步工厂可能获得单机世界权限；旧 Arena 续作还会清除新付费入口。冻结原房间与角色，实体保留永久出生身份，旧任务失效并仅清理自己持有的入口；E/F 原会话门覆盖敌人、煤球及商人异步，恢复传送逐实体检查出生权限。 | CoopAiPrediction 32 条与 5 组 guard/执行反向验证；模式生命周期、Arena 120、Random 762、Campaign 273、DragonKing 159 与 DragonSpawn 77 条，世界最后 10 组负例按字节恢复。 |
+
+未完成的实机人数、玩法和性能边界统一在独立验收报告标出。正常玩家存档未访问，所有实机只在新建隔离专用档执行。
+
 ## 2026-10-13 推送后跨平台门禁修复（Fixed，COMPAT / SAFE，L2）
 
-- CR-2026-10-13-012，P2 / COMPAT：天空岛导航、道路与摆放审计将 Windows CRLF 原字节 SHA 带入公开仓库，Linux LF 签出误报布局/证据过期；生产 `apply_navigation` 同样误拒绝。复用 `sky_island_road_layout` 的纯函数，新签名只统一 CRLF→LF，读取兼容既有原字节、LF 和 CRLF。真实坐标、字段、空白、BOM 与字符串变化仍拒绝；不重写现有地图或审计 JSON。三项旧码在真实 Ubuntu LF 环境均复现，修后两种换行及生产拒绝路径完成反向验证。
-- CR-2026-10-13-013，P2 / SAFE：植物几何测试在公开源码 CI 强制读取私有 OBJ/MTL，干净签出必失败。源码模式改用公开摆放包络驱动真实细化算法，明确报告 `PARTIAL`；完整模式保留真实模型、原半径与拓扑检查，缺原件仍失败。公开 12 类 / 36 包络、本地 12 个真实模型及 4 类破坏/恢复检查通过，证据 `Build/ci-flora-20261013/probe-687b5c9a/evidence.json`。
-
-首推提交 `15439905` 的远端 Guards 失败由以上两类原因导致，共 4 项；Wiki 构建与部署通过。修后公开 LF 副本全量 736 PASS / 9 PARTIAL / 0 FAIL，日志 `Build/commit-20261013/source-only-final-outside-build.log`；指纹证据 `Build/ci-fingerprint-20261013/`。本次只改离线工具、测试与文档，1196 个已编译生产源哈希一致；不据门禁修复宣称实机或性能验证完成。
+[CR-2026-10-13-012/013 的完整闭环记录](archive/CODE_REVIEW_FINDINGS_2026-10.md)已按原字节归档；范围仅为跨平台守卫与离线工具修复。
 
 ## 2026-10-13 玩家反馈实现全面复审与修复（Fixed，COMPAT，L1/L2）
 

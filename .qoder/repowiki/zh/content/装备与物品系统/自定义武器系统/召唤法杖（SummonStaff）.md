@@ -382,3 +382,11 @@ Manager --> WeaponCfg
 - [summon-staff.md:1-38](file://wiki-site/docs/en/equipment/summon-staff.md#L1-L38)
 - [SummonStaffConfig.cs:49-79](file://Integration/NewWeapons/SummonStaff/SummonStaffConfig.cs#L49-L79)
 - [SummonStaffWeaponConfig.cs:28-47](file://Integration/NewWeapons/SummonStaff/SummonStaffWeaponConfig.cs#L28-L47)
+
+## 2026-10-13 联机接线（COMPAT / WIRE+）
+
+施法请求由实际玩家认证，房主执行原异步召唤并登记 AI；每个主人独立计算冷却、召唤上限和随从归属。客户端收到独立数量投影，不本地复制 AI。请求重发按唯一 ID 去重，完成后仍检查房间、场景、主人和手持状态。原手持预热与逐帧生成约束保留。
+
+实现：[SummonStaffAction.cs](file://Integration/NewWeapons/SummonStaff/SummonStaffAction.cs)、[BossRushCoopContentRuntimeModule.cs](file://Integration/Coop/BossRushCoopContentRuntimeModule.cs)。`EquipmentManualFindingsGuard` 更新 UniTask 签名并完成隔离破坏分帧语句的反向验证；属于 L2，不能证明网络和实机召唤（L3）。
+
+请求、数量回复、个人冷却与生成后的随从归属都绑定创建时的资产身份。相同角色对象切槽后，旧 await 续作失效，旧请求不重发，数量立即清空；房主清理旧槽随从且不以伤害触发爆裂。`CoopContent` 直接执行生产协议与归属方法，覆盖 16 位玩家、重复输入、错槽回复、独立冷却与异步主人检查（L2）。

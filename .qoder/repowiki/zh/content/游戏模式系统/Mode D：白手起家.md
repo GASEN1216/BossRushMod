@@ -1,5 +1,9 @@
 # Mode D：白手起家
 
+2026-10-13 联机接线（COMPAT / WIRE+，L1/L2，L3 待验）：房主唯一推进波次并生成敌人，客人投影共享战况，每人按原净身检查与原数值领取自己的初始物资。物资标签绑定本场与本人资产身份，不把房主装备复制给客人，也不因全房人数合并物资。每波冻结有效参与者；5 波无伤、10 波通关和 Boss 类型事实定向交付到本人的成就入口。真实 Boss 实例沿用原去重集合，个人网络事实另由收据去重。切槽后不会把原槽的物资或成绩交给新槽，原槽恢复可继续处理尚未确认的收据。
+
+实现：[Mode D 联机模块](file://ModeD/ModeDRuntimeModule_Coop.cs)、[开局物资与生命周期](file://ModeD/ModeDRuntimeModule_Lifecycle.cs)、[权威波次](file://ModeD/ModeDRuntimeModule_Waves.cs)、[执行回归](file://tests/fixtures/ArenaCoop/README.md)。这些提供隔离执行与接线证据；实际多机裸装校验、复活后装备和战斗同步尚须游戏内验收。
+
 2026-10-08 入场归属修复（COMPAT，CR-2026-10-08-018）：DEMO 竞技场的就绪等待、完整 setup、Mode E 启动验证和路牌补建共用 `IntegrationRuntimeModule` 的 arena entry request。请求绑定原场景 handle 与就绪后的唯一主角；原图卸载、官方开始下一次加载、角色替换 / 死亡、后继请求与模块销毁会取消旧任务，30 秒等待超时也不再派发 setup。旧代码原图卸载后仍等待满 30 秒，再读取当前天空岛角色的裸装状态并误启动 Mode D；修复后每次协程恢复都检查原请求归属。`LegacyArenaEntry` 执行真实模式判定、完整 DEMO setup 与 Mode D 生命周期，旧生产源码在跨图迟到启动断言实跑转红；证据为 L1 / L2，具体玩家返航原因仍需对应日志或实机确认。
 
 2026-10-06 波次血量与难度叠加（COMPAT）：`ApplyModeDWaveScaling` 保留每波 3% 规则，用整体 `PercentageMultiply` 叠加并回读 `Health.MaxHealth` 同步满血。先按已经受 Boss 生命比例影响的 `Stat.Value` 算 Add 增量，会让增量再次吃末尾百分比，例如 50% 难度、第 2 波的 1000 基准 Boss 原会得到 507.5 上限却写入 515 当前血量；修正后两者均为 515。普通敌人仍只接受本来的波次倍率。
@@ -402,3 +406,5 @@ Mode D 通过独立敌池、随机装备与全局掉落池，构建了“从零�
 2026-09-25 模块解耦（COMPAT）：[ModeDItemPool.cs](file://ModeD/ModeDItemPool.cs) 与配装、StarterKit、GlobalLoot partial 持有 D/E/F 共用的发装池、物化计划、品质分桶和全局掉落缓存；装配时绑定既有 Boss 候选目录、Legacy 配置、征程近战工具判据和丧尸候选排除判据。后两项仍在原随机分支位置求值。[ModeDRuntimeModule.cs](file://ModeD/ModeDRuntimeModule.cs) 持有 D 波次状态、敌人列表与协程句柄，敌池扫描、预设选择、自动下一波、路牌、刷怪、结算与启停主体均进入同一模块。裸装及玩家背包检查由 [ModeEntryInventory.cs](file://Utilities/ModeEntryInventory.cs) 承接；[ModeD.cs](file://ModeD/ModeD.cs) 保留跨模式入场协调与兼容桥。`CaptureValidity` 直接读取模块状态，D 与 Arena 的完整性计时仍沿用原共享时钟和调度槽位。隔离正式编译、Mode D 守卫与全量 69 项执行回归通过；波次结案回归直接链接生产模块，覆盖迟到任务、生成未结案、活敌及重复完成门，真实游戏仍待验收。
 
 2026-10-06 二次深审：地图选择费用查询也统一在注册未就绪／查询异常时回退 BossRushItemIds.BossRushTicket，和裸体准入使用同一发布常量；不再使用原版模板 868。
+
+2026-10-13 联机事务复核（COMPAT / WIRE+，L1/L2）：实际入口仍要求裸装，完整 starter 成功落地后才认可个人参与；发装失败回收本次新物，部分回收失败保留原对象欠账，只在原资产重试。同场景重复进入尚未结束的共享 run 不失效其刷怪代次；迟获准可参与当前未结案波次，已完成波次奖励不会补给后来者。房主死亡仅结束自己的个人资格，原参赛者仍存活时共享世界继续。个人 Boss 成就和波次奖励用冻结资产收据，房主也走该归属路径。`ArenaCoop`、`AuditModeLifecycle`、`ModeDEntryOwnership` 执行生产事务与边界；F3 验收先保管真实原装备和整个物品树，再走 `TryStartModeD`，最后原物恢复，避免裸装前提错误造成假失败。

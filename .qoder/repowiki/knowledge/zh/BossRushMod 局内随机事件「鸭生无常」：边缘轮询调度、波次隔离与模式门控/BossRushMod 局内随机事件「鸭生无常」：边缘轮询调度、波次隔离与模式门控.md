@@ -1,4 +1,15 @@
 ---
+
+## 2026-10-13 原版 COOP 接线
+
+房主单独驱动事件调度和世界副作用，`RandomEventsRuntimeModule_Coop` 发布当前事件实例、剩余时间、锚点与临时商人实体。客端的 Director 只保留事件 HUD，并执行血月本机天气/暗角或三种 Tempo 本机属性；不会调用乱入 Boss、现金、空投或游行的生成器。空投落地注册唯一原生 Loot 库存，金鸭雨沿原生 Item.Drop，同位置烟花/声东击西表现通过房主事件重播。临时商人绑定原生 AI 外壳并建立个人店铺。
+
+血月维持原单次金额，对当前连接成员分别发送可确认、可重试的个人现金收据。共享世界掉落没有按成员复制。房主死亡后只要还有活人，事件继续围绕存活成员展开。切图、断线和模块销毁会释放本机属性、天气与店铺。
+
+`RandomEventsCoop` 链接生产投影/调度/清理方法，模拟 16 成员和 11 事件；`RandomEventTempo` 运行生产属性追踪器，覆盖客端只修改自己及各类清理。证据为 L1/L2，实机步骤见 `docs/reports/testing/2026-10-13-联机全量适配验收.md`。
+
+[联机事件运行时](file://RandomEvents/RandomEventsRuntimeModule_Coop.cs)
+
 kind: gameplay_system
 name: BossRushMod 局内随机事件「鸭生无常」：边缘轮询调度、波次隔离与模式门控
 category: gameplay_system
@@ -233,3 +244,5 @@ Boss 乱入和神秘商人的异步请求全部失败时，`HasFailedToStart` �
 
 
 2026-09-22 审计修复（COMPAT，L1，未实机）：金鸭雨捕获该次 RandomEventContext，cleanup 失效此 context；逐堆实例化前后和结束回调均复核，未投放的迟到现金销毁，已落地现金保持玩家收益。空投箱先在 inactive 暂存父节点下实例化并配置独立库存/loader，关闭 autoSetup 避免重复填充；显式激活后若 Loader.Awake.RandomActive 又关根节点则恢复一次，并校验 activeInHierarchy，失败不返回成功箱体。
+
+2026-10-13 联机收尾：RandomEventDirector 在实际模式开始或首次有效世界快照冻结原联网状态、客人 role、room 与本地场景实例。Tick、强制触发及快照应用都先验证原局；真实 Stop、换 role/非空房间沿生产 OnSceneChanged 清除活动事件和本地效果。旧场景仍有同一模式签名时不会凭离线世界权限推进，新局真正结束或新场景实例才可重新建立。暂空同房握手保留当前事件，不擦掉天气。RandomEventsCoop 当前 762 条生产断言及真实 codec 往返覆盖这些边界；原版网络/音画与 16 真实进程帧耗仍为 L3。

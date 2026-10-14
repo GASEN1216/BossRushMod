@@ -421,11 +421,22 @@ journal；已提交结果不得转成退款重打，已退款的旧场不得标�
 由于当前 `/Assets/*` 约定会忽略 UI 二进制，发布流程必须从外部 Unity 制品目录复制并记录
 source/input/bundle SHA-256；若未来要把它们纳入 Git，需另行登记 `OPERATIONAL` 例外。
 
-**Harmony 面。** Mode H 首发唯一允许的 Harmony 新增是
+**Harmony 面。** Mode H 单机控制保留
 `CA_ControlOtherCharacter.CanMove` 与 `CanRun` 两个 postfix
-（`ModeH/ModeHHarmonyPatches.cs`）。禁止扩大到 `CanUseHand`/`CanControlAim`
-或全局 team、输入、索敌、死亡逻辑；额外死亡掉落抑制仍只走
+（`ModeH/ModeHHarmonyPatches.cs`）。2026-10-13 联机扩展通过
+`Common/Coop/BossRushCoopControl.cs` 的临时操控租约转发指定实体的输入；
+只有租约拥有者、本场景代次、递增序号匹配的包可在房主执行，退出/断线/切图恢复原控制器。
+租约建立与控制确认分开：房主收到所属玩家真实输入、本机绑定目标镜像后才报告控制成功；未确认时重发状态，释放时清除移动、射击、奔跑和瞄准。
+不扩展 `CanUseHand`/`CanControlAim`；额外死亡掉落抑制仍只走
 `Patches/Combat/CharacterOnDeadPatch.cs` 的既有扩展。
+
+**联机个人比赛凭证（SCHEMA+）。** `BossRush_ModeHCoop_v1` 由 `ModeHCoopLedger`
+通过 `BossRushSlotJsonStore` 和共享保存协调引擎整存 JSON，schemaVersion 为 1。
+旧档无键时为空记录；未知版本或不可读数据进入写屏障。记录各人的对阵 run/match、
+选择队伍、赔率、种子、弃赛、结果 token 与个人净收益，不复制房主 Season。
+实际本金、押品和赔付继续经过原 `ModeHCashBetService`，重复收据不能再次支付。
+各个人收据与在途玩法命令冻结随机资产身份 `AssetId`；网络不传存档槽号或内容。切槽不能沿用旧准备资格、在途支付或奖励，旧义务保留至原槽身份回来；删除当前槽后新建身份，旧义务不能进入新档。
+个人选择持久化和付款完成后才报告准备；上一场收据晚到时保留未结义务。
 
 **UI 层级面。** `BossRushUILayers` 新增四个常量，必须保持按数值升序声明：
 `ModeHHud = 960`、`ModeHDiagnostics = 970`、`ModeHModal = 980`（插在 `ModeGEntry = 950`
@@ -947,3 +958,29 @@ Boss 音频调用使用 `AcquireBossBgm(bossKey, owner)` / `ReleaseBossBgm(bossK
 同 key 多 owner 只在最后一个释放后停止；不同 key 按最近仍存活的 owner 抢占并在其释放后恢复。
 切场景统一清空租约。幽灵女巫普通局保留标准死亡表现；鸭王征程终章只允许 Campaign 发一次
 终章文案、胜利与 stinger，公共死亡清理始终执行且重复回调幂等。
+
+
+## 14. 原版 COOP 联机边界（2026-10-13，COMPAT / WIRE+）
+
+适配目标是 Mr.sans & InitLoader 的工坊 `3591341282`、原版 `EscapeFromDuckovCoopMod` / `EscapeFromDuckovModApi` 公开扩展 API。可选反射绑定集中在 `Common/Coop/BossRushCoopTransport.cs`；没有该程序集时维持单机路径，不加编译时 DLL 依赖。上游源码核对版本为 `65d13a96f47697eac863178f0c3542779299d618`，实装 API 检查由 `CoopInstalledApi` 夹具记录。其他同名重制联机模组不自动视为此协议的实现。
+
+- 房间身份由原生 NetPeer 与房主分配 ID 绑定。`ModMessageContext.IsServer` 是接收侧身份，不能用来认证发送方。客户端快照只接受当前房主 peer；私有命令通过房间、场景代次、序号和发送者校验。
+- 原版 Direct 可能不发 ModNetworkApi 断线事件，成员状态还须以原生 ConnectedPeerList 对账；重连先核对实际旧 peer 已离线。hello 序号冻结槽位变更顺序，welcome 回显该序号并拒绝旧回执；进入另一房间时清空旧成员、roster 序号和场景代次。
+- DLL 与 Assets 内容指纹一致后房间才可接收玩法命令。世界波次、AI、机关、共享容器由房主裁决，个人装备、成长、关系和永久奖励只在所属客户端提交。
+- 动态加载的 Mod 类型不进入 Unity 构建期类型树，实机 JsonUtility 会静默省略部分嵌套数组 / List。联机边界及其中的 JSON 字符串载荷统一使用 BossRushCoopJson：复用共享 BossRushJsonParser，只映射编译期目标类型字段，不接受远端类型名；官方 CustomData 的 SerializeField 私有字段保留。UInt64 种子用十进制字符串保留全部位，接收兼容非负 Int64 数值；UnityEngine.Object、委托、字典和循环图拒绝进入 DTO。不能用 System.Text.Json 替身的成功证明 Unity 序列化可靠。
+- 同步去重不能减少各玩家原有内容：亡魂按玩家、资产身份、raid 与记录快照分别生成；配偶、宠物及召唤保留各自归属。竞技场奖励按冻结参赛名单保留各人的原有份数，不能只留下房主一份，也不能给迟加入的观战者补发旧波奖励。
+- 个人请求、预扣付款及结果收据冻结资产身份；只发送本进程内随机身份，不发送本机槽号。切槽后旧请求不能写新档，切回原槽可重试；删除存档后废弃旧身份，新建同槽不得继承旧收据。聚合统计也要在采集时冻结该身份。
+- `ModNetworkApi` 的频道缓存只有最新一条消息，不是持久事件队列；`CoopGameplayChannel` 发布完整现态，`CoopPersonalDelivery` 用稳定收据 ID、重发与确认完成个人交付。断线期间收据保留，已经离线的人不阻塞当前连接成员的返程。传输队列随房间生命周期清理；不能据此承诺房主进程终止后恢复所有尚未落盘的收据。
+- 客端重连到 welcome 之前的空 RunId 不是新房间，不能清除已收收据和欠交义务。控制租约的授予和释放共用递增 revision；释放墓碑不得被迟到授予覆盖，旧释放也不得抢占较新的租约。
+- 世界箱完整快照按 UTF-16 安全边界分片，单片 envelope 必须低于传输字节上限；只在同 generation / revision 的所有片收齐后替换待装配清单。乱序与重复不得应用半个世界；原生箱 key 冲突查找以实际已注册箱数为界，不得用固定低人数容量裁掉同位置内容。
+- 场景准备事实允许玩法逐帧声明，但同一实际场景代次 / key 只首次立即发送；保留既有 hello 周期重报覆盖丢失、迟加入与重连。清理和新场景实例仍清准备集合，不能把旧就绪继承到同名重载。
+- 原生 AI 标识是有符号 int，负数有效，只有 `0` 表示未知；统一经 `GetAiId` / `FindAi`，不得使用 `id > 0` 判断登记成功。
+- 原版 COOP 的客端预测死亡会追加强制击杀上报。仅对玩法 owner 明确登记的 Mod AI，在本机玩家攻击的 `Health.Hurt` 上下文中保留至少 1 点预测生命；命中反馈与原伤害上报继续执行，真实死亡由房主快照落地。上下文须支持嵌套和异常清理，场景更换立即撤销保护，同一 AI ID 换身后重新绑定。
+- Mod 世界实体的出生角色和原房间保留在实体 marker。停止原生网络后门面恢复单机判据，不代表存量客端复制体或旧房主实体取得单机/新房间的世界伤害资格。实体入口用 `HasEntityAuthority` 校验，预测 owner 清理不擦出生归属；新建单机和新房间实体沿原玩法执行。
+- 新可破坏物件使用房主分配的 entity key，通过 `RegisterWorldDestructible` 给双端原生 tag 赋同一非零 uint。不要用 sibling index 或生成顺序推断跨端身份；完成 Awake 后登记，伤害继续走原生可破坏物通道。
+- 世界宝箱由房主填唯一库存，客户端只有可交互外壳，库存内容继续走原生 Loot 同步。个人奖励收据不能同时填入第二份共享掉落。
+- 原生 SceneLoader 投票返回 CompletedTask 不代表换图完成。必须等实际场景、官方关卡初始化、角色和模块自己的到达屏障；同一场景再次加载也必须换代，旧命令不得作用于新一局。
+- 联机个人模态界面只阻断本地输入，不把 Time.timeScale 置零。HUD 每帧沿用官方界面隐藏与暂停双门。
+- 随机事件及共享变异由房主决定本场集合与世界副作用，客端只应用本机属性/天气/表现；不能重放世界生成、敌方属性修改或伤害。鸭生无常血月现金作为各成员个人收据，金鸭雨与空投继续走唯一原生世界库存。
+
+L1/L2 验证只证明接线、编译及隔离逻辑；房间实际人数、丢包、重连、动作表现、性能和资源加载仍需 L3 多进程游戏验收。

@@ -430,3 +430,18 @@ Boss --> Weapon["PhantomWitchScytheWeaponConfig"]
 此前该武器只登记 ItemFactory 与实例恢复入口，但资源包实际走 EquipmentFactory，导致首次元数据查询可早于完整配置；本地化又只依赖配置末段，统一启动/语言刷新不会重新注入。现在 `EquipmentConfiguratorBootstrap` 登记其专属配置器并按 TypeID 过滤；共享 `PhantomWitchScytheLocalization` 挂进扩展本地化入口，配置器在模型/数值操作前先注入实际 raw key。保留 Item_500044、旧名字和 prefab 名，补大小写/反馈拼写别名，不改 TypeID、存档和资源身份。
 
 真实本地化、统一注入入口与配置入口顺序由 `tests/fixtures/PhantomScytheLocalization` 执行回归；Unity 物品/资源和其他组件为宿主替身，真实 UI、战斗与旧存档仍需实机验收。
+
+## 2026-10-13 联机接线（COMPAT / WIRE+）
+
+女巫在房主选择全房间最近存活玩家；Mode F 准备期拒绝任意房间玩家作为直接攻击目标。客户端只同步原生 AI 上的显隐、阶段与纯特效，不挂自定义战斗控制器或再扣一次角色生命。
+
+实现：[PhantomWitchAbilityController.cs](file://Integration/PhantomWitch/PhantomWitchAbilityController.cs)、[BossRushCoopFxRuntimeModule.cs](file://Integration/Coop/BossRushCoopFxRuntimeModule.cs)。`ModeFPreparationSpawnGuard` 已随全玩家判据更新并实际负向验证（L2）；网络与游戏进程表现待 L3。
+## 2026-10-13 联机密集受击查询（COMPAT / WIRE+）
+
+女巫范围技能与 Boss 咒域通过 `PhantomWitchAbilityController.QueryDamageReceivers` 查询世界接收体，32 个初始槽位满时增长，超过常规缓冲时完整查询，避免 16 人多碰撞器或密集 AI 截断后排目标。每个控制器/咒域持有自己的缓冲和去重集合，敌对过滤、伤害、诅咒与招式规则保留；客户端咒域不再次结算世界伤害。
+
+实现：[PhantomWitchAbilityController_MovementAndDamage.cs](file://Integration/PhantomWitch/PhantomWitchAbilityController_MovementAndDamage.cs)、[PhantomWitchBossCurseRealmRuntime.cs](file://Integration/PhantomWitch/PhantomWitchBossCurseRealmRuntime.cs)。`DragonKingCoopWorld` 额外执行生产女巫查询与咒域伤害，覆盖 16 人每人多碰撞器、一次诅咒、敌对过滤、极端满载与客端权威（L2）；真实阵营互打、墙体和 PhysX 仍需 L3。
+
+本人镰刀领域的真实 `DealRealmDamage` 查询已从固定 32 改按需增容，保留缓冲最多 1024 后用完整 OverlapSphere，不截断目标；按本人 caster 归属，不加世界房主门，原队伍/角色/距离/伤害/诅咒过滤保留。个人代理的 `AuditCombatSeptember` Realm 111 条生产断言及饱和/fallback 副本负向通过；实际物理、网络伤害及帧耗仍待 L3。
+
+世界女巫首次 Initialize 即冻结实体归属；真实 cone、Boss 诅咒领域与 minion 异步续作检查原 caster/boss 的 HasEntityAuthority。Stop 不把旧镜像或旧房间首领变成离线世界 owner，晚到随从在实际创建与认领之间失去归属时销毁。个人镰刀领域继续按本人 caster 归属，未增加世界房主门。四首领工厂的原 room/role lease 与实体 helper 分别有生产执行边界用例；原版物理、同步到达及帧耗仍须 L3。

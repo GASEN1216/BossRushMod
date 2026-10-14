@@ -369,3 +369,19 @@ RUNTIME --> LIFE["主控制器生命周期"]
 - 二阶段第二段冲锋：落地后在起手开始时重新锁定方向，原地转向并亮 `DashSecondSegmentWindup`（0.3 s）倒计时光圈与蓄力声再冲。
 - `ApplyDamageToPlayer`、冲锋碰撞、撞击伤害遵守翻滚豁免；翻滚穿过的弹幕不消耗。岩浆仍为持续地面伤害。技能伤害按全局倍率放大，见《自定义 Boss 系统》同日小节。
 - 删去太阳舞五个未接线常量（光束由 `SunBeamGroupPrefab` 与 `SunBeamDamageTrigger` 决定）。
+
+## 2026-10-13 联机接线（COMPAT / WIRE+）
+
+龙皇决策归房主，目标查询覆盖全部存活玩家，整房无人存活才结束战斗。客户端沿原生 AI ID 绑定角色的阶段、尺寸、可见性与技能表现；不再运行自定义 Boss 伤害决策。Character 伤害沿底层联机处理，FX 重播只改变表现。
+
+实现：[DragonKingAbilityController.cs](file://Integration/DragonKing/DragonKingAbilityController.cs)、[BossRushCoopFxRuntimeModule.cs](file://Integration/Coop/BossRushCoopFxRuntimeModule.cs)。当前为 L1 静态接线与 L2 编译/守卫证据；全房间阶段表现、切图及网络乱序待 L3。
+
+独立复核补齐了伤害入口：身体碰撞、光束与岩浆按实际触碰的每名玩家维护独立冷却；光束与弹幕的翻滚检查属于实际受击者。普通棱彩弹与长矛命中一个有效目标后消费，持续万彩虹环逐人结算；房主死亡不能停止活队员的岩浆伤害。岩浆碰撞器缓存只扫描各角色自己的子树，共用 COOP 父容器不串人；AI 阵营查询满缓冲时增长，极端满载改用完整查询，重复碰撞器仍只伤一次且观战玩家豁免。
+
+远端 COOP 角色的 Rigidbody 是运动学模型，身体碰撞的击退改由 [DragonKingCoopContactRuntimeModule.cs](file://Integration/DragonKing/DragonKingCoopContactRuntimeModule.cs) 发送个人收据，在本人用官方 `SetForceMoveVelocity` 执行。事件 ID 稳定，玩家、资产、房间、场景与生命令牌冻结；重复收据只执行一次，旧身体、死亡后同体复活、换槽、同图重载或换房不接旧击退。房主本人走同一应用方法，单机和阵营 AI 保留原 AddForce。重播冲击波只推动各端自己的主玩家。
+
+岩浆独立类型原样移至 [DragonKingLavaZone.cs](file://Integration/DragonKing/DragonKingLavaZone.cs)；场景清理和 runtime 销毁调用真实 `ResetStaticCaches`，释放活区、每人冷却、身体几何、AI 缓冲、点燃缓存与 updater。`DragonKingCoopWorld` 执行生产受击/查询/击退方法，击退使用真实 `CoopPersonalDelivery` 和共用 JSON codec，覆盖 16 人接触、光束、岩浆、复活、乱序、去重、角色归属与大量 AI（L2）。真实 PhysX、原版联机伤害/移动和满房帧耗尚需 L3。
+
+出生与战斗权限固定在原实体：实际 Initialize 在任何技能激活前将客端角色 MarkReplica，将房主角色 TrackAuthority；身体碰撞、光束、岩浆、弹幕、长矛及孩儿护我异步工厂均检查 HasEntityAuthority，原镜像或旧房间实体在 Stop 后不升级为新单机世界 owner。四种自定义首领工厂（龙皇、龙裔、女巫、沙暴冠军）共用既有 contact 文件内的 CoopBossCreationLease，捕获出生时 role/room，待工厂或装备 await 后继续检查原 lease。同房暂空握手保留，真实 Stop 与非空新房间永久撤销；新单机实体正常运行。
+
+各端重播的冲击波保留本人的官方强制移动，独立冻结本机 body、asset、local scene handle 及原 room/role；断网、换人、切图或换房后清掉旧波，重连不继续旧击退。`DragonKingCoopWorld` 159 条生产断言包含真实龙裔碰撞 Hurt、原镜像拒伤、世界出生 lease 与个人冲击波原身体边界。永久实体归属 helper 的真实 Harmony 用例由底层专题另覆盖，这里以可变 API 边界验证实际伤害调用点。上述修复为 L1/L2，真实网络伤害、位置与满房性能仍需 L3。

@@ -427,3 +427,11 @@ WCfg --> Ids["FrostmourneIds"]
   - 参考路径：[FrostmourneWeaponConfig.cs:685-757](file://Integration/Frostmourne/FrostmourneWeaponConfig.cs#L685-L757)
 
 [本节为索引，不直接分析具体文件]
+
+## 2026-10-13 联机接线（COMPAT / WIRE+）
+
+客户端施放提交唯一请求，房主验证实际施法玩家、存活、持有物品、房间/场景代次和个人冷却，再分帧执行原召唤逻辑。召唤上限与阵型按主人计算，AI 登记与实体伤害由房主管理；客户端接收自己召唤数量，保留原技能准入。生成完成再核对原主人，切图销毁未完成的施法组件及已生成随从。
+
+实现：[FrostmourneAction.cs](file://Integration/Frostmourne/FrostmourneAction.cs)、[BossRushCoopContentRuntimeModule.cs](file://Integration/Coop/BossRushCoopContentRuntimeModule.cs)。现有装备 owner 守卫/隔离回归仅验证 L1/L2 接线；全房间施放、迟到 AI 与实际技能表现待 L3。
+
+请求、个人冷却、计数与随从归属冻结原玩家资产身份；同一角色切槽后，不继续旧请求和 await 生成，也不把旧亡灵上限算进新槽。房主回收旧槽随从，原槽与新槽冷却各自独立。异步联网入口提取到同目录 [FrostmourneAction_Coop.cs](file://Integration/Frostmourne/FrostmourneAction_Coop.cs)，保持文件预算。`CoopContent` 执行真实协议和归属方法，宿主依赖为替身，属于 L2。

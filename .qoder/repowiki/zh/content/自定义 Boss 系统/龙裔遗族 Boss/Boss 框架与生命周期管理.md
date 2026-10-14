@@ -323,3 +323,13 @@ D --> R["掉落追踪<br/>RegisterBossRandomLootTracking"]
 ## 2026-10-07 第三方预设改名后的副本释放
 
 Legacy 生成的运行时 clone 实例名统一为既有清理约定 `DragonDescendant_Preset`，与托管 G/H 生成一致。第三方改写 nameKey 后，`BossCleanupHelpers.DestroyRuntimePreset` 仍可按实例名识别并释放自己的副本；图鉴身份继续由现有根能力组件确认。回归从生产创建语句提取名字，执行真实清理，覆盖改名、重复清理和不误删官方共享 preset；恢复旧实例名会转红。证据为 L1/L2，未作游戏内采样。
+
+## 2026-10-13 联机实机错误后的初始化顺序
+
+第三端原版 COOP 实测在 Mode F 生成龙裔时出现 `Coroutine couldn't be started ... BossRush_DragonDescendant is inactive`：生成器在 `SetActive(true)` 之前调用能力 `Initialize`，后者立即启动燃烧弹计时协程。现将能力装配放在延期激活的最后一次场景、宿主与模式有效性检查之后，并在角色激活和解除官方距离休眠后调用。武器、倍率、射击订阅、预缓存、燃烧弹、血条、仇恨、位置恢复与掉落仍按原路径启动；孩儿护我仍不加入波次和 BGM，随机乱入仍保留战斗与掉落。
+
+`ContentThirdReviewFixes/DragonSpawn` 执行完整生产生成、初始化及取消清理方法，50 项断言覆盖 inactive 工厂、延期激活、模式结束、同图换 handle、宿主替换及装备/工厂晚续作。副本恢复旧初始化顺序后转红，原字节恢复后转绿。原异常是 L3 已发生证据，修复目前为 L1/L2；真实三端修复后复验由主审记录。
+
+2026-10-13 收尾核对发现公开 SpawnDragonDescendant 默认 isActiveCheck=null，普通波次与随机乱入不能全部借用调用者清理门。真实生成入口现也捕获 CoopBossCreationLease，原联网房间、角色发生变化时不再提交待完成的工厂或装备，沿原 finally 销毁晚到角色。实际 Initialize 先 MarkReplica/TrackAuthority，再装配技能；Update、火箭与燃烧弹创建、计时器 yield 后、延期火焰爆炸、二阶段弹幕与冲刺、碰撞 Hurt、复活资格与独白续作沿原实体 HasCombatAuthority 判断。旧客端镜像在 Stop 后保持非权威，原房主实体也不能迁入新房间；新单机、孩儿护我友军、阵营敌对检查、火箭数量、复活、装备与掉落原行为保留。
+
+最新 DragonSpawn 为 77 条生产执行断言：默认公开入口没有额外调用者 predicate，Stop/换房/换 role 后 factory 晚到必须回收；首次客端绑定永久标记镜像，原主机保留实际两发火箭与复活，真实燃烧弹计时器在已 yield 后 Stop 不再创建攻击。龙裔实际碰撞 Hurt 另在 DragonKingCoopWorld 执行。宿主物理、Mono Coroutine 调度及正式 DLL 多端复验尚为 L3 边界；生产源码与副本负例按本轮冻结清单记录。

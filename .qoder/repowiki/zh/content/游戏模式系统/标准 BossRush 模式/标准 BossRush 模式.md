@@ -1,5 +1,9 @@
 # 标准 BossRush 模式
 
+2026-10-13 联机接线（COMPAT / WIRE+，L1/L2，L3 待验）：房主裁决波次、刷怪、真实死亡、推进和世界掉落，客人消费场景代次内的世界快照并保留自己的受伤、治疗、成就和快递。开局冻结实际参赛者及其资产身份，无间炼狱再冻结本波仍有效的参赛者；迟加入观战和中途切换到其它存档槽不追加旧局奖励资格。原箱子、现金与里程碑掉落仍由房主按每名有效参赛者一整份原规则生成，不把人数乘到敌人数量。世界胜利和敌人死亡去重，个人事实走定向、可重试收据；旧槽奖励等原槽恢复后领取，迟到旧局事实不借用新局的无伤或速通状态。
+
+入口与份数：[联机模块](file://WavesArena/WavesArenaRuntimeModule_Coop.cs)、[通关奖励](file://WavesArena/WavesArenaRuntimeModule_VictoryRewards.cs)、[炼狱奖励](file://WavesArena/WavesArenaRuntimeModule_InfiniteHellCompletion.cs)、[里程碑落地](file://LootAndRewards/InfiniteHellMilestoneDelivery.cs)。[ArenaCoop](file://tests/fixtures/ArenaCoop/README.md) 执行生产参与者冻结、个人收据和里程碑算法；物理箱子生成、原生拾取和完整房间稳定性仍须按联机验收单在游戏内检查。
+
 2026-10-08 DEMO 入场协程归属（COMPAT）：就绪等待只在场景、官方 loader、角色、相机与 LevelManager 全部就绪时派发；超时取消。`IntegrationRuntimeModule_ArenaEntry.cs` 持有原场景与角色绑定、后继请求替换、切图 / 卸载 / 销毁取消及任务释放。DEMO setup 每次恢复共用归属检查，Mode E 验证改为受 owner 递归驱动的子 IEnumerator，异步路牌补建也登记同一请求。普通子 IEnumerator 由显式栈推进并逆序释放；CustomYieldInstruction 与 Coroutine 保留 Unity 原生等待语义。Normal / D / E / F / G / H 的正常分支及取消路径由 `LegacyArenaEntry` 执行，实际 Unity 调度和地图画面仍需实机验收。
 
 > 2026-09-26 迁移注：波次、生成、清场、现金磁铁与 Tick 的宿主兼容入口合并到 `WavesArena.cs`；`BossRushEntryFlow.cs` 和 `WavesArenaEntryAndTeleport.cs` 继续承担跨模式入场协调。运行时状态和算法仍在既有 `WavesArenaRuntimeModule` partial，成员语义与初始化顺序不因文件归并改变。
@@ -348,3 +352,5 @@ LR --> EM["EconomyManager"]
 - [Config.cs:155-232](file://Config/Config.cs#L155-L232)
 - [BossFilter.cs:85-158](file://BossFilter/BossFilter.cs#L85-L158)
 - [BossFilter.cs:329-346](file://BossFilter/BossFilter.cs#L329-L346)
+
+2026-10-13 联机复核（COMPAT / WIRE+，L1/L2）：共享波次由房主推进，个人奖励份数在原开局参赛资产上冻结；迟加入和切槽不会领取已结案份额。Boss 死亡时房主也经原资产个人收据记成就，避免直接写房主当时的新槽。真实 `LootAndRewards.OnPlayerDeath` 以原参赛者是否仍存活判断共享世界终止，后来加入的新槽观察者不能代替已全灭队伍。`ArenaCoop` 连接生产 Arena / Mode D、真实个人交付与 codec、原奖励算法及实际死亡处理，验证乱序、重复、失败重试和 16 份原奖励总量；物品落地、AI 和多进程场景仍属于 L3。

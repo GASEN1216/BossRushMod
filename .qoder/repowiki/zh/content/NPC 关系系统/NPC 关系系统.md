@@ -1,5 +1,13 @@
 # NPC 关系系统
 
+## 2026-10-13 联机实体与个人关系（COMPAT / WIRE+）
+
+`CoopNpcWorld` 由公共 NPC runtime 持有，共享实体的生成、位置和活动状态来自房主；客端镜像继续装配哥布林、护士、快递员与捏脸 NPC 的本地交互服务，因此买卖、礼物、好感与婚姻沿本人的现有存档。自定义 prefab 不保证带 `CharacterMainControl`，共享跟随桥按 GameObject 绑定实际移动组件。
+
+同一 NPC 的跟随只有一份运行时租约，房主自己的跟随也占用该租约。客人请求绑定其真实角色；拒绝时撤回本人的跟随状态并提示，死亡、断线或角色重建会解除/重新绑定移动目标。客端婚后服务标记不搬动共享实体，也不销毁房主的 NPC。个人菜单继续封锁本人的输入，联机期间不修改全房 timeScale。
+
+来源：[CoopNpcWorld.cs](file://Integration/NPCs/Common/CoopNpcWorld.cs)、[WeddingModBehaviourBridge.cs](file://Integration/Wedding/WeddingModBehaviourBridge.cs)、[NPCFollowMovementBase.cs](file://Integration/Utils/NPCFollowMovementBase.cs)、[BossRushUIFoundation.cs](file://Common/UI/BossRushUIFoundation.cs)。L2 已有共享模态输入用例；交易、婚后跟随与多人 NPC 装配仍需 L3，不能由离线替身证明可玩。
+
 <cite>
 **本文引用的文件**
 - [AffinityManager.cs](file://Integration/Affinity/AffinityManager.cs)
@@ -352,3 +360,13 @@ INPCAffinityConfig <.. AffinityManager : "配置注册"
 存档中已经放置 `wedding_chapel` 时，模型注册不能再由好感历史标记单独阻断。`InitWeddingBuilding` 与基地早期入口都会检查已有放置记录，恢复已有教堂的 prefab 并请求官方重绘。未放置教堂的空档保留原好感解锁规则；费用、数量上限、关系标记和建筑存档均不改写。
 
 章节来源：`Integration/Wedding/WeddingBuildingInjector.cs`、`Integration/Wedding/WeddingBuildingInjector_DataEventsAndRuntime.cs`、`tests/LatestPlayerLogRegressionGuard.py`、`tests/fixtures/GameplayLogFixes/README.md`。实际教堂模型和交互恢复需实机复测。
+
+## 2026-10-13 联机个人配偶（COMPAT / WIRE+）
+
+每位玩家的婚姻、好感、跟随资格仍属于自己的个人档。即使多人结婚同一 NPC，也按稳定玩家 ID、个人 AssetId 与 NPC ID 创建不同的配偶实例；公共居民保留原 ID，配偶不覆盖哥布林/护士运行时单例或永久捏脸 NPC 的公共 named registry。房主移动所有配偶，客户端装配各实例原有的聊天、礼物和服务交互；驻留教堂、跟随、回家与离婚只改变本人的实例。宿主私人成婚不再阻断其他成员的普通地图居民。
+
+个人请求冻结当前资产与房间/场景代次，递增序号阻止过期跟随盖掉回家；重复请求和快照不重复生成。断线回收该玩家实体及序号，重连可从新序号重新恢复。槽位更换回收旧槽实体，旧槽请求不能创建到新槽。加入联机前已存在的私人驻留/跟随实体在首次迁移时回收，普通居民按原生成条件重建；婚姻 flags 不变。离婚保持原反馈等待，再回收本人配偶；旧异步工厂完成时只清理自身，不删除后继。
+
+实现：[CoopNpcWorld.cs](file://Integration/NPCs/Common/CoopNpcWorld.cs)、[CoopNpcWorld_Spouses.cs](file://Integration/NPCs/Common/CoopNpcWorld_Spouses.cs)、[WeddingModBehaviourBridge.cs](file://Integration/Wedding/WeddingModBehaviourBridge.cs)、[NPCMarriageSystem.cs](file://Integration/Wedding/NPCMarriageSystem.cs)。[CoopSpouses](file://tests/fixtures/CoopSpouses/README.md) 执行完整生产调度与 factory 组合，覆盖 16 名成员同 NPC、独立服务/跟随/回家/离婚、切槽、重连、晚加入、切图与异步替换；[CoopSpouseOwnershipGuard.py](file://tests/CoopSpouseOwnershipGuard.py) 钉入口与公共 registry 边界。均为 L1/L2，Unity、寻路、prefab、存档与网络使用替身，未启动游戏，游戏内表现及性能仍需 L3。
+
+同日独立复审：房主世界列表携带递增 Sequence；客端先刷新房间/场景范围，再拒绝小于或等于已接收序号的快照。离婚后乱序到达的旧“仍有配偶”快照不再重新生成服务实体。CoopSpouses 直接执行空新快照与旧快照倒序接收；移除顺序比较后在该断言转红。本夹具运行器同时改为执行本次独立输出的 TargetPath，记录 SHA-256，避免旧 bin 假绿。
