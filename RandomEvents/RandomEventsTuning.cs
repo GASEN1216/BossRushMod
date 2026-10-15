@@ -166,6 +166,12 @@ namespace BossRush
         internal const int BossIntrusionCount = 1;
         internal const float BossIntrusionMinPlayerDistance = 30f;
 
+        /// <summary>
+        /// 白手起家里 Boss 乱入的最早波次，对齐 Mode D 自己首次出 Boss 的第 6 波。
+        /// 白手起家开局只有一把灰枪，开局 90 秒就乱入 Boss 会被玩家当成「第一波就出 Boss」。
+        /// </summary>
+        internal const int BossIntrusionModeDMinWave = 6;
+
         #endregion
 
         #region E4 神秘商人路过

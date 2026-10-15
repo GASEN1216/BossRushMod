@@ -643,6 +643,21 @@ namespace BossRush
 
         internal override float Weight { get { return RandomEventsTuning.WeightBossIntrusion; } }
 
+        /// <summary>白手起家前几波全是小怪，乱入 Boss 要等到 Mode D 自己开始出 Boss 的波次。</summary>
+        internal override bool CanTrigger(RandomEventContext ctx)
+        {
+            try
+            {
+                ModBehaviour owner = RandomEventEffectHelpers.ResolveOwner(ctx);
+                if (owner == null) return false;
+                return !owner.IsModeDActive || owner.ModeDWaveIndex >= RandomEventsTuning.BossIntrusionModeDMinWave;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
         internal override bool OnTrigger(RandomEventContext ctx)
         {
             try

@@ -11,6 +11,7 @@ namespace BossRush
         NotReady,
         EquipmentSlot,
         WeaponSlot,
+        AccessorySlot,
         Backpack,
         DogBackpack,
         PetNestBackpack
@@ -21,12 +22,15 @@ namespace BossRush
         internal NakedEntryBlockKind Kind;
         internal string ItemName;
 
-        /// <summary>装备槽、武器槽都空，只有背包类容器挡路：玩家显然想裸装入场，值得明说原因。</summary>
+        /// <summary>
+        /// 护甲、头盔、背包槽与武器槽都空，只剩背包类容器或饰品挡路：玩家显然想裸装入场，值得明说原因。
+        /// 饰品（面罩、耳机、图腾）在武器槽之后才判，所以命中它时武器槽一定是空的。
+        /// </summary>
         internal bool OnlyContainersBlock
         {
             get
             {
-                return Kind == NakedEntryBlockKind.NotReady || Kind == NakedEntryBlockKind.Backpack
+                return Kind == NakedEntryBlockKind.NotReady || Kind == NakedEntryBlockKind.AccessorySlot || Kind == NakedEntryBlockKind.Backpack
                     || Kind == NakedEntryBlockKind.DogBackpack || Kind == NakedEntryBlockKind.PetNestBackpack;
             }
         }
@@ -38,8 +42,13 @@ namespace BossRush
         {
             "Armor",
             "Helmat",
+            "Backpack"
+        };
+
+        // 小件饰品最容易忘了摘；排在武器槽之后判，命中时可以放心提示「这次不会进白手起家」。
+        private static readonly string[] NakedAccessorySlotNames = new string[]
+        {
             "FaceMask",
-            "Backpack",
             "Headset",
             "Totem1",
             "Totem2"
@@ -185,6 +194,22 @@ namespace BossRush
                         {
                             ModBehaviour.DevLog("[" + logTag + "] 武器槽不为空: " + slotName);
                             block = new NakedEntryBlock { Kind = NakedEntryBlockKind.WeaponSlot, ItemName = SafeDisplayName(slot.Content) };
+                            return false;
+                        }
+                    }
+                    catch { }
+                }
+
+                for (int i = 0; i < NakedAccessorySlotNames.Length; i++)
+                {
+                    string slotName = NakedAccessorySlotNames[i];
+                    try
+                    {
+                        Slot slot = characterItem.Slots.GetSlot(slotName);
+                        if (slot != null && slot.Content != null)
+                        {
+                            ModBehaviour.DevLog("[" + logTag + "] 饰品槽不为空: " + slotName);
+                            block = new NakedEntryBlock { Kind = NakedEntryBlockKind.AccessorySlot, ItemName = SafeDisplayName(slot.Content) };
                             return false;
                         }
                     }

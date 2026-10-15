@@ -105,6 +105,17 @@ internal static class InventoryEntryProgram
         Check(!host.IsPlayerNaked() && ModBehaviour.Messages.Count == before + 1 && ModBehaviour.Messages[before].Contains("pet"),
             "deployed PetNest backpack blocks naked entry and says so");
         PetNestService.DeployedPet = null;
+        // 2026-10-14：只剩饰品（面罩 / 耳机 / 图腾）挡路也要说清；手里有武器的普通挑战玩家照旧不提示。
+        before = ModBehaviour.Messages.Count;
+        var slots = CharacterMainControl.Main.CharacterItem.Slots.Content;
+        slots["Totem1"] = new ItemStatsSystem.Items.Slot { Content = new Item { TypeID = 3, DisplayName = "totem" } };
+        Check(!host.IsPlayerNaked() && ModBehaviour.Messages.Count == before + 1 && ModBehaviour.Messages[before].Contains("totem"),
+            "accessory-only blocker is named to the player");
+        slots["PrimaryWeapon"] = new ItemStatsSystem.Items.Slot { Content = new Item { TypeID = 4, DisplayName = "gun" } };
+        UnityEngine.Time.unscaledTime += 30f;
+        before = ModBehaviour.Messages.Count;
+        Check(!host.IsPlayerNaked() && ModBehaviour.Messages.Count == before, "armed players wearing a totem get no From Scratch notice");
+        slots.Clear();
         before = ModBehaviour.Messages.Count;
         CharacterMainControl.Main.CharacterItem.Slots.Content["Armor"] = new ItemStatsSystem.Items.Slot { Content = new Item { TypeID = 2 } };
         Check(!host.IsPlayerNaked() && ModBehaviour.Messages.Count == before, "geared normal-challenge players get no From Scratch notice");
