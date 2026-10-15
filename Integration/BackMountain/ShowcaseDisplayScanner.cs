@@ -40,6 +40,9 @@ namespace BossRush
         {
             ClearSubscriptions();
             if (!inBaseScene || !unlocked) return;
+            // 下水道（Level_HiddenWarehouse_CellarUnderGround）也算基地，但官方建筑区不在那个子场景：
+            // 搜不到柜子不等于玩家撤了陈列，保留缓存与已挂的加成，不改登记簿。
+            if (!IsBuildingAreaLoaded()) return;
             try
             {
                 Showcase[] showcases = UnityEngine.Object.FindObjectsOfType<Showcase>(true);
@@ -61,6 +64,13 @@ namespace BossRush
             {
                 ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 扫描官方展示建筑失败: " + e.Message);
             }
+        }
+
+        /// <summary>官方枪架 / 假人都实例化在 BuildingArea 下；它没加载时这次扫描不能代表玩家的陈列。</summary>
+        private static bool IsBuildingAreaLoaded()
+        {
+            try { return UnityEngine.Object.FindObjectOfType<BuildingArea>(true) != null; }
+            catch (Exception) { return false; }
         }
 
         private static void HandleSlotContentChanged(Item item, Slot slot)

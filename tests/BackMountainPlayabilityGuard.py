@@ -44,6 +44,9 @@ def validate(root):
             'ShowcaseDisplayScanner: FlushIfDirty 首句必须 O(1) 早返')
     require('if(!inBaseScene||!unlocked)return;' in scanner,
             'ShowcaseDisplayScanner: 未解锁 / 局内不得扫描订阅')
+    require('if(!inBaseScene||!unlocked)return;if(!IsBuildingAreaLoaded())return;' in scanner
+            and 'FindObjectOfType<BuildingArea>(true)!=null' in scanner,
+            'ShowcaseDisplayScanner: 官方建筑区未加载（下水道子场景）时不得用空扫描覆盖陈列与生命加成')
 
     runtime = compact(read('Integration/BackMountain/BackMountainRuntimeModule.cs'))
     require('RaidUtilities.OnRaidEnd+=HandleRaidEnded;' in runtime
