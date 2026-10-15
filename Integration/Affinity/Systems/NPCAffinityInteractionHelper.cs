@@ -17,6 +17,45 @@ namespace BossRush
     /// </summary>
     public static class NPCAffinityInteractionHelper
     {
+        private const float ChatLabelRefreshInterval = 0.25f;
+
+        /// <summary>
+        /// 「聊天」选项名后面挂上当前好感（「聊天（好感 Lv.3 · 120/300）」），玩家走近就能看到，不用等加分那一下。
+        /// 每只 NPC 一条自己的 key；没登记好感的 NPC 保持通用「聊天」。语言在调用时解析，切语言后再走近即更新。
+        /// 由主交互体的 IsInteractable 调用：玩家贴着 NPC 时官方每帧都来问，这里按 0.25 秒节流；
+        /// 菜单正显示本 NPC 时不改（官方只在交互主体变化时重建菜单文字，中途改名不生效还白分配）。
+        /// </summary>
+        internal static void RefreshChatOptionLabelWhenApproached(InteractableBase owner, string npcId, ref float nextRefreshTime)
+        {
+            if (owner == null) return;
+            try
+            {
+                CharacterMainControl player = CharacterMainControl.Main;
+                if (player != null && player.interactAction != null
+                    && player.interactAction.MasterInteractableAround == owner)
+                {
+                    return;
+                }
+                float now = Time.unscaledTime;
+                if (now < nextRefreshTime) return;
+                nextRefreshTime = now + ChatLabelRefreshInterval;
+
+                string key = "BossRush_Chat";
+                string text = L10n.T("聊天", "Chat");
+                if (!string.IsNullOrEmpty(npcId) && AffinityManager.GetNPCConfig(npcId) != null)
+                {
+                    key = "BossRush_Chat_" + npcId;
+                    text += L10n.T("（好感 ", " (Affinity ") + AffinityUIManager.BuildProgressLine(npcId) + L10n.T("）", ")");
+                }
+                LocalizationHelper.InjectLocalization(key, text);
+                owner.InteractName = key;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[Affinity] [WARNING] 刷新聊天选项好感失败 " + npcId + ": " + e.Message);
+            }
+        }
+
         /// <summary>
         /// 在NPC生成时检查并应用每日好感度衰减（统一入口）
         /// </summary>

@@ -227,7 +227,7 @@ namespace BossRush
         }
 
         /// <summary>「Lv.3 · 120/300」；满级写「Lv.10 · 满级」。</summary>
-        private static string BuildProgressLine(string npcId)
+        internal static string BuildProgressLine(string npcId)
         {
             int level = AffinityManager.GetLevel(npcId);
             int progress;

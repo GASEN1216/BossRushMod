@@ -331,8 +331,12 @@ namespace BossRush
             }
         }
         
+        private float nextChatLabelRefreshTime;
+
+        // 走近就把好感写进「聊天」选项名（Lv.x · a/b）。
         protected override bool IsInteractable()
         {
+            NPCAffinityInteractionHelper.RefreshChatOptionLabelWhenApproached(this, GoblinAffinityConfig.NPC_ID, ref nextChatLabelRefreshTime);
             return true;
         }
         

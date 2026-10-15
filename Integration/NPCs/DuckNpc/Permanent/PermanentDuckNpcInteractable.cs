@@ -343,6 +343,15 @@ namespace BossRush
         /// 于是首帧就 OnTimeOut → finishWhenTimeOut → FinishInteract。
         /// 羽织/叮当的主交互也是这么接的。
         /// </remarks>
+        private float _nextChatLabelRefreshTime;
+
+        // 走近就把好感写进「聊天」选项名（Lv.x · a/b）。
+        protected override bool IsInteractable()
+        {
+            NPCAffinityInteractionHelper.RefreshChatOptionLabelWhenApproached(this, _npcId, ref _nextChatLabelRefreshTime);
+            return true;
+        }
+
         protected override void OnTimeOut()
         {
             try
