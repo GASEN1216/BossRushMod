@@ -31,6 +31,9 @@ namespace BossRush
         // 基地判定的场景缓存，见 InBaseHubScene()。0 不是合法的 Scene.handle，可直接当「未缓存」。
         private int cachedSceneHandle;
         private bool cachedBaseHub;
+        // 本进程去过岛、还没在基地关卡就绪时做过返航光照处理；快照 2 秒后再记一次（那时基地 LightControl 已写过几帧）。
+        private bool returnLightingPending;
+        private float returnLightingFollowUpAt = -1f;
 
         public override string ModuleName { get { return "SkyIsland"; } }
 
@@ -67,7 +70,51 @@ namespace BossRush
             ScheduleEntry();
         }
 
-        private void OnLevelReady() { ScheduleEntry(); }
+        private void OnLevelReady()
+        {
+            ScheduleEntry();
+            if (returnLightingPending && owner != null && owner.GetComponent<SkyIslandSession>() == null
+                && SceneRuntimeGate.IsBaseHubSceneName(SceneManager.GetActiveScene().name))
+            {
+                returnLightingPending = false;
+                RefreshBaseLightingAfterReturn();
+            }
+        }
+
+        /// <summary>
+        /// 有玩家报「天空岛撤离后基地变黑」。静态排查没找到岛上留下的状态：RenderSettings 随岛图卸载，
+        /// 着色器全局量按 owner 还原，TimeOfDay 只改副本。剩下的嫌疑是引擎沿用了岛上星夜那份很暗的环境球。
+        /// 回到基地时让引擎按基地自己的设置重算一次环境光（不改任何玩法与基地设置），
+        /// 并在正式版日志里留刷新前与 2 秒后的光照快照，下次再报就有据可查。每趟返航只做一次。
+        /// </summary>
+        private void RefreshBaseLightingAfterReturn()
+        {
+            try
+            {
+                Debug.Log("[SkyIsland] 返航进基地光照（刷新前）: " + DescribeLighting());
+                DynamicGI.UpdateEnvironment();
+                returnLightingFollowUpAt = Time.unscaledTime + 2f;
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[SkyIsland] 返航刷新基地环境光失败: " + e.Message);
+            }
+        }
+
+        private static string DescribeLighting()
+        {
+            UnityEngine.Rendering.SphericalHarmonicsL2 sh = RenderSettings.ambientProbe;
+            Light sun = RenderSettings.sun;
+            return "scene=" + SceneManager.GetActiveScene().name
+                + " mode=" + RenderSettings.ambientMode
+                + " intensity=" + RenderSettings.ambientIntensity.ToString("0.###")
+                + " sky=" + RenderSettings.ambientSkyColor + " equator=" + RenderSettings.ambientEquatorColor
+                + " ground=" + RenderSettings.ambientGroundColor
+                + " sh0=(" + sh[0, 0].ToString("0.###") + "," + sh[1, 0].ToString("0.###") + "," + sh[2, 0].ToString("0.###") + ")"
+                + " sun=" + (sun != null ? sun.name + "@" + sun.intensity.ToString("0.##") : "null")
+                + " fog=" + RenderSettings.fog + " reflect=" + RenderSettings.reflectionIntensity.ToString("0.##")
+                + " timeScale=" + Time.timeScale.ToString("0.##");
+        }
 
         /// <summary>Jeff 刚收下航向仪：下一次挂上船点入口时念一遍「航路已开放」，此后不再念。</summary>
         private void OnRouteOpened()
@@ -122,7 +169,17 @@ namespace BossRush
             if (prelude != null) prelude.Tick();
             // 岛上不再有自绘地图，也就不需要任何输入处理：
             // 官方地图由玩家自己绑定的地图键开合（`CharacterInputControl.OnUIMapInput`）。
-            if (owner.GetComponent<SkyIslandSession>() != null) return;
+            if (owner.GetComponent<SkyIslandSession>() != null)
+            {
+                returnLightingPending = true;
+                return;
+            }
+            if (returnLightingFollowUpAt > 0f && Time.unscaledTime >= returnLightingFollowUpAt)
+            {
+                returnLightingFollowUpAt = -1f;
+                try { Debug.Log("[SkyIsland] 返航进基地光照（2 秒后）: " + DescribeLighting()); }
+                catch (Exception e) { Debug.LogWarning("[SkyIsland] 记录返航光照快照失败: " + e.Message); }
+            }
             if (SceneLoader.IsSceneLoading || LevelManager.LevelInitializing || !LevelManager.LevelInited) return;
             SkyIslandNoteBridge.Tick();
             if (!InBaseHubScene())
