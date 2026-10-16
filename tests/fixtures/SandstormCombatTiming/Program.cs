@@ -32,6 +32,7 @@ internal static class Program
         AstralStaffFx.Root=null;
         BossRushCoop.IsConnected=false;
         BossRushCoop.Players=new BossRushCoopPlayer[0];
+        DragonKingCoopContactRuntimeModule.Calls.Clear();
     }
     private static SandstormChampionController Begin(int phase=3, int count=1)
     {
@@ -147,13 +148,24 @@ internal static class Program
         participants.Add(new BossRushCoopPlayer { IsAlive=false,Character=dead });
         BossRushCoop.IsConnected=true;BossRushCoop.Players=participants.ToArray();
         MethodInfo strike=typeof(SandstormChampionMinionArts).GetMethod("StrikeArea",BindingFlags.NonPublic|BindingFlags.Instance);
-        object[] args={Vector3.zero,Vector3.forward,5f,60f,7f,Vector3.zero,1,false};
+        object[] args={Vector3.zero,Vector3.forward,5f,60f,7f,Vector3.forward*4f,1,false};
         Check((bool)strike.Invoke(arts,args),"room sweep reports contact");
         Check(controller.Hits==12&&controller.HitTargets.Count==12,"every eligible participant is hit once without a two-player ceiling");
         for(int i=0;i<12;i++)Check(controller.HitTargets[i]==participants[i].Character,"damage retains individual target owner");
+        var pushes=DragonKingCoopContactRuntimeModule.Calls;
+        Check(pushes.Count==12,"every struck participant gets an individual network push");
+        var ids=new HashSet<string>();
+        for(int i=0;i<12;i++)
+        {
+            Check(pushes[i].Player==participants[i].Character,"push retains exact damage target body");
+            Near(pushes[i].Velocity.z,4f,"push retains original strength");
+            Near(pushes[i].Seconds,.14f,"push retains original duration");
+            Check(pushes[i].Dodge&&pushes[i].Id.StartsWith("sandguard-art:")&&ids.Add(pushes[i].Id),"push carries dodge gate and unique id");
+        }
         BossSkillDamageRules.Dodging=true;Check(!(bool)strike.Invoke(arts,args)&&controller.Hits==12,"room-wide dodge exclusion");
         BossSkillDamageRules.Dodging=false;Physics.Wall=true;
         Check(!(bool)strike.Invoke(arts,args)&&controller.Hits==12,"wall blocks all room sweep targets");
+        Check(pushes.Count==12,"dodge and walls cannot emit extra network pushes");
     }
     private static void RoomDash()
     {

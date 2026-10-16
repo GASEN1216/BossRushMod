@@ -236,6 +236,15 @@ namespace BossRush
         internal static BossRushCoopPlayer[] Players = new BossRushCoopPlayer[0];
         internal static CharacterMainControl GetCombatTarget(Vector3 origin) { return CharacterMainControl.Main; }
     }
+    // Transport boundary only: real delivery/identity validation runs in DragonKingCoopWorld.
+    internal static class DragonKingCoopContactRuntimeModule
+    {
+        internal sealed class Call
+        { internal CharacterMainControl Player;internal Vector3 Velocity;internal string Id;internal float Seconds;internal bool Dodge; }
+        internal static readonly List<Call> Calls=new List<Call>();
+        internal static void Push(CharacterMainControl player,Vector3 velocity,string id,float seconds=0f,bool dodge=false)
+        { Calls.Add(new Call{Player=player,Velocity=velocity,Id=id,Seconds=seconds,Dodge=dodge}); }
+    }
     internal sealed partial class SandstormChampionController
     {
         internal readonly List<CharacterMainControl> HitTargets = new List<CharacterMainControl>();

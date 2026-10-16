@@ -68,6 +68,7 @@ internal static partial class Program
         CheckEncounterTargetingPolicy();
         CheckChatter();
         CheckChatterBehavior();
+        CheckPersonalChallengeReopen();
         Reset();
         using (var world = new World("D"))
         {
@@ -264,6 +265,44 @@ internal static partial class Program
                 "once the barn side is cleared nobody comes");
         }
         Console.WriteLine("PASS SkyIslandEncounters: " + checks + " assertions (production owner with Unity / async substitutes)");
+    }
+
+    private static void CheckPersonalChallengeReopen()
+    {
+        Reset();
+        BossRushCoop.IsConnected = true; BossRushCoop.IsHost = true;
+        try
+        {
+            using (var world = new World("BellKeeper"))
+            {
+                world.Saved.Add("BellKeeper");
+                world.Tick();
+                Check(!world.Encounters.HasStarted("BellKeeper"), "host saved ending cannot preclear a co-op challenge");
+                Check(world.Encounters.BeginRemoteChallenge("BellKeeper", world.Player.transform.position,
+                    "guest-one", "asset-one", "request-one"), "first eligible participant starts a full named group");
+                string player, asset, request;
+                Check(world.Encounters.TryGetChallengeOwner("BellKeeper", out player, out asset, out request)
+                    && player == "guest-one" && asset == "asset-one" && request == "request-one",
+                    "production encounter freezes exact initiator, asset and request");
+                Check(!world.Encounters.BeginRemoteChallenge("BellKeeper", world.Player.transform.position,
+                    "guest-two", "asset-two", "request-two"), "a second participant cannot replace an ongoing challenge");
+                foreach (CharacterMainControl enemy in CharacterRandomPreset.Created.ToArray()) Kill(enemy);
+                world.Tick();
+                Check(world.Encounters.BeginRemoteChallenge("BellKeeper", world.Player.transform.position,
+                    "guest-two", "asset-two", "request-two"), "a different participant can reopen the cleared group this raid");
+                Check(CharacterRandomPreset.Created.Count == 2 * GroupSize("BellKeeper")
+                    && world.Encounters.LivingEnemyCount == GroupSize("BellKeeper"),
+                    "reopened challenge rebuilds every dead slot and spawns the complete group");
+                Check(world.Encounters.TryGetChallengeOwner("BellKeeper", out player, out asset, out request)
+                    && player == "guest-two" && asset == "asset-two" && request == "request-two",
+                    "reopened group carries the new participant's exact completion destination");
+            }
+            BossRushCoop.IsHost = false;
+            using (var world = new World("BellKeeper"))
+                Check(!world.Encounters.BeginRemoteChallenge("BellKeeper", world.Player.transform.position,
+                    "guest", "asset", "request"), "client replica cannot spawn a challenge group");
+        }
+        finally { BossRushCoop.IsConnected = false; BossRushCoop.IsHost = false; }
     }
 
     private static void CheckChatter()

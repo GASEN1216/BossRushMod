@@ -34,8 +34,9 @@ paths = ['SkyIsland/SkyIslandOfficialQuestGivers.cs',
          'SkyIsland/SkyIslandEncounters.cs',
          'SkyIsland/SkyIslandOfficialQuestTable.cs',
          'SkyIsland/SkyIslandSession.cs',
+         'SkyIsland/SkyIslandSessionCoop.cs',
          'SkyIsland/SkyIslandWorldStory.cs']
-givers, bridge, host_bridge, wedding_runtime, permanent, marriage, dialogue, factory, residents, encounters, quest_table, session, world = [(ROOT / path).read_text(encoding='utf-8-sig') for path in paths]
+givers, bridge, host_bridge, wedding_runtime, permanent, marriage, dialogue, factory, residents, encounters, quest_table, session, session_coop, world = [(ROOT / path).read_text(encoding='utf-8-sig') for path in paths]
 fields = []
 for name in ('FallbackAttemptLimit', 'attached', 'fallbackDone', 'fallbackAttempts'):
     found = re.findall(r'^        private [^\n]*\b' + name + r'\b[^\n]*;', givers, re.M)
@@ -78,7 +79,9 @@ source += 'namespace BossRush { internal sealed partial class SkyIslandEncounter
 giver_fields = re.findall(r'^        internal const int (?:WeibaiGiverId|FuzhouGiverId|BellKeeperGiverId) = \d+;', quest_table, re.M)
 assert len(giver_fields) == 3
 source += 'namespace BossRush { internal static partial class SkyIslandOfficialQuestTable {\n' + '\n'.join(giver_fields) + '\n' + '\n'.join(member(quest_table, sig) for sig in ('internal static int GiverIdOfResident(', 'internal static string ResidentOfGiver(', 'internal static string FallbackMarkerOfGiver(')) + '\n} }\n'
-source += 'namespace BossRush { internal sealed partial class SkyIslandSession {\n' + '\n'.join(member(session, sig) for sig in ('internal bool BeginStoryChallenge(', 'internal bool CanBeginStoryChallenge(', 'private static bool TryChallengeOutcome(')) + '\n} }\n'
+challenge_fields = re.findall(r'^        private [^\n]*\bcoopCompletedChallenges\b[^\n]*;', session_coop, re.M)
+assert len(challenge_fields) == 1, 'coopCompletedChallenges'
+source += 'namespace BossRush { internal sealed partial class SkyIslandSession {\n' + '\n'.join(challenge_fields) + '\n' + '\n'.join(member(session, sig) for sig in ('internal bool BeginStoryChallenge(', 'internal bool CanBeginStoryChallenge(', 'private static bool TryChallengeOutcome(')) + '\n} }\n'
 source += 'namespace BossRush { internal sealed partial class SkyIslandWorldStory {\n' + '\n'.join(member(world, sig) for sig in ('private void ZhelingChoices(', 'private bool ChallengeAvailable(', 'private SkyIslandStoryPresentation.Choice Challenge(')) + '\n} }\n'
 OUT.mkdir(parents=True, exist_ok=True)
 generated = OUT / 'Production.cs'

@@ -33,7 +33,8 @@ namespace UnityEngine
         public T AddComponent<T>() where T : Component, new()
         { var c = new T { gameObject = this }; Components.Add(c); return c; }
     }
-    public class Component : Object { public GameObject gameObject; }
+    public class Component : Object { public GameObject gameObject; public readonly Transform transform = new Transform(); }
+    public class Transform { public Vector3 position; }
     public class Coroutine { }
     public class MonoBehaviour : Component
     {
@@ -152,7 +153,10 @@ namespace BossRush
         private ModBehaviour.OriginalWeaponData originalWeaponData;
         private UnityEngine.Coroutine grenadeTimerCoroutine;
         internal int PrefabPreparations, ShootSubscriptions;
-        private bool UsesArenaOpponent() { return ModBehaviour.Instance.IsModeEActive || ModBehaviour.Instance.IsModeFActive; }
+        internal CharacterMainControl ArenaOpponent;
+        internal bool? LastAllowMainCharacter;
+        internal CharacterMainControl Target { get { return playerCharacter; } }
+        private CharacterMainControl ResolveArenaOpponent(bool allowMainCharacter) { LastAllowMainCharacter = allowMainCharacter; return ArenaOpponent; }
         private void OnBossHurt(DamageInfo info) { }
         private void SubscribeToShootEvent() { ShootSubscriptions++; }
         private int bulletCounter; private bool isEnraged, hasResurrected, isResurrecting, isInvulnerable;
@@ -174,7 +178,10 @@ namespace BossRush
         internal static bool IsConnected, IsHost;
         internal static bool IsClient { get { return IsConnected && !IsHost; } }
         internal static string RunId="room";
+        internal static CharacterMainControl CombatTarget;
+        internal static CharacterMainControl GetCombatTarget(UnityEngine.Vector3 origin) { return CombatTarget; }
     }
+    internal static class ModeHRuntimeGates { internal static bool IsModeHRunOwnerActive; }
     // Controlled actor-ownership API boundary; actual helper has separate 32-case Harmony regression.
     internal static class CoopAiPredictionHealthProtection
     {

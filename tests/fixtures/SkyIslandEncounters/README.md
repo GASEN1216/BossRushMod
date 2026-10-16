@@ -5,6 +5,8 @@
 直接链接生产 `SkyIslandEncounters.cs` 全文件与真实内容 registry / JSON。Unity 对象销毁、Health 事件、
 异步角色工厂、物理地面和 UI 日志使用替身；不访问游戏存档或真正生成 Unity 角色。
 
+联机挑战入口 `BeginRemoteChallenge` 和 `TryGetChallengeOwner` 从当前生产 partial 逐字抽取并记录源文件哈希。验证房主旧结局不会提前清场、正在战斗时不能换发起者、同趟下一位同行可重开完整敌群，以及玩家 / 存档 / 请求归属随新挑战更新。网络接收、资格核验与个人结局投递由 `SkyIslandCoopCommands` 链接生产逻辑验证。
+
 2026-10-06 独立深审：序章额外原样执行 `ShouldRunObjective` 和 `IsObjectiveGeneration`，取消此前始终返回 true 的验收替身。未接任务、已持航向仪、已开航线均由生产门拒绝；角色工厂挂起后撤销接取、开航线、拿到仪器、换图、变更代数或关闭 owner，生产 SpawnBoss 必须回收迟到角色。这些是玩家入口的生产判据和异步边界证据，序章 Tick 到该判据的接线另由源码审查与守卫核对。
 
 覆盖敌人先死后销毁仍能清场、提交失败重试、不重复生成已死亡槽、缺 Health 的异常角色回收、

@@ -717,12 +717,12 @@ def check_encounter_refresh():
     """
     encounters = source('SkyIslandEncounters.cs')
     tick = encounters.split('internal void Tick()', 1)[1].split(chr(10) + '        }', 1)[0]
-    assert 'if (!encounter.Started && encounter.Manual && completed(encounter.Id))' in tick, \
-        'Saved clears may only suppress manual (named story) encounters; auto groups must respawn each raid'
+    assert 'if (!BossRushCoop.IsConnected && !encounter.Started && encounter.Manual && completed(encounter.Id))' in tick, \
+        'Saved clears may only suppress offline manual encounters; co-op challengers keep personal endings and auto groups respawn each raid'
     # 反例：没有 encounter.Manual 这一项就等于全组永久静音。
     assert 'if (!encounter.Started && completed(encounter.Id)) {' not in tick, \
         'The unconditional short-circuit is what emptied the island on every revisit'
-    # 具名剧情对手仍必须是一次性的：折翎/钟守/噬风打完就不该再出现。
+    # 具名剧情对手对本人仍是一次性的；房主旧档不能提前关掉同行的完整挑战。
     session = source('SkyIslandSession.cs')
     assert 'id == "Storm" && (!story.Current.BothBeacons || story.Current.StormResolved)' in session, \
         'The storm must stay one-shot'
@@ -792,10 +792,11 @@ def check_session_ownership():
     # 两个条件延迟不同——最后一名倒下的那一帧 IsBusy 就转 false，而持久 flag 要等
     # encounters.Tick（0.25 s 节流）提交并被存档接受；存档有写屏障时 flag 永远落不下来，
     # 那就是持久可见（CR-2026-09-09-013）。
-    assert 'residents.SetVisible("sky_zheling", encounters == null || !encounters.WasStartedThisRaid("Zheling"));' in session, \
-        'Zheling must rest after combat this raid and return for relationships on the next raid'
-    assert 'IsStoryChallengeActive("Zheling")' not in session.split('residents.SetVisible("sky_zheling"', 1)[1].split(';', 1)[0], \
-        'Zheling visibility must not depend on the frame-latency IsBusy query'
+    assert 'residents.SetVisible("sky_zheling", encounters == null || (BossRushCoop.IsConnected ? !IsStoryChallengeActive("Zheling") : !encounters.WasStartedThisRaid("Zheling")));' in session, \
+        'Offline Zheling rests for the raid; co-op Zheling must return after combat for the next eligible participant'
+    visibility = session.split('residents.SetVisible("sky_zheling"', 1)[1].split(';', 1)[0]
+    assert ': !encounters.WasStartedThisRaid("Zheling")' in visibility, \
+        'Offline Zheling visibility must retain the raid-started fact instead of the frame-latency IsBusy query'
     enc_src = source('SkyIslandEncounters.cs')
     assert 'internal bool HasStarted(string id)' in enc_src, \
         'The one-shot "was this group ever fought" fact must live in the encounter owner'

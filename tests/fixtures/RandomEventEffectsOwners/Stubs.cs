@@ -35,10 +35,12 @@ namespace UnityEngine
   public static Vector3 operator -(Vector3 a,Vector3 b){return new Vector3(a.x-b.x,a.y-b.y,a.z-b.z);}
   public static Vector3 operator -(Vector3 a){return zero-a;}public static Vector3 operator *(Vector3 a,float s){return new Vector3(a.x*s,a.y*s,a.z*s);}
   public static Vector3 LerpUnclamped(Vector3 a,Vector3 b,float t){return a+(b-a)*t;}
+  public static float Distance(Vector3 a,Vector3 b){return (float)Math.Sqrt((a-b).sqrMagnitude);}
  }
  public struct Color{}
  public static class Mathf{public static int Max(int a,int b){return Math.Max(a,b);}public static float Max(float a,float b){return Math.Max(a,b);}}
  public static class Time{public static float deltaTime=.25f;}
+ public static class Random{public static int Range(int min,int max){return max-1;}}
  public static class Resources{public static object Values;public static int Calls;public static T[] FindObjectsOfTypeAll<T>(){Calls++;return Values as T[];}}
 }
 namespace UnityEngine.SceneManagement
@@ -108,7 +110,8 @@ namespace BossRush
   internal EnemySpawnCoreOptions Options;
   internal ModBehaviour(){randomEventsRuntime=new RandomEventsRuntimeModule(this);}
   internal static void DevLog(string message){}
-  internal Vector3[] GetCurrentSceneSpawnPoints(){return null;}
+  internal Vector3[] SpawnPoints;
+  internal Vector3[] GetCurrentSceneSpawnPoints(){return SpawnPoints;}
   internal string GetRandomEventDirectionForRuntime(Vector3 pos,Vector3 player){return "north";}
   internal static string GetModPath(){return null;}
   internal void PlaySoundEffect(string path){Probe.Add("sound");}
@@ -150,6 +153,15 @@ namespace BossRush
 public class InteractableLootbox : UnityEngine.Component { }
 namespace BossRush
 {
- internal static class BossRushCoop { internal static bool IsPlayer(CharacterMainControl character) { return character == CharacterMainControl.Main; } internal static bool RequestAiRegistration(CharacterMainControl character) { return false; } internal static bool IsHost; internal static bool RegisterWorldLoot(InteractableLootbox box) { throw new InvalidOperationException("Offline fixture"); } }
+ internal sealed class BossRushCoopPlayer { internal bool IsAlive; internal CharacterMainControl Character; }
+ internal static class BossRushCoop
+ {
+  internal static bool IsConnected,IsHost;
+  internal static BossRushCoopPlayer[] Players=new BossRushCoopPlayer[0];
+  internal static bool IsPlayer(CharacterMainControl character)
+  { if(character==CharacterMainControl.Main)return true;foreach(var player in Players)if(player.Character==character)return true;return false; }
+  internal static bool RequestAiRegistration(CharacterMainControl character) { return false; }
+  internal static bool RegisterWorldLoot(InteractableLootbox box) { throw new InvalidOperationException("Offline fixture"); }
+ }
  internal sealed partial class RandomEventsRuntimeModule { internal static void PublishCoopFx(int kind, UnityEngine.Vector3 position, int index, float duration = 0f) { } }
 }

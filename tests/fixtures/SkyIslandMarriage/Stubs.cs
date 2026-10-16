@@ -13,7 +13,13 @@ namespace BossRush
         internal static void DeferLocalSpouseRelease(float seconds) { }
     }
     internal sealed partial class SkyIslandSession
-    { private bool RequestCoopChallenge(string id) { return false; } }
+    {
+        internal bool CoopRequestAccepted;
+        internal int CoopRequests;
+        private bool RequestCoopChallenge(string id) { CoopRequests++; return CoopRequestAccepted; }
+        internal void MarkChallengeComplete(string player, string asset, string id)
+        { coopCompletedChallenges.Add(player + ":" + asset + ":" + id); }
+    }
 }
 
 namespace UnityEngine.SceneManagement
@@ -206,8 +212,8 @@ namespace BossRush
         internal SkyIslandResidents residents; internal GameObject root; internal CharacterMainControl player;
         internal bool residentsFailed;
         internal SkyIslandWorldStory worldStory; internal SkyIslandStoryService story; internal bool Valid;
-        internal SkyIslandEncounters encounters; internal int Announcements;
-        internal void Announce(string message, bool warning) { Announcements++; }
+        internal SkyIslandEncounters encounters; internal int Announcements; internal string LastAnnouncement;
+        internal void Announce(string message, bool warning) { Announcements++; LastAnnouncement = message; }
         private bool IsSessionValid() { return Valid; }
     }
     internal sealed class QuestGiver : InteractableBase { internal int ID; }

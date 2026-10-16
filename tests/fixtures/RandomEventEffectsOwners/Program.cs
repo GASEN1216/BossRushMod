@@ -12,7 +12,7 @@ internal static class Program
  private static int checks;
  private static void Check(bool value,string message){checks++;if(!value)throw new Exception(message);}
  private static void Ordered(params string[] names){int p=0;foreach(var name in names){int i=Probe.Events.FindIndex(p,e=>e==name);Check(i>=0,"missing/order: "+name+" "+string.Join("|",Probe.Events));p=i+1;}}
- private static void Reset(){Probe.Events.Clear();Probe.LastTask=null;Resources.Values=null;Resources.Calls=0;UnityEngine.SceneManagement.SceneManager.Index=1;BossRushAudioManager.Instance=new BossRushAudioManager();CharacterMainControl.Main=new CharacterMainControl("player");StockShopView.Instance=null;RandomEventsRuntimeModule.ShopSuccess=true;}
+ private static void Reset(){Probe.Events.Clear();Probe.LastTask=null;Resources.Values=null;Resources.Calls=0;UnityEngine.SceneManagement.SceneManager.Index=1;BossRushAudioManager.Instance=new BossRushAudioManager();CharacterMainControl.Main=new CharacterMainControl("player");StockShopView.Instance=null;RandomEventsRuntimeModule.ShopSuccess=true;BossRushCoop.IsConnected=BossRushCoop.IsHost=false;BossRushCoop.Players=new BossRushCoopPlayer[0];}
  private static async Task Intruder()
  {
   Reset();var owner=new ModBehaviour();int success=0,failed=0;bool valid=true;
@@ -77,5 +77,28 @@ internal static class Program
   Check(AIMainBrain.Last.fromTeam==Teams.player&&AIMainBrain.Last.fromCharacter==null,"airdrop AI sound changed");
   crate=new GameObject("cancelled");routine=owner.RandomEventAirdropDropRoutine(crate,Vector3.zero,10,1,()=>landed++);routine.MoveNext();UnityEngine.Object.Destroy(crate);Check(!routine.MoveNext()&&landed==1,"destroyed airdrop must stop before landing callback");
  }
- private static async Task Main(){await Intruder();await Parade();await Merchant();Environment();Console.WriteLine("RandomEventEffectsOwners: PASS ("+checks+" assertions)");}
+ private static void PartySpawnPoints()
+ {
+  Reset();var owner=new ModBehaviour();var host=CharacterMainControl.Main;host.Health.IsDead=true;
+  var guest=new CharacterMainControl("guest");guest.transform.position=new Vector3(10,0,0);
+  var second=new CharacterMainControl("second");second.transform.position=new Vector3(16,0,1);
+  var dead=new CharacterMainControl("dead");dead.Health.IsDead=true;dead.transform.position=new Vector3(30,0,0);
+  BossRushCoop.IsConnected=BossRushCoop.IsHost=true;
+  BossRushCoop.Players=new[]{new BossRushCoopPlayer{IsAlive=false,Character=host},new BossRushCoopPlayer{IsAlive=true,Character=guest},new BossRushCoopPlayer{IsAlive=false,Character=dead}};
+  Check(RandomEventEffectHelpers.ResolveAlivePlayer()==guest,"dead host must resolve actual living guest for event placement");
+  BossRushCoop.Players=new[]{new BossRushCoopPlayer{IsAlive=false,Character=host},new BossRushCoopPlayer{IsAlive=true,Character=guest},new BossRushCoopPlayer{IsAlive=true,Character=second},new BossRushCoopPlayer{IsAlive=false,Character=dead}};
+  owner.SpawnPoints=new[]{guest.transform.position,new Vector3(16,0,0),new Vector3(30,0,0)};
+  var point=owner.Runtime.GetRandomEventSafePointAwayFromPlayer(5f);
+  Check(Vector3.Distance(point,new Vector3(30,0,0))<.001f,"nearest preset respects every living guest exclusion radius and ignores dead members");
+  owner.SpawnPoints=null;point=owner.Runtime.GetRandomEventSafePointAwayFromPlayer(5f);
+  var expected=guest.transform.position+Vector3.forward*(Vector3.Distance(guest.transform.position,second.transform.position)+5f);
+  Check(Vector3.Distance(point,expected)<.001f,"no-preset fallback is centered on actual living participant and encloses other living guests");
+  var remote=new CharacterMainControl("remote"){Team=Teams.wolf};
+  BossRushCoop.Players=new[]{new BossRushCoopPlayer{IsAlive=true,Character=remote}};
+  owner.RandomEventCachedCharactersForRuntime.Add(remote);var targets=new List<CharacterMainControl>();owner.Runtime.CollectEventBuffTargets(targets);
+  Check(targets.Count==0,"remote player with temporary enemy team must never receive enemy buff");
+  BossRushCoop.IsConnected=false;host.Health.IsDead=false;host.transform.position=new Vector3(2,0,3);
+  Check(RandomEventEffectHelpers.ResolveAlivePlayer()==host,"offline event placement retains main player");
+ }
+ private static async Task Main(){await Intruder();await Parade();await Merchant();Environment();PartySpawnPoints();Console.WriteLine("RandomEventEffectsOwners: PASS ("+checks+" assertions)");}
 }

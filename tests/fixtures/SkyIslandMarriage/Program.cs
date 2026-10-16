@@ -21,6 +21,7 @@ internal static class Program
     }
     private static SkyIslandSession Session(bool weibai)
     {
+        BossRushCoop.IsConnected = false; BossRushCoop.IsHost = false;
         SkyIslandOfficialQuestGivers.Reset(); SkyIslandOfficialQuestGivers.UiReady = true;
         PermanentDuckNpcRegistry.Instances.Clear(); AffinityManager.Spouse = null;
         AffinityManager.Following = false; Saves.SavesSystem.CurrentSlot = 1;
@@ -163,6 +164,7 @@ internal static class Program
         Console.OutputEncoding = System.Text.Encoding.UTF8;
         RaidVisibility();
         FollowingZhelingChallenge();
+        PersonalChallengeGate();
         Givers(); Interactions(); Divorce();
         MarriageLifecycleRegression.Run(Npc, Session, Check);
         ActorReuseRegression.Run(Npc, Check);
@@ -232,6 +234,44 @@ internal static class Program
                 "Zheling hides only after this raid starts, even for completed old saves");
             Check(!encounters.WasStartedThisRaid("missing"), "missing encounter never hides resident");
         }
+    }
+
+    private static void PersonalChallengeGate()
+    {
+        foreach (bool connected in new[] { false, true })
+        foreach (bool samePlayer in new[] { false, true })
+        foreach (bool sameAsset in new[] { false, true })
+        {
+            var session = Session(false);
+            session.story.CanWrite = true; session.story.Current = new SkyIslandStoryData { BothBeacons = true };
+            session.encounters = new SkyIslandEncounters { Allowed = true }; session.worldStory.BindChallenge(session);
+            BossRushCoop.IsConnected = connected; BossRushCoop.IsHost = true;
+            session.MarkChallengeComplete(samePlayer ? BossRushCoop.LocalPlayerId : "other-player",
+                sameAsset ? BossRushCoop.LocalAssetId : "other-asset", "Zheling");
+            string reason;
+            bool allowed = !(connected && samePlayer && sameAsset);
+            Check(session.CanBeginStoryChallenge("Zheling", out reason) == allowed,
+                "co-op completion gate matches the exact original player and asset only");
+            Check((session.worldStory.ZhelingOptions().Count == 1) == allowed,
+                "completed personal challenge and menu availability use the same production gate");
+            Check(session.BeginStoryChallenge("Zheling") == allowed && session.encounters.Starts == (allowed ? 1 : 0),
+                "personal completion gate is rechecked at the actual start entry");
+        }
+        foreach (bool cn in new[] { false, true })
+        {
+            var session = Session(false); L10n.IsChinese = cn;
+            session.story.CanWrite = true; session.story.Current = new SkyIslandStoryData();
+            session.encounters = new SkyIslandEncounters { Allowed = true }; session.worldStory.BindChallenge(session);
+            session.CoopRequestAccepted = true;
+            BossRushCoop.IsConnected = true; BossRushCoop.IsHost = false;
+            var choices = session.worldStory.ZhelingOptions(); choices[0].Action();
+            string receipt = session.worldStory.ConfirmChallenge();
+            Check(session.CoopRequests == 1 && session.encounters.Starts == 0 && session.worldStory.ChallengePanelDisposed,
+                "client confirmation queues the request and closes the panel without spawning locally");
+            Check(receipt == session.LastAnnouncement && receipt.Contains(cn ? "等待房主确认" : "waiting for the host"),
+                "client receives a visible pending subtitle in the current language");
+        }
+        BossRushCoop.IsConnected = false; BossRushCoop.IsHost = false;
     }
 }
 

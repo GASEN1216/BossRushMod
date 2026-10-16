@@ -6,6 +6,7 @@
   <ItemGroup>
     <Compile Include="../CoopOfflineStubs.cs" Link="Fixture/CoopOfflineStubs.cs" />
     <Compile Include="../../../Build/runtime-regressions/SkyIslandEncounters/PreludeSpawn.Extracted.cs" Link="Production/PreludeSpawn.Extracted.cs" />
+    <Compile Include="../../../Build/runtime-regressions/SkyIslandEncounters/ChallengeOwner.Extracted.cs" Link="Production/ChallengeOwner.Extracted.cs" />
     <Compile Include="../../../SkyIsland/SkyIslandEncounters.cs" Link="Production/SkyIslandEncounters.cs" />
     <Compile Include="../../../SkyIsland/SkyIslandBossVoice.cs" Link="Production/SkyIslandBossVoice.cs" />
     <Compile Include="../../../SkyIsland/SkyIslandChatter.cs" Link="Production/SkyIslandChatter.cs" />

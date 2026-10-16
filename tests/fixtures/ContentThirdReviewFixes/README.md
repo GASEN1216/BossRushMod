@@ -6,6 +6,8 @@
 
 同日 `DragonSpawn` 逐字提取完整生产 `SpawnDragonDescendant`、`Initialize` 和 `CleanupCancelledDragonDescendant`，仅把 UniTask 返回载体换成可控 Task。执行 50 项断言：工厂返回激活/未激活角色、延期激活、延期后模式结束/同图重载/宿主替换、工厂和装备晚续作、孩儿护我及随机乱入。能力初始化的生产 `StartCoroutine` 真正执行，替身在 inactive 对象上启动时明确失败；检查成功返回必须非 null，避免 Unity 销毁对象等于 null 让成功条件恒真。销毁替身连带销毁组件，取消路径执行生产清理。恢复旧 Initialize 在激活之前的顺序后执行转红、按字节及 SHA-256 恢复再通过。工厂、装备、伤害事件、资源预缓存、音乐和 Unity 调度为边界替身，这里不能证明真实燃烧弹、物理或网络表现。
 
+2026-10-16 `DragonSpawn` 同步链接初始化现在调用的真实 `RefreshPlayerReference` 与 `UsesArenaOpponent`，避免生产依赖缺席导致夹具编译失败。追加单机、同行玩家、Mode E、Mode H 四种初始化来源及看台主角过滤参数，当前共 85 项断言。场内 AI 选敌与同行目标查询仍是可控边界；断言验证生产分支选择和初始化调用，没有复制这些外部目标算法。
+
 同日 `CaptureTiming` 逐字提取完整生产 `CaptureAutotestShot`，38 项断言覆盖等待帧末期间发生 TMP/相机/圆环/行坐标更新、四种编码与预算计数、浮层在等待期间出现、截图抛错、临时纹理销毁。探针收集与屏幕像素分别读取可变化的帧号，必须相符，不能在 `WaitForEndOfFrame` 前收集；预置上一张分析后，本张被遮挡或失败必须清空，后续断言不能使用旧帧。两个独立副本分别恢复旧时序及去掉 LastShot 清空，执行回归确实转红，按字节恢复再通过；时序副本还使修改后的 F3AutotestOrchestratorGuard 转红。TMP、相机、纹理/编码与取色判据是边界替身，回归仅验证生产编排与状态寿命，不能证明渲染颜色或圆环实际可见度；真实截图仍须游戏进程复测。
 
 2026-10-06：图鉴以真实 `CodexKillCollector` 验证龙皇 / 龙裔控制器优先于被第三方改写或删除的 preset，后续命中不重复做组件查询；计时和击杀仍归入自定义 Boss。控制器与 Unity GetComponent 为替身，此处不模拟第三方 Mod 的完整生成流程。

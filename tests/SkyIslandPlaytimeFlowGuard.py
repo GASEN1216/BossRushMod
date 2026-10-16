@@ -159,13 +159,13 @@ def main():
 
     # ---- 3. 挑战开始的回执不能在面板收起之后写回正文 ----
     challenge = need_body(world, "private SkyIslandStoryPresentation.Choice Challenge(string label, string id)", "挑战选项")
-    ordered(challenge, ["presentation.Dispose();", 'string started = L10n.T("挑战开始", "The challenge begins");',
+    ordered(challenge, ["presentation.Dispose();", 'string started = BossRushCoop.IsClient ? L10n.T("已申请挑战，等待房主确认", "Challenge requested; waiting for the host") : L10n.T("挑战开始", "The challenge begins");',
                         "session.Announce(started, false);", "return started;"],
-            "挑战开始必须在面板收起后改走字幕")
+            "挑战回执必须在面板收起后走字幕，客户端只提示等待房主确认")
     storm = need_body(world, "private void StormChoice(List<SkyIslandStoryPresentation.Choice> choices)", "噬风选项")
-    ordered(storm, ["presentation.Dispose();", 'string opened = L10n.T("风眼张开了", "The eye of the storm opens");',
+    ordered(storm, ["presentation.Dispose();", 'string opened = BossRushCoop.IsClient ? L10n.T("已申请挑战，等待房主确认", "Challenge requested; waiting for the host") : L10n.T("风眼张开了", "The eye of the storm opens");',
                     "session.Announce(opened, false);", "return opened;"],
-            "风眼张开必须在面板收起后改走字幕")
+            "风眼回执必须在面板收起后走字幕，客户端只提示等待房主确认")
     if re.search(r"presentation\.Dispose\(\);return L10n\.T\(", squash(world)):
         errors.append("又出现「面板收起之后直接 return 回执」的写法：回执会被 SetBodyText 静默吞掉")
 

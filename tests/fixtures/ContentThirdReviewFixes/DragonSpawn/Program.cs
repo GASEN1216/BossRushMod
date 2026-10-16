@@ -19,6 +19,7 @@ internal static class Program
             MonoBehaviour.Starts = MonoBehaviour.InactiveStarts = SpawnedEnemyActivationHelper.Releases = 0;
             UniTask.Deferred = null;
             BossRushCoop.IsConnected=false; BossRushCoop.IsHost=false; BossRushCoop.RunId="birth-room";
+            BossRushCoop.CombatTarget=null; ModeHRuntimeGates.IsModeHRunOwnerActive=false;
             SceneManager.Current = new Scene { handle = 11, buildIndex = 7 };
             ModBehaviour.Instance = new ModBehaviour { IsModeFActive = true };
             BossRushAudioManager.Instance = new BossRushAudioManager();
@@ -45,6 +46,25 @@ internal static class Program
     }
     private static void Main()
     {
+        foreach (string targetSource in new[] { "solo", "coop", "mode-e", "mode-h" })
+        {
+            var s = new Session(true);
+            CharacterMainControl.Main = new CharacterMainControl();
+            var combatTarget = new CharacterMainControl();
+            var arenaTarget = new CharacterMainControl();
+            BossRushCoop.CombatTarget = combatTarget;
+            BossRushCoop.IsConnected = targetSource != "solo";
+            BossRushCoop.IsHost = true;
+            ModBehaviour.Instance.IsModeEActive = targetSource == "mode-e";
+            ModeHRuntimeGates.IsModeHRunOwnerActive = targetSource == "mode-h";
+            var controller = s.Actor.gameObject.AddComponent<DragonDescendantAbilityController>();
+            controller.ArenaOpponent = arenaTarget;
+            controller.Initialize(s.Actor);
+            Check(controller.Target == (targetSource == "solo" ? CharacterMainControl.Main : targetSource == "coop" ? combatTarget : arenaTarget),
+                "real Initialize resolves original combat target source: " + targetSource);
+            Check(controller.LastAllowMainCharacter == (targetSource == "mode-e" ? (bool?)true : targetSource == "mode-h" ? (bool?)false : null),
+                "real arena selection excludes spectator only for Mode H: " + targetSource);
+        }
         foreach (bool active in new[] { false, true })
         {
             var s = new Session(active);

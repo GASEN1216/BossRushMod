@@ -63,8 +63,8 @@ if raid_started is None or not re.fullmatch(
         r'\s*Encounter encounter = Find\(id\);\s*return encounter != null && encounter.Started;\s*',
         raid_started.group(1)):
     errors.append('折翎关系恢复必须区分本趟 Started 与旧档投影的 Cleared')
-if 'residents.SetVisible("sky_zheling", encounters == null || !encounters.WasStartedThisRaid("Zheling"));' not in SESSION:
-    errors.append('折翎只在本趟挑战后休整，不得按持久战败位永久隐藏')
+if 'residents.SetVisible("sky_zheling", encounters == null || (BossRushCoop.IsConnected ? !IsStoryChallengeActive("Zheling") : !encounters.WasStartedThisRaid("Zheling")));' not in SESSION:
+    errors.append('折翎单机本趟开战后休整，联机战斗结束后须恢复供下一位同行发起个人挑战，不得按持久战败位永久隐藏')
 bridge = clean_source((ROOT / 'SkyIsland/SkyIslandSceneReferenceBridge.cs').read_text(encoding='utf-8-sig'))
 def constant(source, name):
     match = re.search(r'const\s+string\s+' + name + r'\s*=\s*"([^"\r\n]+)"\s*;', source)

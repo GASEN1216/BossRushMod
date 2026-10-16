@@ -85,7 +85,7 @@ namespace BossRush
     internal sealed partial class ZombieModeRuntimeModule
     {
         // 此夹具走单机选装；真实联机钱包/合同由 ZombieCoopFlow 执行。
-        internal void RememberCoopZombieWallet() { }
+        internal void RememberCoopZombieWallet() { throw new InvalidOperationException("Offline starter fixture must not mutate co-op wallets; real wallet behavior is executed by ZombieCoopFlow"); }
         private bool coopZombieStarterChosen;
         private void SendCoopZombieCommand(string action, int value = 0, string text = null, bool flag = false) { throw new InvalidOperationException("Offline fixture"); }
         private void DeliverCoopZombiePoints(int amount) { throw new InvalidOperationException("Offline fixture"); }
