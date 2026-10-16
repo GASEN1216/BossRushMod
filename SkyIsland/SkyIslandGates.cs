@@ -181,10 +181,10 @@ namespace BossRush
                 case "K3":
                     title = L10n.T("鸣风栈道 / 风铃集 · K3", "Windsong Boardwalk / Windchime Market · K3");
                     condition = story.BothBeacons
-                        ? L10n.T("两端航标都修好了\n到鸣风栈道开启旧桥",
-                            "Both beacons restored\nOpen the old bridge on Windsong Boardwalk")
-                        : L10n.T("先修好风标和星灯\n再到鸣风栈道开启旧桥",
-                            "Restore the wind beacon and the star lamp first\nthen open the old bridge on Windsong Boardwalk"); break;
+                        ? L10n.T("两端航标都修好了\n到栈道双航标门木牌开启旧桥",
+                            "Both beacons restored\nOpen the old bridge at the boardwalk's twin-beacon gate sign")
+                        : L10n.T("先修好风标和星灯\n再到栈道双航标门木牌开启旧桥",
+                            "Restore the wind beacon and the star lamp first\nthen open the old bridge at the boardwalk's twin-beacon gate sign"); break;
                 case "BellCourt":
                     title = L10n.T("鸣风栈道 / 归航钟庭", "Windsong Boardwalk / Homecoming Bell Court");
                     condition = L10n.T("先修好悬根林的风标\n和残星工坊的星灯",

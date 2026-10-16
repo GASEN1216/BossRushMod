@@ -261,6 +261,70 @@ namespace BossRush
             }
         }
 
+        /// <summary>已死未计数的本波 Boss 兜底扫描间隔（秒）：只比一到三个 IsDead。</summary>
+        private const float SilentBossDeathSweepInterval = 0.25f;
+        private float silentBossDeathSweepTimer;
+        private readonly System.Collections.Generic.List<CharacterMainControl> silentBossDeathScratch =
+            new System.Collections.Generic.List<CharacterMainControl>(3);
+
+        /// <summary>
+        /// 主路由（Health.OnDead）收不到的本波 Boss 死亡在这里补结案。OnDead 是多播委托，前面的订阅者抛异常
+        /// 会截断后面的订阅者：创意工坊击杀提示类 Mod 不判空就读攻击者，流血 / 毒区这类无攻击者死亡必然抛 NRE。
+        /// 10 秒一次的 TryFixStuckWaveIfNoBossAlive 只会强推下一波，跳过 HandleBossDeath 里的成就、
+        /// 无间炼狱现金池和已击败计数；这里把已死未计数的本波 Boss 交给同一条 HandleBossDeath（CountedDeadBosses 去重）。
+        /// 只扫本波容器：多 Boss 档扫 CurrentWaveBosses（结案时会移出），单 Boss 档扫 CurrentBoss（推波时清空），
+        /// 乱入 Boss 不在其中。已销毁的 Boss 拿不到角色，仍交给 10 秒自检推波。
+        /// </summary>
+        internal void SweepSilentWaveBossDeaths(float deltaTime)
+        {
+            silentBossDeathSweepTimer += deltaTime;
+            if (silentBossDeathSweepTimer < SilentBossDeathSweepInterval) return;
+            silentBossDeathSweepTimer = 0f;
+
+            silentBossDeathScratch.Clear();
+            try
+            {
+                if (BossesPerWave > 1)
+                {
+                    if (CurrentWaveBosses != null)
+                    {
+                        for (int i = 0; i < CurrentWaveBosses.Count; i++)
+                        {
+                            CharacterMainControl boss = CurrentWaveBosses[i] as CharacterMainControl;
+                            if (IsSilentlyDeadWaveBoss(boss)) silentBossDeathScratch.Add(boss);
+                        }
+                    }
+                }
+                else
+                {
+                    CharacterMainControl boss = CurrentBoss as CharacterMainControl;
+                    if (IsSilentlyDeadWaveBoss(boss)) silentBossDeathScratch.Add(boss);
+                }
+
+                // HandleBossDeath 会改 CurrentWaveBosses，先收集再结案。
+                for (int i = 0; i < silentBossDeathScratch.Count; i++)
+                {
+                    ModBehaviour.DevLog("[BossRush] [WARNING] 本波 Boss 死亡没收到 OnDead（可能被别的订阅者异常截断），兜底结案");
+                    HandleBossDeath(silentBossDeathScratch[i], default(DamageInfo));
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[BossRush] [WARNING] 本波 Boss 死亡兜底扫描失败: " + e.Message);
+            }
+            finally
+            {
+                silentBossDeathScratch.Clear();
+            }
+        }
+
+        private bool IsSilentlyDeadWaveBoss(CharacterMainControl boss)
+        {
+            if (boss == null || CountedDeadBosses.Contains(boss)) return false;
+            Health health = boss.Health;
+            return health != null && health.IsDead;
+        }
+
         /// <summary>
         /// 这只 Boss 是否属于本波，即它的死亡是否有资格推进波次。
         ///

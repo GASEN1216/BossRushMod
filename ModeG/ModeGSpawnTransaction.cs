@@ -134,7 +134,8 @@ namespace BossRush
         /// </summary>
         public bool MarkKilled(Health health)
         {
-            if (health == null || !_activeBosses.Remove(health)) return false;
+            // 引用判空：已被官方 DestroyOnDelay 销毁的 Health 仍要能结案（兜底轮询会送来这种引用）。
+            if (ReferenceEquals(health, null) || !_activeBosses.Remove(health)) return false;
             _state.UnregisterTrackedBoss(health);
             // 注意：不清理 _committedKeyByHealth —— 死亡回调链内仍需 Health->key 归因，
             // 映射保留至 ResetForNextWave（每波 Boss 数量极小，无泄漏风险）。

@@ -71,7 +71,7 @@ namespace BossRush
 
         /// <summary>
         /// 前期波次需要排除的强力 Boss 名称列表
-        /// 包括：口口口口、四骑士、龙裔遗族和焚天龙皇
+        /// 包括：口口口口、四骑士、龙裔遗族、焚天龙皇和幽灵女巫
         /// </summary>
         internal static readonly HashSet<string> EarlyWaveExcludedBosses = new HashSet<string>
         {
@@ -82,6 +82,7 @@ namespace BossRush
             "Cname_StormBoss5",    // 口口口口 或 四骑士
             "DragonDescendant",    // 龙裔遗族
             "boss_dragonking",     // 焚天龙皇
+            "boss_phantomwitch",   // 幽灵女巫（PhantomWitchConfig.BossNameKey；玩家反馈 2026-10-15 弹指可灭首波出女巫）
         };
 
         /// <summary>
@@ -95,27 +96,35 @@ namespace BossRush
 
         /// <summary>
         /// 预处理：确保前20波不出现强力Boss
-        /// 在挑战开始时调用一次，将前20位中的强力Boss与后面的普通Boss交换
+        /// 在挑战开始时调用一次，将前20位中的强力Boss与后面的普通Boss交换。
+        /// 启用的 Boss 不足 20 + 强力数时，保护窗口缩到"普通 Boss 数"，强力 Boss 全部压到最后几波，
+        /// 不能因为玩家关了一部分 Boss 就让第一波直接出龙皇 / 女巫。
         /// </summary>
         internal void EnsureEarlyWavesNoStrongBoss()
         {
-            if (EnemyPresets == null || EnemyPresets.Count <= 20) return;
+            if (EnemyPresets == null || EnemyPresets.Count <= 1) return;
 
             // 过滤缓存的顺序可能还是洗牌前的，但启用成员没变；只借它判断资格。
             // 按原池里的当前顺序收集启用项下标，关闭的 Boss 不占实际出场位置。
             var filteredPresets = owner.GetFilteredEnemyPresets();
-            if (filteredPresets == null || filteredPresets.Count <= 20) return;
+            if (filteredPresets == null || filteredPresets.Count <= 1) return;
             var enabledPresets = new HashSet<EnemyPresetInfo>(filteredPresets);
             var enabledIndices = new List<int>(filteredPresets.Count);
+            int strongCount = 0;
             for (int i = 0; i < EnemyPresets.Count; i++)
             {
-                if (enabledPresets.Contains(EnemyPresets[i])) enabledIndices.Add(i);
+                if (!enabledPresets.Contains(EnemyPresets[i])) continue;
+                enabledIndices.Add(i);
+                if (IsEarlyWaveExcludedBoss(EnemyPresets[i].name)) strongCount++;
             }
 
-            int swapCount = 0;
-            int nextSwapTarget = 20; // 从第20位开始找可交换的普通Boss
+            int protectedWaves = System.Math.Min(20, enabledIndices.Count - strongCount);
+            if (strongCount == 0 || protectedWaves <= 0) return;
 
-            for (int i = 0; i < 20 && i < enabledIndices.Count; i++)
+            int swapCount = 0;
+            int nextSwapTarget = protectedWaves; // 从保护窗口之后开始找可交换的普通Boss
+
+            for (int i = 0; i < protectedWaves && i < enabledIndices.Count; i++)
             {
                 int sourceIndex = enabledIndices[i];
                 if (!IsEarlyWaveExcludedBoss(EnemyPresets[sourceIndex].name)) continue;

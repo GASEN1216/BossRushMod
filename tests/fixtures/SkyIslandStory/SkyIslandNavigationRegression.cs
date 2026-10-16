@@ -28,6 +28,9 @@ internal static class SkyIslandNavigationRegression
             Targets(data, check, "Search_A");
             Apply(ref data, SkyIslandStoryAction.AcceptBellCourtQuest, check);
             Targets(data, check, "Search_H");
+            // 玩家反馈 2026-10-16：目标卡让去双航标门打噬风，地图圈却在 31 米外的风眼，木牌找不到。
+            check(SkyIslandMapMarkers.SideTargets(data).Contains("Search_E") && !SkyIslandMapMarkers.SideTargets(data).Contains("POI_E"),
+                "both beacons lit: map circles the twin-beacon gate sign, not the wind eye");
             if (peaceful)
             {
                 Apply(ref data, SkyIslandStoryAction.FindOldLetter, check);
@@ -46,7 +49,8 @@ internal static class SkyIslandNavigationRegression
             Targets(data, check, "Search_A");
             Apply(ref data, SkyIslandStoryAction.DeliverBellCourtQuest, check);
             Targets(data, check);
-            check(SkyIslandMapMarkers.SideTargets(data).Contains("POI_E"), "optional Windeater survives full quest delivery");
+            check(SkyIslandMapMarkers.SideTargets(data).Contains("Search_E") && !SkyIslandMapMarkers.SideTargets(data).Contains("POI_E"),
+                "optional Windeater survives full quest delivery and circles the twin-beacon gate sign");
             check(SkyIslandMapMarkers.SideTargets(data).Contains("Search_S1"), "unfinished garden remains an optional destination");
         }
         L10n.IsChinese = true;

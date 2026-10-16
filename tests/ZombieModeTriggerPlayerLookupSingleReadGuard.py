@@ -46,7 +46,8 @@ def main() -> int:
     required = [
         "CharacterMainControl player = CharacterMainControl.Main;",
         "damageInfo.fromCharacter != player",
-        "player.Health.AddHealth",
+        # 吸血抽成辅助方法（击杀那一下在死亡处理里补判，2026-10-16）：受伤处理把同一个 player 传进去。
+        "TryApplyZombieModeTriggerLifesteal(player, options);",
         "Vector3 baseDirection = (victim.transform.position - player.transform.position);",
         "baseDirection = player.transform.forward;",
         "Vector3 returnDirection = (player.transform.position - victim.transform.position);",
@@ -59,6 +60,14 @@ def main() -> int:
 
     if "CharacterMainControl.Main.transform" in body:
         return fail("HandleZombieModeOptionHealthHurt still dereferences CharacterMainControl.Main.transform")
+
+    lifesteal = extract_method_body(text, "private static void TryApplyZombieModeTriggerLifesteal(CharacterMainControl player, ZombieModeOptionRuntimeState options)")
+    if lifesteal is None:
+        return fail("missing TryApplyZombieModeTriggerLifesteal body")
+    if "player.Health.AddHealth" not in lifesteal:
+        return fail("lifesteal helper must heal through the passed-in player")
+    if "CharacterMainControl.Main" in lifesteal:
+        return fail("lifesteal helper must not re-read CharacterMainControl.Main")
 
     print("ZombieModeTriggerPlayerLookupSingleReadGuard: PASS")
     return 0

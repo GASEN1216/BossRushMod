@@ -1102,7 +1102,9 @@ namespace BossRush
             if (target == null)
             {
                 target = NearestMarker(SkyIslandMapMarkers.SideTargets(story.Current), from);
-                what = L10n.T("还没做完的支线", "an unfinished side path");
+                what = target != null && target.name == "Search_E"
+                    ? L10n.T("鸣风栈道的双航标门木牌", "the twin-beacon gate sign on Windsong Boardwalk")
+                    : L10n.T("还没做完的支线", "an unfinished side path");
             }
             // 主线支线都没了：带着晴岚风晶就指还缺风晶灯的地方；否则指这一趟还没采的风晶簇（碎晶是点灯的料）。
             if (target == null && fieldcraft != null && fieldcraft.CountInPack(BossRushItemIds.SkyIslandQinglanWindcrystal) > 0)

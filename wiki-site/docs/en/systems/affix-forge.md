@@ -62,7 +62,7 @@ Each affix only goes on certain gear types, noted after the name.
 
 ### Common (5)
 
-- **Lifesteal** (weapons) — Hits restore `0.6% / 1.0% / 1.5%` of max health, 0.4s cooldown.
+- **Lifesteal** (weapons) — Hits restore `0.6% / 1.0% / 1.5%` of max health, the killing blow included, 0.4s cooldown.
   A shotgun blast counts once, so don't expect a full heal per trigger.
 - **Slaughter** (all) — Kills restore `3% / 5% / 8%` of max health. No cooldown, and very
   comfortable sustain while clearing trash.

@@ -2,7 +2,9 @@
 
 ## 2026-10-13 启用池的前期强 Boss 排序（COMPAT）
 
-标准挑战洗牌后，前期排除按当前原池中的启用成员下标处理，资格复用 BossFilter 的过滤结果，强 Boss 类别沿用 EarlyWaveExcludedBosses。关闭的 Boss 不占前 20 个实际出场位置，也不能成为交换目标；排序后作废旧过滤缓存，生成入口读取最终顺序。有足够的启用普通 Boss 时，龙皇、龙裔与四骑士进入第 21 个及之后的出场位置；不足时保留所有成员，不删 Boss、不补造替代项。无间炼狱保持原有随机权重与不限制强 Boss 的规则。
+标准挑战洗牌后，前期排除按当前原池中的启用成员下标处理，资格复用 BossFilter 的过滤结果，强 Boss 类别沿用 EarlyWaveExcludedBosses。关闭的 Boss 不占前 20 个实际出场位置，也不能成为交换目标；排序后作废旧过滤缓存，生成入口读取最终顺序。有足够的启用普通 Boss 时，龙皇、龙裔、四骑士与幽灵女巫进入第 21 个及之后的出场位置；启用普通 Boss 不足 20 个时，保护窗口缩到普通 Boss 的个数，强力 Boss 全部排到最后几波（2026-10-16 玩家反馈弹指可灭首波出女巫后补上女巫并改为按池子大小缩放）。全是强力 Boss 时保留原顺序，不删 Boss、不补造替代项。无间炼狱保持原有随机权重与不限制强 Boss 的规则。
+
+波次死亡的主路由是 `Health.OnDead`。别的订阅者在流血 / 毒区这类无攻击者死亡上抛异常会截断多播，`WavesArenaRuntimeModule.SweepSilentWaveBossDeaths` 每 0.25 秒扫一次本波容器（多 Boss 档 `CurrentWaveBosses`、单 Boss 档 `CurrentBoss`），已死且未计入 `CountedDeadBosses` 的交给同一条 `HandleBossDeath`，成就、现金池与已击败计数照常；已销毁的 Boss 仍由 10 秒一次的 `TryFixStuckWaveIfNoBossAlive` 推波（2026-10-16）。
 
 该处理只在挑战启动时扫描一次原池，使用集合判成员并保存启用下标，没有新增每帧工作。AuditModeLifecycle 的 WaveOrdering 子项抽取真实启动、排序和缓存方法，验证关闭项混合池、多个强 Boss、成员守恒及无间炼狱例外；原样旧排序方法在独立副本上转红。真实 AI、生成位置和游戏内表现仍需实机验收。
 

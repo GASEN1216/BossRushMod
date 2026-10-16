@@ -159,6 +159,32 @@ def main():
     if "wavesArenaRuntime.HandleBossDeath(bossMain, damageInfo);" not in host:
         return fail("掉落漏斗调用的宿主入口必须转发到实际竞技场模块")
 
+    # ---- 6) 已死未计数的本波 Boss 兜底（2026-10-16：流血致死被别的 OnDead 订阅者异常截断） ----
+    # 兜底只能把本波容器里的 Boss 交给同一条 HandleBossDeath（成员闸、去重照旧），不得自己推波，
+    # 也不得去扫乱入 Boss；且要排在 10 秒自检之前，否则自检会跳过成就与现金池直接推波。
+    sweep = extract_method(arena, "internal void SweepSilentWaveBossDeaths(float deltaTime)")
+    if not sweep:
+        return fail(ARENA.as_posix() + " 找不到 SweepSilentWaveBossDeaths 兜底扫描")
+    sweep = strip_comments(sweep)
+    for token, why in (
+        ("CurrentWaveBosses[i] as CharacterMainControl", "多 Boss 档只扫本波列表"),
+        ("CurrentBoss as CharacterMainControl", "单 Boss 档只扫当前 Boss"),
+        ("HandleBossDeath(silentBossDeathScratch[i], default(DamageInfo));", "必须走同一条结案路由"),
+    ):
+        if token not in sweep:
+            return fail("SweepSilentWaveBossDeaths 缺少「" + token + "」：" + why)
+    if "ProceedAfterWaveFinished" in sweep or "BossesInCurrentWaveRemaining" in sweep:
+        return fail("SweepSilentWaveBossDeaths 不得自己推波或改剩余计数，只能交给 HandleBossDeath")
+    dead_check = extract_method(arena, "private bool IsSilentlyDeadWaveBoss(CharacterMainControl boss)")
+    if not dead_check or "CountedDeadBosses.Contains(boss)" not in dead_check or "health.IsDead" not in dead_check:
+        return fail("IsSilentlyDeadWaveBoss 必须跳过已计数的 Boss，并只认 Health.IsDead")
+    tick_path = Path("WavesArena/WavesArenaRuntimeModule_Tick.cs")
+    tick = strip_comments(tick_path.read_text(encoding="utf-8", errors="ignore"))
+    sweep_at = tick.find("SweepSilentWaveBossDeaths(deltaTime);")
+    fix_at = tick.find("owner.TryFixStuckWaveIfNoBossAlive();")
+    if sweep_at < 0 or fix_at < 0 or sweep_at > fix_at:
+        return fail(tick_path.as_posix() + " 要在 10 秒自检之前调 SweepSilentWaveBossDeaths(deltaTime)")
+
     print("WavesArenaBossMembershipGuard: PASS（分界线就位，"
           + str(len(ABOVE_GATE)) + " 项在上，" + str(len(BELOW_GATE)) + " 项在下）")
     return 0

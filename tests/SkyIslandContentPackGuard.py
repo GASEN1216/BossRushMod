@@ -288,7 +288,11 @@ def main():
                       "地图标记")
     require(apply, "foreach (string target in SideTargets(data))", "官方地图要圈可选目标（R-14）")
     side = need_body(markers, "internal static IEnumerable<string> SideTargets(SkyIslandStoryData data)", "可选目标")
-    require(side, 'if (data.BothBeacons && !data.StormResolved) yield return "POI_E";', "双航标后没打噬风要圈风眼")
+    # 2026-10-16 玩家反馈：引噬风 / 开 K3 都在双航标门木牌（Search_E）的面板里点，圈风眼 POI_E 会把玩家带到离木牌 31 米的空地。
+    require(side, 'if (data.BothBeacons && (!data.StormResolved || !data.Has(SkyIslandStoryFlag.ShortcutK3))) yield return "Search_E";',
+            "双航标后没打噬风或没开 K3 要圈双航标门木牌")
+    if 'yield return "POI_E"' in side:
+        errors.append("可选目标不能再圈风眼 POI_E：那里没有可交互的木牌")
     for key in ("Search_S1", "Search_S2", "Search_S3", "Search_S4"):
         require(side, 'yield return "%s";' % key, "结局后要圈未拿到的支线物证")
     if apply.count("step into the green ring to extract") != 2:

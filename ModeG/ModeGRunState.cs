@@ -317,7 +317,7 @@ namespace BossRush
         /// </summary>
         public void UnregisterTrackedBoss(Health health)
         {
-            if (health == null) return;
+            if (ReferenceEquals(health, null)) return;
             lock (_casLock)
             {
                 _trackedBossByHealth.Remove(health);

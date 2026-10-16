@@ -1127,6 +1127,9 @@ namespace BossRush
                     // 弹药禁令违规一次性播报（Intermission/Spawning/Fighting/LastStand 全程有效）
                     TickAmmoViolationAnnounce();
 
+                    // 已登记 Boss 死亡兜底（主路由是遥测的 OnDead 订阅；MarkKilled 去重，不会双记）
+                    SweepSilentBossDeaths();
+
                     // 波结算（下一帧窄上报）
                     if (_waveSettlementPending && !_waveSpawnInFlight)
                     {

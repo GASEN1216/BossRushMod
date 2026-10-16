@@ -2,6 +2,19 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+## 2026-10-16 玩家反馈四项 + v2.3.4 发版（COMPAT / OPERATIONAL，L1/L2，未实机）
+
+1. 汲血打死敌人不回血：官方致死顺序是 OnDead → OnHurt，命中类词缀用 `victim.IsDead` 排掉了致命一击。`AffixDefinition` 加 `ProcsOnLethalHit`，只给汲血开；灌能等其它命中词缀不变。丧尸模式「吸血」奖励同理被 `DeathSettled` 挡住，抽成 `TryApplyZombieModeTriggerLifesteal`，死亡处理里补判一次。描述与双语 Wiki 写明「打死敌人的那一下也算」。
+2. 弹指可灭首波出幽灵女巫：前 20 波强力 Boss 排除表漏了 `boss_phantomwitch`；补上。另把保护窗口改成 `min(20, 启用普通 Boss 数)`，Boss 池开得少时强力 Boss 也压到最后几波（以前 ≤20 个就整段不保护）。
+3. 天空岛找不到双航标门木牌：引噬风与开 K3 都在 `Search_E` 的面板里点，地图可选圈却画在噬风遭遇锚点 `POI_E`（风眼），离木牌 31 米，12 米半径罩不住。改圈 `Search_E`，噬风打过但 K3 没开时也圈；标签写「双航标门 · 在这儿引噬风 / 开中轴旧桥」，罗盘与 K3 门牌同样点名木牌。
+4. 宿命回响 Boss 流血死亡卡进度：Mode G 只靠 `Health.OnDead` 记 Boss 击杀，没有轮询兜底。流血 / 毒区这类无攻击者死亡上，前面的订阅者抛异常（已知击杀提示类 Mod 不判空攻击者）就会截断多播。新增 `SweepSilentBossDeaths`：战斗 / 最后处决阶段每 0.25 秒扫已登记 Boss，已死或已销毁的交给同一条 `HandleBossDead`（`MarkKilled` 去重，改为引用判空以接住已销毁 Health）。玩家那局的具体抛异常者 UNVERIFIED，需要 Player.log。
+5. 标准 BossRush / 无间炼狱同一缺口：原有 10 秒一次的 `TryFixStuckWaveIfNoBossAlive` 不会永久卡波，但它直接推波，跳过 `HandleBossDeath` 里的击杀成就、敌人回收退订、无间炼狱现金池与已击败计数，最多还要等 10 秒。新增 `SweepSilentWaveBossDeaths`（0.25 秒，排在 10 秒自检之前）：只扫本波容器（多 Boss 档 `CurrentWaveBosses`、单 Boss 档 `CurrentBoss`），已死且不在 `CountedDeadBosses` 里的交给同一条 `HandleBossDeath`；已销毁、拿不到角色的仍由 10 秒自检推波。
+6. 发版：Wiki 新增 v2.3.4 中英更新日志并登记目录与总览；`info.ini` 升到 2.3.4。工坊简介 a.md / b.md 上一版贴不进去：Steamworks 说明上限 8000 是 UTF-8 字节，网页提交换行按 CRLF 计，a.md 实为 8097、b.md 8765。新增 `tools/workshop_description_budget.py` 按最坏口径（CRLF + HTML 转义）计并留 300 余量；新版删去 v2.3.2 段，a.md 7009、b.md 7623。
+
+验证：全量守卫 745/745、全量执行回归 129/129（三个 D 盘环境变量已设；Mode G 兜底提取到 `ModeG/ModeGRuntimeModule_SilentDeathSweep.cs` 后重跑 ModeGCombat、ModeGEntryOwners 与全量守卫）、Wiki 构建通过。Windows 正式构建已部署本机游戏目录，0 错误、2 条既有 CS0649，DLL SHA-256 `70B4E71278FF243E29D16D7B4B85A03E5EF6101031DC6536B43A563433848114`，74 包哈希一致，不含 Dev 代码；`info.ini` 2.3.4 已拷进游戏目录。新增断言：汲血致命一击、小 Boss 池排序、地图圈双航标门；结构守卫：Mode G 与标准波次兜底、`MarkKilled` 引用判空。汲血回归、Mode G 两条、标准波次两条、丧尸吸血一条各做一次「改坏转红、按字节还原转绿」。同步守卫：SkyIslandContentPackGuard（圈 `Search_E`、禁止圈 `POI_E`）、ModeGDeathRoutingGuard、ModeGSpawnTransactionGuard、ZombieModeTriggerPlayerLookupSingleReadGuard、WavesArenaBossMembershipGuard。
+
+实机清单：LS-A 手持带汲血的武器、半血一枪打死小怪，血量不涨即不合格；WA-A 弹指可灭开局连开 5 次，前 20 波出现龙皇 / 龙裔 / 幽灵女巫 / 风暴 Boss 即不合格；SK-A 两灯修好后按 M，紫圈不在栈道靠悬根林的木牌上、或圈里按不出「直面云海里的那阵风」即不合格；MG-A 宿命回响里让 Boss 流血致死，1 秒内不计击杀、不进结算即不合格；BR-A 无间炼狱里让 Boss 流血致死，1 秒内不推下一波、现金池没涨即不合格；WS-A 用新的 a.md / b.md 更新工坊描述，被拒或被截断即不合格。
+
 ## 2026-10-15 v2.3.3 发版准备（COMPAT / OPERATIONAL，L1/L2）
 
 复查本轮五项时发现饰品槽检查照抄空 catch，全仓空 catch 969 超预算 968；三段槽位循环合成 `TryFindFilledSlot`，判定顺序与结果不变，降到 966。本机私有资源停在 10-13 早上（图标包缺 500109、物品 ID 表未登记），经 `private-sync.ps1 sync` 拉齐后两项守卫转绿。

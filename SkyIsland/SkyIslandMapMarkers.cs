@@ -92,7 +92,7 @@ namespace BossRush
             }
             // 支线 / 可选挑战用紫（UE-21）：旧写法和码头撤离点同为 Accent 青，地图上一眼分不开。
             foreach (string target in SideTargets(data))
-                Add(root.Find(target), SideLabel(target), BossRushUIColors.RarityEpic, ObjectiveRadius, null);
+                Add(root.Find(target), SideLabel(target, data), BossRushUIColors.RarityEpic, ObjectiveRadius, null);
             if (notify == null) return;
             if ((opened & 2) != 0)
                 notify(L10n.T("风标亮了：悬根林广场多了一个返航点，站进绿环即可撤离",
@@ -163,13 +163,15 @@ namespace BossRush
 
         /// <summary>
         /// 可选目标（可玩性评估 R-14）：主线目标卡只管航标与钟庭，结局后更是什么都不圈，支线物证与噬风从来不上地图。
-        /// - 两端航标都亮、噬风还没打：圈鸣风栈道上的风眼（`POI_E`，噬风遭遇锚点）；结局之后仍没打同样圈。
+        /// - 两端航标都亮、噬风还没打或中轴旧桥 K3 还没开：圈鸣风栈道的双航标门（`Search_E`）——两件事都在这块木牌的面板里点；
+        ///   以前圈的是噬风遭遇锚点 `POI_E`（风眼），离木牌 31 米，12 米的圈罩不住它，玩家走进圈里找不到能交互的东西
+        ///   （玩家反馈 2026-10-16）。结局之后仍没打同样圈。
         /// - 结局之后：圈还没拿到的支线物证（S1–S4 的物证点）；种植记录拿到了但还没交，就圈风铃集留言板。
         /// 与主线目标一样只在剧情旗标变化时重建（见 <see cref="Apply"/>）；风标罗盘在主线目标都没有时指向这里。
         /// </summary>
         internal static IEnumerable<string> SideTargets(SkyIslandStoryData data)
         {
-            if (data.BothBeacons && !data.StormResolved) yield return "POI_E";
+            if (data.BothBeacons && (!data.StormResolved || !data.Has(SkyIslandStoryFlag.ShortcutK3))) yield return "Search_E";
             if (!data.Has(SkyIslandStoryFlag.Ending)) yield break;
             if (!data.Has(SkyIslandStoryFlag.PlantingRecord)) yield return "Search_S1";
             else if (!data.Has(SkyIslandStoryFlag.PlantingDelivered)) yield return "Search_B";
@@ -204,11 +206,12 @@ namespace BossRush
             return task == null ? L10n.T("当前目标", "Current objective") : L10n.T("目标 · ", "Objective · ") + task;
         }
 
-        private static string SideLabel(string target)
+        private static string SideLabel(string target, SkyIslandStoryData data)
         {
-            return target == "POI_E"
-                ? L10n.T("可选挑战 · 噬风", "Optional challenge · the Windeater")
-                : L10n.T("支线目标", "Side objective");
+            if (target != "Search_E") return L10n.T("支线目标", "Side objective");
+            return !data.StormResolved
+                ? L10n.T("双航标门 · 在这儿引噬风", "Twin-beacon gate · call the Windeater here")
+                : L10n.T("双航标门 · 在这儿开中轴旧桥", "Twin-beacon gate · open the centre bridge here");
         }
 
         private static readonly System.Reflection.FieldInfo ExitIconField = BossRush.Common.Utils.ReflectionCache.GetField(

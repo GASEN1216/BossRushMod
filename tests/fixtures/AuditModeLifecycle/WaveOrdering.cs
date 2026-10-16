@@ -51,6 +51,12 @@ namespace BossRush {
    host=new ModBehaviour();host.BossFilterEnemyPresets.Add(new EnemyPresetInfo{name="boss_dragonking"});for(int i=0;i<21;i++)host.BossFilterEnemyPresets.Add(new EnemyPresetInfo{name="DragonDescendant"});
    arena=new WavesArenaRuntimeModule(host);arena.StartFirstWave();
    Check(host.GetFilteredEnemyPresets().Count==22,"no replacement available must preserve the full pool");
+   // 玩家反馈 2026-10-15：弹指可灭首波出幽灵女巫；Boss 池不足 20 个时也要把强力 Boss 压到最后。
+   Check(WavesArenaRuntimeModule.EarlyWaveExcludedBosses.Contains("boss_phantomwitch"),"phantom witch must count as an early-wave strong boss");
+   host=new ModBehaviour();host.BossFilterEnemyPresets.Add(new EnemyPresetInfo{name="boss_phantomwitch"});host.BossFilterEnemyPresets.Add(new EnemyPresetInfo{name="boss_dragonking"});
+   for(int i=0;i<10;i++)host.BossFilterEnemyPresets.Add(new EnemyPresetInfo{name="normal"+i});
+   arena=new WavesArenaRuntimeModule(host);arena.StartFirstWave();pool=host.GetFilteredEnemyPresets();
+   Check(pool.Count==12&&pool.Take(10).All(p=>!WavesArenaRuntimeModule.EarlyWaveExcludedBosses.Contains(p.name))&&arena.Spawned.name.StartsWith("normal"),"small pool must still keep strong bosses behind every ordinary boss");
    Console.WriteLine("WaveOrdering: "+checks+" assertions PASS");
   }
  }

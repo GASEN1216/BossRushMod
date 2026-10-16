@@ -611,6 +611,7 @@ echo(ModeG\ModeGSpawnTransaction.cs
 echo(ModeG\ModeGCleanupController.cs
 echo(ModeG\ModeGRuntimeModule.cs
 echo(ModeG\ModeGRuntimeModule_PublicApiAndShutdown.cs
+echo(ModeG\ModeGRuntimeModule_SilentDeathSweep.cs
 echo(ModeG\ModeGRuntimeLifecycle.cs
 echo(ModeG\ModeGRuntimeBridge.cs
 echo(ModeG\ModeGHUD.cs

@@ -111,6 +111,9 @@ namespace BossRush
         /// <summary>true = 枪械归因时一次开火只触发一次（抗霰弹多弹丸重复 OnHurt）。</summary>
         public bool ConsumesShotGate;
 
+        /// <summary>true = 致命一击那次 OnHurt 也算"命中"（汲血：打死敌人也回血）。</summary>
+        public bool ProcsOnLethalHit;
+
         /// <summary>主数值是否按百分比展示。</summary>
         public bool Value1IsPercent = true;
 
@@ -315,9 +318,10 @@ namespace BossRush
                 TierValues = Val_Lifesteal,
                 ProcCooldownSeconds = CD_Lifesteal,
                 ConsumesShotGate = true,
+                ProcsOnLethalHit = true,
                 NameCN = "汲血", NameEN = "Lifesteal",
-                DescCN = "命中敌人时回复最大生命的 {0}（冷却 0.4 秒）。",
-                DescEN = "Restore {0} of max health when you hit an enemy (0.4s cooldown)."
+                DescCN = "命中敌人时回复最大生命的 {0}，打死敌人的那一下也算（冷却 0.4 秒）。",
+                DescEN = "Restore {0} of max health when you hit an enemy, including the killing blow (0.4s cooldown)."
             },
             new AffixDefinition
             {

@@ -165,8 +165,9 @@ def main():
              r"public bool MarkExhausted\(int slotIndex\)",
              "两次尝试耗尽结案入口"),
             ("KilledOutcome",
-             r"public bool MarkKilled\(Health health\)",
-             "死亡结案入口（exact Health 引用身份）"),
+             r"public bool MarkKilled\(Health health\)\s*\{[\s\S]{0,200}?"
+             r"if \(ReferenceEquals\(health, null\) \|\| !_activeBosses\.Remove\(health\)\) return false;",
+             "死亡结案入口（exact Health 引用身份；已销毁的 Health 也要能结案）"),
         ]
         for name, pattern, desc in checks:
             if not re.search(pattern, tx):
