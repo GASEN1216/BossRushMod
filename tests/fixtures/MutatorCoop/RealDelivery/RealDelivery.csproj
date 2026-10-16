@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AssemblyName>MutatorCoopRealDelivery</AssemblyName>
+    <DefineConstants>$(DefineConstants);MUTATOR_REAL_DELIVERY</DefineConstants>
+    <MutatorProductionRoot Condition="'$(MutatorProductionRoot)' == ''">$(MSBuildProjectDirectory)/../../../..</MutatorProductionRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Stubs.cs"/><Compile Include="Program.cs"/><Compile Include="Wire.cs"/>
+    <Compile Include="$(MutatorProductionRoot)/Integration/Mutators/MutatorDefinitions.cs"/>
+    <Compile Include="$(MutatorProductionRoot)/Integration/Mutators/MutatorManager.cs"/>
+    <Compile Include="$(MutatorProductionRoot)/Integration/Mutators/MutatorManager_Coop.cs"/>
+    <Compile Include="$(MutatorProductionRoot)/Integration/Mutators/MutatorCoopRuntimeModule.cs"/>
+    <Compile Include="$(MutatorProductionRoot)/Integration/Mutators/MutatorModeFlow.cs"/>
+    <Compile Include="$(MutatorProductionRoot)/Utilities/CoopPersonalDelivery.cs"/>
+    <Compile Include="$(MutatorProductionRoot)/Common/Coop/BossRushCoopJson.cs"/>
+    <Compile Include="$(MutatorProductionRoot)/Common/Data/BossRushJsonValue.cs"/>
+    <Compile Include="$(MutatorProductionRoot)/Utilities/SimpleJsonHelper.cs"/>
+  </ItemGroup>
+</Project>

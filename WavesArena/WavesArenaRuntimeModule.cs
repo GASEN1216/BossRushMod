@@ -155,7 +155,10 @@ namespace BossRush
         internal static void EnqueueMilestone(ModBehaviour expectedOwner, int tier, UnityEngine.Vector3 position)
         {
             if (current != null && current.owner == expectedOwner && current.milestoneDelivery != null)
-                current.milestoneDelivery.Enqueue(tier, position, current.CoopArenaRewardCopies);
+            {
+                if (BossRushCoop.IsConnected) current.DeliverCoopArenaReward("milestone", 0, 0, 0, tier);
+                else current.milestoneDelivery.Enqueue(tier, position);
+            }
         }
 
         public override void OnUpdate(float deltaTime, float unscaledDeltaTime)
@@ -214,6 +217,7 @@ namespace BossRush
             ReleaseBossRandomLootTrackingOnDestroy();
             if (current == this) current = null;
             milestoneDelivery = null;
+            CleanupCoopArenaRewards();
             owner = null;
         }
     }

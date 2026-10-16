@@ -115,7 +115,15 @@ namespace BossRush
         {
             try
             {
-                CharacterMainControl player = BossRushCoop.IsHost ? BossRushCoop.GetCombatTarget(Vector3.zero) : CharacterMainControl.Main;
+                CharacterMainControl player = CharacterMainControl.Main;
+                if (BossRushCoop.IsConnected && BossRushCoop.IsHost)
+                {
+                    player = null;
+                    int candidates = 0;
+                    foreach (BossRushCoopPlayer member in BossRushCoop.Players)
+                        if (member.IsAlive && member.Character != null && member.Character.Health != null && !member.Character.Health.IsDead
+                            && UnityEngine.Random.Range(0, ++candidates) == 0) player = member.Character;
+                }
                 if (player == null || player.Health == null || player.Health.IsDead)
                 {
                     return null;

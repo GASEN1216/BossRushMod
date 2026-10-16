@@ -10,6 +10,7 @@ namespace UnityEngine
 
 namespace BossRush
 {
+    internal static class BossRushCoop { internal static bool IsConnected, IsHost; internal static string RunId; }
     internal static class L10n
     {
         public static string T(string text, string en) { return text; }
@@ -61,6 +62,7 @@ namespace BossRush
     }
     internal sealed class RunState
     {
+        internal string RunId;
         internal ModeHLifecycle Lifecycle;
         internal long OwnerToken;
     }
@@ -112,6 +114,8 @@ namespace BossRush
     }
     internal partial class ModeHRuntimeModule
     {
+        private bool _coopProjection, _coopWorldWasConnected;
+        private string _coopWorldRun, _coopWorldRoom;
 
         internal ModBehaviour _owner;
         internal bool _shutdownCompleted, _commandsClosed, _certificationFromF3, _lastCertificationUsedCache;

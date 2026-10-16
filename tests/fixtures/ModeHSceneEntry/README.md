@@ -20,3 +20,5 @@
 2026-09-26：额外覆盖普通 BossRush 自定义落点在 SceneLoader 或 MultiSceneCore 仍加载时不移动玩家，加载完成后只初始化一次。
 
 首次已到达时另测：不再调用 Legacy SetPosition，但仍执行一次竞技场初始化。到达标记在本夹具为替身，其生产生命周期由 EntryAndReforgeCompatibility 执行。
+
+2026-10-15 owner 依赖同步：当前所提取的世界回调/转换或续赛方法读取真实 IsCoopWorldAuthorityCurrent；夹具同步提取该生产属性及所需原房间/原连接字段，没有恒真替身。默认离线用例保持原语义；原生 host Stop、换角色/房间和真实迟到 custom factory 的执行边界集中由 ModeHCoop 的 WorldOwner 用例验证。

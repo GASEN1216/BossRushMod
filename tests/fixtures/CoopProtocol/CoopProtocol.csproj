@@ -5,6 +5,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" /><Compile Include="Stubs.cs" />
+    <Compile Include="ChannelScenes.cs" />
+    <Compile Include="../CoopSceneCoreBoundary.cs" />
     <Compile Include="../../../Common/Coop/BossRushCoopProtocol.cs" />
     <Compile Include="../../../Utilities/CoopGameplayChannel.cs" />
     <Compile Include="../../../Utilities/CoopPersonalDelivery.cs" />

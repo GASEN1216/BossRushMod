@@ -15,7 +15,7 @@ namespace BossRush
     [Serializable]
     internal sealed class CoopModeEUtilitySmoke
     {
-        public string Id, Run;
+        public string Id, Run, SceneToken;
         public int Scene;
         public Vector3 Position;
     }
@@ -56,7 +56,7 @@ namespace BossRush
             if (!BossRushCoop.IsClient) return;
             foreach (CoopModeEUtilityRequest request in coopUtilityRequests.Values)
                 if (request.AssetId == BossRushCoop.LocalAssetId && request.Run == BossRushCoop.RunId)
-                    coopChannel.Request("utility", text: BossRushCoopJson.ToJson(request));
+                    coopChannel.RequestRepeat("utility", text: BossRushCoopJson.ToJson(request));
         }
 
         private void ExecuteCoopUtility(CoopGameplayCommand command)
@@ -108,16 +108,18 @@ namespace BossRush
 
         private void PublishCoopUtilitySmoke(Vector3 position)
         {
-            if (!BossRushCoop.IsHost) return;
+            if (!BossRushCoop.IsHost || !BossRushCoop.HasBoundScene) return;
             BossRushCoop.Broadcast("ModeE.utility-smoke", new CoopModeEUtilitySmoke {
-                Id = Guid.NewGuid().ToString("N"), Run = BossRushCoop.RunId, Scene = BossRushCoop.SceneGeneration, Position = position });
+                Id = Guid.NewGuid().ToString("N"), Run = BossRushCoop.RunId, Scene = BossRushCoop.SceneGeneration,
+                SceneToken = BossRushCoop.SceneToken, Position = position });
         }
         private void OnCoopUtilitySmoke(BossRushCoopMessage message)
         {
-            if (!BossRushCoop.IsClient || !message.IsFromHost) return;
+            if (!BossRushCoop.IsClient || !BossRushCoop.HasBoundScene || !message.IsFromHost) return;
             CoopModeEUtilitySmoke effect = message.Read<CoopModeEUtilitySmoke>();
             Guid id;
             if (effect == null || effect.Run != BossRushCoop.RunId || effect.Scene != BossRushCoop.SceneGeneration
+                || string.IsNullOrEmpty(effect.SceneToken) || effect.SceneToken != BossRushCoop.SceneToken
                 || !Guid.TryParseExact(effect.Id, "N", out id) || !coopUtilitySmokeSeen.Add(effect.Id)) return;
             PlayCoopUtilitySmoke(effect.Position);
         }

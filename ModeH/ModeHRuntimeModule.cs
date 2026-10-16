@@ -399,7 +399,7 @@ namespace BossRush
         /// </summary>
         internal bool TryTransition(ModeHLifecycle expected, ModeHLifecycle next, string reason)
         {
-            if (_runState == null) return false;
+            if (_runState == null || !IsCoopWorldAuthorityCurrent) return false;
             ModeHTransitionRecord record;
             string failureReasonId;
             bool ok = ModeHStateMachine.TryTransition(

@@ -50,6 +50,8 @@ namespace BossRush
 
         private static FrostmourneConfig _config;
         private bool spawningStarted;
+        private bool coopSummonRejected;
+        private int coopSummonAttempt;
         private bool spawningComplete;
         private int activeSpawnRequestId;
 
@@ -97,6 +99,7 @@ namespace BossRush
             activeSpawnRequestId++;
             spawningStarted = false;
             spawningComplete = false;
+            coopSummonRejected = false; coopSummonAttempt++;
             return true;
         }
 
@@ -107,7 +110,7 @@ namespace BossRush
                 spawningStarted = true;
                 int spawnRequestId = activeSpawnRequestId;
                 if (BossRushCoop.IsClient)
-                { BossRushCoopContentRuntimeModule.RequestSummon(2); spawningComplete = true; }
+                { int attempt = coopSummonAttempt; if (!BossRushCoopContentRuntimeModule.RequestSummon(2, accepted => OnCoopSummonResult(attempt, accepted))) { StopAction(); return; } spawningComplete = true; }
                 else SpawnZombiesAsync(spawnRequestId).Forget();
             }
 
@@ -117,15 +120,9 @@ namespace BossRush
             }
         }
 
-        protected override void OnAbilityStop()
-        {
-            activeSpawnRequestId++;
-            spawningStarted = false;
-            spawningComplete = false;
-        }
-
         private void OnDestroy()
         {
+            coopSummonAttempt++;
             activeSpawnRequestId++;
             spawningStarted = false;
         }
@@ -381,7 +378,7 @@ namespace BossRush
                 return false;
             }
             if (coopOwner != null && (!BossRushCoop.IsHost || coopRun != BossRushCoop.RunId || coopScene != BossRushCoop.SceneGeneration
-                || !BossRushCoopContentRuntimeModule.IsSummonOwnerCurrent(player, coopAsset) || player.CurrentHoldItemAgent == null
+                || !BossRushCoopContentRuntimeModule.IsSummonOwnerCurrent(player, coopAsset, coopToken) || player.CurrentHoldItemAgent == null
                 || player.CurrentHoldItemAgent.Item == null || player.CurrentHoldItemAgent.Item.TypeID != FrostmourneIds.WeaponTypeId)) return false;
 
             if (player.Health != null && player.Health.IsDead)

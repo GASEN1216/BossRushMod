@@ -36,24 +36,34 @@ namespace BossRush
             if (marker == null) marker = character.gameObject.AddComponent<CoopAiPredictionReplicaMarker>();
             // 这是实体出生归属；停止网络或清理预测 owner 都不能把旧镜像变成单机世界实体。
             marker.Replica = true;
-            if (Owner == null) return;
+            if (Owner == null || !BossRushCoop.HasBoundScene || string.IsNullOrEmpty(BossRushCoop.SceneToken)) return;
+            marker.PredictionRun = BossRushCoop.RunId; marker.PredictionToken = BossRushCoop.SceneToken;
+            marker.PredictionGeneration = BossRushCoop.SceneGeneration;
             marker.Armed = true; marker.Owner = Owner; Owner.Remember(marker);
         }
         internal static Health Begin(Health health, CharacterMainControl attacker)
         {
             Health previous = predicting; predicting = null;
-            if (!BossRushCoop.IsClient || health == null || attacker == null
+            if (!BossRushCoop.IsClient || !BossRushCoop.HasBoundScene || health == null || attacker == null
                 || BossRushCoop.GetPlayerId(attacker) != BossRushCoop.LocalPlayerId) return previous;
             CharacterMainControl character = health.TryGetCharacter();
             CoopAiPredictionReplicaMarker marker = character != null ? character.GetComponent<CoopAiPredictionReplicaMarker>() : null;
-            if (marker != null && marker.Armed && marker.Owner == Owner) predicting = health;
+            if (marker != null && marker.Armed && marker.Owner == Owner && IsCurrent(marker)) predicting = health;
             return previous;
         }
         internal static void End(Health previous) { predicting = previous; }
         internal static bool TryClamp(Health health, ref float value)
         {
-            if (!BossRushCoop.IsClient || health == null || health != predicting || value > 0f) return false;
+            if (!BossRushCoop.IsClient || !BossRushCoop.HasBoundScene || health == null || health != predicting || value > 0f) return false;
+            CharacterMainControl character = health.TryGetCharacter();
+            var marker = character != null ? character.GetComponent<CoopAiPredictionReplicaMarker>() : null;
+            if (marker == null || !marker.Armed || marker.Owner != Owner || !IsCurrent(marker)) return false;
             value = 1f; return true;
+        }
+        private static bool IsCurrent(CoopAiPredictionReplicaMarker marker)
+        {
+            return marker.PredictionRun == BossRushCoop.RunId && marker.PredictionGeneration == BossRushCoop.SceneGeneration
+                && !string.IsNullOrEmpty(marker.PredictionToken) && marker.PredictionToken == BossRushCoop.SceneToken;
         }
         internal static void ResetStaticCaches() { predicting = null; Owner = null; }
     }
@@ -62,6 +72,8 @@ namespace BossRush
     {
         internal bool Armed, Replica, AuthorityBound;
         internal string AuthorityRun;
+        internal string PredictionRun, PredictionToken;
+        internal int PredictionGeneration;
         internal CoopAiPredictionHealthRuntimeModule Owner;
     }
 
@@ -81,7 +93,7 @@ namespace BossRush
         public override string ModuleName { get { return "CoopAiPredictionHealth"; } }
         // JsonUtility 的字段由网络填充。
 #pragma warning disable 0649
-        [Serializable] private sealed class AuthorityState { public string Run; public int Generation; public int[] Ids; }
+        [Serializable] private sealed class AuthorityState { public string Run, SceneToken; public int Generation; public int[] Ids; }
 #pragma warning restore 0649
         private sealed class Authority { internal CharacterMainControl Character; internal int Id; }
         private readonly List<Authority> authorities = new List<Authority>();
@@ -108,35 +120,38 @@ namespace BossRush
         internal void Remember(CoopAiPredictionReplicaMarker marker) { if (marker != null) markers.Add(marker); }
         private void OnAiSpawned(int id, CharacterMainControl character)
         {
-            if (id == 0 || character == null || !BossRushCoop.SessionReady) return;
+            if (id == 0 || character == null || !BossRushCoop.SessionReady || !BossRushCoop.HasBoundScene) return;
             if (BossRushCoop.IsHost && tracked.Contains(character))
             {
                 foreach (Authority entry in authorities) if (entry.Character == character) { entry.Id = id; break; }
                 PublishAuthority();
             }
             else if (BossRushCoop.IsClient && latest != null && latest.Run == BossRushCoop.RunId
-                && latest.Generation == BossRushCoop.SceneGeneration && Array.IndexOf(latest.Ids, id) >= 0)
+                && latest.Generation == BossRushCoop.SceneGeneration && latest.SceneToken == BossRushCoop.SceneToken && Array.IndexOf(latest.Ids, id) >= 0)
                 BindReplica(id, character);
         }
         private void Receive(BossRushCoopMessage message)
         {
-            if (!BossRushCoop.IsClient || !message.IsFromHost) return;
+            if (!BossRushCoop.IsClient || !BossRushCoop.HasBoundScene || !message.IsFromHost) return;
             RefreshWorld();
             AuthorityState state = message.Read<AuthorityState>();
-            if (state == null || state.Run != run || state.Generation != generation || state.Ids == null || state.Ids.Length > 4096) return;
+            if (state == null || state.Run != run || state.Generation != generation || string.IsNullOrEmpty(state.SceneToken)
+                || state.SceneToken != BossRushCoop.SceneToken || state.Ids == null || state.Ids.Length > 4096) return;
             latest = state; nextTick = 0f;
             foreach (int id in state.Ids)
             { CharacterMainControl character = BossRushCoop.FindAi(id); if (id != 0 && character != null) BindReplica(id, character); }
         }
         private void RefreshWorld()
         {
-            if (run == BossRushCoop.RunId && generation == BossRushCoop.SceneGeneration) return;
-            ClearWorld(); run = BossRushCoop.RunId; generation = BossRushCoop.SceneGeneration;
+            if (run != BossRushCoop.RunId || generation != BossRushCoop.SceneGeneration)
+            { ClearWorld(); run = BossRushCoop.RunId; generation = BossRushCoop.SceneGeneration; }
+            // Native Begin closes the old Core before the next host generation is committed.
+            if (BossRushCoop.IsClient && !BossRushCoop.HasBoundScene && (latest != null || markers.Count > 0 || bound.Count > 0)) ClearWorld();
         }
         public override void OnUpdate(float deltaTime, float unscaledDeltaTime)
         {
             RefreshWorld();
-            if (!BossRushCoop.SessionReady || Time.unscaledTime < nextTick) return;
+            if (!BossRushCoop.SessionReady || !BossRushCoop.HasBoundScene || Time.unscaledTime < nextTick) return;
             nextTick = Time.unscaledTime + 0.2f;
             if (BossRushCoop.IsHost)
             {
@@ -150,7 +165,7 @@ namespace BossRush
                 nextPublish = Time.unscaledTime + 0.5f;
                 PublishAuthority();
             }
-            else if (latest != null)
+            else if (latest != null && latest.SceneToken == BossRushCoop.SceneToken)
             {
                 foreach (int id in latest.Ids)
                 {
@@ -162,9 +177,10 @@ namespace BossRush
         }
         private void PublishAuthority()
         {
+            if (!BossRushCoop.HasBoundScene) return;
             var ids = new List<int>(authorities.Count);
             foreach (Authority entry in authorities) if (entry.Id != 0) ids.Add(entry.Id);
-            BossRushCoop.Broadcast("ai.predict", new AuthorityState { Run = run, Generation = generation, Ids = ids.ToArray() });
+            BossRushCoop.Broadcast("ai.predict", new AuthorityState { Run = run, Generation = generation, SceneToken = BossRushCoop.SceneToken, Ids = ids.ToArray() });
         }
         private void BindReplica(int id, CharacterMainControl character)
         {

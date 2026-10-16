@@ -651,18 +651,6 @@ namespace BossRush
         }
 
         /// <summary>
-        /// Mode G 辅助单位释放通知（仅成功提交者恰好一次；幂等移除）。
-        /// </summary>
-        private void HandleModeGAuxiliaryReleased(CharacterMainControl auxiliary, ManagedBossRole role)
-        {
-            try
-            {
-                if (auxiliary != null) _committedAuxiliaries.Remove(auxiliary);
-            }
-            catch { /* no-throw */ }
-        }
-
-        /// <summary>
         /// official 路径 onCommit（SpawnCore 激活屏障内）：阵营安全网。
         /// </summary>
         private bool CommitOfficialSpawn(EnemySpawnContext ctx)
@@ -839,7 +827,7 @@ namespace BossRush
                     // 被 Achievement 侧窄去重当成重复上报吞掉第二只。
                     int token = unchecked((int)ModeGDeterministicRandom.Fnv1a64(
                         (bossType ?? "Normal") + "|" + _state.waveEpoch
-                        + "|" + (health != null ? health.GetInstanceID() : 0)));
+                        + "|" + (!ReferenceEquals(health, null) ? health.GetInstanceID() : 0)));
                     if (IsCoopAssetCurrent && !CoopPersonalDefeated)
                         ModeGCombatTelemetry.EnqueueAchievementReport(
                             token, bossType ?? "Normal", !AchievementTracker.HasTakenDamage);
@@ -911,6 +899,15 @@ namespace BossRush
                 }
             }
             catch { }
+            // 客端只有已提交的原生副本，不持有房主托管 handle；死亡后也不能再读角色组件。
+            string key;
+            if (_spawnTransaction.TryGetCommittedKeyByHealth(health, out key))
+            {
+                if (key == ModeGEncounterVariation.ManagedDragonDescendantKey) bossType = "DragonDescendant";
+                else if (key == ModeGEncounterVariation.ManagedDragonKingKey) bossType = "DragonKing";
+                else if (key == ModeGEncounterVariation.ManagedPhantomWitchKey) bossType = "PhantomWitch";
+                if (bossType != null) return true;
+            }
             return false;
         }
 

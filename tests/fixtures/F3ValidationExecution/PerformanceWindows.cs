@@ -16,7 +16,7 @@ internal static class Mathf
 }
 internal static class SceneManager
 {
-    internal struct Scene { internal int handle; internal string name; }
+    internal struct Scene { internal int handle; internal string name; internal bool isLoaded; internal bool IsValid() { return handle != 0; } }
     internal static int Handle;
     internal static string Name = "Arena";
     internal static Scene GetActiveScene() { return new Scene { handle = Handle, name = Name }; }

@@ -14,13 +14,14 @@ Judges 的代码部分（剥掉注释与字符串字面量之后）一旦出现 
 from pathlib import Path
 import hashlib
 import json
+import os
 import subprocess
 import sys
 from xml.sax.saxutils import escape
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
-OUT = ROOT / 'Build' / 'runtime-regressions' / 'F3AutotestJudges'
+OUT = Path(os.environ.get('BOSSRUSH_FIXTURE_OUTPUT', str(ROOT / 'Build' / 'runtime-regressions' / 'F3AutotestJudges')))
 JUDGES = 'DebugAndTools/F3GameplayValidationAutotestJudges.cs'
 MODELS = 'DebugAndTools/F3GameplayValidationAutotestModels.cs'
 STORY_AUTOTEST = 'SkyIsland/SkyIslandStoryServiceAutotest.cs'

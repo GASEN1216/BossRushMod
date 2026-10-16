@@ -669,6 +669,7 @@ namespace BossRush
         private bool IsCallbackStillValid(long ownerToken, int generation)
         {
             if (_shutdownCompleted || _commandsClosed) return false;
+            if (!IsCoopWorldAuthorityCurrent) return false;
             if (_runState == null) return false;
             if (_runState.OwnerToken != ownerToken) return false;
             if (_sceneGeneration != generation) return false;

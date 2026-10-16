@@ -159,7 +159,30 @@ namespace BossRush
         public void RegisterAbility(CharacterMainControl target) { Binds++; TargetCharacter = target; }
         public void RebindToCharacter(CharacterMainControl target) { Binds++; TargetCharacter = target; }
     }
-    internal static class FrostmourneAction { internal static int Cleans; public static void CleanupAllSummonedZombies() { Cleans++; } }
+    internal static partial class FrostmourneAction
+    {
+        private static readonly List<CharacterMainControl> summonedZombies = new List<CharacterMainControl>();
+        private static readonly Dictionary<CharacterMainControl, CharacterMainControl> summonOwners = new Dictionary<CharacterMainControl, CharacterMainControl>();
+        private static object cachedZombiePreset;
+        private static bool presetSearchAttempted;
+        internal static void Seed(CharacterMainControl ally) { summonedZombies.Add(ally); summonOwners[ally] = ally; cachedZombiePreset = new object(); presetSearchAttempted = true; }
+        internal static bool CacheEmpty { get { return summonedZombies.Count == 0 && summonOwners.Count == 0 && cachedZombiePreset == null && !presetSearchAttempted; } }
+    }
+    internal static partial class SummonStaffAction
+    {
+        private static readonly List<CharacterMainControl> summonedAllies = new List<CharacterMainControl>();
+        private static readonly Dictionary<CharacterMainControl, CharacterMainControl> summonOwners = new Dictionary<CharacterMainControl, CharacterMainControl>();
+        private static object cachedPreset;
+        private static bool presetSearchAttempted;
+        internal static void Seed(CharacterMainControl ally) { summonedAllies.Add(ally); summonOwners[ally] = ally; cachedPreset = new object(); presetSearchAttempted = true; }
+        internal static bool CacheEmpty { get { return summonedAllies.Count == 0 && summonOwners.Count == 0 && cachedPreset == null && !presetSearchAttempted; } }
+    }
+    internal static class SummonStaffManager
+    {
+        internal static int Cleans;
+        internal static bool SawDirtyCache;
+        internal static void CleanupStatic() { Cleans++; SawDirtyCache |= !SummonStaffAction.CacheEmpty; }
+    }
     internal static class FrostmourneBlueBossDropHandler { internal static int Cleans; public static void Cleanup() { Cleans++; } }
     internal sealed class GoblinNPCController : MonoBehaviour { }
     internal sealed class NurseNPCController : MonoBehaviour { }
@@ -231,10 +254,15 @@ internal static class Program
         host = new ModBehaviour(); var reverse = new ReverseScaleRuntimeModule(); reverse.OnAwake(host); reverse.InitializeReverseScaleSystem(); var reverseEffect = ReverseScaleEffectManager.Instance; reverse.SetupReverseScaleForScene(new Scene("Gameplay")); reverse.OnDestroy(); reverse.OnDestroy();
         Check(reverseEffect == null && ReverseScaleAbilityManager.Instance == null && ReverseScaleAbilityManager.Cleans == 1, "direct ReverseScale destroy must clean managers once");
         foreach (Coroutine c in host.Coroutines) c.MoveNext(); Check(ReverseScaleEffectManager.Checks == 0 && host.Coroutines.All(c => c.Stopped), "ReverseScale destroy must cancel pending check");
+        var frostAlly = new CharacterMainControl(); FrostmourneAction.Seed(frostAlly);
         host = new ModBehaviour(); var frost = new FrostmourneRuntimeModule(); frost.OnAwake(host); frost.InitializeFrostmourneSystem(); CharacterMainControl.Main = null; frost.SetupFrostmourneForScene(new Scene("Gameplay")); frost.OnDestroy(); frost.OnDestroy(); CharacterMainControl.Main = new CharacterMainControl();
         foreach (Coroutine c in host.Coroutines) c.MoveNext();
-        Check(FrostmourneAbilityManager.Instance == null && FrostmourneAbilityManager.Cleans == 1 && FrostmourneAction.Cleans == 1 && FrostmourneBlueBossDropHandler.Cleans == 1, "direct Frostmourne destroy must execute original cleanup order once");
+        Check(FrostmourneAbilityManager.Instance == null && FrostmourneAbilityManager.Cleans == 1 && FrostmourneBlueBossDropHandler.Cleans == 1, "direct Frostmourne destroy must execute original cleanup order once");
+        Check(frostAlly.gameObject == null && FrostmourneAction.CacheEmpty, "actual Frostmourne owner destroy clears summons owners and preset cache without a scene reset");
         Check(FrostmourneAbilityManager.Binds == 0 && host.Coroutines.All(c => c.Stopped), "Frostmourne destroy must cancel delayed player binding");
+        var staffAlly = new CharacterMainControl(); SummonStaffAction.Seed(staffAlly); NewWeaponRuntime.CleanupOnDestroy();
+        Check(staffAlly.gameObject == null && SummonStaffAction.CacheEmpty, "actual new weapon shutdown clears staff summons owners and preset cache");
+        Check(SummonStaffManager.Cleans == 1 && !SummonStaffManager.SawDirtyCache, "actual staff full reset precedes manager release");
     }
     private static void Npcs()
     {

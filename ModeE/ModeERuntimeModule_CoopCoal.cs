@@ -189,7 +189,7 @@ namespace BossRush
             if (!BossRushCoop.IsClient) return;
             foreach (CoopModeECoalRequest request in coopCoalRequests.Values)
                 if (request.AssetId == BossRushCoop.LocalAssetId && request.Run == BossRushCoop.RunId)
-                    coopChannel.Request("coal", text: BossRushCoopJson.ToJson(request));
+                    coopChannel.RequestRepeat("coal", text: BossRushCoopJson.ToJson(request));
         }
         private void RefreshCoopCoalSession()
         {

@@ -416,3 +416,6 @@ Mode E/F 为运行时角色克隆的 `CharacterRandomPreset` 由挂在角色对�
 阵营 Boss/小怪缓存、狼阵营分配计数、生成预计数与完成数、龙裔/龙王占位及分批生成现归 `Utilities/ModeEFEnemySpawnRuntime.cs`。根装配把同一实例交给 E/F，并复用既有 `ModeEFSpawnPreparation` 与 `EnemySpawnRuntime`；Mode F 的初始生成、池预热和龙裔占位不再通过 Mode E 字段。筛选池、原 D 小怪池、会话有效性与 E 提交登记通过窄委托绑定。
 
 分批顺序仍按玩家距离排序，原 800/500 ms 等待、生成前预计数、随机调用次数、失败回退和重试后最终预设检查保持。E 的贝壳奖励分类与生成提交仍由 E 模块负责，并查询共享服务的缓存。活敌列表、去重集合、阵营登记、回血缓存及死亡/掉落订阅句柄已归 `Utilities/ModeEFEnemyRegistry.cs`，E/F 持有同一实例；E 的同阵营禁掉落策略、缩放与贝壳结算仍在 E。F 对 E 的残留缩放、仇恨及入局重置使用明确清理动作，不再直接修改其私有仇恨字典。原列表次序、引用身份、Unity 假 null、先退订后派发死亡回调，以及重置时与 E 私有状态清理的交错顺序保持。登记回归直接链接服务与真实 E 掉落策略，见 `tests/fixtures/ModeEFEnemyRegistry/`。执行证据见 `tests/fixtures/ModeEFEnemySpawnRuntime/`，不代表实机帧耗时已验证。
+
+
+2026-10-15 联机队伍收尾（COMPAT）：Mode E 房主把已准入客人的实际角色切到所选阵营，结束时必须归还每个原实例的原阵营；只恢复本地主角会把客人的房主侧镜像留在 scav。`ModeERuntimeModule_Coop` 在首次修改前冻结角色、原队伍和房间，重复快照不重写原值，结束恢复，异常保留重试，换房/换角色不修改新 owner，其它系统已改过的队伍保留。Dev F3 的敌对统计与自动清敌目标都先按真实联机玩家身份排除队友，仍保留敌对 NPC 判据。旧 DLL 三端实机已抓到两残留体同时匹配 Coop player ID 与原生角色表；新修复的源码执行回归和守卫不替代新 DLL 实机复验。

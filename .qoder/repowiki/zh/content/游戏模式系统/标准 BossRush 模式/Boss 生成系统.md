@@ -1,5 +1,11 @@
 # Boss 生成系统
 
+2026-10-15：实机只读 FactoryTrace 记录到 Dev 终章收尾和强制收场沿正式 `ClearEnemiesForBossRush` 删除了同一未完成的原生角色；该角色的 `OnDestroy` 销毁物品树后，官方 `CreateCharacterAsync` 仍从最后一次 `NextFrame` 恢复，`PrimWeaponSlot` 实际返回 null 并发生异常。正常入场与旅行也共用这条生产清场路径，不能只在 F3 增加固定等待。原生 `currentSpawnedCount` 在 `CreateAt(...).Forget()` 后即递增，AI 初始化也早于最后的装备装配，都不能作为生成完成事实。
+
+`NativeArenaFactoryLifecyclePatch` 和角色自己的 `NativeArenaFactoryLease` 位于 [SpawnerControl](file://WavesArena/WavesArenaSpawnerControl.cs)：按值读取真实 `MoveNext` 前后状态和角色引用，终态前保留同一对象与物品树，终态后重新执行原有清场筛选。`ForceKillAllEnemies`、普通清场及外来大兴兴清理均接入；同类请求合并，死亡仍走原 `Health.Hurt`，组件销毁撤销旧请求，模块、玩家身体、存档资产、活动/角色场景实例、房间或房主角色变化会取消旧续作。没有包装或消费官方任务，也没有替换原生生成策略、削减敌人或永久豁免未完成对象。观察仅在工厂实际步进时运行，不添加每帧扫描；没有清场请求时不分配请求集合。
+
+证据边界：原问题已由同对象实机链确认；`ArenaHostRemainder` 保留原有 661 条断言，另以实际 Harmony 和真实 CLR 异步暂停/恢复覆盖 31 条生成清理断言，并只读核对安装 DLL 的原生字段及 `MoveNext`。实际 Unity/Core/Item/UniTask/Harmony API 编译通过，8 项副本破坏均执行转红并按字节恢复。修复后的游戏内时序与性能仍待新候选实测；当前证据不把原生 spawner root 销毁另行推定为已复现原因。
+
 2026-09-25：共享生成主体归 [EnemySpawnCore.cs](file://Utilities/EnemySpawnCore.cs) 中的 `EnemySpawnRuntime`；[EnemySpawnHostBridge.cs](file://Utilities/EnemySpawnHostBridge.cs) 只装配窄查询/动作并保留原宿主入口。普通与特殊 Boss 仍走原分支和等待顺序，Mode G 的静态 dispatcher 由旧属性转到同一静态槽位；预设缓存就绪方法归 [Mode D 敌池模块](file://ModeD/ModeDRuntimeModule_EnemyPools.cs)。生成运行时与后处理队列有独立执行回归，游戏内异步/AI/资源表现仍需实测。
 
 标准模式原根宿主的 `SpawnEnemyAtPositionAsync` 和无间炼狱倍率已归 [LegacySpawn](file://WavesArena/WavesArenaRuntimeModule_LegacySpawn.cs)，波次生成模块直接调用同一 owner；旧宿主签名继续转发。特殊 Boss 在提前返回前应用变异词条，普通分支保留中立队伍安全网、随从豁免、配装/激活/掉落/仇恨/恢复的原顺序。奖励箱模板查找与碰撞配置归 [LootTemplates](file://WavesArena/WavesArenaRuntimeModule_LootTemplates.cs)，缓存仍由原 Arena 静态槽持有。大兴兴归属、共享角色缓存与范围清理见 [CharacterRegistry](file://WavesArena/WavesArenaRuntimeModule_CharacterRegistry.cs)；Mode G 本局角色和遗种巢随从豁免保持。

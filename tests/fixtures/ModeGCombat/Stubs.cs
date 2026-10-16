@@ -18,6 +18,7 @@ namespace UnityEngine
         public static bool operator !=(Object a, Object b) { return !(a == b); }
         public override bool Equals(object b) { return ReferenceEquals(this, b); }
         public override int GetHashCode() { return base.GetHashCode(); }
+        public int GetInstanceID() { return GetHashCode(); }
         public static void Destroy(Object value)
         {
             if (ReferenceEquals(value, null)) return;
@@ -198,6 +199,17 @@ namespace Saves
 }
 namespace BossRush
 {
+    internal static class AchievementTracker { internal static bool HasTakenDamage; }
+    public enum ManagedBossCleanupReason { Death, TechnicalLoss }
+    public sealed class ManagedBossRuntimeHandle
+    {
+        public CharacterMainControl Character; public string AchievementBossType;
+        public Action<DamageInfo> CleanupAfterDeath;
+        public void CleanupOnce(ManagedBossCleanupReason reason) { }
+    }
+    public sealed class ManagedBossSpawnContext { }
+    public sealed class EnemySpawnCoreOptions
+    { public bool HoldForExternalCommit,ApplySharedMutators,AllowRandomRetryFallback; public ManagedBossSpawnContext ManagedBossContext; }
     public static class FateEchoRelicConfig { public const int TYPE_ID=500057; }
     public enum WeaponFamily { None, Gun, Melee }
     public static class L10n
@@ -212,7 +224,10 @@ namespace BossRush
         public static void DevLog(string message) { }
         public void ShowMessage(string message) { }
         internal int AchievementReports;
-        public void ReportModeGBossKillAchievement(int t, string b, bool f) { AchievementReports++; }
+        internal readonly List<string> AchievementTypes = new List<string>();
+        internal readonly List<int> AchievementTokens = new List<int>();
+        public void ReportModeGBossKillAchievement(int t, string b, bool f)
+        { AchievementReports++; AchievementTypes.Add(b); AchievementTokens.Add(t); }
         public bool TryStartModeGRewardMaterialization_LootAndRewards(int[] ids,Inventory inventory,
             Action<int,Item,bool> perItem,Action<int,int,int> completed,out string reason)
         { reason="fixture does not start Unity components"; return false; }
@@ -263,6 +278,8 @@ namespace BossRush
     }
     internal static class ModeGDeathRouting
     {
+        internal static bool ShouldTriggerLastStand(ModeGRunState state,int alive,int committed)
+        { return !state.lastStandActive && alive==1 && committed>1; }
         internal static void HandleVictory(ModeGRuntimeModule module) { }
         internal static void HandlePlayerDeath(ModeGRuntimeModule module, Health health, DamageInfo info) { }
     }
@@ -272,6 +289,8 @@ namespace BossRush
         internal static readonly Dictionary<string,CharacterMainControl> Entities=new Dictionary<string,CharacterMainControl>();
         internal static CharacterMainControl FindEntity(string id)
         { CharacterMainControl value; return id!=null && Entities.TryGetValue(id,out value) ? value : null; }
+        internal static string GetPlayerId(CharacterMainControl character)
+        { foreach(var pair in Entities)if(ReferenceEquals(pair.Value,character))return pair.Key.StartsWith("p:")?pair.Key.Substring(2):null;return null; }
     }
     internal sealed class BossRushCoopPlayer
     { internal string Id,AssetId;internal bool IsLocal;internal CharacterMainControl Character;internal bool IsAlive {get{return Character!=null&&Character.Health!=null&&!Character.Health.IsDead;}} }
@@ -287,6 +306,12 @@ namespace BossRush
     }
     internal sealed partial class ModeGRuntimeModule
     {
+        private readonly ModeGSpawnTransaction _spawnTransaction;
+        private readonly List<ManagedBossRuntimeHandle> _managedHandles=new List<ManagedBossRuntimeHandle>();
+        private readonly List<CharacterMainControl> _characterScratch=new List<CharacterMainControl>();
+        private ModeGWavePlan _wavePlan;
+        private bool _batchActivationInProgress,_waveSettlementPending;
+        private void HandleTechnicalBossDeath(Health health) { throw new InvalidOperationException("Unexpected spawning death in combat regression"); }
         private string coopRunAsset,coopRunRoom; private bool coopAssetBound;
         private readonly Dictionary<string,string> coopParticipantAssets=new Dictionary<string,string>(StringComparer.Ordinal);
         private bool _disposed, _ended, _firstWaveCombatStarted;
@@ -301,17 +326,28 @@ namespace BossRush
         private readonly ModBehaviour _host = ModBehaviour.Instance;
         private int coopGuestWave;
         private long coopAppliedOrder;
-        private long coopAdmissionBaseline,coopRequestedAdmissionBaseline;private bool coopAdmissionReady,coopRunWasClient,coopEntryActorsKnown;private int coopEntryWave;
+        private long coopAdmissionBaseline,coopRequestedAdmissionBaseline;private bool coopAdmissionReady,coopRunWasClient,coopRunWasConnected,coopEntryActorsKnown;private int coopEntryWave;
         private readonly HashSet<int> coopEntryActors=new HashSet<int>();
         private readonly Dictionary<int,CharacterMainControl> coopBosses = new Dictionary<int,CharacterMainControl>();
+        private readonly Dictionary<int,Health> coopBossHealth = new Dictionary<int,Health>();
+        private int coopBossGeneration = -1;
         private readonly HashSet<long> coopCombatApplied = new HashSet<long>();
-        internal int CoopBossDeaths;
+        internal int CoopBossDeaths { get { return _spawnTransaction.Journal.Count-_spawnTransaction.ActiveBossCount; } }
+        internal int ActiveCoopBosses { get { return _spawnTransaction.ActiveBossCount; } }
+        internal bool WaveSettlementPending {get{return _waveSettlementPending;}}
+        internal int TotalKills {get{return _totalBossKills;}}
         public ModeGRuntimeModule(ModeGRunState state,ModeGCombatTelemetry telemetry,ModeGAdaptiveCombat adaptive)
-        { _state=state; _telemetry=telemetry; _adaptive=adaptive; }
-        internal void BindCoopBoss(int id, CharacterMainControl boss)
-        { coopGuestWave=_state.waveEpoch; coopBosses[id]=boss; }
-        private void HandleBossDead(Health health,DamageInfo info)
-        { CoopBossDeaths++; _state.UnregisterTrackedBoss(health); }
+        { _state=state; _telemetry=telemetry; _adaptive=adaptive; _spawnTransaction=new ModeGSpawnTransaction(state); }
+        internal void BindCoopBoss(int id, CharacterMainControl boss, string key="official_boss")
+        {
+            coopGuestWave=_state.waveEpoch; _state.UnregisterTrackedBoss(boss.Health);
+            if(_state.SlotExpected==0)_state.TrySetWaveSlotPlan(1);
+            if(!_spawnTransaction.TryCommit(0,key,boss))throw new InvalidOperationException("Actual spawn transaction commit rejected");
+            coopBosses[id]=boss;coopBossHealth[id]=boss.Health;coopBossGeneration=BossRushCoop.SceneGeneration;
+        }
+        internal void AuditCacheUnregistered(int id,Health health){coopBossHealth[id]=health;}
+        internal int CachedHealthCount {get{return coopBossHealth.Count;}}
+        internal void AuditReleaseBosses(){ClearCoopBossReferences();}
         public void Settle(ModeGDistanceVerdict distance,ModeGDirectDamageClass terminal)
         { _activeDistanceVerdict=distance; _lastTerminalFamily=terminal; SettleCurrentWave(); }
         public static float SpawnWait(float elapsed,float previous,float now,bool wasPaused,bool paused)

@@ -73,8 +73,15 @@ static class Program
         SceneManager.Index = 3; ModBehaviour.RuntimeActive = false;
         Check(!action.Valid(third, player), "inactive gameplay runtime rejects late creation");
         ModBehaviour.RuntimeActive = true;
+        int attemptBeforeDestroy = action.CoopAttempt;
         action.Destroy();
         Check(!action.Valid(third, player), "destroyed owner rejects late creation");
+        Check(action.CoopAttempt == attemptBeforeDestroy + 1, "actual action destroy retires its own co-op callback generation");
+        var lifetime = new SummonStaffAllyLifetime();
+        Check(!lifetime.BurstClosed, "ally lifetime starts with an open burst gate");
+        lifetime.Destroy(); lifetime.Destroy();
+        Check(lifetime.BurstClosed && action.CoopAttempt == attemptBeforeDestroy + 1,
+            "actual ally lifetime destroy only closes its burst and cannot mutate the action generation");
         var completed = new SummonStaffAction();
         int completedId = completed.Start(); completed.Complete();
         Check(!completed.Running && !completed.Valid(completedId, player), "finished batch closes its request");

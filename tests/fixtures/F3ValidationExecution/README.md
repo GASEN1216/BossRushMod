@@ -30,3 +30,9 @@ EntryPreparation 链接完整生产 F3ModeDLoadoutLease：保管原 Item 对象�
 2026-10-13 round7 实机确认基地 PlayerStorage 在竞技场为空，旧夹具恒定初始化它漏掉了前提。现在 Fresh 默认 PlayerStorage.Inventory=null；生产 lease 创建 inactive、DontDestroyOnLoad 的官方 Inventory 载体，完整归还且空后才销毁。边界替身模拟 Unity 销毁对象等于 null、GameObject 销毁连带组件及库存原物；执行真实 helper 覆盖空基地仓库、容量通知/部分转入失败、旧 root 真销毁后死亡换体、切槽拒绝归还、归还目标容量不足保留载体、外部原费用归还阻塞后重试。正式玩法 runtime 未改，这是 Dev 专用档验收准备修复。真实 AddComponent/SetCapacity 的官方 API 绑定另做 Windows 定向编译；这些隔离执行用例仍不证明 Unity 实际场景与存盘。
 
 GChildProtection 提取专属孩儿护我护卫与 Hurt 方法；ExtractionFlows 提取真实 F 撤离入口、整个 F3 F_EXTRACTION 用例和丧尸撤离协程，验证异步分数／现金／结算、全员进圈、未准入拒绝、资产变化及超时失败。最新 119 条断言为绿，包含容量与物品转入回调中切槽时仍保管原资产原物的边界。原生物理、导航、背包保存、场景投票和 UI 依赖仍为替身；生产用例执行链为真，L2 不等于多进程实机通过。请用聚合入口运行并保留本次 TargetPath 和 SHA-256。
+
+2026-10-15 追加三端场景完成条件：逐字提取 F3 的本机准备发布、全员等待与真实 Base Core 判定，实际链接生产 `BossRushCoopSceneBarrier`。各端的 AfterInit、当前 Main、Item、Health、相机及加载状态分别可变；前两人就绪时第三人必须继续阻塞完整 LoadScene，第三人实际就绪后才成功，同名旧代次和错误 Core 不可放行。合法 Base 船舱子场景可以恢复，竞技场伪装 active scene 名称不可以。客户端 Update 常驻发布接线由守卫覆盖，未声称这个 Unity 每帧入口已由隔离执行验证。
+
+ModeHButtons 抽取实际 H 按钮解析及标签，覆盖中英文正式联机确认、原单机下注金额后缀和近似错误文字。此轮合计 161 条，旧 host-only 场景成功、缺 Item 仍准备、错误 Core 基地恢复三项均有真实执行反例，连同 Update 接线守卫在稀疏副本破坏后转红并按字节恢复。该数量只对应当次源码与日志，不代表真实三端加载或 H 赛季已通过。
+
+2026-10-16 同步房主开始入口：本夹具执行真实 DecorateCoopBetPage、按钮解析和点击回调，验证未确认房主/客端没有越权开始按钮，已确认房主的独立开始按钮恰好调用正确回调。该回调在此只计调用次数；完整跳过、退款及准入策略由 ModeHCoop 的实际生产模块回归覆盖，不以本 UI 边界替代。

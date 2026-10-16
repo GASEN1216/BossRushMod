@@ -6,4 +6,6 @@
 
 宿主替身只模拟基础配置覆盖、RF 差值读回、角色状态与动作调度。异步角色创建保持挂起，由测试驱动生产请求判据；不模拟 Unity 实例化、Harmony、物理、真实资源耗时或特效。属于 L2，不能代替 L3。抽取源哈希保存在 `Build/manual-equipment-recovery/production-sha256.json`。
 
+2026-10-16 补入同文件第二个类型 `SummonStaffAllyLifetime.OnDestroy` 的真实方法，独立于主 Action 编译；主 Action 销毁必须递增自己的请求代数并取消请求，随从生命周期只能关闭爆裂闸。副本恢复旧错误时必须出现未定义 `coopSummonAttempt` 编译错误，不能由给随从补同名字段掩盖。联机请求在本离线夹具中误达时直接抛错；实际联机拒绝与 CD 恢复由 CoopContent 覆盖。
+
 2026-10-08 合并星阙登记后，补齐其组件配置/表现依赖的宿主替身，链接生产 AstralStaffConfig 并抽取 ApplyAttributes，TypeID 使用生产 BossRushItemIds。额外验证真实注册入口登记星阙，以及缺组件实例恢复重铸、不修复磨损、重复查询不叠加；组件替身不验证 Unity 真实组件装配和粒子表现。

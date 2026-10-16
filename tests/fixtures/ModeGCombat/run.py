@@ -39,6 +39,10 @@ def main():
                         "public sealed class ModeGRewardStrictMaterializer") + "\n"
     generated += member(sources["ModeGCleanupController.cs"], "public static class ModeGLateCleanupSink") + "\n"
     generated += "public static partial class ModeGEncounterVariation {\n"
+    for name in ("ManagedDragonDescendantKey", "ManagedDragonKingKey", "ManagedPhantomWitchKey"):
+        source = sources["ModeGEncounterVariation.cs"]
+        start = source.index("public const string " + name + " =")
+        generated += source[start:source.index(";", start) + 1] + "\n"
     generated += member(sources["ModeGEncounterVariation.cs"], "public static UnityEngine.Vector2[] GetSpawnOffsets(") + "\n}\n"
     generated += "internal sealed partial class ModeGEntryRuntime {\n"
     generated += member(sources["ModeGRuntimeBridge.cs"], "private static bool TrySelectModeGFormation(") + "\n"
@@ -56,13 +60,17 @@ def main():
     generated += runtime[begin:end]
     for signature in ("private void SettleCurrentWave()", "private void PrepareNextAmmoBanIfNeeded()",
                       "private void PublishAmmoBan(", "private int GetAmmoThreatSharePercent(",
-                      "private static float AdvanceSpawnWait(", "private bool CanContinueRun()"):
+                      "private static float AdvanceSpawnWait(", "private bool CanContinueRun()",
+                      "private void HandleBossDead(", "private bool ResolveBossAchievementType(",
+                      "private ManagedBossRuntimeHandle FindManagedHandle(", "private void CheckNemesisDefeat(",
+                      "private int GetNemesisEncounterRank("):
         generated += member(runtime, signature) + "\n"
     api = sources["ModeGRuntimeModule_PublicApiAndShutdown.cs"]
     generated += member(api, "public ModeGContractProgress BuildContractProgress()") + "\n"
     generated += member(api, "private void FillObjective(") + "\n"
     # 收据接收与个人评分链接真实生产方法；网络角色索引仍由宿主替身提供。
     generated += member(sources["ModeGCoopRuntime.cs"], "internal bool ApplyCoopCombat(") + "\n}\n"
+    generated += member(sources["ModeGSpawnTransaction.cs"], "public sealed class ModeGSpawnTransaction") + "\n"
     generated += "internal sealed partial class ModeGEntryRuntime {\n"
     generated += member(sources["ModeGCoopRuntime.cs"], "internal static bool CanApplyPersonalCombat") + "\n}\n"
     generated += "internal sealed partial class ModeGRuntimeModule {\n"
@@ -71,7 +79,7 @@ def main():
     generated += "}\n"
     generated += member(sources["ModeGCoopRuntime.cs"], "internal sealed class ModeGCoopCombat") + "\n}\n"
     generated += "namespace BossRush {\n" + member(sources["ModeGCoopRuntime.cs"], "internal sealed class ModeGCoopActor") + "\n" + member(sources["ModeGCoopRuntime.cs"], "internal sealed class ModeGCoopParticipant") + "\n" + member(sources["ModeGCoopRuntime.cs"], "internal sealed class ModeGCoopWorld") + "\ninternal sealed partial class ModeGRuntimeModule {\n"
-    for signature in ("internal long CoopRequestedAdmissionBaseline", "internal bool CoopRunWasClient", "internal bool CoopRunHasWorldAuthority", "internal void FreezeCoopAdmission("):
+    for signature in ("internal long CoopRequestedAdmissionBaseline", "internal bool CoopRunWasClient", "internal bool CoopRunHasWorldAuthority", "internal void FreezeCoopAdmission(", "private void ClearCoopBossReferences()"):
         generated += member(sources["ModeGCoopRuntime.cs"], signature) + "\n"
     generated += "}}\n"
     extracted = OUT / "ProductionExtracted.cs"

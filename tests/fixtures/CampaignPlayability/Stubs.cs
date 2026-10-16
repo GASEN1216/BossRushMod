@@ -40,6 +40,8 @@ public class CharacterMainControl : UnityEngine.Object
     public int InstanceId = 1;
     public int GetInstanceID() { return InstanceId; }
     public int PositionCalls;
+    internal BossRush.PetNestCompanionAgent PetAgent;
+    public T GetComponent<T>() where T : class { return PetAgent as T; }
     public void SetPosition(UnityEngine.Vector3 position) { PositionCalls++; transform.position = position; }
 }
 public enum Teams { player, wolf, middle }
@@ -113,7 +115,7 @@ namespace BossRush
         public static void CriticalLog(string key, string value) { }
         public void ShowMessage(string value) { }
     }
-    public class ZombieModeRunState { public int LifecyclePhase, CurrentWave; }
+    public class ZombieModeRunState { public int LifecyclePhase, CurrentWave, RunId; }
     public class ZombieRun : ZombieModeRunState { }
     public class ModeFState { public Dictionary<int, int> BountyMarksByCharacterId = new Dictionary<int, int>(); }
     internal static class ZombieModeLifecyclePhase { internal const int None = 0; }
@@ -152,6 +154,7 @@ namespace BossRush
         {
             if (Reject) return false;
             if (chapter != Active) throw new Exception("wrong campaign owner");
+            if (State == CampaignChapterState.ReadyToDeliver) return true;
             Notifications++;
             State = CampaignChapterState.ReadyToDeliver;
             return true;
@@ -175,22 +178,16 @@ namespace Duckov.NoteIndexs
     }
 }
 
-namespace BossRush {
- internal sealed class CoopCampaignFact { public string Kind,Mode,RunId; public bool Melee,Boss,Bounty; public int Wave,SceneGeneration; }
- internal sealed partial class CampaignRuntimeModule {
- private static CampaignRuntimeModule coopOwner;
- private CoopPersonalDelivery<CoopCampaignFact> coopFacts;
- private CoopGameplayChannel<object> coopWorld;
- private bool coopRemoteFinalAdmission;
- private void InitializeCoopCampaign() { }
- private bool DeliverCoopCampaignFact(string id, CoopCampaignFact fact) { return false; }
- internal bool ApplyFactForTest(CoopCampaignFact fact) { return ApplyCoopCampaignFact(fact); }
- }
-}
 
 namespace BossRush {
- internal static partial class BossRushCoop { internal static bool IsPlayer(CharacterMainControl value) { return object.ReferenceEquals(value, CharacterMainControl.Main); } }
- internal sealed partial class CampaignRuntimeModule { internal static bool ReportCoopCampaignKill(CharacterMainControl victim,bool melee,bool boss,bool bounty) { return false; } }
- internal sealed class CoopArenaEntryAdapter { internal int CoopEntryMode; internal void SetCoopEntryMode(int mode) { CoopEntryMode = mode; } internal System.Collections.IEnumerator SetupCoopClientEntry(UnityEngine.SceneManagement.Scene scene, System.Action entry, System.Action continuation, System.Action rescue) { yield break; } internal void TryCreateArenaRescueTeleport(System.Action rescue) { try { rescue(); } catch { } } }
+ internal static partial class BossRushCoop {
+  internal static bool IsPlayer(CharacterMainControl value) { return value != null && (object.ReferenceEquals(value, CharacterMainControl.Main) || Players.Exists(p=>p.IsConnected && p.Character==value)); }
+  internal static string GetPlayerId(CharacterMainControl value) { var player=Players.Find(p=>p.Character==value);return player!=null?player.Id:null; }
+ }
+ internal sealed class PetNestCompanionAgent { internal CharacterMainControl Master; }
+ internal static class FrostmourneAction { internal static readonly Dictionary<CharacterMainControl,CharacterMainControl> Owners=new Dictionary<CharacterMainControl,CharacterMainControl>(); internal static bool TryGetSummonOwner(CharacterMainControl actor,out CharacterMainControl owner){return Owners.TryGetValue(actor,out owner);} }
+ internal static class SummonStaffAction { internal static readonly Dictionary<CharacterMainControl,CharacterMainControl> Owners=new Dictionary<CharacterMainControl,CharacterMainControl>(); internal static bool TryGetSummonOwner(CharacterMainControl actor,out CharacterMainControl owner){return Owners.TryGetValue(actor,out owner);} }
+ public partial class ModBehaviour { internal readonly Dictionary<CharacterMainControl,CharacterMainControl> HiredOwners=new Dictionary<CharacterMainControl,CharacterMainControl>();internal void AttributeModeEHiredBossKillToOwner(ref DamageInfo info){CharacterMainControl owner;if(info.fromCharacter!=null&&HiredOwners.TryGetValue(info.fromCharacter,out owner))info.fromCharacter=owner;} }
+ internal sealed partial class CoopArenaEntryAdapter { internal int CoopEntryMode; internal void SetCoopEntryMode(int mode) { CoopEntryMode = mode; } internal System.Collections.IEnumerator SetupCoopClientEntry(UnityEngine.SceneManagement.Scene scene, System.Action entry, System.Action continuation, System.Action rescue) { yield break; } internal void TryCreateArenaRescueTeleport(System.Action rescue) { try { rescue(); } catch { } } }
  public partial class ModBehaviour { private readonly CoopArenaEntryAdapter wavesArenaRuntime = new CoopArenaEntryAdapter(); }
 }

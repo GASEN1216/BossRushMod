@@ -193,9 +193,13 @@ namespace BossRush
         private Vector3 demoChallengeStartPosition;
         private CharacterMainControl playerCharacter;
         internal bool modeGActive;
-        public ModBehaviour() { Instance = this; bossRushIntegrationRuntime.OnAwake(this); modeDRuntime.OnAwake(this); }
+        public ModBehaviour() { Instance = this; wavesArenaRuntime = new CoopArenaEntryAdapter(this); bossRushIntegrationRuntime.OnAwake(this); modeDRuntime.OnAwake(this); }
         internal object CreateIntegrationDeferredBootstrapActions() { return new object(); }
         internal IEnumerator Entry(Scene scene) { return bossRushIntegrationRuntime.WaitForLevelInitializedThenSetup_Integration(scene); }
+        private IEnumerator WaitForLevelInitializedThenSetup(Scene scene) { return bossRushIntegrationRuntime.WaitForLevelInitializedThenSetup_Integration(scene); }
+        private void SetCurrentMapSpawnPoints(string scene) { Probe.Touch("map-points"); }
+        private void SetArenaCenterFromMapConfig(string scene) { Probe.Touch("map-center"); }
+        internal void ReceiveCoopEntry(int mode) { wavesArenaRuntime.Receive(mode); }
         internal void DestroyOwner() { bossRushIntegrationRuntime.OnDestroy(); modeDRuntime.OnDestroy(); UnityEngine.Object.Destroy(gameObject); }
         internal static void DevLog(string value) { }
         public bool IsPlayerNaked() { Probe.Touch("inventory"); return Probe.Entry == "D" || Probe.Entry == "E"; }
@@ -307,6 +311,13 @@ namespace BossRush {
  private void RefreshCoopModeDParticipants() { }
  private void InitializeCoopModeD() { } private void TickCoopModeD(float delta) { }
  }
- internal sealed class CoopArenaEntryAdapter { internal int CoopEntryMode; internal void SetCoopEntryMode(int mode) { CoopEntryMode = mode; } internal System.Collections.IEnumerator SetupCoopClientEntry(UnityEngine.SceneManagement.Scene scene, System.Action entry, System.Action continuation, System.Action rescue) { yield break; } internal void TryCreateArenaRescueTeleport(System.Action rescue) { try { rescue(); } catch { } } }
- public partial class ModBehaviour { private readonly CoopArenaEntryAdapter wavesArenaRuntime = new CoopArenaEntryAdapter(); }
+ internal static partial class BossRushCoop { internal static bool HasBoundScene=true; internal static string SceneToken="native-1"; }
+ internal sealed partial class CoopArenaEntryAdapter {
+     private readonly ModBehaviour owner; private string coopArenaEntryToken,coopArenaEntryScheduledToken; private int coopArenaEntryHandle; private bool ArenaActive;
+     internal int CoopEntryMode; internal CoopArenaEntryAdapter(ModBehaviour host) { owner=host; }
+     internal void Receive(int mode) { ArenaActive=true;CoopEntryMode=mode;coopArenaEntryToken=BossRushCoop.SceneToken;ScheduleCoopArenaEntry(); }
+     internal void SetCoopEntryMode(int mode) { CoopEntryMode = mode; }
+     internal void TryCreateArenaRescueTeleport(System.Action rescue) { try { rescue(); } catch { } }
+ }
+ public partial class ModBehaviour { private readonly CoopArenaEntryAdapter wavesArenaRuntime; }
 }

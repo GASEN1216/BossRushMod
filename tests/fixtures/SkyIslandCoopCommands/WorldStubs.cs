@@ -42,11 +42,13 @@ namespace BossRush
         internal static readonly List<BossRushCoopMessage> Broadcasts=new List<BossRushCoopMessage>(),Personal=new List<BossRushCoopMessage>();
         internal static IDisposable Register(string topic,Action<BossRushCoopMessage> callback) { Handlers[topic]=callback;return new CallbackLease(()=>Handlers.Remove(topic)); }
         internal static void Emit(string topic,object value,bool fromHost=true) { Handlers[topic](new BossRushCoopMessage { SenderId="host",Payload=value,IsFromHost=fromHost }); }
-        internal static void Broadcast<T>(string topic,T value) { Broadcasts.Add(new BossRushCoopMessage { IsFromHost=true,Payload=value }); }
+        internal static bool SendAccepted=true;internal static bool Broadcast<T>(string topic,T value) { if(!SendAccepted)return false;Broadcasts.Add(new BossRushCoopMessage { IsFromHost=true,Payload=value });return true; }
         internal static void SendToPlayer<T>(string id,string topic,T value) { Personal.Add(new BossRushCoopMessage { SenderId=id,Payload=value }); }
         internal static void MarkSceneReady(string key) { Marks++; }
         internal static bool AllPlayersSceneReady(string key) { return BarrierReady; }
         internal static CharacterMainControl GetCombatTarget(Vector3 position) { foreach(var player in Players)if(player.IsAlive)return player.Character;return null; }
+        internal static CharacterMainControl FindAi(int id) { return ProjectionActor; }
+        internal static CharacterMainControl ProjectionActor;
     }
     internal sealed class ModBehaviour
     {
@@ -56,6 +58,7 @@ namespace BossRush
     }
     internal sealed partial class SkyIslandSession
     {
+        internal void CreditChallengeBounty(string id) { }
         internal static int Prepared,Joined;
         internal bool CoopTravelActive=true; private bool closed,coopJoining;
         internal static bool CanEnter(ModBehaviour owner,out string reason) { reason=null;return owner.Session==null; }
@@ -102,13 +105,15 @@ namespace BossRush
         internal SkyIslandCoopWorldEffects() { current=this; }
         internal int SlowCount { get { return slows.Count; } }
         internal long WorldRevision { get { return latest != null ? latest.Revision : 0; } }
-        internal void WorldPacket(long revision,bool fromHost=true,string travel=null)
-        { ReceiveWorld(new BossRushCoopMessage { IsFromHost=fromHost,Payload=new World { TravelId=travel??TravelId,Revision=revision } }); }
+        internal void WorldPacket(long revision,bool fromHost=true,string travel=null,string sceneToken=null)
+        { ReceiveWorld(new BossRushCoopMessage { IsFromHost=fromHost,Payload=new World { TravelId=travel??TravelId,SceneToken=sceneToken??BossRushCoop.SceneToken,Revision=revision } }); }
+        internal bool WorldCurrent {get{return IsWorldCurrent();}}
+        internal void FlushEffects() { PublishPlayerEffects(); }
         internal void Shot(CharacterMainControl actor) { OnLocalShot(new ItemAgent_Gun { Holder=actor }); }
-        internal object Snapshot(long count,bool ears,string stream="stream-1",string asset="asset-1",int rootweave=0) { return new PlayerEffects { TravelId=TravelId,AssetId=asset,Stream=stream,Noise=count,Revision=count,Earmuffs=ears,Rootweave=rootweave }; }
+        internal object Snapshot(long count,bool ears,string stream="stream-1",string asset="asset-1",int rootweave=0) { return new PlayerEffects { TravelId=TravelId,SceneToken=BossRushCoop.SceneToken,AssetId=asset,Stream=stream,Noise=count,Revision=count,Earmuffs=ears,Rootweave=rootweave }; }
         internal void Receive(string sender,object value) { ReceivePlayerEffects(new BossRushCoopMessage { SenderId=sender,Payload=value }); }
         internal void AddLocalSlow(string id,float seconds) { SlowPacket(id,++fixtureSlowRevision,-.3f,seconds); }
-        internal void SlowPacket(string id,long revision,float percent,float seconds=2,string asset="asset-1") { ReceiveSlow(new BossRushCoopMessage { IsFromHost=true,Payload=new Slow { TravelId=TravelId,AssetId=asset,Id=id,Percent=percent,Seconds=seconds,Revision=revision } }); }
+        internal void SlowPacket(string id,long revision,float percent,float seconds=2,string asset="asset-1") { ReceiveSlow(new BossRushCoopMessage { IsFromHost=true,Payload=new Slow { TravelId=TravelId,SceneToken=BossRushCoop.SceneToken,AssetId=asset,Id=id,Percent=percent,Seconds=seconds,Revision=revision } }); }
         internal void Expire() { TickSlows(); }
     }
     internal sealed class SkyIslandBossContext { internal Transform Root=new Transform(); }

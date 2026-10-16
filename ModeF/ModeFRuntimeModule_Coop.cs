@@ -11,6 +11,8 @@ namespace BossRush
         public string Id, AssetId;
         public int Marks, Kills;
         public bool Dead, Extracted, Admitted, Declined;
+        [NonSerialized] public bool StarterSent;
+        [NonSerialized] public bool ExtractionLastAlive, ExtractionLastInside, ExtractionCountdownQualified;
     }
 
     [Serializable]
@@ -65,6 +67,15 @@ namespace BossRush
         private CoopPersonalDelivery<CoopModeFPersonal> coopPersonal;
         private readonly Dictionary<string, CoopModeFPlayerState> coopPlayers = new Dictionary<string, CoopModeFPlayerState>(StringComparer.Ordinal);
         private string coopEpoch, coopStartedEpoch;
+        internal string CampaignEntryEpoch { get { return coopEpoch; } }
+        internal bool TryGetCoopCampaignParticipantAsset(string expectedEpoch, string playerId, out string assetId)
+        {
+            assetId = null;
+            CoopModeFPlayerState participant;
+            if (expectedEpoch != coopEpoch || !coopPlayers.TryGetValue(playerId, out participant) || !participant.Admitted || participant.Declined) return false;
+            assetId = participant.AssetId;
+            return !string.IsNullOrEmpty(assetId);
+        }
         private string coopLocalAsset;
         private readonly HashSet<string> coopStartedAssets = new HashSet<string>(StringComparer.Ordinal);
         private int coopAppliedKillCount;
@@ -160,9 +171,12 @@ namespace BossRush
             coopPersonal.Tick(deltaTime);
             coopAdmissionRetry -= Mathf.Max(0f, deltaTime);
             bool admitted;
+            CoopModeFPlayerState confirmed;
             if (BossRushCoop.IsClient && modeFActive && coopLocalAsset == BossRushCoop.LocalAssetId && coopAdmissionRetry <= 0f
-                && coopAdmissionDecisions.TryGetValue(BossRushCoop.LocalAssetId + ":" + coopEpoch, out admitted))
-            { coopAdmissionRetry = 1f; coopChannel.Request("admission", text: coopEpoch, flag: admitted); }
+                && coopAdmissionDecisions.TryGetValue(BossRushCoop.LocalAssetId + ":" + coopEpoch, out admitted)
+                && (!coopPlayers.TryGetValue(BossRushCoop.LocalPlayerId, out confirmed) || confirmed.AssetId != coopLocalAsset
+                    || !(admitted ? confirmed.Admitted : confirmed.Declined)))
+            { coopAdmissionRetry = 1f; coopChannel.RequestRepeat("admission", text: coopEpoch, flag: admitted); }
             TickCoopFortificationTransactions(deltaTime);
             UpdateCoopExtractionPresentation();
             if (BossRushCoop.IsHost && coopExtractionAwaitingReceipts && !coopPersonal.HasPendingForIdPrefix("extract:" + coopEpoch + ":"))
@@ -171,7 +185,7 @@ namespace BossRush
                 TryNotifyModeFExtraction(coopExtractionPosition);
                 TryLoadBaseSceneAfterModeFExtraction();
             }
-            if (!BossRushCoop.IsHost || !modeFActive) return;
+            if (!BossRushCoop.IsHost || !BossRushCoop.HasBoundScene || !modeFActive) return;
             foreach (BossRushCoopPlayer player in BossRushCoop.Players)
             {
                 CoopModeFPlayerState state;
@@ -188,8 +202,8 @@ namespace BossRush
                     if (dead && !state.Dead) { state.Marks = 0; state.Dead = true; MarkModeFBountyLeaderDirty(); }
                     if (!dead) state.Dead = false;
                 }
-                if (player.IsAlive) coopPersonal.Deliver(player.Id, "start:" + coopEpoch,
-                    new CoopModeFPersonal { Epoch = coopEpoch, Kind = "start" }, state.AssetId);
+                if (player.IsAlive && !state.StarterSent && coopPersonal.Deliver(player.Id, "start:" + coopEpoch,
+                    new CoopModeFPersonal { Epoch = coopEpoch, Kind = "start" }, state.AssetId)) state.StarterSent = true;
             }
             if (!CoopModeFAnyParticipantAlive() && coopPlayers.Count > 0)
             {
@@ -198,6 +212,7 @@ namespace BossRush
                 return;
             }
             if (!modeFState.ExtractionPointSpawned || modeFState.ExtractionResolved) return;
+            RefreshCoopModeFExtractionEligibility();
             bool inside = true;
             foreach (BossRushCoopPlayer player in BossRushCoop.Players)
             {
@@ -515,16 +530,39 @@ namespace BossRush
             if (Time.frameCount % 120 == 0) UpdateModeFPendingUtilityRewards();
         }
 
-        private void CompleteCoopModeFExtraction()
+        private void RefreshCoopModeFExtractionEligibility()
         {
-            if (!BossRushCoop.IsHost || modeFState.ExtractionResolved) return;
-            modeFState.ExtractionResolved = true;
             foreach (BossRushCoopPlayer player in BossRushCoop.Players)
             {
                 CoopModeFPlayerState state;
-                if (!player.IsAlive || !coopPlayers.TryGetValue(player.Id, out state) || !IsCoopModeFParticipant(player, state)) continue;
+                if (!player.IsConnected || !coopPlayers.TryGetValue(player.Id, out state)
+                    || !IsCoopModeFParticipant(player, state)) continue;
+                state.ExtractionLastAlive = player.IsAlive && !state.Dead;
+                state.ExtractionLastInside = state.ExtractionLastAlive
+                    && (player.Character.transform.position - coopExtractionPosition).sqrMagnitude <= 9f;
+                state.ExtractionCountdownQualified = state.ExtractionLastAlive && coopExtractionElapsed > 0f;
+            }
+        }
+
+        private bool IsCoopModeFExtractionRecipient(CoopModeFPlayerState state)
+        {
+            if (state == null || !state.Admitted || state.Declined || state.Dead) return false;
+            BossRushCoopPlayer player = BossRushCoop.FindPlayer(state.Id);
+            if (player != null && player.IsConnected) return IsCoopModeFParticipant(player, state) && player.IsAlive;
+            // 只保留最后一次真实圈内或倒计时开始后的断线资格；不为早离圈外者补资格。
+            return state.ExtractionLastAlive && (state.ExtractionLastInside || state.ExtractionCountdownQualified);
+        }
+
+        private void CompleteCoopModeFExtraction()
+        {
+            if (!BossRushCoop.IsHost || !BossRushCoop.HasBoundScene || modeFState.ExtractionResolved) return;
+            modeFState.ExtractionResolved = true;
+            RefreshCoopModeFExtractionEligibility();
+            foreach (CoopModeFPlayerState state in coopPlayers.Values)
+            {
+                if (!IsCoopModeFExtractionRecipient(state)) continue;
                 state.Extracted = true;
-                coopPersonal.Deliver(player.Id, "extract:" + coopEpoch + ":", new CoopModeFPersonal
+                coopPersonal.Deliver(state.Id, "extract:" + coopEpoch + ":", new CoopModeFPersonal
                 { Epoch = coopEpoch, Kind = "extract", Marks = state.Marks, Kills = state.Kills }, state.AssetId);
             }
             if (modeFActive) ExitModeF();

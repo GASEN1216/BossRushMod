@@ -9,3 +9,7 @@ Item KV 容器、prefab 基线恢复、装备刷新、房间角色名册与退�
 独立复审增补原样执行宠物 OnRequest / OnRelease / OnAward / Clear / RefreshRewardRun 与原生投影绑定：释放与新部署乱序、重复请求、服务拒绝后重试、空握手与同房重连不重复经验、不清未确认事实/每局预算、实际换房清理，以及同 ID 新对象与重生主人绑定。成长替身可失败且记录实际经验累加；宠物生成、照料表现、传输和存档仍为外围替身。所有运行使用本次 TargetPath 与 SHA-256。
 
 网络嵌套 DTO 编码直接链接真实 `BossRushCoopJson`、共享 `BossRushJsonValue` 与 `SimpleJsonHelper`；完整装备变量列表经真实 codec 往返。提取 DTO 恢复生产原有 `[Serializable]` 注解，不使用 Unity JSON 替身。
+
+2026-10-15 场景消费边界：显式装配 HasBoundScene 与本次实际旅行 SceneToken，默认不放行；调用真正消息接收→绑定/AI spawn 事件或完整 Tick，覆盖相同公开 generation 下原生旅行已替换、旧包、旧 pending 和 await 完成窗口。Wraith 保留同一实际 Core 在 token 观察前生成的墓箱队列，跨 Core 不迁移该请求，原记录仍保留；宠物/配偶当前世界投影延后消费并重试，过期旅行投影拒绝。宠物经验回执继续使用原资产收据；旧亡魂击杀回执现只确认，不删除持久记录。网络/Core/Unity工厂及持久化仍为受控边界，本回归不替代 Windows 全编译与 L3。
+
+Claude PC-03/04/05 增补：逐字执行真实 `OnSceneLoaded`、Core/room/token 生命周期和两种武器的 `OnAbilityStart`→`OnAbilityUpdate`→派生 `OnStop`→真实基类 `EquipmentAbilityAction.OnStop`，覆盖单机和同 Core Additive 不清召唤、新 Core 仅回收已登记网络实体、拒绝/未发的技能冷却退款、旧结果不能退款新技能与资产切换取消回调。真实词条初始化、写槽、清槽、未知词条名字进入发送→实际 codec→快照接收，验证隐藏空名字不会拒绝整份 RF/AFX 状态。工厂执行仅为可计数替身；这里的 accepted 表示通过房主准入，不证明异步工厂、真实 AI 或动画成功。两类 `TryGetSummonOwner` 也执行原表和当前 owner/body/asset/token 核对。

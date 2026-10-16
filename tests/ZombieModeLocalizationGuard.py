@@ -1,6 +1,7 @@
 from pathlib import Path
 import re
 import sys
+from cs_source_util import clean_source
 
 
 LOCALIZATION = Path("Localization/LocalizationInjector.cs")
@@ -11,6 +12,7 @@ USAGE_FILES = [
     # （AGENTS 4.15：新子系统的状态与算法放自己的类型里，宿主只留一行转发）。
     Path("ZombieMode/ZombieModeEntryDebt.cs"),
     Path("ZombieMode/ZombieModeEntry_StarterLoadout.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule_Coop.cs"),
     Path("ZombieMode/ZombieModeMapSelectionHelper.cs"),
     Path("ZombieMode/ZombieModeHudController.cs"),
     Path("ZombieMode/ZombieModeRuntimeModule_Hud.cs"),
@@ -198,6 +200,11 @@ REQUIRED_USAGE_KEYS = [
 ]
 
 
+COOP_KEYS = tuple("BossRush_ZombieMode_Coop_" + name for name in (
+    "WaitingTitle", "StartTitle", "StartBody", "StartConfirm", "KeepWaiting",
+    "SkippedNoCharge", "SkippedRefundPending", "SkippedRefunded"))
+
+
 def fail(message: str) -> int:
     print(message)
     return 1
@@ -205,14 +212,14 @@ def fail(message: str) -> int:
 
 
 def main() -> int:
-    localization_text = LOCALIZATION.read_text(encoding="utf-8")
+    localization_text = clean_source(LOCALIZATION.read_text(encoding="utf-8-sig"))
 
     missing = [key for key in REQUIRED_KEYS if key not in localization_text]
     if missing:
         return fail("ZombieModeLocalizationGuard: missing injected keys -> " + ", ".join(missing))
 
     for file_path in USAGE_FILES:
-        usage_text = file_path.read_text(encoding="utf-8")
+        usage_text = clean_source(file_path.read_text(encoding="utf-8-sig"))
         hardcoded = re.findall(r'L10n\.T\("[^\"]+",\s*"[^\"]+"\)', usage_text)
         if hardcoded:
             return fail(
@@ -222,10 +229,17 @@ def main() -> int:
                 + hardcoded[0]
             )
 
-    combined_usage = "\n".join(path.read_text(encoding="utf-8") for path in USAGE_FILES)
+    combined_usage = "\n".join(clean_source(path.read_text(encoding="utf-8-sig")) for path in USAGE_FILES)
     missing_usage = [key for key in REQUIRED_USAGE_KEYS if key not in combined_usage]
     if missing_usage:
         return fail("ZombieModeLocalizationGuard: required keys not used in ZombieMode flows -> " + ", ".join(missing_usage))
+
+    for key in COOP_KEYS:
+        pattern = r'InjectZombieModeString\("' + re.escape(key) + r'",\s*"[^"\n]+",\s*"[^"\n]+"\);'
+        if len(re.findall(pattern, localization_text)) != 1:
+            return fail("ZombieModeLocalizationGuard: missing unique bilingual injection -> " + key)
+        if 'L10n.T("' + key + '")' not in combined_usage:
+            return fail("ZombieModeLocalizationGuard: co-op text must resolve through L10n at use -> " + key)
 
     print("ZombieModeLocalizationGuard: PASS")
     return 0

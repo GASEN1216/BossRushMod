@@ -6,6 +6,7 @@ internal static class Program
     private static void Check(bool value,string label) { checks++;if(!value)throw new Exception(label); }
     private static void Main()
     {
+        BossRushCoop.HasBoundScene=true;
         for(int i=0;i<16;i++)BossRushCoop.Players.Add(new BossRushCoopPlayer { Id=i==0?"host":"p"+i,AssetId="A" });
         CharacterMainControl.Main=BossRushCoop.Players[0].Character;
         var host=new ModeFRuntimeModule();host.Begin();
@@ -128,6 +129,41 @@ internal static class Program
         Check(compact.Apply(new CoopModeFPersonal {Epoch="owed",Kind="kill",Kills=2}),"room compaction cannot discard original unpaid reward ledger");
         CharacterMainControl.Main=new CharacterMainControl();BossRushCoop.RunId="room-facts";var facts=new ModeFRuntimeModule();facts.EnableCampaign();facts.coopEpoch="fact-old";facts.coopLocalAsset="A";CampaignObjectiveTracker.Chapter="fact-original";facts.Apply(new CoopModeFPersonal {Epoch="fact-old",Kind="start"});facts.World(new CoopModeFState {Active=true,Epoch="fact-new"});CampaignObjectiveTracker.Chapter="fact-new";int growth=facts.RewardCalls;var markedReceipt=new CoopModeFPersonal {Epoch="fact-old",Kind="kill",Kills=1,VictimMarks=2};CampaignObjectiveTracker.ObservationAvailable=false;Check(!facts.Apply(markedReceipt)&&facts.RewardCalls==growth,"original campaign kill observation failure retains item and growth transaction");CampaignObjectiveTracker.ObservationAvailable=true;Check(facts.Apply(markedReceipt)&&facts.RewardCalls==growth&&CampaignObjectiveTracker.Observations.Contains("fact-original:1:True"),"late marked kill observes frozen original lease before old supply ledger commits");Check(facts.Apply(new CoopModeFPersonal {Epoch="fact-old",Kind="kill",Kills=2})&&CampaignObjectiveTracker.Observations.Contains("fact-original:2:False"),"unmarked late kill preserves real victim marked fact");
         BossRushCoop.IsHost=false;BossRushCoop.IsClient=true;BossRushCoop.RunId="room-projection";var projected=new ModeFRuntimeModule();projected.modeFActive=false;projected.World(new CoopModeFState {Active=true,Epoch="projected"});projected.coopStartedEpoch="A:projected";projected.Apply(new CoopModeFPersonal {Epoch="projected",Kind="kill",Kills=1});projected.Tick();Check(projected.modeFActive&&projected.Exits==0,"same original client room continues its world");BossRushCoop.IsConnected=false;BossRushCoop.IsClient=false;BossRushCoop.RunId="";projected.Tick();Check(!projected.modeFActive&&projected.Exits==1,"stopped native network retires old F projection once");Check(projected.Apply(new CoopModeFPersonal {Epoch="projected",Kind="kill",Kills=2})&&!projected.modeFActive,"late old F supply receipt cannot resurrect retired world");projected.Tick();Check(projected.Exits==1,"F projection cleanup does not block later single player ticks");BossRushCoop.IsConnected=true;BossRushCoop.IsClient=true;BossRushCoop.RunId="room-two";projected.World(new CoopModeFState {Active=true,Epoch="new-room"});BossRushCoop.RunId="room-three";projected.Tick();Check(!projected.modeFActive&&projected.Exits==2,"connected native new room also retires old F projection");BossRushCoop.IsHost=true;BossRushCoop.IsClient=false;
+        BossRushCoop.IsHost=true;BossRushCoop.IsClient=false;BossRushCoop.LocalPlayerId="host";
+        foreach(var player in BossRushCoop.Players){player.AssetId="A";player.IsConnected=true;player.Character.Health.IsDead=false;}
+        var startup=new ModeFRuntimeModule();startup.Begin();startup.coopPersonal.Accept=false;startup.Tick();
+        Check(startup.coopPersonal.Pending.Count==0&&startup.coopPersonal.Attempts==16,"F rejected initial queues retain every guest starter for retry");
+        startup.coopPersonal.Accept=true;startup.Tick();int allocations=startup.coopPersonal.Pending.Count,attempts=startup.coopPersonal.Attempts;
+        for(int i=0;i<100;i++)startup.Tick();
+        Check(allocations==16&&startup.coopPersonal.Pending.Count==16&&startup.coopPersonal.Attempts==attempts,"F per-frame tick does not recreate successful starter receipts for 15 guests");
+        BossRushCoop.IsHost=false;BossRushCoop.IsClient=true;BossRushCoop.LocalPlayerId="p1";
+        var admission=new ModeFRuntimeModule();admission.coopEpoch="confirmation";admission.coopLocalAsset="A";admission.AdmitForTest(true);
+        admission.Tick();Check(admission.AdmissionReports==1,"F unconfirmed admitted decision is reported");
+        admission.coopPlayers["p1"]=new CoopModeFPlayerState{Id="p1",AssetId="B",Admitted=true};admission.Tick();
+        Check(admission.AdmissionReports==2,"F wrong-asset host confirmation cannot stop the original paid decision");
+        admission.coopPlayers["p1"].AssetId="A";for(int i=0;i<100;i++)admission.Tick();
+        Check(admission.AdmissionReports==2,"F genuine same-asset admitted snapshot stops stable admission traffic");
+        BossRushCoop.IsHost=true;BossRushCoop.IsClient=false;BossRushCoop.IsConnected=true;
+        foreach(var member in BossRushCoop.Players){member.AssetId="A";member.IsConnected=true;member.Character.Health.IsDead=false;member.Character.transform.position=new UnityEngine.Vector3();}
+        BossRushCoop.Players[2].AssetId="offline-original";var offline=new ModeFRuntimeModule();offline.Begin();foreach(var participantState in offline.coopPlayers.Values)participantState.Admitted=true;
+        offline.modeFState.ExtractionPointSpawned=true;
+        BossRushCoop.Players[1].Character.transform.position=new UnityEngine.Vector3(10,0,0);
+        offline.Tick(); // p1 observed outside before disconnect; countdown has not begun.
+        BossRushCoop.Players[1].IsConnected=false;
+        offline.Tick(); // countdown begins with p2 inside and all remaining players inside.
+        BossRushCoop.Players[2].Character.transform.position=new UnityEngine.Vector3(10,0,0);
+        offline.Tick(); // previous active countdown is retained as qualification if this member disconnects now.
+        BossRushCoop.Players[2].IsConnected=false;
+        BossRushCoop.Players[3].Character.Health.IsDead=true;offline.Tick();BossRushCoop.Players[3].IsConnected=false;
+        offline.Extract();
+        Check(!offline.coopPersonal.Pending.Exists(x=>x.Player=="p1"&&x.Payload.Kind=="extract"),"F early disconnect observed outside receives no extraction receipt");
+        Check(offline.coopPersonal.Pending.Exists(x=>x.Player=="p2"&&x.Payload.Kind=="extract"&&x.Asset=="offline-original"),"F countdown disconnect retains receipt on original frozen asset");
+        Check(!offline.coopPersonal.Pending.Exists(x=>x.Player=="p3"&&x.Payload.Kind=="extract"),"F actual personal death before disconnect cannot inherit retained qualification");
+        var insideBefore=new ModeFRuntimeModule();foreach(var member in BossRushCoop.Players){member.IsConnected=true;member.Character.Health.IsDead=false;member.Character.transform.position=new UnityEngine.Vector3();}insideBefore.Begin();foreach(var participantState in insideBefore.coopPlayers.Values)participantState.Admitted=true;
+        insideBefore.modeFState.ExtractionPointSpawned=true;BossRushCoop.Players[4].Character.transform.position=new UnityEngine.Vector3(20,0,0);insideBefore.Tick();BossRushCoop.Players[5].IsConnected=false;
+        BossRushCoop.Players[6].AssetId="B";insideBefore.Extract();
+        Check(insideBefore.coopPersonal.Pending.Exists(x=>x.Player=="p5"&&x.Payload.Kind=="extract"&&x.Asset=="A"),"F last actual inside before countdown survives disconnect");
+        Check(!insideBefore.coopPersonal.Pending.Exists(x=>x.Player=="p6"&&x.Payload.Kind=="extract"),"F connected new asset cannot inherit original extraction eligibility");
         Console.WriteLine("ModeFCoop: "+checks+" PASS; production E/F personal admission, ownership, receipt order and early-inactive settlement; engine and delivery adapters.");
     }
 }

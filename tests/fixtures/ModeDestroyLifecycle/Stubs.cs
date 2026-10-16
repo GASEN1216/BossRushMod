@@ -213,6 +213,7 @@ namespace BossRush
             enemyRegistry.AttachLootHandler(enemy, d => DeathCallbacks++);
             modeEStartupWarmupCoroutine = Warmup = modeEHost.OwnCoroutine();
         }
+        internal void SetPlayerTeamForTest(CharacterMainControl character, Teams team) { SetCoopModeEPlayerTeam(character, team); }
         private void CleanupModeELotteryAndHiringRuntime() { Probe.Events.Add("lottery-cleanup"); }
         private void DestroyModeEShellRuntimeState() { ShellDisposes++; }
         private void ResetModeEMerchantStaticCaches() { }
@@ -320,7 +321,8 @@ namespace BossRush
 }
 
 namespace BossRush {
- internal static partial class BossRushCoop { internal static bool IsPlayer(CharacterMainControl value) { return object.ReferenceEquals(value, CharacterMainControl.Main); } }
+ internal sealed class BossRushCoopPlayer { internal string Id; internal CharacterMainControl Character; }
+ internal static partial class BossRushCoop { internal static readonly List<BossRushCoopPlayer> Players = new List<BossRushCoopPlayer>(); }
  internal sealed partial class ModeDRuntimeModule { private bool coopProjectionRetiring; private CoopGameplayChannel<object> coopChannel; private CoopPersonalDelivery<object> coopPersonal; private void InitializeCoopModeD() { } }
  internal sealed partial class ModeERuntimeModule { private bool coopProjectionRetiring; private CoopGameplayChannel<object> coopChannel; private CoopPersonalDelivery<object> coopPersonal; private void InitializeCoopModeE() { } }
  internal sealed partial class ModeFRuntimeModule { private bool coopProjectionRetiring; private CoopGameplayChannel<object> coopChannel; private CoopPersonalDelivery<object> coopPersonal; private void InitializeCoopModeF() { } }

@@ -34,6 +34,11 @@ declaration = text[start:end]
 assert not re.search(r'"[^"\n]*[{}][^"\n]*"', clean_source(declaration)), "Use a lexical extractor for brace-containing literals"
 out = Path(sys.argv[1]).resolve()
 out.parent.mkdir(parents=True, exist_ok=True)
+facade = []
+for name in ("IsConnected", "IsHost", "IsClient", "HasWorldAuthority", "SessionReady", "HasBoundScene"):
+    matches = re.findall(r"^\s*(?:public|internal) static bool " + name + r"\s*\{[^\r\n]+\r?$", text, re.M)
+    assert len(matches) == 1, name
+    facade.append(matches[0])
 out.write_text("// Production declaration SHA256 " + hashlib.sha256(raw).hexdigest() +
-               "\nusing System;\nnamespace BossRush {\n" + declaration + "\n}\n", encoding="utf-8")
+               "\nusing System;\nnamespace BossRush {\n" + declaration + "\ninternal static partial class BossRushCoop {\n" + "\n".join(facade) + "\n}\n}\n", encoding="utf-8")
 print("ProductionPlayer source=" + str(source) + " SHA256=" + hashlib.sha256(raw).hexdigest())

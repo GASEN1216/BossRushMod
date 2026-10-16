@@ -34,7 +34,8 @@ def main():
                     'Owner != null && HasEntityAuthority(character)', 'Owner.Track(character);'], 'host birth cannot relabel old entities')
     replica = body(source, 'internal static void MarkReplica(CharacterMainControl character)')
     ordered(replica, ['!BossRushCoop.IsClient', 'marker.Replica = true;',
-                      'if (Owner == null) return;', 'marker.Armed = true;'], 'replica birth precedes optional prediction owner')
+                      'Owner == null || !BossRushCoop.HasBoundScene', 'marker.PredictionRun = BossRushCoop.RunId;',
+                      'marker.PredictionToken = BossRushCoop.SceneToken;', 'marker.Armed = true;'], 'replica birth precedes optional prediction owner')
     begin = body(source, 'internal static Health Begin(Health health, CharacterMainControl attacker)')
     ordered(begin, ['Health previous = predicting; predicting = null;', '!BossRushCoop.IsClient',
                     'BossRushCoop.GetPlayerId(attacker) != BossRushCoop.LocalPlayerId',
@@ -50,6 +51,24 @@ def main():
     ordered(track, ['RefreshWorld();', 'tracked.Add(character)', 'authorities.Add(new Authority { Character = character })'], 'explicit ownership queue')
     receive = body(source, 'private void Receive(BossRushCoopMessage message)')
     ordered(receive, ['!message.IsFromHost', 'RefreshWorld();', 'state.Run != run', 'state.Generation != generation', 'latest = state;'], 'host/current world only')
+    for signature in ('private void Receive(BossRushCoopMessage message)',
+                      'private void OnAiSpawned(int id, CharacterMainControl character)',
+                      'public override void OnUpdate(float deltaTime, float unscaledDeltaTime)',
+                      'private void PublishAuthority()',
+                      'internal static Health Begin(Health health, CharacterMainControl attacker)',
+                      'internal static bool TryClamp(Health health, ref float value)'):
+        assert '!BossRushCoop.HasBoundScene' in body(source, signature), 'bound actual Core at consumer: ' + signature
+    ordered(receive, ['string.IsNullOrEmpty(state.SceneToken)', 'state.SceneToken != BossRushCoop.SceneToken', 'latest = state;'], 'exact certificate travel token')
+    eligibility = body(source, 'private static bool IsCurrent(CoopAiPredictionReplicaMarker marker)')
+    for token in ('marker.PredictionRun == BossRushCoop.RunId', 'marker.PredictionGeneration == BossRushCoop.SceneGeneration',
+                  '!string.IsNullOrEmpty(marker.PredictionToken)', 'marker.PredictionToken == BossRushCoop.SceneToken'):
+        assert token in eligibility, 'frozen prediction qualification: ' + token
+    assert 'IsCurrent(marker)' in begin and 'IsCurrent(marker)' in clamp, 'both Hurt admission and actual lethal setter check frozen scene'
+    assert 'latest.SceneToken == BossRushCoop.SceneToken' in body(source, 'private void OnAiSpawned(int id, CharacterMainControl character)'), 'native birth cannot replay old certificate'
+    assert 'else if (latest != null && latest.SceneToken == BossRushCoop.SceneToken)' in body(source, 'public override void OnUpdate(float deltaTime, float unscaledDeltaTime)'), 'poll cannot replay old certificate'
+    assert 'SceneToken = BossRushCoop.SceneToken' in body(source, 'private void PublishAuthority()'), 'host publishes actual travel token'
+    refresh = body(source, 'private void RefreshWorld()')
+    assert 'BossRushCoop.IsClient && !BossRushCoop.HasBoundScene' in refresh and 'ClearWorld();' in refresh, 'native Begin retires previous client qualification before generation advances'
     update = body(source, 'public override void OnUpdate(float deltaTime, float unscaledDeltaTime)')
     for token in ('entry.Id == 0', 'BossRushCoop.FindAi(id)', 'BindReplica(id, character);'):
         assert token in update, 'delayed signed ID producer: ' + token

@@ -165,11 +165,20 @@ def main() -> int:
         feature, "internal void AttributeModeEHiredBossKillToOwner(")
     for token in [
         "modeEHiredBosses.TryGetValue(damageInfo.fromCharacter, out state)",
-        "state.Owner != CharacterMainControl.Main",
+        "!IsModeEHireOwnerCurrent(state.Owner)",
         "damageInfo.fromCharacter = state.Owner;",
     ]:
         if token not in attribution:
             return fail("hired Boss kill owner attribution missing -> " + token)
+    # 联机房主上客人雇的 Boss 归属客人的身体；单机仍只认本机主角，不能放宽成任意角色。
+    owner_gate = extract_method(feature, "private static bool IsModeEHireOwnerCurrent(")
+    for token in [
+        "owner != null",
+        "owner == CharacterMainControl.Main",
+        "BossRushCoop.IsHost && BossRushCoop.IsPlayer(owner)",
+    ]:
+        if token not in owner_gate:
+            return fail("hired Boss owner must be the local main or a bound co-op player on the host -> " + token)
     for forbidden in ["foreach (", "for (", "new List<", "GetComponents"]:
         if forbidden in attribution:
             return fail("death attribution must stay O(1) -> " + forbidden)
@@ -193,7 +202,7 @@ def main() -> int:
     for token in [
         "requestedTeam == modeEPlayerFaction",
         "modeEHiredBosses.TryGetValue(character, out state)",
-        "state.Owner == CharacterMainControl.Main",
+        "IsModeEHireOwnerCurrent(state.Owner)",
     ]:
         if token not in team_guard:
             return fail("hired managed Boss team ownership guard missing -> " + token)

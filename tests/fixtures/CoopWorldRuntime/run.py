@@ -20,7 +20,7 @@ scene = ROOT / "Common/Coop/BossRushCoopRuntimeModule.cs"
 loot_text = loot.read_text(encoding="utf-8-sig"); scene_text = scene.read_text(encoding="utf-8-sig")
 code = "using System; using System.Text; using System.Collections.Generic; using UnityEngine; using UnityEngine.SceneManagement; namespace BossRush { partial class BossRushCoopWorldLoot {\n"
 for signature in ("private sealed class BoxState", "private sealed class Snapshot\n", "private sealed class SnapshotPart",
-                  "private static int Key(", "internal bool Register(", "private void PublishSnapshot(", "private void OnSnapshot(", "internal void Reset(", "internal void ChangeGeneration("):
+                  "private static int Key(", "internal bool Register(", "internal void Tick(", "private void PublishSnapshot(", "private void OnSnapshot(", "private void ApplyPending(", "internal void Reset(", "internal void ChangeGeneration("):
     # Serializable is metadata only; codec maps the actual production field types.
     code += member(loot_text, signature)
 for field in ("PartCharacters", "incoming", "incomingRevision", "incomingCount", "pending", "revision", "nextTick"):
@@ -38,6 +38,7 @@ routing = member(gravity_text, "internal void RefreshZombieModeGravityWellTarget
 code += routing[:routing.index("            if (!IsZombieModeRunValid(runId))")] + 'throw new Exception("only the actual client producer is exercised");}\n}}'
 generated = OUT / "Production.cs"; generated.write_text(code, encoding="utf-8")
 sources = [generated, HERE / "Stubs.cs", HERE / "Program.cs", ROOT / "Common/Coop/BossRushCoopControl.cs", ROOT / "Common/Coop/BossRushCoopProtocol.cs"]
+sources += [ROOT / "Common/Coop/BossRushCoopSceneIdentity.cs"]
 sources += [ROOT / path for path in ("Common/Coop/BossRushCoopJson.cs", "Common/Data/BossRushJsonValue.cs", "Utilities/SimpleJsonHelper.cs")]
 project = OUT / "Regression.csproj"
 includes = "".join('<Compile Include="' + escape(str(p), {'"': '&quot;'}) + '" />' for p in sources)

@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using Duckov.MiniMaps;
 using Cysharp.Threading.Tasks;
 using Duckov.Scenes;
@@ -258,16 +259,17 @@ namespace BossRush
 
             if (BossRushCoop.IsConnected)
             {
-                if (!BossRushCoop.HasWorldAuthority || coopZombieExtractionPending) return;
+                if (!BossRushCoop.HasWorldAuthority || !BossRushCoop.HasBoundScene || coopZombieExtractionPending) return;
                 if (!CoopZombieAllInsideExtraction(runState.ActiveExtractionArea)) return;
                 runState.ExtractionSuccessHandled = true;
                 coopZombieExtractionPending = true;
-                foreach (BossRushCoopPlayer player in BossRushCoop.Players)
-                    if (IsCoopZombieParticipant(player) && player.IsAlive)
+                RefreshCoopZombieExtractionEligibility(runState.ActiveExtractionArea);
+                foreach (KeyValuePair<string, string> participant in coopZombieParticipants)
+                    if (IsCoopZombieExtractionRecipient(participant.Key, participant.Value))
                     {
-                        int issued; coopZombiePointsIssued.TryGetValue(player.Id + ":" + coopZombieParticipants[player.Id], out issued);
-                        coopZombiePersonal.Deliver(player.Id, runId + ":extract:",
-                            new CoopZombiePersonal { Run = runId, Kind = "extract", Amount = issued }, coopZombieParticipants[player.Id]);
+                        int issued; coopZombiePointsIssued.TryGetValue(participant.Key + ":" + participant.Value, out issued);
+                        coopZombiePersonal.Deliver(participant.Key, runId + ":extract:",
+                            new CoopZombiePersonal { Run = runId, Kind = "extract", Amount = issued }, participant.Value);
                     }
                 return;
             }

@@ -16,6 +16,8 @@ namespace BossRush
         internal object Peer;
         internal string ReconnectToken;
         internal long HelloSequence;
+        internal long AssetRevision;
+        internal string ReadyEpoch;
         internal bool HostAlive;
         internal string HostAliveAssetId;
         internal int HostAliveGeneration = -1;
@@ -26,7 +28,7 @@ namespace BossRush
             {
                 if (!IsConnected || Character == null || Character.Health == null) return false;
                 if (IsLocal || (BossRushCoop.Runtime != null && BossRushCoop.Runtime.Host)) return !Character.Health.IsDead;
-                if (!BossRushCoop.IsClient || !BossRushCoop.Runtime.HasHostPeer) { HostAlive = false; return false; }
+                if (!BossRushCoop.IsClient || !BossRushCoop.Runtime.HasHostPeer || !BossRushCoop.Runtime.HasBoundScene) { HostAlive = false; return false; }
                 // 原生客端代理的 Health.IsDead 不一定随远端死亡更新；只使用房主当前名单的事实。
                 return BossRushCoop.IsClient && HostAlive && HostAliveGeneration == BossRushCoop.SceneGeneration
                     && string.Equals(HostAliveAssetId, AssetId, StringComparison.Ordinal)
@@ -62,15 +64,20 @@ namespace BossRush
             host.Register(new CoopAiPredictionHealthRuntimeModule());
             host.Register(new DragonKingCoopContactRuntimeModule());
         }
-        public static bool IsConnected { get { return Runtime != null && Runtime.Connected; } }
-        public static bool IsHost { get { return IsConnected && Runtime.Host; } }
-        public static bool IsClient { get { return IsConnected && !Runtime.Host; } }
+        public static bool IsConnected { get { return Runtime != null && (Runtime.Connected || Runtime.NetworkBlocked); } }
+        public static bool IsHost { get { return IsConnected && !Runtime.NetworkBlocked && Runtime.Host; } }
+        public static bool IsClient { get { return IsConnected && !IsHost; } }
         public static bool HasWorldAuthority { get { return !IsConnected || IsHost; } }
         public static string LocalPlayerId { get { return Runtime != null ? Runtime.LocalId : "local"; } }
         public static string LocalAssetId { get { return Runtime != null ? Runtime.GetLocalAssetId() : string.Empty; } }
         public static string RunId { get { return Runtime != null ? Runtime.SessionId : string.Empty; } }
         public static int SceneGeneration { get { return Runtime != null ? Runtime.Generation : 0; } }
         public static bool SessionReady { get { return !IsConnected || Runtime.Ready; } }
+        internal static bool HasBoundScene { get { return !IsConnected || (Runtime != null && Runtime.HasBoundScene); } }
+        internal static string SceneToken { get { return Runtime != null ? Runtime.SceneToken : null; } }
+        internal static string LocalReadyEpoch { get { return Runtime != null ? Runtime.LocalReadyEpoch : null; } }
+        internal static object NativeService { get { return Runtime != null ? Runtime.NativeService : null; } }
+        internal static object NativeHostPeer { get { return Runtime != null ? Runtime.NativeHostPeer : null; } }
         public static IReadOnlyList<BossRushCoopPlayer> Players { get { return Runtime != null ? Runtime.Players : emptyPlayers; } }
         public static bool AnyPlayerAlive
         {

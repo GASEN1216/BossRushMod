@@ -7,7 +7,7 @@ namespace BossRush
     /// <summary>服务器招式的真实线几何、可破坏道具与减速。表现镜像不运行招式或再次造成伤害。</summary>
     internal sealed class SkyIslandCoopWorldEffects : IDisposable
     {
-        [Serializable] private sealed class World { public string TravelId; public long Revision; public Line[] Lines; public Prop[] Props; public Lamp[] Lamps; }
+        [Serializable] private sealed class World { public string TravelId, SceneToken; public long Revision; public Line[] Lines; public Prop[] Props; public Lamp[] Lamps; }
         [Serializable] private sealed class Line
         {
             public int Id; public Vector3 Position, Scale; public Quaternion Rotation;
@@ -21,8 +21,8 @@ namespace BossRush
             public string Key, Name, Source; public Vector3 Position; public Quaternion Rotation;
             public float Radius, Health; public int Team; public bool Active, Decoy; public Color Tint;
         }
-        [Serializable] private sealed class Slow { public string TravelId, Id, AssetId; public float Percent, Seconds; public long Revision; }
-        [Serializable] private sealed class PlayerEffects { public string TravelId, AssetId, Stream; public long Noise, Revision; public bool Earmuffs; public int Rootweave; }
+        [Serializable] private sealed class Slow { public string TravelId, Id, AssetId, SceneToken; public float Percent, Seconds; public long Revision; }
+        [Serializable] private sealed class PlayerEffects { public string TravelId, AssetId, Stream, SceneToken; public long Noise, Revision; public bool Earmuffs; public int Rootweave; }
         private sealed class PlayerEffectsState
         {
             internal string AssetId, Stream; internal long Noise, Revision = -1; internal bool Earmuffs; internal int Rootweave;
@@ -109,13 +109,15 @@ namespace BossRush
             EnsureLocalStream();
             long noise = SkyIslandBossGearWorn.Earmuffs ? 1L : 2L;
             if (!SkyIslandBossRules.InCave(player.transform.position.x, player.transform.position.z)) noise = 0;
+            if (noise == 0) return;
             localNoise += noise;
-            PublishPlayerEffects();
+            // 噪声是累加事实，下个既有 4 Hz 包完整上报；逐枪发包不增加玩法信息。
         }
         private void PublishPlayerEffects()
         {
+            if (!BossRushCoop.HasBoundScene) return;
             EnsureLocalStream();
-            var value = new PlayerEffects { TravelId = TravelId, AssetId = localAsset, Stream = localStream,
+            var value = new PlayerEffects { TravelId = TravelId, SceneToken = BossRushCoop.SceneToken, AssetId = localAsset, Stream = localStream,
                 Noise = localNoise, Revision = ++localRevision, Earmuffs = SkyIslandBossGearWorn.Earmuffs, Rootweave = SkyIslandBossGearWorn.RootweavePieces };
             if (BossRushCoop.IsClient) BossRushCoop.SendToHost("sky.effects.player", value);
             else if (BossRushCoop.IsHost) ApplyPlayerEffects(BossRushCoop.LocalPlayerId, value);
@@ -125,7 +127,8 @@ namespace BossRush
         private void ApplyPlayerEffects(string playerId, PlayerEffects value)
         {
             BossRushCoopPlayer member = BossRushCoop.FindPlayer(playerId);
-            if (member == null || value == null || value.TravelId != TravelId || value.AssetId != member.AssetId
+            if (!BossRushCoop.HasBoundScene || member == null || value == null || value.TravelId != TravelId || value.AssetId != member.AssetId
+                || string.IsNullOrEmpty(value.SceneToken) || value.SceneToken != BossRushCoop.SceneToken
                 || string.IsNullOrEmpty(value.Stream) || value.Stream.Length > 64 || value.Noise < 0 || value.Revision < 0
                 || value.Rootweave < 0 || value.Rootweave > SkyIslandBossRules.RootweaveSet.Length) return;
             PlayerEffectsState state;
@@ -168,11 +171,11 @@ namespace BossRush
         }
         internal static void SendSlow(string player, string id, float percent, float seconds)
         {
-            if (current != null && BossRushCoop.IsHost && player != BossRushCoop.LocalPlayerId)
+            if (current != null && BossRushCoop.IsHost && BossRushCoop.HasBoundScene && player != BossRushCoop.LocalPlayerId)
             {
                 BossRushCoopPlayer target = BossRushCoop.FindPlayer(player);
                 if (target == null) return;
-                BossRushCoop.SendToPlayer(player, "sky.effects.slow", new Slow { TravelId = current.TravelId, AssetId = target.AssetId,
+                BossRushCoop.SendToPlayer(player, "sky.effects.slow", new Slow { TravelId = current.TravelId, SceneToken = BossRushCoop.SceneToken, AssetId = target.AssetId,
                     Id = id, Percent = percent, Seconds = seconds, Revision = ++current.sequence });
             }
         }
@@ -181,6 +184,7 @@ namespace BossRush
             if (!BossRushCoop.IsClient || !message.IsFromHost) return;
             Slow data = message.Read<Slow>();
             if (data == null || data.TravelId != TravelId || data.AssetId != BossRushCoop.LocalAssetId || string.IsNullOrEmpty(data.Id)
+                || string.IsNullOrEmpty(data.SceneToken) || data.SceneToken != BossRushCoop.SceneToken
                 || data.Percent > 0f || data.Percent < -1f || data.Revision <= 0) return;
             long revision;
             if (slowRevisions.TryGetValue(data.Id, out revision) && data.Revision <= revision) return;
@@ -198,13 +202,14 @@ namespace BossRush
         {
             if (!BossRushCoop.IsClient || !message.IsFromHost) return;
             World state = message.Read<World>();
-            if (state != null && state.TravelId == TravelId && state.Revision > 0
-                && (latest == null || state.Revision > latest.Revision)) latest = state;
+            if (state != null && state.TravelId == TravelId && !string.IsNullOrEmpty(state.SceneToken) && state.SceneToken == BossRushCoop.SceneToken && state.Revision > 0
+                && (latest == null || latest.SceneToken != state.SceneToken || state.Revision > latest.Revision)) latest = state;
         }
         internal void Tick()
         {
             if (!BossRushCoop.IsConnected) return;
             TickSlows();
+            if (!BossRushCoop.HasBoundScene) return;
             if (Time.unscaledTime >= nextPlayerPublish)
             { nextPlayerPublish = Time.unscaledTime + 0.25f; PublishPlayerEffects(); }
             Transform worldRoot = root();
@@ -224,7 +229,7 @@ namespace BossRush
         }
         private void ApplyWorld(Transform worldRoot)
         {
-            if (latest == null || latest.Lines == null || latest.Props == null || latest.Lines.Length > 128 || latest.Props.Length > 64) return;
+            if (!IsWorldCurrent() || latest.Lines == null || latest.Props == null || latest.Lines.Length > 128 || latest.Props.Length > 64) return;
             var alive = new HashSet<int>();
             foreach (Line entry in latest.Lines)
             {
@@ -267,6 +272,8 @@ namespace BossRush
             foreach (var pair in lamps) if (!aliveLamps.Contains(pair.Key)) { if (pair.Value != null) UnityEngine.Object.Destroy(pair.Value.gameObject); removeLamps.Add(pair.Key); }
             foreach (int id in removeLamps) lamps.Remove(id);
         }
+        private bool IsWorldCurrent()
+        { return BossRushCoop.HasBoundScene && latest != null && latest.SceneToken == BossRushCoop.SceneToken; }
         private void Publish()
         {
             var snapshotLines = new List<Line>();
@@ -303,7 +310,7 @@ namespace BossRush
                 if (light.enabled && light.gameObject.activeInHierarchy) snapshotLamps.Add(new Lamp { Id = pair.Key, Position = light.transform.position, Color = light.color, Range = light.range, Intensity = light.intensity });
             }
             foreach (int id in staleLamps) lamps.Remove(id);
-            BossRushCoop.Broadcast("sky.effects.world", new World { TravelId = TravelId, Revision = ++sequence,
+            BossRushCoop.Broadcast("sky.effects.world", new World { TravelId = TravelId, SceneToken = BossRushCoop.SceneToken, Revision = ++sequence,
                 Lines = snapshotLines.ToArray(), Props = snapshotProps.ToArray(), Lamps = snapshotLamps.ToArray() });
         }
         private void ApplyProp(Prop entry, Transform worldRoot)

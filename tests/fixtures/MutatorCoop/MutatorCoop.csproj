@@ -2,6 +2,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><RollForward>Major</RollForward>
     <LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <MutatorProductionRoot Condition="'$(MutatorProductionRoot)' == ''">$(MSBuildProjectDirectory)/../../..</MutatorProductionRoot>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" /><Compile Include="Stubs.cs" />
@@ -11,4 +12,18 @@
     <Compile Include="../../../Integration/Mutators/MutatorCoopRuntimeModule.cs" />
     <Compile Include="../../../Integration/Mutators/MutatorModeFlow.cs" />
   </ItemGroup>
+  <Target Name="BuildRealDeliverySubfixture" BeforeTargets="CoreCompile">
+    <MSBuild Projects="$(MSBuildProjectDirectory)/RealDelivery/RealDelivery.csproj" Targets="Restore;Build" BuildInParallel="false"
+             Properties="Configuration=$(Configuration);BaseIntermediateOutputPath=$(BaseIntermediateOutputPath)real-delivery/;OutputPath=$(TargetDir)real-delivery/;OutDir=$(TargetDir)real-delivery/;AppendTargetFrameworkToOutputPath=false;MutatorProductionRoot=$(MutatorProductionRoot)">
+      <Output TaskParameter="TargetOutputs" ItemName="RealDeliveryBuildOutputs" />
+    </MSBuild>
+    <ItemGroup>
+      <RealDeliveryAssembly Include="@(RealDeliveryBuildOutputs)" Condition="'%(Extension)' == '.dll' And '%(Filename)' == 'MutatorCoopRealDelivery'" />
+    </ItemGroup>
+    <Error Condition="'@(RealDeliveryAssembly->Count())' != '1'" Text="Expected exactly one actual real-delivery TargetOutputs assembly." />
+    <GetFileHash Files="@(RealDeliveryAssembly)" Algorithm="SHA256">
+      <Output TaskParameter="Items" ItemName="RealDeliveryHashedAssembly" />
+    </GetFileHash>
+    <WriteLinesToFile File="$(TargetDir)real-delivery.manifest" Lines="@(RealDeliveryHashedAssembly->'%(FullPath)|%(FileHash)')" Overwrite="true" />
+  </Target>
 </Project>

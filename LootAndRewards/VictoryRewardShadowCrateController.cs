@@ -77,18 +77,26 @@ namespace BossRush
         private float stateElapsedSeconds;
         private float appearElapsedSeconds;
         private bool disposed;
+        private Func<Vector3, bool> personalMaterializer;
+        private Func<bool> personalOwnerCurrent;
+        private float personalLandAt;
 
         public bool Initialize(
             ModBehaviour ownerInstance,
             CharacterMainControl playerCharacter,
             InteractableLootbox visualPrefab,
-            int rewardHighQualityCount)
+            int rewardHighQualityCount,
+            Func<Vector3, bool> materializePersonal = null,
+            Func<bool> isPersonalOwnerCurrent = null)
         {
             owner = ownerInstance;
             player = playerCharacter;
             playerTransform = player != null ? player.transform : null;
             sourcePrefab = visualPrefab;
             highQualityCount = rewardHighQualityCount;
+            personalMaterializer = materializePersonal;
+            personalOwnerCurrent = isPersonalOwnerCurrent;
+            personalLandAt = Time.unscaledTime + 2f;
             state = ShadowCrateState.Following;
             stateElapsedSeconds = 0f;
             appearElapsedSeconds = 0f;
@@ -146,10 +154,12 @@ namespace BossRush
 
         private void Update()
         {
+            if (personalOwnerCurrent != null && !personalOwnerCurrent()) { CleanupAndDestroy(true); return; }
             if (disposed || ghostObject == null)
             {
                 return;
             }
+            if (personalMaterializer != null && state == ShadowCrateState.Following && Time.unscaledTime >= personalLandAt) CompleteAndLand();
 
             switch (state)
             {
@@ -518,6 +528,18 @@ namespace BossRush
                 return;
             }
 
+            if (personalMaterializer != null)
+            {
+                // 只有实际真箱交接成功才完成；模板/库存短暂不可用时保留同一演出重试。
+                VictoryRewardCrateHeroVisual.BeginLandingHandoff(ghostTransform != null ? ghostTransform.rotation : Quaternion.identity);
+                bool committed;
+                try { committed = personalMaterializer(landingPosition); }
+                finally { VictoryRewardCrateHeroVisual.EndLandingHandoff(); }
+                if (!committed) return;
+                state = ShadowCrateState.Completed;
+                PlayLandingImpact(); ReleaseGhostAuraLight(); CleanupAndDestroy(true);
+                return;
+            }
             state = ShadowCrateState.Completed;
             ModBehaviour.DevLog("[BossRush] 通关奖励箱虚影完成落地: landing=" + landingPosition);
 

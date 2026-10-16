@@ -163,7 +163,7 @@ namespace BossRush
                 FrostmourneAbilityManager.CleanupStatic();
 
                 // 清理所有召唤的僵尸
-                FrostmourneAction.CleanupAllSummonedZombies();
+                FrostmourneAction.ResetStaticCaches();
 
                 // 清理 Blue Boss 额外掉落订阅
                 FrostmourneBlueBossDropHandler.Cleanup();

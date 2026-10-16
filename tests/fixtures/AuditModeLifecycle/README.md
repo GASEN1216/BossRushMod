@@ -24,9 +24,9 @@ Mode F 补位提取后，`RespawnModeFBossAsync` 直接在 `ModeFRuntimeModule` 
 
 补查的 Mode D 直接链接真实 `ModeDRuntimeModule` 与 `ModeDRuntimeModule_WaveResolution`，验证退出、重开同号波次、同场景重载和销毁均失效旧闭包，以及迟到结案拒绝、等齐生成结果、活敌阻止结算、死敌清除与重复结算门。Tick 和完成效果由可观测替身提供；实际队列消费点由 `ModeDAsyncOwnerGuard` 检查。丧尸拍照直接抽取统一暂停门及暂停时钟方法，以基本 Time/CameraMode 替身验证拍照暂停与恢复，不模拟实际阶段 UI 或敌人 AI。
 
-交叉复核另抽取 F3 的 TryReclaimAutotestItems / ClearAutotestSnapshotKey；物品收回器和计数器是可观测替身，仅验证门控顺序、短缺契约与失败留键，不声称测试了真实 Inventory/ES3。里程碑直接链接完整服务，核对 1–16 阶累计完整标价总额、故障重试、每帧/每阶实体预算，另验 15/16/32/33 阶数学边界及宿主 long 饱和。
+2026-10-15 Dev 原物归属回归取代旧 count-only 恢复替身：`AutotestBuffer` 逐字抽取当前 `TryReclaimAutotestItems`、清键、原树收据验证/暂存/恢复/异步工厂、标记提交、实际三来源计数与回收方法，并直接链接 `BossRushCoopJson`、共享 JSON parser/helper。受控的 `ItemTreeData.InstantiateAsync` 工厂只模拟宿主返回时机；生产 await 后的 slot/asset/body/快照检查和真实 codec 均执行。原来的「短缺不补也可成功」契约已撤销；旧 v1 数量快照始终 pending，不可用于回收或假报还原完成。
 
-AutotestBuffer 子夹具另外逐字抽取实际 CountOwnedItems / CountBufferedItems / CountInInventory、ReclaimAutotestItems、RemoveOwnedItems / RemoveFromBuffer / RemoveFromInventory 与清键流程。官方 ItemTreeData 的 rootInstanceID / entries / Count 变量由小型数据替身表达；验证 Buffer 尾部新增奖励回收、原树与无关物品保留、部分堆叠、缺主角/背包、旧快照基线不足、SaveBuffer 和物理写失败留键。只验证生产算法与调用顺序，不声称执行了真实 Unity 或 ES3。
+当前断言覆盖原 Buffer A 与新 pack B 同 ID、镜像的原 pack/新 Buffer、原堆叠与嵌套树具体对象、持久 owner 实际脱槽与旧 body 必经销毁后归还原实例、崩溃树重建、位置占用/短缺/不可读容器、换槽/换 body/替换快照后晚到工厂、保存失败留键、临时归属字段恢复及重试。可观测 Unity 替身模拟销毁后判空、Destroy 连带子对象与持久 owner 标志；没有执行真实 Unity `DontDestroyOnLoad`、ES3 或物理，不宣称已验证真实跨图。已实编官方 API 的同一方法，仍需新 Dev DLL 的 L3 复验。
 
 RunOnly 清理子夹具逐字抽取 `ZombieModeRuntimeModule` 的登记、敌人 / 未知记录剪枝、单对象移除、RunId 失效及整局清理方法，并抽取宿主薄桥和 `ZombieModeRunOnlyRecord`；直接链接生产 `RunScopedRegistry.ForEachReverse`。Unity 对象替身模拟销毁后判空和 `Destroy`，宿主替身仅记录保险、效果、支援队列、事件索引、奖励 UI 与地图隔离清理动作。断言覆盖旧 RunId 拒绝登记、奖励 UI 死记录回收、对象单项移除、敌人与未知记录剪枝、失败及成功撤离清理顺序、反向回收、RunId 在记录回调前失效以及终局后账本清空；不模拟真实 Unity 场景切换与玩家存档。
 
@@ -40,3 +40,5 @@ Zombie HUD 子项逐字抽取 `ZombieModeRuntimeModule_Hud` 的创建、显隐�
 2026-09-25 后续归属：视觉复原与脚印释放 helper 从 `ZombieModeRuntimeModule_EnemyRuntime.cs` 抽取真实模块方法，宿主入口仍按生产薄桥接通；RunOnly 的地图隔离恢复动作由模块替身记录，旧宿主恢复入口抽取 `ZombieModeEntry.cs` 的真实转发。地图隔离内部行为由专用夹具负责，本套件继续约束清理顺序。
 
 2026-09-27 独立审计修复：MerchantOwner 删除自造的 session 相等门，逐字抽取生产 E/F BeginSession、Invalidate、IsSessionStillValid、共享 gate 与 OnAwake/OnDestroy。End/Exit 的依赖在此故意保持无操作，以证明销毁安全来自生产 gate 本身；完整模式清理另由 ModeDestroyLifecycle 实跑。商人覆盖 dispose 之后才返回的 null/fault/success、直接向已 dispose owner 发请求，以及 gate 自身抛异常的回收。Unity 替身销毁 GameObject 连带角色组件并模拟假 null。
+
+原物登记由实际 `AutotestItemEscrowOwner` 组件实例持有，独立于 Runner。夹具通过 Unity 替身的组件 `OnDestroy` 回调执行生产撤销方法，覆盖登记清空而恢复键保留、原树重新实例化、已销毁 owner 的迟到工厂结果被销毁、旧 owner 重复回调不能清掉新 owner，以及归还后只销毁空 owner。抽取代码用类型别名把生产外层静态类型映射到夹具壳，不改方法体。实际 Runner `Shutdown` 的完整调用与真实 Unity 生命周期仍属于 L1/L3 边界。

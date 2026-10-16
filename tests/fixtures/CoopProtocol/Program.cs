@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using BossRush;
 using UnityEngine;
 
-internal static class Program
+internal static partial class Program
 {
     [Serializable] private sealed class State { public int count; }
     private static int checks;
@@ -12,7 +12,7 @@ internal static class Program
     { return new BossRushCoopMessage { SenderId = sender, IsFromHost = host, Json = BossRushCoopJson.ToJson(value) }; }
     private static void Main()
     {
-        ReplayAndBarrier(); RoomCommands(); PersonalReceipts(); LocalReceipts(); AssetReceipts(); ReconnectReceipts(); ReceiptGroups();
+        ReplayAndBarrier(); RoomCommands(); ChannelScenes(); PersonalReceipts(); PausedReceiptAcknowledgement(); LocalReceipts(); AssetReceipts(); ReconnectReceipts(); ReceiptGroups();
         Console.WriteLine("PASS CoopProtocol: " + checks + " production-linked assertions (16 peers, replay, authority, scene, retry and ack)");
     }
     private static void ReplayAndBarrier()
@@ -41,6 +41,8 @@ internal static class Program
     {
         BossRushCoop.Peers.Clear(); BossRushCoop.Wire.Clear();
         for (int i = 0; i < 16; i++) BossRushCoop.Peers.Add(new TestPeer { Id = i == 0 ? "host" : "p" + i, Host = i == 0 });
+        foreach (var peer in BossRushCoop.Peers) peer.BindScene();
+        BossRushCoop.FailSends = BossRushCoop.DropAcks = BossRushCoop.SendAttempts = 0;
         BossRushCoop.Current = BossRushCoop.Peers[0];
     }
     private static void RoomCommands()
@@ -57,7 +59,7 @@ internal static class Program
             client.Request("ready");
         }
         BossRushCoop.Flush(); Check(total == 15 && seenOwners.Count == 15, "every client command has separate owner");
-        var duplicate = new CoopGameplayCommand { RunId = host.Run, AssetId = "slot-A", SceneGeneration = 1, Sequence = 1, Action = "ready", PlayerId = "host" };
+        var duplicate = new CoopGameplayCommand { RunId = host.Run, AssetId = "slot-A", ReadyEpoch = BossRushCoop.Peers[1].ReadyEpoch, SceneToken = host.Token, SceneGeneration = 1, Sequence = 1, Action = "ready", PlayerId = "host" };
         BossRushCoop.Deliver(host, "BossRush.Gameplay.fixture.command", Message("p1", false, duplicate));
         Check(total == 15, "duplicate sequence rejected");
         duplicate.Sequence = 2; duplicate.RunId = "prior-room";
@@ -73,11 +75,13 @@ internal static class Program
         BossRushCoop.Peers[1].AssetId = "slot-B"; duplicate.Sequence = 3;
         BossRushCoop.Deliver(host, "BossRush.Gameplay.fixture.command", Message("p1", false, duplicate)); Check(total == 16, "old slot command rejected even from authentic peer");
         duplicate.AssetId = "slot-B";
+        duplicate.ReadyEpoch = BossRushCoop.Peers[1].ReadyEpoch; duplicate.Sequence = 1;
         BossRushCoop.Deliver(host, "BossRush.Gameplay.fixture.command", Message("p1", false, duplicate)); Check(total == 17, "new slot command accepted without consuming rejected sequence");
         BossRushCoop.Disconnect(BossRushCoop.Peers[1]); BossRushCoop.Peers[1].Connected = true; duplicate.Sequence = 1;
+        duplicate.ReadyEpoch = BossRushCoop.Peers[1].ReadyEpoch;
         BossRushCoop.Deliver(host, "BossRush.Gameplay.fixture.command", Message("p1", false, duplicate)); Check(total == 18, "reconnected stable identity can send first sequence after previous high value");
-        BossRushCoop.Flush(); Check(applied == 18, "all clients receive latest snapshot");
-        var forged = new CoopGameplaySnapshot { RunId = host.Run, SceneGeneration = 1, Revision = 10000, Payload = BossRushCoopJson.ToJson(new State { count = 999 }) };
+        BossRushCoop.Current=host;hostChannel.Tick(0);BossRushCoop.Flush(); Check(applied == 18, "all clients receive latest snapshot on next host channel tick");
+        var forged = new CoopGameplaySnapshot { RunId = host.Run, SceneToken = host.Token, SceneGeneration = 1, Revision = 10000, Payload = BossRushCoopJson.ToJson(new State { count = 999 }) };
         BossRushCoop.Deliver(BossRushCoop.Peers[1], "BossRush.Gameplay.fixture.snapshot", Message("p2", false, forged)); Check(applied == 18, "non-host snapshot rejected");
         forged.Revision = 1;
         BossRushCoop.Deliver(BossRushCoop.Peers[1], "BossRush.Gameplay.fixture.snapshot", Message("host", true, forged)); Check(applied == 18, "stale snapshot rejected");
@@ -100,6 +104,29 @@ internal static class Program
         BossRushCoop.Deliver(guest, "BossRush.Personal.fixture", Message("host", true, replay)); Check(applied == 10, "duplicate receipt cannot apply twice");
         replay.Id = "1:old"; replay.RunId = "prior-room";
         BossRushCoop.Deliver(guest, "BossRush.Personal.fixture", Message("host", true, replay)); Check(applied == 10, "old room receipt rejected");
+        receiver.Dispose(); sender.Dispose();
+    }
+    private static void PausedReceiptAcknowledgement()
+    {
+        MakeRoom(); var host = BossRushCoop.Current; var guest = BossRushCoop.Peers[1]; int applied = 0;
+        var sender = new CoopPersonalDelivery<State>("paused-receipt", s => true);
+        BossRushCoop.Current = guest;
+        var receiver = new CoopPersonalDelivery<State>("paused-receipt", s => { applied += s.count; return true; });
+        string epoch = guest.ReadyEpoch, token = guest.Token, room = guest.Run; var core = guest.Core; int generation = guest.Scene;
+        host.Ready = guest.Ready = false;
+        BossRushCoop.Current = host;
+        Check(sender.Deliver(guest.Id, "earned", new State { count = 11 }), "unready room retains and sends an already earned personal receipt");
+        BossRushCoop.Flush();
+        Check(applied == 11 && sender.HasPendingDeliveries, "actual local commit survives a handshake-blocked ACK");
+        for (int second = 0; second < 60; second++) { sender.Tick(1); BossRushCoop.Flush(); }
+        Check(applied == 11 && sender.HasPendingDeliveries, "sixty seconds of duplicate receipts cannot pay twice or discard the unconfirmed obligation");
+        Check(guest.ReadyEpoch == epoch && guest.Token == token && guest.Run == room && ReferenceEquals(core, guest.Core) && guest.Scene == generation,
+            "receipt pause preserves the original room asset epoch and actual scene owner");
+        host.Ready = guest.Ready = true;
+        sender.Tick(1); BossRushCoop.Flush();
+        Check(applied == 11 && !sender.HasPendingDeliveries, "recovered handshake ACKs the original committed receipt without repeating its reward");
+        sender.Tick(60); BossRushCoop.Flush();
+        Check(applied == 11 && !sender.HasPendingDeliveries, "confirmed personal reward stays exactly once after the retry window");
         receiver.Dispose(); sender.Dispose();
     }
     private static void LocalReceipts()

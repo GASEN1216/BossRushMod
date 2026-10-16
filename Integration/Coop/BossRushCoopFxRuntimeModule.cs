@@ -18,6 +18,7 @@ namespace BossRush
     {
         public string run;
         public int scene;
+        public string token;
         public string origin;
         public string method;
         public BossRushCoopFxArgument[] args;
@@ -37,6 +38,7 @@ namespace BossRush
     {
         public string run;
         public int scene;
+        public string token;
         public BossRushCoopHazardState[] hazards;
         public int hit;
         public float damage;
@@ -152,10 +154,11 @@ namespace BossRush
 
         private void Send(MethodInfo method, object[] args)
         {
+            if (!BossRushCoop.HasBoundScene) return;
             try
             {
                 var packet = new BossRushCoopFxPacket { run = BossRushCoop.RunId, scene = BossRushCoop.SceneGeneration,
-                    origin = BossRushCoop.LocalPlayerId, method = MethodKey(method), args = new BossRushCoopFxArgument[args.Length] };
+                    token = BossRushCoop.SceneToken, origin = BossRushCoop.LocalPlayerId, method = MethodKey(method), args = new BossRushCoopFxArgument[args.Length] };
                 for (int i = 0; i < args.Length; i++) packet.args[i] = Encode(args[i]);
                 if (BossRushCoop.IsHost) BossRushCoop.Broadcast(Topic, packet);
                 else BossRushCoop.SendToHost(Topic, packet);
@@ -165,12 +168,13 @@ namespace BossRush
 
         private void OnMessage(BossRushCoopMessage message)
         {
-            if (!BossRushCoop.IsConnected || (!BossRushCoop.IsHost && !message.IsFromHost)) return;
+            if (!BossRushCoop.IsConnected || !BossRushCoop.HasBoundScene || (!BossRushCoop.IsHost && !message.IsFromHost)) return;
             try
             {
                 BossRushCoopFxPacket packet = message.Read<BossRushCoopFxPacket>();
                 MethodInfo method;
                 if (packet == null || packet.run != BossRushCoop.RunId || packet.scene != BossRushCoop.SceneGeneration
+                    || string.IsNullOrEmpty(packet.token) || packet.token != BossRushCoop.SceneToken
                     || packet.args == null || packet.args.Length > 16 || !methods.TryGetValue(packet.method ?? string.Empty, out method)) return;
                 if (BossRushCoop.IsHost && !message.IsFromHost)
                 {
@@ -266,18 +270,19 @@ namespace BossRush
         internal static void SubmitHazardHit(Component component, DamageInfo damage)
         {
             int id;
-            if (instance == null || !BossRushCoop.IsClient || damage.fromCharacter != CharacterMainControl.Main
+            if (instance == null || !BossRushCoop.IsClient || !BossRushCoop.HasBoundScene || damage.fromCharacter != CharacterMainControl.Main
                 || !instance.replicaIds.TryGetValue(component, out id) || damage.damageValue <= 0f) return;
             BossRushCoop.SendToHost("content.hazard-hit", new BossRushCoopHazardPacket {
-                run = BossRushCoop.RunId, scene = BossRushCoop.SceneGeneration, hit = id, damage = damage.damageValue });
+                run = BossRushCoop.RunId, scene = BossRushCoop.SceneGeneration, token = BossRushCoop.SceneToken, hit = id, damage = damage.damageValue });
         }
         private void OnHazardHit(BossRushCoopMessage message)
         {
-            if (!BossRushCoop.IsHost || message.IsFromHost) return;
+            if (!BossRushCoop.IsHost || !BossRushCoop.HasBoundScene || message.IsFromHost) return;
             BossRushCoopHazardPacket packet = message.Read<BossRushCoopHazardPacket>();
             Component component;
             BossRushCoopPlayer player = BossRushCoop.FindPlayer(message.SenderId);
             if (packet == null || packet.run != BossRushCoop.RunId || packet.scene != BossRushCoop.SceneGeneration
+                || string.IsNullOrEmpty(packet.token) || packet.token != BossRushCoop.SceneToken
                 || packet.damage <= 0f || packet.damage > 100000f || float.IsNaN(packet.damage) || player == null || !player.IsAlive
                 || !hazards.TryGetValue(packet.hit, out component) || component == null
                 || (component.transform.position - player.Character.transform.position).sqrMagnitude > 300f * 300f) return;
@@ -286,7 +291,7 @@ namespace BossRush
         }
         public override void OnUpdate(float deltaTime, float unscaledDeltaTime)
         {
-            if (!BossRushCoop.IsHost || (hazards.Count == 0 && bosses.Count == 0 && !sentHazards) || Time.unscaledTime < nextHazardTick) return;
+            if (!BossRushCoop.IsHost || !BossRushCoop.HasBoundScene || (hazards.Count == 0 && bosses.Count == 0 && !sentHazards) || Time.unscaledTime < nextHazardTick) return;
             nextHazardTick = Time.unscaledTime + 0.1f;
             var states = new List<BossRushCoopHazardState>();
             var remove = new List<int>();
@@ -320,14 +325,15 @@ namespace BossRush
             }
             foreach (CharacterMainControl character in gone) bosses.Remove(character);
             BossRushCoop.Broadcast("content.hazards", new BossRushCoopHazardPacket {
-                run = BossRushCoop.RunId, scene = BossRushCoop.SceneGeneration, hazards = states.ToArray(), bosses = bossStates.ToArray() });
+                run = BossRushCoop.RunId, scene = BossRushCoop.SceneGeneration, token = BossRushCoop.SceneToken, hazards = states.ToArray(), bosses = bossStates.ToArray() });
             sentHazards = states.Count > 0;
         }
         private void OnHazards(BossRushCoopMessage message)
         {
-            if (!BossRushCoop.IsClient || !message.IsFromHost) return;
+            if (!BossRushCoop.IsClient || !BossRushCoop.HasBoundScene || !message.IsFromHost) return;
             BossRushCoopHazardPacket packet = message.Read<BossRushCoopHazardPacket>();
             if (packet == null || packet.run != BossRushCoop.RunId || packet.scene != BossRushCoop.SceneGeneration
+                || string.IsNullOrEmpty(packet.token) || packet.token != BossRushCoop.SceneToken
                 || packet.hazards == null || packet.hazards.Length > 256) return;
             var present = new HashSet<int>();
             if (packet.bosses != null && packet.bosses.Length <= 128)

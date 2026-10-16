@@ -31,6 +31,7 @@ def main():
 
     groups = {
         "ModeHRuntimeModule": [
+            ("ModeHRuntimeModule_Coop.cs", "private bool IsCoopWorldAuthorityCurrent"),
             ("ModeHRuntimeModule.cs", "internal bool TryTransition("),
             ("ModeHRuntimeModule.cs", "internal void RequestRecovering("),
             ("ModeHRuntimeModule.cs", "internal void RequestErrorRecoveryPending("),

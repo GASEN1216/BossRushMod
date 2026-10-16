@@ -15,7 +15,7 @@ public sealed class CharacterRandomPreset {}
 public sealed class CharacterMainControl:UnityEngine.Object { public static CharacterMainControl Main; public Health Health=new Health(); public bool dropBoxOnDead; public UnityEngine.GameObject gameObject=new UnityEngine.GameObject(); public CharacterMainControl(){gameObject.Components.Add(this);gameObject.Components.Add(Health);} }
 namespace BossRush {
  // This fixture links only the arena generation owner; loot event cleanup has its own guard.
- internal sealed partial class WavesArenaRuntimeModule { private string coopArenaProjectionRoom;private void RetireLostCoopArenaProjection() {} private void ReleaseBossRandomLootTrackingOnDestroy() {} }
+ internal sealed partial class WavesArenaRuntimeModule { private string coopArenaProjectionRoom;private void RetireLostCoopArenaProjection() {} private void ReleaseBossRandomLootTrackingOnDestroy() {} private void CleanupCoopArenaRewards() {} private void DeliverCoopArenaReward(string kind,long cash,int quality,int itemType,int tier) { throw new Exception("offline owner fixture must not dispatch a COOP reward"); } }
  public class EnemyPresetInfo { public string name; }
  internal sealed class ModeDItemPool {}
  internal sealed partial class ModeDRuntimeModule {

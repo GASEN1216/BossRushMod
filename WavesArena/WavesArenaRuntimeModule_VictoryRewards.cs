@@ -96,7 +96,7 @@ namespace BossRush
 
                 owner.ShowBigBanner(banner);
                 QueueCoopArenaVictoryCopies(rewardHighCount);
-                StartVictoryRewardShadowCrate_LootAndRewards(rewardHighCount);
+                if (!BossRushCoop.IsConnected) StartVictoryRewardShadowCrate_LootAndRewards(rewardHighCount);
             }
             catch (Exception e)
             {
@@ -465,13 +465,14 @@ namespace BossRush
             SpawnDifficultyRewardLootbox_LootAndRewards(highQualityCount);
         }
 
-        private void SpawnDifficultyRewardLootbox_LootAndRewards(int highQualityCount)
+        private InteractableLootbox SpawnDifficultyRewardLootbox_LootAndRewards(int highQualityCount, bool personal = false, Vector3? personalPosition = null)
         {
+            InteractableLootbox created = null;
             try
             {
                 if (highQualityCount <= 0)
                 {
-                    return;
+                    return null;
                 }
 
                 CharacterMainControl main = null;
@@ -496,8 +497,8 @@ namespace BossRush
                     }
                 }
 
-                Vector3 pos = _difficultyRewardSpawnPositionOverride;
-                if (!_difficultyRewardSpawnPositionOverrideActive)
+                Vector3 pos = personalPosition ?? _difficultyRewardSpawnPositionOverride;
+                if (!personalPosition.HasValue && !_difficultyRewardSpawnPositionOverrideActive)
                 {
                     pos = DemoChallengeStartPosition;
                     if (pos == Vector3.zero)
@@ -560,7 +561,7 @@ namespace BossRush
                 if (prefab == null)
                 {
                     ModBehaviour.DevLog("[BossRush] SpawnDifficultyRewardLootbox: 未找到 Lootbox 模板，无法生成通关奖励箱");
-                    return;
+                    return null;
                 }
 
                 try
@@ -577,6 +578,7 @@ namespace BossRush
                 }
 
                 InteractableLootbox lootbox = UnityEngine.Object.Instantiate(prefab, pos, Quaternion.identity);
+                created = lootbox;
                 lootbox.needInspect = true;
 
                 try
@@ -616,7 +618,12 @@ namespace BossRush
                     ModBehaviour.DevLog("[BossRush] [WARNING] SpawnDifficultyRewardLootbox: 创建独立奖励箱库存失败: " + e.Message);
                 }
 
-                BossRushCoop.RegisterWorldLoot(lootbox);
+                if (personal)
+                {
+                    lootbox.gameObject.SetActive(true);
+                    if (!CoopArenaPersonalLoot.Attach(lootbox)) { UnityEngine.Object.Destroy(lootbox.gameObject); return null; }
+                }
+                else BossRushCoop.RegisterWorldLoot(lootbox);
                 // 根据配置决定是否让通关奖励箱作为子弹掩体
                 try
                 {
@@ -629,7 +636,7 @@ namespace BossRush
 
                 try
                 {
-                    MultiSceneCore.MoveToActiveWithScene(lootbox.gameObject, SceneManager.GetActiveScene().buildIndex);
+                    if (!personal) MultiSceneCore.MoveToActiveWithScene(lootbox.gameObject, SceneManager.GetActiveScene().buildIndex);
                 }
                 catch (Exception e)
                 {
@@ -885,17 +892,22 @@ namespace BossRush
                         loader.randomFromPool = true;
                         loader.ignoreLevelConfig = true;
                         loader.CalculateChances();
-                        loader.StartSetup();
-                        owner.StartCoroutine(CleanupDifficultyRewardLootboxInventory_LootAndRewards(lootbox, highQualityCount));
+                        if (!personal)
+                        {
+                            loader.StartSetup();
+                            owner.StartCoroutine(CleanupDifficultyRewardLootboxInventory_LootAndRewards(lootbox, highQualityCount));
+                        }
                     }
                     catch (Exception cfgEx)
                     {
                         ModBehaviour.DevLog("[BossRush] 配置通关奖励 LootBoxLoader 失败: " + cfgEx.Message);
+                        if (personal) { UnityEngine.Object.Destroy(lootbox.gameObject); return null; }
                     }
                 }
                 else
                 {
                     ModBehaviour.DevLog("[BossRush] 通关奖励盒子上没有 LootBoxLoader 组件，将使用 Prefab 默认内容");
+                    if (personal) { UnityEngine.Object.Destroy(lootbox.gameObject); return null; }
                 }
 
                 Inventory inventory = lootbox.Inventory;
@@ -905,10 +917,13 @@ namespace BossRush
                 }
 
                 ModBehaviour.DevLog("[BossRush] 已为难度奖励生成专用奖励盒子，高品质物品数量=" + highQualityCount);
+                return lootbox;
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[BossRush] SpawnDifficultyRewardLootbox 错误: " + e.Message);
+                if (created != null) UnityEngine.Object.Destroy(created.gameObject);
+                return null;
             }
         }
     }

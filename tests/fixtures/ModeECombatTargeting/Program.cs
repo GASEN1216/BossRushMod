@@ -2,12 +2,15 @@ using System;
 static class Time { internal static float time; }
 namespace BossRush
 {
+    struct Vector3 { internal float x; }
+    class Transform { internal Vector3 position; }
     class Health { public bool IsDead; public CharacterMainControl Owner; public CharacterMainControl TryGetCharacter() { return Owner; } }
     class DamageReceiver { public Health health; }
     class AICharacterController { public DamageReceiver searchedEnemy; public float forceTracePlayerDistance; public bool noticed; }
     class CharacterMainControl
     {
         public static CharacterMainControl Main;
+        internal readonly Transform transform = new Transform();
         public Teams Team; public bool IsMainCharacter; public Health Health;
         public AICharacterController aiCharacterController = new AICharacterController();
         internal CoopAiPredictionReplicaMarker Marker;
@@ -24,6 +27,19 @@ namespace BossRush
     static class BossRushCoop
     {
         internal static bool Connected, Host;
+        internal static bool IsConnected { get { return Connected; } }
+        internal static readonly System.Collections.Generic.List<CharacterMainControl> Players = new System.Collections.Generic.List<CharacterMainControl>();
+        internal static CharacterMainControl GetCombatTarget(Vector3 at)
+        {
+            CharacterMainControl best = null; float distance = float.MaxValue;
+            foreach (CharacterMainControl p in Players)
+            {
+                if (p == null || p.Health == null || p.Health.IsDead) continue;
+                float d = Math.Abs(p.transform.position.x - at.x);
+                if (d < distance) { distance = d; best = p; }
+            }
+            return best;
+        }
         internal static string RunId;
         internal static bool IsHost { get { return Connected && Host; } }
         internal static bool HasWorldAuthority { get { return !Connected || IsHost; } }
@@ -32,6 +48,7 @@ namespace BossRush
     partial class DragonDescendantAbilityController
     {
         private CharacterMainControl bossCharacter, playerCharacter;
+        private readonly Transform transform = new Transform();
         private AiOwner aiController;
         private bool isEnraged = true;
         private float lastCollisionTime;
@@ -84,6 +101,13 @@ namespace BossRush
             Check(abilities.Resolve() == null, "dead target cannot receive a skill");
             ModeHRuntimeGates.IsModeHRunOwnerActive = false; ModBehaviour.Instance.IsModeEActive = false;
             Check(abilities.Resolve() == player, "ordinary BossRush preserves direct-player targeting");
+            BossRushCoop.Connected = true; BossRushCoop.Host = true;
+            BossRushCoop.Players.Add(player);
+            var guest = new CharacterMainControl(Teams.bear); guest.transform.position = new Vector3 { x = 100 };
+            BossRushCoop.Players.Add(guest); boss.transform.position = new Vector3 { x = 99 };
+            Check(abilities.Resolve() == guest, "non-arena production refresh selects actual nearest guest");
+            guest.Health.IsDead = true; Check(abilities.Resolve() == player, "dead guest does not replace actual live target");
+            BossRushCoop.Connected = false;
             MutatorManager.Bloodhound = true; boss.Team = Teams.bear; boss.aiCharacterController.forceTracePlayerDistance = 99999f;
             BloodhoundSetup.Apply(boss, false, Teams.bear, Teams.bear);
             Check(boss.aiCharacterController.forceTracePlayerDistance == 0, "Mode E allied bloodhound clears shared forced-player tracking");

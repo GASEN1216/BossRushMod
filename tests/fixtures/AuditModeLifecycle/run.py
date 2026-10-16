@@ -372,8 +372,19 @@ extraction_methods='\n'.join(member(extraction_module,m) for m in [
     'private bool SettleZombieModeExtractionCashShell()',
     'private bool TryDispatchZombieModeExtractionSuccess(CountDownArea area)',
 ])
+extraction_coop=ROOT/'ZombieMode/ZombieModeRuntimeModule_Coop.cs'
+extraction_methods += '\n' + type_block(extraction_coop, 'private sealed class CoopZombieExtractionEligibility')
+extraction_methods += '\n' + '\n'.join(member(extraction_coop, m) for m in [
+    'private static string CoopZombieParticipantKey(', 'private bool IsCoopZombieParticipant(',
+    'private void RefreshCoopZombieExtractionEligibility(', 'private bool IsCoopZombieExtractionRecipient(',
+])
 extraction_fixture='''using System;
 using System.Collections.Generic;
+using UnityEngine;
+namespace UnityEngine {
+internal struct Vector3 { internal float x,y,z; internal static Vector3 zero { get { return new Vector3(); } } internal float sqrMagnitude { get { return x*x+y*y+z*z; } } public static Vector3 operator -(Vector3 a,Vector3 b) { return new Vector3 {x=a.x-b.x,y=a.y-b.y,z=a.z-b.z}; } }
+internal sealed class Transform { internal Vector3 position; }
+}
 namespace BossRush {
 internal enum ZombieModeCombatPhase { ExtractionOpportunity, SuccessExit }
 internal enum ZombieModeFailureReason { SuccessfulExtraction }
@@ -382,11 +393,13 @@ internal sealed class ZombieModeRunState {
  internal bool BeaconChanneling = true; internal ZombieModeCombatPhase CombatPhase = ZombieModeCombatPhase.ExtractionOpportunity;
  internal CountDownArea ActiveExtractionArea; internal long PurificationPoints = 41;
 }
-internal sealed class CountDownArea { internal Action<CountDownArea> onCountDownStopped; internal Action onCountDownSucceed; }
+internal sealed class CountDownArea { internal Transform transform = new Transform(); internal Action<CountDownArea> onCountDownStopped; internal Action onCountDownSucceed; }
 internal static class ExtractionTrace { internal static readonly List<string> Events = new List<string>(); }
 // The original settlement fixture executes offline; optional room receipts are absent.
-internal static partial class BossRushCoop { internal static readonly BossRushCoopPlayer[] Players = new BossRushCoopPlayer[0]; }
-internal sealed class BossRushCoopPlayer { internal string Id, AssetId; internal bool IsAlive; }
+internal static partial class BossRushCoop { internal static bool HasBoundScene; internal static readonly BossRushCoopPlayer[] Players = new BossRushCoopPlayer[0]; internal static BossRushCoopPlayer FindPlayer(string id) { foreach (var player in Players) if (player.Id==id) return player; return null; } }
+internal sealed class BossRushCoopPlayer { internal string Id, AssetId; internal bool IsAlive,IsConnected; internal CharacterMainControl Character; }
+internal sealed class CharacterMainControl { internal Transform transform = new Transform(); }
+internal static class ZombieModeTuning { internal const float ExtractionAreaTriggerRadius=3f; }
 internal sealed class CoopZombiePersonal { internal int Run, Amount; internal string Kind; }
 internal static class L10n { internal static string T(string value) { return value; } internal static string T(string chinese, string english) { return chinese; } }
 internal static class NotificationText { internal static void Push(string value) { ExtractionTrace.Events.Add("notification:" + value); } }
@@ -405,7 +418,8 @@ internal sealed partial class ZombieModeRuntimeModule {
  private bool coopZombieExtractionPending; private CoopPersonalDelivery<CoopZombiePersonal> coopZombiePersonal;
  private readonly Dictionary<string,string> coopZombieParticipants = new Dictionary<string,string>();
  private readonly Dictionary<string,int> coopZombiePointsIssued = new Dictionary<string,int>();
- private bool IsCoopZombieParticipant(BossRushCoopPlayer player) { return false; }
+ private readonly HashSet<string> coopZombieStarterReady = new HashSet<string>();
+ private readonly Dictionary<string,CoopZombieExtractionEligibility> coopZombieExtractionEligibility = new Dictionary<string,CoopZombieExtractionEligibility>();
  private bool CoopZombieAllInsideExtraction(CountDownArea area) { return false; }
  internal ZombieModeRuntimeModule(ModBehaviour owner, ZombieModeRunState runState) { this.owner = owner; this.runState = runState; }
  internal bool IsZombieModeRunValid(int runId) { return runId > 0 && runState.RunId == runId; }
@@ -508,12 +522,18 @@ execute('wave_ordering', [HERE/'WaveOrdering.cs'],
 execute('wave_owner',[ROOT/'tests/fixtures/CoopOfflineStubs.cs',HERE/'WaveOwner.cs',ROOT/'WavesArena/WavesArenaRuntimeModule.cs',ROOT/'ModeD/ModeDRuntimeModule.cs',ROOT/'ModeD/ModeDRuntimeModule_WaveResolution.cs'], 'using System; namespace BossRush { internal sealed partial class ModeDRuntimeModule {'+mode_d_destroy+'}}')
 execute('milestone',[HERE/'Milestone.cs',ROOT/'LootAndRewards/InfiniteHellMilestoneDelivery.cs'])
 f3=ROOT/'DebugAndTools/F3GameplayValidationAutotestStory.cs'
-f3methods='\n'.join(member(f3,m) for m in ['private static bool TryReclaimAutotestItems(', 'private bool ClearAutotestSnapshotKey()'])
-execute('autotest_restore',[HERE/'AutotestRestore.cs'],'using System; using Saves; namespace BossRush { public partial class RestoreProbe {'+f3methods+'}}')
+# Actual ownership/custody methods replace the obsolete count-only restore adapter.
 readonly=ROOT/'DebugAndTools/F3GameplayValidationSkyIsland.cs'
+raw=f3.read_text(encoding='utf-8-sig')
+start=raw.index('        #region 原物归属与持久暂存')
+end=raw.index('        #endregion',start)
+custody=raw[start:end].split('\n',1)[1]
 buffer_methods='\n'.join(member(f3,m) for m in ['private static bool TryReclaimAutotestItems(', 'private bool ClearAutotestSnapshotKey()', 'private static string ReclaimAutotestItems(', 'private static int RemoveOwnedItems(', 'private static int RemoveFromBuffer(', 'private static int RemoveFromInventory('])
 buffer_methods+='\n'+'\n'.join(member(readonly,m) for m in ['private static int CountOwnedItems(', 'private static int CountBufferedItems(', 'private static int CountInInventory('])
-execute('autotest_buffer',[HERE/'AutotestBuffer.cs'],'using System; using System.Collections.Generic; using Saves; using ItemStatsSystem; namespace BossRush { public partial class BufferRestoreProbe {'+buffer_methods+'}}')
+receipt=type_block(ROOT/'DebugAndTools/F3GameplayValidationAutotestModels.cs','internal sealed class F3AutotestItemReceipt')
+execute('autotest_buffer',[HERE/'AutotestBuffer.cs',ROOT/'Common/Coop/BossRushCoopJson.cs',ROOT/'Common/Data/BossRushJsonValue.cs',ROOT/'Utilities/SimpleJsonHelper.cs'],
+        'using System; using System.Collections.Generic; using Saves; using ItemStatsSystem; using ItemStatsSystem.Data; using UnityEngine; using F3GameplayValidationRunner = BossRush.BufferRestoreProbe; namespace BossRush {'+receipt+' public partial class BufferRestoreProbe {'+buffer_methods+'\n'+custody+'}}')
+
 import json
 (OUT/'sources.json').write_text(json.dumps(hashes,indent=2),encoding='utf-8')
 print('PASS AuditModeLifecycle production-linked regressions')

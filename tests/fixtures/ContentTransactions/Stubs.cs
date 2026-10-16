@@ -585,12 +585,16 @@ namespace BossRush
 
 namespace BossRush
 {
-    // 本夹具只验证原有单机存档事务，网络消息验证由 CoopProtocol 独立生产链接夹具覆盖。
+    // 本夹具验证存档事务及终章 scope；网络投影仅记录生命周期调用，不模拟任务租约。
+    // 完整网络事实、原 progress / 计时归属与切档行为由 CampaignPlayability 链接生产代码执行。
     internal sealed partial class CampaignRuntimeModule
     {
         private static CampaignRuntimeModule coopOwner;
         private OfflineCampaignChannel coopFacts, coopWorld;
         private void InitializeCoopCampaign() { }
+        internal int CoopProjectionResets, CoopFactCleanups;
+        private void ResetCoopCampaignProjection() { CoopProjectionResets++; }
+        private void CleanupCoopCampaignFacts() { CoopFactCleanups++; }
     }
     internal sealed class OfflineCampaignChannel
     {

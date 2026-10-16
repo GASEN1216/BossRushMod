@@ -5,11 +5,14 @@ import json
 import re
 import subprocess
 import sys
+import argparse
 from xml.sax.saxutils import escape
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
-OUT = ROOT / "Build/runtime-regressions/ModeGEntryOwners"
+parser = argparse.ArgumentParser()
+parser.add_argument('--output', type=Path, default=ROOT / "Build/runtime-regressions/ModeGEntryOwners")
+OUT = parser.parse_args().output.resolve()
 
 
 def member(source, signature):
@@ -43,7 +46,7 @@ def main():
     network = network.replace("IDisposable Register(string topic", "IDisposable RegisterNetwork(string topic")
     generated_network = OUT / "Network.cs"
     generated_network.write_text(network, encoding="utf-8")
-    files = [generated_network] + [ROOT / name for name in ("Utilities/CoopGameplayChannel.cs", "Utilities/CoopPersonalDelivery.cs",
+    files = [generated_network, ROOT / "tests/fixtures/CoopSceneCoreBoundary.cs"] + [ROOT / name for name in ("Utilities/CoopGameplayChannel.cs", "Utilities/CoopPersonalDelivery.cs",
         "Common/Coop/BossRushCoopJson.cs", "Common/Data/BossRushJsonValue.cs", "Utilities/SimpleJsonHelper.cs")]
     for path in production:
         generated = OUT / path.name
@@ -76,7 +79,7 @@ def main():
         + "\n".join(member(coop_source, signature) for signature in (
             "private void FreezeCoopAsset()", "internal string GetCoopParticipantAsset(", "internal string CoopRunAsset", "internal string CoopRunRoom",
             "internal bool IsCoopAssetCurrent", "internal bool CheckCoopAsset()", "internal bool CoopAdmissionReady", "internal bool ApplyCoopCombat(",
-            "internal long CoopRequestedAdmissionBaseline", "internal bool CoopRunWasClient", "internal bool CoopRunHasWorldAuthority", "internal void FreezeCoopAdmission(", "private void DriveCoopGuest()"))
+            "internal long CoopRequestedAdmissionBaseline", "internal bool CoopRunWasClient", "internal bool CoopRunHasWorldAuthority", "internal void FreezeCoopAdmission(", "internal void ApplyCoopWorld(ModeGCoopWorld world)", "private void DriveCoopGuest()"))
         + "\n" + member((ROOT / "ModeG/ModeGRuntimeModule_PublicApiAndShutdown.cs").read_text(encoding="utf-8-sig"), "private void RefundStartupPaymentOnTechnicalFailure(")
         + "\n" + member((ROOT / "ModeG/ModeGRuntimeModule_PublicApiAndShutdown.cs").read_text(encoding="utf-8-sig"), "public void DisarmStartupRefund()")
         + "\n}}", encoding="utf-8")

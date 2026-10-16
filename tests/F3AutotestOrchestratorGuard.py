@@ -82,11 +82,11 @@ VIA_CALLER = {
 }
 # 必须自己过写入门的方法。
 MUST_GATE = {
-    STORY: ("TakeAutotestSnapshotCore", "ApplyAutotestStage", "GiveAutotestItems", "ClearAutotestSnapshotKey", "ReclaimAutotestItems"),
+    STORY: ("TakeAutotestSnapshotCore", "ApplyAutotestStage", "GiveAutotestItems", "ClearAutotestSnapshotKey", "ReclaimAutotestItems", "CaptureAutotestOriginals", "CaptureAutotestInventory", "StashAutotestOriginals", "SaveAutotestAssets", "RestoreAutotestOriginals", "SetAutotestOriginalMarkers"),
     ACTIONS: ("AutotestStepSkipReason", "AutotestClearNearby", "AutotestSetHealth"),
 }
 
-METHOD = re.compile(r"(?m)^[ \t]*(?:(?:private|internal|public|protected|static|sealed|override|virtual)\s+)+[\w<>\[\],.?]+\s+(\w+)\s*\(")
+METHOD = re.compile(r"(?m)^[ \t]*(?:(?:private|internal|public|protected|static|sealed|override|virtual|async)\s+)+[\w<>\[\],.?]+\s+(\w+)\s*\(")
 
 
 def blank_strings(code):
@@ -370,6 +370,46 @@ def check(src):
             "if (!matches) return false;", 'CharacterItem.Save("MainCharacterItemData")',
             'PlayerStorage.Inventory.Save("PlayerStorage")', "PlayerStorageBuffer.SaveBuffer()"),
             "收回物品必须先核对余额，再采集三份容器快照，才能让调用者清恢复键")
+    ordered(errors, reclaim, ("if (!snapshot.ItemReceiptsIncluded)", "ValidateAutotestReceipts(snapshot)",
+            "snapshot.Asset != BossRushCoop.LocalAssetId", "ReclaimAutotestItems(snapshot)", "RestoreAutotestOriginals(snapshot)"),
+            "旧数量快照或不完整原树收据不可删除物品；原物须恢复后才核对余额")
+    if reclaim is None or "if (after != before ||" not in reclaim:
+        errors.append("原物短缺和额外残留均须阻止清除恢复键")
+    ordered(errors, story.body("TakeAutotestSnapshotCore") if story else None,
+            ("CaptureAutotestOriginals(snapshot)", "ValidateAutotestReceipts(snapshot)", "EncodeAutotestSnapshot(snapshot)",
+             "SaveAutotestAssets()", "SavesSystem.Save<string>(AutotestSnapshotKey, json)", "SavesSystem.SaveFile(false)",
+             "_autotest.SnapshotPersisted = true", "StashAutotestOriginals(snapshot)"),
+            "原树与资产必须先同次持久化，才可脱槽暂存原物")
+    ordered(errors, story.body("StashAutotestOriginals") if story else None,
+            ("snapshot.Slot != SavesSystem.CurrentSlot", "snapshot.Asset != BossRushCoop.LocalAssetId", "GetAutotestCustodyOwner()",
+             "custody.Live.Detach()", "custody.Live.transform.SetParent(_autotestItemEscrow.transform, false)", "SaveAutotestAssets()", "SavesSystem.SaveFile(false)"),
+            "跨图原实例必须脱槽进入持久 owner，且只可写原槽原资产")
+    ordered(errors, story.body("GetAutotestCustodyOwner") if story else None,
+            ("new GameObject(", "DontDestroyOnLoad(_autotestItemEscrow)", "AddComponent<AutotestItemEscrowOwner>()", "SetActive(false)"),
+            "原物登记须由真实持久组件持有，不能寄存在短命 Runner")
+    ordered(errors, story.body("OnDestroy") if story else None,
+            ("F3GameplayValidationRunner.ResetAutotestStaticCaches(this)",), "原物持久组件销毁必须撤销登记与未完成续作")
+    reset_custody = story.body("ResetAutotestStaticCaches") if story else None
+    ordered(errors, reset_custody,
+            ("custody.Retired = true", "owner.Custody.Clear()", "ReferenceEquals(_autotestCustodyOwner, owner)", "_autotestCustodyOwner = null", "_autotestItemEscrow = null"),
+            "销毁只撤销原 owner 的登记，旧 owner 不可清掉新 owner")
+    if reset_custody is None or "SavesSystem." in reset_custody or "Destroy(" in reset_custody:
+        errors.append("原物 owner 销毁不可删除恢复键或主动销毁原物")
+    ordered(errors, story.body("RemoveFromInventory") if story else None,
+            ("AutotestOwnsOriginal(snapshot, item.GetString(AutotestOriginalKey))", "item.TypeID == typeId", "item.GetAllChildren(true, false).Count != 1", "inventory.RemoveItem(item)"),
+            "回收不得删除原实例或连带销毁含其它物品的树")
+    ordered(errors, story.body("RemoveFromBuffer") if story else None,
+            ("AutotestOwnsOriginal(snapshot, AutotestTreeToken(tree))", "buffer.RemoveAt(i)"), "Buffer 原树不能按 TypeID 数量误删")
+    ordered(errors, story.body("MaterializeAutotestOriginal") if story else None,
+              ("owner = GetAutotestCustodyOwner()", "snapshotJson = SavesSystem.Load<string>(AutotestSnapshotKey)", "await ItemTreeData.InstantiateAsync(tree)",
+               "owner == null || custody.Retired || !ReferenceEquals(_autotestCustodyOwner, owner)",
+             "IsDedicatedCurrentSlot()", "snapshot.Slot != SavesSystem.CurrentSlot", "snapshot.Asset != BossRushCoop.LocalAssetId",
+             "snapshotJson != SavesSystem.Load<string>(AutotestSnapshotKey)", "CharacterMainControl.Main.CharacterItem != body", "custody.Live = item"),
+            "异步原树工厂返回后须重核测试槽、资产、快照和原 body，不得把旧续作交付到新角色")
+    ordered(errors, story.body("ClearAutotestSnapshotKey") if story else None,
+            ("SetAutotestOriginalMarkers(snapshot, false)", "SaveAutotestAssets()", "SavesSystem.Save<string>(AutotestSnapshotKey, string.Empty)",
+             "SavesSystem.SaveFile(false)", "ReleaseAutotestCustody(snapshot)", "SetAutotestOriginalMarkers(snapshot, true)"),
+            "归属字段还原须与清恢复键同次提交，提交失败须恢复 pending 标记")
     env = story.body("RestoreAutotestEnvironment") if story else None
     for token, why in (("RestoreAutotestLanguage(out", "语言"), ("SkyIslandNight.DevForceNight = snapshot.ForceNight", "强制夜里"),
                        (".SetInvincible(pair.Value)", "临时无敌"), (".SetHealth(pair.Value)", "临时压低的血量"),
@@ -427,6 +467,15 @@ def sub_once(pattern, replacement):
 
 
 PROBES = (
+    (STORY, sub_once(r'private void OnDestroy\(\) \{ F3GameplayValidationRunner.ResetAutotestStaticCaches\(this\); \}', "private void OnDestroy() { }"), "持久原物 owner 销毁未撤销续作"),
+    (STORY, sub_once(r'custody.Retired = true;', "custody.Retired = false;"), "已销毁 owner 的登记仍可接受工厂结果"),
+    (STORY, sub_once(r'owner == null \|\| custody.Retired \|\| !ReferenceEquals\(_autotestCustodyOwner, owner\)', "false"), "工厂续作忽略原物 owner 已销毁或更换"),
+    (STORY, sub_once(r'if \(AutotestOwnsOriginal\(snapshot, AutotestTreeToken\(tree\)\)\) continue;', ""), "Buffer 原树归属保护丢失"),
+    (STORY, sub_once(r'if \(after != before \|\|', "if (after > before ||"), "原物短缺仍清恢复键"),
+    (STORY, sub_once(r'if \(!snapshot.ItemReceiptsIncluded\) \{[^\n]*\}', ""), "旧数量快照冒充有原物归属"),
+    (STORY, sub_once(r'UnityEngine.Object.DontDestroyOnLoad\(_autotestItemEscrow\);', ""), "原物暂存 owner 未跨图持久化"),
+    (STORY, sub_once(r'snapshotJson != SavesSystem.Load<string>\(AutotestSnapshotKey\)', "false"), "旧快照异步续作穿过已取消的新演练"),
+    (STORY, sub_once(r'SetAutotestOriginalMarkers\(snapshot, false\);', ""), "成功提交后遗留原物测试标记"),
     ("DebugAndTools/F3GameplayValidationAutotestModels.cs", sub_once(r"\A#if BOSSRUSH_DEV\r?\n", ""), "纯数据模型去掉 Dev 包裹"),
     (BAT, sub_once(r"echo\(DebugAndTools\\F3GameplayValidationAutotestModels\.cs\r\n", ""), "新模型文件漏登记编译清单"),
     (AUTOTEST, sub_once(r"RunStatus\(storyOk && itemsOk && envOk,", "RunStatus(storyOk,"), "物品恢复键落盘失败仍报告成功"),

@@ -49,13 +49,13 @@ namespace BossRush.Utils {static class NPCCommonUtils {public static void FixSha
 namespace BossRush
 {
     static class Probe {internal static int Creates,Attaches,RegistryWrites,SpawnsWithTrack;internal static readonly List<Task> Tasks=new List<Task>();internal static TaskCompletionSource<CharacterMainControl> DuckGate;}
-    class BossRushCoopPlayer {public string Id,AssetId;public CharacterMainControl Character;public bool IsConnected=true,IsAlive=true;}
+    class BossRushCoopPlayer {public string Id,AssetId,ReadyEpoch="epoch-initial";public CharacterMainControl Character;public bool IsConnected=true,IsAlive=true;}
     class BossRushCoopMessage {public string SenderId;public bool IsFromHost;public object Payload;public T Read<T>(){return BossRushCoopJson.FromJson<T>(BossRushCoopJson.ToJson(Payload));}}
     class EmptyDisposable:IDisposable {readonly Action cleanup;internal EmptyDisposable(Action c){cleanup=c;}public void Dispose(){cleanup();}}
     static class BossRushCoop
     {
-        public static bool IsHost=true,IsClient=false,IsConnected=true,SessionReady=true;public static bool HasWorldAuthority{get{return !IsClient;}}
-        public static string RunId="run",LocalPlayerId="host",LocalAssetId="host-asset";public static int SceneGeneration=1;
+        public static bool IsHost=true,IsClient=false,IsConnected=true,SessionReady=true; public static bool HasBoundScene; internal static string SceneToken;public static bool HasWorldAuthority{get{return !IsClient;}}
+        public static string LocalReadyEpoch="epoch-initial";public static string RunId="run",LocalPlayerId="host",LocalAssetId="host-asset";public static int SceneGeneration=1;
         public static readonly List<BossRushCoopPlayer> Players=new List<BossRushCoopPlayer>();
         internal static readonly Dictionary<string,Action<BossRushCoopMessage>> Channels=new Dictionary<string,Action<BossRushCoopMessage>>();
         internal static readonly List<object> Broadcasts=new List<object>(),Sends=new List<object>();public static event Action<string> PlayerDisconnected;
@@ -97,3 +97,5 @@ namespace BossRush
     }
     static class SkyIslandWorldStory {public static string ResidentName(string n){return n;}}
 }
+
+namespace BossRush { internal sealed partial class CoopNpcWorld { internal bool LocalAcknowledged {get{return spouseAcknowledged;}} internal void ConfirmLocal(SpouseIntent intent) { OnSpouseReply(new BossRushCoopMessage {IsFromHost=true,Payload=new SpouseReply {Asset=intent.Asset,Epoch=intent.Epoch,Sequence=intent.Sequence}}); } } }

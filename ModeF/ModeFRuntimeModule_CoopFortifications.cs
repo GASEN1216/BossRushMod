@@ -76,7 +76,7 @@ namespace BossRush
             if (!BossRushCoop.IsClient) return;
             foreach (CoopModeFFortificationRequest request in coopFortRequests.Values)
                 if (request.AssetId == BossRushCoop.LocalAssetId && request.Run == BossRushCoop.RunId)
-                    coopChannel.Request("fortification", text: BossRushCoopJson.ToJson(request));
+                    coopChannel.RequestRepeat("fortification", text: BossRushCoopJson.ToJson(request));
         }
         private void RefreshCoopFortificationSession()
         {

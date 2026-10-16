@@ -6,7 +6,7 @@ namespace UnityEngine {
 }
 namespace ItemStatsSystem {
  public class Item {
-  public int TypeID, StackCount=1, MaxStackCount=1000000;
+  public int TypeID, StackCount=1, MaxStackCount=1000000; public object ParentObject;
   public int GetTotalRawValue(){return 5000;}
   public void DestroyTree(){}
   public void Drop(UnityEngine.Vector3 p,bool a,UnityEngine.Vector3 d,float f){ if(StackCount<1||StackCount>MaxStackCount)throw new Exception("illegal stack"); if(TypeID==1254) ItemAssetsCollection.Crowns+=StackCount;else ItemAssetsCollection.Cash+=StackCount;ItemAssetsCollection.Drops++; }

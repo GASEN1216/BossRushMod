@@ -37,6 +37,7 @@ namespace UnityEngine
     }
     public static class Mathf
     {
+        public static float Max(float a, float b) { return Math.Max(a, b); }
         public static int Min(int a, int b) { return Math.Min(a, b); }
         public static int Clamp(int x, int a, int b) { return Math.Max(a, Math.Min(x, b)); }
     }
@@ -156,13 +157,17 @@ namespace BossRush
     internal sealed class BossRushCoopPlayer
     {
         internal string Id;
+        internal string AssetId, ReadyEpoch;
+        internal bool IsLocal;
         internal CharacterMainControl Character;
         internal bool IsConnected = true;
         internal bool IsAlive { get { return IsConnected && Character != null && !Character.Health.IsDead; } }
     }
-    internal static class BossRushCoop
+    internal static partial class BossRushCoop
     {
         internal static bool IsConnected = true, IsHost = true;
+        internal static bool HasBoundScene;
+        internal static string SceneToken;
         internal static bool IsClient { get { return IsConnected && !IsHost; } }
         internal static bool HasWorldAuthority { get { return !IsConnected || IsHost; } }
         internal static string RunId = "room";
@@ -184,15 +189,17 @@ namespace BossRush
         internal void Tick(float dt) { if (BossRushCoop.IsHost) Publish(); }
         public void Dispose() { }
     }
+#if !MUTATOR_REAL_DELIVERY
     internal sealed class CoopPersonalDelivery<T> : IDisposable
     {
         internal struct Delivery { internal string Player, Id; internal T Value; }
         internal static readonly List<Delivery> Sent = new List<Delivery>();
         internal CoopPersonalDelivery(string topic, Func<T, bool> apply) { }
         internal void Tick(float dt) { }
-        internal bool Deliver(string player, string id, T value) { Sent.Add(new Delivery { Player = player, Id = id, Value = value }); return true; }
+        internal bool Deliver(string player, string id, T value, string targetAssetId = null) { Sent.Add(new Delivery { Player = player, Id = id, Value = value }); return true; }
         public void Dispose() { }
     }
+#endif
     internal static class BossRushUI { internal static bool Paused; internal static bool IsGamePaused() { return Paused; } }
     internal static class MutatorUI { internal static int Banners; internal static void ShowBanner() { Banners++; } internal static void HideAll() { } }
     public static class L10n { public static string T(string cn, string en) { return cn; } }

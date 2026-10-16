@@ -40,12 +40,14 @@ namespace BossRush
     {
         private static SummonStaffConfig _config;
         private bool spawningStarted;
+        private bool coopSummonRejected;
+        private int coopSummonAttempt;
         private bool spawningComplete;
         private int activeSpawnRequestId;
         private bool keepPendingSpawnOnStop;
         private CharacterMainControl coopOwner;
         private string coopRun;
-        private string coopAsset;
+        private string coopAsset, coopToken;
         private int coopScene;
 
         // 缓存的预设
@@ -88,6 +90,7 @@ namespace BossRush
             activeSpawnRequestId++;
             spawningStarted = false;
             spawningComplete = false;
+            coopSummonRejected = false; coopSummonAttempt++;
             keepPendingSpawnOnStop = false;
             return true;
         }
@@ -99,7 +102,7 @@ namespace BossRush
                 spawningStarted = true;
                 int requestId = activeSpawnRequestId;
                 if (BossRushCoop.IsClient)
-                { BossRushCoopContentRuntimeModule.RequestSummon(1); spawningComplete = true; }
+                { int attempt = coopSummonAttempt; if (!BossRushCoopContentRuntimeModule.RequestSummon(1, accepted => OnCoopSummonResult(attempt, accepted))) { StopAction(); return; } spawningComplete = true; }
                 else SpawnAlliesAsync(requestId).Forget();
             }
 
@@ -110,6 +113,18 @@ namespace BossRush
                 keepPendingSpawnOnStop = !spawningComplete;
                 StopAction();
             }
+        }
+
+        private void OnCoopSummonResult(int attempt, bool accepted)
+        {
+            if (this == null || attempt != coopSummonAttempt || accepted) return;
+            coopSummonRejected = true;
+            lastEndTime = -999f; isCoolingDown = false;
+        }
+        protected override void OnStop()
+        {
+            base.OnStop();
+            if (coopSummonRejected) { lastEndTime = -999f; isCoolingDown = false; }
         }
 
         protected override void OnAbilityStop()
@@ -128,6 +143,7 @@ namespace BossRush
 
         private void OnDestroy()
         {
+            coopSummonAttempt++;
             CancelPendingSummons();
         }
 
@@ -136,7 +152,7 @@ namespace BossRush
         /// </summary>
         internal async UniTask SpawnForCoop(CharacterMainControl player)
         {
-            coopOwner = player; coopRun = BossRushCoop.RunId; coopScene = BossRushCoop.SceneGeneration;
+            coopOwner = player; coopRun = BossRushCoop.RunId; coopScene = BossRushCoop.SceneGeneration; coopToken = BossRushCoop.SceneToken;
             coopAsset = BossRushCoop.FindPlayer(BossRushCoop.GetPlayerId(player))?.AssetId;
             PreparePreset(); activeSpawnRequestId++; spawningStarted = true;
             await SpawnAlliesAsync(activeSpawnRequestId);
@@ -323,7 +339,7 @@ namespace BossRush
             if (!isActiveAndEnabled || player == null || (coopOwner == null && CharacterMainControl.Main != player))
                 return false;
             if (coopOwner != null && (!BossRushCoop.IsHost || coopRun != BossRushCoop.RunId || coopScene != BossRushCoop.SceneGeneration
-                || !BossRushCoopContentRuntimeModule.IsSummonOwnerCurrent(player, coopAsset))) return false;
+                || !BossRushCoopContentRuntimeModule.IsSummonOwnerCurrent(player, coopAsset, coopToken))) return false;
             if (player.Health != null && player.Health.IsDead)
                 return false;
             if (!ModBehaviour.CanRunGameplayRuntimeCached()) return false;
@@ -472,6 +488,17 @@ namespace BossRush
             summonedAllies.Clear();
             summonOwners.Clear();
         }
+        internal static bool TryGetSummonOwner(CharacterMainControl summoned, out CharacterMainControl owner)
+        {
+            owner = null;
+            CharacterMainControl candidate;
+            if (summoned == null || !summonOwners.TryGetValue(summoned, out candidate) || candidate == null) return false;
+            if (BossRushCoop.IsConnected ? !BossRushCoopContentRuntimeModule.IsSummonOwnedBy(summoned, candidate)
+                : candidate != CharacterMainControl.Main) return false;
+            owner = candidate;
+            return true;
+        }
+
         internal static int GetCountForOwner(CharacterMainControl player)
         {
             BossRushCoopContentRuntimeModule.PruneSummonOwners();

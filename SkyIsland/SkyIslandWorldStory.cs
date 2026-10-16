@@ -397,9 +397,11 @@ namespace BossRush
                         "Can't start yet: stand on Windsong Boardwalk and let the last fight finish.");
                 presentation.Dispose();
                 // 同 Challenge：面板已经收起，回执改走字幕。
-                string opened = L10n.T("风眼张开了", "The eye of the storm opens");
+                string opened = BossRushCoop.IsClient
+                    ? L10n.T("已申请挑战，等待房主确认", "Challenge requested; waiting for the host")
+                    : L10n.T("风眼张开了", "The eye of the storm opens");
                 session.Announce(opened, false);
-                story.LogTiming("challenge", "Storm");
+                if (!BossRushCoop.IsClient) story.LogTiming("challenge", "Storm");
                 return opened;
             }));
         }
@@ -436,9 +438,11 @@ namespace BossRush
                 }
                 presentation.Dispose();
                 // 面板已经收起，回执写不回正文（SetBodyText 见正文已销毁直接返回）：改走字幕，否则面板一关就没了下文。
-                string started = L10n.T("挑战开始", "The challenge begins");
+                string started = BossRushCoop.IsClient
+                    ? L10n.T("已申请挑战，等待房主确认", "Challenge requested; waiting for the host")
+                    : L10n.T("挑战开始", "The challenge begins");
                 session.Announce(started, false);
-                story.LogTiming("challenge", id);
+                if (!BossRushCoop.IsClient) story.LogTiming("challenge", id);
                 return started;
             };
             // 两个具名对手都是「和解 / 战胜」二选一：打赢就关掉和解线，开打前先换到确认页（UI 共识对照审查 B-15）。

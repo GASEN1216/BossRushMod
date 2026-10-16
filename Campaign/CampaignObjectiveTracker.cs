@@ -34,11 +34,13 @@ namespace BossRush
         private static readonly List<CampaignObjectiveProgress> _progress =
             new List<CampaignObjectiveProgress>();
 
-        /// <summary>入场累计秒数（SurviveMinutes 用）。</summary>
-        private static float _elapsedSeconds;
+        internal sealed class SessionClock { internal float Seconds; internal bool Notified; }
+        private static SessionClock _clock;
+        /// <summary>同一批进度对象的各份个人 lease 共用精确计时。</summary>
+        private static float _elapsedSeconds { get { return _clock == null ? 0f : _clock.Seconds; } set { _clock.Seconds = value; } }
 
         /// <summary>本局已达成并上报过，避免重复通知。</summary>
-        private static bool _notified;
+        private static bool _notified { get { return _clock != null && _clock.Notified; } set { _clock.Notified = value; } }
 
         // 接取/放弃会改变契约身份；换槽保留各资产的身份，回原槽仍可结算其旧收据。
         private static readonly Dictionary<string, long> contractRevisions = new Dictionary<string, long>(StringComparer.Ordinal);
@@ -48,8 +50,11 @@ namespace BossRush
             internal string Chapter, Mode, Asset;
             internal long ContractRevision;
             internal CampaignObjectiveProgress[] Objectives;
+            internal SessionClock Clock;
             internal bool Reported;
             internal int KillReceipts, MarkedKillReceipts;
+            internal int MeleeFactKills, BossFactKills, BountyFactKills;
+            internal readonly HashSet<string> Facts = new HashSet<string>(StringComparer.Ordinal);
         }
 
         internal static void InvalidateContractIdentity()
@@ -65,12 +70,28 @@ namespace BossRush
         internal static ExtractionLease CaptureExtractionLease(string mode)
         {
             if (!BossRushCoop.IsConnected || string.IsNullOrEmpty(BossRushCoop.LocalAssetId)) return null;
+            if (!CampaignRuntimeModule.PrepareCoopCampaignEntry(mode)) return null;
             EnsureArmedFor(mode);
             if (!IsArmed || _notified || _armedMode != mode) return null;
             long revision;
             contractRevisions.TryGetValue(BossRushCoop.LocalAssetId, out revision);
             return new ExtractionLease { Chapter = _armedChapterId, Mode = mode, Asset = BossRushCoop.LocalAssetId,
-                ContractRevision = revision, Objectives = _progress.ToArray() };
+                ContractRevision = revision, Objectives = _progress.ToArray(), Clock = _clock };
+        }
+
+        internal static bool RestoreExtractionLease(ExtractionLease value)
+        {
+            if (value == null || value.Reported || value.Objectives == null || value.Asset != BossRushCoop.LocalAssetId) return false;
+            long revision;
+            contractRevisions.TryGetValue(value.Asset, out revision);
+            if (revision != value.ContractRevision || CampaignProgressService.GetActiveChapterId() != value.Chapter
+                || CampaignProgressService.GetState(value.Chapter) != CampaignChapterState.ContractActive) return false;
+            if (IsExtractionLeaseCurrent(value)) return true;
+            ResetSession();
+            _armedChapterId = value.Chapter; _armedMode = value.Mode;
+            _clock = value.Clock;
+            _progress.AddRange(value.Objectives);
+            return true;
         }
 
         /// <summary>null 或已取消原契约没有欠账；跨资产/写入失败等待重试，不改当前武装进度。</summary>
@@ -81,7 +102,7 @@ namespace BossRush
             long revision;
             contractRevisions.TryGetValue(value.Asset, out revision);
             if (revision != value.ContractRevision || CampaignProgressService.GetActiveChapterId() != value.Chapter) return true;
-            if (CampaignProgressService.GetState(value.Chapter) == CampaignChapterState.ReadyToDeliver) { value.Reported = true; return true; }
+            if (CampaignProgressService.GetState(value.Chapter) == CampaignChapterState.ReadyToDeliver) { value.Reported = true; if (value.Clock != null) value.Clock.Notified = true; return true; }
             if (CampaignProgressService.GetState(value.Chapter) != CampaignChapterState.ContractActive) return true;
             foreach (CampaignObjectiveProgress objective in value.Objectives)
             {
@@ -93,7 +114,63 @@ namespace BossRush
             foreach (CampaignObjectiveProgress objective in value.Objectives)
                 if (!objective.IsSatisfied) return true;
             if (!CampaignProgressService.NotifyObjectivesSatisfied(value.Chapter)) return false;
+            if (value.Clock != null) value.Clock.Notified = true;
             value.Reported = true;
+            return true;
+        }
+
+        internal static bool IsExtractionLeaseCurrent(ExtractionLease value)
+        {
+            return value != null && value.Chapter == _armedChapterId && value.Objectives != null
+                && value.Objectives.Length == _progress.Count && _progress.Count > 0
+                && ReferenceEquals(value.Objectives[0], _progress[0]);
+        }
+
+        /// <summary>权威事实只写入入场时冻结的原合同；计数与个人下界取 max，不叠加同一次击杀。</summary>
+        internal static bool ReportCoopFactLease(ExtractionLease value, CoopCampaignFact fact)
+        {
+            if (value == null || value.Reported) return true;
+            if (value.Asset != BossRushCoop.LocalAssetId) return false;
+            long revision;
+            contractRevisions.TryGetValue(value.Asset, out revision);
+            if (revision != value.ContractRevision || CampaignProgressService.GetActiveChapterId() != value.Chapter
+                || CampaignProgressService.GetState(value.Chapter) != CampaignChapterState.ContractActive)
+            {
+                value.Reported = true;
+                value.Objectives = null;
+                value.Facts.Clear();
+                return true;
+            }
+            if (value.Facts.Add(fact.FactId))
+            {
+                if (fact.Kind == "kill")
+                {
+                    if (fact.Melee) value.MeleeFactKills++;
+                    if (fact.Boss) value.BossFactKills++;
+                    if (fact.Boss && fact.Bounty) value.BountyFactKills++;
+                }
+                foreach (CampaignObjectiveProgress item in value.Objectives)
+                {
+                    if (item == null || item.Def == null || item.Failed) continue;
+                    int reached = 0;
+                    if (item.Def.Kind == CampaignObjectiveKind.MeleeKills) reached = value.MeleeFactKills;
+                    else if (item.Def.Kind == CampaignObjectiveKind.FactionBossKills) reached = value.BossFactKills;
+                    else if (item.Def.Kind == CampaignObjectiveKind.BountyKills) reached = value.BountyFactKills;
+                    else if (fact.Kind == "wave" && item.Def.Kind == CampaignObjectiveKind.ReachWave) reached = fact.Wave;
+                    else if (fact.Kind == "wave" && item.Def.Kind == CampaignObjectiveKind.NoDamageUntilWave && fact.Wave > item.Def.Threshold
+                        || fact.Kind == "standard" && (item.Def.Kind == CampaignObjectiveKind.StandardClear || item.Def.Kind == CampaignObjectiveKind.NoDamageUntilWave)
+                        || fact.Kind == "final" && item.Def.Kind == CampaignObjectiveKind.FinalBossKill)
+                        reached = item.Def.Threshold;
+                    item.Current = Math.Max(item.Current, Math.Min(reached, item.Def.Threshold));
+                }
+            }
+            foreach (CampaignObjectiveProgress item in value.Objectives)
+                if (!item.IsSatisfied) return true;
+            if (!CampaignProgressService.NotifyObjectivesSatisfied(value.Chapter)) return false;
+            if (value.Clock != null) value.Clock.Notified = true;
+            value.Reported = true;
+            value.Objectives = null;
+            value.Facts.Clear();
             return true;
         }
 
@@ -180,6 +257,7 @@ namespace BossRush
 
                 _armedChapterId = def.ChapterId;
                 _armedMode = mode;
+                _clock = new SessionClock();
                 _elapsedSeconds = 0f;
                 _notified = false;
 
@@ -216,8 +294,7 @@ namespace BossRush
         {
             _armedChapterId = null;
             _armedMode = null;
-            _elapsedSeconds = 0f;
-            _notified = false;
+            _clock = null;
             _progress.Clear();
         }
 

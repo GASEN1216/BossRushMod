@@ -101,7 +101,11 @@ private string SkyIslandFrameProfileMetrics(out string reason) { reason = null; 
 internal IEnumerator Run(float seconds = 5f, bool baseline = true) { return SamplePerformance("SKY_PERF_PROBE", seconds, baseline); }
 ''' + performance_methods + '\n} }\n'
     scene_methods = '\n'.join(extract(scenes, signature) for signature in (
-        'private IEnumerator LoadScene(', 'private static bool IsRuntimeReady(', 'private static string DescribeSceneReadiness('))
+        'private IEnumerator LoadScene(', 'private static bool IsRuntimeReady(', 'private static string DescribeSceneReadiness(',
+        'private static string CoopValidationSceneKey(', 'private static void MarkCoopValidationSceneReady(',
+        'private static bool AreCoopValidationPlayersReady(')) + '\n' + extract(runner, 'private static bool IsBaseScene(')
+    barrier = extract((root / 'Common/Coop/BossRushCoopProtocol.cs').read_text(encoding='utf-8-sig'), 'internal sealed class BossRushCoopSceneBarrier')
+    generated += 'namespace BossRush { ' + barrier + ' }\n'
     generated += '''
 namespace BossRush { internal sealed class ProductionSceneCase {
 private readonly SceneHost _host = new SceneHost();
@@ -111,6 +115,11 @@ internal string _operationReason;
 internal int _lastSceneClicksFed, _sceneClicksFed;
 internal readonly List<string> Results = new List<string>(), Reasons = new List<string>(), Metrics = new List<string>();
 private static string BaseSceneNameForValidation() { return "Base"; }
+internal static bool Dedicated = true;
+private static bool IsDedicatedCurrentSlot() { return Dedicated; }
+internal static void MarkActualReady() { MarkCoopValidationSceneReady(); }
+internal static bool ActualGroupReady() { return AreCoopValidationPlayersReady(); }
+internal static bool ActualBase() { return IsBaseScene(); }
 private bool ShouldAbort() { return false; }
 private string DescribeAbortReason() { return "cancelled"; }
 private void WriteRaw(string value) { }
@@ -119,6 +128,14 @@ private static bool TryClickAutotestClosureContinue() { ClosureClicks++; return 
 private void Record(string id, string status, long elapsed, string metrics, string reason) { Results.Add(status); Reasons.Add(reason); Metrics.Add(metrics); }
 internal IEnumerator Run(bool toBase = false) { return LoadScene("arena-id", "SCENE", true, toBase); }
 ''' + scene_methods + '\n}}\n'
+    hcoop = (root / 'ModeH/ModeHRuntimeModule_Coop.cs').read_text(encoding='utf-8-sig')
+    hbets = (root / 'ModeH/ModeHRuntimeModule_BetFlow.cs').read_text(encoding='utf-8-sig')
+    hbuttons = ('namespace HButtonBoundary {using GameObject=HButtonGameObject;using Button=HButtonButton;using TMP_Text=HButtonText;'
+        'internal sealed partial class ProductionHButtonCase {'
+        + extract(seasons, 'private bool TryClickModeHButton(') + extract(seasons, 'private string ResolveModeHButtonLabel(')
+        + '}internal sealed partial class ModeHRuntimeModule {'
+        + extract(hcoop, 'private void DecorateCoopBetPage(') + extract(hbets, 'private string DescribeStandingBetSuffix()') + '}}')
+    generated += hbuttons
     entry_preparation = extract(modes, 'internal sealed class F3ModeDLoadoutLease')
     generated += 'namespace BossRush { ' + entry_preparation + ' }\n'
     protection = '\n'.join(extract(seasons, signature) for signature in (
@@ -178,7 +195,7 @@ internal IEnumerator Run() { return ValidationCompleteZombieExtraction(delegate(
     out = root / 'Build/f3-validation-execution'
     out.mkdir(parents=True, exist_ok=True)
     (out / 'ProductionCase.cs').write_text(generated, encoding='utf-8')
-    (out / 'source.sha256').write_text(hashlib.sha256((methods + island_methods + skip_signal + performance_methods + scene_methods + entry_preparation + field + protection + f_trigger + f_extract + z_extract).encode('utf-8')).hexdigest(), encoding='utf-8')
+    (out / 'source.sha256').write_text(hashlib.sha256((methods + island_methods + skip_signal + performance_methods + scene_methods + barrier + hbuttons + entry_preparation + field + protection + f_trigger + f_extract + z_extract).encode('utf-8')).hexdigest(), encoding='utf-8')
     sys.path.insert(0, str(root / 'tools'))
     from run_runtime_regressions import run_project_fixture
     code, output = run_project_fixture(HERE / "F3ValidationExecution.csproj", out / 'runs', root)

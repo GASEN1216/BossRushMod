@@ -13,8 +13,8 @@ namespace BossRush
             if (!disposed && !session.IsReady && session.IsWorldReady && gnats != null)
                 gnats.Frame(Time.time, Time.deltaTime, BossRushCoop.GetCombatTarget(root.position));
         }
-        [Serializable] private sealed class GatherRequest { public string Id, TravelId, AssetId; }
-        [Serializable] private sealed class GatherState { public string TravelId; public string[] Claimed; }
+        [Serializable] private sealed class GatherRequest { public string Id, TravelId, AssetId, SceneToken; }
+        [Serializable] private sealed class GatherState { public string TravelId, SceneToken; public string[] Claimed; }
         private readonly Dictionary<string, string> coopGatherClaims = new Dictionary<string, string>(StringComparer.Ordinal);
         private readonly Dictionary<string, GatherRequest> coopGatherReceipts = new Dictionary<string, GatherRequest>(StringComparer.Ordinal);
         private CoopPersonalDelivery<GatherRequest> coopHarvestDelivery;
@@ -33,7 +33,7 @@ namespace BossRush
         {
             if (Time.unscaledTime < nextCoopGatherRequest) return;
             nextCoopGatherRequest = Time.unscaledTime + 1f;
-            var request = new GatherRequest { Id = id, TravelId = TravelId, AssetId = BossRushCoop.LocalAssetId };
+            var request = new GatherRequest { Id = id, TravelId = TravelId, AssetId = BossRushCoop.LocalAssetId, SceneToken = BossRushCoop.SceneToken };
             if (BossRushCoop.IsClient) BossRushCoop.SendToHost("sky.gather.request", request);
             else AdmitHarvest(BossRushCoop.LocalPlayerId, request);
         }
@@ -45,7 +45,8 @@ namespace BossRush
         {
             BossRushCoopPlayer player = BossRushCoop.FindPlayer(playerId);
             Vector3 position;
-            if (request == null || request.TravelId != TravelId || player == null || !player.IsAlive
+            if (!BossRushCoop.HasBoundScene || request == null || request.TravelId != TravelId || player == null || !player.IsAlive
+                || string.IsNullOrEmpty(request.SceneToken) || request.SceneToken != BossRushCoop.SceneToken
                 || string.IsNullOrEmpty(request.AssetId) || request.AssetId != player.AssetId
                 || !gathering.TryGetPosition(request.Id, out position)
                 || (player.Character.transform.position - position).sqrMagnitude > 36f) return;
@@ -76,21 +77,22 @@ namespace BossRush
         }
         private void OnCoopGatherState(BossRushCoopMessage message)
         {
-            if (!BossRushCoop.IsClient || !message.IsFromHost) return;
+            if (!BossRushCoop.IsClient || !BossRushCoop.HasBoundScene || !message.IsFromHost) return;
             GatherState state = message.Read<GatherState>();
-            if (state == null || state.TravelId != TravelId || state.Claimed == null || state.Claimed.Length > SkyIslandFieldcraftRules.Nodes.Length) return;
+            if (state == null || state.TravelId != TravelId || string.IsNullOrEmpty(state.SceneToken) || state.SceneToken != BossRushCoop.SceneToken
+                || state.Claimed == null || state.Claimed.Length > SkyIslandFieldcraftRules.Nodes.Length) return;
             foreach (string id in state.Claimed) gathering.MarkHarvested(id);
         }
         internal void TickCoopHarvest()
         {
             if (!BossRushCoop.IsConnected) return;
             coopHarvestDelivery.Tick(Time.unscaledDeltaTime);
-            if (!BossRushCoop.IsHost || Time.unscaledTime < nextCoopGatherState) return;
+            if (!BossRushCoop.IsHost || !BossRushCoop.HasBoundScene || Time.unscaledTime < nextCoopGatherState) return;
             nextCoopGatherState = Time.unscaledTime + 0.5f;
             foreach (var claim in coopGatherClaims)
                 coopHarvestDelivery.Deliver(claim.Value, TravelId + ":" + claim.Key, coopGatherReceipts[claim.Key], coopGatherReceipts[claim.Key].AssetId);
             var ids = new string[coopGatherClaims.Count]; coopGatherClaims.Keys.CopyTo(ids, 0);
-            BossRushCoop.Broadcast("sky.gather.state", new GatherState { TravelId = TravelId, Claimed = ids });
+            BossRushCoop.Broadcast("sky.gather.state", new GatherState { TravelId = TravelId, SceneToken = BossRushCoop.SceneToken, Claimed = ids });
         }
         private void DisposeCoopHarvest()
         {

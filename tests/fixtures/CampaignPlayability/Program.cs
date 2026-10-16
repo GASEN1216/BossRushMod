@@ -146,6 +146,7 @@ internal static class Program
         CampaignObjectiveTracker.EnsureArmedFor("standard");
         Check(!CampaignObjectiveTracker.IsArmed, "ready-to-deliver chapter cannot rearm");
         CheckBridges();
+        CoopFactsRegression.Run(Check);
         CheckExtractionLeases();
         CheckNotes();
         CheckQuestTable();
@@ -316,6 +317,7 @@ internal static class Program
 
     private static void CheckBridges()
     {
+        BossRushCoop.HasBoundScene=true; BossRushCoop.SceneToken="bridge-token"; BossRushCoop.RunId="bridge-room";
         Arm("ch1");
         var owner = ModBehaviour.Instance;
         CampaignObjectiveTracker.ResetSession();
@@ -348,17 +350,23 @@ internal static class Program
         Player.Health.IsDead = true;
         owner.TickCampaignModeBridge(1f);
         Check(!CampaignObjectiveTracker.IsArmed, "death disarms tracking before mode flags clear");
+        owner.SetCampaignEntryForTest("bridge-original-entry");
+        owner.AdmitCampaignForTest(BossRushCoop.LocalPlayerId, BossRushCoop.LocalAssetId);
         BossRushCoop.IsConnected=true;BossRushCoop.IsHost=true;BossRushCoop.AnyPlayerAlive=true;
         owner.TickCampaignModeBridge(600f);
         Check(!CampaignObjectiveTracker.IsArmed && owner.ResolveCampaignCurrentMode()==null,"living guest cannot keep dead host's personal contract armed");
         Check(owner.CampaignRuntime.ApplyFactForTest(new CoopCampaignFact { Kind="wave",Mode=CampaignContentCatalog.ModeModeD,Wave=5,RunId=BossRushCoop.RunId,SceneGeneration=BossRushCoop.SceneGeneration }) && !CampaignObjectiveTracker.IsArmed,"dead local owner acknowledges shared fact without rearming a personal contract");
         Player.Health.IsDead = false;
+        owner.CampaignRuntime.CaptureWorldForTest();
         owner.TickCampaignModeBridge(1f);
-        Check(CampaignObjectiveTracker.Progress[0].Current == 5, "same mode rearm reobserves its current wave");
+        Check(CampaignObjectiveTracker.IsArmed && CampaignObjectiveTracker.Progress.Count == 2 && CampaignObjectiveTracker.Progress[0].Current == 5, "same mode rearm reobserves its current wave");
         int before=CampaignObjectiveTracker.Progress[1].Current;
-        Check(owner.CampaignRuntime.ApplyFactForTest(new CoopCampaignFact { Kind="kill",Melee=true,Mode=CampaignContentCatalog.ModeModeD,RunId=BossRushCoop.RunId,SceneGeneration=BossRushCoop.SceneGeneration-1 }) && CampaignObjectiveTracker.Progress[1].Current==before,"former scene's delayed kill cannot advance current personal objectives");
-        Check(owner.CampaignRuntime.ApplyFactForTest(new CoopCampaignFact { Kind="kill",Melee=true,Mode=CampaignContentCatalog.ModeModeD,RunId="former-room",SceneGeneration=BossRushCoop.SceneGeneration }) && CampaignObjectiveTracker.Progress[1].Current==before,"former room's fact cannot advance current chapter");
-        owner.CampaignRuntime.ApplyFactForTest(new CoopCampaignFact { Kind="kill",Melee=true,Mode=CampaignContentCatalog.ModeModeD,RunId=BossRushCoop.RunId,SceneGeneration=BossRushCoop.SceneGeneration });
+        Check(owner.CampaignRuntime.ApplyFactForTest(new CoopCampaignFact { Kind="kill",Melee=true,Mode=CampaignContentCatalog.ModeModeD,RunId=BossRushCoop.RunId,SceneGeneration=BossRushCoop.SceneGeneration-1,SceneToken="former-token",Scope="former-scope",FactId="old-kill" }) && CampaignObjectiveTracker.Progress[1].Current==before,"former scene's delayed kill cannot advance current personal objectives");
+        Check(owner.CampaignRuntime.ApplyFactForTest(new CoopCampaignFact { Kind="kill",Melee=true,Mode=CampaignContentCatalog.ModeModeD,RunId="former-room",SceneGeneration=BossRushCoop.SceneGeneration,SceneToken="former-token",Scope="former-scope",FactId="old-kill" }) && CampaignObjectiveTracker.Progress[1].Current==before,"former room's fact cannot advance current chapter");
+        BossRushCoop.RunId="bridge-room"; BossRushCoop.SceneToken="bridge-token"; BossRushCoop.HasBoundScene=true;
+        owner.CampaignRuntime.CaptureWorldForTest();
+        owner.TickCampaignModeBridge(0f);
+        owner.CampaignRuntime.ApplyFactForTest(owner.CampaignRuntime.FactForTest("kill", "bridge-kill", true));
         Check(CampaignObjectiveTracker.Progress[1].Current==before+1,"current scene's authenticated fact advances only local armed chapter");
         BossRushCoop.IsConnected=BossRushCoop.IsHost=false;
         Arm("ch1"); owner = ModBehaviour.Instance; owner.modeGActive = true;

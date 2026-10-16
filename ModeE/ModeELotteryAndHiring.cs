@@ -908,13 +908,20 @@ namespace BossRush
             ModeEBossHireState state;
             if (!modeEHiredBosses.TryGetValue(damageInfo.fromCharacter, out state) ||
                 state == null || !state.Hired || state.Owner == null ||
-                state.Owner != CharacterMainControl.Main ||
+                !IsModeEHireOwnerCurrent(state.Owner) ||
                 state.SessionToken != modeESessionToken)
             {
                 return;
             }
 
             damageInfo.fromCharacter = state.Owner;
+        }
+
+        // 单机只认本机主角；联机房主上，客人雇的 Boss 归属他在房主机上仍绑定的身体（ConvertCoopModeEHire 写入）。
+        private static bool IsModeEHireOwnerCurrent(CharacterMainControl owner)
+        {
+            return owner != null && (owner == CharacterMainControl.Main
+                || (BossRushCoop.IsHost && BossRushCoop.IsPlayer(owner)));
         }
 
         internal bool ShouldBlockModeEHiredBossTeamChange(
@@ -930,7 +937,7 @@ namespace BossRush
             ModeEBossHireState state;
             return modeEHiredBosses.TryGetValue(character, out state) &&
                    state != null && state.Hired &&
-                   state.Owner == CharacterMainControl.Main &&
+                   IsModeEHireOwnerCurrent(state.Owner) &&
                    state.SessionToken == modeESessionToken;
         }
 

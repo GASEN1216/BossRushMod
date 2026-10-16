@@ -4,7 +4,7 @@ using BossRush;
 using HarmonyLib;
 using UnityEngine;
 
-internal static class Program
+internal static partial class Program
 {
     private static int count;
     private static void Check(bool condition,string message) { count++;if(!condition)throw new Exception(message); }
@@ -46,6 +46,7 @@ internal static class Program
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void Run()
     {
+        BossRushCoop.HasBoundScene=true;BossRushCoop.SceneToken="initial-scene";
         var player=new CharacterMainControl { PlayerId="local" };
         var replica=new CharacterMainControl(10f,0f) { Ai=-7 };
         var owner=new CoopAiPredictionHealthRuntimeModule();BossRushCoop.IsHost=false;owner.OnAwake(new ModBehaviour());
@@ -107,15 +108,17 @@ internal static class Program
         Check(arrivalReplica.GetComponent<CoopAiPredictionReplicaMarker>()!=null&&arrivalReplica.GetComponent<CoopAiPredictionReplicaMarker>().Armed,"confirmed ownership before native birth protects in AiSpawned callback without tick delay");
         arrivalOwner.OnDestroy();authorityOwner.OnDestroy();Check(CoopAiPredictionHealthProtection.Owner==null&&BossRushCoop.Handler==null&&!BossRushCoop.HasAiSubscriber,"single runtime owner tears down channel/event and static owner");
         AuthorityLifetimes();
+        SceneBoundaries();
         Console.WriteLine("CoopAiPrediction: PASS "+count+" real installed Harmony assertions; production Hurt context, shared lethal setter, exact owned-AI projection and frozen entity authority.");
     }
-    public static int Main()
+    public static int Main(string[] args)
     {
         try
         {
             var harmony=new Harmony("BossRush.fixture.coop-prediction");
             foreach(Type type in new[] { typeof(BossRushHealthHurtContextPatch),typeof(BossRushBossLethalHealthProtectionPatch),typeof(CoopAiPredictionHealthHurtPatch),typeof(NativePredictionFixturePatch) })
             { Console.WriteLine("Install "+type.Name);harmony.CreateClassProcessor(type).Patch(); }
+            if(args.Length>0) { if(args[0]=="fx")FxSceneBoundary();else PredictionSceneBoundary();return 0; }
             Run();return 0;
         }
         catch(Exception error) { Console.WriteLine("FAIL "+error.GetType().FullName+": "+error.Message);return 1; }

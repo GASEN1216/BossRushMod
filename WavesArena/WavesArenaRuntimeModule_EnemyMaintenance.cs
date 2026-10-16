@@ -86,6 +86,8 @@ namespace BossRush
                     catch {}
                     if (!isEnemy) continue;
 
+                    if (DeferNativeFactoryCleanup(c, NativeArenaCleanupKind.ForceKill)) continue;
+
                     try
                     {
                         if (c.Health != null && !c.Health.IsDead)
@@ -261,6 +263,7 @@ namespace BossRush
 
                     if (c.gameObject != null)
                     {
+                        if (DeferNativeFactoryCleanup(c, NativeArenaCleanupKind.ClearEnemies)) continue;
                         _reusableDestroyList.Add(c.gameObject);
                     }
                 }

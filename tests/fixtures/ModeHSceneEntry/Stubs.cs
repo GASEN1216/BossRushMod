@@ -80,8 +80,8 @@ namespace BossRush
     public enum ModeHExitReason { SceneGenerationMismatch,TechnicalAbort }
     public class ModeHRunState
     {
-        public long OwnerToken,RunSeed; public string SceneName; public ModeHLifecycle Lifecycle;
-        public ModeHRunState(string id,long seed,string scene,int generation) { SceneName=scene;OwnerToken=seed;RunSeed=seed; }
+        public long OwnerToken,RunSeed; public string RunId,SceneName; public ModeHLifecycle Lifecycle;
+        public ModeHRunState(string id,long seed,string scene,int generation) { RunId=id;SceneName=scene;OwnerToken=seed;RunSeed=seed; }
         public void UpdateSceneGeneration(int value) { } public void ResetTechnicalRetry() { }
     }
     public static class ModeHSeedStream { public static ulong Fnv1a64(string value) { return 12345; } }
@@ -170,6 +170,8 @@ namespace BossRush
     }
     internal partial class ModeHRuntimeModule
     {
+        private bool _coopProjection, _coopWorldWasConnected;
+        private string _coopWorldRun, _coopWorldRoom;
         private void BindCoopWorldAsset() { }
         private void ReleaseCoopProjection() {}
 
@@ -208,4 +210,4 @@ namespace BossRush
     }
 }
 
-namespace BossRush { internal static class BossRushCoop { internal static bool IsClient { get { return false; } } } }
+namespace BossRush { internal static class BossRushCoop { internal static bool IsConnected, IsHost, IsClient; internal static string RunId; } }

@@ -104,6 +104,25 @@ namespace BossRush
             if (round.Resolved) return true;
             round.Forfeited = true; return Persist(next);
         }
+        internal bool CancelUnstarted(string run, int match, long seed)
+        {
+            Data next = Copy();
+            if (next == null) return false;
+            Round round = Find(next, run, match);
+            if (round != null && (round.Seed != seed || round.Resolved)) return false;
+            ModeHCashBetRecord bet = ModeHCashBetService.ReservedFor(run, match);
+            if (bet != null)
+            {
+                if (bet.combatStarted != 0) return false;
+                long refunded;
+                if (!ModeHCashBetService.TryRefund("coop_unconfirmed", out refunded)) return false;
+                ModeHItemBetStake.ReleaseLocked();
+            }
+            if (round == null) return true;
+            next.Rounds.Remove(round);
+            return Persist(next);
+        }
+
         internal bool Apply(ModeHCoopResult result, bool host)
         {
             if (result == null || string.IsNullOrEmpty(result.Token) || result.Token.Length > 256

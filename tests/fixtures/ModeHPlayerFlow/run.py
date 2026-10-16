@@ -47,6 +47,7 @@ def main():
     scene = "ModeH/ModeHRuntimeModule_SceneFlow.cs"
     runner = "DebugAndTools/F3GameplayValidationRunner.cs"
     code += "\nnamespace BossRush { partial class ModeHRuntimeModule {\n"
+    code += extract("ModeH/ModeHRuntimeModule_Coop.cs", "private bool IsCoopWorldAuthorityCurrent")
     code += "\n".join(extract(scene, signature) for signature in (
         "private void StartCertification()", "internal bool CanRunCertificationFromF3(",
         "internal bool StartCertificationFromF3(", "private IEnumerator DriveCertification(",

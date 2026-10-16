@@ -78,6 +78,56 @@ internal static class Program
         Console.OutputEncoding=new System.Text.UTF8Encoding(false);
         ItemAssetsCollection.metadata[100]=new ItemMetaData { id=100,tags=new[]{new Duckov.Utilities.Tag { name="Gun" }} };
         ItemAssetsCollection.metadata[101]=new ItemMetaData { id=101,tags=new[]{new Duckov.Utilities.Tag { name="MeleeWeapon" }} };
+        Case("原生副本先销毁后个人事实仍按原引用结算，未知引用拒绝",()=>{
+            using(var b=new Battle(0)) {
+                var runtime=new ModeGRuntimeModule(b.state,b.telemetry,b.adaptive);
+                runtime.BindCoopBoss(-17,b.boss);ModeGEntryRuntime.UseRuntime(runtime);
+                BossRushCoop.Entities["p:local"]=b.player;BossRushCoop.IsConnected=true;BossRushCoop.IsHost=false;
+                try {
+                    runtime.FreezeAsset();
+                    Check(runtime.ApplyCoopCombat(new ModeGCoopCombat{Run=1,Admission=true,Sequence=9000,Order=0}),"实际准入");
+                    Health original=b.boss.Health;UnityEngine.Object.Destroy(b.boss.gameObject);
+                    Check(b.boss==null&&original==null&&!ReferenceEquals(original,null),"原生销毁连带Health，托管引用保留");
+                    var damage=new ModeGCoopCombat{Run=1,Wave=0,Boss=-17,Sequence=91,Order=1,Source="p:local",Weapon=100,Damage=20,Final=20,Phase=(int)ModeGCombatPhase.Fighting};
+                    var dead=new ModeGCoopCombat{Run=1,Wave=0,Boss=-17,Sequence=92,Order=2,Source="p:local",Weapon=100,Damage=80,Final=80,Dead=true,Phase=(int)ModeGCombatPhase.Fighting};
+                    Check(!runtime.ApplyCoopCombat(dead),"销毁不允许乱序越过前序伤害");
+                    BossRushCoop.SceneGeneration++;
+                    Check(!runtime.ApplyCoopCombat(damage),"旧场景原引用不能在同图重载代次结算");BossRushCoop.SceneGeneration--;
+                    runtime.AuditCacheUnregistered(-99,new Health());
+                    Check(!runtime.ApplyCoopCombat(new ModeGCoopCombat{Run=1,Wave=0,Boss=-99,Sequence=93,Order=1,Dead=true}),"缓存中未登记伪引用不能结算");
+                    Check(!runtime.ApplyCoopCombat(new ModeGCoopCombat{Run=1,Wave=0,Boss=-100,Sequence=94,Order=1,Dead=true}),"未知AI不能结算");
+                    Check(runtime.ApplyCoopCombat(damage),"原Health身份保留真实护甲后伤害");Near(20,b.telemetry.TotalDirectDamage,"伤害不吞");
+                    Check(runtime.ApplyCoopCombat(dead),"销毁后的死亡事实走真实HandleBossDead并ACK");
+                    Check(runtime.ActiveCoopBosses==0&&b.state.TrackedBossCount==0&&runtime.WaveSettlementPending,"真实生成事务注销并触发下一帧波结算");
+                    Check(runtime.TotalKills==1,"本人真实末击保留个人击杀数量");Near(100,b.telemetry.TotalDirectDamage,"末击完整计分");
+                    Check(runtime.ApplyCoopCombat(dead)&&runtime.ApplyCoopCombat(damage),"死亡和伤害重发确认");
+                    Check(runtime.TotalKills==1,"重发不增个人击杀");Near(100,b.telemetry.TotalDirectDamage,"重发不增贡献");
+                    Check(!runtime.ApplyCoopCombat(new ModeGCoopCombat{Run=2,Wave=0,Boss=-17,Sequence=95,Order=3,Dead=true}),"旧缓存不可跨run使用");
+                    runtime.AuditReleaseBosses();Check(runtime.CachedHealthCount==0,"终局/换波释放全部原实体引用");
+                }finally {BossRushCoop.IsConnected=false;BossRushCoop.IsHost=false;BossRushCoop.Entities.Clear();ModeGEntryRuntime.UseRuntime(null);}
+            }
+        });
+        Case("托管Boss副本销毁后按冻结key保留原类型个人成就",()=>{
+            ModeGCombatTelemetry.DropPendingAchievementReports();
+            ModBehaviour.Instance.AchievementTypes.Clear();ModBehaviour.Instance.AchievementTokens.Clear();
+            var keys=new[]{ModeGEncounterVariation.ManagedDragonDescendantKey,ModeGEncounterVariation.ManagedDragonKingKey,ModeGEncounterVariation.ManagedPhantomWitchKey,"official_boss"};
+            var types=new[]{"DragonDescendant","DragonKing","PhantomWitch","Normal"};
+            try {
+                for(int i=0;i<keys.Length;i++) using(var b=new Battle(0)) {
+                    var runtime=new ModeGRuntimeModule(b.state,b.telemetry,b.adaptive);
+                    runtime.BindCoopBoss(-17,b.boss,keys[i]);ModeGEntryRuntime.UseRuntime(runtime);
+                    BossRushCoop.Entities["p:local"]=b.player;BossRushCoop.IsConnected=true;BossRushCoop.IsHost=false;
+                    runtime.FreezeAsset();
+                    Check(runtime.ApplyCoopCombat(new ModeGCoopCombat{Run=1,Admission=true,Sequence=9000,Order=0}),"类型回归真实准入");
+                    UnityEngine.Object.Destroy(b.boss.gameObject);
+                    var dead=new ModeGCoopCombat{Run=1,Wave=0,Boss=-17,Sequence=92,Order=1,Source="p:local",Weapon=100,Damage=100,Final=100,Dead=true,Phase=(int)ModeGCombatPhase.Fighting};
+                    Check(runtime.ApplyCoopCombat(dead)&&runtime.ApplyCoopCombat(dead),"类型回归真实死亡与重发");
+                    ModeGCombatTelemetry.ConsumePendingAchievementReports(b.state);
+                    Check(ModBehaviour.Instance.AchievementTypes.Count==i+1&&ModBehaviour.Instance.AchievementTypes[i]==types[i],"原类型只入账一次: "+keys[i]);
+                    Check(ModBehaviour.Instance.AchievementTokens[i]!=0,"销毁对象仍保留实例token");
+                }
+            }finally {BossRushCoop.IsConnected=false;BossRushCoop.IsHost=false;BossRushCoop.Entities.Clear();ModeGEntryRuntime.UseRuntime(null);ModeGCombatTelemetry.DropPendingAchievementReports();}
+        });
         Case("联网原生回调跳过，个人收据按顺序只计本人护甲后伤害",()=>{
             using(var b=new Battle()) {
                 var runtime=new ModeGRuntimeModule(b.state,b.telemetry,b.adaptive);
@@ -451,6 +501,28 @@ internal static class Program
                 Check(runtime.AssetEnds==1,"重复旧回执不能重复终局");BossRushCoop.LocalAssetId="asset-1";
             }
             BossRushCoop.IsConnected=false;BossRushCoop.IsHost=false;
+        });
+        Case("原房主停网立即拒绝旧世界，暂断和原单机保持既有权限",()=>{
+            BossRushCoop.IsConnected=true;BossRushCoop.IsHost=true;BossRushCoop.RunId="host-owned-room";
+            using(var battle=new Battle()) {
+                var runtime=new ModeGRuntimeModule(battle.state,battle.telemetry,battle.adaptive);runtime.FreezeAsset();
+                Check(runtime.CoopRunHasWorldAuthority&&runtime.CanContinueWorld,"G冻结原host世界");
+                BossRushCoop.SessionReady=false;
+                Check(runtime.CoopRunHasWorldAuthority&&runtime.CanContinueWorld&&runtime.CheckCoopAsset(),"G同房握手暂失不吞已有玩家局");
+                BossRushCoop.RunId="";Check(runtime.CanContinueWorld,"G原host空握手保留原房世界");
+                BossRushCoop.IsConnected=false;BossRushCoop.IsHost=false;
+                Console.WriteLine("G_HOST_STOP_REPRO authority="+runtime.CoopRunHasWorldAuthority+" callback="+runtime.CanContinueWorld);
+                Check(!runtime.CoopRunHasWorldAuthority&&!runtime.CanContinueWorld,"G原host真正Stop不可转为单机继续旧世界");
+                Check(!runtime.CheckCoopAsset()&&runtime.AssetEnds==1,"G原host Stop沿原End结清旧owner");
+            }
+            BossRushCoop.IsConnected=false;BossRushCoop.IsHost=false;BossRushCoop.RunId="";
+            using(var battle=new Battle()) {
+                var solo=new ModeGRuntimeModule(battle.state,battle.telemetry,battle.adaptive);solo.FreezeAsset();
+                Check(solo.CoopRunHasWorldAuthority&&solo.CanContinueWorld,"G原单机仍正常开局");
+                BossRushCoop.IsConnected=true;BossRushCoop.IsHost=true;BossRushCoop.RunId="new-room";
+                Check(!solo.CoopRunHasWorldAuthority&&!solo.CanContinueWorld,"G旧单机不能带世界进新房间");
+            }
+            BossRushCoop.IsConnected=false;BossRushCoop.IsHost=false;BossRushCoop.RunId="";BossRushCoop.SessionReady=true;
         });
         Case("原客端断线不获得本地世界生成权限且新房间结清旧局",()=>{
             BossRushCoop.IsConnected=true;BossRushCoop.IsHost=false;BossRushCoop.RunId="old-room";BossRushCoop.LocalAssetId="asset-1";

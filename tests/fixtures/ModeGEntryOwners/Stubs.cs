@@ -39,7 +39,8 @@ namespace BossRush
         }
         internal static IEnumerable<BossRushCoopPlayer> Players {get{foreach(var p in Peers)yield return FindPlayer(p.Id);}}
         internal static CharacterMainControl FindEntity(string id) {return null;}
-        internal static CharacterMainControl FindAi(int id) {return null;}
+        internal static readonly Dictionary<int,CharacterMainControl> AuditAi=new Dictionary<int,CharacterMainControl>();
+        internal static CharacterMainControl FindAi(int id) {CharacterMainControl value;return AuditAi.TryGetValue(id,out value)?value:null;}
         internal static void MarkSceneReady(string key) { Current.ReadyKeys.Add(key); }
     }
 }
@@ -325,24 +326,34 @@ namespace BossRush
         private string coopRunAsset,coopRunRoom;private bool coopAssetBound;
         private readonly Dictionary<string,string> coopParticipantAssets=new Dictionary<string,string>(StringComparer.Ordinal);
         private readonly Dictionary<int,CharacterMainControl> coopBosses=new Dictionary<int,CharacterMainControl>();
+        private readonly Dictionary<int,Health> coopBossHealth=new Dictionary<int,Health>();
+        private int coopBossGeneration=-1;
         private readonly HashSet<long> coopCombatApplied=new HashSet<long>();
-        private long coopAppliedOrder,coopAdmissionBaseline,coopRequestedAdmissionBaseline;private bool coopAdmissionReady,coopRunWasClient,coopEntryActorsKnown;private int coopGuestWave,coopEntryWave;
+        private long coopAppliedOrder,coopAdmissionBaseline,coopRequestedAdmissionBaseline;private bool coopAdmissionReady,coopRunWasClient,coopRunWasConnected,coopEntryActorsKnown;private int coopGuestWave,coopEntryWave;
         private readonly HashSet<int> coopEntryActors=new HashSet<int>();
-        private ModeGCoopWorld coopWorld;private ModeGSpawnTransaction _spawnTransaction;
+        private ModeGCoopWorld coopWorld;private string coopWorldToken;private ModeGSpawnTransaction _spawnTransaction;
         private bool _firstWaveCombatStarted,_waveSettlementPending,coopWaveTelemetryReady;
         internal bool CoopPersonalDefeated {get;private set;}
         private ModeGCombatTelemetry _telemetry;private ModeGAdaptiveCombat _adaptive;
         internal int AuditDamageCalls {get{return _telemetry==null?0:_telemetry.Calls;}}
         internal int AuditBossDeaths;
-        internal void AuditBindBoss(int id) {coopGuestWave=State.waveEpoch;coopBosses[id]=new CharacterMainControl();}
+        internal void AuditBindBoss(int id) {coopGuestWave=State.waveEpoch;coopBossGeneration=BossRushCoop.SceneGeneration;coopBosses[id]=new CharacterMainControl();coopBossHealth[id]=coopBosses[id].Health;State.RegisterTrackedBoss(coopBosses[id].Health,coopBosses[id]);}
         private void HandleBossDead(Health health,DamageInfo info) {AuditBossDeaths++;}
-        internal void ApplyCoopWorld(ModeGCoopWorld world) {coopWorld=world;}
         internal void AuditGuestDrive(ModeGCoopWorld world)
         {
-            coopWorld=world;coopGuestWave=State.waveEpoch=world.Wave;_spawnTransaction=new ModeGSpawnTransaction(State);
+            ApplyCoopWorld(world);coopGuestWave=State.waveEpoch=world.Wave;_spawnTransaction=new ModeGSpawnTransaction(State);
             State.TrySetWaveSlotPlan(world.Expected);for(int i=0;i<world.Expected;i++)_spawnTransaction.MarkExhausted(i);
             State.combatPhase=ModeGCombatPhase.Spawning;DriveCoopGuest();
         }
+        internal void AuditGuestCommit(ModeGCoopWorld world,bool drive=true)
+        {
+            ApplyCoopWorld(world);coopGuestWave=State.waveEpoch=world.Wave;coopBossGeneration=BossRushCoop.SceneGeneration;
+            _spawnTransaction=new ModeGSpawnTransaction(State);State.TrySetWaveSlotPlan(world.Expected);
+            State.combatPhase=ModeGCombatPhase.Spawning;if(drive)DriveCoopGuest();
+        }
+        internal void AuditGuestTick() {DriveCoopGuest();}
+        internal bool AuditOwnsHealth(int id,Health expected)
+        {Health value;return coopBossHealth.TryGetValue(id,out value)&&ReferenceEquals(value,expected)&&State.IsRegisteredBossHealth(value);}
         private void BeginCoopGuestWave(ModeGCoopWorld world) {throw new InvalidOperationException("Guest wave preparation outside this isolated drive case");}
         private void SettleCurrentWave() {Harness.Events.Add("guest-settle");}
         private void TickAmmoViolationAnnounce() { }

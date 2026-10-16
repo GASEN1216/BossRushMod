@@ -44,22 +44,38 @@ namespace BossRush
                 if (target == null) return;
                 if (target.IsMainCharacterHealth || BossRushCoop.IsPlayer(target.TryGetCharacter())) return;
 
-                if (info.fromCharacter == null || (!info.fromCharacter.IsMainCharacter && !BossRushCoop.IsPlayer(info.fromCharacter))) return;
+                CharacterMainControl killer = ResolveKillOwner(info);
+                if (killer == null) return;
 
                 CharacterMainControl victim = target.TryGetCharacter();
                 // 只奖励战斗：盟友、雇员、宠物与中立角色不能刷契约进度。
-                if (victim == null || !Team.IsEnemy(info.fromCharacter.Team, victim.Team)) return;
+                if (victim == null || !Team.IsEnemy(killer.Team, victim.Team)) return;
                 bool isBoss = victim != null && victim.isBossCharacter;
                 bool isMelee = IsMeleeWeapon(info.fromWeaponItemID);
                 bool hasBounty = isBoss && HasBountyMark(victim);
 
-                if (CampaignRuntimeModule.ReportCoopCampaignKill(victim, isMelee, isBoss, hasBounty)) return;
+                if (CampaignRuntimeModule.ReportCoopCampaignKill(killer, victim, isMelee, isBoss, hasBounty)) return;
                 CampaignObjectiveTracker.ReportPlayerKill(isMelee, isBoss, hasBounty);
             }
             catch (Exception)
             {
                 // 采集不是关键路径：热事件里绝不抛，也不打日志（会刷屏）
             }
+        }
+
+        private static CharacterMainControl ResolveKillOwner(DamageInfo info)
+        {
+            ModBehaviour host = ModBehaviour.Instance;
+            if (host != null) host.AttributeModeEHiredBossKillToOwner(ref info);
+            CharacterMainControl actor = info.fromCharacter;
+            if (actor == null) return null;
+            if (BossRushCoop.IsConnected ? BossRushCoop.IsPlayer(actor) : actor.IsMainCharacter) return actor;
+            CharacterMainControl owner;
+            if (FrostmourneAction.TryGetSummonOwner(actor, out owner) || SummonStaffAction.TryGetSummonOwner(actor, out owner))
+                return owner;
+            PetNestCompanionAgent companion = actor.GetComponent<PetNestCompanionAgent>();
+            owner = companion != null ? companion.Master : null;
+            return owner != null && (BossRushCoop.IsConnected ? BossRushCoop.IsPlayer(owner) : owner.IsMainCharacter) ? owner : null;
         }
 
         /// <summary>

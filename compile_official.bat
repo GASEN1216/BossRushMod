@@ -154,9 +154,11 @@ echo(Integration\CoopPersonalProgressRuntimeModule.cs
 echo(Common\Coop\BossRushCoop.cs
 echo(Common\Coop\BossRushCoopControl.cs
 echo(Common\Coop\BossRushCoopProtocol.cs
+echo(Common\Coop\BossRushCoopPacketFrames.cs
 echo(Common\Coop\BossRushCoopJson.cs
 echo(Common\Coop\BossRushCoopRuntimeModule.cs
 echo(Common\Coop\BossRushCoopTransport.cs
+echo(Common\Coop\BossRushCoopSceneIdentity.cs
 echo(Common\Coop\BossRushCoopWorldLoot.cs
 echo(Integration\Coop\BossRushCoopContentRuntimeModule.cs
 echo(Integration\Coop\BossRushCoopFxRuntimeModule.cs
@@ -172,6 +174,7 @@ echo(Utilities\CoopGameplayChannel.cs
 echo(Utilities\CoopAiPredictionHealthProtection.cs
 echo(Utilities\CoopPersonalDelivery.cs
 echo(WavesArena\WavesArenaRuntimeModule_Coop.cs
+echo(WavesArena\WavesArenaRuntimeModule_CoopRewards.cs
 echo(ModBehaviourRuntimeModules.cs
 echo(Common\Lifecycle\BossRushSaveFileThrottle.cs
 echo(Common\Lifecycle\BossRushSaveCoordinatorEngine.cs
@@ -318,6 +321,8 @@ echo(SkyIsland\SkyIslandStargazerChief.cs
 echo(SkyIsland\SkyIslandBossProps.cs
 echo(SkyIsland\SkyIslandRootHunterBoss.cs
 echo(SkyIsland\SkyIslandWaylayerChief.cs
+echo(SkyIsland\CoopWaylayerJournal.cs
+echo(SkyIsland\CoopWaylayerJournalHooks.cs
 echo(SkyIsland\SkyIslandSickleBoss.cs
 echo(SkyIsland\SkyIslandListenerChief.cs
 echo(SkyIsland\SkyIslandPiperChief.cs
@@ -562,6 +567,7 @@ echo(WavesArena\BossRushEntryFlow.cs
 echo(WavesArena\WavesArenaSpawnerControl.cs
 echo(LootAndRewards\LegacyBossLootProbabilityModel.cs
 echo(LootAndRewards\LootAndRewards.cs
+echo(LootAndRewards\CoopArenaPersonalLoot.cs
 echo(LootAndRewards\LootAndRewardsStaticCacheReset.cs
 echo(LootAndRewards\InfiniteHellMilestoneDelivery.cs
 echo(LootAndRewards\VictoryRewardShadowCrateController.cs

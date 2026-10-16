@@ -4,10 +4,13 @@ import hashlib
 import json
 import sys
 import tempfile
+import argparse
 from xml.sax.saxutils import escape
 
 ROOT=Path(__file__).resolve().parents[3]
 HERE=Path(__file__).resolve().parent
+parser=argparse.ArgumentParser();parser.add_argument('--output',type=Path,default=ROOT/"Build/runtime-regressions/DragonKingCoopWorld")
+OUTPUT_ROOT=parser.parse_args().output.resolve()
 sys.path.insert(0,str(ROOT/"tools"))
 from run_runtime_regressions import run_project_fixture
 
@@ -20,11 +23,11 @@ def member(source,signature):
     raise AssertionError(signature)
 
 def main():
-    out=ROOT/"Build/runtime-regressions/DragonKingCoopWorld";out.mkdir(parents=True,exist_ok=True)
+    out=OUTPUT_ROOT;out.mkdir(parents=True,exist_ok=True)
     run=Path(tempfile.mkdtemp(prefix="source-",dir=out))
     paths=[ROOT/"Integration/DragonKing"/name for name in ("DragonKingAbilityHelpers.cs","DragonKingAbilityController_SpecialAttacks.cs","DragonKingAbilityController_ProjectileAndMovement.cs","DragonKingShockwaveEffect.cs","DragonKingCoopContactRuntimeModule.cs","DragonKingLavaZone.cs")]
     helper,special,movement,shockwave,contact,lava_source=[p.read_text(encoding="utf-8-sig") for p in paths]
-    generated="using System; using System.Collections; using System.Collections.Generic; using UnityEngine; using Duckov.Buffs; namespace BossRush {\n"
+    generated="using System; using System.Collections; using System.Collections.Generic; using UnityEngine; using Duckov.Buffs; using UnityEngine.SceneManagement; namespace BossRush {\n"
     generated+=member(contact,"internal sealed class CoopBossCreationLease")+"\n"
     generated+=member(contact,"internal sealed class DragonKingCoopContactRuntimeModule")+"\n"
     generated+=member(helper,"public class DragonKingCollisionDetector")+"\n"+member(helper,"public class SunBeamDamageTrigger")+"\n"
@@ -52,11 +55,21 @@ def main():
     phantom,realm=[p.read_text(encoding="utf-8-sig") for p in phantom_paths]
     generated+="internal sealed partial class PhantomWitchAbilityController {\n"+member(phantom,"internal static int QueryDamageReceivers(")+"}\n"
     generated+="internal sealed partial class PhantomWitchBossCurseRealmRuntime {\n"+member(realm,"private void DealRealmDamage()")+"}\n}\n"
-    descendant_paths=[ROOT/"Integration/DragonDescendant"/name for name in ("DragonDescendantAbilities.cs","DragonDescendantAbilities_CollisionAndIce.cs")]
-    descendant,collision=[p.read_text(encoding="utf-8-sig") for p in descendant_paths]
+    descendant_paths=[ROOT/"Integration/DragonDescendant"/name for name in ("DragonDescendantAbilities.cs","DragonDescendantAbilities_CollisionAndIce.cs","DragonDescendantAbilities_ProjectilesAndGrenades.cs")]
+    descendant,collision,rockets=[p.read_text(encoding="utf-8-sig") for p in descendant_paths]
     generated=generated[:-2]+"public sealed partial class DragonDescendantAbilityController {\n"
     generated+=member(descendant,"internal bool HasCombatAuthority")+"\n"
-    generated+=member(collision,"private void ApplyCollisionDamage(CharacterMainControl player)")+"\n}\n}\n"
+    generated+=member(collision,"private void ApplyCollisionDamage(CharacterMainControl player)")+"\n"
+    for signature in ("private bool UsesArenaOpponent()", "private bool IsPlayerAlly()", "private void RefreshPlayerReference()"):
+        generated+=member(descendant,signature)+"\n"
+    for signature in ("public void OnCollisionWithPlayer(", "private void ApplyKnockback("):
+        generated+=member(collision,signature)+"\n"
+    generated+=member(rockets,"internal bool CanCompleteRocket(")+"\n}\n"
+    generated+=member(collision,"public class DragonDescendantCollisionDetector")+"\n"
+    sand_path=ROOT/"Integration/SandstormChampion/SandstormChampionMinionArts.cs"
+    sand=sand_path.read_text(encoding="utf-8-sig")
+    generated+="internal partial class SandstormChampionMinionArts {\n"+member(sand,"private bool Strike(CharacterMainControl player,")+"\n"+member(sand,"private static IEnumerator PushPlayer(")+"\n}\n}\n"
+    paths.append(sand_path)
     paths+=descendant_paths
     paths+=phantom_paths+[ROOT/"Utilities/CoopPersonalDelivery.cs",ROOT/"Common/Coop/BossRushCoopJson.cs",ROOT/"Common/Data/BossRushJsonValue.cs",ROOT/"Utilities/SimpleJsonHelper.cs"]
     (run/"Production.cs").write_text(generated,encoding="utf-8")

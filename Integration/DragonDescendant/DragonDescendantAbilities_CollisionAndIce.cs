@@ -15,6 +15,7 @@ namespace BossRush
 {
     public partial class DragonDescendantAbilityController : MonoBehaviour
     {
+        private readonly Dictionary<CharacterMainControl, float> collisionTimes = new Dictionary<CharacterMainControl, float>();
         /// <summary>
         /// 处理与玩家的碰撞
         /// </summary>
@@ -29,8 +30,17 @@ namespace BossRush
                 || (player.IsMainCharacter && ModeHRuntimeGates.IsModeHRunOwnerActive)) return;
 
             // 检查冷却
-            if (Time.time - lastCollisionTime < COLLISION_COOLDOWN) return;
-            lastCollisionTime = Time.time;
+            float lastHit;
+            if (BossRushCoop.IsConnected)
+            {
+                if (collisionTimes.TryGetValue(player, out lastHit) && Time.time - lastHit < COLLISION_COOLDOWN) return;
+                collisionTimes[player] = Time.time;
+            }
+            else
+            {
+                if (Time.time - lastCollisionTime < COLLISION_COOLDOWN) return;
+                lastCollisionTime = Time.time;
+            }
 
             ModBehaviour.DevLog("[DragonDescendant] 撞击玩家");
 
@@ -135,6 +145,12 @@ namespace BossRush
 
                 // 应用击退力
                 float force = DragonDescendantConfig.KnockbackForce;
+                if (BossRushCoop.IsConnected && BossRushCoop.IsPlayer(player) && !UsesArenaOpponent())
+                {
+                    DragonKingCoopContactRuntimeModule.Push(player, knockbackDir * force,
+                        "descendant-contact:" + Guid.NewGuid().ToString("N"));
+                    return;
+                }
 
                 // 优先使用原版的SetForceMoveVelocity方法（如果存在）
                 try
@@ -338,7 +354,8 @@ namespace BossRush
         /// <summary>
         /// 当前在触发器内的玩家
         /// </summary>
-        private CharacterMainControl playerInTrigger = null;
+        private readonly Dictionary<Collider, CharacterMainControl> playersInTrigger = new Dictionary<Collider, CharacterMainControl>();
+        private readonly HashSet<CharacterMainControl> checkedPlayers = new HashSet<CharacterMainControl>();
 
         /// <summary>
         /// 持续碰撞检测协程
@@ -361,34 +378,19 @@ namespace BossRush
         private void OnTriggerEnter(Collider other)
         {
             CharacterMainControl character = GetPlayerFromCollider(other);
-            if (character != null && character.IsMainCharacter)
-            {
-                playerInTrigger = character;
-
-                // 立即检测一次
-                TryTriggerCollision();
-
-                // 启动持续检测协程
-                if (stayCheckCoroutine == null)
-                {
-                    stayCheckCoroutine = StartCoroutine(StayCheckCoroutine());
-                }
-            }
+            if (character == null || !BossRushCoop.IsPlayer(character)) return;
+            playersInTrigger[other] = character;
+            TryTriggerCollision();
+            if (stayCheckCoroutine == null) stayCheckCoroutine = StartCoroutine(StayCheckCoroutine());
         }
 
         private void OnTriggerExit(Collider other)
         {
-            CharacterMainControl character = GetPlayerFromCollider(other);
-            if (character != null && character == playerInTrigger)
+            playersInTrigger.Remove(other);
+            if (playersInTrigger.Count == 0 && stayCheckCoroutine != null)
             {
-                playerInTrigger = null;
-
-                // 停止持续检测协程
-                if (stayCheckCoroutine != null)
-                {
-                    StopCoroutine(stayCheckCoroutine);
-                    stayCheckCoroutine = null;
-                }
+                StopCoroutine(stayCheckCoroutine);
+                stayCheckCoroutine = null;
             }
         }
 
@@ -397,7 +399,7 @@ namespace BossRush
         /// </summary>
         private IEnumerator StayCheckCoroutine()
         {
-            while (playerInTrigger != null)
+            while (playersInTrigger.Count != 0)
             {
                 yield return waitCheckInterval;
                 TryTriggerCollision();
@@ -410,11 +412,12 @@ namespace BossRush
         /// </summary>
         private void TryTriggerCollision()
         {
-            if (controller == null || playerInTrigger == null) return;
-            if (Time.time - lastCollisionCheckTime < CHECK_COOLDOWN) return;
-
+            if (controller == null || Time.time - lastCollisionCheckTime < CHECK_COOLDOWN) return;
             lastCollisionCheckTime = Time.time;
-            controller.OnCollisionWithPlayer(playerInTrigger);
+            checkedPlayers.Clear();
+            foreach (CharacterMainControl player in playersInTrigger.Values)
+                if (player != null && player.Health != null && !player.Health.IsDead && checkedPlayers.Add(player))
+                    controller.OnCollisionWithPlayer(player);
         }
 
         /// <summary>
@@ -453,7 +456,8 @@ namespace BossRush
                 StopCoroutine(stayCheckCoroutine);
                 stayCheckCoroutine = null;
             }
-            playerInTrigger = null;
+            playersInTrigger.Clear();
+            checkedPlayers.Clear();
             controller = null;
         }
     }

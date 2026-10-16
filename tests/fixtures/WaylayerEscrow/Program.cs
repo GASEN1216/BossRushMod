@@ -6,7 +6,7 @@ using ItemStatsSystem;
 using ItemStatsSystem.Data;
 using UnityEngine;
 
-internal static class Program
+internal static partial class Program
 {
     private static int checks;
     private static CoopWaylayerEscrow host,guest;
@@ -15,19 +15,28 @@ internal static class Program
     private static BossRushCoopPlayer member;
     private static void Check(bool value,string reason) {if(!value)throw new Exception(reason);checks++;}
     private static CharacterMainControl Player() {return new CharacterMainControl {CharacterItem=new Item {Inventory=new Inventory()}};}
-    private static void Host() {BossRushCoop.IsHost=true;BossRushCoop.IsClient=false;BossRushCoop.LocalPlayerId="host";BossRushCoop.LocalAssetId="host-slot";CharacterMainControl.Main=hostPlayer;}
-    private static void Guest(string asset="guest-slot") {BossRushCoop.IsHost=false;BossRushCoop.IsClient=true;BossRushCoop.LocalPlayerId="guest";BossRushCoop.LocalAssetId=asset;CharacterMainControl.Main=guestPlayer;}
+    private static void Host() {BossRushCoop.IsHost=true;BossRushCoop.IsClient=false;BossRushCoop.LocalPlayerId="host";BossRushCoop.LocalAssetId="host-slot";CharacterMainControl.Main=hostPlayer;Saves.SavesSystem.CurrentSlot=1;}
+    private static void Guest(string asset="guest-slot") {BossRushCoop.IsHost=false;BossRushCoop.IsClient=true;BossRushCoop.LocalPlayerId="guest";BossRushCoop.LocalAssetId=asset;CharacterMainControl.Main=guestPlayer;Saves.SavesSystem.CurrentSlot=asset=="other-slot"?3:2;}
     private static void Setup()
     {
         if(guest!=null){Guest();guest.Dispose();}if(host!=null){Host();host.Dispose();}
+        Saves.SavesSystem.Reset();
+        Duckov.UI.NotificationText.Notices.Clear();
         BossRushCoop.Players.Clear();BossRushCoop.Entities.Clear();BossRushCoop.Sent.Clear();BossRushCoop.Handlers.Clear();
         CoopPersonalDelivery<CoopWaylayerEscrow.Decision>.Queue.Clear();CoopPersonalDelivery<CoopWaylayerEscrow.Decision>.Apply.Clear();
         ItemTreeData.Deferred=null;ItemTreeData.FactoryCalls=0;ItemTreeData.Fail=false;ItemUtilities.RejectDrop=ItemUtilities.RejectSend=false;
         ItemAssetsCollection.Prefabs[5001]=new Item {TypeID=5001};ItemAssetsCollection.Prefabs[5002]=new Item {TypeID=5002};
-        BossRushCoop.RunId="room";BossRushCoop.SceneGeneration=2;hostPlayer=Player();guestPlayer=Player();boss=Player();chief=new SkyIslandWaylayerChief();
+        BossRushCoop.RunId="room";BossRushCoop.SceneGeneration=2;BossRushCoop.HasBoundScene=true;BossRushCoop.SceneToken="scene-2";hostPlayer=Player();guestPlayer=Player();boss=Player();chief=new SkyIslandWaylayerChief();
         BossRushCoop.Players["host"]=new BossRushCoopPlayer {Id="host",AssetId="host-slot",Character=hostPlayer};
         member=new BossRushCoopPlayer {Id="guest",AssetId="guest-slot",Character=guestPlayer};BossRushCoop.Players["guest"]=member;BossRushCoop.Entities["boss"]=boss;
-        Host();host=new CoopWaylayerEscrow();Guest();guest=new CoopWaylayerEscrow();
+        Host();host=new CoopWaylayerEscrow();Guest();guest=new CoopWaylayerEscrow();Handshake();
+    }
+    private static void Handshake()
+    {
+        Guest();guest.Tick(1);var hello=BossRushCoop.Sent.Last(v=>v.Topic=="sky.waylayer.identity").Value;
+        Host();BossRushCoop.Receive("host","sky.waylayer.identity",hello,"guest",false);
+        var answer=BossRushCoop.Sent.Last(v=>v.Topic=="sky.waylayer.identity").Value;
+        Guest();BossRushCoop.Receive("guest","sky.waylayer.identity",answer,"host",true);
     }
     private static Item Add(CharacterMainControl player,int type,int count,string metadata)
     {var item=new Item {TypeID=type,StackCount=count,Metadata=metadata};player.CharacterItem.Inventory.AddItem(item);return item;}
@@ -45,6 +54,17 @@ internal static class Program
     private static CoopWaylayerEscrow.Decision Decision() {return CoopPersonalDelivery<CoopWaylayerEscrow.Decision>.Queue.Last().Value;}
     private static async Task Main()
     {
+        try { await MainBody(); }
+        catch(Exception error)
+        {
+            Console.WriteLine("FAIL TYPE: "+error.GetType().FullName);
+            Console.WriteLine("FAIL MESSAGE: "+error.Message);
+            Console.WriteLine("FAIL STACK: "+error.StackTrace);
+            Environment.ExitCode=1;
+        }
+    }
+    private static async Task MainBody()
+    {
         Setup();var mine=Add(hostPlayer,5002,7,"host");var stack=Add(guestPlayer,5002,3,"frozen guest metadata");var cheaper=Add(guestPlayer,5001,2,"cheap");
         var packet=Start();Check(stack.StackCount==2&&mine.StackCount==7&&cheaper.StackCount==2,"only selected guest loses one highest value consumable");
         var response=Response();BossRushCoop.Receive("guest","sky.waylayer.reserve",packet,"host",true);
@@ -54,6 +74,9 @@ internal static class Program
         Check(chief.Bag.GetItemAt(0).Metadata=="frozen guest metadata","world item retains frozen source metadata");
         Guest();Check(Apply(Decision())&&Apply(Decision())&&stack.StackCount==2,"committed personal decision is idempotent");
         BossRushCoop.Receive("guest","sky.waylayer.reserve",packet,"host",true);Check(stack.StackCount==2,"late reserve cannot reopen a settled transaction");
+        int queued=CoopPersonalDelivery<CoopWaylayerEscrow.Decision>.Queue.Count;Host();
+        for(int generation=3;generation<30;generation++){BossRushCoop.SceneGeneration=generation;host.Tick(1);host.Tick(1);}
+        Check(CoopPersonalDelivery<CoopWaylayerEscrow.Decision>.Queue.Count==queued,"completed steal registers its personal receipt once across arbitrarily many scene generations; delivery owns retries");
 
         Setup();stack=Add(guestPlayer,5002,3,"refund");Start();ItemTreeData.Fail=true;Respond(Response());
         Check(!Decision().Success&&chief.Snatches==0,"factory failure reports rejection without gameplay count");
@@ -90,7 +113,11 @@ internal static class Program
 
         Setup();stack=Add(guestPlayer,5002,3,"new room");Start();BossRushCoop.RunId="next-room";Guest("other-slot");guest.Tick(1);
         Check(stack.StackCount==2,"room cancellation preserves obligation while original asset is unavailable");Guest();BossRushCoop.LocalPlayerId="new-room-peer";guest.Tick(1);guest.Tick(1);
-        Check(stack.StackCount==3,"old room reservation returns once in its original asset");
+        Check(stack.StackCount==2,"unknown old room commit remains escrowed, never blindly refunded");
+        await JournalCases();
+#if WAYLAYER_HARMONY_FIXTURE
+        await HookCases();
+#endif
         Guest();guest.Dispose();Host();host.Dispose();Check(BossRushCoop.Handlers.Count==0,"escrow owner disposes all protocol subscriptions");
         Console.WriteLine("WaylayerEscrow: PASS "+checks+" production assertions; transport, Unity and item factory are controlled boundaries.");
     }

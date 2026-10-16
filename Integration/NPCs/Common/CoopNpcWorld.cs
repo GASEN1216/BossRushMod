@@ -9,7 +9,7 @@ namespace BossRush
     /// <summary>房主拥有 NPC 移动，每端挂自己的服务、关系与剧情交互。</summary>
     internal sealed partial class CoopNpcWorld : IDisposable
     {
-        [Serializable] internal sealed class State { public string RunId; public int Generation; public long Sequence; public Entry[] Npcs; }
+        [Serializable] internal sealed class State { public string RunId, Token; public int Generation; public long Sequence; public Entry[] Npcs; }
         [Serializable] internal sealed class Entry
         {
             public string Id, Kind, Owner, Asset, NpcId;
@@ -28,7 +28,7 @@ namespace BossRush
         private long stateSequence;
         private int generation;
         private int sceneGeneration = -1;
-        private string runId;
+        private string runId, sceneToken;
         private bool disposed;
         internal static CoopNpcWorld Current { get; private set; }
         internal static bool ApplyingReplica { get; private set; }
@@ -69,7 +69,7 @@ namespace BossRush
             if (!BossRushCoop.IsClient || !message.IsFromHost) return;
             RefreshCoopNpcScope();
             State state = message.Read<State>();
-            if (state == null || state.RunId != runId || state.Generation != sceneGeneration
+            if (state == null || state.RunId != runId || state.Generation != sceneGeneration || string.IsNullOrEmpty(state.Token) || state.Token != BossRushCoop.SceneToken
                 || state.Npcs == null || state.Npcs.Length > 4096 || state.Sequence <= 0
                 || (latest != null && state.Sequence <= latest.Sequence)) return;
             latest = state;
@@ -77,7 +77,7 @@ namespace BossRush
 
         internal void Tick()
         {
-            if (disposed || !BossRushCoop.IsConnected || !BossRushCoop.SessionReady || SceneLoader.IsSceneLoading
+            if (disposed || !BossRushCoop.IsConnected || !BossRushCoop.SessionReady || !BossRushCoop.HasBoundScene || SceneLoader.IsSceneLoading
                 || !LevelManager.AfterInit || Time.unscaledTime < nextTick) return;
             nextTick = Time.unscaledTime + 0.25f;
             RefreshCoopNpcScope();
@@ -91,12 +91,12 @@ namespace BossRush
                             Position = pair.Value.Object.transform.position, Rotation = pair.Value.Object.transform.rotation,
                             Active = pair.Value.Object.activeSelf, Owner = pair.Value.Owner, Asset = pair.Value.Asset,
                             NpcId = pair.Value.NpcId, Following = pair.Value.Following });
-                BossRushCoop.Broadcast("npc.world", new State { RunId = runId, Generation = sceneGeneration, Sequence = ++stateSequence, Npcs = entries.ToArray() });
+                BossRushCoop.Broadcast("npc.world", new State { RunId = runId, Token = sceneToken, Generation = sceneGeneration, Sequence = ++stateSequence, Npcs = entries.ToArray() });
                 return;
             }
             TickLocalSpouse();
             if (latest == null || latest.Npcs == null || latest.Npcs.Length > 4096
-                || latest.RunId != runId || latest.Generation != sceneGeneration) return;
+                || latest.RunId != runId || latest.Generation != sceneGeneration || latest.Token != BossRushCoop.SceneToken) return;
             foreach (Entry entry in latest.Npcs)
             {
                 if (entry == null || string.IsNullOrEmpty(entry.Id)) continue;
@@ -140,7 +140,7 @@ namespace BossRush
                     if (!DuckNpcRegistry.TryGet(entry.Id, out blueprint)) return;
                     created = await DuckNpcSpawner.SpawnAsync(blueprint, entry.Position, entry.Rotation * Vector3.forward, true);
                     if (created == null) return;
-                    if (disposed || requestGeneration != generation) { DuckNpcSpawner.Despawn(created); return; }
+                    if (disposed || !IsCoopNpcSceneCurrent(requestGeneration)) { DuckNpcSpawner.Despawn(created); return; }
                     if (blueprint.isPermanent)
                     {
                         PermanentDuckNpcModule.AttachPermanentParts(created, blueprint, entry.Position);
@@ -172,10 +172,15 @@ namespace BossRush
             foreach (var pair in actors) if (pair.Value.Object == null) gone.Add(pair.Key);
             foreach (string id in gone) actors.Remove(id);
         }
+        private bool IsCoopNpcSceneCurrent(int requestGeneration)
+        {
+            return BossRushCoop.HasBoundScene && requestGeneration == generation
+                && sceneGeneration == BossRushCoop.SceneGeneration && runId == BossRushCoop.RunId && sceneToken == BossRushCoop.SceneToken;
+        }
         private void RefreshCoopNpcScope()
         {
-            if (sceneGeneration == BossRushCoop.SceneGeneration && runId == BossRushCoop.RunId) return;
-            ClearScene(); sceneGeneration = BossRushCoop.SceneGeneration; runId = BossRushCoop.RunId;
+            if (sceneGeneration == BossRushCoop.SceneGeneration && runId == BossRushCoop.RunId && sceneToken == BossRushCoop.SceneToken) return;
+            ClearScene(); sceneGeneration = BossRushCoop.SceneGeneration; runId = BossRushCoop.RunId; sceneToken = BossRushCoop.SceneToken;
         }
         internal static Vector3? ReplicaPosition { get; private set; }
         public void Dispose()

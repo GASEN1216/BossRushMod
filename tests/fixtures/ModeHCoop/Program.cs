@@ -7,18 +7,20 @@ namespace UnityEngine
 }
 namespace BossRush
 {
-    enum ModeHLifecycle { None, Drafting, MatchBrief, MatchFighting, Intermission }
-    class Run { public string RunId="season"; public long RunSeed=17,OwnerToken=1; public int TechnicalRetrySequence; public ModeHLifecycle Lifecycle=ModeHLifecycle.Drafting; }
-    class Roster { public int RerollsUsed; }
-    class ModeHCoopWorld { public string Run, Round; public string[] Requested; }
+    enum ModeHLifecycle { None, Drafting, RosterLocked, MatchBrief, MatchFighting, Intermission }
+    class Run { public string RunId="season"; public long RunSeed=17,OwnerToken=1,StateSequence; public int MatchIndex=1,TechnicalRetrySequence; public ModeHLifecycle Lifecycle=ModeHLifecycle.Drafting; public void RestoreMatchIndex(int match,int retry,long sequence) {MatchIndex=match;TechnicalRetrySequence=retry;StateSequence=sequence;} }
+    class Roster { public int RerollsUsed,MatchIndex; public string RunId; public List<int> Allies=new List<int>(),Enemies=new List<int>(); }
+
     class Health {public bool IsDead;}
-    class CharacterMainControl {public Health Health;public static CharacterMainControl Main {get{return BossRushCoop.FindPlayer(BossRushCoop.LocalPlayerId).Character;}}}
+    class CharacterMainControl {public Health Health;public object characterPreset; public Item CharacterItem;public static CharacterMainControl Main {get{return BossRushCoop.FindPlayer(BossRushCoop.LocalPlayerId).Character;}}}
     class ModeHSpectatorLease {public static int Acquires;public void Release(int generation) {}public bool TryAcquire(int position,int generation,long owner,out string error) {Acquires++;error=null;return true;}}
-    class Map {public int SpectatorPos;}
+    class Map {public int SpectatorPos;public string SceneName="TestArena",SceneId="TestArenaID";}
     class BossRushCoopPlayer { public string Id; public string AssetId="slot-A"; public bool IsConnected=true; public CharacterMainControl Character; }
     static class BossRushCoop
     {
         public static bool IsConnected=true, IsHost=true, IsClient=false, SessionReady=true, SceneReady=true;
+        public static bool HasBoundScene;
+        public static string SceneToken;
         public static string LocalPlayerId="p0",RunId="h-room";public static void EndControlLease(string lease){}
         public static string LocalAssetId { get { return FindPlayer(LocalPlayerId).AssetId; } }
         public static List<BossRushCoopPlayer> Players=new List<BossRushCoopPlayer>();
@@ -30,30 +32,34 @@ namespace BossRush
     class CoopGameplayCommand { public string PlayerId, Text, Action, AssetId; }
     class CoopGameplayChannel<T>
     {
+        public int Requests;
         public void Tick(float dt) {} public void Publish() {}
-        public bool Request(string action, string text=null) { return true; }
+        public bool Request(string action, string text=null) { Requests++; return true; }
+        public bool RequestRepeat(string action, string text=null) { return Request(action, text); }
     }
     class CoopPersonalDelivery<T>
     {
         public bool HasPendingConnectedDeliveries;
         public int Starts;
-        public string LastTargetAsset;
+        public string LastTargetAsset; public readonly Dictionary<string,string> Targets = new Dictionary<string,string>();
         public void Tick(float dt) {}
         public bool HasPendingForPlayers(IEnumerable<string> ids) { return HasPendingConnectedDeliveries; }
-        public bool Deliver(string player,string id,T payload,string targetAssetId=null) { Starts++; LastTargetAsset=targetAssetId;return true; }
+        public bool Deliver(string player,string id,T payload,string targetAssetId=null) { Starts++; LastTargetAsset=targetAssetId; Targets[player]=targetAssetId;return true; }
     }
     class Ui { public void ApplyHudVisibility() {} }
     class CombatControl { public string Operator; public void SetCoopOperator(string player) { Operator=player; } }
     partial class ModeHRuntimeModule
     {
-        private string _coopWorldAsset,_coopWorldRun;
+        private string _coopWorldAsset,_coopWorldRun,_coopWorldRoom;
+        private bool _coopWorldWasConnected;
+        private string _coopProjectionToken;
         private object _season=new object();private Map _map;
         private bool _seasonDirty;
         private int _sceneGeneration;
         private ModeHSpectatorLease _spectatorLease=new ModeHSpectatorLease();
         public int Released, Restored, Reconciled;
         private void EnsureContentScanned() {}
-        private void CancelSeasonResume() {}
+        private void CancelSceneReadyWait() {}
         private void ReleaseRuntimeObjects() {Released++;}
         private void BeginNewRunSession() {}
         private void RestoreFromSaveIfPresent() {Restored++;}
@@ -73,18 +79,20 @@ namespace BossRush
         ModeHCoopWorld _coopView;
         HashSet<string> _coopRequested=new HashSet<string>(), _coopFunded=new HashSet<string>(), _coopForfeited=new HashSet<string>(), _coopExited=new HashSet<string>();
         Dictionary<string,string> _coopRequestedAssets=new Dictionary<string,string>(),_coopFundedAssets=new Dictionary<string,string>();
+        Dictionary<string,string> _coopSkipped=new Dictionary<string,string>(); HashSet<string> _coopSkipQueued=new HashSet<string>();
+        public string Target(string id) {string asset;return _coopResults.Targets.TryGetValue(id,out asset)?asset:null;} public void Skip() {StartCoopWithConfirmedPlayers();} public bool Skipped(string id,string asset) {return IsCoopSkipped(id,asset);}
         string _coopRound, _coopStartedRound,_coopParticipantRun,_coopBellRequester;
-        bool _coopProjection, _coopStarting, _commandsClosed,_shutdownCompleted,_restoredSeasonPending;string _coopProjectionRoom,_coopControlLease,_coopUiStamp,_coopPrepared;
+        bool _coopProjection, _coopStarting, _commandsClosed,_shutdownCompleted,_restoredSeasonPending,_resumeScenePending;string _coopProjectionRoom,_coopControlLease,_coopUiStamp,_coopPrepared;
         void DestroyUi() {Released++;}
-        public void BeginProjection(){_coopProjection=true;_coopProjectionRoom=BossRushCoop.RunId;}public bool Projecting{get{return _coopProjection;}}
+        public void BeginProjection(){_coopProjection=true;_coopProjectionRoom=BossRushCoop.RunId;_coopProjectionToken=BossRushCoop.SceneToken;}public bool Projecting{get{return _coopProjection;}}
         CombatControl _combatControl=new CombatControl();
-        bool HasActiveRun { get { return true; } } bool GroupModeEnabled { get { return true; } }
+        bool GroupModeEnabled { get { return true; } }
         int GroupMatchIndex { get { return 1; } }
         public int Starts, Bells;
         void RestoreCoopSpectators() {} void ProtectCoopSpectators(float dt) {}
         void RefreshCoopSlot() {}
-        void TryPrepareCoopBet(float dt,string round) {}
-        void TickCoopSpectator(float dt) {} void RouteUiForLifecycle(ModeHLifecycle phase) {}
+        public int SpectatorTicks;
+        void TickCoopSpectator(float dt) {SpectatorTicks++;} void RouteUiForLifecycle(ModeHLifecycle phase) {}
         bool IsGroupRosterPhase() { return _runState.Lifecycle==ModeHLifecycle.Drafting || _runState.Lifecycle==ModeHLifecycle.MatchBrief; }
         void StartGroupMatch() { if(RequestCoopStart()) return; Starts++; _runState.Lifecycle=ModeHLifecycle.MatchFighting; }
         void RerollGroupRoster() { if(RequestCoopReroll()) return; _groupRoster.RerollsUsed++; }
@@ -100,9 +108,9 @@ namespace BossRush
         public string LastAsset { get { return _coopResults.LastTargetAsset; } }
     }
     static class ModeHGroupTeamTags {public static void SetActive(bool x){}}
-    static class ModeHRuntimeGates { public static void SetCombatFrameActive(bool x){}public static bool OwnerActive;public static void SetRunOwnerActive(bool x) {OwnerActive=x;} }
-    static class BossRushMapSelectionHelper {public static bool HasPendingModeHEntryIntent() {return false;}}
-    static class ModeHEntry {public static void CancelPendingEntry() {}}
+    static class ModeHRuntimeGates { public static int SlotGeneration; public static void SetCombatFrameActive(bool x){}public static bool OwnerActive;public static void SetRunOwnerActive(bool x) {OwnerActive=x;} }
+    static class BossRushMapSelectionHelper { public static bool Pending; public static int Generation; public static bool HasPendingModeHEntryIntent() {return Pending;} public static int GetPendingModeHSceneGeneration() { return Generation; } public static int FreezeModeHEntryIntent(string name,string id) { Pending=true;return Generation=77; } }
+    static class ModeHEntry {public static void CancelPendingEntry() {BossRushMapSelectionHelper.Pending=false;}}
     static class ModeHTicketRefund {public static void ResetStaticCaches() {}}
     static class ModeHSessionSummary {public static void Discard() {}}
     class BossRushSlotJsonStoreSpec<T> where T:class
@@ -135,16 +143,20 @@ namespace BossRush
     }
     static class Faults { public static bool StoreFail,FlushFail,PaymentFail; }
     static class ModeHConfig { public const int SeasonMatchCount=6,CurrentSchemaVersion=1,MinOdds=1,MaxOdds=5; }
-    static class ModeHGroupBattle { public const int WinnerBlue=1,WinnerRed=2; }
+    partial class ModeHGroupBattle { public const int WinnerBlue=1,WinnerRed=2; }
     static class L10n { public static string T(string cn,string en) {return en;} }
-    class ModeHCashBetRecord { public string runId; public int matchIndex,status,kind,betSide,odds; public long payout,amount; }
+    class ModeHCashBetRecord { public string runId; public int matchIndex,status,kind,betSide,odds,combatStarted; public long payout,amount; }
     static class ModeHCashBetService
     {
         public const int StatusReserved=1,StatusSettled=2,KindItems=1;
         public const int BetSideBlue=1,BetSideRed=2;
         public static ModeHCashBetRecord Current;
-        public static int Payments,ItemPayments;
-        public static ModeHCashBetRecord ReservedFor(string run,int match) {return Current!=null&&Current.runId==run&&Current.matchIndex==match?Current:null;}
+        public static long StandingAmount;
+        public static int Reserves;
+        public static bool TryReserve(string run,int match,int odds,long amount,out string failure,int side)
+        {failure=null;if(Current!=null&&Current.status==StatusReserved)return false;Reserves++;Current=new ModeHCashBetRecord {runId=run,matchIndex=match,odds=odds,amount=amount,status=StatusReserved,betSide=side};return true;}
+        public static int Payments,ItemPayments,Refunds; public static bool TryRefund(string context,out long amount) {amount=0;if(Faults.PaymentFail || Current==null || Current.status!=StatusReserved)return false;amount=Current.amount;Current.payout=amount;Current.status=3;Refunds++;return true;}
+        public static ModeHCashBetRecord ReservedFor(string run,int match) {return Current!=null&&Current.status==StatusReserved&&Current.runId==run&&Current.matchIndex==match?Current:null;}
         public static bool TryMarkCombatStarted(string run,int match) {return true;}
         public static bool TrySettleItems(string run,int match,bool won,long seed) {ItemPayments++;long paid;return TrySettle(run,match,won,0,0,"",out paid);}
         public static bool TrySettle(string run,int match,bool won,long a,long b,string c,out long payout)
@@ -176,6 +188,7 @@ namespace BossRush
         static void Check(bool condition,string label) {if(!condition)throw new Exception(label);checks++;}
         static void Main()
         {
+            BossRushCoop.HasBoundScene=true;BossRushCoop.SceneToken="h-initial-core";
             for(int i=0;i<16;i++)BossRushCoop.Players.Add(new BossRushCoopPlayer {Id="p"+i,Character=new CharacterMainControl {Health=new Health()}});
             var room=new ModeHRuntimeModule();
             room.Command("p0","funded");Check(room.Funds==0,"unrequested funds cannot start a match");
@@ -254,6 +267,19 @@ namespace BossRush
             Check(ledger.AlignReservedBet("later",1,carried)&&ledger.ResolveSide("later",1,false),"personal side follows the actual reserved asset journal");
             Faults.StoreFail=true;Check(!ledger.Forfeit("later",1),"failed forfeit journal cannot report successful exit");Faults.StoreFail=false;
             BossRushCoop.IsHost=false;BossRushCoop.IsClient=true;var projection=new ModeHRuntimeModule();projection.BeginProjection();projection.Tick();Check(projection.Projecting&&projection.Released==0,"H actual client tick retains original native room projection");BossRushCoop.RunId="other-h-room";projection.Tick();Check(!projection.Projecting&&projection.Released==1&&projection.Restored==1,"H actual tick releases old room spectator/runtime before processing new room");projection.Tick();Check(projection.Released==1,"H old room cleanup is idempotent");var stopped=new ModeHRuntimeModule();stopped.BeginProjection();BossRushCoop.IsConnected=false;BossRushCoop.IsClient=false;stopped.Tick();Check(!stopped.Projecting&&stopped.Released==1,"H native StopNetwork releases former client world before offline owner can tick");BossRushCoop.IsConnected=true;BossRushCoop.IsHost=true;
+            WorldOwnerRegression.Run(Check);
+            CachedSceneRegression.Run(Check);
+            BossRushCoop.IsConnected=true;BossRushCoop.IsHost=true;BossRushCoop.IsClient=false;BossRushCoop.HasBoundScene=true;BossRushCoop.SceneReady=true;
+            foreach(var p in BossRushCoop.Players){p.IsConnected=true;p.AssetId="slot-A";if(p.Character!=null&&p.Character.Health!=null)p.Character.Health.IsDead=false;}
+            BossRushCoop.Players[1].AssetId="skip-original";var skip=new ModeHRuntimeModule();skip.Command("p0","ready");skip.Command("p0","funded");skip.Command("p1","ready");skip.Skip();
+            Check(skip.Target("p1")=="skip-original","H skip refund targets original unconfirmed asset instead of host slot");
+            Check(skip.Skipped("p1","skip-original")&&!skip.Skipped("p0","slot-A"),"H host explicit start freezes only unconfirmed original assets");
+            skip.Command("p1","funded");Check(!skip.IsFunded("p1"),"H late funding after skip cannot enter current match");skip.Tick();Check(skip.Starts==1,"H explicit start advances confirmed host without 15 unconfirmed players");
+            var refund=new ModeHCoopLedger();Check(refund.Prepare("skip-cash",1,777,false,2),"H unconfirmed ledger records original run");ModeHCashBetService.Current=new ModeHCashBetRecord {runId="skip-cash",matchIndex=1,status=1,amount=71};int refunds=ModeHCashBetService.Refunds;
+            Faults.PaymentFail=true;Check(!refund.CancelUnstarted("skip-cash",1,777)&&refund.Owns("skip-cash",1)&&ModeHCashBetService.Current.status==1,"H cash refund failure retains original prepared ledger and held bet");Faults.PaymentFail=false;
+            Check(refund.CancelUnstarted("skip-cash",1,777)&&!refund.Owns("skip-cash",1)&&ModeHCashBetService.Current.payout==71&&ModeHCashBetService.Refunds==refunds+1,"H skipped cash returns full original amount and removes only unconfirmed participation");Check(refund.CancelUnstarted("skip-cash",1,777)&&ModeHCashBetService.Refunds==refunds+1,"H refund receipt retries cannot pay twice");
+            Check(refund.Prepare("skip-item",1,778,false,2),"H next round accepts a new confirmation after skip");ModeHCashBetService.Current=new ModeHCashBetRecord {runId="skip-item",matchIndex=1,status=1,kind=1,amount=90};Check(!refund.CancelUnstarted("skip-item",1,999),"H wrong seed cannot cancel another prepared bet");int releaseBefore=ModeHItemBetStake.Releases;Check(refund.CancelUnstarted("skip-item",1,778)&&ModeHItemBetStake.Releases==releaseBefore+1,"H skipped original item stake unlocks exact existing items");
+            Check(refund.Prepare("started",1,779,false,2),"H real confirmed bet owns ledger");ModeHCashBetService.Current=new ModeHCashBetRecord {runId="started",matchIndex=1,status=1,combatStarted=1,amount=80};Check(!refund.CancelUnstarted("started",1,779)&&ModeHCashBetService.Current.status==1,"H skip cannot refund actual started combat");
             Console.WriteLine("ModeHCoop PASS: "+checks+" assertions; production room coordination and ledger; in-memory host/save adapters.");
         }
     }

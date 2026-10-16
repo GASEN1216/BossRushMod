@@ -26,6 +26,10 @@ namespace BossRush
         private Vector3 position;
         private bool converted;
         private readonly System.Collections.Generic.Dictionary<int, int> participantCopies = new System.Collections.Generic.Dictionary<int, int>();
+        private readonly Func<Item, bool> personalCommit;
+        internal InfiniteHellMilestoneDelivery(Func<Item, bool> personalCommit = null, int completedTier = 0)
+        { this.personalCommit = personalCommit; this.completedTier = Math.Max(0, completedTier); }
+        internal bool IsComplete(int tier) { return completedTier >= tier; }
 
         internal static long SaturatingReward(int tier, long unit)
         {
@@ -81,7 +85,7 @@ namespace BossRush
         internal void Tick(ModBehaviour owner)
         {
             if (completedTier >= requestedTier || Time.unscaledTime < retryAt) return;
-            if (owner == null || !owner.IsActive || BossRushUI.IsGamePaused()) return;
+            if (owner == null || (personalCommit == null && !owner.IsActive) || BossRushUI.IsGamePaused()) return;
             try
             {
                 if (activeTier == 0)
@@ -116,12 +120,13 @@ namespace BossRush
                         item = ItemAssetsCollection.InstantiateSync(typeId);
                         if (item == null) { retryAt = Time.unscaledTime + 1f; return; }
                         item.StackCount = amount;
-                        item.Drop(position, true, UnityEngine.Random.insideUnitSphere.normalized, UnityEngine.Random.Range(30f, 60f));
-                        delivered = true;
+                        if (personalCommit != null) delivered = personalCommit(item);
+                        else { item.Drop(position, true, UnityEngine.Random.insideUnitSphere.normalized, UnityEngine.Random.Range(30f, 60f)); delivered = true; }
+                        if (!delivered) { retryAt = Time.unscaledTime + 1f; return; }
                     }
                     finally
                     {
-                        if (!delivered && item != null) item.DestroyTree();
+                        if (!delivered && item != null && item.ParentObject == null) item.DestroyTree();
                     }
                     if (isCrown) { crownDrops--; crownsRemaining--; }
                     else { cashDrops--; cashRemaining -= amount; }

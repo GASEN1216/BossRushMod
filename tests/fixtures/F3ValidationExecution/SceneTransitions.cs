@@ -13,6 +13,14 @@ internal struct UniTask
     internal void Forget() { }
 }
 internal struct MultiSceneLocation { }
+internal sealed class MultiSceneCore
+{
+    internal static MultiSceneCore Instance;
+    internal bool IsLoading;
+    internal SceneInfo SceneInfo;
+    internal readonly SceneGameObject gameObject = new SceneGameObject();
+}
+internal sealed class SceneInfo { internal string ID; }
 internal sealed class SceneLoader
 {
     internal static readonly SceneLoader Instance = new SceneLoader();
@@ -37,7 +45,7 @@ internal sealed class CharacterMainControl
     internal T GetComponent<T>() where T : class { return Controller as T; }
 }
 internal sealed class SceneTransform { internal object position = new object(); }
-internal sealed class SceneGameObject { internal bool activeInHierarchy; }
+internal sealed class SceneGameObject { internal bool activeInHierarchy; internal SceneManager.Scene scene; }
 internal sealed class SceneHealth
 {
     internal bool IsDead, Invincible, ReviveOnce;
@@ -58,6 +66,7 @@ internal sealed class LevelManager
     internal static LevelManager Instance;
     internal static bool AfterInit;
     internal SceneCamera GameCamera;
+    internal CharacterMainControl MainCharacter;
 }
 internal sealed class SceneHost { internal string GetArenaSceneName() { return "Arena"; } }
 
@@ -71,8 +80,11 @@ internal static class SceneTransitions
         SceneLoader.IsSceneLoading = false; SceneLoader.NextTask = Task.CompletedTask;
         CharacterMainControl.Main = new CharacterMainControl { CharacterItem = new ItemStatsSystem.Item() };
         CharacterMainControl.Main.gameObject.activeInHierarchy = true;
-        LevelManager.Instance = new LevelManager { GameCamera = new SceneCamera { isActiveAndEnabled = true } };
+        LevelManager.Instance = new LevelManager { GameCamera = new SceneCamera { isActiveAndEnabled = true }, MainCharacter = CharacterMainControl.Main };
         LevelManager.AfterInit = true;
+        MultiSceneCore.Instance = new MultiSceneCore { SceneInfo = new SceneInfo { ID = "ArenaCore" } };
+        MultiSceneCore.Instance.gameObject.scene = new SceneManager.Scene { handle = 7, isLoaded = true };
+        BossRushCoop.ResetSceneReady(); ProductionSceneCase.Dedicated = true;
         return new ProductionSceneCase();
     }
     private static void Drain(IEnumerator iterator)
@@ -82,6 +94,55 @@ internal static class SceneTransitions
     }
     internal static void Run(Action<bool, string> check)
     {
+        Fresh(); BossRushCoop.IsConnected = true;
+        ProductionSceneCase.MarkActualReady();
+        check(!ProductionSceneCase.ActualGroupReady(), "scene: one genuinely ready peer cannot pass three-person barrier");
+        BossRushCoop.ReadyPeer = "guest1"; ProductionSceneCase.MarkActualReady();
+        BossRushCoop.ReadyPeer = "guest2"; LevelManager.AfterInit = false; ProductionSceneCase.MarkActualReady();
+        check(!ProductionSceneCase.ActualGroupReady(), "scene: late guest without AfterInit does not publish ready");
+        LevelManager.AfterInit = true; CharacterMainControl.Main.CharacterItem = null; ProductionSceneCase.MarkActualReady();
+        check(!ProductionSceneCase.ActualGroupReady(), "scene: save-dependent character item must really exist");
+        CharacterMainControl.Main.CharacterItem = new ItemStatsSystem.Item();
+        LevelManager.Instance.MainCharacter = null; ProductionSceneCase.MarkActualReady();
+        check(!ProductionSceneCase.ActualGroupReady(), "scene: LevelManager save target must be the actual Main body");
+        LevelManager.Instance.MainCharacter = CharacterMainControl.Main;
+        SceneLoader.IsSceneLoading = true; ProductionSceneCase.MarkActualReady();
+        check(!ProductionSceneCase.ActualGroupReady(), "scene: native pending load cannot acknowledge ready");
+        SceneLoader.IsSceneLoading = false; ProductionSceneCase.Dedicated = false;
+        check(!ProductionSceneCase.ActualGroupReady(), "scene: normal player slot cannot participate in Dev validation barrier");
+        ProductionSceneCase.Dedicated = true; ProductionSceneCase.MarkActualReady();
+        check(ProductionSceneCase.ActualGroupReady(), "scene: all three actual initialized peers release the production barrier");
+        ProductionSceneCase.Dedicated = false;
+        check(!ProductionSceneCase.ActualGroupReady(), "scene: cached ready cannot admit a newly selected non-test slot");
+        ProductionSceneCase.Dedicated = true;
+        BossRushCoop.SceneReady.Clear(); BossRushCoop.ReadyPeer = "host";
+        check(!ProductionSceneCase.ActualGroupReady(), "scene: new generation discards old same-map ready");
+        MultiSceneCore.Instance.SceneInfo.ID = "OtherCore";
+        check(!ProductionSceneCase.ActualGroupReady(), "scene: another official Core cannot satisfy old scene key");
+        MultiSceneCore.Instance.SceneInfo.ID = "Base"; SceneManager.Name = "Base_SceneV2_Sub_01";
+        check(ProductionSceneCase.ActualBase(), "scene: live Base Core permits original-item recovery in official boat subscene");
+        MultiSceneCore.Instance.SceneInfo.ID = "Raid"; SceneManager.Name = "Base_SceneV2";
+        check(!ProductionSceneCase.ActualBase(), "scene: Base-looking active name cannot grant recovery in raid Core");
+        MultiSceneCore.Instance.SceneInfo.ID = "Base"; MultiSceneCore.Instance.IsLoading = true;
+        check(!ProductionSceneCase.ActualBase(), "scene: loading Base cannot grant recovery");
+        MultiSceneCore.Instance.IsLoading = false;
+        MultiSceneCore.Instance.gameObject.scene = new SceneManager.Scene { handle = 7, isLoaded = false };
+        check(!ProductionSceneCase.ActualBase(), "scene: unloaded Base Core cannot grant recovery");
+
+        var multiplayer = Fresh(); BossRushCoop.IsConnected = true;
+        using (var stack = new ValidationCoroutineStack(multiplayer.Run()))
+        {
+            check(stack.MoveNext(), "scene: three-player transition starts with original official entry");
+            SceneManager.Handle = 8;
+            check(stack.MoveNext() && multiplayer.Results.Count == 0, "scene: host target is ready but slow guests must not be declared PASS");
+            BossRushCoop.ReadyPeer = "guest1"; ProductionSceneCase.MarkActualReady();
+            BossRushCoop.ReadyPeer = "host";
+            check(stack.MoveNext(), "scene: second peer arrival still waits for third");
+            BossRushCoop.ReadyPeer = "guest2"; ProductionSceneCase.MarkActualReady();
+            BossRushCoop.ReadyPeer = "host";
+            check(!stack.MoveNext() && multiplayer._operationSucceeded, "scene: actual LoadScene coroutine only passes after all three ready facts");
+        }
+
         var unchanged = Fresh(); Drain(unchanged.Run());
         check(unchanged.Results.Count == 1 && unchanged.Results[0] == "FAIL"
             && unchanged._operationReason == "scene_instance_did_not_change" && ProductionSceneCase.ClosureClicks == 0,

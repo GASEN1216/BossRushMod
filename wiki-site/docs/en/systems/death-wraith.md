@@ -37,7 +37,7 @@ clean up after yourself is often harder than the Boss that killed you in the fir
 ## The Fine Print
 
 - **Records follow lost property.** One death record is kept per raid; repeated records for the same raid replace that entry. Different raids can coexist. The cap follows the current official difficulty's lost-property limit; overflow removes the oldest record and its wraith.
-- **Beating it settles that record.** Killing a wraith removes its record, leaving other raids' records intact. Opening its matching official lost-property cache also removes the saved record, preventing later respawns from that entry.
+- **Defeating it clears only its current appearance.** The record stays with the official lost property. A defeated wraith does not respawn in the same scene, but can appear again on your next visit. Opening the matching official lost-property cache removes the saved record; overflow and disabling the system also clear records under their existing rules.
 - **It drops nothing.** A wraith has no loot crate, and killing it returns not one piece of gear.
   Recover your belongings from the official lost-property cache; the wraith gives no extra gear.
 - **Normal game scenes only**; menus and loading screens never trigger it.

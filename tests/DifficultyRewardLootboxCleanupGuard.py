@@ -49,7 +49,7 @@ def extract_block(text: str, signature: str) -> str:
 
 def main() -> int:
     text = "\n".join(path.read_text(encoding="utf-8") for path in SOURCES if path.exists())
-    block = extract_block(text, "private void SpawnDifficultyRewardLootbox_LootAndRewards(int highQualityCount)")
+    block = extract_block(text, "private InteractableLootbox SpawnDifficultyRewardLootbox_LootAndRewards(int highQualityCount,")
     if not block:
         return fail("DifficultyRewardLootboxCleanupGuard: spawn method not found")
 

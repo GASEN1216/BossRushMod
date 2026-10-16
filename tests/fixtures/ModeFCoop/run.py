@@ -7,7 +7,10 @@ from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parents[3]
 HERE = Path(__file__).resolve().parent
-OUT = ROOT / "Build/runtime-regressions/ModeFCoop"
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("--output", type=Path, default=ROOT / "Build/runtime-regressions/ModeFCoop")
+OUT = parser.parse_args().output.resolve()
 sys.path.insert(0, str(ROOT / "tests"))
 from cs_source_util import clean_source
 
@@ -35,6 +38,7 @@ code += [block(signature) for signature in (
     "private void BeginCoopModeF(", "private void TickCoopModeF(", "private void ApplyCoopModeF(",
     "private bool ApplyCoopModeFPersonal(", "private void DeliverCoopModeFKill(",
     "private int GetCoopModeFPlayerMarks(", "private static bool IsCoopModeFParticipant(",
+    "private void RefreshCoopModeFExtractionEligibility(", "private bool IsCoopModeFExtractionRecipient(",
     "private bool CoopModeFAnyParticipantAlive(", "private void CompleteCoopModeFExtraction(", "private void ExecuteCoopModeF(")]
 code += ["} internal partial class ModeERuntimeModule {"]
 f_source = source
@@ -57,4 +61,8 @@ sys.path.insert(0, str(ROOT / "tools"))
 from run_runtime_regressions import run_project_fixture
 code, output = run_project_fixture(project, OUT / "runs", ROOT)
 print(output)
+if code == 0:
+    from delivery_chain import run as run_delivery_chain
+    code, output = run_delivery_chain(ROOT, HERE, OUT, generated)
+    print(output)
 raise SystemExit(code)

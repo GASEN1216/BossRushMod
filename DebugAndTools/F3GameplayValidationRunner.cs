@@ -211,7 +211,7 @@ namespace BossRush
             for (int i = 0; i < all.Length; i++)
             {
                 CharacterMainControl c = all[i];
-                if (c == null || c == CharacterMainControl.Main) continue;
+                if (c == null || c == CharacterMainControl.Main || BossRushCoop.IsPlayer(c)) continue;
                 try
                 {
                     if (c.Health == null || c.Health.IsDead) continue;
@@ -1025,7 +1025,10 @@ namespace BossRush
 
         private static bool IsBaseScene()
         {
-            return string.Equals(SceneManager.GetActiveScene().name, "Base_SceneV2", StringComparison.Ordinal);
+            MultiSceneCore core = MultiSceneCore.Instance;
+            return !SceneLoader.IsSceneLoading && core != null && !core.IsLoading
+                && core.SceneInfo != null && string.Equals(core.SceneInfo.ID, "Base", StringComparison.Ordinal)
+                && core.gameObject.scene.IsValid() && core.gameObject.scene.isLoaded;
         }
 
         private static string BuildDedicatedMarker()

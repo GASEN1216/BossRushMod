@@ -101,7 +101,7 @@ namespace BossRush
         }
         internal void Tick()
         {
-            if (!BossRushCoop.IsConnected || Time.unscaledTime < nextTick) return;
+            if (!BossRushCoop.IsConnected || !BossRushCoop.HasBoundScene || Time.unscaledTime < nextTick) return;
             nextTick = Time.unscaledTime + 0.5f;
             if (BossRushCoop.IsHost)
             {
@@ -159,7 +159,8 @@ namespace BossRush
         }
         private void ApplyPending()
         {
-            if (pending == null) return;
+            // 新代次可能先于本机实际到达；保留完整快照，等对应 Core 绑定后再操作箱子。
+            if (pending == null || pending.generation != BossRushCoop.SceneGeneration || !BossRushCoop.HasBoundScene) return;
             var live = new HashSet<int>();
             foreach (var state in pending.boxes)
             {

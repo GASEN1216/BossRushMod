@@ -1,12 +1,41 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
+using HarmonyLib;
 using UnityEngine;
 
 namespace BossRush
 {
     internal sealed partial class WavesArenaRuntimeModule
     {
+        // 官方角色已经加入场景时，CreateCharacterAsync 仍可能停在 NextFrame / 装备装配。
+        // 只延后本模块已决定执行的清场；完成后重新走原筛选，不能把半成品永久豁免。
+        private bool DeferNativeFactoryCleanup(CharacterMainControl character, NativeArenaCleanupKind kind)
+        {
+            NativeArenaFactoryLease lease = character.GetComponent<NativeArenaFactoryLease>();
+            if (lease == null || !lease.IsCreating) return false;
+            ModBehaviour expectedOwner = owner;
+            CharacterMainControl player = CharacterMainControl.Main;
+            int scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle;
+            int characterScene = character.gameObject.scene.handle;
+            bool connected = BossRushCoop.IsConnected;
+            string room = BossRushCoop.RunId, asset = BossRushCoop.LocalAssetId;
+            lease.Defer(kind, delegate
+            {
+                if (owner == null || owner != expectedOwner || current != this || character == null
+                    || CharacterMainControl.Main != player || BossRushCoop.LocalAssetId != asset
+                    || UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle != scene
+                    || character.gameObject.scene.handle != characterScene || !BossRushCoop.HasWorldAuthority
+                    || (connected ? !BossRushCoop.IsConnected || !BossRushCoop.IsHost || BossRushCoop.RunId != room
+                        : BossRushCoop.IsConnected)) return;
+                if (kind == NativeArenaCleanupKind.ForceKill) ForceKillAllEnemies();
+                else if (kind == NativeArenaCleanupKind.ClearEnemies) ClearEnemiesForBossRush();
+                else TryCleanNonBossRushDaXingXing();
+            });
+            return true;
+        }
+
         /// <summary>
         /// 禁用场景中的所有spawner
         /// [性能优化] 只扫描 CharacterSpawnerRoot，因为它是所有 spawner 的根控制器
@@ -250,6 +279,94 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[BossRush] [ERROR] TryFixStuckWaveIfNoBossAlive 错误: " + e.Message);
             }
+        }
+    }
+
+    internal enum NativeArenaCleanupKind { ForceKill, ClearEnemies, ForeignDaXingXing }
+
+    /// <summary>随真实角色销毁的生成租约；没有轮询、全局角色表或任务包装。</summary>
+    internal sealed class NativeArenaFactoryLease : MonoBehaviour
+    {
+        private Dictionary<NativeArenaCleanupKind, Action> deferred;
+        internal bool IsCreating { get; private set; } = true;
+
+        internal void Defer(NativeArenaCleanupKind kind, Action retry)
+        {
+            if (!IsCreating) return;
+            if (deferred == null) deferred = new Dictionary<NativeArenaCleanupKind, Action>();
+            if (deferred.ContainsKey(kind)) return;
+            deferred.Add(kind, retry);
+        }
+
+        internal void Complete()
+        {
+            if (!IsCreating) return;
+            IsCreating = false;
+            if (deferred == null) return;
+            // ForceKill 先于直接销毁，保留原死亡事件；回调可能再次清场，先释放全部收据。
+            var work = new Action[3];
+            foreach (var entry in deferred) work[(int)entry.Key] = entry.Value;
+            deferred.Clear(); deferred = null;
+            foreach (Action retry in work)
+            {
+                if (retry == null) continue;
+                try { retry(); }
+                catch (Exception e) { ModBehaviour.DevLog("[BossRush] 原生生成结束后清场失败: " + e.Message); }
+            }
+        }
+
+        private void OnDestroy() { if (deferred != null) deferred.Clear(); deferred = null; IsCreating = false; }
+    }
+
+    /// <summary>只按值读取真实 MoveNext 前后状态；不改状态机、awaiter、返回任务或异常。</summary>
+    [HarmonyPatch]
+    internal static class NativeArenaFactoryLifecyclePatch
+    {
+        private static readonly Type machine = FindMachine();
+        private static readonly FieldInfo characterField = machine != null ? FindCharacterField(machine) : null;
+        private static readonly FieldInfo stateField = machine != null ? machine.GetField("<>1__state", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic) : null;
+
+        private static Type FindMachine()
+        {
+            foreach (Type type in typeof(CharacterRandomPreset).GetNestedTypes(BindingFlags.Public | BindingFlags.NonPublic))
+                if (type.Name.StartsWith("<CreateCharacterAsync>d__", StringComparison.Ordinal)) return type;
+            return null;
+        }
+
+        private static FieldInfo FindCharacterField(Type type)
+        {
+            foreach (FieldInfo field in type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+                if (field.FieldType == typeof(CharacterMainControl) && field.Name.StartsWith("<character>", StringComparison.Ordinal)) return field;
+            return null;
+        }
+
+        private static MethodBase TargetMethod()
+        {
+            if (machine == null || characterField == null || stateField == null || stateField.FieldType != typeof(int))
+                throw new MissingMemberException("CharacterRandomPreset.CreateCharacterAsync 生成生命周期字段不匹配");
+            return AccessTools.Method(machine, "MoveNext");
+        }
+
+        private static void Prefix(object __instance, out CharacterMainControl __state)
+        {
+            __state = null;
+            try { __state = characterField.GetValue(__instance) as CharacterMainControl; }
+            catch (Exception e) { ModBehaviour.DevLog("[BossRush] 原生生成生命周期读取失败: " + e.Message); }
+        }
+
+        private static void Postfix(object __instance, CharacterMainControl __state)
+        {
+            try
+            {
+                bool terminal = (int)stateField.GetValue(__instance) == -2;
+                CharacterMainControl character = characterField.GetValue(__instance) as CharacterMainControl;
+                if (character == null) character = __state;
+                if (character == null) return;
+                NativeArenaFactoryLease lease = character.GetComponent<NativeArenaFactoryLease>();
+                if (terminal) { if (lease != null) lease.Complete(); }
+                else if (lease == null) character.gameObject.AddComponent<NativeArenaFactoryLease>();
+            }
+            catch (Exception e) { ModBehaviour.DevLog("[BossRush] 原生生成生命周期收尾失败: " + e.Message); }
         }
     }
 }

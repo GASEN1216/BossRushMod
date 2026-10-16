@@ -3,14 +3,16 @@
     <OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework>
     <LangVersion>7.3</LangVersion><Nullable>disable</Nullable><ImplicitUsings>disable</ImplicitUsings>
     <AssemblyName>Regression</AssemblyName>
+    <FixtureGeneratedRoot Condition="'$(BOSSRUSH_FIXTURE_OUTPUT)' == ''">../../../Build/runtime-regressions/F3AutotestJudges/gen</FixtureGeneratedRoot>
+    <FixtureGeneratedRoot Condition="'$(BOSSRUSH_FIXTURE_OUTPUT)' != ''">$(BOSSRUSH_FIXTURE_OUTPUT)/gen</FixtureGeneratedRoot>
     <!-- 不定义 BOSSRUSH_DEV：只有 run.py 显式去掉包裹的文件按 Dev 口径编译，其余生产文件不展开 Dev 区块。 -->
   </PropertyGroup>
   <ItemGroup>
     <!-- run.py 逐字抽出（只去掉首尾 #if BOSSRUSH_DEV / #endif，行号不变）。 -->
-    <Compile Include="../../../Build/runtime-regressions/F3AutotestJudges/gen/AutotestJudges.cs" Link="Generated/AutotestJudges.cs" />
-    <Compile Include="../../../Build/runtime-regressions/F3AutotestJudges/gen/AutotestModels.cs" Link="Generated/AutotestModels.cs" />
-    <Compile Include="../../../Build/runtime-regressions/F3AutotestJudges/gen/SkyIslandStoryServiceAutotest.cs" Link="Generated/SkyIslandStoryServiceAutotest.cs" />
-    <Compile Include="../../../Build/runtime-regressions/F3AutotestJudges/gen/AssetCollectors.cs" Link="Generated/AssetCollectors.cs" />
+    <Compile Include="$(FixtureGeneratedRoot)/AutotestJudges.cs" Link="Generated/AutotestJudges.cs" />
+    <Compile Include="$(FixtureGeneratedRoot)/AutotestModels.cs" Link="Generated/AutotestModels.cs" />
+    <Compile Include="$(FixtureGeneratedRoot)/SkyIslandStoryServiceAutotest.cs" Link="Generated/SkyIslandStoryServiceAutotest.cs" />
+    <Compile Include="$(FixtureGeneratedRoot)/AssetCollectors.cs" Link="Generated/AssetCollectors.cs" />
     <!-- 宿主替身：SavesSystem、Time、L10n 等沿用 SkyIslandStory 夹具；写入门替身（AutotestGateStub.cs）在本目录，默认拒绝。 -->
     <Compile Include="../SkyIslandStory/Stubs.cs" Link="Stubs/Stubs.cs" />
     <!-- 生产纯规则与共享存档引擎：与 SkyIslandValidationJudges 同一份清单。 -->

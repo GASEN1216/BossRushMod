@@ -12,7 +12,7 @@ internal static class Program
     private static BossRushCoopPlayer Player(string id,string asset)
     { var p=new BossRushCoopPlayer {Id=id,AssetId=asset,Character=new GameObject(id).AddComponent<CharacterMainControl>()};BossRushCoop.Players.Add(p);return p; }
     private static CoopNpcWorld.SpouseIntent Intent(BossRushCoopPlayer p,string npc,long sequence=1,bool present=true,bool following=true)
-    { return new CoopNpcWorld.SpouseIntent {NpcId=npc,Asset=p.AssetId,Sequence=sequence,Present=present,Following=following,Home=new Vector3(10,0,10),Run=BossRushCoop.RunId,Scene=BossRushCoop.SceneGeneration}; }
+    { return new CoopNpcWorld.SpouseIntent {Token=BossRushCoop.SceneToken,Epoch=p.ReadyEpoch,NpcId=npc,Asset=p.AssetId,Sequence=sequence,Present=present,Following=following,Home=new Vector3(10,0,10),Run=BossRushCoop.RunId,Scene=BossRushCoop.SceneGeneration}; }
     private static void Send(BossRushCoopPlayer p,CoopNpcWorld.SpouseIntent request)
     {BossRushCoop.Channels["npc.spouse.request"](new BossRushCoopMessage {SenderId=p.Id,Payload=request});}
     private static GameObject Spouse(BossRushCoopPlayer p,string npc)
@@ -21,6 +21,7 @@ internal static class Program
 
     private static void Main()
     {
+        BossRushCoop.HasBoundScene=true;BossRushCoop.SceneToken="travel-initial";
         var owner=new ModBehaviour();var world=new CoopNpcWorld(owner);var host=Player("host","host-asset");CharacterMainControl.Main=host.Character;
         var publicNpc=new GameObject("public goblin");CoopNpcWorld.Track("goblin","goblin",publicNpc);
         var players=new List<BossRushCoopPlayer>();
@@ -52,6 +53,8 @@ internal static class Program
         Check(prior==null,"slot switch retires old asset's body");
         var forged=Intent(players[2],"nurse");forged.Asset="A2";Send(players[2],forged);Tick(world);
         Check(Spouse(players[2],"nurse")==null,"old asset request cannot deploy into current slot");
+        var staleEpoch=Intent(players[2],"nurse",100);staleEpoch.Epoch="previous-handshake";Send(players[2],staleEpoch);Tick(world);
+        Check(Spouse(players[2],"nurse")==null,"old ready epoch request cannot deploy personal spouse into a new handshake with unchanged asset");
         Send(players[2],Intent(players[2],"nurse"));Tick(world);
         Check(Spouse(players[2],"nurse")!=null && Spouse(players[3],"goblin")!=null,"new slot receives independent current spouse");
         var saved=players[3].Character;GameObject companion=Spouse(players[3],"goblin");players[3].IsAlive=false;Tick(world);
@@ -84,7 +87,14 @@ internal static class Program
         Check(CoopNpcWorld.FindLocalSpouse("goblin")==CoopNpcWorld.FindObject(CoopNpcWorld.SpouseWorldId(players[0].Id,players[0].AssetId,"goblin")),"personal lookup resolves own composite");
         GameObject oldLocal=CoopNpcWorld.FindLocalSpouse("goblin");BossRushCoop.LocalAssetId="other-slot";
         Check(CoopNpcWorld.FindLocalSpouse("goblin")==null && oldLocal!=null,"switching asset does not borrow another slot's spouse");
-        var removal=new CoopNpcWorld.State {RunId=projection.RunId,Generation=projection.Generation,Sequence=projection.Sequence+1,Npcs=new CoopNpcWorld.Entry[0]};
+        var keep=projection.Npcs.First(e=>!string.IsNullOrEmpty(e.Owner));var kept=CoopNpcWorld.FindObject(keep.Id);float oldX=kept.transform.position.x;
+        var moved=new CoopNpcWorld.State {Token=BossRushCoop.SceneToken,RunId=projection.RunId,Generation=projection.Generation,Sequence=projection.Sequence+1,Npcs=projection.Npcs};
+        keep.Position=new Vector3(oldX+31,0,0);BossRushCoop.HasBoundScene=false;
+        BossRushCoop.Channels["npc.world"](new BossRushCoopMessage {IsFromHost=true,Payload=moved});Tick(guest);
+        Check(kept.transform.position.x==oldX,"unbound Core cannot move an existing spouse from previous-generation world state");
+        BossRushCoop.HasBoundScene=true;Tick(guest);
+        Check(kept.transform.position.x==oldX+31,"bound Core consumes retained spouse world state without another packet");
+        var removal=new CoopNpcWorld.State {Token=BossRushCoop.SceneToken,RunId=projection.RunId,Generation=projection.Generation,Sequence=projection.Sequence+2,Npcs=new CoopNpcWorld.Entry[0]};
         BossRushCoop.Channels["npc.world"](new BossRushCoopMessage {IsFromHost=true,Payload=removal});Tick(guest);
         Check(oldLocal==null,"current authoritative removal retires the original guest spouse component tree");
         creates=Probe.Creates;
@@ -93,8 +103,65 @@ internal static class Program
         BossRushCoop.SceneGeneration++;Tick(guest);
         foreach(var entry in projection.Npcs.Where(e=>!string.IsNullOrEmpty(e.Owner)))Check(CoopNpcWorld.FindObject(entry.Id)==null,"scene generation clears all old spouse mirrors");
         guest.Dispose();Check(BossRushCoop.Subscribers==0,"guest owner cleanup unsubscribes");
+        SceneAsync(owner,players[0]);
         Check(CoopNpcWorld.SpouseWorldId("a:b","c","npc")!=CoopNpcWorld.SpouseWorldId("a","b:c","npc"),"length encoded world keys cannot alias participants/assets");
         Console.WriteLine("CoopSpouses PASS: "+checks+" assertions; 16 owners, own slot, independent services/home/follow/divorce, retries, stale sequence, disconnect/reconnect, async replacement, late join and scene cleanup. No live transport/game/save is exercised.");
+    }
+
+    private static void DrainDuck(CharacterMainControl body)
+    {Probe.DuckGate.SetResult(body);foreach(Task pending in Probe.Tasks)pending.GetAwaiter().GetResult();Probe.Tasks.Clear();Probe.DuckGate=null;}
+
+    private static void SceneAsync(ModBehaviour owner,BossRushCoopPlayer p)
+    {
+        BossRushCoop.IsHost=true;BossRushCoop.IsClient=false;BossRushCoop.HasBoundScene=true;AffinityManager.Spouse=null;
+        var hostWorld=new CoopNpcWorld(owner);int sends=BossRushCoop.Sends.Count;BossRushCoop.HasBoundScene=false;Send(p,Intent(p,"goblin",200));
+        Check(BossRushCoop.Sends.Count==sends,"unbound host cannot ACK old-scene spouse intent");
+        BossRushCoop.HasBoundScene=true;Send(p,Intent(p,"goblin",200));Tick(hostWorld);Check(Spouse(p,"goblin")!=null,"original spouse intent retries after bound Core");
+        Probe.DuckGate=new TaskCompletionSource<CharacterMainControl>();Send(p,Intent(p,"duck",201));Tick(hostWorld,1);
+        BossRushCoop.HasBoundScene=false;var obsolete=new GameObject("unbound host spouse").AddComponent<CharacterMainControl>();DrainDuck(obsolete);
+        Check(obsolete==null && Spouse(p,"duck")==null,"host spouse factory completion cannot attach during unbound Core window");
+        BossRushCoop.HasBoundScene=true;Tick(hostWorld);Check(Spouse(p,"duck")!=null,"host retries retained spouse intent after scene binding");hostWorld.Dispose();
+        BossRushCoop.IsHost=false;BossRushCoop.IsClient=true;
+        BossRushCoop.LocalPlayerId=p.Id;BossRushCoop.LocalAssetId=p.AssetId;AffinityManager.Spouse="goblin";AffinityManager.Following=true;
+        var localWorld=new CoopNpcWorld(owner);BossRushCoop.HasBoundScene=false;sends=BossRushCoop.Sends.Count;
+        Check(CoopNpcWorld.RequestFollow("goblin",true) && BossRushCoop.Sends.Count==sends,"unbound client retains spouse follow intent without sending prior generation");
+        BossRushCoop.HasBoundScene=true;Tick(localWorld);Check(BossRushCoop.Sends.Count>sends,"bound client retries retained real marriage follow intent");var first=(CoopNpcWorld.SpouseIntent)BossRushCoop.Sends.Last(x=>x is CoopNpcWorld.SpouseIntent);
+        string currentEpoch=BossRushCoop.LocalReadyEpoch;BossRushCoop.LocalReadyEpoch="new-epoch-before-tick";localWorld.ConfirmLocal(first);
+        Check(!localWorld.LocalAcknowledged,"old ACK cannot settle intent during actual reconnect before next local Tick");BossRushCoop.LocalReadyEpoch=currentEpoch;
+        localWorld.ConfirmLocal(first);sends=BossRushCoop.Sends.Count;Tick(localWorld,6);
+        Check(BossRushCoop.Sends.Count==sends,"acknowledged actual local intent stays quiet in unchanged handshake");
+        string oldEpoch=BossRushCoop.LocalReadyEpoch;BossRushCoop.LocalReadyEpoch="epoch-reconnected";p.ReadyEpoch=BossRushCoop.LocalReadyEpoch;
+        Tick(localWorld);var retry=(CoopNpcWorld.SpouseIntent)BossRushCoop.Sends.Last(x=>x is CoopNpcWorld.SpouseIntent);
+        Check(BossRushCoop.Sends.Count>sends && retry.Epoch==p.ReadyEpoch && retry.Sequence>first.Sequence,"same room generation token reconnect epoch drives real client Tick to resend spouse intent");
+        localWorld.ConfirmLocal(first);sends=BossRushCoop.Sends.Count;Tick(localWorld,6);
+        Check(BossRushCoop.Sends.Count>sends,"stale pre-reconnect ACK cannot silence new handshake intent");
+        localWorld.ConfirmLocal(retry);sends=BossRushCoop.Sends.Count;Tick(localWorld,6);Check(BossRushCoop.Sends.Count==sends,"new handshake ACK settles the actual local intent");
+        BossRushCoop.LocalReadyEpoch=oldEpoch;p.ReadyEpoch=oldEpoch;
+        localWorld.Dispose();AffinityManager.Spouse=null;
+        var guestWorld=new CoopNpcWorld(owner);Tick(guestWorld,1);
+        var entry=new CoopNpcWorld.Entry {Id=CoopNpcWorld.SpouseWorldId(p.Id,p.AssetId,"duck"),Kind="spouse",Owner=p.Id,Asset=p.AssetId,NpcId="duck",Active=true,Following=true};
+        var state=new CoopNpcWorld.State {Token=BossRushCoop.SceneToken,RunId=BossRushCoop.RunId,Generation=BossRushCoop.SceneGeneration,Sequence=1,Npcs=new[] {entry}};
+        Probe.DuckGate=new TaskCompletionSource<CharacterMainControl>();BossRushCoop.Channels["npc.world"](new BossRushCoopMessage {IsFromHost=true,Payload=state});Tick(guestWorld,1);
+        BossRushCoop.HasBoundScene=false;obsolete=new GameObject("unbound guest spouse").AddComponent<CharacterMainControl>();DrainDuck(obsolete);
+        Check(obsolete==null && Spouse(p,"duck")==null,"guest spouse factory completion cannot register in unbound Core");
+        BossRushCoop.HasBoundScene=true;Tick(guestWorld);Check(Spouse(p,"duck")!=null,"guest retries retained full spouse snapshot after binding");guestWorld.Dispose();
+        var publicWorld=new CoopNpcWorld(owner);Tick(publicWorld,1);int writes=Probe.RegistryWrites;
+        state.Sequence=2;state.Npcs=new[] {new CoopNpcWorld.Entry {Id="duck",Kind="duck",Active=true}};
+        Probe.DuckGate=new TaskCompletionSource<CharacterMainControl>();BossRushCoop.Channels["npc.world"](new BossRushCoopMessage {IsFromHost=true,Payload=state});Tick(publicWorld,1);
+        BossRushCoop.HasBoundScene=false;obsolete=new GameObject("unbound public npc").AddComponent<CharacterMainControl>();DrainDuck(obsolete);
+        Check(obsolete==null && Probe.RegistryWrites==writes && CoopNpcWorld.FindObject("duck")==null,"public NPC async completion cannot write registry in unbound Core");
+        BossRushCoop.HasBoundScene=true;Tick(publicWorld);Check(CoopNpcWorld.FindObject("duck")!=null && Probe.RegistryWrites==writes+1,"public NPC retries complete pending snapshot once bound");publicWorld.Dispose();
+        var tokenWorld=new CoopNpcWorld(owner);Tick(tokenWorld,1);state.Sequence=3;Probe.DuckGate=new TaskCompletionSource<CharacterMainControl>();
+        BossRushCoop.Channels["npc.world"](new BossRushCoopMessage {IsFromHost=true,Payload=state});Tick(tokenWorld,1);
+        BossRushCoop.SceneToken="new-npc-native-travel";obsolete=new GameObject("old token npc").AddComponent<CharacterMainControl>();writes=Probe.RegistryWrites;DrainDuck(obsolete);
+        Check(obsolete==null && Probe.RegistryWrites==writes && CoopNpcWorld.FindObject("duck")==null,"NPC await cannot attach to another native travel while public generation and bound flag remain unchanged");
+        BossRushCoop.Channels["npc.world"](new BossRushCoopMessage {IsFromHost=true,Payload=state});Tick(tokenWorld);
+        Check(CoopNpcWorld.FindObject("duck")==null,"old NPC world token is rejected before pending on new native travel");
+        state.Token=BossRushCoop.SceneToken;state.Sequence=4;BossRushCoop.Channels["npc.world"](new BossRushCoopMessage {IsFromHost=true,Payload=state});Tick(tokenWorld);
+        Check(CoopNpcWorld.FindObject("duck")!=null,"current native travel restores complete NPC world state");tokenWorld.Dispose();
+        BossRushCoop.IsHost=true;BossRushCoop.IsClient=false;var intentWorld=new CoopNpcWorld(owner);var oldIntent=Intent(p,"goblin",301);oldIntent.Token="travel-initial";sends=BossRushCoop.Sends.Count;Send(p,oldIntent);
+        Check(BossRushCoop.Sends.Count==sends,"old native-travel spouse request cannot be ACKed in new bound Core at same public generation");
+        oldIntent.Token=BossRushCoop.SceneToken;Send(p,oldIntent);Tick(intentWorld);Check(Spouse(p,"goblin")!=null,"current native-travel spouse request preserves full original service body");intentWorld.Dispose();
     }
 
     private static void AsyncReplacement(CoopNpcWorld world,BossRushCoopPlayer p)

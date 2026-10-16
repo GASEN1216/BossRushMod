@@ -20,3 +20,5 @@
 取消兜底和 ESC 绑定也提取生产方法，验证只读空动作仍可退出、确认弹窗打开时让出 ESC；资产写入和按键设备由替身记录，不替代 journal 事务回归或实机点击。
 
 2026-09-28：扫描缓存故意只含同名错误 clone 或为空，执行真实 `ResolveAuditedPreset` 验证仍优先取得官方目录内的完整发布池；目录外条目保留原缓存回退。
+
+2026-10-15 owner 依赖同步：当前所提取的世界回调/转换或续赛方法读取真实 IsCoopWorldAuthorityCurrent；夹具同步提取该生产属性及所需原房间/原连接字段，没有恒真替身。默认离线用例保持原语义；原生 host Stop、换角色/房间和真实迟到 custom factory 的执行边界集中由 ModeHCoop 的 WorldOwner 用例验证。

@@ -286,6 +286,10 @@ def main():
                      "_controller.HurtPlayer(player, damage, to);")
     ordered(strike, arts_path + " 棍卫重击先判翻滚与隔墙再结算", "BossSkillDamageRules.IsDodging(player)",
             "Physics.Linecast(from, to, wall, QueryTriggerInteraction.Ignore)", "_controller.HurtPlayer(player, damage, to);")
+    check('DragonKingCoopContactRuntimeModule.Push(player, push,' in strike and '0.14f, true' in strike,
+          arts_path + ': connected victim must perform original 0.14s dodge-aware force on its own client')
+    check('else _marker.StartCoroutine(PushPlayer(player, push));' in strike,
+          arts_path + ': no-COOP force path must remain intact')
     for signature in ("private IEnumerator Sweep()", "private IEnumerator Spin()", "private IEnumerator Starfall()"):
         check("Warning" in body(arts_path, signature), arts_path + " / " + signature + ": 每招都要有地面预警")
     require(MARKER, "private void TickCombat()", "if (_arts != null && _arts.Running)", "_arts.TryStart(player, towards.magnitude, sight)")

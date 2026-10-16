@@ -2,6 +2,7 @@
 from pathlib import Path
 import hashlib
 import json
+import re
 import sys
 from xml.sax.saxutils import escape
 
@@ -30,7 +31,10 @@ def main():
     collision = ROOT / "Integration/DragonDescendant/DragonDescendantAbilities_CollisionAndIce.cs"
     battle = ROOT / "ModeE/ModeEBattle.cs"
     source = clean_source(controller.read_text(encoding="utf-8-sig"))
-    generated = "using System; namespace BossRush { partial class DragonDescendantAbilityController {\n"
+    generated = "using System; using System.Collections.Generic; namespace BossRush { partial class DragonDescendantAbilityController {\n"
+    fields = re.findall(r"private readonly Dictionary<CharacterMainControl, float> collisionTimes = [^;]+;", collision.read_text(encoding="utf-8-sig"))
+    assert len(fields) == 1, "extract actual per-player collision owner"
+    generated += fields[0] + "\n"
     generated += "\n".join(member(source, signature) for signature in (
         "private bool UsesArenaOpponent()", "private bool IsPlayerAlly()", "private void RefreshPlayerReference()",
         "private CharacterMainControl ResolveArenaOpponent(bool allowMainCharacter)", "internal bool HasCombatAuthority"))

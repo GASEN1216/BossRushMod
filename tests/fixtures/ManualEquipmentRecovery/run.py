@@ -46,7 +46,8 @@ def main():
     runtime = read('Integration/NewWeapons/Common/NewWeaponRuntime.cs')
     forge = read('Integration/AffixForge/AffixForgeSystem.cs')
     data = read('Integration/AffixForge/AffixItemData.cs')
-    action = member(read('Integration/NewWeapons/SummonStaff/SummonStaffAction.cs'), 'public class SummonStaffAction')
+    staff = read('Integration/NewWeapons/SummonStaff/SummonStaffAction.cs')
+    action = member(staff, 'public class SummonStaffAction')
     manager = read('Integration/NewWeapons/SummonStaff/SummonStaffManager.cs')
     generated = 'using System; using System.Collections.Generic; using ItemStatsSystem; using UnityEngine;\nnamespace BossRush {\n'
     generated += 'static class NewWeaponRuntime {\n' + member(runtime, 'internal static void RegisterRuntimeConfigs(') + '\n}\n'
@@ -62,14 +63,20 @@ def main():
                       'public static bool RestoreRuntimeState(', 'public static bool NeedsMeleeRuntimeConfig('):
         generated += member(restore, signature) + '\n'
     generated += '} partial class SummonStaffAction {\n'
+    # Keep the actual action-owned generation field in its owning class. The
+    # ally lifetime below must compile without inheriting this action state.
+    import re
+    generated += re.search(r'private int coopSummonAttempt;', action).group(0) + '\n'
+    generated += re.search(r'private bool coopSummonRejected;', action).group(0) + '\n'
     for signature in ('protected override bool OnAbilityStart(', 'protected override void OnAbilityUpdate(',
                       'protected override void OnAbilityStop(', 'internal void CancelPendingSummons(',
-                      'private void OnDestroy(', 'private bool IsRequestValid('):
+                      'private void OnDestroy(', 'private void OnCoopSummonResult(', 'private bool IsRequestValid('):
         generated += member(action, signature) + '\n'
     generated += '} partial class SummonStaffManager {\n'
     for signature in ('private void CancelPreparation(', 'private void OnHoldItemChanged('):
         generated += member(manager, signature) + '\n'
-    generated += '}}'
+    generated += '} partial class SummonStaffAllyLifetime {\n'
+    generated += member(member(staff, 'internal sealed class SummonStaffAllyLifetime'), 'private void OnDestroy(') + '\n}}'
     extracted = OUT / 'Production.cs'
     extracted.write_text(generated, encoding='utf-8')
     sources = [extracted, HERE / 'Program.cs', HERE / 'Stubs.cs',
@@ -83,7 +90,11 @@ def main():
     path = OUT / 'Regression.csproj'
     path.write_text(project, encoding='utf-8')
     (OUT / 'production-sha256.json').write_text(json.dumps(inputs, indent=2), encoding='utf-8')
-    return subprocess.call(['dotnet', 'run', '--project', str(path), '--configuration', 'Release'], cwd=ROOT)
+    sys.path.insert(0, str(ROOT / 'tools'))
+    from run_runtime_regressions import run_project_fixture
+    result, output = run_project_fixture(path, OUT, ROOT)
+    print(output)
+    return result
 
 
 if __name__ == '__main__':

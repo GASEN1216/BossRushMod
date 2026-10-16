@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Reflection.Emit;
 using HarmonyLib;
 using ItemStatsSystem;
 using UnityEngine;
@@ -29,8 +30,13 @@ namespace BossRush
         private MethodInfo getSelfId;
         private Type writerActionType;
         private MethodInfo writerPut;
+        // 原生 BuildPayload 在 SendToServer/SendToClient/Broadcast 内同步调用写入回调；只编译一次，按次换字节。
+        private Delegate writerBuilder;
+        private byte[] outgoing;
         private IDisposable messageSubscription;
         private BossRushCoopSceneLoadCompatibility sceneLoadCompatibility;
+        private BossRushCoopSceneIdentityBridge sceneIdentityBridge;
+        internal BossRushCoopSceneIdentity SceneIdentity { get; private set; }
         private readonly List<KeyValuePair<EventInfo, Delegate>> subscriptions = new List<KeyValuePair<EventInfo, Delegate>>();
         private readonly Action<object, byte[]> receive;
         private readonly Action<object> peerDisconnected;
@@ -40,6 +46,32 @@ namespace BossRush
         internal bool Bound { get { return messageSubscription != null; } }
         internal bool NetworkStarted { get { return Bool(Read(serviceType, Service, "NetworkStarted")); } }
         internal bool IsServer { get { return Bool(Read(serviceType, Service, "IsServer")); } }
+        // Probe the public connection state independently of optional adapter binding.
+        // An installed but stopped COOP remains ordinary single-player. An unreadable
+        // live service must never grant every client single-player world authority.
+        internal bool TryGetNetworkState(out bool started, out bool host)
+        {
+            started = false; host = false;
+            if (serviceType == null) serviceType = FindType("EscapeFromDuckovCoopMod.NetService");
+            if (serviceType == null) return true;
+            try
+            {
+                const BindingFlags publicStatic = BindingFlags.Public | BindingFlags.Static;
+                if (serviceType.GetProperty("Instance", publicStatic) == null && serviceType.GetField("Instance", publicStatic) == null)
+                { started = true; return false; }
+                object service = Service;
+                if (service == null) return true;
+                object active = Read(serviceType, service, "NetworkStarted");
+                if (!(active is bool)) { started = true; return false; }
+                started = (bool)active;
+                if (!started) return true;
+                object role = Read(serviceType, service, "IsServer");
+                if (!(role is bool)) return false;
+                host = (bool)role;
+                return true;
+            }
+            catch (Exception) { started = true; return false; }
+        }
         internal object HostPeer { get { return Read(serviceType, Service, "connectedPeer"); } }
         internal int PeerCount
         {
@@ -55,10 +87,65 @@ namespace BossRush
             return false;
         }
 
+        internal List<object> ConnectedPeers()
+        {
+            var result = new List<object>();
+            var manager = Read(serviceType, Service, "netManager");
+            var connected = manager != null ? Read(manager.GetType(), manager, "ConnectedPeerList") as IEnumerable : null;
+            if (connected != null) foreach (object peer in connected) if (peer != null) result.Add(peer);
+            return result;
+        }
+
+        internal string PeerDisplayName(object peer)
+        {
+            string id = NativeId(peer) ?? ("peer#" + peer.GetHashCode());
+            try
+            {
+                MethodInfo resolve = serviceType.GetMethod("ResolvePeerDisplayName", BindingFlags.Public | BindingFlags.Instance);
+                string name = resolve != null ? resolve.Invoke(Service, new object[] { peer, id }) as string : null;
+                if (!string.IsNullOrWhiteSpace(name))
+                {
+                    name = name.Replace('\r', ' ').Replace('\n', ' ');
+                    if (name.Length > 100) name = name.Substring(0, 100);
+                    return name == id ? id : name + " (" + id + ")";
+                }
+            }
+            catch (Exception e) { ModBehaviour.DevLog("[BossRush Coop] Native peer name unavailable: " + e.Message); }
+            return id;
+        }
+
+        // Use COOP's existing server chat RPC so a peer without BossRush can also
+        // see the compatibility reason. No user chat input or native registry is replaced.
+        internal bool BroadcastCompatibilityNotice(string text)
+        {
+            if (!Bound || !NetworkStarted || !IsServer || string.IsNullOrEmpty(text)) return false;
+            try
+            {
+                Type messageType = FindType("EscapeFromDuckovCoopMod.ChatMessageRpc");
+                Type toolType = FindType("EscapeFromDuckovCoopMod.CoopTool");
+                if (messageType == null || toolType == null) return false;
+                MethodInfo send = toolType.GetMethod("SendRpc", BindingFlags.Public | BindingFlags.Static);
+                if (send == null || !send.IsGenericMethodDefinition) return false;
+                object message = Activator.CreateInstance(messageType);
+                messageType.GetField("SenderId").SetValue(message, "BossRush");
+                messageType.GetField("SenderName").SetValue(message, "BossRush");
+                messageType.GetField("Content").SetValue(message, text);
+                send.MakeGenericMethod(messageType).Invoke(null, new object[] { message, null });
+                return true;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.CriticalLog("coop-native-compatibility-notice", "[BossRush Coop] Native room notice failed: " + e.Message);
+                return false;
+            }
+        }
+
         internal BossRushCoopTransport(Action<object, byte[]> receive, Action<object> disconnected,
             Action<string, CharacterMainControl, bool> playerSpawned, Action<int, CharacterMainControl> aiSpawned)
         {
             this.receive = receive; peerDisconnected = disconnected; this.playerSpawned = playerSpawned; this.aiSpawned = aiSpawned;
+            SceneIdentity = new BossRushCoopSceneIdentity(() => Bound && NetworkStarted, () => IsServer,
+                () => Service, () => HostPeer, () => BossRushCoop.RunId);
         }
 
         internal bool TryBind()
@@ -72,6 +159,7 @@ namespace BossRush
             if (serviceType == null || apiType == null || eventsType == null) return false;
             try
             {
+                EnsureSpectatorForceEndRegistration(serviceType.Assembly);
                 MethodInfo register = apiType.GetMethod("RegisterHandler", BindingFlags.Public | BindingFlags.Static);
                 sendHost = apiType.GetMethod("SendToServer", BindingFlags.Public | BindingFlags.Static);
                 sendPeer = apiType.GetMethod("SendToClient", BindingFlags.Public | BindingFlags.Static);
@@ -84,6 +172,7 @@ namespace BossRush
                 Type writerType = writerActionType.GetGenericArguments()[0];
                 writerPut = writerType.GetMethod("Put", new[] { typeof(byte[]) });
                 if (writerPut == null) throw new InvalidOperationException("NetDataWriter.Put(byte[]) is unavailable.");
+                writerBuilder = Adapt(writerActionType, WriteOutgoing);
                 Delegate callback = Adapt(register.GetParameters()[1].ParameterType, OnRawMessage);
                 messageSubscription = register.Invoke(null, new object[] { Channel, callback }) as IDisposable;
                 if (messageSubscription == null) throw new InvalidOperationException("RegisterHandler returned no subscription.");
@@ -96,8 +185,12 @@ namespace BossRush
                 Type sceneNet = FindType("EscapeFromDuckovCoopMod.SceneNet");
                 if (sceneNet != null)
                 {
-                    sceneLoadCompatibility = new BossRushCoopSceneLoadCompatibility(sceneNet, () => Bound && NetworkStarted);
+                    sceneLoadCompatibility = new BossRushCoopSceneLoadCompatibility(sceneNet, () => Bound && NetworkStarted, () => HostPeer);
                     sceneLoadCompatibility.Install();
+                    sceneIdentityBridge = new BossRushCoopSceneIdentityBridge(sceneNet, SceneIdentity,
+                        () => Bound && NetworkStarted, () => IsServer, () => Service, () => HostPeer,
+                        () => BossRushCoop.RunId, SendSceneIdentityMarker);
+                    sceneIdentityBridge.Install();
                 }
                 return true;
             }
@@ -107,6 +200,46 @@ namespace BossRush
                 ModBehaviour.CriticalLog("coop-api-bind", "[BossRush Coop] Optional API binding failed: " + e.Message);
                 return false;
             }
+        }
+
+        // Workshop 1.3.6 sends this existing RPC after ending host spectating, but omits its registry entry.
+        // Register its own handler through the native API; never replace a descriptor, opcode or spectator policy.
+        private static void EnsureSpectatorForceEndRegistration(Assembly nativeAssembly)
+        {
+            const BindingFlags flags = BindingFlags.Public | BindingFlags.Static;
+            Type message = nativeAssembly.GetType("EscapeFromDuckovCoopMod.SpectatorForceEndRpc", false);
+            if (message == null) return; // Older API versions without this message have no such sender to repair.
+            Type registry = nativeAssembly.GetType("EscapeFromDuckovCoopMod.RpcRegistry", true);
+            Type handlers = nativeAssembly.GetType("EscapeFromDuckovCoopMod.RPCScene", true);
+            Type context = nativeAssembly.GetType("EscapeFromDuckovCoopMod.RpcContext", true);
+            MethodInfo initialize = registry.GetMethod("Initialize", flags, null, Type.EmptyTypes, null);
+            MethodInfo descriptor = registry.GetMethod("GetDescriptor", flags);
+            MethodInfo register = registry.GetMethod("Register", flags);
+            MethodInfo handler = handlers.GetMethod("HandleSpectatorForceEnd", flags, null, new[] { context, message }, null);
+            Type callback = typeof(Action<,>).MakeGenericType(context, message);
+            if (!message.IsValueType || !context.IsValueType || initialize == null || initialize.ReturnType != typeof(void)
+                || descriptor == null || !descriptor.IsGenericMethodDefinition || descriptor.GetGenericArguments().Length != 1 || descriptor.GetParameters().Length != 0
+                || register == null || !register.IsGenericMethodDefinition || register.GetGenericArguments().Length != 1
+                || register.ReturnType != typeof(void) || handler == null || handler.ReturnType != typeof(void))
+                throw new MissingMethodException("Native spectator RPC registration contract changed.");
+            MethodInfo get = descriptor.MakeGenericMethod(message);
+            MethodInfo add = register.MakeGenericMethod(message);
+            if (add.GetParameters().Length != 1 || add.GetParameters()[0].ParameterType != callback)
+                throw new MissingMethodException("Native spectator RPC callback contract changed.");
+            initialize.Invoke(null, null);
+            try
+            {
+                if (get.Invoke(null, null) == null) throw new InvalidOperationException("Native spectator RPC registry returned no descriptor.");
+                return; // Native versions that already register it retain their exact original handler.
+            }
+            catch (TargetInvocationException e)
+            {
+                if (!(e.InnerException is InvalidOperationException)
+                    || e.InnerException.Message != "Rpc message " + message.FullName + " not registered") throw;
+            }
+            // Native Register rejects duplicate opcodes before changing either registry; propagate any conflict.
+            add.Invoke(null, new object[] { Delegate.CreateDelegate(callback, handler) });
+            if (get.Invoke(null, null) == null) throw new InvalidOperationException("Native spectator RPC registration returned no descriptor.");
         }
 
         private void OnRawMessage(object[] args)
@@ -255,11 +388,29 @@ namespace BossRush
         internal bool Send(object peer, byte[] bytes, bool all = false)
         {
             if (!Bound || !NetworkStarted) return false;
-            Delegate builder = Adapt(writerActionType, args => writerPut.Invoke(args[0], new object[] { bytes }));
-            if (!IsServer) return Bool(sendHost.Invoke(null, new object[] { Channel, builder }));
-            if (all) { broadcast.Invoke(null, new object[] { Channel, builder, false }); return true; }
-            if (peer == null) return false;
-            return Bool(sendPeer.Invoke(null, new object[] { peer, Channel, builder, false }));
+            byte[] previous = outgoing; outgoing = bytes;
+            try
+            {
+                if (!IsServer) return Bool(sendHost.Invoke(null, new object[] { Channel, writerBuilder }));
+                if (all) { broadcast.Invoke(null, new object[] { Channel, writerBuilder, false }); return true; }
+                if (peer == null) return false;
+                return Bool(sendPeer.Invoke(null, new object[] { peer, Channel, writerBuilder, false }));
+            }
+            finally { outgoing = previous; }
+        }
+
+        private void SendSceneIdentityMarker(byte[] bytes)
+        {
+            if (!Bound || !NetworkStarted || !IsServer) throw new InvalidOperationException("Scene marker has no native host.");
+            byte[] previous = outgoing; outgoing = bytes;
+            try { broadcast.Invoke(null, new object[] { BossRushCoopSceneIdentityBridge.MarkerChannel, writerBuilder, false }); }
+            finally { outgoing = previous; }
+        }
+
+        private void WriteOutgoing(object[] args)
+        {
+            if (outgoing == null) throw new InvalidOperationException("Native writer callback ran outside a send.");
+            writerPut.Invoke(args[0], new object[] { outgoing });
         }
 
         private void Subscribe(Type type, string name, Action<object[]> callback)
@@ -304,6 +455,8 @@ namespace BossRush
         }
         public void Dispose()
         {
+            if (sceneIdentityBridge != null) { sceneIdentityBridge.Dispose(); sceneIdentityBridge = null; }
+            SceneIdentity.Dispose();
             if (sceneLoadCompatibility != null) { sceneLoadCompatibility.Dispose(); sceneLoadCompatibility = null; }
             if (messageSubscription != null)
             {
@@ -317,6 +470,255 @@ namespace BossRush
                 catch (Exception e) { ModBehaviour.DevLog("[BossRush Coop] Unsubscribe failed: " + e.Message); }
             }
             subscriptions.Clear();
+            writerBuilder = null; outgoing = null;
+        }
+    }
+
+    /// <summary>
+    /// Read-only native ingress/egress observation. Our marker is delivered before its native Begin
+    /// on the same ReliableOrdered channel, and is observed before ModNetworkApi queues it.
+    /// </summary>
+    internal sealed class BossRushCoopSceneIdentityBridge : IDisposable
+    {
+        internal const string MarkerChannel = "BossRush.SceneIdentity.v1";
+        private const string PatchOwner = "BossRush.Coop.SceneIdentity.v1";
+        private const BindingFlags Flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance;
+        private static BossRushCoopSceneIdentityBridge active;
+        private readonly Type sceneNet;
+        private readonly BossRushCoopSceneIdentity identity;
+        private readonly Func<bool> live, host;
+        private readonly Func<object> service, peer;
+        private readonly Func<string> session;
+        private readonly Action<byte[]> send;
+        private readonly FieldInfo nativeInstance, voteActive;
+        private readonly FieldInfo[] destination;
+        private FieldInfo[] messageDestination;
+        private PropertyInfo isServer, sender, contextService, channel, payload;
+        private Harmony harmony;
+        private long serial;
+        private bool reported;
+
+        internal BossRushCoopSceneIdentityBridge(Type sceneNet, BossRushCoopSceneIdentity identity,
+            Func<bool> live, Func<bool> host, Func<object> service, Func<object> peer, Func<string> session, Action<byte[]> send)
+        {
+            this.sceneNet = sceneNet; this.identity = identity; this.live = live; this.host = host;
+            this.service = service; this.peer = peer; this.session = session; this.send = send;
+            nativeInstance = Field(sceneNet, "Instance", sceneNet);
+            voteActive = Field(sceneNet, "sceneVoteActive", typeof(bool));
+            destination = Destination(sceneNet, true);
+        }
+
+        private static FieldInfo Field(Type type, string name, Type expected)
+        {
+            FieldInfo field = type.GetField(name, Flags);
+            if (field == null || field.FieldType != expected) throw new MissingFieldException(type.FullName, name);
+            return field;
+        }
+
+        private static FieldInfo[] Destination(Type type, bool native)
+        {
+            string[] names = native
+                ? new[] { "sceneTargetId", "sceneCurtainGuid", "sceneNotifyEvac", "sceneSaveToFile", "sceneUseLocation", "sceneLocationName" }
+                : new[] { "SceneId", "CurtainGuid", "NotifyEvac", "SaveToFile", "UseLocation", "LocationName" };
+            Type[] types = { typeof(string), typeof(string), typeof(bool), typeof(bool), typeof(bool), typeof(string) };
+            var result = new FieldInfo[names.Length];
+            for (int i = 0; i < result.Length; i++) result[i] = Field(type, names[i], types[i]);
+            return result;
+        }
+
+        private static BossRushCoopSceneMarker ReadDestination(FieldInfo[] fields, object value)
+        {
+            return new BossRushCoopSceneMarker { sceneId = fields[0].GetValue(value) as string, curtainGuid = fields[1].GetValue(value) as string,
+                notifyEvac = (bool)fields[2].GetValue(value), saveToFile = (bool)fields[3].GetValue(value),
+                useLocation = (bool)fields[4].GetValue(value), locationName = fields[5].GetValue(value) as string };
+        }
+
+        internal void Install()
+        {
+            if (harmony != null) return;
+            if (active != null) active.Dispose();
+            active = this;
+            harmony = new Harmony(PatchOwner);
+            try
+            {
+                Type rpc = sceneNet.Assembly.GetType(sceneNet.Namespace + ".RPCScene", true);
+                Type modRpc = sceneNet.Assembly.GetType(sceneNet.Namespace + ".RPCModApi", true);
+                MethodInfo begin = rpc.GetMethod("HandleSceneBeginLoad", Flags);
+                MethodInfo mod = modRpc.GetMethod("HandleModApiMessage", Flags);
+                if (begin == null || mod == null || !begin.IsStatic || !mod.IsStatic
+                    || begin.GetParameters().Length != 2 || mod.GetParameters().Length != 2)
+                    throw new MissingMethodException("Native scene marker ingress contract changed.");
+                Type context = begin.GetParameters()[0].ParameterType;
+                if (!context.IsValueType || mod.GetParameters()[0].ParameterType != context)
+                    throw new MissingMemberException("Native RPC context contract changed.");
+                isServer = context.GetProperty("IsServer", Flags);
+                sender = context.GetProperty("Sender", Flags);
+                contextService = context.GetProperty("Service", Flags);
+                Type modMessage = mod.GetParameters()[1].ParameterType;
+                channel = modMessage.GetProperty("Channel", Flags);
+                payload = modMessage.GetProperty("Payload", Flags);
+                if (isServer == null || isServer.PropertyType != typeof(bool) || sender == null || contextService == null
+                    || channel == null || channel.PropertyType != typeof(string) || payload == null || payload.PropertyType != typeof(byte[]))
+                    throw new MissingMemberException("Native marker payload contract changed.");
+                messageDestination = Destination(begin.GetParameters()[1].ParameterType, false);
+                MethodInfo broadcastBegin = sceneNet.GetMethod("Server_BroadcastBeginSceneLoad", Flags, null, Type.EmptyTypes, null);
+                if (broadcastBegin == null) throw new MissingMethodException(sceneNet.FullName, "Server_BroadcastBeginSceneLoad");
+                var sendPatch = new HarmonyMethod(typeof(BossRushCoopSceneIdentityBridge), "ObserveNativeSend") { priority = Priority.Last };
+                harmony.Patch(broadcastBegin, transpiler: sendPatch);
+                Patch(mod, "BeforeMarkerIngress", null);
+                Patch(begin, "BeforeBeginIngress", null);
+                foreach (string name in new[] { "Host_BeginSceneVote_Simple", "Client_RequestBeginSceneVote", "Client_OnSceneVoteStart" })
+                    Patch(Require(name), "BeforeVote", "AfterNewVote");
+                foreach (string name in new[] { "CancelVote", "Client_OnVoteCancelled" })
+                    Patch(Require(name), "BeforeVote", "AfterCancel");
+                identity.Install();
+            }
+            catch { Dispose(); throw; }
+        }
+
+        private MethodInfo Require(string name)
+        {
+            MethodInfo method = sceneNet.GetMethod(name, Flags);
+            if (method == null) throw new MissingMethodException(sceneNet.FullName, name);
+            return method;
+        }
+
+        private void Patch(MethodInfo method, string prefix, string postfix)
+        {
+            Type type = typeof(BossRushCoopSceneIdentityBridge);
+            harmony.Patch(method, prefix == null ? null : new HarmonyMethod(type, prefix), postfix == null ? null : new HarmonyMethod(type, postfix));
+        }
+
+        private bool Ingress(object context)
+        {
+            return live() && !host() && context != null && !(bool)isServer.GetValue(context, null)
+                && ReferenceEquals(contextService.GetValue(context, null), service())
+                && peer() != null && ReferenceEquals(sender.GetValue(context, null), peer());
+        }
+
+        private void Report(Exception error)
+        {
+            if (reported) return;
+            reported = true;
+            ModBehaviour.CriticalLog("coop-scene-identity", "[BossRush Coop] Native scene identity observation failed: " + error.Message);
+        }
+
+        // Insert beside the installed native send, after its destination has been built and its
+        // possible spectator Closure has returned. Preserve the exact native in-struct and peer.
+        private static IEnumerable<CodeInstruction> ObserveNativeSend(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
+        {
+            var result = new List<CodeInstruction>();
+            int matched = 0;
+            foreach (CodeInstruction instruction in instructions)
+            {
+                var method = instruction.operand as MethodInfo;
+                if (instruction.opcode != OpCodes.Call || method == null || !method.IsGenericMethod
+                    || method.DeclaringType.FullName != "EscapeFromDuckovCoopMod.CoopTool" || method.Name != "SendRpc"
+                    || method.GetGenericArguments().Length != 1 || method.GetGenericArguments()[0].Name != "SceneBeginLoadRpc")
+                { result.Add(instruction); continue; }
+                var parameters = method.GetParameters();
+                if (parameters.Length != 2 || !parameters[0].ParameterType.IsByRef || method.ReturnType != typeof(void))
+                    throw new MissingMethodException("Native SceneBegin send signature changed.");
+                LocalBuilder excluded = generator.DeclareLocal(parameters[1].ParameterType);
+                LocalBuilder marker = generator.DeclareLocal(typeof(BossRushCoopSceneMarker));
+                var first = new CodeInstruction(OpCodes.Stloc, excluded);
+                first.labels.AddRange(instruction.labels); instruction.labels.Clear();
+                first.blocks.AddRange(instruction.blocks); instruction.blocks.Clear();
+                result.Add(first);
+                result.Add(new CodeInstruction(OpCodes.Dup));
+                result.Add(new CodeInstruction(OpCodes.Ldobj, method.GetGenericArguments()[0]));
+                result.Add(new CodeInstruction(OpCodes.Box, method.GetGenericArguments()[0]));
+                result.Add(new CodeInstruction(OpCodes.Ldarg_0));
+                result.Add(new CodeInstruction(OpCodes.Call, typeof(BossRushCoopSceneIdentityBridge).GetMethod("BeforeNativeSend", Flags)));
+                result.Add(new CodeInstruction(OpCodes.Stloc, marker));
+                result.Add(new CodeInstruction(OpCodes.Ldloc, excluded));
+                result.Add(instruction);
+                result.Add(new CodeInstruction(OpCodes.Ldloc, marker));
+                result.Add(new CodeInstruction(OpCodes.Ldarg_0));
+                result.Add(new CodeInstruction(OpCodes.Call, typeof(BossRushCoopSceneIdentityBridge).GetMethod("AfterNativeSend", Flags)));
+                matched++;
+            }
+            if (matched != 1) throw new MissingMethodException("Expected one installed native SceneBegin send, found " + matched);
+            return result;
+        }
+
+        private static BossRushCoopSceneMarker BeforeNativeSend(object message, object instance)
+        {
+            var owner = active;
+            if (owner == null || !owner.live() || !owner.host() || !ReferenceEquals(owner.nativeInstance.GetValue(null), instance)) return null;
+            try
+            {
+                BossRushCoopSceneMarker marker = ReadDestination(owner.messageDestination, message);
+                marker.session = owner.session(); marker.serial = ++owner.serial; marker.token = Guid.NewGuid().ToString("N");
+                if (!marker.Valid()) throw new InvalidOperationException("Native travel preceded its room identity.");
+                byte[] bytes = System.Text.Encoding.UTF8.GetBytes(BossRushCoopJson.ToJson(marker));
+                owner.send(bytes); // Synchronous native backend send before the original native Begin send.
+                return marker;
+            }
+            catch (Exception e) { owner.Report(e); }
+            return null;
+        }
+
+        private static void AfterNativeSend(BossRushCoopSceneMarker marker, object instance)
+        {
+            var owner = active;
+            if (owner != null && marker != null && owner.live() && owner.host()
+                && ReferenceEquals(owner.nativeInstance.GetValue(null), instance)) owner.identity.ApproveHost(marker);
+        }
+
+        private static void BeforeMarkerIngress(object __0, object __1)
+        {
+            var owner = active;
+            if (owner == null) return;
+            try
+            {
+                if (!owner.Ingress(__0) || __1 == null || (string)owner.channel.GetValue(__1, null) != MarkerChannel) return;
+                byte[] bytes = owner.payload.GetValue(__1, null) as byte[];
+                if (bytes == null || bytes.Length == 0 || bytes.Length > 4096) return;
+                // Observe before Receive -> Enqueue. Never drain, consume or reorder the native ModNetwork queue.
+                owner.identity.StageMarker(BossRushCoopJson.FromJson<BossRushCoopSceneMarker>(System.Text.Encoding.UTF8.GetString(bytes)));
+            }
+            catch (Exception e) { owner.Report(e); }
+        }
+
+        private static void BeforeBeginIngress(object __0, object __1)
+        {
+            var owner = active;
+            if (owner == null) return;
+            try
+            {
+                if (owner.Ingress(__0) && __1 != null)
+                    owner.identity.ObserveNativeBegin(ReadDestination(owner.messageDestination, __1));
+            }
+            catch (Exception e) { owner.Report(e); }
+        }
+
+        private struct VoteObservation { internal bool Active; internal long Revision; }
+
+        private static void BeforeVote(object __instance, out VoteObservation __state)
+        {
+            __state = new VoteObservation { Active = active != null && (bool)active.voteActive.GetValue(__instance),
+                Revision = active == null ? -1 : active.identity.Revision };
+        }
+
+        private static void AfterNewVote(object __instance, VoteObservation __state)
+        {
+            var owner = active;
+            if (owner != null && !__state.Active && (bool)owner.voteActive.GetValue(__instance)
+                && owner.identity.Revision == __state.Revision) owner.identity.CancelPending();
+        }
+
+        private static void AfterCancel(object __instance, VoteObservation __state)
+        {
+            var owner = active;
+            if (owner != null && __state.Active && !(bool)owner.voteActive.GetValue(__instance)
+                && owner.identity.Revision == __state.Revision) owner.identity.CancelPending();
+        }
+
+        public void Dispose()
+        {
+            if (harmony != null) { harmony.UnpatchAll(PatchOwner); harmony = null; }
+            if (ReferenceEquals(active, this)) active = null;
         }
     }
 
@@ -332,14 +734,19 @@ namespace BossRush
         private static BossRushCoopSceneLoadCompatibility active;
         private readonly Type nativeType;
         private readonly Func<bool> networkStarted;
+        private readonly Func<object> hostPeer;
         private readonly FieldInfo nativeInstance, target, launched, authorizedTarget;
+        private MethodInfo spectatorBegin;
+        private PropertyInfo beginIsServer, beginSender, beginService;
+        private FieldInfo nativeServiceInstance, beginDestination, spectatorInstance, spectatorActive, spectatorPending, voteActive;
         private Harmony harmony;
         private bool subscribed;
-        private ReturnLease lease, pending;
+        private ReturnLease lease, pending, spectatorApproval;
 
         private sealed class ReturnLease
         {
             internal object Native;
+            internal object ApprovalHost, Spectator;
             internal CharacterMainControl Body;
             internal Duckov.Scenes.MultiSceneCore Core;
             internal string Run, Asset;
@@ -347,10 +754,11 @@ namespace BossRush
             internal bool Authorized;
         }
 
-        internal BossRushCoopSceneLoadCompatibility(Type nativeType, Func<bool> networkStarted)
+        internal BossRushCoopSceneLoadCompatibility(Type nativeType, Func<bool> networkStarted, Func<object> hostPeer)
         {
             this.nativeType = nativeType;
             this.networkStarted = networkStarted;
+            this.hostPeer = hostPeer;
             nativeInstance = RequireField("Instance");
             target = RequireField("sceneTargetId");
             launched = RequireField("_localSceneLoadLaunched");
@@ -369,6 +777,7 @@ namespace BossRush
                 Patch(perform, "BeforeApprovedLoad", "AfterApprovedLoad");
                 Patch(RequireMethod("IsLocalSceneLoadAllowed", new[] { typeof(string) }), null, "AfterAuthorizationQuery");
                 Patch(RequireMethod("AuthorizeLocalSceneLoad", new[] { typeof(string), typeof(float) }), "BeforeNativeAuthorization", null);
+                InstallSpectatorApproval();
                 foreach (string name in new[] { "ClearLocalSceneLoadAuthorization", "Host_BeginSceneVote_Simple", "Client_RequestBeginSceneVote", "Client_OnSceneVoteStart", "CancelVote", "Client_OnVoteCancelled" })
                 {
                     MethodInfo method = nativeType.GetMethod(name, NativeFlags);
@@ -382,6 +791,31 @@ namespace BossRush
                 subscribed = true;
             }
             catch { Dispose(); throw; }
+        }
+
+        private void InstallSpectatorApproval()
+        {
+            Type rpc = nativeType.Assembly.GetType(nativeType.Namespace + ".RPCScene", true);
+            Type spectator = nativeType.Assembly.GetType(nativeType.Namespace + ".Spectator", true);
+            spectatorBegin = rpc.GetMethod("HandleSceneBeginLoad", NativeFlags);
+            if (spectatorBegin == null || !spectatorBegin.IsStatic || spectatorBegin.GetParameters().Length != 2)
+                throw new MissingMethodException(rpc.FullName, "HandleSceneBeginLoad");
+            ParameterInfo[] args = spectatorBegin.GetParameters();
+            beginIsServer = args[0].ParameterType.GetProperty("IsServer", NativeFlags);
+            beginSender = args[0].ParameterType.GetProperty("Sender", NativeFlags);
+            beginService = args[0].ParameterType.GetProperty("Service", NativeFlags);
+            nativeServiceInstance = beginService == null ? null : beginService.PropertyType.GetField("Instance", NativeFlags);
+            beginDestination = args[1].ParameterType.GetField("SceneId", NativeFlags);
+            spectatorInstance = spectator.GetField("Instance", NativeFlags);
+            spectatorActive = spectator.GetField("_spectatorActive", NativeFlags);
+            spectatorPending = spectator.GetField("_spectatorEndOnVotePending", NativeFlags);
+            voteActive = RequireField("sceneVoteActive");
+            if (beginIsServer == null || beginIsServer.PropertyType != typeof(bool) || beginSender == null || beginService == null || nativeServiceInstance == null
+                || beginDestination == null || beginDestination.FieldType != typeof(string) || spectatorInstance == null
+                || spectatorActive == null || spectatorActive.FieldType != typeof(bool)
+                || spectatorPending == null || spectatorPending.FieldType != typeof(bool))
+                throw new MissingMemberException("Native spectator scene approval contract changed.");
+            Patch(spectatorBegin, "BeforeSpectatorApproval", "AfterSpectatorApproval");
         }
 
         private FieldInfo RequireField(string name)
@@ -421,6 +855,7 @@ namespace BossRush
                 || !ReferenceEquals(value.Body, CharacterMainControl.Main) || !ReferenceEquals(value.Core, Duckov.Scenes.MultiSceneCore.Instance)
                 || value.Run != BossRushCoop.RunId || value.Asset != BossRushCoop.LocalAssetId
                 || !string.Equals(target.GetValue(instance) as string, "Base", StringComparison.OrdinalIgnoreCase)) return false;
+            if (value.ApprovalHost != null && (!BossRushCoop.IsClient || !ReferenceEquals(value.ApprovalHost, hostPeer()))) return false;
             Scene source = value.Core.gameObject.scene;
             return source.IsValid() && source.isLoaded && source.handle == value.SceneHandle;
         }
@@ -431,6 +866,35 @@ namespace BossRush
             active.OnIdentityChanged();
             __state = active.Capture(__instance, __0);
             active.pending = __state;
+        }
+        private static void BeforeSpectatorApproval(object __0, object __1, out ReturnLease __state)
+        {
+            __state = null;
+            if (active == null || __0 == null || __1 == null || !BossRushCoop.IsClient
+                || (bool)active.beginIsServer.GetValue(__0, null)) return;
+            object peer = active.hostPeer();
+            object service = active.beginService.GetValue(__0, null);
+            if (peer == null || service == null || !ReferenceEquals(service, active.nativeServiceInstance.GetValue(null))
+                || !ReferenceEquals(peer, active.beginSender.GetValue(__0, null))) return;
+            active.OnIdentityChanged();
+            // 原版死客在此 RPC 内只展示 Closure 后 return，根本不会调用 TryPerform。
+            // 授权来自本次房主 BeginLoad 的真实目标，不能沿用上次加载的 launched/TTL。
+            object spectator = active.spectatorInstance.GetValue(null);
+            if (spectator == null || !(bool)active.spectatorActive.GetValue(spectator)
+                || !(bool)active.spectatorPending.GetValue(spectator)) return;
+            __state = active.Capture(active.nativeInstance.GetValue(null), active.beginDestination.GetValue(__1) as string);
+            if (__state != null) { __state.ApprovalHost = peer; __state.Spectator = spectator; }
+            active.spectatorApproval = __state;
+        }
+        private static void AfterSpectatorApproval(ReturnLease __state)
+        {
+            if (active == null || __state == null || !ReferenceEquals(active.spectatorApproval, __state)) return;
+            active.spectatorApproval = null;
+            if (!active.Current(__state, __state.Native)) return;
+            object spectator = active.spectatorInstance.GetValue(null);
+            if (spectator == null || !ReferenceEquals(spectator, __state.Spectator) || (bool)active.spectatorActive.GetValue(spectator)
+                || (bool)active.spectatorPending.GetValue(spectator) || (bool)active.voteActive.GetValue(__state.Native)) return;
+            active.lease = __state;
         }
         private static void BeforeNativeAuthorization(object __instance, string __0)
         {
@@ -454,10 +918,11 @@ namespace BossRush
             if (!__result && string.Equals(__0, "Base", StringComparison.OrdinalIgnoreCase)) __result = true;
         }
         private static void BeforeNewTravelOrCancel() { if (active != null) active.OnIdentityChanged(); }
-        private void OnIdentityChanged() { lease = pending = null; }
+        private void OnIdentityChanged() { lease = pending = spectatorApproval = null; }
         private void OnSceneUnloaded(Scene scene)
         {
-            if ((lease != null && lease.SceneHandle == scene.handle) || (pending != null && pending.SceneHandle == scene.handle)) OnIdentityChanged();
+            if ((lease != null && lease.SceneHandle == scene.handle) || (pending != null && pending.SceneHandle == scene.handle)
+                || (spectatorApproval != null && spectatorApproval.SceneHandle == scene.handle)) OnIdentityChanged();
         }
         public void Dispose()
         {

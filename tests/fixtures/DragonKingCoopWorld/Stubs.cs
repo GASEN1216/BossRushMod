@@ -8,11 +8,19 @@ namespace UnityEngine
     public class Component:Object { public GameObject gameObject; public Transform transform { get { return gameObject.transform; } } public T GetComponentInParent<T>() where T:class { return gameObject.Character as T; } public T GetComponent<T>() where T:class { return typeof(T)==typeof(Rigidbody)?gameObject.Body as T:gameObject.Receiver as T; } }
     public enum ForceMode { Impulse }
     public sealed class Rigidbody { internal int Impulses;public void AddForce(Vector3 velocity,ForceMode mode) { Impulses++; } }
-    public sealed class Coroutine { }
-    public class MonoBehaviour:Component { public bool enabled=true; protected Coroutine StartCoroutine(System.Collections.IEnumerator routine) { return new Coroutine(); } protected void StopCoroutine(Coroutine routine) { } }
+    public sealed class Coroutine { internal System.Collections.IEnumerator Routine; }
+    public class MonoBehaviour:Component {
+        public bool enabled=true; public bool isActiveAndEnabled { get { return enabled && gameObject.activeInHierarchy; } }
+        internal readonly List<Coroutine> Routines=new List<Coroutine>();
+        public Coroutine StartCoroutine(System.Collections.IEnumerator routine) { var value=new Coroutine { Routine=routine };if(routine.MoveNext())Routines.Add(value);return value; }
+        protected void StopCoroutine(Coroutine routine) { Routines.Remove(routine); }
+        internal void Frame() { foreach(var value in Routines.ToArray()) if(!value.Routine.MoveNext())Routines.Remove(value); }
+    }
+    public sealed class WaitForSeconds { public WaitForSeconds(float seconds) { } }
+    public static class LayerMask { public static int NameToLayer(string value) { return 0; } }
     public sealed class GameObject:Object
     {
-        public bool activeInHierarchy=true; public readonly Transform transform; public CharacterMainControl Character;public DamageReceiver Receiver;public Rigidbody Body=new Rigidbody();
+        public int layer;public bool activeInHierarchy=true; public readonly Transform transform; public CharacterMainControl Character;public DamageReceiver Receiver;public Rigidbody Body=new Rigidbody();
         public readonly List<Collider> Colliders=new List<Collider>(); public GameObject() { transform=new Transform(this); }
     }
     public sealed class Transform
@@ -28,6 +36,7 @@ namespace UnityEngine
     {
         public float x,y,z;public Vector3(float x,float y,float z) { this.x=x;this.y=y;this.z=z; }
         public static Vector3 up { get { return new Vector3(0,1,0); } }
+        public void Normalize() { this=normalized; }
         public static Vector3 zero { get { return new Vector3(); } }
         public float sqrMagnitude { get { return x*x+y*y+z*z; } }
         public Vector3 normalized { get { var length=(float)Math.Sqrt(sqrMagnitude);return length>0?this/length:new Vector3(); } }
@@ -41,10 +50,11 @@ namespace UnityEngine
     public struct RaycastHit { public Collider collider;public Vector3 point; }
     public static class Mathf { public static float Sqrt(float value) { return (float)Math.Sqrt(value); } public static float Max(float a,float b) { return Math.Max(a,b); } }
     public sealed class Collider:Component { public bool enabled=true;public Vector3 ClosestPoint(Vector3 center) { return transform.position; } }
-    public static class Time { public static float time,unscaledTime; }
-    public enum QueryTriggerInteraction { Collide }
+    public static class Time { public static float time,unscaledTime,deltaTime=.05f; }
+    public enum QueryTriggerInteraction { Collide,Ignore }
     public static class Physics
     {
+        internal static bool Wall;public static bool Linecast(Vector3 from,Vector3 to,int mask,QueryTriggerInteraction mode) { return Wall; }
         internal static Collider[] Hits=new Collider[0];internal static int Queries;
         public static int OverlapSphereNonAlloc(Vector3 center,float radius,Collider[] buffer,int mask,QueryTriggerInteraction triggers=QueryTriggerInteraction.Collide) { Queries++;int count=Math.Min(buffer.Length,Hits.Length);Array.Copy(Hits,buffer,count);return count; }
         public static Collider[] OverlapSphere(Vector3 center,float radius,int mask,QueryTriggerInteraction triggers=QueryTriggerInteraction.Collide) { Queries++;return (Collider[])Hits.Clone(); }
@@ -98,6 +108,8 @@ namespace BossRush
     {
         internal static bool IsConnected=true,IsHost=true;internal static bool HasWorldAuthority { get { return !IsConnected || IsHost; } }
         internal static bool IsClient { get { return IsConnected && !IsHost; } }
+        internal static bool HasBoundScene;
+        internal static string SceneToken;
         internal static string RunId="room",LocalPlayerId="host",LocalAssetId="asset";internal static int SceneGeneration=1;
         internal static event Action SessionChanged;
         internal sealed class Sent { internal string Sender,Target,Topic,Json; }
@@ -111,19 +123,26 @@ namespace BossRush
         internal static string GetPlayerId(CharacterMainControl target) { foreach(var player in Players)if(player.Character==target)return player.Id;return null; }
         internal static bool AnyPlayerAlive { get { foreach(var p in Players)if(p.IsAlive)return true;return false; } }
         internal static readonly List<BossRushCoopPlayer> Players=new List<BossRushCoopPlayer>();
-        internal static bool IsPlayer(CharacterMainControl actor) { foreach(var p in Players)if(p.Character==actor)return true;return false; }
-        internal static CharacterMainControl GetCombatTarget(Vector3 at) { foreach(var p in Players)if(p.IsAlive)return p.Character;return null; }
+        internal static bool IsPlayer(CharacterMainControl actor) { if(actor==CharacterMainControl.Main)return true;foreach(var p in Players)if(p.Character==actor)return true;return false; }
+        internal static CharacterMainControl GetCombatTarget(Vector3 at) { CharacterMainControl result=null;float distance=float.MaxValue;foreach(var p in Players)if(p.IsAlive && p.Character!=null && !p.Character.Health.IsDead) { float d=(p.Character.transform.position-at).sqrMagnitude;if(d<distance) { distance=d;result=p.Character; } }return result; }
     }
-    internal static class GameplayDataSettings { internal static class Layers { internal const int damageReceiverLayerMask=1; } }
+    internal static class GameplayDataSettings { internal static class Layers { internal const int damageReceiverLayerMask=1;internal static int wallLayerMask; } }
     internal static class BossSkillDamageRules { internal static readonly HashSet<CharacterMainControl> Dodging=new HashSet<CharacterMainControl>();internal static bool IsDodging(CharacterMainControl actor) { return Dodging.Contains(actor); }internal static float ResolveGunDamageScale(CharacterMainControl actor,float baseline) { return 2f; } }
     internal static class DragonKingConfig { internal const float CollisionRadius=1.5f,CollisionCooldown=.5f,SunDanceDamagePerTick=4f,DamageMultiplier=1f,DamagePointHeightOffset=1f,PlayerTargetHeightOffset=1f,ProjectileHitRadius=1f,EtherealLanceDamage=4f;internal const string Sound_Hit="hit",Sound_BoltHit="hit"; }
     internal static class DragonKingFxShared { internal static void HitBurst(Vector3 at,Color color) { } }
-    internal sealed class ModBehaviour { internal static ModBehaviour Instance;internal bool IsModeEActive;internal static void DevLog(string value) { }internal void PlaySoundEffect(string sound) { } }
+    internal sealed class ModBehaviour:MonoBehaviour { internal static ModBehaviour Instance;internal bool IsModeEActive;internal static void DevLog(string value) { }internal void PlaySoundEffect(string sound) { } }
     internal static class ModeHRuntimeGates { internal static bool IsModeHRunOwnerActive; }
-    internal static class DragonDescendantConfig { internal const float CollisionDamage=4, Phase2DamageMultiplier=1; }
-    public sealed partial class DragonDescendantAbilityController
+    internal static class DragonDescendantConfig { internal const float CollisionDamage=4, Phase2DamageMultiplier=1,KnockbackYComponent=.3f,KnockbackForce=8; }
+    public sealed partial class DragonDescendantAbilityController:MonoBehaviour
     {
         private readonly CharacterMainControl bossCharacter=new CharacterMainControl { Team=Teams.wolf };
+        private CharacterMainControl playerCharacter;private Health bossHealth;
+        private bool isEnraged=true,isResurrecting;private float lastCollisionTime;private const float COLLISION_COOLDOWN=.5f;
+        private readonly Dictionary<CharacterMainControl,float> collisionTimes=new Dictionary<CharacterMainControl,float>();
+        internal static CharacterMainControl ArenaTarget;private CharacterMainControl ResolveArenaOpponent(bool allowMain) { return ArenaTarget; }
+        private bool IsPlayerOutOfLeashRange() { return false; }private void PlayCollisionSound() { }
+        internal DragonDescendantAbilityController() { gameObject=bossCharacter.gameObject;bossHealth=bossCharacter.Health; }
+        internal CharacterMainControl TargetForTest() { RefreshPlayerReference();return playerCharacter; }
         internal CharacterMainControl BossForTest { get { return bossCharacter; } }
         internal void CollideForTest(CharacterMainControl target) { ApplyCollisionDamage(target); }
     }
@@ -187,4 +206,17 @@ namespace BossRush
         internal void BindScopeForTest() { CaptureWaveScope();FindPlayer(); }
         internal void KnockForTest() { KnockbackPlayer(new Vector3(1,0,0),new Vector3()); }
     }
+}
+
+public sealed class LevelManager { public static LevelManager Instance=new LevelManager(); }
+public static class SceneLoader { public static bool IsSceneLoading; }
+namespace BossRush {
+ internal partial class SandstormChampionMinionArts {
+    private readonly CharacterMainControl _self=new CharacterMainControl { Team=Teams.wolf };
+    private readonly SandController _controller=new SandController();private readonly UnityEngine.MonoBehaviour _marker=new UnityEngine.MonoBehaviour();private object _fxRoot;
+    internal bool Hit(CharacterMainControl player,Vector3 push) { return Strike(player,4,push,1); }
+ }
+ internal sealed class SandController { internal void HurtPlayer(CharacterMainControl p,float damage,Vector3 to) { p.Health.Hurt(new DamageInfo { damageValue=damage }); } }
+ internal static class AstralStaffFx { internal static void WithRoot(object root,Action action) { action(); }internal static void PlayContact(Vector3 at,Vector3 dir,int tier) { } }
+ internal static class SandstormChampionAssetManager { internal static void ShakeNear(Vector3 at,float force,float range) { } }
 }

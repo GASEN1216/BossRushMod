@@ -23,6 +23,20 @@ namespace BossRush
         internal void NotifyCampaignModeFExtracted() { campaignRuntime.NotifyCampaignModeFExtracted(); }
         internal void NotifyCampaignZombieExtracted() { campaignRuntime.NotifyCampaignZombieExtracted(); }
 
+        internal string CampaignModeDEntryForRuntime { get { return modeDRuntime.CampaignEntryEpoch; } }
+        internal string CampaignModeEEntryForRuntime { get { return modeERuntime.CampaignEntryEpoch; } }
+        internal string CampaignModeFEntryForRuntime { get { return modeFRuntime.CampaignEntryEpoch; } }
+        internal string CampaignArenaEntryForRuntime { get { return wavesArenaRuntime.CampaignEntryEpoch; } }
+        internal bool TryGetCampaignParticipantAssetForRuntime(string mode, string epoch, string player, out string asset)
+        {
+            asset = null;
+            if (mode == CampaignContentCatalog.ModeModeD) return modeDRuntime.TryGetCoopCampaignParticipantAsset(epoch, player, out asset);
+            if (mode == CampaignContentCatalog.ModeModeE) return modeERuntime.TryGetCoopCampaignParticipantAsset(epoch, player, out asset);
+            if (mode == CampaignContentCatalog.ModeModeF) return modeFRuntime.TryGetCoopCampaignParticipantAsset(epoch, player, out asset);
+            if (mode == CampaignContentCatalog.ModeStandard) return wavesArenaRuntime.TryGetCoopCampaignParticipantAsset(epoch, player, out asset);
+            return mode == CampaignContentCatalog.ModeZombie && zombieModeRuntimeModule != null
+                && zombieModeRuntimeModule.TryGetCoopCampaignParticipantAsset(epoch, player, out asset);
+        }
         internal bool CampaignArenaActiveForRuntime { get { return bossRushArenaActive; } }
         internal BossRushSignInteractable CampaignArenaSignForRuntime { get { return uiAndSignsRuntime.SignInteract; } }
         internal bool CampaignModeDActiveForRuntime { get { return modeDActive; } }

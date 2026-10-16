@@ -47,7 +47,7 @@ namespace BossRush
                     // 折翎开战后本趟退下休整，避免最后一名倒下与剧情落盘之间的空窗、尸体和交互体重叠。
                     // 下一次出击恢复本人：胜负事实只开路，不永久剥夺聊天、送礼与婚姻入口；旧战败档同样恢复。
                     // 钟守的战斗对象是守钟装置，本人照旧只在战斗中隐藏。
-                    residents.SetVisible("sky_zheling", encounters == null || !encounters.WasStartedThisRaid("Zheling"));
+                    residents.SetVisible("sky_zheling", encounters == null || (BossRushCoop.IsConnected ? !IsStoryChallengeActive("Zheling") : !encounters.WasStartedThisRaid("Zheling")));
                     residents.SetVisible("sky_bellkeeper", !IsStoryChallengeActive("BellKeeper"));
                     // 活人感：头顶气泡 + 说话时停下脚步。自己节流，说话与否的四道门都在 SkyIslandChatter。
                     residents.Tick(player.transform.position, story == null ? null : story.Current);

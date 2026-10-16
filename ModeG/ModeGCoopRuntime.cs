@@ -28,6 +28,9 @@ namespace BossRush
         private CoopGameplayChannel<ModeGCoopWorld> coop;
         private CoopPersonalDelivery<ModeGCoopCombat> coopCombat;
         private ModeGCoopWorld coopLatest;
+        private string coopLatestToken;
+        private bool IsCoopEntrySceneCurrent
+        { get { return BossRushCoop.HasBoundScene && !string.IsNullOrEmpty(coopLatestToken) && coopLatestToken == BossRushCoop.SceneToken; } }
         private bool coopWaitingEntry;
         private long coopCombatSequence;
         private float coopEntryDeadline;
@@ -53,7 +56,7 @@ namespace BossRush
             coopDeclinedRuns.Clear();
             coopAdmissionFacts.Clear();
             coopUnqualifiedOrders.Clear();
-            coopLatest = null; coopDeclinedRun = 0;
+            coopLatest = null; coopLatestToken = null; coopDeclinedRun = 0;
         }
         internal void EnsureCoop()
         {
@@ -72,7 +75,7 @@ namespace BossRush
         private bool QueueCoopEntry()
         {
             EnsureCoop();
-            if (!BossRushCoop.IsClient || (coopLatest != null && coopLatest.Active)) return false;
+            if (!BossRushCoop.IsClient || (IsCoopEntrySceneCurrent && coopLatest != null && coopLatest.Active)) return false;
             if (!coopWaitingEntry)
             {
                 coopWaitingEntry = true; coopWaitingAsset = BossRushCoop.LocalAssetId; coopEntryDeadline = Time.realtimeSinceStartup + 120f;
@@ -83,7 +86,7 @@ namespace BossRush
         }
         private ModeGEntryPreview FreezeCoopPreview(ModeGEntryPreview personal)
         {
-            if (!BossRushCoop.IsClient || coopLatest == null) return personal;
+            if (!BossRushCoop.IsClient || !IsCoopEntrySceneCurrent || coopLatest == null) return personal;
             return new ModeGEntryPreview(coopLatest.Seed, coopLatest.Counter, (ModeGRunFormat)coopLatest.Format,
                 coopLatest.Signatures, personal.contractCandidateIds, coopLatest.SceneName, coopLatest.SceneId,
                 coopLatest.Verification, DateTime.UtcNow.Ticks);
@@ -133,7 +136,7 @@ namespace BossRush
             {
                 RefreshCoopReceiptRoom();
                 long order; coopUnqualifiedOrders.TryGetValue(BossRushCoop.RunId + ":" + modeGRuntime.State.runId.ToString("x") + ":" + BossRushCoop.LocalAssetId, out order);
-                modeGRuntime.FreezeCoopAdmission(coopLatest, order);
+                modeGRuntime.FreezeCoopAdmission(IsCoopEntrySceneCurrent ? coopLatest : null, order);
             }
             coopAdmissionRetry = 0f;
             coopAdmissionDeadline = Time.realtimeSinceStartup + 120f;
@@ -148,18 +151,18 @@ namespace BossRush
             coopAdmissionRetry -= Mathf.Max(0f, deltaTime);
             if (coopAdmissionRetry > 0f) return;
             coopAdmissionRetry = 1f;
-            EnsureCoop(); coop.Request("admitted", 0, modeGRuntime.State.runId.ToString("x") + ":"
+            EnsureCoop(); coop.RequestRepeat("admitted", 0, modeGRuntime.State.runId.ToString("x") + ":"
                 + modeGRuntime.CoopRequestedAdmissionBaseline.ToString(System.Globalization.CultureInfo.InvariantCulture));
         }
         private bool IsCoopRunClosedForLocalAsset()
         {
             RefreshCoopReceiptRoom();
-            return BossRushCoop.IsClient && coopLatest != null && coopLatest.Active
+            return BossRushCoop.IsClient && IsCoopEntrySceneCurrent && coopLatest != null && coopLatest.Active
                 && coopClosedRuns.Contains(BossRushCoop.RunId + ":" + coopLatest.Id.ToString("x") + ":" + BossRushCoop.LocalAssetId);
         }
         private bool IsCoopParticipantAssetRejected()
         {
-            if (!BossRushCoop.IsClient || coopLatest == null || !coopLatest.Active || coopLatest.Participants == null) return false;
+            if (!BossRushCoop.IsClient || !IsCoopEntrySceneCurrent || coopLatest == null || !coopLatest.Active || coopLatest.Participants == null) return false;
             foreach (ModeGCoopParticipant participant in coopLatest.Participants)
                 if (participant != null && participant.Id == BossRushCoop.LocalPlayerId)
                     return participant.Asset != BossRushCoop.LocalAssetId;
@@ -181,6 +184,7 @@ namespace BossRush
         }
         private void ApplyCoopWorld(ModeGCoopWorld state)
         {
+            if (!BossRushCoop.HasBoundScene) return;
             if (state == null || state.Wave < 0 || state.Wave >= ModeGWavePlan.WaveCount || state.Actors == null || state.Actors.Length > 3) return;
             if (state.Participants != null)
             {
@@ -195,6 +199,7 @@ namespace BossRush
                 && (modeGRuntime.State.runId != state.Id || modeGRuntime.CoopRunRoom != BossRushCoop.RunId))
             { modeGRuntime.End(ModeGExitReason.SceneChanged); ShutdownModeG(); }
             coopLatest = state;
+            coopLatestToken = BossRushCoop.SceneToken;
             if (state.Active && state.Expected > 0 && modeGRuntime == null && coopDeclinedRun != state.Id)
             { coopWaitingEntry = true; coopWaitingAsset = BossRushCoop.LocalAssetId; coopEntryDeadline = Time.realtimeSinceStartup + 120f; }
             if (modeGRuntime != null && modeGRuntime.State != null && modeGRuntime.State.runId == state.Id)
@@ -206,6 +211,8 @@ namespace BossRush
             EnsureCoop();
             if (modeGRuntime != null && !modeGRuntime.CheckCoopAsset() && modeGRuntime.State.IsTerminal) ShutdownModeG();
             coop.Tick(deltaTime); coopCombat.Tick(deltaTime);
+            // 个人债务仍投递；旧世界缓存不能在新 Core 绑定前重新入场或登记实体。
+            if (BossRushCoop.IsClient && (!BossRushCoop.HasBoundScene || (coopLatest != null && !IsCoopEntrySceneCurrent))) return;
             RetryCoopAdmission(deltaTime);
             if (coopWaitingEntry && coopWaitingAsset != BossRushCoop.LocalAssetId)
             { coopWaitingEntry = false; BossRushMapSelectionHelper.ClearPendingEntryFlowState(); return; }
@@ -312,27 +319,33 @@ namespace BossRush
         internal static bool HasLeft(string player) { return coopOwner != null && coopOwner.coopDeparted.Contains(player); }
         internal static bool CanApplyPersonalCombat
         { get { return coopOwner == null || coopOwner.modeGRuntime == null || (coopOwner.modeGRuntime.IsCoopAssetCurrent && !coopOwner.modeGRuntime.CoopPersonalDefeated
-            && (!coopOwner.modeGRuntime.CoopRunWasClient || BossRushCoop.IsConnected)); } }
+            && (coopOwner.modeGRuntime.CoopRunWasClient ? BossRushCoop.IsConnected : coopOwner.modeGRuntime.CoopRunHasWorldAuthority)); } }
     }
 
     internal sealed partial class ModeGRuntimeModule
     {
         private ModeGCoopWorld coopWorld;
+        private string coopWorldToken;
         private int coopGuestWave = -1;
         private bool coopWaveTelemetryReady;
         internal bool CoopPersonalDefeated { get; private set; }
         private readonly Dictionary<int, CharacterMainControl> coopBosses = new Dictionary<int, CharacterMainControl>();
+        // 原生 AI 销毁可先于个人可靠事实到达；只保留本局已提交的原 Health 身份，不保活实体。
+        private readonly Dictionary<int, Health> coopBossHealth = new Dictionary<int, Health>();
+        private int coopBossGeneration = -1;
+        private void ClearCoopBossReferences() { coopBosses.Clear(); coopBossHealth.Clear(); coopBossGeneration = -1; }
         private readonly HashSet<long> coopCombatApplied = new HashSet<long>();
         private long coopAppliedOrder;
         private long coopAdmissionBaseline;
         private bool coopAdmissionReady;
         private long coopRequestedAdmissionBaseline;
         private int coopEntryWave;
-        private bool coopEntryActorsKnown, coopRunWasClient;
+        private bool coopEntryActorsKnown, coopRunWasClient, coopRunWasConnected;
         private readonly HashSet<int> coopEntryActors = new HashSet<int>();
         internal long CoopRequestedAdmissionBaseline { get { return coopRequestedAdmissionBaseline; } }
         internal bool CoopRunWasClient { get { return coopRunWasClient; } }
-        internal bool CoopRunHasWorldAuthority { get { return !coopRunWasClient && BossRushCoop.HasWorldAuthority; } }
+        internal bool CoopRunHasWorldAuthority
+        { get { return !coopRunWasClient && (coopRunWasConnected ? BossRushCoop.IsHost : !BossRushCoop.IsConnected); } }
         internal bool CoopAdmissionReady { get { return coopAdmissionReady; } }
         private string coopRunAsset;
         private string coopRunRoom;
@@ -345,6 +358,7 @@ namespace BossRush
             coopAssetBound = true; coopRunAsset = BossRushCoop.LocalAssetId;
             coopRunRoom = BossRushCoop.RunId;
             coopRunWasClient = BossRushCoop.IsClient;
+            coopRunWasConnected = BossRushCoop.IsConnected;
             coopAdmissionReady = !coopRunWasClient;
             coopParticipantAssets.Clear();
             foreach (BossRushCoopPlayer player in BossRushCoop.Players)
@@ -391,6 +405,13 @@ namespace BossRush
         internal bool IsCoopAssetCurrent { get { return !coopAssetBound || coopRunAsset == BossRushCoop.LocalAssetId; } }
         internal bool CheckCoopAsset()
         {
+            if (coopAssetBound && !coopRunWasClient && !CoopRunHasWorldAuthority)
+            {
+                if (!IsCoopAssetCurrent) DisarmStartupRefund();
+                End(coopRunWasConnected && !BossRushCoop.IsConnected
+                    ? ModeGExitReason.TechnicalIntegrityLoss : ModeGExitReason.SceneChanged);
+                return false;
+            }
             if (coopAssetBound && !string.IsNullOrEmpty(coopRunRoom) && !string.IsNullOrEmpty(BossRushCoop.RunId)
                 && coopRunRoom != BossRushCoop.RunId)
             { End(ModeGExitReason.SceneChanged); return false; }
@@ -457,7 +478,11 @@ namespace BossRush
             }
             return CanContinueRun();
         }
-        internal void ApplyCoopWorld(ModeGCoopWorld world) { coopWorld = world; }
+        internal void ApplyCoopWorld(ModeGCoopWorld world)
+        {
+            if (!BossRushCoop.HasBoundScene) return;
+            coopWorld = world; coopWorldToken = BossRushCoop.SceneToken;
+        }
         private void BeginCoopGuestWave(ModeGCoopWorld world)
         {
             if (coopGuestWave >= 0)
@@ -467,7 +492,8 @@ namespace BossRush
                 if (_state.IsTerminal || !_state.TryResetSlotsForNextWave()) return;
                 _spawnTransaction.ResetForNextWave();
             }
-            coopGuestWave = world.Wave; coopBosses.Clear();
+            coopGuestWave = world.Wave; ClearCoopBossReferences();
+            coopBossGeneration = BossRushCoop.SceneGeneration;
             coopWaveTelemetryReady = false;
             _state.waveEpoch = world.Wave; _state.actIndex = world.Wave / 3; _state.combatPhase = ModeGCombatPhase.Spawning;
             _state.intermissionActive = false; _state.lastStandActive = false;
@@ -490,6 +516,7 @@ namespace BossRush
             if (coopWorld == null || _state.IsTerminal || coopWorld.Expected <= 0) return;
             if (!CheckCoopAsset()) return;
             if (!BossRushCoop.IsConnected) { End(ModeGExitReason.TechnicalIntegrityLoss); return; }
+            if (!BossRushCoop.HasBoundScene || string.IsNullOrEmpty(coopWorldToken) || coopWorldToken != BossRushCoop.SceneToken) return;
             CharacterMainControl player = CharacterMainControl.Main;
             if (!_state.IsActive) return;
             if (coopWorld.Wave != coopGuestWave) BeginCoopGuestWave(coopWorld);
@@ -499,7 +526,8 @@ namespace BossRush
                 if (actor == null || coopBosses.ContainsKey(actor.Id)) continue;
                 CharacterMainControl character = BossRushCoop.FindAi(actor.Id);
                 if (character != null) CoopAiPredictionHealthProtection.MarkReplica(character);
-                if (character != null && _spawnTransaction.TryCommit(actor.Slot, actor.Key, character)) coopBosses[actor.Id] = character;
+                if (character != null && _spawnTransaction.TryCommit(actor.Slot, actor.Key, character))
+                { coopBosses[actor.Id] = character; coopBossHealth[actor.Id] = character.Health; }
             }
             if (_state.SlotResolved == coopWorld.Committed && coopWorld.Resolved == coopWorld.Expected)
                 for (int slot = 0; slot < coopWorld.Expected; slot++)
@@ -557,7 +585,10 @@ namespace BossRush
             }
             if (fact == null || fact.Wave != coopGuestWave || !_state.IsActive) return _state.IsTerminal;
             if (coopCombatApplied.Contains(fact.Sequence)) return true;
-            CharacterMainControl boss; if (!coopBosses.TryGetValue(fact.Boss, out boss) || boss == null || boss.Health == null) return false;
+            Health health;
+            if (coopBossGeneration != BossRushCoop.SceneGeneration
+                || !coopBossHealth.TryGetValue(fact.Boss, out health) || ReferenceEquals(health, null)
+                || !_state.IsRegisteredBossHealth(health)) return false;
             if (fact.Phase == (int)ModeGCombatPhase.Fighting || fact.Phase == (int)ModeGCombatPhase.LastStand)
             { _state.combatPhase = (ModeGCombatPhase)fact.Phase; _state.lastStandActive = fact.Phase == (int)ModeGCombatPhase.LastStand; }
             if (!_firstWaveCombatStarted) { _firstWaveCombatStarted = true; DisarmStartupRefund(); }
@@ -567,8 +598,8 @@ namespace BossRush
                 isFromBuffOrEffect = fact.Effect, damagePoint = fact.Point };
             // 保留命中当时的真实距离，网络延迟不能把远程命中改算成近战距离。
             if (source == CharacterMainControl.Main) info.damagePoint = source.transform.position + fact.Point - fact.SourcePosition;
-            _telemetry.AcceptCoopDamage(boss.Health, info);
-            if (fact.Dead) HandleBossDead(boss.Health, info);
+            _telemetry.AcceptCoopDamage(health, info);
+            if (fact.Dead) HandleBossDead(health, info);
             coopCombatApplied.Add(fact.Sequence); coopAppliedOrder = fact.Order; return true;
         }
         internal void RecordCoopPersonalDefeat(CharacterMainControl player, DamageInfo info)

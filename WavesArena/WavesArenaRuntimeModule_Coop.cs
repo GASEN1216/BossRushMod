@@ -18,6 +18,7 @@ namespace BossRush
         public long CashPool;
         public string Epoch;
         public int RunSequence;
+        public string[] WavePlayers, WaveAssets;
     }
 
     [Serializable]
@@ -25,6 +26,8 @@ namespace BossRush
     {
         public string Kind, Epoch, BossType;
         public int Wave, Difficulty, RunSequence;
+        public long Cash;
+        public int ItemType, Milestone;
     }
 
     internal sealed partial class WavesArenaRuntimeModule
@@ -34,8 +37,16 @@ namespace BossRush
         private readonly Dictionary<string, string> coopArenaParticipants = new Dictionary<string, string>(StringComparer.Ordinal);
         private readonly Dictionary<string, string> coopArenaWaveParticipants = new Dictionary<string, string>(StringComparer.Ordinal);
         private string coopArenaEpoch, coopArenaLocalEpoch, coopArenaLocalAsset;
+        internal string CampaignEntryEpoch { get { return coopArenaEpoch; } }
+        internal bool TryGetCoopCampaignParticipantAsset(string expectedEpoch, string playerId, out string assetId)
+        {
+            assetId = null;
+            return expectedEpoch == coopArenaEpoch && coopArenaWaveParticipants.TryGetValue(playerId, out assetId);
+        }
         private string coopArenaRoom;
         private string coopArenaProjectionRoom;
+        private string coopArenaEntryToken, coopArenaEntryScheduledToken;
+        private int coopArenaEntryHandle;
 
         private void RetireLostCoopArenaProjection()
         {
@@ -45,6 +56,7 @@ namespace BossRush
             SetBossRushRuntimeActive(false);
             ArenaActive = ArenaPlanned = WaitingForNextWave = false;
             WaveCountdown = 0f; CoopEntryMode = 0;
+            coopArenaEntryToken = coopArenaEntryScheduledToken = null;
             milestoneDelivery = null;
             foreach (MonoBehaviour replica in CurrentWaveBosses)
                 if (replica != null && replica.gameObject != null)
@@ -55,8 +67,6 @@ namespace BossRush
         private long coopArenaFactSequence;
         private readonly HashSet<string> coopArenaBossFacts = new HashSet<string>(StringComparer.Ordinal);
         private string coopArenaVictoryEpoch;
-        private int coopArenaVictoryExtraBoxes, coopArenaVictoryQuality, coopArenaVictoryGeneration;
-        private float coopArenaVictoryReadyAt;
         internal int CoopEntryMode { get; private set; }
         internal void SetCoopEntryMode(int mode) { if (BossRushCoop.HasWorldAuthority) CoopEntryMode = mode; }
 
@@ -69,7 +79,8 @@ namespace BossRush
         internal IEnumerator SetupCoopClientEntry(Scene scene, Action createEntry, Action continueEntry, Action createRescue)
         {
             string room = BossRushCoop.RunId;
-            while (BossRushCoop.IsClient && BossRushCoop.RunId == room && scene.isLoaded && SceneManager.GetActiveScene().handle == scene.handle && CoopEntryMode == 0)
+            while (BossRushCoop.IsClient && BossRushCoop.RunId == room && scene.isLoaded && SceneManager.GetActiveScene().handle == scene.handle
+                && (!BossRushCoop.HasBoundScene || coopArenaEntryToken != BossRushCoop.SceneToken || CoopEntryMode == 0))
                 yield return null;
             if (!BossRushCoop.IsClient || BossRushCoop.RunId != room || !scene.isLoaded || SceneManager.GetActiveScene().handle != scene.handle) yield break;
             // 客端只接房主选择的世界，各模式仍管理个人装备与本地界面。
@@ -80,6 +91,17 @@ namespace BossRush
                 createRescue();
             }
             if (CoopEntryMode != 3 && CoopEntryMode != 4) BossRushMapSelectionHelper.ClearPendingEntryFlowState();
+        }
+
+        private void ScheduleCoopArenaEntry()
+        {
+            if (!BossRushCoop.IsClient || !BossRushCoop.HasBoundScene || !ArenaActive || (CoopEntryMode != 1 && CoopEntryMode != 2)
+                || string.IsNullOrEmpty(BossRushCoop.SceneToken)) return;
+            Scene scene = SceneManager.GetActiveScene();
+            if (!scene.isLoaded || (coopArenaEntryScheduledToken == BossRushCoop.SceneToken && coopArenaEntryHandle == scene.handle)) return;
+            coopArenaEntryScheduledToken = BossRushCoop.SceneToken;
+            coopArenaEntryHandle = scene.handle;
+            owner.StartCoopArenaEntryForScene(scene);
         }
 
         private void InitializeCoopArena()
@@ -95,7 +117,6 @@ namespace BossRush
             coopArenaRunSequence++;
             coopArenaEpoch = Guid.NewGuid().ToString("N");
             coopArenaBossFacts.Clear();
-            coopArenaVictoryExtraBoxes = 0;
             coopArenaFactSequence = 0;
             CaptureCoopArenaParticipants(coopArenaParticipants);
             CaptureCoopArenaWaveParticipants();
@@ -113,7 +134,6 @@ namespace BossRush
             coopArenaRoom = BossRushCoop.RunId;
             coopArenaRunSequence = 0; coopArenaEpoch = coopArenaLocalEpoch = coopArenaLocalAsset = null;
             coopArenaParticipants.Clear(); coopArenaWaveParticipants.Clear(); coopArenaBossFacts.Clear();
-            coopArenaVictoryExtraBoxes = 0;
         }
 
         private static void CaptureCoopArenaParticipants(Dictionary<string, string> participants)
@@ -130,13 +150,18 @@ namespace BossRush
             foreach (var entry in coopArenaParticipants)
             {
                 BossRushCoopPlayer player = BossRushCoop.FindPlayer(entry.Key);
-                if (player != null && player.IsAlive && player.AssetId == entry.Value) coopArenaWaveParticipants.Add(entry.Key, entry.Value);
+                if (player != null && player.IsAlive && player.AssetId == entry.Value)
+                {
+                    coopArenaWaveParticipants.Add(entry.Key, entry.Value);
+                    if (coopPersonal != null) coopPersonal.Deliver(entry.Key, coopArenaEpoch + ":begin", new CoopArenaPersonal
+                    { Kind = InfiniteHellMode ? "beginHell" : "begin", Epoch = coopArenaEpoch, RunSequence = coopArenaRunSequence }, entry.Value);
+                }
             }
         }
 
         private int CoopArenaRewardCopies
         {
-            get { return BossRushCoop.IsConnected ? (InfiniteHellMode ? coopArenaWaveParticipants.Count : coopArenaParticipants.Count) : 1; }
+            get { return BossRushCoop.IsConnected ? coopArenaWaveParticipants.Count : 1; }
         }
 
         internal bool HasLivingCoopArenaParticipant()
@@ -162,27 +187,19 @@ namespace BossRush
         private void QueueCoopArenaVictoryCopies(int quality)
         {
             if (!BossRushCoop.IsHost) return;
-            coopArenaVictoryQuality = quality;
-            coopArenaVictoryExtraBoxes = Math.Max(0, CoopArenaRewardCopies - 1);
-            coopArenaVictoryGeneration = BossRushCoop.SceneGeneration;
-            coopArenaVictoryReadyAt = Time.unscaledTime + 2f;
+            DeliverCoopArenaReward("box", 0, quality, 0, 0);
         }
 
         private void TickCoopArenaVictoryCopies()
         {
-            if (!BossRushCoop.IsHost || coopArenaVictoryExtraBoxes <= 0 || Time.unscaledTime < coopArenaVictoryReadyAt) return;
-            if (BossRushCoop.SceneGeneration != coopArenaVictoryGeneration || coopArenaVictoryEpoch != coopArenaEpoch)
-            { coopArenaVictoryExtraBoxes = 0; return; }
-            Vector3 position = owner.ArenaRewardSignGameObject != null ? owner.ArenaRewardSignGameObject.transform.position : ModBehaviour.GetCurrentSceneDefaultPosition();
-            SpawnDifficultyRewardLootboxAtWorldPosition_LootAndRewards(coopArenaVictoryQuality, position + new Vector3(0.7f * coopArenaVictoryExtraBoxes, 0.3f, 0));
-            coopArenaVictoryExtraBoxes--;
+            TickCoopArenaRewards();
         }
 
         private void DeliverCoopArenaFact(string kind, int wave = 0, string bossType = null)
         {
             if (!BossRushCoop.IsHost || string.IsNullOrEmpty(coopArenaEpoch)) return;
             string id = coopArenaEpoch + ":" + kind + ":" + (++coopArenaFactSequence);
-            var cohort = InfiniteHellMode ? coopArenaWaveParticipants : coopArenaParticipants;
+            var cohort = coopArenaWaveParticipants;
             foreach (var participant in cohort)
                 coopPersonal.Deliver(participant.Key, id, new CoopArenaPersonal
                 { Kind = kind, Epoch = coopArenaEpoch, Wave = wave, BossType = bossType, Difficulty = BossesPerWave, RunSequence = coopArenaRunSequence }, participant.Value);
@@ -199,7 +216,7 @@ namespace BossRush
             if (owner.IsModeDActive) { ModeDRuntimeModule.ReportCoopBoss(owner, boss, type); return; }
             // 包含房主：所有个人成绩都按本局冻结资产交付，换槽不继承旧击杀。
             string id = coopArenaEpoch + ":boss:" + entity;
-            foreach (var participant in InfiniteHellMode ? coopArenaWaveParticipants : coopArenaParticipants)
+            foreach (var participant in coopArenaWaveParticipants)
                 coopPersonal.Deliver(participant.Key, id, new CoopArenaPersonal { Kind = "boss", Epoch = coopArenaEpoch, BossType = type, Difficulty = BossesPerWave, RunSequence = coopArenaRunSequence }, participant.Value);
         }
 
@@ -207,6 +224,7 @@ namespace BossRush
         {
             if (owner == null || fact == null) return false;
             RefreshCoopArenaRoom();
+            if (fact.Kind == "box" || fact.Kind == "waveReward" || fact.Kind == "milestone") return ApplyCoopArenaReward(fact);
             if (fact.Kind == "begin" || fact.Kind == "beginHell")
             {
                 // 新局的状态先抵达时不能由迟到旧 begin 重置个人无伤计时。
@@ -262,7 +280,8 @@ namespace BossRush
                 Remaining = BossesInCurrentWaveRemaining, WaveTotal = BossesInCurrentWaveTotal,
                 InfiniteWave = InfiniteHellWaveIndex, Countdown = WaveCountdown, NextBoss = NextWaveBossName,
                 CurrentBoss = BossRushCoop.GetEntityId(CurrentBoss as CharacterMainControl),
-                Bosses = bosses.ToArray(), CashPool = InfiniteHellCashPool, Epoch = coopArenaEpoch, RunSequence = coopArenaRunSequence
+                Bosses = bosses.ToArray(), CashPool = InfiniteHellCashPool, Epoch = coopArenaEpoch, RunSequence = coopArenaRunSequence,
+                WavePlayers = new List<string>(coopArenaWaveParticipants.Keys).ToArray(), WaveAssets = new List<string>(coopArenaWaveParticipants.Values).ToArray()
             };
         }
 
@@ -274,7 +293,12 @@ namespace BossRush
             if (state.RunSequence < coopArenaRunSequence) return;
             coopArenaRunSequence = state.RunSequence;
             CoopEntryMode = state.EntryMode;
+            coopArenaEntryToken = BossRushCoop.SceneToken;
             coopArenaEpoch = state.Epoch;
+            coopArenaWaveParticipants.Clear();
+            if (state.WavePlayers != null && state.WaveAssets != null && state.WavePlayers.Length == state.WaveAssets.Length)
+                for (int i = 0; i < state.WavePlayers.Length; i++)
+                    if (!string.IsNullOrEmpty(state.WavePlayers[i]) && !string.IsNullOrEmpty(state.WaveAssets[i])) coopArenaWaveParticipants[state.WavePlayers[i]] = state.WaveAssets[i];
             bool started = !IsActive && state.Active;
             bool ended = IsActive && !state.Active;
             IsActive = state.Active;
@@ -292,6 +316,7 @@ namespace BossRush
             WaveCountdown = state.Countdown;
             NextWaveBossName = state.NextBoss;
             InfiniteHellCashPool = state.CashPool;
+            ScheduleCoopArenaEntry();
             CurrentBoss = BossRushCoop.FindEntity(state.CurrentBoss);
             CoopAiPredictionHealthProtection.MarkReplica(CurrentBoss as CharacterMainControl);
             CurrentWaveBosses.Clear();
@@ -314,6 +339,12 @@ namespace BossRush
         {
             BossRushCoopPlayer player = BossRushCoop.FindPlayer(command.PlayerId);
             if (player == null || !player.IsAlive || owner == null) return;
+            if (IsActive && ArenaActive && !string.IsNullOrEmpty(player.AssetId)
+                && (command.Action == "enter" || command.Action == "configure" || command.Action == "first" || command.Action == "next"))
+            {
+                // 原路牌的明确操作即为加入；本波已冻结，只从下一波取得完整个人份额。
+                coopArenaParticipants[player.Id] = player.AssetId;
+            }
             switch (command.Action)
             {
                 case "enter":

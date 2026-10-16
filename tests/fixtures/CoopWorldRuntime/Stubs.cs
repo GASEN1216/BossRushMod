@@ -15,12 +15,14 @@ namespace UnityEngine
             if (!ReferenceEquals(go,null)) { go.BeforeDestroy?.Invoke(); foreach(Object component in go.Components) component.Destroyed=true; }
             obj.Destroyed=true;
         }
+        public static void DestroyImmediate(Object obj){Destroy(obj);}
+        public static T Instantiate<T>(T original,Transform parent) where T:Object {throw new Exception("Unexpected shell creation in existing-container scene binding regression");}
         public static bool operator ==(Object a,Object b) { bool an=ReferenceEquals(a,null)||a.Destroyed,bn=ReferenceEquals(b,null)||b.Destroyed;return an||bn?an==bn:ReferenceEquals(a,b); }
         public static bool operator !=(Object a,Object b) {return !(a==b);} public override bool Equals(object b) {return this==b as Object;} public override int GetHashCode(){return id;}
     }
     public class GameObject:Object
-    { public UnityEngine.SceneManagement.Scene scene; public Action BeforeDestroy; public List<Object> Components=new List<Object>(); }
-    public class Transform { public Vector3 position; }
+    { public UnityEngine.SceneManagement.Scene scene; public Action BeforeDestroy; public List<Object> Components=new List<Object>();public string name;public bool activeInHierarchy=true;public readonly Transform transform=new Transform();public GameObject(string name=null){this.name=name;}public void SetActive(bool value){activeInHierarchy=value;} }
+    public class Transform { public Vector3 position,localScale,lossyScale;public Quaternion rotation;public void SetParent(Transform value,bool preserve){} }
     public struct Vector3
     {
         public float x,y,z; public Vector3(float x,float y,float z){this.x=x;this.y=y;this.z=z;}
@@ -40,12 +42,15 @@ namespace UnityEngine
     public static class Time {public static float unscaledTime;}
 }
 namespace UnityEngine.SceneManagement
-{ public struct Scene {public int handle;public bool isLoaded;public bool IsValid(){return handle>0;}} }
-namespace ItemStatsSystem {public class Inventory:UnityEngine.Object {}}
+{ public struct Scene {public int handle;public string name;public bool isLoaded;public bool IsValid(){return handle!=0;}}public static class SceneManager{public static event Action<Scene> sceneUnloaded;public static void Unload(Scene value){sceneUnloaded?.Invoke(value);}public static Scene GetSceneByName(string name){return new Scene();}public static void MoveGameObjectToScene(UnityEngine.GameObject value,Scene scene){value.scene=scene;}} }
+namespace ItemStatsSystem {public class Inventory:UnityEngine.Object {public int Capacity;public bool NeedInspection;public void SetCapacity(int value){Capacity=value;}}}
+public class LootBoxLoader:UnityEngine.Object{}
+public static class GameplayDataSettings {public static PrefabSet Prefabs;public class PrefabSet{public InteractableLootbox LootBoxPrefab;}}
 public class InteractableLootbox:UnityEngine.Object
 {
     public ItemStatsSystem.Inventory Inventory=new ItemStatsSystem.Inventory();
     public readonly Transform transform=new Transform();public readonly GameObject gameObject=new GameObject();
+    public string name;public bool needInspect;public T GetComponent<T>() where T:class{return null;}
     public InteractableLootbox(){gameObject.Components.Add(this);}
 }
 public class AICharacterController {public bool enabled=true;}
@@ -70,7 +75,7 @@ namespace HarmonyLib
     public static class AccessTools{public static MethodInfo Method(Type t,string name){return t.GetMethod(name);}}
 }
 namespace Duckov.Scenes
-{public class Info{public string ID;}public class MultiSceneCore{public static MultiSceneCore Instance;public Info SceneInfo;public GameObject gameObject;}}
+{public class Info{public string ID;public SceneReference SceneReference;}public class SceneReference{public string Name;}public class MultiSceneCore:UnityEngine.Object{public static MultiSceneCore Instance;public bool IsLoading;public Info SceneInfo;public GameObject gameObject;}public class SceneLoadingContext{public string sceneName;}public static class SceneInfoCollection{public static Info GetSceneInfo(string id){return new Info{ID=id,SceneReference=new SceneReference{Name=id}};}}public static class SceneLoader{public static bool IsSceneLoading;public static event Action<SceneLoadingContext> onStartedLoadingScene;public static void Begin(string id){IsSceneLoading=true;onStartedLoadingScene?.Invoke(new SceneLoadingContext{sceneName=id});}}}
 namespace BossRush
 {
     class BossRushCoopPlayer {public string Id,AssetId="asset-A";public bool IsConnected=true,IsLocal,HostAlive;public CharacterMainControl Character;public bool IsAlive{get{return IsConnected&&Character!=null&&!Character.Health.IsDead;}}}
@@ -78,7 +83,7 @@ namespace BossRush
     static class BossRushCoop
     {
         public static bool IsClient {get{return IsConnected&&!IsHost;}}
-        public static bool IsConnected=true,IsHost=true,SessionReady=true;public static string LocalPlayerId="host",LocalAssetId="asset-A",RunId="room";public static int SceneGeneration=1;
+        public static bool IsConnected=true,IsHost=true,SessionReady=true,HasBoundScene;public static string LocalPlayerId="host",LocalAssetId="asset-A",RunId="room";public static int SceneGeneration=1;
         public static List<BossRushCoopPlayer> Players=new List<BossRushCoopPlayer>();public static Dictionary<string,CharacterMainControl> Entities=new Dictionary<string,CharacterMainControl>();
         public static event Action<string> PlayerDisconnected;public static int StatesSent;public static object LastState;public static bool DropStates;
         public static readonly List<string> WorldPackets=new List<string>();
@@ -97,6 +102,7 @@ namespace BossRush
     // Native registry model follows its inventory-reused entry and reference-checked Unregister semantics.
     class BossRushCoopTransport
     {
+        public BossRushCoopSceneIdentity SceneIdentity;
         public sealed class Entry {public InteractableLootbox Box;public ItemStatsSystem.Inventory Inventory;public int Key;}
         readonly Dictionary<int,Entry> byInstance=new Dictionary<int,Entry>();readonly Dictionary<ItemStatsSystem.Inventory,Entry> byInventory=new Dictionary<ItemStatsSystem.Inventory,Entry>();
         public readonly Dictionary<int,Entry> Positions=new Dictionary<int,Entry>();
@@ -107,7 +113,7 @@ namespace BossRush
         {Entry e;if(!byInstance.TryGetValue(box.GetInstanceID(),out e))return true;byInstance.Remove(box.GetInstanceID());Entry cur;if(Positions.TryGetValue(e.Key,out cur)&&ReferenceEquals(cur,e))Positions.Remove(e.Key);if(byInventory.TryGetValue(e.Inventory,out cur)&&ReferenceEquals(cur,e))byInventory.Remove(e.Inventory);return true;}
     }
     static class InteractableLootboxInventoryHelper
-    {public static bool EnsureLocalInventory(InteractableLootbox box){box.Inventory=new ItemStatsSystem.Inventory();box.gameObject.Components.Add(box.Inventory);return true;}}
+    {public static bool EnsureLocalInventory(InteractableLootbox box,int capacity=0){box.Inventory=new ItemStatsSystem.Inventory();box.gameObject.Components.Add(box.Inventory);return true;}}
     partial class BossRushCoopWorldLoot
     {
         private class Box {internal string Id;internal InteractableLootbox Value;internal bool Owned;}
@@ -124,10 +130,15 @@ namespace BossRush
     partial class SceneOwner
     {
         public readonly List<BossRushCoopPlayer> players=new List<BossRushCoopPlayer>();
+        readonly Dictionary<string,long> appliedReadyRevisions=new Dictionary<string,long>();
         string officialSceneId;int localSceneHandle=int.MinValue,generationSceneHandle=int.MinValue;float nextRoster;
+        readonly BossRushCoopTransport transport = new BossRushCoopTransport();
+        string generationSceneToken;bool generationScenePending;int pendingGeneration;
         public bool Host=true;public int Generation;public HashSet<string> localReadyKeys=new HashSet<string>();public readonly BossRushCoopSceneBarrier barrier=new BossRushCoopSceneBarrier();
         public Dictionary<int,CharacterMainControl> aiCharacters=new Dictionary<int,CharacterMainControl>();readonly BossRushCoopControl control;readonly BossRushCoopWorldLoot worldLoot;
-        public SceneOwner(BossRushCoopControl c,BossRushCoopWorldLoot w){control=c;worldLoot=w;}public void Refresh(){RefreshSceneIdentity();}
+        public SceneOwner(BossRushCoopControl c,BossRushCoopWorldLoot w){control=c;worldLoot=w;transport.SceneIdentity=new BossRushCoopSceneIdentity(()=>true,()=>Host,()=>transport,()=>null,()=>"00112233445566778899aabbccddeeff");transport.SceneIdentity.Install();}public void Refresh(){RefreshSceneIdentity();}
+        public void BeginLoad(string id){transport.SceneIdentity.ApproveHost(new BossRushCoopSceneMarker{session="00112233445566778899aabbccddeeff",serial=Generation+1,token=Guid.NewGuid().ToString("N"),sceneId=id});Duckov.Scenes.SceneLoader.Begin(id);}
+        public void Dispose(){transport.SceneIdentity.Dispose();}
     }
     partial class GravityOwner
     {

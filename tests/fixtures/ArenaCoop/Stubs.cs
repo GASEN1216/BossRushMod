@@ -3,23 +3,23 @@ using System.Collections.Generic;
 namespace UnityEngine
 {
     internal static partial class Mathf { internal static int Clamp(int x, int a, int b) { return Math.Max(a, Math.Min(b, x)); } internal static float Round(float x) {return (float)Math.Round(x);} internal static int Max(int a,int b) {return Math.Max(a,b);} }
-    internal class Object {internal bool Destroyed;public static bool operator ==(Object a,Object b){bool an=ReferenceEquals(a,null)||a.Destroyed,bn=ReferenceEquals(b,null)||b.Destroyed;return an||bn?an==bn:ReferenceEquals(a,b);}public static bool operator !=(Object a,Object b){return !(a==b);}public override bool Equals(object b){return this==b as Object;}public override int GetHashCode(){return base.GetHashCode();}internal static void Destroy(GameObject go){if(ReferenceEquals(go,null))return;go.Destroyed=true;foreach(var child in go.Components)child.Destroyed=true;}}
-    internal class MonoBehaviour : Object { public string name; public GameObject gameObject = new GameObject();internal MonoBehaviour(){gameObject.Components.Add(this);}public int GetInstanceID() { return GetHashCode(); } }
-    internal class GameObject : Object {internal readonly List<Object> Components=new List<Object>();internal bool activeSelf=true;internal void SetActive(bool x){activeSelf=x;}public string name="fixture"; public Transform transform = new Transform(); }
+    internal partial class Object {internal bool Destroyed;public static bool operator ==(Object a,Object b){bool an=ReferenceEquals(a,null)||a.Destroyed,bn=ReferenceEquals(b,null)||b.Destroyed;return an||bn?an==bn:ReferenceEquals(a,b);}public static bool operator !=(Object a,Object b){return !(a==b);}public override bool Equals(object b){return this==b as Object;}public override int GetHashCode(){return base.GetHashCode();}internal static void Destroy(GameObject go){if(ReferenceEquals(go,null))return;go.Destroyed=true;foreach(var child in go.Components)child.Destroyed=true;}}
+    internal partial class MonoBehaviour : Object { public string name; public GameObject gameObject = new GameObject();internal MonoBehaviour(){gameObject.Components.Add(this);}public int GetInstanceID() { return GetHashCode(); } }
+    internal partial class GameObject : Object {internal readonly List<Object> Components=new List<Object>();internal bool activeSelf=true;internal void SetActive(bool x){activeSelf=x;}public string name="fixture"; public Transform transform = new Transform(); }
     internal class Transform { public Vector3 position; }
-    internal struct Vector3 { public float x, y, z; public Vector3 normalized { get { return this; } } public Vector3(float x, float y, float z) { this.x=x;this.y=y;this.z=z; } public static Vector3 operator +(Vector3 a, Vector3 b) { return new Vector3(a.x+b.x,a.y+b.y,a.z+b.z); } }
+    internal struct Quaternion {public static Quaternion identity {get{return new Quaternion();}}} internal struct Vector3 {public static Vector3 zero {get{return new Vector3();}} public float x, y, z; public Vector3 normalized { get { return this; } } public Vector3(float x, float y, float z) { this.x=x;this.y=y;this.z=z; } public static Vector3 operator +(Vector3 a, Vector3 b) { return new Vector3(a.x+b.x,a.y+b.y,a.z+b.z); } }
     internal static class Time { public static float time, unscaledTime; }
     internal static class Random { public static Vector3 insideUnitSphere { get { return new Vector3(); } } public static float Range(float a, float b) { return a; } }
     internal static class Debug { public static void LogWarning(string x) {} }
 }
 namespace UnityEngine.SceneManagement
 {
-    internal struct Scene { public bool isLoaded; public string name;public int handle; }
-    internal static class SceneManager { public static Scene GetActiveScene() { return new Scene { name="arena", isLoaded=true }; } }
+    internal struct Scene { public int buildIndex; public bool isLoaded; public string name;public int handle; }
+    internal static class SceneManager { internal static int Handle=1; public static Scene GetActiveScene() { return new Scene { name="arena", isLoaded=true, handle=Handle }; } }
 }
 namespace ItemStatsSystem
 {
-    internal class Item
+    internal partial class Item
     {
         internal Inventory Inventory=new Inventory();internal List<Slot> Slots=new List<Slot>();internal Item Root;
         internal bool Destroyed;internal int DestroyFailures;
@@ -30,7 +30,7 @@ namespace ItemStatsSystem
         internal int GetTotalRawValue() { return 100; }
         internal void Drop(UnityEngine.Vector3 p, bool b, UnityEngine.Vector3 d, float f) { if(TypeID==1254) Probe.Crowns+=StackCount; else Probe.Cash+=StackCount; }
     }
-    internal class Inventory {internal List<Item> Content=new List<Item>();}
+    internal partial class Inventory : UnityEngine.MonoBehaviour {internal List<Item> Content=new List<Item>();}
     internal class Slot {internal Item Content;}
     internal static class ItemAssetsCollection
     { internal static Item GetPrefab(int id) { return new Item { TypeID=id }; } internal static Item InstantiateSync(int id) { return new Item { TypeID=id }; } }
@@ -39,7 +39,7 @@ namespace ItemStatsSystem
 namespace Duckov.Economy
 {
     internal static class EconomyManager
-    { internal const int CashItemID=1; internal static object Instance=new object(); internal static long Money; internal static bool Add(long x) { Money+=x;return true; } }
+    { internal const int CashItemID=1; internal static object Instance=new object(); internal static long Money {get{return BossRush.BossRushCoop.Current.Money;}set{BossRush.BossRushCoop.Current.Money=value;}} internal static bool Add(long x) { Money+=x;if(BossRush.BossRushCoop.Current.ThrowAfterCredit){BossRush.BossRushCoop.Current.ThrowAfterCredit=false;throw new Exception("credit notification");}return true; } }
 }
 namespace BossRush
 {
@@ -83,6 +83,7 @@ namespace BossRush
         internal void InitializeModeDEnemyPoolsForRuntime(){}internal void TryRollMutatorsForArena(string x){}
         internal Sign ArenaRewardSignInteract = new Sign(); internal UnityEngine.GameObject ArenaRewardSignGameObject=new UnityEngine.GameObject();
         internal int Begins, Clears, Courier, BossKills, Hell, DFlawless, DClears, Flawless;
+        internal int EntryRequests; internal void StartCoopArenaEntryForScene(UnityEngine.SceneManagement.Scene scene) { EntryRequests++; }
         internal static void DevLog(string x) {} internal static UnityEngine.Vector3 GetCurrentSceneDefaultPosition() { return new UnityEngine.Vector3(); }
         internal void ShowMessage(string x) {} internal void StartBossRush() {} internal bool IsCurrentSceneValidBossRushArena() { return true; }
         internal void UnregisterEnemyRecoveryForArena(CharacterMainControl c) { }
@@ -136,6 +137,7 @@ namespace BossRush
         internal bool PendingFor(string id){return coopPersonal.HasPendingForPlayers(new[]{id});}
         internal string Epoch {get{return coopEpoch;}}
         internal int RollbackDebt {get{return coopModeDStarterRollback.Count;}}
+        internal int PendingAdmission {get{return ((System.Collections.ICollection)coopChannel.GetType().GetField("pendingRequests",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(coopChannel)).Count;}}
         internal void Freeze() { current=this;CaptureCoopModeDWaveParticipants();modeDWaveCompletePending=false; }internal void Complete() { modeDWaveCompletePending=true;DeliverCoopModeDWaveComplete(); }
         internal void Snapshot() {coopChannel.Tick(1);}internal void Tick() {TickCoopModeD(1);}internal void Dispose() {coopChannel.Dispose();coopPersonal.Dispose();}
     }

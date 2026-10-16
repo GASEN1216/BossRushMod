@@ -133,7 +133,15 @@ namespace Saves { internal static class SavesSystem { internal static int Curren
 namespace BossRush
 {
     internal static class ModBehaviour { internal const bool DevModeEnabled = true; internal static void DevLog(string value) { } }
-    internal static class BossRushCoop { internal static bool IsConnected; internal static string LocalAssetId = "original-slot-A"; }
+    internal static class BossRushCoop
+    {
+        internal static bool IsConnected; internal static string LocalAssetId = "original-slot-A";
+        internal static readonly BossRushCoopSceneBarrier SceneReady = new BossRushCoopSceneBarrier();
+        internal static string ReadyPeer = "host";
+        internal static void MarkSceneReady(string key) { SceneReady.Mark(ReadyPeer, key); }
+        internal static bool AllPlayersSceneReady(string key) { return SceneReady.AllReady(key, new[] { "host", "guest1", "guest2" }); }
+        internal static void ResetSceneReady() { IsConnected = false; ReadyPeer = "host"; SceneReady.Clear(); }
+    }
 }
 
 internal static class EntryPreparation

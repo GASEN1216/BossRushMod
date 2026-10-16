@@ -12,6 +12,9 @@ internal static partial class Program
         if (a == null || b == null) { diff = "null"; return false; }
         if (a.RunId != b.RunId) diff = "runId";
         else if (a.Slot != b.Slot) diff = "slot";
+        else if (a.Asset != b.Asset) diff = "asset";
+        else if (a.ItemReceiptsIncluded != b.ItemReceiptsIncluded) diff = "itemReceiptsIncluded";
+        else if (a.Originals.Count != b.Originals.Count) diff = "originals.count";
         else if (a.RawExists != b.RawExists) diff = "rawExists";
         else if (!string.Equals(a.Raw, b.Raw, StringComparison.Ordinal)) diff = "raw";
         else if (a.Money != b.Money) diff = "money";
@@ -28,6 +31,12 @@ internal static partial class Program
         {
             int count;
             if (!b.Items.TryGetValue(pair.Key, out count) || count != pair.Value) { diff = "items[" + pair.Key + "]"; return false; }
+        }
+        for (int i = 0; i < a.Originals.Count; i++)
+        {
+            var x = a.Originals[i]; var y = b.Originals[i];
+            if (x.Token != y.Token || x.Source != y.Source || x.Position != y.Position || x.TreeJson != y.TreeJson || x.Active != y.Active || x.PriorMarkerJson != y.PriorMarkerJson)
+            { diff = "originals[" + i + "]"; return false; }
         }
         return true;
     }
@@ -46,8 +55,9 @@ internal static partial class Program
         {
             RunId = "autotest-20260914T101500Z", Slot = 7, RawExists = true,
             Raw = "{\"schemaVersion\":1,\"说明\":\"中文\\\"引号\\\"\"}\n第二行\t制表\\反斜杠 \"裸引号\" {}[]",
-            Money = 5000000000L, Language = "ChineseSimplified", ForceNight = true, TimeScale = 0.37f, BufferCountsIncluded = true
+            Money = 5000000000L, Language = "ChineseSimplified", ForceNight = true, TimeScale = 0.37f, BufferCountsIncluded = true, ItemReceiptsIncluded = true, Asset = "asset:中文"
         };
+        full.Originals.Add(new F3AutotestItemReceipt { Token = "original-a", Source = "buffer", Position = 2, Active = false, TreeJson = "{\"nested\": [1,2]}", PriorMarkerJson = "{\"old\":\"中文\"}" });
         full.OfficialUnlocked.AddRange(new[] { "SkyIsland_Note_Search_S1", "SkyIsland_Note_Letter_01", "带中文与\"引号\"的键" });
         full.Items[500069] = 1;
         full.Items[500079] = 3;
@@ -69,10 +79,13 @@ internal static partial class Program
         Check(F3AutotestJudges.DecodeSnapshot(encoded).BufferCountsIncluded, "new snapshot preserves complete Buffer counting contract");
         Check(!F3AutotestJudges.DecodeSnapshot(encoded.Replace(",\"bufferCountsIncluded\":true", "")).BufferCountsIncluded,
             "legacy snapshot defaults to uncounted Buffer and cannot authorize deleting unknown old items");
-        Check(encoded.StartsWith("{\"version\":1,", StringComparison.Ordinal), "snapshot starts with version 1");
-        Check(F3AutotestJudges.DecodeSnapshot(encoded.Replace("{\"version\":1,", "{\"version\":2,")) == null, "red: snapshot version 2 is rejected");
-        Check(F3AutotestJudges.DecodeSnapshot(encoded.Replace("{\"version\":1,", "{")) == null, "red: snapshot without version is rejected");
-        Check(F3AutotestJudges.DecodeSnapshot(encoded.Replace("{\"version\":1,", "{\"version\":\"1\",")) == null, "red: string version is rejected");
+        Check(encoded.StartsWith("{\"version\":2,", StringComparison.Ordinal), "snapshot starts with version 2");
+        Check(!F3AutotestJudges.DecodeSnapshot(encoded.Replace("{\"version\":2,", "{\"version\":1,")).ItemReceiptsIncluded, "legacy v1 remains readable but cannot authorize exact-item reclaim");
+        Check(F3AutotestJudges.DecodeSnapshot(encoded.Replace("{\"version\":2,", "{\"version\":3,")) == null, "red: snapshot unknown version 3 is rejected");
+        Check(F3AutotestJudges.DecodeSnapshot(encoded.Replace("{\"version\":2,", "{")) == null, "red: snapshot without version is rejected");
+        Check(F3AutotestJudges.DecodeSnapshot(encoded.Replace("{\"version\":2,", "{\"version\":\"2\",")) == null, "red: string version is rejected");
+        Check(F3AutotestJudges.DecodeSnapshot(encoded.Replace("\"source\":\"buffer\"", "\"source\":\"other\"")) == null, "unknown original source rejected");
+        Check(F3AutotestJudges.DecodeSnapshot(encoded.Replace("\"position\":2", "\"position\":-1")) == null, "negative original position rejected");
         Check(F3AutotestJudges.DecodeSnapshot(encoded.Substring(0, encoded.Length - 3)) == null, "red: truncated snapshot is rejected");
         Check(F3AutotestJudges.DecodeSnapshot("{not json") == null && F3AutotestJudges.DecodeSnapshot("") == null && F3AutotestJudges.DecodeSnapshot(null) == null,
             "red: garbage, empty and null snapshots are rejected");

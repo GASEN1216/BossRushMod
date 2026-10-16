@@ -18,6 +18,9 @@ namespace BossRush
         private bool _skyIslandDrill;
         private int _sessionSlot, _runtimeErrors, _externalErrors, _errorSamples, _textDiagnostics;
         private float _nextHeartbeat;
+#if BOSSRUSH_DEV
+        private float _nextCoopValidationReady;
+#endif
         private ValidationCoroutineStack _sessionStack;
         private readonly Dictionary<Health, bool> _protectedPlayers = new Dictionary<Health, bool>();
 
@@ -217,6 +220,14 @@ namespace BossRush
 
         private void Update()
         {
+#if BOSSRUSH_DEV
+            // 客端无需启动自己的破坏性套件；常驻 runner 只报告本端实际加载完成。
+            if (BossRushCoop.IsConnected && Time.realtimeSinceStartup >= _nextCoopValidationReady)
+            {
+                _nextCoopValidationReady = Time.realtimeSinceStartup + 0.5f;
+                MarkCoopValidationSceneReady();
+            }
+#endif
             if (_running)
             {
                 if (SavesSystem.CurrentSlot != _sessionSlot) _slotChanged = true;

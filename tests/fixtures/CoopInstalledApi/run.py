@@ -5,11 +5,16 @@ import subprocess
 import hashlib
 import shutil
 import tempfile
+import sys
+import argparse
 from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parents[3]
 HERE = Path(__file__).resolve().parent
-OUT = ROOT / "Build/runtime-regressions/CoopInstalledApi"
+parser = argparse.ArgumentParser()
+parser.add_argument('--output')
+options = parser.parse_args()
+OUT = Path(options.output).resolve() if options.output else ROOT / "Build/runtime-regressions/CoopInstalledApi"
 OUT.mkdir(parents=True, exist_ok=True)
 project = OUT / "Regression.csproj"
 project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup><ItemGroup><Compile Include="' + escape(str(HERE / "Program.cs"), {'"': '&quot;'}) + '" /></ItemGroup></Project>', encoding="utf-8")
@@ -38,7 +43,9 @@ shutil.copy2(harmony, fresh / "0Harmony.dll")
 sdk = subprocess.check_output(["dotnet", "--list-sdks"], text=True).strip().splitlines()[-1]
 compiler = Path(sdk[sdk.index("[")+1:sdk.index("]")]) / sdk.split()[0] / "Roslyn/bincore/csc.dll"
 framework = Path(os.environ.get("WINDIR", "C:/Windows")) / "Microsoft.NET/Framework64/v4.0.30319"
-sources = [ROOT / "Common/Coop/BossRushCoopTransport.cs", HERE / "SceneLoadLease/Stubs.cs", HERE / "SceneLoadLease/Program.cs"]
+sources = [ROOT / "Common/Coop/BossRushCoopTransport.cs", ROOT / "Common/Coop/BossRushCoopSceneIdentity.cs",
+    ROOT / "Common/Coop/BossRushCoopJson.cs", ROOT / "Common/Data/BossRushJsonValue.cs", ROOT / "Utilities/SimpleJsonHelper.cs",
+    HERE / "SceneLoadLease/Stubs.cs", HERE / "SceneLoadLease/Program.cs", HERE / "SceneLoadLease/TransportWriterCases.cs"]
 target = fresh / "SceneLoadLease.exe"
 args = ["/nologo", "/target:exe", "/langversion:7.3", "/noconfig", "/nostdlib+", '/out:"' + str(target) + '"', '/r:"' + str(harmony) + '"']
 args += ['/r:"' + str(framework / name) + '"' for name in ("mscorlib.dll", "System.dll", "System.Core.dll")]
@@ -51,4 +58,10 @@ if result:
     raise SystemExit(result)
 print("Execute fresh TargetPath:", target, flush=True)
 print("SHA-256:", hashlib.sha256(target.read_bytes()).hexdigest(), flush=True)
-raise SystemExit(subprocess.call([str(target), str(workshop), str(game), str(dependency)], cwd=fresh))
+result = subprocess.call([str(target), str(workshop), str(game), str(dependency)], cwd=fresh)
+if result:
+    raise SystemExit(result)
+for group in ('SpectatorRegistration', 'SceneIdentity'):
+    result = subprocess.call([sys.executable, str(HERE / group / 'run.py'), '--output', str(OUT)], cwd=ROOT)
+    if result:
+        raise SystemExit(result)

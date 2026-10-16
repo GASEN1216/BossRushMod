@@ -105,6 +105,7 @@ namespace BossRush
 
             // 提前检测 Mode E / Mode F / Mode D 条件（必须在 DisableAllSpawners 之前，Mode E 需要先扫描 CharacterSpawnerRoot 位置）
             BossRushEntryMode entryMode = resolvedEntryMode ?? DetermineBossRushEntryMode("SetupBossRushInGroundZero");
+            wavesArenaRuntime.SetCoopEntryMode((int)entryMode + 1);
 
             // Mode E 提前分支：先扫描刷怪点（AllocateSpawnPoints 内部调用），再禁用spawner和清理敌人
             // 跳过路牌、撤离点、快递员等 BossRush 竞技场逻辑

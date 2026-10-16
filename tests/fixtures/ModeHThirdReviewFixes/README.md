@@ -16,3 +16,5 @@ python tests/ModeHThirdReviewFixesGuard.py
 明确隔离的边界：Unity/UI、仓库实物和 journal 的磁盘提交、赛季写盘、地图路由。赛季用测试 JSON 完成字段往返，用前写失败/后写失败模拟结果不确定；这证明收益与处置凭据不分离，不等同于官方 JsonUtility/ES3 实机验收。真实满仓返还、切槽、六场赛季与 AI/协程时序仍需实机验证。旧版无处置凭据的候选保留原记录并解释无法确认是否领取，不猜测并补发收益、不阻断赛季；已持有的旧候选不会被当成未领取。反复查看/保存不补造 offered 或 resolved 历史。
 
 专属结构 guard 另有 13 个反向变异；执行夹具与结构 guard 互补，不能代替 Windows 正式编译。
+
+2026-10-15 owner 依赖同步：当前所提取的世界回调/转换或续赛方法读取真实 IsCoopWorldAuthorityCurrent；夹具同步提取该生产属性及所需原房间/原连接字段，没有恒真替身。默认离线用例保持原语义；原生 host Stop、换角色/房间和真实迟到 custom factory 的执行边界集中由 ModeHCoop 的 WorldOwner 用例验证。

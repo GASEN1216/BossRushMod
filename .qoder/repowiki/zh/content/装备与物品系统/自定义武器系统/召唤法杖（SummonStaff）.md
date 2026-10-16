@@ -390,3 +390,10 @@ Manager --> WeaponCfg
 实现：[SummonStaffAction.cs](file://Integration/NewWeapons/SummonStaff/SummonStaffAction.cs)、[BossRushCoopContentRuntimeModule.cs](file://Integration/Coop/BossRushCoopContentRuntimeModule.cs)。`EquipmentManualFindingsGuard` 更新 UniTask 签名并完成隔离破坏分帧语句的反向验证；属于 L2，不能证明网络和实机召唤（L3）。
 
 请求、数量回复、个人冷却与生成后的随从归属都绑定创建时的资产身份。相同角色对象切槽后，旧 await 续作失效，旧请求不重发，数量立即清空；房主清理旧槽随从且不以伤害触发爆裂。`CoopContent` 直接执行生产协议与归属方法，覆盖 16 位玩家、重复输入、错槽回复、独立冷却与异步主人检查（L2）。
+
+2026-10-15 补充：召唤输入、数量与异步 owner 冻结实际原生旅行 `SceneToken`。实际 Core 尚未绑定房主代次时暂停世界消费，完成后只消费当前 token 的事实；异步续作传入开始时捕获的 token，不在 await 后重读新值冒充同一次施法。已完成召唤的 ACK 仍可在绑定窗口确认原请求。单机入口保持原流程；新增场景时序由真实生产方法的 L2 回归覆盖，L3 仍需当前候选实测。
+
+
+2026-10-15 Claude PC-03/04（COMPAT，L1/L2）：联机模块不再清空武器全局静态召唤表。单机 OnSceneLoaded 早返；同实际 MultiSceneCore、room 与 SceneToken 的 Additive 加载保留全部网络召唤和未完成施法，真实换图仅销毁本模块登记的实体/施法。请求返回是否成功排队，ACK 带房主准入结果；未发或被拒绝时提示并返还冷却。退款在真实基类 OnStop 分配冷却后生效，旧结果不能退款后来一次施法，切槽取消原回调。房主冷却保留 0.5 秒到达抖动容差，拒绝结果仍逐请求冻结去重。TryGetSummonOwner 只读原 summonOwners 表，联机再核当前 owner/body/asset/token，客端镜像不能归功；单机只认当前 Main。CoopContent 执行实际场景/请求/动作与基类方法，工厂、Unity 和传输受控，不证明新 L3。
+
+2026-10-16 关停补充（COMPAT，L2）：`NewWeaponRuntime.CleanupOnDestroy` 调用 `SummonStaffAction.ResetStaticCaches`，清理召唤实体、主人表与预设缓存，再退订 Manager；不恢复单机切图全清。主 Action 的 OnDestroy 递增自己的联机回调代数，`SummonStaffAllyLifetime.OnDestroy` 只关闭该随从的爆裂闸。ModuleOwnerCleanup 与 ManualEquipmentRecovery 执行这些真实方法；前者将 owner 调用退回仅清实体时，守卫与缓存断言同时转红，后者恢复把 Action 字段写进随从组件的旧错误时真实编译失败。原字节恢复后通过；仍不证明 Unity 实机销毁时序。

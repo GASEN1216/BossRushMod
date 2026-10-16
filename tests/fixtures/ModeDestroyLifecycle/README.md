@@ -11,3 +11,5 @@
 预热另外抽取真实 Schedule、Prepare 与统一 Stop：在 BeginSession 前启动，手动推进生产 IEnumerator 到商人子协程等待后直接销毁，验证外层和独立 child 都停止。宿主替身在销毁后对 StartCoroutine/StopCoroutine 抛错，自动停止已有协程；用例覆盖 fake-null 宿主仍执行 C# 模式清理。F 正常退出中的对象与 Coroutine 由同一账本保留，既测正常等待完成释放，也测等待未结束时直接模块销毁和原生宿主销毁。
 
 联机旧投影收尾另覆盖 D/E/F：Facade 仍处于新房 client、没有世界权限时，由用例注入生产 retirement 方法持有的 scoped 标志，实际执行原生清场方法，验证只回收旧 replica、不出掉落，F 延迟销毁仍由原 owner 完成。这里不把注入标志当作真实失联检测；实际 room/role 失效检测与标志的设置/释放由 ArenaCoop、ModeECoopEpoch、ModeFCoop 中提取的真实 Tick/Retire 方法另行执行。
+
+联机阵营归还直接抽取生产 `CoopModeEPlayerTeam`、Remember/Set/Restore、Facade `GetPlayerId/IsPlayer`，使用可变真实角色表边界；OnDestroy 用例先沿实际 helper 改本地和远端阵营，再更换主角色并销毁模块，断言原两个实例恢复各自原阵营且新主角色不被覆盖。未连接模式仍执行上列原单机收尾断言。

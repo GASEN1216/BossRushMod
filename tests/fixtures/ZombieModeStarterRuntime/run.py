@@ -4,11 +4,13 @@ import hashlib
 import json
 import re
 import subprocess
+import sys
+import os
 from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parents[3]
 HERE = Path(__file__).resolve().parent
-OUT = ROOT / 'Build/runtime-regressions/ZombieModeStarterRuntime'
+OUT = Path(os.environ.get('BOSSRUSH_FIXTURE_OUT', str(ROOT / 'Build/runtime-regressions/ZombieModeStarterRuntime'))).resolve()
 
 
 def member(source, signature):
@@ -44,7 +46,11 @@ def main():
     includes=''.join('<Compile Include="'+escape(str(path),{'"':'&quot;'})+'" />' for path in [generated,HERE/'Stubs.cs',HERE/'Program.cs',HERE.parent/'CoopOfflineStubs.cs'])
     project=OUT/'Regression.csproj'
     project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649</NoWarn></PropertyGroup><ItemGroup>'+includes+'</ItemGroup></Project>',encoding='utf-8')
-    return subprocess.call(['dotnet','run','--project',str(project),'--configuration','Release'],cwd=ROOT)
+    sys.path.insert(0,str(ROOT/'tools'))
+    from run_runtime_regressions import run_project_fixture
+    result,output=run_project_fixture(project,OUT/'runs',ROOT)
+    print(output)
+    return result
 
 
 if __name__=='__main__': raise SystemExit(main())

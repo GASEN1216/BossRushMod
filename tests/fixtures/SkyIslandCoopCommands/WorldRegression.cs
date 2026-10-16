@@ -72,10 +72,10 @@ internal static class WorldRegression
             effects.Receive("guest",effects.Snapshot(100,true,"stream-2"));Check(heard==10 && !SkyIslandCoopWorldEffects.WorldEarmuffs,"old save slot cannot contribute sound or equipment");
             effects.Receive("guest",effects.Snapshot(2,false,"stream-3","asset-2"));Check(heard==12,"current slot starts its own sound stream");
             BossRushCoop.Players["guest"].AssetId="asset-1";BossRushCoop.IsHost=false;BossRushCoop.LocalPlayerId="guest";
-            BossRushCoop.Requests.Clear();SkyIslandBossGearWorn.Earmuffs=true;effects.Shot(local);
+            BossRushCoop.Requests.Clear();SkyIslandBossGearWorn.Earmuffs=true;effects.Shot(local);Check(BossRushCoop.Requests.Count==0,"shots accumulate without per-shot network sends");effects.FlushEffects();
             BossRushCoop.IsHost=true;effects.Receive("guest",BossRushCoop.Requests[0].Payload);
             Check(heard==13,"earmuff wearer contributes half the normal gun noise");
-            BossRushCoop.IsHost=false;SkyIslandBossGearWorn.Earmuffs=false;effects.Shot(local);
+            BossRushCoop.IsHost=false;SkyIslandBossGearWorn.Earmuffs=false;effects.Shot(local);effects.FlushEffects();
             BossRushCoop.IsHost=true;effects.Receive("guest",BossRushCoop.Requests[1].Payload);Check(heard==15,"ordinary shot contributes full noise without repeated previous shot");
             SkyIslandCoopWorldEffects.PlayerGunNoise-=hear;
 

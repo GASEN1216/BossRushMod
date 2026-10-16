@@ -83,6 +83,19 @@ def require(text, snippets, label):
             errors.append("[{}] 缺少接线 -> {}".format(label, snippet))
 
 
+def member(source, signature):
+    at = source.find(signature)
+    if at < 0:
+        return ""
+    opening = source.find("{", at)
+    depth = 0
+    for index in range(opening, len(source)):
+        depth += (source[index] == "{") - (source[index] == "}")
+        if depth == 0:
+            return source[at:index + 1]
+    return ""
+
+
 def main():
     ids = read(IDS)
     for const_name, type_id in sorted(WEAPON_TYPE_IDS.items()):
@@ -276,14 +289,22 @@ def main():
     # ---- 清理 ----
     # 实现在 NewWeaponRuntime（AGENTS §4.15：子系统状态不放宿主 partial），
     # 宿主只留四个一行转发；两头都钉，任一处断掉都等于清理链断掉。
-    require(read(RUNTIME), (
+    cleanup = member(read(RUNTIME), "internal static void CleanupOnDestroy()")
+    require(cleanup, (
         "NewWeaponEquipState.Unsubscribe();",
         "FrostSpearRuntime.Unsubscribe();",
         "NewWeaponEquipState.ResetStaticCaches();",
         "NewWeaponFx.ResetStaticCaches();",
         "NewWeaponBossDropHandler.ResetStaticCaches();",
-        "SummonStaffAction.CleanupAllSummonedAllies();",
+        "SummonStaffAction.ResetStaticCaches();",
+        "SummonStaffManager.CleanupStatic();",
     ), "Cleanup")
+    reset = member(staff_action, "internal static void ResetStaticCaches()")
+    require(reset, ("CleanupAllSummonedAllies();", "ResetPresetCache();"), "Cleanup:CompleteReset")
+    if cleanup.find("SummonStaffAction.ResetStaticCaches();") > cleanup.find("SummonStaffManager.CleanupStatic();"):
+        errors.append("[Cleanup] SummonStaff full reset must precede manager unsubscribe")
+    if reset.find("CleanupAllSummonedAllies();") > reset.find("ResetPresetCache();"):
+        errors.append("[Cleanup] SummonStaff scene entities must retire before clearing the preset cache")
     require(read(BOOTSTRAP), (
         "NewWeaponRuntime.Initialize();",
         "NewWeaponRuntime.SetupForScene(this, scene);",

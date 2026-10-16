@@ -12,16 +12,16 @@ namespace BossRush
     {
         // ItemTreeData/CustomData 的官方 SerializeField 保存物品原始变量；大快照分片，避免超过公共包上限。
         [Serializable] private sealed class CoopWraithPart
-        { public string Run, Asset, Scene, Key, Data; public Vector3 Position; public int Generation, Part, Count; }
+        { public string Run, Token, Asset, Scene, Key, Data; public Vector3 Position; public int Generation, Part, Count; }
         [Serializable] private sealed class CoopWraithWorld
-        { public string Run; public int Generation; public CoopWraithActor[] Actors; }
+        { public string Run, Token; public int Generation; public CoopWraithActor[] Actors; }
         [Serializable] private sealed class CoopWraithActor
         { public string Key, Owner, Asset, PlayerName, Fingerprint; public uint Raid; public int Ai, Tier; public bool Dead; }
         [Serializable] private sealed class CoopWraithClear
         { public string Asset, Fingerprint; public uint Raid; }
         private sealed class CoopWraithPending
         {
-            internal string Asset, Scene, Key, Fingerprint;
+            internal string Run, Asset, Scene, Token, Key, Fingerprint; internal object Core;
             internal uint Raid; internal Vector3 Position;
             internal string[] Parts; internal int NextPart; internal float NextAt;
         }
@@ -29,7 +29,7 @@ namespace BossRush
         { internal string[] Parts; internal int Received; internal float At; }
         private sealed class CoopWraithSpawn
         {
-            internal string Key, Owner, Asset, Fingerprint, Run;
+            internal string Key, Owner, Asset, Fingerprint, Run, Token;
             internal int Generation; internal WraithInfo Info; internal Vector3 Position;
             internal CharacterMainControl Character; internal bool Spawning, Dead;
         }
@@ -41,7 +41,7 @@ namespace BossRush
         private IDisposable coopWraithRequests, coopWraithWorldSubscription;
         private CoopPersonalDelivery<CoopWraithClear> coopWraithClears;
         private CoopWraithWorld coopWraithLatest;
-        private string coopWraithRun;
+        private string coopWraithRun, coopWraithToken;
         private int coopWraithGeneration = -1;
         private float coopWraithPublishAt;
         private float coopWraithSendAt;
@@ -58,13 +58,14 @@ namespace BossRush
             if (!BossRushCoop.IsConnected) return;
             RefreshCoopWraithWorld();
             coopWraithClears.Tick(unscaledDeltaTime);
+            // 个人清除回执独立重试；场景实体必须等实际 Core 与房主代次绑定。
+            if (!BossRushCoop.HasBoundScene) return;
             TickCoopWraithRequests();
             if (BossRushCoop.IsClient) { BindCoopWraithReplicas(); return; }
             foreach (CoopWraithSpawn entry in new List<CoopWraithSpawn>(coopWraithSpawns.Values))
             {
                 if (!entry.Dead && !entry.Spawning && entry.Character == null && BossRushCoop.SessionReady)
                     TrySpawnStoredDeathWraithForRaid_DeathWraith(entry.Info.raidID, entry.Position, entry);
-                if (entry.Dead) DeliverCoopWraithClear(entry);
             }
             if (Time.unscaledTime < coopWraithPublishAt) return;
             coopWraithPublishAt = Time.unscaledTime + 0.5f;
@@ -75,17 +76,15 @@ namespace BossRush
         private void RefreshCoopWraithWorld()
         {
             // 原生重连到 welcome 之间的空 RunId 不能清掉尚未完成分片的墓箱请求。
-            if (string.IsNullOrEmpty(BossRushCoop.RunId)) return;
-            if (coopWraithRun == BossRushCoop.RunId && coopWraithGeneration == BossRushCoop.SceneGeneration) return;
+            if (string.IsNullOrEmpty(BossRushCoop.RunId) || string.IsNullOrEmpty(BossRushCoop.SceneToken)) return;
+            if (coopWraithRun == BossRushCoop.RunId && coopWraithGeneration == BossRushCoop.SceneGeneration && coopWraithToken == BossRushCoop.SceneToken) return;
             // 墓箱回调可能早于新场景 generation；仅保留本槽、已实际到达目标子场景的请求。
             var waiting = new List<CoopWraithPending>(coopWraithPending.Values);
-            bool sameRun = string.IsNullOrEmpty(coopWraithRun) || coopWraithRun == BossRushCoop.RunId;
             ClearCoopWraithWorld();
-            coopWraithRun = BossRushCoop.RunId; coopWraithGeneration = BossRushCoop.SceneGeneration;
-            if (sameRun)
-                foreach (CoopWraithPending request in waiting)
-                    if (request.Asset == BossRushCoop.LocalAssetId && request.Scene == GetActiveSubSceneId_DeathWraith())
-                        coopWraithPending[request.Key] = request;
+            coopWraithRun = BossRushCoop.RunId; coopWraithGeneration = BossRushCoop.SceneGeneration; coopWraithToken = BossRushCoop.SceneToken;
+            foreach (CoopWraithPending request in waiting)
+                if (IsCoopWraithPendingHere(request))
+                    coopWraithPending[request.Key] = request;
         }
         private static string CoopWraithFingerprint(string json)
         {
@@ -111,15 +110,25 @@ namespace BossRush
             string asset = BossRushCoop.LocalAssetId;
             string key = asset + ":" + raid;
             if (string.IsNullOrEmpty(asset) || coopWraithPending.ContainsKey(key)) return;
-            coopWraithPending.Add(key, new CoopWraithPending { Key = key, Asset = asset,
-                Raid = raid, Scene = GetActiveSubSceneId_DeathWraith(), Position = position });
+            coopWraithPending.Add(key, new CoopWraithPending { Key = key, Run = BossRushCoop.RunId, Asset = asset,
+                Raid = raid, Scene = GetActiveSubSceneId_DeathWraith(), Token = BossRushCoop.SceneToken, Core = Duckov.Scenes.MultiSceneCore.Instance, Position = position });
+        }
+        private bool IsCoopWraithPendingHere(CoopWraithPending request)
+        {
+            return (string.IsNullOrEmpty(request.Run) || request.Run == BossRushCoop.RunId)
+                && request.Asset == BossRushCoop.LocalAssetId && request.Scene == GetActiveSubSceneId_DeathWraith()
+                && request.Core != null && ReferenceEquals(request.Core, Duckov.Scenes.MultiSceneCore.Instance)
+                && (string.IsNullOrEmpty(request.Token) || request.Token == BossRushCoop.SceneToken);
         }
         private void TickCoopWraithRequests()
         {
-            if (!BossRushCoop.SessionReady || !IsDeathWraithSystemEnabled()) return;
+            if (!BossRushCoop.SessionReady || !BossRushCoop.HasBoundScene || !IsDeathWraithSystemEnabled()) return;
             foreach (CoopWraithPending request in new List<CoopWraithPending>(coopWraithPending.Values))
             {
-                if (request.Asset != BossRushCoop.LocalAssetId || request.Scene != GetActiveSubSceneId_DeathWraith()) continue;
+                if (!IsCoopWraithPendingHere(request)) continue;
+                // 墓箱回调可早于 Core token 观察；只给原 Core 的队列补上该次旅行身份。
+                if (string.IsNullOrEmpty(request.Run)) request.Run = BossRushCoop.RunId;
+                if (string.IsNullOrEmpty(request.Token)) request.Token = BossRushCoop.SceneToken;
                 if (request.Parts == null)
                 {
                     WraithInfo info = FindStoredDeathWraithInfoByRaidId_DeathWraith(request.Raid);
@@ -132,7 +141,7 @@ namespace BossRush
                 }
                 if (Time.unscaledTime < request.NextAt || Time.unscaledTime < coopWraithSendAt) continue;
                 int index = request.NextPart;
-                BossRushCoop.SendToHost("wraith.spawn", new CoopWraithPart { Run = coopWraithRun, Generation = coopWraithGeneration,
+                BossRushCoop.SendToHost("wraith.spawn", new CoopWraithPart { Run = coopWraithRun, Token = request.Token, Generation = coopWraithGeneration,
                     Asset = request.Asset, Scene = request.Scene, Key = request.Key + ":" + request.Fingerprint, Position = request.Position, Part = index, Count = request.Parts.Length, Data = request.Parts[index] });
                 coopWraithSendAt = Time.unscaledTime + 0.05f;
                 request.NextPart = (index + 1) % request.Parts.Length;
@@ -141,11 +150,11 @@ namespace BossRush
         }
         private void ReceiveCoopWraithPart(BossRushCoopMessage message)
         {
-            if (!BossRushCoop.IsHost || !BossRushCoop.SessionReady || !IsDeathWraithSystemEnabled()) return;
+            if (!BossRushCoop.IsHost || !BossRushCoop.SessionReady || !BossRushCoop.HasBoundScene || !IsDeathWraithSystemEnabled()) return;
             RefreshCoopWraithWorld();
             BossRushCoopPlayer player = BossRushCoop.FindPlayer(message.SenderId);
             CoopWraithPart part = message.Read<CoopWraithPart>();
-            if (player == null || !player.IsConnected || part == null || part.Run != coopWraithRun || part.Generation != coopWraithGeneration
+            if (player == null || !player.IsConnected || part == null || part.Run != coopWraithRun || part.Generation != coopWraithGeneration || string.IsNullOrEmpty(part.Token) || part.Token != BossRushCoop.SceneToken
                 || string.IsNullOrEmpty(part.Asset) || part.Asset != player.AssetId || part.Scene != GetActiveSubSceneId_DeathWraith()
                 || string.IsNullOrEmpty(part.Key) || part.Key.Length > 192 || !part.Key.StartsWith(part.Asset + ":", StringComparison.Ordinal)
                 || part.Count <= 0 || part.Count > 512 || part.Part < 0 || part.Part >= part.Count || part.Data == null || part.Data.Length > 12000
@@ -180,13 +189,13 @@ namespace BossRush
             string key = player + ":" + requestKey;
             if (coopWraithSpawns.ContainsKey(key)) return;
             coopWraithSpawns.Add(key, new CoopWraithSpawn { Key = key, Owner = player, Asset = asset, Fingerprint = fingerprint,
-                Info = info, Position = position, Run = coopWraithRun, Generation = coopWraithGeneration });
+                Info = info, Position = position, Run = coopWraithRun, Token = coopWraithToken, Generation = coopWraithGeneration });
             coopWraithPublishAt = 0f;
         }
         private bool IsCoopWraithSpawnCurrent(CoopWraithSpawn entry)
         {
             CoopWraithSpawn current;
-            return BossRushCoop.IsHost && entry.Run == BossRushCoop.RunId && entry.Generation == BossRushCoop.SceneGeneration
+            return BossRushCoop.IsHost && BossRushCoop.HasBoundScene && entry.Run == BossRushCoop.RunId && entry.Token == BossRushCoop.SceneToken && entry.Generation == BossRushCoop.SceneGeneration
                 && coopWraithSpawns.TryGetValue(entry.Key, out current) && ReferenceEquals(entry, current);
         }
         private void RegisterCoopWraith(CoopWraithSpawn entry, CharacterMainControl character)
@@ -200,25 +209,14 @@ namespace BossRush
             CharacterMainControl character = health.TryGetCharacter(); CoopWraithSpawn entry;
             if (character == null || !coopWraithOwners.TryGetValue(character, out entry)) return false;
             if (entry.Dead) return true;
-            entry.Dead = true; DeliverCoopWraithClear(entry);
+            entry.Dead = true; // 同场墓碑保留；记录寿命仍随原版遗失物。
             DestroyOwnedWraithPresetClone_DeathWraith(character); coopWraithPublishAt = 0f;
             return true;
         }
-        private void DeliverCoopWraithClear(CoopWraithSpawn entry)
-        {
-            coopWraithClears.Deliver(entry.Owner, entry.Key + ":killed", new CoopWraithClear
-                { Asset = entry.Asset, Raid = entry.Info.raidID, Fingerprint = entry.Fingerprint }, entry.Asset);
-        }
         private bool ApplyCoopWraithClear(CoopWraithClear fact)
         {
-            if (fact == null || fact.Asset != BossRushCoop.LocalAssetId) return false;
-            List<WraithInfo> records = LoadStoredDeathWraithInfos_DeathWraith();
-            if (records == null) return false;
-            WraithInfo original = FindStoredDeathWraithInfoByRaidId_DeathWraith(fact.Raid);
-            if (original != null && CoopWraithFingerprint(BossRushCoopJson.ToJson(original)) != fact.Fingerprint) return true;
-            if (original != null) RemoveStoredDeathWraithInfoByRaidId_DeathWraith(fact.Raid, "联机亡魂被击杀");
-            FlushDeathWraithListIfDirty_DeathWraith();
-            return !_deathWraithListDirty; // 缓存写失败时继续重发，不能提前确认个人删除。
+            // 兼容仍在途的旧击杀回执；它不代表开启遗失物，不能读写个人记录。
+            return fact != null && fact.Asset == BossRushCoop.LocalAssetId;
         }
         private void PublishCoopWraithWorld()
         {
@@ -227,19 +225,20 @@ namespace BossRush
                 actors.Add(new CoopWraithActor { Key = entry.Key, Owner = entry.Owner, Asset = entry.Asset, Raid = entry.Info.raidID,
                     Ai = BossRushCoop.GetAiId(entry.Character), Dead = entry.Dead, PlayerName = entry.Info.playerName,
                     Fingerprint = entry.Fingerprint, Tier = (int)ClassifyWraithTier_DeathWraith(entry.Info.droppedItemsValue, entry.Info.playerTotalWealth) });
-            BossRushCoop.Broadcast("wraith.world", new CoopWraithWorld { Run = coopWraithRun, Generation = coopWraithGeneration, Actors = actors.ToArray() });
+            BossRushCoop.Broadcast("wraith.world", new CoopWraithWorld { Run = coopWraithRun, Token = coopWraithToken, Generation = coopWraithGeneration, Actors = actors.ToArray() });
         }
         private void ReceiveCoopWraithWorld(BossRushCoopMessage message)
         {
             if (!BossRushCoop.IsClient || !message.IsFromHost) return;
             RefreshCoopWraithWorld();
             CoopWraithWorld world = message.Read<CoopWraithWorld>();
-            if (world == null || world.Run != coopWraithRun || world.Generation != coopWraithGeneration || world.Actors == null || world.Actors.Length > 4096) return;
+            if (world == null || world.Run != coopWraithRun || world.Generation != coopWraithGeneration || string.IsNullOrEmpty(world.Token) || world.Token != BossRushCoop.SceneToken || world.Actors == null || world.Actors.Length > 4096) return;
             coopWraithLatest = world;
         }
         private void BindCoopWraithReplicas()
         {
-            if (coopWraithLatest == null) return;
+            if (!BossRushCoop.HasBoundScene || coopWraithLatest == null || coopWraithLatest.Run != BossRushCoop.RunId || coopWraithLatest.Token != BossRushCoop.SceneToken
+                || coopWraithLatest.Generation != BossRushCoop.SceneGeneration) return;
             foreach (CoopWraithActor entry in coopWraithLatest.Actors)
             {
                 if (entry == null) continue;

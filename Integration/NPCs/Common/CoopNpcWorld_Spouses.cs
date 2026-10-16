@@ -10,13 +10,13 @@ namespace BossRush
     {
         [Serializable] internal sealed class SpouseIntent
         {
-            public string NpcId, Asset, Run;
+            public string NpcId, Asset, Run, Token, Epoch;
             public int Scene;
             public long Sequence;
             public bool Present, Following;
             public Vector3 Home;
         }
-        [Serializable] private sealed class SpouseReply { public string Asset; public long Sequence; }
+        [Serializable] private sealed class SpouseReply { public string Asset, Epoch; public long Sequence; }
         private sealed class SpouseState
         {
             internal string PlayerId, WorldId;
@@ -85,13 +85,14 @@ namespace BossRush
             SpouseIntent previous = localSpouseIntent;
             if (previous == null || previous.NpcId != npc || previous.Asset != BossRushCoop.LocalAssetId
                 || previous.Present != present || previous.Following != following || (previous.Home - home).sqrMagnitude > 0.01f
-                || previous.Run != BossRushCoop.RunId || previous.Scene != BossRushCoop.SceneGeneration)
+                || previous.Run != BossRushCoop.RunId || previous.Scene != BossRushCoop.SceneGeneration || previous.Token != BossRushCoop.SceneToken || previous.Epoch != BossRushCoop.LocalReadyEpoch)
             {
                 localSpouseIntent = new SpouseIntent { NpcId = npc, Asset = BossRushCoop.LocalAssetId, Run = BossRushCoop.RunId,
-                    Scene = BossRushCoop.SceneGeneration, Sequence = ++localSpouseSequence,
+                    Scene = BossRushCoop.SceneGeneration, Token = BossRushCoop.SceneToken, Epoch = BossRushCoop.LocalReadyEpoch, Sequence = ++localSpouseSequence,
                     Present = present, Following = following, Home = home };
                 spouseAcknowledged = false; spouseRetryAt = 0f;
             }
+            if (!BossRushCoop.HasBoundScene) return true; // 保留个人意图，实际绑定后 Tick 原样重试。
             if (BossRushCoop.IsHost) { ApplySpouseIntent(BossRushCoop.LocalPlayerId, localSpouseIntent); return true; }
             if (spouseAcknowledged || Time.unscaledTime < spouseRetryAt) return true;
             spouseRetryAt = Time.unscaledTime + 1f;
@@ -120,6 +121,7 @@ namespace BossRush
             if (!BossRushCoop.IsClient || !message.IsFromHost || localSpouseIntent == null) return;
             SpouseReply reply = message.Read<SpouseReply>();
             if (reply != null && reply.Asset == BossRushCoop.LocalAssetId && reply.Asset == localSpouseIntent.Asset
+                && reply.Epoch == localSpouseIntent.Epoch && reply.Epoch == BossRushCoop.LocalReadyEpoch
                 && reply.Sequence == localSpouseIntent.Sequence) spouseAcknowledged = true;
         }
 
@@ -128,16 +130,16 @@ namespace BossRush
 
         private void OnSpouseRequest(BossRushCoopMessage message)
         {
-            if (!BossRushCoop.IsHost || !BossRushCoop.SessionReady) return;
+            if (!BossRushCoop.IsHost || !BossRushCoop.SessionReady || !BossRushCoop.HasBoundScene) return;
             RefreshCoopNpcScope();
             BossRushCoopPlayer player = BossRushCoop.FindPlayer(message.SenderId);
             SpouseIntent intent = message.Read<SpouseIntent>();
             if (player == null || !player.IsConnected || intent == null || string.IsNullOrEmpty(intent.Asset)
-                || intent.Asset != player.AssetId || intent.Run != BossRushCoop.RunId || intent.Scene != BossRushCoop.SceneGeneration
+                || intent.Asset != player.AssetId || string.IsNullOrEmpty(intent.Epoch) || intent.Epoch != player.ReadyEpoch || intent.Run != BossRushCoop.RunId || intent.Scene != BossRushCoop.SceneGeneration || string.IsNullOrEmpty(intent.Token) || intent.Token != BossRushCoop.SceneToken
                 || intent.Sequence <= 0 || !IsSpouseNpc(intent.NpcId) || !FiniteSpousePosition(intent.Home)) return;
             if (intent.Present && !intent.Following && !ModBehaviour.IsBaseHubSceneName(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name)) return;
             ApplySpouseIntent(player.Id, intent);
-            BossRushCoop.SendToPlayer(player.Id, "npc.spouse.reply", new SpouseReply { Asset = intent.Asset, Sequence = intent.Sequence });
+            BossRushCoop.SendToPlayer(player.Id, "npc.spouse.reply", new SpouseReply { Asset = intent.Asset, Epoch = intent.Epoch, Sequence = intent.Sequence });
         }
         private static bool FiniteSpousePosition(Vector3 p)
         {
@@ -202,7 +204,7 @@ namespace BossRush
                 created = await CreateIndependentSpouse(intent.NpcId, position, false);
                 SpouseState current;
                 player = BossRushCoop.FindPlayer(state.PlayerId);
-                if (created == null || disposed || requestGeneration != generation || !BossRushCoop.IsHost
+                if (created == null || disposed || !IsCoopNpcSceneCurrent(requestGeneration) || !BossRushCoop.IsHost
                     || !spouses.TryGetValue(state.WorldId, out current) || !ReferenceEquals(state, current) || state.Intent != intent
                     || player == null || !player.IsConnected || player.AssetId != intent.Asset) return;
                 var actor = new Actor { Object = created, Kind = "spouse", Owner = state.PlayerId, Asset = intent.Asset, NpcId = intent.NpcId };
@@ -225,7 +227,7 @@ namespace BossRush
             bool present = false;
             if (latest != null && latest.Npcs != null)
                 foreach (Entry current in latest.Npcs) if (current != null && current.Id == entry.Id) { present = true; break; }
-            if (disposed || requestGeneration != generation || !present) { DestroySpouseObject(created); return; }
+            if (disposed || !IsCoopNpcSceneCurrent(requestGeneration) || !present) { DestroySpouseObject(created); return; }
             var actor = new Actor { Object = created, Kind = "spouse", Owner = entry.Owner, Asset = entry.Asset, NpcId = entry.NpcId };
             actors[entry.Id] = actor;
             created.name = "BossRush_CoopSpouse_" + entry.Id;

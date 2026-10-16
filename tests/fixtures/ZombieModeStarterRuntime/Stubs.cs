@@ -87,6 +87,8 @@ namespace BossRush
         // 此夹具走单机选装；真实联机钱包/合同由 ZombieCoopFlow 执行。
         internal void RememberCoopZombieWallet() { throw new InvalidOperationException("Offline starter fixture must not mutate co-op wallets; real wallet behavior is executed by ZombieCoopFlow"); }
         private bool coopZombieStarterChosen;
+        private int coopZombieDeclinedRun;
+        private void CommitCoopZombieStarterIfConfirmed(int runId) { throw new InvalidOperationException("Offline starter fixture must not commit a co-op admission; real commit is executed by ZombieCoopFlow"); }
         private void SendCoopZombieCommand(string action, int value = 0, string text = null, bool flag = false) { throw new InvalidOperationException("Offline fixture"); }
         private void DeliverCoopZombiePoints(int amount) { throw new InvalidOperationException("Offline fixture"); }
         private readonly ModBehaviour owner; private readonly ZombieModeRunState runState;
@@ -109,4 +111,15 @@ namespace BossRush
 }
 
 // This original fixture executes offline; slot/network semantics are tested in ZombieCoopFlow.
-namespace BossRush { internal sealed partial class ZombieModeRuntimeModule { private bool IsCoopZombieLocalAssetCurrent() { return true; } } }
+namespace BossRush
+{
+    internal static partial class BossRushCoop { internal static bool HasBoundScene {get{return !IsConnected;}} }
+    internal sealed partial class ZombieModeRuntimeModule
+    {
+        private bool IsCoopZombieLocalAssetCurrent()
+        {
+            if (BossRushCoop.IsConnected) throw new InvalidOperationException("Offline starter fixture cannot claim a network asset");
+            return true;
+        }
+    }
+}

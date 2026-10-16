@@ -75,7 +75,7 @@ namespace BossRush
             Vector3 basePos = Vector3.zero;
             try
             {
-                CharacterMainControl player = CharacterMainControl.Main;
+                CharacterMainControl player = RandomEventEffectHelpers.ResolveAlivePlayer();
                 if (player != null)
                 {
                     basePos = player.transform.position;
@@ -88,7 +88,18 @@ namespace BossRush
                 Vector3[] points = GetRandomEventSpawnPointsSafe();
                 if (points != null && points.Length > 0)
                 {
-                    return SpawnPositionHelper.FindNearestSafeSpawnPoint(points, basePos, minDistance);
+                    if (!BossRushCoop.IsConnected) return SpawnPositionHelper.FindNearestSafeSpawnPoint(points, basePos, minDistance);
+                    Vector3 nearest = Vector3.zero;
+                    float nearestDistance = float.MaxValue;
+                    bool found = false;
+                    foreach (Vector3 point in points)
+                    {
+                        if (!IsRandomEventPointSafeForParty(point, minDistance)) continue;
+                        float distance = (point - basePos).sqrMagnitude;
+                        if (distance >= nearestDistance) continue;
+                        found = true; nearest = point; nearestDistance = distance;
+                    }
+                    if (found) return SpawnPositionHelper.SnapToGround(nearest);
                 }
 
                 Vector3 resolved;
@@ -98,18 +109,36 @@ namespace BossRush
                         Mathf.Max(1f, minDistance),
                         out resolved,
                         SpawnPositionHelper.DefaultLiftOffset,
-                        minDistance))
+                        minDistance) && IsRandomEventPointSafeForParty(resolved, minDistance))
                 {
                     return resolved;
                 }
 
-                return SpawnPositionHelper.SnapToGround(basePos + Vector3.forward * Mathf.Max(1f, minDistance));
+                // 没有安全预设点时，沿原来的地面后备环向外移到全体玩家包络之外。
+                float radius = Mathf.Max(1f, minDistance);
+                if (BossRushCoop.IsConnected)
+                    foreach (BossRushCoopPlayer member in BossRushCoop.Players)
+                        if (member.IsAlive && member.Character != null)
+                            radius = Mathf.Max(radius, Vector3.Distance(basePos, member.Character.transform.position) + minDistance);
+                return SpawnPositionHelper.SnapToGround(basePos + Vector3.forward * radius);
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 解析事件落点失败: " + e.Message);
                 return basePos;
             }
+        }
+
+        private static bool IsRandomEventPointSafeForParty(Vector3 point, float minDistance)
+        {
+            if (!BossRushCoop.IsConnected) return true;
+            foreach (BossRushCoopPlayer member in BossRushCoop.Players)
+            {
+                if (!member.IsAlive || member.Character == null || member.Character.Health == null || member.Character.Health.IsDead) continue;
+                Vector3 delta = point - member.Character.transform.position; delta.y = 0f;
+                if (delta.sqrMagnitude < minDistance * minDistance) return false;
+            }
+            return true;
         }
 
         /// <summary>

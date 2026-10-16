@@ -7,3 +7,5 @@
 断言覆盖真实静态事件委托个数、重复注册、直接模块销毁与原总链先清理两种路径、Coroutine 停止后不得发生迟到效果、冲刺强制速度复位、NPC 对象与组件销毁及引用清空、重复销毁无重复支付结果释放。Arena 检查 D 与 Arena 消费同一个计时器、阈值与重置、单/多 Boss 列表身份及原顺序、精确预设查找、掉落时刻和数量，以及查询结果不能改 owner 集合。
 
 替身边界：Unity 对象/主线程调度模拟销毁假 null、GameObject 连带组件销毁与协程取消；NPC 生成、资源、存档、管理器内部实现、视觉效果叶子和 D 实际刷怪动作不在本夹具内。套装的注册、退订、Deactivate 方法以及所有受验 OnDestroy 均为生产方法，事件退订没有空替身。事件处理器只记录回调，装备管理器记录调用，因此该夹具证明 owner 分发、取消和清理链，不证明实际装备渲染、战斗效果或存档行为。生产完整代码仍须 Windows 正式构建和 L3 实机验证。
+
+召唤终止清理还逐字抽取 FrostmourneAction / SummonStaffAction 的 CleanupAll、ResetPresetCache、ResetStaticCaches 及 NewWeaponRuntime.CleanupOnDestroy。用非空召唤表、归属表和预设缓存验证真正 owner 销毁时全部释放，并检查法杖先清缓存再释放管理器；其它新武器叶子仅隔离依赖，不据此证明其内部清理。夹具执行 MSBuild 返回的本次实际 TargetPath，并记录 SHA-256。

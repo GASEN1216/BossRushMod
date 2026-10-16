@@ -334,6 +334,18 @@ namespace BossRush
 
         #endregion
 
+        /// <summary>
+        /// Mode G 辅助单位释放通知（仅成功提交者恰好一次；幂等移除）。
+        /// </summary>
+        private void HandleModeGAuxiliaryReleased(CharacterMainControl auxiliary, ManagedBossRole role)
+        {
+            try
+            {
+                if (auxiliary != null) _committedAuxiliaries.Remove(auxiliary);
+            }
+            catch { /* no-throw */ }
+        }
+
         #region End（九种终局统一幂等出口）
 
         /// <summary>
@@ -417,7 +429,7 @@ namespace BossRush
                 }
                 catch { }
 
-                try { _committedAuxiliaries.Clear(); } catch { }
+                try { _committedAuxiliaries.Clear(); ClearCoopBossReferences(); } catch { }
 
                 try
                 {

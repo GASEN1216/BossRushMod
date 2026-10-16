@@ -61,6 +61,7 @@ namespace BossRush
     internal static class BossRushCoop
     {
         internal static bool IsConnected=true,IsHost=true,SessionReady=true;
+        internal static bool HasBoundScene; internal static string SceneToken;
         internal static bool IsClient { get { return !IsHost; } }
         internal static string RunId="room",LocalAssetId="asset-host",LocalPlayerId="host";
         internal static int SceneGeneration=1;
@@ -119,7 +120,7 @@ namespace BossRush
             if(order==null) { order=new int[count];for(int i=0;i<count;i++)order[i]=i; }
             foreach(int i in order)
             {
-                var part=new CoopWraithPart { Run=BossRushCoop.RunId,Generation=generation<0?BossRushCoop.SceneGeneration:generation,
+                var part=new CoopWraithPart { Run=BossRushCoop.RunId,Token=BossRushCoop.SceneToken,Generation=generation<0?BossRushCoop.SceneGeneration:generation,
                     Asset=asset,Scene=info.subSceneID,Key=asset+":"+info.raidID+":"+CoopWraithFingerprint(json),Position=tomb,Part=i,Count=count,
                     Data=Encoding.UTF8.GetString(Encoding.UTF8.GetBytes(pieces[i])) };
                 ReceiveCoopWraithPart(new BossRushCoopMessage { SenderId=player,Value=part });
@@ -128,6 +129,8 @@ namespace BossRush
         internal int Actors { get { return coopWraithSpawns.Count; } }
         internal CharacterMainControl Actor(string owner,string asset,uint raid)
         { foreach(CoopWraithSpawn entry in coopWraithSpawns.Values)if(entry.Owner==owner&&entry.Asset==asset&&entry.Info.raidID==raid)return entry.Character;return null; }
+        internal bool LegacyKillReceipt(string asset,uint raid) { return ApplyCoopWraithClear(new CoopWraithClear {Asset=asset,Raid=raid}); }
+        internal void Touch(uint raid) { NotifyOriginalDeadBodyTouched_DeathWraith(new Duckov.DeadBodyManager.DeathInfo {raidID=raid}); }
         internal bool Killed(CharacterMainControl actor) { return HandleCoopWraithDeath(actor.Health); }
         internal string PacketOwner(int index) { return coopWraithClears.Sent[index].Player; }
         internal int Packets { get { return coopWraithClears.Sent.Count; } }
@@ -139,6 +142,7 @@ namespace BossRush
         internal void Cleanup() { ClearCoopWraithWorld(); }
         internal void ReceiveWorld(DeathWraithRuntimeModule host) { host.PublishCoopWraithWorld();ReceiveCoopWraithWorld(new BossRushCoopMessage { IsFromHost=true,Value=BossRushCoop.Sent[BossRushCoop.Sent.Count-1] });BindCoopWraithReplicas(); }
         internal void BindTick() { BindCoopWraithReplicas(); }
+        internal bool CurrentSpawn(uint raid) {foreach(var e in coopWraithSpawns.Values)if(e.Info.raidID==raid)return IsCoopWraithSpawnCurrent(e);return false;}
         internal int Queued { get { return coopWraithPending.Count; } }
         internal void ReceiveSentPart(string player,object value)
         {
@@ -150,3 +154,5 @@ namespace BossRush
         { foreach(CoopWraithSpawn entry in coopWraithSpawns.Values)if(entry.Info.raidID==raid)return entry.Info.itemTreeData.entries[0].Variable;return null; }
     }
 }
+
+namespace Duckov.Scenes {internal static class MultiSceneCore {internal static object Instance;}}

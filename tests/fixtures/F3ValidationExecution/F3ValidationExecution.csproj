@@ -10,6 +10,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="PerformanceWindows.cs" />
     <Compile Include="SceneTransitions.cs" />
+    <Compile Include="ModeHButtons.cs" />
     <Compile Include="EntryPreparation.cs" />
     <Compile Include="GChildProtection.cs" />
     <Compile Include="ExtractionFlows.cs" />

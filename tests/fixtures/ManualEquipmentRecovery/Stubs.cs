@@ -118,6 +118,7 @@ namespace BossRush
     {
         public bool Running, isActiveAndEnabled = true;
         protected float actionElapsedTime;
+        protected float lastEndTime;protected bool isCoolingDown;
         protected virtual bool OnAbilityStart() { return true; }
         protected virtual void OnAbilityUpdate(float dt) { }
         protected virtual void OnAbilityStop() { }
@@ -135,6 +136,13 @@ namespace BossRush
         public bool Valid(int request, CharacterMainControl player) { return IsRequestValid(request, player, 3); }
         public void Complete() { spawningComplete = true; Advance(0.1f); }
         public void Destroy() { isActiveAndEnabled = false; OnDestroy(); }
+        public int CoopAttempt { get { return coopSummonAttempt; } }
+    }
+    partial class SummonStaffAllyLifetime
+    {
+        private bool burstDone;
+        public bool BurstClosed { get { return burstDone; } }
+        public void Destroy() { OnDestroy(); }
     }
     partial class SummonStaffManager
     {
@@ -152,6 +160,6 @@ namespace BossRush {
  // Explicit offline facade: these request-lifetime checks do not exercise transport.
  internal static class BossRushCoop { public static bool IsClient { get { return false; } } public static bool IsHost { get { return false; } } public static string RunId { get { return string.Empty; } } public static int SceneGeneration { get { return 0; } } public static string GetPlayerId(CharacterMainControl player) { return null; } public static BossRushCoopPlayer FindPlayer(string id) { return null; } }
  internal sealed class BossRushCoopPlayer { public bool IsAlive { get { return false; } } }
- internal static class BossRushCoopContentRuntimeModule { internal static bool RequestSummon(int kind) { return false; } internal static bool IsSummonOwnerCurrent(CharacterMainControl player,string asset) { return false; } }
- partial class SummonStaffAction { private CharacterMainControl coopOwner; private string coopRun,coopAsset; private int coopScene; }
+ internal static class BossRushCoopContentRuntimeModule { internal static bool RequestSummon(int kind,Action<bool> complete) { throw new InvalidOperationException("offline equipment fixture must not send a co-op request"); } internal static bool IsSummonOwnerCurrent(CharacterMainControl player,string asset,string token) { return false; } }
+ partial class SummonStaffAction { private CharacterMainControl coopOwner; private string coopRun,coopAsset,coopToken; private int coopScene; }
 }

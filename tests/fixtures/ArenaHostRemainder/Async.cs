@@ -3,6 +3,16 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
+namespace System.Runtime.CompilerServices
+{
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
+    internal sealed class AsyncMethodBuilderAttribute : Attribute
+    {
+        public Type BuilderType { get; private set; }
+        public AsyncMethodBuilderAttribute(Type builderType) { BuilderType = builderType; }
+    }
+}
+
 namespace Cysharp.Threading.Tasks
 {
     [AsyncMethodBuilder(typeof(UniTaskMethodBuilder<>))]

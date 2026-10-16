@@ -96,12 +96,22 @@ namespace BossRush
     internal sealed class F3AutotestSnapshotRecord
     {
         internal string RunId, Raw, Language;
+        internal string Asset = string.Empty;
         internal int Slot;
-        internal bool RawExists, ForceNight, BufferCountsIncluded;
+        internal bool RawExists, ForceNight, BufferCountsIncluded, ItemReceiptsIncluded;
         internal long Money;
         internal float TimeScale = 1f;
         internal readonly List<string> OfficialUnlocked = new List<string>();
         internal readonly Dictionary<int, int> Items = new Dictionary<int, int>();
+        internal readonly List<F3AutotestItemReceipt> Originals = new List<F3AutotestItemReceipt>();
+    }
+
+    /// <summary>原完整物品树的持久归属；TreeJson 使用真实 ItemTreeData codec，Source/Position 为原存放处。</summary>
+    internal sealed class F3AutotestItemReceipt
+    {
+        internal string Token, Source, TreeJson, PriorMarkerJson;
+        internal int Position;
+        internal bool Active;
     }
 
 }

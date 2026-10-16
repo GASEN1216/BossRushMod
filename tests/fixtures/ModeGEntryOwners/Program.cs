@@ -284,11 +284,34 @@ internal static class Program
         CoopReceiptOwners();
         CoopAdmissionBoundaries();
         CoopAdmissionTimeout();
+        HostNativeStop();
         Console.WriteLine("PASS ModeGEntryOwners " + assertions + " assertions");
     }
 
     private static void Use(TestPeer peer,ModBehaviour owner)
     {BossRushCoop.Current=peer;ModBehaviour.Instance=owner;owner.GetModeGEntryRuntimeForHost().AuditUseOwner();}
+
+    private static void HostNativeStop()
+    {
+        foreach(bool switchAsset in new[]{false,true})
+        {
+            ModBehaviour host=Fresh();var peer=new TestPeer{Id="stopping-host",Host=true,Run="stopping-room"};
+            BossRushCoop.Peers.Clear();BossRushCoop.Peers.Add(peer);Use(peer,host);
+            Check(host.TryStartModeG()&&host.Consumed.Count==2,"G original host pays its real ticket and relic before the test stop");
+            var run=host.Core;var oldState=run.State;
+            peer.Connected=false;peer.Host=false;peer.Run="";
+            if(switchAsset)peer.AssetId="new-slot";
+            Check(!run.CoopRunHasWorldAuthority&&!ModeGEntryRuntime.CanApplyPersonalCombat,"G stopped original host has no world or personal damage eligibility before Tick");
+            host.Tick(1);
+            Check(oldState.IsTerminal&&oldState.exitReason==ModeGExitReason.TechnicalIntegrityLoss&&host.Core==null,
+                "G actual entry Tick ends and shuts down the stopped host owner through technical exit");
+            Check(Harness.RefundCount(9001)==(switchAsset?0:1)&&Harness.RefundCount(FateEchoRelicConfig.TYPE_ID)==(switchAsset?0:1),
+                "G actual original startup refund returns both paid items only to original asset");
+            host.Tick(1);Check(Harness.RefundCount(9001)==(switchAsset?0:1),"G stopped host refund cannot replay on later offline Tick");
+            ModeGEntryRuntime.DisposeCoopOwner();ModeGRunContext.Unbind(ModeGRunContext.Current);
+        }
+        BossRushCoop.Current=new TestPeer{Id="offline",Host=true,Connected=false};
+    }
 
     private static ModeGCoopCombat Fact(ulong run,long sequence,int wave=0)
     {return new ModeGCoopCombat{Run=run,Sequence=sequence,Wave=wave,Boss=-7,Phase=(int)ModeGCombatPhase.Fighting,Damage=17,Final=17};}
@@ -297,7 +320,7 @@ internal static class Program
     {
         ModBehaviour host=Fresh(),paid=new ModBehaviour(),declined=new ModBehaviour();declined.Ticket=null;
         var peers=new[]{new TestPeer{Id="host",Host=true},new TestPeer{Id="paid"},new TestPeer{Id="declined"}};
-        BossRushCoop.Peers.Clear();BossRushCoop.Peers.AddRange(peers);var owners=new[]{host,paid,declined};
+        BossRushCoop.Peers.Clear();BossRushCoop.Peers.AddRange(peers); foreach(var peer in peers)peer.BindScene();var owners=new[]{host,paid,declined};
         for(int i=0;i<3;i++){Use(peers[i],owners[i]);owners[i].GetModeGEntryRuntimeForHost().EnsureCoop();}
         Use(peers[0],host);Check(host.TryStartModeG(),"Receipt fixture host starts through paid production entry");host.Tick(1);BossRushCoop.Flush();
         for(int i=1;i<3;i++){Use(peers[i],owners[i]);ModeGRunContext.Unbind(ModeGRunContext.Current);owners[i].Tick(1);BossRushCoop.Flush();}
@@ -370,7 +393,7 @@ internal static class Program
     private static void CoopAdmissionBoundaries()
     {
         var host=Fresh();var client=new ModBehaviour{Ticket=null};var peers=new[]{new TestPeer{Id="boundary-host",Host=true},new TestPeer{Id="boundary-client"}};
-        BossRushCoop.Peers.Clear();BossRushCoop.Peers.AddRange(peers);Use(peers[0],host);host.GetModeGEntryRuntimeForHost().EnsureCoop();Use(peers[1],client);client.GetModeGEntryRuntimeForHost().EnsureCoop();
+        BossRushCoop.Peers.Clear();BossRushCoop.Peers.AddRange(peers); foreach(var peer in peers)peer.BindScene();Use(peers[0],host);host.GetModeGEntryRuntimeForHost().EnsureCoop();Use(peers[1],client);client.GetModeGEntryRuntimeForHost().EnsureCoop();
         Use(peers[0],host);Check(host.TryStartModeG(),"Boundary host uses actual paid entry");host.Tick(1);BossRushCoop.Flush();Use(peers[1],client);ModeGRunContext.Unbind(ModeGRunContext.Current);client.Tick(1);BossRushCoop.Flush();
         var h=host.GetModeGEntryRuntimeForHost();var c=client.GetModeGEntryRuntimeForHost();ulong run=host.Core.State.runId;
         client.Ticket=new Item{TypeID=9001};peers[1].AssetId="new-slot";Use(peers[0],host);host.Tick(1);BossRushCoop.Flush();Use(peers[1],client);int cost=client.Consumed.Count;
@@ -381,7 +404,14 @@ internal static class Program
         BossRushCoop.Flush();Check(denied.State.IsTerminal&&Harness.RefundCount(9001)==1&&Harness.RefundCount(FateEchoRelicConfig.TYPE_ID)==1,"Reliable host denial uses real technical startup refund once for both paid items");
         Use(peers[0],host);h.AuditRetry(1);BossRushCoop.Flush();Check(Harness.RefundCount(9001)==1&&Harness.RefundCount(FateEchoRelicConfig.TYPE_ID)==1,"Repeated denial cannot refund paid items twice");Use(peers[1],client);client.Tick(1);Check(client.Core==null,"Denied paid runtime reaches real entry shutdown");
         peers[1].AssetId="slot-A";world.Wave=1;world.Actors=new[]{new ModeGCoopActor{Id=-8,Slot=0,Key="living"}};world.Committed=1;world.Participants=null;Use(peers[1],client);c.AuditWorld(world);ModeGRunContext.Unbind(ModeGRunContext.Current);
-        Check(client.TryStartModeG(),"Original slot starts later wave with zero known prequalification order");var late=client.Core;late.State.waveEpoch=1;late.AuditBindBoss(-8);BossRushCoop.Flush();Check(late.CoopAdmissionReady&&late.CoopRequestedAdmissionBaseline==0,"Later-wave admission confirms explicit zero baseline");
+        Check(client.TryStartModeG(),"Original slot starts later wave with zero known prequalification order");var late=client.Core;
+        var replica=new CharacterMainControl();BossRushCoop.AuditAi[-8]=replica;late.AuditGuestCommit(world,false);
+        peers[1].Bound=false;late.AuditGuestTick();Check(!late.AuditOwnsHealth(-8,replica.Health),"G cached world cannot commit same-ID replica while the actual Core is unbound");
+        peers[1].Bound=true;BossRushCoop.Flush();peers[1].Token="new-core-same-generation";late.AuditGuestTick();Check(!late.AuditOwnsHealth(-8,replica.Health),"G cached world cannot nominate same-ID replica after token changed without a fresh snapshot");
+        late.ApplyCoopWorld(world);late.AuditGuestTick();Check(late.AuditOwnsHealth(-8,replica.Health),"G exact-token fresh world resumes full committed actor projection");
+        peers[0].Token=peers[1].Token;
+        Check(late.AuditOwnsHealth(-8,replica.Health),"Actual guest drive freezes Health only after actual spawn commit");BossRushCoop.AuditAi.Clear();
+        BossRushCoop.Flush();Check(late.CoopAdmissionReady&&late.CoopRequestedAdmissionBaseline==0,"Later-wave admission confirms explicit zero baseline");
         Use(peers[0],host);BossRushCoop.AuditDropCombat=true;h.AuditDeliver(peers[1].Id,run.ToString("x")+":old-wave-first",Fact(run,900,0));BossRushCoop.Flush();BossRushCoop.AuditDropCombat=false;h.AuditDeliver(peers[1].Id,run.ToString("x")+":old-wave-second",Fact(run,901,0));BossRushCoop.Flush();Check(late.AuditDamageCalls==0&&h.AuditHasDebt,"Late old-wave order cannot skip a missing intermediate fact");
         h.AuditRetry(1);BossRushCoop.Flush();Check(late.AuditDamageCalls==0&&!h.AuditHasDebt,"Strictly ordered old-wave receipts acknowledge without scoring or blocking later facts");
         h.AuditDeliver(peers[1].Id,run.ToString("x")+":already-dead-current-wave",Fact(run,902,1));BossRushCoop.Flush();Check(late.AuditDamageCalls==0&&!h.AuditHasDebt,"Complete frozen entry actor set acknowledges same-wave pre-entry dead AI absent from actual core");
@@ -395,7 +425,7 @@ internal static class Program
 
     private static void CoopAdmissionTimeout()
     {
-        var host=Fresh();var client=new ModBehaviour();var peers=new[]{new TestPeer{Id="timeout-host",Host=true},new TestPeer{Id="timeout-client"}};BossRushCoop.Peers.Clear();BossRushCoop.Peers.AddRange(peers);
+        var host=Fresh();var client=new ModBehaviour();var peers=new[]{new TestPeer{Id="timeout-host",Host=true},new TestPeer{Id="timeout-client"}};BossRushCoop.Peers.Clear();BossRushCoop.Peers.AddRange(peers); foreach(var peer in peers)peer.BindScene();
         Use(peers[0],host);host.GetModeGEntryRuntimeForHost().EnsureCoop();Use(peers[1],client);client.GetModeGEntryRuntimeForHost().EnsureCoop();Use(peers[0],host);Check(host.TryStartModeG(),"Admission timeout host starts actual entry");host.Tick(1);BossRushCoop.Flush();
         Use(peers[1],client);ModeGRunContext.Unbind(ModeGRunContext.Current);BossRushCoop.AuditDropAdmission=true;client.Tick(1);BossRushCoop.Flush();var core=client.Core;
         Check(core!=null&&!core.CoopAdmissionReady&&client.Consumed.Count==2,"Actual paid guest remains waiting when all admission facts are lost");Time.realtimeSinceStartup=121;client.Tick(1);BossRushCoop.Flush();
@@ -409,7 +439,7 @@ internal static class Program
         ModBehaviour host = Fresh(), paidGuest = Fresh(), declinedGuest = Fresh();
         declinedGuest.Ticket = null;
         var peers = new[] { new TestPeer { Id = "host", Host = true }, new TestPeer { Id = "guest-paid" }, new TestPeer { Id = "guest-unpaid" } };
-        BossRushCoop.Peers.Clear(); BossRushCoop.Peers.AddRange(peers);
+        BossRushCoop.Peers.Clear(); BossRushCoop.Peers.AddRange(peers); foreach(var peer in peers)peer.BindScene();
         var owners = new[] { host, paidGuest, declinedGuest };
         for (int i = 0; i < peers.Length; i++)
         {
@@ -421,6 +451,11 @@ internal static class Program
         BossRushCoop.Current = peers[0]; ModBehaviour.Instance = host;
         Check(host.TryStartModeG(), "Room host enters through the real paid Mode G player entry");
         host.Tick(1); BossRushCoop.Flush();
+        Use(peers[1],paidGuest);ModeGRunContext.Unbind(ModeGRunContext.Current);
+        peers[1].Bound=false;paidGuest.Tick(1);Check(!paidGuest.Active&&paidGuest.Consumed.Count==0,"G cached entry cannot spend original ticket/relic while actual Core is unbound");
+        peers[1].Bound=true;string originalToken=peers[1].Token;peers[1].Token="different-core-same-generation";paidGuest.Tick(1);
+        Check(!paidGuest.Active&&paidGuest.Consumed.Count==0,"G cached active world cannot auto-enter or charge after only token changed");
+        peers[1].Token=originalToken;
         for (int i = 1; i < peers.Length; i++)
         {
             BossRushCoop.Current = peers[i]; ModBehaviour.Instance = owners[i];

@@ -33,4 +33,11 @@ assert 'if(_playerModifiers==2)returntrue;' in refresh, '必须确认两项真�
 assert 'RuntimeStatModifierTracker.RemoveAll(_playerRecords,"RandomEventTempopartialplayer");returnfalse;' in refresh, '缺失任一属性时必须撤销半成品'
 assert 'RefreshPlayer();' in tick, '重生或物品换绑必须重新接入本机临时属性'
 assert 'RuntimeStatModifierTracker.RemoveAll(_playerRecords, "RandomEventTempo player");' in tempo, '个人属性必须成对清理'
+bridge = clean_source((ROOT / 'RandomEvents/RandomEventEffectsBridge.cs').read_text(encoding='utf-8-sig'))
+anchor = body(catalog, 'internal static CharacterMainControl ResolveAlivePlayer()')
+assert 'foreach(BossRushCoopPlayermemberinBossRushCoop.Players)' in anchor and 'UnityEngine.Random.Range(0,++candidates)' in anchor, 'All living participants must be eligible without origin anchor bias'
+safe = body(bridge, 'internal Vector3 GetRandomEventSafePointAwayFromPlayer(')
+assert 'RandomEventEffectHelpers.ResolveAlivePlayer()' in safe and 'IsRandomEventPointSafeForParty(point,minDistance)' in safe, 'Intrusion anchors and safe presets must consider the actual party'
+party = body(bridge, 'private static bool IsRandomEventPointSafeForParty(')
+assert 'foreach(BossRushCoopPlayermemberinBossRushCoop.Players)' in party and 'delta.sqrMagnitude<minDistance*minDistance' in party, 'Every alive guest has the original intrusion minimum distance'
 print('RandomEventDistributionGuard: PASS')

@@ -277,6 +277,7 @@ namespace BossRush
                     }
 
                     // 其余所有大兴兴都视为 DEMO 地图原生刷出的 BossRush 外来 Boss，直接清除
+                    if (DeferNativeFactoryCleanup(c, NativeArenaCleanupKind.ForeignDaXingXing)) continue;
                     try
                     {
                         ModBehaviour.DevLog("[BossRush] 清理非 BossRush 源的大兴兴: goName=" + c.gameObject.name +

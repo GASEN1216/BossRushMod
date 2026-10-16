@@ -42,6 +42,7 @@ namespace BossRush
         {
             try
             {
+                RefreshPlayerReference();
                 if (!HasCombatAuthority || bossCharacter == null || playerCharacter == null) return;
 
                 // Mode E 同阵营不攻击玩家
@@ -129,7 +130,7 @@ namespace BossRush
         {
             return HasCombatAuthority && isActiveAndEnabled && bossCharacter != null && bossHealth != null && !bossHealth.IsDead &&
                 playerCharacter != null && playerCharacter.Health != null && !playerCharacter.Health.IsDead &&
-                ReferenceEquals(playerCharacter, CharacterMainControl.Main) && !isResurrecting &&
+                (UsesArenaOpponent() || BossRushCoop.IsPlayer(playerCharacter)) && !isResurrecting &&
                 !SceneLoader.IsSceneLoading && level != null && ReferenceEquals(level, LevelManager.Instance) &&
                 SceneManager.GetActiveScene().handle == sceneHandle && !IsPlayerAlly() && !IsPlayerOutOfLeashRange();
         }

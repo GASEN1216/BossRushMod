@@ -106,6 +106,7 @@ namespace BossRush
             owner.Runtime.ApplyLootBoxCoverSetting(fallback,true);Check(col.isTrigger&&child.isTrigger,"forced cover policy updates self and child colliders");
             TestCampaignFinalBossPreclear();
             TestRegeneration();
+            NativeFactoryCases.Run();
             Console.WriteLine("ArenaHostRemainder: PASS "+assertions+" assertions");
         }
         private static CharacterMainControl SceneEnemy(string name,Teams team=Teams.wolf)
@@ -193,6 +194,15 @@ namespace BossRush
             arenaCount=1;UnityEngine.Object.Destroy(single.gameObject);MutatorManager.RegenCalls.Clear();regen.Tick();Check(MutatorManager.RegenCalls.Count==0,"destroyed single boss is skipped with Unity null semantics");
             MutatorManager.BossRegenEnabled=false;
         }
-        private static void Main() { Run().GetAwaiter().GetResult(); }
+        private static int Main()
+        {
+            try { Run().GetAwaiter().GetResult(); var cleanup=new WavesArenaRuntimeModule(new ModBehaviour()); var shadow=cleanup.PendingRewardForTest(); cleanup.OnDestroy(); Check(shadow==null&&Probe.Events.Contains("cleanup-personal-hook"),"actual arena OnDestroy cancels unlanded personal reward and releases only its private hook owner"); return 0; }
+            catch (Exception error)
+            {
+                Console.WriteLine("FAIL type=" + error.GetType().FullName);
+                try { Console.WriteLine("message=" + error.Message); } catch { }
+                return 1;
+            }
+        }
     }
 }

@@ -114,6 +114,7 @@ namespace BossRush
             {
                 _sceneGeneration++;
                 CampaignObjectiveTracker.ResetSession();
+                ResetCoopCampaignProjection();
                 campaignFinalScopeBound = campaignFinalScopeLost = false;
                 CampaignDialoguePlayer.InvalidatePlayback();
                 if (_questClient != null) _questClient.ClearPending();
@@ -187,6 +188,7 @@ namespace BossRush
             coopWorld = null;
             coopFacts = null;
             if (coopOwner == this) coopOwner = null;
+            CleanupCoopCampaignFacts();
             try
             {
                 if (_owner != null) CleanupCampaignFinalBoss(true);

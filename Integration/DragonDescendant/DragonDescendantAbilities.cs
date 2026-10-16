@@ -222,7 +222,7 @@ namespace BossRush
         /// <summary>
         /// 刷新「玩家」引用。鸭王杯里玩家只在看台观战，龙裔的对手是原版 AI 当前锁定的那只 Boss：
         /// 二阶段冲刺 + 直线 / 扇形弹幕、燃烧弹都朝它放（2026-09-29 owner：龙裔二阶段不会发弹幕，
-        /// 原因是这里一直取主角、再被友方判定挡掉）。Mode E 同样按 AI 仇恨交战；其它模式引用空了才取主角。
+        /// 原因是这里一直取主角、再被友方判定挡掉）。Mode E 同样按 AI 仇恨交战；其它模式每次出招刷新最近活着的同行玩家；单机仍取主角。
         /// </summary>
         private void RefreshPlayerReference()
         {
@@ -231,10 +231,13 @@ namespace BossRush
                 playerCharacter = ResolveArenaOpponent(!ModeHRuntimeGates.IsModeHRunOwnerActive);
                 return;
             }
-            if (playerCharacter == null)
+            try
             {
-                try { playerCharacter = CharacterMainControl.Main; } catch { }
+                playerCharacter = BossRushCoop.IsConnected
+                    ? BossRushCoop.GetCombatTarget(bossCharacter != null ? bossCharacter.transform.position : transform.position)
+                    : CharacterMainControl.Main;
             }
+            catch { playerCharacter = null; }
         }
 
         private CharacterMainControl ResolveArenaOpponent(bool allowMainCharacter)
@@ -305,15 +308,7 @@ namespace BossRush
             }
 
             // 获取玩家引用（鸭王杯里是 AI 锁定的对手，刚激活时还没有）
-            if (UsesArenaOpponent()) playerCharacter = null;
-            else
-            {
-                try
-                {
-                    playerCharacter = CharacterMainControl.Main;
-                }
-                catch { }
-            }
+            RefreshPlayerReference();
 
             // 订阅射击事件
             SubscribeToShootEvent();
@@ -492,6 +487,8 @@ namespace BossRush
                 }
                 return; // 不执行其他逻辑
             }
+
+            RefreshPlayerReference();
 
             // 检测射击（通过弹药变化）- 只在非狂暴状态下检测
             // [性能说明] 这里使用轮询是因为游戏原版没有暴露射击事件API

@@ -27,7 +27,7 @@ def main():
     code = "using System; using System.Collections; using UnityEngine; using UnityEngine.SceneManagement; using ItemStatsSystem; namespace BossRush { public partial class ModBehaviour {\n"
     code += "\n".join(member(source, s) for s in (
         "private enum BossRushEntryMode", "private BossRushEntryMode DetermineBossRushEntryMode(string context)",
-        "private IEnumerator SetupBossRushInDemoChallenge(Scene scene)"))
+        "internal void StartCoopArenaEntryForScene(Scene scene)", "private IEnumerator SetupBossRushInDemoChallenge(Scene scene)"))
     code += member(host.read_text(encoding="utf-8-sig"), "internal void StartBossRushDemoChallengeSetupForScene(Scene scene)")
     code += "\n".join(member(mode_d.read_text(encoding="utf-8-sig"), s) for s in (
         "public bool TryStartModeD()", "public void StartModeD()"))
@@ -37,6 +37,10 @@ def main():
         "public override void OnAwake(ModBehaviour owner)", "public override void OnDestroy()",
         "internal bool ReadSceneLoaderDoneWithWarning(string context)", "internal bool ReadMainExistsWithWarning(string context)",
         "internal bool ReadCameraExistsWithWarning(string context)", "internal bool ReadLevelInitedWithWarning(string context)"))
+    arena_coop = ROOT / "WavesArena/WavesArenaRuntimeModule_Coop.cs"
+    code += "} internal sealed partial class CoopArenaEntryAdapter {"
+    code += "\n".join(member(arena_coop.read_text(encoding="utf-8-sig"), s) for s in (
+        "private void ScheduleCoopArenaEntry()", "internal IEnumerator SetupCoopClientEntry("))
     generated.write_text(code + "}}", encoding="utf-8")
     production = [ROOT / "Integration/BossRushIntegrationRuntimeModule_ArenaEntry.cs",
                   ROOT / "ModeD/ModeDRuntimeModule.cs", ROOT / "ModeD/ModeDRuntimeModule_Lifecycle.cs"]
@@ -48,7 +52,7 @@ def main():
                        '</PropertyGroup><ItemGroup>'
                        + ''.join('<Compile Include="' + escape(str(p), {'"': '&quot;'}) + '" />' for p in paths)
                        + '</ItemGroup></Project>', encoding="utf-8")
-    evidence = production + [entry, host, map_objects, lifecycle, mode_d]
+    evidence = production + [entry, host, map_objects, lifecycle, mode_d, arena_coop]
     (OUT / "production-sha256.json").write_text(json.dumps({str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
                                                             for p in evidence}, indent=2), encoding="utf-8")
     result, output = run_project_fixture(project, OUT, ROOT)

@@ -1,15 +1,15 @@
 using System;
 using System.Collections.Generic;
 
-namespace UnityEngine { public static class Time { public static float time, unscaledTime, realtimeSinceStartup; } }
+namespace UnityEngine { public static class Time { public static float time, unscaledTime, realtimeSinceStartup,unscaledDeltaTime=.1f; } }
 namespace ItemStatsSystem { public sealed class Item { } }
-public sealed class CharacterMainControl { public static CharacterMainControl Main; public string Id; public Health Health=new Health(); public UnityEngine.Transform transform=new UnityEngine.Transform(); public DamageReceiver mainDamageReceiver=new DamageReceiver(); }
+public sealed class CharacterMainControl { public static CharacterMainControl Main; public string Id; public Health Health=new Health(); public UnityEngine.Transform transform=new UnityEngine.Transform(); public DamageReceiver mainDamageReceiver=new DamageReceiver(); internal BossRush.SkyIslandEnemyLife Life; public T GetComponent<T>() where T:class { return Life as T; } public CharacterMainControl gameObject {get{return this;}} public T AddComponent<T>() where T:new() {var value=new T();Life=value as BossRush.SkyIslandEnemyLife;return value;} }
 public struct DamageInfo { public CharacterMainControl fromCharacter; public float damageValue; public UnityEngine.Vector3 damagePoint; public bool isExplosion,isFromBuffOrEffect; public int fromWeaponItemID; public DamageInfo(CharacterMainControl owner) { this=default(DamageInfo);fromCharacter=owner; } }
 namespace BossRush
 {
     internal enum SkyIslandFieldBuff { None, Zapper, Fan }
     internal static class SkyIslandMosquitoRules { internal const float FanCooldownSeconds=2f; }
-    internal static class SkyIslandFieldcraftRules { internal const string OffIsland="off"; }
+    internal static class SkyIslandFieldcraftRules { internal const float TickInterval=.1f;internal const string OffIsland="off"; internal static readonly string[] Nodes=new string[8]; }
     internal static class BossRushItemIds { internal const int SkyIslandGnatZapper=500084; }
     internal struct SkyIslandIngredient { internal SkyIslandIngredient(int id,int amount) { } }
     internal sealed class SkyIslandBounty { internal int Culls; internal void ReportGnatCulled() { Culls++; } }
@@ -19,7 +19,10 @@ namespace BossRush
         internal SkyIslandBounty Bounty=new SkyIslandBounty();
         internal void Announce(string text,bool warning) { }
     }
-    internal sealed class SkyIslandStoryService { internal void LogTiming(string action,string value) { } }
+    internal enum SkyIslandStoryAction { ZhelingDefeated,BellKeeperDefeated,StormSlain }
+    internal sealed class SkyIslandStoryData { internal bool ZhelingResolved,BellKeeperResolved,StormResolved; }
+    internal sealed class SkyIslandStoryService { internal bool CanWrite=true; internal SkyIslandStoryData Current=new SkyIslandStoryData();internal bool TryApply(SkyIslandStoryAction action,out string message) {message=null;return false;}internal void LogTiming(string action,string value) { } }
+    internal static class SkyIslandOfficialQuestStory { internal static SkyIslandStoryService Resolve(ModBehaviour owner,out bool island) {island=false;return null;} }
     internal sealed class SkyIslandInventoryTransaction : IDisposable
     {
         internal static int Inventory=1,Reserved,Commits,Refunds;
@@ -30,7 +33,7 @@ namespace BossRush
         public void Dispose() { if(disposed)return;disposed=true;Reserved--;if(!committed){Inventory++;Refunds++;} }
         internal static void Reset() { Inventory=1;Reserved=Commits=Refunds=0; }
     }
-    internal sealed class BossRushCoopPlayer { internal string Id,AssetId="asset-1";internal CharacterMainControl Character;internal bool IsAlive=true; }
+    internal sealed class BossRushCoopPlayer { internal string Id,AssetId="asset-1";internal CharacterMainControl Character;internal bool IsAlive=true;internal bool IsLocal {get{return Id==BossRushCoop.LocalPlayerId;}} }
     internal sealed class BossRushCoopMessage
     {
         internal string SenderId;internal object Payload; internal bool IsFromHost;
@@ -39,6 +42,8 @@ namespace BossRush
     internal static partial class BossRushCoop
     {
         internal static bool IsHost,SessionReady=true;
+        internal static bool HasBoundScene;
+        internal static string SceneToken;
         internal static bool IsConnected=true;
         internal static bool IsClient { get { return IsConnected && !IsHost; } }
         internal static string LocalPlayerId="guest";
@@ -50,8 +55,9 @@ namespace BossRush
         internal static string GetPlayerId(CharacterMainControl actor) { return actor!=null?actor.Id:null; }
         internal static bool SendToHost<T>(string topic,T payload) { Requests.Add(new BossRushCoopMessage { SenderId=LocalPlayerId,Payload=payload });return true; }
     }
-    internal sealed class CoopPersonalDelivery<T>
+    internal sealed class CoopPersonalDelivery<T>:IDisposable
     {
+        internal CoopPersonalDelivery() { }internal CoopPersonalDelivery(string name,Func<T,bool> callback) { }internal void Tick(float delta) { }public void Dispose() { }
         internal sealed class Packet { internal string Player,Id;internal T Payload; }
         internal readonly List<Packet> Sent=new List<Packet>();
         internal bool Deliver(string player,string id,T payload,string asset=null) { Sent.Add(new Packet { Player=player,Id=id,Payload=payload });return true; }
@@ -70,7 +76,7 @@ namespace BossRush
         private readonly HashSet<string> coopKilled=new HashSet<string>();
         private readonly Queue<string> coopRecentKilled=new Queue<string>();
         private readonly CoopPersonalDelivery<PersonalEvent> coopGnatPersonal=new CoopPersonalDelivery<PersonalEvent>();
-        private long coopBiteSequence;private int bitesSinceSample;
+        private long coopBiteSequence,coopReceivedRevision,coopWorldRevision;private int bitesSinceSample;
         internal int WorldUses;
         internal int Bites { get { return bitesSinceSample; } }
         internal int Culls { get { return session.Bounty.Culls; } }

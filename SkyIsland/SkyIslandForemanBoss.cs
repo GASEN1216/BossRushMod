@@ -196,7 +196,10 @@ namespace BossRush
                 SkyIslandCoopWorldEffects.Track(ring);
                 SkyIslandCoopWorldEffects.TrackProp(go, boss);
                 // 非触发球是官方弹道扫掠要的；它不该把人顶开或卡住（口径同云蚋，必须在 SetActive 之后调用）。
-                IgnoreContact(collider, BossRushCoop.GetCombatTarget(boss.transform.position));
+                // 本机主角必须屏蔽（单机原口径）；联机再逐个屏蔽远端玩家，不按「离 Boss 最近」只挑一个。
+                IgnoreContact(collider, CharacterMainControl.Main);
+                if (BossRushCoop.IsConnected)
+                    foreach (BossRushCoopPlayer member in BossRushCoop.Players) IgnoreContact(collider, member.Character);
                 IgnoreContact(collider, boss);
                 Pylon pylon = new Pylon { Root = go, Tether = tether, ExpiresAt = Time.time + SkyIslandBossRules.PylonLifetime };
                 return pylon;

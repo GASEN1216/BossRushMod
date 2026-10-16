@@ -272,7 +272,49 @@ namespace BossRush
                 && manager != null && LevelManager.AfterInit
                 && player != null && player.gameObject.activeInHierarchy && player.CharacterItem != null
                 && player.Health != null && !player.Health.IsDead
-                && manager.GameCamera != null && manager.GameCamera.isActiveAndEnabled;
+                && manager.GameCamera != null && manager.GameCamera.isActiveAndEnabled
+                && AreCoopValidationPlayersReady();
+        }
+
+        // Dev 多端验收必须等每一端实际完成初始化。原生提交投票的任务会提前完成，
+        // 仅房主 ready 就继续下一次 LoadScene 会撞上慢客尚未建立 MainCharacter 的保存路径。
+        private static string CoopValidationSceneKey()
+        {
+            MultiSceneCore core = MultiSceneCore.Instance;
+            return core != null && core.SceneInfo != null && !string.IsNullOrEmpty(core.SceneInfo.ID)
+                ? "validation.runtime:" + core.SceneInfo.ID : null;
+        }
+
+        private static void MarkCoopValidationSceneReady()
+        {
+#if BOSSRUSH_DEV
+            if (!BossRushCoop.IsConnected || !IsDedicatedCurrentSlot()) return;
+            MultiSceneCore core = MultiSceneCore.Instance;
+            LevelManager manager = LevelManager.Instance;
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (SceneLoader.IsSceneLoading || core == null || core.IsLoading || core.SceneInfo == null
+                || !core.gameObject.scene.IsValid() || !core.gameObject.scene.isLoaded
+                || manager == null || !LevelManager.AfterInit || player == null
+                || manager.MainCharacter != player || !player.gameObject.activeInHierarchy
+                || player.CharacterItem == null || player.Health == null || player.Health.IsDead
+                || manager.GameCamera == null || !manager.GameCamera.isActiveAndEnabled) return;
+            string key = CoopValidationSceneKey();
+            if (key != null) BossRushCoop.MarkSceneReady(key);
+#endif
+        }
+
+        private static bool AreCoopValidationPlayersReady()
+        {
+#if BOSSRUSH_DEV
+            if (!BossRushCoop.IsConnected) return true;
+            if (!IsDedicatedCurrentSlot()) return false;
+            // MarkSceneReady 会先刷新真实 Core 的代次，防止同图重载复用上一代的全员 ready。
+            MarkCoopValidationSceneReady();
+            string key = CoopValidationSceneKey();
+            return key != null && BossRushCoop.AllPlayersSceneReady(key);
+#else
+            return true;
+#endif
         }
 
         private static string DescribeSceneReadiness(string expectedScene)
@@ -285,6 +327,7 @@ namespace BossRush
                 + ",player=" + (player != null) + ",player_active=" + (player != null && player.gameObject.activeInHierarchy)
                 + ",player_alive=" + (player != null && player.Health != null && !player.Health.IsDead)
                 + ",camera=" + (manager != null && manager.GameCamera != null && manager.GameCamera.isActiveAndEnabled)
+                + ",coop_runtime_ready=" + AreCoopValidationPlayersReady()
                 + (SceneLoader.IsSceneLoading ? ",loader_step=" + SceneLoader.LoadingComment : string.Empty);
         }
 

@@ -26,6 +26,7 @@ from cs_source_util import clean_source  # noqa: E402
 SCENES = "DebugAndTools/F3GameplayValidationScenes.cs"
 EXECUTION = "DebugAndTools/F3GameplayValidationExecution.cs"
 AUTOTEST = "DebugAndTools/F3GameplayValidationAutotest.cs"
+RUNNER = "DebugAndTools/F3GameplayValidationRunner.cs"
 
 
 def method_body(code, signature):
@@ -51,6 +52,7 @@ def check(sources):
     scenes = sources[SCENES]
     execution = sources[EXECUTION]
     autotest = sources[AUTOTEST]
+    runner = sources[RUNNER]
 
     update = method_body(execution, "private void Update()")
     if update is None:
@@ -101,6 +103,22 @@ def check(sources):
     if describe is None or "SceneLoader.LoadingComment" not in describe:
         errors.append("过图诊断必须带 SceneLoader.LoadingComment（官方停在哪个等待点）")
 
+    ready = method_body(scenes, "private static bool IsRuntimeReady(") or ""
+    publish = method_body(scenes, "private static void MarkCoopValidationSceneReady(") or ""
+    together = method_body(scenes, "private static bool AreCoopValidationPlayersReady(") or ""
+    base = method_body(runner, "private static bool IsBaseScene(") or ""
+    if "&& AreCoopValidationPlayersReady()" not in ready:
+        errors.append("场景 PASS 必须包含所有真实客端已加载完成的屏障")
+    if update is None or not (0 <= update.find("MarkCoopValidationSceneReady();") < update.find("if (_running)")):
+        errors.append("未启动破坏性套件的客端也必须只读发布本端真实场景 ready")
+    for token in ("!IsDedicatedCurrentSlot()", "core.IsLoading", "LevelManager.AfterInit", "manager.MainCharacter != player", "player.CharacterItem == null"):
+        if token not in publish:
+            errors.append("客端 ready 发布缺实际就绪条件: " + token)
+    if "MarkCoopValidationSceneReady();" not in together or "BossRushCoop.AllPlayersSceneReady(key)" not in together:
+        errors.append("多人最终判据必须先刷新本端真实 Core 代次再读生产全员屏障")
+    if 'string.Equals(core.SceneInfo.ID, "Base", StringComparison.Ordinal)' not in base or "core.gameObject.scene.isLoaded" not in base:
+        errors.append("基地恢复门必须核实际已加载的官方 Base Core，不能只匹配活动子场景名")
+
     depart = autotest.find('AutotestLog("AUTOTEST_ISLAND_READY", "begin", null);')
     depart_end = autotest.find('AutotestLog("AUTOTEST_ISLAND_READY", "end"', max(depart, 0))
     if depart < 0 or depart_end < 0:
@@ -122,6 +140,10 @@ def reverse_checks(sources):
         ("诊断不带加载步骤", SCENES, "SceneLoader.LoadingComment", "string.Empty"),
         ("出发段另喂", AUTOTEST, "if (loadingSince < 0f) loadingSince = Time.realtimeSinceStartup;",
          "if (loadingSince < 0f) loadingSince = Time.realtimeSinceStartup; FeedSceneContinueClick();"),
+        ("仅房主ready", SCENES, "&& AreCoopValidationPlayersReady()", "&& true"),
+        ("客端不发布ready", EXECUTION, "MarkCoopValidationSceneReady();", ""),
+        ("客端未生成也ready", SCENES, "player.CharacterItem == null", "false"),
+        ("基地门错认raid", RUNNER, 'string.Equals(core.SceneInfo.ID, "Base", StringComparison.Ordinal)', "true"),
     )
     failures = []
     for name, rel, old, new in cases:
@@ -136,13 +158,13 @@ def reverse_checks(sources):
 
 
 def main():
-    sources = {rel: clean_source((ROOT / rel).read_text(encoding="utf-8")) for rel in (SCENES, EXECUTION, AUTOTEST)}
+    sources = {rel: clean_source((ROOT / rel).read_text(encoding="utf-8")) for rel in (SCENES, EXECUTION, AUTOTEST, RUNNER)}
     errors = check(sources) or reverse_checks(sources)
     if errors:
         for error in errors:
             print("FAIL: " + error)
         return 1
-    print("PASS: F3 验收统一喂「点击继续」（Update 每帧、只在官方接收器激活时喂、诊断带加载步骤；反向检查 7/7 转红）")
+    print("PASS: F3 统一点击继续、真实全员到达与 Base Core 恢复门；11 项反向检查转红")
     return 0
 
 

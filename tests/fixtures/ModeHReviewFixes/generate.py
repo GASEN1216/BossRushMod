@@ -25,6 +25,7 @@ def method(path, signature):
 
 groups = {
     'ModeHRuntimeModule': [
+        ('ModeH/ModeHRuntimeModule_Coop.cs', 'private bool IsCoopWorldAuthorityCurrent'),
         ('ModeH/ModeHRuntimeModule.cs', 'private void RestoreFromSaveIfPresent()'),
         ('ModeH/ModeHRuntimeModule.cs', 'private void RestoreForSlotChange()'),
         ('ModeH/ModeHRuntimeModule.cs', 'internal bool TryTransition('),

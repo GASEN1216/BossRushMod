@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Security.Cryptography;
+using System.Linq.Expressions;
 
 internal static class Program
 {
@@ -36,6 +37,16 @@ internal static class Program
         put.Invoke(buffer,new object[]{payload});
         byte[] raw=(byte[])writer.GetMethod("CopyData").Invoke(buffer,null);
         Check(BitConverter.ToString(raw)==BitConverter.ToString(payload),"writer byte[] emits raw payload without hidden length framing");
+        MethodInfo buildPayload = network.GetMethod("BuildPayload", BindingFlags.NonPublic | BindingFlags.Static);
+        Check(buildPayload != null && buildPayload.GetParameters().Length == 1, "installed native payload builder contract");
+        int writes = 0;
+        Action<object> write = value => { writes++; put.Invoke(value, new object[] { payload }); };
+        var argument = Expression.Parameter(writer, "writer");
+        var builder = Expression.Lambda(buildPayload.GetParameters()[0].ParameterType,
+            Expression.Invoke(Expression.Constant(write), Expression.Convert(argument, typeof(object))), argument).Compile();
+        byte[] nativePayload = (byte[])buildPayload.Invoke(null, new object[] { builder });
+        Check(writes == 1 && BitConverter.ToString(nativePayload) == BitConverter.ToString(payload),
+            "actual installed BuildPayload executes callback synchronously once before returning exact bytes");
         Type context=Require(api,"EscapeFromDuckovCoopMod.ModMessageContext");
         PropertyInfo memory=context.GetProperty("Payload");
         Check(memory!=null,"payload property");
@@ -49,6 +60,19 @@ internal static class Program
         foreach(string name in new[]{"PlayerSpawned","AiSpawned","ServerRegisterAI","ItemSnapshotCustomDataRequested","ItemSnapshotCustomDataApplied"})
             Check(events.GetEvent(name,BindingFlags.Public|BindingFlags.Static)!=null,name);
         Type service=Require(main,"EscapeFromDuckovCoopMod.NetService");
+        Check(service.GetMethod("ResolvePeerDisplayName", BindingFlags.Public|BindingFlags.Instance) != null, "native display name lookup is public");
+        Type chatType = Require(main, "EscapeFromDuckovCoopMod.ChatMessageRpc");
+        Type coopTool = Require(main, "EscapeFromDuckovCoopMod.CoopTool");
+        MethodInfo sendChat = coopTool.GetMethod("SendRpc", BindingFlags.Public|BindingFlags.Static).MakeGenericMethod(chatType);
+        Check(sendChat.GetParameters().Length == 2 && sendChat.GetParameters()[0].ParameterType == chatType.MakeByRefType(),
+            "installed native chat uses existing by-reference RPC broadcast contract");
+        object chatMessage = Activator.CreateInstance(chatType);
+        foreach (string field in new[] { "SenderId", "SenderName", "Content" }) chatType.GetField(field).SetValue(chatMessage, "BossRush compatibility");
+        object chatWriter = Activator.CreateInstance(writer);
+        chatType.GetMethod("Serialize").Invoke(chatMessage, new[] { chatWriter });
+        byte[] chatBytes = (byte[])writer.GetMethod("CopyData").Invoke(chatWriter, null);
+        Check(BitConverter.ToString(chatBytes).Contains(BitConverter.ToString(System.Text.Encoding.UTF8.GetBytes("BossRush compatibility"))),
+            "actual installed native chat serializer preserves compatibility text");
         foreach(string name in new[]{"GetPlayerId","GetSelfNetworkId"})Check(service.GetMethod(name,BindingFlags.Public|BindingFlags.Instance)!=null,name);
         foreach(string name in new[]{"connectedPeer","remoteCharacters","clientRemoteCharacters","netManager"})Check(service.GetField(name,BindingFlags.Public|BindingFlags.Instance)!=null,name);
         Type netManager=service.GetField("netManager",BindingFlags.Public|BindingFlags.Instance).FieldType;

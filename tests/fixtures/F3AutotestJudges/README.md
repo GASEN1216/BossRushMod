@@ -53,3 +53,5 @@ Unity 侧那一半只能在 Dev 构建里实机跑：截图取像素（亮度样
 13 条断言覆盖原锚点位置距真实点超过 6 米被生产许可拒绝、实际采集体合法近点、传送假成功但距离仍远、缺地面、绕障落点超过近点界、官方动作未开始、动作中断、读条完成后仍未获生产许可，以及实际许可后交互体销毁。宿主替身仅控制物理传送/时钟/动作进展/网络玩家事实与交付记录；生产许可判断逐字执行，不用恒真 authority 或成功发物替身。物理、原生 Harmony、真实库存和网络收据仍要 L3。关闭近点调用的 Build 副本破坏实跑转红，按字节恢复后重跑为绿，证据在 `Build/coop-independent-audit/world-round7-dev-prerequisites/`。
 
 信鸽 `SKY_AUTO_REAL_PIGEON_LETTER` 在专用档通过既有 `clear_nearby` 真实伤害清静，再 `wait_quiet` 后走真实交互；这是 assisted 前提准备，生产战斗门保留。新档未解锁航线的船步骤保持 SKIP；Session fallback 进入不作为船入口 PASS。
+
+2026-10-15 快照扩展为 v2：原资产身份、完整物品树 JSON、来源/位置、归属 token 与该私有字段原文均逐字段往返比较；来源/位置非法与未知版本拒绝，旧 v1 可读但不授予原物回收资格。真实对象恢复另由 `AuditModeLifecycle/AutotestBuffer` 执行当前生产方法；本纯夹具不替它声称库存或崩溃恢复实机正确。`BOSSRUSH_FIXTURE_OUTPUT` 同时决定抽取路径与工程引用路径，避免隔离输出读取默认目录旧抽取物。

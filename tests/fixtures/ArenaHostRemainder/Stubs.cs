@@ -22,7 +22,19 @@ namespace UnityEngine
         public override bool Equals(object other) { return ReferenceEquals(this, other); }
         public override int GetHashCode() { return base.GetHashCode(); }
         public static void Destroy(GameObject go)
-        { if (go == null) return; go.Destroyed = true; foreach (var c in go.Components) c.Destroyed = true; BossRush.Probe.Events.Add("destroy"); }
+        {
+            if (go == null) return;
+            go.Destroyed = true;
+            foreach (var c in go.Components)
+            {
+                c.Destroyed = true;
+                var actor = c as BossRush.CharacterMainControl;
+                if (!ReferenceEquals(actor, null)) actor.CharacterItem.Destroyed = true;
+                var destroy = c.GetType().GetMethod("OnDestroy", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                if (destroy != null) destroy.Invoke(c, null);
+            }
+            BossRush.Probe.Events.Add("destroy");
+        }
         public static T[] FindObjectsOfType<T>() where T : Object
         { SceneScans++; return All.OfType<T>().Where(x => x != null).ToArray(); }
     }
@@ -33,6 +45,7 @@ namespace UnityEngine
         public bool Active;
         public UnityEngine.SceneManagement.Scene scene;
         public T Add<T>(T c) where T : Component { c.gameObject = this; Components.Add(c); return c; }
+        public T AddComponent<T>() where T : Component, new() { return Add(new T()); }
         public T GetComponent<T>() where T : Component { return Components.OfType<T>().FirstOrDefault(x => x != null); }
         public T[] GetComponentsInChildren<T>(bool includeInactive) where T : Component { return Components.OfType<T>().Where(x => x != null).ToArray(); }
         public void SetActive(bool value) { Active = value; BossRush.Probe.Events.Add("active"); }
@@ -68,9 +81,9 @@ namespace UnityEngine
 }
 namespace UnityEngine.SceneManagement
 {
-    public struct Scene { public int buildIndex; public string name; }
+    public struct Scene { public int buildIndex,handle; public string name; }
     public static class SceneManager
-    { public static string Name="arena"; public static Scene GetActiveScene() { return new Scene { buildIndex=17,name=Name }; } }
+    { public static string Name="arena"; public static int Handle=17; public static Scene GetActiveScene() { return new Scene { buildIndex=17,handle=Handle,name=Name }; } }
 }
 namespace ItemStatsSystem { public class Stat { public float BaseValue=100; } }
 namespace Duckov { }
@@ -96,9 +109,22 @@ namespace BossRush
             if (direction.z!=1 || scene!=17 || data!=null || active) throw new Exception("factory contract");
             Calls++; Probe.Events.Add("factory"); return new UniTask<CharacterMainControl>(Factory());
         }
+        // The host seam is a real CLR async value-type state machine. Production hooks read
+        // its actual suspension/termination; no fixture substitutes the cleanup decision.
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        internal async Task<CharacterMainControl> CreateCharacterAsync(CharacterMainControl initial, Task gate, bool fail)
+        {
+            CharacterMainControl character = initial;
+            await gate;
+            if (character == null || character.CharacterItem.Destroyed) throw new NullReferenceException("factory resumed after item tree destruction");
+            if (fail) throw NativeFactoryCases.FactoryError;
+            character.FactoryReady = true;
+            return character;
+        }
     }
     public sealed class CharacterItem
     {
+        public bool Destroyed;
         public object Inventory=new object();
         public readonly Dictionary<string,ItemStatsSystem.Stat> Stats=new Dictionary<string,ItemStatsSystem.Stat>();
         public ItemStatsSystem.Stat GetStat(string key) { ItemStatsSystem.Stat value; return Stats.TryGetValue(key,out value)?value:null; }
@@ -119,14 +145,14 @@ namespace BossRush
     {
         public static CharacterMainControl Main;
         public CharacterRandomPreset characterPreset;
-        public bool Companion, ModeGOwned, ModeEOwned, DeathWraith;
+        public bool Companion, ModeGOwned, ModeEOwned, DeathWraith, FactoryReady;
         public Teams Team=Teams.middle;
         public readonly CharacterItem CharacterItem=new CharacterItem();
         public readonly Health Health=new Health();
         public readonly DamageReceiver mainDamageReceiver=new DamageReceiver();
         public CharacterMainControl(string label)
         {
-            name=label;new GameObject {name=label}.Add(this);
+            name=label;new GameObject {name=label,scene=UnityEngine.SceneManagement.SceneManager.GetActiveScene()}.Add(this);
             foreach(var key in new[]{"MaxHealth","GunDamageMultiplier","MeleeDamageMultiplier"}) CharacterItem.Stats[key]=new ItemStatsSystem.Stat();
             Health.Item=CharacterItem;
         }
@@ -213,5 +239,18 @@ namespace BossRush {
  private CoopGameplayChannel<object> coopChannel;
  private CoopPersonalDelivery<object> coopPersonal;
  private void InitializeCoopArena() { }
+ }
+}
+
+namespace BossRush {
+ internal class VictoryRewardShadowCrateController : UnityEngine.MonoBehaviour { }
+ internal static class CoopArenaPersonalLoot { internal static void Shutdown() { Probe.Events.Add("cleanup-personal-hook"); } }
+ internal sealed partial class WavesArenaRuntimeModule {
+ private sealed class CoopArenaReward { internal VictoryRewardShadowCrateController Shadow; internal InteractableLootbox Box; internal bool Complete,StandardLoading,Cancelled; }
+ private readonly Dictionary<string,CoopArenaReward> coopArenaRewards=new Dictionary<string,CoopArenaReward>();
+ internal VictoryRewardShadowCrateController PendingRewardForTest() {
+ var shadow=new UnityEngine.GameObject().AddComponent<VictoryRewardShadowCrateController>();
+ coopArenaRewards.Add("original",new CoopArenaReward{Shadow=shadow});return shadow;
+ }
  }
 }

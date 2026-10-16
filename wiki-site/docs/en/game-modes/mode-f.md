@@ -109,3 +109,5 @@ Extraction = 3%/sec bleed. Hesitation is death.
 ::: tip
 See the Blood Hunt strategy guide for detailed tips.
 :::
+
+In co-op, a living participant who disconnects after the extraction countdown begins, or was last observed inside the extraction zone, keeps extraction rewards for the original save. Leaving early outside the zone or dying does not qualify.

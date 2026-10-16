@@ -66,6 +66,8 @@ namespace BossRush
     internal sealed class BossRushCoopPlayer { internal string AssetId="asset"; internal bool IsAlive=true; internal CharacterMainControl Character; }
     internal static class BossRushCoop
     {
+        internal static bool HasBoundScene;
+        internal static string SceneToken;
         internal static BossRushCoopPlayer Player;
         internal static BossRushCoopPlayer FindPlayer(string id) { return id=="player" ? Player : null; }
     }
@@ -96,7 +98,7 @@ namespace BossRush
             Current=new SkyIslandFieldcraft { gathering=new SkyIslandGathering { Target=target } };
             BossRushCoop.Player=new BossRushCoopPlayer { Character=CharacterMainControl.Main };
         }
-        internal void AdmitForTest() { AdmitHarvest("player",new GatherRequest { Id="B1",AssetId="asset",TravelId="travel" }); }
+        internal void AdmitForTest() { AdmitHarvest("player",new GatherRequest { Id="B1",AssetId="asset",TravelId="travel",SceneToken=BossRushCoop.SceneToken }); }
     }
     internal class F3AutotestStepRecord
     { internal readonly List<string> Notes = new List<string>(); internal readonly List<string> Assertions = new List<string>(); }
@@ -139,6 +141,7 @@ internal static class GatherInteractionProgram
     private static BossRush.F3GameplayValidationRunner Runner()
     {
         Time.realtimeSinceStartup = 0f;
+        BossRush.BossRushCoop.HasBoundScene=true;BossRush.BossRushCoop.SceneToken="gather-core";
         CharacterMainControl.Main = new CharacterMainControl { transform = new Transform { position = new Vector3(2f,.15f,0f) } };
         var runner = new BossRush.F3GameplayValidationRunner
         { Session = new BossRush.SkyIslandSession(), Target = new InteractableBase { transform = new Transform { position = new Vector3(8f,.05f,0f) } } };

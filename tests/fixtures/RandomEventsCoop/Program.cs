@@ -24,7 +24,7 @@ namespace UnityEngine.SceneManagement
 }
 namespace BossRush
 {
-    internal static class BossRushCoop { internal static bool IsConnected=true,IsClient=true; internal static string RunId="room"; internal static int SceneGeneration=3; }
+    internal static class BossRushCoop { internal static bool IsConnected=true,IsClient=true,HasBoundScene; internal static string RunId="room",SceneToken; internal static int SceneGeneration=3; }
     internal sealed class BossRushCoopMessage { internal bool IsFromHost; internal object Payload; internal T Read<T>() { return BossRushCoopJson.FromJson<T>(BossRushCoopJson.ToJson(Payload)); } }
     internal static class L10n { internal static string T(string cn,string en) { return en; } }
     internal static class BossRushUIColors { internal const int Accent=1; }
@@ -114,8 +114,12 @@ class Program
         Check(retry.CaptureCoop().Serial>a.Serial,"context change invalidates previous instance");
         BossRushCoop.IsClient=false;retry.ApplyCoop(first);Check(retry.ActiveEventId==RandomEventId.None,"host rejects snapshot application");
         BossRushCoop.IsClient=true;var fxOwner=new RandomEventsRuntimeModule();
-        var fx=new CoopRandomEventFx { Run="room",Scene=3,Kind=1,Id="same" };
+        BossRushCoop.HasBoundScene=true;BossRushCoop.SceneToken="random-core";
+        var fx=new CoopRandomEventFx { Run="room",Token=BossRushCoop.SceneToken,Scene=3,Kind=1,Id="same" };
         var message=new BossRushCoopMessage { IsFromHost=true,Payload=fx };
+        BossRushCoop.HasBoundScene=false;fxOwner.Receive(message);Check(RandomEventFx.Plays==0,"unbound Core cannot consume same-generation FX");
+        BossRushCoop.HasBoundScene=true;BossRushCoop.SceneToken="new-random-core";fxOwner.Receive(message);Check(RandomEventFx.Plays==0,"new Core with old public generation rejects old-token FX");
+        BossRushCoop.SceneToken=fx.Token;
         fxOwner.Receive(message);fxOwner.Receive(message);Check(RandomEventFx.Plays==1,"duplicate FX Guid only plays once");
         fx.Id="guest";message.IsFromHost=false;fxOwner.Receive(message);Check(RandomEventFx.Plays==1,"client cannot inject world FX");
         message.IsFromHost=true;fx.Id="old";fx.Run="previous";fxOwner.Receive(message);Check(RandomEventFx.Plays==1,"old room FX rejected");

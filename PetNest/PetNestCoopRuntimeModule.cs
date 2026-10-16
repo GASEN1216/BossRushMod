@@ -8,7 +8,7 @@ namespace BossRush
     [Serializable]
     internal sealed class PetNestCoopPacket
     {
-        public string run;
+        public string run, sceneToken;
         public int scene;
         public string owner;
         public string asset;
@@ -31,7 +31,7 @@ namespace BossRush
         private sealed class Entry
         {
             internal string Owner;
-            internal string Asset;
+            internal string Asset, SceneToken;
             internal PetNestPetRecord Pet;
             internal PetNestCompanionHandle Handle;
             internal bool Owned;
@@ -91,7 +91,7 @@ namespace BossRush
         {
             PetNestPetRecord copy = pet != null ? pet.Clone() : null;
             if (copy != null) copy.backpackJson = null;
-            return new PetNestCoopPacket { run = BossRushCoop.RunId, scene = BossRushCoop.SceneGeneration,
+            return new PetNestCoopPacket { run = BossRushCoop.RunId, scene = BossRushCoop.SceneGeneration, sceneToken = BossRushCoop.SceneToken,
                 owner = BossRushCoop.LocalPlayerId, asset = BossRushCoop.LocalAssetId, pet = copy,
                 atBase = LevelManager.Instance != null && LevelManager.Instance.IsBaseLevel };
         }
@@ -99,6 +99,8 @@ namespace BossRush
         {
             return packet != null && packet.run == BossRushCoop.RunId && packet.scene == BossRushCoop.SceneGeneration;
         }
+        private static bool CurrentWorld(PetNestCoopPacket packet)
+        { return Current(packet) && !string.IsNullOrEmpty(packet.sceneToken) && packet.sceneToken == BossRushCoop.SceneToken; }
         internal static void RequestLocalDeployment(PetNestPetRecord pet)
         {
             if (instance == null || !BossRushCoop.IsClient || pet == null) return;
@@ -108,7 +110,7 @@ namespace BossRush
         internal static void PublishLocalCompanion(PetNestCompanionHandle handle, PetNestPetRecord pet)
         {
             if (instance == null || !BossRushCoop.IsHost || handle == null || pet == null) return;
-            var entry = new Entry { Owner = BossRushCoop.LocalPlayerId, Asset = BossRushCoop.LocalAssetId, Handle = handle, Pet = pet.Clone(),
+            var entry = new Entry { Owner = BossRushCoop.LocalPlayerId, Asset = BossRushCoop.LocalAssetId, SceneToken = BossRushCoop.SceneToken, Handle = handle, Pet = pet.Clone(),
                 Base = LevelManager.Instance != null && LevelManager.Instance.IsBaseLevel };
             instance.entries[entry.Owner] = entry;
             BossRushCoop.RequestAiRegistration(handle.Character);
@@ -127,12 +129,12 @@ namespace BossRush
 
         private void OnRequest(BossRushCoopMessage message)
         {
-            if (!BossRushCoop.IsHost || message.IsFromHost) return;
+            if (!BossRushCoop.IsHost || !BossRushCoop.HasBoundScene || message.IsFromHost) return;
             PetNestCoopPacket packet = message.Read<PetNestCoopPacket>();
             BossRushCoopPlayer player = BossRushCoop.FindPlayer(message.SenderId);
             bool atBase = LevelManager.Instance != null && LevelManager.Instance.IsBaseLevel;
             string reason;
-            if (!Current(packet) || !ValidPet(packet.pet) || player == null || !player.IsAlive || packet.asset != player.AssetId || packet.atBase != atBase
+            if (!CurrentWorld(packet) || !ValidPet(packet.pet) || player == null || !player.IsAlive || packet.asset != player.AssetId || packet.atBase != atBase
                 || (!atBase && !PetNestModeGate.IsCompanionAllowed(owner, out reason))) return;
             if (!AcceptRequestSequence(packet, message.SenderId)) return;
             Entry entry;
@@ -159,7 +161,7 @@ namespace BossRush
                 }
                 Remove(message.SenderId, true);
             }
-            entry = new Entry { Owner = message.SenderId, Asset = packet.asset, Pet = packet.pet.Clone(), Base = atBase, Owned = true, Spawning = true };
+            entry = new Entry { Owner = message.SenderId, Asset = packet.asset, SceneToken = packet.sceneToken, Pet = packet.pet.Clone(), Base = atBase, Owned = true, Spawning = true };
             entries[entry.Owner] = entry;
             string budget = entry.Owner + ":" + entry.Asset;
             if (atBase) killBudgets[budget] = 0;
@@ -186,11 +188,7 @@ namespace BossRush
                 if (source == null) return;
                 handle = await PetNestCompanionSpawner.CreateIsolatedAsync(source, entry.Pet.lineageKey, lineage.ModelScale,
                     master.transform.position + PetNestCompanionSpawner.StagingOffset);
-                Entry current;
-                BossRushCoopPlayer player = BossRushCoop.FindPlayer(entry.Owner);
-                if (handle == null || !BossRushCoop.IsHost || run != BossRushCoop.RunId || scene != BossRushCoop.SceneGeneration
-                    || !entries.TryGetValue(entry.Owner, out current) || current != entry || player == null || !player.IsAlive
-                    || player.Character != master || player.AssetId != entry.Asset) return;
+                if (handle == null || !IsSpawnCurrent(entry, master, run, scene)) return;
                 string reason;
                 if (!PetNestCompanionSpawner.TryActivate(handle, master.transform.position + PetNestCompanionSpawner.SpawnOffset,
                     master, owner, entry.Pet, out reason, !entry.Base, false)) return;
@@ -207,6 +205,14 @@ namespace BossRush
             }
         }
 
+        private bool IsSpawnCurrent(Entry entry, CharacterMainControl master, string run, int scene)
+        {
+            Entry current;
+            BossRushCoopPlayer player = BossRushCoop.FindPlayer(entry.Owner);
+            return BossRushCoop.IsHost && BossRushCoop.HasBoundScene && entry.SceneToken == BossRushCoop.SceneToken && run == BossRushCoop.RunId && scene == BossRushCoop.SceneGeneration
+                && entries.TryGetValue(entry.Owner, out current) && ReferenceEquals(current, entry) && player != null && player.IsAlive
+                && player.Character == master && player.AssetId == entry.Asset;
+        }
         private void FinishSpawn(Entry entry)
         {
             entry.Spawning = false;
@@ -218,7 +224,7 @@ namespace BossRush
 
         private void Publish(Entry entry)
         {
-            if (!BossRushCoop.IsHost || entry.Handle == null || entry.Handle.Character == null) return;
+            if (!BossRushCoop.IsHost || !BossRushCoop.HasBoundScene || entry.SceneToken != BossRushCoop.SceneToken || entry.Handle == null || entry.Handle.Character == null) return;
             entry.Ai = BossRushCoop.GetAiId(entry.Handle.Character);
             if (entry.Ai == 0) return;
             PetNestCoopPacket packet = Packet(entry.Pet);
@@ -234,17 +240,19 @@ namespace BossRush
         {
             if (!BossRushCoop.IsClient || !message.IsFromHost) return;
             PetNestCoopPacket packet = message.Read<PetNestCoopPacket>();
-            if (!Current(packet) || string.IsNullOrEmpty(packet.owner)) return;
+            if (!CurrentWorld(packet) || string.IsNullOrEmpty(packet.owner)) return;
             long sequence;
             if (packet.stateSequence <= 0 || (stateSequences.TryGetValue(packet.owner, out sequence) && packet.stateSequence <= sequence)) return;
-            if (packet.ai == 0) { stateSequences[packet.owner] = packet.stateSequence; Remove(packet.owner, false); pending.Remove(packet.owner); return; }
-            if (!ValidPet(packet.pet) || packet.scale <= 0f || packet.scale > 4f || float.IsNaN(packet.scale)) return;
+            if (packet.ai != 0 && (!ValidPet(packet.pet) || packet.scale <= 0f || packet.scale > 4f || float.IsNaN(packet.scale))) return;
             stateSequences[packet.owner] = packet.stateSequence;
             pending[packet.owner] = packet;
             BindReplica(packet);
         }
         private void BindReplica(PetNestCoopPacket packet)
         {
+            if (!BossRushCoop.HasBoundScene) return;
+            if (!CurrentWorld(packet)) { pending.Remove(packet.owner); return; }
+            if (packet.ai == 0) { Remove(packet.owner, false); pending.Remove(packet.owner); return; }
             CharacterMainControl character = BossRushCoop.FindAi(packet.ai);
             BossRushCoopPlayer player = BossRushCoop.FindPlayer(packet.owner);
             if (character == null || player == null || player.Character == null || packet.asset != player.AssetId) return;
@@ -264,7 +272,7 @@ namespace BossRush
             bool personal = packet.owner == BossRushCoop.LocalPlayerId;
             PetNestPetRecord pet = personal ? PetNestService.TryGetPet(packet.pet.id) : packet.pet;
             if (pet == null) return;
-            var entry = new Entry { Owner = packet.owner, Asset = packet.asset, Pet = packet.pet, Ai = packet.ai, Base = packet.atBase,
+            var entry = new Entry { Owner = packet.owner, Asset = packet.asset, SceneToken = packet.sceneToken, Pet = packet.pet, Ai = packet.ai, Base = packet.atBase,
                 Handle = PetNestCompanionSpawner.AttachNetworkReplica(character, player.Character, pet, packet.scale, personal), Owned = true };
             entries[entry.Owner] = entry;
             if (personal && !entry.Base) PetNestCompanionRuntime.BindNetworkReplica(entry.Handle, pet.id);
@@ -282,7 +290,7 @@ namespace BossRush
             if (!BossRushCoop.IsHost || message.IsFromHost) return;
             PetNestCoopPacket packet = message.Read<PetNestCoopPacket>();
             BossRushCoopPlayer player = BossRushCoop.FindPlayer(message.SenderId);
-            if (!Current(packet) || player == null || !player.IsConnected || packet.asset != player.AssetId
+            if (!CurrentWorld(packet) || player == null || !player.IsConnected || packet.asset != player.AssetId
                 || !AcceptRequestSequence(packet, message.SenderId)) return;
             Entry entry;
             if (entries.TryGetValue(message.SenderId, out entry) && packet.asset == entry.Asset)
@@ -384,7 +392,7 @@ namespace BossRush
         public override void OnUpdate(float deltaTime, float unscaledDeltaTime)
         {
             RefreshRewardRun();
-            if (!BossRushCoop.IsConnected || !BossRushCoop.SessionReady) return;
+            if (!BossRushCoop.IsConnected || !BossRushCoop.SessionReady || !BossRushCoop.HasBoundScene) return;
             if (BossRushCoop.IsHost && entries.Count > 0)
             {
                 var remove = new List<string>();

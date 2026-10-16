@@ -140,3 +140,5 @@ After the sixth match, the season goes into the **Hall of Fame** and gets ranked
 ::: tip
 There are really only three calls to make here: which team to back, how much to bet, and when to ring that one bell. The bosses handle the rest.
 :::
+
+After confirming their own bet, the host may start and skip unconfirmed players. Those players spectate the match, receive a full refund of held cash bets, and have their original staked items unlocked. They may join the next match.

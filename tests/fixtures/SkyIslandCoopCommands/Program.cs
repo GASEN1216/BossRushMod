@@ -10,6 +10,7 @@ internal static class Program
     {
         SkyIslandInventoryTransaction.Reset();BossRushCoop.Requests.Clear();BossRushCoop.IsHost=false;
         BossRushCoop.IsConnected=true;BossRushCoop.Players.Clear();
+        BossRushCoop.HasBoundScene=true;BossRushCoop.SceneToken="sky-core";
         Time.time=Time.unscaledTime=0;
         CharacterMainControl.Main=new CharacterMainControl { Id="guest" };
         BossRushCoop.LocalAssetId="asset-1";
@@ -22,7 +23,11 @@ internal static class Program
         guest.TickUse();Check(SkyIslandInventoryTransaction.Inventory==1 && BossRushCoop.Requests.Count==0,"official synchronous decrement finishes before reservation");
         Time.unscaledTime=1;guest.TickUse();
         Check(SkyIslandInventoryTransaction.Inventory==0 && SkyIslandInventoryTransaction.Reserved==1,"one personal item reserved");
-        BossRushCoop.IsHost=true;host.Receive(BossRushCoop.Requests[0]);host.Receive(BossRushCoop.Requests[0]);
+        BossRushCoop.IsHost=true;BossRushCoop.HasBoundScene=false;host.Receive(BossRushCoop.Requests[0]);
+        Check(host.WorldUses==0&&host.Packets==0,"unbound host cannot admit consumable world placement or commit personal cost");
+        BossRushCoop.HasBoundScene=true;BossRushCoop.SceneToken="another-core";host.Receive(BossRushCoop.Requests[0]);
+        Check(host.WorldUses==0&&host.Packets==0,"old Core consumable request cannot use a new map with unchanged public generation");
+        BossRushCoop.SceneToken="sky-core";host.Receive(BossRushCoop.Requests[0]);host.Receive(BossRushCoop.Requests[0]);
         Check(host.WorldUses==1 && host.Packets==2,"duplicate request applies shared world only once and returns same decision");
         BossRushCoop.IsHost=false;Check(guest.ApplyPacket(host,0),"successful receipt accepted");Check(guest.ApplyPacket(host,1),"duplicate receipt accepted");
         Check(SkyIslandInventoryTransaction.Commits==1 && SkyIslandInventoryTransaction.Refunds==0 && !guest.CoopUsePending,"personal cost committed once after actual world success");
@@ -49,6 +54,7 @@ internal static class Program
         Reset();guest=new SkyIslandGnats();
         Check(!guest.QueueCoopUse(SkyIslandFieldBuff.Zapper,new Item()) && !guest.CoopUsePending,"uninitialized session cannot reserve cost or send a use");
         WorldRegression.Run();
+        SceneProjection.Run(Check);
         Console.WriteLine("PASS SkyIslandCoopCommands: host request idempotence, deferred reservation, commit/refund, personal bite/cull routing, asset escrow isolation, 16-player world skills, native arrival, gun noise and equipment");return 0;
     }
 }

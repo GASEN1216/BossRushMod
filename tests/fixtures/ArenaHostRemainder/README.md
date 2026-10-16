@@ -11,3 +11,10 @@ Unity 对象、官方角色工厂、异步任务桥、Stats/AI/资源查找是�
 宿主的终章状态、官方 spawner 停用和等待对象是明确替身；清场、缓存刷新、角色筛选和协程执行都来自完整生产文件，销毁真实触发替身 GameObject 与所有所挂组件的 Unity 假 null 语义。没有用测试再实现一套清场判据，也不证明实际女巫工厂、粒子、对白或游戏调度。旧实现在未认领 ghost 存活断言实跑转红，前后日志分别保留于 `Build/runtime-regressions/ArenaHostRemainder-campaign-preclear-before.log` 和 `Build/runtime-regressions/ArenaHostRemainder-campaign-preclear-after.log`。
 
 同轮反向验证在独立稀疏副本分别移除直接 Clear 门、循环暂停门和首次扫描门，均在对应行为断言转红；每次按字节还原并核对 SHA-256，恢复后全部 661 条断言通过。共享生产文件没有被变异。证据汇总为 `Build/runtime-regressions/ArenaHostRemainder-campaign-preclear-mutations.json`，各次日志为同名前缀的 `mutation-direct-gate.log`、`mutation-pause-gate.log`、`mutation-initial-gate.log` 和 `mutation-restored.log`。
+
+2026-10-15：追加真实 Harmony 对 CLR 异步值类型 `MoveNext` 的执行。原无补丁时先按生产 Clear 方法清掉同一角色，再恢复等待，断言真实异步续作因物品树销毁发生 NullReference；应用逐字抽取的生产生成租约后，三条完整生产清场入口在官方宿主替身的真实等待期间保留原对象，真终态后重走原筛选，重复请求幂等。覆盖模块、角色、资产、活动场景实例、角色场景、StopNetwork、新房、房主角色变化和单机后入房的旧请求取消；保留异步原异常和原返回对象。角色销毁真实调用组件 OnDestroy，并销毁物品树和所有组件。此项不声称执行 Unity Mono 的原生角色工厂；官方 API 编译、实际同对象实机异常和修复后的游戏复验分开记录。
+
+此夹具使用本机实际 Harmony DLL 和 Windows .NET Framework；每次创建独立输出目录，编译成功后显式执行本次绝对 TargetPath 并记录 SHA。可设置 `BOSSRUSH_FIXTURE_OUTPUT` 将独立证据写到 Build 指定目录，不覆盖全量 runner 的结果。
+
+
+2026-10-16：同一真实 OnDestroy 继续抽取真实 CleanupCoopArenaRewards／CancelCoopArenaReward，验证未落地个人奖励视觉 owner 在清表前销毁。这里只提供 reward 状态外壳，不模拟交付成功；完整 receipt、原物保留和异步取消数量由 ArenaCoop 主组执行。

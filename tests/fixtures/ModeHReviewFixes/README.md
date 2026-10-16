@@ -17,3 +17,5 @@
 同轮补入实际 `ReleaseMatchRuntime`：生成期技术重试须先停止主生成协程并回滚事务，再回同一场看盘。协程调度器 / 生成事务为可观察宿主边界；修复前于旧协程未停止断言失败。
 
 同轮执行实际 `TryDriveSuspendedExit`，证明同一 owner 的重复 tick 只离场一次，新 owner 即使状态序号相同仍能离场。修复前第二个 owner 的退出被旧序号吞掉。
+
+2026-10-15 owner 依赖同步：当前所提取的世界回调/转换或续赛方法读取真实 IsCoopWorldAuthorityCurrent；夹具同步提取该生产属性及所需原房间/原连接字段，没有恒真替身。默认离线用例保持原语义；原生 host Stop、换角色/房间和真实迟到 custom factory 的执行边界集中由 ModeHCoop 的 WorldOwner 用例验证。

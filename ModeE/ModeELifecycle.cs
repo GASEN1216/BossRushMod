@@ -139,8 +139,9 @@ namespace BossRush
                 // 恢复玩家阵营
                 try
                 {
+                    bool coopTeamsOwned = RestoreCoopModeEPlayerTeams();
                     CharacterMainControl player = CharacterMainControl.Main;
-                    if (player != null)
+                    if (!coopTeamsOwned && player != null)
                     {
                         player.SetTeam(Teams.player);
                         ModBehaviour.DevLog("[ModeE] 玩家阵营已恢复为 player");

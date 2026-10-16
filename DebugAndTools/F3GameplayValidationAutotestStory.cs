@@ -9,7 +9,7 @@
 //      其余是 RecordEncounterCleared / TryApply / RecordNote——与玩家在岛上做同一件事时是同一条代码。
 //   3. **还原在收尾阶段做、在 CompleteSession（RunSession 的 finally）里再兜一次**：岛上先经活的 store 还原，回基地后读回核对，
 //      不一致再经一份临时门面还原并读回；读回一致才清掉快照键。
-//   4. **记账**：发给测试用的岛上物品按件数差收回（只收多出来的、不补少了的）；金钱只记变化不改。
+//   4. **记账**：发给测试用的岛上物品按原树收据暂存和归还；只收回演练新增实例；金钱只记变化不改。
 // 任何写入之前先过 AutotestWriteAllowed（Dev + 专用测试档 + 自动验收正在跑或正在做崩溃恢复）。
 // ============================================================================
 
@@ -18,6 +18,7 @@ using System.Collections.Generic;
 using Duckov.Economy;
 using Duckov.NoteIndexs;
 using ItemStatsSystem;
+using ItemStatsSystem.Data;
 using Saves;
 using SodaCraft.Localizations;
 using UnityEngine;
@@ -41,7 +42,7 @@ namespace BossRush
 
         private sealed class AutotestSnapshot
         {
-            internal string RunId;
+            internal string RunId, Asset;
             internal int Slot;
             internal bool RawExists;
             internal string Raw;
@@ -52,7 +53,8 @@ namespace BossRush
             internal SystemLanguage Language;
             internal bool ForceNight;
             internal float TimeScale;
-            internal bool BufferCountsIncluded;
+            internal bool BufferCountsIncluded, ItemReceiptsIncluded;
+            internal readonly List<F3AutotestItemReceipt> Originals = new List<F3AutotestItemReceipt>();
         }
 
         /// <summary>崩溃恢复进行中：写入门在没有运行中验收时也放行（仍要求专用测试档）。</summary>
@@ -88,7 +90,7 @@ namespace BossRush
                     if (!TryRecoverAutotestSnapshot(out recovered)) { reason = "previous_snapshot_not_restored:" + recovered; return false; }
                     metrics = "previous_snapshot=" + recovered + ",";
                 }
-                var snapshot = new AutotestSnapshot { RunId = _runId, Slot = SavesSystem.CurrentSlot, BufferCountsIncluded = true };
+                var snapshot = new AutotestSnapshot { RunId = _runId, Slot = SavesSystem.CurrentSlot, Asset = BossRushCoop.LocalAssetId, BufferCountsIncluded = true };
                 snapshot.RawExists = SavesSystem.KeyExisits(SkyIslandStoryRules.StorageKey);
                 snapshot.Raw = snapshot.RawExists ? SavesSystem.Load<string>(SkyIslandStoryRules.StorageKey) : null;
                 snapshot.Data = snapshot.RawExists ? SkyIslandStoryCodec.Decode(snapshot.Raw) : SkyIslandStoryRules.CreateDefault();
@@ -110,7 +112,10 @@ namespace BossRush
                 snapshot.Language = LocalizationManager.CurrentLanguage;
                 snapshot.ForceNight = SkyIslandNight.DevForceNight;
                 snapshot.TimeScale = Time.timeScale > 0f ? Time.timeScale : 1f;
+                CaptureAutotestOriginals(snapshot);
+                if (!ValidateAutotestReceipts(snapshot)) throw new InvalidOperationException("original_receipts_count_mismatch");
                 string json = EncodeAutotestSnapshot(snapshot);
+                SaveAutotestAssets();
                 SavesSystem.Save<string>(AutotestSnapshotKey, json);
                 if (!string.Equals(SavesSystem.Load<string>(AutotestSnapshotKey), json, StringComparison.Ordinal))
                 {
@@ -120,6 +125,7 @@ namespace BossRush
                 SavesSystem.SaveFile(false);
                 _autotest.Snapshot = snapshot;
                 _autotest.SnapshotPersisted = true;
+                StashAutotestOriginals(snapshot);
                 WriteAutotestTextFile("story_snapshot.json", json);
                 metrics += "raw_exists=" + snapshot.RawExists + ",flags=" + snapshot.Data.flags
                     + ",notes=" + snapshot.Data.discoveredNotes.Length + ",cleared=" + snapshot.Data.clearedEncounters.Length
@@ -143,9 +149,10 @@ namespace BossRush
             {
                 RunId = snapshot.RunId, Slot = snapshot.Slot, RawExists = snapshot.RawExists, Raw = snapshot.Raw, Money = snapshot.Money,
                 Language = snapshot.Language.ToString(), ForceNight = snapshot.ForceNight, TimeScale = snapshot.TimeScale,
-                BufferCountsIncluded = snapshot.BufferCountsIncluded
+                BufferCountsIncluded = snapshot.BufferCountsIncluded, ItemReceiptsIncluded = snapshot.ItemReceiptsIncluded, Asset = snapshot.Asset
             };
             record.OfficialUnlocked.AddRange(snapshot.OfficialUnlocked);
+            record.Originals.AddRange(snapshot.Originals);
             foreach (KeyValuePair<int, int> pair in snapshot.Items) record.Items[pair.Key] = pair.Value;
             return F3AutotestJudges.EncodeSnapshot(record);
         }
@@ -159,11 +166,12 @@ namespace BossRush
             {
                 RunId = record.RunId, Slot = record.Slot, RawExists = record.RawExists, Raw = record.Raw, Data = data,
                 Money = record.Money, ForceNight = record.ForceNight, TimeScale = record.TimeScale,
-                BufferCountsIncluded = record.BufferCountsIncluded
+                BufferCountsIncluded = record.BufferCountsIncluded, ItemReceiptsIncluded = record.ItemReceiptsIncluded, Asset = record.Asset
             };
             try { snapshot.Language = (SystemLanguage)Enum.Parse(typeof(SystemLanguage), string.IsNullOrEmpty(record.Language) ? "Unknown" : record.Language, false); }
             catch (Exception) { snapshot.Language = LocalizationManager.CurrentLanguage; }
             snapshot.OfficialUnlocked.AddRange(record.OfficialUnlocked);
+            snapshot.Originals.AddRange(record.Originals);
             foreach (KeyValuePair<int, int> pair in record.Items) snapshot.Items[pair.Key] = pair.Value;
             return snapshot;
         }
@@ -279,11 +287,16 @@ namespace BossRush
             for (int n = 0; n < count; n++)
             {
                 Item item = ItemAssetsCollection.InstantiateSync(typeId);
-                if (item == null) break;
+                if (item == null) { reason = "instantiate_null:" + typeId + "=" + given + "/" + count; return false; }
                 if (!ItemUtilities.SendToPlayerCharacterInventory(item, false))
                 {
+                    Inventory pack = CharacterMainControl.Main == null || CharacterMainControl.Main.CharacterItem == null ? null : CharacterMainControl.Main.CharacterItem.Inventory;
+                    string packState = pack == null ? "pack=null" : "capacity=" + pack.Capacity + ",occupied=" + pack.Content.FindAll(value => value != null).Count
+                        + ",first_empty=" + pack.GetFirstEmptyPosition() + ",inventory=" + pack.GetInstanceID();
+                    reason = "inventory_delivery_rejected:" + typeId + "=" + given + "/" + count + ",item=" + item.GetInstanceID() + "," + packState;
+                    UnityEngine.Debug.Log("[BossRushValidation] AUTOTEST_GIVE | " + reason);
                     UnityEngine.Object.Destroy(item.gameObject);
-                    break;
+                    return false;
                 }
                 given++;
             }
@@ -361,17 +374,25 @@ namespace BossRush
             if (!AutotestWriteAllowed(out reason)) { ModBehaviour.DevLog("[Validation] 快照键未清除: " + reason); return false; }
             if (SavesSystem.IsSaving) return false;
             string previous = null;
+            AutotestSnapshot snapshot = null;
             try
             {
                 previous = SavesSystem.Load<string>(AutotestSnapshotKey);
+                snapshot = DecodeAutotestSnapshot(previous);
+                if (snapshot == null || !snapshot.ItemReceiptsIncluded) return false;
+                SetAutotestOriginalMarkers(snapshot, false);
+                SaveAutotestAssets();
                 SavesSystem.Save<string>(AutotestSnapshotKey, string.Empty);
                 SavesSystem.SaveFile(false);
+                ReleaseAutotestCustody(snapshot);
                 return true;
             }
             catch (Exception e)
             {
                 try { if (!string.IsNullOrEmpty(previous)) SavesSystem.Save<string>(AutotestSnapshotKey, previous); }
                 catch (Exception restoreError) { ModBehaviour.DevLog("[Validation] 恢复待处理快照键失败: " + restoreError.Message); }
+                try { if (snapshot != null) { SetAutotestOriginalMarkers(snapshot, true); SaveAutotestAssets(); } }
+                catch (Exception restoreError) { ModBehaviour.DevLog("[Validation] 恢复原物归属标记失败: " + restoreError.Message); }
                 ModBehaviour.DevLog("[Validation] 清除快照键失败: " + e.Message);
                 return false;
             }
@@ -507,7 +528,7 @@ namespace BossRush
             return counts;
         }
 
-        /// <summary>按快照件数收回多出来的岛上物品（背包含容器、再到仓库）；少了的不补，只记下来。</summary>
+        /// <summary>原树已暂存；只收回不属于任何原树收据的天空岛物品，再由原树恢复核对。</summary>
         private static string ReclaimAutotestItems(AutotestSnapshot snapshot)
         {
             if (snapshot == null) return "no_snapshot";
@@ -520,13 +541,7 @@ namespace BossRush
                 int now = CountOwnedItems(typeId, out where);
                 int before;
                 snapshot.Items.TryGetValue(typeId, out before);
-                if (now == before) continue;
-                if (now < before)
-                {
-                    parts.Add(typeId + ":" + before + "->" + now + "(fewer_not_refilled)");
-                    continue;
-                }
-                int removed = RemoveOwnedItems(typeId, now - before);
+                int removed = RemoveOwnedItems(snapshot, typeId, int.MaxValue);
                 parts.Add(typeId + ":" + before + "->" + now + ",reclaimed=" + removed);
             }
             return parts.Count == 0 ? "no_change" : string.Join(";", parts.ToArray());
@@ -542,14 +557,22 @@ namespace BossRush
                 if (snapshot.Slot != SavesSystem.CurrentSlot || SavesSystem.IsSaving ||
                     CharacterMainControl.Main == null || CharacterMainControl.Main.CharacterItem == null ||
                     PlayerStorage.Inventory == null || PlayerStorageBuffer.Instance == null) return false;
+                if (!snapshot.ItemReceiptsIncluded) { detail = "legacy_count_only_snapshot_no_original_receipts"; return false; }
+                if (!ValidateAutotestReceipts(snapshot)) { detail = "original_receipts_unreadable_or_incomplete"; return false; }
+                if (snapshot.Asset != BossRushCoop.LocalAssetId) { detail = "snapshot_asset_mismatch"; return false; }
                 // 旧快照没有记录缓冲区基线，不能把原有待收取物误当成验收奖励删除。
                 foreach (int typeId in AutotestLedgerTypeIds)
                 {
+                    string available;
+                    CountOwnedItems(typeId, out available);
+                    if (available.IndexOf("error", StringComparison.Ordinal) >= 0 || available.IndexOf("n/a", StringComparison.Ordinal) >= 0)
+                    { detail = "asset_counts_unavailable:" + available; return false; }
                     int buffered = CountBufferedItems(typeId);
                     if (!snapshot.BufferCountsIncluded && buffered > 0)
                     { detail = "legacy_snapshot_buffer_baseline_missing:" + typeId; return false; }
                 }
                 detail = ReclaimAutotestItems(snapshot);
+                if (!RestoreAutotestOriginals(snapshot)) { detail += ";originals_pending"; return false; }
                 bool matches = true;
                 foreach (int typeId in AutotestLedgerTypeIds)
                 {
@@ -557,9 +580,9 @@ namespace BossRush
                     int before; snapshot.Items.TryGetValue(typeId, out before);
                     int after = CountOwnedItems(typeId, out where);
                     detail += ";verified_" + typeId + "=" + after + "/" + before;
-                    if (after > before || where.IndexOf("error", StringComparison.Ordinal) >= 0
+                    if (after != before || where.IndexOf("error", StringComparison.Ordinal) >= 0
                         || where.IndexOf("n/a", StringComparison.Ordinal) >= 0) matches = false;
-                    // 消耗过的原有物品按既有约定不补发；只有可靠读数才能判断短缺并清恢复键。
+                    // 原物数量必须完全恢复，短缺与额外残留都保留恢复键。
                 }
                 if (!matches) return false;
                 // 先采集收回后的完整容器；恢复键最后清，与资产同一次 SaveFile。
@@ -571,27 +594,27 @@ namespace BossRush
             catch (Exception e) { detail += ";asset_snapshot_failed:" + e.GetType().Name; return false; }
         }
 
-        private static int RemoveOwnedItems(int typeId, int count)
+        private static int RemoveOwnedItems(AutotestSnapshot snapshot, int typeId, int count)
         {
             // 纪念品在岛上由官方寄入缓冲区，先收回追加的尾部记录，保留原有记录。
-            int removed = RemoveFromBuffer(typeId, count);
+            int removed = RemoveFromBuffer(snapshot, typeId, count);
             try
             {
                 CharacterMainControl main = CharacterMainControl.Main;
                 if (removed < count && main != null && main.CharacterItem != null)
-                    removed += RemoveFromInventory(main.CharacterItem.Inventory, typeId, count - removed, 0);
+                    removed += RemoveFromInventory(snapshot, main.CharacterItem.Inventory, typeId, count - removed, 0);
             }
             catch (Exception e) { ModBehaviour.DevLog("[Validation] 收回背包物品失败: " + e.Message); }
             try
             {
                 if (removed < count && PlayerStorage.Inventory != null)
-                    removed += RemoveFromInventory(PlayerStorage.Inventory, typeId, count - removed, 0);
+                    removed += RemoveFromInventory(snapshot, PlayerStorage.Inventory, typeId, count - removed, 0);
             }
             catch (Exception e) { ModBehaviour.DevLog("[Validation] 收回仓库物品失败: " + e.Message); }
             return removed;
         }
 
-        private static int RemoveFromBuffer(int typeId, int count)
+        private static int RemoveFromBuffer(AutotestSnapshot snapshot, int typeId, int count)
         {
             int removed = 0;
             var buffer = PlayerStorageBuffer.Buffer;
@@ -601,6 +624,7 @@ namespace BossRush
                 if (tree == null || tree.RootData == null || tree.RootTypeID != typeId) continue;
                 // 本套件寄入的是独立奖品；不拆带其它物品的树，无法回收时后面的复查保留恢复键。
                 if (tree.entries.Count != 1) continue;
+                if (AutotestOwnsOriginal(snapshot, AutotestTreeToken(tree))) continue;
                 var entry = tree.RootData;
                 int units = Math.Max(1, entry.StackCount);
                 int take = Math.Min(units, count - removed);
@@ -616,7 +640,7 @@ namespace BossRush
             return removed;
         }
 
-        private static int RemoveFromInventory(Inventory inventory, int typeId, int count, int depth)
+        private static int RemoveFromInventory(AutotestSnapshot snapshot, Inventory inventory, int typeId, int count, int depth)
         {
             if (inventory == null || inventory.Content == null || count <= 0 || depth > 4) return 0;
             int removed = 0;
@@ -625,8 +649,11 @@ namespace BossRush
             {
                 Item item = content[i];
                 if (item == null) continue;
+                if (AutotestOwnsOriginal(snapshot, item.GetString(AutotestOriginalKey))) continue;
                 if (item.TypeID == typeId)
                 {
+                    // 不拆容器树；其中可能有非天空岛原物，不能连带销毁。残留会使余额复查失败并保留恢复键。
+                    if (item.GetAllChildren(true, false).Count != 1) continue;
                     int units = item.Stackable ? Math.Max(1, item.StackCount) : 1;
                     if (item.Stackable && units > count - removed)
                     {
@@ -641,7 +668,7 @@ namespace BossRush
                     }
                 }
                 else if (item.Inventory != null && !ReferenceEquals(item.Inventory, inventory))
-                    removed += RemoveFromInventory(item.Inventory, typeId, count - removed, depth + 1);
+                    removed += RemoveFromInventory(snapshot, item.Inventory, typeId, count - removed, depth + 1);
             }
             return removed;
         }
@@ -658,6 +685,299 @@ namespace BossRush
             AutotestSnapshot snapshot = _autotest == null ? null : _autotest.Snapshot;
             long now = EconomyManager.Money;
             return snapshot == null ? "now=" + now : "before=" + snapshot.Money + ",after=" + now + ",delta=" + (now - snapshot.Money) + "(recorded_not_restored)";
+        }
+
+        #endregion
+
+        #region 原物归属与持久暂存
+
+        // pending 期间原树携带 Dev 归属 token，随 ItemTreeData 保存；与清恢复键同次提交时恢复该字段原文。
+        private const string AutotestOriginalKey = "BossRush_Validation_OriginalTree_v2";
+        private sealed class AutotestItemCustody
+        {
+            internal Item Live;
+            internal ItemTreeData Buffered;
+            internal bool Loading;
+            internal bool Retired;
+        }
+        // 原物归属由持久组件持有，不能随验收 Runner 销毁而丢弃原实例。
+        private sealed class AutotestItemEscrowOwner : MonoBehaviour
+        {
+            internal readonly Dictionary<string, AutotestItemCustody> Custody = new Dictionary<string, AutotestItemCustody>();
+            private void OnDestroy() { F3GameplayValidationRunner.ResetAutotestStaticCaches(this); }
+        }
+        private static AutotestItemEscrowOwner _autotestCustodyOwner;
+        private static GameObject _autotestItemEscrow;
+
+        private static AutotestItemEscrowOwner GetAutotestCustodyOwner()
+        {
+            if (_autotestCustodyOwner == null)
+            {
+                _autotestItemEscrow = new GameObject("BossRush_F3OriginalItemEscrow");
+                UnityEngine.Object.DontDestroyOnLoad(_autotestItemEscrow);
+                _autotestCustodyOwner = _autotestItemEscrow.AddComponent<AutotestItemEscrowOwner>();
+                _autotestItemEscrow.SetActive(false);
+            }
+            return _autotestCustodyOwner;
+        }
+
+        private static Dictionary<string, AutotestItemCustody> GetAutotestCustody()
+        { return GetAutotestCustodyOwner().Custody; }
+
+        private static void ResetAutotestStaticCaches(AutotestItemEscrowOwner owner)
+        {
+            if (ReferenceEquals(owner, null)) return;
+            foreach (AutotestItemCustody custody in owner.Custody.Values) custody.Retired = true;
+            owner.Custody.Clear();
+            // 此处不写存档、不清恢复键、不销毁物品。外部销毁 owner 时，已落盘原树仍可恢复。
+            if (!ReferenceEquals(_autotestCustodyOwner, owner)) return;
+            _autotestCustodyOwner = null;
+            _autotestItemEscrow = null;
+        }
+
+        private static string AutotestCustodyKey(AutotestSnapshot snapshot, string token)
+        { return snapshot.Slot + ":" + snapshot.Asset + ":" + snapshot.RunId + ":" + token; }
+
+        private static string AutotestTreeToken(ItemTreeData tree)
+        {
+            if (tree == null || tree.RootData == null) return null;
+            var value = tree.RootData.variables.Find(v => v.Key == AutotestOriginalKey);
+            return value == null ? null : value.GetString();
+        }
+
+        private static bool AutotestContainsLedger(ItemTreeData tree)
+        {
+            if (tree == null || tree.RootData == null || tree.entries == null) throw new InvalidOperationException("original_tree_unreadable");
+            foreach (var entry in tree.entries)
+                if (entry != null && Array.IndexOf(AutotestLedgerTypeIds, entry.typeID) >= 0) return true;
+            return false;
+        }
+
+        private static bool AutotestOwnsOriginal(AutotestSnapshot snapshot, string token)
+        {
+            if (string.IsNullOrEmpty(token)) return false;
+            return snapshot.Originals.Exists(receipt => receipt.Token == token);
+        }
+
+        private static bool ValidateAutotestReceipts(AutotestSnapshot snapshot)
+        {
+            var counts = new Dictionary<int, int>();
+            var tokens = new HashSet<string>(StringComparer.Ordinal);
+            var positions = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var receipt in snapshot.Originals)
+            {
+                if (receipt == null || !tokens.Add(receipt.Token) || !positions.Add(receipt.Source + ":" + receipt.Position)) return false;
+                ItemTreeData tree = BossRushCoopJson.FromJson<ItemTreeData>(receipt.TreeJson);
+                if (tree == null || tree.entries == null || tree.RootData == null || AutotestTreeToken(tree) != receipt.Token) return false;
+                foreach (var entry in tree.entries)
+                {
+                    if (entry == null) return false;
+                    if (Array.IndexOf(AutotestLedgerTypeIds, entry.typeID) < 0) continue;
+                    int count; counts.TryGetValue(entry.typeID, out count);
+                    counts[entry.typeID] = checked(count + Math.Max(1, entry.StackCount));
+                }
+            }
+            foreach (int typeId in AutotestLedgerTypeIds)
+            {
+                int before, backedUp; counts.TryGetValue(typeId, out backedUp);
+                if (!snapshot.Items.TryGetValue(typeId, out before) || before < 0 || before != backedUp) return false;
+            }
+            return true;
+        }
+
+        private static void CaptureAutotestOriginals(AutotestSnapshot snapshot)
+        {
+            string gate;
+            if (!AutotestWriteAllowed(out gate)) throw new InvalidOperationException(gate);
+            CaptureAutotestInventory(snapshot, CharacterMainControl.Main.CharacterItem.Inventory, "pack");
+            CaptureAutotestInventory(snapshot, PlayerStorage.Inventory, "storage");
+            for (int i = 0; i < PlayerStorageBuffer.Buffer.Count; i++)
+            {
+                ItemTreeData tree = PlayerStorageBuffer.Buffer[i];
+                if (!AutotestContainsLedger(tree)) continue;
+                string token = Guid.NewGuid().ToString("N");
+                var priorMarker = tree.RootData.variables.Find(v => v.Key == AutotestOriginalKey);
+                tree.RootData.variables.RemoveAll(v => v.Key == AutotestOriginalKey);
+                tree.RootData.variables.Add(new Duckov.Utilities.CustomData(AutotestOriginalKey, token));
+                snapshot.Originals.Add(new F3AutotestItemReceipt { Token = token, Source = "buffer", Position = i, Active = true,
+                    TreeJson = BossRushCoopJson.ToJson(tree), PriorMarkerJson = priorMarker == null ? null : BossRushCoopJson.ToJson(priorMarker) });
+                GetAutotestCustody()[AutotestCustodyKey(snapshot, token)] = new AutotestItemCustody { Buffered = tree };
+            }
+            snapshot.ItemReceiptsIncluded = true;
+        }
+
+        private static void CaptureAutotestInventory(AutotestSnapshot snapshot, Inventory inventory, string source)
+        {
+            string gate;
+            if (!AutotestWriteAllowed(out gate)) throw new InvalidOperationException(gate);
+            if (inventory == null || inventory.Content == null) throw new InvalidOperationException("original_inventory_unavailable:" + source);
+            for (int i = 0; i < inventory.Content.Count; i++)
+            {
+                Item item = inventory.Content[i];
+                if (item == null || !AutotestContainsLedger(ItemTreeData.FromItem(item))) continue;
+                string token = Guid.NewGuid().ToString("N");
+                Duckov.Utilities.CustomData priorMarker = null;
+                foreach (var variable in item.Variables) if (variable.Key == AutotestOriginalKey) { priorMarker = variable; break; }
+                string priorJson = priorMarker == null ? null : BossRushCoopJson.ToJson(priorMarker);
+                item.SetString(AutotestOriginalKey, token);
+                snapshot.Originals.Add(new F3AutotestItemReceipt { Token = token, Source = source, Position = i,
+                    Active = item.gameObject.activeSelf, TreeJson = BossRushCoopJson.ToJson(ItemTreeData.FromItem(item)), PriorMarkerJson = priorJson });
+                GetAutotestCustody()[AutotestCustodyKey(snapshot, token)] = new AutotestItemCustody { Live = item };
+            }
+        }
+
+        private static void SaveAutotestAssets()
+        {
+            string gate;
+            if (!AutotestWriteAllowed(out gate)) throw new InvalidOperationException(gate);
+            CharacterMainControl.Main.CharacterItem.Save("MainCharacterItemData");
+            PlayerStorage.Inventory.Save("PlayerStorage");
+            PlayerStorageBuffer.SaveBuffer();
+        }
+
+        private static void StashAutotestOriginals(AutotestSnapshot snapshot)
+        {
+            string gate;
+            if (!AutotestWriteAllowed(out gate) || snapshot.Slot != SavesSystem.CurrentSlot || snapshot.Asset != BossRushCoop.LocalAssetId)
+                throw new InvalidOperationException("original_stash_lease_changed");
+            GetAutotestCustodyOwner();
+            foreach (var receipt in snapshot.Originals)
+            {
+                AutotestItemCustody custody = GetAutotestCustody()[AutotestCustodyKey(snapshot, receipt.Token)];
+                if (receipt.Source == "buffer") PlayerStorageBuffer.Buffer.Remove(custody.Buffered);
+                else
+                {
+                    custody.Live.Detach();
+                    custody.Live.transform.SetParent(_autotestItemEscrow.transform, false);
+                }
+            }
+            SaveAutotestAssets();
+            SavesSystem.SaveFile(false);
+        }
+
+        private static Item FindAutotestOriginal(Inventory inventory, string token, int depth)
+        {
+            if (inventory == null || inventory.Content == null || depth > 4) return null;
+            foreach (Item item in inventory.Content)
+            {
+                if (item == null) continue;
+                if (item.GetString(AutotestOriginalKey) == token) return item;
+                Item child = FindAutotestOriginal(item.Inventory, token, depth + 1);
+                if (child != null) return child;
+            }
+            return null;
+        }
+
+        private static async void MaterializeAutotestOriginal(AutotestSnapshot snapshot, F3AutotestItemReceipt receipt, AutotestItemCustody custody)
+        {
+            Item item = null;
+            AutotestItemEscrowOwner owner = GetAutotestCustodyOwner();
+            Item body = CharacterMainControl.Main.CharacterItem;
+            string snapshotJson = SavesSystem.Load<string>(AutotestSnapshotKey);
+            custody.Loading = true;
+            try
+            {
+                ItemTreeData tree = BossRushCoopJson.FromJson<ItemTreeData>(receipt.TreeJson);
+                item = await ItemTreeData.InstantiateAsync(tree);
+                // 续作只保留本次真正创建的副本；换槽、换角色资产或换了 body 时不触碰当前容器，快照仍保留原树可重试。
+                if (owner == null || custody.Retired || !ReferenceEquals(_autotestCustodyOwner, owner)
+                    || !IsDedicatedCurrentSlot() || snapshot.Slot != SavesSystem.CurrentSlot || snapshot.Asset != BossRushCoop.LocalAssetId
+                    || string.IsNullOrEmpty(snapshotJson) || snapshotJson != SavesSystem.Load<string>(AutotestSnapshotKey)
+                    || CharacterMainControl.Main == null || CharacterMainControl.Main.CharacterItem != body)
+                { if (item != null) UnityEngine.Object.Destroy(item.gameObject); return; }
+                if (item != null && item.GetString(AutotestOriginalKey) == receipt.Token)
+                {
+                    item.transform.SetParent(_autotestItemEscrow.transform, false);
+                    custody.Live = item;
+                }
+                else if (item != null) UnityEngine.Object.Destroy(item.gameObject);
+            }
+            catch (Exception e) { ModBehaviour.DevLog("[Validation] 原物树恢复失败: " + e.GetType().Name); }
+            finally { custody.Loading = false; }
+        }
+
+        private static bool RestoreAutotestOriginals(AutotestSnapshot snapshot)
+        {
+            string gate;
+            if (!AutotestWriteAllowed(out gate) || snapshot.Slot != SavesSystem.CurrentSlot || snapshot.Asset != BossRushCoop.LocalAssetId) return false;
+            bool complete = true;
+            foreach (var receipt in snapshot.Originals)
+            {
+                string key = AutotestCustodyKey(snapshot, receipt.Token);
+                AutotestItemCustody custody;
+                if (!GetAutotestCustody().TryGetValue(key, out custody)) GetAutotestCustody()[key] = custody = new AutotestItemCustody();
+                var buffer = PlayerStorageBuffer.Buffer;
+                ItemTreeData existing = buffer.Find(tree => AutotestTreeToken(tree) == receipt.Token);
+                if (existing != null) custody.Buffered = existing;
+                Item found = FindAutotestOriginal(CharacterMainControl.Main.CharacterItem.Inventory, receipt.Token, 0)
+                    ?? FindAutotestOriginal(PlayerStorage.Inventory, receipt.Token, 0);
+                if (found != null) custody.Live = found;
+                if (receipt.Source == "buffer")
+                {
+                    // 原 Buffer 是数据树，保持原引用；重启后才从持久树重建。不会按 TypeID 选择另一份同类物。
+                    if (existing == null)
+                    {
+                        if (custody.Buffered == null) custody.Buffered = BossRushCoopJson.FromJson<ItemTreeData>(receipt.TreeJson);
+                        if (custody.Buffered == null || AutotestTreeToken(custody.Buffered) != receipt.Token) { complete = false; continue; }
+                        if (found != null) { complete = false; continue; }
+                        buffer.Insert(Math.Min(receipt.Position, buffer.Count), custody.Buffered);
+                    }
+                    continue;
+                }
+                if (existing != null) { complete = false; continue; }
+                if (custody.Live == null)
+                {
+                    if (!custody.Loading) MaterializeAutotestOriginal(snapshot, receipt, custody);
+                    complete = false;
+                    continue;
+                }
+                Inventory destination = receipt.Source == "pack" ? CharacterMainControl.Main.CharacterItem.Inventory : PlayerStorage.Inventory;
+                if (receipt.Position >= destination.Capacity) { complete = false; continue; }
+                Item occupant = receipt.Position < destination.Content.Count ? destination.Content[receipt.Position] : null;
+                if (occupant == custody.Live) continue;
+                // AddAt 原版会覆盖占位项，因此必须先确认空位；阻塞时留原实例和恢复键，不覆盖任何其它原物。
+                if (occupant != null) { complete = false; continue; }
+                custody.Live.Detach();
+                if (!destination.AddAt(custody.Live, receipt.Position)) { complete = false; continue; }
+                custody.Live.gameObject.SetActive(receipt.Active);
+            }
+            return complete;
+        }
+
+        private static void ReleaseAutotestCustody(AutotestSnapshot snapshot)
+        {
+            AutotestItemEscrowOwner owner = _autotestCustodyOwner;
+            if (snapshot == null || owner == null) return;
+            foreach (var receipt in snapshot.Originals) owner.Custody.Remove(AutotestCustodyKey(snapshot, receipt.Token));
+            if (owner.Custody.Count != 0) return;
+            GameObject escrow = owner.gameObject;
+            ResetAutotestStaticCaches(owner);
+            UnityEngine.Object.Destroy(escrow);
+        }
+
+        private static void SetAutotestOriginalMarkers(AutotestSnapshot snapshot, bool pending)
+        {
+            string gate;
+            if (!AutotestWriteAllowed(out gate) || snapshot.Slot != SavesSystem.CurrentSlot || snapshot.Asset != BossRushCoop.LocalAssetId)
+                throw new InvalidOperationException("original_marker_lease_changed");
+            foreach (var receipt in snapshot.Originals)
+            {
+                AutotestItemCustody custody = GetAutotestCustody()[AutotestCustodyKey(snapshot, receipt.Token)];
+                var marker = pending ? new Duckov.Utilities.CustomData(AutotestOriginalKey, receipt.Token)
+                    : string.IsNullOrEmpty(receipt.PriorMarkerJson) ? null : BossRushCoopJson.FromJson<Duckov.Utilities.CustomData>(receipt.PriorMarkerJson);
+                if (receipt.Source == "buffer")
+                {
+                    custody.Buffered.RootData.variables.RemoveAll(v => v.Key == AutotestOriginalKey);
+                    if (marker != null) custody.Buffered.RootData.variables.Add(marker);
+                }
+                else
+                {
+                    Duckov.Utilities.CustomData old = null;
+                    foreach (var variable in custody.Live.Variables) if (variable.Key == AutotestOriginalKey) { old = variable; break; }
+                    if (old != null) custody.Live.Variables.Remove(old);
+                    if (marker != null) custody.Live.Variables.Add(marker);
+                }
+            }
         }
 
         #endregion

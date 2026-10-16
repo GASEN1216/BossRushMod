@@ -81,7 +81,7 @@ namespace BossRush
         {
             if (!IsCoopSessionScopeValid()) return false;
             return coopScopeConnected ? this != null && !closed && moved && !returning && root != null
-                && entryScene.IsValid() && entryScene.isLoaded && !SceneLoader.IsSceneLoading && BossRushCoop.AnyPlayerAlive
+                && entryScene.IsValid() && entryScene.isLoaded && !SceneLoader.IsSceneLoading && BossRushCoop.HasBoundScene && BossRushCoop.AnyPlayerAlive
                 : IsSessionValid();
         }
         private void TickCoopWorldWhileDead()
@@ -93,9 +93,9 @@ namespace BossRush
             try { if (SkyIslandFieldcraft.Current != null) SkyIslandFieldcraft.Current.TickCoopWorld(); } catch (Exception e) { TickFault("gnats", e); }
             try { if (gates != null) gates.Apply(CoopGateStory()); } catch (Exception e) { TickFault("gates", e); }
         }
-        [Serializable] internal sealed class CoopChallenge { public string Id, TravelId, AssetId, RequestId; public bool Echo; }
+        [Serializable] internal sealed class CoopChallenge { public string Id, TravelId, AssetId, RequestId, SceneToken; public bool Echo; }
         [Serializable] private sealed class CoopChallengeReply { public bool Accepted, Echo; public string Id, TravelId, AssetId, RequestId; }
-        [Serializable] private sealed class CoopGateFlags { public string TravelId; public int Flags; }
+        [Serializable] private sealed class CoopGateFlags { public string TravelId, SceneToken; public int Flags; }
         private IDisposable coopStateSubscription, coopChallengeSubscription, coopChallengeReplySubscription, coopGateSubscription;
         private SkyIslandCoopWorldEffects coopEffects;
         private SkyIslandEncounters.CoopState pendingCoopState;
@@ -103,9 +103,10 @@ namespace BossRush
         private int coopWorldGateFlags;
         private readonly SkyIslandStoryData coopGateStory = new SkyIslandStoryData();
         private SkyIslandInventoryTransaction coopEchoCost;
-        private CoopChallenge coopEchoRequest;
-        private float coopEchoRequestAt;
+        private CoopChallenge coopEchoRequest, coopNamedRequest;
+        private float coopEchoRequestAt, coopNamedRequestAt;
         private CoopPersonalDelivery<CoopChallengeReply> coopChallengeDelivery;
+        private readonly HashSet<string> coopCompletedChallenges = new HashSet<string>(StringComparer.Ordinal);
         private readonly Dictionary<string, CoopChallengeReply> coopChallengeReplies = new Dictionary<string, CoopChallengeReply>(StringComparer.Ordinal);
         private readonly System.Collections.Generic.Dictionary<string, int> coopEchoStarts = new System.Collections.Generic.Dictionary<string, int>();
         private readonly System.Collections.Generic.HashSet<string> coopCredited = new System.Collections.Generic.HashSet<string>();
@@ -124,33 +125,39 @@ namespace BossRush
 
         private bool RequestCoopChallenge(string id)
         {
-            return BossRushCoop.SendToHost("sky.challenge.request", new CoopChallenge { Id = id, TravelId = SkyIslandCoopRuntime.Current.TravelId,
-                AssetId = BossRushCoop.LocalAssetId, RequestId = Guid.NewGuid().ToString("N") });
+            if (coopNamedRequest != null) return false;
+            coopNamedRequest = new CoopChallenge { Id = id, SceneToken = BossRushCoop.SceneToken, TravelId = SkyIslandCoopRuntime.Current.TravelId,
+                AssetId = BossRushCoop.LocalAssetId, RequestId = Guid.NewGuid().ToString("N") };
+            coopNamedRequestAt = 0f;
+            return true;
         }
         private bool RequestCoopEcho(SkyIslandInventoryTransaction crystal)
         {
             coopEchoRequest = new CoopChallenge { Id = SkyIslandStormEchoRules.EncounterId, Echo = true,
-                TravelId = SkyIslandCoopRuntime.Current.TravelId, AssetId = BossRushCoop.LocalAssetId, RequestId = Guid.NewGuid().ToString("N") };
+                TravelId = SkyIslandCoopRuntime.Current.TravelId, SceneToken = BossRushCoop.SceneToken, AssetId = BossRushCoop.LocalAssetId, RequestId = Guid.NewGuid().ToString("N") };
             coopEchoCost = crystal; coopEchoRequestAt = 0f;
             return true;
         }
 
         private void OnCoopChallenge(BossRushCoopMessage message)
         {
-            if (!BossRushCoop.IsHost || !IsWorldSessionValid() || encounters == null) return;
+            if (!BossRushCoop.IsHost) return;
             BossRushCoopPlayer requester = BossRushCoop.FindPlayer(message.SenderId);
             CoopChallenge data = message.Read<CoopChallenge>();
-            if (requester == null || !requester.IsAlive || data == null || data.Echo != SkyIslandStormEchoRules.IsEcho(data.Id) || SkyIslandCoopRuntime.Current == null
-                || data.TravelId != SkyIslandCoopRuntime.Current.TravelId || string.IsNullOrEmpty(data.AssetId) || data.AssetId != requester.AssetId
-                || string.IsNullOrEmpty(data.RequestId) || data.RequestId.Length > 64) return;
+            if (requester == null || data == null || string.IsNullOrEmpty(data.AssetId) || data.AssetId.Length > 80
+                || string.IsNullOrEmpty(data.RequestId) || data.RequestId.Length > 64 || string.IsNullOrEmpty(data.Id) || data.Id.Length > 64) return;
             string key = requester.Id + ":" + data.AssetId + ":" + data.RequestId;
             CoopChallengeReply reply;
             if (coopChallengeReplies.TryGetValue(key, out reply))
             { coopChallengeDelivery.Deliver(requester.Id, key, reply, data.AssetId); return; }
             string ownerKey = requester.Id + ":" + data.AssetId;
             int starts; coopEchoStarts.TryGetValue(ownerKey, out starts);
-            bool accepted = (!data.Echo || starts < SkyIslandStormEchoRules.MaxPerRaid)
-                && encounters.BeginRemoteChallenge(data.Id, requester.Character.transform.position);
+            bool accepted = IsWorldSessionValid() && encounters != null && requester.IsAlive && requester.Character != null
+                && data.Echo == SkyIslandStormEchoRules.IsEcho(data.Id) && SkyIslandCoopRuntime.Current != null
+                && data.SceneToken == BossRushCoop.SceneToken && data.TravelId == SkyIslandCoopRuntime.Current.TravelId
+                && data.AssetId == requester.AssetId && !coopCompletedChallenges.Contains(ownerKey + ":" + data.Id)
+                && (!data.Echo || starts < SkyIslandStormEchoRules.MaxPerRaid)
+                && encounters.BeginRemoteChallenge(data.Id, requester.Character.transform.position, requester.Id, data.AssetId, data.RequestId);
             if (accepted)
             {
                 nextCoopState = 0f;
@@ -158,8 +165,8 @@ namespace BossRush
             }
             reply = new CoopChallengeReply { Id = data.Id, Echo = data.Echo, Accepted = accepted, TravelId = data.TravelId,
                 AssetId = data.AssetId, RequestId = data.RequestId };
-            if (data.Echo) { coopChallengeReplies[key] = reply; coopChallengeDelivery.Deliver(requester.Id, key, reply, data.AssetId); }
-            else BossRushCoop.SendToPlayer(requester.Id, "sky.challenge.reply", reply);
+            coopChallengeReplies[key] = reply;
+            coopChallengeDelivery.Deliver(requester.Id, key, reply, data.AssetId);
         }
 
         private void OnCoopChallengeReply(BossRushCoopMessage message)
@@ -172,19 +179,27 @@ namespace BossRush
         {
             if (data == null || data.AssetId != BossRushCoop.LocalAssetId || SkyIslandCoopRuntime.Current == null
                 || data.TravelId != SkyIslandCoopRuntime.Current.TravelId) return false;
+            CoopChallenge pending = data.Echo ? coopEchoRequest : coopNamedRequest;
+            if (pending == null || data.RequestId != pending.RequestId || data.Id != pending.Id) return true;
             if (data.Echo && coopEchoCost != null && coopEchoRequest != null && data.RequestId == coopEchoRequest.RequestId)
             {
                 if (data.Accepted) { coopEchoCost.Commit(); stormEchoStarts++; }
                 coopEchoCost.Dispose(); coopEchoCost = null; coopEchoRequest = null;
             }
-            if (!data.Accepted) Status(SkyIslandStormEchoRules.StartFailed, true);
+            if (!data.Echo) coopNamedRequest = null;
+            string message = data.Echo ? (data.Accepted ? SkyIslandStormEchoRules.Opened : SkyIslandStormEchoRules.StartFailed)
+                : data.Accepted ? L10n.T("挑战开始", "The challenge begins")
+                : L10n.T("挑战未开始：房主未能确认这次请求。请确认仍在挑战地点，等当前战斗结束后重试。",
+                    "Challenge not started: the host could not confirm this request. Stay near the challenge site and retry after the current fight ends.");
+            Status(message, !data.Accepted);
+            if (data.Accepted && story != null) story.LogTiming("challenge", data.Id);
             return true;
         }
         private void OnCoopGates(BossRushCoopMessage message)
         {
-            if (!BossRushCoop.IsHost || BossRushCoop.FindPlayer(message.SenderId) == null || SkyIslandCoopRuntime.Current == null) return;
+            if (!BossRushCoop.IsHost || !BossRushCoop.HasBoundScene || BossRushCoop.FindPlayer(message.SenderId) == null || SkyIslandCoopRuntime.Current == null) return;
             CoopGateFlags data = message.Read<CoopGateFlags>();
-            if (data != null && data.TravelId == SkyIslandCoopRuntime.Current.TravelId) coopWorldGateFlags |= data.Flags & SkyIslandStoryRules.KnownFlags;
+            if (data != null && data.TravelId == SkyIslandCoopRuntime.Current.TravelId && !string.IsNullOrEmpty(data.SceneToken) && data.SceneToken == BossRushCoop.SceneToken) coopWorldGateFlags |= data.Flags & SkyIslandStoryRules.KnownFlags;
         }
         private SkyIslandStoryData CoopGateStory()
         {
@@ -198,7 +213,7 @@ namespace BossRush
         {
             if (!BossRushCoop.IsClient || !message.IsFromHost || SkyIslandCoopRuntime.Current == null) return;
             SkyIslandEncounters.CoopState state = message.Read<SkyIslandEncounters.CoopState>();
-            if (state != null && state.TravelId == SkyIslandCoopRuntime.Current.TravelId) pendingCoopState = state;
+            if (state != null && state.TravelId == SkyIslandCoopRuntime.Current.TravelId && !string.IsNullOrEmpty(state.SceneToken) && state.SceneToken == BossRushCoop.SceneToken) pendingCoopState = state;
         }
 
         private void TickCoop()
@@ -206,10 +221,12 @@ namespace BossRush
             if (coopChallengeDelivery != null) coopChallengeDelivery.Tick(Time.unscaledDeltaTime);
             if (coopEchoRequest != null && coopEchoRequest.AssetId == BossRushCoop.LocalAssetId && Time.unscaledTime >= coopEchoRequestAt)
             { coopEchoRequestAt = Time.unscaledTime + 0.5f; BossRushCoop.SendToHost("sky.challenge.request", coopEchoRequest); }
+            if (coopNamedRequest != null && coopNamedRequest.AssetId == BossRushCoop.LocalAssetId && Time.unscaledTime >= coopNamedRequestAt)
+            { coopNamedRequestAt = Time.unscaledTime + 0.5f; BossRushCoop.SendToHost("sky.challenge.request", coopNamedRequest); }
             if (coopEffects != null) coopEffects.Tick();
             if (SkyIslandFieldcraft.Current != null) SkyIslandFieldcraft.Current.TickCoopHarvest();
             SkyIslandWorldStory.TickCoopBossNotes();
-            if (!BossRushCoop.IsConnected || encounters == null) return;
+            if (!BossRushCoop.IsConnected || !BossRushCoop.HasBoundScene || encounters == null) return;
             if (BossRushCoop.IsHost && Time.unscaledTime >= nextCoopState)
             {
                 nextCoopState = Time.unscaledTime + 0.5f;
@@ -222,22 +239,22 @@ namespace BossRush
             if (BossRushCoop.IsClient && Time.unscaledTime >= nextCoopState)
             {
                 nextCoopState = Time.unscaledTime + 0.5f;
-                BossRushCoop.SendToHost("sky.gates.request", new CoopGateFlags { TravelId = SkyIslandCoopRuntime.Current.TravelId, Flags = story.Current.flags });
+                BossRushCoop.SendToHost("sky.gates.request", new CoopGateFlags { TravelId = SkyIslandCoopRuntime.Current.TravelId, SceneToken = BossRushCoop.SceneToken, Flags = story.Current.flags });
             }
-            if (BossRushCoop.IsClient && pendingCoopState != null)
+            if (BossRushCoop.IsClient && pendingCoopState != null && pendingCoopState.SceneToken == BossRushCoop.SceneToken)
             {
                 // 最新快照继续保留：网络角色晚于状态包抵达时下一拍继续绑定。
                 encounters.ApplyCoopState(pendingCoopState);
                 if (patrols != null) patrols.ApplyCoopActors(pendingCoopState.PatrolActors);
                 coopWorldGateFlags = pendingCoopState.GateFlags;
             }
-            if (pendingCoopState != null)
+            if (pendingCoopState != null && pendingCoopState.SceneToken == BossRushCoop.SceneToken)
             {
                 if (pendingCoopState.Encounters == null) return;
                 foreach (SkyIslandEncounters.CoopEncounter entry in pendingCoopState.Encounters)
                 {
-                    if (entry != null && entry.StormBodyDead && !SkyIslandStormEchoRules.IsEcho(entry.Id) && story != null)
-                    { string note; story.TryApply(SkyIslandStoryAction.StormSlain, out note); }
+                    SkyIslandStoryAction namedOutcome;
+                    if (entry != null && TryChallengeOutcome(entry.Id, out namedOutcome)) continue;
                     if (entry != null && entry.Started && entry.Cleared && !coopCredited.Contains(entry.Id))
                     {
                         OnEncounterCleared(entry.Id);
@@ -245,6 +262,23 @@ namespace BossRush
                     }
                 }
             }
+        }
+
+        private bool CompleteCoopChallenge(string id, bool cleared)
+        {
+            SkyIslandStoryAction outcome;
+            if (!BossRushCoop.IsConnected || !TryChallengeOutcome(id, out outcome)) return false;
+            if (!BossRushCoop.IsHost || encounters == null || SkyIslandCoopRuntime.Current == null) return true;
+            string playerId, assetId, requestId;
+            if (!encounters.TryGetChallengeOwner(id, out playerId, out assetId, out requestId)) return true;
+            coopCompletedChallenges.Add(playerId + ":" + assetId + ":" + id);
+            SkyIslandCoopRuntime.Current.CompleteChallenge(playerId, assetId, requestId, id, cleared);
+            return true;
+        }
+        internal void CreditChallengeBounty(string id)
+        {
+            if (!bountyCredited.Contains(id)) AnnounceGuardProgress(id);
+            if (bounty != null && bountyCredited.Add(id)) bounty.ReportEncounterCleared();
         }
 
         private void DisposeCoop()
@@ -256,7 +290,7 @@ namespace BossRush
             if (coopChallengeReplySubscription != null) coopChallengeReplySubscription.Dispose();
             if (coopGateSubscription != null) coopGateSubscription.Dispose();
             if (coopEchoCost != null) coopEchoCost.Dispose();
-            if (coopChallengeDelivery != null) coopChallengeDelivery.Dispose(); coopChallengeDelivery = null; coopEchoRequest = null;
+            if (coopChallengeDelivery != null) coopChallengeDelivery.Dispose(); coopChallengeDelivery = null; coopEchoRequest = coopNamedRequest = null;
             coopEchoCost = null;
             coopChallengeReplySubscription = coopGateSubscription = null;
             coopStateSubscription = coopChallengeSubscription = null;
@@ -295,7 +329,7 @@ namespace BossRush
 
     internal sealed partial class SkyIslandEncounters
     {
-        [Serializable] internal sealed class CoopState { public string TravelId; public int GateFlags; public CoopEncounter[] Encounters; public int[] PatrolActors; }
+        [Serializable] internal sealed class CoopState { public string TravelId, SceneToken; public int GateFlags; public CoopEncounter[] Encounters; public int[] PatrolActors; }
         [Serializable] internal sealed class CoopEncounter
         {
             public string Id;
@@ -322,12 +356,13 @@ namespace BossRush
                 entry.StormBodyDead = source.Count > 0 && source.Definition.TierFor(0) == SkyIslandEnemyTier.Storm && source.Actors[0].Died;
                 result[i] = entry;
             }
-            return new CoopState { TravelId = SkyIslandCoopRuntime.Current != null ? SkyIslandCoopRuntime.Current.TravelId : null, Encounters = result };
+            return new CoopState { TravelId = SkyIslandCoopRuntime.Current != null ? SkyIslandCoopRuntime.Current.TravelId : null, SceneToken = BossRushCoop.SceneToken, Encounters = result };
         }
 
         internal void ApplyCoopState(CoopState state)
         {
-            if (!BossRushCoop.IsClient || closed || state == null || state.Encounters == null) return;
+            if (!BossRushCoop.IsClient || !BossRushCoop.HasBoundScene || closed || state == null || state.Encounters == null
+                || state.SceneToken != BossRushCoop.SceneToken) return;
             foreach (CoopEncounter entry in state.Encounters)
             {
                 Encounter target = entry == null ? null : Find(entry.Id);
@@ -346,7 +381,16 @@ namespace BossRush
             }
         }
 
-        internal bool BeginRemoteChallenge(string id, Vector3 requester)
+        internal bool TryGetChallengeOwner(string id, out string playerId, out string assetId, out string requestId)
+        {
+            Encounter target = Find(id);
+            playerId = target != null ? target.ChallengePlayer : null;
+            assetId = target != null ? target.ChallengeAsset : null;
+            requestId = target != null ? target.ChallengeRequest : null;
+            return !string.IsNullOrEmpty(playerId) && !string.IsNullOrEmpty(assetId) && !string.IsNullOrEmpty(requestId);
+        }
+
+        internal bool BeginRemoteChallenge(string id, Vector3 requester, string challenger = null, string asset = null, string request = null)
         {
             Encounter target = Find(id);
             if (!BossRushCoop.HasWorldAuthority || closed || !valid() || target == null || !target.Manual
@@ -356,6 +400,7 @@ namespace BossRush
             if (target.Cleared)
                 for (int i = 0; i < target.Count; i++) target.Actors[i] = new SkyIslandEnemyRecord();
             target.Cleared = false;
+            target.ChallengePlayer = challenger; target.ChallengeAsset = asset; target.ChallengeRequest = request;
             Spawn(target);
             return true;
         }

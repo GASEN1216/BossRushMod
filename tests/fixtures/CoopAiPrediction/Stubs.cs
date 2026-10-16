@@ -22,12 +22,17 @@ namespace UnityEngine
     public class Component : Object
     {
         public GameObject gameObject;
+        public Transform transform { get { return gameObject.transform; } }
         public T GetComponent<T>() where T:class { return gameObject!=null?gameObject.GetComponent<T>():null; }
         public T GetComponentInParent<T>() where T:class { return GetComponent<T>(); }
+        public T GetComponentInChildren<T>(bool includeInactive) where T:class { return GetComponent<T>(); }
     }
     public class MonoBehaviour : Component { }
     public sealed class GameObject : Object
     {
+        public bool activeSelf=true;
+        public readonly Transform transform=new Transform();
+        public void SetActive(bool value) { activeSelf=value; }
         private readonly Dictionary<Type,Component> components=new Dictionary<Type,Component>();
         public T GetComponent<T>() where T:class { Component c;return components.TryGetValue(typeof(T),out c)?c as T:null; }
         public T AddComponent<T>() where T:Component,new() { var c=new T { gameObject=this };components[typeof(T)]=c;return c; }
@@ -36,6 +41,9 @@ namespace UnityEngine
         internal void Remove(Component c) { components.Remove(c.GetType()); }
     }
     public static class Time { public static float unscaledTime,realtimeSinceStartup; }
+    public struct Vector3 { public float x,y,z; public Vector3(float x,float y,float z) { this.x=x;this.y=y;this.z=z; } public static Vector3 forward { get { return new Vector3(0,0,1); } } }
+    public struct Quaternion { public float x,y,z,w; }
+    public sealed class Transform { public Vector3 position,localScale;public Quaternion rotation;public void SetPositionAndRotation(Vector3 p,Quaternion q) { position=p;rotation=q; } }
     public static class Debug { public static void LogWarning(object message) { } }
 }
 public struct DamageInfo { public CharacterMainControl fromCharacter;public float damageValue; }
@@ -73,7 +81,8 @@ namespace BossRush
     internal sealed class BossRushCoopMessage { internal bool IsFromHost;internal object Value;internal T Read<T>() { return BossRushCoopJson.FromJson<T>(BossRushCoopJson.ToJson(Value)); } }
     internal static class BossRushCoop
     {
-        internal static bool IsHost,IsConnected=true,SessionReady=true;
+        internal static bool IsHost,IsConnected=true,SessionReady=true,HasBoundScene;
+        internal static string SceneToken;
         internal static bool IsClient { get { return IsConnected&&!IsHost; } }
         internal static bool HasWorldAuthority { get { return !IsConnected||IsHost; } }
         internal static string LocalPlayerId="local",RunId="room";internal static int SceneGeneration=1;
@@ -89,6 +98,11 @@ namespace BossRush
         internal static IDisposable Register(string topic,Action<BossRushCoopMessage> callback) { Handler=callback;return new Token(callback); }
         private sealed class Token : IDisposable { private Action<BossRushCoopMessage> callback;internal Token(Action<BossRushCoopMessage> c) { callback=c; } public void Dispose() { if(Handler==callback)Handler=null; } }
     }
+    internal static class CoopAiPredictionFxCounters { internal static int Spawned; }
+    internal sealed class SandstormOrb:UnityEngine.Component { internal static SandstormOrb Spawn(object owner,UnityEngine.Vector3 p,UnityEngine.Vector3 v,float damage,bool variant,bool replica) { CoopAiPredictionFxCounters.Spawned++;return new SandstormOrb {gameObject=new UnityEngine.GameObject()}; } }
+    internal sealed class SandstormCycloneSeed:UnityEngine.Component { internal static SandstormCycloneSeed Spawn(object owner,UnityEngine.Vector3 p,UnityEngine.Vector3 v,bool variant,bool replica) { CoopAiPredictionFxCounters.Spawned++;return new SandstormCycloneSeed {gameObject=new UnityEngine.GameObject()}; } }
+    internal sealed class SandstormTornado:UnityEngine.Component { internal static SandstormTornado Spawn(object owner,UnityEngine.Vector3 p,bool variant,bool replica) { CoopAiPredictionFxCounters.Spawned++;return new SandstormTornado {gameObject=new UnityEngine.GameObject()}; } }
+    internal sealed class SandstormChampionBody:UnityEngine.Component { internal static SandstormChampionBody Attach(CharacterMainControl character,float scale,bool minion) {return new SandstormChampionBody {gameObject=new UnityEngine.GameObject()};}internal void ReadCoopState(BossRushCoopBossState state) {} }
     internal static class ModeGRuntimeGates { internal static bool IsModeGStagingBarrierActive;internal static bool IsModeGStagingHealthBlocked(Health health) { return false; } }
     internal static class ReverseScaleAbilityManager { internal static bool IsPostTriggerInvincible(Health h) { return false; }internal static bool TryPrepareLethalProtectionDuringHurt(Health h) { return false; } }
     internal sealed class ReverseScaleConfig { internal static readonly ReverseScaleConfig Instance=new ReverseScaleConfig();internal float TriggerHealthThreshold=1f; }

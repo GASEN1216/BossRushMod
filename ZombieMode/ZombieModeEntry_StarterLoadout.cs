@@ -22,7 +22,10 @@ namespace BossRush
             GameObject root = new GameObject("ZombieMode_StarterChoice");
             RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.RewardUi, root, root, null);
             ZombieModeStarterChoiceView view = root.AddComponent<ZombieModeStarterChoiceView>();
-            view.Initialize(runId, owner);
+            string room = BossRushCoop.RunId, token = BossRushCoop.SceneToken, asset = BossRushCoop.LocalAssetId;
+            view.Initialize(runId, owner,
+                delegate { return room == BossRushCoop.RunId && token == BossRushCoop.SceneToken && asset == BossRushCoop.LocalAssetId && CanOfferCoopZombieStart(runId); },
+                delegate { ShowCoopZombieStartConfirmation(runId, root); });
             ModBehaviour.DevLog("[ZombieMode] 初始流派选择 UI 已创建: runId=" + runId);
         }
 
@@ -34,21 +37,22 @@ namespace BossRush
                 return;
             }
 
+            if (BossRushCoop.IsConnected)
+            {
+                if (!BossRushCoop.HasBoundScene || coopZombieDeclinedRun == runId || coopZombieStarterChosen) return;
+                runState.StarterLoadout = loadout;
+                coopZombieStarterChosen = true;
+                SendCoopZombieCommand("starter");
+                CommitCoopZombieStarterIfConfirmed(runId);
+                return;
+            }
             if (!GrantZombieModeStarterLoadout(loadout))
             {
                 FailZombieModeBeforeActive(ZombieModeFailureReason.StarterLoadoutFailed);
                 return;
             }
-
             runState.StarterLoadout = loadout;
             FinalizeZombieModeEntryResources();
-            if (BossRushCoop.IsConnected)
-            {
-                coopZombieStarterChosen = true;
-                RememberCoopZombieWallet();
-                SendCoopZombieCommand("starter");
-                return;
-            }
             runState.LifecyclePhase = ZombieModeLifecyclePhase.Active;
             runState.CombatPhase = ZombieModeCombatPhase.InitialPreparation;
             UnlockZombieModeContainersForActiveRun(runId);
@@ -277,11 +281,16 @@ namespace BossRush
         private ModBehaviour owner;
         private ZombieModeUIHelper.ModalInputLease inputLease;
         private bool chosen;
+        private System.Func<bool> canStartCoop;
+        private System.Action startCoop;
+        private GameObject choicePanel, waitingPanel;
+        private bool closingHostWait;
 
-        public void Initialize(int newRunId, ModBehaviour newOwner)
+        public void Initialize(int newRunId, ModBehaviour newOwner, System.Func<bool> canStart = null, System.Action start = null)
         {
             runId = newRunId;
             owner = newOwner;
+            canStartCoop = canStart; startCoop = start;
             Build();
             ClaimInputAndPause();
             // 开局必选、没有「取消」：ESC 只用掉事件，不穿透去开官方暂停菜单（B-28）。
@@ -300,6 +309,7 @@ namespace BossRush
             GameObject panel = ZombieModeUIHelper.CreateModalSurface(
                 "Panel", transform, new Vector2(700f, 452f), BossRushUIColors.Accent);
 
+            choicePanel = panel;
             TextMeshProUGUI title = ZombieModeUIHelper.CreateText("Title", panel.transform,
                 L10n.T("BossRush_ZombieMode_Starter_Title"), 28,
                 new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -34f), new Vector2(-48f, 44f),
@@ -374,7 +384,12 @@ namespace BossRush
                 {
                     owner.SelectZombieModeStarterLoadout(runId, capturedLoadout);
                 }
-                BossRushUIKit.PlayCloseAndDestroy(gameObject);
+                if (KeepCoopHostStartChoice())
+                {
+                    BuildCoopHostWaiting();
+                    ClaimInputAndPause();
+                }
+                else BossRushUIKit.PlayCloseAndDestroy(gameObject);
             };
             // 整张卡可点（B-28）；卡里的按钮只是把「能点」说清楚。
             ZombieModeClickableCard.Make(card, choose);
@@ -390,6 +405,35 @@ namespace BossRush
                 true);
             BossRushUIKit.StyleSecondaryButton(button);
             BossRushUIEntranceAnimation.Play(card, 0.06f + index * 0.06f, 0.24f, 14f);
+        }
+
+        private bool KeepCoopHostStartChoice()
+        {
+            return chosen && canStartCoop != null && canStartCoop();
+        }
+
+        private void BuildCoopHostWaiting()
+        {
+            if (choicePanel != null) choicePanel.SetActive(false);
+            waitingPanel = ZombieModeUIHelper.CreateModalSurface("HostWaiting", transform, new Vector2(600f, 240f), BossRushUIColors.Accent);
+            ZombieModeUIHelper.CreateText("WaitingTitle", waitingPanel.transform,
+                L10n.T("BossRush_ZombieMode_Coop_WaitingTitle"), 24,
+                new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -54f), new Vector2(-48f, 60f),
+                TextAlignmentOptions.Center, BossRushUIColors.TextPrimary);
+            Button button = ZombieModeUIHelper.CreateButton("Start", waitingPanel.transform,
+                L10n.T("BossRush_ZombieMode_Coop_StartConfirm"), new Vector2(0.5f, 0f),
+                new Vector2(0f, 52f), new Vector2(420f, 48f), BossRushUIColors.AccentFill, 18,
+                new Vector2(400f, 40f), delegate { if (KeepCoopHostStartChoice() && startCoop != null) startCoop(); }, true);
+            BossRushUIDepth.ApplyButtonDepth(button, BossRushUIColors.AccentFill);
+        }
+
+        private void Update()
+        {
+            if (!closingHostWait && waitingPanel != null && !KeepCoopHostStartChoice())
+            {
+                closingHostWait = true;
+                BossRushUIKit.PlayCloseAndDestroy(gameObject);
+            }
         }
 
         private void ClaimInputAndPause()

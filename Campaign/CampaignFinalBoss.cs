@@ -298,6 +298,7 @@ namespace BossRush
                 campaignFinalBossSpawnResolved = false;
                 int runId = ++campaignFinalBossRunId;
                 CampaignObjectiveTracker.EnsureArmedFor(CampaignContentCatalog.ModeFinal);
+                BeginCoopCampaignFinalEntry();
                 StartCampaignFinalBossPrologueThenSpawnAsync(runId).Forget();
             }
             catch (Exception e)
@@ -361,6 +362,7 @@ namespace BossRush
             campaignFinalBossActive = true;
             campaignFinalBossSpawnResolved = false;
             int runId = ++campaignFinalBossRunId;
+            BeginCoopCampaignFinalEntry();
             StartCampaignFinalBossAsync(runId).Forget();
             return true;
         }

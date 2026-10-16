@@ -13,7 +13,7 @@ namespace BossRush
         public string[] Ids;
         public CoopMutatorScale[] Enemies;
     }
-    [Serializable] internal sealed class CoopMutatorKill { public string Epoch; public int Scene; public Vector3 Position; }
+    [Serializable] internal sealed class CoopMutatorKill { public string Epoch, Token; public int Scene; public Vector3 Position; }
 
     /// <summary>共享词条由房主抽取；个人数值在本人角色应用，世界伤害只由房主产生。</summary>
     internal sealed class MutatorCoopRuntimeModule : BossRushRuntimeModuleBase
@@ -25,6 +25,8 @@ namespace BossRush
         private readonly HashSet<int> seenDeaths = new HashSet<int>();
         private readonly HashSet<CharacterMainControl> enemies = new HashSet<CharacterMainControl>();
         private string epoch, mode, session, appliedEpoch;
+        private string viewRun, viewToken;
+        private int viewGeneration;
         private CoopMutatorWorld view;
         private bool wasClient, dispatching;
         public override string ModuleName { get { return "CoopMutators"; } }
@@ -60,6 +62,11 @@ namespace BossRush
                 session = BossRushCoop.RunId; seenDeaths.Clear(); appliedEpoch = null;
                 if (BossRushCoop.IsHost) epoch = Guid.NewGuid().ToString("N");
             }
+            if (BossRushCoop.IsClient && view != null && !string.IsNullOrEmpty(BossRushCoop.SceneToken) && !HasCurrentView())
+            {
+                MutatorManager.RemoveAll(); MutatorUI.HideAll(); view = null; appliedEpoch = null;
+            }
+            if (!BossRushCoop.HasBoundScene) return;
             CharacterMainControl player = CharacterMainControl.Main;
             if (player != null && player.CharacterItem != null)
             {
@@ -84,8 +91,9 @@ namespace BossRush
         }
         private void Apply(CoopMutatorWorld state)
         {
-            if (!BossRushCoop.IsClient || state == null) return;
+            if (!BossRushCoop.IsClient || !BossRushCoop.HasBoundScene || state == null) return;
             view = state;
+            viewRun = BossRushCoop.RunId; viewToken = BossRushCoop.SceneToken; viewGeneration = BossRushCoop.SceneGeneration;
             if (!state.Active)
             {
                 if (appliedEpoch != null) { MutatorManager.RemoveAll(); MutatorUI.HideAll(); }
@@ -115,29 +123,36 @@ namespace BossRush
                     }
                 }
         }
+        private bool HasCurrentView()
+        {
+            return view != null && viewRun == BossRushCoop.RunId && viewGeneration == BossRushCoop.SceneGeneration
+                && !string.IsNullOrEmpty(viewToken) && viewToken == BossRushCoop.SceneToken;
+        }
         internal static bool TryHandleEnemyKilled(Health health, DamageInfo damage)
         {
             if (!BossRushCoop.IsConnected) return false;
-            if (active == null || !BossRushCoop.IsHost || !MutatorManager.IsActive || health == null || damage.isFromBuffOrEffect || active.dispatching) return true;
+            if (active == null || !BossRushCoop.IsHost || !BossRushCoop.HasBoundScene || !MutatorManager.IsActive || health == null || damage.isFromBuffOrEffect || active.dispatching) return true;
             CharacterMainControl victim = health.TryGetCharacter();
             if (BossRushCoop.IsPlayer(victim)) return true;
             string playerId = BossRushCoop.GetPlayerId(damage.fromCharacter);
             BossRushCoopPlayer player = BossRushCoop.FindPlayer(playerId);
             if (player == null || !player.IsAlive || !active.seenDeaths.Add(health.GetInstanceID())) return true;
             Vector3 position = victim != null ? victim.transform.position : damage.damagePoint;
-            active.owner.StartCoroutine(active.DispatchKill(playerId, damage.fromCharacter, position, active.epoch, BossRushCoop.SceneGeneration, health.GetInstanceID()));
+            active.owner.StartCoroutine(active.DispatchKill(playerId, damage.fromCharacter, position, active.epoch, BossRushCoop.SceneGeneration, BossRushCoop.SceneToken, health.GetInstanceID(), player.AssetId, player.ReadyEpoch));
             return true;
         }
-        private IEnumerator DispatchKill(string playerId, CharacterMainControl source, Vector3 position, string expectedEpoch, int scene, int victim)
+        private IEnumerator DispatchKill(string playerId, CharacterMainControl source, Vector3 position, string expectedEpoch, int scene, string token, int victim, string asset, string readyEpoch)
         {
             yield return null;
             while (BossRushUI.IsGamePaused())
             {
-                if (!IsDispatchValid(playerId, source, expectedEpoch, scene)) yield break;
+                if (!IsDispatchValid(playerId, source, expectedEpoch, scene, token, asset, readyEpoch)) yield break;
                 yield return null;
             }
-            if (!IsDispatchValid(playerId, source, expectedEpoch, scene)) yield break;
-            kills.Deliver(playerId, expectedEpoch + ":kill:" + victim, new CoopMutatorKill { Epoch = expectedEpoch, Scene = scene, Position = position });
+            if (!IsDispatchValid(playerId, source, expectedEpoch, scene, token, asset, readyEpoch)) yield break;
+            kills.Deliver(playerId, expectedEpoch + ":kill:" + victim, new CoopMutatorKill { Epoch = expectedEpoch, Token = token, Scene = scene, Position = position }, asset);
+            // 本机交付会调用生命/存档边界；回调可能改变当前资产，世界效果仍只属于原击杀。
+            if (!IsDispatchValid(playerId, source, expectedEpoch, scene, token, asset, readyEpoch)) yield break;
             if (!MutatorManager.HasActiveMutator("explode_on_death")) yield break;
             MutatorDefinition definition = MutatorManager.FindCoopDefinition("explode_on_death");
             if (definition == null) yield break;
@@ -150,18 +165,24 @@ namespace BossRush
             }
             finally { dispatching = false; }
         }
-        private bool IsDispatchValid(string playerId, CharacterMainControl source, string expectedEpoch, int scene)
+        private bool IsDispatchValid(string playerId, CharacterMainControl source, string expectedEpoch, int scene, string token, string asset, string readyEpoch)
         {
             BossRushCoopPlayer player = BossRushCoop.FindPlayer(playerId);
-            return owner != null && BossRushCoop.IsHost && MutatorManager.IsActive && epoch == expectedEpoch
-                && BossRushCoop.SceneGeneration == scene && source != null && player != null && player.IsAlive && player.Character == source;
+            return owner != null && BossRushCoop.IsHost && BossRushCoop.HasBoundScene && !string.IsNullOrEmpty(token)
+                && token == BossRushCoop.SceneToken && MutatorManager.IsActive && epoch == expectedEpoch
+                && BossRushCoop.SceneGeneration == scene && source != null && player != null && player.IsAlive && player.Character == source
+                && !string.IsNullOrEmpty(asset) && player.AssetId == asset
+                && !string.IsNullOrEmpty(readyEpoch) && player.ReadyEpoch == readyEpoch;
         }
         private bool ApplyKill(CoopMutatorKill kill)
         {
             if (kill == null) return false;
             // 生命回复属于本局当前场景的即时效果；过图后确认取消，不带进另一局。
+            if (string.IsNullOrEmpty(BossRushCoop.SceneToken) || !BossRushCoop.HasBoundScene) return false;
+            if (kill.Token != BossRushCoop.SceneToken) return true;
             string currentEpoch = BossRushCoop.IsHost ? epoch : appliedEpoch;
             if (kill.Scene != BossRushCoop.SceneGeneration) return true;
+            if (BossRushCoop.IsClient && !HasCurrentView()) return false;
             if (BossRushCoop.IsClient && (view == null || (view.Active && view.Epoch == kill.Epoch && currentEpoch != kill.Epoch))) return false;
             if (kill.Epoch != currentEpoch) return true;
             return MutatorManager.ApplyCoopPersonalKill(kill.Position);

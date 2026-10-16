@@ -507,7 +507,7 @@ namespace BossRush
 
         #region 快照编码（崩溃恢复靠它往返不变形）
 
-        internal const int SnapshotVersion = 1;
+        internal const int SnapshotVersion = 2;
 
         internal static string EncodeSnapshot(F3AutotestSnapshotRecord snapshot)
         {
@@ -515,12 +515,17 @@ namespace BossRush
             w.BeginObject().Int("version", SnapshotVersion).Str("runId", snapshot.RunId).Int("slot", snapshot.Slot).Bool("rawExists", snapshot.RawExists)
                 .Str("raw", snapshot.Raw).Long("money", snapshot.Money).Str("language", snapshot.Language)
                 .Bool("forceNight", snapshot.ForceNight).Num("timeScale", snapshot.TimeScale)
-                .Bool("bufferCountsIncluded", snapshot.BufferCountsIncluded);
+                .Bool("bufferCountsIncluded", snapshot.BufferCountsIncluded)
+                .Bool("itemReceiptsIncluded", snapshot.ItemReceiptsIncluded).Str("asset", snapshot.Asset);
             w.BeginArray("officialUnlocked");
             foreach (string key in snapshot.OfficialUnlocked) w.ItemStr(key);
             w.EndArray().BeginArray("items");
             foreach (KeyValuePair<int, int> pair in snapshot.Items)
                 w.BeginObject().Int("typeId", pair.Key).Int("count", pair.Value).EndObject();
+            w.EndArray().BeginArray("originals");
+            foreach (F3AutotestItemReceipt item in snapshot.Originals)
+                w.BeginObject().Str("token", item.Token).Str("source", item.Source).Int("position", item.Position)
+                    .Bool("active", item.Active).Str("tree", item.TreeJson).Str("priorMarker", item.PriorMarkerJson).EndObject();
             return w.EndArray().EndObject().ToString();
         }
 
@@ -529,7 +534,7 @@ namespace BossRush
         {
             BossRushJsonValue root = BossRushJsonParser.ParseOrNull(json);
             int version;
-            if (root == null || !root.TryGetInt("version", out version) || version != SnapshotVersion) return null;
+            if (root == null || !root.TryGetInt("version", out version) || (version != 1 && version != SnapshotVersion)) return null;
             var snapshot = new F3AutotestSnapshotRecord
             {
                 RunId = root.GetString("runId", string.Empty),
@@ -540,6 +545,8 @@ namespace BossRush
                 ForceNight = root.GetBool("forceNight", false),
                 TimeScale = root.GetFloat("timeScale", 1f),
                 BufferCountsIncluded = root.GetBool("bufferCountsIncluded", false),
+                ItemReceiptsIncluded = version >= 2 && root.GetBool("itemReceiptsIncluded", false),
+                Asset = root.GetString("asset", string.Empty),
             };
             string raw;
             snapshot.Raw = root.TryGetString("raw", out raw) ? raw : null;
@@ -552,6 +559,22 @@ namespace BossRush
                 {
                     int typeId, count;
                     if (item != null && item.TryGetInt("typeId", out typeId) && item.TryGetInt("count", out count)) snapshot.Items[typeId] = count;
+                }
+            }
+            List<BossRushJsonValue> originals;
+            if (snapshot.ItemReceiptsIncluded)
+            {
+                if (!root.TryGetArray("originals", out originals)) return null;
+                var tokens = new HashSet<string>(StringComparer.Ordinal);
+                foreach (BossRushJsonValue item in originals)
+                {
+                    if (item == null) return null;
+                    var receipt = new F3AutotestItemReceipt { Token = item.GetString("token", null), Source = item.GetString("source", null),
+                        Position = item.GetInt("position", -1), Active = item.GetBool("active", true), TreeJson = item.GetString("tree", null),
+                        PriorMarkerJson = item.GetString("priorMarker", null) };
+                    if (string.IsNullOrEmpty(receipt.Token) || !tokens.Add(receipt.Token) || receipt.Position < 0 || string.IsNullOrEmpty(receipt.TreeJson)
+                        || (receipt.Source != "pack" && receipt.Source != "storage" && receipt.Source != "buffer")) return null;
+                    snapshot.Originals.Add(receipt);
                 }
             }
             return snapshot;

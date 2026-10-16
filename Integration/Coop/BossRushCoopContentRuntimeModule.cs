@@ -34,13 +34,15 @@ namespace BossRush
         private static BossRushCoopContentRuntimeModule instance;
         private IDisposable summonChannel, summonAckChannel, summonCountChannel;
         private readonly Dictionary<string, BossRushCoopSummonPacket> summonRequests = new Dictionary<string, BossRushCoopSummonPacket>();
-        private readonly HashSet<string> acceptedSummons = new HashSet<string>();
+        private readonly Dictionary<string, bool> acceptedSummons = new Dictionary<string, bool>();
+        private readonly Dictionary<string, Action<bool>> summonCallbacks = new Dictionary<string, Action<bool>>();
         private readonly Dictionary<string, float> summonCooldowns = new Dictionary<string, float>();
         private readonly HashSet<MonoBehaviour> casting = new HashSet<MonoBehaviour>();
         private readonly Dictionary<int, int> localSummons = new Dictionary<int, int>();
         private readonly Dictionary<CharacterMainControl, SummonOwner> summonEntities = new Dictionary<CharacterMainControl, SummonOwner>();
-        private string summonAsset;
-        private sealed class SummonOwner { internal string Player, Asset; internal CharacterMainControl Character; }
+        private string summonAsset, summonRun, summonToken;
+        private object summonCore;
+        private sealed class SummonOwner { internal string Player, Asset, Token; internal CharacterMainControl Character; }
         private float nextSummonTick;
         public override string ModuleName { get { return "CoopContent"; } }
 
@@ -58,27 +60,46 @@ namespace BossRush
             subscribed = true;
         }
 
-        private void OnSessionChanged()
+        private void ClearCoopContentState()
         {
             ClearCharacters();
             applied.Clear();
             foreach (MonoBehaviour action in casting) if (action != null) UnityEngine.Object.Destroy(action);
+            foreach (Action<bool> callback in new List<Action<bool>>(summonCallbacks.Values)) callback(false);
+            summonCallbacks.Clear();
             casting.Clear(); summonRequests.Clear(); acceptedSummons.Clear(); summonCooldowns.Clear(); localSummons.Clear(); nextSummonTick = 0f;
+            foreach (CharacterMainControl entity in summonEntities.Keys)
+                if (entity != null) { entity.gameObject.SetActive(false); UnityEngine.Object.Destroy(entity.gameObject); }
             summonEntities.Clear(); summonAsset = null;
-            FrostmourneAction.ResetStaticCaches();
-            SummonStaffAction.ResetStaticCaches();
         }
 
-        public override void OnSceneLoaded(SceneRuntimeContext context) { OnSessionChanged(); }
+        private void OnSessionChanged()
+        {
+            if (BossRushCoop.IsConnected) { RefreshSummonScene(); return; }
+            ClearCoopContentState(); summonCore = null; summonRun = summonToken = null;
+        }
+        private void RefreshSummonScene()
+        {
+            object core = Duckov.Scenes.MultiSceneCore.Instance;
+            if (core == null || string.IsNullOrEmpty(BossRushCoop.RunId) || string.IsNullOrEmpty(BossRushCoop.SceneToken)) return;
+            if (ReferenceEquals(core, summonCore) && summonRun == BossRushCoop.RunId && summonToken == BossRushCoop.SceneToken) return;
+            ClearCoopContentState(); summonCore = core; summonRun = BossRushCoop.RunId; summonToken = BossRushCoop.SceneToken;
+        }
+        public override void OnSceneLoaded(SceneRuntimeContext context)
+        {
+            if (!BossRushCoop.IsConnected) return;
+            RefreshSummonScene();
+        }
 
         public override void OnUpdate(float deltaTime, float unscaledDeltaTime)
         {
             if (!BossRushCoop.IsConnected) return;
+            RefreshSummonScene();
             RefreshSummonAsset();
             PruneSummonOwners();
             foreach (BossRushCoopPlayer player in BossRushCoop.Players)
                 OnPlayerSpawned(player);
-            if (!BossRushCoop.SessionReady || Time.unscaledTime < nextSummonTick) return;
+            if (!BossRushCoop.SessionReady || !BossRushCoop.HasBoundScene || Time.unscaledTime < nextSummonTick) return;
             nextSummonTick = Time.unscaledTime + .5f;
             if (BossRushCoop.IsClient)
             {
@@ -90,7 +111,7 @@ namespace BossRush
                     if (player.IsAlive)
                         BossRushCoop.SendToPlayer(player.Id, "content.summon-count", new BossRushCoopSummonPacket
                         {
-                            run = BossRushCoop.RunId, scene = BossRushCoop.SceneGeneration, asset = player.AssetId,
+                            run = BossRushCoop.RunId, scene = BossRushCoop.SceneGeneration, token = BossRushCoop.SceneToken, asset = player.AssetId,
                             staff = SummonStaffAction.GetCountForOwner(player.Character), frost = FrostmourneAction.GetCountForOwner(player.Character)
                         });
         }
@@ -204,41 +225,52 @@ namespace BossRush
             int count;
             return instance != null && instance.localSummons.TryGetValue(kind, out count) ? count : 0;
         }
-        internal static void RequestSummon(int kind)
+        internal static bool RequestSummon(int kind, Action<bool> completed = null)
         {
-            if (instance == null || !BossRushCoop.IsClient || !BossRushCoop.SessionReady) return;
+            if (instance == null || !BossRushCoop.IsClient || !BossRushCoop.SessionReady || !BossRushCoop.HasBoundScene)
+            { if (completed != null) completed(false); NotifySummonRejected(); return false; }
+            instance.RefreshSummonScene();
             instance.RefreshSummonAsset();
             var packet = new BossRushCoopSummonPacket { id = Guid.NewGuid().ToString("N"), kind = kind,
-                run = BossRushCoop.RunId, scene = BossRushCoop.SceneGeneration, asset = BossRushCoop.LocalAssetId };
+                run = BossRushCoop.RunId, scene = BossRushCoop.SceneGeneration, token = BossRushCoop.SceneToken, asset = BossRushCoop.LocalAssetId };
             instance.summonRequests[packet.id] = packet;
+            if (completed != null) instance.summonCallbacks[packet.id] = completed;
             BossRushCoop.SendToHost("content.summon", packet);
+            return true;
         }
+        private static void NotifySummonRejected()
+        { if (ModBehaviour.Instance != null) ModBehaviour.Instance.ShowMessage(L10n.T("召唤未能开始，冷却已返还，请稍后重试。", "Summoning could not start. Cooldown refunded; please try again.")); }
         private static bool CurrentSummon(BossRushCoopSummonPacket packet)
         { return packet != null && packet.run == BossRushCoop.RunId && packet.scene == BossRushCoop.SceneGeneration; }
+        private static bool CurrentSummonWorld(BossRushCoopSummonPacket packet)
+        { return CurrentSummon(packet) && !string.IsNullOrEmpty(packet.token) && packet.token == BossRushCoop.SceneToken; }
         private void RefreshSummonAsset()
         {
             if (summonAsset == BossRushCoop.LocalAssetId) return;
             summonAsset = BossRushCoop.LocalAssetId;
+            foreach (Action<bool> callback in new List<Action<bool>>(summonCallbacks.Values)) callback(false);
+            summonCallbacks.Clear();
             summonRequests.Clear(); localSummons.Clear();
         }
-        internal static bool IsSummonOwnerCurrent(CharacterMainControl character, string asset)
+        internal static bool IsSummonOwnerCurrent(CharacterMainControl character, string asset, string token)
         {
             BossRushCoopPlayer player = BossRushCoop.FindPlayer(BossRushCoop.GetPlayerId(character));
-            return player != null && player.IsAlive && player.Character == character && player.AssetId == asset;
+            return BossRushCoop.HasBoundScene && !string.IsNullOrEmpty(token) && token == BossRushCoop.SceneToken && player != null && player.IsAlive && player.Character == character && player.AssetId == asset;
         }
         internal static void TrackSummon(CharacterMainControl character, CharacterMainControl owner)
         {
             if (instance == null || !BossRushCoop.IsHost || character == null) return;
+            instance.RefreshSummonScene();
             BossRushCoopPlayer player = BossRushCoop.FindPlayer(BossRushCoop.GetPlayerId(owner));
             if (player == null) return;
-            instance.summonEntities[character] = new SummonOwner { Player = player.Id, Asset = player.AssetId, Character = owner };
+            instance.summonEntities[character] = new SummonOwner { Player = player.Id, Asset = player.AssetId, Token = BossRushCoop.SceneToken, Character = owner };
         }
         internal static bool IsSummonOwnedBy(CharacterMainControl character, CharacterMainControl owner)
         {
-            if (!BossRushCoop.IsHost || instance == null) return true;
+            if (!BossRushCoop.IsHost || instance == null) return !BossRushCoop.IsConnected;
             SummonOwner state;
             return instance.summonEntities.TryGetValue(character, out state) && state.Character == owner
-                && IsSummonOwnerCurrent(owner, state.Asset);
+                && IsSummonOwnerCurrent(owner, state.Asset, state.Token);
         }
         internal static void PruneSummonOwners()
         {
@@ -257,20 +289,24 @@ namespace BossRush
         }
         private void OnSummon(BossRushCoopMessage message)
         {
-            if (!BossRushCoop.IsHost || message.IsFromHost) return;
+            if (!BossRushCoop.IsHost || !BossRushCoop.HasBoundScene || message.IsFromHost) return;
+            RefreshSummonScene();
             BossRushCoopSummonPacket packet = message.Read<BossRushCoopSummonPacket>();
             Guid id;
-            if (!CurrentSummon(packet) || !Guid.TryParseExact(packet.id, "N", out id) || (packet.kind != 1 && packet.kind != 2)) return;
+            if (!CurrentSummonWorld(packet) || !Guid.TryParseExact(packet.id, "N", out id) || (packet.kind != 1 && packet.kind != 2)) return;
             BossRushCoopPlayer player = BossRushCoop.FindPlayer(message.SenderId);
             if (player == null || player.AssetId != packet.asset) return;
             string key = message.SenderId + ":" + packet.asset + ":" + packet.id;
-            if (!acceptedSummons.Add(key)) { BossRushCoop.SendToPlayer(message.SenderId, "content.summon-ack", packet); return; }
+            bool accepted;
+            if (acceptedSummons.TryGetValue(key, out accepted)) { packet.accepted = accepted; BossRushCoop.SendToPlayer(message.SenderId, "content.summon-ack", packet); return; }
             string clock = message.SenderId + ":" + packet.asset + ":" + packet.kind;
             float next;
             bool equipped = player != null && player.IsAlive && player.Character.CurrentHoldItemAgent != null
                 && player.Character.CurrentHoldItemAgent.Item != null && player.Character.CurrentHoldItemAgent.Item.TypeID
                     == (packet.kind == 1 ? NewWeaponIds.SummonStaffTypeId : FrostmourneIds.WeaponTypeId);
-            if (equipped && (!summonCooldowns.TryGetValue(clock, out next) || Time.time >= next))
+            packet.accepted = equipped && (!summonCooldowns.TryGetValue(clock, out next) || Time.time + .5f >= next);
+            acceptedSummons.Add(key, packet.accepted);
+            if (packet.accepted)
             {
                 summonCooldowns[clock] = Time.time + (packet.kind == 1 ? new SummonStaffConfig().CooldownTime : new FrostmourneConfig().CooldownTime);
                 ExecuteSummon(player.Character, packet.kind).Forget();
@@ -300,13 +336,16 @@ namespace BossRush
         {
             if (!BossRushCoop.IsClient || !message.IsFromHost) return;
             BossRushCoopSummonPacket packet = message.Read<BossRushCoopSummonPacket>();
-            if (CurrentSummon(packet) && packet.asset == BossRushCoop.LocalAssetId && packet.id != null) summonRequests.Remove(packet.id);
+            if (!CurrentSummon(packet) || packet.asset != BossRushCoop.LocalAssetId || packet.id == null || !summonRequests.Remove(packet.id)) return;
+            Action<bool> callback;
+            if (summonCallbacks.TryGetValue(packet.id, out callback)) { summonCallbacks.Remove(packet.id); callback(packet.accepted); }
+            if (!packet.accepted) NotifySummonRejected();
         }
         private void OnSummonCount(BossRushCoopMessage message)
         {
             if (!BossRushCoop.IsClient || !message.IsFromHost) return;
             BossRushCoopSummonPacket packet = message.Read<BossRushCoopSummonPacket>();
-            if (!CurrentSummon(packet) || packet.asset != BossRushCoop.LocalAssetId) return;
+            if (!BossRushCoop.HasBoundScene || !CurrentSummonWorld(packet) || packet.asset != BossRushCoop.LocalAssetId) return;
             RefreshSummonAsset();
             localSummons[1] = Mathf.Clamp(packet.staff, 0, SummonStaffConfig.SummonCount);
             localSummons[2] = Mathf.Clamp(packet.frost, 0, FrostmourneConfig.SummonCount);
@@ -326,14 +365,15 @@ namespace BossRush
                 BossRushCoop.SessionChanged -= OnSessionChanged;
                 subscribed = false;
             }
-            OnSessionChanged();
+            ClearCoopContentState();
             if (instance == this) instance = null;
         }
     }
     [Serializable]
     internal sealed class BossRushCoopSummonPacket
     {
-        public string id, run, asset;
+        public string id, run, asset, token;
         public int kind, scene, staff, frost;
+        public bool accepted;
     }
 }

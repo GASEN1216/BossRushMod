@@ -408,3 +408,5 @@ Normal wave packs contain 1 of each; Boss node packs contain 2 of each.
 - Use the Zombie Tide Beacon to skip preparation when you're well-equipped
 - Projectile mods stack (most cap at 3). Penetration + Burn works with almost anything
 - Lifesteal trigger is the best sustain option. Grab it early
+
+In co-op, choosing a loadout sends a request; the starter kit is granted after host confirmation. The host can start from the waiting page and skip unconfirmed players. They spectate this run, with held cash and invitations refunded to the original save; incomplete refunds are shown as pending. They may join the next run. Late arrivals who were not explicitly skipped may still join the current run through the original payment and loadout selection flow, receiving the full kit after host confirmation. Living participants disconnected after the extraction countdown begins, or last observed inside the zone, keep extraction rewards for the original save. Early departures outside the zone and deaths do not qualify.

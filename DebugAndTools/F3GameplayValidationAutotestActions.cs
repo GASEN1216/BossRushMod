@@ -528,7 +528,7 @@ namespace BossRush
 
         private static bool IsAutotestHostileWithin(CharacterMainControl character, CharacterMainControl player, float radius)
         {
-            if (character == null || character == player || character.Health == null || character.Health.IsDead) return false;
+            if (character == null || character == player || BossRushCoop.IsPlayer(character) || character.Health == null || character.Health.IsDead) return false;
             if (PetNestCompanionAgent.IsCompanionCharacter(character) || !Team.IsEnemy(Teams.player, character.Team)) return false;
             return Vector3.Distance(character.transform.position, player.transform.position) <= radius;
         }

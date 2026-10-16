@@ -20,6 +20,7 @@ internal static class Program
         Scheduler.Reset();
         Probe.Effects.Clear(); Probe.Disposal.Clear(); Probe.Entry=mode;
         Probe.SignFrames=0; Probe.VerificationFrames=0; Probe.CustomWaiting=false; Probe.CoroutineWaiting=false;
+        BossRushCoop.IsConnected=false;BossRushCoop.IsHost=false;BossRushCoop.HasBoundScene=true;BossRushCoop.SceneToken="native-1";
         SceneManager.Names.Clear(); SceneManager.Loaded.Clear();
         arena=SceneManager.Add(1, "Level_DemoChallenge_1");
         SceneManager.Add(2, "BossRush_SkyIsland"); SceneManager.Add(3, "Level_DemoChallenge_1");
@@ -144,6 +145,20 @@ internal static class Program
         Scheduler.Start(owner.Entry(arena)); Scheduler.Tick(2);
         CharacterMainControl.Main=new CharacterMainControl(); SceneLoader.IsSceneLoading=false; LevelManager.LevelInited=true;
         Scheduler.Tick(10); Check(owner.modeDRuntime.IsActive,"entry binds a late official player after initial sceneLoaded");
+
+        foreach(int mode in new[]{1,2})
+        {
+            owner=Host("Normal",ready:false);BossRushCoop.IsConnected=true;BossRushCoop.RunId="real-room";
+            owner.ReceiveCoopEntry(mode);Scheduler.Tick(2);
+            Check(!Probe.Has("sign"),"guest snapshot uses real level/player readiness before local facilities");
+            LevelManager.LevelInited=true;Scheduler.Tick(12);
+            Check(Probe.Has("sign")&&Probe.Has("sign-retry")&&Probe.Has("bubble"),"real snapshot entry bridge creates local sign, retries and rescue without local map intent: "+mode);
+            Check(Probe.Has("map-points")&&Probe.Has("map-center")&&!Probe.Has("teleport")&&!Probe.Has("clear-enemies")&&!Probe.Has("starter"),"guest local setup configures facilities without host world or personal loadout takeover");
+            owner.ReceiveCoopEntry(mode);Scheduler.Tick(12);Check(Probe.Effects.FindAll(x=>x=="sign").Count==1,"repeated accepted snapshot creates guest facilities once");
+            SceneManager.Active=3;BossRushCoop.SceneToken="native-2";CharacterMainControl.Main=new CharacterMainControl();owner.ReceiveCoopEntry(mode);Scheduler.Tick(12);
+            Check(Probe.Effects.FindAll(x=>x=="sign").Count==2,"same-name reload new handle/token creates successor local facilities");
+        }
+        owner=Host("Normal",ready:false);BossRushCoop.IsConnected=true;owner.ReceiveCoopEntry(1);Depart();NoLateEffects(owner,"accepted snapshot entry cancels on actual scene unload before readiness");
     }
     public static int Main()
     {

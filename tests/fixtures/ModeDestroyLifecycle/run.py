@@ -34,6 +34,7 @@ groups = {
         'ModeE/ModeERuntimeModule.cs': ['public override void OnAwake(', 'public override void OnDestroy()'],
         'ModeE/ModeEStartup.cs': ['private System.Collections.IEnumerator PrepareModeEStartupCoroutine(', 'private bool TryRunModeEStartupWarmupStep(', 'private void ClearModeEStartupWarmupCoroutine(', 'internal void ScheduleModeEStartupWarmup(', 'internal void StopModeEStartupWarmupIfPending()', 'private int BeginModeESession()', 'private void InvalidateModeESession()', 'internal void ResetModeESharedRuntimeState(', 'internal bool IsModeESessionStillValid(', 'private bool IsModeESessionOwnerCurrent()', 'internal bool IsModeEOrModeFSpawnSessionStillValid('],
         'ModeE/ModeELifecycle.cs': ['public void EndModeE('],
+        'ModeE/ModeERuntimeModule_Coop.cs': ['private sealed class CoopModeEPlayerTeam', 'private void RememberCoopModeEPlayerTeam(', 'private void SetCoopModeEPlayerTeam(', 'private bool RestoreCoopModeEPlayerTeams('],
         'ModeE/ModeEBattle_ScalingAndRuntime.cs': ['private void RemoveModeEPlayerScalingModifiers()', 'internal void RemoveModeEScalingModifiers(', 'private void CleanupModeEEnemyRuntimeState('],
     },
     'ModeFRuntimeModule': {
@@ -57,7 +58,14 @@ for owner, sources in groups.items():
             generated.append(raw[start:raw.index(';',start)+1])
     for source, signatures in sources.items():
         generated.extend(member(source, signature) for signature in signatures)
+    if owner == 'ModeERuntimeModule':
+        raw = (ROOT / 'ModeE/ModeERuntimeModule_Coop.cs').read_text(encoding='utf-8-sig')
+        start = raw.index('private readonly Dictionary<CharacterMainControl, CoopModeEPlayerTeam>')
+        generated.append(raw[start:raw.index(';', start) + 1])
     generated.append('}')
+generated.append('internal static partial class BossRushCoop {')
+generated.extend(member('Common/Coop/BossRushCoop.cs', signature) for signature in ['public static string GetPlayerId(', 'public static bool IsPlayer('])
+generated.append('}')
 generated.append('}')
 (OUT / 'Generated.cs').write_text('\n'.join(generated), encoding='utf-8')
 production = [ROOT / p for p in ['ModeD/ModeDRuntimeModule.cs', 'ModeF/ModeFModels.cs', 'Utilities/ModeEFEnemyRegistry.cs', 'Utilities/RunScopedRegistry.cs']]

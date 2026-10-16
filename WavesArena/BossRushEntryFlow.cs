@@ -117,6 +117,13 @@ namespace BossRush
             return BossRushMapSelectionHelper.HasPendingModeHEntryIntent();
         }
 
+        internal void StartCoopArenaEntryForScene(Scene scene)
+        {
+            SetCurrentMapSpawnPoints(scene.name);
+            SetArenaCenterFromMapConfig(scene.name);
+            StartCoroutine(WaitForLevelInitializedThenSetup(scene));
+        }
+
         private IEnumerator SetupBossRushInDemoChallenge(Scene scene)
         {
             // 等待场景初始化（缩短等待时间，尽快传送玩家）

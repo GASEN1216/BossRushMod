@@ -5,6 +5,7 @@ namespace UnityEngine { internal static class Debug { internal static void LogWa
 namespace Saves { internal static class SavesSystem { public static int CurrentSlot = 1; } }
 namespace BossRush
 {
+    internal static class BossRushCoop { internal static bool IsConnected, IsHost; internal static string RunId; }
     internal enum ModeHResultTone { None = 0, Victory = 1, Defeat = 2 }
     internal class ModeHPageContent
     {
@@ -126,6 +127,8 @@ namespace BossRush
     internal class FakeSpawn { public void RollbackAll() { } }
     internal partial class ModeHRuntimeModule
     {
+        private bool _coopWorldWasConnected;
+        private string _coopWorldRun, _coopWorldRoom;
         private bool _coopProjection;
         private bool IsCoopWorldPersonalAssetCurrent { get { return true; } }
 

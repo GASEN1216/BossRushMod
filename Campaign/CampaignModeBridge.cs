@@ -40,6 +40,7 @@ namespace BossRush
         internal void TickCampaignModeBridge(float deltaTime)
         {
             if (!_owner.IsCampaignConfiguredEnabled()) return;
+            if (BossRushCoop.IsConnected && !BossRushCoop.HasBoundScene) return;
 
             try
             {
@@ -48,10 +49,15 @@ namespace BossRush
                 TickCampaignFinalBossYield();
                 if (campaignFinalBossActive)
                 {
+                    if (!IsCoopCampaignTrackingCurrent(CampaignContentCatalog.ModeFinal)) return;
                     // 决战进行中：目标追踪已由 StartCampaignFinalBoss 武装，
                     // 这里只驱动计时，不要再走模式识别（会把 mode 判成 null 而清掉追踪）
                     CharacterMainControl local = CharacterMainControl.Main;
-                    if (local != null && local.Health != null && !local.Health.IsDead) CampaignObjectiveTracker.Tick(deltaTime);
+                    if (local != null && local.Health != null && !local.Health.IsDead)
+                    {
+                        CaptureCoopCampaignTracking(CampaignContentCatalog.ModeFinal);
+                        CampaignObjectiveTracker.Tick(deltaTime);
+                    }
                     else CampaignObjectiveTracker.ResetSession();
                     return;
                 }
@@ -66,9 +72,11 @@ namespace BossRush
                         campaignLastObservedWave = 0;
                         CampaignObjectiveTracker.ResetSession();
                     }
+                    if (BossRushCoop.IsHost) RefreshCoopCampaignSource(ResolveCampaignWorldMode());
                     return;
                 }
 
+                if (!IsCoopCampaignTrackingCurrent(mode)) return;
                 if (!CampaignObjectiveTracker.IsArmed
                     || !string.Equals(campaignLastObservedMode, mode, StringComparison.Ordinal))
                 {
@@ -77,6 +85,7 @@ namespace BossRush
                 }
 
                 CampaignObjectiveTracker.EnsureArmedFor(mode);
+                CaptureCoopCampaignTracking(mode);
                 if (!CampaignObjectiveTracker.IsArmed) return;
 
                 int wave = GetCampaignCurrentWave();

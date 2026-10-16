@@ -20,7 +20,7 @@ namespace BossRush
         public float Remaining, BellRemaining;
         public Vector3 Spectator;
         public ModeHCoopFighter[] Blue, Red;
-        public string[] Requested, Funded, Exited;
+        public string[] Requested, Funded, Exited, Skipped;
         public int[] BlueEntities, RedEntities;
     }
     [Serializable] internal sealed class ModeHCoopResult
@@ -28,7 +28,7 @@ namespace BossRush
         public string Run, Token;
         public int Match, Winner;
         public long Seed;
-        public bool Started, Final;
+        public bool Started, Final, Skipped;
     }
 
     internal sealed partial class ModeHRuntimeModule
@@ -41,6 +41,8 @@ namespace BossRush
         private readonly HashSet<string> _coopExited = new HashSet<string>(StringComparer.Ordinal);
         private readonly Dictionary<string, string> _coopRequestedAssets = new Dictionary<string, string>(StringComparer.Ordinal);
         private readonly Dictionary<string, string> _coopFundedAssets = new Dictionary<string, string>(StringComparer.Ordinal);
+        private readonly Dictionary<string, string> _coopSkipped = new Dictionary<string, string>(StringComparer.Ordinal);
+        private readonly HashSet<string> _coopSkipQueued = new HashSet<string>(StringComparer.Ordinal);
         private ModeHCoopWorld _coopView;
         private bool _coopProjection, _coopStarting, _coopSubscribed;
         private string _coopProjectionRoom;
@@ -61,11 +63,39 @@ namespace BossRush
         private float _coopSpectatorTimer;
         private int _coopSlotGeneration = -1;
         private string _coopWorldAsset, _coopWorldRun;
+        private string _coopWorldRoom;
+        private bool _coopWorldWasConnected;
+        private string _coopProjectionToken;
+        private bool IsCoopProjectionSceneCurrent
+        { get { return BossRushCoop.HasBoundScene && (!_coopProjection || !string.IsNullOrEmpty(_coopProjectionToken) && _coopProjectionToken == BossRushCoop.SceneToken); } }
 
         private void BindCoopWorldAsset()
         {
             _coopWorldAsset = BossRushCoop.LocalAssetId;
             _coopWorldRun = _runState != null ? _runState.RunId : null;
+            _coopWorldRoom = BossRushCoop.RunId;
+            _coopWorldWasConnected = BossRushCoop.IsConnected;
+        }
+
+        private bool IsCoopWorldAuthorityCurrent
+        {
+            get
+            {
+                if (_coopProjection) return false;
+                if (_runState == null || _coopWorldRun != _runState.RunId) return true;
+                if (!_coopWorldWasConnected) return !BossRushCoop.IsConnected;
+                return BossRushCoop.IsHost && (string.IsNullOrEmpty(BossRushCoop.RunId)
+                    || string.IsNullOrEmpty(_coopWorldRoom) || _coopWorldRoom == BossRushCoop.RunId);
+            }
+        }
+
+        private bool CheckCoopWorldAuthority()
+        {
+            if (_coopProjection || (_restoredSeasonPending && !_resumeScenePending) || !HasActiveRun
+                || IsCoopWorldAuthorityCurrent) return true;
+            // 仅关闭原世界；原 Season、押注和已产生的个人收据保留原恢复/交付管线。
+            RequestExit(ModeHExitReason.TechnicalAbort, "coop_world_owner_changed");
+            return false;
         }
 
         private bool IsCoopWorldPersonalAssetCurrent
@@ -140,6 +170,7 @@ namespace BossRush
             _coopRequested.Clear(); _coopFunded.Clear(); _coopForfeited.Clear();
             _coopRequestedAssets.Clear(); _coopFundedAssets.Clear();
             _coopStartedRound = null;
+            _coopSkipped.Clear(); _coopSkipQueued.Clear();
         }
 
         private void TickCoop(float deltaTime)
@@ -150,12 +181,14 @@ namespace BossRush
             RefreshCoopSlot();
             _coopLedger.Tick();
             _coopResults.Tick(deltaTime);
+            if (!CheckCoopWorldAuthority()) return;
             if (!BossRushCoop.IsConnected)
             {
                 ReleaseCoopProjection();
                 RestoreCoopSpectators();
                 return;
             }
+            if (!IsCoopProjectionSceneCurrent) { _coopChannel.Tick(deltaTime); return; }
             if (BossRushCoop.IsHost && HasActiveRun && GroupModeEnabled)
             {
                 EnsureCoopHostSpectator();
@@ -169,6 +202,7 @@ namespace BossRush
                         _coopResults.Deliver(player, "h-start:" + _coopRound, new ModeHCoopResult
                         { Run = _runState.RunId, Match = GroupMatchIndex, Seed = _runState.RunSeed, Started = true }, FundedAsset(player));
                 }
+                QueueCoopSkippedRefunds();
                 if (IsGroupRosterPhase() && _coopRequested.Contains(BossRushCoop.LocalPlayerId))
                     TryPrepareCoopBet(deltaTime, _coopRound);
                 if (IsGroupRosterPhase() && _coopFunded.Count > 0 && !_coopStarting
@@ -177,7 +211,7 @@ namespace BossRush
                 {
                     bool ready = true;
                     foreach (BossRushCoopPlayer player in BossRushCoop.Players)
-                        if (player.IsConnected && !_coopExited.Contains(player.Id) && !IsCoopFunded(player.Id)) { ready = false; break; }
+                        if (player.IsConnected && !_coopExited.Contains(player.Id) && !IsCoopSkipped(player.Id, player.AssetId) && !IsCoopFunded(player.Id)) { ready = false; break; }
                     if (ready)
                     {
                         _coopStarting = true;
@@ -198,7 +232,8 @@ namespace BossRush
 
         private ModeHCoopWorld CaptureCoopWorld()
         {
-            bool active = GroupModeEnabled && HasActiveRun && _map != null && !_shutdownCompleted;
+            bool active = GroupModeEnabled && HasActiveRun && _map != null && !_shutdownCompleted
+                && IsCoopWorldAuthorityCurrent;
             if (!active) return new ModeHCoopWorld();
             if (IsGroupRosterPhase()) EnsureGroupRoster();
             RefreshCoopRound();
@@ -210,7 +245,7 @@ namespace BossRush
                 Spectator = _map.SpectatorPos, Blue = CaptureCoopTeam(_groupRoster != null ? _groupRoster.Allies : null),
                 Red = CaptureCoopTeam(_groupRoster != null ? _groupRoster.Enemies : null),
                 Requested = CurrentAssetParticipants(_coopRequested, _coopRequestedAssets), Funded = CurrentAssetParticipants(_coopFunded, _coopFundedAssets),
-                Exited = new List<string>(_coopExited).ToArray()
+                Exited = new List<string>(_coopExited).ToArray(), Skipped = CaptureCoopSkipped()
             };
             if (_groupBattle != null)
             {
@@ -237,7 +272,7 @@ namespace BossRush
             bool funded = false;
             foreach (BossRushCoopPlayer player in BossRushCoop.Players)
             {
-                if (!player.IsConnected || _coopExited.Contains(player.Id)) continue;
+                if (!player.IsConnected || _coopExited.Contains(player.Id) || IsCoopSkipped(player.Id, player.AssetId)) continue;
                 participants.Add(player.Id);
                 if (IsCoopFunded(player.Id)) funded = true;
             }
@@ -248,7 +283,7 @@ namespace BossRush
         {
             List<string> participants = new List<string>();
             foreach (BossRushCoopPlayer player in BossRushCoop.Players)
-                if (player.IsConnected && !_coopExited.Contains(player.Id)) participants.Add(player.Id);
+                if (player.IsConnected && !_coopExited.Contains(player.Id) && !IsCoopSkipped(player.Id, player.AssetId)) participants.Add(player.Id);
             return _coopResults.HasPendingForPlayers(participants);
         }
 
@@ -321,7 +356,7 @@ namespace BossRush
 
         private void ApplyCoopWorld(ModeHCoopWorld state)
         {
-            if (!BossRushCoop.IsClient || state == null) return;
+            if (!BossRushCoop.IsClient || !BossRushCoop.HasBoundScene || state == null) return;
             if (_coopProjection && _coopProjectionRoom != BossRushCoop.RunId) ReleaseCoopProjection();
             if (!state.Active) { ReleaseCoopProjection(); return; }
             if (state.Run == _coopIgnoredRun || string.IsNullOrEmpty(state.Run) || !IsLevelAfterInit()
@@ -346,6 +381,7 @@ namespace BossRush
                 _coopPrepared = null;
             }
             _coopView = state;
+            _coopProjectionToken = BossRushCoop.SceneToken;
             _runState.RestoreMatchIndex(state.Match, state.Retry, 0);
             _runState.RestoreLifecycle((ModeHLifecycle)state.Phase, ModeHLifecycle.None, ModeHLifecycle.None);
             ModeHRuntimeGates.SetCombatFrameActive((ModeHLifecycle)state.Phase == ModeHLifecycle.MatchFighting);
@@ -371,7 +407,7 @@ namespace BossRush
             if (_spectatorLease != null) _spectatorLease.Release(_sceneGeneration);
             _spectatorLease = null;
             DestroyUi();
-            _coopProjection = false; _coopProjectionRoom = null; _coopView = null; _coopUiStamp = null; _coopPrepared = null;
+            _coopProjection = false; _coopProjectionRoom = null; _coopProjectionToken = null; _coopView = null; _coopUiStamp = null; _coopPrepared = null;
             _groupRoster = null; _map = null; _season = null; _runState = null;
             ModeHRuntimeGates.SetCombatFrameActive(false);
             ModeHGroupTeamTags.SetActive(false);
@@ -379,9 +415,44 @@ namespace BossRush
             RestoreFromSaveIfPresent();
         }
 
+        private bool IsCoopSkipped(string id, string asset)
+        { return _coopSkipped.ContainsKey(id); }
+
+        private string[] CaptureCoopSkipped()
+        {
+            List<string> result = new List<string>();
+            foreach (var skipped in _coopSkipped) result.Add(skipped.Key);
+            return result.ToArray();
+        }
+
+        private void StartCoopWithConfirmedPlayers()
+        {
+            if (!BossRushCoop.IsHost || !HasActiveRun || !IsCoopWorldAuthorityCurrent || !IsCoopProjectionSceneCurrent || !IsGroupRosterPhase()
+                || !IsCoopFunded(BossRushCoop.LocalPlayerId)) return;
+            RefreshCoopRound();
+            foreach (BossRushCoopPlayer player in BossRushCoop.Players)
+            {
+                if (IsCoopFunded(player.Id)) continue;
+                string asset;
+                if (!_coopRequestedAssets.TryGetValue(player.Id, out asset)) asset = player.AssetId;
+                if (!string.IsNullOrEmpty(asset)) _coopSkipped[player.Id] = asset;
+            }
+            QueueCoopSkippedRefunds();
+            _coopChannel.Publish();
+        }
+
+        private void QueueCoopSkippedRefunds()
+        {
+            foreach (var skipped in _coopSkipped)
+                if (!_coopSkipQueued.Contains(skipped.Key) && _coopResults.Deliver(skipped.Key, "h-skip:" + _coopRound,
+                    new ModeHCoopResult { Run = _runState.RunId, Match = GroupMatchIndex, Seed = _runState.RunSeed, Skipped = true }, skipped.Value))
+                    _coopSkipQueued.Add(skipped.Key);
+        }
+
         private bool RequestCoopStart()
         {
             if (!BossRushCoop.IsConnected || _coopStarting) return false;
+            if (!IsCoopProjectionSceneCurrent) return true;
             if (BossRushCoop.IsHost && _coopExited.Contains(BossRushCoop.LocalPlayerId)) return true;
             string round = BossRushCoop.IsClient && _coopView != null ? _coopView.Round : CurrentCoopRound();
             if (string.IsNullOrEmpty(round)) return true;
@@ -409,7 +480,8 @@ namespace BossRush
 
         private void ExecuteCoopCommand(CoopGameplayCommand command)
         {
-            if (!BossRushCoop.IsHost || !HasActiveRun || _commandsClosed || command == null) return;
+            if (!BossRushCoop.IsHost || !HasActiveRun || _commandsClosed || command == null
+                || !IsCoopWorldAuthorityCurrent) return;
             BossRushCoopPlayer player = BossRushCoop.FindPlayer(command.PlayerId);
             if (player == null || !player.IsConnected || string.IsNullOrEmpty(command.AssetId) || command.AssetId != player.AssetId) return;
             RefreshCoopRound();
@@ -419,7 +491,7 @@ namespace BossRush
                 _coopExited.Add(command.PlayerId);
                 if (_coopFunded.Contains(command.PlayerId)) _coopForfeited.Add(command.PlayerId);
             }
-            else if (_coopExited.Contains(command.PlayerId)) return;
+            else if (_coopExited.Contains(command.PlayerId) || IsCoopSkipped(command.PlayerId, command.AssetId)) return;
             else if (command.Action == "ready" && IsGroupRosterPhase())
             { _coopRequested.Add(command.PlayerId); _coopRequestedAssets[command.PlayerId] = command.AssetId; }
             else if (command.Action == "funded" && IsGroupRosterPhase() && _coopRequested.Contains(command.PlayerId))
@@ -439,7 +511,10 @@ namespace BossRush
 
         private void TryPrepareCoopBet(float deltaTime, string round)
         {
+            if (BossRushCoop.IsConnected && !IsCoopProjectionSceneCurrent) return;
             if (string.IsNullOrEmpty(round) || _runState == null || !IsGroupRosterPhase()) return;
+            if (BossRushCoop.IsHost ? IsCoopSkipped(BossRushCoop.LocalPlayerId, BossRushCoop.LocalAssetId)
+                : _coopView != null && Contains(_coopView.Skipped, BossRushCoop.LocalPlayerId)) return;
             if (_coopPrepared == round && !_coopLedger.Owns(_runState.RunId, GroupMatchIndex)) _coopPrepared = null;
             _coopPrepareTimer -= Mathf.Max(deltaTime, 0f);
             if (_coopPrepareTimer > 0f) return;
@@ -486,13 +561,17 @@ namespace BossRush
                 _coopPrepared = round;
                 _showItemBetPicker = false;
             }
-            if (BossRushCoop.IsClient) _coopChannel.Request("funded", text: round);
+            if (BossRushCoop.IsClient)
+            {
+                if (_coopView == null || _coopView.Round != round || !Contains(_coopView.Funded, BossRushCoop.LocalPlayerId))
+                    _coopChannel.RequestRepeat("funded", text: round);
+            }
             else { _coopFunded.Add(BossRushCoop.LocalPlayerId); _coopFundedAssets[BossRushCoop.LocalPlayerId] = BossRushCoop.LocalAssetId; }
         }
 
         private void PublishCoopResult(ModeHGroupBattle battle)
         {
-            if (!BossRushCoop.IsHost || battle == null || _runState == null) return;
+            if (!BossRushCoop.IsHost || battle == null || _runState == null || !IsCoopWorldAuthorityCurrent) return;
             foreach (string player in _coopFunded)
                 _coopResults.Deliver(player, "h-result:" + _coopRound, new ModeHCoopResult
                 {
@@ -505,6 +584,7 @@ namespace BossRush
         private bool ApplyCoopResult(ModeHCoopResult result)
         {
             if (result == null || string.IsNullOrEmpty(result.Run)) return false;
+            if (result.Skipped) return _coopLedger.CancelUnstarted(result.Run, result.Match, result.Seed);
             if (result.Started)
             {
                 ModeHCashBetRecord record = ModeHCashBetService.ReservedFor(result.Run, result.Match);
@@ -557,8 +637,10 @@ namespace BossRush
                 total++;
                 if (BossRushCoop.IsHost ? IsCoopFunded(player.Id) : _coopView != null && Contains(_coopView.Funded, player.Id)) ready++;
             }
-            page.Lines.Add(L10n.T("已准备 " + ready + " / " + total + "；全部确认后统一开赛。", "Ready " + ready + " / " + total + "; the match begins when everyone confirms."));
+            page.Lines.Add(L10n.T("已准备 " + ready + " / " + total + "；房主可开始并跳过未确认者。", "Ready " + ready + " / " + total + "; the host can start and skip unconfirmed players."));
             if (page.Actions.Count > 0) page.Actions[page.Actions.Count - 1].Label = L10n.T("确认押注并准备", "Confirm bet and ready");
+            if (BossRushCoop.IsHost && IsCoopFunded(BossRushCoop.LocalPlayerId))
+                page.Actions.Add(new ModeHActionData { Label = L10n.T("开始并跳过未确认", "Start and skip unconfirmed"), OnClick = StartCoopWithConfirmedPlayers });
         }
 
         private void RequestCoopBell()

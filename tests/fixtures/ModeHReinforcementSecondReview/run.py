@@ -47,6 +47,7 @@ def main():
         control.append(method(sources["ModeHCombatControl.cs"], signature))
     generated = "using System;using System.Collections;using System.Collections.Generic;using UnityEngine;\nnamespace BossRush {\n"
     generated += "internal sealed partial class ModeHRuntimeModule {\n" + "\n".join(runtime) + "\n"
+    generated += method((ROOT / "ModeH/ModeHRuntimeModule_Coop.cs").read_text(encoding="utf-8-sig"), "private bool IsCoopWorldAuthorityCurrent") + "\n"
     generated += group_off_members("enabled", "spawn", "release", "tick", "battle_ref") + "}\n"
     generated += "internal sealed partial class ModeHCombatControl {\n" + "\n".join(control) + "\n}\n}\n"
     (OUT / "Extracted.cs").write_text(generated, encoding="utf-8")

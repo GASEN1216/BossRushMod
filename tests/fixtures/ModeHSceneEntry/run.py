@@ -31,6 +31,7 @@ def main():
     scene = 'ModeH/ModeHRuntimeModule_SceneFlow.cs'
     recovery = 'ModeH/ModeHRuntimeModule_Recovery.cs'
     methods = [('ModeH/ModeHRuntimeModule.cs', 'public override void OnSceneLoaded(')]
+    methods += [('ModeH/ModeHRuntimeModule_Coop.cs', 'private bool IsCoopWorldAuthorityCurrent')]
     methods += [(scene, signature) for signature in (
         'partial void OnSceneLoadedInternal(', 'private void ScheduleSceneReadyWait(',
         'private IEnumerator WaitForModeHSceneReady(', 'private bool IsSceneReadyRequestCurrent(',

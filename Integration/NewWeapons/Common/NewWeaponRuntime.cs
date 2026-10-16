@@ -262,7 +262,7 @@ namespace BossRush
                 AstralStaffController.DestroyInstance();
 
                 // 2) 清理召唤法杖（先收场上的灵魂战士，再销毁管理器）
-                SummonStaffAction.CleanupAllSummonedAllies();
+                SummonStaffAction.ResetStaticCaches();
                 SummonStaffManager.CleanupStatic();
 
                 // 3) 重置运行时与配置静态缓存

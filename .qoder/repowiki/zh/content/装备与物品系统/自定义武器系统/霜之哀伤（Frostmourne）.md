@@ -435,3 +435,10 @@ WCfg --> Ids["FrostmourneIds"]
 实现：[FrostmourneAction.cs](file://Integration/Frostmourne/FrostmourneAction.cs)、[BossRushCoopContentRuntimeModule.cs](file://Integration/Coop/BossRushCoopContentRuntimeModule.cs)。现有装备 owner 守卫/隔离回归仅验证 L1/L2 接线；全房间施放、迟到 AI 与实际技能表现待 L3。
 
 请求、个人冷却、计数与随从归属冻结原玩家资产身份；同一角色切槽后，不继续旧请求和 await 生成，也不把旧亡灵上限算进新槽。房主回收旧槽随从，原槽与新槽冷却各自独立。异步联网入口提取到同目录 [FrostmourneAction_Coop.cs](file://Integration/Frostmourne/FrostmourneAction_Coop.cs)，保持文件预算。`CoopContent` 执行真实协议和归属方法，宿主依赖为替身，属于 L2。
+
+2026-10-15 补充：联网施法在开始时捕获原生旅行 `SceneToken`，之后的每次异步生成与 owner 查询同时核对实际场景绑定和该 token。旧公开 generation 与新实际 Core 相遇时不能接收旧施法输入或数量，当前场景事实在重试后恢复完整原召唤数量。已提交施法 ACK 不依赖世界绑定；单机分支仍走原有本机流程。新增边界证据为 L1/L2，不能代替实际武器、AI 或传输验收。
+
+
+2026-10-15 Claude PC-03/04（COMPAT，L1/L2）：单机与同实际 Core 的 Additive 加载不再由联机模块清全局召唤表；新 Core/room/token 只回收已登记网络实体和施法。未排队或房主拒绝的召唤返还技能冷却并显示中英文提示；OnStop 必须在基类赋值之后返还，异步结果携带本次施法代数，旧失败不能退款新施法。房主保留 0.5 秒到达抖动容差与逐请求结果去重。新增只读 TryGetSummonOwner 复用原召唤表，联机核原主人当前 body/asset/token，单机只认当前 Main。CoopContent 使用真实基类 OnStop 与原动作方法 L2，实际角色工厂和 AI 仍待 L3。
+
+2026-10-16 关停补充（COMPAT，L2）：`FrostmourneRuntimeModule.OnDestroy` 沿 `CleanupFrostmourneSystem` 调用 `FrostmourneAction.ResetStaticCaches`，在所属系统结束时同时销毁召唤、清主人表与预设缓存；不恢复普通切图时的全局清理。ModuleOwnerCleanup 直接执行真实 owner 与 Reset/Cleanup 方法，副本将 owner 退回仅清实体后，StaticCacheLifecycleGuard 与缓存行为断言双红，按原字节恢复后双绿。该证据不等于 Unity 实机生命周期通过。

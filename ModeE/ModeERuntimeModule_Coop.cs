@@ -43,6 +43,7 @@ namespace BossRush
     {
         public string Id, AssetId;
         public bool Admitted, Declined;
+        [NonSerialized] public bool StarterSent;
         public int BossKills;
     }
 
@@ -65,6 +66,15 @@ namespace BossRush
         private CoopGameplayChannel<CoopModeEState> coopChannel;
         private CoopPersonalDelivery<CoopModeEPersonal> coopPersonal;
         private string coopEpoch, coopPersonalEpoch;
+        internal string CampaignEntryEpoch { get { return coopEpoch; } }
+        internal bool TryGetCoopCampaignParticipantAsset(string expectedEpoch, string playerId, out string assetId)
+        {
+            assetId = null;
+            CoopModeEParticipant participant;
+            if (expectedEpoch != coopEpoch || !coopModeEParticipants.TryGetValue(playerId, out participant) || !participant.Admitted || participant.Declined) return false;
+            assetId = participant.AssetId;
+            return !string.IsNullOrEmpty(assetId);
+        }
         private sealed class CoopModeERewardLedger
         {
             internal string AssetId;
@@ -157,9 +167,59 @@ namespace BossRush
         private readonly Dictionary<string, List<Item>> coopEntryRefunds = new Dictionary<string, List<Item>>(StringComparer.Ordinal);
         private readonly Dictionary<string, List<int>> coopEntryRefundTypes = new Dictionary<string, List<int>>(StringComparer.Ordinal);
         private float coopEntryAdmissionRetry;
+        private sealed class CoopModeEPlayerTeam
+        {
+            internal string Room, Player;
+            internal Teams Original;
+            internal Teams? Applied;
+        }
+        private readonly Dictionary<CharacterMainControl, CoopModeEPlayerTeam> coopModeEPlayerTeams = new Dictionary<CharacterMainControl, CoopModeEPlayerTeam>();
+
+        private void RememberCoopModeEPlayerTeam(CharacterMainControl character)
+        {
+            if (!BossRushCoop.IsConnected || character == null || !BossRushCoop.IsPlayer(character)
+                || coopModeEPlayerTeams.ContainsKey(character)) return;
+            coopModeEPlayerTeams.Add(character, new CoopModeEPlayerTeam
+            { Room = BossRushCoop.RunId, Player = BossRushCoop.GetPlayerId(character), Original = character.Team });
+        }
+
+        private void SetCoopModeEPlayerTeam(CharacterMainControl character, Teams faction)
+        {
+            if (character == null || !BossRushCoop.IsPlayer(character)) return;
+            RememberCoopModeEPlayerTeam(character);
+            CoopModeEPlayerTeam lease;
+            if (coopModeEPlayerTeams.TryGetValue(character, out lease)) lease.Applied = faction;
+            if (character.Team != faction) character.SetTeam(faction);
+        }
+
+        private bool RestoreCoopModeEPlayerTeams()
+        {
+            if (coopModeEPlayerTeams.Count == 0) return false;
+            var released = new List<CharacterMainControl>();
+            foreach (var pair in coopModeEPlayerTeams)
+            {
+                CharacterMainControl character = pair.Key;
+                try
+                {
+                    // 本地启动沿原入口 SetTeam；首次收尾时冻结，后续重试不读已复位的模式阵营。
+                    if (!pair.Value.Applied.HasValue) pair.Value.Applied = modeEPlayerFaction;
+                    string currentPlayer = BossRushCoop.IsConnected ? BossRushCoop.GetPlayerId(character) : null;
+                    // 只归还原实例；暂时解绑仍可归还，另一个玩家已接管的实例与新房间不属于此租约。
+                    if (character != null && (!BossRushCoop.IsConnected || pair.Value.Room == BossRushCoop.RunId)
+                        && (string.IsNullOrEmpty(currentPlayer) || currentPlayer == pair.Value.Player)
+                        && character.Team == pair.Value.Applied.Value)
+                        character.SetTeam(pair.Value.Original);
+                    released.Add(character);
+                }
+                catch (Exception e) { ModBehaviour.DevLog("[ModeE] 玩家原阵营待恢复: " + e.Message); }
+            }
+            foreach (CharacterMainControl character in released) coopModeEPlayerTeams.Remove(character);
+            return true;
+        }
 
         private void BeginCoopModeEParticipants()
         {
+            RememberCoopModeEPlayerTeam(CharacterMainControl.Main);
             coopModeELocalAsset = BossRushCoop.LocalAssetId;
             PreserveCoopModeERewardLedger();
             coopModeEParticipants.Clear();
@@ -308,14 +368,18 @@ namespace BossRush
         private void TickCoopModeE(float deltaTime)
         {
             RetireLostCoopProjection();
+            if (!modeEActive) RestoreCoopModeEPlayerTeams();
             TickCoopEntryRefunds();
             coopChannel.Tick(deltaTime);
             coopPersonal.Tick(deltaTime);
             coopEntryAdmissionRetry -= Mathf.Max(0f, deltaTime);
             bool admitted;
+            CoopModeEParticipant confirmed;
             if (BossRushCoop.IsClient && modeEActive && coopModeELocalAsset == BossRushCoop.LocalAssetId && coopEntryAdmissionRetry <= 0f
-                && coopEntryDecisions.TryGetValue("E:" + BossRushCoop.LocalAssetId + ":" + coopEpoch, out admitted))
-            { coopEntryAdmissionRetry = 1f; coopChannel.Request("admission", text: coopEpoch, flag: admitted); }
+                && coopEntryDecisions.TryGetValue("E:" + BossRushCoop.LocalAssetId + ":" + coopEpoch, out admitted)
+                && (!coopModeEParticipants.TryGetValue(BossRushCoop.LocalPlayerId, out confirmed) || confirmed.AssetId != coopModeELocalAsset
+                    || !(admitted ? confirmed.Admitted : confirmed.Declined)))
+            { coopEntryAdmissionRetry = 1f; coopChannel.RequestRepeat("admission", text: coopEpoch, flag: admitted); }
             TickCoopCoal(deltaTime);
             TickCoopUtilities(deltaTime);
             coopHireRetry -= Mathf.Max(0f, deltaTime);
@@ -324,7 +388,7 @@ namespace BossRush
                 coopHireRetry = 1f;
                 foreach (CoopModeEHireRequest request in coopHireRequests.Values)
                     if (request.AssetId == BossRushCoop.LocalAssetId && request.Run == BossRushCoop.RunId)
-                        coopChannel.Request("hire", text: BossRushCoopJson.ToJson(request));
+                        coopChannel.RequestRepeat("hire", text: BossRushCoopJson.ToJson(request));
             }
             if (!BossRushCoop.IsHost || !modeEActive) return;
             foreach (BossRushCoopPlayer player in BossRushCoop.Players)
@@ -334,8 +398,9 @@ namespace BossRush
                 if (!coopModeEParticipants.TryGetValue(player.Id, out participant))
                 { participant = new CoopModeEParticipant { Id = player.Id, AssetId = player.AssetId }; coopModeEParticipants[player.Id] = participant; }
                 if (participant.AssetId != player.AssetId || participant.Declined) continue;
-                if (participant.Admitted && player.Character.Team != modeEPlayerFaction) player.Character.SetTeam(modeEPlayerFaction);
-                coopPersonal.Deliver(player.Id, "start:" + coopEpoch, new CoopModeEPersonal { Epoch = coopEpoch, Starter = true }, participant.AssetId);
+                if (participant.Admitted) SetCoopModeEPlayerTeam(player.Character, modeEPlayerFaction);
+                if (!participant.StarterSent && coopPersonal.Deliver(player.Id, "start:" + coopEpoch,
+                    new CoopModeEPersonal { Epoch = coopEpoch, Starter = true }, participant.AssetId)) participant.StarterSent = true;
             }
         }
 
@@ -405,7 +470,7 @@ namespace BossRush
             CharacterMainControl local = CharacterMainControl.Main;
             modeERespawnTaskRunning = state.RespawnBusy;
             if (state.Active) merchantRuntime.BindCoopEntity(state.Merchant);
-            if (state.Active && IsCoopModeELocalAdmitted() && local != null && local.Team != modeEPlayerFaction) local.SetTeam(modeEPlayerFaction);
+            if (state.Active && IsCoopModeELocalAdmitted()) SetCoopModeEPlayerTeam(local, modeEPlayerFaction);
             modeEFactionDeathCount.Clear();
             if (state.Factions != null && state.Deaths != null)
                 for (int i = 0; i < Math.Min(state.Factions.Length, state.Deaths.Length); i++) modeEFactionDeathCount[(Teams)state.Factions[i]] = state.Deaths[i];
@@ -480,7 +545,7 @@ namespace BossRush
                     ShowFactionBubble(modeEPlayerFaction);
                 });
                 if (admitted) coopPersonalEpoch = personalEpoch;
-                if (admitted && CharacterMainControl.Main.Team != modeEPlayerFaction) CharacterMainControl.Main.SetTeam(modeEPlayerFaction);
+                if (admitted) SetCoopModeEPlayerTeam(CharacterMainControl.Main, modeEPlayerFaction);
                 coopChannel.Request("admission", text: receipt.Epoch, flag: admitted);
                 return true;
             }

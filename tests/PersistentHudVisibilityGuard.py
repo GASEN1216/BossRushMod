@@ -171,6 +171,7 @@ MODAL = {
     "PetNest/PetNestExpeditionRevealView.cs": "遗种巢远征揭晓（PetNestModal）",
     "ZombieMode/ZombieModeCashInvestmentView.cs": "丧尸模式投资面板（ZombieModalInput）：占模态输入",
     "ZombieMode/ZombieModeEntry_StarterLoadout.cs": "丧尸模式开局配装（ZombieModal）",
+    "ZombieMode/ZombieModeRuntimeModule_Coop.cs": "房主主动打开的联机开场确认（ZombieModal），继续等待保留原准备入口",
     "ZombieMode/ZombieModeExtractionController.cs": "丧尸模式撤离确认（ZombieModal）",
     "ZombieMode/ZombieModeRewardSelectionView.cs": "丧尸模式奖励选择面板（ZombieModal）：每波结束的必答模态",
     "ZombieMode/ZombieModeTemporaryNpcServiceView.cs": "丧尸模式补给 / 医疗终端服务面板（ZombieService）：交互打开",
@@ -309,6 +310,11 @@ MODEG_DRIVE_CHAIN = (
 def check(read, layer_files, canvas_files, ongui_files):
     """read(rel) -> 清洗过的源码或 None；三个 dict 都是 {相对路径: 原文}。返回错误清单。"""
     errors = []
+    confirmation = body_of(read("ZombieMode/ZombieModeRuntimeModule_Coop.cs") or "", "private void ShowCoopZombieStartConfirmation(")
+    for required in ("BossRushConfirmDialog.Show(", "SortingOrder = BossRushUILayers.ZombieModal",
+                     "CanOfferCoopZombieStart(run)", "BossRushCoop.HasBoundScene"):
+        if confirmation is None or required not in confirmation:
+            errors.append("联机尸潮等待页必须保留真实可用入口和共享模态确认：缺 " + required)
     for rel, anchor, signature, effect, drive, label in PERSISTENT:
         source = read(rel)
         if source is None:

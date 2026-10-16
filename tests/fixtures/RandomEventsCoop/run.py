@@ -1,8 +1,9 @@
 """Execute production random-event projection and director gate with isolated event effects."""
 from pathlib import Path
-import hashlib, json, subprocess
+import hashlib, json, subprocess, argparse, sys
 from xml.sax.saxutils import escape
 ROOT=Path(__file__).resolve().parents[3]; HERE=Path(__file__).resolve().parent; OUT=ROOT/'Build/runtime-regressions/RandomEventsCoop'
+parser=argparse.ArgumentParser();parser.add_argument('--output',type=Path,default=OUT);OUT=parser.parse_args().output.resolve()
 def block(text, signature):
     assert text.count(signature)==1, signature
     start=text.index(signature); opening=text.index('{',start); end=opening+1; depth=1
@@ -29,8 +30,11 @@ def main():
     project=OUT/'Regression.csproj';includes=''.join('<Compile Include="'+escape(str(p),{'"':'&quot;'})+'" />' for p in sources)
     project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649;0414</NoWarn></PropertyGroup><ItemGroup>'+includes+'</ItemGroup></Project>',encoding='utf-8')
     (OUT/'production-sha256.json').write_text(json.dumps({str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in [coop,director,sources[2]]+codec_sources},indent=2),encoding='utf-8')
-    if subprocess.call(['dotnet','build',str(project),'-c','Release','--nologo'],cwd=ROOT):return 1
-    target=Path(subprocess.check_output(['dotnet','msbuild',str(project),'-p:Configuration=Release','-getProperty:TargetPath'],text=True).strip())
-    print('Target:',target,'SHA256:',hashlib.sha256(target.read_bytes()).hexdigest(),flush=True)
-    return subprocess.call(['dotnet',str(target)],cwd=ROOT)
+    sys.path.insert(0,str(ROOT/'tools'))
+    from run_runtime_regressions import run_project_fixture
+    code,output=run_project_fixture(project,OUT/'execution',ROOT);print(output)
+    if code:return code
+    sys.path.insert(0,str(HERE/'Party'))
+    from party_fixture import run as run_party
+    code,output=run_party(ROOT,OUT/'party',block,run_project_fixture);print(output);return code
 if __name__=='__main__':raise SystemExit(main())

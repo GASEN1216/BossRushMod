@@ -43,17 +43,30 @@ namespace BossRush
     {
         private readonly Dictionary<string, HashSet<string>> ready = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
 
-        internal void Mark(string playerId, string sceneKey)
+        internal bool Mark(string playerId, string sceneKey)
         {
-            if (string.IsNullOrEmpty(playerId) || string.IsNullOrEmpty(sceneKey) || sceneKey.Length > 256) return;
+            if (string.IsNullOrEmpty(playerId) || string.IsNullOrEmpty(sceneKey) || sceneKey.Length > 256) return false;
             HashSet<string> players;
             if (!ready.TryGetValue(sceneKey, out players))
             {
                 // 每个 generation 有界；不接受远端不断创造新屏障耗尽内存。
-                if (ready.Count >= 64) return;
+                if (ready.Count >= 64) return false;
                 ready.Add(sceneKey, players = new HashSet<string>(StringComparer.Ordinal));
             }
-            players.Add(playerId);
+            return players.Add(playerId);
+        }
+
+        internal bool Replace(string sceneKey, IEnumerable<string> players)
+        {
+            if (string.IsNullOrEmpty(sceneKey) || sceneKey.Length > 256 || players == null) return false;
+            if (!ready.ContainsKey(sceneKey) && ready.Count >= 64) return false;
+            ready[sceneKey] = new HashSet<string>(players, StringComparer.Ordinal);
+            return true;
+        }
+
+        internal string[] Keys()
+        {
+            var result = new string[ready.Count]; ready.Keys.CopyTo(result, 0); return result;
         }
 
         internal bool AllReady(string sceneKey, IEnumerable<string> participants)
@@ -94,6 +107,7 @@ namespace BossRush
         public string reconnectToken;
         public string nativeId;
         public string assetId;
+        public long assetRevision;
     }
 
     [Serializable]
@@ -105,6 +119,9 @@ namespace BossRush
         public string reconnectToken;
         public string error;
         public int generation;
+        public string assetId;
+        public long assetRevision;
+        public string readyEpoch;
     }
 
     [Serializable]
@@ -115,12 +132,29 @@ namespace BossRush
         public string assetId;
         public bool connected;
         public bool alive;
+        public long assetRevision;
+        public string readyEpoch;
+    }
+
+    [Serializable]
+    internal sealed class BossRushCoopCompatibilityIssue
+    {
+        public string player;
+        public string reason;
+    }
+
+    [Serializable]
+    internal sealed class BossRushCoopCompatibilityStatus
+    {
+        public BossRushCoopCompatibilityIssue[] issues;
     }
 
     [Serializable]
     internal sealed class BossRushCoopRoster
     {
         public int generation;
+        public string sceneId;
+        public string sceneToken;
         public long revision;
         public bool ready;
         public BossRushCoopRosterEntry[] players;
@@ -131,7 +165,20 @@ namespace BossRush
     {
         public int generation;
         public string key;
-        public string[] players;
+        public string assetId;
+        public long assetRevision;
+        public string readyEpoch;
+        public long revision;
+        public BossRushCoopReadyMember[] members;
+    }
+
+    [Serializable]
+    internal sealed class BossRushCoopReadyMember
+    {
+        public string id;
+        public string assetId;
+        public long assetRevision;
+        public string readyEpoch;
     }
 
     /// <summary>只索引本机槽号，不读取存档内容；网络只发送随机身份，切回原槽可继续领取原收据。</summary>

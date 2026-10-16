@@ -5,6 +5,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -80,6 +81,21 @@ def main():
                          "private ModBehaviour owner; private bool destroyed; private GameObject " + npc.lower() + "NPCInstance; private " + npc + "NPCController " + npc.lower() + "Controller;\n" +
                          "\n".join(block(source, x) for x in ("public override void OnAwake(ModBehaviour owner)", "public override void OnDestroy()", method)) + "\n}")
     generated.append(block(read("Integration/Frostmourne/FrostmourneBootstrap.cs"), "internal sealed class FrostmourneRuntimeModule"))
+    for action, path, cleanup in (
+        ("FrostmourneAction", "Integration/Frostmourne/FrostmourneAction.cs", "internal static void CleanupAllSummonedZombies()"),
+        ("SummonStaffAction", "Integration/NewWeapons/SummonStaff/SummonStaffAction.cs", "internal static void CleanupAllSummonedAllies()"),
+    ):
+        source = read(path)
+        generated.append("internal static partial class " + action + " {" + "\n".join(block(source, signature) for signature in
+            (cleanup, "internal static void ResetPresetCache()", "internal static void ResetStaticCaches()")) + "}")
+    cleanup = block(read("Integration/NewWeapons/Common/NewWeaponRuntime.cs"), "internal static void CleanupOnDestroy()")
+    generated.append("internal static class NewWeaponRuntime {" + cleanup + "}")
+    leaves = {}
+    for owner, method in re.findall(r"\b(\w+)\.(\w+)\(\);", cleanup):
+        if owner not in ("SummonStaffAction", "SummonStaffManager"):
+            leaves.setdefault(owner, set()).add(method)
+    generated += ["internal static class " + owner + " {" + " ".join("internal static void " + method + "() {}" for method in sorted(methods)) + "}"
+                  for owner, methods in sorted(leaves.items())]
     generated.append("internal sealed partial class ModeDRuntimeModule {" + block(read("ModeD/ModeDRuntimeModule_Waves.cs"), "internal void TickModeDIntegrity(float deltaTime)") + "}")
     host = read("Integration/IntegrationHostCompatibility.cs")
     bridge_methods = [block(host, signature) for signature in (
@@ -98,7 +114,11 @@ def main():
     project = OUT / "Regression.csproj"
     project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup><ItemGroup>' + includes + '</ItemGroup></Project>', encoding="utf-8")
     (OUT / "production-sha256.json").write_text(json.dumps(evidence, indent=2), encoding="utf-8")
-    return subprocess.call(["dotnet", "run", "--project", str(project), "--configuration", "Release"], cwd=ROOT)
+    sys.path.insert(0, str(ROOT / "tools"))
+    from run_runtime_regressions import run_project_fixture
+    result, output = run_project_fixture(project, OUT, ROOT)
+    print(output)
+    return result
 
 if __name__ == "__main__":
     raise SystemExit(main())

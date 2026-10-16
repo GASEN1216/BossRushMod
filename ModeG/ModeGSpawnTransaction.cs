@@ -134,7 +134,7 @@ namespace BossRush
         /// </summary>
         public bool MarkKilled(Health health)
         {
-            if (health == null || !_activeBosses.Remove(health)) return false;
+            if (ReferenceEquals(health, null) || !_activeBosses.Remove(health)) return false;
             _state.UnregisterTrackedBoss(health);
             // 注意：不清理 _committedKeyByHealth —— 死亡回调链内仍需 Health->key 归因，
             // 映射保留至 ResetForNextWave（每波 Boss 数量极小，无泄漏风险）。
@@ -148,7 +148,7 @@ namespace BossRush
         public bool TryGetCommittedKeyByHealth(Health health, out string presetKey)
         {
             presetKey = null;
-            if (health == null) return false;
+            if (ReferenceEquals(health, null)) return false;
             return _committedKeyByHealth.TryGetValue(health, out presetKey);
         }
 

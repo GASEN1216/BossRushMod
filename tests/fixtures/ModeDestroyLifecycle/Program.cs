@@ -35,6 +35,27 @@ namespace BossRush
             typeof(ModeERuntimeModule).GetField("coopProjectionRetiring",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).SetValue(retiringE,true);retiringE.EndModeE(false);Check(oldE==null&&!oldE.dropBoxOnDead,"E native End retires projected replica in another connected client room");
             retiringHost=Host();retiringRegistry=new ModeEFEnemyRegistry();retiringE=new ModeERuntimeModule();retiringE.Bind(retiringRegistry);retiringE.OnAwake(retiringHost);var retiringF=new ModeFRuntimeModule();retiringF.Bind(retiringE,retiringRegistry);retiringF.OnAwake(retiringHost);var oldF=new CharacterMainControl();retiringF.Seed(oldF,new ModeFFortificationMarker());
             typeof(ModeFRuntimeModule).GetField("coopProjectionRetiring",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).SetValue(retiringF,true);retiringF.ExitModeF(false);Check(oldF!=null&&!oldF.gameObject.activeSelf&&!oldF.dropBoxOnDead,"F native Exit deactivates projected replica without loot in next client room");retiringF.OnDestroy();Check(oldF==null,"F owned deferred projected replica is reclaimed on shutdown");
+            // Capture and restore through the production team helper, not a forced cleanup result.
+            BossRushCoop.RunId = "destroy-room";
+            var teamHost = Host(); var teamRegistry = new ModeEFEnemyRegistry();
+            var teamE = new ModeERuntimeModule(); teamE.Bind(teamRegistry); teamE.OnAwake(teamHost);
+            var mainAtEntry = CharacterMainControl.Main; mainAtEntry.SetTeam(Teams.middle);
+            var remoteAtEntry = new CharacterMainControl(); remoteAtEntry.SetTeam(Teams.wolf);
+            BossRushCoop.Players.Add(new BossRushCoopPlayer { Id = "remote", Character = remoteAtEntry });
+            teamE.SetPlayerTeamForTest(mainAtEntry, Teams.wolf);
+            teamE.SetPlayerTeamForTest(remoteAtEntry, Teams.middle);
+            teamE.modeEActive = true;
+            Check(mainAtEntry.Team == Teams.wolf && remoteAtEntry.Team == Teams.middle, "E production helper actually applies local/remote temporary teams");
+            var replacementMain = new CharacterMainControl(); replacementMain.SetTeam(Teams.middle);
+            CharacterMainControl.Main = replacementMain;
+            teamE.OnDestroy();
+            Check(mainAtEntry.Team == Teams.middle && remoteAtEntry.Team == Teams.wolf,
+                "E real OnDestroy restores both leased original bodies including temporarily unbound old local body");
+            Check(replacementMain.Team == Teams.middle, "E destroy does not overwrite replacement main body team");
+            teamE.OnDestroy();
+            Check(remoteAtEntry.Team == Teams.wolf && !Probe.Events.Any(x => x.Contains("ERROR") || x.Contains("WARNING")),
+                "E repeated OnDestroy retains remote original faction without swallowed cleanup errors");
+            BossRushCoop.Players.Clear();
             BossRushCoop.IsConnected=false;BossRushCoop.IsHost=false;
             var host = Host(); var d = new ModeDRuntimeModule(); d.OnAwake(host);
             var enemy = new CharacterMainControl(); var task = host.OwnCoroutine();

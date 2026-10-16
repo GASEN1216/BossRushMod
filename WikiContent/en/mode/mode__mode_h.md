@@ -130,3 +130,5 @@ After the sixth match, the season goes into the **Hall of Fame** and gets ranked
 - **The season is stuck: can't get in, can't play on. Now what?** Interact at the dock and you'll get a recovery page. **"Abandon season and settle stakes"** asks you to confirm first and spells out what happens; after that a bet on a match already under way counts as lost, a bet on an unstarted match is returned as-is, the stuck season is cleared, and you can start fresh. Not ready? **"Later"** closes it.
 
 [tip] There are really only three calls to make here: which team to back, how much to bet, and when to ring that one bell. The bosses handle the rest.
+
+After confirming their own bet, the host may start and skip unconfirmed players. Those players spectate the match, receive a full refund of held cash bets, and have their original staked items unlocked. They may join the next match.

@@ -76,7 +76,8 @@ namespace BossRush
             for (int slot = 1; slot <= AffixDefinitions.MaxSlots; slot++)
             {
                 if (key == SlotKey(slot)) return type == CustomDataType.String && !display;
-                if (key == NameKey(slot)) return type == CustomDataType.String && display;
+                // 空槽、清槽及未知词缀的真实生产名称键不可见；类型契约仍冻结。
+                if (key == NameKey(slot)) return type == CustomDataType.String;
                 if (key == LockKey(slot)) return type == CustomDataType.Bool && !display;
             }
             return false;

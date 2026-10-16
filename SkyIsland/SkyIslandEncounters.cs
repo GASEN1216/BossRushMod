@@ -11,7 +11,7 @@ namespace BossRush
     ///
     /// 刷新口径（2026-09-09 可玩性复审后定）：
     /// - **自动组按出击刷新**：每次进岛都会重新生成，出击图应当每趟都有风险。
-    /// - **手动组一次性**：折翎 / 钟守 / 噬风是具名剧情对手，存档事实一旦记下就不再出现。
+    /// - **手动组每人一次**：单机沿本人存档；联机结局只记发起者，同趟其它同行仍可发起完整挑战。
     /// - 两者共用同一份持久 `clearedEncounters`；它对自动组只作为**剧情装置的前置证据**
     ///   （修风标 / 修星灯 / 校准观星镜），不再用于抑制生成。
     /// </summary>
@@ -20,6 +20,7 @@ namespace BossRush
         private sealed class Encounter
         {
             internal string Id;
+            internal string ChallengePlayer, ChallengeAsset, ChallengeRequest;
             internal Transform Marker;
             internal int Count;
             internal SkyIslandEncounterDefinition Definition;
@@ -270,7 +271,10 @@ namespace BossRush
             if (!BossRushCoop.HasWorldAuthority) return false;
             string reason;
             if (!CanBeginChallenge(id, out reason)) return false;
-            Spawn(Find(id));
+            Encounter target = Find(id);
+            if (BossRushCoop.IsConnected) return BeginRemoteChallenge(id, player.transform.position,
+                BossRushCoop.LocalPlayerId, BossRushCoop.LocalAssetId, Guid.NewGuid().ToString("N"));
+            Spawn(target);
             return true;
         }
 
@@ -285,8 +289,8 @@ namespace BossRush
             reason = null;
             if (closed || !valid()) return false;
             Encounter encounter = Find(id);
-            if (encounter == null || !encounter.Manual || encounter.Cleared || completed(id)) return false;
-            if (encounter.Started)
+            if (encounter == null || !encounter.Manual || (!BossRushCoop.IsConnected && encounter.Cleared) || completed(id)) return false;
+            if (encounter.Started && !encounter.Cleared)
             {
                 reason = L10n.T("这一场已经打起来了。", "This fight has already begun.");
                 return false;
@@ -326,7 +330,7 @@ namespace BossRush
                 // 而 39 个搜刮点每趟重刷，这张图就退化成无风险刷宝台。
                 // 剧情前置（D/D_02 修风标、G/G_02 修星灯、S4 校准观星镜）读的仍是同一份持久事实，
                 // 一次达成永久有效，重刷的敌群不会把已完成的装置重新锁上。
-                if (!encounter.Started && encounter.Manual && completed(encounter.Id)) { encounter.Cleared = true; continue; }
+                if (!BossRushCoop.IsConnected && !encounter.Started && encounter.Manual && completed(encounter.Id)) { encounter.Cleared = true; continue; }
                 if (!encounter.Started) continue;
                 foreach (SkyIslandEnemyRecord actor in encounter.Actors)
                 {

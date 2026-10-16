@@ -1,6 +1,8 @@
 # Mode G 生产流程回归
 
-2026-10-13 联机补充：逐字抽取生产 `ApplyCoopCombat` 并链接真实个人遥测，覆盖负数 AI ID、客端跳过原生重复事件、乱序收据等待前序、重复收据幂等、本人护甲后贡献、他人末击仍结束共享 Boss。网络角色索引和共享死亡处理是边界替身，不能证明游戏内 RPC、Boss AI 或九波联机可玩。
+2026-10-13 联机补充：逐字抽取生产 `ApplyCoopCombat` 并链接真实个人遥测，覆盖负数 AI ID、客端跳过原生重复事件、乱序收据等待前序、重复收据幂等、本人护甲后贡献、他人末击仍结束共享 Boss。网络角色索引是边界替身，不能证明游戏内 RPC、Boss AI 或九波联机可玩。
+
+2026-10-15 round10 修复回归：移除共享死亡处理替身，逐字执行完整 `HandleBossDead`、原类型解析和宿敌归因，链接完整 `ModeGSpawnTransaction`。原生 GameObject/Health 先按 Unity 假 null 销毁，再实际消费连续个人伤害/死亡事实；必须注销原 Health、保留个人末击和护甲后贡献并排定下一帧结算。未知引用、未登记缓存、旧 run、同图新场景代次、乱序及重复均有拒绝或幂等断言。托管 Boss 的三种稳定 key 和类型从生产源取值，队列最终交付必须保留 DragonDescendant / DragonKing / PhantomWitch；普通 preset 仍为 Normal。管理器原生清理、角色索引、成就持久化接收器和展示依赖仍是边界替身。本回归不证明真实九波已经恢复，需新 DLL 三端复验。
 
 2026-10-06 携崽扩展：新增非主角随从击杀已登记 Boss 的场景，生产死亡回调正常结案一次、末击不归到主角武器轴、主角直伤分母保持为 0；不把宠物伤害伪报成玩家直伤。
 
@@ -15,3 +17,5 @@
 不覆盖 Unity 物理/导航、真实 Boss AI、异步生成工厂、实际物品交付、HUD 像素可读性与帧耗；这些需要 Windows 编译及 owner 实机验证。
 
 本轮补充：链接完整 ModeGRewardTransaction，逐字抽取实际 ModeGRewardStrictMaterializer、刷怪几何选点与暂停超时计算。覆盖奖励背包销毁、交付事件/逐件回调重入取消、每帧一件、一次完成回调和租约释放；败北打断连胜并保留历史；贪心首选堵塞后的双/三Boss合法组合，以及三种编队共1200组固定种子样本与独立穷举的可行性对照。物理落地在替身中直接接受候选，物品/背包/仓库仍为替身，不据此声称真实导航与奖励实物交付已通过。暂停用例验证生产时间预算纯函数，真实暂停状态接线由 ModeGProductionFlowGuard 检查，异步 Unity 调度仍需实机。
+
+2026-10-15 原 host Stop 补审：逐字执行 FreezeCoopAsset、CheckCoopAsset、CanContinueRun，原网络 host 实际停止后不能获得单机世界权限；同房间 SessionReady 暂失和空握手仍可继续，原单机在离线时可继续，连入新房间后不接管。当前 36 cases PASS。End 在该用例为记录边界，完整异步 SpawnWave 和 Unity 回收不据此宣称通过。

@@ -54,9 +54,11 @@ internal static class Program
         scene.Refresh();scene.localReadyKeys.Add("old");scene.barrier.Mark("host","old");scene.aiCharacters[-20]=fighter;
         int generation=scene.Generation;scene.Refresh();Check(scene.Generation==generation,"same loaded scene does not increment repeatedly");
         var remoteLife=new BossRushCoopPlayer{HostAlive=true};scene.players.Add(remoteLife);
-        Duckov.Scenes.MultiSceneCore.Instance.gameObject.scene=new UnityEngine.SceneManagement.Scene{handle=2,isLoaded=true};scene.Refresh();
+        scene.BeginLoad("arena");var previousCore=Duckov.Scenes.MultiSceneCore.Instance;UnityEngine.SceneManagement.SceneManager.Unload(previousCore.gameObject.scene);UnityEngine.Object.Destroy(previousCore);UnityEngine.Object.Destroy(previousCore.gameObject);
+        Duckov.Scenes.MultiSceneCore.Instance=new Duckov.Scenes.MultiSceneCore{SceneInfo=new Duckov.Scenes.Info{ID="arena"},gameObject=new GameObject{scene=new UnityEngine.SceneManagement.Scene{handle=2,isLoaded=true}}};Duckov.Scenes.SceneLoader.IsSceneLoading=false;scene.Refresh();
         Check(scene.Generation==generation+1&&world.AppliedRevision==0&&scene.localReadyKeys.Count==0&&scene.aiCharacters.Count==0&&!scene.barrier.AllReady("old",new[]{"host"}),"same scene ID reload clears generation-owned AI readiness and world state");
         Check(!remoteLife.HostAlive,"actual scene owner clear method retires prior remote alive fact");
+        scene.Dispose();
         control.Dispose();
         BossRushCoop.IsHost=false;
         var gravity=new GravityOwner();gravity.RefreshZombieModeGravityWellTargets(7,new Vector3(13.25f,1.5f,-7.75f),4.25f,12.5f);
@@ -71,6 +73,22 @@ internal static class Program
         receiver.Receive(packets[0]);Check(receiver.PendingCount==2048&&receiver.PendingName.EndsWith("😀"),"reverse fragments preserve all 2048 boxes and surrogate pairs");
         BossRushCoop.WorldPackets.Clear();sender.PublishBoxes(2,"new");receiver.Receive(BossRushCoop.WorldPackets[0]);foreach(string packet in packets)receiver.Receive(packet);Check(receiver.PendingCount==2&&receiver.PendingName=="new","old complete snapshot cannot overwrite new version");
         receiver.ChangeGeneration();BossRushCoop.SceneGeneration++;foreach(string packet in packets)receiver.Receive(packet);Check(receiver.PendingCount==-1,"same-map generation clears fragments and rejects stale world");
+        // Execute the production Tick -> ApplyPending path while a new host generation
+        // has arrived but this client still owns the previous same-name Core.
+        var delayed=new BossRushCoopWorldLoot(native);var oldSceneBox=Box(0,native);oldSceneBox.name="old-scene-box";oldSceneBox.needInspect=false;
+        oldSceneBox.gameObject.scene=new UnityEngine.SceneManagement.Scene{handle=80,name="arena",isLoaded=true};
+        delayed.Register(oldSceneBox);delayed.Owned(oldSceneBox);
+        BossRushCoop.WorldPackets.Clear();sender.PublishBoxes(1,"new-scene-box");delayed.Receive(BossRushCoop.WorldPackets[0]);
+        BossRushCoop.HasBoundScene=false;Time.unscaledTime+=1;delayed.Tick();
+        Check(oldSceneBox.name=="old-scene-box"&&!oldSceneBox.needInspect,"new-generation container snapshot must not mutate the prior same-name Core before actual binding");
+        BossRushCoop.HasBoundScene=true;Time.unscaledTime+=1;delayed.Tick();
+        Check(oldSceneBox.name=="new-scene-box"&&oldSceneBox.needInspect&&oldSceneBox.Inventory.NeedInspection,"completed matching Core applies the queued production snapshot without losing container state");
+        BossRushCoop.WorldPackets.Clear();sender.PublishBoxes(0,"empty");delayed.Receive(BossRushCoop.WorldPackets[0]);
+        BossRushCoop.HasBoundScene=false;Time.unscaledTime+=1;delayed.Tick();Check(oldSceneBox!=null,"unbound empty snapshot cannot destroy existing shared container");
+        BossRushCoop.HasBoundScene=true;Time.unscaledTime+=1;delayed.Tick();Check(oldSceneBox==null,"bound complete empty snapshot still removes obsolete owned shell");
+        BossRushCoop.IsHost=true;BossRushCoop.HasBoundScene=false;BossRushCoop.WorldPackets.Clear();Time.unscaledTime+=1;sender.Tick();
+        Check(BossRushCoop.WorldPackets.Count==0,"host does not publish half-loaded scene containers");
+        BossRushCoop.HasBoundScene=true;Time.unscaledTime+=1;sender.Tick();Check(BossRushCoop.WorldPackets.Count>0,"host resumes snapshots when actual scene binds");
         Console.WriteLine("CoopWorldRuntime: "+checks+" PASS");
     }
     [Serializable]private class Input{public string lease;public int generation;public long sequence;public Vector3 move,aim;public bool ads;}

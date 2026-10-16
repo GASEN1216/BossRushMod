@@ -68,6 +68,7 @@ internal static class Program
     private static void Main()
     {
         SceneTransitions.Run(Check);
+        HButtonBoundary.ModeHButtons.Run(Check);
         EntryPreparation.Run(Check);
         GChildProtection.Run(Check);
         cleanup.Clear();

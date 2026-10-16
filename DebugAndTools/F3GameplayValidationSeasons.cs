@@ -222,6 +222,7 @@ namespace BossRush
 
         private bool TryClickModeHButton(string objectName, string label)
         {
+            label = ResolveModeHButtonLabel(label);
             GameObject page = GameObject.Find("ModeH_Modal");
             if (page == null) return false;
             foreach (Button button in page.GetComponentsInChildren<Button>(false))
@@ -235,6 +236,18 @@ namespace BossRush
                 return true;
             }
             return false;
+        }
+
+        private string ResolveModeHButtonLabel(string label)
+        {
+            string start = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_StartMatch");
+            string lockIn = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_LockIn");
+            if (label != start && label != lockIn) return label;
+            if (label == start && ModeHRuntimeModule.GroupModeEnabled && BossRushCoop.IsConnected)
+                return L10n.T("确认押注并准备", "Confirm bet and ready");
+            var suffix = typeof(ModeHRuntimeModule).GetMethod("DescribeStandingBetSuffix",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            return label + (string)suffix.Invoke(_host.ModeHRuntime, null);
         }
 
         private static bool IsLiveCharacter(CharacterMainControl character)

@@ -63,8 +63,6 @@ def main():
         "public override void OnSceneLoaded(SceneRuntimeContext context)",
         "public override void OnDestroy()",
     ))
-    coop = clean_source((ROOT / "Campaign/CampaignRuntimeModule_Coop.cs").read_text(encoding="utf-8-sig"))
-    lifecycle += extract_methods(coop, ("private bool ApplyCoopCampaignFact(",))
     extracted = OUT / "FinalBossProduction.cs"
     extracted.write_text("using System; using System.Threading; using System.Threading.Tasks; using UnityEngine; "
                          + "namespace BossRush { internal sealed partial class CampaignRuntimeModule {"
@@ -95,8 +93,47 @@ def main():
     f3_extracted = OUT / "F3FinalBossProduction.cs"
     f3_extracted.write_text("using System; using System.Collections; using System.Diagnostics; using UnityEngine; "
                            + "namespace BossRush { internal sealed partial class F3GameplayValidationRunner {" + f3 + "}}", encoding="utf-8")
-    sources = [ROOT / "tests/fixtures/CoopOfflineStubs.cs"] + [ROOT / name for name in (
-        "Campaign/CampaignModels.cs", "Campaign/CampaignTuning.cs",
+    # Keep only the unrelated offline prediction/channel boundaries. Campaign facts
+    # execute the complete real delivery helper and codec against a recording transport.
+    offline = clean_source((ROOT / "tests/fixtures/CoopOfflineStubs.cs").read_text(encoding="utf-8-sig"))
+    for declaration in ("internal static partial class BossRushCoop", "internal sealed class BossRushCoopMessage", "internal sealed class CoopPersonalDelivery<T>"):
+        start = offline.index(declaration)
+        end = offline.index("{", start) + 1
+        depth = 1
+        while depth:
+            depth += (offline[end] == "{") - (offline[end] == "}")
+            end += 1
+        offline = offline[:start] + offline[end:]
+    offline_path = OUT / "OfflineBoundaries.cs"
+    offline_path.write_text(offline, encoding="utf-8")
+    entry_getters = OUT / "EntryEpochProduction.cs"
+    getter_sources = (("ModeDRuntimeModule", "ModeD/ModeDRuntimeModule_Coop.cs", "coopEpoch"),
+        ("ModeERuntimeModule", "ModeE/ModeERuntimeModule_Coop.cs", "coopEpoch"),
+        ("ModeFRuntimeModule", "ModeF/ModeFRuntimeModule_Coop.cs", "coopEpoch"),
+        ("CoopArenaEntryAdapter", "WavesArena/WavesArenaRuntimeModule_Coop.cs", "coopArenaEpoch"))
+    getter_parts = []
+    for owner_type, getter_path, field in getter_sources:
+        source = clean_source((ROOT / getter_path).read_text(encoding="utf-8-sig"))
+        getter = extract_methods(source, ("internal string CampaignEntryEpoch", "internal bool TryGetCoopCampaignParticipantAsset("))
+        cohort, record = {"ModeDRuntimeModule": ("coopWaveParticipants", "string"),
+            "ModeERuntimeModule": ("coopModeEParticipants", "CoopModeEParticipant"),
+            "ModeFRuntimeModule": ("coopPlayers", "CoopModeFPlayerState"),
+            "CoopArenaEntryAdapter": ("coopArenaWaveParticipants", "string")}[owner_type]
+        if record != "string": getter_parts.append(extract_methods(source, ("internal sealed class " + record,)))
+        value = "asset" if record == "string" else "new " + record + " { Id=id, AssetId=asset, Admitted=admitted, Declined=declined }"
+        getter_parts.append("internal sealed partial class " + owner_type + " { private string " + field
+            + "; private readonly Dictionary<string," + record + "> " + cohort + "=new Dictionary<string," + record + ">();"
+            + " internal void SetParticipantForTest(string id,string asset,bool admitted=true,bool declined=false) { " + cohort + "[id]=" + value + "; }"
+            + " internal void SetEpochForTest(string value) { " + field + "=value; } " + getter + " }")
+    zombie_source = clean_source((ROOT / "ZombieMode/ZombieModeRuntimeModule_Coop.cs").read_text(encoding="utf-8-sig"))
+    getter_parts.append("internal sealed class ZombieModeRuntimeModule { internal ZombieModeRunState runState;"
+        + "internal readonly Dictionary<string,string> coopZombieParticipants=new Dictionary<string,string>();"
+        + "internal readonly HashSet<string> coopZombieStarterReady=new HashSet<string>();"
+        + extract_methods(zombie_source, ("internal bool TryGetCoopCampaignParticipantAsset(",)) + "}")
+    entry_getters.write_text("using System; using System.Collections.Generic; namespace BossRush {" + "".join(getter_parts) + "}", encoding="utf-8")
+    sources = [offline_path, entry_getters] + [ROOT / name for name in (
+        "Campaign/CampaignModels.cs", "Campaign/CampaignTuning.cs", "Campaign/CampaignRuntimeModule_Coop.cs",
+        "Utilities/CoopPersonalDelivery.cs", "Common/Coop/BossRushCoopJson.cs",
         "Campaign/CampaignQuestTable.cs", "Campaign/CampaignBaseObjectives.cs",
         "Campaign/CampaignContentCatalog.cs", "Campaign/CampaignObjectiveTracker.cs",
         "Campaign/CampaignObjectiveCollector.cs", "Campaign/CampaignFacilityUnlocks.cs",
@@ -105,11 +142,12 @@ def main():
         "ModeF/ModeFRuntimeModule_BountyLatch.cs",
         "Common/Data/BossRushJsonValue.cs", "Utilities/SimpleJsonHelper.cs",
         "ModeH/ModeHCanonicalDigest.cs", "ModeH/ModeHSeedStream.cs",
-    )] + [HERE / "Program.cs", HERE / "Stubs.cs", HERE / "FinalBossRegression.cs", HERE / "EntryRegression.cs", HERE / "F3FinalBossRegression.cs", extracted, entry_extracted, f3_extracted]
+    )] + [HERE / "Program.cs", HERE / "Stubs.cs", HERE / "FinalBossRegression.cs", HERE / "EntryRegression.cs", HERE / "F3FinalBossRegression.cs", HERE / "CoopFactsBoundary.cs", HERE / "CoopFactsRegression.cs", HERE / "CoopAttribution.cs", extracted, entry_extracted, f3_extracted]
     production = [p for p in sources if p.is_relative_to(ROOT) and not p.is_relative_to(HERE) and p != extracted]
     production += [ROOT / "Campaign/CampaignFinalBoss.cs", ROOT / "Campaign/CampaignDialoguePlayer.cs", ROOT / "Campaign/CampaignRuntimeModule.cs"]
     production += [ROOT / "WavesArena/BossRushEntryFlow.cs", ROOT / "UIAndSigns/UIAndSigns.cs", ROOT / "Utilities/SpawnPositionHelper.cs"]
     production += [f3_path, ROOT / "Campaign/CampaignRuntimeModule_Coop.cs"]
+    production += [ROOT / value[1] for value in getter_sources]
     (OUT / "production-source-sha256.json").write_text(json.dumps({str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in production}, indent=2), encoding="utf-8")
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType>'
     project += '<TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion>'
@@ -119,7 +157,11 @@ def main():
     project += '</ItemGroup></Project>'
     path = OUT / "CampaignPlayability.csproj"
     path.write_text(project, encoding="utf-8")
-    return subprocess.call(["dotnet", "run", "--project", str(path), "--configuration", "Release"], cwd=ROOT)
+    sys.path.insert(0, str(ROOT / "tools"))
+    from run_runtime_regressions import run_project_fixture
+    code, output = run_project_fixture(path, OUT / "execution", ROOT)
+    print(output)
+    return code
 
 
 if __name__ == "__main__":

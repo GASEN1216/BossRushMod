@@ -361,7 +361,8 @@ namespace BossRush
                 delegate { var failed = ambience; ambience = null; if (failed != null) failed.Dispose(); });
             encounters = new SkyIslandEncounters(root, player, navigation.Mask, groundMask, content, IsWorldSessionValid,
                 EncounterWasSaved, OnEncounterCleared, Status, EncounterLabel, OnStormDefeated, host.GetBossHealthMultiplier);
-            patrols = new SkyIslandPatrols(root, player, navigation.Mask, groundMask, origin, content, IsWorldSessionValid, delegate { return story.Current; });
+            // 巡守的钟庭门控与门本身同一口径（联机取全员旗标并集，单机就是 story.Current）。
+            patrols = new SkyIslandPatrols(root, player, navigation.Mask, groundMask, origin, content, IsWorldSessionValid, CoopGateStory);
             raidSeed = BossRushCoop.IsConnected && SkyIslandCoopRuntime.Current != null ? SkyIslandCoopRuntime.Current.Seed
                 : unchecked(Environment.TickCount ^ (int)(Time.realtimeSinceStartup * 1000f));
             services = new SkyIslandServices(player, root, groundMask, raidSeed);
@@ -383,9 +384,10 @@ namespace BossRush
                 extractionCountdown = new SkyIslandExtractionCountdown(root.transform, ExtractionHold);
             });
             // 搜刮点单独持有 owner：装配失败不拖垮旅程，玩家仍可正常走主线。
+            // 与遭遇 / 巡守同用世界有效性：房主阵亡后 TickCoopWorldWhileDead 仍要给活着的客人建箱（单机回落 IsSessionValid）。
             Safe("scavenging", delegate
             {
-                scavenging = new SkyIslandScavenging(root, player, groundMask, raidSeed, IsSessionValid,
+                scavenging = new SkyIslandScavenging(root, player, groundMask, raidSeed, IsWorldSessionValid,
                     Status, bounty.ReportScavenged);
             });
             EntryStep("residents", delegate { residents = new SkyIslandResidents(); residents.Start(root, navigation, IsSessionValid, worldStory.Talk); },
@@ -1081,7 +1083,8 @@ namespace BossRush
         internal bool CanBeginStoryChallenge(string id, out string reason)
         {
             reason = null;
-            if (!IsSessionValid() || story == null || !story.CanWrite || encounters == null) return false;
+            if (!IsSessionValid() || story == null || !story.CanWrite || encounters == null
+                || BossRushCoop.IsConnected && coopCompletedChallenges.Contains(BossRushCoop.LocalPlayerId + ":" + BossRushCoop.LocalAssetId + ":" + id)) return false;
             // 「还差什么」的文案只取战败动作的 Describe（CanApply 的 blocker）：已经能打或已了结时为 null。下面三条门照旧逐条写明。
             SkyIslandStoryAction outcome;
             if (TryChallengeOutcome(id, out outcome)) SkyIslandStoryRules.CanApply(story.Current, outcome, out reason);
@@ -1129,6 +1132,7 @@ namespace BossRush
         }
         private void OnEncounterCleared(string id)
         {
+            if (CompleteCoopChallenge(id, true)) return;
             string message;
             if (id == "Zheling") story.TryApply(SkyIslandStoryAction.ZhelingDefeated, out message);
             else if (id == "BellKeeper") story.TryApply(SkyIslandStoryAction.BellKeeperDefeated, out message);
@@ -1152,7 +1156,7 @@ namespace BossRush
             if (closed || root == null) return;
             // 噬风·回响倒下只发回响遗存，不碰剧情旗标（SkyIslandSessionEcho）。
             if (SkyIslandStormEchoRules.IsEcho(id)) { OnStormEchoDefeated(position); return; }
-            if (story != null)
+            if (!CompleteCoopChallenge(id, false) && story != null)
             {
                 string message;
                 story.TryApply(SkyIslandStoryAction.StormSlain, out message);

@@ -17,7 +17,7 @@ namespace BossRush
     [Serializable]
     internal sealed class CoopRandomEventFx
     {
-        public string Run, Id;
+        public string Run, Id, Token;
         public int Scene, Kind, Index;
         public float Duration;
         public Vector3 Position;
@@ -69,7 +69,7 @@ namespace BossRush
             coopCash.Tick(delta);
             for (int i = coopAirdropVisuals.Count - 1; i >= 0; i--)
                 if (coopAirdropVisuals[i] == null) coopAirdropVisuals.RemoveAt(i);
-            if (!BossRushCoop.IsClient) return;
+            if (!BossRushCoop.IsClient || !BossRushCoop.HasBoundScene) return;
             if (coopMerchant != null && coopMerchantShop != null) return;
             coopMerchantRetry -= Mathf.Max(0f, delta);
             if (coopMerchantRetry > 0f) return;
@@ -140,14 +140,14 @@ namespace BossRush
         }
         internal static void PublishCoopFx(int kind, Vector3 position, int index, float duration = 0f)
         {
-            if (BossRushCoop.IsHost) BossRushCoop.Broadcast("RandomEvents.fx", new CoopRandomEventFx
-            { Run = BossRushCoop.RunId, Id = Guid.NewGuid().ToString("N"), Scene = BossRushCoop.SceneGeneration, Kind = kind, Position = position, Index = index, Duration = duration });
+            if (BossRushCoop.IsHost && BossRushCoop.HasBoundScene) BossRushCoop.Broadcast("RandomEvents.fx", new CoopRandomEventFx
+            { Run = BossRushCoop.RunId, Token = BossRushCoop.SceneToken, Id = Guid.NewGuid().ToString("N"), Scene = BossRushCoop.SceneGeneration, Kind = kind, Position = position, Index = index, Duration = duration });
         }
         private void ReceiveCoopFx(BossRushCoopMessage message)
         {
-            if (!BossRushCoop.IsClient || message == null || !message.IsFromHost) return;
+            if (!BossRushCoop.IsClient || !BossRushCoop.HasBoundScene || message == null || !message.IsFromHost) return;
             CoopRandomEventFx fx = message.Read<CoopRandomEventFx>();
-            if (fx == null || fx.Scene != BossRushCoop.SceneGeneration || fx.Run != BossRushCoop.RunId
+            if (fx == null || fx.Scene != BossRushCoop.SceneGeneration || fx.Run != BossRushCoop.RunId || string.IsNullOrEmpty(fx.Token) || fx.Token != BossRushCoop.SceneToken
                 || string.IsNullOrEmpty(fx.Id) || fx.Id.Length > 64 || fx.Kind < 1 || fx.Kind > 4
                 || (fx.Kind == 4 && (float.IsNaN(fx.Duration) || float.IsInfinity(fx.Duration) || fx.Duration < 0.05f || fx.Duration > 60f))
                 || float.IsNaN(fx.Position.x) || float.IsInfinity(fx.Position.x)

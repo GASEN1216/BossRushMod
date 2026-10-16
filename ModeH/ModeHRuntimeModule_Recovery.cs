@@ -62,6 +62,7 @@ namespace BossRush
         private void BeginSeasonResumeScene()
         {
             if (_resumeScenePending || _runState == null || _map == null) return;
+            if (BossRushCoop.IsClient) { PresentRecoveryFailure("season_resume_host_required"); return; }
             if (SceneLoader.Instance == null || SceneLoader.IsSceneLoading)
             { PresentRecoveryFailure("season_resume_scene_busy"); return; }
             _commandsClosed = false;
@@ -69,6 +70,7 @@ namespace BossRush
             _resumeScenePending = true;
             _restoredSeasonPending = true;
             _restoredSlotGeneration = ModeHRuntimeGates.SlotGeneration;
+            BindCoopWorldAsset();
             // 原赛季入场票已消费，续赛不预扣新票，也不进入创建赛季的路径。
             _resumeSceneIntentGeneration = BossRushMapSelectionHelper.FreezeModeHEntryIntent(
                 _map.SceneName, _map.SceneId);
@@ -114,6 +116,7 @@ namespace BossRush
         private bool IsSeasonResumeRequestCurrent(long ownerToken, int slotGeneration, int intentGeneration)
         {
             return _resumeScenePending && !_shutdownCompleted && _runState != null
+                && IsCoopWorldAuthorityCurrent
                 && _runState.OwnerToken == ownerToken
                 && ModeHRuntimeGates.SlotGeneration == slotGeneration
                 && _resumeSceneIntentGeneration == intentGeneration

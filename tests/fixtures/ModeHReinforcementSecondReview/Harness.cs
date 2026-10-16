@@ -37,6 +37,7 @@ namespace UnityEngine
 namespace BossRush
 {
     using UnityEngine;
+    internal static class BossRushCoop { internal static bool IsConnected, IsHost; internal static string RunId; }
     internal enum Teams { scav, wolf, all }
     internal static class Team { internal static bool IsEnemy(Teams a, Teams b) { return a != b; } }
     internal sealed class Health { }
@@ -105,7 +106,7 @@ namespace BossRush
         public void Drain() { for (int i = 0; i < 20; i++) foreach (var c in Routines.ToArray()) Advance(c); }
     }
     internal enum ModeHLifecycle { MatchFighting, RelayPending, Intermission, Recovering, MatchSpawning }
-    internal sealed class Run { public long OwnerToken = 7; public int MatchIndex = 1, StateSequence; public ModeHLifecycle Lifecycle = ModeHLifecycle.MatchFighting; }
+    internal sealed class Run { public string RunId; public long OwnerToken = 7; public int MatchIndex = 1, StateSequence; public ModeHLifecycle Lifecycle = ModeHLifecycle.MatchFighting; }
     internal sealed class ModeHMatchPlanDto { public List<string> enemyStableKeys = new List<string>(); public List<int> enemyBatchIndices = new List<int>(); }
     internal sealed class ModeHMatchCorridor { public int SimultaneousCap; }
     internal static class ModeHEncounterPlanner
@@ -168,6 +169,8 @@ namespace BossRush
     internal sealed class Season { public ModeHMatchPlanDto currentMatchPlan = new ModeHMatchPlanDto(); }
     internal sealed partial class ModeHRuntimeModule
     {
+        private bool _coopProjection, _coopWorldWasConnected;
+        private string _coopWorldRun, _coopWorldRoom;
         private Run _runState = new Run(); private int _sceneGeneration = 1;
         private bool _commandsClosed, _shutdownCompleted, _errorSwapInputYielded;
         private Coroutine _relaySpawnRoutine, _spawnRoutine;

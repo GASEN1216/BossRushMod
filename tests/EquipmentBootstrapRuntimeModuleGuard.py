@@ -187,9 +187,18 @@ def main() -> int:
         return fail("Frostmourne player readiness polling cadence must stay at 0.5 seconds for at most 15 seconds")
     rc = ordered(method_body(frost_text, "internal void CleanupFrostmourneSystem()"), (
         "FrostmourneAbilityManager.CleanupStatic();",
-        "FrostmourneAction.CleanupAllSummonedZombies();",
+        "FrostmourneAction.ResetStaticCaches();",
         "FrostmourneBlueBossDropHandler.Cleanup();",
     ), "Frostmourne cleanup")
+    if rc:
+        return rc
+
+    # The owner must release the preset cache as well as scene entities. Keep
+    # both real reset operations, rather than accepting an unrelated same-name call.
+    frost_action = clean_source(Path("Integration/Frostmourne/FrostmourneAction.cs").read_text(encoding="utf-8-sig"))
+    rc = ordered(method_body(frost_action, "internal static void ResetStaticCaches()"), (
+        "CleanupAllSummonedZombies();", "ResetPresetCache();",
+    ), "Frostmourne complete reset")
     if rc:
         return rc
 

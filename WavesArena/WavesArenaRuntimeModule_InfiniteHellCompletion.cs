@@ -29,9 +29,15 @@ namespace BossRush
                 else owner.CheckInfiniteHellAchievementsForArena(InfiniteHellWaveIndex);
 
                 long cashThisWave = InfiniteHellWaveCashThisWave;
-                int copies = CoopArenaRewardCopies;
-                if (BossRushCoop.IsConnected)
-                    cashThisWave = copies <= 0 ? 0 : cashThisWave > long.MaxValue / copies ? long.MaxValue : cashThisWave * copies;
+                bool personalRewards = BossRushCoop.IsConnected;
+                int copies = personalRewards ? 0 : 1;
+                if (personalRewards)
+                {
+                    int itemType = InfiniteHellWaveIndex > 0 && InfiniteHellWaveIndex % 5 == 0 ? GetRandomInfiniteHellHighQualityRewardTypeID() : 0;
+                    if (InfiniteHellWaveIndex > 0 && InfiniteHellWaveIndex % 5 == 0 && itemType <= 0) itemType = 1253;
+                    DeliverCoopArenaReward("waveReward", cashThisWave, 0, itemType, 0);
+                    cashThisWave = 0; // 原数额已冻结到各个人资产，不能再给 host 铺共享份额或记账户。
+                }
                 InfiniteHellWaveCashThisWave = 0L;
                 // 实际交出去之前都算欠账：落地失败的余额记账户，账户也记不进去就滚进下一波，不再凭空丢。
                 long cashRemaining = cashThisWave;

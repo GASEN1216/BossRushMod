@@ -640,6 +640,14 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Starter_Gunner_Desc", "一把枪、一盒弹药、几口药粮、一身甲。", "A gun, a box of ammo, some meds and food, and a set of armor.");
             InjectZombieModeString("BossRush_ZombieMode_Starter_Select", "选择", "Select");
             InjectZombieModeString("BossRush_ZombieMode_Starter_Confirmed", "已锁定开局：{0}", "Starter locked: {0}");
+            InjectZombieModeString("BossRush_ZombieMode_Coop_WaitingTitle", "等待其他玩家确认", "Waiting for player confirmation");
+            InjectZombieModeString("BossRush_ZombieMode_Coop_StartTitle", "开始尸潮？", "Start the tide?");
+            InjectZombieModeString("BossRush_ZombieMode_Coop_StartBody", "未确认流派的玩家本场观战，暂扣现金和邀请函全额退还，下一场可参加。", "Players who have not confirmed a loadout spectate this run. Held cash and invitations are fully refunded; they can join the next run.");
+            InjectZombieModeString("BossRush_ZombieMode_Coop_StartConfirm", "开始并跳过未确认", "Start and skip unconfirmed");
+            InjectZombieModeString("BossRush_ZombieMode_Coop_KeepWaiting", "继续等待", "Keep waiting");
+            InjectZombieModeString("BossRush_ZombieMode_Coop_SkippedNoCharge", "本场已开始，你将旁观；未扣取入场资源，下一场可参加。", "This run has started. You will spectate without an entry charge and can join the next run.");
+            InjectZombieModeString("BossRush_ZombieMode_Coop_SkippedRefundPending", "本场旁观；暂扣现金和邀请函退款处理中，请返回原存档领取。下一场可参加。", "You will spectate. Held cash and invitation refunds are pending for your original save; you can join the next run.");
+            InjectZombieModeString("BossRush_ZombieMode_Coop_SkippedRefunded", "本场旁观；暂扣现金和邀请函已退还，下一场可参加。", "You will spectate. Held cash and invitation have been refunded; you can join the next run.");
             InjectZombieModeString("BossRush_ZombieMode_Hud_Wave", "第 {0} 波", "Wave {0}");
             InjectZombieModeString("BossRush_ZombieMode_Hud_Pollution", "污染 {0} ({1})", "Pollution {0} ({1})");
             InjectZombieModeString("BossRush_ZombieMode_Hud_PollutionTier_Base", "基础", "Base");

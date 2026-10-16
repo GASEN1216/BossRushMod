@@ -6,6 +6,7 @@ namespace UnityEngine { internal static class Debug { internal static void LogWa
 namespace ItemStatsSystem { public class Inventory { public List<Item> Content = new List<Item>(); } }
 namespace BossRush
 {
+    internal static class BossRushCoop { internal static bool IsConnected, IsHost; internal static string RunId; }
     public static class L10n { public static string T(string cn, string en) { return cn; } }
     public partial class ModBehaviour
     {
@@ -99,6 +100,8 @@ namespace BossRush
     internal static class ModeHSessionSummary { public static int Discards; public static void Discard() { Discards++; } }
     internal partial class ModeHRuntimeModule
     {
+        private bool _coopWorldWasConnected;
+        private string _coopWorldRun, _coopWorldRoom;
         private bool _coopProjection;
         private bool RetainCoopWorldOnSlotChange() { return false; }
         private void BindCoopWorldAsset() { }

@@ -1,170 +1,69 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using ItemStatsSystem;
 using ItemStatsSystem.Data;
-
-namespace UnityEngine
-{
-    public class GameObject { public Item Item; }
-    public static class Object { public static void Destroy(GameObject obj) { if (obj != null && obj.Item != null) obj.Item.Destroyed = true; } }
+namespace UnityEngine {
+ public class Object { public bool Destroyed, Persistent; public static bool operator ==(Object a,Object b){return (ReferenceEquals(a,null)||a.Destroyed)?ReferenceEquals(b,null)||b.Destroyed:ReferenceEquals(a,b);}public static bool operator !=(Object a,Object b){return !(a==b);}public override bool Equals(object o){return ReferenceEquals(this,o);}public override int GetHashCode(){return base.GetHashCode();} public static void DontDestroyOnLoad(Object o){o.Persistent=true;} public static void Destroy(Object o){if(ReferenceEquals(o,null))return;o.Destroyed=true;var go=o as GameObject;if(!ReferenceEquals(go,null)){foreach(var component in go.Components){component.Destroyed=true;var callback=component.GetType().GetMethod("OnDestroy",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Public);if(callback!=null)callback.Invoke(component,null);}if(!ReferenceEquals(go.Item,null))go.Item.Destroyed=true;foreach(var c in new List<Transform>(go.transform.Children))Destroy(c.Owner);}} }
+ public class MonoBehaviour:Object {public GameObject gameObject;}
+ public class GameObject:Object {public List<MonoBehaviour> Components=new List<MonoBehaviour>();public T AddComponent<T>() where T:MonoBehaviour{var value=(T)Activator.CreateInstance(typeof(T),true);value.gameObject=this;Components.Add(value);return value;}public Item Item;public bool activeSelf=true;public Transform transform;public GameObject(string name=""){transform=new Transform(this);}public void SetActive(bool value){activeSelf=value;} }
+ public class Transform {public GameObject Owner;public Transform Parent;public List<Transform> Children=new List<Transform>();public Transform(GameObject go){Owner=go;}public void SetParent(Transform parent,bool world=false){if(Parent!=null)Parent.Children.Remove(this);Parent=parent;if(parent!=null)parent.Children.Add(this);} }
 }
-namespace ItemStatsSystem
-{
-    public sealed class Item
-    {
-        public int TypeID, StackCount = 1;
-        public bool Stackable, Destroyed;
-        public Inventory Inventory;
-        public UnityEngine.GameObject gameObject;
-        public Item(int type, int count = 1) { TypeID = type; StackCount = count; Stackable = count > 1; gameObject = new UnityEngine.GameObject { Item = this }; }
-        public void Save(string key) { Saves.SavesSystem.AssetWrites++; }
-    }
-    public sealed class Inventory
-    {
-        public List<Item> Content = new List<Item>();
-        public void RemoveItem(Item item) { Content.Remove(item); }
-        public void Save(string key) { Saves.SavesSystem.AssetWrites++; }
-    }
+namespace Duckov.Utilities { public class CustomData {public string Key;public string Text;public int Value;public bool IsCount;public CustomData(){}public CustomData(string key,string text){Key=key;Text=text;}public CustomData(string key,int value){Key=key;Value=value;IsCount=true;}public string GetString(){return Text;}public int GetInt(){return Value;}public void SetInt(int v){Value=v;} } }
+namespace ItemStatsSystem {
+ public class Item:UnityEngine.Object {static int ids;public int Id=++ids;public int TypeID;public bool Stackable=true;int count=1;public int StackCount{get{return count;}set{count=value;SetCount();}}private Inventory inventory;public Inventory Inventory{get{return inventory;}set{inventory=value;if(value!=null)value.transform.SetParent(transform);}}public Inventory InInventory;public List<Duckov.Utilities.CustomData> Variables=new List<Duckov.Utilities.CustomData>();public UnityEngine.GameObject gameObject;public UnityEngine.Transform transform{get{return gameObject.transform;}}public Item(int type=0,int number=1){TypeID=type;gameObject=new UnityEngine.GameObject(){Item=this};StackCount=number;}private void SetCount(){var v=Variables.Find(x=>x.Key=="Count");if(v==null)Variables.Add(new Duckov.Utilities.CustomData("Count",count));else v.SetInt(count);}public void SetString(string key,string value){var old=Variables.Find(v=>v.Key==key);if(old!=null)Variables.Remove(old);Variables.Add(new Duckov.Utilities.CustomData(key,value));}public string GetString(string key){var v=Variables.Find(x=>x.Key==key);return v==null?null:v.GetString();}public int GetInstanceID(){return Id;}public void Detach(){if(InInventory!=null)InInventory.RemoveItem(this);transform.SetParent(null);}public List<Item> GetAllChildren(bool self,bool slots){var all=new List<Item>();if(self)all.Add(this);if(Inventory!=null)foreach(var child in Inventory.Content)if(child!=null)all.AddRange(child.GetAllChildren(true,false));return all;}public void Save(string key){Saves.SavesSystem.AssetWrites++;} }
+ public class Inventory:UnityEngine.Object {public UnityEngine.GameObject gameObject=new UnityEngine.GameObject();public UnityEngine.Transform transform{get{return gameObject.transform;}}public int Capacity=16;public List<Item> Content=new List<Item>();public bool FailAdd;public bool AddAt(Item item,int index){if(FailAdd||index>=Capacity)return false;while(Content.Count<=index)Content.Add(null);Content[index]=item;item.InInventory=this;item.transform.SetParent(transform);return true;}public void RemoveItem(Item item){int i=Content.IndexOf(item);if(i>=0)Content[i]=null;item.InInventory=null;item.transform.SetParent(null);}public void Save(string key){Saves.SavesSystem.AssetWrites++;} }
 }
-namespace ItemStatsSystem.Data
-{
-    public sealed class CustomData
-    {
-        public string Key = "Count";
-        public int Value;
-        public void SetInt(int value) { Value = value; }
-    }
-    public sealed class ItemTreeData
-    {
-        public int rootInstanceID;
-        public List<DataEntry> entries = new List<DataEntry>();
-        public DataEntry RootData { get { return entries.Find(e => e.instanceID == rootInstanceID); } }
-        public int RootTypeID { get { return RootData == null ? 0 : RootData.typeID; } }
-        public sealed class DataEntry
-        {
-            public int instanceID, typeID;
-            public List<CustomData> variables = new List<CustomData>();
-            public int StackCount { get { var count = variables.Find(v => v.Key == "Count"); return count == null ? 1 : count.Value; } }
-        }
-    }
+namespace ItemStatsSystem.Data {
+ public class ItemTreeData {public int rootInstanceID;public List<DataEntry> entries=new List<DataEntry>();public DataEntry RootData{get{return entries==null?null:entries.Find(v=>v.instanceID==rootInstanceID);}}public int RootTypeID{get{return RootData==null?0:RootData.typeID;}}public class DataEntry {public int instanceID,typeID;public List<Duckov.Utilities.CustomData> variables=new List<Duckov.Utilities.CustomData>();public List<InventoryEntry> inventory=new List<InventoryEntry>();public int StackCount{get{var v=variables.Find(x=>x.Key=="Count");return v==null?1:v.Value;}}}public class InventoryEntry {public int position,instanceID;}public static ItemTreeData FromItem(Item item){var tree=new ItemTreeData{rootInstanceID=item.GetInstanceID()};Build(tree,item);return tree;}static void Build(ItemTreeData tree,Item item){var e=new DataEntry{instanceID=item.Id,typeID=item.TypeID};foreach(var v in item.Variables)e.variables.Add(new Duckov.Utilities.CustomData{Key=v.Key,Text=v.Text,Value=v.Value,IsCount=v.IsCount});tree.entries.Add(e);if(item.Inventory!=null)for(int i=0;i<item.Inventory.Content.Count;i++){var c=item.Inventory.Content[i];if(c==null)continue;e.inventory.Add(new InventoryEntry{position=i,instanceID=c.Id});Build(tree,c);}}public static TaskCompletionSource<Item> Pending;public static bool Delay;public static int FactoryCalls;public static Task<Item> InstantiateAsync(ItemTreeData data){FactoryCalls++;if(Delay){Pending=new TaskCompletionSource<Item>();return Pending.Task;}return Task.FromResult(Load(data,data.RootData));}public static Item Load(ItemTreeData tree,DataEntry entry){var item=new Item(entry.typeID,entry.StackCount);foreach(var v in entry.variables)if(v.Key!="Count")item.Variables.Add(new Duckov.Utilities.CustomData{Key=v.Key,Text=v.Text,Value=v.Value,IsCount=v.IsCount});if(entry.inventory.Count>0){item.Inventory=new Inventory();foreach(var link in entry.inventory)item.Inventory.AddAt(Load(tree,tree.entries.Find(e=>e.instanceID==link.instanceID)),link.position);}return item;} }
 }
-public sealed class CharacterMainControl
-{
-    public static CharacterMainControl Main;
-    public Item CharacterItem = new Item(0) { Inventory = new Inventory() };
-}
-public static class PlayerStorage { public static Inventory Inventory; }
-public sealed class PlayerStorageBuffer
-{
-    public static PlayerStorageBuffer Instance;
-    public static List<ItemTreeData> Buffer = new List<ItemTreeData>();
-    public static bool FailSave;
-    public static void SaveBuffer()
-    {
-        if (FailSave) throw new InvalidOperationException("buffer save failure");
-        Saves.SavesSystem.AssetWrites++;
-    }
-}
-namespace Saves
-{
-    public static class SavesSystem
-    {
-        public static int CurrentSlot = 1, AssetWrites, PhysicalWrites;
-        public static bool IsSaving, FailPhysical;
-        public static string Key = "original_snapshot", PhysicalKey = "original_snapshot";
-        public static T Load<T>(string key) { return (T)(object)Key; }
-        public static void Save<T>(string key, T value) { Key = (string)(object)value; }
-        public static void SaveFile(bool ignored)
-        {
-            if (FailPhysical) throw new InvalidOperationException("physical failure after cached key changed");
-            PhysicalKey = Key; PhysicalWrites++;
-        }
-    }
-}
-namespace BossRush
-{
-    public static class ModBehaviour { public static void DevLog(string text) { } }
-    public partial class BufferRestoreProbe
-    {
-        private const string AutotestSnapshotKey = "snapshot";
-        private sealed class AutotestSnapshot
-        {
-            public int Slot;
-            public bool BufferCountsIncluded;
-            public Dictionary<int, int> Items = new Dictionary<int, int>();
-        }
-        private static readonly int[] AutotestLedgerTypeIds = { 42 };
-        private static bool AutotestWriteAllowed(out string reason) { reason = null; return true; }
-        public string Detail;
-        public bool Restore(int before, bool bufferIncluded = true, int slot = 1)
-        {
-            var snapshot = new AutotestSnapshot { Slot = slot, BufferCountsIncluded = bufferIncluded };
-            snapshot.Items[42] = before;
-            return TryReclaimAutotestItems(snapshot, out Detail) && ClearAutotestSnapshotKey();
-        }
-        public static int Count() { string where; return CountOwnedItems(42, out where); }
-        public static string CountDetail() { string where; CountOwnedItems(42, out where); return where; }
-    }
-    internal static class Program
-    {
-        private static int checks;
-        private static void Check(bool ok, string name) { checks++; if (!ok) throw new Exception(name); }
-        private static ItemTreeData Tree(int id, int type = 42, int count = 1)
-        {
-            var tree = new ItemTreeData { rootInstanceID = id };
-            tree.entries.Add(new ItemTreeData.DataEntry { instanceID = id, typeID = type });
-            tree.RootData.variables.Add(new CustomData { Value = count });
-            return tree;
-        }
-        private static void Reset()
-        {
-            CharacterMainControl.Main = new CharacterMainControl(); PlayerStorage.Inventory = new Inventory();
-            PlayerStorageBuffer.Instance = new PlayerStorageBuffer(); PlayerStorageBuffer.Buffer.Clear(); PlayerStorageBuffer.FailSave = false;
-            Saves.SavesSystem.Key = Saves.SavesSystem.PhysicalKey = "original_snapshot";
-            Saves.SavesSystem.AssetWrites = Saves.SavesSystem.PhysicalWrites = 0;
-            Saves.SavesSystem.IsSaving = Saves.SavesSystem.FailPhysical = false;
-        }
-        public static void Main()
-        {
-            var probe = new BufferRestoreProbe();
-            Reset();
-            var old = Tree(1, 42, 2); var unrelated = Tree(2, 99); var reward = Tree(3);
-            PlayerStorageBuffer.Buffer.AddRange(new[] { old, unrelated, reward });
-            Check(BufferRestoreProbe.Count() == 3, "readonly count includes official pending buffer");
-            Check(probe.Restore(2) && PlayerStorageBuffer.Buffer.Count == 2
-                && ReferenceEquals(PlayerStorageBuffer.Buffer[0], old) && ReferenceEquals(PlayerStorageBuffer.Buffer[1], unrelated),
-                "full-storage buffer reward reclaimed while original and unrelated trees remain");
-            Check(Saves.SavesSystem.PhysicalKey == "" && Saves.SavesSystem.AssetWrites == 3, "asset snapshots precede durable recovery-key clear");
-
-            Reset(); old = Tree(1); reward = Tree(2, 42, 5); PlayerStorageBuffer.Buffer.AddRange(new[] { old, reward });
-            Check(probe.Restore(3) && ReferenceEquals(PlayerStorageBuffer.Buffer[0], old)
-                && reward.RootData.StackCount == 2, "partial buffered stack removal retains baseline quantity");
-
-            Reset(); old = Tree(1); reward = Tree(2); PlayerStorageBuffer.Buffer.AddRange(new[] { old, reward });
-            PlayerStorageBuffer.FailSave = true;
-            Check(!probe.Restore(1) && Saves.SavesSystem.Key == "original_snapshot" && Saves.SavesSystem.PhysicalWrites == 0,
-                "SaveBuffer failure preserves recovery key and skips physical clear");
-            PlayerStorageBuffer.FailSave = false;
-            Check(probe.Restore(1) && PlayerStorageBuffer.Buffer.Count == 1 && ReferenceEquals(PlayerStorageBuffer.Buffer[0], old),
-                "retry after Buffer save failure is idempotent");
-
-            Reset(); PlayerStorageBuffer.Buffer.Add(Tree(7)); Saves.SavesSystem.FailPhysical = true;
-            Check(!probe.Restore(0) && Saves.SavesSystem.Key == "original_snapshot" && Saves.SavesSystem.PhysicalKey == "original_snapshot",
-                "physical failure restores cached recovery key after clear changed cache");
-
-            Reset(); old = Tree(1); PlayerStorageBuffer.Buffer.Add(old);
-            Check(!probe.Restore(0, false) && ReferenceEquals(PlayerStorageBuffer.Buffer[0], old)
-                && Saves.SavesSystem.Key == "original_snapshot", "legacy snapshot cannot delete uncounted original Buffer");
-            Check(!probe.Restore(0, true, 2) && PlayerStorageBuffer.Buffer.Count == 1, "slot mismatch rejects before any mutation");
-            Reset(); Check(probe.Restore(0, false), "legacy snapshot with empty Buffer remains recoverable");
-
-            Reset(); old = Tree(1); old.entries = null; PlayerStorageBuffer.Buffer.Add(old);
-            Check(!probe.Restore(0) && Saves.SavesSystem.Key == "original_snapshot", "malformed Buffer keeps recovery key without destructive recovery");
-            Reset(); CharacterMainControl.Main = null;
-            Check(BufferRestoreProbe.CountDetail().Contains("pack:error"), "missing player is an unreadable count rather than zero assets");
-            CharacterMainControl.Main = new CharacterMainControl(); CharacterMainControl.Main.CharacterItem.Inventory = null;
-            Check(BufferRestoreProbe.CountDetail().Contains("pack:error"), "missing inventory cannot authorize a zero baseline snapshot");
-            Console.WriteLine("PASS AutotestBuffer " + checks + " assertions");
-        }
-    }
+public sealed class CharacterMainControl {public static CharacterMainControl Main;public Item CharacterItem=new Item(){Inventory=new Inventory()};}
+public static class PlayerStorage {public static Inventory Inventory;}
+public sealed class PlayerStorageBuffer {public static PlayerStorageBuffer Instance;public static List<ItemTreeData> Buffer=new List<ItemTreeData>();public static bool FailSave;public static void SaveBuffer(){if(FailSave)throw new InvalidOperationException("buffer save failure");Saves.SavesSystem.AssetWrites++;}}
+namespace Saves {public static class SavesSystem {public static int CurrentSlot=1,AssetWrites,PhysicalWrites;public static bool IsSaving,FailPhysical;public static string Key="snapshot",PhysicalKey="snapshot";public static T Load<T>(string key){return (T)(object)Key;}public static void Save<T>(string key,T value){Key=(string)(object)value;}public static void SaveFile(bool flag){if(FailPhysical)throw new Exception("physical failure");PhysicalKey=Key;PhysicalWrites++;}}}
+namespace BossRush {
+ public static class ModBehaviour {public static void DevLog(string message){} }
+ public static class BossRushCoop {public static string LocalAssetId="asset-a";}
+ public partial class BufferRestoreProbe {
+  private const string AutotestSnapshotKey="snapshot";
+  private static readonly int[] AutotestLedgerTypeIds={42};
+  private sealed class AutotestSnapshot {internal string Asset="asset-a",RunId="run";internal int Slot=1;internal bool BufferCountsIncluded=true,ItemReceiptsIncluded;internal readonly Dictionary<int,int> Items=new Dictionary<int,int>();internal readonly List<F3AutotestItemReceipt> Originals=new List<F3AutotestItemReceipt>();}
+  private static AutotestSnapshot Snapshot;
+  public static bool Gate=true,Dedicated=true;
+  private static bool AutotestWriteAllowed(out string reason){reason=Gate?null:"closed";return Gate;}
+  private static bool IsDedicatedCurrentSlot(){return Dedicated;}
+  private static AutotestSnapshot DecodeAutotestSnapshot(string json){return json=="snapshot"?Snapshot:null;}
+  public string Detail;
+  public static void Capture(bool stash=true){string where;Snapshot=new AutotestSnapshot();Snapshot.Items[42]=CountOwnedItems(42,out where);CaptureAutotestOriginals(Snapshot);Check(ValidateAutotestReceipts(Snapshot),"captured complete original tree receipts");if(stash)StashAutotestOriginals(Snapshot);}
+  public bool Restore(bool clear=false){bool ok=TryReclaimAutotestItems(Snapshot,out Detail);Console.WriteLine("RESTORE "+ok+" "+Detail);return ok&&(!clear||ClearAutotestSnapshotKey());}
+  public static void Crash(){if(_autotestCustodyOwner!=null)ResetAutotestStaticCaches(_autotestCustodyOwner);}
+  public static void Reset(){if(_autotestCustodyOwner!=null)ResetAutotestStaticCaches(_autotestCustodyOwner);CharacterMainControl.Main=new CharacterMainControl();PlayerStorage.Inventory=new Inventory();PlayerStorageBuffer.Instance=new PlayerStorageBuffer();PlayerStorageBuffer.Buffer.Clear();PlayerStorageBuffer.FailSave=false;Saves.SavesSystem.CurrentSlot=1;Saves.SavesSystem.IsSaving=Saves.SavesSystem.FailPhysical=false;Saves.SavesSystem.Key=Saves.SavesSystem.PhysicalKey="snapshot";Saves.SavesSystem.AssetWrites=Saves.SavesSystem.PhysicalWrites=0;BossRushCoop.LocalAssetId="asset-a";ItemTreeData.Delay=false;ItemTreeData.FactoryCalls=0;Gate=Dedicated=true;Snapshot=null;}
+  static int checks;static void Check(bool ok,string label){checks++;if(!ok)throw new Exception(label);Console.WriteLine("PASS "+label);}
+  public static void Main(){var probe=new BufferRestoreProbe();
+   Reset();var a=ItemTreeData.FromItem(new Item(42));PlayerStorageBuffer.Buffer.Add(a);Capture();var b=new Item(42);CharacterMainControl.Main.CharacterItem.Inventory.AddAt(b,0);Check(probe.Restore(true)&&ReferenceEquals(PlayerStorageBuffer.Buffer[0],a)&&b.Destroyed,"original Buffer A survives; only new pack B reclaimed; key cleared");
+   Reset();var original=new Item(42,3);original.SetString("rarity","original-blue");CharacterMainControl.Main.CharacterItem.Inventory.AddAt(original,3);Capture();Check(original.InInventory==null&&!original.Destroyed,"original stack stashed by actual instance before test consumption or merge");b=new Item(42,9);CharacterMainControl.Main.CharacterItem.Inventory.AddAt(b,3);Check(probe.Restore()&&ReferenceEquals(CharacterMainControl.Main.CharacterItem.Inventory.Content[3],original)&&original.StackCount==3&&original.GetString("rarity")=="original-blue"&&b.Destroyed,"same-ID test merged stack reclaimed, exact original quantity and metadata returned");
+   Reset();var container=new Item(99){Inventory=new Inventory()};var child=new Item(42,2);container.Inventory.AddAt(child,2);CharacterMainControl.Main.CharacterItem.Inventory.AddAt(container,1);Capture();Check(probe.Restore()&&ReferenceEquals(CharacterMainControl.Main.CharacterItem.Inventory.Content[1],container)&&ReferenceEquals(container.Inventory.Content[2],child),"nested original tree and exact children survive custody");
+   Reset();original=new Item(42,2);CharacterMainControl.Main.CharacterItem.Inventory.AddAt(original,4);Capture();Check(_autotestItemEscrow.Persistent&&original.transform.Parent==_autotestItemEscrow.transform,"real stash code selects persistent owner and detaches original from body hierarchy");UnityEngine.Object.Destroy(CharacterMainControl.Main.CharacterItem.gameObject);Check(!original.Destroyed,"mandatory old body destruction preserves original under persistent owner");CharacterMainControl.Main=new CharacterMainControl();Check(probe.Restore()&&ReferenceEquals(CharacterMainControl.Main.CharacterItem.Inventory.Content[4],original),"same asset new scene body receives exact original instance at original index");
+   Reset();a=ItemTreeData.FromItem(new Item(42,2));PlayerStorageBuffer.Buffer.Add(a);Capture(false);b=new Item(42,5);CharacterMainControl.Main.CharacterItem.Inventory.AddAt(b,0);Check(probe.Restore()&&ReferenceEquals(PlayerStorageBuffer.Buffer[0],a)&&b.Destroyed,"interruption before stash preserves original receipt and reclaims only new instance");
+   Reset();original=new Item(42,2);CharacterMainControl.Main.CharacterItem.Inventory.AddAt(original,2);Capture(false);b=new Item(42);PlayerStorageBuffer.Buffer.Add(ItemTreeData.FromItem(b));Check(probe.Restore()&&ReferenceEquals(CharacterMainControl.Main.CharacterItem.Inventory.Content[2],original)&&!original.Destroyed&&PlayerStorageBuffer.Buffer.Count==0,"interruption before stash protects exact original pack identity from type-based cleanup");
+   Reset();original=new Item(42,2);CharacterMainControl.Main.CharacterItem.Inventory.AddAt(original,2);Capture();original.StackCount=1;Check(!probe.Restore()&&Saves.SavesSystem.Key=="snapshot","unexpected original shortage must remain pending and cannot clear recovery key");
+   Reset();Capture();b=new Item(42);CharacterMainControl.Main.CharacterItem.Inventory.AddAt(b,0);Gate=false;Check(!probe.Restore()&&!b.Destroyed,"variable write gate rejects without mutation");Gate=true;Saves.SavesSystem.CurrentSlot=2;Check(!probe.Restore()&&!b.Destroyed,"wrong slot refuses before reclaim");Saves.SavesSystem.CurrentSlot=1;BossRushCoop.LocalAssetId="other";Check(!probe.Restore()&&!b.Destroyed,"wrong character asset refuses before reclaim");BossRushCoop.LocalAssetId="asset-a";Saves.SavesSystem.IsSaving=true;Check(!probe.Restore()&&!b.Destroyed,"saving gate refuses before reclaim");Saves.SavesSystem.IsSaving=false;
+   Snapshot.ItemReceiptsIncluded=false;Check(!probe.Restore()&&!b.Destroyed&&Saves.SavesSystem.Key=="snapshot","legacy count-only snapshot always pending, never false green");
+   Reset();original=new Item(42,2);CharacterMainControl.Main.CharacterItem.Inventory.AddAt(original,1);Capture();Snapshot.Originals.Clear();b=new Item(42);CharacterMainControl.Main.CharacterItem.Inventory.AddAt(b,0);Check(!probe.Restore()&&!b.Destroyed,"missing original tree receipt fails before destructive reclaim");
+   Reset();original=new Item(42,2);CharacterMainControl.Main.CharacterItem.Inventory.AddAt(original,1);Capture();Crash();Check(!probe.Restore(),"crash recovery materializes original through actual asynchronous method");Check(probe.Restore()&&CharacterMainControl.Main.CharacterItem.Inventory.Content[1].StackCount==2&&ItemTreeData.FactoryCalls==1,"crash recovery retries once and restores original tree without duplicate");
+   Reset();original=new Item(42);CharacterMainControl.Main.CharacterItem.Inventory.AddAt(original,0);Capture();var blocker=new Item(99);CharacterMainControl.Main.CharacterItem.Inventory.AddAt(blocker,0);Check(!probe.Restore()&&!blocker.Destroyed&&ReferenceEquals(CharacterMainControl.Main.CharacterItem.Inventory.Content[0],blocker),"occupied original source slot cannot be overwritten by native AddAt");CharacterMainControl.Main.CharacterItem.Inventory.RemoveItem(blocker);Check(probe.Restore(),"freeing exact source slot allows original restore");
+   Reset();Capture();container=new Item(42){Inventory=new Inventory()};child=new Item(99);container.Inventory.AddAt(child,0);CharacterMainControl.Main.CharacterItem.Inventory.AddAt(container,0);Check(!probe.Restore()&&!container.Destroyed&&!child.Destroyed,"test container with unrelated child remains pending rather than deleting child");
+   Reset();original=new Item(42);PlayerStorage.Inventory.AddAt(original,2);Capture();PlayerStorageBuffer.FailSave=true;Check(!probe.Restore(true)&&Saves.SavesSystem.Key=="snapshot","buffer asset save failure preserves recovery key");PlayerStorageBuffer.FailSave=false;Check(probe.Restore(true)&&ReferenceEquals(PlayerStorage.Inventory.Content[2],original),"retry after asset save failure is idempotent");
+   Reset();original=new Item(42);original.SetString(AutotestOriginalKey,"prior-private-marker");CharacterMainControl.Main.CharacterItem.Inventory.AddAt(original,2);Capture();Check(probe.Restore(true)&&original.GetString(AutotestOriginalKey)=="prior-private-marker","successful commit restores original private marker value with key clear");
+   Reset();original=new Item(42);CharacterMainControl.Main.CharacterItem.Inventory.AddAt(original,2);Capture();Saves.SavesSystem.FailPhysical=true;Check(!probe.Restore(true)&&Saves.SavesSystem.Key=="snapshot"&&Saves.SavesSystem.PhysicalKey=="snapshot"&&original.GetString(AutotestOriginalKey)==Snapshot.Originals[0].Token,"physical commit failure restores pending cached key and exact original token");Saves.SavesSystem.FailPhysical=false;Check(probe.Restore(true)&&original.GetString(AutotestOriginalKey)==null,"retry commits without leaving any added private marker on original");
+   Reset();Capture();b=new Item(42);PlayerStorageBuffer.Buffer.Add(ItemTreeData.FromItem(b));CharacterMainControl.Main.CharacterItem.Inventory=null;Check(!probe.Restore()&&PlayerStorageBuffer.Buffer.Count==1&&Saves.SavesSystem.Key=="snapshot","unreadable pack stops before reclaiming even newly buffered items");
+   Reset();original=new Item(42);CharacterMainControl.Main.CharacterItem.Inventory.AddAt(original,0);Capture();Crash();ItemTreeData.Delay=true;Check(!probe.Restore(),"delayed native factory leaves pending recovery");var pendingTree=BossRushCoopJson.FromJson<ItemTreeData>(Snapshot.Originals[0].TreeJson);var copy=ItemTreeData.Load(pendingTree,pendingTree.RootData);Saves.SavesSystem.CurrentSlot=2;ItemTreeData.Pending.SetResult(copy);Check(copy.Destroyed&&Saves.SavesSystem.Key=="snapshot","late factory continuation after slot change destroys only newly created copy and preserves backup");
+   Reset();original=new Item(42);CharacterMainControl.Main.CharacterItem.Inventory.AddAt(original,0);Capture();Crash();ItemTreeData.Delay=true;Check(!probe.Restore(),"body-change factory starts pending");pendingTree=BossRushCoopJson.FromJson<ItemTreeData>(Snapshot.Originals[0].TreeJson);copy=ItemTreeData.Load(pendingTree,pendingTree.RootData);UnityEngine.Object.Destroy(CharacterMainControl.Main.CharacterItem.gameObject);CharacterMainControl.Main=new CharacterMainControl();ItemTreeData.Pending.SetResult(copy);Check(copy.Destroyed&&CharacterMainControl.Main.CharacterItem.Inventory.Content.Count==0,"destroyed old body blocks late factory copy from new body");
+   Reset();original=new Item(42);CharacterMainControl.Main.CharacterItem.Inventory.AddAt(original,0);Capture();Crash();ItemTreeData.Delay=true;Check(!probe.Restore(),"cancelled-run factory starts pending");pendingTree=BossRushCoopJson.FromJson<ItemTreeData>(Snapshot.Originals[0].TreeJson);copy=ItemTreeData.Load(pendingTree,pendingTree.RootData);Saves.SavesSystem.Key="new-run-snapshot";ItemTreeData.Pending.SetResult(copy);Check(copy.Destroyed,"cancelled or replaced snapshot cannot accept old factory continuation");
+   Reset();original=new Item(42,2);CharacterMainControl.Main.CharacterItem.Inventory.AddAt(original,2);Capture();var originalOwner=_autotestCustodyOwner;var unrelatedRunner=new UnityEngine.GameObject("runner");UnityEngine.Object.Destroy(unrelatedRunner);Check(_autotestCustodyOwner==originalOwner&&!original.Destroyed&&originalOwner.Custody.Count==1,"independent runner destruction keeps persistent owner and exact original");Check(probe.Restore(true)&&!original.Destroyed&&_autotestCustodyOwner==null&&_autotestItemEscrow==null,"successful commit retires only empty owner after original is attached");
+   Reset();original=new Item(42,2);CharacterMainControl.Main.CharacterItem.Inventory.AddAt(original,2);Capture();originalOwner=_autotestCustodyOwner;UnityEngine.Object.Destroy(originalOwner.gameObject);Check(original.Destroyed&&_autotestCustodyOwner==null&&_autotestItemEscrow==null&&originalOwner.Custody.Count==0&&Saves.SavesSystem.Key=="snapshot","actual persistent owner OnDestroy clears references while keeping durable recovery key");Check(!probe.Restore()&&probe.Restore()&&CharacterMainControl.Main.CharacterItem.Inventory.Content[2].StackCount==2,"destroyed owner restores complete original tree from persisted receipt");
+   Reset();original=new Item(42);CharacterMainControl.Main.CharacterItem.Inventory.AddAt(original,0);Capture();Crash();ItemTreeData.Delay=true;Check(!probe.Restore(),"owner-destruction factory starts pending");originalOwner=_autotestCustodyOwner;var oldCustody=new List<AutotestItemCustody>(originalOwner.Custody.Values)[0];var oldTask=ItemTreeData.Pending;pendingTree=BossRushCoopJson.FromJson<ItemTreeData>(Snapshot.Originals[0].TreeJson);copy=ItemTreeData.Load(pendingTree,pendingTree.RootData);UnityEngine.Object.Destroy(originalOwner.gameObject);var replacementOwner=GetAutotestCustodyOwner();oldTask.SetResult(copy);Check(oldCustody.Retired&&copy.Destroyed&&replacementOwner==_autotestCustodyOwner&&replacementOwner.Custody.Count==0&&Saves.SavesSystem.Key=="snapshot","destroyed owner rejects late factory copy without populating replacement owner");ResetAutotestStaticCaches(originalOwner);Check(_autotestCustodyOwner==replacementOwner,"old owner repeated callback cannot reset new owner");
+   Console.WriteLine("PASS Autotest original receipts "+checks+" assertions");
+  }
+ }
 }

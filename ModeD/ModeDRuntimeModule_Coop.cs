@@ -12,6 +12,15 @@ namespace BossRush
         public int Wave, Expected, Resolved;
         public string Epoch;
         public string[] Enemies;
+        public CoopModeDAdmission[] Admissions;
+        public string[] WavePlayers, WaveAssets;
+    }
+
+    [Serializable]
+    internal sealed class CoopModeDAdmission
+    {
+        public string Player, Asset;
+        public bool Accepted;
     }
 
     [Serializable]
@@ -26,6 +35,12 @@ namespace BossRush
         private CoopGameplayChannel<CoopModeDState> coopChannel;
         private CoopPersonalDelivery<CoopModeDPersonal> coopPersonal;
         private string coopEpoch;
+        internal string CampaignEntryEpoch { get { return coopEpoch; } }
+        internal bool TryGetCoopCampaignParticipantAsset(string expectedEpoch, string playerId, out string assetId)
+        {
+            assetId = null;
+            return expectedEpoch == coopEpoch && coopWaveParticipants.TryGetValue(playerId, out assetId);
+        }
         private string coopDeliveredEpoch;
         private string coopAchievementEpoch;
         private readonly Dictionary<string, string> coopWaveParticipants = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -37,6 +52,8 @@ namespace BossRush
         private readonly Dictionary<string, bool> coopModeDAdmissionDecisions = new Dictionary<string, bool>(StringComparer.Ordinal);
         private readonly Dictionary<string, string> coopModeDAdmitted = new Dictionary<string, string>(StringComparer.Ordinal);
         private readonly Dictionary<string, int> coopModeDStarterAttempts = new Dictionary<string, int>(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> coopModeDStarterSent = new Dictionary<string, int>(StringComparer.Ordinal);
+        private readonly Dictionary<string, CoopModeDAdmission> coopModeDConfirmed = new Dictionary<string, CoopModeDAdmission>(StringComparer.Ordinal);
         private readonly List<Item> coopModeDStarterRollback = new List<Item>();
 
         private void RefreshCoopModeDParticipants()
@@ -45,6 +62,8 @@ namespace BossRush
             coopModeDParticipantEpoch = coopEpoch;
             coopModeDParticipants.Clear();
             coopModeDAdmitted.Clear(); coopModeDStarterAttempts.Clear();
+            coopModeDStarterSent.Clear();
+            coopModeDConfirmed.Clear();
             coopModeDLocalAsset = BossRushCoop.LocalAssetId;
             foreach (BossRushCoopPlayer player in BossRushCoop.Players)
                 if (player.IsAlive && !string.IsNullOrEmpty(player.AssetId)) coopModeDParticipants[player.Id] = player.AssetId;
@@ -126,9 +145,11 @@ namespace BossRush
             TickCoopModeDStarterRollback(deltaTime);
             coopModeDAdmissionRetry -= Mathf.Max(0f, deltaTime);
             bool decision;
+            CoopModeDAdmission confirmed;
             if (BossRushCoop.IsClient && modeDActive && coopModeDLocalAsset == BossRushCoop.LocalAssetId && coopModeDAdmissionRetry <= 0f
-                && coopModeDAdmissionDecisions.TryGetValue(coopEpoch + ":" + coopModeDLocalAsset, out decision))
-            { coopModeDAdmissionRetry = 1f; coopChannel.Request("admission", text: coopEpoch, flag: decision); }
+                && coopModeDAdmissionDecisions.TryGetValue(coopEpoch + ":" + coopModeDLocalAsset, out decision)
+                && (!coopModeDConfirmed.TryGetValue(BossRushCoop.LocalPlayerId, out confirmed) || confirmed.Asset != coopModeDLocalAsset || confirmed.Accepted != decision))
+            { coopModeDAdmissionRetry = 1f; coopChannel.RequestRepeat("admission", text: coopEpoch, flag: decision); }
             if (!BossRushCoop.IsHost || !modeDActive) return;
             RefreshCoopModeDParticipants();
             foreach (BossRushCoopPlayer player in BossRushCoop.Players)
@@ -139,7 +160,10 @@ namespace BossRush
                 if (player.IsAlive && asset == player.AssetId)
                 {
                     int attempt; coopModeDStarterAttempts.TryGetValue(player.Id, out attempt);
-                    coopPersonal.Deliver(player.Id, "start:" + coopEpoch + ":" + attempt, new CoopModeDPersonal { Epoch = coopEpoch }, asset);
+                    int sent;
+                    if ((!coopModeDStarterSent.TryGetValue(player.Id, out sent) || sent != attempt)
+                        && coopPersonal.Deliver(player.Id, "start:" + coopEpoch + ":" + attempt, new CoopModeDPersonal { Epoch = coopEpoch }, asset))
+                        coopModeDStarterSent[player.Id] = attempt;
                 }
             }
         }
@@ -267,7 +291,8 @@ namespace BossRush
             {
                 Active = modeDActive, Complete = modeDWaveCompletePending, Wave = modeDWaveIndex,
                 Expected = modeDExpectedEnemiesInCurrentWave, Resolved = modeDSpawnResolvedInCurrentWave,
-                Epoch = coopEpoch, Enemies = ids.ToArray()
+                Epoch = coopEpoch, Enemies = ids.ToArray(), Admissions = new List<CoopModeDAdmission>(coopModeDConfirmed.Values).ToArray(),
+                WavePlayers = new List<string>(coopWaveParticipants.Keys).ToArray(), WaveAssets = new List<string>(coopWaveParticipants.Values).ToArray()
             };
         }
 
@@ -280,6 +305,13 @@ namespace BossRush
             bool waveChanged = modeDWaveIndex != state.Wave;
             modeDActive = state.Active;
             coopEpoch = state.Epoch;
+            coopWaveParticipants.Clear();
+            if (state.WavePlayers != null && state.WaveAssets != null && state.WavePlayers.Length == state.WaveAssets.Length)
+                for (int i = 0; i < state.WavePlayers.Length; i++)
+                    if (!string.IsNullOrEmpty(state.WavePlayers[i]) && !string.IsNullOrEmpty(state.WaveAssets[i])) coopWaveParticipants[state.WavePlayers[i]] = state.WaveAssets[i];
+            coopModeDConfirmed.Clear();
+            if (state.Admissions != null) foreach (CoopModeDAdmission admission in state.Admissions)
+                if (admission != null && !string.IsNullOrEmpty(admission.Player)) coopModeDConfirmed[admission.Player] = admission;
             modeDWaveIndex = state.Wave;
             modeDWaveCompletePending = state.Complete;
             modeDExpectedEnemiesInCurrentWave = state.Expected;
@@ -312,10 +344,10 @@ namespace BossRush
                     || !coopModeDParticipants.TryGetValue(player.Id, out asset) || asset != command.AssetId) return;
                 if (command.Action == "admission")
                 {
+                    coopModeDConfirmed[player.Id] = new CoopModeDAdmission { Player = player.Id, Asset = asset, Accepted = command.Flag };
                     if (command.Flag)
                     {
                         coopModeDAdmitted[player.Id] = asset;
-                        if (modeDWaveIndex > 0 && !modeDWaveCompletePending) coopWaveParticipants[player.Id] = asset;
                     }
                     else coopModeDAdmitted.Remove(player.Id);
                 }

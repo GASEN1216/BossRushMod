@@ -287,7 +287,13 @@ namespace BossRush
             Vector3 dir = to - from;
             AstralStaffFx.WithRoot(_fxRoot, () => AstralStaffFx.PlayContact(to, dir, tier));
             SandstormChampionAssetManager.ShakeNear(to, 0.12f + 0.05f * tier, 3f);
-            if (push.sqrMagnitude > 0.01f) _marker.StartCoroutine(PushPlayer(player, push));
+            if (push.sqrMagnitude > 0.01f)
+            {
+                if (BossRushCoop.IsConnected)
+                    DragonKingCoopContactRuntimeModule.Push(player, push,
+                        "sandguard-art:" + System.Guid.NewGuid().ToString("N"), 0.14f, true);
+                else _marker.StartCoroutine(PushPlayer(player, push));
+            }
             return true;
         }
 
