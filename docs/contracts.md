@@ -137,6 +137,13 @@ Dev 专用测试档的 `BossRush_Validation_AutotestSnapshot_v1` 保持 version=
 `LevelManager.OnAfterLevelInitialized`（命名方法、幂等订阅、随模块销毁成对退订）与每次入场扣款之前。
 由 `tests/ZombieModeEntryDebtGuard.py` 与执行回归 `tests/fixtures/ZombieModeEntryDebt` 守卫。
 
+NPC 好感 key（早于 `BossRush_` 前缀约定，冻结不改名）：
+
+- `NPCAffinity` — `AffinityJsonSerializer` 整存的 `npcDataList`，每只 NPC 一条 `AffinityData`；读不出来时整局写屏障。
+  2026-10-17 `SCHEMA+`：每条追加可选 `shopStockTokens`（NPC 商店剩余库存，`NPCShopStockLedger` 编码 `typeId:remaining:refillDay:shown`，
+  逗号分隔、坏 token 逐条跳过）；缺字段 = 满库存，旧档行为不变。离婚不清它，终身限量的钻石戒指不会因离婚补货。
+- 现金 NPC 商店开着时，官方 `StockShop.Save` 会写 `StockShop_BossRushNpc_<npcId>`（Mod 命名空间，内容只是官方自带的库存快照，Mod 不读它）。
+
 Breaking:
 
 - 改名旧 key 且无迁移。
@@ -846,6 +853,16 @@ Breaking/Operational:
   所有补丁与清理都按条目验证专用模板所有权（ID + 对象名 + 核心专用 `OfficialQuestProjectionTask` 组件）；ID 冲突时那一条 fail closed，不得改动占用相同整数 ID 的其它内容。
   实现落点（2026-09-22）：注册 / 投影 / 四个 Harmony 补丁 / 四类快照过滤 / 给予者扫描全在共享核心 `Utilities/OfficialQuests/`（唯一实例由 `OfficialQuestRuntimeModule` 持有，注册顺序先于天空岛与征程；守卫 `tests/OfficialQuestProjectionGuard.py`）；天空岛桥只是客户端（`IOfficialQuestClient` + `OfficialQuestBinding` 闭包）。
   官方 `QuestGiverView` 在出击图缺席时不挂岛上给予者（fail-closed，自绘面板照常）。岛上按出击刷新的居民委托不接跨局 Quest。
+
+**NPC 商店（StockShop 动态创建，2026-10-17 反编译源核实）**
+
+- `StockShop.merchantID` 序列化默认值是 `"Albert"`（基地官方商人）。`AddComponent<StockShop>()` 立刻跑 `Awake`：按 Albert 的档案填条目、读 `StockShop_Albert`，
+  并订阅 `SavesSystem.OnCollectSaveData += Save`。不改 ID 的话，NPC 商店开着时一旦存档，就会用 NPC 商品的库存覆盖官方 Albert 的库存存档。
+  `NPCShopSystem.ConfigureShopIdentity` 在 `AddComponent` 后同帧改成 `BossRushNpc_<npcId>` 并回读核对（`Awake` 只读，不写）。
+- `ShowUI` 先调 `RefreshIfNeeded`：新对象的 `lastTimeRefreshedStock` 落在很久以前，必定 `DoRefreshStock`，把库存补满、重掷 `possibility`。
+  所以「每次开店新建 `StockShop`」等于每次开店都补货。现金 NPC 商店的库存改由 `NPCShopStockLedger` 按游戏日管理并跟好感存档走，
+  `SuppressOfficialRestock` 把 `refreshAfterTimeSpan` 推到 3650 天、`lastTimeRefreshedStock` 写成当前时间、`refreshStockOnStart` 钉 false。
+  净化点商店（丧尸模式局内）保持每次开店满库存，不和基地共用库存。执行回归：`NpcAuditFixes`（规则）、`NPCShopPayment`（回写）。
 
 **渲染与程序集**
 

@@ -317,6 +317,30 @@ def main() -> int:
     data_compact = re.sub(r"\s+", "", code_only(read(PERM_DATA)))
     if "data.shop=PermanentDuckNpcShopData.Parse(node,blueprintId);" not in data_compact:
         errors.append("PermanentDuckNpcData.Parse 必须接通可选商店解析")
+    # 2026-10-17 P1-1 / P1-3：可选的 restockDays 与 discountsByLevel 写错时运行期只会静默跳过，
+    # 这里在数据层报红。折扣上限与 PermanentDuckNpcShopData.MaxDiscountRate 一致。
+    if "ParseDiscounts(node,shop,blueprintId);" not in data_compact:
+        errors.append("PermanentDuckNpcShopData.Parse 必须接通 discountsByLevel 折扣解析")
+    for row in (locals().get("table") or {}).get("npcs") or []:
+        shop = ((row or {}).get("permanent") or {}).get("shop")
+        if not isinstance(shop, dict):
+            continue
+        npc_id = row.get("id")
+        for item in shop.get("items") or []:
+            restock = item.get("restockDays", 1) if isinstance(item, dict) else 1
+            if not isinstance(restock, int) or isinstance(restock, bool) or restock < 0:
+                errors.append(npc_id + " 的商店商品 restockDays 必须是 >= 0 的整数（0 = 终身限量）")
+        discounts = shop.get("discountsByLevel")
+        if discounts is None:
+            continue
+        if not isinstance(discounts, dict):
+            errors.append(npc_id + " 的 discountsByLevel 必须是对象")
+            continue
+        for level, rate in discounts.items():
+            if not level.isdigit() or not 1 <= int(level) <= 10:
+                errors.append(npc_id + " 的 discountsByLevel 等级键必须是 1-10：" + level)
+            if isinstance(rate, bool) or not isinstance(rate, (int, float)) or not 0 < rate <= 0.5:
+                errors.append(npc_id + " 的 discountsByLevel 折扣率必须在 (0, 0.5]：" + level)
 
     # ------------------------------------------------------------------
     # 14. 婚姻系统 6 处泛化分支

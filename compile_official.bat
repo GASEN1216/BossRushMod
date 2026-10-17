@@ -1076,6 +1076,7 @@ echo(Integration\Affinity\AffinityJsonSerializer.cs
 echo(Integration\Affinity\AffinityManager.cs
 echo(Integration\Affinity\AffinityManagerPersistenceAndDecay.cs
 echo(Integration\Affinity\AffinityManagerStaticCacheReset.cs
+echo(Integration\Affinity\NPCShopStockLedger.cs
 echo(Integration\Affinity\Core\INPCGiftConfig.cs
 echo(Integration\Affinity\Core\INPCDialogueConfig.cs
 echo(Integration\Affinity\Core\INPCRelationshipDialogueConfig.cs

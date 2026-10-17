@@ -139,4 +139,13 @@ namespace BossRush
     {
         internal static void DevLog(string message) { }
     }
+
+    // 库存写回的落点（生产里是好感存档）；只记最后一次写入。
+    internal static class AffinityManager
+    {
+        internal static string LastNpc;
+        internal static string LastTokens;
+        internal static int Writes;
+        internal static void SetShopStockTokens(string npcId, string tokens) { LastNpc = npcId; LastTokens = tokens; Writes++; }
+    }
 }

@@ -964,6 +964,13 @@ namespace BossRush
                 return false;
             }
 
+            return HasTriggeredStory(data, storyLevel);
+        }
+
+        private static bool HasTriggeredStory(AffinityData data, int storyLevel)
+        {
+            if (data == null) return false;
+
             switch (storyLevel)
             {
                 case 5:

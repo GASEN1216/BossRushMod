@@ -58,7 +58,7 @@ def build(name, files, generated=""):
 def main():
     affinity = ["Integration/Affinity/" + file for file in (
         "AffinityManager.cs", "AffinityManagerPersistenceAndDecay.cs", "AffinityManagerStaticCacheReset.cs",
-        "AffinityJsonSerializer.cs", "AffinityData.cs", "AffinityConfig.cs", "INPCAffinityConfig.cs")]
+        "AffinityJsonSerializer.cs", "AffinityData.cs", "AffinityConfig.cs", "INPCAffinityConfig.cs", "NPCShopStockLedger.cs")]
     affinity += ["Utilities/SimpleJsonHelper.cs", "Common/Data/BossRushJsonValue.cs"]
     daily = ["Integration/DailyReport/" + file for file in (
         "DailyReportService.cs", "DailyReportModels.cs", "DailyReportTuning.cs", "DailyReportCodec.cs",
@@ -67,7 +67,7 @@ def main():
               "Common/Lifecycle/BossRushSaveFileThrottle.cs", "Common/Data/BossRushJsonValue.cs",
               "Utilities/SimpleJsonHelper.cs", "ModeH/ModeHSeedStream.cs"]
     presentation = ["Integration/Affinity/INPCAffinityConfig.cs"] + ["Integration/Affinity/Core/" + file for file in (
-        "INPCGiftConfig.cs", "INPCDialogueConfig.cs", "INPCShopConfig.cs", "INPCGiftContainerConfig.cs", "INPCRelationshipDialogueConfig.cs")]
+        "INPCGiftConfig.cs", "INPCDialogueConfig.cs", "INPCShopConfig.cs", "INPCGiftContainerConfig.cs", "INPCRelationshipDialogueConfig.cs")] + ["Integration/Affinity/NPCShopStockLedger.cs"]
     presentation += ["Integration/Affinity/NPCs/GoblinAffinityConfig.cs", "Integration/Affinity/NPCs/GoblinAffinityConfig_LanguageCache.cs", "Integration/Affinity/NPCs/GoblinAffinityConfig_Persona.cs", "Integration/Affinity/NPCs/NurseAffinityConfig.cs", "Integration/Dialogue/DialogueActorFactory.cs"]
     wedding = "Integration/Wedding/NPCMarriageSystem.cs"
     generated = "using System; using UnityEngine; namespace BossRush {\n" + extract(wedding, "internal static class WeddingBuildingRequirementsPatch") + "\n" + extract(wedding, "internal static class WeddingBuildingRuntimePolicy") + "\n}"

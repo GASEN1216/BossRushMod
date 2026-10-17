@@ -32,6 +32,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using UnityEngine;
 
 namespace BossRush
@@ -71,6 +72,11 @@ namespace BossRush
         public string nameEn;
         public int unlockLevel;
         public readonly List<ShopItemEntry> items = new List<ShopItemEntry>();
+        /// <summary>可选的好感折扣表（等级 -> 折扣率）；不填即原价。</summary>
+        public readonly Dictionary<int, float> discountsByLevel = new Dictionary<int, float>();
+
+        /// <summary>单档折扣上限，防止数据表写成 0.9 这种近乎白送的值。</summary>
+        internal const float MaxDiscountRate = 0.5f;
 
         internal static PermanentDuckNpcShopData Parse(BossRushJsonValue permanent, string blueprintId)
         {
@@ -106,9 +112,40 @@ namespace BossRush
                     ModBehaviour.DevLog("[PermanentDuckNpc] 忽略重复或等级无效的商品: " + blueprintId);
                     continue;
                 }
-                shop.items.Add(new ShopItemEntry(typeId, requiredLevel, stock));
+                // 可选补货间隔（游戏日）：缺省每天补一次，0 = 终身限量；负数视为配置错误，退回缺省。
+                int restockDays;
+                if (!entry.TryGetInt("restockDays", out restockDays)) restockDays = 1;
+                if (restockDays < 0)
+                {
+                    ModBehaviour.DevLog("[PermanentDuckNpc] 商品补货间隔无效，按每天补货处理: " + blueprintId);
+                    restockDays = 1;
+                }
+                shop.items.Add(new ShopItemEntry(typeId, requiredLevel, stock) { RestockDays = restockDays });
             }
+            ParseDiscounts(node, shop, blueprintId);
             return shop.items.Count > 0 ? shop : null;
+        }
+
+        /// <summary>解析可选的 discountsByLevel：键是 1-10 的等级，值在 (0, MaxDiscountRate] 内；坏条目逐条跳过。</summary>
+        private static void ParseDiscounts(BossRushJsonValue node, PermanentDuckNpcShopData shop, string blueprintId)
+        {
+            BossRushJsonValue discounts;
+            if (!node.TryGetObject("discountsByLevel", out discounts) || discounts.Properties == null) return;
+
+            for (int i = 0; i < discounts.Properties.Count; i++)
+            {
+                BossRushJsonProperty property = discounts.Properties[i];
+                int level;
+                float rate = property == null || property.Value == null ? -1f : property.Value.AsFloat(-1f);
+                if (property == null
+                    || !int.TryParse(property.Name, NumberStyles.Integer, CultureInfo.InvariantCulture, out level)
+                    || level < 1 || level > 10 || rate <= 0f || rate > MaxDiscountRate)
+                {
+                    ModBehaviour.DevLog("[PermanentDuckNpc] 忽略无效的商店折扣档: " + blueprintId);
+                    continue;
+                }
+                shop.discountsByLevel[level] = rate;
+            }
         }
     }
 

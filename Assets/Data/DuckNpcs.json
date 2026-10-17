@@ -428,6 +428,7 @@
           "nameCn": "浮舟的航前杂货",
           "nameEn": "Fuzhou's Departure Supplies",
           "unlockLevel": 3,
+          "discountsByLevel": { "3": 0.10, "6": 0.15, "10": 0.20 },
           "items": [
             { "typeId": 500106, "requiredLevel": 3, "maxStock": 1 },
             { "typeId": 500109, "requiredLevel": 3, "maxStock": 1 }
@@ -944,6 +945,7 @@
           "nameCn": "钟守的旧物匣",
           "nameEn": "Bell Keeper's Keepsakes",
           "unlockLevel": 5,
+          "discountsByLevel": { "5": 0.10, "8": 0.15, "10": 0.20 },
           "items": [
             { "typeId": 500107, "requiredLevel": 5, "maxStock": 1 }
           ]

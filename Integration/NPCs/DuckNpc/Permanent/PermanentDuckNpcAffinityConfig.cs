@@ -139,12 +139,14 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 永久 NPC 商店按物品原价出售，暂不附加好感折扣。
+        /// 好感折扣表：来自蓝图 permanent.shop.discountsByLevel；没有商店或没配折扣时为空（原价）。
+        /// 升级横幅按这张表显示「N% 折扣」，商店按 GetDiscountForLevel 取当前等级的最高一档。
         /// </summary>
         public Dictionary<int, float> DiscountsByLevel
         {
             get
             {
+                if (ShopEnabled) return _data.shop.discountsByLevel;
                 if (_discountsByLevel == null)
                 {
                     _discountsByLevel = new Dictionary<int, float>();
@@ -182,7 +184,15 @@ namespace BossRush
             return ShopEnabled ? new List<ShopItemEntry>(_data.shop.items) : new List<ShopItemEntry>();
         }
 
-        public float GetDiscountForLevel(int level) { return 0f; }
+        public float GetDiscountForLevel(int level)
+        {
+            float discount = 0f;
+            foreach (var kvp in DiscountsByLevel)
+            {
+                if (level >= kvp.Key && kvp.Value > discount) discount = kvp.Value;
+            }
+            return discount;
+        }
 
         // ====================================================================
         // INPCGiftConfig

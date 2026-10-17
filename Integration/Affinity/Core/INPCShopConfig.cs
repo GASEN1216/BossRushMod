@@ -31,6 +31,12 @@ namespace BossRush
         public float Possibility { get; set; } = 1.0f;
         
         /// <summary>
+        /// 补货间隔（游戏日）。默认每个游戏日补满一次；0 = 终身限量，卖完不再补
+        /// （NPCShopStockLedger.LifetimeLimited）。剩余库存跟着好感存档走。
+        /// </summary>
+        public int RestockDays { get; set; } = 1;
+        
+        /// <summary>
         /// 创建商品条目
         /// </summary>
         public ShopItemEntry(int typeId, int requiredLevel = 0, int maxStock = 5)

@@ -2,6 +2,19 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+## 2026-10-17 NPC 好感 / 商店改进阶段一（COMPAT / SCHEMA+，L1/L2，未实机）
+
+方案稿 `docs/design/2026-10-17_NPC好感商店个性系统改进方案.md` 第 3 节，owner 同意第 7 节按建议默认值定（戒指终身 1 枚、按游戏日补货、衰减 10 且配偶锁 Lv.10）。
+
+- P1-1 商店库存：新文件 `Integration/Affinity/NPCShopStockLedger.cs`（已登记编译清单），库存写进 `AffinityData.shopStockTokens`；`NPCShopSystem` 开店按记录恢复、购买与关店回写、压住官方 `RefreshIfNeeded`；钻石戒指 `RestockDays = 0`。顺带修掉潜在问题：动态 `StockShop` 的 merchantID 默认是官方 `Albert`，开店时存档会覆盖官方 Albert 的库存存档（静态推断，未实机复现）。
+- P1-2 衰减：每天 15 → 10，里程碑与配偶下限，下次聊天提示一次。
+- P1-3 永久 NPC 折扣：蓝图 `discountsByLevel`，浮舟与钟守配了 10/15/20%。
+- 文档：`docs/contracts.md` §3（`NPCAffinity` 的 `SCHEMA+`）、§7.1（NPC 商店）；repowiki `好感度框架核心.md`；注释里「每次开店重置」的四处说法已改。
+
+验证：全量守卫 746/746；全量执行回归 129/129（`AuditCombatSeptember`、`SkyIslandCombatRuntime` 需设 `GAME_PATH` / `BOSSRUSH_GAME_MANAGED` / `BOSSRUSH_HARMONY_DLL` 后复跑；`PermanentDuckNpcDialogue` 原断言「永久 NPC 不打折」按 P1-3 改为校验蓝图折扣）；`DuckNpcInvariantGuard` 新增蓝图折扣与补货天数校验（反向探针转红后按字节还原）；执行回归 `NpcAuditFixes`、`NPCShopPayment` 新增用例并做反向探针；Windows 正式构建 0 错误，已部署，DLL SHA-256 `29F37E60EBAAAC946D0A379C244CB8A4B7A86D116C09D94E41622BDB14978E31`。
+
+L3 缺：叮当 Lv.7 买戒指后关店重开应显示售罄；买空一件商品，跨一个游戏日后补货；看过 Lv.5 剧情的 NPC 连续多日不聊，不应跌破 Lv.5，下次聊天时应弹出「好久不见」提示；配偶连续多日不聊不应被送回家；浮舟 Lv.3 商店价格应比原价低 10%。
+
 ## 2026-10-17 遗种巢远征与战痕调整（COMPAT，经济调整经 owner 授权，L1/L2，未实机）
 
 起因是同日的设计评估（对照碧蓝航线委托、刺客信条兄弟会、XCOM、暗黑地牢等）；owner 要求四条都改、数值按好玩拍板。

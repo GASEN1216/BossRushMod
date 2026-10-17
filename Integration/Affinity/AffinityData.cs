@@ -22,6 +22,8 @@ namespace BossRush
         public int cheatingIncidentCount = 0;
         public bool hasPendingCheatingRebuke = false;
         public int lastDecayCheckDay = -1;
+        // NPC 商店库存（NPCShopStockLedger 编码）；旧档没有这个字段，按满库存处理。
+        public string shopStockTokens = "";
 
         public AffinityData()
         {
@@ -52,7 +54,8 @@ namespace BossRush
                 marriageDateText = this.marriageDateText,
                 cheatingIncidentCount = this.cheatingIncidentCount,
                 hasPendingCheatingRebuke = this.hasPendingCheatingRebuke,
-                lastDecayCheckDay = this.lastDecayCheckDay
+                lastDecayCheckDay = this.lastDecayCheckDay,
+                shopStockTokens = this.shopStockTokens
             };
         }
     }

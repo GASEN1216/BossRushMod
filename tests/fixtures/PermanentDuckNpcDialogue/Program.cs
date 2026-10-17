@@ -323,6 +323,9 @@ internal static class Program
                       "钟守只提供节拍器，不能与点名册共用 TypeID");
                 Check(keepsakes[0].RequiredLevel == 5 && keepsakes[0].MaxStock == 1,
                       "节拍器解锁等级和单件兑换保持一致");
+                Check(config.GetDiscountForLevel(4) == 0f && config.GetDiscountForLevel(5) == 0.10f
+                      && config.GetDiscountForLevel(9) == 0.15f && config.GetDiscountForLevel(10) == 0.20f,
+                      "钟守的好感折扣按蓝图 5/8/10 级取档");
                 L10n.Chinese = true;
                 Check(config.ShopName == "钟守的旧物匣" && config.UnlocksByLevel[5][0] == "钟守的旧物匣",
                       "钟守中文解锁名来自蓝图");
@@ -347,8 +350,13 @@ internal static class Program
                   "浮舟同时出售独立 TypeID 的点名册与甩锅许可证");
             Check(items[0].RequiredLevel == 3 && items[0].MaxStock == 1,
                   "点名册好感 3 级解锁且每次商店库存 1");
-            Check(items[0].BasePriceFactor == 1f && items[0].Possibility == 1f && config.GetDiscountForLevel(10) == 0f,
-                  "按 item.Value 原价确定供应，不隐含折扣或概率缺货");
+            Check(items[0].BasePriceFactor == 1f && items[0].Possibility == 1f && items[0].RestockDays == 1,
+                  "按 item.Value 原价确定供应，不随机缺货，每个游戏日补货");
+            // 2026-10-17 P1-3：好感折扣来自蓝图 discountsByLevel（3/6/10 级 10%/15%/20%），解锁前与未配档位不打折。
+            Check(config.GetDiscountForLevel(2) == 0f && config.GetDiscountForLevel(3) == 0.10f
+                  && config.GetDiscountForLevel(5) == 0.10f && config.GetDiscountForLevel(6) == 0.15f
+                  && config.GetDiscountForLevel(10) == 0.20f && config.DiscountsByLevel.Count == 3,
+                  "浮舟的好感折扣按蓝图取当前等级的最高一档");
             Check(items[1].RequiredLevel == 3 && items[1].MaxStock == 1
                   && items[1].BasePriceFactor == 1f && items[1].Possibility == 1f,
                   "甩锅许可证好感 3 级解锁、库存 1 且确定按原价供应");

@@ -158,6 +158,7 @@ namespace BossRush
         {
             int gainedPoints = 0;
             dailyChatGranted = false;
+            ShowPendingDecayNotice(npcId);
 
             try
             {
@@ -192,6 +193,28 @@ namespace BossRush
             // 现在：没加分就什么都不弹；加了分由好感变化事件在 NPC 头侧冒浮字「+30 / Lv.3 · 120/300」
             // （AffinityUIManager.ShowAffinityChange），升级由 ShowLevelUpNotification 合成一条消息。这里不再另发横幅。
             return gainedPoints;
+        }
+
+        /// <summary>
+        /// 衰减是在 NPC 生成时悄悄结算的，玩家多半不在场。下次开口聊天时补一条提示，说清楚掉了多少、为什么。
+        /// </summary>
+        private static void ShowPendingDecayNotice(string npcId)
+        {
+            try
+            {
+                AffinityManager.DecayNotice notice;
+                if (!AffinityManager.TryConsumeDecayNotice(npcId, out notice)) return;
+
+                var config = AffinityManager.GetNPCConfig(npcId);
+                string npcName = config != null ? config.DisplayName : npcId;
+                NotificationText.Push(L10n.T(
+                    npcName + "：好久不见。（" + notice.Days + " 天没来往，好感 -" + notice.Points + "）",
+                    npcName + ": Long time no see. (" + notice.Days + " days apart, Affinity -" + notice.Points + ")"));
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[AffinityHelper] [WARNING] 显示好感衰减提示失败: " + e.Message);
+            }
         }
 
         /// <summary>
