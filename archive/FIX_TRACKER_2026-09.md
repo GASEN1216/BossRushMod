@@ -8037,3 +8037,45 @@ L1/L2：157 相关守卫、76 条隔离回归通过，6 个反向探针按字节
 - L2：全量守卫绿（唯一红 `SkyIslandMosquitoGuard` 在改动前 HEAD 已红，与本轮无关）；CampaignPlayability / ContentTransactions / ContentBuildingOwnership / BackMountainLifecycle / SkyIsland 回归全绿；正式编译通过并部署；Wiki 构建通过。L3 未做，清单与待 owner 决定项（官方陈列柜槽位标签需 F3 探针 `SHOWCASE_OFFICIAL_PROBE` 实机读出）见 `docs/reports/reviews/2026-09-22-鸭王征程重设计交付.md`。
 - 提交 `5a317b22`、`0e67241d`、`229fd37a`、`4b5f4ea2`，未推送。
 <!-- BEGIN FULL AUDIT 2026-09-21 -->
+
+## 2026-09-26 丧尸模式 Boss 表现、击杀图鉴与完整链路（COMPAT / WIRE+ / SAFE）
+
+- 修复 CR-2026-09-26-111～113：护盾/减伤提前到死亡前，以实际 finalDamage 单次消费；极速追猎从预警前瞬移改为先预警后真实冲刺、实际落点结算；五类 Boss 增加独立轮廓、技能脉冲、官方姓名血条，跟随官方 modelRoot。
+- 复用共享 FX 材质/粒子、已有冲刺组件与既有 Health.Hurt 补丁，不新建宿主 partial。实例装甲与发光缝各一网格，粒子上限 20，暂停/死亡/旧 run/销毁路径清理。新增两源文件已进 CRLF 正式编译清单；宿主引用计数与归类随新增入口同步。
+- 图鉴生产代码未改：五类 marker、玩家归属、普通丧尸过滤与实例去重已有链路可靠性证据；本轮复查采集→入队→回基地 flush，仍需真实槽重启确认。没有改 TypeID、图鉴 key、存档 schema 或经济参数。
+- L2：丧尸 151 guards 全绿；IntegrationThirdReviewFixes 新增 34 条断言并保持原 127 条通过，ContentThirdReviewFixes、ZombieModeEntryDebt、SaveFailureRecovery 通过。11 次反向拒绝检查按字节还原。双语 Wiki 独立构建通过，导航 80 条，237 页 / 39,145 引用零缺失。
+- Windows 正式编译使用独立 `17b1d360` 基线 + 本轮生产改动快照，Managed 使用真实拷贝；产物 `Build/zombie-audit-20260926/source/Build/BossRush.dll`，SHA-256 `CBDC36E1C7B57FCF047FF99091FC89820497D0B1B386BF641AFB68ABB161A6F6`，14 个 Dev 标识全部缺席。未覆盖实际游戏目录；独立快照不包含其它会话新功能，不视作全仓集成产物。
+- 取舍与回退：沿原伤害/距离/冷却，Hunter 复用既有移动链；外形用代码轮廓避免增加加载与资源管线，可独立撤去 Attach/Pulse 和编译条目；冲刺可独立撤去接线与可选 impact 参数，不影响图鉴与防御。防御回退会恢复致死漏盾缺陷。
+- L3 未做：未启动游戏、未访问玩家存档、未读取游戏截图。外形是否帅、技能是否易读、墙体碰撞、同屏帧耗、回基地及重启的图鉴、连续两局清理，交 owner 按 [完整报告的步骤与看图表](docs/reports/reviews/2026-09-26_丧尸模式Boss与完整链路审查.md) 验收。没有提交、推送或发布。
+
+本专题最终全量门禁：672 PASS / 0 FAIL / 0 KNOWN-RED，diff --check 通过；编译所用本轮生产源码与当前工作区 SHA 一致，两份丧尸 Wiki 生成页也逐字节一致。证据归档于 `Build/zombie-audit-20260926/`。
+
+
+## 2026-09-26 入场 Mod 兼容与重铸后坐力（COMPAT / WIRE+ / SAFE / OPERATIONAL）
+
+- **已修**：自有地图点击先记录目标，回退共用条件/票数门；宿主清理前过滤非关卡附加资源 scene，DEMO 精确匹配待入场目标。
+- **首次直接出生**：核对“鸭科夫源码”及实际 DLL 的异步初始化；官方确认成功后冻结一次入场资格，以 GetPlayerStartLocation 的子场景/坐标贯通首次创建、官方子场景加载定位与最终 startPos。目标已到达后仅保留 NPC/玩法初始化，不再二次搬人。取消/关闭/普通入图清理资格；配套补丁缺失或失败时保留旧传送。Mode E/H 与 DEMO 的 F/G 沿用各自原出场，直接传送兜底及第三方绕开官方选择器时仍走旧流程。
+- **已修**：重铸倾向按官方极性换算收益，RecoilScaleV/H 越低越好；颜色、箭头、极值与揭晓同步。旧 RF_* 数值不迁移不反号，收费/幅度/边界/锁定不变。
+- **L2**：changed-only 404 PASS；生产执行 490 + 102 条断言通过；7 次入场/重铸守卫、6 次执行反向验证及 1 次引用分类反向验证转红并按字节/SHA 还原。Wiki 构建、237 页/39,211 引用及 80 导航检查通过。
+- **交付**：Windows 正式编译部署，Build/游戏 DLL SHA-256 均为 `FB848500F234707BF9339ADB791770C7B3DCA8C0C55E46F28004AA65E9D3D150`，14 个 Dev 标识缺席，72 包哈希一致；本轮不重包；另从暂存区导出 1037 个生产源，按正式参数独立 Windows 编译通过，确认提交不依赖其它会话未提交的源码。按用户要求仅提交本次修复，共享文件分离暂存，不含其它会话工作；未推送、发布、启动游戏或访问玩家档。
+- **待 L3**：秘法纪元/出场 Mod 实际组合、首次可见画面、物理落地及性能未实测。复测：带原冲突物品票进 DEMO/零号区，首次画面在目标点且有 NPC/难度与首波 Boss；地下/冷库子图正确；取消后普通出击不受接管；E/H 等保留原流程；叮当重铸后坐力下降绿、上升红，旧装备不反号。详细步骤和回退见 [交付报告](docs/reports/reviews/入场Mod兼容与重铸后坐力修复_2026-09-26.md)。
+
+## 2026-09-27 丧尸模式 Boss 表现、官方计数与补丁隔离（COMPAT / WIRE+ / SAFE）
+
+- 修复 CR-2026-09-27-101～105，106 延期。Boss 特效改按世界米数（线宽 0.06 m、余烬显式 Local 缩放），背刺改暗甲包发光刃尖，五类各一枚脚下纹章（压在预警圈下），技能起手 / 死亡复用共享 `BossRushFxKit.PlayBurst`，追猎冲刺拖尾；血条加官方 Boss 图标。
+- 显示用 preset 副本在致死一击扣血前换回原 preset：官方击杀计数与击杀丧尸任务恢复记在 `Cname_Zombie`，不再新增官方存档键。
+- 丧尸减伤 Transpiler 拆成独立补丁类，IL 失配不再连带共享 Hurt 上下文补丁（Mode G 屏障、逆鳞、Boss 致死钳制）。Projectile 类 run-only 记录登记时摘除已销毁项。
+- 没有改 TypeID、图鉴 key、存档 schema、本地化 key、伤害 / 冷却 / 经济数值；没有新增源文件。
+- L2：全量守卫本轮文件全绿（两条红来自其他会话未提交的后山变身改动）；7 次反向验证按字节还原；`IntegrationThirdReviewFixes`（37 条丧尸断言，新增 3）、`ContentThirdReviewFixes`、`ZombieModeEntryDebt` 通过；在线 Wiki 临时副本构建通过。
+- Windows 正式编译：HEAD + 本轮生产改动快照，`Build succeeded!`，DLL SHA-256 `5EE64134357908561D8742D4BBAD94CA1379CD159211A60DE1582146EA1DB23E`，14 个 Dev 标识缺席。未部署游戏目录。
+- L3 未做：没有启动游戏、读写存档或看截图。外形是否帅、纹章是否好认、特效是否遮挡、帧耗、官方任务计数，按 [复审报告](docs/reports/reviews/2026-09-27_丧尸模式Boss表现与链路复审.md) 第 5 节清单由 owner 验收。
+- 回退：纹章 / 拖尾 / 爆发各自独立可删；致死前还原与独立补丁类不要回退（分别带回 102、104）。
+
+## 2026-09-27（第二轮）追猎狂暴常驻与残留区死因（COMPAT）
+
+- owner 定「狂暴就是一直」：追猎低于 30% 血触发狂暴后持续到死亡，删掉 15 秒到期、体型回弹和 `HunterFrenzyDurationSeconds` / `FrenzyEndTime` / `FrenzyOriginalScale`。此前到期后下一击立刻重触发，体型在 1 与 1.08 倍间来回跳。`ZombieModeRuntimePauseRegressionGuard` 改为禁止重新引入到期时钟。
+- 修 CR-2026-09-27-106：丧尸 Boss 尸体销毁延迟经 `BossRushEagerReflectionCache.Health_DeadDestroyDelay` 延到最长残留区 + 1 s（9 s），死后再挂回显示 preset，残留腐蚀区 / 毒径 / 死亡毒云害死玩家时结算页显示该 Boss 名而不是「自己」。击杀计数仍在致死前换回的原 preset 名下；残留区伤害、半径、时长不变，恢复监控与 Boss 实例都按已死过滤。
+- 残余边界：若丧尸模式暂停但官方时间照走，超过 9 s 的残留区末段仍会回退到玩家来源（现有时长下不会发生）。
+- L2：全量守卫本轮文件全绿（唯一红 `OfficialCompileListFileExistenceGuard` 是其他会话新增未登记的 `Utilities/OfficialQuests/OfficialQuestItemRules.cs`）；3 次反向验证按字节还原；`IntegrationThirdReviewFixes`、`AffixCombat`、`ContentThirdReviewFixes`、`ZombieModeEntryDebt` 通过；在线 Wiki 临时副本构建通过。
+- Windows 正式编译：HEAD `61e77e6a` + 本轮生产改动快照，`Build succeeded!`，DLL SHA-256 `9A614B50108AD8B86F8D0B2184BAC268C56CF708C1248640001090B8503DCCE7`，14 个 Dev 标识缺席。未部署游戏目录。
+- L3 待 owner：把追猎打到三成血以下，确认狂暴后体型不再忽大忽小、一直保持加速到死；站在腐蚀 Boss 死亡毒云里被毒死，结算页死因应是「腐蚀地面」而不是「自己」。
