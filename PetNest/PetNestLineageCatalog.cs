@@ -324,22 +324,53 @@ namespace BossRush
             return TryGet(lineageKey, out info);
         }
 
-        /// <summary>目的地对应的元素（远征亲和判定用）。</summary>
-        internal static ElementTypes GetDestinationElement(string destinationId)
+        /// <summary>
+        /// 目的地契合的元素，第一项是主元素（天灾本身）。2026-10-17 补齐：此前每处只认一种，
+        /// 火（龙裔、龙皇）、幽灵（幽灵女巫）、空间与抗性无偏好回落的物理血脉永远拿不到加成。
+        /// 现在官方七种元素各落一处，任何血脉都有一个契合的目的地：
+        ///   风暴海域 电 + 空间（雷暴撕开的裂隙）
+        ///   酸雨废墟 毒 + 物理（断墙钢筋，皮糙肉厚才扛得住）
+        ///   极寒荒原 冰 + 火（体温高不怕冻）+ 幽灵（本来就不怕冷）
+        /// </summary>
+        private static readonly ElementTypes[] StormSeaElements = { ElementTypes.electricity, ElementTypes.space };
+        private static readonly ElementTypes[] AcidRuinsElements = { ElementTypes.poison, ElementTypes.physics };
+        private static readonly ElementTypes[] FrozenWasteElements = { ElementTypes.ice, ElementTypes.fire, ElementTypes.ghost };
+        private static readonly ElementTypes[] NoElements = new ElementTypes[0];
+
+        /// <summary>目的地契合的全部元素（只读，调用方不得修改）。未知目的地返回空表。</summary>
+        internal static ElementTypes[] GetDestinationElements(string destinationId)
         {
             if (string.Equals(destinationId, PetNestTuning.DestinationStormSea, StringComparison.Ordinal))
             {
-                return ElementTypes.electricity;
+                return StormSeaElements;
             }
             if (string.Equals(destinationId, PetNestTuning.DestinationAcidRuins, StringComparison.Ordinal))
             {
-                return ElementTypes.poison;
+                return AcidRuinsElements;
             }
             if (string.Equals(destinationId, PetNestTuning.DestinationFrozenWaste, StringComparison.Ordinal))
             {
-                return ElementTypes.ice;
+                return FrozenWasteElements;
             }
-            return ElementTypes.physics;
+            return NoElements;
+        }
+
+        /// <summary>目的地的主元素（天灾本身）。未知目的地回落 physics。</summary>
+        internal static ElementTypes GetDestinationElement(string destinationId)
+        {
+            ElementTypes[] elements = GetDestinationElements(destinationId);
+            return elements.Length > 0 ? elements[0] : ElementTypes.physics;
+        }
+
+        /// <summary>该元素是否契合这个目的地（远征亲和判定的唯一入口）。</summary>
+        internal static bool DestinationAcceptsElement(string destinationId, ElementTypes element)
+        {
+            ElementTypes[] elements = GetDestinationElements(destinationId);
+            for (int i = 0; i < elements.Length; i++)
+            {
+                if (elements[i] == element) return true;
+            }
+            return false;
         }
 
         #endregion

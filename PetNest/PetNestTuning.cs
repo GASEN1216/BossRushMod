@@ -44,7 +44,7 @@ namespace BossRush
         internal const float ShinyChance = 0.004f;
 
         /// <summary>
-        /// 炫彩概率（任意两色搭配，45 种）。比异色常见得多，但仍是少数派：
+        /// 炫彩概率（任意两色有序搭配，10×9 = 90 种：「黑白」与「白黑」是两种）。比异色常见得多，但仍是少数派：
         /// 每 10 枚蛋里约 1 只带色，既有收集面又不会让普通崽显得寒酸。
         /// 与异色**独立** roll：同时命中就是异色的炫彩崽。
         /// </summary>
@@ -201,6 +201,13 @@ namespace BossRush
         /// <summary>同一 stat 的战痕减益叠加封顶（小数口径，见上）。</summary>
         internal const float ScarModifierCapFraction = -0.10f;
 
+        /// <summary>
+        /// 在巢里治好一道战痕要花的同血脉遗魂。治好的疤不删履历：并进「旧伤」计数，不再带减益。
+        /// 40 = 一趟风浪档成功的遗魂；风浪档 25% 留疤，按期望每趟净赚约 18 遗魂，治疤是可持续的。
+        /// XCOM 的伤会好、暗黑地牢的怪癖能去疗养院治：永久减益要有出口。
+        /// </summary>
+        internal const int ScarHealSoulCost = 40;
+
         /// <summary>重伤退场前的短无敌时长（秒），避免钳血后同帧被连击打死。</summary>
         internal const float DownedInvincibleSeconds = 1.5f;
 
@@ -234,8 +241,12 @@ namespace BossRush
         /// <summary>亡命档死亡率（原 0.22f，降低以使期望收益为正）。**出发前必须明示**。</summary>
         internal const float DeathRateDesperate = 0.12f;
 
-        /// <summary>平安档基础成功率。</summary>
-        internal const float SuccessRateSafe = 0.55f;
+        /// <summary>
+        /// 平安档基础成功率。2026-10-17 从 0.55 提到 0.85：「平安」读起来就是「稳拿」，
+        /// 旧值反而是三档里最低的。同时把平安档的现金区间与遗魂压低（见 GetCashRange 与
+        /// ExpeditionSoulRewardSafe），单趟期望收益与旧值持平，变的只是波动。
+        /// </summary>
+        internal const float SuccessRateSafe = 0.85f;
         /// <summary>风浪档基础成功率。</summary>
         internal const float SuccessRateRough = 0.7f;
         /// <summary>亡命档基础成功率。</summary>
@@ -243,6 +254,16 @@ namespace BossRush
 
         /// <summary>血脉元素与目的地匹配时的成功率加成（绝对百分点）。</summary>
         internal const float ElementAffinityBonus = 0.12f;
+
+        /// <summary>
+        /// 同时在途的远征队数（未结算的记录才占队）。2026-10-17 加上限：此前整窝 24 只能同时出发，
+        /// 亡命档一批约 13.5 万金、17 件品质 4，而且蛋→崽→再多派一队会自我加速。
+        /// 主流派遣玩法（碧蓝航线委托、刺客信条兄弟会、魔兽要塞任务）都卡同时进行数。
+        /// </summary>
+        internal const int ExpeditionBaseSlots = 2;
+
+        /// <summary>图鉴解锁血脉数达到各阈值时远征队数各 +1：2 → 3 → 4。与巢扩建同一口径。</summary>
+        internal static readonly int[] ExpeditionSlotMilestoneLineageCounts = { 10, 20 };
 
         /// <summary>
         /// 发奖尝试次数上限。**只用于诊断退避与日志**：连续这么多次仍未发全时打一条
@@ -264,8 +285,8 @@ namespace BossRush
         /// <summary>亡命档远征经验（60 exp 可部分补偿 12% 死亡风险下的期望损失）。</summary>
         internal const int PetExpExpeditionSurviveDesperate = 60;
 
-        /// <summary>平安档远征成功带回的同血脉遗魂。</summary>
-        internal const int ExpeditionSoulRewardSafe = 15;
+        /// <summary>平安档远征成功带回的同血脉遗魂（成功率提到 0.85 后由 15 压到 10，单趟期望 8.5，与旧值 8.25 持平）。</summary>
+        internal const int ExpeditionSoulRewardSafe = 10;
         /// <summary>风浪档远征成功带回的同血脉遗魂。</summary>
         internal const int ExpeditionSoulRewardRough = 40;
         /// <summary>亡命档远征成功带回的同血脉遗魂。</summary>

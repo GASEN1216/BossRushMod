@@ -120,6 +120,8 @@ namespace BossRush
             Add(map, "Fail_pet_invalid", "这只崽的数据不完整，无法入巢",
                 "This cub's data is incomplete and cannot enter the nest");
             Add(map, "Fail_souls_insufficient", "遗魂不够", "Not enough relic souls");
+            Add(map, "Fail_no_scars", "它身上没有要治的战痕", "This cub has no scars to treat");
+            Add(map, "Fail_heal_scar_failed", "治疗未能保存", "The treatment could not be stored");
             Add(map, "Fail_invalid_request", "这个操作的参数不对", "That request was not valid");
 
             // —— 孵化 ——
@@ -146,6 +148,8 @@ namespace BossRush
                 "Dispatch failed; nothing was saved");
             Add(map, "Fail_settle_failed", "远征结算失败，稍后会重试",
                 "Settling the expedition failed; it will be retried");
+            Add(map, "Fail_expedition_slots_full", "远征队伍都派出去了，等在途的回来再派",
+                "Every expedition team is out; wait for one to come back");
 
             // —— 随从进局（模式门控与入场）——
             Add(map, "Fail_mode_g_banned", "宿命回响不能带崽：宿敌的账只算你自己打出来的伤害",

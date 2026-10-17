@@ -746,6 +746,71 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 花同血脉遗魂治好一道战痕（2026-10-17）。治的是最早那道：移出 scars、并进
+        /// mergedOldScarCount 记作「旧伤」——履历照旧计数，减益没了。不加存档字段。
+        /// 远征途中的崽不在巢里，不能治。扣遗魂与移疤在同一候选包里，要么都成、要么都不动。
+        /// </summary>
+        internal static bool TryHealScar(string petId, out string failureReasonId)
+        {
+            failureReasonId = null;
+            PetNestPetRecord pet = TryGetPet(petId);
+            if (pet == null)
+            {
+                failureReasonId = "pet_not_found";
+                return false;
+            }
+            if (pet.state == (int)PetNestPetState.OnExpedition)
+            {
+                failureReasonId = "pet_locked_by_expedition";
+                return false;
+            }
+            if (pet.scars == null || pet.scars.Count == 0)
+            {
+                failureReasonId = "no_scars";
+                return false;
+            }
+            if (GetSouls(pet.lineageKey) < PetNestTuning.ScarHealSoulCost)
+            {
+                failureReasonId = "souls_insufficient";
+                return false;
+            }
+
+            try
+            {
+                if (!BeginCandidate(out failureReasonId)) return false;
+                // 从候选包重新解析实体；候选包与权威内存是两份对象。
+                pet = TryGetPet(petId);
+                PetNestSoulLedgerEntry ledger = null;
+                List<PetNestSoulLedgerEntry> entries = Nest.soulLedger;
+                for (int i = 0; pet != null && i < entries.Count; i++)
+                {
+                    if (entries[i] != null && string.Equals(entries[i].lineageKey, pet.lineageKey, StringComparison.Ordinal))
+                    {
+                        ledger = entries[i];
+                        break;
+                    }
+                }
+                if (pet == null || pet.scars == null || pet.scars.Count == 0
+                    || ledger == null || ledger.souls < PetNestTuning.ScarHealSoulCost)
+                {
+                    PetNestPersistenceAccess.AbortTransaction();
+                    failureReasonId = pet == null ? "pet_not_found" : "souls_insufficient";
+                    return false;
+                }
+                ledger.souls -= PetNestTuning.ScarHealSoulCost;
+                pet.scars.RemoveAt(0);
+                pet.mergedOldScarCount++;
+                return CommitCandidate(out failureReasonId);
+            }
+            catch (Exception e)
+            {
+                PetNestPersistenceAccess.AbortTransaction();
+                failureReasonId = "heal_scar_failed:" + e.GetType().Name;
+                return false;
+            }
+        }
+
         #endregion
 
         #region 落档

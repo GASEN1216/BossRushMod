@@ -232,6 +232,22 @@ namespace BossRush
             });
             else detail.FooterText = PetNestLocalization.DescribeFailure("backpack_not_empty");
 
+            // 治疗战痕：只在有疤、遗魂够时挂按钮（§4.14 不挂灰按钮）；花费与余额写在「战痕」分区里
+            if (pet.scars != null && pet.scars.Count > 0
+                && PetNestService.GetSouls(pet.lineageKey) >= PetNestTuning.ScarHealSoulCost)
+            {
+                detail.Actions.Add(new PetNestActionData
+                {
+                    Label = L10n.T("治一道疤", "Treat a scar"),
+                    OnClick = delegate
+                    {
+                        string failure;
+                        NoteFailure(PetNestService.TryHealScar(petId, out failure), failure);
+                        if (ctx.Refresh != null) ctx.Refresh();
+                    },
+                });
+            }
+
             string reason;
             if (ctx.SendOnExpedition != null && PetNestExpeditionService.CanDepart(pet, out reason))
             {
@@ -441,9 +457,14 @@ namespace BossRush
         /// </summary>
         private static string DescribeScars(PetNestPetRecord pet)
         {
-            int total = (pet.scars != null ? pet.scars.Count : 0) + pet.mergedOldScarCount;
-            if (total == 0) return L10n.T("无", "None");
-            string text = total.ToString();
+            int active = pet.scars != null ? pet.scars.Count : 0;
+            if (active + pet.mergedOldScarCount == 0) return L10n.T("无", "None");
+            string old = pet.mergedOldScarCount > 0
+                ? L10n.T("，旧伤 " + pet.mergedOldScarCount + " 道（不再有减益）",
+                    ", " + pet.mergedOldScarCount + " old (no penalty)")
+                : string.Empty;
+            if (active == 0) return L10n.T("在身 0 道", "0 active") + old;
+            string text = L10n.T("在身 " + active + " 道", active + " active");
             List<string> statKeys = new List<string>();
             PetNestDownedHandler.CollectScarStatKeys(pet, statKeys);
             string effect = null;
@@ -453,7 +474,11 @@ namespace BossRush
                 if (effect != null) effect += L10n.T("，", ", ");
                 effect += PetNestLocalization.DescribeStatDelta(statKeys[i], clamped, true);
             }
-            return effect != null ? text + L10n.T("（" + effect + "）", " (" + effect + ")") : text;
+            if (effect != null) text += L10n.T("（" + effect + "）", " (" + effect + ")");
+            int souls = PetNestService.GetSouls(pet.lineageKey);
+            return text + old + L10n.T(
+                "。治一道花 " + PetNestTuning.ScarHealSoulCost + " 遗魂（这条血脉现有 " + souls + "）",
+                ". Treating one costs " + PetNestTuning.ScarHealSoulCost + " relic souls (this bloodline has " + souls + ")");
         }
 
         #endregion

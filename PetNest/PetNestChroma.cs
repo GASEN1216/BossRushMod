@@ -48,7 +48,7 @@ namespace BossRush
         #region 调色板（id 冻结）
 
         /// <summary>
-        /// 十色调色板。任意两种不同颜色可组成一种炫彩，共 45 种搭配。
+        /// 十色调色板。任意两种不同颜色按先后组成一种炫彩，共 90 种有序搭配。
         /// TextHex 全部经过「深色面板（BossRushUIColors.Surface）上正文 ≥ 4.5:1」的挑选：
         /// 黑与蓝、紫这类深色**不能**按本色写，否则在面板上就是一团看不见的字。
         /// </summary>
@@ -119,7 +119,7 @@ namespace BossRush
 
         /// <summary>
         /// 按 [0,1) 的两个随机数选一对**不同**颜色。
-        /// 随机源由调用方注入，方便离线属性测试逐对覆盖 45 种搭配。
+        /// 随机源由调用方注入，方便离线属性测试逐对覆盖 90 种有序搭配。
         /// </summary>
         internal static void RollPair(float roll0, float roll1, out string idA, out string idB)
         {

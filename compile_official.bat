@@ -1173,6 +1173,7 @@ echo(PetNest\PetNestBackpackRestoration.cs
 echo(PetNest\PetNestDeathSuppressionRegistry.cs
 echo(PetNest\PetNestDownedHandler.cs
 echo(PetNest\PetNestExpeditionService.cs
+echo(PetNest\PetNestExpeditionSlots.cs
 echo(PetNest\PetNestUIBridge.cs
 echo(PetNest\PetNestInteractable.cs
 echo(PetNest\PetNestBuilder.cs

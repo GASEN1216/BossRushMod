@@ -175,6 +175,18 @@ def check_catalog(errors):
     if "GetDestinationElement" not in code:
         errors.append("[元素] 缺少远征目的地元素映射")
 
+    # 2026-10-17：官方七种元素都要有一个契合的远征目的地，否则那类血脉永远拿不到亲和加成
+    tables = re.findall(r"private static readonly ElementTypes\[\] (\w+Elements) = \{([^}]*)\};", code)
+    covered = set()
+    for name, body in tables:
+        if name != "NoElements":
+            covered.update(re.findall(r"ElementTypes\.(\w+)", body))
+    for element in ["physics", "fire", "poison", "electricity", "space", "ghost", "ice"]:
+        if element not in covered:
+            errors.append("[元素] 没有任何远征目的地契合 " + element + "，该系血脉永远拿不到亲和加成")
+    if "DestinationAcceptsElement" not in code:
+        errors.append("[元素] 亲和判定必须走 DestinationAcceptsElement（一处目的地多元素）")
+
 
 def check_clone(errors):
     text = read_petnest("PetNestModels.cs")

@@ -472,6 +472,7 @@ namespace BossRush
         public static bool TryGet(string key, out PetNestLineageInfo info) { info = IsKnownLineage(key) ? new PetNestLineageInfo() : null; return info != null; }
         public static bool IsKnownLineage(string key) { return key == "test" || (key != null && key.StartsWith("test_", StringComparison.Ordinal)); }
         public static ElementTypes GetDestinationElement(string id) { return ElementTypes.electricity; }
+        public static bool DestinationAcceptsElement(string id, ElementTypes element) { return element == GetDestinationElement(id); }
     }
     static class RelicEggConfig
     {

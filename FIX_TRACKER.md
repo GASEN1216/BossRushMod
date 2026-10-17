@@ -2,6 +2,21 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+## 2026-10-17 遗种巢远征与战痕调整（COMPAT，经济调整经 owner 授权，L1/L2，未实机）
+
+起因是同日的设计评估（对照碧蓝航线委托、刺客信条兄弟会、XCOM、暗黑地牢等）；owner 要求四条都改、数值按好玩拍板。
+
+- 远征同时在途上限：基础 2 队，图鉴解锁 10 / 20 血脉各 +1，最多 4。新文件 `PetNest/PetNestExpeditionSlots.cs`（已登记编译清单），只数未结算记录；`TryDepart` 事务内外两次判，失败码 `expedition_slots_full`。不写档，旧档超额在途照常结算。
+- 平安档成功率 0.55 → 0.85，现金 400–1200 → 300–900、遗魂 15 → 10，单趟期望与旧值同量级；风险档卡首行写实际成功率。
+- 遗魂治疤：`PetNestService.TryHealScar` 花 40 同血脉遗魂治最早一道，并进旧伤计数，不加存档字段；巢页「治一道疤」按钮与战痕栏花费 / 余额。
+- 元素亲和：风暴海域 电 + 空间、酸雨废墟 毒 + 物理、极寒荒原 冰 + 火 + 幽灵，判定走 `DestinationAcceptsElement`；远征页写这只崽的元素与契合表。
+- 顺手：炫彩注释「45 种」改为 90 种有序搭配（与 Wiki、代码一致）。
+- 文档：Wiki 中英 `system__pet_nest`、repowiki `遗种巢系统.md`。
+
+验证：全量守卫 746/746；执行回归 ContentTransactions（619 断言，新增 `PetNestScarTreatmentAndExpeditionSlots`）与 PetNestGrowth / PetNestCompanionActivation / PetNestCare 全过；新用例两处生产变异（队数判据放宽、治疤改治最新一道）与 `PetNestModelsGuard` 元素覆盖（删幽灵）均反向转红后按字节还原；Wiki 构建通过；Windows 正式构建 0 错误并已部署，DLL SHA-256 `B95447390462DD46C3DDAFE0B805CFABE75637D0A7EDCBBF85D5C94A893965DE`（游戏目录一致），74 包哈希核对通过，WikiContent 已同步。
+
+L3 缺：远征页「在途 x / y 队」与队满提示、风险档卡成功率行、巢页治疤按钮与战痕栏在 1920×1080 下是否换行合适；治疤后下一局崽的移速恢复；数值手感（平安档是否还有人用、风浪档是否仍是主力）。
+
 ## 2026-10-17 v2.3.5 发版（COMPAT / OPERATIONAL，L1/L2，未实机）
 
 汇总 958de5d9（天空岛指引对齐）与 d6d313cb（交互点可见物）：Wiki 新增 v2.3.5 中英更新日志并登记目录与总览；`info.ini` 升到 2.3.5 并拷进游戏目录；工坊简介 ../a.md / ../b.md 换上 v2.3.5、删去 v2.3.3 段，`tools/workshop_description_budget.py` 量得 a.md 6951、b.md 7685（预算 7700）。为不超 1500 行，2026-09-26～27 四节逐字移入 `archive/FIX_TRACKER_2026-09.md`。

@@ -567,6 +567,9 @@ namespace BossRush
             PetNestPageContent page = new PetNestPageContent();
             page.Title = T("Page_Expedition");
 
+            int usedSlots;
+            int slotCap;
+            bool hasFreeSlot = PetNestExpeditionSlots.HasFreeSlot(out usedSlots, out slotCap);
             List<PetNestExpeditionRecord> records = PetNestExpeditionService.Records;
             PetNestSection underway = null;
             for (int i = 0; i < records.Count; i++)
@@ -576,10 +579,18 @@ namespace BossRush
                 if (underway == null)
                 {
                     underway = new PetNestSection();
-                    underway.Title = L10n.T("在途", "Under way");
+                    underway.Title = L10n.T("在途 · " + usedSlots + " / " + slotCap + " 队",
+                        "Under way · " + usedSlots + " / " + slotCap + " teams");
                     page.Sections.Add(underway);
                 }
                 underway.Items.Add(BuildExpeditionCard(r));
+            }
+
+            if (!hasFreeSlot)
+            {
+                page.Body = PetNestLocalization.DescribeFailure("expedition_slots_full")
+                    + L10n.T("（" + usedSlots + " / " + slotCap + " 队）", " (" + usedSlots + " / " + slotCap + " teams)");
+                return page;
             }
 
             AppendPetPicker(page, selectedPetId, select, refresh);
@@ -684,11 +695,27 @@ namespace BossRush
                 };
                 where.Items.Add(segment);
             }
-            if (anyAffinity)
+            // 契合表一直写出来：玩家要知道「换一只什么系的崽」才能拿到 ★，不只是看这只有没有
+            string table = string.Empty;
+            for (int d = 0; d < destinations.Length; d++)
             {
-                where.Caption = "★ " + T("ElementAffinity")
-                    + L10n.T("：和这只崽的元素契合，成功率更高。", ": matches this cub's element, higher success rate.");
+                ElementTypes[] elements = PetNestLineageCatalog.GetDestinationElements(destinations[d].Id);
+                string names = string.Empty;
+                for (int e = 0; e < elements.Length; e++)
+                {
+                    if (names.Length > 0) names += "/";
+                    names += DescribeElement(elements[e]);
+                }
+                if (table.Length > 0) table += L10n.T("；", "; ");
+                table += PetNestLocalization.DescribeDestination(destinations[d].Id) + " " + names;
             }
+            PetNestLineageInfo lineage;
+            string own = PetNestLineageCatalog.TryGet(pet.lineageKey, out lineage) && lineage != null
+                ? L10n.T("这只崽是" + DescribeElement(lineage.Element) + "系。", "This cub is " + DescribeElement(lineage.Element) + ". ")
+                : string.Empty;
+            where.Caption = own + (anyAffinity ? "★ " : string.Empty) + T("ElementAffinity")
+                + L10n.T("：契合时成功率 +", ": +") + FormatPercent(PetNestTuning.ElementAffinityBonus)
+                + L10n.T("。", " success when matched. ") + table;
             page.Sections.Add(where);
 
             if (_expeditionTier < 0 || _expeditionTier > (int)PetNestRiskTier.Desperate) _expeditionTier = 0;
@@ -705,7 +732,10 @@ namespace BossRush
                 card.Title = DescribeRisk(t);
                 card.Subtitle = FormatDuration(PetNestExpeditionService.GetDurationHours(tier))
                     + " · " + T("DeathRateLabel") + " " + FormatPercent(deathRate);
-                card.Body = DescribeTierPayoff(tier);
+                // 成功率按这只崽与当前目的地算（含元素契合），和出发时固化进记录的是同一个数
+                card.Body = L10n.T("带回战利品的成功率 ", "Success chance ")
+                    + FormatPercent(PetNestExpeditionService.ComputeSuccessRate(pet, chosen, tier))
+                    + "\n" + DescribeTierPayoff(tier);
                 card.IsDanger = tier == PetNestRiskTier.Desperate;
                 card.Selected = t == _expeditionTier;
                 card.OnCardClick = delegate
@@ -736,6 +766,21 @@ namespace BossRush
                     if (refresh != null) refresh();
                 },
             });
+        }
+
+        /// <summary>官方七种元素的玩家可读名（远征契合说明用）。</summary>
+        private static string DescribeElement(ElementTypes element)
+        {
+            switch (element)
+            {
+                case ElementTypes.fire: return L10n.T("火", "Fire");
+                case ElementTypes.poison: return L10n.T("毒", "Poison");
+                case ElementTypes.electricity: return L10n.T("电", "Electric");
+                case ElementTypes.space: return L10n.T("空间", "Space");
+                case ElementTypes.ghost: return L10n.T("幽灵", "Ghost");
+                case ElementTypes.ice: return L10n.T("冰", "Ice");
+                default: return L10n.T("物理", "Physical");
+            }
         }
 
         /// <summary>出发并记下失败原因。远征页（稳妥 / 冒险）与亡命档确认弹窗共用。</summary>

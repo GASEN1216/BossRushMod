@@ -28,7 +28,7 @@ namespace BossRush
 {
     /// <summary>
     /// 一个远征目的地的静态定义。
-    /// **不带元素字段**：目的地 -> 元素只有 PetNestLineageCatalog.GetDestinationElement
+    /// **不带元素字段**：目的地 -> 元素只有 PetNestLineageCatalog.GetDestinationElements
     /// 一份表（元素亲和判定读的就是它）。这里曾经并存一个从没有人读的 Element 字段，
     /// 是典型的第二真相来源，改一处漏一处。
     /// </summary>
@@ -179,7 +179,7 @@ namespace BossRush
 
         /// <summary>
         /// 血脉元素是否与目的地匹配。
-        /// 目的地→元素只认 PetNestLineageCatalog.GetDestinationElement 这一份表，
+        /// 目的地→元素只认 PetNestLineageCatalog.GetDestinationElements 这一份表，
         /// 不在本文件另建第二份——两处一旦不同步，元素亲和会静默偏差。
         /// </summary>
         internal static bool HasElementAffinity(PetNestPetRecord pet, string destinationId)
@@ -188,7 +188,7 @@ namespace BossRush
             PetNestLineageInfo lineage;
             if (!PetNestLineageCatalog.TryGet(pet.lineageKey, out lineage) || lineage == null) return false;
             if (TryGetDestination(destinationId) == null) return false;
-            return lineage.Element == PetNestLineageCatalog.GetDestinationElement(destinationId);
+            return PetNestLineageCatalog.DestinationAcceptsElement(destinationId, lineage.Element);
         }
 
         #endregion
@@ -298,6 +298,13 @@ namespace BossRush
                 failureReasonId = "destination_unknown";
                 return false;
             }
+            int usedSlots;
+            int slotCap;
+            if (!PetNestExpeditionSlots.HasFreeSlot(out usedSlots, out slotCap))
+            {
+                failureReasonId = "expedition_slots_full";
+                return false;
+            }
 
             try
             {
@@ -307,6 +314,12 @@ namespace BossRush
                 if (!CanDepart(pet, out failureReasonId))
                 {
                     PetNestPersistenceAccess.AbortTransaction();
+                    return false;
+                }
+                if (!PetNestExpeditionSlots.HasFreeSlot(out usedSlots, out slotCap))
+                {
+                    PetNestPersistenceAccess.AbortTransaction();
+                    failureReasonId = "expedition_slots_full";
                     return false;
                 }
                 PetNestExpeditionData data = PetNestPersistenceAccess.Expedition;
@@ -811,7 +824,7 @@ namespace BossRush
             {
                 case PetNestRiskTier.Rough: min = 1200; max = 3600; break;
                 case PetNestRiskTier.Desperate: min = 4000; max = 12000; break;
-                default: min = 400; max = 1200; break;
+                default: min = 300; max = 900; break; // 平安档成功率 0.85，单趟期望与旧值同量级
             }
         }
 

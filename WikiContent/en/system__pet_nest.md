@@ -14,7 +14,7 @@ PetNest is on by default and needs no setting turned on anywhere. Build the nest
 Every boss kill feeds two tracks at once:
 
 - **Relic Egg (the lucky track)**: a low-probability direct drop of that boss's egg. It follows that boss's normal loot path: into the **loot crate** in standard arena and From Scratch, **onto the ground** in Infinite Hell (no crate there), and **on the boss itself** only in Faction War and Blood Hunt, where you do have to search the body.
-- **Boss Relic Soul (the guaranteed track)**: **always dropped**, scaled by the boss's max health. Souls are only used to condense an egg of that bloodline. They are not currency and never enter shops.
+- **Boss Relic Soul (the guaranteed track)**: **always dropped**, scaled by the boss's max health. Souls are used to condense an egg of that bloodline and to treat the scars of cubs from it. They are not currency and never enter shops.
 
 Drops cover the three standard difficulties, From Scratch, Faction War and Blood Hunt. **Fate Echo, the Black Market Duck Cup and Zombie Mode do not drop relics** - Bosses in those three modes spawn through their own separate paths and never enter the relic ledger.
 
@@ -71,7 +71,8 @@ Every cub has its own backpack: **4 slots** to start, with more from levels, end
 
 #### While you are there, it does not die
 - A downed cub **does not die**. It is **carried off wounded**: out for the rest of the run, restored when you return to base.
-- Each knockdown leaves a **scar**: when, which map, and who put it down, plus one small permanent debuff.
+- Each knockdown leaves a **scar**: when, which map, and who put it down, plus one small debuff (-2% each, filling walk speed, then run speed, then health, at most -10% per stat).
+- **Scars can be treated**: select the cub on the nest page and press "Treat a scar" to spend **40** souls of its bloodline and heal its oldest scar. A treated scar moves into "old wounds": it still counts in the record but no longer carries a debuff. Cubs away on expeditions cannot be treated; the button is hidden when you don't have enough souls, and the Scars line on the nest page shows the cost and how many souls that bloodline has.
 - Scars double as its service record. Each cub has a scar cap; older ones merge into an "old wounds" count.
 
 #### Where cubs are not allowed
@@ -88,14 +89,18 @@ Every cub has its own backpack: **4 slots** to start, with more from levels, end
 This is the **only** place in the system where a cub can truly die.
 
 #### Three destinations
-- **Storm Sea**: the disaster is a thunderstorm, matching the **Electricity** element
-- **Acid Rain Ruins**: the disaster is acid rain, matching the **Poison** element
-- **Frozen Waste**: the disaster is a blizzard, matching the **Ice** element
+- **Storm Sea**: the disaster is a thunderstorm; suits **Electric** and **Space**
+- **Acid Rain Ruins**: the disaster is acid rain; suits **Poison** and **Physical**
+- **Frozen Waste**: the disaster is a blizzard; suits **Ice**, **Fire** and **Ghost**
 
-Matching the cub's bloodline element to the destination adds `12` percentage points to its loot-success chance. It does not reduce the death rate.
+Every one of the seven elements suits one destination, so every bloodline has somewhere it fits. A matching destination (marked ★) adds `12` percentage points to the loot-success chance. It does not reduce the death rate. A bloodline's element is the one its source boss resists best; bosses with no clear resistance count as Physical. The expedition page tells you which element the cub is.
+
+#### How many at once
+- Up to **2** expeditions can be out at once, +1 each when your index reaches **10 / 20** unlocked bloodlines, up to **4**.
+- Cubs that are back and waiting for their card flip don't take a team. When every team is out, the expedition page shows the count; wait for one to return.
 
 #### Three risk tiers
-The tier sets the payout, the risk and the wait all at once (the wait is real time):
+The tier sets the payout, the risk and the wait all at once (the wait is real time). Base loot-success chance: Safe **85%**, Rough **70%**, Desperate **80%** (after Desperate's death roll), plus 12 points for a matching element; each tier card shows this cub's actual chance at the chosen destination.
 
 - **Safe**: **10 minutes**, low reward, **0%** death rate. Completely safe; the worst case is coming home empty-handed. +15 experience on return
 - **Rough**: **30 minutes**, medium reward, **never fatal**, about 25% chance to come back wounded. +30 experience on return
@@ -103,7 +108,7 @@ The tier sets the payout, the risk and the wait all at once (the wait is real ti
 
 [tip] Per minute waited, Safe gives 1.5 experience and Rough and Desperate give 1 each if the cub survives. Desperate does not level it faster and carries a risk of permanent death. Choose Safe for steady growth; Desperate offers more loot and a chance at a Relic Egg.
 
-Successful Safe / Rough / Desperate trips bring back `400–1200 / 1200–3600 / 4000–12000` money and `15 / 40 / 90` souls of the cub's bloodline.
+Successful Safe / Rough / Desperate trips bring back `300–900 / 1200–3600 / 4000–12000` money and `10 / 40 / 90` souls of the cub's bloodline.
 Successful trips also roll an extra item: **one quality-3 item** for Rough, or **one quality-4 item** for Desperate; Safe has no random-item reward. If no eligible item is available at settlement, that random item is skipped and is not queued for later delivery.
 After a Desperate trip survives and succeeds, it has a further `20%` chance to award a Relic Egg of that bloodline. This is not the overall egg chance per departure.
 Returning empty-handed still awards survival experience; dying awards neither experience nor loot.
@@ -145,7 +150,7 @@ Cubs grow by working with you, capping at level 10 ("Adult"), after which they s
 - **Batch release** — "Select" at the top right of the nest page switches to ticking mode: click cards to tick or untick. "Tick all common cubs" on the right ticks every ordinary cub at once; the deployed cub and shiny or chroma cubs are never ticked that way and have to be ticked one by one. Press "Release N" and confirm to release them all in one go, 60 souls back per cub.
 
 ### Tips
-- Souls exist only to condense eggs. Bank **240** of one bloodline and you can target that boss's egg directly, so unlucky players can still complete the index.
+- Souls condense eggs and treat scars. Bank **240** of one bloodline and you can target that boss's egg directly, so unlucky players can still complete the index; treating one scar costs 40.
   Releasing a cub refunds 60 souls, so four released cubs pay for a fresh egg.
 - When the nest is full, expand or release: unlocking more bloodlines raises the cap, releasing frees a place immediately and refunds some souls.
 - Eggs are easiest to track in the top level of your bag or storage. Eggs tucked inside crates and containers are now found too, but the outer level keeps the count obvious.
