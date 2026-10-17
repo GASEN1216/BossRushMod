@@ -212,9 +212,11 @@ namespace BossRush
                 // A2 原朝 0°：那一点压在 Tripo_cottage_small_03 的碰撞箱里，实机按 60° 步进换到小屋与 A_Cover01 箱堆之间，
                 // 浮空字被箱堆挡掉一截（2026-09-15 第五轮截图）。240° 那一点离两者都有 7 m 以上。
                 Node("A2", "Lamp_A_02", 240f, 8f, SkyIslandGatherKind.Driftwood, SkyIslandLootTier.Supply, "A"),
-                Node("B1", "Lamp_B", 0f, 8f, SkyIslandGatherKind.Grass, SkyIslandLootTier.Supply, "B"),
-                Node("B2", "Lamp_B_02", 0f, 8f, SkyIslandGatherKind.Driftwood, SkyIslandLootTier.Supply, "B"),
-                Node("C1", "POI_C", 0f, 8f, SkyIslandGatherKind.Grass, SkyIslandLootTier.Supply, "C"),
+                // B1 / B2 / C1 / F2 / S4a 原方位落在路面或广场铺装上：采集物件（草丛 / 浮木 / 风晶）是实体，压路过不了场景净空审计，
+                // 2026-10-17 交互点可见性盘点按离线复算就近改到路边（tests/SkyIslandPointPropsPropertyTest.py 复核）。
+                Node("B1", "Lamp_B", 30f, 8f, SkyIslandGatherKind.Grass, SkyIslandLootTier.Supply, "B"),
+                Node("B2", "Lamp_B_02", 75f, 8f, SkyIslandGatherKind.Driftwood, SkyIslandLootTier.Supply, "B"),
+                Node("C1", "POI_C", 330f, 8f, SkyIslandGatherKind.Grass, SkyIslandLootTier.Supply, "C"),
                 Node("C2", "Lamp_C", 0f, 8f, SkyIslandGatherKind.Grass, SkyIslandLootTier.Supply, "C"),
                 Node("C3", "Lamp_C_02", 15f, 8f, SkyIslandGatherKind.Moss, SkyIslandLootTier.Supply, "C"),
                 // D 悬根林 / E 鸣风栈道 / F 镜水寺 / 三座秘境：中段。
@@ -224,7 +226,7 @@ namespace BossRush
                 Node("E1", "Lamp_E", 0f, 8f, SkyIslandGatherKind.Crystal, SkyIslandLootTier.Voyage, "E"),
                 Node("E2", "Lamp_E_02", 0f, 8f, SkyIslandGatherKind.Driftwood, SkyIslandLootTier.Voyage, "E"),
                 Node("F1", "Lamp_F", 150f, 8f, SkyIslandGatherKind.Moss, SkyIslandLootTier.Voyage, "F"),
-                Node("F2", "Lamp_F_02", 0f, 8f, SkyIslandGatherKind.Grass, SkyIslandLootTier.Voyage, "F"),
+                Node("F2", "Lamp_F_02", 260f, 8f, SkyIslandGatherKind.Grass, SkyIslandLootTier.Voyage, "F"),
                 Node("S1a", "POI_S1", 0f, 8f, SkyIslandGatherKind.Grass, SkyIslandLootTier.Voyage, "S1"),
                 Node("S1b", "Region_S1", 150f, 8f, SkyIslandGatherKind.Moss, SkyIslandLootTier.Voyage, "S1"),
                 Node("S2a", "POI_S2", 0f, 8f, SkyIslandGatherKind.Driftwood, SkyIslandLootTier.Voyage, "S2"),
@@ -241,7 +243,7 @@ namespace BossRush
                 Node("K2", "Relay_K2", 0f, 8f, SkyIslandGatherKind.Ore, SkyIslandLootTier.Starworks, "G"),
                 Node("H1", "Lamp_H", 0f, 8f, SkyIslandGatherKind.Crystal, SkyIslandLootTier.Starworks, "H"),
                 Node("H2", "Lamp_H_02", 0f, 8f, SkyIslandGatherKind.Ore, SkyIslandLootTier.Starworks, "H"),
-                Node("S4a", "POI_S4", 15f, 8f, SkyIslandGatherKind.Crystal, SkyIslandLootTier.Starworks, "S4"),
+                Node("S4a", "POI_S4", 30f, 8f, SkyIslandGatherKind.Crystal, SkyIslandLootTier.Starworks, "S4"),
                 Node("S4b", "Region_S4", 75f, 8f, SkyIslandGatherKind.Ore, SkyIslandLootTier.Starworks, "S4")
             };
         }

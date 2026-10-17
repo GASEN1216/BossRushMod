@@ -313,12 +313,12 @@ def main():
     world_echo = clean_source(read("SkyIsland/SkyIslandWorldStoryEcho.cs"))
     side_filter = need_body(world_echo, "private IEnumerable<string> CompassSideTargets()", "罗盘可选目标过滤")
     require(side_filter, "!session.CanSummonStormEcho(out blocker)", "罗盘只在这一趟引得了风时才因引风指双航标门")
-    # ② Search_E 只是个装置，没有木牌；看得见的木牌是北头钟庭门的门牌，写「木牌」会把人引过去。
+    # ② Search_E 旁的小木牌只写地名（AddPointSign）；写通行状态的是 K3 桥头与北头钟庭门的门牌，把双航标门叫成「木牌」会和门牌混淆。
     gates_src = clean_source(read("SkyIsland/SkyIslandGates.cs"))
     for label, src in (("SkyIslandWorldStory.cs", world), ("SkyIslandWorldStoryEcho.cs", clean_source(read("SkyIsland/SkyIslandWorldStoryEcho.cs"))),
                        ("SkyIslandGates.cs", gates_src)):
         if "双航标门木牌" in src or "twin-beacon gate sign" in src:
-            errors.append(label + " 又把双航标门叫成「木牌」：交互点 Search_E 在栈道南头，没有木牌模型")
+            errors.append(label + " 又把双航标门叫成「木牌」：Search_E 旁的小木牌只写地名，会和 K3 / 钟庭的门牌混淆")
     # ③ K1 按钮与回话、拒绝话、门牌同名；④ 穿镜纹甲时折翎的和解按钮不叫人出示没带的旧信与航路图。
     read_point = need_body(world, "internal void ReadPoint(string key, Action recorded)", "装置面板")
     require(read_point, 'L10n.T("系牢回程绳桥 K1", "Lash the K1 rope bridge home")', "K1 按钮要叫「回程绳桥」，与回话和门牌一致")

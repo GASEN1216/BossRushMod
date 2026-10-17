@@ -51,8 +51,10 @@ def main():
     attach = guide.split("internal static void Attach(", 1)[1].split("private static Vector3 GuideOffset(", 1)[0]
     need(attach, "航路图落点", "GuideOffset(root.transform, marker)")
     forbid(attach, "航路图落点", '"SkyIsland_TravelGuide", Vector3.zero')
+    # 方位与距离走 PlacementFor（没有改写时 = 标记名稳定散列 + 交互间距）；风铃集那一处在改写表里挪到路边（2026-10-17）。
     need(guide, "航路图偏移", "SkyIslandRewardCrate.TryFindCratePosition(",
-         "SkyIslandRewardCrate.InteractableSeparation", "SkyIslandLootTables.StableHash(marker.name)")
+         "SkyIslandLootTables.PlacementFor(marker.name, SkyIslandRewardCrate.InteractableSeparation, out bearing, out distance)")
+    forbid(guide, "航路图偏移", "SkyIslandLootTables.StableHash(marker.name)")
 
     # 间距必须大于两侧触发盒半边之和（纪念物 3/2=1.5 + 见闻点 2.2/2=1.1 = 2.6）。
     sep = None

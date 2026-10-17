@@ -1041,6 +1041,8 @@ namespace BossRush
                 bearing, distance, GameplayDataSettings.Layers.groundLayerMask.value, out spot)) return false;
             pigeon = SkyIslandStoryInteractable.Create(root.transform, spot, "SkyIslandPigeon_" + letter.Id,
                 PigeonTitle(), delegate { ReadLetter(letter); });
+            // 以前只有一盏光和走近才浮现的字，地上什么都没有（2026-10-17 交互点可见性盘点）。
+            SkyIslandPointProps.Pigeon(pigeon, letter.Id, PropPalette());
             GameObject glow = new GameObject("PigeonGlow");
             glow.transform.SetParent(pigeon.transform, false);
             glow.transform.localPosition = Vector3.up * 2f;

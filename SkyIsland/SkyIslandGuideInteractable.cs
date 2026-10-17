@@ -15,6 +15,7 @@ namespace BossRush
 
         internal static void Attach(GameObject root, SkyIslandSession owner)
         {
+            SkyIslandPropPalette palette = null;
             foreach (Transform marker in root.GetComponentsInChildren<Transform>(true))
             {
                 if (marker.name != "Search_A_02" && marker.name != "Search_B_02") continue;
@@ -26,6 +27,9 @@ namespace BossRush
                 SkyIslandGuideInteractable guide = NPCInteractionGroupHelper.GetOrCreateStandaloneInteractable<SkyIslandGuideInteractable>(
                     marker, "SkyIsland_TravelGuide", GuideOffset(root.transform, marker), value => value.session = owner);
                 if (guide == null) continue;
+                // 航路图架：以前这里只有一个 0.65 m 的触发球，地上什么都没有（2026-10-17 交互点可见性盘点）。
+                if (palette == null) palette = new SkyIslandPropPalette(root.transform);
+                SkyIslandPointProps.ChartStand(guide.gameObject, marker.name, palette);
                 SphereCollider trigger = guide.GetComponent<SphereCollider>();
                 trigger.isTrigger = true;
                 trigger.center = Vector3.up * 0.8f;
@@ -52,15 +56,18 @@ namespace BossRush
         /// </summary>
         private static Vector3 GuideOffset(Transform root, Transform marker)
         {
-            float bearing = SkyIslandLootTables.StableHash(marker.name) % 360;
+            // 方位与距离走 PlacementFor：没有改写时就是标记名的稳定散列 + 交互间距（与旧写法逐位相同），
+            // 风铃集那一处散列方位落在集市铺装上，航路图架压路，在改写表里挪到路边（2026-10-17）。
+            float bearing, distance;
+            SkyIslandLootTables.PlacementFor(marker.name, SkyIslandRewardCrate.InteractableSeparation, out bearing, out distance);
             Vector3 resolved;
             if (SkyIslandRewardCrate.TryFindCratePosition(root, marker.position, bearing,
-                SkyIslandRewardCrate.InteractableSeparation,
+                distance,
                 GameplayDataSettings.Layers.groundLayerMask.value, out resolved))
                 return resolved - marker.position;
             float radians = bearing * Mathf.Deg2Rad;
             Debug.LogWarning("[SkyIslandGuide] " + marker.name + " 附近没有净空落点，航路图按方位角偏移放置。");
-            return new Vector3(Mathf.Cos(radians), 0f, Mathf.Sin(radians)) * SkyIslandRewardCrate.InteractableSeparation;
+            return new Vector3(Mathf.Cos(radians), 0f, Mathf.Sin(radians)) * distance;
         }
 
         protected override string InteractNameKey

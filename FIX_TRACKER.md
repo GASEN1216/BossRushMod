@@ -2,6 +2,20 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+## 2026-10-17 天空岛交互点可见性：每处交互都有实体物件（COMPAT，L1/L2，未提交、未实机）
+
+owner 要求地图上有交互的地方都要有看得见的实体物件。盘点报告 `docs/reports/reviews/2026-10-17-天空岛交互点可见性盘点.md`：原先看不见的是 20 处见闻点 `Search_*`（触发盒）、2 个航路图（触发球）、12 处信鸽（光 + 走近浮现的字）、30 处采集点（光斑 + 点光）；搜刮 / 谢礼 / 奖励箱、纪念物与归航船名册、居民、零号区航向仪、基地船本来就看得见；兜底装置、商店、合成台、菜畦、药臼、风晶灯、谜题、签筒都是挂在见闻点或航路图上的子选项，跟随宿主。
+
+- 见闻点：`Search_B / E / H` 的小木牌出自会话「天空岛三处看不见的交互点补立牌」的补丁（`SkyIslandGates.AddPointSign`）；本条在其上补齐其余 17 处（15 块双桩 + 码头整备、风标两块单桩窄牌 `AddPointPost`，牌面与字抽成 `AddPointBoard` 共用），字与交互名同词、随语言切换。落点离线求解：相机反方向 2.2 m 起摆，木桩不压路缘、不穿实体，不进任何触发盒，离自家见闻点最近；风标那处站在铺装广场正中，窄牌在 3.7 m 外广场边沿。
+- 新文件 `SkyIsland/SkyIslandPointProps.cs`：白鸽（随信鸽飞走）、航路图架、五种采集物（采走当帧拿掉），程序化基本体 + 场景已加载的作者材质（`SkyIslandPropPalette` 每个 owner 每趟扫一次），无碰撞体，摆在交互体正中。已登记 `compile_official.bat`。
+- 原落点在路面 / 广场铺装正中、实物压路的 12 处挪到路边：风铃集航路图（`GuideOffset` 改走 `PlacementFor`，码头那处逐位不变）、信鸽 Letter_03/04/06/07/09/10（`PlacementFor` 改写表；09 另躲开巡守槽位 4 m）、采集点 B1/B2/C1/F2/S4a（`BuildNodes` 方位）。
+- 运行时摆放表 +100 行（`point_sign` 56、`interact_prop` 44）；场景净空证据表用 2026-10-01 台账 `ledger_d`（实例 13,593、三角形 2,890,336 与原证据相同，作者件无一移动，不用重打场景包）重跑，设计接触 23 条与原先逐条相同、开放 0。
+- 守卫：新 `SkyIslandPointPropsPropertyTest`（建交互体的 9 处写法各登记实物证据、摆放表逐处核对、7 条破坏探针）；`SkyIslandInteractionCompetitionPropertyTest` 木牌集合改为恰好等于全部 `Search_*`、航路图按 `placement_for` 复算；`SkyIslandPlayabilityGuard` 认 `PlacementFor`；`SkyIslandContentPackGuard` ② 注释与报错按「Search_E 旁有只写地名的小木牌」改写。反向验证：删采集物调用、删一块木牌各自转红，按字节还原 sha 一致。
+
+验证见报告第五节。L3 缺：实机清单 `docs/guides/sky-island/天空岛_待人工验证清单.md` 末节 PV-01–PV-10（接在小木牌 PS-01–PS-06 之后）。
+
+合并（2026-10-17，owner 同意）：合并补丁 `git apply --check` 通过后打进主工作区（含小木牌补丁全部内容，未单独打那份），报告拷进 `docs/reports/reviews/`，PS / PV 两段清单追加到人工清单末尾。主工作区复验：全量守卫 736 通过，另 10 条红只因扫进了 `.claude/worktrees/` 下两个会话的工作树副本（逐条核对，报错路径全在工作树里），主工作区源码自身无红；SkyIsland 执行回归 17/17；Windows 正式构建 0 错误并已部署，DLL SHA-256 `EC0A3D73F37708585C16DE19D984C67A30BE31424ADCD447F562B18F8B63959A`（游戏目录与 Build 一致，无 Dev 标识）。
+
 ## 2026-10-17 天空岛剧情指引全面核查（COMPAT，L1/L2，未提交、未实机）
 
 owner 要求从头到尾再查一遍整条剧情指引（含基地序章），报告 `docs/reports/reviews/2026-10-17-天空岛剧情指引全面核查.md`。新执行回归 `SkyIslandGuidanceMatrixRegression` 用生产 `TryApply` / `CanOffer` / `CanDeliver` 枚举 3952 个可达剧情状态 × 中英 × 苇白 / 浮舟 / 钟守逐个缺席，核九条不变式（有圈、圈里有事、照圈能通关、圈与罗盘不泛称、引号里是真按钮名、英文无中文、缺席给予者带兜底装置、做完换导语、交付被拦有原因）；结构不变式本来就全过，没有死胡同。确认并修 22 类，只改文案、标签和两个纯函数，不动判据、旗标、存档、任务 ID 与坐标：

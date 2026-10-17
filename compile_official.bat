@@ -302,6 +302,7 @@ echo(SkyIsland\SkyIslandItemRules.cs
 echo(SkyIsland\SkyIslandFieldcraftRules.cs
 echo(SkyIsland\SkyIslandLights.cs
 echo(SkyIsland\SkyIslandGathering.cs
+echo(SkyIsland\SkyIslandPointProps.cs
 echo(SkyIsland\SkyIslandFieldcraft.cs
 echo(SkyIsland\SkyIslandInventoryTransaction.cs
 echo(SkyIsland\SkyIslandNight.cs

@@ -60,6 +60,8 @@ namespace BossRush
         private Material discMaterial;
         private GameObject breathDriver;
         private bool discMaterialTried;
+        /// <summary>采集物件的作者材质表：第一次建点时扫一次世界根。</summary>
+        private SkyIslandPropPalette palette;
         /// <summary>正在淡出的采完的点：本对象销毁时一并收掉（它们用着上面那份共享材质）。</summary>
         private readonly List<GameObject> fading = new List<GameObject>();
 
@@ -187,6 +189,9 @@ namespace BossRush
                 string label = SkyIslandFieldcraftRules.GatherLabel(node.Kind);
                 go.AddComponent<SkyIslandGatherPoint>().Bind(label, SkyIslandFieldcraftRules.InteractSeconds(node.Kind),
                     delegate { OnGathered(spot); });
+                // 采集物本身（草丛 / 浮木 / 苔垫 / 矿石 / 晶簇）：以前只有光斑和点光，地上没有东西（2026-10-17 交互点可见性盘点）。
+                if (palette == null) palette = new SkyIslandPropPalette(root);
+                SkyIslandPointProps.Gather(go, node.Id, node.Kind, palette);
 
                 GameObject glow = new GameObject("GatherGlow");
                 glow.transform.SetParent(go.transform, false);
@@ -253,6 +258,7 @@ namespace BossRush
                 // 本帧组件仍在）；光斑、点光与字交给 0.4 秒的淡出再销毁根（UE-05）。改名：F3 按 SkyIslandGather_<id> 找「还在不在」。
                 SkyIslandGatherPoint point = gathered.GetComponent<SkyIslandGatherPoint>();
                 if (point != null) UnityEngine.Object.Destroy(point);
+                SkyIslandPointProps.Remove(gathered);
                 BoxCollider trigger = gathered.GetComponent<BoxCollider>();
                 if (trigger != null) UnityEngine.Object.Destroy(trigger);
                 gathered.name = "SkyIslandGatherFading";
