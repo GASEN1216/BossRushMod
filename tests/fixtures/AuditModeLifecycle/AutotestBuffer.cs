@@ -93,7 +93,7 @@ namespace BossRush
             public bool BufferCountsIncluded;
             public Dictionary<int, int> Items = new Dictionary<int, int>();
         }
-        private static readonly int[] AutotestLedgerTypeIds = { 42 };
+        private static readonly int[] AutotestLedgerTypeIds = { 42, BossRushItemIds.SkyIslandHomecomingBadge };
         private static bool AutotestWriteAllowed(out string reason) { reason = null; return true; }
         public string Detail;
         public bool Restore(int before, bool bufferIncluded = true, int slot = 1)
@@ -102,9 +102,19 @@ namespace BossRush
             snapshot.Items[42] = before;
             return TryReclaimAutotestItems(snapshot, out Detail) && ClearAutotestSnapshotKey();
         }
+        public bool RestoreKeepsake(int badgesBefore, int otherBefore)
+        {
+            var snapshot = new AutotestSnapshot { Slot = 1, BufferCountsIncluded = true };
+            snapshot.Items[42] = otherBefore;
+            snapshot.Items[BossRushItemIds.SkyIslandHomecomingBadge] = badgesBefore;
+            return TryReclaimAutotestItems(snapshot, out Detail) && ClearAutotestSnapshotKey();
+        }
+        public static int CountBadges() { string where; return CountOwnedItems(BossRushItemIds.SkyIslandHomecomingBadge, out where); }
         public static int Count() { string where; return CountOwnedItems(42, out where); }
         public static string CountDetail() { string where; CountOwnedItems(42, out where); return where; }
     }
+    // 纪念品 TypeID 只给收回目标用；刻意不等于 42，原有用例的件数语义不变。
+    internal static class BossRushItemIds { public const int SkyIslandHomecomingBadge = 43; public const int SkyIslandWindeaterCore = 44; }
     internal static class Program
     {
         private static int checks;
@@ -164,6 +174,16 @@ namespace BossRush
             Check(BufferRestoreProbe.CountDetail().Contains("pack:error"), "missing player is an unreadable count rather than zero assets");
             CharacterMainControl.Main = new CharacterMainControl(); CharacterMainControl.Main.CharacterItem.Inventory = null;
             Check(BufferRestoreProbe.CountDetail().Contains("pack:error"), "missing inventory cannot authorize a zero baseline snapshot");
+            // 2026-10-17 owner 同意删测试档旧验收残留：纪念品收回压到一件，删缓冲区尾部、留第一条；别的物品照快照件数。
+            Reset(); var firstBadge = Tree(10, 43); var keep = Tree(20, 42);
+            PlayerStorageBuffer.Buffer.Add(firstBadge); PlayerStorageBuffer.Buffer.Add(keep);
+            for (int i = 0; i < 6; i++) PlayerStorageBuffer.Buffer.Add(Tree(11 + i, 43));
+            Check(probe.RestoreKeepsake(7, 1) && BufferRestoreProbe.CountBadges() == 1 && BufferRestoreProbe.Count() == 1
+                && ReferenceEquals(PlayerStorageBuffer.Buffer[0], firstBadge) && ReferenceEquals(PlayerStorageBuffer.Buffer[1], keep)
+                && probe.Detail.Contains("43:7->7,trimmed_to=1,reclaimed=6") && probe.Detail.Contains("verified_43=1/1"),
+                "keepsake residue in the dedicated slot is trimmed to one, other items keep their snapshot count");
+            Reset(); PlayerStorageBuffer.Buffer.Add(Tree(30, 43));
+            Check(probe.RestoreKeepsake(0, 0) && BufferRestoreProbe.CountBadges() == 0, "a keepsake issued during the run is still reclaimed to the snapshot count");
             Console.WriteLine("PASS AutotestBuffer " + checks + " assertions");
         }
     }

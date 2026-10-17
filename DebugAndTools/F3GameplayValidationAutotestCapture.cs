@@ -73,6 +73,14 @@ namespace BossRush
         /// </summary>
         private const float AutotestTextMinArea = 150f;
 
+        /// <summary>
+        /// 文字取色的取样上限（字形框与外圈各一份）。外圈只有十几像素厚：旧上限（字 2400 / 外圈 1200）在 693×125 的正文上步长到 7 / 10 像素，
+        /// 外圈上下各只落 1–2 行，字框挪 1 像素就可能整行踩在下沿那条亮线上——同一帧倒挂邮亭正文在 2.98 与 7.00 之间翻
+        /// （2026-10-16 第十轮 2.93 假红，按已存截图逐像素复算是 9:1）。提到 30000 后这块正文步长 2、外圈每边约 7 行，同帧挪 ±1 像素只在 8.1–9.3 之间；小字框本来步长就是 1，不受影响。
+        /// 一张截图只有几条文字探针，多取的像素可以忽略。
+        /// </summary>
+        private const int AutotestTextSampleCap = 30000;
+
         /// <summary>截图前必须不在屏幕上的调试浮层根物体（F3 菜单、NPC 传送面板）。</summary>
         private static readonly string[] AutotestOverlayRoots = { "F3DebugCheatMenu", "NPCTeleportUI" };
 
@@ -327,12 +335,12 @@ namespace BossRush
                     continue;
                 }
                 float pad = Mathf.Clamp(Mathf.Min(inner.width, inner.height) * 0.35f, 4f, 14f);
-                double[] inside = SampleAutotestY(pixels, analysis.Width, analysis.Height, inner, default(Rect), 2400);
+                double[] inside = SampleAutotestY(pixels, analysis.Width, analysis.Height, inner, default(Rect), AutotestTextSampleCap);
                 Rect outer = AutotestExpand(inner, 2f + pad);
                 // 字坐在小底板上（ESC 键帽在 810×540 下只有 18×10 px）时外圈不能出底板：第五轮外圈上下落到主视觉插画上，
                 // 量成了字对插画（倒挂邮亭 3.75 假红；只取底板内像素是 9.9:1）。
                 if (probe.Plate.width > 0f) outer = AutotestIntersect(outer, probe.Plate);
-                double[] ring = SampleAutotestY(pixels, analysis.Width, analysis.Height, outer, AutotestExpand(inner, 2f), 1200);
+                double[] ring = SampleAutotestY(pixels, analysis.Width, analysis.Height, outer, AutotestExpand(inner, 2f), AutotestTextSampleCap);
                 double bgR, bgG, bgB;
                 MeanAutotestLinearRgb(pixels, analysis.Width, analysis.Height, outer, AutotestExpand(inner, 2f), out bgR, out bgG, out bgB);
                 double declared = F3AutotestJudges.CompositeLuminance(probe.Declared.r, probe.Declared.g, probe.Declared.b, probe.Declared.a, bgR, bgG, bgB);

@@ -659,14 +659,21 @@ namespace BossRush
 
         private static string MiantaiLine(SkyIslandStoryData data)
         {
+            // 折翎要旧信和航路图两样才肯谈（ReconcileZheling）；了结之后他不再「等」（2026-10-16 指引复核：以前只拿到旧信就叫人去，会被拒）。
             return data.Has(SkyIslandStoryFlag.WindBeacon)
-                        ? (data.Has(SkyIslandStoryFlag.OldLetter)
-                            ? L10n.T("风标转顺了，根环也不呜呜响了。带上那封旧信去镜水寺，折翎在等。",
-                            "The beacon turns freely and the roots have stopped howling. Take the old letter to Zheling at Mirrorwater Temple.")
-                            : L10n.T("风标转顺了，根环也不呜呜响了。倒挂邮亭还吊着封旧信，别落下。",
-                            "The beacon turns freely and the roots have stopped howling. There's still an old letter at the Upturned Post Hut."))
-                        : L10n.T("根环那头就是风标，先把跟前的人清干净再动手。倒挂邮亭那封旧信，顺路取了。",
-                            "The beacon is past the root ring, so clear whoever's standing there before you touch it. Pick up the old letter at the Upturned Post Hut on your way.");
+                        ? (!data.Has(SkyIslandStoryFlag.OldLetter)
+                            ? L10n.T("风标转顺了，根环也不呜呜响了。倒挂邮亭还吊着封旧信，别落下。",
+                            "The beacon turns freely and the roots have stopped howling. There's still an old letter at the Upturned Post Hut.")
+                            : data.ZhelingResolved
+                                ? L10n.T("风标转顺了，根环也不呜呜响了。那封旧信，留着当个念想吧。",
+                                "The beacon turns freely and the roots have stopped howling. Keep that old letter; it's worth remembering.")
+                                : data.Has(SkyIslandStoryFlag.RouteChart)
+                                    ? L10n.T("风标转顺了，根环也不呜呜响了。旧信和航路图都齐了，带去镜水寺，折翎在等。",
+                                    "The beacon turns freely and the roots have stopped howling. You have the letter and the chart; take them to Zheling at Mirrorwater Temple.")
+                                    : L10n.T("风标转顺了，根环也不呜呜响了。旧信拿到了，再去听雨洞取航路图，两样一起带去镜水寺找折翎。",
+                                    "The beacon turns freely and the roots have stopped howling. You have the letter; fetch the route chart from Rainlisten Grotto and take both to Zheling at Mirrorwater Temple."))
+                        : L10n.T("根环那头就是风标，先把附近两伙人清干净再动手。倒挂邮亭那封旧信，顺路取了。",
+                            "The beacon is past the root ring, so clear the two groups around it before you touch it. Pick up the old letter at the Upturned Post Hut on your way.");
         }
 
         private static string ZhelingLine(SkyIslandStoryData data)
@@ -692,8 +699,9 @@ namespace BossRush
         private static string BellKeeperEchoLine(SkyIslandStoryData data)
         {
             if (!SkyIslandStormEchoRules.UnlockedBySave(data)) return string.Empty;
-            return L10n.T("\n带着噬风的核，去双航标门烧一块晴岚风晶。它会回来找你，一趟只能引一次。",
-                            "\nCarry the Windeater Core and burn a Qinglan Windcrystal at the twin-beacon gate. Then it will come looking for you, once per raid.");
+            // 双航标门在栈道南头，打过噬风后旁边立着「风眼已散」那块牌子：说出看得见的东西，玩家才找得到（2026-10-17）。
+            return L10n.T("\n带着噬风的核，到栈道南头「风眼已散」那块牌子旁边的双航标门，烧一块晴岚风晶。它会回来找你，一趟只能引一次。",
+                            "\nTake the Windeater Core to the twin-beacon gate at the south end of the boardwalk, by the sign that reads 'The eye is gone', and burn a Qinglan Windcrystal. Then it will come looking for you, once per raid.");
         }
 
         /// <summary>内容批次四：眠苔说苔药与药膏怎么分工——苔药管伤、顺手止痒；药膏管痒、抹上一阵都不怕叮。</summary>
@@ -769,8 +777,8 @@ namespace BossRush
                     : L10n.T("钟守还是不肯松口吧。想快就过栈道去打停他那台守钟装置，想讲和就先把栈道上的「噬风」打掉。",
                         "The Bell Keeper still won't budge, right? For the quick way, cross the boardwalk and stop his bell engine; for peace, beat the Windeater there first.");
             // 结局前（本方法只在结局前被调，结局那段台词在它前面判）：钟守松了口，钟还没敲。
-            return L10n.T("钟守松口了，就去钟庭找他接「归航钟」，把钟敲响。敲完跟他说一声，再回来找我交差。",
-                "So the Bell Keeper gave in. Take The Homecoming Bell from him and ring it. Tell him once it rings, then come back to me.");
+            return L10n.T("钟守松口了，就去钟庭接「归航钟」，把钟敲响。敲完在钟庭交了，再回来找我交差。",
+                "So the Bell Keeper gave in. Take The Homecoming Bell at the Bell Court and ring it. Hand it in there once it rings, then come back to me.");
         }
 
         /// <summary>

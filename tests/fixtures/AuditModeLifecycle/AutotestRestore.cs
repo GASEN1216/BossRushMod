@@ -17,6 +17,7 @@ namespace BossRush {
   private static string ReclaimAutotestItems(AutotestSnapshot s){Reclaimed++;return "ledger";}
   private static int CountOwnedItems(int type,out string where){where=CountFailed?"pack:error/storage:0":"pack:0/storage:0";return Count;}
   private static int CountBufferedItems(int type){return 0;}
+  private static int AutotestReclaimTarget(int type,int before){return before;}
   public bool Reclaim(int slot){string detail;return TryReclaimAutotestItems(new AutotestSnapshot{Slot=slot},out detail);}
   public bool Clear(){return ClearAutotestSnapshotKey();}
  }

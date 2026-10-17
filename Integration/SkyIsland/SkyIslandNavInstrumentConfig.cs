@@ -42,7 +42,7 @@ namespace BossRush
         public static string GetDescription()
         {
             return L10n.T(
-                "从云上掉下来的仪器，外壳烧穿了，指针还在慢慢转。\n里面存着一串不属于地面的坐标。\n把它交给基地的 Jeff。",
+                "从云上掉下来的仪器，外壳烧穿了，指针还在慢慢转。\n里面存着一串不属于地面的坐标。\n把它交给基地的杰夫。",
                 "An instrument fallen from above the clouds. The casing is burned through, but the needle still turns.\nInside is a set of coordinates that belong to no place on the ground.\nHand it to Jeff back at base.");
         }
 

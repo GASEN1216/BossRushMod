@@ -7961,3 +7961,79 @@ cmd 会把这几行拼成一条 echo，写进响应文件后 csc 按空白切参
 - 作者工程与本仓库都未提交。工作区里另一会话的 `docs/contracts.md` 与两份设计提案未动。
 
 <!-- END MANUAL 16 FIX 2026-09-23 -->
+
+## 2026-09-23 菜地收获完成横幅（COMPAT / WIRE+）
+
+owner 要求收获时给玩家横幅。新增 `GardenHarvestNoticePatch`，只在官方 `Crop.Harvest` 的唯一 `Cost.Return → Forget` 之间等待已有交付任务；原版与 Mod 作物均显示名称、数量，以及基地仓库/满仓马蜂自提点说明。任务失败不误报到账，换槽/换主角/切图/停用/卸载后不迟发，正常 Crop 回收不吞提示。保留原发货、清格和异常消费者，无新存档字段或每帧开销。中英 Wiki 与后山专题已同步。
+
+L1/L2：157 相关守卫、76 条隔离回归通过，6 个反向探针按字节还原；官方实际 IL 匹配确认，Windows 正式编译通过（仅既有 CS0649），Dev 标识缺席，Wiki 构建/导航 80 项通过。正式构建脚本曾被自动审批以 blocked by policy 拒绝，已用仅写工作区的编译方式产出正式 DLL `E9F22EE5…2A0D5EAF`；owner 退出游戏后已定点部署 DLL 与中英百科 3 文件，并逐一核对 SHA-256。详见 `docs/reports/testing/20260923菜地收获横幅修复记录.md`。
+
+## 2026-09-23 人工复查六项续修（COMPAT / SCHEMA+ / OPERATIONAL）
+
+承接 `docs/reports/testing/20260922人工实测发现的问题-复核记录.md` 的六条新复查。冰霜作者资源已改但四端仍旧包，已单独重打、回读并正式部署；遗种巢罩灯补暖光；日报去关闭按钮、悬赏全文显示、修复旧图标叠画与反向淡出曲线；删除天空岛独立招牌；Mode H 正式入口免动态认证，追加保留旧值的 ReleaseSupported，补对手目标与每场拍铃重开；宠物扩容等待官方完整就绪，按实际 Item/Inventory owner 同步与回收，切图等安全箱快照加载，官方 Push 提交后才清理实物。
+
+证据 L1/L2：663 守卫、57 组隔离回归全绿，Windows 正式编译成功（既有 RuntimeGate CS0649），14 个 Dev 专用标识缺席；72 包源/目标哈希一致且实际读包 0 错误；25 个 DLL/数据/散图/Wiki 文件核对。Wiki 构建与 80 项导航通过。Pillow 缺失与 .NET 10 分层编译分配计量的环境失败已在正确依赖、关闭分层编译后通过原断言，无放宽。最初游戏占用 DLL 部署失败，owner 回复已退出后完成部署；DLL `D052898A…69DBE8706`，frost_set `A3236664…4FA4E553`，production_icons `031EE280…6E485055`。
+
+详细原因、完整哈希、反向验证、回退资源及六条实机操作清单见 `docs/reports/testing/20260923人工复查续修记录.md`。尚无 L3，未采样性能；宠物此前未扩容的具体实机场景待日志核对。回退用本次 `Build/manual-recheck-20260923/loose-before`、DLL before 文件和资源部署器生成的备份；灯光可撤掉 Attach 调用，Mode H 可恢复原入口分支与配套守卫。
+
+追加菜地核查（SAFE，L1）：官方收获经 Cost.Return(false,false,1,null) 直接送基地仓库，同类可静默叠加；满仓进入马蜂自提点「待取件」，腾空后点「发送至仓库」。Mod 三种作物产物与数量有效，未发现拦截官方收获链的补丁，未确认本次实际丢物。补中英百科去向说明；详细核查与复测见上述续修记录。
+
+## 2026-09-23 玩家文案去「人机感」打磨（SAFE / COMPAT，纯文本）
+
+**起因**：owner「优化 mod 剧情、UI、物品 / 装备描述的文字，不要有人机感」，并追加「Wiki 正文一起改」。
+
+**范围与规模**（只改字符串值；key、占位符、数字、专有名词、标题、链接、catalog.tsv 未动）：
+- 游戏内：剧情与对白（护士 / 叮当好感、捏脸 NPC、婚礼、天空岛居民 / 地点 / 信件 / 手记 / 头目、征程提示、宿命回响）约中 134 / 英 191 条；物品 / 装备 / UI（装备与物品 Desc、遗种巢、许愿台、日报、Mode E 物品）中 33 / 英 37 条。
+- Wiki：`WikiContent/zh|en` 的 boss / npc / mode / tips / start / map / easter / config 约 239 处，item / equipment / system 约 310 处，`wiki-site/hubs/` 各一份。跳过 `changelog__*`（历史记录）与 `mode__mode_h.md`（另一会话在改）；成就文案（Steam 登记）不改。
+- 逐条清单（文件:行号 | 原文 | 新文 | 原因）在本会话 scratchpad 的 `changes_A*.md` / `changes_B*.md`，未入库。
+
+**顺带按代码改正的 Wiki 数值 / 机制**：遗种巢远征 2/4/8 小时 → 10/30/60 分钟（`PetNestTuning.cs:180-187`）；词缀熔石叮当解锁 Lv.2 → Lv.10（`GoblinAffinityConfig.cs:805`）；噬魂挽歌 / 幽灵诅咒改为每层 -30%、叠满 -90%、不定身（`PhantomWitchAssetManager.cs:336`、`:362`）；雷神套装对比段改成普攻附带 + 内置冷却；阿稳扫箱令标准 BossRush 也可用（`ModeEFLootboxTracker.cs:84`）；许愿成功横幅已不存在；平安护身符「多一条命」改为实际机制；征程第 2 章是陈列加成；Mode E BEAR ×2.5 是阵营单位血量伤害；英文入门页的旧征程口径与建筑名。游戏内：逆鳞描述补上 50% 与 8 颗（`HealPercent` / `PrismaticBoltCount`），冷淬液锁的是属性不是部件，安神滴剂英文 all → most。
+
+**没改**：`LocalizationInjector.cs:840-848` 丧尸奖励同义反复（`ZombieModeRewardPlainTextGuard` 逐字钉住）；霜之哀伤「低语」（魔兽梗）。Wiki 两处自相矛盾未定：龙裔一阶段「每 10 发」爆炸范围（攻略页 1 m vs Boss 页 5 m 内 5 点火焰）、无间炼狱专属装备是否掉落（中英说法相反）。
+
+**Needs owner confirmation**：平安护身符新描述「伤重时偶尔能让你缓过来」点破了隐藏机制；许愿台「写个愿望投进去，有人看」；共用花心台词对叮当串味；护士 9 级 / 「手都是抖的」等由深情改嘴硬的几句；系统拒绝提示改口语。
+
+**验证**（L2，无 L3）：全量守卫 662 PASS / 0 NEW-FAIL；语法探针 PASS（语法通过，未正式编译：另一会话当时有未登记新文件且编译会自动部署）；执行回归 SkyIslandDialogue / Story / Interaction / Encounters / Loot / Delivery / Marriage、CampaignPlayability、RandomEventTempo / Failure、ModeGCombat、PermanentDuckNpcDialogue 全部 PASS；天空岛改过的居民台词用 `tools/sky_island_line_screens.py` 核过屏数不变；`npm --prefix wiki-site run build` 成功。实机只能看观感：进基地找护士 / 叮当送礼、看装备 tooltip、天空岛与居民对话，看有没有截断或串味。
+
+<!-- BEGIN AESTHETIC AUDIT 2026-09-23 -->
+
+## 2026-09-22 全仓审计报告修复闭环（COMPAT / SCHEMA+ / OPERATIONAL）
+
+原报告 82 项均已逐条复核并关闭；另从未验证线索确认并修复 2 项，共 84 项。其中 75 项在会话开始时已有对应修复，经本轮复核保留；其余 9 项为本轮补修或新增确认。分类为 COMPAT，成就领奖凭据与 Dev 恢复快照为 SCHEMA+，正式构建部署为 OPERATIONAL。
+
+全量守卫 652 PASS / 0 FAIL；全量隔离回归 56 PASS / 0 FAIL；Windows 978 源正式与 Dev 编译通过。正式 DLL 已部署，Build 与游戏目标 SHA-256 一致，14 个 Dev 专用标识缺席；72 个资源包部署哈希检查通过。Wiki 构建和 80 项导航检查通过，237 页 / 39133 个引用无缺失链接或失效锚点。
+
+正式 DLL SHA-256 `f58dea9cca4d4da50e3ab77d08a21790eb2d4e6b89552f5661f2293ed1981a0f`，Dev 构建仅留在验证目录。初始已有修复与本轮补漏分开记录；本地提交按审计修复范围收录，未推送。
+
+里程碑高阶奖励采用原工作区已有的完整标价折现策略：每阶最多 100 皇冠 + 100 合法现金堆，超额入账户，每帧最多 8 实体，long 饱和防溢出；理由与回退约束见交付记录。
+
+没有启动游戏、没有读写玩家存档、没有 L3；具体操作和 F3 看图清单见 [修复闭环](docs/reports/reviews/2026-09-22_full_audit_fixes.md)。原 82 项与新增两项全部回填状态；仍缺实机触发证据的线索保留未验证。
+
+提交前复核：978 个生产源码与通过正式/Dev 编译的 SHA-256 清单一致，7 个新增生产源码均已登记。AuditModeLifecycle 的支援弹夹具改用保留官方零默认值的最小 ProjectileContext 契约替身，生产 builder 仍逐字抽取，移除对未纳管反编译源码的依赖后专项回归通过。提交仅收录本次审计修复、验证和台账，独立架构计划改动保留在工作区。
+
+<!-- END FULL AUDIT FIXES 2026-09-22 -->
+
+## 2026-09-22 实机启动报错：资源加载器路径键不一致导致全部 Mod 物品注册失败（COMPAT）
+
+- 现象（owner 实机，`Player.log` 12:38）：启动进基地刷 47 条 `The AssetBundle '…' can't be loaded because another AssetBundle with the same files is already loaded`（bossrush_ticket、birthday_cake、ui/bossrush_wiki 与 Items/、Equipment/ 下全部 bundle），随后 `PlayerStorage.Load` / `LevelManager.CreateMainCharacterAsync` NRE（仓库与角色身上的 Mod 物品拿不到 prefab）。
+- 根因（CR-2026-09-22-002）：`60bb84b6`（09-20）引入的异步加载器 `ResourceBundleLoader.Prepare` 用 `Path.Combine(GetModPath(), "Assets/Items/x")` 做 `pending` 字典键，而 `ItemFactory` / `EquipmentFactory` / 按需注册用 `Path.Combine(modDir, "Assets", "x")`，同一文件两种写法，字典查不到 → 同步兜底对已异步加载的 bundle 再调一次 `AssetBundle.LoadFromFile` → Unity 拒绝并返回 null。该提交之后没有实机跑过，本轮征程改动首次启动才暴露；不是征程改动引入。
+- 修复：`ResourceBundleLoader` 的 `pending` 键统一经 `NormalizeKey`（`Path.GetFullPath`，异常时只换分隔符），`Pending.Key` 记录归一化键；`ShowcaseTagInjector` 取 prefab 改走 `BossRushDynamicItemRegistry.GetRegisteredPrefabWithoutEnsuring`（原来经补丁过的 `ItemAssetsCollection.GetPrefab` 会对每个 TypeID 触发同步按需注册，CR-2026-09-22-003）。
+- L2：`ResourceProduction` 夹具新增「分隔符 / `.` 别名命中同一租约且不发第二次原生加载」用例，先在旧加载器上转红、修后转绿；`BackMountainPlayabilityGuard` 新增「取 prefab 只走 WithoutEnsuring」断言并反向验证；`BackMountainLifecycle` 回归绿；改动相关守卫绿（唯一红仍是本轮之前就红的 `SkyIslandMosquitoGuard`）。正式构建通过，游戏目录 DLL SHA-256 `8286B630…` 与 `Build/` 一致，`check_dll_identifiers --expect absent` PASS。
+- L3：待 owner 重开游戏，`Player.log` 应无 `can't be loaded because another AssetBundle` 与 `PlayerStorage.Load` NRE。
+- 复核（owner 12:57 Dev 构建跑 F3，`Player.log` 13:29）：物品 / 装备 bundle 的 47 条已清零，仓库与角色 NRE 消失，征程 / 后山用例 `DATA_CAMPAIGN_JSON` / `GARDEN_SITE_GATE` / `SHOWCASE_OFFICIAL_PROBE` / `BACKMOUNTAIN_SHOWCASE_DISPLAY` / `CAMPAIGN_FINAL_BOSS` 全 PASS。剩两条同类噪音与一条过期判据，本轮一起修：
+  - 基地建筑 bundle（weddingchapel / starwish_fountain / petnest_relic_nest / bossrush_daily_mailbox）每次进基地各报一条同样的错（4 × 9 次）：装配管线每次进基地重跑 `RunSpecial`，而建筑自己还持有 bundle，`LoadFromFileAsync` 被 Unity 拒绝后消费方走「已注入，跳过」，功能无损但刷错（CR-2026-09-22-004）。`RunSpecial` 加可选 `alreadyLoaded` 判据，四处传各自持有字段（`DailyReportMailboxBuilder` / `PetNestBuilder` 加 `IsBundleLoaded`）；`ResourceProduction` 夹具加「持有中不发原生加载、释放后照常加载」用例；`PetNestBuilderInjectionGuard` 接线 token 同步。
+  - `DATA_CODEX_FILTER_REFRESH` 红（official=45->45->45）：e80b1c3f（09-20 owner 拍板）起筛选器关掉的官方 Boss 由名单补成锁定卡，目录不再缩，判据过期。`CodexBossInfo` 加 `IsInCurrentPool`（池子给出=true、名单补的=false），用例改判「池子给出的少一格再恢复、目录不缩（名单读不出时允许少一格）」。
+  - 主套件另一条红 `SKY_NIGHT_BOUNDARY_OFFICIAL`（官方 22–6 vs 岛上 19–5）与岛内 6 条红（截信人字幕、镰爪落点 EnemySpawn_C、断风风线、结局手记正文、英文居民 / 浮舟对白）都在天空岛头目 R2–R4 线（09-16 那轮已红 3 条），不属本轮，未动。`GamingConsole.Load` 的 NRE 是已知 P3（教堂整区重绘打断官方游戏机加载）；16 条 `[鸭鸭市场]` NRE 与 `casino_building` 缺 prefab 是别的 Mod。
+  - 游戏目录现为 **Dev** 构建（owner 在跑 F3），交付前要换回正式构建。
+- owner 纠正（同日）：官方「陈列柜」是废弃建筑，建造菜单里没有；能建的官方展示建筑只有枪械展示架（槽位要 `Gun`）、假人（枪 / 近战 / 头盔 / 护甲 / 面罩 / 耳机）与基地皮肤柜（CR-2026-09-22-006）。`ShowcaseTagInjector` 改为 `ShowcaseTrophyCatalog`：只判哪些 Mod 物品算战利品，**不再补任何官方展示标签**（Mod 枪甲自带槽位标签，探针已证能上架）；征程第三章目标 / 交付对话 / 线索 / 飘字 / 任务说明、后山互动提示、Wiki 中英与站点、覆盖表、交付文档、repowiki 全部改口为「枪械展示架 / 假人」。`Chapters.json` 与硬编码同步（签名互锁仍绿）。L2：全量守卫 645 绿，3 红都在 HEAD 上就红（`BaseBuildingResourcePropertyTest` 缺 lz4 模块、`EmptyCatchGuard` 的 `ZombieModeRewardProjectileSpread.cs`、`SkyIslandMosquitoGuard` wav 部署）；BackMountainLifecycle / CampaignPlayability / ContentTransactions 回归绿；Dev 构建 `1CA540FD` 已部署；Wiki 构建通过。
+- 官方菜地链路复核（同日，通读 `鸭科夫源码` 的 ConstructionSite / CostTaker / Garden / Crop / CropDatabase / GardenView 并重解 level5）：链路成立——工地 `dontSave=false`（官方键 `ConstructionSite_GardenConstruction`），Mod 只激活 `Interactparent` → `CostTaker.OnEnable` 登记官方造价牌 → 付款 → `OnBuilt` 亮 `Built` 子树 → `Garden.Awake/Start` 读档；种子靠 `CropDatabase.IsSeed` 进官方选种界面，种下消耗 1 颗（仓库 / 背包 / 宠物包都算），产物走 `Cost.Return`。三处修正（CR-2026-09-22-007）：①造价是官方定的 **铲子 ×1 + 粑粑 ×9**（粑粑只掉自蝇蝇队员 / 队长，或分解粑粑枪射程模组），ch1 交付对话 / ch1 解锁飘字 / ch2 接取提示原来写「去建设面板建菜地」是错的，改为工地付款并写明造价与来源，Wiki 中英同步；②产物 / 种子 prefab 是克隆链（遗种蛋 ← 便携安全区装置）带来的 3D 模型，官方 `Crop.RefreshDisplayInstance` 与 `InteractablePickup` 都用它，菜地里会长出「装置」——`ConfigureItem` 反射清空 `itemGraphic`，官方退回图标立牌；③浇水的 UniTask 状态机不在反编译源里，浇水是否免费未核实（GardenView 只有种植走 `Cost`，按免费假设）。待 owner 决定：是否接受官方造价（粑粑 ×9 要专门去打蝇蝇）作为第二章前置；替代方案是 `CostTaker.SetCost` 改价，属改官方数值，未做。L2 绿，Dev 构建已部署。
+
+## 2026-09-22 鸭王征程重设计：杰夫发放 + 新故事 + 后山改接官方建筑（COMPAT / SCHEMA+ / WIRE+ / OPERATIONAL）
+
+- 官方任务投影核心抽到 `Utilities/OfficialQuests/`（唯一实例、四补丁只装一次、给予者扫描唯一），天空岛桥改为客户端，天空岛守卫与 13 组执行回归原样绿；新守卫 `OfficialQuestProjectionGuard`（26 探针 + 3 结构探针）。
+- 征程六章投影成官方 Quest 590101–590106（给予者 Jeff=1，owner 本轮授权，已登记 AGENTS §4.14/§10 与 `docs/contracts.md` §7.1/§3.2）；`CampaignProgressService` 仍是唯一权威，发钱 / token / 线索归交付事务；公告板退役（老档保留、互动提示找杰夫，`CampaignBoardView` 删除）。
+- 新故事《册子上的名字》：杰夫口吻文案；新目标类型 `garden_built` / `trophy_displayed`（基地侧，事实由后山经 `CampaignBaseObjectives` 提供）；ch2 加建菜地、ch3 加摆战利品、ch5 波次门 4→5；`chapterId` / `clueId` / token / 奖金不变。
+- 菜地：官方基地菜地工地的付费交互父物体默认 inactive（UnityPy 读 level5 核实），第一章交付后只 `SetActive` 那个父物体，Mod 只读官方键 `ConstructionSite_GardenConstruction`（守卫禁止写）。展示柜：自建登记簿退役（`ShowcaseUI` 删除），Mod 战利品补官方 `ShowCase` 标签，陈列加成按官方陈列柜实摆计算（公式不变），存档 `BossRush_BackMountain_Showcase_v1` 新增可选 `sourceVersion`（`schemaVersion` 保持 1）。点唱机不改代码，加 CR-2026-09-18-025 防回归断言。
+- L2：全量守卫绿（唯一红 `SkyIslandMosquitoGuard` 在改动前 HEAD 已红，与本轮无关）；CampaignPlayability / ContentTransactions / ContentBuildingOwnership / BackMountainLifecycle / SkyIsland 回归全绿；正式编译通过并部署；Wiki 构建通过。L3 未做，清单与待 owner 决定项（官方陈列柜槽位标签需 F3 探针 `SHOWCASE_OFFICIAL_PROBE` 实机读出）见 `docs/reports/reviews/2026-09-22-鸭王征程重设计交付.md`。
+- 提交 `5a317b22`、`0e67241d`、`229fd37a`、`4b5f4ea2`，未推送。
+<!-- BEGIN FULL AUDIT 2026-09-21 -->

@@ -289,12 +289,43 @@ def main():
     require(apply, "foreach (string target in SideTargets(data))", "官方地图要圈可选目标（R-14）")
     side = need_body(markers, "internal static IEnumerable<string> SideTargets(SkyIslandStoryData data)", "可选目标")
     # 2026-10-16 玩家反馈：引噬风 / 开 K3 都在双航标门木牌（Search_E）的面板里点，圈风眼 POI_E 会把玩家带到离木牌 31 米的空地。
-    require(side, 'if (data.BothBeacons && (!data.StormResolved || !data.Has(SkyIslandStoryFlag.ShortcutK3))) yield return "Search_E";',
-            "双航标后没打噬风或没开 K3 要圈双航标门木牌")
+    # 2026-10-17 玩家反馈「双航标门在哪里，风晶哪里烧」：结局后打过噬风，引风也在这个装置上点，K3 开了也照样圈。
+    require(side, 'if (data.BothBeacons && (!data.StormResolved || !data.Has(SkyIslandStoryFlag.ShortcutK3) '
+            '|| SkyIslandStormEchoRules.UnlockedBySave(data))) yield return "Search_E";',
+            "双航标后没打噬风、没开 K3、或结局后能引风时都要圈双航标门装置")
     if 'yield return "POI_E"' in side:
         errors.append("可选目标不能再圈风眼 POI_E：那里没有可交互的木牌")
     for key in ("Search_S1", "Search_S2", "Search_S3", "Search_S4"):
         require(side, 'yield return "%s";' % key, "结局后要圈未拿到的支线物证")
+    # 2026-10-16 指引复核（docs/reports/reviews/2026-10-16-天空岛任务指引指向复核.md）：执行回归够不着的接线在这里钉。
+    # ① 接 / 交任务时圈上与罗盘上的字按「人在不在岛上」走 ContactTask，不再一律「找苇白 / 找浮舟」。
+    require(apply, "string task = contact != null ? ContactTask(contact.GiverId, resident) : TargetTask(target);",
+            "地图圈的字要按给予者在不在岛上写人或兜底装置")
+    target_task = need_body(markers, "internal static string TargetTask(string target)", "地图圈任务字")
+    for key in ('case "Search_A"', 'case "Search_B"'):
+        if squash(key) in target_task:
+            errors.append("TargetTask 又给兜底装置写了「找某某」（%s）：接 / 交任务的字只走 ContactTask" % key)
+    compass_read = need_body(world, "internal string CompassReading(Vector3 from)", "风标罗盘读数")
+    require(compass_read, "what = SkyIslandMapMarkers.ContactTask(contact.GiverId, giver != null) ?? what;",
+            "罗盘找人时的字要与地图圈同一份 ContactTask")
+    # 罗盘的可选目标走 CompassSideTargets：双航标门只因引风被圈时，这一趟引得了才指它，否则罗盘永远停在栈道上。
+    require(compass_read, "target = NearestMarker(CompassSideTargets(), from);", "罗盘的可选目标要经 CompassSideTargets 过滤引风")
+    world_echo = clean_source(read("SkyIsland/SkyIslandWorldStoryEcho.cs"))
+    side_filter = need_body(world_echo, "private IEnumerable<string> CompassSideTargets()", "罗盘可选目标过滤")
+    require(side_filter, "!session.CanSummonStormEcho(out blocker)", "罗盘只在这一趟引得了风时才因引风指双航标门")
+    # ② Search_E 只是个装置，没有木牌；看得见的木牌是北头钟庭门的门牌，写「木牌」会把人引过去。
+    gates_src = clean_source(read("SkyIsland/SkyIslandGates.cs"))
+    for label, src in (("SkyIslandWorldStory.cs", world), ("SkyIslandWorldStoryEcho.cs", clean_source(read("SkyIsland/SkyIslandWorldStoryEcho.cs"))),
+                       ("SkyIslandGates.cs", gates_src)):
+        if "双航标门木牌" in src or "twin-beacon gate sign" in src:
+            errors.append(label + " 又把双航标门叫成「木牌」：交互点 Search_E 在栈道南头，没有木牌模型")
+    # ③ K1 按钮与回话、拒绝话、门牌同名；④ 穿镜纹甲时折翎的和解按钮不叫人出示没带的旧信与航路图。
+    read_point = need_body(world, "internal void ReadPoint(string key, Action recorded)", "装置面板")
+    require(read_point, 'L10n.T("系牢回程绳桥 K1", "Lash the K1 rope bridge home")', "K1 按钮要叫「回程绳桥」，与回话和门牌一致")
+    zheling = need_body(world, "private void ZhelingChoices(List<SkyIslandStoryPresentation.Choice> choices)", "折翎选项")
+    require(zheling, "bool papers = story.Current.Has(SkyIslandStoryFlag.OldLetter | SkyIslandStoryFlag.RouteChart);",
+            "折翎和解按钮要按有没有带齐旧信与航路图换字")
+    require(zheling, 'L10n.T("留下来谈 · 让他看你身上的镜纹甲"', "穿镜纹甲谈和时按钮要说镜纹甲")
     if apply.count("step into the green ring to extract") != 2:
         errors.append("航标广场撤离提示的英文要带「站进绿环即可撤离」那半句（R-7）")
     controls = read("SkyIsland/SkyIslandControls.cs")

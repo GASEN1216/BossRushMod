@@ -162,8 +162,8 @@ namespace BossRush
                 "five fuse into a Qinglan Windcrystal (once the star lamp is lit); charms, salves and compasses need them too; the echo's cache gives three back"));
             Use(text, BossRushItemIds.SkyIslandStardust, L10n.T("晴岚护符、云苔纱笠、残星瞭台的风晶灯；夜里风晶簇更容易出；回响遗存里有两撮",
                 "Qinglan charms, the cloudmoss veil and the Starfall Overlook lamp; clusters yield more at night; the echo's cache holds two"));
-            Use(text, BossRushItemIds.SkyIslandQinglanWindcrystal, L10n.T("用来点七盏风晶灯、做灭蚊灯，灯旁能取暖。十盏灯全亮后，岛上夜里没风，桥上还有风。结局后可在鸣风栈道烧一块来「引风」，把噬风·回响叫回来，每趟一次。",
-                "Wicks for seven windcrystal lamps and the Gnat Zapper. Lamps provide warmth. Ten lit lamps stop island night winds; bridges stay windy. After the ending, burn one on Windsong Boardwalk to call the Windeater's echo, once per raid."));
+            Use(text, BossRushItemIds.SkyIslandQinglanWindcrystal, L10n.T("用来点七盏风晶灯、做灭蚊灯，灯旁能取暖。十盏灯全亮后，岛上夜里没风，桥上还有风。结局后到鸣风栈道南头的双航标门烧一块，就能「引风」，把噬风·回响叫回来，每趟一次。",
+                "Wicks for seven windcrystal lamps and the Gnat Zapper. Lamps provide warmth. Ten lit lamps stop island night winds; bridges stay windy. After the ending, burn one at the twin-beacon gate at the south end of Windsong Boardwalk to call the Windeater's echo, once per raid."));
             Use(text, BossRushItemIds.SkyIslandWindLantern, L10n.T("挡微风、大风挡一半，也能照明。会招云蚋，但灯下的蚋不叮人、不躲子弹，趁灯亮着清掉。钟庭风晶灯也需要一盏。",
                 "Blocks breezes and half of a gale. Draws gnats into its light, where they can't bite or dodge shots. Clear them before it goes out. The Bell Court lamp also needs one."));
             Use(text, BossRushItemIds.SkyIslandWindwardIncense, L10n.T("挡风、加快耐力恢复，也能驱蚋。镜水寺风晶灯需要一炷。回响唤起的栈道与桥上大风也能挡。",
@@ -180,8 +180,8 @@ namespace BossRush
             Use(text, BossRushItemIds.SkyIslandHomecomingBadge, string.Format(L10n.T("带在身上：渡口整备与眠苔的苔药只收 {0}%；在岛上使用：拉缆绳回登云码头（每趟一次）",
                 "carried: the dock refit and Miantai's remedy cost {0}%; used on the isles: pull the line back to Cloudrise Dock (once per raid)"),
                 Percent(SkyIslandItemRules.BadgeServiceRate)));
-            Use(text, BossRushItemIds.SkyIslandWindeaterCore, L10n.T("带在身上：大风对你只算微风；结局后是鸣风栈道「引风」的钥匙（不会用掉）",
-                "carried: a gale only counts as a breeze for you; after the ending, the key for calling the wind on Windsong Boardwalk (never used up)"));
+            Use(text, BossRushItemIds.SkyIslandWindeaterCore, L10n.T("带在身上：大风对你只算微风；结局后带着它去鸣风栈道南头的双航标门「引风」（不会用掉）",
+                "carried: a gale only counts as a breeze for you; after the ending, bring it to the twin-beacon gate at the south end of Windsong Boardwalk to call the wind (never used up)"));
             Use(text, BossRushItemIds.SkyIslandCloudmossVeil, L10n.T("带在身上：云蚋只能在一米外打转，叮咬慢约三倍",
                 "carried: cloud gnats can only circle a metre off, and bite about three times less often"));
             Use(text, BossRushItemIds.SkyIslandGnatZapper, L10n.T("放在地上约 5 分钟：把附近的云蚋引过去电落（守一片地方）",

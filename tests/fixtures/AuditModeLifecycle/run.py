@@ -491,7 +491,7 @@ f3=ROOT/'DebugAndTools/F3GameplayValidationAutotestStory.cs'
 f3methods='\n'.join(member(f3,m) for m in ['private static bool TryReclaimAutotestItems(', 'private bool ClearAutotestSnapshotKey()'])
 execute('autotest_restore',[HERE/'AutotestRestore.cs'],'using System; using Saves; namespace BossRush { public partial class RestoreProbe {'+f3methods+'}}')
 readonly=ROOT/'DebugAndTools/F3GameplayValidationSkyIsland.cs'
-buffer_methods='\n'.join(member(f3,m) for m in ['private static bool TryReclaimAutotestItems(', 'private bool ClearAutotestSnapshotKey()', 'private static string ReclaimAutotestItems(', 'private static int RemoveOwnedItems(', 'private static int RemoveFromBuffer(', 'private static int RemoveFromInventory('])
+buffer_methods='\n'.join(member(f3,m) for m in ['private static bool TryReclaimAutotestItems(', 'private bool ClearAutotestSnapshotKey()', 'private static string ReclaimAutotestItems(', 'private static int RemoveOwnedItems(', 'private static int RemoveFromBuffer(', 'private static int RemoveFromInventory(', 'private static int AutotestReclaimTarget('])
 buffer_methods+='\n'+'\n'.join(member(readonly,m) for m in ['private static int CountOwnedItems(', 'private static int CountBufferedItems(', 'private static int CountInInventory('])
 execute('autotest_buffer',[HERE/'AutotestBuffer.cs'],'using System; using System.Collections.Generic; using Saves; using ItemStatsSystem; namespace BossRush { public partial class BufferRestoreProbe {'+buffer_methods+'}}')
 import json

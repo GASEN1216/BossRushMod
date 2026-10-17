@@ -94,7 +94,10 @@ namespace BossRush
         {
             if (!F3GameplayValidationRunner.AutotestWriteAllowed(out reason)) return false;
             if (closed || encounters == null) { reason = "session_closed"; return false; }
-            return encounters.DevResetEncounter(id, out reason);
+            if (!encounters.DevResetEncounter(id, out reason)) return false;
+            // 「这一趟还没刷过」也包括没记过委托与清场字幕：前面的步骤清过这一组时，重刷后再清要照常出字幕（2026-10-16 指引复核 SKY_AUTO_NEW_GUARD_EAST）。
+            bountyCredited.Remove(id);
+            return true;
         }
 
         /// <summary>取消或收尾时直接派发返航（与撤离成功同一条 Close(true, …)）。站撤离圈走不通时的兜底。</summary>

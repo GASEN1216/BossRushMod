@@ -225,7 +225,7 @@
     },
     {
       "id": "SKY_AUTO_REAL_PIGEON_LETTER",
-      "title": "读信、收下；零选项面板点 ESC 键帽关闭；ESC 键帽字对底板取色；收下之后本趟信鸽状态与规则一致（收下 09–11 时下一只当帧接着落下，不查信鸽物体消失）",
+      "title": "读信、收下；零选项面板点 ESC 键帽关闭；ESC 键帽字对底板取色；收下之后本趟信鸽状态与规则一致（收下 09–11 时下一只当帧接着落下，不查信鸽物体消失）。先回码头等安静再读：上一步停在 POI_F，2026-10-01 巡守加密后那里常有巡守走进 5 米交火门，读信被「附近还有威胁」挡下（2026-10-16 第十轮）",
       "stage": "real",
       "location": "SkyIslandPigeon_*",
       "class": "auto",
@@ -238,6 +238,8 @@
       ],
       "budget": 45,
       "actions": [
+        "teleport:PlayerSpawn:0:0",
+        "wait_quiet:6:true",
         "interact:pigeon",
         "wait_panel:4",
         "shot:pigeon_letter:ui",
@@ -596,7 +598,7 @@
     },
     {
       "id": "SKY_AUTO_REAL_NIGHT_GNATS",
-      "title": "夜里云蚋看不看得见：刷一群后不等就连拍它们从 8–14 m 外飞近（这时还没贴到主角身上）；围上来后主角横移 5 m 再拍原地那团；帧时间与可见度",
+      "title": "夜里云蚋看不看得见：刷一群后不等就连拍它们从 8–14 m 外飞近（这时还没贴到主角身上）；围上来后主角横移 5 m 再拍原地那团；帧时间与可见度。可见度只记读数、不判红，看得见与否以 owner 目检为准：10-01 起码头夜里有路灯照地，同尺寸的空地面韦伯中位就有 0.045–0.065，云蚋 0.098 也分不开（2026-10-17 owner 目检第十轮复跑截图：正常看得见）",
       "stage": "real",
       "location": "PlayerSpawn",
       "class": "shot",
@@ -612,12 +614,12 @@
         "spawn_gnats:6:0:ahead",
         "assert:gnats_alive_ge:1",
         "shot:gnats_night:world",
-        "assert:visible_min:gnat:0.2",
+        "assert:visible_min:gnat:0",
         "burst:gnats_incoming:world:6:0.15",
         "wait_real:3",
         "teleport:PlayerSpawn:5:0:0.3",
         "shot:gnats_left_behind:world",
-        "assert:visible_min:gnat:0.2",
+        "assert:visible_min:gnat:0",
         "burst:gnats_motion:world:4:0.25",
         "frame:5",
         "assert:case:SKY_GNAT_RUNTIME",
@@ -1319,7 +1321,7 @@
     },
     {
       "id": "SKY_AUTO_NEW_S4_GUARD",
-      "title": "残星瞭台：守卫在场时通用交火门先挡住面板，只出字幕「附近还有威胁」——不出谜题、不挂收录与点灯（正文「先清除瞭台上的守卫」只在守卫离开交火半径而遭遇未记清场时才出，实机造不稳）；瞭台观星手在场时截一张世界图（metrics 记装备）；清完解谜、观星镜旗标写入",
+      "title": "残星瞭台：守卫没清时面板照开，正文写「先清除瞭台上的守卫」——不出谜题、不挂收录与点灯（2026-10-01 交火门收到贴身 5 米，守卫刷在 17–34 米外，不再先被「附近还有威胁」挡住；2026-10-16 第十轮按此改判）；瞭台观星手在场时截一张世界图（metrics 记装备）；清完解谜、观星镜旗标写入",
       "stage": "new_save",
       "location": "Search_S4",
       "class": "auto",
@@ -1335,10 +1337,11 @@
         "teleport:Search_S4:2:0",
         "wait_real:0.3",
         "interact:Search_S4",
-        "wait_real:1.5",
-        "assert:panel_closed",
-        "assert:caption_contains:附近还有威胁|threats nearby",
-        "shot:s4_before_clear:ui:SkyIslandHud",
+        "wait_panel:4",
+        "assert:body_contains:先清除瞭台上的守卫|Clear the guards on the overlook",
+        "assert:choice_absent:收录见闻 / 物证|Record the note / evidence",
+        "shot:s4_before_clear:ui",
+        "close_panel",
         "assert:no_flag:Telescope",
         "wait_boss:stargazer:12:optional",
         "shot:stargazer_spawned:world",
@@ -1471,6 +1474,26 @@
       ]
     },
     {
+      "id": "SKY_AUTO_NEW_GUARD_EAST",
+      "title": "指引指向复核（2026-10-16）：新档先清悬根林北边药臼那伙守卫，清场字幕说还差一伙「在风标东边」（D 组锚点在风标交互点以东 51 米），不再说「风标跟前」。清完立刻等字幕：2026-10-16 首跑在清场后又等了约 3 秒，字幕已播完，Player.log 里有这一句但没截到",
+      "stage": "new_save",
+      "location": "Search_D_02",
+      "class": "auto",
+      "checklist": [
+        "2.15.38"
+      ],
+      "budget": 70,
+      "actions": [
+        "invincible:on",
+        "reset_encounter:D_02",
+        "teleport:Search_D_02:2:0",
+        "wait_real:4",
+        "clear_nearby:30:25",
+        "wait_caption:风标东边|east of the wind beacon:10",
+        "shot:guard_east_caption:ui:SkyIslandHud"
+      ]
+    },
+    {
       "id": "SKY_AUTO_NEW_HUD_SETTLE",
       "title": "新档段收尾：面板全部收起、右上目标卡完全显形后再推进双航标（目标变更时竖条闪烁要发生在卡片已稳定在屏上时，不能被上一步面板关闭后的淡入盖住）；拍变更前的卡片作对照",
       "stage": "new_save",
@@ -1555,7 +1578,7 @@
     },
     {
       "id": "SKY_AUTO_BEACONS_MAP",
-      "title": "双航标后官方地图上的噬风风眼浅色圈",
+      "title": "双航标后官方地图：紫圈「双航标门 · 在这儿引噬风」画在栈道南头的双航标门（Search_E），不在风眼；黄圈在归航钟庭",
       "stage": "both_beacons",
       "location": "PlayerSpawn",
       "class": "shot",
@@ -1570,13 +1593,37 @@
       ]
     },
     {
+      "id": "SKY_AUTO_BEACONS_K1_NAME",
+      "title": "指引指向复核（2026-10-16）：风标修好后风标装置上的 K1 按钮叫「系牢回程绳桥 K1」，与修好风标的回话、K1 门牌同名（不点）",
+      "stage": "both_beacons",
+      "location": "Search_D",
+      "class": "auto",
+      "checklist": [
+        "2.15.39",
+        "2.15.41"
+      ],
+      "budget": 45,
+      "actions": [
+        "invincible:on",
+        "teleport:Search_D:2:0",
+        "clear_nearby:45:15",
+        "interact:Search_D",
+        "wait_panel:4",
+        "assert:choice_present:系牢回程绳桥 K1|Lash the K1 rope bridge home",
+        "assert:body_contains:风标校准好了|The wind beacon is calibrated",
+        "shot:k1_choice:ui",
+        "close_panel"
+      ]
+    },
+    {
       "id": "SKY_AUTO_BEACONS_BELL_HIDDEN",
       "title": "双航标、钟守还没了结：归航钟庭面板不挂「敲响归航钟」，正文写还差什么（新档到不了钟庭，清单 2.15.8 已更正）",
       "stage": "both_beacons",
       "location": "Search_H",
       "class": "auto",
       "checklist": [
-        "2.15.8"
+        "2.15.8",
+        "2.15.42"
       ],
       "budget": 60,
       "actions": [
@@ -1587,6 +1634,9 @@
         "wait_panel:4",
         "assert:choice_absent:敲响归航钟|Ring the Homecoming Bell",
         "assert:body_contains:钟守不信航路安全|The Bell Keeper doubts the lanes are safe",
+        "assert:objective_contains:找钟守或「钟守留言」|the Bell Keeper or 'the Bell Keeper's message",
+        "assert:objective_contains:选「挑战守钟装置」|pick 'Challenge the bell engine",
+        "assert:body_contains:还差：|still missing",
         "shot:bell_court_beacons:ui"
       ]
     },
@@ -1707,7 +1757,8 @@
       "class": "auto",
       "checklist": [
         "2.11.13",
-        "M_SKY_ISLAND_05"
+        "M_SKY_ISLAND_05",
+        "2.15.43"
       ],
       "budget": 130,
       "actions": [
@@ -1717,6 +1768,7 @@
         "interact:Search_E",
         "wait_panel:4",
         "assert:choice_present:直面云海里的那阵风|Face the wind",
+        "assert:body_contains:钟庭在栈道北头|The Bell Court is at the north end",
         "shot:boardwalk_storm_choice:ui",
         "assert:wind_gale:true",
         "choose_label:直面云海里的那阵风|Face the wind",
@@ -1741,7 +1793,8 @@
       "class": "auto",
       "checklist": [
         "2.17.5",
-        "2.15.12"
+        "2.15.12",
+        "2.15.44"
       ],
       "budget": 70,
       "actions": [
@@ -1753,6 +1806,7 @@
         "assert:choice_absent:直面云海里的那阵风|Face the wind",
         "assert:choice_absent:引风|Call the wind",
         "assert:body_contains:等归航钟响过|Once the Homecoming Bell",
+        "assert:objective_contains:证明航路安全|Prove the lanes are safe",
         "shot:echo_locked_panel:ui",
         "close_panel",
         "assert:case:SKY_STORM_ECHO"
@@ -1771,6 +1825,32 @@
       "actions": [
         "wait_real:2",
         "assert:case:SKY_KEEPSAKE_ITEMS"
+      ]
+    },
+    {
+      "id": "SKY_AUTO_BELL_POINTER",
+      "title": "指引指向复核（2026-10-16）：钟守放行、接下「归航钟」后，目标卡指「钟守留言」与「敲响归航钟」而不是 55 米外的钟架；钟庭装置导语不再自称「这就是归航钟」",
+      "stage": "bell_ready",
+      "location": "Search_H",
+      "class": "auto",
+      "checklist": [
+        "2.15.40"
+      ],
+      "budget": 50,
+      "actions": [
+        "wait_real:1",
+        "assert:objective_contains:钟守留言|Bell Keeper's message",
+        "assert:objective_contains:敲响归航钟|Ring the Homecoming Bell",
+        "shot:hud_bell_ready:ui:SkyIslandHud",
+        "invincible:on",
+        "teleport:Search_H:2:0",
+        "clear_nearby:60:20",
+        "interact:Search_H",
+        "wait_panel:4",
+        "assert:body_contains:钟守给归航钟留的话|The Bell Keeper's note",
+        "assert:choice_present:敲响归航钟|Ring the Homecoming Bell",
+        "shot:bell_pointer_panel:ui",
+        "close_panel"
       ]
     },
     {
@@ -1812,7 +1892,7 @@
     },
     {
       "id": "SKY_AUTO_END_STAGE",
-      "title": "结局档：剧情数据到位，目标卡写归航钟已响",
+      "title": "结局档：剧情数据到位，目标卡写归航钟已响；打过噬风的结局档，目标卡写清再打噬风要去栈道南头的双航标门、带核和风晶（玩家反馈 2026-10-17）",
       "stage": "ending",
       "location": "PlayerSpawn",
       "class": "auto",
@@ -1824,7 +1904,24 @@
         "assert:stage_data",
         "wait_real:1",
         "assert:objective_contains:归航钟已响|The bell has rung",
+        "assert:objective_contains:栈道南头的双航标门|twin-beacon gate at the south end of the boardwalk",
         "shot:hud_ending:ui:SkyIslandHud"
+      ]
+    },
+    {
+      "id": "SKY_AUTO_END_MAP",
+      "title": "剧情指引全面核查（2026-10-17）：结局后官方地图的紫圈写清要干什么（支线 · 倒挂邮亭那封没寄出的旧信 / 听雨洞的旧航路图 / 残星瞭台……），不是一律「支线目标」",
+      "stage": "ending",
+      "location": "PlayerSpawn",
+      "class": "shot",
+      "checklist": [
+        "2.15.46"
+      ],
+      "budget": 25,
+      "actions": [
+        "open_map",
+        "shot:map_ending:ui:Map",
+        "close_view"
       ]
     },
     {
@@ -2022,8 +2119,8 @@
         "wait_real:0.6",
         "shot:journal_things:ui",
         "assert:overflow_none",
-        "assert:body_contains:结局后是鸣风栈道「引风」的钥匙|the key for calling the wind on Windsong Boardwalk",
-        "assert:body_contains:结局后可在鸣风栈道烧一块来「引风」|burn one on Windsong Boardwalk to call the Windeater's echo",
+        "assert:body_contains:南头的双航标门「引风」|bring it to the twin-beacon gate",
+        "assert:body_contains:南头的双航标门烧一块|burn one at the twin-beacon gate",
         "assert:body_contains:回响遗存里还回来三片|the echo's cache gives three back"
       ]
     },
@@ -2271,8 +2368,8 @@
         "wait_real:0.6",
         "shot:journal_things_alt:ui",
         "assert:overflow_none",
-        "assert:body_contains:结局后可在鸣风栈道烧一块来「引风」|burn one on Windsong Boardwalk to call the Windeater's echo",
-        "assert:body_contains:结局后是鸣风栈道「引风」的钥匙|the key for calling the wind on Windsong Boardwalk",
+        "assert:body_contains:南头的双航标门烧一块|burn one at the twin-beacon gate",
+        "assert:body_contains:南头的双航标门「引风」|bring it to the twin-beacon gate",
         "assert:body_contains:回响遗存里还回来三片|the echo's cache gives three back",
         "assert:body_contains:云苔纱笠|Cloudmoss Veil",
         "assert:body_contains:风晶灭蚊灯|Windcrystal Gnat Zapper",
@@ -2318,7 +2415,9 @@
       "checklist": [
         "2.15.20",
         "2.13.20",
-        "M_SKY_ISLAND_09"
+        "M_SKY_ISLAND_09",
+        "2.15.39",
+        "2.15.41"
       ],
       "budget": 200,
       "actions": [
@@ -2355,7 +2454,9 @@
         "clear_nearby:45:10",
         "interact:Search_D",
         "wait_panel:4:false",
+        "assert:body_contains:风标校准好了|The wind beacon is calibrated",
         "shot:brief_D_alt:ui",
+        "assert:choice_present:系牢回程绳桥 K1|Lash the K1 rope bridge home",
         "assert:overflow_none",
         "set_health:0.6",
         "teleport:Search_D_02:2:0",
@@ -2395,7 +2496,8 @@
         "2.15.20",
         "2.13.20",
         "2.10.14",
-        "M_SKY_ISLAND_09"
+        "M_SKY_ISLAND_09",
+        "2.15.40"
       ],
       "budget": 200,
       "actions": [
@@ -2435,6 +2537,7 @@
         "interact:Search_H",
         "wait_panel:4:false",
         "shot:brief_H_alt:ui",
+        "assert:body_contains:钟守给归航钟留的话|The Bell Keeper's note",
         "assert:overflow_none",
         "teleport:Search_H_02:2:0",
         "clear_nearby:45:10",
@@ -2484,7 +2587,7 @@
         "dialogue_advance:0.4",
         "wait_dialogue_typed:10",
         "shot:dialogue_alt_line4:ui:Dialogue",
-        "assert:dialogue_line_contains:观星手|stargazer up on|悬根林的风标底下蹲着个猎首|huntmaster crouches|断风游猎|Galebreaker holds",
+        "assert:dialogue_line_contains:观星手|stargazer up on|悬根林风标东边蹲着个猎首|huntmaster crouches|断风游猎|Galebreaker holds",
         "dialogue_advance:30",
         "wait_dialogue_typed:10",
         "shot:dialogue_alt_choice:ui:Dialogue",
@@ -3765,6 +3868,66 @@
       "evidence": [
         "SKY_AUTO_REAL_DOCK_PANEL"
       ]
+    },
+    {
+      "checklist": "2.15.38",
+      "class": "auto",
+      "evidence": [
+        "SKY_AUTO_NEW_GUARD_EAST"
+      ]
+    },
+    {
+      "checklist": "2.15.39",
+      "class": "auto",
+      "evidence": [
+        "SKY_AUTO_BEACONS_K1_NAME",
+        "SKY_AUTO_ALT_BRIEFS_WEST"
+      ]
+    },
+    {
+      "checklist": "2.15.40",
+      "class": "auto",
+      "evidence": [
+        "SKY_AUTO_BELL_POINTER",
+        "SKY_AUTO_ALT_BRIEFS_EAST"
+      ]
+    },
+    {
+      "checklist": "2.15.41",
+      "class": "auto",
+      "evidence": [
+        "SKY_AUTO_BEACONS_K1_NAME",
+        "SKY_AUTO_ALT_BRIEFS_WEST"
+      ]
+    },
+    {
+      "checklist": "2.15.42",
+      "class": "auto",
+      "evidence": [
+        "SKY_AUTO_BEACONS_BELL_HIDDEN"
+      ]
+    },
+    {
+      "checklist": "2.15.43",
+      "class": "auto",
+      "evidence": [
+        "SKY_AUTO_BEACONS_BOARDWALK"
+      ]
+    },
+    {
+      "checklist": "2.15.44",
+      "class": "auto",
+      "evidence": [
+        "SKY_AUTO_STORM_ECHO_LOCKED"
+      ]
+    },
+    {
+      "checklist": "2.15.46",
+      "class": "shot",
+      "evidence": [
+        "SKY_AUTO_END_MAP"
+      ],
+      "reason": "结局后紫圈的字（支线 · 某某）只能看官方地图截图；离线由 SkyIslandGuidanceMatrixRegression 钉住不退回泛称"
     },
     {
       "checklist": "2.16.1",

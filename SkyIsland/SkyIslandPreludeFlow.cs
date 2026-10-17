@@ -74,8 +74,9 @@ namespace BossRush
                 L10n.T("前往天空岛 · 晴岚群岛", "Depart for Sky Islands · Qinglan"));
             LocalizationHelper.InjectLocalization(ObjectiveNameKey,
                 L10n.T("失落的航向仪", "Lost Navigation Instrument"));
+            // 圈中间摆的是一台摔坏的航向仪，不是残骸；守卫的尸体箱另在它倒下的地方（2026-10-17 剧情指引全面核查）。
             LocalizationHelper.InjectLocalization(InstrumentNameKey,
-                L10n.T("从残骸里拆一具航向仪", "Salvage a navigation instrument"));
+                L10n.T("从摔坏的航向仪上拆一具", "Salvage one from the downed instrument"));
             LocalizationHelper.InjectLocalization(QuestNameKey, L10n.T("云上的坐标", "Coordinates Above the Clouds"));
             LocalizationHelper.InjectLocalization(QuestDescriptionKey,
                 L10n.T("零号区掉下来一台航向仪，不是地面上的东西。守着它的那个家伙也不像本地拾荒者。帮我把航向仪带回来，我想看看它记了什么。",
@@ -90,7 +91,7 @@ namespace BossRush
                 QuestId = SkyIslandOfficialQuestTable.PreludeQuestId, GiverId = (int)QuestGiverID.Jeff,
                 ObjectName = QuestObjectName, NameKey = QuestNameKey, DescriptionKey = QuestDescriptionKey,
                 Name = () => L10n.T("云上的坐标", "Coordinates Above the Clouds"),
-                Description = () => L10n.T("零号区掉下来一台航向仪，守着它的家伙不是本地人。把航向仪带回来给 Jeff。",
+                Description = () => L10n.T("零号区掉下来一台航向仪，守着它的家伙不是本地人。把航向仪带回来给杰夫。",
                     "A navigation instrument fell into Ground Zero, and its guard is no local. Bring the instrument back to Jeff."),
                 AcceptedFlag = SkyIslandStoryFlag.PreludeAccepted, DeliveredFlag = SkyIslandStoryFlag.RouteUnlocked,
                 AcceptAction = SkyIslandStoryAction.AcceptPrelude, DeliverAction = SkyIslandStoryAction.UnlockRoute,
@@ -116,21 +117,24 @@ namespace BossRush
                         // 已交付的那一份投影在 history 里，这时 holdsInstrument 已经是 false，用航线位兜住。
                         Done = data => data.Has(SkyIslandStoryFlag.PreludeInstrumentRecovered) &&
                             (data.SkyIslandRouteUnlocked || !instrumentSampled || holdsInstrument),
+                        // 中文写「杰夫」：官方中文名牌就是这两个字（Character_Jeff / QuestGiver_Jeff），鸭王征程同一位 NPC 也这么写。
                         Description = data => data.SkyIslandRouteUnlocked
-                            ? L10n.T("坐标已经交给 Jeff 了。", "The coordinates are with Jeff now.")
+                            ? L10n.T("坐标已经交给杰夫了。去基地船边，选「前往天空岛」。", "The coordinates are with Jeff now. Go to the boat at base and pick 'Depart for Sky Islands'.")
                             : !data.Has(SkyIslandStoryFlag.PreludeInstrumentRecovered)
                                 ? L10n.T("去零号区，干掉看守的家伙，把失落的航向仪带回来。",
                                     "Head to Ground Zero, put down the guard, and bring back the lost navigation instrument.")
                                 : !instrumentSampled || holdsInstrument
-                                    ? L10n.T("航向仪在你身上了，回基地找 Jeff。",
+                                    ? L10n.T("航向仪在你身上了，回基地找杰夫。",
                                         "You have the instrument. Take it back to Jeff at base.")
-                                    : L10n.T("航向仪不在你身上了。回零号区，从残骸里再拆一具。",
-                                        "You are no longer carrying the instrument. Go back to Ground Zero and salvage another one from the wreck."),
+                                    // 换场景就会把「守卫已倒」清掉，守卫回来之前摔坏的那台拆不了：先说要再打一次（2026-10-17 剧情指引全面核查）。
+                                    : L10n.T("航向仪不在你身上了。回零号区把看守再打倒一次，航向仪在它的箱子里。",
+                                        "You are no longer carrying the instrument. Go back to Ground Zero and put the guard down again; the instrument will be in its box."),
                         ExtraHint = data => data.SkyIslandRouteUnlocked ? null
                             : data.Has(SkyIslandStoryFlag.PreludeInstrumentRecovered) && (!instrumentSampled || holdsInstrument)
-                                ? L10n.T("交付的时候 Jeff 会把航向仪收走。", "Jeff takes the instrument when you hand it in.")
-                                : L10n.T("地图上圈出来的那一带，就是它掉下来的地方。要普通出击去零号区，开着 BossRush 等模式时它不会出现。",
-                                    "The ring on your map is where it came down. Go on a normal raid to Ground Zero; it won't appear while BossRush or another mode is running."),
+                                ? L10n.T("交付的时候杰夫会把航向仪收走。", "Jeff takes the instrument when you hand it in.")
+                                // 圈只画在零号区的地图上，在基地打开地图看不到。
+                                : L10n.T("到了零号区打开地图，圈出来的那一带就是它掉下来的地方。要普通出击去零号区，开着 BossRush 等模式时它不会出现。",
+                                    "Once in Ground Zero, open the map: the ring is where it came down. Go on a normal raid to Ground Zero; it won't appear while BossRush or another mode is running."),
                     },
                 },
             };
@@ -153,7 +157,7 @@ namespace BossRush
                 reason = null;
                 return true;
             }
-            reason = L10n.T("先在基地找 Jeff 接下「云上的坐标」，把零号区那台航向仪带回去交给他。",
+            reason = L10n.T("先在基地找杰夫接下「云上的坐标」，把零号区那台航向仪带回去交给他。",
                 "Take Coordinates Above the Clouds from Jeff at base first, then bring him the instrument from Ground Zero.");
             return false;
         }
@@ -292,8 +296,8 @@ namespace BossRush
             if (!story.TryApply(SkyIslandStoryAction.AcceptPrelude, out message)) return false;
             story.Tick(true);
             nextInstrumentPoll = 0f;
-            Report(L10n.T("Jeff 在地图上给你圈了个地方。零号区，圈里头。东西在谁手上，你到了就知道。",
-                "Jeff circles a spot on your map. Ground Zero, inside the ring. You will find out who is holding it when you get there."), false);
+            Report(L10n.T("杰夫在你零号区的地图上圈了个地方。到了零号区打开地图，就在圈里头。东西在谁手上，你到了就知道。",
+                "Jeff circles a spot on your Ground Zero map. Open the map once you're there; it's inside the ring. You will find out who is holding it when you get there."), false);
             return true;
         }
 
@@ -307,14 +311,14 @@ namespace BossRush
             }
             if (!SceneRuntimeGate.IsBaseHubSceneName(SceneManager.GetActiveScene().name))
             {
-                reason = L10n.T("带着航向仪回基地找 Jeff。", "Bring the instrument back to Jeff at base.");
+                reason = L10n.T("带着航向仪回基地找杰夫。", "Bring the instrument back to Jeff at base.");
                 return false;
             }
-            // 交付物在身上才算交得掉。丢了不是死局：零号区那具残骸旁边还能再拆一具。
+            // 交付物在身上才算交得掉。丢了不是死局：回零号区守卫会再出现，打倒它箱子里还有一具。
             if (SkyIslandNavInstrumentConfig.CountOwned() <= 0)
             {
-                reason = L10n.T("航向仪不在身上。零号区那堆残骸旁边还能再拆一具。",
-                    "You are not carrying the instrument. There is another one to salvage beside the wreck in Ground Zero.");
+                reason = L10n.T("航向仪不在身上。回零号区把看守再打倒一次，就能再拿到一具。",
+                    "You are not carrying the instrument. Put the guard in Ground Zero down again and you'll get another one.");
                 return false;
             }
             if (!story.RequireAssetSnapshot(null, out reason))
@@ -332,7 +336,7 @@ namespace BossRush
             routeUnlocked = true;
             holdsInstrument = false;
             ClearJeff();
-            Report(L10n.T("Jeff 把坐标读完，让船工在航路表上添了一条晴岚。想上去看，就去船边。",
+            Report(L10n.T("杰夫把坐标读完，让船工在航路表上添了一条晴岚。想上去看，就去船边。",
                 "Jeff finishes reading the coordinates and has the boat crew add Qinglan to the route table. If you want to see it, head down to the boat."), false);
             if (routeOpened != null) routeOpened();
             reason = null;
@@ -362,7 +366,7 @@ namespace BossRush
             if (!story.TryApply(SkyIslandStoryAction.RecoverPreludeInstrument, out message)) return;
             story.Tick(SceneRuntimeGate.IsBaseHubSceneName(SceneManager.GetActiveScene().name));
             if (officialQuest != null) officialQuest.NotifyProgressChanged();
-            Report(L10n.T("航向仪到手了。把它带回基地交给 Jeff。",
+            Report(L10n.T("航向仪到手了。把它带回基地交给杰夫。",
                 "You have the instrument. Take it back to Jeff at base."), false);
         }
 
@@ -571,7 +575,7 @@ namespace BossRush
                 SkyIslandEnemyArmory.Arm(created, SkyIslandEnemyTier.Chief);
                 boss = created;
                 retained = true;
-                Report(L10n.T("风声不对了。看着航向仪的那个，断风游猎·守，醒了。",
+                Report(L10n.T("风声不对了。看着航向仪的那个，断风游猎 · 守，醒了。",
                     "The wind turns wrong. The one watching the instrument, the Galebreaker Warden, is awake."), false);
             }
             catch (Exception e)
@@ -600,8 +604,9 @@ namespace BossRush
             nextInstrumentPoll = 0f;
             Report(instrumentInBox
                 ? L10n.T("断风游猎倒下了。航向仪在它的箱子里。", "The Galebreaker is down. The instrument is in its box.")
-                : L10n.T("断风游猎倒下了，但航向仪没掉进箱子。去它的残骸旁边再拆一具。",
-                    "The Galebreaker is down, but the instrument didn't land in its box. Salvage one from the wreck."), false);
+                // 能拆的是圈中间那台摔坏的航向仪，不是守卫倒下的地方（它会追人，倒地点不固定）。
+                : L10n.T("断风游猎倒下了，但航向仪没掉进箱子。回圈中间那台摔坏的航向仪，从上面拆一具。",
+                    "The Galebreaker is down, but the instrument didn't land in its box. Go back to the downed instrument in the middle of the ring and salvage one from it."), false);
         }
 
         /// <summary>
@@ -619,10 +624,16 @@ namespace BossRush
             if (!CanRecoverInstrument) return;
             if (!SkyIslandNavInstrumentConfig.TryGiveToPlayer())
             {
-                Report(L10n.T("残骸里拆不出完整的航向仪。清点一下背包再来。",
-                    "You cannot pull an intact instrument out of the wreck. Make room in your pack and try again."), true);
+                Report(L10n.T("这台航向仪拆不下来，过一会儿再试。",
+                    "The instrument won't come loose. Try again in a moment."), true);
                 return;
             }
+            // 背包满时官方把它寄进自提柜（出击图里没有仓库实例，进待领取缓冲）：背包和仓库都数不到它，
+            // 任务停在第一步、也不报「到手了」。说清去哪儿取，免得玩家以为没拆到（2026-10-17 剧情指引全面核查）。
+            // 写成 == 0：交付门那句 `<= 0` 被 SkyIslandPreludeGuard 按唯一子串反向探针钉着，这里不能再出现一份。
+            if (SkyIslandNavInstrumentConfig.CountOwned() == 0)
+                Report(L10n.T("背包满了，航向仪进了自提柜。回基地到马蜂自提点取出来，带在身上再交给杰夫。",
+                    "Your pack is full, so the instrument went to the locker. Back at base, take it out of the Wasp Pickup Locker and hand it to Jeff."), false);
             // 剧情事实由下一次采样落下（RefreshInstrumentState），发物品与写存档因此永远只有一个 owner。
             nextInstrumentPoll = 0f;
         }

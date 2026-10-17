@@ -296,7 +296,7 @@ namespace BossRush
                 case "SKY_BOUNTY_GATING": return ValidateSkyIslandBountyGating;
                 case "SKY_RESIDENTS": return ValidateSkyIslandResidents;
                 case "SKY_OFFICIAL_NOTES": return ValidateSkyIslandOfficialNotes;
-                case "SKY_KEEPSAKE_ITEMS": return ValidateSkyIslandKeepsakes;
+                case "SKY_KEEPSAKE_ITEMS": return ValidateAutotestKeepsakes;
                 case "SKY_LETTER_PIGEON": return ValidateSkyIslandLetterPigeon;
                 case "SKY_EXTRACTION_RINGS": return ValidateSkyIslandExtractionRings;
                 case "SKY_EXTRACTION_RULE": return ValidateSkyIslandExtractionRule;
@@ -311,9 +311,33 @@ namespace BossRush
                 case "SKY_LOCALIZATION_EN": return ValidateSkyIslandEnglishText;
                 case "SKY_SCENE_BASELINE": return ValidateSkyIslandSceneBaseline;
                 case "SKY_OFFICIAL_NOTES_BASE": return ValidateSkyIslandOfficialNotesAtBase;
-                case "SKY_KEEPSAKE_ITEMS_BASE": return ValidateSkyIslandKeepsakesAtBase;
+                case "SKY_KEEPSAKE_ITEMS_BASE": return ValidateAutotestKeepsakesAtBase;
                 default: return null;
             }
+        }
+
+        /// <summary>
+        /// 纪念品件数按开跑快照的基线判：专用测试档的官方待收取缓冲区里留着旧验收漏收的纪念品，开跑前就在、收尾原样保留，
+        /// 只读套件的「至多一件」在这个档上恒红（2026-10-16 第十轮复核）。这里只多给基线，判据仍是 JudgeKeepsakes 那一份。
+        /// </summary>
+        private bool ValidateAutotestKeepsakes(out string metrics, out string reason)
+        {
+            return JudgeKeepsakesNow(false, AutotestItemBaseline(BossRushItemIds.SkyIslandHomecomingBadge),
+                AutotestItemBaseline(BossRushItemIds.SkyIslandWindeaterCore), out metrics, out reason);
+        }
+
+        private bool ValidateAutotestKeepsakesAtBase(out string metrics, out string reason)
+        {
+            if (LevelManager.Instance == null || !LevelManager.Instance.IsBaseLevel)
+                throw new SkyIslandSkipCase("not_in_base", "is_base_level=false");
+            return JudgeKeepsakesNow(true, AutotestItemBaseline(BossRushItemIds.SkyIslandHomecomingBadge),
+                AutotestItemBaseline(BossRushItemIds.SkyIslandWindeaterCore), out metrics, out reason);
+        }
+
+        private int AutotestItemBaseline(int typeId)
+        {
+            int count;
+            return _autotest != null && _autotest.Snapshot != null && _autotest.Snapshot.Items.TryGetValue(typeId, out count) ? count : 0;
         }
 
         private static AutotestMeasure AutotestLookup(Dictionary<string, AutotestMeasure> measures, string key)

@@ -180,11 +180,12 @@ namespace BossRush
                             "Repair the Fallen Star Workshop lamp first\nthen open the maintenance walk at the lamp"); break;
                 case "K3":
                     title = L10n.T("鸣风栈道 / 风铃集 · K3", "Windsong Boardwalk / Windchime Market · K3");
+                    // 开桥在栈道南头的双航标门装置（Search_E）上点；那儿没有木牌，看得见的门牌在北头钟庭门两侧（2026-10-16 指引复核）。
                     condition = story.BothBeacons
-                        ? L10n.T("两端航标都修好了\n到栈道双航标门木牌开启旧桥",
-                            "Both beacons restored\nOpen the old bridge at the boardwalk's twin-beacon gate sign")
-                        : L10n.T("先修好风标和星灯\n再到栈道双航标门木牌开启旧桥",
-                            "Restore the wind beacon and the star lamp first\nthen open the old bridge at the boardwalk's twin-beacon gate sign"); break;
+                        ? L10n.T("两端航标都修好了\n到栈道南头的双航标门开启旧桥",
+                            "Both beacons restored\nOpen the old bridge at the twin-beacon gate, south end of the boardwalk")
+                        : L10n.T("先修好风标和星灯\n再到栈道南头的双航标门开启旧桥",
+                            "Restore the wind beacon and the star lamp first\nthen open the old bridge at the twin-beacon gate, south end of the boardwalk"); break;
                 case "BellCourt":
                     title = L10n.T("鸣风栈道 / 归航钟庭", "Windsong Boardwalk / Homecoming Bell Court");
                     condition = L10n.T("先修好悬根林的风标\n和残星工坊的星灯",

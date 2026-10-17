@@ -111,7 +111,8 @@ namespace BossRush
             {
                 case "Search_D": AddIf(choices, L10n.T("校准西侧风标", "Calibrate the west wind beacon"),
                         SkyIslandStoryAction.RepairWindBeacon);
-                    AddIf(choices, L10n.T("系牢林边旧运菜道 K1", "Secure the old produce path K1"),
+                    // 与修好风标的回话、K1 的拒绝话和桥口门牌同名（「回程绳桥」）。
+                    AddIf(choices, L10n.T("系牢回程绳桥 K1", "Lash the K1 rope bridge home"),
                         SkyIslandStoryAction.OpenShortcutK1); break;
                 case "Search_G": AddIf(choices, L10n.T("修复东侧星灯", "Repair the east star lamp"),
                         SkyIslandStoryAction.RepairStarLamp);
@@ -161,7 +162,7 @@ namespace BossRush
             // 正文只放一句导语 +（被隐藏选项留下的）下一步。
             // 长文去了官方笔记图鉴，目标卡常驻右上角 HUD——两处都不必在这里再说一遍。
             presentation.Show(SkyIslandPointText.Name(key),
-                solving ? PuzzleBody(puzzle) : WithNextStep(SkyIslandPointText.Brief(key)),
+                solving ? PuzzleBody(puzzle) : WithNextStep(SkyIslandPointText.BriefFor(key, story.Current)),
                 choices, null, SkyIslandUiArt.GetScene(key));
         }
 
@@ -406,8 +407,11 @@ namespace BossRush
 
         private void ZhelingChoices(List<SkyIslandStoryPresentation.Choice> choices)
         {
-            AddIf(choices, L10n.T("留下来谈 · 出示旧信与航路图",
-                "Stay and talk · show the old letter and the route chart"), SkyIslandStoryAction.ReconcileZheling);
+            // 穿镜纹甲、没带齐旧信与航路图也能谈（SkyIslandStoryRules 的 ReconcileZheling）：按钮不再叫人出示没带的东西。
+            bool papers = story.Current.Has(SkyIslandStoryFlag.OldLetter | SkyIslandStoryFlag.RouteChart);
+            AddIf(choices, papers ? L10n.T("留下来谈 · 出示旧信与航路图", "Stay and talk · show the old letter and the route chart")
+                : L10n.T("留下来谈 · 让他看你身上的镜纹甲", "Stay and talk · let him see your Mirrorgrain Plate"),
+                SkyIslandStoryAction.ReconcileZheling);
             // 两条结局互斥：战胜折翎之后「留下来谈」永久关闭（ReconcileZheling 对已了结的折翎直接拒绝）。
             // 这一项就挨在「留下来谈」下面，按钮上说清楚，免得想走和平线的人手一滑打赢了才发现回不去。
             // 折翎已了结（和解或战胜）之后两项一起收掉。
@@ -1096,15 +1100,15 @@ namespace BossRush
             // 说出这一处要干什么（清守卫 / 修灯 / 找谁），和地图圈上的字同一份。
             string what = (target != null ? SkyIslandMapMarkers.TargetTask(target.name) : null)
                 ?? L10n.T("眼下的目标", "your current objective");
-            // 找人接 / 交任务时指那位居民本人，与地图圈同一份（兜底装置离他 31–41 米）。
+            // 找人接 / 交任务时指那位居民本人，与地图圈同一份（兜底装置离他 31–41 米）；人不在就指装置，字也跟着说装置。
             Transform giver = target != null ? SkyIslandMapMarkers.ContactAnchor(story.Current, session.GiverAnchor) : null;
+            SkyIslandOfficialQuestDefinition contact = target != null ? SkyIslandOfficialQuestTable.NextContactQuest(story.Current) : null;
+            if (contact != null) what = SkyIslandMapMarkers.ContactTask(contact.GiverId, giver != null) ?? what;
             if (giver != null) target = giver;
             if (target == null)
             {
-                target = NearestMarker(SkyIslandMapMarkers.SideTargets(story.Current), from);
-                what = target != null && target.name == "Search_E"
-                    ? L10n.T("鸣风栈道的双航标门木牌", "the twin-beacon gate sign on Windsong Boardwalk")
-                    : L10n.T("还没做完的支线", "an unfinished side path");
+                target = NearestMarker(CompassSideTargets(), from);
+                what = target != null && target.name == "Search_E" ? GateCompassTask() : SkyIslandMapMarkers.SideTask(target != null ? target.name : null);
             }
             // 主线支线都没了：带着晴岚风晶就指还缺风晶灯的地方；否则指这一趟还没采的风晶簇（碎晶是点灯的料）。
             if (target == null && fieldcraft != null && fieldcraft.CountInPack(BossRushItemIds.SkyIslandQinglanWindcrystal) > 0)

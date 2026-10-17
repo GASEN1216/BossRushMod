@@ -122,7 +122,10 @@ def main():
     need(bell, "钟守物证路线", "source.ZhelingResolved")
     forbid(bell, "钟守物证路线", "SkyIslandStoryFlag.ZhelingReconciled")
     # 提示文案必须说明战胜也算，否则玩家仍会去找一个已不可能达成的条件。
-    if "和解或战胜都算" not in bell:
+    # 2026-10-17 起「还差哪几样」按缺项拼在 MissingProof 里（剧情指引全面核查）：拒绝话要调它，它里面要有这句。
+    proof = rules.split("private static string MissingProof(", 1)[1].split("private static string BeaconLine(", 1)[0] \
+        if "private static string MissingProof(" in rules else ""
+    if "和解或战胜都算" not in bell and not ("MissingProof(source)" in bell and "和解或战胜都算" in proof):
         errors.append("钟守失败提示必须说明战胜折翎同样算作了结")
 
     # ---- 6. 剧情面板选项随状态刷新 ----

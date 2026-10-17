@@ -1283,6 +1283,7 @@ internal static class Program
         SkyIslandBossRulesRegression.Run(Check);
         SkyIslandChatterRegression.Run(Check);
         SkyIslandMarriageTextRegression.Run(Check);
+        SkyIslandGuidanceMatrixRegression.Run(Check);
         SkyIslandOfficialQuestRegression.Run(Check);
         SkyIslandNavigationRegression.Run(Check);
         SkyIslandFeedbackRegression.Run(Check);
