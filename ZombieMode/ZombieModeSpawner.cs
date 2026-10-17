@@ -179,19 +179,34 @@ namespace BossRush
 
         internal bool TryGetZombieModeReliableSpawnPosition(out Vector3 position)
         {
+            position = Vector3.zero;
+            // 同一帧里已经整轮找过并失败：玩家位置与刷怪点都没变，再找一遍结果相同。
+            // 安全区一次弹出多只、多只 Boss 同帧解卡时，省掉重复的整轮同步 A* 查询。
+            int frame = Time.frameCount;
+            if (zombieModeReliableSpawnFailedFrame == frame)
+            {
+                return false;
+            }
+
+            CharacterMainControl main = CharacterMainControl.Main;
+            // 玩家吸不上导航面（站在台面、楼梯上）时每个候选点都会判不可达，整轮早退。
+            if (main == null || !SpawnPositionHelper.IsReachableAnchor(main.transform.position))
+            {
+                zombieModeReliableSpawnFailedFrame = frame;
+                return false;
+            }
+
             if (TryGetNearestZombieModeMapSpawnPositionToPlayer(out position))
             {
                 return true;
             }
 
-            CharacterMainControl main = CharacterMainControl.Main;
-            if (main != null && TryFindZombieModeVirtualSpawnAroundPlayer(main.transform.position, out position))
+            if (TryFindZombieModeVirtualSpawnAroundPlayer(main.transform.position, out position))
             {
                 return true;
             }
 
-            if (main != null &&
-                TryFindZombieModeVirtualSpawnAroundPlayer(
+            if (TryFindZombieModeVirtualSpawnAroundPlayer(
                     main.transform.position,
                     ZombieModeTuning.SpawnPointMinPlayerDistance,
                     out position))
@@ -199,8 +214,27 @@ namespace BossRush
                 return true;
             }
 
+            zombieModeReliableSpawnFailedFrame = frame;
             position = Vector3.zero;
             return false;
+        }
+
+        private int zombieModeReliableSpawnFailedFrame = -1;
+
+        private struct ZombieModeSpawnScanEntry
+        {
+            public float DistanceSqr;
+            public int Offset;
+            public int Index;
+        }
+
+        private readonly List<ZombieModeSpawnScanEntry> zombieModeSpawnScanEntries = new List<ZombieModeSpawnScanEntry>();
+        private static readonly System.Comparison<ZombieModeSpawnScanEntry> ZombieModeSpawnScanOrder = CompareZombieModeSpawnScanEntries;
+
+        private static int CompareZombieModeSpawnScanEntries(ZombieModeSpawnScanEntry a, ZombieModeSpawnScanEntry b)
+        {
+            int byDistance = a.DistanceSqr.CompareTo(b.DistanceSqr);
+            return byDistance != 0 ? byDistance : a.Offset.CompareTo(b.Offset);
         }
 
         internal bool TryGetNearestZombieModeMapSpawnPositionToPlayer(out Vector3 position)
@@ -214,55 +248,75 @@ namespace BossRush
                 return false;
             }
 
+            // 没有玩家时每个点都判不可达（可达性以玩家为锚点）。
             CharacterMainControl main = CharacterMainControl.Main;
-            Vector3 playerPos = main != null ? main.transform.position : Vector3.zero;
+            if (main == null)
+            {
+                return false;
+            }
+
+            Vector3 playerPos = main.transform.position;
             float preferredMinDistance = GetZombieModeSpawnPointMinPlayerDistance();
             float preferredMinDistanceSqr = preferredMinDistance * preferredMinDistance;
             float fallbackMinDistanceSqr = ZombieModeTuning.SpawnPointMinPlayerDistance * ZombieModeTuning.SpawnPointMinPlayerDistance;
-            float bestPreferredDistanceSqr = float.MaxValue;
-            float bestFallbackDistanceSqr = float.MaxValue;
-            int bestPreferredIndex = -1;
-            int bestFallbackIndex = -1;
+
+            // 由近到远扫（同距离按轮转顺序），找到第一个够远的可达点就停：结果与全量扫描取最近相同，
+            // 但不再对每个点都做一次同步 A* 可达性查询。
+            zombieModeSpawnScanEntries.Clear();
             int startIndex = Mathf.Abs(runState.NextSpawnPointIndex) % points.Count;
             for (int offset = 0; offset < points.Count; offset++)
             {
                 int index = (startIndex + offset) % points.Count;
-                Vector3 point = points[index].Position;
-                Vector3 delta = point - playerPos;
+                Vector3 delta = points[index].Position - playerPos;
                 delta.y = 0f;
-                float distanceSqr = main != null ? delta.sqrMagnitude : offset;
-                if (main != null && distanceSqr < fallbackMinDistanceSqr)
+                float distanceSqr = delta.sqrMagnitude;
+                if (distanceSqr < fallbackMinDistanceSqr)
                 {
                     continue;
                 }
 
-                if (distanceSqr >= bestPreferredDistanceSqr)
+                ZombieModeSpawnScanEntry entry;
+                entry.DistanceSqr = distanceSqr;
+                entry.Offset = offset;
+                entry.Index = index;
+                zombieModeSpawnScanEntries.Add(entry);
+            }
+            zombieModeSpawnScanEntries.Sort(ZombieModeSpawnScanOrder);
+
+            int bestPreferredIndex = -1;
+            int bestFallbackIndex = -1;
+            Vector3 bestPreferredPosition = Vector3.zero;
+            Vector3 bestFallbackPosition = Vector3.zero;
+            for (int i = 0; i < zombieModeSpawnScanEntries.Count; i++)
+            {
+                ZombieModeSpawnScanEntry entry = zombieModeSpawnScanEntries[i];
+                bool preferred = entry.DistanceSqr >= preferredMinDistanceSqr;
+                // 已有更近的保底点，又不够「优先距离」的点不可能再改变结果。
+                if (bestFallbackIndex >= 0 && !preferred)
                 {
                     continue;
                 }
+
                 Vector3 reachablePoint;
-                if (!TryResolveZombieModeSpawnPoint(point, false, out reachablePoint))
+                if (!TryResolveZombieModeSpawnPoint(points[entry.Index].Position, false, out reachablePoint))
                 {
                     continue;
                 }
 
-                if (distanceSqr < bestFallbackDistanceSqr)
+                if (bestFallbackIndex < 0)
                 {
-                    bestFallbackDistanceSqr = distanceSqr;
-                    bestFallbackIndex = index;
+                    bestFallbackIndex = entry.Index;
+                    bestFallbackPosition = reachablePoint;
                 }
 
-                if (main != null && distanceSqr < preferredMinDistanceSqr)
+                if (preferred)
                 {
-                    continue;
-                }
-
-                if (distanceSqr < bestPreferredDistanceSqr)
-                {
-                    bestPreferredDistanceSqr = distanceSqr;
-                    bestPreferredIndex = index;
+                    bestPreferredIndex = entry.Index;
+                    bestPreferredPosition = reachablePoint;
+                    break;
                 }
             }
+            zombieModeSpawnScanEntries.Clear();
 
             int bestIndex = bestPreferredIndex >= 0 ? bestPreferredIndex : bestFallbackIndex;
             if (bestIndex < 0)
@@ -270,10 +324,7 @@ namespace BossRush
                 return false;
             }
 
-            if (!TryResolveZombieModeSpawnPoint(points[bestIndex].Position, false, out position))
-            {
-                return false;
-            }
+            position = bestPreferredIndex >= 0 ? bestPreferredPosition : bestFallbackPosition;
             runState.NextSpawnPointIndex = (bestIndex + 1) % points.Count;
             return true;
         }

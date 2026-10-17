@@ -40,6 +40,15 @@ def main():
     damage_raw = damage_path.read_bytes()
     production = 'using System; using System.Collections.Generic; using Pathfinding; using UnityEngine; using UnityEngine.AI; using Duckov.Buffs; using Cysharp.Threading.Tasks;\nnamespace BossRush { internal sealed partial class ZombieModeRuntimeModule {\n'
     production += '\n'.join(member(text, signature) for signature in signatures)
+    # 由近到远扫与同帧失败记忆用到的字段、排序结构（2026-10-17 J-Lab 掉帧）。
+    production += '\n' + member(text, 'private struct ZombieModeSpawnScanEntry')
+    production += '\n' + member(text, 'private static int CompareZombieModeSpawnScanEntries(')
+    fields = [line.strip() for line in text.splitlines()
+              if line.strip().startswith(('private int zombieModeReliableSpawnFailedFrame',
+                                          'private readonly List<ZombieModeSpawnScanEntry> zombieModeSpawnScanEntries',
+                                          'private static readonly System.Comparison<ZombieModeSpawnScanEntry> ZombieModeSpawnScanOrder'))]
+    assert len(fields) == 3, fields
+    production += '\n' + '\n'.join(fields) + '\n'
     wave_path = ROOT / 'ZombieMode/ZombieModeRuntimeModule_WaveController.cs'
     production += '\n' + member(wave_path.read_text(encoding='utf-8-sig'), 'private void HandleZombieModeHealthDead(')
     isolation_path = ROOT / 'ZombieMode/ZombieModeMapIsolation.cs'
@@ -54,6 +63,7 @@ def main():
     assert len(constants) == 2, constants
     production += '\ninternal static partial class SpawnPositionHelper {\n' + '\n'.join(constants) + '\n'
     production += member(helper_text, 'internal static bool TryResolveReachableFrom(') + '\n'
+    production += member(helper_text, 'internal static bool IsReachableAnchor(') + '\n'
     production += member(helper_text, 'private static bool IsNearWalkableNode(') + '\n}}'
     generated = OUT / 'Production.cs'
     generated.write_text(production, encoding='utf-8')

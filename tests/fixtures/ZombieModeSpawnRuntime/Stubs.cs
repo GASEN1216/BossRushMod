@@ -43,6 +43,7 @@ namespace Cysharp.Threading.Tasks
 
 namespace UnityEngine
 {
+    public static class Time { public static int frameCount; }
     public class Object
     {
         internal bool Destroyed;

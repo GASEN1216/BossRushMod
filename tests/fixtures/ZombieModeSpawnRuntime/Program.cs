@@ -151,5 +151,33 @@ internal static class Program
         module.TrackDeathCase(boss,true);module.Kill(boss.Health,companion);module.Kill(boss.Health,companion);
         Assert(state.LivingZombieCount==0 && state.CurrentWaveBossesRemaining==0 && state.CurrentWaveKills==1 && module.CompletedWaves==2,"pet boss kill resolves boss count exactly once without becoming a normal kill");
     }
-    public static void Main() { NormalOrder(); GateAndSlot(); PauseRetry(); BossOrder(); NavigationAndPoison(); BossSpawnNearPlayer(); CompanionIsolationAndKills(); Console.WriteLine("PASS ZombieModeSpawnRuntime"); }
+    private static void NearestScanAndAnchor()
+    {
+        ModBehaviour host; ZombieModeRunState state; var module=New(out host,out state);
+        Vector3 result;
+        // 12 m 以内不收；12–18 m 只作保底；18 m 起优先取最近的那个。
+        foreach (float x in new float[] { 30, 13, 5, 19, 45 }) state.SpawnPoints.Add(new ZombieModeSpawnPoint { Position=new Vector3(x,0,0) });
+        Assert(module.TryGetNearestZombieModeMapSpawnPositionToPlayer(out result) && result.x==19 && state.NextSpawnPointIndex==4,"Nearest-first scan must pick the nearest preferred point and advance the rotation past it");
+        state.SpawnPoints.RemoveAll(p=>p.Position.x>=18); state.NextSpawnPointIndex=0;
+        Assert(module.TryGetNearestZombieModeMapSpawnPositionToPlayer(out result) && result.x==13 && state.NextSpawnPointIndex==1,"Without a preferred point the nearest 12 m-safe fallback is kept");
+        state.SpawnPoints.Clear(); state.SpawnPoints.Add(new ZombieModeSpawnPoint { Position=new Vector3(5,0,0) });
+        Assert(!module.TryGetNearestZombieModeMapSpawnPositionToPlayer(out result),"Points inside 12 m never qualify");
+
+        // 玩家站在吸不上 A* 图的位置：整轮早退，只查一次锚点；同一帧再问不再查，下一帧重新查。
+        state.SpawnPoints.Clear(); state.SpawnPoints.Add(new ZombieModeSpawnPoint { Position=new Vector3(25,0,0) });
+        var astar=new AstarPath(); AstarPath.active=astar; int queries=0;
+        var node=new Pathfinding.GraphNode { Area=1 };
+        astar.Nearest=p=>{ queries++; return p.x==0&&p.z==0 ? new Pathfinding.NNInfo { node=node,position=p+new Vector3(5,0,0) } : new Pathfinding.NNInfo { node=node,position=p }; };
+        module.VirtualSpawnAvailable=true; module.VirtualSpawnPosition=new Vector3(-24,0,0);
+        UnityEngine.Time.frameCount=100;
+        Assert(!module.TryGetZombieModeReliableSpawnPosition(out result) && queries==1,"Unsnappable player anchor must fail the whole search after one anchor query");
+        Assert(!module.TryGetZombieModeReliableSpawnPosition(out result) && queries==1,"A failed search is not repeated within the same frame");
+        UnityEngine.Time.frameCount=101;
+        Assert(!module.TryGetZombieModeReliableSpawnPosition(out result) && queries==2,"The next frame searches again");
+        astar.Nearest=p=>{ queries++; return new Pathfinding.NNInfo { node=node,position=p }; };
+        UnityEngine.Time.frameCount=102;
+        Assert(module.TryGetZombieModeReliableSpawnPosition(out result) && result.x==25,"Snappable anchor resumes the normal nearest-point search");
+        module.VirtualSpawnAvailable=false; AstarPath.active=null;
+    }
+    public static void Main() { NormalOrder(); GateAndSlot(); PauseRetry(); BossOrder(); NavigationAndPoison(); BossSpawnNearPlayer(); NearestScanAndAnchor(); CompanionIsolationAndKills(); Console.WriteLine("PASS ZombieModeSpawnRuntime"); }
 }

@@ -33,7 +33,7 @@ SCRIPT_FIXTURES = (
     "ContentBuildingOwnership", "DailyReportHostUI", "BuildingRestoreCore", "F3ValidationExecution", "SetBonusCoroutines", "GameplayLogFixes",
     "StoneOutpostSceneLease", "StoneOutpostMap", "EquipmentResourceScene", "SkyIslandStory", "SkyIslandDelivery", "SkyIslandOfficialContract", "SkyIslandEncounters", "SkyIslandLighting", "SkyIslandRaidLease", "SkyIslandLoot",
     "SkyIslandFooting", "SkyIslandPatrols",
-    "SkyIslandMarriage", "SkyIslandHudPolicy", "SkyIslandDialogue", "SkyIslandInteraction", "SkyIslandCombatRuntime", "ZombieModeEntryDebt", "ZombieModeSafeZoneRuntime", "ZombieModeRewardRuntime", "ZombieModeSpawnRuntime", "ZombieModeStarterRuntime", "PermanentDuckNpcDialogue", "RewardPoolReliability",
+    "SkyIslandMarriage", "SkyIslandHudPolicy", "SkyIslandDialogue", "SkyIslandInteraction", "SkyIslandCombatRuntime", "ZombieModeEntryDebt", "ZombieModeSafeZoneRuntime", "ZombieModeRewardRuntime", "ZombieModeSpawnRuntime", "ZombieModeStarterRuntime", "ZombieModeAmmoSelection", "PermanentDuckNpcDialogue", "RewardPoolReliability",
     "SkyIslandValidationJudges", "F3AutotestJudges", "SpawnPositionPolicy", "EnemySpawnRuntime", "EnemyRecoveryRuntime", "RandomEventEffectsOwners", "ModeEFSpawnPreparation", "ModeEFEnemySpawnRuntime", "ModeEFSpawnPostprocessScheduler", "ModeEFVirtualSpawnerRegistry", "ModeEFMerchantCatalog", "FlightTotemRuntimeModule", "EquipmentBootstrapOwners", "AwenLootSweepRuntime", "WavesArenaPresetWeight", "BirthdayCakeGift",
 )
 PROJECT_FIXTURES = {

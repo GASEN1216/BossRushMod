@@ -100,6 +100,38 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 只判 <see cref="TryResolveReachableFrom"/> 的锚点那一半：锚点吸不上导航面时任何目标都判不可达。
+        /// 批量找点前先问一次就能整轮早退，结果与逐点调用相同（玩家站在台面、楼梯上时省掉整轮同步查询）。
+        /// </summary>
+        internal static bool IsReachableAnchor(Vector3 anchorPosition)
+        {
+            try
+            {
+                AstarPath astar = AstarPath.active;
+                if (astar != null)
+                {
+                    return !astar.isScanning &&
+                           IsNearWalkableNode(astar.GetNearest(anchorPosition, NNConstraint.Walkable), anchorPosition, ReachableAnchorSnapDistance);
+                }
+            }
+            catch
+            {
+                return false;
+            }
+
+            try
+            {
+                NavMeshHit anchorHit;
+                return NavMesh.SamplePosition(anchorPosition, out anchorHit, ReachableAnchorSnapDistance, NavMesh.AllAreas) &&
+                       Mathf.Abs(anchorHit.position.y - anchorPosition.y) <= ReachableVerticalTolerance;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         private static bool IsNearWalkableNode(NNInfo info, Vector3 rawPosition, float maxHorizontalDistance)
         {
             if (info.node == null || !info.node.Walkable)

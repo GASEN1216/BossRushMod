@@ -45,10 +45,7 @@ namespace BossRush
                 foreach (var preset in allPresets)
                 {
                     if (preset == null || string.IsNullOrEmpty(preset.nameKey) || WavesArenaRuntimeModule.IsRuntimeCharacterPresetClone(preset)) continue;
-                    if (!cachedCharacterPresets.ContainsKey(preset.nameKey))
-                    {
-                        cachedCharacterPresets[preset.nameKey] = preset;
-                    }
+                    CachePresetPreferringAsset(cachedCharacterPresets, preset);
                 }
                 if (logEnabled)
                 {
@@ -57,10 +54,14 @@ namespace BossRush
 
                 foreach (var preset in allPresets)
                 {
-                    if (preset == null || WavesArenaRuntimeModule.IsRuntimeCharacterPresetClone(preset)) continue;
+                    if (preset == null || IsRuntimeCreatedPreset(preset)) continue;
 
                     string nameKey = preset.nameKey;
                     if (string.IsNullOrEmpty(nameKey)) continue;
+
+                    // 官方 Boss 不进小怪池：Cname_Boss_Red / Blue 这类 Boss 也不显示名字，会被下面的 showName 判据当成小怪，
+                    // 第 1–2 波「只刷血量最低的」时就可能抽到它们（玩家反馈 2026-10-17：前两波的狼变成了 Boss）。
+                    if (preset.isBoss) continue;
 
                     int team = (int)preset.team;
                     // 只收集敌对阵营，排除玩家和中立阵营
@@ -235,6 +236,30 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 运行时 Instantiate / CreateInstance 出来的 preset 实例 ID 为负，从磁盘或 AssetBundle 载入的资源为正。
+        /// 天空岛小兵（BossRush_SkyIsland_*）、遗种崽（PetNest_Companion_*）、冠军杖卫等克隆都改过名、不带 "(Clone)"，
+        /// 而且底模多是官方 Boss，只靠名字判不出来。
+        /// </summary>
+        private static bool IsRuntimeCreatedPreset(CharacterRandomPreset preset)
+        {
+            return WavesArenaRuntimeModule.IsRuntimeCharacterPresetClone(preset) || preset.GetInstanceID() < 0;
+        }
+
+        /// <summary>
+        /// 同一个 nameKey 优先缓存官方资源：遗种崽克隆沿用官方血脉的 nameKey（如 Cname_Wolf），
+        /// 先被扫到就会让按名刷出的敌人变成玩家阵营、无掉落的那份。其它 Mod 只在运行时创建的 preset 仍然保留。
+        /// </summary>
+        private static void CachePresetPreferringAsset(Dictionary<string, CharacterRandomPreset> cache, CharacterRandomPreset preset)
+        {
+            CharacterRandomPreset existing;
+            if (!cache.TryGetValue(preset.nameKey, out existing) || existing == null
+                || (existing.GetInstanceID() < 0 && preset.GetInstanceID() > 0))
+            {
+                cache[preset.nameKey] = preset;
+            }
+        }
+
         internal void EnsureCharacterPresetsCacheReady()
         {
             if (cachedCharacterPresets != null && cachedCharacterPresets.Count > 0)
@@ -260,10 +285,7 @@ namespace BossRush
                     CharacterRandomPreset preset = allPresets[i];
                     if (preset == null || string.IsNullOrEmpty(preset.nameKey)) continue;
                     if (WavesArenaRuntimeModule.IsRuntimeCharacterPresetClone(preset)) continue;
-                    if (!cachedCharacterPresets.ContainsKey(preset.nameKey))
-                    {
-                        cachedCharacterPresets[preset.nameKey] = preset;
-                    }
+                    CachePresetPreferringAsset(cachedCharacterPresets, preset);
                 }
             }
             catch (Exception e)
