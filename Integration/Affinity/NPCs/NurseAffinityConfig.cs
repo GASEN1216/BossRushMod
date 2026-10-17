@@ -111,12 +111,12 @@ namespace BossRush
                     _unlocksByLevel = new Dictionary<int, string[]>
                     {
                         { 2, new[] { L10n.T("10%治疗折扣", "10% Healing Discount") } },
-                        { 3, new[] { L10n.T("安神滴剂 x5", "Calming Drops x5") } },
+                        { 3, new[] { L10n.T("羽织的叮嘱", "Yu Zhi's Advice"), L10n.T("安神滴剂 x5", "Calming Drops x5") } },
                         { 4, new[] { L10n.T("20%治疗折扣", "20% Healing Discount") } },
                         { 5, new[] { L10n.T("羽织的回忆（上）", "Yu Zhi's Memories (Part 1)") } },
                         { 6, new[] { L10n.T("25%治疗折扣", "25% Healing Discount") } },
                         { 7, new[] { L10n.T("30%治疗折扣", "30% Healing Discount") } },
-                        { 8, new[] { L10n.T("\u5E73\u5B89\u62A4\u8EAB\u7B26", "Peace Charm") } },
+                        { 8, new[] { L10n.T("\u7FBD\u7EC7\u7684\u62C5\u5FC3", "Yu Zhi's Worry"), L10n.T("\u5E73\u5B89\u62A4\u8EAB\u7B26", "Peace Charm") } },
                         { 9, new[] { L10n.T("40%治疗折扣", "40% Healing Discount") } },
                         { 10, new[] { L10n.T("\u7FBD\u7EC7\u7684\u544A\u767D", "Yu Zhi's Confession") } }
                     };

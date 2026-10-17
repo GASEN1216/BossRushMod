@@ -65,6 +65,36 @@ namespace BossRush
         public PermanentDuckNpcLine[] lines;
     }
 
+    /// <summary>
+    /// 一段好感剧情（蓝图 permanent.storyEvents 的一项，SCHEMA+，2026-10-17）。
+    /// 到 <see cref="level"/> 级后找这位 NPC 聊天时，用官方大对话一句一屏播完；播完才打该级剧情标。
+    /// 旧蓝图不写 storyEvents 时为空，那些等级照旧只打标 + 通用横幅。
+    /// </summary>
+    internal sealed class PermanentDuckNpcStoryEvent
+    {
+        /// <summary>剧情节点只能落在这几级上，与羽织、叮当以及 AffinityManager 的剧情标同一组。</summary>
+        internal static readonly int[] Levels = { 3, 5, 8, 10 };
+
+        /// <summary>单段剧情奖励的数量上限，防止数据表写成一大堆。</summary>
+        internal const int MaxRewardCount = 5;
+
+        public int level;
+        public string titleCn;
+        public string titleEn;
+        public PermanentDuckNpcLine[] lines;
+        /// <summary>可选：播完给一次的物品；0 = 没有奖励。</summary>
+        public int rewardTypeId;
+        public int rewardCount;
+
+        /// <summary>好感页、升级横幅里显示的节点名。按当前语言取。</summary>
+        internal string Title { get { return L10n.T(titleCn, titleEn); } }
+
+        internal static bool IsStoryLevel(int value)
+        {
+            return Array.IndexOf(Levels, value) >= 0;
+        }
+    }
+
     /// <summary>可选商店配置；未配置或没有有效商品时不启用商店。</summary>
     internal sealed class PermanentDuckNpcShopData
     {
@@ -165,6 +195,9 @@ namespace BossRush
         // —— 可选商店（旧蓝图缺省为 null，继续只提供社交与原有服务）——
         public PermanentDuckNpcShopData shop;
 
+        // —— 可选好感剧情（旧蓝图缺省为空，按等级升序）——
+        private PermanentDuckNpcStoryEvent[] _storyEvents;
+
         // —— 对话（按 category 分组，每组若干档）——
         private Dictionary<string, List<PermanentDuckNpcDialogueTier>> _dialogues;
 
@@ -258,6 +291,31 @@ namespace BossRush
             return PickRandom(chosen.lines);
         }
 
+        /// <summary>全部剧情（按等级升序）。没配返回空数组，调用方不用判空。</summary>
+        internal PermanentDuckNpcStoryEvent[] StoryEvents
+        {
+            get { return _storyEvents ?? EmptyStoryEvents; }
+        }
+
+        private static readonly PermanentDuckNpcStoryEvent[] EmptyStoryEvents = new PermanentDuckNpcStoryEvent[0];
+
+        /// <summary>取某一级的剧情。没配返回 null。</summary>
+        internal PermanentDuckNpcStoryEvent GetStoryEvent(int level)
+        {
+            if (_storyEvents == null)
+            {
+                return null;
+            }
+            for (int i = 0; i < _storyEvents.Length; i++)
+            {
+                if (_storyEvents[i].level == level)
+                {
+                    return _storyEvents[i];
+                }
+            }
+            return null;
+        }
+
         /// <summary>取婚后专属台词。没配返回 null（回落普通台词）。</summary>
         internal string GetMarriedDialogue(string eventKey)
         {
@@ -338,8 +396,90 @@ namespace BossRush
             data._dialogues = ParseDialogues(node, blueprintId);
             data._marriedDialogues = ParseMarriedDialogues(node, blueprintId);
             data.shop = PermanentDuckNpcShopData.Parse(node, blueprintId);
+            data._storyEvents = ParseStoryEvents(node, blueprintId);
 
             return data;
+        }
+
+        /// <summary>
+        /// 解析可选的 storyEvents：每项 {level, titleCn, titleEn, lines, rewardTypeId?, rewardCount?}。
+        /// 坏条目逐条跳过并记 DevLog（等级不在 3/5/8/10、同级重复、一句台词都读不出）；
+        /// 奖励写错只丢奖励、不丢剧情。
+        /// </summary>
+        private static PermanentDuckNpcStoryEvent[] ParseStoryEvents(BossRushJsonValue node, string blueprintId)
+        {
+            if (node.GetProperty("storyEvents") == null)
+            {
+                return null;
+            }
+
+            List<BossRushJsonValue> items;
+            if (!node.TryGetArray("storyEvents", out items))
+            {
+                ModBehaviour.DevLog("[DuckNpc] [WARNING] 蓝图 " + blueprintId + " 的 storyEvents 不是数组，已忽略");
+                return null;
+            }
+
+            List<PermanentDuckNpcStoryEvent> result = new List<PermanentDuckNpcStoryEvent>(items.Count);
+            for (int i = 0; i < items.Count; i++)
+            {
+                BossRushJsonValue item = items[i];
+                PermanentDuckNpcStoryEvent story = new PermanentDuckNpcStoryEvent();
+                List<BossRushJsonValue> lineItems;
+                if (item == null || item.Kind != BossRushJsonKind.Object
+                    || !item.TryGetInt("level", out story.level)
+                    || !PermanentDuckNpcStoryEvent.IsStoryLevel(story.level)
+                    || !item.TryGetArray("lines", out lineItems))
+                {
+                    ModBehaviour.DevLog("[DuckNpc] [WARNING] 蓝图 " + blueprintId
+                        + " 的 storyEvents 第 " + (i + 1) + " 项缺 level / lines 或等级不是 3/5/8/10，已跳过");
+                    continue;
+                }
+
+                bool duplicate = false;
+                for (int j = 0; j < result.Count; j++)
+                {
+                    if (result[j].level == story.level) duplicate = true;
+                }
+                story.lines = ReadLines(lineItems, blueprintId, "storyEvents.Lv" + story.level);
+                if (duplicate || story.lines == null)
+                {
+                    ModBehaviour.DevLog("[DuckNpc] [WARNING] 蓝图 " + blueprintId
+                        + " 的 Lv" + story.level + " 剧情重复或没有可用台词，已跳过");
+                    continue;
+                }
+
+                if (!item.TryGetString("titleCn", out story.titleCn) || string.IsNullOrEmpty(story.titleCn))
+                {
+                    story.titleCn = null;
+                }
+                if (!item.TryGetString("titleEn", out story.titleEn) || string.IsNullOrEmpty(story.titleEn))
+                {
+                    story.titleEn = null;
+                }
+
+                if (item.TryGetInt("rewardTypeId", out story.rewardTypeId))
+                {
+                    if (!item.TryGetInt("rewardCount", out story.rewardCount)) story.rewardCount = 1;
+                    if (story.rewardTypeId <= 0 || story.rewardCount < 1
+                        || story.rewardCount > PermanentDuckNpcStoryEvent.MaxRewardCount)
+                    {
+                        ModBehaviour.DevLog("[DuckNpc] [WARNING] 蓝图 " + blueprintId
+                            + " 的 Lv" + story.level + " 剧情奖励无效，只播剧情不发奖励");
+                        story.rewardTypeId = 0;
+                        story.rewardCount = 0;
+                    }
+                }
+
+                result.Add(story);
+            }
+
+            if (result.Count == 0)
+            {
+                return null;
+            }
+            result.Sort(delegate(PermanentDuckNpcStoryEvent a, PermanentDuckNpcStoryEvent b) { return a.level.CompareTo(b.level); });
+            return result.ToArray();
         }
 
         private static Dictionary<string, List<PermanentDuckNpcDialogueTier>> ParseDialogues(

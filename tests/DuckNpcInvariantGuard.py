@@ -463,8 +463,9 @@ def main() -> int:
                     if any(not isinstance(node.get(key), str) or not node[key].strip()
                            for key in ("nameCn", "nameEn")):
                         errors.append("天空岛居民 " + npc_id + " 的商店名必须同时提供非空 nameCn/nameEn")
+                # 好感剧情标题同理（titleCn/titleEn 成对），成对与否在下面 storyEvents 一节统一校验。
                 for key, value in node.items():
-                    if key in ("displayNameCn", "nameCn", "nameEn"):
+                    if key in ("displayNameCn", "nameCn", "nameEn", "titleCn", "titleEn"):
                         continue
                     scan(value)
 
@@ -473,6 +474,77 @@ def main() -> int:
             errors.append("天空岛居民 " + npc_id + " 还有只有中文的台词（R-6）：" + line[:24])
         for line in unpaired:
             errors.append("天空岛居民 " + npc_id + " 有一句 {cn, en} 的英文是空的：" + line[:24])
+
+    # ---- 2026-10-17 好感剧情 storyEvents（SCHEMA+）----
+    # 蓝图可选字段：到 3/5/8/10 级找 NPC 聊天时用官方大对话播完，**播完才**打剧情标。
+    # 数据写错在运行期只会逐条跳过（玩家看不到剧情、也没有报错），所以在这里报红。
+    data_compact = re.sub(r"\s+", "", code_only(read(PERM_DATA)))
+    if "data._storyEvents=ParseStoryEvents(node,blueprintId);" not in data_compact:
+        errors.append("PermanentDuckNpcData.Parse 必须接通可选的 storyEvents 解析")
+    story_player_path = PERM_DIR / "PermanentDuckNpcStoryPlayer.cs"
+    story_code = code_only(read(story_player_path)) if story_player_path.exists() else ""
+    await_at = story_code.find("await DialogueManager.ShowDialogueSequenceBilingual(")
+    mark_at = story_code.find("AffinityManager.MarkStoryTriggered(")
+    if await_at < 0 or mark_at < 0 or mark_at < await_at:
+        errors.append("PermanentDuckNpcStoryPlayer 必须先用官方大对话播完剧情，再打剧情标（中途打断的剧情要能重播）")
+    if 'SeenKeyPrefix="story_seen_"' not in re.sub(r"\s+", "", story_code):
+        errors.append("剧情「看过」必须单独记 story_seen_N：旧档的 story_N 是当年只打横幅的标，不能当成看过")
+    chat = re.search(r"privatevoidDoChat\(\)\{(.*?)privatePermanentDuckNpcStoryPlayer_storyPlayer;", interact_compact)
+    chat_body = chat.group(1) if chat else ""
+    play_at = chat_body.find("TryPlayPendingStory(target)")
+    milestone_at = chat_body.find("TryTriggerStoryMilestone();")
+    if play_at < 0 or milestone_at < 0 or play_at > milestone_at:
+        errors.append("永久 NPC 聊天必须先试播待播剧情（TryPlayPendingStory），再给没剧情的等级打标 + 横幅")
+    if "!_storyUnplayable" not in interact_compact:
+        errors.append("对话角色建不出来时必须照常打剧情标（_storyUnplayable），否则 10 级剧情播不了会卡住教堂判据")
+
+    story_levels = (3, 5, 8, 10)
+    for row in (locals().get("table") or {}).get("npcs") or []:
+        permanent = (row or {}).get("permanent")
+        if not isinstance(permanent, dict) or "storyEvents" not in permanent:
+            continue
+        npc_id = row.get("id", "(无 id)")
+        stories = permanent.get("storyEvents")
+        if not isinstance(stories, list) or not stories:
+            errors.append(npc_id + " 的 storyEvents 必须是非空数组（不写剧情就整个删掉该字段）")
+            continue
+        seen_levels = []
+        for story in stories:
+            if not isinstance(story, dict):
+                errors.append(npc_id + " 的 storyEvents 含非对象项")
+                continue
+            level = story.get("level")
+            if isinstance(level, bool) or level not in story_levels:
+                errors.append(npc_id + " 的剧情等级必须是 3/5/8/10：" + str(level))
+                continue
+            if level in seen_levels:
+                errors.append(npc_id + " 的 Lv" + str(level) + " 剧情重复")
+            seen_levels.append(level)
+            for key in ("titleCn", "titleEn"):
+                if not isinstance(story.get(key), str) or not story[key].strip():
+                    errors.append(npc_id + " 的 Lv" + str(level) + " 剧情缺 " + key + "（好感页显示节点名）")
+            lines = story.get("lines")
+            if not isinstance(lines, list) or not lines:
+                errors.append(npc_id + " 的 Lv" + str(level) + " 剧情没有台词")
+            else:
+                for line in lines:
+                    if (not isinstance(line, dict) or set(line.keys()) != {"cn", "en"}
+                            or not str(line.get("cn", "")).strip() or not str(line.get("en", "")).strip()):
+                        errors.append(npc_id + " 的 Lv" + str(level) + " 剧情每句都必须是非空的 {cn, en}："
+                                      + str(line)[:30])
+            if "rewardTypeId" in story:
+                reward = story.get("rewardTypeId")
+                count = story.get("rewardCount", 1)
+                if isinstance(reward, bool) or not isinstance(reward, int) or reward <= 0:
+                    errors.append(npc_id + " 的 Lv" + str(level) + " 剧情 rewardTypeId 必须是正整数")
+                if isinstance(count, bool) or not isinstance(count, int) or not 1 <= count <= 5:
+                    errors.append(npc_id + " 的 Lv" + str(level) + " 剧情 rewardCount 必须在 1-5（MaxRewardCount）")
+            elif "rewardCount" in story:
+                errors.append(npc_id + " 的 Lv" + str(level) + " 剧情只写了 rewardCount 没写 rewardTypeId")
+        # 写了剧情就四级写齐：好感页按等级列节点，缺一段会让玩家以为那一级坏了。
+        missing = [str(level) for level in story_levels if level not in seen_levels]
+        if missing:
+            errors.append(npc_id + " 的好感剧情缺 Lv" + "/".join(missing) + "（写了就要 3/5/8/10 四段齐全）")
 
     compile_text = read(COMPILE_LIST)
     for path in sorted(DUCK_DIR.glob("*.cs")) + sorted(PERM_DIR.glob("*.cs")):

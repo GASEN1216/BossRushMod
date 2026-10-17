@@ -104,12 +104,13 @@ namespace BossRush
                         // 这里的「冷淬液」曾被抄成「冷萃液」，玩家在好感面板看到的是错别字，
                         // 而物品本体仍叫「冷淬液」，对不上号。
                         { 2, new[] { L10n.T("商店", "Shop"), DiamondConfig.GetDisplayName() } },
-                        { 3, new[] { L10n.T("10%折扣", "10% Discount") } },
+                        { 3, new[] { L10n.T("10%折扣", "10% Discount"), L10n.T("叮当的故事（一）", "Dingdang's Story (I)") } },
                         { 4, new[] { ColdQuenchFluidConfig.GetDisplayName(), TemperingSolventConfig.GetDisplayName() } },
-                        { 5, new[] { L10n.T("叮当的故事（上）", "Dingdang's Story (Part 1)") } },
+                        { 5, new[] { L10n.T("叮当的故事（二）", "Dingdang's Story (II)") } },
                         { 6, new[] { L10n.T("15%折扣", "15% Discount"), TemperingSolventConfig.GetDisplayName() + L10n.T(" ×2（赠送）", " ×2 (gift)") } },
                         { 7, new[] { DiamondRingConfig.GetDisplayName() } },
-                        { 10, new[] { L10n.T("叮当的故事（下）", "Dingdang's Story (Part 2)"), L10n.T("20%折扣", "20% Discount"), AffixForgeStoneConfig.GetDisplayName() } }
+                        { 8, new[] { L10n.T("叮当的故事（三）", "Dingdang's Story (III)") } },
+                        { 10, new[] { L10n.T("叮当的故事（四）", "Dingdang's Story (IV)"), L10n.T("20%折扣", "20% Discount"), AffixForgeStoneConfig.GetDisplayName() } }
                     };
                 }
                 return _unlocksByLevel;

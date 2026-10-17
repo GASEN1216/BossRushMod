@@ -343,6 +343,13 @@ namespace BossRush
             }
         }
         
+        /// <summary>红心图标（好感页签的按钮与心数行复用同一张）；资源缺失时为 null。</summary>
+        internal static Sprite GetHeartSprite()
+        {
+            LoadHeartSprite();
+            return heartSprite;
+        }
+
         /// <summary>
         /// 加载红心图标（从 broken_heart AssetBundle 中加载 heart_0）
         /// </summary>

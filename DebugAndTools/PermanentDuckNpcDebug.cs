@@ -38,6 +38,9 @@ namespace BossRush
         private static string _lastStatus = "尚未操作永久 NPC";
         private static bool _spawnInFlight;
 
+        /// <summary>F3 当前操作哪一位永久 NPC（GetAllPermanent 的下标）。</summary>
+        private static int _targetIndex;
+
         internal static string LastStatus
         {
             get { return _lastStatus; }
@@ -48,7 +51,8 @@ namespace BossRush
         // ====================================================================
 
         /// <summary>
-        /// 取要测试的永久 NPC 蓝图。当前取第一条 —— 示例阶段只有一只。
+        /// 取要测试的永久 NPC 蓝图：DuckNpcs.json 里永久蓝图的第 _targetIndex 条（默认第一条，小满）。
+        /// 表变短后下标越界时回到第一条。
         /// </summary>
         private static DuckNpcBlueprint ResolveTarget()
         {
@@ -57,7 +61,34 @@ namespace BossRush
             {
                 return null;
             }
-            return permanents[0];
+            if (_targetIndex < 0 || _targetIndex >= permanents.Count)
+            {
+                _targetIndex = 0;
+            }
+            return permanents[_targetIndex];
+        }
+
+        /// <summary>
+        /// 换到下一位永久 NPC（按表里顺序轮换）。生成 / 回收 / 拉满 / 清零 / 输出状态都作用于当前目标，
+        /// 天空岛居民也能在基地一键拉满好感测好感剧情。
+        /// </summary>
+        internal static void CycleTarget()
+        {
+            List<DuckNpcBlueprint> permanents = PermanentDuckNpcRegistry.GetAllPermanent();
+            if (permanents.Count == 0)
+            {
+                _lastStatus = "DuckNpcs.json 里没有 isPermanent 的蓝图";
+                return;
+            }
+
+            _targetIndex = (_targetIndex + 1) % permanents.Count;
+            DuckNpcBlueprint blueprint = permanents[_targetIndex];
+            string name = blueprint.permanent != null
+                ? L10n.T(blueprint.permanent.displayNameCn, blueprint.permanent.displayNameEn)
+                : blueprint.id;
+            _lastStatus = L10n.T(
+                "当前目标：" + name + "（" + blueprint.id + "）" + (_targetIndex + 1) + "/" + permanents.Count,
+                "Target: " + name + " (" + blueprint.id + ") " + (_targetIndex + 1) + "/" + permanents.Count);
         }
 
         // ====================================================================
@@ -217,7 +248,7 @@ namespace BossRush
                 AffinityManager.FlushSave();
 
                 _lastStatus = "已把 " + blueprint.id + " 拉到 Lv."
-                    + AffinityManager.GetLevel(blueprint.id) + "，并打上 3/5/8/10 级剧情标记（教堂可解锁）";
+                    + AffinityManager.GetLevel(blueprint.id) + "，并打上 3/5/8/10 级剧情标记（教堂可解锁）；没看过的好感剧情找它聊天会依次补播";
                 ModBehaviour.LogInfo(LogPrefix + " " + _lastStatus);
             }
             catch (Exception e)
@@ -469,6 +500,7 @@ namespace BossRush
         {
             _lastStatus = "尚未操作永久 NPC";
             _spawnInFlight = false;
+            _targetIndex = 0;
         }
     }
 }

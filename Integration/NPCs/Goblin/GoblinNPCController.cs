@@ -235,24 +235,33 @@ namespace BossRush
             // 检查是否有UI打开（使用游戏的 View 系统）
             if (IsAnyUIOpen()) return;
 
-            // 获取当前好感度等级
+            // 获取当前好感度等级；叙事顺序优先，按 3 → 5 → 8 → 10 补（持久化剧情标）
             int level = AffinityManager.GetLevel(GoblinAffinityConfig.NPC_ID);
-
-            // 检查5级故事（叙事顺序优先）- 使用持久化状态
-            if (level >= 5 && !AffinityManager.HasTriggeredStory5(GoblinAffinityConfig.NPC_ID))
+            int pendingStoryLevel = GetNextPendingStoryLevel(level);
+            if (pendingStoryLevel > 0)
             {
-                ModBehaviour.DevLog("[GoblinNPC] 触发5级故事对话，等级: " + level);
-                TriggerStoryDialogue(5);
-                return;
+                ModBehaviour.DevLog("[GoblinNPC] 触发" + pendingStoryLevel + "级故事对话，等级: " + level);
+                TriggerStoryDialogue(pendingStoryLevel);
             }
+        }
 
-            // 检查10级故事 - 使用持久化状态
-            if (level >= 10 && !AffinityManager.HasTriggeredStory10(GoblinAffinityConfig.NPC_ID))
+        private static readonly int[] StoryLevels = { 3, 5, 8, 10 };
+
+        /// <summary>
+        /// 当前等级下最低的一段还没播过的剧情；没有返回 0。
+        /// 3 / 8 级是 2026-10-17 补的：旧档已过 5 / 10 级的玩家，下次走近会按顺序补看这两段。
+        /// </summary>
+        internal static int GetNextPendingStoryLevel(int level)
+        {
+            for (int i = 0; i < StoryLevels.Length; i++)
             {
-                ModBehaviour.DevLog("[GoblinNPC] 触发10级故事对话，等级: " + level);
-                TriggerStoryDialogue(10);
-                return;
+                int storyLevel = StoryLevels[i];
+                if (level >= storyLevel && !AffinityManager.HasTriggeredStory(GoblinAffinityConfig.NPC_ID, storyLevel))
+                {
+                    return storyLevel;
+                }
             }
+            return 0;
         }
 
         private bool IsAnyUIOpen()
@@ -453,10 +462,10 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 触发故事对话（5级或10级）
+        /// 触发故事对话（3 / 5 / 8 / 10 级）
         /// 使用大对话系统显示多段对话
         /// </summary>
-        /// <param name="storyLevel">故事等级（5或10）</param>
+        /// <param name="storyLevel">故事等级（3 / 5 / 8 / 10）</param>
         public void TriggerStoryDialogue(int storyLevel)
         {
             if (isInStoryDialogue)
@@ -501,7 +510,15 @@ namespace BossRush
                 System.Action markStoryTriggered;
                 string markLogKey;
 
-                if (storyLevel == 5)
+                if (storyLevel == 3 || storyLevel == 8)
+                {
+                    dialogueKeys = storyLevel == 3
+                        ? LocalizationInjector.GetGoblinStory3DialogueKeys()
+                        : LocalizationInjector.GetGoblinStory8DialogueKeys();
+                    markStoryTriggered = () => AffinityManager.MarkStoryTriggered(GoblinAffinityConfig.NPC_ID, storyLevel);
+                    markLogKey = "GoblinNPCController.TriggerStoryDialogue.MarkStory" + storyLevel + "Triggered";
+                }
+                else if (storyLevel == 5)
                 {
                     dialogueKeys = LocalizationInjector.GetGoblinStory5DialogueKeys();
                     markStoryTriggered = () => AffinityManager.MarkStory5Triggered(GoblinAffinityConfig.NPC_ID);

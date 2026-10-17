@@ -317,6 +317,25 @@ ECM2 层碰撞矩阵）**且全程无报错**。
 `AffinityManager.HasAnyNPCEverReachedMaxLevel()`，它查的是 `hasTriggeredStory10`
 标记而非当前点数。漏掉这步该 NPC 永远解锁不了教堂。
 
+### 好感剧情（2026-10-17，`SCHEMA+`）
+
+蓝图可选字段 `permanent.storyEvents`：每项 `{level, titleCn, titleEn, lines, rewardTypeId?, rewardCount?}`，
+`level` 只能是 3/5/8/10，台词同样接受裸字符串或 `{cn, en}`。七位永久捏脸 NPC（小满与天空岛六位）每人四段，
+晴禾 8 级送归航便当（500071）×1、眠苔 8 级送星苔药膏（500072）×2，其余不带奖励。
+
+- 触发：到级后找 NPC **聊天**（不是走近自动播）。`PermanentDuckNpcInteractable.DoChat` 先算每日聊天好感，
+  再 `TryPlayPendingStory`：有待播剧情就用官方大对话（`DialogueManager.ShowDialogueSequenceBilingual`）一句一屏播，
+  代替本次问候气泡；一次只播一段，按等级从低往高补。
+- 打标：`PermanentDuckNpcStoryPlayer` **播完才**打 `story_N`，并另记 `story_seen_N`（旧档的 `story_N` 是当年只打横幅时打的，
+  缺 `story_seen_N` 时下次聊天补播）。被打断（NPC 停用、切图）不打标，下次重播。10 级首次打标时推「婚礼教堂的建造条件已达成」。
+- 没配剧情的等级照旧当场打标 + 通用横幅；对话角色建不出来时同样当场打标，保住教堂判据。
+- 对话角色复用角色根节点上的 `DuckovDialogueActor`（与天空岛居民对话、结婚过场同一个），已有只刷名字、保留立绘。
+- `PermanentDuckNpcAffinityConfig.UnlocksByLevel` 按语言缓存，列出商店与剧情节点名（「XX的故事（一）」…），供升级横幅与好感页使用。
+- 守卫：`DuckNpcInvariantGuard`（数据合法性、播完才打标、聊天先试播、`story_seen_N`）；执行回归 `PermanentDuckNpcDialogue`（解析与真实数据四段齐全）。
+
+叮当（`GoblinNPCController.GetNextPendingStoryLevel`）同日补了 3 / 8 级两段（文案在 `LocalizationInjector_NpcUiAndItems.cs`），
+走近或聊天按 3 → 5 → 8 → 10 补播；羽织原本就有四段，只在好感页补了 3 / 8 级节点名。
+
 ### 婚姻接线：一条泛化分支而非每 NPC 六处硬编码
 
 婚姻系统对可婚 NPC 原有 6 处 `if (叮当) … else if (羽织) …` 硬编码

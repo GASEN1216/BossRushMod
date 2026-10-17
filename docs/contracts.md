@@ -142,6 +142,10 @@ NPC 好感 key（早于 `BossRush_` 前缀约定，冻结不改名）：
 - `NPCAffinity` — `AffinityJsonSerializer` 整存的 `npcDataList`，每只 NPC 一条 `AffinityData`；读不出来时整局写屏障。
   2026-10-17 `SCHEMA+`：每条追加可选 `shopStockTokens`（NPC 商店剩余库存，`NPCShopStockLedger` 编码 `typeId:remaining:refillDay:shown`，
   逗号分隔、坏 token 逐条跳过）；缺字段 = 满库存，旧档行为不变。离婚不清它，终身限量的钻石戒指不会因离婚补货。
+  2026-10-17 `SCHEMA+`（好感剧情）：不加字段，只往已有的逗号串里追加 token。`triggeredEventKeys` 的 `story_N`（3/5/8/10）仍是剧情标，
+  婚礼教堂（`story_10` / `hasTriggeredStory10`）与好感衰减下限读它；捏脸 NPC 另记 `story_seen_N` 表示「剧情真的播完了」
+  （旧档的 `story_N` 是当年只打横幅时打上的，缺 `story_seen_N` 时下次聊天补播）；剧情奖励领取记在 `claimedRewardKeys` 的 `duck_story_reward_N`。
+  `ResetStoryTriggers` 按 `story_` 前缀清除时连 `story_seen_N` 一并清掉。剧情文案在 `Assets/Data/DuckNpcs.json` 的可选 `permanent.storyEvents`。
 - 现金 NPC 商店开着时，官方 `StockShop.Save` 会写 `StockShop_BossRushNpc_<npcId>`（Mod 命名空间，内容只是官方自带的库存快照，Mod 不读它）。
 
 Breaking:

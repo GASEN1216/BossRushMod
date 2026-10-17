@@ -1005,6 +1005,30 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 通用事件记号（存在 triggeredEventKeys 里，与 story_N 同一列）。
+        /// 捏脸 NPC 用 story_seen_N 记「剧情真的播完了」：旧档里 story_N 可能只是当年打的横幅标，不能当成看过剧情。
+        /// </summary>
+        public static bool HasTriggeredEvent(string npcId, string eventKey)
+        {
+            if (string.IsNullOrEmpty(npcId) || string.IsNullOrEmpty(eventKey)) return false;
+            return npcDataMap.TryGetValue(npcId, out AffinityData data) && data != null && ContainsKeyToken(data.triggeredEventKeys, eventKey);
+        }
+
+        public static void MarkEventTriggered(string npcId, string eventKey)
+        {
+            if (!CanWrite) return;
+            if (string.IsNullOrEmpty(npcId) || string.IsNullOrEmpty(eventKey)) return;
+
+            AffinityData data = GetOrCreateAffinityData(npcId);
+            string updated = AddKeyToken(data.triggeredEventKeys, eventKey);
+            if (!string.Equals(updated, data.triggeredEventKeys, StringComparison.Ordinal))
+            {
+                data.triggeredEventKeys = updated;
+                MarkDirty();
+            }
+        }
+
         public static void ResetStoryTriggers(string npcId)
         {
             if (!CanWrite) return;

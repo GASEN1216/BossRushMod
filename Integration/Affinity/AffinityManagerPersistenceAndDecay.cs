@@ -273,6 +273,12 @@ namespace BossRush
             return null;
         }
 
+        /// <summary>已注册好感配置的 NPC id 快照（好感页签按它列人；调用方改列表不影响注册表）。</summary>
+        public static System.Collections.Generic.List<string> GetRegisteredNpcIds()
+        {
+            return new System.Collections.Generic.List<string>(npcConfigMap.Keys);
+        }
+
         /// <summary>
         /// 获取指定NPC的最大点数（使用统一配置）
         /// </summary>

@@ -43,6 +43,7 @@
     },
     {
       "id": "duck_npc_xiaoman",
+      "testNpc": true,
       "isPermanent": true,
       "displayNameKey": "",
       "faceMode": "json",
@@ -63,6 +64,56 @@
       "permanent": {
         "displayNameCn": "小满",
         "displayNameEn": "Xiao Man",
+        "storyEvents": [
+          {
+            "level": 3,
+            "titleCn": "小满的故事（一）",
+            "titleEn": "Xiao Man's Story (I)",
+            "lines": [
+              { "cn": "你坐。水刚开，我给你倒一杯。", "en": "Sit. The water just boiled. I'll pour you a cup." },
+              { "cn": "我刚来的时候，这屋子只剩四面墙。", "en": "When I first got here, this place was just four walls." },
+              { "cn": "砖是我一块一块垫平的，哪块松我都记着。", "en": "I leveled the bricks one by one. I remember every loose one." },
+              { "cn": "屋子收拾好了，才有人愿意进来坐。", "en": "Once a place is tidy, people want to come in and sit." },
+              { "cn": "你是头一个坐下的。", "en": "You were the first one who sat down." }
+            ]
+          },
+          {
+            "level": 5,
+            "titleCn": "小满的故事（二）",
+            "titleEn": "Xiao Man's Story (II)",
+            "lines": [
+              { "cn": "你出门那几天，我把门口的鞋架修好了。", "en": "While you were out, I fixed the shoe rack by the door." },
+              { "cn": "修完才发现，上面就只放你一双。", "en": "Then I noticed it only ever holds your boots." },
+              { "cn": "我以前有个弟弟，也爱往外跑。", "en": "I had a little brother once. He was always running off too." },
+              { "cn": "有一回他出了门，就再没回来。", "en": "One day he went out and never came back." },
+              { "cn": "所以你每回进门，我都要多看一眼。", "en": "That's why I always look twice when you come through the door." }
+            ]
+          },
+          {
+            "level": 8,
+            "titleCn": "小满的故事（三）",
+            "titleEn": "Xiao Man's Story (III)",
+            "lines": [
+              { "cn": "今天别急着走，陪我把这锅汤看着。", "en": "Don't rush off today. Help me keep an eye on this soup." },
+              { "cn": "我数过了，你出去那么多趟，每趟都回来了。", "en": "I've counted. All those trips, and you came back every time." },
+              { "cn": "以前我数日子，是因为怕。", "en": "I used to count the days because I was scared." },
+              { "cn": "现在数，是因为盼着。", "en": "Now I count because I'm looking forward to it." },
+              { "cn": "汤好了。头一碗给你。", "en": "Soup's ready. First bowl is yours." }
+            ]
+          },
+          {
+            "level": 10,
+            "titleCn": "小满的故事（四）",
+            "titleEn": "Xiao Man's Story (IV)",
+            "lines": [
+              { "cn": "我把弟弟那件旧外套洗了，叠好收起来了。", "en": "I washed my brother's old coat, folded it, and put it away." },
+              { "cn": "放了这么多年，总算舍得了。", "en": "After all these years, I could finally do it." },
+              { "cn": "不是把他忘了。是我有了新的人要等。", "en": "I haven't forgotten him. I just have someone new to wait for." },
+              { "cn": "炉子上的水，以后我天天给你烧着。", "en": "I'll keep the kettle on for you every day from now on." },
+              { "cn": "你走多远都行，记得回这儿就好。", "en": "Go as far as you like. Just remember to come back here." }
+            ]
+          }
+        ],
         "dailyChatAffinity": 30,
         "positiveTags": [
           "Drink",
@@ -187,6 +238,57 @@
       "permanent": {
         "displayNameCn": "晴禾",
         "displayNameEn": "Qinghe",
+        "storyEvents": [
+          {
+            "level": 3,
+            "titleCn": "晴禾的故事（一）",
+            "titleEn": "Qinghe's Story (I)",
+            "lines": [
+              { "cn": "来，帮我扶一下这根竹竿。对，就这样。", "en": "Here, hold this bamboo pole for me. Yes, like that." },
+              { "cn": "岛上的土薄，风一刮就跑。", "en": "The soil up here is thin. The wind just blows it away." },
+              { "cn": "我只好一筐一筐往上背，再拿篱笆挡着。", "en": "So I haul it up basket by basket and fence it in." },
+              { "cn": "有人说我傻，种菜哪有打仗要紧。", "en": "Some say I'm silly. Growing greens isn't as important as fighting." },
+              { "cn": "可仗打完了，总得有口热饭吃吧？", "en": "But after the fighting, someone still needs a hot meal, right?" }
+            ]
+          },
+          {
+            "level": 5,
+            "titleCn": "晴禾的故事（二）",
+            "titleEn": "Qinghe's Story (II)",
+            "lines": [
+              { "cn": "这顶草帽，是我娘编的。", "en": "My mother wove this straw hat." },
+              { "cn": "风灾那年，家里的田一夜就没了。", "en": "The year of the storm, our fields were gone overnight." },
+              { "cn": "我就抱着这顶帽子，跟着船到了岛上。", "en": "I held on to this hat and followed the boats up here." },
+              { "cn": "所以风一大，我追它追得比谁都急。", "en": "That's why I chase it harder than anyone when the wind picks up." },
+              { "cn": "……这事我没跟别人说过。你替我记着，好不好？", "en": "...I've never told anyone that. Keep it for me, will you?" }
+            ]
+          },
+          {
+            "level": 8,
+            "titleCn": "晴禾的故事（三）",
+            "titleEn": "Qinghe's Story (III)",
+            "rewardTypeId": 500071,
+            "rewardCount": 1,
+            "lines": [
+              { "cn": "头一茬青穗收了，我做了个便当。", "en": "The first green ears are in, so I made you a lunchbox." },
+              { "cn": "米是自己种的，菜也是。没花一个钱。", "en": "I grew the rice myself, and the greens. Didn't cost a coin." },
+              { "cn": "路上饿了就打开，别省着。", "en": "Open it when you get hungry out there. Don't save it." },
+              { "cn": "吃完把盒子带回来，我再给你装。", "en": "Bring the box back when you're done, and I'll fill it again." }
+            ]
+          },
+          {
+            "level": 10,
+            "titleCn": "晴禾的故事（四）",
+            "titleEn": "Qinghe's Story (IV)",
+            "lines": [
+              { "cn": "田头那一垄，我空着没种。", "en": "I left the row at the edge of the field empty." },
+              { "cn": "种什么，我想等你来定。", "en": "I wanted you to decide what goes there." },
+              { "cn": "以前我只想着把菜种活。", "en": "I used to only think about keeping the crops alive." },
+              { "cn": "现在会想，明年这时候，你还在不在旁边。", "en": "Now I wonder if you'll still be beside me this time next year." },
+              { "cn": "你在的话，我就多种一点。", "en": "If you are, I'll plant a little more." }
+            ]
+          }
+        ],
         "dailyChatAffinity": 30,
         "positiveTags": [
           "Drink",
@@ -306,6 +408,56 @@
       "permanent": {
         "displayNameCn": "苇白",
         "displayNameEn": "Weibai",
+        "storyEvents": [
+          {
+            "level": 3,
+            "titleCn": "苇白的故事（一）",
+            "titleEn": "Weibai's Story (I)",
+            "lines": [
+              { "cn": "你听，这串风铃有一只低了半个音。", "en": "Listen. One of these chimes is half a note flat." },
+              { "cn": "别人听不出来，我一听就难受。", "en": "Nobody else can hear it, but it drives me mad." },
+              { "cn": "我打小耳朵就灵，师傅说我天生是修灯的命。", "en": "I've had sharp ears since I was little. My master said I was born to fix lamps." },
+              { "cn": "灯灭了能看见，风铃不对只能听出来。", "en": "You can see when a lamp goes out. A wrong chime you can only hear." },
+              { "cn": "所以两样我都修。你听见哪只不对，就告诉我。", "en": "So I fix both. If you hear one that's off, tell me." }
+            ]
+          },
+          {
+            "level": 5,
+            "titleCn": "苇白的故事（二）",
+            "titleEn": "Weibai's Story (II)",
+            "lines": [
+              { "cn": "我师傅以前守着岛上所有的灯。", "en": "My master used to look after every lamp on the island." },
+              { "cn": "风灾那晚，他出去点灯，没回来。", "en": "The night of the storm, he went out to light them and never came back." },
+              { "cn": "我在他工具箱里翻到一片铜，上面刻着我的名字。", "en": "I found a brass sheet in his toolbox with my name carved on it." },
+              { "cn": "他早就打算把灯交给我了，只是没来得及说。", "en": "He meant to hand the lamps over to me. He just never got to say it." },
+              { "cn": "所以灯一灭，我比谁都急。", "en": "That's why nobody worries about a dark lamp more than I do." }
+            ]
+          },
+          {
+            "level": 8,
+            "titleCn": "苇白的故事（三）",
+            "titleEn": "Weibai's Story (III)",
+            "lines": [
+              { "cn": "这片铜我磨了好几天，总算不割手了。", "en": "I've been filing this brass for days. It finally won't cut you." },
+              { "cn": "本来想做灯罩，磨着磨着，磨成了你的名字。", "en": "I meant to make a lamp shade. Somehow it turned into your name." },
+              { "cn": "……别笑。我的手比脑子快。", "en": "...Don't laugh. My hands work faster than my head." },
+              { "cn": "以后你出门，我就在这头调风铃。", "en": "When you head out, I'll be over here tuning the chimes." },
+              { "cn": "东边的铃一响，我就知道你快回来了。", "en": "When the east chime rings, I'll know you're nearly home." }
+            ]
+          },
+          {
+            "level": 10,
+            "titleCn": "苇白的故事（四）",
+            "titleEn": "Weibai's Story (IV)",
+            "lines": [
+              { "cn": "师傅那片刻着我名字的铜，我一直揣在身上。", "en": "I've always carried my master's brass sheet, the one with my name." },
+              { "cn": "今天我在背面也刻了一个名字。", "en": "Today I carved another name on the back." },
+              { "cn": "是你的。刻歪了一点，不许挑。", "en": "Yours. It's a bit crooked. No complaints." },
+              { "cn": "以前我只会守着灯，怕它灭。", "en": "I used to just watch over the lamps, afraid they'd go out." },
+              { "cn": "现在我想守着的，多了一个人。", "en": "Now there's one more I want to watch over." }
+            ]
+          }
+        ],
         "dailyChatAffinity": 30,
         "positiveTags": [
           "Tool"
@@ -424,6 +576,56 @@
       "permanent": {
         "displayNameCn": "浮舟",
         "displayNameEn": "Fuzhou",
+        "storyEvents": [
+          {
+            "level": 3,
+            "titleCn": "浮舟的故事（一）",
+            "titleEn": "Fuzhou's Story (I)",
+            "lines": [
+              { "cn": "你来得正好，帮我拉住这根缆绳。", "en": "Good timing. Hold this mooring rope for me." },
+              { "cn": "每回出航前，我都要把人点一遍。", "en": "Before every voyage, I call the roll." },
+              { "cn": "有人笑我啰嗦，不就几个人吗。", "en": "Some laugh at me. It is only a few people, they say." },
+              { "cn": "可少了一个，船上那个空就再也填不上。", "en": "But if one is missing, that empty spot on the boat never fills." },
+              { "cn": "所以你出门前，记得来我这儿报个到。", "en": "So before you set out, come and check in with me." }
+            ]
+          },
+          {
+            "level": 5,
+            "titleCn": "浮舟的故事（二）",
+            "titleEn": "Fuzhou's Story (II)",
+            "lines": [
+              { "cn": "这本点名册，最早那几页是我爹写的。", "en": "The first pages of this roll-call ledger were written by my father." },
+              { "cn": "风灾那天，他点完名，最后一个上船。", "en": "On the day of the storm, he called the roll and boarded last." },
+              { "cn": "船开了，他名字后面那一格还空着。", "en": "The boat left. The box after his name was still empty." },
+              { "cn": "我接着往下写，一直没把那格划掉。", "en": "I kept writing after it. I never crossed that box out." },
+              { "cn": "我总想着，哪天还能给他打个勾。", "en": "I keep thinking that one day I will still get to tick it." }
+            ]
+          },
+          {
+            "level": 8,
+            "titleCn": "浮舟的故事（三）",
+            "titleEn": "Fuzhou's Story (III)",
+            "lines": [
+              { "cn": "名册最后一页，我给你单开了一行。", "en": "On the last page of the ledger, I opened a line just for you." },
+              { "cn": "不在船员那一栏，在「等着回来的人」那一栏。", "en": "Not under crew. Under \"people we wait for.\"" },
+              { "cn": "这一栏以前只有我爹一个。", "en": "That column only ever had my father in it." },
+              { "cn": "你别嫌晦气。在我这儿，这是最要紧的一栏。", "en": "Do not think it unlucky. To me, it is the column that matters most." },
+              { "cn": "你每回来一次，我就给你打一个勾。", "en": "Each time you come back, I give you a tick." }
+            ]
+          },
+          {
+            "level": 10,
+            "titleCn": "浮舟的故事（四）",
+            "titleEn": "Fuzhou's Story (IV)",
+            "lines": [
+              { "cn": "今天不修船，也不点名。", "en": "No boat repairs today. No roll call either." },
+              { "cn": "我想跟你说：绳结打得再紧，也有松的一天。", "en": "I wanted to tell you: however tight the knot, one day it loosens." },
+              { "cn": "可岸上有人等着，船就知道往哪儿靠。", "en": "But with someone waiting on shore, a boat knows where to dock." },
+              { "cn": "以后我在码头等你。", "en": "From now on, I will wait for you at the dock." },
+              { "cn": "你那一格的勾，我一个都不会落下。", "en": "I will not miss a single tick in your box." }
+            ]
+          }
+        ],
         "shop": {
           "nameCn": "浮舟的航前杂货",
           "nameEn": "Fuzhou's Departure Supplies",
@@ -608,6 +810,57 @@
       "permanent": {
         "displayNameCn": "眠苔",
         "displayNameEn": "Miantai",
+        "storyEvents": [
+          {
+            "level": 3,
+            "titleCn": "眠苔的故事（一）",
+            "titleEn": "Miantai's Story (I)",
+            "lines": [
+              { "cn": "手。……又是新口子。", "en": "Your hands. ...Another fresh cut." },
+              { "cn": "你们跑航路的，都不把伤口当回事。", "en": "You lane runners never take a wound seriously." },
+              { "cn": "我小时候也一样。摔破了膝盖，抹把泥接着跑。", "en": "I was the same as a child. Scraped knee, smear on some mud, keep running." },
+              { "cn": "后来烂了半个月，是一个老药婆把我的腿救回来的。", "en": "Then it festered for half a month. An old herbalist saved my leg." },
+              { "cn": "从那以后，我见不得伤口没包好。坐着，别动。", "en": "Since then I cannot stand an unbandaged wound. Sit. Do not move." }
+            ]
+          },
+          {
+            "level": 5,
+            "titleCn": "眠苔的故事（二）",
+            "titleEn": "Miantai's Story (II)",
+            "lines": [
+              { "cn": "那个老药婆，后来成了我师父。", "en": "That old herbalist became my teacher." },
+              { "cn": "她说药苔要长在不见光的地方，才有药性。", "en": "She said medicinal moss only works if it grows away from the light." },
+              { "cn": "我的名字也是她起的。眠，是睡；苔，是苔藓。", "en": "She gave me my name, too. Mian means sleep. Tai means moss." },
+              { "cn": "她说我性子慢，像睡着的苔，可越慢越治得好人。", "en": "She said I was slow, like sleeping moss, and the slower I was, the better I healed." },
+              { "cn": "所以别催我。好药都是慢慢配出来的。", "en": "So do not rush me. Good medicine takes its time." }
+            ]
+          },
+          {
+            "level": 8,
+            "titleCn": "眠苔的故事（三）",
+            "titleEn": "Miantai's Story (III)",
+            "rewardTypeId": 500072,
+            "rewardCount": 2,
+            "lines": [
+              { "cn": "星苔药膏，我多配了两盒。", "en": "I made two extra tins of starmoss salve." },
+              { "cn": "我知道你总把药让给别人。", "en": "I know you always give your medicine away." },
+              { "cn": "这两盒是给你的，不许让。", "en": "These two are for you. Do not give them away." },
+              { "cn": "人要完整地回来。这句话，我会一直说。", "en": "Come back in one piece. I will keep saying it." }
+            ]
+          },
+          {
+            "level": 10,
+            "titleCn": "眠苔的故事（四）",
+            "titleEn": "Miantai's Story (IV)",
+            "lines": [
+              { "cn": "师父走之前，把她的药臼留给了我。", "en": "Before my teacher passed, she left me her mortar." },
+              { "cn": "她说，哪天我不光惦记伤口，也惦记一个人了，就算出师。", "en": "She said I would finish my training the day I cared about a person, not just a wound." },
+              { "cn": "我那时候不懂。", "en": "I did not understand back then." },
+              { "cn": "现在你一出门，我先把你的药分好。", "en": "Now whenever you head out, I set your remedies aside first." },
+              { "cn": "我大概……算是出师了。", "en": "I suppose... I have finished my training." }
+            ]
+          }
+        ],
         "dailyChatAffinity": 30,
         "positiveTags": [],
         "positiveItemTypeIds": [
@@ -774,6 +1027,56 @@
       "permanent": {
         "displayNameCn": "折翎",
         "displayNameEn": "Zheling",
+        "storyEvents": [
+          {
+            "level": 3,
+            "titleCn": "折翎的故事（一）",
+            "titleEn": "Zheling's Story (I)",
+            "lines": [
+              { "cn": "你还肯来找我说话。", "en": "You still come to talk to me." },
+              { "cn": "我守那条路的时候，没几个人敢靠近。", "en": "When I guarded that road, few dared come near." },
+              { "cn": "刀往路上一横，人就都绕开了。我也习惯了。", "en": "With a blade across the road, everyone went around. I got used to it." },
+              { "cn": "你是少数站住了，还开口问我为什么的。", "en": "You were one of the few who stopped and asked me why." },
+              { "cn": "坐吧。今天不谈路。", "en": "Sit. We will not talk about the road today." }
+            ]
+          },
+          {
+            "level": 5,
+            "titleCn": "折翎的故事（二）",
+            "titleEn": "Zheling's Story (II)",
+            "lines": [
+              { "cn": "风灾那年，我是航路上的守卫。", "en": "The year of the storm, I was a guard on the lanes." },
+              { "cn": "那晚我领最后一船人往回走，风太大，翻了一半。", "en": "That night I led the last boat home. The wind was too strong. Half of them went over." },
+              { "cn": "后来我把那条路封了。我想，没人走，就不会再有人掉下去。", "en": "Afterwards I sealed the road. I thought, if no one walks it, no one else will fall." },
+              { "cn": "可我也把回家的人挡在了外面。", "en": "But I also shut out the people trying to come home." },
+              { "cn": "这些话我只说一次。你听过就好。", "en": "I will only say this once. It is enough that you heard it." }
+            ]
+          },
+          {
+            "level": 8,
+            "titleCn": "折翎的故事（三）",
+            "titleEn": "Zheling's Story (III)",
+            "lines": [
+              { "cn": "镜水寺那位扫地的老人，又托人捎了口信。", "en": "The old sweeper at Mirrorwater Temple sent word again." },
+              { "cn": "他说寺里的钟他替我擦着，让我别惦记。", "en": "He says he keeps the temple bell clean for me. Tells me not to worry." },
+              { "cn": "我进寺的时候，是想把风灾那晚忘掉。", "en": "When I went to the temple, I hoped to forget the night of the storm." },
+              { "cn": "忘不掉。可现在想起来，手不抖了。", "en": "I could not forget. But now when I remember, my hands do not shake." },
+              { "cn": "大概是因为，有人肯听我说完。", "en": "Perhaps because someone was willing to hear me out." }
+            ]
+          },
+          {
+            "level": 10,
+            "titleCn": "折翎的故事（四）",
+            "titleEn": "Zheling's Story (IV)",
+            "lines": [
+              { "cn": "这把刀跟了我很多年，刀鞘上全是风刮的印子。", "en": "This blade has been with me for years. The scabbard is scarred by the wind." },
+              { "cn": "以前我拿它挡人。", "en": "I used to use it to keep people out." },
+              { "cn": "以后我想拿它护着一个人。", "en": "From now on, I want to use it to protect one person." },
+              { "cn": "灯有人守了，路也有人走了。", "en": "Someone tends the lamps now. People walk the road again." },
+              { "cn": "我这个守路的，也想有个地方能回。", "en": "Even an old road guard wants somewhere to come home to." }
+            ]
+          }
+        ],
         "dailyChatAffinity": 30,
         "positiveTags": [
           "Weapon"
@@ -941,6 +1244,56 @@
       "permanent": {
         "displayNameCn": "无声钟守",
         "displayNameEn": "Silent Bell Keeper",
+        "storyEvents": [
+          {
+            "level": 3,
+            "titleCn": "钟守的故事（一）",
+            "titleEn": "The Bell Keeper's Story (I)",
+            "lines": [
+              { "cn": "（他看见你来，把铜牌上的旧字擦掉，空出一块地方。）", "en": "(He sees you coming, wipes the old words off his brass plate, and leaves a clean space.)" },
+              { "cn": "（他写：你常来。）", "en": "(He writes: You come often.)" },
+              { "cn": "（他想了想，又添一行：钟声太吵的那些年，我就不说话了。）", "en": "(He thinks, then adds a line: In the years the bell was too loud, I stopped talking.)" },
+              { "cn": "（他指指自己的喉咙，摇摇头，又指指铜牌。）", "en": "(He points to his throat, shakes his head, and points to the plate.)" },
+              { "cn": "（铜牌上写：这样也好。你说，我写。）", "en": "(The plate reads: This works too. You talk, I write.)" }
+            ]
+          },
+          {
+            "level": 5,
+            "titleCn": "钟守的故事（二）",
+            "titleEn": "The Bell Keeper's Story (II)",
+            "lines": [
+              { "cn": "（他从怀里摸出一块很旧的铜牌，边角都磨圆了。）", "en": "(He takes a very old brass plate from his coat. Its corners are worn round.)" },
+              { "cn": "（上面刻满了名字，一行挨一行，有的已经看不清。）", "en": "(It is covered in names, row after row. Some are too faint to read.)" },
+              { "cn": "（他写：出海没回来的人，我都刻在这里。）", "en": "(He writes: Everyone who sailed out and never came back, I carved here.)" },
+              { "cn": "（他写：钟每响一次，我就怕又要多刻一个。）", "en": "(He writes: Every time the bell rang, I feared I would carve one more.)" },
+              { "cn": "（他把旧铜牌收回怀里，在新牌上写：你的名字，我不想刻在那块上。）", "en": "(He tucks the old plate away and writes on the new one: I do not want your name on that one.)" }
+            ]
+          },
+          {
+            "level": 8,
+            "titleCn": "钟守的故事（三）",
+            "titleEn": "The Bell Keeper's Story (III)",
+            "lines": [
+              { "cn": "（他在铜牌一角，画了一口很小的钟。）", "en": "(In a corner of the plate, he draws a very small bell.)" },
+              { "cn": "（他写：以后你在外面听见钟声——）", "en": "(He writes: From now on, if you hear a bell out there—)" },
+              { "cn": "（他停了停，接着写：就当是我在叫你回来。）", "en": "(He pauses, then continues: think of it as me calling you home.)" },
+              { "cn": "（他看了一会儿，把「叫你回来」划掉，改成「等你」。）", "en": "(He looks at it for a while, crosses out \"calling you home,\" and writes \"waiting for you.\")" },
+              { "cn": "（他把铜牌转过来给你看，有点不好意思地挠了挠头。）", "en": "(He turns the plate around to show you and scratches his head, a little embarrassed.)" }
+            ]
+          },
+          {
+            "level": 10,
+            "titleCn": "钟守的故事（四）",
+            "titleEn": "The Bell Keeper's Story (IV)",
+            "lines": [
+              { "cn": "（他把铜牌擦得很亮，亮得能照见你。）", "en": "(He has polished the brass plate so bright you can see yourself in it.)" },
+              { "cn": "（他写：守钟的人，本来只该等船。）", "en": "(He writes: A bell keeper is only supposed to wait for ships.)" },
+              { "cn": "（他写：后来，我只等一个人。）", "en": "(He writes: Then I started waiting for one person.)" },
+              { "cn": "（他把你的手按在铜牌上，在旁边写：回来了，就敲一下钟。）", "en": "(He places your hand on the plate and writes beside it: When you come back, ring the bell once.)" },
+              { "cn": "（他写：我听得见。）", "en": "(He writes: I will hear it.)" }
+            ]
+          }
+        ],
         "shop": {
           "nameCn": "钟守的旧物匣",
           "nameEn": "Bell Keeper's Keepsakes",

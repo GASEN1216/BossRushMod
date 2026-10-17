@@ -345,7 +345,7 @@ namespace BossRush
         /// </remarks>
         private float _nextChatLabelRefreshTime;
 
-        // 走近就把好感写进「聊天」选项名（Lv.x · a/b）。
+        // 走近时按当前语言刷新「聊天」选项名（好感等级在 Tab 页签栏的「好感」页看）。
         protected override bool IsInteractable()
         {
             NPCAffinityInteractionHelper.RefreshChatOptionLabelWhenApproached(this, _npcId, ref _nextChatLabelRefreshTime);
@@ -405,6 +405,12 @@ namespace BossRush
                 () => { if (_marker != null) { _marker.ShowLoveHeartBubble(); } },
                 LogPrefix);
 
+            // 有待播的好感剧情就用大对话播剧情，代替这次的问候气泡；收尾在剧情结束回调里做。
+            if (TryPlayPendingStory(target))
+            {
+                return;
+            }
+
             TryTriggerStoryMilestone();
 
             int level = AffinityManager.GetLevel(_npcId);
@@ -417,14 +423,98 @@ namespace BossRush
             EndDialogue(6f);
         }
 
+        // ====================================================================
+        // 好感剧情
+        // ====================================================================
+
+        private PermanentDuckNpcStoryPlayer _storyPlayer;
+
+        /// <summary>对话角色建不出来，剧情播不了：本实例里没配剧情一样当场打标，保住教堂判据。</summary>
+        private bool _storyUnplayable;
+
         /// <summary>
-        /// 剧情里程碑打标。
+        /// 这一级配了剧情（蓝图 storyEvents）且还没播完过时，开播并返回 true。
+        /// 建不出对话角色等开不了播的情况返回 false，聊天照常走、等级照常打标（见 TryTriggerStoryMilestone），
+        /// 剧情留到下次聊天再试——不让剧情失败卡住教堂判据。
+        /// </summary>
+        private bool TryPlayPendingStory(Transform target)
+        {
+            try
+            {
+                PermanentDuckNpcAffinityConfig config = AffinityManager.GetNPCConfig(_npcId) as PermanentDuckNpcAffinityConfig;
+                if (config == null || DialogueManager.IsDialogueActive)
+                {
+                    return false;
+                }
+                if (_storyPlayer == null)
+                {
+                    _storyPlayer = new PermanentDuckNpcStoryPlayer(_npcId);
+                }
+                if (_storyPlayer.IsPlaying)
+                {
+                    return true;
+                }
+
+                PermanentDuckNpcStoryEvent story = PermanentDuckNpcStoryPlayer.FindPending(
+                    _npcId, config.Data, AffinityManager.GetLevel(_npcId));
+                if (story == null)
+                {
+                    return false;
+                }
+
+                // 剧情期间站住、面向玩家；结束后按普通聊天的停留时长放行。
+                if (_storyPlayer.TryPlay(story, target, config.DisplayName, OnStoryFinished))
+                {
+                    return true;
+                }
+                _storyUnplayable = true;
+                return false;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(LogPrefix + " [WARNING] 剧情开播失败: " + e.Message);
+                return false;
+            }
+        }
+
+        private void OnStoryFinished(bool played)
+        {
+            if (this == null)
+            {
+                return;
+            }
+            EndDialogue(played ? 6f : 2f);
+        }
+
+        /// <summary>NPC 被剧情隐藏、婚后离岛、切图时取消正在播的剧情（被打断的不打标，下次重播）。</summary>
+        private void OnDisable()
+        {
+            if (_storyPlayer != null)
+            {
+                _storyPlayer.Dispose();
+            }
+        }
+
+        protected override void OnDestroy()
+        {
+            if (_storyPlayer != null)
+            {
+                _storyPlayer.Dispose();
+            }
+            base.OnDestroy();
+        }
+
+        /// <summary>
+        /// 剧情里程碑打标（没配剧情的等级）。
         /// </summary>
         /// <remarks>
         /// **10 级那次是 load-bearing 的**：婚礼教堂的解锁判据是
         /// `AffinityManager.HasAnyNPCEverReachedMaxLevel()`，而它查的是
         /// `hasTriggeredStory10` 标记，**不是当前点数**。
         /// 不打这个标，这只 NPC 自己永远解锁不了教堂，玩家也就永远结不了婚。
+        /// 配了剧情且没播过的等级跳过：由 PermanentDuckNpcStoryPlayer 在剧情播完时打标；
+        /// 走到这里说明这次没开成播（例如另一段对话正开着），下次聊天会再播。
+        /// 例外是对话角色建不出来（_storyUnplayable）——那时剧情播不了，仍当场打标保住教堂判据。
         /// </remarks>
         private void TryTriggerStoryMilestone()
         {
@@ -432,10 +522,17 @@ namespace BossRush
             try
             {
                 int level = AffinityManager.GetLevel(_npcId);
+                PermanentDuckNpcAffinityConfig config = AffinityManager.GetNPCConfig(_npcId) as PermanentDuckNpcAffinityConfig;
+                PermanentDuckNpcData data = config != null ? config.Data : null;
 
                 for (int i = 0; i < StoryMilestones.Length; i++)
                 {
                     int milestone = StoryMilestones[i];
+                    if (!_storyUnplayable && data != null
+                        && PermanentDuckNpcStoryPlayer.IsPending(_npcId, data.GetStoryEvent(milestone)))
+                    {
+                        continue;
+                    }
                     if (level >= milestone && !AffinityManager.HasTriggeredStory(_npcId, milestone))
                     {
                         AffinityManager.MarkStoryTriggered(_npcId, milestone);
@@ -455,12 +552,12 @@ namespace BossRush
             }
         }
 
-        private static readonly int[] StoryMilestones = { 3, 5, 8, 10 };
+        private static readonly int[] StoryMilestones = PermanentDuckNpcStoryEvent.Levels;
 
         /// <summary>
         /// 里程碑横幅（审美审查 UA-33）：旧写法只静默打标，玩家不知道自己解锁了什么——羽织、叮当到同样的等级会播一段剧情。
         /// 一次聊天跨过几档时只报最高那一档；10 级额外写明婚礼教堂的建造条件已达成（判据见上面的 remarks）。
-        /// 捏脸 NPC 暂无里程碑台词：要做完整剧情得给 DuckNpcs.json 加可选字段（SCHEMA+），本轮不做。
+        /// 配了剧情（蓝图 storyEvents）的等级不走这里：播剧情代替横幅，见 PermanentDuckNpcStoryPlayer。
         /// </summary>
         private void ShowMilestoneBanner(int milestone)
         {

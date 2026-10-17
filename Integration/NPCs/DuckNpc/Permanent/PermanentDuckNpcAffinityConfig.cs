@@ -119,23 +119,74 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 等级解锁说明。只用于升级横幅展示，不驱动任何实际解锁。
+        /// 等级解锁说明（商店 + 好感剧情节点）。只用于升级横幅与好感页展示，不驱动任何实际解锁。
+        /// 按语言缓存：切语言后重建，避免把文案锁在旧语言。
         /// </summary>
         public Dictionary<int, string[]> UnlocksByLevel
         {
             get
             {
-                if (_unlocksByLevel == null)
+                bool chinese = L10n.IsChinese;
+                if (_unlocksByLevel == null || chinese != _unlocksChinese)
                 {
-                    _unlocksByLevel = new Dictionary<int, string[]>();
-                }
-                if (ShopEnabled)
-                {
-                    // 升级横幅取用时解析语言，避免蓝图首次载入后把文案锁在旧语言。
-                    _unlocksByLevel[ShopUnlockLevel] = new[] { ShopName };
+                    _unlocksChinese = chinese;
+                    _unlocksByLevel = BuildUnlocksByLevel();
                 }
                 return _unlocksByLevel;
             }
+        }
+
+        private bool _unlocksChinese;
+
+        private Dictionary<int, string[]> BuildUnlocksByLevel()
+        {
+            Dictionary<int, List<string>> byLevel = new Dictionary<int, List<string>>();
+            if (ShopEnabled)
+            {
+                AddUnlock(byLevel, ShopUnlockLevel, ShopName);
+            }
+            PermanentDuckNpcStoryEvent[] stories = _data != null ? _data.StoryEvents : null;
+            if (stories != null)
+            {
+                for (int i = 0; i < stories.Length; i++)
+                {
+                    AddUnlock(byLevel, stories[i].level, GetStoryTitle(stories[i]));
+                }
+            }
+
+            Dictionary<int, string[]> result = new Dictionary<int, string[]>(byLevel.Count);
+            foreach (KeyValuePair<int, List<string>> entry in byLevel)
+            {
+                result[entry.Key] = entry.Value.ToArray();
+            }
+            return result;
+        }
+
+        private static void AddUnlock(Dictionary<int, List<string>> byLevel, int level, string text)
+        {
+            List<string> list;
+            if (!byLevel.TryGetValue(level, out list))
+            {
+                list = new List<string>();
+                byLevel[level] = list;
+            }
+            list.Add(text);
+        }
+
+        /// <summary>剧情节点名；蓝图没写标题时退回「名字的故事」。</summary>
+        internal string GetStoryTitle(PermanentDuckNpcStoryEvent story)
+        {
+            if (story != null && !string.IsNullOrEmpty(story.titleCn))
+            {
+                return story.Title;
+            }
+            return DisplayName + L10n.T("的故事", "'s Story");
+        }
+
+        /// <summary>蓝图数据（剧情播放器取台词用）。可能为 null。</summary>
+        internal PermanentDuckNpcData Data
+        {
+            get { return _data; }
         }
 
         /// <summary>

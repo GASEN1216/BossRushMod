@@ -186,6 +186,7 @@ echo(DebugAndTools\DebugAndTools.cs
 echo(DebugAndTools\DebugAndToolsPlacementAndInspection.cs
 echo(DebugAndTools\DebugAndToolsStaticCacheReset.cs
 echo(DebugAndTools\DebugToolsRuntimeModule.cs
+echo(DebugAndTools\OfficialViewTabsProbe.cs
 echo(DebugAndTools\DebugToolsRuntimeHooks.cs
 echo(DebugAndTools\ArenaPrototype\ArenaPrototypeNavigation.cs
 echo(DebugAndTools\ArenaPrototype\ArenaPrototypeControls.cs
@@ -1009,6 +1010,7 @@ echo(Integration\NPCs\DuckNpc\Permanent\PermanentDuckNpcData.cs
 echo(Integration\NPCs\DuckNpc\Permanent\PermanentDuckNpcRegistry.cs
 echo(Integration\NPCs\DuckNpc\Permanent\PermanentDuckNpcAffinityConfig.cs
 echo(Integration\NPCs\DuckNpc\Permanent\PermanentDuckNpcInteractable.cs
+echo(Integration\NPCs\DuckNpc\Permanent\PermanentDuckNpcStoryPlayer.cs
 echo(Integration\NPCs\DuckNpc\Permanent\PermanentDuckNpcModule.cs
 echo(Integration\NPCs\DuckNpc\DuckNpcFaceRandomizer.cs
 echo(Integration\NPCs\DuckNpc\DuckNpcOutfitter.cs
@@ -1098,6 +1100,10 @@ echo(Integration\Affinity\NPCs\GoblinAffinityConfig_LanguageCache.cs
 echo(Integration\Affinity\NPCs\GoblinAffinityConfig_Persona.cs
 echo(Integration\Affinity\NPCs\NurseAffinityConfig.cs
 echo(Integration\Affinity\AffinityUIManager.cs
+echo(Integration\Affinity\UI\AffinityTabData.cs
+echo(Integration\Affinity\UI\AffinityTabOfficialSkin.cs
+echo(Integration\Affinity\UI\AffinityTabView.cs
+echo(Integration\Affinity\UI\AffinityTabInjector.cs
 echo(Integration\Dialogue\DialogueManager.cs
 echo(Integration\Dialogue\DialogueActorFactory.cs
 echo(Integration\WikiBookItem.cs

@@ -629,24 +629,28 @@ namespace BossRush
                        + "Spawn on demand here when the blueprint has no scene whitelist."),
                 font);
 
+            // 目标默认是 DuckNpcs.json 第一位（小满）；「切换目标」按表里顺序轮换，下面五个按钮都作用于当前目标。
             GameObject row1 = CreateF3Row(section.transform);
             CreateActionButton(row1.transform, font,
+                L10n.T("永久 NPC：切换目标", "Permanent: Next Target"),
+                new Color(0.20f, 0.32f, 0.42f, 1f), () => RunPermanentDuckNpcDebugFromF3(PermanentDuckNpcDebug.CycleTarget));
+            CreateActionButton(row1.transform, font,
                 L10n.T("永久 NPC：在此生成", "Permanent: Spawn Here"),
-                new Color(0.22f, 0.42f, 0.28f, 1f), SpawnPermanentDuckNpcFromF3);
+                new Color(0.22f, 0.42f, 0.28f, 1f), () => RunPermanentDuckNpcDebugFromF3(PermanentDuckNpcDebug.SpawnHere));
             CreateActionButton(row1.transform, font,
                 L10n.T("永久 NPC：回收", "Permanent: Despawn"),
-                new Color(0.44f, 0.22f, 0.22f, 1f), DespawnPermanentDuckNpcFromF3);
+                new Color(0.44f, 0.22f, 0.22f, 1f), () => RunPermanentDuckNpcDebugFromF3(PermanentDuckNpcDebug.Despawn));
             CreateActionButton(row1.transform, font,
                 L10n.T("永久 NPC：输出状态", "Permanent: Dump State"),
-                new Color(0.30f, 0.25f, 0.42f, 1f), DumpPermanentDuckNpcStateFromF3);
+                new Color(0.30f, 0.25f, 0.42f, 1f), () => RunPermanentDuckNpcDebugFromF3(PermanentDuckNpcDebug.DumpState));
 
             GameObject row2 = CreateF3Row(section.transform);
             CreateActionButton(row2.transform, font,
                 L10n.T("好感度拉满(含10级剧情标记)", "Max Affinity (+Story10)"),
-                new Color(0.46f, 0.30f, 0.20f, 1f), MaxPermanentDuckNpcAffinityFromF3);
+                new Color(0.46f, 0.30f, 0.20f, 1f), () => RunPermanentDuckNpcDebugFromF3(PermanentDuckNpcDebug.MaxAffinity));
             CreateActionButton(row2.transform, font,
                 L10n.T("好感度清零", "Reset Affinity"),
-                new Color(0.34f, 0.30f, 0.20f, 1f), ResetPermanentDuckNpcAffinityFromF3);
+                new Color(0.34f, 0.30f, 0.20f, 1f), () => RunPermanentDuckNpcDebugFromF3(PermanentDuckNpcDebug.ResetAffinity));
             CreateActionButton(row2.transform, font,
                 L10n.T("探针：回收", "Probe: Despawn"),
                 new Color(0.44f, 0.22f, 0.22f, 1f), DespawnDuckNpcProbeFromF3);
