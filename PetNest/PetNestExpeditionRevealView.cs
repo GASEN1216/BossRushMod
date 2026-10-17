@@ -53,6 +53,11 @@ namespace BossRush
         private const float LootTileWidth = 140f;
         /// <summary>阵亡的那张牌整卡压暗。</summary>
         private const float DeadCardAlpha = 0.7f;
+        /// <summary>阵亡牌翻开后多停一会儿、慢慢压暗（审查 A-6：与满载牌同一个节奏，重量感不对）。</summary>
+        private const float DeadHoldSeconds = 2.2f;
+        private const float DeadDimSeconds = 0.6f;
+        /// <summary>翻到一半时纵向微缩：横向压扁的同时上下也收一点，看起来像牌在转，而不是被捏扁。</summary>
+        private const float FlipMinHeightScale = 0.94f;
 
         #endregion
 
@@ -390,7 +395,17 @@ namespace BossRush
 
                 SetText(_detailText, BuildCardDetail(record));
                 BuildLoot(record);
-                yield return WaitForPresentation(CardHoldSeconds);
+                PlayOutcomeSound(record);
+                if (record.outcomeDead)
+                {
+                    // 阵亡：从全亮慢慢压到暗，停得更久，留时间读名字
+                    yield return DimDeadCard();
+                    yield return WaitForPresentation(DeadHoldSeconds - DeadDimSeconds);
+                }
+                else
+                {
+                    yield return WaitForPresentation(CardHoldSeconds);
+                }
 
                 // 翻完这张才把它移出待翻列表；中途退出的话下次回基地会重新弹
                 string reason;
@@ -433,6 +448,8 @@ namespace BossRush
                 SetCardWidthScale(1f - BossRushUI.SmoothStep(elapsed / half));
             }
             ShowFront(record);
+            // 阵亡牌翻开时先全亮，由 DimDeadCard 慢慢压暗（ShowFront 直接设了暗度）
+            if (record.outcomeDead && _cardGroup != null) _cardGroup.alpha = 1f;
             elapsed = 0f;
             while (elapsed < half)
             {
@@ -446,7 +463,38 @@ namespace BossRush
         private void SetCardWidthScale(float x)
         {
             if (_card == null) return;
-            _card.transform.localScale = new Vector3(Mathf.Clamp01(x), 1f, 1f);
+            float width = Mathf.Clamp01(x);
+            _card.transform.localScale = new Vector3(width, Mathf.Lerp(FlipMinHeightScale, 1f, width), 1f);
+        }
+
+        private IEnumerator DimDeadCard()
+        {
+            float elapsed = 0f;
+            while (elapsed < DeadDimSeconds)
+            {
+                yield return null;
+                if (!BossRushUI.IsGamePaused()) elapsed += Time.unscaledDeltaTime;
+                if (_cardGroup != null)
+                {
+                    _cardGroup.alpha = Mathf.Lerp(1f, DeadCardAlpha, BossRushUI.SmoothStep(Mathf.Clamp01(elapsed / DeadDimSeconds)));
+                }
+            }
+        }
+
+        /// <summary>
+        /// 按结果配官方音效（审查 A-6）：满载 = 卖出到账音、空手 = 弹出音、负伤 = 小任务音、阵亡 = 官方死亡短乐句。
+        /// 事件不存在或音频未就绪时静默跳过。
+        /// </summary>
+        private static void PlayOutcomeSound(PetNestExpeditionRecord record)
+        {
+            if (record == null) return;
+            string sound;
+            if (record.outcomeDead) sound = "Music/Stinger/stg_death";
+            else if (record.outcomeInjured) sound = IntegrationUIFeedback.SoundMissionSmall;
+            else if (record.outcomeCash > 0 || (record.outcomeLootTypeIds != null && record.outcomeLootTypeIds.Count > 0))
+                sound = IntegrationUIFeedback.SoundSell;
+            else sound = IntegrationUIFeedback.SoundPop;
+            IntegrationUIFeedback.PlaySound(sound);
         }
 
         private void ShowBack(PetNestExpeditionRecord record)

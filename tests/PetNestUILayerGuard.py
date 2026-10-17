@@ -125,9 +125,12 @@ def check_pages(errors):
     # 页面组装层与面板画法文件不碰 canvas（画法文件是 PetNestUI 的 partial，只在既有 surface 里摆内容）
     assembly = ["CreateCanvasRoot", "sortingOrder", "new GameObject(", "AddComponent<Canvas>"]
     nest_code = ""
+    museum_code = ""
     for name, forbidden_list in (
             ("PetNestUIPages.cs", assembly),
             ("PetNestUINestPage.cs", assembly),
+            # 2026-10-17：博物馆组装挪到同一 partial 的 PetNestUIMuseumPage.cs，同一套分层约束
+            ("PetNestUIMuseumPage.cs", assembly),
             ("PetNestUILayout.cs", ["CreateCanvasRoot", "sortingOrder", "AddComponent<Canvas>", "BossRushUILayers."])):
         other = read_petnest(name)
         if other is None:
@@ -136,6 +139,8 @@ def check_pages(errors):
         other_code = strip_cs_comments(other)
         if name == "PetNestUINestPage.cs":
             nest_code = other_code
+        if name == "PetNestUIMuseumPage.cs":
+            museum_code = other_code
         for forbidden in forbidden_list:
             if forbidden in other_code:
                 errors.append("[分层] " + name + " 不得创建 canvas / 碰 sortingOrder: " + forbidden)
@@ -147,7 +152,7 @@ def check_pages(errors):
 
     # 四页齐全（巢页的组装在同一个 partial 类的 PetNestUINestPage.cs）
     for builder in ["BuildNestPage", "BuildHatchPage", "BuildExpeditionPage", "BuildMuseumPage"]:
-        if builder not in code + nest_code:
+        if builder not in code + nest_code + museum_code:
             errors.append("[页面] 缺少构建器: " + builder)
 
     # 失败原因必须落到玩家可读文案，DescribeFailure 不能是死代码
@@ -183,7 +188,9 @@ def check_pages(errors):
             errors.append("[确认] 亡命档出发必须先弹确认（PetNestUI.ConfirmDepart），确认后才出发")
 
     # 纪念碑必须刻风险档位
-    memorial = re.search(r"private static void AppendMemorialCards\([\s\S]{0,1600}?\n        \}", code)
+    memorial = re.search(r"private static void AppendMemorialCards\([\s\S]{0,1600}?\n        \}", code + museum_code)
+    if memorial is None:
+        errors.append("[纪念碑] 缺少 AppendMemorialCards")
     if memorial is not None and "DescribeRisk(m.riskTier)" not in memorial.group(0):
         errors.append("[纪念碑] 碑文必须刻风险档位")
 

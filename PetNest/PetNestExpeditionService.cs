@@ -266,6 +266,12 @@ namespace BossRush
         }
 
 
+        /// <summary>收藏的崽不走亡命档（唯一会真死的一档）；页面不画这一列，出发入口同一判据兜底。</summary>
+        internal static bool AllowsTier(PetNestPetRecord pet, PetNestRiskTier tier)
+        {
+            return pet == null || !pet.favorite || tier != PetNestRiskTier.Desperate;
+        }
+
         /// <summary>页面与出发操作共用的宠状态判据，锁定或重伤时不提供派遣入口。</summary>
         internal static bool CanDepart(PetNestPetRecord pet, out string failureReasonId)
         {
@@ -303,6 +309,11 @@ namespace BossRush
             if (!PetNestExpeditionSlots.HasFreeSlot(out usedSlots, out slotCap))
             {
                 failureReasonId = "expedition_slots_full";
+                return false;
+            }
+            if (!AllowsTier(pet, tier))
+            {
+                failureReasonId = "pet_favorite_desperate";
                 return false;
             }
 

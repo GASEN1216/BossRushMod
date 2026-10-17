@@ -22,6 +22,7 @@
 | `ZombieModeItemIdentityGuard.py` | `ZombieTideInvitation` / `ZombieTideBeacon` / `PortableSafeZoneDevice` TypeID、注册、本地化与掉落隔离。 |
 | `PortableSafeZoneDeviceBundleGuard.py` | 便携安全区装置 AssetBundle 的 UnityFS 文件头、体积上限、部署脚本与资源契约。 |
 | `ZombieModeWaveCleanupAndBossSpawnGuard.py` | 每波普通散落物清理、Boss 初始点校正与卡死恢复链。 |
+| `ZombieModeCompanionCounterplayGuard.py` | 精英「刚硬」「反制」反制词条只认玩家本人（`IsPlayerOwnHit`），遗种巢随从不吃反制、也不替玩家攒「反制」计数；护盾吸收仍按玩家方结算。 |
 | `ZombieModeSpawnEnemyCoreReuseGuard.py` | `TrySpawnZombieModeNormalZombieAsync` / `TrySpawnZombieModeBossAsync` 必须走 `SpawnEnemyCore(...)`。 |
 | `ZombieModeBossRushSpawnPointsOnlyGuard.py` | 保留历史文件名；丧尸优先复用共享缓存的官方 Points，地图画像 / 候选环只作回退，所有最终生成位置必须验证可达性。 |
 | `ZombieModeNormalZombieCapAndAggroGuard.py` | 普通丧尸压力必须受 50 只上限、最近 BossRush 刷怪点、玩家仇恨锁定约束。 |

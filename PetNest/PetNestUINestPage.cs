@@ -40,9 +40,16 @@ namespace BossRush
                 view.OnMode = delegate { if (ctx.SetBatchMode != null) ctx.SetBatchMode(next); };
             }
 
-            for (int i = 0; i < pets.Count; i++)
+            // 排序（审查 B-1）：只改显示顺序，存档原序不动
+            List<PetNestPetRecord> ordered = SortPets(pets, ctx.SortMode);
+            for (int i = 0; i < ordered.Count; i++)
             {
-                if (pets[i] != null) view.Rows.Add(BuildPetRow(pets[i], deployedId, ctx));
+                view.Rows.Add(BuildPetRow(ordered[i], deployedId, ctx));
+            }
+            if (pets.Count > 1 && !ctx.BatchMode && ctx.CycleSort != null)
+            {
+                view.SortLabel = DescribeSortMode(ctx.SortMode);
+                view.OnSort = ctx.CycleSort;
             }
 
             if (pets.Count == 0)
@@ -74,6 +81,7 @@ namespace BossRush
                 slot.Subtitle = L10n.T("选一只崽「设为出战」，它会随你出击", "Deploy a cub and it joins your raids");
                 return slot;
             }
+            slot.Key = "slot:" + deployed.id;
             slot.Title = L10n.T("出战：", "Deployed: ") + PetNestService.GetDecoratedPetName(deployed);
             slot.Subtitle = L10n.T("独立背包：", "Cub backpack: ")
                 + PetNestCompanionRuntime.ResolveCapacityBonus(deployed) + L10n.T(" 格", " slots");
@@ -110,9 +118,11 @@ namespace BossRush
         private static PetNestCardData BuildPetRow(PetNestPetRecord pet, string deployedId, PetNestNestPageContext ctx)
         {
             PetNestCardData row = new PetNestCardData();
+            row.Key = pet.id;
             bool deployed = string.Equals(pet.id, deployedId, StringComparison.Ordinal);
             row.Title = PetNestService.GetDecoratedPetName(pet);
-            row.Subtitle = LineageName(pet.lineageKey) + " · Lv" + pet.level + " · " + DescribeShortState(pet, deployed);
+            row.Subtitle = LineageName(pet.lineageKey) + " · Lv" + pet.level + " · " + DescribeShortState(pet, deployed)
+                + (pet.favorite ? L10n.T(" · 收藏", " · Favorite") : string.Empty);
             row.Icon = ResolveLineagePortrait(pet.lineageKey);
             row.Shiny = pet.shiny;
             PetNestChromaColor colorA = PetNestChroma.Find(pet.chromaA);
@@ -126,8 +136,19 @@ namespace BossRush
             string petId = pet.id;
             if (ctx.BatchMode)
             {
-                // 远征中的崽不能放生：行照常显示（状态写着「远征中」），不画勾选框、不可勾——不挂点不动的框
-                if (pet.state == (int)PetNestPetState.OnExpedition || PetNestService.HasBackpackItems(pet)) return row;
+                // 远征中 / 背包有东西 / 收藏的崽不能放生：行照常显示，不画勾选框、不可勾——不挂点不动的框。
+                // 勾不上的原因写在副标题里（审查 B-4）：只写「在巢」却勾不上，玩家不知道为什么
+                if (pet.state == (int)PetNestPetState.OnExpedition) return row;
+                if (PetNestService.HasBackpackItems(pet))
+                {
+                    row.Subtitle = LineageName(pet.lineageKey) + " · " + L10n.T("背包有物品，先取空", "Empty its backpack first");
+                    return row;
+                }
+                if (pet.favorite)
+                {
+                    row.Subtitle = LineageName(pet.lineageKey) + " · " + L10n.T("已收藏，不能放生", "Favorite, can't release");
+                    return row;
+                }
                 row.Checkbox = true;
                 row.Selected = ctx.BatchSelection != null && ctx.BatchSelection.Contains(petId);
                 row.OnCardClick = delegate
@@ -184,6 +205,19 @@ namespace BossRush
                 + " · " + DescribePetState(pet, deployed);
             // 改名是低频操作：名字旁一颗小按钮，远征中的崽也允许改名
             detail.OnRename = delegate { if (ctx.Rename != null) ctx.Rename(petId); };
+            // 收藏（审查 B-7）：名字旁第二颗小按钮。收藏的崽不能放生、不走亡命档、不进一键勾选
+            bool favorite = pet.favorite;
+            detail.FavoriteLabel = favorite ? L10n.T("取消收藏", "Unfavorite") : L10n.T("收藏", "Favorite");
+            detail.OnFavorite = delegate
+            {
+                string failure;
+                bool ok = PetNestService.TrySetFavorite(petId, !favorite, out failure);
+                NoteResult(ok, failure, favorite ? L10n.T("已取消收藏", "Removed from favorites")
+                    : L10n.T("已收藏：不会被放生，也不走亡命档", "Favorited: protected from release and Desperate runs"));
+                if (ctx.Refresh != null) ctx.Refresh();
+            };
+            PetNestChromaColor frame = PetNestChroma.Find(pet.chromaA);
+            if (frame != null && PetNestChroma.HasChroma(pet)) detail.IconStrokeHex = frame.TextHex;
 
             string appearance = DescribeAppearance(pet);
             if (appearance != null) detail.Sections.Add(new KeyValuePair<string, string>(L10n.T("外观", "Look"), appearance));
@@ -192,14 +226,40 @@ namespace BossRush
                 L10n.T("生命 +", "Health +") + (growth * PetNestTuning.PetLevelMaxHealthBonusPerLevel * 100f).ToString("0")
                 + "% / " + L10n.T("伤害 +", "Damage +") + (growth * PetNestTuning.PetLevelDamageBonusPerLevel * 100f).ToString("0")
                 + "% / " + L10n.T("体型 ", "Size ") + ((1f + growth * PetNestTuning.PetModelScaleGrowthPerLevel) * 100f).ToString("0")
-                + L10n.T("% 初生大小", "% of hatch size")));
+                + L10n.T("% 初生大小", "% of hatch size")
+                // 下一级写出来（审查 B-3）：玩家知道再练一级换来什么
+                + (PetNestProgressionService.IsAdult(pet) ? string.Empty
+                    : "\n" + L10n.T("下一级：生命 +", "Next level: health +")
+                        + (PetNestTuning.PetLevelMaxHealthBonusPerLevel * 100f).ToString("0")
+                        + L10n.T("%、伤害 +", "%, damage +") + (PetNestTuning.PetLevelDamageBonusPerLevel * 100f).ToString("0")
+                        + L10n.T("%，还差 ", "%, ") + (PetNestTuning.PetExpPerLevel - pet.exp) + L10n.T(" 经验", " exp to go"))));
             detail.Sections.Add(new KeyValuePair<string, string>(L10n.T("性格", "Temperament"), DescribePersonality(pet)));
             detail.Sections.Add(new KeyValuePair<string, string>(L10n.T("出身", "Endowments"), DescribeTalents(pet)));
             detail.Sections.Add(new KeyValuePair<string, string>(L10n.T("战痕", "Scars"), DescribeScars(pet)));
-            if (deployed)
+            // 每只崽都有独立背包，不只出战那只（审查 B-5：统一叫「独立背包」，不再混用「捡漏背包」）
+            detail.Sections.Add(new KeyValuePair<string, string>(L10n.T("独立背包", "Cub backpack"),
+                DescribeScavengerBackpack(PetNestCompanionRuntime.ResolveCapacityBonus(pet))));
+
+            // 行动方式三选一（审查 B-2）：此前只能走到崽身边一项一项轮换
+            PetNestBehaviour current = PetNestCareService.Resolve(pet);
+            detail.ChoicesTitle = L10n.T("行动方式", "Behavior");
+            detail.ChoicesCaption = PetNestCareService.DescribeEffect(current);
+            for (int b = 0; b <= (int)PetNestBehaviour.Avoid; b++)
             {
-                detail.Sections.Add(new KeyValuePair<string, string>(L10n.T("捡漏背包", "Scavenger backpack"),
-                    DescribeScavengerBackpack(PetNestCompanionRuntime.ResolveCapacityBonus(pet))));
+                PetNestBehaviour option = (PetNestBehaviour)b;
+                detail.Choices.Add(new PetNestActionData
+                {
+                    Label = PetNestCareService.Describe(option),
+                    Selected = option == current,
+                    OnClick = delegate
+                    {
+                        if (option == current) return;
+                        bool ok = PetNestCareService.TrySetBehaviour(petId, option);
+                        NoteResult(ok, ok ? null : "commit_failed",
+                            L10n.T("行动方式：", "Behavior: ") + PetNestCareService.Describe(option));
+                        if (ctx.Refresh != null) ctx.Refresh();
+                    },
+                });
             }
 
             if (onExpedition)
@@ -210,6 +270,18 @@ namespace BossRush
                 if (record != null)
                 {
                     detail.FooterText = DescribeExpeditionFooter(record);
+                    if (record.settled && ctx.ShowResults != null)
+                    {
+                        // 就地揭晓（审查 D-1）：不用先关面板
+                        detail.FooterText = L10n.T("远征已归来", "Back from the expedition");
+                        detail.Actions.Add(new PetNestActionData
+                        {
+                            Label = L10n.T("查看结果", "See results"),
+                            IsPrimary = true,
+                            OnClick = ctx.ShowResults,
+                        });
+                        return detail;
+                    }
                     // 只给还在路上的记录走表：到点后返回 null 触发一次整页刷新，刷新后不再挂走表，不会每秒重建
                     if (record.settled || PetNestExpeditionService.GetRemainingTicks(record) <= 0L) return detail;
                     PetNestExpeditionRecord live = record;
@@ -222,8 +294,9 @@ namespace BossRush
                 return detail;
             }
 
-            // 危险操作靠左、描边不实心，点了照旧走确认弹窗
-            if (!PetNestService.HasBackpackItems(pet)) detail.Actions.Add(new PetNestActionData
+            // 危险操作靠左、描边不实心，点了照旧走确认弹窗。收藏的崽不挂放生（原因写在底栏）
+            if (pet.favorite) detail.FooterText = L10n.T("已收藏，不能放生", "Favorite, can't release");
+            else if (!PetNestService.HasBackpackItems(pet)) detail.Actions.Add(new PetNestActionData
             {
                 // 按钮上只写素名：装饰名（渐变 / 金字）放在确认弹窗里，那里是深色面板底（2026-09-23 复核第 12 项）
                 Label = L10n.T("放生", "Release"),
@@ -242,7 +315,9 @@ namespace BossRush
                     OnClick = delegate
                     {
                         string failure;
-                        NoteFailure(PetNestService.TryHealScar(petId, out failure), failure);
+                        bool ok = PetNestService.TryHealScar(petId, out failure);
+                        NoteResult(ok, failure, L10n.T("治好了一道战痕（-", "Treated a scar (-")
+                            + PetNestTuning.ScarHealSoulCost + L10n.T(" 遗魂）", " souls)"));
                         if (ctx.Refresh != null) ctx.Refresh();
                     },
                 });
@@ -266,7 +341,8 @@ namespace BossRush
                     OnClick = delegate
                     {
                         string failure;
-                        NoteFailure(PetNestService.ClearDeployedPet(out failure), failure);
+                        bool ok = PetNestService.ClearDeployedPet(out failure);
+                        NoteResult(ok, failure, L10n.T("这只崽留在巢里了", "This cub stays home"));
                         if (ctx.Refresh != null) ctx.Refresh();
                     },
                 });
@@ -281,6 +357,7 @@ namespace BossRush
                     {
                         string failure;
                         NoteFailure(PetNestService.TrySetDeployedPet(petId, out failure), failure);
+                        if (LastFailureText == null) NoteSuccess(L10n.T("出战：下一局它会跟着你", "Deployed: it joins your next raid"));
                         if (ctx.Refresh != null) ctx.Refresh();
                     },
                 });
@@ -327,7 +404,8 @@ namespace BossRush
             for (int i = 0; i < pets.Count; i++)
             {
                 PetNestPetRecord pet = pets[i];
-                if (pet == null || pet.state == (int)PetNestPetState.OnExpedition || PetNestService.HasBackpackItems(pet)) continue;
+                if (pet == null || pet.state == (int)PetNestPetState.OnExpedition || PetNestService.HasBackpackItems(pet)
+                    || pet.favorite) continue;
                 if (ctx.BatchSelection != null && ctx.BatchSelection.Contains(pet.id)) picked.Add(pet.id);
                 bool protectedPet = pet.shiny || PetNestChroma.HasChroma(pet)
                     || string.Equals(pet.id, deployedId, StringComparison.Ordinal);
@@ -402,6 +480,46 @@ namespace BossRush
                     "Bosses may drop relic eggs, and every kill banks souls of that bloodline. Hatch eggs on the Hatch tab, or condense one once you have enough souls.")));
             return detail;
         }
+
+        #region 排序
+
+        private static List<PetNestPetRecord> SortPets(List<PetNestPetRecord> pets, PetNestSortMode mode)
+        {
+            List<PetNestPetRecord> ordered = new List<PetNestPetRecord>(pets.Count);
+            for (int i = 0; i < pets.Count; i++) if (pets[i] != null) ordered.Add(pets[i]);
+            if (mode == PetNestSortMode.Arrival) return ordered;
+            // 稳定排序：同分时保持入巢顺序（List.Sort 不稳定，带上原下标比较）
+            Dictionary<PetNestPetRecord, int> arrival = new Dictionary<PetNestPetRecord, int>(ordered.Count);
+            for (int i = 0; i < ordered.Count; i++) arrival[ordered[i]] = i;
+            ordered.Sort(delegate (PetNestPetRecord a, PetNestPetRecord b)
+            {
+                int c = 0;
+                if (mode == PetNestSortMode.Level) c = b.level.CompareTo(a.level);
+                else if (mode == PetNestSortMode.Lineage)
+                    c = string.Compare(LineageName(a.lineageKey), LineageName(b.lineageKey), StringComparison.Ordinal);
+                else if (mode == PetNestSortMode.Rarity) c = RarityScore(b).CompareTo(RarityScore(a));
+                return c != 0 ? c : arrival[a].CompareTo(arrival[b]);
+            });
+            return ordered;
+        }
+
+        private static int RarityScore(PetNestPetRecord pet)
+        {
+            return (pet.shiny ? 4 : 0) + (PetNestChroma.HasChroma(pet) ? 2 : 0) + (pet.favorite ? 1 : 0);
+        }
+
+        internal static string DescribeSortMode(PetNestSortMode mode)
+        {
+            switch (mode)
+            {
+                case PetNestSortMode.Level: return L10n.T("排序：等级", "Sort: level");
+                case PetNestSortMode.Lineage: return L10n.T("排序：血脉", "Sort: bloodline");
+                case PetNestSortMode.Rarity: return L10n.T("排序：稀有", "Sort: rarity");
+                default: return L10n.T("排序：入巢", "Sort: arrival");
+            }
+        }
+
+        #endregion
 
         #region 详情文案
 

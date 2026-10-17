@@ -513,6 +513,8 @@ PetNest/ 目录零处直调），每批至多一次；`IsSaving` 时改走 defer
 
 **独立背包（2026-09-28，SCHEMA+）。** `PetNestBackpack` 在基地 / 出击随从的共同激活入口绑定崽的稳定 `id`，头顶官方交互名为「背包」。点击后惰性建立官方 `Item.Inventory`，界面走 `LootView.LootItem`；容量沿用原基础格数、等级、性格与天赋公式。物品完整 `ItemTreeData`、槽位与排序锁序列化成可选 `PetNestPetRecord.backpackJson`，随 `Bundle_v2` 保存，原 schemaVersion 与键不变，旧档缺字段视为空背包。半途恢复失败不覆盖原记录；迟到的异步物品核对对象代数与存档槽后才入袋。切图 / 重伤先封存再销毁；换崽不转移物品，有物品的崽不能放生或派去远征，先取空才允许。
 
+**收藏（2026-10-17，SCHEMA+）。** 可选 `PetNestPetRecord.favorite`（布尔，键 `favorite`），随 `Bundle_v2` 保存，原 schemaVersion 与键不变，旧档缺字段视为未收藏。收藏的崽不能放生（`pet_favorite`）、不能派去亡命档（`pet_favorite_desperate`，`PetNestExpeditionService.AllowsTier` 与页面共用判据）、不进批量放生的一键勾选；取消收藏即恢复。
+
 `PetNestBackpackSnapshot` 使用共享 JSON 读写器显式保留官方树节点、原始 KV 字节、配件连接与嵌套容器；官方连接类型没有 `Serializable`，不能直接用 `JsonUtility` 保存整棵树。恢复逐节点登记唯一 owner，缺物品、连接失败、取消或通知异常时回收全部本次节点。变更事件立即登记资产义务，正常保存继续通过原协调器；封存失败关闭交互并保留未保存的物品容器，禁止用另一主角或存档槽的资产完成旧转移。持久化前的进程崩溃仍不能保证恢复。
 
 背包资产快照独立于孵化 / 远征的基地仓库快照：官方 LootView 内的主角和官方宠物背包与崽记录同批采集，出击图不等待基地仓库。物理落盘仍仅经 `PetNestSaveCoordinator` 的共享引擎；官方收集回调只允许更新 ES3 缓存，不重复 `SaveFile`，即便宿主 `IsSaving` 已置位也能采到本次记录。普通主动落盘仍受 `IsSaving` 延迟闸保护。已有官方宠物背包中的物品没有可靠的崽身份，保留在原容器，不猜测迁移。

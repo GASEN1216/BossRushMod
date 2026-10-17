@@ -13,6 +13,7 @@
 // ============================================================================
 
 using System;
+using System.Collections.Generic;
 
 namespace BossRush
 {
@@ -288,6 +289,7 @@ namespace BossRush
             _nextBaseMaintenanceTime =
                 UnityEngine.Time.unscaledTime + BaseMaintenanceIntervalSeconds;
 
+            NotifyDueExpeditions();
             if (!_baseMaintenancePending && !PetNestExpeditionService.HasPendingRewardDebt) return;
 
             try
@@ -315,6 +317,35 @@ namespace BossRush
             {
                 LogFailure("base_maintenance", e);
                 _baseMaintenancePending = true;
+            }
+        }
+
+        /// <summary>已经提醒过的到期远征（记录 id）。只活在本模块实例里，切档 / 卸载随模块一起丢。</summary>
+        private readonly HashSet<string> _notifiedDueExpeditions = new HashSet<string>(StringComparer.Ordinal);
+
+        /// <summary>
+        /// 人已经在基地时远征到点（审查 D-4）：场景回调不会再触发结算，玩家此前要开面板才知道。
+        /// 这里只弹一次官方通知「X 远征归来」，不自动结算、不突然弹翻牌——结果留给玩家去巢里就地揭晓。
+        /// 跟随 5 秒维护节奏；远征同时最多 4 队，扫描量有界。
+        /// </summary>
+        private void NotifyDueExpeditions()
+        {
+            try
+            {
+                List<PetNestExpeditionRecord> records = PetNestExpeditionService.Records;
+                for (int i = 0; i < records.Count; i++)
+                {
+                    PetNestExpeditionRecord r = records[i];
+                    if (r == null || r.settled || string.IsNullOrEmpty(r.id) || !PetNestExpeditionService.IsDue(r)) continue;
+                    if (!_notifiedDueExpeditions.Add(r.id)) continue;
+                    Duckov.UI.NotificationText.Push(L10n.T(
+                        PetNestExpeditionService.DescribePetName(r) + " 远征归来了，去遗种巢看看结果",
+                        PetNestExpeditionService.DescribePetName(r) + " is back from the expedition. Check the Relic Nest."));
+                }
+            }
+            catch (Exception e)
+            {
+                LogFailure("due_notice", e);
             }
         }
 

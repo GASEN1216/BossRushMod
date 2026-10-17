@@ -28,6 +28,17 @@ namespace BossRush
             return source != null && (source.IsMainCharacter || PetNestCompanionAgent.IsCompanionHealth(source.Health));
         }
 
+        /// <summary>
+        /// 只认玩家本人的命中。精英的「刚硬」（远程 ×0.1）与「反制」（同类连击后减伤 60%）是逼玩家换武器的反制词条，
+        /// 遗种巢的崽不会换武器：算进去的话它对这类精英几乎打不出伤害（玩家反馈「一滴血一滴血地掉」），
+        /// 而且它的命中还会替玩家攒满「反制」计数，让精英转头去减玩家自己的伤害（2026-10-17）。
+        /// 护盾吸收与护盾光环仍按 <see cref="IsPlayerSideAttack"/> 对崽生效，那是精英本身的防御，不是反制。
+        /// </summary>
+        internal static bool IsPlayerOwnHit(CharacterMainControl source)
+        {
+            return source != null && source.IsMainCharacter;
+        }
+
         internal static void ReduceFinalDamage(Health health, ref DamageInfo info)
         {
             ModBehaviour owner = ModBehaviour.Instance;

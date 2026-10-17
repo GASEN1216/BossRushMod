@@ -594,6 +594,7 @@ partial class Program
         PetNestBackpackTreeRoundTrip();
         PetNestBackpackOwnedRestoration();
         PetNestScarTreatmentAndExpeditionSlots();
+        PetNestFavoriteAndHatchAll();
         Console.WriteLine("ContentTransactions: " + checks + " assertions passed");
     }
 
@@ -750,6 +751,38 @@ partial class Program
         Check(!PetNestService.TryHealScar("poor", out error) && error == "no_scars"
             && PetNestService.GetSouls("test") == PetNestTuning.ScarHealSoulCost,
             "a cub without scars costs nothing");
+    }
+
+    // 2026-10-17：收藏保护与「全部孵化」。
+    static void PetNestFavoriteAndHatchAll()
+    {
+        string error;
+        PetNestExpeditionRecord record;
+        Reset(); PrepareNest();
+        PetNestService.Nest.pets.Add(new PetNestPetRecord { id = "fav", lineageKey = "test", level = 1 });
+        Check(!PetNestService.TryGetPet("fav").favorite, "cubs start unfavorited");
+        Check(PetNestService.TrySetFavorite("fav", true, out error) && PetNestService.TryGetPet("fav").favorite,
+            "a cub can be favorited");
+        var decoded = PetNestCodec.DecodeBundle(BossRushJsonParser.ParseOrNull(PetNestCodec.EncodeBundle(PetNestPersistence.Bundle.Current)));
+        Check(decoded.nest.pets[0].favorite, "favorite survives the bundle codec round trip");
+        Check(!PetNestService.TryReleasePet("fav", out error) && error == "pet_favorite" && PetNestService.PetCount == 1,
+            "a favorite cub cannot be released");
+        Check(!PetNestExpeditionService.TryDepart("fav", PetNestTuning.DestinationStormSea, PetNestRiskTier.Desperate, out record, out error)
+            && error == "pet_favorite_desperate" && PetNestExpeditionService.Records.Count == 0,
+            "a favorite cub cannot take the only lethal tier");
+        Check(PetNestExpeditionService.TryDepart("fav", PetNestTuning.DestinationStormSea, PetNestRiskTier.Rough, out record, out error),
+            "a favorite cub can still take a non-lethal tier");
+
+        Reset(); PrepareNest();
+        for (int i = 0; i < PetNestTuning.DefaultNestCapacity - 1; i++)
+            PetNestService.Nest.pets.Add(new PetNestPetRecord { id = "fill-" + i, lineageKey = "test", level = 1 });
+        var eggs = new System.Collections.Generic.List<Item>();
+        for (int i = 0; i < 3; i++) { var egg = new Item(); PlayerStorage.Inventory.AddAt(egg, 20 + i); eggs.Add(egg); }
+        System.Collections.Generic.List<PetNestHatchResult> results = PetNestHatchService.TryHatchAll(eggs, out error);
+        Check(results.Count == 1 && error == "nest_full" && PetNestService.PetCount == PetNestTuning.DefaultNestCapacity,
+            "hatch-all stops at the first full nest and keeps what hatched");
+        Check(eggs[0].Destroyed && !eggs[1].Destroyed && !eggs[2].Destroyed,
+            "eggs left over after a full nest are untouched");
     }
 
     static void PetNestBackpackPersistence()

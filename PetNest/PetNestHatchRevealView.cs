@@ -83,6 +83,15 @@ namespace BossRush
         private bool _resultShown;
         private bool _finished;
 
+        // 全部孵化（审查 C-2）：一次揭晓，_result 是其中最稀有的那只，详情写整批汇总
+        private List<PetNestHatchResult> _batch;
+
+        // 稀有度预兆（审查 A-5）：晃蛋时卡片描边按结果的稀有度呼吸（普通不亮、炫彩两色交替、异色金）。
+        // 只读已落档的结果决定颜色，不 roll。
+        private bool _telegraph;
+        private Color _telegraphA;
+        private Color _telegraphB;
+
         // Update 驱动的表现状态（都走 unscaled 时间、过暂停门）
         private bool _shaking;
         private float _shakeTime;
@@ -98,6 +107,34 @@ namespace BossRush
         /// <summary>播放一次孵化揭晓。result 为 null 时直接返回。</summary>
         internal static void Play(PetNestHatchResult result)
         {
+            PlayInternal(result, null);
+        }
+
+        /// <summary>
+        /// 全部孵化的一次揭晓（审查 C-2）：节奏缩短，卡片揭最稀有的那只，详情列整批汇总，稀有的单独高亮。
+        /// 结果都已逐枚落档，这里只回放。
+        /// </summary>
+        internal static void PlayBatch(List<PetNestHatchResult> results)
+        {
+            if (results == null || results.Count == 0) return;
+            PetNestHatchResult best = null;
+            for (int i = 0; i < results.Count; i++)
+            {
+                PetNestHatchResult r = results[i];
+                if (r == null || r.Pet == null) continue;
+                if (best == null || RarityRank(r) > RarityRank(best)) best = r;
+            }
+            if (best == null) return;
+            PlayInternal(best, results.Count > 1 ? results : null);
+        }
+
+        private static int RarityRank(PetNestHatchResult r)
+        {
+            return (r.Shiny ? 2 : 0) + (PetNestChroma.HasChroma(r.Pet) ? 1 : 0);
+        }
+
+        private static void PlayInternal(PetNestHatchResult result, List<PetNestHatchResult> batch)
+        {
             if (result == null || result.Pet == null) return;
             try
             {
@@ -106,6 +143,7 @@ namespace BossRush
                 UnityEngine.Object.DontDestroyOnLoad(host);
                 _instance = host.AddComponent<PetNestHatchRevealView>();
                 _instance._result = result;
+                _instance._batch = batch;
                 _instance.Build();
                 _instance._playRoutine = _instance.StartCoroutine(_instance.PlayRoutine());
             }
@@ -262,21 +300,26 @@ namespace BossRush
         /// <summary>六段节奏。全程只读 _result，不 roll、不写档。</summary>
         private IEnumerator PlayRoutine()
         {
-            // 1) onBegin：蛋在晃
+            bool batch = _batch != null;
+            // 1) onBegin：蛋在晃；稀有结果在这一段就开始让卡片描边呼吸（预兆，审查 A-5）
             SetCardSprite(PetNestUIPages.ResolveItemIcon(RelicEggConfig.TYPE_ID), false);
             _shaking = true;
-            SetText(_rollText, L10n.T("蛋壳在动……", "The shell is moving..."));
-            yield return WaitForPresentation(BeginSeconds);
+            PrepareTelegraph();
+            SetText(_rollText, batch
+                ? L10n.T("一窝蛋壳都在动……（" + _batch.Count + " 枚）", "A clutch is stirring... (" + _batch.Count + ")")
+                : L10n.T("蛋壳在动……", "The shell is moving..."));
+            yield return WaitForPresentation(batch ? BeginSeconds * 0.7f : BeginSeconds);
 
             // 2) onRollBegin
             SetText(_rollText, L10n.T("血脉正在显形", "A bloodline is taking shape"));
-            yield return WaitForPresentation(RollBeginSeconds);
+            yield return WaitForPresentation(batch ? RollBeginSeconds * 0.5f : RollBeginSeconds);
             _shaking = false;
             ResetCardTransform();
 
             // 3) onRollStep ×N：滚动展示血脉名与立绘，纯视觉，与结果无关（步长固定，不用随机数）
             IList<PetNestLineageInfo> lineages = PetNestLineageCatalog.All;
-            for (int i = 0; i < RollStepCount; i++)
+            int steps = batch ? RollStepCount / 2 : RollStepCount;
+            for (int i = 0; i < steps; i++)
             {
                 PetNestLineageInfo sample = lineages.Count > 0 ? lineages[(i * 7 + 3) % lineages.Count] : null;
                 SetText(_rollText, sample != null ? sample.DisplayName : "...");
@@ -289,8 +332,8 @@ namespace BossRush
             ShowResult();
             yield return WaitForPresentation(ShowResultSeconds);
 
-            // 5) onPickup：出身 / 性格 / 异色 / 炫彩
-            SetDetail(BuildDetailText());
+            // 5) onPickup：出身 / 性格 / 异色 / 炫彩（全部孵化时是整批汇总）
+            SetDetail(batch ? BuildBatchSummary() : BuildDetailText());
             yield return WaitForPresentation(PickupSeconds);
 
             // 6) onEnd：**不自动关**。改成等玩家点「关闭」（owner 2026-09-20）。
@@ -322,6 +365,13 @@ namespace BossRush
             {
                 _shakeTime += dt;
                 _cardContent.localEulerAngles = new Vector3(0f, 0f, Mathf.Sin(_shakeTime * ShakeSpeed) * ShakeDegrees);
+                if (_telegraph && _cardStroke != null)
+                {
+                    // 1.6 秒一个呼吸周期；炫彩在两色之间换，异色两色同为金
+                    float breath = 0.5f + 0.5f * Mathf.Sin(_shakeTime * 3.9f);
+                    Color tone = Mathf.Sin(_shakeTime * 1.95f) >= 0f ? _telegraphA : _telegraphB;
+                    _cardStroke.color = Color.Lerp(BossRushUIColors.Stroke, tone, breath);
+                }
             }
 
             if (_swapElapsed >= 0f && _cardImage != null)
@@ -382,6 +432,7 @@ namespace BossRush
             if (_resultShown) return;
             _resultShown = true;
             _shaking = false;
+            _telegraph = false;
             ResetCardTransform();
 
             // 层级（UA-12）：结果名最大（40 粗体），血脉名降为 20 号副标题「血脉 · X」
@@ -402,8 +453,95 @@ namespace BossRush
                 if (_cardStroke != null) _cardStroke.color = BossRushUIColors.RarityLegendary;
             }
             AddChromaRails();
+            PlayRevealBurst();
 
+            // 音效按稀有度分三档（审查 A-5）：异色放大奖音乐、炫彩用官方升级音、普通用官方弹出音
             if (_result.Shiny) PlayJackpotMusic();
+            else if (PetNestChroma.HasChroma(_result.Pet)) IntegrationUIFeedback.PlaySound(IntegrationUIFeedback.SoundLevelUp);
+            else IntegrationUIFeedback.PlaySound(IntegrationUIFeedback.SoundPop);
+        }
+
+        /// <summary>按结果稀有度定预兆色：普通不亮（预兆只给稀有结果，普通蛋不该「假紧张」）。</summary>
+        private void PrepareTelegraph()
+        {
+            _telegraph = false;
+            if (_result == null || _result.Pet == null) return;
+            if (_result.Shiny)
+            {
+                _telegraph = true;
+                _telegraphA = BossRushUIColors.RarityLegendary;
+                _telegraphB = BossRushUIColors.RarityLegendary;
+                return;
+            }
+            Color a, b;
+            if (TryChromaColors(out a, out b))
+            {
+                _telegraph = true;
+                _telegraphA = a;
+                _telegraphB = b;
+            }
+        }
+
+        private bool TryChromaColors(out Color a, out Color b)
+        {
+            a = b = BossRushUIColors.Accent;
+            PetNestChromaColor ca = PetNestChroma.Find(_result.Pet.chromaA);
+            PetNestChromaColor cb = PetNestChroma.Find(_result.Pet.chromaB);
+            int r1, g1, b1, r2, g2, b2;
+            if (ca == null || cb == null || !PetNestChroma.TryParseHex(ca.TextHex, out r1, out g1, out b1)
+                || !PetNestChroma.TryParseHex(cb.TextHex, out r2, out g2, out b2)) return false;
+            a = new Color(r1 / 255f, g1 / 255f, b1 / 255f, 1f);
+            b = new Color(r2 / 255f, g2 / 255f, b2 / 255f, 1f);
+            return true;
+        }
+
+        /// <summary>出结果那一下的爆发：光环 + 星光，颜色与数量按稀有度。卡片收起（取不到图）时不放。</summary>
+        private void PlayRevealBurst()
+        {
+            if (_card == null || !_card.activeSelf || _card.transform.parent == null) return;
+            Color a = BossRushUIColors.Accent;
+            Color b = BossRushUIColors.Accent;
+            int stars = 8;
+            if (_result.Shiny)
+            {
+                a = b = BossRushUIColors.RarityLegendary;
+                stars = 16;
+            }
+            else if (TryChromaColors(out a, out b))
+            {
+                stars = 12;
+            }
+            PetNestUIBurst.Play(_card.transform.parent, new Vector2(0f, CardCenterY), CardSize * 1.1f, a, b, stars);
+            _card.transform.SetAsLastSibling();
+        }
+
+        /// <summary>全部孵化的汇总：一行一只，稀有的排前面并标出来；多于 8 只时并成「……等 N 只」。</summary>
+        private string BuildBatchSummary()
+        {
+            List<PetNestHatchResult> sorted = new List<PetNestHatchResult>(_batch.Count);
+            for (int i = 0; i < _batch.Count; i++) if (_batch[i] != null && _batch[i].Pet != null) sorted.Add(_batch[i]);
+            // 稳定：稀有度高的在前，同档保持孵化顺序
+            List<PetNestHatchResult> ordered = new List<PetNestHatchResult>(sorted.Count);
+            for (int rank = 3; rank >= 0; rank--)
+            {
+                for (int i = 0; i < sorted.Count; i++) if (RarityRank(sorted[i]) == rank) ordered.Add(sorted[i]);
+            }
+            string text = L10n.T("这次孵出 " + ordered.Count + " 只：", "Hatched " + ordered.Count + ":");
+            int listed = Math.Min(ordered.Count, 8);
+            for (int i = 0; i < listed; i++)
+            {
+                PetNestHatchResult r = ordered[i];
+                string tag = r.Shiny ? L10n.T("  ★ 异色", "  ★ Shiny")
+                    : (PetNestChroma.HasChroma(r.Pet) ? L10n.T("  炫彩", "  Chroma") : string.Empty);
+                text += "\n" + PetNestService.GetDecoratedPetName(r.Pet) + "  <color=" + IntegrationUIFeedback.SecondaryHex + ">"
+                    + r.LineageDisplayName + "</color>"
+                    + (tag.Length > 0 ? "<color=" + IntegrationUIFeedback.LegendaryHex + ">" + tag + "</color>" : string.Empty);
+            }
+            if (ordered.Count > listed)
+            {
+                text += "\n" + L10n.T("……等 " + ordered.Count + " 只，都在巢里了", "...and more, all in the nest now");
+            }
+            return text;
         }
 
         /// <summary>炫彩崽：卡片左右两侧各一条色条（第一色在左、第二色在右）。</summary>
@@ -433,7 +571,7 @@ namespace BossRush
         private void CompleteReveal()
         {
             ShowResult();
-            SetDetail(BuildDetailText());
+            SetDetail(_batch != null ? BuildBatchSummary() : BuildDetailText());
             _finished = true;
             if (_dismissLabel != null)
             {

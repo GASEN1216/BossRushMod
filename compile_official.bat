@@ -1184,6 +1184,10 @@ echo(PetNest\PetNestUIPages.cs
 echo(PetNest\PetNestUINestPage.cs
 echo(PetNest\PetNestUI.cs
 echo(PetNest\PetNestUILayout.cs
+echo(PetNest\PetNestUIMotion.cs
+echo(PetNest\PetNestUIMotionParts.cs
+echo(PetNest\PetNestUIMuseumPage.cs
+echo(PetNest\PetNestUIMuseumDetail.cs
 echo(PetNest\PetNestUIWidgets.cs
 echo(PetNest\PetNestHatchRevealView.cs
 echo(PetNest\PetNestExpeditionRevealView.cs

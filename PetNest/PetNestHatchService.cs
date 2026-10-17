@@ -148,6 +148,37 @@ namespace BossRush
         /// <summary>
         /// 四层 roll：出身天赋 ×2（不重复）/ 性格 ×1 / 异色 / 炫彩。孵化即锁定，不可洗。
         /// </summary>
+        /// <summary>
+        /// 全部孵化（审查 C-2，抽卡游戏的「十连」口径）：逐枚走 <see cref="TryHatchEgg"/>，每枚一次独立事务，
+        /// 巢满或任何一枚失败就停下，已经孵出的照常保留。返回实际孵出的结果，交演出层一次揭晓。
+        /// 识别不了血脉的蛋跳过、原样保留，不拦后面的蛋。
+        /// </summary>
+        internal static List<PetNestHatchResult> TryHatchAll(IList<Item> eggs, out string failureReasonId)
+        {
+            failureReasonId = null;
+            List<PetNestHatchResult> results = new List<PetNestHatchResult>();
+            if (eggs == null) return results;
+            for (int i = 0; i < eggs.Count; i++)
+            {
+                if (PetNestService.IsFull)
+                {
+                    failureReasonId = "nest_full";
+                    break;
+                }
+                PetNestHatchResult result;
+                string reason;
+                if (TryHatchEgg(eggs[i], out result, out reason))
+                {
+                    if (result != null) results.Add(result);
+                    continue;
+                }
+                if (reason == "lineage_unknown") continue;
+                failureReasonId = reason;
+                break;
+            }
+            return results;
+        }
+
         internal static PetNestPetRecord RollNewPet(string lineageKey)
         {
             try

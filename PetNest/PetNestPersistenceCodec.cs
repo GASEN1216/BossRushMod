@@ -179,7 +179,8 @@ namespace BossRush
               .Int("mergedOldScarCount", pet.mergedOldScarCount)
               .Str("backpackJson", pet.backpackJson)
               .Int("behaviour", pet.behaviour)
-              .Long("lastFeedUtcTicks", pet.lastFeedUtcTicks);
+              .Long("lastFeedUtcTicks", pet.lastFeedUtcTicks)
+              .Bool("favorite", pet.favorite);
 
             sb.BeginArray("talents");
             if (pet.talents != null)
@@ -297,6 +298,8 @@ namespace BossRush
             // SCHEMA+：旧档没有这两个字段，缺省为「跟随」与「从没喂过」
             pet.behaviour = node.GetInt("behaviour", 0);
             pet.lastFeedUtcTicks = node.GetLong("lastFeedUtcTicks", 0L);
+            // SCHEMA+（2026-10-17）：旧档没有收藏字段，缺省为未收藏
+            pet.favorite = node.GetBool("favorite", false);
 
             pet.talents = new List<PetNestTalentEntry>();
             List<BossRushJsonValue> talentNodes = node.GetArray("talents");

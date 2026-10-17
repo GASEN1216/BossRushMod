@@ -315,6 +315,11 @@ namespace BossRush
                     failureReasonId = "backpack_not_empty";
                     return false;
                 }
+                if (pet.favorite)
+                {
+                    failureReasonId = "pet_favorite";
+                    return false;
+                }
             }
 
             try
@@ -742,6 +747,40 @@ namespace BossRush
             {
                 PetNestPersistenceAccess.AbortTransaction();
                 failureReasonId = "spend_souls_failed:" + e.GetType().Name;
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 收藏 / 取消收藏（2026-10-17）。收藏的崽不能放生、不走亡命档；远征途中也能改，不影响在途结算。
+        /// </summary>
+        internal static bool TrySetFavorite(string petId, bool favorite, out string failureReasonId)
+        {
+            failureReasonId = null;
+            PetNestPetRecord pet = TryGetPet(petId);
+            if (pet == null)
+            {
+                failureReasonId = "pet_not_found";
+                return false;
+            }
+            if (pet.favorite == favorite) return true;
+            try
+            {
+                if (!BeginCandidate(out failureReasonId)) return false;
+                pet = TryGetPet(petId);
+                if (pet == null)
+                {
+                    PetNestPersistenceAccess.AbortTransaction();
+                    failureReasonId = "pet_not_found";
+                    return false;
+                }
+                pet.favorite = favorite;
+                return CommitCandidate(out failureReasonId);
+            }
+            catch (Exception e)
+            {
+                PetNestPersistenceAccess.AbortTransaction();
+                failureReasonId = "favorite_failed:" + e.GetType().Name;
                 return false;
             }
         }
