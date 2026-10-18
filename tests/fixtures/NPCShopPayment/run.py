@@ -38,6 +38,7 @@ def main():
     code += "private static readonly HashSet<Item> ownedDisplayItems = new HashSet<Item>();\n"
     code += "private static readonly Dictionary<int,float> temporaryPurificationFactors = new Dictionary<int,float>();\n"
     code += "private static readonly Dictionary<int,int> temporaryPurificationPrices = new Dictionary<int,int>();\n"
+    code += "private static Dictionary<int, NPCShopStockSlot> currentStockSlots;\n"
     code += 'private const string TemporaryPurificationPriceUnavailable = "TemporaryPurificationPriceUnavailable";\n'
     for signature in (
         "private static bool IsPurificationShop()",
@@ -54,6 +55,7 @@ def main():
         "private static void UnregisterEvents()",
         "private static void OnManagedUIElementClose(ManagedUIElement element)",
         "private static void Cleanup()",
+        "private static void PersistShopStock()",
     ):
         code += extract(source, signature) + "\n"
     code += "internal static int RefreshCount;\n"
@@ -63,11 +65,13 @@ def main():
     code += "internal static bool ActiveForTest { get { return isServiceActive; } } internal static ShopController ControllerForTest { get { return currentController; } } internal static void CleanupForTest() { Cleanup(); }\n"
     code += "internal static void OwnDisplayForTest(Item item) { ownedDisplayItems.Add(item); }\n"
     code += "internal static void Purchase(StockShop shop, Item item) { OnItemPurchased(shop,item); }\n"
+    code += "internal static void TrackStockForTest(int typeId, int remaining) { currentStockSlots = new Dictionary<int, NPCShopStockSlot>(); currentStockSlots[typeId] = new NPCShopStockSlot { TypeId = typeId, Remaining = remaining, RefillDay = 5, Shown = true }; }\n"
+    code += "internal static bool TrackingForTest { get { return currentStockSlots != null; } }\n"
     code += "internal static void Sell(StockShop shop, Item item, int price) { OnItemSoldByPlayer(shop,item,price); }\n"
     code += "}}\n"
     extracted = invocation / "Extracted.cs"
     extracted.write_text(code, encoding="utf-8")
-    paths = [extracted, HERE / "Stubs.cs", HERE / "Program.cs"]
+    paths = [extracted, HERE / "Stubs.cs", HERE / "Program.cs", ROOT / "Integration/Affinity/NPCShopStockLedger.cs"]
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup><ItemGroup>'
     project += "".join('<Compile Include="' + xml.escape(str(p), {'"': '&quot;'}) + '" />' for p in paths)
     project += "</ItemGroup></Project>"

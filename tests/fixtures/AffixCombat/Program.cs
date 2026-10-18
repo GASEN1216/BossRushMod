@@ -276,6 +276,15 @@ internal static class Program
         target.Health.Hurt(Hit(player));
         Check(AffixTriggerFeedback.Lifesteals == lifesteals + 2 && AffixTriggerFeedback.LastHealed == 0f,
             "full-health lifesteal reports zero so no popup is shown");
+        // 玩家反馈 2026-10-16：打死敌人的那一下也要回血；灌能仍不在尸体上补伤。
+        player.Health.CurrentHealth = 50f; Time.time += 1f;
+        CharacterMainControl doomed = Enemy(1f);
+        doomed.Health.Hurt(Hit(player));
+        Check(doomed.Health.IsDead && AffixTriggerFeedback.Lifesteals == lifesteals + 3
+            && player.Health.CurrentHealth > 50f,
+            "lifesteal also heals on the killing blow");
+        Check(AffixTriggerFeedback.Overcharges == overcharges + 2 && doomed.Health.Hits.Count == 1,
+            "overcharge still skips the killing blow");
         AffixRuntimeService.ShutdownRuntime();
     }
 

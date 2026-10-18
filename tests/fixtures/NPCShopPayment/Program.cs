@@ -69,6 +69,7 @@ internal static class Program
         Check(Cost.Cash == 15 && ItemUtilities.Returned == sold,
             "purification shop rejects selling and returns the sold item");
         ShopLifecycle();
+        StockPersistence();
         Console.WriteLine("NPCShopPayment: PASS (" + assertions + " assertions)");
     }
 
@@ -152,5 +153,30 @@ internal static class Program
         NPCShopSystem.ResetStaticCaches();
         Check(shop == null && !NPCShopSystem.ActiveForTest && ManagedUIElement.CloseListeners == 0,
             "static reset also cleans up after the official UI scene has unloaded");
+    }
+
+    // P1-1（2026-10-17）：现金商店买完与关店都把剩余库存写回存档；净化点商店不记。
+    private static void StockPersistence()
+    {
+        StockShop.Entry entry;
+        StockShop shop = Shop(out entry);
+        AffinityManager.Writes = 0;
+        NPCShopSystem.BeginTest(shop, NPCShopPaymentStrategy.Cash, 7);
+        NPCShopSystem.TrackStockForTest(500001, 3);
+        entry.CurrentStock = 2;
+        NPCShopSystem.Purchase(shop, new Item());
+        Check(AffinityManager.Writes == 1 && AffinityManager.LastNpc == "sky_fuzhou"
+            && AffinityManager.LastTokens == "500001:2:5:1", "cash purchase persists the remaining stock");
+        entry.CurrentStock = 1;
+        NPCShopSystem.CloseShop();
+        Check(AffinityManager.Writes == 2 && AffinityManager.LastTokens == "500001:1:5:1" && !NPCShopSystem.TrackingForTest,
+            "closing the shop persists the final stock and drops the tracker");
+
+        shop = Shop(out entry);
+        AffinityManager.Writes = 0;
+        NPCShopSystem.BeginTest(shop, NPCShopPaymentStrategy.Purification(price => true, price => true), 7);
+        NPCShopSystem.Purchase(shop, new Item());
+        NPCShopSystem.CloseShop();
+        Check(AffinityManager.Writes == 0, "purification shops (zombie runs) never write base stock");
     }
 }

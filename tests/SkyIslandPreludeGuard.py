@@ -78,7 +78,7 @@ def check(sources):
         ("officialQuest.Register(BuildDefinition())", "序章没有向多任务注册表登记"),
         ("officialQuest.Unregister(SkyIslandOfficialQuestTable.PreludeQuestId)", "序章销毁时没有从注册表撤掉自己"),
         ("SkyIslandOfficialQuestStory.SetBaseSource(story)", "基地故事没有发布给任务桥当事实源"),
-        ('reason = L10n.T("带着航向仪回基地找 Jeff。"', "序章交付必须回基地（岛上三条才是原地交付）"),
+        ('reason = L10n.T("带着航向仪回基地找杰夫。"', "序章交付必须回基地（岛上三条才是原地交付）"),
         # 交付物：头目的尸体箱里出，交付时收走，丢了还能在残骸处再拆一具（否则会把玩家卡在半路）
         ("SkyIslandNavInstrumentConfig.TryDropInto(boss)", "前置头目没有在建尸体箱前放进交付物"),
         ("boss.BeforeCharacterSpawnLootOnDead -= OnBeforeLoot", "交付物掉落事件没有成对退订"),
@@ -253,6 +253,19 @@ def check(sources):
     for name in ("SkyIslandPreludeFlow.cs", "SkyIslandOfficialQuestBridge.cs", "SkyIslandOfficialQuestTable.cs",
                  "SkyIslandOfficialQuestGivers.cs", "SkyIslandSessionQuestBridge.cs"):
         require(name in sources[COMPILE], COMPILE + " 未登记 " + name)
+
+    # ---- 序章指引文案（2026-10-17 剧情指引全面核查）：执行回归够不着 PreludeFlow 的实例闭包，这里钉结构 ----
+    import re as _re
+    zh_halves = _re.findall(r'L10n\.T\("([^"]*)"', prelude + rules)
+    require(not any("Jeff" in zh for zh in zh_halves),
+            "中文文案里写了 Jeff：官方中文名牌是「杰夫」（Character_Jeff / QuestGiver_Jeff），照字找不到人")
+    require("从残骸" not in prelude and "它的残骸" not in prelude,
+            "序章还叫人去「残骸」拆：圈中间摆的是摔坏的航向仪，守卫的尸体箱另在它倒下的地方")
+    require("回零号区把看守再打倒一次" in prelude,
+            "航向仪丢了的目标行没说要再打倒守卫：换场景后守卫会回来，它倒下之前摔坏的那台拆不了")
+    recover = prelude.split("internal void RecoverInstrument()", 1)[-1].split("internal bool TryPrepareDeparture", 1)[0]
+    require("CountOwned() == 0" in recover and "自提柜" in recover,
+            "背包满时拆出的航向仪进了自提柜，没告诉玩家回基地去取（任务会停在第一步）")
     return errors
 
 
@@ -260,6 +273,10 @@ def main():
     sources = {path: (ROOT / path).read_text(encoding="utf-8-sig") for path in PATHS}
     errors = check(sources)
     probes = (
+        (PRELUDE, "从摔坏的航向仪上拆一具", "从残骸里拆一具航向仪"),
+        (PRELUDE, "回零号区把看守再打倒一次，航向仪在它的箱子里", "回零号区，从残骸里再拆一具"),
+        (PRELUDE, "航向仪在你身上了，回基地找杰夫。", "航向仪在你身上了，回基地找 Jeff。"),
+        (PRELUDE, "if (SkyIslandNavInstrumentConfig.CountOwned() == 0)", "if (false)"),
         (PRELUDE, 'SkyIslandCombatPreset.Apply(clone, source, "K3_Relay", 0, SkyIslandEnemyTier.Chief, owner.GetBossHealthMultiplier());', ""),
         (PRELUDE, "story.IsCurrentSlot && storyReady", "story.IsCurrentSlot"),
         (PRELUDE, "storyReady = false;", "storyReady = true;"),

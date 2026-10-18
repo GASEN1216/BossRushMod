@@ -183,13 +183,13 @@ def build_interactables():
     # 2) 航路图（含它自己的光色子选项，同组）。
     for marker in GUIDE_MARKERS:
         anchor = MARKERS[marker]
-        bearing = stable_hash(marker) % 360
-        spot = resolve_crate(anchor, bearing, SEPARATION)
+        bearing, distance = placement_for(marker, SEPARATION)
+        spot = resolve_crate(anchor, bearing, distance)
         if spot is None:
             # 生产在这里退回纯方位角偏移而不是放弃：码头与集市都是平坦安全区。
             radians = math.radians(bearing)
-            spot = (anchor[0] + math.cos(radians) * SEPARATION, anchor[1],
-                    anchor[2] + math.sin(radians) * SEPARATION)
+            spot = (anchor[0] + math.cos(radians) * distance, anchor[1],
+                    anchor[2] + math.sin(radians) * distance)
             notes.append('航路图 %s 没有净空落点，按纯方位角偏移放置（与生产一致）' % marker)
         items.append(('guide:' + marker, spot, GUIDE_HALF, 'guide:' + marker))
 
@@ -315,6 +315,42 @@ def check_own_anchor_clearance(items):
     return errors
 
 
+def read_point_signs():
+    """见闻点小木牌（`SkyIslandGates.AddPointSign`）：[(见闻点, 牌心, [两根木桩])]。木桩在牌根局部 X ±0.9、牌根绕 Y 转 PointSignYaw。"""
+    source = _read('SkyIsland/SkyIslandGates.cs')
+    yaw = math.radians(_const(source, r'PointSignYaw\s*=\s*([-0-9.]+)f', 'PointSignYaw'))
+    signs = []
+    for key, x, y, z in re.findall(
+            r'AddPointSign\(root, wood, wallLayer, "(\w+)", new Vector3\(([-0-9.]+)f?, ([-0-9.]+)f?, ([-0-9.]+)f?\)\)', source):
+        center = (float(x), float(y), float(z))
+        posts = [(center[0] + side * 0.9 * math.cos(yaw), center[1], center[2] - side * 0.9 * math.sin(yaw)) for side in (-1, 1)]
+        signs.append((key, center, posts))
+    # 单桩窄牌（`AddPointPost`）：桩就在牌心。
+    for key, x, y, z in re.findall(
+            r'AddPointPost\(root, wood, wallLayer, "(\w+)", new Vector3\(([-0-9.]+)f?, ([-0-9.]+)f?, ([-0-9.]+)f?\)\)', source):
+        center = (float(x), float(y), float(z))
+        signs.append((key, center, [center]))
+    return signs
+
+
+def check_point_signs(items, signs):
+    """木牌没有交互体，但不能立进任何触发体（站上去像是在点木牌），也不能离别的交互体比离自己那处装置还近。"""
+    errors = []
+    for key, center, posts in signs:
+        own = 'search:' + key
+        if not any(name == own for name, _pos, _half, _group in items):
+            errors.append('木牌 %s 没有对应的见闻点' % key)
+            continue
+        for point in [center] + posts:
+            for name, pos, half, _group in items:
+                if abs(point[0] - pos[0]) < half + 0.1 and abs(point[2] - pos[2]) < half + 0.1:
+                    errors.append('木牌 %s 立进了 %s 的触发体' % (key, name))
+        nearest = min(items, key=lambda item: horizontal(center, item[1]))[0]
+        if nearest != own:
+            errors.append('木牌 %s 离 %s 比离自己的装置还近' % (key, nearest))
+    return errors
+
+
 def check_negative_probes():
     """破坏探针：复算器必须真的会拒绝坏落点，否则上面的全绿没有意义。"""
     # 推出整张地图：六个方位全部悬空。
@@ -339,7 +375,18 @@ def main():
     placed_gather = sum(1 for name, _pos, _half, _group in items if name.startswith('gather:'))
     assert placed_gather == len(GATHER_NODES), '有采集点在真实几何上落不了位：%d / %d' % (placed_gather, len(GATHER_NODES))
 
-    anchor_errors = check_own_anchor_clearance(items) + check_gather_extraction_clearance(items)
+    signs = read_point_signs()
+    # 每处见闻点恰好一块木牌（2026-10-17 交互点可见性盘点：20 处 Search_* 全补）。
+    sign_keys = [key for key, _center, _posts in signs]
+    search_keys = sorted(m for m in MARKERS if m.startswith('Search'))
+    assert sorted(sign_keys) == search_keys, '见闻点木牌与见闻点对不上：多 %r / 缺 %r' % (
+        sorted(set(sign_keys) - set(search_keys)), sorted(set(search_keys) - set(sign_keys)))
+    # 破坏探针：木牌挪到装置正中、挪到别的见闻点旁，都必须报红。
+    probe = [(key, MARKERS[key], [MARKERS[key]]) for key, _c, _p in signs[:1]]
+    assert check_point_signs(items, probe), '立进触发体的木牌必须被判红'
+    other = MARKERS['Search_A']
+    assert check_point_signs(items, [('Search_B', (other[0] + 2.0, other[1], other[2]), [])]), '离别处装置更近的木牌必须被判红'
+    anchor_errors = check_own_anchor_clearance(items) + check_gather_extraction_clearance(items) + check_point_signs(items, signs)
     overlaps, tight, closest = check_pairs(items)
 
     for note in notes:
@@ -355,8 +402,8 @@ def main():
         raise SystemExit(1)
 
     print('PASS SkyIslandInteractionCompetitionPropertyTest '
-          '(%d 个静态交互体两两复算, 最紧一对: %s, %d 对余量 < 0.5 m, 4 条破坏探针被拒)'
-          % (len(items), closest[1], len(tight)))
+          '(%d 个静态交互体两两复算, 最紧一对: %s, %d 对余量 < 0.5 m, %d 块见闻点木牌不进触发体, 6 条破坏探针被拒)'
+          % (len(items), closest[1], len(tight), len(signs)))
 
 
 if __name__ == '__main__':

@@ -43,9 +43,9 @@ namespace BossRush
         
         /// <summary>
         /// 每日不互动时的好感度衰减值
-        /// 如果玩家当天没有与NPC聊天或送礼，第二天会扣除此值
+        /// 如果玩家当天没有与NPC聊天或送礼，第二天会扣除此值；不跌破已看过的最高剧情里程碑，配偶保住跟随门槛（2026-10-17 由 15 调为 10）
         /// </summary>
-        public const int DAILY_DECAY_AMOUNT = 15;
+        public const int DAILY_DECAY_AMOUNT = 10;
         
         /// <summary>
         /// 是否启用每日衰减

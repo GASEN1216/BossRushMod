@@ -215,14 +215,34 @@
    "mesh": null
   },
   {
+   "kind": "interact_prop",
+   "id": "guide:Search_A_02",
+   "x": 31.444,
+   "y": 0.05,
+   "z": -186.849,
+   "footprint": 0.55,
+   "clearRadius": 0.55,
+   "mesh": "chart_stand"
+  },
+  {
    "kind": "travel_guide",
    "id": "Search_B_02",
-   "x": 35.176,
+   "x": 34.522,
    "y": 5.05,
-   "z": -64.61,
+   "z": -66.97,
    "footprint": 0.0,
    "clearRadius": 0.65,
    "mesh": null
+  },
+  {
+   "kind": "interact_prop",
+   "id": "guide:Search_B_02",
+   "x": 34.522,
+   "y": 5.05,
+   "z": -66.97,
+   "footprint": 0.55,
+   "clearRadius": 0.55,
+   "mesh": "chart_stand"
   },
   {
    "kind": "memorial_stake",
@@ -801,6 +821,16 @@
    "mesh": null
   },
   {
+   "kind": "interact_prop",
+   "id": "pigeon:Letter_01",
+   "x": -2.799,
+   "y": 0.05,
+   "z": -221.551,
+   "footprint": 0.4,
+   "clearRadius": 0.4,
+   "mesh": "pigeon"
+  },
+  {
    "kind": "pigeon",
    "id": "Letter_02",
    "x": -0.39,
@@ -811,24 +841,54 @@
    "mesh": null
   },
   {
+   "kind": "interact_prop",
+   "id": "pigeon:Letter_02",
+   "x": -0.39,
+   "y": 5.05,
+   "z": -91.824,
+   "footprint": 0.4,
+   "clearRadius": 0.4,
+   "mesh": "pigeon"
+  },
+  {
    "kind": "pigeon",
    "id": "Letter_03",
-   "x": -167.743,
+   "x": -167.653,
    "y": 10.05,
-   "z": -81.648,
+   "z": -78.211,
    "footprint": 0.0,
    "clearRadius": 0.6,
    "mesh": null
   },
   {
+   "kind": "interact_prop",
+   "id": "pigeon:Letter_03",
+   "x": -167.653,
+   "y": 10.05,
+   "z": -78.211,
+   "footprint": 0.4,
+   "clearRadius": 0.4,
+   "mesh": "pigeon"
+  },
+  {
    "kind": "pigeon",
    "id": "Letter_04",
-   "x": -287.124,
+   "x": -286.859,
    "y": 7.05,
-   "z": -116.597,
+   "z": -117.389,
    "footprint": 0.0,
    "clearRadius": 0.6,
    "mesh": null
+  },
+  {
+   "kind": "interact_prop",
+   "id": "pigeon:Letter_04",
+   "x": -286.859,
+   "y": 7.05,
+   "z": -117.389,
+   "footprint": 0.4,
+   "clearRadius": 0.4,
+   "mesh": "pigeon"
   },
   {
    "kind": "pigeon",
@@ -841,24 +901,54 @@
    "mesh": null
   },
   {
+   "kind": "interact_prop",
+   "id": "pigeon:Letter_05",
+   "x": -285.4,
+   "y": 13.05,
+   "z": 80.648,
+   "footprint": 0.4,
+   "clearRadius": 0.4,
+   "mesh": "pigeon"
+  },
+  {
    "kind": "pigeon",
    "id": "Letter_06",
-   "x": 177.825,
+   "x": 177.378,
    "y": 15.05,
-   "z": -81.498,
+   "z": -85.141,
    "footprint": 0.0,
    "clearRadius": 0.6,
    "mesh": null
   },
   {
+   "kind": "interact_prop",
+   "id": "pigeon:Letter_06",
+   "x": 177.378,
+   "y": 15.05,
+   "z": -85.141,
+   "footprint": 0.4,
+   "clearRadius": 0.4,
+   "mesh": "pigeon"
+  },
+  {
    "kind": "pigeon",
    "id": "Letter_07",
-   "x": 281.649,
+   "x": 282.757,
    "y": 10.05,
-   "z": -66.453,
+   "z": -67.684,
    "footprint": 0.0,
    "clearRadius": 0.6,
    "mesh": null
+  },
+  {
+   "kind": "interact_prop",
+   "id": "pigeon:Letter_07",
+   "x": 282.757,
+   "y": 10.05,
+   "z": -67.684,
+   "footprint": 0.4,
+   "clearRadius": 0.4,
+   "mesh": "pigeon"
   },
   {
    "kind": "pigeon",
@@ -871,24 +961,54 @@
    "mesh": null
   },
   {
+   "kind": "interact_prop",
+   "id": "pigeon:Letter_08",
+   "x": 297.967,
+   "y": 26.05,
+   "z": 58.199,
+   "footprint": 0.4,
+   "clearRadius": 0.4,
+   "mesh": "pigeon"
+  },
+  {
    "kind": "pigeon",
    "id": "Letter_09",
-   "x": 12.013,
+   "x": 18.272,
    "y": 18.05,
-   "z": 78.853,
+   "z": 84.041,
    "footprint": 0.0,
    "clearRadius": 0.6,
    "mesh": null
   },
   {
+   "kind": "interact_prop",
+   "id": "pigeon:Letter_09",
+   "x": 18.272,
+   "y": 18.05,
+   "z": 84.041,
+   "footprint": 0.4,
+   "clearRadius": 0.4,
+   "mesh": "pigeon"
+  },
+  {
    "kind": "pigeon",
    "id": "Letter_10",
-   "x": 161.352,
+   "x": 159.839,
    "y": 21.05,
-   "z": 89.257,
+   "z": 91.499,
    "footprint": 0.0,
    "clearRadius": 0.6,
    "mesh": null
+  },
+  {
+   "kind": "interact_prop",
+   "id": "pigeon:Letter_10",
+   "x": 159.839,
+   "y": 21.05,
+   "z": 91.499,
+   "footprint": 0.4,
+   "clearRadius": 0.4,
+   "mesh": "pigeon"
   },
   {
    "kind": "pigeon",
@@ -901,6 +1021,16 @@
    "mesh": null
   },
   {
+   "kind": "interact_prop",
+   "id": "pigeon:Letter_11",
+   "x": -18.4,
+   "y": 26.05,
+   "z": 235.771,
+   "footprint": 0.4,
+   "clearRadius": 0.4,
+   "mesh": "pigeon"
+  },
+  {
    "kind": "pigeon",
    "id": "Letter_12",
    "x": -26.743,
@@ -909,6 +1039,16 @@
    "footprint": 0.0,
    "clearRadius": 0.6,
    "mesh": null
+  },
+  {
+   "kind": "interact_prop",
+   "id": "pigeon:Letter_12",
+   "x": -26.743,
+   "y": 0.05,
+   "z": -214.684,
+   "footprint": 0.4,
+   "clearRadius": 0.4,
+   "mesh": "pigeon"
   },
   {
    "kind": "gather_node",
@@ -921,6 +1061,16 @@
    "mesh": "ground_glow"
   },
   {
+   "kind": "interact_prop",
+   "id": "gather:A1",
+   "x": -25.0,
+   "y": 0.05,
+   "z": -204.0,
+   "footprint": 0.7,
+   "clearRadius": 0.7,
+   "mesh": "gather_driftwood"
+  },
+  {
    "kind": "gather_node",
    "id": "A2",
    "x": 22.0,
@@ -931,34 +1081,74 @@
    "mesh": "ground_glow"
   },
   {
+   "kind": "interact_prop",
+   "id": "gather:A2",
+   "x": 22.0,
+   "y": 0.05,
+   "z": -250.928,
+   "footprint": 0.7,
+   "clearRadius": 0.7,
+   "mesh": "gather_driftwood"
+  },
+  {
    "kind": "gather_node",
    "id": "B1",
-   "x": -17.0,
+   "x": -18.072,
    "y": 5.05,
-   "z": -87.0,
+   "z": -83.0,
    "footprint": 0.0,
    "clearRadius": 0.8,
    "mesh": "ground_glow"
+  },
+  {
+   "kind": "interact_prop",
+   "id": "gather:B1",
+   "x": -18.072,
+   "y": 5.05,
+   "z": -83.0,
+   "footprint": 0.45,
+   "clearRadius": 0.45,
+   "mesh": "gather_grass"
   },
   {
    "kind": "gather_node",
    "id": "B2",
-   "x": 4.0,
+   "x": -1.929,
    "y": 5.05,
-   "z": -126.0,
+   "z": -118.273,
    "footprint": 0.0,
    "clearRadius": 0.8,
    "mesh": "ground_glow"
   },
   {
+   "kind": "interact_prop",
+   "id": "gather:B2",
+   "x": -1.929,
+   "y": 5.05,
+   "z": -118.273,
+   "footprint": 0.7,
+   "clearRadius": 0.7,
+   "mesh": "gather_driftwood"
+  },
+  {
    "kind": "gather_node",
    "id": "C1",
-   "x": -169.0,
+   "x": -170.072,
    "y": 10.05,
-   "z": -63.0,
+   "z": -67.0,
    "footprint": 0.0,
    "clearRadius": 0.8,
    "mesh": "ground_glow"
+  },
+  {
+   "kind": "interact_prop",
+   "id": "gather:C1",
+   "x": -170.072,
+   "y": 10.05,
+   "z": -67.0,
+   "footprint": 0.45,
+   "clearRadius": 0.45,
+   "mesh": "gather_grass"
   },
   {
    "kind": "gather_node",
@@ -971,6 +1161,16 @@
    "mesh": "ground_glow"
   },
   {
+   "kind": "interact_prop",
+   "id": "gather:C2",
+   "x": -132.0,
+   "y": 10.05,
+   "z": -72.0,
+   "footprint": 0.45,
+   "clearRadius": 0.45,
+   "mesh": "gather_grass"
+  },
+  {
    "kind": "gather_node",
    "id": "C3",
    "x": -185.273,
@@ -979,6 +1179,16 @@
    "footprint": 0.0,
    "clearRadius": 0.8,
    "mesh": "ground_glow"
+  },
+  {
+   "kind": "interact_prop",
+   "id": "gather:C3",
+   "x": -185.273,
+   "y": 10.05,
+   "z": -101.929,
+   "footprint": 0.45,
+   "clearRadius": 0.45,
+   "mesh": "gather_moss"
   },
   {
    "kind": "gather_node",
@@ -991,6 +1201,16 @@
    "mesh": "ground_glow"
   },
   {
+   "kind": "interact_prop",
+   "id": "gather:D1",
+   "x": -132.929,
+   "y": 16.05,
+   "z": 90.727,
+   "footprint": 0.45,
+   "clearRadius": 0.45,
+   "mesh": "gather_moss"
+  },
+  {
    "kind": "gather_node",
    "id": "D2",
    "x": -140.0,
@@ -999,6 +1219,16 @@
    "footprint": 0.0,
    "clearRadius": 0.8,
    "mesh": "ground_glow"
+  },
+  {
+   "kind": "interact_prop",
+   "id": "gather:D2",
+   "x": -140.0,
+   "y": 16.05,
+   "z": 92.0,
+   "footprint": 0.45,
+   "clearRadius": 0.45,
+   "mesh": "gather_moss"
   },
   {
    "kind": "gather_node",
@@ -1011,6 +1241,16 @@
    "mesh": "ground_glow"
   },
   {
+   "kind": "interact_prop",
+   "id": "gather:D3",
+   "x": -126.0,
+   "y": 16.05,
+   "z": 51.0,
+   "footprint": 0.7,
+   "clearRadius": 0.7,
+   "mesh": "gather_driftwood"
+  },
+  {
    "kind": "gather_node",
    "id": "E1",
    "x": -2.0,
@@ -1019,6 +1259,16 @@
    "footprint": 0.0,
    "clearRadius": 0.8,
    "mesh": "ground_glow"
+  },
+  {
+   "kind": "interact_prop",
+   "id": "gather:E1",
+   "x": -2.0,
+   "y": 18.05,
+   "z": 88.0,
+   "footprint": 0.35,
+   "clearRadius": 0.35,
+   "mesh": "gather_crystal"
   },
   {
    "kind": "gather_node",
@@ -1031,6 +1281,16 @@
    "mesh": "ground_glow"
   },
   {
+   "kind": "interact_prop",
+   "id": "gather:E2",
+   "x": 49.0,
+   "y": 18.05,
+   "z": 56.0,
+   "footprint": 0.7,
+   "clearRadius": 0.7,
+   "mesh": "gather_driftwood"
+  },
+  {
    "kind": "gather_node",
    "id": "F1",
    "x": 158.072,
@@ -1041,14 +1301,34 @@
    "mesh": "ground_glow"
   },
   {
+   "kind": "interact_prop",
+   "id": "gather:F1",
+   "x": 158.072,
+   "y": 15.05,
+   "z": -79.0,
+   "footprint": 0.45,
+   "clearRadius": 0.45,
+   "mesh": "gather_moss"
+  },
+  {
    "kind": "gather_node",
    "id": "F2",
-   "x": 209.0,
+   "x": 199.611,
    "y": 15.05,
-   "z": -89.0,
+   "z": -96.878,
    "footprint": 0.0,
    "clearRadius": 0.8,
    "mesh": "ground_glow"
+  },
+  {
+   "kind": "interact_prop",
+   "id": "gather:F2",
+   "x": 199.611,
+   "y": 15.05,
+   "z": -96.878,
+   "footprint": 0.45,
+   "clearRadius": 0.45,
+   "mesh": "gather_grass"
   },
   {
    "kind": "gather_node",
@@ -1061,6 +1341,16 @@
    "mesh": "ground_glow"
   },
   {
+   "kind": "interact_prop",
+   "id": "gather:S1a",
+   "x": -294.0,
+   "y": 7.05,
+   "z": -83.0,
+   "footprint": 0.45,
+   "clearRadius": 0.45,
+   "mesh": "gather_grass"
+  },
+  {
    "kind": "gather_node",
    "id": "S1b",
    "x": -296.928,
@@ -1069,6 +1359,16 @@
    "footprint": 0.0,
    "clearRadius": 0.8,
    "mesh": "ground_glow"
+  },
+  {
+   "kind": "interact_prop",
+   "id": "gather:S1b",
+   "x": -296.928,
+   "y": 7.05,
+   "z": -114.0,
+   "footprint": 0.45,
+   "clearRadius": 0.45,
+   "mesh": "gather_moss"
   },
   {
    "kind": "gather_node",
@@ -1081,6 +1381,16 @@
    "mesh": "ground_glow"
   },
   {
+   "kind": "interact_prop",
+   "id": "gather:S2a",
+   "x": -286.5,
+   "y": 13.05,
+   "z": 117.0,
+   "footprint": 0.7,
+   "clearRadius": 0.7,
+   "mesh": "gather_driftwood"
+  },
+  {
    "kind": "gather_node",
    "id": "S2b",
    "x": -274.5,
@@ -1089,6 +1399,16 @@
    "footprint": 0.0,
    "clearRadius": 0.8,
    "mesh": "ground_glow"
+  },
+  {
+   "kind": "interact_prop",
+   "id": "gather:S2b",
+   "x": -274.5,
+   "y": 13.05,
+   "z": 82.0,
+   "footprint": 0.45,
+   "clearRadius": 0.45,
+   "mesh": "gather_moss"
   },
   {
    "kind": "gather_node",
@@ -1101,6 +1421,16 @@
    "mesh": "ground_glow"
   },
   {
+   "kind": "interact_prop",
+   "id": "gather:S3a",
+   "x": 298.5,
+   "y": 10.05,
+   "z": -48.0,
+   "footprint": 0.6,
+   "clearRadius": 0.6,
+   "mesh": "gather_ore"
+  },
+  {
    "kind": "gather_node",
    "id": "S3b",
    "x": 292.5,
@@ -1109,6 +1439,16 @@
    "footprint": 0.0,
    "clearRadius": 0.8,
    "mesh": "ground_glow"
+  },
+  {
+   "kind": "interact_prop",
+   "id": "gather:S3b",
+   "x": 292.5,
+   "y": 10.05,
+   "z": -65.0,
+   "footprint": 0.35,
+   "clearRadius": 0.35,
+   "mesh": "gather_crystal"
   },
   {
    "kind": "gather_node",
@@ -1121,6 +1461,16 @@
    "mesh": "ground_glow"
   },
   {
+   "kind": "interact_prop",
+   "id": "gather:K1",
+   "x": -60.429,
+   "y": 12.005,
+   "z": 27.727,
+   "footprint": 0.7,
+   "clearRadius": 0.7,
+   "mesh": "gather_driftwood"
+  },
+  {
    "kind": "gather_node",
    "id": "K3",
    "x": -0.343,
@@ -1129,6 +1479,16 @@
    "footprint": 0.0,
    "clearRadius": 0.8,
    "mesh": "ground_glow"
+  },
+  {
+   "kind": "interact_prop",
+   "id": "gather:K3",
+   "x": -0.343,
+   "y": 11.55,
+   "z": -1.843,
+   "footprint": 0.35,
+   "clearRadius": 0.35,
+   "mesh": "gather_crystal"
   },
   {
    "kind": "gather_node",
@@ -1141,6 +1501,16 @@
    "mesh": "ground_glow"
   },
   {
+   "kind": "interact_prop",
+   "id": "gather:G1",
+   "x": 152.071,
+   "y": 21.05,
+   "z": 90.727,
+   "footprint": 0.6,
+   "clearRadius": 0.6,
+   "mesh": "gather_ore"
+  },
+  {
    "kind": "gather_node",
    "id": "G2",
    "x": 155.0,
@@ -1149,6 +1519,16 @@
    "footprint": 0.0,
    "clearRadius": 0.8,
    "mesh": "ground_glow"
+  },
+  {
+   "kind": "interact_prop",
+   "id": "gather:G2",
+   "x": 155.0,
+   "y": 21.05,
+   "z": 51.0,
+   "footprint": 0.6,
+   "clearRadius": 0.6,
+   "mesh": "gather_ore"
   },
   {
    "kind": "gather_node",
@@ -1161,6 +1541,16 @@
    "mesh": "ground_glow"
   },
   {
+   "kind": "interact_prop",
+   "id": "gather:G3",
+   "x": 167.0,
+   "y": 21.05,
+   "z": 98.928,
+   "footprint": 0.35,
+   "clearRadius": 0.35,
+   "mesh": "gather_crystal"
+  },
+  {
    "kind": "gather_node",
    "id": "K2",
    "x": 64.51,
@@ -1169,6 +1559,16 @@
    "footprint": 0.0,
    "clearRadius": 0.8,
    "mesh": "ground_glow"
+  },
+  {
+   "kind": "interact_prop",
+   "id": "gather:K2",
+   "x": 64.51,
+   "y": 10.69,
+   "z": -3.8,
+   "footprint": 0.6,
+   "clearRadius": 0.6,
+   "mesh": "gather_ore"
   },
   {
    "kind": "gather_node",
@@ -1181,6 +1581,16 @@
    "mesh": "ground_glow"
   },
   {
+   "kind": "interact_prop",
+   "id": "gather:H1",
+   "x": -12.0,
+   "y": 26.05,
+   "z": 233.0,
+   "footprint": 0.35,
+   "clearRadius": 0.35,
+   "mesh": "gather_crystal"
+  },
+  {
    "kind": "gather_node",
    "id": "H2",
    "x": 39.0,
@@ -1191,14 +1601,34 @@
    "mesh": "ground_glow"
   },
   {
+   "kind": "interact_prop",
+   "id": "gather:H2",
+   "x": 39.0,
+   "y": 26.05,
+   "z": 201.0,
+   "footprint": 0.6,
+   "clearRadius": 0.6,
+   "mesh": "gather_ore"
+  },
+  {
    "kind": "gather_node",
    "id": "S4a",
-   "x": 290.727,
+   "x": 289.928,
    "y": 26.05,
-   "z": 94.071,
+   "z": 96.0,
    "footprint": 0.0,
    "clearRadius": 0.8,
    "mesh": "ground_glow"
+  },
+  {
+   "kind": "interact_prop",
+   "id": "gather:S4a",
+   "x": 289.928,
+   "y": 26.05,
+   "z": 96.0,
+   "footprint": 0.35,
+   "clearRadius": 0.35,
+   "mesh": "gather_crystal"
   },
   {
    "kind": "gather_node",
@@ -1209,6 +1639,16 @@
    "footprint": 0.0,
    "clearRadius": 0.8,
    "mesh": "ground_glow"
+  },
+  {
+   "kind": "interact_prop",
+   "id": "gather:S4b",
+   "x": 297.071,
+   "y": 26.05,
+   "z": 64.727,
+   "footprint": 0.6,
+   "clearRadius": 0.6,
+   "mesh": "gather_ore"
   },
   {
    "kind": "hearth",
@@ -1498,6 +1938,566 @@
    "z": 27.5,
    "footprint": 0.16,
    "clearRadius": 0.4,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_B#C",
+   "x": -12.0,
+   "y": 5.0,
+   "z": -102.0,
+   "footprint": 0.0,
+   "clearRadius": 1.0,
+   "mesh": "board"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_B#L",
+   "x": -12.779,
+   "y": 5.0,
+   "z": -102.45,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_B#R",
+   "x": -11.221,
+   "y": 5.0,
+   "z": -101.55,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_E#C",
+   "x": -17.2,
+   "y": 18.0,
+   "z": 60.0,
+   "footprint": 0.0,
+   "clearRadius": 1.0,
+   "mesh": "board"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_E#L",
+   "x": -17.979,
+   "y": 18.0,
+   "z": 59.55,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_E#R",
+   "x": -16.421,
+   "y": 18.0,
+   "z": 60.45,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_H#C",
+   "x": -26.1,
+   "y": 26.0,
+   "z": 206.9,
+   "footprint": 0.0,
+   "clearRadius": 1.0,
+   "mesh": "board"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_H#L",
+   "x": -26.879,
+   "y": 26.0,
+   "z": 206.45,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_H#R",
+   "x": -25.321,
+   "y": 26.0,
+   "z": 207.35,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_A_02#C",
+   "x": 30.1,
+   "y": 0.0,
+   "z": -188.9,
+   "footprint": 0.0,
+   "clearRadius": 1.0,
+   "mesh": "board"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_A_02#L",
+   "x": 29.321,
+   "y": 0.0,
+   "z": -189.35,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_A_02#R",
+   "x": 30.879,
+   "y": 0.0,
+   "z": -188.45,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_B_02#C",
+   "x": 30.9,
+   "y": 5.0,
+   "z": -66.9,
+   "footprint": 0.0,
+   "clearRadius": 1.0,
+   "mesh": "board"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_B_02#L",
+   "x": 30.121,
+   "y": 5.0,
+   "z": -67.35,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_B_02#R",
+   "x": 31.679,
+   "y": 5.0,
+   "z": -66.45,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_C#C",
+   "x": -196.9,
+   "y": 10.0,
+   "z": -98.9,
+   "footprint": 0.0,
+   "clearRadius": 1.0,
+   "mesh": "board"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_C#L",
+   "x": -197.679,
+   "y": 10.0,
+   "z": -99.35,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_C#R",
+   "x": -196.121,
+   "y": 10.0,
+   "z": -98.45,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_C_02#C",
+   "x": -134.1,
+   "y": 10.0,
+   "z": -48.1,
+   "footprint": 0.0,
+   "clearRadius": 1.0,
+   "mesh": "board"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_C_02#L",
+   "x": -134.879,
+   "y": 10.0,
+   "z": -48.55,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_C_02#R",
+   "x": -133.321,
+   "y": 10.0,
+   "z": -47.65,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_D_02#C",
+   "x": -146.7,
+   "y": 16.0,
+   "z": 107.4,
+   "footprint": 0.0,
+   "clearRadius": 1.0,
+   "mesh": "board"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_D_02#L",
+   "x": -147.479,
+   "y": 16.0,
+   "z": 106.95,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_D_02#R",
+   "x": -145.921,
+   "y": 16.0,
+   "z": 107.85,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_E_02#C",
+   "x": 45.9,
+   "y": 18.0,
+   "z": 111.9,
+   "footprint": 0.0,
+   "clearRadius": 1.0,
+   "mesh": "board"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_E_02#L",
+   "x": 45.121,
+   "y": 18.0,
+   "z": 111.45,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_E_02#R",
+   "x": 46.679,
+   "y": 18.0,
+   "z": 112.35,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_F#C",
+   "x": 205.0,
+   "y": 15.0,
+   "z": -42.4,
+   "footprint": 0.0,
+   "clearRadius": 1.0,
+   "mesh": "board"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_F#L",
+   "x": 204.221,
+   "y": 15.0,
+   "z": -42.85,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_F#R",
+   "x": 205.779,
+   "y": 15.0,
+   "z": -41.95,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_F_02#C",
+   "x": 143.2,
+   "y": 15.0,
+   "z": -41.6,
+   "footprint": 0.0,
+   "clearRadius": 1.0,
+   "mesh": "board"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_F_02#L",
+   "x": 142.421,
+   "y": 15.0,
+   "z": -42.05,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_F_02#R",
+   "x": 143.979,
+   "y": 15.0,
+   "z": -41.15,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_G#C",
+   "x": 143.1,
+   "y": 21.0,
+   "z": 56.1,
+   "footprint": 0.0,
+   "clearRadius": 1.0,
+   "mesh": "board"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_G#L",
+   "x": 142.321,
+   "y": 21.0,
+   "z": 55.65,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_G#R",
+   "x": 143.879,
+   "y": 21.0,
+   "z": 56.55,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_G_02#C",
+   "x": 205.9,
+   "y": 21.0,
+   "z": 106.9,
+   "footprint": 0.0,
+   "clearRadius": 1.0,
+   "mesh": "board"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_G_02#L",
+   "x": 205.121,
+   "y": 21.0,
+   "z": 106.45,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_G_02#R",
+   "x": 206.679,
+   "y": 21.0,
+   "z": 107.35,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_H_02#C",
+   "x": 35.9,
+   "y": 26.0,
+   "z": 256.9,
+   "footprint": 0.0,
+   "clearRadius": 1.0,
+   "mesh": "board"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_H_02#L",
+   "x": 35.121,
+   "y": 26.0,
+   "z": 256.45,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_H_02#R",
+   "x": 36.679,
+   "y": 26.0,
+   "z": 257.35,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_S1#C",
+   "x": -309.1,
+   "y": 7.0,
+   "z": -113.1,
+   "footprint": 0.0,
+   "clearRadius": 1.0,
+   "mesh": "board"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_S1#L",
+   "x": -309.879,
+   "y": 7.0,
+   "z": -113.55,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_S1#R",
+   "x": -308.321,
+   "y": 7.0,
+   "z": -112.65,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_S2#C",
+   "x": -295.6,
+   "y": 13.0,
+   "z": 92.9,
+   "footprint": 0.0,
+   "clearRadius": 1.0,
+   "mesh": "board"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_S2#L",
+   "x": -296.379,
+   "y": 13.0,
+   "z": 92.45,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_S2#R",
+   "x": -294.821,
+   "y": 13.0,
+   "z": 93.35,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_S3#C",
+   "x": 288.4,
+   "y": 10.0,
+   "z": -73.2,
+   "footprint": 0.0,
+   "clearRadius": 1.0,
+   "mesh": "board"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_S3#L",
+   "x": 287.621,
+   "y": 10.0,
+   "z": -73.65,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_S3#R",
+   "x": 289.179,
+   "y": 10.0,
+   "z": -72.75,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_S4#C",
+   "x": 283.0,
+   "y": 26.0,
+   "z": 68.2,
+   "footprint": 0.0,
+   "clearRadius": 1.0,
+   "mesh": "board"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_S4#L",
+   "x": 282.221,
+   "y": 26.0,
+   "z": 67.75,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_S4#R",
+   "x": 283.779,
+   "y": 26.0,
+   "z": 68.65,
+   "footprint": 0.1,
+   "clearRadius": 0.7,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_A#P",
+   "x": -29.5,
+   "y": 0.0,
+   "z": -238.7,
+   "footprint": 0.1,
+   "clearRadius": 1.0,
+   "mesh": "post"
+  },
+  {
+   "kind": "point_sign",
+   "id": "Search_D#P",
+   "x": -188.7,
+   "y": 16.0,
+   "z": 58.5,
+   "footprint": 0.1,
+   "clearRadius": 1.0,
    "mesh": "post"
   },
   {

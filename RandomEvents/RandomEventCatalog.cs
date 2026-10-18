@@ -652,6 +652,21 @@ namespace BossRush
 
         internal override float Weight { get { return RandomEventsTuning.WeightBossIntrusion; } }
 
+        /// <summary>白手起家前几波全是小怪，乱入 Boss 要等到 Mode D 自己开始出 Boss 的波次。</summary>
+        internal override bool CanTrigger(RandomEventContext ctx)
+        {
+            try
+            {
+                ModBehaviour owner = RandomEventEffectHelpers.ResolveOwner(ctx);
+                if (owner == null) return false;
+                return !owner.IsModeDActive || owner.ModeDWaveIndex >= RandomEventsTuning.BossIntrusionModeDMinWave;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
         internal override bool OnTrigger(RandomEventContext ctx)
         {
             try
@@ -907,94 +922,6 @@ namespace BossRush
             _pruneTimer = 0f;
 
             RandomEventEffectHelpers.ClearScope(ctx, reason);
-        }
-    }
-
-    /// <summary>
-    /// 乱入 Boss 的逐实例死亡监听。
-    /// 用**命名方法 + 缓存委托实例**订阅官方 UnityEvent，保证 RemoveListener 能精确摘掉；
-    /// 回调只置一个标志位，真正的剪枝在事件 Tick 里做，避免在事件派发过程中改动集合。
-    /// </summary>
-    internal sealed class RandomEventIntruderDeathWatcher
-    {
-        private readonly CharacterMainControl _boss;
-        private Health _health;
-        private UnityAction<DamageInfo> _handler;
-        private bool _subscribed;
-        private bool _dead;
-
-        internal RandomEventIntruderDeathWatcher(CharacterMainControl boss)
-        {
-            _boss = boss;
-        }
-
-        /// <summary>监听目标已死亡或已失效。</summary>
-        internal bool IsFinished
-        {
-            get
-            {
-                if (_dead || _boss == null)
-                {
-                    return true;
-                }
-                try { return _boss.Health == null || _boss.Health.IsDead; }
-                catch (Exception) { return true; }
-            }
-        }
-
-        internal bool Subscribe()
-        {
-            if (_subscribed || _boss == null)
-            {
-                return false;
-            }
-
-            try
-            {
-                _health = _boss.Health;
-                if (_health == null || _health.OnDeadEvent == null)
-                {
-                    return false;
-                }
-
-                _handler = new UnityAction<DamageInfo>(HandleDead);
-                _health.OnDeadEvent.AddListener(_handler);
-                _subscribed = true;
-                return true;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 订阅乱入 Boss 死亡失败: " + e.Message);
-                _subscribed = false;
-                return false;
-            }
-        }
-
-        /// <summary>成对退订。幂等。</summary>
-        internal void Unsubscribe()
-        {
-            if (!_subscribed)
-            {
-                return;
-            }
-            _subscribed = false;
-
-            try
-            {
-                if (_health != null && _health.OnDeadEvent != null && _handler != null)
-                {
-                    _health.OnDeadEvent.RemoveListener(_handler);
-                }
-            }
-            catch (Exception) { }
-
-            _handler = null;
-            _health = null;
-        }
-
-        private void HandleDead(DamageInfo damageInfo)
-        {
-            _dead = true;
         }
     }
 

@@ -21,6 +21,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ROUTING = os.path.join(REPO_ROOT, "ModeG", "ModeGDeathRouting.cs")
 TELEMETRY = os.path.join(REPO_ROOT, "ModeG", "ModeGCombatTelemetry.cs")
 MODULE = os.path.join(REPO_ROOT, "ModeG", "ModeGRuntimeModule.cs")
+SWEEP = os.path.join(REPO_ROOT, "ModeG", "ModeGRuntimeModule_SilentDeathSweep.cs")
 
 
 def read(path, errors):
@@ -36,6 +37,7 @@ def main():
     routing = read(ROUTING, errors)
     telemetry = read(TELEMETRY, errors)
     module = read(MODULE, errors)
+    sweep = read(SWEEP, errors)
 
     if telemetry:
         checks = [
@@ -102,9 +104,32 @@ def main():
             ("TechnicalCleanupReason",
              r"handle\.CleanupOnce\(ManagedBossCleanupReason\.TechnicalLoss\);",
              "技术丢失按 TechnicalLoss 原因清理 handle"),
+            # 2026-10-16 玩家反馈：流血致死被别的 OnDead 订阅者异常截断，Boss 倒了不计击杀、整波卡住。
+            ("SilentDeathSweepDriven",
+             r"private void DriveCore\(float deltaTime\)[\s\S]{0,2500}?SweepSilentBossDeaths\(\);",
+             "每帧驱动要跑已登记 Boss 死亡兜底轮询"),
         ]
         for name, pattern, desc in checks:
             if not re.search(pattern, module):
+                errors.append("[{}] 不满足: {}".format(name, desc))
+
+    if sweep:
+        checks = [
+            ("SilentDeathSweepPhases",
+             r"private void SweepSilentBossDeaths\(\)\s*\{\s*"
+             r"if \(!CoopRunHasWorldAuthority \|\| !CanContinueRun\(\)\s*"
+             r"\|\| _waveSpawnInFlight \|\| _batchActivationInProgress \|\| _spawnTransaction\.ActiveBossCount == 0\) return;\s*"
+             r"if \(_state\.combatPhase != ModeGCombatPhase\.Fighting && _state\.combatPhase != ModeGCombatPhase\.LastStand\) return;",
+             "兜底只在房主（世界权威）且本局可继续时、战斗 / 最后处决阶段扫，生成与批量激活期间交给技术丢失路由"),
+            ("SilentDeathSweepRoutes",
+             r"private void SweepSilentBossDeaths\(\)[\s\S]{0,1500}?dead = health == null \|\| health\.IsDead;"
+             r"[\s\S]{0,400}?ModeGEntryRuntime\.PublishCoopCombat\(health, default\(DamageInfo\), true\);"
+             r"\s*HandleBossDead\(health, default\(DamageInfo\)\);"
+             r"[\s\S]{0,400}?if \(settled && _spawnTransaction\.ActiveBossCount == 0\) _waveSettlementPending = true;",
+             "兜底先给原资产发联机个人战斗事实，再交给同一条死亡路由，存活归零必进结算"),
+        ]
+        for name, pattern, desc in checks:
+            if not re.search(pattern, sweep):
                 errors.append("[{}] 不满足: {}".format(name, desc))
 
     if errors:

@@ -47,6 +47,7 @@ equipment	equipment__sky_island_chiefs_gear	头目装备	Island Chief Gear	20
 equipment	equipment__empty_magazine_mine	空仓地雷盒	Empty-Mag Mine Box	21
 equipment	equipment__roll_call_ledger	教导主任的点名册	Headmaster's Roll-Call Ledger	22
 equipment	equipment__reload_metronome	钟守节拍器	Bell Keeper's Metronome	23
+equipment	equipment__pass_the_bomb	甩锅许可证	License to Pass the Buck	24
 item	item__overview	物品总览	Item Overview	1
 item	item__key_items	入场与功能物品	Entry & Utility Items	2
 item	item__npc_items	NPC 相关物品	NPC Related Items	3
@@ -75,49 +76,53 @@ tips	tips__mode_f_strategy	血猎追击攻略	Blood Hunt Guide	5
 tips	tips__mode_g_strategy	宿命回响攻略	Fate Echo Guide	6
 easter	easter__kunkun	彩蛋	Easter Eggs	1
 changelog	changelog__highlights	更新日志总览	Changelog Overview	1
-changelog	changelog__v2_3_2	v2.3.2	v2.3.2	2
-changelog	changelog__v2_3_1	v2.3.1	v2.3.1	3
-changelog	changelog__v2_3_0	v2.3.0	v2.3.0	4
-changelog	changelog__v2_2_5	v2.2.5	v2.2.5	5
-changelog	changelog__v2_2_4	v2.2.4	v2.2.4	6
-changelog	changelog__v2_2_3	v2.2.3	v2.2.3	7
-changelog	changelog__v2_2_1	v2.2.1	v2.2.1	8
-changelog	changelog__v2_2_0	v2.2.0	v2.2.0	9
-changelog	changelog__v2_1_37	v2.1.37	v2.1.37	10
-changelog	changelog__v2_1_36	v2.1.36	v2.1.36	11
-changelog	changelog__v2_1_35	v2.1.35	v2.1.35	12
-changelog	changelog__v2_1_34	v2.1.34	v2.1.34	13
-changelog	changelog__v2_1_33	v2.1.33	v2.1.33	14
-changelog	changelog__v2_1_32	v2.1.32	v2.1.32	15
-changelog	changelog__v2_1_31	v2.1.31	v2.1.31	16
-changelog	changelog__v2_1_30	v2.1.30	v2.1.30	17
-changelog	changelog__v2_1_29	v2.1.29	v2.1.29	18
-changelog	changelog__v2_1_28	v2.1.28	v2.1.28	19
-changelog	changelog__v2_1_27	v2.1.27	v2.1.27	20
-changelog	changelog__v2_1_25	v2.1.25	v2.1.25	21
-changelog	changelog__v2_1_24	v2.1.24	v2.1.24	22
-changelog	changelog__v2_1_23	v2.1.23	v2.1.23	23
-changelog	changelog__v2_1_20	v2.1.20	v2.1.20	24
-changelog	changelog__v2_1_17	v2.1.17	v2.1.17	25
-changelog	changelog__v2_1_16	v2.1.16	v2.1.16	26
-changelog	changelog__v2_1_15	v2.1.15	v2.1.15	27
-changelog	changelog__v2_1_14	v2.1.14	v2.1.14	28
-changelog	changelog__v2_1_13	v2.1.13	v2.1.13	29
-changelog	changelog__v2_1_12	v2.1.12	v2.1.12	30
-changelog	changelog__v2_1_10	v2.1.10	v2.1.10	31
-changelog	changelog__v2_1_6	v2.1.6	v2.1.6	32
-changelog	changelog__v2_1_2	v2.1.2	v2.1.2	33
-changelog	changelog__v2_1_1	v2.1.1	v2.1.1	34
-changelog	changelog__v2_1_0	v2.1.0	v2.1.0	35
-changelog	changelog__v2_0_6	v2.0.6	v2.0.6	36
-changelog	changelog__v2_0_5	v2.0.5	v2.0.5	37
-changelog	changelog__v2_0_4	v2.0.4	v2.0.4	38
-changelog	changelog__v2_0_3	v2.0.3	v2.0.3	39
-changelog	changelog__v2_0_2	v2.0.2	v2.0.2	40
-changelog	changelog__v2_0_0	v2.0.0	v2.0.0	41
-changelog	changelog__v1_9_7	v1.9.7	v1.9.7	42
-changelog	changelog__v1_7_4	v1.7.4	v1.7.4	43
-changelog	changelog__v1_7_3	v1.7.3	v1.7.3	44
-changelog	changelog__v1_6_4	v1.6.4	v1.6.4	45
-changelog	changelog__v1_6_3	v1.6.3	v1.6.3	46
-changelog	changelog__v1_6_2	v1.6.2	v1.6.2	47
+changelog	changelog__v2_3_6	v2.3.6	v2.3.6	2
+changelog	changelog__v2_3_5	v2.3.5	v2.3.5	3
+changelog	changelog__v2_3_4	v2.3.4	v2.3.4	4
+changelog	changelog__v2_3_3	v2.3.3	v2.3.3	5
+changelog	changelog__v2_3_2	v2.3.2	v2.3.2	6
+changelog	changelog__v2_3_1	v2.3.1	v2.3.1	7
+changelog	changelog__v2_3_0	v2.3.0	v2.3.0	8
+changelog	changelog__v2_2_5	v2.2.5	v2.2.5	9
+changelog	changelog__v2_2_4	v2.2.4	v2.2.4	10
+changelog	changelog__v2_2_3	v2.2.3	v2.2.3	11
+changelog	changelog__v2_2_1	v2.2.1	v2.2.1	12
+changelog	changelog__v2_2_0	v2.2.0	v2.2.0	13
+changelog	changelog__v2_1_37	v2.1.37	v2.1.37	14
+changelog	changelog__v2_1_36	v2.1.36	v2.1.36	15
+changelog	changelog__v2_1_35	v2.1.35	v2.1.35	16
+changelog	changelog__v2_1_34	v2.1.34	v2.1.34	17
+changelog	changelog__v2_1_33	v2.1.33	v2.1.33	18
+changelog	changelog__v2_1_32	v2.1.32	v2.1.32	19
+changelog	changelog__v2_1_31	v2.1.31	v2.1.31	20
+changelog	changelog__v2_1_30	v2.1.30	v2.1.30	21
+changelog	changelog__v2_1_29	v2.1.29	v2.1.29	22
+changelog	changelog__v2_1_28	v2.1.28	v2.1.28	23
+changelog	changelog__v2_1_27	v2.1.27	v2.1.27	24
+changelog	changelog__v2_1_25	v2.1.25	v2.1.25	25
+changelog	changelog__v2_1_24	v2.1.24	v2.1.24	26
+changelog	changelog__v2_1_23	v2.1.23	v2.1.23	27
+changelog	changelog__v2_1_20	v2.1.20	v2.1.20	28
+changelog	changelog__v2_1_17	v2.1.17	v2.1.17	29
+changelog	changelog__v2_1_16	v2.1.16	v2.1.16	30
+changelog	changelog__v2_1_15	v2.1.15	v2.1.15	31
+changelog	changelog__v2_1_14	v2.1.14	v2.1.14	32
+changelog	changelog__v2_1_13	v2.1.13	v2.1.13	33
+changelog	changelog__v2_1_12	v2.1.12	v2.1.12	34
+changelog	changelog__v2_1_10	v2.1.10	v2.1.10	35
+changelog	changelog__v2_1_6	v2.1.6	v2.1.6	36
+changelog	changelog__v2_1_2	v2.1.2	v2.1.2	37
+changelog	changelog__v2_1_1	v2.1.1	v2.1.1	38
+changelog	changelog__v2_1_0	v2.1.0	v2.1.0	39
+changelog	changelog__v2_0_6	v2.0.6	v2.0.6	40
+changelog	changelog__v2_0_5	v2.0.5	v2.0.5	41
+changelog	changelog__v2_0_4	v2.0.4	v2.0.4	42
+changelog	changelog__v2_0_3	v2.0.3	v2.0.3	43
+changelog	changelog__v2_0_2	v2.0.2	v2.0.2	44
+changelog	changelog__v2_0_0	v2.0.0	v2.0.0	45
+changelog	changelog__v1_9_7	v1.9.7	v1.9.7	46
+changelog	changelog__v1_7_4	v1.7.4	v1.7.4	47
+changelog	changelog__v1_7_3	v1.7.3	v1.7.3	48
+changelog	changelog__v1_6_4	v1.6.4	v1.6.4	49
+changelog	changelog__v1_6_3	v1.6.3	v1.6.3	50
+changelog	changelog__v1_6_2	v1.6.2	v1.6.2	51

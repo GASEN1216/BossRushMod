@@ -47,6 +47,7 @@ def main() -> int:
     required = [
         "CharacterMainControl player = CharacterMainControl.Main;",
         "damageInfo.fromCharacter != player",
+        # 吸血抽成辅助方法（击杀那一下在死亡处理里补判，2026-10-16）：受伤处理把同一个 player 传进去。
         "TryApplyZombieModeTriggerLifesteal(player, options);",
         "Vector3 baseDirection = (victim.transform.position - player.transform.position);",
         "baseDirection = player.transform.forward;",

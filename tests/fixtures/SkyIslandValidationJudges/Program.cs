@@ -556,6 +556,13 @@ internal static class Program
             "keepsakes: the fieldcraft owner survived the trip home -> FAIL");
         Check(!F3GameplayValidationRunner.JudgeKeepsakes(1, 1, "ok", "ok", true, false, false, true, out metrics, out reason) && reason.Contains("wind_lantern_light_left_on_base"),
             "keepsakes: the wind lantern followed the player home -> FAIL");
+        // 2026-10-16 第十轮：专用测试档缓冲区里开跑前就有 7 件旧验收留下的纪念品，按开跑基线数多出来的。
+        Check(F3GameplayValidationRunner.JudgeKeepsakes(7, 8, 7, 7, "ok", "ok", false, false, false, false, out metrics, out reason)
+            && metrics.Contains("baseline=7/7"), "keepsakes: 7 pre-run leftovers plus this run's one core -> PASS");
+        Check(!F3GameplayValidationRunner.JudgeKeepsakes(7, 9, 7, 7, "ok", "ok", false, false, false, false, out metrics, out reason)
+            && reason.Contains("windeater_core=9(baseline=7)"), "keepsakes: two cores above the pre-run baseline -> FAIL");
+        Check(!F3GameplayValidationRunner.JudgeKeepsakes(7, 7, 0, 0, "ok", "ok", true, false, false, false, out metrics, out reason)
+            && reason.Contains("homecoming_badge=7") && !metrics.Contains("baseline="), "keepsakes: read-only suite keeps the absolute bar -> FAIL");
     }
 
     // ---------------------------------------------------------------- 采集点

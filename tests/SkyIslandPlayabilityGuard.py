@@ -51,8 +51,10 @@ def main():
     attach = guide.split("internal static void Attach(", 1)[1].split("private static Vector3 GuideOffset(", 1)[0]
     need(attach, "航路图落点", "GuideOffset(root.transform, marker)")
     forbid(attach, "航路图落点", '"SkyIsland_TravelGuide", Vector3.zero')
+    # 方位与距离走 PlacementFor（没有改写时 = 标记名稳定散列 + 交互间距）；风铃集那一处在改写表里挪到路边（2026-10-17）。
     need(guide, "航路图偏移", "SkyIslandRewardCrate.TryFindCratePosition(",
-         "SkyIslandRewardCrate.InteractableSeparation", "SkyIslandLootTables.StableHash(marker.name)")
+         "SkyIslandLootTables.PlacementFor(marker.name, SkyIslandRewardCrate.InteractableSeparation, out bearing, out distance)")
+    forbid(guide, "航路图偏移", "SkyIslandLootTables.StableHash(marker.name)")
 
     # 间距必须大于两侧触发盒半边之和（纪念物 3/2=1.5 + 见闻点 2.2/2=1.1 = 2.6）。
     sep = None
@@ -122,7 +124,10 @@ def main():
     need(bell, "钟守物证路线", "source.ZhelingResolved")
     forbid(bell, "钟守物证路线", "SkyIslandStoryFlag.ZhelingReconciled")
     # 提示文案必须说明战胜也算，否则玩家仍会去找一个已不可能达成的条件。
-    if "和解或战胜都算" not in bell:
+    # 2026-10-17 起「还差哪几样」按缺项拼在 MissingProof 里（剧情指引全面核查）：拒绝话要调它，它里面要有这句。
+    proof = rules.split("private static string MissingProof(", 1)[1].split("private static string BeaconLine(", 1)[0] \
+        if "private static string MissingProof(" in rules else ""
+    if "和解或战胜都算" not in bell and not ("MissingProof(source)" in bell and "和解或战胜都算" in proof):
         errors.append("钟守失败提示必须说明战胜折翎同样算作了结")
 
     # ---- 6. 剧情面板选项随状态刷新 ----

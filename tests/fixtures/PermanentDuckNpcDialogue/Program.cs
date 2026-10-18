@@ -323,6 +323,9 @@ internal static class Program
                       "钟守只提供节拍器，不能与点名册共用 TypeID");
                 Check(keepsakes[0].RequiredLevel == 5 && keepsakes[0].MaxStock == 1,
                       "节拍器解锁等级和单件兑换保持一致");
+                Check(config.GetDiscountForLevel(4) == 0f && config.GetDiscountForLevel(5) == 0.10f
+                      && config.GetDiscountForLevel(9) == 0.15f && config.GetDiscountForLevel(10) == 0.20f,
+                      "钟守的好感折扣按蓝图 5/8/10 级取档");
                 L10n.Chinese = true;
                 Check(config.ShopName == "钟守的旧物匣" && config.UnlocksByLevel[5][0] == "钟守的旧物匣",
                       "钟守中文解锁名来自蓝图");
@@ -341,14 +344,24 @@ internal static class Program
             shops++;
             Check(config.ShopEnabled && config.ShopUnlockLevel == 3, "浮舟的商店在好感 3 级解锁");
             var items = config.GetShopItems();
-            Check(items.Count == 1 && items[0].TypeID == BossRushItemIds.RollCallLedger,
-                  "浮舟只出售已登记的点名册 TypeID");
+            Check(items.Count == 2 && items[0].TypeID == BossRushItemIds.RollCallLedger
+                  && items[1].TypeID == BossRushItemIds.PassTheBomb
+                  && items[0].TypeID != items[1].TypeID,
+                  "浮舟同时出售独立 TypeID 的点名册与甩锅许可证");
             Check(items[0].RequiredLevel == 3 && items[0].MaxStock == 1,
                   "点名册好感 3 级解锁且每次商店库存 1");
-            Check(items[0].BasePriceFactor == 1f && items[0].Possibility == 1f && config.GetDiscountForLevel(10) == 0f,
-                  "按 item.Value 原价确定供应，不隐含折扣或概率缺货");
+            Check(items[0].BasePriceFactor == 1f && items[0].Possibility == 1f && items[0].RestockDays == 1,
+                  "按 item.Value 原价确定供应，不随机缺货，每个游戏日补货");
+            // 2026-10-17 P1-3：好感折扣来自蓝图 discountsByLevel（3/6/10 级 10%/15%/20%），解锁前与未配档位不打折。
+            Check(config.GetDiscountForLevel(2) == 0f && config.GetDiscountForLevel(3) == 0.10f
+                  && config.GetDiscountForLevel(5) == 0.10f && config.GetDiscountForLevel(6) == 0.15f
+                  && config.GetDiscountForLevel(10) == 0.20f && config.DiscountsByLevel.Count == 3,
+                  "浮舟的好感折扣按蓝图取当前等级的最高一档");
+            Check(items[1].RequiredLevel == 3 && items[1].MaxStock == 1
+                  && items[1].BasePriceFactor == 1f && items[1].Possibility == 1f,
+                  "甩锅许可证好感 3 级解锁、库存 1 且确定按原价供应");
             items.Clear();
-            Check(config.GetShopItems().Count == 1, "消费者不能通过清空列表破坏蓝图库存");
+            Check(config.GetShopItems().Count == 2, "消费者不能通过清空列表破坏两件蓝图库存");
             L10n.Chinese = true;
             Check(config.ShopName == "浮舟的航前杂货" && config.UnlocksByLevel[3][0] == "浮舟的航前杂货",
                   "中文解锁条目只提供商店名，由好感 UI 统一添加解锁前缀");
@@ -359,7 +372,98 @@ internal static class Program
                   "开店后原婚后台词仍可用");
         }
         L10n.Chinese = true;
-        Check(shops == 2, "真实蓝图必须同时保留浮舟点名册和钟守节拍器，其他居民不开店");
+        Check(shops == 2, "真实蓝图保留浮舟两件图腾与钟守节拍器，其他居民不开店");
+    }
+
+    // ---- 2026-10-17 好感剧情 storyEvents（SCHEMA+）：坏条目逐条跳过、旧蓝图缺省为空 ----
+    private static void StoryEventsParsing()
+    {
+        PermanentDuckNpcData old = Parse(@"{ ""displayNameCn"": ""旧居民"" }");
+        Check(old.StoryEvents.Length == 0 && old.GetStoryEvent(3) == null, "旧蓝图没有 storyEvents 时为空，不影响聊天");
+
+        int before = ModBehaviour.Logs.Count;
+        PermanentDuckNpcData data = Parse(@"{ ""displayNameCn"": ""试"", ""storyEvents"": [
+            { ""level"": 8, ""titleCn"": ""八"", ""titleEn"": ""Eight"", ""lines"": [{ ""cn"": ""八级"", ""en"": ""Eight"" }],
+              ""rewardTypeId"": 500072, ""rewardCount"": 2 },
+            { ""level"": 3, ""titleCn"": ""三"", ""titleEn"": ""Three"", ""lines"": [{ ""cn"": ""三级"", ""en"": ""Three"" }, ""裸中文""] },
+            { ""level"": 3, ""lines"": [""重复的三级""] },
+            { ""level"": 7, ""lines"": [""不是剧情等级""] },
+            { ""level"": 5, ""lines"": [] },
+            { ""level"": 10, ""lines"": [{ ""cn"": ""十级"", ""en"": ""Ten"" }], ""rewardTypeId"": 123, ""rewardCount"": 99 }
+        ] }");
+        Check(data.StoryEvents.Length == 3, "只留 3/8/10 三段：重复、非剧情等级、空台词都跳过");
+        Check(data.StoryEvents[0].level == 3 && data.StoryEvents[1].level == 8 && data.StoryEvents[2].level == 10,
+              "剧情按等级升序（待播剧情从低往高补）");
+        Check(data.GetStoryEvent(3).lines.Length == 2 && data.GetStoryEvent(3).lines[1].Text == "裸中文",
+              "剧情台词同样接受裸字符串与 {cn, en} 混排");
+        Check(data.GetStoryEvent(8).rewardTypeId == 500072 && data.GetStoryEvent(8).rewardCount == 2, "合法奖励原样读出");
+        Check(data.GetStoryEvent(10).rewardTypeId == 0 && data.GetStoryEvent(10).lines.Length == 1,
+              "奖励数量越界只丢奖励、不丢剧情");
+        Check(data.GetStoryEvent(5) == null, "没台词的那一级不算剧情，回落通用横幅");
+        Check(ModBehaviour.Logs.Count >= before + 4, "坏剧情条目要记 DevLog");
+
+        var config = new PermanentDuckNpcAffinityConfig(new DuckNpcBlueprint { id = "t", permanent = data });
+        L10n.Chinese = true;
+        Check(config.UnlocksByLevel.Count == 3 && config.UnlocksByLevel[3][0] == "三", "好感页按等级列剧情节点");
+        Check(config.UnlocksByLevel[10][0] == "试的故事", "没写标题时退回「名字的故事」");
+        L10n.Chinese = false;
+        Check(config.UnlocksByLevel[8][0] == "Eight", "切英文后剧情节点名跟着换");
+        L10n.Chinese = true;
+    }
+
+    // ---- 真实蓝图：七位永久捏脸 NPC 每人 3/5/8/10 四段，中英成对 ----
+    private static void RealDataStoryEvents()
+    {
+        BossRushJsonValue root;
+        string error;
+        if (!BossRushJsonParser.TryParse(File.ReadAllText(Path.Combine("Assets", "Data", "DuckNpcs.json")), out root, out error))
+            throw new Exception(error);
+        List<BossRushJsonValue> rows;
+        if (!root.TryGetArray("npcs", out rows)) throw new Exception("missing npcs");
+        int withStories = 0;
+        foreach (var row in rows)
+        {
+            string id;
+            if (!row.TryGetString("id", out id)) continue;
+            var data = PermanentDuckNpcData.Parse(row, id);
+            if (data == null) continue;
+            withStories++;
+            Check(data.StoryEvents.Length == 4, id + " 要有 3/5/8/10 四段剧情，实得 " + data.StoryEvents.Length);
+            var config = new PermanentDuckNpcAffinityConfig(new DuckNpcBlueprint { id = id, permanent = data });
+            foreach (int level in new[] { 3, 5, 8, 10 })
+            {
+                var story = data.GetStoryEvent(level);
+                Check(story != null && story.lines.Length >= 4, id + " Lv" + level + " 剧情至少 4 句");
+                foreach (var line in story.lines)
+                {
+                    Check(!string.IsNullOrEmpty(line.cn) && !string.IsNullOrEmpty(line.en) && line.cn != line.en,
+                          id + " Lv" + level + " 有一句没译：" + line.cn);
+                    if (id == "sky_bellkeeper")
+                        Check(line.cn.StartsWith("（") && line.cn.EndsWith("）") && line.en.StartsWith("(") && line.en.EndsWith(")"),
+                              "钟守不开口：剧情每句都是括号里的动作或铜牌字：" + line.cn);
+                }
+                L10n.Chinese = true;
+                string cnTitle = config.GetStoryTitle(story);
+                Check(Array.IndexOf(config.UnlocksByLevel[level], cnTitle) >= 0, id + " Lv" + level + " 好感页要列出剧情节点");
+                L10n.Chinese = false;
+                Check(Array.IndexOf(config.UnlocksByLevel[level], config.GetStoryTitle(story)) >= 0
+                      && config.GetStoryTitle(story) != cnTitle, id + " Lv" + level + " 剧情节点名要有英文");
+                L10n.Chinese = true;
+            }
+            if (id == "sky_fuzhou")
+                Check(config.UnlocksByLevel[3].Length == 2 && config.UnlocksByLevel[3][0] == "浮舟的航前杂货",
+                      "同一级既开店又有剧情时两条都列，商店在前");
+            if (id == "sky_qinghe")
+                Check(data.GetStoryEvent(8).rewardTypeId == 500071 && data.GetStoryEvent(8).rewardCount == 1,
+                      "晴禾 8 级剧情送一份归航便当");
+            else if (id == "sky_miantai")
+                Check(data.GetStoryEvent(8).rewardTypeId == 500072 && data.GetStoryEvent(8).rewardCount == 2,
+                      "眠苔 8 级剧情送两盒星苔药膏");
+            else
+                foreach (var story in data.StoryEvents)
+                    Check(story.rewardTypeId == 0, id + " 的剧情不带奖励（只有晴禾、眠苔 8 级送东西）");
+        }
+        Check(withStories == 7, "七位永久捏脸 NPC 都要接上剧情，实得 " + withStories);
     }
 
     private static int Main()
@@ -374,6 +478,8 @@ internal static class Program
             RealDataSkyIslanders();
             OptionalShopParsing();
             RealDataOptionalShops();
+            StoryEventsParsing();
+            RealDataStoryEvents();
         }
         catch (Exception e)
         {

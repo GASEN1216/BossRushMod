@@ -78,7 +78,21 @@ namespace BossRush
         /// <summary>轮换到下一种行动方式并落档；在场的随从立刻按新方式行动。</summary>
         internal static bool TryCycleBehaviour(string petId, out PetNestBehaviour now)
         {
-            now = PetNestBehaviour.Follow;
+            now = Next(Resolve(PetNestService.TryGetPet(petId)));
+            return TrySetBehaviour(petId, now);
+        }
+
+        /// <summary>轮换顺序里的下一种（局内选项名写「点按换成 X」用）。</summary>
+        internal static PetNestBehaviour Next(PetNestBehaviour current)
+        {
+            return (PetNestBehaviour)(((int)current + 1) % 3);
+        }
+
+        /// <summary>
+        /// 直接设成某一种并落档；在场的随从立刻按新方式行动。巢页详情的三段选择与局内轮换共用这一个写入口。
+        /// </summary>
+        internal static bool TrySetBehaviour(string petId, PetNestBehaviour target)
+        {
             string error;
             if (string.IsNullOrEmpty(petId) || !PetNestPersistenceAccess.BeginTransaction(out error)) return false;
             try
@@ -89,7 +103,7 @@ namespace BossRush
                     PetNestPersistenceAccess.AbortTransaction();
                     return false;
                 }
-                now = (PetNestBehaviour)(((int)Resolve(pet) + 1) % 3);
+                PetNestBehaviour now = target;
                 pet.behaviour = (int)now;
                 if (!PetNestService.StageCommit()) return false;
                 PetNestCompanionRuntime.ApplyBehaviour(petId, now);
@@ -113,12 +127,9 @@ namespace BossRush
             Transform bubbleTarget = companion != null ? companion.transform : null;
             PetNestPetRecord live = PetNestService.TryGetPet(petId);
             if (live == null) return;
-            long now = DateTime.UtcNow.Ticks;
-            long cooldownTicks = TimeSpan.FromMinutes(PetNestTuning.FeedCooldownMinutes).Ticks;
-            long remaining = live.lastFeedUtcTicks + cooldownTicks - now;
-            if (live.lastFeedUtcTicks > 0 && remaining > 0)
+            int minutes = FeedCooldownMinutesLeft(live);
+            if (minutes > 0)
             {
-                int minutes = Math.Max(1, (int)Math.Ceiling(TimeSpan.FromTicks(remaining).TotalMinutes));
                 Say(bubbleTarget, L10n.T("还饱着呢，" + minutes + " 分钟后再喂", "Still full. Try again in " + minutes + " min"));
                 return;
             }
@@ -156,7 +167,7 @@ namespace BossRush
                 }
                 oldLevel = pet.level;
                 PetNestProgressionService.AddExp(pet, PetNestTuning.FeedExp);
-                pet.lastFeedUtcTicks = now;
+                pet.lastFeedUtcTicks = DateTime.UtcNow.Ticks;
                 if (!PetNestService.StageCommit()) return;
                 // 候选包一旦接纳就不能退款；Commit/Dispose 只处置实际预留的原食物。
                 accepted = true;
@@ -192,6 +203,52 @@ namespace BossRush
             Say(bubbleTarget, line);
         }
 
+        /// <summary>喂食冷却还剩几分钟（向上取整）；0 = 现在就能喂。选项名与喂食本身共用。</summary>
+        internal static int FeedCooldownMinutesLeft(PetNestPetRecord pet)
+        {
+            if (pet == null || pet.lastFeedUtcTicks <= 0) return 0;
+            long remaining = pet.lastFeedUtcTicks
+                + TimeSpan.FromMinutes(PetNestTuning.FeedCooldownMinutes).Ticks - DateTime.UtcNow.Ticks;
+            return remaining > 0 ? Math.Max(1, (int)Math.Ceiling(TimeSpan.FromTicks(remaining).TotalMinutes)) : 0;
+        }
+
+        /// <summary>
+        /// 喂食选项名（审查 F-2，口径同付费服务：冷却中照挂，名字上写还要等多久）：
+        /// 能喂时写会喂掉哪份食物，冷却中写剩几分钟，背包没吃的也写出来，不让玩家点了才知道。
+        /// </summary>
+        internal static string DescribeFeedOption(PetNestPetRecord pet)
+        {
+            int minutes = FeedCooldownMinutesLeft(pet);
+            if (minutes > 0) return L10n.T("喂食（还要 " + minutes + " 分钟）", "Feed (" + minutes + " min)");
+            Item food = FindCheapestFood();
+            if (food == null) return L10n.T("喂食（背包里没吃的）", "Feed (nothing edible)");
+            string name;
+            try { name = food.DisplayName; }
+            catch (Exception) { name = null; }
+            return string.IsNullOrEmpty(name) ? L10n.T("喂食", "Feed") : L10n.T("喂食：", "Feed: ") + name;
+        }
+
+        /// <summary>选项名每秒最多重写一次：官方菜单在玩家走近时读名字，冷却分钟数与背包里的食物都会变。</summary>
+        private static float _nextFeedLabelRefresh;
+
+        internal static void ForceFeedLabelRefresh(string petId)
+        {
+            _nextFeedLabelRefresh = 0f;
+            RefreshFeedLabel(petId);
+        }
+
+        internal static void RefreshFeedLabel(string petId)
+        {
+            float now = Time.unscaledTime;
+            if (now < _nextFeedLabelRefresh) return;
+            _nextFeedLabelRefresh = now + 1f;
+            try
+            {
+                LocalizationHelper.InjectLocalization(PetNestFeedOption.Key, DescribeFeedOption(PetNestService.TryGetPet(petId)));
+            }
+            catch (Exception) { /* 选项名刷新失败沿用旧名 */ }
+        }
+
         /// <summary>摸摸：按性格回一句话，不给数值、不落档。</summary>
         internal static void Pat(PetNestPetRecord pet, CharacterMainControl companion)
         {
@@ -204,6 +261,9 @@ namespace BossRush
             else if (id == PetNestTuning.PersonalityLoyal) line = L10n.T("贴着你的腿转了一圈，尾巴摇个不停", "Circles your leg, tail wagging nonstop");
             else line = L10n.T("眯起眼睛，发出满足的咕噜声", "Squints and makes a contented rumble");
             Say(companion.transform, line);
+            // 摸了会有反应（审查 A-8）：视觉根轻轻放大再回来，只动模型、不动碰撞体，0.35 秒播完
+            try { if (companion.modelRoot != null) PetNestPulse.Play(companion.modelRoot, 1.1f, 0.35f); }
+            catch (Exception) { /* 少一个小动作不致命 */ }
         }
 
         /// <summary>
@@ -263,9 +323,12 @@ namespace BossRush
         /// <summary>选项名称的本地化：行动方式这一项按当前方式显示，切换后重新注入。</summary>
         internal static void InjectOptionLocalization(PetNestBehaviour current)
         {
+            // 写明点了会换成哪一种（审查 F-1）：三态轮换看不到下一种，玩家要点两次、读两次气泡才到想要的那档。
+            // 想直接选哪一种，巢页详情里有三段选择。
             LocalizationHelper.InjectLocalization(PetNestBehaviourOption.Key,
-                L10n.T("行动方式：", "Behavior: ") + Describe(current) + L10n.T("（点按切换）", " (tap to switch)"));
-            LocalizationHelper.InjectLocalization(PetNestFeedOption.Key, L10n.T("喂食", "Feed"));
+                L10n.T("行动方式：", "Behavior: ") + Describe(current)
+                + L10n.T("（点按换成" + Describe(Next(current)) + "）", " (tap for " + Describe(Next(current)) + ")"));
+            LocalizationHelper.InjectLocalization(PetNestFeedOption.Key, DescribeFeedOption(PetNestService.DeployedPet));
             LocalizationHelper.InjectLocalization(PetNestPatOption.Key, L10n.T("摸摸", "Pet"));
         }
 
@@ -356,11 +419,16 @@ namespace BossRush
 
         protected override bool IsInteractable()
         {
-            return !string.IsNullOrEmpty(PetId) && !SceneLoader.IsSceneLoading
+            bool ok = !string.IsNullOrEmpty(PetId) && !SceneLoader.IsSceneLoading
                 && _slot == SavesSystem.CurrentSlot && Companion != null
                 && Companion.Health != null && !Companion.Health.IsDead
                 && PetNestPersistenceAccess.CanStoreAll;
+            if (ok) OnQueried();
+            return ok;
         }
+
+        /// <summary>官方菜单来问「能不能交互」时的钩子（玩家走近时）；喂食用它刷新选项名，默认什么都不做。</summary>
+        protected virtual void OnQueried() { }
 
         protected override void OnTimeOut()
         {
@@ -401,9 +469,15 @@ namespace BossRush
         internal const string Key = "BossRush_PetNest_Care_Feed";
         protected override string NameKey { get { return Key; } }
 
+        protected override void OnQueried()
+        {
+            PetNestCareService.RefreshFeedLabel(PetId);
+        }
+
         protected override void Run()
         {
             PetNestCareService.TryFeed(PetId, Companion);
+            PetNestCareService.ForceFeedLabelRefresh(PetId);
         }
     }
 

@@ -243,6 +243,14 @@
       "maxSize": 512
     },
     {
+      "path": "Assets/Icons/pass_the_bomb.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Icons/pass_the_bomb_marker.png",
+      "maxSize": 256
+    },
+    {
       "path": "Assets/Items/empty_magazine_mine_icon.png",
       "maxSize": 512
     },

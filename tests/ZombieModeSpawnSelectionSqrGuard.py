@@ -48,6 +48,8 @@ def main() -> int:
         "float preferredMinDistance = GetZombieModeSpawnPointMinPlayerDistance();",
         "float preferredMinDistanceSqr = preferredMinDistance * preferredMinDistance;",
         "float fallbackMinDistanceSqr = ZombieModeTuning.SpawnPointMinPlayerDistance * ZombieModeTuning.SpawnPointMinPlayerDistance;",
+        # 2026-10-17 改为由近到远扫、找到第一个够远的可达点即停（J-Lab 掉帧）：没有玩家时直接判不可达，
+        # 所以不再有 main != null 的距离分支；两档距离仍只用平方距离比较。
         "float distanceSqr = delta.sqrMagnitude;",
         "if (distanceSqr < fallbackMinDistanceSqr)",
         "bool preferred = entry.DistanceSqr >= preferredMinDistanceSqr;",

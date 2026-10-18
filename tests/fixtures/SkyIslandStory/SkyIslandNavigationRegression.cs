@@ -28,6 +28,9 @@ internal static class SkyIslandNavigationRegression
             Targets(data, check, "Search_A");
             Apply(ref data, SkyIslandStoryAction.AcceptBellCourtQuest, check);
             Targets(data, check, "Search_H");
+            // 玩家反馈 2026-10-16：目标卡让去双航标门打噬风，地图圈却在 31 米外的风眼，木牌找不到。
+            check(SkyIslandMapMarkers.SideTargets(data).Contains("Search_E") && !SkyIslandMapMarkers.SideTargets(data).Contains("POI_E"),
+                "both beacons lit: map circles the twin-beacon gate sign, not the wind eye");
             if (peaceful)
             {
                 Apply(ref data, SkyIslandStoryAction.FindOldLetter, check);
@@ -46,11 +49,153 @@ internal static class SkyIslandNavigationRegression
             Targets(data, check, "Search_A");
             Apply(ref data, SkyIslandStoryAction.DeliverBellCourtQuest, check);
             Targets(data, check);
-            check(SkyIslandMapMarkers.SideTargets(data).Contains("POI_E"), "optional Windeater survives full quest delivery");
+            check(SkyIslandMapMarkers.SideTargets(data).Contains("Search_E") && !SkyIslandMapMarkers.SideTargets(data).Contains("POI_E"),
+                "optional Windeater survives full quest delivery and circles the twin-beacon gate sign");
             check(SkyIslandMapMarkers.SideTargets(data).Contains("Search_S1"), "unfinished garden remains an optional destination");
         }
         L10n.IsChinese = true;
         GuardGuidance(check);
+        PointerTargets(check);
+    }
+
+    /// <summary>
+    /// 2026-10-16 指引复核（docs/reports/reviews/2026-10-16-天空岛任务指引指向复核.md）：
+    /// 每条指引都要指向地图圈里真有的那个交互点——居民不在时写兜底装置、敲钟写「钟守留言」而不是 55 米外的钟架、
+    /// D 组守卫写在风标东边、只拿到旧信不叫人去见折翎。
+    /// </summary>
+    private static void PointerTargets(Action<bool, string> check)
+    {
+        Saves.SavesSystem.Switch(101016);
+        var story = new SkyIslandStoryService(); story.Open();
+        int route = (int)(SkyIslandStoryFlag.PreludeAccepted | SkyIslandStoryFlag.PreludeInstrumentRecovered | SkyIslandStoryFlag.RouteUnlocked);
+        int[] givers = { SkyIslandOfficialQuestTable.WeibaiGiverId, SkyIslandOfficialQuestTable.FuzhouGiverId, SkyIslandOfficialQuestTable.BellKeeperGiverId };
+        foreach (bool chinese in new[] { true, false })
+        {
+            L10n.IsChinese = chinese;
+            // ① 居民不在岛上：圈与罗盘的字写兜底装置（与它走近时的交互名同词），不再叫人去找不在的人。
+            string[] device = chinese ? new[] { "委托", "渡口整备", "钟守留言" } : new[] { "board", "dock refit", "bell keeper's message" };
+            for (int i = 0; i < givers.Length; i++)
+            {
+                string present = SkyIslandMapMarkers.ContactTask(givers[i], true);
+                string absent = SkyIslandMapMarkers.ContactTask(givers[i], false);
+                string marker = SkyIslandOfficialQuestTable.FallbackMarkerOfGiver(givers[i]);
+                check(present != null && absent != null && present != absent, "contact label differs when the giver is away: " + givers[i]);
+                check(present.Contains(chinese ? "找" : "find "), "giver on the isles: the label says to find them: " + givers[i]);
+                check(!absent.Contains(chinese ? "找" : "find ") && absent.ToLowerInvariant().Contains(device[i]),
+                    "giver away: the label names the fallback device, not the missing person: " + givers[i]);
+                check(SkyIslandPointText.Name(marker).ToLowerInvariant().Contains(device[i]),
+                    "the fallback label uses the same word as the device's own interaction name: " + marker);
+                check(chinese || (!Cjk(present) && !Cjk(absent)), "contact labels have an English half: " + givers[i]);
+            }
+            SkyIslandOfficialQuestDefinition bellCourt, homecoming;
+            SkyIslandOfficialQuestTable.TryGet(SkyIslandOfficialQuestTable.BellCourtQuestId, out bellCourt);
+            SkyIslandOfficialQuestTable.TryGet(SkyIslandOfficialQuestTable.HomecomingQuestId, out homecoming);
+            check(bellCourt.Contact().ToLowerInvariant().Contains(device[1]) && homecoming.Contact().ToLowerInvariant().Contains(device[2]),
+                "the HUD contact line names the fallback device for Fuzhou and the Bell Keeper, like Weibai's");
+
+            // ② 敲钟：看得见的大钟挂在钟庭北头，交互点 Search_H 在西南角、相隔 55 米。指引要指圈里的「钟守留言」。
+            var data = new SkyIslandStoryData
+            {
+                flags = route | (int)(SkyIslandStoryFlag.BeaconQuestAccepted | SkyIslandStoryFlag.BeaconQuestDelivered
+                    | SkyIslandStoryFlag.BellCourtQuestAccepted | SkyIslandStoryFlag.WindBeacon | SkyIslandStoryFlag.StarLamp
+                    | SkyIslandStoryFlag.BellKeeperDefeated),
+                clearedEncounters = new string[0], discoveredNotes = new string[0]
+            };
+            SkyIslandStoryData accepted; string reply;
+            check(SkyIslandStoryRules.TryApply(data, SkyIslandStoryAction.AcceptHomecomingQuest, out accepted, out reply)
+                && !reply.Contains(chinese ? "钟架" : "frame") && reply.Contains(chinese ? "钟守留言" : "Bell Keeper's message"),
+                "taking The Homecoming Bell points at the circled message point, not the bell frame");
+            Targets(accepted, check, "Search_H");
+            string objective = SkyIslandStoryRules.Objective(accepted);
+            check(!objective.Contains(chinese ? "钟架" : "frame") && objective.Contains(chinese ? "钟守留言" : "Bell Keeper's message")
+                && objective.Contains(chinese ? "敲响归航钟" : "Ring the Homecoming Bell"),
+                "bell objective names the circled interaction and the exact button");
+            string task = homecoming.Tasks[0].Description(accepted);
+            check(!task.Contains(chinese ? "归航钟跟前" : "Walk up to the Homecoming Bell") && task.Contains(chinese ? "钟守留言" : "Bell Keeper's message"),
+                "quest log line points at the circled interaction, not the bell");
+            check(!SkyIslandPointText.Brief("Search_H").Contains(chinese ? "这就是归航钟" : "This is the Homecoming Bell"),
+                "the message point does not claim to be the bell itself");
+            story.Current.flags = route;
+            string home = story.DescribeNpc("sky_bellkeeper", true, false);
+            check(!home.Contains(chinese ? "找我" : "come to the Bell Court") && home.Contains(chinese ? "钟守留言" : "Bell Keeper's message"),
+                "Bell Keeper at home does not send the player to find him on the isles");
+
+            // ③ D 组守卫在风标交互点以东 51 米：拒绝话与清场字幕写「风标东边」。
+            var guards = new SkyIslandStoryData
+            {
+                flags = route | (int)SkyIslandStoryFlag.BeaconQuestAccepted,
+                clearedEncounters = new[] { "D_02" }, discoveredNotes = new string[0]
+            };
+            string blocker;
+            SkyIslandStoryRules.CanApply(guards, SkyIslandStoryAction.RepairWindBeacon, out blocker);
+            string caption = SkyIslandStoryRules.GuardProgressCaption(guards, "D_02");
+            foreach (string line in new[] { blocker, caption })
+                check(line != null && line.Contains(chinese ? "风标东边" : "east of the wind beacon")
+                    && !line.Contains(chinese ? "风标跟前" : "right by the wind beacon"), "the D guard group is placed east of the beacon: " + line);
+            Targets(guards, check, "EnemySpawn_D", "EnemySpawn_G", "Search_G_02");
+
+            // ④ 眠苔：只拿到旧信不叫人去见折翎（要旧信和航路图两样）；折翎了结后不再说他在等、不再劝人穿甲去谈。
+            story.Current.flags = route | (int)(SkyIslandStoryFlag.WindBeacon | SkyIslandStoryFlag.OldLetter);
+            story.Current.discoveredNotes = new string[0];
+            string miantai = story.DescribeNpc("sky_miantai");
+            check(miantai.Contains(chinese ? "听雨洞" : "Rainlisten Grotto") && !miantai.Contains(chinese ? "折翎在等" : "take them to Zheling"),
+                "letter only: Miantai sends the player for the chart first");
+            story.Current.flags |= (int)SkyIslandStoryFlag.RouteChart;
+            check(story.DescribeNpc("sky_miantai").Contains(chinese ? "折翎在等" : "take them to Zheling"), "letter and chart: Miantai sends the player to Zheling");
+            story.Current.flags |= (int)SkyIslandStoryFlag.ZhelingReconciled;
+            story.Current.discoveredNotes = new[] { SkyIslandBossRules.PiperNote, SkyIslandBossRules.MirrorNote };
+            miantai = story.DescribeNpc("sky_miantai");
+            check(!miantai.Contains(chinese ? "镜水寺" : "Mirrorwater Temple") && !miantai.Contains(chinese ? "去见折翎" : "Zheling will talk"),
+                "Zheling settled: Miantai no longer points at a talk that can't happen");
+            story.Current.flags &= ~(int)SkyIslandStoryFlag.ZhelingReconciled;
+            check(story.DescribeNpc("sky_miantai").Contains(chinese ? "去见折翎" : "Zheling will talk"),
+                "Zheling unsettled: the mirror-plate hint is still there");
+            story.Current.discoveredNotes = new string[0];
+
+            // ⑤ 玩家反馈 2026-10-17「双航标门在哪里，风晶哪里烧」：结局后打过噬风，引风也在双航标门（Search_E）点，
+            //    K3 开了也要圈它；HUD、钟守、手记、钟守的拒绝话都说出「栈道南头」。
+            var echo = new SkyIslandStoryData
+            {
+                flags = route | (int)(SkyIslandStoryFlag.WindBeacon | SkyIslandStoryFlag.StarLamp | SkyIslandStoryFlag.ShortcutK3
+                    | SkyIslandStoryFlag.StormSlain | SkyIslandStoryFlag.BellKeeperDefeated | SkyIslandStoryFlag.Ending
+                    | SkyIslandStoryFlag.BeaconQuestAccepted | SkyIslandStoryFlag.BeaconQuestDelivered
+                    | SkyIslandStoryFlag.BellCourtQuestAccepted | SkyIslandStoryFlag.BellCourtQuestDelivered
+                    | SkyIslandStoryFlag.HomecomingQuestAccepted | SkyIslandStoryFlag.HomecomingQuestDelivered),
+                clearedEncounters = new string[0], discoveredNotes = new string[0]
+            };
+            check(SkyIslandMapMarkers.SideTargets(echo).Contains("Search_E"), "after the ending the echo gate stays circled even with K3 open");
+            echo.flags &= ~(int)SkyIslandStoryFlag.Ending;
+            check(!SkyIslandMapMarkers.SideTargets(echo).Contains("Search_E"), "before the bell rings a slain Windeater and an open K3 leave nothing to do at the gate");
+            echo.flags |= (int)SkyIslandStoryFlag.Ending;
+            string south = chinese ? "栈道南头的双航标门" : "south end of the boardwalk";
+            check(SkyIslandStoryRules.Objective(echo).Contains(south) && SkyIslandStoryRules.Objective(echo).Contains(chinese ? "晴岚风晶" : "Qinglan Windcrystal"),
+                "ending objective says where the echo is called and what to bring");
+            story.Current.flags = echo.flags;
+            string keeper = story.DescribeNpc("sky_bellkeeper");
+            check(keeper.Contains(chinese ? "栈道南头" : "south end of the boardwalk") && keeper.Contains(chinese ? "双航标门" : "twin-beacon gate")
+                && keeper.Contains(chinese ? "它会回来找你" : "it will come looking for you"),
+                "the Bell Keeper says where to burn the windcrystal");
+            check(SkyIslandJournal.Uses().Contains(chinese ? "南头的双航标门烧一块" : "burn one at the twin-beacon gate")
+                && SkyIslandJournal.Uses().Contains(chinese ? "南头的双航标门「引风」" : "bring it to the twin-beacon gate"),
+                "journal uses page names the gate for the windcrystal and the core");
+            var peace = new SkyIslandStoryData
+            {
+                flags = route | (int)(SkyIslandStoryFlag.WindBeacon | SkyIslandStoryFlag.StarLamp),
+                clearedEncounters = new string[0], discoveredNotes = new string[0]
+            };
+            SkyIslandStoryRules.CanApply(peace, SkyIslandStoryAction.ReconcileBellKeeper, out blocker);
+            check(blocker != null && blocker.Contains(chinese ? "栈道南头的双航标门" : "south end of the boardwalk"),
+                "the Bell Keeper's refusal says which end of the boardwalk the gate is on");
+            story.Current.flags = route;
+        }
+        L10n.IsChinese = true;
+        story.Close();
+    }
+
+    private static bool Cjk(string text)
+    {
+        foreach (char c in text) if (c >= 0x4E00 && c <= 0x9FFF) return true;
+        return false;
     }
 
     /// <summary>

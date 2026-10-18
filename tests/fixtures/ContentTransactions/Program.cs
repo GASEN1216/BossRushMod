@@ -599,6 +599,8 @@ partial class Program
         PetNestBackpackPersistence();
         PetNestBackpackTreeRoundTrip();
         PetNestBackpackOwnedRestoration();
+        PetNestScarTreatmentAndExpeditionSlots();
+        PetNestFavoriteAndHatchAll();
         Console.WriteLine("ContentTransactions: " + checks + " assertions passed");
     }
 
@@ -699,6 +701,109 @@ partial class Program
         SavesSystem.SetFile(1); UnityEngine.Time.frameCount++; PetNestSaveCoordinator.Tick();
         Check(!PetNestPersistence.Bundle.HasPendingWrite && !SavesSystem.Cache.ContainsKey(PetNestTuning.BundleStorageKey),
             "slot change discards old accepted pending instead of replaying it into the new slot");
+    }
+
+    // 2026-10-17：远征同时在途队数上限与遗魂治疗战痕。
+    static void PetNestScarTreatmentAndExpeditionSlots()
+    {
+        string error;
+        PetNestExpeditionRecord record;
+        Reset(); PrepareNest();
+        for (int i = 0; i < 3; i++) PetNestService.Nest.pets.Add(new PetNestPetRecord { id = "slot-" + i, lineageKey = "test", level = 1 });
+        Check(PetNestExpeditionSlots.GetCap() == PetNestTuning.ExpeditionBaseSlots, "an empty codex starts with the base expedition teams");
+        Check(PetNestExpeditionService.TryDepart("slot-0", PetNestTuning.DestinationStormSea, PetNestRiskTier.Safe, out record, out error)
+            && PetNestExpeditionService.TryDepart("slot-1", PetNestTuning.DestinationAcidRuins, PetNestRiskTier.Rough, out record, out error),
+            "two teams can be out at once");
+        Check(!PetNestExpeditionService.TryDepart("slot-2", PetNestTuning.DestinationFrozenWaste, PetNestRiskTier.Desperate, out record, out error)
+            && error == "expedition_slots_full" && PetNestExpeditionService.Records.Count == 2
+            && PetNestService.TryGetPet("slot-2").state == (int)PetNestPetState.InNest,
+            "a third team is refused without locking the cub or adding a record");
+        PetNestExpeditionService.Records[0].settled = true;
+        Check(PetNestExpeditionSlots.CountActive() == 1
+            && PetNestExpeditionService.TryDepart("slot-2", PetNestTuning.DestinationFrozenWaste, PetNestRiskTier.Safe, out record, out error),
+            "a settled expedition waiting for its reveal frees its team");
+
+        Reset(); PrepareNest();
+        var pet = new PetNestPetRecord { id = "scarred", lineageKey = "test", level = 1 };
+        pet.Normalize();
+        pet.scars.Add(new PetNestScarRecord { place = "first", statKey = "WalkSpeed", percent = PetNestTuning.ScarModifierFraction });
+        pet.scars.Add(new PetNestScarRecord { place = "second", statKey = "WalkSpeed", percent = PetNestTuning.ScarModifierFraction });
+        PetNestService.Nest.pets.Add(pet);
+        int souls = PetNestService.GetSouls("test");
+        Check(PetNestService.TryHealScar("scarred", out error), "a cub with scars and enough souls can be treated");
+        pet = PetNestService.TryGetPet("scarred");
+        Check(pet.scars.Count == 1 && pet.scars[0].place == "second" && pet.mergedOldScarCount == 1
+            && PetNestService.GetSouls("test") == souls - PetNestTuning.ScarHealSoulCost,
+            "treatment spends lineage souls, heals the oldest scar and keeps it as an old wound");
+        SetPrivate(PetNestPersistence.Bundle, "_storeFaulted", true);
+        Check(!PetNestService.TryHealScar("scarred", out error) && PetNestService.TryGetPet("scarred").scars.Count == 1
+            && PetNestService.GetSouls("test") == souls - PetNestTuning.ScarHealSoulCost,
+            "a rejected save keeps both the scar and the souls");
+
+        Reset(); PrepareNest();
+        pet = new PetNestPetRecord { id = "poor", lineageKey = "test", level = 1 };
+        pet.Normalize();
+        pet.scars.Add(new PetNestScarRecord { place = "only", statKey = "RunSpeed", percent = PetNestTuning.ScarModifierFraction });
+        PetNestService.Nest.pets.Add(pet);
+        PetNestService.Nest.soulLedger[0].souls = PetNestTuning.ScarHealSoulCost - 1;
+        Check(!PetNestService.TryHealScar("poor", out error) && error == "souls_insufficient" && pet.scars.Count == 1,
+            "treatment needs the full soul cost");
+        PetNestService.Nest.soulLedger[0].souls = PetNestTuning.ScarHealSoulCost;
+        pet.state = (int)PetNestPetState.OnExpedition;
+        Check(!PetNestService.TryHealScar("poor", out error) && error == "pet_locked_by_expedition" && pet.scars.Count == 1,
+            "a cub away on an expedition cannot be treated");
+        pet.state = (int)PetNestPetState.InNest;
+        pet.scars.Clear();
+        Check(!PetNestService.TryHealScar("poor", out error) && error == "no_scars"
+            && PetNestService.GetSouls("test") == PetNestTuning.ScarHealSoulCost,
+            "a cub without scars costs nothing");
+    }
+
+    // 2026-10-17：收藏保护与「全部孵化」。
+    static void PetNestFavoriteAndHatchAll()
+    {
+        string error;
+        PetNestExpeditionRecord record;
+        Reset(); PrepareNest();
+        PetNestService.Nest.pets.Add(new PetNestPetRecord { id = "fav", lineageKey = "test", level = 1 });
+        Check(!PetNestService.TryGetPet("fav").favorite, "cubs start unfavorited");
+        Check(PetNestService.TrySetFavorite("fav", true, out error) && PetNestService.TryGetPet("fav").favorite,
+            "a cub can be favorited");
+        var decoded = PetNestCodec.DecodeBundle(BossRushJsonParser.ParseOrNull(PetNestCodec.EncodeBundle(PetNestPersistence.Bundle.Current)));
+        Check(decoded.nest.pets[0].favorite, "favorite survives the bundle codec round trip");
+        Check(!PetNestService.TryReleasePet("fav", out error) && error == "pet_favorite" && PetNestService.PetCount == 1,
+            "a favorite cub cannot be released");
+        Check(!PetNestExpeditionService.TryDepart("fav", PetNestTuning.DestinationStormSea, PetNestRiskTier.Desperate, out record, out error)
+            && error == "pet_favorite_desperate" && PetNestExpeditionService.Records.Count == 0,
+            "a favorite cub cannot take the only lethal tier");
+        Check(PetNestExpeditionService.TryDepart("fav", PetNestTuning.DestinationStormSea, PetNestRiskTier.Rough, out record, out error),
+            "a favorite cub can still take a non-lethal tier");
+
+        Reset(); PrepareNest();
+        for (int i = 0; i < PetNestTuning.DefaultNestCapacity - 1; i++)
+            PetNestService.Nest.pets.Add(new PetNestPetRecord { id = "fill-" + i, lineageKey = "test", level = 1 });
+        var eggs = new System.Collections.Generic.List<Item>();
+        for (int i = 0; i < 3; i++) { var egg = new Item(); PlayerStorage.Inventory.AddAt(egg, 20 + i); eggs.Add(egg); }
+        System.Collections.Generic.List<PetNestHatchResult> results = PetNestHatchService.TryHatchAll(eggs, out error);
+        Check(results.Count == 1 && error == "nest_full" && PetNestService.PetCount == PetNestTuning.DefaultNestCapacity,
+            "hatch-all stops at the first full nest and keeps what hatched");
+        Check(eggs[0].Destroyed && !eggs[1].Destroyed && !eggs[2].Destroyed,
+            "eggs left over after a full nest are untouched");
+
+        // CR-2026-10-18-006：整批只写一次盘（此前每枚各绕过节流同步写整档一次）。
+        Reset(); PrepareNest();
+        for (int i = 0; i < PetNestTuning.DefaultNestCapacity - 3; i++)
+            PetNestService.Nest.pets.Add(new PetNestPetRecord { id = "fill-" + i, lineageKey = "test", level = 1 });
+        eggs = new System.Collections.Generic.List<Item>();
+        for (int i = 0; i < 3; i++) { var egg = new Item(); PlayerStorage.Inventory.AddAt(egg, 20 + i); eggs.Add(egg); }
+        int writesBefore = SavesSystem.Writes;
+        results = PetNestHatchService.TryHatchAll(eggs, out error);
+        Check(results.Count == 3 && error == null && eggs.TrueForAll(e => e.Destroyed)
+            && PetNestService.PetCount == PetNestTuning.DefaultNestCapacity,
+            "hatch-all hatches every egg that fits");
+        Check(SavesSystem.Writes - writesBefore == 1, "hatch-all writes the save file once for the whole batch");
+        Check(PetNestService.TryGetPet(results[0].Pet.id) != null && PetNestService.TryGetPet(results[2].Pet.id) != null,
+            "every hatched cub of the batch is committed");
     }
 
     static void PetNestBackpackPersistence()

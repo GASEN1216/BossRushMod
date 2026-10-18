@@ -286,7 +286,7 @@ namespace BossRush
                 Record("AUTOTEST_MONEY_LEDGER", moneyUnchanged ? "PASS" : "WARN", 0L, _autotest.Info.MoneyLedger,
                     moneyUnchanged ? string.Empty : "money_changed_during_autotest_not_restored");
                 // 基地侧检查放在还原与收回之后：纪念品件数回到开跑前、官方图鉴镜像与还原后的存档对照。
-                RunSyncCase("SKY_KEEPSAKE_ITEMS_BASE", ValidateSkyIslandKeepsakesAtBase);
+                RunSyncCase("SKY_KEEPSAKE_ITEMS_BASE", ValidateAutotestKeepsakesAtBase);
                 string notesMetrics, notesReason;
                 bool mirror = JudgeAutotestOfficialNotesAfterRestore(out notesMetrics, out notesReason);
                 Record("AUTOTEST_BASE_OFFICIAL_NOTES", mirror ? "PASS" : "FAIL", 0L, notesMetrics, notesReason);

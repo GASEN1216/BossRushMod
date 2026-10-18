@@ -185,6 +185,11 @@ namespace BossRush
         public int behaviour;
         /// <summary>上次喂食的 UTC ticks（冷却用）。SCHEMA+：旧档为 0，随时可喂。</summary>
         public long lastFeedUtcTicks;
+        /// <summary>
+        /// 收藏（2026-10-17）。收藏的崽不能放生、不走亡命档、不进一键勾选——像宝可梦 GO 的收藏，防手滑。
+        /// SCHEMA+：旧档缺字段即未收藏。
+        /// </summary>
+        public bool favorite;
 
         /// <summary>容器兜底，反序列化后必须调用。</summary>
         public void Normalize()
@@ -227,6 +232,7 @@ namespace BossRush
             clone.backpackJson = backpackJson;
             clone.behaviour = behaviour;
             clone.lastFeedUtcTicks = lastFeedUtcTicks;
+            clone.favorite = favorite;
 
             clone.talents = new List<PetNestTalentEntry>(talents != null ? talents.Count : 0);
             if (talents != null)

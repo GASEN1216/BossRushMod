@@ -77,7 +77,7 @@ class Program
         });
         Case("base feed pat and behavior target their attached companion",()=>{
             var pet=Character();Add(Food(42,2));var options=Options(pet);Check(options.Length==3&&options.All(Allowed),"base options enabled without raid companion owner");
-            Complete(options.OfType<PetNestFeedOption>().Single());Check(PetNestService.Pet.exp==20&&pet.Health.CurrentHealth==60,"base feed applies to base pet");
+            Complete(options.OfType<PetNestFeedOption>().Single());Check(PetNestService.Pet.exp==20&&pet.Health.CurrentHealth==60,"base feed applies to base pet");Check(options.OfType<PetNestFeedOption>().Single().InteractName.Contains("10"),"feed option shows the cooldown right after feeding");
             Complete(options.OfType<PetNestPatOption>().Single());Check(Duckov.UI.DialogueBubbles.DialogueBubblesManager.LastTarget==pet.transform,"base pet receives interaction bubble");
             Complete(options.OfType<PetNestBehaviourOption>().Single());Check(PetNestService.Pet.behaviour==1,"base behavior stored for next raid");
             SavesSystem.CurrentSlot=2;Check(options.All(x=>!Allowed(x)),"old options cannot mutate another save slot");
@@ -86,7 +86,7 @@ class Program
         Case("existing option names follow official localization reinjection",()=>{
             var pet=Character();PetNestCompanionRuntime.CompanionCharacter=pet;var options=Options(pet);PetNestCareService.InjectOptionLocalization(PetNestBehaviour.Follow);
             foreach(bool chinese in new[]{false,true,false}){
-                L10n.IsChinese=chinese;PetNestLocalization.Inject();Check(options.OfType<PetNestFeedOption>().Single().InteractName==(chinese?"喂食":"Feed"),"feed name changes language without respawn");
+                L10n.IsChinese=chinese;PetNestLocalization.Inject();Check(options.OfType<PetNestFeedOption>().Single().InteractName.StartsWith(chinese?"喂食":"Feed")&&(chinese||!options.OfType<PetNestFeedOption>().Single().InteractName.Contains("喂食")),"feed name changes language without respawn");
                 Check(options.OfType<PetNestPatOption>().Single().InteractName==(chinese?"摸摸":"Pet"),"pat name changes language without respawn");
                 Check(options.OfType<PetNestBehaviourOption>().Single().InteractName.Contains(chinese?"跟随":"Follow"),"behavior name preserves current state in new language");
             }
@@ -96,7 +96,7 @@ class Program
             Complete(options.OfType<PetNestBehaviourOption>().Single());
             L10n.IsChinese=false;PetNestLocalization.Inject();
             Check(PetNestCompanionRuntime.CompanionCharacter==null&&options.OfType<PetNestBehaviourOption>().Single().InteractName.Contains("Aggressive"),"base owner uses current pet behavior in new language");
-            Check(options.OfType<PetNestFeedOption>().Single().InteractName=="Feed"&&options.OfType<PetNestPatOption>().Single().InteractName=="Pet","same base care options refresh without raid owner or respawn");
+            Check(options.OfType<PetNestFeedOption>().Single().InteractName.StartsWith("Feed")&&options.OfType<PetNestPatOption>().Single().InteractName=="Pet","same base care options refresh without raid owner or respawn");
         });
         Case("settled historical risk stays frozen while in-flight Rough becomes safe",()=>{
             var historical=new PetNestExpeditionRecord{riskTier=1,deathRate=.06f,settled=true};Check(PetNestExpeditionService.EffectiveDeathRate(historical)==.06f,"settled historical risk stays 6 percent");

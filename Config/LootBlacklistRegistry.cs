@@ -118,6 +118,7 @@ namespace BossRush
                 BossRushItemIds.RollCallLedger,
                 BossRushItemIds.ReloadMetronome,
                 BossRushItemIds.TemperingSolvent,
+                BossRushItemIds.PassTheBomb,
                 500053, 500054, 500055, 500056,
 
                 FactionFlagConfig.RANDOM_FLAG_TYPE_ID,

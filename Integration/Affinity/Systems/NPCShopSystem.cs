@@ -51,7 +51,7 @@ namespace BossRush
     /// <summary>
     /// 通用NPC商店系统
     /// </summary>
-    public static class NPCShopSystem
+    public static partial class NPCShopSystem
     {
         // ============================================================================
         // 私有字段
@@ -75,11 +75,18 @@ namespace BossRush
         private static string originalTextSell = null;
         private static readonly Dictionary<int, float> temporaryPurificationFactors = new Dictionary<int, float>();
         private static readonly Dictionary<int, int> temporaryPurificationPrices = new Dictionary<int, int>();
+        // 本次开店的库存记录（含当前等级没上架、但存档里已有的商品）；null 表示本店不记库存（净化点商店）。
+        private static Dictionary<int, NPCShopStockSlot> currentStockSlots = null;
 
         // 常量
         private const float BUBBLE_Y_OFFSET = 1.2f;
         private const float BUBBLE_DURATION = 3f;
         private const string TemporaryPurificationPriceUnavailable = "TemporaryPurificationPriceUnavailable";
+        // 官方 StockShop.merchantID 默认是 "Albert"（基地官方商人），不改的话商店开着时触发存档，
+        // 会把 NPC 商品的库存写进 StockShop_Albert。换成 Mod 自己的命名空间。
+        private const string MerchantIdPrefix = "BossRushNpc_";
+        // 压住官方 RefreshIfNeeded：库存由 NPCShopStockLedger 按游戏日管理，官方按真实时间补满会把它冲掉。
+        private static readonly long OfficialRefreshSuppressedTicks = TimeSpan.FromDays(3650).Ticks;
 
         // ============================================================================
         // 公共属性
@@ -372,11 +379,20 @@ namespace BossRush
                 ModBehaviour.DevLog("[NPCShop] [ERROR] 设置 accountAvaliable 失败: " + ex.Message);
             }
 
+            ConfigureShopIdentity(npcId);
+            DetachOfficialShopSaveHooks(currentShop);
+
             // 配置商品
             ConfigureShopEntries(npcId);
 
             // 配置卖出加成（好感度折扣也影响卖出价格）
             ConfigureSellBonus(npcId);
+
+            if (currentStockSlots != null)
+            {
+                SuppressOfficialRestock();
+                PersistShopStock();
+            }
 
             // 关键：手动缓存物品实例到 itemInstances 字典
             // 游戏原生商店在 Start() 中异步调用 CacheItemInstances()
@@ -525,6 +541,13 @@ namespace BossRush
                 return;
             }
 
+            // 现金商店的库存跟着好感存档按游戏日补货；净化点商店（丧尸模式局内）照旧每次开店满库存，不和基地共用库存。
+            currentStockSlots = IsPurificationShop()
+                ? null
+                : NPCShopStockLedger.Parse(AffinityManager.GetShopStockTokens(npcId));
+            int currentDay = NPCGiftSystem.GetCurrentGameDay();
+            bool playerMarried = IsPlayerMarriedForShop();
+
             foreach (var item in items)
             {
                 if (level < item.RequiredLevel)
@@ -550,8 +573,23 @@ namespace BossRush
                     }
 
                     StockShop.Entry wrapped = new StockShop.Entry(itemEntry);
-                    wrapped.CurrentStock = item.MaxStock;
-                    wrapped.Show = true;
+                    if (currentStockSlots != null)
+                    {
+                        NPCShopStockSlot record;
+                        bool hasRecord = currentStockSlots.TryGetValue(item.TypeID, out record);
+                        int restockDays = NPCShopStockLedger.EffectiveRestockDays(item.RestockDays, item.RestockOnlyWhenSingle, playerMarried);
+                        NPCShopStockSlot slot = NPCShopStockLedger.Resolve(hasRecord, record, item.TypeID,
+                            item.MaxStock, restockDays, item.Possibility, currentDay, RollStockPossibility);
+                        currentStockSlots[item.TypeID] = slot;
+                        wrapped.CurrentStock = slot.Remaining;
+                        // 与官方 SetupSaveData 一致：卖完的必出商品留着显示「售罄」，随机商品没掷中或卖完就不显示。
+                        wrapped.Show = slot.Shown && (slot.Remaining > 0 || item.Possibility >= 1f);
+                    }
+                    else
+                    {
+                        wrapped.CurrentStock = item.MaxStock;
+                        wrapped.Show = true;
+                    }
 
                     currentShop.entries.Add(wrapped);
 
@@ -723,6 +761,46 @@ namespace BossRush
         }
 
         // ============================================================================
+        // 私有方法 - 库存存档
+        // ============================================================================
+
+        private static float RollStockPossibility()
+        {
+            return UnityEngine.Random.value;
+        }
+
+        /// <summary>
+        /// 把当前商店各商品的剩余库存写回好感存档（延迟保存，随官方存档落盘）。
+        /// 购买回调与关店清理各调一次：官方扣库存与回调的先后不影响结果，关店时总会按最终库存再写一遍。
+        /// </summary>
+        private static void PersistShopStock()
+        {
+            if (currentStockSlots == null || currentShop == null || currentShop.entries == null
+                || string.IsNullOrEmpty(currentNpcId))
+            {
+                return;
+            }
+
+            try
+            {
+                foreach (var entry in currentShop.entries)
+                {
+                    if (entry == null) continue;
+                    NPCShopStockSlot slot;
+                    if (!currentStockSlots.TryGetValue(entry.ItemTypeID, out slot)) continue;
+                    slot.Remaining = Math.Max(0, entry.CurrentStock);
+                    currentStockSlots[entry.ItemTypeID] = slot;
+                }
+
+                AffinityManager.SetShopStockTokens(currentNpcId, NPCShopStockLedger.Serialize(currentStockSlots));
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[NPCShop] [WARNING] 写回商店库存失败: " + e.Message);
+            }
+        }
+
+        // ============================================================================
         // 私有方法 - 清理
         // ============================================================================
 
@@ -731,6 +809,7 @@ namespace BossRush
             // owner 回收与打开失败也会到这里；先退订，避免官方 Close 回调重入。
             isServiceActive = false;
             UnregisterEvents();
+            PersistShopStock();
             try
             {
                 var shopView = StockShopView.Instance;
@@ -763,6 +842,7 @@ namespace BossRush
             currentPaymentStrategy = NPCShopPaymentStrategy.Cash;
             temporaryPurificationFactors.Clear();
             temporaryPurificationPrices.Clear();
+            currentStockSlots = null;
         }
 
         private static bool IsPurificationShop()
@@ -928,8 +1008,14 @@ namespace BossRush
 
         private static void OnItemPurchased(StockShop shop, Item purchasedItem)
         {
-            if (!isServiceActive || shop != currentShop || purchasedItem == null || !IsPurificationShop())
+            if (!isServiceActive || shop != currentShop || purchasedItem == null)
             {
+                return;
+            }
+
+            if (!IsPurificationShop())
+            {
+                PersistShopStock();
                 return;
             }
 

@@ -101,17 +101,33 @@ namespace BossRush
                 totalDecay = daysWithoutInteraction * AffinityConfig.DAILY_DECAY_AMOUNT;
             }
 
-            // 应用衰减
+            // 应用衰减：不跌破下限（已看过的最高剧情里程碑；配偶另锁在跟随门槛）。
+            // 已经在下限以下（花心惩罚等扣分造成）时不再衰减，也不会被抬回下限。
             if (totalDecay > 0)
             {
                 int oldPoints = data.points;
-                data.points = Math.Max(0, data.points - totalDecay);
+                int floorPoints = GetDecayFloorPoints(data);
+                data.points = oldPoints <= floorPoints ? oldPoints : Math.Max(floorPoints, oldPoints - totalDecay);
+                totalDecay = oldPoints - data.points;
 
                 ModBehaviour.DevLog("[Affinity] " + npcId + " 好感度累积衰减: " + oldPoints + " -> " + data.points +
-                    " (衰减" + totalDecay + "点, " + daysWithoutInteraction + "天未互动)");
+                    " (衰减" + totalDecay + "点, " + daysWithoutInteraction + "天未互动, 下限" + floorPoints + ")");
 
-                // 触发事件
-                OnAffinityChanged?.Invoke(npcId, oldPoints, data.points);
+                if (totalDecay > 0)
+                {
+                    // 玩家还没来聊天又衰减了一轮：累加，提示写的是从上次见面以来一共掉了多少
+                    DecayNotice notice;
+                    int noticeDays = daysWithoutInteraction;
+                    int noticePoints = totalDecay;
+                    if (pendingDecayNotices.TryGetValue(npcId, out notice))
+                    {
+                        noticeDays += notice.Days;
+                        noticePoints += notice.Points;
+                    }
+                    pendingDecayNotices[npcId] = new DecayNotice { Days = noticeDays, Points = noticePoints };
+                    // 触发事件
+                    OnAffinityChanged?.Invoke(npcId, oldPoints, data.points);
+                }
             }
             else
             {
@@ -123,6 +139,49 @@ namespace BossRush
             MarkDirty();
 
             return totalDecay;
+        }
+
+        /// <summary>衰减下限参照的剧情里程碑（与各 NPC 的里程碑剧情等级一致）。</summary>
+        private static readonly int[] DecayFloorMilestones = { 3, 5, 8, 10 };
+
+        /// <summary>一次衰减的结果，等玩家下次和这位 NPC 聊天时提示一次；只在内存里，不存档。</summary>
+        internal struct DecayNotice
+        {
+            public int Days;
+            public int Points;
+        }
+
+        private static readonly System.Collections.Generic.Dictionary<string, DecayNotice> pendingDecayNotices =
+            new System.Collections.Generic.Dictionary<string, DecayNotice>();
+
+        /// <summary>
+        /// 衰减下限点数：已触发过的最高剧情里程碑所在等级的门槛（看过 Lv.5 剧情就不会掉回 Lv.4）；
+        /// 配偶至少保住跟随门槛，避免只因几天没聊天就被送回家。
+        /// </summary>
+        internal static int GetDecayFloorPoints(AffinityData data)
+        {
+            if (data == null) return 0;
+
+            int floorLevel = 1;
+            for (int i = 0; i < DecayFloorMilestones.Length; i++)
+            {
+                int milestone = DecayFloorMilestones[i];
+                if (milestone > floorLevel && HasTriggeredStory(data, milestone)) floorLevel = milestone;
+            }
+            if (data.isMarriedToPlayer && SPOUSE_FOLLOW_REQUIRED_LEVEL > floorLevel)
+            {
+                floorLevel = SPOUSE_FOLLOW_REQUIRED_LEVEL;
+            }
+            return GetPointsRequiredForLevel(floorLevel);
+        }
+
+        /// <summary>取走这位 NPC 待提示的衰减（取一次就清掉）。</summary>
+        internal static bool TryConsumeDecayNotice(string npcId, out DecayNotice notice)
+        {
+            notice = default(DecayNotice);
+            if (string.IsNullOrEmpty(npcId) || !pendingDecayNotices.TryGetValue(npcId, out notice)) return false;
+            pendingDecayNotices.Remove(npcId);
+            return true;
         }
 
         /// <summary>
@@ -188,6 +247,29 @@ namespace BossRush
         // 配置获取
         // ============================================================================
 
+        /// <summary>NPC 商店剩余库存（NPCShopStockLedger 编码）。没有记录时返回空串。</summary>
+        internal static string GetShopStockTokens(string npcId)
+        {
+            if (string.IsNullOrEmpty(npcId)) return string.Empty;
+            AffinityData data;
+            return npcDataMap.TryGetValue(npcId, out data) && data != null
+                ? (data.shopStockTokens ?? string.Empty)
+                : string.Empty;
+        }
+
+        /// <summary>写回 NPC 商店剩余库存；写屏障期间不写（与好感点数同一份存档）。</summary>
+        internal static void SetShopStockTokens(string npcId, string tokens)
+        {
+            if (!CanWrite) return;
+            if (string.IsNullOrEmpty(npcId)) return;
+
+            AffinityData data = GetOrCreateAffinityData(npcId);
+            string value = tokens ?? string.Empty;
+            if (string.Equals(data.shopStockTokens, value, StringComparison.Ordinal)) return;
+            data.shopStockTokens = value;
+            MarkDirty();
+        }
+
         /// <summary>
         /// 获取指定NPC的配置
         /// </summary>
@@ -198,6 +280,12 @@ namespace BossRush
                 return config;
             }
             return null;
+        }
+
+        /// <summary>已注册好感配置的 NPC id 快照（好感页签按它列人；调用方改列表不影响注册表）。</summary>
+        public static System.Collections.Generic.List<string> GetRegisteredNpcIds()
+        {
+            return new System.Collections.Generic.List<string>(npcConfigMap.Keys);
         }
 
         /// <summary>
@@ -266,6 +354,7 @@ namespace BossRush
         {
             // 先清空数据，确保存档隔离
             npcDataMap.Clear();
+            pendingDecayNotices.Clear();
             isDirty = false;
             loadWriteBlocked = true;
 

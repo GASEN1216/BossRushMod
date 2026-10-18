@@ -31,6 +31,18 @@ namespace BossRush
         public float Possibility { get; set; } = 1.0f;
         
         /// <summary>
+        /// 补货间隔（游戏日）。默认每个游戏日补满一次；0 = 终身限量，卖完不再补（DuckNpcs.json 的 restockDays 用）
+        /// （NPCShopStockLedger.LifetimeLimited）。剩余库存跟着好感存档走。
+        /// </summary>
+        public int RestockDays { get; set; } = 1;
+
+        /// <summary>
+        /// 只在玩家单身时补货（钻石戒指）：已婚期间按终身限量处理、卖完不补；离婚后距上次补货满
+        /// RestockDays 个游戏日就补上，离婚了还能再买一枚求婚。
+        /// </summary>
+        public bool RestockOnlyWhenSingle { get; set; }
+
+        /// <summary>
         /// 创建商品条目
         /// </summary>
         public ShopItemEntry(int typeId, int requiredLevel = 0, int maxStock = 5)

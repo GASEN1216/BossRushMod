@@ -555,7 +555,7 @@ namespace BossRush
             Vector3 target;
             if (!TryResolveZombieModeBossFallbackPosition(instance, out target))
             {
-                // 找不到可达点时退避 1 秒，避免每帧、每只卡住的 Boss 重扫同步 A*。
+                // 退避：把「上次可达」推到超时前 1 秒，下一次重试在 1 秒后，而不是下一帧。
                 instance.Lifecycle.LastReachableTime = GetZombieModeRuntimeNow()
                     - ZombieModeTuning.BossStuckTimeoutSeconds + ZombieModeTuning.BossStuckRetryBackoffSeconds;
                 return;

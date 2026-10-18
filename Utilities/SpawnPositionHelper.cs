@@ -100,7 +100,10 @@ namespace BossRush
             }
         }
 
-        /// <summary>只检查可达性判据的锚点一侧；锚点吸不上导航面时，无须逐个查询候选点。</summary>
+        /// <summary>
+        /// 只判 <see cref="TryResolveReachableFrom"/> 的锚点那一半：锚点吸不上导航面时任何目标都判不可达。
+        /// 批量找点前先问一次就能整轮早退，结果与逐点调用相同（玩家站在台面、楼梯上时省掉整轮同步查询）。
+        /// </summary>
         internal static bool IsReachableAnchor(Vector3 anchorPosition)
         {
             try

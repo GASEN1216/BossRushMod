@@ -57,9 +57,11 @@ namespace BossRush
 
         // 版式（UA-01）：与随机事件徽章同左缘（RandomEventsTuning.HudBadgeMarginX），顶边在徽章底边下 8。
         private const float PanelWidth = 300f;
-        private const float PanelHeight = 76f;
+        private const float PanelHeight = 80f;
         private const float PortraitSize = 56f;
         private const float BarHeight = 6f;
+        /// <summary>经验条（审查 F-3）：血条下 2 px 细条，文字里不再写「34/100」。</summary>
+        private const float ExpBarHeight = 2f;
 
         private static PetNestCompanionHudView _instance;
 
@@ -72,6 +74,11 @@ namespace BossRush
         private TextMeshProUGUI _statusText;
         private Image _barFill;
         private PetNestHudBarSmoother _barSmoother;
+        private Image _expFill;
+        private PetNestHudBarSmoother _expSmoother;
+        // 局内升级反馈（审查 A-7）：同一只崽等级变高时脉冲 + 官方升级音 + 头顶飘字
+        private string _levelPetId;
+        private int _lastLevel;
         private int _barTier = -1;
         private float _refreshTimer;
         private PetNestHudModel _lastModel;
@@ -194,10 +201,31 @@ namespace BossRush
             _barFill.raycastTarget = false;
             _barSmoother = fill.AddComponent<PetNestHudBarSmoother>();
 
+            // 经验条：血条下方细轨 + Accent 填充，满级时整条 Success
+            GameObject expTrack = ZombieModeUIHelper.CreateRect(
+                "ExpTrack", _panel.transform, new Vector2(0f, 1f), new Vector2(0f, 1f),
+                new Vector2(0f, -49f), new Vector2(200f, ExpBarHeight), new Vector2(0f, 1f));
+            Image expTrackImage = expTrack.AddComponent<Image>();
+            expTrackImage.sprite = BossRushUI.GetSolidSprite();
+            expTrackImage.color = BossRushUIColors.Divider;
+            expTrackImage.raycastTarget = false;
+            GameObject expFill = ZombieModeUIHelper.CreateRect(
+                "ExpFill", expTrack.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0f, 0.5f));
+            _expFill = expFill.AddComponent<Image>();
+            _expFill.sprite = BossRushUI.GetSolidSprite();
+            _expFill.type = Image.Type.Filled;
+            _expFill.fillMethod = Image.FillMethod.Horizontal;
+            _expFill.fillOrigin = (int)Image.OriginHorizontal.Left;
+            _expFill.fillAmount = 0f;
+            _expFill.color = BossRushUIColors.Accent;
+            _expFill.raycastTarget = false;
+            _expSmoother = expFill.AddComponent<PetNestHudBarSmoother>();
+            _expSmoother.SetTarget(0f);
+
             _statusText = ZombieModeUIHelper.CreateText(
                 "Status", _panel.transform, string.Empty, 14f,
                 new Vector2(0f, 1f), new Vector2(0f, 1f),
-                new Vector2(0f, -50f), new Vector2(200f, 24f),
+                new Vector2(0f, -54f), new Vector2(200f, 24f),
                 TextAlignmentOptions.Left, BossRushUIColors.TextSecondary);
             _statusText.rectTransform.pivot = new Vector2(0f, 1f);
             BossRushUI.ApplyGameFont(_statusText);
@@ -217,6 +245,7 @@ namespace BossRush
             float width = PanelWidth - left - 14f;
             SetRow(_nameText != null ? _nameText.rectTransform : null, left, width);
             SetRow(_barFill != null ? _barFill.rectTransform.parent as RectTransform : null, left, width);
+            SetRow(_expFill != null ? _expFill.rectTransform.parent as RectTransform : null, left, width);
             SetRow(_statusText != null ? _statusText.rectTransform : null, left, width);
         }
 
@@ -317,6 +346,8 @@ namespace BossRush
                 }
 
                 ApplyHealthBar(model);
+                ApplyExpBar(model);
+                DetectLevelUp(petId, model.Level);
 
                 if (_statusText != null)
                 {
@@ -327,6 +358,44 @@ namespace BossRush
             catch (Exception)
             {
                 // HUD 写入失败不得拖崩宿主 Update
+            }
+        }
+
+        private void ApplyExpBar(PetNestHudModel model)
+        {
+            if (_expFill == null || _expSmoother == null) return;
+            bool adult = model.Level >= PetNestTuning.PetMaxLevel;
+            _expFill.color = adult ? BossRushUIColors.Success : BossRushUIColors.Accent;
+            float ratio = adult ? 1f : Mathf.Clamp01(model.Exp / (float)Mathf.Max(1, PetNestTuning.PetExpPerLevel));
+            _expSmoother.SetTarget(ratio);
+        }
+
+        /// <summary>
+        /// 同一只崽等级变高：状态字脉冲一下、播官方升级音、崽头顶飘「Lv5！」（官方 PopText，与对话气泡不抢位）。
+        /// 换崽、首次显示不算升级。
+        /// </summary>
+        private void DetectLevelUp(string petId, int level)
+        {
+            bool samePet = string.Equals(petId, _levelPetId, StringComparison.Ordinal);
+            int previous = _lastLevel;
+            _levelPetId = petId;
+            _lastLevel = level;
+            if (!samePet || previous <= 0 || level <= previous) return;
+            try
+            {
+                if (_statusText != null) PetNestPulse.Play(_statusText.transform, 1.18f, 0.45f);
+                IntegrationUIFeedback.PlaySound(IntegrationUIFeedback.SoundLevelUp);
+                CharacterMainControl companion = PetNestCompanionRuntime.CompanionCharacter;
+                if (companion != null)
+                {
+                    companion.PopText(level >= PetNestTuning.PetMaxLevel
+                        ? L10n.T("长成成年体了！", "All grown up!")
+                        : "Lv" + level + L10n.T("！", "!"));
+                }
+            }
+            catch (Exception)
+            {
+                // 升级反馈失败只是少一下提示
             }
         }
 
@@ -391,11 +460,8 @@ namespace BossRush
             // 血量交给血条，文字只留等级与战痕（UA-01：「血量 72%」4Hz 跳数读起来吃力）。
             // 等级摆在最前：养成的回报现在真的作用在属性上，局内得看得见它长到几级了
             // 经验进度与行动方式（2026-10-12）：带出去打一架长了多少、它现在会不会主动开打，都要看得见
+            // 经验进度交给血条下的经验条（审查 F-3），文字只留等级、行动方式与战痕
             string text = "Lv" + model.Level;
-            if (model.Level < PetNestTuning.PetMaxLevel)
-            {
-                text += " " + model.Exp + "/" + PetNestTuning.PetExpPerLevel;
-            }
             text += " · " + PetNestCareService.Describe((PetNestBehaviour)Mathf.Clamp(model.Behaviour, 0, 2));
             if (model.ScarCount > 0)
             {

@@ -120,6 +120,11 @@ namespace BossRush
             Add(map, "Fail_pet_invalid", "这只崽的数据不完整，无法入巢",
                 "This cub's data is incomplete and cannot enter the nest");
             Add(map, "Fail_souls_insufficient", "遗魂不够", "Not enough relic souls");
+            Add(map, "Fail_no_scars", "它身上没有要治的战痕", "This cub has no scars to treat");
+            Add(map, "Fail_heal_scar_failed", "治疗未能保存", "The treatment could not be stored");
+            Add(map, "Fail_pet_favorite", "收藏的崽不能放生，先取消收藏", "Favorite cubs can't be released; unfavorite it first");
+            Add(map, "Fail_pet_favorite_desperate", "收藏的崽不走亡命档", "Favorite cubs don't take Desperate runs");
+            Add(map, "Fail_favorite_failed", "收藏未能保存", "The favorite could not be stored");
             Add(map, "Fail_invalid_request", "这个操作的参数不对", "That request was not valid");
 
             // —— 孵化 ——
@@ -146,6 +151,8 @@ namespace BossRush
                 "Dispatch failed; nothing was saved");
             Add(map, "Fail_settle_failed", "远征结算失败，稍后会重试",
                 "Settling the expedition failed; it will be retried");
+            Add(map, "Fail_expedition_slots_full", "远征队伍都派出去了，等在途的回来再派",
+                "Every expedition team is out; wait for one to come back");
 
             // —— 随从进局（模式门控与入场）——
             Add(map, "Fail_mode_g_banned", "宿命回响不能带崽：宿敌的账只算你自己打出来的伤害",
@@ -232,8 +239,8 @@ namespace BossRush
                 "不轻易扑上去，更耐揍；代价是枪械输出略低。",
                 "Picks its fights and soaks more damage; slightly weaker with guns.");
             Add(map, "Personality_lazy_Desc",
-                "攻击欲最低、跑得慢；但多带一格捡漏背包。",
-                "Least eager to fight and slower on its feet; carries one extra scavenger slot.");
+                "攻击欲最低、跑得慢；但多带一格独立背包。",
+                "Least eager to fight and slower on its feet; carries one extra cub backpack slot.");
             Add(map, "Personality_loyal_Desc",
                 "贴着主人不乱跑，命也更硬。",
                 "Sticks close to you and is tougher to put down.");
@@ -261,7 +268,7 @@ namespace BossRush
             Add(map, "Stat_MeleeDamageMultiplier", "近战伤害", "Melee damage");
             Add(map, "Stat_BodyArmor", "护甲", "Body armor");
             Add(map, "Stat_GunScatterMultiplier", "枪械散布", "Gun spread");
-            Add(map, "Stat_PetCapcity", "捡漏背包格", "Scavenger slots");
+            Add(map, "Stat_PetCapcity", "独立背包格", "Cub backpack slots");
 
             // 出身天赋名。id 与 PetNestHatchService.TalentPool 的第一列一一对应。
             Add(map, "Talent_swift", "轻步", "Light Step");

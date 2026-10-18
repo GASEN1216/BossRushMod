@@ -239,6 +239,7 @@ namespace BossRush
 
             // 巢页的两栏（PetNestUILayout.cs）：建好先藏着，巢页时才显示
             BuildNestBody(surface.transform);
+            InitMotion(surface.transform);
 
             _modalLease = ZombieModeUIHelper.ClaimModalInput(_canvas.gameObject, "PetNestPanel");
             // ESC / 手柄取消 = 关闭（UA-21）；上面压着改名 / 放生 / 出发确认 / 演出时让给它们
@@ -251,7 +252,7 @@ namespace BossRush
         private static bool IsCoveredByChildWindow()
         {
             return PetNestRenameModal.IsOpen || BossRushConfirmDialog.IsOpen
-                || PetNestHatchRevealView.IsOpen || PetNestExpeditionRevealView.IsOpen;
+                || PetNestHatchRevealView.IsOpen || PetNestExpeditionRevealView.IsOpen || (_instance != null && _instance.IsLineageDetailOpen);
         }
 
         private void BuildHeader(Transform parent)
@@ -301,6 +302,7 @@ namespace BossRush
                 BossRushUIKit.StyleSecondaryButton(tab);
                 _tabs[page] = tab;
             }
+            BuildTabIndicator(parent);
         }
 
         private static string TabLabel(PetNestUIPage page)
@@ -318,6 +320,7 @@ namespace BossRush
 
         private void SwitchPage(PetNestUIPage page)
         {
+            CloseLineageDetail();
             _page = page;
             _showHelp = false;
             _batchMode = false;
@@ -338,8 +341,10 @@ namespace BossRush
                 PruneBatchSelection();
                 PetNestPageContent content = BuildPageContent();
                 if (content == null) return;
+                if (TrySoftRefreshNest(content, samePage)) return;
 
                 float[] scroll = samePage ? CaptureScroll() : null;
+                BeginRender(samePage);
                 ClearSpawned();
                 RefreshHeader();
 
@@ -365,6 +370,7 @@ namespace BossRush
                 _lastRenderedPage = _page;
                 _lastRenderedHelp = _showHelp;
                 _nextLiveTick = Time.unscaledTime + 1f;
+                EndRender();
             }
             catch (Exception e)
             {
@@ -378,9 +384,9 @@ namespace BossRush
             foreach (KeyValuePair<PetNestUIPage, Button> pair in _tabs)
             {
                 bool selected = pair.Key == _page && !_showHelp;
-                // 选中页签用 AccentFill（Accent 压深降饱和、走白字）：Accent 只用于描边与小字强调，
-                // 不再整块平涂（2026-09-23 全 Mod 口径）
-                Color color = selected ? BossRushUIColors.AccentFill : BossRushUIColors.SurfaceRaised;
+                // 2026-10-17（审查 A-2）：选中页签只压一点 Accent，下面一条指示条滑过来标出当前页；
+                // 整块 AccentFill 留给页面底栏唯一的主操作（§4.14 每屏最多一个）
+                Color color = TabColor(selected);
                 // 底色与标签色一起走共享入口；直接写 Image.color 会和 ColorTint 相乘，
                 // 选中的页签反而比未选中的更暗。
                 ZombieModeUIHelper.SetButtonBaseColor(pair.Value, color);
@@ -392,6 +398,7 @@ namespace BossRush
                     label.fontStyle = selected ? FontStyles.Bold : FontStyles.Normal;
                 }
             }
+            MoveTabIndicator();
             if (_helpButton != null)
             {
                 TextMeshProUGUI help = _helpButton.GetComponentInChildren<TextMeshProUGUI>();
@@ -407,10 +414,6 @@ namespace BossRush
             if (!string.IsNullOrEmpty(PetNestUIPages.LastFailureText))
             {
                 SpawnLine(_contentRoot, PetNestUIPages.LastFailureText, 18f, BossRushUIColors.DangerText, ContentWidth);
-            }
-            if (!string.IsNullOrEmpty(content.Notice))
-            {
-                SpawnLine(_contentRoot, content.Notice, 18f, BossRushUIColors.WarningText, ContentWidth);
             }
             if (!string.IsNullOrEmpty(content.Body))
             {
@@ -460,6 +463,7 @@ namespace BossRush
         /// </summary>
         private void Update()
         {
+            TickMotion();
             if (_liveBodies.Count == 0) return;
             float now = Time.unscaledTime;
             if (now < _nextLiveTick || BossRushUI.IsGamePaused()) return;
@@ -547,11 +551,11 @@ namespace BossRush
             switch (_page)
             {
                 case PetNestUIPage.Hatch:
-                    return PetNestUIPages.BuildHatchPage(Refresh, OnHatched);
+                    return PetNestUIPages.BuildHatchPage(Refresh, OnHatched, OnHatchedBatch);
                 case PetNestUIPage.Expedition:
-                    return PetNestUIPages.BuildExpeditionPage(Refresh, ResolveDeparturePetId(), SelectPet);
+                    return PetNestUIPages.BuildExpeditionPage(Refresh, ResolveDeparturePetId(), SelectPet, ShowExpeditionResults);
                 case PetNestUIPage.Museum:
-                    return PetNestUIPages.BuildMuseumPage();
+                    return PetNestUIPages.BuildMuseumPage(OpenLineageDetail);
                 default:
                     PetNestNestPageContext context = new PetNestNestPageContext();
                     context.SelectedPetId = ResolveSelectedPetId();
@@ -564,6 +568,9 @@ namespace BossRush
                     context.SetBatchMode = SetBatchMode;
                     context.ToggleBatch = ToggleBatch;
                     context.SendOnExpedition = SendOnExpedition;
+                    context.SortMode = _sortMode;
+                    context.CycleSort = CycleSort;
+                    context.ShowResults = ShowExpeditionResults;
                     return PetNestUIPages.BuildNestPage(context);
             }
         }
@@ -581,6 +588,7 @@ namespace BossRush
         {
             if (string.IsNullOrEmpty(petId)) return;
             if (!_batchSelection.Remove(petId)) _batchSelection.Add(petId);
+            _softRefreshPending = true;
         }
 
         /// <summary>放生、远征之后已经不在巢里 / 远征中的崽从勾选里剔掉。</summary>
@@ -603,6 +611,7 @@ namespace BossRush
         private void SelectPet(string petId)
         {
             _selectedPetId = petId;
+            _softRefreshPending = true;
         }
 
         /// <summary>巢页详情的「派去远征」：切到远征页，这只崽已经选好。</summary>
@@ -942,8 +951,9 @@ namespace BossRush
             GameObject cell = ZombieModeUIHelper.CreateRect("Cell", parent, new Vector2(0.5f, 0.5f), GridCellSize);
             Image background = cell.AddComponent<Image>();
             background.color = locked ? BossRushUIColors.Surface : BossRushUIColors.SurfaceRaised;
-            background.raycastTarget = false;
+            background.raycastTarget = data.OnCardClick != null;
             BossRushUI.ApplyPanelSkin(background, 10, BossRushUISkinPart.Card);
+            if (data.OnCardClick != null) MakeCardClickable(cell, data.OnCardClick); // 点格子看血脉详情（审查 E-2）
             // 孵出过异色的血脉描一圈金边；不挂流光（标题是白字血脉名，复核第 12 项）
             BossRushUI.ApplyPanelStroke(background, 10, BossRushUISkinPart.Card,
                 data.Shiny ? BossRushUIColors.RarityLegendary : BossRushUIColors.Stroke);

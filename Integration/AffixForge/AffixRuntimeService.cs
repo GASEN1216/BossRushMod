@@ -617,8 +617,8 @@ namespace BossRush
 
         /// <summary>
         /// 受伤分发。注意官方致死路径是 OnDead 先于 OnHurt，且中间已 SetActive(false)，
-        /// 所以命中类词缀必须用 !IsDead 排掉致命一击的那次 OnHurt，
-        /// 否则一次击杀会同时触发"命中"和"击杀"两套效果。
+        /// 所以命中类词缀默认用 !IsDead 排掉致命一击的那次 OnHurt，
+        /// 否则一次击杀会同时触发"命中"和"击杀"两套效果；只有声明 ProcsOnLethalHit 的词缀（汲血）例外。
         /// </summary>
         private static void OnGlobalHurt(Health health, DamageInfo info)
         {
@@ -670,6 +670,13 @@ namespace BossRush
                         }
 
                         if ((hooks & AffixHookMask.OnPlayerHitEnemy) == 0)
+                        {
+                            continue;
+                        }
+
+                        // 致命一击那次 OnHurt 默认归"击杀"；汲血这类声明 ProcsOnLethalHit 的词缀照算命中。
+                        // 官方 Hurt 对已死目标直接 return，所以 IsDead 的 OnHurt 只可能是致死那一下。
+                        if (health.IsDead && !active.Def.ProcsOnLethalHit)
                         {
                             continue;
                         }
@@ -821,8 +828,8 @@ namespace BossRush
                 return false;
             }
 
-            // 致命一击那次 OnHurt 归"击杀"，不归"命中"
-            if (victim.IsMainCharacterHealth || victim.IsDead)
+            // 致命一击（victim.IsDead）是否算命中由调用方按词缀的 ProcsOnLethalHit 决定
+            if (victim.IsMainCharacterHealth)
             {
                 return false;
             }

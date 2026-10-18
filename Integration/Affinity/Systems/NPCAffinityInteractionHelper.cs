@@ -17,6 +17,39 @@ namespace BossRush
     /// </summary>
     public static class NPCAffinityInteractionHelper
     {
+        private const float ChatLabelRefreshInterval = 0.25f;
+
+        /// <summary>
+        /// 「聊天」选项名。2026-10-17 owner 定：好感等级挪进官方 Tab 页签栏的「好感」页（AffinityTabView），
+        /// 选项名只写「聊天」，不再挂「（好感 Lv.3 · 120/300）」。语言在调用时解析，切语言后再走近即更新。
+        /// 由主交互体的 IsInteractable 调用：玩家贴着 NPC 时官方每帧都来问，这里按 0.25 秒节流；
+        /// 菜单正显示本 NPC 时不改（官方只在交互主体变化时重建菜单文字，中途改名不生效还白分配）。
+        /// </summary>
+        internal static void RefreshChatOptionLabelWhenApproached(InteractableBase owner, string npcId, ref float nextRefreshTime)
+        {
+            if (owner == null) return;
+            try
+            {
+                CharacterMainControl player = CharacterMainControl.Main;
+                if (player != null && player.interactAction != null
+                    && player.interactAction.MasterInteractableAround == owner)
+                {
+                    return;
+                }
+                float now = Time.unscaledTime;
+                if (now < nextRefreshTime) return;
+                nextRefreshTime = now + ChatLabelRefreshInterval;
+
+                const string key = "BossRush_Chat";
+                LocalizationHelper.InjectLocalization(key, L10n.T("聊天", "Chat"));
+                owner.InteractName = key;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[Affinity] [WARNING] 刷新聊天选项好感失败 " + npcId + ": " + e.Message);
+            }
+        }
+
         /// <summary>
         /// 在NPC生成时检查并应用每日好感度衰减（统一入口）
         /// </summary>
@@ -119,6 +152,7 @@ namespace BossRush
         {
             int gainedPoints = 0;
             dailyChatGranted = false;
+            ShowPendingDecayNotice(npcId);
 
             try
             {
@@ -153,6 +187,28 @@ namespace BossRush
             // 现在：没加分就什么都不弹；加了分由好感变化事件在 NPC 头侧冒浮字「+30 / Lv.3 · 120/300」
             // （AffinityUIManager.ShowAffinityChange），升级由 ShowLevelUpNotification 合成一条消息。这里不再另发横幅。
             return gainedPoints;
+        }
+
+        /// <summary>
+        /// 衰减是在 NPC 生成时悄悄结算的，玩家多半不在场。下次开口聊天时补一条提示，说清楚掉了多少、为什么。
+        /// </summary>
+        private static void ShowPendingDecayNotice(string npcId)
+        {
+            try
+            {
+                AffinityManager.DecayNotice notice;
+                if (!AffinityManager.TryConsumeDecayNotice(npcId, out notice)) return;
+
+                var config = AffinityManager.GetNPCConfig(npcId);
+                string npcName = config != null ? config.DisplayName : npcId;
+                NotificationText.Push(L10n.T(
+                    npcName + "：好久不见。（" + notice.Days + " 天没来往，好感 -" + notice.Points + "）",
+                    npcName + ": Long time no see. (" + notice.Days + " days apart, Affinity -" + notice.Points + ")"));
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[AffinityHelper] [WARNING] 显示好感衰减提示失败: " + e.Message);
+            }
         }
 
         /// <summary>

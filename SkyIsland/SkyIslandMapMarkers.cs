@@ -82,17 +82,20 @@ namespace BossRush
             Add(bell, L10n.T("归航钟庭撤离点", "Bell Court extraction"), BossRushUIColors.SuccessText, 0f, exit);
             Add(wind, L10n.T("悬根林广场撤离点", "Hanging Root Wood extraction"), BossRushUIColors.SuccessText, 0f, exit);
             Add(star, L10n.T("残星工坊广场撤离点", "Fallen Star Workshop extraction"), BossRushUIColors.SuccessText, 0f, exit);
+            SkyIslandOfficialQuestDefinition contact = SkyIslandOfficialQuestTable.NextContactQuest(data);
             foreach (string target in ObjectiveTargets(data))
             {
                 // 接取 / 复命时只有一个目标（给予者兜底装置的标记）：那位居民在岛上就圈他本人，并跟着他走。
                 bool resident = contactAnchor != null;
-                GameObject point = Add(resident ? contactAnchor : root.Find(target), ObjectiveLabel(target),
+                // 圈上的字跟着圈住的东西走：人在写找他，人不在写兜底装置（ContactTask）。
+                string task = contact != null ? ContactTask(contact.GiverId, resident) : TargetTask(target);
+                GameObject point = Add(resident ? contactAnchor : root.Find(target), ObjectiveLabel(task),
                     BossRushUIColors.WarningText, ObjectiveRadius, null);
                 if (resident) followPoint = point;
             }
             // 支线 / 可选挑战用紫（UE-21）：旧写法和码头撤离点同为 Accent 青，地图上一眼分不开。
             foreach (string target in SideTargets(data))
-                Add(root.Find(target), SideLabel(target), BossRushUIColors.RarityEpic, ObjectiveRadius, null);
+                Add(root.Find(target), SideLabel(target, data), BossRushUIColors.RarityEpic, ObjectiveRadius, null);
             if (notify == null) return;
             if ((opened & 2) != 0)
                 notify(L10n.T("风标亮了：悬根林广场多了一个返航点，站进绿环即可撤离",
@@ -163,13 +166,18 @@ namespace BossRush
 
         /// <summary>
         /// 可选目标（可玩性评估 R-14）：主线目标卡只管航标与钟庭，结局后更是什么都不圈，支线物证与噬风从来不上地图。
-        /// - 两端航标都亮、噬风还没打：圈鸣风栈道上的风眼（`POI_E`，噬风遭遇锚点）；结局之后仍没打同样圈。
+        /// - 两端航标都亮、噬风还没打或中轴旧桥 K3 还没开：圈鸣风栈道的双航标门（`Search_E`）——两件事都在这个装置的面板里点；
+        ///   以前圈的是噬风遭遇锚点 `POI_E`（风眼），离装置 31 米，12 米的圈罩不住它，玩家走进圈里找不到能交互的东西
+        ///   （玩家反馈 2026-10-16）。结局之后仍没打同样圈。
+        ///   结局后打过噬风，「引风」（烧一块晴岚风晶唤回噬风·回响）也在这个装置上点，K3 开了也照样圈：
+        ///   以前这时地图上什么都不圈，玩家问「双航标门在哪里，风晶哪里烧」（玩家反馈 2026-10-17）。
         /// - 结局之后：圈还没拿到的支线物证（S1–S4 的物证点）；种植记录拿到了但还没交，就圈风铃集留言板。
         /// 与主线目标一样只在剧情旗标变化时重建（见 <see cref="Apply"/>）；风标罗盘在主线目标都没有时指向这里。
         /// </summary>
         internal static IEnumerable<string> SideTargets(SkyIslandStoryData data)
         {
-            if (data.BothBeacons && !data.StormResolved) yield return "POI_E";
+            if (data.BothBeacons && (!data.StormResolved || !data.Has(SkyIslandStoryFlag.ShortcutK3)
+                || SkyIslandStormEchoRules.UnlockedBySave(data))) yield return "Search_E";
             if (!data.Has(SkyIslandStoryFlag.Ending)) yield break;
             if (!data.Has(SkyIslandStoryFlag.PlantingRecord)) yield return "Search_S1";
             else if (!data.Has(SkyIslandStoryFlag.PlantingDelivered)) yield return "Search_B";
@@ -190,25 +198,66 @@ namespace BossRush
                     return L10n.T("清掉这伙守卫", "clear these guards");
                 case "Search_D": return L10n.T("修风标", "fix the wind beacon");
                 case "Search_G": return L10n.T("修星灯", "fix the star lamp");
-                case "Search_H": return L10n.T("归航钟庭", "the Bell Court");
-                case "Search_A": return L10n.T("找浮舟", "find Fuzhou");
-                case "Search_B": return L10n.T("找苇白", "find Weibai");
+                // 圈心就是交互点「归航钟 · 钟守留言」：说出它的名字，别让人去找 36 米外挂大钟的钟架（2026-10-17 剧情指引全面核查）。
+                case "Search_H": return L10n.T("归航钟庭的钟守留言", "the Bell Keeper's message at the Bell Court");
+                // 委托板 / 渡口整备只在接 / 交任务时被圈，那时的字走 ContactTask。
+                default: return null;
+            }
+        }
+
+        /// <summary>
+        /// 接 / 交任务时圈上与罗盘上的字。居民在岛上写「找他」；不在（婚后留家、这趟没生成）时圈的是兜底装置，
+        /// 写装置走近时的交互名（<see cref="SkyIslandPointText.Name"/> 的前半段）并注明人不在。
+        /// 以前一律写「找苇白 / 找浮舟」，钟守那条写「归航钟庭」：人不在时圈里只有装置，玩家照字找人找不到（2026-10-16 指引复核）。
+        /// 认不得的给予者返回 null，调用方退回泛称。
+        /// </summary>
+        internal static string ContactTask(int giverId, bool residentPresent)
+        {
+            switch (giverId)
+            {
+                case SkyIslandOfficialQuestTable.WeibaiGiverId:
+                    return residentPresent ? L10n.T("找苇白", "find Weibai")
+                        : L10n.T("风铃集委托板（苇白不在）", "the Windchime Market board (Weibai is away)");
+                case SkyIslandOfficialQuestTable.FuzhouGiverId:
+                    return residentPresent ? L10n.T("找浮舟", "find Fuzhou")
+                        : L10n.T("渡口整备（浮舟不在）", "Dock refit (Fuzhou is away)");
+                case SkyIslandOfficialQuestTable.BellKeeperGiverId:
+                    return residentPresent ? L10n.T("找钟守", "find the Bell Keeper")
+                        : L10n.T("钟守留言（钟守不在）", "the Bell Keeper's message (he is away)");
                 default: return null;
             }
         }
 
         /// <summary>地图圈上的字：说清圈里要干什么，而不是一律「当前目标」。</summary>
-        private static string ObjectiveLabel(string target)
+        private static string ObjectiveLabel(string task)
         {
-            string task = TargetTask(target);
             return task == null ? L10n.T("当前目标", "Current objective") : L10n.T("目标 · ", "Objective · ") + task;
         }
 
-        private static string SideLabel(string target)
+        /// <summary>
+        /// 结局后支线圈里要干什么；地图紫圈与风标罗盘共用。以前圈上只写「支线目标」、罗盘只报「还没做完的支线」，
+        /// 玩家走过去才知道是找信还是修镜子（2026-10-17 剧情指引全面核查）。认不得的标记退回泛称。
+        /// </summary>
+        internal static string SideTask(string target)
         {
-            return target == "POI_E"
-                ? L10n.T("可选挑战 · 噬风", "Optional challenge · the Windeater")
-                : L10n.T("支线目标", "Side objective");
+            switch (target)
+            {
+                case "Search_S1": return L10n.T("蛙鸣池找晴禾的种植记录", "Qinghe's planting record at Frogsong Pool");
+                case "Search_B": return L10n.T("把种植记录交给晴禾或委托板", "give the planting record to Qinghe or the board");
+                case "Search_S2": return L10n.T("倒挂邮亭那封没寄出的旧信", "the unsent letter at the Upturned Post Hut");
+                case "Search_S3": return L10n.T("听雨洞的旧航路图", "the old route chart in Rainlisten Grotto");
+                case "Search_S4": return L10n.T("残星瞭台：清掉守卫、修好观星镜", "Starfall Overlook: clear the guards, fix the telescope");
+                default: return L10n.T("还没做完的支线", "an unfinished side path");
+            }
+        }
+
+        private static string SideLabel(string target, SkyIslandStoryData data)
+        {
+            if (target != "Search_E") return L10n.T("支线 · ", "Side · ") + SideTask(target);
+            if (!data.StormResolved) return L10n.T("双航标门 · 在这儿引噬风", "Twin-beacon gate · call the Windeater here");
+            return SkyIslandStormEchoRules.UnlockedBySave(data)
+                ? L10n.T("双航标门 · 在这儿烧风晶引风", "Twin-beacon gate · burn a windcrystal here to call the wind")
+                : L10n.T("双航标门 · 在这儿开中轴旧桥", "Twin-beacon gate · open the centre bridge here");
         }
 
         private static readonly System.Reflection.FieldInfo ExitIconField = BossRush.Common.Utils.ReflectionCache.GetField(

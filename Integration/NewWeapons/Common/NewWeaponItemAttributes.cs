@@ -112,7 +112,7 @@ namespace BossRush
     /// <summary>
     /// 五把新武器在叮当商店的上架参数。
     /// 5 级介于冷淬液 4 级与套装件 6 级之间——它们是品质 5，比品质 6 的套装件早一档；
-    /// 库存 1 与套装件/钻戒同款（NPCShopSystem 每次开店重置）。
+    /// 库存 1 与套装件同款，每个游戏日补一次（NPCShopStockLedger）。
     /// </summary>
     internal static class NewWeaponShopConfig
     {

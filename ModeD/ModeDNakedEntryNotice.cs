@@ -5,7 +5,7 @@ namespace BossRush
     /// <summary>
     /// 白手起家裸装判定 + 「为什么没进去」的玩家提示。
     /// 判定在入口点击、选图、进图各被调用一次以上；提示按拦截项去重，避免同一原因刷屏。
-    /// 只在装备槽、武器槽全空、仅背包类容器挡路时提示：带着装备进来的普通挑战玩家不会看到它。
+    /// 只在护甲、头盔、背包槽与武器槽全空，仅背包类容器或饰品挡路时提示：带着装备进来的普通挑战玩家不会看到它。
     /// </summary>
     internal static class ModeDNakedEntryNotice
     {
@@ -44,6 +44,9 @@ namespace BossRush
                 case NakedEntryBlockKind.PetNestBackpack:
                     return L10n.T("出战的遗种崽背包里有东西，这次不会进入白手起家；先清空它的背包",
                         "Your deployed pet's pack has items, so this run won't be From Scratch. Empty its pack first");
+                case NakedEntryBlockKind.AccessorySlot:
+                    return L10n.T("身上还戴着「" + item + "」，这次不会进入白手起家（面罩、耳机、图腾也要摘掉）",
+                        "You're still wearing \"" + item + "\", so this run won't be From Scratch (take off masks, headsets and totems too)");
                 case NakedEntryBlockKind.Backpack:
                     return L10n.T("身上还带着「" + item + "」，这次不会进入白手起家（只有船票可以带）",
                         "You're still carrying \"" + item + "\", so this run won't be From Scratch (only the ticket is allowed)");

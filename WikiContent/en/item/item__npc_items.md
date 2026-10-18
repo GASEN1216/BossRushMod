@@ -25,7 +25,7 @@ Sparkly, light... and **fake**. Dingdang will know.
 
 The proposal item. +500 Affinity. At Lv.10: triggers a wedding.
 
-- **Source**: Dingdang shop (Lv.7+)
+- **Source**: Dingdang shop (Lv.7+), one at a time. No restock while you're married; while single, one restocks 3 in-game days after the last, so you can buy another after a divorce or a lost ring
 - Already married + gift to spouse → rejected, ring kept
 - Already married + gift to someone else → **cheating penalty**, ring consumed, Affinity drops
 

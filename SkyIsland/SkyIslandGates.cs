@@ -17,6 +17,8 @@ namespace BossRush
         }
         private readonly List<Gate> gates = new List<Gate>();
         private readonly List<GameObject> signs = new List<GameObject>();
+        /// <summary>见闻点小木牌上的地名：键是见闻点标记名，字取 <see cref="SkyIslandPointText.Name"/>。</summary>
+        private readonly List<KeyValuePair<string, TextMeshPro>> pointLabels = new List<KeyValuePair<string, TextMeshPro>>();
         private readonly ArenaPrototypeNavigation navigation;
         private readonly SkyIslandContentData content;
         private int flags = -1;
@@ -47,6 +49,33 @@ namespace BossRush
             AddSign(root, wood, wallLayer, "BellCourt", new Vector3(-3f, 26, 177.5f));
             AddSign(root, wood, wallLayer, "ZhelingPass", new Vector3(198f, 15, -10f));
             AddSign(root, wood, wallLayer, "ZhelingPass", new Vector3(182f, 21, 27.5f));
+            // 三处只有触发盒的装置各立一块小木牌（2026-10-17）：地图圈罩得住它们，走进圈里却要贴到跟前才出交互提示。
+            // 牌在见闻点背向相机一侧 2–2.2 m、触发盒外，无碰撞体不挡交互；落点由运行时摆放表与场景净空审计复核。
+            AddPointSign(root, wood, wallLayer, "Search_B", new Vector3(-12f, 5, -102f));
+            AddPointSign(root, wood, wallLayer, "Search_E", new Vector3(-17.2f, 18, 60f));
+            AddPointSign(root, wood, wallLayer, "Search_H", new Vector3(-26.1f, 26, 206.9f));
+            // 其余 17 处见闻点同一口径（2026-10-17 交互点可见性盘点，docs/reports/reviews/2026-10-17-天空岛交互点可见性盘点.md）：
+            // 落点离线求解——先试相机反方向 2.2 m，挡了再按 10° 摆开、2.0–3.0 m 外扩；木桩不压路缘、不穿实体，
+            // 牌心 1 m 圈不罩硬物，不进任何触发盒，离自家见闻点最近（SkyIslandInteractionCompetitionPropertyTest / SkyIslandPointPropsPropertyTest）。
+            AddPointSign(root, wood, wallLayer, "Search_A_02", new Vector3(30.1f, 0, -188.9f));
+            AddPointSign(root, wood, wallLayer, "Search_B_02", new Vector3(30.9f, 5, -66.9f));
+            AddPointSign(root, wood, wallLayer, "Search_C", new Vector3(-196.9f, 10, -98.9f));
+            AddPointSign(root, wood, wallLayer, "Search_C_02", new Vector3(-134.1f, 10, -48.1f));
+            AddPointSign(root, wood, wallLayer, "Search_D_02", new Vector3(-146.7f, 16, 107.4f));
+            AddPointSign(root, wood, wallLayer, "Search_E_02", new Vector3(45.9f, 18, 111.9f));
+            AddPointSign(root, wood, wallLayer, "Search_F", new Vector3(205f, 15, -42.4f));
+            AddPointSign(root, wood, wallLayer, "Search_F_02", new Vector3(143.2f, 15, -41.6f));
+            AddPointSign(root, wood, wallLayer, "Search_G", new Vector3(143.1f, 21, 56.1f));
+            AddPointSign(root, wood, wallLayer, "Search_G_02", new Vector3(205.9f, 21, 106.9f));
+            AddPointSign(root, wood, wallLayer, "Search_H_02", new Vector3(35.9f, 26, 256.9f));
+            AddPointSign(root, wood, wallLayer, "Search_S1", new Vector3(-309.1f, 7, -113.1f));
+            AddPointSign(root, wood, wallLayer, "Search_S2", new Vector3(-295.6f, 13, 92.9f));
+            AddPointSign(root, wood, wallLayer, "Search_S3", new Vector3(288.4f, 10, -73.2f));
+            AddPointSign(root, wood, wallLayer, "Search_S4", new Vector3(283f, 26, 68.2f));
+            // 码头整备与风标两处站在铺装广场中间，3 m 内放不下两根木桩：只立一根桩的窄牌。
+            // 码头那块贴着货仓外的空地 1.4 m；风标那块在广场东北沿 3.7 m，正对 9.6 m 外的大风标（场景里最近的可见件）。
+            AddPointPost(root, wood, wallLayer, "Search_A", new Vector3(-29.5f, 0, -238.7f));
+            AddPointPost(root, wood, wallLayer, "Search_D", new Vector3(-188.7f, 16, 58.5f));
         }
         private void Add(GameObject world, Material material, int layer, string id, Vector3 position, float yaw, float width)
         {
@@ -159,6 +188,79 @@ namespace BossRush
             text.raycastTarget = false;
             gate.Labels.Add(text);
         }
+
+        /// <summary>小木牌的木桩按官方默认相机朝向（<c>CameraArm.globalYaw</c>）排开，与朝相机的牌面平行；离线摆放表按同一朝向复算木桩落点。</summary>
+        private const float PointSignYaw = -30f;
+
+        /// <summary>
+        /// 见闻点装置旁的小木牌（20 处 Search_* 原来只有触发盒，场景里看不见；先补 B / E / H，同日补齐其余 17 处）：两根木桩 + 一块朝相机的木牌 + 地名。
+        /// 字与交互提示同词（<see cref="SkyIslandPointText.Name"/>，「 · 」处换行）。构件同桥口木牌，无碰撞体、不在交互层，
+        /// 不抢交互；随 <see cref="signs"/> 回收。
+        /// </summary>
+        private void AddPointSign(GameObject world, Material wood, int layer, string key, Vector3 position)
+        {
+            GameObject sign = new GameObject("PointNotice_" + key);
+            signs.Add(sign);
+            sign.transform.SetParent(world.transform, false);
+            sign.transform.localPosition = position;
+            sign.transform.localRotation = Quaternion.Euler(0f, PointSignYaw, 0f);
+            sign.layer = layer;
+            Beam(sign, wood, layer, new Vector3(-0.9f, 1f, 0), new Vector3(.14f, 2f, .14f));
+            Beam(sign, wood, layer, new Vector3(0.9f, 1f, 0), new Vector3(.14f, 2f, .14f));
+            AddPointBoard(sign, wood, layer, key, 2.1f, new Vector2(2.8f, 1.1f));
+        }
+
+        /// <summary>
+        /// 单桩窄牌：铺装广场中间的见闻点（码头整备、风标）3 m 内放不下两根木桩，只立一根桩。
+        /// 字、换语言、回收与 <see cref="AddPointSign"/> 相同；离线摆放表按一根桩（`#P`）记。
+        /// </summary>
+        private void AddPointPost(GameObject world, Material wood, int layer, string key, Vector3 position)
+        {
+            GameObject sign = new GameObject("PointNotice_" + key);
+            signs.Add(sign);
+            sign.transform.SetParent(world.transform, false);
+            sign.transform.localPosition = position;
+            sign.transform.localRotation = Quaternion.Euler(0f, PointSignYaw, 0f);
+            sign.layer = layer;
+            Beam(sign, wood, layer, new Vector3(0f, 1f, 0), new Vector3(.14f, 2f, .14f));
+            AddPointBoard(sign, wood, layer, key, 2.0f, new Vector2(1.9f, 0.95f));
+        }
+
+        /// <summary>见闻点木牌的牌面与地名：牌面朝固定俯视相机，字取 <see cref="PointNotice"/>，随语言在 <see cref="WriteLabels"/> 里重写。</summary>
+        private void AddPointBoard(GameObject sign, Material wood, int layer, string key, float height, Vector2 size)
+        {
+            GameObject board = new GameObject("PointNoticeBoard");
+            board.transform.SetParent(sign.transform, false);
+            board.transform.localPosition = Vector3.up * height;
+            Camera camera = GameCamera.Instance == null ? null : GameCamera.Instance.renderCamera;
+            if (camera != null) board.transform.rotation = camera.transform.rotation;
+            Beam(board, wood, layer, Vector3.zero, new Vector3(size.x, size.y, .1f));
+            GameObject label = new GameObject("PointNoticeText");
+            label.transform.SetParent(board.transform, false);
+            label.transform.localPosition = new Vector3(0, 0, -.07f);
+            TextMeshPro text = label.AddComponent<TextMeshPro>();
+            TMP_FontAsset font = ZombieModeUIHelper.GetGameFont();
+            if (font == null) throw new InvalidOperationException("见闻点木牌缺少游戏中文字体");
+            text.font = font;
+            // 两行地名；英文名最长约 60 个字母，自动缩放到 1.0 号仍放不下才省略号收尾（窄牌同一下限）。
+            text.enableAutoSizing = true;
+            text.fontSizeMin = 1f;
+            text.fontSizeMax = 2.6f;
+            text.fontSize = 2.6f;
+            text.overflowMode = TextOverflowModes.Ellipsis;
+            text.alignment = TextAlignmentOptions.Center;
+            text.rectTransform.sizeDelta = new Vector2(size.x - 0.2f, size.y - 0.15f);
+            text.color = BossRushUIColors.TextPrimary;
+            text.sortingOrder = BossRushUILayers.WorldOverlay;
+            text.richText = false;
+            text.raycastTarget = false;
+            pointLabels.Add(new KeyValuePair<string, TextMeshPro>(key, text));
+        }
+
+        private static string PointNotice(string key)
+        {
+            return SkyIslandPointText.Name(key).Replace(" · ", "\n");
+        }
         private static string Notice(string id, bool open, SkyIslandStoryData story)
         {
             string title, condition;
@@ -180,11 +282,13 @@ namespace BossRush
                             "Repair the Fallen Star Workshop lamp first\nthen open the maintenance walk at the lamp"); break;
                 case "K3":
                     title = L10n.T("鸣风栈道 / 风铃集 · K3", "Windsong Boardwalk / Windchime Market · K3");
+                    // 开桥在栈道南头的双航标门装置（Search_E）上点；那儿立着一块只写地名的小木牌（AddPointSign），
+                    // 写通行状态的门牌在 K3 桥头与北头钟庭门两侧（2026-10-16 指引复核；2026-10-17 补小木牌）。
                     condition = story.BothBeacons
-                        ? L10n.T("两端航标都修好了\n到鸣风栈道开启旧桥",
-                            "Both beacons restored\nOpen the old bridge on Windsong Boardwalk")
-                        : L10n.T("先修好风标和星灯\n再到鸣风栈道开启旧桥",
-                            "Restore the wind beacon and the star lamp first\nthen open the old bridge on Windsong Boardwalk"); break;
+                        ? L10n.T("两端航标都修好了\n到栈道南头的双航标门开启旧桥",
+                            "Both beacons restored\nOpen the old bridge at the twin-beacon gate, south end of the boardwalk")
+                        : L10n.T("先修好风标和星灯\n再到栈道南头的双航标门开启旧桥",
+                            "Restore the wind beacon and the star lamp first\nthen open the old bridge at the twin-beacon gate, south end of the boardwalk"); break;
                 case "BellCourt":
                     title = L10n.T("鸣风栈道 / 归航钟庭", "Windsong Boardwalk / Homecoming Bell Court");
                     condition = L10n.T("先修好悬根林的风标\n和残星工坊的星灯",
@@ -293,6 +397,8 @@ namespace BossRush
                     label.color = open ? BossRushUIColors.SuccessText : BossRushUIColors.WarningText;
                 }
             }
+            foreach (KeyValuePair<string, TextMeshPro> point in pointLabels)
+                if (point.Value != null) point.Value.text = PointNotice(point.Key);
             labelsChinese = chinese;
         }
         public void Dispose()
@@ -301,6 +407,7 @@ namespace BossRush
             gates.Clear();
             foreach (GameObject sign in signs) if (sign != null) UnityEngine.Object.Destroy(sign);
             signs.Clear();
+            pointLabels.Clear();
         }
     }
 }

@@ -5,8 +5,8 @@
 ## 1. TypeID 与存档身份
 
 - 自定义物品/装备 TypeID 使用 500xxx 区间。
-- 已登记范围：`500001-500108`，空洞 `500009`、`500047` 不回填。
-- `500058` 已登记为便携安全区装置，`500059` 已登记为遗种蛋（遗种巢通用蛋，血脉写在物品 KV `PetNest_Lineage` 上，全谱系共用一个号）；`500060` 已登记为词缀熔石（词缀锻造材料，词缀身份写在装备 KV `AFX_*` 上），`500061` 已登记为鸭皇图鉴（图鉴面板入口物品，使用不消耗）；`500062-500064` 已登记为后山菜地种子（龙裔之种、龙皇焰种、幽魂孢子），`500065-500067` 已登记为后山出击餐（龙息果、焚心椒、幽影蘑菇）；`500068-500072` 已登记为天空岛物品（晴岚航徽、噬风之核两件纪念品，风标罗盘道具，归航菜便当、星苔药膏两种岛上特产；纪念品发放记录写在天空岛剧情存档的 `discoveredNotes` 里，id 前缀 `Keepsake_`）；`500073-500082` 已登记为天空岛内容批次三（云苔纤维、青穗草、浮木、残铜片、风晶碎片、星屑六种采集材料，晴岚风晶一件碎片凑整物品，风灯、驱风香、晴岚护符三种局内耗材；采集点与增益按出击刷新，不加存档字段）；`500083-500085` 已登记为天空岛内容批次四「云蚋」（云苔纱笠随身装备、风晶灭蚊灯局内耗材、药烟蒲扇岛上工具；放回蛙鸣池的蛙卵记在天空岛剧情存档的 `discoveredNotes` 里，id 前缀 `Frog_`，不加存档字段）；`500086-500089` 已登记为天空岛头目 / 岛主的专属装备（星铜护目盔、星炉背甲、星炉背囊出自岛主残星匠首，观星镜盔出自头目瞭台观星手；走装备 bundle `skyisland_boss_gear` 注册、全部登记掉落黑名单；首杀记录写在天空岛剧情存档的 `discoveredNotes` 里，id 为 `Lord_Foreman` / `Chief_Stargazer`，不加存档字段）；`500090-500102` 已登记为天空岛头目 / 岛主 R2–R4 的专属装备（根须面罩、藤编甲、悬根箭囊出自岛主悬根猎首，旧邮包出自头目截信人，青穗斗笠、蓑衣甲、谷囊出自岛主穗镰，静听耳罩出自头目听雨人，苔纱面罩出自头目蚋笛翁，镜纹甲出自头目镜中客，断风兜帽、断风披甲、断风行囊分别出自断风游猎 · 守 / 追 / 伏；同一装备 bundle、全部登记掉落黑名单；首杀记录同样写进 `discoveredNotes`，id 前缀 `Lord_` / `Chief_`，不加存档字段）；`500103` 已登记为失落的航向仪（Jeff 序章「云上的坐标」的交付物：零号区的断风游猎 · 守倒下后留在官方尸体箱里，带回基地交给 Jeff 换 5000 金钱与晴岚航线，交付即消耗；售价 0、登记掉落黑名单，不加存档字段）；`500104` 已登记为星阙（第六章沙暴冠军必掉的纯代码近战光棍，三段棍势，不进随机奖池，无专属 bundle）；`500105` 已登记为空仓地雷盒（图腾，同枪一轮装填中至少开火 6 次后打空弹匣放置延时地雷，不加存档字段）；`500106` 已登记为教导主任的点名册（天空岛登云码头的浮舟好感 3 级商店专属图腾，5 秒内直接命中 3 名不同敌人触发集体追伤，冷却 6 秒，不加存档字段）；`500107` 已登记为钟守节拍器（图腾，整匣换弹时单次节拍判定，成功仅推进官方装填计时；无声钟守好感 5 级、20 枚随身贝壳兑换，岛上与婚后基地一致；不加存档字段）；`500108` 已登记为回火液（重铸界面解除一条已固定属性的消耗品，克隆冷淬液 prefab、零新增 bundle；叮当商店好感 4 级 + 叮当好感 6 级一次性赠 2 瓶，赠送记录走好感 `claimedRewardKeys` 的 `tempering_solvent_lv6_gift`；登记掉落黑名单，不加存档字段）；下一可用 ID 以 `docs/reference/Bossrush使用物品ID表.md` 实际末尾为准。
+- 已登记范围：`500001-500109`，空洞 `500009`、`500047` 不回填。
+- `500058` 已登记为便携安全区装置，`500059` 已登记为遗种蛋（遗种巢通用蛋，血脉写在物品 KV `PetNest_Lineage` 上，全谱系共用一个号）；`500060` 已登记为词缀熔石（词缀锻造材料，词缀身份写在装备 KV `AFX_*` 上），`500061` 已登记为鸭皇图鉴（图鉴面板入口物品，使用不消耗）；`500062-500064` 已登记为后山菜地种子（龙裔之种、龙皇焰种、幽魂孢子），`500065-500067` 已登记为后山出击餐（龙息果、焚心椒、幽影蘑菇）；`500068-500072` 已登记为天空岛物品（晴岚航徽、噬风之核两件纪念品，风标罗盘道具，归航菜便当、星苔药膏两种岛上特产；纪念品发放记录写在天空岛剧情存档的 `discoveredNotes` 里，id 前缀 `Keepsake_`）；`500073-500082` 已登记为天空岛内容批次三（云苔纤维、青穗草、浮木、残铜片、风晶碎片、星屑六种采集材料，晴岚风晶一件碎片凑整物品，风灯、驱风香、晴岚护符三种局内耗材；采集点与增益按出击刷新，不加存档字段）；`500083-500085` 已登记为天空岛内容批次四「云蚋」（云苔纱笠随身装备、风晶灭蚊灯局内耗材、药烟蒲扇岛上工具；放回蛙鸣池的蛙卵记在天空岛剧情存档的 `discoveredNotes` 里，id 前缀 `Frog_`，不加存档字段）；`500086-500089` 已登记为天空岛头目 / 岛主的专属装备（星铜护目盔、星炉背甲、星炉背囊出自岛主残星匠首，观星镜盔出自头目瞭台观星手；走装备 bundle `skyisland_boss_gear` 注册、全部登记掉落黑名单；首杀记录写在天空岛剧情存档的 `discoveredNotes` 里，id 为 `Lord_Foreman` / `Chief_Stargazer`，不加存档字段）；`500090-500102` 已登记为天空岛头目 / 岛主 R2–R4 的专属装备（根须面罩、藤编甲、悬根箭囊出自岛主悬根猎首，旧邮包出自头目截信人，青穗斗笠、蓑衣甲、谷囊出自岛主穗镰，静听耳罩出自头目听雨人，苔纱面罩出自头目蚋笛翁，镜纹甲出自头目镜中客，断风兜帽、断风披甲、断风行囊分别出自断风游猎 · 守 / 追 / 伏；同一装备 bundle、全部登记掉落黑名单；首杀记录同样写进 `discoveredNotes`，id 前缀 `Lord_` / `Chief_`，不加存档字段）；`500103` 已登记为失落的航向仪（Jeff 序章「云上的坐标」的交付物：零号区的断风游猎 · 守倒下后留在官方尸体箱里，带回基地交给 Jeff 换 5000 金钱与晴岚航线，交付即消耗；售价 0、登记掉落黑名单，不加存档字段）；`500104` 已登记为星阙（第六章沙暴冠军必掉的纯代码近战光棍，三段棍势，不进随机奖池，无专属 bundle）；`500105` 已登记为空仓地雷盒（图腾，同枪一轮装填中至少开火 6 次后打空弹匣放置延时地雷，不加存档字段）；`500106` 已登记为教导主任的点名册（天空岛登云码头的浮舟好感 3 级商店专属图腾，5 秒内直接命中 3 名不同敌人触发集体追伤，冷却 6 秒，不加存档字段）；`500107` 已登记为钟守节拍器（图腾，整匣换弹时单次节拍判定，成功仅推进官方装填计时；无声钟守好感 5 级、20 枚随身贝壳兑换，岛上与婚后基地一致；不加存档字段）；`500108` 已登记为回火液（重铸界面解除一条已固定属性的消耗品，克隆冷淬液 prefab、零新增 bundle；叮当商店好感 4 级 + 叮当好感 6 级一次性赠 2 瓶，赠送记录走好感 `claimedRewardKeys` 的 `tempering_solvent_lv6_gift`；登记掉落黑名单，不加存档字段）；`500109` 已登记为甩锅许可证（图腾，直接命中敌人挂 5 秒炸弹，携带者直接命中其他角色便转移，转移不刷新引信；浮舟好感 3 级的航前杂货出售，婚后基地与渡口装置共用库存配置；不加存档字段）；下一可用 ID 以 `docs/reference/Bossrush使用物品ID表.md` 实际末尾为准。
 
 Breaking:
 
@@ -143,6 +143,19 @@ Dev 专用测试档的 `BossRush_Validation_AutotestSnapshot_v1` 保持 version=
 - 物品 KV `BossRush_WaylayerSource` / `BossRush_WaylayerSnapshot` / `BossRush_WaylayerRefund` / `BossRush_WaylayerCustody` 保留原物来源与事务身份；角色根 `BossRush_WaylayerOwner` / `BossRush_WaylayerExcluded` / `BossRush_WaylayerReturned` 为本角色实际正常保存的拥有/排除证明。`BossRush_WaylayerClaimLock` 表示世界领取凭证或待发布本人原件私有锁，`BossRush_WaylayerGrant` 只标实际交付原树。不得按 TypeID、数量相似或包内自报 owner 猜归属。
 - 新事务 `PublicationProtocol = 3`：房主持久托管完整树，耐久 Success 后只恢复锁定领取凭证；实际 transport 发送者、当前角色/资产与持久 journal GUID 唯一冻结 claimant，复用个人递送。`LocalAssetId` 为当前进程租约，不能代替跨进程 GUID。原房主换槽不能接管旧槽责任；领取者离线时义务留在原房主账本，原身份唯一重新绑定后恢复。旧 protocol0 unknown、protocol2 已公开/未知结果均沿原保守语义，不自动退款、重新公开或清账。
 - owner 于本次 PC06 验收明确授权：仅本人领取、追回或明确 Failure 退款发布，调用官方 `ItemSavesUtilities.Save(actualMain.CharacterItem,"MainCharacterItemData")`、共享节流的 `SaveFile(false)`，物理 key 是 **`Item/MainCharacterItemData`**。完整当前角色物品树与 Returned proof 同批保存并用 ES3.File 完整读回匹配后才解锁/确认；失败保留 exact 私有原件重试。此调用会提前落盘当前整份角色物品树，不保存 Health/仓库、不触发 CollectSaveData，授权不扩到其它系统或后续所有普通转交。保存/读回后均复核原 owner、槽、文件、资产、活体、角色根与 exact 库存归属；同帧其它原件等待后续帧。
+NPC 好感 key（早于 `BossRush_` 前缀约定，冻结不改名）：
+
+- `NPCAffinity` — `AffinityJsonSerializer` 整存的 `npcDataList`，每只 NPC 一条 `AffinityData`；读不出来时整局写屏障。
+  2026-10-17 `SCHEMA+`：每条追加可选 `shopStockTokens`（NPC 商店剩余库存，`NPCShopStockLedger` 编码 `typeId:remaining:refillDay:shown`，
+  逗号分隔、坏 token 逐条跳过）；缺字段 = 满库存，旧档行为不变。离婚不清它；钻石戒指（2026-10-18 起 `RestockOnlyWhenSingle`）
+  已婚期间不补，单身时距上次补货满 3 个游戏日补 1 枚，所以离婚后照样能再买，编码与字段不变。
+  2026-10-17 `SCHEMA+`（好感剧情）：不加字段，只往已有的逗号串里追加 token。`triggeredEventKeys` 的 `story_N`（3/5/8/10）仍是剧情标，
+  婚礼教堂（`story_10` / `hasTriggeredStory10`）与好感衰减下限读它；捏脸 NPC 另记 `story_seen_N` 表示「剧情真的播完了」
+  （旧档的 `story_N` 是当年只打横幅时打上的，缺 `story_seen_N` 时下次聊天补播）；剧情奖励领取记在 `claimedRewardKeys` 的 `duck_story_reward_N`。
+  `ResetStoryTriggers` 按 `story_` 前缀清除时连 `story_seen_N` 一并清掉。剧情文案在 `Assets/Data/DuckNpcs.json` 的可选 `permanent.storyEvents`。
+- NPC 商店（`NPCShopSystem`）开店时摘掉官方 `StockShop.Awake` 挂的 `SavesSystem.OnCollectSaveData += Save` 与 `OnSetFile += Load`
+  （2026-10-18，CR-2026-10-18-012），不再写 `StockShop_BossRushNpc_<npcId>`；旧档里已写过的这条键 Mod 从不读，留着无害。
+  反射找不到 `Save` / `Load` 时只记 DevLog，退回旧行为（merchantID 仍是 Mod 命名空间，不碰官方 Albert 的库存键）。
 
 Breaking:
 
@@ -524,6 +537,8 @@ PetNest/ 目录零处直调），每批至多一次；`IsSaving` 时改走 defer
 
 **独立背包（2026-09-28，SCHEMA+）。** `PetNestBackpack` 在基地 / 出击随从的共同激活入口绑定崽的稳定 `id`，头顶官方交互名为「背包」。点击后惰性建立官方 `Item.Inventory`，界面走 `LootView.LootItem`；容量沿用原基础格数、等级、性格与天赋公式。物品完整 `ItemTreeData`、槽位与排序锁序列化成可选 `PetNestPetRecord.backpackJson`，随 `Bundle_v2` 保存，原 schemaVersion 与键不变，旧档缺字段视为空背包。半途恢复失败不覆盖原记录；迟到的异步物品核对对象代数与存档槽后才入袋。切图 / 重伤先封存再销毁；换崽不转移物品，有物品的崽不能放生或派去远征，先取空才允许。
 
+**收藏（2026-10-17，SCHEMA+）。** 可选 `PetNestPetRecord.favorite`（布尔，键 `favorite`），随 `Bundle_v2` 保存，原 schemaVersion 与键不变，旧档缺字段视为未收藏。收藏的崽不能放生（`pet_favorite`）、不能派去亡命档（`pet_favorite_desperate`，`PetNestExpeditionService.AllowsTier` 与页面共用判据）、不进批量放生的一键勾选；取消收藏即恢复。
+
 `PetNestBackpackSnapshot` 使用共享 JSON 读写器显式保留官方树节点、原始 KV 字节、配件连接与嵌套容器；官方连接类型没有 `Serializable`，不能直接用 `JsonUtility` 保存整棵树。恢复逐节点登记唯一 owner，缺物品、连接失败、取消或通知异常时回收全部本次节点。变更事件立即登记资产义务，正常保存继续通过原协调器；封存失败关闭交互并保留未保存的物品容器，禁止用另一主角或存档槽的资产完成旧转移。持久化前的进程崩溃仍不能保证恢复。
 
 背包资产快照独立于孵化 / 远征的基地仓库快照：官方 LootView 内的主角和官方宠物背包与崽记录同批采集，出击图不等待基地仓库。物理落盘仍仅经 `PetNestSaveCoordinator` 的共享引擎；官方收集回调只允许更新 ES3 缓存，不重复 `SaveFile`，即便宿主 `IsSaving` 已置位也能采到本次记录。普通主动落盘仍受 `IsSaving` 延迟闸保护。已有官方宠物背包中的物品没有可靠的崽身份，保留在原容器，不猜测迁移。
@@ -864,6 +879,18 @@ Breaking/Operational:
   所有补丁与清理都按条目验证专用模板所有权（ID + 对象名 + 核心专用 `OfficialQuestProjectionTask` 组件）；ID 冲突时那一条 fail closed，不得改动占用相同整数 ID 的其它内容。
   实现落点（2026-09-22）：注册 / 投影 / 四个 Harmony 补丁 / 四类快照过滤 / 给予者扫描全在共享核心 `Utilities/OfficialQuests/`（唯一实例由 `OfficialQuestRuntimeModule` 持有，注册顺序先于天空岛与征程；守卫 `tests/OfficialQuestProjectionGuard.py`）；天空岛桥只是客户端（`IOfficialQuestClient` + `OfficialQuestBinding` 闭包）。
   官方 `QuestGiverView` 在出击图缺席时不挂岛上给予者（fail-closed，自绘面板照常）。岛上按出击刷新的居民委托不接跨局 Quest。
+
+**NPC 商店（StockShop 动态创建，2026-10-17 反编译源核实）**
+
+- `StockShop.merchantID` 序列化默认值是 `"Albert"`（基地官方商人）。`AddComponent<StockShop>()` 立刻跑 `Awake`：按 Albert 的档案填条目、读 `StockShop_Albert`，
+  并订阅 `SavesSystem.OnCollectSaveData += Save`。不改 ID 的话，NPC 商店开着时一旦存档，就会用 NPC 商品的库存覆盖官方 Albert 的库存存档。
+  `NPCShopSystem.ConfigureShopIdentity` 在 `AddComponent` 后同帧改成 `BossRushNpc_<npcId>` 并回读核对（`Awake` 只读，不写）；
+  随后 `DetachOfficialShopSaveHooks` 用同一实例的 `Save` / `Load`（私有、无参）建委托，从 `OnCollectSaveData` / `OnSetFile` 退订，
+  官方 `OnDestroy` 再退订一次是空操作（2026-10-18）。
+- `ShowUI` 先调 `RefreshIfNeeded`：新对象的 `lastTimeRefreshedStock` 落在很久以前，必定 `DoRefreshStock`，把库存补满、重掷 `possibility`。
+  所以「每次开店新建 `StockShop`」等于每次开店都补货。现金 NPC 商店的库存改由 `NPCShopStockLedger` 按游戏日管理并跟好感存档走，
+  `SuppressOfficialRestock` 把 `refreshAfterTimeSpan` 推到 3650 天、`lastTimeRefreshedStock` 写成当前时间、`refreshStockOnStart` 钉 false。
+  净化点商店（丧尸模式局内）保持每次开店满库存，不和基地共用库存。执行回归：`NpcAuditFixes`（规则）、`NPCShopPayment`（回写）。
 
 **渲染与程序集**
 

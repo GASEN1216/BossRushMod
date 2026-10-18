@@ -104,12 +104,13 @@ namespace BossRush
                         // 这里的「冷淬液」曾被抄成「冷萃液」，玩家在好感面板看到的是错别字，
                         // 而物品本体仍叫「冷淬液」，对不上号。
                         { 2, new[] { L10n.T("商店", "Shop"), DiamondConfig.GetDisplayName() } },
-                        { 3, new[] { L10n.T("10%折扣", "10% Discount") } },
+                        { 3, new[] { L10n.T("10%折扣", "10% Discount"), L10n.T("叮当的故事（一）", "Dingdang's Story (I)") } },
                         { 4, new[] { ColdQuenchFluidConfig.GetDisplayName(), TemperingSolventConfig.GetDisplayName() } },
-                        { 5, new[] { L10n.T("叮当的故事（上）", "Dingdang's Story (Part 1)") } },
+                        { 5, new[] { L10n.T("叮当的故事（二）", "Dingdang's Story (II)") } },
                         { 6, new[] { L10n.T("15%折扣", "15% Discount"), TemperingSolventConfig.GetDisplayName() + L10n.T(" ×2（赠送）", " ×2 (gift)") } },
                         { 7, new[] { DiamondRingConfig.GetDisplayName() } },
-                        { 10, new[] { L10n.T("叮当的故事（下）", "Dingdang's Story (Part 2)"), L10n.T("20%折扣", "20% Discount"), AffixForgeStoneConfig.GetDisplayName() } }
+                        { 8, new[] { L10n.T("叮当的故事（三）", "Dingdang's Story (III)") } },
+                        { 10, new[] { L10n.T("叮当的故事（四）", "Dingdang's Story (IV)"), L10n.T("20%折扣", "20% Discount"), AffixForgeStoneConfig.GetDisplayName() } }
                     };
                 }
                 return _unlocksByLevel;
@@ -800,13 +801,15 @@ namespace BossRush
                 new ShopItemEntry(DiamondConfig.TYPE_ID, DIAMOND_UNLOCK_LEVEL, 5),
                 new ShopItemEntry(ColdQuenchFluidConfig.TYPE_ID, COLD_QUENCH_UNLOCK_LEVEL, 5),
                 new ShopItemEntry(TemperingSolventConfig.TYPE_ID, TemperingSolventConfig.SHOP_UNLOCK_LEVEL, TemperingSolventConfig.SHOP_MAX_STOCK),
-                new ShopItemEntry(DiamondRingConfig.TYPE_ID, DiamondRingConfig.UNLOCK_LEVEL, 1),  // 钻石戒指，7级解锁，限量1个
+                // 钻石戒指：7 级解锁，一次 1 枚（库存跟着好感存档，关店重开不再补）。已婚期间不补；
+                // 单身时距上次补货满 3 个游戏日补 1 枚，离婚、戒指丢了也还能再求婚（审查 CR-2026-10-18-004）
+                new ShopItemEntry(DiamondRingConfig.TYPE_ID, DiamondRingConfig.UNLOCK_LEVEL, 1) { RestockDays = 3, RestockOnlyWhenSingle = true },
                 // 词缀熔石：锻造的唯一消耗材料，游戏内 Wiki 承诺「哥布林商店（要好感度）」。
                 // 满级好感后才提供有限补货，前期熔石以 BossRush 掉落为主。
                 new ShopItemEntry(AffixForgeStoneConfig.TYPE_ID, 10, 5),
                 // 冰霜/雷霆套装（500053-500056）：「上头批出库了」。这里是稳定线，运气线是 Boss 专属掉落格
                 // （风暴区 Boss 掉雷霆、「???」Boss 掉冰霜，见 LootAndRewardsSetBonusLoot.cs）。
-                // 6 级解锁介于冷淬液 4 级与钻戒 7 级之间；库存 1 与钻戒同款（每次开店重置）。
+                // 6 级解锁介于冷淬液 4 级与钻戒 7 级之间；库存 1，每个游戏日补一次（剩余库存跟着好感存档）。
                 // 掉落黑名单保留不动：它只挡随机奖池，NPC 商店不查它（词缀熔石同款）。
                 new ShopItemEntry(FrostThunderSetConfig.FROST_HELMET_ID, FrostThunderSetConfig.SET_PIECE_UNLOCK_LEVEL, FrostThunderSetConfig.SET_PIECE_MAX_STOCK),
                 new ShopItemEntry(FrostThunderSetConfig.FROST_ARMOR_ID, FrostThunderSetConfig.SET_PIECE_UNLOCK_LEVEL, FrostThunderSetConfig.SET_PIECE_MAX_STOCK),
@@ -815,7 +818,7 @@ namespace BossRush
                 // P0 五把新武器（500048-500052）：与套装同款「稳定线 + 运气线」两条获取途径。
                 // 运气线是五个官方 Boss 的专属掉落格（NewWeaponBossDropHandler，原版地图亦可）。
                 // 5 级解锁介于冷淬液 4 级与套装件 6 级之间——它们是品质 5，比品质 6 的套装件早一档；
-                // 库存 1 与套装件/钻戒同款（每次开店重置）。
+                // 库存 1 与套装件同款，每个游戏日补一次。
                 // 掉落黑名单保留不动：它只挡随机奖池，NPC 商店不查它。
                 new ShopItemEntry(NewWeaponIds.ViperDaggerTypeId, NewWeaponShopConfig.UnlockLevel, NewWeaponShopConfig.MaxStock),
                 new ShopItemEntry(NewWeaponIds.SummonStaffTypeId, NewWeaponShopConfig.UnlockLevel, NewWeaponShopConfig.MaxStock),

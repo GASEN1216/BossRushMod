@@ -57,7 +57,13 @@ namespace BossRush
                 ModBehaviour.DevLog("[ModeD] 给玩家发放开局装备...");
 
                 // 1. 发放随机武器（必给，配件随机 0-100%）。武器是第一件，失败时还没发过任何东西，无需回收。
-                GiveRandomWeapon(main);
+                // 武器池含各 Mod 的枪，个别抽中的放不进主武器槽也进不了背包；换一把再试，
+                // 别因为一次抽签让整局白手起家回落成普通挑战（首波就是 Boss）。
+                const int StarterWeaponAttempts = 3;
+                for (int attempt = 0; attempt < StarterWeaponAttempts && lastGivenWeapon == null; attempt++)
+                {
+                    GiveRandomWeapon(main);
+                }
                 if (lastGivenWeapon == null)
                 {
                     ModBehaviour.DevLog("[ModeD] [ERROR] GivePlayerStarterKit: 开局武器没发出去");

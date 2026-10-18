@@ -3,7 +3,7 @@
 落点算法不在这里重写，直接借用逐字复现生产算法的两份属性测试：
 `tests/SkyIslandInteractionCompetitionPropertyTest.py`（见闻点、航路图、纪念物、搜刮箱、谢礼箱、居民、信鸽、采集点）
 与 `tests/SkyIslandContentPlacementPropertyTest.py`（地面射线、墙体裁决）；此外按 C# 常量补上灶火、
-桥口木牌、剧情门、撤离环、巡守与遭遇槽位。改生产落点算法时同步那两份测试，这里自动跟上。
+桥口木牌、见闻点小木牌、剧情门、撤离环、巡守与遭遇槽位。改生产落点算法时同步那两份测试，这里自动跟上。
 
 输出 `ArtSource/SkyIsland/runtime_placements.json`，由 `tools/sky_island_scene_audit.py` 与
 `tests/SkyIslandSceneCleanlinessPropertyTest.py` 读取：每条 {kind, id, x, y, z, clearRadius, footprint, mesh}。
@@ -17,6 +17,17 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'ArtSource/SkyIsland/runtime_placements.json'
+
+# 交互体上的实体物件（SkyIsland/SkyIslandPointProps.cs）：摆在交互体正中，占地半径取各件构件伸得最远的一块
+# （信鸽连喙约 0.37 m、航路图架图板 1.05 m 宽、浮木连断头 1.3 m 长……）。改了构件尺寸同步这里。
+PROP_FOOTPRINT = {'pigeon': 0.4, 'chart_stand': 0.55,
+                  'Grass': 0.45, 'Driftwood': 0.7, 'Moss': 0.45, 'Ore': 0.6, 'Crystal': 0.35}
+
+
+def gather_kinds():
+    """采集点 id → 种类，读 `SkyIslandFieldcraftRules.BuildNodes`。"""
+    source = (ROOT / 'SkyIsland/SkyIslandFieldcraftRules.cs').read_text(encoding='utf-8')
+    return dict(re.findall(r'Node\("([A-Za-z0-9]+)",\s*"[A-Za-z0-9_]+",\s*[0-9.]+f,\s*[0-9.]+f,\s*SkyIslandGatherKind\.(\w+)', source))
 
 
 def _module(name):
@@ -39,7 +50,9 @@ def build():
         points.append(row)
 
     items, notes = competition.build_interactables()
-    # 交互体：网格来源与占地（搜刮箱换了木箱外观，最长边 ≤ 1.3 m）；纪念物有木桩木牌；其余只有触发体。
+    kinds_of_node = gather_kinds()
+    # 交互体：网格来源与占地（搜刮箱换了木箱外观，最长边 ≤ 1.3 m）；纪念物有木桩木牌；见闻点的木牌另记（point_sign）；
+    # 采集点、航路图、信鸽的实体物件另记一条 interact_prop（与交互体同点）。
     for name, spot, half, _group in items:
         kind, identifier = name.split(':', 1)
         if kind == 'loot':
@@ -56,11 +69,16 @@ def build():
             add('search_point', identifier, spot, 0.0, half, None)
         elif kind == 'gather':
             add('gather_node', identifier, spot, 0.0, half, 'ground_glow')
+            gather_kind = kinds_of_node[identifier]
+            size = PROP_FOOTPRINT[gather_kind]
+            add('interact_prop', name, spot, size, size, 'gather_' + gather_kind.lower())
         elif kind == 'guide':
             add('travel_guide', identifier, spot, 0.0, min(half, 0.65), None)
+            add('interact_prop', name, spot, PROP_FOOTPRINT['chart_stand'], PROP_FOOTPRINT['chart_stand'], 'chart_stand')
         elif kind == 'pigeon':
-            # 信鸽没有网格，触发盒半宽 1.5 只管够得着；让出的是站着读信的那块地（0.6 m）。
+            # 触发盒半宽 1.5 只管够得着；让出的是站着读信的那块地（0.6 m）。白鸽本身另记一条物件。
             add('pigeon', identifier, spot, 0.0, 0.6, None)
+            add('interact_prop', name, spot, PROP_FOOTPRINT['pigeon'], PROP_FOOTPRINT['pigeon'], 'pigeon')
 
     # 灶火：P1，方位与距离取 SkyIslandLootTables.PlacementFor(marker + ":hearth", SpotDistance)；失败贴标记下方地面。
     hearth_src = (ROOT / 'SkyIsland/SkyIslandHearthFx.cs').read_text(encoding='utf-8')
@@ -86,6 +104,22 @@ def build():
         for side in (-1, 1):
             add('bridge_sign_post', '%s#%d%s' % (gid, index, 'L' if side < 0 else 'R'),
                 (float(x) + side * 2.4, float(y), float(z)), 0.16, 0.4, 'post')
+    # 见闻点小木牌（20 处 Search_*）：两根木桩在牌根局部 X ±0.9、牌根绕 Y 转 PointSignYaw，各 0.07；
+    # 2.8 m 宽、朝相机斜着的牌面伸出木桩外 0.5 m、前后各约 0.45 m，木桩净空 0.7 加牌心 1.0 把它整块罩住。
+    sign_yaw = math.radians(float(re.search(r'PointSignYaw\s*=\s*([-0-9.]+)f', gates_src).group(1)))
+    for key, x, y, z in re.findall(
+            r'AddPointSign\(root, wood, wallLayer, "(\w+)", new Vector3\(([-0-9.]+)f?, ([-0-9.]+)f?, ([-0-9.]+)f?\)\)', gates_src):
+        x, y, z = float(x), float(y), float(z)
+        add('point_sign', key + '#C', (x, y, z), 0.0, 1.0, 'board')
+        for side in (-1, 1):
+            # Unity 绕 Y 转 θ：局部 (dx, 0, 0) → 世界 (dx·cosθ, 0, −dx·sinθ)。
+            dx = side * 0.9
+            add('point_sign', '%s#%s' % (key, 'L' if side < 0 else 'R'),
+                (x + dx * math.cos(sign_yaw), y, z - dx * math.sin(sign_yaw)), 0.1, 0.7, 'post')
+    # 单桩窄牌（AddPointPost，码头整备与风标）：一根桩在牌根正中，1.9 m 宽的牌面伸出桩外 0.95 m，净空 1.0 罩住。
+    for key, x, y, z in re.findall(
+            r'AddPointPost\(root, wood, wallLayer, "(\w+)", new Vector3\(([-0-9.]+)f?, ([-0-9.]+)f?, ([-0-9.]+)f?\)\)', gates_src):
+        add('point_sign', key + '#P', (float(x), float(y), float(z)), 0.1, 1.0, 'post')
 
     # 撤离环：P6，半径 ExtractionRadius；环里不该有硬物。
     for marker in ('Exit', 'BellExtraction', 'Region_D', 'Region_G'):

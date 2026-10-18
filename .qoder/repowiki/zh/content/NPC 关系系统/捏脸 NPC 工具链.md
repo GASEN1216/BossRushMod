@@ -2,7 +2,7 @@
 
 ## 2026-10-09 可选商店与浮舟航前杂货（SCHEMA+）
 
-永久 NPC 蓝图支持可选 `permanent.shop`：包含双语 `nameCn` / `nameEn`、`unlockLevel` 和商品 `items`（`typeId`、`requiredLevel`、`maxStock`）。未配置或没有有效商品时保持关闭；现有数据给天空岛登云码头的浮舟 `sky_fuzhou` 启用「浮舟的航前杂货 / Fuzhou's Departure Supplies」，好感 3 级出售教导主任的点名册，库存 1、价格因子 1，售价 20000。小满保留示例定位。新增物品应按主题分配给玩家可接触的 NPC，不能把支持通用接口误写成所有居民已有商店库存。
+永久 NPC 蓝图支持可选 `permanent.shop`：包含双语 `nameCn` / `nameEn`、`unlockLevel` 和商品 `items`（`typeId`、`requiredLevel`、`maxStock`）。未配置或没有有效商品时保持关闭；现有数据给天空岛登云码头的浮舟 `sky_fuzhou` 启用「浮舟的航前杂货 / Fuzhou's Departure Supplies」，好感 3 级出售教导主任的点名册（500106，20000）与甩锅许可证（500109，18000），各库存 1、价格因子 1；婚后基地与 `Search_A` 渡口工台共用配置。无声钟守另有好感 5 级的节拍器贝壳兑换，小满保留示例定位。新增物品应按主题分配给玩家可接触的 NPC，不能把支持通用接口误写成所有居民已有商店库存。
 
 `PermanentDuckNpcAffinityConfig` 实现 `INPCShopConfig`；根交互通过共享助手幂等创建 `NPCShopInteractable`，组件订阅现有好感事件并控制解锁显隐，仍走 `NPCShopSystem` 和官方商店界面。婚前婚后使用同一 NPC id 与商店配置，不修改关系存档；捏脸 NPC 回收前按实例关闭所属商店。`NPCShopSystem.Cleanup` 先停用服务并退订事件，再仅关闭 Target 对应当前店且仍打开的官方窗口；静态清理和打开失败共用此收口。天空岛渡口工台另挂同 ID 商店作为居民缺席兜底，由 WorldStory 的构造/Dispose 管理。`PermanentDuckNpcDialogue` 执行真实解析器和配置器，`DuckNpcInvariantGuard` 守卫通用接线；实机购买、动态解锁和婚后交易仍需验收。
 
@@ -316,6 +316,25 @@ ECM2 层碰撞矩阵）**且全程无报错**。
 **10 级必须打剧情标记。** 婚礼教堂的解锁判据是
 `AffinityManager.HasAnyNPCEverReachedMaxLevel()`，它查的是 `hasTriggeredStory10`
 标记而非当前点数。漏掉这步该 NPC 永远解锁不了教堂。
+
+### 好感剧情（2026-10-17，`SCHEMA+`）
+
+蓝图可选字段 `permanent.storyEvents`：每项 `{level, titleCn, titleEn, lines, rewardTypeId?, rewardCount?}`，
+`level` 只能是 3/5/8/10，台词同样接受裸字符串或 `{cn, en}`。七位永久捏脸 NPC（小满与天空岛六位）每人四段，
+晴禾 8 级送归航便当（500071）×1、眠苔 8 级送星苔药膏（500072）×2，其余不带奖励。
+
+- 触发：到级后找 NPC **聊天**（不是走近自动播）。`PermanentDuckNpcInteractable.DoChat` 先算每日聊天好感，
+  再 `TryPlayPendingStory`：有待播剧情就用官方大对话（`DialogueManager.ShowDialogueSequenceBilingual`）一句一屏播，
+  代替本次问候气泡；一次只播一段，按等级从低往高补。
+- 打标：`PermanentDuckNpcStoryPlayer` **播完才**打 `story_N`，并另记 `story_seen_N`（旧档的 `story_N` 是当年只打横幅时打的，
+  缺 `story_seen_N` 时下次聊天补播）。被打断（NPC 停用、切图）不打标，下次重播。10 级首次打标时推「婚礼教堂的建造条件已达成」。
+- 没配剧情的等级照旧当场打标 + 通用横幅；对话角色建不出来时同样当场打标，保住教堂判据。
+- 对话角色复用角色根节点上的 `DuckovDialogueActor`（与天空岛居民对话、结婚过场同一个），已有只刷名字、保留立绘。
+- `PermanentDuckNpcAffinityConfig.UnlocksByLevel` 按语言缓存，列出商店与剧情节点名（「XX的故事（一）」…），供升级横幅与好感页使用。
+- 守卫：`DuckNpcInvariantGuard`（数据合法性、播完才打标、聊天先试播、`story_seen_N`）；执行回归 `PermanentDuckNpcDialogue`（解析与真实数据四段齐全）。
+
+叮当（`GoblinNPCController.GetNextPendingStoryLevel`）同日补了 3 / 8 级两段（文案在 `LocalizationInjector_NpcUiAndItems.cs`），
+走近或聊天按 3 → 5 → 8 → 10 补播；羽织原本就有四段，只在好感页补了 3 / 8 级节点名。
 
 ### 婚姻接线：一条泛化分支而非每 NPC 六处硬编码
 

@@ -30,7 +30,7 @@ namespace BossRush
 
         // ========== 获取路径（2026-09-06 开放） ==========
         // 稳定线：叮当好感商店；运气线：Boss 专属掉落格（LootAndRewardsSetBonusLoot.cs）。
-        // 6 级解锁介于冷淬液 4 级与钻戒 7 级之间；库存 1 与钻戒同款（NPCShopSystem 每次开店重置）。
+        // 6 级解锁介于冷淬液 4 级与钻戒 7 级之间；库存 1，每个游戏日补一次（NPCShopStockLedger，剩余库存跟着好感存档）。
         public const int SET_PIECE_UNLOCK_LEVEL = 6;
         public const int SET_PIECE_MAX_STOCK = 1;
         // 单件售价。StockShop 价格 = Value × 耐久比 × priceFactor，不设 Value 商店会卖 0 元。

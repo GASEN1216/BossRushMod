@@ -341,6 +341,16 @@ namespace BossRush
                 case "EnemySpawn_F": bearing = 146f; distance = 3.2f; return;
                 // 信鸽 Letter_02 的散列方位落在风铃架（Tripo 件比登记占地长）上。
                 case "Letter_02": bearing = 37f; distance = 3.2f; return;
+                // 六封信的散列方位落在路面 / 广场上：信鸽是看得见的实体（SkyIslandPointProps），压路过不了场景净空审计，
+                // 2026-10-17 交互点可见性盘点按离线复算就近改到路边。
+                case "Letter_03": bearing = 146f; distance = 3.2f; return;
+                case "Letter_04": bearing = 11f; distance = 3.2f; return;
+                case "Letter_06": bearing = 318f; distance = 3.2f; return;
+                case "Letter_07": bearing = 237f; distance = 3.2f; return;
+                case "Letter_09": bearing = 51f; distance = 5.2f; return;
+                case "Letter_10": bearing = 189f; distance = 3.2f; return;
+                // 风铃集航路图（SkyIslandGuideInteractable）的散列方位 7° 落在集市铺装上，航路图架压路。
+                case "Search_B_02": bearing = 322f; distance = 3.2f; return;
             }
             bearing = StableHash(key) % 360;
             distance = defaultDistance;

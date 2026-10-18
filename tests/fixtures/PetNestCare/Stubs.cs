@@ -42,7 +42,7 @@ namespace UnityEngine
     }
     public class Transform:Object {public GameObject gameObject;public readonly List<Transform> Children=new List<Transform>();public Vector3 position;public void SetParent(Transform parent){parent.Children.Add(this);}}
     public struct Vector3 {public float x,y,z;public float sqrMagnitude{get{return x*x+y*y+z*z;}}public static Vector3 operator-(Vector3 a,Vector3 b){return new Vector3{x=a.x-b.x,y=a.y-b.y,z=a.z-b.z};}}
-    public static class Time{public static int frameCount=1;}
+    public static class Time{public static int frameCount=1;public static float unscaledTime;}
     public static class Mathf{public static float Min(float a,float b){return Math.Min(a,b);}}
     public static class Debug{public static void LogWarning(string s){}}
 }
@@ -56,7 +56,7 @@ public static class SceneLoader{public static bool IsSceneLoading;}
 public enum Teams{player,wolf}
 public static class Team{public static bool IsEnemy(Teams a,Teams b){return a!=b;}}
 public class Health:Component{public bool IsDead;public float MaxHealth=100,CurrentHealth=50;public CharacterMainControl Character;public void SetHealth(float x){CurrentHealth=x;}public CharacterMainControl TryGetCharacter(){return Character;}}
-public class CharacterMainControl:Component{public static CharacterMainControl Main;public Item CharacterItem;public Health Health;public Teams Team;}
+public class CharacterMainControl:Component{public static CharacterMainControl Main;public Item CharacterItem;public Health Health;public Teams Team;public UnityEngine.Transform modelRoot;}
 public struct DamageInfo{public CharacterMainControl fromCharacter;}
 public class LevelManager{public static LevelManager Instance=new LevelManager();public bool IsBaseLevel;}
 public static class LevelConfig{public static bool SavePet;}
@@ -120,6 +120,8 @@ namespace BossRush
     internal static class PetNestPersistenceAccess{public static bool Active,RejectCommit;public static PetNestPetRecord Candidate;public static bool IsTransactionActive{get{return Active;}}public static bool CanStoreAll{get{return true;}}public static bool BeginTransaction(out string e){e=null;if(Active)return false;Active=true;Candidate=PetNestService.Pet.Clone();return true;}public static void AbortTransaction(){Active=false;}public static bool CommitTransaction(out string e){e=null;Active=false;if(RejectCommit)return false;PetNestService.Pet=Candidate;PetNestService.Pending=true;return true;}}
     internal static class PetNestProgressionService{public static void AddExp(PetNestPetRecord pet,int value){pet.exp+=value;if(pet.exp>=100){pet.exp-=100;pet.level++;}}}
     internal class PetNestCompanionAgent{public PetNestBehaviour Behaviour;public CharacterMainControl Self;public void NotifyEngaged(CharacterMainControl enemy){}}
+    // 2026-10-17：摸摸的小动作走 PetNestUIMotionParts 的脉冲组件（Unity 侧表现），本夹具只记次数
+    internal static class PetNestPulse{public static int Plays;public static void Play(UnityEngine.Transform t,float peak,float seconds){Plays++;}}
     internal static class PetNestCompanionRuntime{public static CharacterMainControl CompanionCharacter;public static PetNestCompanionAgent CompanionAgent;public static bool ThrowRefresh;public static void ApplyBehaviour(string id,PetNestBehaviour value){}public static void RefreshProgression(PetNestPetRecord pet){if(ThrowRefresh)throw new Exception("presentation");}}
     internal static class PetNestBackpack{public static bool CollectAll(out string e){e=null;return true;}}
     internal static class PetNestBaseIdleSpawner{public static int ActiveCount;public static void RefreshProgression(CharacterMainControl character,PetNestPetRecord pet){}}

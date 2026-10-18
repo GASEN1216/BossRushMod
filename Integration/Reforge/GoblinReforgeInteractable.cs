@@ -331,8 +331,12 @@ namespace BossRush
             }
         }
         
+        private float nextChatLabelRefreshTime;
+
+        // 走近时按当前语言刷新「聊天」选项名（好感等级在 Tab 页签栏的「好感」页看）。
         protected override bool IsInteractable()
         {
+            NPCAffinityInteractionHelper.RefreshChatOptionLabelWhenApproached(this, GoblinAffinityConfig.NPC_ID, ref nextChatLabelRefreshTime);
             return true;
         }
         
@@ -412,23 +416,13 @@ namespace BossRush
                 }
 
                 // 兜底：若达到剧情等级但因状态窗口错过了自动触发，则在本次"聊天"时优先触发大对话。
-                // 叙事顺序优先：先5级再10级
+                // 叙事顺序优先：按 3 → 5 → 8 → 10 补
                 int currentLevel = AffinityManager.GetLevel(GoblinAffinityConfig.NPC_ID);
-                if (currentLevel >= 5 && !AffinityManager.HasTriggeredStory5(GoblinAffinityConfig.NPC_ID))
+                int pendingStoryLevel = GoblinNPCController.GetNextPendingStoryLevel(currentLevel);
+                if (pendingStoryLevel > 0 && controller != null)
                 {
-                    if (controller != null)
-                    {
-                        controller.TriggerStoryDialogue(5);
-                        return;
-                    }
-                }
-                if (currentLevel >= 10 && !AffinityManager.HasTriggeredStory10(GoblinAffinityConfig.NPC_ID))
-                {
-                    if (controller != null)
-                    {
-                        controller.TriggerStoryDialogue(10);
-                        return;
-                    }
+                    controller.TriggerStoryDialogue(pendingStoryLevel);
+                    return;
                 }
 
                 bool dailyChatGranted;

@@ -938,33 +938,10 @@ namespace BossRush
         // 现有婚姻/好感度调试 UI 全部写死叮当和护士的 NPC_ID，新 NPC 用不上，
         // 所以这里自带好感度拉满/清零。
 
-        private void SpawnPermanentDuckNpcFromF3()
+        // 六个按钮（切换目标 / 生成 / 回收 / 拉满 / 清零 / 输出状态）共用：执行一条调试操作，再把结果写进 F3 状态栏。
+        private void RunPermanentDuckNpcDebugFromF3(Action operation)
         {
-            PermanentDuckNpcDebug.SpawnHere();
-            SetF3DebugCheatStatus(PermanentDuckNpcDebug.LastStatus, false);
-        }
-
-        private void DespawnPermanentDuckNpcFromF3()
-        {
-            PermanentDuckNpcDebug.Despawn();
-            SetF3DebugCheatStatus(PermanentDuckNpcDebug.LastStatus, false);
-        }
-
-        private void MaxPermanentDuckNpcAffinityFromF3()
-        {
-            PermanentDuckNpcDebug.MaxAffinity();
-            SetF3DebugCheatStatus(PermanentDuckNpcDebug.LastStatus, false);
-        }
-
-        private void ResetPermanentDuckNpcAffinityFromF3()
-        {
-            PermanentDuckNpcDebug.ResetAffinity();
-            SetF3DebugCheatStatus(PermanentDuckNpcDebug.LastStatus, false);
-        }
-
-        private void DumpPermanentDuckNpcStateFromF3()
-        {
-            PermanentDuckNpcDebug.DumpState();
+            operation();
             SetF3DebugCheatStatus(PermanentDuckNpcDebug.LastStatus, false);
         }
 

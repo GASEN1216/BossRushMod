@@ -88,8 +88,7 @@ namespace BossRush
 
         private bool GrantZombieModeAmmoSupplyReward()
         {
-            string caliber = ResolveZombieModeSupplyAmmoCaliber();
-            if (!string.IsNullOrEmpty(caliber) && TryGiveZombieModeStarterAmmo(caliber, ZombieModeTuning.AmmoSupplyRewardAmmoCount))
+            if (TryGiveZombieModeSupplyAmmo(ZombieModeTuning.AmmoSupplyRewardAmmoCount))
             {
                 NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_AmmoSupply"));
                 return true;
@@ -517,6 +516,15 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 属性加成是否已到上限。0.1 累加十次是 0.99999994，留一点浮点余量；减伤按负数累加（上限 -0.40），
+        /// 而 <see cref="GetZombieModeAttributeCap"/> 给的是正数，所以两边都比绝对值。
+        /// </summary>
+        internal static bool IsZombieModeAttributeBonusAtCap(float currentBonus, float cap)
+        {
+            return Mathf.Abs(currentBonus) >= Mathf.Abs(cap) - 0.0001f;
+        }
+
         internal float GetZombieModeAttributeCap(ZombieModeRewardType rewardType)
         {
             switch (rewardType)
@@ -557,17 +565,21 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 弹药补给按玩家手上正在用的枪配口径（中途拿到 RPG 就补火箭弹）；手上没枪再退回开局枪的口径。
+        /// 弹药补给按玩家手上正在用的枪配口径（中途拿到 RPG 就补火箭弹）；手上没枪、或这个口径一发弹药都发不出来时，
+        /// 再按开局枪的口径发。两者都发不出来返回 false，由调用方落到随机弹药。
         /// </summary>
-        private string ResolveZombieModeSupplyAmmoCaliber()
+        private bool TryGiveZombieModeSupplyAmmo(int totalCount)
         {
             string held = TryReadZombieModeItemCaliber(TryGetZombieModePreferredWeaponForMerchantAmmo());
-            if (!string.IsNullOrEmpty(held))
+            if (!string.IsNullOrEmpty(held) && TryGiveZombieModeStarterAmmo(held, totalCount))
             {
-                return held;
+                return true;
             }
 
-            return runState.StarterAmmoCaliber ?? string.Empty;
+            string starter = runState.StarterAmmoCaliber ?? string.Empty;
+            return starter.Length > 0
+                && !string.Equals(starter, held, System.StringComparison.Ordinal)
+                && TryGiveZombieModeStarterAmmo(starter, totalCount);
         }
 
         internal string TryReadZombieModeItemCaliber(Item item)
@@ -598,11 +610,13 @@ namespace BossRush
             return TryGiveZombieModeAmmo(caliber, totalCount, 1, 2);
         }
 
-        private bool TryGiveZombieModeAmmo(string caliber, int totalCount, int minQuality, int maxQuality)
+        /// <param name="allowQualityFallback">区间里没有该口径时是否改发离区间最近的那档；保底品质的购买传 false，
+        /// 发不出就留着保底、按普通区间再买一次。</param>
+        private bool TryGiveZombieModeAmmo(string caliber, int totalCount, int minQuality, int maxQuality, bool allowQualityFallback = true)
         {
             try
             {
-                int chosenTypeId = PickZombieModeAmmoTypeForCaliber(caliber, minQuality, maxQuality);
+                int chosenTypeId = PickZombieModeAmmoTypeForCaliber(caliber, minQuality, maxQuality, allowQualityFallback);
                 if (chosenTypeId <= 0)
                 {
                     return false;
@@ -650,13 +664,14 @@ namespace BossRush
 
         /// <summary>
         /// 先按调用方的品质区间找该口径的弹药；区间里一发都没有时（火箭弹、能量弹这类只有高品质的口径），
-        /// 放开品质取该口径最低品质的那档。官方 Search 落空时只会往低品质降级，不会往上找，所以这里直接查全表。
+        /// 放开品质取离区间最近的那档：区间在可用品质之下取最低档，在之上取不超过上限的最高档，距离相同取高的。
+        /// 官方 Search 落空时只会往低品质降级，不会往上找，所以这里直接查全表。
         /// </summary>
-        private int PickZombieModeAmmoTypeForCaliber(string caliber, int minQuality, int maxQuality)
+        private int PickZombieModeAmmoTypeForCaliber(string caliber, int minQuality, int maxQuality, bool allowQualityFallback)
         {
             caliber = caliber ?? string.Empty;
             int picked = PickZombieModeStrictQualityCandidate(SearchZombieModeAmmo(caliber, minQuality, maxQuality, true), minQuality, maxQuality);
-            if (picked > 0 || caliber.Length == 0)
+            if (picked > 0 || caliber.Length == 0 || !allowQualityFallback)
             {
                 return picked;
             }
@@ -668,19 +683,26 @@ namespace BossRush
                 return -1;
             }
 
-            int lowest = int.MaxValue;
+            int nearest = -1;
+            int nearestDistance = int.MaxValue;
             for (int i = 0; i < anyQuality.Length; i++)
             {
                 int quality = GetZombieModeItemQuality(anyQuality[i]);
-                if (quality >= 0 && quality < lowest) lowest = quality;
+                if (quality < 0) continue;
+                int distance = quality < minQuality ? minQuality - quality : (quality > maxQuality ? quality - maxQuality : 0);
+                if (distance < nearestDistance || (distance == nearestDistance && quality > nearest))
+                {
+                    nearest = quality;
+                    nearestDistance = distance;
+                }
             }
-            if (lowest == int.MaxValue)
+            if (nearest < 0)
             {
                 return -1;
             }
 
-            ModBehaviour.DevLog("[ZombieMode] 口径 " + caliber + " 在品质 " + minQuality + "-" + maxQuality + " 无弹药，改发品质 " + lowest);
-            return PickZombieModeStrictQualityCandidate(anyQuality, lowest, lowest);
+            ModBehaviour.DevLog("[ZombieMode] 口径 " + caliber + " 在品质 " + minQuality + "-" + maxQuality + " 无弹药，改发品质 " + nearest);
+            return PickZombieModeStrictQualityCandidate(anyQuality, nearest, nearest);
         }
 
         private const int ZombieModeAmmoAnyQualityMax = 99;

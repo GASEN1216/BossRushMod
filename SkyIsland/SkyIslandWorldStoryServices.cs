@@ -389,6 +389,15 @@ namespace BossRush
             return memorialWood;
         }
 
+        private SkyIslandPropPalette propPalette;
+
+        /// <summary>信鸽物件用的作者材质表：每趟在世界根里扫一次（<see cref="SkyIslandPointProps"/>）。</summary>
+        private SkyIslandPropPalette PropPalette()
+        {
+            if (propPalette == null) propPalette = new SkyIslandPropPalette(root.transform);
+            return propPalette;
+        }
+
         #endregion
     }
 }

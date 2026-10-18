@@ -55,6 +55,7 @@ namespace BossRush
             EnsureRegistered(BossRushItemIds.EmptyMagazineMine);
             EnsureRegistered(BossRushItemIds.RollCallLedger);
             EnsureRegistered(BossRushItemIds.ReloadMetronome);
+            EnsureRegistered(BossRushItemIds.PassTheBomb);
 
             initialized = true;
         }
@@ -142,6 +143,17 @@ namespace BossRush
                     "RollCallLedger_Placeholder",
                     "BossRush_RollCallLedger",
                     RollCallLedgerConfig.BaseName,
+                    isMelee: false,
+                    tag: "Totem");
+            }
+
+            if (typeId == BossRushItemIds.PassTheBomb)
+            {
+                return EnsureWeaponRegistered(
+                    BossRushItemIds.PassTheBomb,
+                    "PassTheBomb_Placeholder",
+                    "BossRush_PassTheBomb",
+                    PassTheBombConfig.BaseName,
                     isMelee: false,
                     tag: "Totem");
             }
@@ -290,6 +302,8 @@ namespace BossRush
                     return RollCallLedgerWeaponConfig.TryConfigure(clone, baseName);
                 if (typeId == BossRushItemIds.ReloadMetronome)
                     return ReloadMetronomeWeaponConfig.TryConfigure(clone, baseName);
+                if (typeId == BossRushItemIds.PassTheBomb)
+                    return PassTheBombWeaponConfig.TryConfigure(clone, baseName);
             }
             catch (Exception e)
             {

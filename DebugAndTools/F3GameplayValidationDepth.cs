@@ -110,6 +110,11 @@ namespace BossRush
 
             yield return RunIsolatedCase("MODE_ZOMBIE_EXTRACTION", RunZombieExtraction);
             yield return VerifyArenaCleanup("CLEANUP_AFTER_ZOMBIE_EXTRACTION");
+#if BOSSRUSH_DEV
+            // 2026-10-18 审查修复：属性满级、弹药回退与保底、手持枪优先（只取数，F3GameplayValidationReviewFixes.cs）
+            yield return RunIsolatedCase("MODE_ZOMBIE_REWARD_FIXES", RunZombieRewardFixes);
+            yield return VerifyArenaCleanup("CLEANUP_AFTER_ZOMBIE_REWARD_FIXES");
+#endif
 
             yield return RunIsolatedCase("STANDARD_VICTORY_REWARD", RunStandardVictoryReward);
             yield return VerifyArenaCleanup("CLEANUP_AFTER_VICTORY_REWARD");

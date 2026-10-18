@@ -1,0 +1,23 @@
+## v2.3.5
+
+### Release Date
+- 2026-10-17
+- This update proofreads every piece of Sky Islands guidance from start to finish: the map circles, the wind-vane compass, the objective card, resident lines and gate notices now all point at the spot you actually interact with, and every interaction point now has a visible object, so you no longer have to hunt along the ground for a prompt.
+
+### Improved
+
+- **Sky Islands guidance lined up**: map circles, compass readings, the objective card, resident lines, gate notices and quest text were checked one by one against the real interaction points, and button names match the panels exactly.
+  - When Weibai, Fuzhou or the Bell Keeper is not on the islands this trip, the circle and text point straight to the fallback device and name it, instead of sending you after someone who isn't there.
+  - When you want to make peace with the Bell Keeper, only the proof you still lack is listed, with where to get it. You ring the Homecoming Bell at the Bell Keeper's message in the Bell Court, circled on the map.
+  - The twin-beacon gate is now described as the south end of Windsong Boardwalk, separate from the Bell Court gate at the north end. After the ending it is circled when you want to call the wind, and the compass points there only when you can actually call it this trip.
+  - The wind beacon's guard group is now described as east of the beacon, where it really is, and post-ending purple circles say which side path they are for.
+  - The wind beacon, star lamp, Zheling and telescope panels switch to an after-the-fact description once they are done.
+- **Visible interaction points**: all 20 lore points on the islands have a named sign that follows your language; pigeons have a white dove, route charts have a stand, and the five gatherables have real objects that disappear once taken. Twelve interaction points that sat in the middle of a road or plaza were moved to the side.
+- **Sky Islands prelude**: if you lose the navigation instrument you are told to beat the guard again; when your pack is full and the instrument goes to pickup storage, you are told to collect it at the base pickup point; names and buttons in the quest text now use the game's own wording.
+
+### Fixed
+
+- Fixed Miantai sending you to Zheling with only the old letter. Making peace needs both the letter and the route chart, so with just the letter she now sends you to Rainlisten Grotto for the chart first, and she stops mentioning Zheling once that is settled.
+- Fixed Zheling's peace button still asking for the old letter and route chart when you arrive in the Mirrorgrain Plate.
+- Fixed the K1 button at the wind beacon being called the old produce path instead of the rope bridge home named by the gate notice and replies.
+- Fixed the official quest screen's Complete Quest being blocked without a reason; it now says what is missing.

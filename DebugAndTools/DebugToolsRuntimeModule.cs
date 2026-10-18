@@ -12,6 +12,9 @@ namespace BossRush
         public override void OnAwake(ModBehaviour owner)
         {
             this.owner = owner;
+#if BOSSRUSH_DEV
+            OfficialViewTabsProbe.Install();
+#endif
         }
 
         public override void OnUpdate(float deltaTime, float unscaledDeltaTime)
@@ -22,6 +25,9 @@ namespace BossRush
             }
 
             owner.TickDebugTools(deltaTime, unscaledDeltaTime);
+#if BOSSRUSH_DEV
+            OfficialViewTabsProbe.Tick();
+#endif
         }
 
         public override void OnLateUpdate()
@@ -36,6 +42,9 @@ namespace BossRush
 
         public override void OnDestroy()
         {
+#if BOSSRUSH_DEV
+            OfficialViewTabsProbe.Uninstall();
+#endif
             owner = null;
         }
     }

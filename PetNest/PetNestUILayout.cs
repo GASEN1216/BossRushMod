@@ -9,7 +9,8 @@
 //     行上没有按钮；右栏是当前崽的详情，底栏只放作用在它身上的操作，危险操作靠左、主操作最右；
 //   - 分区行：按钮跟着它作用的那一行走（凝蛋按钮在遗魂进度那一行里，不再堆进底部动作条）；
 //   - 分段按钮（远征目的地）、对比卡（风险档，参照定价页的档位对比）、头像小卡（远征选崽）。
-// 选中态一律 WarningText 描边（与 2026-09-23 之前的卡片选中口径一致）。
+// 选中态：2026-10-17 起一律 Accent 描边（审查 A-9：WarningText 的黄是「警告」语义），同页重绘时新选中的那项淡入，
+// 由 PetNestUIMotion.cs 的 ApplySelectedStroke 统一处理。
 // ============================================================================
 
 using System;
@@ -130,13 +131,14 @@ namespace BossRush
         /// <summary>画巢页：出战席位格、容量行、崽列表、右栏详情与底栏。</summary>
         private void RenderNest(PetNestNestView view)
         {
-            if (view.Slot != null) SpawnRow(_nestSlotRoot, view.Slot, NestListWidth, true);
+            if (view.Slot != null) RegisterNestRow(view.Slot.Key, SpawnRow(_nestSlotRoot, view.Slot, NestListWidth, true));
             RenderCapacityRow(view);
 
             for (int i = 0; i < view.Rows.Count; i++)
             {
                 GameObject row = SpawnRow(_nestListRoot, view.Rows[i], NestRowWidth, true);
                 if (row != null) _entranceTargets.Add(row);
+                RegisterNestRow(view.Rows[i].Key, row);
             }
             if (view.Rows.Count == 0 && !string.IsNullOrEmpty(view.EmptyText))
             {
@@ -150,10 +152,13 @@ namespace BossRush
         private void RenderCapacityRow(PetNestNestView view)
         {
             bool hasMode = !string.IsNullOrEmpty(view.ModeLabel) && view.OnMode != null;
+            bool hasSort = !string.IsNullOrEmpty(view.SortLabel) && view.OnSort != null;
+            // 右侧按钮占位：「选择」104 + 「排序：xx」132（审查 B-1）
+            float reserved = (hasMode ? 112f : 0f) + (hasSort ? 140f : 0f);
             TextMeshProUGUI capacity = ZombieModeUIHelper.CreateText(
                 "Capacity", _nestCapacityRoot, view.CapacityText ?? string.Empty, 16f,
                 new Vector2(0f, 0f), new Vector2(1f, 1f),
-                new Vector2(hasMode ? -56f : 0f, 0f), new Vector2(hasMode ? -120f : -8f, 0f),
+                new Vector2(-reserved * 0.5f, 0f), new Vector2(reserved > 0f ? -reserved - 8f : -8f, 0f),
                 TextAlignmentOptions.Left, BossRushUIColors.TextSecondary);
             capacity.enableWordWrapping = false;
             capacity.overflowMode = TextOverflowModes.Ellipsis;
@@ -161,6 +166,16 @@ namespace BossRush
             capacity.fontSize = 16f;
             BossRushUI.ApplyGameFont(capacity);
             _spawned.Add(capacity.gameObject);
+            if (hasSort)
+            {
+                Button sort = ZombieModeUIHelper.CreateButton(
+                    "Sort", _nestCapacityRoot, view.SortLabel,
+                    new Vector2(1f, 0.5f), new Vector2(hasMode ? -54f - 112f - 12f : -66f, 0f), new Vector2(132f, 36f),
+                    BossRushUIColors.SurfaceRaised, 15f, new Vector2(124f, 32f),
+                    new UnityEngine.Events.UnityAction(view.OnSort), true);
+                BossRushUIKit.StyleSecondaryButton(sort);
+                _spawned.Add(sort.gameObject);
+            }
             if (!hasMode) return;
 
             Button mode = ZombieModeUIHelper.CreateButton(
@@ -188,7 +203,38 @@ namespace BossRush
                 SpawnLine(_nestDetailRoot, detail.Sections[i].Value ?? string.Empty, 16f,
                     BossRushUIColors.TextSecondary, NestDetailTextWidth);
             }
+            RenderDetailChoices(detail);
             RenderFooter(detail);
+        }
+
+        /// <summary>详情里的一组单选分段（行动方式，审查 B-2）：区头 + 三段等宽按钮 + 当前项的一句说明。</summary>
+        private void RenderDetailChoices(PetNestDetailData detail)
+        {
+            if (detail.Choices == null || detail.Choices.Count == 0) return;
+            if (!string.IsNullOrEmpty(detail.ChoicesTitle))
+            {
+                TextMeshProUGUI header = SpawnLine(_nestDetailRoot, detail.ChoicesTitle, 17f, BossRushUIColors.Accent, NestDetailTextWidth);
+                header.fontStyle = FontStyles.Bold;
+            }
+            List<PetNestCardData> items = new List<PetNestCardData>(detail.Choices.Count);
+            for (int i = 0; i < detail.Choices.Count; i++)
+            {
+                PetNestActionData choice = detail.Choices[i];
+                if (choice == null) continue;
+                Action click = choice.OnClick;
+                items.Add(new PetNestCardData
+                {
+                    Key = "choice:" + i,
+                    Title = choice.Label,
+                    Selected = choice.Selected,
+                    OnCardClick = click,
+                });
+            }
+            SpawnSegments(_nestDetailRoot, items, NestDetailTextWidth);
+            if (!string.IsNullOrEmpty(detail.ChoicesCaption))
+            {
+                SpawnLine(_nestDetailRoot, detail.ChoicesCaption, 16f, BossRushUIColors.TextSecondary, NestDetailTextWidth);
+            }
         }
 
         private void SpawnDetailHeader(PetNestDetailData detail)
@@ -199,12 +245,17 @@ namespace BossRush
             bool hasIcon = detail.Icon != null;
             if (hasIcon)
             {
+                // 立绘框按身份描边（审查 B-6）：异色金、炫彩第一色、其余默认
+                Color frame = BossRushUIColors.Stroke;
+                Color chroma;
+                if (detail.Shiny) frame = BossRushUIColors.RarityLegendary;
+                else if (TryParseHexColor(detail.IconStrokeHex, out chroma)) frame = chroma;
                 CreateIconFrame(header.transform, "Portrait", detail.Icon,
-                    new Vector2(0f, 1f), new Vector2(0f, 1f), Vector2.zero, NestPortraitSize,
-                    detail.Shiny ? BossRushUIColors.RarityLegendary : BossRushUIColors.Stroke, false);
+                    new Vector2(0f, 1f), new Vector2(0f, 1f), Vector2.zero, NestPortraitSize, frame, false);
             }
             float left = hasIcon ? NestPortraitSize + 16f : 0f;
-            float renameWidth = detail.OnRename != null ? 96f : 0f;
+            bool hasFavorite = detail.OnFavorite != null && !string.IsNullOrEmpty(detail.FavoriteLabel);
+            float renameWidth = (detail.OnRename != null ? 96f : 0f) + (hasFavorite ? 112f : 0f);
             float textWidth = NestDetailTextWidth - left;
 
             TextMeshProUGUI title = ZombieModeUIHelper.CreateText(
@@ -232,6 +283,16 @@ namespace BossRush
                     BossRushUIColors.SurfaceRaised, 16f, new Vector2(88f, 30f),
                     new UnityEngine.Events.UnityAction(detail.OnRename), true);
                 BossRushUIKit.StyleSecondaryButton(rename);
+            }
+            if (hasFavorite)
+            {
+                // 收藏（审查 B-7）：与改名同一档小号次级按钮，排在改名左边
+                Button favorite = ZombieModeUIHelper.CreateButton(
+                    "Favorite", header.transform, detail.FavoriteLabel,
+                    new Vector2(1f, 1f), new Vector2(detail.OnRename != null ? -48f - 96f - 8f - 52f : -52f, -22f),
+                    new Vector2(104f, 34f), BossRushUIColors.SurfaceRaised, 16f, new Vector2(96f, 30f),
+                    new UnityEngine.Events.UnityAction(detail.OnFavorite), true);
+                BossRushUIKit.StyleSecondaryButton(favorite);
             }
 
             float height = 46f;
@@ -373,7 +434,7 @@ namespace BossRush
                 if (data.Shiny) AddIdentityRail(card.transform, "Row_ShinyMark", 13f, BossRushUIColors.RarityLegendary);
             }
             // 选中态用描边点出来（当前崽 / 批量已勾选），否则玩家无从判断「作用在哪只」
-            if (data.Selected) SetCardStroke(card, BossRushUIColors.WarningText);
+            if (data.Selected || data.Key != null) ApplySelectedStroke(card, data.Key, data.Selected);
             if (data.OnCardClick != null) MakeCardClickable(card, data.OnCardClick);
 
             float iconSize = compact ? CompactIconSize : RowIconSize;
@@ -394,7 +455,7 @@ namespace BossRush
             float y = compact ? 8f : 12f;
             TextMeshProUGUI title = CreateRowText(card.transform, "Title", data.Title, compact ? 18f : 20f,
                 BossRushUIColors.TextPrimary, left, y, textWidth, RowTitleHeight, true);
-            if (data.Shiny) PetNestShinyTextShimmer.Attach(title);
+            if (data.Shiny && !data.ShinyFrameOnly) PetNestShinyTextShimmer.Attach(title);
             y += compact ? 30f : RowTitleHeight;
 
             if (!string.IsNullOrEmpty(data.Subtitle))
@@ -406,7 +467,9 @@ namespace BossRush
             }
             if (data.Progress >= 0f)
             {
-                CreateProgressBar(card.transform, data.Progress, data.ProgressText, left, y + 4f, textWidth);
+                TMP_Text number;
+                Image fill = CreateProgressBar(card.transform, data.Progress, data.ProgressText, left, y + 4f, textWidth, out number);
+                RegisterProgressBar(fill, number, data);
                 y += 26f;
             }
             if (!string.IsNullOrEmpty(data.Body))
@@ -468,8 +531,10 @@ namespace BossRush
         /// 进度条：细轨 + 填充（Filled 必须配 sprite，否则 fillAmount 失效——同好感度条的坑），右侧写数字。
         /// 满了用 Success（「已达成」的状态色），没满用 Accent。
         /// </summary>
-        private static void CreateProgressBar(Transform parent, float progress, string text, float left, float top, float width)
+        private static Image CreateProgressBar(Transform parent, float progress, string text, float left, float top, float width,
+            out TMP_Text number)
         {
+            number = null;
             float textWidth = string.IsNullOrEmpty(text) ? 0f : 96f;
             float barWidth = Mathf.Max(60f, Mathf.Min(360f, width - textWidth - 12f));
             GameObject track = ZombieModeUIHelper.CreateRect("ProgressTrack", parent,
@@ -490,24 +555,29 @@ namespace BossRush
             fill.color = progress >= 1f ? BossRushUIColors.Success : BossRushUIColors.Accent;
             fill.raycastTarget = false;
 
-            if (textWidth <= 0f) return;
-            CreateRowText(parent, "ProgressText", text, 15f, BossRushUIColors.TextSecondary,
+            if (textWidth <= 0f) return fill;
+            number = CreateRowText(parent, "ProgressText", text, 15f, BossRushUIColors.TextSecondary,
                 left + barWidth + 12f, top - 7f, textWidth, 26f, false);
+            return fill;
         }
 
         /// <summary>
-        /// 分段按钮（远征目的地）：等宽并排，选中的一颗压一点 Accent 底色并描 WarningText 边，其余是次级按钮。
+        /// 分段按钮（远征目的地）：等宽并排，选中的一颗压一点 Accent 底色并描 Accent 边（淡入），其余是次级按钮；有副标题时第二行小字。
         /// </summary>
         private void SpawnSegments(Transform parent, List<PetNestCardData> items, float width)
         {
-            GameObject row = ZombieModeUIHelper.CreateRect("Segments", parent, new Vector2(0.5f, 0.5f), new Vector2(width, 50f));
+            // 有第二行（目的地契合的元素，审查 D-3）时整排加高
+            bool twoLine = false;
+            for (int i = 0; i < items.Count; i++) if (items[i] != null && !string.IsNullOrEmpty(items[i].Subtitle)) twoLine = true;
+            float height = twoLine ? 64f : 50f;
+            GameObject row = ZombieModeUIHelper.CreateRect("Segments", parent, new Vector2(0.5f, 0.5f), new Vector2(width, height));
             HorizontalLayoutGroup layout = row.AddComponent<HorizontalLayoutGroup>();
             layout.spacing = 12f;
             layout.childControlWidth = true;
             layout.childControlHeight = true;
             layout.childForceExpandWidth = true;
             layout.childForceExpandHeight = true;
-            SetLayoutHeight(row, 50f);
+            SetLayoutHeight(row, height);
             _spawned.Add(row);
 
             for (int i = 0; i < items.Count; i++)
@@ -519,14 +589,21 @@ namespace BossRush
                     : BossRushUIColors.SurfaceRaised;
                 Button segment = ZombieModeUIHelper.CreateButton(
                     "Segment", row.transform, item.Title,
-                    new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(200f, 50f),
-                    fill, 18f, new Vector2(190f, 46f),
+                    new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(200f, height),
+                    fill, 18f, new Vector2(190f, height - 4f),
                     item.OnCardClick != null ? new UnityEngine.Events.UnityAction(item.OnCardClick) : null,
                     item.OnCardClick != null);
+                TextMeshProUGUI label = segment.GetComponentInChildren<TextMeshProUGUI>();
+                if (label != null && !string.IsNullOrEmpty(item.Subtitle))
+                {
+                    label.enableWordWrapping = false;
+                    label.text = (item.Title ?? string.Empty) + "\n<size=78%><color=" + IntegrationUIFeedback.SecondaryHex + ">"
+                        + item.Subtitle + "</color></size>";
+                }
                 if (item.Selected)
                 {
-                    AddButtonStroke(segment, BossRushUIColors.WarningText);
-                    TextMeshProUGUI label = segment.GetComponentInChildren<TextMeshProUGUI>();
+                    AddButtonStroke(segment, BossRushUIColors.Accent);
+                    ApplySelectedStroke(segment.gameObject, item.Key, true);
                     if (label != null) label.fontStyle = FontStyles.Bold;
                 }
                 else
@@ -562,7 +639,7 @@ namespace BossRush
                 PetNestCardData item = items[i];
                 GameObject card = BossRushUI.CreateCard("Column", row.transform, Vector2.zero, new Vector2(columnWidth, 160f),
                     BossRushUIColors.SurfaceRaised, item.IsDanger ? BossRushUIColors.Danger : BossRushUIColors.Accent, true);
-                if (item.Selected) SetCardStroke(card, BossRushUIColors.WarningText);
+                if (item.Selected) ApplySelectedStroke(card, item.Key, true);
                 if (item.OnCardClick != null) MakeCardClickable(card, item.OnCardClick);
 
                 float textWidth = columnWidth - 40f;
@@ -616,7 +693,7 @@ namespace BossRush
                 PetNestCardData item = items[i];
                 GameObject cell = BossRushUI.CreateCard("Chip", grid.transform, Vector2.zero, StripCellSize,
                     BossRushUIColors.SurfaceRaised, item.Shiny ? BossRushUIColors.RarityLegendary : BossRushUIColors.Accent, true);
-                if (item.Selected) SetCardStroke(cell, BossRushUIColors.WarningText);
+                if (item.Selected) ApplySelectedStroke(cell, item.Key, true);
                 if (item.OnCardClick != null) MakeCardClickable(cell, item.OnCardClick);
                 float left = 16f;
                 if (item.Icon != null)
@@ -639,14 +716,6 @@ namespace BossRush
         #endregion
 
         #region 卡片小件
-
-        /// <summary>改 CreateCard 建的 Stroke 子物体的颜色（选中态）。</summary>
-        private static void SetCardStroke(GameObject card, Color color)
-        {
-            Transform stroke = card.transform.Find("Stroke");
-            Image strokeImage = stroke != null ? stroke.GetComponent<Image>() : null;
-            if (strokeImage != null) strokeImage.color = color;
-        }
 
         /// <summary>
         /// 卡片本身可点：走共享按钮入口（UA-16），悬停向 Accent 微微提亮、按下压暗，带官方 hover / click 音效与按下回弹。

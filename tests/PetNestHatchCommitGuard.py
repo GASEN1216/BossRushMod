@@ -53,9 +53,20 @@ def main():
             errors.append("[commit-before-reveal] 孵化服务不得引用演出/UI 符号: " + symbol)
 
     # 2. fail-closed 不消耗蛋
-    hatch = re.search(r"internal static bool TryHatchEgg\([\s\S]{0,2600}?\n        \}", code)
+    # 单枚入口只转发到核心（flush=true）；全部孵化走同一核心、flush=false，循环后整批落一次盘。
+    entry = re.search(r"internal static bool TryHatchEgg\(Item egg, out PetNestHatchResult result, out string failureReasonId\)\s*\{\s*"
+                      r"return TryHatchEggCore\(egg, true, out result, out failureReasonId\);\s*\}", code)
+    if entry is None:
+        errors.append("[入口] TryHatchEgg(Item, out PetNestHatchResult, out string) 必须只转发 TryHatchEggCore(egg, true, ...)")
+    batch = re.search(r"internal static List<PetNestHatchResult> TryHatchAll\([\s\S]*?\n        \}", code)
+    batch_body = batch.group(0) if batch else ""
+    loop_pos = batch_body.find("TryHatchEggCore(eggs[i], false, out result, out reason)")
+    batch_flush_pos = batch_body.find("PetNestSaveCoordinator.RequestAssetFlush(out flushError)")
+    if loop_pos < 0 or batch_flush_pos < loop_pos or batch_body.count("RequestAssetFlush(") != 1 or "TryHatchEgg(" in batch_body:
+        errors.append("[落盘] 全部孵化必须逐枚走 TryHatchEggCore(…, false, …)，循环后只落一次盘（CR-2026-10-18-006）")
+    hatch = re.search(r"private static bool TryHatchEggCore\([\s\S]{0,2600}?\n        \}", code)
     if hatch is None:
-        errors.append("[入口] 缺少 TryHatchEgg(Item, out PetNestHatchResult, out string)")
+        errors.append("[入口] 缺少 TryHatchEggCore(Item, bool, out PetNestHatchResult, out string)")
     else:
         body = hatch.group(0)
         if 'failureReasonId = "lineage_unknown";' not in body:
@@ -74,7 +85,7 @@ def main():
         elif add_pos > consume_pos:
             errors.append("[commit-before-reveal] 必须先入巢落档，成功后才消耗蛋")
         detach_pos = body.find("origin.RemoveAt(position, out removed)")
-        flush_pos = body.find("PetNestSaveCoordinator.RequestAssetFlush(out failureReasonId)")
+        flush_pos = body.find("flush && !PetNestSaveCoordinator.RequestAssetFlush(out failureReasonId)")
         if not 0 <= detach_pos < add_pos < consume_pos < flush_pos:
             errors.append("[原子性] 必须按摘蛋、候选接管、销毁、联合落盘顺序执行")
         if "origin.AddAt(egg, position)" not in body:

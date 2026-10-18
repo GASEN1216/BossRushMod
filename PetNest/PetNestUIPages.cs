@@ -31,8 +31,6 @@ namespace BossRush
         public List<PetNestSection> Sections = new List<PetNestSection>();
         /// <summary>底部动作按钮（远征页的「出发」）。</summary>
         public List<PetNestActionData> Actions = new List<PetNestActionData>();
-        /// <summary>顶部警示行（远征出发页的死亡率明示等）；空表示不显示。</summary>
-        public string Notice;
         /// <summary>卡片按网格排（博物馆血脉图鉴，UA-17）。</summary>
         public bool CardsAsGrid;
         /// <summary>巢页的「列表 + 详情」；非 null 时面板改画左右两栏，上面几个字段不用。</summary>
@@ -73,6 +71,8 @@ namespace BossRush
         public string Body;
         /// <summary>是否异色（用 Legendary token 高亮）。</summary>
         public bool Shiny;
+        /// <summary>Shiny 只描金边、不给标题挂流光（成就行这类不是崽的格子；每个流光是一个每帧组件）。</summary>
+        public bool ShinyFrameOnly;
         /// <summary>是否是危险选项（亡命档、真死记录）。</summary>
         public bool IsDanger;
         /// <summary>行内按钮回调；为 null 表示不画按钮（不挂灰掉的占位按钮，§4.14）。</summary>
@@ -101,6 +101,13 @@ namespace BossRush
         public float Progress = -1f;
         /// <summary>进度条右侧的数字（「12 / 20」）。</summary>
         public string ProgressText;
+        /// <summary>
+        /// 稳定身份（崽 id / 目的地 id / 档位 / 血脉 key）。同页重绘时据此判断「这一项是不是刚被选中」，
+        /// 只有新选中的那项播描边淡入；巢页点选据此原地改行，不整页重建（审查 A-1）。
+        /// </summary>
+        public string Key;
+        /// <summary>面板开着时每秒重算的进度（在途远征）；与 LiveBody 同一次走表，进度条平滑过去（审查 A-3）。</summary>
+        public Func<float> LiveProgress;
     }
 
     /// <summary>巢页左右两栏的只读数据（组装在 PetNestUINestPage.cs）。</summary>
@@ -117,6 +124,9 @@ namespace BossRush
         public List<PetNestCardData> Rows = new List<PetNestCardData>();
         /// <summary>空巢时列表里的那句话。</summary>
         public string EmptyText;
+        /// <summary>排序按钮文案（「排序：等级」）与回调；null 表示不画（审查 B-1）。</summary>
+        public string SortLabel;
+        public Action OnSort;
         /// <summary>右栏详情。</summary>
         public PetNestDetailData Detail;
     }
@@ -138,6 +148,18 @@ namespace BossRush
         public Func<string> LiveFooter;
         /// <summary>底栏按钮：危险操作靠左，其余靠右，主操作最右。</summary>
         public List<PetNestActionData> Actions = new List<PetNestActionData>();
+        /// <summary>
+        /// 详情里的一组单选分段（行动方式，审查 B-2）：区头 + 等宽分段 + 一句说明；Choices 为空不画。
+        /// 选中项用 <see cref="PetNestActionData.Selected"/> 标出。
+        /// </summary>
+        public string ChoicesTitle;
+        public string ChoicesCaption;
+        public List<PetNestActionData> Choices = new List<PetNestActionData>();
+        /// <summary>名字旁的「收藏 / 取消收藏」；null 表示不画（审查 B-7）。</summary>
+        public string FavoriteLabel;
+        public Action OnFavorite;
+        /// <summary>立绘框描边色（炫彩第一色）；null 时按异色金 / 默认描边（审查 B-6）。</summary>
+        public string IconStrokeHex;
     }
 
     /// <summary>
@@ -158,6 +180,11 @@ namespace BossRush
         public Action<string> ToggleBatch;
         /// <summary>「派去远征」：切到远征页并把这只崽预先填进去。</summary>
         public Action<string> SendOnExpedition;
+        /// <summary>列表排序（面板内状态，不进存档）与切换回调（审查 B-1）。</summary>
+        public PetNestSortMode SortMode;
+        public Action CycleSort;
+        /// <summary>就地播远征翻牌（审查 D-1）；null 时退回「关面板就揭晓」。</summary>
+        public Action ShowResults;
     }
 
     /// <summary>一个动作按钮（巢页详情底栏、远征页的「出发」）。</summary>
@@ -173,6 +200,21 @@ namespace BossRush
         public bool IsDanger;
         /// <summary>这一屏的主操作（AccentFill 整块填充，每屏最多一个，§4.14）。</summary>
         public bool IsPrimary;
+        /// <summary>单选分段里的当前项（详情的行动方式）。</summary>
+        public bool Selected;
+    }
+
+    /// <summary>巢页列表的排序（审查 B-1，宝可梦 HOME / 帕鲁盒子的排序口径）。</summary>
+    internal enum PetNestSortMode
+    {
+        /// <summary>入巢顺序（存档里的原序）。</summary>
+        Arrival = 0,
+        /// <summary>等级从高到低。</summary>
+        Level = 1,
+        /// <summary>按血脉名聚在一起。</summary>
+        Lineage = 2,
+        /// <summary>异色、炫彩、收藏在前。</summary>
+        Rarity = 3,
     }
 
     /// <summary>各页的内容组装器。无状态，每次打开重新组装。</summary>
@@ -199,6 +241,7 @@ namespace BossRush
         internal static void ClearLastFailureText()
         {
             LastFailureText = null;
+            LastSuccessText = null;
             _expeditionDestinationId = null;
             _expeditionTier = 0;
         }
@@ -211,6 +254,24 @@ namespace BossRush
                 : PetNestLocalization.DescribeFailure(failureReasonId);
         }
 
+        /// <summary>
+        /// 最近一次成功操作的一句话（审查 A-4）。面板重绘后把它弹成底部轻提示并清掉；
+        /// 失败仍走常驻的红字（失败要等玩家看见并处理，成功只需要一个确认）。
+        /// </summary>
+        internal static string LastSuccessText;
+
+        internal static void NoteSuccess(string text)
+        {
+            LastSuccessText = text;
+        }
+
+        /// <summary>失败记红字、成功弹轻提示，二选一。</summary>
+        private static void NoteResult(bool ok, string failureReasonId, string successText)
+        {
+            NoteFailure(ok, failureReasonId);
+            if (ok) NoteSuccess(successText);
+        }
+
         /// <summary>供同层弹窗（如命名弹窗）回写失败原因。</summary>
         internal static void NoteExternalFailure(bool ok, string failureReasonId)
         {
@@ -221,6 +282,7 @@ namespace BossRush
         internal static void ClearFailure()
         {
             LastFailureText = null;
+            LastSuccessText = null;
             _expeditionDestinationId = null;
             _expeditionTier = 0;
         }
@@ -356,7 +418,7 @@ namespace BossRush
             PetNestPageContent page = new PetNestPageContent();
             page.Title = L10n.T("说明", "Guide");
             AddHelp(page, T("SystemName"), T("SystemDesc"));
-            AddHelp(page, L10n.T("出战与捡漏背包", "Deploying and the scavenger backpack"),
+            AddHelp(page, L10n.T("出战与独立背包", "Deploying and the cub backpack"),
                 DescribeScavengerBackpack(0));
             string milestone = DescribeCapacityMilestone();
             AddHelp(page, L10n.T("巢的容量", "Nest capacity"),
@@ -387,13 +449,18 @@ namespace BossRush
         #region 孵化
 
         /// <summary>孵化页：可孵化的蛋（按血脉合并）+ 遗魂账本（进度条与行内凝蛋）。</summary>
-        internal static PetNestPageContent BuildHatchPage(Action refresh, Action<PetNestHatchResult> onHatched)
+        internal static PetNestPageContent BuildHatchPage(Action refresh, Action<PetNestHatchResult> onHatched,
+            Action<List<PetNestHatchResult>> onHatchedBatch = null)
         {
             PetNestPageContent page = new PetNestPageContent();
             page.Title = T("Page_Hatch");
-            // 保底进度放在孵化页最上面：开蛋前就知道还差几枚（owner 2026-09-22 要保底）
-            page.Notice = DescribePity();
+            // 保底进度放在孵化页最上面：开蛋前就知道还差几枚（owner 2026-09-22 要保底）。
+            // 2026-10-17（审查 C-3）：从一句黄字警示改成两条进度条，警示色不再用于中性信息
+            AppendPitySection(page);
 
+            // 巢满时不挂「孵化」「凝蛋」（审查 C-1，§4.14「能不能挂」与「点了会不会被拒」同一份判据）：
+            // 旧写法照挂，点了才在顶上报「巢已经满了」
+            bool nestFull = PetNestService.IsFull;
             List<ItemStatsSystem.Item> eggs = PetNestHatchService.CollectAvailableEggs();
 
             // 同血脉的蛋合成一行「×N」：十枚同样的蛋铺十张卡，玩家要自己数（交互重排 #6）
@@ -419,6 +486,10 @@ namespace BossRush
                 eggSection.Caption = L10n.T("背包和仓库里没有遗种蛋。打 Boss 有机会带回来，也可以在下面用遗魂凝蛋。",
                     "No relic eggs in your inventory or storage. Bosses may leave one behind, or condense one from souls below.");
             }
+            else if (nestFull)
+            {
+                eggSection.Caption = DescribeNestFullHint();
+            }
             for (int g = 0; g < order.Count; g++)
             {
                 List<ItemStatsSystem.Item> group = groups[order[g]];
@@ -435,7 +506,8 @@ namespace BossRush
                 card.Body = known
                     ? L10n.T("孵化后锁定出身、性格、炫彩与异色。一次孵一枚。", "Hatching locks endowments, temperament, chroma and shiny. One egg at a time.")
                     : T("Fail_lineage_unknown");
-                if (known)
+                card.Key = order[g];
+                if (known && !nestFull)
                 {
                     ItemStatsSystem.Item captured = group[0];
                     card.ActionLabel = L10n.T("孵化", "Hatch");
@@ -457,8 +529,83 @@ namespace BossRush
             }
             page.Sections.Add(eggSection);
 
-            AppendCondenseCards(page, refresh, onHatched);
+            // 全部孵化（审查 C-2，抽卡十连口径）：两枚以上能孵时给一个页面级主操作，一次揭晓再看汇总。
+            // 数量受巢的空位限制，按钮上写实际会孵几枚。
+            int free = PetNestService.Capacity - PetNestService.PetCount;
+            int hatchable = CountKnownEggs(eggs);
+            int batch = Math.Min(hatchable, free);
+            if (!nestFull && batch >= 2 && onHatchedBatch != null)
+            {
+                List<ItemStatsSystem.Item> captured = eggs;
+                page.Actions.Add(new PetNestActionData
+                {
+                    Label = L10n.T("全部孵化（" + batch + " 枚）", "Hatch all (" + batch + ")"),
+                    IsPrimary = true,
+                    OnClick = delegate
+                    {
+                        string reason;
+                        List<PetNestHatchResult> results = PetNestHatchService.TryHatchAll(captured, out reason);
+                        // 孵出一部分后停下的原因也要让玩家看见（巢满是按钮数量算好的正常收尾，不提示）
+                        NoteFailure(reason == null || (results.Count > 0 && reason == "nest_full"), reason);
+                        if (results.Count > 0 && LastFailureText != null)
+                        {
+                            LastFailureText = L10n.T("孵出 " + results.Count + " 枚，其余没孵：", "Hatched " + results.Count + "; the rest didn't: ")
+                                + LastFailureText;
+                        }
+                        if (results.Count > 0) onHatchedBatch(results);
+                        if (refresh != null) refresh();
+                    },
+                });
+            }
+
+            AppendCondenseCards(page, refresh, onHatched, nestFull);
             return page;
+        }
+
+        /// <summary>能识别血脉的蛋有几枚（认不出的蛋原样留着，不算进「全部孵化」）。</summary>
+        private static int CountKnownEggs(List<ItemStatsSystem.Item> eggs)
+        {
+            int count = 0;
+            for (int i = 0; i < eggs.Count; i++)
+            {
+                string key = RelicEggConfig.ReadLineage(eggs[i]);
+                if (!string.IsNullOrEmpty(key) && PetNestLineageCatalog.IsKnownLineage(key)) count++;
+            }
+            return count;
+        }
+
+        /// <summary>巢满时的下一步：放生腾位，或解锁更多血脉扩建。</summary>
+        private static string DescribeNestFullHint()
+        {
+            return L10n.T("巢满了（" + PetNestService.PetCount + " / " + PetNestService.Capacity
+                    + "）：先在「巢」页放生几只腾出位子，或解锁更多血脉扩建。",
+                "The nest is full (" + PetNestService.PetCount + " / " + PetNestService.Capacity
+                    + "): release some cubs on the Nest tab, or unlock more bloodlines to expand it.");
+        }
+
+        /// <summary>保底：两条进度条（炫彩 x / 10、异色 x / 100），出了就重新计数。</summary>
+        private static void AppendPitySection(PetNestPageContent page)
+        {
+            PetNestNestData nest = PetNestService.Nest;
+            PetNestSection pity = new PetNestSection();
+            pity.Title = L10n.T("孵化保底", "Hatch pity");
+            pity.Caption = L10n.T("条满的那一枚必出；出了就重新计数。", "The hatch that fills a bar is guaranteed; the bar resets when one appears.");
+            pity.Items.Add(BuildPityRow(L10n.T("炫彩", "Chroma"), nest.hatchesSinceChroma, PetNestTuning.ChromaPityHatches, "pity:chroma"));
+            pity.Items.Add(BuildPityRow(L10n.T("异色", "Shiny"), nest.hatchesSinceShiny, PetNestTuning.ShinyPityHatches, "pity:shiny"));
+            page.Sections.Add(pity);
+        }
+
+        private static PetNestCardData BuildPityRow(string name, int since, int pityHatches, string key)
+        {
+            int remaining = PetNestPity.RemainingUntilGuaranteed(since, pityHatches);
+            int done = Math.Max(0, pityHatches - remaining);
+            PetNestCardData row = new PetNestCardData();
+            row.Key = key;
+            row.Title = name;
+            row.Subtitle = L10n.T("最多再孵 " + remaining + " 枚必出", "Guaranteed within " + remaining + " more");
+            row.Progress = pityHatches > 0 ? Math.Min(1f, done / (float)pityHatches) : 0f;
+            row.ProgressText = done + " / " + pityHatches;
+            return row;
         }
 
         /// <summary>
@@ -466,7 +613,7 @@ namespace BossRush
         /// 旧写法进度是纯文字行、按钮却堆在底部动作条，超过 4 条还退成竖排小滚动窗（交互重排 #6）。
         /// </summary>
         private static void AppendCondenseCards(
-            PetNestPageContent page, Action refresh, Action<PetNestHatchResult> onHatched)
+            PetNestPageContent page, Action refresh, Action<PetNestHatchResult> onHatched, bool nestFull)
         {
             PetNestSection ledger = new PetNestSection();
             ledger.Title = T("SoulLedger");
@@ -487,6 +634,7 @@ namespace BossRush
                 int souls = PetNestService.GetSouls(lineage.LineageKey);
 
                 PetNestCardData row = new PetNestCardData();
+                row.Key = "souls:" + lineage.LineageKey;
                 row.Title = lineage.DisplayName;
                 row.Icon = ResolveLineagePortrait(lineage.LineageKey);
                 row.Progress = need > 0 ? Math.Min(1f, souls / (float)need) : 1f;
@@ -499,6 +647,12 @@ namespace BossRush
                     continue;
                 }
 
+                if (nestFull)
+                {
+                    row.Subtitle = L10n.T("够数了，巢有空位就能凝蛋", "Enough souls; condense once the nest has room");
+                    ledger.Items.Add(row);
+                    continue;
+                }
                 row.Subtitle = L10n.T("够数了，可以凝成一枚蛋直接孵化", "Enough to condense an egg and hatch it");
                 string key = lineage.LineageKey;
                 row.ActionLabel = T("CondenseEgg");
@@ -556,7 +710,8 @@ namespace BossRush
         /// **死亡率必须明示**：每张风险档卡都带出发时会固化的那个数字。
         /// <paramref name="select"/> 是远征页里换崽的回调（和巢页共用同一个选中）；为 null 时不画选崽区。
         /// </summary>
-        internal static PetNestPageContent BuildExpeditionPage(Action refresh, string selectedPetId, Action<string> select = null)
+        internal static PetNestPageContent BuildExpeditionPage(Action refresh, string selectedPetId, Action<string> select = null,
+            Action showResults = null)
         {
             // 玩家已经站在基地、远征在此期间到期时，场景回调不会再触发一次结算。
             // 打开页面本身就是一次自然的结算时机，否则卡片会一直停在"剩余 0h0m"，
@@ -567,6 +722,9 @@ namespace BossRush
             PetNestPageContent page = new PetNestPageContent();
             page.Title = T("Page_Expedition");
 
+            int usedSlots;
+            int slotCap;
+            bool hasFreeSlot = PetNestExpeditionSlots.HasFreeSlot(out usedSlots, out slotCap);
             List<PetNestExpeditionRecord> records = PetNestExpeditionService.Records;
             PetNestSection underway = null;
             for (int i = 0; i < records.Count; i++)
@@ -576,10 +734,18 @@ namespace BossRush
                 if (underway == null)
                 {
                     underway = new PetNestSection();
-                    underway.Title = L10n.T("在途", "Under way");
+                    underway.Title = L10n.T("在途 · " + usedSlots + " / " + slotCap + " 队",
+                        "Under way · " + usedSlots + " / " + slotCap + " teams");
                     page.Sections.Add(underway);
                 }
-                underway.Items.Add(BuildExpeditionCard(r));
+                underway.Items.Add(BuildExpeditionCard(r, showResults));
+            }
+
+            if (!hasFreeSlot)
+            {
+                page.Body = PetNestLocalization.DescribeFailure("expedition_slots_full")
+                    + L10n.T("（" + usedSlots + " / " + slotCap + " 队）", " (" + usedSlots + " / " + slotCap + " teams)");
+                return page;
             }
 
             AppendPetPicker(page, selectedPetId, select, refresh);
@@ -621,6 +787,7 @@ namespace BossRush
                 if (pet == null || !PetNestExpeditionService.CanDepart(pet, out reason)) continue;
                 string petId = pet.id;
                 PetNestCardData chip = new PetNestCardData();
+                chip.Key = pet.id;
                 chip.Title = PetNestService.GetDecoratedPetName(pet);
                 chip.Subtitle = "Lv" + pet.level;
                 chip.Icon = ResolveLineagePortrait(pet.lineageKey);
@@ -647,10 +814,8 @@ namespace BossRush
         {
             PetNestDestinationInfo[] destinations = PetNestExpeditionService.Destinations;
             if (destinations == null || destinations.Length == 0) return;
-            page.Notice = L10n.T(
-                "亡命档是真死：崽不会回来，只会留在纪念碑上。出发前请看清死亡率。",
-                "Desperate runs kill for real: the cub never comes back, only its name on the memorial. "
-                + "Read the death rate before you commit.");
+            // 页顶不再常驻「亡命档是真死」的警示（审查 D-2，UI 共识第 7 节：流程页不挂风险文字）：
+            // 亡命档那一列本身是红条 + 死亡率，后果写在出发前必弹的确认框里。
 
             if (string.IsNullOrEmpty(_expeditionDestinationId)
                 || PetNestExpeditionService.TryGetDestination(_expeditionDestinationId) == null)
@@ -675,7 +840,10 @@ namespace BossRush
                 bool affinity = PetNestExpeditionService.HasElementAffinity(pet, destinationId);
                 anyAffinity |= affinity;
                 PetNestCardData segment = new PetNestCardData();
+                segment.Key = destinationId;
+                // 契合元素直接写在按钮第二行（审查 D-3）：信息贴着它说明的那颗按钮，不再在下面挂一整段契合表
                 segment.Title = PetNestLocalization.DescribeDestination(destinationId) + (affinity ? " ★" : string.Empty);
+                segment.Subtitle = DescribeElements(PetNestLineageCatalog.GetDestinationElements(destinationId));
                 segment.Selected = destinationId == chosen;
                 segment.OnCardClick = delegate
                 {
@@ -684,28 +852,42 @@ namespace BossRush
                 };
                 where.Items.Add(segment);
             }
-            if (anyAffinity)
-            {
-                where.Caption = "★ " + T("ElementAffinity")
-                    + L10n.T("：和这只崽的元素契合，成功率更高。", ": matches this cub's element, higher success rate.");
-            }
+            PetNestLineageInfo lineage;
+            string own = PetNestLineageCatalog.TryGet(pet.lineageKey, out lineage) && lineage != null
+                ? L10n.T("这只崽是" + DescribeElement(lineage.Element) + "系。", "This cub is " + DescribeElement(lineage.Element) + ". ")
+                : string.Empty;
+            where.Caption = own + (anyAffinity ? "★ " : string.Empty) + T("ElementAffinity")
+                + L10n.T("：契合时成功率 +", ": +") + FormatPercent(PetNestTuning.ElementAffinityBonus)
+                + L10n.T("。", " success when matched.");
             page.Sections.Add(where);
 
             if (_expeditionTier < 0 || _expeditionTier > (int)PetNestRiskTier.Desperate) _expeditionTier = 0;
             PetNestSection tiers = new PetNestSection();
             tiers.Title = L10n.T("风险档", "Risk tier");
             tiers.Layout = PetNestSectionLayout.Columns;
+            // 收藏的崽不走亡命档（审查 B-7）：这一列不画，原因写在区头说明里，不挂点了才被拒的卡
+            if (!PetNestExpeditionService.AllowsTier(pet, PetNestRiskTier.Desperate))
+            {
+                if (_expeditionTier == (int)PetNestRiskTier.Desperate) _expeditionTier = 0;
+                tiers.Caption = L10n.T("收藏的崽不走亡命档。", "Favorite cubs don't take Desperate runs.");
+            }
             for (int t = 0; t <= (int)PetNestRiskTier.Desperate; t++)
             {
                 PetNestRiskTier tier = (PetNestRiskTier)t;
+                if (!PetNestExpeditionService.AllowsTier(pet, tier)) continue;
                 float deathRate = PetNestExpeditionService.GetDeathRate(tier);
                 int tierIndex = t;
 
                 PetNestCardData card = new PetNestCardData();
+                card.Key = "tier:" + t;
                 card.Title = DescribeRisk(t);
-                card.Subtitle = FormatDuration(PetNestExpeditionService.GetDurationHours(tier))
+                // 关键两个数放第一行（审查 D-5，定价页对比卡口径）：成功率按这只崽与当前目的地算（含元素契合），
+                // 和出发时固化进记录的是同一个数；死亡率同样是出发时会固化的那个数
+                card.Subtitle = L10n.T("成功 ", "Success ")
+                    + FormatPercent(PetNestExpeditionService.ComputeSuccessRate(pet, chosen, tier))
                     + " · " + T("DeathRateLabel") + " " + FormatPercent(deathRate);
-                card.Body = DescribeTierPayoff(tier);
+                card.Body = FormatDuration(PetNestExpeditionService.GetDurationHours(tier))
+                    + " · " + DescribeTierPayoff(tier);
                 card.IsDanger = tier == PetNestRiskTier.Desperate;
                 card.Selected = t == _expeditionTier;
                 card.OnCardClick = delegate
@@ -736,6 +918,33 @@ namespace BossRush
                     if (refresh != null) refresh();
                 },
             });
+        }
+
+        /// <summary>「电 / 空间」：目的地按钮第二行。</summary>
+        private static string DescribeElements(ElementTypes[] elements)
+        {
+            string names = string.Empty;
+            for (int e = 0; e < elements.Length; e++)
+            {
+                if (names.Length > 0) names += " / ";
+                names += DescribeElement(elements[e]);
+            }
+            return names;
+        }
+
+        /// <summary>官方七种元素的玩家可读名（远征契合说明用）。</summary>
+        private static string DescribeElement(ElementTypes element)
+        {
+            switch (element)
+            {
+                case ElementTypes.fire: return L10n.T("火", "Fire");
+                case ElementTypes.poison: return L10n.T("毒", "Poison");
+                case ElementTypes.electricity: return L10n.T("电", "Electric");
+                case ElementTypes.space: return L10n.T("空间", "Space");
+                case ElementTypes.ghost: return L10n.T("幽灵", "Ghost");
+                case ElementTypes.ice: return L10n.T("冰", "Ice");
+                default: return L10n.T("物理", "Physical");
+            }
         }
 
         /// <summary>出发并记下失败原因。远征页（稳妥 / 冒险）与亡命档确认弹窗共用。</summary>
@@ -805,9 +1014,10 @@ namespace BossRush
         }
 
         /// <summary>在途远征的一行：装饰名、去向与档位、剩余时间与进度条（每秒走表）。</summary>
-        private static PetNestCardData BuildExpeditionCard(PetNestExpeditionRecord r)
+        private static PetNestCardData BuildExpeditionCard(PetNestExpeditionRecord r, Action showResults)
         {
             PetNestCardData card = new PetNestCardData();
+            card.Key = r.id;
             // 装饰名：炫彩渐变 / 异色金字。崽已阵亡时走记录里固化的颜色，不会退化成裸名字。
             // 刻意**不**设 card.Shiny：色条优先级是 Shiny > IsDanger，
             // 让异色顶掉亡命档的红条会把「这趟很可能回不来」这条警示吃掉。
@@ -820,12 +1030,24 @@ namespace BossRush
 
             if (r.settled)
             {
-                card.Body = L10n.T("已经回来了，关掉面板就揭晓结果。", "Back already. Close the panel to see how it went.");
+                // 就地揭晓（审查 D-1，碧蓝航线委托「完成」口径）：演出层压在面板之上，不用先关面板。
+                // 关面板时自动翻牌的旧路径保留作兜底。
+                card.Body = showResults != null
+                    ? L10n.T("已经回来了。", "Back already.")
+                    : L10n.T("已经回来了，关掉面板就揭晓结果。", "Back already. Close the panel to see how it went.");
                 card.Progress = 1f;
+                if (showResults != null)
+                {
+                    card.ActionLabel = L10n.T("查看结果", "See results");
+                    card.OnClick = showResults;
+                }
                 return card;
             }
             card.Body = DescribeExpeditionRemaining(r);
             card.Progress = DescribeExpeditionProgress(r);
+            // 进度条跟着走表一起平滑走（审查 A-3）：旧写法只改字，进度条停在打开面板那一刻
+            PetNestExpeditionRecord tracked = r;
+            card.LiveProgress = delegate { return DescribeExpeditionProgress(tracked); };
             // 面板开着时每秒走一次表（UA-22）：只改这一行的正文，不整页重建；到点返回 null 让面板整页刷新去结算
             PetNestExpeditionRecord live = r;
             card.LiveBody = delegate
@@ -879,98 +1101,6 @@ namespace BossRush
         private static string FormatPercent(float rate)
         {
             return PetNestLocalization.FormatPercent(rate);
-        }
-
-        #endregion
-
-        #region 博物馆
-
-        /// <summary>博物馆页：血脉图鉴网格 + 阵亡纪念碑。</summary>
-        internal static PetNestPageContent BuildMuseumPage()
-        {
-            PetNestPageContent page = new PetNestPageContent();
-            page.Title = T("Page_Museum");
-            // 血脉图鉴按 4 列网格排：一格一张立绘 + 名字 + 两行数字；未解锁的压成剪影（UA-17）
-            page.CardsAsGrid = true;
-
-            PetNestMuseumData museum = PetNestPersistenceAccess.Museum;
-            int unlocked = 0;
-            for (int i = 0; i < museum.lineages.Count; i++)
-            {
-                PetNestLineageStats stats = museum.lineages[i];
-                if (stats == null) continue;
-                if (stats.unlocked) unlocked++;
-                page.Cards.Add(BuildLineageCard(stats));
-            }
-
-            page.Body = L10n.T("已解锁血脉", "Bloodlines unlocked")
-                + " " + unlocked + " / " + PetNestLineageCatalog.Count;
-
-            AppendMemorialCards(page, museum);
-            return page;
-        }
-
-        private static PetNestCardData BuildLineageCard(PetNestLineageStats stats)
-        {
-            // 网格格子：Title = 名字，Subtitle = 第一行数字（击杀 · 孵化），Body = 第二行（最高等级 · 远征 · 异色）。
-            // card.Shiny 只给格子描一圈金边，**不挂流光**：标题是白字血脉名，流光挂上去看不出（2026-09-23 复核第 12 项）。
-            PetNestCardData card = new PetNestCardData();
-            card.Title = LineageName(stats.lineageKey);
-            card.Shiny = stats.shinyHatched > 0;
-            card.Icon = ResolveLineagePortrait(stats.lineageKey);
-            card.IconLocked = !stats.unlocked;
-            if (!stats.unlocked)
-            {
-                card.Subtitle = L10n.T("未解锁", "Locked");
-                card.Body = L10n.T("击杀", "Kills") + " " + stats.kills;
-                return card;
-            }
-            card.Subtitle = L10n.T("击杀", "Kills") + " " + stats.kills
-                + " · " + L10n.T("孵化", "Hatched") + " " + stats.hatched;
-            card.Body = L10n.T("最高 Lv", "Best Lv") + stats.maxLevel
-                + " · " + L10n.T("远征", "Trips") + " " + stats.expeditions
-                + (stats.shinyHatched > 0
-                    ? " · <color=" + PetNestChroma.ShinyTextHex + ">★" + stats.shinyHatched + "</color>"
-                    : string.Empty);
-            return card;
-        }
-
-        /// <summary>纪念碑：一行一位，名字 + 血脉与生涯 + 去向、档位、死亡率。旧写法是一长串「·」拼成的单行字。</summary>
-        private static void AppendMemorialCards(PetNestPageContent page, PetNestMuseumData museum)
-        {
-            if (museum.memorials.Count == 0 && museum.mergedMemorialCount == 0) return;
-
-            PetNestSection memorial = new PetNestSection();
-            memorial.Title = T("Page_Memorial");
-            for (int i = museum.memorials.Count - 1; i >= 0; i--)
-            {
-                PetNestMemorialEntry m = museum.memorials[i];
-                if (m == null) continue;
-                // 碑文一定要刻风险档位：那是玩家自己按下的选择。
-                PetNestCardData row = new PetNestCardData();
-                row.Body = PetNestLocalization.DescribeDestination(m.destinationId)
-                    + " · " + DescribeRisk(m.riskTier)
-                    + " · " + T("DeathRateLabel") + " " + FormatPercent(m.deathRate);
-                row.Subtitle = LineageName(m.lineageKey) + " · " + L10n.T("生涯", "Career") + " " + m.careerCount;
-                row.IsDanger = true;
-                // 名字同样要带炫彩 / 异色：崽已经被移除，碑上这一行是这份颜色**唯一**的去处。
-                try
-                {
-                    row.Title = PetNestChroma.Decorate(m.shiny, m.chromaA, m.chromaB, m.displayName, L10n.IsChinese);
-                }
-                catch (Exception)
-                {
-                    row.Title = m.displayName;
-                }
-                memorial.Items.Add(row);
-            }
-
-            if (museum.mergedMemorialCount > 0)
-            {
-                memorial.Caption = L10n.T("碑林（更早的名字）", "Older names in the grove")
-                    + " " + museum.mergedMemorialCount;
-            }
-            page.Sections.Add(memorial);
         }
 
         #endregion

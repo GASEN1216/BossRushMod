@@ -55,6 +55,9 @@ namespace BossRush
         /// <summary>唯一标识。会写进 DuckNpcRuntimeMarker，供交互和好感度反查。</summary>
         public string id;
 
+        /// <summary>测试用 NPC（如 duck_npc_xiaoman）：不进 Tab 页签栏的「好感」页。缺省 false。</summary>
+        public bool testNpc;
+
         /// <summary>本地化 key（可空）。</summary>
         public string displayNameKey;
 
@@ -291,6 +294,11 @@ namespace BossRush
             {
                 // 默认玩家方：这是清场豁免与不被攻击的根基。
                 b.team = "player";
+            }
+
+            if (!row.TryGetBool("testNpc", out b.testNpc))
+            {
+                b.testNpc = false;
             }
 
             if (!row.TryGetBool("invincible", out b.invincible))

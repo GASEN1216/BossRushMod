@@ -206,8 +206,11 @@ namespace BossRush
         protected override bool IsInteractable()
         {
             RefreshHealOptionWhenApproached();
+            NPCAffinityInteractionHelper.RefreshChatOptionLabelWhenApproached(this, NurseAffinityConfig.NPC_ID, ref nextChatLabelRefreshTime);
             return true;
         }
+
+        private float nextChatLabelRefreshTime;
 
         /// <summary>治疗选项显隐的刷新间隔（秒）。玩家贴着护士时官方每帧都来问 IsInteractable。</summary>
         private const float HealOptionRefreshInterval = 0.25f;

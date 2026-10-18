@@ -116,6 +116,7 @@ namespace BossRush
                 RewardItems = ToStacks(def.RewardItems),
                 CanOffer = () => SkyIslandOfficialQuestTable.CanOffer(def, SkyIslandOfficialQuestStory.Capture(host)),
                 CanDeliver = () => SkyIslandOfficialQuestTable.CanDeliver(def, SkyIslandOfficialQuestStory.Capture(host)),
+                DeliverBlocked = () => SkyIslandOfficialQuestTable.DeliverBlocked(def, SkyIslandOfficialQuestStory.Capture(host)),
                 IsAccepted = () => HasFlag(def.AcceptedFlag),
                 IsDelivered = () => HasFlag(def.DeliveredFlag),
                 RewardPaid = () => HasFlag(def.DeliveredFlag),

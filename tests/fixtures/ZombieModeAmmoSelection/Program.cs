@@ -30,14 +30,6 @@ internal static class Program
     {
         var module = new ZombieModeRuntimeModule();
 
-        module.runState.StarterAmmoCaliber = "9mm";
-        module.Held = new Item { Constants = new ItemConstants { Caliber = "Rocket" } };
-        Assert(module.SupplyCaliber() == "Rocket", "Ammo supply follows the gun currently held after switching weapons");
-        module.Held = null;
-        Assert(module.SupplyCaliber() == "9mm", "Without a held gun, supply retains the original starter caliber");
-        module.runState.StarterAmmoCaliber = null;
-        Assert(module.SupplyCaliber() == string.Empty, "Missing held and starter calibers keep the existing random-ammo fallback reachable");
-
         Seed();
         Assert(module.Give("9mm", 120, 1, 2) && Table.Sent.Count == 1 && Table.Sent[0].TypeID == 1 && Table.Sent[0].StackCount == 60,
             "Ordinary bullets keep the in-range quality and one full stack");
@@ -57,6 +49,25 @@ internal static class Program
 
         Seed();
         Assert(!module.Give("Laser", 120, 1, 2) && Table.Sent.Count == 0, "A caliber with no ammo at all grants nothing");
+
+        // 区间高于该口径全部品质（契约换装要 5 品以上、9mm 只有 1 / 3 品）：取不超过上限的最高档，不是最差的 1 品。
+        Seed();
+        Assert(module.Give("9mm", 120, 5, 6) && Table.Sent.Count == 1 && Table.Sent[0].TypeID == 2,
+            "A band above every quality of the caliber falls back to the nearest (highest) quality, not the lowest");
+
+        // 商人保底 (6,6)：该口径没有 6 品就什么都不发，保底留给下次（调用方再按普通区间买）。
+        Seed();
+        Assert(!module.GiveStrict("9mm", 200, 6, 6) && Table.Sent.Count == 0,
+            "Guaranteed-quality purchase must not be consumed by an out-of-band fallback");
+        Seed();
+        Assert(module.GiveStrict("Grenade", 4, 6, 6) && Table.Sent.All(i => i.TypeID == 20),
+            "Guaranteed-quality purchase still grants when the caliber has that quality");
+
+        // 属性满级判定（同一文件的生产方法）：减伤按负数累加到 -0.40，上限表给的是 0.40。
+        Assert(ZombieModeRuntimeModule.IsZombieModeAttributeBonusAtCap(-0.40f, 0.40f), "Damage reduction stored as -0.40 is at its cap");
+        Assert(!ZombieModeRuntimeModule.IsZombieModeAttributeBonusAtCap(-0.35f, 0.40f), "Damage reduction below the cap stays in the pool");
+        Assert(ZombieModeRuntimeModule.IsZombieModeAttributeBonusAtCap(0.99999994f, 1.00f), "Ten 0.1 steps reach the 100% cap despite float error");
+        Assert(!ZombieModeRuntimeModule.IsZombieModeAttributeBonusAtCap(0.9f, 1.00f), "A bonus one step below the cap stays in the pool");
 
         Console.WriteLine("PASS ZombieModeAmmoSelection");
     }

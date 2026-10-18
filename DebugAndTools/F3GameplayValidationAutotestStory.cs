@@ -15,6 +15,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using Duckov.Economy;
 using Duckov.NoteIndexs;
 using ItemStatsSystem;
@@ -414,7 +415,7 @@ namespace BossRush
                 parts.Add(language);
                 try { SkyIslandNight.DevForceNight = snapshot.ForceNight; }
                 catch (Exception e) { parts.Add("force_night_threw:" + e.GetType().Name); ok = false; }
-                parts.Add("force_night=" + SkyIslandNight.DevForceNight + "/" + snapshot.ForceNight);
+                parts.Add("force_night=" + SkyIslandNight.DevForceNight + "/" + snapshot.ForceNight + ",night_volume_restored=" + RestoreAutotestNightVolume());
                 ok &= SkyIslandNight.DevForceNight == snapshot.ForceNight;
             }
             int invincible = 0, healed = 0;
@@ -516,6 +517,69 @@ namespace BossRush
             if (!_autotest.HealthOriginal.ContainsKey(health)) _autotest.HealthOriginal.Add(health, health.CurrentHealth);
             health.SetHealth(Mathf.Max(1f, health.MaxHealth * Mathf.Clamp01(fraction)));
         }
+
+        /// <summary>
+        /// 「强制夜里」只拨本 Mod 的钟点（<see cref="SkyIslandNight.DevForceNight"/>），官方 <c>TimeOfDayController</c> 仍按官方钟点挑后处理时段。
+        /// 2026-10-01 起岛上白天 / 黎明换成户外后处理（<see cref="SkyIslandOutdoorDaylight"/>），官方白天跑「强制夜里」就成了星夜光照叠白天的浅蓝远景雾：
+        /// 2026-10-16 第十轮云蚋那一步官方钟点约 9–12 点，整帧亮度是 09-22 的 4 倍（远处 0.007 → 0.13），云蚋对地面的韦伯对比从 0.36 掉到 0.17。
+        /// 真夜里官方挑的是夜里时段（原样保留），所以这里只在岛上的克隆配置里，把每个天气条目非夜里时段的 Volume 临时换成该条目夜里那份；
+        /// 官方每帧按时段 SetTargetProfile，约 2 秒混合到位。关掉或还原时逐条写回；克隆随离岛销毁，不碰基地配置、不拨官方时钟、不写存档。
+        /// </summary>
+        private string SyncAutotestNightVolume(bool night)
+        {
+            try
+            {
+                if (!night) return "restored=" + RestoreAutotestNightVolume();
+                if (_autotestNightVolumeOriginals.Count > 0) return "kept";
+                if (AutotestPhasesField == null) return "phases_field_missing";
+                if (SkyIslandSessionOrNull() == null) return "not_on_island";
+                TimeOfDayConfig config = LevelConfig.Instance == null ? null : LevelConfig.Instance.timeOfDayConfig;
+                if (config == null) return "config_missing";
+                int swapped = 0;
+                foreach (TimeOfDayEntry entry in config.GetComponentsInChildren<TimeOfDayEntry>(true))
+                {
+                    var phases = AutotestPhasesField.GetValue(entry) as List<TimeOfDayPhase>;
+                    if (phases == null) continue;
+                    TimeOfDayPhase nightPhase = entry.GetPhase(TimePhaseTags.night);
+                    if (nightPhase.timePhaseTag != TimePhaseTags.night || nightPhase.volumeProfile == null) continue;
+                    _autotestNightVolumeOriginals[entry] = new List<TimeOfDayPhase>(phases);
+                    for (int i = 0; i < phases.Count; i++)
+                    {
+                        TimeOfDayPhase phase = phases[i];
+                        if (phase.timePhaseTag == TimePhaseTags.night || phase.volumeProfile == nightPhase.volumeProfile) continue;
+                        phase.volumeProfile = nightPhase.volumeProfile;
+                        phases[i] = phase;
+                        swapped++;
+                    }
+                }
+                return "swapped=" + swapped;
+            }
+            catch (Exception e) { return "error_" + e.GetType().Name; }
+        }
+
+        /// <summary>把强制夜里换掉的时段写回原样；离岛后克隆已销毁的条目跳过。返回写回了几个条目。</summary>
+        private int RestoreAutotestNightVolume()
+        {
+            int restored = 0;
+            foreach (KeyValuePair<TimeOfDayEntry, List<TimeOfDayPhase>> pair in _autotestNightVolumeOriginals)
+            {
+                try
+                {
+                    if (pair.Key == null || AutotestPhasesField == null) continue;
+                    AutotestPhasesField.SetValue(pair.Key, new List<TimeOfDayPhase>(pair.Value));
+                    restored++;
+                }
+                catch (Exception e) { ModBehaviour.DevLog("[Validation] 还原夜里后处理失败: " + e.Message); }
+            }
+            _autotestNightVolumeOriginals.Clear();
+            return restored;
+        }
+
+        /// <summary>强制夜里换掉之前的时段原样（按条目）；跟着这个 runner 实例，验收结束随环境还原清空。</summary>
+        private readonly Dictionary<TimeOfDayEntry, List<TimeOfDayPhase>> _autotestNightVolumeOriginals =
+            new Dictionary<TimeOfDayEntry, List<TimeOfDayPhase>>();
+        private static readonly FieldInfo AutotestPhasesField =
+            typeof(TimeOfDayEntry).GetField("phases", BindingFlags.Instance | BindingFlags.NonPublic);
 
         #endregion
 

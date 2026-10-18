@@ -70,6 +70,7 @@ namespace BossRush
             {
                 if (!owner.IsModeDActive)
                 {
+                    // 已死未计数的本波 Boss 先走正常结案（0.25 秒一扫）；10 秒自检兜已销毁、拿不到角色的情况。
                     SweepSilentWaveBossDeaths(deltaTime);
                     if (AdvanceWaveIntegrityCheck(deltaTime))
                     {

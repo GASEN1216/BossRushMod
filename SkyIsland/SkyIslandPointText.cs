@@ -25,8 +25,9 @@ namespace BossRush
             switch (key)
             {
                 case "Search_A": return L10n.T("登云码头 · 渡口整备", "Cloudrise Dock · dock refit");
-                case "Search_D": return L10n.T("校准风标 · 开启林边回程路",
-                    "Calibrate the wind beacon · open the woodland way home");
+                // 与 K1 按钮「系牢回程绳桥 K1」、修好风标的回话和桥口门牌同名（2026-10-17 剧情指引全面核查）。
+                case "Search_D": return L10n.T("校准风标 · 系牢回程绳桥",
+                    "Calibrate the wind beacon · lash the rope bridge home");
                 case "Search_G": return L10n.T("修复星灯 · 开启检修廊",
                     "Repair the star lamp · open the maintenance walk");
                 case "Search_E": return L10n.T("双航标门 · 中轴旧桥与风眼",
@@ -81,9 +82,10 @@ namespace BossRush
                 case "Search_D": return L10n.T(
                     "风标卡在巨根里。附近两伙人清掉，就能校准。",
                     "The wind beacon is stuck in the roots. Clear the two groups nearby and you can fix it.");
+                // 这里是栈道南头；「两灯亮才开、门后是钟庭」的那扇门在北头，离这儿八十多米（2026-10-17 剧情指引全面核查）。
                 case "Search_E": return L10n.T(
-                    "两盏灯都亮了这扇门才开。门后就是钟庭。",
-                    "This gate opens once both lights are on. The Bell Court is beyond.");
+                    "两盏灯亮了，就能在这儿放下中轴旧桥、引噬风出来。钟庭在栈道北头。",
+                    "Once both lights burn, lower the old centre bridge or call the Windeater out here. The Bell Court is at the north end.");
                 case "Search_F": return L10n.T(
                     "折翎守着这条路。拿旧信和航路图来能谈，也能硬打。",
                     "Zheling guards this road. Bring the letter and chart to talk, or fight him.");
@@ -91,8 +93,8 @@ namespace BossRush
                     "星灯没坏，只是偏了。附近两伙人清掉，就能修好。",
                     "The star lamp isn't broken, just off. Clear the two groups nearby and you can fix it.");
                 case "Search_H": return L10n.T(
-                    "这就是归航钟。钟守点了头，才能敲。",
-                    "This is the Homecoming Bell. It can only ring once the Bell Keeper agrees.");
+                    "钟守给归航钟留的话。他点了头，在这儿就能敲钟。",
+                    "The Bell Keeper's note about the Homecoming Bell. Once he agrees, you can ring it from here.");
                 case "Search_S1": return L10n.T(
                     "池边的纸页记着菜种、日期，和每个归航人的名字。",
                     "The pages by the pool list seeds, dates, and everyone expected home.");
@@ -211,6 +213,38 @@ namespace BossRush
                     "旧木牌上记录着岛民的一天：有人等信，有人修灯，有人把空船再系紧一点。",
                     "An old board records a day on the islands: someone waiting for a letter, someone mending a lamp, someone tying an empty boat a little tighter.");
             }
+        }
+
+        /// <summary>
+        /// 面板正文用的导语：这一处要做的事已经做完时换成一句「做完了」，其余同 <see cref="Brief"/>。
+        /// 以前风标修好、星灯点亮、折翎了结、观星镜校准之后，面板还写着「清掉附近两伙人就能修」「拿旧信来能谈，也能硬打」，
+        /// 叫人去做一件已经做完、按钮也不再挂的事（2026-10-17 剧情指引全面核查）。长度口径同 <see cref="Brief"/>（中文 ≤ 40 字）。
+        /// </summary>
+        internal static string BriefFor(string key, SkyIslandStoryData data)
+        {
+            if (data != null)
+            {
+                switch (key)
+                {
+                    case "Search_D":
+                        if (data.Has(SkyIslandStoryFlag.WindBeacon))
+                            return L10n.T("风标校准好了，西边的航路有了方向。", "The wind beacon is calibrated; the western lane has a bearing again.");
+                        break;
+                    case "Search_G":
+                        if (data.Has(SkyIslandStoryFlag.StarLamp))
+                            return L10n.T("星灯重新校准了，东边的光照回了村里。", "The star lamp is realigned; the east light reaches the village again.");
+                        break;
+                    case "Search_F":
+                        if (data.ZhelingResolved)
+                            return L10n.T("折翎不再拦这条路，去残星工坊的近路开着。", "Zheling no longer blocks this road; the shortcut to the workshop is open.");
+                        break;
+                    case "Search_S4":
+                        if (data.Has(SkyIslandStoryFlag.Telescope))
+                            return L10n.T("观星镜校准好了，群岛的星图连上了。", "The telescope is aligned; the archipelago's star chart is back.");
+                        break;
+                }
+            }
+            return Brief(key);
         }
     }
 }

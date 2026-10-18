@@ -11,6 +11,7 @@ namespace BossRush
         NotReady,
         EquipmentSlot,
         WeaponSlot,
+        AccessorySlot,
         Backpack,
         DogBackpack,
         PetNestBackpack
@@ -21,12 +22,15 @@ namespace BossRush
         internal NakedEntryBlockKind Kind;
         internal string ItemName;
 
-        /// <summary>装备槽、武器槽都空，只有背包类容器挡路：玩家显然想裸装入场，值得明说原因。</summary>
+        /// <summary>
+        /// 护甲、头盔、背包槽与武器槽都空，只剩背包类容器或饰品挡路：玩家显然想裸装入场，值得明说原因。
+        /// 饰品（面罩、耳机、图腾）在武器槽之后才判，所以命中它时武器槽一定是空的。
+        /// </summary>
         internal bool OnlyContainersBlock
         {
             get
             {
-                return Kind == NakedEntryBlockKind.NotReady || Kind == NakedEntryBlockKind.Backpack
+                return Kind == NakedEntryBlockKind.NotReady || Kind == NakedEntryBlockKind.AccessorySlot || Kind == NakedEntryBlockKind.Backpack
                     || Kind == NakedEntryBlockKind.DogBackpack || Kind == NakedEntryBlockKind.PetNestBackpack;
             }
         }
@@ -38,8 +42,13 @@ namespace BossRush
         {
             "Armor",
             "Helmat",
+            "Backpack"
+        };
+
+        // 小件饰品最容易忘了摘；排在武器槽之后判，命中时可以放心提示「这次不会进白手起家」。
+        private static readonly string[] NakedAccessorySlotNames = new string[]
+        {
             "FaceMask",
-            "Backpack",
             "Headset",
             "Totem1",
             "Totem2"
@@ -159,37 +168,14 @@ namespace BossRush
                     return false;
                 }
 
-                for (int i = 0; i < NakedEquipmentSlotNames.Length; i++)
+                // 判定顺序：护甲 / 头盔 / 背包槽 → 武器槽 → 饰品槽。饰品排最后，命中它时前两类一定是空的。
+                if (TryFindFilledSlot(characterItem, NakedEquipmentSlotNames, logTag, "装备槽不为空: ", NakedEntryBlockKind.EquipmentSlot, out block)
+                    || TryFindFilledSlot(characterItem, NakedWeaponSlotNames, logTag, "武器槽不为空: ", NakedEntryBlockKind.WeaponSlot, out block)
+                    || TryFindFilledSlot(characterItem, NakedAccessorySlotNames, logTag, "饰品槽不为空: ", NakedEntryBlockKind.AccessorySlot, out block))
                 {
-                    string slotName = NakedEquipmentSlotNames[i];
-                    try
-                    {
-                        Slot slot = characterItem.Slots.GetSlot(slotName);
-                        if (slot != null && slot.Content != null)
-                        {
-                            ModBehaviour.DevLog("[" + logTag + "] 装备槽不为空: " + slotName);
-                            block = new NakedEntryBlock { Kind = NakedEntryBlockKind.EquipmentSlot, ItemName = SafeDisplayName(slot.Content) };
-                            return false;
-                        }
-                    }
-                    catch { }
+                    return false;
                 }
-
-                for (int i = 0; i < NakedWeaponSlotNames.Length; i++)
-                {
-                    string slotName = NakedWeaponSlotNames[i];
-                    try
-                    {
-                        Slot slot = characterItem.Slots.GetSlot(slotName);
-                        if (slot != null && slot.Content != null)
-                        {
-                            ModBehaviour.DevLog("[" + logTag + "] 武器槽不为空: " + slotName);
-                            block = new NakedEntryBlock { Kind = NakedEntryBlockKind.WeaponSlot, ItemName = SafeDisplayName(slot.Content) };
-                            return false;
-                        }
-                    }
-                    catch { }
-                }
+                block = new NakedEntryBlock { Kind = NakedEntryBlockKind.NotReady };
 
                 Inventory inventory = characterItem.Inventory;
                 if (inventory != null && inventory.Content != null)
@@ -284,6 +270,31 @@ namespace BossRush
                 ModBehaviour.DevLog("[" + logTag + "] [ERROR] 裸装检测失败: " + e.Message);
                 return false;
             }
+        }
+
+        /// <summary>按顺序找第一个有东西的槽；读不了的槽按空槽处理（与原先逐槽 try 的语义一致）。</summary>
+        private static bool TryFindFilledSlot(Item characterItem, string[] slotNames, string logTag, string logLabel,
+            NakedEntryBlockKind kind, out NakedEntryBlock block)
+        {
+            for (int i = 0; i < slotNames.Length; i++)
+            {
+                Item content;
+                try
+                {
+                    Slot slot = characterItem.Slots.GetSlot(slotNames[i]);
+                    content = slot != null ? slot.Content : null;
+                }
+                catch (Exception)
+                {
+                    content = null;
+                }
+                if (content == null) continue;
+                ModBehaviour.DevLog("[" + logTag + "] " + logLabel + slotNames[i]);
+                block = new NakedEntryBlock { Kind = kind, ItemName = SafeDisplayName(content) };
+                return true;
+            }
+            block = default(NakedEntryBlock);
+            return false;
         }
 
         private static string SafeDisplayName(Item item)

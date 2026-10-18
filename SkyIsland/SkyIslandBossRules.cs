@@ -1101,8 +1101,8 @@ namespace BossRush
                         return L10n.T("残星瞭台上那个观星手，眼睛毒得很。脚下一亮圈，要么钻掩体，要么冲到它脸上。\n",
                             "The stargazer up on Starfall Overlook has a mean eye. If a ring lights at your feet, find cover or get right in its face.\n");
                     if (!Defeated(data, Find("D", 0)))
-                        return L10n.T("悬根林的风标底下蹲着个猎首。它的绊索桩砍一根就断，地上根洞一亮赶紧让开。\n",
-                            "A huntmaster crouches under the beacon in Hanging Root Wood. Cut one tripwire stake and the line drops; when a root hollow lights, move.\n");
+                        return L10n.T("悬根林风标东边蹲着个猎首。它的绊索桩砍一根就断，地上根洞一亮赶紧让开。\n",
+                            "A huntmaster crouches east of the beacon in Hanging Root Wood. Cut one tripwire stake and the line drops; when a root hollow lights, move.\n");
                     if (!Defeated(data, Find("K1_Relay", 0)) || !Defeated(data, Find("K2_Relay", 0)) || !Defeated(data, Find("K3_Relay", 0)))
                         return L10n.T("三座回程中继，一座一个断风游猎，连拾荒者也打。冲锋前地上先亮一条线，横着让。\n",
                             "A Galebreaker holds each return relay, and they fight the scavengers too. A line lights up before the charge, so sidestep.\n");
@@ -1124,7 +1124,11 @@ namespace BossRush
                     if (!Defeated(data, Find("F", 0)))
                         return L10n.T("\n镜中客也是夜里，在镜池边，会换到你背后。它留下的倒影打碎，它就站不稳。",
                             "\nThe Mirror Guest is a night thing too, and it swaps behind you at the pool. Break the reflection it leaves and it can't keep its feet.");
-                    return L10n.T("\n苔纱面罩戴上，云蚋认不出你在瞄它。穿镜纹甲去见折翎，没有旧信和航路图他也肯谈。",
+                    // 折翎了结之后不再劝人穿甲去谈：那一项已经永远点不出来（2026-10-16 指引复核）。
+                    return data != null && data.ZhelingResolved
+                        ? L10n.T("\n苔纱面罩戴上，云蚋认不出你在瞄它。那身镜纹甲，就留着当个纪念吧。",
+                            "\nIn the mossgauze mask, gnats can't read your aim and stop dodging. Keep the Mirrorgrain Plate as a memento.")
+                        : L10n.T("\n苔纱面罩戴上，云蚋认不出你在瞄它。穿镜纹甲去见折翎，没有旧信和航路图他也肯谈。",
                             "\nIn the mossgauze mask, gnats can't read your aim and stop dodging. In the Mirrorgrain Plate, Zheling will talk without the letter or chart.");
                 default:
                     return string.Empty;

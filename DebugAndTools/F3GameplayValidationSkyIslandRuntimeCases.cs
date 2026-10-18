@@ -385,14 +385,26 @@ namespace BossRush
         /// SKY_KEEPSAKE_ITEMS 的判据（岛上、基地各跑一次）。晴岚航徽、噬风之核各至多一件（背包含容器 + 基地仓库）；
         /// 两件的图标取得到、且不是运行时兜底克隆源的图标。在基地时再核对岛上耗材一样都没跟回来：
         /// 采集 / 合成 / 夜风 owner、云蚋 owner 与头顶那盏风灯都已经不在。
+        /// 「至多一件」数的是基线之上多出来的：只读套件与主套件基线是 0；全自动验收传开跑快照里的件数——
+        /// 专用测试档的官方待收取缓冲区里留着 7 轮旧验收漏收的纪念品（4dd333ab 之前收回不看缓冲区），
+        /// 那是开跑前就有、收尾按快照原样保留的，不是这一轮发重了（2026-10-16 第十轮复核）。
         /// </summary>
         internal static bool JudgeKeepsakes(int badgeCount, int coreCount, string badgeIcon, string coreIcon, bool atBase,
             bool fieldcraftLeft, bool gnatsLeft, bool lanternLeft, out string metrics, out string reason)
         {
+            return JudgeKeepsakes(badgeCount, coreCount, 0, 0, badgeIcon, coreIcon, atBase, fieldcraftLeft, gnatsLeft, lanternLeft,
+                out metrics, out reason);
+        }
+
+        internal static bool JudgeKeepsakes(int badgeCount, int coreCount, int badgeBaseline, int coreBaseline, string badgeIcon,
+            string coreIcon, bool atBase, bool fieldcraftLeft, bool gnatsLeft, bool lanternLeft, out string metrics, out string reason)
+        {
             reason = null;
             List<string> errors = new List<string>();
-            if (badgeCount > 1) errors.Add("homecoming_badge=" + badgeCount);
-            if (coreCount > 1) errors.Add("windeater_core=" + coreCount);
+            badgeBaseline = Math.Max(0, badgeBaseline);
+            coreBaseline = Math.Max(0, coreBaseline);
+            if (badgeCount - badgeBaseline > 1) errors.Add("homecoming_badge=" + badgeCount + (badgeBaseline > 0 ? "(baseline=" + badgeBaseline + ")" : string.Empty));
+            if (coreCount - coreBaseline > 1) errors.Add("windeater_core=" + coreCount + (coreBaseline > 0 ? "(baseline=" + coreBaseline + ")" : string.Empty));
             if (!string.Equals(badgeIcon, "ok", StringComparison.Ordinal)) errors.Add("badge_icon:" + badgeIcon);
             if (!string.Equals(coreIcon, "ok", StringComparison.Ordinal)) errors.Add("core_icon:" + coreIcon);
             if (atBase)
@@ -402,6 +414,7 @@ namespace BossRush
                 if (lanternLeft) errors.Add("wind_lantern_light_left_on_base");
             }
             metrics = "where=" + (atBase ? "base" : "island") + ",badge=" + badgeCount + "/1,core=" + coreCount + "/1"
+                + (badgeBaseline > 0 || coreBaseline > 0 ? ",baseline=" + badgeBaseline + "/" + coreBaseline : string.Empty)
                 + ",badge_icon=" + badgeIcon + ",core_icon=" + coreIcon
                 + (atBase ? ",fieldcraft_left=" + fieldcraftLeft + ",gnats_left=" + gnatsLeft + ",lantern_left=" + lanternLeft : string.Empty);
             if (errors.Count > 0) reason = "纪念品或离岛残留不合格：" + string.Join(",", errors.ToArray());
@@ -884,22 +897,23 @@ namespace BossRush
 
         private bool ValidateSkyIslandKeepsakes(out string metrics, out string reason)
         {
-            return JudgeKeepsakesNow(false, out metrics, out reason);
+            return JudgeKeepsakesNow(false, 0, 0, out metrics, out reason);
         }
 
         private bool ValidateSkyIslandKeepsakesAtBase(out string metrics, out string reason)
         {
             if (LevelManager.Instance == null || !LevelManager.Instance.IsBaseLevel)
                 throw new SkyIslandSkipCase("not_in_base", "is_base_level=false");
-            return JudgeKeepsakesNow(true, out metrics, out reason);
+            return JudgeKeepsakesNow(true, 0, 0, out metrics, out reason);
         }
 
-        private static bool JudgeKeepsakesNow(bool atBase, out string metrics, out string reason)
+        /// <summary>基线由调用方给：只读套件恒为 0，全自动验收传开跑快照的件数（见 <see cref="JudgeKeepsakes(int,int,int,int,string,string,bool,bool,bool,bool,out string,out string)"/>）。</summary>
+        private static bool JudgeKeepsakesNow(bool atBase, int badgeBaseline, int coreBaseline, out string metrics, out string reason)
         {
             string badgeWhere, coreWhere;
             int badge = CountOwnedItems(BossRushItemIds.SkyIslandHomecomingBadge, out badgeWhere);
             int core = CountOwnedItems(BossRushItemIds.SkyIslandWindeaterCore, out coreWhere);
-            bool ok = JudgeKeepsakes(badge, core, DescribeKeepsakeIcon(BossRushItemIds.SkyIslandHomecomingBadge),
+            bool ok = JudgeKeepsakes(badge, core, badgeBaseline, coreBaseline, DescribeKeepsakeIcon(BossRushItemIds.SkyIslandHomecomingBadge),
                 DescribeKeepsakeIcon(BossRushItemIds.SkyIslandWindeaterCore), atBase,
                 SkyIslandFieldcraft.Current != null, SkyIslandGnats.Current != null,
                 GameObject.Find("SkyIslandLanternLight") != null, out metrics, out reason);

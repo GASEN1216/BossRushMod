@@ -410,6 +410,8 @@ namespace BossRush
                 if (modelRoot == null) return;
                 float scale = handle.ModelScale > 0f ? handle.ModelScale : DefaultModelScale;
                 modelRoot.localScale = new Vector3(scale, scale, scale);
+                // 摸摸的缩放脉冲正在播时改以新体型为基准，播完不会被还原成旧体型
+                PetNestPulse.Rebase(modelRoot);
             }
             catch (Exception e)
             {

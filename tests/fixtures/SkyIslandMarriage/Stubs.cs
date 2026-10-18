@@ -280,9 +280,13 @@ namespace BossRush
 namespace BossRush
 {
     internal enum SkyIslandStoryAction { ReconcileZheling, ZhelingDefeated, BellKeeperDefeated, StormSlain }
+    // ZhelingChoices 按有没有带齐旧信与航路图给和解按钮换字（2026-10-16 指引复核）；位值照生产，替身默认 0 = 都没带。
+    [Flags] internal enum SkyIslandStoryFlag { OldLetter = 8, RouteChart = 16 }
     internal sealed class SkyIslandStoryData
     {
         internal bool ZhelingResolved, BellKeeperResolved, BothBeacons, StormResolved;
+        internal int flags;
+        internal bool Has(SkyIslandStoryFlag value) { return (flags & (int)value) == (int)value; }
         // SkyIslandSessionQuestBridge.AnnounceGuardProgress 读清场事实；婚姻夹具不清场，恒为 false。
         internal bool EncounterCleared(string id) { return false; }
     }

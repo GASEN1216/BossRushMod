@@ -229,6 +229,7 @@ echo(DebugAndTools\DebugAndTools.cs
 echo(DebugAndTools\DebugAndToolsPlacementAndInspection.cs
 echo(DebugAndTools\DebugAndToolsStaticCacheReset.cs
 echo(DebugAndTools\DebugToolsRuntimeModule.cs
+echo(DebugAndTools\OfficialViewTabsProbe.cs
 echo(DebugAndTools\DebugToolsRuntimeHooks.cs
 echo(DebugAndTools\ArenaPrototype\ArenaPrototypeNavigation.cs
 echo(DebugAndTools\ArenaPrototype\ArenaPrototypeControls.cs
@@ -350,6 +351,7 @@ echo(SkyIsland\SkyIslandItemRules.cs
 echo(SkyIsland\SkyIslandFieldcraftRules.cs
 echo(SkyIsland\SkyIslandLights.cs
 echo(SkyIsland\SkyIslandGathering.cs
+echo(SkyIsland\SkyIslandPointProps.cs
 echo(SkyIsland\SkyIslandFieldcraft.cs
 echo(SkyIsland\SkyIslandInventoryTransaction.cs
 echo(SkyIsland\SkyIslandNight.cs
@@ -382,6 +384,7 @@ echo(DebugAndTools\F3GameplayValidationCoverage.cs
 echo(DebugAndTools\F3GameplayValidationItems.cs
 echo(DebugAndTools\F3GameplayValidationZombie.cs
 echo(DebugAndTools\F3GameplayValidationZombieCoopProbe.cs
+echo(DebugAndTools\F3GameplayValidationReviewFixes.cs
 echo(DebugAndTools\F3GameplayValidationModeHKits.cs
 echo(DebugAndTools\F3GameplayValidationModeHErrorSwap.cs
 echo(DebugAndTools\F3GameplayValidationScenes.cs
@@ -994,6 +997,12 @@ echo(Integration\NewWeapons\RollCallLedger\RollCallLedgerRules.cs
 echo(Integration\NewWeapons\RollCallLedger\RollCallLedgerRuntime.cs
 echo(Integration\NewWeapons\RollCallLedger\RollCallLedgerFx.cs
 echo(Integration\NewWeapons\RollCallLedger\RollCallLedgerIcon.cs
+echo(Integration\NewWeapons\PassTheBomb\PassTheBombConfig.cs
+echo(Integration\NewWeapons\PassTheBomb\PassTheBombWeaponConfig.cs
+echo(Integration\NewWeapons\PassTheBomb\PassTheBombIcon.cs
+echo(Integration\NewWeapons\PassTheBomb\PassTheBombRules.cs
+echo(Integration\NewWeapons\PassTheBomb\PassTheBombRuntime.cs
+echo(Integration\NewWeapons\PassTheBomb\PassTheBombFx.cs
 echo(Integration\FlightTotem\FlightConfig.cs
 echo(Integration\FlightTotem\FlightTotemFactory.cs
 echo(Integration\FlightTotem\FlightTotemBootstrap.cs
@@ -1059,6 +1068,7 @@ echo(Integration\NPCs\DuckNpc\Permanent\PermanentDuckNpcData.cs
 echo(Integration\NPCs\DuckNpc\Permanent\PermanentDuckNpcRegistry.cs
 echo(Integration\NPCs\DuckNpc\Permanent\PermanentDuckNpcAffinityConfig.cs
 echo(Integration\NPCs\DuckNpc\Permanent\PermanentDuckNpcInteractable.cs
+echo(Integration\NPCs\DuckNpc\Permanent\PermanentDuckNpcStoryPlayer.cs
 echo(Integration\NPCs\DuckNpc\Permanent\PermanentDuckNpcModule.cs
 echo(Integration\NPCs\DuckNpc\DuckNpcFaceRandomizer.cs
 echo(Integration\NPCs\DuckNpc\DuckNpcOutfitter.cs
@@ -1126,6 +1136,7 @@ echo(Integration\Affinity\AffinityJsonSerializer.cs
 echo(Integration\Affinity\AffinityManager.cs
 echo(Integration\Affinity\AffinityManagerPersistenceAndDecay.cs
 echo(Integration\Affinity\AffinityManagerStaticCacheReset.cs
+echo(Integration\Affinity\NPCShopStockLedger.cs
 echo(Integration\Affinity\Core\INPCGiftConfig.cs
 echo(Integration\Affinity\Core\INPCDialogueConfig.cs
 echo(Integration\Affinity\Core\INPCRelationshipDialogueConfig.cs
@@ -1137,6 +1148,7 @@ echo(Integration\Affinity\Services\NPCGiftContainerService.cs
 echo(Integration\Affinity\Systems\NPCGiftSystem.cs
 echo(Integration\Affinity\Systems\NPCDialogueSystem.cs
 echo(Integration\Affinity\Systems\NPCShopSystem.cs
+echo(Integration\Affinity\Systems\NPCShopSystemOfficialShopHooks.cs
 echo(Integration\Affinity\Systems\NPCAffinityInteractionHelper.cs
 echo(Integration\Affinity\AffinityRuntimeHooks.cs
 echo(Integration\Affinity\Interactables\NPCInteractableBase.cs
@@ -1147,6 +1159,10 @@ echo(Integration\Affinity\NPCs\GoblinAffinityConfig_LanguageCache.cs
 echo(Integration\Affinity\NPCs\GoblinAffinityConfig_Persona.cs
 echo(Integration\Affinity\NPCs\NurseAffinityConfig.cs
 echo(Integration\Affinity\AffinityUIManager.cs
+echo(Integration\Affinity\UI\AffinityTabData.cs
+echo(Integration\Affinity\UI\AffinityTabOfficialSkin.cs
+echo(Integration\Affinity\UI\AffinityTabView.cs
+echo(Integration\Affinity\UI\AffinityTabInjector.cs
 echo(Integration\Dialogue\DialogueManager.cs
 echo(Integration\Dialogue\DialogueActorFactory.cs
 echo(Integration\WikiBookItem.cs
@@ -1223,6 +1239,7 @@ echo(PetNest\PetNestBackpackRestoration.cs
 echo(PetNest\PetNestDeathSuppressionRegistry.cs
 echo(PetNest\PetNestDownedHandler.cs
 echo(PetNest\PetNestExpeditionService.cs
+echo(PetNest\PetNestExpeditionSlots.cs
 echo(PetNest\PetNestUIBridge.cs
 echo(PetNest\PetNestInteractable.cs
 echo(PetNest\PetNestBuilder.cs
@@ -1232,6 +1249,10 @@ echo(PetNest\PetNestUIPages.cs
 echo(PetNest\PetNestUINestPage.cs
 echo(PetNest\PetNestUI.cs
 echo(PetNest\PetNestUILayout.cs
+echo(PetNest\PetNestUIMotion.cs
+echo(PetNest\PetNestUIMotionParts.cs
+echo(PetNest\PetNestUIMuseumPage.cs
+echo(PetNest\PetNestUIMuseumDetail.cs
 echo(PetNest\PetNestUIWidgets.cs
 echo(PetNest\PetNestHatchRevealView.cs
 echo(PetNest\PetNestExpeditionRevealView.cs
@@ -1290,6 +1311,7 @@ echo(RandomEvents\RandomEventModels.cs
 echo(RandomEvents\RandomEventModeGate.cs
 echo(RandomEvents\RandomEventDirector.cs
 echo(RandomEvents\RandomEventCatalog.cs
+echo(RandomEvents\RandomEventCatalog_IntruderWatcher.cs
 echo(RandomEvents\RandomEventFx.cs
 echo(RandomEvents\RandomEventCatalog_Fun.cs
 echo(RandomEvents\RandomEventAirdropHold.cs

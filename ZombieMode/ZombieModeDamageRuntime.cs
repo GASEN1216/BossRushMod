@@ -28,8 +28,12 @@ namespace BossRush
             return source != null && ((source.IsMainCharacter || BossRushCoop.IsPlayer(source)) || PetNestCompanionAgent.IsCompanionHealth(source.Health));
         }
 
-        // 刚硬 / 反制要求玩家本人换武器；随从的命中不能替玩家积累反制。
-        // 护盾和护盾光环仍消费 IsPlayerSideAttack，保留对随从的正常防御。
+        /// <summary>
+        /// 只认玩家本人（含联机队友本人）的命中。精英的「刚硬」（远程 ×0.1）与「反制」（同类连击后减伤 60%）是逼玩家换武器的反制词条，
+        /// 遗种巢的崽不会换武器：算进去的话它对这类精英几乎打不出伤害（玩家反馈「一滴血一滴血地掉」），
+        /// 而且它的命中还会替玩家攒满「反制」计数，让精英转头去减玩家自己的伤害（2026-10-17）。
+        /// 护盾吸收与护盾光环仍按 <see cref="IsPlayerSideAttack"/> 对崽生效，那是精英本身的防御，不是反制。
+        /// </summary>
         internal static bool IsPlayerOwnHit(CharacterMainControl source)
         {
             return source != null && (source.IsMainCharacter || BossRushCoop.IsPlayer(source));

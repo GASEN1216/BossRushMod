@@ -56,6 +56,9 @@ namespace BossRush
                     _levelUpSubscribed = true;
                 }
 
+                // 官方 Tab 页签栏最左一格的「好感」页：随官方页面打开时挂上（幂等，Cleanup 退订）
+                AffinityTabInjector.Install();
+
                 DevLog("[BossRush] 好感度系统初始化完成");
             }
             catch (Exception e)
@@ -100,6 +103,7 @@ namespace BossRush
                 AffinityManager.Shutdown();
                 AffinityManager.ResetStaticCaches();
                 AffinityUIManager.Cleanup();
+                AffinityTabInjector.Uninstall();
             }
             catch (Exception e)
             {

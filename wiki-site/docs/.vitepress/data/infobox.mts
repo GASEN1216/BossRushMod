@@ -252,6 +252,22 @@ export const INFOBOX: Record<string, Infobox> = {
     ],
     links: ['/npcs/', '/systems/affinity-marriage'],
   },
+  '/equipment/pass-the-bomb': {
+    eyebrowZh: '图腾',
+    eyebrowEn: 'Totem',
+    rows: [
+      { zh: '品质', en: 'Rarity', vz: '5', tier: 5 },
+      { zh: '重量', en: 'Weight', vz: '0.3' },
+      { zh: '基础价值', en: 'Base value', vz: '18,000' },
+      { zh: '触发', en: 'Trigger', vz: '直伤敌人挂弹，携带者攻击转移', ve: 'Directly hit an enemy to plant; the carrier passes it by hitting someone' },
+      { zh: '引信 / 冷却', en: 'Fuse / Cooldown', vz: '5 秒 / 12 秒', ve: '5 s / 12 s' },
+      { zh: '半径', en: 'Radius', vz: '3 米', ve: '3 m' },
+      { zh: '基础伤害', en: 'Base damage', vz: '玩家 40 / 其他 160，周围友方免伤', ve: 'Player 40 / others 160; nearby allies are spared' },
+      { zh: '来源', en: 'Source', vz: '浮舟的航前杂货（好感 3 级）', ve: "Fuzhou's Departure Supplies (affinity Lv.3)" },
+      { zh: '物品 ID', en: 'Internal ID', vz: '500109' },
+    ],
+    links: ['/equipment/roll-call-ledger', '/systems/affinity-marriage'],
+  },
   '/equipment/empty-magazine-mine': {
     eyebrowZh: '图腾',
     eyebrowEn: 'Totem',

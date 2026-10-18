@@ -399,6 +399,36 @@ namespace BossRush
             return keys;
         }
 
+        /// <summary>叮当 3 级故事：叮当的锤子（2026-10-17 补齐四段）。</summary>
+        public static string[] GetGoblinStory3DialogueKeys()
+        {
+            return BuildDynamicDialogueKeys(
+                "BossRush_GoblinStory3_",
+                new string[][]
+                {
+                    new string[] { "你又来了。叮当记得你，你上回没砍价。", "You're back. Dingdang remembers you. You didn't haggle last time." },
+                    new string[] { "这把锤子是叮当捡的。逃出来那天，就躺在路边。", "Dingdang found this hammer. The day Dingdang got out, it was lying by the road." },
+                    new string[] { "叮当不会别的。敲坏了，就再敲好，这么学会的。", "Dingdang didn't know anything. Broke things, fixed them again. That's how Dingdang learned." },
+                    new string[] { "敲东西的时候，叮当就不用想别的事。", "When Dingdang is hammering, Dingdang doesn't have to think about anything else." },
+                    new string[] { "你的家伙坏了就拿来。叮当给你敲好，不坑你。", "If your gear breaks, bring it here. Dingdang will fix it. Fair price." }
+                });
+        }
+
+        /// <summary>叮当 8 级故事：叮当的梦（2026-10-17 补齐四段）。</summary>
+        public static string[] GetGoblinStory8DialogueKeys()
+        {
+            return BuildDynamicDialogueKeys(
+                "BossRush_GoblinStory8_",
+                new string[][]
+                {
+                    new string[] { "叮当昨晚又梦见实验室了。", "Dingdang dreamed about the lab again last night." },
+                    new string[] { "白灯一直亮，有人一直在念编号。", "The white lights stay on. Someone keeps reading out numbers." },
+                    new string[] { "以前醒了，叮当就爬起来敲铁，敲到天亮。", "Dingdang used to wake up and hammer iron until sunrise." },
+                    new string[] { "这回醒了，叮当先想的是：你今天回不回来。", "This time, the first thing Dingdang thought was: will you come back today?" },
+                    new string[] { "……叮当没说奇怪的话吧？快，买东西去。", "...Dingdang didn't say anything strange, right? Go on, buy something." }
+                });
+        }
+
         /// <summary>
         /// 获取护士5级故事对话的本地化键数组
         /// </summary>

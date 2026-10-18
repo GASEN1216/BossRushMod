@@ -137,8 +137,10 @@ namespace BossRush
             }
 
             ZombieModeOptionRuntimeState options = runState.OptionRuntime;
-            // OnDead 先于 OnHurt 结算并注销 marker，在这里补判致死一击的命中回血。
+            // 致死顺序是 OnDead -> DeathSettled -> OnHurt，命中处理会被 DeathSettled 挡掉；
+            // 吸血在这里补判一次，打死敌人的那一下也能回血（玩家反馈 2026-10-16）。
             TryApplyZombieModeTriggerLifesteal(player, options);
+
             if (options.TriggerPurificationSiphonStacks > 0)
             {
                 int stacks = Mathf.Min(2, options.TriggerPurificationSiphonStacks);
@@ -169,10 +171,16 @@ namespace BossRush
 
         private static void TryApplyZombieModeTriggerLifesteal(CharacterMainControl player, ZombieModeOptionRuntimeState options)
         {
-            if (options.TriggerLifestealChancePercent <= 0 || player == null || player.Health == null) return;
+            if (options.TriggerLifestealChancePercent <= 0 || player == null || player.Health == null)
+            {
+                return;
+            }
+
             int chance = Mathf.Min(ZombieModeLifestealChanceCapPercent, options.TriggerLifestealChancePercent);
             if (UnityEngine.Random.value <= chance / 100f)
+            {
                 player.Health.AddHealth(Mathf.Max(1, options.TriggerLifestealHealAmount));
+            }
         }
 
         private void TriggerZombieModeDoomPulse(int runId, int stacks)
@@ -298,8 +306,7 @@ namespace BossRush
 
         private void GrantZombieModeAmmoRainSupply(int amount)
         {
-            string caliber = ResolveZombieModeSupplyAmmoCaliber();
-            if (!string.IsNullOrEmpty(caliber) && TryGiveZombieModeStarterAmmo(caliber, amount))
+            if (TryGiveZombieModeSupplyAmmo(amount))
             {
                 return;
             }

@@ -105,6 +105,14 @@ namespace BossRush
                 + ",replay_scope=" + (BossRushCoop.IsConnected ? "l2_personal_receipt" : "official_event");
             completed(settled, metrics, settled ? null : "extraction_settlement_or_idempotency_failed");
         }
+#if BOSSRUSH_DEV
+        // MODE_ZOMBIE_REWARD_FIXES：判据与取数在 F3GameplayValidationReviewFixes.cs 的 ZombieModeRuntimeModule 分部里
+        internal bool ValidationCheckZombieRewardFixes(out string metrics, out string reason)
+        {
+            if (owner == null || !owner.IsZombieModeActive) { metrics = string.Empty; reason = "zombie_not_active"; return false; }
+            return ValidationCheckRewardFixes(out metrics, out reason);
+        }
+#endif
     }
 
     internal sealed partial class F3GameplayValidationRunner

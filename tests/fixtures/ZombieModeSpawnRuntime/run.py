@@ -47,6 +47,7 @@ def main():
     damage_raw = damage_path.read_bytes()
     production = 'using System; using System.Collections.Generic; using Pathfinding; using UnityEngine; using UnityEngine.AI; using Duckov.Buffs; using Cysharp.Threading.Tasks;\nnamespace BossRush { internal sealed partial class ZombieModeRuntimeModule {\n'
     production += '\n'.join(member(text, signature) for signature in signatures)
+    # 由近到远扫与同帧失败记忆用到的字段、排序结构（2026-10-17 J-Lab 掉帧）。
     production += '\n' + member(text, 'private struct ZombieModeSpawnScanEntry')
     production += '\n' + member(text, 'private static int CompareZombieModeSpawnScanEntries(')
     fields = [line.strip() for line in text.splitlines()

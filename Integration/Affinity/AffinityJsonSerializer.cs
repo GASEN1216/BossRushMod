@@ -58,7 +58,8 @@ namespace BossRush
             SimpleJsonHelper.AppendString(sb, "marriageDateText", data.marriageDateText ?? string.Empty);
             SimpleJsonHelper.AppendInt(sb, "cheatingIncidentCount", data.cheatingIncidentCount);
             SimpleJsonHelper.AppendBool(sb, "hasPendingCheatingRebuke", data.hasPendingCheatingRebuke);
-            SimpleJsonHelper.AppendInt(sb, "lastDecayCheckDay", data.lastDecayCheckDay, addComma: false);
+            SimpleJsonHelper.AppendInt(sb, "lastDecayCheckDay", data.lastDecayCheckDay);
+            SimpleJsonHelper.AppendString(sb, "shopStockTokens", data.shopStockTokens ?? string.Empty, addComma: false);
             sb.Append('}');
         }
 
@@ -76,7 +77,7 @@ namespace BossRush
                 bool value;
                 if (entry.GetProperty(key) != null && !entry.TryGetBool(key, out value)) return null;
             }
-            foreach (string key in new[] { "npcId", "interactionHistoryDays", "triggeredEventKeys", "claimedRewardKeys", "marriageDateText" })
+            foreach (string key in new[] { "npcId", "interactionHistoryDays", "triggeredEventKeys", "claimedRewardKeys", "marriageDateText", "shopStockTokens" })
             {
                 string value;
                 if (entry.GetProperty(key) != null && !entry.TryGetString(key, out value)) return null;
@@ -99,7 +100,8 @@ namespace BossRush
                 marriageDateText = entry.GetString("marriageDateText", string.Empty),
                 cheatingIncidentCount = entry.GetInt("cheatingIncidentCount", 0),
                 hasPendingCheatingRebuke = entry.GetBool("hasPendingCheatingRebuke", false),
-                lastDecayCheckDay = entry.GetInt("lastDecayCheckDay", -1)
+                lastDecayCheckDay = entry.GetInt("lastDecayCheckDay", -1),
+                shopStockTokens = entry.GetString("shopStockTokens", string.Empty)
             };
         }
     }

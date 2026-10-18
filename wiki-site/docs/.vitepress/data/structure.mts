@@ -325,6 +325,16 @@ export const CATEGORIES: WikiCategory[] = [
         tagEn: 'Totem',
       },
       {
+        path: '/equipment/pass-the-bomb',
+        zh: '甩锅许可证',
+        en: 'License to Pass the Buck',
+        icon: 'cat-equipment',
+        blurbZh: '五秒炸弹随攻击转手，小心对方把锅甩回来',
+        blurbEn: 'A five-second bomb follows each hit; watch for the return pass',
+        tagZh: '图腾',
+        tagEn: 'Totem',
+      },
+      {
         path: '/equipment/reload-metronome',
         zh: '钟守节拍器',
         en: "Bell Keeper's Metronome",

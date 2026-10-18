@@ -315,7 +315,8 @@ def main():
     ordered(open_crafting, ["SkyIslandFieldcraftRules.Unlocked(recipe, story.Current)", "SkyIslandFieldcraftRules.LockedLabel(recipe)",
                             "continue;", "fieldcraft.Craft(recipe, out message)"], "合成面板把还不会做的配方写明要等什么")
     compass = need_body(world, "internal string CompassReading(Vector3 from)", "罗盘读数")
-    ordered(compass, ["SkyIslandMapMarkers.SideTargets(story.Current)", "SkyIslandLights.UnlitMarkers(story.Current)",
+    # 2026-10-17：可选目标经 CompassSideTargets（SkyIslandWorldStoryEcho.cs）读 SideTargets，只是在这一趟引不了风时跳过双航标门。
+    ordered(compass, ["NearestMarker(CompassSideTargets(), from)", "SkyIslandLights.UnlitMarkers(story.Current)",
                       "fieldcraft.TryNearestUnharvested(SkyIslandGatherKind.Crystal"],
             "罗盘在主线支线之后指还缺灯的地方与没采的风晶簇")
 

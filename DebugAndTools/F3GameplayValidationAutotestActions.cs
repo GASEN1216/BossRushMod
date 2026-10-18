@@ -565,7 +565,7 @@ namespace BossRush
             // on 强制夜里、off 关掉、restore 回到开跑前的值（快照里记着）。
             string mode = Arg(args, 0);
             SkyIslandNight.DevForceNight = mode == "on" || (mode == "restore" && original);
-            record.Notes.Add("force_night=" + SkyIslandNight.DevForceNight);
+            record.Notes.Add("force_night=" + SkyIslandNight.DevForceNight + ",night_volume=" + SyncAutotestNightVolume(mode == "on"));
         }
 
         /// <summary><c>give:TypeID:件数</c> 发进背包；<c>give_if_missing</c> 只补到背包顶层有这么多件（不重复发纪念品）。</summary>

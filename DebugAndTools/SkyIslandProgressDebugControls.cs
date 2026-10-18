@@ -33,7 +33,7 @@ namespace BossRush
             panel.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             Label(panel.transform, L10n.T("天空岛进度", "Sky Islands progress"), 24, 38);
             Label(panel.transform,
-                L10n.T("把当前存档的天空岛剧情和任务清回新档，从 Jeff 的「云上的坐标」重新开始。背包和仓库里的物品不动。请在基地按。",
+                L10n.T("把当前存档的天空岛剧情和任务清回新档，从杰夫的「云上的坐标」重新开始。背包和仓库里的物品不动。请在基地按。",
                     "Reset this save's Sky Islands story and quests to a fresh start, beginning again with Jeff's Coordinates Above the Clouds. Items in your backpack and storage are kept. Use it at base."),
                 18, 62);
 
@@ -91,7 +91,7 @@ namespace BossRush
             Debug.Log("[SkyIsland] F3_STORY_RESET ok=" + ok + " detail=" + detail);
             if (ok)
             {
-                report(L10n.T("天空岛剧情和任务已清空，去找 Jeff 重新开始。", "Sky Islands story and quests reset. Talk to Jeff to start over."), false);
+                report(L10n.T("天空岛剧情和任务已清空，去找杰夫重新开始。", "Sky Islands story and quests reset. Talk to Jeff to start over."), false);
                 return;
             }
             report(detail == "on_island"

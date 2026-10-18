@@ -119,32 +119,85 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 等级解锁说明。只用于升级横幅展示，不驱动任何实际解锁。
+        /// 等级解锁说明（商店 + 好感剧情节点）。只用于升级横幅与好感页展示，不驱动任何实际解锁。
+        /// 按语言缓存：切语言后重建，避免把文案锁在旧语言。
         /// </summary>
         public Dictionary<int, string[]> UnlocksByLevel
         {
             get
             {
-                if (_unlocksByLevel == null)
+                bool chinese = L10n.IsChinese;
+                if (_unlocksByLevel == null || chinese != _unlocksChinese)
                 {
-                    _unlocksByLevel = new Dictionary<int, string[]>();
-                }
-                if (ShopEnabled)
-                {
-                    // 升级横幅取用时解析语言，避免蓝图首次载入后把文案锁在旧语言。
-                    _unlocksByLevel[ShopUnlockLevel] = new[] { ShopName };
+                    _unlocksChinese = chinese;
+                    _unlocksByLevel = BuildUnlocksByLevel();
                 }
                 return _unlocksByLevel;
             }
         }
 
+        private bool _unlocksChinese;
+
+        private Dictionary<int, string[]> BuildUnlocksByLevel()
+        {
+            Dictionary<int, List<string>> byLevel = new Dictionary<int, List<string>>();
+            if (ShopEnabled)
+            {
+                AddUnlock(byLevel, ShopUnlockLevel, ShopName);
+            }
+            PermanentDuckNpcStoryEvent[] stories = _data != null ? _data.StoryEvents : null;
+            if (stories != null)
+            {
+                for (int i = 0; i < stories.Length; i++)
+                {
+                    AddUnlock(byLevel, stories[i].level, GetStoryTitle(stories[i]));
+                }
+            }
+
+            Dictionary<int, string[]> result = new Dictionary<int, string[]>(byLevel.Count);
+            foreach (KeyValuePair<int, List<string>> entry in byLevel)
+            {
+                result[entry.Key] = entry.Value.ToArray();
+            }
+            return result;
+        }
+
+        private static void AddUnlock(Dictionary<int, List<string>> byLevel, int level, string text)
+        {
+            List<string> list;
+            if (!byLevel.TryGetValue(level, out list))
+            {
+                list = new List<string>();
+                byLevel[level] = list;
+            }
+            list.Add(text);
+        }
+
+        /// <summary>剧情节点名；蓝图没写标题时退回「名字的故事」。</summary>
+        internal string GetStoryTitle(PermanentDuckNpcStoryEvent story)
+        {
+            if (story != null && !string.IsNullOrEmpty(story.titleCn))
+            {
+                return story.Title;
+            }
+            return DisplayName + L10n.T("的故事", "'s Story");
+        }
+
+        /// <summary>蓝图数据（剧情播放器取台词用）。可能为 null。</summary>
+        internal PermanentDuckNpcData Data
+        {
+            get { return _data; }
+        }
+
         /// <summary>
-        /// 永久 NPC 商店按物品原价出售，暂不附加好感折扣。
+        /// 好感折扣表：来自蓝图 permanent.shop.discountsByLevel；没有商店或没配折扣时为空（原价）。
+        /// 升级横幅按这张表显示「N% 折扣」，商店按 GetDiscountForLevel 取当前等级的最高一档。
         /// </summary>
         public Dictionary<int, float> DiscountsByLevel
         {
             get
             {
+                if (ShopEnabled) return _data.shop.discountsByLevel;
                 if (_discountsByLevel == null)
                 {
                     _discountsByLevel = new Dictionary<int, float>();
@@ -182,7 +235,15 @@ namespace BossRush
             return ShopEnabled ? new List<ShopItemEntry>(_data.shop.items) : new List<ShopItemEntry>();
         }
 
-        public float GetDiscountForLevel(int level) { return 0f; }
+        public float GetDiscountForLevel(int level)
+        {
+            float discount = 0f;
+            foreach (var kvp in DiscountsByLevel)
+            {
+                if (level >= kvp.Key && kvp.Value > discount) discount = kvp.Value;
+            }
+            return discount;
+        }
 
         // ====================================================================
         // INPCGiftConfig

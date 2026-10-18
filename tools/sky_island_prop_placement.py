@@ -33,7 +33,7 @@ MARKER_CLEAR = {'search': 1.4, 'point_of_interest': 1.6, 'spawn': 2.0, 'extracti
 DERIVED_RUNTIME_KINDS = {'patrol_slot'}
 SOFT_BLOCKING = {'bridge_mouth', 'doorway', 'search', 'lamp', 'runtime_loot_crate', 'runtime_bounty_crate',
                  'runtime_memorial_stake', 'runtime_hearth', 'runtime_gather_node', 'runtime_search_point',
-                 'runtime_bridge_sign_post', 'runtime_story_gate'}
+                 'runtime_bridge_sign_post', 'runtime_point_sign', 'runtime_story_gate'}
 
 
 def corners(bounds):

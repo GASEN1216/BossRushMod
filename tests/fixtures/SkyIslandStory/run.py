@@ -32,7 +32,22 @@ generated = OUT / "PreludeGenerated.cs"
 marker_path = ROOT / "SkyIsland/SkyIslandMapMarkers.cs"
 marker_source = marker_path.read_text(encoding="utf-8-sig")
 marker_methods = [method(marker_source, signature) for signature in
-                  ("internal static IEnumerable<string> ObjectiveTargets(", "internal static IEnumerable<string> SideTargets(")]
+                  ("internal static IEnumerable<string> ObjectiveTargets(", "internal static IEnumerable<string> SideTargets(",
+                   "internal static string ContactTask(", "internal static string TargetTask(",
+                   "internal static string SideTask(", "private static string ObjectiveLabel(", "private static string SideLabel(")]
+# 剧情指引全状态矩阵（SkyIslandGuidanceMatrixRegression）要读地图圈上的字：两个私有标签函数改成 internal，正文逐字不动。
+marker_methods = [m.replace("private static string", "internal static string", 1) for m in marker_methods]
+gates_path = ROOT / "SkyIsland/SkyIslandGates.cs"
+gate_notice = method(gates_path.read_text(encoding="utf-8-sig"),
+                     "private static string Notice(string id, bool open, SkyIslandStoryData story)").replace("private static", "internal static", 1)
+echo_path = ROOT / "SkyIsland/SkyIslandWorldStoryEcho.cs"
+gate_compass = method(echo_path.read_text(encoding="utf-8-sig"), "private string GateCompassTask()").replace("private string", "internal string", 1)
+labels_path = ROOT / "SkyIsland/SkyIslandSessionLabels.cs"
+labels_source = labels_path.read_text(encoding="utf-8-sig")
+region_methods = [method(labels_source, signature).replace("private static", "internal static", 1) for signature in
+                  ("internal static string RegionLabel(string id)", "private static string MainRegionLabel(char region)",
+                   "private static string MainRegionCn(char region)", "private static string MainRegionEn(char region)")]
+world_files = sorted((ROOT / "SkyIsland").glob("SkyIslandWorldStory*.cs"))
 world_path = ROOT / "SkyIsland/SkyIslandWorldStory.cs"
 world_source = world_path.read_text(encoding="utf-8-sig")
 reward_path = ROOT / "SkyIsland/SkyIslandWorldStoryRewards.cs"
@@ -54,6 +69,19 @@ retry_lines = re.findall(r"^        +if \(keepsakesPending && Time\.unscaledTime
 assert len(retry_lines) == 1, "生产纪念品重试入口必须唯一"
 keepsake_methods = [method(reward_source, signature) for signature in
                     ("private void GrantKeepsakes()", "private void WarnKeepsakePending(string reason)")]
+# 面板按钮名逐字取生产文件：指引里「」/'' 引着的选项名必须能在按钮上找到原词（SkyIslandGuidanceMatrixRegression）。
+button_token = re.compile(r"AddIf\(choices,|Choice\(|Challenge\(|ServiceChoice\(choices,")
+button_stop = re.compile(r"delegate|SkyIslandStoryAction\.|\"BellKeeper\"|\"Zheling\"|\(\) =>|\),\s*\w+\);")
+button_pair = re.compile(r'L10n\.T\("([^"\\]*)",\s*"([^"\\]*)"\)')
+buttons = []
+for world_file in world_files:
+    world_text = world_file.read_text(encoding="utf-8-sig")
+    for hit in button_token.finditer(world_text):
+        window = world_text[hit.end():hit.end() + 400]
+        cut = button_stop.search(window)
+        for pair in button_pair.findall(window[:cut.start()] if cut else window):
+            if pair not in buttons: buttons.append(pair)
+assert len(buttons) >= 15, "按钮名抽取过少：" + str(len(buttons))
 sys.path.insert(0, str(ROOT / "tests/fixtures"))
 from sky_island_asset_collectors import generate_asset_collectors
 generate_asset_collectors(ROOT, OUT)
@@ -61,6 +89,11 @@ generated.write_text("using System; using System.Collections.Generic; using Unit
                      "namespace BossRush { internal sealed partial class SkyIslandPreludeFlow {\n"
                      + "\n".join(methods) + "\n}\n"
                      + "internal static class SkyIslandMapMarkers {\n" + "\n".join(marker_methods) + "\n}\n"
+                     + "internal static class SkyIslandGateNoticeHarness {\n" + gate_notice + "\n}\n"
+                     + "internal static class SkyIslandRegionLabelHarness {\n" + "\n".join(region_methods) + "\n}\n"
+                     + "internal sealed class SkyIslandGateCompassHarness {\ninternal SkyIslandStoryService story;\n" + gate_compass + "\n}\n"
+                     + "internal static class SkyIslandGuidanceLabels {\ninternal static readonly string[][] Buttons = {\n"
+                     + ",\n".join('new[] { "' + zh + '", "' + en + '" }' for zh, en in buttons) + "\n};\n}\n"
                      + "internal sealed partial class SkyIslandFeedbackHarness {\n" + "\n".join(feedback_fields)
                      + "\n" + method(world_source, "private void RebuildFeedback()") + "\n}\n"
                      + "internal sealed partial class SkyIslandKeepsakeHarness {\n" + "\n".join(keepsake_fields)
@@ -69,7 +102,7 @@ generated.write_text("using System; using System.Collections.Generic; using Unit
                      + "}\n", encoding="utf-8")
 (OUT / "navigation-feedback-source-sha256.txt").write_text("\n".join(
     str(path.relative_to(ROOT)) + " " + hashlib.sha256(path.read_bytes()).hexdigest()
-    for path in (marker_path, world_path, reward_path)), encoding="utf-8")
+    for path in [marker_path, reward_path, gates_path, labels_path] + world_files), encoding="utf-8")
 (OUT / "prelude-source-sha256.txt").write_text(hashlib.sha256(source_path.read_bytes()).hexdigest() + "\n", encoding="utf-8")
 sys.path.insert(0, str(ROOT / "tools"))
 from run_runtime_regressions import run_project_fixture

@@ -3,7 +3,7 @@ from pathlib import Path
 import hashlib
 import json
 import re
-import sys
+import subprocess
 from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -34,12 +34,11 @@ def main():
 
     grants = read('ZombieModeRewardItemGrants.cs')
     rewards = read('ZombieModeRewards.cs')
-    tuning = read('ZombieModeTuning.cs')
     source = ('using System; using System.Collections.Generic; using UnityEngine; using Duckov.Utilities; using ItemStatsSystem;\n'
               'namespace BossRush { internal sealed partial class ZombieModeRuntimeModule {\n')
     for signature in ('private bool TryGiveZombieModeAmmo(', 'private int PickZombieModeAmmoTypeForCaliber(',
                       'private int[] SearchZombieModeAmmo(', 'private static int GetZombieModeItemQuality(',
-                      'private string ResolveZombieModeSupplyAmmoCaliber(', 'internal string TryReadZombieModeItemCaliber('):
+                      'internal static bool IsZombieModeAttributeBonusAtCap('):
         source += member(grants, signature) + '\n'
     constants = re.findall(r'^        private const int ZombieModeAmmoAnyQualityMax = \d+;', grants, re.M)
     assert len(constants) == 1, constants
@@ -48,10 +47,7 @@ def main():
         source += member(rewards, signature) + '\n'
     tags = re.findall(r'^        internal static readonly string\[\] ZombieModeRewardTag(?:Ammo|Bullet) = [^\n]+;', rewards, re.M)
     assert len(tags) == 2, tags
-    source += '\n'.join(tags) + '\n}'
-    minimum = re.findall(r'^            public const int HeavyAmmoMinimumRounds = \d+;', tuning, re.M)
-    assert len(minimum) == 1, minimum
-    source += 'internal static class ZombieModeTuning {' + minimum[0] + '}}'
+    source += '\n'.join(tags) + '\n}}'
     generated = OUT / 'Production.cs'
     generated.write_text(source, encoding='utf-8')
     (OUT / 'production-sha256.json').write_text(json.dumps(hashes, indent=2), encoding='utf-8')
@@ -61,11 +57,7 @@ def main():
     project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework>'
                        '<LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649</NoWarn>'
                        '</PropertyGroup><ItemGroup>' + includes + '</ItemGroup></Project>', encoding='utf-8')
-    sys.path.insert(0, str(ROOT / 'tools'))
-    from run_runtime_regressions import run_project_fixture
-    code, output = run_project_fixture(project, OUT / 'runs', ROOT)
-    print(output)
-    return code
+    return subprocess.call(['dotnet', 'run', '--project', str(project), '--configuration', 'Release'], cwd=ROOT)
 
 
 if __name__ == '__main__':

@@ -47,6 +47,9 @@ def validate(root):
     require('if(!IsBuildingAreaLoaded())return;try{Showcase[]showcases=' in scanner
             and 'UnityEngine.Object.FindObjectOfType<BuildingArea>(true)!=null' in scanner,
             'ShowcaseDisplayScanner: 未加载官方建筑区的基地子场景不得用空快照覆盖陈列')
+    require('if(!inBaseScene||!unlocked)return;if(!IsBuildingAreaLoaded())return;' in scanner
+            and 'FindObjectOfType<BuildingArea>(true)!=null' in scanner,
+            'ShowcaseDisplayScanner: 官方建筑区未加载（下水道子场景）时不得用空扫描覆盖陈列与生命加成')
 
     runtime = compact(read('Integration/BackMountain/BackMountainRuntimeModule.cs'))
     require('RaidUtilities.OnRaidEnd+=HandleRaidEnded;' in runtime

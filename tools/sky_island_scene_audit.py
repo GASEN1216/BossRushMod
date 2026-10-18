@@ -48,7 +48,7 @@ MIN_AREA = 0.01
 # 花草也要让开的净空（与 tools/sky_island_prop_placement.py 的 SOFT_BLOCKING 同一口径）。
 SOFT_ZONE_KINDS = {'bridge_mouth', 'doorway', 'search', 'lamp', 'runtime_loot_crate', 'runtime_bounty_crate',
                    'runtime_memorial_stake', 'runtime_hearth', 'runtime_gather_node', 'runtime_search_point',
-                   'runtime_bridge_sign_post', 'runtime_story_gate'}
+                   'runtime_bridge_sign_post', 'runtime_point_sign', 'runtime_story_gate'}
 
 # 这些是「面」而不是「东西」：路、广场铺装、贴地细节、地面。
 SURFACE_KINDS = {'road', 'paving'}

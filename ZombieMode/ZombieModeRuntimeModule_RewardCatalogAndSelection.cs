@@ -326,7 +326,8 @@ namespace BossRush
                 string attributeKey = GetZombieModeAttributeKey(rewardType);
                 if (!string.IsNullOrEmpty(attributeKey) && runState.AttributeBonuses.TryGetValue(attributeKey, out currentBonus))
                 {
-                    if (currentBonus >= GetZombieModeAttributeCap(rewardType) - 0.0001f)
+                    // 到上限后再选一点也不加，留在池里只会白占一个选项格（玩家反馈 2026-10-17：远程伤害满 100% 还在出）。
+                    if (IsZombieModeAttributeBonusAtCap(currentBonus, GetZombieModeAttributeCap(rewardType)))
                     {
                         return;
                     }
