@@ -2,6 +2,12 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+## 2026-10-18 v2.3.6 发版准备（COMPAT / OPERATIONAL，L1/L2；本轮修复的 F3 核对 L3 见下一节，未推送）
+
+- `info.ini` 2.3.5 → 2.3.6（不进 git，已手动拷进游戏目录）；WikiContent 中英 `changelog__v2_3_6`、`catalog.tsv` 插行并顺延 order、两份 `changelog__highlights`；上一级目录 `a.md` / `b.md` 换成 v2.3.6 + v2.3.5 两段、链接指向 v2.3.6，`workshop_description_budget.py` 6950 / 7577（上限 7700）。
+- 正式构建部署：游戏目录 `BossRush.dll` 与 `Build/` 同为 `E7E5DDD65D3412D335A6CAB35E80EC44F7316329CC3BFA5F817BB50896A7BFDB`，`check_dll_identifiers.py --expect absent` 14 个 Dev 标识全无，本轮新加的 F3 字符串也不在；游戏目录 WikiContent 已含 v2.3.6。
+- 验证：全量守卫 747/747、全量执行回归 130/130、Wiki 站点构建通过（顺带的 8 份仅换行差异已还原）。push 与创意工坊发布待 owner。
+
 ## 2026-10-18 v2.3.5 之后五个提交审查：CR-2026-10-18-001～022 全部修复（COMPAT / OPERATIONAL，L1/L2，未提交、未部署、未实机）
 
 审查结论与锚点见 `CODE_REVIEW_FINDINGS.md` 同日节。owner 要求全部修复，钻戒限量与官方存档键两条授权「好玩优先自己定」。

@@ -1,0 +1,32 @@
+## v2.3.6
+
+### Release Date
+- 2026-10-18
+- This update focuses on NPC affinity and the Relic Nest: your inventory has a new Affinity tab, nine NPCs now have affinity stories at levels 3/5/8/10, NPC shop stock is saved with your game, and the Relic Nest's expeditions, scars, hatching and museum have all been reworked. A few player-reported issues in Zombie Mode and From Scratch are fixed too.
+
+### Added
+
+- **Affinity tab**: open your inventory and the leftmost tab is now Affinity. It lists each NPC's hearts, level progress, whether you have chatted or given a gift today, and what each level unlocks.
+- **Affinity stories**: each of the seven custom NPCs has four stories at levels 3/5/8/10 that play when you chat with them after reaching the level; some come with a small gift. Dingdang gains level 3 and level 8 stories.
+- **Favorites and Hatch All in the Relic Nest**: mark cubs as favorites (favorites can't be released or sent on the lethal tier), and when you have two or more hatchable eggs, hatch them all at once with a single reveal.
+- **Treat scars with relic souls**: spend 40 souls of the same lineage in the nest page to heal a cub's oldest scar.
+- **Full museum lineage**: unseen lineages now show as silhouettes, every cell opens a detail view, and a taming achievements section was added.
+
+### Improved
+
+- **NPC shop stock is saved**: reopening a shop no longer refills it; stock restocks once per in-game day. Dingdang sells one Diamond Ring at a time: no restock while you're married; while single, one restocks 3 in-game days after the last, so you can still buy one to propose after a divorce or a lost ring.
+- **Gentler affinity decay**: 10 points per idle day (was 15), never below the level of the highest story you have seen, and spouses stay at level 10; next time you chat, you're told how much was lost in total.
+- **Fuzhou and the Bell Keeper give shop discounts**: the higher the affinity, the cheaper, up to 20% off.
+- **Expeditions**: up to 2 teams at once, +1 each at 10 and 20 lineages in the codex (max 4); the safe tier's success rate rises to 85%; element affinities are filled in for all three destinations, and the expedition page shows the cub's element.
+- **Relic Nest feel**: selecting, switching tabs, progress bars and numbers now animate; hatch reveals foreshadow and sound by rarity; expedition results can be flipped right inside the nest.
+- **Zombie Mode**: spawn-point searches are cheaper and stuck Bosses are no longer re-checked every frame, reducing stutter on maps like the lab; a random RPG comes with rockets; Ammo Supply and Ammo rain match the gun in your hands.
+
+### Fixed
+
+- Fixed maxed-out attributes still appearing in Zombie Mode's pick-three (including damage reduction after reaching 40%).
+- Fixed the Zombie Mode merchant's "next purchase guaranteed high quality" being used up on low-quality ammo when your gun has no ammo of that quality.
+- Fixed cubs barely hurting Stalwart and Adaptive elites in Zombie Mode: those affixes now only apply to the player.
+- Fixed Bosses possibly spawning in the first two waves of From Scratch.
+- Fixed the Affinity tab labeling Yu Zhi's healing discount as a shop discount.
+- Fixed a cub that just returned and was sent out again still showing "Back from the expedition" in the nest; the nest no longer offers "Send on expedition" when all teams are out.
+- Fixed a cub's size snapping back to its pre-level-up size when it leveled right after being petted.
