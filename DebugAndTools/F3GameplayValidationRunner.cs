@@ -503,6 +503,10 @@ namespace BossRush
             RunSyncCase("SKY_OFFICIAL_NOTES_BASE", ValidateSkyIslandOfficialNotesAtBase);
             RunSyncCase("SKY_KEEPSAKE_ITEMS_BASE", ValidateSkyIslandKeepsakesAtBase);
             yield return RunPublishedItemCases();
+#if BOSSRUSH_DEV
+            // 2026-10-18 审查修复的基地侧核对（F3GameplayValidationReviewFixes.cs）：内存改动当帧还原，不写存档
+            RunReviewFixBaseCases();
+#endif
 
             SetStage("3/7 后山与经济");
             yield return RunBaseEconomyCases();

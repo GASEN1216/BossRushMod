@@ -17,10 +17,11 @@ namespace BossRush
         /// 摘掉官方 StockShop.Awake 挂的存档回调（OnCollectSaveData += Save、OnSetFile += Load）。
         /// 库存只记在好感存档里，官方 Save 只会往存档写一条 Mod 不读的 StockShop_BossRushNpc_* 键（审查 CR-2026-10-18-012）。
         /// 官方 OnDestroy 再退订一次是空操作。反射找不到方法时只记日志，退回原行为（merchantID 已换成 Mod 命名空间）。
+        /// F3 验收用临时商店走同一个方法（NPC_SHOP_OFFICIAL_SAVE_HOOKS）。
         /// </summary>
-        private static void DetachOfficialShopSaveHooks()
+        internal static bool DetachOfficialShopSaveHooks(StockShop shop)
         {
-            if (currentShop == null) return;
+            if (shop == null) return false;
             try
             {
                 if (officialShopSaveMethod == null)
@@ -30,15 +31,23 @@ namespace BossRush
                 if (officialShopSaveMethod == null || officialShopLoadMethod == null)
                 {
                     ModBehaviour.DevLog("[NPCShop] [WARNING] StockShop.Save / Load 反射缺失，官方存档回调未摘除");
-                    return;
+                    return false;
                 }
-                Saves.SavesSystem.OnCollectSaveData -= (Action)Delegate.CreateDelegate(typeof(Action), currentShop, officialShopSaveMethod);
-                Saves.SavesSystem.OnSetFile -= (Action)Delegate.CreateDelegate(typeof(Action), currentShop, officialShopLoadMethod);
+                Saves.SavesSystem.OnCollectSaveData -= (Action)Delegate.CreateDelegate(typeof(Action), shop, officialShopSaveMethod);
+                Saves.SavesSystem.OnSetFile -= (Action)Delegate.CreateDelegate(typeof(Action), shop, officialShopLoadMethod);
+                return true;
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[NPCShop] [WARNING] 摘除官方商店存档回调失败: " + e.Message);
+                return false;
             }
+        }
+
+        /// <summary>开店时玩家是否已婚（钻石戒指已婚不补货）；CreateShop 与 F3 验收共用。</summary>
+        internal static bool IsPlayerMarriedForShop()
+        {
+            return !string.IsNullOrEmpty(AffinityManager.GetCurrentSpouseNpcId());
         }
 
         private static MethodInfo officialShopSaveMethod;

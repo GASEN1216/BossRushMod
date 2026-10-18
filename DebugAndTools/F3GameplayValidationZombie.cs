@@ -42,6 +42,15 @@ namespace BossRush
             if (!settled) reason = "extraction_settlement_or_idempotency_failed";
             return settled;
         }
+#if BOSSRUSH_DEV
+        // MODE_ZOMBIE_REWARD_FIXES：判据与取数在 F3GameplayValidationReviewFixes.cs 的 ZombieModeRuntimeModule 分部里
+        internal bool ValidationCheckZombieRewardFixes(out string metrics, out string reason)
+        {
+            ZombieModeRuntimeModule runtime = zombieModeHostLifecycle.Runtime;
+            if (runtime == null || !IsZombieModeActive) { metrics = string.Empty; reason = "zombie_not_active"; return false; }
+            return runtime.ValidationCheckRewardFixes(out metrics, out reason);
+        }
+#endif
     }
 
     internal sealed partial class F3GameplayValidationRunner

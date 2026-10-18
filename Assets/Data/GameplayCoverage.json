@@ -465,7 +465,8 @@
       ],
       "automatic": [
         "MODE_ZOMBIE_LIFECYCLE",
-        "MODE_ZOMBIE_EXTRACTION"
+        "MODE_ZOMBIE_EXTRACTION",
+        "MODE_ZOMBIE_REWARD_FIXES"
       ],
       "wiki": [
         "mode__zombie_mode"
@@ -712,7 +713,13 @@
       ],
       "automatic": [
         "PETNEST_BUNDLE_V2",
-        "PETNEST_REWARD_DEBT"
+        "PETNEST_REWARD_DEBT",
+        "PETNEST_HATCH_ALL_PLAN",
+        "PETNEST_DETAIL_ACTIVE_EXPEDITION",
+        "PETNEST_DETAIL_SLOTS_FULL",
+        "PETNEST_DETAIL_SCAR_PRICE",
+        "PETNEST_PULSE_REBASE",
+        "PETNEST_MUSEUM_ACHIEVEMENT_FRAME"
       ],
       "wiki": [
         "system__pet_nest"
@@ -856,7 +863,12 @@
         "Integration/Wedding",
         "Integration/NPCs/Common"
       ],
-      "automatic": [],
+      "automatic": [
+        "AFFINITY_RING_RESTOCK_MARRIAGE",
+        "AFFINITY_TAB_NURSE_DISCOUNT",
+        "AFFINITY_DECAY_NOTICE_ACCUMULATE",
+        "NPC_SHOP_OFFICIAL_SAVE_HOOKS"
+      ],
       "wiki": [
         "npc__affinity_and_marriage"
       ],
@@ -1686,6 +1698,7 @@
         "CLEANUP_AFTER_VICTORY_REWARD",
         "CLEANUP_AFTER_ZOMBIE",
         "CLEANUP_AFTER_ZOMBIE_EXTRACTION",
+        "CLEANUP_AFTER_ZOMBIE_REWARD_FIXES",
         "COVERAGE_MANIFEST",
         "FINAL_5S",
         "FINAL_CLEAN_STATE",

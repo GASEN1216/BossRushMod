@@ -380,7 +380,7 @@ namespace BossRush
             }
 
             ConfigureShopIdentity(npcId);
-            DetachOfficialShopSaveHooks();
+            DetachOfficialShopSaveHooks(currentShop);
 
             // 配置商品
             ConfigureShopEntries(npcId);
@@ -546,7 +546,7 @@ namespace BossRush
                 ? null
                 : NPCShopStockLedger.Parse(AffinityManager.GetShopStockTokens(npcId));
             int currentDay = NPCGiftSystem.GetCurrentGameDay();
-            bool playerMarried = !string.IsNullOrEmpty(AffinityManager.GetCurrentSpouseNpcId());
+            bool playerMarried = IsPlayerMarriedForShop();
 
             foreach (var item in items)
             {

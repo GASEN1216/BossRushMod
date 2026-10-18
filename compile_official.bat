@@ -335,6 +335,7 @@ echo(DebugAndTools\F3GameplayValidationSeasons.cs
 echo(DebugAndTools\F3GameplayValidationCoverage.cs
 echo(DebugAndTools\F3GameplayValidationItems.cs
 echo(DebugAndTools\F3GameplayValidationZombie.cs
+echo(DebugAndTools\F3GameplayValidationReviewFixes.cs
 echo(DebugAndTools\F3GameplayValidationModeHKits.cs
 echo(DebugAndTools\F3GameplayValidationModeHErrorSwap.cs
 echo(DebugAndTools\F3GameplayValidationScenes.cs
