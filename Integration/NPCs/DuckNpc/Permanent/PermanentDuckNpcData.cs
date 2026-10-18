@@ -105,8 +105,11 @@ namespace BossRush
         /// <summary>可选的好感折扣表（等级 -> 折扣率）；不填即原价。</summary>
         public readonly Dictionary<int, float> discountsByLevel = new Dictionary<int, float>();
 
-        /// <summary>单档折扣上限，防止数据表写成 0.9 这种近乎白送的值。</summary>
-        internal const float MaxDiscountRate = 0.5f;
+        /// <summary>
+        /// 单档折扣上限。买价 = 原价 × (1 - 折扣)、卖价 = 原价 × (0.5 + 折扣 / 2)，折扣超过 1/3 后卖价高于买价，
+        /// 同一家店买进卖出就能刷钱，所以压在 0.30（审查 CR-2026-10-18-013；DuckNpcInvariantGuard 同步）。
+        /// </summary>
+        internal const float MaxDiscountRate = 0.30f;
 
         internal static PermanentDuckNpcShopData Parse(BossRushJsonValue permanent, string blueprintId)
         {

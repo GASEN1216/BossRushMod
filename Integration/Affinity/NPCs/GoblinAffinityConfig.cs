@@ -801,8 +801,9 @@ namespace BossRush
                 new ShopItemEntry(DiamondConfig.TYPE_ID, DIAMOND_UNLOCK_LEVEL, 5),
                 new ShopItemEntry(ColdQuenchFluidConfig.TYPE_ID, COLD_QUENCH_UNLOCK_LEVEL, 5),
                 new ShopItemEntry(TemperingSolventConfig.TYPE_ID, TemperingSolventConfig.SHOP_UNLOCK_LEVEL, TemperingSolventConfig.SHOP_MAX_STOCK),
-                // 钻石戒指：7 级解锁，终身限量 1 枚（库存跟着好感存档，关店重开不再补）
-                new ShopItemEntry(DiamondRingConfig.TYPE_ID, DiamondRingConfig.UNLOCK_LEVEL, 1) { RestockDays = NPCShopStockLedger.LifetimeLimited },
+                // 钻石戒指：7 级解锁，一次 1 枚（库存跟着好感存档，关店重开不再补）。已婚期间不补；
+                // 单身时距上次补货满 3 个游戏日补 1 枚，离婚、戒指丢了也还能再求婚（审查 CR-2026-10-18-004）
+                new ShopItemEntry(DiamondRingConfig.TYPE_ID, DiamondRingConfig.UNLOCK_LEVEL, 1) { RestockDays = 3, RestockOnlyWhenSingle = true },
                 // 词缀熔石：锻造的唯一消耗材料，游戏内 Wiki 承诺「哥布林商店（要好感度）」。
                 // 满级好感后才提供有限补货，前期熔石以 BossRush 掉落为主。
                 new ShopItemEntry(AffixForgeStoneConfig.TYPE_ID, 10, 5),

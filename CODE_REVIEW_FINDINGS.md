@@ -2,6 +2,41 @@
 
 更早记录见 `archive/`；月度归档索引保留在本文件正文。
 
+## 2026-10-18 v2.3.5 之后五个提交审查（001～023 全部 Fixed，COMPAT / OPERATIONAL，L1/L2，L3 待 owner）
+
+范围 `3abfddcc..e25005ee`：`5a835089`、`9f9f9449`、`1170e834`、`c09c53cb`、`e25005ee`。审查时 HEAD 隔离签出 Windows 正式编译 0 错误；全量守卫 747/747；相关执行回归 7 项全过。没有 P0 / P1。下列位置按审查时 HEAD 行号；owner 要求全部修复，钻戒限量与官方存档键两条授权按好玩优先自定。
+
+| ID | 级 / 分类 | 问题 | 位置 |
+| --- | --- | --- | --- |
+| CR-2026-10-18-001 | P2 / COMPAT | 丧尸模式减伤按负数累加，判上限用正数 0.40，满级后仍出卡、选了不加 | `ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs:329`、`ZombieModeRewardItemGrants.cs:534` |
+| CR-2026-10-18-002 | P2 / COMPAT | 商人「下次购买保底 6 品」在该口径没有 6 品弹药时被回退成最低品质弹药并清掉保底 | `ZombieModeRewardItemGrants.cs:653-681`、`ZombieModeRewardNpcServices.cs:183-195` |
+| CR-2026-10-18-003 | P2 / COMPAT（PLAUSIBLE） | 弹药补给 / 弹雨：手上口径发不出弹药时不再退回开局口径，直接发随机弹（是否存在无弹药口径的枪未核实） | `ZombieModeRewardItemGrants.cs:89-99,560-569`、`ZombieModeRewardTriggerEffects.cs:307-318` |
+| CR-2026-10-18-004 | P2 / COMPAT | 钻石戒指终身限 1 枚，离婚不重置，求婚 / 丢失后只能赌许愿池，离婚后基本无法再婚 | `Integration/Affinity/NPCs/GoblinAffinityConfig.cs:805`、`NPCShopStockLedger.cs:96` |
+| CR-2026-10-18-005 | P2 / COMPAT | 好感页对所有 NPC 读 `DiscountsByLevel` 并写「商店折扣」，羽织的治疗折扣被写成商店折扣 | `Integration/Affinity/UI/AffinityTabData.cs:101,195-198` |
+| CR-2026-10-18-006 | P2 / COMPAT | 「全部孵化」每枚蛋各走一次 `RequestAssetFlush(bypassGates)`，一次点击同步整档写盘 N 次 | `PetNest/PetNestHatchService.cs:123-138,156-180` |
+| CR-2026-10-18-007 | P2 / COMPAT | 刚归来未揭晓的崽再派出后，巢页按 petId 取到旧的已结算记录，显示「远征已归来 / 查看结果」 | `PetNest/PetNestUINestPage.cs:265-284,372-380` |
+| CR-2026-10-18-008 | P3 / COMPAT | 弹药区间回退一律取最低品质；请求区间高于可用品质时应取最接近的那档 | `ZombieModeRewardItemGrants.cs:669-681` |
+| CR-2026-10-18-009 | P3 / SAFE | 「按手上的枪配口径」实际是主武器槽优先，没读当前手持 | `ZombieModeRewardNpcServices.cs:210-228` |
+| CR-2026-10-18-010 | P3 / SAFE | 弹药夹具替身降级语义与官方 `Search` 不一致，缺保底 (6,6) 与区间高于可用品质用例 | `tests/fixtures/ZombieModeAmmoSelection/Stubs.cs:84-93` |
+| CR-2026-10-18-011 | P3 / SAFE | 衰减提示直接赋值，未聊天期间第二次衰减覆盖第一次，提示天数 / 扣分偏少 | `Integration/Affinity/AffinityManagerPersistenceAndDecay.cs:118` |
+| CR-2026-10-18-012 | P3 / OPERATIONAL | 动态 `StockShop` 的 `Awake` 已订阅 `SavesSystem.OnCollectSaveData`，商店开着时会写官方存档键 `StockShop_BossRushNpc_<npcId>`（Mod 不读） | `Integration/Affinity/Systems/NPCShopSystem.cs:85-87,776-777` |
+| CR-2026-10-18-013 | P3 / COMPAT | 永久 NPC 折扣上限 0.5 超过低买高卖临界 1/3（现有数据最高 0.20） | `Integration/NPCs/DuckNpc/Permanent/PermanentDuckNpcData.cs:109,172` |
+| CR-2026-10-18-014 | P3 / SAFE | 对话系统吞掉非取消异常后，剧情仍被记成看过并发奖 | `PermanentDuckNpcStoryPlayer.cs:148-150`、`Integration/Dialogue/DialogueManager.cs:424-427` |
+| CR-2026-10-18-015 | P3 / SAFE | 远征队满时巢页仍挂「派去远征」，点进去才被拒 | `PetNest/PetNestUINestPage.cs:326-334` |
+| CR-2026-10-18-016 | P3 / SAFE | 「治一道疤」遗魂不够时不挂、按钮不写价钱，不符合付费服务口径 | `PetNest/PetNestUINestPage.cs:308-324` |
+| CR-2026-10-18-017 | P3 / COMPAT | 摸摸脉冲结束时把体型还原成开始时的值，期间升级的新体型被盖回；曲线用 `Mathf.Sin` | `PetNest/PetNestUIMotionParts.cs:138-172`、`PetNestCompanionCare.cs:265` |
+| CR-2026-10-18-018 | P3 / COMPAT | 远征到期提醒去重集合跨存档槽不清，换槽后同 id 的远征不提醒 | `PetNest/PetNestRuntimeModule.cs:324,340,354-364` |
+| CR-2026-10-18-019 | P3 / COMPAT | 「全部孵化」孵出过一枚后吞掉后续失败原因；写盘失败但已提交的那枚不进揭晓 | `PetNest/PetNestUIPages.cs:546`、`PetNestHatchService.cs:138,175-177` |
+| CR-2026-10-18-020 | P3 / SAFE | 博物馆驯养成就行复用 `Shiny`，给白字标题挂每帧流光 | `PetNest/PetNestUIMuseumPage.cs:222` |
+| CR-2026-10-18-021 | P3 / SAFE | 守卫缺口：三份新 PetNestUI 文件不在分层守卫清单；丧尸反制守卫只断言子串 `IsPlayerOwnHit(`，加 `|| IsPlayerSideAttack` 仍能过 | `tests/PetNestUILayerGuard.py:130-134`、`tests/ZombieModeCompanionCounterplayGuard.py:39-44` |
+| CR-2026-10-18-022 | P3 / SAFE | 页签指示条用 `AccentFill`（应为 `Accent`）；`RollNewPet` 的 summary 错挂到 `TryHatchAll` 头上 | `PetNest/PetNestUIMotion.cs:84`、`PetNestHatchService.cs:148-156` |
+| CR-2026-10-18-023 | P2 / SAFE | 修复阶段全量回归发现：`1170e834` 后 HEAD 上两份执行回归就是红的（当轮只跑了按名过滤的回归）。`ManualSeptemberReview` 抽取的揭晓 / 归巢方法引用新成员却没有替身，编译失败；`IntegrationThirdReviewFixes` 仍断言「崽的远程命中吃刚硬减伤」，与有意改成「反制只认玩家本人」的设计相反 | `tests/fixtures/ManualSeptemberReview/Stubs.cs`、`HomecomingStubs.cs`；`tests/fixtures/IntegrationThirdReviewFixes/ZombieBossCases.cs:235` |
+
+修复闭环（详见 `FIX_TRACKER.md` 同日节）：001 `IsZombieModeAttributeBonusAtCap` 比绝对值；002 / 008 `allowQualityFallback` + 取离区间最近的品质；003 `TryGiveZombieModeSupplyAmmo` 退回开局口径；009 先读 `GetGun()`；010 替身按官方 `DownGradeSearch`、补用例；004（拍板）戒指 `RestockOnlyWhenSingle` + 3 天，已婚不补、单身补；005 羽织标「治疗折扣」；011 衰减提示累加；012（拍板）开店摘掉官方 `Save` / `Load` 回调；013 折扣上限 0.30；014 `DialogueManager.SequenceFailureSerial`；006 / 019 整批单次落盘、部分孵化写原因；007 按 `lockedByExpeditionId` 找本趟；015 队满不挂；016 治疤有疤就挂并写价钱；017 `PetNestPulse.Rebase` + 共享缓动；018 换槽清空、键带出发时间；020 `ShinyFrameOnly`；021 两个守卫补强；022 `Accent` 与 summary 归位；023 补替身、断言随设计更新。为满足大文件预算，`NPCShopSystem` 改 partial，官方商店钩子三方法原样移到 `NPCShopSystemOfficialShopHooks.cs`（已登记编译清单）。
+
+- Refuted：「好感写屏障期间剧情奖励能反复领、钻戒限量守不住」。屏障只在读档失败时保持，反序列化先进候选表、失败不写入，内存好感表为空且加分同样被拦，等级停在 0，到不了 3 级以上剧情与 7 级戒指。
+- UNVERIFIED / Needs runtime smoke：没有 `GameClock` 的场景里 `GameClock.Day` 为 0，可能被当成「日子倒退」补满每日商品；好感页签克隆自笔记按钮，笔记未解锁时是否随模板隐藏、是否带「笔记」悬浮字；好感页根节点盖住 `ViewArea` 是否挡页签栏点击；批量孵化揭晓汇总 9–10 行时是否压住关闭按钮；博物馆首次打开全谱系头像同步加载耗时；白手起家小怪池按实例 ID 正负排除运行时 preset 的假设，以及 Mode E/F 阵营小怪表是否因排除 `isBoss` 变空；平安档现金期望实际上调约 16%（文字口径写的是不变）。
+
 ## 2026-10-13 推送后跨平台门禁修复（Fixed，COMPAT / SAFE，L2）
 
 - CR-2026-10-13-012，P2 / COMPAT：天空岛导航、道路与摆放审计将 Windows CRLF 原字节 SHA 带入公开仓库，Linux LF 签出误报布局/证据过期；生产 `apply_navigation` 同样误拒绝。复用 `sky_island_road_layout` 的纯函数，新签名只统一 CRLF→LF，读取兼容既有原字节、LF 和 CRLF。真实坐标、字段、空白、BOM 与字符串变化仍拒绝；不重写现有地图或审计 JSON。三项旧码在真实 Ubuntu LF 环境均复现，修后两种换行及生产拒绝路径完成反向验证。
@@ -541,6 +576,7 @@ UNVERIFIED 不计入上述六项：嵌套 Sticky 押品需要 `AcceptSticky=true
 
 ## 归档索引
 
+- 2026-09-22 人工实测复核修复交付（12 项均 Fixed / L1+L2，L3 待 owner；2026-10-18 台账满 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-09.md`
 - 2026-09-24 UI 共识对照审查中确认的缺陷（均 Fixed / L1+L2，L3 待 owner） → `archive/CODE_REVIEW_FINDINGS_2026-09.md`
 - 2026-09-23 UI / 交互 / 特效审美审查中确认的缺陷（均 Fixed / L1+L2，L3 待 owner） → `archive/CODE_REVIEW_FINDINGS_2026-09.md`
 - 2026-09-23 人工实测 16 项中确认的缺陷（均 Fixed / L1+L2，L3 待 owner） → `archive/CODE_REVIEW_FINDINGS_2026-09.md`
@@ -718,27 +754,6 @@ UNVERIFIED 不计入上述六项：嵌套 Sticky 押品需要 `AcceptSticky=true
 
 
 <!-- BEGIN UI CONSENSUS AUDIT FINDINGS 2026-09-24 -->
-
-## 2026-09-22 人工实测复核修复交付（COMPAT / OPERATIONAL / SAFE）
-
-原 17 项全面复核中的 12 项 confirmed findings 现均完成离线修复。完整代码锚点、资源证据和人工清单见 [20260922 人工实测复核修复记录](docs/reports/testing/20260922人工实测复核修复记录.md)。原始 17 项仍有 L3 与产品口径待验；此状态只覆盖下表，其他全仓审计事项按各自记录。
-
-| ID | 本轮状态 / 证据 |
-| --- | --- |
-| CR-2026-09-22-011 | Fixed / L1+L2；冰原掠夺者图鉴收录；L3 待 owner |
-| CR-2026-09-22-012 | Fixed / L1+L2；Mode H 入场与续赛时序；L3 待 owner |
-| CR-2026-09-22-013 | Fixed / L1+L2；派遣/放生后实体与光环回收；L3 待 owner |
-| CR-2026-09-22-014 | Fixed / L1+L2；当前 D 盘正式部署缺口；部署 72 包/531 文件已核验 |
-| CR-2026-09-22-015 | Fixed / L1+L2；套装旧协程清 pending 导致双发；L3 待 owner |
-| CR-2026-09-20-016 | Fixed / L1+L2；日报生产包仍烤旧动态控件；L3 待 owner |
-| CR-2026-09-20-017 | Fixed / L1+L2；日报正文两倍宽裁字；L3 待 owner |
-| CR-2026-09-20-019 | Fixed / L1+L2；旧在途彩宠死亡翻牌丢色；L3 待 owner |
-| CR-2026-09-21-034 | Fixed / L1+L2；FallbackItem 错误消耗奖励游标；L3 待 owner |
-| CR-2026-09-22-016 | Fixed / L1+L2；锁定宠仍进入必拒绝的派遣菜单；L3 待 owner |
-| CR-2026-09-22-017 | Fixed / L1+L2；远征翻牌暂停期间自动推进；L3 待 owner |
-| CR-2026-09-21-038 | Fixed / L1+L2；云蚋守卫断言旧复制语句；守卫闭环 |
-
-最终全量守卫 649 PASS / 0 FAIL，隔离回归 52 PASS / 0 FAIL，Windows 960 源正式编译成功；D 盘正式目标 72 包三端一致且实际判包通过，531 个部署文件一致，14 个 Dev 标识缺席。未启动游戏或访问玩家存档。证据目录 `Build/manual-fix-20260922/`。下面保留的审计复现与 Open 状态是修复前快照；本表是这些 ID 的最新状态。
 
 <!-- BEGIN FULL AUDIT 2026-09-21 -->
 

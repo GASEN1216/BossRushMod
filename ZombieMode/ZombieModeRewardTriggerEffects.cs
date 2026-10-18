@@ -306,8 +306,7 @@ namespace BossRush
 
         private void GrantZombieModeAmmoRainSupply(int amount)
         {
-            string caliber = ResolveZombieModeSupplyAmmoCaliber();
-            if (!string.IsNullOrEmpty(caliber) && TryGiveZombieModeStarterAmmo(caliber, amount))
+            if (TryGiveZombieModeSupplyAmmo(amount))
             {
                 return;
             }

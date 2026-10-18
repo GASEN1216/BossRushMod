@@ -8,6 +8,7 @@ namespace UnityEngine
     {
         public static int Min(int a, int b) { return a < b ? a : b; }
         public static int Max(int a, int b) { return a > b ? a : b; }
+        public static float Abs(float a) { return a < 0f ? -a : a; }
     }
 
     public static class Random { public static int Range(int min, int max) { return min; } }
@@ -78,14 +79,17 @@ namespace ItemStatsSystem
 
         public static int[] GetAllTypeIds(ItemFilter filter) { return Table.Entries.Where(e => Matches(e, filter)).Select(e => e.Id).ToArray(); }
 
-        /// <summary>官方 Search 落空时只把品质区间往下降级，不会往上找。</summary>
+        /// <summary>
+        /// 官方 Search 落空时只往下降级，不会往上找：每次把区间收成单档 min(max, min) - 1（ItemAssetsCollection.DownGradeSearch）。
+        /// </summary>
         public static int[] Search(ItemFilter filter)
         {
             int[] result = GetAllTypeIds(filter);
             while (result.Length < 1)
             {
-                filter.minQuality--; filter.maxQuality--;
-                if (filter.maxQuality < 0 || filter.minQuality < 0) break;
+                int next = Math.Min(filter.maxQuality, filter.minQuality) - 1;
+                filter.minQuality = next; filter.maxQuality = next;
+                if (next < 0) break;
                 result = GetAllTypeIds(filter);
             }
             return result;
@@ -128,5 +132,6 @@ namespace BossRush
         }
 
         internal bool Give(string caliber, int count, int minQuality, int maxQuality) { return TryGiveZombieModeAmmo(caliber, count, minQuality, maxQuality); }
+        internal bool GiveStrict(string caliber, int count, int minQuality, int maxQuality) { return TryGiveZombieModeAmmo(caliber, count, minQuality, maxQuality, false); }
     }
 }

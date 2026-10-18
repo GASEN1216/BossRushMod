@@ -81,6 +81,12 @@ namespace BossRush
         /// </summary>
         internal static bool TryHatchEgg(Item egg, out PetNestHatchResult result, out string failureReasonId)
         {
+            return TryHatchEggCore(egg, true, out result, out failureReasonId);
+        }
+
+        /// <param name="flush">false 时只提交候选、不落盘（全部孵化整批最后落一次）；提交成功即返回结果。</param>
+        private static bool TryHatchEggCore(Item egg, bool flush, out PetNestHatchResult result, out string failureReasonId)
+        {
             result = null;
             failureReasonId = null;
 
@@ -135,7 +141,7 @@ namespace BossRush
             }
             TryConsumeEgg(egg);
             // 文件写失败时完整候选与实物欠账一起保留，不能把旧蛋放回造成重复孵化。
-            if (!PetNestSaveCoordinator.RequestAssetFlush(out failureReasonId)) return false;
+            if (flush && !PetNestSaveCoordinator.RequestAssetFlush(out failureReasonId)) return false;
 
             result = new PetNestHatchResult();
             result.Pet = pet;
@@ -146,11 +152,10 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 四层 roll：出身天赋 ×2（不重复）/ 性格 ×1 / 异色 / 炫彩。孵化即锁定，不可洗。
-        /// </summary>
-        /// <summary>
-        /// 全部孵化（审查 C-2，抽卡游戏的「十连」口径）：逐枚走 <see cref="TryHatchEgg"/>，每枚一次独立事务，
-        /// 巢满或任何一枚失败就停下，已经孵出的照常保留。返回实际孵出的结果，交演出层一次揭晓。
+        /// 全部孵化（审查 C-2，抽卡游戏的「十连」口径）：逐枚走与单枚相同的事务，每枚一次独立提交，
+        /// 巢满或任何一枚失败就停下，已经孵出的照常保留。整批只在最后落一次盘（审查 CR-2026-10-18-006：
+        /// 每枚都绕过节流同步写整档，一次点击会写 N 次）；落盘失败时已提交的崽仍在结果里，
+        /// 候选与实物欠账由保存协调器保留重试，failureReasonId 带出写盘原因。
         /// 识别不了血脉的蛋跳过、原样保留，不拦后面的蛋。
         /// </summary>
         internal static List<PetNestHatchResult> TryHatchAll(IList<Item> eggs, out string failureReasonId)
@@ -158,6 +163,7 @@ namespace BossRush
             failureReasonId = null;
             List<PetNestHatchResult> results = new List<PetNestHatchResult>();
             if (eggs == null) return results;
+            bool committed = false;
             for (int i = 0; i < eggs.Count; i++)
             {
                 if (PetNestService.IsFull)
@@ -167,8 +173,9 @@ namespace BossRush
                 }
                 PetNestHatchResult result;
                 string reason;
-                if (TryHatchEgg(eggs[i], out result, out reason))
+                if (TryHatchEggCore(eggs[i], false, out result, out reason))
                 {
+                    committed = true;
                     if (result != null) results.Add(result);
                     continue;
                 }
@@ -176,8 +183,18 @@ namespace BossRush
                 failureReasonId = reason;
                 break;
             }
+
+            string flushError;
+            if (committed && !PetNestSaveCoordinator.RequestAssetFlush(out flushError) && failureReasonId == null)
+            {
+                failureReasonId = flushError;
+            }
             return results;
         }
+
+        /// <summary>
+        /// 四层 roll：出身天赋 ×2（不重复）/ 性格 ×1 / 异色 / 炫彩。孵化即锁定，不可洗。
+        /// </summary>
 
         internal static PetNestPetRecord RollNewPet(string lineageKey)
         {

@@ -1090,6 +1090,7 @@ echo(Integration\Affinity\Services\NPCGiftContainerService.cs
 echo(Integration\Affinity\Systems\NPCGiftSystem.cs
 echo(Integration\Affinity\Systems\NPCDialogueSystem.cs
 echo(Integration\Affinity\Systems\NPCShopSystem.cs
+echo(Integration\Affinity\Systems\NPCShopSystemOfficialShopHooks.cs
 echo(Integration\Affinity\Systems\NPCAffinityInteractionHelper.cs
 echo(Integration\Affinity\AffinityRuntimeHooks.cs
 echo(Integration\Affinity\Interactables\NPCInteractableBase.cs

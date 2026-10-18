@@ -265,7 +265,7 @@ namespace BossRush
             if (onExpedition)
             {
                 // 远征中的崽不挂出战 / 放生 / 远征按钮，底栏只写还要多久（§4.14 不挂灰按钮）
-                PetNestExpeditionRecord record = FindActiveExpedition(petId);
+                PetNestExpeditionRecord record = FindActiveExpedition(pet);
                 detail.FooterText = L10n.T("远征中，回来之前不能出战或放生", "On an expedition; can't deploy or release until it returns");
                 if (record != null)
                 {
@@ -305,13 +305,14 @@ namespace BossRush
             });
             else detail.FooterText = PetNestLocalization.DescribeFailure("backpack_not_empty");
 
-            // 治疗战痕：只在有疤、遗魂够时挂按钮（§4.14 不挂灰按钮）；花费与余额写在「战痕」分区里
-            if (pet.scars != null && pet.scars.Count > 0
-                && PetNestService.GetSouls(pet.lineageKey) >= PetNestTuning.ScarHealSoulCost)
+            // 治疗战痕是付费服务（Common/UI/AGENTS.md 2026-09-14 口径）：有疤就挂，按钮写明价钱；
+            // 遗魂不够照挂，点了由服务层返回 souls_insufficient 提示（审查 CR-2026-10-18-016）
+            if (pet.scars != null && pet.scars.Count > 0)
             {
                 detail.Actions.Add(new PetNestActionData
                 {
-                    Label = L10n.T("治一道疤", "Treat a scar"),
+                    Label = L10n.T("治一道疤（" + PetNestTuning.ScarHealSoulCost + " 遗魂）",
+                        "Treat a scar (" + PetNestTuning.ScarHealSoulCost + " souls)"),
                     OnClick = delegate
                     {
                         string failure;
@@ -326,11 +327,20 @@ namespace BossRush
             string reason;
             if (ctx.SendOnExpedition != null && PetNestExpeditionService.CanDepart(pet, out reason))
             {
-                detail.Actions.Add(new PetNestActionData
+                // 「能不能挂」与远征页「点了会不会被拒」同一份判据：队满不挂，原因写进底栏（审查 CR-2026-10-18-015）
+                int usedSlots, slotCap;
+                if (PetNestExpeditionSlots.HasFreeSlot(out usedSlots, out slotCap))
                 {
-                    Label = L10n.T("派去远征", "Send on expedition"),
-                    OnClick = delegate { ctx.SendOnExpedition(petId); },
-                });
+                    detail.Actions.Add(new PetNestActionData
+                    {
+                        Label = L10n.T("派去远征", "Send on expedition"),
+                        OnClick = delegate { ctx.SendOnExpedition(petId); },
+                    });
+                }
+                else if (string.IsNullOrEmpty(detail.FooterText))
+                {
+                    detail.FooterText = PetNestLocalization.DescribeFailure("expedition_slots_full");
+                }
             }
 
             if (deployed)
@@ -369,14 +379,23 @@ namespace BossRush
             return detail;
         }
 
-        private static PetNestExpeditionRecord FindActiveExpedition(string petId)
+        /// <summary>
+        /// 这只崽当前这一趟的记录：按崽身上锁定的远征 id 找。上一趟已结算、还没揭晓的记录会留在表里，
+        /// 刚回来又被派出去时按 petId 会先撞上旧的那条（审查 CR-2026-10-18-007）；锁定 id 缺失时退回找未结算的。
+        /// </summary>
+        private static PetNestExpeditionRecord FindActiveExpedition(PetNestPetRecord pet)
         {
             List<PetNestExpeditionRecord> records = PetNestExpeditionService.Records;
+            string lockedId = pet.lockedByExpeditionId;
+            PetNestExpeditionRecord unsettled = null;
             for (int i = 0; i < records.Count; i++)
             {
-                if (records[i] != null && string.Equals(records[i].petId, petId, StringComparison.Ordinal)) return records[i];
+                PetNestExpeditionRecord record = records[i];
+                if (record == null || !string.Equals(record.petId, pet.id, StringComparison.Ordinal)) continue;
+                if (!string.IsNullOrEmpty(lockedId) && string.Equals(record.id, lockedId, StringComparison.Ordinal)) return record;
+                if (unsettled == null && !record.settled) unsettled = record;
             }
-            return null;
+            return unsettled;
         }
 
         private static string DescribeExpeditionFooter(PetNestExpeditionRecord record)

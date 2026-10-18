@@ -190,6 +190,9 @@ namespace BossRush
         public static bool IsModeHRunInProgressSafe() { return false; }
     }
     static class L10n { public static bool IsChinese=true; public static string T(string a,string b) { return IsChinese?a:b; } }
+    // 2026-10-17（1170e834）孵化揭晓按稀有度分三档音效：异色走 PlayJackpotMusic（计数），炫彩 / 普通走官方 UI 音（这里只记次数）
+    static class PetNestChroma { public static bool HasChroma(PetNestPetRecord pet) { return false; } }
+    static class IntegrationUIFeedback { public const string SoundLevelUp="UI/level_up",SoundPop="UI/pop"; public static int Sounds; public static void PlaySound(string eventName) { Sounds++; } }
     static class LocalizationHelper { public static string GetLocalizedText(string key) { return key; } }
     static class MapPointSceneResolver { public static string Active="sub"; public static string Resolve() { return Active; } }
     enum PetNestPetState { InNest,Deployed,Downed,OnExpedition }
@@ -286,11 +289,17 @@ namespace BossRush
         string BuildResultTitle() { return "name"; }
         string BuildDetailText() { return "personality + talents + chroma"; }
         static void PlayJackpotMusic() { Music++; }
+        // 2026-10-17（1170e834）批量揭晓与预兆、揭晓爆点：本夹具只测单枚流程，替身保持惰性
+        List<RevealResult> _batch;
+        bool _telegraph;
+        void PrepareTelegraph() { _telegraph = false; }
+        void PlayRevealBurst() { }
+        string BuildBatchSummary() { return BuildDetailText(); }
         public void Click() { OnDismiss(); }
         public bool Complete { get { return _finished && _detailText.text==BuildDetailText(); } }
         public static IEnumerator Wait() { return WaitForPresentation(1); }
     }
-    class PetNestExpeditionRecord { public string id; }
+    class PetNestExpeditionRecord { public string id; public bool outcomeDead; }
     static class PetNestExpeditionService
     {
         public static int Revealed;
@@ -303,6 +312,10 @@ namespace BossRush
     partial class PetNestExpeditionRevealView
     {
         const float CardEnterSeconds = .3f, CardFlipSeconds = .55f, CardHoldSeconds = 1.4f;
+        // 2026-10-17（1170e834）阵亡牌的压暗与结果音效：替身不播，阵亡分支由 outcomeDead=false 不进
+        const float DeadHoldSeconds = 2.2f, DeadDimSeconds = .6f;
+        void PlayOutcomeSound(PetNestExpeditionRecord record) { }
+        IEnumerator DimDeadCard() { yield break; }
         Label _cardText = new Label(), _detailText = new Label(), _skipLabel = new Label();
         object _skipButton = new object();
         bool _finished;

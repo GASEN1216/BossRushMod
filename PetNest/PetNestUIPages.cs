@@ -71,6 +71,8 @@ namespace BossRush
         public string Body;
         /// <summary>是否异色（用 Legendary token 高亮）。</summary>
         public bool Shiny;
+        /// <summary>Shiny 只描金边、不给标题挂流光（成就行这类不是崽的格子；每个流光是一个每帧组件）。</summary>
+        public bool ShinyFrameOnly;
         /// <summary>是否是危险选项（亡命档、真死记录）。</summary>
         public bool IsDanger;
         /// <summary>行内按钮回调；为 null 表示不画按钮（不挂灰掉的占位按钮，§4.14）。</summary>
@@ -543,7 +545,13 @@ namespace BossRush
                     {
                         string reason;
                         List<PetNestHatchResult> results = PetNestHatchService.TryHatchAll(captured, out reason);
-                        NoteFailure(results.Count > 0 || reason == null, reason);
+                        // 孵出一部分后停下的原因也要让玩家看见（巢满是按钮数量算好的正常收尾，不提示）
+                        NoteFailure(reason == null || (results.Count > 0 && reason == "nest_full"), reason);
+                        if (results.Count > 0 && LastFailureText != null)
+                        {
+                            LastFailureText = L10n.T("孵出 " + results.Count + " 枚，其余没孵：", "Hatched " + results.Count + "; the rest didn't: ")
+                                + LastFailureText;
+                        }
                         if (results.Count > 0) onHatchedBatch(results);
                         if (refresh != null) refresh();
                     },

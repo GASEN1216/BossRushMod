@@ -134,6 +134,7 @@ namespace BossRush
         private float _peak;
         private float _seconds;
         private float _elapsed;
+        private const float RisePortion = 0.35f;
 
         internal static void Play(Transform target, float peak, float seconds)
         {
@@ -155,14 +156,27 @@ namespace BossRush
             pulse.enabled = true;
         }
 
+        /// <summary>
+        /// 别处给 target 写了新的绝对缩放（崽升级换体型）：脉冲改以新值为基准，播完回到新值，
+        /// 不把升级后的体型还原成旧值（审查 CR-2026-10-18-017）。没在播时什么都不做。
+        /// </summary>
+        internal static void Rebase(Transform target)
+        {
+            if (target == null) return;
+            PetNestPulse pulse = target.GetComponent<PetNestPulse>();
+            if (pulse != null && pulse.enabled) pulse._base = target.localScale;
+        }
+
         private void Update()
         {
             if (_target == null) { enabled = false; return; }
             if (BossRushUI.IsGamePaused()) return;
             _elapsed += Time.unscaledDeltaTime;
             float t = Mathf.Clamp01(_elapsed / _seconds);
-            // 前 35% 冲到峰值，后 65% 缓回：sin 半波，不过冲
-            float k = Mathf.Sin(t * Mathf.PI);
+            // 前 35% 冲到峰值（EaseOut），后 65% 原地缓回（SmoothStep），不过冲；只用共享的两条缓动
+            float k = t < RisePortion
+                ? BossRushUI.EaseOut(t / RisePortion)
+                : 1f - BossRushUI.SmoothStep((t - RisePortion) / (1f - RisePortion));
             _target.localScale = _base * Mathf.Lerp(1f, _peak, k);
             if (_elapsed >= _seconds)
             {

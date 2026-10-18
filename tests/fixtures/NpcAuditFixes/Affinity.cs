@@ -56,6 +56,11 @@ class Program {
   Check(AffinityManager.CheckAndApplyDailyDecay("spouse")==0 && AffinityManager.GetPoints("spouse")==2300 && !AffinityManager.TryConsumeDecayNotice("spouse",out notice),"spouse at Lv.10 does not decay or notify");
   Check(AffinityManager.CheckAndApplyDailyDecay("hurt")==0 && AffinityManager.GetPoints("hurt")==2000,"points already below the floor are neither decayed nor raised");
   Check(AffinityManager.CheckAndApplyDailyDecay("plain")==0,"same-day recheck is idempotent");
+  // CR-2026-10-18-011：玩家没来聊天又衰减一轮时提示要累加，不能被后一次覆盖。
+  GameClock.Day=103;Check(AffinityManager.CheckAndApplyDailyDecay("plain")==30,"second idle stretch decays again");
+  GameClock.Day=105;Check(AffinityManager.CheckAndApplyDailyDecay("plain")==20,"third idle stretch decays again");
+  Check(AffinityManager.TryConsumeDecayNotice("plain",out notice) && notice.Days==5 && notice.Points==50,"unread decay notices accumulate days and points");
+  GameClock.Day=100;
   AffinityManager.Load();Check(!AffinityManager.TryConsumeDecayNotice("story5",out notice),"reload clears pending notices");
   GameClock.Day=100;
  }
@@ -71,6 +76,12 @@ class Program {
   Check(NPCShopStockLedger.Resolve(true,sold,7,1,1,1f,100,never).Remaining==0,"daily item stays sold out the same day");
   Check(NPCShopStockLedger.Resolve(true,sold,7,1,1,1f,101,()=>0f).Remaining==1,"daily item refills next game day");
   Check(NPCShopStockLedger.Resolve(true,sold,7,1,1,1f,99,()=>0f).Remaining==1,"game day going backwards refills instead of locking");
+  // CR-2026-10-18-004：钻石戒指已婚不补；离婚后距上次补货满间隔就补，能再求婚。
+  int ringMarried=NPCShopStockLedger.EffectiveRestockDays(3,true,true), ringSingle=NPCShopStockLedger.EffectiveRestockDays(3,true,false);
+  Check(NPCShopStockLedger.Resolve(true,sold,7,1,ringMarried,1f,500,never).Remaining==0,"single-only item stays sold out while married");
+  Check(NPCShopStockLedger.Resolve(true,sold,7,1,ringSingle,1f,500,()=>0f).Remaining==1,"single-only item restocks once the player is single again");
+  Check(NPCShopStockLedger.Resolve(true,sold,7,1,ringSingle,1f,102,never).Remaining==0,"single-only item still waits its restock interval");
+  Check(NPCShopStockLedger.EffectiveRestockDays(1,false,true)==1,"ordinary items ignore marriage");
   NPCShopStockSlot hidden=NPCShopStockLedger.Resolve(false,none,8,3,1,0.5f,100,high);
   Check(!hidden.Shown && hidden.Remaining==0,"possibility roll above p hides the item for the day");
   Check(!NPCShopStockLedger.Resolve(true,hidden,8,3,1,0.5f,100,never).Shown,"reopening the same day keeps the roll (no reroll by reopening)");

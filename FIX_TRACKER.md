@@ -2,6 +2,22 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+## 2026-10-18 v2.3.5 之后五个提交审查：CR-2026-10-18-001～022 全部修复（COMPAT / OPERATIONAL，L1/L2，未提交、未部署、未实机）
+
+审查结论与锚点见 `CODE_REVIEW_FINDINGS.md` 同日节。owner 要求全部修复，钻戒限量与官方存档键两条授权「好玩优先自己定」。
+
+- 丧尸模式：属性满级判定提成 `IsZombieModeAttributeBonusAtCap`（绝对值比，减伤满 -40% 不再出卡）；`TryGiveZombieModeAmmo` 加 `allowQualityFallback`，商人保底品质的购买传 false，没有保底品质就留着保底、按普通区间买；区间回退改取离区间最近的那档；补给 / 弹雨改走 `TryGiveZombieModeSupplyAmmo`（手上口径发不出就退回开局口径，再落随机弹）；配口径先看 `GetGun()` 手持枪，再主槽、副槽。弹药夹具替身按官方 `DownGradeSearch` 收成单档降级，补区间高于可用品质、保底 (6,6)、属性满级四类用例。
+- 好感与商店：钻石戒指（拍板）改为 `RestockOnlyWhenSingle` + 3 个游戏日——已婚不补，单身时满 3 天补 1 枚，离婚、戒指丢失后都能再求婚；规则在纯函数 `NPCShopStockLedger.EffectiveRestockDays`，不改存档编码。官方存档键（拍板）：开店后 `DetachOfficialShopSaveHooks` 摘掉官方 `Save` / `Load` 回调，不再写 `StockShop_BossRushNpc_*`，反射失败只记日志退回旧行为。好感页羽织的折扣标「治疗折扣」，有商店的 NPC 改读 `NPCShopSystem.GetDiscount`；衰减提示累加；永久 NPC 折扣上限 0.5 → 0.30（守卫同步并钉代码常量）；对话序列吞异常时 `DialogueManager.SequenceFailureSerial` 自增，剧情据此不记看过、不发奖。
+- 遗种巢：`TryHatchAll` 走 `TryHatchEggCore(…, false, …)`，整批最后落一次盘，写盘失败时已提交的崽仍进揭晓并带出原因；部分孵化后停下写「孵出 k 枚，其余没孵：…」；巢页按崽身上的 `lockedByExpeditionId` 找本趟记录；队满不挂「派去远征」、底栏写原因；「治一道疤（40 遗魂）」有疤就挂；摸摸脉冲在体型被改写时 `Rebase`，曲线换成 EaseOut / SmoothStep；到期提醒去重换槽清空、键带出发时间；成就行 `ShinyFrameOnly` 只描边；页签指示条改 `Accent`；`RollNewPet` summary 归位。
+- 守卫：`PetNestHatchCommitGuard` 跟到核心方法并断言整批单次落盘；`ZombieModeCompanionCounterplayGuard` 断言整条 if 条件；`PetNestUILayerGuard` 补三份新 UI 文件；`DuckNpcInvariantGuard` 折扣上限 0.30 并钉 `MaxDiscountRate`。
+- 文档：`docs/contracts.md` §3 / §7.1；repowiki 好感度框架核心、僵尸模式、遗种巢系统；游戏内与在线 Wiki 的钻石戒指获取说明（中英）。
+- CR-023（修复阶段全量回归发现，HEAD 上就红）：`ManualSeptemberReview` 补 1170e834 新成员的惰性替身；`IntegrationThirdReviewFixes` 的刚硬用例改为「崽的命中不吃减伤」。
+- 预算：`NPCShopSystem` 改 partial，`DetachOfficialShopSaveHooks` / `ConfigureShopIdentity` / `SuppressOfficialRestock` 原样移到新文件 `Integration/Affinity/Systems/NPCShopSystemOfficialShopHooks.cs`（已登记编译清单），主文件 1144 行；`CODE_REVIEW_FINDINGS.md` 满 1200 行，已闭环的 2026-09-22 人工实测复核修复交付节逐字移入 `archive/CODE_REVIEW_FINDINGS_2026-09.md` 并留索引。
+
+验证：Windows 正式编译 0 错误（`GAME_PATH` 指游戏程序集拷贝，未部署；`Build/BossRush.dll` SHA-256 `CB722D094B3F4ECF2A366111373173E0D18F5F22DABFC0B154B94F486A717BBA`，游戏目录 DLL 未变）；全量守卫 747 中 746 过，余下 `LargeFileBudgetGuard`（GoblinAffinityConfig 超 2 行）改掉后单跑与 changed-only 189 项全过；全量执行回归 130/130；Wiki 站点构建通过（构建顺带的 8 份仅换行差异已还原）。反向验证 10 项（满级绝对值、保底不回退、最近品质、衰减累加、已婚不补、整批落盘守卫与夹具、反制整条件、UI 分层、折扣上限）全部转红并按字节还原。CR-003 / 009 / 015–018 / 020 / 022 只有 L1（读码与编译），没有执行回归。
+
+L3 缺：丧尸模式减伤满 40% 后三选一里不再出现减伤；副槽拿 RPG 时弹药补给给火箭弹；商人保底 6 品在口径没有 6 品时不被吃掉。叮当 Lv.7 买戒指后关店重开售罄；结婚后不补；离婚后（距上次补货满 3 个游戏日）再开店有 1 枚。羽织好感页写「治疗折扣」。遗种巢一次孵 3 枚以上点「全部孵化」无明显卡顿、全部入巢；刚归来未揭晓的崽再派出，巢页显示剩余时间；队满时巢页没有「派去远征」；治疤按钮带价钱、遗魂不够点了提示；摸摸后紧接升级体型正确。
+
 ## 2026-10-17 玩家反馈：丧尸模式 J-Lab 掉帧、RPG 不配火箭弹、属性满了还出、白手起家前两波出 Boss（COMPAT，L1/L2，未提交、未实机）
 
 - 白手起家前两波：第 1–2 波只刷小怪池里血量最低、不显示名字的 preset。官方 Boss 里也有不显示名字的（`Cname_Boss_Red/Blue`），天空岛小兵、遗种崽、冠军杖卫等运行时克隆改过名（不带 "(Clone)"）且底模多是官方 Boss，都可能混进小怪池。`ModeDRuntimeModule_EnemyPools.cs` 小怪池排除 `isBoss` 与实例 ID 为负的运行时 preset；按名缓存同名优先官方资源（遗种崽克隆沿用官方血脉 nameKey，会顶替官方狼）。根因是读代码推断：没有玩家日志，没确认玩家那局混进来的是哪个 preset。另一可能（未改）：进图时狗子背包还在读，裸装判定回「未就绪」，整局回落成普通挑战；入场 setup 在 `LevelInited` 之后再等 0.5 秒才判定，这条概率低。

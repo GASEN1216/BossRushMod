@@ -455,7 +455,7 @@ namespace BossRush
             float y = compact ? 8f : 12f;
             TextMeshProUGUI title = CreateRowText(card.transform, "Title", data.Title, compact ? 18f : 20f,
                 BossRushUIColors.TextPrimary, left, y, textWidth, RowTitleHeight, true);
-            if (data.Shiny) PetNestShinyTextShimmer.Attach(title);
+            if (data.Shiny && !data.ShinyFrameOnly) PetNestShinyTextShimmer.Attach(title);
             y += compact ? 30f : RowTitleHeight;
 
             if (!string.IsNullOrEmpty(data.Subtitle))

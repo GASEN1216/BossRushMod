@@ -321,6 +321,8 @@ def main() -> int:
     # 这里在数据层报红。折扣上限与 PermanentDuckNpcShopData.MaxDiscountRate 一致。
     if "ParseDiscounts(node,shop,blueprintId);" not in data_compact:
         errors.append("PermanentDuckNpcShopData.Parse 必须接通 discountsByLevel 折扣解析")
+    if "internalconstfloatMaxDiscountRate=0.30f;" not in data_compact:
+        errors.append("PermanentDuckNpcShopData.MaxDiscountRate 必须是 0.30f（超过 1/3 能低买高卖），与下面的数据层上限一致")
     for row in (locals().get("table") or {}).get("npcs") or []:
         shop = ((row or {}).get("permanent") or {}).get("shop")
         if not isinstance(shop, dict):
@@ -339,8 +341,9 @@ def main() -> int:
         for level, rate in discounts.items():
             if not level.isdigit() or not 1 <= int(level) <= 10:
                 errors.append(npc_id + " 的 discountsByLevel 等级键必须是 1-10：" + level)
-            if isinstance(rate, bool) or not isinstance(rate, (int, float)) or not 0 < rate <= 0.5:
-                errors.append(npc_id + " 的 discountsByLevel 折扣率必须在 (0, 0.5]：" + level)
+            # 上限 0.30：折扣超过 1/3 后卖价（0.5 + 折扣 / 2）高于买价（1 - 折扣），能在同一家店低买高卖
+            if isinstance(rate, bool) or not isinstance(rate, (int, float)) or not 0 < rate <= 0.30:
+                errors.append(npc_id + " 的 discountsByLevel 折扣率必须在 (0, 0.30]：" + level)
 
     # ------------------------------------------------------------------
     # 14. 婚姻系统 6 处泛化分支

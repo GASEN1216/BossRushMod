@@ -131,7 +131,11 @@ def check_pages(errors):
             ("PetNestUINestPage.cs", assembly),
             # 2026-10-17：博物馆组装挪到同一 partial 的 PetNestUIMuseumPage.cs，同一套分层约束
             ("PetNestUIMuseumPage.cs", assembly),
-            ("PetNestUILayout.cs", ["CreateCanvasRoot", "sortingOrder", "AddComponent<Canvas>", "BossRushUILayers."])):
+            ("PetNestUILayout.cs", ["CreateCanvasRoot", "sortingOrder", "AddComponent<Canvas>", "BossRushUILayers."]),
+            # 2026-10-18（CR-2026-10-18-021）：动效与博物馆详情是同一 partial 的画法文件，同样只在既有 surface 里摆东西
+            ("PetNestUIMotion.cs", ["CreateCanvasRoot", "sortingOrder", "AddComponent<Canvas>", "BossRushUILayers."]),
+            ("PetNestUIMotionParts.cs", ["CreateCanvasRoot", "sortingOrder", "AddComponent<Canvas>", "BossRushUILayers."]),
+            ("PetNestUIMuseumDetail.cs", ["CreateCanvasRoot", "sortingOrder", "AddComponent<Canvas>", "BossRushUILayers."])):
         other = read_petnest(name)
         if other is None:
             errors.append("[File] 缺少 PetNest/" + name)

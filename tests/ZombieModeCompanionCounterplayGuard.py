@@ -35,13 +35,20 @@ def main():
         if body != "return source != null && source.IsMainCharacter;":
             errors.append("[判据] IsPlayerOwnHit 只能认主角，不得把随从算进来: " + body)
 
-    for affix in ("Stalwart", "Adaptive"):
-        clause = re.search(r"marker\.EliteAffixes\.Contains\(ZombieModeEliteAffix\." + affix + r"\)\s*&&\s*([^\n]+)", tuning)
+    # 断言整个 if 条件（CR-2026-10-18-021）：只查子串时改成 `IsPlayerOwnHit(x) || IsPlayerSideAttack(x)` 也能过。
+    expected_conditions = {
+        "Stalwart": "ZombieModeDamageRuntime.IsPlayerOwnHit(damageInfo.fromCharacter) && !IsZombieModeDamageFromMeleeWeapon(damageInfo)",
+        "Adaptive": "ZombieModeDamageRuntime.IsPlayerOwnHit(damageInfo.fromCharacter)",
+    }
+    for affix, expected in expected_conditions.items():
+        clause = re.search(r"if \(marker\.EliteAffixes\.Contains\(ZombieModeEliteAffix\." + affix + r"\)\s*&&([\s\S]*?)\)\s*\{", tuning)
         if clause is None:
             errors.append("[反制] 找不到「" + affix + "」词条判定")
             continue
-        if "ZombieModeDamageRuntime.IsPlayerOwnHit(damageInfo.fromCharacter)" not in clause.group(1):
-            errors.append("[反制] 「" + affix + "」必须只对玩家本人的命中生效（IsPlayerOwnHit）")
+        condition = re.sub(r"\s+", " ", clause.group(1)).strip()
+        if condition != expected:
+            errors.append("[反制] 「" + affix + "」必须只对玩家本人的命中生效（IsPlayerOwnHit），条件应为 `"
+                          + expected + "`，实际 `" + condition + "`")
 
     reduce = re.search(r"internal static void ReduceFinalDamage\([\s\S]*?\n        \}", damage)
     if reduce is None or "if (IsPlayerSideAttack(info.fromCharacter))" not in reduce.group(0):

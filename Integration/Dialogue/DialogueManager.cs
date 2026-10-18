@@ -423,6 +423,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
+                SequenceFailureSerial++;
                 ModBehaviour.DevLog(LOG_TAG + " [ERROR] ShowDialogueSequenceBilingual 出错: " + e.Message);
             }
             finally
@@ -431,6 +432,12 @@ namespace BossRush
                 EndDialogueSession(owner);
             }
         }
+
+        /// <summary>
+        /// 对话序列吞掉非取消异常的次数。调用方在 await 前后比对，不等就说明没播完
+        /// （好感剧情据此不打「看过」标、不发奖，下次聊天重播）。只增不减，不需要清理。
+        /// </summary>
+        internal static int SequenceFailureSerial { get; private set; }
 
         // ============================================================================
         // 多选对话

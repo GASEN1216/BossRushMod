@@ -9,7 +9,8 @@
 // 规则：
 //   - 每件商品一条记录：剩余数量、上次补货的游戏日、本轮是否上架；
 //   - RestockDays > 0：距上次补货满 RestockDays 个游戏日（或游戏日倒退）时补满并重掷上架；
-//   - RestockDays == 0：终身限量，永不补货（钻石戒指）；
+//   - RestockDays == 0：终身限量，永不补货；
+//   - 钻石戒指（ShopItemEntry.RestockOnlyWhenSingle）：已婚期间调用方按 0 传入，单身时按 RestockDays 补；
 //   - 没有记录的商品（旧档 / 新上架）当作刚补满，旧档行为不变；
 //   - MaxStock 下调后剩余数量按新上限截断。
 // 记录格式：`typeId:remaining:refillDay:shown`，逗号分隔；坏 token 跳过，不拖垮整份。
@@ -35,6 +36,15 @@ namespace BossRush
     {
         /// <summary>RestockDays 取这个值表示终身限量、永不补货。</summary>
         internal const int LifetimeLimited = 0;
+
+        /// <summary>
+        /// 本次开店实际用的补货间隔：只在单身时补货的商品（钻石戒指）在玩家已婚期间按终身限量处理，
+        /// 离婚后回到原间隔（距上次补货早已满间隔时下次开店就补上）。
+        /// </summary>
+        internal static int EffectiveRestockDays(int restockDays, bool restockOnlyWhenSingle, bool playerMarried)
+        {
+            return restockOnlyWhenSingle && playerMarried ? LifetimeLimited : restockDays;
+        }
 
         internal static Dictionary<int, NPCShopStockSlot> Parse(string tokens)
         {

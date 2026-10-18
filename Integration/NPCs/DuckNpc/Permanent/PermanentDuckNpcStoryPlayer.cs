@@ -145,9 +145,12 @@ namespace BossRush
                 }
 
                 ModBehaviour.DevLog(LogPrefix + " " + _npcId + " 开始 Lv" + story.level + " 剧情，共 " + lines.Length + " 句");
+                int failuresBefore = DialogueManager.SequenceFailureSerial;
                 await DialogueManager.ShowDialogueSequenceBilingual(actor, lines,
                     "BossRush_DuckNpcStory_" + _npcId + "_" + story.level, cancellation.Token);
-                played = !cancellation.IsCancellationRequested;
+                // 对话系统中途出错会吞掉异常正常返回：这种情况不算看过，下次聊天重播
+                played = !cancellation.IsCancellationRequested
+                    && DialogueManager.SequenceFailureSerial == failuresBefore;
             }
             catch (OperationCanceledException)
             {

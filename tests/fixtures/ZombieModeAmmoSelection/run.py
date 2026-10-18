@@ -37,7 +37,8 @@ def main():
     source = ('using System; using System.Collections.Generic; using UnityEngine; using Duckov.Utilities; using ItemStatsSystem;\n'
               'namespace BossRush { internal sealed partial class ZombieModeRuntimeModule {\n')
     for signature in ('private bool TryGiveZombieModeAmmo(', 'private int PickZombieModeAmmoTypeForCaliber(',
-                      'private int[] SearchZombieModeAmmo(', 'private static int GetZombieModeItemQuality('):
+                      'private int[] SearchZombieModeAmmo(', 'private static int GetZombieModeItemQuality(',
+                      'internal static bool IsZombieModeAttributeBonusAtCap('):
         source += member(grants, signature) + '\n'
     constants = re.findall(r'^        private const int ZombieModeAmmoAnyQualityMax = \d+;', grants, re.M)
     assert len(constants) == 1, constants

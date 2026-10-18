@@ -115,7 +115,16 @@ namespace BossRush
 
                 if (totalDecay > 0)
                 {
-                    pendingDecayNotices[npcId] = new DecayNotice { Days = daysWithoutInteraction, Points = totalDecay };
+                    // 玩家还没来聊天又衰减了一轮：累加，提示写的是从上次见面以来一共掉了多少
+                    DecayNotice notice;
+                    int noticeDays = daysWithoutInteraction;
+                    int noticePoints = totalDecay;
+                    if (pendingDecayNotices.TryGetValue(npcId, out notice))
+                    {
+                        noticeDays += notice.Days;
+                        noticePoints += notice.Points;
+                    }
+                    pendingDecayNotices[npcId] = new DecayNotice { Days = noticeDays, Points = noticePoints };
                     // 触发事件
                     OnAffinityChanged?.Invoke(npcId, oldPoints, data.points);
                 }

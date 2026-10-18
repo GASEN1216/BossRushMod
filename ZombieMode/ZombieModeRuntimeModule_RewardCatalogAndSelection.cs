@@ -325,8 +325,7 @@ namespace BossRush
                 if (!string.IsNullOrEmpty(attributeKey) && runState.AttributeBonuses.TryGetValue(attributeKey, out currentBonus))
                 {
                     // 到上限后再选一点也不加，留在池里只会白占一个选项格（玩家反馈 2026-10-17：远程伤害满 100% 还在出）。
-                    // 0.1 累加十次是 0.99999994，留一点浮点余量。
-                    if (currentBonus >= GetZombieModeAttributeCap(rewardType) - 0.0001f)
+                    if (IsZombieModeAttributeBonusAtCap(currentBonus, GetZombieModeAttributeCap(rewardType)))
                     {
                         return;
                     }

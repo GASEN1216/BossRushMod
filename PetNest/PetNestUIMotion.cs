@@ -73,7 +73,7 @@ namespace BossRush
             PetNestPageKeys.Attach(_canvas.gameObject, StepPage, IsCoveredByChildWindow);
         }
 
-        /// <summary>页签下的指示条（审查 A-2）：AccentFill 细条，切页时滑过去。</summary>
+        /// <summary>页签下的指示条（审查 A-2）：Accent 细条（强调色；AccentFill 留给每屏唯一的主操作填充，§4.14），切页时滑过去。</summary>
         private void BuildTabIndicator(Transform parent)
         {
             GameObject bar = ZombieModeUIHelper.CreateRect("TabIndicator", parent, new Vector2(0.5f, 0.5f), new Vector2(120f, 3f));
@@ -81,7 +81,7 @@ namespace BossRush
             _tabIndicator.anchoredPosition = new Vector2(TabX(PetNestUIPage.Nest), 243f);
             Image image = bar.AddComponent<Image>();
             image.sprite = BossRushUI.GetSolidSprite();
-            image.color = BossRushUIColors.AccentFill;
+            image.color = BossRushUIColors.Accent;
             image.raycastTarget = false;
         }
 

@@ -783,6 +783,21 @@ partial class Program
             "hatch-all stops at the first full nest and keeps what hatched");
         Check(eggs[0].Destroyed && !eggs[1].Destroyed && !eggs[2].Destroyed,
             "eggs left over after a full nest are untouched");
+
+        // CR-2026-10-18-006：整批只写一次盘（此前每枚各绕过节流同步写整档一次）。
+        Reset(); PrepareNest();
+        for (int i = 0; i < PetNestTuning.DefaultNestCapacity - 3; i++)
+            PetNestService.Nest.pets.Add(new PetNestPetRecord { id = "fill-" + i, lineageKey = "test", level = 1 });
+        eggs = new System.Collections.Generic.List<Item>();
+        for (int i = 0; i < 3; i++) { var egg = new Item(); PlayerStorage.Inventory.AddAt(egg, 20 + i); eggs.Add(egg); }
+        int writesBefore = SavesSystem.Writes;
+        results = PetNestHatchService.TryHatchAll(eggs, out error);
+        Check(results.Count == 3 && error == null && eggs.TrueForAll(e => e.Destroyed)
+            && PetNestService.PetCount == PetNestTuning.DefaultNestCapacity,
+            "hatch-all hatches every egg that fits");
+        Check(SavesSystem.Writes - writesBefore == 1, "hatch-all writes the save file once for the whole batch");
+        Check(PetNestService.TryGetPet(results[0].Pet.id) != null && PetNestService.TryGetPet(results[2].Pet.id) != null,
+            "every hatched cub of the batch is committed");
     }
 
     static void PetNestBackpackPersistence()

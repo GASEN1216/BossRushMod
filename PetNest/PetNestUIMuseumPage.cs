@@ -218,8 +218,9 @@ namespace BossRush
                 row.Title = unlocked || !def.isHidden ? (chinese ? def.nameCN : def.nameEN) : L10n.T("？？？", "???");
                 row.Subtitle = unlocked ? L10n.T("已达成", "Unlocked") : L10n.T("未达成", "Locked");
                 row.Body = unlocked || !def.isHidden ? (chinese ? def.descCN : def.descEN) : L10n.T("达成后揭晓", "Revealed when unlocked");
-                // 已达成的格子描金边（与异色同一个稀有口径），未达成的保持素色
+                // 已达成的格子描金边（与异色同一个稀有口径），未达成的保持素色；只描边，标题不挂流光
                 row.Shiny = unlocked;
+                row.ShinyFrameOnly = true;
                 section.Items.Add(row);
             }
             if (section.Items.Count == 0) return;

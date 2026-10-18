@@ -28,6 +28,9 @@ namespace BossRush
         void EnsureBootstrapped() { _bootstrapped = true; }
         void ShutdownIfEnabledTurnedOff() { _bootstrapped = false; }
         void EnsureOfficialLineagesPrimed() { }
+        // 2026-10-17 到期远征提醒（1170e834）；本夹具不测提醒，换槽清空在生产 ValidateHomecomingSlot 里照常执行
+        readonly HashSet<string> _notifiedDueExpeditions = new HashSet<string>();
+        void NotifyDueExpeditions() { }
         static void CloseAllInteractiveViewsForSceneChange() { }
         static void LogFailure(string stage, Exception error) { throw new Exception(stage, error); }
     }

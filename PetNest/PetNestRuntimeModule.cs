@@ -320,7 +320,10 @@ namespace BossRush
             }
         }
 
-        /// <summary>已经提醒过的到期远征（记录 id）。只活在本模块实例里，切档 / 卸载随模块一起丢。</summary>
+        /// <summary>
+        /// 已经提醒过的到期远征（记录 id + 出发时间）。记录 id 是每个存档槽各自的流水号，换槽在
+        /// <see cref="ValidateHomecomingSlot"/> 里清空；不存档重读同一槽时 id 会复用，键里带出发时间区分。
+        /// </summary>
         private readonly HashSet<string> _notifiedDueExpeditions = new HashSet<string>(StringComparer.Ordinal);
 
         /// <summary>
@@ -337,7 +340,7 @@ namespace BossRush
                 {
                     PetNestExpeditionRecord r = records[i];
                     if (r == null || r.settled || string.IsNullOrEmpty(r.id) || !PetNestExpeditionService.IsDue(r)) continue;
-                    if (!_notifiedDueExpeditions.Add(r.id)) continue;
+                    if (!_notifiedDueExpeditions.Add(r.id + "@" + r.departTicks)) continue;
                     Duckov.UI.NotificationText.Push(L10n.T(
                         PetNestExpeditionService.DescribePetName(r) + " 远征归来了，去遗种巢看看结果",
                         PetNestExpeditionService.DescribePetName(r) + " is back from the expedition. Check the Relic Nest."));
@@ -355,6 +358,7 @@ namespace BossRush
         {
             int slot = Saves.SavesSystem.CurrentSlot;
             if (_homecomingSlot == slot) return;
+            _notifiedDueExpeditions.Clear();
             if (_homecomingSlot >= 0)
             {
                 _homecomingPetId = null;

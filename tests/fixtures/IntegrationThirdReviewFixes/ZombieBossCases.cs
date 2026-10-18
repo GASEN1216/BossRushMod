@@ -232,7 +232,9 @@ internal static class ZombieBossCases
             elite = BossRush.ModBehaviour.Instance.Markers[target.Owner];
             elite.EnemyKind = BossRush.ZombieModeEnemyKind.Elite;
             elite.EliteAffixes.Add(BossRush.ZombieModeEliteAffix.Stalwart);
-            Near(Hit(target, 100, false, true), 10, "companion ranged hit respects elite Stalwart before lethal test");
+            // 2026-10-17 起反制词条只认玩家本人（ZombieModeCompanionCounterplayGuard）：崽的远程命中不吃刚硬减伤
+            float companionHit = Hit(target, 100, false, true);
+            Check(companionHit > 10 && target.IsDead, "companion ranged hit is not reduced by elite Stalwart (player-only counterplay), got=" + companionHit);
             target = Target(20, false, BossRush.ZombieModeBossKind.Hunter);
             elite = BossRush.ModBehaviour.Instance.Markers[target.Owner];
             elite.EnemyKind = BossRush.ZombieModeEnemyKind.Elite;

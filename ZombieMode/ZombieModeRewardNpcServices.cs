@@ -184,7 +184,8 @@ namespace BossRush
             {
                 int guaranteedMinQuality = Mathf.Max(entry.GrantMinQuality, runState.GuaranteedMerchantPurchaseMinQuality);
                 int guaranteedMaxQuality = Mathf.Max(entry.GrantMaxQuality, runState.GuaranteedMerchantPurchaseMinQuality);
-                if (TryGiveZombieModeMerchantAmmoForEquippedWeapon(entry, guaranteedMinQuality, guaranteedMaxQuality))
+                // 保底不放开品质：该口径没有保底品质的弹药就留着保底，这次按普通区间买
+                if (TryGiveZombieModeMerchantAmmoForEquippedWeapon(entry, guaranteedMinQuality, guaranteedMaxQuality, false))
                 {
                     runState.GuaranteedMerchantPurchasePending = false;
                     runState.GuaranteedMerchantPurchaseMinQuality = 0;
@@ -192,10 +193,10 @@ namespace BossRush
                 }
             }
 
-            return TryGiveZombieModeMerchantAmmoForEquippedWeapon(entry, entry.GrantMinQuality, entry.GrantMaxQuality);
+            return TryGiveZombieModeMerchantAmmoForEquippedWeapon(entry, entry.GrantMinQuality, entry.GrantMaxQuality, true);
         }
 
-        private bool TryGiveZombieModeMerchantAmmoForEquippedWeapon(ZombieModeNpcCatalog.MerchantStockEntry entry, int minQuality, int maxQuality)
+        private bool TryGiveZombieModeMerchantAmmoForEquippedWeapon(ZombieModeNpcCatalog.MerchantStockEntry entry, int minQuality, int maxQuality, bool allowQualityFallback)
         {
             Item weapon = TryGetZombieModePreferredWeaponForMerchantAmmo();
             string caliber = TryReadZombieModeItemCaliber(weapon);
@@ -204,7 +205,7 @@ namespace BossRush
                 return false;
             }
 
-            return TryGiveZombieModeAmmo(caliber, ZombieModeTuning.MerchantAmmoPurchaseCount, minQuality, maxQuality);
+            return TryGiveZombieModeAmmo(caliber, ZombieModeTuning.MerchantAmmoPurchaseCount, minQuality, maxQuality, allowQualityFallback);
         }
 
         private Item TryGetZombieModePreferredWeaponForMerchantAmmo()
@@ -213,6 +214,21 @@ namespace BossRush
             if (player == null)
             {
                 return null;
+            }
+
+            // 先看手上正拿着的枪（RPG 放在副槽也照样配火箭弹），手上不是枪再按主槽、副槽
+            try
+            {
+                ItemAgent_Gun heldGun = player.GetGun();
+                Item held = heldGun != null ? heldGun.Item : null;
+                if (IsZombieModeAmmoTargetWeapon(held))
+                {
+                    return held;
+                }
+            }
+            catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[ZombieMode] 读手持枪失败: " + e.Message);
             }
 
             Slot primarySlot = player.PrimWeaponSlot();

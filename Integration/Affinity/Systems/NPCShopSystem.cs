@@ -51,7 +51,7 @@ namespace BossRush
     /// <summary>
     /// 通用NPC商店系统
     /// </summary>
-    public static class NPCShopSystem
+    public static partial class NPCShopSystem
     {
         // ============================================================================
         // 私有字段
@@ -380,6 +380,7 @@ namespace BossRush
             }
 
             ConfigureShopIdentity(npcId);
+            DetachOfficialShopSaveHooks();
 
             // 配置商品
             ConfigureShopEntries(npcId);
@@ -545,6 +546,7 @@ namespace BossRush
                 ? null
                 : NPCShopStockLedger.Parse(AffinityManager.GetShopStockTokens(npcId));
             int currentDay = NPCGiftSystem.GetCurrentGameDay();
+            bool playerMarried = !string.IsNullOrEmpty(AffinityManager.GetCurrentSpouseNpcId());
 
             foreach (var item in items)
             {
@@ -575,8 +577,9 @@ namespace BossRush
                     {
                         NPCShopStockSlot record;
                         bool hasRecord = currentStockSlots.TryGetValue(item.TypeID, out record);
+                        int restockDays = NPCShopStockLedger.EffectiveRestockDays(item.RestockDays, item.RestockOnlyWhenSingle, playerMarried);
                         NPCShopStockSlot slot = NPCShopStockLedger.Resolve(hasRecord, record, item.TypeID,
-                            item.MaxStock, item.RestockDays, item.Possibility, currentDay, RollStockPossibility);
+                            item.MaxStock, restockDays, item.Possibility, currentDay, RollStockPossibility);
                         currentStockSlots[item.TypeID] = slot;
                         wrapped.CurrentStock = slot.Remaining;
                         // 与官方 SetupSaveData 一致：卖完的必出商品留着显示「售罄」，随机商品没掷中或卖完就不显示。
@@ -760,56 +763,6 @@ namespace BossRush
         // ============================================================================
         // 私有方法 - 库存存档
         // ============================================================================
-
-        /// <summary>把官方 merchantID 换成本 NPC 的命名空间并回读核对；失败只记日志（库存照常由本系统管理）。</summary>
-        private static void ConfigureShopIdentity(string npcId)
-        {
-            try
-            {
-                var fMerchant = BossRushEagerReflectionCache.StockShop_MerchantID;
-                if (fMerchant == null || currentShop == null)
-                {
-                    ModBehaviour.DevLog("[NPCShop] [WARNING] StockShop.merchantID 反射字段缺失");
-                    return;
-                }
-
-                string merchantId = MerchantIdPrefix + npcId;
-                fMerchant.SetValue(currentShop, merchantId);
-                if (!string.Equals(currentShop.MerchantID, merchantId, StringComparison.Ordinal))
-                {
-                    ModBehaviour.DevLog("[NPCShop] [WARNING] merchantID 设置回读失败: " + merchantId);
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[NPCShop] [WARNING] 设置 merchantID 失败: " + e.Message);
-            }
-        }
-
-        /// <summary>把官方补货计时推到很远的将来，ShowUI 里的 RefreshIfNeeded 就不会把存档库存冲回满。</summary>
-        private static void SuppressOfficialRestock()
-        {
-            try
-            {
-                var fRefreshAfter = BossRushEagerReflectionCache.StockShop_RefreshAfterTimeSpan;
-                var fLastRefreshed = BossRushEagerReflectionCache.StockShop_LastTimeRefreshedStock;
-                if (fRefreshAfter == null || fLastRefreshed == null || currentShop == null)
-                {
-                    ModBehaviour.DevLog("[NPCShop] [WARNING] 官方补货计时反射字段缺失，开店会补满库存");
-                    return;
-                }
-
-                fRefreshAfter.SetValue(currentShop, OfficialRefreshSuppressedTicks);
-                fLastRefreshed.SetValue(currentShop, DateTime.UtcNow.ToBinary());
-                // 官方 Start 在 refreshStockOnStart 为真时也会补满；默认就是 false，这里明确钉住。
-                var fRefreshOnStart = BossRushEagerReflectionCache.StockShop_RefreshStockOnStart;
-                if (fRefreshOnStart != null) fRefreshOnStart.SetValue(currentShop, false);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[NPCShop] [WARNING] 压住官方补货失败: " + e.Message);
-            }
-        }
 
         private static float RollStockPossibility()
         {

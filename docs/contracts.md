@@ -141,12 +141,15 @@ NPC 好感 key（早于 `BossRush_` 前缀约定，冻结不改名）：
 
 - `NPCAffinity` — `AffinityJsonSerializer` 整存的 `npcDataList`，每只 NPC 一条 `AffinityData`；读不出来时整局写屏障。
   2026-10-17 `SCHEMA+`：每条追加可选 `shopStockTokens`（NPC 商店剩余库存，`NPCShopStockLedger` 编码 `typeId:remaining:refillDay:shown`，
-  逗号分隔、坏 token 逐条跳过）；缺字段 = 满库存，旧档行为不变。离婚不清它，终身限量的钻石戒指不会因离婚补货。
+  逗号分隔、坏 token 逐条跳过）；缺字段 = 满库存，旧档行为不变。离婚不清它；钻石戒指（2026-10-18 起 `RestockOnlyWhenSingle`）
+  已婚期间不补，单身时距上次补货满 3 个游戏日补 1 枚，所以离婚后照样能再买，编码与字段不变。
   2026-10-17 `SCHEMA+`（好感剧情）：不加字段，只往已有的逗号串里追加 token。`triggeredEventKeys` 的 `story_N`（3/5/8/10）仍是剧情标，
   婚礼教堂（`story_10` / `hasTriggeredStory10`）与好感衰减下限读它；捏脸 NPC 另记 `story_seen_N` 表示「剧情真的播完了」
   （旧档的 `story_N` 是当年只打横幅时打上的，缺 `story_seen_N` 时下次聊天补播）；剧情奖励领取记在 `claimedRewardKeys` 的 `duck_story_reward_N`。
   `ResetStoryTriggers` 按 `story_` 前缀清除时连 `story_seen_N` 一并清掉。剧情文案在 `Assets/Data/DuckNpcs.json` 的可选 `permanent.storyEvents`。
-- 现金 NPC 商店开着时，官方 `StockShop.Save` 会写 `StockShop_BossRushNpc_<npcId>`（Mod 命名空间，内容只是官方自带的库存快照，Mod 不读它）。
+- NPC 商店（`NPCShopSystem`）开店时摘掉官方 `StockShop.Awake` 挂的 `SavesSystem.OnCollectSaveData += Save` 与 `OnSetFile += Load`
+  （2026-10-18，CR-2026-10-18-012），不再写 `StockShop_BossRushNpc_<npcId>`；旧档里已写过的这条键 Mod 从不读，留着无害。
+  反射找不到 `Save` / `Load` 时只记 DevLog，退回旧行为（merchantID 仍是 Mod 命名空间，不碰官方 Albert 的库存键）。
 
 Breaking:
 
@@ -864,7 +867,9 @@ Breaking/Operational:
 
 - `StockShop.merchantID` 序列化默认值是 `"Albert"`（基地官方商人）。`AddComponent<StockShop>()` 立刻跑 `Awake`：按 Albert 的档案填条目、读 `StockShop_Albert`，
   并订阅 `SavesSystem.OnCollectSaveData += Save`。不改 ID 的话，NPC 商店开着时一旦存档，就会用 NPC 商品的库存覆盖官方 Albert 的库存存档。
-  `NPCShopSystem.ConfigureShopIdentity` 在 `AddComponent` 后同帧改成 `BossRushNpc_<npcId>` 并回读核对（`Awake` 只读，不写）。
+  `NPCShopSystem.ConfigureShopIdentity` 在 `AddComponent` 后同帧改成 `BossRushNpc_<npcId>` 并回读核对（`Awake` 只读，不写）；
+  随后 `DetachOfficialShopSaveHooks` 用同一实例的 `Save` / `Load`（私有、无参）建委托，从 `OnCollectSaveData` / `OnSetFile` 退订，
+  官方 `OnDestroy` 再退订一次是空操作（2026-10-18）。
 - `ShowUI` 先调 `RefreshIfNeeded`：新对象的 `lastTimeRefreshedStock` 落在很久以前，必定 `DoRefreshStock`，把库存补满、重掷 `possibility`。
   所以「每次开店新建 `StockShop`」等于每次开店都补货。现金 NPC 商店的库存改由 `NPCShopStockLedger` 按游戏日管理并跟好感存档走，
   `SuppressOfficialRestock` 把 `refreshAfterTimeSpan` 推到 3650 天、`lastTimeRefreshedStock` 写成当前时间、`refreshStockOnStart` 钉 false。

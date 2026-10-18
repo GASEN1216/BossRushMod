@@ -36,8 +36,10 @@ namespace BossRush
         public string MarriageDate;
         public bool ChattedToday;
         public bool GiftedToday;
-        /// <summary>当前商店折扣（0–1）；没有商店或没到折扣档为 0。</summary>
+        /// <summary>当前折扣（0–1）；没有商店 / 治疗服务或没到折扣档为 0。</summary>
         public float Discount;
+        /// <summary>折扣是治疗折扣（羽织不开商店，DiscountsByLevel 用在治疗上）。</summary>
+        public bool DiscountIsHealing;
         public readonly List<AffinityTabUnlock> Unlocks = new List<AffinityTabUnlock>();
 
         public bool IsMaxLevel { get { return Level >= MaxLevel; } }
@@ -98,7 +100,17 @@ namespace BossRush
                 entry.Married = AffinityManager.IsMarriedToPlayer(npcId);
                 entry.MarriageDate = entry.Married ? AffinityManager.GetMarriageDateText(npcId) : null;
                 entry.Met = entry.Points > 0 || lastChat >= 0 || lastGift >= 0 || entry.Married;
-                entry.Discount = AffinityManager.GetDiscount(npcId);
+                // 有商店的按商店折扣（与开店实际价格同一个入口）；羽织的 DiscountsByLevel 是治疗折扣，单独标
+                INPCShopConfig shopConfig = config as INPCShopConfig;
+                if (shopConfig != null && shopConfig.ShopEnabled)
+                {
+                    entry.Discount = NPCShopSystem.GetDiscount(npcId);
+                }
+                else if (config is NurseAffinityConfig)
+                {
+                    entry.Discount = AffinityManager.GetDiscount(npcId);
+                    entry.DiscountIsHealing = true;
+                }
 
                 Dictionary<int, List<string>> byLevel = new Dictionary<int, List<string>>();
                 Dictionary<int, string[]> unlocks = config.UnlocksByLevel;
@@ -194,7 +206,9 @@ namespace BossRush
                 : entry.Progress + "/" + entry.Required;
             if (entry.Discount > 0.001f)
             {
-                line += L10n.T(" · 商店折扣 ", " · Shop discount ") + Math.Round(entry.Discount * 100f) + "%";
+                line += (entry.DiscountIsHealing
+                    ? L10n.T(" · 治疗折扣 ", " · Healing discount ")
+                    : L10n.T(" · 商店折扣 ", " · Shop discount ")) + Math.Round(entry.Discount * 100f) + "%";
             }
             return line;
         }
