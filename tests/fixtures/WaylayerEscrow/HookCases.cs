@@ -10,7 +10,7 @@ using ItemStatsSystem.Data;
 
 namespace Saves
 {
-    internal static class ItemSavesUtilities
+    internal static partial class ItemSavesUtilities
     {
         // Same installed MoveNext order: load tree, invoke factory, then first await. No task wrapper in any hook.
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -19,12 +19,7 @@ namespace Saves
             ItemTreeData data=SavesSystem.Load<ItemTreeData>("Item/"+key);
             return await ItemTreeData.InstantiateAsync(data);
         }
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void Save(Item item,string key)
-        {
-            SavesSystem.CharacterWrites++;
-            SavesSystem.Save("Item/"+key,ItemTreeData.FromItem(item));
-        }
+
     }
 }
 internal static partial class Program

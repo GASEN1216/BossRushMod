@@ -5,17 +5,17 @@ namespace UnityEngine
     internal static partial class Mathf { internal static int Clamp(int x, int a, int b) { return Math.Max(a, Math.Min(b, x)); } internal static float Round(float x) {return (float)Math.Round(x);} internal static int Max(int a,int b) {return Math.Max(a,b);} }
     internal partial class Object {internal bool Destroyed;public static bool operator ==(Object a,Object b){bool an=ReferenceEquals(a,null)||a.Destroyed,bn=ReferenceEquals(b,null)||b.Destroyed;return an||bn?an==bn:ReferenceEquals(a,b);}public static bool operator !=(Object a,Object b){return !(a==b);}public override bool Equals(object b){return this==b as Object;}public override int GetHashCode(){return base.GetHashCode();}internal static void Destroy(GameObject go){if(ReferenceEquals(go,null))return;go.Destroyed=true;foreach(var child in go.Components)child.Destroyed=true;}}
     internal partial class MonoBehaviour : Object { public string name; public GameObject gameObject = new GameObject();internal MonoBehaviour(){gameObject.Components.Add(this);}public int GetInstanceID() { return GetHashCode(); } }
-    internal partial class GameObject : Object {internal readonly List<Object> Components=new List<Object>();internal bool activeSelf=true;internal void SetActive(bool x){activeSelf=x;}public string name="fixture"; public Transform transform = new Transform(); }
+    internal partial class GameObject : Object {internal readonly List<Object> Components=new List<Object>();internal bool activeSelf=true;internal void SetActive(bool x){activeSelf=x;}public string name="fixture"; public UnityEngine.SceneManagement.Scene scene=UnityEngine.SceneManagement.SceneManager.GetActiveScene(); public Transform transform = new Transform(); }
     internal class Transform { public Vector3 position; }
-    internal struct Quaternion {public static Quaternion identity {get{return new Quaternion();}}} internal struct Vector3 {public static Vector3 zero {get{return new Vector3();}} public float x, y, z; public Vector3 normalized { get { return this; } } public Vector3(float x, float y, float z) { this.x=x;this.y=y;this.z=z; } public static Vector3 operator +(Vector3 a, Vector3 b) { return new Vector3(a.x+b.x,a.y+b.y,a.z+b.z); } }
+    internal struct Quaternion {public static Quaternion identity {get{return new Quaternion();}}} internal struct Vector3 {public static Vector3 zero {get{return new Vector3();}} public float x, y, z; public float sqrMagnitude {get{return x*x+y*y+z*z;}} public static Vector3 operator -(Vector3 a,Vector3 b){return new Vector3(a.x-b.x,a.y-b.y,a.z-b.z);} public Vector3 normalized { get { return this; } } public Vector3(float x, float y, float z) { this.x=x;this.y=y;this.z=z; } public static Vector3 operator +(Vector3 a, Vector3 b) { return new Vector3(a.x+b.x,a.y+b.y,a.z+b.z); } }
     internal static class Time { public static float time, unscaledTime; }
     internal static class Random { public static Vector3 insideUnitSphere { get { return new Vector3(); } } public static float Range(float a, float b) { return a; } }
     internal static class Debug { public static void LogWarning(string x) {} }
 }
 namespace UnityEngine.SceneManagement
 {
-    internal struct Scene { public int buildIndex; public bool isLoaded; public string name;public int handle; }
-    internal static class SceneManager { internal static int Handle=1; public static Scene GetActiveScene() { return new Scene { name="arena", isLoaded=true, handle=Handle }; } }
+    internal struct Scene { public int buildIndex; public bool isLoaded; public string name;public int handle; public static bool operator ==(Scene a,Scene b){return a.handle==b.handle;}public static bool operator !=(Scene a,Scene b){return !(a==b);}public override bool Equals(object o){return o is Scene && this==(Scene)o;}public override int GetHashCode(){return handle;} }
+    internal static class SceneManager { internal static void MoveGameObjectToScene(UnityEngine.GameObject go,Scene scene){go.scene=scene;}internal static int Handle=1; public static Scene GetActiveScene() { return new Scene { name="arena", isLoaded=true, handle=Handle }; } }
 }
 namespace ItemStatsSystem
 {
@@ -47,7 +47,7 @@ namespace BossRush
     internal class Health { public bool IsDead; public float MaxHealth=100; internal CharacterMainControl Character; internal static event Action<Health, DamageInfo> OnDead; internal T GetComponent<T>() where T:class { return Character as T; } }
     internal struct DamageInfo { }
     internal class CharacterMainControl : UnityEngine.MonoBehaviour
-    { public Health Health=new Health();public ItemStatsSystem.Item CharacterItem=new ItemStatsSystem.Item(); internal CharacterMainControl() {Health.Character=this;} internal static CharacterMainControl Main { get { return BossRushCoop.Current.Character; } } }
+    { internal void SetPosition(UnityEngine.Vector3 value){transform.position=value;}public Health Health=new Health();public ItemStatsSystem.Item CharacterItem=new ItemStatsSystem.Item(); internal CharacterMainControl() {Health.Character=this;} internal static CharacterMainControl Main { get { return BossRushCoop.Current.Character; } } }
     internal static class CharacterMainControlExtensions { internal static bool IsMainCharacter(CharacterMainControl c) {return c==CharacterMainControl.Main;} }
     internal sealed partial class BossRushCoopPlayer { public CharacterMainControl Character; public bool IsAlive { get { return IsConnected && Character!=null && !Character.Health.IsDead; } } }
     internal sealed partial class TestPeer { internal CharacterMainControl Character = new CharacterMainControl(); }
@@ -59,6 +59,7 @@ namespace BossRush
         internal static bool IsPlayer(CharacterMainControl c) { return Peers.Exists(p=>p.Character==c); }
         internal static bool AnyPlayerAlive {get {return Peers.Exists(p=>p.Connected&&!p.Character.Health.IsDead);} }
     }
+    internal static class BossRushInitialSpawn {internal static bool HasArrived(UnityEngine.Vector3 target){return false;}}
     internal static class BossRushMapSelectionHelper {internal static int Clears; internal static void ClearPendingEntryFlowState() {Clears++;} }
     internal static class BossRushUI { internal static bool IsGamePaused() { return false; } }
     internal static class L10n { internal static string T(string a,string b=null) { return b??a; } }
@@ -84,6 +85,7 @@ namespace BossRush
         internal Sign ArenaRewardSignInteract = new Sign(); internal UnityEngine.GameObject ArenaRewardSignGameObject=new UnityEngine.GameObject();
         internal int Begins, Clears, Courier, BossKills, Hell, DFlawless, DClears, Flawless;
         internal int EntryRequests; internal void StartCoopArenaEntryForScene(UnityEngine.SceneManagement.Scene scene) { EntryRequests++; }
+        internal static UnityEngine.Vector3 GetDefaultPositionForScene(string scene){return GetCurrentSceneDefaultPosition();}
         internal static void DevLog(string x) {} internal static UnityEngine.Vector3 GetCurrentSceneDefaultPosition() { return new UnityEngine.Vector3(); }
         internal void ShowMessage(string x) {} internal void StartBossRush() {} internal bool IsCurrentSceneValidBossRushArena() { return true; }
         internal void UnregisterEnemyRecoveryForArena(CharacterMainControl c) { }
@@ -113,8 +115,8 @@ namespace BossRush
         internal void Begin() { BeginCoopArenaRun(); } internal void Wave() { CaptureCoopArenaWaveParticipants(); }
         internal int Copies { get { return CoopArenaRewardCopies; } } internal string Epoch { get { return coopArenaEpoch; } } internal int RunSequence { get { return coopArenaRunSequence; } }
         internal void Fact(string kind,int wave=0) { DeliverCoopArenaFact(kind,wave); } internal void Boss(CharacterMainControl boss) { HandleBossDeath(boss,new DamageInfo()); }
-        private bool IsCurrentWaveBossMember(CharacterMainControl boss) { return boss==CurrentBoss; }
-        private void ProceedAfterWaveFinished() { }
+        internal int WaveAdvances;
+        private void ProceedAfterWaveFinished() { WaveAdvances++; }
         internal void Tick() { RetireLostCoopArenaProjection();coopPersonal.Tick(1); }internal void World(CoopArenaState state){ApplyCoopArena(state);} internal void Snapshot() { coopChannel.Tick(1); }
         internal bool Victory() { return TryBeginCoopArenaVictory(); } internal void QueueVictory(int quality) { QueueCoopArenaVictoryCopies(quality); }
         internal void TickBoxes() { TickCoopArenaVictoryCopies(); } internal bool Apply(CoopArenaPersonal fact) { return ApplyCoopArenaPersonal(fact); }

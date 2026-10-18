@@ -35,7 +35,7 @@ internal static partial class Program
         var reloaded=j.PrepareLoad(naturallySaved);
         Check(reloaded.RootData.inventory.Count==2&&reloaded.GetEntry(reloaded.RootData.inventory[1].instanceID).StackCount==2,"natural-save exclusion receipt prevents a second deduction");
         Check(Saves.SavesSystem.CharacterWrites==0,"journal never invokes whole-character save");
-        Host();var taken=chief.Bag.GetItemAt(0);taken.Detach();hostPlayer.CharacterItem.Inventory.AddItem(taken);
+        Host();var taken=TicketItem(host,packet.Id)??chief.Bag.GetItemAt(0);Journal(host).FindCommit(packet.Id).PublicationProtocol=2;Check(Journal(host).Persist(),"legacy already-public protocol2 success remains durable");taken.SetString(CoopWaylayerJournal.ClaimLockKey,"");taken.Detach();hostPlayer.CharacterItem.Inventory.AddItem(taken);
         host.Dispose();Saves.SavesSystem.Reload();host=new CoopWaylayerEscrow();Handshake();
         Guest();BossRushCoop.Receive("guest","sky.waylayer.result",result,"host",true);
         Host();BossRushCoop.Receive("host","sky.waylayer.query",query,"guest",false);
@@ -170,6 +170,80 @@ internal static partial class Program
         Check(recovered!=null,"known pre-publication cancellation must produce original-host terminal after readable recovery");
         result=recovered.Value;Guest();BossRushCoop.Receive("guest","sky.waylayer.result",result,"host",true);
         Check(!((CoopWaylayerEscrow.Decision)result).Success&&stack.StackCount==3,"known pre-publication cancellation recovers exact original after restart and readable original host");
+
+        Setup();stack=Add(guestPlayer,5002,3,"unconfirmed success stays private");packet=Start();response=Response();
+        Host();writes=Saves.SavesSystem.PhysicalWrites;Saves.SavesSystem.FailBeforeDiskAfterWrites=writes+3;Respond(response);
+        var heldEntries=(System.Collections.IDictionary)typeof(CoopWaylayerEscrow).GetField("host",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(host);
+        var heldEntry=heldEntries[packet.Id];
+        var heldItem=(Item)heldEntry.GetType().GetField("Custody",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(heldEntry);
+        Check(heldItem!=null&&!heldItem.IsBeingDestroyed&&!SkyIslandInventoryTransaction.HasOwner(heldItem)&&chief.Bag.Content.All(v=>v==null),"failed terminal write retains exact private live original without lootable custody");
+        Check(CoopPersonalDelivery<CoopWaylayerEscrow.Decision>.Queue.Count==0&&ItemTreeData.FactoryCalls==1,"unconfirmed terminal cannot announce success or create another original");
+        Saves.SavesSystem.FailBeforeDiskAfterWrites=0;Respond(response);
+        Check(Decision().Success&&ReferenceEquals(chief.Bag.GetItemAt(0),heldItem)&&ItemTreeData.FactoryCalls==1&&chief.Snatches==1,"recovered terminal write publishes the exact staged instance once");
+        Guest();Check(Apply(Decision())&&stack.StackCount==2,"private retry commits one original debit");
+
+        foreach(string boundary in new[]{"scene","chief","room"})
+        {
+            Setup();stack=Add(guestPlayer,5002,3,"private original retired on "+boundary);packet=Start();response=Response();
+            Host();writes=Saves.SavesSystem.PhysicalWrites;Saves.SavesSystem.FailBeforeDiskAfterWrites=writes+3;Respond(response);
+            heldEntries=(System.Collections.IDictionary)typeof(CoopWaylayerEscrow).GetField("host",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(host);
+            heldEntry=heldEntries[packet.Id];heldItem=(Item)heldEntry.GetType().GetField("Custody",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(heldEntry);
+            Saves.SavesSystem.FailBeforeDiskAfterWrites=0;
+            if(boundary=="scene")BossRushCoop.SceneToken="different-current-scene";
+            else if(boundary=="chief")UnityEngine.Object.Destroy(chief);
+            else BossRushCoop.RunId="different-current-room";
+            Respond(response);
+            Check(chief.Bag.Content.All(v=>v==null)&&heldItem!=null&&!heldItem.IsBeingDestroyed,"stale publication retry cannot expose private original after "+boundary);
+            CoopPersonalDelivery<CoopWaylayerEscrow.Decision>.RejectDelivery=true;
+            host.Tick(1);
+            var recoverable=TicketItem(host,packet.Id);Check(recoverable!=null&&CoopWaylayerClaims.Locked(recoverable)&&recoverable.InInventory!=hostPlayer.CharacterItem.Inventory,"confirmed protocol3 custody remains locked and recoverable without success delivery after "+boundary);
+            if(boundary=="scene")
+            {
+                CoopPersonalDelivery<CoopWaylayerEscrow.Decision>.RejectDelivery=false;host.Tick(1);
+                Check(recoverable!=null&&CoopWaylayerClaims.Locked(recoverable),"terminal delivery does not destroy the protocol3 public recovery ticket");
+            }
+            host.Dispose();
+            Check(heldItem.IsBeingDestroyed&&recoverable.IsBeingDestroyed,"owner cleanup retires every private or public protocol3 ticket while retaining durable custody after "+boundary);
+            Guest();Check(Journal(guest).FindDebt(packet.Id).State==CoopWaylayerJournal.Reserved,"host cleanup never invents guest terminal without authenticated result after "+boundary);
+        }
+
+        Setup();stack=Add(guestPlayer,5002,3,"old ambiguous publication remains conservative");packet=Start();response=Response();Host();hj=Journal(host);
+        var legacy=hj.PrepareCommit(packet.Id,response.Owner,response.Proof,response.Tree);Check(hj.FinishCommit(legacy,true),"legacy custody fixture begins with real durable original tree");
+        legacy.PublicationStarted=true;legacy.PublicationProtocol=0;Check(hj.Persist(),"old protocol ambiguous publication is physically persisted");
+        host.Dispose();Saves.SavesSystem.Reload();host=new CoopWaylayerEscrow();BossRushCoop.RunId="legacy-ambiguous-reconnect";Handshake();Guest();guest.Tick(1);
+        query=BossRushCoop.Sent.Last(v=>v.Topic=="sky.waylayer.query").Value;
+        int legacyResults=BossRushCoop.Sent.Count(v=>v.Topic=="sky.waylayer.result");Host();BossRushCoop.Receive("host","sky.waylayer.query",query,"guest",false);
+        Check(BossRushCoop.Sent.Count(v=>v.Topic=="sky.waylayer.result")==legacyResults&&Journal(host).FindCommit(packet.Id).State==CoopWaylayerJournal.Custody&&stack.StackCount==2,"old ambiguous protocol cannot be relabeled as safely refundable new custody");
+
+        Setup();stack=Add(guestPlayer,5002,3,"external adoption notification moves original");packet=Start();response=Response();
+        chief.Bag.AfterAdd=item=>{item.Detach();hostPlayer.CharacterItem.Inventory.AddItem(item);};Respond(response);
+        var externallyOwned=hostPlayer.CharacterItem.Inventory.Content.FirstOrDefault(v=>v!=null);
+        var uncertain=Journal(host).FindCommit(packet.Id);
+        Check(externallyOwned==null,"new protocol locked ticket cannot be moved into foreign inventory by adoption callback");
+        Check(uncertain.State==CoopWaylayerJournal.Failure&&!Decision().Success,"blocked foreign adoption keeps exact rejection authority without asset leakage");Guest();Check(Apply(Decision())&&stack.StackCount==3,"blocked foreign callback returns one original through real decision handler");
+
+        // The last successful physical write is the publication barrier.  Every later
+        // write is unavailable, including Dispose: a forced stop cannot flush the
+        // in-memory cancellation. Reload uses only that frozen physical image.
+        Setup();stack=Add(guestPlayer,5002,3,"publication barrier killed before cancellation durability");packet=Start();response=Response();
+        Host();writes=Saves.SavesSystem.PhysicalWrites;
+        Saves.SavesSystem.ThrowAfterDisk=true;Saves.SavesSystem.FailReadAfterWrites=writes+3;
+        Saves.SavesSystem.FailBeforeDiskAfterWrites=writes+3;Respond(response);
+        Check(chief.Bag.Content.All(v=>v==null)&&CoopPersonalDelivery<CoopWaylayerEscrow.Decision>.Queue.Count==0,"compound fault never exposes an unconfirmed publication");
+        string frozen=(string)Saves.SavesSystem.Disk[Saves.SavesSystem.CurrentFilePath]["BossRush_CoopWaylayerJournal"];
+        var persisted=BossRushCoopJson.FromJson<CoopWaylayerJournal.Document>(frozen).Commits.Single(v=>v.Id==packet.Id);
+        Check(persisted.State==CoopWaylayerJournal.Custody&&persisted.PublicationStarted,"abrupt-stop disk image retains the exact ambiguous publication barrier");
+        host.Dispose();
+        Check((string)Saves.SavesSystem.Disk[Saves.SavesSystem.CurrentFilePath]["BossRush_CoopWaylayerJournal"]==frozen,"unavailable shutdown cannot repair the frozen physical image");
+        Saves.SavesSystem.ThrowAfterDisk=false;Saves.SavesSystem.FailReadAfterWrites=Saves.SavesSystem.FailBeforeDiskAfterWrites=0;
+        Saves.SavesSystem.Reload();host=new CoopWaylayerEscrow();BossRushCoop.RunId="killed-publication-reconnect";Handshake();Guest();guest.Tick(1);
+        query=BossRushCoop.Sent.Last(v=>v.Topic=="sky.waylayer.query").Value;
+        int resultCount=BossRushCoop.Sent.Count(v=>v.Topic=="sky.waylayer.result");
+        Host();BossRushCoop.Receive("host","sky.waylayer.query",query,"guest",false);
+        Check(BossRushCoop.Sent.Count(v=>v.Topic=="sky.waylayer.result")==resultCount+1,"original-host restart must settle publication-barrier failure with no cancellation write");
+        result=BossRushCoop.Sent.Last(v=>v.Topic=="sky.waylayer.result").Value;
+        Guest();BossRushCoop.Receive("guest","sky.waylayer.result",result,"host",true);
+        Check(!((CoopWaylayerEscrow.Decision)result).Success&&stack.StackCount==3,"abrupt-stop recovery restores exactly one original");
 
         Setup();Guest();j=Journal(guest);
         for(int i=0;i<5000;i++) j.Data.Debts.Add(new CoopWaylayerJournal.Debt {

@@ -57,7 +57,7 @@ namespace BossRush
     internal sealed class BossRushMapEntryAssetRuntimeModule : BossRushRuntimeModuleBase
     {
         public override string ModuleName { get { return "MapEntryAsset"; } }
-        public override void OnUpdate(float deltaTime, float unscaledDeltaTime) { BossRushMapSelectionHelper.TickPrepaidAssetRefunds(); }
-        public override void OnDestroy() { BossRushMapSelectionHelper.ResetStaticCaches(); }
+        public override void OnUpdate(float deltaTime, float unscaledDeltaTime) { BossRushCoopMapPaymentCompatibility.TickRefunds(); BossRushMapSelectionHelper.TickPrepaidAssetRefunds(); }
+        public override void OnDestroy() { BossRushMapSelectionHelper.ResetStaticCaches(); BossRushCoopMapPaymentCompatibility.ResetStaticCaches(); }
     }
 }

@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
 SOURCE = Path("ZombieMode/ZombieModeSpawner.cs")
@@ -35,7 +36,7 @@ def extract_method_body(text: str, signature: str) -> str | None:
 
 
 def main() -> int:
-    text = SOURCE.read_text(encoding="utf-8")
+    text = clean_source(SOURCE.read_text(encoding="utf-8-sig"))
     body = extract_method_body(text, "internal bool TryGetNearestZombieModeMapSpawnPositionToPlayer(out Vector3 position)")
     if body is None:
         return fail("missing TryGetNearestZombieModeMapSpawnPositionToPlayer body")
@@ -47,14 +48,28 @@ def main() -> int:
         "float preferredMinDistance = GetZombieModeSpawnPointMinPlayerDistance();",
         "float preferredMinDistanceSqr = preferredMinDistance * preferredMinDistance;",
         "float fallbackMinDistanceSqr = ZombieModeTuning.SpawnPointMinPlayerDistance * ZombieModeTuning.SpawnPointMinPlayerDistance;",
-        "float distanceSqr = main != null ? delta.sqrMagnitude : offset;",
-        "if (main != null && distanceSqr < fallbackMinDistanceSqr)",
-        "if (main != null && distanceSqr < preferredMinDistanceSqr)",
+        "float distanceSqr = delta.sqrMagnitude;",
+        "if (distanceSqr < fallbackMinDistanceSqr)",
+        "bool preferred = entry.DistanceSqr >= preferredMinDistanceSqr;",
+        "zombieModeSpawnScanEntries.Sort(ZombieModeSpawnScanOrder);",
         "int bestIndex = bestPreferredIndex >= 0 ? bestPreferredIndex : bestFallbackIndex;",
     ]
     for snippet in required:
         if snippet not in body:
             return fail("missing squared-distance spawn selection snippet -> " + snippet)
+
+    reliable = extract_method_body(text, "internal bool TryGetZombieModeReliableSpawnPosition(out Vector3 position)")
+    anchors = extract_method_body(text, "private bool HasZombieModeReachableSpawnAnchor()")
+    if reliable is None or anchors is None:
+        return fail("missing reliable spawn failure cache or eligible anchor check")
+    for snippet in ("zombieModeReliableSpawnFailedFrame == frame", "!HasZombieModeReachableSpawnAnchor()", "zombieModeReliableSpawnFailedFrame = frame;"):
+        if snippet not in reliable:
+            return fail("missing per-frame search gate -> " + snippet)
+    if reliable.index("!HasZombieModeReachableSpawnAnchor()") > reliable.index("TryGetNearestZombieModeMapSpawnPositionToPlayer("):
+        return fail("navigation anchor check must precede the point scan")
+    for snippet in ("ZombieModeLifecyclePhase.InitializingRun", "(!initializing && !IsCoopZombieParticipant(player))", "SpawnPositionHelper.IsReachableAnchor(player.Character.transform.position)"):
+        if snippet not in anchors:
+            return fail("co-op anchor must preserve initial alive / active admitted eligibility -> " + snippet)
 
     print("ZombieModeSpawnSelectionSqrGuard: PASS")
     return 0

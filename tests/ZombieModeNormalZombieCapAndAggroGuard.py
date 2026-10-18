@@ -172,12 +172,19 @@ def main() -> int:
     for token in [
         "CharacterMainControl.Main",
         "ZombieModeTuning.SafeZoneRadius",
-        "delta.sqrMagnitude > radius * radius",
+        "GetZombieModeNearestParticipantHorizontalDistanceSquared(marker.transform.position) > radius * radius",
         "marker.IsBoss",
     ]:
         result = require(cleanup, token, "safe-zone cleanup must filter by player-centered safe-zone radius and avoid boss lifecycle damage")
         if result:
             return result
+
+    nearest = extract_method(Path("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs").read_text(encoding="utf-8"), "GetZombieModeNearestParticipantHorizontalDistanceSquared")
+    for token in ["foreach (BossRushCoopPlayer player in BossRushCoop.Players)",
+                  "if (!IsCoopZombieParticipant(player) || !player.IsAlive) continue;", "delta.y = 0f;",
+                  "nearest = Mathf.Min(nearest, delta.sqrMagnitude);"]:
+        if token not in clean_source(nearest):
+            return fail("safe-zone distance must use all admitted live participants on the horizontal plane: " + token)
 
     reserve = extract_method(spawner, "TryReserveZombieModeNormalSpawnSlot")
     if not reserve:

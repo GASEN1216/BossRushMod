@@ -237,6 +237,14 @@ public sealed class ExplosionManager
 }
 namespace BossRush
 {
+    internal static class BossRushCoop
+    {
+        internal static bool IsConnected, IsHost;
+        internal static string RunId, SceneToken;
+        internal static CharacterMainControl Guest;
+        internal static bool IsPlayer(CharacterMainControl character)
+        { return character != null && (character == CharacterMainControl.Main || character == Guest); }
+    }
     // 本夹具只执行既有离线路径；联机词条执行另见 MutatorCoop。
     internal static class MutatorCoopRuntimeModule { internal static bool TryHandleEnemyKilled(Health h, DamageInfo d) { return false; } }
     public sealed partial class ModBehaviour : UnityEngine.Object

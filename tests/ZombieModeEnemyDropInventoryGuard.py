@@ -1,7 +1,9 @@
-"""ZombieModeEnemyDropInventoryGuard: enemy drops should go to player inventory first."""
+"""Enemy drops: solo inventory first, co-op host creates shared native ground items."""
 
 from pathlib import Path
 import sys
+import re
+from cs_source_util import clean_source
 
 
 DROPS = Path("ZombieMode/ZombieModeDropsAndPerformance.cs")
@@ -62,6 +64,11 @@ def main() -> int:
     delivery_start = text.index("private GameObject TryDropZombieModeItemNearPosition")
     delivery_end = text.index("private void DropZombieModeItemAtPlayerFeet", delivery_start)
     delivery_body = text[delivery_start:delivery_end]
+    clean_delivery = re.sub(r"\s+", " ", clean_source(delivery_body))
+    if "if (!BossRushCoop.HasWorldAuthority || !IsZombieModeRunValid(runId) || typeId <= 0)" not in clean_delivery:
+        return fail("only world authority may create enemy item drops")
+    if "CharacterMainControl player = BossRushCoop.IsConnected ? null : CharacterMainControl.Main;" not in clean_delivery:
+        return fail("co-op enemy drops must use the native shared ground path instead of the host inventory")
     if delivery_body.count("DropZombieModeItemAtPlayerFeet(") < 2:
         return fail("overweight and all other player-valid ground paths must share the feet-drop helper")
     if "item.Drop(player, true);" in delivery_body:

@@ -18,6 +18,24 @@ def main():
         assert required in schedule, 'guest scene entry scope: ' + required
     wait = body(coop, 'internal IEnumerator SetupCoopClientEntry(')
     assert 'coopArenaEntryToken != BossRushCoop.SceneToken' in wait, 'old mode cannot configure a new scene'
+    placement = body(wait, 'if (BossRushCoop.IsClient && BossRushCoop.RunId == room && scene.isLoaded && SceneManager.GetActiveScene().handle == scene.handle && (CoopEntryMode == 1 || CoopEntryMode == 2))')
+    for required in ('CharacterMainControl local = CharacterMainControl.Main;', 'string token = BossRushCoop.SceneToken;',
+                     'int generation = BossRushCoop.SceneGeneration;', 'string asset = BossRushCoop.LocalAssetId;',
+                     'local.Health == null || local.Health.IsDead || !BossRushCoop.HasBoundScene',
+                     'string.IsNullOrEmpty(asset) || coopArenaEntryToken != token',
+                     'Vector3 target = ModBehaviour.GetDefaultPositionForScene(scene.name);',
+                     'if (local.gameObject.scene != scene) SceneManager.MoveGameObjectToScene(local.gameObject, scene);',
+                     'if (!BossRushInitialSpawn.HasArrived(target) && (local.transform.position - target).sqrMagnitude > 0.25f) local.SetPosition(target);'):
+        assert required in placement, 'exact local Normal/D first placement: ' + required
+    assert placement.count('local.SetPosition(target);') == 1, 'first entry has one position operation'
+    validation = placement[placement.index('if (!aligned'):placement.index('createEntry();')]
+    for required in ('!BossRushCoop.IsClient', 'BossRushCoop.RunId != room', '!BossRushCoop.HasBoundScene',
+                     'BossRushCoop.SceneToken != token', 'coopArenaEntryToken != token',
+                     'BossRushCoop.SceneGeneration != generation', 'BossRushCoop.LocalAssetId != asset',
+                     '!scene.isLoaded', 'SceneManager.GetActiveScene().handle != scene.handle',
+                     'local == null', 'CharacterMainControl.Main != local', 'local.Health == null', 'local.Health.IsDead', 'yield break;'):
+        assert required in validation, 'position callback must retain the actual local entry lease: ' + required
+    assert placement.index('local.SetPosition(target);') < placement.index('if (!aligned') < placement.index('createEntry();') < placement.index('continueEntry();') < placement.index('createRescue();'), 'revalidate before dispatching existing local facilities'
     entry = clean_source((ROOT / 'WavesArena/BossRushEntryFlow.cs').read_text(encoding='utf-8-sig'))
     bridge = body(entry, 'internal void StartCoopArenaEntryForScene(')
     for required in ('SetCurrentMapSpawnPoints(scene.name);', 'SetArenaCenterFromMapConfig(scene.name);',

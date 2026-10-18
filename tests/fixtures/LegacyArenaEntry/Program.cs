@@ -26,7 +26,7 @@ internal static class Program
         SceneManager.Add(2, "BossRush_SkyIsland"); SceneManager.Add(3, "Level_DemoChallenge_1");
         SceneManager.Active=1; SceneLoader.IsSceneLoading=false;
         LevelManager.LevelInited=ready; GameCamera.Instance=new GameCamera();
-        CharacterMainControl.Main=new CharacterMainControl();
+        BossRushInitialSpawn.Arrived=false; BossRushCoop.LocalAssetId="actual-asset"; CharacterMainControl.PositionHook=null; CharacterMainControl.Main=new CharacterMainControl();
         previous=new ModBehaviour(); return previous;
     }
     private static void Depart(bool notify=true)
@@ -153,12 +153,41 @@ internal static class Program
             Check(!Probe.Has("sign"),"guest snapshot uses real level/player readiness before local facilities");
             LevelManager.LevelInited=true;Scheduler.Tick(12);
             Check(Probe.Has("sign")&&Probe.Has("sign-retry")&&Probe.Has("bubble"),"real snapshot entry bridge creates local sign, retries and rescue without local map intent: "+mode);
-            Check(Probe.Has("map-points")&&Probe.Has("map-center")&&!Probe.Has("teleport")&&!Probe.Has("clear-enemies")&&!Probe.Has("starter"),"guest local setup configures facilities without host world or personal loadout takeover");
+            Check(Probe.Has("map-points")&&Probe.Has("map-center")&&Probe.Has("teleport")&&!Probe.Has("clear-enemies")&&!Probe.Has("starter"),"guest local setup aligns its actual local body without host world or loadout takeover");
+            Check((CharacterMainControl.Main.transform.position-new Vector3(3,4,5)).sqrMagnitude<0.01f,"guest Normal/D actual body reaches configured host arena world position");
             owner.ReceiveCoopEntry(mode);Scheduler.Tick(12);Check(Probe.Effects.FindAll(x=>x=="sign").Count==1,"repeated accepted snapshot creates guest facilities once");
             SceneManager.Active=3;BossRushCoop.SceneToken="native-2";CharacterMainControl.Main=new CharacterMainControl();owner.ReceiveCoopEntry(mode);Scheduler.Tick(12);
             Check(Probe.Effects.FindAll(x=>x=="sign").Count==2,"same-name reload new handle/token creates successor local facilities");
         }
         owner=Host("Normal",ready:false);BossRushCoop.IsConnected=true;owner.ReceiveCoopEntry(1);Depart();NoLateEffects(owner,"accepted snapshot entry cancels on actual scene unload before readiness");
+        foreach(string change in new[]{"room","token","entrytoken","generation","asset","bound","body","death","scene"})
+        {
+            owner=Host("Normal"); BossRushCoop.IsConnected=true;BossRushCoop.RunId="actual-room";
+            CharacterMainControl.PositionHook=()=> {
+                if(change=="room")BossRushCoop.RunId="successor-room";
+                if(change=="token")BossRushCoop.SceneToken="successor-token";
+                if(change=="entrytoken")owner.ReplaceArenaEntryToken();
+                if(change=="generation")BossRushCoop.SceneGeneration++;
+                if(change=="asset")BossRushCoop.LocalAssetId="successor-asset";
+                if(change=="bound")BossRushCoop.HasBoundScene=false;
+                if(change=="body")CharacterMainControl.Main=new CharacterMainControl();
+                if(change=="death")CharacterMainControl.Main.Health.IsDead=true;
+                if(change=="scene")SceneManager.Active=3;
+            };
+            owner.ReceiveCoopEntry(2);Scheduler.Tick(12);
+            Check(Probe.Has("teleport")&&!Probe.Has("sign")&&!Probe.Has("bubble")&&!Probe.Has("starter"),"SetPosition callback cannot dispatch facilities into new lease: "+change);
+        }
+        owner=Host("Normal");BossRushCoop.IsConnected=true;BossRushInitialSpawn.Arrived=true;
+        CharacterMainControl.Main.transform.position=new Vector3(3,4,5);owner.ReceiveCoopEntry(2);Scheduler.Tick(12);
+        Check(Probe.Has("sign")&&!Probe.Has("teleport"),"already-arrived real native initial spawn is not positioned a second time");
+        owner=Host("Normal");BossRushCoop.IsConnected=true;BossRushCoop.HasBoundScene=false;owner.ReceiveCoopEntry(2);Scheduler.Tick(12);
+        Check(!Probe.Has("teleport")&&!Probe.Has("sign"),"unbound native scene cannot receive any local arena positioning");
+        foreach(int entryMode in new[]{3,4,5,6})
+        {
+            owner=Host("Normal");BossRushCoop.IsConnected=true;owner.ReceiveCoopEntry(entryMode);Scheduler.Tick(12);
+            Check(!Probe.Has("teleport")&&!Probe.Has("sign"),"non Normal/D modes retain their independent entry placement: "+entryMode);
+        }
+
     }
     public static int Main()
     {

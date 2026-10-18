@@ -100,6 +100,35 @@ namespace BossRush
             }
         }
 
+        /// <summary>只检查可达性判据的锚点一侧；锚点吸不上导航面时，无须逐个查询候选点。</summary>
+        internal static bool IsReachableAnchor(Vector3 anchorPosition)
+        {
+            try
+            {
+                AstarPath astar = AstarPath.active;
+                if (astar != null)
+                {
+                    return !astar.isScanning &&
+                           IsNearWalkableNode(astar.GetNearest(anchorPosition, NNConstraint.Walkable), anchorPosition, ReachableAnchorSnapDistance);
+                }
+            }
+            catch
+            {
+                return false;
+            }
+
+            try
+            {
+                NavMeshHit anchorHit;
+                return NavMesh.SamplePosition(anchorPosition, out anchorHit, ReachableAnchorSnapDistance, NavMesh.AllAreas) &&
+                       Mathf.Abs(anchorHit.position.y - anchorPosition.y) <= ReachableVerticalTolerance;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         private static bool IsNearWalkableNode(NNInfo info, Vector3 rawPosition, float maxHorizontalDistance)
         {
             if (info.node == null || !info.node.Walkable)

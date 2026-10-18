@@ -40,6 +40,8 @@ namespace BossRush
         {
             ClearSubscriptions();
             if (!inBaseScene || !unlocked) return;
+            // 基地子场景未加载建筑区时，空扫描不能代表玩家撤下了陈列。
+            if (!IsBuildingAreaLoaded()) return;
             try
             {
                 Showcase[] showcases = UnityEngine.Object.FindObjectsOfType<Showcase>(true);
@@ -61,6 +63,12 @@ namespace BossRush
             {
                 ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 扫描官方展示建筑失败: " + e.Message);
             }
+        }
+
+        private static bool IsBuildingAreaLoaded()
+        {
+            try { return UnityEngine.Object.FindObjectOfType<BuildingArea>(true) != null; }
+            catch (Exception) { return false; }
         }
 
         private static void HandleSlotContentChanged(Item item, Slot slot)

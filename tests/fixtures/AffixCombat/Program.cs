@@ -19,6 +19,8 @@ internal static class Program
     private static CharacterMainControl Reset(params string[] ids)
     {
         AffixRuntimeService.ResetStaticCaches();
+        BossRushCoop.IsConnected = BossRushCoop.IsHost = false;
+        BossRushCoop.RunId = BossRushCoop.SceneToken = null; BossRushCoop.Guest = null;
         BossRushUI.Paused = false;
         ModBehaviour.Instance = new ModBehaviour(); LevelManager.Instance = new LevelManager(); Time.time = 10f;
         CharacterMainControl.Main = new CharacterMainControl();
@@ -401,5 +403,59 @@ internal static class Program
         ZombieModeRuntimeModule.TriggerDoomPulse(player, 3, (point, radius, damage) =>
         { points++; geometry &= Math.Abs(point.sqrMagnitude - 4f) < .001f && radius == 2.75f && damage == 50f; });
         Check(points == 3 && geometry, "extracted pulse geometry retains three equally distant origins");
+        CheckCoopZombieExplosions();
+    }
+
+    private static void CheckCoopZombieExplosions()
+    {
+        foreach (string hostState in new[] { "dead", "destroyed", "replaced" })
+        {
+            CharacterMainControl player = Reset(); ModBehaviour host = ModBehaviour.Instance;
+            BossRushCoop.IsConnected = BossRushCoop.IsHost = true;
+            BossRushCoop.RunId = "room"; BossRushCoop.SceneToken = "scene";
+            BossRushCoop.Guest = new CharacterMainControl();
+            var explosions = LevelManager.Instance.ExplosionManager;
+            host.DealZombieModeExplosionAreaDamage(1, Enemy(), new Vector3(), 4, 30);
+            if (hostState == "dead") player.Health.IsDead = true;
+            if (hostState == "destroyed") UnityEngine.Object.Destroy(player.gameObject);
+            if (hostState == "replaced") CharacterMainControl.Main = new CharacterMainControl();
+            host.Advance();
+            Check(explosions.Calls == 1 && host.Pending.Count == 0 && host.zombieModeRunState.RunOnlyObjects.Count == 0,
+                "host world blast survives local host " + hostState + " while guest continues");
+        }
+        foreach (string cancel in new[] { "disconnect", "room", "token", "role", "solo_join" })
+        {
+            Reset(); ModBehaviour host = ModBehaviour.Instance;
+            BossRushCoop.IsConnected = BossRushCoop.IsHost = cancel != "solo_join";
+            BossRushCoop.RunId = "room"; BossRushCoop.SceneToken = "scene";
+            var explosions = LevelManager.Instance.ExplosionManager;
+            host.DealZombieModeExplosionAreaDamage(1, Enemy(), new Vector3(), 4, 30);
+            if (cancel == "disconnect") BossRushCoop.IsConnected = BossRushCoop.IsHost = false;
+            if (cancel == "room") BossRushCoop.RunId = "new-room";
+            if (cancel == "token") BossRushCoop.SceneToken = "new-scene";
+            if (cancel == "role") BossRushCoop.IsHost = false;
+            if (cancel == "solo_join") BossRushCoop.IsConnected = BossRushCoop.IsHost = true;
+            host.Advance();
+            Check(explosions.Calls == 0 && host.Pending.Count == 0 && host.zombieModeRunState.RunOnlyObjects.Count == 0,
+                "world blast cancels and releases old lease after " + cancel);
+        }
+        foreach (bool isHost in new[] { false, true })
+        {
+            CharacterMainControl player = Reset(); ModBehaviour host = ModBehaviour.Instance;
+            BossRushCoop.IsConnected = true; BossRushCoop.IsHost = isHost;
+            BossRushCoop.RunId = "room"; BossRushCoop.SceneToken = "scene";
+            var explosions = LevelManager.Instance.ExplosionManager;
+            host.OptionExplosion(); player.Health.IsDead = true; host.Advance();
+            Check(explosions.Calls == 0 && host.zombieModeRunState.RunOnlyObjects.Count == 0,
+                "personal reward blast still cancels on local death for " + (isHost ? "host" : "guest"));
+        }
+        Reset(); ModBehaviour current = ModBehaviour.Instance;
+        BossRushCoop.Guest = new CharacterMainControl();
+        var manager = LevelManager.Instance.ExplosionManager;
+        current.DealZombieModeExplosionAreaDamage(1, BossRushCoop.Guest, new Vector3(), 4, 30); current.Advance();
+        Check(manager.Last.isFromBuffOrEffect, "remote player explosion retains player effect recursion marker");
+        manager.Fail = true;
+        current.DealZombieModeExplosionAreaDamage(1, BossRushCoop.Guest, new Vector3(), 4, 30); current.Advance();
+        Check(current.Fallbacks == 0, "remote player explosion failure cannot hurt party through enemy fallback");
     }
 }

@@ -42,3 +42,5 @@ Zombie HUD 子项逐字抽取 `ZombieModeRuntimeModule_Hud` 的创建、显隐�
 2026-09-27 独立审计修复：MerchantOwner 删除自造的 session 相等门，逐字抽取生产 E/F BeginSession、Invalidate、IsSessionStillValid、共享 gate 与 OnAwake/OnDestroy。End/Exit 的依赖在此故意保持无操作，以证明销毁安全来自生产 gate 本身；完整模式清理另由 ModeDestroyLifecycle 实跑。商人覆盖 dispose 之后才返回的 null/fault/success、直接向已 dispose owner 发请求，以及 gate 自身抛异常的回收。Unity 替身销毁 GameObject 连带角色组件并模拟假 null。
 
 原物登记由实际 `AutotestItemEscrowOwner` 组件实例持有，独立于 Runner。夹具通过 Unity 替身的组件 `OnDestroy` 回调执行生产撤销方法，覆盖登记清空而恢复键保留、原树重新实例化、已销毁 owner 的迟到工厂结果被销毁、旧 owner 重复回调不能清掉新 owner，以及归还后只销毁空 owner。抽取代码用类型别名把生产外层静态类型映射到夹具壳，不改方法体。实际 Runner `Shutdown` 的完整调用与真实 Unity 生命周期仍属于 L1/L3 边界。
+
+联机租约边界：transfer、preparation_duration 和 pause_clock 继续逐字执行生产 RunId 门 / Tick，依赖的租约服务由可控返回值替身提供；失效用例断言转存不触碰原物、敌人登记不访问组件、准备时长不改写 / 不开 UI、Tick 先请求退役且不进入世界控制器。这里不复制 room / role / sticky revoke 算法；这些真实服务与完整退役路径由 ZombieCoopFlow 生产链接回归覆盖。

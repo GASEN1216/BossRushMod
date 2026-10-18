@@ -86,6 +86,31 @@ namespace BossRush
             // 客端只接房主选择的世界，各模式仍管理个人装备与本地界面。
             if (BossRushCoop.IsClient && BossRushCoop.RunId == room && scene.isLoaded && SceneManager.GetActiveScene().handle == scene.handle && (CoopEntryMode == 1 || CoopEntryMode == 2))
             {
+                // 原生联机投票会跳过 WaitForConfirm/InitialSpawn；仅首次本地设施
+                // 初始化复用房主普通/白手起家落点，不持续拉回，不操作其他玩家。
+                CharacterMainControl local = CharacterMainControl.Main;
+                string token = BossRushCoop.SceneToken;
+                int generation = BossRushCoop.SceneGeneration;
+                string asset = BossRushCoop.LocalAssetId;
+                if (local == null || local.Health == null || local.Health.IsDead || !BossRushCoop.HasBoundScene
+                    || string.IsNullOrEmpty(asset) || coopArenaEntryToken != token) yield break;
+                bool aligned = false;
+                try
+                {
+                    Vector3 target = ModBehaviour.GetDefaultPositionForScene(scene.name);
+                    if (local.gameObject.scene != scene) SceneManager.MoveGameObjectToScene(local.gameObject, scene);
+                    if (!BossRushInitialSpawn.HasArrived(target) && (local.transform.position - target).sqrMagnitude > 0.25f)
+                        local.SetPosition(target);
+                    aligned = true;
+                    ModBehaviour.DevLog("[BossRush Coop] 客端首次竞技场落点: 本机=" + BossRushCoop.LocalPlayerId
+                        + ", 身体=" + local.GetInstanceID() + ", 目标=" + target + ", 实际=" + local.transform.position);
+                }
+                catch (Exception e) { Debug.LogWarning("[BossRush Coop] 客端竞技场落点失败: " + e.Message); }
+                if (!aligned || !BossRushCoop.IsClient || BossRushCoop.RunId != room || !BossRushCoop.HasBoundScene
+                    || BossRushCoop.SceneToken != token || coopArenaEntryToken != token || BossRushCoop.SceneGeneration != generation
+                    || BossRushCoop.LocalAssetId != asset
+                    || !scene.isLoaded || SceneManager.GetActiveScene().handle != scene.handle
+                    || local == null || CharacterMainControl.Main != local || local.Health == null || local.Health.IsDead) yield break;
                 createEntry();
                 continueEntry();
                 createRescue();

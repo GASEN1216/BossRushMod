@@ -28,6 +28,13 @@ namespace BossRush
             return source != null && ((source.IsMainCharacter || BossRushCoop.IsPlayer(source)) || PetNestCompanionAgent.IsCompanionHealth(source.Health));
         }
 
+        // 刚硬 / 反制要求玩家本人换武器；随从的命中不能替玩家积累反制。
+        // 护盾和护盾光环仍消费 IsPlayerSideAttack，保留对随从的正常防御。
+        internal static bool IsPlayerOwnHit(CharacterMainControl source)
+        {
+            return source != null && (source.IsMainCharacter || BossRushCoop.IsPlayer(source));
+        }
+
         internal static void ReduceFinalDamage(Health health, ref DamageInfo info)
         {
             ModBehaviour owner = ModBehaviour.Instance;

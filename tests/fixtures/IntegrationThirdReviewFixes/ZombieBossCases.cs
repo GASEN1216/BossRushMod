@@ -114,11 +114,12 @@ internal static class ZombieBossCases
         return health;
     }
 
-    private static float Hit(Health target, float damage, bool player = true, bool companion = false)
+    private static float Hit(Health target, float damage, bool player = true, bool companion = false, bool remote = false)
     {
         var attacker = new CharacterMainControl { IsMainCharacter = player };
         attacker.Health = new GameObject().AddComponent<Health>();
         BossRush.PetNestCompanionAgent.CompanionHealth = companion ? attacker.Health : null;
+        BossRush.BossRushCoop.RemotePlayer = remote ? attacker : null;
         LevelManager.Instance.MainCharacter = attacker;
         float observed = -1;
         Health.OnHurt = (h, info) => observed = info.finalDamage;
@@ -228,11 +229,12 @@ internal static class ZombieBossCases
             elite.EliteAffixes.Add(BossRush.ZombieModeEliteAffix.Stalwart);
             Near(Hit(target, 100), 10, "Stalwart reduces actual final damage before death");
             Near(target.CurrentHealth, 10, "ranged reduction cannot heal above pre-hit health");
-            target = Target(20, false, BossRush.ZombieModeBossKind.Hunter);
+            target = Target(1000, false, BossRush.ZombieModeBossKind.Hunter);
             elite = BossRush.ModBehaviour.Instance.Markers[target.Owner];
             elite.EnemyKind = BossRush.ZombieModeEnemyKind.Elite;
             elite.EliteAffixes.Add(BossRush.ZombieModeEliteAffix.Stalwart);
-            Near(Hit(target, 100, false, true), 10, "companion ranged hit respects elite Stalwart before lethal test");
+            Near(Hit(target, 100, false, true), 100, "companion is not subject to weapon-switch Stalwart counterplay");
+            Near(Hit(target, 100, false, false, true), 10, "actual remote player remains subject to Stalwart counterplay");
             target = Target(20, false, BossRush.ZombieModeBossKind.Hunter);
             elite = BossRush.ModBehaviour.Instance.Markers[target.Owner];
             elite.EnemyKind = BossRush.ZombieModeEnemyKind.Elite;
@@ -249,6 +251,13 @@ internal static class ZombieBossCases
             Time.unscaledTime += BossRush.ZombieModeTuning.AdaptiveAffixDurationSeconds + 1;
             Near(Hit(target, 10), 10, "adaptive expiry restores normal damage");
             Time.unscaledTime = 0;
+            target = Target(1000, false, BossRush.ZombieModeBossKind.Hunter);
+            elite = BossRush.ModBehaviour.Instance.Markers[target.Owner];elite.EnemyKind = BossRush.ZombieModeEnemyKind.Elite;
+            elite.EliteAffixes.Add(BossRush.ZombieModeEliteAffix.Adaptive);
+            for(int i=0;i<BossRush.ZombieModeTuning.AdaptiveAffixHitThreshold+1;i++)Near(Hit(target,10,false,true),10,"companion hits never build or consume player adaptive counterplay");
+            Check(elite.AdaptiveRangedHitCount==0&&!elite.AdaptiveRangedActive,"companion cannot fill player's ranged count");
+            for(int i=1;i<BossRush.ZombieModeTuning.AdaptiveAffixHitThreshold;i++)Near(Hit(target,10,false,false,true),10,"remote player builds own counterplay normally");
+            Near(Hit(target,10,false,false,true),10*(1-BossRush.ZombieModeTuning.AdaptiveAffixReductionPercent),"remote threshold hit remains reduced");
 
             // 原元素观察补丁与减伤同装：观察保持原贡献，读取按真实 finalDamage 分摊。
             harmony.CreateClassProcessor(typeof(BossRush.SetBonusDamageObservation)).Patch();

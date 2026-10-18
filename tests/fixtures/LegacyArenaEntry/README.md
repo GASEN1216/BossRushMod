@@ -5,3 +5,5 @@
 覆盖原图卸载、官方开始切图、同名不同 handle、等待和延迟启动期间换角色、死亡、后继请求、30 秒超时、模块销毁、晚初始化角色；原图卸载时必经销毁旧角色 GameObject 与组件，并模拟 Unity 销毁对象等同 null。Mode E 的嵌套验证及异步路牌补建均验证取消和反序释放，另验证普通子 IEnumerator 递归执行，以及 CustomYieldInstruction / Coroutine 保留原生等待语义。
 
 运行 `python tools/run_runtime_regressions.py --filter LegacyArenaEntry`。每次生成独立构建目录，只执行本次构建返回的 TargetPath；日志保存执行对象 SHA-256，`production-sha256.json` 保存生产源码哈希。此夹具提供 L1 / L2，不能证明 Unity 实际调度或天空岛实机游玩。
+
+联机原生投票没有本地确认 intent 时，完整 `SetupCoopClientEntry` 仍须在当前 bound scene 给普通 / D 的实际本机身体使用地图配置世界坐标；重复快照及已经到达的初始出生不再次 `SetPosition`。夹具覆盖尚未绑定、E/F/G/H 独立入口，以及位置同步回调中换房、token、entry token、代次、资产、身体、死亡或 scene 后不再创建设施。`SetPosition` / `MoveGameObjectToScene` 是记录真实调用顺序的宿主边界，不能据此声称 Unity / ECM 实机落点已通过。

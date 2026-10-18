@@ -65,6 +65,14 @@ def main():
   need(read(path),'internal async UniTask SpawnForCoop(','coopToken = BossRushCoop.SceneToken;')
  for path in ('Integration/Frostmourne/FrostmourneAction.cs','Integration/NewWeapons/SummonStaff/SummonStaffAction.cs'):
   assert 'IsSummonOwnerCurrent(player, coopAsset, coopToken)' in read(path),path+' await must use captured travel token'
+ for path,signature,predicate,count in (
+  ('Integration/Frostmourne/FrostmourneAction.cs','private async UniTask SpawnZombiesAsync(','IsSpawnRequestStillValid',4),
+  ('Integration/NewWeapons/SummonStaff/SummonStaffAction.cs','private async UniTask SpawnAlliesAsync(','IsRequestValid',3)):
+  spawn=body(read(path),signature)
+  assert 'var creationLease = new CoopBossCreationLease();' in spawn,path+' local cast must freeze the original world before its factory await'
+  checks=re.findall(r'if\s*\(([^{};]*?' + predicate + r'\([^;{}]*?\))\)',spawn)
+  assert len(checks)==count and all(check.startswith('!creationLease.IsValid() || !'+predicate+'(') for check in checks),path+' every pre/post factory validation must reject revoked world creation'
+  assert spawn.index('new CoopBossCreationLease()')<spawn.index('await '),path+' lease capture must precede the asynchronous factory'
  print('CoopPersonalSceneBindingGuard PASS')
 if __name__=='__main__':
  try:main()

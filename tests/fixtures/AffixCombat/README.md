@@ -10,7 +10,7 @@
 
 直接链接完整 `AffixRuntimeService.cs`、`AffixRuntimeService_Effects.cs`、`AffixDefinitions.cs`、
 `Common/Stats/RuntimeStatModifierTracker.cs`，并以底层 Stat 替身验证三种 ModifierType、失败分支、移除和 owner 隔离；
-`ZombieModeRuntimeModule.cs` 中逐字抽取 `DeferExplosion`、`ExplosionNextFrame`、`TriggerDoomPulse` 三个生产方法，
+直接链接 `ZombieModeDeferredExplosion.cs` 中的 `DeferExplosion`、`ExplosionNextFrame`，从 `ZombieModeRuntimeModule.cs` 逐字抽取 `TriggerDoomPulse`，
 并直接链接 `RunScopedRegistry.cs`。夹具不编译模块中不相关的入场/场景成员，以免为宿主流程引入大批无关游戏类型替身。
 由装备变化与 Health 事件驱动真实词缀分发器。
 `run.py` 逐字提取共享变异的死亡分发/延迟方法和天降殉爆 OnApply、丧尸奖励爆炸/末日脉冲/区域爆炸入口，
@@ -29,3 +29,5 @@ Unity 对象、协程、生命、物品 KV、底层 Stat 和 Buff 为替身；�
 协程在 StartCoroutine 时立即推进到首个 yield；
 爆炸替身保留官方同一实例复用碰撞数组及 damagedHealth 的行为，用于暴露重入覆写。
 实际物理命中、护甲、官方 Buff 叠层与渲染不在本夹具的证明范围内。产物仅写入 Build/affix-combat。
+
+2026-10-18：同份生产延迟爆炸 iterator 验证联机房主倒地、对象销毁或换角色后，敌方世界爆炸仍继续；个人奖励爆炸保留原角色生命限制。断房、换房、场景 token 或房主权限改变，以及离线效果等待期间加入房间，均取消旧任务并释放登记。远端玩家来源保持效果递归标记，官方爆炸失败时不得进入伤害玩家的敌方兜底。联机门面仅是可变身份边界，实际房间事件由联机协议夹具另测。本入口使用聚合 runner 的独立输出与本次 TargetPath，记录源码/执行制品 SHA-256；负向验证禁用世界权限分支和远端效果标记后应在对应行为断言转红。

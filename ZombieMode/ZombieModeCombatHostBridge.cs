@@ -491,6 +491,12 @@ namespace BossRush
             if (module != null) module.TryExecuteZombieModeTelegraphedAreaDamage(runId, source, origin, radius, damage);
         }
 
+        internal void TryApplyZombieModePlayerSlowInPersistentArea(int runId, Vector3 origin, float radius, float percent, float duration, ZombieModeAreaTickRuntime area)
+        {
+            ZombieModeRuntimeModule module = zombieModeRuntimeModule;
+            if (module != null) module.TryApplyZombieModePlayerSlowInArea(runId, origin, radius, percent, duration, area);
+        }
+
         public void TryApplyZombieModePlayerSlowInArea(int runId, Vector3 origin, float radius, float percent, float duration)
         {
             ZombieModeRuntimeModule module = zombieModeRuntimeModule;

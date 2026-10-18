@@ -126,6 +126,28 @@ internal static partial class Program
         Check(entryOwner.EntryRequests==2,"same map new native token and handle schedules its own facilities once");
         entryState.EntryMode=3;BossRushCoop.Current.Token="mode-e";entryArena.World(entryState);Check(entryOwner.EntryRequests==2,"E world does not initialize ordinary arena facilities");entryArena.Dispose();
         PersonalRewardRegression();
+        Room();host=BossRushCoop.Current;worlds.Clear();owners.Clear();
+        foreach(var peer in BossRushCoop.Peers){BossRushCoop.Current=peer;var o=new ModBehaviour();owners.Add(o);worlds.Add(new WavesArenaRuntimeModule(o));}
+        BossRushCoop.Current=host;var sweeping=worlds[0];sweeping.Begin();sweeping.Wave();BossRushCoop.Flush();
+        sweeping.InfiniteHellMode=true;sweeping.BossesPerWave=2;sweeping.BossesInCurrentWaveRemaining=2;
+        var firstDead=new CharacterMainControl{name="dead-a"};firstDead.Health.IsDead=true;
+        var secondDead=new CharacterMainControl{name="dead-b"};secondDead.Health.IsDead=true;
+        sweeping.CurrentWaveBosses.Add(firstDead);sweeping.CurrentWaveBosses.Add(secondDead);sweeping.CurrentBoss=secondDead;
+        host.AssetId="slot-new";BossRushCoop.Peers[1].AssetId="slot-new";
+        sweeping.SweepSilentWaveBossDeaths(.2f);BossRushCoop.Flush();Check(sweeping.DefeatedEnemies==0,"silent sweep keeps quarter-second budget");
+        sweeping.SweepSilentWaveBossDeaths(.05f);BossRushCoop.Flush();
+        Check(sweeping.DefeatedEnemies==2&&sweeping.BossesInCurrentWaveRemaining==0&&sweeping.CurrentWaveBosses.Count==0&&sweeping.WaveAdvances==1,"silent wave bosses use actual normal membership, count and final advance");
+        Check(sweeping.InfiniteHellCashPool==2000,"silent death retains both original max-health cash rewards");
+        Check(owners[0].BossKills==0&&owners[1].BossKills==0&&owners[15].BossKills==2,"silent death publishes both real personal Boss receipts only to original assets");
+        host.AssetId="slot-A";BossRushCoop.Peers[1].AssetId="slot-A";sweeping.Tick();BossRushCoop.Flush();
+        Check(owners[0].BossKills==2&&owners[1].BossKills==2,"original assets recover each silent death receipt");
+        sweeping.SweepSilentWaveBossDeaths(1);sweeping.Boss(firstDead);BossRushCoop.Flush();
+        Check(sweeping.DefeatedEnemies==2&&sweeping.InfiniteHellCashPool==2000&&owners[15].BossKills==2,"late death callback and repeat sweep cannot double count cash or personal receipts");
+        BossRushCoop.Current=BossRushCoop.Peers[2];var guestBoss=new CharacterMainControl();guestBoss.Health.IsDead=true;worlds[2].CurrentBoss=guestBoss;worlds[2].SweepSilentWaveBossDeaths(1);
+        Check(worlds[2].DefeatedEnemies==0,"guest sweep cannot settle local native replicas");
+        BossRushCoop.Current=host;owners[0].IsModeDActive=true;var modeDBoss=new CharacterMainControl();modeDBoss.Health.IsDead=true;sweeping.CurrentBoss=modeDBoss;sweeping.BossesPerWave=1;sweeping.SweepSilentWaveBossDeaths(1);
+        Check(sweeping.DefeatedEnemies==2,"standard sweep cannot consume Mode D world deaths");
+        foreach(var world in worlds)world.Dispose();
         Console.WriteLine("ArenaCoop: "+checks+" PASS; real Arena/D personal channels and frozen reward cohorts, fake engine materialization.");
     }
 }

@@ -19,3 +19,6 @@
 本轮补充：链接完整 ModeGRewardTransaction，逐字抽取实际 ModeGRewardStrictMaterializer、刷怪几何选点与暂停超时计算。覆盖奖励背包销毁、交付事件/逐件回调重入取消、每帧一件、一次完成回调和租约释放；败北打断连胜并保留历史；贪心首选堵塞后的双/三Boss合法组合，以及三种编队共1200组固定种子样本与独立穷举的可行性对照。物理落地在替身中直接接受候选，物品/背包/仓库仍为替身，不据此声称真实导航与奖励实物交付已通过。暂停用例验证生产时间预算纯函数，真实暂停状态接线由 ModeGProductionFlowGuard 检查，异步 Unity 调度仍需实机。
 
 2026-10-15 原 host Stop 补审：逐字执行 FreezeCoopAsset、CheckCoopAsset、CanContinueRun，原网络 host 实际停止后不能获得单机世界权限；同房间 SessionReady 暂失和空握手仍可继续，原单机在离线时可继续，连入新房间后不接管。当前 36 cases PASS。End 在该用例为记录边界，完整异步 SpawnWave 和 Unity 回收不据此宣称通过。
+# 2026-10-18 联机死亡兜底补充
+
+新增完整生产 `ModeGRuntimeModule_SilentDeathSweep`。先让前置 `Health.OnDead` 订阅者真实抛异常截断遥测，再执行正常死亡路由、生成事务注销和波结算排队。生产发布器正文同时执行，验证在注销前沿冻结的原参与者资产交付死亡；网络末端只记录收件资产。原生对象销毁和场景代次改变分别覆盖冻结 AI 身份回取与拒绝越代，客端不能自行补世界死亡。实际频道投递与 ordered receipt 消费仍由已有联机夹具覆盖；本组不证明真实多端游戏时序。

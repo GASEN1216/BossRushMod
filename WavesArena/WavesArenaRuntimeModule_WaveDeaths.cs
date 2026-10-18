@@ -264,6 +264,56 @@ namespace BossRush
             }
         }
 
+        private const float SilentBossDeathSweepInterval = 0.25f;
+        private float silentBossDeathSweepTimer;
+        private readonly System.Collections.Generic.List<CharacterMainControl> silentBossDeathScratch =
+            new System.Collections.Generic.List<CharacterMainControl>(3);
+
+        // 只扫本波容器，交回正常结案：不能让 10 秒完整性自检直接推波跳过现金与个人 Boss 收据。
+        internal void SweepSilentWaveBossDeaths(float deltaTime)
+        {
+            if (!BossRushCoop.HasWorldAuthority || !owner.IsActive || owner.IsModeDActive) return;
+            silentBossDeathSweepTimer += deltaTime;
+            if (silentBossDeathSweepTimer < SilentBossDeathSweepInterval) return;
+            silentBossDeathSweepTimer = 0f;
+            silentBossDeathScratch.Clear();
+            try
+            {
+                if (BossesPerWave > 1)
+                {
+                    if (CurrentWaveBosses != null)
+                        for (int i = 0; i < CurrentWaveBosses.Count; i++)
+                        {
+                            CharacterMainControl boss = CurrentWaveBosses[i] as CharacterMainControl;
+                            if (IsSilentlyDeadWaveBoss(boss)) silentBossDeathScratch.Add(boss);
+                        }
+                }
+                else
+                {
+                    CharacterMainControl boss = CurrentBoss as CharacterMainControl;
+                    if (IsSilentlyDeadWaveBoss(boss)) silentBossDeathScratch.Add(boss);
+                }
+
+                for (int i = 0; i < silentBossDeathScratch.Count; i++)
+                {
+                    ModBehaviour.DevLog("[BossRush] [WARNING] Wave boss death missed OnDead; settling normally");
+                    HandleBossDeath(silentBossDeathScratch[i], default(DamageInfo));
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[BossRush] [WARNING] Silent boss death sweep failed: " + e.Message);
+            }
+            finally { silentBossDeathScratch.Clear(); }
+        }
+
+        private bool IsSilentlyDeadWaveBoss(CharacterMainControl boss)
+        {
+            if (boss == null || CountedDeadBosses.Contains(boss)) return false;
+            Health health = boss.Health;
+            return health != null && health.IsDead;
+        }
+
         /// <summary>
         /// 这只 Boss 是否属于本波，即它的死亡是否有资格推进波次。
         ///

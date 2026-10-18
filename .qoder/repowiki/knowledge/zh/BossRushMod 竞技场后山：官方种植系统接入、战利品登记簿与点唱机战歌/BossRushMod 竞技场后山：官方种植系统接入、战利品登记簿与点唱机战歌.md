@@ -329,3 +329,9 @@ CharacterItem、装备树、当前和最大生命保持原样。计时用 deltaT
 官方 CharacterMainControl.OnAttackEvent 在动作被拒时也触发；果实能力现改订阅同一角色 CA_Attack.OnAttack，只在成功开始近战时排队，按原 action 实例退订。射击、伤害、范围、冷却、30 秒和退出恢复不变。
 
 实际 DLL 同时核对收获的背包失败→Return 送仓→满仓进入自提缓存。BackMountainMorph 执行真实服务/前缀，覆盖三果实 1/20 堆叠、读条期间失效、无效近战及现有属性/伤害/清理；GardenHarvestNotice 执行真实补丁包装；JeffQuestFlow 只读 DLL 的调用与跳转契约。证据为 L1/L2，未启动游戏；报告与人工步骤见 `docs/reports/reviews/2026-09-26-Jeff任务与果实生产审查.md`。
+
+## 2026-10-18 地下子场景的陈列快照（COMPAT，L1/L2）
+
+[ShowcaseDisplayScanner.RefreshForScene](file://Integration/BackMountain/ShowcaseDisplayScanner.cs) 只在官方 BuildingArea 实例真实载入后扫描陈列并覆盖保存快照。地下区等没有建筑区的子场景不以空列表清掉基地展示架/假人的加成；回到已加载建筑区后仍按现有实际陈列重新计算。
+
+[BackMountainLifecycle 的 Scanner 子回归](file://tests/fixtures/BackMountainLifecycle/README.md) 执行真实完整扫描器，核对缺失、未载入和正常载入边界；去掉门控后真实反例转红。真实跨场景属性表现仍需 L3。

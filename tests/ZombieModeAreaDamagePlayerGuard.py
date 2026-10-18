@@ -3,6 +3,7 @@
 from pathlib import Path
 import re
 import sys
+from cs_source_util import clean_source
 
 
 POLLUTION_PARTS = [
@@ -21,7 +22,7 @@ def fail(message: str) -> int:
 
 
 def read_pollution() -> str:
-    return "\n".join(path.read_text(encoding="utf-8") for path in POLLUTION_PARTS)
+    return "\n".join(clean_source(path.read_text(encoding="utf-8")) for path in POLLUTION_PARTS)
 
 
 def extract_method(text: str, method_name: str, signature_hint: str = "") -> str:
@@ -67,6 +68,7 @@ def main() -> int:
             return fail("player-only area damage still uses unsafe Health.Hurt path: " + token)
 
     required = [
+        "foreach (CharacterMainControl player in EnumerateZombieModeZoneTargets(runId))",
         "CharacterMainControl damageSource = source != null ? source : player;",
         "DamageInfo damageInfo = new DamageInfo(damageSource);",
         "damageInfo.isFromBuffOrEffect = source == null;",
@@ -76,6 +78,13 @@ def main() -> int:
     for token in required:
         if token not in area_damage:
             return fail("player-only area damage missing safe receiver/source token: " + token)
+
+    zones = clean_source(Path("ZombieMode/ZombieModeCoopZoneEffects.cs").read_text(encoding="utf-8"))
+    targets = extract_method(zones, "EnumerateZombieModeZoneTargets")
+    for token in ["!IsZombieModeRunValid(runId)", "!BossRushCoop.HasWorldAuthority", "!BossRushCoop.HasBoundScene",
+                  "IsCoopZombieParticipant(participant) && participant.IsAlive", "yield return participant.Character;"]:
+        if token not in targets:
+            return fail("area damage must retain frozen alive participant/world authority gate -> " + token)
 
     stealth_break = extract_method(wave, "TryHandleZombieModeSafeZonePlayerAttack")
     if not stealth_break:

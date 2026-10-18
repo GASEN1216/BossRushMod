@@ -43,14 +43,19 @@ def main():
     source += member(models, "public sealed class ZombieModeDropCandidate") + "\n"
     source += "internal sealed partial class ZombieModeRuntimeModule {\n"
     for signature in ("internal bool IsZombieModeRunValid(", "internal void RegisterZombieModeRunOnlyObject(", "internal void PruneZombieModeRunOnlyEnemyRecords(",
-                      "internal void RemoveZombieModeRunOnlyObjectRecord("):
+                      "internal void RemoveZombieModeRunOnlyObjectRecord(", "internal void PruneZombieModeUnknownRunOnlyRecords("):
         source += member(runtime, signature) + "\n"
     source += member(drops, "internal void ReleaseZombieModeOwnedDropCandidates()") + "\n"
+    source += member(drops, "internal void CleanupZombieModeExpiredDropCandidates(bool forceWaveCleanup)") + "\n"
+    source += "private float zombieModeLastDropPickupScanTime;\n"
+    coop = read("ZombieMode/ZombieModeRuntimeModule_Coop.cs")
+    for signature in ("private bool CoopZombieAnyParticipantAlive()", "private bool CoopZombieAllPlayersInsideSafeZone()"):
+        source += member(coop, signature) + "\n"
     source += member(extraction, "internal bool AnyZombieModeSafeZoneActive") + "\n"
     for field in ("private readonly HashSet<int> zombieModeEnemyInstanceIds", "private readonly Dictionary<int, ZombieModeEnemyRuntimeMarker> zombieModeEnemyMarkersByInstanceId", "private readonly List<ZombieModeEnemyRuntimeMarker> zombieModeEnemyMarkerScratch"):
         start = spatial.index(field)
         source += spatial[start:spatial.index(";", start) + 1] + "\n"
-    for signature in ("internal bool IsZombieModeKnownEnemy(",
+    for signature in ("private float GetZombieModeNearestParticipantHorizontalDistanceSquared(", "internal bool IsZombieModeKnownEnemy(",
                       "internal void RegisterZombieModeEnemyInstanceId(CharacterMainControl character, ZombieModeEnemyRuntimeMarker marker)",
                       "internal void UnregisterZombieModeEnemyInstanceId(",
                       "internal int CollectZombieModeRuntimeEnemyMarkers(",

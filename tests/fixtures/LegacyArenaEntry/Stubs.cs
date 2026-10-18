@@ -119,8 +119,8 @@ namespace BossRush
     {
         public static CharacterMainControl Main;
         public Health Health = new Health();
-        public bool dropBoxOnDead;
-        public void SetPosition(Vector3 value) { transform.position = value; Probe.Touch("teleport"); }
+        public bool dropBoxOnDead; public int GetInstanceID(){return GetHashCode();}
+        public static Action PositionHook; public void SetPosition(Vector3 value) { transform.position = value; Probe.Touch("teleport"); if(PositionHook!=null)PositionHook(); }
     }
     public class EnemyPresetInfo { }
     public class CharacterRandomPreset { }
@@ -156,7 +156,7 @@ namespace BossRush
         internal static string T(string value) { return value; }
         internal static string T(string cn, string en) { return en; }
     }
-    internal static class BossRushInitialSpawn { internal static bool HasArrived(Vector3 value) { return false; } }
+    internal static class BossRushInitialSpawn { internal static bool Arrived; internal static bool HasArrived(Vector3 value) { return Arrived; } }
     internal static class BossRushMapSelectionHelper
     {
         internal static bool HasPendingModeHEntryIntent() { return Probe.Entry == "H"; }
@@ -242,6 +242,7 @@ namespace BossRush
         private void StopModeEStartupWarmupIfPending() { Probe.Touch("warmup-stop"); }
         private void TryRefundModeGPendingPrepaidTicket() { Probe.Touch("refund"); }
         private static Vector3 GetCurrentSceneDefaultPosition() { return new Vector3(3,4,5); }
+        internal static Vector3 GetDefaultPositionForScene(string scene) { return new Vector3(3,4,5); }
         private T FindObjectOfType<T>() where T : class { return CharacterMainControl.Main as T; }
         private void CreateRescueTeleportBubble() { Probe.Touch("bubble"); }
         private void TryCreateArenaDifficultyEntryPoint() { Probe.Touch("sign"); }
@@ -315,9 +316,10 @@ namespace BossRush {
  internal sealed partial class CoopArenaEntryAdapter {
      private readonly ModBehaviour owner; private string coopArenaEntryToken,coopArenaEntryScheduledToken; private int coopArenaEntryHandle; private bool ArenaActive;
      internal int CoopEntryMode; internal CoopArenaEntryAdapter(ModBehaviour host) { owner=host; }
+     internal void ChangeEntryToken() { coopArenaEntryToken="successor-entry-token"; }
      internal void Receive(int mode) { ArenaActive=true;CoopEntryMode=mode;coopArenaEntryToken=BossRushCoop.SceneToken;ScheduleCoopArenaEntry(); }
      internal void SetCoopEntryMode(int mode) { CoopEntryMode = mode; }
      internal void TryCreateArenaRescueTeleport(System.Action rescue) { try { rescue(); } catch { } }
  }
- public partial class ModBehaviour { private readonly CoopArenaEntryAdapter wavesArenaRuntime; }
+ public partial class ModBehaviour { private readonly CoopArenaEntryAdapter wavesArenaRuntime; internal void ReplaceArenaEntryToken(){wavesArenaRuntime.ChangeEntryToken();} }
 }

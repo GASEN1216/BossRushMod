@@ -70,11 +70,15 @@ def main():
     generated += member(api, "private void FillObjective(") + "\n"
     # 收据接收与个人评分链接真实生产方法；网络角色索引仍由宿主替身提供。
     generated += member(sources["ModeGCoopRuntime.cs"], "internal bool ApplyCoopCombat(") + "\n}\n"
+    generated += "internal sealed partial class ModeGEntryRuntime {\n" + member(sources["ModeGCoopRuntime.cs"], "internal static void PublishCoopCombat(").replace("PublishCoopCombat(", "PublishProductionCoopCombat(", 1) + "\n}\n"
     generated += member(sources["ModeGSpawnTransaction.cs"], "public sealed class ModeGSpawnTransaction") + "\n"
     generated += "internal sealed partial class ModeGEntryRuntime {\n"
     generated += member(sources["ModeGCoopRuntime.cs"], "internal static bool CanApplyPersonalCombat") + "\n}\n"
     generated += "internal sealed partial class ModeGRuntimeModule {\n"
     for signature in ("internal bool CoopPersonalDefeated", "private void FreezeCoopAsset()", "internal bool CoopAnyParticipantAlive()", "internal bool IsCoopAssetCurrent", "internal bool CheckCoopAsset()"):
+        generated += member(sources["ModeGCoopRuntime.cs"], signature) + "\n"
+    generated += member(sources["ModeGCoopRuntime.cs"], "internal string GetCoopParticipantAsset(") + "\n"
+    for signature in ("internal void RememberCoopBossIdentity(", "internal int ResolveCoopBossIdentity("):
         generated += member(sources["ModeGCoopRuntime.cs"], signature) + "\n"
     generated += "}\n"
     generated += member(sources["ModeGCoopRuntime.cs"], "internal sealed class ModeGCoopCombat") + "\n}\n"
@@ -89,6 +93,7 @@ def main():
         "ModeGDeterministicRandom.cs", "ModeGAvailability.cs", "ModeGFateContract.cs",
         "ModeGProfilePersistence.cs", "ModeGNemesisPersistence.cs", "ModeGWeaponScoringCompatibilityMatrix.cs",
         "ModeGRewardTransaction.cs",
+        "ModeGRuntimeModule_SilentDeathSweep.cs",
     )] + [HERE / "Stubs.cs", HERE / "Program.cs", extracted, ROOT / "tests/fixtures/CoopOfflineStubs.cs"]
     (OUT / "source-sha256.txt").write_text("\n".join(
         name + " " + hashlib.sha256((ROOT / "ModeG" / name).read_bytes()).hexdigest()

@@ -522,7 +522,7 @@ namespace BossRush
                 return;
             }
 
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = ZombieModeRuntimeModule.GetCoopZombieTarget(transform.position);
             if (trajectory != null)
             {
                 trajectory.SetPosition(0, transform.position);

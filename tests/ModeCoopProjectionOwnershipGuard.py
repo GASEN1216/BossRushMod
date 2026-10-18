@@ -31,7 +31,25 @@ def main():
     require("BossRushCoop.IsClient && coopZombieProjectionRoom == BossRushCoop.RunId" in retire and "owner.CleanupZombieModeForRuntimeModule(" in retire and "coopZombieAdmissionPending = false;" in retire and "coopZombieLocalRun = 0;" in retire,"Zombie old projection must abort original run and pending admission")
     require(tick.index("RetireLostCoopZombieProjection();") < tick.index("coopZombieWorld.Tick("),"Zombie projection must abort before channel and offline phase drive")
     world=squeeze(method_body(z,"private void ApplyCoopZombieWorld("))
-    require(world.count("!BossRushCoop.IsClient || BossRushCoop.RunId != coopZombieProjectionRoom") == 2,"late cash prompt callbacks must remain owned by original client room")
+    require("string admissionRoom = BossRushCoop.RunId, admissionToken = BossRushCoop.SceneToken;" in world
+        and world.count("!BossRushCoop.IsClient || BossRushCoop.RunId != admissionRoom || BossRushCoop.SceneToken != admissionToken") == 2
+        and world.count("coopZombieLocalRun != state.Run || runState.RunId != state.Run || !coopZombieAdmissionPending") == 2,
+        "late cash prompt callbacks must freeze room, scene and pending business transaction")
+    lease=squeeze(method_body(z,"private bool IsCoopZombieRunLeaseCurrent("))
+    capture=squeeze(method_body(z,"private void CaptureCoopZombieRunLease("))
+    require("coopZombieLeaseConnected = BossRushCoop.IsConnected;" in capture
+        and "coopZombieLeaseHost = BossRushCoop.IsHost;" in capture and "coopZombieLeaseRoom = BossRushCoop.RunId;" in capture,
+        "Zombie run lease must capture connection, role and original room")
+    require("if (coopZombieLeaseRevoked) return false;" in lease and "coopZombieLeaseRevoked = true;" in lease
+        and "coopZombieLeaseConnected != BossRushCoop.IsConnected" in lease
+        and "coopZombieLeaseHost != BossRushCoop.IsHost || coopZombieLeaseRoom != BossRushCoop.RunId" in lease,
+        "Zombie lost run lease must remain permanently revoked across return to an old connection")
+    runtime=read("ZombieMode/ZombieModeRuntimeModule.cs")
+    require("!IsCoopZombieRunLeaseCurrent()" in method_body(runtime,"internal bool IsZombieModeRunValid("),
+        "Zombie async validity must reject retired run before next Update")
+    phase_tick=squeeze(method_body(runtime,"internal void TickZombieMode("))
+    require(phase_tick.index("RetireLostCoopZombieProjection();") < phase_tick.index("owner.TickZombieModeWaveControllerForRuntimeModule("),
+        "Zombie run retirement must precede world phase work")
     h=read("ModeH/ModeHRuntimeModule_Coop.cs")
     tick=squeeze(method_body(h,"private void TickCoop("))
     release=squeeze(method_body(h,"private void ReleaseCoopProjection("))

@@ -145,10 +145,11 @@ namespace BossRush
 {
     internal static partial class BossRushCoop
     {
-        internal static IEnumerable<BossRushCoopPlayer> Players { get { return new BossRushCoopPlayer[0]; } }
-        internal static CharacterMainControl GetCombatTarget(UnityEngine.Vector3 position) { return CharacterMainControl.Main; }
+        internal static readonly List<BossRushCoopPlayer> Players = new List<BossRushCoopPlayer>();
+        internal static CharacterMainControl CombatTarget;
+        internal static CharacterMainControl GetCombatTarget(UnityEngine.Vector3 position) { return IsConnected ? CombatTarget : CharacterMainControl.Main; }
     }
-    internal sealed class BossRushCoopPlayer { internal bool IsAlive; internal CharacterMainControl Character; }
+    internal sealed class BossRushCoopPlayer { internal bool IsAlive, Participant; internal CharacterMainControl Character; }
     internal sealed class CoopZombieArea { public UnityEngine.Vector3 Origin; public float Radius, Strength; }
     internal static class ModBehaviour { public static void DevLog(string text) { } }
     internal static class SpawnPositionHelper
@@ -173,7 +174,7 @@ namespace BossRush
     }
     internal sealed class ZombieModeRunState
     {
-        public int RunId, SceneBuildIndex = -1, LivingZombieCount, LivingNormalZombieCount, CurrentWaveKillTarget;
+        public int RunId, SceneBuildIndex = -1, LivingZombieCount, LivingNormalZombieCount, CurrentWaveKillTarget, CurrentWave;
         public bool IsCleaningUp, ActiveSafeZoneActive, PortableSafeZoneActive, PlayerInsideSafeZone, SafeZoneThreatSuppressed;
         public ZombieModeLifecyclePhase LifecyclePhase = ZombieModeLifecyclePhase.Active;
         public ZombieModeCombatPhase CombatPhase = ZombieModeCombatPhase.Preparation;
@@ -184,9 +185,13 @@ namespace BossRush
     }
     internal sealed partial class ZombieModeRuntimeModule
     {
+        // Asset and session adjudication are the explicit boundary here; ZombieCoopFlow links the real predicates.
+        private bool IsCoopZombieRunLeaseCurrent() { return BossRushCoop.SessionReady; }
+        private bool IsCoopZombieParticipant(BossRushCoopPlayer player) { return player != null && player.Participant; }
+        private float GetZombieModeRuntimeNow() { return UnityEngine.Time.unscaledTime; }
+        internal void RefreshPresence() { UpdateZombieModeSafeZonePlayerPresence(); }
         private CharacterMainControl coopZombieCommandPlayer;
         private void SendCoopZombieCommand(string action, int value = 0, string text = null, bool flag = false) { throw new InvalidOperationException("Offline fixture"); }
-        private bool CoopZombieAllPlayersInsideSafeZone() { throw new InvalidOperationException("Offline fixture"); }
         private bool TryResolveZombieModeSpawnPoint(UnityEngine.Vector3 point,bool virtualPoint,out UnityEngine.Vector3 result,float navMeshSampleRadius=-1f)
         {
             result=SpawnPositionHelper.Succeed ? SpawnPositionHelper.Resolved : point;
@@ -210,5 +215,5 @@ namespace UnityEngine
     }
 }
 
-// This original fixture executes offline; slot/network semantics are tested in ZombieCoopFlow.
-namespace BossRush { internal sealed partial class ZombieModeRuntimeModule { private static CharacterMainControl GetCoopZombieTarget(UnityEngine.Vector3 position) { return CharacterMainControl.Main; } } }
+// Target selection is an explicitly bound adapter; full cohort selection runs in ZombieCoopFlow.
+namespace BossRush { internal sealed partial class ZombieModeRuntimeModule { private static CharacterMainControl GetCoopZombieTarget(UnityEngine.Vector3 position) { return BossRushCoop.GetCombatTarget(position); } } }

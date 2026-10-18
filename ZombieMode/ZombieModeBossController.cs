@@ -20,6 +20,17 @@ namespace BossRush
             get { return runtimeRunId; }
         }
 
+        // Pause may have ended before this component's next Update; the saved pause start
+        // is still the effective clock until Update adds that interval to runtimeEndTime.
+        protected float RuntimeRemainingSeconds
+        {
+            get
+            {
+                float effectiveNow = runtimePauseStartTime >= 0f ? runtimePauseStartTime : Time.unscaledTime;
+                return Mathf.Max(0f, runtimeEndTime - effectiveNow);
+            }
+        }
+
         protected void InitializeTimedRuntime(int newRunId, float duration)
         {
             runtimeRunId = newRunId;
@@ -108,6 +119,17 @@ namespace BossRush
         private bool armed;
         private Duckov.Buffs.Buff damageBuff;
 
+        internal Vector3 CoopSlowOrigin
+        {
+            get { return followSourcePosition && source != null && source.transform != null
+                ? source.transform.position + Vector3.up * 0.04f : transform.position; }
+        }
+
+        internal float CoopSlowRemainingSeconds
+        {
+            get { return isActiveAndEnabled && armed && slowPercent > 0f ? RuntimeRemainingSeconds : 0f; }
+        }
+
         internal void SetDamageBuff(Duckov.Buffs.Buff buff)
         {
             damageBuff = buff;
@@ -172,7 +194,7 @@ namespace BossRush
 
             if (slowPercent > 0f)
             {
-                inst.TryApplyZombieModePlayerSlowInArea(RuntimeRunId, transform.position, radius, slowPercent, tickInterval * 2f);
+                inst.TryApplyZombieModePlayerSlowInPersistentArea(RuntimeRunId, transform.position, radius, slowPercent, tickInterval * 2f, this);
             }
         }
     }

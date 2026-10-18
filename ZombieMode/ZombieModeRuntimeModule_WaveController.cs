@@ -177,6 +177,7 @@ namespace BossRush
             // 必须在 DeathSettled 和 hot-path marker 注销前处理，否则致死一击不会取消安全区。
             TryHandleZombieModeSafeZonePlayerAttack(runId, damageInfo, character);
             HandleZombieModeOptionHealthDead(runId, health, damageInfo, character, marker);
+            HandleCoopZombieRemoteKillRewards(runId, damageInfo, character, marker);
             marker.DeathSettled = true;
             // 一旦 DeathSettled 就从 hot path 集合移除——后续技能命中尸体不会重新进入 marker 路径。
             UnregisterZombieModeEnemyInstanceId(character);

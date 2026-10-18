@@ -79,6 +79,8 @@ namespace BossRush
         internal void RememberCoopZombieWallet() { Trace.Add("wallet:" + runState.RunId); }
         private void InitializeCoopZombie() { }
         private void CleanupCoopZombie() { }
+        // 联机租约在 ZombieCoopFlow 执行；本夹具只验证既有宿主清理协议。
+        private bool IsCoopZombieRunLeaseCurrent() { return true; }
         internal IEnumerator TargetRoutine;
         internal void RollbackZombieModeInventoryTransfer() { Trace.Add("rollback:" + runState.LifecyclePhase); }
         internal void RefundZombieModeInvitationIfNeeded() { Trace.Add("invitation"); }

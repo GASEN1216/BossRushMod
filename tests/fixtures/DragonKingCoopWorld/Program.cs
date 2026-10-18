@@ -94,7 +94,11 @@ internal static class Program
         BossRushCoop.IsConnected=true;BossRushCoop.RunId="birth-room";Check(!spawnLease.IsValid(),"revoked factory lease never resurrects on reconnect");
         var roomLease=new CoopBossCreationLease();BossRushCoop.RunId="replacement-room";Check(!roomLease.IsValid(),"in-flight boss factory cannot migrate to a new room");
         BossRushCoop.IsHost=false;Check(!new CoopBossCreationLease().IsValid(),"client never admits a world boss factory");
-        BossRushCoop.IsConnected=false;Check(new CoopBossCreationLease().IsValid(),"new no-COOP boss factory retains normal solo behavior");
+        BossRushCoop.IsConnected=false;var soloLease=new CoopBossCreationLease();Check(soloLease.IsValid(),"new no-COOP boss factory retains normal solo behavior");
+        BossRushCoop.IsConnected=true;BossRushCoop.IsHost=true;Check(!soloLease.IsValid(),"solo factory cannot continue as a host world summon after joining a room");
+        BossRushCoop.IsConnected=false;Check(!soloLease.IsValid(),"revoked solo factory cannot resume after leaving the joined room");
+        var soloToGuest=new CoopBossCreationLease();BossRushCoop.IsConnected=true;BossRushCoop.IsHost=false;
+        Check(!soloToGuest.IsValid(),"solo factory cannot continue as client-created AI after joining a room");
         BossRushCoop.IsConnected=true;BossRushCoop.IsHost=false;BossRushCoop.RunId="wave-room";CharacterMainControl.Main=players[0];
         var personalWave=new DragonKingShockwaveEffect();personalWave.BindScopeForTest();int pushes=players[0].Pushes;personalWave.KnockForTest();
         Check(players[0].Pushes==pushes+1,"valid host-replayed shockwave preserves actual local player's official force move");

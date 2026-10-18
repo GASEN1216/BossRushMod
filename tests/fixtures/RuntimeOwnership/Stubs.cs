@@ -47,6 +47,19 @@ public sealed class CharacterMainControl
     public Transform transform => gameObject.transform;
     public T GetComponent<T>() where T:class => gameObject.GetComponent<T>();
 }
+// This fixture fixes the session boundary explicitly; multiplayer admission and
+// nearest-participant behavior execute in ZombieModeSafeZoneRuntime.
+public static class BossRushCoop
+{
+    public static bool IsConnected => false;
+    public static IEnumerable<BossRushCoopPlayer> Players => new BossRushCoopPlayer[0];
+}
+public sealed class BossRushCoopPlayer
+{
+    public bool IsAlive;
+    public CharacterMainControl Character;
+}
+public static class Mathf { public static float Min(float a, float b) => Math.Min(a,b); }
 public sealed class DuckNpcMovement { public void Hold() {} }
 public sealed class ZombieModeDropCandidate { public GameObject GameObject; public bool BossDrop, HighValue; public int WaveAtSpawn; public float SpawnTime; }
 public sealed class RunState { public List<ZombieModeDropCandidate> EntityDropCleanupCandidates=new List<ZombieModeDropCandidate>(); public int CurrentWave=1; }
@@ -126,6 +139,7 @@ namespace UnityEngine
 }
 internal sealed partial class ZombieModeRuntimeModule
 {
+    private bool IsCoopZombieParticipant(BossRushCoopPlayer player) => false;
     private RunState runState=new RunState();
     private float zombieModeLastDropPickupScanTime, now;
     private float GetZombieModeRuntimeNow() => now;

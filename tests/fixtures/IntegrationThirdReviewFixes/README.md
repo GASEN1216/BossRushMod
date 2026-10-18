@@ -38,3 +38,6 @@
 2026-09-27 合并迁移：伤害调用完整穿过生产 `ZombieModeCombatHostBridge` 到 `ZombieModeRuntimeModule_BossController` 与 `ZombieModeRuntimeModule_PollutionTuning` 的真实成员；模块在每个目标场景建立时显式绑定，场景列表、时钟和武器元数据是边界替身。共享护盾和冲刺组件继续从生产独立类型提取，哈希记录覆盖薄桥、owner、组件及调参源码。删除真实宿主吸收转发后，致死前护盾消费断言必须失败。
 
 2026-10-07 大额押注宿主契约：现装官方 DLL 的只读 IL 检查增加 `EconomyManager.Pay(Cost)` 和 `IsEnough`。前者即使收到 `cashAvailable:false`，首次预检仍硬编码现金可用；后者用未检查溢出的加法合计账户与现金。检查实际调用前的三条入栈指令，以及账户／现金 getter 后的普通 `add`、无 `add.ovf`。IL 留在 `installed-game-economy-il.txt`，未调用经济 API、未访问玩家数据。
+# 2026-10-18 宠物反制与联机玩家分类
+
+真实 Harmony 与官方 Hurt 正文继续验证：宠物不触发刚硬或积累反制计数，原生玩家索引中的客人仍受这两条反制约束，Boss 护盾对宠物的既有防御保持。玩家 / 宠物身份索引为可变边界，伤害分类与精英防御方法来自当前生产文件。

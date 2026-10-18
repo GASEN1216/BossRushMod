@@ -334,9 +334,19 @@ namespace BossRush
             return null;
         }
 
+        private CharacterMainControl GetZombieModeTemporaryNpcAnchorPlayer()
+        {
+            CharacterMainControl local = CharacterMainControl.Main;
+            if (!BossRushCoop.IsConnected) return local;
+            // 命令执行期间以实际选中奖励的人为锚；自动生成则选择当前已准入活人。
+            if (coopZombieCommandPlayer != null) return coopZombieCommandPlayer;
+            return GetCoopZombieCombatTarget(runState.ActiveSafeZoneActive
+                ? runState.ActiveSafeZoneCenter : (local != null ? local.transform.position : Vector3.zero));
+        }
+
         private Vector3 GetZombieModeTemporaryRealNpcAnchorPosition()
         {
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = GetZombieModeTemporaryNpcAnchorPlayer();
             Vector3 center = runState.ActiveSafeZoneActive
                 ? runState.ActiveSafeZoneCenter
                 : (player != null ? player.transform.position + player.transform.forward * 3f : Vector3.zero);
@@ -832,7 +842,7 @@ namespace BossRush
 
         private GameObject CreateZombieModeTemporaryServiceTerminal(int runId, string serviceType)
         {
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = GetZombieModeTemporaryNpcAnchorPlayer();
             Vector3 center = runState.ActiveSafeZoneActive
                 ? runState.ActiveSafeZoneCenter
                 : (player != null ? player.transform.position + player.transform.forward * 3f : Vector3.zero);

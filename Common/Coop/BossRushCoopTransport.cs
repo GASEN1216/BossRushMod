@@ -35,6 +35,7 @@ namespace BossRush
         private byte[] outgoing;
         private IDisposable messageSubscription;
         private BossRushCoopSceneLoadCompatibility sceneLoadCompatibility;
+        private BossRushCoopMapPaymentCompatibility mapPaymentCompatibility;
         private BossRushCoopSceneIdentityBridge sceneIdentityBridge;
         internal BossRushCoopSceneIdentity SceneIdentity { get; private set; }
         private readonly List<KeyValuePair<EventInfo, Delegate>> subscriptions = new List<KeyValuePair<EventInfo, Delegate>>();
@@ -187,6 +188,9 @@ namespace BossRush
                 {
                     sceneLoadCompatibility = new BossRushCoopSceneLoadCompatibility(sceneNet, () => Bound && NetworkStarted, () => HostPeer);
                     sceneLoadCompatibility.Install();
+                    mapPaymentCompatibility = new BossRushCoopMapPaymentCompatibility(sceneNet, () => Bound && NetworkStarted,
+                        () => IsServer, () => Service);
+                    mapPaymentCompatibility.Install();
                     sceneIdentityBridge = new BossRushCoopSceneIdentityBridge(sceneNet, SceneIdentity,
                         () => Bound && NetworkStarted, () => IsServer, () => Service, () => HostPeer,
                         () => BossRushCoop.RunId, SendSceneIdentityMarker);
@@ -308,6 +312,126 @@ namespace BossRush
             if (register == null) return false;
             register.Invoke(registry, new object[] { box, box.Inventory, -1 });
             return true;
+        }
+
+        // 只用于丧尸普通共享掉落的已授权拾取；不改动原生其它物品的策略。
+        private sealed class NetworkDropScope : IDisposable
+        {
+            private FieldInfo field;
+            private readonly bool previous;
+            internal NetworkDropScope(FieldInfo value)
+            { field = value; previous = (bool)value.GetValue(null); value.SetValue(null, true); }
+            public void Dispose()
+            { if (field == null) return; field.SetValue(null, previous); field = null; }
+        }
+
+        internal static IDisposable BeginNetworkItemDropScope()
+        {
+            Type type = FindType("EscapeFromDuckovCoopMod.ItemNet");
+            FieldInfo field = type != null ? type.GetField("InNetworkDrop", BindingFlags.Public | BindingFlags.Static) : null;
+            return field != null && field.FieldType == typeof(bool) ? new NetworkDropScope(field) : null;
+        }
+
+        internal static void ProtectNetworkDropPickup(Item item)
+        {
+            if (item == null) return;
+            try
+            {
+                Type manager = FindType("EscapeFromDuckovCoopMod.COOPManager");
+                object net = manager != null ? Read(manager, null, "ItemNet") : null;
+                MethodInfo request = net != null ? net.GetType().GetMethod("Client_RequestPickup", new[] { typeof(Item) }) : null;
+                Type database = FindType("EscapeFromDuckovCoopMod.CoopSyncDatabase");
+                object registry = database != null ? Read(database, null, "Drops") : null;
+                MethodInfo lookup = registry != null ? registry.GetType().GetMethod("TryGetByItem") : null;
+                object[] arguments = { item, null };
+                if (lookup != null && (bool)lookup.Invoke(registry, arguments) && arguments[1] != null)
+                {
+                    FieldInfo pendingField = net.GetType().GetField("_pendingPickups", BindingFlags.Instance | BindingFlags.NonPublic);
+                    object pending = pendingField != null ? pendingField.GetValue(net) : null;
+                    MethodInfo contains = pending != null ? pending.GetType().GetMethod("Contains", new[] { typeof(uint) }) : null;
+                    object id = Read(arguments[1].GetType(), arguments[1], "DropId");
+                    if (contains != null && (bool)contains.Invoke(pending, new[] { id })) return;
+                }
+                if (request != null) request.Invoke(net, new object[] { item });
+            }
+            catch (Exception e) { ModBehaviour.DevLog("[BossRush Coop] Protect native drop pickup failed: " + e.Message); }
+        }
+
+        private sealed class NetworkDropLease
+        {
+            internal object Registry, Entry, ItemNet, Service;
+            internal Item Item;
+            internal uint Id;
+            internal int Generation;
+            internal string Room, SceneToken;
+            internal MethodInfo TryGetById, Pickup, Broadcast;
+            internal Type ContextType, RequestType, DespawnType;
+        }
+
+        internal static object CaptureNetworkDrop(Item item)
+        {
+            try
+            {
+                Type database = FindType("EscapeFromDuckovCoopMod.CoopSyncDatabase");
+                Type manager = FindType("EscapeFromDuckovCoopMod.COOPManager");
+                Type serviceType = FindType("EscapeFromDuckovCoopMod.NetService");
+                object registry = database != null ? Read(database, null, "Drops") : null;
+                object net = manager != null ? Read(manager, null, "ItemNet") : null;
+                object service = serviceType != null ? Read(serviceType, null, "Instance") : null;
+                if (registry == null || net == null || service == null) return null;
+                MethodInfo lookup = registry.GetType().GetMethod("TryGetByItem");
+                MethodInfo pickup = net.GetType().GetMethod("Server_HandlePickupRequest");
+                Type tool = FindType("EscapeFromDuckovCoopMod.CoopTool");
+                MethodInfo broadcast = null;
+                if (tool != null)
+                    foreach (MethodInfo method in tool.GetMethods(BindingFlags.Public | BindingFlags.Static))
+                        if (method.Name == "SendRpc" && method.IsGenericMethodDefinition && method.GetParameters().Length == 2) { broadcast = method; break; }
+                object[] arguments = { item, null };
+                if (lookup == null || pickup == null || broadcast == null || !(bool)lookup.Invoke(registry, arguments) || arguments[1] == null) return null;
+                // 原生无 agent 的异常 fallback 会把 Item 本体当 Agent；它不能作为可拾取掉落租约。
+                if (ReferenceEquals(Read(arguments[1].GetType(), arguments[1], "Agent"), item.gameObject)) return null;
+                ParameterInfo[] parameters = pickup.GetParameters();
+                Type despawn = FindType("EscapeFromDuckovCoopMod.ItemDespawnRpc");
+                if (parameters.Length != 2 || despawn == null) return null;
+                return new NetworkDropLease { Registry = registry, Entry = arguments[1], Item = item, ItemNet = net, Service = service,
+                    Room = BossRushCoop.RunId, Generation = BossRushCoop.SceneGeneration, SceneToken = BossRushCoop.SceneToken,
+                    Id = Convert.ToUInt32(Read(arguments[1].GetType(), arguments[1], "DropId")),
+                    TryGetById = registry.GetType().GetMethod("TryGetById"), Pickup = pickup, Broadcast = broadcast.MakeGenericMethod(despawn),
+                    ContextType = parameters[0].ParameterType, RequestType = parameters[1].ParameterType, DespawnType = despawn };
+            }
+            catch (Exception) { return null; }
+        }
+
+        internal static bool CompleteNetworkDrop(object captured)
+        {
+            var lease = captured as NetworkDropLease;
+            if (lease == null) return false;
+            try
+            {
+                Type database = FindType("EscapeFromDuckovCoopMod.CoopSyncDatabase");
+                Type manager = FindType("EscapeFromDuckovCoopMod.COOPManager");
+                Type serviceType = FindType("EscapeFromDuckovCoopMod.NetService");
+                if (!BossRushCoop.IsHost || lease.Room != BossRushCoop.RunId || lease.Generation != BossRushCoop.SceneGeneration
+                    || lease.SceneToken != BossRushCoop.SceneToken || database == null || manager == null || serviceType == null
+                    || !ReferenceEquals(lease.Registry, Read(database, null, "Drops"))
+                    || !ReferenceEquals(lease.ItemNet, Read(manager, null, "ItemNet"))
+                    || !ReferenceEquals(lease.Service, Read(serviceType, null, "Instance"))) return false;
+                object[] lookup = { lease.Id, null };
+                if ((bool)lease.TryGetById.Invoke(lease.Registry, lookup))
+                {
+                    if (!ReferenceEquals(lookup[1], lease.Entry) || !ReferenceEquals(Read(lookup[1].GetType(), lookup[1], "Item"), lease.Item)) return false;
+                    object context = Activator.CreateInstance(lease.ContextType, new[] { lease.Service, null });
+                    object request = Activator.CreateInstance(lease.RequestType);
+                    lease.RequestType.GetField("DropId").SetValue(request, lease.Id);
+                    lease.Pickup.Invoke(lease.ItemNet, new[] { context, request });
+                }
+                // 原生拾取可能已经退役注册项；合堆/通知异常仍须确保所有复制体收到同一个幂等删除事实。
+                object despawn = Activator.CreateInstance(lease.DespawnType);
+                lease.DespawnType.GetField("DropId").SetValue(despawn, lease.Id);
+                lease.Broadcast.Invoke(null, new[] { despawn, null });
+                return true;
+            }
+            catch (Exception) { return false; }
         }
         internal bool UnregisterLoot(InteractableLootbox box)
         {
@@ -455,6 +579,7 @@ namespace BossRush
         }
         public void Dispose()
         {
+            if (mapPaymentCompatibility != null) { mapPaymentCompatibility.Dispose(); mapPaymentCompatibility = null; }
             if (sceneIdentityBridge != null) { sceneIdentityBridge.Dispose(); sceneIdentityBridge = null; }
             SceneIdentity.Dispose();
             if (sceneLoadCompatibility != null) { sceneLoadCompatibility.Dispose(); sceneLoadCompatibility = null; }

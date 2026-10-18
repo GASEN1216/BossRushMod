@@ -2,6 +2,7 @@
 from pathlib import Path
 import hashlib
 import subprocess
+import sys
 from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -23,7 +24,10 @@ def main():
     target = OUT / 'Regression.csproj'
     target.write_text(project, encoding='utf-8')
     (OUT / 'source-hashes.txt').write_text('\n'.join(hashlib.sha256(p.read_bytes()).hexdigest() + ' ' + str(p.relative_to(ROOT)) for p in paths), encoding='utf-8')
-    return subprocess.call(['dotnet', 'run', '--project', str(target), '--configuration', 'Release'], cwd=ROOT)
+    result = subprocess.call(['dotnet', 'run', '--project', str(target), '--configuration', 'Release'], cwd=ROOT)
+    if result:
+        return result
+    return subprocess.call([sys.executable, str(HERE / 'Scanner/run.py')], cwd=ROOT)
 
 
 if __name__ == '__main__':

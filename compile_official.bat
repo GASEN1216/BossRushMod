@@ -149,6 +149,9 @@ echo(ModeH\ModeHRuntimeModule_Coop.cs
 echo(SkyIsland\SkyIslandCoopWorldEffects.cs
 echo(SkyIsland\SkyIslandFieldcraftCoop.cs
 echo(ZombieMode\ZombieModeRuntimeModule_Coop.cs
+echo(ZombieMode\ZombieModeCoopKillRewards.cs
+echo(ZombieMode\ZombieModeCoopZoneEffects.cs
+echo(ZombieMode\ZombieModeCoopDropClaims.cs
 echo(Campaign\CampaignRuntimeModule_Coop.cs
 echo(Integration\CoopPersonalProgressRuntimeModule.cs
 echo(Common\Coop\BossRushCoop.cs
@@ -158,6 +161,7 @@ echo(Common\Coop\BossRushCoopPacketFrames.cs
 echo(Common\Coop\BossRushCoopJson.cs
 echo(Common\Coop\BossRushCoopRuntimeModule.cs
 echo(Common\Coop\BossRushCoopTransport.cs
+echo(Common\Coop\BossRushCoopMapPaymentCompatibility.cs
 echo(Common\Coop\BossRushCoopSceneIdentity.cs
 echo(Common\Coop\BossRushCoopWorldLoot.cs
 echo(Integration\Coop\BossRushCoopContentRuntimeModule.cs
@@ -323,6 +327,9 @@ echo(SkyIsland\SkyIslandRootHunterBoss.cs
 echo(SkyIsland\SkyIslandWaylayerChief.cs
 echo(SkyIsland\CoopWaylayerJournal.cs
 echo(SkyIsland\CoopWaylayerJournalHooks.cs
+echo(SkyIsland\CoopWaylayerClaims.cs
+echo(SkyIsland\CoopWaylayerClaimUseHooks.cs
+echo(SkyIsland\CoopWaylayerNativeBuildScope.cs
 echo(SkyIsland\SkyIslandSickleBoss.cs
 echo(SkyIsland\SkyIslandListenerChief.cs
 echo(SkyIsland\SkyIslandPiperChief.cs
@@ -374,6 +381,7 @@ echo(DebugAndTools\F3GameplayValidationSeasons.cs
 echo(DebugAndTools\F3GameplayValidationCoverage.cs
 echo(DebugAndTools\F3GameplayValidationItems.cs
 echo(DebugAndTools\F3GameplayValidationZombie.cs
+echo(DebugAndTools\F3GameplayValidationZombieCoopProbe.cs
 echo(DebugAndTools\F3GameplayValidationModeHKits.cs
 echo(DebugAndTools\F3GameplayValidationModeHErrorSwap.cs
 echo(DebugAndTools\F3GameplayValidationScenes.cs
@@ -653,6 +661,7 @@ echo(ModeG\ModeGPresentationAssetCache.cs
 echo(ModeG\ModeGSpawnTransaction.cs
 echo(ModeG\ModeGCleanupController.cs
 echo(ModeG\ModeGRuntimeModule.cs
+echo(ModeG\ModeGRuntimeModule_SilentDeathSweep.cs
 echo(ModeG\ModeGRuntimeModule_PublicApiAndShutdown.cs
 echo(ModeG\ModeGRuntimeLifecycle.cs
 echo(ModeG\ModeGRuntimeBridge.cs
@@ -768,6 +777,7 @@ echo(ZombieMode\ZombieModeModels.cs
 echo(ZombieMode\ZombieModeSpawnSanitizationPolicy.cs
 echo(ZombieMode\ZombieModeTuning.cs
 echo(ZombieMode\ZombieModeRuntimeModule.cs
+echo(ZombieMode\ZombieModeDeferredExplosion.cs
 echo(ZombieMode\ZombieModeEntryHostBridge.cs
 echo(ZombieMode\ZombieModeCombatHostBridge.cs
 echo(ZombieMode\ZombieModeRewardHostBridge.cs
@@ -823,6 +833,7 @@ echo(BossFilter\BossFilterUi.cs
 echo(BossFilter\BossFilterHostBridge.cs
 echo(MapSelection\BossRushMapSelectionHelper.cs
 echo(MapSelection\BossRushMapEntryAssetLease.cs
+echo(MapSelection\BossRushCoopMapPaymentReceipt.cs
 echo(MapSelection\BossRushMapRuntime.cs
 echo(MapSelection\MapThumbnailCache.cs
 echo(MapSelection\BossRushInitialSpawn.cs

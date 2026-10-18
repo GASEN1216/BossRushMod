@@ -237,10 +237,10 @@ namespace BossRush
         }
         internal static void PublishCoopCombat(Health health, DamageInfo info, bool dead)
         {
-            if (!BossRushCoop.IsHost || coopOwner == null || coopOwner.modeGRuntime == null || health == null) return;
+            if (!BossRushCoop.IsHost || coopOwner == null || coopOwner.modeGRuntime == null || ReferenceEquals(health, null)) return;
             ModeGRuntimeModule run = coopOwner.modeGRuntime; ModeGRunState state = run.State;
             if (state == null || !state.IsRegisteredBossHealth(health)) return;
-            CharacterMainControl actor = health.GetComponent<CharacterMainControl>(); int ai = BossRushCoop.GetAiId(actor);
+            int ai = run.ResolveCoopBossIdentity(health);
             if (ai == 0) return;
             var fact = new ModeGCoopCombat { Run = state.runId, Wave = state.waveEpoch, Boss = ai,
                 Weapon = info.fromWeaponItemID, DamageType = (int)info.damageType, Crit = info.crit,
@@ -334,6 +334,27 @@ namespace BossRush
         private readonly Dictionary<int, Health> coopBossHealth = new Dictionary<int, Health>();
         private int coopBossGeneration = -1;
         private void ClearCoopBossReferences() { coopBosses.Clear(); coopBossHealth.Clear(); coopBossGeneration = -1; }
+        // 已发布给客人的原生 AI 身份须保留到 exact Health 结案；原生 Destroy 可先于漏事件兜底。
+        internal void RememberCoopBossIdentity(int id, Health health)
+        {
+            if (!BossRushCoop.IsHost || id == 0 || health == null) return;
+            if (coopBossGeneration != BossRushCoop.SceneGeneration) ClearCoopBossReferences();
+            coopBossGeneration = BossRushCoop.SceneGeneration;
+            coopBossHealth[id] = health;
+        }
+        internal int ResolveCoopBossIdentity(Health health)
+        {
+            if (ReferenceEquals(health, null) || !_state.IsRegisteredBossHealth(health)) return 0;
+            if (health != null)
+            {
+                int live = BossRushCoop.GetAiId(health.GetComponent<CharacterMainControl>());
+                if (live != 0) return live;
+            }
+            if (coopBossGeneration != BossRushCoop.SceneGeneration) return 0;
+            foreach (KeyValuePair<int, Health> pair in coopBossHealth)
+                if (ReferenceEquals(pair.Value, health)) return pair.Key;
+            return 0;
+        }
         private readonly HashSet<long> coopCombatApplied = new HashSet<long>();
         private long coopAppliedOrder;
         private long coopAdmissionBaseline;
@@ -440,7 +461,11 @@ namespace BossRush
                 string key; if (id == 0 || !_spawnTransaction.TryGetCommittedKey(character, out key)) continue;
                 int slot = -1;
                 foreach (var entry in _spawnTransaction.Journal) if (entry.instanceId == character.GetInstanceID()) { slot = entry.slotIndex; break; }
-                if (slot >= 0) actors.Add(new ModeGCoopActor { Id = id, Slot = slot, Key = key, MaxHealth = character.Health.MaxHealth });
+                if (slot >= 0)
+                {
+                    RememberCoopBossIdentity(id, character.Health);
+                    actors.Add(new ModeGCoopActor { Id = id, Slot = slot, Key = key, MaxHealth = character.Health.MaxHealth });
+                }
             }
             return new ModeGCoopWorld { Id = _state.runId, Seed = _state.runSeed, Counter = _preview.sessionCounter,
                 Created = _preview.createdTicks, Format = (int)_preview.runFormat, SceneName = _preview.sceneName,

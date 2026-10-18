@@ -411,13 +411,13 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 基地船点在按需加载的子场景里（Base_SceneV2_Sub_01 的 Envir/Prfb_BoatBetweenBaseAndFarm）。从官方子场景缓存的位置里
-        /// 找路径带 Boat 的那一个；找不到时把全部缓存位置写进 metrics，下一轮据此改。
+        /// 基地船点在按需加载的子场景里。从官方缓存选择真实场景与完整路径，加载后由官方解析实际 Transform；
+        /// 缓存 position 已是世界坐标，不能当子场景局部坐标再次换算。找不到时把全部缓存位置写进 metrics。
         /// </summary>
-        private static bool TryFindAutotestBoatLocation(out string sceneId, out Vector3 position, List<string> notes)
+        private static bool TryFindAutotestBoatLocation(out MultiSceneLocation boatLocation, List<string> notes)
         {
-            sceneId = null;
-            position = Vector3.zero;
+            boatLocation = default(MultiSceneLocation);
+            bool found = false;
             MultiSceneCore core = MultiSceneCore.Instance;
             if (core == null || core.SubScenes == null) { notes.Add("multiscene_core_missing"); return false; }
             var seen = new List<string>();
@@ -428,17 +428,17 @@ namespace BossRush
                 {
                     if (location == null || string.IsNullOrEmpty(location.path)) continue;
                     seen.Add(entry.sceneID + "/" + location.path);
-                    if (sceneId == null && (location.path.IndexOf("Boat", StringComparison.OrdinalIgnoreCase) >= 0
+                    if (!found && (location.path.IndexOf("Boat", StringComparison.OrdinalIgnoreCase) >= 0
                         || location.path.IndexOf("Dock", StringComparison.OrdinalIgnoreCase) >= 0))
                     {
-                        sceneId = entry.sceneID;
-                        position = location.position;
+                        boatLocation = new MultiSceneLocation { SceneID = entry.sceneID, LocationName = location.path };
+                        found = true;
                     }
                 }
             }
-            notes.Add("boat_location=" + (sceneId == null ? "not_found" : sceneId + "@" + position));
-            if (sceneId == null) notes.Add("cached_locations=" + F3AutotestJudges.Join(seen, 24));
-            return sceneId != null;
+            notes.Add("boat_location=" + (found ? boatLocation.SceneID + "/" + boatLocation.LocationName : "not_found"));
+            if (!found) notes.Add("cached_locations=" + F3AutotestJudges.Join(seen, 24));
+            return found;
         }
 
         private IEnumerator AutotestDepart()
@@ -451,15 +451,14 @@ namespace BossRush
             notes.Add("departure_loaded=" + (departure != null));
             if (departure == null)
             {
-                string sceneId;
-                Vector3 boat;
-                if (TryFindAutotestBoatLocation(out sceneId, out boat, notes))
+                MultiSceneLocation boatLocation;
+                if (TryFindAutotestBoatLocation(out boatLocation, notes))
                 {
                     UniTask<bool> teleport = default(UniTask<bool>);
-                    bool started = false;
+                    bool started = false, arrived = false;
                     try
                     {
-                        teleport = MultiSceneCore.Instance.LoadAndTeleport(sceneId, boat, true);
+                        teleport = MultiSceneCore.Instance.LoadAndTeleport(boatLocation);
                         started = true;
                     }
                     catch (Exception e) { notes.Add("load_and_teleport_threw:" + e.GetType().Name); }
@@ -472,12 +471,16 @@ namespace BossRush
                         if (teleport.Status == UniTaskStatus.Pending) teleport.Forget();
                         else
                         {
-                            try { notes.Add("teleport_result=" + teleport.GetAwaiter().GetResult()); }
+                            try
+                            {
+                                arrived = teleport.GetAwaiter().GetResult();
+                                notes.Add("teleport_result=" + arrived);
+                            }
                             catch (Exception e) { notes.Add("teleport_threw:" + e.GetType().Name); }
                         }
                     }
                     until = Time.realtimeSinceStartup + 20f;
-                    while (departure == null && Time.realtimeSinceStartup < until && !ShouldAbort())
+                    while (arrived && departure == null && Time.realtimeSinceStartup < until && !ShouldAbort())
                     {
                         yield return null;
                         departure = FindAutotestDeparture();

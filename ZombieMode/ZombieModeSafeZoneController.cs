@@ -47,10 +47,14 @@ namespace BossRush
         {
             if (BossRushCoop.IsConnected)
             {
-                bool allInside = BossRushCoop.AnyPlayerAlive;
+                bool anyAlive = false, allInside = true;
                 foreach (BossRushCoopPlayer player in BossRushCoop.Players)
-                    if (player.IsAlive && !IsZombieModePositionInsideActiveSafeZone(player.Character.transform.position)) { allInside = false; break; }
-                runState.PlayerInsideSafeZone = allInside;
+                {
+                    if (!IsCoopZombieParticipant(player) || !player.IsAlive) continue;
+                    anyAlive = true;
+                    if (!IsZombieModePositionInsideActiveSafeZone(player.Character.transform.position)) { allInside = false; break; }
+                }
+                runState.PlayerInsideSafeZone = anyAlive && allInside;
                 return;
             }
             runState.PlayerInsideSafeZone = IsZombieModePlayerInsideActiveSafeZone();
@@ -402,18 +406,14 @@ namespace BossRush
                 marker.HasSuppressedForceTraceDistance = false;
             }
 
-            CharacterMainControl main = CharacterMainControl.Main;
-            if (main != null)
-            {
-                SetZombieModeEnemyTargetToMainPlayer(ai);
-            }
+            SetZombieModeEnemyTargetToMainPlayer(ai);
         }
 
         internal bool ShouldZombieModeEnemyAggroPlayerNow()
         {
             return runState.CombatPhase == ZombieModeCombatPhase.Combat ||
                    (AnyZombieModeSafeZoneActive &&
-                    !IsZombieModePlayerInsideActiveSafeZone());
+                    !(BossRushCoop.IsConnected ? CoopZombieAllPlayersInsideSafeZone() : IsZombieModePlayerInsideActiveSafeZone()));
         }
 
         internal void TryRegisterZombieModeShootStealthBreaker(int runId)
@@ -456,13 +456,11 @@ namespace BossRush
                 return;
             }
 
-            CharacterMainControl player = CharacterMainControl.Main;
-            if (player == null)
+            if (!BossRushCoop.HasWorldAuthority || (!BossRushCoop.IsConnected && CharacterMainControl.Main == null))
             {
                 return;
             }
 
-            Vector3 center = player.transform.position;
             float radius = ZombieModeTuning.SafeZoneRadius;
             int count = CollectZombieModeRuntimeEnemyMarkers(runId, zombieModeEnemyMarkerScratch, false);
             if (count <= 0)
@@ -479,9 +477,7 @@ namespace BossRush
                     continue;
                 }
 
-                Vector3 delta = marker.transform.position - center;
-                delta.y = 0f;
-                if (delta.sqrMagnitude > radius * radius)
+                if (GetZombieModeNearestParticipantHorizontalDistanceSquared(marker.transform.position) > radius * radius)
                 {
                     continue;
                 }

@@ -35,6 +35,7 @@ def main():
                   'private bool TryResolveZombieModeSpawnPoint(',
                   'internal Vector3 GetZombieModeSpawnPosition(',
                   'internal bool TryGetZombieModeReliableSpawnPosition(',
+                  'private bool HasZombieModeReachableSpawnAnchor(',
                   'internal bool TryGetNearestZombieModeMapSpawnPositionToPlayer(',
                   'internal Vector3 GetZombieModeBossSpawnPosition(']
     signatures += ['internal bool CollectZombieModeSpawnPoints(', 'private void ResetZombieModeSpawnPointDedupGrid(',
@@ -46,6 +47,14 @@ def main():
     damage_raw = damage_path.read_bytes()
     production = 'using System; using System.Collections.Generic; using Pathfinding; using UnityEngine; using UnityEngine.AI; using Duckov.Buffs; using Cysharp.Threading.Tasks;\nnamespace BossRush { internal sealed partial class ZombieModeRuntimeModule {\n'
     production += '\n'.join(member(text, signature) for signature in signatures)
+    production += '\n' + member(text, 'private struct ZombieModeSpawnScanEntry')
+    production += '\n' + member(text, 'private static int CompareZombieModeSpawnScanEntries(')
+    fields = [line.strip() for line in text.splitlines()
+              if line.strip().startswith(('private int zombieModeReliableSpawnFailedFrame',
+                                          'private readonly List<ZombieModeSpawnScanEntry> zombieModeSpawnScanEntries',
+                                          'private static readonly System.Comparison<ZombieModeSpawnScanEntry> ZombieModeSpawnScanOrder'))]
+    assert len(fields) == 3, fields
+    production += '\n' + '\n'.join(fields) + '\n'
     coop_path = ROOT / 'ZombieMode/ZombieModeRuntimeModule_Coop.cs'
     coop_text = coop_path.read_text(encoding='utf-8-sig')
     for signature in ('private static string CoopZombieParticipantKey(', 'private bool IsCoopZombieParticipant(',
@@ -53,9 +62,18 @@ def main():
         production += '\n' + member(coop_text, signature)
     wave_path = ROOT / 'ZombieMode/ZombieModeRuntimeModule_WaveController.cs'
     production += '\n' + member(wave_path.read_text(encoding='utf-8-sig'), 'private void HandleZombieModeHealthDead(')
+    boss_path = ROOT / 'ZombieMode/ZombieModeRuntimeModule_BossController.cs'
+    boss_text = boss_path.read_text(encoding='utf-8-sig')
+    for signature in ('internal void TickZombieModeBossController(', 'private void TryExecuteZombieModeBossSkill(',
+                      'private bool TryClaimZombieModeBossSkillWindow(', 'internal void TickZombieModeHunterState(',
+                      'internal void TickZombieModeCorruptorState(', 'private bool IsZombieModeBossEngagedWithPlayer(',
+                      'private void TeleportZombieModeBossNearPlayer(', 'private bool TryResolveZombieModeBossFallbackPosition('):
+        production += '\n' + member(boss_text, signature)
     isolation_path = ROOT / 'ZombieMode/ZombieModeMapIsolation.cs'
     production += '\n' + member(isolation_path.read_text(encoding='utf-8-sig'), 'private bool ShouldSkipZombieModeOriginalCharacter(')
-    production += '\n' + member(damage_raw.decode('utf-8-sig'), 'internal void DealZombieModeAreaDamageToPlayer(int runId, CharacterMainControl source,') + '\n}'
+    production += '\n' + member(damage_raw.decode('utf-8-sig'), 'internal void DealZombieModeAreaDamageToPlayer(int runId, CharacterMainControl source,')
+    zone_path = ROOT / 'ZombieMode/ZombieModeCoopZoneEffects.cs'
+    production += '\n' + member(zone_path.read_text(encoding='utf-8-sig'), 'private IEnumerable<CharacterMainControl> EnumerateZombieModeZoneTargets(') + '\n}'
     # 可达性判据在共享 SpawnPositionHelper（A* 优先、无 A* 退 NavMesh），连同常量一起按原文执行。
     helper_path = ROOT / 'Utilities/SpawnPositionHelper.cs'
     helper_raw = helper_path.read_bytes()
@@ -65,11 +83,12 @@ def main():
     assert len(constants) == 2, constants
     production += '\ninternal static partial class SpawnPositionHelper {\n' + '\n'.join(constants) + '\n'
     production += member(helper_text, 'internal static bool TryResolveReachableFrom(') + '\n'
+    production += member(helper_text, 'internal static bool IsReachableAnchor(') + '\n'
     production += member(helper_text, 'private static bool IsNearWalkableNode(') + '\n}}'
     generated = OUT / 'Production.cs'
     generated.write_text(production, encoding='utf-8')
     (OUT / 'production-sha256.json').write_text(json.dumps({str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
-                                                         for p in (path, damage_path, helper_path, wave_path, isolation_path, coop_path)}, indent=2), encoding='utf-8')
+                                                         for p in (path, damage_path, helper_path, wave_path, isolation_path, coop_path, boss_path, zone_path)}, indent=2), encoding='utf-8')
     sources = [generated, HERE / 'Program.cs', HERE / 'Stubs.cs', HERE.parent / 'CoopOfflineStubs.cs']
     includes = ''.join('<Compile Include="' + escape(str(path), {'"': '&quot;'}) + '" />' for path in sources)
     project = OUT / 'Regression.csproj'

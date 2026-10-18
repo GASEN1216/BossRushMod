@@ -75,6 +75,8 @@ namespace BossRush
 
         internal void TickZombieMode(float deltaTime)
         {
+            RetireLostCoopZombieProjection();
+            if (!IsCoopZombieRunLeaseCurrent()) return;
             if (!ZombieModePhaseGuards.IsRunActive(runState.LifecyclePhase))
             {
                 ResetZombieModeRuntimePauseClock();
@@ -456,6 +458,8 @@ namespace BossRush
 
         internal bool TryHandleZombieModePendingMapSceneLoaded(Scene scene, BossRushMapConfig loadedMapConfig)
         {
+            RetireLostCoopZombieProjection();
+            if (!IsCoopZombieRunLeaseCurrent()) return false;
             if (!ZombieModeMapSelectionHelper.HasPendingZombieEntry)
             {
                 return false;
@@ -503,6 +507,7 @@ namespace BossRush
 
         internal System.Collections.IEnumerator WaitForZombieModeTargetSceneActiveThenInitialize(Scene scene, Vector3? customPos)
         {
+            int entrySequence = coopZombieEntrySequence;
             const float maxWait = 30f;
             const float interval = 0.1f;
             float elapsed = 0f;
@@ -510,6 +515,7 @@ namespace BossRush
 
             while (elapsed < maxWait)
             {
+                if (entrySequence != coopZombieEntrySequence || !IsCoopZombieRunLeaseCurrent()) yield break;
                 attempt++;
                 Scene activeScene = SceneManager.GetActiveScene();
                 bool sceneLoaded = scene.isLoaded;
@@ -540,6 +546,7 @@ namespace BossRush
                 elapsed += interval;
             }
 
+            if (entrySequence != coopZombieEntrySequence || !IsCoopZombieRunLeaseCurrent()) yield break;
             Scene finalActiveScene = SceneManager.GetActiveScene();
             if (!scene.isLoaded || finalActiveScene.name != scene.name)
             {
@@ -619,7 +626,7 @@ namespace BossRush
 
         internal bool IsZombieModeRunValid(int runId)
         {
-            if (runId <= 0 || runState.RunId != runId || runState.IsCleaningUp)
+            if (runId <= 0 || runState.RunId != runId || runState.IsCleaningUp || !IsCoopZombieRunLeaseCurrent())
             {
                 return false;
             }
@@ -1105,62 +1112,6 @@ namespace BossRush
             }
 
             return false;
-        }
-
-        // 源码的爆炸复用同一份碰撞与去重缓冲；Hurt / Dead 回调只安排下一帧。
-        // 每次请求使用已有 RunOnlyObjects，结束立刻移除，不让高频暴击留下整局协程记录。
-        internal static void DeferExplosion(ModBehaviour owner, ZombieModeRunState run, int runId,
-            Func<bool> valid, Action apply)
-        {
-            if (owner == null || run == null || valid == null || !valid()) return;
-            CharacterMainControl player = CharacterMainControl.Main;
-            LevelManager level = LevelManager.Instance;
-            var record = new ZombieModeRunOnlyRecord { RunId = runId, Kind = ZombieModeRunOnlyObjectKind.Coroutine };
-            Coroutine pending = null;
-            record.CleanupAction = () =>
-            {
-                if (owner != null && pending != null) owner.StopCoroutine(pending);
-                record.CleanupAction = null;
-                run.RunOnlyObjects.Remove(record);
-            };
-            run.RunOnlyObjects.Add(record);
-            try
-            {
-                pending = owner.StartCoroutine(ExplosionNextFrame(owner, run, record, player, level, valid, apply));
-            }
-            catch (Exception e)
-            {
-                record.CleanupAction = null;
-                run.RunOnlyObjects.Remove(record);
-                ModBehaviour.DevLog("[ZombieMode] explosion scheduling failed: " + e.Message);
-            }
-        }
-
-        private static IEnumerator ExplosionNextFrame(ModBehaviour owner, ZombieModeRunState run,
-            ZombieModeRunOnlyRecord record, CharacterMainControl player, LevelManager level,
-            Func<bool> valid, Action apply)
-        {
-            yield return null;
-            try
-            {
-                while (owner != null && record.CleanupAction != null && valid()
-                    && player != null && ReferenceEquals(player, CharacterMainControl.Main)
-                    && player.Health != null && !player.Health.IsDead
-                    && ReferenceEquals(level, LevelManager.Instance))
-                {
-                    if (!owner.IsZombieModeRuntimePaused())
-                    {
-                        apply();
-                        yield break;
-                    }
-                    yield return null;
-                }
-            }
-            finally
-            {
-                record.CleanupAction = null;
-                run.RunOnlyObjects.Remove(record);
-            }
         }
 
         internal static void TriggerDoomPulse(CharacterMainControl player, int stacks,

@@ -2,6 +2,8 @@
 
 ## Baseline
 
+- 2026-10-18 联机原生选图付款适配：新增 `Common/` 1 处本地提示通知、`MapSelection/` 1 处原资产退款活动模式校验，分别归 Candidate: notification 与 Keep: gameplay state。当前精确分组为 Common 1 / MapSelection 5 / 总 420；其余分组不变。
+
 - 2026-10-13：`ModeEPetSpawner.SpawnForPlayer` 新增 1 处当前宿主读取，归 Keep: Unity owner / gameplay state。房主为经身份核验的实际使用者生成煤球，并捕获 E/F 的场景/局代次，避免异步续作绑定其它玩家。
 
 - 2026-10-08：沙暴冠军工厂新增 1 处当前宿主身份核对，归 Keep: Unity owner；防止旧 owner 的异步生成被新会话接收。技能音效用注入的宿主引用。
@@ -9,7 +11,7 @@
 - 2026-09-27 合并后复算：新增后山变身、丧尸 Boss 及初始出生读取按实际位置计数；保留 P3 owner 迁移和 SkyIsland 正式目录。初始出生仍在主角销毁前冻结同一入场判据。
 
 - Command: `rg -n "ModBehaviour\\.Instance" --glob "*.cs"`
-- Raw matches: 418
+- Raw matches: 420
 - 2026-09-24 P3：DeathWraith 异步生成与 Wedding 配偶恢复迁入各自 RuntimeModule 后，两处原先在宿主内使用的 `Instance` 校验改为显式 `ModBehaviour.Instance == owner`。行数增加 2，旧请求隔离条件保持不变。
 - 2026-09-24 P3/P4：Integration 的当前净值从 270 降为 267。临时哥布林商店由创建者传入现金 / 净化点策略，通用商店不再用 `ModBehaviour.Instance` 猜测丧尸模式；各运行时模块保留异步请求的宿主身份校验。
 - Current event-bus pilot: achievement popup notification only.
@@ -38,7 +40,8 @@
 | `Audio/` | 9 | candidate notification + Unity owner | Audio manager uses `ModBehaviour.Instance` as the component host and sound playback bridge. It is a later candidate for a narrow audio service, not a broad event bus. 2026-08-30 +1：`BossBgmCoordinator` 经它播 stinger（复用既有 `PlaySoundEffect`，不另起音频通道）。 |
 | `Patches/` | 8 | patch entrypoint / Unity owner | Harmony patches need the current mod singleton to route base-game callbacks into the mod. `MagicBlendInitializationOrderPatch` additionally uses it as a coroutine owner while waiting for the official `MagicBlending.Start()` initialization, then replays the same state entry. |
 | `SkyIsland/` | 3 | Keep: Unity owner / gameplay state | 2026-09-26：从 DebugAndTools 原样迁出，三个居民交互宿主查询保持。 |
-| `MapSelection/` | 4 | gameplay command | Map selection must call active mod entry/exit state. |
+| `Common/` | 1 | Candidate: notification | 2026-10-18：`BossRushCoopMapPaymentCompatibility.AllowEntryClick` 在客人尝试自行选择专属地图时，用当前宿主的 `ShowMessage` 提示由房主选图。仅拒绝点击时触发，沿既有本地化通知入口，不新增全局服务或轮询。 |
+| `MapSelection/` | 5 | Keep: gameplay state / gameplay command | Map selection must call active mod entry/exit state. 2026-10-18 新增 `CoopMapPaymentReceipt.Refund` 的当前宿主读取：仅原资产、冻结票价和未公开付款仍有效时检查活动模式，防止运行中或已转交的票据被第二次退款；保持既有模式退款 owner，不经通知总线。 |
 | `ModeG/` | 4 | gameplay state / Unity owner | Mode G uses the live mod instance for entry, presentation and managed runtime ownership; these calls stay direct to preserve the run transaction boundary. |
 | `ModeH/` | 1 |
 | `RandomEvents/` | 5 | gameplay command / Unity owner | Mode H 场内交互只在一个解析器里取活动 mod 实例，其余路径复用捕获的 host，保持入口事务边界。 |

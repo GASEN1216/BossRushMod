@@ -88,7 +88,7 @@ public class HealthSimpleBase : UnityEngine.Component { }
 public class InteractableLootbox : UnityEngine.Component { public object Inventory; }
 public class MapSelectionEntry : UnityEngine.Object { public int BeaconIndex { get; set; } }
 public class LevelManager : UnityEngine.Component { public static LevelManager Instance { get; set; } public static int loadLevelBeaconIndex; public CharacterMainControl MainCharacter { get; set; } }
-namespace ItemStatsSystem { public class Item { } }
+namespace ItemStatsSystem { public class Item : UnityEngine.Component { } }
 namespace BossRush
 {
     internal static class ModBehaviour
@@ -100,7 +100,8 @@ namespace BossRush
     {
         public static bool IsConnected;
         public static bool IsClient { get { return IsConnected && EscapeFromDuckovCoopMod.NetService.Instance != null && !EscapeFromDuckovCoopMod.NetService.Instance.IsServer; } }
-        public static string RunId, LocalAssetId;
+        public static bool IsHost { get { return IsConnected && EscapeFromDuckovCoopMod.NetService.Instance != null && EscapeFromDuckovCoopMod.NetService.Instance.IsServer; } }
+        public static string RunId, LocalAssetId, SceneToken;
         public static int SceneGeneration;
         public static event Action SessionChanged;
         public static void ChangeSession() { if (SessionChanged != null) SessionChanged(); }
@@ -277,3 +278,6 @@ namespace EscapeFromDuckovCoopMod
     }
 }
 public static class TestClock { public static float Now; public static float Read() { return Now; } }
+
+// Dedicated CoopMapPayment fixture executes the full new payment owner and installed vote IL.
+namespace BossRush {internal sealed class BossRushCoopMapPaymentCompatibility : IDisposable {internal BossRushCoopMapPaymentCompatibility(Type native,Func<bool> live,Func<bool> host,Func<object> service){} internal void Install(){} public void Dispose(){} }}

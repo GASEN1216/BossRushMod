@@ -131,7 +131,8 @@ namespace BossRush
                 return;
             }
 
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = BossRushCoop.IsConnected
+                ? GetCoopZombieCombatTarget(instance.Character.transform.position) : CharacterMainControl.Main;
             if (player == null)
             {
                 return;
@@ -197,7 +198,8 @@ namespace BossRush
         internal void TickZombieModeHunterState(ZombieModeHunterState hunter, ZombieModeBossInstance instance, float now)
         {
             CharacterMainControl boss = instance != null ? instance.Character : null;
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = BossRushCoop.IsConnected
+                ? GetCoopZombieCombatTarget(boss != null ? boss.transform.position : Vector3.zero) : CharacterMainControl.Main;
             if (boss == null || player == null) return;
             int runId = runState.RunId;
 
@@ -275,7 +277,7 @@ namespace BossRush
         {
             CharacterMainControl boss = instance != null ? instance.Character : null;
             if (boss == null) return;
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = BossRushCoop.IsConnected ? GetCoopZombieCombatTarget(boss.transform.position) : CharacterMainControl.Main;
             int runId = runState.RunId;
 
             if (now >= corruptor.NextZoneTime && player != null && TryClaimZombieModeBossSkillWindow(now))
@@ -524,7 +526,7 @@ namespace BossRush
         /// </summary>
         private bool IsZombieModeBossEngagedWithPlayer(Vector3 bossPosition)
         {
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = BossRushCoop.IsConnected ? GetCoopZombieCombatTarget(bossPosition) : CharacterMainControl.Main;
             if (player == null)
             {
                 return false;
@@ -553,6 +555,9 @@ namespace BossRush
             Vector3 target;
             if (!TryResolveZombieModeBossFallbackPosition(instance, out target))
             {
+                // 找不到可达点时退避 1 秒，避免每帧、每只卡住的 Boss 重扫同步 A*。
+                instance.Lifecycle.LastReachableTime = GetZombieModeRuntimeNow()
+                    - ZombieModeTuning.BossStuckTimeoutSeconds + ZombieModeTuning.BossStuckRetryBackoffSeconds;
                 return;
             }
 
@@ -583,7 +588,7 @@ namespace BossRush
             instance.Lifecycle.LastHurtTime = GetZombieModeRuntimeNow();
             ZombieModeEnemyRuntimeMarker marker = EnsureZombieModeBossMarker(instance);
             AICharacterController ai = GetZombieModeEnemyAI(boss.gameObject, marker);
-            CharacterMainControl main = CharacterMainControl.Main;
+            CharacterMainControl main = BossRushCoop.IsConnected ? GetCoopZombieCombatTarget(target) : CharacterMainControl.Main;
             if (ai != null && main != null)
             {
                 SetZombieModeEnemyTargetToMainPlayer(ai);
@@ -882,13 +887,14 @@ namespace BossRush
 
         internal void TryApplyZombieModePlayerSlow(int runId, float percent, float duration)
         {
-            if (!IsZombieModeRunValid(runId))
+            if (!IsZombieModeRunValid(runId) || !IsCoopZombieLocalAssetCurrent()
+                || (BossRushCoop.IsConnected && !BossRushCoop.HasBoundScene))
             {
                 return;
             }
 
             CharacterMainControl player = CharacterMainControl.Main;
-            if (player == null)
+            if (player == null || player.Health == null || player.Health.IsDead)
             {
                 return;
             }

@@ -88,9 +88,7 @@ namespace BossRush
 
         private bool GrantZombieModeAmmoSupplyReward()
         {
-            string caliber = !string.IsNullOrEmpty(runState.StarterAmmoCaliber)
-                ? runState.StarterAmmoCaliber
-                : string.Empty;
+            string caliber = ResolveZombieModeSupplyAmmoCaliber();
             if (!string.IsNullOrEmpty(caliber) && TryGiveZombieModeStarterAmmo(caliber, ZombieModeTuning.AmmoSupplyRewardAmmoCount))
             {
                 NotificationText.Push(L10n.T("BossRush_ZombieMode_Reward_AmmoSupply"));
@@ -558,6 +556,20 @@ namespace BossRush
             return success;
         }
 
+        /// <summary>
+        /// 弹药补给按玩家手上正在用的枪配口径（中途拿到 RPG 就补火箭弹）；手上没枪再退回开局枪的口径。
+        /// </summary>
+        private string ResolveZombieModeSupplyAmmoCaliber()
+        {
+            string held = TryReadZombieModeItemCaliber(TryGetZombieModePreferredWeaponForMerchantAmmo());
+            if (!string.IsNullOrEmpty(held))
+            {
+                return held;
+            }
+
+            return runState.StarterAmmoCaliber ?? string.Empty;
+        }
+
         internal string TryReadZombieModeItemCaliber(Item item)
         {
             if (item == null)
@@ -590,24 +602,7 @@ namespace BossRush
         {
             try
             {
-                ItemFilter filter = new ItemFilter();
-                Tag[] ammoTags = ResolveZombieModeTags(ZombieModeRewardTagAmmo);
-                if (ammoTags == null || ammoTags.Length <= 0)
-                {
-                    ammoTags = ResolveZombieModeTags(ZombieModeRewardTagBullet);
-                }
-                filter.requireTags = ammoTags;
-                filter.minQuality = minQuality;
-                filter.maxQuality = maxQuality;
-                filter.caliber = caliber ?? string.Empty;
-
-                int[] candidates = ItemAssetsCollection.Search(filter);
-                if (candidates == null || candidates.Length <= 0)
-                {
-                    return false;
-                }
-
-                int chosenTypeId = PickZombieModeStrictQualityCandidate(candidates, minQuality, maxQuality);
+                int chosenTypeId = PickZombieModeAmmoTypeForCaliber(caliber, minQuality, maxQuality);
                 if (chosenTypeId <= 0)
                 {
                     return false;
@@ -619,14 +614,115 @@ namespace BossRush
                     return false;
                 }
 
-                try { ammoItem.StackCount = totalCount; } catch (System.Exception e) { ModBehaviour.DevLog("[ZombieMode] ammoItem.StackCount 设置失败: " + e.Message); }
+                // 官方 StackCount 会夹到 MaxStackCount：普通子弹给一整组，火箭弹这类不堆叠 / 小堆叠的重弹药只剩一两发。
+                // 不堆叠的物品设数量会报官方错误日志，只给可堆叠的设。
+                if (ammoItem.Stackable)
+                {
+                    try { ammoItem.StackCount = totalCount; } catch (System.Exception e) { ModBehaviour.DevLog("[ZombieMode] ammoItem.StackCount 设置失败: " + e.Message); }
+                }
+                int granted = ammoItem.StackCount;
                 ItemUtilities.SendToPlayer(ammoItem, true, true);
+
+                int minimumRounds = Mathf.Min(totalCount, ZombieModeTuning.HeavyAmmoMinimumRounds);
+                for (int guard = 0; granted < minimumRounds && guard < minimumRounds; guard++)
+                {
+                    Item extra = ItemAssetsCollection.InstantiateSync(chosenTypeId);
+                    if (extra == null)
+                    {
+                        break;
+                    }
+
+                    if (extra.Stackable)
+                    {
+                        try { extra.StackCount = minimumRounds - granted; } catch (System.Exception) { }
+                    }
+                    granted += Mathf.Max(1, extra.StackCount);
+                    ItemUtilities.SendToPlayer(extra, true, true);
+                }
                 return true;
             }
             catch (System.Exception e)
             {
                 ModBehaviour.DevLog("[ZombieMode] 发放起始弹药失败: " + e.Message);
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// 先按调用方的品质区间找该口径的弹药；区间里一发都没有时（火箭弹、能量弹这类只有高品质的口径），
+        /// 放开品质取该口径最低品质的那档。官方 Search 落空时只会往低品质降级，不会往上找，所以这里直接查全表。
+        /// </summary>
+        private int PickZombieModeAmmoTypeForCaliber(string caliber, int minQuality, int maxQuality)
+        {
+            caliber = caliber ?? string.Empty;
+            int picked = PickZombieModeStrictQualityCandidate(SearchZombieModeAmmo(caliber, minQuality, maxQuality, true), minQuality, maxQuality);
+            if (picked > 0 || caliber.Length == 0)
+            {
+                return picked;
+            }
+
+            int[] anyQuality = SearchZombieModeAmmo(caliber, 0, ZombieModeAmmoAnyQualityMax, false);
+            if (anyQuality == null || anyQuality.Length <= 0)
+            {
+                ModBehaviour.DevLog("[ZombieMode] 口径 " + caliber + " 找不到任何弹药");
+                return -1;
+            }
+
+            int lowest = int.MaxValue;
+            for (int i = 0; i < anyQuality.Length; i++)
+            {
+                int quality = GetZombieModeItemQuality(anyQuality[i]);
+                if (quality >= 0 && quality < lowest) lowest = quality;
+            }
+            if (lowest == int.MaxValue)
+            {
+                return -1;
+            }
+
+            ModBehaviour.DevLog("[ZombieMode] 口径 " + caliber + " 在品质 " + minQuality + "-" + maxQuality + " 无弹药，改发品质 " + lowest);
+            return PickZombieModeStrictQualityCandidate(anyQuality, lowest, lowest);
+        }
+
+        private const int ZombieModeAmmoAnyQualityMax = 99;
+
+        private int[] SearchZombieModeAmmo(string caliber, int minQuality, int maxQuality, bool allowOfficialDowngrade)
+        {
+            // 有的弹药只挂 Bullet 不挂 Ammo（或反过来），两组标签依次试。
+            string[][] tagSets = { ZombieModeRewardTagAmmo, ZombieModeRewardTagBullet };
+            for (int i = 0; i < tagSets.Length; i++)
+            {
+                Tag[] tags = ResolveZombieModeTags(tagSets[i]);
+                if (tags == null || tags.Length <= 0)
+                {
+                    continue;
+                }
+
+                ItemFilter filter = new ItemFilter();
+                filter.requireTags = tags;
+                filter.minQuality = minQuality;
+                filter.maxQuality = maxQuality;
+                filter.caliber = caliber;
+                int[] result = allowOfficialDowngrade
+                    ? ItemAssetsCollection.Search(filter)
+                    : ItemAssetsCollection.GetAllTypeIds(filter);
+                if (result != null && result.Length > 0)
+                {
+                    return result;
+                }
+            }
+            return null;
+        }
+
+        private static int GetZombieModeItemQuality(int typeId)
+        {
+            try
+            {
+                ItemMetaData metaData = ItemAssetsCollection.GetMetaData(typeId);
+                return metaData.id > 0 ? metaData.quality : -1;
+            }
+            catch
+            {
+                return -1;
             }
         }
 

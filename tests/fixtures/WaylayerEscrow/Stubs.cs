@@ -27,32 +27,66 @@ namespace ItemStatsSystem
 {
     internal sealed class Inventory
     {
-        internal readonly List<Item> Content=new List<Item>();internal int Capacity=8;internal bool Reject,ThrowAfterAdd;
+        internal readonly List<Item> Content=new List<Item>();internal int Capacity=8;internal bool Reject,ThrowAfterAdd;internal Action<Item> AfterAdd;
+        internal Item AttachedToItem;internal readonly UnityEngine.Transform transform=new UnityEngine.Transform();
         internal Item GetItemAt(int slot) {return slot<Content.Count?Content[slot]:null;}
-        internal bool AddItem(Item item) {if(Reject)return false;int slot=Content.FindIndex(i=>i==null);if(slot<0)slot=Content.Count;AddAt(item,slot);return true;}
-        internal void AddAt(Item item,int slot) {if(Reject)return;while(Content.Count<=slot)Content.Add(null);if(Content[slot]!=null)return;Content[slot]=item;item.InInventory=this;if(ThrowAfterAdd)throw new Exception("notification");}
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        internal bool AddItem(Item item) {
+#if !WAYLAYER_HARMONY_FIXTURE
+        if(!BossRush.CoopWaylayerClaims.AllowInventory(item,this,false))return false;
+#endif
+        if(Reject)return false;int slot=Content.FindIndex(i=>i==null);if(slot<0)slot=Content.Count;return AddAt(item,slot);}
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        internal bool AddAt(Item item,int slot) {
+#if !WAYLAYER_HARMONY_FIXTURE
+        if(!BossRush.CoopWaylayerClaims.AllowInventory(item,this,true))return false;
+#endif
+        if(Reject||item==null||item.InInventory!=null||slot<0||slot>=Capacity)return false;while(Content.Count<=slot)Content.Add(null);if(Content[slot]!=null)return false;Content[slot]=item;item.InInventory=this;if(AfterAdd!=null)AfterAdd(item);if(ThrowAfterAdd)throw new Exception("notification");return true;}
+        internal Action<Item> AfterRemove;internal bool RemoveItem(Item item) {if(item.InInventory!=this)return false;Remove(item);if(AfterRemove!=null)AfterRemove(item);return true;}
         internal void Remove(Item item) {int slot=Content.IndexOf(item);if(slot>=0)Content[slot]=null;item.InInventory=null;}
     }
-    internal sealed class AgentUtilities {internal object ActiveAgent;}
+    internal sealed class ItemAgent {internal readonly UnityEngine.Transform transform=new UnityEngine.Transform();}
+    internal sealed class AgentUtilities {internal ItemAgent ActiveAgent;internal void ReleaseActiveAgent(){ActiveAgent=null;}}
     internal sealed class Item:UnityEngine.Object
     {
         internal int TypeID;internal bool Stackable=true,IsBeingDestroyed,OnGround,RejectCount,ThrowAfterCount,RejectDetach;
-        internal string Metadata;internal Inventory InInventory,Inventory;internal AgentUtilities AgentUtilities;internal readonly List<Duckov.Utilities.CustomData> Variables=new List<Duckov.Utilities.CustomData>();
+        internal Action<Item> AfterCount;internal string Metadata;internal Inventory InInventory;private Inventory inventory;internal Inventory Inventory {get{return inventory;}set{inventory=value;if(value!=null)value.AttachedToItem=this;}}
+        internal ItemStatsSystem.Items.Slot PluggedIntoSlot;internal Item ParentItem {get{return InInventory!=null?InInventory.AttachedToItem:PluggedIntoSlot!=null?PluggedIntoSlot.Master:null;}}
+        internal readonly UnityEngine.Transform transform=new UnityEngine.Transform();internal ItemAgent ActiveAgent {get{return AgentUtilities==null?null:AgentUtilities.ActiveAgent;}}internal AgentUtilities AgentUtilities;internal readonly List<Duckov.Utilities.CustomData> Variables=new List<Duckov.Utilities.CustomData>();
         // Official variable lookup does not create a capturing predicate for every read.
         internal string GetString(string key) {foreach(var value in Variables)if(value.Key==key)return value.Text;return null;}
         internal void SetString(string key,string value) {Variables.RemoveAll(v=>v.Key==key);Variables.Add(new Duckov.Utilities.CustomData(key,value));}
         internal List<Item> GetAllChildren(bool self,bool unused) {var result=new List<Item>();if(self)result.Add(this);if(Inventory!=null)foreach(var item in Inventory.Content)if(item!=null)result.AddRange(item.GetAllChildren(true,false));return result;}
-        private int count=1;internal int StackCount {get{return count;}set{if(RejectCount)return;count=value;if(ThrowAfterCount)throw new Exception("count notification");}}
-        internal void Detach() {if(!RejectDetach&&InInventory!=null)InInventory.Remove(this);}
+        private int count=1;internal int StackCount {get{return count;}set{if(RejectCount)return;count=value;if(AfterCount!=null)AfterCount(this);if(ThrowAfterCount)throw new Exception("count notification");}}
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        internal void Detach() {
+#if !WAYLAYER_HARMONY_FIXTURE
+        if(!BossRush.CoopWaylayerClaims.AllowDetach(this))return;
+#endif
+        if(!RejectDetach&&InInventory!=null)InInventory.Remove(this);}
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        internal void Combine(Item incomingItem) {
+#if !WAYLAYER_HARMONY_FIXTURE
+        if(!BossRush.CoopWaylayerClaims.AllowCombine(this,incomingItem))return;
+#endif
+        StackCount+=incomingItem.StackCount;incomingItem.StackCount=0;incomingItem.DestroyTree();}
         internal void DestroyTree() {if(InInventory!=null)InInventory.Remove(this);IsBeingDestroyed=true;Destroyed=true;}
-        internal void Drop(CharacterMainControl player,bool toss) {if(ItemUtilities.RejectDrop)return;OnGround=true;}
+        internal void Drop(CharacterMainControl player,bool toss) {if(!BossRush.CoopWaylayerClaims.AllowDrop(this)||ItemUtilities.RejectDrop)return;OnGround=true;AgentUtilities=new AgentUtilities {ActiveAgent=new ItemAgent()};AgentUtilities.ActiveAgent.transform.position=player.transform.position;transform.position=player.transform.position;}
     }
     internal static class ItemAssetsCollection
     {
         internal static readonly Dictionary<int,Item> Prefabs=new Dictionary<int,Item>();
         internal static Item GetPrefab(int type) {Item item;return Prefabs.TryGetValue(type,out item)?item:null;}
     }
-    internal static class ItemUtilities {internal static bool RejectSend,RejectDrop;internal static void SendToPlayer(Item item,bool ignore,bool storage) {if(!RejectSend)CharacterMainControl.Main.CharacterItem.Inventory.AddItem(item);}}
+    internal static class ItemUtilities {
+        internal static int MergeCalls;
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        internal static bool AddAndMerge(Inventory inventory,Item item,int preferedFirstPosition=0) {
+#if !WAYLAYER_HARMONY_FIXTURE
+        if(!BossRush.CoopWaylayerClaims.AllowMerge(inventory,item))return false;
+#endif
+        MergeCalls++;return inventory.AddItem(item);}
+        internal static bool RejectSend,RejectDrop;internal static void SendToPlayer(Item item,bool ignore,bool storage) {if(!RejectSend)CharacterMainControl.Main.CharacterItem.Inventory.AddItem(item);}}
 }
 namespace ItemStatsSystem.Data
 {
@@ -86,8 +120,9 @@ namespace BossRush
     internal sealed class BossRushCoopMessage {internal bool IsFromHost;internal string SenderId;internal object Packet;internal T Read<T>() {return BossRushCoopJson.FromJson<T>(BossRushCoopJson.ToJson(Packet));}}
     internal static class BossRushCoop
     {
-        internal static bool IsHost,IsClient,HasBoundScene=true;internal static string SceneToken="scene-2",LocalReadyEpoch="ready";internal static object NativeService=new object(),NativeHostPeer=new object();internal static int SceneGeneration=2;internal static string RunId="room",LocalPlayerId,LocalAssetId;
-        internal static readonly Dictionary<string,BossRushCoopPlayer> Players=new Dictionary<string,BossRushCoopPlayer>();internal static readonly Dictionary<string,CharacterMainControl> Entities=new Dictionary<string,CharacterMainControl>();
+        internal static bool IsHost,IsClient,HasBoundScene=true;internal static bool IsConnected {get{return IsHost||IsClient;}}internal static bool HasWorldAuthority {get{return IsHost;}}internal static string SceneToken="scene-2",LocalReadyEpoch="ready";internal static object NativeService=new object(),NativeHostPeer=new object();internal static int SceneGeneration=2;internal static string RunId="room",LocalPlayerId,LocalAssetId;
+        internal sealed class PlayerMap:Dictionary<string,BossRushCoopPlayer> {public new IEnumerator<BossRushCoopPlayer> GetEnumerator(){return Values.GetEnumerator();}}
+        internal static readonly PlayerMap Players=new PlayerMap();internal static readonly Dictionary<string,CharacterMainControl> Entities=new Dictionary<string,CharacterMainControl>();
         internal sealed class SentPacket {internal string Target,Topic;internal object Value;}
         internal static readonly List<SentPacket> Sent=new List<SentPacket>();internal static readonly Dictionary<string,Action<BossRushCoopMessage>> Handlers=new Dictionary<string,Action<BossRushCoopMessage>>();
         internal static BossRushCoopPlayer FindPlayer(string id) {BossRushCoopPlayer p;return id!=null&&Players.TryGetValue(id,out p)?p:null;}
@@ -98,16 +133,21 @@ namespace BossRush
         internal static IDisposable Register(string topic,Action<BossRushCoopMessage> handler) {string key=LocalPlayerId+":"+topic;Handlers[key]=handler;return new Sub {Key=key};}
         internal static void SendToPlayer<T>(string target,string topic,T value) {Sent.Add(new SentPacket {Target=target,Topic=topic,Value=BossRushCoopJson.FromJson<T>(BossRushCoopJson.ToJson(value))});}
         internal static void SendToHost<T>(string topic,T value) {SendToPlayer("host",topic,value);}
+        internal static event Action<ItemStatsSystem.Item,Dictionary<string,string>> ItemSnapshotRequested;
+        internal static event Action<ItemStatsSystem.Item,IReadOnlyDictionary<string,string>> ItemSnapshotApplied;
+        internal static bool Broadcast<T>(string topic,T value){Sent.Add(new SentPacket {Target="*",Topic=topic,Value=value});return true;}
+        internal static void Restore(ItemStatsSystem.Item item,IReadOnlyDictionary<string,string> data){if(ItemSnapshotApplied!=null)ItemSnapshotApplied(item,data);}
         internal static void Receive(string target,string topic,object value,string sender,bool fromHost) {Handlers[target+":"+topic](new BossRushCoopMessage {Packet=value,SenderId=sender,IsFromHost=fromHost});}
     }
     internal sealed class CoopPersonalDelivery<T>:IDisposable where T:class
     {
         internal sealed class Queued {internal string Player,Asset;internal T Value;}
-        internal static readonly List<Queued> Queue=new List<Queued>();internal static readonly Dictionary<string,Func<T,bool>> Apply=new Dictionary<string,Func<T,bool>>();private readonly string player;
-        internal CoopPersonalDelivery(string name,Func<T,bool> apply) {player=BossRushCoop.LocalPlayerId;Apply[player]=apply;}
-        internal bool Deliver(string target,string id,T value,string asset) {Queue.Add(new Queued {Player=target,Asset=asset,Value=value});return true;}
-        internal void Tick(float delta) { }public void Dispose() {Apply.Remove(player);}
+        internal static readonly List<Queued> Queue=new List<Queued>();internal static readonly Dictionary<string,Func<T,bool>> Apply=new Dictionary<string,Func<T,bool>>();internal static bool RejectDelivery;private readonly string player;private readonly ProductionCoopPersonalDelivery<T> runtime;
+        internal CoopPersonalDelivery(string name,Func<T,bool> apply) {player=BossRushCoop.LocalPlayerId;Apply[player]=apply;if(typeof(T)==typeof(CoopWaylayerJournal.Commit))runtime=new ProductionCoopPersonalDelivery<T>(name,apply);}
+        internal bool Deliver(string target,string id,T value,string asset) {if(RejectDelivery)return false;Queue.Add(new Queued {Player=target,Asset=asset,Value=value});return runtime!=null?runtime.Deliver(target,id,value,asset):true;}
+        internal void Tick(float delta) {if(runtime!=null)runtime.Tick(delta);}public void Dispose() {if(runtime!=null)runtime.Dispose();Apply.Remove(player);}
     }
+    internal static class BossRushCoopTransport {internal static object CaptureNetworkDrop(ItemStatsSystem.Item item){return null;}internal static bool CompleteNetworkDrop(object value){return true;}}
     internal static class SkyIslandInventoryTransaction {internal static bool HasOwner(ItemStatsSystem.Item item) {return item!=null&&(item.InInventory!=null||item.OnGround);}internal static void DestroyUnowned(ItemStatsSystem.Item item) {if(item!=null&&!HasOwner(item))item.DestroyTree();}}
     internal static class SkyIslandBossRules {internal const float SnatchReach=2.9f,SnatchCooldown=12f;internal static int StealScore(int type) {return type==5001?10:type==5002?20:-1;}}
     internal sealed partial class SkyIslandWaylayerChief:UnityEngine.Object
@@ -122,3 +162,28 @@ namespace Duckov.UI
 {
     internal static class NotificationText {internal static readonly List<string> Notices=new List<string>();internal static void Push(string text){Notices.Add(text);}}
 }
+
+namespace ItemStatsSystem.Items {
+ internal sealed class Slot {internal ItemStatsSystem.Item Master,Content;
+ [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+ internal bool Plug(ItemStatsSystem.Item otherItem,out ItemStatsSystem.Item unpluggedItem){unpluggedItem=null;
+#if !WAYLAYER_HARMONY_FIXTURE
+ if(!BossRush.CoopWaylayerClaims.AllowSlot(otherItem,this))return false;
+#endif
+ Content=otherItem;otherItem.PluggedIntoSlot=this;return true;}}
+}
+#if !WAYLAYER_HARMONY_FIXTURE
+namespace HarmonyLib {
+ [AttributeUsage(AttributeTargets.Class)]internal sealed class HarmonyPatch:Attribute {internal HarmonyPatch(Type t,string n){}internal HarmonyPatch(Type t,string n,Type[] a){}}
+ [AttributeUsage(AttributeTargets.Method)]internal sealed class HarmonyPrefix:Attribute {}
+}
+#endif
+
+internal sealed class CharacterItemControl {internal CharacterMainControl characterMainControl;[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]internal bool PickupItem(ItemStatsSystem.Item item){
+#if !WAYLAYER_HARMONY_FIXTURE
+ if(!BossRush.CoopWaylayerClaims.AllowPickup(this,item))return false;
+#endif
+ return characterMainControl.CharacterItem.Inventory.AddItem(item);}}
+internal static class ItemExtensions {[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)] internal static ItemStatsSystem.ItemAgent Drop(ItemStatsSystem.Item item,UnityEngine.Vector3 pos,bool body,UnityEngine.Vector3 direction,float angle){return null;}}
+
+namespace BossRush {internal static class CoopWaylayerNativeBuildScope {private sealed class Lease:IDisposable{public void Dispose(){}} internal static IDisposable Acquire(){return new Lease();}internal static void EnsureInstalled(){}internal static void RegisterTicketRoot(ItemStatsSystem.Item item){}internal static bool AllowInventory(ItemStatsSystem.Item item,ItemStatsSystem.Inventory inventory,bool mutation){return false;}internal static bool AllowSlot(ItemStatsSystem.Item item,ItemStatsSystem.Items.Slot slot){return false;}}}

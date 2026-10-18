@@ -15,21 +15,25 @@ internal static partial class Program
     private static BossRushCoopPlayer member;
     private static void Check(bool value,string reason) {if(!value)throw new Exception(reason);checks++;}
     private static CharacterMainControl Player() {return new CharacterMainControl {CharacterItem=new Item {Inventory=new Inventory()}};}
-    private static void Host() {BossRushCoop.IsHost=true;BossRushCoop.IsClient=false;BossRushCoop.LocalPlayerId="host";BossRushCoop.LocalAssetId="host-slot";CharacterMainControl.Main=hostPlayer;Saves.SavesSystem.CurrentSlot=1;}
-    private static void Guest(string asset="guest-slot") {BossRushCoop.IsHost=false;BossRushCoop.IsClient=true;BossRushCoop.LocalPlayerId="guest";BossRushCoop.LocalAssetId=asset;CharacterMainControl.Main=guestPlayer;Saves.SavesSystem.CurrentSlot=asset=="other-slot"?3:2;}
-    private static void Setup()
+    private static void Host() {Time.frameCount++;BossRushCoop.IsHost=true;BossRushCoop.IsClient=false;BossRushCoop.LocalPlayerId="host";BossRushCoop.LocalAssetId="host-slot";CharacterMainControl.Main=hostPlayer;Saves.SavesSystem.CurrentSlot=1;Context(host);}
+    private static void Guest(string asset="guest-slot") {Time.frameCount++;BossRushCoop.IsHost=false;BossRushCoop.IsClient=true;BossRushCoop.LocalPlayerId="guest";BossRushCoop.LocalAssetId=asset;CharacterMainControl.Main=guestPlayer;Saves.SavesSystem.CurrentSlot=asset=="other-slot"?3:2;Context(guest);}
+    private static readonly Action<CoopWaylayerClaims> setClaimsOwner=(Action<CoopWaylayerClaims>)Delegate.CreateDelegate(typeof(Action<CoopWaylayerClaims>),typeof(CoopWaylayerClaims).GetProperty("Current",System.Reflection.BindingFlags.Static|System.Reflection.BindingFlags.NonPublic).GetSetMethod(true));
+    private static void Context(CoopWaylayerEscrow escrow) {if(escrow!=null)setClaimsOwner((CoopWaylayerClaims)typeof(CoopWaylayerEscrow).GetField("claims",System.Reflection.BindingFlags.NonPublic|System.Reflection.BindingFlags.Instance).GetValue(escrow));}
+    private static void Setup(bool restore=false)
     {
         if(guest!=null){Guest();guest.Dispose();}if(host!=null){Host();host.Dispose();}
         Saves.SavesSystem.Reset();
         Duckov.UI.NotificationText.Notices.Clear();
         BossRushCoop.Players.Clear();BossRushCoop.Entities.Clear();BossRushCoop.Sent.Clear();BossRushCoop.Handlers.Clear();
+        CoopPersonalDelivery<CoopWaylayerJournal.Commit>.Queue.Clear();CoopPersonalDelivery<CoopWaylayerJournal.Commit>.Apply.Clear();
         CoopPersonalDelivery<CoopWaylayerEscrow.Decision>.Queue.Clear();CoopPersonalDelivery<CoopWaylayerEscrow.Decision>.Apply.Clear();
+        CoopPersonalDelivery<CoopWaylayerEscrow.Decision>.RejectDelivery=false;
         ItemTreeData.Deferred=null;ItemTreeData.FactoryCalls=0;ItemTreeData.Fail=false;ItemUtilities.RejectDrop=ItemUtilities.RejectSend=false;
         ItemAssetsCollection.Prefabs[5001]=new Item {TypeID=5001};ItemAssetsCollection.Prefabs[5002]=new Item {TypeID=5002};
         BossRushCoop.RunId="room";BossRushCoop.SceneGeneration=2;BossRushCoop.HasBoundScene=true;BossRushCoop.SceneToken="scene-2";hostPlayer=Player();guestPlayer=Player();boss=Player();chief=new SkyIslandWaylayerChief();
-        BossRushCoop.Players["host"]=new BossRushCoopPlayer {Id="host",AssetId="host-slot",Character=hostPlayer};
+        BossRushCoop.Players["host"]=new BossRushCoopPlayer {Id="host",AssetId="host-slot",Character=hostPlayer,IsLocal=true};
         member=new BossRushCoopPlayer {Id="guest",AssetId="guest-slot",Character=guestPlayer};BossRushCoop.Players["guest"]=member;BossRushCoop.Entities["boss"]=boss;
-        Host();host=new CoopWaylayerEscrow();Guest();guest=new CoopWaylayerEscrow();Handshake();
+        Host();if(restore)Saves.SavesSystem.Reload();host=new CoopWaylayerEscrow();Guest();if(restore)Saves.SavesSystem.Reload();guest=new CoopWaylayerEscrow();Handshake();
     }
     private static void Handshake()
     {
@@ -50,11 +54,23 @@ internal static partial class Program
     private static void Respond(CoopWaylayerEscrow.Packet response)
     {Host();BossRushCoop.Receive("host","sky.waylayer.reserved",response,"guest",false);}
     private static bool Apply(CoopWaylayerEscrow.Decision decision)
-    {return CoopPersonalDelivery<CoopWaylayerEscrow.Decision>.Apply["guest"](decision);}
-    private static CoopWaylayerEscrow.Decision Decision() {return CoopPersonalDelivery<CoopWaylayerEscrow.Decision>.Queue.Last().Value;}
-    private static async Task Main()
     {
-        try { await MainBody(); }
+        bool applied=CoopPersonalDelivery<CoopWaylayerEscrow.Decision>.Apply["guest"](decision);
+        // A terminal decision may persist its journal in this frame. Its private refund
+        // publication retries on a later simulated frame, using the same actual callback.
+        if(!applied&&!decision.Success){Time.frameCount++;applied=CoopPersonalDelivery<CoopWaylayerEscrow.Decision>.Apply["guest"](decision);}
+        return applied;
+    }
+    private static CoopWaylayerEscrow.Decision Decision() {return CoopPersonalDelivery<CoopWaylayerEscrow.Decision>.Queue.Last().Value;}
+    private static async Task Main(string[] args)
+    {
+        try {
+#if WAYLAYER_HARMONY_FIXTURE
+            var claimsHarmony=new HarmonyLib.Harmony("BossRush.Tests.WaylayerClaims");
+            foreach(var hook in new[]{typeof(CoopWaylayerClaimAddAtHook),typeof(CoopWaylayerClaimAddItemHook),typeof(CoopWaylayerClaimPlugHook),typeof(CoopWaylayerClaimCombineHook),typeof(CoopWaylayerClaimMergeHook),typeof(CoopWaylayerClaimPickupHook),typeof(CoopWaylayerClaimDetachHook),typeof(CoopWaylayerClaimDropHook)})claimsHarmony.CreateClassProcessor(hook).Patch();
+#endif
+            if(args.Length>0) {CrashProcess(args);return;}
+            await MainBody(); await ClaimCases(); await PublicationCases(); await CrashCases();Console.WriteLine("WaylayerEscrowFinal: PASS "+checks+" assertions including independent-process crashes."); }
         catch(Exception error)
         {
             Console.WriteLine("FAIL TYPE: "+error.GetType().FullName);

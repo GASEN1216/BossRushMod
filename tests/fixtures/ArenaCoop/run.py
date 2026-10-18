@@ -34,9 +34,13 @@ def member(source, signature):
     raise AssertionError(signature)
 
 deaths_source = ROOT / "WavesArena/WavesArenaRuntimeModule_WaveDeaths.cs"
+death_source = deaths_source.read_text(encoding="utf-8-sig")
+death_fields = death_source[death_source.index("        private const float SilentBossDeathSweepInterval"):death_source.index("        internal void SweepSilentWaveBossDeaths(")]
 deaths = OUT / "ProductionDeaths.cs"
 deaths.write_text("using System;using UnityEngine;namespace BossRush {internal sealed partial class WavesArenaRuntimeModule {\n"
-                  + member(deaths_source.read_text(encoding="utf-8-sig"), "internal void HandleBossDeath(") + "\n}internal sealed partial class ModeDRuntimeModule {\n"
+                  + death_fields + "\n" + "\n".join(member(death_source, signature) for signature in (
+                      "internal void HandleBossDeath(", "internal void SweepSilentWaveBossDeaths(",
+                      "private bool IsSilentlyDeadWaveBoss(", "private bool IsCurrentWaveBossMember(", "private bool IsSameWaveBossInstance(")) + "\n}internal sealed partial class ModeDRuntimeModule {\n"
                   + member((ROOT/"ModeD/ModeDRuntimeModule_Lifecycle.cs").read_text(encoding="utf-8-sig"),"internal static bool TryStartModeD(") + "\n"
                   + member((ROOT/"ModeD/ModeDRuntimeModule_Lifecycle.cs").read_text(encoding="utf-8-sig"),"internal void StartModeD()")
                   + "\n}internal partial class ModBehaviour {\n"

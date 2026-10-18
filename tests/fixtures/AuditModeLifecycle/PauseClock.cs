@@ -131,6 +131,12 @@ namespace BossRush
             Check(owner.GetZombieModeRuntimeNow() == 55f && owner.TickOrder.Count == 7,
                 "new active run starts a clean unscaled runtime clock");
 
+            owner.TickOrder.Clear(); owner.TickDeltas.Clear();
+            module.CoopLeaseCurrent = false; int checksBefore = module.RetirementChecks;
+            owner.RunTick(0.5f);
+            Check(module.RetirementChecks == checksBefore + 1 && owner.TickOrder.Count == 0 && owner.TickDeltas.Count == 0,
+                "tick asks the run owner to retire before a revoked lease blocks all world controllers");
+
             Console.WriteLine("AuditModeLifecycle pause clock/tick: " + checks + " PASS / 0 FAIL");
         }
     }

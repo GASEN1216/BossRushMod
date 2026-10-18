@@ -1,22 +1,30 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace UnityEngine
 {
-    internal sealed class GameObject { internal readonly Transform transform=new Transform();internal bool active=true;internal void SetActive(bool value){active=value;} }
+    public class Object {internal bool Destroyed;public static void Destroy(Object value){if(ReferenceEquals(value,null))return;value.Destroyed=true;GameObject body=value as GameObject;if(body!=null)foreach(Object component in body.Components)component.Destroyed=true;}public static bool operator ==(Object a,Object b){return (ReferenceEquals(a,null)||a.Destroyed)?ReferenceEquals(b,null)||b.Destroyed:ReferenceEquals(a,b);}public static bool operator !=(Object a,Object b){return !(a==b);}public override bool Equals(object obj){return this==obj as Object;}public override int GetHashCode(){return base.GetHashCode();}}
+    internal sealed class GameObject : Object {internal string name;internal static GameObject CreatePrimitive(PrimitiveType kind){return new GameObject();}internal T GetComponent<T>() where T:class{return null;}internal readonly List<Object> Components=new List<Object>();internal readonly Transform transform=new Transform();internal bool active=true;internal void SetActive(bool value){active=value;}internal T AddComponent<T>() where T:new(){T value=new T();Object component=value as Object;if(component!=null)Components.Add(component);return value;} }
     public struct Vector3
     {
-        public float x, y, z; public static Vector3 zero {get{return new Vector3();}}
+        public float x, y, z;public static Vector3 forward {get{return new Vector3(0,0,1);}}public static Vector3 down {get{return new Vector3(0,-1,0);}}public Vector3 normalized{get{float m=magnitude;return m>0?this*(1f/m):zero;}} public static Vector3 zero {get{return new Vector3();}}
         public Vector3(float a, float b, float c) { x = a; y = b; z = c; }
-        public float sqrMagnitude { get { return x * x + y * y + z * z; } }
+        public float magnitude {get{return (float)Math.Sqrt(sqrMagnitude);}} public float sqrMagnitude { get { return x * x + y * y + z * z; } }
         public static Vector3 operator -(Vector3 a, Vector3 b) { return new Vector3(a.x-b.x,a.y-b.y,a.z-b.z); }
+        public static Vector3 up {get{return new Vector3(0,1,0);}}public static Vector3 operator +(Vector3 a,Vector3 b){return new Vector3(a.x+b.x,a.y+b.y,a.z+b.z);}public static Vector3 operator *(Vector3 a,float b){return new Vector3(a.x*b,a.y*b,a.z*b);}
     }
-    public sealed class Transform { public Vector3 position; }
+    public sealed class Transform {public Vector3 forward=Vector3.forward;public Quaternion rotation; public Vector3 position; }
+    internal enum PrimitiveType {Capsule}
+    internal sealed class Renderer {}
+    internal struct RaycastHit {internal Vector3 point;}
+    internal static class Physics {internal static bool Raycast(Vector3 origin,Vector3 direction,out RaycastHit hit,float distance){hit=new RaycastHit();return false;}}
+    public struct Quaternion {private float angle;public static Quaternion Euler(float x,float y,float z){return new Quaternion {angle=y*(float)Math.PI/180f};}public static Quaternion LookRotation(Vector3 direction){return new Quaternion();}public static Vector3 operator *(Quaternion q,Vector3 v){return new Vector3(v.x*(float)Math.Cos(q.angle)+v.z*(float)Math.Sin(q.angle),v.y,v.z*(float)Math.Cos(q.angle)-v.x*(float)Math.Sin(q.angle));}}
     public static class Mathf { public static int RoundToInt(float value){return (int)Math.Round(value);} public static int Max(int a, int b) { return Math.Max(a,b); } }
-    public static class Time { public static float unscaledTime; }
+    internal sealed class WaitForSeconds {internal WaitForSeconds(float seconds){}}
+    public static class Time { public static float unscaledTime; public static float unscaledDeltaTime=1; }
 }
-public sealed class Health { public bool IsDead; }
-public sealed class CharacterMainControl { public static CharacterMainControl Main; public readonly Health Health=new Health(); public readonly UnityEngine.Transform transform = new UnityEngine.Transform(); }
+public sealed class Health : UnityEngine.Object { public bool IsDead; }
+public sealed class CharacterMainControl : UnityEngine.Object { public static CharacterMainControl Main; public readonly Health Health=new Health(); public readonly UnityEngine.Transform transform = new UnityEngine.Transform(); internal readonly UnityEngine.GameObject gameObject=new UnityEngine.GameObject();internal CharacterMainControl(){gameObject.Components.Add(this);gameObject.Components.Add(Health);}internal T GetComponent<T>() where T:class{return null;} }
 public sealed class CountDownArea { public readonly UnityEngine.Transform transform = new UnityEngine.Transform(); }
 namespace Duckov.Economy { public static class EconomyManager { public static bool Succeed = true; public static long Cash; public static bool Add(long amount) { if(!Succeed)return false; Cash+=amount;return true; } } }
 namespace Duckov.UI { public static class NotificationText { public static string Last; public static bool Throw; public static void Push(string text) { Last=text; if (Throw) throw new InvalidOperationException("notification fault"); } } }
@@ -49,9 +57,10 @@ namespace BossRush
     internal static class BossRushCoop
     {
         internal static bool IsConnected = true;
-        internal static bool HasBoundScene=true; internal static bool IsHost=true,HasWorldAuthority=true;internal static bool IsClient {get {return IsConnected&&!IsHost;}}internal static string RunId="z-room",SceneToken="z-token";
+        internal static bool HasBoundScene=true; internal static bool IsHost=true;internal static bool HasWorldAuthority {get{return !IsConnected||IsHost;}set{IsHost=value;}}internal static bool IsClient {get {return IsConnected&&!IsHost;}}internal static string RunId="z-room",SceneToken="z-token";
         internal static string LocalAssetId = "slot-A"; internal static string LocalPlayerId = "p0";
         internal static BossRushCoopPlayer FindPlayer(string id) {return Players.Find(x=>x.Id==id);}
+        internal static CharacterMainControl FindEntity(string id){return null;}internal static CharacterMainControl GetCombatTarget(UnityEngine.Vector3 origin){return CharacterMainControl.Main;}
         internal static readonly List<BossRushCoopPlayer> Players = new List<BossRushCoopPlayer>();
         internal static bool AnyPlayerAlive { get { return Players.Exists(p=>p.IsConnected && p.IsAlive); } }
     }
@@ -69,17 +78,18 @@ namespace BossRush
         internal void BuildForTest(Action start) {startCoop=start;choicePanel=new UnityEngine.GameObject();BuildCoopHostWaiting();}
         internal bool ChoiceHidden {get{return !choicePanel.active&&waitingPanel!=null;}}
     }
-    internal static class ZombieModeTuning { internal const float ExtractionAreaTriggerRadius = 3f; }
-    internal enum ZombieModeCombatPhase { InitialPreparation,Combat, SuccessExit,RewardSelection,ExtractionOpportunity }
-    internal enum ZombieModeLifecyclePhase { None,WaitingStarterChoice,Active,Exiting }
-    internal enum ZombieModeFailureReason { SuccessfulExtraction,Unknown,StarterLoadoutFailed }
+    internal static class ZombieModeTuning { internal const float NavMeshLiftOffset=.1f,NavMeshSafeZoneRadius=3;internal const float ExtractionAreaTriggerRadius = 3f;internal const long CashToPurificationRatio=1; }
+    internal enum ZombieModeCombatPhase { InitialPreparation,Combat, SuccessExit,RewardSelection,ExtractionOpportunity,None }
+    internal enum ZombieModeLifecyclePhase { None,WaitingStarterChoice,Active,Exiting,SelectingMap,InitializingRun }
+    internal enum ZombieModeFailureReason { SuccessfulExtraction,Unknown,StarterLoadoutFailed,InitializationFailed }
     internal enum ZombieModeStarterLoadout {Melee,Gunner}
-    internal sealed class ModBehaviour { internal bool CampaignEnabled;internal bool IsCampaignConfiguredEnabled() { return CampaignEnabled; }internal int Extracts;internal void ShowBigBanner(string text) { } internal void NotifyCampaignZombieExtracted() { Extracts++; } internal static void DevLog(string value) { }internal void CleanupZombieModeForRuntimeModule(ZombieModeFailureReason reason) { } }
-    internal sealed class FlowState { internal readonly CountDownArea ActiveExtractionArea=new CountDownArea();internal bool ZombieModeResourcesCommitted,EntryResourcesFinalized;internal ZombieModeStarterLoadout StarterLoadout;internal bool ExtractionChanneling,BeaconChanneling;internal int RunId = 11, CurrentWave = 5, PurificationPoints; internal bool ExtractionSuccessHandled; internal ZombieModeCombatPhase CombatPhase;internal ZombieModeLifecyclePhase LifecyclePhase=ZombieModeLifecyclePhase.Active; }
-    internal sealed class ZombieModeEntryTransaction { internal bool EntryResourcesFinalized; internal bool CashTemporarilyHeld=true, InvitationTemporarilyHeld=true; internal long CashWithheldAmount=250; }
+    internal sealed class ModBehaviour { internal bool CampaignEnabled;internal bool IsCampaignConfiguredEnabled() { return CampaignEnabled; }internal int Extracts,Selections,ContinueClicks,ExtractClicks,ProjectileImpacts;internal UnityEngine.Vector3 ImpactPosition;internal void TryExecuteZombieModeHarasserProjectileImpact(int run,CharacterMainControl source,UnityEngine.Vector3 point,float damage,float slowRadius,float slowPercent,float slowDuration){ProjectileImpacts++;ImpactPosition=point;}internal int ExtractsUnused;internal void ContinueZombieModeAfterExtractionOpportunity(int run){ContinueClicks++;}internal string StartZombieModeExtractionFromUi(int run){ExtractClicks++;return null;}internal void SelectZombieModeReward(int run,ZombieModeRewardType reward){Selections++;}internal static BossRushMapConfig[] GetAllMapConfigs(){return new BossRushMapConfig[0];}internal bool IsAnyBossRushLikeModeActive(){return false;}internal int GetZombieModeBossRewardSelectionCountForRewardRuntimeModule(int wave){return 2;}internal void ShowBigBanner(string text) { } internal void NotifyCampaignZombieExtracted() { Extracts++; } internal static void DevLog(string value) { }internal int Cleanups,WorldTicks;internal void CleanupZombieModeForRuntimeModule(ZombieModeFailureReason reason) {Cleanups++;}internal void TickZombieModeWaveControllerForRuntimeModule(float dt){WorldTicks++;}internal void TickZombieModeBossControllerForRuntimeModule(float dt){}internal void UpdateModeFFortificationHighlightsForRuntimeModule(){}internal void UpdateFortPlacementMode(){}internal void UpdateModeFRepairSelection(){}internal bool ReadSceneLoaderDoneWithWarningForRuntimeModule(string reason){return true;}internal bool ReadLevelInitedWithWarningForRuntimeModule(string reason){return true;} }
+    internal sealed class FlowState { internal CountDownArea ActiveExtractionArea=new CountDownArea();internal bool ZombieModeResourcesCommitted,EntryResourcesFinalized;internal ZombieModeStarterLoadout StarterLoadout;internal bool ExtractionChanneling,BeaconChanneling;internal int SceneBuildIndex=-1;internal bool IsCleaningUp;internal int RunId = 11, CurrentWave = 5, PurificationPoints; internal bool ExtractionSuccessHandled; internal ZombieModeCombatPhase CombatPhase;internal ZombieModeLifecyclePhase LifecyclePhase=ZombieModeLifecyclePhase.Active;
+        internal readonly List<object> TemporaryNpcs=new List<object>(),TemporaryRealNpcs=new List<object>();internal long PendingCashInvestment,ConfirmedCashInvested;internal object MapProfile;internal ZombieModeRewardNode CurrentRewardNode;internal int CurrentWaveKills,CurrentWaveKillTarget,CurrentWaveBossesRemaining,LivingZombieCount,LivingNormalZombieCount,PollutionFromNatural,PollutionFromContracts,PendingEliteSquadCount;internal float PreparationTimer,ActiveSafeZoneRadius,PortableSafeZoneRadius;internal UnityEngine.Vector3 ActiveSafeZoneCenter,PortableSafeZoneCenter;internal bool ActiveSafeZoneActive,PortableSafeZoneActive;internal UnityEngine.GameObject ActiveSafeZoneVisual,PortableSafeZoneVisual;internal void ResetForNewRun(int run,int index,string name){RunId=run;CurrentWave=0;}}
+    internal sealed class ZombieModeEntryTransaction { internal bool EntryResourcesFinalized; internal bool CashTemporarilyHeld=true, InvitationTemporarilyHeld=true; internal long CashWithheldAmount=250;internal void Reset(){EntryResourcesFinalized=CashTemporarilyHeld=InvitationTemporarilyHeld=false;CashWithheldAmount=0;} }
     internal static class ZombieModeEntryDebt { internal static long Cash;internal static int Invitations;internal static bool CashFail;internal static bool RefundCash(long x) { if(CashFail)return false;Cash+=x;return true; }internal static bool RefundInvitation() { Invitations++;return true; } }
     internal class RuntimeBase { public virtual void OnUpdate(float deltaTime,float unscaledDeltaTime) { } }
-    internal sealed class FakeChannel { internal sealed class Entry {internal string Player,Id,Asset;internal CoopZombiePersonal Receipt;}internal readonly List<Entry> Pending=new List<Entry>();internal readonly List<string> Repeats=new List<string>(),Requests=new List<string>(); internal void Request(string action,int value,string text,bool flag) {Requests.Add(action+":"+value);} internal void RequestRepeat(string action,int value,string text,bool flag) {Repeats.Add(action+":"+value);} internal bool HasPendingConnectedDeliveries;internal bool HasPendingForIdPrefix(string prefix) { return HasPendingConnectedDeliveries; }internal void Publish() {} internal void Tick(float dt) { }internal bool Deliver(string player,string id,CoopZombiePersonal receipt,string asset) { Pending.Add(new Entry {Player=player,Id=id,Asset=asset,Receipt=BossRushCoopJson.FromJson<CoopZombiePersonal>(BossRushCoopJson.ToJson(receipt))}); return true; } }
+    internal sealed class FakeChannel { internal sealed class Entry {internal string Player,Id,Asset;internal CoopZombiePersonal Receipt;}internal readonly List<Entry> Pending=new List<Entry>();internal readonly List<CoopGameplayCommand> Commands=new List<CoopGameplayCommand>();internal readonly List<string> Repeats=new List<string>(),Requests=new List<string>(); internal void Request(string action,int value,string text,bool flag) {Requests.Add(action+":"+value);Commands.Add(new CoopGameplayCommand {Action=action,Value=value,Text=text,Flag=flag,PlayerId=BossRushCoop.LocalPlayerId,AssetId=BossRushCoop.LocalAssetId});} internal void RequestRepeat(string action,int value,string text,bool flag) {Repeats.Add(action+":"+value);} internal bool HasPendingConnectedDeliveries;internal bool HasPendingForIdPrefix(string prefix) { return HasPendingConnectedDeliveries; }internal void Publish() {} internal void Tick(float dt) { }internal bool Deliver(string player,string id,CoopZombiePersonal receipt,string asset) { Pending.Add(new Entry {Player=player,Id=id,Asset=asset,Receipt=BossRushCoopJson.FromJson<CoopZombiePersonal>(BossRushCoopJson.ToJson(receipt))}); return true; } }
     internal sealed partial class ZombieModeRuntimeModule : RuntimeBase
     {
         private readonly FakeChannel coopZombieWorld=new FakeChannel(),coopZombiePersonal=new FakeChannel();
@@ -95,7 +105,7 @@ namespace BossRush
         private void RefundZombieModeInvitationIfNeeded(){} private void RefundZombieModeCashIfNeeded(){}
         private void TryNotifyZombieModeExtraction() { }private void TryLoadBaseSceneAfterZombieModeExtraction() { }
         private void SettleZombieModeFailureInsuranceShell(int run) { }private void RemoveZombieModeAttributeModifiers() { }private void RemoveZombieModeOptionRuntimeEffects() { }
-        private void ExecuteCoopZombieCommand(CoopGameplayCommand command) {if(command.Action=="starter")RegisterCoopZombieStarter(BossRushCoop.FindPlayer(BossRushCoop.LocalPlayerId));}private void UnlockZombieModeContainersForActiveRun(int run) { }
+        private void UnlockZombieModeContainersForActiveRun(int run) { }
         private void BeginZombieModePreparation(int run,bool first,bool keep) { Preparations++;runState.CombatPhase=ZombieModeCombatPhase.Combat; }
         private void BeginZombieModeExtractionOpportunity(int run) { }private void FailZombieModeActive(int run) { }
         private readonly Dictionary<string,CoopZombieExtractionEligibility> coopZombieExtractionEligibility=new Dictionary<string,CoopZombieExtractionEligibility>();
@@ -105,7 +115,7 @@ namespace BossRush
         private readonly HashSet<string> coopZombieDeclinedAssets = new HashSet<string>();
         private readonly Dictionary<string,CoopZombieRefund> coopZombieRefunds = new Dictionary<string,CoopZombieRefund>();
         private int coopZombieEntrySequence;
-        private string coopZombieWalletRoom=BossRushCoop.RunId,coopZombieProjectionRoom;private bool coopZombieAdmissionPending;
+        private bool coopZombieLeaseCaptured,coopZombieLeaseConnected,coopZombieLeaseHost,coopZombieLeaseRevoked,coopZombieLeaseRetired,pendingEntry;private string coopZombieLeaseRoom;private string coopZombieWalletRoom=BossRushCoop.RunId,coopZombieProjectionRoom;private bool coopZombieAdmissionPending;
         private readonly Dictionary<string,object> coopZombieTerminals=new Dictionary<string,object>(),coopZombieRealNpcs=new Dictionary<string,object>();
         private readonly Dictionary<string,CoopZombieWallet> coopZombieWallets = new Dictionary<string,CoopZombieWallet>();
         private readonly Dictionary<string,int> coopZombiePointsIssued=new Dictionary<string,int>();private long coopZombieReceiptSequence;
@@ -114,9 +124,13 @@ namespace BossRush
         private readonly ZombieModeEntryTransaction entryTransaction = new ZombieModeEntryTransaction();
         private bool ShouldRollbackZombieModeEntryResources() { return true; }
         private readonly FlowState runState = new FlowState();
+        private static ZombieModeRuntimeModule coopZombieOwner;private object zombieModeRewardUiToken;private int coopZombieExtractionUiWave=-1;private CharacterMainControl coopZombieCommandPlayer;
+        private int KillRewardRecords;private void ResetCoopZombieKillRewards(){}private void TickCoopZombieKillRewards(float dt){}private void ResetCoopZombieZoneEffects(){}private void TickCoopZombieZoneEffects(float dt){}private void ResetCoopZombieDropClaims(int run){}private void TickCoopZombieDropClaims(float dt){}private void RecordCoopZombieKillRewardSelection(BossRushCoopPlayer player,ZombieModeRewardType reward){KillRewardRecords++;}
         private readonly ModBehaviour owner = new ModBehaviour();
         private bool IsPlayerInsideZombieModeExtractionArea(CountDownArea area) { return true; }
-        private bool IsZombieModeRunValid(int run) { return runState.RunId==run; }private bool TryDispatchZombieModeExtractionSuccess(CountDownArea area) { return true; }private void TryReleaseZombieModeExtractionCountdownUi() { }private void ShowZombieModeExtractionOpportunityUi(int run) { }
+        private bool TryDispatchZombieModeExtractionSuccess(CountDownArea area) { return true; }private void TryReleaseZombieModeExtractionCountdownUi() { }private int ExtractionShows,ExtractionClears;private void ShowZombieModeExtractionOpportunityUi(int run) { ExtractionShows++; }
+        private bool OfficialReady=true;private bool IsOfficialLevelAfterInitForZombieMode(){return OfficialReady;}private const int InitialPurificationPoints=5;private int Initialized;private int BeginZombieModeRunShell(int index,string name){return runState.RunId;}private bool InitializeZombieModeRunAfterMapLoaded(int run){Initialized++;return true;}private void ResetZombieModeRuntimePauseClock(){}private void RefreshZombieModeRuntimePauseClock(){}private bool IsZombieModeRuntimePaused(){return false;}private void TickZombieModeDropsAndPerformance(float dt){}private void TickZombieModeTemporaryNpcProtection(){}private object BuildZombieModeMapProfile(int i,string name){return new object();}private Action Admit;private void ShowZombieModeCashInvestmentPrompt(Action accept,Action cancel){Admit=accept;}private bool TryRunZombieModePrechecks(out ZombieModeFailureReason reason){reason=ZombieModeFailureReason.Unknown;return true;}private int EntryCommits;private bool CommitZombieModeEntryResourcesShell(out ZombieModeFailureReason reason){EntryCommits++;reason=ZombieModeFailureReason.Unknown;return true;}private bool InitializeCoopZombiePersonalRun(int run){runState.LifecyclePhase=ZombieModeLifecyclePhase.WaitingStarterChoice;return true;}private void ClearZombieModeEnemyInstanceIds(){}private void RegisterZombieModeEnemyInstanceId(CharacterMainControl character,ZombieModeEnemyRuntimeMarker marker){}private void MirrorCoopZombieTerminals(CoopZombieTerminal[] terminals){}private void UpdateZombieModeSafeZoneVisual(){}private void TryGiveZombieModeWaveClearHealingItem(){}private void ShowZombieModeRewardSelection(int run,bool boss){}private void EnsureZombieModeExtractionArea(int run){if(runState.ActiveExtractionArea==null)runState.ActiveExtractionArea=new CountDownArea();}private void ClearZombieModeExtractionOpportunityUi(){ExtractionClears++;}private void DestroyZombieModeActiveExtractionArea(){runState.ActiveExtractionArea=null;}private UnityEngine.GameObject CreateZombieModeFlatZoneVisual(string name,UnityEngine.Vector3 center,float radius,float height,UnityEngine.Color color){var body=new UnityEngine.GameObject();body.transform.position=center;return body;}private void AttachZombieModeSafeZoneBoundaryVisual(UnityEngine.GameObject visual,UnityEngine.Vector3 center,float radius){}private void RegisterZombieModeRunOnlyObject(int run,ZombieModeRunOnlyObjectKind kind,UnityEngine.GameObject gameObject,object target,Action cleanup){}
+        private int Beacons,Portables,Continues,Extractions,Npcs,Gravity;private bool TryUseZombieModeBeacon(){Beacons++;return true;}private bool TryUseZombieModePortableSafeZoneDevice(){Portables++;return true;}private void ContinueZombieModeAfterExtractionOpportunity(int run){Continues++;}private string StartZombieModeExtractionFromUi(int run){Extractions++;return null;}private void RefreshZombieModeGravityWellTargets(int run,UnityEngine.Vector3 origin,float radius,float strength){Gravity++;}private void SpawnCoopZombieRewardNpc(ZombieModeRewardType reward){Npcs++;}
         private bool IsZombieModePositionInsideActiveSafeZone(UnityEngine.Vector3 position) { position.y=0f; return position.sqrMagnitude<=9f; }
         private static int assertions;
         private static void Check(bool value,string label) { assertions++; if(!value)throw new Exception(label); }
@@ -270,8 +284,284 @@ namespace BossRush
             mayStart=false;ZombieModeUIHelper.Last.Click();Check(startClicks==1,"Z actual waiting delegate rechecks eligibility before invoking start");
             L10n.Chinese=true;ZombieModeRuntimeModule.NotifyCoopZombieSkippedEntry(true,true);
             Check(Duckov.UI.NotificationText.Last.Contains("退款处理中"),"Z actual injected co-op text resolves current language at notification use");L10n.Chinese=false;
+            RunCommandAndMirrorChecks();RunEnemyTargetChecks();RunLeaseChecks();RunNpcAnchorChecks();
             Console.WriteLine("ZombieCoopFlow: PASS "+assertions+" source-linked assertions (16 participants)");
         }
     }
     internal static class Program { private static void Main() { ZombieModeRuntimeModule.Run(); } }
+}
+namespace UnityEngine.SceneManagement
+{
+    internal struct Scene {internal string name;internal int buildIndex;internal bool isLoaded;}
+    internal static class SceneManager {internal static Scene GetActiveScene(){return new Scene {name="ZombieTestScene",buildIndex=7,isLoaded=true};}}
+}
+namespace BossRush
+{
+    internal sealed class BossRushMapConfig {}
+    internal enum ZombieModeRewardCategory {Economy}
+    internal sealed class ZombieModeRewardNode {internal int Wave,RemainingSelections=1;internal bool BossNode;internal readonly List<ZombieModeRewardType> Options=new List<ZombieModeRewardType>();}
+    internal sealed class ZombieModeRewardCatalogEntry {internal ZombieModeRewardCategory Category;internal ZombieModeRewardType RewardType;}
+    internal static class ZombieModeMapSelectionHelper {internal static bool ShowZombieModeMapSelection(out string failure){failure=null;return false;}internal static void ConfirmZombieModeMapEntry(int index){}internal static int PendingClears;internal static void ClearPendingZombieEntry(){PendingClears++;}}
+    internal static class ZombieModePhaseGuards {internal static bool IsActive(ZombieModeLifecyclePhase phase){return phase==ZombieModeLifecyclePhase.Active;}internal static bool IsRunActive(ZombieModeLifecyclePhase phase){return phase==ZombieModeLifecyclePhase.Active;}internal static bool ShouldPauseModePressure(ZombieModeCombatPhase phase){return false;}}
+    internal enum ZombieModeEnemyKind {Normal,Special,Elite}
+    internal enum ZombieModeBossKind {Titan}
+    internal enum ZombieModeSpecialKind {None}
+    internal enum ZombieModeRunOnlyObjectKind {Unknown}
+    internal sealed class ZombieModeEnemyRuntimeMarker {internal T GetComponent<T>() where T:class{return Owner as T;}internal int RunId,PurificationPointValue;internal CharacterMainControl Owner;internal bool IsBoss,DeathSettled,RemovedFromRuntime;internal ZombieModeEnemyKind EnemyKind;internal ZombieModeBossKind BossKind;internal ZombieModeSpecialKind SpecialKind;}
+    internal static class CoopAiPredictionHealthProtection {internal static void MarkReplica(CharacterMainControl character){}}
+    internal static class ZombieModeZoneVisuals {internal static readonly UnityEngine.Color SafeZoneColor=new UnityEngine.Color(1);}
+    internal sealed partial class ZombieModeRewardSelectionView
+    {
+        private int runId;private ModBehaviour owner;private bool selecting,closing;
+        internal void Bind(int run,ModBehaviour host){runId=run;owner=host;}
+        internal void Choose(ZombieModeRewardType type,object token){Select(type,token);}
+    }
+}
+namespace BossRush
+{
+    internal sealed partial class ZombieModeRuntimeModule
+    {
+        private int GetZombieModeMinimumRewardCategoryCount(bool boss){return 1;}
+        private List<ZombieModeRewardCatalogEntry> BuildZombieModeRewardCatalogEntries(bool boss){return new List<ZombieModeRewardCatalogEntry>{new ZombieModeRewardCatalogEntry {RewardType=ZombieModeRewardType.Heal}};}
+        private bool IsZombieModeBossBonusRewardSelection(ZombieModeRewardNode node){return false;}
+        private void KeepZombieModeBossBonusRewardEntries(List<ZombieModeRewardCatalogEntry> catalog){}
+        private void TryAddZombieModeEarlyGuaranteedReward(ZombieModeRewardNode node,List<ZombieModeRewardCatalogEntry> catalog,List<ZombieModeRewardCategory> categories,bool gear){}
+        private ZombieModeRewardCategory RollZombieModeRewardCategory(List<ZombieModeRewardCatalogEntry> catalog,List<ZombieModeRewardCategory> categories,int count,int minimum){return ZombieModeRewardCategory.Economy;}
+        private ZombieModeRewardCatalogEntry SelectZombieModeRewardEntryForCategory(List<ZombieModeRewardCatalogEntry> catalog,ZombieModeRewardCategory category,List<ZombieModeRewardType> options){return catalog.Count==0?null:catalog[0];}
+        private void EnsureZombieModeRewardCategoryDiversity(ZombieModeRewardNode node,List<ZombieModeRewardCatalogEntry> catalog,int minimum){}
+
+        private CoopGameplayCommand WireCommand(CoopGameplayCommand original)
+        {
+            CoopGameplayCommand wire = BossRushCoopJson.FromJson<CoopGameplayCommand>(BossRushCoopJson.ToJson(original));
+            wire.PlayerId = original.PlayerId;
+            return wire;
+        }
+        private static void RunCommandAndMirrorChecks()
+        {
+            BossRushCoop.IsConnected=true;BossRushCoop.IsHost=false;BossRushCoop.HasBoundScene=true;
+            BossRushCoop.LocalPlayerId="p1";BossRushCoop.LocalAssetId="slot-A";
+            foreach(BossRushCoopPlayer player in BossRushCoop.Players){player.IsAlive=player.IsConnected=true;player.AssetId="slot-A";}
+            var sender=new ZombieModeRuntimeModule();sender.runState.RunId=81;sender.runState.CurrentWave=5;
+            sender.SendCoopZombieCommand("reward-world",1,ZombieModeRewardType.ContractPollutionDeal.ToString());
+            var packet=sender.WireCommand(sender.coopZombieWorld.Commands[0]);
+            var payload=BossRushCoopJson.FromJson<CoopZombieCommand>(packet.Text);
+            Check(payload.Run==81&&payload.Wave==5&&payload.Text==ZombieModeRewardType.ContractPollutionDeal.ToString(),"Z actual Send and codec freeze business run and wave before transport retry");
+            var host=new ZombieModeRuntimeModule();host.runState.RunId=81;host.runState.CurrentWave=5;host.runState.CombatPhase=ZombieModeCombatPhase.RewardSelection;
+            host.coopZombieParticipants["p1"]="slot-A";host.coopZombieStarterReady.Add("p1:slot-A");
+            BossRushCoop.IsHost=true;BossRushCoop.LocalPlayerId="p0";
+            host.ExecuteCoopZombieCommand(packet);host.ExecuteCoopZombieCommand(packet);
+            Check(host.Npcs==1&&host.runState.PollutionFromContracts==2&&host.KillRewardRecords==1,"Z actual Execute applies current reward pollution NPC and kill-reward record once");
+            host.runState.CurrentWave=10;host.ExecuteCoopZombieCommand(packet);
+            Check(host.Npcs==1&&host.runState.PollutionFromContracts==2,"Z prior wave reward retry cannot apply to next reward wave in same scene");
+            host.ResetCoopZombieRun(82);host.runState.RunId=82;host.runState.CurrentWave=5;host.coopZombieParticipants["p1"]="slot-A";host.coopZombieStarterReady.Add("p1:slot-A");host.ExecuteCoopZombieCommand(packet);
+            Check(host.Npcs==1,"Z prior run reward cannot apply to same numbered wave of new run");
+            BossRushCoop.IsHost=false;BossRushCoop.LocalPlayerId="p1";
+            sender.SendCoopZombieCommand("starter");var staleStarter=sender.WireCommand(sender.coopZombieWorld.Commands[1]);
+            sender.SendCoopZombieCommand("decline");var staleDecline=sender.WireCommand(sender.coopZombieWorld.Commands[2]);
+            BossRushCoop.IsHost=true;host.coopZombieStarterReady.Clear();host.ExecuteCoopZombieCommand(staleStarter);host.ExecuteCoopZombieCommand(staleDecline);
+            Check(host.coopZombieStarterReady.Count==0&&host.coopZombieDeclinedAssets.Count==0,"Z old starter and decline cannot alter next run cohort");
+            BossRushCoop.IsHost=true;
+            host.runState.RunId=81;host.runState.CurrentWave=10;host.ExecuteCoopZombieCommand(staleStarter);
+            Check(host.coopZombieStarterReady.Contains("p1:slot-A"),"Z current run late admission remains valid across wave change");
+            host.ExecuteCoopZombieCommand(staleDecline);Check(host.coopZombieDeclinedAssets.Contains("p1:slot-A")&&!host.coopZombieStarterReady.Contains("p1:slot-A"),"Z current run decline still withdraws matching original participant");
+            host.coopZombieDeclinedAssets.Clear();host.coopZombieStarterReady.Add("p1:slot-A");
+            sender.runState.CurrentWave=10;
+            foreach(string action in new[]{"beacon","portable","continue","extract","gravity"})
+            {
+                BossRushCoop.IsHost=false;
+                string text=action=="gravity"?BossRushCoopJson.ToJson(new CoopZombieArea {Radius=3,Strength=1}):null;
+                sender.SendCoopZombieCommand(action,0,text);var world=sender.WireCommand(sender.coopZombieWorld.Commands[sender.coopZombieWorld.Commands.Count-1]);
+                BossRushCoop.IsHost=true;
+                host.runState.CurrentWave=11;host.ExecuteCoopZombieCommand(world);
+                host.runState.CurrentWave=10;host.ExecuteCoopZombieCommand(world);
+            }
+            Check(host.Beacons==1&&host.Portables==1&&host.Continues==1&&host.Extractions==1&&host.Gravity==1,"Z general world operations reject stale wave and accept current original participant");
+            host.coopZombieStarterReady.Clear();BossRushCoop.IsHost=false;sender.SendCoopZombieCommand("portable");BossRushCoop.IsHost=true;host.ExecuteCoopZombieCommand(sender.WireCommand(sender.coopZombieWorld.Commands[sender.coopZombieWorld.Commands.Count-1]));
+            Check(host.Portables==1,"Z unadmitted observer cannot deploy a shared safe zone");
+            BossRushCoop.IsHost=true;BossRushCoop.LocalPlayerId="p0";host.coopZombieParticipants["p0"]="slot-A";host.coopZombieStarterReady.Add("p0:slot-A");host.SendCoopZombieCommand("beacon");
+            Check(host.Beacons==2,"Z host direct action follows same encoded validated production command path");
+
+            BossRushCoop.IsHost=false;var projected=new ZombieModeRuntimeModule();projected.runState.RunId=80;projected.coopZombieLocalRun=80;projected.coopZombieStarterGranted=true;
+            projected.coopZombieParticipants["p1"]="slot-A";projected.coopZombieStarterReady.Add("p1:slot-A");BossRushCoop.Players[1].AssetId="slot-B";
+            var state=new CoopZombieWorld {Run=82,SceneName="ZombieTestScene",Lifecycle=(int)ZombieModeLifecyclePhase.Active,Combat=(int)ZombieModeCombatPhase.ExtractionOpportunity,Wave=5,HasExtractionArea=true,ExtractionPosition=new UnityEngine.Vector3(50,0,0),StarterReady=new[]{"p0:slot-A","p1:slot-B"}};
+            projected.ApplyCoopZombieWorld(state);
+            Check(projected.coopZombieLocalRun==82&&projected.coopZombieParticipants.Count==0&&projected.coopZombieAdmissionPending,"Z actual ApplyWorld new run clears old asset cohort before admission");
+            projected.Admit();projected.Admit();
+            Check(projected.EntryCommits==1,"Z duplicate investment confirmation cannot charge entry twice");
+            projected.coopZombieStarterChosen=true;projected.ApplyCoopZombieWorld(state);
+            string asset;Check(projected.TryGetCoopCampaignParticipantAsset("82","p1",out asset)&&asset=="slot-B","Z actual next-run projection admits confirmed new asset rather than retaining previous run slot");
+            projected.ApplyCoopZombieWorld(state);projected.ApplyCoopZombieWorld(state);
+            Check(projected.ExtractionShows==1,"Z repeated world snapshots open extraction choice once");
+            Check(projected.runState.ActiveExtractionArea.transform.position.x==50,"Z late client without safe zone uses actual host extraction center");
+            state.Extracting=true;projected.ApplyCoopZombieWorld(state);int clears=projected.ExtractionClears;projected.ApplyCoopZombieWorld(state);
+            Check(projected.ExtractionShows==1&&clears>0,"Z ongoing extraction never reopens choice over client movement");
+            state.Extracting=false;projected.ApplyCoopZombieWorld(state);projected.ApplyCoopZombieWorld(state);
+            Check(projected.ExtractionShows==2,"Z canceled countdown offers exactly one new retry choice");
+            state.Combat=(int)ZombieModeCombatPhase.Combat;state.Wave=6;projected.ApplyCoopZombieWorld(state);
+            Check(projected.runState.ActiveExtractionArea==null,"Z world phase exit retires old client extraction area");
+            projected.runState.ActiveSafeZoneActive=true;projected.runState.ActiveSafeZoneRadius=3;projected.runState.ActiveSafeZoneCenter=new UnityEngine.Vector3(1,0,0);projected.MirrorCoopZombieSafeZone(false);var visual=projected.runState.ActiveSafeZoneVisual;
+            projected.runState.ActiveSafeZoneCenter=new UnityEngine.Vector3(24,0,0);projected.MirrorCoopZombieSafeZone(false);
+            Check(object.ReferenceEquals(visual,projected.runState.ActiveSafeZoneVisual)&&visual.transform.position.x==24,"Z existing safe zone visual follows replaced host center");
+            projected.runState.ActiveSafeZoneActive=false;projected.MirrorCoopZombieSafeZone(false);
+            Check(visual==null&&projected.runState.ActiveSafeZoneVisual==null,"Z inactive snapshot destroys old mirrored circle");
+
+            coopZombieOwner=projected;projected.runState.CombatPhase=ZombieModeCombatPhase.RewardSelection;projected.runState.CurrentRewardNode=new ZombieModeRewardNode {Wave=6};projected.RollZombieModeRewardOptions();
+            object firstToken=CaptureZombieModeRewardUiToken(82);var view=new ZombieModeRewardSelectionView();view.Bind(82,projected.owner);view.Choose(ZombieModeRewardType.Heal,firstToken);
+            Check(projected.owner.Selections==1,"Z real reward view Select accepts current production roll token");
+            projected.RollZombieModeRewardOptions();view.Choose(ZombieModeRewardType.Heal,firstToken);
+            Check(projected.owner.Selections==1,"Z old card callback cannot select same enum after actual reward reroll");
+            object secondToken=CaptureZombieModeRewardUiToken(82);view.Choose(ZombieModeRewardType.Heal,secondToken);
+            Check(projected.owner.Selections==2,"Z rebuilt current card remains selectable");
+            BossRushCoop.LocalAssetId="slot-B";view.Choose(ZombieModeRewardType.Heal,secondToken);BossRushCoop.LocalAssetId="slot-A";projected.runState.CombatPhase=ZombieModeCombatPhase.Combat;view.Choose(ZombieModeRewardType.Heal,secondToken);
+            Check(projected.owner.Selections==2,"Z old view cannot select after asset or combat phase changed");
+            var canceledAdmission=new ZombieModeRuntimeModule();canceledAdmission.runState.RunId=0;canceledAdmission.coopZombieLocalRun=0;
+            canceledAdmission.ApplyCoopZombieWorld(new CoopZombieWorld {Run=91,SceneName="ZombieTestScene",Lifecycle=(int)ZombieModeLifecyclePhase.Active});Action oldAdmission=canceledAdmission.Admit;
+            canceledAdmission.ApplyCoopZombieWorld(new CoopZombieWorld());oldAdmission();
+            Check(!canceledAdmission.coopZombieAdmissionPending&&canceledAdmission.coopZombieLocalRun==0&&canceledAdmission.EntryCommits==0,"Z ended host run cancels pending client investment before stale confirm");
+            canceledAdmission.ApplyCoopZombieWorld(new CoopZombieWorld {Run=92,SceneName="ZombieTestScene",Lifecycle=(int)ZombieModeLifecyclePhase.Active});oldAdmission();
+            Check(canceledAdmission.coopZombieAdmissionPending&&canceledAdmission.EntryCommits==0,"Z old investment callback cannot cancel next run pending transaction");
+            Action currentAdmission=canceledAdmission.Admit;BossRushCoop.SceneToken="next-z-scene";currentAdmission();BossRushCoop.SceneToken="z-token";
+            Check(canceledAdmission.EntryCommits==0&&canceledAdmission.coopZombieAdmissionPending,"Z investment confirmation freezes original scene token");
+            var closedExtraction=new ZombieModeExtractionOpportunityView();closedExtraction.Bind(82,projected.owner);closedExtraction.ReleaseInput();closedExtraction.Click(true);
+            Check(projected.owner.ExtractClicks==0,"Z extraction choice released by host ignores stale callback");
+            var openExtraction=new ZombieModeExtractionOpportunityView();openExtraction.Bind(82,projected.owner);openExtraction.Click(false);openExtraction.Click(true);
+            Check(projected.owner.ContinueClicks==1&&projected.owner.ExtractClicks==0,"Z current extraction choice dispatches once and refuses closed follow-up");
+            coopZombieOwner=null;BossRushCoop.IsHost=true;BossRushCoop.LocalPlayerId="p0";
+        }
+    }
+}
+namespace BossRush
+{
+    internal static class BossRushUIKit {internal static void PlayCloseAndDestroy(UnityEngine.GameObject body){UnityEngine.Object.Destroy(body);}}
+    internal static class ZombieModeUiNudge {internal static void Flash(UnityEngine.UI.Button button,string text){}}
+    internal sealed class CancelKeyBoundary {internal void Detach(){}}
+    internal sealed partial class ZombieModeExtractionOpportunityView
+    {
+        private int runId;private ModBehaviour owner;private bool decided,closed;private CancelKeyBoundary cancelKey;
+        private readonly UnityEngine.GameObject gameObject=new UnityEngine.GameObject();private UnityEngine.UI.Button extractButton;
+        private void RestoreInputState(){}
+        internal void Bind(int run,ModBehaviour host){runId=run;owner=host;}
+        internal void Click(bool extract){Choose(extract);}
+    }
+}
+namespace BossRush
+{
+    internal abstract class HarasserRuntimeBoundary : UnityEngine.Object
+    {
+        protected readonly UnityEngine.GameObject gameObject=new UnityEngine.GameObject();
+        protected UnityEngine.Transform transform {get{return gameObject.transform;}}
+        protected int RuntimeRunId=11;
+        protected abstract void TickRuntime(ModBehaviour inst);
+    }
+    internal sealed class TrajectoryBoundary {internal void SetPosition(int index,UnityEngine.Vector3 position){}}
+    internal sealed partial class ZombieModeHarasserProjectileRuntime : HarasserRuntimeBoundary
+    {
+        private bool resolved;private CharacterMainControl source;private UnityEngine.Vector3 targetPosition,velocity;private float impactRadius=0.85f,speed=1,travelledDistance,maxTravelDistance=8,lastDistanceToTarget;private float damage=5,slowRadius=1,slowPercent=0.1f,slowDuration=1;private TrajectoryBoundary trajectory;
+        internal void Prime(CharacterMainControl character,UnityEngine.Vector3 target){source=character;targetPosition=target;velocity=new UnityEngine.Vector3(1,0,0);}
+        internal void Advance(ModBehaviour host){TickRuntime(host);}
+        internal bool IsGone {get{return gameObject.Destroyed;}}
+    }
+    internal sealed partial class ZombieModeRuntimeModule
+    {
+        private CharacterMainControl SkillTarget;private int SpecialSkills,EliteSkills;
+        private void TryExecuteZombieModeSpecialSkill(int run,CharacterMainControl character,ZombieModeEnemyRuntimeMarker marker,CharacterMainControl target){SkillTarget=target;SpecialSkills++;}
+        private void TryExecuteZombieModeEliteSkill(int run,CharacterMainControl character,ZombieModeEnemyRuntimeMarker marker,CharacterMainControl target){SkillTarget=target;EliteSkills++;}
+        private static void RunEnemyTargetChecks()
+        {
+            BossRushCoop.IsConnected=true;BossRushCoop.IsHost=true;BossRushCoop.IsHost=true;
+            var mode=new ZombieModeRuntimeModule();coopZombieOwner=mode;mode.runState.CombatPhase=ZombieModeCombatPhase.Combat;
+            var host=BossRushCoop.FindPlayer("p0");var guest=BossRushCoop.FindPlayer("p1");var observer=BossRushCoop.FindPlayer("p2");
+            host.IsAlive=false;host.IsConnected=true;guest.IsConnected=guest.IsAlive=true;observer.IsConnected=observer.IsAlive=true;
+            CharacterMainControl.Main=host.Character;CharacterMainControl.Main.Health.IsDead=true;
+            guest.Character.transform.position=new UnityEngine.Vector3(4,0,0);observer.Character.transform.position=new UnityEngine.Vector3(0,0,0);
+            mode.coopZombieParticipants[guest.Id]=guest.AssetId;mode.coopZombieStarterReady.Add(CoopZombieParticipantKey(guest));
+            var enemy=new CharacterMainControl();var marker=new ZombieModeEnemyRuntimeMarker {RunId=11,Owner=enemy,EnemyKind=ZombieModeEnemyKind.Special};
+            mode.TryExecuteZombieModeEnemyRuntimeSkill(marker);
+            Check(mode.SpecialSkills==1&&object.ReferenceEquals(mode.SkillTarget,guest.Character),"Z special skill targets admitted living guest after host death rather than closer observer");
+            marker.EnemyKind=ZombieModeEnemyKind.Elite;mode.TryExecuteZombieModeEnemyRuntimeSkill(marker);
+            Check(mode.EliteSkills==1&&object.ReferenceEquals(mode.SkillTarget,guest.Character),"Z elite skill shares current admitted target selection");
+            guest.IsAlive=false;mode.TryExecuteZombieModeEnemyRuntimeSkill(marker);
+            Check(mode.EliteSkills==1,"Z world skill has no target when admitted party is dead");
+            guest.IsAlive=true;BossRushCoop.IsHost=false;mode.TryExecuteZombieModeEnemyRuntimeSkill(marker);
+            Check(mode.EliteSkills==1,"Z client replica cannot independently run world skills");BossRushCoop.IsHost=true;
+            guest.Character.transform.position=new UnityEngine.Vector3(0.5f,0,0);var projectile=new ZombieModeHarasserProjectileRuntime();projectile.Prime(enemy,new UnityEngine.Vector3(1,0,0));projectile.Advance(mode.owner);
+            Check(mode.owner.ProjectileImpacts==1&&mode.owner.ImpactPosition.x==0.5f&&projectile.IsGone,"Z actual harasser tick hits living guest and dispatches impact after host death");
+            guest.Character.transform.position=new UnityEngine.Vector3(8,0,0);var missed=new ZombieModeHarasserProjectileRuntime();missed.Prime(enemy,new UnityEngine.Vector3(1,0,0));missed.Advance(mode.owner);
+            Check(mode.owner.ProjectileImpacts==1&&missed.IsGone,"Z harasser reaching old target without current player remains a miss");
+            BossRushCoop.IsConnected=false;CharacterMainControl.Main=host.Character;host.Character.Health.IsDead=false;marker.EnemyKind=ZombieModeEnemyKind.Special;mode.TryExecuteZombieModeEnemyRuntimeSkill(marker);
+            Check(object.ReferenceEquals(mode.SkillTarget,host.Character)&&mode.SpecialSkills==2,"Z offline skills retain local player targeting");BossRushCoop.IsConnected=true;host.IsAlive=true;coopZombieOwner=null;
+        }
+    }
+}
+
+namespace BossRush
+{
+    internal sealed partial class ZombieModeRuntimeModule
+    {
+        private static void RunLeaseChecks()
+        {
+            foreach(string loss in new[]{"disconnect","room","role","solo_join","client_room"})
+            {
+                BossRushCoop.RunId="lease-room";BossRushCoop.IsConnected=loss!="solo_join";BossRushCoop.IsHost=loss!="solo_join"&&loss!="client_room";BossRushCoop.LocalAssetId="slot-A";
+                var runtime=new ZombieModeRuntimeModule();runtime.runState.RunId=201;runtime.ResetCoopZombieRun(201);runtime.runState.CurrentWave=3;runtime.runState.PurificationPoints=17;runtime.pendingEntry=true;
+                runtime.coopZombiePersonal.Deliver("p1","201:owed",new CoopZombiePersonal {Run=201,Kind="extract",Amount=7},"slot-A");
+                runtime.coopZombieRefunds["old-entry"]=new CoopZombieRefund {AssetId="slot-B",Cash=25,Invitation=true};
+                Check(runtime.IsZombieModeRunValid(201),"Z frozen new run begins with current lease "+loss);
+                runtime.TickZombieMode(1);Check(runtime.owner.WorldTicks==(BossRushCoop.IsHost||!BossRushCoop.IsConnected?1:0),"Z original lease permits appropriate world authority "+loss);
+                if(loss=="disconnect")BossRushCoop.IsConnected=BossRushCoop.IsHost=false;
+                if(loss=="room"||loss=="client_room")BossRushCoop.RunId="successor-room";
+                if(loss=="role")BossRushCoop.IsHost=false;
+                if(loss=="solo_join")BossRushCoop.IsConnected=BossRushCoop.IsHost=true;
+                Check(!runtime.IsZombieModeRunValid(201),"Z production run validation cancels before next Update on "+loss);
+                BossRushCoop.RunId="lease-room";BossRushCoop.IsConnected=loss!="solo_join";BossRushCoop.IsHost=loss!="solo_join"&&loss!="client_room";
+                Check(!runtime.IsZombieModeRunValid(201),"Z returning old connection identity cannot resurrect revoked run "+loss);
+                int ticks=runtime.owner.WorldTicks;runtime.TickZombieMode(1);runtime.OnUpdate(1,1);runtime.OnUpdate(1,1);
+                Check(runtime.owner.WorldTicks==ticks&&runtime.owner.Cleanups==1&&runtime.coopZombieLocalRun==0&&!runtime.pendingEntry,"Z lease loss retires world once before offline/channel work "+loss);
+                Check(runtime.coopZombiePersonal.Pending.Count==1&&runtime.coopZombieRefunds.ContainsKey("old-entry"),"Z permanent original-asset receipt and entry debt survive world retirement "+loss);
+                if(loss!="solo_join")Check(runtime.coopZombieWallets["lease-room:slot-A:201"].Points==17,"Z retirement remembers original room wallet after connection loss "+loss);
+                runtime.ResetCoopZombieRun(202);runtime.runState.RunId=202;
+                Check(runtime.IsZombieModeRunValid(202),"Z explicit next run obtains fresh lease "+loss);
+            }
+            foreach(string loss in new[]{"room","new_entry"})
+            {
+                BossRushCoop.IsConnected=BossRushCoop.IsHost=true;BossRushCoop.RunId="entry-room";
+                var runtime=new ZombieModeRuntimeModule();runtime.ResetCoopZombieEntryTransaction();runtime.OfficialReady=false;
+                System.Collections.IEnumerator loading=runtime.WaitForZombieModeTargetSceneActiveThenInitialize(UnityEngine.SceneManagement.SceneManager.GetActiveScene(),null);
+                Check(loading.MoveNext(),"Z actual map iterator waits for official ready before "+loss);
+                if(loss=="room")BossRushCoop.RunId="other-room";else runtime.ResetCoopZombieEntryTransaction();
+                runtime.OfficialReady=true;
+                Check(!loading.MoveNext()&&runtime.Initialized==0,"Z stale pending map iterator cannot initialize successor context "+loss);
+            }
+            BossRushCoop.IsConnected=BossRushCoop.IsHost=true;BossRushCoop.RunId="z-room";BossRushCoop.LocalAssetId="slot-A";
+        }
+    }
+}
+
+namespace BossRush
+{
+    internal static class SpawnPositionHelper {internal static bool TrySampleNavMesh(UnityEngine.Vector3 origin,out UnityEngine.Vector3 resolved,float lift,float radius){resolved=origin;return false;}}
+    internal static class ZombieModeNpcCatalog {internal static readonly float[] NpcAngleArrangement=new float[]{0,90};}
+    internal static class ZombieModeServiceTerminalLook {internal static bool Dress(UnityEngine.GameObject root,UnityEngine.GameObject prefab,string name){return false;}}
+    internal sealed class ZombieModeTemporaryNpcInteractable {internal void Initialize(int run,string service){}}
+    internal sealed partial class ZombieModeRuntimeModule
+    {
+        private UnityEngine.GameObject resolveZombieModeNpcPrefab(string type){return null;}
+        private void SetZombieModeRendererColor(UnityEngine.Renderer renderer,UnityEngine.Color color){}
+        private static void RunNpcAnchorChecks()
+        {
+            BossRushCoop.IsConnected=BossRushCoop.IsHost=true;BossRushCoop.LocalPlayerId="p0";
+            var runtime=new ZombieModeRuntimeModule();var host=BossRushCoop.FindPlayer("p0");var guest=BossRushCoop.FindPlayer("p1");var other=BossRushCoop.FindPlayer("p2");
+            CharacterMainControl.Main=host.Character;host.IsAlive=false;host.Character.transform.position=new UnityEngine.Vector3(0,0,0);
+            guest.IsAlive=guest.IsConnected=true;guest.Character.transform.position=new UnityEngine.Vector3(40,0,0);other.IsAlive=other.IsConnected=true;other.Character.transform.position=new UnityEngine.Vector3(100,0,0);
+            runtime.coopZombieParticipants[guest.Id]=guest.AssetId;runtime.coopZombieStarterReady.Add(CoopZombieParticipantKey(guest));runtime.coopZombieParticipants[other.Id]=other.AssetId;runtime.coopZombieStarterReady.Add(CoopZombieParticipantKey(other));
+            Check(runtime.GetZombieModeTemporaryRealNpcAnchorPosition().x==40&&runtime.CreateZombieModeTemporaryServiceTerminal(11,"Nurse").transform.position.x==40,"Z automatic NPC and service terminal anchor near admitted survivor after host death");
+            runtime.coopZombieCommandPlayer=other.Character;
+            Check(runtime.GetZombieModeTemporaryRealNpcAnchorPosition().x==100&&runtime.CreateZombieModeTemporaryServiceTerminal(11,"Supply").transform.position.x==100,"Z command-selected NPC and service terminal follow actual remote chooser");
+            runtime.runState.ActiveSafeZoneActive=true;runtime.runState.ActiveSafeZoneCenter=new UnityEngine.Vector3(65,0,0);
+            Check(runtime.GetZombieModeTemporaryRealNpcAnchorPosition().x==65&&runtime.CreateZombieModeTemporaryServiceTerminal(11,"Nurse").transform.position.x==65,"Z active safe zone remains shared NPC placement center");
+            BossRushCoop.IsConnected=false;runtime.runState.ActiveSafeZoneActive=false;
+            Check(runtime.GetZombieModeTemporaryRealNpcAnchorPosition().x==0&&runtime.CreateZombieModeTemporaryServiceTerminal(11,"Nurse").transform.position.x==0,"Z solo NPC placement retains local player anchor");
+            BossRushCoop.IsConnected=BossRushCoop.IsHost=true;
+        }
+    }
 }

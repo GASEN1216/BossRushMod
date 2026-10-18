@@ -35,8 +35,8 @@ namespace BossRush
         public int Run, Scene, Lifecycle, Combat, Wave, Kills, Target, Bosses, Living, Normal, Natural, Contracts;
         public string SceneName;
         public float Preparation, Radius, PortableRadius;
-        public Vector3 Center, PortableCenter;
-        public bool Safe, Portable, Beacon, Extracting;
+        public Vector3 Center, PortableCenter, ExtractionPosition;
+        public bool Safe, Portable, Beacon, Extracting, HasExtractionArea;
         public CoopZombieEnemy[] Enemies;
         public CoopZombieTerminal[] Terminals;
         public string[] StarterReady, Skipped;
@@ -49,6 +49,13 @@ namespace BossRush
         public string Kind;
     }
 
+    [Serializable]
+    internal sealed class CoopZombieCommand
+    {
+        public int Run, Wave;
+        public string Text;
+    }
+
     internal sealed partial class ZombieModeRuntimeModule
     {
         private bool BeginCoopZombiePersonalRewardNode()
@@ -59,13 +66,56 @@ namespace BossRush
             return true;
         }
         private static ZombieModeRuntimeModule coopZombieOwner;
+        private object zombieModeRewardUiToken;
+
+        internal static object CaptureZombieModeRewardUiToken(int run)
+        {
+            ZombieModeRuntimeModule runtime = coopZombieOwner;
+            return runtime != null && runtime.IsZombieModeRunValid(run) ? runtime.zombieModeRewardUiToken : null;
+        }
+
+        internal static bool IsZombieModeRewardUiTokenCurrent(int run, object token)
+        {
+            ZombieModeRuntimeModule runtime = coopZombieOwner;
+            return runtime != null && token != null && runtime.IsZombieModeRunValid(run)
+                && runtime.IsCoopZombieLocalAssetCurrent() && runtime.runState.CombatPhase == ZombieModeCombatPhase.RewardSelection
+                && ReferenceEquals(token, runtime.zombieModeRewardUiToken);
+        }
         private string coopZombieProjectionRoom;
+        private bool coopZombieLeaseCaptured, coopZombieLeaseConnected, coopZombieLeaseHost;
+        private bool coopZombieLeaseRevoked, coopZombieLeaseRetired;
+        private string coopZombieLeaseRoom;
+
+        private void CaptureCoopZombieRunLease()
+        {
+            coopZombieLeaseCaptured = true;
+            coopZombieLeaseRevoked = coopZombieLeaseRetired = false;
+            coopZombieLeaseConnected = BossRushCoop.IsConnected;
+            coopZombieLeaseHost = BossRushCoop.IsHost;
+            coopZombieLeaseRoom = BossRushCoop.RunId;
+        }
+
+        private bool IsCoopZombieRunLeaseCurrent()
+        {
+            if (coopZombieLeaseRevoked) return false;
+            if (!coopZombieLeaseCaptured) return true;
+            if (coopZombieLeaseConnected != BossRushCoop.IsConnected || (coopZombieLeaseConnected
+                && (coopZombieLeaseHost != BossRushCoop.IsHost || coopZombieLeaseRoom != BossRushCoop.RunId)))
+                coopZombieLeaseRevoked = true;
+            return !coopZombieLeaseRevoked;
+        }
 
         private void RetireLostCoopZombieProjection()
         {
-            if (coopZombieProjectionRoom == null || (BossRushCoop.IsClient && coopZombieProjectionRoom == BossRushCoop.RunId)) return;
+            bool lostRun = !IsCoopZombieRunLeaseCurrent();
+            bool lostProjection = coopZombieProjectionRoom != null && !(BossRushCoop.IsClient && coopZombieProjectionRoom == BossRushCoop.RunId);
+            if ((!lostRun && !lostProjection) || coopZombieLeaseRetired) return;
+            coopZombieLeaseRevoked = coopZombieLeaseRetired = true;
+            RememberCoopZombieWallet();
             coopZombieProjectionRoom = null;
             coopZombieAdmissionPending = false;
+            pendingEntry = false;
+            ZombieModeMapSelectionHelper.ClearPendingZombieEntry();
             owner.CleanupZombieModeForRuntimeModule((runState.ExtractionSuccessHandled || runState.CombatPhase == ZombieModeCombatPhase.SuccessExit) ? ZombieModeFailureReason.SuccessfulExtraction : ZombieModeFailureReason.Unknown);
             coopZombieLocalRun = 0; coopZombieTerminals.Clear(); coopZombieRealNpcs.Clear();
         }
@@ -161,11 +211,11 @@ namespace BossRush
 
         internal void RememberCoopZombieWallet()
         {
-            if (!BossRushCoop.IsConnected || runState == null || runState.RunId == 0 || runState.LifecyclePhase == ZombieModeLifecyclePhase.None || string.IsNullOrEmpty(coopZombieLocalAsset)) return;
+            if (!(coopZombieLeaseCaptured ? coopZombieLeaseConnected : BossRushCoop.IsConnected) || runState == null || runState.RunId == 0 || runState.LifecyclePhase == ZombieModeLifecyclePhase.None || string.IsNullOrEmpty(coopZombieLocalAsset)) return;
             string key = coopZombieWalletRoom + ":" + coopZombieLocalAsset + ":" + Math.Abs(runState.RunId);
             CoopZombieWallet wallet;
             if (!coopZombieWallets.TryGetValue(key, out wallet)) { wallet = new CoopZombieWallet(); coopZombieWallets.Add(key, wallet); }
-            if (!wallet.CampaignCaptured && coopZombieStarterChosen && coopZombieStarterGranted && coopZombieLocalAsset == BossRushCoop.LocalAssetId)
+            if (!wallet.CampaignCaptured && IsCoopZombieRunLeaseCurrent() && coopZombieStarterChosen && coopZombieStarterGranted && coopZombieLocalAsset == BossRushCoop.LocalAssetId)
             {
                 wallet.Campaign = owner.IsCampaignConfiguredEnabled() ? CampaignObjectiveTracker.CaptureExtractionLease(CampaignContentCatalog.ModeZombie) : null;
                 wallet.CampaignCaptured = true;
@@ -174,6 +224,7 @@ namespace BossRush
             if (!wallet.Extracted) wallet.Points = runState.PurificationPoints;
         }
         private int coopZombieLocalRun, coopZombieLocalRewardWave = -1, coopZombieCompletedRewardWave = -1;
+        private int coopZombieExtractionUiWave = -1;
         private bool coopZombieAdmissionPending, coopZombieStarterChosen, coopZombiePersonalDeath, coopZombieExtractionPending;
         private CharacterMainControl coopZombieCommandPlayer;
         private long coopZombieReceiptSequence;
@@ -185,11 +236,15 @@ namespace BossRush
             coopZombieOwner = this;
             coopZombieWorld = new CoopGameplayChannel<CoopZombieWorld>("Zombie", CaptureCoopZombieWorld, ApplyCoopZombieWorld, ExecuteCoopZombieCommand);
             coopZombiePersonal = new CoopPersonalDelivery<CoopZombiePersonal>("Zombie", ApplyCoopZombiePersonal);
+            InitializeCoopZombieKillRewards();
+            InitializeCoopZombieZoneEffects();
+            InitializeCoopZombieDropClaims();
         }
 
         private void ResetCoopZombieEntryTransaction()
         {
             QueueCoopZombieWrongAssetRefund();
+            CaptureCoopZombieRunLease();
             coopZombieLocalAsset = BossRushCoop.LocalAssetId;
             coopZombieEntrySequence++;
             entryTransaction.Reset();
@@ -200,6 +255,10 @@ namespace BossRush
         private void ResetCoopZombieRun(int runId)
         {
             RememberCoopZombieWallet();
+            CaptureCoopZombieRunLease();
+            ResetCoopZombieKillRewards();
+            ResetCoopZombieZoneEffects();
+            ResetCoopZombieDropClaims(runId);
             coopZombiePointsIssued.Clear();
             coopZombieExtractionEligibility.Clear();
             coopZombieStarterReady.Clear(); coopZombieRewardReady.Clear(); coopZombieWorldSelections.Clear();
@@ -211,10 +270,14 @@ namespace BossRush
             coopZombieStarterGranted = false; coopZombieSkipped.Clear(); coopZombieSkippedAssets.Clear(); coopZombieSkipQueued.Clear();
             coopZombieStarterChosen = coopZombiePersonalDeath = coopZombieExtractionPending = false;
             coopZombieLocalRewardWave = coopZombieCompletedRewardWave = -1;
+            coopZombieExtractionUiWave = -1;
         }
 
         private void CleanupCoopZombie()
         {
+            CleanupCoopZombieKillRewards();
+            CleanupCoopZombieZoneEffects();
+            CleanupCoopZombieDropClaims();
             if (coopZombieWorld != null) coopZombieWorld.Dispose();
             if (coopZombiePersonal != null) coopZombiePersonal.Dispose();
             coopZombieWorld = null; coopZombiePersonal = null;
@@ -281,6 +344,9 @@ namespace BossRush
             TickCoopZombieRefunds();
             coopZombieWorld.Tick(unscaledDeltaTime);
             coopZombiePersonal.Tick(unscaledDeltaTime);
+            TickCoopZombieKillRewards(unscaledDeltaTime);
+            TickCoopZombieZoneEffects(unscaledDeltaTime);
+            TickCoopZombieDropClaims(unscaledDeltaTime);
             if (!BossRushCoop.IsConnected) return;
             if (coopZombieExtractionPending && BossRushCoop.IsHost && !coopZombiePersonal.HasPendingForIdPrefix(runState.RunId + ":extract:"))
             {
@@ -490,6 +556,7 @@ namespace BossRush
 
         private CoopZombieWorld CaptureCoopZombieWorld()
         {
+            if (!IsCoopZombieRunLeaseCurrent()) return new CoopZombieWorld();
             var enemies = new List<CoopZombieEnemy>();
             foreach (ZombieModeEnemyRuntimeMarker marker in zombieModeEnemyMarkersByInstanceId.Values)
                 if (marker != null && marker.Owner != null && !marker.DeathSettled && !marker.RemovedFromRuntime)
@@ -510,6 +577,8 @@ namespace BossRush
                 Contracts = runState.PollutionFromContracts, Preparation = runState.PreparationTimer, Center = runState.ActiveSafeZoneCenter,
                 Radius = runState.ActiveSafeZoneRadius, Safe = runState.ActiveSafeZoneActive, PortableCenter = runState.PortableSafeZoneCenter,
                 PortableRadius = runState.PortableSafeZoneRadius, Portable = runState.PortableSafeZoneActive,
+                HasExtractionArea = runState.ActiveExtractionArea != null,
+                ExtractionPosition = runState.ActiveExtractionArea != null ? runState.ActiveExtractionArea.transform.position : Vector3.zero,
                 Beacon = runState.BeaconChanneling, Extracting = runState.ExtractionChanneling, Enemies = enemies.ToArray(), Terminals = terminals.ToArray(),
                 StarterReady = new List<string>(coopZombieStarterReady).ToArray(), Skipped = new List<string>(coopZombieSkipped).ToArray() };
         }
@@ -521,8 +590,9 @@ namespace BossRush
             if (!IsCoopZombieLocalAssetCurrent() && (state.Run == coopZombieLocalRun || state.Run <= 0)) return;
             if (state.Run <= 0 || state.Lifecycle == (int)ZombieModeLifecyclePhase.None)
             {
-                if (coopZombieLocalRun > 0 && !coopZombieAdmissionPending)
+                if (coopZombieLocalRun > 0)
                 {
+                    coopZombieAdmissionPending = false;
                     RefundZombieModeInvitationIfNeeded(); RefundZombieModeCashIfNeeded();
                     owner.CleanupZombieModeForRuntimeModule((runState.ExtractionSuccessHandled || runState.CombatPhase == ZombieModeCombatPhase.SuccessExit) ? ZombieModeFailureReason.SuccessfulExtraction : ZombieModeFailureReason.Unknown);
                     coopZombieLocalRun = 0; coopZombieTerminals.Clear(); coopZombieRealNpcs.Clear();
@@ -537,13 +607,9 @@ namespace BossRush
             if (coopZombieLocalRun != state.Run && coopZombieDeclinedRun != state.Run && !coopZombieAdmissionPending)
             {
                 coopZombieAdmissionPending = true;
-                coopZombieWalletRoom = BossRushCoop.RunId;
-                coopZombieLocalRun = state.Run;
-                coopZombieLocalAsset = BossRushCoop.LocalAssetId;
+                ResetCoopZombieRun(state.Run);
                 string admissionAsset = coopZombieLocalAsset;
-                coopZombieConfirmedStarter = null; coopZombieStarterGranted = false;
-                coopZombieStarterChosen = coopZombiePersonalDeath = false;
-                coopZombieLocalRewardWave = coopZombieCompletedRewardWave = -1;
+                string admissionRoom = BossRushCoop.RunId, admissionToken = BossRushCoop.SceneToken;
                 runState.ResetForNewRun(state.Run, scene.buildIndex, scene.name);
                 runState.MapProfile = BuildZombieModeMapProfile(scene.buildIndex, scene.name);
                 runState.LifecyclePhase = ZombieModeLifecyclePhase.SelectingMap;
@@ -551,8 +617,9 @@ namespace BossRush
                 entryTransaction.Reset();
                 ShowZombieModeCashInvestmentPrompt(delegate
                 {
-                    if (!BossRushCoop.IsClient || BossRushCoop.RunId != coopZombieProjectionRoom || BossRushCoop.LocalAssetId != admissionAsset || coopZombieLocalRun != state.Run)
-                    { coopZombieAdmissionPending = false; return; }
+                    if (!BossRushCoop.IsClient || BossRushCoop.RunId != admissionRoom || BossRushCoop.SceneToken != admissionToken
+                        || BossRushCoop.LocalAssetId != admissionAsset || coopZombieLocalRun != state.Run || runState.RunId != state.Run
+                        || !coopZombieAdmissionPending || runState.LifecyclePhase != ZombieModeLifecyclePhase.SelectingMap) return;
                     ZombieModeFailureReason reason;
                     if (!TryRunZombieModePrechecks(out reason) || !CommitZombieModeEntryResourcesShell(out reason))
                     { RefundZombieModeInvitationIfNeeded(); RefundZombieModeCashIfNeeded(); coopZombieAdmissionPending = false; coopZombieDeclinedRun = state.Run; SendCoopZombieCommand("decline"); return; }
@@ -563,7 +630,9 @@ namespace BossRush
                     coopZombieAdmissionPending = false;
                 }, delegate
                 {
-                    if (!BossRushCoop.IsClient || BossRushCoop.RunId != coopZombieProjectionRoom || BossRushCoop.LocalAssetId != admissionAsset || coopZombieLocalRun != state.Run) return;
+                    if (!BossRushCoop.IsClient || BossRushCoop.RunId != admissionRoom || BossRushCoop.SceneToken != admissionToken
+                        || BossRushCoop.LocalAssetId != admissionAsset || coopZombieLocalRun != state.Run || runState.RunId != state.Run
+                        || !coopZombieAdmissionPending || runState.LifecyclePhase != ZombieModeLifecyclePhase.SelectingMap) return;
                     coopZombieAdmissionPending = false; coopZombieDeclinedRun = state.Run; SendCoopZombieCommand("decline");
                 });
             }
@@ -600,8 +669,35 @@ namespace BossRush
                 TryGiveZombieModeWaveClearHealingItem();
                 ShowZombieModeRewardSelection(state.Run, IsZombieModeBossWave(state.Wave));
             }
-            if (runState.CombatPhase == ZombieModeCombatPhase.ExtractionOpportunity)
-            { EnsureZombieModeExtractionArea(state.Run); ShowZombieModeExtractionOpportunityUi(state.Run); }
+            MirrorCoopZombieExtractionOpportunity(state);
+        }
+
+        private void MirrorCoopZombieExtractionOpportunity(CoopZombieWorld state)
+        {
+            if (runState.CombatPhase != ZombieModeCombatPhase.ExtractionOpportunity)
+            {
+                if (coopZombieExtractionUiWave >= 0) ClearZombieModeExtractionOpportunityUi();
+                coopZombieExtractionUiWave = -1;
+                DestroyZombieModeActiveExtractionArea();
+                return;
+            }
+            if (!state.HasExtractionArea)
+            {
+                DestroyZombieModeActiveExtractionArea();
+                return;
+            }
+            EnsureZombieModeExtractionArea(state.Run);
+            if (runState.ActiveExtractionArea != null) runState.ActiveExtractionArea.transform.position = state.ExtractionPosition;
+            if (runState.ExtractionChanneling)
+            {
+                ClearZombieModeExtractionOpportunityUi();
+                coopZombieExtractionUiWave = -1;
+            }
+            else if (coopZombieExtractionUiWave != runState.CurrentWave)
+            {
+                coopZombieExtractionUiWave = runState.CurrentWave;
+                ShowZombieModeExtractionOpportunityUi(state.Run);
+            }
         }
 
         private void MirrorCoopZombieSafeZone(bool portable)
@@ -614,9 +710,13 @@ namespace BossRush
                 if (portable) runState.PortableSafeZoneVisual = null; else runState.ActiveSafeZoneVisual = null;
                 return;
             }
-            if (visual != null) return;
             Vector3 center = portable ? runState.PortableSafeZoneCenter : runState.ActiveSafeZoneCenter;
             float radius = portable ? runState.PortableSafeZoneRadius : runState.ActiveSafeZoneRadius;
+            if (visual != null)
+            {
+                visual.transform.position = center + Vector3.up * 0.03f;
+                return;
+            }
             visual = CreateZombieModeFlatZoneVisual("ZombieMode_CoopSafeZone", center + Vector3.up * 0.03f, radius, 0.05f, ZombieModeZoneVisuals.SafeZoneColor);
             AttachZombieModeSafeZoneBoundaryVisual(visual, center, radius);
             RegisterZombieModeRunOnlyObject(runState.RunId, ZombieModeRunOnlyObjectKind.Unknown, visual, visual, null);
@@ -690,7 +790,9 @@ namespace BossRush
 
         private void SendCoopZombieCommand(string action, int value = 0, string text = null, bool flag = false, bool repeat = false)
         {
-            if (!BossRushCoop.IsConnected) return;
+            if (!BossRushCoop.IsConnected || !IsCoopZombieRunLeaseCurrent()) return;
+            // 频道的 room / scene 身份不随同场景的新局或下一波变化，业务身份必须在发出时冻结。
+            text = BossRushCoopJson.ToJson(new CoopZombieCommand { Run = runState.RunId, Wave = runState.CurrentWave, Text = text });
             if (BossRushCoop.IsHost) ExecuteCoopZombieCommand(new CoopGameplayCommand
                 { PlayerId = BossRushCoop.LocalPlayerId, AssetId = BossRushCoop.LocalAssetId, Action = action, Value = value, Text = text, Flag = flag });
             else if (repeat) coopZombieWorld.RequestRepeat(action, value, text, flag);
@@ -710,7 +812,10 @@ namespace BossRush
                     ZombieModeMapSelectionHelper.ConfirmZombieModeMapEntry(command.Value);
                 return;
             }
-            if (runState.RunId <= 0) return;
+            if (!IsCoopZombieRunLeaseCurrent()) return;
+            CoopZombieCommand payload = BossRushCoopJson.FromJson<CoopZombieCommand>(command.Text);
+            if (runState.RunId <= 0 || payload == null || payload.Run != runState.RunId) return;
+            if (command.Action != "starter" && command.Action != "decline" && payload.Wave != runState.CurrentWave) return;
             coopZombieCommandPlayer = player.Character;
             try
             {
@@ -718,26 +823,28 @@ namespace BossRush
                 if (command.Action == "decline") { coopZombieDeclinedAssets.Add(participantKey); coopZombieStarterReady.Remove(participantKey); return; }
                 if (coopZombieSkipped.Contains(participantKey)) return;
                 if (coopZombieParticipants.TryGetValue(player.Id, out previousAsset) && previousAsset != player.AssetId) return;
-                if (command.Action == "starter") RegisterCoopZombieStarter(player);
-                else if (command.Action == "reward-done" && command.Value == runState.CurrentWave && runState.CombatPhase == ZombieModeCombatPhase.RewardSelection)
+                if (command.Action == "starter") { RegisterCoopZombieStarter(player); return; }
+                if (!IsCoopZombieParticipant(player)) return;
+                if (command.Action == "reward-done" && command.Value == runState.CurrentWave && runState.CombatPhase == ZombieModeCombatPhase.RewardSelection)
                     coopZombieRewardReady[participantKey] = command.Value;
                 else if (command.Action == "reward-world" && runState.CombatPhase == ZombieModeCombatPhase.RewardSelection)
                 {
                     ZombieModeRewardType reward;
-                    if (!Enum.TryParse(command.Text, out reward) || !Enum.IsDefined(typeof(ZombieModeRewardType), reward)) return;
+                    if (!Enum.TryParse(payload.Text, out reward) || !Enum.IsDefined(typeof(ZombieModeRewardType), reward)) return;
                     if (!IsCoopZombieParticipant(player)) return;
                     string key = participantKey + ":" + runState.CurrentWave + ":" + command.Value;
                     int maxSelections = IsZombieModeBossWave(runState.CurrentWave) ? owner.GetZombieModeBossRewardSelectionCountForRewardRuntimeModule(runState.CurrentWave) : 1;
                     int readyWave;
                     if (command.Value < 1 || command.Value > maxSelections || coopZombieRewardReady.TryGetValue(participantKey, out readyWave) && readyWave == runState.CurrentWave) return;
                     if (!coopZombieWorldSelections.Add(key)) return;
+                    RecordCoopZombieKillRewardSelection(player, reward);
                     if (player.Id != BossRushCoop.LocalPlayerId) runState.PollutionFromContracts += GetCoopZombieRewardPollution(reward);
                     if (reward == ZombieModeRewardType.MapEventEliteSquad && player.Id != BossRushCoop.LocalPlayerId) runState.PendingEliteSquadCount += 3;
                     SpawnCoopZombieRewardNpc(reward);
                 }
                 else if (command.Action == "gravity")
                 {
-                    CoopZombieArea area = BossRushCoopJson.FromJson<CoopZombieArea>(command.Text);
+                    CoopZombieArea area = BossRushCoopJson.FromJson<CoopZombieArea>(payload.Text);
                     if (area == null || !ZombieModePhaseGuards.IsRunActive(runState.LifecyclePhase) || area.Radius <= 0f || area.Radius > 60f
                         || area.Strength < 0f || area.Strength > 100f || (area.Origin - player.Character.transform.position).sqrMagnitude > 3600f) return;
                     RefreshZombieModeGravityWellTargets(runState.RunId, area.Origin, area.Radius, area.Strength);

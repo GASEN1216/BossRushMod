@@ -395,7 +395,7 @@ namespace BossRush
 
         private GameObject TryDropZombieModeItemNearPosition(int runId, int typeId, Vector3 position, bool highValue, bool bossDrop)
         {
-            if (!IsZombieModeRunValid(runId) || typeId <= 0)
+            if (!BossRushCoop.HasWorldAuthority || !IsZombieModeRunValid(runId) || typeId <= 0)
             {
                 return null;
             }
@@ -426,7 +426,8 @@ namespace BossRush
                     ModBehaviour.DevLog("[ZombieMode] 掉落属性快照失败，跳过负重预检: " + e.Message);
                 }
 
-                CharacterMainControl player = CharacterMainControl.Main;
+                // 联机掉落留在原尸体处，经原生 Item.Drop 同步共享；单机仍优先自动入包。
+                CharacterMainControl player = BossRushCoop.IsConnected ? null : CharacterMainControl.Main;
                 if (player != null)
                 {
                     if (player.CharacterItem != null && player.CharacterItem.Inventory != null)
@@ -486,6 +487,7 @@ namespace BossRush
 
                 Vector3 dropPosition = position + Vector3.up * 0.35f;
                 Vector3 dropDirection = UnityEngine.Random.insideUnitSphere.normalized;
+                if (BossRushCoop.IsConnected && !bossDrop) RegisterCoopZombieSharedDrop(runId, item);
                 item.Drop(dropPosition, true, dropDirection, bossDrop ? 30f : 18f);
                 GameObject fallbackObject = item.gameObject;
                 RegisterZombieModeDropCandidate(runId, fallbackObject, highValue, bossDrop);
@@ -665,8 +667,6 @@ namespace BossRush
                 return;
             }
 
-            CharacterMainControl player = CharacterMainControl.Main;
-            Vector3 playerPosition = player != null ? player.transform.position : Vector3.zero;
             float now = GetZombieModeRuntimeNow();
             // 拾取检查要对每个候选物做一次 GetComponent，中后期候选物有几十个，
             // 不能每帧跑；波次清理必须立即准确，所以强制清理时不受节流限制。
@@ -733,9 +733,7 @@ namespace BossRush
                     continue;
                 }
 
-                Vector3 delta = candidate.GameObject.transform.position - playerPosition;
-                delta.y = 0f;
-                if (delta.sqrMagnitude < 25f)
+                if (GetZombieModeNearestParticipantHorizontalDistanceSquared(candidate.GameObject.transform.position) < 25f)
                 {
                     continue;
                 }

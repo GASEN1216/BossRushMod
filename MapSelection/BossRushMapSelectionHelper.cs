@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 // BossRushMapSelectionHelper.cs - 地图选择 UI 集成
 // ============================================================================
 // 模块说明：
@@ -177,6 +177,7 @@ namespace BossRush
 
         internal static void CancelUnstartedMapSelection()
         {
+            BossRushCoopMapPaymentCompatibility.OnMapClosed();
             if (SceneLoader.IsSceneLoading || pendingPrepaidTicketForCurrentEntry
                 || pendingEntryFlowSource != BossRushEntryFlowSource.MapSelectionUi) return;
             ClearPendingMapEntry();
@@ -315,9 +316,21 @@ namespace BossRush
         public static void MarkTargetSceneLoadStarted()
         {
             if (!IsPendingEntryAssetCurrent()) return;
-            if (pendingEntryKind == BossRushPendingEntryKind.ModeH) return;
+            if (pendingEntryKind == BossRushPendingEntryKind.ModeH || BossRushCoop.IsConnected) return;
             pendingPrepaidTicketForCurrentEntry =
                 pendingEntryFlowSource == BossRushEntryFlowSource.MapSelectionUi;
+        }
+
+        internal static bool HasCoopOwnedMapTarget(string sceneId)
+        {
+            foreach (GameObject obj in bossRushEntryObjects)
+            {
+                if (obj == null || !obj.activeInHierarchy) continue;
+                var entry = obj.GetComponent<MapSelectionEntry>();
+                if (entry != null && entry.SceneID == sceneId
+                    && obj.GetComponent<BossRushMapEntryClickHandler>() != null) return true;
+            }
+            return false;
         }
 
         internal static void CaptureModeHPayment(Cost cost)
@@ -334,6 +347,7 @@ namespace BossRush
         /// </summary>
         internal static void NotePaidCost(Cost cost)
         {
+            if (BossRushCoop.IsConnected && !BossRushCoopMapPaymentCompatibility.PublishingReceipt) return;
             if (pendingEntryKind != BossRushPendingEntryKind.ModeH
                 || pendingEntryFlowSource != BossRushEntryFlowSource.MapSelectionUi
                 || pendingPrepaidTicketForCurrentEntry) return;
@@ -486,6 +500,7 @@ namespace BossRush
         /// </summary>
         public static void ShowBossRushMapSelection(BossRushPendingEntryKind kind)
         {
+            if (!BossRushCoopMapPaymentCompatibility.CanOpenMapSelection()) return;
             try
             {
                 MarkEntryFlowFromMapSelectionUi(kind);
@@ -1044,10 +1059,19 @@ namespace BossRush
     internal static class BossRushMapEntrySelectionPatch
     {
         [HarmonyPrefix, HarmonyPriority(Priority.First)]
+        internal static bool BeforeNotify(MapSelectionEntry mapSelectionEntry)
+        {
+            if (!BossRushCoopMapPaymentCompatibility.AllowEntryClick(mapSelectionEntry)) return false;
+            RecordSelection(mapSelectionEntry);
+            return true;
+        }
+
         internal static void RecordSelection(MapSelectionEntry mapSelectionEntry)
         {
             try
             {
+                BossRushCoopMapPaymentCompatibility.RejectSelected(mapSelectionEntry);
+                if (!BossRushCoopMapPaymentCompatibility.CanRecordSelection()) return;
                 BossRushMapSelectionHelper.CaptureInitialSpawnSelection(-1);
                 if (mapSelectionEntry == null || !mapSelectionEntry.ConditionsSatisfied
                     || !mapSelectionEntry.Cost.Enough) return;
@@ -1056,6 +1080,7 @@ namespace BossRush
                 {
                     BossRushMapSelectionHelper.SetPendingMapEntryIndex(marker.entryIndex);
                     BossRushMapSelectionHelper.CaptureModeHPayment(mapSelectionEntry.Cost);
+                    BossRushCoopMapPaymentCompatibility.CaptureSelected(mapSelectionEntry, marker.entryIndex);
                 }
                 else
                     BossRushMapSelectionHelper.CancelUnstartedMapSelection();
@@ -1064,6 +1089,20 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[BossRush] 记录入场地图失败: " + e.Message);
             }
+        }
+    }
+
+    // The installed COOP also intercepts the entry itself before NotifyEntryClicked.
+    // Capture at both actual native entry points; duplicate observations are harmless.
+    [HarmonyPatch(typeof(MapSelectionEntry), "OnPointerClick", new Type[] { typeof(PointerEventData) })]
+    internal static class BossRushMapEntryPointerSelectionPatch
+    {
+        [HarmonyPrefix, HarmonyPriority(Priority.First)]
+        internal static bool BeforePointer(MapSelectionEntry __instance)
+        {
+            if (!BossRushCoopMapPaymentCompatibility.AllowEntryClick(__instance)) return false;
+            BossRushMapEntrySelectionPatch.RecordSelection(__instance);
+            return true;
         }
     }
 

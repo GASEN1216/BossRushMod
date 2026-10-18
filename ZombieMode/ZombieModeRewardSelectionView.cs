@@ -28,6 +28,7 @@ namespace BossRush
         private static readonly string DangerHex = "#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.DangerText);
 
         private int runId;
+        private object rewardUiToken;
         private ModBehaviour owner;
         private ZombieModeUIHelper.ModalInputLease inputLease;
         private bool restEditorExpanded;
@@ -98,6 +99,7 @@ namespace BossRush
 
         private void BuildPanel(bool opening, float previousHeight)
         {
+            rewardUiToken = ZombieModeRuntimeModule.CaptureZombieModeRewardUiToken(runId);
             bool bossNode = owner.IsZombieModeBossRewardNode(runId);
             IList<ZombieModeRewardType> options = owner.GetZombieModeRewardOptions(runId);
             string signature = BuildOptionsSignature(options);
@@ -372,9 +374,10 @@ namespace BossRush
 
             bool capturedPaid = paid;
             int capturedCost = cost;
+            object capturedToken = rewardUiToken;
             button.onClick.AddListener(delegate
             {
-                if (owner == null || closing || selecting)
+                if (owner == null || closing || selecting || !ZombieModeRuntimeModule.IsZombieModeRewardUiTokenCurrent(runId, capturedToken))
                 {
                     return;
                 }
@@ -502,7 +505,8 @@ namespace BossRush
             button.targetGraphic = cardImage;
             ZombieModeUIHelper.SetButtonBaseColor(button, BossRushUIColors.SurfaceRaised);
             ZombieModeRewardType capturedType = rewardType;
-            button.onClick.AddListener(delegate { Select(capturedType); });
+            object capturedToken = rewardUiToken;
+            button.onClick.AddListener(delegate { Select(capturedType, capturedToken); });
             keyOptions.Add(rewardType);
 
             if (animate)
@@ -513,7 +517,12 @@ namespace BossRush
 
         private void Select(ZombieModeRewardType rewardType)
         {
-            if (owner == null || selecting || closing)
+            Select(rewardType, rewardUiToken);
+        }
+
+        private void Select(ZombieModeRewardType rewardType, object token)
+        {
+            if (owner == null || selecting || closing || !ZombieModeRuntimeModule.IsZombieModeRewardUiTokenCurrent(runId, token))
             {
                 return;
             }

@@ -193,11 +193,21 @@ namespace BossRush
             if (!CanAcceptCoopSnatch || item == null) return false;
             Inventory bag = BossInventory();
             if (bag == null) return false;
-            try { bag.AddItem(item); }
+            try { using (CoopWaylayerClaims.Admit(item, bag)) bag.AddItem(item); }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 联机赃物入包通知失败：" + e.Message); }
             if (item.InInventory != bag) return false;
-            stolen.Add(item);
+            if (!stolen.Contains(item)) stolen.Add(item);
             return true;
+        }
+
+        internal bool SuspendCoopSnatch(Item item)
+        {
+            if (item == null) return false;
+            // 只撤出刚刚接纳的同一个首领包；外部已搬走的原件没有撤销权限。
+            if (item.InInventory != BossInventory()) return !SkyIslandInventoryTransaction.HasOwner(item);
+            try { item.Detach(); }
+            catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 联机赃物暂存通知失败：" + e.Message); }
+            return !SkyIslandInventoryTransaction.HasOwner(item);
         }
 
         internal void PublishCoopSnatch(CharacterMainControl player, int typeId)
@@ -332,6 +342,7 @@ namespace BossRush
             {
                 Item item = content[i];
                 if (item == null || item.IsBeingDestroyed) continue;
+                if (CoopWaylayerClaims.Locked(item)) continue;
                 int score = SkyIslandBossRules.StealScore(item.TypeID);
                 if (score <= bestScore) continue;
                 if (item.AgentUtilities != null && item.AgentUtilities.ActiveAgent != null) continue;
@@ -531,7 +542,8 @@ namespace BossRush
             internal Inventory Pack;
             internal Item Whole, Stack;
             internal int Slot;
-            internal bool Reserved, Settled, Refunding, PendingNotified;
+            internal bool Reserved, Settled, Refunding, PendingNotified, RefundApplied;
+            internal CharacterMainControl RefundBody; internal Inventory RefundPack;
         }
         private const string RequestTopic = "sky.waylayer.reserve", ResponseTopic = "sky.waylayer.reserved";
         private const string IdentityTopic = "sky.waylayer.identity", QueryTopic = "sky.waylayer.query", ResultTopic = "sky.waylayer.result";
@@ -544,6 +556,7 @@ namespace BossRush
         private readonly IDisposable requestSubscription, responseSubscription, identitySubscription, querySubscription, resultSubscription;
         private readonly CoopPersonalDelivery<Decision> decisions;
         private readonly CoopWaylayerJournal journal;
+        private readonly CoopWaylayerClaims claims;
         private string hostIdentity, identityRun, identitySlot, identityAsset, identityReady;
         private object identityService, identityPeer;
         private float timer;
@@ -561,6 +574,24 @@ namespace BossRush
             querySubscription = BossRushCoop.Register(QueryTopic, OnQuery);
             resultSubscription = BossRushCoop.Register(ResultTopic, OnResult);
             decisions = new CoopPersonalDelivery<Decision>("waylayer", ApplyDecision);
+            claims = new CoopWaylayerClaims(journal, ClaimIdentity);
+        }
+        private string ClaimIdentity(string playerId)
+        {
+            BossRushCoopPlayer player = BossRushCoop.FindPlayer(playerId);
+            if (player == null || !player.IsConnected) return null;
+            IdentityMessage owner;
+            string result = player.IsLocal || player.Id == BossRushCoop.LocalPlayerId ? journal.Identity
+                : owners.TryGetValue(playerId, out owner) && owner.Run == BossRushCoop.RunId && owner.Asset == player.AssetId ? owner.Identity : null;
+            if (string.IsNullOrEmpty(result)) return null;
+            foreach (BossRushCoopPlayer other in BossRushCoop.Players)
+            {
+                if (other == null || !other.IsConnected || other.Id == playerId) continue;
+                string otherOwner = other.IsLocal || other.Id == BossRushCoop.LocalPlayerId ? journal.Identity
+                    : owners.TryGetValue(other.Id, out owner) && owner.Run == BossRushCoop.RunId && owner.Asset == other.AssetId ? owner.Identity : null;
+                if (otherOwner == result) return null;
+            }
+            return result;
         }
         private bool EnsureIdentity()
         {
@@ -646,6 +677,7 @@ namespace BossRush
             BossRushCoop.SendToPlayer(player.Id, IdentityTopic, new IdentityMessage
                 { Identity = journal.Identity, Run = BossRushCoop.RunId, Asset = BossRushCoop.LocalAssetId,
                     AckOwner = value.Identity, AckAsset = value.Asset });
+            claims.ReconcilePlayer(player.Id);
         }
         private void OnReserve(BossRushCoopMessage message)
         {
@@ -746,14 +778,14 @@ namespace BossRush
                     if (commit.State == CoopWaylayerJournal.Success)
                     {
                         success = terminal = journal.MarkPublished(commit);
-                        if (success) Present(entry);
+                        if (success) success = terminal = PublishCustody(entry);
                         return;
                     }
                     if (commit.PublicationStarted)
                     {
-                        // 开始公开后只认实际仍在原首领包中的同一实物，不能从树再次复制。
-                        if (entry.Custody != null && SkyIslandInventoryTransaction.HasOwner(entry.Custody))
-                        { success = terminal = journal.MarkPublished(commit); if (success) Present(entry); }
+                        // 只重试同一实物；v2 可以处于不可拾暂存，绝不从树再次复制。
+                        if (entry.Custody != null && (commit.PublicationProtocol == 2 || commit.PublicationProtocol == 3 || SkyIslandInventoryTransaction.HasOwner(entry.Custody)))
+                        { success = terminal = journal.MarkPublished(commit); if (success) success = terminal = PublishCustody(entry); }
                         return;
                     }
                 }
@@ -765,17 +797,20 @@ namespace BossRush
                     if (!disposed && CurrentWorld(entry) && created != null && created.TypeID == tree.RootTypeID && created.StackCount == 1)
                     {
                         created.SetString(CoopWaylayerJournal.CustodyKey, packet.Id);
+                        claims.Track(commit, created, BossRushCoop.FindEntity(packet.Boss));
                         BossRushCoopPlayer player = BossRushCoop.FindPlayer(packet.Player);
                         bool adopted = entry.Chief.AcceptCoopSnatch(created, player.Character);
                         if (adopted)
                         {
                             entry.Custody = created;
-                            // 两个公开前屏障都确认后才把实物留到下一帧；无 await / 外部可见窗口。
+                            if (!entry.Chief.SuspendCoopSnatch(created))
+                            { journal.HoldUncertainCustody(commit); return; }
+                            // 真实入包检查后立即暂存；直到 Success 耐久确认才重新放进可拾世界。
                             if (journal.FinishCommit(commit, true) && journal.StartPublication(commit))
                             {
-                                // 此后即便终态写盘不明，也保留真包实物，不再撤销后谎称 Success。
+                                // 写结果不明时保留同一暂存原件，下一次仅重试屏障，不公开也不复制。
                                 success = terminal = journal.MarkPublished(commit);
-                                if (success) Present(entry);
+                                if (success) success = terminal = PublishCustody(entry);
                                 return;
                             }
                             else
@@ -787,6 +822,12 @@ namespace BossRush
                                 return; // 未公开 custody 留待核账，绝不发送成功。
                             }
                         }
+                        else if (SkyIslandInventoryTransaction.HasOwner(created))
+                        {
+                            entry.Custody = created;
+                            journal.HoldUncertainCustody(commit);
+                            return;
+                        }
                     }
                 }
                 if (!success && commit != null) terminal = journal.FinishCommit(commit, false);
@@ -794,7 +835,8 @@ namespace BossRush
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 联机赃物创建失败：" + e.Message); }
             finally
             {
-                if (!success) SkyIslandInventoryTransaction.DestroyUnowned(created);
+                bool held = commit != null && commit.State == CoopWaylayerJournal.Success && ReferenceEquals(entry.Custody, created);
+                if (!success && !held) SkyIslandInventoryTransaction.DestroyUnowned(created);
                 entry.Processing = false;
                 if (!terminal && commit != null && !SkyIslandInventoryTransaction.HasOwner(created))
                     terminal = journal.FinishCommit(commit, false);
@@ -802,6 +844,18 @@ namespace BossRush
                 if (terminal && entry.Chief != null) entry.Chief.CompleteCoopSnatch(success);
                 if (terminal) QueueDecision(entry);
             }
+        }
+        private bool PublishCustody(HostEntry entry)
+        {
+            Item item = entry.Custody;
+            if (item == null || !CurrentWorld(entry)) return false;
+            BossRushCoopPlayer player = BossRushCoop.FindPlayer(entry.Request.Player);
+            if (!SkyIslandInventoryTransaction.HasOwner(item))
+            {
+                if (player == null || !entry.Chief.AcceptCoopSnatch(item, player.Character)) return false;
+            }
+            Present(entry);
+            return true;
         }
         private void Present(HostEntry entry)
         {
@@ -821,7 +875,11 @@ namespace BossRush
         {
             if (disposed || entry.DecisionQueued || entry.Request.Run != BossRushCoop.RunId || entry.Request.Host != journal.Identity) return;
             entry.DecisionQueued = decisions.Deliver(entry.Request.Player, "snatch:" + entry.Request.Id, Result(entry), entry.Request.Asset);
-            if (entry.DecisionQueued) host.Remove(entry.Request.Id);
+            if (entry.DecisionQueued)
+            {
+                SkyIslandInventoryTransaction.DestroyUnowned(entry.Custody);
+                host.Remove(entry.Request.Id);
+            }
         }
         private bool ApplyDecision(Decision decision)
         {
@@ -871,42 +929,72 @@ namespace BossRush
         private async void Refund(LocalEntry entry)
         {
             entry.Refunding = true;
-            string identity = journal.Identity;
+            string identity = journal.Identity, asset = BossRushCoop.LocalAssetId;
+            CharacterMainControl player = CharacterMainControl.Main;
             try
             {
-                if (!OwnAsset(entry.Response)) return;
+                if (!OwnAsset(entry.Response) || player == null || player.Health == null || player.Health.IsDead) return;
                 if (journal.IsReturned(entry.Response.Id)) { entry.Settled = true; return; }
-                CharacterMainControl player = CharacterMainControl.Main;
-                Inventory pack = player != null && player.CharacterItem != null ? player.CharacterItem.Inventory : null;
+                Inventory pack = player.CharacterItem != null ? player.CharacterItem.Inventory : null;
                 if (pack == null || !journal.OwnsCharacter(player.CharacterItem)) return;
-                Item stack = entry.Stack;
-                if (stack != null && !stack.IsBeingDestroyed && stack.InInventory == entry.Pack && entry.Pack == pack)
+                Item original = entry.RefundApplied ? (entry.Stack != null ? entry.Stack : entry.Whole) : null;
+                if (!entry.RefundApplied)
                 {
-                    int before = stack.StackCount;
-                    try { stack.StackCount = before + 1; } catch (Exception) { }
-                    if (stack.StackCount == before + 1)
-                    { stack.SetString(CoopWaylayerJournal.RefundKey, entry.Response.Id); journal.NoteReturned(entry.Response.Id); entry.Settled = true; }
-                    return;
+                    Item stack = entry.Stack;
+                    if (stack != null && !stack.IsBeingDestroyed && stack.InInventory == entry.Pack && entry.Pack == pack)
+                    {
+                        int before = stack.StackCount;
+                        CoopWaylayerClaims.LockOriginal(stack, entry.Response.Id);
+                        using (journal.ObserveReturn(entry.Response.Id, stack, before + 1))
+                        {
+                            try { stack.StackCount = before + 1; } catch (Exception) { }
+                            entry.RefundApplied = stack != null && stack.StackCount == before + 1;
+                        }
+                        if (!entry.RefundApplied) { CoopWaylayerClaims.UnlockOriginal(stack, entry.Response.Id); return; }
+                        original = stack; entry.RefundBody = player; entry.RefundPack = pack;
+                    }
+                    else
+                    {
+                        if (entry.Whole == null || entry.Whole.IsBeingDestroyed) entry.Whole = await ItemTreeData.InstantiateAsync(entry.Debt.Tree);
+                        if (disposed || identity != journal.Identity || asset != BossRushCoop.LocalAssetId || !OwnAsset(entry.Response)
+                            || !ReferenceEquals(player, CharacterMainControl.Main) || player == null || player.Health == null || player.Health.IsDead
+                            || entry.Whole == null || !ReferenceEquals(journal.FindDebt(entry.Debt.Id), entry.Debt))
+                        { SkyIslandInventoryTransaction.DestroyUnowned(entry.Whole); return; }
+                        original = entry.Whole;
+                        CoopWaylayerClaims.LockOriginal(original, entry.Response.Id);
+                        using (journal.ObserveReturn(entry.Response.Id, original, original.StackCount))
+                        {
+                            try
+                            {
+                                using (CoopWaylayerClaims.Admit(original, pack))
+                                {
+                                    if (entry.Slot >= 0 && entry.Slot < pack.Capacity && pack.GetItemAt(entry.Slot) == null) pack.AddAt(original, entry.Slot);
+                                    else pack.AddItem(original);
+                                }
+                            }
+                            catch (Exception) { }
+                            entry.RefundApplied = original != null && original.InInventory == pack;
+                        }
+                        if (!entry.RefundApplied) return;
+                        entry.RefundBody = player; entry.RefundPack = pack;
+                    }
                 }
-                if (entry.Whole == null || entry.Whole.IsBeingDestroyed)
-                    entry.Whole = await ItemTreeData.InstantiateAsync(entry.Debt.Tree);
-                // 原槽 GUID、原 journal 条目和实际角色都必须仍然是发起续作时的本人。
-                if (disposed || identity != journal.Identity || !OwnAsset(entry.Response) || entry.Whole == null
-                    || !ReferenceEquals(journal.FindDebt(entry.Debt.Id), entry.Debt))
-                { SkyIslandInventoryTransaction.DestroyUnowned(entry.Whole); return; }
-                player = CharacterMainControl.Main;
-                pack = player != null && player.CharacterItem != null ? player.CharacterItem.Inventory : null;
-                if (pack == null || !journal.OwnsCharacter(player.CharacterItem)) return;
-                entry.Whole.SetString(CoopWaylayerJournal.RefundKey, entry.Response.Id);
-                // 返还只交本人实际背包，满包保留原物待空位；不公开掉落再冒充持久返还。
-                try
+                if (original != null && original.InInventory != null && original.InInventory != pack && ReferenceEquals(original, entry.Whole))
                 {
-                    if (entry.Slot >= 0 && entry.Slot < pack.Capacity && pack.GetItemAt(entry.Slot) == null) pack.AddAt(entry.Whole, entry.Slot);
-                    else pack.AddItem(entry.Whole);
+                    if (!claims.RecoverOriginal(original, entry.Response.Id, identity, asset, entry.RefundBody, entry.RefundPack, player, pack)) return;
+                    entry.RefundBody = player; entry.RefundPack = pack;
                 }
-                catch (Exception) { }
-                entry.Settled = entry.Whole.InInventory == pack;
-                if (entry.Settled) journal.NoteReturned(entry.Response.Id);
+                if (disposed || identity != journal.Identity || asset != BossRushCoop.LocalAssetId || !ReferenceEquals(player, CharacterMainControl.Main)
+                    || player == null || player.Health == null || player.Health.IsDead || original == null || original.InInventory != pack) return;
+                original.SetString(CoopWaylayerJournal.RefundKey, entry.Response.Id);
+                if (original.ActiveAgent != null) original.AgentUtilities.ReleaseActiveAgent();
+                if (original.ActiveAgent != null || !journal.PublishOriginal(entry.Response.Id, original)) return;
+                if (disposed || identity != journal.Identity || asset != BossRushCoop.LocalAssetId || !ReferenceEquals(player, CharacterMainControl.Main)
+                    || player == null || player.Health == null || player.Health.IsDead || player.CharacterItem == null
+                    || player.CharacterItem.Inventory != pack || original == null || original.InInventory != pack || !OwnAsset(entry.Response)) return;
+                journal.NoteReturned(entry.Response.Id);
+                CoopWaylayerClaims.UnlockOriginal(original, entry.Response.Id);
+                entry.Settled = true;
             }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 联机赃物返还待重试：" + e.Message); }
             finally
@@ -959,7 +1047,7 @@ namespace BossRush
             }
             if (commit.Owner != query.Owner || commit.Proof != query.Proof) return;
             // 重启前 Pending 未到 durable Success：未向世界开放下一帧，原树可明确回退。
-            if (commit.State == CoopWaylayerJournal.Custody && commit.PublicationStarted) return;
+            if (commit.State == CoopWaylayerJournal.Custody && commit.PublicationStarted && commit.PublicationProtocol != 2 && commit.PublicationProtocol != 3) return;
             if (commit.State == CoopWaylayerJournal.Success)
             { if (!commit.PublicationStarted || !journal.MarkPublished(commit)) return; }
             else if (!journal.FinishCommit(commit, false)) return;
@@ -976,7 +1064,7 @@ namespace BossRush
         internal void Tick(float delta)
         {
             if (disposed) return;
-            journal.Tick(); decisions.Tick(delta);
+            journal.Tick(); decisions.Tick(delta); claims.Tick(delta);
             timer -= Mathf.Max(0f, delta);
             if (timer > 0f) return;
             timer = 0.5f;
@@ -1039,8 +1127,9 @@ namespace BossRush
             disposed = true;
             foreach (LocalEntry entry in local.Values) NotifyPending(entry);
             requestSubscription.Dispose(); responseSubscription.Dispose(); identitySubscription.Dispose();
-            querySubscription.Dispose(); resultSubscription.Dispose(); decisions.Dispose(); journal.Dispose();
+            querySubscription.Dispose(); resultSubscription.Dispose(); decisions.Dispose(); claims.Dispose(); journal.Dispose();
             foreach (LocalEntry entry in local.Values) SkyIslandInventoryTransaction.DestroyUnowned(entry.Whole);
+            foreach (HostEntry entry in host.Values) SkyIslandInventoryTransaction.DestroyUnowned(entry.Custody);
             host.Clear(); local.Clear(); owners.Clear(); pendingDebts.Clear(); debtWork.Clear(); hostWork.Clear();
             if (ReferenceEquals(Current, this)) Current = null;
         }

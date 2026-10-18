@@ -47,6 +47,21 @@ internal static class Program
         Assert(state.PendingNormalZombieSpawns==3,"Repeated completion must not release another spawn's reservation");
         state.PendingNormalZombieSpawns=0;
     }
+    private static void CoopTeamFallback()
+    {
+        ModBehaviour host; ZombieModeRunState state; var module=New(out host,out state);
+        BossRushCoop.IsConnected=true; BossRushCoop.IsHost=true; CharacterMainControl.Main=null;
+        var guest=new BossRushCoopPlayer {Id="guest",Character=new CharacterMainControl("guest") {Team=Teams.scav}};
+        guest.Character.transform.position=new Vector3(40,0,0); BossRushCoop.Players.Add(guest); module.Admit(guest);
+        var task=module.TrySpawnZombieModeNormalZombieAsync(1,new Vector3(42,0,0)).Inner;
+        var enemy=new CharacterMainControl("non-hostile-candidate");host.Requests.Dequeue().Complete(enemy);
+        Assert(task.Result==enemy && enemy.Team==Teams.wolf,
+            "Actual spawn preparation restores hostility to admitted remote team after host body unload");
+        Probe.Trace.Clear();guest.AssetId="replacement";
+        task=module.TrySpawnZombieModeNormalZombieAsync(1,new Vector3(42,0,0)).Inner;
+        Assert(task.Result==null && host.Requests.Count==0 && !Probe.Trace.Contains("team:wolf"),
+            "Unadmitted replacement cannot supply a navigation or hostile-team safety anchor");
+    }
     private static void PauseRetry()
     {
         ModBehaviour host; ZombieModeRunState state; var module=New(out host,out state); module.Paused=true;
@@ -180,5 +195,73 @@ internal static class Program
         Assert(!module.CollectZombieModeSpawnPoints(1), "All dead room members cannot manufacture a navigation anchor");
         BossRushCoop.IsConnected = false; BossRushCoop.IsHost = false; BossRushCoop.Players.Clear();
     }
-    public static void Main() { NormalOrder(); GateAndSlot(); PauseRetry(); BossOrder(); NavigationAndPoison(); BossSpawnNearPlayer(); CompanionIsolationAndKills(); CoopInitializationNavigation(); Console.WriteLine("PASS ZombieModeSpawnRuntime"); }
+    private static void NearestScanAndAnchor()
+    {
+        ModBehaviour host; ZombieModeRunState state; var module=New(out host,out state);
+        Vector3 result;
+        foreach(float x in new float[]{30,13,5,19,45}) state.SpawnPoints.Add(new ZombieModeSpawnPoint {Position=new Vector3(x,0,0)});
+        var astar=new AstarPath();AstarPath.active=astar;int queries=0;var node=new Pathfinding.GraphNode {Area=1};
+        astar.Nearest=p=>{queries++;return new Pathfinding.NNInfo {node=node,position=p};};
+        Assert(module.TryGetNearestZombieModeMapSpawnPositionToPlayer(out result)&&result.x==19&&state.NextSpawnPointIndex==4,"Nearest preferred point preserves rotation and distance tiers");
+        Assert(queries==4,"Sorted scan queries one fallback and one preferred point, without rescanning the chosen point");
+        state.SpawnPoints.RemoveAll(p=>p.Position.x>=18);state.NextSpawnPointIndex=0;
+        Assert(module.TryGetNearestZombieModeMapSpawnPositionToPlayer(out result)&&result.x==13,"Without preferred points the nearest safe fallback remains valid");
+        state.SpawnPoints.Clear();state.SpawnPoints.Add(new ZombieModeSpawnPoint {Position=new Vector3(5,0,0)});
+        Assert(!module.TryGetNearestZombieModeMapSpawnPositionToPlayer(out result),"Points inside 12 m never qualify");
+        state.SpawnPoints.Clear();state.SpawnPoints.Add(new ZombieModeSpawnPoint {Position=new Vector3(25,0,0)});
+        queries=0;astar.Nearest=p=>{queries++;return new Pathfinding.NNInfo {node=node,position=p+new Vector3(5,0,0)};};
+        module.VirtualSpawnAvailable=true;module.VirtualSpawnPosition=new Vector3(-24,0,0);UnityEngine.Time.frameCount=100;
+        Assert(!module.TryGetZombieModeReliableSpawnPosition(out result)&&queries==1,"Unsnappable solo anchor rejects the complete search after one query");
+        Assert(!module.TryGetZombieModeReliableSpawnPosition(out result)&&queries==1,"Same-frame failed search never repeats navigation work");
+        UnityEngine.Time.frameCount++;
+        Assert(!module.TryGetZombieModeReliableSpawnPosition(out result)&&queries==2,"Next frame retries the anchor check");
+        astar.Nearest=p=>{queries++;return new Pathfinding.NNInfo {node=node,position=p};};UnityEngine.Time.frameCount++;
+        Assert(module.TryGetZombieModeReliableSpawnPosition(out result)&&result.x==25,"A recovered anchor resumes nearest map spawn selection");
+
+        var hostPeer=new BossRushCoopPlayer {Id="host",Character=CharacterMainControl.Main};
+        var guest=new BossRushCoopPlayer {Id="guest",Character=new CharacterMainControl("guest")};guest.Character.transform.position=new Vector3(40,0,0);
+        BossRushCoop.IsConnected=true;BossRushCoop.IsHost=true;BossRushCoop.Players.Add(hostPeer);BossRushCoop.Players.Add(guest);
+        state.SpawnPoints.Clear();state.SpawnPoints.Add(new ZombieModeSpawnPoint {Position=new Vector3(60,0,0)});module.VirtualSpawnAvailable=false;
+        astar.Nearest=p=>new Pathfinding.NNInfo {node=node,position=p.x==0?p+new Vector3(5,0,0):p};
+        state.LifecyclePhase=ZombieModeLifecyclePhase.InitializingRun;UnityEngine.Time.frameCount++;
+        Assert(module.TryGetZombieModeReliableSpawnPosition(out result)&&result.x==60,"Initialization checks all living anchors when the nearest-to-origin host is off navigation");
+        state.LifecyclePhase=ZombieModeLifecyclePhase.Active;module.Admit(hostPeer);UnityEngine.Time.frameCount++;
+        Assert(!module.TryGetZombieModeReliableSpawnPosition(out result),"An unadmitted reachable guest cannot bypass an admitted host's failed navigation anchor");
+        module.Admit(guest);UnityEngine.Time.frameCount++;
+        Assert(module.TryGetZombieModeReliableSpawnPosition(out result)&&result.x==60,"A reachable admitted guest keeps spawn selection available while host is off navigation");
+        hostPeer.Character.Health.IsDead=true;UnityEngine.Time.frameCount++;
+        Assert(module.TryGetZombieModeReliableSpawnPosition(out result),"Dead host does not block living admitted guest spawn anchors");
+        guest.AssetId="replacement";UnityEngine.Time.frameCount++;
+        Assert(!module.TryGetZombieModeReliableSpawnPosition(out result),"Replacement guest asset cannot inherit original admitted navigation eligibility");
+    }
+    private static void CoopBossTargetAndBackoff()
+    {
+        ModBehaviour host; ZombieModeRunState state; var module=New(out host,out state);
+        var hostPeer=new BossRushCoopPlayer {Id="host",Character=CharacterMainControl.Main};hostPeer.Character.Health.IsDead=true;
+        var guest=new BossRushCoopPlayer {Id="guest",Character=new CharacterMainControl("guest")};guest.Character.transform.position=new Vector3(40,0,0);
+        BossRushCoop.IsConnected=true;BossRushCoop.IsHost=true;BossRushCoop.Players.Add(hostPeer);BossRushCoop.Players.Add(guest);module.Admit(guest);
+        var boss=new CharacterMainControl("boss");boss.transform.position=new Vector3(42,0,0);
+        var skill=new ZombieModeBossSkillState();var instance=new ZombieModeBossInstance {Character=boss,Kind=ZombieModeBossKind.Hunter,SkillState=skill};
+        instance.Lifecycle.Alive=true;instance.Lifecycle.LastKnownPosition=boss.transform.position;state.CurrentWaveBossInstances.Add(instance);module.Clock=100;
+        CharacterMainControl.Main=null;module.TickZombieModeBossController(.1f);
+        Assert(skill.Ticks==1&&instance.Lifecycle.LastReachableTime==100&&boss.transform.position.x==42,"Live admitted guest keeps Boss skills running and prevents false stuck teleports after host body unload");
+        int dashes=ZombieModeSprinterDashRuntime.Started;
+        module.TickZombieModeHunterState(new ZombieModeHunterState(),instance,100);
+        Assert(ZombieModeSprinterDashRuntime.Started==dashes+1&&ZombieModeSprinterDashRuntime.Target.x==40,"Hunter dash targets the actual living admitted guest");
+        module.TickZombieModeCorruptorState(new ZombieModeCorruptorState(),instance,200);
+        Assert(module.CorruptionZones==1&&module.CorruptionTarget.x==40,"Corruptor area targets the actual living admitted guest");
+        guest.AssetId="replacement";module.TickZombieModeHunterState(new ZombieModeHunterState(),instance,300);
+        Assert(ZombieModeSprinterDashRuntime.Started==dashes+1,"Unadmitted replacement body cannot become a Boss skill target");
+
+        module=New(out host,out state);boss=new CharacterMainControl("stuck boss");boss.transform.position=new Vector3(100,0,0);
+        instance=new ZombieModeBossInstance {Character=boss};instance.Lifecycle.Alive=true;instance.Lifecycle.LastKnownPosition=boss.transform.position;state.CurrentWaveBossInstances.Add(instance);
+        int queries=0;AstarPath.active=new AstarPath {Nearest=p=>{queries++;return new Pathfinding.NNInfo();}};
+        module.Clock=100;UnityEngine.Time.frameCount=200;module.TickZombieModeBossController(.1f);
+        Assert(queries==1&&instance.Lifecycle.LastReachableTime==89,"Failed Boss fallback schedules its next search one second later");
+        for(int i=1;i<=9;i++){module.Clock=100+i*.1f;UnityEngine.Time.frameCount++;module.TickZombieModeBossController(.1f);}
+        Assert(queries==1,"Unreachable stuck Boss performs no additional navigation queries before the backoff expires");
+        module.Clock=101;UnityEngine.Time.frameCount++;module.TickZombieModeBossController(.1f);
+        Assert(queries==2,"Stuck Boss retries the real search when the one-second backoff expires");
+    }
+    public static void Main() { NormalOrder(); CoopTeamFallback(); GateAndSlot(); PauseRetry(); BossOrder(); NavigationAndPoison(); BossSpawnNearPlayer(); CompanionIsolationAndKills(); CoopInitializationNavigation(); NearestScanAndAnchor(); CoopBossTargetAndBackoff(); Console.WriteLine("PASS ZombieModeSpawnRuntime"); }
 }

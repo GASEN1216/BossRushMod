@@ -17,6 +17,10 @@ OUT.mkdir(parents=True, exist_ok=True)
 
 def block(path, signature):
     source = (ROOT / path).read_text(encoding="utf-8-sig")
+    return source_block(source, signature)
+
+
+def source_block(source, signature):
     start = source.index(signature)
     opening = source.index("{", start)
     depth = 1
@@ -32,10 +36,10 @@ selection = "ZombieMode/ZombieModeRewardOptionCore.cs"
 extraction = "ZombieMode/ZombieModeRuntimeModule_Extraction.cs"
 wave = "ZombieMode/ZombieModeRuntimeModule_WaveController.cs"
 models = "ZombieMode/ZombieModeModels.cs"
-generated = "using System; using System.Collections.Generic; using UnityEngine; using Duckov.Economy; using Duckov.UI; namespace BossRush {\n"
+generated = "using System; using System.Collections; using System.Collections.Generic; using UnityEngine; using UnityEngine.SceneManagement; using Duckov.Economy; using Duckov.UI; namespace BossRush {\n"
 generated += block(models, "public enum ZombieModeRewardType") + "\n"
 generated += block(coop, "internal sealed class CoopZombiePersonal") + "\n"
-for dto in ("CoopZombieEnemy", "CoopZombieTerminal", "CoopZombieWorld"):
+for dto in ("CoopZombieEnemy", "CoopZombieTerminal", "CoopZombieWorld", "CoopZombieCommand", "CoopZombieArea"):
     generated += block(coop, "internal sealed class " + dto) + "\n"
 generated += block("Utilities/CoopGameplayChannel.cs", "internal sealed class CoopGameplayCommand") + "\n"
 generated += "internal sealed partial class ZombieModeRuntimeModule {\n"
@@ -44,6 +48,18 @@ generated += block(coop, "private sealed class CoopZombieExtractionEligibility")
 generated += block(coop, "private sealed class CoopZombieWallet") + "\n"
 for path, signature in (
     (coop, "private void RetireLostCoopZombieProjection("),
+    (coop, "private void CaptureCoopZombieRunLease("),
+    (coop, "private bool IsCoopZombieRunLeaseCurrent("),
+    (coop, "private void ResetCoopZombieEntryTransaction("),
+    ("ZombieMode/ZombieModeRuntimeModule.cs", "internal bool IsZombieModeRunValid("),
+    ("ZombieMode/ZombieModeRuntimeModule.cs", "internal void TickZombieMode("),
+    ("ZombieMode/ZombieModeRuntimeModule.cs", "internal System.Collections.IEnumerator WaitForZombieModeTargetSceneActiveThenInitialize("),
+    (coop, "internal static object CaptureZombieModeRewardUiToken("),
+    (coop, "internal static bool IsZombieModeRewardUiTokenCurrent("),
+    (coop, "private void ApplyCoopZombieWorld("),
+    (coop, "private void MirrorCoopZombieSafeZone("),
+    (coop, "private void MirrorCoopZombieExtractionOpportunity("),
+    (coop, "private void ExecuteCoopZombieCommand("),
     (coop, "private bool IsCoopZombieLocalAssetCurrent("),
     (coop, "private static string CoopZombieParticipantKey("),
     (coop, "private bool IsCoopZombieParticipant("),
@@ -64,6 +80,12 @@ for path, signature in (
     (coop, "private bool IsCoopZombieExtractionRecipient("),
     (coop, "internal bool TryGetCoopCampaignParticipantAsset("),
     (coop, "private bool CoopZombieAnyParticipantAlive("),
+    (coop, "private CharacterMainControl GetCoopZombieCombatTarget("),
+    (coop, "internal static CharacterMainControl GetCoopZombieTarget("),
+    ("ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs", "internal void TryExecuteZombieModeEnemyRuntimeSkill("),
+    ("ZombieMode/ZombieModeRewardEffectsAndNpc.cs", "private CharacterMainControl GetZombieModeTemporaryNpcAnchorPlayer("),
+    ("ZombieMode/ZombieModeRewardEffectsAndNpc.cs", "private Vector3 GetZombieModeTemporaryRealNpcAnchorPosition("),
+    ("ZombieMode/ZombieModeRewardEffectsAndNpc.cs", "private GameObject CreateZombieModeTemporaryServiceTerminal("),
     (coop, "private bool QueueCoopZombieWrongAssetRefund("),
     (coop, "private void TickCoopZombieRefunds("),
     (coop, "internal void RememberCoopZombieWallet("),
@@ -78,13 +100,17 @@ for path, signature in (
     (coop, "private void SendCoopZombieCommand("),
     (coop, "private void ApplyCoopZombieStarterConfirmation("),
     (selection, "private int GetZombieModeOptionTradeoffPollutionGain("),
+    ("ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs", "private void RollZombieModeRewardOptions("),
     (extraction, "private bool SettleZombieModeExtractionCashShell("),
     (extraction, "private void CompleteZombieModeExtractionSuccess("),
     (wave, "internal static bool IsZombieModeBossWave("),
 ):
     if path != extraction:
         generated += block(path, signature) + "\n"
-generated += "} internal sealed partial class ZombieModeStarterChoiceView {" + block("ZombieMode/ZombieModeEntry_StarterLoadout.cs", "private bool KeepCoopHostStartChoice(") + "}}"
+generated += "} internal sealed partial class ZombieModeRewardSelectionView {" + block("ZombieMode/ZombieModeRewardSelectionView.cs", "private void Select(ZombieModeRewardType rewardType, object token)") + "} internal sealed partial class ZombieModeStarterChoiceView {" + block("ZombieMode/ZombieModeEntry_StarterLoadout.cs", "private bool KeepCoopHostStartChoice(") + "}}"
+generated += "namespace BossRush { internal sealed partial class ZombieModeExtractionOpportunityView {" + block("ZombieMode/ZombieModeExtractionController.cs", "private void Choose(") + block("ZombieMode/ZombieModeExtractionController.cs", "internal void ReleaseInput(") + "}}"
+harasser = block("ZombieMode/ZombieModePollution_RuntimeComponents.cs", "public sealed class ZombieModeHarasserProjectileRuntime")
+generated += "namespace BossRush { internal sealed partial class ZombieModeHarasserProjectileRuntime {" + source_block(harasser, "protected override void TickRuntime(") + source_block(harasser, "private bool IsPlayerHit(") + source_block(harasser, "private void ResolveImpact(") + "}}"
 (OUT / "Production.cs").write_text(generated, encoding="utf-8")
 # Compile this partial with its own production using declarations. A shared
 # generated header used to hide a missing Collections.Generic in this file.
@@ -105,7 +131,7 @@ assert len(localized_calls) == 8, "all actual co-op waiting/refund texts must ha
 (OUT / "Localization.cs").write_text('namespace BossRush { internal static class ZombieCoopLocalization { internal static void Register(){' + '\n'.join(localized_calls) + '} private static void InjectZombieModeString(string key,string cn,string en){L10n.Register(key,cn,en);} }}', encoding="utf-8")
 (OUT / "source-hashes.txt").write_text("\n".join(
     hashlib.sha256((ROOT / path).read_bytes()).hexdigest() + " " + path
-    for path in (coop, selection, extraction, wave, models, starter, localization, "ZombieMode/ZombieModeRuntimeModule.cs", "Utilities/CoopGameplayChannel.cs", "Common/UI/BossRushUIFeel.cs")), encoding="utf-8")
+    for path in (coop, selection, extraction, wave, models, starter, localization, "ZombieMode/ZombieModeRuntimeModule.cs", "ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs", "ZombieMode/ZombieModeRewardSelectionView.cs", "ZombieMode/ZombieModeExtractionController.cs", "ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs", "ZombieMode/ZombieModePollution_RuntimeComponents.cs", "ZombieMode/ZombieModeRewardEffectsAndNpc.cs", "Utilities/CoopGameplayChannel.cs", "Common/UI/BossRushUIFeel.cs")), encoding="utf-8")
 sources = [HERE / "Program.cs", HERE / "WaitingUiBoundaries.cs", OUT / "Production.cs", OUT / "Extraction.cs", OUT / "WaitingUi.cs", OUT / "Localization.cs", ROOT / "Common/Coop/BossRushCoopJson.cs", ROOT / "Common/Data/BossRushJsonValue.cs", ROOT / "Utilities/SimpleJsonHelper.cs"]
 includes = "".join('<Compile Include="' + escape(str(path), {'"': '&quot;'}) + '" />' for path in sources)
 project = OUT / "Regression.csproj"

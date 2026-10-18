@@ -132,6 +132,8 @@ namespace BossRush
         /// </summary>
         private async UniTask SpawnZombiesAsync(int spawnRequestId)
         {
+            // 包含本机施法，防止旧房主或单机的异步创建在换房后继续生成亡灵。
+            var creationLease = new CoopBossCreationLease();
             try
             {
                 CharacterMainControl player = coopOwner != null ? coopOwner : CharacterMainControl.Main;
@@ -169,7 +171,7 @@ namespace BossRush
                 // 仅补齐缺额，保证场上同时最多 5 只亡灵
                 for (int i = 0; i < availableSlots; i++)
                 {
-                    if (!IsSpawnRequestStillValid(spawnRequestId, player, relatedScene))
+                    if (!creationLease.IsValid() || !IsSpawnRequestStillValid(spawnRequestId, player, relatedScene))
                     {
                         return;
                     }
@@ -190,7 +192,7 @@ namespace BossRush
                     bool summonSucceeded = false;
                     for (int candidateIndex = 0; candidateIndex < candidateSpawnPositions.Count; candidateIndex++)
                     {
-                        if (!IsSpawnRequestStillValid(spawnRequestId, player, relatedScene))
+                        if (!creationLease.IsValid() || !IsSpawnRequestStillValid(spawnRequestId, player, relatedScene))
                         {
                             return;
                         }
@@ -202,7 +204,7 @@ namespace BossRush
                             CharacterMainControl zombie = await zombiePreset.CreateCharacterAsync(
                                 spawnPos, Vector3.forward, relatedScene, null, false);
 
-                            if (!IsSpawnRequestStillValid(spawnRequestId, player, relatedScene))
+                            if (!creationLease.IsValid() || !IsSpawnRequestStillValid(spawnRequestId, player, relatedScene))
                             {
                                 if (zombie != null && zombie.gameObject != null)
                                 {
@@ -263,7 +265,7 @@ namespace BossRush
                     await UniTask.Yield();
                 }
 
-                if (!IsSpawnRequestStillValid(spawnRequestId, player, relatedScene))
+                if (!creationLease.IsValid() || !IsSpawnRequestStillValid(spawnRequestId, player, relatedScene))
                 {
                     return;
                 }

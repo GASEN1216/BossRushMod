@@ -43,6 +43,7 @@ namespace Cysharp.Threading.Tasks
 
 namespace UnityEngine
 {
+    public static class Time { public static int frameCount; }
     public class Object
     {
         internal bool Destroyed;
@@ -59,11 +60,13 @@ namespace UnityEngine
         }
     }
     public class Component : Object { public GameObject gameObject; public Transform transform { get { return gameObject.transform; } } }
+    public sealed class Rigidbody : Component { public Vector3 velocity, angularVelocity; }
     public sealed class Transform : Component { public Vector3 position; }
     public sealed class GameObject : Object
     {
         public string name; public Transform transform; internal readonly List<Component> Components=new List<Component>();
         public GameObject(string value) { name=value; transform=new Transform { gameObject=this }; Components.Add(transform); }
+        public T AddComponent<T>() where T : Component,new() { var value=new T { gameObject=this }; Components.Add(value); return value; }
     }
     public struct Vector3
     {
@@ -105,6 +108,7 @@ namespace UnityEngine.AI
 {
     public enum NavMeshPathStatus { PathComplete, PathPartial, PathInvalid }
     public sealed class NavMeshPath { public NavMeshPathStatus status; }
+    public sealed class NavMeshAgent : UnityEngine.Component { public bool enabled; public bool Warp(Vector3 point) { transform.position=point; return true; } }
     public struct NavMeshHit { public Vector3 position; }
     public static class NavMesh
     {
@@ -122,14 +126,20 @@ namespace BossRush
 {
     internal static partial class BossRushCoop
     {
+        internal static bool HasBoundScene = true;
         internal static readonly List<BossRushCoopPlayer> Players = new List<BossRushCoopPlayer>();
         internal static CharacterMainControl GetCombatTarget(Vector3 position)
-        { return Players.Find(p => p.IsConnected && p.IsAlive)?.Character; }
+        {
+            CharacterMainControl nearest=null;float distance=float.MaxValue;
+            foreach(BossRushCoopPlayer peer in Players) if(peer.IsConnected&&peer.IsAlive)
+            {float candidate=(peer.Character.transform.position-position).sqrMagnitude;if(candidate<distance){distance=candidate;nearest=peer.Character;}}
+            return nearest;
+        }
         internal static bool IsPlayer(CharacterMainControl character) { return character != null && character.IsMainCharacter; }
     }
     internal sealed class BossRushCoopPlayer
     { internal string Id, AssetId = "original"; internal bool IsConnected = true; internal CharacterMainControl Character;
-        internal bool IsAlive { get { return Character != null && !Character.Health.IsDead; } } }
+        internal bool IsAlive { get { return IsConnected && Character != null && !Character.Health.IsDead; } } }
     public enum Teams { player, scav, wolf }
     public static class Team { public static bool IsEnemy(Teams player,Teams enemy) { return enemy==Teams.wolf; } }
     public sealed class Health { public bool IsDead; public CharacterMainControl Owner; public float MaxHealth=50; public CharacterMainControl TryGetCharacter() { return Owner; } public void SetHealth(float value) { Probe.Trace.Add("heal"); } }
@@ -140,6 +150,9 @@ namespace BossRush
         public readonly AICharacterController AI=new AICharacterController();
         public CharacterMainControl(string name) { gameObject=new GameObject(name); gameObject.Components.Add(this); Health.Owner=this; }
         public T GetComponent<T>() where T : Component { foreach(var component in gameObject.Components)if(component is T)return (T)component;return null; }
+        public T GetComponentInChildren<T>(bool includeInactive=false) where T : Component { return GetComponent<T>(); }
+        public void SetPosition(Vector3 value) { transform.position=value; }
+        public void PopText(string text) { }
         public void SetTeam(Teams team) { Team=team; Probe.Trace.Add("team:"+team); }
     }
     public sealed class AICharacterController { public float forceTracePlayerDistance; public bool noticed; }
@@ -155,14 +168,15 @@ namespace BossRush
     public sealed class EnemySpawnContext { public CharacterMainControl character; }
     public sealed class ZombieModeBossInstance
     {
-        public CharacterMainControl Character; public ZombieModeBossKind Kind; public ZombieModeEnemyRuntimeMarker Marker;
+        public CharacterMainControl Character; public ZombieModeBossKind Kind; public ZombieModeEnemyRuntimeMarker Marker; public ZombieModeBossSkillState SkillState;
         public readonly LifecycleState Lifecycle=new LifecycleState();
         public sealed class LifecycleState { public bool Alive; public Vector3 LastKnownPosition; public float LastReachableTime,LastHurtTime; }
     }
     public sealed class ZombieModeRunState
     {
         public int RunId=1,LivingNormalZombieCount,PendingNormalZombieSpawns,LivingZombieCount,NextSpawnPointIndex;
-        public int CurrentWaveKills,CurrentWaveKillTarget,CurrentWaveBossesRemaining;
+        public int CurrentWaveKills,CurrentWaveKillTarget,CurrentWaveBossesRemaining,CurrentWave;
+        public float NextBossSkillWindowTime;
         public ZombieModeLifecyclePhase LifecyclePhase=ZombieModeLifecyclePhase.Active;
         public ZombieModeCombatPhase CombatPhase=ZombieModeCombatPhase.Combat;
         public readonly List<ZombieModeBossInstance> CurrentWaveBossInstances=new List<ZombieModeBossInstance>();
@@ -172,7 +186,19 @@ namespace BossRush
     }
     public sealed class ZombieModeMapProfile { public Vector3[] StaticSpawnPoints; public bool AllowVirtualSpawnPoints = true; }
     public sealed class ZombieModeSpawnPoint { public Vector3 Position; public ZombieModeSpawnPoint() { } public ZombieModeSpawnPoint(Vector3 point, bool virtualPoint) { Position = point; } }
-    public static class ZombieModeTuning { public const int MaxNormalZombieCount=20; public const float SpawnPointDuplicateDistance = 1f, NormalZombieForceTraceDistance=120,NavMeshVirtualSpawnRadius=3,SpawnPointNavMeshSampleRadius=2,NavMeshLiftOffset=0.1f,SpawnPointMinPlayerDistance=12,BossSpreadMinDistance=8; }
+    public static class ZombieModeTuning { public const int MaxNormalZombieCount=20; public const float SpawnPointDuplicateDistance = 1f, NormalZombieForceTraceDistance=120,NavMeshVirtualSpawnRadius=3,SpawnPointNavMeshSampleRadius=2,NavMeshLiftOffset=0.1f,SpawnPointMinPlayerDistance=12,BossSpreadMinDistance=8;
+        public const float BossStuckTimeoutSeconds=12,BossStuckRetryBackoffSeconds=1,BossStuckEngagedHeightTolerance=2,BossStuckEngagedDistance=8,BossSkillGlobalSpacingSeconds=1;
+        public const float HunterDashCooldownSeconds=10,HunterDashRadius=3,HunterDashDistance=12,HunterDashStartupSeconds=1,HunterDashDamage=10;
+        public const float CorruptorZoneCooldownSeconds=10,CorruptorPoisonPathTickIntervalSeconds=1; }
+    public class ZombieModeBossSkillState { public int Ticks; public virtual void Tick(ModBehaviour owner,ZombieModeBossInstance instance,float now) { Ticks++; } }
+    public sealed class ZombieModeTitanState : ZombieModeBossSkillState { public bool DamageReductionActive; public float DamageReductionEndTime; }
+    public sealed class ZombieModeHunterState : ZombieModeBossSkillState { public float NextDashTime; }
+    public sealed class ZombieModeCorruptorState : ZombieModeBossSkillState { public float NextZoneTime,NextPoisonPathTime; }
+    public static class ZombieModeBossVisuals { public static void Pulse(ZombieModeEnemyRuntimeMarker marker) { } public static int GetAccent(ZombieModeBossKind kind) { return 0; } }
+    public static class L10n { public static string T(string text) { return text; } }
+    public enum ZombieModeRunOnlyObjectKind { Projectile }
+    public sealed class ZombieModeSprinterDashRuntime : Component { public static Vector3 Target; public static int Started;
+        public void Initialize(int runId,CharacterMainControl boss,Vector3 target,float distance,float startup,float duration,float radius,float damage) { Target=target;Started++; } }
     internal static partial class SpawnPositionHelper
     {
         public static bool PassesMinPlayerDistance(Vector3 point,float distance) { return (point-CharacterMainControl.Main.transform.position).sqrMagnitude>=distance*distance; }
@@ -193,6 +219,8 @@ namespace BossRush
     }
     public sealed class ModBehaviour
     {
+        public bool IsZombieModeActive=true;
+        public float GetZombieModeBossDamageScaleForRuntimeModule(int wave) { return 1f; }
         internal Vector3[] CachedPoints;
         internal void PreCacheMapSpawnerPositions() { }
         internal Vector3[] GetZombieModeCachedSpawnerPositionsForRuntimeModule() { return CachedPoints; }
@@ -213,6 +241,14 @@ namespace BossRush
         private const string ZOMBIE_MODE_NORMAL_PRESET_NAME="Cname_Zombie";
         private readonly ModBehaviour owner; private readonly ZombieModeRunState runState;
         internal bool Paused,Invalid,SuppressThreat;
+        internal float Clock=12f;
+        internal Vector3 CorruptionTarget;
+        internal int CorruptionZones;
+        private GameObject CreateZombieModeFlatZoneVisual(string name,Vector3 position,float radius,float height,int color) { var result=new GameObject(name);result.transform.position=position;return result; }
+        private void RegisterZombieModeRunOnlyObject(int runId,ZombieModeRunOnlyObjectKind kind,GameObject value,Component runtime,object extra) { }
+        private void SpawnZombieModeCorruptionZone(int runId,CharacterMainControl source,Vector3 origin) { CorruptionTarget=origin;CorruptionZones++; }
+        private void SpawnZombieModePoisonPathSegment(int runId,CharacterMainControl source,Vector3 origin) { }
+        private ZombieModeEnemyRuntimeMarker EnsureZombieModeBossMarker(ZombieModeBossInstance instance) { return instance.Marker; }
         private readonly UnityEngine.AI.NavMeshPath zombieModeSpawnReachabilityPath=new UnityEngine.AI.NavMeshPath();
         private readonly Dictionary<long, List<ZombieModeSpawnPoint>> zombieModeSpawnPointDedupGrid = new Dictionary<long, List<ZombieModeSpawnPoint>>();
         private float zombieModeSpawnPointDedupCellSize = 1f;
@@ -236,6 +272,7 @@ namespace BossRush
         private void FailZombieModeActive(int runId) { }
         private void TryHandleZombieModeSafeZonePlayerAttack(int id,DamageInfo info,CharacterMainControl c) { }
         private void HandleZombieModeOptionHealthDead(int id,Health h,DamageInfo info,CharacterMainControl c,ZombieModeEnemyRuntimeMarker m) { }
+        private void HandleCoopZombieRemoteKillRewards(int id,DamageInfo info,CharacterMainControl c,ZombieModeEnemyRuntimeMarker m) { }
         private int GetZombieModeDeathStarCount(ZombieModeEnemyRuntimeMarker m) { return 1; }
         private void SpawnZombieModeDeathStars(int id,Vector3 pos,int points,int count) { DeathStarPoints+=points*count; }
         private void HandleZombieModeBossDefeated(int id,ZombieModeEnemyRuntimeMarker m,CharacterMainControl c) { runState.CurrentWaveBossesRemaining--; }
@@ -262,7 +299,7 @@ namespace BossRush
         private bool ShouldSuppressZombieModeEnemyAggroForSafeZone() { return SuppressThreat; }
         private bool TryMoveZombieModeEnemyOutsideSafeZone(GameObject value,ZombieModeEnemyRuntimeMarker marker,bool suppressed) { Probe.Trace.Add("safe:"+runState.LivingZombieCount); return true; }
         private int GetZombieModeBossPointValue(ZombieModeBossKind kind) { Probe.Trace.Add("boss-points"); return 10; }
-        private float GetZombieModeRuntimeNow() { Probe.Trace.Add("clock"); return 12; }
+        private float GetZombieModeRuntimeNow() { Probe.Trace.Add("clock"); return Clock; }
         private void RegisterZombieModeBossRuntime(int runId,CharacterMainControl character,ZombieModeBossKind kind) { Probe.Trace.Add("boss-runtime:"+runState.CurrentWaveBossInstances.Count); }
         private AICharacterController GetZombieModeEnemyAI(GameObject value,ZombieModeEnemyRuntimeMarker marker) { return ((CharacterMainControl)value.Components[1]).AI; }
         private void SetZombieModeEnemyThreatSuppressed(GameObject value,ZombieModeEnemyRuntimeMarker marker,bool suppressed) { Probe.Trace.Add("suppress"); }

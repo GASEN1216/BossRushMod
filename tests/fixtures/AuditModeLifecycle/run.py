@@ -128,10 +128,14 @@ public sealed class ZombieModeEntryTransaction {
  public readonly List<ItemTreeData> InventoryTransferredInboxItems = new List<ItemTreeData>();
 }
 internal sealed partial class ZombieModeRuntimeModule {
+ // Room/role revocation is exercised by ZombieCoopFlow; this fixture controls its lease-service result.
+ internal bool CoopLeaseCurrent = true;
+ private bool IsCoopZombieRunLeaseCurrent() { return CoopLeaseCurrent; }
  private bool IsCoopZombieLocalAssetCurrent() { return true; }
  private ModBehaviour owner; private ZombieModeRunState runState; private ZombieModeEntryTransaction entryTransaction;
 '''+enemy_module_fields+'''
  internal bool WasIndexedAtLastRunOnlyRegistration; internal Action LastRunOnlyCleanup; internal int RunOnlyRegistrationCount;
+ internal void SetLeaseForTest(bool current) { CoopLeaseCurrent = current; }
  internal ZombieModeRuntimeModule(ModBehaviour owner, ZombieModeRunState runState, ZombieModeEntryTransaction entryTransaction) { this.owner = owner; this.runState = runState; this.entryTransaction = entryTransaction; }
  internal void RegisterZombieModeRunOnlyObject(int runId, ZombieModeRunOnlyObjectKind kind, GameObject gameObject, UnityEngine.Object target, Action cleanupAction) {
   RunOnlyRegistrationCount++; LastRunOnlyCleanup = cleanupAction;
@@ -159,6 +163,7 @@ public partial class ModBehaviour {
  public int RunOnlyRegistrationCountForTest { get { return zombieModeRuntimeModule == null ? 0 : zombieModeRuntimeModule.RunOnlyRegistrationCount; } }
  public bool WasIndexedAtRunOnlyRegistrationForTest { get { return zombieModeRuntimeModule != null && zombieModeRuntimeModule.WasIndexedAtLastRunOnlyRegistration; } }
  public void RunLastCleanupForTest() { if (zombieModeRuntimeModule != null && zombieModeRuntimeModule.LastRunOnlyCleanup != null) zombieModeRuntimeModule.LastRunOnlyCleanup(); }
+ public void SetLeaseForTest(bool current) { zombieModeRuntimeModule.SetLeaseForTest(current); }
  public bool Prepare() { return PrepareZombieModeInventoryTransferShell(1); }
  public bool PrepareViaRuntimeBridge() { return PrepareZombieModeInventoryTransferForRuntimeModule(1); }
  public void Rollback() { RollbackZombieModeInventoryTransferShell(); }
@@ -216,8 +221,14 @@ internal enum ZombieModeLifecyclePhase { None, Active }
 internal static class ZombieModePhaseGuards { internal static bool IsRunActive(ZombieModeLifecyclePhase phase) { return phase == ZombieModeLifecyclePhase.Active; } }
 internal sealed class ZombieModeRunState { internal int RunId = 1; internal ZombieModeLifecyclePhase LifecyclePhase = ZombieModeLifecyclePhase.Active; }
 internal sealed partial class ZombieModeRuntimeModule {
+ // Room/role revocation is exercised by ZombieCoopFlow; this fixture controls its lease-service result.
+ internal bool CoopLeaseCurrent = true;
+ private bool IsCoopZombieRunLeaseCurrent() { return CoopLeaseCurrent; }
  private bool IsCoopZombieLocalAssetCurrent() { return true; }
  private ModBehaviour owner; private ZombieModeRunState runState;
+ // The run owner is isolated here; the production full retirement/cleanup path runs in ZombieCoopFlow.
+ internal int RetirementChecks;
+ private void RetireLostCoopZombieProjection() { RetirementChecks++; }
  private float runtimePausedDuration; private float runtimePauseStartTime = -1f; private int runtimePauseRunId;
  internal ZombieModeRuntimeModule(ModBehaviour owner, ZombieModeRunState runState) { this.owner = owner; this.runState = runState; }
 '''+pause_methods+'''\n}
@@ -259,6 +270,9 @@ internal sealed class ZombieModeRunState {
 }
 internal static class ZombieModeTuning { internal const float PreparationCountdownSeconds = 45f; }
 internal sealed partial class ZombieModeRuntimeModule {
+ // Room/role revocation is exercised by ZombieCoopFlow; this fixture controls its lease-service result.
+ internal bool CoopLeaseCurrent = true;
+ private bool IsCoopZombieRunLeaseCurrent() { return CoopLeaseCurrent; }
  private bool IsCoopZombieLocalAssetCurrent() { return true; }
  private ModBehaviour owner; private ZombieModeRunState runState;
  internal ZombieModeRuntimeModule(ModBehaviour owner, ZombieModeRunState runState) { this.owner = owner; this.runState = runState; }
@@ -312,6 +326,9 @@ public static class Program {
   state.CombatPhase = BossRush.ZombieModeCombatPhase.RewardSelection; state.IsCleaningUp = true;
   owner.SetZombieModePreparationDuration(7, 60); owner.OpenZombieModePreparationDurationEditor(7);
   Check(!owner.RewardSelectionShown && state.SelectedPreparationDurationSeconds == previous, "cleaning-up run rejects editor and duration updates");
+  state.IsCleaningUp = false; module.CoopLeaseCurrent = false; owner.RewardSelectionShown = false;
+  owner.SetZombieModePreparationDuration(7, 60); owner.OpenZombieModePreparationDurationEditor(7);
+  Check(!owner.RewardSelectionShown && state.SelectedPreparationDurationSeconds == previous, "retired lease rejects duration updates and editor before UI side effects");
   Console.WriteLine("AuditModeLifecycle preparation duration: " + checks + " PASS / 0 FAIL");
  }
 }'''

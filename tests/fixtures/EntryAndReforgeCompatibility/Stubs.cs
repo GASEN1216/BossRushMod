@@ -249,4 +249,7 @@ namespace BossRush
     }
 }
 
-namespace BossRush { internal static class BossRushCoop { internal static string LocalAssetId { get { return "asset-" + Saves.SavesSystem.CurrentSlot; } } } }
+namespace BossRush { internal static class BossRushCoop { internal static bool IsConnected; internal static string LocalAssetId { get { return "asset-" + Saves.SavesSystem.CurrentSlot; } } } }
+
+// The actual optional native payment owner is executed by CoopMapPayment; this group is offline entry/refund.
+namespace BossRush {internal static class BossRushCoopMapPaymentCompatibility {internal static bool PublishingReceipt {get{return false;}} internal static void OnMapClosed(){} internal static bool CanRecordSelection(){return true;} internal static bool CanOpenMapSelection(){return true;} internal static void RejectSelected(Duckov.UI.MapSelectionEntry entry){} internal static void CaptureSelected(Duckov.UI.MapSelectionEntry entry,int index){} }}

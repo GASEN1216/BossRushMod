@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
 SOURCE = Path("ZombieMode/ZombieModeRewardTriggerEffects.cs")
@@ -35,7 +36,7 @@ def extract_method_body(text: str, signature: str) -> str | None:
 
 
 def main() -> int:
-    text = SOURCE.read_text(encoding="utf-8-sig")
+    text = clean_source(SOURCE.read_text(encoding="utf-8-sig"))
     body = extract_method_body(text, "internal void HandleZombieModeOptionHealthHurt(")
     if body is None:
         return fail("missing HandleZombieModeOptionHealthHurt body")
@@ -46,7 +47,7 @@ def main() -> int:
     required = [
         "CharacterMainControl player = CharacterMainControl.Main;",
         "damageInfo.fromCharacter != player",
-        "player.Health.AddHealth",
+        "TryApplyZombieModeTriggerLifesteal(player, options);",
         "Vector3 baseDirection = (victim.transform.position - player.transform.position);",
         "baseDirection = player.transform.forward;",
         "Vector3 returnDirection = (player.transform.position - victim.transform.position);",
@@ -59,6 +60,13 @@ def main() -> int:
 
     if "CharacterMainControl.Main.transform" in body:
         return fail("HandleZombieModeOptionHealthHurt still dereferences CharacterMainControl.Main.transform")
+
+    helper = extract_method_body(text, "private static void TryApplyZombieModeTriggerLifesteal(")
+    if helper is None or "CharacterMainControl.Main" in helper or "player.Health.AddHealth(Mathf.Max(1, options.TriggerLifestealHealAmount));" not in helper:
+        return fail("lifesteal helper must heal the captured player without another Main lookup")
+    dead = extract_method_body(text, "internal void HandleZombieModeOptionHealthDead(")
+    if dead is None or "TryApplyZombieModeTriggerLifesteal(player, options);" not in dead:
+        return fail("fatal direct hit must reuse the captured player for lifesteal")
 
     print("ZombieModeTriggerPlayerLookupSingleReadGuard: PASS")
     return 0

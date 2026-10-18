@@ -78,6 +78,48 @@ internal static class Program
         Console.OutputEncoding=new System.Text.UTF8Encoding(false);
         ItemAssetsCollection.metadata[100]=new ItemMetaData { id=100,tags=new[]{new Duckov.Utilities.Tag { name="Gun" }} };
         ItemAssetsCollection.metadata[101]=new ItemMetaData { id=101,tags=new[]{new Duckov.Utilities.Tag { name="MeleeWeapon" }} };
+        Case("全局死亡订阅被截断仍结案并在注销前发布客人死亡事实",()=>{
+            Action<Health,DamageInfo> breaker=(h,d)=>{throw new InvalidOperationException("foreign death subscriber");};
+            Health.OnDead+=breaker;
+            try {
+                BossRushCoop.IsConnected=true;BossRushCoop.IsHost=true;BossRushCoop.RunId="sweep-room";
+                using(var b=new Battle(0)) {
+                    var runtime=new ModeGRuntimeModule(b.state,b.telemetry,b.adaptive);
+                    BossRushCoop.Players.Clear();BossRushCoop.Players.Add(new BossRushCoopPlayer{Id="local",AssetId=BossRushCoop.LocalAssetId,IsLocal=true,Character=b.player});
+                    BossRushCoop.Players.Add(new BossRushCoopPlayer{Id="guest",AssetId="original-guest",Character=Character()});
+                    runtime.BindCoopBoss(-71,b.boss);runtime.FreezeAsset();ModeGEntryRuntime.UseRuntime(runtime);
+                    ModeGEntryRuntime.AuditPublisher=true;BossRushCoop.Players[1].AssetId="switched-guest";
+                    bool interrupted=false;try {b.Hit(100,100);}catch(InvalidOperationException){interrupted=true;}
+                    Check(interrupted&&b.boss.Health.IsDead&&runtime.ActiveCoopBosses==1&&b.deaths==0,"真实多播异常截断遥测，已死 Boss 仍登记");
+                    Time.unscaledTime=100;runtime.SpawnInFlight=true;runtime.AuditSweep();
+                    Check(runtime.ActiveCoopBosses==1&&ModeGEntryRuntime.PublishedDeaths==0,"生成事务中不走正常战斗补偿");
+                    runtime.SpawnInFlight=false;runtime.AuditSweep();
+                    Check(runtime.ActiveCoopBosses==0&&b.state.TrackedBossCount==0&&runtime.WaveSettlementPending,"真实 MarkKilled 清登记并排入波结算");
+                    Check(ModeGEntryRuntime.PublishedDeaths==1,"在注销前发布一次共享死亡给个人交付入口");
+                    Check(ModeGEntryRuntime.DeliveredAssets.Count==1&&ModeGEntryRuntime.DeliveredAssets[0]=="guest:original-guest","真实生产发布器沿冻结参与者资产交付死亡，不借当前新槽");
+                    runtime.AuditSweep();Health.OnDead-=breaker;Health.EmitDead(b.boss.Health,default(DamageInfo));runtime.AuditSweep();
+                    Check(ModeGEntryRuntime.PublishedDeaths==1,"重复轮询不重发，常规遥测也忽略已注销 Boss");
+                }
+                BossRushCoop.IsHost=false;
+                using(var b=new Battle(0)) {
+                    var runtime=new ModeGRuntimeModule(b.state,b.telemetry,b.adaptive);runtime.BindCoopBoss(-72,b.boss);runtime.FreezeAsset();ModeGEntryRuntime.UseRuntime(runtime);
+                    b.boss.Health.IsDead=true;runtime.AuditSweep();
+                    Check(runtime.ActiveCoopBosses==1&&ModeGEntryRuntime.PublishedDeaths==0,"客端不得扫描结案原生副本");
+                }
+                BossRushCoop.IsHost=true;
+                using(var b=new Battle(0)) {
+                    var runtime=new ModeGRuntimeModule(b.state,b.telemetry,b.adaptive);runtime.BindCoopBoss(-73,b.boss);runtime.FreezeAsset();ModeGEntryRuntime.UseRuntime(runtime);
+                    runtime.RememberCoopBossIdentity(-73,b.boss.Health);Health original=b.boss.Health;
+                    UnityEngine.Object.Destroy(b.boss.gameObject);
+                    Check(original==null&&!ReferenceEquals(original,null),"原生先销毁保留 exact Health 托管身份");
+                    Check(runtime.ResolveCoopBossIdentity(original)==-73,"实际身份解析器找回此前公布的原生 AI id");
+                    BossRushCoop.SceneGeneration++;Check(runtime.ResolveCoopBossIdentity(original)==0,"冻结 AI 身份不得越过原生场景代次");BossRushCoop.SceneGeneration--;
+                    Time.unscaledTime=101;runtime.AuditSweep();
+                    Check(runtime.ActiveCoopBosses==0&&runtime.WaveSettlementPending&&ModeGEntryRuntime.DeliveredAssets.Count==1,"已销毁 Health 同时补 host 波结算和真实 guest 个人死亡发布");
+                    Check(runtime.ResolveCoopBossIdentity(original)==0,"已注销原 Health 不可借冻结表再发伪死亡");
+                }
+            } finally {Health.OnDead-=breaker;ModeGEntryRuntime.AuditPublisher=false;ModeGEntryRuntime.UseRuntime(null);foreach(var peer in BossRushCoop.Players)if(!peer.IsLocal)UnityEngine.Object.Destroy(peer.Character.gameObject);BossRushCoop.Players.Clear();BossRushCoop.IsConnected=false;BossRushCoop.IsHost=false;BossRushCoop.RunId="";}
+        });
         Case("原生副本先销毁后个人事实仍按原引用结算，未知引用拒绝",()=>{
             using(var b=new Battle(0)) {
                 var runtime=new ModeGRuntimeModule(b.state,b.telemetry,b.adaptive);

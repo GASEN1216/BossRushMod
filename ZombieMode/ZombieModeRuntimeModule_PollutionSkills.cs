@@ -143,7 +143,7 @@ namespace BossRush
 
         internal void TryExecuteZombieModeEnemyRuntimeSkill(ZombieModeEnemyRuntimeMarker marker)
         {
-            if (marker == null ||
+            if (!BossRushCoop.HasWorldAuthority || marker == null ||
                 !IsZombieModeRunValid(marker.RunId) ||
                 runState.CombatPhase != ZombieModeCombatPhase.Combat ||
                 ZombieModePhaseGuards.ShouldPauseModePressure(runState.CombatPhase) ||
@@ -159,7 +159,7 @@ namespace BossRush
                 character = marker.GetComponent<CharacterMainControl>();
             }
 
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = character != null ? GetCoopZombieCombatTarget(character.transform.position) : null;
             if (character == null || player == null)
             {
                 return;
@@ -766,7 +766,7 @@ namespace BossRush
                 return;
             }
 
-            CharacterMainControl player = CharacterMainControl.Main;
+            CharacterMainControl player = GetCoopZombieCombatTarget(impactPosition);
             if (player != null)
             {
                 impactPosition.y = player.transform.position.y;
@@ -854,26 +854,22 @@ namespace BossRush
             source.Health.Hurt(selfDamage);
         }
 
-        internal void TryApplyZombieModePlayerSlowInArea(int runId, Vector3 origin, float radius, float percent, float duration)
+        internal void TryApplyZombieModePlayerSlowInArea(int runId, Vector3 origin, float radius, float percent, float duration, ZombieModeAreaTickRuntime area = null)
         {
             if (!IsZombieModeRunValid(runId) || ZombieModePhaseGuards.ShouldPauseModePressure(runState.CombatPhase))
             {
                 return;
             }
 
-            CharacterMainControl player = CharacterMainControl.Main;
-            if (player == null)
+            foreach (CharacterMainControl player in EnumerateZombieModeZoneTargets(runId))
             {
-                return;
+                Vector3 delta = player.transform.position - origin;
+                if (delta.sqrMagnitude > radius * radius) continue;
+                if (ReferenceEquals(player, CharacterMainControl.Main))
+                    owner.TryApplyZombieModePlayerSlow(runId, percent, duration);
+                else
+                    SendCoopZombieZoneSlow(runId, player, origin, radius, percent, duration, area);
             }
-
-            Vector3 delta = player.transform.position - origin;
-            if (delta.sqrMagnitude > radius * radius)
-            {
-                return;
-            }
-
-            owner.TryApplyZombieModePlayerSlow(runId, percent, duration);
         }
 
         internal void DealZombieModeAreaDamageToPlayer(int runId, Vector3 origin, float radius, float damage)
@@ -888,36 +884,32 @@ namespace BossRush
                 return;
             }
 
-            CharacterMainControl player = CharacterMainControl.Main;
-            if (player == null || player.Health == null || player.mainDamageReceiver == null)
+            foreach (CharacterMainControl player in EnumerateZombieModeZoneTargets(runId))
             {
-                return;
+                if (player.mainDamageReceiver == null) continue;
+                Vector3 delta = player.transform.position - origin;
+                if (delta.sqrMagnitude > radius * radius) continue;
+
+                CharacterMainControl damageSource = source != null ? source : player;
+                DamageInfo damageInfo = new DamageInfo(damageSource);
+                damageInfo.damageType = DamageTypes.normal;
+                damageInfo.damageValue = damage;
+                damageInfo.buff = buff;
+                damageInfo.buffChance = buff != null ? 1f : 0f;
+                damageInfo.damagePoint = player.transform.position;
+                damageInfo.damageNormal = delta.sqrMagnitude > 0.0001f ? delta.normalized : Vector3.up;
+                damageInfo.isFromBuffOrEffect = source == null;
+
+                // 原生 COOP 的 DamageReceiver.Hurt 前缀向该代理对应的 peer 转发伤害和 Buff。
+                DamageReceiver receiver = player.mainDamageReceiver;
+                receiver.Hurt(damageInfo);
             }
-
-            Vector3 delta = player.transform.position - origin;
-            if (delta.sqrMagnitude > radius * radius)
-            {
-                return;
-            }
-
-            CharacterMainControl damageSource = source != null ? source : player;
-            DamageInfo damageInfo = new DamageInfo(damageSource);
-            damageInfo.damageType = DamageTypes.normal;
-            damageInfo.damageValue = damage;
-            damageInfo.buff = buff;
-            damageInfo.buffChance = buff != null ? 1f : 0f;
-            damageInfo.damagePoint = player.transform.position;
-            damageInfo.damageNormal = delta.sqrMagnitude > 0.0001f ? delta.normalized : Vector3.up;
-            damageInfo.isFromBuffOrEffect = source == null;
-
-            DamageReceiver receiver = player.mainDamageReceiver;
-            receiver.Hurt(damageInfo);
         }
 
         // ====================================================================
         // ExplosionManager.CreateExplosion 接入（审查 §4.2）
         // ====================================================================
-        // DealZombieModeAreaDamageToPlayer 是 mod 自实现的"只对主角伤害"路径，
+        // DealZombieModeAreaDamageToPlayer 是 mod 自实现的"只对本局玩家伤害"路径，
         // 跳过墙体 raycast，无 VFX，无屏幕震动。当 telegraph 起手或 Boss 死亡爆炸
         // 想要原生效果（屏幕震动 / 标准爆炸 VFX / 障碍物挡墙）时，调用此方法走源码。
         //
@@ -950,7 +942,7 @@ namespace BossRush
                         DamageInfo dmgInfo = new DamageInfo(source);
                         dmgInfo.damageValue = damage;
                         dmgInfo.isExplosion = true;
-                        dmgInfo.isFromBuffOrEffect = ReferenceEquals(source, CharacterMainControl.Main);
+                        dmgInfo.isFromBuffOrEffect = BossRushCoop.IsPlayer(source);
 
                         LevelManager.Instance.ExplosionManager.CreateExplosion(
                             origin,
@@ -969,9 +961,9 @@ namespace BossRush
 
                 // 兜底：源码 API 不可用 / source 为空时仍走 player-only 实现，
                 // 与原行为一致避免技能完全失效。
-                if (canHurtSelf || !ReferenceEquals(source, CharacterMainControl.Main))
+                if (canHurtSelf || !BossRushCoop.IsPlayer(source))
                     DealZombieModeAreaDamageToPlayer(runId, source, origin, radius, damage);
-            });
+            }, true);
         }
     }
 }

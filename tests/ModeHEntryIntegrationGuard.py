@@ -104,7 +104,7 @@ def main():
         selection = method_body(code, "internal static void RecordSelection(")
         if "BossRushMapSelectionHelper.CaptureModeHPayment(mapSelectionEntry.Cost);" not in selection:
             errors.append("[Payment] 官方付款之前必须绑定选中条目的费用")
-        if "if (pendingEntryKind == BossRushPendingEntryKind.ModeH) return;" not in target:
+        if "if (pendingEntryKind == BossRushPendingEntryKind.ModeH || BossRushCoop.IsConnected) return;" not in target:
             errors.append("[Payment] Mode H 不得从目标场景回调推定已扣票")
 
         freeze = re.search(r"public static int FreezeModeHEntryIntent\([\s\S]{0,600}?\n        \}", code)

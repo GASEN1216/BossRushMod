@@ -152,7 +152,7 @@ namespace Duckov.UI
 }
 namespace BossRush
 {
-    internal static class BossRushCoop { internal static string Asset = "asset"; internal static string LocalAssetId { get { return Asset + "-" + Saves.SavesSystem.CurrentSlot; } } }
+    internal static class BossRushCoop { internal static string Asset = "asset"; internal static bool IsConnected; internal static string LocalAssetId { get { return Asset + "-" + Saves.SavesSystem.CurrentSlot; } } }
     internal struct SkyIslandIngredient { internal int TypeId, Count; }
     internal enum BossRushPendingEntryKind { None, ModeG, ModeH }
     public enum ModeHAvailabilityStatus { Available, Unavailable }
@@ -223,3 +223,6 @@ namespace BossRush
         private void GiveRandomBackpack(CharacterMainControl player) { }
     }
 }
+
+// The actual optional native payment owner is executed by CoopMapPayment; this group is offline entry/refund.
+namespace BossRush {internal static class BossRushCoopMapPaymentCompatibility {internal static bool PublishingReceipt {get{return false;}} internal static void OnMapClosed(){} internal static bool CanRecordSelection(){return true;} internal static bool CanOpenMapSelection(){return true;} internal static void RejectSelected(Duckov.UI.MapSelectionEntry entry){} internal static void CaptureSelected(Duckov.UI.MapSelectionEntry entry,int index){} }}

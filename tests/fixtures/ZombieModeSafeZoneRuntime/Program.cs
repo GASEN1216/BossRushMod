@@ -199,6 +199,54 @@ internal static class Program
         Assert(ground == null && lootbox == null, "Unowned drops on the ground must still be destroyed");
     }
 
+    private static void TestCoopSafetyAndNearbyDrops()
+    {
+        BossRushCoop.IsConnected = true; BossRushCoop.IsHost = true;
+        CharacterMainControl.Main = null;
+        var guest = Character("guest", new Vector3(100, 3, 0));
+        var observer = Character("observer", new Vector3(200, 3, 0));
+        BossRushCoop.Players.Add(new BossRushCoopPlayer { Character = guest, IsAlive = true, Participant = true });
+        BossRushCoop.Players.Add(new BossRushCoopPlayer { Character = observer, IsAlive = true });
+        var state = State(7); state.ActiveSafeZoneCenter = guest.transform.position; state.PortableSafeZoneActive = false;
+        state.LivingZombieCount = state.LivingNormalZombieCount = 3;
+        var module = new ZombieModeRuntimeModule(state);
+        var nearby = Enemy(module, state, "near-live-guest", new Vector3(101, 0, 0));
+        var byObserver = Enemy(module, state, "near-observer", new Vector3(201, 0, 0));
+        var boss = Enemy(module, state, "coop-boss", new Vector3(101, 0, 0), true);
+        module.CleanupZombieModeEnemiesNearPlayerSafeZone(7, "coop");
+        Assert(nearby == null && byObserver != null && boss != null && state.LivingZombieCount == 2,
+            "With no host body, preparation clears ordinary enemies near the admitted guest only");
+        Time.unscaledTime = 99999;
+        module.RefreshPresence();
+        Assert(state.PlayerInsideSafeZone, "An unadmitted living observer cannot disable admitted players' safe-zone protection");
+        Assert(!module.ShouldZombieModeEnemyAggroPlayerNow(), "Releasing NPC protection cannot target guests who remain inside the shared safe zone");
+
+        BossRushCoop.CombatTarget = guest;
+        module.SetZombieModeEnemyThreatSuppressed(byObserver.gameObject, byObserver, true);
+        var ai = byObserver.gameObject.GetComponent<AICharacterController>();
+        Assert(ai.searchedEnemy == null && !ai.noticed, "Protection must first clear the previous enemy target");
+        guest.transform.position = new Vector3(110, 3, 0);
+        state.CombatPhase = ZombieModeCombatPhase.Combat;
+        module.ReleaseZombieModeSafeZoneThreatSuppression();
+        Assert(ReferenceEquals(ai.searchedEnemy, guest.mainDamageReceiver) && ai.noticed && ai.forceTracePlayerDistance == 32f,
+            "Releasing protection without a host body must restore pursuit of the admitted live guest");
+        guest.transform.position = new Vector3(100, 3, 0);
+
+        var nearDrop = new GameObject("drop-near-guest"); nearDrop.transform.position = new Vector3(104, 0, 0);
+        var observerDrop = new GameObject("drop-near-observer"); observerDrop.transform.position = new Vector3(201, 0, 0);
+        foreach (var go in new[] { nearDrop, observerDrop })
+        {
+            state.EntityDropCleanupCandidates.Add(new ZombieModeDropCandidate { GameObject = go, SpawnTime = 0 });
+            module.RegisterZombieModeRunOnlyObject(7, ZombieModeRunOnlyObjectKind.Unknown, go, go, null);
+        }
+        module.CleanupZombieModeExpiredDropCandidates(false);
+        Assert(nearDrop != null && observerDrop == null, "Expired drops within five horizontal metres of an admitted guest remain available to pick up");
+        module.CleanupZombieModeExpiredDropCandidates(true);
+        Assert(nearDrop == null, "Forced next-wave cleanup keeps its original clearing rule even near a player");
+        BossRushCoop.CombatTarget = null;
+        BossRushCoop.Players.Clear(); BossRushCoop.IsConnected = false; BossRushCoop.IsHost = false;
+    }
+
     public static int Main()
     {
         TestBoundaryAndThreatRestoration();
@@ -206,6 +254,7 @@ internal static class Program
         TestSpatialQueriesAndAiCache();
         TestEventOwnership();
         TestExtractionKeepsJustPickedUpDrops();
+        TestCoopSafetyAndNearbyDrops();
         Console.WriteLine("ZombieModeSafeZoneRuntime PASS: boundaries, threat, removal order, ownership, queries, cache, subscriptions, extraction drop ownership");
         return 0;
     }

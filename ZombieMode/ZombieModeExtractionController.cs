@@ -134,7 +134,7 @@ namespace BossRush
         /// </summary>
         private void Choose(bool extract)
         {
-            if (owner == null || decided)
+            if (owner == null || decided || closed)
             {
                 return;
             }

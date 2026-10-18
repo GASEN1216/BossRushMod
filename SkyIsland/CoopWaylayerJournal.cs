@@ -9,7 +9,7 @@ using ItemStatsSystem.Data;
 namespace BossRush
 {
     /// <summary>
-    /// SCHEMA+：只保存一次劫包的原物与提交结果。不会采集或强制保存整份角色背包。
+    /// SCHEMA+：只保存一次劫包的原物与提交结果。仅 PC-06 原件发布经 owner 授权保存本人角色物品树。
     /// 原生正常保存附带排除收据；旧盘重载时只扣留同一原物的一份，不能按 TypeID 猜物。
     /// </summary>
     internal sealed class CoopWaylayerJournal : IDisposable, IBossRushSaveBatchSource
@@ -21,6 +21,8 @@ namespace BossRush
         internal const string ExcludedKey = "BossRush_WaylayerExcluded";
         internal const string ReturnedKey = "BossRush_WaylayerReturned";
         internal const string CharacterOwnerKey = "BossRush_WaylayerOwner";
+        internal const string ClaimLockKey = "BossRush_WaylayerClaimLock";
+        internal const string GrantKey = "BossRush_WaylayerGrant";
         internal const int Prepared = 0, Reserved = 1, Success = 2, Failure = 3;
         internal const int Custody = 4;
 
@@ -36,6 +38,13 @@ namespace BossRush
             public ItemTreeData Tree;
             public int State;
             public bool PublicationStarted;
+            public int PublicationProtocol;
+            public string ClaimId, ClaimOwner, ClaimProof;
+        }
+        [Serializable] internal sealed class Grant
+        {
+            public string Id, CommitId, Host, Owner, Proof;
+            public ItemTreeData Tree;
         }
         [Serializable] internal sealed class Document
         {
@@ -45,12 +54,72 @@ namespace BossRush
             public List<Commit> Commits = new List<Commit>();
             public List<string> Excluded = new List<string>();
             public List<string> Returned = new List<string>();
+            public List<Grant> Grants = new List<Grant>();
         }
         private readonly BossRushSlotJsonStore<Document> store;
         private readonly BossRushSaveCoordinatorEngine coordinator;
         private readonly HashSet<string> debited = new HashSet<string>(StringComparer.Ordinal);
         private readonly HashSet<string> returned = new HashSet<string>(StringComparer.Ordinal);
         private CharacterMainControl boundCharacter;
+        private ReturnProof returnProof;
+        private sealed class ReturnProof : IDisposable
+        {
+            internal CoopWaylayerJournal Owner; internal ReturnProof Previous;
+            internal string Id, Identity, Asset; internal int Slot, Count;
+            internal CharacterMainControl Body; internal Item Item;
+            public void Dispose() { if (ReferenceEquals(Owner.returnProof, this)) Owner.returnProof = Previous; }
+        }
+        internal IDisposable ObserveReturn(string id, Item item, int expectedCount)
+        {
+            var proof = new ReturnProof { Owner = this, Previous = returnProof, Id = id, Item = item, Count = expectedCount,
+                Body = CharacterMainControl.Main, Identity = Identity, Asset = BossRushCoop.LocalAssetId, Slot = Saves.SavesSystem.CurrentSlot };
+            returnProof = proof; return proof;
+        }
+        private bool CurrentReturn(ReturnProof proof, Item character)
+        {
+            return proof.Identity == Identity && proof.Slot == Saves.SavesSystem.CurrentSlot && proof.Asset == BossRushCoop.LocalAssetId
+                && proof.Body != null && ReferenceEquals(proof.Body, CharacterMainControl.Main) && ReferenceEquals(proof.Body.CharacterItem, character)
+                && proof.Item != null && proof.Item.InInventory == character.Inventory && proof.Item.StackCount == proof.Count;
+        }
+        private bool CurrentOriginal(string owner, string asset, int slot, string path, CharacterMainControl body, Item character, Item original)
+        {
+            return !disposed && owner == Identity && slot == Saves.SavesSystem.CurrentSlot && path == Saves.SavesSystem.CurrentFilePath
+                && asset == BossRushCoop.LocalAssetId && body != null && ReferenceEquals(body, CharacterMainControl.Main)
+                && body.Health != null && !body.Health.IsDead && ReferenceEquals(character, body.CharacterItem)
+                && character != null && original != null && original.InInventory == character.Inventory;
+        }
+        // Owner-authorized PC-06 only: publish an exact returned original after the actual
+        // native character tree and its receipt are confirmed together in the physical file.
+        internal bool PublishOriginal(string id, Item original)
+        {
+            CharacterMainControl body = CharacterMainControl.Main;
+            if (disposed || !ValidId(id) || body == null || body.Health == null || body.Health.IsDead || body.CharacterItem == null
+                || original == null || original.InInventory != body.CharacterItem.Inventory || !OwnsCharacter(body.CharacterItem) || Saves.SavesSystem.IsSaving) return false;
+            Item character = body.CharacterItem;
+            string owner = Identity, asset = BossRushCoop.LocalAssetId, path = Saves.SavesSystem.CurrentFilePath;
+            int slot = Saves.SavesSystem.CurrentSlot;
+            bool existing = returned.Contains(id);
+            returned.Add(id);
+            try
+            {
+                BeforeNativeSave(body.CharacterItem);
+                string expected = BossRushCoopJson.ToJson(ItemTreeData.FromItem(character));
+                if (!CurrentOriginal(owner, asset, slot, path, body, character, original) || !BossRushSaveFileThrottle.TryBeginSaveFile(false)) return false;
+                try
+                {
+                    Saves.ItemSavesUtilities.Save(body.CharacterItem, "MainCharacterItemData");
+                    BossRushSaveFileThrottle.RunSaveFile(() => Saves.SavesSystem.SaveFile(false));
+                }
+                catch (Exception e) { ModBehaviour.DevLog("[SkyIslandWaylayer] original publication save pending: " + e.Message); }
+                if (!CurrentOriginal(owner, asset, slot, path, body, character, original)) return false;
+                var settings = new ES3Settings(path, (ES3Settings)null) { location = ES3.Location.File };
+                bool confirmed = ES3.KeyExists("Item/MainCharacterItemData", path, settings)
+                    && BossRushCoopJson.ToJson(ES3.Load<ItemTreeData>("Item/MainCharacterItemData", path, settings)) == expected;
+                return confirmed && CurrentOriginal(owner, asset, slot, path, body, character, original);
+            }
+            catch (Exception e) { ModBehaviour.DevLog("[SkyIslandWaylayer] original publication readback pending: " + e.Message); return false; }
+            finally { if (!existing) returned.Remove(id); }
+        }
         private string durableJson;
         private int durableSlot = int.MinValue;
         private bool disposed;
@@ -93,6 +162,16 @@ namespace BossRush
                     if (commit == null || !ValidId(commit.Id) || commit.Host != value.Identity || !ValidId(commit.Owner)
                         || !ValidId(commit.Proof) || commit.State < Reserved || commit.State > Custody
                         || !ids.Add(commit.Id)) return null;
+                // SCHEMA+: older schema-1 documents have no grant collection or claim fields.
+                if (value.Grants == null) value.Grants = new List<Grant>();
+                foreach (Commit commit in value.Commits)
+                    if (!string.IsNullOrEmpty(commit.ClaimId) && (commit.PublicationProtocol != 3 || commit.State != Success
+                        || !ValidId(commit.ClaimId) || !ValidId(commit.ClaimOwner) || !ValidId(commit.ClaimProof))) return null;
+                ids.Clear();
+                foreach (Grant grant in value.Grants)
+                    if (grant == null || !ValidId(grant.Id) || !ValidId(grant.CommitId) || !ValidId(grant.Host)
+                        || grant.Owner != value.Identity || !ValidId(grant.Proof) || grant.Tree == null
+                        || grant.Tree.RootData == null || !ids.Add(grant.Id)) return null;
                 return value;
             }
             catch (Exception) { return null; }
@@ -177,7 +256,18 @@ namespace BossRush
             if (string.IsNullOrEmpty(owner) && (Data.Debts.Count == 0 || respawn))
             { character.SetString(CharacterOwnerKey, Identity); owner = Identity; }
             bool valid = owner == Identity;
-            if (valid && current != null && ReferenceEquals(current.CharacterItem, character)) boundCharacter = current;
+            if (valid && current != null && ReferenceEquals(current.CharacterItem, character))
+            {
+                // Native-first loading may use a temporary journal. Import its receipts once,
+                // before the runtime owner's first normal save can overwrite the root proof.
+                if (!ReferenceEquals(boundCharacter, current))
+                {
+                    string proof = character.GetString(ReturnedKey);
+                    foreach (Grant grant in Data.Grants) if (Contains(proof, grant.Id)) returned.Add(grant.Id);
+                    foreach (Debt debt in Data.Debts) if (Contains(proof, debt.Id)) returned.Add(debt.Id);
+                }
+                boundCharacter = current;
+            }
             return valid;
         }
         internal Commit PrepareCommit(string id, string owner, string proof, ItemTreeData tree)
@@ -186,7 +276,7 @@ namespace BossRush
             if (old != null) return old.Owner == owner && old.Proof == proof ? old : null;
             if (!CanWrite || !ValidId(id) || !ValidId(owner) || !ValidId(proof)) return null;
             var value = new Commit { Id = id, Host = Identity, Owner = owner, Proof = proof,
-                Tree = tree == null ? null : Clone(tree), State = Reserved };
+                Tree = tree == null ? null : Clone(tree), State = Reserved, PublicationProtocol = tree == null ? 0 : 3 };
             Data.Commits.Add(value);
             if (Persist()) return value;
             Data.Commits.Remove(value);
@@ -201,7 +291,7 @@ namespace BossRush
             }
             else
             {
-                if (value.State == Success || value.PublicationStarted) return false;
+                if (value.State == Success || (value.PublicationStarted && value.PublicationProtocol != 2 && value.PublicationProtocol != 3)) return false;
                 value.State = Failure;
             }
             // Custody 只代表原树在账本，绝不冒充已公开成功。未公开原件可以持久拒绝后退回本人。
@@ -210,8 +300,16 @@ namespace BossRush
         internal bool StartPublication(Commit value)
         {
             if (value.State != Custody) return false;
+            // 新事务 v3 的锁定凭证已从世界包移入本机暂存；未确认 Success 前绝不再公开。
+            value.PublicationProtocol = 3;
             value.PublicationStarted = true;
             return Persist();
+        }
+        internal void HoldUncertainCustody(Commit value)
+        {
+            // 第三方入包通知若搬走了原件，不能销毁它或宣称新协议的未公开证明。
+            value.State = Custody; value.PublicationProtocol = 0; value.PublicationStarted = true;
+            Persist();
         }
         internal bool CancelUnpublished(Commit value, Item retracted)
         {
@@ -226,6 +324,28 @@ namespace BossRush
             if (!value.PublicationStarted || (value.State != Custody && value.State != Success)) return false;
             value.State = Success;
             return Persist();
+        }
+        internal bool FreezeClaim(Commit value, string owner)
+        {
+            if (value == null || value.PublicationProtocol != 3 || value.State != Success || !ValidId(owner)) return false;
+            if (string.IsNullOrEmpty(value.ClaimId))
+            { value.ClaimId = Guid.NewGuid().ToString("N"); value.ClaimOwner = owner; value.ClaimProof = Guid.NewGuid().ToString("N"); }
+            // An unconfirmed write keeps the same claimant in memory. Never reassign a possibly durable grant.
+            return value.ClaimOwner == owner && Persist();
+        }
+        internal Grant PrepareGrant(Commit value)
+        {
+            if (value == null || value.PublicationProtocol != 3 || value.State != Success || value.ClaimOwner != Identity
+                || !ValidId(value.ClaimId) || !ValidId(value.ClaimProof) || value.Tree == null || value.Tree.RootData == null) return null;
+            Grant grant = Data.Grants.Find(item => item.Id == value.ClaimId);
+            if (grant == null)
+            {
+                grant = new Grant { Id = value.ClaimId, CommitId = value.Id, Host = value.Host, Owner = value.ClaimOwner,
+                    Proof = value.ClaimProof, Tree = Clone(value.Tree) };
+                Data.Grants.Add(grant);
+            }
+            if (grant.CommitId != value.Id || grant.Host != value.Host || grant.Owner != value.ClaimOwner || grant.Proof != value.ClaimProof) return null;
+            return Persist() ? grant : null;
         }
 
         internal static ItemTreeData Clone(ItemTreeData value)
@@ -297,12 +417,27 @@ namespace BossRush
                 if (debt.State == Failure)
                 {
                     // 旧盘里原物尚在，或者正常保存已包含返还物，不能再增一份。
-                    if (refunded || (!excluded && source != null)) returned.Add(debt.Id);
+                    if (refunded || (!excluded && source != null))
+                    {
+                        returned.Add(debt.Id);
+                        foreach (ItemTreeData.DataEntry entry in tree.entries)
+                            if (Get(entry, ClaimLockKey) == debt.Id) Set(entry, ClaimLockKey, string.Empty);
+                    }
                     else debited.Add(debt.Id);
                     continue;
                 }
                 if (!excluded && source != null) RemoveOne(tree, source);
                 debited.Add(debt.Id);
+            }
+            foreach (Grant grant in value.Grants)
+            {
+                bool proof = Contains(Get(tree.RootData, ReturnedKey), grant.Id);
+                ItemTreeData.DataEntry owned = tree.entries.Find(entry => Get(entry, GrantKey) == grant.Id);
+                if (proof || owned != null) returned.Add(grant.Id);
+                // Grant clones are locked until their actual local adoption finishes. A native
+                // save from an AddAt notification can already contain the owned clone.
+                if (owned != null) foreach (ItemTreeData.DataEntry entry in tree.entries)
+                    if (Get(entry, ClaimLockKey) == grant.Id) Set(entry, ClaimLockKey, string.Empty);
             }
             Set(tree.RootData, ExcludedKey, Join(debited, returned));
             Set(tree.RootData, ReturnedKey, Join(returned, null));
@@ -329,13 +464,20 @@ namespace BossRush
             if (character == null || disposed || !OwnsCharacter(character)) return;
             // 收据随同实际角色树保存，不依赖另一笔 journal 写入成功；合堆、移动原物也不丢排除事实。
             // 只有原件实际交入本人背包后才会 NoteReturned，外部掉落不算返还。
-            character.SetString(ExcludedKey, Join(debited, returned));
-            character.SetString(ReturnedKey, Join(returned, null));
+            var staged = new List<string>();
+            for (ReturnProof proof = returnProof; proof != null; proof = proof.Previous)
+                if (CurrentReturn(proof, character) && returned.Add(proof.Id)) staged.Add(proof.Id);
+            try
+            {
+                character.SetString(ExcludedKey, Join(debited, returned));
+                character.SetString(ReturnedKey, Join(returned, null));
+            }
+            finally { foreach (string id in staged) returned.Remove(id); }
         }
         private void OnSlotChanged()
         {
             debited.Clear(); returned.Clear();
-            boundCharacter = null; durableJson = null; durableSlot = int.MinValue;
+            boundCharacter = null; returnProof = null; durableJson = null; durableSlot = int.MinValue;
             if (coordinator != null) coordinator.NotifySlotChanged();
         }
         private void OnFlushed() { if (coordinator != null) coordinator.NotifyPendingWriteFlushed(); }
@@ -346,7 +488,7 @@ namespace BossRush
             coordinator.TryFlushOnHostDestroy();
             store.ShutdownSubscription(); coordinator.Reset();
             debited.Clear(); returned.Clear(); disposed = true;
-            boundCharacter = null; durableJson = null;
+            boundCharacter = null; returnProof = null; durableJson = null;
             if (ReferenceEquals(Current, this)) Current = null;
         }
         string IBossRushSaveBatchSource.LogPrefix { get { return "[SkyIslandWaylayer] "; } }

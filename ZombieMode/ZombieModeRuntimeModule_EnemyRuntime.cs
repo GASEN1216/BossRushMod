@@ -6,6 +6,26 @@ namespace BossRush
 {
     internal sealed partial class ZombieModeRuntimeModule
     {
+        private float GetZombieModeNearestParticipantHorizontalDistanceSquared(Vector3 position)
+        {
+            float nearest = float.PositiveInfinity;
+            if (!BossRushCoop.IsConnected)
+            {
+                CharacterMainControl local = CharacterMainControl.Main;
+                Vector3 delta = position - (local != null ? local.transform.position : Vector3.zero);
+                delta.y = 0f;
+                return delta.sqrMagnitude;
+            }
+            foreach (BossRushCoopPlayer player in BossRushCoop.Players)
+            {
+                if (!IsCoopZombieParticipant(player) || !player.IsAlive) continue;
+                Vector3 delta = position - player.Character.transform.position;
+                delta.y = 0f;
+                nearest = Mathf.Min(nearest, delta.sqrMagnitude);
+            }
+            return nearest;
+        }
+
         private readonly HashSet<int> zombieModeEnemyInstanceIds = new HashSet<int>();
 
         private readonly Dictionary<int, ZombieModeEnemyRuntimeMarker> zombieModeEnemyMarkersByInstanceId =

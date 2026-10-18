@@ -12,10 +12,10 @@ import tempfile
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT_FIXTURES = (
     "DragonKingCoopWorld",
-    "WaylayerEscrow",
+    "WaylayerEscrow", "WaylayerNativeBuild", "WaylayerClaimUse",
     "ModeFCoop",
     "ModeECoopEpoch",
-    "ArenaCoop", "CoopAiPrediction", "CoopContent", "CoopSpouses", "CoopWorldRuntime", "DeathWraithCoop", "RandomEventsCoop", "SkyIslandCoopCommands", "ZombieCoopFlow", "ModeHCoop", "CoopInstalledApi",
+    "ArenaCoop", "CoopAiPrediction", "CoopContent", "CoopSpouses", "CoopWorldRuntime", "DeathWraithCoop", "RandomEventsCoop", "SkyIslandCoopCommands", "ZombieCoopFlow", "ZombieCoopKillRewards", "ZombieCoopZoneEffects", "ZombieCoopDrops", "ZombieCoopDropClaims", "ModeHCoop", "CoopInstalledApi", "CoopMapPayment",
     "PhantomScytheLocalization",
     "SandstormCombatRuntime", "SandstormCombatTiming",
     "BossHealthScaling",
@@ -38,7 +38,7 @@ SCRIPT_FIXTURES = (
     "ContentBuildingOwnership", "DailyReportHostUI", "BuildingRestoreCore", "F3ValidationExecution", "SetBonusCoroutines", "GameplayLogFixes",
     "StoneOutpostSceneLease", "StoneOutpostMap", "EquipmentResourceScene", "SkyIslandStory", "SkyIslandDelivery", "SkyIslandOfficialContract", "SkyIslandEncounters", "SkyIslandLighting", "SkyIslandRaidLease", "SkyIslandLoot",
     "SkyIslandFooting", "SkyIslandPatrols",
-    "SkyIslandMarriage", "SkyIslandHudPolicy", "SkyIslandDialogue", "SkyIslandInteraction", "SkyIslandCombatRuntime", "ZombieModeEntryDebt", "ZombieModeSafeZoneRuntime", "ZombieModeRewardRuntime", "ZombieModeSpawnRuntime", "ZombieModeStarterRuntime", "PermanentDuckNpcDialogue", "RewardPoolReliability",
+    "SkyIslandMarriage", "SkyIslandHudPolicy", "SkyIslandDialogue", "SkyIslandInteraction", "SkyIslandCombatRuntime", "ZombieModeEntryDebt", "ZombieModeAmmoSelection", "ZombieModeSafeZoneRuntime", "ZombieModeRewardRuntime", "ZombieModeSpawnRuntime", "ZombieModeStarterRuntime", "PermanentDuckNpcDialogue", "RewardPoolReliability",
     "SkyIslandValidationJudges", "F3AutotestJudges", "SpawnPositionPolicy", "EnemySpawnRuntime", "EnemyRecoveryRuntime", "RandomEventEffectsOwners", "ModeEFSpawnPreparation", "ModeEFEnemySpawnRuntime", "ModeEFSpawnPostprocessScheduler", "ModeEFVirtualSpawnerRegistry", "ModeEFMerchantCatalog", "FlightTotemRuntimeModule", "EquipmentBootstrapOwners", "AwenLootSweepRuntime", "WavesArenaPresetWeight", "BirthdayCakeGift",
 )
 PROJECT_FIXTURES = {

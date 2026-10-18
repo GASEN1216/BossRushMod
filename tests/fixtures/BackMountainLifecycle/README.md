@@ -9,3 +9,6 @@
 宿主替身模拟 Unity 已销毁对象等于 null、GameObject 连带销毁组件；存档按槽隔离并可注入写/读回失败；stat 保留 Add 与 PercentageAdd 的数值语义；官方换弹公式按当前反编译源码核对。不能证明实际 Unity 物理、渲染、音频、官方输入栈和帧耗；这些必须通过 L3 检查。
 
 2026-09-25 三形态扩展：后山 UsageBehavior 统一转到即时 MorphService；本夹具的变身宿主只控制成功/拒绝/异常，验证消费与补偿事务，不再将它伪装为 RaidMealService 登记。真实三形态外观、属性、碰撞和清理见 BackMountainMorph。BackMountainLifecycle 仍逐字链接旧 RaidMealService，验证旧档已预备餐食兑现、过区重挂与局末清理。
+# 2026-10-18 基地子场景陈列扫描
+
+`Scanner` 子组编译实际运行时 `ShowcaseDisplayScanner` 全文，显式改变 BuildingArea 与官方槽内容，验证未加载建筑区或查找异常时不发布空快照、旧订阅仍撤销、建筑区确实加载且清空时正常发布空快照。快照接收层为记录替身；持久化与属性恢复由主组链接的真实 ShowcaseService 继续覆盖。未启动游戏或读取玩家存档。

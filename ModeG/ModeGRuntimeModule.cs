@@ -1144,6 +1144,9 @@ namespace BossRush
                     // 弹药禁令违规一次性播报（Intermission/Spawning/Fighting/LastStand 全程有效）
                     TickAmmoViolationAnnounce();
 
+                    // 全局 OnDead 可能被其它订阅者异常截断；仍走正常结案和个人收据。
+                    SweepSilentBossDeaths();
+
                     // 波结算（下一帧窄上报）
                     if (_waveSettlementPending && !_waveSpawnInFlight)
                     {

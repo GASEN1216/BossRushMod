@@ -11,8 +11,8 @@ def main(root,out,production):
     if os.name!='nt' or not harmony.is_file():
         raise RuntimeError('Requires Windows and installed Harmony; no stub-only hook PASS')
     compiler=sorted(Path('C:/Program Files/dotnet/sdk').glob('*/Roslyn/bincore/csc.dll'))[-1]
-    files=[production]+[here/n for n in ('Stubs.cs','Program.cs','Persistence.cs','JournalCases.cs','HookCases.cs')]
-    files += [root/p for p in ('SkyIsland/CoopWaylayerJournal.cs','SkyIsland/CoopWaylayerJournalHooks.cs','Common/Coop/BossRushCoopJson.cs','Common/Data/BossRushJsonValue.cs','Utilities/SimpleJsonHelper.cs','Common/Lifecycle/BossRushSlotJsonStore.cs','Common/Lifecycle/BossRushSaveCoordinatorEngine.cs','Common/Lifecycle/BossRushSaveFileThrottle.cs')]
+    files=[production,out/"PersonalDelivery.cs",here/"ClaimCases.cs",here/"PublicationCases.cs"]+[here/n for n in ('Stubs.cs','Program.cs','Persistence.cs','JournalCases.cs','CrashCases.cs','HookCases.cs')]
+    files += [root/p for p in ('SkyIsland/CoopWaylayerJournal.cs','SkyIsland/CoopWaylayerClaims.cs','SkyIsland/CoopWaylayerJournalHooks.cs','Common/Coop/BossRushCoopJson.cs','Common/Data/BossRushJsonValue.cs','Utilities/SimpleJsonHelper.cs','Common/Lifecycle/BossRushSlotJsonStore.cs','Common/Lifecycle/BossRushSaveCoordinatorEngine.cs','Common/Lifecycle/BossRushSaveFileThrottle.cs')]
     target=fresh/'WaylayerHarmony.exe'
     args=['/nologo','/target:exe','/nostdlib+','/langversion:7.3','/define:WAYLAYER_HARMONY_FIXTURE','/out:"'+str(target)+'"']
     args+=['/r:"'+str(p)+'"' for p in [harmony]+[framework/n for n in ('mscorlib.dll','System.dll','System.Core.dll')]]

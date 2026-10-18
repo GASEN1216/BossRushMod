@@ -160,6 +160,8 @@ namespace BossRush
 
         private async UniTask SpawnAlliesAsync(int requestId)
         {
+            // 本机施法也绑定开始时的世界；异步创建期间断线或进房不能转为另一份世界产物。
+            var creationLease = new CoopBossCreationLease();
             try
             {
                 CharacterMainControl player = coopOwner != null ? coopOwner : CharacterMainControl.Main;
@@ -186,7 +188,7 @@ namespace BossRush
 
                 for (int i = 0; i < availableSlots; i++)
                 {
-                    if (!IsRequestValid(requestId, player, sceneIndex)) return;
+                    if (!creationLease.IsValid() || !IsRequestValid(requestId, player, sceneIndex)) return;
 
                     // 计算生成位置：围着投放点等角散开
                     float angle = 360f * i / SummonStaffConfig.SummonCount;
@@ -198,7 +200,7 @@ namespace BossRush
                         CharacterMainControl ally = await preset.CreateCharacterAsync(
                             spawnPos, Vector3.forward, sceneIndex, null, false);
 
-                        if (!IsRequestValid(requestId, player, sceneIndex))
+                        if (!creationLease.IsValid() || !IsRequestValid(requestId, player, sceneIndex))
                         {
                             if (ally != null && ally.gameObject != null)
                             {
@@ -242,7 +244,7 @@ namespace BossRush
                     await UniTask.NextFrame();
                 }
 
-                if (!IsRequestValid(requestId, player, sceneIndex)) return;
+                if (!creationLease.IsValid() || !IsRequestValid(requestId, player, sceneIndex)) return;
 
                 if (successCount > 0)
                 {

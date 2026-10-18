@@ -72,6 +72,7 @@ namespace BossRush
                 return;
             }
 
+            zombieModeRewardUiToken = new object();
             node.Options.Clear();
             int optionCount = node.BossNode ? 4 : 3;
             int minimumCategoryCount = GetZombieModeMinimumRewardCategoryCount(node.BossNode);
@@ -325,9 +326,9 @@ namespace BossRush
                 string attributeKey = GetZombieModeAttributeKey(rewardType);
                 if (!string.IsNullOrEmpty(attributeKey) && runState.AttributeBonuses.TryGetValue(attributeKey, out currentBonus))
                 {
-                    if (currentBonus >= GetZombieModeAttributeCap(rewardType))
+                    if (currentBonus >= GetZombieModeAttributeCap(rewardType) - 0.0001f)
                     {
-                        weight = Mathf.Max(1, Mathf.FloorToInt(weight * 0.2f));
+                        return;
                     }
                 }
             }

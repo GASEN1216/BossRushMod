@@ -137,6 +137,13 @@ Dev 专用测试档的 `BossRush_Validation_AutotestSnapshot_v1` 保持 version=
 `LevelManager.OnAfterLevelInitialized`（命名方法、幂等订阅、随模块销毁成对退订）与每次入场扣款之前。
 由 `tests/ZombieModeEntryDebtGuard.py` 与执行回归 `tests/fixtures/ZombieModeEntryDebt` 守卫。
 
+天空岛截信人单件核账（2026-10-18，`COMPAT / SCHEMA+ / WIRE+`）：
+
+- `BossRush_CoopWaylayerJournal` — 当前槽 JSON 字符串，`schemaVersion = 1`；保存持久 `Identity`、单件完整 `Debt.Tree` / `Commit.Tree`、终态和排除/返还证明。新增可选 `Grants` 及 `ClaimId` / `ClaimOwner` / `ClaimProof`，旧档缺省为空，不升级 schema 或清历史。
+- 物品 KV `BossRush_WaylayerSource` / `BossRush_WaylayerSnapshot` / `BossRush_WaylayerRefund` / `BossRush_WaylayerCustody` 保留原物来源与事务身份；角色根 `BossRush_WaylayerOwner` / `BossRush_WaylayerExcluded` / `BossRush_WaylayerReturned` 为本角色实际正常保存的拥有/排除证明。`BossRush_WaylayerClaimLock` 表示世界领取凭证或待发布本人原件私有锁，`BossRush_WaylayerGrant` 只标实际交付原树。不得按 TypeID、数量相似或包内自报 owner 猜归属。
+- 新事务 `PublicationProtocol = 3`：房主持久托管完整树，耐久 Success 后只恢复锁定领取凭证；实际 transport 发送者、当前角色/资产与持久 journal GUID 唯一冻结 claimant，复用个人递送。`LocalAssetId` 为当前进程租约，不能代替跨进程 GUID。原房主换槽不能接管旧槽责任；领取者离线时义务留在原房主账本，原身份唯一重新绑定后恢复。旧 protocol0 unknown、protocol2 已公开/未知结果均沿原保守语义，不自动退款、重新公开或清账。
+- owner 于本次 PC06 验收明确授权：仅本人领取、追回或明确 Failure 退款发布，调用官方 `ItemSavesUtilities.Save(actualMain.CharacterItem,"MainCharacterItemData")`、共享节流的 `SaveFile(false)`，物理 key 是 **`Item/MainCharacterItemData`**。完整当前角色物品树与 Returned proof 同批保存并用 ES3.File 完整读回匹配后才解锁/确认；失败保留 exact 私有原件重试。此调用会提前落盘当前整份角色物品树，不保存 Health/仓库、不触发 CollectSaveData，授权不扩到其它系统或后续所有普通转交。保存/读回后均复核原 owner、槽、文件、资产、活体、角色根与 exact 库存归属；同帧其它原件等待后续帧。
+
 Breaking:
 
 - 改名旧 key 且无迁移。
@@ -976,6 +983,7 @@ Boss 音频调用使用 `AcquireBossBgm(bossKey, owner)` / `ReleaseBossBgm(bossK
 - 原版 ModApi 的 byte[] 长度为 UInt16。完整 envelope 保持既有大小预算，大包在 Runtime 原生发送前分片，每帧连头部须低于原生上限；接收按已认证 peer 隔离，完整长度和 SHA 校验后才进入原会话、身份与消息去重判据。断开、会话清理与超时释放未完成片，不能靠降低内容数量修复截断。
 - 原生已批准 Base 返程包含普通 TryPerform/Authorize 与死客 HandleSceneBeginLoad 提前显示 Closure 两条路径。死客只能承接当前房主 peer 的真实 Base Begin 消息，不能以 ready、投票或旧 launched 标志推定批准；两条许可都绑定原资产、身体、源 Core，取消、新旅行、换体、卸载、换档和断线失效，房主先到不撤销慢客有效许可。
 - 场景准备事实允许玩法逐帧声明，但同一实际场景代次 / key 只首次立即发送；保留既有 hello 周期重报覆盖丢失、迟加入与重连。清理和新场景实例仍清准备集合，不能把旧就绪继承到同名重载。
+- 原生地图投票可跳过官方 WaitForConfirm，普通 BossRush / Mode D 客端本地设施初始化因此在实际场景绑定后，复用地图配置的世界落点补一次本机对齐。已由初始出生路由到达的角色不重复设置；原生 scene token、房间、代次、资产、实际身体与 scene handle 在位置操作后再次核对。不同模式的独立落点仍由各模式 owner 负责，后续快照不能持续拉回玩家。
 - roster 携带房主官方 Core 的 sceneId；客端收到新代次与本地实际场景绑定分别推进。房主先到时须等待客端离开原 Core，客端先到时须等待匹配代次；首次同图加入不强制重载。当前 Core 必须存在、已加载且结束初始化，官方 ID 与实际 handle 均匹配；绑定时不消费该包的存活事实，下一完整名单再绑定身体。未绑定 Core 不发送 ready，缺失/卸载中的 Core 不可用缓存恢复远端存活；换房清除待绑定状态。
 - 原生 AI 标识是有符号 int，负数有效，只有 `0` 表示未知；统一经 `GetAiId` / `FindAi`，不得使用 `id > 0` 判断登记成功。
 - 原版 COOP 的客端预测死亡会追加强制击杀上报。仅对玩法 owner 明确登记的 Mod AI，在本机玩家攻击的 `Health.Hurt` 上下文中保留至少 1 点预测生命；命中反馈与原伤害上报继续执行，真实死亡由房主快照落地。上下文须支持嵌套和异常清理，场景更换立即撤销保护，同一 AI ID 换身后重新绑定。

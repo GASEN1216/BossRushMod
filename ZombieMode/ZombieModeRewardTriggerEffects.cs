@@ -42,16 +42,7 @@ namespace BossRush
             }
 
             ZombieModeOptionRuntimeState options = runState.OptionRuntime;
-            if (options.TriggerLifestealChancePercent > 0)
-            {
-                int chance = Mathf.Min(ZombieModeLifestealChanceCapPercent, options.TriggerLifestealChancePercent);
-                if (player != null &&
-                    player.Health != null &&
-                    UnityEngine.Random.value <= chance / 100f)
-                {
-                    player.Health.AddHealth(Mathf.Max(1, options.TriggerLifestealHealAmount));
-                }
-            }
+            TryApplyZombieModeTriggerLifesteal(player, options);
 
             if (options.TriggerCritBurstStacks > 0 && damageInfo.crit > 0)
             {
@@ -146,6 +137,8 @@ namespace BossRush
             }
 
             ZombieModeOptionRuntimeState options = runState.OptionRuntime;
+            // OnDead 先于 OnHurt 结算并注销 marker，在这里补判致死一击的命中回血。
+            TryApplyZombieModeTriggerLifesteal(player, options);
             if (options.TriggerPurificationSiphonStacks > 0)
             {
                 int stacks = Mathf.Min(2, options.TriggerPurificationSiphonStacks);
@@ -172,6 +165,14 @@ namespace BossRush
                     TriggerZombieModeDoomPulse(runId, stacks);
                 }
             }
+        }
+
+        private static void TryApplyZombieModeTriggerLifesteal(CharacterMainControl player, ZombieModeOptionRuntimeState options)
+        {
+            if (options.TriggerLifestealChancePercent <= 0 || player == null || player.Health == null) return;
+            int chance = Mathf.Min(ZombieModeLifestealChanceCapPercent, options.TriggerLifestealChancePercent);
+            if (UnityEngine.Random.value <= chance / 100f)
+                player.Health.AddHealth(Mathf.Max(1, options.TriggerLifestealHealAmount));
         }
 
         private void TriggerZombieModeDoomPulse(int runId, int stacks)
@@ -297,9 +298,7 @@ namespace BossRush
 
         private void GrantZombieModeAmmoRainSupply(int amount)
         {
-            string caliber = !string.IsNullOrEmpty(runState.StarterAmmoCaliber)
-                ? runState.StarterAmmoCaliber
-                : string.Empty;
+            string caliber = ResolveZombieModeSupplyAmmoCaliber();
             if (!string.IsNullOrEmpty(caliber) && TryGiveZombieModeStarterAmmo(caliber, amount))
             {
                 return;

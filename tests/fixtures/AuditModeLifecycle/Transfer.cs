@@ -259,6 +259,12 @@ static class Program {
  }
  static void Main() {
   TestEnemyRuntime();
+  Item protectedItem = Setup(false); var retiredMode = NewMode(); retiredMode.SetLeaseForTest(false);
+  Check(!retiredMode.Prepare() && !retiredMode.InventoryTransferStarted && OwnedCopies(protectedItem) == 1 && TransferTrace.Events.Count == 0,
+   "retired lease rejects inventory transfer without detaching or persisting player items");
+  var protectedEnemy = new CharacterMainControl();
+  Check(retiredMode.RegisterEnemyForTest(1, protectedEnemy) == null && protectedEnemy.gameObject.GetComponentCalls == 0 && protectedEnemy.gameObject.AddComponentCalls == 0,
+   "retired lease rejects marker registration before touching enemy components");
   Item item = Setup(true); var mode = NewMode();
   Check(mode.Prepare(), "full storage entry transfer succeeds through the legacy host bridge");
   Check(mode.InventoryTransferStarted, "completed transfer sets the transaction started flag");

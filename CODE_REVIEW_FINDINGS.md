@@ -2,6 +2,46 @@
 
 更早记录见 `archive/`；月度归档索引保留在本文件正文。
 
+## 2026-10-18 候选5实机续验与候选6修复（COMPAT / WIRE+，L1/L2，L3 未闭环）
+
+CR-2026-10-18-016：P1 / Fixed（L1/L2），L3 待验。原生 COOP 地图投票绕过官方确认入口，初始出生路由没有建立 pending；房主普通 / D 入口有地图世界坐标兜底，客端早退后仅创建本地设施，因而留在原生落点。候选5的 Normal4 已实际付款一次并生成完整首波三名 Boss；两客实际目标距离约 249 米，三端开火为 0，随后房主真实死亡。未采到精确 ARM 坐标，房主零输入与攻击者身份不能据此推定。修复仅在普通 / D 的真实本机场景绑定后复用房主配置落点一次，同步位置调用后重核房间、场景、代次、资产、entry token 和实际身体，再建立设施。完整生产入口回归 81 项通过，相关竞技场 212 项、入口兼容 493 项通过，结构与行为负向均按预期失败并按字节恢复。冻结证据 `Build/coop-audit-20261018/L3/normal4-entry-placement-review-v2/source-stable.receipt.json`；候选6的真实落点、原生开火、死亡、个人收据与 ACK 仍须验收。
+
+Normal4 原失败保持为失败：`L3/normal-v4-draft/normal-first-wave-attempt4-candidate5-0e8147a4c56744e1bbaf334fc0a0bffb/results.json`。返程首次因测试驱动在死者分支跳过官方结算“继续”而超时；一次真实官方按钮操作后，三端回基地、完整非空原物实例及全部变量恢复通过，见 `L3/normal4-restoration-draft/normal4-restoration-candidate5-ca2bdb050a5f4a0e9ca7e5b8dc913c6c/results.json`，SHA `181bd1f4e06ab896ab0f114d6f49dd2de577e4223f414df9437ebfb9171e55ac`。随后三端各一次官方保存、完整物品树读盘与正常退出均通过，见 `L3/cutover6-native-save/actual-graceful-close-candidate5/closure.json`。这些证明原件保护与退出闭环，不能充当战斗或发版通过。
+
+CR-2026-10-18-015 的付款修复已编入候选5，Normal4 实采房主扣票一次、客机不扣且首波真正开始；取消、失败与完整玩法验收仍未闭环。此前候选4段落保留为历史状态。PC-06 继续维持 P1 / Reopened，未因离线回归或原件恢复而放行。
+
+## 2026-10-18 联机候选4实机续验发现（COMPAT / WIRE+，L1）
+
+CR-2026-10-18-015：P1 / Open。实际安装 COOP 的自有地图点击前缀启动投票后跳过原版 `MapSelectionView.LoadTask`，全员准备后的原生调用链直接加载场景，没有执行 `Cost.Pay`。当前 `BossRushMapSelectionHelper.MarkTargetSceneLoadStarted()` 对非 H 模式仅凭 `MapSelectionUi` 来源登记预付，普通挑战不会补扣，E/F/G 还可能把不存在的付款用于预付及退款判断。仅投票通过不能证明已经付票；发布验收继续阻断。候选4首波尝试实际停在准备投票，真实扣票为 0、开火为 0，未把尚未入场记成 L3 漏票复现。
+
+证据为 `Build/coop-audit-20261018/L3/native-variable-trace/native-and-candidate-fees-35e70fe6fe38401a90a2100b251f1c76.json`：完整核对实际安装 COOP、官方原版地图付款状态机、场景加载及候选 Dev 的真实 IL；安装 COOP 没有支付调用，原版付款在被跳过的方法中。修复要求在房主实际投票提交、任何开始加载广播之前完成同一自有选中条目的真实一次付款；客端不扣、取消不扣、单机不重复扣，未知支付结果不得自动重试。修复与实际三端付款、取消及失败用例尚待闭环。
+
+## 2026-10-18 独立目录联机复审（COMPAT / WIRE+，L1/L2）
+
+工作目录为 `C:/Users/GASEN/.codex/worktrees/coop-audit/BossRushMod`，分支 `codex/coop-full-compat`，起点 `2ea2c476`。本轮审查实际安装的原版 COOP（工坊 3591341282）、整个联机分支和主线相关修复；所有改动、回归与构建均在此独立目录进行。Fixed 只表示相应生产修复及离线回归闭环，最终统一验证见 `FIX_TRACKER.md` 本日记录，不能外推为真实多人游戏通过。
+
+| ID | 等级 / 状态 | 原因、玩家影响与修复 | 证据 |
+| --- | --- | --- | --- |
+| CR-2026-10-18-001 | P1 / Fixed / COMPAT | 丧尸业务命令只有场景屏障，同图内旧局或旧波的奖励、重力、安全区命令能影响后继状态；旧奖励卡回调也可能消费重抽后的选项。命令增加局与波绑定，starter/decline 保留本局迟加入语义；奖励视图捕获本次 roll token，并复核资产与阶段。 | `ZombieCoopFlow` 执行完整 Send/Execute、codec、Roll/View.Select；run/wave/token 等隔离破坏实际转红并按字节恢复。 |
+| CR-2026-10-18-002 | P1 / Fixed / COMPAT | 客端新局沿用旧参与资产表，上一局换槽后合法新准入被拒绝；撤离周期快照重复打开已关闭提示，迟加入撤离位置及已有安全圈位置也可能过期。新局先清 cohort，撤离提示按波/关闭回调管理，镜像同步真实撤离点及安全圈中心、半径。 | `ZombieCoopFlow` 完整 ApplyWorld、镜像及真实撤离 View 关闭路径；cohort、提示及圈位置负向验证。 |
+| CR-2026-10-18-003 | P1 / Fixed / COMPAT / WIRE+ | 客端复制体死亡事件在世界权限门早返，击杀回血、额外净化星与连杀爆炸无法按客人奖励生效。房主按原生攻击者和已冻结参与资产结算，世界星及爆炸只生成一次，回血使用可靠个人投递；过期局、波、场景及错误资产不执行瞬时效果。 | `ZombieCoopKillRewards` 链接完整生产死亡入口、奖励桥、Delivery 与 codec；实际安装 COOP 的攻击者解析和死亡转发 IL 已核对；重复死亡/丢 ACK/换槽/房主死亡执行回归及负向验证。 |
+| CR-2026-10-18-004 | P1 / Fixed / COMPAT | 房主死亡或本体卸载后，丧尸 Boss 技能与解卡仍取 Main，活客人无法成为有效目标。技能按已准入原资产选择真实存活目标。 | `ZombieModeSpawnRuntime` 执行真实 Boss 方法，房主死亡且客人在场、导航失败退避均有行为反例。 |
+| CR-2026-10-18-005 | P1 / Fixed / COMPAT | 本机异步召唤只冻结角色和手持物，在创建期间进房、换房或断线后仍可能把旧召唤生成到新世界。霜之哀伤与召唤法杖统一复用原有 `CoopBossCreationLease`，各次 await 前后与最终激活复核，晚到对象销毁。 | `DragonKingCoopWorld` 租约场景；`CoopPersonalSceneBindingGuard` 两分支稀疏副本反向验证。 |
+| CR-2026-10-18-006 | P2 / Fixed / COMPAT | 联机分支缺主线刷怪可达性优化：每候选都跑路径、同帧重复失败、Boss 无点持续重试。保留最近/公平选择，最近排序后找到有效点即停；所有合资格玩家均无导航锚点时才早退，同帧失败缓存与 Boss 一秒退避。 | `ZombieModeSpawnRuntime` 真生产选择/恢复方法，排序/准入/缓存守卫和缓存/客人目标/退避行为负向验证。性能改善尚未实机采样。 |
+| CR-2026-10-18-007 | P1 / Fixed / COMPAT | 联机分支低品质区间配不到 RPG 等重弹药，补给仍按开局口径；致死一击汲血遗漏。按当前手持口径补给，区间无弹时取同口径最低品质，重弹至少四发且不超过请求量；沿真实死亡事件共用汲血判断。属性达到上限不再提供无效卡。 | `ZombieModeAmmoSelection` 受控真实物品搜索/授予生产方法，RPG 和手持口径行为负例；击杀回归执行真实致死入口。 |
+| CR-2026-10-18-008 | P1 / Fixed / COMPAT / WIRE+ | 腐蚀区域伤害及减速只取 Main，客人不受完整区域技能影响；简单重试会在区域消失后续上旧效果，直接从短 tick 扣全程时延又让高延迟客人永不减速。房主遍历有效活人，伤害复用原版转发；持续减速绑定真实区域剩余寿命与实时中心，保留原 tick 时长，仅从源有效期扣完整 nonce 往返时间；重发保留首次时钟，停用及暂停恢复正确失效。 | `ZombieCoopZoneEffects` 完整原版伤害 Prefix/消息字段 IL、生产 timed base/AreaTick/桥及收据、codec，199 条断言；覆盖 125/125、450/10、10/450、400/400 ms、三阶段丢包、离开/死亡/禁用/销毁/切图和暂停恢复，六项最终负向准确转红并按字节恢复。 |
+| CR-2026-10-18-009 | P1 / Fixed / COMPAT | 停止 COOP、换房或角色变化时，旧局因全局恢复单机权限而继续刷怪或执行旧现金回调。冻结本局房间/角色归属，入口异步、Tick、命令及世界抓取统一复核；过期局清理，但原资产退款与结算义务仍保留。 | `ZombieCoopFlow` 完整入口/Send/Execute/ApplyWorld 与生命周期回归，`ZombieModeHostOwners`；局归属、异步及世界延迟爆炸反向验证。 |
+| CR-2026-10-18-010 | P1 / Fixed / COMPAT | 普通丧尸掉落直接进房主背包，安全区清怪、临时 NPC 与近身掉落保护也只认房主。联机普通掉落按原数量质量在尸体位置走原生 Drop；安全区、NPC 与五米保护识别已准入原资产活人，旁观者不影响判定。移除仇恨释放的多余 Main 门，房主卸载后仍恢复追击有效客人。 | `ZombieCoopDrops` 11 条真实授予方法断言，`ZombieModeSafeZoneRuntime` 覆盖客人/旁观者/强制清理及 Main 为空释放追击；原门反向准确转红并恢复。Drop 原生登记与广播 IL 已核对；并发拾取仲裁另列 013，L3 待验。 |
+| CR-2026-10-18-011 | P2 / Fixed / COMPAT | 宠物攻击被共用玩家方判断计入刚硬/反制，误伤宠物玩法；普通怪生成敌对性又在房主体缺失时跳过。刚硬/反制限定本人及真实联机玩家；敌对安全网取有效参赛活人。 | `IntegrationThirdReviewFixes` 官方 Hurt IL/Harmony 与 `ZombieModeSpawnRuntime`，宠物及 Main 缺失生成回调负例。 |
+| CR-2026-10-18-012 | P1 / Fixed / COMPAT | 地下子场景没有 BuildingArea，空陈列扫描覆盖已有加成；G/Waves 漏收死亡事件时已死 Boss 仍占波次。扫描等官方建筑区载入；每 0.25 秒检查本波已死 Boss，走原结案/奖励。G 对销毁 Health 使用同场景已发布身份补死亡事实，避免客人卡下一波。 | `BackMountainLifecycle/Scanner`、`ModeGCombat`、`ArenaCoop` 实际生产方法，含完整 G 发布器及被销毁原引用；11 项玩法反向验证按字节恢复。 |
+| CR-2026-10-18-013 | P1 / Fixed / COMPAT / WIRE+ | 原生拾取先在各端入包再请求删除，两个客人可同时拿走普通共享掉落。专属网络 marker 在 Drop 前登记，房主授予单一持有人，真实拾取结果按 nonce 去重；未知异常保留原授权。部分合堆即使返回 false 也按已提交数量处理，旧 DropId 退役，原物余量带新 marker 重新落地。通知异常补原生 pending 保护已装备物；换局清理地面复制体，原房间/场景/registry/entry/item 身份限制防误删新房物。 | `ZombieCoopDropClaims` 217 条断言，执行八个官方完整方法与 17 个安装 COOP 完整原生 IL；覆盖争抢、重复、丢包、异常、部分合堆数量守恒及旧房 ID/对象复用。20 项行为、10 项专属 guard 负向均按预期转红并按字节恢复。实际 ItemSpawn 先同步应用 metadata，再创建可拾 agent；真实三端仍需 COOP-Z07/Z08 验收。 |
+
+历史 CR-2026-10-13-020（截信人 PC-06）维持 P1 / Reopened。protocol2 已阻止 Success 耐久确认前公开实物，并能在重启后拒绝未公开的 Custody；原 WaylayerEscrow 167 / Harmony Framework 183 条及 10 项双红恢复证据保留于 `Build/coop-independent-audit/pc06-reverse-gip05y70/`。但追加生产链反例确认：Success 实际写入、确认失败后强杀，原房主新进程返回 Success，使客人原资产终态扣除至 2 件，世界为 0 件；journal 虽保留原树，生产中没有实际领取或核账入口。`Build/coop-audit-20261018/L3/pc06-success-after-contract/receipt.json` 的真实文件强杀 / 新进程 L2 反例按发布契约转红，不能把责任树留存计为物品可用。正在补向后兼容的持久托管与领取凭据，必须覆盖未公开恢复、已公开未领取重建、已领取保存重载和原生搬包 / 合堆边界。protocol3 草稿在受控库存/ES3 替身中另有实际文件和新进程反例：领取物未随本人原生保存便转移到另一受控库存，后者保存后强杀领取进程，重启合计由 3 变 4；有效红证据为 `Build/coop-audit-20261018/L3/pc06-claim-crossasset-before-03/receipt.json`，前两次 runner 失败原样保留。明确拒收退款在同一受控库存/ES3 替身链中保存、崩溃可使总数 1 变 2，反例见 `Build/coop-audit-20261018/L3/pc06-refund-crossasset-before-01/receipt.json`。2026-10-18 owner 明确同意「仅为这类领取增加一次保存」；结合已说明的领取与明确退款范围，正在接入仅 PC-06 涉事原物的发布屏障：官方当前角色物品树保存并物理读回后才解锁，不改旧 unknown 语义。领取/明确退款屏障生产逻辑已接入并经 L2 冻结复审：同一角色根、槽位、资产、身体存活、原物归属在物理读回后和解锁前再次复核，同帧一次原生保存，死亡恢复保留原实例；待发布物的原生使用/消费入口正补独立窄锁。Claim/Refund 的实际文件强杀新进程正例见 `L3/pc06-native-publication-process-03/receipt.json`（宿主库存/ES3 为明确替身，等级 L2）。另有无 PC06 metadata 的纯原生库存替身对照同样暴露旧角色树回滚，不能由此宣称安装 COOP 的完整实机转移会复制，或据此放宽数量合同。此项修复与 Unity 三端强杀重连、真实 Drop/Pickup 对照、库存及保存重载验证通过前不放行；原生 SaveFile 忙状态未被强改。
+
+
+2026-10-18 续验：CR-2026-10-18-014，P2 / Fixed（L1/L2）/ COMPAT / WIRE+。F3 船点未加载时，把官方缓存的世界坐标传给要求局部坐标的重载，再加一次地图偏移，角色会落到地形外。改用原场景 ID 与完整地点路径调用官方 `LoadAndTeleport(MultiSceneLocation)`，只在真实终态返回 true 后继续查找船点。Windows 正式/Dev 真编译、全量 781 守卫与 155 执行回归通过，11 项结构破坏实际转红并还原。三端独立原生地点工具已证实正确落地，但修改后的生产 F3 入口仍待候选4实机验证，不能由工具替代。证据 `Build/coop-audit-20261018/L3/f3-boat-location/`。
+
+PC-06 的六个原生使用/消费门与同一原实例死亡恢复已完成 L1/L2 冻结；前期反例演进保留，当前仍为 P1 / Reopened，真实三端领取、明确退款、死亡恢复、转移与强杀重载未闭环。升级准备中，三端原生保存只给角色根补两条空收据，原枪弹完整节点不变；正常退出只刷新日报累计时间和更新时间戳，退出后完整物品树与原生读盘一致。这些准备证据不构成玩法通过。
 
 ## 2026-10-13 联机独立复审（COMPAT / WIRE+，L1/L2；L3 单独记载）
 
@@ -999,127 +1039,9 @@ Mode F/G/H、Zombie、终章/BGM、最终清场与存档回读。Player.log 不�
 ```
 
 
-## 2026-09-18 鸭王征程生产审核与体验优化
+## 2026-09-18 鸭王征程生产审核与体验优化（代码修复 L1/L2 已归档，L3 待验）
 
-来源：owner 要求全面审核并优化。以下为当前代码确认并已修复的问题；未做 L3，完整范围与验收见 `docs/reports/reviews/2026-09-22-鸭王征程重设计交付.md`。第三章去等待属于体验取舍，不列为缺陷。
-
-
-### CR-2026-09-22-001 · documented · COMPAT / SCHEMA+ / WIRE+ · 鸭王征程改由官方 Jeff 发放、后山三设施改接官方建筑（设计决策归档）
-
-- 状态：documented（owner 2026-09-22 拍板；不是缺陷）。
-- 位置：`Utilities/OfficialQuests/`、`Campaign/CampaignOfficialQuestClient.cs`、`Campaign/CampaignQuestTable.cs`、`Campaign/CampaignBaseObjectives.cs`、`Integration/BackMountain/GardenConstructionSite.cs`、`ShowcaseDisplayScanner.cs`、`ShowcaseTagInjector.cs`、`ShowcaseService.cs`。
-- 决定与理由：①征程六章接官方 `Duckov.Quests`（590101–590106，给予者 Jeff=1），投影核心只有一份，Mod 存档仍是权威；旧自绘公告板 / 面板退役，老档已建的保留。②官方基地菜地工地的付费交互父物体默认 inactive，玩家原本没有途径建成，Mod 只激活父物体、不写官方键；官方将来自己放出即 no-op。③自建「战利品登记簿」退役，加成改按官方陈列柜实摆计算（官方柜是基地存储，不带出击，换来真实陈列）；回退 = judges 改回读缓存、`sourceVersion` 回 1。④「建好菜地」放第二章（token 只在交付时发；上一章解锁的东西是下一章目标）。
-- 证据等级：L1 + L2；L3 待 owner（清单见 `docs/reports/reviews/2026-09-22-鸭王征程重设计交付.md`）。
-- 待 owner 决定：官方陈列柜槽位标签（需 F3 `SHOWCASE_OFFICIAL_PROBE` 实机读出）；若官方陈列柜被 `requireQuests` 门住是否改官方数据；官方将来改成任务解锁菜地时 Mod 是否让位。
-
-### CR-2026-09-22-002 · P0 · COMPAT · ResourceBundleLoader 的 pending 键按字符串比较，同一 bundle 两种路径写法触发同步二次加载，全部 Mod 物品注册失败
-
-- 状态：Fixed（L2），待 L3。
-- 位置：`Utilities/ResourceBundleLoader.cs`（`Prepare` / `LoadFromFile` / `Pending.ReleaseOwned`）。
-- 证据：owner 实机 `Player.log`（2026-09-22 12:38）47 条 `can't be loaded because another AssetBundle with the same files is already loaded`，栈为 `Prepare` consumer → `EnsureRegistered` / `ItemFactory.LoadBundleInternal` → `ResourceBundleLoader.LoadFromFile` → `AssetBundle.LoadFromFile`；随后 `PlayerStorage.Load` 与 `CreateMainCharacterAsync` 因 prefab 为 null 抛 NRE。
-- 根因：`FactoryResourceLoading.RunSpecial` 以 `Path.Combine(GetModPath(), "Assets/Items/x")` 为键，消费方以 `Path.Combine(modDir, "Assets", "Items", "x")` 查，`Dictionary<string,…>(OrdinalIgnoreCase)` 视为两个键；引入于 `60bb84b6`（09-20），此后未实机。
-- 修复：键统一经 `NormalizeKey`（`Path.GetFullPath`），`Pending.Key` 持有归一化键；夹具 `ResourceProduction` 加别名用例（旧代码转红）。
-- 兼容性：COMPAT；不改任何调用方路径写法。
-
-### CR-2026-09-22-003 · P2 · COMPAT · ShowcaseTagInjector 经补丁过的 ItemAssetsCollection.GetPrefab 枚举全部物品，等于在 bootstrap 里对每个 TypeID 强制同步按需注册
-
-- 状态：Fixed（L2）。
-- 位置：`Integration/BackMountain/ShowcaseTagInjector.cs`（`IsShowcaseTrophy` / `EnsureTagged`）。
-- 问题：文件头承诺「不 force-load bundle」，但 `ItemAssetsCollection.GetPrefab` 被 `ItemAssetsCollectionDynamicRegistrationPatch` 接管，对未注册的 TypeID 会同步跑 `EnsureRegistered`，异步预热失去意义，且在 CR-2026-09-22-002 存在时每件都撞二次加载。
-- 修复：改走 `BossRushDynamicItemRegistry.GetRegisteredPrefabWithoutEnsuring`（`prefabCheckDepth` 旁路补丁），未注册的下次进基地再补；`BackMountainPlayabilityGuard` 加断言并反向验证。
-
-### CR-2026-09-22-004 · P2 · COMPAT · 基地建筑 bundle 每次进基地被装配管线重复异步加载，Unity 每次报四条 "already loaded"
-
-- 状态：Fixed（L2），待 L3。
-- 位置：`Integration/FactoryResourceLoading.cs`（`RunSpecial`）、`Integration/IntegrationDeferredBootstrap.cs` 四处调用、`DailyReportMailboxBuilder` / `PetNestBuilder` 新增 `IsBundleLoaded`。
-- 证据：owner 实机 `Player.log`（2026-09-22 13:29）weddingchapel / starwish_fountain / petnest_relic_nest / bossrush_daily_mailbox 各 9 条，栈在原生线程（`LoadFromFileAsync`），紧随其后是各建筑「已注入，跳过」。
-- 根因：`60bb84b6` 把建筑加载改成 `RunSpecial` 无条件 `Prepare`，但建筑注入器持有静态 bundle 不释放；`LoadDirectory` 有 `loaded(name)` 门而 `RunSpecial` 没有。
-- 修复：`RunSpecial(..., Func<bool> alreadyLoaded = null)`，持有中直接交给消费方；判据与消费方的持有字段同源。
-
-### CR-2026-09-22-005 · P3 · SAFE · F3 用例 DATA_CODEX_FILTER_REFRESH 的判据停在锁定卡之前
-
-- 状态：Fixed（L2），待 L3。
-- 位置：`DebugAndTools/F3GameplayValidationCodex.cs`、`Integration/Codex/CodexBossCatalog.cs`（`CodexBossInfo.IsInCurrentPool`）。
-- 证据：本轮 F3 `official=45->45->45` FAIL；09-16 之前 `47->46->47` PASS；中间 e80b1c3f 让名单把筛掉的官方 Boss 补成锁定卡（owner 2026-09-20 拍板）。
-- 修复：用例改判池子给出的条目少一格再恢复，目录不缩；名单读不出（fail-open）时仍允许少一格。
-
-### CR-2026-09-22-006 · P2 · COMPAT · 陈列加成设计押在官方「陈列柜」上，而该建筑是官方废弃的、建造菜单里没有
-
-- 状态：Fixed（L2），待 L3。
-- 位置：`Integration/BackMountain/ShowcaseTrophyCatalog.cs`（原 `ShowcaseTagInjector.cs`）、`ShowcaseDisplayScanner.cs`、征程文案（`CampaignContentCatalog` / `CampaignDialoguePlayer` / `CampaignLocalization` / `Chapters.json`）、Wiki。
-- 证据：owner 2026-09-22 实机确认；F3 `SHOWCASE_OFFICIAL_PROBE`（13:29）场上只有 Gun 架（12 槽 `Gun`）、假人（7 槽按装备类型）、基地皮肤柜，Mod 枪（500035）与护甲（500004）已经摆在架子上。
-- 根因：设计阶段从反编译源看到 `Tag_ShowCase` 与 `Showcase_01` 就当成可建，没有核对建造菜单数据。
-- 修复：撤掉 `ShowCase` 标签注入（Mod 装备自带槽位标签），加成按枪械展示架 / 假人实摆计算（采集与公式不变）；玩家可见文案全部改口；`BackMountainPlayabilityGuard` 禁止再补展示标签。
-- 教训：「官方有这个建筑类」不等于「玩家建得出来」，与菜地工地一样要先看场景 / 建造表。
-
-### CR-2026-09-22-007 · P1 · COMPAT · 菜地指引写错入口（「建设面板」），造价与粑粑来源没告诉玩家；产物在菜地里长成克隆源的 3D 模型
-
-- 状态：Fixed（L2），待 L3。
-- 位置：`Campaign/CampaignDialoguePlayer.cs`（ch1 交付第 3 句）、`Campaign/CampaignContentCatalog.cs`（ch2 `GetEntryHint`、ch1 `GetDeliveredNotice`）、`Integration/BackMountain/BackMountainItems.cs`（`ConfigureItem`）、Wiki 中英。
-- 证据：`鸭科夫源码` `ConstructionSite` / `CostTaker` / `Garden` / `Crop` / `GardenView`；level5 重解 `GardenConstruct`：`dontSave=0`、`money=0`、`items=[(98,1),(938,9)]`；`resources.assets` 扫 `Item` 组件 98=Shovel（铲子）、938=Shit（粑粑 / Poop）；官方 Wiki：粑粑只掉自蝇蝇队员 / 队长，分解粑粑枪射程模组得 5。
-- 问题：①菜地是基地里的官方工地，付费交互由 Mod 打开，不在建造菜单，文案却让玩家去建设面板找；②第二章前置要 9 坨粑粑，玩家不知道去哪弄；③产物 prefab 沿克隆链带着便携安全区装置的模型，官方 `Crop.RefreshDisplayInstance` 用 `item.ItemGraphic` 摆作物，`InteractablePickup` 同理。
-- 修复：三处文案改为「带铲子 ×1、粑粑 ×9 去工地交钱动工」并在对话里点出蝇蝇；Wiki 写清造价、配方与掉落地点；`ConfigureItem` 反射清空私有 `itemGraphic`，官方退回 `spriteGraphicPfb` 图标立牌（官方无模型物品同一条路）。
-- 未核实：`GardenView.WateringTask` 状态机不在反编译源里，浇水按免费假设。
-- 待 owner：官方造价是否接受为第二章前置；改价要走 `CostTaker.SetCost`（改官方数值，§10）。
-
-### CR-2026-09-18-026 · P1 / COMPAT · 终章异步生成未与标准波次隔离，旧失败可清掉后继挑战
-
-- 状态：Fixed，待 L3。
-- 位置：`Campaign/CampaignFinalBoss.cs`。
-- 原因与修复：原工厂未传 isNonWaveSpawn，使用默认波次登记；旧请求 catch 无条件清理。现在走原工厂非波次路径，成功/异常都校验生成编号；死亡、让路、切槽、卸载回收，取消独白等待。
-- 验证：L1/L2：真实编排抽取回归、非波次/旧异常/取消反向探针。
-
-### CR-2026-09-18-027 · P1 / COMPAT · 目标终点入队失败后会随离场丢失重试机会
-
-- 状态：Fixed，待 L3。
-- 位置：`Campaign/CampaignProgressService.cs`。
-- 原因与修复：原目标完成只依赖局内追踪再次通知，终章死亡后立刻 ResetSession，一次性事件无法重发。服务保存会话内未入队事实，每秒重试；待交付和已达标未入队均不允许放弃，切槽清旧事实。
-- 验证：L1/L2：ContentTransactions 执行一次终点、离场重试、切槽和重复操作；重试早返变异转红。
-
-### CR-2026-09-18-028 · P2 / COMPAT · 待交付章节可被重新武装，完成计数继续变化
-
-- 状态：Fixed，待 L3。
-- 位置：`Campaign/CampaignObjectiveTracker.cs`。
-- 原因与修复：原 EnsureArmedFor 只认活动章节定义，ReadyToDeliver 仍被 GetActiveChapterDef 返回；计数与无伤判断在完成后继续消费事件。改为只武装 ContractActive，完成冻结、计数封顶，并重置同模式新局的波次观察。
-- 验证：L1/L2：真实追踪器与模式桥覆盖；重新武装变异转红。
-
-### CR-2026-09-18-029 · P2 / COMPAT · 敌方目标未按实际敌我关系过滤
-
-- 状态：Fixed，待 L3。
-- 位置：`Campaign/CampaignObjectiveCollector.cs`。
-- 原因与修复：原主玩家致命一击通过后直接统计，未排除友军与中立头目。复用官方 Team.IsEnemy，拒绝非敌对受害者，保留模式现有击杀归属。
-- 验证：L1/L2：友军/中立/敌对回归，移除敌对门控变异转红。
-
-### CR-2026-09-18-030 · P2 / COMPAT · 第二章近战目标缺少稳定开局工具
-
-- 状态：Fixed，待 L3。
-- 位置：`ModeD/ModeDEquipment_StarterKit.cs`。
-- 原因与修复：原近战武器只有 40% 开局概率，而契约要求五次近战击杀且入场禁止自带装备。仅 ModeD 活动近战契约保证调用原近战配装；其它模式共用整备不获得这个保证，待交付也不触发。
-- 验证：L1/L2：实际入口接线、契约判据回归、移除 ModeD 限定的反向探针；物品实例化仍待 L3。
-
-### CR-2026-09-18-031 · P2 / COMPAT · 公告板未取得模态输入，HUD 语言与高度未随内容更新
-
-- 状态：Fixed，待 L3。
-- 位置：`Campaign/CampaignBoardView.cs、Campaign/CampaignHud.cs`。
-- 原因与修复：原建 Canvas 只提供 Raycaster；模态界面未占有输入，HUD 脏检查不含语言且固定高度。复用 ModalInputLease 并在 Esc/销毁/切槽释放；语言参与脏检查、正文实测量高；待交付和失败反馈明确。
-- 验证：L1；L2 结构接线及模态/语言反向探针。实际输入栈、渲染和双语布局待 L3。
-
-### CR-2026-09-18-032 · P2 / COMPAT · 线索镜像可残留旧槽状态，旧对话等待未取消
-
-- 状态：Fixed，待 L3。
-- 位置：`Campaign/CampaignNoteBridge.cs、Campaign/CampaignDialoguePlayer.cs`。
-- 原因与修复：原注册只补新条目的字典，解锁只向官方单向追加；常驻 actor 的异步对话可跨槽继续。改为权威存档双向校正列表/字典/解锁，读故障不反锁；共享取消 token 与代际门保护交付反馈。
-- 验证：L1/L2：真实 Note 桥回归、取消方法/终章编排、共享 DialogueManager 回归及反向探针；官方图鉴界面待 L3。
-
-### CR-2026-09-18-033 · P2 / COMPAT · 程序化资源缺少完整归属，重复创建/卸载可残留材质和图标
-
-- 状态：Fixed，待 L3。
-- 位置：`Campaign/CampaignAssetCache.cs、Campaign/CampaignBoardBuilder.cs`。
-- 原因与修复：召唤石子件原分别 new Material，公告板运行时图标与材质未进入统一账本。共用现有 AssetCache 的材质和 ownedObjects，运行时纹理/sprite/材质随 owner 回收，染色工具从宿主原样移入资源类型；无新增缓存或调度器。
-- 验证：L1：分配与销毁路径核对；L2 资源归属接线守卫。实际 Unity 对象回收与帧耗待 L3。
-
-
-提交集成补记（OPERATIONAL，L1/L2）：上游 f3d28dc 新增 SkyIslandBossVoice.cs 未登记 compile_official.bat，当前 HEAD 的 BossForge 已引用它；由 OfficialCompileListFileExistenceGuard 可直接检出。本次仅补显式编译清单一行，使新提交可独立构建，不改该模块玩法。
+本节原始全文逐字存入 [2026-09 月归档](archive/CODE_REVIEW_FINDINGS_2026-09.md)。CR-2026-09-22-001～007、CR-2026-09-18-026～033 的代码结论按归档；各项 L3 与 owner 产品决定仍未关闭，人工清单见原节引用报告。2026-10-18 的陈列扫描修复另记本日新条目，不据此关闭历史验收。
 
 ## 2026-09-22：20260920 人工实测 17 项当前实现复核
 

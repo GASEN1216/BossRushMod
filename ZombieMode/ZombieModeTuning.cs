@@ -86,6 +86,8 @@ namespace BossRush
         {
             public const float TemporaryNpcProtectionTickIntervalSeconds = 0.25f;
             public const float BossStuckTimeoutSeconds = 12f;
+            /// <summary>Boss 找不到可达恢复点时的重试间隔，避免每帧重复完整导航查询。</summary>
+            public const float BossStuckRetryBackoffSeconds = 1f;
             /// <summary>
             /// Boss 与玩家水平距离小于该值时视为正在交战，不按“位移不足”判定卡死。
             /// 举盾、起手 telegraph 和贴脸近战 Boss 本来就不移动，不能被反复瞬移。
@@ -180,6 +182,8 @@ namespace BossRush
             public const int RandomGunRewardAmmoCount = 120;
             public const int AmmoSupplyRewardAmmoCount = 240;
             public const int ContractGunRewardAmmoCount = 120;
+            /// <summary>火箭弹等不堆叠 / 小堆叠重弹药的最低发放数量。</summary>
+            public const int HeavyAmmoMinimumRounds = 4;
             public const int MerchantAmmoPurchaseCount = 200;
             public const int AmmoRainSingleStackCount = 120;
             public const int AmmoRainDoubleStackCount = 180;
@@ -454,6 +458,7 @@ namespace BossRush
         // Performance
         public const float TemporaryNpcProtectionTickIntervalSeconds = Performance.TemporaryNpcProtectionTickIntervalSeconds;
         public const float BossStuckTimeoutSeconds = Performance.BossStuckTimeoutSeconds;
+        public const float BossStuckRetryBackoffSeconds = Performance.BossStuckRetryBackoffSeconds;
         public const float BossStuckEngagedDistance = Performance.BossStuckEngagedDistance;
         public const float BossStuckEngagedHeightTolerance = Performance.BossStuckEngagedHeightTolerance;
         public const int DropCleanupWaveAge = Performance.DropCleanupWaveAge;
@@ -530,6 +535,7 @@ namespace BossRush
         public const int RandomGunRewardAmmoCount = Reward.RandomGunRewardAmmoCount;
         public const int AmmoSupplyRewardAmmoCount = Reward.AmmoSupplyRewardAmmoCount;
         public const int ContractGunRewardAmmoCount = Reward.ContractGunRewardAmmoCount;
+        public const int HeavyAmmoMinimumRounds = Reward.HeavyAmmoMinimumRounds;
         public const int MerchantAmmoPurchaseCount = Reward.MerchantAmmoPurchaseCount;
         public const int AmmoRainSingleStackCount = Reward.AmmoRainSingleStackCount;
         public const int AmmoRainDoubleStackCount = Reward.AmmoRainDoubleStackCount;

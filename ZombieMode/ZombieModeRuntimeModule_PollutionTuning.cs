@@ -389,14 +389,14 @@ namespace BossRush
             }
 
             if (marker.EliteAffixes.Contains(ZombieModeEliteAffix.Stalwart) &&
-                ZombieModeDamageRuntime.IsPlayerSideAttack(damageInfo.fromCharacter) &&
+                ZombieModeDamageRuntime.IsPlayerOwnHit(damageInfo.fromCharacter) &&
                 !IsZombieModeDamageFromMeleeWeapon(damageInfo))
             {
                 damageInfo.finalDamage *= ZombieModeTuning.StalwartRangedDamageMultiplier;
             }
 
             if (marker.EliteAffixes.Contains(ZombieModeEliteAffix.Adaptive) &&
-                ZombieModeDamageRuntime.IsPlayerSideAttack(damageInfo.fromCharacter))
+                ZombieModeDamageRuntime.IsPlayerOwnHit(damageInfo.fromCharacter))
             {
                 float now = GetZombieModeRuntimeNow();
                 bool isMelee = IsZombieModeDamageFromMeleeWeapon(damageInfo);

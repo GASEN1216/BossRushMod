@@ -4,6 +4,8 @@
 
 运行 `python tools/run_runtime_regressions.py --filter CoopInstalledApi`。
 
+2026-10-18：整类 Transport 新增丧尸共享掉落租约辅助方法，SceneLoadLease 的 Item 宿主替身按官方组件继承补齐 gameObject，用于编译整个生产类；本子组不执行拾取业务，拾取/合堆/原生登记删除的完整执行边界见 `ZombieCoopDropClaims`。
+
 2026-10-15 C-01/C-03：完整生产 Transport 连续发送不同载荷，验证委托仅在绑定时构建、嵌套回调恢复外层载荷、发送异常清理和 Dispose；实际安装 API 的 BuildPayload 同步调用一次 writer 并保留精确字节。联网探测以可变反射对象覆盖缺失/重命名 singleton、角色与启动字段、getter 抛错和明确离线，角色无法判定时不能获得房主权限。C-02 另调用实际安装 ChatMessageRpc 的序列化器，并核对原生泛型 SendRpc 的 by-ref 签名；真正聊天发送走生产反射方法、以记录 sink 隔离原生网络。正常玩家存档与游戏进程均未访问，聊天实际可见性仍须 L3。
 
 同一入口还真编译并执行整个生产 `BossRushCoopTransport.cs`，使用本机安装的 Harmony 验证已批准 Base 返回的租约。API 注册、角色、场景和异步 Closure 继续按钮为可变宿主边界；没有恒真授权替身。先证未经批准及新投票不能通行，再证等待超过 15 秒、活人/死者、房主先入 Base 的慢客仍能继续，最后覆盖取消、新目标、native Clear/Authorize、换房、换档、换 body、同图新 handle、场景卸载和 Dispose。新的全局 SceneGeneration 不代表本客已离开原场景，因此不单独撤销其授权。

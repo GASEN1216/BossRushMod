@@ -1,11 +1,15 @@
 """Run production combat dispatch/effects with controlled host substitutes."""
 from pathlib import Path
-import subprocess
+import argparse
+import hashlib
+import sys
 from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parents[3]
 HERE = Path(__file__).resolve().parent
-OUT = ROOT / "Build/affix-combat"
+parser = argparse.ArgumentParser()
+parser.add_argument("--output", type=Path, default=ROOT / "Build/affix-combat")
+OUT = parser.parse_args().output.resolve()
 
 
 def member(source, signature):
@@ -66,12 +70,7 @@ def main():
     generated += member(rewards, "private void CreateZombieModeOptionExplosion(") + '\n'
     generated += member(rewards, "private void TriggerZombieModeDoomPulse(") + '\n'
     generated += "private void DealZombieModeAreaDamageToPlayer(int runId, CharacterMainControl source, Vector3 origin, float radius, float damage) { owner.DealZombieModeAreaDamageToPlayer(runId, source, origin, radius, damage); }\n"
-    for signature in (
-        "internal static void DeferExplosion(",
-        "private static IEnumerator ExplosionNextFrame(",
-        "internal static void TriggerDoomPulse(",
-    ):
-        generated += member(runtime_module, signature) + "\n"
+    generated += member(runtime_module, "internal static void TriggerDoomPulse(") + "\n"
     generated += member(skills, "internal void DealZombieModeExplosionAreaDamage(") + "\n"
     generated += "}}"
     generated = "using ItemStatsSystem;\n" + generated
@@ -81,6 +80,7 @@ def main():
         "AffixRuntimeService.cs", "AffixRuntimeService_Effects.cs", "AffixDefinitions.cs",
     )] + [ROOT / "Common/Stats/RuntimeStatModifierTracker.cs",
           ROOT / "Utilities/RunScopedRegistry.cs",
+          ROOT / "ZombieMode/ZombieModeDeferredExplosion.cs",
           HERE / "Program.cs", HERE / "Stubs.cs", extracted]
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType>'
     project += '<TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion>'
@@ -89,7 +89,16 @@ def main():
     project += '</ItemGroup></Project>'
     path = OUT / "AffixCombat.csproj"
     path.write_text(project, encoding="utf-8")
-    return subprocess.call(["dotnet", "run", "--project", str(path), "--configuration", "Release"], cwd=ROOT)
+    (OUT / "source-hashes.txt").write_text("\n".join(
+        hashlib.sha256(p.read_bytes()).hexdigest() + " " + str(p.relative_to(ROOT))
+        for p in [ROOT / "ZombieMode/ZombieModeRuntimeModule.cs",
+                  ROOT / "ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs",
+                  ROOT / "ZombieMode/ZombieModeRewardTriggerEffects.cs"] + sources if p != extracted), encoding="utf-8")
+    sys.path.insert(0, str(ROOT / "tools"))
+    from run_runtime_regressions import run_project_fixture
+    code, output = run_project_fixture(path, OUT / "runs", ROOT)
+    print(output)
+    return code
 
 
 if __name__ == "__main__":

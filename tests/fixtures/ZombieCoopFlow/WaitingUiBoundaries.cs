@@ -1,4 +1,4 @@
-// Native UI presentation is isolated. Both the production waiting button and
+﻿// Native UI presentation is isolated. Both the production waiting button and
 // the shared ApplyButtonDepth method are extracted unchanged by run.py.
 using System;
 namespace Duckov.MiniMaps {}
@@ -12,7 +12,7 @@ namespace TMPro { internal enum TextAlignmentOptions {Center} }
 namespace UnityEngine
 {
     internal struct Vector2 {internal float x,y;internal Vector2(float a,float b){x=a;y=b;}}
-    internal struct Color {internal float a;internal Color(float alpha){a=alpha;}}
+    internal struct Color {internal float a;internal Color(float alpha){a=alpha;}internal Color(float r,float g,float b,float alpha){a=alpha;}}
     internal sealed class Sprite {internal Vector2 border=new Vector2(8,8);}
 }
 namespace UnityEngine.UI

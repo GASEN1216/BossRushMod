@@ -70,6 +70,7 @@ namespace BossRush
             {
                 if (!owner.IsModeDActive)
                 {
+                    SweepSilentWaveBossDeaths(deltaTime);
                     if (AdvanceWaveIntegrityCheck(deltaTime))
                     {
                         owner.TryFixStuckWaveIfNoBossAlive();

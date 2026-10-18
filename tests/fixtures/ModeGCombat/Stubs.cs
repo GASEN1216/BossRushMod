@@ -42,6 +42,7 @@ namespace UnityEngine
         public static Vector3 operator -(Vector3 a,Vector3 b) { return new Vector3(a.x-b.x,a.y-b.y,a.z-b.z); }
         public float sqrMagnitude { get { return x*x+y*y+z*z; } }
     }
+    public static class Time { public static float unscaledTime; }
     public static class Mathf
     {
         public const float Deg2Rad=(float)(Math.PI/180.0);
@@ -153,6 +154,7 @@ public class Health : UnityEngine.Object
 {
     public static event Action<Health,DamageInfo> OnHurt, OnDead;
     public CharacterMainControl owner;
+    public T GetComponent<T>() where T:class { return owner as T; }
     public float CurrentHealth; public bool IsDead;
     public float MaxHealth { get { return owner.CharacterItem.GetStat("MaxHealth").Value; } }
     public CharacterMainControl TryGetCharacter() { return owner; }
@@ -238,12 +240,18 @@ namespace BossRush
     {
         private static ModeGEntryRuntime coopOwner;
         private ModeGRuntimeModule modeGRuntime;
+        private long coopCombatSequence;
+        private readonly HashSet<string> coopDeparted=new HashSet<string>();
+        internal static bool AuditPublisher;
+        internal static readonly List<string> DeliveredAssets=new List<string>();
         internal static int PublishedDamage, PublishedDeaths;
         internal static bool HasLeft(string id) { return false; }
         internal static void UseRuntime(ModeGRuntimeModule runtime)
-        { coopOwner = runtime == null ? null : new ModeGEntryRuntime { modeGRuntime=runtime }; PublishedDamage=0;PublishedDeaths=0; }
+        { coopOwner = runtime == null ? null : new ModeGEntryRuntime { modeGRuntime=runtime }; PublishedDamage=0;PublishedDeaths=0;DeliveredAssets.Clear(); }
         internal static void PublishCoopCombat(Health health, DamageInfo info, bool dead)
-        { if(dead)PublishedDeaths++;else PublishedDamage++; }
+        { if(dead)PublishedDeaths++;else PublishedDamage++;if(AuditPublisher)PublishProductionCoopCombat(health,info,dead); }
+        private void DeliverOrdered(string id,string receipt,ModeGCoopCombat fact)
+        { DeliveredAssets.Add(id+":"+modeGRuntime.GetCoopParticipantAsset(id)); }
         internal static bool SelectFormation(Vector3[] source,int count,ModeGPlanVariant variant,out Vector3[] selected)
         { return TrySelectModeGFormation(source,new Vector3(),0,count,variant,ModeGWavePlan.GetFormationSpec(variant),false,out selected); }
     }
@@ -291,6 +299,9 @@ namespace BossRush
         { CharacterMainControl value; return id!=null && Entities.TryGetValue(id,out value) ? value : null; }
         internal static string GetPlayerId(CharacterMainControl character)
         { foreach(var pair in Entities)if(ReferenceEquals(pair.Value,character))return pair.Key.StartsWith("p:")?pair.Key.Substring(2):null;return null; }
+        internal static string GetEntityId(CharacterMainControl character) {return GetPlayerId(character);}
+        internal static int GetAiId(CharacterMainControl character) {return character==null?0:character.GetInstanceID();}
+        internal static BossRushCoopPlayer FindPlayer(string id) {return Players.Find(p=>p.Id==id);}
     }
     internal sealed class BossRushCoopPlayer
     { internal string Id,AssetId;internal bool IsLocal;internal CharacterMainControl Character;internal bool IsAlive {get{return Character!=null&&Character.Health!=null&&!Character.Health.IsDead;}} }
@@ -310,7 +321,9 @@ namespace BossRush
         private readonly List<ManagedBossRuntimeHandle> _managedHandles=new List<ManagedBossRuntimeHandle>();
         private readonly List<CharacterMainControl> _characterScratch=new List<CharacterMainControl>();
         private ModeGWavePlan _wavePlan;
-        private bool _batchActivationInProgress,_waveSettlementPending;
+        private bool _batchActivationInProgress,_waveSettlementPending,_waveSpawnInFlight;
+        internal void AuditSweep() { SweepSilentBossDeaths(); }
+        internal bool SpawnInFlight { set { _waveSpawnInFlight=value; } }
         private void HandleTechnicalBossDeath(Health health) { throw new InvalidOperationException("Unexpected spawning death in combat regression"); }
         private string coopRunAsset,coopRunRoom; private bool coopAssetBound;
         private readonly Dictionary<string,string> coopParticipantAssets=new Dictionary<string,string>(StringComparer.Ordinal);
@@ -321,6 +334,7 @@ namespace BossRush
         private void DisarmStartupRefund() { StartupDisarmed=true; }
         internal void End(ModeGExitReason reason) { if(_state.exitReason==ModeGExitReason.None)AssetEnds++;_state.exitReason=reason; }
         private readonly ModeGRunState _state;
+        internal ModeGRunState State {get{return _state;}}
         private readonly ModeGCombatTelemetry _telemetry;
         private readonly ModeGAdaptiveCombat _adaptive;
         private readonly ModBehaviour _host = ModBehaviour.Instance;
