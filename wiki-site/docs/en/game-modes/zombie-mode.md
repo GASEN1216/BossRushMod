@@ -37,6 +37,8 @@ You must pick one of two loadouts upon entering:
 
 Both loadouts also get a random armor set: body armor, helmet and headset, one each (quality ≤5).
 
+Your starter choice does not restrict weapons for the run: Melee starters can use guns, and Gunners can switch to melee. It affects starting supplies, early guaranteed upgrades, and starter-gear rerolls; both weapon reward types remain available.
+
 ---
 
 ## Core Loop

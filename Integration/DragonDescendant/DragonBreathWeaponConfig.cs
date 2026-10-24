@@ -63,6 +63,7 @@ namespace BossRush
         // Stat类的baseValue和display字段缓存
         private static FieldInfo cachedStatBaseValueField = null;
         private static FieldInfo cachedStatDisplayField = null;
+        private static FieldInfo cachedStatsDictionaryField = null;
         private static bool statFieldsCached = false;
 
         // 子弹和枪口特效预制体缓存
@@ -180,6 +181,7 @@ namespace BossRush
 
                 ConfigureSharedGunFoundation(item, CALIBER, MAX_DURABILITY, REPAIR_LOSS_RATIO);
                 SetWeaponStats(item);
+                EnsureZombieDamageFactor(item);
                 AddWeaponTags(item);
                 SetBulletCountDisplay(item);  // 设置BulletCount显示
                 ConfigureGunSettings(item);   // 配置枪械音效和特效
@@ -191,6 +193,52 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[DragonBreathWeapon] 配置出错: " + e.Message);
+            }
+        }
+
+        internal static bool NeedsRuntimeConfig(Item item)
+        {
+            return CustomItemRuntimeStateHelper.NeedsGunRuntimeConfig(item, true) ||
+                   (item != null && item.Stats != null && item.Stats.GetStat("DamageFactorToZombie") == null);
+        }
+
+        internal static void RestoreRuntimeConfig(Item item)
+        {
+            if (CustomItemRuntimeStateHelper.NeedsGunRuntimeConfig(item, true))
+            {
+                ConfigureWeapon(item);
+                return;
+            }
+
+            // 旧实例只缺对丧尸系数时仅补这一项，保留当前基础属性、重铸和运行时修饰。
+            EnsureZombieDamageFactor(item);
+        }
+
+        private static void EnsureZombieDamageFactor(Item item)
+        {
+            if (item == null || item.Stats == null || item.Stats.GetStat("DamageFactorToZombie") != null)
+            {
+                return;
+            }
+
+            // 官方缺失 stat 时返回 0，Health.Hurt 会据此把丧尸的直接伤害乘成 0。
+            item.Stats.Add(new Stat("DamageFactorToZombie", 1f, false));
+            InvalidateStatsDictionary(item.Stats);
+        }
+
+        private static void InvalidateStatsDictionary(StatCollection stats)
+        {
+            try
+            {
+                CacheStatFields();
+                if (cachedStatsDictionaryField != null)
+                {
+                    cachedStatsDictionaryField.SetValue(stats, null);
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[DragonBreathWeapon] 重置 Stat 字典失败: " + e.Message);
             }
         }
 
@@ -606,6 +654,9 @@ namespace BossRush
                     }
                 }
 
+                // 官方 Add 只写列表，不更新已建立的 hash 字典；战斗按 hash 读取，必须先失效。
+                InvalidateStatsDictionary(item.Stats);
+
                 // 验证关键 Stats 是否正确设置（用于调试）
                 VerifyCriticalStats(item);
 
@@ -740,6 +791,8 @@ namespace BossRush
                     BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
                 cachedStatDisplayField = typeof(Stat).GetField("display",
                     BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                cachedStatsDictionaryField = typeof(StatCollection).GetField("_cachedStatsDictionary",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
             }
             catch { }
 

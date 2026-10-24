@@ -7,6 +7,7 @@ Your first custom gun. Dropped by Dragon Descendant. Looks modest on paper, but 
 ### Stats
 
 - **Type**: Firearm / **Element**: Fire / **Drop**: Dragon Descendant (10%) / Drops on death
+- Uses BR ammunition and deals direct-hit damage to zombies. Choosing the Melee starter loadout does not prevent using it later.
 - Dmg 23 / ROF 13 / Mag 20 / Reload 3s / Speed 122 / Range 28
 - Crit 25% / Crit Dmg 1.5x / Move 82% (hip) / 45% (ADS) / Spread 27/8
 

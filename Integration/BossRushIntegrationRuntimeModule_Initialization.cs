@@ -121,12 +121,12 @@ namespace BossRush
         internal void RegisterCustomWeaponRuntimeConfigs()
         {
             NewWeaponRuntime.RegisterRuntimeConfigs();
-            CustomItemRuntimeStateHelper.RegisterGunRuntimeConfiguredItem(
+            CustomItemRuntimeStateHelper.RegisterRuntimeConfiguredItem(
                 DragonBreathWeaponConfig.WEAPON_TYPE_ID,
-                DragonBreathWeaponConfig.ConfigureWeapon,
-                "龙息",
+                DragonBreathWeaponConfig.RestoreRuntimeConfig,
+                DragonBreathWeaponConfig.NeedsRuntimeConfig,
                 null,
-                true);
+                "龙息");
 
             CustomItemRuntimeStateHelper.RegisterGunRuntimeConfiguredItem(
                 DragonKingBossGunConfig.WeaponTypeId,

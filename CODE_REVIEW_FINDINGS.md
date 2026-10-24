@@ -2,6 +2,12 @@
 
 更早记录见 `archive/`；月度归档索引保留在本文件正文。
 
+## 2026-10-24 龙息丧尸伤害修复（COMPAT / WIRE+；Fixed at L1/L2，L3 待验）
+
+CR-2026-10-24-001，P2：龙息资源及运行时配置缺少 `DamageFactorToZombie`，官方枪械读取缺项为 0，弹道送入 `Health.Hurt` 后对 isZombie 目标把直接伤害清零。现装 resources.assets 五种 Cname_Zombie 的该标记均为 1，当前 DLL 的创建状态机也明确复制 preset.isZombie 至 Health，故不是只由测试替身构造的靶子。玩家未提供“无法使用”的具体表现，不能据此认定所有无法开火/装弹反馈都同因。
+
+`Integration/DragonDescendant/DragonBreathWeaponConfig.cs` 为缺项补中性值 1，并刷新官方 StatCollection 的懒哈希缓存；`Integration/BossRushIntegrationRuntimeModule_Initialization.cs` 登记龙息专属恢复判据，使旧枪经初始化和手持入口补配，保留已有系数、重铸、磨损与运行时修饰。42 项回归直接执行生产恢复入口及完整官方枪械→弹道→DamageReceiver→Health 方法，旧行为直伤为 0、修复后恢复伤害，5 项负向探针均在预期断言转红。正式 Windows 隔离编译通过；无 L3。证据及宿主替身边界见 `Build/champion-dragonbreath-20261024/` 与夹具 README；待实机验收 BR 装弹、开火、旧枪重入场及普通/大体型丧尸伤害。
+
 ## 2026-10-23 CR-008 补充：吞咽动画受击外沿修复（COMPAT；Fixed at L1/L2，L3 待验）
 
 CR-2026-10-23-008 的动画外沿遗漏已补齐。`GreedyMimicVisual.cs:66、165、207` 缓存主箱身和两块箱盖网格包络，每帧变换 24 个角点；`GreedyMimicEncounter.cs:69、156、194` 在成长回调及动画后更新唯一 BoxCollider，通过 kinematic Rigidbody 发布姿态，保留胸口基点与一次成长缩放。吞咽正负相、呼吸、跳动与开盖均覆盖；不逐帧重建碰撞体或全局 SyncTransforms。官方爆炸和近战不为 simpleHealth 多 Collider 去重，因此保持单盒。
