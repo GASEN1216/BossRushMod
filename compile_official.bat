@@ -106,6 +106,7 @@ echo(/reference:ItemStatsSystem.dll
 echo(/reference:UniTask.dll
 echo(/reference:Sirenix.OdinInspector.Attributes.dll
 echo(/reference:TeamSoda.Duckov.Core.dll
+echo(/reference:FOW.dll
 echo(/reference:EasySave3.dll
 echo(/reference:TeamSoda.Duckov.Utilities.dll
 echo(/reference:AstarPathfindingProject.dll
@@ -455,6 +456,7 @@ echo(Utilities\F3DebugCheatMath.cs
 echo(Utilities\ManagedBossSpawnContracts.cs
 echo(Utilities\ModBossPresetLookup.cs
 echo(Utilities\SpawnedEnemyActivationHelper.cs
+echo(Utilities\ModEntityFogVisibility.cs
 echo(Utilities\EnemySpawnCore.cs
 echo(Utilities\EnemySpawnHostBridge.cs
 echo(Utilities\ModeEFSpawnProfiler.cs
@@ -919,6 +921,15 @@ echo(Integration\SandstormChampion\SandstormChampionBody.cs
 echo(Integration\SandstormChampion\SandstormChampionHazards.cs
 echo(Integration\SandstormChampion\SandstormChampionBoss.cs
 echo(Integration\SandstormChampion\SandstormChampionAbilityController.cs
+echo(Integration\FieldAdventures\ExplorationRuntimeRegistration.cs
+echo(Integration\FieldAdventures\FieldAdventureSupport.cs
+echo(Integration\FieldAdventures\FieldAdventureVisualAssets.cs
+echo(Integration\FieldAdventures\Mimic\GreedyMimicEncounter.cs
+echo(Integration\FieldAdventures\Mimic\GreedyMimicInteractable.cs
+echo(Integration\FieldAdventures\Mimic\GreedyMimicInventory.cs
+echo(Integration\FieldAdventures\Mimic\GreedyMimicRules.cs
+echo(Integration\FieldAdventures\Mimic\GreedyMimicRuntimeModule.cs
+echo(Integration\FieldAdventures\Mimic\GreedyMimicVisual.cs
 echo(Integration\NewWeapons\EmptyMagazineMine\EmptyMagazineMineConfig.cs
 echo(Integration\NewWeapons\ReloadMetronome\ReloadMetronomeConfig.cs
 echo(Integration\NewWeapons\ReloadMetronome\ReloadMetronomeRules.cs

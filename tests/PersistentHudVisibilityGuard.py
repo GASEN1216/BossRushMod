@@ -57,6 +57,11 @@ REVERT_TO_VISIBLE = re.compile(r"\b(?:visible|shown)\s*=\s*true\b|\b(?:suppresse
 # 驱动方式：("call", 宿主文件, 调用片段, 宿主方法签名, 调用外层的块, 调用前的单行判空 if, 宿主里调用之前的 return 条数)
 #          或 ("unity", 类声明正则)。宿主那三项是按 2026-09-14 的生产代码记下的：宿主结构有意改了就一起改这里。
 PERSISTENT = (
+    ("Integration/FieldAdventures/Mimic/GreedyMimicVisual.cs", None, "internal void SyncHudVisibility()",
+     "healthRoot.gameObject.SetActive(visible);",
+     ("call", "Integration/FieldAdventures/Mimic/GreedyMimicEncounter.cs", "visual.SyncHudVisibility();",
+      "internal void SyncHudVisibility()", [], "if (visual != null)", 0),
+     "贪吃宝箱怪世界血条；遭遇运行时在暂停早返前驱动"),
     ("Integration/NewWeapons/PassTheBomb/PassTheBombFx.cs", None, "private void LateUpdate()",
      "canvas.enabled = visible;", ("unity", r"class PassTheBombFx\s*:\s*MonoBehaviour"),
      "甩锅许可证：待爆期间跟随携带者的头顶倒计时"),

@@ -148,6 +148,7 @@ namespace BossRush
             runtimeModuleHost.Register(dragonDescendantRuntimeModule);
             phantomWitchRuntimeModule = new PhantomWitchRuntimeModule();
             runtimeModuleHost.Register(phantomWitchRuntimeModule);
+            ExplorationRuntimeRegistration.Register(runtimeModuleHost);
         }
 
         private UnityEngine.GameObject ResolveZombieModeTemporaryNpcPrefab(string kind)
