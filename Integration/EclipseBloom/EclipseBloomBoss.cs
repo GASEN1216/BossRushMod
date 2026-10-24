@@ -61,7 +61,7 @@ namespace BossRush
                 boss.transform.localScale = Vector3.one;
                 Stat hp = boss.CharacterItem.GetStat("MaxHealth");
                 if (hp == null) throw new InvalidOperationException("eclipse_health_stat_unavailable");
-                hp.BaseValue = 5000f;
+                hp.BaseValue = EclipseBloomTuning.BaseHealth;
                 boss.Health.SetHealth(boss.Health.MaxHealth);
                 float baseline = BossSkillDamageRules.ReadMeleeDamageStatBase(boss);
                 owner.ApplyCampaignBossStatMultiplierForRuntime(boss);

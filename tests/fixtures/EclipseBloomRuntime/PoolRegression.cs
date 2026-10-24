@@ -14,7 +14,7 @@ internal static partial class Program
         Check(EclipseBloomPoolAdapter.IsPreset(preset) && EclipseBloomPoolAdapter.IsPreset(EclipseBloomBoss.NameKey)
             && !EclipseBloomPoolAdapter.IsPreset((EnemyPresetInfo)null) && !EclipseBloomPoolAdapter.IsPreset("unrelated"),
             "Boss pool catalogue registers exactly one recognizable Eclipse Bloom identity");
-        Check(preset.team == (int)Teams.wolf && preset.baseHealth == 5000f && preset.baseDamage == 34f,
+        Check(preset.team == (int)Teams.wolf && preset.baseHealth == EclipseBloomTuning.BaseHealth && preset.baseDamage == 34f,
             "Boss pool catalogue retains flower hostility health and damage tuning");
         owner.IsActive = true; EclipseBloomRuntimeModule natural = Module(); ModuleFrame(natural);
         Check(CharacterRandomPreset.CreateCalls == 0, "active BossRush excludes natural map generation before the pool factory runs");

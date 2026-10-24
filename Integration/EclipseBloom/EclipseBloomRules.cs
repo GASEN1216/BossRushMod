@@ -31,6 +31,22 @@ namespace BossRush
         // 玩家离花冠 9.5 m 以外放风筝时，每次新预警同时落日珥。
         internal const float FlareMinimumDistance = 9.5f;
         internal const float FlareRadius = 2.4f;
+        // 2026-10-24 加强（owner：太容易被打倒）：更厚的血、更厚的花瓣；花瓣没拆时核心按每片 18% 减伤，
+        // 四瓣全在只吃 28%。逼玩家先拆瓣再打核心，而不是站远对着日核倾泻。
+        internal const float BaseHealth = 7500f;
+        internal const float PetalHealthFraction = 0.075f;
+        internal const float CoreGuardPerPetal = 0.18f;
+        // 引导任务完成后的普通出击里，每趟 37 号只有这个概率遇到花冠。
+        internal const float RepeatEncounterChance = 0.3f;
+
+        /// <summary>核心受伤倍率：第三阶段花瓣已崩落，不再护核。</summary>
+        internal static float CoreDamageScale(int phase, int intactMask)
+        {
+            if (phase >= 3) return 1f;
+            int intact = 0;
+            for (int value = intactMask & AllPetalsMask; value != 0; value &= value - 1) intact++;
+            return 1f - CoreGuardPerPetal * intact;
+        }
     }
 
     /// <summary>

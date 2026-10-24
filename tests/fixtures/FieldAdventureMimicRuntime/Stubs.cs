@@ -195,7 +195,7 @@ namespace BossRush.Utils
 }
 namespace BossRush
 {
-    public class ModBehaviour { }
+    public class ModBehaviour { public static void DevLog(string message) { } }
     // 地形只返回可控落点；真实射线 / 胶囊净空由 Unity 侧另验。
     internal static class GreedyMimicTerrain
     {
@@ -212,6 +212,7 @@ namespace BossRush
     internal class GreedyMimicVisual : IDisposable
     {
         internal const int ShellCapacity = 10;
+        public bool MouthOpen;
         public int Slams, Explosions, ShellPops, Muzzles, Heals, LeapFrames, LaneShows, CircleShows;
         public readonly bool[] ShellVisible = new bool[ShellCapacity];
         public void SetLeap(float progress) { if (progress >= 0f) LeapFrames++; }

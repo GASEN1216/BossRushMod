@@ -18,10 +18,14 @@ namespace BossRush
         internal const float ShellRange = 32f;
         internal const float ShellHalfWidth = 0.8f;
         internal const float EnragedHealthFraction = 0.4f;
+        /// <summary>闭着嘴时铁皮箱体只吃这么多伤害；张嘴（蓄力预警、吞咽、扑跳）时全额。</summary>
+        internal const float ShellArmor = 0.45f;
+        /// <summary>每趟普通出击遇到宝箱怪的概率；遇上时出现的时间与位置也随机。</summary>
+        internal const float SpawnChance = 0.35f;
         private readonly int[] meals = new int[3];
         internal int Meals { get; private set; }
         internal int Level(GreedyMimicFood food) { int index = (int)food; return index >= 0 && index < 3 ? meals[index] : 0; }
-        internal float MaximumHealth { get { return 600f + Meals * 240f; } }
+        internal float MaximumHealth { get { return 900f + Meals * 300f; } }
         internal float Scale { get { return 1f + Meals * 0.18f; } }
         internal static int Cost(GreedyMimicFood food) { return food == GreedyMimicFood.Ammunition ? 12 : 1; }
         internal bool CanFeed(GreedyMimicFood food) { return (int)food >= 0 && (int)food < 3 && Meals < MaximumMeals; }

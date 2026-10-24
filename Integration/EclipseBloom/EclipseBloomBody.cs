@@ -191,15 +191,23 @@ namespace BossRush
             SkyIslandBossSfx.Play(null, SkyIslandBossCue.Impact, transform.position);
         }
 
-        /// <summary>核心中弹：一小簇向外崩的金屑，核心外壳短促一胀。频率由控制器限流。</summary>
-        internal void PlayCoreHit(Vector3 point)
+        /// <summary>
+        /// 核心中弹：一小簇向外崩的金屑，核心外壳短促一胀。频率由控制器限流。
+        /// guarded 时花瓣仍在护核：改成一圈苍白的日冕护壁闪光、火星更少，读得出「这下没打疼」。
+        /// </summary>
+        internal void PlayCoreHit(Vector3 point, bool guarded)
         {
             if (_released || _coreCage == null) return;
-            _coreHit = 1f;
+            _coreHit = guarded ? 0.35f : 1f;
             Vector3 center = _coreCage.position;
             Vector3 outward = point - center;
             if (outward.sqrMagnitude < 0.0001f) outward = Vector3.up;
-            BossRushFxBurst chips = BossRushFxKit.Sparks(EclipseBloomVisuals.PaleGold, 7);
+            if (guarded)
+            {
+                Burst(center + outward.normalized * GetCoreRadius(),
+                    BossRushFxKit.Shockwave(new Color(1f, 0.92f, 0.7f, 0.55f), GetCoreRadius() * 1.4f, 1.25f, 0.18f, false));
+            }
+            BossRushFxBurst chips = BossRushFxKit.Sparks(guarded ? new Color(1f, 0.95f, 0.8f) : EclipseBloomVisuals.PaleGold, guarded ? 3 : 7);
             chips.Cone = 40f; chips.Direction = outward;
             chips.SpeedMin = 3f; chips.SpeedMax = 6.5f; chips.Gravity = 0.8f;
             chips.LifeMin = 0.2f; chips.LifeMax = 0.4f;

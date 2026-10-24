@@ -205,6 +205,28 @@ internal static class Program
         }
     }
 
+    private static void ShellArmor()
+    {
+        DamageReceiver receiver;
+        using (var subject = new Subject(false))
+        {
+            receiver = subject.Receiver;
+            var closed = new DamageInfo(subject.Player) { damageValue = 100f };
+            subject.Visual.MouthOpen = false; ReceiverDamageScaling.Apply(receiver, ref closed);
+            Near(closed.damageValue, 100f * GreedyMimicRules.ShellArmor, "a closed iron shell only takes the armored share");
+            var open = new DamageInfo(subject.Player) { damageValue = 100f };
+            subject.Visual.MouthOpen = true; ReceiverDamageScaling.Apply(receiver, ref open);
+            Near(open.damageValue, 100f, "an open mouth takes full damage");
+            var heal = new DamageInfo(subject.Player) { damageValue = -50f };
+            subject.Visual.MouthOpen = false; ReceiverDamageScaling.Apply(receiver, ref heal);
+            Near(heal.damageValue, -50f, "armor never scales healing");
+        }
+        var after = new DamageInfo(null) { damageValue = 100f };
+        ReceiverDamageScaling.Apply(receiver, ref after);
+        Near(after.damageValue, 100f, "disposing the encounter unregisters its armor");
+        Check(!ReceiverDamageScaling.IsArmed, "no stale armor registrations remain after dispose");
+    }
+
     private static void FlyingVolley()
     {
         using (var subject = new Subject(false))
@@ -237,7 +259,7 @@ internal static class Program
 
     private static void Main()
     {
-        RecoveryThresholds(); FilterAndAccumulation(); TongueAndPounce(); FlyingVolley();
+        RecoveryThresholds(); FilterAndAccumulation(); TongueAndPounce(); FlyingVolley(); ShellArmor();
         Console.WriteLine("PASS FieldAdventureMimicRuntime: " + assertions + " assertions; real Encounter, Rules, official HealthSimpleBase and DamageReceiver; host/visual are stubs.");
     }
 }

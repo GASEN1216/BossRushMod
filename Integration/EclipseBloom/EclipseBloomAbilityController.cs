@@ -29,6 +29,7 @@ namespace BossRush
         private Modifier headArmor;
         private CharacterRandomPreset originalPreset;
         private GameObject coreHit;
+        private DamageReceiver coreReceiver;
         private readonly List<Collider> hiddenHitColliders = new List<Collider>();
         private EclipseBloomSolarFlares flares;
         private int seenAttackSerial;
@@ -84,7 +85,7 @@ namespace BossRush
             for (int i = 0; i < petals.Length; i++)
             {
                 petals[i] = EclipseBloomPetal.Create(this, i, body.GetPetalPosition(i),
-                    Mathf.Max(1f, boss.Health.MaxHealth * 0.055f), boss.Team);
+                    Mathf.Max(1f, boss.Health.MaxHealth * EclipseBloomTuning.PetalHealthFraction), boss.Team);
                 EclipseBloomEncounterPlacement.BindToScene(petals[i].gameObject, boss.gameObject.scene);
             }
             SyncPetals();
@@ -134,6 +135,9 @@ namespace BossRush
             receiver.OnHurtEvent = new UnityEvent<DamageInfo>();
             receiver.OnDeadEvent = new UnityEvent<DamageInfo>();
             receiver.OnHurtEvent.AddListener(OnCoreHurt);
+            coreReceiver = receiver;
+            // 花瓣护核：伤害进入官方 Health 之前按剩余花瓣数缩小（DamageReceiver.Hurt 前缀消费）。
+            ReceiverDamageScaling.Register(receiver, info => EclipseBloomTuning.CoreDamageScale(rules.Phase, rules.IntactMask));
             coreHit.transform.position = body.GetCorePosition();
             coreHit.SetActive(true);
             Collider physical = boss.GetComponent<Collider>();
@@ -237,7 +241,7 @@ namespace BossRush
         {
             if (stopped || body == null || Time.time < nextCoreFeedbackAt) return;
             nextCoreFeedbackAt = Time.time + 0.07f;
-            body.PlayCoreHit(info.damagePoint);
+            body.PlayCoreHit(info.damagePoint, EclipseBloomTuning.CoreDamageScale(rules.Phase, rules.IntactMask) < 1f);
         }
 
         internal void NotifyPetalHurt(int index, Vector3 point)
@@ -367,6 +371,8 @@ namespace BossRush
             if (headArmor != null) headArmor.RemoveFromTarget();
             bodyArmor = null;
             headArmor = null;
+            ReceiverDamageScaling.Unregister(coreReceiver);
+            coreReceiver = null;
             if (coreHit != null) Destroy(coreHit);
             coreHit = null;
             if (flares != null) flares.Dispose();

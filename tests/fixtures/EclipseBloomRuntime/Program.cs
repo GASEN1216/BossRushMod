@@ -58,7 +58,7 @@ internal static partial class Program
         LayerMask.MissingDamageLayer = false; LayerMask.FailDamageLayerAt = LayerMask.DamageLayerCalls = 0;
         ItemAssetsCollection.Missing = false; ItemAssetsCollection.OverrideType = 0;
         ResidualSunShieldWeaponConfig.Fails = false; EclipseBloomBody.FailAttach = false; EclipseBloomBody.Created.Clear();
-        BossRushUI.Paused = false; CodexKillCollector.Calls = 0; SpawnPositionHelper.Reject = false;
+        BossRushUI.Paused = false; CodexKillCollector.Calls = 0; SpawnPositionHelper.Reject = false; EclipseBloomRuntimeModule.EncounterRoll = () => 0f;
         BossRushAudioManager.Instance = new BossRushAudioManager();
         SceneLoader.IsSceneLoading = false;
         SceneManager.Loaded.Clear();
@@ -155,6 +155,7 @@ internal static partial class Program
         Case("async_generation_cancel", AsyncGenerationCancel);
         Case("natural_entry_mode_exclusion", EntryModes);
         Case("normal_raid_once_and_scene_ownership", NaturalRaid);
+        Case("repeat_encounter_rolls_once_per_raid", RepeatEncounterRoll);
         Case("main_scene_waits_for_target_and_guide", SceneAndGuideReadiness);
         Case("boss_pool_catalogue_and_independent_owners", PoolCatalogueAndOwnership);
         Case("boss_pool_cancellation_boundaries", PoolCancellation);
@@ -199,7 +200,7 @@ internal static partial class Program
             var receiver = petal.GetComponent<DamageReceiver>(); var health = petal.GetComponent<HealthSimpleBase>();
             Check(receiver.useSimpleHealth && receiver.simpleHealth == health && health.dmgReceiver == receiver,
                 "production petal connects both directions of the official simple health pipeline");
-            Check(health.HealthValue == 55f && receiver.Team == Teams.wolf,
+            Check(Math.Abs(health.HealthValue - 1000f * EclipseBloomTuning.PetalHealthFraction) < 0.01f && receiver.Team == Teams.wolf,
                 "official Awake observes the configured petal health and hostile team");
             var capsule = petal.GetComponent<CapsuleCollider>();
             Check(!capsule.isTrigger && petal.gameObject.layer == 17,
@@ -243,6 +244,13 @@ internal static partial class Program
         receiver.Hurt(new DamageInfo(CharacterMainControl.Main) { damageValue = 17f });
         Check(battle.Boss.Health.CurrentHealth == before - 17f && battle.Rules.ElapsedSeconds == 0f,
             "core remains damageable even during the harmless entrance period");
+        var guarded = new DamageInfo(CharacterMainControl.Main) { damageValue = 100f };
+        ReceiverDamageScaling.Apply(receiver, ref guarded);
+        Check(Math.Abs(guarded.damageValue - 28f) < 0.001f, "four intact petals shield the core down to 28 percent");
+        battle.Controller.BreakPetal(0); battle.Controller.BreakPetal(1);
+        var opened = new DamageInfo(CharacterMainControl.Main) { damageValue = 100f };
+        ReceiverDamageScaling.Apply(receiver, ref opened);
+        Check(battle.Rules.IntactMask == 12 && Math.Abs(opened.damageValue - 64f) < 0.001f, "each broken petal opens the core further");
         Check(!SavesCounter.Keys.Contains(EclipseBloomBoss.NameKey), "custom identity is not written into official kill counters before death");
         battle.Boss.Health.Kill(new DamageInfo(CharacterMainControl.Main));
         Check(battle.Boss.characterPreset == Resources.FindObjectsOfTypeAll<CharacterRandomPreset>().First()
@@ -434,7 +442,7 @@ internal static partial class Program
         Check(!pending.IsCompleted && AsyncProbe.Frames.Count == 1, "production spawn yields after core stat preparation");
         Check(!character.gameObject.activeSelf,
             "uncommitted boss stays inactive during the preparation yield before its reward and death subscription exist");
-        Check(character.Team == Teams.wolf && character.CharacterItem.MaxHealth.BaseValue == 5000f,
+        Check(character.Team == Teams.wolf && character.CharacterItem.MaxHealth.BaseValue == EclipseBloomTuning.BaseHealth,
             "spawn applies hostile safety net and boss health");
         Check(character.Primary.Content == null && character.Secondary.Content == null && character.Melee.Content == null,
             "spawn removes all three original weapon slots");

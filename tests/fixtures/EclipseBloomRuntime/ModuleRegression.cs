@@ -91,6 +91,21 @@ internal static partial class Program
             "ordinary exploration naturally spawns without adding an arena altar or interaction");
     }
 
+    private static void RepeatEncounterRoll()
+    {
+        EclipseBloomRuntimeModule module = Module();
+        EclipseBloomRuntimeModule.EncounterRoll = () => 0.9f;
+        for (int frame = 0; frame < 120; frame++) ModuleFrame(module);
+        Check(CharacterRandomPreset.CreateCalls == 0, "after the guide a losing roll leaves this raid without the flower");
+        EclipseBloomRuntimeModule.EncounterRoll = () => 0f;
+        for (int frame = 0; frame < 120; frame++) ModuleFrame(module);
+        Check(CharacterRandomPreset.CreateCalls == 0, "the repeat encounter is rolled once per raid, not every frame");
+        EclipseBloomIntroduction.EncounterIsQuestObjective = true;
+        try { UntilSpawn(module, 1); }
+        finally { EclipseBloomIntroduction.EncounterIsQuestObjective = false; }
+        Check(CharacterRandomPreset.CreateCalls == 1, "an active guide quest always spawns its objective regardless of the roll");
+    }
+
     private static void NaturalRaid()
     {
         EclipseBloomRuntimeModule module = Module();

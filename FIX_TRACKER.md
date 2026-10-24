@@ -2,6 +2,10 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+## 2026-10-24 第三轮：新敌人更耐打、随机遇敌、叮当委托与五种试用品（COMPAT / SCHEMA+；L1/L2，L3 待验）
+
+owner 实测「太容易被打倒、进图必刷」并要求叮当试用品先接委托再随机出现、种类更多更夸张。蚀日花冠：生命 7500、花瓣 7.5%，花瓣护核每片 18%（四瓣 28%），引导进行中必刷、完成后每趟 37 号 30%。贪吃宝箱怪：生命 900+300/口，闭嘴铁皮 ×0.45、张嘴全额，每趟 35% 随机出现、时间与距离随机。减伤统一走新增 `Utilities/ReceiverDamageScaling.cs`，挂在既有 `DamageReceiver.Hurt` 前缀上（不新开补丁，参数改 ref），卸载路径兜底清空。叮当委托 `DangerousPrototypeCommission`：好感 10 级在基地叮当组内挂选项，接下即剧情、对话完直接完成，新存槽键 `BossRush_DangerousPrototype_Commission_v1`（SCHEMA+，不接官方 Quest）。试验台改为委托完成后每趟 45% 随机出现、随机时刻、14–30 米并标地图，每台只放一件；试用品扩为五种（倒鸭一号·超载、折射太阳·暴走数值加强，新增嘎嘎轨道炮、雷霆鸭嘴、压轴大烟花），各有招牌部件与专属特效。夹具与守卫同步：花冠规则 / 运行时（护核 28%→64%、每趟只掷一次、任务目标必刷）、宝箱规则 / 运行时（新生命、铁皮倍率、撤销登记）、试用品规则（五种数值、随机分布、非法 id）、原型运行时分发替身。全量守卫 752 PASS；全量执行回归 144 组通过（AudioRuntime 首轮偶发失败、单独重跑通过；FieldAdventureVisuals 因测试工程 Library 缓存指向旧反向验证路径而中断，清缓存后重跑通过，宝箱受击 575 万项全命中）；试用品、花冠规则与残日盾片反向探针通过。正式构建 DLL `7E55D7DBE22A1A1173FAD66052674BE10F4C1F078A49E431710898236E5B4F7E` 已部署。未提交。
+
 ## 2026-10-24 提交前全量核对与残日盾片图标重做（COMPAT / SAFE；L1/L2）
 
 残日盾片 UI 图标原为灰色哑光渲染、与游戏内深色模型不符，按星阙图标标准以游戏内模型预览为参考重出（gpt-image-2.5-flare 图像编辑，透明底 512），作者源旧图存 `ArtSource/EclipseBloom/Previews/`，经作者工程 `EclipseBloomBundleBuilder` 重打 `residual_sun_shield_model`，`EclipseBloomAuthoredBundleGuard` 通过、作者台账 50 项更新并核验。全量核对修掉 5 处此前遗留：`ZombieModeRuntimeModule.cs` 超 1200 行，入场等待两方法原样拆到 `ZombieModeRuntimeModule_TargetSceneEntry.cs`（4 个守卫与 ZombieModeHostOwners 夹具改读两文件，已反向验证）；冠军之影入池新增一处宿主身份校验，`ModBehaviourInstanceClassificationGuard` 基线与分类文档补登 271 / 414；ArenaHostRemainder、AuditModeLifecycle 夹具补入池适配器替身；怪件快递表现拆出 `PlayBurstFx` / `PlayShoutRing` 以兼容 FieldAdventureDeliveryRuntime 抽取。结果：全量守卫 752 PASS；全量执行回归 144 PASS（设 GAME_PATH / BOSSRUSH_GAME_MANAGED / BOSSRUSH_HARMONY_DLL）；正式构建 DLL `DC3CE0BE673E26535FDC8001F5BCC8A28C16DD76C144B65C0468E60CC38F0F5A` 与盾片包均已部署并核对 SHA。L3 仍待实机。

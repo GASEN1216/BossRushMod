@@ -4,7 +4,7 @@ Eclipse Bloom is a three-phase Boss intended for stronger equipment. Four metal 
 
 ## Starting the Challenge
 
-Take the Bloom introduction quest from Jeff at base, then enter **Experimental Area 37** on a normal raid. Open the map and approach the marked area: the Bloom appears on clear ground nearby, at most once per raid. Defeat it and return to Jeff to complete the introduction. After completion, it can appear again on later normal raids.
+Take the Bloom introduction quest from Jeff at base, then enter **Experimental Area 37** on a normal raid. Open the map and approach the marked area: the Bloom appears on clear ground nearby, on every raid while the quest is active and at most once per raid. Defeat it and return to Jeff to complete the introduction. After that, roughly 30% of normal raids to Experimental Area 37 will meet it again.
 
 This challenge is optional. If you die before handing in the quest, it is automatically abandoned and the objective and current encounter are cleared. Return to Jeff when better equipped to accept it again; other maps and story progress remain accessible. The Residual Sun Shield Shard is a combat drop and is not consumed by the quest.
 
@@ -12,8 +12,9 @@ The Bloom also joins the compatible Boss pool and follows its filtering settings
 
 ## Petals and Safe Gaps
 
-- **Core**: 5000 base health, affected by the current Boss stat multiplier. Attacking the central obsidian sun advances its phases.
-- **Four petals**: each has separate health equal to 5.5% of the Boss's maximum health. Guns and melee attacks can break them. Petal damage does not directly reduce core health.
+- **Core**: 7500 base health, affected by the current Boss stat multiplier. Attacking the central obsidian sun advances its phases.
+- **Petal ward**: in phases one and two, each unbroken petal reduces damage to the core by 18%, so with all four intact the core takes only 28% and flashes a pale corona ward when hit. Each broken petal removes one layer; once the petals fall in phase three, the ward is gone.
+- **Four petals**: each has separate health equal to 7.5% of the Boss's maximum health. Guns and melee attacks can break them. Petal damage does not directly reduce core health, but it opens the ward.
 - **Sectors**: each spans 60 degrees, from roughly 0.6 to 13 metres away from the core. The illuminated outline and fill mark the current danger area, with gaps between sectors.
 - **Breaking a petal**: immediately cancels its current attack. Later petal patterns preserve that gap. Once every petal is broken, the core starts a fresh warning and takes over.
 

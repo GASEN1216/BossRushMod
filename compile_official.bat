@@ -461,6 +461,7 @@ echo(Utilities\ModEntityFogVisibility.cs
 echo(Utilities\EnemySpawnCore.cs
 echo(Utilities\EnemySpawnHostBridge.cs
 echo(Utilities\BossPoolSpawnBindings.cs
+echo(Utilities\ReceiverDamageScaling.cs
 echo(Utilities\ModeEFSpawnProfiler.cs
 echo(Utilities\ModeEFMerchantRuntime.cs
 echo(Utilities\ModeEFMerchantCatalog.cs
@@ -948,6 +949,8 @@ echo(Integration\FieldAdventures\Mimic\GreedyMimicTerrain.cs
 echo(Integration\FieldAdventures\Mimic\GreedyMimicVisual.cs
 echo(Integration\FieldAdventures\Prototypes\DangerousPrototypeInteractable.cs
 echo(Integration\FieldAdventures\Prototypes\DangerousPrototypeRules.cs
+echo(Integration\FieldAdventures\Prototypes\DangerousPrototypeCatalog.cs
+echo(Integration\FieldAdventures\Prototypes\DangerousPrototypeCommission.cs
 echo(Integration\FieldAdventures\Prototypes\DangerousPrototypeRuntimeModule.cs
 echo(Integration\FieldAdventures\Prototypes\DangerousPrototypeVisuals.cs
 echo(Integration\EclipseBloom\EclipseBloomIntroductionPersistence.cs

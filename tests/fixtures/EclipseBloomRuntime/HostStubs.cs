@@ -316,7 +316,7 @@ namespace BossRush
     { internal static bool ArenaPlanned, ArenaActive; }
     internal static class EclipseBloomIntroduction
     {
-        internal static bool CanSpawnEncounter = true;
+        internal static bool CanSpawnEncounter = true; internal static bool EncounterIsQuestObjective;
         internal static int Defeats, Spawns;
         internal static void NotifyDefeated() { Defeats++; }
         internal static void NotifyEncounterSpawned() { Spawns++; }
@@ -403,7 +403,8 @@ namespace BossRush
         { Frames++; Phase = phase; IntactMask = intactMask; Rotation = rotation; AttackMask = attackMask; Damaging = damage; }
         internal void PlayPetalBreak(int index) { Breaks++; }
         internal int CoreHits, PetalHits;
-        internal void PlayCoreHit(Vector3 point) { CoreHits++; }
+        internal int GuardedCoreHits;
+        internal void PlayCoreHit(Vector3 point, bool guarded) { CoreHits++; if (guarded) GuardedCoreHits++; }
         internal void PlayPetalHit(int index, Vector3 point) { PetalHits++; }
         internal void Dissipate() { Dissipations++; UnityEngine.Object.Destroy(gameObject); }
     }

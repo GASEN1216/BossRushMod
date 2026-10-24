@@ -10,6 +10,7 @@
     <Compile Include="Stubs.cs" />
     <Compile Include="../../../Integration/FieldAdventures/Mimic/GreedyMimicEncounter.cs" />
     <Compile Include="../../../Integration/FieldAdventures/Mimic/GreedyMimicRules.cs" />
+    <Compile Include="../../../Utilities/ReceiverDamageScaling.cs" />
     <Compile Include="../../../鸭科夫源码/TeamSoda.Duckov.Core/HealthSimpleBase.cs" />
     <Compile Include="../../../鸭科夫源码/TeamSoda.Duckov.Core/DamageReceiver.cs" />
   </ItemGroup>

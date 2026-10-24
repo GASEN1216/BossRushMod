@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using BossRush.Utils;
+using Duckov.MiniMaps;
 using Duckov.Scenes;
 using Duckov.Utilities;
 using ItemStatsSystem;
@@ -10,7 +11,11 @@ using UnityEngine.SceneManagement;
 
 namespace BossRush
 {
-    /// <summary>叮当局内借测。装备与存档不变；唯一 owner 持有事件、模型、对话和奖励事务。</summary>
+    /// <summary>
+    /// 叮当局内借测。装备与存档不变；唯一 owner 持有事件、模型、对话和奖励事务。
+    /// 2026-10-24：只有接下过叮当的委托（DangerousPrototypeCommission）才会出现；每趟出击按概率决定试验台来不来、
+    /// 什么时候来、放哪一件（每台只放一种），试验台随机落在玩家附近较远处并标在地图上。
+    /// </summary>
     internal sealed class DangerousPrototypeRuntimeModule : BossRushRuntimeModuleBase
     {
         private ModBehaviour owner;
@@ -35,7 +40,23 @@ namespace BossRush
         private float recoilTime;
         private float visualTailTime;
         private float lastChargeCue = 1f;
-        private readonly Vector3[] guidePoints = new Vector3[4];
+        private readonly Vector3[] guidePoints = new Vector3[DangerousPrototypeRules.RicochetBounces + 2];
+        private float recoilSpeed = 6f;
+        // 本趟出击的试验台计划：是否出现、什么时候出现、放哪一件。
+        internal const float BenchChance = 0.45f;
+        private bool benchRolled, benchPlanned;
+        private float benchDelay;
+        private DangerousPrototypeKind offeredKind;
+        private readonly List<FinaleShell> finales = new List<FinaleShell>();
+        private readonly List<FinaleBomblet> bomblets = new List<FinaleBomblet>();
+        private sealed class FinaleShell
+        {
+            internal Vector3 From, To; internal float Age; internal GameObject Shell; internal CharacterMainControl Shooter;
+        }
+        private sealed class FinaleBomblet
+        {
+            internal Vector3 Position; internal float Fuse; internal Color Color; internal CharacterMainControl Shooter;
+        }
         private Vector3 recoilDirection;
         private int WallMask { get { return GameplayDataSettings.Layers.wallLayerMask | GameplayDataSettings.Layers.groundLayerMask; } }
         public override string ModuleName { get { return "DangerousPrototypes"; } }
@@ -53,7 +74,7 @@ namespace BossRush
             if (owner == null || SceneLoader.IsSceneLoading || BossRushUI.IsGamePaused()) return;
             if (LevelManager.Instance != raidLevel)
             {
-                CleanupRaid(); rules.ResetRaid(); raidLevel = LevelManager.Instance;
+                CleanupRaid(); rules.ResetRaid(); raidLevel = LevelManager.Instance; benchRolled = false; benchPlanned = false;
             }
             CharacterMainControl player;
             Scene scene;
@@ -65,16 +86,26 @@ namespace BossRush
                 if (initializedRaid) CleanupRaid();
                 return;
             }
+            TickFinales(deltaTime);
+            if (!benchRolled)
+            {
+                // 每趟出击只掷一次：没接委托不来；接了也只有一部分出击会遇上，来的时间和那一件都随机。
+                benchRolled = true;
+                benchPlanned = DangerousPrototypeCommission.IsUnlocked && UnityEngine.Random.Range(0f, 1f) < BenchChance;
+                benchDelay = UnityEngine.Random.Range(25f, 110f);
+                offeredKind = DangerousPrototypeRules.RandomKind(UnityEngine.Random.Range(0f, 0.9999f));
+            }
+            if (!benchPlanned && !rules.Active && !rules.Completed) return;
             if (!initializedRaid)
             {
-                initializedRaid = true; entryTimer = 1.5f; entrySceneHandle = scene.handle;
+                initializedRaid = true; entryTimer = benchDelay; entrySceneHandle = scene.handle;
             }
             else if (entrySceneHandle != scene.handle)
             {
-                // 换同一趟内的区域时，试验台重新放在新入口，验收/领奖状态不动。
-                ClearEntries(); entrySceneHandle = scene.handle; entryAttempts = 0; entryTimer = 1.5f;
+                // 换同一趟内的区域时，试验台重新随机落在新区域，验收/领奖状态不动。
+                ClearEntries(); entrySceneHandle = scene.handle; entryAttempts = 0; entryTimer = 6f;
             }
-            if (entryAttempts < 15 && (entryTimer -= deltaTime) <= 0f)
+            if (benchPlanned && entryAttempts < 15 && (entryTimer -= deltaTime) <= 0f)
             {
                 entryTimer = 4f; entryAttempts++;
                 TryCreateEntries(player, scene);
@@ -166,11 +197,11 @@ namespace BossRush
                         goblin.transform, "DangerousPrototypeOption", list, x => { x.Runtime = this; x.GroupMember = true; });
                     if (option != null && !entries.Contains(option)) entries.Add(option);
                 }
-                // 试验台始终留在入场附近，避免叮当离开/婚后不在地图上时无法交还。
+                // 试验台随机落在玩家附近较远处并标在地图上；同趟内一直留着，方便回来交还。
                 if (station != null) return;
                 Vector3 position;
-                if (!FieldAdventureSupport.TryFindGround(player.transform.position, 5f, 9f, out position)) return;
-                station = DangerousPrototypeVisuals.CreateStation(position);
+                if (!FieldAdventureSupport.TryFindGround(player.transform.position, 14f, 30f, out position)) return;
+                station = DangerousPrototypeVisuals.CreateStation(position, offeredKind);
                 SceneManager.MoveGameObjectToScene(station, scene);
                 var entry = NPCInteractionGroupHelper.GetOrCreateStandaloneInteractable<DangerousPrototypeInteractable>(
                     station.transform, "PrototypeConsole", new Vector3(0f, 0.35f, 0f), x =>
@@ -186,7 +217,9 @@ namespace BossRush
                     UnityEngine.Object.Destroy(station); station = null;
                     return;
                 }
-                FieldAdventureSupport.Notify("附近放着叮当的危险试验台。带上枪，来借一件夸张的试用品。", "Dingdang's prototype bench is nearby. Bring a gun and borrow something ridiculous.");
+                AddBenchMapPoint(station);
+                FieldAdventureSupport.Notify("叮当的危险试验台出现在附近（地图已标记），这次放的是「" + DangerousPrototypeCatalog.Name(offeredKind) + "」。",
+                    "Dingdang's prototype bench has turned up nearby (marked on the map). This time it holds the " + DangerousPrototypeCatalog.Name(offeredKind) + ".");
             }
             catch (Exception e) { ModBehaviour.DevLog("[DangerousPrototype] 入口创建失败: " + e.Message); }
         }
@@ -228,36 +261,18 @@ namespace BossRush
                     if (epoch == generation && cancel == 1) EndLease(true);
                     return;
                 }
-                var kinds = new List<DangerousPrototypeKind>();
-                var choices = new List<string[]>();
-                if (rules.CanBorrow(DangerousPrototypeKind.JetCannon))
-                {
-                    kinds.Add(DangerousPrototypeKind.JetCannon);
-                    choices.Add(new[] { "倒鸭一号：巨炮试射", "Duckback Mk.I: jet cannon" });
-                }
-                if (rules.CanBorrow(DangerousPrototypeKind.RicochetSun))
-                {
-                    kinds.Add(DangerousPrototypeKind.RicochetSun);
-                    choices.Add(new[] { "折射太阳：弹墙试射", "Ricochet Sun: wall bouncer" });
-                }
-                if (kinds.Count == 0)
+                DangerousPrototypeKind kind = offeredKind;
+                if (!rules.CanBorrow(kind))
                 {
                     await DialogueManager.ShowDialogueSequenceBilingual(actor, new[] { new[] {
-                        "这趟数据已经够了！下次出击，我再准备新的试验装置。", "All tests complete for this raid! I'll have fresh rigs next time." } },
+                        "这趟数据已经够了！下次出击，叮当再准备新的试验装置。", "All tests complete for this raid! Dingdang will have a fresh rig next time." } },
                         "BossRush_Prototype_Done", cancellation.Token);
                     return;
                 }
-                choices.Add(new[] { "离开", "Leave" });
-                int choice = await DialogueManager.ShowMultipleChoiceBilingual(actor, choices.ToArray(), 0f,
-                    "BossRush_Prototype_Select", cancellation.Token);
-                if (epoch != generation || choice < 0 || choice >= kinds.Count) return;
-                DangerousPrototypeKind kind = kinds[choice];
-                bool jet = kind == DangerousPrototypeKind.JetCannon;
+                string name = DangerousPrototypeCatalog.Name(kind);
                 await DialogueManager.ShowDialogueSequenceBilingual(actor, new[] { new[] {
-                    jet ? "把装置套到你手里的枪上。每 2.5 秒蓄满压力，下一次开火喷出巨炮并将你往后推。150 秒内用巨炮命中敌人 6 次，回来领一瓶冷淬液。原枪照常消耗弹药。"
-                        : "把太阳折进枪口！每 1.6 秒蓄满，开火射出最多反弹 3 次的光束。直击伤害低，弹墙后伤害暴涨。150 秒内取得 3 次反弹命中，回来领一瓶冷淬液。原枪照常消耗弹药。",
-                    jet ? "Fits your held gun. Every 2.5 seconds, the next shot fires a huge blast and pushes you back. Score 6 blast hits within 150 seconds, then return for one Cold Quench Fluid. Your gun still consumes ammo."
-                        : "Fold a sun into your muzzle! Every 1.6 seconds, your next shot releases a beam with up to 3 wall bounces. Direct hits are weak; bounced hits are powerful. Score 3 bounced hits in 150 seconds for one Cold Quench Fluid. Your gun still consumes ammo." } },
+                    "这次只带了一件：「" + name + "」。" + DangerousPrototypeCatalog.Brief(kind) + "达标后回来领一瓶冷淬液。原枪照常消耗弹药。",
+                    "Only one rig this time: the " + name + ". " + DangerousPrototypeCatalog.Brief(kind) + " Pass and return for one Cold Quench Fluid. Your gun still consumes ammo." } },
                     "BossRush_Prototype_Brief", cancellation.Token);
                 int accept = await DialogueManager.ShowMultipleChoiceBilingual(actor, new[] {
                     new[] { "装上，开工！", "Install it. Let's go!" }, new[] { "再想想", "Maybe later" } },
@@ -334,11 +349,13 @@ namespace BossRush
                 int before = rules.Progress;
                 DangerousPrototypeKind kind = rules.Kind;
                 if (visuals != null) visuals.Fire();
-                TraceBlast(from, direction, kind);
-                if (kind == DangerousPrototypeKind.JetCannon && rules.Active)
+                if (kind == DangerousPrototypeKind.JetCannon || kind == DangerousPrototypeKind.RicochetSun) TraceBlast(from, direction, kind);
+                else FireSpecial(kind, from, direction);
+                if ((kind == DangerousPrototypeKind.JetCannon || kind == DangerousPrototypeKind.QuackRail) && rules.Active)
                 {
                     recoilDirection = -Vector3.ProjectOnPlane(direction, Vector3.up).normalized;
                     recoilTime = 0.22f;
+                    recoilSpeed = kind == DangerousPrototypeKind.QuackRail ? 11f : 9f;
                 }
                 if (rules.Completed)
                 {
@@ -367,8 +384,8 @@ namespace BossRush
         }
         private void TraceBlast(Vector3 from, Vector3 direction, DangerousPrototypeKind kind)
         {
-            float remaining = kind == DangerousPrototypeKind.JetCannon ? 19f : 48f;
-            int maxBounce = kind == DangerousPrototypeKind.JetCannon ? 0 : 3;
+            float remaining = kind == DangerousPrototypeKind.JetCannon ? DangerousPrototypeRules.JetRange : DangerousPrototypeRules.RicochetRange;
+            int maxBounce = kind == DangerousPrototypeKind.JetCannon ? 0 : DangerousPrototypeRules.RicochetBounces;
             var hitThisShot = new HashSet<UnityEngine.Object>();
             int epoch = generation;
             for (int bounce = 0; bounce <= maxBounce && remaining > 0.1f; bounce++)
@@ -378,7 +395,7 @@ namespace BossRush
                 float distance = blocked ? wall.distance : remaining;
                 Vector3 end = from + direction * distance;
                 if (visuals != null) visuals.Beam(from, end, kind == DangerousPrototypeKind.JetCannon, bounce);
-                float radius = kind == DangerousPrototypeKind.JetCannon ? 0.8f : 0.22f;
+                float radius = kind == DangerousPrototypeKind.JetCannon ? DangerousPrototypeRules.JetRadius : 0.3f;
                 RaycastHit[] hits = Physics.SphereCastAll(from, radius, direction, distance,
                     GameplayDataSettings.Layers.damageReceiverLayerMask, QueryTriggerInteraction.Collide);
                 Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
@@ -424,7 +441,7 @@ namespace BossRush
             float step = Mathf.Min(deltaTime, recoilTime);
             recoilTime -= step;
             Vector3 origin = borrower.transform.position;
-            float speed = 6f * Mathf.Clamp01(recoilTime / 0.22f);
+            float speed = recoilSpeed * Mathf.Clamp01(recoilTime / 0.22f);
             // 留足下一帧以及停止惯性的距离；每一段都要求落脚地面连续，拒绝台阶/悬崖。
             float distance = speed * Mathf.Max(step, 0.06f) + 0.45f;
             RaycastHit hit;
@@ -441,6 +458,196 @@ namespace BossRush
             borrower.SetForceMoveVelocity(safe ? recoilDirection * speed : Vector3.zero);
             if (!safe || recoilTime <= 0f) { borrower.SetForceMoveVelocity(Vector3.zero); recoilTime = 0f; }
         }
+        /// <summary>轨道炮 / 雷霆 / 烟花的出手；倒鸭一号与折射太阳仍走 TraceBlast。</summary>
+        private void FireSpecial(DangerousPrototypeKind kind, Vector3 from, Vector3 direction)
+        {
+            if (kind == DangerousPrototypeKind.QuackRail) FireRail(from, direction);
+            else if (kind == DangerousPrototypeKind.Thunderbill) FireThunder(from, direction);
+            else if (kind == DangerousPrototypeKind.GrandFinale) LaunchFinale(from, direction);
+        }
+
+        /// <summary>贯穿一整条线上的所有敌人，遇墙才停。</summary>
+        private void FireRail(Vector3 from, Vector3 direction)
+        {
+            RaycastHit wall;
+            bool blocked = Physics.Raycast(from, direction, out wall, DangerousPrototypeRules.RailRange, WallMask, QueryTriggerInteraction.Ignore);
+            float distance = blocked ? wall.distance : DangerousPrototypeRules.RailRange;
+            Vector3 end = from + direction * distance;
+            if (visuals != null) visuals.RailBeam(from, end);
+            if (blocked && visuals != null) visuals.Impact(wall.point, wall.normal, 1);
+            RaycastHit[] hits = Physics.SphereCastAll(from, DangerousPrototypeRules.RailRadius, direction, distance,
+                GameplayDataSettings.Layers.damageReceiverLayerMask, QueryTriggerInteraction.Collide);
+            Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            var hit = new HashSet<UnityEngine.Object>();
+            int epoch = generation;
+            for (int i = 0; i < hits.Length; i++)
+            {
+                if (epoch != generation) return;
+                TryHurt(hits[i].collider, from, DangerousPrototypeRules.Damage(DangerousPrototypeKind.QuackRail, 0), false, borrower, hit, epoch);
+            }
+        }
+
+        /// <summary>沿射向找第一个敌人，再在 9 米内逐个跳向最近的下一个，最多 7 跳。</summary>
+        private void FireThunder(Vector3 from, Vector3 direction)
+        {
+            RaycastHit wall;
+            float reach = Physics.Raycast(from, direction, out wall, DangerousPrototypeRules.ThunderReach, WallMask, QueryTriggerInteraction.Ignore)
+                ? wall.distance : DangerousPrototypeRules.ThunderReach;
+            RaycastHit[] hits = Physics.SphereCastAll(from, 0.9f, direction, reach,
+                GameplayDataSettings.Layers.damageReceiverLayerMask, QueryTriggerInteraction.Collide);
+            Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            var hit = new HashSet<UnityEngine.Object>();
+            var points = new List<Vector3> { from };
+            int epoch = generation;
+            Collider current = null;
+            for (int i = 0; i < hits.Length && current == null; i++)
+                if (TryHurt(hits[i].collider, from, DangerousPrototypeRules.Damage(DangerousPrototypeKind.Thunderbill, 0), false, borrower, hit, epoch))
+                    current = hits[i].collider;
+            if (current == null)
+            {
+                points.Add(from + direction * Mathf.Min(reach, 8f));
+                if (visuals != null) visuals.Lightning(points.ToArray(), false);
+                return;
+            }
+            points.Add(current.bounds.center);
+            for (int link = 1; link < DangerousPrototypeRules.ThunderLinks; link++)
+            {
+                if (epoch != generation) return;
+                Vector3 center = current.bounds.center;
+                Collider[] around = Physics.OverlapSphere(center, DangerousPrototypeRules.ThunderHopRange,
+                    GameplayDataSettings.Layers.damageReceiverLayerMask, QueryTriggerInteraction.Collide);
+                Array.Sort(around, (a, b) => (a.bounds.center - center).sqrMagnitude.CompareTo((b.bounds.center - center).sqrMagnitude));
+                Collider next = null;
+                for (int i = 0; i < around.Length && next == null; i++)
+                    if (TryHurt(around[i], center, DangerousPrototypeRules.Damage(DangerousPrototypeKind.Thunderbill, link), false, borrower, hit, epoch))
+                        next = around[i];
+                if (next == null) break;
+                current = next;
+                points.Add(current.bounds.center);
+            }
+            if (visuals != null) visuals.Lightning(points.ToArray(), true);
+        }
+
+        /// <summary>朝准星抛一枚大烟花；落地、分裂与子弹爆炸在 TickFinales 里按时间推进，离手也照样炸完。</summary>
+        private void LaunchFinale(Vector3 from, Vector3 direction)
+        {
+            Vector3 aim = borrower != null ? borrower.GetCurrentAimPoint() : from + direction * 12f;
+            Vector3 flat = aim - from; flat.y = 0f;
+            if (flat.sqrMagnitude > DangerousPrototypeRules.FinaleMaxRange * DangerousPrototypeRules.FinaleMaxRange)
+                aim = from + flat.normalized * DangerousPrototypeRules.FinaleMaxRange;
+            RaycastHit ground;
+            if (Physics.Raycast(aim + Vector3.up * 4f, Vector3.down, out ground, 10f, GameplayDataSettings.Layers.groundLayerMask, QueryTriggerInteraction.Ignore))
+                aim = ground.point;
+            finales.Add(new FinaleShell { From = from, To = aim, Shooter = borrower, Shell = DangerousPrototypeVisuals.CreateFireworkShell(from) });
+        }
+
+        private void TickFinales(float deltaTime)
+        {
+            for (int i = finales.Count - 1; i >= 0; i--)
+            {
+                FinaleShell shell = finales[i];
+                shell.Age += deltaTime;
+                float t = Mathf.Clamp01(shell.Age / DangerousPrototypeRules.FinaleFlightSeconds);
+                Vector3 position = Vector3.Lerp(shell.From, shell.To, t) + Vector3.up * (Mathf.Sin(t * Mathf.PI) * 6f);
+                if (shell.Shell != null) shell.Shell.transform.position = position;
+                if (t < 1f) continue;
+                finales.RemoveAt(i);
+                if (shell.Shell != null) DangerousPrototypeVisuals.ReleaseFireworkShell(shell.Shell);
+                DangerousPrototypeVisuals.FireworkBurst(shell.To, new Color(1f, 0.85f, 0.4f), DangerousPrototypeRules.FinaleMainRadius, true);
+                Explode(shell.To, DangerousPrototypeRules.FinaleMainRadius, DangerousPrototypeRules.Damage(DangerousPrototypeKind.GrandFinale, 0), shell.Shooter);
+                for (int b = 0; b < DangerousPrototypeRules.FinaleBomblets; b++)
+                {
+                    float angle = b * 2.39996323f;
+                    float radius = 2.2f + 4.6f * ((b * 7 % DangerousPrototypeRules.FinaleBomblets) / (float)DangerousPrototypeRules.FinaleBomblets);
+                    bomblets.Add(new FinaleBomblet
+                    {
+                        Position = shell.To + new Vector3(Mathf.Cos(angle) * radius, 0.2f, Mathf.Sin(angle) * radius),
+                        Fuse = 0.2f + 0.05f * b, Color = FinalePalette[b % FinalePalette.Length], Shooter = shell.Shooter
+                    });
+                }
+            }
+            for (int i = bomblets.Count - 1; i >= 0; i--)
+            {
+                FinaleBomblet bomblet = bomblets[i];
+                bomblet.Fuse -= deltaTime;
+                if (bomblet.Fuse > 0f) continue;
+                bomblets.RemoveAt(i);
+                DangerousPrototypeVisuals.FireworkBurst(bomblet.Position, bomblet.Color, DangerousPrototypeRules.FinaleBombletRadius, false);
+                Explode(bomblet.Position, DangerousPrototypeRules.FinaleBombletRadius, DangerousPrototypeRules.Damage(DangerousPrototypeKind.GrandFinale, 1), bomblet.Shooter);
+            }
+        }
+
+        private static readonly Color[] FinalePalette =
+        {
+            new Color(1f, 0.82f, 0.3f), new Color(0.35f, 0.9f, 1f), new Color(1f, 0.45f, 0.75f), new Color(0.5f, 1f, 0.55f)
+        };
+
+        private void Explode(Vector3 center, float radius, float damage, CharacterMainControl shooter)
+        {
+            if (shooter == null || shooter.Health == null || shooter.Health.IsDead) return;
+            Collider[] around = Physics.OverlapSphere(center, radius, GameplayDataSettings.Layers.damageReceiverLayerMask, QueryTriggerInteraction.Collide);
+            var hit = new HashSet<UnityEngine.Object>();
+            int epoch = generation;
+            for (int i = 0; i < around.Length; i++)
+            {
+                if (epoch != generation) return;
+                TryHurt(around[i], center + Vector3.up * 0.5f, damage, true, shooter, hit, epoch);
+            }
+        }
+
+        /// <summary>
+        /// 新三种试用品共用的单目标伤害：阵营、随从、去重与墙体遮挡同 TraceBlast 口径；实际扣血才推进验收。
+        /// 返回是否结算了这个目标（用于雷霆选下一跳）。
+        /// </summary>
+        private bool TryHurt(Collider collider, Vector3 from, float amount, bool explosion, CharacterMainControl source,
+            HashSet<UnityEngine.Object> hit, int epoch)
+        {
+            if (collider == null || source == null) return false;
+            DamageReceiver receiver = collider.GetComponent<DamageReceiver>();
+            if (receiver == null || !Team.IsEnemy(source.Team, receiver.Team)) return false;
+            Health health = receiver.useSimpleHealth ? null : receiver.health;
+            HealthSimpleBase simple = receiver.useSimpleHealth ? receiver.simpleHealth : null;
+            UnityEngine.Object target = health != null ? (UnityEngine.Object)health : simple;
+            if (target == null || hit.Contains(target)) return false;
+            if (health != null && (health.IsDead || health.IsMainCharacterHealth || PetNestCompanionAgent.IsCompanionHealth(health))) return false;
+            if (simple != null && simple.HealthValue <= 0f) return false;
+            Vector3 point = collider.bounds.center;
+            if (Physics.Linecast(from, point, WallMask, QueryTriggerInteraction.Ignore)) return false;
+            hit.Add(target);
+            var damage = new DamageInfo(source);
+            damage.damageValue = amount;
+            damage.damageType = DamageTypes.normal;
+            damage.isFromBuffOrEffect = true;
+            damage.isExplosion = explosion;
+            damage.damagePoint = point; damage.damageNormal = (from - point).normalized;
+            float oldHealth = health != null ? health.CurrentHealth : simple.HealthValue;
+            try { receiver.Hurt(damage); }
+            catch (Exception e) { ModBehaviour.DevLog("[DangerousPrototype] 单目标伤害失败: " + e.Message); }
+            if (epoch != generation) return true;
+            bool tookDamage = health != null ? (health.IsDead || health.CurrentHealth < oldHealth)
+                : (simple == null || simple.HealthValue < oldHealth);
+            if (target == null || tookDamage) rules.ObserveHit(true);
+            if (tookDamage && visuals != null) visuals.Impact(point, (from - point).normalized, 1);
+            return true;
+        }
+
+        private static void AddBenchMapPoint(GameObject bench)
+        {
+            try
+            {
+                const string key = "BossRush_PrototypeBench_Map";
+                LocalizationHelper.InjectLocalization(key, L10n.T("叮当的试验台", "Dingdang's prototype bench"));
+                bench.SetActive(false);
+                var marker = bench.AddComponent<SimplePointOfInterest>();
+                marker.Color = BossRushUIColors.WarningText;
+                marker.ScaleFactor = 1.25f;
+                marker.IsArea = false;
+                bench.SetActive(true);
+                marker.Setup(null, key);
+            }
+            catch (Exception e) { ModBehaviour.DevLog("[DangerousPrototype] 试验台地图标记失败: " + e.Message); }
+        }
+
         private void TryClaim(Vector3 position)
         {
             if (!rules.Completed || delivering) return;
@@ -507,6 +714,12 @@ namespace BossRush
             borrower = null; borrowedGun = null; borrowedItem = null;
             if (cancel) rules.Cancel();
         }
+        private void ClearFinales()
+        {
+            foreach (FinaleShell shell in finales) if (shell.Shell != null) UnityEngine.Object.Destroy(shell.Shell);
+            finales.Clear();
+            bomblets.Clear();
+        }
         private void OnLoading(SceneLoadingContext context) { CleanupRaid(); }
         private void OnDead(DamageInfo info) { CleanupRaid(); }
         private void CleanupRaid()
@@ -516,6 +729,7 @@ namespace BossRush
             dialogueOpen = false;
             EndLease(true);
             ClearEntries();
+            ClearFinales();
             initializedRaid = false; entryAttempts = 0; entryTimer = 0f;
         }
         private void ClearEntries()

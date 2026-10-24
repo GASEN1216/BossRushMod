@@ -9,6 +9,7 @@ namespace BossRush
             host.Register(new EclipseBloomRuntimeModule());
             host.Register(new GreedyMimicRuntimeModule());
             host.Register(new OddParcelRuntimeModule());
+            host.Register(new DangerousPrototypeCommission());
             host.Register(new DangerousPrototypeRuntimeModule());
         }
     }

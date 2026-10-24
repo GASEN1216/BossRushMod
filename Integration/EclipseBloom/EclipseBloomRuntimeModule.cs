@@ -29,6 +29,9 @@ namespace BossRush
         private bool spawning;
         private bool consumed;
         private bool relaxedPlacement;
+        private bool encounterRolled, encounterAllowed;
+        /// <summary>完成引导后的随机遇敌掷点；离线夹具可替换成定值。</summary>
+        internal static Func<float> EncounterRoll = () => UnityEngine.Random.Range(0f, 1f);
         private float retryAt;
 
         public override void OnAwake(ModBehaviour host)
@@ -71,6 +74,7 @@ namespace BossRush
                     consumed = false;
                     candidateIndex = 0;
                     relaxedPlacement = false;
+                    encounterRolled = false;
                     retryAt = 0f;
                 }
                 return false;
@@ -83,6 +87,7 @@ namespace BossRush
                 consumed = false;
                 candidateIndex = 0;
                 relaxedPlacement = false;
+                encounterRolled = false;
                 retryAt = 0f;
             }
             return true;
@@ -119,6 +124,16 @@ namespace BossRush
                 || !EclipseBloomIntroduction.CanSpawnEncounter || Time.unscaledTime < retryAt) return;
             Scene target;
             if (!EclipseBloomEncounterPlacement.TryGetExplorationScene(out target)) return;
+            // 引导任务进行中必刷（任务目标）；完成之后每趟 37 号只按概率遇到一次，不再进图必刷。
+            if (!EclipseBloomIntroduction.EncounterIsQuestObjective)
+            {
+                if (!encounterRolled)
+                {
+                    encounterRolled = true;
+                    encounterAllowed = EncounterRoll() < EclipseBloomTuning.RepeatEncounterChance;
+                }
+                if (!encounterAllowed) return;
+            }
             encounterScene = target;
             if (!CanRunEncounter()) return;
             Vector3 position;
@@ -137,8 +152,8 @@ namespace BossRush
             active = true;
             spawning = true;
             int token = ++generation;
-            owner.ShowMessage(L10n.T("蚀日花冠正在绽放。击碎花瓣，打开安全缺口。",
-                "The Eclipse Bloom awakens. Break its petals to open safe gaps."));
+            owner.ShowMessage(L10n.T("蚀日花冠正在绽放。花瓣护着核心，先击碎花瓣再打日核。",
+                "The Eclipse Bloom awakens. Its petals shield the core: break them before striking the sun."));
             Spawn(token, position, target).Forget();
         }
 
@@ -184,6 +199,8 @@ namespace BossRush
         public override void OnDestroy()
         {
             Cleanup();
+            // 部位减伤登记（花冠护核、宝箱铁皮）握着 DamageReceiver 引用；战斗 owner 正常会撤销，探索模块卸载时兜底整表清空。
+            ReceiverDamageScaling.ResetStaticCaches();
             if (Current == this) Current = null;
             owner = null;
             levelOwner = null;

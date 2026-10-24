@@ -12,6 +12,8 @@ namespace BossRush
         private int spawnAttempts;
         private bool spawned;
         private float nextCheck, readyTime;
+        /// <summary>每趟出击的遇敌掷点；离线夹具可替换成定值。</summary>
+        internal static Func<float> SpawnRoll = () => UnityEngine.Random.Range(0f, 1f);
         public override string ModuleName { get { return "GreedyMimic"; } }
         public override void OnAwake(ModBehaviour host) { owner = host; }
         public override void OnSceneLoaded(SceneRuntimeContext context)
@@ -40,13 +42,18 @@ namespace BossRush
                 nextCheck = 1f;
                 if (!FieldAdventureSupport.TryGetRaid(owner, out player, out scene)) return;
                 if (!ReferenceEquals(raidOwner, LevelManager.Instance))
-                { raidOwner = LevelManager.Instance; spawned = false; spawnAttempts = 0; readyTime = 6f; }
+                {
+                    // 不是每趟都有：先掷一次，遇上了也在 30~150 秒之间的随机时刻才冒出来。
+                    raidOwner = LevelManager.Instance; spawnAttempts = 0;
+                    spawned = SpawnRoll() >= GreedyMimicRules.SpawnChance;
+                    readyTime = UnityEngine.Random.Range(30f, 150f);
+                }
                 if (spawned) return;
                 readyTime -= 1f;
                 if (readyTime > 0f) return;
                 Vector3 position;
                 if (++spawnAttempts > 12) { spawned = true; return; }
-                if (!FieldAdventureSupport.TryFindGround(player.transform.position, 16f, 24f, out position)) return;
+                if (!FieldAdventureSupport.TryFindGround(player.transform.position, 20f, 36f, out position)) return;
                 // 成长后的箱体和药瓶远大于普通落点胶囊，额外预留完整模型净空。
                 if (Physics.CheckBox(position + Vector3.up * 3f, new Vector3(2.5f, 2.9f, 2.3f), Quaternion.identity,
                     Duckov.Utilities.GameplayDataSettings.Layers.wallLayerMask, QueryTriggerInteraction.Ignore)) return;

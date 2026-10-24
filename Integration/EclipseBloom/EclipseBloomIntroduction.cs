@@ -27,6 +27,16 @@ namespace BossRush
         private float nextJeffAttempt, nextMarkerAttempt;
 
         public override string ModuleName { get { return "EclipseBloomIntroduction"; } }
+        /// <summary>接了引导、还没击败：这趟 37 号的花冠是任务目标，必须出现。</summary>
+        internal static bool EncounterIsQuestObjective
+        {
+            get
+            {
+                return current != null && current.EnsureData() && !current.abandonPending
+                    && current.data.Accepted && !current.data.Defeated && !current.data.Completed;
+            }
+        }
+
         internal static bool CanSpawnEncounter
         {
             get

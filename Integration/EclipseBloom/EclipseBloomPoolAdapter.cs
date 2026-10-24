@@ -27,7 +27,7 @@ namespace BossRush
                 name = EclipseBloomBoss.NameKey,
                 displayName = L10n.T("蚀日花冠", "Eclipse Bloom"),
                 team = (int)Teams.wolf,
-                baseHealth = 5000f,
+                baseHealth = EclipseBloomTuning.BaseHealth,
                 baseDamage = 34f,
                 healthMultiplier = 1f,
                 damageMultiplier = 1f,

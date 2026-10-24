@@ -38,7 +38,9 @@ namespace BossRush
         private readonly Mesh ringMesh, toothMesh, discMesh;
         private float clock, swallow, scale = 1f;
         private float warningTotal = -1f, lastWarning, lastHealth = 1f, shownHealth = 1f, lagHealth = 1f, hitFlash, nextHitFx;
-        private float leap = -1f, dying = -1f;
+        private float leap = -1f, dying = -1f, lastOpening;
+        /// <summary>箱盖张开到能看见牙龈：此时打的是要害，铁皮减伤不生效。</summary>
+        internal bool MouthOpen { get { return lastOpening >= 40f || swallow > 0f || leap >= 0f || dying >= 0f; } }
         private bool popped, disposed;
         private GreedyMimicAttack currentAttack;
         private static readonly Color Wood = new Color(0.24f, 0.08f, 0.035f);
@@ -273,6 +275,7 @@ namespace BossRush
             Body.localScale = Vector3.Scale(new Vector3(1f + chew, 1f - chew * 0.7f, 1f + chew), squash) * scale;
             Body.localPosition = Vector3.up * (leap >= 0f ? 0f : Mathf.Abs(Mathf.Sin(clock * (fighting ? 6 : 2))) * 0.09f);
             jaw.localRotation = Quaternion.Euler(-opening, 0, 0);
+            lastOpening = opening;
         }
 
         private void TickHealth(float dt, float fraction)
@@ -280,8 +283,22 @@ namespace BossRush
             if (fraction < lastHealth - 0.0005f && clock >= nextHitFx)
             {
                 // 中弹：木屑从箱身崩出、双眼一闪；箱身不做缩放回弹，受击包络始终贴着网格。
+                // 闭嘴时打在铁皮上：一簇金色火星「叮」一下；张嘴时打中要害：喷出一小团血红。
                 nextHitFx = clock + 0.09f;
-                hitFlash = 1f;
+                hitFlash = MouthOpen ? 1f : 0.4f;
+                if (!MouthOpen)
+                {
+                    BossRushFxBurst clank = BossRushFxKit.Sparks(Coin, 7);
+                    clank.SpeedMin = 3f; clank.SpeedMax = 6f; clank.Gravity = 0.9f; clank.LifeMin = 0.15f; clank.LifeMax = 0.3f;
+                    Fx(Body.position + Vector3.up * (1.3f * scale), clank);
+                }
+                else
+                {
+                    BossRushFxBurst gore = BossRushFxKit.Dust(new Color(0.75f, 0.08f, 0.12f, 0.8f), 6);
+                    gore.Radial = false; gore.FlatOnGround = false; gore.Upward = true; gore.SpeedMin = 2f; gore.SpeedMax = 4f;
+                    gore.SizeMin = 0.2f; gore.SizeMax = 0.4f; gore.Gravity = 1.2f; gore.LifeMin = 0.35f; gore.LifeMax = 0.6f;
+                    Fx(jaw.position + Facing.forward * (0.9f * scale), gore);
+                }
                 BossRushFxBurst chips = BossRushFxKit.Dust(Splinter, 5);
                 chips.Shape = BossRushParticleShape.Shard;
                 chips.Radial = false; chips.FlatOnGround = false; chips.Upward = true;

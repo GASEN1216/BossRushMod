@@ -196,6 +196,10 @@ namespace BossRush
         private int generation;
         private float recoilTime;
         private Vector3 recoilDirection;
+        private float recoilSpeed = 6f;
+        // 轨道炮 / 雷霆 / 烟花另有出手路径；本夹具只验证射向、墙体与后坐合同，这里只记录分发。
+        internal int SpecialShots;
+        private void FireSpecial(DangerousPrototypeKind kind, Vector3 from, Vector3 direction) { SpecialShots++; }
         private int WallMask { get { return GameplayDataSettings.Layers.wallLayerMask | GameplayDataSettings.Layers.groundLayerMask; } }
         internal DangerousPrototypeRuntimeModule(CharacterMainControl player, ItemAgent_Gun gun, DangerousPrototypeKind kind)
         {

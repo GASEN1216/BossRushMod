@@ -1,10 +1,10 @@
 ## Field Adventures
 
-Ordinary raids now offer three optional diversions: grow a hungry mimic, deliver Awen's temperamental parcels, and test Dingdang's oversized weapon rigs. They appear on eligible ordinary raid maps, outside the base and BossRush combat modes. An activity may not appear if no suitable open ground can be found nearby.
+Ordinary raids now offer three optional diversions: grow a hungry mimic, deliver Awen's temperamental parcels, and test Dingdang's oversized weapon rigs. The mimic and Dingdang's bench are random encounters, not on every raid. They appear on eligible ordinary raid maps, outside the base and BossRush combat modes. An activity may not appear if no suitable open ground can be found nearby.
 
 ### Gluttonous Mimic
 
-A little after entering a map, a giant rumbling chest may appear nearby. It starts passive. Approach to feed it or choose "Feast" to start fighting. Shooting it also starts combat immediately.
+Not every raid has one: about 35% of ordinary raids do, at a random moment between half a minute and two and a half minutes in, twenty to thirty-odd metres from you. When it shows up, it is a giant rumbling chest. It starts passive. Approach to feed it or choose "Feast" to start fighting. Shooting it also starts combat immediately.
 
 Before each meal, a confirmation shows the exact item, amount and body part it will grow. Nothing is consumed until you confirm. It accepts up to three meals, and the third starts combat automatically.
 
@@ -14,7 +14,9 @@ Before each meal, a confirmation shows the exact item, amount and body part it w
 
 Once the fight starts it does not sit still. Beyond 9 metres it crouches and pounces onto your position (a 2.4-metre landing ring that grows with its size to 3.2 metres after three meals, leaping up to 16 metres). Within 9 metres it lashes its tongue along a locked line instead; sidestep to dodge. Hide behind a wall for two turns and it leaps over the cover. It attacks faster as its health drops, and below 40% a pounce that lands next to you is followed at once by a tongue lash.
 
-Each meal makes the whole chest larger and adds 240 maximum health. It starts with 600 health and reaches 1320 after three meals. Repeating a food type strengthens its matching attack. You may start fighting after one or two meals, or feed it nothing at all.
+It wears an iron shell: **with its mouth shut it takes only 45% damage**, and hits throw golden sparks. While its mouth is open (charging a warning, swallowing or pouncing) you hit the soft spot for full damage, with a red splash.
+
+Each meal makes the whole chest larger and adds 300 maximum health. It starts with 900 health and reaches 1800 after three meals. Repeating a food type strengthens its matching attack. You may start fighting after one or two meals, or feed it nothing at all.
 
 It only accepts ordinary quality 1-3 items in your backpack's outer inventory. Locked slots, wishlisted items, quest items, custom items, containers and partially used medicine are excluded. Ammo needs a single stack of at least 12 rounds, grenades must deal explosive damage, and medicine must restore health. The lowest-quality eligible item is selected first, then the cheapest within that quality.
 
@@ -41,17 +43,20 @@ You may accept two orders per raid. Cancelled orders, ruined parcels and leaving
 
 ### Dingdang's Dangerous Prototypes
 
-Find Dingdang on an ordinary raid map and choose "Dangerous prototypes". A prototype bench also appears near your entry point for borrowing, checking progress and returning rigs. Hold the gun you want to test, choose a rig and confirm installation.
+First, take Dingdang's commission. Once your affinity with Dingdang reaches **level 10**, she offers "Dingdang's commission: dangerous prototypes" at base. Choosing it accepts the commission; Dingdang tells you about the over-spec rigs she's been building out back, and the commission completes as soon as the conversation ends. You only do this once.
 
-The prototype attaches to the gun held when you borrowed it. Once its pressure lights fill, **fire normally** to release an extra experimental attack. Your original gun still fires and consumes ammunition as usual.
+After that, her prototype bench turns up **at random** on ordinary raids: roughly 45% of raids, at no fixed time, on open ground somewhere between a dozen and thirty metres from you, marked on the map as "Dingdang's prototype bench". Each bench holds **just one** prototype, also chosen at random. If Dingdang herself is on the map that raid, she lends the same rig.
 
-- **Duckback Mk.I**: a huge cannon sleeve charges every 2.5 seconds. The next shot sends out a thick blast and pushes you backwards a short distance. Land 6 actual blast hits within 150 seconds to pass.
-- **Ricochet Sun**: a glowing sun rig charges every 1.6 seconds. The next shot fires a beam that can bounce off walls up to 3 times. Direct hits are weak; bounced hits are much stronger. Land 3 bounced hits within 150 seconds to pass.
+Hold the gun you want to test; the rig attaches to it when borrowed. Once the pressure lights fill, **fire normally** to release an extra experimental attack. Your gun still fires and consumes ammo as usual.
 
-Switching guns hides the rig. Switch back to the original gun to continue, while the timer keeps running. You may borrow again after timing out or returning an unfinished test. Death or ending the raid recalls the rig; it is not permanent equipment you can take home.
+- **Duckback Mk.I Overdrive**: charges every 2 seconds and vents a 26-metre jet over two metres wide for 140 per enemy, throwing you well back. Land 6 jet hits within 150 seconds.
+- **Ricochet Sun Unbound**: charges every 1.4 seconds; the beam bounces off walls up to 5 times across 60 metres. Direct hits do 30, bounced hits start at 160 and gain 25 per extra bounce. Land 3 bounced hits within 150 seconds.
+- **Quackrail Cannon**: charges every 3.5 seconds and punches a slug through every enemy in a 70-metre line for 260 each, stopping only at walls, with even harder recoil than Duckback. Land 6 hits within 150 seconds.
+- **Thunderbill**: charges every 1.2 seconds and cracks chain lightning at the first enemy within 24 metres of your aim, then jumps to the nearest next enemy within 9 metres, up to 7 enemies; 70 on the first hit and 6 less per jump. Rack up 12 jumps within 150 seconds.
+- **Grand Finale**: charges every 3 seconds and lobs a huge firework at your aim point (up to 30 metres): 110 on landing, then 12 coloured bomblets for 45 each. Land 10 main or bomblet hits within 150 seconds.
 
-The pressure lights fill segment by segment; when full, the muzzle flashes a star and a chime plays. While holding Ricochet Sun, a guide line traces the beam's first two bounces in front of the muzzle (cyan for the direct leg, gold after a bounce), so you can angle off a wall and see where the beam will fold.
+Switching guns hides the rig; switch back to the original gun to continue while the timer keeps running. You may borrow again after timing out or returning early. Death or ending the raid recalls the rig; it is not equipment you can take home. The pressure lights fill segment by segment, and when full the muzzle flashes a star with a chime; while holding Ricochet Sun, a guide line traces the beam's first two bounces.
 
-After passing, return to Dingdang or the bench and choose "Return and claim reward". Each prototype grants **1 Cold Quench Fluid per raid**, for 2 bottles if you complete both. If your bag is full, the reward is placed beside the return point. A failed delivery can be retried. Once you claim a prototype's reward, that same test is closed for the rest of the raid.
+After passing, return to the bench (or Dingdang) and choose "Return and claim reward" for **1 Cold Quench Fluid**; if your bag is full it is placed beside the return point, and a failed delivery can be retried. Once claimed, that raid's bench is closed.
 
-[tip] Ricochet Sun requires actual hits after a wall bounce. Aim at a wall near the enemy and fold the beam toward them; repeatedly shooting straight at the enemy does not advance this test.
+[tip] Quackrail and Thunderbill both love crowds: line enemies up before firing the rail, or wait for them to bunch before calling the lightning. Grand Finale is lobbed, so it clears low walls.

@@ -15,6 +15,7 @@ PRODUCTION = (
     "Integration/EclipseBloom/EclipseBloomRules.cs",
     "Integration/EclipseBloom/EclipseBloomVisuals_Geometry.cs",
     "Integration/EclipseBloom/EclipseBloomAbilityController.cs",
+    "Utilities/ReceiverDamageScaling.cs",
     "Integration/EclipseBloom/EclipseBloomPetal.cs",
     "Integration/EclipseBloom/EclipseBloomBoss.cs",
     "Integration/EclipseBloom/EclipseBloomRuntimeModule.cs",

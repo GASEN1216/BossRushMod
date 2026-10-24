@@ -45,7 +45,7 @@ namespace BossRush
             try
             {
             kind = selected;
-            accent = kind == DangerousPrototypeKind.JetCannon ? new Color(1f, 0.39f, 0.04f) : new Color(0.12f, 0.95f, 1f);
+            accent = Accent(kind);
             coreStrip = BossRushFxKit.GetShapeMaterial(BossRushParticleShape.TrailStrip, BossRushFxBlend.Additive, BossRushFxKit.GainHot);
             glowStrip = BossRushFxKit.GetShapeMaterial(BossRushParticleShape.TrailStrip, BossRushFxBlend.Additive, BossRushFxKit.GainBright);
             root = new GameObject("DangerousPrototype_HeldRig");
@@ -53,6 +53,8 @@ namespace BossRush
             FieldAdventureVisualAssets.Acquire(root);
             root.transform.localRotation = Quaternion.identity;
             root.transform.localPosition = new Vector3(0f, 0f, -0.28f);
+            // 越夸张越好：整套装置比枪大一圈，远处也看得出手里套了什么。
+            root.transform.localScale = Vector3.one * 1.2f;
             Color dark = new Color(0.09f, 0.13f, 0.16f);
             Color steel = new Color(0.41f, 0.5f, 0.56f);
             Part(root.transform, "PressureHousing", PrimitiveType.Cube, new Vector3(0f, 0f, 0.15f), new Vector3(0.52f, 0.43f, 0.8f), dark);
@@ -83,6 +85,7 @@ namespace BossRush
                 Cylinder(root.transform, "OversizedPressureTank", new Vector3(side * 0.35f, -0.13f, -0.1f), 0.15f, 0.38f, accent);
                 Cylinder(root.transform, "TankCap", new Vector3(side * 0.35f, -0.13f, 0.28f), 0.18f, 0.04f, dark);
             }
+            BuildSignature(root.transform, kind, accent, dark, steel);
             // 挂枪后新增的模型须接入官方角色显隐缓存，模型构建结束后才 SetRenderers。
             var subVisuals = root.AddComponent<CharacterSubVisuals>();
             subVisuals.SetRenderers();
@@ -139,6 +142,66 @@ namespace BossRush
             {
                 float pulse = 0.65f + 0.35f * Mathf.Sin(clock * 5f);
                 guide.widthMultiplier = (charge >= 1f ? 0.065f : 0.04f) * pulse;
+            }
+        }
+
+        internal static Color Accent(DangerousPrototypeKind kind)
+        {
+            switch (kind)
+            {
+                case DangerousPrototypeKind.JetCannon: return new Color(1f, 0.39f, 0.04f);
+                case DangerousPrototypeKind.RicochetSun: return new Color(0.12f, 0.95f, 1f);
+                case DangerousPrototypeKind.QuackRail: return new Color(0.45f, 0.55f, 1f);
+                case DangerousPrototypeKind.Thunderbill: return new Color(1f, 0.9f, 0.3f);
+                default: return new Color(1f, 0.42f, 0.72f);
+            }
+        }
+
+        /// <summary>每种装置一处一眼认得出的招牌部件。</summary>
+        private static void BuildSignature(Transform parent, DangerousPrototypeKind kind, Color accent, Color dark, Color steel)
+        {
+            switch (kind)
+            {
+                case DangerousPrototypeKind.JetCannon:
+                    // 枪口外再套一圈喇叭口和两根排气管。
+                    Cylinder(parent, "FlaredBlastHorn", new Vector3(0f, 0f, 1.42f), 0.58f, 0.09f, dark);
+                    for (int side = -1; side <= 1; side += 2)
+                        Cylinder(parent, "ExhaustStack", new Vector3(side * 0.24f, 0.32f, 0.4f), 0.07f, 0.3f, steel);
+                    break;
+                case DangerousPrototypeKind.RicochetSun:
+                    // 枪口前一圈太阳光芒片。
+                    for (int i = 0; i < 8; i++)
+                    {
+                        var ray = new GameObject("SunRayArm").transform;
+                        ray.SetParent(parent, false); ray.localPosition = new Vector3(0f, 0f, 1.2f); ray.localRotation = Quaternion.Euler(0f, 0f, i * 45f);
+                        Part(ray, "SunRay", PrimitiveType.Cube, new Vector3(0f, 0.5f, 0f), new Vector3(0.09f, 0.32f, 0.04f), accent);
+                    }
+                    break;
+                case DangerousPrototypeKind.QuackRail:
+                    // 两根伸出枪口一米多的导轨，缠着发光线圈。
+                    for (int side = -1; side <= 1; side += 2)
+                    {
+                        Part(parent, "RailBar", PrimitiveType.Cube, new Vector3(side * 0.2f, 0f, 1.35f), new Vector3(0.07f, 0.14f, 1.9f), steel);
+                        for (int c = 0; c < 4; c++)
+                            Cylinder(parent, "RailCoil", new Vector3(side * 0.2f, 0f, 0.7f + c * 0.42f), 0.12f, 0.03f, accent);
+                    }
+                    break;
+                case DangerousPrototypeKind.Thunderbill:
+                    // 背上一颗特斯拉线圈球，枪口三根放电叉。
+                    Part(parent, "TeslaSphere", PrimitiveType.Sphere, new Vector3(0f, 0.48f, 0.05f), Vector3.one * 0.34f, accent);
+                    Cylinder(parent, "TeslaMast", new Vector3(0f, 0.3f, 0.05f), 0.05f, 0.12f, steel);
+                    for (int i = 0; i < 3; i++)
+                    {
+                        var fork = new GameObject("DischargeFork").transform;
+                        fork.SetParent(parent, false); fork.localPosition = new Vector3(0f, 0f, 1.3f); fork.localRotation = Quaternion.Euler(0f, 0f, i * 120f);
+                        Part(fork, "Prong", PrimitiveType.Cube, new Vector3(0f, 0.2f, 0.16f), new Vector3(0.05f, 0.05f, 0.36f), steel);
+                    }
+                    break;
+                default:
+                    // 顶上一排六管烟花发射架。
+                    for (int i = 0; i < 6; i++)
+                        Cylinder(parent, "RocketTube", new Vector3(-0.25f + (i % 3) * 0.25f, 0.42f + (i / 3) * 0.22f, 0.25f), 0.1f, 0.32f, i % 2 == 0 ? accent : dark);
+                    break;
             }
         }
 
@@ -230,6 +293,117 @@ namespace BossRush
             BossRushFxKit.PlayBurst(point + normal * 0.05f, sparks);
         }
 
+        /// <summary>轨道炮：一条贯穿全程的粗亮芯 + 外晕 + 沿线一串收拢冲击环与火花，镜头重震。</summary>
+        internal void RailBeam(Vector3 from, Vector3 to)
+        {
+            Vector3 delta = to - from;
+            float length = delta.magnitude;
+            if (length < 0.02f) return;
+            int segments = Mathf.Clamp(Mathf.CeilToInt(length / 4f), 1, 18);
+            for (int i = 0; i < segments; i++)
+            {
+                Vector3 a = Vector3.Lerp(from, to, (float)i / segments);
+                Vector3 b = Vector3.Lerp(from, to, (float)(i + 1) / segments);
+                Stroke(new[] { a, b }, new Color(accent.r, accent.g, accent.b, 0.9f), 0.9f, 0.7f, false, glowStrip);
+                Stroke(new[] { a, b }, new Color(1f, 1f, 1f, 1f), 0.24f, 0.45f, false, coreStrip);
+            }
+            Vector3 axis = delta / length;
+            for (float d = 2f; d < length; d += 5f)
+            {
+                Ring(from + axis * d, axis, 0.45f, accent, 0.07f, 0.5f);
+                BossRushFxBurst sparks = BossRushFxKit.Sparks(accent, 6);
+                sparks.Cone = 70f; sparks.Direction = Vector3.up; sparks.SpeedMin = 2f; sparks.SpeedMax = 5f; sparks.Gravity = 0.5f;
+                BossRushFxKit.PlayBurst(from + axis * d, sparks);
+            }
+            BossRushFxKit.PlayBurst(to, BossRushFxKit.Glint(accent, 1.6f, 0.2f));
+            Shake(-axis, 0.35f);
+        }
+
+        /// <summary>连锁闪电：每一跳一道折线，亮芯 + 外晕，节点处一颗星芒；空放时只劈出一截。</summary>
+        internal void Lightning(Vector3[] points, bool landed)
+        {
+            if (points == null || points.Length < 2) return;
+            for (int i = 0; i < points.Length - 1; i++)
+            {
+                Vector3 a = points[i], b = points[i + 1];
+                float length = Vector3.Distance(a, b);
+                int steps = Mathf.Clamp(Mathf.CeilToInt(length / 0.8f), 3, 14);
+                Vector3[] bolt = new Vector3[steps + 1];
+                Vector3 side = Vector3.Cross((b - a).normalized, Vector3.up);
+                if (side.sqrMagnitude < 0.01f) side = Vector3.right;
+                for (int s = 0; s <= steps; s++)
+                {
+                    float t = s / (float)steps;
+                    float jitter = (s == 0 || s == steps) ? 0f : (UnityEngine.Random.value - 0.5f) * 0.6f;
+                    bolt[s] = Vector3.Lerp(a, b, t) + side * jitter + Vector3.up * ((UnityEngine.Random.value - 0.5f) * 0.3f);
+                }
+                Stroke(bolt, new Color(accent.r, accent.g, accent.b, 0.85f), 0.32f, 0.32f, false, glowStrip);
+                Stroke(bolt, Color.white, 0.09f, 0.24f, false, coreStrip);
+                if (landed || i + 1 < points.Length - 1)
+                    BossRushFxKit.PlayBurst(b, BossRushFxKit.Glint(accent, 0.9f, 0.18f));
+            }
+            Shake(Vector3.up, 0.12f);
+        }
+
+        /// <summary>烟花弹：一颗带拖尾的亮弹，运行时每帧挪动，落地时交回 Release。</summary>
+        internal static GameObject CreateFireworkShell(Vector3 position)
+        {
+            Material hot = BossRushFxKit.GetShapeMaterial(BossRushParticleShape.GlowDot, BossRushFxBlend.Additive, BossRushFxKit.GainHot);
+            GameObject shell = new GameObject("DangerousPrototype_FireworkShell");
+            shell.transform.position = position;
+            if (hot == null) return shell;
+            ParticleSystem trail = BossRushFxKit.CreateEmitter("ShellTrail", shell.transform, Vector3.zero, hot, 120, true);
+            if (trail != null)
+            {
+                var main = trail.main;
+                main.startLifetime = new ParticleSystem.MinMaxCurve(0.3f, 0.55f);
+                main.startSize = new ParticleSystem.MinMaxCurve(0.12f, 0.24f);
+                var color = trail.colorOverLifetime;
+                color.enabled = true;
+                color.color = BossRushFxKit.FadeGradient(Color.white, new Color(1f, 0.7f, 0.3f, 0.9f), new Color(1f, 0.3f, 0.1f, 0f), 0f);
+                var emission = trail.emission;
+                emission.rateOverDistance = 9f;
+                trail.Play();
+            }
+            ModEntityFogVisibility.Attach(shell);
+            return shell;
+        }
+
+        internal static void ReleaseFireworkShell(GameObject shell)
+        {
+            if (shell != null) BossRushFxKit.Release(shell, 0.1f, 1f, true);
+        }
+
+        /// <summary>烟花炸开：亮芯、彩色星屑球形炸开后下坠、贴地冲击环与一记闪光；大号用于主弹。</summary>
+        internal static void FireworkBurst(Vector3 position, Color color, float radius, bool big)
+        {
+            try
+            {
+                Vector3 air = position + Vector3.up * (big ? 1.6f : 1f);
+                BossRushFxKit.PlayBurst(air, BossRushFxKit.Glint(Color.Lerp(color, Color.white, 0.5f), radius * (big ? 1.2f : 0.8f), 0.2f));
+                BossRushFxBurst stars = BossRushFxKit.Sparks(color, big ? 70 : 26);
+                stars.SpeedMin = radius * 1.6f; stars.SpeedMax = radius * 2.8f; stars.Gravity = 0.45f; stars.Drag = 1.6f;
+                stars.LifeMin = 0.6f; stars.LifeMax = big ? 1.4f : 1f; stars.SizeMin = 0.07f; stars.SizeMax = 0.14f; stars.Trail = 0.3f;
+                BossRushFxKit.PlayBurst(air, stars);
+                BossRushFxKit.PlayBurst(position + Vector3.up * 0.06f,
+                    BossRushFxKit.Shockwave(new Color(color.r, color.g, color.b, 0.7f), radius * 0.5f, 2.4f, 0.4f, true));
+                if (big)
+                {
+                    BossRushFxBurst smoke = BossRushFxKit.Dust(new Color(0.3f, 0.28f, 0.3f, 0.5f), 12);
+                    smoke.ShapeRadius = radius * 0.5f;
+                    BossRushFxKit.PlayBurst(position + Vector3.up * 0.1f, smoke);
+                    Shake(Vector3.up, 0.25f);
+                }
+                GameObject flash = new GameObject("DangerousPrototype_FireworkFlash");
+                flash.transform.position = air;
+                Light light = flash.AddComponent<Light>();
+                light.type = LightType.Point; light.color = color; light.range = radius * 3f; light.intensity = big ? 5f : 2.5f; light.shadows = LightShadows.None;
+                BossRushFxLightFade.Attach(light, light.intensity, 0f).FadeOut(0.35f, true);
+                ModEntityFogVisibility.Attach(flash);
+            }
+            catch (System.Exception e) { ModBehaviour.DevLog("[DangerousPrototype] 烟花表现失败: " + e.Message); }
+        }
+
         /// <summary>反弹炮瞄准线：沿当前射向画到前两次反弹，直射段青色、反弹后转金色，越远越淡。</summary>
         internal void ShowGuide(Vector3[] points, int count)
         {
@@ -312,13 +486,19 @@ namespace BossRush
         }
         internal static GameObject CreateStation(Vector3 position)
         {
+            return CreateStation(position, DangerousPrototypeKind.JetCannon);
+        }
+
+        /// <summary>试验台按这趟放的那一件着色，台面上悬着一圈同色的全息环。</summary>
+        internal static GameObject CreateStation(Vector3 position, DangerousPrototypeKind offered)
+        {
             GameObject station = new GameObject("Dingdang_DangerousPrototypeBench");
             try
             {
             FieldAdventureVisualAssets.Acquire(station);
             station.transform.position = position;
             Color dark = new Color(0.1f, 0.16f, 0.2f);
-            Color orange = new Color(1f, 0.52f, 0.05f);
+            Color orange = Accent(offered);
             Part(station.transform, "Workbench", PrimitiveType.Cube, new Vector3(0f, 0.7f, 0f), new Vector3(2.5f, 0.2f, 1.25f), dark);
             for (int i = -1; i <= 1; i += 2)
             {

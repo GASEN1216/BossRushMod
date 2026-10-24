@@ -15,6 +15,7 @@ from run_runtime_regressions import run_project_fixture
 SOURCES = (
     "Integration/FieldAdventures/Mimic/GreedyMimicEncounter.cs",
     "Integration/FieldAdventures/Mimic/GreedyMimicRules.cs",
+    "Utilities/ReceiverDamageScaling.cs",
     "鸭科夫源码/TeamSoda.Duckov.Core/HealthSimpleBase.cs",
     "鸭科夫源码/TeamSoda.Duckov.Core/DamageReceiver.cs",
 )

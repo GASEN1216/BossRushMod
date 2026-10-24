@@ -74,6 +74,8 @@ namespace BossRush
             health = receiverRoot.AddComponent<HealthSimpleBase>(); health.team = Teams.wolf;
             health.maxHealthValue = Rules.MaximumHealth; health.damageMultiplierIfNotMainCharacter = 0f; health.dmgReceiver = receiver; receiver.simpleHealth = health;
             health.OnHurtEvent += OnHurt; health.OnDeadEvent += OnDead; subscribed = true;
+            // 铁皮箱体：伤害进入官方轻量血量之前，闭嘴时按 ShellArmor 缩小（DamageReceiver.Hurt 前缀消费）。
+            ReceiverDamageScaling.Register(receiver, info => visual != null && visual.MouthOpen ? 1f : GreedyMimicRules.ShellArmor);
             SyncReceiverGeometry();
             receiverRoot.SetActive(true); Physics.SyncTransforms();
             CharacterMainControl player = CharacterMainControl.Main;
@@ -182,7 +184,8 @@ namespace BossRush
             if (fighting || disposed || pendingDeath || settled) return;
             fighting = true; cooldown = 1.6f;
             if (interactionRoot != null) interactionRoot.SetActive(false);
-            FieldAdventureSupport.Notify("开席！它把你也写进了菜单。", "FEAST! You have been added to the menu.");
+            FieldAdventureSupport.Notify("开席！它把你也写进了菜单。铁皮箱子很硬，趁它张嘴蓄力、吞咽或扑跳时打要害。",
+                "FEAST! You have been added to the menu. Its iron shell shrugs off hits; strike while its mouth is open to charge, swallow or pounce.");
         }
         private void OnHurt(DamageInfo damage)
         {
@@ -490,6 +493,7 @@ namespace BossRush
         private void RemoveReceiver()
         {
             if (subscribed && health != null) { health.OnHurtEvent -= OnHurt; health.OnDeadEvent -= OnDead; }
+            ReceiverDamageScaling.Unregister(receiver);
             subscribed = false; health = null; receiver = null;
             bodyCollider = null; receiverBody = null;
             if (receiverRoot != null) { receiverRoot.SetActive(false); UnityEngine.Object.Destroy(receiverRoot); }

@@ -158,7 +158,7 @@ def validate(root=ROOT):
     require(combat, "private void OnBossDead(", "EclipseBloomRuntimeModule.NotifyOwnedBossDefeated(boss);")
     check("EclipseBloomIntroduction.NotifyDefeated()" not in source(combat), "池中击杀不得绕过原生实例身份核验推进引导")
     require(pool, "internal static void Register(", "owner.FindArenaEnemyPreset(EclipseBloomBoss.NameKey) != null",
-            "owner.AddArenaEnemyPreset(new EnemyPresetInfo", "team = (int)Teams.wolf", "baseHealth = 5000f", "baseDamage = 34f")
+            "owner.AddArenaEnemyPreset(new EnemyPresetInfo", "team = (int)Teams.wolf", "baseHealth = EclipseBloomTuning.BaseHealth", "baseDamage = 34f")
     pool_spawn = require(pool, "internal static async UniTask<CharacterMainControl> SpawnAsync(",
             "owner.IsModeEActive || owner.IsModeFActive", "EclipseBloomEncounterPlacement.TryGetSpawnScene(out scene)",
             "EclipseBloomEncounterPlacement.IsCurrent(scene, levelScene, levelOwner)",

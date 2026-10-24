@@ -35,7 +35,7 @@ internal static partial class Program
     private static void MimicMenusAndGrowth()
     {
         var empty = new GreedyMimicRules();
-        Check(empty.Meals == 0 && empty.MaximumHealth == 600f && empty.Scale == 1f, "unfed mimic has base health and scale");
+        Check(empty.Meals == 0 && empty.MaximumHealth == 900f && empty.Scale == 1f, "unfed mimic has base health and scale");
         foreach (int invalid in new[] { -1, 3, 32, int.MinValue, int.MaxValue })
         {
             Check(!empty.CanFeed((GreedyMimicFood)invalid) && !empty.Feed((GreedyMimicFood)invalid), "invalid meals never consume growth capacity");
@@ -58,7 +58,7 @@ internal static partial class Program
                 previousHealth = rules.MaximumHealth; previousScale = rules.Scale;
             }
             Check(rules.Meals == 3 && rules.Level(food) == 3, "three same-kind meals retain all three upgrades");
-            Near(rules.MaximumHealth, 1320f, "fully fed mimic health budget");
+            Near(rules.MaximumHealth, 1800f, "fully fed mimic health budget");
             Near(rules.Scale, 1.54f, "fully fed mimic size budget");
             foreach (GreedyMimicFood fourth in new[] { GreedyMimicFood.Ammunition, GreedyMimicFood.Explosive, GreedyMimicFood.Medicine })
                 Check(!rules.CanFeed(fourth) && !rules.Feed(fourth), "fourth meal is rejected for every food type");
@@ -235,7 +235,7 @@ internal static partial class Program
     private static void PrototypeBorrowAndCooldown()
     {
         var invalidRules = new DangerousPrototypeRules();
-        foreach (int invalid in new[] { -1, 2, 31, 32, int.MinValue, int.MaxValue })
+        foreach (int invalid in new[] { -1, 5, 31, 32, int.MinValue, int.MaxValue })
         {
             Check(!invalidRules.CanBorrow((DangerousPrototypeKind)invalid)
                 && !invalidRules.Borrow((DangerousPrototypeKind)invalid), "invalid prototype kinds cannot alias valid claim bits");
@@ -300,9 +300,28 @@ internal static partial class Program
         Check(!ricochet.Borrow(DangerousPrototypeKind.JetCannon), "unclaimed completion blocks borrowing another rig");
         Check(DangerousPrototypeRules.Damage(DangerousPrototypeKind.RicochetSun, 1)
             > DangerousPrototypeRules.Damage(DangerousPrototypeKind.RicochetSun, 0), "wall bounces increase combat damage");
-        Near(DangerousPrototypeRules.Damage(DangerousPrototypeKind.JetCannon, 0), 85f, "jet cannon fixed damage budget");
-        Near(DangerousPrototypeRules.Damage(DangerousPrototypeKind.RicochetSun, 0), 22f, "direct beam fixed damage budget");
-        Near(DangerousPrototypeRules.Damage(DangerousPrototypeKind.RicochetSun, 3), 110f, "reflected beam fixed damage budget");
+        Near(DangerousPrototypeRules.Damage(DangerousPrototypeKind.JetCannon, 0), 140f, "overdrive jet cannon damage budget");
+        Near(DangerousPrototypeRules.Damage(DangerousPrototypeKind.RicochetSun, 0), 30f, "direct beam damage budget");
+        Near(DangerousPrototypeRules.Damage(DangerousPrototypeKind.RicochetSun, 1), 160f, "first bounce damage budget");
+        Near(DangerousPrototypeRules.Damage(DangerousPrototypeKind.RicochetSun, 3), 210f, "each extra bounce adds damage");
+        Near(DangerousPrototypeRules.Damage(DangerousPrototypeKind.RicochetSun, 9), 260f, "bounce bonus is capped");
+        Near(DangerousPrototypeRules.Damage(DangerousPrototypeKind.QuackRail, 0), 260f, "rail slug damage budget");
+        Check(DangerousPrototypeRules.Damage(DangerousPrototypeKind.Thunderbill, 0) == 70f && DangerousPrototypeRules.Damage(DangerousPrototypeKind.Thunderbill, 6) == 40f
+            && DangerousPrototypeRules.Damage(DangerousPrototypeKind.Thunderbill, 20) == 40f, "chain lightning decays per jump to a floor");
+        Check(DangerousPrototypeRules.Damage(DangerousPrototypeKind.GrandFinale, 0) > DangerousPrototypeRules.Damage(DangerousPrototypeKind.GrandFinale, 1), "the main firework outhits each bomblet");
+        var seenKinds = new HashSet<DangerousPrototypeKind>();
+        for (int roll = 0; roll < 100; roll++) seenKinds.Add(DangerousPrototypeRules.RandomKind(roll / 100f));
+        Check(seenKinds.Count == DangerousPrototypeRules.KindCount, "the bench draw can offer every prototype");
+        Check(DangerousPrototypeRules.RandomKind(-1f) == DangerousPrototypeKind.JetCannon && DangerousPrototypeRules.RandomKind(1f) == DangerousPrototypeKind.GrandFinale
+            && DangerousPrototypeRules.RandomKind(float.NaN) == DangerousPrototypeKind.JetCannon, "out-of-range draws clamp to a real prototype");
+        foreach (DangerousPrototypeKind kind in new[] { DangerousPrototypeKind.QuackRail, DangerousPrototypeKind.Thunderbill, DangerousPrototypeKind.GrandFinale })
+        {
+            var trial = new DangerousPrototypeRules();
+            Check(trial.Borrow(kind) && trial.Target >= 6 && trial.RechargeSeconds >= 1f, "new prototype " + kind + " borrows with a real target and recharge");
+            for (int hit = 0; hit < trial.Target - 1; hit++) Check(!trial.ObserveHit(false), "new prototypes count every actual hit");
+            Check(trial.ObserveHit(false) && trial.Completed && trial.Claim(), "new prototype completes and claims once");
+        }
+        Check(!new DangerousPrototypeRules().CanBorrow((DangerousPrototypeKind)99), "unknown prototype ids are rejected");
     }
 
     private static void PrototypeRewardsAndCancellation()

@@ -22,6 +22,7 @@ SOURCES = (
     "Integration/FieldAdventures/Mimic/GreedyMimicVisual.cs",
     "Integration/FieldAdventures/Mimic/GreedyMimicRuntimeModule.cs",
     "Integration/FieldAdventures/Mimic/GreedyMimicTerrain.cs",
+    "Utilities/ReceiverDamageScaling.cs",
     "鸭科夫源码/TeamSoda.Duckov.Core/HealthSimpleBase.cs",
     "鸭科夫源码/TeamSoda.Duckov.Core/DamageReceiver.cs",
     "鸭科夫源码/TeamSoda.Duckov.Core/ExplosionManager.cs",

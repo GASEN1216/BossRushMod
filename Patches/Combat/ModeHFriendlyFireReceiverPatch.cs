@@ -11,6 +11,7 @@
 // Mode H 目录不允许新增 Harmony 补丁（ModeHStandInGuard），跨模块的受伤拦截点放在 Patches/Combat。
 //
 // 契约：先读 ModeHFriendlyFireBarrier.IsArmed 静态 bool 快速早返（非鸭王杯群战零开销）；
+// 2026-10-24 起同一前缀还挂 ReceiverDamageScaling（自定义 Boss 部位减伤），参数改为 ref 才能改写伤害；
 // 只拦「攻击者与受击者同队、都不是玩家、不是自伤」；判定 no-throw，异常一律放行。
 // ============================================================================
 
@@ -22,8 +23,10 @@ namespace BossRush
     internal static class ModeHFriendlyFireReceiverPatch
     {
         [HarmonyPrefix]
-        private static bool Prefix(DamageReceiver __instance, DamageInfo damageInfo, ref bool __result)
+        private static bool Prefix(DamageReceiver __instance, ref DamageInfo damageInfo, ref bool __result)
         {
+            // 同一拦截点上的第二个消费者：自定义 Boss 部位减伤（花瓣护核、铁皮箱体），未登记时一次计数早返。
+            if (ReceiverDamageScaling.IsArmed) ReceiverDamageScaling.Apply(__instance, ref damageInfo);
             if (!ModeHFriendlyFireBarrier.IsArmed) return true;
             Health health = null;
             try { health = __instance != null ? __instance.health : null; }
