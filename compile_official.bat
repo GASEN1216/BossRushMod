@@ -921,6 +921,10 @@ echo(Integration\SandstormChampion\SandstormChampionBody.cs
 echo(Integration\SandstormChampion\SandstormChampionHazards.cs
 echo(Integration\SandstormChampion\SandstormChampionBoss.cs
 echo(Integration\SandstormChampion\SandstormChampionAbilityController.cs
+echo(Integration\FieldAdventures\Prototypes\DangerousPrototypeInteractable.cs
+echo(Integration\FieldAdventures\Prototypes\DangerousPrototypeRules.cs
+echo(Integration\FieldAdventures\Prototypes\DangerousPrototypeRuntimeModule.cs
+echo(Integration\FieldAdventures\Prototypes\DangerousPrototypeVisuals.cs
 echo(Integration\FieldAdventures\Delivery\OddParcelInteractable.cs
 echo(Integration\FieldAdventures\Delivery\OddParcelRules.cs
 echo(Integration\FieldAdventures\Delivery\OddParcelRuntimeModule.cs

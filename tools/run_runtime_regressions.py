@@ -11,6 +11,7 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT_FIXTURES = (
+    "FieldAdventurePrototypeRuntime",
     "FieldAdventureDeliveryRuntime",
     "FieldAdventureMimicRuntime",
     "PhantomScytheLocalization",

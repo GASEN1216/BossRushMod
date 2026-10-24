@@ -7,6 +7,7 @@ namespace BossRush
         {
             host.Register(new GreedyMimicRuntimeModule());
             host.Register(new OddParcelRuntimeModule());
+            host.Register(new DangerousPrototypeRuntimeModule());
         }
     }
 }
