@@ -41,6 +41,19 @@ namespace BossRush
             try
             {
                 if (isActiveCheck != null && !isActiveCheck()) return null;
+                if (SandstormChampionPoolAdapter.IsPreset(preset))
+                {
+                    CharacterMainControl champion = await SandstormChampionPoolAdapter.SpawnAsync(owner, position,
+                        isActiveCheck, false);
+                    if (champion != null)
+                    {
+                        if (InfiniteHellMode) ApplyInfiniteHellScaling(champion, preset);
+                        MutatorManager.ApplyToEnemy(champion);
+                        coroutineHost.StartCoroutine(enemyRecoveryMonitor.DelayedBossPositionValidation(champion, 0.5f));
+                        enemyRecoveryMonitor.RegisterEnemyRecoveryAnchor(champion, position);
+                    }
+                    return champion;
+                }
                 // 检查是否是龙裔遗族Boss，使用专门的生成方法
                 if (IsDragonDescendantPreset(preset))
                 {

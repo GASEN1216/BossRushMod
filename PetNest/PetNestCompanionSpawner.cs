@@ -958,6 +958,8 @@ namespace BossRush
         internal static CharacterRandomPreset ResolveSourcePreset(string lineageKey)
         {
             if (string.IsNullOrEmpty(lineageKey)) return null;
+            // 冠军的临时 preset 只供原实例使用，不是幼体的官方底模。
+            if (SandstormChampionPoolAdapter.IsPreset(lineageKey)) return null;
             try
             {
                 CharacterRandomPreset[] all = ObjectCache.GetCharacterPresets();

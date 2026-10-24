@@ -957,6 +957,7 @@ namespace BossRush
                     continue;
                 }
 
+                if (SandstormChampionPoolAdapter.IsPreset(preset)) continue;
                 if (owner.IsDragonKingPreset(preset))
                 {
                     continue;

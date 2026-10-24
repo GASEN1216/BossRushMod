@@ -973,7 +973,8 @@ namespace BossRush
         {
             return IsDragonDescendantPreset(preset)
                 || IsDragonKingPreset(preset)
-                || IsPhantomWitchPreset(preset);
+                || IsPhantomWitchPreset(preset)
+                || SandstormChampionPoolAdapter.IsPreset(preset);
         }
 
         internal async UniTask<ManagedBossPrepareResult> PrepareManagedPhantomWitchAsync(

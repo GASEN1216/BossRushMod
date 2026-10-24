@@ -49,12 +49,14 @@ internal static class Program
     private static void CacheAndClassification()
     {
         var s=new Session();var wolf=Preset("wolf",Teams.wolf);var minion=Preset("m",Teams.scav);
-        s.Bosses.AddRange(new[] { wolf,Preset("king",Teams.wolf),Preset("dragon",Teams.wolf),null,Preset("",Teams.wolf) });
+        s.Bosses.AddRange(new[] { wolf,Preset("king",Teams.wolf),Preset("dragon",Teams.wolf),Preset(SandstormChampionPoolAdapter.NameKey,Teams.wolf),null,Preset("",Teams.wolf) });
         s.Minions.Add(minion);
         s.Runtime.EnsureModeEFSpawnPoolsReady("test");
         Check(string.Join(",",s.Events)=="arena,minions","cache preparation preserves initializer order");
         Check(s.Runtime.ContainsBossPreset(Preset("wolf",Teams.wolf)),"cache identity accepts final preset name clone");
         Check(!s.Runtime.ContainsBossPreset(Preset("king",Teams.wolf)),"king excluded from all faction boss caches");
+        Check(!s.Runtime.ContainsBossPreset(Preset(SandstormChampionPoolAdapter.NameKey,Teams.wolf)),
+            "player-targeted champion excluded from faction boss caches");
         Check(s.Runtime.ContainsMinionPreset(minion),"minions remain in independent source pool");
         int classified=s.Classifications;s.Runtime.BuildModeEFactionPresetCaches();
         Check(s.Classifications==classified,"same source identity and counts reuse faction cache");

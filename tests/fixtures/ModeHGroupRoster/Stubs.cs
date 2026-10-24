@@ -78,3 +78,13 @@ namespace BossRush
         public const string BossNameEN = "Phantom Witch";
     }
 }
+
+namespace BossRush
+{
+    // 冠军目录身份是边界替身；完整池入口由 SandstormChampionPool 直接链接验证。
+    internal static class SandstormChampionPoolAdapter
+    {
+        internal const string NameKey = "BossRush_Campaign_FinalBoss_Name";
+        internal static bool IsPreset(EnemyPresetInfo preset) { return preset != null && preset.name == NameKey; }
+    }
+}

@@ -142,6 +142,8 @@ namespace BossRush
                 {
                     EnemyPresetInfo info = presets[i];
                     if (info == null || string.IsNullOrEmpty(info.name) || !seen.Add(info.name)) continue;
+                    // 冠军只追击主玩家，不适用于玩家旁观的两队群战。
+                    if (SandstormChampionPoolAdapter.IsPreset(info)) continue;
                     if (IsCustomKey(info.name)) continue; // 自定义三只下面统一登记
                     CharacterRandomPreset preset = ModeHProductionCertification.ResolveAuditedPreset(info.name);
                     if (preset == null) continue;

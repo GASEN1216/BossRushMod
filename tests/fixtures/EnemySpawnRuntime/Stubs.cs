@@ -116,6 +116,7 @@ namespace BossRush
         public readonly GameObject gameObject;
         public readonly HealthState Health = new HealthState();
         public readonly CharacterItemState CharacterItem = new CharacterItemState();
+        public float MeleeDamageMultiplierBase = 1f;
         public CharacterMainControl(string name)
         {
             this.name = name; gameObject = new GameObject { name = name }; gameObject.Components.Add(this);
@@ -150,4 +151,19 @@ namespace BossRush
     { internal static void ReleaseFromPlayerDistanceSleep(CharacterMainControl c) { Probe.Events.Add("wake"); } }
     internal static class MutatorManager
     { internal static void ApplyToEnemy(CharacterMainControl c) { Probe.Events.Add("mutator"); } }
+}
+
+namespace BossRush
+{
+    // 冠军目录身份是边界替身；完整池入口由 SandstormChampionPool 直接链接验证。
+    internal static class SandstormChampionPoolAdapter
+    {
+        internal const string NameKey = "BossRush_Campaign_FinalBoss_Name";
+        internal static bool IsPreset(EnemyPresetInfo preset) { return preset != null && preset.name == NameKey; }
+        internal static void CleanupCancelled(CharacterMainControl character)
+        {
+            Probe.Events.Add("cleanup:" + NameKey);
+            UnityEngine.Object.Destroy(character.gameObject);
+        }
+    }
 }

@@ -59,6 +59,7 @@ namespace BossRush
 
             // 注册幽灵女巫Boss
             owner.RegisterPhantomWitchPresetForArena();
+            SandstormChampionPoolAdapter.Register(owner);
 
             PruneNonBossEnemyPresetsFromCache();
 

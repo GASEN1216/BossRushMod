@@ -7,12 +7,13 @@ using UnityEngine.SceneManagement;
 
 namespace BossRush
 {
-    /// <summary>只在第六章报名石召唤；不登记普通波次、不预载女巫或武器资源。</summary>
+    /// <summary>征程报名石与共享 Boss 池复用的实例工厂；不预载女巫资源。</summary>
     internal static class SandstormChampionBoss
     {
         internal const string NameKey = "BossRush_Campaign_FinalBoss_Name";
 
-        internal static async UniTask<CharacterMainControl> SpawnAsync(ModBehaviour owner, Vector3 position, Func<bool> isCurrent)
+        internal static async UniTask<CharacterMainControl> SpawnAsync(ModBehaviour owner, Vector3 position, Func<bool> isCurrent,
+            bool deferActivationUntilNextFrame = false)
         {
             CharacterMainControl boss = null;
             CharacterRandomPreset runtimePreset = null;
@@ -42,6 +43,8 @@ namespace BossRush
                 BossAIController ai = new BossAIController(boss, "SandstormChampion");
                 ai.Pause();
                 RemoveOriginalCombat(boss);
+                // 官方工厂可能返回已激活角色；延迟生成时先停用，不能让技能在等待帧提前开打。
+                if (deferActivationUntilNextFrame) boss.gameObject.SetActive(false);
                 boss.gameObject.name = SandstormChampionConfig.GameObjectName;
                 boss.characterPreset = runtimePreset;
                 boss.isBossCharacter = true;
@@ -67,6 +70,12 @@ namespace BossRush
                 if (!AstralStaffWeaponConfig.TryConfigure(reward))
                     throw new InvalidOperationException("champion_reward_configuration_failed");
                 reward.Durability = reward.MaxDurability;
+
+                if (deferActivationUntilNextFrame)
+                {
+                    await UniTask.Yield();
+                    if (!IsCurrent(owner, sceneHandle, isCurrent)) throw new OperationCanceledException();
+                }
 
                 SandstormChampionController controller = boss.gameObject.AddComponent<SandstormChampionController>();
                 controller.Initialize(boss, runtimePreset, reward, baseline, ai, isCurrent, sceneHandle, owner);

@@ -29,6 +29,8 @@ namespace BossRush
                     isNonWaveSpawn: nonWave, isActiveCheck: active),
                 CleanupCancelledDragonDescendant, character => CleanupCancelledDragonKing(character),
                 CleanupFailedPhantomWitchSpawn);
+            enemySpawnRuntime.BindSandstormChampionService((position, notify, defer, nonWave, active) =>
+                SandstormChampionPoolAdapter.SpawnAsync(this, position, active, nonWave, defer));
             enemySpawnRuntime.BindEquipmentServices(modeDRuntime.NormalizeDamageMultiplier,
                 modeDItemPool.EquipEnemyForModeD, modeDItemPool.CreateSharedModeEnemyEquipmentMaterializationPlan,
                 (character, isBoss) => ApplyBossStatMultiplier(character, isBoss: isBoss),

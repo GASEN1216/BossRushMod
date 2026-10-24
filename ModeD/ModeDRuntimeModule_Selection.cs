@@ -41,6 +41,20 @@ namespace BossRush
                 return null;
             }
 
+            // E/F 重试也会借用本选择器；冠军只攻击主玩家，须与它们正式池一致排除。
+            if (owner.IsModeEActive || owner.IsModeFActive)
+            {
+                presetFilterCache.Clear();
+                for (int i = 0; i < filteredBossPool.Count; i++)
+                {
+                    EnemyPresetInfo candidate = filteredBossPool[i];
+                    if (SandstormChampionPoolAdapter.IsPreset(candidate)) continue;
+                    if (candidate != null) presetFilterCache.Add(candidate);
+                }
+                if (presetFilterCache.Count == 0) return null;
+                filteredBossPool = presetFilterCache;
+            }
+
             // 第6-10波（首次出Boss的波次）：过滤掉强力Boss
             // Mode E 不使用波次系统，直接走完整池
             if (!owner.IsModeEActive && !owner.IsModeFActive && modeDWaveIndex <= 10)

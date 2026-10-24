@@ -139,6 +139,8 @@ namespace BossRush
                 for (int i = 0; i < filteredBossPool.Count; i++)
                 {
                     EnemyPresetInfo boss = filteredBossPool[i];
+                    // 冠军技能仅指向主玩家，不能进入 E/F 阵营池。
+                    if (SandstormChampionPoolAdapter.IsPreset(boss)) continue;
                     if (boss == null || string.IsNullOrEmpty(boss.name) || IsDragonKingPreset(boss))
                     {
                         continue;

@@ -31,6 +31,8 @@ internal static class Program
         // 宿主表里登记过的自定义 Boss 不能按官方口径重复进池
         host.BossFilterEnemyPresets.Add(new EnemyPresetInfo { name = DragonKingConfig.BossNameKey, baseHealth = 800 });
 
+        host.BossFilterEnemyPresets.Add(new EnemyPresetInfo { name = SandstormChampionPoolAdapter.NameKey });
+        ModeHProductionCertification.Catalog[SandstormChampionPoolAdapter.NameKey] = new CharacterRandomPreset();
         List<ModeHGroupEntry> pool = ModeHGroupPool.Build(host);
         Check(pool.Count == 15, "pool = 12 official + 3 custom (missing preset excluded)");
         int customs = 0;

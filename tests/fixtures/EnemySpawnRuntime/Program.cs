@@ -18,6 +18,7 @@ namespace BossRush
             internal readonly EnemySpawnRuntime Runtime;
             internal bool Active = true, DescendantSpawned, KingSpawned;
             internal int RandomCalls, SpecialCalls;
+            internal float PreparedMeleeDamageMultiplierBase = 1f;
             internal CharacterMainControl LastCreated;
             internal Owner()
             {
@@ -27,7 +28,7 @@ namespace BossRush
                 Runtime = new EnemySpawnRuntime(Scheduler);
                 Runtime.BindPresetQueries(() => Presets, Roll, Roll, () => DescendantSpawned, () => KingSpawned);
                 Runtime.BindSpecialBossServices(p => p.name == "descendant", p => p.name == "king", p => p.name == "witch",
-                    p => p.name == "descendant" || p.name == "king" || p.name == "witch",
+                    p => p.name == "descendant" || p.name == "king" || p.name == "witch" || SandstormChampionPoolAdapter.IsPreset(p),
                     (pos, child, notify, defer, nonWave, active) =>
                     {
                         Check(!child && !notify, "descendant legacy flags");
@@ -36,7 +37,12 @@ namespace BossRush
                     (pos, notify, defer, nonWave, active) => { Check(!notify, "king legacy flag"); return SpawnSpecial("king", defer, nonWave, active); },
                     (pos, notify, defer, nonWave, active) => { Check(!notify, "witch legacy flag"); return SpawnSpecial("witch", defer, nonWave, active); },
                     c => Cleanup(c, "descendant"), c => Cleanup(c, "king"), c => Cleanup(c, "witch"));
-                Runtime.BindEquipmentServices(c => Probe.Events.Add("normalize"),
+                Runtime.BindSandstormChampionService((pos, notify, defer, nonWave, active) =>
+                {
+                    Check(!notify, "champion legacy flag");
+                    return SpawnSpecial(SandstormChampionPoolAdapter.NameKey, defer, nonWave, active);
+                });
+                Runtime.BindEquipmentServices(c => { Probe.Events.Add("normalize"); c.MeleeDamageMultiplierBase = 1f; },
                     (c, wave, health, boss) => { Check(wave == 4 && health == 120 && boss, "equipment receives original spawn parameters"); Probe.Events.Add("equip"); },
                     (c, wave, health, boss) => { Probe.Events.Add("plan"); return new ModeDItemPool.SharedModeEnemyEquipmentMaterializationPlan(); },
                     (c, boss) => Probe.Events.Add("multiplier"), (c, count) => Probe.Events.Add("loot:" + count));
@@ -48,6 +54,7 @@ namespace BossRush
                 SpecialCalls++; Probe.Events.Add("special:" + kind + ":" + defer + ":" + nonWave);
                 Check(active != null, "special spawn receives validity callback");
                 LastCreated = new CharacterMainControl(kind);
+                LastCreated.MeleeDamageMultiplierBase = PreparedMeleeDamageMultiplierBase;
                 return new UniTask<CharacterMainControl>(Task.FromResult(LastCreated));
             }
             private void Cleanup(CharacterMainControl c, string kind) { Probe.Events.Add("cleanup:" + kind); UnityEngine.Object.Destroy(c.gameObject); }
@@ -127,7 +134,7 @@ namespace BossRush
                 "external hold returns frozen character");
             Check(!Probe.Events.Contains("wake") && !Probe.Events.Contains("mutator") && !Probe.Events.Contains("loot:3"), "external hold respects caller mutator and loot policy");
 
-            foreach (string kind in new[] { "descendant", "king", "witch" })
+            foreach (string kind in new[] { "descendant", "king", "witch", SandstormChampionPoolAdapter.NameKey })
             {
                 Reset(); owner = new Owner(); preset = new EnemyPresetInfo { name = kind, displayName = kind };
                 result = owner.Spawn(preset, new EnemySpawnCoreOptions { SuppressWaveBossRegistration = true }, deferred: true).Result;
@@ -135,6 +142,27 @@ namespace BossRush
                 Check(!Probe.Events.Contains("yield") && !Probe.Events.Contains("equip") && !Probe.Events.Contains("multiplier"), "special boss avoids duplicate generic preparation");
                 Reset(); owner = new Owner(); owner.Active = false; result = owner.Spawn(preset).Result;
                 Check(!result.success && owner.LastCreated == null && Probe.Events.Contains("cleanup:" + kind), "special boss invalidation uses its original cleanup owner");
+            }
+
+            foreach (float baseline in new[] { .65f, 2.75f, 2.75f * 1.8f })
+            {
+                foreach (string scaledKind in new[] { SandstormChampionPoolAdapter.NameKey })
+                {
+                    Reset(); owner = new Owner { PreparedMeleeDamageMultiplierBase = baseline };
+                    preset = new EnemyPresetInfo { name = scaledKind };
+                    result = owner.Spawn(preset).Result;
+                    Check(result.success && result.context.character.MeleeDamageMultiplierBase == baseline
+                        && !Probe.Events.Contains("normalize"),
+                        "prepared special boss preserves non-unit melee baseline including global scaling: " + scaledKind + " / " + baseline);
+                }
+                foreach (string otherKind in new[] { "descendant", "king", "witch" })
+                {
+                    Reset(); owner = new Owner { PreparedMeleeDamageMultiplierBase = baseline };
+                    result = owner.Spawn(new EnemyPresetInfo { name = otherKind }).Result;
+                    Check(result.success && result.context.character.MeleeDamageMultiplierBase == 1f
+                        && Probe.Events.Contains("normalize"),
+                        "other special bosses retain existing melee normalization: " + otherKind + " / " + baseline);
+                }
             }
 
             Reset(); owner = new Owner(); owner.DescendantSpawned = true; owner.KingSpawned = true;

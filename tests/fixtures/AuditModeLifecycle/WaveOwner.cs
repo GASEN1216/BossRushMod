@@ -72,3 +72,8 @@ namespace BossRush {
   }
  }
 }
+
+namespace BossRush
+{
+ internal static class SandstormChampionBoss { internal const string NameKey = "BossRush_Campaign_FinalBoss_Name"; }
+}

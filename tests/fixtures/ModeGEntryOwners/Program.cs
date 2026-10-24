@@ -167,7 +167,7 @@ internal static class Program
         host.Pool = new System.Collections.Generic.List<EnemyPresetInfo> {
             new EnemyPresetInfo { name = "B" }, new EnemyPresetInfo { name = "A" },
             new EnemyPresetInfo { name = "Dragon" }, new EnemyPresetInfo { name = "King" },
-            new EnemyPresetInfo { name = "Witch" }, new EnemyPresetInfo { name = "OtherManaged" }
+            new EnemyPresetInfo { name = "Witch" }, new EnemyPresetInfo { name = "OtherManaged" }, new EnemyPresetInfo { name = SandstormChampionPoolAdapter.NameKey }
         };
         ModeGBossSnapshot snapshot = host.CreateModeGBossSnapshot();
         Check(snapshot.officialKeys.SequenceEqual(new[] { "A", "B" }), "Snapshot did not read new filtered pool or classify managed presets");

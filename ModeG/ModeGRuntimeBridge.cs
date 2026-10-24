@@ -30,6 +30,8 @@ namespace BossRush
                 {
                     EnemyPresetInfo info = filtered[i];
                     if (info == null || string.IsNullOrEmpty(info.name)) continue;
+                    // 冠军没有 G 的 Prepare / Activate 事务句柄。
+                    if (SandstormChampionPoolAdapter.IsPreset(info)) continue;
 
                     if (IsDragonDescendantPreset(info))
                     {

@@ -147,6 +147,7 @@ namespace BossRush
             {
                 EnemyPresetInfo info = pool[i];
                 if (info == null || string.IsNullOrEmpty(info.name)) continue;
+                if (SandstormChampionPoolAdapter.IsPreset(info)) continue;
                 if (byKey.ContainsKey(info.name)) continue;
 
                 // fail-closed：nameKey 查不到官方 preset 就不进目录

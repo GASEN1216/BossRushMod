@@ -128,6 +128,7 @@ namespace BossRush
         private DescendantSpawner SpawnDragonDescendant;
         private SpecialBossSpawner SpawnDragonKing;
         private SpecialBossSpawner SpawnPhantomWitch;
+        private SpecialBossSpawner SpawnSandstormChampion;
         private Action<CharacterMainControl> CleanupCancelledDragonDescendant;
         private Action<CharacterMainControl> CleanupCancelledDragonKing;
         private Action<CharacterMainControl> CleanupFailedPhantomWitchSpawn;
@@ -177,6 +178,11 @@ namespace BossRush
             CleanupCancelledDragonDescendant = cleanupDescendant;
             CleanupCancelledDragonKing = cleanupKing;
             CleanupFailedPhantomWitchSpawn = cleanupWitch;
+        }
+
+        internal void BindSandstormChampionService(SpecialBossSpawner spawner)
+        {
+            SpawnSandstormChampion = spawner;
         }
 
         internal void BindEquipmentServices(
@@ -438,6 +444,13 @@ namespace BossRush
                                 continue;
                             }
                         }
+                        else if (SandstormChampionPoolAdapter.IsPreset(currentPreset))
+                        {
+                            if (SpawnSandstormChampion == null)
+                                return EnemySpawnCoreResult.Failed("冠军之影生成适配器未接线", currentPreset);
+                            character = await SpawnSandstormChampion(position, false, deferActivationUntilNextFrame,
+                                options != null && options.SuppressWaveBossRegistration, isActiveCheck);
+                        }
                         // 龙裔遗族Boss：使用专用生成方法
                         else if (IsDragonDescendantPreset(currentPreset))
                         {
@@ -546,6 +559,7 @@ namespace BossRush
                                     {
                                         if (IsDragonDescendantPreset(currentPreset)) CleanupCancelledDragonDescendant(character);
                                         else if (IsDragonKingPreset(currentPreset)) CleanupCancelledDragonKing(character);
+                                        else if (SandstormChampionPoolAdapter.IsPreset(currentPreset)) SandstormChampionPoolAdapter.CleanupCancelled(character);
                                         else CleanupFailedPhantomWitchSpawn(character);
                                     }
                                 }
@@ -570,9 +584,9 @@ namespace BossRush
                             // 标记大兴兴（防止被误清理）
                             TryTrackSpawnCoreDaXingXing(character, currentPreset);
 
-                            if (normalizeDamageMultiplier)
+                            if (normalizeDamageMultiplier && !SandstormChampionPoolAdapter.IsPreset(currentPreset))
                             {
-                                // 统一伤害倍率（龙裔/龙王也需要）
+                                // 冠军技能已保留刷出前的基线，不能再次归一化；其余特殊 Boss 沿用原流程。
                                 NormalizeDamageMultiplier(character);
                             }
 

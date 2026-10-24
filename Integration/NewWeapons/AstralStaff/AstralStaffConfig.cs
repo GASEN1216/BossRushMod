@@ -33,14 +33,14 @@ namespace BossRush
             + "<color=#FFE9A8>【一豆 · 流星横扫】</color>前方大半圈横扫，击退。\n"
             + "<color=#9FF3FF>【二豆 · 双龙回旋】</color>原地两圈回旋，两段伤害，把周围的敌人卷近。\n"
             + "<color=#FFFFFF>【三豆 · 星陨天崩】</color>向前一跃，砸下一根巨大的光棍，前方一条全中，落点震开一圈。\n"
-            + "<color=#BBBBBB>来源：鸭王征程第六章 冠军之影 必掉</color>";
+            + "<color=#BBBBBB>来源：冠军之影必掉（征程第六章或共享 Boss 池）</color>";
         internal const string DescriptionEN =
             "When the Shadow of the Champion fell apart into sand, this was left standing in it. It weighs nothing. It is just light.\n"
             + "<color=#FFD36B>[Focus]</color> Left-click light attacks; every 2 hits that land build one Focus point (the third combo hit counts double), up to 3. Hold right-click to charge more; release to unleash.\n"
             + "<color=#FFE9A8>[1 Focus · Meteor Sweep]</color> A wide sweep in front that knocks enemies back.\n"
             + "<color=#9FF3FF>[2 Focus · Twin Dragon Spin]</color> Two full spins, two hits, drags nearby enemies in.\n"
             + "<color=#FFFFFF>[3 Focus · Starfall]</color> Leap forward and slam down a giant staff of light: hits everything in a line, then a shockwave at the landing point.\n"
-            + "<color=#BBBBBB>Source: guaranteed drop from the Shadow of the Champion (Duck King's Campaign, Chapter 6)</color>";
+            + "<color=#BBBBBB>Source: guaranteed drop from the Shadow of the Champion (Campaign Chapter 6 or the shared Boss pool)</color>";
 
         // ========== 物品属性 ==========
         internal const int Quality = 6;

@@ -57,7 +57,17 @@ namespace BossRush {
    for(int i=0;i<10;i++)host.BossFilterEnemyPresets.Add(new EnemyPresetInfo{name="normal"+i});
    arena=new WavesArenaRuntimeModule(host);arena.StartFirstWave();pool=host.GetFilteredEnemyPresets();
    Check(pool.Count==12&&pool.Take(10).All(p=>!WavesArenaRuntimeModule.EarlyWaveExcludedBosses.Contains(p.name))&&arena.Spawned.name.StartsWith("normal"),"small pool must still keep strong bosses behind every ordinary boss");
+   host=new ModBehaviour();host.BossFilterEnemyPresets.Add(new EnemyPresetInfo{name=SandstormChampionBoss.NameKey});
+   for(int i=0;i<5;i++)host.BossFilterEnemyPresets.Add(new EnemyPresetInfo{name="normal"+i});
+   arena=new WavesArenaRuntimeModule(host);arena.StartFirstWave();pool=host.GetFilteredEnemyPresets();
+   Check(pool.Take(5).All(p=>p.name!=SandstormChampionBoss.NameKey)&&pool.Last().name==SandstormChampionBoss.NameKey,
+       "champion follows ordinary enabled bosses even in a small pool");
    Console.WriteLine("WaveOrdering: "+checks+" assertions PASS");
   }
  }
+}
+
+namespace BossRush
+{
+ internal static class SandstormChampionBoss { internal const string NameKey = "BossRush_Campaign_FinalBoss_Name"; }
 }

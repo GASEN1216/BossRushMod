@@ -920,6 +920,7 @@ echo(Integration\SandstormChampion\SandstormChampionMinionArts.cs
 echo(Integration\SandstormChampion\SandstormChampionBody.cs
 echo(Integration\SandstormChampion\SandstormChampionHazards.cs
 echo(Integration\SandstormChampion\SandstormChampionBoss.cs
+echo(Integration\SandstormChampion\SandstormChampionPoolAdapter.cs
 echo(Integration\SandstormChampion\SandstormChampionAbilityController.cs
 echo(Integration\FieldAdventures\Prototypes\DangerousPrototypeInteractable.cs
 echo(Integration\FieldAdventures\Prototypes\DangerousPrototypeRules.cs

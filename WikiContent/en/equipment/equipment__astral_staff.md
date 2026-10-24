@@ -1,6 +1,6 @@
 # Astral Staff
 
-A staff of light dropped by the Shadow of the Champion in Chapter 6 of the Duck King Campaign. It is excluded from random reward pools.
+A light staff dropped by the Shadow of the Champion. Obtain it from the Chapter 6 Campaign encounter or by defeating the Champion in standard BossRush, Infinite Hell, Mode D, or a random encounter. The staff itself stays out of random item reward pools.
 
 Summoned sand guards also wield Astral Staffs of light, but drop no items when defeated.
 
