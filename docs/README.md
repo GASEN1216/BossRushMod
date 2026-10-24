@@ -64,6 +64,7 @@ NPC：
 
 - [游戏内验收覆盖维护](guides/游戏内验收覆盖维护.md)：F3 验收用例与覆盖表怎么维护
 - [星愿许愿台本地发布与混淆流程](guides/星愿许愿台本地发布与混淆流程.md)
+- [Boss 宣传片制作与 B 站投稿流程](guides/Boss宣传片制作与B站投稿流程.md)：实录挑镜头、合成配乐、字卡、渲染、内置浏览器投稿；脚本在 [guides/trailer-kit/](guides/trailer-kit)
 
 ## reference/ — 查表
 
