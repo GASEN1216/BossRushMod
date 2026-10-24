@@ -1,5 +1,15 @@
 # 自定义 Boss 系统
 
+## 2026-10-22 蚀日花冠独立挑战（COMPAT / WIRE+）
+
+[蚀日花冠与残日盾片](蚀日花冠与残日盾片.md) 记录兼容 Boss 池、杰夫官方任务引导及 37 号实验区自然刷新、四瓣部位破坏、三阶段扇区攻击、独立程序化外形与专属图腾奖励。引导任务死亡自动放弃，可回基地重接；专门 runtime owner 保证模式互斥与每趟出击名额；核心可直接攻击，拆瓣形成安全缺口。实现与验收边界见专题，尚无实机画面与碰撞证据。
+
+## 2026-10-21 自定义外观与原版迷雾接线（COMPAT / WIRE+）
+
+原版敌人按 FOW hider → DuckovHider → CharacterMainControl.Hide / Show → CharacterSubVisuals 切换 Character / SpecialCamera 层。自定义龙王 / 龙裔装备和女巫镰刀、焚皇戟的实际 bundle 缺少 CharacterSubVisuals；工厂现在为缺组件的装备 / 近战模型补齐并收集渲染器，实例 SetParent 时沿官方链登记，已有组件保留。枪械 BuildAgent 原本会补组件，继续使用原链。近战渲染准备会重设 Default，因此准备完成后再调用持有者 CharacterModel.SyncHiddenToMainCharacter，恢复当前迷雾层。
+
+女巫结束技能隐身只恢复自己的 Renderer / alpha，不再调用角色 Show 清除战争迷雾 Hidden；观察者为 0 时官方只在边沿发事件，强制 Show 后可能一直暴露。沙暴冠军与召唤物的独立粒子外形在 Build 后接 [ModEntityFogVisibility.cs](file://Utilities/ModEntityFogVisibility.cs)，复用 Boss 现有 hider，保留技能隐身和 AI。离开视野时武器、装备、沙云和光源应与本体一起隐藏；未做游戏渲染采样，不把守卫、隔离回归或编译当作实机通过。
+
 <cite>
 **本文引用的文件**
 - [BossRushIntegration.cs](file://Integration/BossRushIntegration.cs)

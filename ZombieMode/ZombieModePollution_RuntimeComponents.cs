@@ -253,6 +253,12 @@ namespace BossRush
             ZombieModeZoneVisuals.FadeOutAndDestroy(gameObject, this);
         }
 
+        protected override void OnRuntimeStopping(ModBehaviour inst, bool expired)
+        {
+            // 掉帧可能跨过 triggerTime 和 runtimeEndTime；沿用触发与来源存活检查，不能吞掉已完成的预警。
+            if (expired) TickRuntime(inst);
+        }
+
         private void RefreshFollowSourceOrigin()
         {
             if (!followSourcePosition || source == null || source.transform == null)
@@ -331,6 +337,11 @@ namespace BossRush
             triggered = true;
             inst.TryApplyZombieModePlayerSlowInArea(RuntimeRunId, origin, radius, slowPercent, slowDuration);
             ZombieModeZoneVisuals.FadeOutAndDestroy(gameObject, this);
+        }
+
+        protected override void OnRuntimeStopping(ModBehaviour inst, bool expired)
+        {
+            if (expired) TickRuntime(inst);
         }
 
         protected override void OnRuntimeResumedAfterPause(ModBehaviour inst, float pausedDuration)
@@ -413,6 +424,11 @@ namespace BossRush
                 cloudColor,
                 followSourceAfterSpawn);
             ZombieModeZoneVisuals.FadeOutAndDestroy(gameObject, this);
+        }
+
+        protected override void OnRuntimeStopping(ModBehaviour inst, bool expired)
+        {
+            if (expired) TickRuntime(inst);
         }
 
         private void RefreshFollowSourceOrigin()
@@ -535,15 +551,18 @@ namespace BossRush
             }
 
             float step = speed * Time.unscaledDeltaTime;
+            // 掉帧时停在发射时锁定的目标点，不能越过已躲开的落点继续追击。
+            step = Mathf.Min(step, lastDistanceToTarget);
             if (step <= 0f)
             {
                 return;
             }
 
+            Vector3 previousPosition = transform.position;
             transform.position += velocity * step;
             travelledDistance += step;
 
-            if (IsPlayerHit(player))
+            if (IsPlayerHit(player, previousPosition, transform.position))
             {
                 ResolveImpact(inst, player.transform.position);
                 return;
@@ -592,6 +611,21 @@ namespace BossRush
             Vector3 delta = player.transform.position - transform.position;
             delta.y = 0f;
             return delta.sqrMagnitude <= impactRadius * impactRadius;
+        }
+
+        private bool IsPlayerHit(CharacterMainControl player, Vector3 start, Vector3 end)
+        {
+            if (player == null) return false;
+            Vector3 segment = end - start;
+            segment.y = 0f;
+            Vector3 toPlayer = player.transform.position - start;
+            toPlayer.y = 0f;
+            float lengthSqr = segment.sqrMagnitude;
+            float fraction = lengthSqr > 0.0001f
+                ? Mathf.Clamp01(Vector3.Dot(toPlayer, segment) / lengthSqr)
+                : 0f;
+            Vector3 nearestDelta = toPlayer - segment * fraction;
+            return nearestDelta.sqrMagnitude <= impactRadius * impactRadius;
         }
 
         private void ResolveImpact(ModBehaviour inst, Vector3 impactPosition)

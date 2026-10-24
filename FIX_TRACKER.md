@@ -2,6 +2,20 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+## 2026-10-24 提交前全量核对与残日盾片图标重做（COMPAT / SAFE；L1/L2）
+
+残日盾片 UI 图标原为灰色哑光渲染、与游戏内深色模型不符，按星阙图标标准以游戏内模型预览为参考重出（gpt-image-2.5-flare 图像编辑，透明底 512），作者源旧图存 `ArtSource/EclipseBloom/Previews/`，经作者工程 `EclipseBloomBundleBuilder` 重打 `residual_sun_shield_model`，`EclipseBloomAuthoredBundleGuard` 通过、作者台账 50 项更新并核验。全量核对修掉 5 处此前遗留：`ZombieModeRuntimeModule.cs` 超 1200 行，入场等待两方法原样拆到 `ZombieModeRuntimeModule_TargetSceneEntry.cs`（4 个守卫与 ZombieModeHostOwners 夹具改读两文件，已反向验证）；冠军之影入池新增一处宿主身份校验，`ModBehaviourInstanceClassificationGuard` 基线与分类文档补登 271 / 414；ArenaHostRemainder、AuditModeLifecycle 夹具补入池适配器替身；怪件快递表现拆出 `PlayBurstFx` / `PlayShoutRing` 以兼容 FieldAdventureDeliveryRuntime 抽取。结果：全量守卫 752 PASS；全量执行回归 144 PASS（设 GAME_PATH / BOSSRUSH_GAME_MANAGED / BOSSRUSH_HARMONY_DLL）；正式构建 DLL `DC3CE0BE673E26535FDC8001F5BCC8A28C16DD76C144B65C0468E60CC38F0F5A` 与盾片包均已部署并核对 SHA。L3 仍待实机。
+
+## 2026-10-24 蚀日花冠 37 号目标圈不刷新（COMPAT；L1/L2，L3 待验）
+
+owner 实测进 37 号目标圈看不到花冠；Player.log 中该趟出击没有任何花冠生成记录（同日 BossRush 池抽到花冠时有）。根因判断：`EclipseBloomEncounterPlacement` 只有圈心 3 m 内 5 个候选，且要求 3.8 / 8 / 14 m 三圈 48 个采样全部可走、无墙、高差 ≤0.7 m，军事基地 14 m 内必有障碍，五点恒被否、每 2 秒重试一轮永不生成（未在游戏内复现，属推断）。改为目标圈内黄金角螺旋 24 个候选（≤18 m）、分圈门槛（12/12、12/16、8/16），一轮失败后放宽为 10/9/5 并记 Dev 日志。EclipseBloomRuntime 新增候选分布用例，`EclipseBloomIntegrationGuard` 通过。
+
+## 2026-10-24 新敌人难度重做与表现质感提升（COMPAT；L1/L2，L3 待验）
+
+owner 实测意见「新增敌怪没有难度、人机感重、特效塑料感」。蚀日花冠：预警前 0.45 秒扇区转向玩家后锁定（`EclipseBloomRules.Track` / `AttackSerial`），休整追击 6 m 起、12 m 外全速，离花冠 9.5 m 外每次新预警按阶段落 1/2/3 道预判日珥（新文件 `EclipseBloomSolarFlares.cs`），第三阶段贴身也隔轮落一道；核心 / 花瓣受击反馈、出伤日焰喷发、预警末段明灭与定位音效。残日盾片表现重做为开合缓动的四瓣日轮 + 120° 光弧 + 绕身日珠，撤驱动先收拢淡出。贪吃宝箱怪：远距扑跳（`GreedyMimicTerrain.cs` 校验落点）、9 m 内锁线舌击、隔墙两轮跳过掩体、真实飞行弹幕与二波重瞄、炸弹预判、冷却随血量 2.2→1.15 s、残血落地接舌击；预警圈倒计时烧满、柔光弹道线、朝镜头血条带残影、FxKit 粒子替换实心几何火花、战败鼓胀后崩开。叮当试用品：双层柔边光束、开火 / 撞墙 / 命中敌人粒子、蓄满闪光与提示音、折射太阳反弹瞄准线；怪件快递签收彩纸、汽水泡沫、巨蛋羽毛与柔光台环。
+
+同步：花冠规则 / 运行时、宝箱运行时、盾片夹具替身与断言按新行为改写（不放宽旧断言，旧「45 米咬击」改为舌击 / 扑跳 / 飞行弹幕三组）；残日盾片反向探针两处锚点改指 `ExplorationRuntimeRegistration.cs`（此前已失配）。`FieldAdventureIntegrationGuard` 的奖励位置断言随「宝箱会移动」改为战败时实际位置（扑跳中先落回落点），已做反向验证。EclipseBloomParticles 真实 Unity 回归通过。验证：Windows 正式构建通过并部署，DLL `FE95C66F1828E874BDB33F772B337EBE7A15091D7DF34A8BA6AF3F83DEC69240`；EclipseBloomRules / EclipseBloomRuntime / ResidualSunShield / FieldAdventureRules / FieldAdventurePrototypeRuntime / FieldAdventureMimicRuntime 回归与三组反向探针通过；冠军之影 / 花冠入池的两条生成委托从宿主 `EnemySpawnHostBridge` 移到新文件 `Utilities/BossPoolSpawnBindings.cs`，宿主只剩一行转发，`ModBehaviourPartialBudgetGuard` 回到 19947 行转绿（`EclipseBloomIntegrationGuard`、`SandstormChampionPoolGuard` 同步改指并反向验证）；changed-only 532 项守卫全绿，EnemySpawnRuntime / SandstormChampion / EclipseBloomRuntime 回归通过；Wiki 站点构建通过。未提交、未启动游戏。
+
 ## 2026-10-24 冠军之影入池与龙息丧尸兼容（COMPAT / WIRE+；L1/L2，L3 待验）
 
 冠军之影新增 `SandstormChampionPoolAdapter`，接入标准 BossRush、无间炼狱、Mode D 与既有随机乱入，沿用前期强 Boss 保护、原工厂、每实例技能与星阙掉落。E/F/G/H、遗种巢和丧尸流程显式拒绝；未添加丧尸专属 Boss，既有运行时 preset clone 过滤保留。波次租约仅清理自身，非波次不登记，池内击杀不推进征程章节。交叉复审补齐 defer 的真实时序：额外等待及有效性检查在控制器初始化/激活前完成。
@@ -43,6 +57,112 @@ DLL SHA-256 `E71A3440FC59E83D320EE4EDF088B69E42C0FDA6ADA042D299A16887E7007223`�
 中央 FieldAdventure 六组回归全过，包含规则/库存 1376、场景门 43、宝箱 199、快递 2993、试用品 2316 条断言和真实 Unity 六组 Deferred 视觉；20 项新隔离负探针均按预期转红并恢复 SHA。Windows 正式隔离编译通过（无 Dev，两条既有 ModeH 警告），DLL SHA `A38565E7B6B3E1848EAE4812CAFAB478D1C89714E568D010C32B3A3D7E02ABF8`。全量 751 守卫初跑两红，台账已原字节归档并复测通过，唯一保留的是既有丧尸文件 1239 > 1200；最终 533 项 changed-only 守卫全部通过，未抬预算或加白名单。
 
 专题 repowiki、官方 API 陷阱与夹具边界已同步。范围/哈希/日志/人工验收在 `Build/field-adventures-fixes-20261023/`；没有部署、启动游戏、访问玩家存档、提交或推送。L3 待验收步骤 FA-01～FA-06 见其中 `验收与复审.md`，尚未采样实际性能。
+
+## 2026-10-23 蚀日花冠粒子报错与独立音乐（COMPAT）
+
+CR-2026-10-23-001 已修复：余烬线性速度三轴统一 TwoConstants，零横向速度及原 y 漂移/轨道效果不变。玩家原日志 239 次刷屏；真实 Unity 引擎基线 94 次模拟零错误，隔离副本恢复旧写法重现 112 次同类错误并准确转红，生产 SHA 保持。新增 `EclipseBloomParticles` 中央回归，覆盖三阶段、逐瓣破碎、死亡爆发和销毁。正式构建通过，14 个 Dev 标识缺席。
+
+原创专曲《黑日花冠》约 131 秒，沿现有 owner 租约接入，替换幽灵女巫曲目引用；20,005 条运行时断言、7 项音乐反向验证、12 项音频检查和真实 FMOD 无声解码通过。正式 DLL、曲目表和新 WAV 已更新本机 Mod 并逐份核对 SHA，原文件已备份。作者源、部署和复测证据见 [本轮报告](docs/reports/testing/蚀日花冠粒子报错与独立配乐-2026-10-23.md)。未启动游戏，修复后的 L3 游戏复测待确认。
+
+## 2026-10-22 蚀日花冠官方地图、Boss 池与作者资源（COMPAT / SCHEMA+ / WIRE+）
+
+落实 Jeff 590215 官方任务投影、普通 37 号实验区固定区域自然刷新、死亡自动放弃/可重新接取、每出击一次与跨槽/异步隔离。标准/无限、Mode D 和兼容事件接入 Boss 池；E/F/G 与遗种巢显式过滤。移除独立竞技场花苞入口。
+
+闭环 CR-2026-10-22-003～009：完整盾片模型/图标/拾取代理，核心拓扑、贴地预警、可见性判伤、实际死亡掉落、死亡待写入保存门及 SpawnCore 倍率保留。正式建模走用户指定 Blender MCP，细节纹理走 docs API，既有 Unity 作者工程定向打包；两包注册发布清单，模型与图标由明确 owner 借用/清理。额外防止并发花冠临时 preset 成为另一实例的官方身份。
+
+Windows 正式隔离构建通过（1245 源，Dev 标识缺席），DLL SHA 4D08FE728F43B8ADE23310DBCAC3E6E8A2DEAB9041648948676BEFD561DD5BEF。全量 750 守卫 749 PASS，唯一红项为既有 ZombieModeRuntimeModule 1239 > 1200；未调整预算。战斗19组、引导11例、资产76断言、SpawnCore94断言及规则/盾片回归通过；108 个隔离负向准确转红，原生产 SHA 未变。Wiki 构建、80 导航、265 页 / 46767 引用全绿。
+
+[详细报告](docs/reports/testing/蚀日花冠官方地图与资源审核-2026-10-22.md) 保存资源/DLL SHA、证据路径和边界；[人工验收](docs/reports/testing/蚀日花冠与残日盾片实机验收-2026-10-22.md) 仍全部 pending。未部署、启动游戏、读写存档或公开提交/推送。
+
+## 2026-10-22 Demo 丧尸入场与旧传送防护（COMPAT，CR-001/002 Fixed at L1/L2；未部署）
+
+玩家反馈 Demo 第 17 波同图回到开局点，暂无现场日志。官方真实 StartPoints 为 `(460.66,-5,106.31)`；本机资源与当前 DLL 未找到按周期、波次或越界自动回起点规则。官方 InitLevel 正常尾部在 LevelInited 后约 0.25 秒写起点，输入 / 移动也受 LevelInited 门控，尚不能解释本次现场。正常 Demo 不生成旧 custom 请求，旧 custom 坐标也不自然等于官方初始点；反馈因果仍 UNVERIFIED。
+
+CR-2026-10-22-001：custom 使用既有 IntegrationRuntimeModule 的请求 / 递归协程驱动，绑定 sceneLoaded 的目标 Scene，在官方 loader、MultiSceneCore、LevelInited 与 AfterInit 就绪后只绑定一次主角。允许 Main 到目标图的正常激活过渡；新普通 / custom 入场相互取消，切图、卸载、死亡、角色替换、owner 销毁及 H / 丧尸接管均取消。位置写入前复核，30 秒预算包含 loading，超时不放行；GroundZero 后继、持续清场与 Mode E 验证也登记同一请求。没有调整玩法、落点、存档或编译预算。
+
+CR-2026-10-22-002：入场序号与原 owner、RunState、事务及 RunId 绑定等待，循环内及最终复核前后检查仍属于本次 LoadingMap 入场。最后一次 yield 后重新读取全部官方条件，并匹配目标场景 handle；未 ready 沿原失败与邀请函 / 现金退款门处理，LoadingMap 失败保持原不主动返基地协议。旧等待直接结束，不能清掉后继标记、创建新 RunId 或退款新现金 / 邀请函；未扩大 CR-2026-10-21-009 / 010 的退款故障边界。
+
+验证：461 项 changed-only 守卫、153 项 ZombieMode 守卫全绿；8 组 ZombieMode 回归加 ModeHSceneEntry、LegacyArenaEntry、EntryAndReforgeCompatibility 共 11 组全绿。最新 ModeHSceneEntry 152 条、LegacyArenaEntry 53 条；HostOwners 原所有权 1,166 条，新目标就绪 12 组场景 4,872 条（包含逐帧 wait 检查）。副本中 4 个 CR-001 守卫变异、3 个执行变异及 5 个同时命中 CR-002 守卫 / 执行的变异均按预期转红，逐字还原与 SHA-256 核对后复跑转绿。报告分别为 `Build/custom-teleport-fix-negatives-20261022/report.json`、`Build/reviews/2026-10-22-zombie-demo-teleport/cr002-fix-evidence.json`。
+
+Windows 正式构建采用真实 Managed 的物理拷贝作为 GAME_PATH，1220 个正式源码输入在编译前后哈希一致，未定义 BOSSRUSH_DEV。产物 `Build/teleport-safety-20261022/BossRush.dll`，SHA-256 `660449400e11f70912ecc379ddf60317bdbdd2006994f378e1efc00c9613df7b`；编译 0 错误、保留 2 条既有 Mode H CS0649 警告。隔离目标无 Mods 目录，构建尾部自动复制未成功且跳过资源部署；真实游戏 DLL 前后均为 `DDCB2E41BE74F5B14610611F7F8038E04A2140A9EB5AE83F3C5280B510B007ED`。未部署、启动游戏、访问存档或提交；编译记录与无部署证据见 `Build/teleport-safety-20261022/compile-result.json`。
+
+L3 待 owner 后续授权部署后验收，记录文件 `Build/teleport-safety-20261022/runtime-smoke.md`，本轮未执行：
+
+- T1：按当前绑定的交互键打开丧尸入口，选择 Demo 挑战，完成开局选项后用移动键离开出生区域，连续推进至第 17 波前后；观察玩家位置和波次 HUD。未操作传送仍突然回开局点、波次重置或初始化重复均不合格。
+- T2：通过地图选择进入配置 custom 落点的普通地图，待加载结束后按移动键离开落点；再按正常入口流程验证 Mode E / H。观察出生落点、路牌 / 模式 UI 和角色控制；错误落点、重复搬动、正常入场超时或入口缺失均不合格。
+- T3：在普通 custom 入场与 Mode E 验证等待阶段按已绑定的暂停 / 退出键结束该次流程，再从入口进入丧尸 Demo；观察新局位置、邀请函 / 现金和模式 UI。旧坐标写入、新局退款 / 标记被清除、普通路牌或 NPC 初始化延迟串入新局均不合格。若正常操作无法命中等待窗口，保留未覆盖，不能把 L2 取消用例当作实机通过。
+
+## 2026-10-21 v2.3.7 发版准备与游戏目录部署（OPERATIONAL / SAFE，已部署、未发布）
+
+owner 明确授权直接替换修复 DLL，并整理教训、双语 Wiki 与工坊描述。`info.ini` 从 2.3.6 升至 2.3.7；正式产物 `Build/entity-fog-20261021/BossRush.dll` 已复制至 `D:/software/steam/steamapps/common/Escape from Duckov/Duckov_Data/Mods/BossRush/BossRush.dll`，目标 SHA-256 与源均为 `DDCB2E41BE74F5B14610611F7F8038E04A2140A9EB5AE83F3C5280B510B007ED`。旧 DLL 与旧 info.ini 已备份到 `Build/release-v2.3.7-20261021/pre-deploy/`；版本元数据也已部署并核对哈希，74 个资源包通过 `Deploy-ResourceBundles.ps1 -VerifyOnly` 校验。游戏目录 WikiContent 共 255 项源文件逐一比对通过，其中更新 11 项；被覆盖的旧文件同样备份。部署与资源摘要在同一证据目录。
+
+此部署包含本页下方 NPC 姓名、Boss / NPC 迷雾及丧尸专项修复，不把历史条目的“未部署”视为当前状态。知识库、开发规则与官方 API 契约补录接线教训；中英版本日志、README 与工坊源描述按待发布口径整理。没有启动游戏、访问玩家存档、向公开仓库提交 / 推送或上传创意工坊；L3 仍按下方 N1–N3、F1–F3 与 Z1–Z4 验收，尤其不将 NaN 传播防护写成已找到第 13 / 23 波首次异常来源。
+
+发版材料验证：changed-only 守卫 458/458，Wiki 专项 15/15，站点构建、80 项导航与 261 页 / 45,546 引用链接检查通过。工坊中文 `../a.md` 与英文 `../b.md` 有效预算分别为 7005 / 7700、7588 / 7700 字节；中英日志、BBCode 与版本链接已校对。本地私有文档及 info.ini 经既有授权的 private-sync 同步完成（私有提交 `ee7a77b`）；公开代码 / Wiki 未提交。材料摘要、校验与同步日志保存在 `Build/release-v2.3.7-20261021/`。
+
+同日文案修订：owner 即将发布，要求沿用前几个版本的语气。中英版本日志、总览、README、local-only 发布说明与工坊文本去掉准备状态及验收过程，改写为玩家遇到的问题；技术教训和真实验证边界保留在开发规则与台账。工坊最终预算为中文 6874 / 7700、英文 7542 / 7700 字节；本条记录文案调整，不表示已经执行公开上传。
+
+## 2026-10-21 自定义 Boss / NPC 迷雾可见性（COMPAT / WIRE+，L1/L2，未部署、未实机）
+
+CR-2026-10-21-011：实际模型包核对证实，龙王 / 龙裔装备及镰刀 / 戟缺 CharacterSubVisuals；原版持有 / 装备接口不补组件，只有枪械 BuildAgent 自带补齐。EquipmentFactory 在完整模型阶段为缺失者补官方组件，让 SetParent 自动登记；两把近战完成渲染准备后同步当前角色隐藏层。女巫 RestoreVisibleState 不再强制 Show，避免观察者为 0 时清除官方 Hidden 后无后继隐藏边沿。
+
+三位独立 NPC 没有 FOW 组件且固定 Default 层；捏脸 NPC 保留友好阵营时又受官方友军显隐豁免。共享 ModEntityFogVisibility 直接接官方 FOW hider 事件，已有 source 复用，缺 source 才配置 inactive 三点 probe；只隐藏缓存 Renderer 与光源，不停用 AI / Collider / 服务，保留原 forceRenderingOff、light mask 与技能 enabled。沙暴 Body 在构建完成后复用角色 hider。订阅幂等，停用 / 销毁退订，主玩家死亡与非 Raid 保持可见。仅隐藏时遍历缓存，可见时 O(1)，没有逐帧树扫描；性能仅为静态预期。
+
+验证：changed-only 守卫 260/260 通过；新增实链夹具 38 条断言通过，覆盖观察者、永久揭示、首帧、死亡、生命周期、技能显隐状态、光源恢复、官方子视觉与近战末尾同步。EquipmentBootstrapOwners、EquipmentConfiguratorRegistry、ResourceProduction、GoblinRuntimeModule、IntegrationLeafOwners 相关回归通过。19 个隔离守卫变异及其中 15 个执行变异均命中指定失败，逐字还原并核对 SHA-256 后转绿，报告 `Build/fog-visibility-negative-f4fugmw8/negative-results.json`。
+
+Windows 正式隔离编译退出码 0，2 条既有 ModeH CS0649，14 个 Dev 标识均不在产物中；未写入真实游戏目录。DLL、构建日志、源摘要与验证副本在 `Build/entity-fog-20261021/`；`BossRush.dll` SHA-256 为 `DDCB2E41BE74F5B14610611F7F8038E04A2140A9EB5AE83F3C5280B510B007ED`，交付前 12 项生产源码 / 构建脚本哈希与编译时一致。包含此前姓名修复，不代表真实迷雾几何、URP 与帧耗已验收。
+
+实机 F1：普通出击图背对 / 走出视野并隔墙观察阿稳、叮当、羽织与捏脸 NPC，应隐藏模型，返回视野恢复服务。F2：龙王 / 龙裔 / 女巫在视野外不露装备、近战和本体；女巫结束隐身、切武器后仍守视野，进入视野后其技能自身隐身继续有效。F3：沙暴冠军与召唤物离开视野后沙云 / 眼光不透雾，回到视野恢复；基地、主玩家死亡、切图往返不留隐藏对象或事件。未启动游戏或读写玩家存档。
+
+## 2026-10-21 丧尸模式专项审查与修复（COMPAT，L1/L2，未部署）
+
+本轮修复五项新发现与一项既有问题：CR-2026-10-21-004 撤离工厂接受结算回执后才返程；005 现金到账先提交点数、异常时核对官方余额，通知故障不重复发钱；006 开波回收已销毁星点登记，即使实体掉落列表为空也执行；007 三种预警自然过期补结算，避免低帧率漏触发；008 骚扰弹按帧轨迹检测并停在原目标点；CR-2026-10-20-001 三叉/散射移除二次削伤，保留选卡代价。Mode F 未提供新回执时沿用既有工厂行为，新增字段为可选、无存档格式变化。
+
+验证：全量守卫最终 747/747 通过；相关生产执行回归 15/15 通过，覆盖 ZombieMode 八项、EnemyRecoveryRuntime、IntegrationThirdReviewFixes、SpawnPositionPolicy、EnemySpawnRuntime、ModeEFEnemySpawnRuntime、AuditModeLifecycle、RuntimeOwnership。新增或修改守卫与关键行为的隔离反向验证命中预期失败，按字节恢复后通过；报告分别在 `Build/zombie-extraction-negative-probes.json`、`Build/runtime-regressions/ZombieModeRewardRuntime/spread-negative-fz8x8w66/`、`Build/zombie-audit-20261021/star-cleanup-probes/`，预警/弹体修复前失败日志在 `Build/zombie-threat-review-20261021/`。
+
+Windows 正式构建退出码 0，无 Dev，2 条既有 ModeH CS0649 警告；使用游戏 Managed 实体拷贝，编译期间 1,220 项源码/脚本哈希未变，真实游戏 DLL 哈希未变。独立保存产物 `Build/zombie-audit-20261021/BossRush.dll`，SHA-256 `210DC19AEBAE4CCD10431F7365C56E9F209106E086461A883F4D65ED0B2C70BA`；构建日志、源摘要、结果与隔离回归汇总均在同目录。未部署、未启动游戏或访问玩家存档。原第 13 / 23 波 Collider NaN 的首写来源仍未证实，本轮修复不得代称该根因。
+
+另纠正中英 Wiki 与开局注释的旧“2,000 发”承诺（SAFE）：当前游戏说明、实际发放和 2026-10-17 回归均为普通弹药一组、重弹药至少 4 发，未修改数值。相关 Wiki 守卫、数量执行回归与站点构建通过。台账容量守卫发现超限后，将 9 月 27 日两项已闭环记录按原字节归档，证据在 `Build/zombie-audit-20261021/ledger-archive-proof.json`。
+
+审查剩余项（Open，P2 / COMPAT，L1）：CR-2026-10-21-009 即时退款与欠账持久化同时失败后，HostLifecycle Reset 丢失暂扣事务；CR-2026-10-21-010 欠账读取异常被当作 0，随后成功写入可覆盖旧债。均有明确故障分支证据，无正常玩家 L3 复现。前者需单独设计存档身份、换槽/删档/销毁与重试 owner，后者需 TryRead 区分缺键与读错并补故障执行回归；本轮未扩大欠账协议和生命周期。具体路径与触发条件见 CODE_REVIEW_FINDINGS 同号记录。
+
+L3 验收：Z1，单弹枪选三叉/散射后对同种敌人比较全中伤害，仍应体现散射的 5% 枪伤代价，但不能额外只剩原来五分之一；切枪/退局后属性恢复。Z2，Boss/特殊怪预警结束须结算一次，暂停不偷跑、来源死亡/换局不补击；骚扰弹穿过玩家要命中，玩家侧移及目标点后方不误伤。Z3，正常完成多波并撤离，净化点兑现金只发生一次、背包掉落保留、可再次入场；付款不可用须留场保留点数并能重试。Z4，分别覆盖 12→13→14 和 22→23→24 波，身体/头部命中应持续扣血、圈外满进度能结算。未采样帧耗，记录数量回归不等于实机无性能问题。
+
+## 2026-10-21 自定义友好 NPC 移除常驻头顶姓名（COMPAT，L1/L2，未部署、未实机）
+
+CR-2026-10-21-003：自定义 NPC 在俯视、第一和第三人称下都额外常驻头顶姓名。旧 `NPCNameTagHelper` 复制原版外观后禁用 `HealthBar` / `FadeGroup`，每帧自行投影并强制打开名字。本机原版资源证实友好 Jeff 等 preset 关闭 showName / showHealthBar，基地 Orange / Xavier 的静态模型没有头顶名牌，姓名由官方对话、商店和交互界面显示。
+
+撤掉自定义友好 NPC 的独立头顶 UI。保留旧登记入口，初始姓名由原对话 owner 设置；只有显式改名时才同步已有官方 DuckovDialogueActor 的 BossRush_ 姓名键，避免延迟 actor 被出生时的旧语言覆盖。有待更新但无 actor 时每秒至多查找一次；不创建 actor、Health 或名牌，不加 Harmony。注销与静态清理只释放 helper 状态，现有对话 / 商店展示姓名。阿稳、叮当、羽织、永久捏脸 NPC 和天空岛居民共用此入口；专题文档同步更新。
+
+Windows 正式隔离编译退出码 0，无 Dev 定义，2 条既有 ModeH CS0649 警告；Managed 为实体拷贝，未写入游戏 Mod 目录。正式 DLL 位于 `Build/npc-name-native-20261021/BossRush.dll`，SHA-256 `2D44E9A1990E1426DF3F6685BE04537E868E17DEAF62E4AD0D7567A4A3CFA57A`；构建日志与源文件摘要在同目录。名牌、Harmony、静态缓存、事件生命周期、编译清单、NPC 生命周期与 Transform 缓存、知识库引用守卫通过，14 个 Dev 标识均不在正式 DLL 中。SkyIslandInteraction 聚合回归 971 条断言通过；10 个隔离守卫变异均命中预期失败，其中 9 个同时触发指定执行回归失败，按字节恢复及 SHA-256 核对后全绿，证据 `Build/name-visibility-negative-b0nhb8_n/negative-results.json`。全局 changed-only 曾因共享 CODE_REVIEW_FINDINGS 台账超过 1200 行失败，本轮相关守卫均通过；不将其写成全局守卫全绿。
+
+未启动游戏或读写玩家存档。实机步骤 N1：俯视、第一和第三人称各从基地出门，观察阿稳 / 叮当 / 羽织方向，平时不应常驻三个姓名。N2：逐个打开对话与商店，姓名应继续显示；往返切图后无头顶名牌残留或失去交互。N3：天空岛中英文切换、隐藏 / 重现居民、延迟开启永久 NPC 剧情，官方姓名不应被出生时缓存的旧语言覆盖。三位旧 NPC 已有的切语言后对话姓名刷新遗漏不属于本次引入；本次不重写其 owner 初始注入。编译与替身回归不代表实机通过。
+
+## 2026-10-21 丧尸满进度滞留与信标后续波次（COMPAT，L1/L2，未部署、未实机）
+
+玩家明确补充：圈外继续打怪时仍显示战斗击杀进度且已满，随后进圈用尸潮信标开波，之后怪无法命中。按该约束追查，不能按准备期环境怪解释；圈可能是自动准备区或战斗便携区，现有证据不能确定。首次 NaN 的托管写入者仍未证实，沿用 10-20 的传播防护、异常碰撞恢复与正式限频诊断。
+
+2026-10-21 追加只读复核（SAFE）：玩家确认第 13 波也发生在原版本，未安装修复 DLL，奖励组合不详。第 13 / 23 波均为普通波，移速早已封顶；奖励枪伤代价在正常上限下最多 52%，未发现正常组合必然产生首个 NaN 或全场永久无敌的闭环。保留未证实状态，不认定为修复后复发。现有正式产物与本机游戏 DLL 的 SHA-256 仍分别为 `16ED59D3573F2622A1213FEE9DD5FAF53C5E6CA25891D7F95023EECF19ACE727`、`507E7C448EC2CA8B3D0D346C6586D46E1067F73155FB218D82D74ACB9E666E83`；本轮未改运行时代码、未部署、未新增实机证据。后续验收同时覆盖 12→13→14 与 22→23→24 波。
+
+- CR-2026-10-21-001：Combat Tick 在安全区工作前补达标结算，普通波与已清空 Boss 波不再依赖下一次死亡事件。死亡先去重、注销并计数、生成本体星点，再执行选项连锁；死亡副作用分别捕获，事件总边界阻止异常逃回官方 Health.Hurt。低频波末清理、NPC 回收、补给、横幅分别隔离，结算协程幂等登记；启动 null / throw 或迭代器异常后最多每秒重试，补给与自然污染只在原 CompleteWave 执行一次。
+- CR-2026-10-21-002：StartWave 加准备阶段门，先初始化新波目标再执行精英与横幅；信标以 run / wave / operationId 归属，尾帧检查阶段、撤离、flag 与所属操作，取消 / Dispose 仅释放本次读条，启动失败回滚。没有证据证明该防御缺口就是本次实际竞态，安全区和信标链也未发现给丧尸写无敌 / 关闭受击碰撞体。
+- 验证：全量守卫 747/747，最终 changed-only 144/144；相关执行回归 13/13，其中新 `ZombieModeWaveRuntime` 80 场景 / 274 断言、`EnemyRecoveryRuntime` 117 断言。新夹具链接真实死亡、Tick / Start / Complete / Settlement、信标方法和阶段守门；物理、地图与奖励 UI 为替身边界。隔离反向验证 4 项分别移除满目标补偿、死亡异常隔离、开波阶段门、信标尾帧复核，均命中预期失败，按字节恢复后通过；原工作区 SHA 未变。
+- 正式构建：Windows `compile_official.bat` 退出码 0，无 Dev 定义，2 条既有 ModeH CS0649 警告；使用 Managed 实体拷贝，游戏目录 DLL SHA 未变。`Build/BossRush.dll` SHA-256 `16ED59D3573F2622A1213FEE9DD5FAF53C5E6CA25891D7F95023EECF19ACE727`。日志及源文件摘要在 `Build/zombie-wave-progress-20261021/`，反向报告在 `Build/runtime-regression-probes/ZombieModeWaveRuntime-9_8a2p97/report.json`。
+
+L3 待验收：正常入口打过 22→23→24 波；在圈外击杀达标，左上应退出满击杀进度并进入结算 / 奖励；选完奖励进入准备倒计时，倒计时或尸潮信标都只推进一波。后续身体、头部命中持续扣血，异常恢复保留剩余 HP。满进度滞留、跳波、重复奖励、怪只可攻击不可受伤、恢复后继续 Collider NaN 均不合格。编译与替身回归不代表游戏实机通过。
+
+## 2026-10-20 丧尸第 23 波无敌：NaN 传播防护与碰撞恢复（COMPAT / WIRE+，L1/L2，未部署、未自行实机）
+
+玩家补充的 Player.log 有 198 次 Collider 变换矩阵 NaN / Infinity，涉及同名迅捷精英的根、身体和头部，能解释受击检测丢失；日志无法还原首发写入者，也未证明第 23 波专属。CR-2026-10-20-002 已修复可证实的恢复遗漏与传播缺口，首发来源继续标 UNVERIFIED。
+
+- 引力井：拒绝非法原点、半径、拉力、坐标、旋转与溢出计算；通过真实 ECM2.SetPositionAndRotation 同步物理，保留速度与贴地。已核对真实 DLL，避开频繁 ForceSetPosition 的禁启和暂停贴地副作用。
+- 共享恢复：对标准 BossRush、D/E/F/G 和丧尸模式已有跟踪敌人增加合法根姿态 / 受击祖先缓存，坏状态不覆盖快照；沿原有效落点恢复，保留剩余 HP、敌人身份和击杀 / 奖励流程，清 Movement 输入、ECM2 积累力 / 速度和动态刚体惯性。无合法快照或可达点等待；同步失败继续重试。受击祖先缓存按当前层级恢复，处理晚挂头碰撞体和移出根的旧节点。
+- 诊断与成本：正式限频输出恢复前位置 / 旋转 / 缩放、节点路径、实例 ID、速度及强制移动状态。沿用每秒主巡检，缓存受击祖先每 2 秒检查、树发现每 10 秒刷新；常态不用逐帧全树扫描。此为静态成本分析，未做游戏性能采样。
+- 验证与交付：正式编译、全量守卫、EnemyRecoveryRuntime 与 ZombieModeSafeZoneRuntime 等生产回归以及隔离反向验证结果见 `Build/zombie-invincible-20261020/` 与 `Build/runtime-regressions/`。DLL 使用无 Dev 定义的正式脚本，在游戏 Managed 拷贝上编译；未启动游戏或读写玩家存档。
+
+验证：全量守卫 747/747 通过；最终失败重试 / 层级排序补丁后 changed-only 114/114 通过。隔离反向验证 8 个变异全部按预期转红并还原；相关生产执行回归 12/12 通过（ZombieMode 七项、EnemyRecoveryRuntime、IntegrationThirdReviewFixes、SpawnPositionPolicy、EnemySpawnRuntime、ModeEFEnemySpawnRuntime），恢复夹具 117 条断言。Windows 正式编译退出码 0，无 Dev 定义，2 条既有 ModeHPageContent 未赋值警告；使用 Managed 实体拷贝，游戏目录 DLL SHA-256 未变。正式产物 `Build/BossRush.dll` SHA-256 `C0159A3BAED3DF957265B79D500D824DB1FD1677B7AB2876259CF6BB816AC7DC`，完整证据在 `Build/zombie-invincible-20261020/` 和 `Build/runtime-regressions/`。
+
+L3 待验收：普通入口打过 22→23→24 波，连续命中迅捷精英的身体与头部应掉血并可继续下一波；若触发恢复，已受伤怪保留剩余血量；持续无敌、满血重置或恢复后继续出现 Collider NaN 为不合格。首次 NaN 的托管写入来源仍未证实，新诊断用于缩小再次出现时的污染位置。
 
 ## 2026-10-18 v2.3.6 发版准备（COMPAT / OPERATIONAL，L1/L2；本轮修复的 F3 核对 L3 见下一节，未推送）
 

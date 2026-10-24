@@ -237,6 +237,10 @@ namespace BossRush
         internal static bool TryGetSharedSpawnPosition(Vector3[] points, out Vector3 pos, Vector3[] avoids, float distance, bool requireAvoidance)
         { AvoidPositions = avoids; if (distance != 10 || !requireAvoidance) throw new Exception("avoidance"); pos = points != null && points.Length > 0 ? points[0] : Vector3.zero; return Avoided && pos != Vector3.zero; }
     }
+    internal static class ModEntityFogVisibility
+    {
+        internal static void Attach(GameObject value) { }
+    }
     internal static class NPCCommonUtils
     {
         internal static void FixShaders(GameObject value, string prefix) { Probe.Add("shaders"); }

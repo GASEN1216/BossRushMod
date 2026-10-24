@@ -1,5 +1,9 @@
 # 战役目标与终章生命周期回归
 
+2026-10-22：花冠占场查询由可控替身提供，实际执行终章生产门禁与 Start 入口；验证花冠进行中拒绝冠影之战，既不启动独白也不调用冠军工厂，花冠结束后立即允许再次进入。花冠自身代际取消与互斥状态由 `EclipseBloomRuntime` 完整生产链接夹具覆盖。
+
+该互斥的独立副本反向验证：`python tests/fixtures/CampaignPlayability/eclipse_negative_probe.py`，仅在 `Build/runtime-regressions/CampaignPlayability-eclipse-negative/` 中移除生产占场门，必须在实际交互门禁断言转红，并核对共享生产文件 SHA-256 未变。
+
 2026-10-08：终章生成改接独立 SandstormChampionBoss 工厂。夹具只替代 Unity 工厂为可延迟 Task，并记录生产传入的 ownership lease，实际执行生产 runId 闭包，确认清理前为真、清理后为假；不把替身字段误称为非波次证明。冠军战斗、死亡入箱与视觉仍需 L1 接线审核和 L3 验收。
 
 2026-10-07 报名石再次复现：夹具抽取完整真实 `SetupBossRushInDemoChallenge` 与真实普通/雪图路牌创建方法，直接链接 Campaign 宿主桥，证明官方 AfterInit 已真但 BossRush 二次传送及路牌尚未生成时不创建石头。默认出生点与真实路牌配置点刻意相距数百米；玩家后来走开，报名石仍围绕路牌生成。另覆盖显式自定义牌位置、雪图隐形交互点、牌失活/销毁/跨场景拒绝与单实例。几何执行生产 `TryFindAroundPlayer`、`TrySampleNavMesh`、`TryRaycastSnapPreserveXZ`、`PassesMinPlayerDistance`，NavMesh 适配器返回失败，Physics 适配器对受控水平地面求交；断言可见牌的受控 +0.8 米 pivot 输入确实被投回地面。模式检测、路牌模型工厂、垃圾桶/NPC/清场表现为替身，不模拟 Unity 渲染或实地图可达性。夹具逐次生成生产来源 SHA-256；此前只等官方初始化的实现须在“official AfterInit cannot create the altar before BossRush's real second teleport and roadsign creation”断言转红。

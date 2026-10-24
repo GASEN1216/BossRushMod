@@ -22,6 +22,7 @@ namespace BossRush
             RollCallLedgerWeaponConfig.RegisterEquipmentConfigurator();
             ReloadMetronomeWeaponConfig.RegisterEquipmentConfigurator();
             PassTheBombWeaponConfig.RegisterEquipmentConfigurator();
+            ResidualSunShieldWeaponConfig.RegisterEquipmentConfigurator();
             PhantomWitchScytheWeaponConfig.RegisterEquipmentConfigurator();
         }
     }

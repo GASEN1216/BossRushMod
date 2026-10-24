@@ -39,8 +39,9 @@ def main():
     assert "bossRushIntegrationRuntime.ApplyCustomTeleportPosition(" in travel, "宿主位置写入必须到达真实 Integration owner"
     owner = "Integration/BossRushIntegrationRuntimeModule_Travel.cs"
     wait = method(owner, "internal IEnumerator WaitForCustomTeleportSceneReady(")
-    assert re.search(r"if\s*\(SceneLoader.IsSceneLoading\s*\|\|\s*\(entryCore != null && entryCore.IsLoading\)\)\s*\{\s*yield return null;\s*continue;", wait), "最终出场结束前不能移动玩家"
+    assert re.search(r"if\s*\(SceneLoader.IsSceneLoading\s*\|\|\s*\(entryCore != null && entryCore.IsLoading\)\)\s*\{\s*yield return null;\s*elapsed \+= Mathf.Max\(0f, Time.unscaledDeltaTime\);\s*continue;", wait), "最终出场结束前不能移动玩家，且加载也计入有限超时"
     assert wait.index("entryCore.IsLoading") < wait.index('ReadMainExistsWithWarning(') < wait.index("elapsed += interval;"), "官方加载门须位于就绪读取及超时推进之前"
+    assert "if (!bossRushIntegrationRuntime.IsCustomTeleportReady()) yield break;" in travel, "超时或失去 owner 不得继续搬人"
     landing = method(owner, "internal Vector3 ApplyCustomTeleportPosition(")
     gate = re.search(r"if\s*\(isModeEEntry\s*\|\|\s*BossRushInitialSpawn.HasArrived\(targetPosition\)\)\s*\{\s*return finalPosition;\s*\}", landing)
     assert gate and gate.start() < landing.index("Physics.RaycastAll("), "首次已到达时不能再次搬人"

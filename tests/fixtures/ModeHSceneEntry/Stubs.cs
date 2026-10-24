@@ -13,6 +13,7 @@ namespace UnityEngine
         public override bool Equals(object value) { return this == value as Object; }
         public override int GetHashCode() { return base.GetHashCode(); }
         public static void Destroy(Object o) { if (!ReferenceEquals(o,null)) o.Destroyed = true; }
+        public static T[] FindObjectsOfType<T>(bool inactive) { return new T[0]; }
     }
     public class Coroutine { public IEnumerator Body; public Stack<IEnumerator> Nested=new Stack<IEnumerator>(); public bool Stopped; }
     public struct Vector3
@@ -25,6 +26,8 @@ namespace UnityEngine
     }
     public class Transform { public Vector3 position; }
     public class WaitForSeconds { public WaitForSeconds(float seconds) { } }
+    public abstract class CustomYieldInstruction : IEnumerator
+    { public object Current { get { return null; } } public virtual bool MoveNext() { return false; } public void Reset() { } }
     public static class Time { public static float unscaledDeltaTime=.1f; }
     public static class Mathf { public static float Max(float a,float b) { return Math.Max(a,b); } public static float Abs(float a) { return Math.Abs(a); } }
     public struct RaycastHit { public Vector3 point; }
@@ -40,8 +43,18 @@ namespace UnityEngine.SceneManagement
     {
         public string name; public int handle; public bool isLoaded;
         public bool IsValid() { return handle!=0; }
+        public static bool operator ==(Scene a, Scene b) { return a.handle==b.handle; }
+        public static bool operator !=(Scene a, Scene b) { return a.handle!=b.handle; }
+        public override bool Equals(object value) { return value is Scene && this==(Scene)value; }
+        public override int GetHashCode() { return handle; }
     }
-    public static class SceneManager { public static Scene Active; public static Scene GetActiveScene() { return Active; } }
+    public static class SceneManager
+    {
+        public static Scene Active; public static event Action<Scene> sceneUnloaded;
+        public static Scene GetActiveScene() { return Active; }
+        public static void Unload(Scene scene) { if(sceneUnloaded!=null)sceneUnloaded(scene); }
+        public static void ResetEvents() { sceneUnloaded=null; }
+    }
 }
 public class Health { public bool IsDead; }
 public class CharacterMainControl : UnityEngine.Object
@@ -54,12 +67,24 @@ public class AstarPath { public static AstarPath active; public bool isScanning;
 public class GameCamera { public static GameCamera Instance; public UnityEngine.Transform transform=new UnityEngine.Transform(); }
 public class SceneLoader
 {
+    public static event Action<SceneLoadingContext> onStartedLoadingScene;
+    public static void BeginLoad() { IsSceneLoading=true;if(onStartedLoadingScene!=null)onStartedLoadingScene(new SceneLoadingContext()); }
+    public static void ResetEvents() { onStartedLoadingScene=null; }
     public static SceneLoader Instance; public static bool IsSceneLoading;
     public Func<Task> Load;
     public Task LoadScene(string id,object curtain,bool click) { return Load(); }
 }
+public struct SceneLoadingContext { }
+namespace Duckov.Economy
+{
+    public struct Cost { }
+    public static class EconomyManager { public static event Action<Cost> OnCostPaid { add { } remove { } } }
+}
+namespace Cysharp.Threading.Tasks { public static class UniTaskExtensions { public static void Forget(Task<bool> task) { } } }
 namespace Duckov.Scenes
 {
+    public struct MultiSceneLocation { public string SceneID; }
+    public class MultiSceneTeleporter { public MultiSceneLocation Target;public string InteractName,name;public void DoTeleport() { } }
     public class MultiSceneCore
     {
         public static MultiSceneCore Instance; public bool IsLoading;
@@ -67,6 +92,7 @@ namespace Duckov.Scenes
         public Task<bool> LoadAndTeleport(string id,UnityEngine.Vector3 p)
         { Teleports++;Target=id;return Complete(Teleport==null?Task.CompletedTask:Teleport(id,p)); }
         private static async Task<bool> Complete(Task t) { await t;return true; }
+        public Task<bool> LoadAndTeleport(string id,UnityEngine.Vector3 p,bool local) { return LoadAndTeleport(id,p); }
     }
 }
 namespace BossRush
@@ -75,7 +101,7 @@ namespace BossRush
     using UnityEngine.SceneManagement;
     public class SceneRuntimeContext { public Scene Scene; public string SceneName; public SceneRuntimeContext(Scene s) { Scene=s;SceneName=s.name; } }
     public static class BossRushUI { public static bool Paused; public static bool IsGamePaused() { return Paused; } }
-    public enum BossRushEntryMode { Normal,ModeE,ModeH }
+    public enum BossRushEntryMode { Normal,ModeD,ModeE,ModeF,ModeG,ModeH }
     public enum ModeHLifecycle { None,EntryIntent,SceneLoading,ProductionCertifying,Recovering,MatchBrief }
     public enum ModeHExitReason { SceneGenerationMismatch,TechnicalAbort }
     public class ModeHRunState
@@ -94,9 +120,15 @@ namespace BossRush
     }
     public static class BossRushInitialSpawn { public static bool Arrived; public static bool HasArrived(Vector3 p) { return Arrived; } }
     public class BossRushMapConfig { public Vector3? customSpawnPos; }
+    public static class BossRushMapRuntime { public static Vector3 ResolveArenaSignPosition(BossRushMapConfig map,Vector3 p) { return p; } }
+    public static class ModeGInteractable
+    { public static bool TryOpenConfirmation(ModBehaviour owner) { return false; } public static bool IsConfirmationOpen,LastConfirmationAttemptedStart; }
+    public static class L10n { public static string T(string cn,string en) { return en; } }
     public static class BossRushMapSelectionHelper
     {
         public static int Generation; public static string Name,Id; public static bool Pending, Paid = true;
+        internal static void NotePaidCost(Duckov.Economy.Cost cost) { }
+        public static void ClearPendingEntryFlowState() { }
         public static bool HasPendingPrepaidTicket() { return Paid; }
         public static bool HasPendingModeHEntryIntent() { return Pending; }
         public static int GetPendingModeHSceneGeneration() { return Generation; }
@@ -130,9 +162,13 @@ namespace BossRush
         public readonly List<Coroutine> Routines=new List<Coroutine>(); public int LegacySetups;
         private WaitForSeconds sharedWait05s=new WaitForSeconds(.5f);
         private IntegrationRuntimeModule bossRushIntegrationRuntime;
-        public bool IsZombieModeActive;
+        public bool IsZombieModeActive, ZombieStarting, ModeESelected;
+        public int LegacySetupCompletions;
+        public int VerificationEntered,VerificationDisposed,VerificationAfterWait,CleanupTicks;
+        private bool spawnersDisabled,bossRushArenaActive,modeGActive;
         public ModBehaviour() { bossRushIntegrationRuntime=new IntegrationRuntimeModule(this); }
         internal WaitForSeconds IntegrationSharedWait05s { get { return sharedWait05s; } }
+        internal WaitForSeconds IntegrationSharedWait1s { get { return new WaitForSeconds(1); } }
         public static void DevLog(string text) { }
         public static bool IsModeHRunInProgressSafe() { return ModeHRuntimeGates.Active; }
         public Coroutine StartCoroutine(IEnumerator body)
@@ -152,19 +188,55 @@ namespace BossRush
             }
             coroutine.Stopped=true;
         }
-        public Coroutine Legacy(Vector3 point) { return StartCoroutine(TeleportPlayerToCustomPosition(point)); }
+        public Coroutine Legacy(Vector3 point) { return StartCoroutine(TeleportPlayerToCustomPositionForIntegration(point)); }
+        public Coroutine Legacy(Vector3 point,Scene scene) { return StartCoroutine(bossRushIntegrationRuntime.BeginCustomTeleport(scene,TeleportPlayerToCustomPosition(point))); }
+        public Coroutine ForceFallback(Vector3 point) { return StartCoroutine(bossRushIntegrationRuntime.ForceTeleportToSubScene("sub",point)); }
+        public Coroutine OrdinaryEntry(Scene scene) { return StartCoroutine(bossRushIntegrationRuntime.BeginOrdinary(scene)); }
+        public void DestroyOwner() { bossRushIntegrationRuntime.Close();UnityEngine.Object.Destroy(this); }
+        internal void StartBossRushDemoChallengeSetupForScene(Scene scene) { }
+        internal void SetBossRushArenaPlannedForIntegration(bool value) { }
+        internal void ClearBossRushPendingMapEntryForIntegration() { }
+        internal void ClearBossRushPendingEntryFlowStateForIntegration() { }
         private bool ReadMainExistsWithWarning(string context) { return CharacterMainControl.Main!=null; }
         private bool ReadLevelInitedWithWarning(string context) { return LevelManager.LevelInited; }
-        private bool IsZombieModeStartupInProgress() { return false; }
+        private bool IsZombieModeStartupInProgress() { return ZombieStarting; }
         private BossRushEntryMode DetermineBossRushEntryMode(string context)
-        { return BossRushMapSelectionHelper.Pending?BossRushEntryMode.ModeH:BossRushEntryMode.Normal; }
+        { return BossRushMapSelectionHelper.Pending?BossRushEntryMode.ModeH:ModeESelected?BossRushEntryMode.ModeE:BossRushEntryMode.Normal; }
         private BossRushMapConfig GetMapConfigBySceneName(string name) { return new BossRushMapConfig{customSpawnPos=new Vector3(1,0,1)}; }
-        private IEnumerator SetupBossRushInGroundZero(Vector3 point,BossRushEntryMode entry) { LegacySetups++;yield break; }
+        private void SetArenaCenterFromMapConfig(string scene) { LegacySetups++; }
+        private void InitializeEnemyPresets() { }
+        private void InitializeItemValueCacheAsync() { }
+        private void InitializeBossPoolFilter() { }
+        private void PreCacheMapSpawnerPositions() { }
+        private void ScheduleModeEStartupWarmup(string context) { }
+        private void DisableAllSpawners() { }
+        private void ClearEnemiesForBossRush() { }
+        private bool TryStartModeE() { return true; }
+        private bool TryStartModeF() { return true; }
+        private bool TryStartModeD() { return true; }
+        private void StopModeEStartupWarmupIfPending() { }
+        private void SpawnCommonNPCs(string context) { LegacySetupCompletions++; }
+        private void ScheduleRestoreFollowingSpouse(string scene,string context) { }
+        private void TryRefundModeGPendingPrepaidTicket() { }
+        private void ShowMessage(string message) { }
+        private void SpawnBossRushMapObjects() { }
+        private void TryCreateArenaDifficultyEntryPoint(Vector3 p) { }
+        private void SetCurrentMapSpawnPoints(string scene) { }
+        // Boundaries controlled by the fixture: their production callers and cancellation driver are real.
+        private IEnumerator WaitForModeEStartupVerification(Action<bool> completed)
+        { VerificationEntered++;try { yield return null;VerificationAfterWait++;completed(true); } finally { VerificationDisposed++; } }
+        private IEnumerator ContinuousClearEnemiesUntilWaveStart()
+        { while(true) { CleanupTicks++;yield return null; } }
     }
     internal partial class IntegrationRuntimeModule
     {
         private ModBehaviour _owner;
-        public IntegrationRuntimeModule(ModBehaviour owner) { _owner=owner; }
+        public IntegrationRuntimeModule(ModBehaviour owner) { _owner=owner;SubscribeArenaEntryEvents(); }
+        public void Close() { CleanupArenaEntry();_owner=null; }
+        public IEnumerator BeginOrdinary(Scene scene) { return BeginArenaEntryWait(scene); }
+        private bool ReadSceneLoaderDoneWithWarning(string context) { return !SceneLoader.IsSceneLoading; }
+        private bool ReadCameraExistsWithWarning(string context) { return GameCamera.Instance!=null; }
+        private void LogIntegrationWarningLimited(string a,string b,Exception e) { }
         private bool ReadMainExistsWithWarning(string context) { return CharacterMainControl.Main!=null; }
         private bool ReadLevelInitedWithWarning(string context) { return LevelManager.LevelInited; }
     }

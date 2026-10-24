@@ -53,6 +53,7 @@ namespace BossRush
             body.HideBaseRenderers();
             try { body.Build(); }
             catch (Exception e) { ModBehaviour.DevLog(SandstormChampionConfig.LogPrefix + "[WARNING] 外形构建失败: " + e.Message); }
+            ModEntityFogVisibility.Attach(go, boss.transform);
             return body;
         }
 

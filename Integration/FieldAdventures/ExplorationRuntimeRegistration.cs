@@ -5,6 +5,8 @@ namespace BossRush
     {
         internal static void Register(BossRushRuntimeModuleHost host)
         {
+            host.Register(new EclipseBloomIntroduction());
+            host.Register(new EclipseBloomRuntimeModule());
             host.Register(new GreedyMimicRuntimeModule());
             host.Register(new OddParcelRuntimeModule());
             host.Register(new DangerousPrototypeRuntimeModule());

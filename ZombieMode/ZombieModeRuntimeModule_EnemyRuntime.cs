@@ -257,7 +257,10 @@ namespace BossRush
             {
                 return;
             }
-            if (radius <= 0f)
+            // NaN 绕过 <= / >，必须在范围判断和写回位置前分别挡住。
+            if (!IsZombieModeGravityWellFinite(origin) ||
+                !IsZombieModeGravityWellFinite(radius) || radius <= 0f ||
+                !IsZombieModeGravityWellFinite(pullStrength) || pullStrength <= 0f)
             {
                 return;
             }
@@ -265,6 +268,10 @@ namespace BossRush
             CharacterMainControl player = CharacterMainControl.Main;
             DamageReceiver playerDamageReceiver = player != null ? player.mainDamageReceiver : null;
             float radiusSqr = radius * radius;
+            if (!IsZombieModeGravityWellFinite(radiusSqr))
+            {
+                return;
+            }
             const float minPullDistance = 0.4f;
             const float stopDistance = 0.35f;
             float minPullDistanceSqr = minPullDistance * minPullDistance;
@@ -294,10 +301,19 @@ namespace BossRush
                     continue;
                 }
 
-                Vector3 delta = origin - enemy.transform.position;
+                Vector3 currentPosition = enemy.transform.position;
+                Quaternion currentRotation = enemy.transform.rotation;
+                if (!IsZombieModeGravityWellFinite(currentPosition) || !IsZombieModeGravityWellRotationValid(currentRotation))
+                {
+                    // 非法角色由共享恢复监控按合法快照修复，聚怪不再传播坏值。
+                    continue;
+                }
+
+                Vector3 delta = origin - currentPosition;
                 delta.y = 0f;
                 float distanceSqr = delta.sqrMagnitude;
-                if (distanceSqr <= minPullDistanceSqr || distanceSqr > radiusSqr)
+                if (!IsZombieModeGravityWellFinite(distanceSqr) ||
+                    distanceSqr <= minPullDistanceSqr || distanceSqr > radiusSqr)
                 {
                     continue;
                 }
@@ -305,7 +321,22 @@ namespace BossRush
                 float distance = Mathf.Sqrt(distanceSqr);
                 float stepDistance = Mathf.Min(distance - stopDistance, pullStrength);
                 Vector3 step = delta * (stepDistance / distance);
-                enemy.transform.position += step;
+                Vector3 destination = currentPosition + step;
+                if (!IsZombieModeGravityWellFinite(step) || !IsZombieModeGravityWellFinite(destination))
+                {
+                    continue;
+                }
+
+                // 同步官方控制器、刚体与 Transform。ForceSetPosition 会暂停贴地并禁启角色，
+                // 不适用于每 0.2 秒牵引；此入口保留正常速度、贴地和组件生命周期。
+                ECM2.CharacterMovement movement = enemy.GetComponent<ECM2.CharacterMovement>();
+                if (movement == null) continue;
+                try { movement.SetPositionAndRotation(destination, currentRotation, false); }
+                catch (System.Exception e)
+                {
+                    ModBehaviour.DevLog("[ZombieMode] 聚怪奖励同步位置失败: " + e.Message);
+                    continue;
+                }
 
                 AICharacterController ai = GetZombieModeEnemyAI(enemy.gameObject, marker);
                 if (ai != null && playerDamageReceiver != null)
@@ -317,6 +348,27 @@ namespace BossRush
             }
 
             zombieModeEnemyMarkerScratch.Clear();
+        }
+
+        private static bool IsZombieModeGravityWellFinite(float value)
+        {
+            return !float.IsNaN(value) && !float.IsInfinity(value);
+        }
+
+        private static bool IsZombieModeGravityWellFinite(Vector3 value)
+        {
+            return IsZombieModeGravityWellFinite(value.x) &&
+                IsZombieModeGravityWellFinite(value.y) &&
+                IsZombieModeGravityWellFinite(value.z);
+        }
+
+        private static bool IsZombieModeGravityWellRotationValid(Quaternion value)
+        {
+            if (!IsZombieModeGravityWellFinite(value.x) || !IsZombieModeGravityWellFinite(value.y) ||
+                !IsZombieModeGravityWellFinite(value.z) || !IsZombieModeGravityWellFinite(value.w)) return false;
+            double lengthSquared = (double)value.x * value.x + (double)value.y * value.y +
+                (double)value.z * value.z + (double)value.w * value.w;
+            return System.Math.Abs(lengthSquared - 1d) < 0.01d;
         }
 
         internal CharacterMainControl TryFindZombieModeNearestEnemyTarget(int runId, CharacterMainControl exclude, float radius)

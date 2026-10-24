@@ -76,7 +76,14 @@ namespace UnityEngine
     public sealed class Transform : Component
     {
         public Vector3 position;
+        public Quaternion rotation = Quaternion.identity;
         public bool IsChildOf(Transform parent) { return ReferenceEquals(this, parent); }
+    }
+    public struct Quaternion
+    {
+        public float x, y, z, w;
+        public Quaternion(float x, float y, float z, float w) { this.x = x; this.y = y; this.z = z; this.w = w; }
+        public static Quaternion identity { get { return new Quaternion(0, 0, 0, 1); } }
     }
     public struct Vector3
     {
@@ -97,6 +104,22 @@ namespace UnityEngine
         public static float Sqrt(float value) { return (float)Math.Sqrt(value); }
     }
     public static class Time { public static float unscaledTime; }
+}
+
+namespace ECM2
+{
+    public sealed class CharacterMovement : UnityEngine.MonoBehaviour
+    {
+        public void SetPositionAndRotation(UnityEngine.Vector3 position, UnityEngine.Quaternion rotation, bool updateGround)
+        {
+            var owner = GetComponent<CharacterMainControl>();
+            owner.PositionSyncCalls++;
+            if (owner.FailPositionSync) throw new InvalidOperationException("controlled movement failure");
+            if (updateGround) throw new InvalidOperationException("frequent pull must retain ground constraint");
+            owner.MovementPosition = transform.position = position;
+            transform.rotation = rotation;
+        }
+    }
 }
 
 namespace ItemStatsSystem
@@ -123,7 +146,16 @@ public sealed class CharacterMainControl : UnityEngine.MonoBehaviour
 {
     public static CharacterMainControl Main;
     public DamageReceiver mainDamageReceiver;
-    public void SetPosition(UnityEngine.Vector3 position) { transform.position = position; }
+    public int PositionSyncCalls;
+    public UnityEngine.Vector3 MovementPosition, MovementVelocity;
+    public bool FailPositionSync;
+    public void SetPosition(UnityEngine.Vector3 position)
+    {
+        PositionSyncCalls++;
+        if (FailPositionSync) throw new InvalidOperationException("controlled movement failure");
+        MovementPosition = transform.position = position;
+        MovementVelocity = UnityEngine.Vector3.zero;
+    }
 }
 public sealed class DamageReceiver : UnityEngine.MonoBehaviour { }
 public sealed class AICharacterController : UnityEngine.MonoBehaviour

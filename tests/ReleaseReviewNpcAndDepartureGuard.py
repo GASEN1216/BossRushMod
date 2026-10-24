@@ -1,7 +1,7 @@
-"""2026-10-01 发布前审查 P1 的结构锁：捏脸 NPC 头顶名字的生命周期、可婚永久 NPC 的移动组件、天空岛离岛记录的去留。
+"""2026-10-01 发布前审查 P1 的结构锁：捏脸 NPC 姓名登记的生命周期、可婚永久 NPC 的移动组件、天空岛离岛记录的去留。
 
-1. 捏脸 NPC（永久 NPC 与天空岛居民）登记过原版名字组件后，名牌要每帧跟着角色走、停用时收起、销毁时注销
-   （口径同快递员 / 护士）。旧代码只登记一次：名牌停在生成点，隐藏后不收，角色没了登记还在。
+1. 捏脸 NPC（永久 NPC 与天空岛居民）的旧登记入口现在只同步显式更新的官方对话姓名，不创建头顶名牌。
+   LateUpdate / OnDisable 保留刷新入口，让延迟创建的 actor 能接收更新；销毁时注销，避免登记跨生命周期残留。
 2. CR-2026-09-30-004：永久 NPC 都能结婚，婚后开跟随靠 DuckNpcMovement 走路；按人设站定（canWander=false，
    折翎、无声钟守）的以前直接 return 不挂组件，婚后跟随原地不动。现在一律挂，站定的只是平时不溜达。
 3. CR-2026-09-30-002：回主菜单也会卸载岛场景，「这一趟暂不入档的永久记录」只在撤离或倒下时保留，去向是主菜单的不留。
@@ -45,10 +45,10 @@ def check(src):
     marker = src[MARKER]
     late = body(marker, "private void LateUpdate()")
     if late is None or "NPCNameTagHelper.RefreshOriginalHealthBarName(transform);" not in late:
-        errors.append("DuckNpcRuntimeMarker 必须在 LateUpdate 里刷新原版名字组件（名牌跟着角色走）")
+        errors.append("DuckNpcRuntimeMarker 必须在 LateUpdate 里提交待更新的官方对话姓名")
     disable = body(marker, "private void OnDisable()")
     if disable is None or "NPCNameTagHelper.RefreshOriginalHealthBarName(transform);" not in disable:
-        errors.append("DuckNpcRuntimeMarker 停用时必须刷新一次，让名牌按 activeInHierarchy 收起")
+        errors.append("DuckNpcRuntimeMarker 停用时必须保留已有姓名更新的提交入口")
     destroy = body(marker, "private void OnDestroy()")
     if destroy is None or "NPCNameTagHelper.UnregisterOriginalHealthBarName(transform);" not in destroy:
         errors.append("DuckNpcRuntimeMarker 销毁时必须注销名字登记")

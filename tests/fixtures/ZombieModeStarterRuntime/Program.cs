@@ -52,5 +52,5 @@ internal static class Program
         marker.VisualFootMarker=new GameObject("foot");marker.VisualFootMarkerFallbackApplied=true;ZombieModeRuntimeModule.ReleaseZombieModeFootMarker(marker);ZombieModeRuntimeModule.ReleaseZombieModeFootMarker(marker);
         Assert(marker.VisualFootMarker==null && !marker.VisualFootMarkerFallbackApplied && string.Join(",",Probe.Trace)=="release:foot","Foot marker must clear owner state and release to the pool exactly once");
     }
-    public static void Main() { Starter();Cash();PurificationAndIsolation();VisualCleanup();Console.WriteLine("PASS ZombieModeStarterRuntime"); }
+    public static void Main() { Starter();Cash();PurificationAndIsolation();VisualCleanup();ExtractionRegression.Run();Console.WriteLine("PASS ZombieModeStarterRuntime"); }
 }

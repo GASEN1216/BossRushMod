@@ -16,6 +16,8 @@
 - **Subscribe**: [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3612465423)
 - **Contributing / AI collaboration**: read [AGENTS.md](AGENTS.md) first (written in Chinese)
 
+**v2.3.7** fixes NPC names staying on screen, Bosses and gear showing through fog, and Zombie Mode waves getting stuck at full progress, beacon wave starts, low spread damage and extraction payouts. See the [v2.3.7 changelog](WikiContent/en/changelog__v2_3_7.md).
+
 ## What's Inside
 
 ### Game Modes
@@ -39,7 +41,7 @@
 ### Bosses, NPCs and Gear
 
 - **Original bosses**: Dragon Descendant, Skyburner Dragon Lord, Phantom Witch.
-- **NPCs**: Awen (courier), Dingdang (goblin smith, reforging), Yuori (nurse), plus permanent NPCs made with the duck-face NPC tool; affinity, gifts and marriage.
+- **NPCs**: Awen (courier), Dingdang (goblin smith, reforging), Yu Zhi (nurse), plus permanent NPCs made with the duck-face NPC tool; affinity, gifts and marriage.
 - **Gear**: Dragon Set, Dragon King Set, Frost Set, Thunder Set, Cloud Soar I, Reverse Scale, Inferno Emperor's Realm-Breaking Halberd, Dragon Breath, Dragon Cannon, Soulreaper's Requiem, Frostmourne, Viper Dagger, Summoning Staff, Energy Shield, Frost Spear, Thunder Ring.
 
 ### Systems

@@ -60,7 +60,10 @@ def main():
             "SandstormChampionPoolAdapter.IsPreset(preset)", "managed identity prevents ordinary preset fallback")
     require(compact(source("WavesArena/WavesArenaRuntimeModule.cs")), "SandstormChampionBoss.NameKey,", "early strong boss protection")
     require(body("Utilities/EnemySpawnHostBridge.cs", "private void BindSpawnPostprocessServices()"),
-            "enemySpawnRuntime.BindSandstormChampionService(", "production spawn delegate binding")
+            "BossPoolSpawnBindings.Bind(enemySpawnRuntime, this);", "host forwards pool spawn bindings")
+    require(body("Utilities/BossPoolSpawnBindings.cs", "internal static void Bind("),
+            "runtime.BindSandstormChampionService((position, notify, defer, nonWave, active) => SandstormChampionPoolAdapter.SpawnAsync(host, position, active, nonWave, defer));",
+            "production spawn delegate binding")
     core = body("Utilities/EnemySpawnCore.cs", "internal async UniTask<EnemySpawnCoreResult> SpawnEnemyCoreInternalAsync(")
     require(core, "else if (SandstormChampionPoolAdapter.IsPreset(currentPreset))", "dedicated core factory dispatch")
     require(core, "SandstormChampionPoolAdapter.CleanupCancelled(character);", "core cancellation owner")

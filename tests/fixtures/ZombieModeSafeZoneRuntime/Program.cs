@@ -16,6 +16,7 @@ internal static class Program
         var obj = new GameObject(name);
         obj.transform.position = position;
         var character = obj.AddComponent<CharacterMainControl>();
+        obj.AddComponent<ECM2.CharacterMovement>();
         character.mainDamageReceiver = obj.AddComponent<DamageReceiver>();
         return character;
     }
@@ -168,6 +169,60 @@ internal static class Program
         Assert(ItemAgent_Gun.SubscriberCount == 0, "All run cleanup paths must unsubscribe");
     }
 
+    private static void TestGravityRejectsInvalidPhysicsInputs()
+    {
+        var state = State(8);
+        var module = new ZombieModeRuntimeModule(state);
+        CharacterMainControl.Main = Character("gravity-player", Vector3.zero);
+        var ordinary = Enemy(module, state, "gravity-valid", new Vector3(2, 1, 0), cached: true);
+        var corrupt = Enemy(module, state, "gravity-corrupt", new Vector3(float.NaN, 0, 0), cached: true);
+        var infinite = Enemy(module, state, "gravity-infinite", new Vector3(0, float.PositiveInfinity, 0), cached: true);
+        var overflow = Enemy(module, state, "gravity-overflow", new Vector3(float.MaxValue, 0, 0), cached: true);
+        var invalidRotation = Enemy(module, state, "gravity-bad-rotation", new Vector3(2, 0, 0), cached: true);
+        invalidRotation.transform.rotation = new Quaternion(float.NaN, 0, 0, 1);
+        var zeroRotation = Enemy(module, state, "gravity-zero-rotation", new Vector3(2, 0, 0), cached: true);
+        zeroRotation.transform.rotation = new Quaternion();
+        var noMovement = Enemy(module, state, "gravity-no-movement", new Vector3(2, 0, 0), cached: true);
+        UnityEngine.Object.Destroy(noMovement.GetComponent<ECM2.CharacterMovement>());
+        var tooClose = Enemy(module, state, "gravity-center", new Vector3(0.1f, 0, 0), cached: true);
+        var outside = Enemy(module, state, "gravity-outside", new Vector3(20, 0, 0), cached: true);
+        var throwing = Enemy(module, state, "gravity-throwing", new Vector3(3, 0, 0), cached: true);
+        throwing.Owner.FailPositionSync = true;
+        var afterFailure = Enemy(module, state, "gravity-after-failure", new Vector3(4, 0, 0), cached: true);
+        ordinary.Owner.MovementVelocity = new Vector3(5, 0, 0);
+
+        foreach (float invalid in new[] { float.NaN, float.PositiveInfinity, float.NegativeInfinity, 0f, -1f })
+        {
+            module.RefreshZombieModeGravityWellTargets(8, Vector3.zero, invalid, 1f);
+            module.RefreshZombieModeGravityWellTargets(8, Vector3.zero, 6f, invalid);
+        }
+        module.RefreshZombieModeGravityWellTargets(8, new Vector3(float.NaN, 0, 0), 6f, 1f);
+        module.RefreshZombieModeGravityWellTargets(8, new Vector3(0, 0, float.PositiveInfinity), 6f, 1f);
+        module.RefreshZombieModeGravityWellTargets(8, Vector3.zero, float.MaxValue, 1f);
+        module.RefreshZombieModeGravityWellTargets(9, Vector3.zero, 6f, 1f);
+        Assert(ordinary.Owner.PositionSyncCalls == 0 && corrupt.Owner.PositionSyncCalls == 0,
+            "Invalid well inputs and stale runs must not write any movement state");
+
+        module.RefreshZombieModeGravityWellTargets(8, Vector3.zero, 6f, 1f);
+        Assert(ordinary.transform.position.x == 1f && ordinary.transform.position.y == 1f &&
+            ordinary.Owner.PositionSyncCalls == 1 && ordinary.Owner.MovementPosition.x == 1f &&
+            ordinary.Owner.MovementVelocity.x == 5f,
+            "A valid pull must preserve height and synchronize official movement instead of only changing Transform");
+        Assert(corrupt.Owner.PositionSyncCalls == 0 && infinite.Owner.PositionSyncCalls == 0 && overflow.Owner.PositionSyncCalls == 0,
+            "Corrupt positions and overflowing distances must be left to recovery without another movement write");
+        Assert(invalidRotation.Owner.PositionSyncCalls == 0 && zeroRotation.Owner.PositionSyncCalls == 0 && noMovement.Owner.PositionSyncCalls == 0,
+            "Invalid rotations or a missing official controller must never be written into physics");
+        Assert(tooClose.Owner.PositionSyncCalls == 0 && outside.Owner.PositionSyncCalls == 0,
+            "Finite validation must retain the well's inner stop and outer radius");
+        Assert(throwing.Owner.PositionSyncCalls == 1 && throwing.transform.position.x == 3f,
+            "A failed official move must not fall back to an unsynchronized Transform write or abort the scan");
+        Assert(afterFailure.Owner.PositionSyncCalls == 1 && afterFailure.transform.position.x == 3f,
+            "One failed official move must not prevent later enemies from being pulled");
+        ordinary.transform.position = new Vector3(2, 1, 0);
+        module.RefreshZombieModeGravityWellTargets(8, Vector3.zero, 6f, 1f);
+        Assert(ordinary.Owner.PositionSyncCalls == 2, "A rejected enemy must not poison subsequent well ticks");
+    }
+
     private static void TestExtractionKeepsJustPickedUpDrops()
     {
         var state = State(7);
@@ -204,9 +259,10 @@ internal static class Program
         TestBoundaryAndThreatRestoration();
         TestRemovalOrderAndRunIsolation();
         TestSpatialQueriesAndAiCache();
+        TestGravityRejectsInvalidPhysicsInputs();
         TestEventOwnership();
         TestExtractionKeepsJustPickedUpDrops();
-        Console.WriteLine("ZombieModeSafeZoneRuntime PASS: boundaries, threat, removal order, ownership, queries, cache, subscriptions, extraction drop ownership");
+        Console.WriteLine("ZombieModeSafeZoneRuntime PASS: boundaries, threat, removal order, ownership, queries, cache, subscriptions, extraction drop ownership, gravity finite inputs and official movement sync");
         return 0;
     }
 }

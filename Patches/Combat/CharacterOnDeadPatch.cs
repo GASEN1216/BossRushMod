@@ -21,6 +21,8 @@ namespace BossRush
         [HarmonyPrefix]
         public static void Prefix(CharacterMainControl __instance)
         {
+            // 花冠沿官方底模计数；专属掉落由实例 owner 准备，不能再叠底模 Boss 的额外掉落。
+            if (EclipseBloomAbilityController.RestoreOfficialPresetBeforeDeath(__instance)) return;
             // 沙暴召唤物仍执行官方死亡流程，但不进入任何额外战利品处理。
             // 唯一 preset 身份覆盖异步创建期间，组件身份覆盖生成完成之后。
             if (SandstormChampionMinionMarker.IsSummonedMinion(__instance))

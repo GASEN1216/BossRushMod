@@ -224,6 +224,7 @@ namespace BossRush
 
                 NPCCommonUtils.FixShaders(courierNPCInstance, "[CourierNPC]");
                 NPCCommonUtils.SetLayerRecursively(courierNPCInstance, LayerMask.NameToLayer("Default"));
+                ModEntityFogVisibility.Attach(courierNPCInstance);
 
                 // 添加控制器组件
                 courierController = courierNPCInstance.AddComponent<CourierNPCController>();

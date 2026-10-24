@@ -1,5 +1,8 @@
 from pathlib import Path
+import re
 import sys
+
+from cs_source_util import clean_source
 
 
 EFFECTS = Path("ZombieMode/ZombieModeRewardEffects.cs")
@@ -13,7 +16,7 @@ EFFECT_PARTS = [
 
 
 def read_effects() -> str:
-    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in EFFECT_PARTS)
+    return "\n".join(clean_source(path.read_text(encoding="utf-8")) for path in EFFECT_PARTS)
 
 REFORGE = Path("Integration/Reforge/ReforgeSystem.cs")
 
@@ -64,21 +67,15 @@ def main() -> int:
         "ZombieModeProjectileSpreadSnapshot snapshot = CaptureZombieModeProjectileSpreadSnapshot(holdItem);",
         "float currentShotCount = shotCountStat.Value;",
         "float currentShotAngle = shotAngleStat.Value;",
-        "Stat damageStat = holdItem.Stats.GetStat(\"Damage\");",
         "int shotCount = Mathf.Max(1, Mathf.RoundToInt(currentShotCount));",
         "float shotAngle = Mathf.Max(0f, currentShotAngle);",
         "shotCount = Mathf.Max(shotCount, 3);",
         "shotAngle = Mathf.Max(shotAngle, 8f);",
         "shotCount = Mathf.Max(shotCount, 5);",
         "shotAngle = Mathf.Max(shotAngle, 18f);",
-        "float damageSplitMultiplier = CalculateZombieModeProjectileSpreadDamageMultiplier(currentShotCount, shotCount);",
         "TryAddZombieModeGunStatRuntimeModifier(snapshot, holdItem, \"ShotCount\", shotCount - currentShotCount);",
         "TryAddZombieModeGunStatRuntimeModifier(snapshot, holdItem, \"ShotAngle\", shotAngle - currentShotAngle);",
-        "TryAddZombieModeGunStatRuntimePercentageModifier(snapshot, holdItem, \"Damage\", damageSplitMultiplier - 1f);",
-        "private float CalculateZombieModeProjectileSpreadDamageMultiplier(float originalShotCount, int appliedShotCount)",
-        "Order 300 is intentional: spread overlays are a late runtime delta",
         "new Modifier(ModifierType.Add, delta, true, 300, snapshot);",
-        "new Modifier(ModifierType.PercentageAdd, percent, true, 300, snapshot);",
         "RuntimeStatModifierTracker.RemoveAll(snapshot.ModifierRecords, \"ZombieMode Projectile Spread\");",
         "private void RestoreZombieModeProjectileSpreadStateExcept(Item exceptItem)",
         "RestoreExistingZombieModeProjectileSpreadSnapshot(holdItem);",
@@ -90,6 +87,15 @@ def main() -> int:
     rebuild_body = extract_method_body(effects, "private void RebuildZombieModeProjectileSpreadState()")
     if not rebuild_body:
         return fail("missing RebuildZombieModeProjectileSpreadState body")
+    # 官方 ShootOneBullet 已按 ShotCount 分摊整枪伤害；扩散层只能写这两个瞬时属性。
+    modifier_calls = re.findall(
+        r'TryAddZombieModeGunStatRuntimeModifier\s*\(\s*snapshot\s*,\s*holdItem\s*,\s*"([^"]+)"\s*,',
+        rebuild_body)
+    if modifier_calls != ["ShotCount", "ShotAngle"] or '"Damage"' in rebuild_body:
+        return fail("spread must leave Damage to official ShotCount division; only ShotCount/ShotAngle overlays are allowed")
+    for forbidden in ("CalculateZombieModeProjectileSpreadDamageMultiplier", "TryAddZombieModeGunStatRuntimePercentageModifier"):
+        if forbidden in effects:
+            return fail("spread must not apply a second damage split -> " + forbidden)
     result = require_before(
         rebuild_body,
         "RestoreExistingZombieModeProjectileSpreadSnapshot(holdItem);",

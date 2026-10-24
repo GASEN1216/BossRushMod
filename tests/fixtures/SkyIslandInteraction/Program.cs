@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using BossRush;
+using BossRush.Utils;
 using UnityEngine;
 using Duckov.Economy;
 
@@ -25,6 +26,7 @@ internal static class Program
         AudioStop();
         PanelLooks();
         LocalizationRegression.Run(Check);
+        NPCNameTagHelper.RunNameVisibilityChecks(Check);
         ItemAndInteractionLocalizationRegression.Run(Check);
         DockShopRegression.Run(Check);
         Check(HUDManager.Tokens.Count == 0 && ZombieModeUIHelper.Leases == 0, "all modal and HUD owners released");

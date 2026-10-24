@@ -279,6 +279,7 @@ namespace BossRush
             ApplyTeamAndSurvivability(npc, request);
             ApplyModelScale(npc, request);
             AttachMarker(npc, request);
+            ModEntityFogVisibility.Attach(npc.gameObject);
 
             try
             {

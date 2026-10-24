@@ -38,11 +38,13 @@ namespace UnityEngine
         public static Vector3 forward { get { return new Vector3(0,0,1); } }
         public static Vector3 up { get { return new Vector3(0, 1, 0); } }
         public float sqrMagnitude { get { return x * x + y * y + z * z; } }
+        public float magnitude { get { return (float)Math.Sqrt(sqrMagnitude); } }
         public Vector3 normalized { get { return this * (1f / (float)Math.Sqrt(Math.Max(sqrMagnitude, 0.00001f))); } }
         public static Vector3 operator +(Vector3 a, Vector3 b) { return new Vector3(a.x + b.x, a.y + b.y, a.z + b.z); }
         public static Vector3 operator -(Vector3 a, Vector3 b) { return new Vector3(a.x - b.x, a.y - b.y, a.z - b.z); }
         public static Vector3 operator *(Vector3 a, float b) { return new Vector3(a.x * b, a.y * b, a.z * b); }
         public static float Distance(Vector3 a, Vector3 b) { return (float)Math.Sqrt((a - b).sqrMagnitude); }
+        public static float Dot(Vector3 a, Vector3 b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
     }
     public struct Color { }
     public class Transform : Object { public Vector3 position; public Vector3 forward = new Vector3(0,0,1); public Quaternion rotation; }
@@ -66,7 +68,8 @@ namespace UnityEngine
         public Transform transform { get { return gameObject.transform; } }
         public T GetComponent<T>() where T : MonoBehaviour { return gameObject.GetComponent<T>(); }
     }
-    public static class Time { public static float time, unscaledTime; }
+    public class LineRenderer : MonoBehaviour { public void SetPosition(int index, Vector3 position) { } }
+    public static class Time { public static float time, unscaledTime, unscaledDeltaTime; }
     public static class Random
     {
         public static Vector2 insideUnitCircle { get { return new Vector2(1, 0); } }
@@ -78,6 +81,7 @@ namespace UnityEngine
         public static float Min(float a, float b) { return Math.Min(a, b); }
         public static float Max(float a, float b) { return Math.Max(a, b); }
         public static float Clamp(float v, float a, float b) { return Math.Max(a, Math.Min(v, b)); }
+        public static float Clamp01(float v) { return Clamp(v, 0f, 1f); }
     }
 }
 namespace Pathfinding
@@ -201,6 +205,16 @@ public partial class Health : MonoBehaviour
 }
 namespace BossRush
 {
+    // 残日盾片的装备与致死前效果由专用夹具覆盖；这里只记录全链桥接，不改变既有丧尸伤害。
+    internal static class ResidualSunShieldRuntime
+    {
+        internal static int Calls;
+        internal static Health LastHealth;
+        internal static float LastFinalDamage;
+        internal static void ModifyFinalDamage(Health health, ref DamageInfo info)
+        { Calls++; LastHealth = health; LastFinalDamage = info.finalDamage; }
+    }
+
     internal partial class SetBonusRuntimeModule
     {
         internal bool frostSetActive, thunderSetActive;

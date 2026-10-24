@@ -1,5 +1,7 @@
 # 标准 BossRush 模式
 
+2026-10-22 custom 地图入场防护（COMPAT）：custom 使用独立请求槽位并复用现有 ArenaEntry 协程驱动，绑定 sceneLoaded 传入的实际目标 Scene，允许 Main 到目标图的正常激活过渡。官方 loader、MultiSceneCore、`LevelInited` 与 `AfterInit` 全部就绪后只绑定一次主玩家，加载等待也计入 30 秒上限；未就绪时取消。H / 丧尸接管、后继请求、切图、卸载、玩家替换或 owner 销毁后，旧任务停止，写位置前再次检查；GroundZero 后续任务受同一请求约束。正常 custom、Mode E / H、超时与跨局取消由现有入场夹具覆盖，真实 Unity 调度仍需实机验收。
+
 2026-10-08 DEMO 入场协程归属（COMPAT）：就绪等待只在场景、官方 loader、角色、相机与 LevelManager 全部就绪时派发；超时取消。`IntegrationRuntimeModule_ArenaEntry.cs` 持有原场景与角色绑定、后继请求替换、切图 / 卸载 / 销毁取消及任务释放。DEMO setup 每次恢复共用归属检查，Mode E 验证改为受 owner 递归驱动的子 IEnumerator，异步路牌补建也登记同一请求。普通子 IEnumerator 由显式栈推进并逆序释放；CustomYieldInstruction 与 Coroutine 保留 Unity 原生等待语义。Normal / D / E / F / G / H 的正常分支及取消路径由 `LegacyArenaEntry` 执行，实际 Unity 调度和地图画面仍需实机验收。
 
 > 2026-09-26 迁移注：波次、生成、清场、现金磁铁与 Tick 的宿主兼容入口合并到 `WavesArena.cs`；`BossRushEntryFlow.cs` 和 `WavesArenaEntryAndTeleport.cs` 继续承担跨模式入场协调。运行时状态和算法仍在既有 `WavesArenaRuntimeModule` partial，成员语义与初始化顺序不因文件归并改变。

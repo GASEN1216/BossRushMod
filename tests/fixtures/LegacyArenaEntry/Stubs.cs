@@ -177,6 +177,7 @@ namespace BossRush
     {
         private ModBehaviour _owner;
         private object _deferredBootstrapActions;
+        private static bool IsCustomTeleportOfficialReady() { return false; }
         public override string ModuleName { get { return "Integration"; } }
         private void StopRuntimeStateMonitor() { }
         private void CleanupDeferredIntegrationBootstrap() { }
@@ -187,6 +188,7 @@ namespace BossRush
     }
     public partial class ModBehaviour : Component
     {
+        internal bool ShouldSkipCustomTeleportForIntegration() { return false; }
         public static ModBehaviour Instance;
         internal readonly IntegrationRuntimeModule bossRushIntegrationRuntime = new IntegrationRuntimeModule();
         internal readonly ModeDRuntimeModule modeDRuntime = new ModeDRuntimeModule();

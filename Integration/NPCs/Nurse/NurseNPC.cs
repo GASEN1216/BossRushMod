@@ -211,6 +211,7 @@ namespace BossRush
 
                 NPCCommonUtils.FixShaders(nurseNPCInstance, "[NurseNPC]");
                 NPCCommonUtils.SetLayerRecursively(nurseNPCInstance, LayerMask.NameToLayer("Default"));
+                ModEntityFogVisibility.Attach(nurseNPCInstance);
                 
                 // 添加控制器组件
                 nurseController = nurseNPCInstance.GetComponent<NurseNPCController>();

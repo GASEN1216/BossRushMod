@@ -1,5 +1,7 @@
 from pathlib import Path
 import sys
+import re
+from cs_source_util import clean_source
 
 
 COMPILE = Path("compile_official.bat")
@@ -66,8 +68,11 @@ def main() -> int:
         if result:
             return result
 
-    if "EconomyManager.Add(cashGain)" not in extraction or "if (EconomyManager.Add(cashGain))" not in extraction:
+    payout = re.sub(r"\s+", " ", extract_method(clean_source(extraction), "private bool SettleZombieModeExtractionCashShell()"))
+    if "paid = EconomyManager.Add(cashGain);" not in payout or "if (!paid) {" not in payout:
         return fail("ZombieModeCashAndOriginalExtractionGuard: extraction cash must check EconomyManager.Add result")
+    if not (0 <= payout.find("if (!paid) {") < payout.find("runState.PurificationPoints = 0;") < payout.find("NotificationText.Push(")):
+        return fail("ZombieModeCashAndOriginalExtractionGuard: payout must commit after receipt and before UI notification")
 
     result = require(compile_text, "ZombieMode\\ZombieModeCashInvestmentView.cs", "official compile list")
     if result:

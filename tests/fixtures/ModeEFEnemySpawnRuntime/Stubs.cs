@@ -65,6 +65,12 @@ namespace BossRush
     using UnityEngine;
     public enum Teams { player, wolf, bear, scav, usec }
     public sealed class EnemyPresetInfo { public string name, displayName; public int team; public float baseHealth; }
+    // 花冠专用 owner 的完整身份检测由 EclipseBloomRuntime 覆盖；这里仅作内容边界。
+    internal static class EclipseBloomPoolAdapter
+    {
+        internal const string NameKey = "BossRush_EclipseBloom_Name";
+        internal static bool IsPreset(EnemyPresetInfo preset) { return preset != null && preset.name == NameKey; }
+    }
     public sealed class CharacterMainControl : Object
     {
         public static CharacterMainControl Main;

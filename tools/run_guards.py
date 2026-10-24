@@ -48,6 +48,7 @@ KNOWN_RED_FILE = os.path.join(TESTS_DIR, "known_red_guards.txt")
 # 需要实机日志/游戏进程的脚本，不属于结构守卫，默认不跑
 SKIP_ALWAYS = {"SmokeLogScan.py"}
 EXTERNAL_ARTIFACT_GUARDS = {
+    "EclipseBloomAuthoredBundleGuard.py",
     "ModeGPresentationAssetGuard.py", "ModeHPresentationAssetGuard.py",
     "PortableSafeZoneDeviceBundleGuard.py", "BaseBuildingResourcePropertyTest.py",
     "DailyReportArtPropertyTest.py",

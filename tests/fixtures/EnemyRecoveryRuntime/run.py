@@ -10,7 +10,7 @@ HERE = Path(__file__).resolve().parent
 OUT = ROOT / "Build/runtime-regressions/EnemyRecoveryRuntime"
 OUT.mkdir(parents=True, exist_ok=True)
 production = [ROOT / p for p in (
-    "Utilities/EnemyRecoveryMonitor.cs", "ZombieMode/ZombieModeRuntimeModule_Recovery.cs", "WavesArena/WavesArenaRuntimeModule_Recovery.cs")]
+    "Utilities/EnemyRecoveryMonitor.cs", "Utilities/EnemyRecoveryTransformSafety.cs", "ZombieMode/ZombieModeRuntimeModule_Recovery.cs", "WavesArena/WavesArenaRuntimeModule_Recovery.cs")]
 sources = production + [HERE / "Stubs.cs", HERE / "Program.cs"]
 includes = "".join('<Compile Include="' + escape(str(p), {'"': '&quot;'}) + '" />' for p in sources)
 project = OUT / "Regression.csproj"

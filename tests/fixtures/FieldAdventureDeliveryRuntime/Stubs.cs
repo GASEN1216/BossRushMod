@@ -313,6 +313,9 @@ namespace BossRush
         public OddParcelVisual(GameObject parent,OddParcelKind kind,bool station,bool destination)
         { this.kind=kind; root=new GameObject("VoiceHost"); root.transform.SetParent(parent.transform,false); if(!station) BuildVoice(); }
         public void Tick(float dt,float pressure,bool carried) { }
+        // 爆发 / 声浪粒子属于共享 FxKit，执行回归只验证音量与叫声时序。
+        private void PlayBurstFx(bool celebrate) { }
+        private void PlayShoutRing() { }
         public void Dispose() { if(voice!=null) voice.Stop(); UnityEngine.Object.Destroy(root); UnityEngine.Object.Destroy(quack); }
     }
     internal static class Probe

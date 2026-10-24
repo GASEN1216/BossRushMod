@@ -43,6 +43,7 @@ namespace BossRush
         internal const string DragonKing = "DragonKing";
         internal const string DragonDescendant = "DragonDescendant";
         internal const string PhantomWitch = "PhantomWitch";
+        internal const string EclipseBloom = "EclipseBloom";
     }
 
     /// <summary>场景常驻 BGM 标识常量（BgmTracks.json 的 sceneTracks.sceneKey）。</summary>

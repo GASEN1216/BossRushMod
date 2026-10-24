@@ -84,6 +84,34 @@ export const INFOBOX: Record<string, Infobox> = {
     links: ['/equipment/phantom-scythe', '/guides/boss-fights'],
   },
 
+  '/bosses/eclipse-bloom': {
+    eyebrowZh: '37 号实验区 · 兼容 Boss 池',
+    eyebrowEn: 'Experimental Area 37 · Compatible Boss pool',
+    rows: [
+      { zh: '基础生命', en: 'Base health', vz: '5000' },
+      { zh: '阶段', en: 'Phases', vz: '3（60% / 25% 转阶段）', ve: '3 (transitions at 60% / 25%)' },
+      { zh: '可破坏部位', en: 'Breakable parts', vz: '4 片花瓣', ve: '4 petals' },
+      { zh: '扇区范围', en: 'Sector range', vz: '0.6–13 米 · 60°', ve: '0.6–13 m · 60°' },
+      { zh: '寻找', en: 'Encounter', vz: 'Jeff 引导后普通出击至 37，或兼容 Boss 池', ve: 'Jeff introduction and a normal raid to Area 37, or compatible Boss pools' },
+      { zh: '掉落', en: 'Drop', vz: '每次 1 件残日盾片', ve: '1 Residual Sun Shield Shard per victory' },
+    ],
+    links: ['/equipment/residual-sun-shield'],
+  },
+  '/equipment/residual-sun-shield': {
+    eyebrowZh: '图腾 · 翻滚护盾',
+    eyebrowEn: 'Totem · Dodge guard',
+    rows: [
+      { zh: '品质', en: 'Rarity', vz: '6（史诗）', ve: '6 (Epic)', tier: 6 },
+      { zh: '护盾', en: 'Guard', vz: '0.65 秒 · 正面 120°', ve: '0.65 s · frontal 120°' },
+      { zh: '阻挡', en: 'Block', vz: '70% · 单次最多 60', ve: '70% · up to 60 per hit' },
+      { zh: '冷却', en: 'Cooldown', vz: '4 秒', ve: '4 s' },
+      { zh: '余晖充能', en: 'Riposte charge', vz: '6 秒 · 最多 60 追加伤害', ve: '6 s · up to 60 bonus damage' },
+      { zh: '来源', en: 'Source', vz: '蚀日花冠 · 每次 1 件', ve: 'Eclipse Bloom · 1 per victory' },
+      { zh: '物品 ID', en: 'Internal ID', vz: '500110' },
+    ],
+    links: ['/bosses/eclipse-bloom'],
+  },
+
   // ── 近战武器 ────────────────────────────────────────────
   '/equipment/phantom-scythe': {
     eyebrowZh: '近战武器 · 幽灵',

@@ -11,6 +11,7 @@ MODE_RUNTIME_HOOKS = Path("Utilities/ModeRuntimeHooks.cs")
 ZOMBIE_RUNTIME_HOOKS = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 HOST_LIFECYCLE = Path("ZombieMode/ZombieModeRuntimeModule_HostLifecycle.cs")
 RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
+TARGET_ENTRY = Path("ZombieMode/ZombieModeRuntimeModule_TargetSceneEntry.cs")
 
 REQUIRED_MODEL_SNIPPETS = [
     "public enum ZombieModeLifecyclePhase",
@@ -123,7 +124,8 @@ def main() -> int:
     mod_text = MOD_BEHAVIOUR.read_text(encoding="utf-8")
     mode_runtime_hooks_text = MODE_RUNTIME_HOOKS.read_text(encoding="utf-8")
     zombie_runtime_hooks_text = ZOMBIE_RUNTIME_HOOKS.read_text(encoding="utf-8")
-    runtime_module_text = RUNTIME_MODULE.read_text(encoding="utf-8")
+    # 入场等待协程在 2026-10-24 原样拆到同一 partial 的 _TargetSceneEntry.cs（大文件预算）。
+    runtime_module_text = RUNTIME_MODULE.read_text(encoding="utf-8") + "\n" + TARGET_ENTRY.read_text(encoding="utf-8-sig")
 
     for snippet in REQUIRED_MODEL_SNIPPETS:
         if snippet not in model_text:

@@ -105,6 +105,17 @@ namespace BossRush
         internal static TaskCompletionSource<bool> YieldGate;
     }
     public class EnemyPresetInfo { public string name, displayName; public float baseHealth = 120; }
+    // 只隔离内容身份和取消动作；完整花冠 adapter 另由 EclipseBloomRuntime 执行。
+    internal static class EclipseBloomPoolAdapter
+    {
+        internal const string NameKey = "BossRush_EclipseBloom_Name";
+        internal static bool IsPreset(EnemyPresetInfo preset) { return preset != null && preset.name == NameKey; }
+        internal static void CleanupCancelled(CharacterMainControl character)
+        {
+            Probe.Events.Add("cleanup:" + NameKey);
+            UnityEngine.Object.Destroy(character.gameObject);
+        }
+    }
     public class CharacterMainControl : UnityEngine.Object
     {
         public sealed class HealthState

@@ -68,7 +68,7 @@ def main():
     gate = body('ModeH/ModeHEntry.cs', 'private bool ShouldSkipLegacySceneSetupForModeH()')
     assert 'HasPendingModeHEntryIntent()' in gate and 'IsModeHRunInProgressSafe()' in gate
     integration = body('Integration/BossRushIntegration_StartAndScene.cs', 'private void OnSceneLoaded_Integration(')
-    assert re.search(r'if\s*\(!ShouldSkipLegacySceneSetupForModeH\(\)\)\s*StartCoroutine\(TeleportPlayerToCustomPosition\(customPos.Value\)\);', integration)
+    assert re.search(r'if\s*\(!ShouldSkipLegacySceneSetupForModeH\(\)\)\s*StartCoroutine\(bossRushIntegrationRuntime.BeginCustomTeleport\(scene, TeleportPlayerToCustomPosition\(customPos.Value\)\)\);', integration)
     print('ModeHSceneEntryGuard: PASS (entry, resume, official readiness, cancellation, Legacy position ownership)')
 
 

@@ -20,6 +20,7 @@ namespace BossRush
         private List<int> rewardCandidateScratch;
         private HashSet<int> opaqueFilterLogIds;
         private bool pendingEntry;
+        private int entryAttemptId;
         private float runtimePausedDuration;
         private float runtimePauseStartTime = -1f;
         private int runtimePauseRunId;
@@ -185,6 +186,7 @@ namespace BossRush
                 return false;
             }
 
+            entryAttemptId++;
             pendingEntry = true;
             entryTransaction.Reset();
             runState.PendingCashInvestment = 0L;
@@ -499,77 +501,6 @@ namespace BossRush
             return false;
         }
 
-        internal System.Collections.IEnumerator WaitForZombieModeTargetSceneActiveThenInitialize(Scene scene, Vector3? customPos)
-        {
-            const float maxWait = 30f;
-            const float interval = 0.1f;
-            float elapsed = 0f;
-            int attempt = 0;
-
-            while (elapsed < maxWait)
-            {
-                attempt++;
-                Scene activeScene = SceneManager.GetActiveScene();
-                bool sceneLoaded = scene.isLoaded;
-                bool activeMatches = activeScene.name == scene.name;
-                bool sceneLoaderDone = owner.ReadSceneLoaderDoneWithWarningForRuntimeModule("ZombieModeTargetSceneInitialize");
-                bool levelInited = owner.ReadLevelInitedWithWarningForRuntimeModule("ZombieModeTargetSceneInitialize");
-                // 官方 InitLevel 置 levelInited 后还会等 0.25 秒再 SetPosition(startPos)、置 afterInit；
-                // 在这之前初始化会拿到未定位的玩家，失败回基地还会让官方 SetPosition 打到已销毁的角色。
-                bool levelAfterInit = IsOfficialLevelAfterInitForZombieMode();
-
-                if (sceneLoaded && activeMatches && sceneLoaderDone && levelInited && levelAfterInit)
-                {
-                    break;
-                }
-
-                if (attempt % 10 == 0)
-                {
-                    ModBehaviour.DevLog("[ZombieMode] 等待目标地图激活: target=" + scene.name
-                        + ", active=" + activeScene.name
-                        + ", sceneLoaded=" + sceneLoaded
-                        + ", sceneLoaderDone=" + sceneLoaderDone
-                        + ", levelInited=" + levelInited
-                        + ", afterInit=" + levelAfterInit
-                        + ", elapsed=" + elapsed + "s");
-                }
-
-                yield return new WaitForSeconds(interval);
-                elapsed += interval;
-            }
-
-            Scene finalActiveScene = SceneManager.GetActiveScene();
-            if (!scene.isLoaded || finalActiveScene.name != scene.name)
-            {
-                ModBehaviour.DevLog("[ZombieMode] 初始化失败：目标地图未成为 ActiveScene, target=" + scene.name + ", active=" + finalActiveScene.name);
-                ZombieModeMapSelectionHelper.ClearPendingZombieEntry();
-                FailZombieModeBeforeActive(ZombieModeFailureReason.InitializationFailed);
-                yield break;
-            }
-
-            int runId = BeginZombieModeRunShell(scene.buildIndex, scene.name);
-            // 状态机推进：LoadingMap → InitializingRun（WaitingStarterChoice 由 InitializeZombieModeRunAfterMapLoaded 末尾设置）
-            runState.LifecyclePhase = ZombieModeLifecyclePhase.InitializingRun;
-            runState.CombatPhase = ZombieModeCombatPhase.None;
-            runState.PurificationPoints = InitialPurificationPoints;
-            if (runState.ConfirmedCashInvested > 0L)
-            {
-                // 100 现金 = 1 净化点数（向下取整）
-                runState.PurificationPoints = (int)System.Math.Min(
-                    int.MaxValue,
-                    runState.ConfirmedCashInvested / ZombieModeTuning.CashToPurificationRatio);
-            }
-
-            ZombieModeMapSelectionHelper.ClearPendingZombieEntry();
-            if (!InitializeZombieModeRunAfterMapLoaded(runId))
-            {
-                FailZombieModeBeforeActive(ZombieModeFailureReason.InitializationFailed);
-                yield break;
-            }
-
-            ModBehaviour.DevLog("[ZombieMode] 已进入目标地图: " + scene.name + "，等待初始流派选择");
-        }
-
         internal int BeginZombieModeRunShell(int sceneBuildIndex, string sceneName)
         {
             int runId = ++nextRunId;
@@ -841,7 +772,10 @@ namespace BossRush
                     continue;
                 }
 
-                if (record.Kind != ZombieModeRunOnlyObjectKind.Unknown ||
+                // 星点吸收动画结束后对象已销毁；随下一波开始时的清理摘掉记录，避免逐波累积。
+                // 仍存活的星点 / 吸收动画必须保留在 run-only 表中，供中途退局统一销毁。
+                if ((record.Kind != ZombieModeRunOnlyObjectKind.Unknown &&
+                     record.Kind != ZombieModeRunOnlyObjectKind.PurificationPoint) ||
                     record.GameObject != null ||
                     record.Target != null)
                 {

@@ -30,8 +30,9 @@ def main():
         'ZombiePurificationPointController.cs':['internal void ForceCollectZombieModePendingPurificationStars(', 'public void CollectZombieModePurificationPoint(', 'private static SoulCube TryGetSoulCubePrefab(', 'private static void PrewarmSoulCubePrefabCache(', 'internal void PrepareSoulCubePrefabCacheForZombieRun('],
         'ZombieModeMapIsolation.cs':['internal bool ApplyZombieModeMapIsolationShell(', 'internal void RestoreZombieModeMapIsolationShell(', 'private void DisableZombieModeOriginalSpawners(', 'private void RestoreZombieModeOriginalSpawners('],
         'ZombieModeRuntimeModule_EnemyRuntime.cs':['internal static void RestoreZombieModeVisualScale(', 'internal static void ReleaseZombieModeFootMarker('],
+        'ZombieModeRuntimeModule_Extraction.cs':['private bool CompleteZombieModeExtractionSuccess(', 'private bool SettleZombieModeExtractionCashShell(', 'private bool TryDispatchZombieModeExtractionSuccess(', 'internal void EnsureZombieModeExtractionArea('],
     }
-    source='using System; using System.Collections.Generic; using UnityEngine; using Duckov.Utilities; using ItemStatsSystem;\nnamespace BossRush { internal sealed partial class ZombieModeRuntimeModule {\n'
+    source='using System; using System.Collections.Generic; using UnityEngine; using UnityEngine.Events; using Duckov.Utilities; using Duckov.Economy; using Duckov.UI; using ItemStatsSystem;\nnamespace BossRush { internal sealed partial class ZombieModeRuntimeModule {\n'
     for name, signatures in selections.items():
         text=read(name)
         source+='\n'.join(member(text, signature) for signature in signatures)+'\n'
@@ -39,9 +40,14 @@ def main():
     source+='\n'.join(re.findall(r'^        internal static readonly string\[\] ZombieModeRewardTag\w+ = [^\n]+;',rewards,re.M))+'\n'
     purification=read('ZombiePurificationPointController.cs')
     source+='\n'.join(re.findall(r'^        private static (?:SoulCube|bool) s_\w+;',purification,re.M))+'\n}}'
+    factory_path=ROOT/'Utilities/ModeExtractionPointFactory.cs'
+    raw=factory_path.read_bytes(); hashes[str(factory_path.relative_to(ROOT))]=hashlib.sha256(raw).hexdigest()
+    factory=raw.decode('utf-8-sig')
+    source+='\nnamespace BossRush {\n'+member(factory,'internal sealed class ModeExtractionPointRequest')+'\n'+member(factory,'internal sealed class ModeExtractionPointResult')
+    source+='\ninternal static partial class ModeExtractionPointFactory {\n'+member(factory,'private static void ConfigureEvents(')+'\n}}'
     generated=OUT/'Production.cs'; generated.write_text(source,encoding='utf-8')
     (OUT/'production-sha256.json').write_text(json.dumps(hashes,indent=2),encoding='utf-8')
-    includes=''.join('<Compile Include="'+escape(str(path),{'"':'&quot;'})+'" />' for path in [generated,HERE/'Stubs.cs',HERE/'Program.cs'])
+    includes=''.join('<Compile Include="'+escape(str(path),{'"':'&quot;'})+'" />' for path in [generated,HERE/'Stubs.cs',HERE/'Program.cs',HERE/'ExtractionRegression.cs'])
     project=OUT/'Regression.csproj'
     project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649</NoWarn></PropertyGroup><ItemGroup>'+includes+'</ItemGroup></Project>',encoding='utf-8')
     return subprocess.call(['dotnet','run','--project',str(project),'--configuration','Release'],cwd=ROOT)

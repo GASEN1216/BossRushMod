@@ -410,6 +410,7 @@ namespace BossRush
             }
 
             loadedModels[itemPrefab.TypeID] = modelAgent;
+            EnsureModelSubVisuals(modelAgent.gameObject);
             SetAgentUtilityPrefab(itemPrefab, "EquipmentModel", modelAgent);
             InjectItemGraphicForEquipment(itemPrefab, modelAgent, true);
             return true;
@@ -660,6 +661,10 @@ namespace BossRush
                         loadedModelsByBaseName[baseName] = agent;
 
                         EquipmentType? detectedType = ParseEquipmentTypeFromName(goName);
+                        if (detectedType != EquipmentType.Gun)
+                        {
+                            EnsureModelSubVisuals(agent.gameObject);
+                        }
                         if (detectedType.HasValue && !typesByBaseName.ContainsKey(baseName))
                         {
                             typesByBaseName[baseName] = detectedType.Value;

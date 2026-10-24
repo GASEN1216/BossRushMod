@@ -47,6 +47,8 @@ namespace UnityEngine
     }
     internal class GameObject : Object
     {
+        internal static int CreatedCount;
+        internal int GetComponentCalls;
         internal string name;
         internal bool activeSelf = true;
         internal int layer;
@@ -71,6 +73,7 @@ namespace UnityEngine
         internal readonly List<Component> Components = new List<Component>();
         internal GameObject(string name, params Type[] types)
         {
+            CreatedCount++;
             this.name = name;
             transform = new RectTransform { gameObject = this };
             Components.Add(transform);
@@ -86,6 +89,7 @@ namespace UnityEngine
         }
         internal T GetComponent<T>() where T : Component
         {
+            GetComponentCalls++;
             if (Destroyed) return null;
             foreach (var c in Components) if (c is T && !c.Destroyed) return (T)c;
             return null;
@@ -161,7 +165,7 @@ namespace UnityEngine
         internal static float Lerp(float a, float b, float t) { return a + (b - a) * Clamp01(t); }
         internal static float Abs(float value) { return Math.Abs(value); }
     }
-    internal static class Time { internal static float time; }
+    internal static class Time { internal static float time, unscaledTime; }
     internal static class Debug { internal static void LogWarning(string value) { } internal static void Log(string value) { } }
     internal class Collider : Component { internal bool enabled; }
     internal class BoxCollider : Collider { internal bool isTrigger; internal Vector3 size; }

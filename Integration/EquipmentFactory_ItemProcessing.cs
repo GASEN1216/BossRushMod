@@ -352,6 +352,21 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 装备和近战模型沿用官方子视觉登记；挂到角色骨骼时由组件自动接入迷雾显隐。
+        /// 已有组件的列表由资源或原有 owner 管理，不能在这里清空其绑定缓存。
+        /// </summary>
+        private static void EnsureModelSubVisuals(GameObject modelGo)
+        {
+            if (modelGo == null || modelGo.GetComponent<CharacterSubVisuals>() != null)
+            {
+                return;
+            }
+
+            CharacterSubVisuals visuals = modelGo.AddComponent<CharacterSubVisuals>();
+            visuals.SetRenderers();
+        }
+
+        /// <summary>
         /// 为缺少 DuckovItemAgent 组件的模型创建运行时副本并添加组件
         /// AssetBundle 中的对象是只读的，动态添加的组件无法被正确序列化
         /// 所以需要先实例化创建可修改的运行时副本
@@ -463,6 +478,7 @@ namespace BossRush
                 EnsureSocketsListInitialized(embeddedAgent);
                 SetLayerRecursively(runtimeCopy, CHARACTER_LAYER);
                 FixModelLayerAndShader(runtimeCopy);
+                EnsureModelSubVisuals(runtimeCopy);
                 runtimeCopy.transform.position = new Vector3(0f, -9999f, 0f);
                 UnityEngine.Object.DontDestroyOnLoad(runtimeCopy);
 
@@ -888,6 +904,7 @@ namespace BossRush
                 }
 
                 ApplyMeleeAgentDefaults(handheldPrefab, meleeTemplate);
+                EnsureModelSubVisuals(runtimeCopy);
                 return handheldPrefab;
             }
             catch (Exception e)

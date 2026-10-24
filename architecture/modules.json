@@ -1113,6 +1113,42 @@
       ]
     },
     {
+      "id": "eclipse-bloom",
+      "title": "蚀日花冠与残日盾片",
+      "kind": "content",
+      "paths": [
+        "Integration/EclipseBloom/**/*.cs"
+      ],
+      "entry": "Integration/EclipseBloom/EclipseBloomRuntimeModule.cs",
+      "state_owner": "EclipseBloomRuntimeModule / EclipseBloomAbilityController / ResidualSunShieldRuntime",
+      "public_api": [
+        "EclipseBloomRuntimeModule.OnUpdate",
+        "EclipseBloomIntroduction",
+        "EclipseBloomPoolAdapter.SpawnAsync",
+        "EclipseBloomBoss.SpawnAsync"
+      ],
+      "data": [],
+      "tests": [
+        "tests/EclipseBloomIntegrationGuard.py",
+        "tests/fixtures/EclipseBloomRules",
+        "tests/fixtures/EclipseBloomRuntime",
+        "tests/fixtures/ResidualSunShield"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/自定义 Boss 系统/蚀日花冠与残日盾片.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "Integration/AGENTS.md"
+      ],
+      "depends_on": [
+        "new-weapons",
+        "arena",
+        "common",
+        "utilities"
+      ]
+    },
+    {
       "id": "sandstorm-champion",
       "title": "第六章沙暴冠军",
       "kind": "content",

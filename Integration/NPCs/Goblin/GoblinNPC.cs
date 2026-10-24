@@ -214,6 +214,7 @@ namespace BossRush
                 
                 NPCCommonUtils.FixShaders(goblinNPCInstance, "[GoblinNPC]");
                 NPCCommonUtils.SetLayerRecursively(goblinNPCInstance, LayerMask.NameToLayer("Default"));
+                ModEntityFogVisibility.Attach(goblinNPCInstance);
                 
                 // 添加控制器组件
                 goblinController = goblinNPCInstance.AddComponent<GoblinNPCController>();

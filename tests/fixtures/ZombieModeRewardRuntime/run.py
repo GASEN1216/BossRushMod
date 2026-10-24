@@ -33,7 +33,9 @@ def main():
 
     effects = read('ZombieModeRewardEffects.cs')
     fields = member(effects, 'internal sealed partial class ZombieModeRuntimeModule')
-    source = 'using System; using System.Collections.Generic; using UnityEngine; using ItemStatsSystem;\nnamespace BossRush {\n' + fields + '\ninternal sealed partial class ZombieModeRuntimeModule {\n'
+    source = 'using System; using System.Collections.Generic; using UnityEngine; using ItemStatsSystem; using ItemStatsSystem.Stats;\nnamespace BossRush {\n' + fields
+    source += member(read('ZombieModeModels.cs'), 'public enum ZombieModeRewardType')
+    source += '\ninternal sealed partial class ZombieModeRuntimeModule {\n'
     selections = {
         'ZombieModeRewardNpcServices.cs': [
             'internal ZombieModeTemporaryNpc FindZombieModeTemporaryNpc(',
@@ -49,11 +51,21 @@ def main():
             'private void EnsureZombieModeOptionPlayerHealthListener()', 'private void UnregisterZombieModeOptionPlayerHealthListener()',
         ],
         'ZombieModeRewardProjectileSpread.cs': [
+            'private void RebuildZombieModeProjectileSpreadState()',
             'private void RestoreZombieModeProjectileSpreadState()',
+            'private void RestoreZombieModeProjectileSpreadStateExcept(',
             'private void RestoreZombieModeProjectileSpreadSnapshot(',
             'private void EnsureZombieModeProjectileSpreadListener()',
+            'private void OnZombieModeSpreadHoldAgentChanged(',
+            'private void TryAddZombieModeGunStatRuntimeModifier(',
+            'private ZombieModeProjectileSpreadSnapshot CaptureZombieModeProjectileSpreadSnapshot(',
+            'private void RestoreExistingZombieModeProjectileSpreadSnapshot(',
         ],
-        'ZombieModeRewardOptionCore.cs': ['internal void RemoveZombieModeOptionRuntimeEffects()'],
+        'ZombieModeRewardOptionCore.cs': [
+            'internal void RemoveZombieModeOptionRuntimeEffects()',
+            'private float GetZombieModeOptionTradeoffGunDamagePenalty(',
+            'private float GetZombieModeOptionTradeoffReloadSpeedPenalty(',
+        ],
         'ZombieModeRewardEffectsAndNpc.cs': [
             'internal void BindZombieModeTemporaryNpcServices(', 'private GameObject CreateZombieModeTemporaryCourierNpc(',
         ],
@@ -75,10 +87,21 @@ def main():
         assert npc.count(declaration) == 1
         source += declaration + '\n'
     source += '}}\n'
+    # Execute the actual official split/clamp statements, not a second handwritten formula.
+    official_path = ROOT / '鸭科夫源码/TeamSoda.Duckov.Core/ItemAgent_Gun.cs'
+    official_raw = official_path.read_bytes()
+    hashes[str(official_path.relative_to(ROOT))] = hashlib.sha256(official_raw).hexdigest()
+    official_shoot = member(official_raw.decode('utf-8-sig'), 'private void ShootOneBullet(')
+    split_start = 'float characterDamageMultiplier = this.CharacterDamageMultiplier;'
+    split_end = 'projectileContext.dmgOverDistance = this.DmgOverDistance;'
+    assert official_shoot.count(split_start) == official_shoot.count(split_end) == 1
+    split = official_shoot[official_shoot.index(split_start):official_shoot.index(split_end)]
+    source += 'internal sealed partial class OfficialGunFixture { internal float ShootDamage() { var projectileContext = new ProjectileContext();\n'
+    source += split + '\nreturn projectileContext.damage; }}\n'
     generated = OUT / 'Production.cs'
     generated.write_text(source, encoding='utf-8')
     (OUT / 'production-sha256.json').write_text(json.dumps(hashes, indent=2), encoding='utf-8')
-    sources = [generated, HERE / 'Program.cs', HERE / 'Stubs.cs', ROOT / 'Utilities/RunScopedRegistry.cs']
+    sources = [generated, HERE / 'Program.cs', HERE / 'Stubs.cs', HERE / 'SpreadRegression.cs', ROOT / 'Utilities/RunScopedRegistry.cs']
     includes = ''.join('<Compile Include="' + escape(str(path), {'"': '&quot;'}) + '" />' for path in sources)
     project = OUT / 'Regression.csproj'
     project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType>'

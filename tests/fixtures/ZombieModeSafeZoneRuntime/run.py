@@ -56,6 +56,9 @@ def main():
                       "internal static AICharacterController GetZombieModeEnemyAI(",
                       "internal static void SetZombieModeEnemyTargetToMainPlayer(",
                       "internal void RefreshZombieModeGravityWellTargets(",
+                      "private static bool IsZombieModeGravityWellFinite(float value)",
+                      "private static bool IsZombieModeGravityWellFinite(Vector3 value)",
+                      "private static bool IsZombieModeGravityWellRotationValid(Quaternion value)",
                       "internal CharacterMainControl TryFindZombieModeNearestEnemyTarget("):
         source += member(spatial, signature) + "\n"
     source += "}}\n"

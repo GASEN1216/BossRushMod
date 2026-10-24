@@ -70,6 +70,8 @@ namespace BossRush
             RollCallLedgerWeaponConfig.InjectLocalization();
             ReloadMetronomeWeaponConfig.InjectLocalization();
             PassTheBombWeaponConfig.InjectLocalization();
+            ResidualSunShieldWeaponConfig.InjectLocalization();
+            EclipseBloomLocalization.Inject();
             _owner.InjectReverseScaleLocalizationFromRuntimeModule();
             LocalizationInjector.InjectWeddingBuildingLocalization();
             ModBehaviour.DevLog("[BossRush] extension localization injected");

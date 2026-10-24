@@ -2,11 +2,12 @@
   "version": 1,
   "_comment": "Boss 战循环 BGM / 胜利 stinger / 点唱机曲目 / 场景常驻曲。音频文件放 Assets/Sounds/BGM/。文件缺失的条目会被静默跳过，因此换曲目只需替换同名文件，不需要改代码。phase 字段 V1 恒为 0（非 0 的条目会被忽略），为二期 FMOD 阶段切歌预留。",
   "_comment_dragonking": "DragonKing 故意不在 bossTracks 里：Assets/Sounds/DragonKing/dragonking.mp3 是作者已有的曲子，龙王维持旧的播放路径。将来若要接管，在这里加一条 bossKey=DragonKing 的条目并把文件放进 Assets/Sounds/BGM/ 即可，代码零改动。",
-  "_comment_format": "wav / ogg / mp3 都行（FMOD programmer sound 原生支持）。要循环的曲子优先用 ogg 或 wav：FMOD 读部分 mp3（例如网站转出、带 Info 头的 CBR）会把时长估成两倍，循环时中间空白半首（2026-09-26 实测 ryw.mp3 34.4 秒被读成 69.3 秒）。Boss 战两条循环是程序化合成的氛围乐，32kHz 单声道，约 -25 LUFS，刻意压低以免盖过枪声；点唱机与场景常驻曲统一到 -16 LUFS（官方点唱机曲目约 -12 LUFS）。",
+  "_comment_format": "wav / ogg / mp3 都行（FMOD programmer sound 原生支持）。要循环的曲子优先用 ogg 或 wav：FMOD 读部分 mp3（例如网站转出、带 Info 头的 CBR）会把时长估成两倍，循环时中间空白半首（2026-09-26 实测 ryw.mp3 34.4 秒被读成 69.3 秒）。原有龙裔/魔女两条循环是32kHz单声道氛围乐，约-25 LUFS；蚀日花冠为独立原创72小节管弦配乐，44.1kHz双声道PCM16、132 BPM、约130.91秒，目标-22 LUFS/-3 dBTP，三段编排气氛递进（仍以phase=0整曲循环，不按HP切轨），保留枪声空间；点唱机与场景常驻曲统一到 -16 LUFS（官方点唱机曲目约 -12 LUFS）。",
   "_comment_sceneTracks": "场景常驻曲（SCHEMA+，2026-09-26）：地图会话开始时起播并循环；Boss 曲起播时让位，Boss 曲停下后自动接回；会话结束（撤离、倒下、退出）停止。sceneKey 取 BossBgmScenes 常量。",
   "bossTracks": [
     { "bossKey": "DragonDescendant", "file": "boss_descendant_loop.wav", "loop": true, "phase": 0 },
-    { "bossKey": "PhantomWitch", "file": "boss_witch_loop.wav", "loop": true, "phase": 0 }
+    { "bossKey": "PhantomWitch", "file": "boss_witch_loop.wav", "loop": true, "phase": 0 },
+    { "bossKey": "EclipseBloom", "file": "boss_eclipse_bloom_loop.wav", "loop": true, "phase": 0 }
   ],
   "stingers": [
     { "eventKey": "BossVictory", "file": "stinger_boss_victory.wav" },

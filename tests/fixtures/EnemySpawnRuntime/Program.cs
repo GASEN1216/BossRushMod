@@ -28,7 +28,7 @@ namespace BossRush
                 Runtime = new EnemySpawnRuntime(Scheduler);
                 Runtime.BindPresetQueries(() => Presets, Roll, Roll, () => DescendantSpawned, () => KingSpawned);
                 Runtime.BindSpecialBossServices(p => p.name == "descendant", p => p.name == "king", p => p.name == "witch",
-                    p => p.name == "descendant" || p.name == "king" || p.name == "witch" || SandstormChampionPoolAdapter.IsPreset(p),
+                    p => p.name == "descendant" || p.name == "king" || p.name == "witch" || EclipseBloomPoolAdapter.IsPreset(p) || SandstormChampionPoolAdapter.IsPreset(p),
                     (pos, child, notify, defer, nonWave, active) =>
                     {
                         Check(!child && !notify, "descendant legacy flags");
@@ -41,6 +41,11 @@ namespace BossRush
                 {
                     Check(!notify, "champion legacy flag");
                     return SpawnSpecial(SandstormChampionPoolAdapter.NameKey, defer, nonWave, active);
+                });
+                Runtime.BindEclipseBloomService((pos, notify, defer, nonWave, active) =>
+                {
+                    Check(!notify, "eclipse legacy flag");
+                    return SpawnSpecial(EclipseBloomPoolAdapter.NameKey, defer, nonWave, active);
                 });
                 Runtime.BindEquipmentServices(c => { Probe.Events.Add("normalize"); c.MeleeDamageMultiplierBase = 1f; },
                     (c, wave, health, boss) => { Check(wave == 4 && health == 120 && boss, "equipment receives original spawn parameters"); Probe.Events.Add("equip"); },
@@ -134,7 +139,7 @@ namespace BossRush
                 "external hold returns frozen character");
             Check(!Probe.Events.Contains("wake") && !Probe.Events.Contains("mutator") && !Probe.Events.Contains("loot:3"), "external hold respects caller mutator and loot policy");
 
-            foreach (string kind in new[] { "descendant", "king", "witch", SandstormChampionPoolAdapter.NameKey })
+            foreach (string kind in new[] { "descendant", "king", "witch", EclipseBloomPoolAdapter.NameKey, SandstormChampionPoolAdapter.NameKey })
             {
                 Reset(); owner = new Owner(); preset = new EnemyPresetInfo { name = kind, displayName = kind };
                 result = owner.Spawn(preset, new EnemySpawnCoreOptions { SuppressWaveBossRegistration = true }, deferred: true).Result;
@@ -146,7 +151,7 @@ namespace BossRush
 
             foreach (float baseline in new[] { .65f, 2.75f, 2.75f * 1.8f })
             {
-                foreach (string scaledKind in new[] { SandstormChampionPoolAdapter.NameKey })
+                foreach (string scaledKind in new[] { SandstormChampionPoolAdapter.NameKey, EclipseBloomPoolAdapter.NameKey })
                 {
                     Reset(); owner = new Owner { PreparedMeleeDamageMultiplierBase = baseline };
                     preset = new EnemyPresetInfo { name = scaledKind };

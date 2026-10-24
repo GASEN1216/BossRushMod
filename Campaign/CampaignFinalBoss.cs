@@ -122,6 +122,7 @@ namespace BossRush
             {
                 // 进场只登记竞技场归属；点路牌开波后 IsActive 才表示已有战斗占场。
                 if (_owner.CampaignArenaActiveForRuntime && _owner.IsActive) return true;
+                if (EclipseBloomRuntimeModule.IsEncounterActive) return true;
                 if (_owner.CampaignModeDActiveForRuntime) return true;
                 if (_owner.CampaignModeEActiveForRuntime) return true;
                 if (_owner.CampaignModeFActiveForRuntime) return true;

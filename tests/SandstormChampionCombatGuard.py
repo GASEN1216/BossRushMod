@@ -277,8 +277,17 @@ def main():
             "gameObject.SetActive(false);", "Destroy(gameObject);")
     require(MINIONS, "internal void DismissWave()", "_generation++;", "marker.Despawn();", "_minions.Clear();")
     prefix = body(DEATH, "public static void Prefix(")
-    check(prefix.startswith("if (SandstormChampionMinionMarker.IsSummonedMinion(__instance)) return;"),
-          DEATH + ": 小弟必须在全部额外掉落 handler 之前早返，保留原版 void Prefix 协议")
+    early_returns = ("if (EclipseBloomAbilityController.RestoreOfficialPresetBeforeDeath(__instance)) return; "
+                     "if (SandstormChampionMinionMarker.IsSummonedMinion(__instance)) return;")
+    check(prefix.startswith(early_returns),
+          DEATH + ": 必须先恢复花冠身份，再立即让小弟早返，且均先于全部额外掉落 handler")
+    check("public static void Prefix(CharacterMainControl __instance)" in source(DEATH),
+          DEATH + ": 必须保留原版 void Prefix 协议")
+    for handler in ("FrostmourneBlueBossDropHandler.TryHandleBlueBossDeath(__instance);",
+                    "PhantomWitchScytheBossDropHandler.TryHandlePhantomWitchDeath(__instance);",
+                    "SetBonusBossDropHandler.TryHandleSetBonusBossDeath(__instance);",
+                    "NewWeaponBossDropHandler.TryHandleNewWeaponBossDeath(__instance);"):
+        ordered(prefix, DEATH + " 死亡分支隔离", early_returns, handler)
 
     # owner 2026-10-08：棍卫随机使出星阙三档重击。公平性与 owner 约束钉在结构上。
     arts_path = "Integration/SandstormChampion/SandstormChampionMinionArts.cs"

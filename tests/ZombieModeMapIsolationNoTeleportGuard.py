@@ -6,6 +6,7 @@ import sys
 
 ENTRY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
+TARGET_ENTRY = Path("ZombieMode/ZombieModeRuntimeModule_TargetSceneEntry.cs")
 MAP_ISOLATION = Path("ZombieMode/ZombieModeMapIsolation.cs")
 
 
@@ -38,7 +39,8 @@ def extract_method(text: str, marker: str) -> str:
 
 def main() -> int:
     entry = ENTRY.read_text(encoding="utf-8")
-    runtime_module = RUNTIME_MODULE.read_text(encoding="utf-8")
+    # 入场等待协程在 2026-10-24 原样拆到同一 partial 的 _TargetSceneEntry.cs（大文件预算）。
+    runtime_module = RUNTIME_MODULE.read_text(encoding="utf-8") + "\n" + TARGET_ENTRY.read_text(encoding="utf-8-sig")
     map_isolation = MAP_ISOLATION.read_text(encoding="utf-8")
 
     wait_method = extract_method(runtime_module, "internal System.Collections.IEnumerator WaitForZombieModeTargetSceneActiveThenInitialize")

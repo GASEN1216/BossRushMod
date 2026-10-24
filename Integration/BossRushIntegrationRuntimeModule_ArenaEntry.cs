@@ -11,10 +11,11 @@ namespace BossRush
         private sealed class ArenaEntryRequest
         {
             internal readonly Scene Scene;
+            internal readonly bool CustomTeleport;
             internal readonly List<ArenaEntryTask> Tasks = new List<ArenaEntryTask>();
             internal CharacterMainControl Player;
             internal bool PlayerBound, SawActiveScene, Ready, Cancelled;
-            internal ArenaEntryRequest(Scene scene) { Scene = scene; }
+            internal ArenaEntryRequest(Scene scene, bool customTeleport = false) { Scene = scene; CustomTeleport = customTeleport; }
         }
 
         private sealed class ArenaEntryTask
@@ -25,6 +26,7 @@ namespace BossRush
         }
 
         private ArenaEntryRequest _arenaEntryRequest;
+        private ArenaEntryRequest _customTeleportRequest;
         private bool _arenaEntryEventsSubscribed;
 
         private void SubscribeArenaEntryEvents()
@@ -39,6 +41,7 @@ namespace BossRush
         private void CleanupArenaEntry()
         {
             CancelArenaEntry(_arenaEntryRequest);
+            CancelArenaEntry(_customTeleportRequest);
             if (!_arenaEntryEventsSubscribed) return;
             SceneLoader.onStartedLoadingScene -= OnArenaEntrySceneLoading;
             SceneManager.sceneUnloaded -= OnArenaEntrySceneUnloaded;
@@ -55,12 +58,15 @@ namespace BossRush
         private void OnArenaEntrySceneLoading(SceneLoadingContext context)
         {
             CancelArenaEntry(_arenaEntryRequest);
+            CancelArenaEntry(_customTeleportRequest);
         }
 
         private void OnArenaEntrySceneUnloaded(Scene scene)
         {
             if (_arenaEntryRequest != null && _arenaEntryRequest.Scene == scene)
                 CancelArenaEntry(_arenaEntryRequest);
+            if (_customTeleportRequest != null && _customTeleportRequest.Scene == scene)
+                CancelArenaEntry(_customTeleportRequest);
         }
 
         private void CancelArenaEntry(ArenaEntryRequest request, ArenaEntryTask currentTask = null)
@@ -68,6 +74,7 @@ namespace BossRush
             if (request == null || request.Cancelled) return;
             request.Cancelled = true;
             if (ReferenceEquals(_arenaEntryRequest, request)) _arenaEntryRequest = null;
+            if (ReferenceEquals(_customTeleportRequest, request)) _customTeleportRequest = null;
             ArenaEntryTask[] tasks = request.Tasks.ToArray();
             foreach (ArenaEntryTask task in tasks)
             {
@@ -82,15 +89,17 @@ namespace BossRush
         private bool IsArenaEntryCurrent(ArenaEntryRequest request)
         {
             if (_owner == null || request == null || request.Cancelled
-                || !ReferenceEquals(_arenaEntryRequest, request)
+                || !ReferenceEquals(request.CustomTeleport ? _customTeleportRequest : _arenaEntryRequest, request)
                 || !request.Scene.IsValid() || !request.Scene.isLoaded) return false;
+            if (request.CustomTeleport && _owner.ShouldSkipCustomTeleportForIntegration()) return false;
             bool active = SceneManager.GetActiveScene() == request.Scene;
             if (active) request.SawActiveScene = true;
             else if (request.SawActiveScene || request.Ready) return false;
 
             CharacterMainControl main = CharacterMainControl.Main;
             // sceneLoaded 早于官方新角色初始化。等目标图成为活动图且 loader 完成后再绑定一次。
-            if (!request.PlayerBound && active && !SceneLoader.IsSceneLoading && main != null)
+            if (!request.PlayerBound && active && !SceneLoader.IsSceneLoading && main != null
+                && (!request.CustomTeleport || IsCustomTeleportOfficialReady()))
             {
                 request.Player = main;
                 request.PlayerBound = true;
@@ -102,6 +111,7 @@ namespace BossRush
         private IEnumerator BeginArenaEntryWait(Scene scene)
         {
             CancelArenaEntry(_arenaEntryRequest);
+            CancelArenaEntry(_customTeleportRequest);
             var request = new ArenaEntryRequest(scene);
             _arenaEntryRequest = request;
             return RunArenaEntryTask(request, WaitForArenaEntryReady(request));

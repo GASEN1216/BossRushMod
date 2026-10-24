@@ -8,9 +8,11 @@ A little after entering a map, a giant rumbling chest may appear nearby. It star
 
 Before each meal, a confirmation shows the exact item, amount and body part it will grow. Nothing is consumed until you confirm. It accepts up to three meals, and the third starts combat automatically.
 
-- **12 rounds of ammunition**: grows four cannons and learns a fan volley shown by warning lines on the ground.
-- **1 grenade**: grows bomb sacs and learns to lob giant bombs into marked circles.
+- **12 rounds of ammunition**: grows four cannons that fire travelling shells down five warning lanes; you can still sidestep after they leave the barrels. With two ammunition meals, a second wave follows immediately, re-aimed at where you are.
+- **1 grenade**: grows bomb sacs and learns to lob giant bombs into marked circles, one of them aimed where you are heading.
 - **1 medicine item**: grows a huge bottle and learns a charged heal. Deal a total of 45 damage during the charge to interrupt it.
+
+Once the fight starts it does not sit still. Beyond 9 metres it crouches and pounces onto your position (a 2.4-metre landing ring that grows with its size to 3.2 metres after three meals, leaping up to 16 metres). Within 9 metres it lashes its tongue along a locked line instead; sidestep to dodge. Hide behind a wall for two turns and it leaps over the cover. It attacks faster as its health drops, and below 40% a pounce that lands next to you is followed at once by a tongue lash.
 
 Each meal makes the whole chest larger and adds 240 maximum health. It starts with 600 health and reaches 1320 after three meals. Repeating a food type strengthens its matching attack. You may start fighting after one or two meals, or feed it nothing at all.
 
@@ -47,6 +49,8 @@ The prototype attaches to the gun held when you borrowed it. Once its pressure l
 - **Ricochet Sun**: a glowing sun rig charges every 1.6 seconds. The next shot fires a beam that can bounce off walls up to 3 times. Direct hits are weak; bounced hits are much stronger. Land 3 bounced hits within 150 seconds to pass.
 
 Switching guns hides the rig. Switch back to the original gun to continue, while the timer keeps running. You may borrow again after timing out or returning an unfinished test. Death or ending the raid recalls the rig; it is not permanent equipment you can take home.
+
+The pressure lights fill segment by segment; when full, the muzzle flashes a star and a chime plays. While holding Ricochet Sun, a guide line traces the beam's first two bounces in front of the muzzle (cyan for the direct leg, gold after a bounce), so you can angle off a wall and see where the beam will fold.
 
 After passing, return to Dingdang or the bench and choose "Return and claim reward". Each prototype grants **1 Cold Quench Fluid per raid**, for 2 bottles if you complete both. If your bag is full, the reward is placed beside the return point. A failed delivery can be retried. Once you claim a prototype's reward, that same test is closed for the rest of the raid.
 

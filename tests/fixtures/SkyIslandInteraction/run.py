@@ -187,7 +187,14 @@ def generate():
     parts.append("namespace BossRush.Utils { internal static partial class NPCNameTagHelper {\n"
                  + member(helper, "private sealed class OriginalHealthBarEntry") + "\n"
                  + field(helper, "OriginalHealthBarEntriesByTransformId") + "\n"
-                 + member(helper, "internal static bool UpdateOriginalHealthBarDisplayName(") + "\n}\n}\n")
+                 + "\n".join(field(helper, name) for name in ("_cachedCamera", "_cachedCameraTransform", "_nextCameraRefreshTime")) + "\n"
+                 + "\n".join(member(helper, signature) for signature in (
+                     "public static void ResetStaticCaches()",
+                     "public static bool RegisterOriginalHealthBarName(",
+                     "internal static bool UpdateOriginalHealthBarDisplayName(",
+                     "public static void RefreshOriginalHealthBarName(",
+                     "public static void UnregisterOriginalHealthBarName(",
+                     "private static void TryApplyOfficialDialogueName(")) + "\n}\n}\n")
     localization, localization_paths = localization_sources()
     parts.append(localization)
     dock, dock_paths = dock_shop_sources()
@@ -206,7 +213,8 @@ def generate():
     hashes.update({p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in dock_paths})
     (OUT / "source-hashes.json").write_text(json.dumps(hashes, indent=2), encoding="utf-8")
     return [generated, HERE / "Stubs.cs", HERE / "Host.cs", HERE / "Program.cs", HERE / "LocalizationRegression.cs",
-            HERE / "ItemAndInteractionLocalizationRegression.cs", HERE / "DockShopRegression.cs"] + linked
+            HERE / "ItemAndInteractionLocalizationRegression.cs", HERE / "DockShopRegression.cs",
+            HERE / "NpcNameVisibilityRegression.cs"] + linked
 
 
 def main():

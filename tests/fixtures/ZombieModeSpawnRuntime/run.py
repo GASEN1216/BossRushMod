@@ -50,7 +50,14 @@ def main():
     assert len(fields) == 3, fields
     production += '\n' + '\n'.join(fields) + '\n'
     wave_path = ROOT / 'ZombieMode/ZombieModeRuntimeModule_WaveController.cs'
-    production += '\n' + member(wave_path.read_text(encoding='utf-8-sig'), 'private void HandleZombieModeHealthDead(')
+    wave_text = wave_path.read_text(encoding='utf-8-sig')
+    for signature in ('private void HandleZombieModeHealthDead(', 'private void RunZombieModeWaveSideEffect(',
+                      'private void LogZombieModeWaveFailure('):
+        production += '\n' + member(wave_text, signature)
+    warning_fields = [line.strip() for line in wave_text.splitlines()
+                      if line.strip().startswith('private float zombieModeLastWaveFailureWarningTime')]
+    assert len(warning_fields) == 1, warning_fields
+    production += '\n' + warning_fields[0]
     isolation_path = ROOT / 'ZombieMode/ZombieModeMapIsolation.cs'
     production += '\n' + member(isolation_path.read_text(encoding='utf-8-sig'), 'private bool ShouldSkipZombieModeOriginalCharacter(')
     production += '\n' + member(damage_raw.decode('utf-8-sig'), 'internal void DealZombieModeAreaDamageToPlayer(int runId, CharacterMainControl source,') + '\n}'

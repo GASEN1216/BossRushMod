@@ -34,6 +34,13 @@
 - 头盔走 `HelmetFitBundleBuilder`，天空岛模型生成保留校准调用，全量 `DuckovBundleBuilder` 打包前验证。构建后运行 `python tools/helmet_fit.py --check` 与 `python tools/run_guards.py --filter HelmetFit`，再核对包内姿态和部署哈希；缺作者工程的 PARTIAL 不是资源通过。
 - 护甲按胸腹与肩臂活动范围、背包按贴背面、面罩/耳机按脸部与两侧定位，不套统一尺寸或偏移。实际头型和动作仍需 owner 试戴；固定资源无法保证极端捏脸均无穿模。教程见 `docs/guides/头盔佩戴与装备尺寸校准.md`。
 
+## NPC 姓名与角色视野
+
+- 自定义友好 NPC 的姓名交给官方对话 / 商店 owner；`NPCNameTagHelper` 只兼容登记与显式语言更新。不为姓名新建 `Health`、常驻屏幕标签，或克隆 `HealthBar` 后绕过其 `Hidden`、镜头前后和 `FadeGroup` 控制。不要按第一 / 第三 / 俯视角分别打补丁。
+- 装备与近战模型经 `EquipmentFactory.EnsureModelSubVisuals` 补缺失的 `CharacterSubVisuals`；模型子树建好后才 `SetRenderers()`，已有组件及其缓存交原 owner 管理。官方装备 / 手持挂载不会自动补此组件，枪的 `BuildAgent` 有自己的补齐流程。运行时近战重新设层、材质和渲染状态后，以 `characterModel.SyncHiddenToMainCharacter()` 收尾。
+- 独立 NPC 模型与沙暴等角色外的附加外形，建好渲染子树后装配 `ModEntityFogVisibility`，复用角色已有的官方迷雾源；不能以改友好阵营、停用整只角色或关闭 AI / 碰撞来隐藏模型。技能收尾只恢复技能自己的状态，不调用 `CharacterMainControl.Show()` 清掉迷雾的 `Hidden`。
+- 官方 API 的具体陷阱见 `docs/contracts.md` §7.1；对应守卫为 `tests/NPCNameTagHotPathTransformGuard.py`、`tests/ModEntityFogVisibilityGuard.py`，执行回归为 `SkyIslandInteraction` 与 `ModEntityFogVisibility`。离线验证不证明实际迷雾遮挡和各视角观感。
+
 ## 其他规则
 
 - 装备走 `EquipmentFactory`，物品走 `ItemFactory`，不要绕过工厂手写注册。

@@ -448,6 +448,11 @@ namespace BossRush
             {
                 FallbackLoader = EnsureNewWeaponPlaceholder
             }, BossRushItemIds.PassTheBomb);
+            Add(plans, new RegistrationPlan
+            {
+                EquipmentBundles = new string[] { "residual_sun_shield_model" },
+                FallbackLoader = EnsureNewWeaponPlaceholder
+            }, BossRushItemIds.ResidualSunShield);
 
             Add(plans, new RegistrationPlan
             {

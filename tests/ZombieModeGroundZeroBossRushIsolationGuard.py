@@ -56,22 +56,23 @@ def main() -> int:
     if not teleport:
         return fail("TeleportPlayerToCustomPosition not found")
 
-    bossrush_schedule = teleport.find("StartCoroutine(SetupBossRushInGroundZero")
+    bossrush_schedule = teleport.find("StartCustomTeleportContinuation(SetupBossRushInGroundZero")
     if bossrush_schedule < 0:
         return fail("GroundZero setup scheduling not found in custom-position teleport flow")
 
+    custom_gate = extract_method(text, "internal bool ShouldSkipCustomTeleportForIntegration")
     for snippet in [
         "IsZombieModeStartupInProgress()",
         "ZombieModeMapSelectionHelper.HasPendingZombieEntry",
         "IsZombieModeActive",
-        "跳过 BossRush GroundZero 初始化",
     ]:
-        if snippet not in teleport:
+        if snippet not in custom_gate:
             return fail("TeleportPlayerToCustomPosition must guard ZombieMode before GroundZero setup: " + snippet)
 
-    first_teleport_guard = teleport.find("IsZombieModeStartupInProgress()")
-    if first_teleport_guard < 0 or first_teleport_guard > bossrush_schedule:
-        return fail("ZombieMode teleport guard must run before GroundZero setup scheduling")
+    first_teleport_guard = teleport.find("if (ShouldSkipCustomTeleportForIntegration()) yield break;")
+    apply_position = teleport.find("ApplyCustomTeleportPosition(")
+    if first_teleport_guard < 0 or apply_position < 0 or first_teleport_guard > apply_position or apply_position > bossrush_schedule:
+        return fail("ZombieMode teleport guard must run before custom position writes and owned GroundZero setup scheduling")
 
     setup = extract_method(text, "private System.Collections.IEnumerator SetupBossRushInGroundZero")
     if not setup:

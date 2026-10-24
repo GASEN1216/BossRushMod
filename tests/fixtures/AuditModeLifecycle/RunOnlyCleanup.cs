@@ -138,6 +138,30 @@ namespace BossRush
             Check(owner.Trace.Contains("unknown-action") && run.RunOnlyObjects.Count == 2,
                 "unknown empty records are pruned from the sole RunOnlyObjects registry");
 
+            var activeStar = new GameObject();
+            var fadingStar = new GameObject();
+            owner.AddTestRecord(ZombieModeRunOnlyObjectKind.PurificationPoint, activeStar, activeStar, null);
+            owner.AddTestRecord(ZombieModeRunOnlyObjectKind.PurificationPoint, fadingStar, fadingStar, null);
+            for (int wave = 0; wave < 20; wave++)
+            {
+                for (int kill = 0; kill < 200; kill++)
+                {
+                    var consumedStar = new GameObject();
+                    owner.AddTestRecord(ZombieModeRunOnlyObjectKind.PurificationPoint, consumedStar, consumedStar, null);
+                    UnityEngine.Object.Destroy(consumedStar);
+                }
+                owner.PruneTestUnknownRecords();
+                Check(run.RunOnlyObjects.Count == 4 &&
+                    run.RunOnlyObjects.Exists(record => record.GameObject == activeStar) &&
+                    run.RunOnlyObjects.Exists(record => record.GameObject == fadingStar),
+                    "wave cleanup removes consumed stars while retaining active and fading stars: " + wave);
+            }
+            UnityEngine.Object.Destroy(activeStar);
+            UnityEngine.Object.Destroy(fadingStar);
+            owner.PruneTestUnknownRecords();
+            Check(run.RunOnlyObjects.Count == 2,
+                "destroyed pickup animation records no longer survive into following waves");
+
             var liveEnemyObject = new GameObject();
             var liveEnemy = new ZombieModeEnemyRuntimeMarker { RunId = 41 };
             run.RunOnlyObjects.Add(Record(41, ZombieModeRunOnlyObjectKind.Enemy, liveEnemyObject, liveEnemy, null));

@@ -129,6 +129,7 @@ namespace BossRush
         private SpecialBossSpawner SpawnDragonKing;
         private SpecialBossSpawner SpawnPhantomWitch;
         private SpecialBossSpawner SpawnSandstormChampion;
+        private SpecialBossSpawner SpawnEclipseBloom;
         private Action<CharacterMainControl> CleanupCancelledDragonDescendant;
         private Action<CharacterMainControl> CleanupCancelledDragonKing;
         private Action<CharacterMainControl> CleanupFailedPhantomWitchSpawn;
@@ -180,11 +181,6 @@ namespace BossRush
             CleanupFailedPhantomWitchSpawn = cleanupWitch;
         }
 
-        internal void BindSandstormChampionService(SpecialBossSpawner spawner)
-        {
-            SpawnSandstormChampion = spawner;
-        }
-
         internal void BindEquipmentServices(
             Action<CharacterMainControl> normalize,
             Action<CharacterMainControl, int, float, bool> equip,
@@ -197,6 +193,16 @@ namespace BossRush
             CreateSharedModeEnemyEquipmentMaterializationPlan = createPlan;
             ApplyBossStatMultiplier = applyMultiplier;
             RegisterBossRandomLootTracking = registerLoot;
+        }
+
+        internal void BindSandstormChampionService(SpecialBossSpawner spawner)
+        {
+            SpawnSandstormChampion = spawner;
+        }
+
+        internal void BindEclipseBloomService(SpecialBossSpawner spawner)
+        {
+            SpawnEclipseBloom = spawner;
         }
 
         internal void BindOwnedEnemyTracking(
@@ -451,6 +457,14 @@ namespace BossRush
                             character = await SpawnSandstormChampion(position, false, deferActivationUntilNextFrame,
                                 options != null && options.SuppressWaveBossRegistration, isActiveCheck);
                         }
+                        else if (EclipseBloomPoolAdapter.IsPreset(currentPreset))
+                        {
+                            // 目录项没有可直接实例化的官方 preset；失败不得生成同阵营普通底模。
+                            if (SpawnEclipseBloom == null)
+                                return EnemySpawnCoreResult.Failed("花冠生成适配器未接线", currentPreset);
+                            character = await SpawnEclipseBloom(position, false, deferActivationUntilNextFrame,
+                                options != null && options.SuppressWaveBossRegistration, isActiveCheck);
+                        }
                         // 龙裔遗族Boss：使用专用生成方法
                         else if (IsDragonDescendantPreset(currentPreset))
                         {
@@ -560,6 +574,7 @@ namespace BossRush
                                         if (IsDragonDescendantPreset(currentPreset)) CleanupCancelledDragonDescendant(character);
                                         else if (IsDragonKingPreset(currentPreset)) CleanupCancelledDragonKing(character);
                                         else if (SandstormChampionPoolAdapter.IsPreset(currentPreset)) SandstormChampionPoolAdapter.CleanupCancelled(character);
+                                        else if (EclipseBloomPoolAdapter.IsPreset(currentPreset)) EclipseBloomPoolAdapter.CleanupCancelled(character);
                                         else CleanupFailedPhantomWitchSpawn(character);
                                     }
                                 }
@@ -584,9 +599,11 @@ namespace BossRush
                             // 标记大兴兴（防止被误清理）
                             TryTrackSpawnCoreDaXingXing(character, currentPreset);
 
-                            if (normalizeDamageMultiplier && !SandstormChampionPoolAdapter.IsPreset(currentPreset))
+                            if (normalizeDamageMultiplier && !SandstormChampionPoolAdapter.IsPreset(currentPreset)
+                                && !EclipseBloomPoolAdapter.IsPreset(currentPreset))
                             {
-                                // 冠军技能已保留刷出前的基线，不能再次归一化；其余特殊 Boss 沿用原流程。
+                                // 花冠已按宿主基线缩放技能伤害；再次归一会抹掉全局倍率。
+                                // 其它托管 Boss 保留原有归一化流程。
                                 NormalizeDamageMultiplier(character);
                             }
 

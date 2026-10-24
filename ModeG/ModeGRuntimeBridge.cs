@@ -32,6 +32,8 @@ namespace BossRush
                     if (info == null || string.IsNullOrEmpty(info.name)) continue;
                     // 冠军没有 G 的 Prepare / Activate 事务句柄。
                     if (SandstormChampionPoolAdapter.IsPreset(info)) continue;
+                    // 花冠没有 Mode G 的 Prepare / Activate 事务句柄，不能当官方角色回退。
+                    if (EclipseBloomPoolAdapter.IsPreset(info)) continue;
 
                     if (IsDragonDescendantPreset(info))
                     {

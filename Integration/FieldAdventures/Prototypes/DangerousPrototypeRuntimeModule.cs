@@ -34,6 +34,8 @@ namespace BossRush
         private float entryTimer;
         private float recoilTime;
         private float visualTailTime;
+        private float lastChargeCue = 1f;
+        private readonly Vector3[] guidePoints = new Vector3[4];
         private Vector3 recoilDirection;
         private int WallMask { get { return GameplayDataSettings.Layers.wallLayerMask | GameplayDataSettings.Layers.groundLayerMask; } }
         public override string ModuleName { get { return "DangerousPrototypes"; } }
@@ -105,7 +107,42 @@ namespace BossRush
                 return;
             }
             if (visuals != null) visuals.Tick(deltaTime, rules.Charge);
+            // 蓄满那一刻给一声提示：压力灯在枪身上不一定看得清，玩家要知道「下一枪会放出来」。
+            if (lastChargeCue < 1f && rules.Charge >= 1f) NewWeaponFx.PlaySound("astral_bean_full.wav");
+            lastChargeCue = rules.Charge;
+            UpdateAimGuide();
             TickRecoil(deltaTime);
+        }
+        /// <summary>
+        /// 反弹炮的价值在弹墙后的伤害，凭空预判反射角太难：手持时沿官方射向实时画出前两次反弹的路线。
+        /// 每帧至多三次射线，只在借用中、实际持枪时运行。
+        /// </summary>
+        private void UpdateAimGuide()
+        {
+            if (visuals == null) return;
+            if (rules.Kind != DangerousPrototypeKind.RicochetSun || borrowedGun == null || borrowedGun.muzzle == null || borrower == null)
+            { visuals.HideGuide(); return; }
+            try
+            {
+                Vector3 from = borrowedGun.muzzle.position;
+                Vector3 direction = ResolveShotDirection(borrowedGun, borrower);
+                float remaining = 30f;
+                int count = 0;
+                guidePoints[count++] = from;
+                for (int bounce = 0; bounce <= 2 && remaining > 0.1f; bounce++)
+                {
+                    RaycastHit wall;
+                    bool blocked = Physics.Raycast(from, direction, out wall, remaining, WallMask, QueryTriggerInteraction.Ignore);
+                    Vector3 end = blocked ? wall.point : from + direction * remaining;
+                    guidePoints[count++] = end;
+                    if (!blocked) break;
+                    remaining -= wall.distance + 0.06f;
+                    direction = Vector3.Reflect(direction, wall.normal).normalized;
+                    from = wall.point + wall.normal * 0.06f;
+                }
+                visuals.ShowGuide(guidePoints, count);
+            }
+            catch (Exception e) { visuals.HideGuide(); ModBehaviour.DevLog("[DangerousPrototype] 瞄准线失败: " + e.Message); }
         }
         internal bool CanInteract
         {
@@ -372,6 +409,7 @@ namespace BossRush
                     bool tookDamage = health != null ? (health.IsDead || health.CurrentHealth < oldHealth)
                         : (simple == null || simple.HealthValue < oldHealth);
                     if (target == null || tookDamage) rules.ObserveHit(bounce > 0);
+                    if (tookDamage && visuals != null) visuals.Impact(point, -direction, bounce);
                 }
                 if (!blocked || bounce == maxBounce) break;
                 if (visuals != null) visuals.Impact(wall.point, wall.normal, bounce);

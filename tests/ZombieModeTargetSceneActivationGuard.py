@@ -8,10 +8,12 @@ target scene to become active before BeginZombieModeRunShell/Initialize.
 
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
 ENTRY = Path("ZombieMode/ZombieModeEntryHostBridge.cs")
 RUNTIME_MODULE = Path("ZombieMode/ZombieModeRuntimeModule.cs")
+TARGET_ENTRY = Path("ZombieMode/ZombieModeRuntimeModule_TargetSceneEntry.cs")
 
 
 def fail(message: str) -> int:
@@ -42,8 +44,9 @@ def extract_method(text: str, marker: str) -> str:
 
 
 def main() -> int:
-    entry = ENTRY.read_text(encoding="utf-8")
-    module = RUNTIME_MODULE.read_text(encoding="utf-8")
+    entry = clean_source(ENTRY.read_text(encoding="utf-8-sig"))
+    # 入场等待协程与身份核对在 2026-10-24 原样拆到同一 partial 的 _TargetSceneEntry.cs（大文件预算）。
+    module = clean_source(RUNTIME_MODULE.read_text(encoding="utf-8-sig") + "\n" + TARGET_ENTRY.read_text(encoding="utf-8-sig"))
 
     host_handle = extract_method(entry, "private bool TryHandleZombieModePendingMapSceneLoaded")
     if not host_handle or "module.TryHandleZombieModePendingMapSceneLoaded(scene, loadedMapConfig)" not in host_handle:
@@ -87,6 +90,37 @@ def main() -> int:
     flat_wait = " ".join(wait_method.split())
     if "bool levelAfterInit = IsOfficialLevelAfterInitForZombieMode();" not in flat_wait or             "sceneLoaded && activeMatches && sceneLoaderDone && levelInited && levelAfterInit" not in flat_wait:
         return fail("ZombieModeTargetSceneActivationGuard: initialization must wait for LevelManager.AfterInit")
+
+    final_guard = "if (!scene.isLoaded || finalActiveScene.name != scene.name || finalActiveScene.handle != scene.handle || !finalSceneLoaderDone || !finalLevelInited || !finalLevelAfterInit)"
+    if final_guard not in flat_wait or flat_wait.index(final_guard) > flat_wait.index("int runId = BeginZombieModeRunShell("):
+        return fail("ZombieModeTargetSceneActivationGuard: final target/readiness recheck must precede Begin, including timeout")
+    for statement in [
+        'bool finalSceneLoaderDone = owner.ReadSceneLoaderDoneWithWarningForRuntimeModule("ZombieModeTargetSceneInitialize");',
+        'bool finalLevelInited = owner.ReadLevelInitedWithWarningForRuntimeModule("ZombieModeTargetSceneInitialize");',
+        "bool finalLevelAfterInit = IsOfficialLevelAfterInitForZombieMode();",
+        "bool activeMatches = activeScene.name == scene.name && activeScene.handle == scene.handle;",
+    ]:
+        if statement not in flat_wait:
+            return fail("ZombieModeTargetSceneActivationGuard: missing live final readiness/scene identity probe -> " + statement)
+
+    identity_call = "IsZombieModeTargetSceneEntryCurrent(expectedEntryAttemptId, expectedRunState, expectedTransaction, expectedOwner, expectedRunId, scene.name)"
+    if flat_wait.count(identity_call) != 3:
+        return fail("ZombieModeTargetSceneActivationGuard: entry identity must be checked in wait, before final probes and after probes")
+    identity = " ".join(extract_method(module, "private bool IsZombieModeTargetSceneEntryCurrent(").split())
+    for predicate in [
+        "owner != null && ReferenceEquals(owner, expectedOwner)",
+        "entryAttemptId == expectedEntryAttemptId && ReferenceEquals(runState, expectedRunState)",
+        "ReferenceEquals(entryTransaction, expectedTransaction)",
+        "runState.RunId == expectedRunId && !runState.IsCleaningUp && pendingEntry",
+        "runState.LifecyclePhase == ZombieModeLifecyclePhase.LoadingMap",
+        "ZombieModeMapSelectionHelper.HasPendingZombieEntry",
+        "ZombieModeMapSelectionHelper.GetPendingTargetSubSceneName() == targetSceneName",
+    ]:
+        if predicate not in identity:
+            return fail("ZombieModeTargetSceneActivationGuard: stale waiter can escape its entry identity -> " + predicate)
+    entry_begin = " ".join(extract_method(module, "internal bool TryBeginMapSelectionShell()").split())
+    if "entryAttemptId++; pendingEntry = true;" not in entry_begin:
+        return fail("ZombieModeTargetSceneActivationGuard: successful entry selection must advance its attempt identity")
     after_init = extract_method(module, "internal static bool IsOfficialLevelAfterInitForZombieMode")
     if "LevelManager.AfterInit" not in after_init:
         return fail("ZombieModeTargetSceneActivationGuard: AfterInit probe must read LevelManager.AfterInit")

@@ -168,17 +168,8 @@ namespace BossRush
         private void RestoreVisibleState()
         {
             SetStealthMode(PhantomWitchStealthMode.Visible);
-
-            try
-            {
-                if (bossCharacter != null)
-                {
-                    bossCharacter.Show();
-                }
-            }
-            catch
-            {
-            }
+            // 技能只恢复自己的 Renderer / alpha；官方 Show 会清掉迷雾 Hidden，
+            // 而观察者仍为 0 时 FOW 不会再次发出隐藏事件。
 
             try
             {

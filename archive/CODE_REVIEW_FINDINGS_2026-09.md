@@ -4242,6 +4242,84 @@ Mode G 本轮收尾补证（2026-09-18）：最终专项守卫37 PASS、生产�
 
 最终全量守卫 649 PASS / 0 FAIL，隔离回归 52 PASS / 0 FAIL，Windows 960 源正式编译成功；D 盘正式目标 72 包三端一致且实际判包通过，531 个部署文件一致，14 个 Dev 标识缺席。未启动游戏或访问玩家存档。证据目录 `Build/manual-fix-20260922/`。下面保留的审计复现与 Open 状态是修复前快照；本表是这些 ID 的最新状态。
 
+
+<!-- BEGIN UI VFX BOSS DESIGN REVIEW 2026-09-27 -->
+
+## 2026-09-27 UI / 特效 / Boss 设计审核（Fixed / L1+L2，L3 待实机）
+
+只读审核三路（UI 与波次遮挡、特效塑料感、Boss 技能机制），随后按 owner「全部修复」实施。UI 与波次提示未见遮挡或塑料感高危项（横幅走官方 `NotificationText` 队列，实际屏幕位置待实机）；特效已普遍三段式。确认并修复：
+
+| ID | 严重程度 / 兼容性 | 问题 | 状态 |
+| --- | --- | --- | --- |
+| UVB-2026-09-27-01 | 高 / COMPAT | 龙王技能弹、冲锋、撞击，龙裔冲撞直接 `Hurt` 不看 `Dashing`，与官方子弹/爆炸/近战的翻滚豁免不一致 | Fixed：`Utilities/BossSkillDamageRules.cs` 统一瞬发豁免；持续地面区域按官方 `ZoneDamage` 不豁免 |
+| UVB-2026-09-27-02 | 高 / COMPAT | 幽灵女巫（冠军之影同源）主力招式零硬直、固定轮播、P3 残喘突袭与侧翼压制同码、两组技能只有配置 | Fixed：三招收招硬直、战术包袋随机不连出、残喘重斩追击、删死配置、起手音 |
+| UVB-2026-09-27-03 | 中 / COMPAT | 冠军之影 1.6 倍与全局 Boss 倍率不作用于自制技能伤害；龙裔二阶段覆盖掉全局倍率 | Fixed：按「当前 Stat / 刷怪基线」放大；龙裔二阶段乘法保留 |
+| UVB-2026-09-27-04 | 中 / COMPAT | 龙王大招预警期间常规扫射不停、虚影枪末线 0.1 s、二段冲锋无预警 | Fixed：预警类大招停火、末线 ≥0.4 s、二段 0.3 s 倒计时光圈 |
+| UVB-2026-09-27-05 | 中 / COMPAT | 龙裔「火箭弹」无弹体无预警、在玩家脚下瞬间结算；二阶段冲刺无起手 | Fixed：锁点 + 贴地预警 0.8 s + 落点爆炸（1.6 m/10 伤）；冲刺 0.3 s 扬尘起手 |
+| UVB-2026-09-27-06 | 中 / COMPAT | 丧尸 Hunter 冲刺起手 0.3 s；同场多 Boss 技能无全局节流 | Fixed：0.45 s；`BossSkillGlobalSpacingSeconds` 错开起手（Boss 数量与奖励不变，未封顶以免改经济） |
+| UVB-2026-09-27-07 | 低 / COMPAT | 焚皇戟火焰单色覆盖、丧尸支援弹无辨识、龙王冲击波单色、成就灰阶字面量色 | Fixed：三段渐变/金红色相、主题色拖尾、色相推进、`BossRushUIColors.Disabled` |
+
+未改：ModeH 危险按钮（B-04）核实已在 `fe122a36` 修复；Storm 脉冲圈登记 `TelegraphRingNames` 需搬常量并改三处结构守卫，而 Storm 逃圈速度已有 `SkyIslandStormEchoEscapePropertyTest` 保护，不做。
+
+<!-- END UI VFX BOSS DESIGN REVIEW 2026-09-27 -->
+
+## 2026-09-27 模块解耦独立审计修复（L1/L2 已闭环）
+
+基点 `f90d6a5d` 的七项确认问题已修复；拉取前 699 守卫、99 隔离回归、Windows 正式/Dev 构建全部通过。随后合并远端的终态验证另见 [完整修复与合并记录](architecture/MIGRATION_REPAIR_20260927.md)，不能以此前结果替代合并后验证。
+
+| ID | 严重度 / 分类 | 修复与证据 |
+| --- | --- | --- |
+| CR-2026-09-27-001 | P1 / COMPAT | D/E/F owner 先失效会话后清本局；E 预热 child、F 0.25 秒待销毁对象均回收；真实销毁/退出 103 断言及强反向。 |
+| CR-2026-09-27-002 | P1 / COMPAT | 真实 E/F gate 拒绝销毁 owner，商人异常判据失败关闭；商人与共享敌人迟到结果回归及反向通过。 |
+| CR-2026-09-27-003 | P1 / OPERATIONAL | 聚合器只执行本次 build 的 TargetPath；保留旧 DLL 的真实保存屏障破坏命中预期失败，恢复后绿。 |
+| CR-2026-09-27-004 | P2 / COMPAT | ReferenceEquals 活动宿主门阻止未装配重复实例清全局；真实 Awake/OnDestroy/dispatcher 及 3 个反向。 |
+| CR-2026-09-27-005 | P2 / SAFE | 静态缓存守卫只读正式清单并追真实 OnDestroy 调用图；28 用例与 4 个含旧 tmp 的强反向。 |
+| CR-2026-09-27-006 | P2 / COMPAT | Arena 私有时钟和窄动作，套装/装备/NPC 独立 owner 清理；39 项生产路径检查、11 个强反向。 |
+| CR-2026-09-27-007 | P2 / SAFE | 两篇当前天空岛专题改为真实正式路径，核对目标存在。 |
+
+文件位置、触发、影响、源哈希、各夹具替身边界及剩余 L3 在完整记录。实机仍为 MANUAL_PENDING，未将构建或隔离回归写成游戏内已生效。
+
+## 2026-09-30 天空岛整体生产审查（2026-10-01 全部 Fixed，L2；实机待验）
+
+当前候选未达到整体生产标准；确认 3 项 P1、8 项 P2，完整触发、源码证据、隔离反例、各方面判断和 PROD-SKY-01～09 实机清单见 [整体生产审查](docs/reports/sky-island/2026-09-30-天空岛整体生产标准审查.md)。没有修改生产代码、启动游戏或访问玩家存档，不沿用旧版本实机绿项。
+
+- CR-2026-09-30-002（P1 / Fixed 2026-10-01 / L2）：返回主菜单被按成功返航结算。修：`SkyIslandSessionDeparture.KeepsRaidHeldRecords` 只认撤离与倒下、去向是主菜单不留；`ReleaseReviewNpcAndDepartureGuard`。
+- CR-2026-09-30-003（P1 / Fixed 2026-10-01 / L2）：死亡保存和永久记录结算之间存在丢失窗口。修：`OnPlayerDied` 与撤离同口径 `SettleRaidHeld(true)` 再 `Tick(true)`；官方死亡处理先存档，这里紧接着立即写盘，不再等岛场景卸载。
+- CR-2026-09-30-004（P1 / Fixed 2026-10-01 / L2）：折翎和无声钟守的配偶跟随缺少移动组件。修：永久 NPC 一律挂 `DuckNpcMovement`，`StayHomeUnlessFollowing` 让按人设站定的平时不溜达、婚后跟随照走。
+- CR-2026-09-30-005（P2 / Fixed 2026-10-01 / L1→L2）：撤离提前剧情保存缺少同批角色资产快照。修：`SkyIslandStoryService` 在 `SettleRaidHeld(true)` 后记下出击角色，`CollectSnapshot` 写剧情前照官方 `SaveMainCharacter` 同批存背包与血量。
+- CR-2026-09-30-006（P2 / Fixed 2026-10-01 / L1→L2）：六位居民婚后恢复跳过每日好感衰减。修：`PermanentDuckNpcModule.ForceSpawnAtAsync` 复核后补 `ApplyDailyDecayOnSpawn`（口径同护士 / 哥布林）。
+- CR-2026-09-30-007（P2 / Fixed 2026-10-01 / L1→L2）：官方加载异常后的全局忙标志阻断返航恢复。修：`SkyIslandRaidLease.ReleaseStuckOfficialLoadingFlag`（只在租约自己那次加载抛异常后反射放下 `IsSceneLoading`，已登记 contracts §7）。
+- CR-2026-09-30-008（P2 / Fixed 2026-10-01 / L1/L2→L2）：帧时间采样漏掉跨越窗口终点的长帧。修：`SamplePerformanceWindow` 改为先 yield 再取样再判到点，跨终点长帧计入。
+- CR-2026-09-30-009（P2 / Fixed 2026-10-01 / L1→L2）：已经显示的机制警示在隐藏 HUD 后恢复为过期提示。修：`SkyIslandCaptionQueue.ShowingWarningExpired` + HUD 开播记入队时刻，过期即收。
+- CR-2026-09-30-010（P2 / Fixed 2026-10-01 / L1/L2→L2）：自动验收总状态没有纳入主套件和岛内套件红项。修：`RunStatus` 并入套件 FAIL。
+- CR-2026-09-30-011（P2 / Fixed 2026-10-01 / L2→L2）：规范 Shader 检查命令使用失效的游戏路径。修：`verify_sky_island_bundle_shaders.py` 先认 GAME_PATH、再按编译脚本候选表探测，找不到判 FAIL。
+- CR-2026-09-30-012（P2 / Fixed 2026-10-01 / L1→L2）：发声体先销毁时氛围循环音失去停止入口，尚未证明实际声音残留。修：`SkyIslandAmbience` 记住 AudioObject 引用停音，发声体销毁时每帧补停（实际残留仍需实机听）。
+
+2026-09-30 天空岛模型碰撞修复（COMPAT / SCHEMA+ / L1+L2）：建筑占位被误裁成实体地面洞、硬物缺碰撞与名义包围盒误挡、救援以标记高度代替命中地面均已修复，验证和 COLL-01～06 清单见 [交付报告](docs/reports/sky-island/2026-09-30-天空岛模型碰撞修复与交付.md)。复审 CR-2026-09-30-001（P2 / OPERATIONAL）：导航指纹未包含桥梁硬面，也不检测新增硬物；Fixed：生产 apply_navigation 重新枚举当前硬物集合，指纹包含桥梁；11 项执行反例、两个恢复旧逻辑的内存变异和真实 Blender 来源校验通过。切片输入与导航几何未改，完整来源绑定后 raid 包再次 PhysX PASS。
+
+更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
+
+2026-09-29 天空岛发布前复审（2 项 Fixed / COMPAT），[完整证据与验收清单](docs/reports/sky-island/2026-09-29-天空岛发布前代码审查.md)：CR-2026-09-29-101（P1）修复官方“点击继续”等待被 120 秒场景超时误判；CR-2026-09-29-102（P2）补回装备特殊效果的岛内范围说明。证据止于 L1/L2，L3 待验；没有将历史实机结果沿用到当前候选。
+
+## 2026-09-28 天空岛全面审核与修复（8 项 Fixed / L1+L2，L3 待实机）
+
+原审计 2 项 P1、3 项 P2 已修复；两条战斗线索经实际 DLL/行为树与隔离反例确证，另修 F3 窗口完整性，共 8 项。原始触发见[审核快照](docs/reports/reviews/2026-09-28-天空岛全面代码审核.md)，最终实现、复用/性能边界和实机步骤见[修复验收报告](docs/reports/sky-island/2026-09-28-天空岛修复与生产验收.md)。
+
+| ID | 严重度 / 分类 / 状态 | 修复与证据 |
+| --- | --- | --- |
+| CR-2026-09-28-004 | P1 / COMPAT / Fixed | `SkyIslandWorldStoryRewards` 与 `SkyIslandStoryService.Begin/EndKeepsakeDelivery` 按实际缓冲回执提交，覆盖满包罗盘；冻结交付中采集，寄存实物/收据同批保存，独立快照义务在 typed pending 消费后继续驱动 Tick。Story/Delivery 回归覆盖重开、物理失败、换槽、只采集未写盘和限频重试；L3 见 FIX-SKY-01。 |
+| CR-2026-09-28-002 | P1 / COMPAT / Fixed | `SkyIslandItems.InjectLocalization` 同时注入 18 件物品名称与 `_Desc`，删除官方空 setter/只读属性的无效反射。真实注入入口中英回归及反向验证通过；L3 见 FIX-SKY-02。 |
+| CR-2026-09-28-001 | P2 / COMPAT / Fixed | `SkyIslandStoryService` 目标/摘要加入接纳快照身份缓存键，清场数组变化及时失效。两端守卫和中英回归通过，正常稳定状态 10000 次读取托管分配为 0 B；L3 见 FIX-SKY-03。 |
+| CR-2026-09-28-005 | P2 / COMPAT / Fixed | 信鸽/采集 Relabel 复用基类 ApplyInteractName；搜索点复用章节表和全局语言刷新，延迟 Start 不覆盖新语言。现存对象热切执行回归及反向通过；L3 见 FIX-SKY-02。 |
+| CR-2026-09-28-003 | P2 / COMPAT / Fixed | `SkyIslandSceneReferenceBridge.InjectLocalization` 接全局刷新，语言变化不重装桥。场景名称热切回归通过；L3 见 FIX-SKY-02。 |
+| CR-2026-09-28-006 | P2 / COMPAT / Fixed | 原 U-CB-01：实际黑板/行为树确认强制追踪覆盖敌对 NPC 目标。自动遭遇改用官方感知，手动挑战保留追踪，不新增全局扫描。真实生成入口与选敌逻辑回归/反向通过；专属招式仍按原玩家目标设计，L3 见 FIX-SKY-04。 |
+| CR-2026-09-28-007 | P2 / COMPAT + WIRE+ / Fixed | 原 U-CB-02：原官方方法在受控 9 目标场景只处理 8 个。新增 `SkyIslandExplosionBufferPatch` 临时借换 manager 缓冲，饱和增长、按重入深度复用，Finalizer 恢复原数组/Health列表/掩码，继续执行官方伤害循环。64 条真实 Harmony 隔离断言及反向通过；真实 PhysX/L3 见 FIX-SKY-04。 |
+| CR-2026-09-28-008 | P2 / COMPAT / Fixed | `SamplePerformanceWindow` 复用完整窗口判据，锁定场景、拒绝不足额样本，并在取消/Dispose 后关闭开窗时录制。63 条 F3 执行断言及反向通过；跨图或中断样本不更新有效基线，L3 见 PERF-SKY-01～03。 |
+
+终态：全量守卫 711/711、执行回归 109/109；1119 份 C# 的 Windows 正式/Dev 隔离构建 exit 0，正式 14 个 Dev 标识缺席、Dev 全部可检出。回归目标 net8.0 在本机 .NET 10.0.5 以 Major roll-forward 执行。没有部署、启动游戏或读写玩家存档，尚不能宣称生产实机验收完成或整岛无性能问题。
+
+
+
 <!-- BEGIN JEFF FRUIT REAUDIT 2026-09-27 -->
 
 ## 2026-09-27 Jeff 任务与菜地果实链路复审（8 项 Fixed / L1+L2，L3 待验）

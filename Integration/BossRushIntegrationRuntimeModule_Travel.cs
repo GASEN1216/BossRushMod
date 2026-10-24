@@ -1,32 +1,66 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using Duckov.Scenes;
 
 namespace BossRush
 {
     internal sealed partial class IntegrationRuntimeModule
     {
+        internal IEnumerator BeginCustomTeleport(Scene scene, IEnumerator routine)
+        {
+            CancelArenaEntry(_arenaEntryRequest);
+            CancelArenaEntry(_customTeleportRequest);
+            var request = new ArenaEntryRequest(scene, true);
+            _customTeleportRequest = request;
+            return RunArenaEntryTask(request, routine);
+        }
+
+        private static bool IsCustomTeleportOfficialReady()
+        {
+            var core = MultiSceneCore.Instance;
+            return !SceneLoader.IsSceneLoading && (core == null || !core.IsLoading)
+                && LevelManager.LevelInited && LevelManager.AfterInit;
+        }
+
+        internal bool IsCustomTeleportReady()
+        {
+            ArenaEntryRequest request = _customTeleportRequest;
+            return request != null && request.Ready && IsArenaEntryCurrent(request)
+                && IsCustomTeleportOfficialReady() && SceneManager.GetActiveScene() == request.Scene;
+        }
+
+        internal void StartCustomTeleportContinuation(IEnumerator routine)
+        {
+            if (IsCustomTeleportReady()) StartArenaEntryTask(_customTeleportRequest, routine);
+        }
+
         internal IEnumerator WaitForCustomTeleportSceneReady()
         {
+            ArenaEntryRequest request = _customTeleportRequest;
             const float maxWait = 30f;
             const float interval = 0.1f;
             float elapsed = 0f;
 
             while (elapsed < maxWait)
             {
-                // LevelInited 早于官方最终落点/出场动画；加载期间不抢写位置，也不消耗就绪超时。
+                if (!IsArenaEntryCurrent(request)) yield break;
+                // 加载也计入超时；官方最终落点完成前不绑定角色或写位置。
                 var entryCore = MultiSceneCore.Instance;
                 if (SceneLoader.IsSceneLoading || (entryCore != null && entryCore.IsLoading))
                 {
                     yield return null;
+                    elapsed += Mathf.Max(0f, Time.unscaledDeltaTime);
                     continue;
                 }
                 bool mainExists = ReadMainExistsWithWarning("TeleportPlayerToCustomPosition");
                 bool levelInited = ReadLevelInitedWithWarning("TeleportPlayerToCustomPosition");
 
-                if (mainExists && levelInited)
+                if (mainExists && levelInited && IsCustomTeleportOfficialReady()
+                    && request.PlayerBound && SceneManager.GetActiveScene() == request.Scene)
                 {
+                    request.Ready = true;
                     break;
                 }
 
@@ -34,6 +68,11 @@ namespace BossRush
                 elapsed += interval;
             }
 
+            if (request == null || !request.Ready)
+            {
+                CancelArenaEntry(request);
+                yield break;
+            }
             yield return _owner.IntegrationSharedWait05s;
         }
 

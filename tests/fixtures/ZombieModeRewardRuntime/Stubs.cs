@@ -17,6 +17,7 @@ namespace UnityEngine
     public class Object
     {
         internal bool Destroyed;
+        public int GetInstanceID() { return GetHashCode(); }
         public static bool operator ==(Object a, Object b)
         {
             bool an = ReferenceEquals(a, null) || a.Destroyed, bn = ReferenceEquals(b, null) || b.Destroyed;
@@ -61,12 +62,15 @@ namespace UnityEngine
     public static class Mathf
     {
         public static int Max(int a,int b) { return Math.Max(a,b); }
+        public static float Max(float a,float b) { return Math.Max(a,b); }
+        public static float Abs(float value) { return Math.Abs(value); }
+        public static int RoundToInt(float value) { return (int)Math.Round(value); }
         public static int FloorToInt(float value) { return (int)Math.Floor(value); }
     }
 }
 namespace UnityEngine.Events { public delegate void UnityAction<T>(T value); }
-namespace ItemStatsSystem { public sealed class Item { } }
-public sealed class DuckovItemAgent { }
+public sealed class DuckovItemAgent { public ItemStatsSystem.Item Item; }
+public sealed class ItemSetting_Gun { }
 public sealed class Health : UnityEngine.Object
 {
     public readonly HealthEvent OnHealthChange = new HealthEvent();
@@ -82,6 +86,12 @@ public sealed class CharacterMainControl : UnityEngine.Object
 {
     public static CharacterMainControl Main;
     public Health Health = new Health();
+    public DuckovItemAgent CurrentHoldItemAgent;
+    public void Hold(ItemStatsSystem.Item item)
+    {
+        CurrentHoldItemAgent = item == null ? null : new DuckovItemAgent { Item = item };
+        if (OnHoldAgentChanged != null) OnHoldAgentChanged(CurrentHoldItemAgent);
+    }
     public event Action<DuckovItemAgent> OnHoldAgentChanged;
     public int HoldSubscribers { get { return OnHoldAgentChanged == null ? 0 : OnHoldAgentChanged.GetInvocationList().Length; } }
 }
@@ -105,10 +115,21 @@ public static class CourierPaidLootSweepService { public static void CloseServic
 namespace BossRush
 {
     public sealed class ModBehaviour { public static void DevLog(string value) { } }
-    internal sealed class BossRushStatModifierRecord { }
+    internal sealed class BossRushStatModifierRecord
+    {
+        internal ItemStatsSystem.Item CharacterItem;
+        internal ItemStatsSystem.Stat Stat;
+        internal ItemStatsSystem.Stats.Modifier Modifier;
+        internal string StatName;
+    }
     internal static class RuntimeStatModifierTracker
     {
-        internal static void RemoveAll(List<BossRushStatModifierRecord> list,string context) { Probe.Trace.Add(context); list.Clear(); }
+        internal static void RemoveAll(List<BossRushStatModifierRecord> list,string context)
+        {
+            Probe.Trace.Add(context);
+            foreach (var record in list) if (record.Stat != null) record.Stat.RemoveModifier(record.Modifier);
+            list.Clear();
+        }
     }
     internal static class NotificationText { internal static void Push(string text) { Probe.Trace.Add("notify:"+text); } }
     internal static class L10n { internal static string T(string text) { return text; } }
@@ -129,13 +150,15 @@ namespace BossRush
     internal sealed class ZombieModeOptionRuntimeState
     {
         internal bool MutatorBulletTimeEnabled, MutatorGuardianShieldEnabled, PlayerHealthListenerRegistered;
+        internal int ProjectileTridentStacks, ProjectileShotgunSprayStacks;
         internal readonly List<BossRushStatModifierRecord> GuardianShieldRecords = new List<BossRushStatModifierRecord>();
         internal readonly List<BossRushStatModifierRecord> ModifierRecords = new List<BossRushStatModifierRecord>();
-        internal void Reset() { Probe.Trace.Add("options-reset"); PlayerHealthListenerRegistered=false; MutatorBulletTimeEnabled=false; MutatorGuardianShieldEnabled=false; }
+        internal void Reset() { Probe.Trace.Add("options-reset"); PlayerHealthListenerRegistered=false; MutatorBulletTimeEnabled=false; MutatorGuardianShieldEnabled=false; ProjectileTridentStacks=0; ProjectileShotgunSprayStacks=0; }
     }
     internal sealed class ZombieModeRunState
     {
         internal int RunId, CurrentWave, PurificationPoints;
+        internal int LifecyclePhase;
         internal readonly List<ZombieModeTemporaryNpc> TemporaryNpcs = new List<ZombieModeTemporaryNpc>();
         internal readonly List<ZombieModeTemporaryRealNpcRecord> TemporaryRealNpcs = new List<ZombieModeTemporaryRealNpcRecord>();
         internal readonly ZombieModeOptionRuntimeState OptionRuntime = new ZombieModeOptionRuntimeState();
@@ -172,7 +195,6 @@ namespace BossRush
             if(ObjectCleanups.TryGetValue(target,out cleanup)) { cleanup(); ObjectCleanups.Remove(target); }
         }
         private void HandleZombieModePlayerHealthChangedForOptions(Health health) { }
-        private void OnZombieModeSpreadHoldAgentChanged(DuckovItemAgent agent) { }
         private void RemoveZombieModePhase2ContractRuntimeEffects() { Probe.Trace.Add("phase2-remove"); }
         internal void RegisterEffects() { EnsureZombieModeOptionPlayerHealthListener(); EnsureZombieModeProjectileSpreadListener(); }
         internal GameObject CreateCourier() { return CreateZombieModeTemporaryCourierNpc(new Vector3()); }
@@ -183,5 +205,8 @@ namespace BossRush
             zombieModeProjectileSpreadSnapshots.Add(id,snapshot);
         }
         internal int SnapshotCount { get { return zombieModeProjectileSpreadSnapshots.Count; } }
+        internal void RebuildSpread() { RebuildZombieModeProjectileSpreadState(); }
+        internal float GunTradeoff(ZombieModeRewardType reward) { return GetZombieModeOptionTradeoffGunDamagePenalty(reward); }
+        internal float ReloadTradeoff(ZombieModeRewardType reward) { return GetZombieModeOptionTradeoffReloadSpeedPenalty(reward); }
     }
 }

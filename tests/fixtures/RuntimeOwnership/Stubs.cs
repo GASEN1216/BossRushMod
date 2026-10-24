@@ -130,7 +130,8 @@ internal sealed partial class ZombieModeRuntimeModule
     private float zombieModeLastDropPickupScanTime, now;
     private float GetZombieModeRuntimeNow() => now;
     private void RemoveZombieModeRunOnlyObjectRecord(GameObject o) {}
-    private void PruneZombieModeUnknownRunOnlyRecords() {}
+    internal int PruneCalls;
+    private void PruneZombieModeUnknownRunOnlyRecords() { PruneCalls++; }
     public GameObject Cleanup(float age, float lastScan, bool owned, bool equipped, bool force, bool high=false, bool boss=false)
     {
         now=300.01f; zombieModeLastDropPickupScanTime=lastScan;

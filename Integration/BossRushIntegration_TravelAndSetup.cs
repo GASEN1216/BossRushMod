@@ -30,6 +30,9 @@ namespace BossRush
 
             // 等待期间可能进入 H，或认证已消费 typed intent；两种情况都由 H 持有位置。
             if (ShouldSkipLegacySceneSetupForModeH()) yield break;
+            if (!bossRushIntegrationRuntime.IsCustomTeleportReady()) yield break;
+
+            if (ShouldSkipCustomTeleportForIntegration()) yield break;
 
             BossRushEntryMode entryMode = DetermineBossRushEntryMode("TeleportPlayerToCustomPosition");
             bool isModeEEntry = entryMode == BossRushEntryMode.ModeE;
@@ -48,20 +51,11 @@ namespace BossRush
                         main,
                         isModeEEntry);
 
-                    bool zombieModeOwnsCurrentEntry = IsZombieModeStartupInProgress() ||
-                        ZombieModeMapSelectionHelper.HasPendingZombieEntry ||
-                        IsZombieModeActive;
-                    if (zombieModeOwnsCurrentEntry)
-                    {
-                        DevLog("[ZombieMode] TeleportPlayerToCustomPosition: 丧尸模式正在接管当前入图，跳过 BossRush GroundZero 初始化");
-                        yield break;
-                    }
-
                     string currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
                     BossRushMapConfig mapConfig = GetMapConfigBySceneName(currentScene);
                     if (mapConfig != null && mapConfig.customSpawnPos.HasValue)
                     {
-                        StartCoroutine(SetupBossRushInGroundZero(finalPosition, entryMode));
+                        bossRushIntegrationRuntime.StartCustomTeleportContinuation(SetupBossRushInGroundZero(finalPosition, entryMode));
                     }
                 }
                 else
@@ -140,7 +134,7 @@ namespace BossRush
                 if (startedModeE)
                 {
                     bool verifiedModeE = false;
-                    yield return StartCoroutine(WaitForModeEStartupVerification(result => verifiedModeE = result));
+                    yield return WaitForModeEStartupVerification(result => verifiedModeE = result);
                     if (verifiedModeE)
                     {
                         SpawnCommonNPCs("GroundZero场景 Mode E 初始化完成");
@@ -235,7 +229,7 @@ namespace BossRush
             DevLog("[BossRush] SetupBossRushInGroundZero: 已禁用竞技场范围内的敌怪生成器");
 
             // 3. 启动持续清理敌人协程（直到波次开始）
-            StartCoroutine(ContinuousClearEnemiesUntilWaveStart());
+            bossRushIntegrationRuntime.StartCustomTeleportContinuation(ContinuousClearEnemiesUntilWaveStart());
 
             // 4. 等待场景稳定
             yield return new UnityEngine.WaitForSeconds(0.5f);
@@ -284,7 +278,14 @@ namespace BossRush
 
         internal System.Collections.IEnumerator TeleportPlayerToCustomPositionForIntegration(Vector3 targetPosition)
         {
-            return TeleportPlayerToCustomPosition(targetPosition);
+            return bossRushIntegrationRuntime.BeginCustomTeleport(
+                UnityEngine.SceneManagement.SceneManager.GetActiveScene(), TeleportPlayerToCustomPosition(targetPosition));
+        }
+
+        internal bool ShouldSkipCustomTeleportForIntegration()
+        {
+            return ShouldSkipLegacySceneSetupForModeH() || IsZombieModeStartupInProgress()
+                || ZombieModeMapSelectionHelper.HasPendingZombieEntry || IsZombieModeActive;
         }
 
         internal void SetBossRushArenaPlannedForIntegration(bool planned)

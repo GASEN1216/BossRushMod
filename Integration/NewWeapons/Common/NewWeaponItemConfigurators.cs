@@ -44,6 +44,7 @@ namespace BossRush
                 ItemFactory.RegisterConfigurator(BossRushItemIds.RollCallLedger, ConfigureRollCallLedger);
                 ItemFactory.RegisterConfigurator(BossRushItemIds.ReloadMetronome, ConfigureReloadMetronome);
                 ItemFactory.RegisterConfigurator(BossRushItemIds.PassTheBomb, ConfigurePassTheBomb);
+                ItemFactory.RegisterConfigurator(BossRushItemIds.ResidualSunShield, item => ResidualSunShieldWeaponConfig.TryConfigure(item));
             }
             catch (Exception e)
             {

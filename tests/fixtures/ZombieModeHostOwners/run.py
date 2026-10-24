@@ -3,6 +3,7 @@ from pathlib import Path
 import hashlib
 import json
 import subprocess
+import sys
 from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -83,7 +84,58 @@ def main():
     project += '</ItemGroup></Project>'
     path = OUT / "ZombieModeHostOwners.csproj"
     path.write_text(project, encoding="utf-8")
-    return subprocess.call(["dotnet", "run", "--project", str(path), "--configuration", "Release"], cwd=ROOT)
+    sys.path.insert(0, str(ROOT / "tools"))
+    from run_runtime_regressions import run_project_fixture
+    code, output = run_project_fixture(path, OUT, ROOT)
+    print(output)
+    if code:
+        return code
+    return target_scene_readiness(module, models, run_project_fixture)
+
+
+def target_scene_readiness(module, models, run_project_fixture):
+    """A second executable keeps old ownership seams separate from real entry/refund methods."""
+    target = OUT / "target-scene-readiness"
+    target.mkdir(parents=True, exist_ok=True)
+    generated = "using System; using System.Collections; using System.Collections.Generic; using UnityEngine; using UnityEngine.SceneManagement; namespace BossRush {\n"
+    generated += "\n".join(member(models, signature) for signature in [
+        "public enum ZombieModeLifecyclePhase", "public enum ZombieModeCombatPhase",
+        "public enum ZombieModeFailureReason", "public sealed class ZombieModeEntryTransaction",
+    ])
+    generated += member(ROOT / "ZombieMode/ZombieModeTuning.cs", "public static class ZombieModePhaseGuards")
+    generated += "\ninternal sealed partial class ZombieModeRuntimeModule {\n"
+    source = module.read_text(encoding="utf-8-sig")
+    for field in ["private ModBehaviour owner;", "private ZombieModeRunState runState;", "private ZombieModeEntryTransaction entryTransaction;", "private Dictionary<string, int[]> rewardCandidateCache;", "private List<int> rewardCandidateScratch;", "private HashSet<int> opaqueFilterLogIds;", "private bool pendingEntry;", "private int entryAttemptId;", "private static int nextRunId;", "private const int InitialPurificationPoints = 0;"]:
+        assert source.count(field) == 1, field
+        generated += field + "\n"
+    generated += "\n".join(member(module, signature) for signature in [
+        "internal void AdoptHostState(", "internal bool TryBeginMapSelectionShell()",
+        "internal void CancelMapSelectionShell()", "internal bool IsZombieModeStartupInProgress()",
+        "internal int BeginZombieModeRunShell(", "internal bool IsZombieModeRunValid(",
+        "internal bool InitializeZombieModeRunAfterMapLoaded(",
+        "internal bool ShouldRollbackZombieModeEntryResources()", "internal void RefundZombieModeInvitationIfNeeded()",
+        "internal void RefundZombieModeCashIfNeeded()", "internal void FailZombieModeBeforeActive(",
+        "internal bool ShouldReturnToBaseAfterZombieModePreActiveFailure(",
+        "internal static bool IsOfficialLevelAfterInitForZombieMode()",
+        "private static bool IsOfficialLevelSafeToLeaveForZombieMode()",
+        "private System.Collections.IEnumerator LoadBaseSceneAfterOfficialLevelInitialized()",
+    ])
+    # 入场等待与身份核对在 2026-10-24 原样拆到同一 partial 的 _TargetSceneEntry.cs（大文件预算）。
+    target_entry = ROOT / "ZombieMode/ZombieModeRuntimeModule_TargetSceneEntry.cs"
+    generated += "\n" + "\n".join(member(target_entry, signature) for signature in [
+        "internal System.Collections.IEnumerator WaitForZombieModeTargetSceneActiveThenInitialize(",
+        "private bool IsZombieModeTargetSceneEntryCurrent(",
+    ])
+    generated += "\n}}\n"
+    production = target / "Production.cs"
+    production.write_text(generated, encoding="utf-8")
+    (target / "production-source-sha256.json").write_text(json.dumps(HASHES, indent=2), encoding="utf-8")
+    files = [production, HERE / "TargetSceneEntryStubs.cs", HERE / "TargetSceneEntryRegression.cs"]
+    project = target / "TargetSceneReadiness.csproj"
+    project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649;0169</NoWarn></PropertyGroup><ItemGroup>' + ''.join('<Compile Include="' + escape(str(p), {'"': '&quot;'}) + '"/>' for p in files) + '</ItemGroup></Project>', encoding="utf-8")
+    code, output = run_project_fixture(project, target, ROOT)
+    print(output)
+    return code
 
 
 if __name__ == "__main__":

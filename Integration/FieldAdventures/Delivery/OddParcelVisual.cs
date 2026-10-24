@@ -159,15 +159,24 @@ namespace BossRush
                 leftWing = Piece(body, "DispatchWingLeft", PrimitiveType.Sphere, new Vector3(-.85f, 1.8f, 0f), new Vector3(.62f, .17f, .45f), Color.white);
                 rightWing = Piece(body, "DispatchWingRight", PrimitiveType.Sphere, new Vector3(.85f, 1.8f, 0f), new Vector3(.62f, .17f, .45f), Color.white);
             }
+            // 地面一圈柔光环，亮弧绕着转：远处也认得出这是能交互的快递台。
             orbit = new GameObject("RotatingDeliveryHalo").transform;
             orbit.SetParent(root.transform, false);
-            for (int i = 0; i < 12; i++)
+            orbit.localPosition = Vector3.up * .06f;
+            LineRenderer halo = orbit.gameObject.AddComponent<LineRenderer>();
+            halo.sharedMaterial = BossRushFxKit.GetShapeMaterial(BossRushParticleShape.TrailStrip, BossRushFxBlend.Additive, BossRushFxKit.GainBright);
+            halo.useWorldSpace = false; halo.loop = true; halo.positionCount = 48; halo.widthMultiplier = .1f;
+            halo.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; halo.receiveShadows = false;
+            for (int i = 0; i < 48; i++)
             {
-                float a = i * Mathf.PI / 6f;
-                Transform t = Piece(orbit, "HaloSegment", PrimitiveType.Cube,
-                    new Vector3(Mathf.Cos(a) * 1.5f, .08f, Mathf.Sin(a) * 1.5f), new Vector3(.34f, .055f, .15f), destination ? cyan : orange);
-                t.localRotation = Quaternion.Euler(0f, -a * Mathf.Rad2Deg, 0f);
+                float a = i * Mathf.PI * 2f / 48f;
+                halo.SetPosition(i, new Vector3(Mathf.Cos(a) * 1.5f, 0f, Mathf.Sin(a) * 1.5f));
             }
+            Color tone = destination ? cyan : orange;
+            Gradient arc = new Gradient();
+            arc.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(tone, .18f), new GradientColorKey(tone, 1f) },
+                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(.55f, .3f), new GradientAlphaKey(.12f, .75f), new GradientAlphaKey(.9f, 1f) });
+            halo.colorGradient = arc;
         }
 
         private void BuildParticles(Vector3 position)
@@ -230,8 +239,13 @@ namespace BossRush
             if (orbit != null) orbit.localRotation = Quaternion.Euler(0f, phase * 32f, 0f);
             if (stamp != null) stamp.localPosition = Vector3.up * (bounce > 0f ? -.4f * Mathf.Sin((1f - bounce) * Mathf.PI) : Mathf.Sin(phase * 2f) * .08f);
             if (beak != null && kind == OddParcelKind.QuackingEgg) beak.localScale = new Vector3(.67f, shout > 0f ? .32f : .16f, .56f);
+            // 压力灯按每格电量连续升起；最后两格接近满时跟着心跳一样跳。
+            float beat = pressure >= 80f ? 1f + Mathf.Abs(Mathf.Sin(phase * 9f)) * .35f : 1f;
             for (int i = 0; i < gauge.Length; i++) if (gauge[i] != null)
-                gauge[i].localScale = new Vector3(.065f, pressure >= i * 10f ? .13f : .025f, .06f);
+            {
+                float level = Mathf.Clamp01(pressure / 10f - i);
+                gauge[i].localScale = new Vector3(.065f, Mathf.Lerp(.025f, .13f, level) * (i >= 8 && level > 0f ? beat : 1f), .06f);
+            }
             if (spray != null)
             {
                 var emission = spray.emission;
@@ -243,14 +257,68 @@ namespace BossRush
         {
             bounce = 1f; shout = .5f;
             if (spray != null) spray.Emit(celebrate ? 100 : 65);
+            PlayBurstFx(celebrate);
             Squawk();
+        }
+
+        private void PlayBurstFx(bool celebrate)
+        {
+            Vector3 top = root.transform.position + Vector3.up * (station ? 1.9f : 2.3f);
+            try
+            {
+                if (celebrate)
+                {
+                    // 签收：巨型印章盖下，彩纸从台面炸开，一圈冲击环贴地推开。
+                    for (int i = 0; i < 2; i++)
+                    {
+                        BossRushFxBurst confetti = BossRushFxKit.Dust(i == 0 ? cyan : orange, 18);
+                        confetti.Shape = BossRushParticleShape.Shard; confetti.Radial = false; confetti.FlatOnGround = false; confetti.Upward = true;
+                        confetti.SpeedMin = 4f; confetti.SpeedMax = 8f; confetti.Gravity = .55f; confetti.Drag = 1.4f;
+                        confetti.SizeMin = .12f; confetti.SizeMax = .22f; confetti.LifeMin = 1f; confetti.LifeMax = 1.7f;
+                        confetti.Spin = 540f; confetti.GrowTo = .9f; confetti.FadeIn = 0f;
+                        BossRushFxKit.PlayBurst(top, confetti);
+                    }
+                    BossRushFxKit.PlayBurst(top, BossRushFxKit.Glint(Color.Lerp(cyan, Color.white, .4f), 1.3f, .2f));
+                    BossRushFxKit.PlayBurst(root.transform.position + Vector3.up * .06f, BossRushFxKit.Shockwave(new Color(cyan.r, cyan.g, cyan.b, .65f), .9f, 3f, .45f, true));
+                }
+                else if (kind == OddParcelKind.AngrySoda)
+                {
+                    // 汽水爆开：一大团气泡从拉环喷出。
+                    BossRushFxBurst foam = BossRushFxKit.Dust(new Color(.85f, 1f, 1f, .85f), 26);
+                    foam.Shape = BossRushParticleShape.Bubble; foam.Radial = false; foam.FlatOnGround = false; foam.Cone = 28f; foam.Direction = Vector3.up;
+                    foam.SpeedMin = 4f; foam.SpeedMax = 8f; foam.Gravity = .7f; foam.Drag = 1.2f; foam.SizeMin = .18f; foam.SizeMax = .4f;
+                    foam.LifeMin = .8f; foam.LifeMax = 1.4f; foam.GrowTo = 1.2f;
+                    BossRushFxKit.PlayBurst(top, foam);
+                }
+                else
+                {
+                    // 巨蛋弹起：羽毛和蛋壳屑一起蹦出来。
+                    BossRushFxBurst feathers = BossRushFxKit.Dust(new Color(1f, .9f, .55f, .9f), 14);
+                    feathers.Shape = BossRushParticleShape.Leaf; feathers.Radial = false; feathers.FlatOnGround = false; feathers.Upward = true;
+                    feathers.SpeedMin = 2.5f; feathers.SpeedMax = 5f; feathers.Gravity = .18f; feathers.Drag = 2f;
+                    feathers.SizeMin = .2f; feathers.SizeMax = .34f; feathers.LifeMin = 1.2f; feathers.LifeMax = 2f; feathers.Spin = 200f;
+                    BossRushFxKit.PlayBurst(top, feathers);
+                }
+                BossRushFxBurst dust = BossRushFxKit.Dust(new Color(.5f, .45f, .4f, .4f), 10);
+                dust.ShapeRadius = .6f;
+                BossRushFxKit.PlayBurst(root.transform.position + Vector3.up * .1f, dust);
+            }
+            catch (Exception e) { ModBehaviour.DevLog("[OddParcel] 爆发表现失败: " + e.Message); }
         }
 
         internal void Squawk()
         {
+            if (shout <= 0f) PlayShoutRing();
             shout = .5f;
             SyncVoiceVolume();
             if (voice != null && quack != null && voice.volume > 0f) voice.Play();
+        }
+
+        /// <summary>巨蛋叫一声时嘴边推开一圈声浪。</summary>
+        private void PlayShoutRing()
+        {
+            if (beak == null || station) return;
+            BossRushFxKit.PlayBurst(beak.position + beak.forward * .3f, BossRushFxKit.Shockwave(new Color(1f, .85f, .5f, .55f), .3f, 4f, .35f, false));
         }
 
         internal void SyncVoiceVolume()

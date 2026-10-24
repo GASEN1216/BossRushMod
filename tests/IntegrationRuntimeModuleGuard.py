@@ -376,11 +376,50 @@ def main():
     second_gate = travel_host_teleport.find(mode_h_gate, first_gate + len(mode_h_gate))
     entry_selection = travel_host_teleport.find("DetermineBossRushEntryMode(\"TeleportPlayerToCustomPosition\")")
     apply_landing = travel_host_teleport.find("ApplyCustomTeleportPosition(")
-    zombie_guard = travel_host_teleport.find("IsZombieModeStartupInProgress()")
-    ground_zero_schedule = travel_host_teleport.find("StartCoroutine(SetupBossRushInGroundZero(finalPosition, entryMode));")
-    travel_positions = [first_gate, wait_call, second_gate, entry_selection, apply_landing, zombie_guard, ground_zero_schedule]
+    zombie_guard = travel_host_teleport.find("if (ShouldSkipCustomTeleportForIntegration()) yield break;")
+    ground_zero_schedule = travel_host_teleport.find("bossRushIntegrationRuntime.StartCustomTeleportContinuation(SetupBossRushInGroundZero(finalPosition, entryMode));")
+    ready_gate = travel_host_teleport.find("if (!bossRushIntegrationRuntime.IsCustomTeleportReady()) yield break;")
+    travel_positions = [first_gate, wait_call, second_gate, ready_gate, zombie_guard, entry_selection, apply_landing, ground_zero_schedule]
     if not travel_host_teleport or any(position < 0 for position in travel_positions) or travel_positions != sorted(travel_positions):
-        return fail("host travel coordination must keep both Mode H gates, entry selection, teleport, and ZombieMode guard order")
+        return fail("custom teleport must recheck readiness and ZombieMode before movement, then schedule owned GroundZero setup")
+
+    custom_begin = method_body(module_travel, "internal IEnumerator BeginCustomTeleport(Scene scene, IEnumerator routine)")
+    if require_order(custom_begin, ["CancelArenaEntry(_arenaEntryRequest);", "CancelArenaEntry(_customTeleportRequest);", "new ArenaEntryRequest(scene, true)",
+                                   "_customTeleportRequest = request;", "RunArenaEntryTask(request, routine)"], "BeginCustomTeleport"):
+        return fail("custom teleport must freeze an exact scene and supersede the previous request in the existing owner driver")
+    if "CancelArenaEntry(_customTeleportRequest);" not in method_body(module_arena_entry, "private IEnumerator BeginArenaEntryWait(Scene scene)"):
+        return fail("a new ordinary entry must supersede the previous custom teleport generation")
+    official_ready = method_body(module_travel, "private static bool IsCustomTeleportOfficialReady()")
+    for token in ("!SceneLoader.IsSceneLoading", "!core.IsLoading", "LevelManager.LevelInited && LevelManager.AfterInit"):
+        if token not in official_ready:
+            return fail("custom teleport official readiness missing: " + token)
+    for token in ("if (!IsArenaEntryCurrent(request)) yield break;", "elapsed += Mathf.Max(0f, Time.unscaledDeltaTime);",
+                  "request.PlayerBound && SceneManager.GetActiveScene() == request.Scene", "request.Ready = true;",
+                  "if (request == null || !request.Ready)", "CancelArenaEntry(request);", "yield break;"):
+        if token not in travel_wait:
+            return fail("custom readiness must cancel stale/timed-out requests without falling through: " + token)
+    custom_current = method_body(module_arena_entry, "private bool IsArenaEntryCurrent(ArenaEntryRequest request)")
+    for token in ("request.CustomTeleport ? _customTeleportRequest : _arenaEntryRequest",
+                  "request.CustomTeleport && _owner.ShouldSkipCustomTeleportForIntegration()",
+                  "else if (request.SawActiveScene || request.Ready) return false;",
+                  "!request.CustomTeleport || IsCustomTeleportOfficialReady()", "request.Player == main"):
+        if token not in custom_current:
+            return fail("custom request scene/player/mode identity gate missing: " + token)
+    for signature in ("private void CleanupArenaEntry()", "private void OnArenaEntrySceneLoading(SceneLoadingContext context)",
+                      "private void OnArenaEntrySceneUnloaded(Scene scene)"):
+        if "CancelArenaEntry(_customTeleportRequest);" not in method_body(module_arena_entry, signature):
+            return fail("custom teleport cancellation must share scene/owner cleanup: " + signature)
+    custom_mode_gate = method_body(travel_host, "internal bool ShouldSkipCustomTeleportForIntegration()")
+    for token in ("ShouldSkipLegacySceneSetupForModeH()", "IsZombieModeStartupInProgress()",
+                  "ZombieModeMapSelectionHelper.HasPendingZombieEntry", "IsZombieModeActive"):
+        if token not in custom_mode_gate:
+            return fail("custom request must yield to typed mode ownership: " + token)
+    if "StartCoroutine(bossRushIntegrationRuntime.BeginCustomTeleport(scene, TeleportPlayerToCustomPosition(customPos.Value)));" not in lifecycle:
+        return fail("custom sceneLoaded entry must freeze callback target Scene before active-scene promotion")
+    ground_zero = method_body(travel_host, "private System.Collections.IEnumerator SetupBossRushInGroundZero(")
+    if "yield return WaitForModeEStartupVerification(result => verifiedModeE = result);" not in ground_zero or \
+            "bossRushIntegrationRuntime.StartCustomTeleportContinuation(ContinuousClearEnemiesUntilWaveStart());" not in ground_zero:
+        return fail("custom GroundZero verification and clearing must remain under request cancellation")
 
     force_teleport = method_body(module_travel, "internal IEnumerator ForceTeleportToSubScene(string targetSubSceneID, Vector3 targetPosition)")
     if require_order(force_teleport, [
@@ -492,7 +531,7 @@ def main():
         return fail("SetupBossRushInGroundZero must retain the map-object call site")
     if require_order(ground_zero_setup[map_spawn_position:], [
         "SpawnBossRushMapObjects();", "DisableAllSpawners();",
-        "StartCoroutine(ContinuousClearEnemiesUntilWaveStart());", "ClearEnemiesForBossRush();",
+        "bossRushIntegrationRuntime.StartCustomTeleportContinuation(ContinuousClearEnemiesUntilWaveStart());", "ClearEnemiesForBossRush();",
         "SetCurrentMapSpawnPoints(currentSceneName);", "bossRushArenaActive = true;",
     ], "SetupBossRushInGroundZero"):
         return fail("ground-zero lifecycle must keep map objects ahead of spawner cleanup and preserve arena setup order")

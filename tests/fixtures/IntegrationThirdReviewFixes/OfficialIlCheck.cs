@@ -9,6 +9,13 @@ using HarmonyLib;
 
 namespace BossRush
 {
+    // 此进程只验证官方 DLL 的 IL 安装；盾片行为由 ResidualSunShield 专用夹具执行。
+    internal static class ResidualSunShieldRuntime
+    {
+        internal static int Calls;
+        internal static void ModifyFinalDamage(Health health, ref DamageInfo info) { Calls++; }
+    }
+
     // IL 接线探针不创建宠物，身份查询保持未上膛；防御行为由 ZombieBossCases 实跑。
     internal static class PetNestCompanionAgent
     {

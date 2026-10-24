@@ -974,7 +974,8 @@ namespace BossRush
             return IsDragonDescendantPreset(preset)
                 || IsDragonKingPreset(preset)
                 || IsPhantomWitchPreset(preset)
-                || SandstormChampionPoolAdapter.IsPreset(preset);
+                || SandstormChampionPoolAdapter.IsPreset(preset)
+                || EclipseBloomPoolAdapter.IsPreset(preset);
         }
 
         internal async UniTask<ManagedBossPrepareResult> PrepareManagedPhantomWitchAsync(

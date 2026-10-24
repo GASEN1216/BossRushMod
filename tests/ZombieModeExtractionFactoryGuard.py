@@ -1,5 +1,7 @@
 from pathlib import Path
 import sys
+import re
+from cs_source_util import clean_source
 
 
 FACTORY = Path("Utilities/ModeExtractionPointFactory.cs")
@@ -39,10 +41,10 @@ def main() -> int:
     if not FACTORY.exists():
         return fail("ZombieModeExtractionFactoryGuard: missing Utilities/ModeExtractionPointFactory.cs")
 
-    factory = FACTORY.read_text(encoding="utf-8")
+    factory = clean_source(FACTORY.read_text(encoding="utf-8"))
     compile_text = COMPILE.read_text(encoding="utf-8")
     modef = MODEF.read_text(encoding="utf-8")
-    zombie = ZOMBIE.read_text(encoding="utf-8")
+    zombie = clean_source(ZOMBIE.read_text(encoding="utf-8"))
 
     if "Utilities\\ModeExtractionPointFactory.cs" not in compile_text:
         return fail("ZombieModeExtractionFactoryGuard: compile_official.bat does not include ModeExtractionPointFactory")
@@ -75,6 +77,12 @@ def main() -> int:
     if not (0 <= events.find("if (successDispatched") < events.find("successDispatched = true;")
             < events.find("request.OnSucceed();")):
         return fail("ZombieModeExtractionFactoryGuard: 成功事件必须先占有再结算，防止丧尸递归派发导致双重返程")
+    normalized_events = re.sub(r"\s+", " ", events)
+    receipt_gate = "if (request.TrySucceed != null) { bool accepted = false; try { accepted = request.TrySucceed(); } finally { if (!accepted) successDispatched = false; } if (!accepted) return; }"
+    if receipt_gate not in normalized_events or not (
+            normalized_events.find("successDispatched = true;") < normalized_events.find(receipt_gate)
+            < normalized_events.find("request.OnFallbackNotify(request.Position);")):
+        return fail("ZombieModeExtractionFactoryGuard: 结算拒绝必须释放重试锁并阻止返程")
 
     for token in [
         "TryCreateModeFExtractionFromPrefab",
@@ -92,6 +100,8 @@ def main() -> int:
 
     if "ModeExtractionPointFactory.CreateExtractionPoint(request)" not in ensure_area:
         return fail("ZombieModeExtractionFactoryGuard: Zombie extraction area does not use shared factory")
+    if "request.TrySucceed = delegate { return runState.ActiveExtractionArea != null && CompleteZombieModeExtractionSuccess(runId); };" not in re.sub(r"\s+", " ", ensure_area):
+        return fail("ZombieModeExtractionFactoryGuard: 丧尸撤离必须把结算回执交给工厂")
 
     if "GameObject.CreatePrimitive(PrimitiveType.Cylinder)" in ensure_area:
         return fail("ZombieModeExtractionFactoryGuard: Zombie extraction still creates primitive cylinder")

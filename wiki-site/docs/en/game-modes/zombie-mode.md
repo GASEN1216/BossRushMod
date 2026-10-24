@@ -33,7 +33,7 @@ affix forging (the temporary goblin doesn't offer it), and relic soul/egg drops 
 You must pick one of two loadouts upon entering:
 
 - **Melee** — Starting Gear: Random melee weapon ×1 (quality ≤5) + healing items (with guaranteed recovery items) + food ×3 + drinks ×2
-- **Gunner** — Starting Gear: Random firearm ×1 + matching caliber ammo ×2000 + medical ×3 + food ×2 + drinks ×1
+- **Gunner** — Starting Gear: Random firearm ×1 + one stack of matching ammo (limited by the item's stack cap; heavy ammo with small stacks or no stacking is topped up to at least 4 rounds) + medical ×3 + food ×2 + drinks ×1
 
 Both loadouts also get a random armor set: body armor, helmet and headset, one each (quality ≤5).
 

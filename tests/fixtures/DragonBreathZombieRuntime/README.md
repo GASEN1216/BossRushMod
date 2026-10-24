@@ -44,7 +44,7 @@ Unity 对象、场景、资源、音画、inventory、输入和物理查询由�
 
 实际作者工程 `Assets/Prefabs/dragon/dragon_Gun_Item.prefab`（SHA-256 `4cb52d4c0695e49af6053b223d7fb1bb4fcc745957ed6e772719f4596f92623e`）与当前 `Assets/Equipment/dragon_equipment`（`9a94165c633d92dbe7b6719adfe7a2aab3d5c1b41ce249f31746b4b8bc0d9f1d`）中，龙息 TypeID 500005 的 Stats 只有 BuffChance，没有 DamageFactorToZombie；bundle 中 Item path_id 为 -1258923828365836097、StatCollection path_id 为 -200171630346340987。生产完整属性表此前也未补该项。
 
-现装官方 `resources.assets`（`93c4ab6ad71fdb3bf4a331bbb2ac6bc2f7db7b0f12efe60dd43ea019ab2e543d`）的 CharacterRandomPreset 对象 path_id 76566 至 76570，对应 EnemyPreset_Zombie / Big / Range / SelfDestruction / Snow，nameKey 均为 Cname_Zombie、isZombie 均为 true。通过 UnityPy 与由现装程序集生成的 typetree 读取，标准 MonoBehaviour 头的脚本引用核为 `{m_FileID:1,m_PathID:583}`；isZombie 在各对象内的字节偏移分别为 136、140、140、152、140，原始字节均为 `01 00 00 00`。ZombieModeSpawner 使用 Cname_Zombie preset，这不是仅构造理论僵尸靶。
+现装官方 `resources.assets`（`93c4ab6ad71fdb3bf4a331bbb2ac6bc2f7db7b0f12efe60dd43ea019ab2e543d`）的 CharacterRandomPreset 对象 path_id 76566 至 76570，对应 EnemyPreset_Zombie / Big / Range / SelfDestruction / Snow，nameKey 均为 Cname_Zombie、isZombie 均为 true。通过 UnityPy 与由现装程序集生成的 typetree 读取，标准 MonoBehaviour 头的脚本引用核为 `{m_FileID:1,m_PathID:583}`；isZombie 在各对象内的字节偏移分别为 136、140、140、152、140，原始字节均为 `01 00 00 00`。ZombieModeSpawner 使用 Cname_Zombie preset，证明实际模式目标进入官方僵尸乘数路径。
 
 另经现装 DLL 只读 PE / IL 交叉审查：Core SHA-256 `298d5d5885427632d5a94b2f3ce587f8ebc9528ec71e575a475158c326ecae8f`，`CharacterRandomPreset.<CreateCharacterAsync>d__100.MoveNext` 的 IL_0622 读 preset.isZombie，紧邻 IL_0627 写 Health.isZombie；`ItemStatsSystem.dll`（`a276e15c022f71b2214bd05e1b9b0f2e620c16561df576fed0b79c2fe4402e60`）的 StatCollection.Add 仍只有 list.Add 与 ret，无缓存失效，枪属性 getter 仍经静态 hash 调用 GetStatValue。
 

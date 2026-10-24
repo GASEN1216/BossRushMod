@@ -63,9 +63,18 @@ namespace BossRush
         public int ZombieModeCurrentRunId = 7;
         public bool Paused;
         public int Impacts;
+        public int SlowApplications, CloudSpawns, ProjectileImpacts;
         public Vector3 ImpactPosition;
         public void TryExecuteZombieModeTelegraphedAreaDamage(int run, CharacterMainControl source, Vector3 origin, float radius, float damage)
         { Impacts++; ImpactPosition = origin; }
+        public void TryApplyZombieModePlayerSlowInArea(int run, Vector3 origin, float radius, float percent, float duration)
+        { SlowApplications++; }
+        public void SpawnZombieModeDamageCloud(int run, CharacterMainControl source, Vector3 origin, float radius,
+            float duration, float dps, float tick, string name, Color color, bool followSource)
+        { CloudSpawns++; ImpactPosition = origin; }
+        public void TryExecuteZombieModeHarasserProjectileImpact(int run, CharacterMainControl source, Vector3 origin,
+            float damage, float slowRadius, float slowPercent, float slowDuration)
+        { ProjectileImpacts++; ImpactPosition = origin; }
         public bool IsZombieModeRuntimePaused() { return Paused; }
         public float GetZombieModeRuntimeNow() { return Time.unscaledTime; }
         public readonly Dictionary<CharacterMainControl, ZombieModeEnemyRuntimeMarker> Markers = new Dictionary<CharacterMainControl, ZombieModeEnemyRuntimeMarker>();
@@ -266,6 +275,7 @@ internal static class ZombieBossCases
         }
         finally { harmony.UnpatchAll(harmony.Id); BossRush.ModBehaviour.Instance = null; }
         DashCases();
+        ZombieThreatCases.Run();
         Console.WriteLine("PASS ZombieBoss: " + checks + " production defense assertions over official Hurt body");
     }
 }

@@ -960,6 +960,8 @@ namespace BossRush
             if (string.IsNullOrEmpty(lineageKey)) return null;
             // 冠军的临时 preset 只供原实例使用，不是幼体的官方底模。
             if (SandstormChampionPoolAdapter.IsPreset(lineageKey)) return null;
+            // 花冠的 runtime preset 仅是宿主骨架，不能作为没有花冠控制器的幼体模型。
+            if (EclipseBloomPoolAdapter.IsPreset(lineageKey)) return null;
             try
             {
                 CharacterRandomPreset[] all = ObjectCache.GetCharacterPresets();

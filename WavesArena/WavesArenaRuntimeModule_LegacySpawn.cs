@@ -54,6 +54,19 @@ namespace BossRush
                     }
                     return champion;
                 }
+                if (EclipseBloomPoolAdapter.IsPreset(preset))
+                {
+                    CharacterMainControl bloom = await EclipseBloomPoolAdapter.SpawnAsync(owner, position,
+                        isActiveCheck, false);
+                    if (bloom != null)
+                    {
+                        if (InfiniteHellMode) ApplyInfiniteHellScaling(bloom, preset);
+                        MutatorManager.ApplyToEnemy(bloom);
+                        coroutineHost.StartCoroutine(enemyRecoveryMonitor.DelayedBossPositionValidation(bloom, 0.5f));
+                        enemyRecoveryMonitor.RegisterEnemyRecoveryAnchor(bloom, position);
+                    }
+                    return bloom;
+                }
                 // 检查是否是龙裔遗族Boss，使用专门的生成方法
                 if (IsDragonDescendantPreset(preset))
                 {

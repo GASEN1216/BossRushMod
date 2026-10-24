@@ -198,6 +198,10 @@ namespace BossRush
             return position != Vector3.zero;
         }
     }
+    internal static class ModEntityFogVisibility
+    {
+        internal static void Attach(GameObject value) { }
+    }
     internal static class NPCCommonUtils
     {
         internal static void FixShaders(GameObject gameObject, string prefix) { }

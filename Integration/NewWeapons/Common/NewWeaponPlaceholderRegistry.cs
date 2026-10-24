@@ -56,6 +56,7 @@ namespace BossRush
             EnsureRegistered(BossRushItemIds.RollCallLedger);
             EnsureRegistered(BossRushItemIds.ReloadMetronome);
             EnsureRegistered(BossRushItemIds.PassTheBomb);
+            EnsureRegistered(BossRushItemIds.ResidualSunShield);
 
             initialized = true;
         }
@@ -145,6 +146,12 @@ namespace BossRush
                     RollCallLedgerConfig.BaseName,
                     isMelee: false,
                     tag: "Totem");
+            }
+
+            if (typeId == BossRushItemIds.ResidualSunShield)
+            {
+                return EnsureWeaponRegistered(BossRushItemIds.ResidualSunShield, "ResidualSunShield_Placeholder",
+                    "BossRush_ResidualSunShield", ResidualSunShieldConfig.BaseName, isMelee: false, tag: "Totem");
             }
 
             if (typeId == BossRushItemIds.PassTheBomb)
@@ -302,6 +309,8 @@ namespace BossRush
                     return RollCallLedgerWeaponConfig.TryConfigure(clone, baseName);
                 if (typeId == BossRushItemIds.ReloadMetronome)
                     return ReloadMetronomeWeaponConfig.TryConfigure(clone, baseName);
+                if (typeId == BossRushItemIds.ResidualSunShield)
+                    return ResidualSunShieldWeaponConfig.TryConfigure(clone, baseName);
                 if (typeId == BossRushItemIds.PassTheBomb)
                     return PassTheBombWeaponConfig.TryConfigure(clone, baseName);
             }

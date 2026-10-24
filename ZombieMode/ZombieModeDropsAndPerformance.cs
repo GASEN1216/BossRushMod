@@ -657,6 +657,12 @@ namespace BossRush
 
         internal void CleanupZombieModeExpiredDropCandidates(bool forceWaveCleanup)
         {
+            // 即使散落物已被全部拾取，也要回收上一波已销毁星点的登记记录。
+            if (forceWaveCleanup)
+            {
+                PruneZombieModeUnknownRunOnlyRecords();
+            }
+
             if (runState.EntityDropCleanupCandidates.Count <= 0)
             {
                 return;
@@ -742,7 +748,7 @@ namespace BossRush
                 runState.EntityDropCleanupCandidates.RemoveAt(i);
             }
 
-            if (shouldPruneDestroyedRunOnlyRecords)
+            if (shouldPruneDestroyedRunOnlyRecords && !forceWaveCleanup)
             {
                 PruneZombieModeUnknownRunOnlyRecords();
             }

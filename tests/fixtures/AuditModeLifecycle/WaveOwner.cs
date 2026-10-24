@@ -76,4 +76,5 @@ namespace BossRush {
 namespace BossRush
 {
  internal static class SandstormChampionBoss { internal const string NameKey = "BossRush_Campaign_FinalBoss_Name"; }
+ internal static class EclipseBloomBoss { internal const string NameKey = "BossRush_EclipseBloom_Name"; }
 }

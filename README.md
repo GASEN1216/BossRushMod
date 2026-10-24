@@ -16,6 +16,8 @@
 - **订阅**：[Steam 创意工坊](https://steamcommunity.com/sharedfiles/filedetails/?id=3612465423)
 - **参与开发 / AI 协作**：先读 [AGENTS.md](AGENTS.md)
 
+**v2.3.7** 修复了 NPC 名字一直挂在屏幕上、Boss 和装备在迷雾里也能看见的问题，以及丧尸模式圈外满进度不结算、信标重复开波、散射伤害偏低和撤离兑换异常。详见 [v2.3.7 更新说明](WikiContent/zh/changelog__v2_3_7.md)。
+
 ## 内容一览
 
 ### 游戏模式

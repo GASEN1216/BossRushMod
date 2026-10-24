@@ -1,5 +1,21 @@
 # NPC 交互系统
 
+## 2026-10-21 NPC 接回官方战争迷雾（COMPAT / WIRE+）
+
+阿稳、叮当、羽织的 bundle 只有模型和 Standard 材质，既无 FOW hider，也无原版角色显隐组件；换成游戏 shader 并固定 Default 层不会自动获得玩家视野判据。三者在材质 / 层设置完成后装配 [ModEntityFogVisibility.cs](file://Utilities/ModEntityFogVisibility.cs)。捏脸 NPC 在工厂完成外形配置后装配同一绑定，保留原阵营；官方 CharacterModel 对非敌对角色豁免隐藏，因此单调 `Hide()` 不足以让友好模型遵循迷雾。
+
+绑定监听官方 `FOW.FogOfWarHider.OnActiveChanged`；有 hider 时复用，无 hider 才创建 inactive 子 probe，先配置原版中心高 0.526、左右各 0.15 的三采样点再激活。只缓存一次 Renderer / Light，隐藏用 `forceRenderingOff` 和光源 mask，显露时恢复原值，不改技能使用的 Renderer.enabled、根对象、AI、碰撞器或交互。隐藏期间 LateUpdate 仅检查缓存，防止其它视觉准备重开渲染；可见时 O(1) 早返，不逐帧扫树。非战斗图、主玩家死亡沿原版保持可见；停用 / 销毁退订并恢复。真实视野边界、切图与视角模组画面仍待实机。
+
+## 2026-10-21 自定义友好 NPC 姓名遵循原版展示（COMPAT）
+
+本机原版资源中，友好 Jeff、Alex、Fo、XiaoMing 的 preset 均为 `showName=false`、`showHealthBar=false`；基地 Orange / Xavier 是静态模型与商店交互组件，没有 Health 或头顶姓名 TMP。原版姓名显示在 `DialogueUI`、`StockShopView` 和选中交互提示中。自定义阿稳、叮当、羽织、永久捏脸 NPC 与天空岛居民同样不创建常驻头顶名牌，俯视、第一和第三人称使用一致行为。
+
+`NPCNameTagHelper` 保留原登记 / 刷新 API，初始姓名由对话 owner 设置，普通刷新不重写它；显式 `UpdateOriginalHealthBarDisplayName` 改名后才同步现有 `DuckovDialogueActor` 的 `BossRush_` 本地化键。不创建 actor、Health、UI 或 Harmony 补丁，不修改原版姓名键。相同姓名不重复注入，有待更新但无 actor 时每秒至多查找一次；延迟创建的 actor 不会被出生时的旧语言姓名覆盖。注销与静态清理只释放 helper 登记，官方 actor 仍由原对话 owner 管理。原有对话与商店姓名接线继续使用。
+
+旧实现仅复制原版名牌外观，却禁用 `HealthBar` / `FadeGroup`，自行投影且每帧强制打开姓名，因此所有视角都会出现额外姓名。兼容用 `CreateNameTag` / `UpdateNameTagRotation` 入口仍保留，自定义友好 NPC 禁止重新调用它们。
+
+来源：[NPCNameTagHelper.cs](file://Integration/Utils/NPCNameTagHelper.cs)。守卫与 `SkyIslandInteraction` 执行回归验证登记、官方姓名绑定和生命周期；游戏渲染效果仍需实机确认。
+
 ## 2026-09-22 审计修订（COMPAT）
 
 共享 `DialogueManager` 的官方请求捕获 actor、UI 实例、session owner 和请求代次。actor 销毁、UI 被替换或 Cleanup 后，旧字幕/多选等待会取消；已销毁对象按 Unity 的 null 语义判定。原本不带 token 的本地化 key 序列也传播 `OperationCanceledException`，阿稳、羽织、叮当及婚礼文字重播分别处理取消，不再把中断当作成功，也不强行关闭后继对话。输入令牌随场景销毁；取消后的官方 drain 只能推进原 UI、原代次的请求。`DialogueActorFactory` 在 Get/Create 时清掉销毁项，Remove 使用托管引用身份，避免 Unity destroyed-as-null 使字典项无法移除。

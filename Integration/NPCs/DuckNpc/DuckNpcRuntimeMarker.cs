@@ -171,16 +171,15 @@ namespace BossRush
         // 头顶名字
         // ====================================================================
 
-        // 永久 NPC 与天空岛居民生成时登记过一次原版名字组件（NPCNameTagHelper.RegisterOriginalHealthBarName），
-        // 那份名牌不会自己跟着角色走：快递员、护士都是在 LateUpdate 里刷新、OnDestroy 里注销。捏脸 NPC 以前没人刷，
-        // 名牌停在生成点，隐藏后也不收起，角色销毁后登记还留着（发布前审查 P1）。没登记过的捏脸 NPC，Refresh 只是一次查表就返回。
+        // 永久 NPC 与天空岛居民沿用已有姓名登记入口；与原版基地 NPC 一样，不创建常驻头顶名牌。
+        // 刷新只同步官方 DuckovDialogueActor 的姓名键，稳定状态不重复注入；销毁时释放登记。
 
         private void LateUpdate()
         {
             NPCNameTagHelper.RefreshOriginalHealthBarName(transform);
         }
 
-        /// <summary>角色停用（居民按剧情隐藏、婚后离岛）时刷一次：显示判据看 activeInHierarchy，名牌随之收起。</summary>
+        /// <summary>角色停用时保留官方姓名同步；独立头顶 UI 已撤除。</summary>
         private void OnDisable()
         {
             NPCNameTagHelper.RefreshOriginalHealthBarName(transform);

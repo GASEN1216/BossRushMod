@@ -2,6 +2,12 @@
 
 Three regular NPC companions have their own services and personality, alongside the Sky Islands residents.
 
+### Names and Vision
+
+Custom NPCs follow vanilla name display: no extra permanent overhead names, while dialogue, shops and interaction screens still show their names. The same rule applies to top-down, first-person and third-person views.
+
+On raid maps, NPC models hide and reappear with player vision instead of remaining visible through walls or fog of war. They remain available for interaction when back in view. This fog hiding does not apply at base.
+
 ### The Cast
 
 - **Dingdang** (Goblin Smith) — Reforge, affix forging, shop, daily chat

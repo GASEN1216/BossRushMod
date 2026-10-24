@@ -18,6 +18,7 @@ internal static class Program
     private static ModeHRuntimeModule Reset(string name="arena",string id="main")
     {
         BossRushInitialSpawn.Arrived=false;
+        SceneLoader.ResetEvents();SceneManager.ResetEvents();ZombieModeMapSelectionHelper.HasPendingZombieEntry=false;
         AstarPath.active = new AstarPath();
         CharacterMainControl.Main=null;LevelManager.LevelInited=false;LevelManager.AfterInit=false;LevelManager.LevelInitializingComment="";SceneLoader.IsSceneLoading=true;
         SceneLoader.Instance=new SceneLoader{Load=()=>Task.CompletedTask};
@@ -40,10 +41,10 @@ internal static class Program
     private static void Ticks(ModeHRuntimeModule runtime,int count) { for(int i=0;i<count;i++)runtime._owner.Tick(); }
     private static void Main(string[] args)
     {
-        using(var maps=JsonDocument.Parse(File.ReadAllText(args[0])))
+        using(var maps=JsonDocument.Parse(File.ReadAllText(args.Length>0?args[0]:Environment.GetEnvironmentVariable("BOSSRUSH_MODEH_MAPS"))))
             foreach(var map in maps.RootElement.EnumerateArray())
                 NewMapEntry(map.GetProperty("scene").GetString(),map.GetProperty("id").GetString());
-        LegacyOrdering();Cancellation();ReadinessGates();Resume().GetAwaiter().GetResult();
+        LegacyOrdering();CustomTeleportOwnership();Cancellation();ReadinessGates();Resume().GetAwaiter().GetResult();
         Console.WriteLine("PASS: "+checks+" assertions; production scene callbacks, wait, resume and Legacy coroutine; no Unity smoke");
     }
     private static void NewMapEntry(string name,string id)
@@ -136,6 +137,100 @@ internal static class Program
         r=Reset();r.OnSceneLoaded(new SceneRuntimeContext(Target()));
         r.OnSceneLoaded(new SceneRuntimeContext(new Scene{name="other",handle=3,isLoaded=true}));Ticks(r,3);
         Check(r.FreshStarted==0&&r.Aborts==1&&!BossRushMapSelectionHelper.Pending,"scene generation mismatch aborts current entry once");
+    }
+    private static void CustomTeleportOwnership()
+    {
+        // sceneLoaded can precede target activation and replacement of the old scene's Main.
+        var r=Reset();BossRushMapSelectionHelper.Pending=false;
+        CharacterMainControl.Main=new CharacterMainControl();var departing=CharacterMainControl.Main;
+        r._owner.Legacy(Stand,Target());Ticks(r,2);
+        Check(departing.PositionWrites==0,"custom target waits while main scene remains active");
+        UnityEngine.Object.Destroy(departing);Ready(Target());Ticks(r,2);
+        Check(At(Stand)&&r._owner.LegacySetups==1,"same entry permits official replacement Main in actual target scene");
+
+        r=Reset();BossRushMapSelectionHelper.Pending=false;Ready(Target());
+        r._owner.Legacy(Vector3.zero);Ticks(r,2);
+        Check(At(Vector3.zero)&&r._owner.LegacySetups==1,"zero is a valid configured custom landing");
+
+        r=Reset();BossRushMapSelectionHelper.Pending=false;Ready(Target());r._owner.ModeESelected=true;
+        int writes=CharacterMainControl.Main.PositionWrites;r._owner.Legacy(Stand);Ticks(r,2);
+        Check(At(Ordinary)&&CharacterMainControl.Main.PositionWrites==writes&&r._owner.LegacySetups==1,"Mode E preserves official landing and setup");
+        Ticks(r,1);Check(r._owner.VerificationAfterWait==1&&r._owner.LegacySetupCompletions==1,"normal Mode E nested verification completes and spawns common NPCs once");
+
+        r=Reset();BossRushMapSelectionHelper.Pending=false;Ready(Target());LevelManager.AfterInit=false;
+        r._owner.Legacy(Stand);Ticks(r,3);
+        Check(At(Ordinary)&&r._owner.LegacySetups==0,"custom waits through official final placement window");
+        LevelManager.AfterInit=true;Ticks(r,2);
+        Check(At(Stand)&&r._owner.LegacySetups==1,"custom starts once official AfterInit completes");
+
+        foreach(string blocker in new[]{"active","pending","startup"})
+        {
+            r=Reset();BossRushMapSelectionHelper.Pending=false;Ready(Target());MultiSceneCore.Instance.IsLoading=true;
+            var old=r._owner.Legacy(Stand);writes=CharacterMainControl.Main.PositionWrites;
+            if(blocker=="active")r._owner.IsZombieModeActive=true;
+            else if(blocker=="pending")ZombieModeMapSelectionHelper.HasPendingZombieEntry=true;
+            else r._owner.ZombieStarting=true;
+            Ticks(r,1);MultiSceneCore.Instance.IsLoading=false;Ticks(r,2);
+            Check(old.Stopped&&At(Ordinary)&&CharacterMainControl.Main.PositionWrites==writes&&r._owner.LegacySetups==0,
+                "Zombie takeover cancels loading custom before any position write: "+blocker);
+        }
+
+        foreach(string cancellation in new[]{"scene","same-name-new-handle","player","death","load-event","unload-event","owner","zombie-tail"})
+        {
+            r=Reset();BossRushMapSelectionHelper.Pending=false;Ready(Target());
+            var old=r._owner.Legacy(Stand); // final 0.5s wait, bound to this exact scene and Main
+            var previous=CharacterMainControl.Main;writes=previous.PositionWrites;
+            if(cancellation=="scene")SceneManager.Active=new Scene{name="elsewhere",handle=9,isLoaded=true};
+            else if(cancellation=="same-name-new-handle")SceneManager.Active=new Scene{name="arena",handle=9,isLoaded=true};
+            else if(cancellation=="player") { UnityEngine.Object.Destroy(previous);CharacterMainControl.Main=new CharacterMainControl(); }
+            else if(cancellation=="death")previous.Health.IsDead=true;
+            else if(cancellation=="load-event")SceneLoader.BeginLoad();
+            else if(cancellation=="unload-event")SceneManager.Unload(Target());
+            else if(cancellation=="owner")r._owner.DestroyOwner();
+            else r._owner.IsZombieModeActive=true;
+            Ticks(r,3);while(old.Body.MoveNext()) { }
+            Check(r._owner.LegacySetups==0&&previous.PositionWrites==writes&&
+                (cancellation!="player"||CharacterMainControl.Main.PositionWrites==0),
+                "tail-frame cancellation prevents stale writes/setup including manually resumed task: "+cancellation);
+        }
+
+        r=Reset();BossRushMapSelectionHelper.Pending=false;Ready(Target());
+        var stale=r._owner.Legacy(Stand);r._owner.Legacy(Vector3.zero);Ticks(r,2);while(stale.Body.MoveNext()) { }
+        Check(At(Vector3.zero)&&r._owner.LegacySetups==1,"new custom generation exclusively owns position and continuation");
+
+        r=Reset();BossRushMapSelectionHelper.Pending=false;Ready(Target());
+        stale=r._owner.Legacy(Stand);r._owner.OrdinaryEntry(Target());Ticks(r,2);while(stale.Body.MoveNext()) { }
+        Check(At(Ordinary)&&r._owner.LegacySetups==0,"new ordinary entry generation also cancels the old custom request");
+
+        r=Reset();BossRushMapSelectionHelper.Pending=false;Ready(Target());MultiSceneCore.Instance.IsLoading=true;
+        stale=r._owner.Legacy(Stand);Time.unscaledDeltaTime=31;Ticks(r,2);MultiSceneCore.Instance.IsLoading=false;Ticks(r,2);
+        Check(stale.Stopped&&At(Ordinary)&&r._owner.LegacySetups==0,"loading timeout cancels without late movement when loader settles");
+
+        r=Reset();BossRushMapSelectionHelper.Pending=false;Ready(Target());SceneLoader.IsSceneLoading=true;
+        stale=r._owner.Legacy(Stand);Time.unscaledDeltaTime=31;Ticks(r,2);SceneLoader.IsSceneLoading=false;Ticks(r,2);
+        Check(stale.Stopped&&At(Ordinary)&&r._owner.LegacySetups==0,"global loader timeout also cancels before a late release");
+
+        r=Reset();BossRushMapSelectionHelper.Pending=false;Ready(Target());LevelManager.AfterInit=false;
+        stale=r._owner.Legacy(Stand);Ticks(r,305);LevelManager.AfterInit=true;Ticks(r,2);
+        Check(stale.Stopped&&At(Ordinary)&&r._owner.LegacySetups==0,"official readiness timeout cannot fall through into teleport");
+
+        r=Reset();BossRushMapSelectionHelper.Pending=false;Ready(Target());
+        r._owner.Legacy(Stand);Ticks(r,1);Check(r._owner.LegacySetups==1&&r._owner.LegacySetupCompletions==0,"custom setup continuation enters owned wait");
+        SceneLoader.BeginLoad();Ticks(r,2);
+        Check(r._owner.LegacySetupCompletions==0,"scene load cancels custom GroundZero continuation");
+        int cleanup=r._owner.CleanupTicks;Ticks(r,2);
+        Check(r._owner.CleanupTicks==cleanup,"scene load also cancels independently scheduled continuous clearing");
+
+        r=Reset();BossRushMapSelectionHelper.Pending=false;Ready(Target());r._owner.ModeESelected=true;
+        r._owner.Legacy(Stand);Ticks(r,2);
+        Check(r._owner.VerificationEntered==1&&r._owner.VerificationAfterWait==0,"real GroundZero Mode E branch drives nested verification");
+        SceneLoader.BeginLoad();Ticks(r,2);
+        Check(r._owner.VerificationDisposed==1&&r._owner.VerificationAfterWait==0&&r._owner.LegacySetupCompletions==0,
+            "Mode E verification is disposed and cannot recover or spawn NPCs after cancellation");
+
+        r=Reset();BossRushMapSelectionHelper.Pending=false;Ready(Target());MultiSceneCore.Instance=null;
+        r._owner.ForceFallback(Stand);Ticks(r,3);
+        Check(At(Stand)&&r._owner.LegacySetups==1,"real ForceTeleport no-core fallback uses owned active-scene custom entry");
     }
     private static void ReadinessGates()
     {

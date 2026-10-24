@@ -138,37 +138,106 @@ internal static class Program
         }
     }
 
-    private static void BiteRange()
+    private static void Begin(Subject subject, Vector3 player)
     {
-        foreach (float distance in new[] { 31.99f, 32f, 32.01f, 40f, 45f, 45.01f })
+        subject.Player.transform.position = player;
+        Invoke(subject.Encounter, "BeginCombat"); Set(subject.Encounter, "cooldown", 0f);
+        subject.Encounter.Tick(0.01f, subject.Player);
+    }
+
+    private static void TongueAndPounce()
+    {
+        foreach (float distance in new[] { 3f, 8.99f })
             using (var subject = new Subject(false))
             {
-                subject.Player.transform.position = new Vector3(0, 0, distance);
-                Invoke(subject.Encounter, "BeginCombat"); Set(subject.Encounter, "cooldown", 0f);
-                subject.Encounter.Tick(0.01f, subject.Player); subject.Encounter.Tick(1.4f, subject.Player);
-                bool inRange = distance <= 45f;
-                Check(subject.Player.Health.DamageCalls == (inRange ? 1 : 0), "production bite range at " + distance);
-                Check(subject.Visual.TongueStrikes == (inRange ? 1 : 0), "production tongue invocation shares bite gate at " + distance);
-                if (inRange)
-                {
-                    Near(subject.Visual.TongueTarget.z, distance, "production tongue receives full locked bite endpoint at " + distance);
-                    Near(subject.Player.Health.LastDamage, 20f, "production bite preserves damage at " + distance);
-                }
+                Begin(subject, new Vector3(0, 0, distance));
+                Check(Get<GreedyMimicAttack>(subject.Encounter, "attack") == GreedyMimicAttack.Bite && Get<float>(subject.Encounter, "warningLeft") > 0f
+                    && subject.Visual.LaneShows == 1, "close bite telegraphs a locked tongue lane at " + distance);
+                subject.Encounter.Tick(0.8f, subject.Player);
+                Check(subject.Player.Health.DamageCalls == 1 && subject.Visual.TongueStrikes == 1, "tongue lash lands inside its lane at " + distance);
+                Near(subject.Visual.TongueTarget.z, distance, "tongue strikes the locked endpoint at " + distance);
+                Near(subject.Player.Health.LastDamage, 20f, "tongue keeps the bite damage budget at " + distance);
             }
         using (var subject = new Subject(false))
         {
-            subject.Player.transform.position = new Vector3(0, 0, 40);
-            Invoke(subject.Encounter, "BeginCombat"); Set(subject.Encounter, "cooldown", 0f);
-            subject.Encounter.Tick(0.01f, subject.Player);
+            Begin(subject, new Vector3(0, 0, 6f));
+            subject.Player.transform.position = new Vector3(1.5f, 0, 6f);
+            subject.Encounter.Tick(0.8f, subject.Player);
+            Check(subject.Player.Health.DamageCalls == 0 && subject.Visual.TongueStrikes == 1, "stepping out of the locked lane dodges the tongue");
+        }
+        using (var subject = new Subject(false))
+        {
+            Begin(subject, new Vector3(0, 0, 12f));
+            Check(Get<GreedyMimicAttack>(subject.Encounter, "attack") == GreedyMimicAttack.Pounce && subject.Visual.CircleShows == 1,
+                "a far bite turn becomes a telegraphed pounce");
+            subject.Encounter.Tick(1.06f, subject.Player);
+            Check(Get<float>(subject.Encounter, "leapLeft") > 0f && subject.Player.Health.DamageCalls == 0, "airborne pounce deals no damage before landing");
+            for (int i = 0; i < 6; i++) subject.Encounter.Tick(0.1f, subject.Player);
+            Near(subject.Visual.Root.transform.position.z, 12f, "pounce lands on the locked landing point");
+            Check(subject.Visual.LeapFrames > 0 && subject.Visual.Slams == 1 && subject.Player.Health.DamageCalls == 1, "landing slam hits a player inside the ring");
+            Near(subject.Player.Health.LastDamage, 26f, "unfed pounce damage budget");
+        }
+        using (var subject = new Subject(false))
+        {
+            Begin(subject, new Vector3(0, 0, 30f));
+            subject.Encounter.Tick(1.06f, subject.Player);
+            for (int i = 0; i < 6; i++) subject.Encounter.Tick(0.1f, subject.Player);
+            Near(subject.Visual.Root.transform.position.z, GreedyMimicRules.MaximumLeap, "a long pounce is capped at the maximum leap");
+            Check(subject.Player.Health.DamageCalls == 0, "a landing ring that misses the player deals no damage");
+        }
+        using (var subject = new Subject(false))
+        {
+            GreedyMimicTerrain.RejectLanding = true;
+            try
+            {
+                Begin(subject, new Vector3(0, 0, 20f));
+                Check(Get<float>(subject.Encounter, "warningLeft") == 0f && subject.Visual.CircleShows == 0 && subject.Player.Health.DamageCalls == 0,
+                    "no valid landing produces no phantom attack");
+            }
+            finally { GreedyMimicTerrain.RejectLanding = false; }
+        }
+        using (var subject = new Subject(false))
+        {
+            Begin(subject, new Vector3(0, 0, 6f));
             subject.Player.transform.position = new Vector3(0, 0, 45.01f);
-            subject.Encounter.Tick(1.4f, subject.Player);
-            Check(subject.Player.Health.DamageCalls == 0 && subject.Visual.TongueStrikes == 0, "leaving combat range cancels locked bite");
+            subject.Encounter.Tick(0.8f, subject.Player);
+            Check(subject.Player.Health.DamageCalls == 0 && subject.Visual.TongueStrikes == 0, "leaving combat range cancels a locked tongue");
+        }
+    }
+
+    private static void FlyingVolley()
+    {
+        using (var subject = new Subject(false))
+        {
+            subject.Encounter.Rules.Feed(GreedyMimicFood.Ammunition); subject.Encounter.Rules.Feed(GreedyMimicFood.Ammunition);
+            Invoke(subject.Encounter, "CreateReceiver");
+            subject.Player.transform.position = new Vector3(0, 0, 10f);
+            Invoke(subject.Encounter, "BeginCombat"); Set(subject.Encounter, "attackTurn", 1); Set(subject.Encounter, "cooldown", 0f);
+            subject.Encounter.Tick(0.01f, subject.Player);
+            Check(Get<GreedyMimicAttack>(subject.Encounter, "attack") == GreedyMimicAttack.Volley && subject.Visual.LaneShows == 5, "learned volley telegraphs five lanes");
+            subject.Encounter.Tick(1.35f, subject.Player);
+            Check(subject.Visual.Muzzles == 1 && subject.Player.Health.DamageCalls == 0, "shells leave the muzzle without instant lane damage");
+            Check(Get<float>(subject.Encounter, "warningLeft") > 0f && subject.Visual.LaneShows == 10, "two ammunition meals re-aim a second wave");
+            for (int i = 0; i < 40; i++) subject.Encounter.Tick(0.05f, subject.Player);
+            Check(subject.Visual.Muzzles == 2 && subject.Player.Health.DamageCalls == 2, "each flying wave can hit a standing player once");
+            Near(subject.Player.Health.LastDamage, 26f, "two ammunition meals volley damage");
+            Check(subject.Visual.ShellPops >= 2, "shells burst on hit or at range");
+        }
+        using (var subject = new Subject(false))
+        {
+            subject.Encounter.Rules.Feed(GreedyMimicFood.Ammunition); Invoke(subject.Encounter, "CreateReceiver");
+            subject.Player.transform.position = new Vector3(0, 0, 10f);
+            Invoke(subject.Encounter, "BeginCombat"); Set(subject.Encounter, "attackTurn", 1); Set(subject.Encounter, "cooldown", 0f);
+            subject.Encounter.Tick(0.01f, subject.Player); subject.Encounter.Tick(1.35f, subject.Player);
+            subject.Player.transform.position = new Vector3(1.05f, 0, 10f);
+            for (int i = 0; i < 30; i++) subject.Encounter.Tick(0.05f, subject.Player);
+            Check(subject.Player.Health.DamageCalls == 0, "sidestepping after release dodges the flying shells");
         }
     }
 
     private static void Main()
     {
-        RecoveryThresholds(); FilterAndAccumulation(); BiteRange();
+        RecoveryThresholds(); FilterAndAccumulation(); TongueAndPounce(); FlyingVolley();
         Console.WriteLine("PASS FieldAdventureMimicRuntime: " + assertions + " assertions; real Encounter, Rules, official HealthSimpleBase and DamageReceiver; host/visual are stubs.");
     }
 }

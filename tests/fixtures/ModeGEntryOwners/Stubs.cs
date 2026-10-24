@@ -157,6 +157,12 @@ namespace BossRush
         }
     }
     public class EnemyPresetInfo { public string name; }
+    // 内容边界；完整花冠 adapter 由 EclipseBloomRuntime 链接验证。
+    internal static class EclipseBloomPoolAdapter
+    {
+        internal const string NameKey = "BossRush_EclipseBloom_Name";
+        internal static bool IsPreset(EnemyPresetInfo preset) { return preset != null && preset.name == NameKey; }
+    }
     public class EnemySpawnCoreOptions
     {
         public bool HoldForExternalCommit, ApplySharedMutators = true, AllowRandomRetryFallback = true;

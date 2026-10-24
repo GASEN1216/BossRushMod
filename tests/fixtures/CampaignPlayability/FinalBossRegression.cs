@@ -140,6 +140,11 @@ public static class LevelManager { public static bool AfterInit; }
 
 namespace BossRush
 {
+    // 仅替代其它独立战斗的占场查询；实际终章互斥由提取的生产门禁执行。
+    internal static class EclipseBloomRuntimeModule
+    {
+        internal static bool IsEncounterActive;
+    }
     internal static partial class CampaignDialoguePlayer
     {
         private static int _playbackGeneration;
@@ -254,6 +259,7 @@ internal static class FinalBossRegression
 
     internal static void Run(Action<bool, string> check)
     {
+        EclipseBloomRuntimeModule.IsEncounterActive = false;
         EntryRegression.Run(check);
         CharacterMainControl.Main = new CharacterMainControl { Health = new Health() };
         CampaignProgressService.Active = "ch6";
@@ -324,6 +330,19 @@ internal static class FinalBossRegression
         check(!owner.CanStartCampaignFinalBoss(), "ready chapter rejects final summon through actual interaction gate");
         CampaignProgressService.State = CampaignChapterState.ContractActive;
         check(owner.CanStartCampaignFinalBoss(), "active final contract can summon after entering the arena before starting waves");
+        EclipseBloomRuntimeModule.IsEncounterActive = true;
+        check(!owner.CanStartCampaignFinalBoss(), "active eclipse bloom excludes the final showdown through the production interaction gate");
+        owner.StartCampaignFinalBoss();
+        check(!owner.IsCampaignFinalBossActive && !owner.ChampionFactoryRequested,
+            "an occupied eclipse arena cannot start the final prologue or champion factory");
+        EclipseBloomRuntimeModule.IsEncounterActive = false;
+        check(owner.CanStartCampaignFinalBoss(), "stopping the eclipse bloom releases the final showdown interaction again");
+        owner.StartCampaignFinalBoss();
+        check(owner.IsCampaignFinalBossActive && !owner.ChampionFactoryRequested,
+            "released eclipse arena can arm the real final showdown prologue");
+        owner.CleanupCampaignFinalBoss(true);
+        check(!owner.IsCampaignFinalBossActive && owner.CanStartCampaignFinalBoss(),
+            "restarted final showdown cleanup also leaves its interaction reusable");
         owner.IsActive = true;
         check(!owner.CanStartCampaignFinalBoss(), "started arena waves still prevent a simultaneous final showdown");
         owner.IsActive = false;

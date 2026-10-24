@@ -141,7 +141,9 @@ namespace BossRush
                     EnemyPresetInfo boss = filteredBossPool[i];
                     // 冠军技能仅指向主玩家，不能进入 E/F 阵营池。
                     if (SandstormChampionPoolAdapter.IsPreset(boss)) continue;
-                    if (boss == null || string.IsNullOrEmpty(boss.name) || IsDragonKingPreset(boss))
+                    // 花冠只攻击主玩家，没有 E/F 阵营战的目标与部位阵营协议。
+                    if (boss == null || string.IsNullOrEmpty(boss.name) || IsDragonKingPreset(boss)
+                        || EclipseBloomPoolAdapter.IsPreset(boss))
                     {
                         continue;
                     }

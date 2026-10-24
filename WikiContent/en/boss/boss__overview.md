@@ -1,8 +1,12 @@
 ## Boss Overview
 
-Three custom arena Bosses join the vanilla pool. Each has its own skill set, phase transitions, and exclusive loot.
+Custom Bosses have their own skills, phase transitions and exclusive loot. Find them in supported wave modes; Eclipse Bloom also has a guided encounter on the official Experimental Area 37 map.
 
 The Sky Islands have a separate roster of lords and chiefs. See Sky Islands · Qinglan Archipelago and the island equipment pages for their locations, loot and stories.
+
+### Fog of War and Stealth
+
+On raid maps, custom Boss models, gear and weapons hide and reappear with player vision. The Sandstorm Champion's sand clouds and eye lights follow vision too. After the Phantom Witch ends a stealth skill, she must still be in player vision to appear; entering vision does not end an active stealth skill early.
 
 ### The Roster
 
@@ -10,7 +14,11 @@ The Sky Islands have a separate roster of lords and chiefs. See Sky Islands · Q
 - **Skyburner Dragon Lord** — 800 HP, **highest difficulty**. Drops: Dragon King's Crown, Dragon King's Scale Mail, Cloud Soar I, Reverse Scale, Inferno Emperor's Realm-Breaking Halberd, Skyburner Dragon Cannon
 - **Phantom Witch** — 1000 HP, high difficulty. Blink + scythe + Curse Realm + summoning. Drops: Soulreaper's Requiem
 
-### When Do They Appear?
+### Official Map and Boss Pool: Eclipse Bloom
+
+- **Eclipse Bloom** — 5000 base HP. Follow Jeff's quest to Experimental Area 37, or encounter it through compatible Boss pools. Break individual petals with guns or melee to open safe gaps. At 60% health the crown unfolds and rotates; at 25% the core takes over. Every victory drops 1 Residual Sun Shield Shard. Death abandons an unfinished introduction, which can be accepted again. The map encounter appears at most once per raid.
+
+### When Do Wave Bosses Appear?
 
 - **Standard** — At the start, the mode tries to move the Four Horsemen, Koko Koko, Dragon Descendant and Skyburner Dragon Lord beyond the first 20 candidate positions. Short pools, too few ordinary Bosses and player filtering can defeat that protection. The Phantom Witch is not excluded
 - **Infinite Hell** — Weighted draws from enabled Bosses begin on wave 1, with no 20-wave heavy-hitter exclusion

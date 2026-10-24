@@ -11,12 +11,12 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT_FIXTURES = (
-    "DragonBreathZombieRuntime",
     "SandstormChampionPool",
+    "DragonBreathZombieRuntime",
+    "FieldAdventureMimicRuntime", "FieldAdventureDeliveryRuntime", "FieldAdventurePrototypeRuntime",
     "FieldAdventureVisuals",
-    "FieldAdventurePrototypeRuntime",
-    "FieldAdventureDeliveryRuntime",
-    "FieldAdventureMimicRuntime",
+    "ResidualSunShield", "EclipseBloomRuntime", "EclipseBloomParticles",
+    "ModEntityFogVisibility",
     "PhantomScytheLocalization",
     "SandstormCombatRuntime", "SandstormCombatTiming",
     "BossHealthScaling",
@@ -39,12 +39,13 @@ SCRIPT_FIXTURES = (
     "ContentBuildingOwnership", "DailyReportHostUI", "BuildingRestoreCore", "F3ValidationExecution", "SetBonusCoroutines", "GameplayLogFixes",
     "StoneOutpostSceneLease", "StoneOutpostMap", "EquipmentResourceScene", "SkyIslandStory", "SkyIslandDelivery", "SkyIslandOfficialContract", "SkyIslandEncounters", "SkyIslandLighting", "SkyIslandRaidLease", "SkyIslandLoot",
     "SkyIslandFooting", "SkyIslandPatrols",
-    "SkyIslandMarriage", "SkyIslandHudPolicy", "SkyIslandDialogue", "SkyIslandInteraction", "SkyIslandCombatRuntime", "ZombieModeEntryDebt", "ZombieModeSafeZoneRuntime", "ZombieModeRewardRuntime", "ZombieModeSpawnRuntime", "ZombieModeStarterRuntime", "ZombieModeAmmoSelection", "PermanentDuckNpcDialogue", "RewardPoolReliability",
+    "SkyIslandMarriage", "SkyIslandHudPolicy", "SkyIslandDialogue", "SkyIslandInteraction", "SkyIslandCombatRuntime", "ZombieModeEntryDebt", "ZombieModeSafeZoneRuntime", "ZombieModeWaveRuntime", "ZombieModeRewardRuntime", "ZombieModeSpawnRuntime", "ZombieModeStarterRuntime", "ZombieModeAmmoSelection", "PermanentDuckNpcDialogue", "RewardPoolReliability",
     "SkyIslandValidationJudges", "F3AutotestJudges", "SpawnPositionPolicy", "EnemySpawnRuntime", "EnemyRecoveryRuntime", "RandomEventEffectsOwners", "ModeEFSpawnPreparation", "ModeEFEnemySpawnRuntime", "ModeEFSpawnPostprocessScheduler", "ModeEFVirtualSpawnerRegistry", "ModeEFMerchantCatalog", "FlightTotemRuntimeModule", "EquipmentBootstrapOwners", "AwenLootSweepRuntime", "WavesArenaPresetWeight", "BirthdayCakeGift",
 )
 PROJECT_FIXTURES = {
-    "FieldAdventureRules": "FieldAdventureRules.csproj",
     "FieldAdventureGate": "FieldAdventureGate.csproj",
+    "FieldAdventureRules": "FieldAdventureRules.csproj",
+    "EclipseBloomRules": "EclipseBloomRules.csproj",
     "PassTheBomb": "PassTheBomb.csproj",
     "SandstormChampionPattern": "SandstormChampionPattern.csproj",
     "EmptyMagazineMine": "EmptyMagazineMine.csproj",

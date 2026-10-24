@@ -329,7 +329,7 @@ namespace BossRush
                         BossRushMapSelectionHelper.MarkTargetSceneLoadStarted();
                         bossRushArenaPlanned = false;
                         if (!ShouldSkipLegacySceneSetupForModeH())
-                            StartCoroutine(TeleportPlayerToCustomPosition(customPos.Value));
+                            StartCoroutine(bossRushIntegrationRuntime.BeginCustomTeleport(scene, TeleportPlayerToCustomPosition(customPos.Value)));
                         BossRushMapSelectionHelper.ClearPendingMapEntry();
                     }
                     else if (scene.name.Contains("Loading") || scene.name.Contains("Menu") ||

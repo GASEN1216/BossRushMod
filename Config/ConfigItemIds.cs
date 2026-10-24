@@ -126,5 +126,7 @@ namespace BossRush
         public const int TemperingSolvent = 500108;
         // 甩锅许可证（图腾）
         public const int PassTheBomb = 500109;
+        /// <summary>蚀日花冠专属图腾：残日盾片。</summary>
+        public const int ResidualSunShield = 500110;
     }
 }

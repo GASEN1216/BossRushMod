@@ -4,7 +4,9 @@
 
 入口脚本逐字抽取生产交互提交、服务判据、奖励落点、音频停止、环形几何和语言刷新方法；其余剧情判据链接完整生产文件。Unity 布局、物理、音频和经济服务使用显式替身，不访问玩家存档。
 
-语言回归抽取居民 RefreshLocalizedNames、序章 InjectLocalizations、ResidentName 与 NPCNameTagHelper 的已有登记更新方法及字段。保留语言覆盖字典，对同一批 UI 中英双向切换，核对船点交互等稳定 key、隐藏/销毁/注销居民和稳定语言下的写入次数。09-23 按 owner 复查移除了船点浮空招牌，夹具同步移除其专属逻辑；无浮空字由 SkyIslandHudGuard 守卫，组内入口仍由 SkyIslandPlayerEntryGuard 保护。官方 UI 创建与布局仍是替身；生命周期调用接线由 SkyIslandLiveLocalizationGuard 补充，异步出生后现取姓名目前为 L1 验证。
+语言回归抽取居民 RefreshLocalizedNames、序章 InjectLocalizations、ResidentName 与 NPCNameTagHelper 的真实登记、显式改名、刷新、注销及重置方法。保留语言覆盖字典，对同一批官方 DuckovDialogueActor 中英双向切换，核对船点交互等稳定 key、隐藏/销毁/注销居民和稳定语言下的写入次数。09-23 按 owner 复查移除了船点浮空招牌，夹具同步移除其专属逻辑；无浮空字由 SkyIslandHudGuard 守卫，组内入口仍由 SkyIslandPlayerEntryGuard 保护。官方 actor 与本地化存储是明确替身；对话窗口真实绘制和异步出生接线仍需实机或 L1 证据。
+
+2026-10-21 友好 NPC 姓名：撤掉独立头顶 UI，`NpcNameVisibilityRegression` 执行真实 helper 方法，验证登记和反复刷新不新增 GameObject/组件、官方 actor owner 初始姓名不被覆盖、延迟创建 actor 保留当前语言姓名、显式语言变更写入现有自定义姓名 key、无 actor 时按 1 秒重试且不创建组件、原版姓名 key 不被覆盖、隐藏角色状态保留、注销与重置不销毁 actor，以及姓名更新不复活登记。所有视角不再有独立名牌由生产路径无 UI 创建和 NPC 调用点守卫共同约束；实际官方对话和商店绘制由宿主负责，回归不证明实机镜头效果。运行 `python tests/fixtures/SkyIslandInteraction/name_visibility_negative_probes.py` 在 `Build/name-visibility-negative-*/` 隔离副本执行 10 个守卫反向探针，其中 9 个再经聚合入口确认真实行为回归在预期断言转红；每次逐字还原并核对 SHA-256。
 
 2026-09-28 扩展：抽取完整天空岛物品定义与名称/描述注入、场景名注入、共享建筑交互基类、搜索点及信鸽/采集交互体的真实刷新方法；物品名称价值规则和见闻文案链接完整生产文件。官方 `Item.Description` / `DescriptionRaw` / `description` 与 `InteractableBase.InteractName` getter 从只读反编译源逐字抽取，避免“description 可写”或“每次读取都会重注入”的替身假设。验证 18 件物品描述、20 处固定搜索点、同一信鸽与隐藏采集点的中英反复切换、读条和回调保留，以及 120 次名称查询不增加字典写入。覆盖字典和 Unity 场景仍是内存替身，不启动游戏、不读写玩家存档；全局语言入口接线由 `SkyIslandLiveLocalizationGuard` 检查。
 

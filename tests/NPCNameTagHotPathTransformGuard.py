@@ -1,97 +1,96 @@
-"""Guard: support NPC name tag refresh should reuse sampled Transform data."""
-
+"""友好 NPC 的旧名牌入口只能刷新现有官方对话 actor，不能创建头顶 UI。"""
 from pathlib import Path
+import re
 import sys
+from cs_source_util import clean_source
+
+ROOT = Path(__file__).resolve().parents[1]
+HELPER = ROOT / "Integration/Utils/NPCNameTagHelper.cs"
 
 
-HELPER = Path("Integration/Utils/NPCNameTagHelper.cs")
+def method(source: str, signature: str) -> str:
+    hits = list(re.finditer(r"^([ \t]*)" + re.escape(signature), source, re.M))
+    if len(hits) != 1:
+        raise ValueError("方法锚点必须唯一: " + signature)
+    hit = hits[0]
+    opening = source.index("{", hit.end())
+    end = re.search(r"^" + re.escape(hit.group(1)) + r"\}", source[opening:], re.M)
+    if end is None:
+        raise ValueError("方法未闭合: " + signature)
+    return source[opening:opening + end.end()]
 
 
-def fail(message: str) -> int:
-    print("NPCNameTagHotPathTransformGuard: FAIL - " + message)
-    return 1
+def check(source: str) -> list[str]:
+    source = clean_source(source).replace("\r\n", "\n")
+    errors = []
 
+    def need(condition, message):
+        if not condition:
+            errors.append(message)
 
-def extract_block(text: str, signature: str) -> str | None:
-    start = text.find(signature)
-    if start < 0:
-        return None
+    try:
+        reset = method(source, "public static void ResetStaticCaches()")
+        refresh_camera = method(source, "private static void RefreshCachedCamera()")
+        rotate = method(source, "public static void UpdateNameTagRotation(")
+        register = method(source, "public static bool RegisterOriginalHealthBarName(")
+        refresh = method(source, "public static void RefreshOriginalHealthBarName(")
+        rename = method(source, "internal static bool UpdateOriginalHealthBarDisplayName(")
+        unregister = method(source, "public static void UnregisterOriginalHealthBarName(")
+        apply_name = method(source, "private static void TryApplyOfficialDialogueName(")
+    except ValueError as error:
+        return [str(error)]
 
-    brace_start = text.find("{", start)
-    if brace_start < 0:
-        return None
+    need("private static Transform _cachedCameraTransform;" in source,
+         "旧世界空间标签仍须缓存相机 Transform")
+    need("_cachedCameraTransform = null;" in reset, "清理必须清掉相机 Transform 缓存")
+    need("_cachedCameraTransform = _cachedCamera != null ? _cachedCamera.transform : null;" in refresh_camera,
+         "刷新相机时必须一并刷新 Transform 缓存")
+    need("nameTagObject.transform.rotation = _cachedCameraTransform.rotation;" in rotate,
+         "旧世界空间标签旋转必须复用相机 Transform 缓存")
 
-    depth = 0
-    for idx in range(brace_start, len(text)):
-        ch = text[idx]
-        if ch == "{":
-            depth += 1
-        elif ch == "}":
-            depth -= 1
-            if depth == 0:
-                return text[start : idx + 1]
-
-    return None
-
-
-def extract_method_body(text: str, signature: str) -> str | None:
-    block = extract_block(text, signature)
-    if block is None:
-        return None
-
-    brace_start = block.find("{")
-    return block[brace_start:] if brace_start >= 0 else None
+    registered_path = "\n".join((register, refresh, rename, unregister, reset, apply_name))
+    need(not re.search(r"(?:new\s+GameObject\s*\(|AddComponent\s*<|Instantiate\s*\(|CreateNameTag\s*\(|HealthBarManager|\bHealth\b|SetActive\s*\(|WorldToScreenPoint\s*\()", registered_path),
+         "友好 NPC 登记路径不得创建 UI、Health、actor 或改变节点显隐")
+    need("RefreshOriginalHealthBarName(parent);" in register and "TryApplyOfficialDialogueName(entry);" in refresh,
+         "登记与刷新入口必须接到官方对话姓名绑定")
+    need("entry.Actor = entry.Target.GetComponent<DuckovDialogueActor>();" in apply_name,
+         "姓名只能绑定现有 DuckovDialogueActor，不得创建替代组件")
+    need("if (now < entry.NextActorLookupTime) return;" in apply_name
+         and "entry.NextActorLookupTime = now + 1f;" in apply_name,
+         "无 actor 时必须按 1 秒间隔重试查找")
+    need('nameKey.StartsWith("BossRush_", StringComparison.Ordinal)' in apply_name,
+         "只能写 BossRush_ 姓名键，不能覆盖原版全局姓名")
+    need("LocalizationHelper.InjectLocalization(nameKey, entry.DisplayName);" in apply_name,
+         "姓名须注入官方 actor 的 NameKey")
+    need("!entry.PendingNameUpdate" in apply_name and "entry.PendingNameUpdate = false;" in apply_name
+         and "entry.PendingNameUpdate = true;" in rename and "PendingNameUpdate = true" not in register,
+         "只有显式姓名变化才能提交注入，登记不得覆盖 owner 初始姓名")
+    need("string.Equals(entry.DisplayName, next, StringComparison.Ordinal)" in rename,
+         "稳定姓名文字必须避免重复注入")
+    need("OriginalHealthBarEntriesByTransformId.TryGetValue(parent.GetInstanceID(), out entry)" in rename
+         and "RegisterOriginalHealthBarName(" not in rename,
+         "姓名更新只作用于已有登记，不得复活注销项")
+    need("OriginalHealthBarEntriesByTransformId.Remove(parent.GetInstanceID());" in unregister
+         and "OriginalHealthBarEntriesByTransformId.Clear();" in reset,
+         "注销和重置必须释放 helper 登记")
+    need("Destroy(" not in unregister + reset and "Actor = null" not in unregister + reset,
+         "注销和重置不得删除其他 owner 的官方 actor")
+    return errors
 
 
 def main() -> int:
-    text = HELPER.read_text(encoding="utf-8-sig")
-
-    if "private static Transform _cachedCameraTransform;" not in text:
-        return fail("missing cached camera Transform field")
-
-    reset = extract_method_body(text, "public static void ResetStaticCaches()")
-    refresh = extract_method_body(text, "private static void RefreshCachedCamera()")
-    update = extract_method_body(text, "private static void UpdateOriginalHealthBarInstance(")
-    should_show_block = extract_block(text, "private static bool ShouldShowOriginalHealthBarName(")
-    should_show = extract_method_body(text, "private static bool ShouldShowOriginalHealthBarName(")
-    rotate = extract_method_body(text, "public static void UpdateNameTagRotation(")
-
-    if reset is None or "_cachedCameraTransform = null;" not in reset:
-        return fail("ResetStaticCaches should clear cached camera Transform")
-
-    if refresh is None:
-        return fail("missing RefreshCachedCamera")
-    if "_cachedCameraTransform = _cachedCamera != null ? _cachedCamera.transform : null;" not in refresh:
-        return fail("RefreshCachedCamera should refresh cached camera Transform with Camera.main")
-
-    if rotate is None or "nameTagObject.transform.rotation = _cachedCameraTransform.rotation;" not in rotate:
-        return fail("legacy name tag rotation should reuse cached camera Transform")
-
-    if update is None:
-        return fail("missing UpdateOriginalHealthBarInstance")
-    required_update_tokens = [
-        "Vector3 targetPosition = entry.Target.position;",
-        "Transform cameraTransform = _cachedCameraTransform;",
-        "bool shouldShow = ShouldShowOriginalHealthBarName(entry.Target, targetPosition, cameraTransform);",
-        "targetPosition + Vector3.up * GetAdjustedOriginalHealthBarNameHeight(entry.Height)",
-    ]
-    for token in required_update_tokens:
-        if token not in update:
-            return fail("UpdateOriginalHealthBarInstance missing token -> " + token)
-
-    if "entry.Target.position + Vector3.up" in update:
-        return fail("UpdateOriginalHealthBarInstance should reuse sampled targetPosition")
-    if "_cachedCamera.transform" in update:
-        return fail("UpdateOriginalHealthBarInstance should use cached camera Transform")
-
-    if should_show_block is None or should_show is None:
-        return fail("missing ShouldShowOriginalHealthBarName")
-    if "Transform cameraTransform" not in should_show_block or "Vector3 targetPosition" not in should_show_block:
-        return fail("ShouldShowOriginalHealthBarName should accept sampled target/camera data")
-    if "target.position" in should_show or "_cachedCamera.transform" in should_show:
-        return fail("ShouldShowOriginalHealthBarName should not resample transforms")
-
-    print("NPCNameTagHotPathTransformGuard: PASS")
+    errors = check(HELPER.read_text(encoding="utf-8-sig"))
+    for directory in (ROOT / "Integration/NPCs", ROOT / "SkyIsland"):
+        for path in directory.rglob("*.cs"):
+            source = clean_source(path.read_text(encoding="utf-8-sig"))
+            if re.search(r"NPCNameTagHelper\.(?:CreateNameTag|UpdateNameTagRotation)\s*\(", source):
+                errors.append(str(path.relative_to(ROOT)) + "：友好 NPC 不得再调用旧头顶标签入口")
+    if errors:
+        print("NPCNameTagHotPathTransformGuard: FAIL")
+        for error in errors:
+            print("  - " + error)
+        return 1
+    print("NPCNameTagHotPathTransformGuard: PASS (existing official dialogue actor only)")
     return 0
 
 

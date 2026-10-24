@@ -958,7 +958,7 @@ namespace BossRush
                 }
 
                 if (SandstormChampionPoolAdapter.IsPreset(preset)) continue;
-                if (owner.IsDragonKingPreset(preset))
+                if (owner.IsDragonKingPreset(preset) || EclipseBloomPoolAdapter.IsPreset(preset))
                 {
                     continue;
                 }

@@ -50,7 +50,8 @@ namespace BossRush
             BossRushItemIds.EmptyMagazineMine,
             BossRushItemIds.RollCallLedger,
             BossRushItemIds.ReloadMetronome,
-            BossRushItemIds.PassTheBomb
+            BossRushItemIds.PassTheBomb,
+            BossRushItemIds.ResidualSunShield
         };
 
         private static readonly bool[] totemEquipped = new bool[TrackedTotemTypeIds.Length];

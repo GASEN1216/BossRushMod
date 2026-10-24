@@ -41,6 +41,7 @@ namespace BossRush
 
         internal static void ReduceFinalDamage(Health health, ref DamageInfo info)
         {
+            ResidualSunShieldRuntime.ModifyFinalDamage(health, ref info);
             ModBehaviour owner = ModBehaviour.Instance;
             if (owner == null || !owner.IsZombieModeActive || health == null || health.IsDead
                 || info.fromCharacter == null

@@ -1,5 +1,6 @@
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
 EXTRACTION = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
@@ -48,7 +49,7 @@ def has_success_dispatch_guard(method: str) -> bool:
 
 
 def main() -> int:
-    extraction = EXTRACTION.read_text(encoding="utf-8")
+    extraction = clean_source(EXTRACTION.read_text(encoding="utf-8"))
 
     try:
         ensure_area = extract_method(extraction, "internal void EnsureZombieModeExtractionArea")
@@ -57,7 +58,7 @@ def main() -> int:
 
         require(
             ensure_area,
-            "request.OnSucceed",
+            "request.TrySucceed = delegate",
             "ZombieMode extraction must keep its own success bridge attached to the shared extraction point",
         )
         require(
@@ -66,7 +67,7 @@ def main() -> int:
             "ZombieMode extraction factory fallback must bind through a Vector3-aware adapter",
         )
 
-        complete_success = extract_method(extraction, "private void CompleteZombieModeExtractionSuccess")
+        complete_success = extract_method(extraction, "private bool CompleteZombieModeExtractionSuccess")
         if not complete_success:
             return fail("cannot extract CompleteZombieModeExtractionSuccess")
 

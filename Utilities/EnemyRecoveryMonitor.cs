@@ -3,6 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
+using static BossRush.EnemyRecoveryTransformSafety;
+using RecoveryTransformSnapshot = BossRush.EnemyRecoveryTransformSafety.RecoveryTransformSnapshot;
 
 namespace BossRush
 {
@@ -110,7 +112,7 @@ namespace BossRush
         }
 
 
-        private sealed class EnemyRecoveryState
+        internal sealed class EnemyRecoveryState
         {
             public Vector3 lastSamplePosition;
             public float lastMovedTime;
@@ -119,6 +121,18 @@ namespace BossRush
             public Vector3 excludedAnchorPosition;
             public bool hasExcludedAnchorPosition;
             public int continuousFallSamples;
+            public bool hasValidTransformSnapshot;
+            public bool invalidTransformRecoveryPending;
+            public Vector3 validPosition;
+            public Quaternion validRotation;
+            public Vector3 validScale;
+            public float nextColliderTransformCheck;
+            public float nextColliderCacheRefresh;
+            public readonly List<RecoveryTransformSnapshot> colliderTransforms = new List<RecoveryTransformSnapshot>();
+            public readonly HashSet<Transform> cachedColliderTransforms = new HashSet<Transform>();
+            public Rigidbody[] rigidbodies;
+            public Transform root;
+            public ECM2.CharacterMovement characterMovement;
         }
 
         private const float EnemyRecoveryCheckInterval = 1f;
@@ -139,6 +153,9 @@ namespace BossRush
         private const float EnemyCurrentPointExclusionRadius = 1f;
         private const float EnemyGroundLiftOffset = 0.15f;
         private const string ZombieModeDistantRecoveryReason = "distant";
+        private const string InvalidTransformRecoveryReason = "invalid_transform";
+        private const float ColliderTransformCheckInterval = 2f;
+        private float nextInvalidTransformWarning;
 
         private readonly Dictionary<CharacterMainControl, EnemyRecoveryState> enemyRecoveryStates
             = new Dictionary<CharacterMainControl, EnemyRecoveryState>();
@@ -174,6 +191,7 @@ namespace BossRush
             enemyRecoveryModeEValidatedRawCandidates.Clear();
             enemyRecoveryModeEValidatedSourcePoints = null;
             enemyRecoverySpawnCandidatesArePrevalidated = false;
+            nextInvalidTransformWarning = 0f;
         }
 
         internal void RegisterEnemyRecoveryAnchor(CharacterMainControl enemy, Vector3 anchorPosition)
@@ -210,8 +228,16 @@ namespace BossRush
                     enemyRecoveryStates[enemy] = state;
                 }
 
-                state.excludedAnchorPosition = anchorPosition;
-                state.hasExcludedAnchorPosition = true;
+                if (IsFiniteRecoveryVector(anchorPosition))
+                {
+                    state.excludedAnchorPosition = anchorPosition;
+                    state.hasExcludedAnchorPosition = true;
+                }
+                CacheRecoveryColliderTransforms(enemy, state);
+                if (!state.invalidTransformRecoveryPending && AreRecoveryColliderTransformsValid(state))
+                {
+                    CaptureRecoveryTransformSnapshot(enemy, state);
+                }
             }
             catch (Exception e)
             {
@@ -365,6 +391,44 @@ namespace BossRush
 
                 Vector3 currentPos = enemy.transform.position;
                 float now = Time.time;
+
+                // NaN makes every distance comparison false. Check it before movement/fall sampling,
+                // retaining the last legal snapshot until a validated recovery point is available.
+                bool invalidRoot = !IsRecoveryRootTransformValid(enemy.transform);
+                if (state.invalidTransformRecoveryPending || invalidRoot || now >= state.nextColliderTransformCheck)
+                {
+                    state.nextColliderTransformCheck = now + ColliderTransformCheckInterval;
+                    if (now >= state.nextColliderCacheRefresh)
+                    {
+                        CacheRecoveryColliderTransforms(enemy, state);
+                    }
+                    if (state.invalidTransformRecoveryPending || invalidRoot || !AreRecoveryColliderTransformsValid(state))
+                    {
+                        // A failed native sync may leave transforms legal while motor/physics state still needs repair.
+                        // Without a historical pose, allow an external repair to establish the first snapshot later.
+                        if (state.hasValidTransformSnapshot) state.invalidTransformRecoveryPending = true;
+                        string diagnostic = Time.unscaledTime >= nextInvalidTransformWarning
+                            ? DescribeInvalidEnemyTransform(enemy, state, zombieMarker)
+                            : null;
+                        Vector3 repairedPosition;
+                        bool repaired = state.hasValidTransformSnapshot &&
+                            TryRecoverEnemyToNearestSpawnPoint(enemy, state, player,
+                                InvalidTransformRecoveryReason, zombieMarker, out repairedPosition);
+                        WarnInvalidEnemyTransform(enemy, repaired, diagnostic);
+                        if (repaired)
+                        {
+                            state.invalidTransformRecoveryPending = false;
+                            state.lastSamplePosition = enemy.transform.position;
+                            state.lastMovedTime = now;
+                            state.lastRecoveryTime = now;
+                            state.continuousFallSamples = 0;
+                            state.farFromPlayerSince = -1f;
+                        }
+                        return;
+                    }
+                    CaptureRecoveryColliderSnapshots(state);
+                }
+                CaptureRecoveryTransformSnapshot(enemy, state);
 
                 if (GetHorizontalSqrDistance(currentPos, state.lastSamplePosition) >= EnemyMovementThresholdSqr)
                 {
@@ -535,7 +599,8 @@ namespace BossRush
 
             try
             {
-                Vector3 currentPos = enemy.transform.position;
+                bool repairTransform = reason == InvalidTransformRecoveryReason;
+                Vector3 currentPos = repairTransform ? state.validPosition : enemy.transform.position;
                 float preservedCurrentHealth = 0f;
                 bool hasPreservedCurrentHealth = false;
                 try
@@ -558,13 +623,41 @@ namespace BossRush
                     ModBehaviour.DevLog("[EnemyRecovery] [WARNING] No valid recovery spawn found for " + enemy.name + " reason=" + reason);
                     return false;
                 }
+                if (!IsFiniteRecoveryVector(targetPos)) return false;
+
+                if (repairTransform)
+                {
+                    enemy.transform.localScale = state.validScale;
+                    enemy.transform.rotation = state.validRotation;
+                    enemy.transform.position = targetPos;
+                    if (!RestoreRecoveryColliderTransforms(enemy, state)) return false;
+                    // Movement force input and ECM2 accumulated forces are separate state.
+                    Movement movement = enemy.movementControl;
+                    if (movement != null)
+                    {
+                        movement.forceMove = false;
+                        movement.forceMoveVelocity = Vector3.zero;
+                        movement.SetMoveInput(Vector3.zero);
+                        movement.targetAimDirection = enemy.transform.forward;
+                    }
+                }
 
                 try
                 {
-                    enemy.SetPosition(targetPos);
+                    if (repairTransform && state.characterMovement != null)
+                    {
+                        state.characterMovement.ClearAccumulatedForces();
+                        state.characterMovement.velocity = Vector3.zero;
+                        state.characterMovement.SetPositionAndRotation(targetPos, state.validRotation, false);
+                    }
+                    else
+                    {
+                        enemy.SetPosition(targetPos);
+                    }
                 }
                 catch (Exception setPositionEx)
                 {
+                    if (repairTransform && state.characterMovement != null) return false;
                     ModBehaviour.DevLog("[EnemyRecovery] [WARNING] SetPosition 恢复敌人失败，改用 transform.position: " + setPositionEx.Message);
                     enemy.transform.position = targetPos;
                 }
@@ -593,6 +686,13 @@ namespace BossRush
 
                 RestoreRecoveredEnemyAggro(enemy, player, zombieMarker);
                 RestoreEnemyHealthAfterRecovery(enemy, preservedCurrentHealth, hasPreservedCurrentHealth);
+                if (repairTransform)
+                {
+                    ResetInvalidRecoveryRigidbodies(state);
+                    Physics.SyncTransforms();
+                    if (!IsRecoveryRootTransformValid(enemy.transform) || !AreRecoveryColliderTransformsValid(state)) return false;
+                    CaptureRecoveryTransformSnapshot(enemy, state);
+                }
 
                 state.excludedAnchorPosition = targetPos;
                 state.hasExcludedAnchorPosition = true;
@@ -607,6 +707,72 @@ namespace BossRush
                 ModBehaviour.DevLog("[EnemyRecovery] [ERROR] TryRecoverEnemyToNearestSpawnPoint failed: " + e.Message);
                 return false;
             }
+        }
+
+        private string DescribeInvalidEnemyTransform(CharacterMainControl enemy, EnemyRecoveryState state, Component zombieMarker)
+        {
+            Transform invalid = enemy.transform;
+            if (IsRecoveryRootTransformValid(invalid))
+            {
+                for (int i = 0; i < state.colliderTransforms.Count; i++)
+                {
+                    Transform candidate = state.colliderTransforms[i].target;
+                    if (candidate == null || !candidate.IsChildOf(state.root)) continue;
+                    if (!IsRecoveryRootTransformValid(candidate)) invalid = candidate;
+                    if (!IsRecoveryLocalTransformValid(candidate)) { invalid = candidate; break; }
+                }
+            }
+            string path = invalid == enemy.transform ? "." : invalid.name;
+            for (Transform parent = invalid.parent; parent != null && parent != enemy.transform; parent = parent.parent)
+            {
+                if (invalid == enemy.transform) break;
+                path = parent.name + "/" + path;
+            }
+            string mode = IsZombieModeActive ? "ZombieMode" : modeDActive ? "D" : modeEActive ? "E" : modeFActive ? "F" : "Arena/G";
+            string details = "mode=" + mode + " instanceId=" + enemy.GetInstanceID() + " name=" + enemy.name +
+                " node=" + path + " worldPosition=" + RecoveryVectorText(invalid.position) +
+                " localPosition=" + RecoveryVectorText(invalid.localPosition) +
+                " localRotation=" + RecoveryRotationText(invalid.localRotation) +
+                " worldRotation=" + RecoveryRotationText(invalid.rotation) +
+                " localScale=" + RecoveryVectorText(invalid.localScale) +
+                " lossyScale=" + RecoveryVectorText(invalid.lossyScale);
+            Movement movement = enemy.movementControl;
+            if (movement != null)
+            {
+                try
+                {
+                    Vector3 velocity = movement.Velocity;
+                    details += " velocity=" + RecoveryVectorText(velocity) + " velocityFinite=" + IsFiniteRecoveryVector(velocity) +
+                        " forceMove=" + movement.forceMove + " forceVelocity=" + RecoveryVectorText(movement.forceMoveVelocity) +
+                        " forceVelocityFinite=" + IsFiniteRecoveryVector(movement.forceMoveVelocity);
+                }
+                catch { details += " movementState=unavailable"; }
+            }
+            return details;
+        }
+
+        private static string RecoveryVectorText(Vector3 value)
+        {
+            return "(" + RecoveryFloatText(value.x) + "," + RecoveryFloatText(value.y) + "," + RecoveryFloatText(value.z) + ")";
+        }
+
+        private static string RecoveryRotationText(Quaternion value)
+        {
+            return "(" + RecoveryFloatText(value.x) + "," + RecoveryFloatText(value.y) + "," + RecoveryFloatText(value.z) + "," + RecoveryFloatText(value.w) + ")";
+        }
+
+        private static string RecoveryFloatText(float value)
+        {
+            return value.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        private void WarnInvalidEnemyTransform(CharacterMainControl enemy, bool recovered, string diagnostic)
+        {
+            if (Time.unscaledTime < nextInvalidTransformWarning) return;
+            nextInvalidTransformWarning = Time.unscaledTime + 10f;
+            Debug.LogWarning("[EnemyRecovery] Invalid collider transform: " + diagnostic +
+                (recovered ? "; restored last valid transform at a validated recovery point." :
+                    "; recovery pending (no valid snapshot or reachable point)."));
         }
 
         private void RestoreEnemyHealthAfterRecovery(CharacterMainControl enemy, float preservedCurrentHealth, bool hasPreservedCurrentHealth)

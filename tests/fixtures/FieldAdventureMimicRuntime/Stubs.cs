@@ -108,11 +108,13 @@ namespace UnityEngine
         public static Vector3 operator +(Vector3 a, Vector3 b) { return new Vector3(a.x + b.x, a.y + b.y, a.z + b.z); }
         public static Vector3 operator -(Vector3 a, Vector3 b) { return new Vector3(a.x - b.x, a.y - b.y, a.z - b.z); }
         public static Vector3 operator *(Vector3 a, float b) { return new Vector3(a.x * b, a.y * b, a.z * b); }
+        public static Vector3 Lerp(Vector3 a, Vector3 b, float t) { return a + (b - a) * t; }
     }
     public struct Quaternion
     {
         private float angle;
         public static Quaternion Euler(float x, float y, float z) { return new Quaternion { angle = y * (float)Math.PI / 180f }; }
+        public static Quaternion LookRotation(Vector3 forward) { return new Quaternion { angle = (float)Math.Atan2(forward.x, forward.z) }; }
         public static Vector3 operator *(Quaternion q, Vector3 v)
         { float c = (float)Math.Cos(q.angle), s = (float)Math.Sin(q.angle); return new Vector3(v.x * c + v.z * s, v.y, -v.x * s + v.z * c); }
     }
@@ -120,6 +122,9 @@ namespace UnityEngine
     {
         public static float Max(float a, float b) { return Math.Max(a, b); }
         public static float Abs(float f) { return Math.Abs(f); }
+        public const float PI = (float)Math.PI;
+        public static float Min(float a, float b) { return Math.Min(a, b); }
+        public static float Sin(float f) { return (float)Math.Sin(f); }
     }
     public static class LayerMask { public static int NameToLayer(string name) { return 8; } }
     public enum QueryTriggerInteraction { Ignore }
@@ -191,8 +196,31 @@ namespace BossRush.Utils
 namespace BossRush
 {
     public class ModBehaviour { }
+    // 地形只返回可控落点；真实射线 / 胶囊净空由 Unity 侧另验。
+    internal static class GreedyMimicTerrain
+    {
+        public static bool RejectLanding, WallBlocksShells;
+        public static bool TryLanding(UnityEngine.Vector3 from, UnityEngine.Vector3 target, float radius, float maxLeap, out UnityEngine.Vector3 landing)
+        {
+            UnityEngine.Vector3 delta = target - from; delta.y = 0;
+            float distance = (float)Math.Sqrt(delta.sqrMagnitude);
+            landing = from + delta.normalized * Math.Min(distance, maxLeap);
+            return !RejectLanding && distance >= 0.5f;
+        }
+        public static bool SegmentBlocked(UnityEngine.Vector3 from, UnityEngine.Vector3 to) { return WallBlocksShells; }
+    }
     internal class GreedyMimicVisual : IDisposable
     {
+        internal const int ShellCapacity = 10;
+        public int Slams, Explosions, ShellPops, Muzzles, Heals, LeapFrames, LaneShows, CircleShows;
+        public readonly bool[] ShellVisible = new bool[ShellCapacity];
+        public void SetLeap(float progress) { if (progress >= 0f) LeapFrames++; }
+        public void SetShell(int index, UnityEngine.Vector3 position, bool visible) { ShellVisible[index] = visible; }
+        public void ShellPop(UnityEngine.Vector3 position) { ShellPops++; }
+        public void Muzzle() { Muzzles++; }
+        public void Slam(UnityEngine.Vector3 position, float radius) { Slams++; }
+        public void Explode(UnityEngine.Vector3 position, float radius) { Explosions++; }
+        public void Heal(UnityEngine.Vector3 position) { Heals++; }
         public readonly UnityEngine.GameObject Root = new UnityEngine.GameObject();
         public readonly UnityEngine.Transform Facing;
         public UnityEngine.Vector3 TongueTarget;
@@ -212,8 +240,8 @@ namespace BossRush
         public void ClearAttack() { AttackClears++; }
         public void Burst(UnityEngine.Vector3 position, float duration) { }
         public void AnimateBomb(int index, UnityEngine.Vector3 origin, UnityEngine.Vector3 target, float progress) { }
-        public void ShowCircle(int index, UnityEngine.Vector3 position, float radius, bool healing) { }
-        public void ShowLane(int index, UnityEngine.Vector3 start, UnityEngine.Vector3 end) { }
+        public void ShowCircle(int index, UnityEngine.Vector3 position, float radius, bool healing) { CircleShows++; }
+        public void ShowLane(int index, UnityEngine.Vector3 start, UnityEngine.Vector3 end) { LaneShows++; }
         public void StrikeTongue(UnityEngine.Vector3 target) { TongueTarget = target; TongueStrikes++; }
         public void Defeated() { }
         public void Dispose() { UnityEngine.Object.Destroy(Root); }

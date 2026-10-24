@@ -126,7 +126,7 @@ namespace BossRush
         internal void ClearEnemiesForBossRush()
         {
             // 征程从对白起就占用竞技场；工厂在途时尚无可按实例过滤的 Boss。
-            if (owner.IsCampaignFinalBossActive) return;
+            if (owner.IsCampaignFinalBossActive || EclipseBloomRuntimeModule.IsEncounterActive) return;
 
             try
             {
@@ -292,7 +292,7 @@ namespace BossRush
         {
             ModBehaviour.DevLog("[BossRush] ContinuousClearEnemiesUntilWaveStart: 协程已启动");
 
-            if (!owner.IsCampaignFinalBossActive) RefreshCharacterCache();
+            if (!owner.IsCampaignFinalBossActive && !EclipseBloomRuntimeModule.IsEncounterActive) RefreshCharacterCache();
 
             int loopCount = 0;
             const int MAX_SPAWNER_DISABLE_ATTEMPTS = 5;
@@ -303,7 +303,7 @@ namespace BossRush
             while (!owner.IsActive && owner.IsBossRushArenaActive && !owner.IsModeEActive && !ModBehaviour.IsModeGRunInProgressSafe() && !ModBehaviour.IsModeHRunInProgressSafe() && loopCount < MAX_LOOP_COUNT)
             {
                 // 暂停预清场，退出/召唤失败后仍由原协程继续；决战不消耗清场预算。
-                if (owner.IsCampaignFinalBossActive)
+                if (owner.IsCampaignFinalBossActive || EclipseBloomRuntimeModule.IsEncounterActive)
                 {
                     yield return owner.ArenaSharedWait05s;
                     continue;

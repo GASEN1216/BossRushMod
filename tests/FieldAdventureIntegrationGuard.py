@@ -178,8 +178,10 @@ def validate(root=ROOT):
     require(mimic, "private void Cleanup()", "if (encounter != null) encounter.Dispose();", "encounter = null;")
     require(mimic, "public override void OnDestroy()", "Cleanup();")
     settle = body(encounter, "private void SettleVictory()")
-    ordered(settle, encounter + ": 奖励之前封口", "settled = true;", "RemoveReceiver();",
-            "GreedyMimicInventory.Reward(EconomyManager.CashItemID, 600 + Rules.Meals * 400, origin);")
+    # 宝箱会扑跳移动，奖励落在战败时的实际位置；扑跳中被击杀先落回落点再取位置。
+    ordered(settle, encounter + ": 奖励之前封口", "visual.Root.transform.position = leapTo;", "Vector3 center = Center;",
+            "settled = true;", "RemoveReceiver();",
+            "GreedyMimicInventory.Reward(EconomyManager.CashItemID, 600 + Rules.Meals * 400, center);")
 
     # 官方在 Awake / Start 启用交互 collider，组员必须随后禁用，避免抢占主入口。
     for relative, hide in (("Mimic/GreedyMimicInteractable.cs", "HideGroupCollider"),

@@ -15,6 +15,7 @@ namespace BossRush
     internal sealed partial class ZombieModeRuntimeModule : BossRushRuntimeModuleBase
     {
         private GameObject zombieModeExtractionOpportunityUiRoot;
+        private int zombieModeBeaconOperationId;
 
         private bool IsZombieModeActive
         {
@@ -113,49 +114,74 @@ namespace BossRush
 
             runState.BeaconChanneling = true;
             runState.BeaconChannelStartTime = Time.unscaledTime;
-            owner.StartZombieModeCoroutineForRuntimeModule(ZombieModeBeaconChannelCoroutine(runState.RunId), runState.RunId);
+            int operationId = unchecked(++zombieModeBeaconOperationId);
+            if (owner.StartZombieModeCoroutineForRuntimeModule(
+                ZombieModeBeaconChannelCoroutine(runState.RunId, runState.CurrentWave, operationId), runState.RunId) == null)
+            {
+                runState.BeaconChanneling = false;
+                runState.BeaconChannelStartTime = 0f;
+                return false;
+            }
             NotificationText.Push(L10n.T("BossRush_ZombieMode_Notify_BeaconChannelStarted"));
             return true;
         }
 
-        private IEnumerator ZombieModeBeaconChannelCoroutine(int runId)
+        private bool IsZombieModeBeaconOperationCurrent(int runId, int wave, int operationId)
         {
-            float remaining = runState.BeaconChannelDuration;
-            while (remaining > 0f)
+            return IsZombieModeRunValid(runId) && runState.CurrentWave == wave &&
+                   zombieModeBeaconOperationId == operationId && runState.BeaconChanneling;
+        }
+
+        private IEnumerator ZombieModeBeaconChannelCoroutine(int runId, int wave, int operationId)
+        {
+            try
             {
-                if (!IsZombieModeRunValid(runId))
+                float remaining = runState.BeaconChannelDuration;
+                while (remaining > 0f)
+                {
+                    if (!IsZombieModeBeaconOperationCurrent(runId, wave, operationId))
+                    {
+                        yield break;
+                    }
+
+                    if (runState.ExtractionChanneling || !ZombieModePhaseGuards.AllowsBeacon(runState.CombatPhase))
+                    {
+                        yield break;
+                    }
+
+                    if (!IsZombieModeRuntimePaused())
+                    {
+                        remaining -= Time.unscaledDeltaTime;
+                    }
+                    else
+                    {
+                        // 暂停时起点跟着顺延：HUD 信标读条按「当前时刻 - 起点」算已引导时长（审美审查 UC-17）。
+                        runState.BeaconChannelStartTime += Time.unscaledDeltaTime;
+                    }
+
+                    yield return null;
+                }
+
+                // 最后一次 yield 后仍需重新验证，旧引导不能在战斗 / 撤离阶段重开一波。
+                if (!IsZombieModeBeaconOperationCurrent(runId, wave, operationId) ||
+                    runState.ExtractionChanneling || !ZombieModePhaseGuards.AllowsBeacon(runState.CombatPhase))
                 {
                     yield break;
                 }
 
-                if (runState.ExtractionChanneling || !ZombieModePhaseGuards.AllowsBeacon(runState.CombatPhase))
+                runState.BeaconChanneling = false;
+                runState.BeaconChannelStartTime = 0f;
+                owner.StartZombieModeWaveForRuntimeModule(runId);
+            }
+            finally
+            {
+                // 仅释放本次引导，晚到的旧协程不能取消同 run 的新引导。
+                if (IsZombieModeBeaconOperationCurrent(runId, wave, operationId))
                 {
                     runState.BeaconChanneling = false;
                     runState.BeaconChannelStartTime = 0f;
-                    yield break;
                 }
-
-                if (!IsZombieModeRuntimePaused())
-                {
-                    remaining -= Time.unscaledDeltaTime;
-                }
-                else
-                {
-                    // 暂停时起点跟着顺延：HUD 信标读条按「当前时刻 - 起点」算已引导时长（审美审查 UC-17）。
-                    runState.BeaconChannelStartTime += Time.unscaledDeltaTime;
-                }
-
-                yield return null;
             }
-
-            if (!IsZombieModeRunValid(runId) || !runState.BeaconChanneling)
-            {
-                yield break;
-            }
-
-            runState.BeaconChanneling = false;
-            runState.BeaconChannelStartTime = 0f;
-            owner.StartZombieModeWaveForRuntimeModule(runId);
         }
 
         internal void ShowZombieModeExtractionOpportunityUi(int runId)
@@ -243,11 +269,15 @@ namespace BossRush
             return null;
         }
 
-        private void CompleteZombieModeExtractionSuccess(int runId)
+        private bool CompleteZombieModeExtractionSuccess(int runId)
         {
-            if (!IsZombieModeRunValid(runId) || runState.ExtractionSuccessHandled)
+            if (!IsZombieModeRunValid(runId))
             {
-                return;
+                return false;
+            }
+            if (runState.ExtractionSuccessHandled)
+            {
+                return true;
             }
 
             if (!SettleZombieModeExtractionCashShell())
@@ -260,7 +290,7 @@ namespace BossRush
                     "净化点结算失败，奖励已保留；请稍后重新撤离。",
                     "Purification payout failed; your reward was preserved. Try extracting again later."));
                 ShowZombieModeExtractionOpportunityUi(runId);
-                return;
+                return false;
             }
 
             runState.ExtractionSuccessHandled = true;
@@ -282,6 +312,7 @@ namespace BossRush
             }
 
             owner.CleanupZombieModeForRuntimeModule(ZombieModeFailureReason.SuccessfulExtraction);
+            return true;
         }
 
         private bool SettleZombieModeExtractionCashShell()
@@ -292,23 +323,36 @@ namespace BossRush
             }
 
             long cashGain = runState.PurificationPoints;
+            long moneyBefore = EconomyManager.Money;
+            bool paid = false;
             try
             {
-                if (EconomyManager.Add(cashGain))
-                {
-                    NotificationText.Push(string.Format(L10n.T("BossRush_ZombieMode_Notify_ExtractionCash"), cashGain.ToString("N0")));
-                    runState.PurificationPoints = 0;
-                    return true;
-                }
+                paid = EconomyManager.Add(cashGain);
             }
             catch (System.Exception e)
             {
-                ModBehaviour.DevLog("[ZombieMode] 净化点现金结算异常，保留欠账: " + e.Message);
+                // 官方 Add 先写 Money，再广播 OnMoneyChanged；监听器抛错不代表没有到账。
+                paid = moneyBefore <= long.MaxValue - cashGain && EconomyManager.Money >= moneyBefore + cashGain;
+                ModBehaviour.DevLog("[ZombieMode] 净化点现金结算异常，到账核对=" + paid + ": " + e.Message);
+            }
+
+            if (!paid)
+            {
+                ModBehaviour.DevLog("[ZombieMode] 净化点现金结算失败，保留欠账: " + cashGain);
                 return false;
             }
 
-            ModBehaviour.DevLog("[ZombieMode] 净化点现金结算失败，保留欠账: " + cashGain);
-            return false;
+            // 先提交到账结果，通知 UI 故障不能让玩家再次兑换同一笔净化点。
+            runState.PurificationPoints = 0;
+            try
+            {
+                NotificationText.Push(string.Format(L10n.T("BossRush_ZombieMode_Notify_ExtractionCash"), cashGain.ToString("N0")));
+            }
+            catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[ZombieMode] 净化点现金结算通知失败: " + e.Message);
+            }
+            return true;
         }
 
         private IEnumerator ZombieModeExtractionCountdownCoroutine(int runId)
@@ -375,14 +419,9 @@ namespace BossRush
             {
                 return IsZombieModeRunValid(runId) && runState.ActiveExtractionArea == area;
             };
-            request.OnSucceed = delegate
+            request.TrySucceed = delegate
             {
-                if (IsZombieModeRunValid(runId) &&
-                    runState.ActiveExtractionArea != null &&
-                    !runState.ExtractionSuccessHandled)
-                {
-                    CompleteZombieModeExtractionSuccess(runId);
-                }
+                return runState.ActiveExtractionArea != null && CompleteZombieModeExtractionSuccess(runId);
             };
             request.OnFallbackNotify = TryNotifyZombieModeExtractionFromFactory;
             request.OnFallbackLoadBase = TryLoadBaseSceneAfterZombieModeExtraction;

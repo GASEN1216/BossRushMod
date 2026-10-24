@@ -84,6 +84,20 @@ namespace BossRush
     public enum Teams { player, middle, wolf, scav, usec, bear, lab }
     public static class Team { public static bool IsEnemy(Teams a, Teams b) { return b==Teams.wolf || b==Teams.scav; } }
     public class EnemyPresetInfo { public string name, displayName; public int team; }
+    // 入池 Boss（冠军之影、蚀日花冠）走各自专属工厂并另有夹具；本夹具只验证普通预设的竞技场刷怪与维护顺序。
+    internal static class SandstormChampionPoolAdapter
+    {
+        internal static bool IsPreset(EnemyPresetInfo preset) { return false; }
+        internal static UniTask<CharacterMainControl> SpawnAsync(ModBehaviour owner, Vector3 position, Func<bool> active, bool nonWave, bool defer = false)
+        { return new UniTask<CharacterMainControl>(Task.FromResult<CharacterMainControl>(null)); }
+    }
+    internal static class EclipseBloomPoolAdapter
+    {
+        internal static bool IsPreset(EnemyPresetInfo preset) { return false; }
+        internal static UniTask<CharacterMainControl> SpawnAsync(ModBehaviour owner, Vector3 position, Func<bool> active, bool nonWave, bool defer = false)
+        { return new UniTask<CharacterMainControl>(Task.FromResult<CharacterMainControl>(null)); }
+    }
+    internal static class EclipseBloomRuntimeModule { internal static bool IsEncounterActive { get { return false; } } }
     public class CharacterRandomPreset : Object
     {
         public string nameKey, DisplayName;

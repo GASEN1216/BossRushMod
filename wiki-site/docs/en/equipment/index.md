@@ -2,7 +2,7 @@
 
 - **Bell Keeper's Metronome**: A 20% extra drop from Speedy, or trade 20 seashells from your backpack with the Silent Bell Keeper at affinity level 5. Time a second reload press to finish early. Available at home after marriage.
 
-There are **40 obtainable custom equipment pieces** (sets counted piece by piece): 23 regular pieces plus 17 Sky Islands wearable pieces. Regular gear comes from custom Bosses, extra official Boss drops and NPC shops; island gear mainly comes from island lords and chiefs, and the prelude Warden can also drop a Galebreaker Hood.
+There are **41 obtainable custom equipment pieces** (sets counted piece by piece): 24 regular pieces plus 17 Sky Islands wearable pieces. Regular gear comes from custom Bosses, extra official Boss drops and NPC shops; island gear mainly comes from island lords and chiefs, and the prelude Warden can also drop a Galebreaker Hood.
 
 The 5 new weapons from v2.2.0 and the Frost and Thunder sets from the same batch are **all obtainable now** (see below): each weapon drops at 20% from one official boss (vanilla maps included), or can be bought from Dingdang's Shop at Affinity 5.
 
@@ -12,6 +12,7 @@ The 5 new weapons from v2.2.0 and the Frost and Thunder sets from the same batch
 - **Dragon King Set** — Helmet + Armor (Dragon Lord) — **direct upgrade**
 - **Cloud Soar I** — Flight totem (Dragon Lord)
 - **Reverse Scale** — One-time lifesave totem (Dragon Lord)
+- **Residual Sun Shield Shard** — Totem; Eclipse Bloom always drops 1. Dodging opens a brief frontal guard, and a successful block empowers your next direct hit with an afterglow riposte
 - **Empty-Mag Mine Box** — Exclusive 20% extra drop from Mad Bomber; fire at least 6 times, then empty the magazine to leave a delayed mine at your feet
 - **Headmaster's Roll-Call Ledger** — Sold by Fuzhou at Cloudrise Dock in the Sky Islands at affinity Lv.3; directly hit 3 different enemies within 5 seconds for a group strike
 - **Inferno Emperor's Realm-Breaking Halberd** — Fire melee with 3-hit combo (Dragon Lord)

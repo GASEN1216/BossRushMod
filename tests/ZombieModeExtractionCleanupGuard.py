@@ -1,5 +1,6 @@
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
 ZOMBIE = Path("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
@@ -33,9 +34,9 @@ def extract_method(text: str, marker: str) -> str:
 
 
 def main() -> int:
-    text = ZOMBIE.read_text(encoding="utf-8")
+    text = clean_source(ZOMBIE.read_text(encoding="utf-8"))
 
-    method = extract_method(text, "private void CompleteZombieModeExtractionSuccess")
+    method = extract_method(text, "private bool CompleteZombieModeExtractionSuccess")
     if not method:
         return fail("CompleteZombieModeExtractionSuccess not found")
 

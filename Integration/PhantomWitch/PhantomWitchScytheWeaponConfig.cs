@@ -686,6 +686,11 @@ namespace BossRush
             DisableMotionBlur(go);
             FixModelGraphics(go);
             EnableRuntimeRenderers(go);
+            CharacterMainControl holder = go.GetComponentInParent<CharacterMainControl>(true);
+            if (holder != null && holder.characterModel != null)
+            {
+                holder.characterModel.SyncHiddenToMainCharacter();
+            }
         }
 
         private static void EnableRuntimeRenderers(GameObject go)

@@ -12,6 +12,27 @@ namespace BossRush
         private Action<Health, DamageInfo> zombieModeOnDeadHandler;
         private Action<Health, DamageInfo> zombieModeOnHurtHandler;
         private readonly List<ZombieModeEnemyRuntimeMarker> waveEnemyMarkerScratch = new List<ZombieModeEnemyRuntimeMarker>();
+        private float zombieModeLastWaveFailureWarningTime = float.NegativeInfinity;
+        private bool zombieModeSettlementRunning;
+        private int zombieModeSettlementRunId;
+        private int zombieModeSettlementWave;
+        private float zombieModeSettlementRetryTime;
+
+        private void LogZombieModeWaveFailure(string step, Exception exception)
+        {
+            float now = Time.unscaledTime;
+            if (now - zombieModeLastWaveFailureWarningTime < 10f) return;
+            zombieModeLastWaveFailureWarningTime = now;
+            Debug.LogWarning("[ZombieMode] wave operation failed: run=" + runState.RunId +
+                " wave=" + runState.CurrentWave + " phase=" + runState.CombatPhase +
+                " step=" + step + " error=" + exception);
+        }
+
+        private void RunZombieModeWaveSideEffect(string step, Action action)
+        {
+            try { action(); }
+            catch (Exception exception) { LogZombieModeWaveFailure(step, exception); }
+        }
 
         internal void RegisterZombieModeEventListeners(int runId)
         {
@@ -23,7 +44,9 @@ namespace BossRush
             UnregisterZombieModeEventListeners();
             zombieModeOnDeadHandler = delegate(Health health, DamageInfo damageInfo)
             {
-                HandleZombieModeHealthDead(runId, health, damageInfo);
+                // 不能让 Mod 的死亡副作用打断官方 OnDead 后的禁用 / 销毁流程。
+                try { HandleZombieModeHealthDead(runId, health, damageInfo); }
+                catch (Exception exception) { LogZombieModeWaveFailure("DeathEvent", exception); }
             };
             zombieModeOnHurtHandler = delegate(Health health, DamageInfo damageInfo)
             {
@@ -173,8 +196,8 @@ namespace BossRush
 
             // 官方 Health.Hurt 的致死顺序是 OnDead -> SetActive(false) -> OnHurt。
             // 必须在 DeathSettled 和 hot-path marker 注销前处理，否则致死一击不会取消安全区。
-            TryHandleZombieModeSafeZonePlayerAttack(runId, damageInfo, character);
-            HandleZombieModeOptionHealthDead(runId, health, damageInfo, character, marker);
+            try { TryHandleZombieModeSafeZonePlayerAttack(runId, damageInfo, character); }
+            catch (Exception exception) { LogZombieModeWaveFailure("LethalSafeZoneAttack", exception); }
             marker.DeathSettled = true;
             // 一旦 DeathSettled 就从 hot path 集合移除——后续技能命中尸体不会重新进入 marker 路径。
             UnregisterZombieModeEnemyInstanceId(character);
@@ -183,17 +206,30 @@ namespace BossRush
             if (!marker.IsBoss)
             {
                 runState.LivingNormalZombieCount = Mathf.Max(0, runState.LivingNormalZombieCount - 1);
+                runState.CurrentWaveKills++;
             }
 
             int pointValue = Mathf.Max(1, marker.PurificationPointValue);
             int starCount = GetZombieModeDeathStarCount(marker);
-            SpawnZombieModeDeathStars(runId, character.transform.position, pointValue, starCount);
+            try { SpawnZombieModeDeathStars(runId, character.transform.position, pointValue, starCount); }
+            catch (Exception exception) { LogZombieModeWaveFailure("DeathStars", exception); }
+
+            // 选项死效可能触发连锁爆炸、重入其他死亡事件；先去重、计数并生成本体星点。
+            // 各副作用分别隔离，任何掉落 / 特效异常都不能吞掉击杀或阻止达标结算。
+            if (marker.IsBoss)
+            {
+                try { HandleZombieModeBossDefeated(runId, marker, character); }
+                catch (Exception exception) { LogZombieModeWaveFailure("BossDefeated", exception); }
+            }
+            try { HandleZombieModeOptionHealthDead(runId, health, damageInfo, character, marker); }
+            catch (Exception exception) { LogZombieModeWaveFailure("OptionDeath", exception); }
 
             if (marker.IsBoss)
             {
-                HandleZombieModeBossDefeated(runId, marker, character);
-                HandleZombieModeBossDeathEffects(runId, marker, character);
-                TrySpawnZombieModeBossDrop(runId, marker, character.transform.position);
+                try { HandleZombieModeBossDeathEffects(runId, marker, character); }
+                catch (Exception exception) { LogZombieModeWaveFailure("BossDeathEffects", exception); }
+                try { TrySpawnZombieModeBossDrop(runId, marker, character.transform.position); }
+                catch (Exception exception) { LogZombieModeWaveFailure("BossDrop", exception); }
                 if (runState.CombatPhase == ZombieModeCombatPhase.Combat &&
                     runState.CurrentWaveBossesRemaining <= 0)
                 {
@@ -205,15 +241,17 @@ namespace BossRush
 
             if (marker.EnemyKind == ZombieModeEnemyKind.Elite)
             {
-                HandleZombieModeEliteDeathEffects(runId, marker, character);
+                try { HandleZombieModeEliteDeathEffects(runId, marker, character); }
+                catch (Exception exception) { LogZombieModeWaveFailure("EliteDeathEffects", exception); }
             }
             else if (marker.EnemyKind == ZombieModeEnemyKind.Special)
             {
-                HandleZombieModeSpecialDeathEffects(runId, marker, character);
+                try { HandleZombieModeSpecialDeathEffects(runId, marker, character); }
+                catch (Exception exception) { LogZombieModeWaveFailure("SpecialDeathEffects", exception); }
             }
 
-            TrySpawnZombieModeEnemyDrop(runId, marker, character.transform.position);
-            runState.CurrentWaveKills++;
+            try { TrySpawnZombieModeEnemyDrop(runId, marker, character.transform.position); }
+            catch (Exception exception) { LogZombieModeWaveFailure("EnemyDrop", exception); }
             if (runState.CombatPhase == ZombieModeCombatPhase.Combat &&
                 runState.CurrentWaveKillTarget > 0 &&
                 runState.CurrentWaveKills >= runState.CurrentWaveKillTarget)
@@ -263,6 +301,20 @@ namespace BossRush
                 return;
             }
 
+            // 达标推进不能依赖又一次死亡回调，也不能被安全区表现 / 驱逐异常挡住。
+            if (ZombieModePhaseGuards.IsCombatRunning(runState.CombatPhase) &&
+                ((runState.CurrentWaveKillTarget > 0 && runState.CurrentWaveKills >= runState.CurrentWaveKillTarget) ||
+                 (IsZombieModeBossWave(runState.CurrentWave) && runState.CurrentWaveBossesRemaining <= 0)))
+            {
+                CompleteZombieModeWave(runState.RunId);
+                return;
+            }
+            if (runState.CombatPhase == ZombieModeCombatPhase.Settling)
+            {
+                TryStartZombieModeSettlement(runState.RunId);
+                return;
+            }
+
             if (AnyZombieModeSafeZoneActive)
             {
                 TickZombieModeSafeZone();
@@ -292,7 +344,7 @@ namespace BossRush
 
         internal void StartZombieModeWave(int runId)
         {
-            if (!IsZombieModeRunValid(runId))
+            if (!IsZombieModeRunValid(runId) || !ZombieModePhaseGuards.AllowsBeacon(runState.CombatPhase))
             {
                 return;
             }
@@ -311,20 +363,26 @@ namespace BossRush
             runState.BeaconChannelStartTime = 0f;
             runState.ExtractionChanneling = false;
             runState.CombatPhase = ZombieModeCombatPhase.Combat;
-            ReleaseZombieModeSafeZoneThreatSuppression();
-            SpawnPendingZombieModeEliteSquad(runId);
-
-            if (IsZombieModeBossWave(runState.CurrentWave))
+            bool bossWave = IsZombieModeBossWave(runState.CurrentWave);
+            if (bossWave)
             {
                 runState.CurrentWaveKillTarget = 0;
                 runState.CurrentWaveBossesRemaining = GetZombieModeBossCountForWave(runState.CurrentWave);
-                owner.ShowBigBanner(string.Format(L10n.T("BossRush_ZombieMode_Banner_WaveIncoming"), runState.CurrentWave));
+            }
+            else
+            {
+                runState.CurrentWaveKillTarget = Mathf.Max(1, GetZombieModeBaseWaveKillTarget());
+            }
+            ReleaseZombieModeSafeZoneThreatSuppression();
+            RunZombieModeWaveSideEffect("PendingEliteSquad", () => { SpawnPendingZombieModeEliteSquad(runId); });
+
+            RunZombieModeWaveSideEffect("WaveIncomingBanner", () =>
+                owner.ShowBigBanner(string.Format(L10n.T("BossRush_ZombieMode_Banner_WaveIncoming"), runState.CurrentWave)));
+            if (bossWave)
+            {
                 SpawnZombieModeBossWaveAsync(runId, runState.CurrentWaveBossesRemaining).Forget();
                 return;
             }
-
-            runState.CurrentWaveKillTarget = Mathf.Max(1, GetZombieModeBaseWaveKillTarget());
-            owner.ShowBigBanner(string.Format(L10n.T("BossRush_ZombieMode_Banner_WaveIncoming"), runState.CurrentWave));
         }
 
         private int GetZombieModeBaseWaveKillTarget()
@@ -780,55 +838,91 @@ namespace BossRush
             }
 
             runState.CombatPhase = ZombieModeCombatPhase.Settling;
-            CleanupZombieModeEnemiesNearPlayerSafeZone(runId, "CompleteWave");
-            RecycleZombieModeTemporaryNpcs(runId);
-            RecycleZombieModeTemporaryRealNpcs(runId);
             bool bossNode = IsZombieModeBossWave(runState.CurrentWave);
             if (bossNode)
             {
                 runState.PollutionFromNatural++;
             }
 
-            if (!TryGiveZombieModeWaveClearHealingItem())
+            RunZombieModeWaveSideEffect("WaveClearSafeZoneCleanup",
+                () => { CleanupZombieModeEnemiesNearPlayerSafeZone(runId, "CompleteWave"); });
+            RunZombieModeWaveSideEffect("WaveClearTemporaryNpcs", () => { RecycleZombieModeTemporaryNpcs(runId); });
+            RunZombieModeWaveSideEffect("WaveClearTemporaryRealNpcs", () => { RecycleZombieModeTemporaryRealNpcs(runId); });
+            RunZombieModeWaveSideEffect("WaveClearHealing", () =>
             {
-                ModBehaviour.DevLog("[ZombieMode] 波次结束治疗补给发放失败");
-            }
+                if (!TryGiveZombieModeWaveClearHealingItem())
+                    ModBehaviour.DevLog("[ZombieMode] 波次结束治疗补给发放失败");
+            });
 
-            owner.ShowBigBanner(string.Format(L10n.T("BossRush_ZombieMode_Banner_WaveCleared"), runState.CurrentWave));
-            owner.StartZombieModeCoroutineForRuntimeModule(ZombieModeSettlementCoroutine(runId, bossNode), runId);
+            RunZombieModeWaveSideEffect("WaveClearedBanner", () =>
+                owner.ShowBigBanner(string.Format(L10n.T("BossRush_ZombieMode_Banner_WaveCleared"), runState.CurrentWave)));
+            TryStartZombieModeSettlement(runId);
+        }
+
+        private void TryStartZombieModeSettlement(int runId)
+        {
+            if (!IsZombieModeRunValid(runId) || runState.CombatPhase != ZombieModeCombatPhase.Settling) return;
+            bool sameWave = zombieModeSettlementRunId == runId && zombieModeSettlementWave == runState.CurrentWave;
+            if (sameWave && (zombieModeSettlementRunning || Time.unscaledTime < zombieModeSettlementRetryTime)) return;
+            zombieModeSettlementRunId = runId;
+            zombieModeSettlementWave = runState.CurrentWave;
+            zombieModeSettlementRetryTime = Time.unscaledTime + 1f;
+            zombieModeSettlementRunning = true;
+            try
+            {
+                // StartCoroutine 会同步推进 iterator，故 running 必须先置位；启动失败留给 Tick 重试。
+                if (owner.StartZombieModeCoroutineForRuntimeModule(
+                    ZombieModeSettlementCoroutine(runId, IsZombieModeBossWave(runState.CurrentWave)), runId) == null)
+                    zombieModeSettlementRunning = false;
+            }
+            catch (Exception exception)
+            {
+                zombieModeSettlementRunning = false;
+                LogZombieModeWaveFailure("SettlementStart", exception);
+            }
         }
 
         private IEnumerator ZombieModeSettlementCoroutine(int runId, bool bossNode)
         {
-            float remaining = ZombieModeTuning.SettlementMaxWaitSeconds;
-            while (IsZombieModeRunValid(runId) && runState.CombatPhase == ZombieModeCombatPhase.Settling)
+            int wave = runState.CurrentWave;
+            try
             {
-                if (!HasZombieModePendingPurificationStars())
+                float remaining = ZombieModeTuning.SettlementMaxWaitSeconds;
+                while (IsZombieModeRunValid(runId) && runState.CombatPhase == ZombieModeCombatPhase.Settling)
                 {
-                    break;
+                    if (!HasZombieModePendingPurificationStars())
+                    {
+                        break;
+                    }
+
+                    if (!IsZombieModeRuntimePaused())
+                    {
+                        remaining -= Time.unscaledDeltaTime;
+                    }
+
+                    if (remaining <= 0f)
+                    {
+                        ForceCollectZombieModePendingPurificationStars(runId);
+                        break;
+                    }
+
+                    yield return null;
                 }
 
-                if (!IsZombieModeRuntimePaused())
+                if (!IsZombieModeRunValid(runId) || runState.CombatPhase != ZombieModeCombatPhase.Settling)
                 {
-                    remaining -= Time.unscaledDeltaTime;
+                    yield break;
                 }
 
-                if (remaining <= 0f)
-                {
-                    ForceCollectZombieModePendingPurificationStars(runId);
-                    break;
-                }
-
-                yield return null;
+                ForceCollectZombieModePendingPurificationStars(runId);
+                ShowZombieModeRewardSelection(runId, bossNode);
             }
-
-            if (!IsZombieModeRunValid(runId) || runState.CombatPhase != ZombieModeCombatPhase.Settling)
+            finally
             {
-                yield break;
+                // 异常 / run-only 取消也释放所有权，避免留下 Settling 且永远没有结算协程。
+                if (zombieModeSettlementRunId == runId && zombieModeSettlementWave == wave)
+                    zombieModeSettlementRunning = false;
             }
-
-            ForceCollectZombieModePendingPurificationStars(runId);
-            ShowZombieModeRewardSelection(runId, bossNode);
         }
 
         private int GetZombieModeDeathStarCount(ZombieModeEnemyRuntimeMarker marker)

@@ -44,8 +44,7 @@ namespace BossRush
 
             Stat shotCountStat = holdItem.Stats.GetStat("ShotCount");
             Stat shotAngleStat = holdItem.Stats.GetStat("ShotAngle");
-            Stat damageStat = holdItem.Stats.GetStat("Damage");
-            if (shotCountStat == null || shotAngleStat == null || damageStat == null)
+            if (shotCountStat == null || shotAngleStat == null)
             {
                 RestoreZombieModeProjectileSpreadSnapshot(snapshot);
                 zombieModeProjectileSpreadSnapshots.Remove(holdItem.GetInstanceID());
@@ -68,17 +67,10 @@ namespace BossRush
                 shotAngle = Mathf.Max(shotAngle, 18f);
             }
 
-            float damageSplitMultiplier = CalculateZombieModeProjectileSpreadDamageMultiplier(currentShotCount, shotCount);
+            // 官方 ShootOneBullet 已按 ShotCount 分摊整枪 Damage；这里只扩弹数与角度，避免再次削减总伤。
+            // 散射选卡的枪伤代价仍由人物 GunDamageMultiplier 的独立修饰负责。
             TryAddZombieModeGunStatRuntimeModifier(snapshot, holdItem, "ShotCount", shotCount - currentShotCount);
             TryAddZombieModeGunStatRuntimeModifier(snapshot, holdItem, "ShotAngle", shotAngle - currentShotAngle);
-            TryAddZombieModeGunStatRuntimePercentageModifier(snapshot, holdItem, "Damage", damageSplitMultiplier - 1f);
-        }
-
-        private float CalculateZombieModeProjectileSpreadDamageMultiplier(float originalShotCount, int appliedShotCount)
-        {
-            float safeOriginalShotCount = Mathf.Max(1f, originalShotCount);
-            int safeAppliedShotCount = Mathf.Max(1, appliedShotCount);
-            return Mathf.Clamp(safeOriginalShotCount / safeAppliedShotCount, 0.05f, 1f);
         }
 
         internal bool CanTriggerZombieModeProjectileTrailDamage(int runId)
@@ -215,37 +207,6 @@ namespace BossRush
             catch (System.Exception e)
             {
                 ModBehaviour.DevLog("[ZombieMode] spread stat apply failed: " + statName + ", " + e.Message);
-            }
-        }
-
-        private void TryAddZombieModeGunStatRuntimePercentageModifier(ZombieModeProjectileSpreadSnapshot snapshot, Item item, string statName, float percent)
-        {
-            if (snapshot == null || item == null || item.Stats == null || string.IsNullOrEmpty(statName) || Mathf.Abs(percent) < 0.0001f)
-            {
-                return;
-            }
-
-            try
-            {
-                Stat stat = item.Stats.GetStat(statName);
-                if (stat == null)
-                {
-                    return;
-                }
-
-                // Order 300 is intentional: spread overlays are a late runtime delta; revisit if per-pellet Damage needs to compose differently with gun affixes.
-                Modifier modifier = new Modifier(ModifierType.PercentageAdd, percent, true, 300, snapshot);
-                stat.AddModifier(modifier);
-                BossRushStatModifierRecord record = new BossRushStatModifierRecord();
-                record.CharacterItem = item;
-                record.Stat = stat;
-                record.Modifier = modifier;
-                record.StatName = statName;
-                snapshot.ModifierRecords.Add(record);
-            }
-            catch (System.Exception e)
-            {
-                ModBehaviour.DevLog("[ZombieMode] spread percent stat apply failed: " + statName + ", " + e.Message);
             }
         }
 

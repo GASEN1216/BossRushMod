@@ -17,6 +17,7 @@ namespace BossRush
         public bool DisableSmokeEffects = true;
         public Func<CountDownArea, bool> IsCurrentArea;
         public UnityAction OnSucceed;
+        public Func<bool> TrySucceed;
         public Action<Vector3> OnFallbackNotify;
         public Action OnFallbackLoadBase;
     }
@@ -281,6 +282,23 @@ namespace BossRush
                     return;
                 }
                 successDispatched = true;
+
+                // 需要结算回执的模式可以拒绝本次成功；拒绝时允许原区域再次尝试。
+                // 回执保存在当前栈帧，避免 OnSucceed 清理 runState 后再读状态而误判。
+                if (request.TrySucceed != null)
+                {
+                    bool accepted = false;
+                    try
+                    {
+                        accepted = request.TrySucceed();
+                    }
+                    finally
+                    {
+                        // 回执回调自身抛错时也要释放，避免修复 UI 后原区域永久不能重试。
+                        if (!accepted) successDispatched = false;
+                    }
+                    if (!accepted) return;
+                }
 
                 if (request.OnSucceed != null)
                 {

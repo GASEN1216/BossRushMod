@@ -84,6 +84,7 @@ namespace BossRush
             "boss_dragonking",     // 焚天龙皇
             "boss_phantomwitch",   // 幽灵女巫（PhantomWitchConfig.BossNameKey；玩家反馈 2026-10-15 弹指可灭首波出女巫）
             SandstormChampionBoss.NameKey, // 冠军之影：征程终章强度，沿用前期强 Boss 保护。
+            EclipseBloomBoss.NameKey, // 蚀日花冠：四瓣三阶段战斗，放在强力 Boss 的后段。
         };
 
         /// <summary>

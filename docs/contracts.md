@@ -5,8 +5,8 @@
 ## 1. TypeID 与存档身份
 
 - 自定义物品/装备 TypeID 使用 500xxx 区间。
-- 已登记范围：`500001-500109`，空洞 `500009`、`500047` 不回填。
-- `500058` 已登记为便携安全区装置，`500059` 已登记为遗种蛋（遗种巢通用蛋，血脉写在物品 KV `PetNest_Lineage` 上，全谱系共用一个号）；`500060` 已登记为词缀熔石（词缀锻造材料，词缀身份写在装备 KV `AFX_*` 上），`500061` 已登记为鸭皇图鉴（图鉴面板入口物品，使用不消耗）；`500062-500064` 已登记为后山菜地种子（龙裔之种、龙皇焰种、幽魂孢子），`500065-500067` 已登记为后山出击餐（龙息果、焚心椒、幽影蘑菇）；`500068-500072` 已登记为天空岛物品（晴岚航徽、噬风之核两件纪念品，风标罗盘道具，归航菜便当、星苔药膏两种岛上特产；纪念品发放记录写在天空岛剧情存档的 `discoveredNotes` 里，id 前缀 `Keepsake_`）；`500073-500082` 已登记为天空岛内容批次三（云苔纤维、青穗草、浮木、残铜片、风晶碎片、星屑六种采集材料，晴岚风晶一件碎片凑整物品，风灯、驱风香、晴岚护符三种局内耗材；采集点与增益按出击刷新，不加存档字段）；`500083-500085` 已登记为天空岛内容批次四「云蚋」（云苔纱笠随身装备、风晶灭蚊灯局内耗材、药烟蒲扇岛上工具；放回蛙鸣池的蛙卵记在天空岛剧情存档的 `discoveredNotes` 里，id 前缀 `Frog_`，不加存档字段）；`500086-500089` 已登记为天空岛头目 / 岛主的专属装备（星铜护目盔、星炉背甲、星炉背囊出自岛主残星匠首，观星镜盔出自头目瞭台观星手；走装备 bundle `skyisland_boss_gear` 注册、全部登记掉落黑名单；首杀记录写在天空岛剧情存档的 `discoveredNotes` 里，id 为 `Lord_Foreman` / `Chief_Stargazer`，不加存档字段）；`500090-500102` 已登记为天空岛头目 / 岛主 R2–R4 的专属装备（根须面罩、藤编甲、悬根箭囊出自岛主悬根猎首，旧邮包出自头目截信人，青穗斗笠、蓑衣甲、谷囊出自岛主穗镰，静听耳罩出自头目听雨人，苔纱面罩出自头目蚋笛翁，镜纹甲出自头目镜中客，断风兜帽、断风披甲、断风行囊分别出自断风游猎 · 守 / 追 / 伏；同一装备 bundle、全部登记掉落黑名单；首杀记录同样写进 `discoveredNotes`，id 前缀 `Lord_` / `Chief_`，不加存档字段）；`500103` 已登记为失落的航向仪（Jeff 序章「云上的坐标」的交付物：零号区的断风游猎 · 守倒下后留在官方尸体箱里，带回基地交给 Jeff 换 5000 金钱与晴岚航线，交付即消耗；售价 0、登记掉落黑名单，不加存档字段）；`500104` 已登记为星阙（第六章沙暴冠军必掉的纯代码近战光棍，三段棍势，不进随机奖池，无专属 bundle）；`500105` 已登记为空仓地雷盒（图腾，同枪一轮装填中至少开火 6 次后打空弹匣放置延时地雷，不加存档字段）；`500106` 已登记为教导主任的点名册（天空岛登云码头的浮舟好感 3 级商店专属图腾，5 秒内直接命中 3 名不同敌人触发集体追伤，冷却 6 秒，不加存档字段）；`500107` 已登记为钟守节拍器（图腾，整匣换弹时单次节拍判定，成功仅推进官方装填计时；无声钟守好感 5 级、20 枚随身贝壳兑换，岛上与婚后基地一致；不加存档字段）；`500108` 已登记为回火液（重铸界面解除一条已固定属性的消耗品，克隆冷淬液 prefab、零新增 bundle；叮当商店好感 4 级 + 叮当好感 6 级一次性赠 2 瓶，赠送记录走好感 `claimedRewardKeys` 的 `tempering_solvent_lv6_gift`；登记掉落黑名单，不加存档字段）；`500109` 已登记为甩锅许可证（图腾，直接命中敌人挂 5 秒炸弹，携带者直接命中其他角色便转移，转移不刷新引信；浮舟好感 3 级的航前杂货出售，婚后基地与渡口装置共用库存配置；不加存档字段）；下一可用 ID 以 `docs/reference/Bossrush使用物品ID表.md` 实际末尾为准。
+- 已登记范围：`500001-500110`，空洞 `500009`、`500047` 不回填。
+- `500058` 已登记为便携安全区装置，`500059` 已登记为遗种蛋（遗种巢通用蛋，血脉写在物品 KV `PetNest_Lineage` 上，全谱系共用一个号）；`500060` 已登记为词缀熔石（词缀锻造材料，词缀身份写在装备 KV `AFX_*` 上），`500061` 已登记为鸭皇图鉴（图鉴面板入口物品，使用不消耗）；`500062-500064` 已登记为后山菜地种子（龙裔之种、龙皇焰种、幽魂孢子），`500065-500067` 已登记为后山出击餐（龙息果、焚心椒、幽影蘑菇）；`500068-500072` 已登记为天空岛物品（晴岚航徽、噬风之核两件纪念品，风标罗盘道具，归航菜便当、星苔药膏两种岛上特产；纪念品发放记录写在天空岛剧情存档的 `discoveredNotes` 里，id 前缀 `Keepsake_`）；`500073-500082` 已登记为天空岛内容批次三（云苔纤维、青穗草、浮木、残铜片、风晶碎片、星屑六种采集材料，晴岚风晶一件碎片凑整物品，风灯、驱风香、晴岚护符三种局内耗材；采集点与增益按出击刷新，不加存档字段）；`500083-500085` 已登记为天空岛内容批次四「云蚋」（云苔纱笠随身装备、风晶灭蚊灯局内耗材、药烟蒲扇岛上工具；放回蛙鸣池的蛙卵记在天空岛剧情存档的 `discoveredNotes` 里，id 前缀 `Frog_`，不加存档字段）；`500086-500089` 已登记为天空岛头目 / 岛主的专属装备（星铜护目盔、星炉背甲、星炉背囊出自岛主残星匠首，观星镜盔出自头目瞭台观星手；走装备 bundle `skyisland_boss_gear` 注册、全部登记掉落黑名单；首杀记录写在天空岛剧情存档的 `discoveredNotes` 里，id 为 `Lord_Foreman` / `Chief_Stargazer`，不加存档字段）；`500090-500102` 已登记为天空岛头目 / 岛主 R2–R4 的专属装备（根须面罩、藤编甲、悬根箭囊出自岛主悬根猎首，旧邮包出自头目截信人，青穗斗笠、蓑衣甲、谷囊出自岛主穗镰，静听耳罩出自头目听雨人，苔纱面罩出自头目蚋笛翁，镜纹甲出自头目镜中客，断风兜帽、断风披甲、断风行囊分别出自断风游猎 · 守 / 追 / 伏；同一装备 bundle、全部登记掉落黑名单；首杀记录同样写进 `discoveredNotes`，id 前缀 `Lord_` / `Chief_`，不加存档字段）；`500103` 已登记为失落的航向仪（Jeff 序章「云上的坐标」的交付物：零号区的断风游猎 · 守倒下后留在官方尸体箱里，带回基地交给 Jeff 换 5000 金钱与晴岚航线，交付即消耗；售价 0、登记掉落黑名单，不加存档字段）；`500104` 已登记为星阙（第六章沙暴冠军必掉的纯代码近战光棍，三段棍势，不进随机奖池，无专属 bundle）；`500105` 已登记为空仓地雷盒（图腾，同枪一轮装填中至少开火 6 次后打空弹匣放置延时地雷，不加存档字段）；`500106` 已登记为教导主任的点名册（天空岛登云码头的浮舟好感 3 级商店专属图腾，5 秒内直接命中 3 名不同敌人触发集体追伤，冷却 6 秒，不加存档字段）；`500107` 已登记为钟守节拍器（图腾，整匣换弹时单次节拍判定，成功仅推进官方装填计时；无声钟守好感 5 级、20 枚随身贝壳兑换，岛上与婚后基地一致；不加存档字段）；`500108` 已登记为回火液（重铸界面解除一条已固定属性的消耗品，克隆冷淬液 prefab、零新增 bundle；叮当商店好感 4 级 + 叮当好感 6 级一次性赠 2 瓶，赠送记录走好感 `claimedRewardKeys` 的 `tempering_solvent_lv6_gift`；登记掉落黑名单，不加存档字段）；`500109` 已登记为甩锅许可证（图腾，直接命中敌人挂 5 秒炸弹，携带者直接命中其他角色便转移，转移不刷新引信；浮舟好感 3 级的航前杂货出售，婚后基地与渡口装置共用库存配置；不加存档字段）；`500110` 已登记为残日盾片（蚀日花冠必掉图腾，翻滚后短暂正面减伤并充能下一次直接攻击；不进随机奖池，不加存档字段）；下一可用 ID 以 `docs/reference/Bossrush使用物品ID表.md` 实际末尾为准。
 
 Breaking:
 
@@ -52,6 +52,8 @@ Breaking:
 - 改变值类型或单位，例如秒变帧、`KeyCode` 整数变字符串且无兼容解析。
 
 ## 3. 存档与持久化 key
+
+- `BossRush_EclipseBloom_Introduction_v1` — `EclipseBloomIntroductionPersistence.StorageKey`，独立槽位 JSON，`schemaVersion = 1`（2026-10-22，`SCHEMA+`）。`accepted` / `defeated` / `completed` 均为布尔；缺 key 默认为未接取，未知 schema 或矛盾状态拒绝覆盖。死亡清空接取与击败事实并自动放弃官方任务，回基地可重新接取；交付完成后普通 37 号探索仍可每次出击刷新一只。只保存 Mod 事实，官方任务快照由共享投影核心过滤。
 
 新持久化 key 使用 `BossRush_` 前缀，避免与原版或其他 Mod 碰撞。
 
@@ -862,8 +864,9 @@ Breaking/Operational:
 
   区间 5900–5949 归 BossRush 的自定义给予者（官方 UI 不显示给予者名，`Quest.Compare` 只做整数减法，`GetAllQuestsByQuestGiverID` 只做相等比较）。
   BossRush 保留任务 ID 段：`590001`–`590099` 天空岛入口、`590011`–`590013` 岛上主线、`590101`–`590106` 鸭科夫征程六章、`590201`–`590214` 新内容一次性引导；章节下一可用 `590107`。征程六章的奖金由 `CampaignProgressService.TryDeliver` 的补偿式事务发放（官方奖励行只展示 `def.RewardCash`，`PayReward = null`），线索与设施 token 同一事务；引导任务以 `acceptedGuides` / `experiencedGuides` / `completedGuides` 为权威；2026-09-27 起交付发奖金（`CampaignProgressService.TryDeliverGuide`，与章节同一套先发钱、写事实、失败退款、会话闩）与奖励物品，数值只在 `Campaign/CampaignRewardTable.cs`；2026-09-25 owner 明确授权挂 Jeff，接取和交付均限基地；官方 UI 没有「放弃任务」入口，`TryAbandonContract` 只留 Dev 演练。
+  `590215` 为 2026-10-22 owner 明确授权的独立 Jeff 蚀日花冠引导，使用 `EclipseBloomIntroduction` 客户端登记共享 `OfficialQuestProjection`；接取和交付限基地，目标为普通 37 号探索中击败当前遭遇 owner 持有的花冠。无提交物、额外金钱或实物奖励，专属盾片由 Boss 掉落且不收走；主玩家死亡立即撤销 accepted / defeated，随后共享核心移除四类官方投影，可回 Jeff 重新接取，不自动重接，不锁地图或其它进度。
   运行时向官方 `QuestCollection` 注册 prefab，接取、任务日志、目标完成通知与交付按钮均走官方 `QuestManager` / `Quest` / `Task` / `QuestGiverView`；岛上三条只在岛上接、岛上交，返航后仍留在官方任务日志里。
-  `BossRush_SkyIsland_Story_v1` 仍是唯一权威；官方 `GenerateSaveData` / `SetupSaveData` 快照会剥离这些 ID 的 active、history、completed、ever-inspected 记录（`Quest.SaveData.questGiverID` 随整条记录一起剥掉，卸载后不留野枚举值），
+  各客户端的 Mod 分槽事实是唯一权威（天空岛为 `BossRush_SkyIsland_Story_v1`，花冠引导为 `BossRush_EclipseBloom_Introduction_v1`）；官方 `GenerateSaveData` / `SetupSaveData` 快照会剥离这些 ID 的 active、history、completed、ever-inspected 记录（`Quest.SaveData.questGiverID` 随整条记录一起剥掉，卸载后不留野枚举值），
   加载后从 Mod 事实重建官方投影，保证卸载后 `"Quest"/"Data"` 没有孤儿 ID；`completedQuests` 的残留还会把 `IsQuestAvaliable` 永久钉死，所以四类一个都不能少。
   已接受的副作用：已交付任务的 history 投影缺失时用 `ForceComplete` 重建，会再发一次 `Quest.onQuestCompleted`（`AchievementManager` 查不到 `Quest_59xxxx` 直接返回，`BDSManager` 上报一条匿名遥测），每次加载每条至多一次。
   所有补丁与清理都按条目验证专用模板所有权（ID + 对象名 + 核心专用 `OfficialQuestProjectionTask` 组件）；ID 冲突时那一条 fail closed，不得改动占用相同整数 ID 的其它内容。
@@ -883,6 +886,12 @@ Breaking/Operational:
   净化点商店（丧尸模式局内）保持每次开店满库存，不和基地共用库存。执行回归：`NpcAuditFixes`（规则）、`NPCShopPayment`（回写）。
 
 **渲染与程序集**
+
+- 自定义友好 NPC 姓名沿用 `DuckovDialogueActor` / 商店 UI。`HealthBar.LateUpdate` 在目标失活或 `Health.Hidden` 时释放，并按镜头前方判定切换 `FadeGroup`；复制出独立标签、移除行为再强制显示，会绕过上述控制并在不同视角产生常驻大字。`NPCNameTagHelper` 的旧登记入口只保留兼容与显式本地化更新，不新建 Health、actor 或常驻 UI，不改官方姓名 key。核实位置：`鸭科夫源码/TeamSoda.Duckov.Core/Duckov/UI/HealthBar.cs`、`Integration/Utils/NPCNameTagHelper.cs`（2026-10-21）。
+- 迷雾是组件与层级控制链，不是换成游戏材质就自动生效：`DuckovHider` → `CharacterMainControl.Hide/Show` → `CharacterModel.SyncHiddenToMainCharacter` → 已登记的 `CharacterSubVisuals.SetRenderersHidden`。装备 `SetParent`、手持 `SetHolder` 不自动添加 `CharacterSubVisuals`；只有枪的 `ItemAgent_Gun.BuildAgent` 显式补缺失组件并 `SetRenderers()`。自定义装备 / 近战由 `EquipmentFactory.EnsureModelSubVisuals` 在模型建好后补缺失组件，保留已有组件缓存；挂载时由其 `OnTransformParentChanged` 登记。运行时近战准备会重新写渲染层和显示状态，末尾须再同步角色 Hidden。核实位置：官方 `CharacterSubVisuals.cs`、`CharacterModel.cs`、`CharacterEquipmentController.cs`、`DuckovItemAgent.cs`、`ItemAgentHolder.cs`、`ItemAgent_Gun.cs`（同目录，2026-10-21）。
+- `CharacterMainControl.Hide()` 对 `Teams.player` 早退，`CharacterModel.SyncHiddenToMainCharacter()` 对不敌对玩家的队伍强制可见；友好 NPC 不能靠改成敌对队伍获得迷雾隐藏。独立 NPC / 角色外附加外形用 `Utilities/ModEntityFogVisibility` 只控制已缓存 Renderer 的 `forceRenderingOff` 与 Light 的 `cullingMask`，不关角色、AI、碰撞或 `Renderer.enabled`，出入视野保留技能自身的显隐状态。与 `DuckovHider` 的场景和死亡语义一致，仅在出击图且主玩家存活时隐藏，停用 / 销毁还原并退订。
+- `FOW.FogOfWarHider` 在 **FOW.dll**：`OnEnable` 立即读取 `SamplePoints`，注册时同步发出不可见事件；缺失源须在 inactive probe 上填好非空采样数组，订阅后再启用。优先复用角色已有源，避免重复探针。`PermanentlyReveal` 表示首次被观察后保持显示，不能当成出生就可见；禁用 hider 会发出可见事件，因此初始状态按 `!isActiveAndEnabled || NumObservers > 0` 对齐。以上由本机官方 DLL / IL 核对（2026-10-21）；现有反编译文本未包含该程序集，不以夹具替身当官方证据。
+- `CharacterMainControl.Show()` 会清除角色的 `Hidden`；迷雾观察者只在变化时发事件，技能收尾擅自 Show 后，零观察者状态可能一直等不到下一次隐藏。技能应只恢复自身隐身 / 无敌状态，保留迷雾 owner 的状态。守卫 `tests/ModEntityFogVisibilityGuard.py` 覆盖安装与收尾接线，执行回归 `tests/fixtures/ModEntityFogVisibility/` 使用官方宿主替身验证状态恢复和退订；真实遮挡几何、URP 像素表现及性能仍需实机。
 
 - 项目色彩空间是 **Linear**（`ProjectSettings` 的 `m_ActiveColorSpace=1`）：uGUI 的半透明在线性光里混合，屏幕上的相对亮度 `Y = Y(前景)·α + Y(背景)·(1-α)`。
   在 sRGB 数值上做 alpha 混合算出来的对比度严重偏高——深色半透明压暗底上的小字，sRGB 口径 5.95:1，线性实际 2.13:1。

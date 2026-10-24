@@ -359,7 +359,7 @@ public partial class ModBehaviour {
 execute('runonly_cleanup',[HERE/'RunOnlyCleanup.cs',ROOT/'Utilities/RunScopedRegistry.cs'],run_only)
 extraction_module=ROOT/'ZombieMode/ZombieModeRuntimeModule_Extraction.cs'
 extraction_methods='\n'.join(member(extraction_module,m) for m in [
-    'private void CompleteZombieModeExtractionSuccess(int runId)',
+    'private bool CompleteZombieModeExtractionSuccess(int runId)',
     'private bool SettleZombieModeExtractionCashShell()',
     'private bool TryDispatchZombieModeExtractionSuccess(CountDownArea area)',
 ])
@@ -378,7 +378,8 @@ internal static class ExtractionTrace { internal static readonly List<string> Ev
 internal static class L10n { internal static string T(string value) { return value; } internal static string T(string chinese, string english) { return chinese; } }
 internal static class NotificationText { internal static void Push(string value) { ExtractionTrace.Events.Add("notification:" + value); } }
 internal static class EconomyManager {
- internal static bool Result; internal static bool Add(long amount) { ExtractionTrace.Events.Add("payout:" + amount); return Result; }
+ internal static long Money;
+ internal static bool Result; internal static bool Add(long amount) { ExtractionTrace.Events.Add("payout:" + amount); if (Result) Money += amount; return Result; }
 }
 public partial class ModBehaviour {
  internal void NotifyCampaignZombieExtracted() { ExtractionTrace.Events.Add("campaign"); }

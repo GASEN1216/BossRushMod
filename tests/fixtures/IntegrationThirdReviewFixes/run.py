@@ -88,7 +88,13 @@ def main():
     generated += "}\n" + member(boss, "public sealed class ZombieModeBossShieldRuntime")
     generated += member(components, "public sealed class ZombieModeShieldedAffixRuntime")
     generated += member(boss, "public abstract class ZombieModeTimedRunScopedRuntime")
-    generated += member(components, "public sealed class ZombieModeSprinterDashRuntime") + "}\n"
+    for signature in ("public sealed class ZombieModeSprinterDashRuntime",
+                      "public sealed class ZombieModeTelegraphedAreaDamageRuntime",
+                      "public sealed class ZombieModeTelegraphedPlayerSlowRuntime",
+                      "public sealed class ZombieModeTelegraphedDamageCloudRuntime",
+                      "public sealed class ZombieModeHarasserProjectileRuntime"):
+        generated += member(components, signature)
+    generated += "}\n"
     tuning_path = ROOT / "ZombieMode/ZombieModeTuning.cs"
     tuning = tuning_path.read_text(encoding="utf-8-sig")
     generated += "namespace BossRush { public static class ZombieModeTuning {"
@@ -104,7 +110,7 @@ def main():
                official / "AI_PathControl.cs", official / "ElementFactor.cs",
                official / "ElementTypes.cs", official / "DamageTypes.cs",
                ROOT / "ZombieMode/ZombieModeDamageRuntime.cs",
-               HERE / "ZombieBossCases.cs", HERE / "Stubs.cs", HERE / "Program.cs", generated_path]
+               HERE / "ZombieBossCases.cs", HERE / "ZombieThreatCases.cs", HERE / "Stubs.cs", HERE / "Program.cs", generated_path]
     sdk = subprocess.check_output(["dotnet", "--list-sdks"], text=True).strip().splitlines()[-1]
     compiler = Path(sdk[sdk.index("[") + 1:sdk.index("]")]) / sdk.split()[0] / "Roslyn/bincore/csc.dll"
     framework = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Microsoft.NET/Framework64/v4.0.30319"

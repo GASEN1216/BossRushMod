@@ -24,6 +24,12 @@ public static class Program
     }
     public static async Task Main()
     {
+        var emptyDrops = new ZombieModeRuntimeModule();
+        emptyDrops.CleanupZombieModeExpiredDropCandidates(false);
+        Check(emptyDrops.PruneCalls == 0, "empty drop frame does not scan the run registry");
+        emptyDrops.CleanupZombieModeExpiredDropCandidates(true);
+        Check(emptyDrops.PruneCalls == 1, "wave start prunes consumed star records even with no entity drops");
+
         var mod=Reset();
         Check(!mod.Cleanup(300.01f,299f,true,false,false).Destroyed,"scan frame keeps inventory item");
         mod=Reset(); Check(!mod.Cleanup(300.01f,299.9f,true,false,false).Destroyed,"between scans keeps inventory item");

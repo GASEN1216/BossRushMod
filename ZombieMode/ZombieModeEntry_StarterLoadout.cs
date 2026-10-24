@@ -49,7 +49,7 @@ namespace BossRush
         }
 
         // Melee = 近战×1（品质≤5）+ 医疗品×5 + 食物×3 + 饮料×2
-        // Gunner = 枪械×1 + 匹配口径×2000 + 医疗×3 + 食物×2 + 饮料×1
+        // Gunner = 枪械×1 + 同口径弹药一组（受堆叠上限限制，重弹药至少 4 发）+ 医疗×3 + 食物×2 + 饮料×1
         private bool GrantZombieModeStarterLoadout(ZombieModeStarterLoadout loadout)
         {
             try

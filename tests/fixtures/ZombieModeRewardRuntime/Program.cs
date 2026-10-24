@@ -71,7 +71,7 @@ internal static class Program
     }
     public static int Main()
     {
-        TestServiceTransactions(); TestEventOwnership(); TestNpcBindingAndRecycle();
+        TestServiceTransactions(); TestEventOwnership(); TestNpcBindingAndRecycle(); SpreadRegression.Run();
         Console.WriteLine("ZombieModeRewardRuntime PASS: service deduction/refund, event ownership, cleanup order, NPC binding/recycling"); return 0;
     }
 }

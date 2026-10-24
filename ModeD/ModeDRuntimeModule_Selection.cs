@@ -41,7 +41,7 @@ namespace BossRush
                 return null;
             }
 
-            // E/F 重试也会借用本选择器；冠军只攻击主玩家，须与它们正式池一致排除。
+            // E/F 在 SpawnCore 重试时也会借用本选择器；与它们正式池的排除口径一致。
             if (owner.IsModeEActive || owner.IsModeFActive)
             {
                 presetFilterCache.Clear();
@@ -49,7 +49,8 @@ namespace BossRush
                 {
                     EnemyPresetInfo candidate = filteredBossPool[i];
                     if (SandstormChampionPoolAdapter.IsPreset(candidate)) continue;
-                    if (candidate != null) presetFilterCache.Add(candidate);
+                    if (candidate != null && !EclipseBloomPoolAdapter.IsPreset(candidate))
+                        presetFilterCache.Add(candidate);
                 }
                 if (presetFilterCache.Count == 0) return null;
                 filteredBossPool = presetFilterCache;

@@ -43,7 +43,8 @@ namespace Cysharp.Threading.Tasks
 
 namespace UnityEngine
 {
-    public static class Time { public static int frameCount; }
+    public static class Time { public static int frameCount; public static float unscaledTime; }
+    public static class Debug { public static void LogWarning(object value) { } }
     public class Object
     {
         internal bool Destroyed;
@@ -148,7 +149,7 @@ namespace BossRush
     public sealed class ZombieModeRunState
     {
         public int RunId=1,LivingNormalZombieCount,PendingNormalZombieSpawns,LivingZombieCount,NextSpawnPointIndex;
-        public int CurrentWaveKills,CurrentWaveKillTarget,CurrentWaveBossesRemaining;
+        public int CurrentWave,CurrentWaveKills,CurrentWaveKillTarget,CurrentWaveBossesRemaining;
         public ZombieModeLifecyclePhase LifecyclePhase=ZombieModeLifecyclePhase.Active;
         public ZombieModeCombatPhase CombatPhase=ZombieModeCombatPhase.Combat;
         public readonly List<ZombieModeBossInstance> CurrentWaveBossInstances=new List<ZombieModeBossInstance>();
