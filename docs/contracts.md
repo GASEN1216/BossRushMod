@@ -734,6 +734,13 @@ Breaking/Operational:
 
 ## 7.1 官方游戏行为：静默失败类陷阱
 
+**野外交互、轻量血量与附加射击（2026-10-23 核对）**
+
+- `HealthSimpleBase.OnHurt` 先重新判定 `crit`，再按暴击倍率与非主玩家倍率扣血；随后发出的 `DamageInfo.damageValue` 仍是原始值。主玩家伤害累计须使用已判定的 `crit` / `critDamageFactor` 或实际血量差，不能把原始值当作最终伤害。核实：`鸭科夫源码/TeamSoda.Duckov.Core/HealthSimpleBase.cs`。
+- `CA_Interact.SearchInteractableAround` 用 `CurrentAimDirection` 偏移查询球，角色朝向来自 `modelRoot.forward`，不能假定角色根 `transform.forward` 同步旋转。`InteractSelectionHUD.SetInteractable` 只在绑定时拷贝名称；`LocalizationManager.SetOverrideText` 不主动刷新已显示的文字。动态交互须刷新当前已绑定行，并保留分组选择。核实：同一官方源码目录中的 `CA_Interact.cs`、`CharacterMainControl.cs`、`InteractHUD.cs`、`InteractSelectionHUD.cs`。
+- `Duckov.AudioManager.Bus.Apply` 只控制 FMOD 总线。独立 Unity `AudioSource` 要显式读取 Master 和 Master/SFX 的 `Volume`、`Mute`，包括暂停菜单内的设置变化；AI 听觉与玩家播放音量分开。核实：`鸭科夫源码/TeamSoda.Duckov.Core/Duckov/AudioManager.cs`。
+- `ItemAgent_Gun.TransToFire` 仅在瞄点水平距离大于角色到枪口距离加 0.1 米、且 `CharacterMoveability > 0.5f` 时改用瞄点方向，其余保留枪口前向。附加弹道与后坐不能无条件取瞄点减枪口，否则脚边瞄准会翻向身后。核实：`鸭科夫源码/TeamSoda.Duckov.Core/ItemAgent_Gun.cs`。
+
 **同步写盘失败与账户预检（2026-10-07，现装 DLL / IL 核对）**
 
 - `SavesSystem.SaveFile` 先置私有静态 `bool saving=true`，再备份并调用 `ES3.StoreCachedFile`，末尾才置 false，方法没有异常处理区。物理写失败会把后续调用永久挡在 `IsSaving`。共享内容引擎和 Mode H 协调器通过 `BossRushSaveFileThrottle.RunSaveFile` 包装各自的同步调用：已有保存时拒绝调用；只在自己同步调用抛异常且字段仍为 true 时反射复位，保留原异常及 pending 交既有重试。字段缺失或类型变化保持原异常并记录 DevLog。此保护不覆盖官方自行发起、Mode G / 好感旧直调路径，不保证持续 IO 故障或进程终止时的未落盘事实；没有新增轮询或写盘机制。

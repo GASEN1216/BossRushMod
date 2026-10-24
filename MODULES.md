@@ -52,5 +52,6 @@
 | `reverse-scale` | 逆鳞 | `Integration/ReverseScale/ReverseScaleBootstrap.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
 | `wedding` | 婚姻 | `Integration/Wedding/WeddingRuntimeModule.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
 | `sky-items` | 天空岛物品 | `Integration/SkyIsland/SkyIslandBossGearConfig.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
+| `field-adventures` | 野外趣事：贪吃宝箱、怪件快递与危险试用品 | `Integration/FieldAdventures/ExplorationRuntimeRegistration.cs` | `AGENTS.md`、`Integration/AGENTS.md`、`Common/UI/AGENTS.md` |
 | `mutators` | 变异词条 | `Integration/Mutators/MutatorDefinitions.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
 <!-- END GENERATED MODULES -->

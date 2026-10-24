@@ -84,6 +84,7 @@ export const ENTRY_TO_PATH = {
   'system__daily_report':             'systems/daily-report.md',
   'system__codex':                    'systems/codex.md',
   'system__random_events':            'systems/random-events.md',
+  'system__field_adventures':         'systems/field-adventures.md',
   'system__affix_forge':              'systems/affix-forge.md',
   'system__campaign':                 'systems/campaign.md',
   'system__back_mountain':            'systems/arena-backyard.md',

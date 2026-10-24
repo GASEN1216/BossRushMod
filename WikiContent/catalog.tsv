@@ -67,6 +67,7 @@ system	system__random_events	局内随机事件	Random Events	11
 system	system__affix_forge	词缀锻造	Affix Forging	12
 system	system__campaign	鸭王征程	Duck King Campaign	13
 system	system__back_mountain	竞技场后山	Arena Backyard	14
+system	system__field_adventures	野外趣事	Field Adventures	15
 config	config__overview	配置选项	Configuration Options	1
 tips	tips__new_player_route	新手推荐路线	New Player Route	1
 tips	tips__hell_and_mode_d	无间炼狱与白手起家攻略	Infinite Hell & From Scratch Guide	2

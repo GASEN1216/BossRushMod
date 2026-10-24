@@ -2,6 +2,60 @@
 
 更早记录见 `archive/`；月度归档索引保留在本文件正文。
 
+## 2026-10-23 CR-008 补充：吞咽动画受击外沿修复（COMPAT；Fixed at L1/L2，L3 待验）
+
+CR-2026-10-23-008 的动画外沿遗漏已补齐。`GreedyMimicVisual.cs:66、165、207` 缓存主箱身和两块箱盖网格包络，每帧变换 24 个角点；`GreedyMimicEncounter.cs:69、156、194` 在成长回调及动画后更新唯一 BoxCollider，通过 kinematic Rigidbody 发布姿态，保留胸口基点与一次成长缩放。吞咽正负相、呼吸、跳动与开盖均覆盖；不逐帧重建碰撞体或全局 SyncTransforms。官方爆炸和近战不为 simpleHealth 多 Collider 去重，因此保持单盒。
+
+真实 Unity 原生基线 5,754,526 项检查通过，486,373 次实际主网格射线、1,459,119 次球扫全部命中，吞咽外沿漏判为 0，四次官方爆炸均只扣一次血；成长当刻、回血打断、收缩拒收、暂停和销毁均覆盖。六项原生变异、15 项结构变异、独立旧盒变异及原有两项伤害变异共 24 项反向验证均实跑预期转红并恢复字节/SHA。独立复审另有 129,702 项检查通过，旧盒 875 条射线漏判准确转红；三位子代理均 gpt-6.1-sol / xhigh，未发现最终候选新增 confirmed issue。
+
+533 项相关守卫、六组 FieldAdventure 中央回归与共享迷雾回归通过；Windows 正式隔离构建通过，DLL SHA-256 `B1DD5331ABDEBD4E2C1F172EE2A658631544CC93826F0288625F8648082B65A2`，14 个 Dev 标识缺席、77 个资源包 SHA 校验通过，仅两条既有 ModeH CS0649。真实游戏 DLL SHA 未变，其他任务改动保留；未提交、真实部署、启动游戏或访问存档。单盒为当前主箱体的保守包络，包含开口空隙，曲面边缘不逐三角形贴合；L3 与实际帧耗仍待验。完整证据与人工清单见 [吞咽受击修复报告](Build/mimic-swallow-collision-fix-20261023/修复与验证.md)。
+
+## 2026-10-23 CR-008 / 009 修复与交叉复审（COMPAT；Fixed at L1/L2，L3 待验）
+
+- **CR-2026-10-23-008，P2 / COMPAT / Fixed at L1/L2。** `Integration/FieldAdventures/Mimic/GreedyMimicVisual.cs:48、174` 新增单位缩放 Facing，由它统一朝向；`GreedyMimicEncounter.cs:48` 的受击体挂同节点。Body 保留原成长、呼吸、吞咽、跳动，受击尺寸/中心仅乘一次 Rules.Scale，世界预警与长舌仍挂 Root。当前 Encounter + Visual + 官方 HealthSimpleBase / DamageReceiver 的真实 Unity 装配通过 456 条断言：0～3 餐、8 朝向、左右边缘 64 组网格/射线/0.1 米球扫均中；隔离恢复固定 Root 后 16 组横向射线与球扫在预期断言转红，按字节恢复。成长、锁向、第三餐即时受击与清理均覆盖。该轮仅闭环稳定朝向；吞咽动画外沿的后续补充修复见上节。
+
+- **CR-2026-10-23-009，P2 / COMPAT / Fixed at L1/L2。** `Integration/FieldAdventures/Delivery/OddParcelRuntimeModule.cs:200` 用 CanInteract(Offer) 同步阿稳组员；变更前保留选中对象，变更后通过官方索引切换保留服务或收敛到阿稳主项。`OddParcelInteractable.cs:88` 定向调用当前官方 HUD 的内容/选择刷新，保留选中事件幂等并同步索引缓存；隐藏祖先、池中 inactive 行同样处理。ClearWorld 先退组清引用再结束订单，旧 generation 对话不能修改新 owner。永久夹具实际执行官方 F 动作、分组和 HUD，3300 条通过，覆盖订单全流程、LIFO 池复用、持续/重开菜单、跨代次挂起对话；19 项隔离负探针全部在预期断言转红并恢复。局部新增官方 HUD 私有成员兼容调用属于 WIRE+，目标已对照当前官方实现与独立执行核实。
+
+最终 533 项相关守卫、6 组 FieldAdventure 中央回归、共享迷雾回归与 Windows 正式隔离构建通过；7 项结构守卫负探针、1 项原生固定受击盒负探针、19 项快递负探针、2 项独立选择负探针及原有 2 项宝箱伤害负探针通过。三个子代理均 gpt-6.1-sol / xhigh；互相复审与独立 77 条完整官方交互探针未发现新增 confirmed issue。DLL SHA-256 `458722F995D2B9B7BBE3239591754D0150ADC900411453062DEC8C1330C46EA5`，无 Dev 标识，仅两条既有 ModeH CS0649。
+
+证据和人工验收见 [本轮交付报告](Build/field-adventures-fixes-008-009-20261023/修复与验证.md)。只改 4 份既有生产文件及配套回归/守卫/专题文档，保留其它任务改动；无提交、真实游戏部署、游戏启动或存档访问。L3、游戏 PhysX 帧序及实际性能仍待验；未重跑全量守卫。
+
+## 2026-10-23 野外趣事初始独立审核（SAFE；008、009 初始复现，后续修复见上节）
+
+本轮重新对照当前生产、官方源码与资源，三个子代理统一 gpt-6.1-sol / xhigh。确认两个 P2，未发现 P0/P1；均在上一轮六项修复前存在。CR-2026-10-23-002～007 维持 Fixed at L1/L2，尚无 L3。本轮只审核，未修生产。
+
+- **CR-2026-10-23-008，P2 / COMPAT / Fixed at L1/L2（修复见上节；以下为初始复现）。** `Integration/FieldAdventures/Mimic/GreedyMimicEncounter.cs:48、52` 将矩形受击盒挂在固定 Root，`GreedyMimicVisual.cs:171` 只转 Body。玩家绕到 90/270 度后射击主木质箱体边缘，真实网格命中但受击盒漏判，可能同时影响回血打断。真实 Unity 装配当前 Encounter、Visual 与官方 HealthSimpleBase / DamageReceiver：0～3 餐、四朝向共 16 组网格均命中，其中横向 8 组 BoxCollider 射线与 0.1 米 SphereCast 均漏，正反向 8 组正常。建议同步稳定 yaw 并避免重复成长缩放；修后补斜向、成长、实际子弹及 L3 四侧射击。原生 42 条生命周期/装配断言通过包含缺陷特征复现，不代表已修复。
+
+- **CR-2026-10-23-009，P2 / COMPAT / Fixed at L1/L2（修复见上节；以下为初始复现）。** `Integration/FieldAdventures/Delivery/OddParcelRuntimeModule.cs:185、231、461` 把快递子项持续留在阿稳组中；已有订单或两单额度耗尽时仅拒绝动作。官方 GetInteractableList 不检查子项可用性，HUD 仍建可选行。生产挂组、接单与取消，结合完整官方 HUD / CA_Interact / CharacterActionBase，复现两状态均 `visible=true、selected=true、StartActionByCharacter=false`，F 无反馈。建议按订单/额度同步成员并刷新列表、按对象保留选择；验证首单前中后、第二单用尽、持续打开菜单与重新靠近。3048 条隔离断言包含该坏行为的特征复现。
+
+新增真实 PhysX 40 个胸口在墙外的射击组合均挡住墙后伤害；另 8 个胸口在墙内/表面的构造有穿墙伤害，尚未证明合法角色位置可达，记 UNVERIFIED。官方 HUD 真实资源父链、FOW.dll 启停 IL 已核实；性能无实机采样。
+
+本轮 533 项 changed-only 守卫、6 组 FieldAdventure 回归、共享迷雾回归与 Windows 正式隔离构建通过；未重跑上轮全部 20 项负探针及全量守卫。旧丧尸文件仍 1239 行。详细触发、锚点、替身边界、证据与 FA-A01～A08 实机清单见 [独立审核报告](Build/field-adventures-independent-audit-20261023/审核报告.md)。没有真实部署、游戏启动、存档访问或提交；其他任务原字节保留。
+
+## 2026-10-23 野外趣事六项修复与交叉复审（COMPAT；002～007 Fixed at L1/L2，L3 待验）
+
+本轮覆盖三个玩法的 17 份生产源码及直接调用链、宿主/资源登记与相关夹具；实际修改 6 份既有生产文件，无新增 TypeID、存档字段或生产源码文件。三个子代理均按用户要求使用 GPT-6.1 Sol / xhigh，分别修复后交叉审核其他模块，主审复核共享门、材质租约、官方 API、构建与测试边界。最终未发现新的 confirmed P0/P1/P2；不将未实机的观感或性能推测记为已确认问题。
+
+- **CR-2026-10-23-002，P2 / COMPAT / Fixed at L1/L2。** 原 `OnHurt` 仅累加 raw damageValue，30 × 2 暴击实扣 60 却无法达到 45 点回血打断。`Integration/FieldAdventures/Mimic/GreedyMimicEncounter.cs:159` 现使用官方已判定的 crit 倍率累计正伤害，保留主玩家过滤，零/负倍率和回血不计入。FieldAdventureMimicRuntime 完整执行生产 Encounter、Rules、官方 HealthSimpleBase 与 DamageReceiver，覆盖普通/暴击边界及累计、拒收、非主玩家和负伤害；恢复旧累计方式会在真实扣血归因断言转红。L3 验证：实际普通/暴击达到 45 时药瓶蓄力应中断。
+
+- **CR-2026-10-23-003，P2 / COMPAT / Fixed at L1/L2。** 原包裹按角色根 forward 摆放，官方按模型朝向检测，转身约 81° 后失去交互。`Integration/FieldAdventures/Delivery/OddParcelRuntimeModule.cs:350` 现沿 CurrentAimDirection 放在前方一米，抱起当刻同步；`:360` 的携带交互球退回玩家上方，放下/喷发成功落地时恢复中心，失败保持携带态。复审发现仅改朝向还不足以覆盖移动先于包裹更新，已补该帧序修复与回归；完整官方 CA_Interact 覆盖移动 0.5 米、任意转向与先搜索后更新。L3 验证：奔跑转身期间 F 交互持续可用，落地后须靠近包裹。
+
+- **CR-2026-10-23-004，P2 / COMPAT / Fixed at L1/L2。** 原 32 米舌长与 45 米攻击门不一致，40 米仍受击但舌尖差约 8 米。`Integration/FieldAdventures/Mimic/GreedyMimicVisual.cs:216` 现伸至实际锁定落点，独立十二段各有迷雾采样与清理；弹幕保留八段/32 米。真实 Unity Transform 检查 31.99/32.01/40/45 米的连续端点、每段长度及采样登记，恢复旧截断会在真实端点断言转红。官方迷雾后端仍为替身，L3 验证最大射程实体、预警、命中及远端迷雾是否一致。
+
+- **CR-2026-10-23-005，P2 / COMPAT / Fixed at L1/L2。** 原只更新本地化表，持续同一目标时压力/完整度文字不刷新。`Integration/FieldAdventures/Delivery/OddParcelInteractable.cs:62` 现仅在值/语言变化时刷新官方 HUD 已绑定行，不清目标、不重新选中；喷发当刻刷新。夹具执行完整官方 InteractHUD / InteractSelectionHUD，覆盖同目标变化、组选中与事件保留、语言切换；恢复只改本地化时按预期失败。L3 验证官方交互文字随搬运和喷发变化，组内选择不跳回。
+
+- **CR-2026-10-23-006，P2 / COMPAT / Fixed at L1/L2。** 原无条件用瞄点减枪口，近瞄点会使附加攻击和巨炮后坐反向。`Integration/FieldAdventures/Prototypes/DangerousPrototypeRuntimeModule.cs:316` 与官方基础方向一致：水平距离超过角色到枪口距离加 0.1 米且 Moveability > 0.5 时才取瞄点，否则保留枪口前向；OnShot 和后坐共用结果。`:296` 遇墙沿胸口检查段退回，避免切向/反向射击时沿射向退到墙后。310 场景/2316 断言比对抽取的真实生产与官方方向分支，并执行 OnShot、TraceBlast、TickRecoil；六项隔离旧行为均转红。墙面为解析平面替身，L3 仍需脚边/高差/薄墙/斜墙与实际接触验证；私有 OverrideShootPoint 和第三方改弹道不在官方基础方向合同内。
+
+- **CR-2026-10-23-007，P2 / COMPAT / Fixed at L1/L2。** 原 Unity 音源固定 0.7，不受官方 FMOD 设置影响。`Integration/FieldAdventures/Delivery/OddParcelVisual.cs:256` 现桥接 Master 与 Master/SFX 的 Volume、Mute；播放前及 runtime 暂停早返之前同步，AI 声源独立。运行时回归覆盖设置与暂停，真实 Unity AudioSource 检查实际音量属性；固定音量、漏 Mute、暂停后更新均被负探针抓到。L3 验证播放期间改主/音效音量或静音，叫声立即服从设置、敌人听觉不随玩家静音关闭。
+
+验证：中央 `python tools/run_runtime_regressions.py --filter FieldAdventure` **6 PASS / 0 FAIL**；规则/库存 1376、场景门 43、宝箱 199、快递 2993、试用品 2316 条断言通过，真实 Unity 六组 Deferred 视觉无引擎错误和粉色像素。新运行时负探针 15 项、舌头结构守卫负探针 4 项、原生舌头负探针 1 项全部在预期断言转红，隔离副本按字节还原，生产输入 SHA 未变。新夹具已登记中央入口，各 README 写明真实生产与替身边界，不能把整体生命周期都声称为 L2。
+
+全量 751 项守卫初跑 749 PASS / 2 FAIL：台账超限已把三节九月已闭环记录原字节追加至月档、正文留索引，LedgerSizeGuard 复测通过；唯一保留的是既有 ZombieModeRuntimeModule.cs 1239 > 1200，与本次无关。最终 FieldAdventureIntegrationGuard 与 533 项 changed-only 守卫全部通过。Windows 正式隔离构建通过、无 Dev 定义，只有两条既有 ModeH CS0649 警告；DLL SHA-256 `A38565E7B6B3E1848EAE4812CAFAB478D1C89714E568D010C32B3A3D7E02ABF8`。GAME_PATH 指向 Managed 实体拷贝，未部署、启动游戏、访问存档或提交。
+
+证据汇总与人工验收见 `Build/field-adventures-fixes-20261023/`：`final-evidence.json`、`runtime-final.log`、`windows-build-final.log`、`guards-full.log`、`guard-probes/results.json` 与 `验收与复审.md`。原生最终报告 `Build/FieldAdventureVisuals/run-arsh4p5k/baseline.json`，旧舌长反向报告 `run-9l2xui66/negative-short-tongue.json`；快递七项负探针 `Build/runtime-regressions/FieldAdventureDeliveryRuntime/source-9sjlupx2/result.json`，试用品六项 `Build/runtime-regressions/FieldAdventurePrototypeRuntime-negative/copy-t_2yc3ek/report.json`，宝箱负探针随中央夹具默认执行。
+
+剩余证据边界（非 confirmed finding）：反复切回借用枪会重建视觉对象，尚无帧耗采样，不能认定卡顿；宝箱直接 Health.Hurt 的载具保护路径未证实在普通出击可达；真实 PhysX、地形、迷雾遮挡、音量听感与操作手感仍待 L3。公开发布前按人工步骤检查，不能以编译/离线预览宣称游戏内已验证。
+
 ## 2026-10-18 v2.3.5 之后五个提交审查（001～023 全部 Fixed，COMPAT / OPERATIONAL，L1/L2，L3 待 owner）
 
 范围 `3abfddcc..e25005ee`：`5a835089`、`9f9f9449`、`1170e834`、`c09c53cb`、`e25005ee`。审查时 HEAD 隔离签出 Windows 正式编译 0 错误；全量守卫 747/747；相关执行回归 7 项全过。没有 P0 / P1。下列位置按审查时 HEAD 行号；owner 要求全部修复，钻戒限量与官方存档键两条授权按好玩优先自定。
@@ -466,70 +520,11 @@ CR-2026-09-27-401～406 的原始发现、逐项回填及当时验证已[按原�
 
 文件位置、触发、影响、源哈希、各夹具替身边界及剩余 L3 在完整记录。实机仍为 MANUAL_PENDING，未将构建或隔离回归写成游戏内已生效。
 
-<!-- BEGIN JEFF FRUIT REAUDIT 2026-09-27 -->
+2026-09-27 Jeff 任务与菜地果实链路复审：8 项 Fixed / L1+L2，L3 仍待验；完整原文见 [2026-09 归档](archive/CODE_REVIEW_FINDINGS_2026-09.md)。
 
-## 2026-09-27 Jeff 任务与菜地果实链路复审（8 项 Fixed / L1+L2，L3 待验）
+2026-09-26 Jeff 任务与菜地果实链路：4 项 Fixed / L1+L2，L3 仍待验；完整原文见 [2026-09 归档](archive/CODE_REVIEW_FINDINGS_2026-09.md)。
 
-结合 `鸭科夫源码/` 与本机官方 DLL 复审任务挂载与推进、收获到手、吃下变身三条链，重点补上一轮替身没有模拟的官方行为（`CanEditInventory`、雨天元素系数、`Garden.Load` 缺表分支）。完整依据、反驳 / 接受项与人工步骤见 [复审报告](docs/reports/reviews/2026-09-27-Jeff任务与果实复审.md)。编号 301 起。
-
-| ID | 等级 / 分类 | 确认问题与修复 | 验证 / 状态 |
-| --- | --- | --- | --- |
-| CR-2026-09-27-301 | P1 / COMPAT | 引导一条接一条，第 5 条「天空岛装备」无前置，未做完 Jeff 序章的档卡死后面九条。`GuidePrerequisiteMet` 加 `SkyIslandPreludeFlow.CanUseRoute`，前置未到跳过。 | Fixed / L2。JeffQuestFlow 新档走完其余 11 条；反向探针转红。 |
-| CR-2026-09-27-302 | P2 / COMPAT / WIRE+ | 吃果实时 `CA_UseItem` 在跑，官方 `SetCharacterModel` 把 `holdWeaponBeforeUse` 清成 -1，`OnStop` 切近战（无近战则空手）。换模前后写回官方字段。 | Fixed / L2。三果实 × 三种吃前武器；DLL 契约核对字段与调用顺序。 |
-| CR-2026-09-27-303 | P2 / COMPAT | 到期时正在近战 / 冲刺 / 交互 / 用道具，换回模型会连手持武器一起销毁。改为等动作结束再恢复，最多 3 秒。 | Fixed / L2。等待、放行、卡死强制恢复；探针转红。 |
-| CR-2026-09-27-304 | P2 / COMPAT / WIRE+ | 官方雨天对火焰系数再减 0.15 不截断，乘 0 的火免变成火伤回血且越过上限。雨天补排在乘算之后的 `Add +0.15`。 | Fixed / L2。夹具 Stat 按官方 Order 重写；探针得 -0.15 转红。 |
-| CR-2026-09-27-305 | P2 / COMPAT / WIRE+ | 作物表注入晚于 `Garden.Load` 时，未初始化 Crop 带默认 Data 进字典，下次存档抹掉 Mod 作物。注入成功后对含空壳的 Garden 重读一次存档。 | Fixed / L2。早读→晚注入→恢复，健康菜地与模板不重读；探针转红。 |
-| CR-2026-09-27-306 | P3 / COMPAT | `AddDynamicEntry` 在官方物品表未就绪时返回 false，兜底注册却记成功。改为检查返回值、交给重试。 | Fixed / L2。探针转红。 |
-| CR-2026-09-27-307 | P3 / COMPAT | 官方接取后 Mod 事实写失败只打 DevLog（正式构建不存在），任务无声消失。改为给玩家原因，投影退回可接取页。 | Fixed / L2。失败提示、退回、重试。 |
-| CR-2026-09-27-308 | P3 / COMPAT | 官方作物不浇水不长，起步种子提示没说。补中英一句。 | Fixed / L1。 |
-
-反驳：切语言后种子名不跟随（已在 `InjectLocalization_Extra_Integration`）。接受：基地可食用（Wiki 设计）、额外攻击不出命中标记（`isFromBuffOrEffect` 设计）、护甲削减额外伤害（数值取舍）、换武器慢一帧与女巫持枪手势（待实机）。
-
-<!-- END JEFF FRUIT REAUDIT 2026-09-27 -->
-
-<!-- BEGIN JEFF FRUIT AUDIT 2026-09-26 -->
-
-## 2026-09-26 Jeff 任务与菜地果实链路（4 项 Fixed / L1+L2，L3 待验）
-
-结合官方反编译源与本机 DLL 审查 24 个任务 ID（Jeff 21、岛上 3）、收获路线与三种变身。完整接线、验证边界和人工步骤见 [审查报告](docs/reports/reviews/2026-09-26-Jeff任务与果实生产审查.md)。编号 201 起区分同日并发专题。
-
-| ID | 等级 / 分类 | 确认问题与修复 | 验证 / 状态 |
-| --- | --- | --- | --- |
-| CR-2026-09-26-201 | P1 / COMPAT / WIRE+ | 官方食用二次 CanBeUsed 失败不进 OnUse，但 OnFinish 仍扣数量，旧补偿漏掉读条期间失效。果实专用前缀在扣量入口复查主玩家/场景/资格，原 OnUse 启动失败补偿保留。 | Fixed / L1+L2。真实前缀与服务覆盖三果实 1/20 堆叠、死亡/切图/停用/场景消失/已有变身；DLL 核对方法字段。 |
-| CR-2026-09-26-202 | P2 / COMPAT | 官方 OnAttackEvent 即使近战 StartAction 被拒也发，导致果实能力被无效输入触发。改订阅原 CA_Attack.OnAttack，保存同一 action 引用并退订。 | Fixed / L1+L2。成功近战有能力，无效输入无能力；恢复/生命周期回归通过。 |
-| CR-2026-09-26-203 | P2 / COMPAT | ReadyToDeliver 只表示局内目标结算，正文却给未建菜地/未摆战利品标“已达成”。基地正文仅认 baseFact，历史 Completed 由客户端传完成事实。 | Fixed / L1+L2。中英目标、缺设施拒交、补齐可交及历史不反转；交付门原本正确。 |
-| CR-2026-09-26-204 | P2 / COMPAT | 鸭王杯“看完一场”使用 IsMatchInProgress，刚开战就达成。只读 HasCompletedMatch 改查当前已有已结算/已归档战报。 | Fixed / L1+L2。真实属性提取执行，未结算拒绝，正常结算达成；不新增存档或改经济数值。 |
-
-没有把官方异步发货的理论异常当作已发生丢物。背包失败转仓、满仓转自提已核对实际 IL，物品数量/画面仍待 L3；不以隔离宿主替身冒充 Unity 或 Harmony 已生效。
-
-<!-- END JEFF FRUIT AUDIT 2026-09-26 -->
-
-<!-- BEGIN SKY RELEASE FINDINGS 2026-09-26 -->
-
-## 2026-09-26 天空岛发版审查（COMPAT / SAFE；修复完成，L3 待 owner）
-
-本轮按用户授权的正式玩家可达、六居民关系、内容承诺与战斗品质标准审查。详细证据与候选门禁见 [发版验收](docs/reports/sky-island/天空岛_发版验收_2026-09-26.md)，完整内容、NPC、Boss 矩阵链接在报告内。编号101起用于区分同日并发专题；本节只记有源码根因的缺口，不将未实机的观感推测记为确认缺陷。
-
-| ID | 等级 / 分类 | 已确认问题与修复 | 验证 / 状态 |
-| --- | --- | --- | --- |
-| CR-2026-09-26-101 | P1 / COMPAT | 本轮“六居民全关系”标准下，浮舟、眠苔、折翎、钟守是非永久蓝图；`AttachPermanent` 又只认晴禾/苇白，改配置后婚后恢复仍无法接航路。补四份现有关系配置与偏好，绑定按六人地标识别，复用原好感/礼物/婚姻/恢复。 | Fixed / L1+L2。六人数据、真实绑定点击及关系生命周期回归；逐人实机婚姻仍待验。 |
-| CR-2026-09-26-102 | P1 / COMPAT | 折翎显隐读取持久战败位，且 `HasStarted` 将旧 `Cleared` 当开战，旧战败档永久失去本人。新增局内 `WasStartedThisRaid` 查询，本趟战后休整、次趟恢复，保留旧选择与奖励事实；婚后/名册文本同步。 | Fixed / L1+L2。已保存Cleared与本趟Started回归；两守卫反向验证；旧档实际恢复待验。 |
-| CR-2026-09-26-103 | P2 / COMPAT | 噬风首战圈随追逐移动，固定半径/预警时长无法保证玩家后撤可离圈。首战/回响均锁风眼，圈、灯、伤害共用原点；保留原伤害、阶段及高输出压阶段。 | Fixed / L1+L2。StormEcho/Playability/逃圈属性、首战既有F3步骤扩展；正常负重实打待验。 |
-| CR-2026-09-26-104 | P2 / COMPAT | 圈工厂材质失败返回disabled但非null，控制器可无圈伤害；匠首部分圈生成失败仍炸全部预排落点。公共造圈拒disabled、噬风缺圈取消，星焰只结算成功有圈的对应点。 | Fixed / L1+L2。守卫与实际破坏红样本；资源实机不可见仍判不合格。 |
-| CR-2026-09-26-105 | P2 / COMPAT | 穗镰镰扫范围随追逐移动，泥地减速时玩家可能不断被重新卷入。起手固定圆心，复用BossAIController站定蓄力及恢复，伤害位置与预兆相同。 | Fixed / L1+L2。守卫固定伤害圆心破坏转红；实际暂停/恢复和泥中应对待验。 |
-| CR-2026-09-26-106 | P2 / COMPAT | 蚋笛翁被打断仅4.5秒冷却，比成功施法的9秒更快，正确打断反增加压力。打断改13.5秒，保留1秒/8伤打断门与成功9秒。 | Fixed / L1+L2。真实规则固定期望/上限判据；节奏取舍与回退见报告。 |
-| CR-2026-09-26-107 | P2 / COMPAT | 镜中客倒影给不透明角色材质写alpha，无法保证半透明。保留BakeMesh及贴图，复用共享Alpha材质和正确Tint，不复制Item、不改本体。 | Fixed / L1+L2。材质接线守卫与包读取；实际透明层次和遮挡须owner目检。 |
-| CR-2026-09-26-108 | P2 / COMPAT | Wiki承诺噬风/回响起大风，原WindLevel在白天栈道及十灯后只到微风。风暴且在栈道/桥时优先返回2，风核仍2→1，保留灯/香用途。 | Fixed / L1+L2。真实规则覆盖日夜/桥/栈道/十灯/风核及结束恢复；实机风级和寒意待验。 |
-| CR-2026-09-26-109 | P2 / COMPAT | 婚礼视频用Assembly.Location查资源，字节加载时为空而直接回退。改用已验证GetModPath，保留角色→通用→文字过场次序。 | Fixed / L1+正式编译。现有视频文件定位静态核对；未声称六位有专属视频。 |
-| CR-2026-09-26-110 | P3 / SAFE | Wiki新人“读坐标”与实体仪器交付不符、招引“半成”数值错、维修漏最低收费、噬风固定四次不符跨阈值行为、晴禾位置/天色切换描述不清。双语按生产事实修正，同时补全部六位关系说明。 | Fixed / L1+Wiki构建。原承诺/修正依据见内容矩阵，不靠删合理内容结案。 |
-| CR-2026-09-26-114 | P2 / COMPAT | 并发基础数值迁移后，属性从Forge移到克隆preset阶段，序章SpawnBoss遗漏新入口，正式必经守卫仍用旧底模属性。现于官方CreateCharacterAsync前按K3_Relay/0/Chief应用同一规则，保留实体仪器/掉帽/敌对与owner。 | Fixed / L1+L2。逐字抽取SpawnBoss，钉工厂调用时375生命、源preset不变与重刷不复利；相关守卫反向验证。 |
-| CR-2026-09-26-115 | P2 / SAFE | SKY_RESIDENTS以未婚外地registry实例豁免岛上缺席，且原只查组件不查能否进入菜单，可能假绿。现未婚必在岛，聊天/送礼/剧情必须在官方交互组且启用；剧情隐藏明确未观测，婚后显示沿原规则。 | Fixed / L2。186条纯判据，六项实际破坏转红/字节还原；日常真实交互仍待L3。 |
-
-本轮没有新L3，不把部署、资源可读或F3规则回归写成实机好玩/视觉合格；全仓并发变更导致的候选红项在总报告单列，未覆盖其他会话代码。最终构建哈希、门禁、owner R01–R09与看图文件名均以总报告为准。
-
-| CR-2026-09-26-116 | P2 / COMPAT | 已婚折翎同场随行时仍可从本人或Search_F开战，居民显隐不拥有配偶，导致同身份友敌同时在场。统一挑战判据拦截该组合，提示先送回家；陈旧确认回调使用同一拒绝原因。 | Fixed / L1+L2。真实入口回归覆盖64组合、中英、陈旧确认与送回家后恢复；婚姻组947 checks通过，F3 M22待实机。 |
-
-<!-- END SKY RELEASE FINDINGS 2026-09-26 -->
+2026-09-26 天空岛发版审查：代码修复与 L1/L2 已闭环，L3 仍待验；完整原文见 [2026-09 归档](archive/CODE_REVIEW_FINDINGS_2026-09.md)。
 
 ## 2026-09-25 F3 实机报告（runId 20260925_044506_391）复核：4 项生产缺陷 + 4 项验收数据 / 判据问题（均 Fixed / L1+L2，L3 待下一轮 F3）
 

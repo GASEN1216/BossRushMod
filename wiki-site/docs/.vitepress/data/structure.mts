@@ -738,6 +738,14 @@ export const CATEGORIES: WikiCategory[] = [
         blurbEn: 'Supply drops, blood moons, and worse surprises',
       },
       {
+        path: '/systems/field-adventures',
+        zh: '野外趣事',
+        en: 'Field Adventures',
+        icon: 'sys-events',
+        blurbZh: '贪吃宝箱怪、怪件快递与叮当的危险试用品',
+        blurbEn: 'Hungry mimics, odd parcels, and Dingdang’s dangerous prototypes',
+      },
+      {
         path: '/systems/campaign',
         zh: '鸭王征程',
         en: 'Duck King Campaign',

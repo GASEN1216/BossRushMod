@@ -1381,6 +1381,43 @@
       ]
     },
     {
+      "id": "field-adventures",
+      "title": "野外趣事：贪吃宝箱、怪件快递与危险试用品",
+      "kind": "content",
+      "paths": [
+        "Integration/FieldAdventures/**/*.cs"
+      ],
+      "entry": "Integration/FieldAdventures/ExplorationRuntimeRegistration.cs",
+      "state_owner": "GreedyMimicRuntimeModule / OddParcelRuntimeModule / DangerousPrototypeRuntimeModule",
+      "public_api": [
+        "FieldAdventureSupport"
+      ],
+      "data": [
+        "Assets/ui/field_adventures_visuals"
+      ],
+      "tests": [
+        "tests/FieldAdventureIntegrationGuard.py",
+        "tests/fixtures/FieldAdventureGate",
+        "tests/fixtures/FieldAdventureRules",
+        "tests/fixtures/FieldAdventureVisuals"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/高级功能/野外趣事.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "Integration/AGENTS.md",
+        "Common/UI/AGENTS.md"
+      ],
+      "depends_on": [
+        "integration-core",
+        "npcs",
+        "common",
+        "utilities",
+        "sky-island"
+      ]
+    },
+    {
       "id": "mutators",
       "title": "变异词条",
       "kind": "system",
