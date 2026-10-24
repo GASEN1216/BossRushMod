@@ -16,7 +16,7 @@
 - **订阅**：[Steam 创意工坊](https://steamcommunity.com/sharedfiles/filedetails/?id=3612465423)
 - **参与开发 / AI 协作**：先读 [AGENTS.md](AGENTS.md)
 
-**v2.3.7** 修复了 NPC 名字一直挂在屏幕上、Boss 和装备在迷雾里也能看见的问题，以及丧尸模式圈外满进度不结算、信标重复开波、散射伤害偏低和撤离兑换异常。详见 [v2.3.7 更新说明](WikiContent/zh/changelog__v2_3_7.md)。
+**v2.3.8** 加入新 Boss 蚀日花冠与它的专属图腾残日盾片，普通出击新增贪吃宝箱怪、阿稳的怪件快递、叮当的危险试用品三件野外趣事；冠军之影进入 Boss 池，并修复龙息打丧尸零伤害。详见 [v2.3.8 更新说明](WikiContent/zh/changelog__v2_3_8.md)。
 
 ## 内容一览
 

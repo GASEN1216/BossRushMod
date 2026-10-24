@@ -16,7 +16,7 @@
 - **Subscribe**: [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3612465423)
 - **Contributing / AI collaboration**: read [AGENTS.md](AGENTS.md) first (written in Chinese)
 
-**v2.3.7** fixes NPC names staying on screen, Bosses and gear showing through fog, and Zombie Mode waves getting stuck at full progress, beacon wave starts, low spread damage and extraction payouts. See the [v2.3.7 changelog](WikiContent/en/changelog__v2_3_7.md).
+**v2.3.8** adds a new Boss, the Eclipse Bloom, with its signature Residual Sun Shield Shard totem, plus three field adventures on ordinary raids: the Gluttonous Mimic, Awen's Odd-Parcel Delivery and Dingdang's Dangerous Prototypes. The Shadow of the Champion joins the Boss pool, and Dragon's Breath no longer deals zero damage to zombies. See the [v2.3.8 changelog](WikiContent/en/changelog__v2_3_8.md).
 
 ## What's Inside
 
