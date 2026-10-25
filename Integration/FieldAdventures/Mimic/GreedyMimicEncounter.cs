@@ -140,7 +140,7 @@ namespace BossRush
             ItemStatsSystem.Item item = GreedyMimicInventory.Find(player, food, out slot);
             if (item == null)
             {
-                FieldAdventureSupport.Notify("背包没有可投喂的食材：只收品质 1–3 的普通物品，跳过锁定、愿望清单和使用过的药品。弹药须同一堆至少 12 发。", "No eligible meal: ordinary quality 1–3 items only. Locked slots, wishlisted items and used medicine are excluded. Ammo needs a stack of 12.");
+                FieldAdventureSupport.Notify("背包没有可投喂的食材：它会挑最便宜的那件吃，跳过锁定格、愿望清单和用过的药品。弹药须同一堆至少 12 发。", "No eligible meal: it eats the cheapest match and skips locked slots, wishlisted items and used medicine. Ammo needs a stack of 12.");
                 return;
             }
             int capturedSlot = slot;

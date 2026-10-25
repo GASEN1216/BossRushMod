@@ -29,85 +29,42 @@ namespace BossRush
                 Canvas canvas = f3DebugCheatMenuRoot.AddComponent<Canvas>();
                 canvas.renderMode = RenderMode.ScreenSpaceOverlay;
                 canvas.sortingOrder = BossRushUILayers.Modal;
-
-                CanvasScaler scaler = f3DebugCheatMenuRoot.AddComponent<CanvasScaler>();
-                ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
-
+                ZombieModeUIHelper.ConfigureCanvasScaler(f3DebugCheatMenuRoot.AddComponent<CanvasScaler>());
                 f3DebugCheatMenuRoot.AddComponent<GraphicRaycaster>();
 
+                // 版式（2026-10-25 优化）：深色遮罩 + 带描边的大面板；标题 / 摘要 / 左导航 / 内容 / 状态栏各自一块面，按钮走共享质感层。
                 GameObject background = CreateUIObject("Background", f3DebugCheatMenuRoot.transform);
-                RectTransform backgroundRect = background.GetComponent<RectTransform>();
-                backgroundRect.anchorMin = Vector2.zero;
-                backgroundRect.anchorMax = Vector2.one;
-                backgroundRect.offsetMin = Vector2.zero;
-                backgroundRect.offsetMax = Vector2.zero;
-                Image backgroundImage = background.AddComponent<Image>();
-                backgroundImage.color = new Color(0f, 0f, 0f, 0.72f);
-                Button backgroundButton = background.AddComponent<Button>();
-                backgroundButton.onClick.AddListener(HideF3DebugCheatMenu);
+                F3DebugUiKit.Place(background, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+                background.AddComponent<Image>().color = BossRushUIColors.BackdropStrong;
+                background.AddComponent<Button>().onClick.AddListener(HideF3DebugCheatMenu);
 
-                GameObject panel = CreateUIObject("Panel", f3DebugCheatMenuRoot.transform);
+                Image panelImage = F3DebugUiKit.CreateSurface(f3DebugCheatMenuRoot.transform, "Panel", BossRushUIColors.Surface, 16, BossRushUISkinPart.Panel);
+                GameObject panel = panelImage.gameObject;
                 RectTransform panelRect = panel.GetComponent<RectTransform>();
-                panelRect.anchorMin = new Vector2(0.5f, 0.5f);
-                panelRect.anchorMax = new Vector2(0.5f, 0.5f);
-                panelRect.pivot = new Vector2(0.5f, 0.5f);
-                panelRect.sizeDelta = new Vector2(1550f, 920f);
-                Image panelImage = panel.AddComponent<Image>();
-                panelImage.color = new Color(0.08f, 0.09f, 0.12f, 0.98f);
+                panelRect.anchorMin = panelRect.anchorMax = panelRect.pivot = new Vector2(0.5f, 0.5f);
+                panelRect.sizeDelta = new Vector2(1600f, 940f);
 
-                GameObject title = CreateUIObject("Title", panel.transform);
-                RectTransform titleRect = title.GetComponent<RectTransform>();
-                titleRect.anchorMin = new Vector2(0f, 1f);
-                titleRect.anchorMax = new Vector2(1f, 1f);
-                titleRect.pivot = new Vector2(0.5f, 1f);
-                titleRect.anchoredPosition = new Vector2(0f, -18f);
-                titleRect.sizeDelta = new Vector2(-150f, 42f);
-                Text titleText = title.AddComponent<Text>();
-                titleText.font = font;
-                titleText.fontSize = 28;
-                titleText.alignment = TextAnchor.MiddleLeft;
-                titleText.color = Color.white;
-                titleText.text = L10n.T("F3 调试作弊总控面板", "F3 Debug Cheat Control");
+                Text titleText = F3DebugUiKit.CreateFillText(panel.transform, font, 26, BossRushUIColors.TextPrimary, TextAnchor.MiddleLeft);
+                F3DebugUiKit.Place(titleText.gameObject, new Vector2(0f, 1f), Vector2.one, new Vector2(28f, -66f), new Vector2(-170f, -14f));
+                titleText.fontStyle = FontStyle.Bold;
+                titleText.text = L10n.T("F3 调试总控", "F3 Debug Control") + "   <size=16><color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.TextSecondary) + ">"
+                    + L10n.T("Esc 关闭 · 仅 Dev 构建", "Esc to close · Dev build only") + "</color></size>";
+                Button closeButton = F3DebugUiKit.CreateButton(panel.transform, font, L10n.T("关闭", "Close"), BossRushUIColors.Danger, HideF3DebugCheatMenu, 120f, 40f, 18);
+                F3DebugUiKit.Place(closeButton.gameObject, Vector2.one, Vector2.one, new Vector2(-148f, -60f), new Vector2(-24f, -20f));
 
-                GameObject closeButtonObject = CreateUIObject("CloseButton", panel.transform);
-                RectTransform closeButtonRect = closeButtonObject.GetComponent<RectTransform>();
-                closeButtonRect.anchorMin = new Vector2(1f, 1f);
-                closeButtonRect.anchorMax = new Vector2(1f, 1f);
-                closeButtonRect.pivot = new Vector2(1f, 1f);
-                closeButtonRect.anchoredPosition = new Vector2(-20f, -18f);
-                closeButtonRect.sizeDelta = new Vector2(120f, 42f);
-                Image closeButtonImage = closeButtonObject.AddComponent<Image>();
-                closeButtonImage.color = new Color(0.35f, 0.18f, 0.18f, 1f);
-                Button closeButton = closeButtonObject.AddComponent<Button>();
-                closeButton.onClick.AddListener(HideF3DebugCheatMenu);
-                CreateCenteredText(closeButtonObject.transform, font, L10n.T("关闭", "Close"), 20, Color.white);
-
-                GameObject summary = CreateUIObject("Summary", panel.transform);
-                RectTransform summaryRect = summary.GetComponent<RectTransform>();
-                summaryRect.anchorMin = new Vector2(0f, 1f);
-                summaryRect.anchorMax = new Vector2(1f, 1f);
-                summaryRect.pivot = new Vector2(0.5f, 1f);
-                summaryRect.anchoredPosition = new Vector2(0f, -74f);
-                summaryRect.sizeDelta = new Vector2(-40f, 104f);
-                Image summaryImage = summary.AddComponent<Image>();
-                summaryImage.color = new Color(0.12f, 0.14f, 0.18f, 1f);
-                f3DebugCheatSummaryText = CreateFillText(summary.transform, font, 18, new Color(0.92f, 0.95f, 0.98f, 1f), TextAnchor.UpperLeft);
+                Image summaryImage = F3DebugUiKit.CreateSurface(panel.transform, "Summary", BossRushUIColors.Header, 10, BossRushUISkinPart.Card);
+                F3DebugUiKit.Place(summaryImage.gameObject, new Vector2(0f, 1f), Vector2.one, new Vector2(24f, -172f), new Vector2(-24f, -76f));
+                f3DebugCheatSummaryText = F3DebugUiKit.CreateFillText(summaryImage.transform, font, 17, BossRushUIColors.TextSecondary, TextAnchor.UpperLeft);
                 f3DebugCheatSummaryText.horizontalOverflow = HorizontalWrapMode.Wrap;
                 f3DebugCheatSummaryText.verticalOverflow = VerticalWrapMode.Overflow;
                 f3DebugCheatSummaryText.text = string.Empty;
 
-                GameObject navPanel = CreateUIObject("NavPanel", panel.transform);
-                RectTransform navRect = navPanel.GetComponent<RectTransform>();
-                navRect.anchorMin = new Vector2(0f, 0f);
-                navRect.anchorMax = new Vector2(0f, 1f);
-                navRect.pivot = new Vector2(0f, 1f);
-                navRect.anchoredPosition = new Vector2(20f, -194f);
-                navRect.sizeDelta = new Vector2(220f, -270f);
-                Image navImage = navPanel.AddComponent<Image>();
-                navImage.color = new Color(0.11f, 0.12f, 0.16f, 1f);
+                Image navImage = F3DebugUiKit.CreateSurface(panel.transform, "NavPanel", BossRushUIColors.Header, 10, BossRushUISkinPart.Card);
+                GameObject navPanel = navImage.gameObject;
+                F3DebugUiKit.Place(navPanel, Vector2.zero, new Vector2(0f, 1f), new Vector2(24f, 72f), new Vector2(240f, -186f));
                 VerticalLayoutGroup navLayout = navPanel.AddComponent<VerticalLayoutGroup>();
-                navLayout.padding = new RectOffset(10, 10, 10, 10);
-                navLayout.spacing = 10f;
+                navLayout.padding = new RectOffset(10, 10, 12, 12);
+                navLayout.spacing = 8f;
                 navLayout.childControlHeight = false;
                 navLayout.childControlWidth = true;
                 navLayout.childForceExpandHeight = false;
@@ -120,41 +77,27 @@ namespace BossRush
                 CreateF3DebugCheatNavButton(navPanel.transform, font, F3DebugCheatPage.NpcStory, L10n.T("NPC/剧情", "NPC/Story"));
                 CreateF3DebugCheatNavButton(navPanel.transform, font, F3DebugCheatPage.SceneDebug, L10n.T("场景调试", "Scene Debug"));
                 CreateF3DebugCheatNavButton(navPanel.transform, font, F3DebugCheatPage.Validation, L10n.T("验收测试", "Validation"));
+#if BOSSRUSH_DEV
+                CreateF3DebugCheatNavButton(navPanel.transform, font, F3DebugCheatPage.Recording, L10n.T("录制视频", "Recording"));
+#endif
 
                 GameObject contentPanel = CreateUIObject("ContentPanel", panel.transform);
-                RectTransform contentPanelRect = contentPanel.GetComponent<RectTransform>();
-                contentPanelRect.anchorMin = new Vector2(0f, 0f);
-                contentPanelRect.anchorMax = new Vector2(1f, 1f);
-                contentPanelRect.offsetMin = new Vector2(260f, 68f);
-                contentPanelRect.offsetMax = new Vector2(-20f, -194f);
-                Image contentPanelImage = contentPanel.AddComponent<Image>();
-                contentPanelImage.color = new Color(0.10f, 0.11f, 0.15f, 1f);
+                F3DebugUiKit.Place(contentPanel, Vector2.zero, Vector2.one, new Vector2(256f, 72f), new Vector2(-24f, -186f));
 
                 GameObject scrollView = CreateUIObject("ScrollView", contentPanel.transform);
-                RectTransform scrollRect = scrollView.GetComponent<RectTransform>();
-                scrollRect.anchorMin = Vector2.zero;
-                scrollRect.anchorMax = Vector2.one;
-                scrollRect.offsetMin = new Vector2(14f, 14f);
-                scrollRect.offsetMax = new Vector2(-14f, -14f);
+                F3DebugUiKit.Place(scrollView, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
                 ScrollRect scroll = scrollView.AddComponent<ScrollRect>();
                 scroll.horizontal = false;
                 scroll.vertical = true;
                 scroll.movementType = ScrollRect.MovementType.Clamped;
+                scroll.scrollSensitivity = 40f;
 
                 GameObject viewport = CreateUIObject("Viewport", scrollView.transform);
-                RectTransform viewportRect = viewport.GetComponent<RectTransform>();
-                viewportRect.anchorMin = Vector2.zero;
-                viewportRect.anchorMax = Vector2.one;
-                viewportRect.offsetMin = Vector2.zero;
-                viewportRect.offsetMax = Vector2.zero;
-                // 注意：Mask 依赖 Image 渲染写入 Stencil Buffer 才能让子节点显示。
-                // 默认 UI Shader 开启 UNITY_UI_ALPHACLIP，当 color.a < 0.001 时会 discard 像素，
-                // 导致 Stencil 不写入，所有子元素会被完全裁切（表现为内容区空白）。
-                // 所以 alpha 必须 > 0，再通过 Mask.showMaskGraphic=false 隐藏颜色本身。
-                Image viewportImage = viewport.AddComponent<Image>();
-                viewportImage.color = new Color(1f, 1f, 1f, 1f);
-                Mask viewportMask = viewport.AddComponent<Mask>();
-                viewportMask.showMaskGraphic = false;
+                RectTransform viewportRect = F3DebugUiKit.Place(viewport, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+                // Mask 依赖 Image 写 Stencil：默认 UI Shader 开 UNITY_UI_ALPHACLIP，a < 0.001 会 discard、子节点全被裁掉（内容区空白）。
+                // 所以 alpha 必须 > 0，再用 showMaskGraphic=false 把颜色本身藏起来。
+                viewport.AddComponent<Image>().color = Color.white;
+                viewport.AddComponent<Mask>().showMaskGraphic = false;
 
                 GameObject content = CreateUIObject("Content", viewport.transform);
                 RectTransform contentRect = content.GetComponent<RectTransform>();
@@ -162,30 +105,22 @@ namespace BossRush
                 contentRect.anchorMax = new Vector2(1f, 1f);
                 contentRect.pivot = new Vector2(0.5f, 1f);
                 contentRect.anchoredPosition = Vector2.zero;
-                contentRect.sizeDelta = new Vector2(0f, 0f);
+                contentRect.sizeDelta = Vector2.zero;
                 VerticalLayoutGroup contentLayout = content.AddComponent<VerticalLayoutGroup>();
-                contentLayout.padding = new RectOffset(8, 8, 8, 8);
+                contentLayout.padding = new RectOffset(2, 8, 0, 8);
                 contentLayout.spacing = 14f;
                 contentLayout.childControlHeight = false;
                 contentLayout.childControlWidth = true;
                 contentLayout.childForceExpandHeight = false;
                 contentLayout.childForceExpandWidth = true;
-                ContentSizeFitter contentFitter = content.AddComponent<ContentSizeFitter>();
-                contentFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+                content.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
                 scroll.viewport = viewportRect;
                 scroll.content = contentRect;
                 f3DebugCheatContentRoot = content.transform;
 
-                GameObject statusBar = CreateUIObject("StatusBar", panel.transform);
-                RectTransform statusRect = statusBar.GetComponent<RectTransform>();
-                statusRect.anchorMin = new Vector2(0f, 0f);
-                statusRect.anchorMax = new Vector2(1f, 0f);
-                statusRect.pivot = new Vector2(0.5f, 0f);
-                statusRect.anchoredPosition = new Vector2(0f, 16f);
-                statusRect.sizeDelta = new Vector2(-40f, 40f);
-                Image statusImage = statusBar.AddComponent<Image>();
-                statusImage.color = new Color(0.13f, 0.15f, 0.18f, 1f);
-                f3DebugCheatStatusText = CreateFillText(statusBar.transform, font, 18, new Color(0.90f, 0.95f, 0.98f, 1f), TextAnchor.MiddleLeft);
+                Image statusImage = F3DebugUiKit.CreateSurface(panel.transform, "StatusBar", BossRushUIColors.Header, 8, BossRushUISkinPart.Card);
+                F3DebugUiKit.Place(statusImage.gameObject, Vector2.zero, new Vector2(1f, 0f), new Vector2(24f, 18f), new Vector2(-24f, 58f));
+                f3DebugCheatStatusText = F3DebugUiKit.CreateFillText(statusImage.transform, font, 17, BossRushUIColors.TextPrimary, TextAnchor.MiddleLeft);
                 f3DebugCheatStatusText.text = L10n.T("准备就绪", "Ready");
 
                 DontDestroyOnLoad(f3DebugCheatMenuRoot);
@@ -238,19 +173,12 @@ namespace BossRush
 
         private void CreateF3DebugCheatNavButton(Transform parent, Font font, F3DebugCheatPage page, string text)
         {
-            GameObject buttonObject = CreateUIObject("Nav_" + page, parent);
-            Image image = buttonObject.AddComponent<Image>();
-            image.color = new Color(0.18f, 0.20f, 0.26f, 1f);
-            Button button = buttonObject.AddComponent<Button>();
-            button.onClick.AddListener(delegate
+            Button button = F3DebugUiKit.CreateButton(parent, font, text, BossRushUIColors.Header, delegate
             {
                 f3DebugCheatCurrentPage = page;
                 RefreshF3DebugCheatPage();
-            });
-            LayoutElement layoutElement = buttonObject.AddComponent<LayoutElement>();
-            layoutElement.preferredHeight = 48f;
-            CreateCenteredText(buttonObject.transform, font, text, 18, Color.white);
-            f3DebugCheatNavButtonImages[page] = image;
+            }, 0f, 46f, 18);
+            f3DebugCheatNavButtonImages[page] = button.GetComponent<Image>();
         }
 
         private void RefreshF3DebugCheatPage()
@@ -294,6 +222,11 @@ namespace BossRush
                     break;
                 case F3DebugCheatPage.Validation:
                     BuildF3GameplayValidationPage();
+                    break;
+                case F3DebugCheatPage.Recording:
+#if BOSSRUSH_DEV
+                    PromoRecordingControls.Build(f3DebugCheatContentRoot, this, HideF3DebugCheatMenu, SetF3DebugCheatStatus);
+#endif
                     break;
             }
 
@@ -689,47 +622,9 @@ namespace BossRush
             CreateActionButton(row3.transform, font, L10n.T("日报：输出状态", "Daily: Dump State"), new Color(0.24f, 0.24f, 0.30f, 1f), DumpDailyReportStateFromF3);
         }
 
-        private GameObject CreateF3Section(string title, string description, Font font)
-        {
-            GameObject section = CreateUIObject("Section_" + title, f3DebugCheatContentRoot);
-            Image sectionImage = section.AddComponent<Image>();
-            sectionImage.color = new Color(0.14f, 0.15f, 0.20f, 1f);
-            VerticalLayoutGroup layout = section.AddComponent<VerticalLayoutGroup>();
-            layout.padding = new RectOffset(14, 14, 14, 14);
-            layout.spacing = 10f;
-            layout.childControlHeight = false;
-            layout.childControlWidth = true;
-            layout.childForceExpandHeight = false;
-            layout.childForceExpandWidth = true;
-            ContentSizeFitter fitter = section.AddComponent<ContentSizeFitter>();
-            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-            LayoutElement element = section.AddComponent<LayoutElement>();
-            element.minHeight = 120f;
-
-            CreateLabel(section.transform, font, title, 24, new Color(0.97f, 0.98f, 1f, 1f), FontStyle.Bold);
-            if (!string.IsNullOrEmpty(description))
-            {
-                CreateLabel(section.transform, font, description, 17, new Color(0.84f, 0.89f, 0.95f, 1f), FontStyle.Normal);
-            }
-            return section;
-        }
-
-        private GameObject CreateF3Row(Transform parent)
-        {
-            GameObject row = CreateUIObject("Row", parent);
-            HorizontalLayoutGroup layout = row.AddComponent<HorizontalLayoutGroup>();
-            layout.spacing = 10f;
-            layout.padding = new RectOffset(0, 0, 0, 0);
-            layout.childControlHeight = false;
-            layout.childControlWidth = false;
-            layout.childForceExpandHeight = false;
-            layout.childForceExpandWidth = false;
-            ContentSizeFitter fitter = row.AddComponent<ContentSizeFitter>();
-            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-            fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
-            return row;
-        }
+        // 以下构件已移到 F3DebugUiKit（2026-10-25），这里只留一行转发，调用点不变。
+        private GameObject CreateF3Section(string title, string description, Font font) { return F3DebugUiKit.CreateSection(f3DebugCheatContentRoot, title, description, font); }
+        private GameObject CreateF3Row(Transform parent) { return F3DebugUiKit.CreateRow(parent); }
 
         private GameObject CreateF3LabeledInputRow(Transform parent, Font font, string label, out InputField inputField, string text)
         {
@@ -739,160 +634,14 @@ namespace BossRush
             return row;
         }
 
-        private static GameObject CreateUIObject(string name, Transform parent)
-        {
-            GameObject go = new GameObject(name, typeof(RectTransform));
-            go.transform.SetParent(parent, false);
-            return go;
-        }
-
-        private Text CreateLabel(Transform parent, Font font, string text, int fontSize, Color color, FontStyle style)
-        {
-            GameObject go = CreateUIObject("Label", parent);
-            Text label = go.AddComponent<Text>();
-            label.font = font;
-            label.text = text;
-            label.fontSize = fontSize;
-            label.color = color;
-            label.fontStyle = style;
-            label.alignment = TextAnchor.MiddleLeft;
-            label.horizontalOverflow = HorizontalWrapMode.Wrap;
-            label.verticalOverflow = VerticalWrapMode.Overflow;
-            ContentSizeFitter fitter = go.AddComponent<ContentSizeFitter>();
-            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-            return label;
-        }
-
-        private Text CreateLabelWithWidth(Transform parent, Font font, string text, int fontSize, float width)
-        {
-            GameObject go = CreateUIObject("Label", parent);
-            LayoutElement element = go.AddComponent<LayoutElement>();
-            element.preferredWidth = width;
-            element.minWidth = width;
-            element.preferredHeight = 34f;
-            Text label = go.AddComponent<Text>();
-            label.font = font;
-            label.text = text;
-            label.fontSize = fontSize;
-            label.color = Color.white;
-            label.alignment = TextAnchor.MiddleLeft;
-            return label;
-        }
-
-        private void CreateCenteredText(Transform parent, Font font, string text, int fontSize, Color color)
-        {
-            GameObject textObject = CreateUIObject("Text", parent);
-            RectTransform rect = textObject.GetComponent<RectTransform>();
-            rect.anchorMin = Vector2.zero;
-            rect.anchorMax = Vector2.one;
-            rect.offsetMin = Vector2.zero;
-            rect.offsetMax = Vector2.zero;
-            Text label = textObject.AddComponent<Text>();
-            label.font = font;
-            label.text = text;
-            label.fontSize = fontSize;
-            label.color = color;
-            label.alignment = TextAnchor.MiddleCenter;
-        }
-
-        private Text CreateFillText(Transform parent, Font font, int fontSize, Color color, TextAnchor alignment)
-        {
-            GameObject textObject = CreateUIObject("Text", parent);
-            RectTransform rect = textObject.GetComponent<RectTransform>();
-            rect.anchorMin = Vector2.zero;
-            rect.anchorMax = Vector2.one;
-            rect.offsetMin = new Vector2(10f, 6f);
-            rect.offsetMax = new Vector2(-10f, -6f);
-
-            Text label = textObject.AddComponent<Text>();
-            label.font = font;
-            label.fontSize = fontSize;
-            label.color = color;
-            label.alignment = alignment;
-            return label;
-        }
-
-        private Button CreateActionButton(Transform parent, Font font, string text, Color color, UnityEngine.Events.UnityAction onClick)
-        {
-            GameObject go = CreateUIObject("Button_" + text, parent);
-            LayoutElement element = go.AddComponent<LayoutElement>();
-            element.preferredWidth = 170f;
-            element.preferredHeight = 40f;
-            element.minHeight = 40f;
-            Image image = go.AddComponent<Image>();
-            image.color = color;
-            Button button = go.AddComponent<Button>();
-            button.onClick.AddListener(onClick);
-            CreateCenteredText(go.transform, font, text, 17, Color.white);
-            return button;
-        }
-
-        private Button CreatePresetButton(Transform parent, Font font, string text, UnityEngine.Events.UnityAction onClick)
-        {
-            GameObject go = CreateUIObject("Preset_" + text, parent);
-            LayoutElement element = go.AddComponent<LayoutElement>();
-            element.preferredWidth = 76f;
-            element.preferredHeight = 36f;
-            Image image = go.AddComponent<Image>();
-            image.color = new Color(0.25f, 0.28f, 0.35f, 1f);
-            Button button = go.AddComponent<Button>();
-            button.onClick.AddListener(onClick);
-            CreateCenteredText(go.transform, font, text, 16, Color.white);
-            return button;
-        }
-
-        private InputField CreateInputField(Transform parent, Font font, string text, float width)
-        {
-            GameObject root = CreateUIObject("InputField", parent);
-            LayoutElement element = root.AddComponent<LayoutElement>();
-            element.preferredWidth = width;
-            element.minWidth = width;
-            element.preferredHeight = 40f;
-            Image image = root.AddComponent<Image>();
-            image.color = new Color(0.95f, 0.97f, 1f, 1f);
-            InputField inputField = root.AddComponent<InputField>();
-
-            GameObject placeholderObject = CreateUIObject("Placeholder", root.transform);
-            RectTransform placeholderRect = placeholderObject.GetComponent<RectTransform>();
-            placeholderRect.anchorMin = Vector2.zero;
-            placeholderRect.anchorMax = Vector2.one;
-            placeholderRect.offsetMin = new Vector2(10f, 6f);
-            placeholderRect.offsetMax = new Vector2(-10f, -6f);
-            Text placeholderText = placeholderObject.AddComponent<Text>();
-            placeholderText.font = font;
-            placeholderText.fontSize = 17;
-            placeholderText.alignment = TextAnchor.MiddleLeft;
-            placeholderText.color = new Color(0.55f, 0.58f, 0.62f, 1f);
-            placeholderText.text = text;
-
-            GameObject textObject = CreateUIObject("Text", root.transform);
-            RectTransform textRect = textObject.GetComponent<RectTransform>();
-            textRect.anchorMin = Vector2.zero;
-            textRect.anchorMax = Vector2.one;
-            textRect.offsetMin = new Vector2(10f, 6f);
-            textRect.offsetMax = new Vector2(-10f, -6f);
-            Text fieldText = textObject.AddComponent<Text>();
-            fieldText.font = font;
-            fieldText.fontSize = 17;
-            fieldText.alignment = TextAnchor.MiddleLeft;
-            fieldText.color = new Color(0.12f, 0.12f, 0.15f, 1f);
-            fieldText.text = text;
-
-            inputField.textComponent = fieldText;
-            inputField.placeholder = placeholderText;
-            inputField.text = text;
-            inputField.lineType = InputField.LineType.SingleLine;
-            inputField.contentType = InputField.ContentType.Standard;
-            return inputField;
-        }
-
-        private void ClearChildren(Transform parent)
-        {
-            for (int i = parent.childCount - 1; i >= 0; i--)
-            {
-                Destroy(parent.GetChild(i).gameObject);
-            }
-        }
-
+        private static GameObject CreateUIObject(string name, Transform parent) { return F3DebugUiKit.CreateUIObject(name, parent); }
+        private Text CreateLabel(Transform parent, Font font, string text, int fontSize, Color color, FontStyle style) { return F3DebugUiKit.CreateLabel(parent, font, text, fontSize, color, style); }
+        private Text CreateLabelWithWidth(Transform parent, Font font, string text, int fontSize, float width) { return F3DebugUiKit.CreateLabelWithWidth(parent, font, text, fontSize, width); }
+        private void CreateCenteredText(Transform parent, Font font, string text, int fontSize, Color color) { F3DebugUiKit.CreateCenteredText(parent, font, text, fontSize, color); }
+        private Text CreateFillText(Transform parent, Font font, int fontSize, Color color, TextAnchor alignment) { return F3DebugUiKit.CreateFillText(parent, font, fontSize, color, alignment); }
+        private Button CreateActionButton(Transform parent, Font font, string text, Color color, UnityEngine.Events.UnityAction onClick) { return F3DebugUiKit.CreateActionButton(parent, font, text, color, onClick); }
+        private Button CreatePresetButton(Transform parent, Font font, string text, UnityEngine.Events.UnityAction onClick) { return F3DebugUiKit.CreatePresetButton(parent, font, text, onClick); }
+        private InputField CreateInputField(Transform parent, Font font, string text, float width) { return F3DebugUiKit.CreateInputField(parent, font, text, width); }
+        private void ClearChildren(Transform parent) { F3DebugUiKit.ClearChildren(parent); }
     }
 }

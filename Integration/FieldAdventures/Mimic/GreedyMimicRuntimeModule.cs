@@ -15,7 +15,13 @@ namespace BossRush
         /// <summary>每趟出击的遇敌掷点；离线夹具可替换成定值。</summary>
         internal static Func<float> SpawnRoll = () => UnityEngine.Random.Range(0f, 1f);
         public override string ModuleName { get { return "GreedyMimic"; } }
-        public override void OnAwake(ModBehaviour host) { owner = host; }
+        public override void OnAwake(ModBehaviour host)
+        {
+            owner = host;
+#if BOSSRUSH_DEV
+            DevCurrent = this;
+#endif
+        }
         public override void OnSceneLoaded(SceneRuntimeContext context)
         {
             if (encounter != null && (!encounter.Scene.IsValid() || !encounter.Scene.isLoaded || context.LoadMode == LoadSceneMode.Single)) Cleanup();
@@ -64,6 +70,38 @@ namespace BossRush
             catch (Exception e) { Debug.LogWarning("[GreedyMimic] 遭遇运行失败，已清理: " + e.Message); Cleanup(); }
         }
         private void Cleanup() { if (encounter != null) encounter.Dispose(); encounter = null; }
-        public override void OnDestroy() { Cleanup(); owner = null; raidOwner = null; spawned = false; }
+        public override void OnDestroy()
+        {
+            Cleanup(); owner = null; raidOwner = null; spawned = false;
+#if BOSSRUSH_DEV
+            if (DevCurrent == this) DevCurrent = null;
+#endif
+        }
+#if BOSSRUSH_DEV
+        internal static GreedyMimicRuntimeModule DevCurrent { get; private set; }
+
+        /// <summary>F3 录制模式：替掉本趟掷点，立刻在玩家身边 9–15 米放一只宝箱怪（已有的那只先回收）。</summary>
+        internal bool DevForceSpawn(out string reason)
+        {
+            reason = string.Empty;
+            CharacterMainControl player;
+            Scene scene;
+            if (!FieldAdventureSupport.TryGetRaid(owner, out player, out scene)) { reason = "not_in_raid"; return false; }
+            Cleanup();
+            for (int attempt = 0; attempt < 8; attempt++)
+            {
+                Vector3 position;
+                if (!FieldAdventureSupport.TryFindGround(player.transform.position, 9f, 15f, out position)) continue;
+                if (Physics.CheckBox(position + Vector3.up * 3f, new Vector3(2.5f, 2.9f, 2.3f), Quaternion.identity,
+                    Duckov.Utilities.GameplayDataSettings.Layers.wallLayerMask, QueryTriggerInteraction.Ignore)) continue;
+                raidOwner = LevelManager.Instance;
+                spawned = true;
+                encounter = new GreedyMimicEncounter(owner, scene, position, player);
+                return true;
+            }
+            reason = "no_clear_ground";
+            return false;
+        }
+#endif
     }
 }

@@ -326,6 +326,9 @@ echo(DebugAndTools\PermanentDuckNpcDebug.cs
 echo(DebugAndTools\ItemSpawner.cs
 echo(DebugAndTools\F3DebugCheatMenu.cs
 echo(DebugAndTools\F3DebugCheatMenuUi.cs
+echo(DebugAndTools\F3DebugUiKit.cs
+echo(DebugAndTools\PromoRecording\PromoRecordingDirector.cs
+echo(DebugAndTools\PromoRecording\PromoRecordingControls.cs
 echo(DebugAndTools\CampaignPetNestDebugControls.cs
 echo(DebugAndTools\CampaignProgressDebugControls.cs
 echo(DebugAndTools\F3DebugCheatMenuPlayerStats.cs

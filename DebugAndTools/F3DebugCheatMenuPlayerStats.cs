@@ -28,9 +28,7 @@ namespace BossRush
                     continue;
                 }
 
-                entry.Value.color = entry.Key == f3DebugCheatCurrentPage
-                    ? new Color(0.30f, 0.45f, 0.68f, 1f)
-                    : new Color(0.18f, 0.20f, 0.26f, 1f);
+                F3DebugUiKit.SetNavSelected(entry.Value, entry.Key == f3DebugCheatCurrentPage);
             }
         }
 
@@ -110,9 +108,7 @@ namespace BossRush
             if (f3DebugCheatStatusText != null)
             {
                 f3DebugCheatStatusText.text = message;
-                f3DebugCheatStatusText.color = isError
-                    ? new Color(1f, 0.65f, 0.65f, 1f)
-                    : new Color(0.90f, 0.95f, 0.98f, 1f);
+                f3DebugCheatStatusText.color = isError ? BossRushUIColors.DangerText : BossRushUIColors.SuccessText;
             }
 
             if (!string.IsNullOrEmpty(message))

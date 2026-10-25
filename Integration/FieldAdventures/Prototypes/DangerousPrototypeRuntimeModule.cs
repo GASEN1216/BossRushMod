@@ -64,6 +64,9 @@ namespace BossRush
         public override void OnAwake(ModBehaviour host)
         {
             owner = host;
+#if BOSSRUSH_DEV
+            DevCurrent = this;
+#endif
             if (subscribed) return;
             subscribed = true;
             SceneLoader.onStartedLoadingScene += OnLoading;
@@ -200,7 +203,11 @@ namespace BossRush
                 // 试验台随机落在玩家附近较远处并标在地图上；同趟内一直留着，方便回来交还。
                 if (station != null) return;
                 Vector3 position;
-                if (!FieldAdventureSupport.TryFindGround(player.transform.position, 14f, 30f, out position)) return;
+                float near = 14f, far = 30f;
+#if BOSSRUSH_DEV
+                if (devNearBench) { near = 5f; far = 9f; }
+#endif
+                if (!FieldAdventureSupport.TryFindGround(player.transform.position, near, far, out position)) return;
                 station = DangerousPrototypeVisuals.CreateStation(position, offeredKind);
                 SceneManager.MoveGameObjectToScene(station, scene);
                 var entry = NPCInteractionGroupHelper.GetOrCreateStandaloneInteractable<DangerousPrototypeInteractable>(
@@ -731,6 +738,9 @@ namespace BossRush
             ClearEntries();
             ClearFinales();
             initializedRaid = false; entryAttempts = 0; entryTimer = 0f;
+#if BOSSRUSH_DEV
+            devNearBench = false;
+#endif
         }
         private void ClearEntries()
         {
@@ -764,6 +774,36 @@ namespace BossRush
                 LevelManager.OnMainCharacterDead -= OnDead;
             }
             CleanupRaid(); owner = null;
+#if BOSSRUSH_DEV
+            if (DevCurrent == this) DevCurrent = null;
+#endif
         }
+#if BOSSRUSH_DEV
+        internal static DangerousPrototypeRuntimeModule DevCurrent { get; private set; }
+        private bool devNearBench;
+
+        /// <summary>F3 录制模式：本趟改放指定试用品，试验台下一帧落在玩家身边 5–9 米（不看委托与概率，额度重置）。</summary>
+        internal bool DevForceBench(DangerousPrototypeKind kind, out string reason)
+        {
+            reason = string.Empty;
+            CharacterMainControl player;
+            Scene scene;
+            if (!FieldAdventureSupport.TryGetRaid(owner, out player, out scene)) { reason = "not_in_raid"; return false; }
+            EndLease(true);
+            ClearEntries();
+            ClearFinales();
+            rules.ResetRaid();
+            raidLevel = LevelManager.Instance;
+            benchRolled = true;
+            benchPlanned = true;
+            offeredKind = kind;
+            initializedRaid = true;
+            entrySceneHandle = scene.handle;
+            entryAttempts = 0;
+            entryTimer = 0f;
+            devNearBench = true;
+            return true;
+        }
+#endif
     }
 }

@@ -23,7 +23,8 @@ namespace BossRush
             Battle,
             NpcStory,
             SceneDebug,
-            Validation
+            Validation,
+            Recording
         }
 
         private sealed class F3DebugCheatPlayerState

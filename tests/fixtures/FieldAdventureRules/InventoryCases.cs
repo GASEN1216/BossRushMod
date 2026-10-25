@@ -45,7 +45,6 @@ internal static partial class Program
         RejectedItem((item, pack) => item.Sticky = true, "sticky items are protected from mimic feeding");
         RejectedItem((item, pack) => item.CanBeSold = false, "unsellable items are protected from mimic feeding");
         RejectedItem((item, pack) => item.Quality = 0, "invalid low quality is protected from mimic feeding");
-        RejectedItem((item, pack) => item.Quality = 4, "high quality items are protected from mimic feeding");
         RejectedItem((item, pack) => item.TypeID = 0, "invalid type ids are protected from mimic feeding");
         RejectedItem((item, pack) => item.TypeID = BossRushItemIds.BossRushTicket, "custom item id range is protected from mimic feeding");
         RejectedItem((item, pack) => item.Tags.Add("Quest"), "quest tags are protected from mimic feeding");
@@ -59,6 +58,11 @@ internal static partial class Program
         RejectedItem((item, pack) => UnityEngine.Object.Destroy(item.gameObject), "destroying the item game object invalidates its component for feeding");
         RejectedItem((item, pack) => ItemWishlist.Instance = new ItemWishlist { Wanted = new HashSet<int> { item.TypeID } },
             "manually wishlisted items are protected from mimic feeding");
+
+        Inventory highPack; NewPlayer(out highPack);
+        Item highQuality = Ammunition(highPack, 0); highQuality.Quality = 8;
+        Check(GreedyMimicInventory.Eligible(highQuality, highPack, 0, GreedyMimicFood.Ammunition),
+            "high quality food is eligible since 2026-10-25; selection still prefers the cheapest match");
 
         Inventory inventory; CharacterMainControl player = NewPlayer(out inventory);
         Item expensive = Ammunition(inventory, 0); expensive.Value = 200;

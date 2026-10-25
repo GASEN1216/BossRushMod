@@ -134,6 +134,8 @@ EXCLUDED = {
         "许愿台是玩家主动打开的界面，只借 HudOverlay 当宿主层（HOST_TOPMOST_SORTING_ORDER）",
     "SkyIsland/SkyIslandGates.cs":
         "桥口木牌：世界空间文字（WorldOverlay）",
+    "DebugAndTools/PromoRecording/PromoRecordingDirector.cs":
+        "Dev 专用录制提示条：只在 Dev 构建、owner 从 F3 主动开启录制时出现，End / 结束录制即销毁；贴屏幕最右 180 px，剪辑时裁掉",
     "DebugAndTools/ArenaPrototype/ArenaPrototypeControls.cs":
         "Dev 专用自建试验场的状态行：只在 Dev 构建出现，本轮只登记不改（见报告第三节待办）",
     "ModeF/ModeFUI.cs":

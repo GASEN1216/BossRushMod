@@ -35,7 +35,13 @@ namespace BossRush
         private Vector3 lastPlayerPosition;
         public override string ModuleName { get { return "OddParcel"; } }
 
-        public override void OnAwake(ModBehaviour host) { owner = host; }
+        public override void OnAwake(ModBehaviour host)
+        {
+            owner = host;
+#if BOSSRUSH_DEV
+            DevCurrent = this;
+#endif
+        }
 
         public override void OnSceneLoaded(SceneRuntimeContext context)
         {
@@ -153,6 +159,10 @@ namespace BossRush
             worldRoot = new GameObject("BossRush_OddParcel_Raid");
             SceneManager.MoveGameObjectToScene(worldRoot, scene);
             cancellation = new CancellationTokenSource();
+#if BOSSRUSH_DEV
+            // 录制模式只要玩家身边的发件台，不挂到可能很远的阿稳身上。
+            if (!devDispatchOnly)
+#endif
             TryAttachCourier(scene);
             if (courierOption == null)
             {
@@ -529,8 +539,34 @@ namespace BossRush
             worldRoot = dispatch = null; dispatchInteract = null;
             player = null; sceneHandle = -1;
             sceneAge = courierScanElapsed = 0f; courierScans = 0;
+#if BOSSRUSH_DEV
+            devDispatchOnly = false;
+#endif
         }
 
-        public override void OnDestroy() { ClearWorld(); owner = null; raidOwner = null; }
+        public override void OnDestroy()
+        {
+            ClearWorld(); owner = null; raidOwner = null;
+#if BOSSRUSH_DEV
+            if (DevCurrent == this) DevCurrent = null;
+#endif
+        }
+#if BOSSRUSH_DEV
+        internal static OddParcelRuntimeModule DevCurrent { get; private set; }
+        private bool devDispatchOnly;
+
+        /// <summary>F3 录制模式：退掉本趟快递、归还两单额度，发件台下一帧就在玩家身边 3–7 米重开。</summary>
+        internal void DevResetOrders()
+        {
+            int keepScene = sceneHandle;
+            ClearWorld();
+            sceneHandle = keepScene;
+            acceptedOrders = 0;
+            gateDelay = 0f;
+            sceneAge = 2f;
+            courierScans = 8;
+            devDispatchOnly = true;
+        }
+#endif
     }
 }

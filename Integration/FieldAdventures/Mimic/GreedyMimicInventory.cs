@@ -6,18 +6,25 @@ using UnityEngine;
 
 namespace BossRush
 {
-    /// <summary>只消费明确展示的同一背包物品。排除锁格、愿望清单、任务/自定义物品、容器与已使用药包。</summary>
+    /// <summary>只消费明确展示的同一背包物品。不限品质（2026-10-25 owner 定），挑最便宜的那件；排除锁格、愿望清单、任务/自定义物品、容器与已使用药包。</summary>
     internal static class GreedyMimicInventory
     {
         internal static bool Eligible(Item item, Inventory inventory, int slot, GreedyMimicFood food)
         {
             if ((int)food < 0 || (int)food > 2 || item == null || inventory == null || item.IsBeingDestroyed || item.InInventory != inventory
                 || slot < 0 || inventory.GetItemAt(slot) != item || inventory.IsIndexLocked(slot)
-                || item.TypeID <= 0 || item.TypeID >= BossRushItemIds.BossRushTicket || item.Quality < 1 || item.Quality > 3 || item.Sticky || !item.CanBeSold
+                || item.TypeID <= 0 || item.TypeID >= BossRushItemIds.BossRushTicket || item.Quality < 1 || item.Sticky || !item.CanBeSold
                 || item.Inventory != null || (item.Slots != null && item.Slots.Count > 0)
                 || item.Tags.Contains("Quest") || item.Tags.Contains("Special")
                 || (ItemWishlist.Instance != null && ItemWishlist.Instance.IsManuallyWishlisted(item.TypeID))) return false;
             if ((item.Stackable ? item.StackCount : 1) < GreedyMimicRules.Cost(food)) return false;
+            return MatchesFood(item, food);
+        }
+
+        /// <summary>只看物品本身是不是这类食材（子弹 / 有爆炸伤害的消耗型手雷 / 能回血的药）；背包与保护条件归 Eligible。</summary>
+        internal static bool MatchesFood(Item item, GreedyMimicFood food)
+        {
+            if (item == null) return false;
             if (food == GreedyMimicFood.Ammunition) return item.GetComponent<ItemSetting_Bullet>() != null;
             if (food == GreedyMimicFood.Explosive)
             {

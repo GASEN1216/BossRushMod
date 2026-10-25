@@ -18,7 +18,7 @@ It wears an iron shell: **with its mouth shut it takes only 45% damage**, and hi
 
 Each meal makes the whole chest larger and adds 300 maximum health. It starts with 900 health and reaches 1800 after three meals. Repeating a food type strengthens its matching attack. You may start fighting after one or two meals, or feed it nothing at all.
 
-It only accepts ordinary quality 1-3 items in your backpack's outer inventory. Locked slots, wishlisted items, quest items, custom items, containers and partially used medicine are excluded. Ammo needs a single stack of at least 12 rounds, grenades must deal explosive damage, and medicine must restore health. The lowest-quality eligible item is selected first, then the cheapest within that quality.
+It accepts ordinary items of any quality in your backpack's outer inventory. Locked slots, wishlisted items, quest items, custom items, containers and partially used medicine are excluded. Ammo needs a single stack of at least 12 rounds, grenades must deal explosive damage, and medicine must restore health. The lowest-quality eligible item is selected first, then the cheapest within that quality.
 
 Defeat it to make it spit cash and **twice the amount of each ingredient you fed it** onto the ground. Cash starts at 600, plus 400 per meal, up to 1800. Pick up the drops. At most one mimic appears per raid; moving between areas of the same raid does not refresh that allowance.
 
