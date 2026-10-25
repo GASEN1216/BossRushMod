@@ -21,11 +21,13 @@ namespace BossRush
         private const float CooldownBubbleInterval = 0.35f;
         private readonly FrostmourneConfig configInstance = new FrostmourneConfig();
         private float nextStatusBubbleTime = -999f;
+        private bool holdEventSubscribed;
 
         protected override void Update()
         {
             if (!ModBehaviour.CanRunGameplayRuntimeCached())
             {
+                CancelPendingSummons();
                 return;
             }
 
@@ -77,16 +79,47 @@ namespace BossRush
         protected override void OnManagerInitialized()
         {
             FrostmourneAction.SetConfig(configInstance);
+            if (!holdEventSubscribed)
+            {
+                CharacterMainControl.OnMainCharacterChangeHoldItemAgentEvent += OnHoldItemChanged;
+                holdEventSubscribed = true;
+            }
             LogIfVerbose("霜之哀伤右键技能管理器已初始化");
         }
 
         protected override void OnDestroy()
         {
+            if (holdEventSubscribed)
+            {
+                CharacterMainControl.OnMainCharacterChangeHoldItemAgentEvent -= OnHoldItemChanged;
+                holdEventSubscribed = false;
+            }
+            CancelPendingSummons();
             base.OnDestroy();
+        }
+
+        protected override void OnAfterDeactivate()
+        {
+            CancelPendingSummons();
+            base.OnAfterDeactivate();
+        }
+
+        private void OnHoldItemChanged(CharacterMainControl character, DuckovItemAgent agent)
+        {
+            if (character != CharacterMainControl.Main) return;
+            CancelPendingSummons();
+        }
+
+        private void CancelPendingSummons()
+        {
+            if (abilityAction == null) return;
+            abilityAction.CancelPendingSummons();
+            if (abilityAction.Running) abilityAction.StopAction();
         }
 
         public override void OnSceneChanged()
         {
+            CancelPendingSummons();
             FrostmourneAction.ResetPresetCache();
             base.OnSceneChanged();
         }

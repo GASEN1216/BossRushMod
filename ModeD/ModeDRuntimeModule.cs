@@ -54,10 +54,16 @@ namespace BossRush
             int capturedGeneration = runtime.generation;
             int wave = runtime.modeDWaveIndex;
             int scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle;
+            // 死亡广播可能被其他订阅者截断；在 EndModeD 到来前也不能继续刷怪或自动开波。
+            // 绑定原主角，防止同场景角色替换后把旧队列交给新角色。
+            CharacterMainControl player = CharacterMainControl.Main;
             return () => runtime.owner != null && runtime.owner == expectedOwner && current == runtime
                 && runtime.generation == capturedGeneration && runtime.modeDActive
                 && runtime.modeDWaveIndex == wave
-                && UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle == scene;
+                && !SceneLoader.IsSceneLoading
+                && UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle == scene
+                && player != null && CharacterMainControl.Main == player
+                && player.Health != null && !player.Health.IsDead;
         }
 
         public override void OnSceneLoaded(SceneRuntimeContext context)

@@ -23,8 +23,10 @@ child_multiplier = next(line.strip() for line in king_config.splitlines()
                         if 'const float ChildProtectionDescendantStatMultiplier =' in line)
 field = next(line.strip() for line in config.splitlines() if 'public int bossHealthPercent =' in line)
 (OUT / 'Host.cs').write_text('using UnityEngine; namespace BossRush { public partial class ModBehaviour {\n'
-    + 'private class BossRushConfig { public float bossStatMultiplier = 1f; ' + field + ' }\n'
+    + 'private class BossRushConfig { public float bossStatMultiplier = 1f; public float waveIntervalSeconds = 15f; public float milestoneRestBonusSeconds = 30f; ' + field + ' }\n'
     + member(config, 'internal float GetBossHealthMultiplier()') + '\n'
+    + member(config, 'internal float GetWaveIntervalSeconds()') + '\n'
+    + member(config, 'internal float GetMilestoneRestBonusSeconds()') + '\n'
     + member(bridge, 'private void ApplyBossStatMultiplier(') + '\n} }', encoding='utf-8')
 (OUT / 'Wave.cs').write_text('using System; using UnityEngine; using ItemStatsSystem; using ItemStatsSystem.Stats; '
     + 'namespace BossRush { internal partial class ModeDRuntimeModule { '

@@ -338,6 +338,7 @@ namespace BossRush
             }
             if (Kind == BossRushJsonKind.Float)
             {
+                if (double.IsNaN(FloatValue) || double.IsInfinity(FloatValue)) return fallback;
                 double rounded = Math.Round(FloatValue);
                 return rounded > int.MaxValue || rounded < int.MinValue ? fallback : (int)rounded;
             }
@@ -350,8 +351,10 @@ namespace BossRush
             if (Kind == BossRushJsonKind.Integer) return IntegerValue;
             if (Kind == BossRushJsonKind.Float)
             {
+                if (double.IsNaN(FloatValue) || double.IsInfinity(FloatValue)) return fallback;
                 double rounded = Math.Round(FloatValue);
-                return rounded > long.MaxValue || rounded < long.MinValue ? fallback : (long)rounded;
+                // long.MaxValue 转 double 会上舍入到 2^63；该上界必须排除，避免溢出成负数。
+                return rounded >= 9223372036854775808d || rounded < -9223372036854775808d ? fallback : (long)rounded;
             }
             return fallback;
         }

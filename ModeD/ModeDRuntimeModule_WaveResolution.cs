@@ -21,6 +21,8 @@ namespace BossRush
 
         internal void TryResolveModeDWaveComplete()
         {
+            // 退局后仍可能收到同帧死亡回调；未开首波也没有可结算的波次。
+            if (!modeDActive || modeDWaveIndex <= 0) return;
             if (modeDWaveCompletePending) return;
 
             CleanupDeadEnemies();

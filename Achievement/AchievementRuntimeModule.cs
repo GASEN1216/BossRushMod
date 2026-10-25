@@ -100,6 +100,13 @@ namespace BossRush
         {
             try
             {
+                // 面板常驻且持有时停租约；切图、死亡与主角销毁时先归还，
+                // 不让加载窗口里的快捷键重新打开一层跨场景模态。
+                if (!IsAchievementViewAvailable())
+                {
+                    AchievementView.CloseIfOpen();
+                    return;
+                }
                 UnityEngine.KeyCode achievementKey = UnityEngine.KeyCode.L;
                 if (hasAchievementConfiguration() && getAchievementHotkey() > 0)
                 {
@@ -118,6 +125,13 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[BossRush] 成就界面快捷键处理失败: " + e.Message);
             }
+        }
+
+        internal static bool IsAchievementViewAvailable()
+        {
+            if (SceneLoader.IsSceneLoading || !LevelManager.LevelInited || !LevelManager.AfterInit) return false;
+            CharacterMainControl player = CharacterMainControl.Main;
+            return player != null && player.Health != null && !player.Health.IsDead;
         }
 
         private void CleanupAchievementRuntimeCore()

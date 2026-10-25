@@ -4384,3 +4384,45 @@ Mode G 本轮收尾补证（2026-09-18）：最终专项守卫37 PASS、生产�
 | CR-2026-09-26-116 | P2 / COMPAT | 已婚折翎同场随行时仍可从本人或Search_F开战，居民显隐不拥有配偶，导致同身份友敌同时在场。统一挑战判据拦截该组合，提示先送回家；陈旧确认回调使用同一拒绝原因。 | Fixed / L1+L2。真实入口回归覆盖64组合、中英、陈旧确认与送回家后恢复；婚姻组947 checks通过，F3 M22待实机。 |
 
 <!-- END SKY RELEASE FINDINGS 2026-09-26 -->
+
+## 2026-09-27 天空岛发版复审（Wiki 对账、可达性、居民、Boss 质感）
+
+分类：COMPAT / SAFE；修复完成，L1+L2，L3 待 owner。详见本地报告 `docs/reports/sky-island/天空岛_发版复审_2026-09-27.md`。
+
+| ID | 等级 / 分类 | 已确认根因与影响 | 修复 / 验证 |
+| --- | --- | --- | --- |
+| CR-2026-09-27-001 | P2 / COMPAT | `Assets/Data/DuckNpcs.json` 苇白、浮舟 `positiveTags` 写 `"Tools"`；官方 Tag 名是 `Tool`（官方本地化键 `Tag_Tool`，没有 `Tag_Tools`），`NPCGiftSystem.HasPositiveTag` 按 Tag 资产 `.name` 精确比对。苇白没有按 TypeID 的喜好兜底，于是「苇白喜欢工具」从未兑现、任何礼物都拿不到 +80；浮舟靠 500075/500076 兜底，工具类同样失效 | Fixed：两处改 `Tool`；新守卫 `DuckNpcGiftTagGuard`（永久 NPC 喜好标签必须是官方 Tag、每位至少一条能命中），反向验证：还原 `Tools` 后两条断言转红、按 SHA 还原转绿。Tag 资产名等于本地化键后缀是按 Weapon / Food / Helmat 的既有用法推断，实机送一件官方工具验证（清单 M-02） |
+| CR-2026-09-27-002 | P2 / COMPAT | 天空岛全部头目 / 岛主招式没有音效（`DebugAndTools/SkyIsland` 下只有环境音与云蚋调 `PostCustomSFX`）；走 `ExplosionFxTypes.custom` 的镰扫、落石、换位、冲步、伏击、绊索落地无声；结算无光；换阶段与倒下只有字幕 | Fixed：`gen_sky_island_sfx.py` 新增 5 种程序化音效；`SkyIslandImpactFx` 新增 `SkyIslandBossSfx`、`Flash`、`PhaseBurst`、`DefeatBurst`；Forge / 四位多阶段 Boss / 噬风 / 断风 / 镜中客 / 匠首 / 具名对手接线。判定一字未动。新守卫 `SkyIslandBossFeedbackGuard`（9 个内置反向探针）。观感与帧耗时待实机 |
+| CR-2026-09-27-003 | P3 / SAFE | Wiki「白天在岛上是无风的」与 `SkyIslandFieldcraftRules.WindLevel` 不符：桥与中继平台白天也有微风，双航标后噬风未散时白天同样大风 | Fixed：中英同步改写；`SkyIslandWikiParityGuard` PASS |
+| CR-2026-09-27-004 | P3 / COMPAT | 目标卡「恢复两端航标」不提示要先清守卫，新玩家站在风标台前按了没反应才知道（09-10 可玩性评估 5.1） | Fixed：航标未清守卫时加「（先清守卫）」，判据 `WindBeaconGuardsCleared / StarLampGuardsCleared` 与 `TryApply` 的拒绝共用；SkyIslandStory 执行回归 PASS |
+
+复核后不成立 / 未改：
+- Wiki「口口口口」不是占位符，是官方 preset `EnemyPreset_Boss_Island_Koukou` 的原名。
+- Wiki 噬风「预警约一秒半」对应 `PulseTelegraph = 1.4f`，带「约」字，判一致。
+- 晴禾与另一位 NPC 的 `positiveTags` 含 `Consumable`（官方无此 Tag），各有 `Food` 或 TypeID 兜底、不影响可送礼；登记为 `DuckNpcGiftTagGuard.KNOWN_NOOP` 既有债务，未改行为。
+- 内容可达性（18 件岛物 + 航向仪、17 件装备、11 配方、4 委托、4 谜题、12 信、20 见闻、名册、主线四任务与三处缺席兜底）未发现新的 P0/P1（L1）。
+
+## 2026-09-27 丧尸模式 Boss 表现、官方计数与补丁隔离复审
+
+分类：COMPAT / WIRE+；L1+L2 + Windows 正式编译，L3 待 owner。详见 [复审报告](docs/reports/reviews/2026-09-27_丧尸模式Boss表现与链路复审.md)。同日 001–004 已被其他会话占用，本专题从 101 起。
+
+| ID | 等级 / 分类 | 已确认根因与影响 | 修复 / 验证 |
+| --- | --- | --- | --- |
+| CR-2026-09-27-101 | P2 / COMPAT | `ZombieModeBossVisuals` 的线宽与余烬按身高倍数给，但 LineRenderer 线宽不随 Transform 缩放、粒子 Local 缩放不继承父级：能量环 1.2 cm、脉冲 2.6 cm、余烬 2.5 cm，低于 0.06 m 下限（VB-08），实机基本不可见；发光缝藏在甲内。 | Fixed：世界米数线宽 / 余烬、暗甲包发光刃尖、五种脚下纹章、共享 PlayBurst 起手与死亡爆发、追猎冲刺拖尾。守卫钉线宽下限、Local 缩放与五个纹章分支。观感待 L3。 |
+| CR-2026-09-27-102 | P2 / COMPAT | 09-26 显示副本改 `nameKey` 且销毁才还原；官方 `CharacterMainControl.OnDead` 按它写 `SavesCounter` 击杀计数，官方存档多出 `Count/Kills/BossRush_ZombieMode_Boss_*`，击杀 `Cname_Zombie` 的官方任务漏算 Boss。 | Fixed：`ZombieModeDamageRuntime.ReduceFinalDamage` 判定致死后、扣血前换回原 preset。执行回归新增 3 条断言（吸收不换 / 致死恰好一次 / 普通丧尸不碰）。已写入的旧键不清理（§10）。 |
+| CR-2026-09-27-103 | P3 / COMPAT | 丧尸 Boss 血条无官方 Boss 图标（preset iconType=none），与其他 Mod Boss 不一致。 | Fixed：显示副本设 `CharacterIconTypes.boss`。守卫覆盖。 |
+| CR-2026-09-27-104 | P2 / WIRE+ | 丧尸减伤 Transpiler 挂在共享 `BossRushHealthHurtContextPatch`；IL 失配抛出时逐类安装器跳过整类，所有模式同时失去 Mode G 屏障、逆鳞无敌与 Boss 致死钳制。 | Fixed：独立 `ZombieModeHealthHurtDamagePatch`；`ModeGSpawnTransactionGuard` 登记精确身份，展示守卫禁止回挂。官方 DLL 两种注入顺序回归通过。 |
+| CR-2026-09-27-105 | P3 / COMPAT | `Projectile` 类 run-only 记录局内不清理，毒径 / 远程弹道整局累积并被多处线性遍历（性能影响推断）。 | Fixed：登记新 Projectile 记录时摘除已销毁的同类记录。 |
+| CR-2026-09-27-106 | P3 / COMPAT | 腐蚀 Boss 死后 0.5 s 被销毁，死亡毒云与残留腐蚀区 `source` 为空，回退成玩家来源的效果伤害，死因显示「自己」。 | Fixed（同日第二轮）：丧尸 Boss 的 `Health.DeadDestroyDelay` 延到最长残留区（8 s）+ 1 s，尸体保持失活但有效；静态 OnDead（晚于写击杀计数的实例 OnDeadEvent）再挂回显示副本，结算页死因显示 Boss 名。玩家兜底来源不变（`ZombieModeAreaDamagePlayerGuard` 禁止空来源）。 |
+
+线索（UNVERIFIED）：~~追猎狂暴无单次标记~~ owner 同日定为「狂暴就是一直」，已改为触发一次持续到死亡（见 FIX_TRACKER 同日第二轮）；丧尸 Boss 未设 `isBossCharacter`，日报 / 征程 Boss 计数可能不含丧尸 Boss。图鉴链路复核无新增缺陷。
+
+## 2026-09-29 天空岛发布前生产级审查
+
+- CR-2026-09-29-101～117（P2×4 / P3×13，COMPAT / SAFE / OPERATIONAL）：Fixed，L1 + L2、无 L3；逐条根因 / 修复 / 验证见本地报告 `docs/reports/sky-island/天空岛_发布前生产审查_2026-09-29.md` §1，修复流水见 `FIX_TRACKER.md` 同日节。切片 C「Mod 物品进岛上物资池」refuted。
+- CR-2026-09-29-112（P3 / COMPAT）：头目首杀手记与字幕不看击杀者，断风被拾荒者打死也记首杀（`SkyIslandBossForge.RaiseDefeated`，消费方 `SkyIslandWorldStoryBosses`）。Fixed（owner 2026-09-29 定「只认主角击杀」）：`RaiseDefeated` 带致死一击，倒下回执照放，首杀回调按官方击杀计数口径 `fromCharacter.IsMainCharacter` 过滤；尸体箱与掉落照常；三张装备页 Wiki 中英改为「亲手打倒的首杀」。
+
+
+## 2026-09-30 天空岛道路与阴影（COMPAT，模型专题）
+
+已修复旧路线穿入登记模型、房前家具朝向及长椅背板错位、重复输出已替换地标、跨级联阴影坐标插值、共面反绕序贴图 / 深度争抢和 normal bias 不一致。采用连续重规划道路、实际包络摆放、单一结构 owner、片元级阴影坐标与配对面标记；未关闭正常阴影。证据和实机判据见 [本轮报告](docs/reports/sky-island/2026-09-30-天空岛摆放与阴影修复.md)。此记录只覆盖模型专题，不关闭上方整体生产审查的独立玩法问题。

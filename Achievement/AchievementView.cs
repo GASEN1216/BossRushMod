@@ -168,6 +168,18 @@ namespace BossRush
             Destroy(_instance.gameObject);
         }
 
+        internal static void CloseIfOpen()
+        {
+            // 查询清理入口不能使用 Instance，避免主菜单每帧重建隐藏面板。
+            if (_instance != null && _instance.isOpen) _instance.Close();
+        }
+
+        private void Update()
+        {
+            // 宿主在加载画面会跳过运行时模块 Tick；常驻面板自行释放跨图输入租约。
+            if (isOpen && !AchievementRuntimeModule.IsAchievementViewAvailable()) Close();
+        }
+
         /// <summary>
         /// 创建UI - 参考BossFilter的实现
         /// </summary>
@@ -664,7 +676,7 @@ namespace BossRush
 
         public void Open()
         {
-            if (isOpen) return;
+            if (isOpen || !AchievementRuntimeModule.IsAchievementViewAvailable()) return;
 
             isOpen = true;
             // 上一次关闭的淡出还没播完就又打开：停掉淡出、恢复成完整面板

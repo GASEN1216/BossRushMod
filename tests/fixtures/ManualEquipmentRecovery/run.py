@@ -69,6 +69,16 @@ def main():
     generated += '} partial class SummonStaffManager {\n'
     for signature in ('private void CancelPreparation(', 'private void OnHoldItemChanged('):
         generated += member(manager, signature) + '\n'
+    generated += '} partial class FrostmourneAction {\n'
+    frost = read('Integration/Frostmourne/FrostmourneAction.cs')
+    for signature in ('protected override bool OnAbilityStart(', 'protected override void OnAbilityUpdate(',
+                      'protected override void OnAbilityStop(', 'internal void CancelPendingSummons(',
+                      'private void OnDestroy(', 'private bool IsSpawnRequestStillValid('):
+        generated += member(frost, signature) + '\n'
+    generated += '} partial class FrostmourneAbilityManager {\n'
+    frost_manager = read('Integration/Frostmourne/FrostmourneAbilityManager.cs')
+    for signature in ('private void CancelPendingSummons(', 'private void OnHoldItemChanged('):
+        generated += member(frost_manager, signature) + '\n'
     generated += '}}'
     extracted = OUT / 'Production.cs'
     extracted.write_text(generated, encoding='utf-8')
@@ -83,7 +93,11 @@ def main():
     path = OUT / 'Regression.csproj'
     path.write_text(project, encoding='utf-8')
     (OUT / 'production-sha256.json').write_text(json.dumps(inputs, indent=2), encoding='utf-8')
-    return subprocess.call(['dotnet', 'run', '--project', str(path), '--configuration', 'Release'], cwd=ROOT)
+    sys.path.insert(0, str(ROOT / 'tools'))
+    from run_runtime_regressions import run_project_fixture
+    code, output = run_project_fixture(path, OUT / 'execution', ROOT)
+    print(output)
+    return code
 
 
 if __name__ == '__main__':

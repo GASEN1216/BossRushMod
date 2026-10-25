@@ -697,7 +697,8 @@
       "kind": "devtools",
       "paths": [
         "DebugAndTools/*.cs",
-        "DebugAndTools/ArenaPrototype/**/*.cs"
+        "DebugAndTools/ArenaPrototype/**/*.cs",
+        "DebugAndTools/PromoRecording/**/*.cs"
       ],
       "entry": "DebugAndTools/F3GameplayValidationRunner.cs",
       "state_owner": "DebugToolsRuntimeModule",

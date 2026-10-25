@@ -10,6 +10,55 @@ class Program
     const string BetKey = "BossRush_ModeHCashBet_v1";
     const string ItemKey = "Item/MainCharacterItemData";
     static int checks;
+    static void InterruptedSlotNotification()
+    {
+        foreach (bool flush in new[] { true, false })
+        {
+            Reset();
+            SavesSystem.OnSetFile += ThrowBeforeStoreNotification;
+            int resets = 0;
+            var store = new BossRushSlotJsonStore<string>(new BossRushSlotJsonStoreSpec<string>
+            {
+                StorageKey = "audit_slot", SchemaVersion = 1, LogPrefix = "audit", DisplayName = "audit",
+                Encode = value => value, Decode = value => value, ReadSchemaVersion = value => 1,
+                CreateDefault = () => "empty", NotifySlotChanged = () => resets++
+            });
+            store.EnsureSubscribed(); store.LoadOrInit();
+            Check(store.Store("slot-one"), "slot one write accepted before interrupted notification");
+            try { SavesSystem.ChangeSlot(2); } catch (InvalidOperationException) { }
+            SavesSystem.Cache["audit_slot"] = "slot-two";
+            bool accepted = flush ? store.FlushPending() : store.Store("late-slot-one");
+            Check(!accepted, "stale slot write rejected when earlier OnSetFile handler throws: " + flush);
+            Check((string)SavesSystem.Cache["audit_slot"] == "slot-two", "new slot payload survives stale write: " + flush);
+            Check(!store.HasPendingWrite && resets == 1, "slot drift invalidates old pending and notifies owner once: " + flush);
+            Check(store.Current == "slot-two", "new slot reloads its own payload after write rejection: " + flush);
+            Check(store.Store("new-slot-two") && store.FlushPending(), "same-slot writing can recover after stale request rejection: " + flush);
+            store.ResetAll();
+        }
+    }
+    static void ThrowBeforeStoreNotification() { throw new InvalidOperationException("earlier subscriber failed"); }
+    static void FirstStoreBindsSlot()
+    {
+        Reset();
+        var spec = new BossRushSlotJsonStoreSpec<string>
+        {
+            StorageKey = "audit_first_store", SchemaVersion = 1, LogPrefix = "audit", DisplayName = "audit",
+            Encode = value => value, Decode = value => value,
+            ReadSchemaVersion = value => value == "future-version" ? 2 : 1, CreateDefault = () => "empty"
+        };
+        var store = new BossRushSlotJsonStore<string>(spec);
+        Check(store.Store("slot-one"), "first Store can initialize an empty slot");
+        SavesSystem.ChangeSlot(2); SavesSystem.Cache[spec.StorageKey] = "slot-two";
+        Check(!store.FlushPending() && (string)SavesSystem.Cache[spec.StorageKey] == "slot-two",
+            "first Store binds pending to its slot without requiring an earlier read");
+        store.ResetAll();
+        SavesSystem.Cache[spec.StorageKey] = "future-version";
+        store = new BossRushSlotJsonStore<string>(spec);
+        Check(!store.Store("replacement") && store.HasWriteBarrier && !store.HasPendingWrite,
+            "first Store observes unread future schema before replacing its payload");
+        Check((string)SavesSystem.Cache[spec.StorageKey] == "future-version", "first Store preserves future-version payload");
+        store.ResetAll();
+    }
     static Inventory Bag { get { return CharacterMainControl.Main.CharacterItem.Inventory; } }
     static void Check(bool ok, string name)
     {
@@ -870,6 +919,8 @@ class Program
         try
         {
             OfficialEconomyContract.Verify(args[0]);
+            InterruptedSlotNotification();
+            FirstStoreBindsSlot();
             DailyRollover(); WinAndRetries(); CrashBoundaries(); LossAndIdentity(); NestedStakeOwnership(); WarehouseNotifications(); CashRestoreReadiness(); CashBetSurvivesSpectatorExit(); StartedBetForfeit(); AbandonBetResolution(); BetSideAndSeasonNet(); CustomCashAmount(); LargeCashBets(); SmallBetsAndFrozenRecovery(); OfficialCashPrecheckOverflow(); Schema(); CashJournalFaultRecovery(); OfficialPayOverflowRecovery();
             Console.WriteLine("SaveFailureRecovery: PASS " + checks + " assertions (real services, stores and coordinators; in-memory host)");
             return 0;

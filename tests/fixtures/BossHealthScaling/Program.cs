@@ -82,6 +82,7 @@ namespace BossRush
         private BossRushConfig config = new BossRushConfig();
         public static void DevLog(string value) { }
         internal void Configure(int percent, float global = 1) { config.bossHealthPercent = percent; config.bossStatMultiplier = global; }
+        internal void ConfigureTiming(float wave, float rest) { config.waveIntervalSeconds = wave; config.milestoneRestBonusSeconds = rest; }
         internal void Apply(CharacterMainControl c, bool boss = true, float? explicitMultiplier = null)
         { ApplyBossStatMultiplier(c, explicitMultiplier, boss); }
     }
@@ -89,10 +90,33 @@ namespace BossRush
     {
         private static int checks;
         private static void Equal(float actual, float expected, string label)
-        { checks++; if (Math.Abs(actual - expected) > 0.001f) throw new Exception(label + ": " + actual + " != " + expected); }
+        { checks++; if (float.IsNaN(actual) || float.IsInfinity(actual) || Math.Abs(actual - expected) > 0.001f) throw new Exception(label + ": " + actual + " != " + expected); }
         private static void Main()
         {
+            foreach (float invalid in new[] { 0f, -1f, float.NaN, float.PositiveInfinity, float.NegativeInfinity })
+            {
+                var invalidBoss = new CharacterMainControl();
+                BossStatScaling.ApplyBossStatMultiplier(invalidBoss, null, invalid);
+                Equal(invalidBoss.Health.MaxHealth, 1000, "invalid global multiplier preserves health");
+                Equal(invalidBoss.AI.reactionTime, 2, "invalid global multiplier preserves AI timing");
+                Equal(invalidBoss.CharacterItem.GetStat("GunDamageMultiplier").BaseValue, 2, "invalid global multiplier preserves damage");
+                var explicitBoss = new CharacterMainControl();
+                BossStatScaling.ApplyBossStatMultiplier(explicitBoss, invalid, 2);
+                Equal(explicitBoss.Health.MaxHealth, 2000, "invalid explicit multiplier falls back to valid global setting");
+                var invalidHealth = new CharacterMainControl();
+                BossStatScaling.ApplyBossStatMultiplier(invalidHealth, null, 2, invalid);
+                Equal(invalidHealth.Health.MaxHealth, 2000, "invalid health percentage preserves valid global scaling");
+            }
             var owner = new ModBehaviour();
+            owner.ConfigureTiming(float.NaN, float.NaN);
+            Equal(owner.GetWaveIntervalSeconds(), 15, "invalid wave interval uses default without stalling countdown");
+            Equal(owner.GetMilestoneRestBonusSeconds(), 30, "invalid milestone rest uses default");
+            owner.ConfigureTiming(-5, -5);
+            Equal(owner.GetWaveIntervalSeconds(), 2, "short wave interval stays clamped");
+            Equal(owner.GetMilestoneRestBonusSeconds(), 0, "negative rest stays clamped");
+            owner.ConfigureTiming(1000, 1000);
+            Equal(owner.GetWaveIntervalSeconds(), 60, "long wave interval stays clamped");
+            Equal(owner.GetMilestoneRestBonusSeconds(), 120, "long rest stays clamped");
             Equal(owner.GetBossHealthMultiplier(), 1, "new configuration preserves existing health");
             foreach (int percent in new[] { 10, 100, 200, -100, 1000 })
             {

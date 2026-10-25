@@ -2,6 +2,21 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+## 2026-10-25 全模块边界审查与修复（COMPAT / SAFE；L1/L2，L3 待验）
+
+修复 `CR-2026-10-25-001`～`010`：共享 store 的跨槽待写与首次写入屏障；危险试用品委托迟到提交；Mode D 原玩家归属、两模式加载开始时旧生成失效及第 0 波误结算；霜之哀伤慢创建；成就面板在宿主加载早返后的独立关闭；Boss 非法倍率、NaN 倒计时与 JSON Int64 上边界。每项触发条件、位置、证据、覆盖范围及 6 个手工实机步骤见 `CODE_REVIEW_FINDINGS.md` 同日记录。另补 `architecture/modules.json` 中既有 PromoRecording 两份源码的归属登记（SAFE）。
+
+验证结果：
+
+- 首轮守卫 751 PASS / 1 FAIL；补模块登记后最终全量 **752 PASS / 0 FAIL / 0 KNOWN-RED**，日志 `Build/audit-20261025-guards-final.log`。
+- 原有全量执行回归首轮 142 PASS / 2 环境失败；为 AuditCombatSeptember 和 SkyIslandCombatRuntime 显式设置隔离 Managed 与安装的 Harmony 路径后两组通过，原有 **144 组**均已有本轮通过证据。原生 Unity FieldAdventureVisuals 及其反向探针通过；这是隔离编辑器证据，不是实际游戏 L3。
+- 正式构建完成后，对修改及共享存档/解析消费者统一重跑 **24 PASS / 0 FAIL**，包含新增 PrototypeCommissionLifecycle（67 条）、扩展 ManualEquipmentRecovery（72 条）和 SaveFailureRecovery（401 条）。结果清单 `Build/audit-20261025/affected-results.json`，聚合日志 `Build/audit-20261025-runtime-final-affected.log`。
+- 新边界先红后绿：JSON 越界、零倍率、NaN 倒计时、切槽通知中断、首次写入未绑槽、Mode D 死亡/加载/第 0 波分别执行旧生产失败；委托三项与霜之哀伤一项隔离反向探针验证通过，原生产文件哈希保持。
+- Windows C# 7.3 正式编译通过（已移除 BOSSRUSH_DEV_BUILD），引用本机游戏 Managed 的真实拷贝，日志 `Build/audit-20261025-compile-official.log`。两条 CS0649 是既有 Mode H 兼容页面字段；现有 PrematchDeclutter 守卫要求不启用，未当作 bug 改动。隔离目录未设置 Mods 目标，脚本报告自动复制失败；编译产物已独立保存在 `Build/audit-20261025/BossRush.official.dll`，SHA-256 为 `66567F1C3CAF9C4502F55A5863BA2E4E1676B9037529E6599C64580BD2C26BDE`。没有向实际游戏目录部署。
+- `git diff --check` 与模块预算守卫通过；未新增生产源码、TypeID、持久化 key 或 schema。对应 repowiki 与回归 README 已同步，无公开/私有仓库推送或提交。
+
+性能范围：新增检查围绕实际写入、活动召唤、活动对话或已开面板执行；没有新增全局扫描、资源预热或修改玩法数量。未采样游戏帧耗时，不能作为性能改善的实测证据。本轮未启动游戏或访问玩家存档；真实加载、控制恢复、召唤画面和存档切换仍待按验收清单完成 L3。
+
 ## 2026-10-24 第三轮：新敌人更耐打、随机遇敌、叮当委托与五种试用品（COMPAT / SCHEMA+；L1/L2，L3 待验）
 
 owner 实测「太容易被打倒、进图必刷」并要求叮当试用品先接委托再随机出现、种类更多更夸张。蚀日花冠：生命 7500、花瓣 7.5%，花瓣护核每片 18%（四瓣 28%），引导进行中必刷、完成后每趟 37 号 30%。贪吃宝箱怪：生命 900+300/口，闭嘴铁皮 ×0.45、张嘴全额，每趟 35% 随机出现、时间与距离随机。减伤统一走新增 `Utilities/ReceiverDamageScaling.cs`，挂在既有 `DamageReceiver.Hurt` 前缀上（不新开补丁，参数改 ref），卸载路径兜底清空。叮当委托 `DangerousPrototypeCommission`：好感 10 级在基地叮当组内挂选项，接下即剧情、对话完直接完成，新存槽键 `BossRush_DangerousPrototype_Commission_v1`（SCHEMA+，不接官方 Quest）。试验台改为委托完成后每趟 45% 随机出现、随机时刻、14–30 米并标地图，每台只放一件；试用品扩为五种（倒鸭一号·超载、折射太阳·暴走数值加强，新增嘎嘎轨道炮、雷霆鸭嘴、压轴大烟花），各有招牌部件与专属特效。夹具与守卫同步：花冠规则 / 运行时（护核 28%→64%、每趟只掷一次、任务目标必刷）、宝箱规则 / 运行时（新生命、铁皮倍率、撤销登记）、试用品规则（五种数值、随机分布、非法 id）、原型运行时分发替身。全量守卫 752 PASS；全量执行回归 144 组通过（AudioRuntime 首轮偶发失败、单独重跑通过；FieldAdventureVisuals 因测试工程 Library 缓存指向旧反向验证路径而中断，清缓存后重跑通过，宝箱受击 575 万项全命中）；试用品、花冠规则与残日盾片反向探针通过。正式构建 DLL `7E55D7DBE22A1A1173FAD66052674BE10F4C1F078A49E431710898236E5B4F7E` 已部署。未提交。

@@ -12,6 +12,7 @@ namespace ItemStatsSystem { public sealed class Item {} }
 public sealed class Health:UnityEngine.Object { public bool IsDead; }
 public sealed class InteractableLootbox {}
 public sealed class CharacterRandomPreset {}
+public static class SceneLoader { public static bool IsSceneLoading; }
 public sealed class CharacterMainControl:UnityEngine.Object { public static CharacterMainControl Main; public Health Health=new Health(); public bool dropBoxOnDead; public UnityEngine.GameObject gameObject=new UnityEngine.GameObject(); public CharacterMainControl(){gameObject.Components.Add(this);gameObject.Components.Add(Health);} }
 namespace BossRush {
  // This fixture links only the arena generation owner; loot event cleanup has its own guard.
@@ -44,6 +45,9 @@ namespace BossRush {
    Check(module.EnemyPresets[1].name=="normal20"&&module.EnemyPresets[20].name=="DragonDescendant"&&module.EnemyPresets.Count==22,"early-wave strong boss moved without changing pool size");
    CharacterMainControl.Main=new CharacterMainControl();
    var old=WavesArenaRuntimeModule.CaptureValidity(host,true,true);Check(old(),"active current wave accepted");
+   SceneLoader.IsSceneLoading=true;
+   Check(!old(),"arena cancels pending boss spawning at load start before the old scene unloads");
+   SceneLoader.IsSceneLoading=false;
    host.IsActive=false;Check(!old(),"ended run rejected");host.IsActive=true;
    var current=WavesArenaRuntimeModule.CaptureValidity(host,true,true);Check(!old()&&current(),"new wave rejects old result");
    module.OnSceneLoaded(new SceneRuntimeContext());Check(!current(),"same scene reload invalidates generation");
@@ -56,6 +60,21 @@ namespace BossRush {
    var modeD=new ModeDRuntimeModule();modeD.OnAwake(host);modeD.modeDActive=true;modeD.modeDWaveIndex=1;
    host.IsModeDActive=false;host.ModeDWaveIndex=99;
    var oldD=ModeDRuntimeModule.CaptureValidity(host,true);Check(oldD(),"Mode D current dispatch accepted");
+   SceneLoader.IsSceneLoading=true;
+   Check(!oldD(),"Mode D cancels pending work when loading begins before scene generation changes");
+   SceneLoader.IsSceneLoading=false;
+   CharacterMainControl.Main.Health.IsDead=true;
+   Check(!oldD(),"Mode D rejects pending work immediately when player dies even before death cleanup");
+   CharacterMainControl.Main=new CharacterMainControl();
+   Check(!oldD(),"Mode D cannot transfer pending work to a replacement player in the same scene");
+   var replacedD=ModeDRuntimeModule.CaptureValidity(host,false);
+   UnityEngine.Object.Destroy(CharacterMainControl.Main.gameObject);
+   Check(!replacedD(),"Mode D rejects destroyed player and destroyed Health through Unity null semantics");
+   CharacterMainControl.Main=null;
+   var noPlayerD=ModeDRuntimeModule.CaptureValidity(host,false);
+   CharacterMainControl.Main=new CharacterMainControl();
+   Check(!noPlayerD(),"Mode D work captured without a player cannot adopt a later player");
+   oldD=ModeDRuntimeModule.CaptureValidity(host,true);
    ModeDRuntimeModule.Invalidate(host);modeD.modeDActive=false;Check(!oldD(),"Mode D ended queue rejected before next dispatch");
    modeD.modeDActive=true;modeD.modeDWaveIndex=1;var nextD=ModeDRuntimeModule.CaptureValidity(host,true);
    Check(!oldD()&&nextD(),"Mode D reused wave 1 rejects old callbacks and automatic-next-wave task");
@@ -69,6 +88,9 @@ namespace BossRush {
    modeD.TryResolveModeDWaveComplete();Check(modeD.CompletionCalls==1,"pending Mode D completion is idempotent");
    modeD.OnSceneLoaded(new SceneRuntimeContext());Check(!nextD(),"Mode D same-scene reload invalidates queued work");
    nextD=ModeDRuntimeModule.CaptureValidity(host,true);modeD.OnDestroy();Check(!nextD(),"Mode D runtime destruction invalidates queued work");
+   modeD.TryResolveModeDWaveComplete();Check(modeD.CompletionCalls==1,"late Mode D death cannot complete wave zero after shutdown");
+   modeD.modeDActive=true;modeD.modeDWaveIndex=0;
+   modeD.TryResolveModeDWaveComplete();Check(modeD.CompletionCalls==1,"Mode D waiting for its first wave cannot be settled by an old death callback");
   }
  }
 }

@@ -14,6 +14,10 @@
 
 不访问玩家存档或启动游戏；不验证真实 ES3 文件原子性、Unity 帧时序、物品资源和 UI 表现。
 
+2026-10-25：补充共享槽位 store 的通知中断用例。替身按官方 `SetFile` 的真实顺序先切换 CurrentSlot，再直接调用多播 OnSetFile；前置订阅者抛错使 store 漏收通知。真实 Store / FlushPending 必须拒绝旧请求、保留新槽原值、丢弃旧 pending 并通知 owner，随后新槽可重新加载和保存。旧代码先在 flush 分支实跑失败，修复后两条写入口均通过；故障注入只操作内存宿主。
+
+同轮补充首次不经读取直接 Store：必须绑定原槽，换槽后拒绝旧 pending，并在已有未知 schema 时拒绝覆盖。首次入队未绑槽的旧行为另有一次实跑红项；修复后全部通过。
+
 2026-10-06：自选押注移除 20,000 固定上限，覆盖钱包及真实返还倍率设限、锁盘复验、只扣本金、赔率与队伍变动、重启后的冻结赔付、旧 v1/v2/v3 账本兼容、损坏金额/倍率写屏障、零至 long 极值、校准与统计防溢出、0..10000 滑条单调性及精确端点。小额赢注按原十位取整返还 0 时仍保存真实胜负；逐字执行生产金额与倍率格式化，验证冻结值和 long 两端可显示。拖动中的布局、指针操作与真实 Unity 保存时序仍需实机。
 
 2026-10-07 独立复审：现金锁盘和结算分别注入一次键写失败 / 回读失败，执行真实 journal Tick 恢复，核对本金、冻结分数、赔付及状态同批保存，重复调用和重载不重扣、不重赔。物品奖品已交付后再使回读失败，核对资产快照与剩余义务没有被 replacement 的首次订阅清空，重建旧物品树后不重发；换槽只读新槽，旧 accepted 记录不迁入。旧实现实跑转红于“journal tick recovers the accepted reservation and cash obligation after transient key failure”，日志 `Build/runtime-regressions/ModeHCashRecovery-before.log`。

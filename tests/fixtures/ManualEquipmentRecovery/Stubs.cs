@@ -148,3 +148,29 @@ namespace BossRush
         public void HoldChanged(CharacterMainControl player) { OnHoldItemChanged(player, null); }
     }
 }
+
+public static class SceneLoader { public static bool IsSceneLoading; }
+namespace BossRush
+{
+    static class FrostmourneConfig { public const float TotalActionDuration = 1.5f; }
+    partial class FrostmourneAction : ActionBase
+    {
+        private int activeSpawnRequestId;
+        private bool spawningStarted, spawningComplete, keepPendingSpawnOnStop;
+        public int Requests;
+        private PendingSpawn SpawnZombiesAsync(int id) { Requests++; return new PendingSpawn(); }
+        public int Start() { actionElapsedTime = 0f; Running = OnAbilityStart(); OnAbilityUpdate(0f); return activeSpawnRequestId; }
+        public void Advance(float elapsed) { actionElapsedTime = elapsed; if (Running) OnAbilityUpdate(0f); }
+        public bool Valid(int request, CharacterMainControl player) { return IsSpawnRequestStillValid(request, player, 3); }
+        public void Complete() { spawningComplete = true; Advance(0.1f); }
+        public void Destroy() { isActiveAndEnabled = false; OnDestroy(); }
+    }
+    partial class FrostmourneAbilityManager
+    {
+        public static bool Holding = true;
+        private FrostmourneAction abilityAction;
+        public FrostmourneAbilityManager(FrostmourneAction action) { abilityAction = action; }
+        internal static bool IsHoldingFrostmourne(CharacterMainControl player) { return Holding; }
+        public void HoldChanged(CharacterMainControl player) { OnHoldItemChanged(player, null); }
+    }
+}

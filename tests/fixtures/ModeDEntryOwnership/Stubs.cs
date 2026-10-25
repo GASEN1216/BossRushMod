@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 
+public static class SceneLoader { public static bool IsSceneLoading; }
+
 namespace UnityEngine
 {
     public class Object
@@ -70,8 +72,11 @@ namespace BossRush
     internal struct SceneRuntimeContext {}
     public class EnemyPresetInfo {}
     public class CharacterRandomPreset {}
+    public class Health : UnityEngine.Object { public bool IsDead; }
     public class CharacterMainControl : UnityEngine.Component
     {
+        public static CharacterMainControl Main;
+        public Health Health;
         public bool dropBoxOnDead;
     }
     internal sealed class ModeDItemPool

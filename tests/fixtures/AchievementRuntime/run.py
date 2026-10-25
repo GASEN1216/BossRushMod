@@ -5,10 +5,25 @@ import json
 import re
 import subprocess
 from xml.sax.saxutils import escape
+import sys
 
 ROOT = Path(__file__).resolve().parents[3]
 HERE = Path(__file__).resolve().parent
 OUT = ROOT / 'Build/runtime-regressions/AchievementRuntime'
+sys.path.insert(0, str(ROOT / 'tests'))
+from cs_source_util import clean_source
+
+
+def member(source, signature):
+    assert source.count(signature) == 1, signature
+    start = source.index(signature)
+    opening = source.index('{', start)
+    depth = 0
+    for end in range(opening, len(source)):
+        depth += (source[end] == '{') - (source[end] == '}')
+        if depth == 0:
+            return source[start:end + 1]
+    raise AssertionError(signature)
 
 
 def main():
@@ -29,14 +44,25 @@ def main():
     start = host.index('            CleanupAchievementRuntime();')
     end = host.index('            SafeRuntime.Run("BossRushUI.ResetStaticCaches"', start)
     cleanup = host[start:end]
+    # 链接实际宿主 gate 与模块分发语句，证明独立 View tick 能在宿主早退后释放面板。
+    update = member(clean_source(host), 'void Update()')
+    update_start = update.index('{') + 1
+    dispatch = 'runtimeModuleHost.OnUpdate(Time.deltaTime, Time.unscaledDeltaTime);'
+    update_end = update.index(dispatch) + len(dispatch)
+    update_prefix = update[update_start:update_end]
+    view = clean_source(read('Achievement/AchievementView.cs'))
+    view_lifetime = '\n'.join(member(view, signature) for signature in (
+        'internal static void CloseIfOpen()', 'private void Update()'))
     config = read('Achievement/AchievementMedalConfig.cs')
     constants = '\n'.join(re.findall(r'        public const (?:int|string) (?:TYPE_ID|STOCK_SAVE_KEY|DEFAULT_MAX_STOCK) = [^\r\n]+;', config))
     assert len(constants.splitlines()) == 3
     generated = OUT / 'ProductionAssembly.cs'
-    generated.write_text('namespace BossRush { public partial class ModBehaviour {\n'
+    generated.write_text('using UnityEngine; namespace BossRush { public partial class ModBehaviour {\n'
                          + 'internal void BindProductionAchievementForFixture() {\n' + binding + '\n}\n'
+                         + 'internal void TickHostForFixture() {\n' + update_prefix + '\n}\n'
                          + 'internal void CleanupProductionAchievementSlotForFixture() {\n' + cleanup + '\n}\n}\n'
-                         + 'public static partial class AchievementMedalConfig {\n' + constants + '\n}}', encoding='utf-8')
+                         + 'public static partial class AchievementMedalConfig {\n' + constants + '\n}\n'
+                         + 'public sealed partial class AchievementView {\n' + view_lifetime + '\n}}', encoding='utf-8')
     paths += [generated, HERE / 'Stubs.cs', HERE / 'Program.cs']
     includes = ''.join('<Compile Include="' + escape(str(path), {'"': '&quot;'}) + '" />' for path in paths)
     project = OUT / 'Regression.csproj'

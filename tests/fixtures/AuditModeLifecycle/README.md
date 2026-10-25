@@ -24,6 +24,10 @@ Mode F 补位提取后，`RespawnModeFBossAsync` 直接在 `ModeFRuntimeModule` 
 
 补查的 Mode D 直接链接真实 `ModeDRuntimeModule` 与 `ModeDRuntimeModule_WaveResolution`，验证退出、重开同号波次、同场景重载和销毁均失效旧闭包，以及迟到结案拒绝、等齐生成结果、活敌阻止结算、死敌清除与重复结算门。Tick 和完成效果由可观测替身提供；实际队列消费点由 `ModeDAsyncOwnerGuard` 检查。丧尸拍照直接抽取统一暂停门及暂停时钟方法，以基本 Time/CameraMode 替身验证拍照暂停与恢复，不模拟实际阶段 UI 或敌人 AI。
 
+2026-10-25 Mode D 追加玩家死亡但清理未执行、同图主角替换、销毁连带 Health 判空，以及无玩家时捕获后补建角色的四种异步失效场景。测试直接执行生产 `CaptureValidity`；旧实现已实跑失败在死亡用例，不以模式关闭代替玩家失效。另执行真实波次结算入口，证明退出后的迟到死亡与首波未开始时不能结算第 0 波；旧实现在退出后用例实跑失败。
+
+同轮追加只开启 `SceneLoader.IsSceneLoading`、保持原场景与玩家的用例，验证标准竞技场和 Mode D 的旧刷怪闭包立即失效。Mode D 旧门已实跑失败；此窗口发生在 `sceneLoaded` 推进代数以前，宿主 Update 早返不等于已启动协程和异步工厂停止。真实官方加载时序仍属于 L3 验收范围。
+
 交叉复核另抽取 F3 的 TryReclaimAutotestItems / ClearAutotestSnapshotKey；物品收回器和计数器是可观测替身，仅验证门控顺序、短缺契约与失败留键，不声称测试了真实 Inventory/ES3。里程碑直接链接完整服务，核对 1–16 阶累计完整标价总额、故障重试、每帧/每阶实体预算，另验 15/16/32/33 阶数学边界及宿主 long 饱和。
 
 AutotestBuffer 子夹具另外逐字抽取实际 CountOwnedItems / CountBufferedItems / CountInInventory、ReclaimAutotestItems、RemoveOwnedItems / RemoveFromBuffer / RemoveFromInventory 与清键流程。官方 ItemTreeData 的 rootInstanceID / entries / Count 变量由小型数据替身表达；验证 Buffer 尾部新增奖励回收、原树与无关物品保留、部分堆叠、缺主角/背包、旧快照基线不足、SaveBuffer 和物理写失败留键。只验证生产算法与调用顺序，不声称执行了真实 Unity 或 ES3。

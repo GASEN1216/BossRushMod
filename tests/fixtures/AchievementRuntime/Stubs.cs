@@ -8,6 +8,8 @@ internal static class Probe
     internal static readonly List<string> Unlocks = new List<string>();
     internal static int HotkeyReads;
     internal static bool ThrowManagerInitialization;
+    internal static bool RunGameplay;
+    internal static int ModuleTicks;
 }
 
 namespace UnityEngine
@@ -46,6 +48,7 @@ namespace UnityEngine
         public static KeyCode LastKey;
         public static bool GetKeyDown(KeyCode key) { LastKey = key; return Pressed; }
     }
+    public static class Time { public static float deltaTime = 1, unscaledDeltaTime = 1; }
 }
 
 namespace UnityEngine.SceneManagement
@@ -148,6 +151,7 @@ namespace BossRush
     {
         private static Action<Health, DamageInfo> hurt;
         public float CurrentHealth = 100;
+        public bool IsDead;
         public readonly HealthChangeEvent OnHealthChange = new HealthChangeEvent();
         public static event Action<Health, DamageInfo> OnHurt
         {
@@ -184,6 +188,7 @@ namespace BossRush
     }
     public static class LevelManager
     {
+        public static bool LevelInited, AfterInit;
         private static Action initialized;
         public static event Action OnAfterLevelInitialized
         {
@@ -193,6 +198,7 @@ namespace BossRush
         public static int Subscribers { get { return initialized == null ? 0 : initialized.GetInvocationList().Length; } }
         public static void Rebind() { if (initialized != null) initialized(); }
     }
+    public static class SceneLoader { public static bool IsSceneLoading; }
     public static class ModeGRuntimeGates
     {
         public static bool DamageWindow;
@@ -231,12 +237,17 @@ namespace BossRush
         public static void ResetStaticCaches() { Probe.Trace.Add("manager-reset"); }
     }
     public static class AchievementIconLoader { public static void ResetStaticCaches() { Probe.Trace.Add("icons-reset"); } }
-    public sealed class AchievementView
+    public sealed partial class AchievementView
     {
         public static AchievementView Instance;
+        private static AchievementView _instance { get { return Instance; } }
+        private bool isOpen;
+        public bool IsOpen { get { return isOpen; } }
         public static void EnsureInstance() { Probe.Trace.Add("view-ensure"); if (Instance == null) Instance = new AchievementView(); }
         public static void Shutdown() { Probe.Trace.Add("view-shutdown"); Instance = null; }
-        public void Toggle() { Probe.Trace.Add("toggle"); }
+        public void Close() { isOpen = false; Probe.Trace.Add("view-close"); }
+        public void Toggle() { isOpen = !isOpen; Probe.Trace.Add("toggle"); }
+        public void TickViewForFixture() { Update(); }
     }
     public static class SteamAchievementPopup
     {
@@ -269,6 +280,8 @@ namespace BossRush
     {
         internal AchievementRuntimeModule Registered;
         internal void Register(AchievementRuntimeModule runtime) { Registered = runtime; Probe.Trace.Add("register"); }
+        internal void OnUpdate(float deltaTime, float unscaledDeltaTime)
+        { Probe.ModuleTicks++; Registered.OnUpdate(deltaTime, unscaledDeltaTime); }
     }
     public partial class ModBehaviour : UnityEngine.Object
     {
@@ -281,6 +294,8 @@ namespace BossRush
         private const string BaseSceneName = "Base_SceneV2";
         internal bool IsBaseHubNormalMerchantShop(Duckov.Economy.StockShop shop) { return shop != null && shop.Eligible; }
         public static void DevLog(string message) { }
+        private bool CanRunGameplayThisFrame() { return Probe.RunGameplay; }
+        private void TickAlwaysOnRuntime() { Probe.Trace.Add("always-on"); }
         internal void BeginSessionForFixture() { BeginAchievementSession("fixture"); }
         internal bool KillForFixture(CharacterMainControl boss) { return CheckBossKillAchievementsOnce(boss); }
         internal void ClearForFixture() { CheckClearAchievements(); }

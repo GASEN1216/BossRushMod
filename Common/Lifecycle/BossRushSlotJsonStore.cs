@@ -14,6 +14,7 @@
 //   - 缓存带槽位烙印：LoadOrInit 命中缓存也要比对 SavesSystem.CurrentSlot，
 //     不一致就自失效重载并复位运行时。退订之后（开关关闭）换档没有任何回调，
 //     只靠 OnSetFile 会把上一个槽的数据写进新档，因此校验必须在读取侧；
+//     Store / FlushPending 也复核槽位，防止 OnSetFile 被前置订阅异常截断后先写后读；
 //   - 重新订阅时丢弃 dormant 期间可能过期的缓存：同槽删档重开靠槽号比对看不出来，
 //     重新订阅这一刻是唯一确定的重新对齐点；
 //   - 写屏障：未知 / 更高 schemaVersion、payload 不可读时只读不写，**绝不覆盖该 key**；
@@ -389,14 +390,18 @@ namespace BossRush
         internal bool Store(T value)
         {
             if (value == null) return false;
+            if (!ValidateWriteSlot()) return false;
             if (_storeFaulted) return false;
-            if (HasWriteBarrier) return false;
 
             try
             {
+                // 首次写入也先读取 schema 与槽位，不要求调用方先访问 Current。
+                LoadOrInit();
+                if (HasWriteBarrier) return false;
                 if (_spec.BeforeStore != null) _spec.BeforeStore(value);
                 string json = _spec.Encode(value);
                 if (json == null) return false;
+                if (!ValidateWriteSlot()) return false;
 
                 lock (_lock)
                 {
@@ -422,6 +427,7 @@ namespace BossRush
         /// </summary>
         internal bool FlushPending()
         {
+            if (!ValidateWriteSlot()) return false;
             lock (_lock)
             {
                 if (!_pendingActive || _pendingJson == null) return true;
@@ -468,6 +474,26 @@ namespace BossRush
         #endregion
 
         #region 清理
+
+        // 官方 OnSetFile 是普通多播事件；前面的订阅者抛异常会让本 store 漏收通知。
+        // 写入口也核对原槽位，避免协调器在下次读取之前把旧 pending 写进新槽。
+        private bool ValidateWriteSlot()
+        {
+            int slot = ReadCurrentSlotSafe();
+            lock (_lock)
+            {
+                if (slot == SlotUnknown)
+                {
+                    _lastError = "write_slot_unknown";
+                    return false;
+                }
+                if (_cacheSlot == SlotUnknown || _cacheSlot == slot) return true;
+                ResetForSlotChangeLocked();
+                _lastError = "write_slot_changed";
+            }
+            NotifyDownstream();
+            return false;
+        }
 
         /// <summary>切档 / 删档：丢弃内存状态，从新档重新加载。故障标记不清（跨槽保守）。</summary>
         internal void ResetForSlotChange()

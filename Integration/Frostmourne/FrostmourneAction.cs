@@ -51,6 +51,7 @@ namespace BossRush
         private static FrostmourneConfig _config;
         private bool spawningStarted;
         private bool spawningComplete;
+        private bool keepPendingSpawnOnStop;
         private int activeSpawnRequestId;
 
         // 缓存的僵尸预设
@@ -96,6 +97,7 @@ namespace BossRush
             activeSpawnRequestId++;
             spawningStarted = false;
             spawningComplete = false;
+            keepPendingSpawnOnStop = false;
             return true;
         }
 
@@ -110,21 +112,29 @@ namespace BossRush
 
             if (spawningComplete || actionElapsedTime >= FrostmourneConfig.TotalActionDuration)
             {
+                // 动作收势不取消尚在加载的召唤；离手、死亡与场景门仍会拒绝过期结果。
+                keepPendingSpawnOnStop = !spawningComplete;
                 StopAction();
             }
         }
 
         protected override void OnAbilityStop()
         {
+            if (!keepPendingSpawnOnStop) CancelPendingSummons();
+            keepPendingSpawnOnStop = false;
+        }
+
+        internal void CancelPendingSummons()
+        {
             activeSpawnRequestId++;
             spawningStarted = false;
             spawningComplete = false;
+            keepPendingSpawnOnStop = false;
         }
 
         private void OnDestroy()
         {
-            activeSpawnRequestId++;
-            spawningStarted = false;
+            CancelPendingSummons();
         }
 
         /// <summary>
@@ -379,6 +389,9 @@ namespace BossRush
             {
                 return false;
             }
+
+            if (SceneLoader.IsSceneLoading || !ModBehaviour.CanRunGameplayRuntimeCached()
+                || !FrostmourneAbilityManager.IsHoldingFrostmourne(player)) return false;
 
             return UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex == relatedScene;
         }

@@ -78,6 +78,38 @@ static class Program
         var completed = new SummonStaffAction();
         int completedId = completed.Start(); completed.Complete();
         Check(!completed.Running && !completed.Valid(completedId, player), "finished batch closes its request");
+        var frost = new FrostmourneAction();
+        var frostManager = new FrostmourneAbilityManager(frost);
+        int frostFirst = frost.Start();
+        frost.Advance(1.6f);
+        Check(!frost.Running && frost.Valid(frostFirst, player), "Frostmourne cold creation survives normal cast completion");
+        frost.Advance(3f);
+        Check(frost.Requests == 1, "Frostmourne normal completion never starts a duplicate batch");
+        frostManager.HoldChanged(new CharacterMainControl());
+        Check(frost.Valid(frostFirst, player), "NPC hand changes do not cancel Frostmourne");
+        FrostmourneAbilityManager.Holding = false;
+        Check(!frost.Valid(frostFirst, player), "unheld Frostmourne cannot accept a late spawn");
+        frostManager.HoldChanged(player);
+        FrostmourneAbilityManager.Holding = true;
+        frostManager.HoldChanged(player);
+        Check(!frost.Valid(frostFirst, player), "Frostmourne switch away and back invalidates old response");
+        int frostSecond = frost.Start(); frost.StopAction();
+        Check(!frost.Valid(frostSecond, player), "Frostmourne interrupted cast rejects late response");
+        int frostThird = frost.Start(); frost.Advance(1.6f);
+        player.Health.IsDead = true;
+        Check(!frost.Valid(frostThird, player), "Frostmourne death rejects late spawn");
+        player.Health.IsDead = false; SceneLoader.IsSceneLoading = true;
+        Check(!frost.Valid(frostThird, player), "Frostmourne loading rejects spawn before scene-loaded callback");
+        SceneLoader.IsSceneLoading = false; SceneManager.Index = 4;
+        Check(!frost.Valid(frostThird, player), "Frostmourne scene change rejects spawn");
+        SceneManager.Index = 3; ModBehaviour.RuntimeActive = false;
+        Check(!frost.Valid(frostThird, player), "Frostmourne inactive gameplay rejects spawn");
+        ModBehaviour.RuntimeActive = true;
+        frost.Destroy();
+        Check(!frost.Valid(frostThird, player), "Frostmourne destroyed action rejects spawn");
+        var frostFinished = new FrostmourneAction();
+        int frostFinishedId = frostFinished.Start(); frostFinished.Complete();
+        Check(!frostFinished.Running && !frostFinished.Valid(frostFinishedId, player), "Frostmourne finished batch closes request");
         Console.WriteLine("ManualEquipmentRecovery: PASS " + checks);
     }
 }

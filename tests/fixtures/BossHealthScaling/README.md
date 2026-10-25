@@ -4,6 +4,8 @@
 
 Item / Stat、Health 与 AI 为无 Unity 引擎的替身；不证明实际游戏中的数值、技能或性能。运行 `python tools/run_runtime_regressions.py --filter BossHealthScaling`。
 
+2026-10-25：新增零、负数、NaN、正负无穷倍率，以及波次间隔和里程碑休息的 NaN 回退与有限值上下限。生产旧版先分别在零生命值和 NaN 倒计时断言转红；数值断言也显式拒绝 NaN / Infinity，避免 `Abs(NaN) > tolerance` 假绿。有效全局倍率、显式倍率及生命比例的既有叠加仍覆盖。
+
 另提取真实 `ApplyModeDWaveScaling`，覆盖 50% / 100% / 200% 的第 2 波增量只缩放一次、实际当前血量与上限一致，以及后装备的加法生命和重复调用幂等。
 
 独立复审补入 `ApplyDescendantStatReduction` 与真实召唤降属性常量，覆盖龙皇护卫龙裔在 10% / 50% / 100% / 200% 配置下减半基础数值后仍以实际满血登场。Health 替身按官方 `SetHealth` 钳到当前 MaxHealth；隔离副本恢复旧的 `SetHealth(newHealth)` 后，200% 用例实际报 `500 != 1000`，副本按字节还原并核对 SHA-256。

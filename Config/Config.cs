@@ -1071,7 +1071,7 @@ namespace BossRush
             float value = 15f;
             if (config != null)
             {
-                value = config.waveIntervalSeconds;
+                value = float.IsNaN(config.waveIntervalSeconds) ? value : config.waveIntervalSeconds;
             }
 
             if (value < 2f)
@@ -1096,7 +1096,7 @@ namespace BossRush
             float value = 30f;
             if (config != null)
             {
-                value = config.milestoneRestBonusSeconds;
+                value = float.IsNaN(config.milestoneRestBonusSeconds) ? value : config.milestoneRestBonusSeconds;
             }
 
             if (value < 0f)

@@ -21,12 +21,16 @@ internal static class Program
         Probe.Unlocks.Clear();
         Probe.HotkeyReads = 0;
         Probe.ThrowManagerInitialization = false;
+        Probe.RunGameplay = true;
+        Probe.ModuleTicks = 0;
         AchievementTracker.HasTakenDamage = AchievementTracker.HasUsedHealItem = AchievementTracker.HasPickedUpItem = false;
         AchievementTracker.TotalBossKills = AchievementTracker.TotalDragonKingKills = AchievementTracker.TotalClears = 0;
         AchievementTracker.ArenaEnterTime = 10;
         AchievementTracker.Elapsed = 60;
         ModeGRuntimeGates.DamageWindow = false;
         CharacterMainControl.Main = new CharacterMainControl("player");
+        SceneLoader.IsSceneLoading = false;
+        LevelManager.LevelInited = LevelManager.AfterInit = true;
         Input.Pressed = false;
         Duckov.UI.View.ActiveView = null;
         var host = new ModBehaviour();
@@ -166,6 +170,49 @@ internal static class Program
 
     private static StockShop Shop() { return new StockShop(); }
 
+    private static void ViewLifetime()
+    {
+        var host = New();
+        Input.Pressed = true;
+        host.achievementRuntime.OnUpdate(1, 2);
+        Assert(AchievementView.Instance.IsOpen, "Ready gameplay must open the achievement view");
+        SceneLoader.IsSceneLoading = true;
+        Probe.RunGameplay = false;
+        Probe.Trace.Clear();
+        host.TickHostForFixture();
+        Assert(Probe.ModuleTicks == 0 && AchievementView.Instance.IsOpen
+            && Probe.Trace.SequenceEqual(new[] { "always-on" }),
+            "Real host dispatch must skip the module while its gameplay gate is closed");
+        Probe.Trace.Clear();
+        AchievementView.Instance.TickViewForFixture();
+        Assert(!AchievementView.Instance.IsOpen && Probe.Trace.SequenceEqual(new[] { "view-close" }),
+            "Independent production view tick must close the modal even when the host skips every module");
+        AchievementView.Instance = null;
+        Probe.Trace.Clear();
+        host.achievementRuntime.OnUpdate(1, 2);
+        Assert(AchievementView.Instance == null && Probe.Trace.Count == 0,
+            "Repeated loading ticks must neither create a view nor process the hotkey");
+        SceneLoader.IsSceneLoading = false;
+        Probe.RunGameplay = true;
+        LevelManager.AfterInit = false;
+        Assert(!AchievementRuntimeModule.IsAchievementViewAvailable(), "Partial level initialization must keep the modal unavailable");
+        LevelManager.AfterInit = true;
+        LevelManager.LevelInited = false;
+        Assert(!AchievementRuntimeModule.IsAchievementViewAvailable(), "Uninitialized levels must keep the modal unavailable");
+        LevelManager.LevelInited = true;
+        AchievementView.EnsureInstance();
+        host.achievementRuntime.OnUpdate(1, 2);
+        CharacterMainControl.Main.Health.IsDead = true;
+        host.achievementRuntime.OnUpdate(1, 2);
+        Assert(!AchievementView.Instance.IsOpen, "Player death must release an existing modal");
+        UnityEngine.Object.Destroy(CharacterMainControl.Main.gameObject);
+        Assert(!AchievementRuntimeModule.IsAchievementViewAvailable(), "A destroyed player must not reopen the modal");
+        CharacterMainControl.Main = new CharacterMainControl("next level");
+        host.achievementRuntime.OnUpdate(1, 2);
+        Assert(AchievementView.Instance.IsOpen, "The next ready player must restore ordinary hotkey access");
+        host.achievementRuntime.OnDestroy();
+    }
+
     private static void MedalStock()
     {
         var host = New();
@@ -217,6 +264,7 @@ internal static class Program
         InitializationAndCleanup();
         SessionsAndKills();
         PlayerEventsAndHotkey();
+        ViewLifetime();
         MedalStock();
         Console.WriteLine("PASS AchievementRuntime");
     }

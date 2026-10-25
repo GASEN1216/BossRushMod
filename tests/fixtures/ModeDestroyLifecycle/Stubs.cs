@@ -5,6 +5,8 @@ using UnityEngine;
 using UnityEngine.Events;
 using ItemStatsSystem;
 
+public static class SceneLoader { public static bool IsSceneLoading; }
+
 namespace UnityEngine
 {
     public class Object
@@ -87,6 +89,7 @@ namespace BossRush
     public sealed class DamageInfo { }
     public sealed class Health : UnityEngine.Object
     {
+        public bool IsDead;
         public readonly UnityEvent<DamageInfo> OnDeadEvent = new UnityEvent<DamageInfo>();
         public float MaxHealth = 100, CurrentHealth = 140;
         public void SetHealth(float h) { CurrentHealth = h; }

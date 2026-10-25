@@ -27,9 +27,14 @@ namespace BossRush
         private GoblinInteractable host;
         private DangerousPrototypeCommissionInteractable option;
         private CancellationTokenSource dialogue;
+        private CharacterMainControl dialoguePlayer;
+        private GoblinNPCController dialogueController;
+        private LevelManager dialogueLevel;
+        private int dialogueSlot = -1;
         private int openedSlot = -1;
         private float nextScan;
         private bool committing;
+        private bool sceneLoadingSubscribed;
 
         public override string ModuleName { get { return "DangerousPrototypeCommission"; } }
 
@@ -43,11 +48,23 @@ namespace BossRush
         {
             owner = hostBehaviour;
             current = this;
+            if (!sceneLoadingSubscribed)
+            {
+                SceneLoader.onStartedLoadingScene += OnSceneLoadingStarted;
+                sceneLoadingSubscribed = true;
+            }
             persistence = new DangerousPrototypeCommissionPersistence(OnSlotChanged, () => true, () => !committing);
+        }
+
+        private void OnSceneLoadingStarted(SceneLoadingContext context)
+        {
+            CancelDialogue();
+            DetachOption();
         }
 
         public override void OnSceneLoaded(SceneRuntimeContext context)
         {
+            CancelDialogue();
             DetachOption();
             nextScan = 0f;
         }
@@ -55,6 +72,7 @@ namespace BossRush
         public override void OnUpdate(float deltaTime, float unscaledDeltaTime)
         {
             if (persistence != null) persistence.Tick();
+            if (dialogue != null && !IsDialogueContextCurrent()) CancelDialogue();
             if (Time.unscaledTime < nextScan) return;
             nextScan = Time.unscaledTime + 1f;
             try { SyncOption(); }
@@ -114,16 +132,20 @@ namespace BossRush
 
         internal async void Accept(DangerousPrototypeCommissionInteractable source)
         {
-            if (!CanAccept || source == null || host == null) return;
+            if (!CanAccept || source == null || source != option || host == null) return;
             var cancellation = new CancellationTokenSource();
             dialogue = cancellation;
+            dialoguePlayer = CharacterMainControl.Main;
+            dialogueLevel = LevelManager.Instance;
+            dialogueSlot = openedSlot;
             GoblinNPCController controller = host.GetComponent<GoblinNPCController>();
+            dialogueController = controller;
             try
             {
                 if (controller != null) controller.StartDialogue();
                 var actor = DialogueActorFactory.CreateBilingual(host.gameObject, "goblin_dingdang", "叮当", "Dingdang", new Vector3(0f, 2f, 0f));
                 await DialogueManager.ShowDialogueSequenceBilingual(actor, Story, "BossRush_PrototypeCommission_Story", cancellation.Token);
-                if (cancellation.IsCancellationRequested || dialogue != cancellation) return;
+                if (cancellation.IsCancellationRequested || dialogue != cancellation || !IsDialogueContextCurrent()) return;
                 if (!Commit())
                 {
                     FieldAdventureSupport.Notify("委托暂时没能记下，稍后再找叮当一次。", "The commission could not be recorded. Talk to Dingdang again shortly.");
@@ -136,12 +158,14 @@ namespace BossRush
             catch (Exception e) { ModBehaviour.DevLog("[DangerousPrototypeCommission] 委托对话失败: " + e.Message); }
             finally
             {
-                if (controller != null)
+                if (ReferenceEquals(dialogue, cancellation))
                 {
-                    try { controller.EndDialogueWithStay(6f); }
-                    catch (Exception e) { ModBehaviour.DevLog("[DangerousPrototypeCommission] 叮当收尾动作失败: " + e.Message); }
+                    FinishNpcDialogue();
+                    dialogue = null;
+                    dialoguePlayer = null;
+                    dialogueLevel = null;
+                    dialogueSlot = -1;
                 }
-                if (ReferenceEquals(dialogue, cancellation)) dialogue = null;
                 cancellation.Dispose();
                 if (data != null && data.Completed) DetachOption();
             }
@@ -186,8 +210,40 @@ namespace BossRush
             return data != null && !persistence.HasWriteBarrier;
         }
 
+        private bool IsDialogueContextCurrent()
+        {
+            return dialogue != null && !dialogue.IsCancellationRequested
+                && dialoguePlayer != null && dialoguePlayer == CharacterMainControl.Main
+                && dialoguePlayer.Health != null && !dialoguePlayer.Health.IsDead
+                && dialogueLevel != null && dialogueLevel == LevelManager.Instance && dialogueLevel.IsBaseLevel
+                && LevelManager.AfterInit && !SceneLoader.IsSceneLoading
+                && dialogueSlot >= 0 && SavesSystem.CurrentSlot == dialogueSlot
+                && host != null && option != null && option.Owner == this;
+        }
+
+        private void CancelDialogue()
+        {
+            CancellationTokenSource pending = dialogue;
+            dialogue = null;
+            dialoguePlayer = null;
+            dialogueLevel = null;
+            dialogueSlot = -1;
+            FinishNpcDialogue();
+            if (pending != null) pending.Cancel();
+        }
+
+        private void FinishNpcDialogue()
+        {
+            GoblinNPCController controller = dialogueController;
+            dialogueController = null;
+            if (controller == null) return;
+            try { controller.EndDialogueWithStay(6f); }
+            catch (Exception e) { ModBehaviour.DevLog("[DangerousPrototypeCommission] 叮当收尾动作失败: " + e.Message); }
+        }
+
         private void OnSlotChanged()
         {
+            CancelDialogue();
             data = null;
             openedSlot = -1;
             DetachOption();
@@ -195,7 +251,12 @@ namespace BossRush
 
         public override void OnDestroy()
         {
-            if (dialogue != null) { dialogue.Cancel(); dialogue = null; }
+            if (sceneLoadingSubscribed)
+            {
+                SceneLoader.onStartedLoadingScene -= OnSceneLoadingStarted;
+                sceneLoadingSubscribed = false;
+            }
+            CancelDialogue();
             DetachOption();
             if (persistence != null) persistence.Dispose();
             persistence = null;

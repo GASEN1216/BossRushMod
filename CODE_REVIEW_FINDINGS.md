@@ -2,6 +2,38 @@
 
 更早记录见 `archive/`；月度归档索引保留在本文件正文。
 
+## 2026-10-25 全模块重点链路审查（COMPAT；L1/L2 修复，L3 待验）
+
+本轮从干净工作区开始，四路并行检查宿主与共享持久层、各玩法模式、Integration 内容，以及世界/UI/音频链路，并交叉复核加载时宿主早返后的实际可达性。范围包括进入/退出、死亡、玩家销毁与替换、异步晚到、切图与切槽、重复回调、无效数值、交易和资源清理；这是按风险选择的生产链路审核，不代表全部源码逐行或全部状态组合已穷举。
+
+以下问题均已修复，兼容分类为 COMPAT，证据为生产接线 L1 与隔离执行 L2。有效配置、已发布 key、TypeID 和存档 schema 保持兼容；没有游戏内 L3 证据。
+
+- **CR-2026-10-25-001，P1：共享存档漏收切槽通知后可跨槽写入。** `Common/Lifecycle/BossRushSlotJsonStore.cs` 的 Store / FlushPending 原来只依赖读取入口检查槽位。官方 `SavesSystem.SetFile` 先切槽再调用普通多播事件，前置订阅者异常会截断后续通知；旧 pending 随协调器 flush 覆盖新槽。现两条写入口复核槽位，漂移时拒绝请求、清旧 pending 并通知 owner；首次直接 Store 也先加载 schema 并绑定槽位。`SaveFailureRecovery` 以真实 store 和内存宿主先复现红项，再验证通知中断、首次直接写入、高版本屏障和新槽恢复。
+- **CR-2026-10-25-002，P1：危险试用品委托迟到完成可写入新槽。** `Integration/FieldAdventures/Prototypes/DangerousPrototypeCommission.cs` 的异步对话原未绑定原玩家、关卡与存档槽。现提交时复核请求所有权，并在加载开始、切图、切槽、玩家失效和销毁时取消；旧回调不能重复收尾新对话。`PrototypeCommissionLifecycle` 完整执行生产模块，67 条断言通过；忽略取消的迟到回调、加载时不调用模块 Tick、NPC 复位与退订均覆盖，三项隔离反向探针按预期转红。
+- **CR-2026-10-25-003，P1：Mode D 的旧波次任务不绑定原玩家。** `ModeD/ModeDRuntimeModule.cs` 的 CaptureValidity 原只检查模式、波次及场景。死亡广播被截断、主角销毁或同图替换时仍可接受旧生成结果与自动开波。现捕获原玩家并检查身份和 Health；`AuditModeLifecycle` 在旧生产代码的死亡用例转红，修复后覆盖死亡、销毁、替换和重生后的旧请求失效。
+- **CR-2026-10-25-004，P2：加载开始至 sceneLoaded 之间旧生成任务仍有效。** `ModeD/ModeDRuntimeModule.cs` 与 `WavesArena/WavesArenaRuntimeModule.cs` 的 CaptureValidity 补充 SceneLoader 加载门。根 Update 早返不会终止已运行的协程和异步生成，单靠场景代数更新过晚。`AuditModeLifecycle` 覆盖仅改变 loading 标志、场景和玩家仍相同的两模式窗口，旧 Mode D 实跑失败。
+- **CR-2026-10-25-005，P2：Mode D 退出后可误结算第 0 波。** `ModeD/ModeDRuntimeModule_WaveResolution.cs` 的 TryResolveModeDWaveComplete 原可把退出后的空列表与零 pending 判为完成，迟到死亡回调可能改提示和路牌。现要求 modeDActive 且波次大于 0；真实入口的关停后再次结算用例先红后绿，现有连续波次回归仍通过。
+- **CR-2026-10-25-006，P2：霜之哀伤慢创建被正常收招取消。** `Integration/Frostmourne/FrostmourneAction.cs` 原在 1.5 秒动作结束时无条件取消生成代数，冷加载超过动作时长便销毁合法召唤物。现区分正常完成和主动中断，管理器在离手、停用、死亡、加载与销毁时仍拒绝旧请求。`ManualEquipmentRecovery` 合计 72 条断言通过，恢复旧正常收势取消行为的隔离探针按预期失败。
+- **CR-2026-10-25-007，P2：成就面板可跨加载或玩家失效残留。** `Achievement/AchievementRuntimeModule.cs` 与 `Achievement/AchievementView.cs` 统一检查关卡、主角与加载状态；View 自身 Update 负责关闭已开面板，独立于根宿主 gameplay gate。`AchievementRuntime` 执行真实宿主早退/模块分发及 View.Update，先证明加载时模块未被驱动，再证明面板自行关闭。实际 Unity 输入租约归还仍需 L3。
+- **CR-2026-10-25-008，P2：无效 Boss 倍率污染生命与 AI 数值。** `Utilities/BossStatScaling.cs` 原直接使用零、负数或非有限倍率，可生成零生命并除零计算 AI 时序。现优先回退有效全局倍率，否则使用中性值 1；无效生命比例也使用 1。`BossHealthScaling` 在旧版零生命用例转红，修复后覆盖五类无效值，保留正常倍率叠加、护卫减半和生命比例语义。
+- **CR-2026-10-25-009，P2：NaN 配置可拖住波次倒计时。** `Config/Config.cs` 的两个休息时间 getter 原仅用大小比较钳制，NaN 可穿透。现 NaN 沿用本地默认值，有限值与正负无穷沿用既有范围钳制。`BossHealthScaling` 链接真实 getter，旧版 NaN 断言转红，修复后默认值和上下限均通过。
+- **CR-2026-10-25-010，P2：JSON 浮点转 Int64 在上边界溢出。** `Common/Data/BossRushJsonValue.cs` 原将 double 与 long.MaxValue 比较，但后者转为 double 已舍入到 2^63，导致该越界值被转成负数。现排除上界并拒绝非有限整数转换，保留真正的 long.MaxValue 整数 token、long.MinValue 浮点边界和既有四舍五入。`AuditCoreParsing` 在旧版解析 `9223372036854775808` 时先红，修复后边界回归通过。
+
+首轮全量守卫为 751 PASS / 1 FAIL，唯一红项是 `architecture/modules.json` 漏登记既有 PromoRecording 两份源码，已补归属（SAFE）。首轮全量执行回归为 142 PASS / 2 环境失败；两组失败分别缺少显式 Managed / Harmony 环境变量，需补齐环境后重跑，不能计为通过。最终构建、门禁与重跑结果在同日 `FIX_TRACKER.md` 记录。
+
+其他已审查链路未形成新增 confirmed finding：Mode E 阵营退出与共享租约、Mode F 补怪和撤离、Mode G/H 生成与场景准备、丧尸波次与安全区及结算、征程与随机事件取消、里程碑奖励、装备启停、NPC 商店/好感/婚姻交易、天空岛返航/剧情/巡守、遗种巢晚到生成、共享确认框、地图选择及 BGM owner。未测实际帧耗时，不据静态门控宣称无性能问题；历史待实机条目不因本轮离线通过而关闭。
+
+人工验收记录建议文件名 `BossRush_Audit_20261025_smoke.txt`，以下是手工步骤 ID，并非新增 F3 自动用例：
+
+- `AUDIT-01`：Mode D 待刷怪或自动下一波期间死亡；观察死亡画面和波次提示，死亡后继续生成或提示新波即不合格。
+- `AUDIT-02`：标准竞技场批量生成、Mode D 自动下一波期间返基地；观察加载画面及入基地后的场景，不得有迟到敌人、下一波提示或“第 0 波完成”。
+- `AUDIT-03`：冷启动后持霜之哀伤右键召唤；观察玩家周围，慢加载仍应完成召唤。另在生成中切武器和切图，原请求不得留下迟到亡灵。
+- `AUDIT-04`：基地与加载、死亡期间分别按 L；观察屏幕中央成就面板、鼠标和移动控制，加载/死亡不得被面板遮挡，关闭后控制必须恢复。
+- `AUDIT-05`：接叮当危险试用品委托后中断对话并返基地；观察叮当交互选项与朝向，取消后应能重新交互，正常完成只记录当前槽一次。
+- `AUDIT-06`：使用独立测试槽正常切换两槽，核对图鉴、征程与日报各自进度；新槽出现另一槽进度或未知格式被覆盖即不合格。前置订阅者异常只在离线夹具注入，不要求修改真实玩家存档。
+
+本轮未启动游戏、未访问玩家存档；以上实机结果尚未采集。
+
 ## 2026-10-24 龙息丧尸伤害修复（COMPAT / WIRE+；Fixed at L1/L2，L3 待验）
 
 CR-2026-10-24-001，P2：龙息资源及运行时配置缺少 `DamageFactorToZombie`，官方枪械读取缺项为 0，弹道送入 `Health.Hurt` 后对 isZombie 目标把直接伤害清零。现装 resources.assets 五种 Cname_Zombie 的该标记均为 1，当前 DLL 的创建状态机也明确复制 preset.isZombie 至 Health，故不是只由测试替身构造的靶子。玩家未提供“无法使用”的具体表现，不能据此认定所有无法开火/装弹反馈都同因。
@@ -577,6 +609,10 @@ UNVERIFIED 不计入上述六项：嵌套 Sticky 押品需要 `AcceptSticky=true
 
 ## 归档索引
 
+- 2026-09-27 天空岛发版复审（Wiki 对账、可达性、居民、Boss 质感）（Fixed，L3 待 owner；2026-10-25 台账超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-09.md`
+- 2026-09-27 丧尸模式 Boss 表现、官方计数与补丁隔离复审（Fixed，L3 待 owner；2026-10-25 台账超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-09.md`
+- 2026-09-29 天空岛发布前生产级审查（Fixed，L3 待 owner；2026-10-25 台账超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-09.md`
+- 2026-09-30 天空岛道路与阴影（COMPAT，模型专题）（Fixed，L3 待 owner；2026-10-25 台账超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-09.md`
 - 2026-09-22 人工实测复核修复交付（12 项均 Fixed / L1+L2，L3 待 owner；2026-10-18 台账满 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-09.md`
 - 2026-09-24 UI 共识对照审查中确认的缺陷（均 Fixed / L1+L2，L3 待 owner） → `archive/CODE_REVIEW_FINDINGS_2026-09.md`
 - 2026-09-23 UI / 交互 / 特效审美审查中确认的缺陷（均 Fixed / L1+L2，L3 待 owner） → `archive/CODE_REVIEW_FINDINGS_2026-09.md`
@@ -1143,45 +1179,3 @@ Mode F/G/H、Zombie、终章/BGM、最终清场与存档回读。Player.log 不�
 | CR-2026-09-26-113 | P2 / COMPAT | 五类 Boss 没有独立轮廓；普通变异外形路径排除 IsBoss，原来只有体型与飘字，不能满足明确区分需求。 | Fixed：独立 `ZombieModeBossVisuals` 五类轮廓/色系/技能脉冲/官方姓名，跟随 modelRoot，暂停与销毁清理。L1+L2 接线与反向守卫；审美、遮挡、帧耗待 owner 目检。 |
 
 图鉴复核：五个 `zombie_boss_*` key、主角亲手击杀、杂兵过滤、实例去重、回基地 flush 与持久化链未发现新增确认缺陷；`ContentThirdReviewFixes`、`SaveFailureRecovery` 通过。未修改图鉴生产代码，不能将隔离回归写成实机重启后已保存。独立 Windows 正式构建通过，未部署实际游戏目录；并行改动应整合后另作正式交付。
-
-## 2026-09-27 天空岛发版复审（Wiki 对账、可达性、居民、Boss 质感）
-
-分类：COMPAT / SAFE；修复完成，L1+L2，L3 待 owner。详见本地报告 `docs/reports/sky-island/天空岛_发版复审_2026-09-27.md`。
-
-| ID | 等级 / 分类 | 已确认根因与影响 | 修复 / 验证 |
-| --- | --- | --- | --- |
-| CR-2026-09-27-001 | P2 / COMPAT | `Assets/Data/DuckNpcs.json` 苇白、浮舟 `positiveTags` 写 `"Tools"`；官方 Tag 名是 `Tool`（官方本地化键 `Tag_Tool`，没有 `Tag_Tools`），`NPCGiftSystem.HasPositiveTag` 按 Tag 资产 `.name` 精确比对。苇白没有按 TypeID 的喜好兜底，于是「苇白喜欢工具」从未兑现、任何礼物都拿不到 +80；浮舟靠 500075/500076 兜底，工具类同样失效 | Fixed：两处改 `Tool`；新守卫 `DuckNpcGiftTagGuard`（永久 NPC 喜好标签必须是官方 Tag、每位至少一条能命中），反向验证：还原 `Tools` 后两条断言转红、按 SHA 还原转绿。Tag 资产名等于本地化键后缀是按 Weapon / Food / Helmat 的既有用法推断，实机送一件官方工具验证（清单 M-02） |
-| CR-2026-09-27-002 | P2 / COMPAT | 天空岛全部头目 / 岛主招式没有音效（`DebugAndTools/SkyIsland` 下只有环境音与云蚋调 `PostCustomSFX`）；走 `ExplosionFxTypes.custom` 的镰扫、落石、换位、冲步、伏击、绊索落地无声；结算无光；换阶段与倒下只有字幕 | Fixed：`gen_sky_island_sfx.py` 新增 5 种程序化音效；`SkyIslandImpactFx` 新增 `SkyIslandBossSfx`、`Flash`、`PhaseBurst`、`DefeatBurst`；Forge / 四位多阶段 Boss / 噬风 / 断风 / 镜中客 / 匠首 / 具名对手接线。判定一字未动。新守卫 `SkyIslandBossFeedbackGuard`（9 个内置反向探针）。观感与帧耗时待实机 |
-| CR-2026-09-27-003 | P3 / SAFE | Wiki「白天在岛上是无风的」与 `SkyIslandFieldcraftRules.WindLevel` 不符：桥与中继平台白天也有微风，双航标后噬风未散时白天同样大风 | Fixed：中英同步改写；`SkyIslandWikiParityGuard` PASS |
-| CR-2026-09-27-004 | P3 / COMPAT | 目标卡「恢复两端航标」不提示要先清守卫，新玩家站在风标台前按了没反应才知道（09-10 可玩性评估 5.1） | Fixed：航标未清守卫时加「（先清守卫）」，判据 `WindBeaconGuardsCleared / StarLampGuardsCleared` 与 `TryApply` 的拒绝共用；SkyIslandStory 执行回归 PASS |
-
-复核后不成立 / 未改：
-- Wiki「口口口口」不是占位符，是官方 preset `EnemyPreset_Boss_Island_Koukou` 的原名。
-- Wiki 噬风「预警约一秒半」对应 `PulseTelegraph = 1.4f`，带「约」字，判一致。
-- 晴禾与另一位 NPC 的 `positiveTags` 含 `Consumable`（官方无此 Tag），各有 `Food` 或 TypeID 兜底、不影响可送礼；登记为 `DuckNpcGiftTagGuard.KNOWN_NOOP` 既有债务，未改行为。
-- 内容可达性（18 件岛物 + 航向仪、17 件装备、11 配方、4 委托、4 谜题、12 信、20 见闻、名册、主线四任务与三处缺席兜底）未发现新的 P0/P1（L1）。
-
-## 2026-09-27 丧尸模式 Boss 表现、官方计数与补丁隔离复审
-
-分类：COMPAT / WIRE+；L1+L2 + Windows 正式编译，L3 待 owner。详见 [复审报告](docs/reports/reviews/2026-09-27_丧尸模式Boss表现与链路复审.md)。同日 001–004 已被其他会话占用，本专题从 101 起。
-
-| ID | 等级 / 分类 | 已确认根因与影响 | 修复 / 验证 |
-| --- | --- | --- | --- |
-| CR-2026-09-27-101 | P2 / COMPAT | `ZombieModeBossVisuals` 的线宽与余烬按身高倍数给，但 LineRenderer 线宽不随 Transform 缩放、粒子 Local 缩放不继承父级：能量环 1.2 cm、脉冲 2.6 cm、余烬 2.5 cm，低于 0.06 m 下限（VB-08），实机基本不可见；发光缝藏在甲内。 | Fixed：世界米数线宽 / 余烬、暗甲包发光刃尖、五种脚下纹章、共享 PlayBurst 起手与死亡爆发、追猎冲刺拖尾。守卫钉线宽下限、Local 缩放与五个纹章分支。观感待 L3。 |
-| CR-2026-09-27-102 | P2 / COMPAT | 09-26 显示副本改 `nameKey` 且销毁才还原；官方 `CharacterMainControl.OnDead` 按它写 `SavesCounter` 击杀计数，官方存档多出 `Count/Kills/BossRush_ZombieMode_Boss_*`，击杀 `Cname_Zombie` 的官方任务漏算 Boss。 | Fixed：`ZombieModeDamageRuntime.ReduceFinalDamage` 判定致死后、扣血前换回原 preset。执行回归新增 3 条断言（吸收不换 / 致死恰好一次 / 普通丧尸不碰）。已写入的旧键不清理（§10）。 |
-| CR-2026-09-27-103 | P3 / COMPAT | 丧尸 Boss 血条无官方 Boss 图标（preset iconType=none），与其他 Mod Boss 不一致。 | Fixed：显示副本设 `CharacterIconTypes.boss`。守卫覆盖。 |
-| CR-2026-09-27-104 | P2 / WIRE+ | 丧尸减伤 Transpiler 挂在共享 `BossRushHealthHurtContextPatch`；IL 失配抛出时逐类安装器跳过整类，所有模式同时失去 Mode G 屏障、逆鳞无敌与 Boss 致死钳制。 | Fixed：独立 `ZombieModeHealthHurtDamagePatch`；`ModeGSpawnTransactionGuard` 登记精确身份，展示守卫禁止回挂。官方 DLL 两种注入顺序回归通过。 |
-| CR-2026-09-27-105 | P3 / COMPAT | `Projectile` 类 run-only 记录局内不清理，毒径 / 远程弹道整局累积并被多处线性遍历（性能影响推断）。 | Fixed：登记新 Projectile 记录时摘除已销毁的同类记录。 |
-| CR-2026-09-27-106 | P3 / COMPAT | 腐蚀 Boss 死后 0.5 s 被销毁，死亡毒云与残留腐蚀区 `source` 为空，回退成玩家来源的效果伤害，死因显示「自己」。 | Fixed（同日第二轮）：丧尸 Boss 的 `Health.DeadDestroyDelay` 延到最长残留区（8 s）+ 1 s，尸体保持失活但有效；静态 OnDead（晚于写击杀计数的实例 OnDeadEvent）再挂回显示副本，结算页死因显示 Boss 名。玩家兜底来源不变（`ZombieModeAreaDamagePlayerGuard` 禁止空来源）。 |
-
-线索（UNVERIFIED）：~~追猎狂暴无单次标记~~ owner 同日定为「狂暴就是一直」，已改为触发一次持续到死亡（见 FIX_TRACKER 同日第二轮）；丧尸 Boss 未设 `isBossCharacter`，日报 / 征程 Boss 计数可能不含丧尸 Boss。图鉴链路复核无新增缺陷。
-
-## 2026-09-29 天空岛发布前生产级审查
-
-- CR-2026-09-29-101～117（P2×4 / P3×13，COMPAT / SAFE / OPERATIONAL）：Fixed，L1 + L2、无 L3；逐条根因 / 修复 / 验证见本地报告 `docs/reports/sky-island/天空岛_发布前生产审查_2026-09-29.md` §1，修复流水见 `FIX_TRACKER.md` 同日节。切片 C「Mod 物品进岛上物资池」refuted。
-- CR-2026-09-29-112（P3 / COMPAT）：头目首杀手记与字幕不看击杀者，断风被拾荒者打死也记首杀（`SkyIslandBossForge.RaiseDefeated`，消费方 `SkyIslandWorldStoryBosses`）。Fixed（owner 2026-09-29 定「只认主角击杀」）：`RaiseDefeated` 带致死一击，倒下回执照放，首杀回调按官方击杀计数口径 `fromCharacter.IsMainCharacter` 过滤；尸体箱与掉落照常；三张装备页 Wiki 中英改为「亲手打倒的首杀」。
-
-
-## 2026-09-30 天空岛道路与阴影（COMPAT，模型专题）
-
-已修复旧路线穿入登记模型、房前家具朝向及长椅背板错位、重复输出已替换地标、跨级联阴影坐标插值、共面反绕序贴图 / 深度争抢和 normal bias 不一致。采用连续重规划道路、实际包络摆放、单一结构 owner、片元级阴影坐标与配对面标记；未关闭正常阴影。证据和实机判据见 [本轮报告](docs/reports/sky-island/2026-09-30-天空岛摆放与阴影修复.md)。此记录只覆盖模型专题，不关闭上方整体生产审查的独立玩法问题。

@@ -185,6 +185,7 @@ namespace BossRush
             CharacterMainControl player = CharacterMainControl.Main;
             return () => runtime.owner != null && runtime.owner == expectedOwner
                 && current == runtime && runtime.waveGeneration == generation
+                && !SceneLoader.IsSceneLoading
                 && UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle == sceneHandle
                 && player != null && CharacterMainControl.Main == player
                 && player.Health != null && !player.Health.IsDead

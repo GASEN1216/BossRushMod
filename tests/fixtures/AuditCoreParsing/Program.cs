@@ -30,6 +30,22 @@ internal static class Program
     }
     private static void Main()
     {
+        foreach (string value in new[] { "9223372036854775808", "9.223372036854776e18", "-9.223372036854778e18" })
+        {
+            BossRushJsonValue root; string error;
+            Check(BossRushJsonParser.TryParse("{\"v\":" + value + "}", out root, out error), "large finite token parses: " + value);
+            Check(root.GetLong("v", 17L) == 17L, "out-of-range long uses fallback: " + value);
+        }
+        foreach (double value in new[] { double.NaN, double.PositiveInfinity, double.NegativeInfinity })
+        {
+            var token = BossRushJsonValue.NewFloat(value);
+            Check(token.AsInt(17) == 17 && token.AsLong(17L) == 17L, "non-finite constructed token uses integer fallbacks");
+        }
+        Check(BossRushJsonValue.NewInteger(long.MaxValue).AsLong(17L) == long.MaxValue, "exact integer maximum remains valid");
+        Check(BossRushJsonValue.NewFloat(-9223372036854775808d).AsLong(17L) == long.MinValue, "exact floating lower boundary remains valid");
+        Check(BossRushJsonValue.NewFloat(9223372036854774784d).AsLong(17L) == 9223372036854774784L, "largest representable double below upper boundary remains valid");
+        Check(BossRushJsonValue.NewFloat(12.5).AsLong(17L) == 12L && BossRushJsonValue.NewFloat(13.5).AsInt(17) == 14,
+            "existing midpoint rounding remains unchanged");
         foreach (string value in new[] { "[]", "[1,2]", "[1,2,3,4]", "[\"bad\",5,6]", "[1e39,0,0]", "null", "{}" })
         {
             var map = MapSpawnPointRegistry.DeserializeFromJson(Map(value));

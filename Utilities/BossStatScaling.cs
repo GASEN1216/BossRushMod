@@ -18,6 +18,9 @@ namespace BossRush
 
             // 获取倍率值：优先使用传入参数，否则从配置读取
             float mult = multiplier ?? defaultMultiplier;
+            if (!(mult > 0f) || float.IsInfinity(mult))
+                mult = defaultMultiplier > 0f && !float.IsInfinity(defaultMultiplier) ? defaultMultiplier : 1f;
+            if (!(healthMultiplier > 0f) || float.IsInfinity(healthMultiplier)) healthMultiplier = 1f;
 
             ModBehaviour.DevLog("[BossRush] ApplyBossStatMultiplier 开始: mult=" + mult);
 

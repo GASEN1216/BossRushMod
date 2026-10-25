@@ -14,7 +14,7 @@ SCRIPT_FIXTURES = (
     "SandstormChampionPool",
     "DragonBreathZombieRuntime",
     "FieldAdventureMimicRuntime", "FieldAdventureDeliveryRuntime", "FieldAdventurePrototypeRuntime",
-    "FieldAdventureVisuals",
+    "FieldAdventureVisuals", "PrototypeCommissionLifecycle",
     "ResidualSunShield", "EclipseBloomRuntime", "EclipseBloomParticles",
     "ModEntityFogVisibility",
     "PhantomScytheLocalization",
