@@ -6,6 +6,7 @@
 // 每一项先倒数 5 秒给玩家站位，再调用该项的准备动作（刷宝箱怪 / 重开快递 / 放试验台 / 刷花冠），
 // 然后按建议时长计时，到点自动进入下一项。提示条只占屏幕最右 180 px，宣传片裁切时直接裁掉。
 // 热键（F2–F12 已被其它调试工具占用）：PgDn 下一项、PgUp 重来本项、Home 暂停计时、Insert 刷 3 个靶子、End 结束。
+// 小键盘同位键也认（3/9/7/0/1，正是小键盘上印着 PgDn/PgUp/Home/Ins/End 的那几颗）：紧凑键盘没有独立导航键，NumLock 开关都能用。
 // ============================================================================
 
 using System;
@@ -85,7 +86,7 @@ namespace BossRush
             get
             {
                 if (steps == null) return string.Empty;
-                if (phase == Phase.Waiting) return L10n.T("等待开始（PgDn）", "Waiting (PgDn)");
+                if (phase == Phase.Waiting) return L10n.T("等待开始（PgDn / 小键盘 3）", "Waiting (PgDn / Num 3)");
                 if (phase == Phase.Finished) return L10n.T("全部录完", "All done");
                 return (index + 1) + "/" + steps.Count + " " + steps[index].Title;
             }
@@ -122,11 +123,16 @@ namespace BossRush
 
         private void HandleKeys()
         {
-            if (Input.GetKeyDown(KeyCode.PageDown)) Next();
-            else if (Input.GetKeyDown(KeyCode.PageUp)) { if (index >= 0 && index < steps.Count) StartStep(index); }
-            else if (Input.GetKeyDown(KeyCode.Home)) { paused = !paused; Refresh(); }
-            else if (Input.GetKeyDown(KeyCode.Insert)) lastError = PromoRecordingKit.SpawnTargets(host, 3) ?? string.Empty;
-            else if (Input.GetKeyDown(KeyCode.End)) Destroy(this);
+            if (Pressed(KeyCode.PageDown, KeyCode.Keypad3)) Next();
+            else if (Pressed(KeyCode.PageUp, KeyCode.Keypad9)) { if (index >= 0 && index < steps.Count) StartStep(index); }
+            else if (Pressed(KeyCode.Home, KeyCode.Keypad7)) { paused = !paused; Refresh(); }
+            else if (Pressed(KeyCode.Insert, KeyCode.Keypad0)) lastError = PromoRecordingKit.SpawnTargets(host, 3) ?? string.Empty;
+            else if (Pressed(KeyCode.End, KeyCode.Keypad1)) Destroy(this);
+        }
+
+        private static bool Pressed(KeyCode key, KeyCode keypad)
+        {
+            return Input.GetKeyDown(key) || Input.GetKeyDown(keypad);
         }
 
         internal void Next()
@@ -170,12 +176,12 @@ namespace BossRush
             if (phase == Phase.Waiting)
             {
                 sb.Append("<color=").Append(accent).Append("><b>").Append(L10n.T("录制模式", "Recording")).Append("</b></color>\n");
-                sb.Append(L10n.T("进普通出击地图，站到开阔处，按 PgDn 开始。", "Enter a normal raid map, stand in the open, press PgDn."));
+                sb.Append(L10n.T("进普通出击地图，站到开阔处，按 PgDn（小键盘 3）开始。", "Enter a normal raid map, stand in the open, press PgDn (Num 3)."));
             }
             else if (phase == Phase.Finished)
             {
                 sb.Append("<color=").Append(accent).Append("><b>").Append(L10n.T("全部录完", "All done")).Append("</b></color>\n");
-                sb.Append(L10n.T("按 PgDn 或 End 关闭提示。", "Press PgDn or End to close."));
+                sb.Append(L10n.T("按 PgDn（小键盘 3）或 End（小键盘 1）关闭提示。", "Press PgDn (Num 3) or End (Num 1) to close."));
             }
             else
             {
@@ -194,7 +200,7 @@ namespace BossRush
                     sb.Append("\n<color=").Append(muted).Append(">").Append(L10n.T("下一项：", "Next: ")).Append(steps[index + 1].Title).Append("</color>");
             }
             sb.Append("\n<size=12><color=").Append(muted).Append(">")
-                .Append(L10n.T("PgDn 下一项 · PgUp 重来\nHome 暂停 · Ins 刷靶 · End 结束", "PgDn next · PgUp redo\nHome pause · Ins targets · End stop"))
+                .Append(L10n.T("小键盘 3 / PgDn 下一项\n9 / PgUp 重来 · 7 / Home 暂停\n0 / Ins 刷靶 · 1 / End 结束", "Num 3 / PgDn next\n9 / PgUp redo · 7 / Home pause\n0 / Ins targets · 1 / End stop"))
                 .Append("</color></size>");
             overlayText.text = sb.ToString();
         }
@@ -365,13 +371,16 @@ namespace BossRush
             if (error != null) return error;
             CharacterRandomPreset preset = FindPreset("Cname_Scav");
             if (preset == null) return L10n.T("找不到拾荒者底模", "Scav preset unavailable");
+            int placed = 0;
             for (int i = 0; i < count; i++)
             {
                 Vector3 position;
-                if (!FieldAdventureSupport.TryFindGround(player.transform.position, 11f, 16f, out position)) continue;
+                if (!FieldAdventureSupport.TryFindGroundBands(player.transform.position, TargetBands, out position)) continue;
                 SpawnTarget(preset, position, scene).Forget();
+                placed++;
             }
-            return null;
+            // 一个都没放下也要报出来，否则提示条显示成功、场上却没有靶子。
+            return placed > 0 ? null : L10n.T("附近没有空地刷靶子，换个开阔处再按 Insert（小键盘 0）", "No room for targets; move and press Insert (Num 0)");
         }
 
         private static async UniTaskVoid SpawnTarget(CharacterRandomPreset preset, Vector3 position, Scene scene)
@@ -394,6 +403,9 @@ namespace BossRush
         }
 
         private static CharacterMainControl bloom;
+        // 远档整轮落空再退到近档；录制时站位不一定开阔，单档失败就得来回找地方。
+        private static readonly float[] TargetBands = { 11f, 16f, 7f, 20f };
+        private static readonly float[] BloomBands = { 14f, 18f, 10f, 22f };
 
         /// <summary>录制结束（导演组件销毁）时清掉静态引用：本趟花冠与食材表。</summary>
         internal static void ResetStaticCaches()
@@ -411,8 +423,8 @@ namespace BossRush
             if (error != null) return error;
             if (bloom != null && bloom.Health != null && !bloom.Health.IsDead) return null;
             Vector3 position;
-            if (!FieldAdventureSupport.TryFindGround(player.transform.position, 14f, 18f, out position))
-                return L10n.T("附近没有空地，换个开阔处再按 PgUp", "No open ground nearby; move and press PgUp");
+            if (!FieldAdventureSupport.TryFindGroundBands(player.transform.position, BloomBands, out position))
+                return L10n.T("附近没有空地，换个开阔处再按 PgUp（小键盘 9）", "No open ground nearby; move and press PgUp (Num 9)");
             Scene target = scene;
             SpawnBloomAsync(host, position, target).Forget();
             return null;
@@ -430,7 +442,7 @@ namespace BossRush
             if (module == null) return "module_unavailable";
             string reason;
             if (module.DevForceSpawn(out reason)) return null;
-            return reason == "not_in_raid" ? RequireRaid(host, out _, out _) : L10n.T("附近没有空地放宝箱，换个开阔处再按 PgUp", "No room for the chest; move and press PgUp");
+            return reason == "not_in_raid" ? RequireRaid(host, out _, out _) : L10n.T("附近没有空地放宝箱，换个开阔处再按 PgUp（小键盘 9）", "No room for the chest; move and press PgUp (Num 9)");
         }
 
         internal static string Parcel(ModBehaviour host)
@@ -441,8 +453,10 @@ namespace BossRush
             if (error != null) return error;
             OddParcelRuntimeModule module = OddParcelRuntimeModule.DevCurrent;
             if (module == null) return "module_unavailable";
-            module.DevResetOrders();
-            return null;
+            string reason = module.DevResetOrders();
+            if (reason == null) return null;
+            return reason == "not_in_raid" ? RequireRaid(host, out _, out _) ?? reason
+                : L10n.T("附近没有空地放发件台，换个开阔处再按 PgUp（小键盘 9）", "No room for the dispatch; move and press PgUp (Num 9)");
         }
 
         internal static string Bench(ModBehaviour host, DangerousPrototypeKind kind)
@@ -464,8 +478,8 @@ namespace BossRush
         {
             string name = DangerousPrototypeCatalog.Name(kind);
             return Step("试用品：" + name, "Prototype: " + name, 60f, d => Bench(host, kind),
-                new[] { "身边出现试验台，前方刷了 3 个靶子", "① 手里拿枪，交互试验台装上", "② " + tipCn, "③ 不够打就按 Insert 再刷" },
-                new[] { "A bench appeared; 3 targets ahead", "1. Hold a gun, install at the bench", "2. " + tipEn, "3. Press Insert for more targets" });
+                new[] { "身边出现试验台，前方刷了 3 个靶子", "① 手里拿枪，交互试验台装上", "② " + tipCn, "③ 不够打就按 Insert（小键盘 0）再刷" },
+                new[] { "A bench appeared; 3 targets ahead", "1. Hold a gun, install at the bench", "2. " + tipEn, "3. Press Insert (Num 0) for more targets" });
         }
 
         /// <summary>v2.3.8「野外趣事」宣传片剧本。时长是建议值，到点自动进入下一项。</summary>

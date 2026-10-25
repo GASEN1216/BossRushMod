@@ -98,6 +98,21 @@ namespace BossRush
             return false;
         }
 
+        /// <summary>
+        /// 由远到近逐档找落点：bands 按 {min, max} 成对给出，前一档整轮落空才试下一档。
+        /// 拥挤地图里远档的 12 个候选常常全落在墙里或楼外；放宽只缩短距离，连通、地面与净空判据不变。
+        /// </summary>
+        internal static bool TryFindGroundBands(Vector3 origin, float[] bands, out Vector3 position)
+        {
+            position = Vector3.zero;
+            if (bands == null) return false;
+            for (int i = 0; i + 1 < bands.Length; i += 2)
+            {
+                if (TryFindGround(origin, bands[i], bands[i + 1], out position)) return true;
+            }
+            return false;
+        }
+
         private static bool IsFinite(float value) { return !float.IsNaN(value) && !float.IsInfinity(value); }
 
         internal static void Notify(string cn, string en)

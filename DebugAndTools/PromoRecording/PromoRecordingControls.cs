@@ -22,10 +22,10 @@ namespace BossRush
                 L10n.T("录制视频 · v2.3.8 野外趣事", "Recording · v2.3.8 Field Adventures"),
                 L10n.T("在普通出击地图里按剧本依次触发要拍的内容：每项先倒数 5 秒给你站位，再刷出对应内容并按建议时长计时，到点自动进入下一项。"
                     + "屏幕最右侧 180 像素的窄条实时提示要做什么（剪辑时会裁掉）。血量低于 45% 自动回满。"
-                    + "热键：PgDn 下一项、PgUp 重来本项、Home 暂停计时、Insert 刷 3 个靶子、End 结束。",
+                    + "热键（小键盘同样可用）：小键盘 3 / PgDn 下一项、9 / PgUp 重来本项、7 / Home 暂停计时、0 / Insert 刷 3 个靶子、1 / End 结束。",
                     "Triggers each shot in order on a normal raid map: 5 s to get in position, then the content spawns and a timer runs; "
                     + "it moves on automatically. A 180 px strip on the far right tells you what to do (cropped out in editing). Health refills below 45%. "
-                    + "Keys: PgDn next, PgUp redo, Home pause, Insert 3 targets, End stop."),
+                    + "Keys (numpad works too): Num 3 / PgDn next, 9 / PgUp redo, 7 / Home pause, 0 / Insert 3 targets, 1 / End stop."),
                 font);
             Text status = F3DebugUiKit.CreateLabel(intro.transform, font,
                 running != null ? L10n.T("进行中：", "Running: ") + running.StatusLine : L10n.T("未开始", "Not started"),
@@ -36,7 +36,7 @@ namespace BossRush
             {
                 string kit = PromoRecordingKit.GrantKit();
                 PromoRecordingDirector.Begin(host, script, -1);
-                report(kit ?? L10n.T("已发放食材与残日盾片；站到开阔处按 PgDn 开始第一项", "Kit granted; stand in the open and press PgDn"), kit != null);
+                report(kit ?? L10n.T("已发放食材与残日盾片；站到开阔处按 PgDn（小键盘 3）开始第一项", "Kit granted; stand in the open and press PgDn (Num 3)"), kit != null);
                 closeMenu();
             });
             F3DebugUiKit.CreateActionButton(row.transform, font, L10n.T("只发道具", "Grant kit only"), BossRushUIColors.Header, delegate
@@ -65,7 +65,7 @@ namespace BossRush
                     PromoRecordingDirector d = PromoRecordingDirector.Find(host);
                     if (d == null) { report(L10n.T("先开始录制", "Start recording first"), true); return; }
                     d.AutoAdvance = !d.AutoAdvance;
-                    report(d.AutoAdvance ? L10n.T("到点自动下一项：开", "Auto advance: on") : L10n.T("到点自动下一项：关（用 PgDn 手动切）", "Auto advance: off (use PgDn)"), false);
+                    report(d.AutoAdvance ? L10n.T("到点自动下一项：开", "Auto advance: on") : L10n.T("到点自动下一项：关（用 PgDn / 小键盘 3 手动切）", "Auto advance: off (use PgDn / Num 3)"), false);
                 });
             F3DebugUiKit.CreateActionButton(options.transform, font,
                 (autoHeal ? "√ " : "  ") + L10n.T("低血自动回满", "Auto heal"), BossRushUIColors.Header, delegate

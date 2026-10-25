@@ -69,19 +69,52 @@ namespace BossRush
             return section;
         }
 
+        /// <summary>
+        /// 竖向滚动列表：遮罩视口 + 内容按子项自适应高度 + 共享滚动条（右侧 padding 至少留 20 给滑块）。
+        /// 子项高度交给布局（childControlHeight=true）时按钮的 LayoutElement 才生效；
+        /// 为 false 时 Unity 直接取子项 sizeDelta，新建 RectTransform 是 100×100。
+        /// </summary>
+        internal static Transform CreateScrollList(Transform parent, RectOffset padding, float spacing, bool controlChildHeight)
+        {
+            GameObject scrollView = CreateUIObject("ScrollView", parent);
+            Place(scrollView, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            ScrollRect scroll = scrollView.AddComponent<ScrollRect>();
+
+            GameObject viewport = CreateUIObject("Viewport", scrollView.transform);
+            RectTransform viewportRect = Place(viewport, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            // Mask 依赖 Image 写 Stencil：默认 UI Shader 开 UNITY_UI_ALPHACLIP，a < 0.001 会 discard、子节点全被裁掉（内容区空白）。
+            // 所以 alpha 必须 > 0，再用 showMaskGraphic=false 把颜色本身藏起来。
+            viewport.AddComponent<Image>().color = Color.white;
+            viewport.AddComponent<Mask>().showMaskGraphic = false;
+
+            GameObject content = CreateUIObject("Content", viewport.transform);
+            RectTransform contentRect = content.GetComponent<RectTransform>();
+            contentRect.anchorMin = new Vector2(0f, 1f);
+            contentRect.anchorMax = new Vector2(1f, 1f);
+            contentRect.pivot = new Vector2(0.5f, 1f);
+            contentRect.anchoredPosition = Vector2.zero;
+            contentRect.sizeDelta = Vector2.zero;
+            VerticalLayoutGroup layout = content.AddComponent<VerticalLayoutGroup>();
+            layout.padding = padding;
+            layout.spacing = spacing;
+            layout.childControlHeight = controlChildHeight;
+            layout.childControlWidth = true;
+            layout.childForceExpandHeight = false;
+            layout.childForceExpandWidth = true;
+            content.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            scroll.viewport = viewportRect;
+            scroll.content = contentRect;
+            BossRushUI.ConfigureScrollRect(scroll);
+            return content.transform;
+        }
+
+        /// <summary>按钮行：宽度跟随父级，放不下就折到下一行，不再向两侧溢出到导航或屏幕外。</summary>
         internal static GameObject CreateRow(Transform parent)
         {
             GameObject row = CreateUIObject("Row", parent);
-            HorizontalLayoutGroup layout = row.AddComponent<HorizontalLayoutGroup>();
-            layout.spacing = 10f;
-            layout.childAlignment = TextAnchor.MiddleLeft;
-            layout.childControlHeight = false;
-            layout.childControlWidth = false;
-            layout.childForceExpandHeight = false;
-            layout.childForceExpandWidth = false;
-            ContentSizeFitter fitter = row.AddComponent<ContentSizeFitter>();
-            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-            fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+            row.AddComponent<F3FlowRowLayout>();
+            row.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             return row;
         }
 
@@ -214,6 +247,74 @@ namespace BossRush
             {
                 Object.Destroy(parent.GetChild(i).gameObject);
             }
+        }
+    }
+
+    /// <summary>
+    /// 自动折行的按钮行。旧版是 HorizontalLayoutGroup + 横向 ContentSizeFitter：一行放不下时行宽按内容撑开、以中心为轴
+    /// 向左右同时溢出，左半截被导航或屏幕边裁掉。这里行宽由父级给定，子项按 LayoutElement 首选尺寸排、超宽就换行。
+    /// </summary>
+    internal sealed class F3FlowRowLayout : LayoutGroup
+    {
+        private const float Spacing = 10f;
+
+        public override void CalculateLayoutInputHorizontal()
+        {
+            base.CalculateLayoutInputHorizontal();
+            float min = 0f, preferred = 0f;
+            for (int i = 0; i < rectChildren.Count; i++)
+            {
+                float width = LayoutUtility.GetPreferredWidth(rectChildren[i]);
+                min = Mathf.Max(min, width);
+                preferred += width + (i > 0 ? Spacing : 0f);
+            }
+            SetLayoutInputForAxis(min + padding.horizontal, preferred + padding.horizontal, -1f, 0);
+        }
+
+        public override void CalculateLayoutInputVertical()
+        {
+            float height = Arrange(-1) + padding.vertical;
+            SetLayoutInputForAxis(height, height, -1f, 1);
+        }
+
+        public override void SetLayoutHorizontal() { Arrange(0); }
+
+        public override void SetLayoutVertical() { Arrange(1); }
+
+        /// <summary>逐行排布并返回内容总高；axis 为 0/1 时写入该轴，-1 只量不写。行内按最高子项垂直居中。</summary>
+        private float Arrange(int axis)
+        {
+            float available = rectTransform.rect.width - padding.horizontal;
+            if (available <= 0f) available = float.MaxValue;
+            float y = 0f;
+            int start = 0;
+            while (start < rectChildren.Count)
+            {
+                float lineWidth = 0f, lineHeight = 0f;
+                int end = start;
+                while (end < rectChildren.Count)
+                {
+                    float width = Mathf.Min(LayoutUtility.GetPreferredWidth(rectChildren[end]), available);
+                    float next = lineWidth + (end > start ? Spacing : 0f) + width;
+                    if (end > start && next > available) break;
+                    lineWidth = next;
+                    lineHeight = Mathf.Max(lineHeight, LayoutUtility.GetPreferredHeight(rectChildren[end]));
+                    end++;
+                }
+                float x = 0f;
+                for (int i = start; i < end && axis >= 0; i++)
+                {
+                    RectTransform child = rectChildren[i];
+                    float width = Mathf.Min(LayoutUtility.GetPreferredWidth(child), available);
+                    float height = LayoutUtility.GetPreferredHeight(child);
+                    if (axis == 0) SetChildAlongAxis(child, 0, padding.left + x, width);
+                    else SetChildAlongAxis(child, 1, padding.top + y + (lineHeight - height) * 0.5f, height);
+                    x += width + Spacing;
+                }
+                y += lineHeight + (end < rectChildren.Count ? Spacing : 0f);
+                start = end;
+            }
+            return y;
         }
     }
 }

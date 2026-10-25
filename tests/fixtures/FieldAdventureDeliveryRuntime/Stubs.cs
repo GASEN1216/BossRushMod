@@ -291,6 +291,8 @@ namespace BossRush
         { player=CharacterMainControl.Main; scene=new UnityEngine.SceneManagement.Scene {handle=SceneHandle,isLoaded=true}; return Raid; }
         public static bool TryFindGround(Vector3 origin,float min,float max,out Vector3 result)
         { result=FixedGround ? GroundPosition : origin + new Vector3(min>20 ? 40 : min>2.9f ? 3 : 1,0,0); return Ground; }
+        public static bool TryFindGroundBands(Vector3 origin,float[] bands,out Vector3 result)
+        { result=default(Vector3); for(int i=0;i+1<bands.Length;i+=2) if(TryFindGround(origin,bands[i],bands[i+1],out result)) return true; return false; }
         public static void Notify(string cn,string en) { }
     }
     public static class DialogueActorFactory { public static object CreateBilingual(GameObject g,string k,string cn,string en) { return new object(); } public static void RefreshBilingualName(string k,string cn,string en) { } }

@@ -59,6 +59,7 @@ namespace BossRush
         }
         private Vector3 recoilDirection;
         private int WallMask { get { return GameplayDataSettings.Layers.wallLayerMask | GameplayDataSettings.Layers.groundLayerMask; } }
+        private static readonly float[] BenchBands = { 14f, 30f, 8f, 18f };
         public override string ModuleName { get { return "DangerousPrototypes"; } }
 
         public override void OnAwake(ModBehaviour host)
@@ -203,11 +204,12 @@ namespace BossRush
                 // 试验台随机落在玩家附近较远处并标在地图上；同趟内一直留着，方便回来交还。
                 if (station != null) return;
                 Vector3 position;
-                float near = 14f, far = 30f;
+                // 远档整轮落空就退到近档，避免 15 次尝试全落空、掷中的试验台整趟不出现。
+                float[] bands = BenchBands;
 #if BOSSRUSH_DEV
-                if (devNearBench) { near = 5f; far = 9f; }
+                if (devNearBench) bands = DevBenchBands;
 #endif
-                if (!FieldAdventureSupport.TryFindGround(player.transform.position, near, far, out position)) return;
+                if (!FieldAdventureSupport.TryFindGroundBands(player.transform.position, bands, out position)) return;
                 station = DangerousPrototypeVisuals.CreateStation(position, offeredKind);
                 SceneManager.MoveGameObjectToScene(station, scene);
                 var entry = NPCInteractionGroupHelper.GetOrCreateStandaloneInteractable<DangerousPrototypeInteractable>(
@@ -781,6 +783,7 @@ namespace BossRush
 #if BOSSRUSH_DEV
         internal static DangerousPrototypeRuntimeModule DevCurrent { get; private set; }
         private bool devNearBench;
+        private static readonly float[] DevBenchBands = { 5f, 9f, 3f, 12f };
 
         /// <summary>F3 录制模式：本趟改放指定试用品，试验台下一帧落在玩家身边 5–9 米（不看委托与概率，额度重置）。</summary>
         internal bool DevForceBench(DangerousPrototypeKind kind, out string reason)

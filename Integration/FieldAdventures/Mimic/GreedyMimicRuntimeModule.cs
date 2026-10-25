@@ -12,6 +12,7 @@ namespace BossRush
         private int spawnAttempts;
         private bool spawned;
         private float nextCheck, readyTime;
+        private static readonly float[] SpawnBands = { 20f, 36f, 12f, 24f };
         /// <summary>每趟出击的遇敌掷点；离线夹具可替换成定值。</summary>
         internal static Func<float> SpawnRoll = () => UnityEngine.Random.Range(0f, 1f);
         public override string ModuleName { get { return "GreedyMimic"; } }
@@ -59,7 +60,8 @@ namespace BossRush
                 if (readyTime > 0f) return;
                 Vector3 position;
                 if (++spawnAttempts > 12) { spawned = true; return; }
-                if (!FieldAdventureSupport.TryFindGround(player.transform.position, 20f, 36f, out position)) return;
+                // 远档整轮落空就退到近档：只认 20–36 米时，拥挤地图里 12 次尝试全落空，掷中的宝箱怪整趟都不出来。
+                if (!FieldAdventureSupport.TryFindGroundBands(player.transform.position, SpawnBands, out position)) return;
                 // 成长后的箱体和药瓶远大于普通落点胶囊，额外预留完整模型净空。
                 if (Physics.CheckBox(position + Vector3.up * 3f, new Vector3(2.5f, 2.9f, 2.3f), Quaternion.identity,
                     Duckov.Utilities.GameplayDataSettings.Layers.wallLayerMask, QueryTriggerInteraction.Ignore)) return;
@@ -79,6 +81,7 @@ namespace BossRush
         }
 #if BOSSRUSH_DEV
         internal static GreedyMimicRuntimeModule DevCurrent { get; private set; }
+        private static readonly float[] DevSpawnBands = { 9f, 15f, 6f, 18f };
 
         /// <summary>F3 录制模式：替掉本趟掷点，立刻在玩家身边 9–15 米放一只宝箱怪（已有的那只先回收）。</summary>
         internal bool DevForceSpawn(out string reason)
@@ -91,7 +94,7 @@ namespace BossRush
             for (int attempt = 0; attempt < 8; attempt++)
             {
                 Vector3 position;
-                if (!FieldAdventureSupport.TryFindGround(player.transform.position, 9f, 15f, out position)) continue;
+                if (!FieldAdventureSupport.TryFindGroundBands(player.transform.position, DevSpawnBands, out position)) continue;
                 if (Physics.CheckBox(position + Vector3.up * 3f, new Vector3(2.5f, 2.9f, 2.3f), Quaternion.identity,
                     Duckov.Utilities.GameplayDataSettings.Layers.wallLayerMask, QueryTriggerInteraction.Ignore)) continue;
                 raidOwner = LevelManager.Instance;

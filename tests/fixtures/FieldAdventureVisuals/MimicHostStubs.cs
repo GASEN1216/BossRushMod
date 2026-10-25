@@ -68,6 +68,7 @@ namespace BossRush
         { player = CharacterMainControl.Main; scene = SceneManager.GetActiveScene(); return player != null && player.Health != null && !player.Health.IsDead; }
         internal static void Notify(string cn, string en) { Notices.Add(en); }
         internal static bool TryFindGround(Vector3 origin, float min, float max, out Vector3 position) { position = origin; return true; }
+        internal static bool TryFindGroundBands(Vector3 origin, float[] bands, out Vector3 position) { position = origin; return true; }
     }
     internal static class L10n { internal static string T(string cn, string en) { return en; } }
     internal static class GreedyMimicInventory

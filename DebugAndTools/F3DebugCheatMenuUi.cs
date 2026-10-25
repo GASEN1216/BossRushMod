@@ -60,63 +60,25 @@ namespace BossRush
                 f3DebugCheatSummaryText.text = string.Empty;
 
                 Image navImage = F3DebugUiKit.CreateSurface(panel.transform, "NavPanel", BossRushUIColors.Header, 10, BossRushUISkinPart.Card);
-                GameObject navPanel = navImage.gameObject;
-                F3DebugUiKit.Place(navPanel, Vector2.zero, new Vector2(0f, 1f), new Vector2(24f, 72f), new Vector2(240f, -186f));
-                VerticalLayoutGroup navLayout = navPanel.AddComponent<VerticalLayoutGroup>();
-                navLayout.padding = new RectOffset(10, 10, 12, 12);
-                navLayout.spacing = 8f;
-                navLayout.childControlHeight = false;
-                navLayout.childControlWidth = true;
-                navLayout.childForceExpandHeight = false;
-                navLayout.childForceExpandWidth = true;
+                F3DebugUiKit.Place(navImage.gameObject, Vector2.zero, new Vector2(0f, 1f), new Vector2(24f, 72f), new Vector2(240f, -186f));
+                // 导航可滚动、按钮高度交给布局：旧版不控高，按钮取默认 100 高，8 个页签撑出面板、底部的点不到。
+                Transform navList = F3DebugUiKit.CreateScrollList(navImage.transform, new RectOffset(10, 24, 12, 12), 8f, true);
 
-                CreateF3DebugCheatNavButton(navPanel.transform, font, F3DebugCheatPage.Teleport, L10n.T("传送", "Teleport"));
-                CreateF3DebugCheatNavButton(navPanel.transform, font, F3DebugCheatPage.PlayerStats, L10n.T("玩家属性", "Player Stats"));
-                CreateF3DebugCheatNavButton(navPanel.transform, font, F3DebugCheatPage.Resources, L10n.T("资源与物品", "Resources"));
-                CreateF3DebugCheatNavButton(navPanel.transform, font, F3DebugCheatPage.Battle, L10n.T("战斗流程", "Battle"));
-                CreateF3DebugCheatNavButton(navPanel.transform, font, F3DebugCheatPage.NpcStory, L10n.T("NPC/剧情", "NPC/Story"));
-                CreateF3DebugCheatNavButton(navPanel.transform, font, F3DebugCheatPage.SceneDebug, L10n.T("场景调试", "Scene Debug"));
-                CreateF3DebugCheatNavButton(navPanel.transform, font, F3DebugCheatPage.Validation, L10n.T("验收测试", "Validation"));
+                CreateF3DebugCheatNavButton(navList, font, F3DebugCheatPage.Teleport, L10n.T("传送", "Teleport"));
+                CreateF3DebugCheatNavButton(navList, font, F3DebugCheatPage.PlayerStats, L10n.T("玩家属性", "Player Stats"));
+                CreateF3DebugCheatNavButton(navList, font, F3DebugCheatPage.Resources, L10n.T("资源与物品", "Resources"));
+                CreateF3DebugCheatNavButton(navList, font, F3DebugCheatPage.Battle, L10n.T("战斗流程", "Battle"));
+                CreateF3DebugCheatNavButton(navList, font, F3DebugCheatPage.NpcStory, L10n.T("NPC/剧情", "NPC/Story"));
+                CreateF3DebugCheatNavButton(navList, font, F3DebugCheatPage.SceneDebug, L10n.T("场景调试", "Scene Debug"));
+                CreateF3DebugCheatNavButton(navList, font, F3DebugCheatPage.Validation, L10n.T("验收测试", "Validation"));
 #if BOSSRUSH_DEV
-                CreateF3DebugCheatNavButton(navPanel.transform, font, F3DebugCheatPage.Recording, L10n.T("录制视频", "Recording"));
+                CreateF3DebugCheatNavButton(navList, font, F3DebugCheatPage.Recording, L10n.T("录制视频", "Recording"));
 #endif
 
                 GameObject contentPanel = CreateUIObject("ContentPanel", panel.transform);
                 F3DebugUiKit.Place(contentPanel, Vector2.zero, Vector2.one, new Vector2(256f, 72f), new Vector2(-24f, -186f));
-
-                GameObject scrollView = CreateUIObject("ScrollView", contentPanel.transform);
-                F3DebugUiKit.Place(scrollView, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
-                ScrollRect scroll = scrollView.AddComponent<ScrollRect>();
-                scroll.horizontal = false;
-                scroll.vertical = true;
-                scroll.movementType = ScrollRect.MovementType.Clamped;
-                scroll.scrollSensitivity = 40f;
-
-                GameObject viewport = CreateUIObject("Viewport", scrollView.transform);
-                RectTransform viewportRect = F3DebugUiKit.Place(viewport, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
-                // Mask 依赖 Image 写 Stencil：默认 UI Shader 开 UNITY_UI_ALPHACLIP，a < 0.001 会 discard、子节点全被裁掉（内容区空白）。
-                // 所以 alpha 必须 > 0，再用 showMaskGraphic=false 把颜色本身藏起来。
-                viewport.AddComponent<Image>().color = Color.white;
-                viewport.AddComponent<Mask>().showMaskGraphic = false;
-
-                GameObject content = CreateUIObject("Content", viewport.transform);
-                RectTransform contentRect = content.GetComponent<RectTransform>();
-                contentRect.anchorMin = new Vector2(0f, 1f);
-                contentRect.anchorMax = new Vector2(1f, 1f);
-                contentRect.pivot = new Vector2(0.5f, 1f);
-                contentRect.anchoredPosition = Vector2.zero;
-                contentRect.sizeDelta = Vector2.zero;
-                VerticalLayoutGroup contentLayout = content.AddComponent<VerticalLayoutGroup>();
-                contentLayout.padding = new RectOffset(2, 8, 0, 8);
-                contentLayout.spacing = 14f;
-                contentLayout.childControlHeight = false;
-                contentLayout.childControlWidth = true;
-                contentLayout.childForceExpandHeight = false;
-                contentLayout.childForceExpandWidth = true;
-                content.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-                scroll.viewport = viewportRect;
-                scroll.content = contentRect;
-                f3DebugCheatContentRoot = content.transform;
+                // 区块自带 ContentSizeFitter 定高，内容列表不控子项高度；右侧 24 留给滚动条。
+                f3DebugCheatContentRoot = F3DebugUiKit.CreateScrollList(contentPanel.transform, new RectOffset(2, 24, 0, 8), 14f, false);
 
                 Image statusImage = F3DebugUiKit.CreateSurface(panel.transform, "StatusBar", BossRushUIColors.Header, 8, BossRushUISkinPart.Card);
                 F3DebugUiKit.Place(statusImage.gameObject, Vector2.zero, new Vector2(1f, 0f), new Vector2(24f, 18f), new Vector2(-24f, 58f));

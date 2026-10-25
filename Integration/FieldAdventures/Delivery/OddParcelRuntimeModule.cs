@@ -16,6 +16,10 @@ namespace BossRush
     internal sealed class OddParcelRuntimeModule : BossRushRuntimeModuleBase
     {
         private const int MaxOrders = 2;
+        // 落点由远到近逐档放宽：签收台要走一段路才有意思，但只认 28–45 米时拥挤地图里常常整轮落空、接了单却说没地方签收。
+        private static readonly float[] DispatchBands = { 3f, 7f, 1.5f, 10f };
+        private static readonly float[] ReceiptBands = { 28f, 45f, 20f, 36f, 14f, 28f };
+        private static readonly float[] ParcelBands = { 1.5f, 3f, .8f, 4.5f };
         private ModBehaviour owner;
         private LevelManager raidOwner;
         private CharacterMainControl player;
@@ -167,9 +171,13 @@ namespace BossRush
             if (courierOption == null)
             {
                 Vector3 position;
-                if (!FieldAdventureSupport.TryFindGround(player.transform.position, 3f, 7f, out position))
+                if (!FieldAdventureSupport.TryFindGroundBands(player.transform.position, DispatchBands, out position))
                 {
-                    ClearWorld(); gateDelay = 4f; return;
+                    // 此时只建了空根与取消源；就地撤掉并保留场景、额度与录制标记，4 秒后原样重试。
+                    // 走 ClearWorld 会把场景号清成 -1，下一帧被当成换区再清一遍，录制模式随之丢掉「只放身边发件台」。
+                    UnityEngine.Object.Destroy(worldRoot); worldRoot = null;
+                    cancellation.Cancel(); cancellation.Dispose(); cancellation = null;
+                    gateDelay = 4f; return;
                 }
                 dispatch = NewAnchor("AwenOddParcelDispatch", position);
                 dispatchInteract = dispatch.AddComponent<OddParcelInteractable>();
@@ -349,8 +357,10 @@ namespace BossRush
         {
             if (worldRoot == null || condition != null || acceptedOrders >= MaxOrders || player == null) return;
             Vector3 end, start;
-            if (!FieldAdventureSupport.TryFindGround(origin, 28f, 45f, out end)
-                || !FieldAdventureSupport.TryFindGround(player.transform.position, 1.5f, 3f, out start))
+            // 阿稳站在台阶或屋里时以他为圆心整轮落空，再以玩家为圆心找一次。
+            if (!(FieldAdventureSupport.TryFindGroundBands(origin, ReceiptBands, out end)
+                    || FieldAdventureSupport.TryFindGroundBands(player.transform.position, ReceiptBands, out end))
+                || !FieldAdventureSupport.TryFindGroundBands(player.transform.position, ParcelBands, out start))
             {
                 FieldAdventureSupport.Notify("阿稳：附近没有合适的签收落点，这单先不算。", "Awen: no suitable receipt location nearby. This attempt uses no order slot.");
                 return;
@@ -555,17 +565,26 @@ namespace BossRush
         internal static OddParcelRuntimeModule DevCurrent { get; private set; }
         private bool devDispatchOnly;
 
-        /// <summary>F3 录制模式：退掉本趟快递、归还两单额度，发件台下一帧就在玩家身边 3–7 米重开。</summary>
-        internal void DevResetOrders()
+        /// <summary>
+        /// F3 录制模式：退掉本趟快递、归还两单额度，当场在玩家身边重开发件台。
+        /// 返回 null 表示已放好；否则是失败原因，录制提示条据此显示「未触发」（4 秒后仍会按原规则重试）。
+        /// </summary>
+        internal string DevResetOrders()
         {
-            int keepScene = sceneHandle;
             ClearWorld();
-            sceneHandle = keepScene;
             acceptedOrders = 0;
+            CharacterMainControl currentPlayer;
+            Scene scene;
+            if (!FieldAdventureSupport.TryGetRaid(owner, out currentPlayer, out scene)) return "not_in_raid";
+            raidOwner = LevelManager.Instance;
+            player = currentPlayer;
+            sceneHandle = scene.handle;
             gateDelay = 0f;
             sceneAge = 2f;
             courierScans = 8;
             devDispatchOnly = true;
+            OpenWorld(scene);
+            return dispatch != null ? null : "no_clear_ground";
         }
 #endif
     }
