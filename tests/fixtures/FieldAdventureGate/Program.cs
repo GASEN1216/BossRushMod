@@ -32,6 +32,8 @@ internal static class Program
         Physics.Slope = 1;
         Physics.GroundOffset = 0;
         Physics.Raycasts = 0;
+        FieldAdventureRoute.Walkable = true;
+        FieldAdventureRoute.Queries = 0;
     }
     private static bool Allowed() { CharacterMainControl player; Scene scene; return FieldAdventureSupport.TryGetRaid(owner,out player,out scene); }
     private static void Reject(Action mutation, string label) { Reset(); mutation(); Check(!Allowed(),label); }
@@ -76,6 +78,13 @@ internal static class Program
         Reset(); Vector3 point;
         Check(FieldAdventureSupport.TryFindGround(Vector3.zero,8,16,out point),"connected grounded clear candidate accepted");
         Check(point.sqrMagnitude>=64 && point.sqrMagnitude<=257 && SpawnPositionHelper.Queries==1,"accepted point preserves distance budget");
+        Check(FieldAdventureRoute.Queries==1,"accepted point proves a walkable route exactly once");
+        Reset(); FieldAdventureRoute.Walkable=false;
+        Check(!FieldAdventureSupport.TryFindGround(Vector3.zero,8,16,out point) && FieldAdventureRoute.Queries==12,"connected point the player cannot walk to is refused and route budget is bounded");
+        Reset(); Physics.Wall=true;
+        Check(!FieldAdventureSupport.TryFindGround(Vector3.zero,8,16,out point) && FieldAdventureRoute.Queries==0,"route query runs only after cheap ground and clearance checks");
+        Reset(); FieldAdventureRoute.Walkable=false;
+        Check(!FieldAdventureSupport.TryFindGroundBands(Vector3.zero,new float[] { 28,45,20,36,14,28 },out point) && FieldAdventureRoute.Queries==36,"fallback bands keep the route requirement in every band");
         Reset(); SpawnPositionHelper.Anchor=false;
         Check(!FieldAdventureSupport.TryFindGround(Vector3.zero,8,16,out point) && SpawnPositionHelper.Queries==0,"no anchor avoids expensive candidate queries");
         Reset(); SpawnPositionHelper.Reachable=false;

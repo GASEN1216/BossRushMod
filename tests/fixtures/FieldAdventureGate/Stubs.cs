@@ -135,5 +135,11 @@ namespace BossRush
             return Reachable;
         }
     }
+    internal static class FieldAdventureRoute
+    {
+        public static bool Walkable = true;
+        public static int Queries;
+        public static bool IsWalkable(UnityEngine.Vector3 from, UnityEngine.Vector3 to) { Queries++; return Walkable; }
+    }
     internal static class L10n { public static string T(string cn,string en) { return cn; } }
 }

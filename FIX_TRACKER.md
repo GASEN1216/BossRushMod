@@ -7,6 +7,7 @@
 - **F3 左侧导航溢出**：导航 VerticalLayoutGroup 不控子项高度，按钮的 LayoutElement 不生效、取新建 RectTransform 默认 100 高，8 个页签约 880 高撑出 682 高的导航区。导航与内容都改走 `F3DebugUiKit.CreateScrollList`（共享 `ConfigureScrollRect` 滚动条），导航控高；按钮行改为 `F3FlowRowLayout` 自动折行，旧行宽按内容撑开、以中心为轴向左右溢出被裁。
 - **录制热键**：PgDn/PgUp/Home/Insert/End 之外同时认小键盘 3/9/7/0/1（键帽上印着同名导航键），提示条与页面说明同步。
 - **怪件快递签收台常生成失败**：接单后签收台只认 28–45 米、12 个候选一轮，拥挤地图常提示「附近没有合适的签收落点」。新增 `FieldAdventureSupport.TryFindGroundBands` 由远到近放宽（28–45→20–36→14–28 米，再以玩家为圆心重找），判据不变；发件台失败不再走 ClearWorld（原先清掉场景号与录制标记，重试时改挂远处阿稳）；录制模式快递一项当场重开并在失败时显示「未触发」。
+- **签收台刷到地图可走区域外**（同日追加）：`TryFindGround` 只证明落点与接单点在导航图同一连通区，官方导航图常铺过地图边空气墙，墙外点也算连通。新增 `Integration/FieldAdventures/FieldAdventureRoute.cs` 作为最后一道判据：真算 A* 路径（终点须到目标 1.2 米内，A* 报完成不等于走到了；绕路 ≤ 直线 ×3 + 15 米），再沿路每段用玩家 ECM2 `collisionLayers`（去地面层）扫细胶囊，挡住玩家的墙与空气墙都作废。所有野外趣事落点共用。FieldAdventureGate 增 4 条断言（47 条），删掉判据的反向探针在「accepted point proves a walkable route exactly once」转红，按 SHA 还原。
 - **同类问题**：宝箱怪（20–36→12–24 米）、试验台（14–30→8–18 米）原先固定尝试次数全落空即整趟不出现，同样放宽；录制刷靶子一个都没放下时报错，花冠落点放宽。
 - 验证：全量守卫 752 PASS；Dev 与正式构建均编译通过，正式 DLL `D8157889…0022A` 已部署且与 `Build/` 一致；FieldAdventure 六组执行回归通过，快递 19 项反向探针照常转红。夹具替身补 `TryFindGroundBands`。未进游戏，面板观感与实际落点成功率待 L3。
 

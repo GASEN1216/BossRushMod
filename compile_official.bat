@@ -941,6 +941,7 @@ echo(Integration\FieldAdventures\Delivery\OddParcelRules.cs
 echo(Integration\FieldAdventures\Delivery\OddParcelRuntimeModule.cs
 echo(Integration\FieldAdventures\Delivery\OddParcelVisual.cs
 echo(Integration\FieldAdventures\ExplorationRuntimeRegistration.cs
+echo(Integration\FieldAdventures\FieldAdventureRoute.cs
 echo(Integration\FieldAdventures\FieldAdventureSupport.cs
 echo(Integration\FieldAdventures\FieldAdventureVisualAssets.cs
 echo(Integration\FieldAdventures\Mimic\GreedyMimicEncounter.cs

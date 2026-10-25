@@ -56,7 +56,7 @@ namespace BossRush
                 && !SceneRuntimeGate.IsModResourceScene(scene) && SceneRuntimeGate.IsGameplaySceneName(scene.name);
         }
 
-        /// <summary>有限候选，必须有真实导航连通性、实体地面与身体净空；找不到就延后尝试。</summary>
+        /// <summary>有限候选，必须有真实导航连通性、实体地面、身体净空，且玩家沿真实路线走得到；找不到就延后尝试。</summary>
         internal static bool TryFindGround(Vector3 origin, float minDistance, float maxDistance, out Vector3 position)
         {
             position = Vector3.zero;
@@ -87,7 +87,10 @@ namespace BossRush
                     Vector3 bottom = ground.point + Vector3.up * 0.9f;
                     if (Physics.CheckCapsule(bottom, ground.point + Vector3.up * 2f, 0.8f,
                             GameplayDataSettings.Layers.wallLayerMask, QueryTriggerInteraction.Ignore)) continue;
-                    position = ground.point + Vector3.up * 0.04f;
+                    Vector3 placed = ground.point + Vector3.up * 0.04f;
+                    // 最贵的一步放最后：真算路并沿路扫墙，导航图铺出空气墙外的点在这里作废。
+                    if (!FieldAdventureRoute.IsWalkable(origin, placed)) continue;
+                    position = placed;
                     return true;
                 }
             }
