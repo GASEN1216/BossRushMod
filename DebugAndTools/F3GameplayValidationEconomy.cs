@@ -246,7 +246,7 @@ namespace BossRush
 
                 bool stored = CodexPersistence.Store(before);
                 bool flushed = CodexPersistence.FlushPending();
-                Saves.SavesSystem.SaveFile(false);
+                BossRushSaveFileThrottle.RunSaveFile(() => Saves.SavesSystem.SaveFile(false));
 
                 // 清静态缓存再读：这才是「重启后还在不在」的等价验证。
                 CodexPersistence.ResetStaticCaches();

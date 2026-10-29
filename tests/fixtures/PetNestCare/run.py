@@ -43,7 +43,7 @@ def main():
     for signature in ("internal static bool StageCommit()", "private static bool CommitCandidate("):
         source += member("PetNest/PetNestService.cs", signature) + "\n"
     source += "}\nstatic partial class PetNestSaveCoordinator {\n"
-    for signature in ("internal static void MarkBackpackAssetsChanged()", "internal static bool RequireBackpackAssetSnapshot(",
+    for signature in ("internal static void MarkBackpackAssetsChanged()", "internal static bool RequireBackpackAssetSnapshot(", "private static bool CanCollectBackpackAssets(",
                       "internal static bool CollectPendingAssets(", "internal static bool RequestAssetFlush("):
         source += member("PetNest/PetNestSaveCoordinator.cs", signature) + "\n"
     source += "}\nstatic partial class PetNestLocalization {\n" + member("Localization/PetNestLocalization.cs", "public static void Inject()") + "\n}\n"

@@ -37,10 +37,17 @@ namespace BossRush
             return false;
         }
 
-        /// <summary>炮弹本帧位移是否撞到墙。</summary>
-        internal static bool SegmentBlocked(Vector3 from, Vector3 to)
+        /// <summary>返回炮弹本帧最先撞到的墙面位置，供命中判断截短有效弹道。</summary>
+        internal static bool TryGetWallHit(Vector3 from, Vector3 to, out Vector3 point)
         {
-            return Physics.Linecast(from, to, GameplayDataSettings.Layers.wallLayerMask, QueryTriggerInteraction.Ignore);
+            RaycastHit hit;
+            if (Physics.Linecast(from, to, out hit, GameplayDataSettings.Layers.wallLayerMask, QueryTriggerInteraction.Ignore))
+            {
+                point = hit.point;
+                return true;
+            }
+            point = to;
+            return false;
         }
     }
 }

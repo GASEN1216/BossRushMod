@@ -70,8 +70,14 @@ internal static partial class Program
         Item higherQuality = Ammunition(inventory, 2); higherQuality.Quality = 2; higherQuality.Value = 1;
         Item cheapestLocked = Ammunition(inventory, 3); cheapestLocked.Value = 1; inventory.Locked.Add(3);
         int slot;
+        Check(ReferenceEquals(GreedyMimicInventory.Find(player, GreedyMimicFood.Ammunition, out slot), higherQuality) && slot == 2,
+            "food selection chooses the cheapest eligible item across qualities and skips protected stock");
+        higherQuality.Value = cheap.Value;
         Check(ReferenceEquals(GreedyMimicInventory.Find(player, GreedyMimicFood.Ammunition, out slot), cheap) && slot == 1,
-            "food selection prefers lowest eligible quality then price and skips protected stock");
+            "equally priced food prefers lower quality");
+        higherQuality.Quality = cheap.Quality;
+        Check(ReferenceEquals(GreedyMimicInventory.Find(player, GreedyMimicFood.Ammunition, out slot), cheap) && slot == 1,
+            "equally priced food of the same quality preserves inventory order");
         Check(!GreedyMimicInventory.Eligible(cheap, inventory, -1, GreedyMimicFood.Ammunition), "negative selected slots are rejected");
         Check(!GreedyMimicInventory.Eligible(cheap, inventory, 1, (GreedyMimicFood)3), "invalid food category cannot consume a valid item");
         Check(GreedyMimicInventory.Find(null, GreedyMimicFood.Medicine, out slot) == null && slot == -1, "missing player produces no food offer");

@@ -435,7 +435,8 @@ namespace BossRush
             {
                 return info.DisplayName;
             }
-            return string.IsNullOrEmpty(pet.lineageKey) ? pet.id : pet.lineageKey;
+            return string.IsNullOrEmpty(pet.lineageKey) ? pet.id
+                : PetNestLineageCatalog.ResolveCurrentDisplayName(pet.lineageKey, null);
         }
 
         /// <summary>

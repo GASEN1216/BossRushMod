@@ -21,7 +21,7 @@ SCRIPT_FIXTURES = (
     "SandstormCombatRuntime", "SandstormCombatTiming",
     "BossHealthScaling",
     "ModeECombatTargeting",
-    "PetNestCompanionActivation", "PetNestCare", "ReforgeAssetTransactions",
+    "PetNestCompanionActivation", "PetNestCare", "PetNestLineageNames", "ReforgeAssetTransactions",
     "SkyIslandRenderEntry",
     "DeathWraithPersistence",
     "ModeDEntryOwnership", "LegacyArenaEntry", "ModeEntryPaymentDelivery",
@@ -43,6 +43,8 @@ SCRIPT_FIXTURES = (
     "SkyIslandValidationJudges", "F3AutotestJudges", "SpawnPositionPolicy", "EnemySpawnRuntime", "EnemyRecoveryRuntime", "RandomEventEffectsOwners", "ModeEFSpawnPreparation", "ModeEFEnemySpawnRuntime", "ModeEFSpawnPostprocessScheduler", "ModeEFVirtualSpawnerRegistry", "ModeEFMerchantCatalog", "FlightTotemRuntimeModule", "EquipmentBootstrapOwners", "AwenLootSweepRuntime", "WavesArenaPresetWeight", "BirthdayCakeGift",
 )
 PROJECT_FIXTURES = {
+    "PromoRecordingLifecycle": "PromoRecordingLifecycle.csproj",
+    "ModeGPersistenceRecovery": "ModeGPersistenceRecovery.csproj",
     "FieldAdventureGate": "FieldAdventureGate.csproj",
     "FieldAdventureRules": "FieldAdventureRules.csproj",
     "EclipseBloomRules": "EclipseBloomRules.csproj",

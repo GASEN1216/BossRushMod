@@ -73,7 +73,7 @@ namespace BossRush
                     reason = "日报跨日批次无法写入存档缓存";
                     return false;
                 }
-                SavesSystem.SaveFile(false);
+                BossRushSaveFileThrottle.RunSaveFile(() => SavesSystem.SaveFile(false));
 
                 DailyReportService.ResetStaticCaches();
                 DailyReportPersistence.ResetStaticCaches();

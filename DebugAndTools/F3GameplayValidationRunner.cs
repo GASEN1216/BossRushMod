@@ -379,7 +379,7 @@ namespace BossRush
                     reason = "测试档标记回读不一致";
                     return false;
                 }
-                SavesSystem.SaveFile(false);
+                BossRushSaveFileThrottle.RunSaveFile(() => SavesSystem.SaveFile(false));
                 reason = "当前槽已标记为专用验收测试档（槽位 " + SavesSystem.CurrentSlot + "）";
                 _status = reason;
                 return true;
@@ -892,7 +892,7 @@ namespace BossRush
             {
                 PetNestSaveCoordinator.RequestFlush();
                 DailyReportSaveCoordinator.RequestFlush();
-                SavesSystem.SaveFile(false);
+                BossRushSaveFileThrottle.RunSaveFile(() => SavesSystem.SaveFile(false));
                 bool marker = IsDedicatedCurrentSlot();
                 bool campaign = CampaignContentCatalog.Source == "Json";
                 metrics = "dedicated_marker=" + marker + ",campaign_json=" + campaign;
@@ -1036,7 +1036,7 @@ namespace BossRush
                 string marker = _runId + "|" + DateTime.UtcNow.Ticks;
                 SavesSystem.Save<string>(RunMarkerKey, marker);
                 if (!string.Equals(SavesSystem.Load<string>(RunMarkerKey), marker, StringComparison.Ordinal)) return false;
-                SavesSystem.SaveFile(false);
+                BossRushSaveFileThrottle.RunSaveFile(() => SavesSystem.SaveFile(false));
                 return true;
             }
             catch { return false; }
@@ -1047,7 +1047,7 @@ namespace BossRush
             try
             {
                 SavesSystem.Save<string>(RunMarkerKey, string.Empty);
-                SavesSystem.SaveFile(false);
+                BossRushSaveFileThrottle.RunSaveFile(() => SavesSystem.SaveFile(false));
             }
             catch (Exception e) { ModBehaviour.DevLog("[Validation] 清除运行标记失败: " + e.Message); }
         }

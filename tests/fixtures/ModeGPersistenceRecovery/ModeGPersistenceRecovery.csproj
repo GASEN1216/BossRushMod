@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RollForward>Major</RollForward>
+    <LangVersion>7.3</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="Stubs.cs" />
+    <Compile Include="../../../ModeG/ModeGPersistenceFlushCoordinator.cs" />
+    <Compile Include="../../../ModeG/ModeGProfilePersistence.cs" />
+    <Compile Include="../../../ModeG/ModeGNemesisPersistence.cs" />
+    <Compile Include="../../../Common/Lifecycle/BossRushSaveFileThrottle.cs" />
+  </ItemGroup>
+</Project>

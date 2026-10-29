@@ -179,7 +179,7 @@ namespace BossRush
             if (!SavesSystem.IsSaving && IsSameSlot(slot, generation))
             {
                 lock (Sync) { _hostWriteDeferred = false; }
-                SavesSystem.SaveFile(false);
+                BossRushSaveFileThrottle.RunSaveFile(() => SavesSystem.SaveFile(false));
             }
         }
 

@@ -5,6 +5,7 @@ using ItemStatsSystem.Data;
 
 namespace UnityEngine
 {
+    public static class Time { public static int frameCount; }
     public class GameObject { public Item Item; }
     public static class Object { public static void Destroy(GameObject obj) { if (obj != null && obj.Item != null) obj.Item.Destroyed = true; } }
 }
@@ -70,14 +71,18 @@ namespace Saves
     public static class SavesSystem
     {
         public static int CurrentSlot = 1, AssetWrites, PhysicalWrites;
-        public static bool IsSaving, FailPhysical;
+        private static bool saving;
+        public static bool IsSaving { get { return saving; } set { saving = value; } }
+        public static bool FailPhysical;
         public static string Key = "original_snapshot", PhysicalKey = "original_snapshot";
         public static T Load<T>(string key) { return (T)(object)Key; }
         public static void Save<T>(string key, T value) { Key = (string)(object)value; }
         public static void SaveFile(bool ignored)
         {
+            saving = true;
             if (FailPhysical) throw new InvalidOperationException("physical failure after cached key changed");
             PhysicalKey = Key; PhysicalWrites++;
+            saving = false;
         }
     }
 }
@@ -161,6 +166,9 @@ namespace BossRush
             Reset(); PlayerStorageBuffer.Buffer.Add(Tree(7)); Saves.SavesSystem.FailPhysical = true;
             Check(!probe.Restore(0) && Saves.SavesSystem.Key == "original_snapshot" && Saves.SavesSystem.PhysicalKey == "original_snapshot",
                 "physical failure restores cached recovery key after clear changed cache");
+            Check(!Saves.SavesSystem.IsSaving, "failed clear releases its own saving latch");
+            Saves.SavesSystem.FailPhysical = false;
+            Check(probe.Restore(0) && Saves.SavesSystem.PhysicalKey == "", "recovery-key clear can retry in the same session");
 
             Reset(); old = Tree(1); PlayerStorageBuffer.Buffer.Add(old);
             Check(!probe.Restore(0, false) && ReferenceEquals(PlayerStorageBuffer.Buffer[0], old)

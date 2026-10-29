@@ -2,6 +2,34 @@
 
 更早记录见 `archive/`；月度归档索引保留在本文件正文。
 
+## 2026-10-29 最新代码审核与遗种崽反馈（COMPAT；L1/L2 修复，L3 待验）
+
+本轮从干净工作区、HEAD `f9ef9fd4` 开始，审查 `41360aa4..HEAD` 的最新变更及直接影响面，并沿玩家反馈回查遗种巢、共享持久层和旧物理保存入口。三位子代理均为 gpt-6.1-sol / xhigh。覆盖宿主生命周期、存档与本地化、Mode D–H / 标准竞技场 / 丧尸 / 征程 / 天空岛 / 随机事件的相关状态路径、Integration 野外趣事与装备、F3 录制；未改动的大模块做重点链路抽查与全量已有回归，不声称全部源码逐行或状态组合穷举。
+
+以下七项均已修复，兼容分类 COMPAT，证据为 L1 生产调用链与 L2 执行回归；未发现新增 P0，未取得游戏内 L3：
+
+- **CR-2026-10-29-001，P1：已有崽的默认名泄漏 Cname key。** `PetNest/PetNestService.cs:428` 原来在血脉被当前 Boss 筛选器排除、目录尚未建成时直接返回 `lineageKey`；`PetNest/PetNestLineageCatalog.cs:33` 又缓存构建当时的本地化结果，官方缺词条的 `*Cname_*` 也被当作有效名字。现按取用时的语言解析，即使目录缺项仍查询名字；没有词条时显示双语“未知血脉”，保留稳定血脉 ID 与玩家自定义昵称。`PetNestLineageNames` 14 条断言覆盖语言晚就绪、切语言、筛选缺项、目录未建与昵称；两项隔离反向探针均在预期断言失败。玩家入口与报告吻合，但实际玩家包和日志尚未取得。
+- **CR-2026-10-29-002，P1：部分 Mod 保存入口失败后可把全局保存状态永久留在忙碌。** `ModeG/ModeGPersistenceFlushCoordinator.cs`、`ModeG/ModeGProfilePersistence.cs`、`ModeG/ModeGNemesisPersistence.cs` 的三个物理入口，以及 `Integration/Affinity/AffinityManager.cs:151` 的关停保存，原来直接调用官方 `SaveFile`。官方 `SavesSystem` 先置 `saving=true` 再备份/写文件，异常时没有 finally；后续遗种崽背包、共享存档等都被 `IsSaving` 拦截，可能贯穿基地与出击。现四处复用既有 `BossRushSaveFileThrottle.RunSaveFile`，只复位本调用留下的闩，保留原异常、已有缓存及各模块原有故障语义，不重入或释放他方保存。`ModeGPersistenceRecovery` 14 个独立进程场景 / 86 条断言、`NpcAuditFixes` 关停失败回归先红后绿；三个 Mode G 旧调用反向探针和相关守卫反向验证均通过。该缺陷需要先发生物理保存异常，不能仅凭玩家提示认定本次报告就是此因。
+- **CR-2026-10-29-003，P2：崽包把隐藏的官方宠物容器也当作必须就绪的转移来源。** `PetNest/PetNestSaveCoordinator.cs:79`、`:116` 原无条件检查 `PetProxy.PetInventory.Loading`，与官方 `LootView.OnOpen` 只在 `LevelConfig.SavePet=true` 展示该容器不一致。现前置与采集共同采用官方可见条件；显示中的官方宠物包仍须加载完成并同批采集。`PetNestCare` 51 条断言及恢复旧门控的隔离反向探针通过。此为条件性缺陷，正常关卡隐藏容器默认不加载，不把它说成玩家“基地和出击都持续报错”的充分根因。`PetNestBackpack.cs:373` 另按原因变化记录一次 Warning，区分保存中、槽位、主角、角色物品、官方宠物包；用户提示仍经原本地化前缀解析。
+- **CR-2026-10-29-004，P2：宝箱投喂未遵守“选最便宜”承诺。** `Integration/FieldAdventures/Mimic/GreedyMimicInventory.cs:49` 原先按品质优先，低品质高价和高品质低价同类食物同时存在时会吃掉更贵者。现价格优先，同价才用品质排序。真实生产 Rules 夹具修前失败、修后 1417 条断言通过，12 项隔离负探针包含恢复旧品质排序；仍保留锁槽、装备、配件和非空容器保护。L3 核对不同品质/价格食物的实际消耗。
+- **CR-2026-10-29-005，P2：宝箱炮弹可在同帧隔墙扣血。** `Integration/FieldAdventures/Mimic/GreedyMimicEncounter.cs:432` 原先先判玩家命中，再以 else-if 查墙；本帧弹道同时越过墙和墙后玩家时墙判定完全不执行。现 `GreedyMimicTerrain.cs:41` 返回最近墙点，先截短有效弹道，再判墙前玩家，并阻止命中半径跨过墙面。`FieldAdventureMimicRuntime` 生产逻辑与官方伤害组件隔离执行：修前墙后玩家仍受伤，修后 271 条断言、3 项隔离负探针通过，含墙前/墙后/同面和半径边缘。真正场景的 PhysX 墙层仍需 L3。
+- **CR-2026-10-29-006，P2：Dev 录制的迟到角色生成越过结束和场景边界。** `DebugAndTools/PromoRecording/PromoRecordingDirector.cs` 的靶子 await 后原无 owner 校验，花冠旧回调还能重写清理后的静态引用。现绑定请求代数、原主角与普通出击场景，开始/换步骤/结束/销毁取消在途请求，花冠生成期间预留，拒绝并回收迟到角色；已提交的拍摄角色仍按原场景生命周期运行。`PromoRecordingLifecycle` 完整生产文件 65 条断言、旧生产及四项隔离变异均在预期断言转红。仅影响 Dev，正式构建不含该录制实现。
+- **CR-2026-10-29-007，P1：无奖励的基地维护留下仓库保存义务，阻塞之后的崽包转移。** `PetNest/PetNestExpeditionService.cs:572` 原先在检查欠奖、重试间隔和事务可用性之前调用 `RequireAssetSnapshot`。空扫描没有资产变化，也不请求物理保存，却遗留必须采集基地仓库的标志；进入没有 `PlayerStorage` 的出击图后，崽包转移落盘被该标志拦住。现只有真实欠奖、已过重试间隔且取得事务时才建立义务。`PetNestHatchService.cs:128` 同类失败分支也已修复：先核对蛋的归属，未摘取或确认完整回滚时凭本次 owner 撤销新建义务；已有真实欠账、重入中新建的义务和不完整回滚均保留，回滚不得覆盖原槽新物品。`ContentTransactions` 旧实现先红、修后通过，覆盖基地空扫描后出击实际崽包快照落盘、退避、拒绝事务、旧债、部分发奖及孵化回滚。真正开始外部到账后不凭奖励游标未变就清除义务，避免宿主通知抛异常后漏存已改变的资产。无 L3，不据此认定玩家在基地的持续阻塞已完全解释。
+
+CR-2026-10-29-002 同因入口已继续补齐：`DebugAndTools/F3GameplayValidationRunner.cs` 四处、`F3GameplayValidationAutotestStory.cs` 两处、`F3GameplayValidationEconomy.cs` 与 `F3GameplayValidationPersistence.cs` 各一处，均复用同一保护器，保持回读和快照回滚顺序。新增 `AuditModeLifecycle/f3_save_latch` 执行八个生产方法与真实保护器，50 条断言通过；八次执行反向验证及八次守卫反向验证均准确转红并还原（`Build/F3SaveLatch-negative/results.json`）。这八条为 Dev 验收入口，不将它们推断为玩家运行正式版时的原因。
+
+玩家反馈的归因边界：名字有明确的本 Mod 展示缺陷；背包已确认三类可阻塞路径，007 在正常基地维护到出击的链路中已离线复现。玩家补充“基地和出击地图都会出现”，仍需实际运行包和日志确认完整归因。本机只有 2026-10-24 的旧 Player.log，未含对应错误，且不是玩家日志。需要修复包复现后的 `[PetNest] 背包暂不可用: asset_save_not_ready:<原因>` 及其前置异常判断实际命中哪个条件；不为消除提示强行清宿主保存状态或跳过资产采集。
+
+完整验证、构建产物和哈希见 `FIX_TRACKER.md` 同日记录。人工验收记录建议文件名 `BossRush_Audit_20261029_smoke.txt`，以下为手工 ID，不是新增 F3 自动步骤：
+
+- `AUDIT-29-01`：重进游戏，在遗种巢列表、出战 HUD、改名框核对默认名；改变 Boss 筛选并切换中英后重开面板。出现 Cname / 星号 key、旧语种锁死或玩家昵称变化即不合格。
+- `AUDIT-29-02`：没有远征奖励待领取时在基地停留至少 5 秒，基地闲逛崽和随后出击的随从各按 F 打开背包，存入/取出一件普通物品，关闭后重开并正常切图。持续“准备中”、丢失/重复物品或正常就绪仍不能开启即不合格；复现时提交 Player.log 中上述新诊断及前面的保存/物品加载异常。
+- `AUDIT-29-03`：向贪吃宝箱投喂两种同类、品质与价格高低相反的食物，观察背包消耗；未选择低价者即不合格。
+- `AUDIT-29-04`：分别站在宝箱炮弹与实体墙之间、墙后，观察血量；墙前正常命中，墙后隔墙扣血即不合格。
+- `AUDIT-29-05`：Dev 按 F3 开始录制，在刷靶/花冠慢创建期间结束录制或返基地；加载后出现迟到敌人、重复花冠即不合格。正常结束录制已在场的拍摄对象不应被误删。
+
+本轮未启动游戏、未访问玩家存档或部署；修复按 owner 要求纳入本地提交。未采集帧耗时；离线通过不代表玩家实机故障全部消失。
+
 ## 2026-10-25 全模块重点链路审查（COMPAT；L1/L2 修复，L3 待验）
 
 本轮从干净工作区开始，四路并行检查宿主与共享持久层、各玩法模式、Integration 内容，以及世界/UI/音频链路，并交叉复核加载时宿主早返后的实际可达性。范围包括进入/退出、死亡、玩家销毁与替换、异步晚到、切图与切槽、重复回调、无效数值、交易和资源清理；这是按风险选择的生产链路审核，不代表全部源码逐行或全部状态组合已穷举。
@@ -199,116 +227,9 @@ CR-2026-10-21-003，P2 / COMPAT / Fixed at L1/L2，Needs runtime smoke：旧 `NP
 
 首推提交 `15439905` 的远端 Guards 失败由以上两类原因导致，共 4 项；Wiki 构建与部署通过。修后公开 LF 副本全量 736 PASS / 9 PARTIAL / 0 FAIL，日志 `Build/commit-20261013/source-only-final-outside-build.log`；指纹证据 `Build/ci-fingerprint-20261013/`。本次只改离线工具、测试与文档，1196 个已编译生产源哈希一致；不据门禁修复宣称实机或性能验证完成。
 
-## 2026-10-13 玩家反馈实现全面复审与修复（Fixed，COMPAT，L1/L2）
+## 2026-10-13 玩家反馈实现全面复审与修复（归档索引；L3 待验）
 
-审查基线为 `f3bb8e3b` 之后当时未提交工作区（125 个已跟踪改动文件、4 个新增 C# 文件）。随后按 owner「修复所有你觉得需要修复的地方」完成 CR-001～011；修复沿用库存事务、保存协调器、入口与排序流程，未增加生产 C# 文件或存档字段。下列位置和复现结果保留审查时快照，修复结果见本节闭环表。未部署、启动游戏或访问玩家存档，Fixed 只表示 L1/L2 闭环。
-
-### CR-2026-10-13-001 — P1 / Fixed / COMPAT：解锁材料扣除后异常会重新锁回属性
-
-- 位置：`Integration/Reforge/ReforgeUIManager.cs:119–123`；依赖 `Integration/ItemFactory.cs:496–554`。
-- 触发与影响：官方库存先修改数量/移除物品，再发通知；通知抛异常时 `ConsumeItem` 返回 false，新入口将已经解除的属性重新锁回。玩家损失回火液却没有获得解除效果。
-- 证据 L1/L2：抽取原样生产消耗、锁定/解锁与点击方法，模拟官方提交后通知异常。正常路径 `2→1, locked=false`；部分堆叠异常 `2→1, locked=true`；最后一件移除异常 `1→0, locked=true`。探针：`Build/review-20261013/reforge_probe.py`。
-- 最小修复与验证：复用现有库存预留/回滚事务形态，按实际物品与锁定结果提交，不能以捕获异常后的 false 判断“尚未扣除”。补部分堆叠、最后一件、通知异常及失败回滚的执行回归；REF-01 实机在蓝色锁定行按当前确认流程操作，材料与锁定状态不一致即不合格。
-
-### CR-2026-10-13-003 — P1 / Fixed / COMPAT：旧欠票未清仍允许再次付票，连续失败丢失退款责任
-
-- 位置：`ModeH/ModeHTicketRefund.cs:57,67–86`、`ModeH/ModeHEntry.cs:136–142`。
-- 触发与影响：首次退票失败留下 `_owedSlot`；下次入口补发仍失败，却继续打开选图并允许支付新票。再次退款失败只覆盖同一槽号，两张欠票最终只退一张。
-- 证据 L1/L2：正式入口调用链已核对；独立探针链接完整生产退款类，两次输出 Owed，恢复发票后仅创建 1 张且 `HasOwedRefund=false`。探针：`Build/entry-review-20261013/prepare.py`。
-- 最小修复与验证：让结清方法返回结果，同槽欠票未结清时保留责任、阻止新付款入口并提示重试，无需增加多笔债务系统。补持续失败后恢复的正式入口回归；MH-01 实机连续入场失败后在背包/脚下核对退票，少票不合格。
-
-### CR-2026-10-13-004 — P1 / Fixed / COMPAT：白手起家仍把创建武器视为交付成功
-
-- 位置：`ModeD/ModeDEquipment_StarterKit.cs:61–65,123,151–161`。
-- 触发与影响：`lastGivenWeapon` 在装备前赋值；装备失败后忽略入包返回值。两处均拒绝交付或交付前异常时，新的成功判据仍为 true，模式继续启动，玩家却没有开局武器。本项是 CR-2026-10-12-003 的修复遗漏。
-- 证据 L1/L2：抽取真实 `GivePlayerStarterKit` 与 `GiveRandomWeapon`，模拟官方明确失败返回，结果 `success=true, player items=0`；现有 ModeDEntryOwnership 替换了真实物品池，不能覆盖该路径。探针同 CR-003。
-- 最小修复与验证：让武器发放返回真实交付结果，确认装备或入包后设置后续弹药引用；异常先核对归属，只清理未交付实例。补两种拒绝与提交后通知异常；MD-01 实机进入白手起家检查武器槽/背包，无武器却进入战斗不合格。
-
-### CR-2026-10-13-005 — P1 / Fixed / COMPAT：喂食通知异常导致食物损失且经验不增加
-
-- 位置：`PetNest/PetNestCompanionCare.cs:148–152`，与 CR-001 共用 `ItemFactory.ConsumeItem` 的提交判定问题。
-- 触发与影响：食物已经移除，通知抛错后消耗函数返回 false；新喂食入口中止经验/冷却事务，`consumed` 仍为 false，也不执行返还。
-- 证据 L1/L2：原样生产喂食、选食物、消耗及提交方法的隔离执行确认食物从 1 变 0、经验仍为 0。探针：`Build/review-20261013-pets/probe.py`。
-- 最小修复与验证：和 CR-001 共用可靠的消耗收据/回滚方式，保留具体对象与原数量，不靠重新创建同 TypeID 代替原资产恢复。补消费后的通知异常；PET-01 实机通过宠物“喂食”查看背包和经验，食物减少但无经验不合格。
-
-### CR-2026-10-13-006 — P1 / Fixed / COMPAT：喂食成长与食物消耗未建立同批保存义务
-
-- 位置：`PetNest/PetNestCompanionCare.cs:146–157`；保存链 `PetNestRuntimeModule.cs:221` → `PetNestSaveCoordinator.cs:185–187` → 共享保存引擎。
-- 触发与影响：成功喂食后，在下一次官方 CollectSaveData 前卸载 Mod/销毁宿主，且没有其他操作登记主角资产快照。成长与冷却已 StageCommit，但没有调用现有资产屏障；CollectPendingAssets 第 105–106 行直接返回，官方 SaveFile 仅落已有缓存，可能保存新成长和旧食物快照。
-- 证据 L1/L2：探针链接实际共享保存引擎与节流器、原样生产资产采集，宿主销毁落盘结果 `exp=20, food=1, inventory captures=0`；官方 `SavesSystem.SaveFile:503–519` 不触发采集。探针同 CR-005。
-- 最小修复与验证：消费前登记局内可用的 `RequireBackpackAssetSnapshot`，沿现有协调器将消费、经验和冷却作为一批提交/落盘，并保留失败重试义务；不另建存档管线。补宿主销毁及落盘失败重试；PET-02 实机喂食后卸载/重载并检查食物与成长，二者恢复到不同时间点不合格。
-
-### CR-2026-10-13-002 — P2 / Fixed / COMPAT：新增一次性好感赠礼可能反复发放
-
-- 位置：`Integration/Reforge/GoblinReforgeInteractable.cs:459–465`；依赖 `Integration/NPCs/Goblin/GoblinNPCReward.cs:58–78`。
-- 触发与影响：回火液已进入背包后库存通知抛错，旧赠礼辅助方法返回 false，新一次性奖励入口便不写 claimed 标记。再次聊天再次发放。本项限定新增回火液赠礼，不扩大为旧奖励系统整体审计。
-- 证据 L1/L2：抽取真实赠礼方法，并执行新领取条件，连续两次得到 `claimed=false, owned=4`。探针同 CR-001。
-- 最小修复与验证：核对实际交付凭据后标记领取，提示失败不能改写交付结果；补已入包后通知异常和重复聊天。GIFT-01 实机达到好感门槛后连续聊天，奖励多于一次不合格。
-
-### CR-2026-10-13-007 — P2 / Fixed / COMPAT：基地宠物照料入口全部被禁用
-
-- 位置：`PetNest/PetNestCompanionCare.cs:330–331`；基地装配在 `PetNestBaseIdleSpawner.cs:175`、`PetNestCompanionSpawner.cs:530`。
-- 触发与影响：基地由 BaseIdleSpawner 持有宠物，场景流程清空局内 CompanionRuntime；新选项却要求后者的 CompanionCharacter 非空。基地已有喂食、摸摸、行为选项，但无法操作。
-- 证据 L1/L2：正式基地生命周期与装配链可达；真实 IsInteractable 在基地 owner 为空时返回 false。探针同 CR-005。
-- 最小修复与验证：选项绑定实际宠物实例与 PetId，行为设定沿现有记录保存、出击时应用。补基地 owner 用例；PET-03 实机在基地选中宠物依次操作三项，任一无故禁用不合格。
-
-### CR-2026-10-13-008 — P2 / Fixed / COMPAT：切换语言后照料菜单继续显示旧语言
-
-- 位置：`PetNest/PetNestCompanionCare.cs:245–248`。
-- 触发与影响：生成时将当前语言的文字写进不分语言的全局 override，仅生成/切行为时重新注入；之后切语言仍显示旧的喂食、摸摸和行为文本。
-- 证据 L1/L2：官方 override 机制与所有注入调用点已核对；原样注入探针中文生成后切英文，文字仍为中文。探针同 CR-005。
-- 最小修复与验证：复用现有语言切换事件由 runtime owner 刷新现存选项，或显示时解析当前语言；保持幂等订阅/清理。PET-04 实机保持宠物存在并切换中英文，菜单残留旧语言不合格。
-
-### CR-2026-10-13-009 — P2 / Fixed / COMPAT：旧远征死亡结果会同时显示死亡率 0%
-
-- 位置：`PetNest/PetNestExpeditionService.cs:127–130`、`PetNest/PetNestExpeditionRevealView.cs:552`。
-- 触发与影响：更新前已经结算、尚未翻牌的风浪档死亡记录，仍保留死亡结果；新增统一概率封顶同时用于历史结果显示，打开 PlayPending 会同时显示“死亡率 0%”与“没有回来”。
-- 证据 L1：结算状态、基地 PlayPending 到结果文案的正式链已核对；本项未做独立执行或实机验证。
-- 最小修复与验证：当前概率封顶只影响未结算远征；历史结果显示当时记录的概率，不更改旧死亡结果。补升级前已结算/未结算两种记录；PET-05 实机翻旧结果，概率与历史结果相互矛盾不合格。
-
-### CR-2026-10-13-010 — P2 / Fixed / COMPAT：Boss 过滤后第一波仍可能出现龙皇
-
-- 位置：`WavesArena/WavesArenaRuntimeModule_Start.cs:62`，影响 `WavesArenaRuntimeModule.cs:102–113` 的旧排序逻辑。
-- 触发与影响：新改动使洗牌后的过滤缓存生效，但前 20 波排除强 Boss 仍按未过滤池下标处理。关闭部分 Boss 后，原池第 21 位龙皇可以成为实际第一波，即使还有 22 个启用普通 Boss。此为 CR-2026-10-12-010 的直接影响面遗漏。
-- 证据 L1/L2：抽取真实启动、过滤、预处理方法，合法洗牌数据包含 20 个关闭项、22 个普通启用项、1 个龙皇，输出 `raw index=20, enabled index=0, first=boss_dragonking`。探针：`Build/dragon-review-probe/probe.py`。
-- 最小修复与验证：复用现有强 Boss 集合，按启用 Boss 的实际出场顺序处理前 20 个位置，再重建缓存；不新增配置。补混合开关池；BR-01 实机关闭部分 Boss 多次开局，普通候选足够时前 20 波出现龙皇不合格。
-
-### 既有兼容债务与未证实线索
-
-- CR-2026-10-13-011，P2 / Fixed / COMPAT / L1+L2：`ModeH/ModeHTicketRefund.cs` 迁入的旧交付逻辑，在其他 Mod 使船票可堆叠且合并通知异常时，可能目标堆加一后又将 incoming 落地。默认包 `maxStackCount=1`，不满足触发条件；不得写成默认必现。旧探针输出 `target=2, dropped=1`。现复用共享事务按实际合并差额修正剩余原件，只有未合并余量进入不合堆入包/落地；新增堆叠兼容执行回归与旧码反例均通过。
-- 兼容加固（原 UNVERIFIED，不升级为默认可达故障）：付款回执绑定选中费用数组身份、generation 与槽位；对照当前游戏 DLL 的 Cost/LoadTask/Pay 链确认真实付款保留同一数组，回归覆盖另一费用数组的同价付款拒收。
-- 兼容加固（原 UNVERIFIED）：场景回调不再推定付款；取消清理 H planned 与地图意图，换槽复用现有 RestoreForSlotChange 清入口；取得 run/租约前核对真实收据。正式清槽链已复核，相关真实方法断言通过。
-- UNVERIFIED：若第三方更早的 OnCostPaid 订阅者抛异常，仍可能阻断本订阅收据；缺玩家现场证据，本轮未整体替换事件/Harmony 策略，需在具体 Mod 组合中验证。
-- UNVERIFIED：宿命回响近身龙裔出生点未新增可达性校验；缺真实地图阻挡证据，保留墙边/平台/不同楼层 L3 检查。
-- 天空岛修改确实将 `SpawnTomb=false` 改为放行并保留 SaveCharacter 门槛；这不能单凭旧复合条件日志证明玩家当次一定由 NoDeathDrops 导致。本轮结束时用户所给 `C:/Users/GASEN/Downloads/Player(1).log` 路径不存在，仓库 `Player.log` 是 8 月旧文件，未拿它替代当次日志。
-- 范围差异：当前是两次点击确认解锁、亡命档保留死亡、宠物装备延期，已有 10-12 台账称当轮确认；本次不把这些设计差异当代码 bug。
-
-### 修复闭环（COMPAT，L1/L2）
-
-| ID | 已实施的最小修复 | 执行证据 |
-| --- | --- | --- |
-| 001 | 锁定/解锁共用现有材料预留事务，按真实属性标记提交；失败归还原件，阻止点击重入与行换绑。 | ReforgeAssetTransactions 38 项；旧解锁代码 5 项转红。 |
-| 002 | 赠礼共用合堆差额收据与真实入包/落地归属，显示失败不否定交付；防重入，领取前要求好感存储可写。 | 同上；旧赠礼代码 6 项转红，含提交后通知异常。 |
-| 003 / 004 / 011 | 欠票未还阻止新付款；退款按真实差额交付；白手起家仅在武器确实属于玩家时承认成功。 | ModeEntryPaymentDelivery 50 项；旧码三类反例转红。 |
-| 005 / 006 | 食物使用原件预留/回滚；消费前登记资产快照义务，成长接纳后沿原协调器落盘/重试；表现失败不撤销资产结果。 | PetNestCare 37 项；ContentTransactions 609 项含真实保存链 8 项；旧喂食代码反例转红。 |
-| 007 / 008 / 009 | 基地选项绑定实际宠物与槽位；复用现有语言重注入；已结算远征保留历史概率，在途记录按新规则结算。 | PetNestCare、CompanionActivation 27 项、Growth 51 项；旧行为 9 类失败场景。 |
-| 010 | 按过滤后实际启用顺序保护前 20 波，在启动时完成一次排序并复用缓存失效。 | AuditModeLifecycle 新增 11 项；旧排序方法反例转红。 |
-
-修改过的重铸、Mode H、宠物守卫均做隔离副本「通过→破坏后失败→按字节还原后通过」，证据分别在 `Build/fix-20261013/reforge-negative/`、`Build/entry-fix-baseline/guard-reverse/`、`Build/review-20261013-pets/guard-negative/`。修复未提高宿主 partial 预算，58 个文件仍为 19948 行；新增工作仅在点击、入场和既有语言事件触发，不增加每帧扫描。
-
-修复后 Windows 真编译 1196 个源文件通过（0 错误、2 个既有 CS0649），隔离 DLL SHA-256 `e584696a31e03de5c6454ea7819442774a51c56215ed916317f37c5129343ab7`，源码清单在 `Build/fix-20261013/compile/manifest.json`。全量回归初跑 127/128，通过补齐旧 ModeHReviewFixes 夹具对真实退款清理方法的依赖，重试 70 项通过，最终 128/128；未用恒成功替身代替生产逻辑。初次汇总与重试分别保留在 `Build/fix-20261013/runtime-results.json`、`Build/entry-fix-baseline/ModeHReviewFixes-results.json`。
-
-资源阻断同步闭环（SAFE / OPERATIONAL）：从作者原件在隔离工程恢复 `production_icons` 与缺失的 `reload_metronome`，349 个公共图标及既有 348 个 Sprite 的尺寸/PPU 一致；未改发布清单，未部署游戏。完整资源校验发现天空岛检查器仍使用旧的 7 张纹理名，已改为沿 Renderer → Material → _BaseMap 的真实引用验证，复用现行作者元数据与尺寸表，检查 BC7、不可读、完整 mip 和材质绑定，保留原导航/网格判据。真实 99 材质 / 919 材质槽及作者 GUID 引用一致，天空岛包未改；7 类移除判据的隔离反向验证与 6 类真实包记录反例均准确失败。最终发布清单 74/74 包、0 错误，证据 `Build/resource-recovery-20261013/full-resource-verification-final.json`；初次 73/74 结果保留。
-
-745 项守卫均有修复后通过证据：全量初跑 743 通过，宿主预算与退款调用链守卫修正后重跑通过，之后变化的资源属性测试与文档引用检查通过。没有实机或帧耗数据；上方 REF / GIFT / MD / MH / PET / BR 的操作、观察位置与不合格条件仍需 L3，PERF-01 同地图比较无宠物、三种行动方式和密集战斗，观察稳定帧时间、周期尖峰及切图残留。
-
-### 复审阶段验证证据（修复前历史快照）
-
-- 全量守卫 744 项：743 通过，DailyReportArtPropertyTest 唯一失败，原因是本机既有 production_icons 包与清单的 alias/Sprite 不一致；不能写成全部通过。日志 `Build/review-20261012-guards.log`。另核实 release 清单要求的 `Assets/ui/reload_metronome` 缺失，完整发布资源校验未通过。
-- Windows 真编译：按当前官方显式清单编译 1196 个源文件、真实游戏/Harmony 引用、C# 7.3、非 Dev，输出到隔离 Build 目录；0 错误、2 个既有 CS0649。不是完整部署流水线通过。哈希和源码清单：`Build/review-20261013/compile/manifest.json`。
-- 执行回归 125/125 通过：初次两项因缺环境变量失败，补游戏 DLL/Harmony 拷贝后仅复跑失败项通过；汇总 `Build/review-20261013/runtime-results.json`，保留初次与重试结果。当前夹具未覆盖上述全部新增入口，因此另做独立探针。
-- Wiki 构建及 80 项导航检查通过；现金交付独立探针另有 9 项通过，包括金额守恒、堆叠上限、最多 12 堆、到账后广播异常和账户缺失留余额。
-- 所有结论上限 L1/L2。没有 L3 或帧耗采样，不能承诺“无性能问题”；PERF-01 仍需在同地图比较无宠物、跟随/主动/回避及多敌人战斗，检查稳定帧时间、周期尖峰和切图后残留任务。本次提出的修复优先沿用库存事务、保存协调器、入口门和现有过滤流程，避免重写模式状态机。
+CR-001～011 已在 L1/L2 修复，完整根因、验证和手工验收原文见 [2026-10 月归档](archive/CODE_REVIEW_FINDINGS_2026-10.md)。REF / GIFT / MD / MH / PET / BR 实机体验与 PERF-01 帧耗仍待 L3；归档不关闭这些验收事项。
 
 ## 2026-10-12 玩家反馈与 Player(1).log 全面修复（COMPAT / SCHEMA+，L1/L2）
 

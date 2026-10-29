@@ -574,16 +574,22 @@ namespace BossRush
             int granted = 0;
             try
             {
-                if (!IsRewardRuntimeReady()) return 0;
-                string assetError;
-                if (_validationRewardBackend == null
-                    && !PetNestSaveCoordinator.RequireAssetSnapshot(out assetError)) return 0;
+                if (!IsRewardRuntimeReady() || !HasPendingRewardDebt) return 0;
                 long now = DateTime.UtcNow.Ticks;
                 if (now < _nextRewardGrantAttemptTicks) return 0;
-                _nextRewardGrantAttemptTicks = now + TimeSpan.TicksPerSecond * 5L;
 
                 string transactionError;
                 if (!PetNestPersistenceAccess.BeginTransaction(out transactionError)) return 0;
+                // 只有真正要尝试到账的事务才建立基地资产义务；空维护、退避和拒绝事务
+                // 都没有改变资产，不能把后续出击里的崽包绑定到不存在的基地仓库。
+                string assetError;
+                if (_validationRewardBackend == null
+                    && !PetNestSaveCoordinator.RequireAssetSnapshot(out assetError))
+                {
+                    PetNestPersistenceAccess.AbortTransaction();
+                    return 0;
+                }
+                _nextRewardGrantAttemptTicks = now + TimeSpan.TicksPerSecond * 5L;
                 List<PetNestExpeditionRecord> records = Records;
                 // progressed：现金记账 / 物品游标前进 / 整条发完，必须连同资产 durable 落盘。
                 // 一直发不出（资源缺失、经济未就绪）时只有诊断计数在变：不能每 5 秒整档 SaveFile。

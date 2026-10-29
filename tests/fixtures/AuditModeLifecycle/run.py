@@ -490,11 +490,25 @@ execute('wave_owner',[HERE/'WaveOwner.cs',ROOT/'WavesArena/WavesArenaRuntimeModu
 execute('milestone',[HERE/'Milestone.cs',ROOT/'LootAndRewards/InfiniteHellMilestoneDelivery.cs'])
 f3=ROOT/'DebugAndTools/F3GameplayValidationAutotestStory.cs'
 f3methods='\n'.join(member(f3,m) for m in ['private static bool TryReclaimAutotestItems(', 'private bool ClearAutotestSnapshotKey()'])
-execute('autotest_restore',[HERE/'AutotestRestore.cs'],'using System; using Saves; namespace BossRush { public partial class RestoreProbe {'+f3methods+'}}')
+execute('autotest_restore',[HERE/'AutotestRestore.cs',ROOT/'Common/Lifecycle/BossRushSaveFileThrottle.cs'],'using System; using Saves; namespace BossRush { public partial class RestoreProbe {'+f3methods+'}}')
 readonly=ROOT/'DebugAndTools/F3GameplayValidationSkyIsland.cs'
 buffer_methods='\n'.join(member(f3,m) for m in ['private static bool TryReclaimAutotestItems(', 'private bool ClearAutotestSnapshotKey()', 'private static string ReclaimAutotestItems(', 'private static int RemoveOwnedItems(', 'private static int RemoveFromBuffer(', 'private static int RemoveFromInventory(', 'private static int AutotestReclaimTarget('])
 buffer_methods+='\n'+'\n'.join(member(readonly,m) for m in ['private static int CountOwnedItems(', 'private static int CountBufferedItems(', 'private static int CountInInventory('])
-execute('autotest_buffer',[HERE/'AutotestBuffer.cs'],'using System; using System.Collections.Generic; using Saves; using ItemStatsSystem; namespace BossRush { public partial class BufferRestoreProbe {'+buffer_methods+'}}')
+execute('autotest_buffer',[HERE/'AutotestBuffer.cs',ROOT/'Common/Lifecycle/BossRushSaveFileThrottle.cs'],'using System; using System.Collections.Generic; using Saves; using ItemStatsSystem; namespace BossRush { public partial class BufferRestoreProbe {'+buffer_methods+'}}')
+f3_save_methods='\n'.join(member(ROOT/path,signature) for path,signature in [
+    ('DebugAndTools/F3GameplayValidationRunner.cs','internal static bool TryMarkCurrentSlot('),
+    ('DebugAndTools/F3GameplayValidationRunner.cs','private bool ValidateFinalSaveReadback('),
+    ('DebugAndTools/F3GameplayValidationRunner.cs','private bool WriteRunMarker('),
+    ('DebugAndTools/F3GameplayValidationRunner.cs','private static void ClearRunMarker('),
+    ('DebugAndTools/F3GameplayValidationAutotestStory.cs','private bool TakeAutotestSnapshotCore('),
+    ('DebugAndTools/F3GameplayValidationAutotestStory.cs','private bool ClearAutotestSnapshotKey('),
+    ('DebugAndTools/F3GameplayValidationEconomy.cs','private bool ValidateCodexPersistenceReadback('),
+])
+daily_save_method=member(ROOT/'DebugAndTools/F3GameplayValidationPersistence.cs','internal bool ValidateDailyReportRollback(')
+save_generated='using System; using Saves; using UnityEngine; using Duckov.Economy; using SodaCraft.Localizations; namespace BossRush {'
+save_generated+='internal sealed partial class F3GameplayValidationRunner {'+f3_save_methods+'}'
+save_generated+='public partial class ModBehaviour {'+daily_save_method+'}}'
+execute('f3_save_latch',[HERE/'F3SaveLatch.cs',ROOT/'Common/Lifecycle/BossRushSaveFileThrottle.cs'],save_generated)
 import json
 (OUT/'sources.json').write_text(json.dumps(hashes,indent=2),encoding='utf-8')
 print('PASS AuditModeLifecycle production-linked regressions')

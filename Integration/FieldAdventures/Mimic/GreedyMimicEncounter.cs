@@ -429,15 +429,18 @@ namespace BossRush
                 if (!shellActive[i]) continue;
                 float step = GreedyMimicRules.ShellSpeed * dt;
                 Vector3 from = shellPosition[i], to = from + shellDirection[i] * step;
-                bool stop = false;
+                bool blocked = GreedyMimicTerrain.TryGetWallHit(from, to, out to);
+                bool stop = blocked;
+                // 先按最近墙面截短本帧弹道。玩家中心若在墙后，不能因 0.8 米命中半径包住墙面而隔墙受伤。
+                bool playerBeforeWall = !blocked || Vector3.Dot(p - from, shellDirection[i]) < Vector3.Distance(from, to);
                 if (!waveHit[shellWave[i]] && Mathf.Abs(p.y - (from.y - 1.2f)) < 2.5f
+                    && playerBeforeWall
                     && GreedyMimicRules.DistanceToSegmentSquared(p.x, p.z, from.x, from.z, to.x, to.z)
                         <= GreedyMimicRules.ShellHalfWidth * GreedyMimicRules.ShellHalfWidth)
                 {
                     waveHit[shellWave[i]] = true; stop = true;
                     HurtPlayer(player, Rules.Damage(GreedyMimicAttack.Volley), false);
                 }
-                else if (GreedyMimicTerrain.SegmentBlocked(from, to)) stop = true;
                 shellTravel[i] += step;
                 if (!stop && shellTravel[i] >= GreedyMimicRules.ShellRange) stop = true;
                 shellPosition[i] = to;

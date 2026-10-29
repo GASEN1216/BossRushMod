@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
-namespace Saves { public static class SavesSystem {public static int CurrentSlot=1;public static bool IsSaving, FailPhysical, FailKey;public static string Key="snapshot";public static T Load<T>(string key){return (T)(object)Key;} public static void Save<T>(string k,T v){if(FailKey)throw new Exception("write failure");Key=(string)(object)v;}public static void SaveFile(bool flag){if(FailPhysical){FailKey=true;throw new Exception("physical failure");}}} }
+namespace UnityEngine { public static class Time { public static int frameCount; } }
+namespace Saves { public static class SavesSystem {public static int CurrentSlot=1;private static bool saving;public static bool IsSaving {get{return saving;}set{saving=value;}} public static bool FailPhysical, FailKey;public static string Key="snapshot";public static T Load<T>(string key){return (T)(object)Key;} public static void Save<T>(string k,T v){if(FailKey)throw new Exception("write failure");Key=(string)(object)v;}public static void SaveFile(bool flag){saving=true;if(FailPhysical){FailKey=true;throw new Exception("physical failure");}saving=false;}} }
 public class Item {public void Save(string key){BossRush.RestoreProbe.Saved++;}}
 public class Inventory {public void Save(string key){BossRush.RestoreProbe.Saved++;}}
 public class CharacterMainControl {public static CharacterMainControl Main=new CharacterMainControl();public Item CharacterItem=new Item();}
@@ -30,6 +31,9 @@ namespace BossRush {
    RestoreProbe.Saved=0;RestoreProbe.Count=3;Check(!p.Reclaim(1)&&RestoreProbe.Saved==0,"remaining excess keeps recovery key");
    RestoreProbe.Count=0;RestoreProbe.CountFailed=true;Check(!p.Reclaim(1)&&RestoreProbe.Saved==0,"failed count cannot masquerade as shortage");
    Saves.SavesSystem.FailPhysical=true;Check(!p.Clear(),"physical and compensating key write failures do not escape");
+   Check(!Saves.SavesSystem.IsSaving,"physical failure releases saving even when recovery-key rollback also fails");
+   Saves.SavesSystem.FailPhysical=Saves.SavesSystem.FailKey=false;
+   Check(p.Clear()&&!Saves.SavesSystem.IsSaving,"clear can retry in the same session after a failed physical write");
   }
  }
 }

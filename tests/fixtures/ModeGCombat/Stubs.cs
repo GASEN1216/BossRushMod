@@ -245,6 +245,11 @@ namespace BossRush
         public static void RequestFlush() { }
         public static void NotifySlotChanged() { }
     }
+    internal static class BossRushSaveFileThrottle
+    {
+        // 本夹具只测 Mode G 战斗与 DTO 语义；同步失败闩由 ModeGPersistenceRecovery 直链共享保护验证。
+        internal static void RunSaveFile(Action save) { save(); }
+    }
     internal static class ModeGRecapPanel
     {
         internal static string GetAmmoDisplayName(int id) { return id.ToString(); }

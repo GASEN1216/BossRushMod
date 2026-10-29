@@ -21,6 +21,7 @@ flush 协调不变式在宿敌/个人记录两个持久化类中共同实现：
 import os
 import re
 import sys
+from cs_source_util import clean_source
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 NEMESIS = os.path.join(REPO_ROOT, "ModeG", "ModeGNemesisPersistence.cs")
@@ -117,7 +118,7 @@ def main():
             ("FaultBeforeHostSave",
              r"ModeGNemesisPersistence\.IsStoreFaulted"
              r"[\s\S]{0,120}?ModeGProfilePersistence\.IsStoreFaulted"
-             r"[\s\S]{0,700}?SavesSystem\.SaveFile\(false\);",
+             r"[\s\S]{0,700}?BossRushSaveFileThrottle\.RunSaveFile\(\(\) => SavesSystem\.SaveFile\(false\)\);",
              "DTO fault 检查先于 host SaveFile"),
             ("TypedFlushBeforeDeferral",
              r"ModeGNemesisPersistence\.FlushPending\(writeFile: false\);"
@@ -160,8 +161,11 @@ def main():
         for name, pattern, desc in coordinator_checks:
             if not re.search(pattern, coordinator):
                 errors.append("[Coordinator:{}] 不满足: {}".format(name, desc))
-        if coordinator.count("SavesSystem.SaveFile(false);") != 1:
-            errors.append("[Coordinator:SingleSaveFile] coordinator 必须仅有一个 SaveFile(false) 调用点")
+        protected_save = "BossRushSaveFileThrottle.RunSaveFile(() => SavesSystem.SaveFile(false));"
+        for source, label in ((coordinator, "Coordinator"), (profile, "Profile"), (nemesis, "Nemesis")):
+            code = re.sub(r"\s+", " ", clean_source(source))
+            if code.count(protected_save) != 1 or code.count("SavesSystem.SaveFile(") != 1:
+                errors.append("[{}:SingleProtectedSaveFile] 物理写盘必须恰好一次且通过共享同步失败保护".format(label))
 
     # 战斗帧顺延的欠账必须在终局帧结清（Cleanup 归零相位之后补一次 RequestFlush）
     if shutdown and not re.search(

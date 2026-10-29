@@ -231,7 +231,7 @@ namespace BossRush
                 }
                 if (writeFile)
                 {
-                    SavesSystem.SaveFile(false);
+                    BossRushSaveFileThrottle.RunSaveFile(() => SavesSystem.SaveFile(false));
                 }
                 _pending = null;
                 _pendingFlushActive = false;

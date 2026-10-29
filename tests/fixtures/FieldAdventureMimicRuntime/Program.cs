@@ -26,6 +26,7 @@ internal static class Program
         internal Subject(bool medicine)
         {
             FieldAdventureSupport.Notices.Clear(); Physics.Blocked = false;
+            GreedyMimicTerrain.WallBlocksShells = false; GreedyMimicTerrain.WallZ = 0.5f;
             Player = new GameObject("MainPlayer").AddComponent<CharacterMainControl>(); Player.IsMainCharacter = true;
             Player.Health = Player.gameObject.AddComponent<Health>();
             Player.transform.position = new Vector3(0, 0, 5);
@@ -257,9 +258,41 @@ internal static class Program
         }
     }
 
+    private static void ShellWallCase(float playerZ, float wallZ, float playerX, bool expectedHit, string label)
+    {
+        using (var subject = new Subject(false))
+        {
+            subject.Player.transform.position = new Vector3(playerX, 0, playerZ);
+            Get<bool[]>(subject.Encounter, "shellActive")[0] = true;
+            Get<Vector3[]>(subject.Encounter, "shellPosition")[0] = new Vector3(0, 1.2f, 0);
+            Get<Vector3[]>(subject.Encounter, "shellDirection")[0] = new Vector3(0, 0, 1);
+            GreedyMimicTerrain.WallZ = wallZ; GreedyMimicTerrain.WallBlocksShells = true;
+            subject.Encounter.GetType().GetMethod("TickShells", Flags).Invoke(subject.Encounter, new object[] { 0.1f, subject.Player });
+            Check(subject.Player.Health.DamageCalls == (expectedHit ? 1 : 0), label);
+            Check(!Get<bool[]>(subject.Encounter, "shellActive")[0] && subject.Visual.ShellPops == 1,
+                label + ": shell stops once at the wall or player");
+            Check(Get<bool[]>(subject.Encounter, "waveHit")[0] == expectedHit,
+                label + ": a blocked shell does not spend the wave hit");
+            if (!expectedHit && wallZ <= GreedyMimicRules.ShellSpeed * 0.1f)
+                Near(Get<Vector3[]>(subject.Encounter, "shellPosition")[0].z, wallZ,
+                    label + ": shell ends on the nearest wall");
+        }
+    }
+
+    private static void FlyingVolleyWalls()
+    {
+        ShellWallCase(1f, 0.5f, 0f, false, "a wall before the player blocks same-frame shell damage");
+        ShellWallCase(0.6f, 0.5f, 0f, false, "the hit radius cannot reach through a nearby wall");
+        ShellWallCase(0.5f, 0.5f, 0f, false, "the wall wins when the player centre is exactly on its boundary");
+        ShellWallCase(0.49f, 0.5f, 0f, true, "a player immediately before the wall still takes the shell hit");
+        ShellWallCase(0.25f, 1.2f, 0.79f, true, "a player in front of the wall retains the existing hit width");
+        ShellWallCase(0.25f, 1.2f, 0.81f, false, "a player outside the existing hit width remains safe");
+        ShellWallCase(1f, 2f, 0f, true, "a wall beyond this frame cannot block an earlier player hit");
+    }
+
     private static void Main()
     {
-        RecoveryThresholds(); FilterAndAccumulation(); TongueAndPounce(); FlyingVolley(); ShellArmor();
+        RecoveryThresholds(); FilterAndAccumulation(); TongueAndPounce(); FlyingVolley(); FlyingVolleyWalls(); ShellArmor();
         Console.WriteLine("PASS FieldAdventureMimicRuntime: " + assertions + " assertions; real Encounter, Rules, official HealthSimpleBase and DamageReceiver; host/visual are stubs.");
     }
 }

@@ -126,16 +126,28 @@ namespace BossRush
             }
 
             // 先可逆摘取蛋，再把新崽与原容器一起提交；销毁只发生在候选包已接管之后。
-            if (!PetNestSaveCoordinator.RequireAssetSnapshot(out failureReasonId)) return false;
             Inventory origin = egg.InInventory;
             int position = origin != null ? origin.GetIndex(egg) : -1;
             if (position < 0) { failureReasonId = "egg_owner_missing"; return false; }
+            PetNestSaveCoordinator.AssetSnapshotToken unusedSnapshot;
+            if (!PetNestSaveCoordinator.RequireAssetSnapshot(out failureReasonId, out unusedSnapshot)) return false;
             Item removed;
             if (!origin.RemoveAt(position, out removed) || !ReferenceEquals(removed, egg))
-            { failureReasonId = "egg_detach_failed"; return false; }
+            {
+                if (removed == null && ReferenceEquals(egg.InInventory, origin) && ReferenceEquals(origin.GetItemAt(position), egg))
+                    PetNestSaveCoordinator.ReleaseUnusedAssetSnapshot(unusedSnapshot);
+                failureReasonId = "egg_detach_failed";
+                return false;
+            }
             if (!PetNestService.TryCommitHatch(pet, 0, out failureReasonId, false))
             {
-                if (!origin.AddAt(egg, position))
+                // 官方 AddAt 会覆盖非空槽位；只在原槽空闲时尝试归还，并核对通知后的真实归属。
+                bool restored = ReferenceEquals(egg.InInventory, origin) && ReferenceEquals(origin.GetItemAt(position), egg);
+                if (!restored && egg.InInventory == null && origin.GetItemAt(position) == null)
+                    restored = origin.AddAt(egg, position) && ReferenceEquals(egg.InInventory, origin)
+                        && ReferenceEquals(origin.GetItemAt(position), egg);
+                if (restored) PetNestSaveCoordinator.ReleaseUnusedAssetSnapshot(unusedSnapshot);
+                else
                     ModBehaviour.CriticalLog("[PetNest] 孵化回滚无法恢复蛋的原槽位");
                 return false;
             }

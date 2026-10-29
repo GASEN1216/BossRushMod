@@ -46,3 +46,7 @@ Zombie HUD 子项逐字抽取 `ZombieModeRuntimeModule_Hud` 的创建、显隐�
 2026-09-25 后续归属：视觉复原与脚印释放 helper 从 `ZombieModeRuntimeModule_EnemyRuntime.cs` 抽取真实模块方法，宿主入口仍按生产薄桥接通；RunOnly 的地图隔离恢复动作由模块替身记录，旧宿主恢复入口抽取 `ZombieModeEntry.cs` 的真实转发。地图隔离内部行为由专用夹具负责，本套件继续约束清理顺序。
 
 2026-09-27 独立审计修复：MerchantOwner 删除自造的 session 相等门，逐字抽取生产 E/F BeginSession、Invalidate、IsSessionStillValid、共享 gate 与 OnAwake/OnDestroy。End/Exit 的依赖在此故意保持无操作，以证明销毁安全来自生产 gate 本身；完整模式清理另由 ModeDestroyLifecycle 实跑。商人覆盖 dispose 之后才返回的 null/fault/success、直接向已 dispose owner 发请求，以及 gate 自身抛异常的回收。Unity 替身销毁 GameObject 连带角色组件并模拟假 null。
+
+2026-10-29 保存失败补查：`f3_save_latch` 逐字抽取标记专用槽、最终回读、运行标记写 / 清、天空岛快照写 / 清、图鉴回读及日报回滚的 8 个完整生产方法，直接链接真实 `BossRushSaveFileThrottle`。官方边界替身保留私有 `saving` 字段，写盘抛异常后故意不复位；逐路断言真实保护器释放本次闩、后续子系统在同会话可继续保存、已有官方保存不会被重入或释放，且成功路径仍只写一次。覆盖快照提交 / 报告时机、失败清键恢复缓存、图鉴失败不清缓存、日报 `finally` 复位测试拒写标志与最终回读请求原有协调器。
+
+此子项的剧情、图鉴、日报、专用槽资格与文本报告是边界替身，只验证这 8 个生产方法对物理保存结果的处理和调用顺序，不证明对应系统的真实事务或 ES3 磁盘行为。既有 `autotest_restore` / `autotest_buffer` 也直接链接真实保护器，并追加失败后同会话重试及双重失败不遗留 saving 的断言；真实游戏仍属 L3 验收。

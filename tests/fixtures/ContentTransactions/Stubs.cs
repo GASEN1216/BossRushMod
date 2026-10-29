@@ -298,7 +298,7 @@ namespace ItemStatsSystem
         public List<int> lockedIndexes = new List<int>();
         public void SetCapacity(int capacity) { Capacity = capacity; }
         public void LockIndex(int index) { if (!lockedIndexes.Contains(index)) lockedIndexes.Add(index); }
-        public bool Reject;
+        public bool Reject, RejectRemove;
         public Action<Item> AfterAdd, AfterRemove;
         public Dictionary<int, Item> Items = new Dictionary<int, Item>();
         public List<Item> Content
@@ -313,6 +313,7 @@ namespace ItemStatsSystem
         public int GetIndex(Item item) { foreach (var p in Items) if (ReferenceEquals(p.Value, item)) return p.Key; return -1; }
         public bool RemoveAt(int index, out Item item)
         {
+            if (RejectRemove) { item = null; return false; }
             if (!Items.TryGetValue(index, out item)) return false;
             Items.Remove(index); item.InInventory = null; if (AfterRemove != null) AfterRemove(item); return true;
         }
@@ -363,7 +364,13 @@ namespace BossRush
         public static bool DevModeEnabled = true;
         public static ModBehaviour Instance = new ModBehaviour();
         public static void DevLog(string text) { }
-        public static void CriticalLog(string text) { throw new Exception(text); }
+        public static bool AcceptExpectedCriticalLog;
+        public static int CriticalLogs;
+        public static void CriticalLog(string text)
+        {
+            CriticalLogs++;
+            if (!AcceptExpectedCriticalLog) throw new Exception(text);
+        }
         public void ShowMessage(string text) { }
         public void CleanupCampaignFinalBoss(bool destroyBoss) { }
         public bool IsBackMountainConfiguredEnabled() { return true; }
@@ -471,6 +478,7 @@ namespace BossRush
         public static readonly IList<PetNestLineageInfo> All = new List<PetNestLineageInfo> { new PetNestLineageInfo() };
         public static bool TryGet(string key, out PetNestLineageInfo info) { info = IsKnownLineage(key) ? new PetNestLineageInfo() : null; return info != null; }
         public static bool IsKnownLineage(string key) { return key == "test" || (key != null && key.StartsWith("test_", StringComparison.Ordinal)); }
+        public static string ResolveCurrentDisplayName(string key, string fallback) { return fallback ?? key; }
         public static ElementTypes GetDestinationElement(string id) { return ElementTypes.electricity; }
         public static bool DestinationAcceptsElement(string id, ElementTypes element) { return element == GetDestinationElement(id); }
     }

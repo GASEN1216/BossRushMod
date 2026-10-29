@@ -29,6 +29,7 @@ partial class Program
     static void Reset()
     {
         CampaignPersistence.ResetStaticCaches(); CampaignSaveCoordinator.NotifySlotChanged();
+        ModBehaviour.AcceptExpectedCriticalLog = false; ModBehaviour.CriticalLogs = 0;
         CampaignProgressService.ResetStaticCaches(); DailyReportSaveCoordinator.ResetStaticCaches();
         CampaignFacilityUnlocks.ResetStaticCaches();
         PetNestSaveCoordinator.ResetStaticCaches(); PetNestMuseumStats.ResetStaticCaches();
@@ -590,6 +591,8 @@ partial class Program
         PityGuarantees();
         PetNestLifecycleRepairs();
         PetNestCarePersistenceCompatibility();
+        PetNestRewardAssetObligation();
+        PetNestUnusedHatchObligation();
         PetNestBackpackPersistence();
         PetNestBackpackTreeRoundTrip();
         PetNestBackpackOwnedRestoration();
@@ -798,6 +801,175 @@ partial class Program
         Check(SavesSystem.Writes - writesBefore == 1, "hatch-all writes the save file once for the whole batch");
         Check(PetNestService.TryGetPet(results[0].Pet.id) != null && PetNestService.TryGetPet(results[2].Pet.id) != null,
             "every hatched cub of the batch is committed");
+    }
+
+    static void PetNestRewardAssetObligation()
+    {
+        string error;
+        Reset(); PrepareNest();
+        PetNestService.Nest.pets.Add(new PetNestPetRecord { id = "idle-cub", lineageKey = "test", level = 1 });
+        Check(PetNestExpeditionService.TryGrantPendingRewards() == 0 && SavesSystem.Writes == 0,
+            "base maintenance with no expedition debt performs no physical reward write");
+        LevelManager.Instance.IsBaseLevel = false; PlayerStorage.Instance = null;
+        PetProxy.PetInventory = new Inventory();
+        var item = new Item { TypeID = 101 };
+        CharacterMainControl.Main.CharacterItem.Inventory.AddAt(item, 0);
+        Check(PetNestSaveCoordinator.RequireBackpackAssetSnapshot(out error),
+            "SavePet=true ready official pack permits the normal raid backpack entry");
+        Item removed;
+        CharacterMainControl.Main.CharacterItem.Inventory.RemoveAt(0, out removed);
+        var snapshot = new PetNestBackpackSnapshot();
+        var tree = ItemStatsSystem.Data.ItemTreeData.FromItem(removed);
+        tree.entries.Add(new ItemStatsSystem.Data.ItemTreeData.DataEntry { instanceID = removed.GetInstanceID(), typeID = removed.TypeID });
+        snapshot.Items.Add(new PetNestBackpackEntry { Position = 0, Tree = tree });
+        string json = snapshot.Encode();
+        Check(PetNestService.StoreBackpack("idle-cub", json, out error), "raid transfer stages the actual cub backpack snapshot");
+        Check(PetNestSaveCoordinator.RequestAssetFlush(out error),
+            "no-debt base maintenance cannot leave a warehouse obligation that blocks the later raid transfer");
+        Check(DiskNest().nest.pets[0].backpackJson == json && (int)SavesSystem.Disk["MainCharacterItemData"] == 0
+            && SavesSystem.Disk.ContainsKey("Inventory_Safe"), "raid transfer persists cub, removed player item and visible official pack together");
+
+        Reset(); PrepareNest();
+        PetNestPersistence.Bundle.Current.expedition.records.Add(PendingEgg("cooldown-debt", "gone"));
+        SetPrivate(typeof(PetNestExpeditionService), "_nextRewardGrantAttemptTicks", DateTime.UtcNow.AddMinutes(1).Ticks);
+        Check(PetNestExpeditionService.TryGrantPendingRewards() == 0, "retry delay prevents an expedition reward attempt");
+        LevelManager.Instance.IsBaseLevel = false; PlayerStorage.Instance = null; PetProxy.PetInventory = new Inventory();
+        Check(PetNestSaveCoordinator.RequireBackpackAssetSnapshot(out error) && PetNestSaveCoordinator.RequestAssetFlush(out error),
+            "a reward skipped by its retry delay cannot create a new warehouse obligation");
+
+        Reset(); PrepareNest();
+        PetNestPersistence.Bundle.Current.expedition.records.Add(PendingEgg("nested-debt", "gone"));
+        Check(PetNestPersistenceAccess.BeginTransaction(out error), "another caller owns the existing candidate");
+        Check(PetNestExpeditionService.TryGrantPendingRewards() == 0 && PetNestPersistenceAccess.IsTransactionActive,
+            "rejected nested reward work leaves the caller candidate intact");
+        PetNestPersistenceAccess.AbortTransaction();
+        LevelManager.Instance.IsBaseLevel = false; PlayerStorage.Instance = null; PetProxy.PetInventory = new Inventory();
+        Check(PetNestSaveCoordinator.RequireBackpackAssetSnapshot(out error) && PetNestSaveCoordinator.RequestAssetFlush(out error),
+            "reward work unable to begin a transaction cannot create a new warehouse obligation");
+
+        Reset(); PrepareNest();
+        Check(PetNestSaveCoordinator.RequireAssetSnapshot(out error), "an earlier real base asset operation establishes its obligation");
+        EconomyManager.Money += 123;
+        Check(PetNestExpeditionService.TryGrantPendingRewards() == 0, "no-debt maintenance skips without consuming another operation's obligation");
+        LevelManager.Instance.IsBaseLevel = false; PlayerStorage.Instance = null; PetProxy.PetInventory = new Inventory();
+        Check(PetNestSaveCoordinator.RequireBackpackAssetSnapshot(out error) && !PetNestSaveCoordinator.RequestAssetFlush(out error)
+            && error == "asset_save_not_ready:storage_instance", "existing unsaved base asset debt still blocks incomplete snapshots");
+
+        Reset(); PrepareNest();
+        var debt = PendingEgg("partial-cash", "gone"); debt.cashGranted = false; debt.outcomeCash = 250;
+        debt.outcomeLootTypeIds[0] = 123456; PetNestPersistence.Bundle.Current.expedition.records.Add(debt);
+        ItemAssetsCollection.MissingPrefabId = 123456; SavesSystem.FailPhysical = 1;
+        Check(PetNestExpeditionService.TryGrantPendingRewards() == 0 && EconomyManager.Adds == 1,
+            "real pending reward grants cash once before its missing item and injected physical failure");
+        debt = PetNestExpeditionService.Records[0];
+        Check(debt.cashGranted && debt.grantedLootUnits == 0 && !debt.rewardsGranted,
+            "partially delivered reward retains its exact cash and item cursors");
+        LevelManager.Instance.IsBaseLevel = false; PlayerStorage.Instance = null; PetProxy.PetInventory = new Inventory();
+        Check(PetNestSaveCoordinator.RequireBackpackAssetSnapshot(out error) && !PetNestSaveCoordinator.RequestAssetFlush(out error)
+            && error == "asset_save_not_ready:storage_instance", "a real partial reward keeps its warehouse obligation after leaving base");
+        LevelManager.Instance.IsBaseLevel = true; PlayerStorage.Instance = new PlayerStorage(); UnityEngine.Time.frameCount++;
+        PetNestSaveCoordinator.Tick();
+        Check(DiskMoney == 100250 && DiskNest().expedition.records[0].cashGranted
+            && !DiskNest().expedition.records[0].rewardsGranted, "base retry persists the existing cash and unfinished reward without granting again");
+        ItemAssetsCollection.MissingPrefabId = 0; PetNestExpeditionService.ResetValidationRewardBackend();
+        Check(PetNestExpeditionService.TryGrantPendingRewards() == 1 && EconomyManager.Adds == 1
+            && ItemUtilities.Delivered.Count == 1, "remaining item resumes after recovery without duplicating cash");
+    }
+
+    static bool FlushBackpackAfterLeavingBase(out string error)
+    {
+        LevelManager.Instance.IsBaseLevel = false; PlayerStorage.Instance = null;
+        PetProxy.PetInventory = new Inventory();
+        return PetNestSaveCoordinator.RequireBackpackAssetSnapshot(out error)
+            && PetNestSaveCoordinator.RequestAssetFlush(out error);
+    }
+
+    static void PetNestUnusedHatchObligation()
+    {
+        PetNestHatchResult result; string error;
+        Reset(); PrepareNest();
+        Check(!PetNestHatchService.TryHatchEgg(new Item(), out result, out error) && error == "egg_owner_missing",
+            "an orphan egg is rejected without consuming or adding a cub");
+        Check(FlushBackpackAfterLeavingBase(out error), "an orphan egg cannot create a base warehouse obligation");
+
+        Reset(); PrepareNest(); var egg = Egg(); var origin = PlayerStorage.Inventory; origin.RejectRemove = true;
+        Check(!PetNestHatchService.TryHatchEgg(egg, out result, out error) && error == "egg_detach_failed"
+            && ReferenceEquals(egg.InInventory, origin) && ReferenceEquals(origin.GetItemAt(5), egg),
+            "a rejected detach leaves the same egg in its exact original slot");
+        Check(FlushBackpackAfterLeavingBase(out error), "a proven unchanged detach releases only its unused base obligation");
+
+        Reset(); PrepareNest(); egg = Egg(); origin = PlayerStorage.Inventory;
+        SetPrivate(PetNestPersistence.Bundle, "_storeFaulted", true);
+        Check(!PetNestHatchService.TryHatchEgg(egg, out result, out error)
+            && ReferenceEquals(egg.InInventory, origin) && ReferenceEquals(origin.GetItemAt(5), egg)
+            && !egg.Destroyed && PetNestService.PetCount == 0, "candidate rejection restores the exact unconsumed egg");
+        SetPrivate(PetNestPersistence.Bundle, "_storeFaulted", false);
+        Check(FlushBackpackAfterLeavingBase(out error), "a fully rolled back hatch leaves the later raid backpack usable");
+
+        Reset(); PrepareNest(); egg = Egg(); origin = PlayerStorage.Inventory;
+        Check(PetNestSaveCoordinator.RequireAssetSnapshot(out error), "an earlier physical change owns a base obligation before rejected hatching");
+        EconomyManager.Money += 23; SetPrivate(PetNestPersistence.Bundle, "_storeFaulted", true);
+        PetNestHatchService.TryHatchEgg(egg, out result, out error);
+        SetPrivate(PetNestPersistence.Bundle, "_storeFaulted", false);
+        Check(!FlushBackpackAfterLeavingBase(out error) && error == "asset_save_not_ready:storage_instance",
+            "rolled back hatching cannot release an existing real base obligation");
+
+        Reset(); PrepareNest(); egg = Egg(); origin = PlayerStorage.Inventory;
+        origin.AfterRemove = removed =>
+        {
+            string nestedError; EconomyManager.Money += 42;
+            Check(PetNestSaveCoordinator.RequireAssetSnapshot(out nestedError), "a nested asset change renews the base obligation");
+            SetPrivate(PetNestPersistence.Bundle, "_storeFaulted", true);
+        };
+        Check(!PetNestHatchService.TryHatchEgg(egg, out result, out error)
+            && ReferenceEquals(origin.GetItemAt(5), egg), "outer hatch rolls back after a nested asset operation");
+        SetPrivate(PetNestPersistence.Bundle, "_storeFaulted", false);
+        Check(!FlushBackpackAfterLeavingBase(out error) && error == "asset_save_not_ready:storage_instance",
+            "outer rollback cannot release the newer nested base obligation");
+
+        Reset(); PrepareNest(); egg = Egg(); origin = PlayerStorage.Inventory;
+        ModBehaviour.AcceptExpectedCriticalLog = true;
+        origin.AfterRemove = removed => { origin.Reject = true; SetPrivate(PetNestPersistence.Bundle, "_storeFaulted", true); };
+        Check(!PetNestHatchService.TryHatchEgg(egg, out result, out error) && egg.InInventory == null
+            && origin.GetItemAt(5) == null && !egg.Destroyed && ModBehaviour.CriticalLogs == 1,
+            "a failed rollback preserves the live detached egg and reports the exact recovery failure");
+        SetPrivate(PetNestPersistence.Bundle, "_storeFaulted", false);
+        Check(!FlushBackpackAfterLeavingBase(out error) && error == "asset_save_not_ready:storage_instance",
+            "a failed hatch rollback retains its real physical obligation");
+
+        Reset(); PrepareNest(); egg = Egg(); origin = PlayerStorage.Inventory; var replacement = new Item { TypeID = 222 };
+        ModBehaviour.AcceptExpectedCriticalLog = true;
+        origin.AfterRemove = removed => { origin.AddAt(replacement, 5); SetPrivate(PetNestPersistence.Bundle, "_storeFaulted", true); };
+        Check(!PetNestHatchService.TryHatchEgg(egg, out result, out error)
+            && ReferenceEquals(origin.GetItemAt(5), replacement) && egg.InInventory == null,
+            "hatch rollback cannot overwrite another item inserted into the original slot");
+        SetPrivate(PetNestPersistence.Bundle, "_storeFaulted", false);
+        Check(!FlushBackpackAfterLeavingBase(out error) && error == "asset_save_not_ready:storage_instance",
+            "an occupied rollback slot retains the physical obligation");
+
+        Reset(); PrepareNest(); egg = Egg(); origin = PlayerStorage.Inventory;
+        origin.AfterRemove = removed => { throw new InvalidOperationException("notification after physical detach"); };
+        bool threw = false;
+        try { PetNestHatchService.TryHatchEgg(egg, out result, out error); } catch (InvalidOperationException) { threw = true; }
+        Check(threw && egg.InInventory == null && !egg.Destroyed && PetNestService.PetCount == 0,
+            "an inventory notification can throw after actually detaching the egg");
+        Check(!FlushBackpackAfterLeavingBase(out error) && error == "asset_save_not_ready:storage_instance",
+            "an uncertain interrupted hatch retains its physical obligation");
+
+        foreach (string boundary in new[] { "slot", "reset", "physical-save" })
+        {
+            Reset(); PrepareNest(); PetNestSaveCoordinator.AssetSnapshotToken stale;
+            Check(PetNestSaveCoordinator.RequireAssetSnapshot(out error, out stale) && stale != null,
+                boundary + " setup acquires a cancellable unused obligation");
+            if (boundary == "slot") { SavesSystem.CurrentSlot++; PetNestSaveCoordinator.NotifySlotChanged(); }
+            else if (boundary == "reset") PetNestSaveCoordinator.ResetStaticCaches();
+            else Check(PetNestSaveCoordinator.RequestAssetFlush(out error), "physical save settles the old obligation");
+            Check(PetNestSaveCoordinator.RequireAssetSnapshot(out error), boundary + " creates a separate new physical obligation");
+            EconomyManager.Money += 5;
+            PetNestSaveCoordinator.ReleaseUnusedAssetSnapshot(stale);
+            Check(!FlushBackpackAfterLeavingBase(out error) && error == "asset_save_not_ready:storage_instance",
+                boundary + " invalidates a stale rollback owner without clearing the new debt");
+        }
     }
 
     static void PetNestBackpackPersistence()

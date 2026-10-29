@@ -148,7 +148,7 @@ namespace BossRush
             {
                 if (CanWrite) SaveImmediate();
                 // 强制将缓存写入磁盘文件（不更新保存时间戳）
-                if (CanWrite) Saves.SavesSystem.SaveFile(false);
+                if (CanWrite) BossRushSaveFileThrottle.RunSaveFile(() => { Saves.SavesSystem.SaveFile(false); });
                 ModBehaviour.DevLog("[Affinity] 好感度数据已强制写入磁盘");
             }
             catch (System.Exception e)

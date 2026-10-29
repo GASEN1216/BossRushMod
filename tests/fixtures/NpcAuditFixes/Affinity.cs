@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using BossRush;
-namespace UnityEngine { public static class Time { public static float realtimeSinceStartup=1f; } }
+namespace UnityEngine { public static class Time { public static float realtimeSinceStartup=1f; public static int frameCount=1; } }
 public static class GameClock { public static int Day=100; }
 namespace BossRush { public static class ModBehaviour { public static void DevLog(string s) {} } }
 namespace Saves {
@@ -10,13 +10,17 @@ namespace Saves {
   public static event Action OnSetFile,OnCollectSaveData;
   public static string Raw;
   public static bool FailLoad;
+  private static bool saving;
+  public static bool IsSaving { get { return saving; } }
+  public static bool FailPhysical;
+  public static void BeginExternalSave() { saving=true; }
   public static int Writes,PhysicalWrites;
   public static bool KeyExisits(string key) { return Raw!=null; }
   public static T Load<T>(string key) { if(FailLoad) {FailLoad=false;throw new InvalidOperationException("controlled read failure");} return (T)(object)Raw; }
   public static void Save<T>(string key,T data) { Raw=(string)(object)data;Writes++; }
-  public static void SaveFile(bool flag) { PhysicalWrites++; }
+  public static void SaveFile(bool flag) { PhysicalWrites++;saving=true;if(FailPhysical)throw new InvalidOperationException("controlled disk failure");saving=false; }
   public static void Collect() { if(OnCollectSaveData!=null)OnCollectSaveData(); }
-  public static void Reset(string raw,bool failLoad=false) { Raw=raw;FailLoad=failLoad;Writes=PhysicalWrites=0;OnSetFile=null;OnCollectSaveData=null;AffinityManager.ResetStaticCaches(); }
+  public static void Reset(string raw,bool failLoad=false) { Raw=raw;FailLoad=failLoad;FailPhysical=saving=false;Writes=PhysicalWrites=0;OnSetFile=null;OnCollectSaveData=null;AffinityManager.ResetStaticCaches(); }
  }
 }
 class Program {
@@ -37,7 +41,19 @@ class Program {
   Saves.SavesSystem.Reset("bad");AffinityManager.Initialize();Saves.SavesSystem.Raw=legacy;AffinityManager.Load();Check(AffinityManager.CanWrite && AffinityManager.GetPoints("npc")==2300,"successful reload lifts barrier");
   DecayFloor();
   ShopStock();
+  ShutdownSaveFailure();
   Console.WriteLine("Affinity "+checks+" PASS");
+ }
+ static void ShutdownSaveFailure(){
+  Saves.SavesSystem.Reset(null);AffinityManager.Initialize();AffinityManager.SetPoints("npc",50);
+  Saves.SavesSystem.FailPhysical=true;AffinityManager.Shutdown();
+  Check(Saves.SavesSystem.PhysicalWrites==1,"shutdown reaches the injected disk failure");
+  Check(!Saves.SavesSystem.IsSaving,"failed affinity shutdown must release its own saving latch");
+  Check(Saves.SavesSystem.Raw.Contains("\"points\":50"),"failed disk write keeps the collected affinity cache");
+  Saves.SavesSystem.FailPhysical=false;Saves.SavesSystem.SaveFile(false);
+  Check(!Saves.SavesSystem.IsSaving && Saves.SavesSystem.PhysicalWrites==2,"later official save can run after affinity failure");
+  Saves.SavesSystem.Reset(null);AffinityManager.Initialize();Saves.SavesSystem.BeginExternalSave();AffinityManager.Shutdown();
+  Check(Saves.SavesSystem.PhysicalWrites==0 && Saves.SavesSystem.IsSaving,"shutdown must not reenter or release an already running external save");
  }
  static string Npc(string id,int points,string extra){return "{\"npcId\":\""+id+"\",\"points\":"+points+",\"lastChatDay\":80,\"lastDecayCheckDay\":90"+extra+"}";}
  // P1-2（2026-10-17）：衰减不跌破已看过的最高剧情里程碑；配偶保住 Lv.10；扣分只提示一次。

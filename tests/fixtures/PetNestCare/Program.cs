@@ -28,6 +28,7 @@ class Program
         PetNestService.Pet=new PetNestPetRecord();PetNestService.Pending=false;PetNestPersistenceAccess.Active=PetNestPersistenceAccess.RejectCommit=false;
         SavesSystem.Cache.Clear();SavesSystem.Disk.Clear();SavesSystem.CurrentSlot=1;SavesSystem.IsSaving=false;SavesSystem.FailAt=SavesSystem.Attempts=0;
         PetNestSaveCoordinator.Reset();BossRushSaveFileThrottle.ResetStaticCaches();Time.frameCount++;LevelManager.Instance.IsBaseLevel=false;L10n.IsChinese=true;
+        LevelConfig.SavePet=false;PetProxy.PetInventory=null;
         Duckov.UI.DialogueBubbles.DialogueBubblesManager.Lines.Clear();
     }
     static int FoodCount(){return Bag.Content.Where(x=>x!=null).Sum(x=>x.StackCount);}
@@ -42,6 +43,34 @@ class Program
     }
     static void Main()
     {
+        Case("hidden official pet inventory does not block cub transfers",()=>{
+            PetProxy.PetInventory=new Inventory{Loading=true};string error;
+            Check(PetNestSaveCoordinator.RequireBackpackAssetSnapshot(out error),"SavePet=false hides the official dog pack, so its loading flag cannot block opening");
+            Check(PetNestSaveCoordinator.CollectPendingAssets(out error),"the same hidden pack cannot block collection after a transfer");
+            Check(PetProxy.PetInventory.SaveCount==0&&PetNestSaveCoordinator.Captures==1,"only the visible player source is captured");
+        });
+        Case("visible official pet inventory must finish loading before transfers",()=>{
+            LevelConfig.SavePet=true;PetProxy.PetInventory=new Inventory{Loading=true};string error;
+            Check(!PetNestSaveCoordinator.RequireBackpackAssetSnapshot(out error)&&error=="asset_save_not_ready:official_pet_inventory_loading","visible loading dog pack still blocks transfer with a specific diagnosis");
+            PetNestSaveCoordinator.MarkBackpackAssetsChanged();
+            Check(!PetNestSaveCoordinator.CollectPendingAssets(out error)&&PetNestSaveCoordinator.Captures==0,"pending collection also waits for the visible pack");
+            PetProxy.PetInventory.Loading=false;
+            Check(PetNestSaveCoordinator.RequireBackpackAssetSnapshot(out error)&&PetNestSaveCoordinator.CollectPendingAssets(out error),"readiness recovery reopens the original path");
+            Check(PetProxy.PetInventory.SaveCount==1&&PetNestSaveCoordinator.Captures==1,"player and visible dog pack share the same collection");
+        });
+        Case("shared backpack gates identify their blocker and official collection can run while saving",()=>{
+            string error;SavesSystem.IsSaving=true;
+            Check(!PetNestSaveCoordinator.RequireBackpackAssetSnapshot(out error)&&error=="asset_save_not_ready:save_in_progress","interaction diagnoses an existing save");
+            PetNestSaveCoordinator.MarkBackpackAssetsChanged();
+            Check(PetNestSaveCoordinator.CollectPendingAssets(out error),"official collect callback remains allowed inside IsSaving");
+            SavesSystem.IsSaving=false;SavesSystem.CurrentSlot=-1;
+            Check(!PetNestSaveCoordinator.RequireBackpackAssetSnapshot(out error)&&error=="asset_save_not_ready:save_slot","invalid save slot is identified");
+            SavesSystem.CurrentSlot=1;var owner=CharacterMainControl.Main;CharacterMainControl.Main=null;
+            Check(!PetNestSaveCoordinator.RequireBackpackAssetSnapshot(out error)&&error=="asset_save_not_ready:main_character","missing main character is identified");
+            CharacterMainControl.Main=owner;var item=owner.CharacterItem;owner.CharacterItem=null;
+            Check(!PetNestSaveCoordinator.RequireBackpackAssetSnapshot(out error)&&error=="asset_save_not_ready:main_character_item","missing character item is identified");
+            owner.CharacterItem=item;Check(PetNestSaveCoordinator.RequireBackpackAssetSnapshot(out error),"same owner recovers after all shared gates clear");
+        });
         Case("successful feed persists food and growth together",()=>{
             Add(Food(42,2));CharacterMainControl.Main.CharacterItem.Save("MainCharacterItemData");PetNestSaveCoordinator.Captures=0;
             var pet=Character();PetNestCareService.TryFeed("pet",pet);Check(PetNestService.Pet.exp==20&&FoodCount()==1,"feed consumes exactly one and grants 20 exp");

@@ -2,6 +2,30 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+## 2026-10-29 最新代码审核与遗种崽名字/背包排查（COMPAT；L1/L2 修复，L3 待验）
+
+修复 `CR-2026-10-29-001`～`007`：已有崽默认名脱离当前血脉筛选目录并按当前语言解析；Mode G 三处、好感关停及八处 F3 入口的写盘异常只释放本次保存闩；崽包仅等待实际可见的官方宠物容器，并输出去重的具体阻塞原因；空远征检查和确认完整回滚的孵化不再遗留基地仓库保存义务；贪吃宝箱按价格选食物、炮弹先判墙；Dev 录制取消迟到生成并防花冠在途重复。未改已发布存档 key、schema、TypeID 或玩家昵称。各项根因、证据和手工验收见同日 `CODE_REVIEW_FINDINGS.md`。
+
+验证记录：
+
+- 首轮全量守卫 **752 PASS / 0 FAIL / 0 KNOWN-RED**，237.6 秒。修改后的相关守卫 **63 PASS / 0 FAIL**，`Build/audit-20261029/guards-final.log`；Mode G 另有 38 项守卫和三项隔离反向验证通过。
+- 全量已有执行回归首轮 **144 PASS / 1 FAIL**：`FieldAdventureVisuals` 在运行期间遇到本轮宝箱源码修改，最终源文件 SHA 稳定检查拒绝通过，功能断言及负探针已执行。原日志与汇总保留为 `Build/audit-20261029/runtime-all.log`、`runtime-all-results.json`；不能把这一轮写成全绿。源码稳定后的最终受影响回归为 **20 PASS / 0 FAIL**，含 Unity 原生 `FieldAdventureVisuals` 重跑及三个新增夹具，日志 `runtime-final-affected.log`、`affected-results.json`。合并各轮最后一次有效结果，当前全部 **148 组**均有本轮通过证据，见 `combined-results.json`；不是同一次全量运行。
+- 名字 14 条、PetNestCare 51 条、宝箱规则 1417 条、宝箱运行时 271 条、录制 65 条、Mode G 保存恢复 86 条断言通过；名字/宠物包 3 项、宝箱 15 项、录制 5 项、Mode G 3 项隔离反向探针均实跑预期转红并恢复。好感关停新增回归在旧生产代码的保存闩断言失败，修后 `NpcAuditFixes` 通过，日志 `affinity-old-red-detail.log` / `affinity-fixed.log`。
+- Windows C# 7.3 的 Dev 与正式隔离真编译均通过，分别为 `compile-dev.log` 与 `compile-official.log`。引用本机 Managed 的真实拷贝；隔离目录没有 Mods 目标，所以脚本的自动复制警告是预期结果，没有向实际游戏部署。仅两条既有 ModeH 页面字段 CS0649。
+- 首轮正式 DLL（由下述补全版本替代）：`Build/audit-20261029/BossRush.official.dll`，SHA-256 `B61E2958B9AFF5EEF4EB81DE0EB581B3C8E092689C46FE8346D098938FEA75C6`；Dev DLL 独立保留为 `BossRush.dev.dll`，SHA-256 `492507B73A3E88C750A75D67086BBA4D058DFF3CE92421FFB3D91C6D1258AC1E`。
+- 首轮 12 份生产源码 SHA 与构建后记录一致，正式 DLL 无录制导演/工具类型、Dev DLL 含对应类型；`git diff --check`、编译清单与知识库引用守卫通过。原生 Unity 的截图只供 owner 查看，本轮只读其文字验证报告。
+
+补全修复与最终产物：
+
+- 007 在 `ContentTransactions` 的旧生产实现先复现空远征检查和失败孵化遗留义务，最终 **675 条断言**通过；实跑基地空扫描后出击无仓库的崽包入物联合保存，保留真实欠账与部分发奖游标。孵化撤销凭据只归首次新建的义务所有，每次登记换 owner，物理保存成功、切槽和重置使旧凭据失效；不完整回滚保留义务，原槽被占用时不调用会覆盖物品的官方 AddAt。另有 **24 项 PetNest 守卫**、两项执行反向探针与一项修改守卫的反向验证通过；证据 `Build/runtime-regressions/petnest-obligation-negative-8oqg3qfr/results.json`，两份旧实现失败日志 `ContentTransactions-CR007-before.log` / `ContentTransactions-CR007-hatch-before.log`。
+- 002 补齐八处 Dev 保存入口。`AuditModeLifecycle/f3_save_latch` **50 条断言**，八项执行反向验证及八项守卫反向验证通过；记录 `Build/F3SaveLatch-negative/results.json`。保持各调用的键回读、快照和回滚顺序；不清除另一个正在进行的保存。
+- 最终相关守卫 **84 项均有通过证据**：首跑 83 PASS，唯一失败为审查台账 1209 行超过 1200 行预算（`followup/guards-final.log`）。将 2026-10-13 已完成代码修复的整节原文按字节归档至 `archive/CODE_REVIEW_FINDINGS_2026-10.md`，正文保留索引和 L3 待验事项，未抬预算；原文 SHA 和一致性见 `followup/archive-evidence.json`，复测 LedgerSize 通过（`followup/guards-ledger-recheck.log`）。`git diff --check` 通过。
+- 最终受影响执行回归 **10 PASS / 0 FAIL**：遗种巢四组、内容事务、保存恢复、F3 执行、模式生命周期、Mode H 玩家流程、天空岛验收判断。日志与结果保留在 `Build/audit-20261029/followup/runtime-affected.log`、`affected-results.json`、`runtime-logs/`。覆盖合并仍为 **148 组**最后有效结果全通过，`followup/combined-results.json` 明确记录这是多轮合并，未重复未受影响的原生视觉测试。
+- 最终 Windows Dev / 正式隔离真编译均通过，日志 `followup/compile-dev.log` 与 `followup/compile-official.log`，只有两条既有 Mode H CS0649。最终 **18 份生产源码** SHA 稳定；14 个 Dev 专用标识在正式版全部缺席、Dev 版全部存在。独立复审没有新增 confirmed issue。
+- 最终正式 DLL：`Build/audit-20261029/followup/BossRush.official.dll`，SHA-256 `5585A078FF3F17EE90C4E2A24DDB2FBE41956123438F128E75CF85B8F782AE3E`；Dev 单独保留为 `followup/BossRush.dev.dll`，SHA-256 `EECC2CC60CF6B0A07263ED9B24C98F540AB3CAF0798D5B597257903921085329`。`Build/BossRush.dll` 与最终正式版一致；真实游戏 DLL 仍为原先的 `B22F6BDB79106BC3868FB3C2F1E538A27F267087C670BFA3BA61CE4BFB85A75F`，未部署。
+
+玩家说基地和出击均报“背包与仓库还没就绪”。已修全部七项确认缺陷，007 已在正常基地维护到出击链路中离线复现；未拿到玩家日志/运行包，基地与出击完整体验仍待实机确认。修复按 owner 要求纳入本地提交；未启动游戏、未读写玩家存档、未部署或推送。对应专题 repowiki 与夹具说明已同步。
+
 ## 2026-10-25 F3 面板滚动、录制小键盘热键与野外趣事落点放宽（COMPAT；L1/L2，L3 待验）
 
 - **F3 左侧导航溢出**：导航 VerticalLayoutGroup 不控子项高度，按钮的 LayoutElement 不生效、取新建 RectTransform 默认 100 高，8 个页签约 880 高撑出 682 高的导航区。导航与内容都改走 `F3DebugUiKit.CreateScrollList`（共享 `ConfigureScrollRect` 滚动条），导航控高；按钮行改为 `F3FlowRowLayout` 自动折行，旧行宽按内容撑开、以中心为轴向左右溢出被裁。

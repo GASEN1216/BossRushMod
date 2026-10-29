@@ -64,7 +64,7 @@ def main():
     batch_flush_pos = batch_body.find("PetNestSaveCoordinator.RequestAssetFlush(out flushError)")
     if loop_pos < 0 or batch_flush_pos < loop_pos or batch_body.count("RequestAssetFlush(") != 1 or "TryHatchEgg(" in batch_body:
         errors.append("[落盘] 全部孵化必须逐枚走 TryHatchEggCore(…, false, …)，循环后只落一次盘（CR-2026-10-18-006）")
-    hatch = re.search(r"private static bool TryHatchEggCore\([\s\S]{0,2600}?\n        \}", code)
+    hatch = re.search(r"private static bool TryHatchEggCore\([\s\S]*?\n        \}", code)
     if hatch is None:
         errors.append("[入口] 缺少 TryHatchEggCore(Item, bool, out PetNestHatchResult, out string)")
     else:

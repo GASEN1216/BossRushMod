@@ -32,6 +32,7 @@ namespace BossRush
         private bool _destroying;
         private CharacterMainControl _assetOwner;
         private float _nextSaveTime;
+        private string _lastFailure;
 
         internal static PetNestBackpack Attach(CharacterMainControl character, PetNestPetRecord pet)
         {
@@ -154,6 +155,7 @@ namespace BossRush
                 if (LootView.Instance.open) LootView.Instance.Close();
                 LootView.LootItem(_container);
                 _wasOpen = true;
+                _lastFailure = null;
             }
             catch (Exception e)
             {
@@ -368,8 +370,14 @@ namespace BossRush
             _inventory = null;
         }
 
-        private static void NotifyFailure(string error)
+        private void NotifyFailure(string error)
         {
+            // 同一故障可由每两秒的封存重试持续触发，只在原因变化时记录一次。
+            if (!string.Equals(_lastFailure, error, StringComparison.Ordinal))
+            {
+                Debug.LogWarning("[PetNest] 背包暂不可用: " + error);
+                _lastFailure = error;
+            }
             if (CharacterMainControl.Main != null)
                 CharacterMainControl.Main.PopText(PetNestLocalization.DescribeFailure(error), -1f);
         }

@@ -41,6 +41,8 @@ def main():
          "critical exact: interrupt credits real positive health loss"),
         ("credit-rejected-source", b"damage.fromCharacter == null || !damage.fromCharacter.IsMainCharacter",
          b"false", "non-main and missing sources cannot interrupt recovery"),
+        ("ignore-wall-before-player", b"&& playerBeforeWall", b"&& true",
+         "a wall before the player blocks same-frame shell damage"),
     )
     try:
         for label, anchor, replacement, expected in probes:

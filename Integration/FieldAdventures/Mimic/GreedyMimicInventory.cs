@@ -46,7 +46,7 @@ namespace BossRush
             for (int i = 0; i < pack.Content.Count; i++)
             {
                 Item item = pack.Content[i];
-                if (Eligible(item, pack, i, food) && (best == null || item.Quality < best.Quality || (item.Quality == best.Quality && item.Value < best.Value)))
+                if (Eligible(item, pack, i, food) && (best == null || item.Value < best.Value || (item.Value == best.Value && item.Quality < best.Quality)))
                 { best = item; slot = i; }
             }
             return best;

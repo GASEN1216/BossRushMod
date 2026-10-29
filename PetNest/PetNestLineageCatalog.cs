@@ -23,13 +23,18 @@ using System.Collections.Generic;
 
 namespace BossRush
 {
-    /// <summary>一个血脉的目录条目。只读快照，构建后不再变更。</summary>
+    /// <summary>一个血脉的目录条目。身份与数值为快照，名字在取用时按当前语言解析。</summary>
     internal sealed class PetNestLineageInfo
     {
         /// <summary>血脉 key（官方 preset nameKey 或自定义 Boss 常量）。</summary>
         internal string LineageKey;
-        /// <summary>显示名（取 preset.DisplayName，缺失时回落 LineageKey）。</summary>
-        internal string DisplayName;
+        private string _fallbackName;
+        /// <summary>名字不缓存本地化结果：目录可早于语言表建成，玩家也可以随时切换语言。</summary>
+        internal string DisplayName
+        {
+            get { return PetNestLineageCatalog.ResolveCurrentDisplayName(LineageKey, _fallbackName); }
+            set { _fallbackName = value; }
+        }
         /// <summary>血脉自有元素（远征亲和判定用）。</summary>
         internal ElementTypes Element;
         /// <summary>幼体视觉缩放档（只作用于 modelRoot）。</summary>
@@ -157,7 +162,7 @@ namespace BossRush
 
                 PetNestLineageInfo entry = new PetNestLineageInfo();
                 entry.LineageKey = info.name;
-                entry.DisplayName = ResolveDisplayName(preset, info);
+                entry.DisplayName = info.displayName;
                 entry.Element = DeriveElement(preset);
                 entry.ModelScale = ResolveModelScale(info.name);
                 entry.IsCustomBoss = false;
@@ -215,21 +220,24 @@ namespace BossRush
             return key;
         }
 
-        private static string ResolveDisplayName(CharacterRandomPreset preset, EnemyPresetInfo info)
+        internal static string ResolveCurrentDisplayName(string key, string fallback)
         {
-            try
-            {
-                string display = preset != null ? preset.DisplayName : null;
-                if (!string.IsNullOrEmpty(display)) return display;
-            }
-            catch (Exception)
-            {
-                // 显示名解析失败：继续走下面的回落链
-            }
+            if (string.IsNullOrEmpty(key)) return fallback ?? string.Empty;
+            for (int i = 0; i < CustomBossLineageKeys.Length; i++)
+                if (string.Equals(key, CustomBossLineageKeys[i], StringComparison.Ordinal))
+                    return ResolveCustomDisplayName(key);
+            // 官方缺词条返回 *key*；早期目录、筛选器排除的已有崽都不能把身份 key 当名字。
+            string display = LocalizationHelper.GetLocalizedText(key);
+            if (IsResolvedDisplayName(display, key)) return display;
+            if (IsResolvedDisplayName(fallback, key)) return fallback;
+            return L10n.T("未知血脉", "Unknown bloodline");
+        }
 
-            if (info != null && !string.IsNullOrEmpty(info.displayName)) return info.displayName;
-            if (info != null && !string.IsNullOrEmpty(info.name)) return info.name;
-            return preset != null ? preset.nameKey : string.Empty;
+        private static bool IsResolvedDisplayName(string display, string key)
+        {
+            return !string.IsNullOrWhiteSpace(display)
+                && !string.Equals(display, key, StringComparison.Ordinal)
+                && !string.Equals(display, "*" + key + "*", StringComparison.Ordinal);
         }
 
         /// <summary>

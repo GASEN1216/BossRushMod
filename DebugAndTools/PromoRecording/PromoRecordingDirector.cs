@@ -64,6 +64,7 @@ namespace BossRush
 
         internal static PromoRecordingDirector Begin(ModBehaviour owner, List<PromoRecordingStep> script, int startIndex)
         {
+            PromoRecordingKit.CancelPendingSpawns();
             PromoRecordingDirector director = Find(owner);
             if (director == null) director = owner.gameObject.AddComponent<PromoRecordingDirector>();
             director.host = owner;
@@ -77,6 +78,8 @@ namespace BossRush
 
         internal static void End(ModBehaviour owner)
         {
+            // 单独「刷靶子」也允许未创建导演；结束按钮必须同样取消它的在途请求。
+            PromoRecordingKit.CancelPendingSpawns();
             PromoRecordingDirector director = Find(owner);
             if (director != null) Destroy(director);
         }
@@ -143,6 +146,7 @@ namespace BossRush
 
         internal void StartStep(int i)
         {
+            PromoRecordingKit.CancelPendingSpawns();
             if (i >= steps.Count) { index = steps.Count; phase = Phase.Finished; Refresh(); return; }
             index = Mathf.Max(0, i);
             phase = Phase.LeadIn;
@@ -376,19 +380,25 @@ namespace BossRush
             {
                 Vector3 position;
                 if (!FieldAdventureSupport.TryFindGroundBands(player.transform.position, TargetBands, out position)) continue;
-                SpawnTarget(preset, position, scene).Forget();
+                SpawnTarget(host, player, preset, position, scene, spawnGeneration).Forget();
                 placed++;
             }
             // 一个都没放下也要报出来，否则提示条显示成功、场上却没有靶子。
             return placed > 0 ? null : L10n.T("附近没有空地刷靶子，换个开阔处再按 Insert（小键盘 0）", "No room for targets; move and press Insert (Num 0)");
         }
 
-        private static async UniTaskVoid SpawnTarget(CharacterRandomPreset preset, Vector3 position, Scene scene)
+        private static async UniTaskVoid SpawnTarget(ModBehaviour host, CharacterMainControl player,
+            CharacterRandomPreset preset, Vector3 position, Scene scene, int generation)
         {
             try
             {
                 CharacterMainControl enemy = await preset.CreateCharacterAsync(position, Vector3.forward, scene.buildIndex, null, false);
                 if (enemy == null) return;
+                if (generation != spawnGeneration || !IsSameRaid(host, player, scene))
+                {
+                    UnityEngine.Object.Destroy(enemy.gameObject);
+                    return;
+                }
                 if (!Team.IsEnemy(Teams.player, enemy.Team)) enemy.SetTeam(Teams.wolf);
                 SpawnedEnemyActivationHelper.ReleaseFromPlayerDistanceSleep(enemy);
             }
@@ -403,6 +413,8 @@ namespace BossRush
         }
 
         private static CharacterMainControl bloom;
+        private static int spawnGeneration;
+        private static int pendingBloomGeneration = -1;
         // 远档整轮落空再退到近档；录制时站位不一定开阔，单档失败就得来回找地方。
         private static readonly float[] TargetBands = { 11f, 16f, 7f, 20f };
         private static readonly float[] BloomBands = { 14f, 18f, 10f, 22f };
@@ -410,8 +422,25 @@ namespace BossRush
         /// <summary>录制结束（导演组件销毁）时清掉静态引用：本趟花冠与食材表。</summary>
         internal static void ResetStaticCaches()
         {
+            CancelPendingSpawns();
             bloom = null;
             foodCache.Clear();
+        }
+
+        /// <summary>只取消尚未提交的生成；已在场上供拍摄的角色仍由原场景持有。</summary>
+        internal static void CancelPendingSpawns()
+        {
+            spawnGeneration++;
+            pendingBloomGeneration = -1;
+        }
+
+        private static bool IsSameRaid(ModBehaviour host, CharacterMainControl player, Scene target)
+        {
+            CharacterMainControl currentPlayer;
+            Scene currentScene;
+            return target.IsValid() && target.isLoaded
+                && FieldAdventureSupport.TryGetRaid(host, out currentPlayer, out currentScene)
+                && player != null && currentPlayer == player && currentScene.handle == target.handle;
         }
 
         /// <summary>前方 14–18 米刷一株蚀日花冠；场上已有活着的就不再刷。</summary>
@@ -422,18 +451,40 @@ namespace BossRush
             string error = RequireRaid(host, out player, out scene);
             if (error != null) return error;
             if (bloom != null && bloom.Health != null && !bloom.Health.IsDead) return null;
+            if (pendingBloomGeneration == spawnGeneration) return null;
             Vector3 position;
             if (!FieldAdventureSupport.TryFindGroundBands(player.transform.position, BloomBands, out position))
                 return L10n.T("附近没有空地，换个开阔处再按 PgUp（小键盘 9）", "No open ground nearby; move and press PgUp (Num 9)");
-            Scene target = scene;
-            SpawnBloomAsync(host, position, target).Forget();
+            int generation = spawnGeneration;
+            pendingBloomGeneration = generation;
+            SpawnBloomAsync(host, player, position, scene, generation).Forget();
             return null;
         }
 
-        private static async UniTaskVoid SpawnBloomAsync(ModBehaviour host, Vector3 position, Scene target)
+        private static async UniTaskVoid SpawnBloomAsync(ModBehaviour host, CharacterMainControl player,
+            Vector3 position, Scene target, int generation)
         {
-            bloom = await EclipseBloomBoss.SpawnAsync(host, position,
-                () => target.isLoaded && CharacterMainControl.Main != null, target);
+            bool committed = false;
+            try
+            {
+                // 工厂会把判据交给已提交花冠的战斗控制器。结束录制只撤销在途生成，
+                // 不让下一步 / 关闭提示条把已布置好的拍摄对象销毁。
+                CharacterMainControl spawned = await EclipseBloomBoss.SpawnAsync(host, position,
+                    () => IsSameRaid(host, player, target) && (committed || generation == spawnGeneration), target);
+                if (spawned == null) return;
+                if (generation != spawnGeneration || !IsSameRaid(host, player, target))
+                {
+                    UnityEngine.Object.Destroy(spawned.gameObject);
+                    return;
+                }
+                bloom = spawned;
+                committed = true;
+            }
+            catch (Exception e) { ModBehaviour.DevLog("[PromoRecording] 刷花冠失败: " + e.Message); }
+            finally
+            {
+                if (pendingBloomGeneration == generation) pendingBloomGeneration = -1;
+            }
         }
 
         internal static string Mimic(ModBehaviour host)

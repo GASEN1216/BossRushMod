@@ -2,6 +2,7 @@
 """Guard: F3 full gameplay validation remains Dev-only, serial and self-cleaning."""
 
 from pathlib import Path
+import re
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -35,9 +36,30 @@ CASE_FILES = (
     Path("DebugAndTools/F3GameplayValidationLeaks.cs"),
 )
 
+SAVE_FILE_CASES = {
+    RUNNER: ("internal static bool TryMarkCurrentSlot(", "private bool ValidateFinalSaveReadback(",
+             "private bool WriteRunMarker(", "private static void ClearRunMarker("),
+    Path("DebugAndTools/F3GameplayValidationAutotestStory.cs"):
+        ("private bool TakeAutotestSnapshotCore(", "private bool ClearAutotestSnapshotKey("),
+    Path("DebugAndTools/F3GameplayValidationEconomy.cs"):
+        ("private bool ValidateCodexPersistenceReadback(",),
+    PERSISTENCE_CASE: ("internal bool ValidateDailyReportRollback(",),
+}
+
 
 def main():
     errors = []
+    for path, signatures in SAVE_FILE_CASES.items():
+        source = squeeze(clean_source(path.read_text(encoding="utf-8-sig")))
+        api = "Saves.SavesSystem" if path.name == "F3GameplayValidationEconomy.cs" else "SavesSystem"
+        protected_save = "BossRushSaveFileThrottle.RunSaveFile(() => " + api + ".SaveFile(false));"
+        for signature in signatures:
+            body = squeeze(method_body(source, signature))
+            if body.count(protected_save) != 1:
+                errors.append(str(path) + " " + signature + " 必须通过共享同步失败保护执行一次物理写盘")
+        remainder = source.replace(protected_save, "")
+        if re.search(r"\b(?:Saves\.)?SavesSystem\.SaveFile\s*\(", remainder):
+            errors.append(str(path) + " 存在没有共享同步失败保护的物理写盘")
     if not RUNNER.is_file():
         errors.append("缺少 F3GameplayValidationRunner.cs")
     else:

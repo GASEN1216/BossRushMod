@@ -72,12 +72,12 @@ namespace ItemStatsSystem
 {
     public class Inventory
     {
-        public bool Loading,ThrowBeforeRemove,ThrowAfterRemove,ThrowAfterAdd;public int Capacity=20;public readonly List<Item> Content=new List<Item>();
+        public bool Loading,ThrowBeforeRemove,ThrowAfterRemove,ThrowAfterAdd;public int Capacity=20,SaveCount;public readonly List<Item> Content=new List<Item>();
         public bool RemoveItem(Item item){if(ThrowBeforeRemove){ThrowBeforeRemove=false;throw new Exception("before remove");}int slot=Content.IndexOf(item);if(slot<0)return false;Content[slot]=null;item.InInventory=null;if(ThrowAfterRemove){ThrowAfterRemove=false;throw new Exception("after remove");}return true;}
         public Item GetItemAt(int slot){return slot>=0&&slot<Content.Count?Content[slot]:null;}
         public bool AddAt(Item item,int slot){while(Content.Count<=slot)Content.Add(null);if(Content[slot]!=null)return false;Content[slot]=item;item.InInventory=this;if(ThrowAfterAdd){ThrowAfterAdd=false;throw new Exception("after add");}return true;}
         public bool AddItem(Item item){int slot=Content.FindIndex(x=>x==null);if(slot<0)slot=Content.Count;if(slot>=Capacity)return false;return AddAt(item,slot);}
-        public void Save(string key){}
+        public void Save(string key){SaveCount++;}
     }
     public class AgentUtilities{public object ActiveAgent;}
     public class Item:Component

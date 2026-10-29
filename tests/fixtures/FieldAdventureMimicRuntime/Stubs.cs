@@ -97,6 +97,8 @@ namespace UnityEngine
     }
     public struct Vector3
     {
+        public static float Dot(Vector3 a, Vector3 b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
+        public static float Distance(Vector3 a, Vector3 b) { return (float)Math.Sqrt((a - b).sqrMagnitude); }
         public float x, y, z;
         public Vector3(float x, float y, float z) { this.x = x; this.y = y; this.z = z; }
         public static Vector3 zero { get { return new Vector3(); } }
@@ -200,6 +202,7 @@ namespace BossRush
     internal static class GreedyMimicTerrain
     {
         public static bool RejectLanding, WallBlocksShells;
+        public static float WallZ = 0.5f;
         public static bool TryLanding(UnityEngine.Vector3 from, UnityEngine.Vector3 target, float radius, float maxLeap, out UnityEngine.Vector3 landing)
         {
             UnityEngine.Vector3 delta = target - from; delta.y = 0;
@@ -207,7 +210,12 @@ namespace BossRush
             landing = from + delta.normalized * Math.Min(distance, maxLeap);
             return !RejectLanding && distance >= 0.5f;
         }
-        public static bool SegmentBlocked(UnityEngine.Vector3 from, UnityEngine.Vector3 to) { return WallBlocksShells; }
+        public static bool TryGetWallHit(UnityEngine.Vector3 from, UnityEngine.Vector3 to, out UnityEngine.Vector3 point)
+        {
+            bool blocked = WallBlocksShells && from.z <= WallZ && to.z >= WallZ;
+            point = blocked ? UnityEngine.Vector3.Lerp(from, to, (WallZ - from.z) / (to.z - from.z)) : to;
+            return blocked;
+        }
     }
     internal class GreedyMimicVisual : IDisposable
     {

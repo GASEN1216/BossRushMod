@@ -118,7 +118,7 @@ namespace BossRush
                     reason = "snapshot_key_readback_mismatch";
                     return false;
                 }
-                SavesSystem.SaveFile(false);
+                BossRushSaveFileThrottle.RunSaveFile(() => SavesSystem.SaveFile(false));
                 _autotest.Snapshot = snapshot;
                 _autotest.SnapshotPersisted = true;
                 WriteAutotestTextFile("story_snapshot.json", json);
@@ -366,7 +366,7 @@ namespace BossRush
             {
                 previous = SavesSystem.Load<string>(AutotestSnapshotKey);
                 SavesSystem.Save<string>(AutotestSnapshotKey, string.Empty);
-                SavesSystem.SaveFile(false);
+                BossRushSaveFileThrottle.RunSaveFile(() => SavesSystem.SaveFile(false));
                 return true;
             }
             catch (Exception e)
