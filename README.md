@@ -16,7 +16,7 @@
 - **订阅**：[Steam 创意工坊](https://steamcommunity.com/sharedfiles/filedetails/?id=3612465423)
 - **参与开发 / AI 协作**：先读 [AGENTS.md](AGENTS.md)
 
-**v2.3.8** 加入新 Boss 蚀日花冠与它的专属图腾残日盾片，普通出击新增贪吃宝箱怪、阿稳的怪件快递、叮当的危险试用品三件野外趣事；冠军之影进入 Boss 池，并修复龙息打丧尸零伤害。详见 [v2.3.8 更新说明](WikiContent/zh/changelog__v2_3_8.md)。
+**v2.3.9** 修复遗种崽名字与背包保存阻塞，改善保存异常后的恢复和切图清理；野外趣事的落点须玩家实际走得到，宝箱攻击遵守墙体遮挡，烟花试用品达标后及时回收并提示。详见 [v2.3.9 更新说明](WikiContent/zh/changelog__v2_3_9.md)。
 
 ## 内容一览
 

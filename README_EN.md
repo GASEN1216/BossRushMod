@@ -16,7 +16,7 @@
 - **Subscribe**: [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3612465423)
 - **Contributing / AI collaboration**: read [AGENTS.md](AGENTS.md) first (written in Chinese)
 
-**v2.3.8** adds a new Boss, the Eclipse Bloom, with its signature Residual Sun Shield Shard totem, plus three field adventures on ordinary raids: the Gluttonous Mimic, Awen's Odd-Parcel Delivery and Dingdang's Dangerous Prototypes. The Shadow of the Champion joins the Boss pool, and Dragon's Breath no longer deals zero damage to zombies. See the [v2.3.8 changelog](WikiContent/en/changelog__v2_3_8.md).
+**v2.3.9** fixes cub names and backpack saving, improves recovery after save failures and cleanup during transitions, and makes field-adventure placement require a route the player can actually walk. Mimic attacks respect walls, and completed firework prototypes are recalled with a completion message. See the [v2.3.9 changelog](WikiContent/en/changelog__v2_3_9.md).
 
 ## What's Inside
 

@@ -2,6 +2,64 @@
 
 更早记录见 `archive/`；月度归档索引保留在本文件正文。
 
+## 2026-10-29 HEAD a8aed728 全面复审（4 项已于 2026-10-30 修复；COMPAT，L3 待验）
+
+起点工作区干净，审查对象为 HEAD `a8aed728`。逐调用链复核 `41360aa4..a8aed728` 最新改动及其直接影响面，同时抽查未改动大模块的关键入口、退出、异步回调和存档边界。覆盖共享持久层、遗种巢、成就、好感、野外趣事、霜之哀伤、F3、标准竞技场、Mode D–H、丧尸、征程、天空岛和随机事件；全仓守卫与已有执行回归均运行。大模块采用关键路径抽查，不表示所有源码逐行或所有状态组合穷举。
+
+2026-10-29 仅审查与登记；2026-10-30 按 owner「全部修复」完成以下四项生产修复及回归。下面保留原始触发与审查证据，不将历史报告作为确认依据，也不表示四项均由最后一个提交引入。没有提交、部署到真实游戏目录、启动游戏或访问玩家存档。
+
+### CR-2026-10-29-008 · P1 / COMPAT · 零到账的远征补发失败仍可阻塞出击中的崽包保存
+
+- 状态：Fixed（2026-10-30），L1 + L2，L3 待验；CR-2026-10-29-007 修复后的残余分支。
+- 位置：`PetNest/PetNestExpeditionService.cs:585-590`、`:629-637`；后续阻塞在 `PetNest/PetNestSaveCoordinator.cs:148`。
+- 触发：基地里有已结算欠奖，现金已经到账，但剩余物品的真实 prefab 暂时不可用。补发先调用 `RequireAssetSnapshot` 登记必须采集基地仓库的义务，实际没有调用现金或物品交付；无进展分支只提交诊断计数或中止事务，既不申请物理保存，也不撤销本次空义务。
+- 证据：链接真实远征服务、Bundle、崽包 Store、共享保存引擎和协调器的隔离探针确认 `Adds=0`、无物品交付、`HasDeferredFlush=False`。额外模拟官方 `LevelManager.NotifySaveBeforeLoadScene` 的 Collect + SaveFile，物理写成功一次，义务仍保留；切到没有 `PlayerStorage` 的出击场景后，崽包前置检查和 Store 均成功，`RequestAssetFlush` 返回 `asset_save_not_ready:storage_instance`。官方 SaveFile 没有通知该协调器清义务，`PetNestPersistence.HandleCollectSaveData` 也只采集/flush，因而常规切图保存不能消除此状态。证据：`Build/review-head-20261029/persistence-transition/result.log`；原始探针 `Build/review-persistence-20261029/probe.log`。
+- 影响：一次未到账的奖励重试把后续崽包转移绑定到出击图不存在的基地仓库，造成保存失败并反复提示，符合此前修复想消除的阻塞类型。
+- 建议：补发持有 `AssetSnapshotToken`，在确认尚未调用任何资产变更 API 的失败路径撤销本次新建义务，或在基地妥善结清该批次。不能单凭奖励游标没有前进就撤销，外部通知可能在资产已变更后抛异常；已有真实欠账和重入的新义务必须保留。
+- 修复：持有本次 token，以 `ref assetDeliveryStarted` 在现金/物品外部 API 调用前置位，`finally` 仅在投递尚未开始时撤销。缺 prefab、实例化/身份/盖章失败及计数封顶不再遗留空义务；旧 owner、重入 owner 和可能已变更资产的异常路径保留。ContentTransactions 新回归在旧代码先红、修后 698 条断言通过；两项同步守卫的 6 个隔离反向探针均命中并按字节还原，证据 `Build/fixes-20261030/content-before.log`、`content-after.log`、`asset-guard-negative-results.json`。
+- 验证需求：补齐“现金已领 + 物品 prefab 缺失 + 官方切图前保存成功 + 出击崽包转移”回归，同时保留部分发奖、外部通知抛错、已有义务与重入 owner 的保护。L3 在专用测试档模拟缺资源后进出基地，观察崽包转移是否仍报仓库未就绪，并确认重载后的资产一致性。
+
+### CR-2026-10-29-009 · P2 / COMPAT · 宝箱扑跳落地冲击忽略墙体遮挡
+
+- 状态：Fixed（2026-10-30），L1 + L2，L3 待验；当前既有缺陷，与已修的炮弹撞墙分支不同。
+- 位置：`Integration/FieldAdventures/Mimic/GreedyMimicEncounter.cs:395-396`。
+- 触发与影响：扑跳预警锁定落点后，玩家移动到附近薄墙另一侧，只要仍在落地半径内且高度差小于 2.5 米，就会被直接扣血。落点自身的净空检查不覆盖整个冲击半径，合法落点也能出现这一条件。
+- 证据：真实 Encounter、Rules、官方 HealthSimpleBase / DamageReceiver 隔离执行，落点 z=12、玩家 z=14，墙体位于两者之间；未投喂时身位半径 1.1 米、冲击半径 2.4 米，墙距落点 1.5 米不妨碍落点净空。遮挡查询分别返回无遮挡/有遮挡，当前实现两种情况均造成 26 伤害。只在隔离副本补 `Unblocked(leapTo, p)` 后，无遮挡仍伤 26、有墙伤害为 0。真实 PhysX 未执行。证据：`Build/review-integration-20261029/pounce-evidence.json`、`pounce-current.log`、`pounce-occlusion-counterfactual.log`。
+- 建议：扑跳伤害结算复用舌击和炸弹已有的 `Unblocked` 门控，保留落地视觉、伤害值、半径和后续连招。
+- 修复：落地伤害在原半径/高差判定后增加 `Unblocked(leapTo, p)`。执行回归覆盖薄墙分割冲击范围、无遮挡伤害、半径和高度边界；旧生产先红，4 个隔离反向探针验证承重判据。
+- 验证需求：覆盖墙前/墙后、冲击半径边缘、落点有效但冲击区域被墙分割的情形；L3 在薄墙拐角观察扑跳预警后躲到墙后是否仍掉血。
+
+### CR-2026-10-29-010 · P2 / COMPAT · 烟花试用品异步达标后遗漏完成通知和借用收尾
+
+- 状态：Fixed（2026-10-30），L1 + L2，L3 待验；当前既有缺陷。
+- 位置：`Integration/FieldAdventures/Prototypes/DangerousPrototypeRuntimeModule.cs:93`、`:117-125`；仅有的成功收尾在 `:369-373`。
+- 触发：巨型烟花筒（GrandFinale）的主弹或子弹在后续 `OnUpdate → TickFinales → TryHurt → ObserveHit` 中达到目标，规则立即变成 `Completed=true / Active=false`。OnUpdate 随后从 `!rules.Active` 分支返回；成功的 `EndLease(false)` 和完成通知仅存在于同步的 `OnShot` 尾部。再次开枪又被 `IsHeld()` 内的 Active 条件提前拦截，不能补做收尾。
+- 证据：从生产文件逐字抽取 OnUpdate、OnShot、LaunchFinale、TickFinales、Explode、TryHurt、EndLease 等方法，链接真实 Rules，用隔离宿主/物理/视觉替身执行。真实烟花爆炸达成 10 次命中后，`completed=True, subscribed=True, borrower=True, rig=True, notifications=0`；再开一枪并推进 200 秒仍保持同样残留。证据：`Build/review-head-20261029/finale-completion/result.log`。现有 `FieldAdventurePrototypeRuntime` 只验证射向/后坐，并将 FireSpecial 替身化，已有通过结果不覆盖此路径。
+- 影响：试验已完成却无达标提示，枪上试用品模型和借用事件保持到换枪/切图等后续操作；试验台仍可按 Completed 状态领奖，未证实奖励丢失。
+- 建议：成功收尾由一个幂等入口负责，同步射击和异步爆炸达标均调用，执行退订、清借用引用、收模型与一次性完成通知，同时保留已发射烟花的尾效。
+- 修复：同步 OnShot 与 TickFinales 后共用 `CompleteLeaseIfReady()`，在 Active 早返前通过 lease owner 幂等收尾并通知；保留在途烟花的 Shooter 与尾效。新增 FieldAdventurePrototypeCompletion 执行真实方法，覆盖主弹、子弹、收枪后达标、重复 Tick/开枪、规则领奖、暂停、取消与超时；旧生产先红，81 条断言与 4 个隔离反向探针通过，真实奖励交付仍待实机。
+- 验证需求：覆盖主弹达标、子弹达标、达标后不换枪等待、再次开枪、领奖和切图；L3 观察完成提示及手持模型是否及时撤去。
+
+### CR-2026-10-29-011 · P2 / COMPAT · F3 数字输入会误触发录制快捷键
+
+- 状态：Fixed（2026-10-30），L1 + L2，L3 待验；只影响 Dev 构建。
+- 位置：`DebugAndTools/PromoRecording/PromoRecordingDirector.cs:102`、`:127-133`。
+- 触发与影响：录制模式保持运行时打开 F3 的物品/金额输入框，用小键盘输入数字。HandleKeys 无条件先于暂停门执行，原始 `Input.GetKeyDown` 也不检查官方输入阻塞或输入框焦点：输入 3 会切换拍摄项，0 发起三个靶子生成，1 销毁录制组件。F3 的 `InputManager.DisableInput` 只登记官方输入阻塞源，不会截获 Unity 原始按键查询。
+- 证据：完整生产 PromoRecordingDirector.cs 配现有生命周期夹具的宿主替身，将 `IsGamePaused` 设为 true 后驱动实际 Update：数字 3 令 index 从 -1 变 0，数字 0 产生 3 个敌人请求，数字 1 销毁导演。证据：`Build/review-head-20261029/recording-input/result.log`。输入焦点/实际 UI 尚未 L3。
+- 建议：处理录制快捷键前检查 F3/模态输入与文本框焦点，暂停菜单中不消费拍摄操作；保留正常录制时的小键盘兼容和录制自身暂停键。
+- 修复：快捷键统一检查官方暂停、timeScale、模态租约、官方输入和 legacy/TMP 焦点，录制自身 paused 不屏蔽 Home/7 恢复。真实 Update 回归在旧代码先红、修后 319 条断言通过，7 个隔离反向探针确认各门及恢复键；证据 `Build/fix-recording-input-20261030/`。
+- 验证需求：录制中分别在 F3 金额、数量和属性输入框键入含 0/1/3/7/9 的数值，确认不会刷怪、切项或结束；关闭输入界面后快捷键照常生效。
+
+2026-10-30 修复验证：全量守卫 752 PASS / 0 FAIL；Windows 正式/Dev 隔离真编译通过，独立复核无新增 confirmed issue。全量回归首轮 148 PASS / 1 组视觉夹具超时；单独延长该次等待重跑，真实 Unity 基线和 6 项原生反向验证通过，最终 149 组均有本轮通过证据，是多轮合并。原日志、各次结果、合并清单和源码/DLL 哈希证据见 `Build/fixes-20261030/`，详细修复与 FIX30-01～04 实机步骤见 `FIX_TRACKER.md`。未取得 L3，未提交或部署。
+
+2026-10-29 审查验证：
+
+- `python tools/run_guards.py --verbose`：752 PASS / 0 NEW-FAIL / 0 KNOWN-RED，未使用 source-only；日志 `Build/review-head-20261029/guards.log`。
+- `python tools/run_runtime_regressions.py --jobs 4`：148 组 PASS / 0 FAIL；汇总 `Build/review-head-20261029/regression-results.json`，日志 `regressions.log`。新增审查探针单独执行，现有套件全绿不覆盖上述四项遗漏。
+- Windows 官方脚本正式和 Dev 构建均退出 0，使用本机游戏 Managed 的独立拷贝。只有 ModeHUIPages 两个既有 CS0649 警告。隔离目录没有 Mod 子目录，脚本的自动复制未完成，本轮不将其记为部署或发布资源验证。日志 `Build/review-head-20261029/compile-release.log`、`compile-dev.log`；两种 DLL 分别保留，`Build/BossRush.dll` 已还原为本轮正式产物。
+- `check_dll_identifiers.py`：正式 DLL 不含所检查的 14 个 Dev 专用标识，Dev DLL 能检出全部 14 个，正反对照均通过。
+- 未取得 L3：真实输入栈、场景物理遮挡、过图存档时序和运行帧耗仍需游戏内验证。审查探针模拟宿主，不视作实机证据。
+
 ## 2026-10-29 最新代码审核与遗种崽反馈（COMPAT；L1/L2 修复，L3 待验）
 
 本轮从干净工作区、HEAD `f9ef9fd4` 开始，审查 `41360aa4..HEAD` 的最新变更及直接影响面，并沿玩家反馈回查遗种巢、共享持久层和旧物理保存入口。三位子代理均为 gpt-6.1-sol / xhigh。覆盖宿主生命周期、存档与本地化、Mode D–H / 标准竞技场 / 丧尸 / 征程 / 天空岛 / 随机事件的相关状态路径、Integration 野外趣事与装备、F3 录制；未改动的大模块做重点链路抽查与全量已有回归，不声称全部源码逐行或状态组合穷举。

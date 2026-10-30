@@ -91,6 +91,7 @@ namespace BossRush
                 return;
             }
             TickFinales(deltaTime);
+            CompleteLeaseIfReady();
             if (!benchRolled)
             {
                 // 每趟出击只掷一次：没接委托不来；接了也只有一部分出击会遇上，来的时间和那一件都随机。
@@ -366,12 +367,7 @@ namespace BossRush
                     recoilTime = 0.22f;
                     recoilSpeed = kind == DangerousPrototypeKind.QuackRail ? 11f : 9f;
                 }
-                if (rules.Completed)
-                {
-                    EndLease(false);
-                    FieldAdventureSupport.Notify("试验达标！找叮当或入场附近的试验台，交还后领取冷淬液。", "Test passed! Return to Dingdang or the bench near your entry point for Cold Quench Fluid.");
-                }
-                else if (rules.Progress != before)
+                if (!CompleteLeaseIfReady() && rules.Progress != before)
                     FieldAdventureSupport.Notify("试验命中 " + rules.Progress + "/" + rules.Target, "Test hits " + rules.Progress + "/" + rules.Target);
             }
             catch (Exception e) { ModBehaviour.DevLog("[DangerousPrototype] 射击失败: " + e.Message); }
@@ -700,6 +696,14 @@ namespace BossRush
                 delivering = false;
             }
             if (!delivered) FieldAdventureSupport.Notify("奖励暂时没能交付，请再次交还领取。", "Reward delivery failed. Please interact again to claim it.");
+        }
+        private bool CompleteLeaseIfReady()
+        {
+            // 烟花在后续帧结算；同步与异步命中都在失活早返前收口，用订阅 owner 保证只通知一次。
+            if (!rules.Completed || !leaseSubscribed) return false;
+            EndLease(false);
+            FieldAdventureSupport.Notify("试验达标！找叮当或入场附近的试验台，交还后领取冷淬液。", "Test passed! Return to Dingdang or the bench near your entry point for Cold Quench Fluid.");
+            return true;
         }
         private void EndLease(bool cancel)
         {

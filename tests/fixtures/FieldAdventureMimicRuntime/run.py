@@ -43,6 +43,8 @@ def main():
          b"false", "non-main and missing sources cannot interrupt recovery"),
         ("ignore-wall-before-player", b"&& playerBeforeWall", b"&& true",
          "a wall before the player blocks same-frame shell damage"),
+        ("ignore-pounce-wall", b"&& Unblocked(leapTo, p)", b"&& true",
+         "a wall between landing and player blocks the pounce slam"),
     )
     try:
         for label, anchor, replacement, expected in probes:

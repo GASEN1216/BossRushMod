@@ -65,7 +65,8 @@ namespace BossRush
         internal static bool DebugGrantRewards(PetNestExpeditionRecord record)
         {
             if (!ModBehaviour.DevModeEnabled) return false;
-            return GrantRewards(record);
+            bool assetDeliveryStarted = false;
+            return GrantRewards(record, ref assetDeliveryStarted);
         }
 
         #region 目的地表
@@ -572,6 +573,8 @@ namespace BossRush
         internal static int TryGrantPendingRewards()
         {
             int granted = 0;
+            PetNestSaveCoordinator.AssetSnapshotToken unusedSnapshot = null;
+            bool assetDeliveryStarted = false;
             try
             {
                 if (!IsRewardRuntimeReady() || !HasPendingRewardDebt) return 0;
@@ -584,7 +587,7 @@ namespace BossRush
                 // 都没有改变资产，不能把后续出击里的崽包绑定到不存在的基地仓库。
                 string assetError;
                 if (_validationRewardBackend == null
-                    && !PetNestSaveCoordinator.RequireAssetSnapshot(out assetError))
+                    && !PetNestSaveCoordinator.RequireAssetSnapshot(out assetError, out unusedSnapshot))
                 {
                     PetNestPersistenceAccess.AbortTransaction();
                     return 0;
@@ -601,7 +604,7 @@ namespace BossRush
 
                     bool cashBefore = r.cashGranted;
                     int unitsBefore = r.grantedLootUnits;
-                    bool complete = GrantRewards(r);
+                    bool complete = GrantRewards(r, ref assetDeliveryStarted);
                     if (r.cashGranted != cashBefore || r.grantedLootUnits != unitsBefore) progressed = true;
                     // 计数到上限封顶：之后无进展的重试不再改记录，也就不再写候选包
                     if (!complete && r.rewardGrantAttempts < PetNestTuning.MaxRewardGrantAttempts)
@@ -641,6 +644,12 @@ namespace BossRush
             {
                 PetNestPersistenceAccess.AbortTransaction();
                 ModBehaviour.DevLog("[PetNest] 远征奖励补发失败: " + e.Message);
+            }
+            finally
+            {
+                // 缺资源、身份或盖章失败发生在投递前，可撤销本次新建的空义务。
+                // 一旦调用外部发钱/配送，即使抛错且游标未动，也可能已改资产，必须保留。
+                if (!assetDeliveryStarted) PetNestSaveCoordinator.ReleaseUnusedAssetSnapshot(unusedSnapshot);
             }
             return granted;
         }
@@ -944,7 +953,7 @@ namespace BossRush
         /// 无法消除的崩溃窗口可能重复。
         /// 记账只改内存，落档由调用方在扫完一轮后统一 CommitBoth。
         /// </summary>
-        private static bool GrantRewards(PetNestExpeditionRecord record)
+        private static bool GrantRewards(PetNestExpeditionRecord record, ref bool assetDeliveryStarted)
         {
             if (record == null) return true;
             bool complete = true;
@@ -964,6 +973,7 @@ namespace BossRush
                         // 官方 Add 在 Instance==null 时返回 false 而**不抛异常**，
                         // 丢弃返回值等于把"钱没发出去"当成发过了
                         IValidationRewardBackend validation = _validationRewardBackend;
+                        assetDeliveryStarted = true;
                         ok = validation != null
                             ? validation.TryGrantCash(record.outcomeCash)
                             : EconomyManager.Add(record.outcomeCash);
@@ -995,7 +1005,7 @@ namespace BossRush
                         IValidationRewardBackend validation = _validationRewardBackend;
                         bool itemGranted = validation != null
                             ? validation.TryGrantItem(typeId, record)
-                            : GrantOneItem(typeId, record);
+                            : GrantOneItem(typeId, record, ref assetDeliveryStarted);
                         if (!itemGranted)
                         {
                             complete = false;
@@ -1019,7 +1029,7 @@ namespace BossRush
         /// 投递一件战利品。只有成功送达才返回 true；身份缺失、实例化或盖章失败
         /// 都保留欠账，不能把缺少血脉的蛋伪装成已投递。
         /// </summary>
-        private static bool GrantOneItem(int typeId, PetNestExpeditionRecord record)
+        private static bool GrantOneItem(int typeId, PetNestExpeditionRecord record, ref bool assetDeliveryStarted)
         {
             Item item = null;
             try
@@ -1057,6 +1067,7 @@ namespace BossRush
                     }
                 }
 
+                assetDeliveryStarted = true;
                 ItemUtilities.SendToPlayer(item);
                 item = null;
                 return true;

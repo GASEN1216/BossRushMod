@@ -193,6 +193,7 @@ namespace BossRush
         private ItemAgent_Gun borrowedGun;
         private DangerousPrototypeVisuals visuals;
         private DangerousPrototypeRules rules;
+        private bool leaseSubscribed;
         private int generation;
         private float recoilTime;
         private Vector3 recoilDirection;
@@ -204,14 +205,14 @@ namespace BossRush
         internal DangerousPrototypeRuntimeModule(CharacterMainControl player, ItemAgent_Gun gun, DangerousPrototypeKind kind)
         {
             owner = new object(); borrower = player; borrowedGun = gun;
-            rules = new DangerousPrototypeRules(); rules.Borrow(kind);
+            rules = new DangerousPrototypeRules(); rules.Borrow(kind); leaseSubscribed = true;
             FieldAdventureSupport.Player = player;
         }
         internal void Fire(ItemAgent_Gun gun) { OnShot(gun); }
         internal void Recoil(float dt) { TickRecoil(dt); }
         internal int Progress { get { return rules.Progress; } }
         internal Vector3 RecoilDirection { get { return recoilDirection; } }
-        private void EndLease(bool cancel) { if (cancel) rules.Cancel(); }
+        private void EndLease(bool cancel) { leaseSubscribed = false; if (cancel) rules.Cancel(); }
     }
     internal sealed class DangerousPrototypeVisuals
     {

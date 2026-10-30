@@ -42,6 +42,8 @@ def run(root=ROOT, output_root=None):
         "private static Vector3 ResolveShotDirection(", "private void TraceBlast(",
         "private void TickRecoil(",
     )]
+    if "private bool CompleteLeaseIfReady()" in runtime:
+        methods.append(member(runtime, "private bool CompleteLeaseIfReady()"))
     production = ("using System; using System.Collections.Generic; using UnityEngine; "
                   "using UnityEngine.SceneManagement; namespace BossRush { "
                   "internal sealed partial class DangerousPrototypeRuntimeModule {\n"

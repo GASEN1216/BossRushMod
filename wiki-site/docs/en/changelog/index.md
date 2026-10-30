@@ -23,6 +23,11 @@
 - Three field adventures on ordinary raids: the Gluttonous Mimic, Awen's Odd-Parcel Delivery and Dingdang's Dangerous Prototypes (five rigs that appear at random after her level-10 commission).
 - The Shadow of the Champion joins the Boss pool, and Dragon's Breath no longer deals zero damage to zombies. See `v2.3.8` for the full list.
 
+## v2.3.9 (2026-10-30)
+
+- Fixes cub names and backpack saving, plus recovery after save failures and cleanup during transitions.
+- Field-adventure placements require a walkable route, mimic cannonballs and landing impacts respect walls, and firework prototypes are recalled with a message when later explosions complete the trial. See `v2.3.9` for the full list.
+
 ::: tip
-For fast historical context, start with `v2.1.0` and `v2.1.20`. For the latest major additions, see `v2.3.0`, `v2.3.1`, `v2.3.2`, `v2.3.3`, `v2.3.4`, `v2.3.5`, `v2.3.6`, `v2.3.7` and `v2.3.8`, which cover everything introduced in the Qinglan Archipelago era and its latest fixes.
+For fast historical context, start with `v2.1.0` and `v2.1.20`. For the latest major additions, see `v2.3.0`, `v2.3.1`, `v2.3.2`, `v2.3.3`, `v2.3.4`, `v2.3.5`, `v2.3.6`, `v2.3.7`, `v2.3.8` and `v2.3.9`, which cover everything introduced in the Qinglan Archipelago era and its latest fixes.
 :::

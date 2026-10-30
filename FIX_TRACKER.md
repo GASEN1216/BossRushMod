@@ -2,6 +2,33 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+## 2026-10-30 v2.3.9 正式发布包准备（COMPAT / OPERATIONAL；L1/L2，L3 待验）
+
+版本从 2.3.8 升至 2.3.9，更新中英 README、更新日志、highlights、catalog 与生成站点页，纳入本轮四项复审修复。本地 `info.ini` 与发布包元数据同步为 2.3.9；该文件仍按原规则忽略，不强行加入公开 Git。发布流程专题 repowiki 同步。
+
+Windows 正式真编译成功，清除 Dev 环境开关，使用 Managed 的独立拷贝与预建的隔离 Mod 目录；只有两条既有 Mode H CS0649。正式 DLL SHA-256 `F2B1725451D42251B0D62DE961B3CA081BB57D022749902FAAF5A36B51D86BCA`，14 个 Dev 专用标识均缺席。77 个资源包的清单、SHA-256 和内容检查通过；补齐元数据、预览图及原有配置密文后，619 个发布文件全部与源文件按字节摘要比对。证据在 `Build/release-v2.3.9/`。
+
+百科构建通过，80 项导航检查及 15 项 Wiki 守卫通过。生产源码与前一节全量 752 项守卫、149 组最后有效执行回归通过时保持一致，未重复无关回归。ZIP 只含 `BossRush/` Mod 目录，619 项逐一解压读取并核对 SHA-256；`BossRush-v2.3.9.zip` SHA-256 为 `805D6579902F2D77B359A7359151FB4D7E826F5C5B45DFB4B7E03381A619505D`。发布目录与 ZIP 清单分别见 `package-manifest.json`、`archive-verification.json`。
+
+按 owner 要求整理为本地提交；构建产物、配置密文与本地元数据不入 Git。真实游戏 DLL 保持原哈希，未向真实游戏部署、未推送或上传工坊、未启动游戏和访问玩家存档。L3 仍按下节 FIX30-01～04 验收，不将离线检查视作实机通过。
+
+## 2026-10-30 全面复审四项修复（COMPAT；L1/L2，L3 待验）
+
+修复 `CR-2026-10-29-008`～`011`：远征奖励在投递前失败时，只释放本次新建的空资产保存义务，保留已有/重入义务与外部 API 可能已改资产的异常路径；宝箱扑跳落地伤害复用墙体遮挡判定；危险试用品同步射击与异步烟花共用幂等完成收尾，退订并收模型、提示一次且保留在途烟花；Dev 录制热键遵循官方暂停、输入许可、模态与文本焦点，录制自身暂停仍可原键恢复。未新增生产文件、TypeID、存档键或 schema。三篇专题 repowiki 与夹具说明同步，独立只读复核未发现新增 confirmed issue。
+
+四项均已在旧生产实现先复现红项，修后相关执行回归通过；ContentTransactions 698 条、宝箱 319 条、PromoRecordingLifecycle 319 条、烟花完成 81 条断言。宝箱 4 项、烟花 4 项、录制 7 项与资产边界/结算守卫 6 项隔离反向探针按预期失败，副本按字节恢复。全量守卫 **752 PASS / 0 NEW-FAIL / 0 KNOWN-RED**，424.0 秒，未使用 source-only；证据在 `Build/fixes-20261030/`、`Build/fix-recording-input-20261030/` 及 `Build/runtime-regressions/FieldAdventureMimicRuntime/`、`FieldAdventurePrototypeCompletion/`。
+
+Windows C# 7.3 正式与 Dev 真编译均成功，引用本机 Managed 的独立拷贝；只有两条既有 Mode H CS0649。日志 `Build/fixes-20261030/compile-release.log`、`compile-dev.log`。隔离目录没有 Mods 目标，自动复制警告为预期，没有向真实游戏部署。正式 DLL `BossRush-release.dll` SHA-256 `DA5E0ACDFB80090C9C5288B52C753A5BA6C5EFE339DF207663C7522ACC6FCC3A`，Dev DLL `BossRush-dev.dll` SHA-256 `6073BFB46B49B001961E31BFE563F35203F8F2187B33BDC0EEF448A3FA40F8CD`；14 个 Dev 专用标识正反对照通过，`Build/BossRush.dll` 已恢复为本轮正式版。
+
+全量执行回归首轮 **148 PASS / 1 FAIL**，唯一失败为 FieldAdventureVisuals 超过聚合入口默认 600 秒，原日志和 149 组结果保留在 `regressions.log`、`regression-results.json`。将仅该次调用的等待时限增至 1800 秒、使用独立证据目录重跑后 **1 PASS / 0 FAIL**，含真实 Unity 基线与 6 项隔离反向验证；未修改仓库 runner 时限。最终 **149 组**均有本轮通过证据，是两轮最后有效结果合并，见 `combined-regression-results.json`，不是同一次全量全绿。`visual-retry-detail.log`、`visual-retry/run-2khmni1f/` 保留原生文字报告，截图供 owner 查看。四份生产源码、正式/Dev DLL、Build 正式产物和真实游戏 DLL 哈希稳定，详见 `final-verification.json`、`final-hashes.json`。未提交或推送。
+
+L3 手工验收（本轮未启动游戏、未访问玩家存档，以下均待验）：
+
+- **FIX30-01**：在专用测试档制造现金已领但物品暂缺的远征欠奖，基地维护并切到出击，按 F 打开崽包并转移物品、回基地重载。若仍提示仓库未就绪、转移结果丢失或原有奖励重复到账即不合格；观察崽包界面与重载后双方容器，关联 `PetNestExpeditionService.cs`。
+- **FIX30-02**：在薄墙拐角等宝箱扑跳预警锁定后躲到墙另一侧且仍在冲击圈内，比较墙前/墙后生命值。墙后扣血或无遮挡圈内完全无伤即不合格，关联 `GreedyMimicEncounter.cs`。
+- **FIX30-03**：Dev F3 录制页生成危险试验台，借烟花并命中达标后保持持枪。观察左侧完成提示、枪上装置及在途烟花，再按 F 交还领奖；无提示、装置残留、重复提示、尾效中断或重复领奖即不合格，关联 `DangerousPrototypeRuntimeModule.cs`。
+- **FIX30-04**：录制中按 F3 打开数字输入框，用小键盘输入 0/1/3/7/9，观察右侧录制条及附近靶子。输入不得切项/刷靶/结束；关闭面板后快捷键应恢复，Home/7 暂停后再按应恢复。任一误触或不能恢复即不合格，关联 `PromoRecordingDirector.cs`。
+
 ## 2026-10-29 最新代码审核与遗种崽名字/背包排查（COMPAT；L1/L2 修复，L3 待验）
 
 修复 `CR-2026-10-29-001`～`007`：已有崽默认名脱离当前血脉筛选目录并按当前语言解析；Mode G 三处、好感关停及八处 F3 入口的写盘异常只释放本次保存闩；崽包仅等待实际可见的官方宠物容器，并输出去重的具体阻塞原因；空远征检查和确认完整回滚的孵化不再遗留基地仓库保存义务；贪吃宝箱按价格选食物、炮弹先判墙；Dev 录制取消迟到生成并防花冠在途重复。未改已发布存档 key、schema、TypeID 或玩家昵称。各项根因、证据和手工验收见同日 `CODE_REVIEW_FINDINGS.md`。

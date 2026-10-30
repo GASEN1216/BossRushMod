@@ -74,13 +74,18 @@ namespace UnityEngine
     public class Canvas : Component { public RenderMode renderMode; public int sortingOrder; }
     public static class ColorUtility { public static string ToHtmlStringRGB(Color value) { return "ffffff"; } }
     public static class Mathf { public static int CeilToInt(float f) { return (int)Math.Ceiling(f); } public static int Max(int a, int b) { return Math.Max(a,b); } public static int Clamp(int v, int a, int b) { return Math.Max(a, Math.Min(b,v)); } }
-    public static class Time { public static float unscaledDeltaTime; }
+    public static class Time { public static float unscaledDeltaTime; public static float timeScale = 1f; }
     public enum KeyCode { PageDown, Keypad3, PageUp, Keypad9, Home, Keypad7, Insert, Keypad0, End, Keypad1 }
-    public static class Input { public static bool GetKeyDown(KeyCode key) { return false; } }
+    public static class Input
+    {
+        public static readonly HashSet<KeyCode> Pressed = new HashSet<KeyCode>();
+        public static bool GetKeyDown(KeyCode key) { return Pressed.Contains(key); }
+    }
     public static class Resources { public static T[] FindObjectsOfTypeAll<T>() where T : class { return new[] { CharacterRandomPreset.Preset as T }; } }
 }
 namespace UnityEngine.UI
 {
+    public class InputField : UnityEngine.Component { public bool isFocused; }
     public class CanvasScaler : UnityEngine.Component { }
     public class Image : UnityEngine.Component { public UnityEngine.Color color; public bool raycastTarget; }
     public class VerticalLayoutGroup : UnityEngine.Component { public UnityEngine.RectOffset padding; public bool childControlWidth, childControlHeight, childForceExpandHeight; }
@@ -99,6 +104,7 @@ namespace UnityEngine.SceneManagement
 }
 namespace TMPro
 {
+    public class TMP_InputField : UnityEngine.Component { public bool isFocused; }
     public class TextMeshProUGUI : UnityEngine.Component
     { public string text; public float fontSize, lineSpacing; public UnityEngine.Color color; public bool enableWordWrapping, raycastTarget; }
 }
@@ -129,6 +135,11 @@ public class CharacterMainControl : UnityEngine.MonoBehaviour
 public enum Teams { player, wolf, neutral }
 public static class Team { public static bool IsEnemy(Teams a, Teams b) { return b == Teams.wolf; } }
 public static class SceneLoader { public static bool IsSceneLoading; }
+public static class InputManager { public static bool InputActived = true; }
+namespace UnityEngine.EventSystems
+{
+    public class EventSystem { public static EventSystem current; public UnityEngine.GameObject currentSelectedGameObject; }
+}
 public class CharacterRandomPreset : UnityEngine.Object
 {
     public string nameKey = "Cname_Scav";
@@ -145,11 +156,11 @@ namespace BossRush
     public class ModBehaviour : UnityEngine.MonoBehaviour { public static void DevLog(string message) { } }
     public static class L10n { public static bool IsChinese = true; public static string T(string cn, string en) { return IsChinese ? cn : en; } }
     public static class BossRushUI
-    { public static bool IsGamePaused() { return false; } public static void ApplyPanelSkin(UnityEngine.UI.Image image, int radius, BossRushUISkinPart part) { } public static void ApplyGameFont(TMPro.TextMeshProUGUI text) { } }
+    { public static bool Paused; public static bool IsGamePaused() { return Paused; } public static void ApplyPanelSkin(UnityEngine.UI.Image image, int radius, BossRushUISkinPart part) { } public static void ApplyGameFont(TMPro.TextMeshProUGUI text) { } }
     public enum BossRushUISkinPart { Card }
     public static class BossRushUILayers { public const int Hud = 1; }
     public static class BossRushUIColors { public static UnityEngine.Color Accent, TextSecondary, WarningText, DangerText, Surface, TextPrimary; }
-    public static class BossRushUIKit { public static void ApplyWorldTextOutline(TMPro.TextMeshProUGUI text) { } }
+    public static class BossRushUIKit { public static bool IsModalInputPaused; public static void ApplyWorldTextOutline(TMPro.TextMeshProUGUI text) { } }
     public static class ZombieModeUIHelper { public static void ConfigureCanvasScaler(UnityEngine.UI.CanvasScaler scaler) { } }
     public static class FieldAdventureSupport
     {

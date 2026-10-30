@@ -31,7 +31,13 @@ def main():
             r"PlayerStorageBuffer.SaveBuffer\(\)", r"EconomyManager.Instance.GenerateSaveData\(\)",
             r"CollectPendingAssets\(out error\)[\s\S]*?Bundle.FlushPending\(\)",
         ],
-        "PetNest/PetNestExpeditionService.cs": [r"RequireAssetSnapshot\(out assetError\)[\s\S]*?GrantRewards\(r\)"],
+        "PetNest/PetNestExpeditionService.cs": [
+            r"RequireAssetSnapshot\(out assetError, out unusedSnapshot\)[\s\S]*?GrantRewards\(r, ref assetDeliveryStarted\)",
+            r"finally\s*\{\s*if \(!assetDeliveryStarted\) PetNestSaveCoordinator.ReleaseUnusedAssetSnapshot\(unusedSnapshot\);\s*\}",
+            # 外部 API 可能改完资产才抛错，不能根据未前进的奖励游标撤销义务。
+            r"assetDeliveryStarted = true;\s*ok = validation != null\s*\? validation.TryGrantCash\(record.outcomeCash\)\s*: EconomyManager.Add\(record.outcomeCash\);",
+            r"assetDeliveryStarted = true;\s*ItemUtilities.SendToPlayer\(item\);",
+        ],
         "PetNest/PetNestPersistence.cs": [r"CollectPendingAssets\(out assetError\)[\s\S]*?_bundle.FlushPending\(true\)"],
         # 天空岛纪念品（CR-2026-09-11-017）：发放前必须先立实物快照义务，落盘时四样官方资产
         # 与剧情手记进同一批；否则「已记账、物品未持久化」会在跨重启窗口里吞掉纪念品。

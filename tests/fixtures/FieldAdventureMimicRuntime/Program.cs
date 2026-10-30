@@ -228,6 +228,35 @@ internal static class Program
         Check(!ReceiverDamageScaling.IsArmed, "no stale armor registrations remain after dispose");
     }
 
+    private static void PounceWallCase(float offset, float height, bool blocked, bool expectedHit, string label)
+    {
+        using (var subject = new Subject(false))
+        {
+            Begin(subject, new Vector3(0, 0, 12f));
+            subject.Encounter.Tick(1.06f, subject.Player);
+            Check(Get<float>(subject.Encounter, "leapLeft") > 0f, label + ": leap starts before cover changes");
+            // 起跳后玩家绕到落点侧面；障碍只改变落地伤害路径，不否决合法起跳或落点。
+            subject.Player.transform.position = new Vector3(offset, height, 12f);
+            Physics.Blocked = blocked;
+            for (int i = 0; i < 6; i++) subject.Encounter.Tick(0.1f, subject.Player);
+            Check(subject.Player.Health.DamageCalls == (expectedHit ? 1 : 0), label);
+            Check(subject.Visual.Slams == 1 && Get<float>(subject.Encounter, "leapLeft") == 0f,
+                label + ": the landing slam still finishes once");
+            Near(subject.Visual.Root.transform.position.z, 12f, label + ": cover does not move the locked landing point");
+        }
+    }
+
+    private static void PounceWalls()
+    {
+        PounceWallCase(2f, 0f, true, false, "a wall between landing and player blocks the pounce slam");
+        PounceWallCase(2f, 0f, false, true, "an unobstructed player keeps the pounce damage");
+        float radius = new GreedyMimicRules().PounceRadius;
+        PounceWallCase(radius - 0.01f, 0f, false, true, "inside the pounce radius remains hittable");
+        PounceWallCase(radius + 0.01f, 0f, false, false, "outside the pounce radius remains safe");
+        PounceWallCase(2f, 2.49f, false, true, "inside the pounce height allowance remains hittable");
+        PounceWallCase(2f, 2.5f, false, false, "the pounce height boundary remains safe");
+    }
+
     private static void FlyingVolley()
     {
         using (var subject = new Subject(false))
@@ -292,7 +321,7 @@ internal static class Program
 
     private static void Main()
     {
-        RecoveryThresholds(); FilterAndAccumulation(); TongueAndPounce(); FlyingVolley(); FlyingVolleyWalls(); ShellArmor();
+        RecoveryThresholds(); FilterAndAccumulation(); TongueAndPounce(); PounceWalls(); FlyingVolley(); FlyingVolleyWalls(); ShellArmor();
         Console.WriteLine("PASS FieldAdventureMimicRuntime: " + assertions + " assertions; real Encounter, Rules, official HealthSimpleBase and DamageReceiver; host/visual are stubs.");
     }
 }

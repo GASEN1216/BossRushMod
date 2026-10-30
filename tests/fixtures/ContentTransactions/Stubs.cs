@@ -106,10 +106,11 @@ namespace Duckov.Economy
         public static long Money;
         public static int Adds;
         public static bool RejectAdd, RejectPay;
+        public static Action AfterAdd;
         public struct SaveData { public long money; }
         public object GenerateSaveData() { return new SaveData { money = Money }; }
         // Official Add mutates live Money and returns false if Instance is absent.
-        public static bool Add(long value) { if (Instance == null || RejectAdd) return false; Money += value; Adds++; return true; }
+        public static bool Add(long value) { if (Instance == null || RejectAdd) return false; Money += value; Adds++; if (AfterAdd != null) AfterAdd(); return true; }
         public static bool Pay(Cost cost, bool account, bool cash) { if (RejectPay || Money < cost.money) return false; Money -= cost.money; return true; }
     }
 }
@@ -119,7 +120,8 @@ class LevelManager { public static LevelManager Instance = new LevelManager(); p
 static class ItemUtilities
 {
     public static List<Item> Delivered = new List<Item>();
-    public static void SendToPlayer(Item item) { Delivered.Add(item); }
+    public static Action AfterRewardDelivery;
+    public static void SendToPlayer(Item item) { Delivered.Add(item); if (AfterRewardDelivery != null) AfterRewardDelivery(); }
     public static bool ThrowBeforePack, ThrowBeforeBuffer, ThrowAfterBuffer;
     public static Action DuringDelivery;
     public static bool SendToPlayerCharacter(Item item, bool dontMerge)
@@ -223,8 +225,9 @@ namespace ItemStatsSystem
         public static object Instance = new object();
         public static bool FailInstantiate;
         public static int MissingPrefabId, InstantiateCalls;
+        public static Action BeforeGetPrefab;
         public static readonly List<Item> Instances = new List<Item>();
-        public static Item GetPrefab(int id) { return id == MissingPrefabId ? null : new Item { TypeID = id }; }
+        public static Item GetPrefab(int id) { if (BeforeGetPrefab != null) BeforeGetPrefab(); return id == MissingPrefabId ? null : new Item { TypeID = id }; }
         // 官方已知条目缺 prefab 时返回同 TypeID 非 null 空壳，不能用 null 替身掩盖它。
         public static Item InstantiateSync(int id)
         {

@@ -17,6 +17,7 @@ using Duckov.Utilities;
 using ItemStatsSystem;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -126,6 +127,20 @@ namespace BossRush
 
         private void HandleKeys()
         {
+            // F3 直接暂停时间并禁用官方输入；模态框与文本编辑也不能消费录制热键。
+            // paused 只暂停录制计时，不参与此门控，Home / 小键盘 7 仍可恢复计时。
+            if (BossRushUI.IsGamePaused() || Time.timeScale <= 0f ||
+                BossRushUIKit.IsModalInputPaused || !InputManager.InputActived) return;
+
+            GameObject selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
+            if (selected != null)
+            {
+                InputField input = selected.GetComponent<InputField>();
+                if (input != null && input.isFocused) return;
+                TMP_InputField tmpInput = selected.GetComponent<TMP_InputField>();
+                if (tmpInput != null && tmpInput.isFocused) return;
+            }
+
             if (Pressed(KeyCode.PageDown, KeyCode.Keypad3)) Next();
             else if (Pressed(KeyCode.PageUp, KeyCode.Keypad9)) { if (index >= 0 && index < steps.Count) StartStep(index); }
             else if (Pressed(KeyCode.Home, KeyCode.Keypad7)) { paused = !paused; Refresh(); }

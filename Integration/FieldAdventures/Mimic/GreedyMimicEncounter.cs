@@ -391,7 +391,8 @@ namespace BossRush
             float radius = Rules.PounceRadius;
             visual.Slam(leapTo, radius);
             Vector3 p = player.transform.position;
-            if (GreedyMimicRules.InCircle(p.x - leapTo.x, p.z - leapTo.z, radius) && Mathf.Abs(p.y - leapTo.y) < 2.5f)
+            if (GreedyMimicRules.InCircle(p.x - leapTo.x, p.z - leapTo.z, radius) && Mathf.Abs(p.y - leapTo.y) < 2.5f
+                && Unblocked(leapTo, p))
                 HurtPlayer(player, Rules.Damage(GreedyMimicAttack.Pounce), false);
             cooldown = GreedyMimicRules.Cooldown(HealthFraction);
             // 残血时落地接一记舌击，不给喘息。

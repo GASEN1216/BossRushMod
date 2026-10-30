@@ -200,7 +200,7 @@ def main():
         if "r.rewardsGranted = true;" not in body:
             errors.append("[发奖] 补发后必须置已发放标记并落档")
         # 按条目记账：整体重试会让已到账的现金再发一次
-        if "GrantRewards(r)" not in body:
+        if "GrantRewards(r, ref assetDeliveryStarted)" not in body:
             errors.append("[发奖] 补发必须经 GrantRewards 逐格续发，不得另起一套发放路径")
         if "r.rewardGrantAttempts++" not in body:
             errors.append("[发奖] 必须记录连续失败次数供可靠性诊断")
@@ -225,7 +225,7 @@ def main():
 
     # 9b. 按条目记账：现金与战利品各有自己的账，补发只重做真正失败的那一格
     grant = re.search(
-        r"private static bool GrantRewards\(PetNestExpeditionRecord record\)[\s\S]{0,3000}?\n        \}",
+        r"private static bool GrantRewards\(PetNestExpeditionRecord record, ref bool assetDeliveryStarted\)[\s\S]{0,3000}?\n        \}",
         code)
     if grant is None:
         errors.append("[发奖记账] GrantRewards 必须返回 bool（是否已全部发出），"
@@ -246,7 +246,7 @@ def main():
 
     # 9c. 只有实际送达才可消费欠奖，身份缺失/盖章失败必须保留欠账。
     one = re.search(
-        r"private static bool GrantOneItem\(int typeId, PetNestExpeditionRecord record\)"
+        r"private static bool GrantOneItem\(int typeId, PetNestExpeditionRecord record, ref bool assetDeliveryStarted\)"
         r"[\s\S]{0,2400}?\n        \}", code)
     if one is None:
         errors.append("[发奖记账] GrantOneItem 必须返回 bool（这一件是否已了结）")

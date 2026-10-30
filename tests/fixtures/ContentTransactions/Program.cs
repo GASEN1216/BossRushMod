@@ -36,6 +36,7 @@ partial class Program
         BossRushSaveFileThrottle.ResetStaticCaches(); SavesSystem.Reset();
         EconomyManager.Instance = new EconomyManager(); EconomyManager.Money = 100000;
         EconomyManager.Adds = 0; EconomyManager.RejectAdd = EconomyManager.RejectPay = false;
+        EconomyManager.AfterAdd = null;
         SavesSystem.Save("EconomyData", (EconomyManager.SaveData)EconomyManager.Instance.GenerateSaveData());
         LevelManager.Instance = new LevelManager(); LevelManager.LevelInited = true;
         LevelManager.LevelInitializing = SceneLoader.IsSceneLoading = false; UnityEngine.Time.frameCount++;
@@ -48,10 +49,12 @@ partial class Program
         ItemUtilities.Delivered.Clear(); RelicEggConfig.FailStamp = false;
         ItemUtilities.ThrowBeforePack = ItemUtilities.ThrowBeforeBuffer = ItemUtilities.ThrowAfterBuffer = false;
         ItemUtilities.DuringDelivery = null;
+        ItemUtilities.AfterRewardDelivery = null;
         PlayerStorage.IncomingItemBuffer.Clear();
         PlayerStorage.Instance = new PlayerStorage();
         ItemAssetsCollection.FailInstantiate = false; UnityEngine.Random.value = 0;
         ItemAssetsCollection.MissingPrefabId = ItemAssetsCollection.InstantiateCalls = 0;
+        ItemAssetsCollection.BeforeGetPrefab = null;
         PetNestBaseIdleSpawner.DeployNotifications = PetNestCompanionRuntime.Cleanups = 0;
         PetNestUIPages.DepartCardRequests = 0;
         BackMountainBossMorphService.Reject = BackMountainBossMorphService.Throw = false; BackMountainBossMorphService.Started = 0;
@@ -592,6 +595,7 @@ partial class Program
         PetNestLifecycleRepairs();
         PetNestCarePersistenceCompatibility();
         PetNestRewardAssetObligation();
+        PetNestFailedRewardAssetObligation();
         PetNestUnusedHatchObligation();
         PetNestBackpackPersistence();
         PetNestBackpackTreeRoundTrip();
@@ -874,6 +878,76 @@ partial class Program
         ItemAssetsCollection.MissingPrefabId = 0; PetNestExpeditionService.ResetValidationRewardBackend();
         Check(PetNestExpeditionService.TryGrantPendingRewards() == 1 && EconomyManager.Adds == 1
             && ItemUtilities.Delivered.Count == 1, "remaining item resumes after recovery without duplicating cash");
+    }
+
+    static void PetNestFailedRewardAssetObligation()
+    {
+        string error;
+        foreach (string failure in new[] { "prefab", "instantiate", "lineage", "stamp", "attempt-cap" })
+        {
+            Reset(); PrepareNest(); PetNestSaveCoordinator.EnsureSubscribed();
+            var debt = PendingEgg("failed-" + failure, "gone");
+            debt.petLineageKey = failure == "lineage" ? null : "test";
+            if (failure == "prefab" || failure == "attempt-cap") ItemAssetsCollection.MissingPrefabId = RelicEggConfig.TYPE_ID;
+            if (failure == "instantiate") ItemAssetsCollection.FailInstantiate = true;
+            if (failure == "stamp") RelicEggConfig.FailStamp = true;
+            if (failure == "attempt-cap") debt.rewardGrantAttempts = PetNestTuning.MaxRewardGrantAttempts;
+            PetNestPersistence.Bundle.Current.expedition.records.Add(debt);
+            int writesBefore = SavesSystem.Writes;
+            Check(PetNestExpeditionService.TryGrantPendingRewards() == 0
+                && EconomyManager.Adds == 0 && ItemUtilities.Delivered.Count == 0
+                && SavesSystem.Writes == writesBefore && !PetNestSaveCoordinator.HasDeferredFlush,
+                "failed reward changes no assets or scheduled physical save: " + failure);
+            Check(!PetNestExpeditionService.Records[0].rewardsGranted
+                && PetNestExpeditionService.Records[0].grantedLootUnits == 0,
+                "failed reward keeps its unconsumed debt: " + failure);
+            // 官方先采集并写盘也不能留下无主的基地资产义务。
+            SavesSystem.Collect(); SavesSystem.SaveFile(false);
+            Check(FlushBackpackAfterLeavingBase(out error),
+                "unused failed reward obligation cannot block the next raid backpack: " + failure + " / " + error);
+        }
+
+        Reset(); PrepareNest();
+        var pending = PendingEgg("existing-reward", "gone");
+        PetNestPersistence.Bundle.Current.expedition.records.Add(pending);
+        ItemAssetsCollection.MissingPrefabId = RelicEggConfig.TYPE_ID;
+        Check(PetNestSaveCoordinator.RequireAssetSnapshot(out error), "real asset obligation exists before failed reward");
+        PetNestExpeditionService.TryGrantPendingRewards();
+        Check(!FlushBackpackAfterLeavingBase(out error) && error == "asset_save_not_ready:storage_instance",
+            "failed reward cannot release an earlier real asset obligation");
+
+        Reset(); PrepareNest();
+        pending = PendingEgg("nested-reward", "gone");
+        PetNestPersistence.Bundle.Current.expedition.records.Add(pending);
+        ItemAssetsCollection.MissingPrefabId = RelicEggConfig.TYPE_ID;
+        ItemAssetsCollection.BeforeGetPrefab = () =>
+        {
+            ItemAssetsCollection.BeforeGetPrefab = null;
+            string nestedError; EconomyManager.Money += 13;
+            Check(PetNestSaveCoordinator.RequireAssetSnapshot(out nestedError), "nested real asset operation renews reward obligation");
+        };
+        PetNestExpeditionService.TryGrantPendingRewards();
+        Check(!FlushBackpackAfterLeavingBase(out error) && error == "asset_save_not_ready:storage_instance",
+            "failed reward cannot release a newer nested asset obligation");
+
+        foreach (bool cash in new[] { false, true })
+        {
+            Reset(); PrepareNest();
+            pending = PendingEgg("throwing-delivery", "gone"); pending.petLineageKey = "test";
+            if (cash)
+            {
+                pending.cashGranted = false; pending.outcomeCash = 250;
+                EconomyManager.AfterAdd = () => { throw new InvalidOperationException("after cash mutation"); };
+            }
+            else ItemUtilities.AfterRewardDelivery = () => { throw new InvalidOperationException("after item delivery"); };
+            PetNestPersistence.Bundle.Current.expedition.records.Add(pending);
+            PetNestExpeditionService.TryGrantPendingRewards();
+            Check(cash ? EconomyManager.Adds == 1 && !PetNestExpeditionService.Records[0].cashGranted
+                : ItemUtilities.Delivered.Count == 1 && PetNestExpeditionService.Records[0].grantedLootUnits == 0,
+                "external delivery can mutate before throwing without advancing cursor: " + cash);
+            Check(!FlushBackpackAfterLeavingBase(out error) && error == "asset_save_not_ready:storage_instance",
+                "unchanged cursor cannot release a possibly delivered asset obligation: " + cash);
+        }
     }
 
     static bool FlushBackpackAfterLeavingBase(out string error)
