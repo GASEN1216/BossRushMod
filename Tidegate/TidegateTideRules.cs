@@ -17,9 +17,9 @@ namespace BossRush
         internal const float LowLevel = -1.5f, HighLevel = 0.45f;
         /// <summary>大闸关着时泻湖的水位：比外海高潮还高，金库所在的储蓄所整栋泡在水下。</summary>
         internal const float LagoonFull = 0.62f;
-        /// <summary>大闸提起后泻湖放水的速度（米 / 现实秒），放到和外海齐平后跟着外海涨落。</summary>
+        /// <summary>大闸提起后泻湖放水的速度（米 / 游戏帧秒，暂停时不动），放到和外海齐平后跟着外海涨落。</summary>
         internal const float LagoonDrainRate = 0.085f;
-        /// <summary>湿痕线回落速度（米 / 现实秒）：水退了，地面还湿一阵。</summary>
+        /// <summary>湿痕线回落速度（米 / 游戏帧秒）：水退了，地面还湿一阵。</summary>
         internal const float WetLineFallRate = 0.02f;
         /// <summary>深于这个水深算深水：泡在深水里的箱子不能搜，敌人的导航三角形也按它判淹没。</summary>
         internal const float DeepWater = 0.5f;

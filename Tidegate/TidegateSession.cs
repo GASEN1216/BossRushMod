@@ -43,6 +43,8 @@ namespace BossRush
         private string assemblyError, firstReturnReason;
         private bool subscribed, closed, ready, moved, navigationReady, returning, returnRequested, deathPending, loadStarted;
         private bool pathCompleted, pathValid;
+        /// <summary>这一趟已经收尾。撤离返航时组件要等返航走完才销毁，基地关卡就绪那一刻它还在，判「还在出击」要看这个。</summary>
+        internal bool IsClosed { get { return closed; } }
         private int groundMask;
         private float enteredAt, nextHud, nextGroundCheck;
         private Vector3 safePosition;
@@ -332,6 +334,8 @@ namespace BossRush
                     Close(true, "extract_" + exitId);
                     return;
                 }
+                // 官方读条接管时这里是 null（整行收掉）；HUD 自己按字符串比较去重，每帧调不重排版。
+                if (hud != null) hud.SetExtraction(extraction.HudFallback);
             }
             if (Time.unscaledTime >= nextHud)
             {

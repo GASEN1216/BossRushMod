@@ -16,10 +16,11 @@
 // 【数值口径】官方物品价值带（离线解码 1569 件，天空岛池口径）：1–3 品质带中位 500、均值 842；2–5 带中位 810、
 // 均值 2116；4–8 带中位 2400、均值 7196。天空岛同类：晴岚航徽（纪念品）5000 / 品质 5，风标罗盘 1500 / 品质 4。
 //   - 阀门手轮 800 / 品质 2：任务零件，拿去潮位站就装掉了，卖价落在低品质带均值附近，不当换钱的路子。
-//   - 潮汐怀表 6000 / 品质 5：独一份的剧情纪念品，比晴岚航徽略贵（金库最深处的保险柜里出）。
+//   - 潮汐怀表 6000 / 品质 5：剧情纪念品，比晴岚航徽略贵。金库最深处的保险柜每趟放一块，但身上已经带着一块时不放，
+//     所以它是「三阀一闸 + 等低潮」这条主线的回报，不是白拿的第二块；交给闸伯之后想带着看潮，再打一趟金库。
 //   - 防水袋 2500 / 品质 4、鸭蹼脚掌 4000 / 品质 4：带在身上才生效的随身装备，闸伯商店有售；
 //     鸭蹼更难得（滩涂埋货稀有掉落），定价高一档。两者都在 4–8 带中位与均值之间。
-//   - 闸伯的信 50 / 品质 1：一封信，卖了也就几个钱。
+//   - 闸伯的信 50 / 品质 1：剧情钥匙，不可出售（NotSellable）；送过没读又弄丢了，阿稳每个游戏日最多补寄一封。
 // 五件全部登记掉落黑名单（Config/LootBlacklistRegistry.cs + Assets/Data/LootBlacklist.json），不进许愿台、日报与各类品质池。
 // ============================================================================
 
@@ -159,6 +160,8 @@ namespace BossRush
                 item.Quality = def.Quality;
                 ModeFItemConfigHelper.SetHiddenMember(item, "weight", def.Weight);
                 EquipmentHelper.AddTagToItem(item, "Special");
+                // 闸伯的信是剧情钥匙：读了才开航线，不让顺手卖给商人（口径同鸭皇图鉴；丢了还有补寄，见 TidegateStory.TryDeliverLetter）。
+                if (typeId == BossRushItemIds.TidegateLetter) EquipmentHelper.AddTagToItem(item, "NotSellable");
                 EquipmentHelperIcon.TryInjectIcon(item, null, def.IconName);
                 if (def.UseTime > 0f)
                 {

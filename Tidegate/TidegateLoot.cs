@@ -14,7 +14,10 @@ namespace BossRush
     {
         private const float ActivationRange = 60f;
         private const float TickInterval = 0.5f;
-        /// <summary>玩家贴着箱子时不收也不放：官方搜刮界面可能正开着。</summary>
+        /// <summary>
+        /// 玩家贴着箱子时不收起：官方搜刮界面可能正开着。只管「收起」这一个方向——被淹的箱子已经停用、没有界面开着它，
+        /// 水退了就马上放出来，站在旁边等退潮的人不用先走开再回来。
+        /// </summary>
         private const float KeepNearRange = 4f;
 
         private sealed class Point
@@ -85,11 +88,11 @@ namespace BossRush
 
         /// <summary>
         /// 每趟固定放进箱子的潮闸镇物品：船舱储物柜里的阀门手轮、所长保险柜里的潮汐怀表；滩涂埋货有小概率出鸭蹼脚掌。
-        /// 返回 0 表示没有。
+        /// 怀表只在玩家身上没带着一块时放（带着它进来看潮的人不会再白拿一块 6000 的去卖）。返回 0 表示没有。
         /// </summary>
-        internal static int FixedItemOf(string pointId, string kind, System.Random random)
+        internal static int FixedItemOf(string pointId, string kind, System.Random random, bool carryingWatch)
         {
-            if (pointId == "LOOT_vault_71") return BossRushItemIds.TidegateTideWatch;
+            if (pointId == "LOOT_vault_71") return carryingWatch ? 0 : BossRushItemIds.TidegateTideWatch;
             if (kind == "locker") return BossRushItemIds.TidegateHandwheel;
             if (kind == "buried" && random.Next(100) < FlippersChancePercent) return BossRushItemIds.TidegateFlippers;
             return 0;
@@ -126,10 +129,10 @@ namespace BossRush
             {
                 Point point = points[i];
                 float distance = (point.Marker.position - origin).sqrMagnitude;
-                if (point.Built && point.Box != null && distance > KeepNearRange * KeepNearRange)
+                if (point.Built && point.Box != null)
                 {
                     bool flooded = tide.IsDeepAt(point.Marker.position);
-                    if (flooded != point.Flooded)
+                    if (flooded != point.Flooded && (!flooded || distance > KeepNearRange * KeepNearRange))
                     {
                         point.Flooded = flooded;
                         point.Box.gameObject.SetActive(!flooded);
@@ -140,10 +143,10 @@ namespace BossRush
                 nearest = point;
             }
             // 一次只建一个：走进一片新街区时不集中做实例化与物品创建。
-            if (nearest != null) Build(nearest);
+            if (nearest != null) Build(nearest, player);
         }
 
-        private void Build(Point point)
+        private void Build(Point point, CharacterMainControl player)
         {
             point.Built = true;
             string error;
@@ -169,7 +172,8 @@ namespace BossRush
                 int amount = category == SkyIslandLootCategory.Ammo ? 20 + random.Next(31) : 1;
                 if (SkyIslandRewardCrate.AddOfficialStack(box, typeId, amount, log, category.ToString())) added++;
             }
-            int fixedItem = FixedItemOf(point.Id, point.Kind, random);
+            bool carryingWatch = point.Id == "LOOT_vault_71" && TidegateInventory.Carries(player, BossRushItemIds.TidegateTideWatch);
+            int fixedItem = FixedItemOf(point.Id, point.Kind, random, carryingWatch);
             if (fixedItem != 0 && SkyIslandRewardCrate.AddOfficialStack(box, fixedItem, 1, log, "Tidegate")) added++;
             point.Flooded = tide.IsDeepAt(point.Marker.position);
             if (point.Flooded) box.gameObject.SetActive(false);

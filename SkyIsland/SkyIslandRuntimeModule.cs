@@ -73,7 +73,9 @@ namespace BossRush
         private void OnLevelReady()
         {
             ScheduleEntry();
-            if (returnLightingPending && owner != null && owner.GetComponent<SkyIslandSession>() == null
+            // 撤离返航时会话组件要等官方加载走完才销毁，基地就绪这一刻它还在但已收尾（2026-11-05 审查发现刷新一直被跳过）。
+            SkyIslandSession session = owner == null ? null : owner.GetComponent<SkyIslandSession>();
+            if (returnLightingPending && owner != null && (session == null || session.IsClosed)
                 && SceneRuntimeGate.IsBaseHubSceneName(SceneManager.GetActiveScene().name))
             {
                 returnLightingPending = false;
@@ -169,9 +171,10 @@ namespace BossRush
             if (prelude != null) prelude.Tick();
             // 岛上不再有自绘地图，也就不需要任何输入处理：
             // 官方地图由玩家自己绑定的地图键开合（`CharacterInputControl.OnUIMapInput`）。
-            if (owner.GetComponent<SkyIslandSession>() != null)
+            SkyIslandSession activeSession = owner.GetComponent<SkyIslandSession>();
+            if (activeSession != null)
             {
-                returnLightingPending = true;
+                if (!activeSession.IsClosed) returnLightingPending = true;
                 return;
             }
             if (returnLightingFollowUpAt > 0f && Time.unscaledTime >= returnLightingFollowUpAt)

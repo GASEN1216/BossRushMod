@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using ItemStatsSystem;
+using ItemStatsSystem.Data;
 using UnityEngine;
 
 namespace BossRush
@@ -116,14 +117,19 @@ namespace BossRush
     {
         internal const int PageCount = 4;
         private static TidegateStoryPersistence persistence;
+        /// <summary>上一次补寄信的官方游戏日：信送过、没读、又哪儿都找不到时，每个游戏日最多补寄一次。</summary>
+        private static long resendDay = long.MinValue;
 
         /// <summary>模块启动时绑定，销毁时解绑。</summary>
-        internal static void Bind(TidegateStoryPersistence value) { persistence = value; }
+        internal static void Bind(TidegateStoryPersistence value) { persistence = value; resendDay = long.MinValue; }
 
         internal static TidegateStoryData Current
         {
             get { return persistence == null ? null : persistence.Load(); }
         }
+
+        /// <summary>剧情存档读写正常（没有写屏障、没有故障）。读不了时 <see cref="Current"/> 是全 false 的默认值，不能拿它下结论。</summary>
+        internal static bool Writable { get { return persistence != null && persistence.Writable; } }
 
         /// <summary>竹筏航线是否开放（读过信）。</summary>
         internal static bool RouteUnlocked
@@ -201,13 +207,17 @@ namespace BossRush
             if (!Mutate(delegate (TidegateStoryData d) { d.WatchDelivered = true; }))
             { reason = L10n.T("存档暂时不可写，稍后再试", "The save is not writable right now"); return false; }
             TidegateInventory.Consume(watch);
-            TidegateInventory.Give(player, BossRushItemIds.TidegateDryBag);
+            // 交表只在基地的竹筏边发生：背包满了就进仓库，不掉在下水道地上。
+            bool rewarded = TidegateInventory.GiveToPlayerOrStorage(BossRushItemIds.TidegateDryBag);
             TidegateNoteBridge.Unlock(TidegateNoteBridge.EndingId);
             BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
             {
                 Title = TidegateText.EndingTitle,
                 Body = TidegateText.EndingBody,
-                Warning = L10n.T("闸伯塞给你一个防水袋。", "Old Zha presses a dry bag into your hands."),
+                Warning = rewarded
+                    ? L10n.T("闸伯塞给你一个防水袋（背包满了就放进仓库）。", "Old Zha presses a dry bag into your hands (it goes to storage if your pack is full).")
+                    : L10n.T("闸伯想塞给你一个防水袋，可这会儿没能递到你手上。他的竹筏上也有卖。",
+                        "Old Zha meant to give you a dry bag but couldn't hand it over right now. He sells them on his raft too."),
                 ConfirmLabel = L10n.T("收下", "Take it"),
                 CancelLabel = L10n.T("合上", "Close"),
                 Danger = false,
@@ -219,11 +229,20 @@ namespace BossRush
         /// <summary>
         /// 阿稳送湿包裹：在基地、关卡已就绪、还没送过时送一次（快递进仓库并弹官方横幅）。
         /// 物品没注册好或快递失败都不记「已送」，下次进基地再试。
+        /// 送过却没读、信又哪儿都找不到（卖给商人、扔了、带进出击死在外面）时补寄：航线只认读信，没有信这个档就永远进不了潮闸镇。
+        /// 补寄每个官方游戏日最多一次；仓库不在（找不全）时不补。
         /// </summary>
         internal static void TryDeliverLetter()
         {
             TidegateStoryData data = Current;
-            if (data == null || data.LetterDelivered || persistence == null || !persistence.Writable) return;
+            if (data == null || data.LetterRead || persistence == null || !persistence.Writable) return;
+            bool resend = data.LetterDelivered;
+            if (resend)
+            {
+                long day = GameClock.Instance == null ? -1L : GameClock.Day;
+                if (day < 0 || day == resendDay || TidegateInventory.OwnsAnywhere(BossRushItemIds.TidegateLetter) != false) return;
+                resendDay = day;
+            }
             Item letter = null;
             try
             {
@@ -231,13 +250,16 @@ namespace BossRush
                 letter = ItemAssetsCollection.InstantiateSync(BossRushItemIds.TidegateLetter);
                 if (letter == null || letter.TypeID != BossRushItemIds.TidegateLetter) { if (letter != null) letter.DestroyTree(); return; }
                 int fallback;
-                int sent = CourierService.QuickDeliverItems(new[] { letter }, L10n.T(
-                    "阿稳：潮闸镇那边漂来一个湿透的包裹，写着你的名字，放你仓库了。",
-                    "Awen: A soaked parcel drifted in from Tidegate with your name on it. It's in your storage."), true, out fallback);
+                string banner = resend
+                    ? L10n.T("阿稳：闸伯又托人捎来一封信，说上回那封你多半弄丢了。放你仓库了。",
+                        "Awen: Old Zha sent another letter. Says you probably lost the last one. It's in your storage.")
+                    : L10n.T("阿稳：潮闸镇那边漂来一个湿透的包裹，写着你的名字，放你仓库了。",
+                        "Awen: A soaked parcel drifted in from Tidegate with your name on it. It's in your storage.");
+                int sent = CourierService.QuickDeliverItems(new[] { letter }, banner, true, out fallback);
                 if (sent <= 0 && fallback <= 0) { if (letter.InInventory == null) letter.DestroyTree(); return; }
                 letter = null;
                 Mutate(delegate (TidegateStoryData d) { d.LetterDelivered = true; });
-                Debug.Log(TidegateRaidScene.LogTag + " LETTER_DELIVERED");
+                Debug.Log(TidegateRaidScene.LogTag + (resend ? " LETTER_RESENT day=" + resendDay : " LETTER_DELIVERED"));
             }
             catch (Exception e)
             {
@@ -263,6 +285,12 @@ namespace BossRush
 
         internal static bool Has(CharacterMainControl player, int typeId) { return Find(player, typeId) != null; }
 
+        /// <summary>主角整棵物品树里（装备、背包、背包里的容器）有没有这件。整树遍历会分配列表，只在低频路径用。</summary>
+        internal static bool Carries(CharacterMainControl player, int typeId)
+        {
+            return player != null && player.CharacterItem != null && TreeContains(player.CharacterItem, typeId);
+        }
+
         /// <summary>消耗一件（可堆叠的减一，不可堆叠的整件销毁）。</summary>
         internal static void Consume(Item item)
         {
@@ -273,24 +301,61 @@ namespace BossRush
             item.DestroyTree();
         }
 
-        /// <summary>给主角一件：先进背包，满了落地（`SkyIslandInventoryTransaction.TryDeliver` 同一口径）。</summary>
-        internal static bool Give(CharacterMainControl player, int typeId)
+        /// <summary>
+        /// 在基地给主角一件：先进身上，放不下进仓库（官方 `ItemUtilities.SendToPlayer(item, false, true)`，背包满时不落地）。
+        /// 物品没注册好、或基地仓库不在时返回 false，什么都不发。
+        /// </summary>
+        internal static bool GiveToPlayerOrStorage(int typeId)
         {
             Item item = null;
             try
             {
-                if (ItemAssetsCollection.GetPrefab(typeId) == null) return false;
+                if (PlayerStorage.Inventory == null || ItemAssetsCollection.GetPrefab(typeId) == null) return false;
                 item = ItemAssetsCollection.InstantiateSync(typeId);
                 if (item == null || item.TypeID != typeId) { if (item != null) item.DestroyTree(); return false; }
-                if (SkyIslandInventoryTransaction.TryDeliver(item, player)) return true;
-                item.DestroyTree();
-                return false;
+                ItemUtilities.SendToPlayer(item, false, true);
+                return true;
             }
             catch (Exception e)
             {
+                if (item != null && item.InInventory == null && item.PluggedIntoSlot == null)
+                {
+                    try { item.DestroyTree(); } catch (Exception inner) { Debug.LogWarning(TidegateRaidScene.LogTag + " 物品回收失败：" + inner.Message); }
+                }
                 Debug.LogWarning(TidegateRaidScene.LogTag + " 物品 " + typeId + " 发放失败：" + e.Message);
                 return false;
             }
+        }
+
+        /// <summary>
+        /// 主角身上（含装备、背包与里面的容器）、基地仓库、快递缓冲里有没有这件物品。
+        /// 仓库不在（出击场景）或主角没就绪时返回 null（找不全，不能下「没有」的结论）。只在低频路径用：整树遍历会分配列表。
+        /// </summary>
+        internal static bool? OwnsAnywhere(int typeId)
+        {
+            CharacterMainControl player = CharacterMainControl.Main;
+            Inventory storage = PlayerStorage.Inventory;
+            if (player == null || player.CharacterItem == null || storage == null) return null;
+            if (TreeContains(player.CharacterItem, typeId)) return true;
+            List<Item> stored = storage.Content;
+            for (int i = 0; i < stored.Count; i++)
+                if (stored[i] != null && TreeContains(stored[i], typeId)) return true;
+            List<ItemTreeData> buffer = PlayerStorage.IncomingItemBuffer;
+            if (buffer != null)
+                foreach (ItemTreeData tree in buffer)
+                    if (tree != null && tree.entries != null)
+                        foreach (ItemTreeData.DataEntry entry in tree.entries)
+                            if (entry != null && entry.typeID == typeId) return true;
+            return false;
+        }
+
+        private static bool TreeContains(Item root, int typeId)
+        {
+            if (root.TypeID == typeId) return true;
+            List<Item> children = root.GetAllChildren(true, true);
+            for (int i = 0; i < children.Count; i++)
+                if (children[i] != null && children[i].TypeID == typeId) return true;
+            return false;
         }
     }
 }

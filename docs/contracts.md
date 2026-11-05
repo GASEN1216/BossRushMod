@@ -54,6 +54,7 @@ Breaking:
 ## 3. 存档与持久化 key
 
 - `BossRush_EclipseBloom_Introduction_v1` — `EclipseBloomIntroductionPersistence.StorageKey`，独立槽位 JSON，`schemaVersion = 1`（2026-10-22，`SCHEMA+`）。`accepted` / `defeated` / `completed` 均为布尔；缺 key 默认为未接取，未知 schema 或矛盾状态拒绝覆盖。死亡清空接取与击败事实并自动放弃官方任务，回基地可重新接取；交付完成后普通 37 号探索仍可每次出击刷新一只。只保存 Mod 事实，官方任务快照由共享投影核心过滤。
+- `BossRush_Tidegate_Story_v1` — `TidegateStoryPersistence.StorageKey`，独立槽位 JSON，`schemaVersion = 1`（2026-11-05，`SCHEMA+`）。`letterDelivered` / `letterRead` / `watchDelivered` 为布尔，`pages` 为 0–15 的位掩码（闸工日志第 1–4 页）；缺 key 默认为全未发生，未知 schema、越界页码或矛盾态（读过信却没送达）拒绝覆盖。送达后没读、信又哪儿都找不到时每个官方游戏日最多补寄一次，不加字段。信、日志与收尾镜像进官方笔记图鉴（键前缀 `BossRushTidegate_`，见 §7.1 的 NoteIndex 例外）；没有官方任务。
 
 新持久化 key 使用 `BossRush_` 前缀，避免与原版或其他 Mod 碰撞。
 
@@ -843,7 +844,7 @@ Breaking/Operational:
 - 输入资产 `Duckov Controls` 只有键鼠方案，没有手柄绑定；`UIInputManager.OnNavigate` 在 started / performed / canceled 各发一次，自绘面板导航按边沿走一步。
 - `NoteIndex.SetNoteDynamic` 只写查询字典、不写 `notes` 列表，两边都写界面才看得到；`titleKey` / `contentKey` 是只读派生属性，文案走 `LocalizationHelper.InjectLocalizations`。
 - `NoteIndex` 的解锁状态随官方存档写进 `NoteIndexData`（`Save()` 挂在 `OnCollectSaveData` 上，`unlockedNotes` 与 `readNotes` 两份列表都从 `unlockedNotes` 拷）。所以镜像我们自己的图鉴条目**就是在写官方存档键**：卸载 Mod 后只剩带本 Mod 前缀的孤儿 key，官方读档不报错，图鉴「已解锁数」可能虚高。
-  2026-09-14 拍板接受为例外（天空岛见闻、征程线索）。我们的存档仍是权威，镜像双向同步：官方点亮而我们存档里没有的，经公开属性 `UnlockedNotes`（返回的就是解锁集合本身）收回并照官方写法调 `onNoteStatusChanged`。
+  2026-09-14 拍板接受为例外（天空岛见闻、征程线索；2026-11-05 起含潮闸镇的信、日志与收尾，键前缀 `BossRushTidegate_`）。我们的存档仍是权威，镜像双向同步：官方点亮而我们存档里没有的，经公开属性 `UnlockedNotes`（返回的就是解锁集合本身）收回并照官方写法调 `onNoteStatusChanged`。
 - 切图前要禁输入，就用**当前场景内的临时对象**调 `InputManager.DisableInput`：`blockInputSources` 只在源销毁或失活时解封，挂 DontDestroyOnLoad 会让输入永久锁死。
   `SceneLoader.LoadScene` 同步拒绝时 `LoadFinished` 立刻为 true，等待场景的循环必须看它。
   官方在 `allowSceneActivation = true` 之前等待玩家“点击继续”；天空岛等场景根节点时仅对本租约仍加载、无错误且 `LoadingComment == "Wait for click..."` 的阶段延长期限，点击后真实加载仍须超时。官方更新后复核诊断字符串与激活顺序（`SkyIslandRaidLease.HasSceneLoadTimeRemaining`）。

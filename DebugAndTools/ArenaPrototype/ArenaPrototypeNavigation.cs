@@ -55,6 +55,24 @@ namespace BossRush
             return node == null || node.Walkable;
         }
 
+        /// <summary>
+        /// 离这个点最近的本租约图可走节点上的最近点（落在三角形面上）。图没建好或找不到时返回 false、原样给回。
+        /// 潮闸镇刷怪用它把落在实心碰撞盒里的刷怪点挪到能站的地方。
+        /// </summary>
+        internal bool TryNearestWalkable(Vector3 point, out Vector3 position)
+        {
+            position = point;
+            if (graph == null || owner == null) return false;
+            NNConstraint constraint = NNConstraint.None;
+            constraint.constrainWalkability = true;
+            constraint.walkable = true;
+            constraint.graphMask = GraphMask.FromGraph(graph);
+            NNInfo nearest = owner.GetNearest(point, constraint);
+            if (nearest.node == null) return false;
+            position = nearest.position;
+            return true;
+        }
+
         /// <summary>只修改本租约图。按整块三角面包围盒相交封门，避免长三角形中心落在门外而漏通。</summary>
         internal void SetBlockedAreas(Bounds[] areas)
         {
@@ -86,12 +104,15 @@ namespace BossRush
         /// <summary>
         /// 按三角形三个顶点判断能不能走（潮闸镇按潮位封住被淹的三角形）。只改本租约图；与 <see cref="SetBlockedAreas"/>
         /// 一样以扫描后的原始可走性为基准，判据放开时自动恢复。
+        /// 只写真正变了的节点、有变化才标图脏：官方带的 A* 里 `Walkable` 的 setter 每写一次都把节点交给分层图重算，
+        /// 涨落时每秒整图重写约 3900 个节点没有必要。
         /// </summary>
         internal void SetWalkable(Func<Vector3, Vector3, Vector3, bool> walkable)
         {
             if (graph == null || owner == null || walkable == null) return;
             owner.AddWorkItem((IWorkItemContext context) =>
             {
+                bool changed = false;
                 graph.GetNodes((Action<GraphNode>)(node =>
                 {
                     bool original;
@@ -99,9 +120,12 @@ namespace BossRush
                     { original = node.Walkable; originalWalkability.Add(node, original); }
                     TriangleMeshNode triangle = node as TriangleMeshNode;
                     bool open = triangle == null || walkable((Vector3)triangle.GetVertex(0), (Vector3)triangle.GetVertex(1), (Vector3)triangle.GetVertex(2));
-                    node.Walkable = original && open;
+                    bool next = original && open;
+                    if (node.Walkable == next) return;
+                    node.Walkable = next;
+                    changed = true;
                 }));
-                context.SetGraphDirty(graph);
+                if (changed) context.SetGraphDirty(graph);
             });
             owner.FlushWorkItems();
         }

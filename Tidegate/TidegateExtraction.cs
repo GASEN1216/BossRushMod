@@ -33,6 +33,13 @@ namespace BossRush
         private float held = -1f;
         private bool disposed, lighthouseBoat;
         private float nextRings;
+        private int fallbackSeconds = -1;
+
+        /// <summary>
+        /// 撤离读秒的文字兜底：官方读条控件不在场（或反射字段对不上、`Show` 返回 false）时给 HUD 卡片的一行，
+        /// 官方读条接管或不在撤离圈里时为 null（口径同天空岛 `SkyIslandSession.ShowExtraction`）。
+        /// </summary>
+        internal string HudFallback { get; private set; }
 
         internal TidegateExtraction(TidegateWorld world, TidegateTide tide, int groundMask)
         {
@@ -110,18 +117,28 @@ namespace BossRush
                 if (current != null) HideCountdown();
                 current = null;
                 held = -1f;
+                SetFallback(-1);
                 return false;
             }
             if (inside != current) { HideCountdown(); current = inside; held = 0f; }
             held += Math.Max(0f, advance);
-            if (current.Countdown != null) current.Countdown.Show(held);
+            bool shown = current.Countdown != null && current.Countdown.Show(held);
+            SetFallback(shown ? -1 : Mathf.CeilToInt(Mathf.Max(0f, current.Hold - held)));
             if (held < current.Hold) return false;
             exitId = current.Id;
             return true;
         }
 
+        private void SetFallback(int seconds)
+        {
+            if (seconds == fallbackSeconds) return;
+            fallbackSeconds = seconds;
+            HudFallback = seconds < 0 ? null : L10n.T("返回基地 · ", "Returning to base · ") + seconds + L10n.T(" 秒", "s");
+        }
+
         internal void HideCountdown()
         {
+            SetFallback(-1);
             if (current != null && current.Countdown != null)
             {
                 try { current.Countdown.Hide(); }

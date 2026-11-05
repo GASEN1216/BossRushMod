@@ -118,7 +118,7 @@ namespace BossRush
             if (disposed || lighthouseLit) return;
             lighthouseLit = true;
             boatAt = Time.time + BoatDelay;
-            if (enemies != null) enemies.Lure(world.Lighthouse.position, LureRadius);
+            if (enemies != null) enemies.Lure(world.Lighthouse.position, LureRadius, RevealSeconds);
             if (enemies != null) enemies.RevealOnMap(RevealSeconds);
             LightBeam();
             announce(L10n.T("灯塔亮了。45 秒后灯塔码头来船——附近的人也都看见了。",

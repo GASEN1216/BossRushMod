@@ -101,9 +101,10 @@ namespace BossRush
             double hours = ClockHours();
             level = TidegateTideRules.LevelAt(hours);
             TidegateTidePhase next = TidegateTideRules.PhaseAt(hours);
-            lagoon = TidegateTideRules.StepLagoon(lagoon, level, sluiceOpen, Time.unscaledDeltaTime);
-            wetTide = TidegateTideRules.StepWetLine(wetTide, level, Time.unscaledDeltaTime);
-            wetLagoon = TidegateTideRules.StepWetLine(wetLagoon, lagoon, Time.unscaledDeltaTime);
+            // 泻湖放水与湿痕按会话传进来的游戏帧时间走：暂停与拍照模式压 timeScale 时和潮位一起停，不在菜单里偷偷放干。
+            lagoon = TidegateTideRules.StepLagoon(lagoon, level, sluiceOpen, deltaTime);
+            wetTide = TidegateTideRules.StepWetLine(wetTide, level, deltaTime);
+            wetLagoon = TidegateTideRules.StepWetLine(wetLagoon, lagoon, deltaTime);
             Vector4 sun = Shader.GetGlobalVector(SkySunColorId);
             night = Shader.GetGlobalFloat(SkyEnabledId) > 0.5f ? SkyIslandStreetLampRules.NightFactor(sun.x, sun.y, sun.z) : 0f;
             Shader.SetGlobalFloat(LightingEnabledId, Shader.GetGlobalFloat(SkyEnabledId));

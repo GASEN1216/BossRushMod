@@ -86,10 +86,13 @@ namespace BossRush
 
         internal static void RequestSync() { syncPending = true; }
 
-        /// <summary>模块每帧调；只在需要同步时做事，平时 O(1)。</summary>
+        /// <summary>
+        /// 模块每帧调；只在需要同步时做事，平时 O(1)。剧情存档读不了（写屏障、解码失败、换槽中）时
+        /// 读到的是全 false 的默认值，拿它对齐会把官方图鉴里的条目全收回，所以等存档恢复再同步，镜像保留原状态（口径同天空岛）。
+        /// </summary>
         internal static void Tick()
         {
-            if (!syncPending) return;
+            if (!syncPending || !TidegateStory.Writable) return;
             EnsureRegistered(TidegateStory.Current);
         }
 

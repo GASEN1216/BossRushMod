@@ -78,6 +78,7 @@ namespace BossRush
         private const float SaveQuietRadius = 45f;
         private int groundMask, searchCount, nextLandmark;
         private bool subscribed, closed, ready, moved, spawning, pathCompleted, pathValid;
+        internal bool IsClosed { get { return closed; } } // 撤离返航时组件等返航走完才销毁，基地就绪那一刻它还在
         private float enteredAt, nextGroundCheck, airborneSince = -1, nextHud;
         /// <summary>
         /// 本趟被捞回落脚点的次数，以及「同一处连着捞」的计数与上一次捞回的位置。

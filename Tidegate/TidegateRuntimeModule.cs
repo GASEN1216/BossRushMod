@@ -46,7 +46,10 @@ namespace BossRush
         /// </summary>
         private void OnLevelReady()
         {
-            if (!returnLightingPending || owner == null || owner.GetComponent<TidegateSession>() != null) return;
+            if (!returnLightingPending || owner == null) return;
+            // 撤离返航时会话组件要等官方加载走完（基地就绪之后）才销毁，这一刻它还在但已收尾，按「不在出击」算。
+            TidegateSession session = owner.GetComponent<TidegateSession>();
+            if (session != null && !session.IsClosed) return;
             if (!SceneRuntimeGate.IsBaseHubSceneName(SceneManager.GetActiveScene().name)) return;
             returnLightingPending = false;
             try { DynamicGI.UpdateEnvironment(); }
@@ -58,10 +61,13 @@ namespace BossRush
             if (owner == null) return;
             TidegateStory.Tick();
             TidegateNoteBridge.Tick();
-            if (owner.GetComponent<TidegateSession>() != null) { returnLightingPending = true; return; }
+            TidegateSession active = owner.GetComponent<TidegateSession>();
+            if (active != null) { if (!active.IsClosed) returnLightingPending = true; return; }
             if (Time.unscaledTime < nextAttempt) return;
             nextAttempt = Time.unscaledTime + 1f;
             if (SceneLoader.IsSceneLoading || LevelManager.LevelInitializing || !LevelManager.LevelInited) return;
+            // 在竹筏边结婚的闸伯趁还在下水道时交给婚姻接管（挪回主场景），之后玩家走出下水道也不会把配偶一起卸掉。
+            TidegateZhabo.ReleaseIfMarried();
             bool inBase = SceneRuntimeGate.IsBaseHubSceneName(SceneManager.GetActiveScene().name);
             // 阿稳送湿包裹：在基地、没有进行中的模式时送一次；失败下次进基地再试（每 30 秒最多问一次）。
             string mode;
@@ -76,7 +82,12 @@ namespace BossRush
                 ClearEntry();
                 return;
             }
-            if (raft != null) return;
+            if (raft != null)
+            {
+                // 闸伯第一次没生成出来（官方生成返回空）就在这里补：它自己判重、判婚、30 秒退避，平时是几个字段比较。
+                TidegateZhabo.Spawn(target);
+                return;
+            }
             if (!TidegateRaidScene.IsBundleDeployed() || !TidegateEntryRaft.IsBundleDeployed())
             {
                 if (!bundleWarned)

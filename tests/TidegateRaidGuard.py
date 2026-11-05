@@ -122,6 +122,45 @@ def main():
     if notes.find("notes.Add(note)") < 0 or notes.find("notes.Add(note)") > notes.find("NoteIndex.SetNoteDynamic(note)"):
         errors.append("官方笔记图鉴要先写 notes 列表再 SetNoteDynamic（只写字典界面列不出来）")
 
+    # 2026-11-05 审查修复（三路独立审查）——
+    # 丢信：送过没读、信又哪儿都找不到时补寄（每游戏日一次），信不可出售；否则这个档永远开不了航线。
+    need(deliver, "补寄闸伯的信", "if (data == null || data.LetterRead", "TidegateInventory.OwnsAnywhere(BossRushItemIds.TidegateLetter) != false",
+         "day == resendDay")
+    need(read("Integration/Tidegate/TidegateItems.cs"), "信不可出售",
+         'if (typeId == BossRushItemIds.TidegateLetter) EquipmentHelper.AddTagToItem(item, "NotSellable");')
+    # 谢礼在基地：背包满了进仓库，不落地。
+    need(body(story, "internal static bool GiveToPlayerOrStorage(int typeId)"), "交表谢礼", "ItemUtilities.SendToPlayer(item, false, true)")
+    # 婚后配偶：交给婚姻接管并挪回主场景，不回收（口径同天空岛居民）。
+    release = body(zhabo, "internal static void ReleaseIfMarried()") or ""
+    need(release, "闸伯婚后交接", "AffinityManager.IsMarriedToPlayer(BlueprintId)", "owned = null;", "MultiSceneCore.MoveToMainScene(npc.gameObject)")
+    if despawn.find("ReleaseIfMarried();") < 0 or despawn.find("ReleaseIfMarried();") > despawn.find("DuckNpcSpawner.Despawn(npc)"):
+        errors.append("闸伯回收前必须先把已婚的交给婚姻接管")
+    need(module, "闸伯婚后交接时机", "TidegateZhabo.ReleaseIfMarried();")
+    # 图鉴镜像：剧情存档读不了时不拿默认值收回条目。
+    need(body(notes, "internal static void Tick()"), "图鉴镜像写屏障", "!TidegateStory.Writable")
+    # 刷怪：先吸到本图导航可走面，再贴地；Boss 不卷走；不给常驻透视锁定；灯塔引怪限时还原。
+    spawn = body(enemies, "private async void Spawn(Slot slot)") or ""
+    snap = spawn.find("navigation.TryNearestWalkable(position, out snapped)")
+    if snap < 0 or snap > spawn.find("clone.CreateCharacterAsync("):
+        errors.append("刷怪必须先吸到本图导航可走面（有刷怪点落在实心碰撞盒里）")
+    if re.search(r"forceTracePlayerDistance\s*=\s*\d", enemies):
+        errors.append("刷怪不得写死 forceTracePlayerDistance（官方 AI 在这个距离内无视视线锁定，等于透视）")
+    need(body(enemies, "private void TickTide()"), "沙老大不卷走", 'slot.Kind != "boss" && !diggersOut')
+    need(body(enemies, "private void EndLure()"), "灯塔引怪还原", "slot.Ai.forceTracePlayerDistance = slot.LureOriginal;")
+    need(enemies, "灯塔引怪限时", "lureUntil = -1f; EndLure();")
+    need(read("Tidegate/TidegateDevices.cs"), "灯塔引怪时长", "enemies.Lure(world.Lighthouse.position, LureRadius, RevealSeconds)")
+    # 箱子：只有收起要等玩家走开，水退了马上放出。
+    need(read("Tidegate/TidegateLoot.cs"), "箱子放出不等人", "if (flooded != point.Flooded && (!flooded || distance > KeepNearRange * KeepNearRange))")
+    # 导航：只写变了的节点（A* setter 每写一次都交分层图重算）。
+    walk = body(read("DebugAndTools/ArenaPrototype/ArenaPrototypeNavigation.cs"), "internal void SetWalkable(Func<Vector3, Vector3, Vector3, bool> walkable)")
+    need(walk, "导航只写变化", "if (node.Walkable == next) return;", "if (changed) context.SetGraphDirty(graph);")
+    # 撤离读条兜底：官方读条不在场时 HUD 文字读秒。
+    need(session, "撤离读秒兜底", "hud.SetExtraction(extraction.HudFallback)")
+    need(read("Tidegate/TidegateExtraction.cs"), "撤离读秒兜底", "bool shown = current.Countdown != null && current.Countdown.Show(held);")
+    # 返航刷新基地环境光：撤离返航时会话组件到基地就绪后才销毁，要看「已收尾」而不是「组件在不在」（天空岛同修）。
+    need(body(module, "private void OnLevelReady()"), "返航环境光", "if (session != null && !session.IsClosed) return;")
+    need(body(read("SkyIsland/SkyIslandRuntimeModule.cs"), "private void OnLevelReady()"), "天空岛返航环境光", "(session == null || session.IsClosed)")
+
     # 潮汐读跨天连续的官方时间：只读当天时刻（24 不是 4.5 的整数倍）会让午夜从低潮一步跳回高潮。
     tide = read("Tidegate/TidegateTide.cs")
     need(body(tide, "internal static double ClockHours()"), "潮汐时钟", "TidegateTideRules.ElapsedHours(GameClock.Day, GameClock.TimeOfDay.TotalSeconds)")

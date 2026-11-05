@@ -42,6 +42,8 @@ namespace BossRush
             internal int Waypoint;
             internal float DeepSince = -1f;
             internal GameObject MapPoint;
+            /// <summary>灯塔引怪前的官方 forceTracePlayerDistance；负数表示没被引。</summary>
+            internal float LureOriginal = -1f;
         }
 
         private readonly List<Slot> slots = new List<Slot>();
@@ -50,7 +52,7 @@ namespace BossRush
         private readonly ArenaPrototypeNavigation navigation;
         private readonly CharacterMainControl player;
         private readonly Func<bool> valid;
-        private float nextTick, nextTide, revealUntil = -1f;
+        private float nextTick, nextTide, revealUntil = -1f, lureUntil = -1f;
         private bool closed, spawning;
 
         internal int SpawnedCount { get; private set; }
@@ -78,6 +80,7 @@ namespace BossRush
             if (closed || valid == null || !valid() || player == null) return;
             if (Time.time >= nextTide) { nextTide = Time.time + TideInterval; TickTide(); }
             if (revealUntil > 0f && Time.time >= revealUntil) { revealUntil = -1f; ClearReveal(); }
+            if (lureUntil > 0f && Time.time >= lureUntil) { lureUntil = -1f; EndLure(); }
             if (spawning || Time.time < nextTick) return;
             nextTick = Time.time + TickInterval;
             Vector3 origin = player.transform.position;
@@ -118,7 +121,10 @@ namespace BossRush
                 // 正式出击沿用官方 OnDead 箱子、经验与魂语义；距离激活关掉，由下面的安全网统一解除休眠。
                 clone.dropBoxOnDead = true;
                 clone.setActiveByPlayerDistance = false;
-                Vector3 position = slot.Marker.position;
+                // 先吸到本图导航最近的可走面上：有几个刷怪点落在车辆 / 设备的实心碰撞盒里（墙层），
+                // 地面射线会穿过盒子落到盒底，敌人就生在盒子里头（ArtSource/Tidegate/README.md 的「运行时要 GetNearest」）。
+                Vector3 position = slot.Marker.position, snapped;
+                if (navigation.TryNearestWalkable(position, out snapped)) position = snapped;
                 float ground;
                 if (world.TryGroundAt(position, out ground)) position.y = ground + 0.05f;
                 created = await clone.CreateCharacterAsync(position, slot.Marker.forward, -1, null, false);
@@ -131,8 +137,7 @@ namespace BossRush
                 SpawnedEnemyActivationHelper.ReleaseFromPlayerDistanceSleep(created);
                 // 根 AGENTS §4.5：官方 preset 的阵营可能是中立，统一挂到 wolf，保证与玩家敌对、彼此不内斗。
                 created.SetTeam(Teams.wolf);
-                // 沙老大发现玩家后咬住不放；其余交给官方感知。
-                if (slot.Kind == "boss") ai.forceTracePlayerDistance = 40f;
+                // 选敌全交给官方感知。不改 forceTracePlayerDistance：官方 AI 在这个距离内无视视线每帧锁定玩家，等于透视。
                 created.transform.SetParent(world.Root.transform, true);
                 slot.Ai = ai;
                 if (revealUntil > 0f) MarkOnMap(slot);
@@ -184,7 +189,8 @@ namespace BossRush
                 else continue;
                 slot.Ai.patrolPosition = goal;
                 // 被潮水卷走：涨潮 / 高潮时还泡在深水里（脚下水深 > 0.5 m）超过 8 秒就消失，不掉东西。
-                if (!diggersOut && tide.IsDeepAt(character.transform.position))
+                // 沙老大不卷：他是官方 Boss，掉落是打他的回报，不能让潮水白白带走。
+                if (slot.Kind != "boss" && !diggersOut && tide.IsDeepAt(character.transform.position))
                 {
                     if (slot.DeepSince < 0f) slot.DeepSince = Time.time;
                     else if (Time.time - slot.DeepSince > SweptSeconds) SweepAway(slot);
@@ -260,17 +266,32 @@ namespace BossRush
             }
         }
 
-        /// <summary>灯塔点亮这类动静：半径内已刷出的敌人咬住玩家（官方 forceTracePlayerDistance）。</summary>
-        internal void Lure(Vector3 origin, float radius)
+        /// <summary>
+        /// 灯塔点亮这类动静：半径内已刷出的敌人在 <paramref name="seconds"/> 秒里咬住玩家（官方 forceTracePlayerDistance，
+        /// 这个距离内无视视线锁定），到时还原成官方原值——和全图显示敌人同样长，不是整趟透视。
+        /// </summary>
+        internal void Lure(Vector3 origin, float radius, float seconds)
         {
             if (closed) return;
             foreach (Slot slot in slots)
             {
                 CharacterMainControl character = slot.Character;
-                if (character == null || character.Health == null || character.Health.IsDead) continue;
+                AICharacterController ai = slot.Ai;
+                if (character == null || ai == null || character.Health == null || character.Health.IsDead) continue;
                 if ((character.transform.position - origin).sqrMagnitude > radius * radius) continue;
-                AICharacterController ai = character.GetComponentInChildren<AICharacterController>();
-                if (ai != null) ai.forceTracePlayerDistance = Mathf.Max(ai.forceTracePlayerDistance, radius + 20f);
+                if (slot.LureOriginal < 0f) slot.LureOriginal = Mathf.Max(0f, ai.forceTracePlayerDistance);
+                ai.forceTracePlayerDistance = Mathf.Max(slot.LureOriginal, radius + 20f);
+            }
+            lureUntil = Time.time + Mathf.Max(1f, seconds);
+        }
+
+        private void EndLure()
+        {
+            foreach (Slot slot in slots)
+            {
+                if (slot.LureOriginal < 0f) continue;
+                if (slot.Ai != null) slot.Ai.forceTracePlayerDistance = slot.LureOriginal;
+                slot.LureOriginal = -1f;
             }
         }
 

@@ -5,7 +5,7 @@ A seaside town that rises and falls with the tide. At low tide the mudflats, a s
 ### Setting out
 
 - At base, with no mode running, Awen couriers a soaked parcel that drifted in from Tidegate into your storage. Inside is **Old Zha's Letter**.
-- Use (read) the letter from your backpack and the raft route in the bunker sewer opens. The letter is never used up, so you can read it again whenever you like.
+- Use (read) the letter from your backpack and the raft route in the bunker sewer opens. The letter is never used up, so you can read it again whenever you like. It can't be sold; if you lose it before reading it, Awen sends another one a day later.
 - Go down into the bunker sewer and follow the west walkway all the way north (up to the water tanks). A raft with a lantern is moored in the canal, and Old Zha stands beside it. Choose "Take Old Zha's raft to Tidegate".
 - Leaving and coming back work like any other map: the loading screen stops at "Click to continue", and extracting shows the usual extraction summary before you return to base. Finish any running mode first; you cannot go while on a Sky Islands trip.
 
@@ -24,7 +24,7 @@ A seaside town that rises and falls with the tide. At low tide the mudflats, a s
 
 ### Extraction
 
-All four extraction points have a ring painted on the ground and are marked on the game map, with a label saying when they are open:
+All four extraction points are marked on the game map, with a label saying when they are open; an exit that is open right now also lights a ring on the ground:
 
 - **Highway Checkpoint** (southwest corner of town): always open, 10 seconds.
 - **Ferry Pier**: the boat only calls at high tide, 5 seconds.
@@ -38,7 +38,7 @@ The countdown is the same one the regular extraction points use: it pauses while
 - The tide gate has three valves: the **Waterworks No. 3 pump house**, the **town pump station** and the **tide gauge station**. Each takes 3 seconds to turn.
 - The sand gang pulled the tide gauge handwheel off and dumped it in the **locker in the sand dredger's cabin** (Valve Handwheel). The dredger's gangway sits low and floods at high tide, so go while the water is out. Bring the wheel to the tide gauge station and the valve turns; the wheel stays on the valve.
 - With all three open the gate lifts: the lagoon starts draining, and once it is empty it rises and falls with the sea. About 4 seconds later a squad of the sand gang comes over the seawall, heading for the vault.
-- At low tide the savings bank comes out of the water. The safes in the vault hold the best loot, and **the manager's safe** always has a Tide Pocket Watch.
+- At low tide the savings bank comes out of the water. The safes in the vault hold the best loot, and **the manager's safe** always has a Tide Pocket Watch (unless you are already carrying one).
 
 ### The lighthouse
 
@@ -67,7 +67,7 @@ The countdown is the same one the regular extraction points use: it pauses while
 
 - **Old Zha's Letter** (500115): delivered by Awen. Reading it opens the raft route, and you can read it again.
 - **Valve Handwheel** (500111): in the dredger cabin locker, one per run; used up at the tide gauge valve.
-- **Tide Pocket Watch** (500112): in the manager's safe, one per run; give it to Old Zha, or keep it to read the tide.
+- **Tide Pocket Watch** (500112): in the manager's safe, one per run (none if you are already carrying one); give it to Old Zha, or keep it to read the tide.
 - **Dry Bag** (500113): Old Zha's thanks and his shop; carry it to swim with 6 kg more load.
 - **Duck Flippers** (500114): now and then in the buried caches, and in Old Zha's shop; carry them to swim faster in Tidegate.
 
