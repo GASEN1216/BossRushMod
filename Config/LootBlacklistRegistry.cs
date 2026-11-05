@@ -201,6 +201,12 @@ namespace BossRush
                 // 失落的航向仪：只从零号区那具尸体箱里出，交付即消耗——不进许愿台、日报与各类品质池。
                 BossRushItemIds.SkyIslandNavInstrument,
                 BossRushItemIds.AstralStaff,
+                // 潮闸镇物品：只从潮闸镇的固定点位、闸伯（谢礼与商店）和阿稳快递出——不进许愿台、日报与各类品质池。
+                BossRushItemIds.TidegateHandwheel,
+                BossRushItemIds.TidegateTideWatch,
+                BossRushItemIds.TidegateDryBag,
+                BossRushItemIds.TidegateFlippers,
+                BossRushItemIds.TidegateLetter,
             };
         }
     }

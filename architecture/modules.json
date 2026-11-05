@@ -692,6 +692,43 @@
       ]
     },
     {
+      "id": "tidegate",
+      "title": "潮闸镇独立出击地图（潮汐、竹筏入口、撤离、搜刮与刷怪）",
+      "kind": "map",
+      "paths": [
+        "Tidegate/**/*.cs",
+        "Utilities/RaidScenes/*.cs",
+        "Integration/Tidegate/*.cs"
+      ],
+      "entry": "Tidegate/TidegateRuntimeModule.cs",
+      "state_owner": "TidegateRuntimeModule",
+      "public_api": [
+        "TidegateRuntimeModule",
+        "ModRaidSceneBridge"
+      ],
+      "data": [],
+      "tests": [
+        "tests/SkyIslandSceneReferenceBridgeGuard.py",
+        "tests/fixtures/SkyIslandSceneReferenceBridge",
+        "tests/Tidegate*",
+        "tests/fixtures/TidegateTideRules"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/游戏模式系统/潮闸镇独立出击地图.md",
+        "WikiContent/zh/map__tidegate.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "SkyIsland/AGENTS.md"
+      ],
+      "depends_on": [
+        "host",
+        "common",
+        "utilities",
+        "sky-island"
+      ]
+    },
+    {
       "id": "devtools",
       "title": "F3、调试与场景原型",
       "kind": "devtools",

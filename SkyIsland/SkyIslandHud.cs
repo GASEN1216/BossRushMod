@@ -312,8 +312,12 @@ namespace BossRush
         private readonly HashSet<string> titled = new HashSet<string>(StringComparer.Ordinal);
         private readonly SkyIslandCaptionQueue captions = new SkyIslandCaptionQueue(CaptionQueueLimit);
 
-        internal SkyIslandHud(Transform owner)
+        /// <summary>区域大标题上方的小字（地图名）。潮闸镇复用这张卡时传自己的名字；取用时解析语言。</summary>
+        private readonly Func<string> overline;
+
+        internal SkyIslandHud(Transform owner, Func<string> overline = null)
         {
+            this.overline = overline;
             try
             {
                 canvas = BossRushUI.CreateCanvasRoot("SkyIslandHud", BossRushUILayers.HudOverlay, false);
@@ -932,7 +936,7 @@ namespace BossRush
 
         private void StartBanner(string title)
         {
-            if (bannerOverline != null) bannerOverline.text = L10n.T("晴岚群岛", "QINGLAN ARCHIPELAGO");
+            if (bannerOverline != null) bannerOverline.text = overline != null ? overline() : L10n.T("晴岚群岛", "QINGLAN ARCHIPELAGO");
             if (bannerTitle != null) bannerTitle.text = title;
             if (bannerHint != null) bannerHint.text = landingHint ?? string.Empty;
             bannerHold = landingHint != null ? BannerLandingHold : BannerHold;

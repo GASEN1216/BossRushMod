@@ -24,8 +24,14 @@ namespace BossRush
         internal const string StoneOutpostResourceScenePath = "Assets/StoneOutpost/StoneOutpost.unity";
         private const string BaseRootSceneName = "Base";
         private const string BaseSceneName = "Base_SceneV2";
+        /// <summary>基地地堡下水道（官方船点所在子场景，sceneID `Base_SceneV2_2`）。</summary>
         private const string BaseSceneSubName = "Base_SceneV2_Sub_01";
-        private const string BaseSewerSceneName = "Level_HiddenWarehouse_CellarUnderGround";
+        /// <summary>
+        /// 仓库区出击图 `Level_HiddenWarehouse_Main` 的地下室子场景，**不是基地**。它曾被当成「基地下水道」写进基地名单，
+        /// 玩家在仓库区出击时走进地下室，Mod 就以为回到了基地（2026-11-05 读官方 level18 / level3 的 MultiSceneCore.subScenes 核实：
+        /// 基地的两个子场景是 Base_SceneV2 与 Base_SceneV2_Sub_01）。留着常量只为让守卫钉住「它不在基地名单里」。
+        /// </summary>
+        internal const string HiddenWarehouseCellarSceneName = "Level_HiddenWarehouse_CellarUnderGround";
 
         /// <summary>
         /// 只承载附加环境资源、不代表角色/关卡服务切换的 Scene；按精确路径识别。
@@ -40,8 +46,7 @@ namespace BossRush
         {
             return sceneName == BaseRootSceneName ||
                    sceneName == BaseSceneName ||
-                   sceneName == BaseSceneSubName ||
-                   sceneName == BaseSewerSceneName;
+                   sceneName == BaseSceneSubName;
         }
 
         internal static bool IsGameplaySceneName(string sceneName)

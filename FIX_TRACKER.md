@@ -2,6 +2,26 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+## 2026-11-05 新地图「潮闸镇」接入游戏（COMPAT / SCHEMA+ / OPERATIONAL；L1/L2，L3 待验）
+
+owner 拍板方向与竹筏入口后，从 three.js 原型 → Blender → 作者工程 Unity → 游戏侧接入一路做完。结构与行为见 `.qoder/repowiki/zh/content/游戏模式系统/潮闸镇独立出击地图.md`，设计与剧情见 `docs/design/tidegate-town/README.md`，作者资源见 `ArtSource/Tidegate/README.md`。
+
+- **独立出击**：天空岛的官方加载状态机转译补丁抽成多图共用的 `Utilities/RaidScenes/ModRaidSceneBridge`（全仓只能装一份），天空岛只剩门面、常量不变；另有通用 `ModRaidLease` / `ModRaidOfficialContract`，天空岛自己的租约与合同还没迁。
+- **玩法**（`Tidegate/`）：潮汐挂官方时钟、负重决定能否游泳（官方 Water 层 + `CanSwim`）、四处撤离、搜刮、刷怪（`SetTeam(Teams.wolf)` 与距离休眠解除照旧）、淘沙帮跟潮走、三阀一闸、灯塔光束与叫船、地图标签。
+- **剧情与内容**（SCHEMA+）：阿稳快递湿包裹 → 闸伯的信 → 四页闸工日志 → 潮汐怀表交给闸伯；存档 `BossRush_Tidegate_Story_v1`（分槽 JSON），信与日志镜像进官方笔记图鉴；没有新增官方任务号。新物品 TypeID **500111–500115**（阀门手轮、潮汐怀表、防水袋、鸭蹼脚掌、闸伯的信），三处台账已更新，下一可用 500116。永久捏脸 NPC `tidegate_zhabo` 站在竹筏边，四段好感剧情，商店卖防水袋 / 鸭蹼脚掌。
+- **入口**：基地地堡下水道北端「闸伯的竹筏」，读过信才出现；竹筏是作者工程的正式模型（小包 `Assets/arenas/tidegate_entry`），包缺失或着色器被剥光时整个入口不开，不拿几何体顶替。
+- **顺带修复**：`SceneRuntimeGate.IsBaseHubSceneName` 曾把仓库区地下室当成基地下水道；正式版只从 `production_icons` 取图标，10-12 加的回火液图标一直没登记（正式版显示克隆源的图标），与五件新物品一起登记并重打包。
+- **宣传片会话报的潮汐 bug（已修）**：潮位原先读当天时刻（每天归零），24 不是 4.5 的整数倍，午夜会从低潮 −1.5 m 一步跳回高潮 +0.45 m（滩涂上的人当场被淹、没有涨潮过程）。改为跨天连续的「官方天数 × 86300 + 当天秒数」（`TidegateTideRules.ElapsedHours`），潮汐运行时与淘沙帮撤回计时同改。代价是每天同一钟点的潮相往后挪约 1.5 小时，这正是潮汐怀表「看准涨落」的用处，所以保留 4.5 小时一轮。
+
+**验证（L2）**：
+- 全量守卫 **753 PASS / 0 NEW-FAIL / 0 KNOWN-RED**（潮汐修复前）；潮汐修复后 `--changed-only` **250 PASS**。`TidegateRaidGuard` 本轮新增竹筏模型五条、潮汐时钟三条，八条变异全部转红、按字节还原。
+- 全量执行回归 **149 PASS / 1 FAIL**：唯一失败 `FieldAdventureVisuals` 超出聚合入口 600 秒（同时段 Unity 在打图标包），单独重跑 430 秒 **PASS**；未改 runner 时限。潮汐修复后 `TidegateTideRules` 重跑 **95327 条断言 PASS**；把跨天时钟改回只读当天时刻（两种变异）都转红。
+- 图标包 `IconsBuild` `BUILD PASS sprites=357`；新旧包逐张比对只多 6 张、原 351 张一致。`production_icons` `f6c70956…22d6` → **`affc0cfd…8e5b`**（旧包备份在本会话 scratchpad）。资源发布校验 **79 包 0 错误**；`verify_tidegate_bundle_shaders.py` 两个包 PASS。
+- Windows 正式真编译成功（只有两条既有 Mode H CS0649），已部署到 `D:\software\steam\...\Mods\BossRush`：`BossRush.dll` **`857497EE…D382`**（无 Dev 专属串），`tidegate_raid` `dc3f558e…`、`tidegate_entry` `b0e7e70e…`、`production_icons`、数据 JSON、图标与 Wiki 页按 SHA-256 与仓库一致。
+- 作者工程（独立仓库）里 `Assets/Tidegate/`、`Assets/Editor/TidegateBuilder.cs` 与图标构建写入的 `Assets/ProductionIcons/` 七个新源图都未提交。
+
+**未验证（L3）**：没进游戏。人工清单是 `Assets/Data/GameplayCoverage.json` 的 `M_TIDEGATE_01`～`07`；本轮补了竹筏外观、灯塔光束与五件物品图标三处不合格条件。竹筏站位、闸伯站位与井盖 / 钓鱼点的交互抢占都是离线读场景文件得出的，最需要实机看。宣传片成片在 `ArtSource/Tidegate/trailer/`（three.js 场景渲染，不是实录），未上传。
+
 ## 2026-10-30 v2.3.9 正式发布包准备（COMPAT / OPERATIONAL；L1/L2，L3 待验）
 
 版本从 2.3.8 升至 2.3.9，更新中英 README、更新日志、highlights、catalog 与生成站点页，纳入本轮四项复审修复。本地 `info.ini` 与发布包元数据同步为 2.3.9；该文件仍按原规则忽略，不强行加入公开 Git。发布流程专题 repowiki 同步。

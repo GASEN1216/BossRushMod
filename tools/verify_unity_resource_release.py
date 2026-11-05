@@ -163,9 +163,12 @@ def inspect(path):
 def validate(row,name):
     errors=[]
     if not set(row['compression'])<={0,2,3}: errors.append('LZMA/non-LZ4 payload')
+    # 潮闸镇水面高度图（R 地面高、G 泻湖遮罩）运行时要在 CPU 上查泻湖与水深（TidegateWorld.InLagoon / TryGetLagoonBounds），
+    # 只这一张按名放行；别的贴图可读仍然是错。
+    cpu_textures={'tidegate_raid':{'TidegateHeight'}}.get(name,set())
     for t in row['textures']:
         if 'Crunched' in t['format']: errors.append('Crunch: '+t['name'])
-        if t['width'] and t['height'] and t['readable']: errors.append('Readable texture: '+t['name'])
+        if t['width'] and t['height'] and t['readable'] and t['name'] not in cpu_textures: errors.append('Readable texture: '+t['name'])
     if name in ('birthday_cake','bossrush_ticket'):
         expected = 'BirthdayCake' if name=='birthday_cake' else 'BossRushTicket2'
         target=[t for t in row['textures'] if t['name']==expected]
@@ -205,6 +208,11 @@ def validate(row,name):
         expected={'modeg_echo_emblem':(256,256),'modeg_echo_banner':(1024,576)}
         actual={t['name']:(t['width'],t['height']) for t in row['textures']}
         if actual!=expected: errors.append('Mode G texture dimensions contract')
+    if name=='tidegate_raid':
+        nav=[m for m in row['meshes'] if m['name']=='TidegateNavigation']
+        if len(nav)!=1 or not nav[0]['readable'] or not 0<nav[0]['vertices']<=4095: errors.append('Navigation contract')
+        height=[t for t in row['textures'] if t['name']=='TidegateHeight']
+        if len(height)!=1 or not height[0]['readable']: errors.append('Tidegate water height map must stay CPU-readable')
     if name=='sky_island_raid':
         nav=[m for m in row['meshes'] if m['name']=='SkyIslandNavigation']
         if len(nav)!=1 or not nav[0]['readable'] or not 0<nav[0]['vertices']<=4095: errors.append('Navigation contract')

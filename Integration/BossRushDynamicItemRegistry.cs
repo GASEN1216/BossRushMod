@@ -408,6 +408,18 @@ namespace BossRush
                 FallbackLoader = delegate(int typeId) { return SkyIslandNavInstrumentConfig.EnsureRuntimeFallbackRegistrationShell(); }
             }, BossRushItemIds.SkyIslandNavInstrument);
 
+            // 潮闸镇物品（阀门手轮、潮汐怀表、防水袋、鸭蹼脚掌、闸伯的信）：同为零新增 bundle 的克隆兜底。
+            // 玩家仓库与背包里存着这些 TypeID，漏登记会让重启后它们退化成官方 FallbackItem（AGENTS 契约第 6 节）。
+            Add(plans, new RegistrationPlan
+            {
+                FallbackLoader = delegate(int typeId) { return TidegateItems.EnsureRuntimeRegistration(typeId); }
+            },
+                BossRushItemIds.TidegateHandwheel,
+                BossRushItemIds.TidegateTideWatch,
+                BossRushItemIds.TidegateDryBag,
+                BossRushItemIds.TidegateFlippers,
+                BossRushItemIds.TidegateLetter);
+
             // 回火液：克隆冷淬液 prefab，零新增 bundle；漏登记时仓库里的回火液重启后会退化成官方 FallbackItem。
             Add(plans, new RegistrationPlan
             {

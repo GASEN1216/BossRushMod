@@ -630,8 +630,8 @@ export const CATEGORIES: WikiCategory[] = [
     zh: '地图',
     en: 'Maps',
     icon: 'cat-maps',
-    blurbZh: '9 张竞技场地图与天空岛探索旅程',
-    blurbEn: 'Nine arena maps and a journey through the Sky Islands',
+    blurbZh: '9 张竞技场地图、天空岛探索旅程与潮闸镇',
+    blurbEn: 'Nine arena maps, a journey through the Sky Islands, and Tidegate',
     entries: [
       {
         path: '/maps/',
@@ -648,6 +648,14 @@ export const CATEGORIES: WikiCategory[] = [
         icon: 'cat-maps',
         blurbZh: '修复航标、寻找旧信，让归航钟再次响起',
         blurbEn: 'Restore the beacons, find the old letter and ring the homecoming bell',
+      },
+      {
+        path: '/maps/tidegate',
+        zh: '潮闸镇',
+        en: 'Tidegate',
+        icon: 'cat-maps',
+        blurbZh: '跟着潮水搜刮，开闸取回沉没金库里的怀表',
+        blurbEn: 'Loot with the tide, lift the gate and recover the watch from the sunken vault',
       },
     ],
   },

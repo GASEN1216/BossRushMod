@@ -1,4 +1,4 @@
-"""真实 Harmony + 生产天空岛桥接执行回归，Unity/场景API为隔离替身；不访问玩家存档。"""
+"""真实 Harmony + 生产多图身份桥（天空岛门面 + 第二张替身地图）执行回归，Unity/场景API为隔离替身；不访问玩家存档。"""
 from pathlib import Path
 import os
 import shutil
@@ -25,7 +25,8 @@ if __name__ == "__main__":
             '/out:"' + str(exe) + '"', '/r:"' + str(harmony) + '"']
     args += ['/r:"' + str(framework / name) + '"' for name in ("mscorlib.dll", "System.dll", "System.Core.dll")]
     args += ['"' + str(p) + '"' for p in (
-        ROOT / "SkyIsland/SkyIslandSceneReferenceBridge.cs", HERE / "Host.cs", HERE / "Program.cs")]
+        ROOT / "Utilities/RaidScenes/ModRaidSceneBridge.cs", ROOT / "SkyIsland/SkyIslandSceneReferenceBridge.cs",
+        HERE / "Host.cs", HERE / "Program.cs")]
     response = OUT / "compile.rsp"
     response.write_text("\n".join(args), encoding="utf-8-sig")
     code = subprocess.call(["dotnet", str(compiler), "@" + str(response)], cwd=ROOT)

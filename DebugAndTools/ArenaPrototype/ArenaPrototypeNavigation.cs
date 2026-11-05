@@ -83,6 +83,29 @@ namespace BossRush
             owner.FlushWorkItems();
         }
 
+        /// <summary>
+        /// 按三角形三个顶点判断能不能走（潮闸镇按潮位封住被淹的三角形）。只改本租约图；与 <see cref="SetBlockedAreas"/>
+        /// 一样以扫描后的原始可走性为基准，判据放开时自动恢复。
+        /// </summary>
+        internal void SetWalkable(Func<Vector3, Vector3, Vector3, bool> walkable)
+        {
+            if (graph == null || owner == null || walkable == null) return;
+            owner.AddWorkItem((IWorkItemContext context) =>
+            {
+                graph.GetNodes((Action<GraphNode>)(node =>
+                {
+                    bool original;
+                    if (!originalWalkability.TryGetValue(node, out original))
+                    { original = node.Walkable; originalWalkability.Add(node, original); }
+                    TriangleMeshNode triangle = node as TriangleMeshNode;
+                    bool open = triangle == null || walkable((Vector3)triangle.GetVertex(0), (Vector3)triangle.GetVertex(1), (Vector3)triangle.GetVertex(2));
+                    node.Walkable = original && open;
+                }));
+                context.SetGraphDirty(graph);
+            });
+            owner.FlushWorkItems();
+        }
+
         public void Dispose()
         {
             if (graph != null && owner != null && owner.data != null)

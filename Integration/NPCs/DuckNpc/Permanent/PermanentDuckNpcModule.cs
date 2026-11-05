@@ -130,6 +130,7 @@ namespace BossRush
 
             // 独立天空岛由地图会话按固定地标管理居民，普通地图刷新不能争抢其 registry。
             if (string.Equals(sceneName, "SkyIslandRaid", StringComparison.Ordinal)) return false;
+            if (string.Equals(sceneName, "TidegateRaid", StringComparison.Ordinal)) return false;
 
             // 竞技场让位：注册中心在竞技场有「随机支援 NPC 三选一」抽签，
             // 参与就会挤掉羽织/叮当的名额。永久 NPC 常驻主城/普通图即可。

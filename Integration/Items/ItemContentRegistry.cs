@@ -33,6 +33,7 @@ namespace BossRush
             CodexBookConfig.RegisterConfigurator();
             SkyIslandItems.RegisterConfigurators();
             SkyIslandNavInstrumentConfig.RegisterConfigurator();
+            TidegateItems.RegisterConfigurators();
             ItemFactory.RegisterConfigurator(BossRushItemIds.AdventureJournal, OnAdventureJournalLoaded);
             ItemFactory.RegisterConfigurator(FenHuangHalberdIds.WeaponTypeId, OnFenHuangHalberdLoaded);
             ItemFactory.RegisterConfigurator(FrostmourneIds.WeaponTypeId, OnFrostmourneLoaded);

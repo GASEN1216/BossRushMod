@@ -86,6 +86,8 @@ namespace BossRush
 
             // 天空岛剧情角色由地图会话持有，不能再走通用随机刷新。
             if (string.Equals(sceneName, "SkyIslandRaid", StringComparison.Ordinal)) return false;
+            // 潮闸镇同理：独立出击图没有通用刷新点表，人物由地图会话自己安排。
+            if (string.Equals(sceneName, "TidegateRaid", StringComparison.Ordinal)) return false;
 
             // 竞技场让位：见文件头第 2 条。
             if (IsArenaLikeScene(mod, sceneName))
@@ -157,6 +159,7 @@ namespace BossRush
             }
 
             if (string.Equals(sceneName, "SkyIslandRaid", StringComparison.Ordinal)) return;
+            if (string.Equals(sceneName, "TidegateRaid", StringComparison.Ordinal)) return;
             _spawnInFlight = true;
             SpawnForSceneAsync(sceneName).Forget();
         }

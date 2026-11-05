@@ -1503,6 +1503,385 @@
       }
     },
     {
+      "id": "tidegate_zhabo",
+      "isPermanent": true,
+      "displayNameKey": "",
+      "faceMode": "json",
+      "faceJson": "{\"savedSetting\":true,\"headSetting\":{\"mainColor\":{\"r\":0.79,\"g\":0.8,\"b\":0.8,\"a\":1.0},\"headScaleOffset\":0.11,\"foreheadHeight\":0.16,\"foreheadRound\":0.72},\"hairID\":7,\"hairInfo\":{\"radius\":0,\"color\":{\"r\":0.94,\"g\":0.94,\"b\":0.92,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"eyeID\":3,\"eyeInfo\":{\"radius\":0.23,\"color\":{\"r\":0.16,\"g\":0.13,\"b\":0.11,\"a\":1.0},\"height\":0.084,\"heightOffset\":0,\"scale\":1.0,\"twist\":0,\"distanceAngle\":45.0,\"leftRightAngle\":0},\"eyebrowID\":2,\"eyebrowInfo\":{\"radius\":0.23,\"color\":{\"r\":0.4,\"g\":0.4,\"b\":0.42,\"a\":1.0},\"height\":0.07,\"heightOffset\":0.089,\"scale\":1.45,\"twist\":0,\"distanceAngle\":40.0,\"leftRightAngle\":0},\"mouthID\":5,\"mouthInfo\":{\"radius\":0.23,\"color\":{\"r\":0.9,\"g\":0.6,\"b\":0.34,\"a\":1.0},\"height\":0.03,\"heightOffset\":0,\"scale\":0.95,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"tailID\":2,\"tailInfo\":{\"radius\":0,\"color\":{\"r\":0.52,\"g\":0.54,\"b\":0.56,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"footID\":1,\"footInfo\":{\"radius\":0,\"color\":{\"r\":0.85,\"g\":0.48,\"b\":0.24,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"wingID\":1,\"wingInfo\":{\"radius\":0,\"color\":{\"r\":0.52,\"g\":0.54,\"b\":0.56,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0}}",
+      "baseModel": "",
+      "modelScale": 0.95,
+      "team": "player",
+      "invincible": true,
+      "showHealthBar": false,
+      "pushCharacter": false,
+      "randomEquipment": false,
+      "equipmentTypeIds": [
+        1136,
+        1307
+      ],
+      "canWander": false,
+      "wanderRadius": 2.5,
+      "scenes": [
+        "TidegateRaid"
+      ],
+      "permanent": {
+        "displayNameCn": "闸伯",
+        "displayNameEn": "Old Zha",
+        "storyEvents": [
+          {
+            "level": 3,
+            "titleCn": "闸伯的故事（一）",
+            "titleEn": "Old Zha's Story (I)",
+            "lines": [
+              {
+                "cn": "我十七岁进的第三水厂，头一天就叫师傅踹进了闸槽。",
+                "en": "I started at No. 3 Waterworks at seventeen. First day, my master kicked me into the gate slot."
+              },
+              {
+                "cn": "他说，当闸工，先得知道水有多冷。",
+                "en": "He said a gatekeeper has to know how cold the water is first."
+              },
+              {
+                "cn": "后来厂里三个班，就我这个班一回潮都没误过。",
+                "en": "Later the works ran three shifts. Mine never missed a single tide."
+              },
+              {
+                "cn": "镇上嫌我嗓门大。嗓门不大，涨潮的时候谁听得见？",
+                "en": "Folks in town said I was too loud. If I weren't, who'd hear me when the tide came in?"
+              },
+              {
+                "cn": "你也一样。下回我喊，你就跑，别回头问为什么。",
+                "en": "Same goes for you. When I shout, you run. Don't turn around and ask why."
+              }
+            ]
+          },
+          {
+            "level": 5,
+            "titleCn": "闸伯的故事（二）",
+            "titleEn": "Old Zha's Story (II)",
+            "lines": [
+              {
+                "cn": "镇子撤空那天，大闸是我亲手落下的。",
+                "en": "The day the town cleared out, I lowered the tide gate myself."
+              },
+              {
+                "cn": "外头的潮太凶，不落闸，整个老镇都得泡着。",
+                "en": "The sea was too rough. Leave the gate up and all of Old Town would have flooded."
+              },
+              {
+                "cn": "可闸一落，泻湖只进不出，储蓄所也泡进去了。",
+                "en": "But with the gate down, the lagoon only filled. The savings bank went under with it."
+              },
+              {
+                "cn": "我本想等风头过了回来提闸。这一等，就是好些年。",
+                "en": "I meant to come back and lift it once things settled. That wait turned into years."
+              },
+              {
+                "cn": "那伙挖沙的倒好，趁没人管，把潮位站的手轮都拆了。",
+                "en": "Meanwhile that sand gang, with nobody watching, pulled the handwheel off the tide gauge."
+              }
+            ]
+          },
+          {
+            "level": 8,
+            "titleCn": "闸伯的故事（三）",
+            "titleEn": "Old Zha's Story (III)",
+            "lines": [
+              {
+                "cn": "储蓄所那个所长，跟我是一条街上长大的。",
+                "en": "That savings bank manager grew up on the same street as me."
+              },
+              {
+                "cn": "那块怀表是我的。表盘外那圈潮位，是我拿刀尖一格格刻的。",
+                "en": "That pocket watch was mine. I cut the tide marks around the dial with a knife tip, one notch at a time."
+              },
+              {
+                "cn": "他借去说看两天，转身就锁进了保险柜。",
+                "en": "He borrowed it for two days, he said, then turned around and locked it in his safe."
+              },
+              {
+                "cn": "我去要，他说外头乱，搁他那儿稳当。",
+                "en": "When I went to get it, he said it was rough out there and safer with him."
+              },
+              {
+                "cn": "为这个，我俩一直吵到撤镇那天。他没能出来。",
+                "en": "We argued about it right up to the day the town emptied. He never made it out."
+              },
+              {
+                "cn": "我不是稀罕那块表。我是气他到底没亲手还我。",
+                "en": "It's not the watch. It's that he never handed it back himself."
+              }
+            ]
+          },
+          {
+            "level": 10,
+            "titleCn": "闸伯的故事（四）",
+            "titleEn": "Old Zha's Story (IV)",
+            "lines": [
+              {
+                "cn": "坐过来。今天不撑筏，教你听闸。",
+                "en": "Come sit. No poling today. I'm teaching you to listen to the gate."
+              },
+              {
+                "cn": "闸门往上走是闷响，卡住了是尖响。听见尖响，赶紧跑。",
+                "en": "A gate going up makes a low thud. A jammed one screeches. Hear a screech, run."
+              },
+              {
+                "cn": "第三水厂的闸工，到我这儿本来就断了。",
+                "en": "The gatekeepers of No. 3 Waterworks were supposed to end with me."
+              },
+              {
+                "cn": "现在不算断。往后谁问起，你就说是闸伯带出来的。",
+                "en": "Not anymore. Anyone asks, you tell them Old Zha trained you."
+              },
+              {
+                "cn": "嗓门练大点。涨潮的时候，总得有人喊。",
+                "en": "Work on that voice. When the tide comes in, somebody has to shout."
+              }
+            ]
+          }
+        ],
+        "shop": {
+          "nameCn": "闸伯的防水货",
+          "nameEn": "Old Zha's Waterproof Goods",
+          "unlockLevel": 1,
+          "discountsByLevel": {
+            "3": 0.1,
+            "6": 0.15,
+            "10": 0.2
+          },
+          "items": [
+            {
+              "typeId": 500113,
+              "requiredLevel": 1,
+              "maxStock": 2
+            },
+            {
+              "typeId": 500114,
+              "requiredLevel": 4,
+              "maxStock": 1
+            }
+          ]
+        },
+        "dailyChatAffinity": 30,
+        "positiveTags": [],
+        "positiveItemTypeIds": [
+          22,
+          29,
+          1207,
+          1106,
+          1124
+        ],
+        "negativeItemTypeIds": [
+          82,
+          1560
+        ],
+        "positiveBubbles": [
+          {
+            "cn": "懂行。这个我收了。",
+            "en": "You know what's good. I'll take this."
+          },
+          {
+            "cn": "好东西。今晚就着潮声享用。",
+            "en": "Good stuff. I'll enjoy it tonight with the tide coming in."
+          }
+        ],
+        "negativeBubbles": [
+          {
+            "cn": "这玩意儿？拿回去。",
+            "en": "This thing? Take it back."
+          },
+          {
+            "cn": "我在水上干了四十年，你拿这个糊弄我？",
+            "en": "Forty years on the water and you try to fob me off with this?"
+          }
+        ],
+        "normalBubbles": [
+          {
+            "cn": "嗯，搁那儿吧。",
+            "en": "Hm. Leave it there."
+          },
+          {
+            "cn": "收了。别指望我说谢谢。",
+            "en": "Got it. Don't expect a thank-you."
+          }
+        ],
+        "dialogues": {
+          "greeting": [
+            {
+              "minLevel": 0,
+              "lines": [
+                {
+                  "cn": "来了？站稳。这筏子不等磨磨蹭蹭的人。",
+                  "en": "You made it? Plant your feet. This raft doesn't wait for dawdlers."
+                },
+                {
+                  "cn": "看潮别看天。天会骗人，水不会。",
+                  "en": "Watch the water, not the sky. The sky lies. Water doesn't."
+                },
+                {
+                  "cn": "那封信泡烂了一半，你还认得出字。眼神不错。",
+                  "en": "Half that letter rotted in the wet and you still read it. Good eyes."
+                }
+              ]
+            },
+            {
+              "minLevel": 4,
+              "lines": [
+                {
+                  "cn": "一身泥腥味，又下滩了吧？水漫过脚脖子就上岸。",
+                  "en": "You reek of mud. Down on the flats again? Water past your ankles, you get out."
+                },
+                {
+                  "cn": "阿稳那家伙收钱狠，可东西从来没送丢过。这点我服。",
+                  "en": "Awen charges like a thief, but he's never lost a parcel. I'll give him that."
+                }
+              ]
+            },
+            {
+              "minLevel": 8,
+              "lines": [
+                {
+                  "cn": "坐。篙子我来撑，你歇会儿。",
+                  "en": "Sit. I'll do the poling. You rest."
+                },
+                {
+                  "cn": "今天水稳，筏子不晃。有话坐下说。",
+                  "en": "Water's calm today and the raft's steady. Sit down if you've got something to say."
+                }
+              ]
+            }
+          ],
+          "idle": [
+            {
+              "cn": "涨潮先漫脚脖子。漫过了就往高处走，别犹豫。",
+              "en": "The tide takes your ankles first. Once it's past them, head for high ground. Don't stop to think."
+            },
+            {
+              "cn": "那伙挖沙的把滩挖成了筛子，早晚把海堤也挖塌。",
+              "en": "That sand gang has dug the flats into a sieve. Sooner or later they'll bring the seawall down."
+            },
+            {
+              "cn": "三个阀门少拧一个，闸提到一半就卡死。说多少遍了。",
+              "en": "Miss one of the three valves and the gate jams halfway. How many times do I have to say it."
+            },
+            {
+              "cn": "背太沉别下深水。沉了底，我可捞不动你。",
+              "en": "Don't take a heavy load into deep water. You sink, I'm not hauling you up."
+            },
+            {
+              "cn": "阿稳给我送那封信，说泡水的包裹得加钱。哼。",
+              "en": "Awen charged me extra for that letter. Said wet parcels cost more. Hmph."
+            }
+          ],
+          "afterGift": [
+            {
+              "cn": "嗯，收下了。",
+              "en": "Hm. I'll take it."
+            },
+            {
+              "cn": "东西我收着。下回别乱花钱。",
+              "en": "I'll hang on to it. Don't throw your money around next time."
+            }
+          ],
+          "levelUp": [
+            {
+              "cn": "你这人，还行。",
+              "en": "You're all right."
+            },
+            {
+              "cn": "下回来，筏子上给你留块干地方。",
+              "en": "Next time you come, I'll keep a dry spot on the raft for you."
+            }
+          ],
+          "farewell": [
+            {
+              "cn": "去吧。看着点潮。",
+              "en": "Go on. Keep an eye on the tide."
+            },
+            {
+              "cn": "回来的时候喊一声，我耳朵背。",
+              "en": "Give a shout when you're back. My ears aren't what they were."
+            }
+          ],
+          "alreadyGifted": [
+            {
+              "cn": "今天收过了。剩下的自己留着。",
+              "en": "I've had one today. Keep the rest for yourself."
+            }
+          ],
+          "alreadyGiftedPositive": [
+            {
+              "cn": "今天那份正合我意，再多就糟蹋了。",
+              "en": "Today's was just right. Any more is a waste."
+            }
+          ],
+          "alreadyGiftedNormal": [
+            {
+              "cn": "收过了，明天再说。",
+              "en": "Already got one. Tomorrow."
+            }
+          ],
+          "alreadyGiftedNegative": [
+            {
+              "cn": "今天那件还堵着我呢。明天再说。",
+              "en": "I'm still sore about today's. Tomorrow."
+            }
+          ]
+        },
+        "marriedDialogues": {
+          "dialogue_greeting_married": [
+            {
+              "cn": "回来了？先喝口热的，再说今天碰上什么。",
+              "en": "Back? Drink something hot first, then tell me what you ran into today."
+            }
+          ],
+          "dialogue_idle_married": [
+            {
+              "cn": "潮水我盯着，你安心歇着。",
+              "en": "I'll keep an eye on the tide. You rest easy."
+            }
+          ],
+          "dialogue_farewell_married": [
+            {
+              "cn": "去吧。天黑前不回来，我撑筏子去找你。",
+              "en": "Go on. Not back by dark and I'm poling out to find you."
+            }
+          ],
+          "dialogue_after_gift_married": [
+            {
+              "cn": "又乱花钱。……行，收着。",
+              "en": "Wasting money again. ...Fine, I'll keep it."
+            }
+          ],
+          "gift_positive_married": [
+            {
+              "cn": "你倒记得我爱这口。",
+              "en": "You remembered what I like."
+            }
+          ],
+          "gift_normal_married": [
+            {
+              "cn": "收着了。下回给你带条鱼。",
+              "en": "Got it. I'll bring you a fish next time."
+            }
+          ],
+          "ring_reject": [
+            {
+              "cn": "戒指？咱俩还没熟到这份上。收回去。",
+              "en": "A ring? We're not that close yet. Put it away."
+            }
+          ],
+          "marriage_chapel_required": [
+            {
+              "cn": "这种事得办得像样。先把教堂盖起来。",
+              "en": "If we're doing this, we do it properly. Build the chapel first."
+            }
+          ]
+        }
+      }
+    },
+    {
       "id": "skyboss_foreman",
       "isPermanent": false,
       "displayNameKey": "",

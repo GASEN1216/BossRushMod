@@ -29,6 +29,7 @@
 | `interactables` | 共享交互体 | `Interactables/BossRushBuildingInteractableBase.cs` | `AGENTS.md` |
 | `map-selection` | 地图选择 | `MapSelection/BossRushMapSelectionHelper.cs` | `AGENTS.md` |
 | `sky-island` | 天空岛正式地图、居民与剧情 | `SkyIsland/SkyIslandRuntimeModule.cs` | `AGENTS.md`、`SkyIsland/AGENTS.md`、`Common/UI/AGENTS.md` |
+| `tidegate` | 潮闸镇独立出击地图（潮汐、竹筏入口、撤离、搜刮与刷怪） | `Tidegate/TidegateRuntimeModule.cs` | `AGENTS.md`、`SkyIsland/AGENTS.md` |
 | `devtools` | F3、调试与场景原型 | `DebugAndTools/F3GameplayValidationRunner.cs` | `AGENTS.md`、`DebugAndTools/AGENTS.md`、`Common/UI/AGENTS.md` |
 | `integration-core` | 物品、装备工厂与集成生命周期 | `Integration/BossRushIntegrationRuntimeModule.cs` | `AGENTS.md`、`Integration/AGENTS.md` |
 | `npcs` | NPC 与建筑内容 | `Integration/IntegrationHostCompatibility.cs` | `AGENTS.md`、`Integration/AGENTS.md` |

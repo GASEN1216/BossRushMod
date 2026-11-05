@@ -52,6 +52,18 @@ def main():
     assert validate(bad,'sky_island_raid')
     bad=copy.deepcopy(sky);bad['meshes'].append({'name':'VIS_B_Leaf','vertices':65536,'triangles':1,'readable':True})
     assert validate(bad,'sky_island_raid')
+    tide=copy.deepcopy(row)
+    tide['textures']=[dict(row['textures'][0],name='TidegateHeight',format='RGHalf',width=341,height=321,readable=True)]
+    tide['meshes']=[{'name':'TidegateNavigation','triangles':3906,'vertices':3456,'readable':True}]
+    assert not validate(tide,'tidegate_raid')
+    for changes in [{'vertices':4096},{'vertices':0},{'readable':False},{'name':'NavigationGone'}]:
+        bad=copy.deepcopy(tide);bad['meshes'][0].update(changes)
+        assert validate(bad,'tidegate_raid'),changes
+    bad=copy.deepcopy(tide);bad['textures'][0]['readable']=False
+    assert validate(bad,'tidegate_raid'), 'water height map must stay CPU-readable'
+    bad=copy.deepcopy(tide);bad['textures'].append(dict(row['textures'][0],name='OtherTexture',readable=True))
+    assert validate(bad,'tidegate_raid'), 'only the water height map may be readable'
+    assert validate(tide,'energyshield_totem_model'), 'the height-map allowance is scoped to tidegate_raid'
     for name,texture in [('birthday_cake','BirthdayCake'),('bossrush_ticket','BossRushTicket2')]:
         icon=copy.deepcopy(row)
         icon['textures']=[dict(row['textures'][0],name=texture,format='BC7')]

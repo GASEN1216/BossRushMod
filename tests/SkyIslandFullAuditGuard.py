@@ -192,18 +192,19 @@ def main():
                 errors.append("WithDetail 的英文分支不得带上中文异常原文")
 
     # ---- CR-2026-09-10-025：热路径分配 ----
-    bridge = read(SKY + "SkyIslandSceneReferenceBridge.cs")
-    is_scene = need_body(bridge, "internal static bool IsScene(Scene scene)", "天空岛场景判定")
+    # 2026-11-05：判定与句柄缓存搬进多图共用的 ModRaidSceneBridge，天空岛门面只转发。
+    bridge = read("Utilities/RaidScenes/ModRaidSceneBridge.cs")
+    is_scene = need_body(bridge, "internal static bool IsScene(ModRaidSceneIdentity identity, Scene scene)", "Mod 地图场景判定")
     if is_scene:
-        gate = is_scene.find("if (!scene.IsValid() || scene.buildIndex >= 0) return false;")
+        gate = is_scene.find("scene.buildIndex >= 0) return false;")
         path_read = is_scene.find("scene.path")
-        handle = is_scene.find("scene.handle == knownSceneHandle")
+        handle = is_scene.find("scene.handle == identity.KnownSceneHandle")
         if not (0 <= gate < handle < path_read):
             errors.append("IsScene 必须先比 buildIndex、再比句柄缓存，最后才读 scene.path（它挂在全局补丁热路径上，每读一次分配一个字符串）")
-    for signature in ("internal static void BeginInitialization(object owner)", "private static void OnSceneUnloaded(Scene scene)",
-                      "private static void CleanupRegistration()"):
+    for signature in ("internal static void BeginInitialization(object owner, ModRaidSceneIdentity identity)",
+                      "private static void OnSceneUnloaded(Scene scene)", "private static void RemoveIdentity(ModRaidSceneIdentity identity)"):
         body = need_body(bridge, signature, "场景句柄缓存作废点")
-        require(body, "knownSceneHandle = 0;", "天空岛场景句柄缓存必须在 " + signature + " 里作废")
+        require(body, "KnownSceneHandle = 0;", "Mod 地图场景句柄缓存必须在 " + signature + " 里作废")
     # 2026-09-14 B 轮：地名与对手名原样挪进了同一个 partial 的 SkyIslandSessionLabels.cs（会话主文件卡在 1200 行预算上），两份合起来看。
     session = read(SKY + "SkyIslandSession.cs") + "\n" + read(SKY + "SkyIslandSessionLabels.cs")
     for signature in ("internal static string LandmarkLabel(string name)", "internal static string RegionLabel(string id)",

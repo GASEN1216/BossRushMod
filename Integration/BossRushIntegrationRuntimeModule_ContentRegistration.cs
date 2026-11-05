@@ -49,6 +49,10 @@ namespace BossRush
             // 天空岛物品的 DisplayNameRaw 注入（AGENTS.md 4.4）
             SkyIslandItems.InjectLocalization();
             SkyIslandSceneReferenceBridge.InjectLocalization(); SkyIslandEnemyTiers.ReinjectNames();
+            // 潮闸镇：地图名与基地竹筏入口的交互名
+            TidegateRaidScene.InjectLocalization();
+            // 潮闸镇物品的 DisplayNameRaw 注入（AGENTS.md 4.4）
+            TidegateItems.InjectLocalization();
             SkyIslandSearchPoint.InjectLocalizations();
             // 搜刮箱交互名「搜集 / Search」（官方 displayNameKey 按 key 查表，切语言时随这条链重注入）
             SkyIslandRewardCrate.InjectLocalizations();

@@ -120,7 +120,7 @@ namespace BossRush
                     "The Sky Islands raid scene bundle is missing. Update the mod's assets");
                 return false;
             }
-            if (owner.GetComponent<SkyIslandSession>() != null || owner.GetComponent<ArenaPrototypeSession>() != null)
+            if (owner.GetComponent<SkyIslandSession>() != null || owner.GetComponent<ArenaPrototypeSession>() != null || owner.GetComponent<TidegateSession>() != null)
             {
                 reason = L10n.T("先结束当前的场景旅程，等它收拾完",
                     "End the current scene journey and wait for it to clean up");

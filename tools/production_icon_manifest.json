@@ -423,7 +423,31 @@
       "maxSize": 512
     },
     {
+      "path": "Assets/Items/tempering_solvent.png",
+      "maxSize": 512
+    },
+    {
       "path": "Assets/Items/thunder_ring_icon.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/tidegate_dry_bag.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/tidegate_flippers.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/tidegate_handwheel.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/tidegate_letter.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/tidegate_tide_watch.png",
       "maxSize": 512
     },
     {

@@ -1275,10 +1275,14 @@ def main() -> int:
         "SceneLoader.IsSceneLoading",
         "MultiSceneCore.Instance",
         "Base_SceneV2",
-        "Level_HiddenWarehouse_CellarUnderGround",
+        "Base_SceneV2_Sub_01",
     ]:
         if required not in scene_gate:
             return fail("ArchitectureStructureGuard: SceneRuntimeGate missing behavior-preserving token: " + required)
+    # 2026-11-05：仓库区出击图的地下室子场景曾被误当成基地下水道；基地名单里不许再出现它。
+    hub = scene_gate.split("internal static bool IsBaseHubSceneName(string sceneName)", 1)[-1].split("\n        }", 1)[0]
+    if "HiddenWarehouseCellarSceneName" in hub or "Level_HiddenWarehouse_CellarUnderGround" in hub or "BaseSewerSceneName" in hub:
+        return fail("ArchitectureStructureGuard: Level_HiddenWarehouse_CellarUnderGround is a raid sub-scene, not the base sewer")
 
     print("ArchitectureStructureGuard: PASS")
     return 0

@@ -77,6 +77,38 @@ internal static class Program
         Check(SceneLocationsProvider.GetLocation(reference, "StartPoints/PlayerSpawn") == spawn, "real provider location used by official teleport");
         Check(SceneLocationsProvider.GetLocation(SkyIslandSceneReferenceBridge.SceneId, "StartPoints/PlayerSpawn") == spawn, "id provider lookup is precise");
 
+        // ---- 2026-11-05 多图：第二张 Mod 地图与天空岛共用同一份补丁，各自只认自己 ----
+        var harborScene = Scene("Assets/Harbor/HarborRaid.unity", 3);
+        SceneManager.Scenes.Add(harborScene);
+        var harbor = new ModRaidSceneIdentity("BossRush_TestHarbor", harborScene.path, "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "BossRush_TestHarbor_SceneName", null, "[Harbor]");
+        Check(ModRaidSceneBridge.Register(harbor), "second identity registers on the shared patches");
+        var duplicate = new ModRaidSceneIdentity(SkyIslandSceneReferenceBridge.SceneId, "Assets/Dup/Dup.unity", "cccccccccccccccccccccccccccccccc", "dup", null, "[Dup]");
+        Check(!ModRaidSceneBridge.Register(duplicate) && SceneInfoCollection.GetSceneInfo(SkyIslandSceneReferenceBridge.SceneId).SceneReference == reference,
+            "a conflicting identity is refused without disturbing the registered one");
+        var harborReference = ModRaidSceneBridge.ReferenceOf(harbor);
+        Check(harborReference.Path == harborScene.path && harborReference.UnsafeReason == SceneReferenceUnsafeReason.None, "second reference resolves and is accepted");
+        Check(SceneInfoCollection.GetSceneID(harborReference) == "BossRush_TestHarbor" && SceneInfoCollection.GetSceneID(reference) == SkyIslandSceneReferenceBridge.SceneId,
+            "each reference resolves its own id");
+        SceneManager.Active = harborScene;
+        var harborProvider = new SceneLocationsProvider("Harbor");
+        var harborSpawn = new GameObject("HarborSpawn").transform;
+        harborProvider.Locations.Add("StartPoints/PlayerSpawn", harborSpawn);
+        Check(SceneInfoCollection.GetSceneID(-1) == "BossRush_TestHarbor", "-1 resolves to whichever registered map is active");
+        Check(SceneLocationsProvider.GetLocation(harborReference, "StartPoints/PlayerSpawn") == harborSpawn &&
+              SceneLocationsProvider.GetLocation("BossRush_TestHarbor", "StartPoints/PlayerSpawn") == harborSpawn,
+            "second map's provider lookups never fall through to the island");
+        Check(!SkyIslandSceneReferenceBridge.IsScene(harborScene) && ModRaidSceneBridge.IsScene(harbor, harborScene), "identities never claim each other's scene");
+        SceneManager.Active = sky;
+        Check(SceneInfoCollection.GetSceneID(-1) == SkyIslandSceneReferenceBridge.SceneId &&
+              SceneLocationsProvider.GetLocation(reference, "StartPoints/PlayerSpawn") == spawn, "island lookups unaffected by the second map");
+        SceneManager.Unload(harborScene);
+        SceneLocationsProvider.ActiveProviders.Remove(harborProvider);
+        ModRaidSceneBridge.Unregister(harbor);
+        Check(SceneInfoCollection.GetSceneInfo("BossRush_TestHarbor") == null && !SceneGuidToPathMapProvider.Forward.ContainsKey("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"),
+            "unregistering one map removes only its own metadata");
+        Check(SceneInfoCollection.GetSceneInfo(SkyIslandSceneReferenceBridge.SceneId).SceneReference == reference && reference.UnsafeReason == SceneReferenceUnsafeReason.None,
+            "the island stays bridged after another map leaves");
+
         int events = 0;
         MultiSceneCore.OnSubSceneLoaded += (owner, scene) => { Check(owner == core && scene.handle == sky.handle && !core.IsLoading, "official callback owns actual active scene"); events++; };
         var frame = new System.Threading.Tasks.TaskCompletionSource<bool>();

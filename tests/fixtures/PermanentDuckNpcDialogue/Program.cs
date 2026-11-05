@@ -336,6 +336,29 @@ internal static class Program
                 Check(config.GetShopItems().Count == 1, "钟守库存副本不能修改蓝图");
                 continue;
             }
+            // 2026-11-05 潮闸镇闸伯：初见（好感 1 级）就卖防水袋（库存 2），4 级加鸭蹼脚掌（库存 1）；折扣照浮舟 3/6/10 级。
+            if (id == "tidegate_zhabo")
+            {
+                shops++;
+                Check(config.ShopEnabled && config.ShopUnlockLevel == 1, "闸伯的防水货在好感 1 级解锁");
+                var goods = config.GetShopItems();
+                Check(goods.Count == 2 && goods[0].TypeID == BossRushItemIds.TidegateDryBag
+                      && goods[1].TypeID == BossRushItemIds.TidegateFlippers,
+                      "闸伯只卖防水袋与鸭蹼脚掌");
+                Check(goods[0].RequiredLevel == 1 && goods[0].MaxStock == 2 && goods[0].RestockDays == 1
+                      && goods[1].RequiredLevel == 4 && goods[1].MaxStock == 1,
+                      "防水袋 1 级库存 2、鸭蹼脚掌 4 级库存 1，每个游戏日补货");
+                Check(config.GetDiscountForLevel(2) == 0f && config.GetDiscountForLevel(3) == 0.10f
+                      && config.GetDiscountForLevel(6) == 0.15f && config.GetDiscountForLevel(10) == 0.20f,
+                      "闸伯的好感折扣按浮舟口径 3/6/10 级取档");
+                L10n.Chinese = true;
+                Check(config.ShopName == "闸伯的防水货" && config.UnlocksByLevel[1][0] == "闸伯的防水货",
+                      "闸伯中文商店名来自蓝图");
+                L10n.Chinese = false;
+                Check(config.ShopName == "Old Zha's Waterproof Goods" && config.UnlocksByLevel[1][0] == "Old Zha's Waterproof Goods",
+                      "闸伯商店名随语言切换");
+                continue;
+            }
             if (id != "sky_fuzhou")
             {
                 Check(!config.ShopEnabled && config.GetShopItems().Count == 0, id + " 未配置商店不能取得点名册库存");
@@ -372,7 +395,7 @@ internal static class Program
                   "开店后原婚后台词仍可用");
         }
         L10n.Chinese = true;
-        Check(shops == 2, "真实蓝图保留浮舟两件图腾与钟守节拍器，其他居民不开店");
+        Check(shops == 3, "真实蓝图保留浮舟两件图腾、钟守节拍器与闸伯防水货，其他居民不开店");
     }
 
     // ---- 2026-10-17 好感剧情 storyEvents（SCHEMA+）：坏条目逐条跳过、旧蓝图缺省为空 ----
@@ -463,7 +486,7 @@ internal static class Program
                 foreach (var story in data.StoryEvents)
                     Check(story.rewardTypeId == 0, id + " 的剧情不带奖励（只有晴禾、眠苔 8 级送东西）");
         }
-        Check(withStories == 7, "七位永久捏脸 NPC 都要接上剧情，实得 " + withStories);
+        Check(withStories == 8, "八位永久捏脸 NPC（含潮闸镇闸伯）都要接上剧情，实得 " + withStories);
     }
 
     private static int Main()

@@ -320,6 +320,23 @@ echo(SkyIsland\SkyIslandCombatBalance.cs
 echo(SkyIsland\SkyIslandCombatPreset.cs
 echo(SkyIsland\SkyIslandChampionMoves.cs
 echo(SkyIsland\SkyIslandFxAssets.cs
+echo(Tidegate\TidegateNoteBridge.cs
+echo(Tidegate\TidegateStory.cs
+echo(Tidegate\TidegateZhabo.cs
+echo(Tidegate\TidegateDevices.cs
+echo(Tidegate\TidegateWater.cs
+echo(Tidegate\TidegateMap.cs
+echo(Tidegate\TidegateEnemies.cs
+echo(Tidegate\TidegateEntryRaft.cs
+echo(Tidegate\TidegateExtraction.cs
+echo(Tidegate\TidegateLoot.cs
+echo(Tidegate\TidegateRaidScene.cs
+echo(Tidegate\TidegateRuntimeModule.cs
+echo(Tidegate\TidegateSession.cs
+echo(Tidegate\TidegateText.cs
+echo(Tidegate\TidegateTide.cs
+echo(Tidegate\TidegateTideRules.cs
+echo(Tidegate\TidegateWorld.cs
 echo(DebugAndTools\ArenaPrototype\StoneOutpostMapDataLease.cs
 echo(DebugAndTools\MarriageTestDebugUI.cs
 echo(DebugAndTools\PermanentDuckNpcDebug.cs
@@ -499,6 +516,9 @@ echo(Utilities\OfficialQuests\OfficialQuestItemRules.cs
 echo(Utilities\OfficialQuests\OfficialQuestItems.cs
 echo(Utilities\OfficialQuests\OfficialQuestGiverLocator.cs
 echo(Utilities\OfficialQuests\OfficialQuestRuntimeModule.cs
+echo(Utilities\RaidScenes\ModRaidLease.cs
+echo(Utilities\RaidScenes\ModRaidOfficialContract.cs
+echo(Utilities\RaidScenes\ModRaidSceneBridge.cs
 echo(Config\Config.cs
 echo(Config\BossPoolFactorJson.cs
 echo(Config\ConfigModeG.cs
@@ -1397,6 +1417,8 @@ echo(Integration\SkyIsland\SkyIslandBossGearConfig.cs
 echo(Integration\SkyIsland\SkyIslandNavInstrumentConfig.cs
 echo(Integration\SkyIsland\SkyIslandCompassUsage.cs
 echo(Integration\SkyIsland\SkyIslandFieldcraftUsage.cs
+echo(Integration\Tidegate\TidegateItems.cs
+echo(Integration\Tidegate\TidegateLetterUsage.cs
 )>"%OUTPUT_DIR%\bossrush.rsp"
 
 dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" @"%OUTPUT_DIR%\bossrush.rsp"
@@ -1421,6 +1443,18 @@ if %BUILD_EXIT_CODE% EQU 0 (
             if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas"
             copy /Y "Assets\arenas\sky_island_raid" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas\sky_island_raid" >nul 2>nul
             echo Deployed Sky Island raid bundle to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas
+        )
+        REM Tidegate raid scene bundle (author project TidegateBuilder.BuildAndExit)
+        if exist "Assets\arenas\tidegate_raid" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas"
+            copy /Y "Assets\arenas\tidegate_raid" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas\tidegate_raid" >nul 2>nul
+            echo Deployed Tidegate raid bundle to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas
+        )
+        REM Tidegate base entry raft bundle (author project TidegateBuilder.BuildEntryAndExit)
+        if exist "Assets\arenas\tidegate_entry" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas"
+            copy /Y "Assets\arenas\tidegate_entry" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas\tidegate_entry" >nul 2>nul
+            echo Deployed Tidegate entry raft bundle to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas
         )
         if exist "Assets\Data\SkyIsland" (
             if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data\SkyIsland" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data\SkyIsland"

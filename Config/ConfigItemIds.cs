@@ -128,5 +128,15 @@ namespace BossRush
         public const int PassTheBomb = 500109;
         /// <summary>蚀日花冠专属图腾：残日盾片。</summary>
         public const int ResidualSunShield = 500110;
+        /// <summary>潮闸镇：阀门手轮。挖沙船船舱储物柜固定产出，潮位站阀门要它（拧开时消耗）。</summary>
+        public const int TidegateHandwheel = 500111;
+        /// <summary>潮闸镇：潮汐怀表。沉没金库「所长的保险柜」固定产出；交给闸伯完成剧情，留着带进潮闸镇则显示精确涨落倒计时。</summary>
+        public const int TidegateTideWatch = 500112;
+        /// <summary>潮闸镇：防水袋。闸伯的谢礼与商店；带在身上，潮闸镇游泳负重上限 +6 kg。</summary>
+        public const int TidegateDryBag = 500113;
+        /// <summary>潮闸镇：鸭蹼脚掌。滩涂埋货稀有掉落与闸伯商店；带在身上，在潮闸镇游得更快。</summary>
+        public const int TidegateFlippers = 500114;
+        /// <summary>潮闸镇：闸伯的信（湿透的包裹里那封）。阿稳快递送达一次；读了才开放地堡下水道的竹筏航线。</summary>
+        public const int TidegateLetter = 500115;
     }
 }

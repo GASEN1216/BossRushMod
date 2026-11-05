@@ -299,6 +299,12 @@ namespace BossRush
         /// 往箱子里放**一格**：可堆叠的按 <paramref name="amount"/> 堆（被官方堆叠上限截住），不可堆叠的就一件。
         /// 先问 prefab、实例化后回读 TypeID，与 <see cref="Fill"/> 同一条防线；失败只跳过这一格。
         /// </summary>
+        /// <summary>潮闸镇的搜刮箱装填（<c>TidegateLoot</c>）走同一条「先问 prefab、实例化后回读」的防线。</summary>
+        internal static bool AddOfficialStack(InteractableLootbox box, int typeId, int amount, System.Text.StringBuilder log, string label)
+        {
+            return AddStack(box, typeId, amount, log, label);
+        }
+
         private static bool AddStack(InteractableLootbox box, int typeId, int amount, System.Text.StringBuilder log, string label)
         {
             if (typeId <= 0) return false;

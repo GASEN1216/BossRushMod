@@ -40,7 +40,7 @@ namespace BossRush
         {
             ClearSubscriptions();
             if (!inBaseScene || !unlocked) return;
-            // 下水道（Level_HiddenWarehouse_CellarUnderGround）也算基地，但官方建筑区不在那个子场景：
+            // 下水道（Base_SceneV2_Sub_01）也算基地，但官方建筑区不在那个子场景：
             // 搜不到柜子不等于玩家撤了陈列，保留缓存与已挂的加成，不改登记簿。
             if (!IsBuildingAreaLoaded()) return;
             try

@@ -20,6 +20,11 @@ CONSTANT_SOURCES = {
     "BossRushItemIds.TemperingSolvent": Path("Config/ConfigItemIds.cs"),
     "BossRushItemIds.PassTheBomb": Path("Config/ConfigItemIds.cs"),
     "BossRushItemIds.ResidualSunShield": Path("Config/ConfigItemIds.cs"),
+    "BossRushItemIds.TidegateHandwheel": Path("Config/ConfigItemIds.cs"),
+    "BossRushItemIds.TidegateTideWatch": Path("Config/ConfigItemIds.cs"),
+    "BossRushItemIds.TidegateDryBag": Path("Config/ConfigItemIds.cs"),
+    "BossRushItemIds.TidegateFlippers": Path("Config/ConfigItemIds.cs"),
+    "BossRushItemIds.TidegateLetter": Path("Config/ConfigItemIds.cs"),
 }
 
 CONSTANT_VALUES = {

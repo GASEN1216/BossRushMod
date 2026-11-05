@@ -15,12 +15,11 @@ ROOT = Path(__file__).resolve().parent.parent
 DUCK_DIR = ROOT / "Integration" / "NPCs" / "DuckNpc"
 DATA_FILE = ROOT / "Assets" / "Data" / "DuckNpcs.json"
 
-# 合法场景名：基地枢纽四个变体（Utilities/SceneRuntimeGate.cs）
+# 合法场景名：基地枢纽三个变体（Utilities/SceneRuntimeGate.cs；仓库区地下室不是基地，2026-11-05 移出）
 # ∪ Assets/SpawnPoints/*.json 的 sceneName 全集（文件名即场景名）。
 # 比对是大小写敏感的 Ordinal（DuckNpcBlueprint.AllowsScene）。
 KNOWN_SCENE_NAMES = set(
-    ["Base", "Base_SceneV2", "Base_SceneV2_Sub_01",
-     "Level_HiddenWarehouse_CellarUnderGround", "SkyIslandRaid"]
+    ["Base", "Base_SceneV2", "Base_SceneV2_Sub_01", "SkyIslandRaid", "TidegateRaid"]
     + [p.stem for p in (ROOT / "Assets" / "SpawnPoints").glob("*.json")]
 )
 COMPILE_LIST = ROOT / "compile_official.bat"
