@@ -2,6 +2,72 @@
 
 更早记录见 `archive/`；月度归档索引保留在本文件正文。
 
+## 2026-11-05 潮闸镇生产水准复审（HEAD 4f9a1642 之后；017～028 当日全部修复；COMPAT，L1/L2，L3 待验）
+
+owner「审核最新代码与 3D 场景是否达到生产水准、UI 交互逻辑特效够不够精致」，看完报告后「开始全部修复」。在 001～016 已修复的基础上补审：通读 `Tidegate/`、`Integration/Tidegate/`、`Utilities/RaidScenes/`，作者工程四个自研着色器与构建器，导航 / 碰撞 / 布局导出数据与作者预览图；与 001～016 及其未证实线索不重复。修复与验证见 `FIX_TRACKER.md` 同日节。没有启动游戏、没有访问存档。
+
+### CR-2026-11-05-017 · P1 / COMPAT · 潮汐换相、渡口来船、暗渠露出全程没有提示
+
+- 状态：Fixed（2026-11-05），L1 + L2，L3 待验。
+- 位置：`Tidegate/TidegateTide.cs` 的 `PhaseChanged` 原先全仓零订阅；会话只刷 HUD 文本。owner 认可的原型有涨潮前 15 秒警报、每相字幕与「渡口的船要走」提醒（`docs/design/tidegate-town/v2/js/game.js:180-196`）。
+- 影响：涨潮只有 30 现实秒，滩涂约 16 秒后变深水；背重的人在滩涂 / 沉船搜刮时没有任何预警就下沉缺氧；渡口与暗渠开合都没有提示。
+- 修复：会话订阅并在清理时退订 `PhaseChanged`，每相出字幕（涨潮警示色加警报、高潮在渡口拉汽笛）；纯规则 `TidegateTideRules.NoticeAt` 给出低潮最后 15 秒涨潮警报、高潮最后 12 秒渡口要走，会话每轮各报一次（执行回归覆盖「每轮恰好一次」）。
+
+### CR-2026-11-05-018 · P2 / COMPAT · 潮位读数放在 HUD「目标」行，读数一变就触发「目标更新」
+
+- 状态：Fixed，L1 + L2，L3 待验。
+- 位置：会话每 0.5 秒 `SetObjective(tide.Describe(...))`，文本含一位小数的潮位与 m:ss 倒计时；`SkyIsland/SkyIslandHud.cs` 值一变就挂「目标更新」眉题（停 6 秒）、闪强调条、目标行淡出淡入。
+- 影响：带着潮汐怀表时整趟出击眉题常驻、强调条每秒闪、目标行每秒换字；潮闸镇也没有真正的目标引导。
+- 修复：目标行改成按进度变化的引导（还剩哪几处阀门 → 带手轮去潮位站 / 手轮在挖沙船 → 泻湖放水中 / 金库露出水面 / 又被淹了 → 带怀表回去交给闸伯）；`TidegateTide.Chip` 把潮相、潮位与怀表倒计时放小标行，负重、游泳与出口同行；没带怀表的人在落地横幅里看到怀表的用处。
+
+### CR-2026-11-05-019 · P2 / COMPAT · 海侧地图边界碰撞顶面 0.307 m，低于高潮水位 0.45 m
+
+- 状态：Fixed，L1 + L2，L3 待验（游不游得出去要实机看）。
+- 位置：`ArtSource/Tidegate/collision_boxes.json` 海侧墙（three.js `[-89,-3.5,69]→[89,0.307,70]`）被构建器原样照搬；官方游泳把脚底压在水面下约 0.5 m（`CharacterMainControl.UpdateSwim`）；外海水体铺到 ±170 m，旧兜底要 |z| > 150 才拉回。
+- 修复：`TidegateWorld.AddBoundary` 在 `ApplyLayers` 里沿可玩区（180 × 140 m）四边补墙层碰撞（y −12…+6），不重打场景包；越界兜底改为可玩区外 8 m（`OutsidePlayArea`）。
+
+### CR-2026-11-05-020 · P2 / COMPAT · 灯塔点光只照到角色，照不到地面与建筑
+
+- 状态：Fixed，L1 + L2，L3 待验。
+- 位置：自研着色器在 GBuffer 里 albedo 置 0、`kLightingInvalid`，延迟光源对地面与建筑的贡献为 0，本图只认 `_TidegateLamp*` 灯数组；`TidegateDevices.LightBeam` 的注释却写「照亮周围的角色与地面」。
+- 修复：灯塔点亮后灯头进灯数组第一格（半径 16 m、暖色，白天 35% 亮度）；入夜（夜色 ≥ 0.25）拿着带手电的枪时，瞄准方向前 3.5 m 每帧放一盏近似手电的灯（owner「全部修复」即接）。夜灯最多 14 盏、留一格给手电。注释改正。
+
+### CR-2026-11-05-021 · P2 / COMPAT · 全图没有任何声音
+
+- 状态：Fixed，L1 + L2；音效没人耳试听，L3 待验。
+- 修复：新增 `Tidegate/TidegateSounds.cs`（与 `SkyIslandAmbience` 同一套 `PostCustomSFX` / `StopAll` 反射绑定）：码头、滩涂、栈桥、灯塔岬岸边的海浪循环（38 / 44 m 滞回）、栈桥浮标钟、涨潮警报、来船汽笛、阀门、大闸、灯塔点亮。文件由 `tools/gen_tidegate_sfx.py` 程序化生成（标准库，`--check` 校验格式、峰值、首尾与循环接缝）进 `Assets/Sounds/Tidegate`（local-only），正式编译的声音目录自检加 `Tidegate`。
+
+### CR-2026-11-05-022 · P2 / COMPAT · 地表贴图 2–4 m 一铺、不旋转不偏移，一屏能看到约十次同样的裂纹
+
+- 状态：Fixed，L1 + 作者预览前后对比目检，L3 待验。
+- 修复：作者工程 `TidegateTerrain.shader` 每层按权重 `[branch]` 采样（梯度分支外算好），水泥、沥青、泥、岩石、海床走 Inigo Quilez「texture repetition」第三法去平铺；铺路石有砖缝，不偏移；整体叠 10–15 m 中频明暗，草地按 30–40 m 一块偏黄。重打 `tidegate_raid`（`fbee4ab5…`），两包着色器判包与 79 包资源校验通过。
+
+### CR-2026-11-05-023～026 · P3（均 Fixed，L1 + L2，L3 待验）
+
+- **023 观感**：水厂沉淀池平涂像绿色地板 → `TidegateEnvironment` 加静水 `_Ripple`（细波纹法线 + 天光），构建器只给 `water{...}` 材质开；水面不接阴影 → `TidegateWater` 接主光阴影（透明按阴影贴图、单级阴影顶点算坐标）；镇外大片同色草地 → 地形着色器草地黄斑。外圈地形没加起伏（要回 three.js 改导出，游戏镜头只看得到边界外约 14 m，那一带已有散布）。
+- **024 交互反馈**：走近被淹的箱柜提示一次「等退潮」；潮位站缺手轮写进交互名（交互名随状态变化才重注入）；阀门交互名括号随语言；读信写不进存档时提示稍后再读，不说竹筏出现了。
+- **025 一致性**：HUD 地名按 24 m 到访半径与 4 m 滞回；「带着怀表」HUD、交表（`FindCarried`）、竹筏交表选项（半秒缓存）与金库同按整棵物品树。
+- **026 维护**：剧情箱柜改成一张表 `TidegateLoot.StoryContainers`，`tools/build_tidegate_navigation.py --check` 逐条核对布局 `fixed` 标签（两个方向都报）；原型「小金条」落为沉船船长保险柜固定多一件金库档值钱物（过价值上限与黑名单）；两处 XML 注释归位；在建角色改计数器；`guard` 按天空岛精英档配枪；游泳时 `VisableDistanceFactor` ×0.5（原型「游泳时敌人发现距离减半」）。Wiki 中英同步。
+
+### CR-2026-11-05-027 · P2 / OPERATIONAL · `4f9a1642` 让 `LedgerSizeGuard` 转红
+
+- 状态：Fixed（2026-11-05），L2。
+- 位置：本文件提交时 1218 行，超过 1200 行上限；该提交的 `FIX_TRACKER.md` 写全量守卫 753 PASS，跑在追加台账之前。
+- 修复：按 owner「满了立刻归档」把 13 个已闭环节逐字搬进 `archive/CODE_REVIEW_FINDINGS_2026-10.md` / `_2026-09.md` 并补索引，核对零丢失。
+
+### CR-2026-11-05-028 · P2 / COMPAT · 潮闸镇没有预热官方物资池与敌人武器池
+
+- 状态：Fixed，L1 + L2，帧时间未采样。修复期间发现。
+- 位置：天空岛进岛读条时 `SkyIslandLootPools.Prewarm()`（顺带武器池，CR-2026-09-14-014）；潮闸镇的箱子同样走 `SkyIslandLootPools`，却没预热，第一只箱子（出生点 60 m 内，落地 0.5 秒就建）那一帧现查官方物品表；守卫配枪后武器池也一样。
+- 修复：导航扫描后、放行官方初始化前逐帧预热（读条里），失败只记一次、箱子照常懒建。
+
+### 未证实线索（UNVERIFIED，要实机）
+
+- 竹筏在基地下水道用自研 Environment 着色器：吃 URP 主光与固定天光，不吃下水道的点光与烘焙光，也照不到自己的马灯，可能比周围亮或平（人工清单 `M_TIDEGATE_08` ⑨）。
+- 性能没采样：1209 个渲染器、181 个材质、不开静态合批；Environment 着色器对所有不透明件 `clip()`，整镇失去 early-Z。地形改成按权重分支采样后平均采样数应下降，去平铺层多一次采样，同样没采样。
+- 灯塔光束白天和夜里一样亮（`TidegateBeam.shader` 不读 `_TidegateNight`）；交表选项挂在竹筏交互组里，不在 6.6 m 外的闸伯身上。
+- 程序化音效与手电近似灯（点光、不是光锥）的观感没人看过、听过。
+
 ## 2026-11-05 潮闸镇提交 bea44008 全面审查（16 项已当日修复；COMPAT，L3 待验）
 
 owner「全部审核一遍，确保没问题把代码提交了」。按三块分给三个独立审查（出击基础设施与会话、局内玩法运行时、剧情 / 物品 / NPC / 数据），只读、各自对照 `鸭科夫源码/` 与调用链；结论由主会话逐条复核代码后才登记。另有主会话自查守卫与资源校验脚本的改动（未发现放宽断言）。修复与验证见 `FIX_TRACKER.md` 同日节。没有启动游戏、没有访问玩家存档。
@@ -467,130 +533,8 @@ Fixed 为代码和离线闭环，真实重启与战斗尚待 L3。新制品、�
 
 CR-2026-10-08-001：P2 / Fixed。新图腾动态 prefab 使用 DontDestroyOnLoad 并留在 ItemAssetsCollection；初版却由 NewWeaponRuntime cleanup 销毁程序化 Sprite/Texture，同进程重新启用时复用旧 prefab 会继续引用失效图标。改由动态 prefab 上的组件拥有资源，用创建者 instanceId 保护共享图标，宿主 cleanup 不再释放它。当前代码审查与正式编译通过；实际热重载未做 L3，证据和验收步骤见 [交付记录](docs/reports/testing/2026-10-08-空仓地雷盒交付与验收.md)。
 
-## 2026-10-07 Player.log 复现：二次传送与终章误清场（COMPAT，L1/L2）
-
-| ID | 级别 / 状态 / 分类 | 根因与最小修复 |
-| --- | --- | --- |
-| CR-2026-10-07-017 | P1 / Fixed / COMPAT | `AfterInit` 只代表官方初始化，BossRush 的延迟入口协程还会再次搬人；报名石已在旧落点生成。复用真实路牌 owner：当前场景路牌实际生成后才允许报名石出现，以路牌实际位置为锚点投影地面，与垃圾桶共用同一场地来源。 |
-| CR-2026-10-07-018 | P1 / Fixed / COMPAT | 第六章独白、异步生成和决战期间普通波次 `IsActive` 仍为 false，Legacy 持续预清场因此删除女巫；征程检测实例消失收尾并重建石头。直接清场首部检查终章占场；原持续协程在占场时暂停扫描、刷怪器处理和次数预算，失败/退出后恢复。 |
-
-用户提供的 `Player.log` 证明旧交付仍有运行时缺口：先生成石头，后执行 BossRush 传送；女巫生成成功后紧接着清理一个敌人，随后征程自动收尾。CR-016 的 active scene 缓存修复保留，但其“等待 AfterInit 即可避免旧位置”的结论不成立，由 CR-017 补齐。新修复的验证与人工步骤见 [日志复现报告](docs/reports/reviews/2026-10-07-报名石位置与冠军女巫误清场.md)。
-
-当前修复：相关守卫 30 / 30、执行回归 117 / 117、Windows 正式编译及部署哈希一致；征程真实入口/路牌/几何 225 checks、真实预清场 661 assertions。全量守卫 737 / 738，唯一红项为未改动的 local-only 物品 ID 表已写 500104/下一可用 500105，而公开台账仍止于 500103；未修改或放宽该守卫。新制品 L3 未运行，Fixed 仅指本次代码与离线验证闭环。
-
-## 2026-10-07 征程直接关闭与终章报名石（COMPAT，L1/L2）
-
-| ID | 级别 / 状态 / 分类 | 根因与最小修复 |
-| --- | --- | --- |
-| CR-2026-10-07-015 | P1 / Fixed / COMPAT | 官方采集先消费征程 typed pending，但引擎未登记此路径的物理保存义务；随后未写盘或失败时，Tick 与关闭兜底误判无事可做。成功写入和回读后通过可选回调通知征程原引擎保留 owed/deferred，真正保存成功或切槽才清除。真实采集、关闭补盘、切槽与独立新进程文件恢复回归覆盖。 |
-| CR-2026-10-07-016 | P1 / Fixed（场景缓存）；二次传送遗漏见 CR-017 / COMPAT | sceneLoaded 后 active scene 可能晚切换，终章只按 generation 缓存 false 导致报名石整局缺失。缓存加入 active scene.handle，否定结果每秒重试，并等待官方 AfterInit。原回归仅覆盖官方搬人，未覆盖 BossRush 后续二次传送；玩家日志已证实该测试缺口。 |
-
-完整 16 项反馈复核、验证与 RQ-01～03 实机步骤见 [本轮报告](docs/reports/reviews/2026-10-07-征程重启与终章石复核.md)。用户明确关闭前第六章“已接取”；没有读取玩家档、启动游戏或推定已丢进度恢复，Fixed 表示代码和离线证据闭环。
-
-## 2026-10-07 远端合并后的全部改动复审（COMPAT / WIRE+，L1/L2）
-
-用户授权快进合并 `f0711934`，本地全部修复经保护快照恢复，未创建或推送公开提交。当前完整结论见 [合并复审报告](docs/reports/reviews/2026-10-07-全部改动独立深度复审.md)。远端已占用 001～005，以下本地项采用 006～014；两边重复发现的极值支付合并为 001，最终保留“先 Pay、明确拒付且余额未变、确有溢出才 Add”的窄分支。
-
-| ID | 级别 / 状态 / 分类 | 根因、最小修复与 L2 证据 |
-| --- | --- | --- |
-| CR-2026-10-07-006 | P1 / Fixed / COMPAT / WIRE+ | 官方激活栅栏之后的事件／黑幕异常不会再经过 NextFrame，漏登记或放行原生 operation 使后续切图阻塞。首次 setter 登记，异常与表现结束放行，完成前保留资源；真实 Harmony、现装 DLL 与反向探针通过。 |
-| CR-2026-10-07-007 | P1 / Fixed / COMPAT | 未产生岛图时无 sceneUnloaded 可供 Session 清理，成功返家后重复重载基地。无岛实例的返航派发后交回租约；真实 DispatchReturnIfReady 修前红、修后绿。 |
-| CR-2026-10-07-008 | P1 / Fixed / COMPAT / WIRE+ | 返航幕布卸掉岛图后再失败，旧释放门放弃重试，目标半恢复角色可能覆写旧快照。保留 returnFailed 并保护失败返航目标的再次采集；原岛与死亡保存继续，租约／Harmony 回归通过。 |
-| CR-2026-10-07-009 | P1 / Fixed / COMPAT | 按技能目标判断友军被碰撞入口复用，追敌中的友军龙裔会伤害同营主角。入口按实际碰撞双方 Team.IsEnemy 判断；真实碰撞回归与旧判据反向验证通过。 |
-| CR-2026-10-07-010 | P1 / Fixed / COMPAT | 押注键写／回读一次故障留下单向 store fault，资金已扣但结算／物理保存永久受阻。同槽恢复已接受账本，空 replacement 先订阅，保留原协调器现金／物品义务；真实故障、重启、冻结赔率与换槽回归通过。 |
-| CR-2026-10-07-011 | P2 / Fixed / COMPAT | 加载立即清理先于基地回调，归巢随从 ID 被清空，漏经验和场次。既有 Update 在清理前留 ID；实际归巢 AddExp 流程修前转红。 |
-| CR-2026-10-07-012 | P2 / Fixed / COMPAT | 龙皇护卫龙裔降基础生命后写基值为当前生命，200% 设置时半血登场。改回读 Health.MaxHealth；10/50/100/200% 与旧代码反向回归通过。 |
-| CR-2026-10-07-013 | P2 / Fixed / COMPAT | 归巢事务拒绝仍清待办与预算，真实写故障也不恢复。成功接受才消费待办，5 秒维护重试并绑定槽；已接受 pending 真正写入／回读一致后清写故障，未知 schema 屏障保留。生产模块和真实 store／协调器回归及四项反向验证通过。 |
-| CR-2026-10-07-014 | P2 / Fixed / COMPAT | 普通非 Boss 预设 fallback 的龙皇／龙裔实例死亡先清 preset，全局入口在组件辨认前早返漏图鉴。两位既有死亡 owner 复用稳定身份入口；两个生产方法、普通 fallback、第三方改 key、归属与去重回归通过，逐个删调用准确转红。 |
-
-合并后的共享内容与 H 独立保存协调器均补 sticky saving 自动恢复回归，H 的测试不再使用非 sticky 替身；荆棘补三档 finalDamage、冷却、来源及递归验证，未改玩法数值。最终全量守卫 736 / 736、一次完整回归 117 / 117、Windows 正式编译及 73 包部署验证通过；源／部署 DLL SHA-256 为 `3A378E05F60EDB9107FDD225450EBD9D2A1788907AFD4C677CFAA7716BC0F034`，14 个 Dev 标识不存在。三件资源网格已确认齐全。详细证据及人工步骤在合并报告；L3 未执行。
-
-## 2026-10-07 最新提交独立深度复审（COMPAT / WIRE+，L1/L2）
-
-重新从玩家入口、生产调用、现装官方 DLL / IL 与失败恢复审查 `af9bcb43`，没有把旧 Fixed 或绿测试当结论。完整逐项结论、反向证据和 R01～R18 实机步骤见 [本轮报告](docs/reports/reviews/2026-10-07-最新提交独立深度复审.md)。下述 Fixed 仅为代码与离线验证闭环；未启动游戏、访问玩家存档或提交 / 推送公开代码。
-
-| ID | 级别 / 状态 / 分类 | 根因与最小修复 |
-| --- | --- | --- |
-| CR-2026-10-07-001 | P2 / Fixed / COMPAT | 官方 Pay(Cost) 忽略 cashAvailable 的预检仍相加账户与背包现金，unchecked long 溢出误拒合法大额押注。仅此上溢边界改走已有账户 Add(delta)，普通支付和账本流程保留。真实官方预检替身与现装 IL 证明；移除生产分支后金额回归和守卫均转红。 |
-| CR-2026-10-07-002 | P1 / Fixed / COMPAT | inactive 巡守根下的官方子 AI 被默认 GetComponentInChildren 漏掉，首次生成或挂起恢复失败。唯一查询补 true；直接执行生产 ConfigureNavigation，旧 HEAD 在 inactive_child_navigation 实际转红，另 8 项隔离变异验证。 |
-| CR-2026-10-07-003 | P1 / Fixed / COMPAT | 官方先派发实例死亡再派发全局死亡，女巫实例 owner 先清 preset，使普通击杀也漏图鉴。清理前提交稳定身份并复用原过滤 / 实例去重；三 Boss clone 名统一既有清理约定，第三方改名后仍释放自有副本。真实死亡方法、清理 helper、官方顺序共 471 条断言；移除身份调用及逐个恢复旧 clone 名均使生产回归与守卫转红。 |
-| CR-2026-10-07-004 | P1 / Fixed / WIRE+ | 官方 SaveFile 置 saving 后写盘异常没有 finally，后续重试永久被 IsSaving 拦住。共享引擎和 H 的已有唯一写点复用受控同步包装，只释放自己失败调用留下的私有 saving 闩，原异常与 pending 保留。旧 sticky 测试手清闩已纠正；去掉包装后生产回归与新守卫均转红。现装 IL 钉住字段、时序和无 finally。 |
-| CR-2026-10-07-005 | P1 / Fixed / COMPAT | 官方对话 UI / actor 失效独立取消终章独白，旧 catch 留下活动闩，记名石持续不可用。仅当前 runId 取消时归还召唤权，旧请求不清后继 owner；恢复旧 catch 后独立取消回归实际转红。 |
-
-保存保护只覆盖共享内容引擎与 H 发起的同步写盘，不接管官方独立保存、Mode G / 好感旧直调；持续 IO 故障、进程终止与已丢历史数据仍有边界。未新增常驻扫描、生产源文件或存档 schema，未放宽守卫。全量守卫 736 / 736；回归覆盖 117 / 117（全量 116 加修正测试替身后复跑，保留逐次结果）；Windows 正式编译 / 73 包部署通过，源 / 部署 DLL SHA-256 `CB1DCB32458ACAA87C9366A04910F1261B3FC4DB435F20D11237491C4752B205` 一致，14 项 Dev 标识检查通过，详见本轮报告。
-
-资源复核：起始全量守卫 735 / 735，源与部署 skyisland_fx 均直接读到三件 LootCrate 网格（199,122 B，SHA-256 `1699BADD7F674CF81B51D24AE28483F4C13E513C30B9FC2E11EFBA9C12FD67E1`），本轮未重打包。CR-2026-10-06-012 的历史缺失在当前制品上不成立，不能继续作为既有红项。旧 10-06 报告本机缺失，以下历史验证数字保留，当前结论以本轮报告为准。
-
-## 2026-10-06 第二轮深审：征程重复报名、宠物全模式、押注全余额与晴岚黑屏（L1/L2）
-
-用户补充与最终实施见 [完整 17 项报告](docs/reports/reviews/2026-10-06-用户反馈审核与修复.md)。本节取代首轮对征程“未复现”、宠物 G／丧尸禁入、押注固定 20,000 和敲钟地图未知的结论。以下已修复项均未作 L3 声明。
-
-| ID | 级别 / 状态 / 分类 | 根因与修复证据 |
-| --- | --- | --- |
-| CR-2026-10-06-013 | P1 / Fixed / COMPAT | `Campaign/CampaignPersistence.cs:158` 恢复时先 Store 再首次订阅，订阅主动清缓存使已接受进度丢失。已改为先订阅再恢复；真实订阅旧代码转红，三类异常分别经独立写进程／读进程文件回归验证。 |
-| CR-2026-10-06-014 | P1 / Fixed / COMPAT | `Campaign/CampaignOfficialQuestClient.cs:103` 故障时仍 Ready，会拿默认空章节刷新 Jeff。读屏障或写故障时暂停投影，防止“报个名”重新可接；现装 Core／EasySave3 IL 契约与官方投影夹具通过。 |
-| CR-2026-10-06-015 | P1 / Fixed / COMPAT | `PetNest/PetNestCompanionSpawner.cs` staging 根 inactive 时未包含 inactive 子树，旧基地禁战可能拿不到 AI。包含 inactive 查询后在激活前停战斗树；真实 TryActivate／Agent 回归证明基地禁战、出击新实体正常 AI／伤害，并覆盖换队、换主角、死亡和长加载。 |
-| CR-2026-10-06-016 | P2 / Fixed / COMPAT | `MapSelection/BossRushMapSelectionHelper.cs:220` 地图费用仍残留 868 回退，首轮只修 Mode D 漏了此入口。两条入口回退共享发布常量 500001；真实地图费用与注册失败回归通过。 |
-| CR-2026-10-06-017 | P1 / Fixed / WIRE+ | `SkyIsland/SkyIslandSceneReferenceBridge.cs` 与 `SkyIslandRaidLease.cs` 在官方加载异常后漏 Hide，且早期分帧等待不观察取消。只补本租约黑幕引用计数，观察四处官方等待并释放目标 operation 的激活阻塞，资源和补丁延迟到各自真正完成再释放。真实 Harmony／现装 DLL／租约回归与两项反向验证通过。 |
-| CR-2026-10-06-018 | P1 / Fixed / SCHEMA+ | `ModeH/ModeHCashBetService.cs` 大额乘法、胜率、估值及累计有溢出风险，恢复会按变化后的分数赔付。decimal／long 安全计算，锁盘复验上限和扣款，新增可选冻结分子／分母／胜负结果；旧 v1/v2/v3 可读，小额零返还赢注和 long.MinValue 展示均正确。 |
-
-按用户裁决，宠物仅 H（含待入场）禁止；G 清场／Boss 结案沿用现有豁免，丧尸清场显式排除宠物身份，宠物攻击正常消费 Boss 防御；不把宠物计为敌人。押注只扣本金，上限为 min(余额, floor(余额÷本场真实返还倍率))，取消固定 20,000 上限，UI 用归一化整数进度，大额不经过 float。
-
-补充黑屏兼容：当前源与部署包 shader 判包通过；`SkyIslandRendering` 入场按 shader 去重校验 GBuffer，旧 Forward-only 包虽然 isSupported 也不会静默进入黑地形。天空岛“归航钟”没有女巫生成调用，敲钟写 Ending 后向钟守交付。
-
-验证：117 / 117 全量执行回归，734 / 735 全量守卫；唯一失败仍是首轮 CR-012 既有特效包缺三件搜刮箱网格。Windows 正式编译／部署通过，DLL SHA-256 `0F109A2031B81F4EA376AF862F72AEE86624DD44A851E46B61C6348F4B7F883C`，14 项 Dev 标识检查通过，未启动游戏／读取玩家存档。
-
-## 2026-10-06 玩家 16 项反馈审核（COMPAT / SCHEMA+，L1/L2）
-
-逐项结论、生产路径、故障边界与 UF-01～15 实机步骤见 [审核报告](docs/reports/reviews/2026-10-06-用户反馈审核与修复.md)。本轮未启动游戏、未读取或修改玩家存档。以下 Fixed 只表示代码与离线验证闭环，不表示 L3 已通过。
-
-| ID | 级别 / 状态 | 证据与修复 |
-| --- | --- | --- |
-| CR-2026-10-06-001 | P1 / Fixed / COMPAT | `ZombieMode/ZombieModeSpawner.cs` 的 Boss 全图点可落在追踪范围外；复用最近可达点、拥挤环和追踪距离，ZombieModeSpawnRuntime 覆盖。 |
-| CR-2026-10-06-002 | P1 / Fixed / COMPAT | `PetNest/PetNestModeGate.cs` 允许名单排除普通出击；最终按用户裁决允许所有游戏地图与模式，仅 H（含待入场）禁止，基地由独立闲逛 owner 管理。PetNestGrowth 覆盖；旧 G／丧尸禁入描述已撤销。 |
-| CR-2026-10-06-003 | P1 / Fixed / COMPAT | 基地宠物未禁战；`PetNestCompanionSpawner.cs` 显示前停官方 AI 子树并复用跟随，基地调用显式 allowCombat:false，ManualSeptemberReview 覆盖。 |
-| CR-2026-10-06-004 | P1 / Fixed / COMPAT | `SkyIslandSession.cs` 与 `ModeHRuntimeModule_SceneFlow.cs` 在 A* 正扫描时立即扫描或选址，会触发返家；复用有界等待，导航未就绪不可提前接管。 |
-| CR-2026-10-06-005 | P1 / Fixed / COMPAT | `CampaignFinalBoss.cs` 把竞技场环境已激活误判成普通波次在战斗，挡住记名石；改为同时检查 IsActive，CampaignPlayability 覆盖。 |
-| CR-2026-10-06-006 | P1 / Fixed / COMPAT | `ModeD/ModeD.cs` 注册未就绪时把船票 ID 回退成 868；改用共享 500001 常量，ModeDEntryOwnership 覆盖。 |
-| CR-2026-10-06-007 | P1 / Fixed / COMPAT | 龙皇、女巫注册被旧 static 成功标记阻断，目录清空后无法补登记；改查当前目录，WavesArenaPresetWeight 覆盖三 Boss 重建。 |
-| CR-2026-10-06-008 | P2 / Fixed / COMPAT | 女巫基础预设查找缓存失败或销毁对象，迟到资源无法恢复；仅成功有效结果早返，执行回归覆盖迟到与 Unity 销毁语义。 |
-| CR-2026-10-06-009 | P2 / Fixed / COMPAT | `CodexKillCollector.cs` 仅用可变 nameKey 归档，第三方改名可把龙皇记成观测者；复用已有能力组件识别，普通杂兵轻门与后续命中 O(1) 保留，图鉴回归覆盖。 |
-| CR-2026-10-06-010 | P1 / Fixed / COMPAT | Mode E 猎犬友军恢复强追玩家，龙裔技能固定指主角；按友军身份禁强追、共用官方 AI 敌对目标，ModeECombatTargeting 覆盖。 |
-| CR-2026-10-06-011 | P2 / Fixed / COMPAT | `ModeDRuntimeModule_Waves.cs` 对已乘生命比例的 Value 求 Add 增量会二次缩放并让当前血量与上限不一致；改为每波 3% 整体乘算并回读上限，BossHealthScaling 覆盖 50/100/200。 |
-| CR-2026-10-06-012 | P2 / Rechecked 2026-10-07 / OPERATIONAL | 10-06 历史记录为特效包缺三件网格；10-07 源 / 部署包均直接读到三件，原守卫通过。当前资源缺口不成立，本轮未重打包，未把资源存在当画面验收。 |
-
-首轮待确认项已重新调查：征程故障恢复重置见 CR-013／014；天空岛归航钟没有女巫生成步骤。本次按用户明确的鸭王杯 Mode H 复核，仍未从当前生产链证实“正常观众被全员攻击”。未接序章刷零号区守卫被当前前置／异步复核门反证。随机敌人 Mod 全面兼容性未实机测试。
-
-验证：115 / 115 执行回归；734 / 735 全量守卫，唯一失败 CR-012；Windows 正式编译通过，1148 源文件，正式 DLL 源与目标 SHA-256 `1875537F...97E2F93B` 一致，Dev 标识检查通过。详细完整哈希和测试边界见报告。
-
-## 2026-09-30 天空岛整体生产审查（2026-10-01 全部 Fixed，L2；实机待验）
-
-原文与修复证据已逐字移入 [2026-09 月度归档](archive/CODE_REVIEW_FINDINGS_2026-09.md)，L3 仍按原条目待验。
-
 ## 2026-09-29 Mode H 发布前审核第二轮（14 项 Fixed / COMPAT / L1+L2）
 CR-2026-09-29-013～015（P1）：看台退出回基地押注被误退、进程内换档后内容闸不重开、休眠原生敌人未清场；016～020（P2）：附加场景离场残留无敌中立、名人堂暂存失败重试误报成功、建页异常留下无按钮模态页、五处单行 TMP 框高不足、战斗每帧拼字符串；021～026（P3）六项。证伪 3、未证实 4；owner 拍板 2 项已落地（开战后退出 / 放弃押注按输结清、观战击杀不给经验），触发 / 修法 / 实机清单见[第二轮报告](docs/reports/reviews/2026-09-29-模式H发布前审核-第二轮.md)。
-## 2026-09-29 Mode H 发布前审核（12 项 Fixed / COMPAT / L1+L2）
-
-## 2026-09-29 Mode H 发布前审核与复核（19 项 Fixed / COMPAT / L1+L2）
-
-001～012 见[前轮审核报告](docs/reports/reviews/2026-09-29-模式H发布前审核.md)，新增 013～019 的触发、位置、修复及实机清单见[发布复核报告](docs/reports/reviews/2026-09-29-模式H发布复核与验收.md)。717 守卫、110 执行夹具及 Windows 正式构建通过，无未修 confirmed finding，L3 尚待验收。
-- CR-2026-09-29-001～003（P1）：实物押注通知异常双扣；旧仓库通知异常丢托管/已交付物品；钱包未就绪的恢复迟付及终季误退本金。SaveFailureRecovery 故障回归闭环。
-- CR-2026-09-29-004～007（P1）：观战状态写后异常未补偿；早期恢复不能挂起；生成重试遗留主协程；跨季相同序号吞挂起退出。ModeHCombatRelease / ModeHReviewFixes 闭环。
-- CR-2026-09-29-008（P1）：建页故障重入后旧页覆盖恢复态；ModeHPlayerFlow 九类页面与 owner 边界闭环。
-- CR-2026-09-29-009～012（P2）：原图刷怪器部分回滚/原值错误；接力继承远程受伤；核心击杀归属与前批终结标签错误；Unity 假 null 残留死亡抑制登记。ModeHCombatRelease / ModeHMarketAudit 闭环。
-- CR-2026-09-29-013～015（P1）：嵌套押品重复估值/额外扣现金；仓库未就绪误入永久人工介入；放弃覆盖已决押注。SaveFailureRecovery / GameplayLogFixes / ModeHRecoverySecondReview 闭环。
-- CR-2026-09-29-016～017（P1）：无 Season / owner 的旧押品恢复动作缺失；倒地帧被胆怯截断接力。ModeHPlayerFlow / ModeHMarketAudit 闭环；恢复页不可关闭线索已证伪。
-- CR-2026-09-29-019（P1）：初始/接力协程与增援配装异常不进技术重试。共用逐层协程驱动并补增援异常边界，ModeHReinforcementSecondReview 闭环。
-- CR-2026-09-29-018（P2）：ERROR 切回时官方控制动作未停止，丢失原枪槽。先停本次动作再恢复控制，ModeHMarketAudit 闭环。
-
-## 2026-09-28 天空岛全面审核与修复（8 项 Fixed / L1+L2，L3 待实机）
-
-原文与修复证据已逐字移入 [2026-09 月度归档](archive/CODE_REVIEW_FINDINGS_2026-09.md)，L3 仍按原条目待验。
-
-## 2026-09-27 生产就绪全面审计（代码修复与 L1/L2 已闭环，L3 待实机）
-
-CR-2026-09-27-401～406 的原始发现、逐项回填及当时验证已[按原文归档](archive/CODE_REVIEW_FINDINGS_2026-09-27_production_readiness.md)。运行时验收仍见[续审报告](docs/reports/reviews/2026-09-27-生产就绪全面审计-天空岛重点-续审.md)，不得把当时离线通过解释为 L3 已完成。
-
 ## 2026-09-27 UI / 特效 / Boss 与模块解耦审计归档
 
 两项 L1/L2 已闭环记录已按原字节迁入 [9 月归档](archive/CODE_REVIEW_FINDINGS_2026-09.md)，保留原验证结果与 L3 待验边界。
@@ -600,23 +544,6 @@ CR-2026-09-27-401～406 的原始发现、逐项回填及当时验证已[按原�
 2026-09-26 Jeff 任务与菜地果实链路：4 项 Fixed / L1+L2，L3 仍待验；完整原文见 [2026-09 归档](archive/CODE_REVIEW_FINDINGS_2026-09.md)。
 
 2026-09-26 天空岛发版审查：代码修复与 L1/L2 已闭环，L3 仍待验；完整原文见 [2026-09 归档](archive/CODE_REVIEW_FINDINGS_2026-09.md)。
-
-## 2026-09-25 F3 实机报告（runId 20260925_044506_391）复核：4 项生产缺陷 + 4 项验收数据 / 判据问题（均 Fixed / L1+L2，L3 待下一轮 F3）
-
-证据来源：owner 在 `51d2f0e6` Dev 构建上跑的 F3（主套件 327 过 / 9 红，全在天空岛；岛内全自动 79 / 6 / 1）。基地与各模式 1–7 阶段 182 项全过；`Player.log` 的异常全部来自 DuckMarket、MoveBlackMarket 与官方 `GamingConsole.Load`。
-
-| ID | 级别 / 兼容分类 | 已确认问题与修复 | 验证 / 状态 |
-| --- | --- | --- | --- |
-| CR-2026-09-25-006 | **P2** / COMPAT | 岛上判夜 19–5 与官方运行时不同相：`SKY_NIGHT_BOUNDARY_OFFICIAL` 实机读出 `TimeOfDayController.nightStart=22 / morningStart=6`，09-16（CR-2026-09-16-004）照反编译源的字段初值 19 / 5 对齐，被 `LevelManagerPrefab` 序列化值覆盖。19–22 点岛上已起夜风、刷云蚋、放夜限定头目而官方仍是黄昏。`SkyIslandNight` 改 22–6、`ForcedHour` 2；光照晨光段 6–7、暮色→星夜 18–22；取数补记 `official_dawn` 只记不判。夜长 10 → 8 现实分钟（owner 授权「全部修复」按对齐官方拍板）。 | **Fixed / L1+L2**。SkyIslandLighting / SkyIslandStory 夹具按 22–6 改写边界与天亮折算；`SkyIslandMosquitoGuard` 钉 22 / 6；Wiki 中英 6 页、契约、repowiki 同步。 |
-| CR-2026-09-25-007 | **P2** / COMPAT | 天空岛五扇门的导航封锁会整体丢失（`Player.log` `gate navigation block was lost and re-applied … walkable_before=3705`），1 秒自检只重封且之后不再记日志，`SKY_GATE_REACHABILITY` 两次落在丢失窗口里：门关着 `Search_H_02` 走得到。玩家本人被碰撞体挡住，受影响的是敌人 / 居民寻路。根因（L1 推断）：Mod 自建 `NavMeshGraph` 没关 `enableNavmeshCutting`，克隆官方 prefab 上的 `NavmeshCut` 让 tile 整块重建、`Walkable=false` 随旧节点丢掉。`ArenaPrototypeNavigation.BeginScan` 关掉切割；重封改为每次计数、日志 10 秒限频。 | **Fixed / L1+L2**。游戏 A* DLL 含该字段（编译通过即证）；`SkyIslandGateNavigationPropertyTest` 钉住这一行。是否根治以下一轮 F3 `gate_locked_blocked=1/1` 与日志无 `lost and re-applied` 为准。 |
-| CR-2026-09-25-008 | P3 / COMPAT | 苇白在「两盏灯都亮、航标单没接」时先说「这单还没交呢」再说「这单你还没接」，前后矛盾（英文复拍读出）。改为这一格只说「还没接，先接再交」。 | **Fixed / L2**。SkyIslandMarriageTextRegression 加「未接单不催交」断言；离线逐屏复算英文 10 屏 → 9 屏且无矛盾。 |
-| CR-2026-09-25-009 | P3 / COMPAT | 浮舟「十盏灯都亮」英文在 `54c8d98c`（09-17）被拆成三屏、中文两屏，违反 `DescribeNpc` 注释「改写保持屏数」，`SKY_AUTO_ALT_FUZHOU` 的星工装备断言落到别的句子上。英文合回两屏。 | **Fixed / L2**。`tools/sky_island_line_screens.py` 复算 2 屏；离线逐屏确认第 6 屏为星工装备。 |
-| CR-2026-09-25-010 | P3 / TEST | `SKY_AUTO_REAL_BOSS_SICKLE` 的瞬移偏移 `EnemySpawn_C:-9:5` 落进梯田小屋碰撞盒，整圈 1.2 m 都被占，自 09-16 起每轮 `target_ground_missing`。改 `9:5`；`SkyIslandAutotestTableGuard` 新增按几何表碰撞盒离线复算落点（含反向检查）。 | **Fixed / L2**。守卫 32 条反向检查全红，改回旧偏移即转红。 |
-| CR-2026-09-25-011 | P3 / TEST | `SKY_AUTO_REAL_NIGHT_GNATS` 可见度探针只挑最近的一只、刷新方位随机，扇形外的精灵被官方夜里战争迷雾整块盖住，读数 0.129 / 0.033 随方位跳。owner 目检「看得到，不用调」。表现不动、门槛不放宽，只把刷新改成主角瞄准方向 ±15°（`spawn_gnats:6:0:ahead`，`DevSpawnAhead`）。 | **Fixed / L1**。演练符号表两处守卫同步；实机读数待下一轮 F3。 |
-| CR-2026-09-25-012 | P3 / TEST | `SKY_AUTO_END_JOURNAL` 断言没跟 `54c8d98c` 的手记改写；顺手把「消耗一块「引风」」改成「烧一块来「引风」」（引风是装置动作，不是物品），两处断言同步。 | **Fixed / L2**。守卫文本核对通过。 |
-| CR-2026-09-25-013 | P3 / TEST | 全自动测试档从不接、交航路任务，结局后苇白先念 6 屏催单，`SKY_AUTO_ALT_RESIDENT` 的情报句被挤到第 7 屏。剧情阶段补齐 590001 序章与三条岛上任务的接 / 交（阶段目标文案逐一复算不变），情报句落在第 4 屏，断言挪到标题写的第 3–4 句的第 4 句。`F3AutotestJudges` 红样本改为按位核 Ending 缺失。 | **Fixed / L2**。离线逐屏复算；F3AutotestJudges 330 条、SkyIslandStory 全绿。 |
-
-<!-- BEGIN FULL AUDIT FINDINGS 2026-09-25 -->
 
 ## 2026-09-25 全仓审查与修复：5 项新登记、1 项旧问题局部复开（均 Fixed / L1+L2，L3 待 owner）
 
@@ -638,14 +565,21 @@ UNVERIFIED 不计入上述六项：嵌套 Sticky 押品需要 `AcceptSticky=true
 <!-- END FULL AUDIT FINDINGS 2026-09-25 -->
 
 
-## CR-2026-09-26-001 — 船票 owner 迁移后地图费用读回旧 ID（P1，已修复，COMPAT）
-
-触发：地图选择创建传送费用时，`BossRushMapSelectionHelper.GetBossRushTicketTypeId` 仍通过 `typeof(ModBehaviour).GetField("bossRushTicketTypeId")` 查询；该成员在迁移后成为转发属性，反射恒取不到字段。注册已得到 500001 时仍退回 868，费用查询、票数检查和相关退款查询因此使用错误物品 ID。
-
-修复：查询直接读取唯一注册 owner `IntegrationRuntimeModule.BossRushTicketTypeId`，保留正 ID 判断、未注册的 868 回退及防崩路径，不新增缓存或第二份状态。`IntegrationLeafOwners` 逐字执行生产注册、查询与 Cost 构造；修复前实跑命中 `map ticket lookup lost registered runtime owner ID`，修复后通过。新增断言覆盖 500001、未注册回退、备用正 ID、再次注册刷新、零现金且一张票。证据：`Build/migration/p6-ticket-before.log`、`p6-ticket-after.log`，级别 L1/L2；真实船点扣票/取消/退款仍由 `architecture/MIGRATION_ACCEPTANCE.md` 的 M_ENTRY_01–03 实机验收。
-
 ## 归档索引
 
+- 2026-10-07 Player.log 复现：二次传送与终章误清场（COMPAT，L1/L2）（2026-11-05 台账超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-10.md`
+- 2026-10-07 征程直接关闭与终章报名石（COMPAT，L1/L2）（2026-11-05 台账超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-10.md`
+- 2026-10-07 远端合并后的全部改动复审（COMPAT / WIRE+，L1/L2）（2026-11-05 台账超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-10.md`
+- 2026-10-07 最新提交独立深度复审（COMPAT / WIRE+，L1/L2）（2026-11-05 台账超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-10.md`
+- 2026-10-06 第二轮深审：征程重复报名、宠物全模式、押注全余额与晴岚黑屏（L1/L2）（2026-11-05 台账超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-10.md`
+- 2026-10-06 玩家 16 项反馈审核（COMPAT / SCHEMA+，L1/L2）（2026-11-05 台账超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-10.md`
+- 2026-09-30 天空岛整体生产审查（2026-10-01 全部 Fixed，L2；实机待验）（2026-11-05 台账超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-09.md`
+- 2026-09-29 Mode H 发布前审核（12 项 Fixed / COMPAT / L1+L2）（2026-11-05 台账超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-09.md`
+- 2026-09-29 Mode H 发布前审核与复核（19 项 Fixed / COMPAT / L1+L2）（2026-11-05 台账超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-09.md`
+- 2026-09-28 天空岛全面审核与修复（8 项 Fixed / L1+L2，L3 待实机）（2026-11-05 台账超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-09.md`
+- 2026-09-27 生产就绪全面审计（代码修复与 L1/L2 已闭环，L3 待实机）（2026-11-05 台账超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-09.md`
+- 2026-09-25 F3 实机报告（runId 20260925_044506_391）复核：4 项生产缺陷 + 4 项验收数据 / 判据问题（均 Fixed / L1+L2，L3 待下一轮 F3）（2026-11-05 台账超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-09.md`
+- CR-2026-09-26-001 — 船票 owner 迁移后地图费用读回旧 ID（P1，已修复，COMPAT）（2026-11-05 台账超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-09.md`
 - 2026-09-27 天空岛发版复审（Wiki 对账、可达性、居民、Boss 质感）（Fixed，L3 待 owner；2026-10-25 台账超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-09.md`
 - 2026-09-27 丧尸模式 Boss 表现、官方计数与补丁隔离复审（Fixed，L3 待 owner；2026-10-25 台账超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-09.md`
 - 2026-09-29 天空岛发布前生产级审查（Fixed，L3 待 owner；2026-10-25 台账超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-09.md`

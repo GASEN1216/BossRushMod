@@ -21,13 +21,19 @@ namespace BossRush
         internal const float DryBagBonus = 6f;
         /// <summary>带着鸭蹼脚掌在水里时的移速加成（PercentageAdd，官方游泳本身是 ×0.8）。</summary>
         internal const float FlippersSpeedBonus = 0.35f;
+        /// <summary>
+        /// 游泳时敌人发现距离减半（原型规则，CR-2026-11-05-026）：官方 AI 索敌按目标的 `VisableDistanceFactor` 缩放视距
+        /// （`AIMainBrain`：距离 ≤ searchDistance × 系数才算看见）。PercentageMultiply -0.5 = 最终值 ×0.5，不受装备加减影响。
+        /// </summary>
+        internal const float SwimVisibilityMultiplier = -0.5f;
         private const float BoxBottom = -14f;
         private const float CheckInterval = 0.5f;
-        private const string CanSwimStat = "CanSwim";
+        private const string CanSwimStat = "CanSwim", VisibilityStat = "VisableDistanceFactor";
 
         private readonly List<BoxCollider> seaBoxes = new List<BoxCollider>();
         private readonly List<BossRushStatModifierRecord> swimRecords = new List<BossRushStatModifierRecord>();
         private readonly List<BossRushStatModifierRecord> flipperRecords = new List<BossRushStatModifierRecord>();
+        private readonly List<BossRushStatModifierRecord> stealthRecords = new List<BossRushStatModifierRecord>();
         private readonly object modifierSource = new object();
         private readonly TidegateTide tide;
         private readonly CharacterMainControl player;
@@ -35,9 +41,11 @@ namespace BossRush
         private GameObject root;
         private BoxCollider lagoonBox;
         private float appliedSea = float.NaN, appliedLagoon = float.NaN, nextCheck;
-        private bool swimGranted, flippersOn, warnedStat, disposed, hasDryBag;
+        private bool swimGranted, flippersOn, stealthOn, warnedStat, warnedStealth, disposed, hasDryBag;
 
         internal bool CanSwimNow { get { return swimGranted; } }
+        /// <summary>正在游泳、敌人发现距离减半中（HUD 小标用）。</summary>
+        internal bool Stealthy { get { return stealthOn; } }
         internal float WeightLimit { get { return SwimWeightLimit + (hasDryBag ? DryBagBonus : 0f); } }
 
         internal TidegateWater(TidegateWorld world, TidegateTide tide, CharacterMainControl player, Func<bool> valid)
@@ -118,6 +126,7 @@ namespace BossRush
             if (item == null) return;
             hasDryBag = TidegateInventory.Has(player, BossRushItemIds.TidegateDryBag);
             ApplyFlippers(player.Swimming && TidegateInventory.Has(player, BossRushItemIds.TidegateFlippers));
+            ApplyStealth(player.Swimming);
             bool light = item.TotalWeight <= WeightLimit;
             if (light == swimGranted) return;
             if (light)
@@ -149,12 +158,33 @@ namespace BossRush
             RuntimeStatModifierTracker.RemoveAll(flipperRecords, "TidegateFlippers");
         }
 
+        /// <summary>游泳时敌人发现距离减半，上岸就摘；跨状态才增删修饰。主角没有这项属性时按「不减」处理、只警告一次。</summary>
+        private void ApplyStealth(bool on)
+        {
+            if (on == stealthOn) return;
+            if (on)
+            {
+                stealthOn = RuntimeStatModifierTracker.TryAdd(player, VisibilityStat, SwimVisibilityMultiplier, modifierSource, stealthRecords,
+                    "TidegateSwimStealth", ModifierType.PercentageMultiply);
+                if (!stealthOn && !warnedStealth)
+                {
+                    warnedStealth = true;
+                    Debug.LogWarning(TidegateRaidScene.LogTag + " 主角没有 VisableDistanceFactor 属性，游泳时敌人发现距离不减半");
+                }
+                return;
+            }
+            RuntimeStatModifierTracker.RemoveAll(stealthRecords, "TidegateSwimStealth");
+            stealthOn = false;
+        }
+
         public void Dispose()
         {
             if (disposed) return;
             disposed = true;
             RuntimeStatModifierTracker.RemoveAll(flipperRecords, "TidegateFlippers");
             flippersOn = false;
+            RuntimeStatModifierTracker.RemoveAll(stealthRecords, "TidegateSwimStealth");
+            stealthOn = false;
             // 游泳能力只属于这一趟：离开潮闸镇必须摘掉，否则跟着主角回基地。
             RuntimeStatModifierTracker.RemoveAll(swimRecords, "TidegateSwim");
             swimGranted = false;

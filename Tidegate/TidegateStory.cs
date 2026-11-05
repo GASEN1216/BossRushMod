@@ -168,15 +168,21 @@ namespace BossRush
         internal static void ReadLetter()
         {
             bool first = !RouteUnlocked;
-            if (first && !Mutate(delegate (TidegateStoryData d) { d.LetterDelivered = true; d.LetterRead = true; }))
+            bool stored = !first || Mutate(delegate (TidegateStoryData d) { d.LetterDelivered = true; d.LetterRead = true; });
+            if (!stored)
                 Debug.LogWarning(TidegateRaidScene.LogTag + " 读信状态没写进存档（存档只读或换槽中），这次先只显示信");
             TidegateNoteBridge.Unlock(TidegateNoteBridge.LetterId);
+            // 第一次读才报竹筏；没写进存档就不说竹筏出现了（航线只认存档里的「读过」，CR-2026-11-05-024）。
+            string warning = !first ? null : stored
+                ? L10n.T("地堡下水道东头，水道最北边，多了一只挂马灯的竹筏。",
+                    "A raft with a lantern now waits at the far north end of the bunker sewer canal.")
+                : L10n.T("存档暂时写不进去，竹筏航线这次没记上。稍后再读一次信。",
+                    "The save can't be written right now, so the raft route wasn't recorded. Read the letter again shortly.");
             BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
             {
                 Title = TidegateText.LetterTitle,
                 Body = TidegateText.LetterBody,
-                Warning = first ? L10n.T("地堡下水道东头，水道最北边，多了一只挂马灯的竹筏。",
-                    "A raft with a lantern now waits at the far north end of the bunker sewer canal.") : null,
+                Warning = warning,
                 ConfirmLabel = L10n.T("收好信", "Keep the letter"),
                 CancelLabel = L10n.T("合上", "Close"),
                 Danger = false,
@@ -202,7 +208,8 @@ namespace BossRush
             reason = null;
             if (WatchDelivered) { reason = L10n.T("怀表已经交给闸伯了", "Old Zha already has the watch"); return false; }
             if (persistence == null || !persistence.Writable) { reason = L10n.T("存档暂时不可写，稍后再试", "The save is not writable right now"); return false; }
-            Item watch = TidegateInventory.Find(player, BossRushItemIds.TidegateTideWatch);
+            // 和金库「身上带着就不放」同一判据：整棵物品树（背包里的收纳容器也算），CR-2026-11-05-025。
+            Item watch = TidegateInventory.FindCarried(player, BossRushItemIds.TidegateTideWatch);
             if (watch == null) { reason = L10n.T("身上没有潮汐怀表", "You are not carrying the tide pocket watch"); return false; }
             if (!Mutate(delegate (TidegateStoryData d) { d.WatchDelivered = true; }))
             { reason = L10n.T("存档暂时不可写，稍后再试", "The save is not writable right now"); return false; }
@@ -288,7 +295,19 @@ namespace BossRush
         /// <summary>主角整棵物品树里（装备、背包、背包里的容器）有没有这件。整树遍历会分配列表，只在低频路径用。</summary>
         internal static bool Carries(CharacterMainControl player, int typeId)
         {
-            return player != null && player.CharacterItem != null && TreeContains(player.CharacterItem, typeId);
+            return FindCarried(player, typeId) != null;
+        }
+
+        /// <summary>主角整棵物品树里找一件（找到的可以是收纳容器里的那件）。整树遍历会分配列表，只在低频路径用。</summary>
+        internal static Item FindCarried(CharacterMainControl player, int typeId)
+        {
+            if (player == null || player.CharacterItem == null) return null;
+            Item root = player.CharacterItem;
+            if (root.TypeID == typeId) return root;
+            List<Item> children = root.GetAllChildren(true, true);
+            for (int i = 0; i < children.Count; i++)
+                if (children[i] != null && children[i].TypeID == typeId && !children[i].IsBeingDestroyed) return children[i];
+            return null;
         }
 
         /// <summary>消耗一件（可堆叠的减一，不可堆叠的整件销毁）。</summary>

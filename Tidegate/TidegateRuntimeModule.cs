@@ -143,19 +143,30 @@ namespace BossRush
         }
     }
 
-    /// <summary>竹筏交互组里的第二项：「把潮汐怀表交给闸伯」。只在身上带着怀表、还没交过时可选。</summary>
+    /// <summary>
+    /// 竹筏交互组里的第二项：「把潮汐怀表交给闸伯」。只在身上带着怀表、还没交过时可选。
+    /// 「带着」按整棵物品树（收纳容器里的也算），与金库放不放、HUD 倒计时同一判据（CR-2026-11-05-025）。
+    /// 官方每帧都问能不能交互，整树遍历会分配列表，所以半秒查一次。
+    /// </summary>
     public sealed class TidegateWatchInteractable : BossRushBuildingInteractableBase
     {
         internal const string NameKey = "BossRush_Tidegate_GiveWatch";
         private ModBehaviour owner;
+        private bool carrying;
+        private float nextCheck;
         protected override string InteractNameKey { get { return NameKey; } }
         protected override string LogPrefix { get { return TidegateRaidScene.LogTag + " "; } }
         internal void Bind(ModBehaviour host) { owner = host; }
 
         protected override bool IsBuildingInteractable()
         {
-            return owner != null && !TidegateStory.WatchDelivered
-                && TidegateInventory.Has(CharacterMainControl.Main, BossRushItemIds.TidegateTideWatch);
+            if (owner == null || TidegateStory.WatchDelivered) return false;
+            if (Time.unscaledTime >= nextCheck)
+            {
+                nextCheck = Time.unscaledTime + 0.5f;
+                carrying = TidegateInventory.Carries(CharacterMainControl.Main, BossRushItemIds.TidegateTideWatch);
+            }
+            return carrying;
         }
 
         protected override void OnInteractCompleted()

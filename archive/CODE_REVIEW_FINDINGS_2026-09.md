@@ -4426,3 +4426,52 @@ Mode G 本轮收尾补证（2026-09-18）：最终专项守卫37 PASS、生产�
 ## 2026-09-30 天空岛道路与阴影（COMPAT，模型专题）
 
 已修复旧路线穿入登记模型、房前家具朝向及长椅背板错位、重复输出已替换地标、跨级联阴影坐标插值、共面反绕序贴图 / 深度争抢和 normal bias 不一致。采用连续重规划道路、实际包络摆放、单一结构 owner、片元级阴影坐标与配对面标记；未关闭正常阴影。证据和实机判据见 [本轮报告](docs/reports/sky-island/2026-09-30-天空岛摆放与阴影修复.md)。此记录只覆盖模型专题，不关闭上方整体生产审查的独立玩法问题。
+
+## 2026-09-30 天空岛整体生产审查（2026-10-01 全部 Fixed，L2；实机待验）
+
+原文与修复证据已逐字移入 [2026-09 月度归档](archive/CODE_REVIEW_FINDINGS_2026-09.md)，L3 仍按原条目待验。
+
+## 2026-09-29 Mode H 发布前审核（12 项 Fixed / COMPAT / L1+L2）
+
+## 2026-09-29 Mode H 发布前审核与复核（19 项 Fixed / COMPAT / L1+L2）
+
+001～012 见[前轮审核报告](docs/reports/reviews/2026-09-29-模式H发布前审核.md)，新增 013～019 的触发、位置、修复及实机清单见[发布复核报告](docs/reports/reviews/2026-09-29-模式H发布复核与验收.md)。717 守卫、110 执行夹具及 Windows 正式构建通过，无未修 confirmed finding，L3 尚待验收。
+- CR-2026-09-29-001～003（P1）：实物押注通知异常双扣；旧仓库通知异常丢托管/已交付物品；钱包未就绪的恢复迟付及终季误退本金。SaveFailureRecovery 故障回归闭环。
+- CR-2026-09-29-004～007（P1）：观战状态写后异常未补偿；早期恢复不能挂起；生成重试遗留主协程；跨季相同序号吞挂起退出。ModeHCombatRelease / ModeHReviewFixes 闭环。
+- CR-2026-09-29-008（P1）：建页故障重入后旧页覆盖恢复态；ModeHPlayerFlow 九类页面与 owner 边界闭环。
+- CR-2026-09-29-009～012（P2）：原图刷怪器部分回滚/原值错误；接力继承远程受伤；核心击杀归属与前批终结标签错误；Unity 假 null 残留死亡抑制登记。ModeHCombatRelease / ModeHMarketAudit 闭环。
+- CR-2026-09-29-013～015（P1）：嵌套押品重复估值/额外扣现金；仓库未就绪误入永久人工介入；放弃覆盖已决押注。SaveFailureRecovery / GameplayLogFixes / ModeHRecoverySecondReview 闭环。
+- CR-2026-09-29-016～017（P1）：无 Season / owner 的旧押品恢复动作缺失；倒地帧被胆怯截断接力。ModeHPlayerFlow / ModeHMarketAudit 闭环；恢复页不可关闭线索已证伪。
+- CR-2026-09-29-019（P1）：初始/接力协程与增援配装异常不进技术重试。共用逐层协程驱动并补增援异常边界，ModeHReinforcementSecondReview 闭环。
+- CR-2026-09-29-018（P2）：ERROR 切回时官方控制动作未停止，丢失原枪槽。先停本次动作再恢复控制，ModeHMarketAudit 闭环。
+
+## 2026-09-28 天空岛全面审核与修复（8 项 Fixed / L1+L2，L3 待实机）
+
+原文与修复证据已逐字移入 [2026-09 月度归档](archive/CODE_REVIEW_FINDINGS_2026-09.md)，L3 仍按原条目待验。
+
+## 2026-09-27 生产就绪全面审计（代码修复与 L1/L2 已闭环，L3 待实机）
+
+CR-2026-09-27-401～406 的原始发现、逐项回填及当时验证已[按原文归档](archive/CODE_REVIEW_FINDINGS_2026-09-27_production_readiness.md)。运行时验收仍见[续审报告](docs/reports/reviews/2026-09-27-生产就绪全面审计-天空岛重点-续审.md)，不得把当时离线通过解释为 L3 已完成。
+
+## 2026-09-25 F3 实机报告（runId 20260925_044506_391）复核：4 项生产缺陷 + 4 项验收数据 / 判据问题（均 Fixed / L1+L2，L3 待下一轮 F3）
+
+证据来源：owner 在 `51d2f0e6` Dev 构建上跑的 F3（主套件 327 过 / 9 红，全在天空岛；岛内全自动 79 / 6 / 1）。基地与各模式 1–7 阶段 182 项全过；`Player.log` 的异常全部来自 DuckMarket、MoveBlackMarket 与官方 `GamingConsole.Load`。
+
+| ID | 级别 / 兼容分类 | 已确认问题与修复 | 验证 / 状态 |
+| --- | --- | --- | --- |
+| CR-2026-09-25-006 | **P2** / COMPAT | 岛上判夜 19–5 与官方运行时不同相：`SKY_NIGHT_BOUNDARY_OFFICIAL` 实机读出 `TimeOfDayController.nightStart=22 / morningStart=6`，09-16（CR-2026-09-16-004）照反编译源的字段初值 19 / 5 对齐，被 `LevelManagerPrefab` 序列化值覆盖。19–22 点岛上已起夜风、刷云蚋、放夜限定头目而官方仍是黄昏。`SkyIslandNight` 改 22–6、`ForcedHour` 2；光照晨光段 6–7、暮色→星夜 18–22；取数补记 `official_dawn` 只记不判。夜长 10 → 8 现实分钟（owner 授权「全部修复」按对齐官方拍板）。 | **Fixed / L1+L2**。SkyIslandLighting / SkyIslandStory 夹具按 22–6 改写边界与天亮折算；`SkyIslandMosquitoGuard` 钉 22 / 6；Wiki 中英 6 页、契约、repowiki 同步。 |
+| CR-2026-09-25-007 | **P2** / COMPAT | 天空岛五扇门的导航封锁会整体丢失（`Player.log` `gate navigation block was lost and re-applied … walkable_before=3705`），1 秒自检只重封且之后不再记日志，`SKY_GATE_REACHABILITY` 两次落在丢失窗口里：门关着 `Search_H_02` 走得到。玩家本人被碰撞体挡住，受影响的是敌人 / 居民寻路。根因（L1 推断）：Mod 自建 `NavMeshGraph` 没关 `enableNavmeshCutting`，克隆官方 prefab 上的 `NavmeshCut` 让 tile 整块重建、`Walkable=false` 随旧节点丢掉。`ArenaPrototypeNavigation.BeginScan` 关掉切割；重封改为每次计数、日志 10 秒限频。 | **Fixed / L1+L2**。游戏 A* DLL 含该字段（编译通过即证）；`SkyIslandGateNavigationPropertyTest` 钉住这一行。是否根治以下一轮 F3 `gate_locked_blocked=1/1` 与日志无 `lost and re-applied` 为准。 |
+| CR-2026-09-25-008 | P3 / COMPAT | 苇白在「两盏灯都亮、航标单没接」时先说「这单还没交呢」再说「这单你还没接」，前后矛盾（英文复拍读出）。改为这一格只说「还没接，先接再交」。 | **Fixed / L2**。SkyIslandMarriageTextRegression 加「未接单不催交」断言；离线逐屏复算英文 10 屏 → 9 屏且无矛盾。 |
+| CR-2026-09-25-009 | P3 / COMPAT | 浮舟「十盏灯都亮」英文在 `54c8d98c`（09-17）被拆成三屏、中文两屏，违反 `DescribeNpc` 注释「改写保持屏数」，`SKY_AUTO_ALT_FUZHOU` 的星工装备断言落到别的句子上。英文合回两屏。 | **Fixed / L2**。`tools/sky_island_line_screens.py` 复算 2 屏；离线逐屏确认第 6 屏为星工装备。 |
+| CR-2026-09-25-010 | P3 / TEST | `SKY_AUTO_REAL_BOSS_SICKLE` 的瞬移偏移 `EnemySpawn_C:-9:5` 落进梯田小屋碰撞盒，整圈 1.2 m 都被占，自 09-16 起每轮 `target_ground_missing`。改 `9:5`；`SkyIslandAutotestTableGuard` 新增按几何表碰撞盒离线复算落点（含反向检查）。 | **Fixed / L2**。守卫 32 条反向检查全红，改回旧偏移即转红。 |
+| CR-2026-09-25-011 | P3 / TEST | `SKY_AUTO_REAL_NIGHT_GNATS` 可见度探针只挑最近的一只、刷新方位随机，扇形外的精灵被官方夜里战争迷雾整块盖住，读数 0.129 / 0.033 随方位跳。owner 目检「看得到，不用调」。表现不动、门槛不放宽，只把刷新改成主角瞄准方向 ±15°（`spawn_gnats:6:0:ahead`，`DevSpawnAhead`）。 | **Fixed / L1**。演练符号表两处守卫同步；实机读数待下一轮 F3。 |
+| CR-2026-09-25-012 | P3 / TEST | `SKY_AUTO_END_JOURNAL` 断言没跟 `54c8d98c` 的手记改写；顺手把「消耗一块「引风」」改成「烧一块来「引风」」（引风是装置动作，不是物品），两处断言同步。 | **Fixed / L2**。守卫文本核对通过。 |
+| CR-2026-09-25-013 | P3 / TEST | 全自动测试档从不接、交航路任务，结局后苇白先念 6 屏催单，`SKY_AUTO_ALT_RESIDENT` 的情报句被挤到第 7 屏。剧情阶段补齐 590001 序章与三条岛上任务的接 / 交（阶段目标文案逐一复算不变），情报句落在第 4 屏，断言挪到标题写的第 3–4 句的第 4 句。`F3AutotestJudges` 红样本改为按位核 Ending 缺失。 | **Fixed / L2**。离线逐屏复算；F3AutotestJudges 330 条、SkyIslandStory 全绿。 |
+
+<!-- BEGIN FULL AUDIT FINDINGS 2026-09-25 -->
+
+## CR-2026-09-26-001 — 船票 owner 迁移后地图费用读回旧 ID（P1，已修复，COMPAT）
+
+触发：地图选择创建传送费用时，`BossRushMapSelectionHelper.GetBossRushTicketTypeId` 仍通过 `typeof(ModBehaviour).GetField("bossRushTicketTypeId")` 查询；该成员在迁移后成为转发属性，反射恒取不到字段。注册已得到 500001 时仍退回 868，费用查询、票数检查和相关退款查询因此使用错误物品 ID。
+
+修复：查询直接读取唯一注册 owner `IntegrationRuntimeModule.BossRushTicketTypeId`，保留正 ID 判断、未注册的 868 回退及防崩路径，不新增缓存或第二份状态。`IntegrationLeafOwners` 逐字执行生产注册、查询与 Cost 构造；修复前实跑命中 `map ticket lookup lost registered runtime owner ID`，修复后通过。新增断言覆盖 500001、未注册回退、备用正 ID、再次注册刷新、零现金且一张票。证据：`Build/migration/p6-ticket-before.log`、`p6-ticket-after.log`，级别 L1/L2；真实船点扣票/取消/退款仍由 `architecture/MIGRATION_ACCEPTANCE.md` 的 M_ENTRY_01–03 实机验收。

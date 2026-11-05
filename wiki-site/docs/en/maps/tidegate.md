@@ -12,14 +12,16 @@ A seaside town that rises and falls with the tide. At low tide the mudflats, a s
 ## Tides
 
 - The tide follows the game clock. One cycle takes about 4.5 game hours (about four and a half minutes at normal speed): ebb, low tide, flood, high tide. When you arrive decides where the water is.
-- The card in the top right shows the current phase and water level. Carry the **Tide Pocket Watch** and it also shows how long until the next turn of the tide.
-- Water deeper than half a metre counts as deep: crates under deep water cannot be searched (they appear once the water drops), and enemies stay out of it.
+- The small line on the card in the top right shows the current phase and water level. Carry the **Tide Pocket Watch** and it also shows how long until the next turn of the tide. The card's objective line tells you what to do next (turn the valves, get into the vault, take the watch home).
+- Every turn of the tide comes with a message: a tide alarm sounds 15 seconds before the flood and again when it starts, and near the end of high tide you are told the ferry is about to leave.
+- Water deeper than half a metre counts as deep: crates under deep water cannot be searched (they appear once the water drops, and walking up to one tells you to wait for low tide), and enemies stay out of it.
 
 ## Swimming and load
 
 - You can swim in Tidegate, but only light: you float only while your total load is **14 kg** or less, and carrying a **Dry Bag** adds 6 kg to that. The card shows "Load x/14 · can swim" or "will sink".
 - Overloaded, you sink in deep water, and once your head goes under you run out of air and take damage. Caught on the flats by the flood? Drop your heaviest item first, then swim.
 - Carrying **Duck Flippers** makes you swim faster.
+- While you swim, enemies spot you at half the usual distance; the card says "swimming, harder to spot".
 - Swimming only works in Tidegate; you do not take it back to base.
 
 ## Extraction
@@ -36,18 +38,18 @@ The countdown is the same one the regular extraction points use: it pauses while
 ## Three valves, one gate, and the sunken vault
 
 - The tide gate has three valves: the **Waterworks No. 3 pump house**, the **town pump station** and the **tide gauge station**. Each takes 3 seconds to turn.
-- The sand gang pulled the tide gauge handwheel off and dumped it in the **locker in the sand dredger's cabin** (Valve Handwheel). The dredger's gangway sits low and floods at high tide, so go while the water is out. Bring the wheel to the tide gauge station and the valve turns; the wheel stays on the valve.
+- The sand gang pulled the tide gauge handwheel off and dumped it in the **locker in the sand dredger's cabin** (Valve Handwheel). The dredger's gangway sits low and floods at high tide, so go while the water is out. Bring the wheel to the tide gauge station and the valve turns; the wheel stays on the valve. Without the wheel, that valve's prompt says "handwheel missing".
 - With all three open the gate lifts: the lagoon starts draining, and once it is empty it rises and falls with the sea. About 4 seconds later a squad of the sand gang comes over the seawall, heading for the vault.
 - At low tide the savings bank comes out of the water. The safes in the vault hold the best loot, and **the manager's safe** always has a Tide Pocket Watch (unless you are already carrying one).
 
 ## The lighthouse
 
-- Light the lighthouse on the cape (2 second interaction). The beam starts turning, every enemy on the map shows on the game map for the next 40 seconds, enemies within 60 metres come for you, and 45 seconds later a boat arrives at the Lighthouse Jetty for you to leave on.
+- Light the lighthouse on the cape (2 second interaction). The beam starts turning and lights up the ground around the tower, every enemy on the map shows on the game map for the next 40 seconds, enemies within 60 metres come for you, and 45 seconds later a boat arrives at the Lighthouse Jetty for you to leave on.
 
 ## Loot and enemies
 
-- Crates use the official search screen, and what is inside depends on where they are: houses, toolboxes, fish crates and medicine boxes in town hold everyday supplies; buried caches on the flats, the shipwreck, safes and the dredger locker are better; the vault is best.
-- Enemies only appear 25 to 75 metres away from you, never right behind your back. Scavengers hold the town and docks, guards watch the waterworks and the lighthouse cape, and the sand gang works around the dredger with their boss, the **Sand Boss** (an official boss).
+- Crates use the official search screen, and what is inside depends on where they are: houses, toolboxes, fish crates and medicine boxes in town hold everyday supplies; buried caches on the flats, the shipwreck, safes and the dredger locker are better; the vault is best. The captain's safe in the shipwreck always holds one vault-grade valuable.
+- Enemies only appear 25 to 75 metres away from you, never right behind your back. Scavengers hold the town and docks, guards with better guns watch the waterworks and the lighthouse cape, and the sand gang works around the dredger with their boss, the **Sand Boss** (an official boss).
 - The sand gang follows the tide: they dig the flats at low tide and head back to the dredger just before the flood. Any of them still standing in deep water when the tide comes in gets swept away.
 
 ## Gatekeeper's logs and the pocket watch

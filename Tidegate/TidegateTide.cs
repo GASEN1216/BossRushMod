@@ -6,7 +6,7 @@ namespace BossRush
 {
     /// <summary>
     /// 潮闸镇的潮汐运行时 owner：按官方游戏时钟推进潮位（规则在 <see cref="TidegateTideRules"/>），
-    /// 每帧把潮位、湿痕、昼夜与夜灯写进三套自研着色器的全局量，并按潮位封住被淹的导航三角形。
+    /// 每帧把潮位、湿痕、昼夜与灯数组（夜灯、点亮后的灯塔、手电）写进三套自研着色器的全局量，并按潮位封住被淹的导航三角形。
     /// 光照本体由会话里的 `SkyIslandLighting` 持有（自有太阳光、官方 LightControl、随官方时钟调色），
     /// 这里只把它写出的太阳 / 环境量镜像到 `_Tidegate*`，两套材质与官方角色用同一份光。
     /// </summary>
@@ -31,6 +31,14 @@ namespace BossRush
         private static readonly int SkyAmbientId = Shader.PropertyToID("_SkyIslandAmbientColor");
         private static readonly int SkyEnabledId = Shader.PropertyToID("_SkyIslandLightingEnabled");
         private static readonly Color LampColor = new Color(1f, 0.72f, 0.42f) * 1.6f;
+        /// <summary>灯塔灯头那盏灯白天的亮度份额：白天太阳压着看不出来，黄昏到夜里才是一圈暖光。</summary>
+        private const float BeaconDayShare = 0.35f;
+        /// <summary>
+        /// 手电：官方枪挂手电（`CharacterMainControl.FlashLight`）是聚光灯，延迟光源照不到自研着色器，夜里光锥落不到地上。
+        /// 这里在瞄准方向前方放一盏近似的灯；入夜（夜色 ≥ 0.25）才亮，跟着夜色渐强。
+        /// </summary>
+        private const float FlashlightReach = 3.5f, FlashlightRange = 6.5f, FlashlightMinNight = 0.25f;
+        private static readonly Color FlashlightColor = new Color(0.92f, 0.95f, 1f) * 1.3f;
 
         private readonly TidegateWorld world;
         private readonly List<Vector3> lamps = new List<Vector3>();
@@ -38,10 +46,14 @@ namespace BossRush
         private readonly Vector4[] lampColors = new Vector4[MaxLamps];
         private ArenaPrototypeNavigation navigation;
         private TidegateTidePhase phase;
-        private bool sluiceOpen, disposed, phaseKnown;
+        private bool sluiceOpen, disposed, phaseKnown, beaconOn, flashlightShown;
         private float level, lagoon, wetTide, wetLagoon, night;
         private float nextLamps, nextNavigation;
         private float navigationLevel = float.NaN, navigationLagoon = float.NaN;
+        private Vector4 beaconPosition;
+        private Color beaconColor;
+        /// <summary>每 0.5 秒排好的灯（灯塔 + 最近的夜灯）占前几格；手电每帧写在它们后面那一格。</summary>
+        private int staticLamps;
 
         internal float Level { get { return level; } }
         internal float LagoonLevel { get { return lagoon; } }
@@ -70,6 +82,30 @@ namespace BossRush
         {
             if (GameClock.Instance == null) return double.NaN;
             return TidegateTideRules.ElapsedHours(GameClock.Day, GameClock.TimeOfDay.TotalSeconds);
+        }
+
+        /// <summary>到下一次换相还有多少现实秒（官方时钟倍速换算）。</summary>
+        internal static double RealSecondsUntilNextPhase()
+        {
+            return TidegateTideRules.RealSecondsUntilNextPhase(ClockHours(), SkyIslandLighting.ClockScale());
+        }
+
+        /// <summary>此刻该不该有换相前的提示（涨潮警报 / 渡口要走），每一轮报几次由会话记。</summary>
+        internal static TidegateTideNotice Notice()
+        {
+            return TidegateTideRules.NoticeAt(ClockHours(), SkyIslandLighting.ClockScale());
+        }
+
+        /// <summary>
+        /// 灯塔点亮后灯头那盏灯常驻灯数组（CR-2026-11-05-020）：自研着色器不吃延迟光源，官方点光只照得亮角色，
+        /// 地面和塔身要靠这里。本趟内不会熄。
+        /// </summary>
+        internal void SetBeacon(Vector3 position, float range, Color color)
+        {
+            beaconOn = true;
+            beaconPosition = new Vector4(position.x, position.y, position.z, range);
+            beaconColor = color;
+            nextLamps = 0f;
         }
 
         internal void BindNavigation(ArenaPrototypeNavigation value)
@@ -117,6 +153,7 @@ namespace BossRush
             Shader.SetGlobalFloat(WetTideId, wetTide);
             Shader.SetGlobalFloat(WetLagoonId, wetLagoon);
             if (Time.unscaledTime >= nextLamps) { nextLamps = Time.unscaledTime + 0.5f; PublishLamps(); }
+            TickFlashlight();
             if (navigation != null && Time.unscaledTime >= nextNavigation) { nextNavigation = Time.unscaledTime + 1f; ApplyNavigation(); }
             if (!phaseKnown) { phaseKnown = true; phase = next; return; }
             if (next != phase)
@@ -128,26 +165,67 @@ namespace BossRush
             }
         }
 
-        /// <summary>夜里把离玩家最近的 16 盏灯写进着色器数组；白天只写一次 0 盏。</summary>
+        /// <summary>
+        /// 每 0.5 秒排一次灯：灯塔点亮后灯头占第一格，夜里再按离玩家远近排最近的夜灯，最后一格留给手电（<see cref="TickFlashlight"/>）。
+        /// 白天又没点灯塔时只写一次 0 盏。
+        /// </summary>
         private void PublishLamps()
         {
             CharacterMainControl player = CharacterMainControl.Main;
-            if (night <= 0.01f || player == null || lamps.Count == 0)
+            int count = 0;
+            if (beaconOn)
             {
-                Shader.SetGlobalFloat(LampCountId, 0f);
+                Color beacon = beaconColor * Mathf.Lerp(BeaconDayShare, 1f, night);
+                lampPositions[count] = beaconPosition;
+                lampColors[count] = new Vector4(beacon.r, beacon.g, beacon.b, 1f);
+                count++;
+            }
+            if (night > 0.01f && player != null && lamps.Count > 0)
+            {
+                Vector3 origin = player.transform.position;
+                lamps.Sort((a, b) => (a - origin).sqrMagnitude.CompareTo((b - origin).sqrMagnitude));
+                int take = Math.Min(MaxLamps - 1 - count, lamps.Count);
+                Color color = LampColor * night;
+                for (int i = 0; i < take; i++, count++)
+                {
+                    lampPositions[count] = new Vector4(lamps[i].x, lamps[i].y, lamps[i].z, LampRange);
+                    lampColors[count] = new Vector4(color.r, color.g, color.b, 1f);
+                }
+            }
+            for (int i = count; i < MaxLamps; i++) { lampPositions[i] = Vector4.zero; lampColors[i] = Vector4.zero; }
+            staticLamps = count;
+            flashlightShown = false;
+            UploadLamps(count);
+        }
+
+        /// <summary>手电那一格每帧跟着玩家与瞄准方向走（0.5 秒一排会拖在人后面）；没开时只在关掉那一帧补写一次。</summary>
+        private void TickFlashlight()
+        {
+            CharacterMainControl player = CharacterMainControl.Main;
+            bool on = night >= FlashlightMinNight && player != null && staticLamps < MaxLamps && player.FlashLight;
+            if (!on)
+            {
+                if (flashlightShown) { flashlightShown = false; lampColors[staticLamps] = Vector4.zero; UploadLamps(staticLamps); }
                 return;
             }
-            Vector3 origin = player.transform.position;
-            lamps.Sort((a, b) => (a - origin).sqrMagnitude.CompareTo((b - origin).sqrMagnitude));
-            int count = Math.Min(MaxLamps, lamps.Count);
-            Color color = LampColor * night;
-            for (int i = 0; i < MaxLamps; i++)
+            Vector3 aim = player.CurrentAimDirection;
+            aim.y = 0f;
+            if (aim.sqrMagnitude < 1e-4f) aim = player.transform.forward;
+            Vector3 at = player.transform.position + aim.normalized * FlashlightReach + Vector3.up * 0.6f;
+            Color color = FlashlightColor * night;
+            lampPositions[staticLamps] = new Vector4(at.x, at.y, at.z, FlashlightRange);
+            lampColors[staticLamps] = new Vector4(color.r, color.g, color.b, 1f);
+            flashlightShown = true;
+            UploadLamps(staticLamps + 1);
+        }
+
+        private void UploadLamps(int count)
+        {
+            if (count > 0)
             {
-                lampPositions[i] = i < count ? new Vector4(lamps[i].x, lamps[i].y, lamps[i].z, LampRange) : Vector4.zero;
-                lampColors[i] = i < count ? new Vector4(color.r, color.g, color.b, 1f) : Vector4.zero;
+                Shader.SetGlobalVectorArray(LampPositionsId, lampPositions);
+                Shader.SetGlobalVectorArray(LampColorsId, lampColors);
             }
-            Shader.SetGlobalVectorArray(LampPositionsId, lampPositions);
-            Shader.SetGlobalVectorArray(LampColorsId, lampColors);
             Shader.SetGlobalFloat(LampCountId, count);
         }
 
@@ -171,17 +249,15 @@ namespace BossRush
         }
 
         /// <summary>
-        /// HUD 目标行：当前潮相与潮位；身上带着潮汐怀表（<paramref name="precise"/>）时再加下一次换相的倒计时
-        /// （现实时间，按官方时钟倍速换算）——这是怀表在潮闸镇里的用处。
+        /// HUD 小标行里的潮汐一段：当前潮相与潮位；身上带着潮汐怀表（<paramref name="precise"/>）时再加下一次换相的倒计时
+        /// （现实时间，按官方时钟倍速换算）——这是怀表在潮闸镇里的用处。放小标行而不是目标行：目标行的字一变就挂「目标更新」
+        /// （CR-2026-11-05-018）。
         /// </summary>
-        internal string Describe(bool precise)
+        internal string Chip(bool precise)
         {
-            if (!precise)
-                return TidegateText.PhaseName(phase) + " " + (level >= 0 ? "+" : "") + level.ToString("F1") + L10n.T(" 米", " m")
-                    + L10n.T(" · 带潮汐怀表能看准涨落", " · a tide pocket watch shows the timing");
-            double hours = ClockHours();
-            double scale = SkyIslandLighting.ClockScale();
-            int seconds = (int)Math.Ceiling(TidegateTideRules.HoursUntilNextPhase(hours) * 3600.0 / Math.Max(1.0, scale));
+            string head = TidegateText.PhaseName(phase) + " " + (level >= 0 ? "+" : "") + level.ToString("F1") + L10n.T(" 米", " m");
+            if (!precise) return head;
+            int seconds = (int)Math.Ceiling(RealSecondsUntilNextPhase());
             string remain = (seconds / 60) + ":" + (seconds % 60).ToString("00");
             string next;
             switch (phase)
@@ -191,8 +267,7 @@ namespace BossRush
                 case TidegateTidePhase.Flood: next = L10n.T("涨满还有 ", "High tide in "); break;
                 default: next = L10n.T("开始退潮还有 ", "Ebb starts in "); break;
             }
-            return TidegateText.PhaseName(phase) + " " + (level >= 0 ? "+" : "") + level.ToString("F1") + L10n.T(" 米", " m")
-                + " · " + next + remain;
+            return head + " · " + next + remain;
         }
 
         public void Dispose()

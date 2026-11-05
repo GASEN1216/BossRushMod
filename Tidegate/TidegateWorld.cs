@@ -13,6 +13,12 @@ namespace BossRush
     internal sealed class TidegateWorld : IDisposable
     {
         private static readonly string[] WorldShaders = { "BossRush/Tidegate/Environment", "BossRush/Tidegate/Terrain", "BossRush/Tidegate/Water", "BossRush/Tidegate/Beam" };
+        /// <summary>可玩区：逻辑网格 180 × 140 m、以原点为中心（布局 `grid` 的 W / H / OX / OZ）。边界墙与越界兜底都按它。</summary>
+        internal static readonly Rect PlayArea = Rect.MinMaxRect(-90f, -70f, 90f, 70f);
+        /// <summary>出了可玩区这么远才算掉出地图、拉回落脚点（边界墙挡着，正常走不到）。</summary>
+        private const float OutOfBoundsMargin = 8f;
+        /// <summary>补的边界墙从 y = -12 到 +6：外海最深处与高潮游泳时的身位都在里面。</summary>
+        private const float BoundaryBottom = -12f, BoundaryTop = 6f;
         internal readonly GameObject Root;
         internal readonly Transform PlayerSpawn;
         internal readonly Dictionary<string, Transform> Exits = new Dictionary<string, Transform>(StringComparer.Ordinal);
@@ -115,7 +121,43 @@ namespace BossRush
                 { collider.gameObject.layer = wallLayer; walls++; }
             }
             if (ground == 0 || walls == 0) throw new InvalidOperationException("潮闸镇地面或墙体碰撞体缺失");
+            AddBoundary(wallLayer);
             Debug.Log(TidegateRaidScene.LogTag + " LAYERS_READY ground=" + ground + " walls=" + walls + " shaders=" + checkedShaders.Count);
+        }
+
+        /// <summary>
+        /// 沿可玩区四边补一圈墙层碰撞（CR-2026-11-05-019）：导出数据里海侧那堵边界墙顶面只有 0.307 m，比高潮水位 0.45 m 还低，
+        /// 官方游泳把脚底压在水面下约 0.5 m（`CharacterMainControl.UpdateSwim`），高潮时可能当台阶跨出去、游进外海。
+        /// 运行时补，不重打场景包；墙在原边界墙外侧贴着放，不改可走区域。
+        /// </summary>
+        private void AddBoundary(int wallLayer)
+        {
+            Transform collision = Root.transform.Find("Collision");
+            var holder = new GameObject("COL_Wall_Boundary");
+            holder.transform.SetParent(collision != null ? collision : Root.transform, false);
+            holder.layer = wallLayer;
+            float height = BoundaryTop - BoundaryBottom, centerY = (BoundaryTop + BoundaryBottom) * 0.5f;
+            Rect a = PlayArea;
+            AddWall(holder, "North", new Vector3(a.center.x, centerY, a.yMax + 0.5f), new Vector3(a.width + 2f, height, 1f), wallLayer);
+            AddWall(holder, "South", new Vector3(a.center.x, centerY, a.yMin - 0.5f), new Vector3(a.width + 2f, height, 1f), wallLayer);
+            AddWall(holder, "East", new Vector3(a.xMax + 0.5f, centerY, a.center.y), new Vector3(1f, height, a.height + 2f), wallLayer);
+            AddWall(holder, "West", new Vector3(a.xMin - 0.5f, centerY, a.center.y), new Vector3(1f, height, a.height + 2f), wallLayer);
+        }
+
+        private static void AddWall(GameObject holder, string side, Vector3 center, Vector3 size, int layer)
+        {
+            var wall = new GameObject("COL_Wall_Boundary" + side);
+            wall.layer = layer;
+            wall.transform.SetParent(holder.transform, false);
+            wall.transform.position = center;
+            wall.AddComponent<BoxCollider>().size = size;
+        }
+
+        /// <summary>这一点是不是已经掉出了地图（可玩区外再 8 m）。</summary>
+        internal static bool OutsidePlayArea(Vector3 position)
+        {
+            return position.x < PlayArea.xMin - OutOfBoundsMargin || position.x > PlayArea.xMax + OutOfBoundsMargin
+                || position.z < PlayArea.yMin - OutOfBoundsMargin || position.z > PlayArea.yMax + OutOfBoundsMargin;
         }
 
         internal void VerifyGround(int mask)
@@ -192,17 +234,20 @@ namespace BossRush
             return true;
         }
 
-        /// <summary>HUD 用的地名：离玩家最近的地标。</summary>
-        internal string RegionNear(Vector3 position)
+        /// <summary>离这一点最近的地标与水平距离；没有地标时返回 null。HUD 地名的到访半径与滞回在会话里判。</summary>
+        internal Transform NearestPoi(Vector3 position, out float distance)
         {
             Transform best = null;
-            float distance = float.MaxValue;
+            float bestSqr = float.MaxValue;
             foreach (Transform poi in Pois)
             {
-                float d = (poi.position - position).sqrMagnitude;
-                if (d < distance) { distance = d; best = poi; }
+                Vector3 offset = poi.position - position;
+                offset.y = 0f;
+                float d = offset.sqrMagnitude;
+                if (d < bestSqr) { bestSqr = d; best = poi; }
             }
-            return best == null ? TidegateRaidScene.DisplayName : TidegateText.PlaceName(best.name);
+            distance = best == null ? float.MaxValue : Mathf.Sqrt(bestSqr);
+            return best;
         }
 
         private static int FirstLayer(int mask)

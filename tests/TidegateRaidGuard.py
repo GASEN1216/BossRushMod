@@ -161,6 +161,92 @@ def main():
     need(body(module, "private void OnLevelReady()"), "返航环境光", "if (session != null && !session.IsClosed) return;")
     need(body(read("SkyIsland/SkyIslandRuntimeModule.cs"), "private void OnLevelReady()"), "天空岛返航环境光", "(session == null || session.IsClosed)")
 
+    # 2026-11-05 生产水准复审（CR-2026-11-05-017～028）——
+    rules = read("Tidegate/TidegateTideRules.cs")
+    loot = read("Tidegate/TidegateLoot.cs")
+    devices = read("Tidegate/TidegateDevices.cs")
+    tide_rt = read("Tidegate/TidegateTide.cs")
+    update = body(session, "private void Update()") or ""
+    cleanup = body(session, "private void Cleanup(string reason)") or ""
+    build = body(session, "private IEnumerator Build()") or ""
+    # 017 换相有字幕与警报：会话订阅并退订潮汐换相；涨潮警示色加警报；换相前提示每轮一次（15 秒涨潮警报、12 秒渡口要走）。
+    need(build, "换相提示订阅", "tide.PhaseChanged += OnTidePhaseChanged;")
+    need(cleanup, "换相提示退订", "tide.PhaseChanged -= OnTidePhaseChanged;")
+    phase_changed = body(session, "private void OnTidePhaseChanged(TidegateTidePhase previous, TidegateTidePhase next)") or ""
+    need(phase_changed, "换相字幕", "noticeShown = TidegateTideNotice.None;", "case TidegateTidePhase.Flood:", "sounds.Play(TidegateCue.Siren, null)")
+    flood_case = phase_changed.split("case TidegateTidePhase.Flood:", 1)[-1].split("break;", 1)[0]
+    if "), true);" not in flood_case:
+        errors.append("涨潮字幕必须用警示色（Status 第二个参数 true）")
+    need(body(session, "private void TickTideNotices()"), "换相前提示", "TidegateTide.Notice()", "notice == noticeShown")
+    need(update, "换相前提示时机", "TickTideNotices();")
+    need(rules, "提示时长", "FloodWarningSeconds = 15.0", "FerryLeavingSeconds = 12.0")
+    # 018 目标行只放按进度变化的引导；每秒在变的潮位、倒计时放小标行。
+    need(update, "目标行", "hud.SetObjective(Objective());", "hud.SetChips(FieldStatus());")
+    objective = body(session, "private string Objective()") or ""
+    if not objective or re.search(r"tide\.Chip\(|RealSecondsUntilNextPhase|\.Level\.ToString", objective):
+        errors.append("HUD 目标行不得放潮位读数或倒计时（字一变就挂「目标更新」）")
+    need(body(session, "private string FieldStatus()"), "小标行潮汐", "tide.Chip(carryingWatch)")
+    # 019 可玩区四边补墙层碰撞（海侧原墙顶面低于高潮水位）；越界兜底按可玩区。
+    need(body(world, "internal void ApplyLayers()"), "边界墙", "AddBoundary(wallLayer);")
+    need(body(world, "private void AddBoundary(int wallLayer)"), "边界墙四边", '"North"', '"South"', '"East"', '"West"')
+    need(world, "边界墙高度", "BoundaryBottom = -12f, BoundaryTop = 6f", "Rect.MinMaxRect(-90f, -70f, 90f, 70f)")
+    need(update, "越界兜底", "TidegateWorld.OutsidePlayArea(position)")
+    if "160f" in update:
+        errors.append("越界兜底不得再用旧的 ±160 / ±150 m 范围")
+    # 020 灯塔点亮后灯头进灯数组（自研着色器不吃延迟光源）；入夜手电每帧一格。
+    need(body(devices, "private void LightBeam()"), "灯塔照地", "tide.SetBeacon(beam.position, BeaconRange, BeaconColor)")
+    need(body(tide_rt, "private void PublishLamps()"), "灯塔灯位", "if (beaconOn)", "MaxLamps - 1 - count")
+    need(body(tide_rt, "private void TickFlashlight()"), "手电", "player.FlashLight", "night >= FlashlightMinNight")
+    need(body(tide_rt, "internal void Tick(float deltaTime)"), "手电每帧", "TickFlashlight();")
+    # 021 声音：会话持有、每帧推进、清理时先停循环再销毁；提示音接到换相与机关；部署自检认得 Tidegate 目录。
+    sounds_src = read("Tidegate/TidegateSounds.cs")
+    need(build, "音效装配", "sounds = new TidegateSounds(world)")
+    need(update, "音效推进", "sounds.Tick(position)")
+    need(cleanup, "音效清理", "sounds.Dispose()")
+    need(sounds_src, "音效目录", '"Assets", "Sounds", "Tidegate"', '"PostCustomSFX"', '"StopAll"')
+    dispose_sounds = body(sounds_src, "public void Dispose()") or ""
+    if dispose_sounds.find("StopAll(null, go);") < 0 or dispose_sounds.find("StopAll(null, go);") > dispose_sounds.find("Destroy(go)"):
+        errors.append("潮闸镇音效必须先 StopAll 再销毁发声体（循环声不随 GameObject 停）")
+    need(devices, "机关音效", "TidegateCue.Valve", "TidegateCue.Gate", "TidegateCue.Lighthouse", "TidegateCue.Horn")
+    if "SetBonus SkyIsland Tidegate items lottery" not in (ROOT / "compile_official.bat").read_text(encoding="utf-8", errors="replace"):
+        errors.append("compile_official.bat 的声音目录自检要包含 Tidegate")
+    # 024 交互反馈：被淹的箱柜走近提示一次；缺手轮写进交互名；括号随语言；读信写不进存档时不说竹筏出现了。
+    need(body(loot, "internal void Tick(CharacterMainControl player)"), "被淹箱子提示",
+         "if (point.Flooded && !point.FloodHinted && distance <= FloodHintRange * FloodHintRange && announce != null)")
+    need(body(devices, "private static string ValveLabel(int index)"), "阀门交互名", 'L10n.T("拧开阀门（", "Open the valve (")',
+         'L10n.T(" · 缺手轮", " · handwheel missing")', 'L10n.T("）", ")")')
+    need(body(story, "internal static void ReadLetter()"), "读信写入", "bool stored = !first || Mutate(", ": stored")
+    # 025 地名按到访半径与滞回；「带着怀表」HUD、交表与金库同一判据（整棵物品树）。
+    need(body(session, "private void UpdateRegion(Vector3 position)"), "地名滞回", "distance <= RegionRadius",
+         "distance + RegionSwitchMargin < current")
+    need(session, "地名半径", "RegionRadius = 24f, RegionSwitchMargin = 4f",
+         "carryingWatch = TidegateInventory.Carries(player, BossRushItemIds.TidegateTideWatch)")
+    need(body(story, "internal static bool TryDeliverWatch(CharacterMainControl player, out string reason)"), "交表判据",
+         "TidegateInventory.FindCarried(player, BossRushItemIds.TidegateTideWatch)")
+    need(module, "交表选项判据", "TidegateInventory.Carries(CharacterMainControl.Main, BossRushItemIds.TidegateTideWatch)")
+    # 026 剧情箱柜一张表（布局 fixed 标签由导航检查脚本核对）；沉船保险柜放一件金库档值钱物；增援计数；守卫配枪；游泳隐蔽。
+    for row in ('{ "LOOT_safe_68", "page1" }', '{ "LOOT_house_69", "page2" }', '{ "LOOT_house_70", "page3" }',
+                '{ "LOOT_vault_71", "page4" }', '{ "LOOT_vault_71", "tidewatch" }', '{ "LOOT_locker_72", "wheel" }',
+                '{ "LOOT_safe_77", "goldbar" }'):
+        need(loot, "剧情箱柜表", row)
+    need(body(loot, "internal static int PageIndexOf(string pointId)"), "日志页出处", 'HasFixed(pointId, "page" + (page + 1))')
+    need(body(loot, "private void Build(Point point, CharacterMainControl player)"), "沉船保险柜",
+         'if (HasFixed(point.Id, "goldbar"))', "SkyIslandLootTier.Starworks")
+    nav_tool = (ROOT / "tools/build_tidegate_navigation.py").read_text(encoding="utf-8")
+    if "story = story_containers(grid.layout)" not in nav_tool or "'Tidegate' / 'TidegateLoot.cs'" not in nav_tool:
+        errors.append("导航检查脚本要核对剧情箱柜表与布局 fixed 标签")
+    need(enemies, "刷怪计数", "if (inFlight > 0 || Time.time < nextTick) return;", "inFlight++;", "inFlight--;")
+    if re.search(r"\bspawning\b", enemies):
+        errors.append("刷怪节流不得退回布尔（海堤增援三连会提前清零）")
+    need(spawn, "守卫配枪", 'if (slot.Kind == "guard") SkyIslandEnemyArmory.Arm(created, SkyIslandEnemyTier.Elite);')
+    need(water, "游泳隐蔽", "ApplyStealth(player.Swimming);", '"VisableDistanceFactor"', "SwimVisibilityMultiplier = -0.5f",
+         "ModifierType.PercentageMultiply")
+    need(body(water, "public void Dispose()"), "游泳隐蔽清理", "RuntimeStatModifierTracker.RemoveAll(stealthRecords")
+    # 028 物资池与武器池趁读条预热（导航扫完、放行官方初始化之前）。
+    warm_at, ready_at = build.find("SkyIslandLootPools.Prewarm()"), build.find("navigationReady = true;")
+    if warm_at < 0 or ready_at < 0 or warm_at > ready_at:
+        errors.append("潮闸镇要在放行官方初始化之前预热物资池（SkyIslandLootPools.Prewarm）")
+
     # 潮汐读跨天连续的官方时间：只读当天时刻（24 不是 4.5 的整数倍）会让午夜从低潮一步跳回高潮。
     tide = read("Tidegate/TidegateTide.cs")
     need(body(tide, "internal static double ClockHours()"), "潮汐时钟", "TidegateTideRules.ElapsedHours(GameClock.Day, GameClock.TimeOfDay.TotalSeconds)")
@@ -168,7 +254,8 @@ def main():
                 "Tidegate/TidegateExtraction.cs"):
         if "SkyIslandLighting.ClockHours()" in read(rel):
             errors.append(rel + " 的潮汐计时不得读当天时刻（SkyIslandLighting.ClockHours），改用 TidegateTide.ClockHours()")
-    need(enemies, "淘沙帮撤回计时", "double hours = TidegateTide.ClockHours();")
+    need(body(enemies, "private bool DiggersOut()"), "淘沙帮撤回计时", "TidegateTide.RealSecondsUntilNextPhase()")
+    need(body(tide, "internal static double RealSecondsUntilNextPhase()"), "换相倒计时", "TidegateTideRules.RealSecondsUntilNextPhase(ClockHours(),")
 
     # 竹筏用作者工程的正式模型：包缺了就不开入口，不拿几何体顶替；着色器同大地图口径；包跟着筏子卸载。
     raft = read("Tidegate/TidegateEntryRaft.cs")

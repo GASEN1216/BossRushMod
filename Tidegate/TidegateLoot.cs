@@ -19,6 +19,23 @@ namespace BossRush
         /// 水退了就马上放出来，站在旁边等退潮的人不用先走开再回来。
         /// </summary>
         private const float KeepNearRange = 4f;
+        /// <summary>走到被淹的箱柜跟前这么近，提示一次「等退潮」（模型是场景静态件、照样看得见，交互体却停用了）。</summary>
+        private const float FloodHintRange = 3.5f;
+
+        /// <summary>
+        /// 剧情箱柜：场景包标记名 → 原型布局（`v2/js/layout.js` 与导出的 `tidegate_layout.json` 的 `fixed`）里这只箱子的固定内容。
+        /// 布局重导会重新编号：`tools/build_tidegate_navigation.py --check` 逐条核对这张表与布局，对不上就失败（CR-2026-11-05-026）。
+        /// </summary>
+        internal static readonly string[,] StoryContainers =
+        {
+            { "LOOT_safe_68", "page1" },     // 第三水厂控制室保险箱
+            { "LOOT_house_69", "page2" },    // 镇区泵站值班桌
+            { "LOOT_house_70", "page3" },    // 潮位站记录柜
+            { "LOOT_vault_71", "page4" },    // 储蓄所所长的保险柜
+            { "LOOT_vault_71", "tidewatch" },
+            { "LOOT_locker_72", "wheel" },   // 挖沙船船舱储物柜
+            { "LOOT_safe_77", "goldbar" },   // 沉船船长的保险柜：原型放一根小金条，正式版放一件金库档的值钱物
+        };
 
         private sealed class Point
         {
@@ -26,7 +43,7 @@ namespace BossRush
             internal string Id, Kind;
             internal float Yaw;
             internal InteractableLootbox Box;
-            internal bool Built, Failed, Flooded, Opened;
+            internal bool Built, Failed, Flooded, Opened, FloodHinted;
         }
 
         private struct Spec
@@ -41,6 +58,7 @@ namespace BossRush
         private readonly TidegateTide tide;
         private readonly int seed;
         private readonly Func<bool> valid;
+        private readonly Action<string, bool> announce;
         private float nextTick;
         private int opened;
         private bool closed, subscribed;
@@ -50,12 +68,13 @@ namespace BossRush
         internal event Action<string> Opened;
         internal int PointCount { get { return points.Count; } }
 
-        internal TidegateLoot(TidegateWorld world, TidegateTide tide, int seed, Func<bool> valid)
+        internal TidegateLoot(TidegateWorld world, TidegateTide tide, int seed, Func<bool> valid, Action<string, bool> announce)
         {
             this.world = world;
             this.tide = tide;
             this.seed = seed;
             this.valid = valid;
+            this.announce = announce;
             foreach (Transform marker in world.LootMarkers)
             {
                 // LOOT_<种类>_<序号>
@@ -66,24 +85,23 @@ namespace BossRush
             subscribed = true;
         }
 
+        /// <summary>这只箱柜在剧情表里有没有这个固定内容标签。</summary>
+        internal static bool HasFixed(string pointId, string tag)
+        {
+            for (int i = 0; i < StoryContainers.GetLength(0); i++)
+                if (StoryContainers[i, 0] == pointId && StoryContainers[i, 1] == tag) return true;
+            return false;
+        }
+
         /// <summary>
-        /// 箱子种类 → 档次与格子类别。镇上生活物资为主；要等退潮或开闸才够得着的（滩涂埋货、沉船、金库）和
-        /// 有人守的（保险箱）档次更高，这是「跟着潮水走」的回报。
-        /// </summary>
-        /// <summary>
-        /// 四页闸工日志的出处（场景包里固定的四个箱柜，名字来自 three.js 原型 layout.js 的 fixed 字段）。
+        /// 四页闸工日志的出处（剧情表里 `page1`～`page4` 的四个箱柜）。
         /// 翻开就算找到（存档权威在 <see cref="TidegateStory.RecordPage"/>），正文进官方笔记图鉴。
         /// </summary>
         internal static int PageIndexOf(string pointId)
         {
-            switch (pointId)
-            {
-                case "LOOT_safe_68": return 0;   // 第三水厂控制室保险箱
-                case "LOOT_house_69": return 1;  // 镇区泵站值班桌
-                case "LOOT_house_70": return 2;  // 潮位站记录柜
-                case "LOOT_vault_71": return 3;  // 储蓄所所长的保险柜
-                default: return -1;
-            }
+            for (int page = 0; page < TidegateStory.PageCount; page++)
+                if (HasFixed(pointId, "page" + (page + 1))) return page;
+            return -1;
         }
 
         /// <summary>
@@ -92,8 +110,8 @@ namespace BossRush
         /// </summary>
         internal static int FixedItemOf(string pointId, string kind, System.Random random, bool carryingWatch)
         {
-            if (pointId == "LOOT_vault_71") return carryingWatch ? 0 : BossRushItemIds.TidegateTideWatch;
-            if (kind == "locker") return BossRushItemIds.TidegateHandwheel;
+            if (HasFixed(pointId, "tidewatch")) return carryingWatch ? 0 : BossRushItemIds.TidegateTideWatch;
+            if (HasFixed(pointId, "wheel")) return BossRushItemIds.TidegateHandwheel;
             if (kind == "buried" && random.Next(100) < FlippersChancePercent) return BossRushItemIds.TidegateFlippers;
             return 0;
         }
@@ -101,6 +119,10 @@ namespace BossRush
         /// <summary>滩涂埋货出鸭蹼脚掌的概率（%）。六个埋货点、只在退潮时够得着，一趟大约三成能见到一双。</summary>
         internal const int FlippersChancePercent = 6;
 
+        /// <summary>
+        /// 箱子种类 → 档次与格子类别。镇上生活物资为主；要等退潮或开闸才够得着的（滩涂埋货、沉船、金库）和
+        /// 有人守的（保险箱）档次更高，这是「跟着潮水走」的回报。
+        /// </summary>
         private static Spec SpecOf(string kind)
         {
             switch (kind)
@@ -136,6 +158,13 @@ namespace BossRush
                     {
                         point.Flooded = flooded;
                         point.Box.gameObject.SetActive(!flooded);
+                        if (!flooded) point.FloodHinted = false;
+                    }
+                    // 被淹的箱柜：模型还在、交互没了，走到跟前提示一次，水退之前不再说（CR-2026-11-05-024）。
+                    if (point.Flooded && !point.FloodHinted && distance <= FloodHintRange * FloodHintRange && announce != null)
+                    {
+                        point.FloodHinted = true;
+                        announce(L10n.T("这只箱子泡在深水里，搜不了，等退潮再来。", "This container is under deep water. Come back at low tide."), false);
                     }
                 }
                 if (point.Built || point.Failed || distance >= best) continue;
@@ -172,9 +201,15 @@ namespace BossRush
                 int amount = category == SkyIslandLootCategory.Ammo ? 20 + random.Next(31) : 1;
                 if (SkyIslandRewardCrate.AddOfficialStack(box, typeId, amount, log, category.ToString())) added++;
             }
-            bool carryingWatch = point.Id == "LOOT_vault_71" && TidegateInventory.Carries(player, BossRushItemIds.TidegateTideWatch);
+            bool carryingWatch = HasFixed(point.Id, "tidewatch") && TidegateInventory.Carries(player, BossRushItemIds.TidegateTideWatch);
             int fixedItem = FixedItemOf(point.Id, point.Kind, random, carryingWatch);
             if (fixedItem != 0 && SkyIslandRewardCrate.AddOfficialStack(box, fixedItem, 1, log, "Tidegate")) added++;
+            // 沉船船长的保险柜：原型里固定一根小金条（低潮才够得着、涨潮最先淹），正式版从金库档的值钱物里抽一件，同样过价值上限与黑名单。
+            if (HasFixed(point.Id, "goldbar"))
+            {
+                int valuable = SkyIslandLootPools.PickCategory(SkyIslandLootCategory.General, SkyIslandLootTier.Starworks, random);
+                if (valuable != 0 && SkyIslandRewardCrate.AddOfficialStack(box, valuable, 1, log, "TidegateWreck")) added++;
+            }
             point.Flooded = tide.IsDeepAt(point.Marker.position);
             if (point.Flooded) box.gameObject.SetActive(false);
             Debug.Log(TidegateRaidScene.LogTag + " LOOT_READY id=" + point.Id + " tier=" + spec.Tier + " items=" + added

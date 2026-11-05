@@ -39,7 +39,18 @@ namespace BossRush
         private TidegateMap map;
         private TidegateWater water;
         private TidegateDevices devices;
+        private TidegateSounds sounds;
         private GameObject returnInputBlock;
+        /// <summary>HUD 地名：走进地标这么近才换，离开或在两地标之间保持上一个，新地标要近这么多才换。</summary>
+        private const float RegionRadius = 24f, RegionSwitchMargin = 4f;
+        /// <summary>泻湖水位低于这个高度（金库地面约 -0.95 m + 深水 0.5 m）时，储蓄所金库露出水面、能进去搜。</summary>
+        private const float VaultDryLevel = -0.45f;
+        private Transform regionPoi;
+        /// <summary>这一轮已经报过的换相前提示；换相时清零（每轮一次涨潮警报、一次渡口要走）。</summary>
+        private TidegateTideNotice noticeShown;
+        /// <summary>身上（整棵物品树）带没带潮汐怀表：两秒查一次，HUD 倒计时与目标行共用。</summary>
+        private bool carryingWatch;
+        private float nextWatchCheck;
         private string assemblyError, firstReturnReason;
         private bool subscribed, closed, ready, moved, navigationReady, returning, returnRequested, deathPending, loadStarted;
         private bool pathCompleted, pathValid;
@@ -177,6 +188,8 @@ namespace BossRush
             lighting.Apply(root);
             tide = new TidegateTide(world);
             tide.Tick(0f);
+            // 涨退潮是这张图的主机制，换相要有字幕与警报（CR-2026-11-05-017）；首个 Tick 只定相位、不触发。
+            tide.PhaseChanged += OnTidePhaseChanged;
             Physics.SyncTransforms();
             world.VerifyGround(groundMask);
             Transform nav = root.transform.Find("Navigation");
@@ -203,6 +216,20 @@ namespace BossRush
             scan.Dispose();
             scan = null;
             if (navigation.CountWalkableNodes() == 0) throw new InvalidOperationException("潮闸镇导航没有可走节点");
+            // 官方物资池与敌人武器池趁读条预热，每个池子占一帧（口径同天空岛 CR-2026-09-14-014）：懒建时第一只箱子、
+            // 第一名守卫出来那一帧要现查官方物品表（CR-2026-11-05-028）。预热失败只记一次，箱子照常懒建。
+            IEnumerator warm = null;
+            Safe("loot_prewarm", delegate { warm = SkyIslandLootPools.Prewarm(); });
+            while (warm != null)
+            {
+                bool more = false;
+                object current = null;
+                try { more = warm.MoveNext(); if (more) current = warm.Current; }
+                catch (Exception e) { TickFault("loot_prewarm", e); }
+                if (!more) break;
+                yield return current;
+            }
+            Safe("loot_prewarm_release", delegate { (warm as IDisposable)?.Dispose(); });
             // 低潮全图连通：从出生点到每个刷怪点探一次路（潮位封锁在下面才挂上，这里看的是完整的图）。
             // 与天空岛不同，这里软失败：够不着的点本趟不刷、记一行日志给场景包那一侧修，不让一个点拖垮整趟出击。
             probe = root.AddComponent<Seeker>();
@@ -242,6 +269,15 @@ namespace BossRush
             playerHealth = player.Health;
             playerHealth.OnDeadEvent.AddListener(OnPlayerDied);
             LevelManager.UnregisterWaitForInitialization(this);
+            carryingWatch = TidegateInventory.Carries(player, BossRushItemIds.TidegateTideWatch);
+            nextWatchCheck = Time.unscaledTime + 2f;
+            // 落地横幅的提示：没带怀表的人告诉他怀表有什么用（倒计时只在带着怀表时出现在小标行）。
+            if (hud != null && !carryingWatch)
+                Safe("landing_hint", delegate
+                {
+                    hud.SetLandingHint(L10n.T("地图键看全镇 · 站进撤离环读完条返航 · 带潮汐怀表能看涨落倒计时",
+                        "Map key: see the town · stand in an extraction ring until the bar fills · a tide pocket watch shows the countdown"));
+                });
             safePosition = world.PlayerSpawn.position + Vector3.up * 0.15f;
             moved = ready = true;
             enteredAt = Time.unscaledTime;
@@ -250,11 +286,12 @@ namespace BossRush
             Safe("map", delegate { map = new TidegateMap(world); });
             Safe("water", delegate { water = new TidegateWater(world, tide, player, IsSessionValid); });
             Safe("extraction", delegate { extraction = new TidegateExtraction(world, tide, groundMask); });
-            Safe("loot", delegate { loot = new TidegateLoot(world, tide, seed, IsSessionValid); });
+            Safe("loot", delegate { loot = new TidegateLoot(world, tide, seed, IsSessionValid, Status); });
             Safe("enemies", delegate { enemies = new TidegateEnemies(world, tide, navigation, player, seed, IsSessionValid, unreachable); });
+            Safe("sounds", delegate { sounds = new TidegateSounds(world); });
             Safe("devices", delegate
             {
-                devices = new TidegateDevices(world, tide, extraction, enemies, IsSessionValid, Status);
+                devices = new TidegateDevices(world, tide, extraction, enemies, sounds, IsSessionValid, Status);
                 if (loot != null) loot.Opened += OnLootOpened;
             });
             Debug.Log(TidegateRaidScene.LogTag + " ENTER_PASS scene=" + entryScene.path + " nodes=" + navigation.CountWalkableNodes() +
@@ -316,7 +353,9 @@ namespace BossRush
             try { if (devices != null) devices.Tick(); } catch (Exception e) { TickFault("devices", e); }
             try { if (map != null) map.Tick(); } catch (Exception e) { TickFault("map", e); }
             Vector3 position = player.transform.position;
-            if (position.y < -14f || Mathf.Abs(position.x) > 160f || Mathf.Abs(position.z) > 150f) { Rescue(); return; }
+            try { if (sounds != null) sounds.Tick(position); } catch (Exception e) { TickFault("sounds", e); }
+            // 四边有墙（TidegateWorld.AddBoundary），这里只兜物理穿模或掉出世界：出了可玩区 8 m 或掉到 -14 m 以下拉回落脚点。
+            if (position.y < -14f || TidegateWorld.OutsidePlayArea(position)) { Rescue(); return; }
             if (Time.unscaledTime >= nextGroundCheck)
             {
                 nextGroundCheck = Time.unscaledTime + 0.25f;
@@ -340,13 +379,119 @@ namespace BossRush
             if (Time.unscaledTime >= nextHud)
             {
                 nextHud = Time.unscaledTime + 0.5f;
+                if (Time.unscaledTime >= nextWatchCheck)
+                {
+                    nextWatchCheck = Time.unscaledTime + 2f;
+                    carryingWatch = TidegateInventory.Carries(player, BossRushItemIds.TidegateTideWatch);
+                }
+                TickTideNotices();
                 if (hud != null && tide != null)
                 {
-                    hud.SetRegion(world.RegionNear(player.transform.position));
-                    hud.SetObjective(tide.Describe(TidegateInventory.Has(player, BossRushItemIds.TidegateTideWatch)));
+                    UpdateRegion(player.transform.position);
+                    hud.SetObjective(Objective());
                     hud.SetChips(FieldStatus());
                 }
             }
+        }
+
+        /// <summary>
+        /// 换相字幕（原型 game.js 的 onPhase）：涨潮用警示色并拉警报，高潮在渡口拉汽笛。只在出击进行中报；
+        /// 换相清零本轮的提前提示，下一轮再报一次（CR-2026-11-05-017）。
+        /// </summary>
+        private void OnTidePhaseChanged(TidegateTidePhase previous, TidegateTidePhase next)
+        {
+            noticeShown = TidegateTideNotice.None;
+            if (!IsSessionValid()) return;
+            switch (next)
+            {
+                case TidegateTidePhase.Ebb:
+                    Status(L10n.T("开始退潮了。", "The tide is going out."), false);
+                    break;
+                case TidegateTidePhase.Low:
+                    Status(L10n.T("低潮：滩涂、沉船货舱和排水暗渠都露出来了，淘沙帮下滩了。",
+                        "Low tide: the flats, the wreck's hold and the drain culvert are above water. The sand gang is heading out."), false);
+                    break;
+                case TidegateTidePhase.Flood:
+                    Status(L10n.T("涨潮了！滩涂很快就是深水，背得重的赶紧上岸。",
+                        "The tide is coming in! The flats will be deep water soon. Get ashore if you're carrying a heavy load."), true);
+                    if (sounds != null) sounds.Play(TidegateCue.Siren, null);
+                    break;
+                default:
+                    Status(L10n.T("高潮：栈桥渡口来船了，可以从栈桥撤离。", "High tide: a boat is at the ferry pier. You can leave from there."), false);
+                    Transform ferry;
+                    if (sounds != null && world.Exits.TryGetValue("ferry", out ferry)) sounds.Play(TidegateCue.Horn, ferry.position);
+                    break;
+            }
+        }
+
+        /// <summary>换相前的提前提示：低潮最后 15 秒拉涨潮警报，高潮最后 12 秒提醒渡口的船要走；每轮各一次。</summary>
+        private void TickTideNotices()
+        {
+            if (tide == null) return;
+            TidegateTideNotice notice = TidegateTide.Notice();
+            if (notice == TidegateTideNotice.None || notice == noticeShown) return;
+            noticeShown = notice;
+            int seconds = Mathf.Max(1, Mathf.CeilToInt((float)TidegateTide.RealSecondsUntilNextPhase()));
+            if (notice == TidegateTideNotice.FloodSoon)
+            {
+                Status(L10n.T("潮汐警报：", "Tide alarm: the flood starts in ") + seconds + L10n.T(" 秒后涨潮，滩涂上的往高处走。", " s. Get off the flats."), true);
+                if (sounds != null) sounds.Play(TidegateCue.Siren, null);
+                return;
+            }
+            Status(L10n.T("潮水快退了，渡口的船再过 ", "The tide is turning. The ferry leaves in ") + seconds + L10n.T(" 秒就走。", " s."), false);
+        }
+
+        /// <summary>
+        /// HUD 地名：走进某个地标 24 m 内才换；离开所有地标、或站在两个地标之间时保持上一个，新地标要近 4 m 以上才换。
+        /// 遵守 `SkyIslandHud.SetRegion` 的约定，免得地名来回跳、游在外海也报地名（CR-2026-11-05-025）。
+        /// </summary>
+        private void UpdateRegion(Vector3 position)
+        {
+            float distance;
+            Transform nearest = world.NearestPoi(position, out distance);
+            if (nearest != null && nearest != regionPoi && distance <= RegionRadius)
+            {
+                float current = float.MaxValue;
+                if (regionPoi != null)
+                {
+                    Vector3 offset = regionPoi.position - position;
+                    offset.y = 0f;
+                    current = offset.magnitude;
+                }
+                if (current > RegionRadius || distance + RegionSwitchMargin < current) regionPoi = nearest;
+            }
+            hud.SetRegion(regionPoi == null ? TidegateRaidScene.DisplayName : TidegateText.PlaceName(regionPoi.name));
+        }
+
+        /// <summary>
+        /// HUD 目标行：按进度给下一步，只在进度变化时换字，「目标更新」才名副其实（CR-2026-11-05-018）。
+        /// 潮相、潮位与怀表倒计时放小标行（<see cref="FieldStatus"/>）。
+        /// </summary>
+        private string Objective()
+        {
+            if (carryingWatch && !TidegateStory.WatchDelivered)
+                return L10n.T("带着潮汐怀表撤离，回地堡下水道交给闸伯", "Extract with the tide pocket watch and bring it to Old Zha in the bunker sewer");
+            if (devices != null && tide != null && !tide.SluiceOpen && devices.ValveCount > 0)
+            {
+                string count = L10n.T("（", " (") + devices.OpenValves + "/" + devices.ValveCount + L10n.T("）", ")");
+                bool lastIsGauge = !devices.TideGaugeOpen && devices.OpenValves == devices.ValveCount - 1;
+                if (lastIsGauge && TidegateInventory.Find(player, BossRushItemIds.TidegateHandwheel) != null)
+                    return L10n.T("带着阀门手轮去灯塔岬的潮位站，拧开最后一处阀门", "Take the handwheel to the tide gauge station on the cape and open the last valve") + count;
+                if (lastIsGauge)
+                    return L10n.T("潮位站的阀门缺手轮：去挖沙船船舱的储物柜拿，跳板涨潮会淹",
+                        "The tide gauge valve has no handwheel. It's in the dredger's cabin locker; the gangway floods at high tide") + count;
+                return L10n.T("拧开三处阀门提起大闸", "Open the three valves to lift the tide gate") + count
+                    + L10n.T("：还剩 ", " · still to open: ") + devices.RemainingValves();
+            }
+            if (tide != null && tide.SluiceOpen)
+            {
+                if (tide.LagoonLevel > VaultDryLevel && tide.LagoonLevel > tide.Level)
+                    return L10n.T("大闸已提起，泻湖正在放水：退潮后进储蓄所金库", "The tide gate is up and the lagoon is draining. Enter the bank vault at low tide");
+                return tide.LagoonLevel <= VaultDryLevel
+                    ? L10n.T("储蓄所金库露出水面了：所长的保险柜在最里面", "The bank vault is above water. The manager's safe is at the very back")
+                    : L10n.T("潮水又淹了金库：等下一次退潮", "The tide has flooded the vault again. Wait for the next low tide");
+            }
+            return L10n.T("搜刮后从开着的出口撤离", "Loot, then leave through an open exit");
         }
 
         /// <summary>搜刮点第一次被翻开：固定箱柜里的闸工日志记进剧情存档（官方笔记图鉴同步点亮），字幕报一下题目。</summary>
@@ -357,14 +502,18 @@ namespace BossRush
             Status(L10n.T("找到了", "Found ") + TidegateText.PageTitle(page) + L10n.T("（笔记图鉴里能翻）", " (in your notes)"), false);
         }
 
-        /// <summary>HUD 第三行：机关进度 · 能不能游 · 开着的出口。</summary>
+        /// <summary>
+        /// HUD 小标行：潮相与潮位（带着怀表时加换相倒计时）· 负重与能不能游（游泳时敌人更难发现）· 开着的出口。
+        /// 每秒都在变的读数放这一行，不触发目标行的「目标更新」（CR-2026-11-05-018）。
+        /// </summary>
         private string FieldStatus()
         {
             var parts = new List<string>(3);
-            if (devices != null) parts.Add(devices.Describe());
+            if (tide != null) parts.Add(tide.Chip(carryingWatch));
             if (water != null && player != null && player.CharacterItem != null)
                 parts.Add(L10n.T("负重 ", "Load ") + player.CharacterItem.TotalWeight.ToString("F0") + "/" + water.WeightLimit.ToString("F0")
-                    + (water.CanSwimNow ? L10n.T(" 能游", " · can swim") : L10n.T(" 下水会沉", " · will sink")));
+                    + (water.Stealthy ? L10n.T(" 游泳中，敌人难发现", " · swimming, harder to spot")
+                        : water.CanSwimNow ? L10n.T(" 能游", " · can swim") : L10n.T(" 下水会沉", " · will sink")));
             if (extraction != null) parts.Add(extraction.Describe());
             return string.Join(" · ", parts.ToArray());
         }
@@ -484,6 +633,9 @@ namespace BossRush
             }
             Safe("devices", delegate { if (devices != null) devices.Dispose(); });
             devices = null;
+            // 循环海浪不随发声体销毁而停：先 StopAll 再销毁（TidegateSounds.Dispose）。
+            Safe("sounds", delegate { if (sounds != null) sounds.Dispose(); });
+            sounds = null;
             Safe("enemies", delegate { if (enemies != null) enemies.Dispose(); });
             enemies = null;
             Safe("loot", delegate { if (loot != null) loot.Dispose(); });
@@ -494,7 +646,12 @@ namespace BossRush
             map = null;
             Safe("water", delegate { if (water != null) water.Dispose(); });
             water = null;
-            Safe("tide", delegate { if (tide != null) tide.Dispose(); });
+            Safe("tide", delegate
+            {
+                if (tide == null) return;
+                tide.PhaseChanged -= OnTidePhaseChanged;
+                tide.Dispose();
+            });
             tide = null;
             Safe("path", delegate { if (probe != null) probe.CancelCurrentPathRequest(); });
             Safe("scan", delegate { if (scan != null) scan.Dispose(); });

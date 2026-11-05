@@ -333,6 +333,7 @@ echo(Tidegate\TidegateLoot.cs
 echo(Tidegate\TidegateRaidScene.cs
 echo(Tidegate\TidegateRuntimeModule.cs
 echo(Tidegate\TidegateSession.cs
+echo(Tidegate\TidegateSounds.cs
 echo(Tidegate\TidegateText.cs
 echo(Tidegate\TidegateTide.cs
 echo(Tidegate\TidegateTideRules.cs
@@ -1579,7 +1580,7 @@ if %BUILD_EXIT_CODE% EQU 0 (
                 echo Deployed sound tree to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds
             )
             rem Fail loud per folder: a missing folder here means the feature reading it is mute.
-            for %%S in (Achievement BGM DragonKing Goblin NewWeapons Nurse SetBonus SkyIsland items lottery) do (
+            for %%S in (Achievement BGM DragonKing Goblin NewWeapons Nurse SetBonus SkyIsland Tidegate items lottery) do (
                 if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\%%S" echo WARNING: sound folder missing after deploy: %%S
             )
         ) else (

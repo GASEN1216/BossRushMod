@@ -79,6 +79,33 @@ internal static class Program
         Check(Math.Abs(untilLow - 0.3) < 1e-9, "countdown to the next phase");
         Check(Math.Abs(TidegateTideRules.HoursUntilNextPhase(4.4) - 0.1) < 1e-9, "countdown wraps into the next cycle");
 
+        // 换相前提示（CR-2026-11-05-017）：官方倍速 60（1 游戏小时 = 60 现实秒）。低潮在 2.5 h 结束、高潮在 4.5 h 结束。
+        const double scale = 60.0;
+        Check(Math.Abs(TidegateTideRules.RealSecondsUntilNextPhase(2.5 - 10.0 / 60.0, scale) - 10.0) < 1e-6, "real seconds follow the clock scale");
+        Check(Math.Abs(TidegateTideRules.RealSecondsUntilNextPhase(0.2, 0.0) - 0.3 * 3600.0) < 1e-6, "a stopped clock scale never divides by zero");
+        Check(TidegateTideRules.NoticeAt(2.5 - 20.0 / 60.0, scale) == TidegateTideNotice.None, "no flood alarm 20 s before the flood");
+        Check(TidegateTideRules.NoticeAt(2.5 - 14.0 / 60.0, scale) == TidegateTideNotice.FloodSoon, "flood alarm inside the last 15 s of low tide");
+        Check(TidegateTideRules.NoticeAt(2.5 + 1.0 / 60.0, scale) == TidegateTideNotice.None, "no alarm once the flood has started");
+        Check(TidegateTideRules.NoticeAt(4.5 - 13.0 / 60.0, scale) == TidegateTideNotice.None, "ferry stays quiet 13 s before the ebb");
+        Check(TidegateTideRules.NoticeAt(4.5 - 11.0 / 60.0, scale) == TidegateTideNotice.FerryLeaving, "ferry warning inside the last 12 s of high tide");
+        Check(TidegateTideRules.NoticeAt(0.25, scale) == TidegateTideNotice.None, "nothing to announce while ebbing");
+        Check(TidegateTideRules.NoticeAt(double.NaN, scale) == TidegateTideNotice.None, "no clock, no alarm");
+        int floodAlarms = 0;
+        TidegateTideNotice shown = TidegateTideNotice.None;
+        TidegateTidePhase seen = TidegateTideRules.PhaseAt(0.0);
+        for (int i = 0; i <= 2 * 4500; i++)
+        {
+            // 两整轮、每 0.001 h（0.06 现实秒）问一次，会话按「换相清零、同一提示只报一次」记：每一轮恰好一次涨潮警报。
+            double hours = i * 0.001;
+            TidegateTidePhase phase = TidegateTideRules.PhaseAt(hours);
+            if (phase != seen) { seen = phase; shown = TidegateTideNotice.None; }
+            TidegateTideNotice notice = TidegateTideRules.NoticeAt(hours, scale);
+            if (notice == TidegateTideNotice.None || notice == shown) continue;
+            shown = notice;
+            if (notice == TidegateTideNotice.FloodSoon) floodAlarms++;
+        }
+        Check(floodAlarms == 2, "exactly one flood alarm per tide cycle");
+
         // 泻湖：闸关着恒满；提起后以固定速度降到外海，之后贴着外海走（外海涨上来时泻湖跟着涨）。
         float lagoon = TidegateTideRules.LagoonFull;
         Check(TidegateTideRules.StepLagoon(lagoon, -1.5f, false, 10f) == TidegateTideRules.LagoonFull, "closed sluice keeps the lagoon full");

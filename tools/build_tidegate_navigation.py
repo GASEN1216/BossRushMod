@@ -38,6 +38,7 @@ import argparse
 import hashlib
 import json
 import math
+import re
 import sys
 import time
 from collections import defaultdict, deque
@@ -361,6 +362,22 @@ def bfs(adj, start, allowed):
     return seen
 
 
+LOOT_SOURCE = REPO / 'Tidegate' / 'TidegateLoot.cs'
+STORY_ROW = re.compile(r'\{\s*"(LOOT_[A-Za-z]+_\d+)",\s*"([a-z0-9]+)"\s*\}')
+
+
+def story_containers(layout):
+    """剧情箱柜：运行时 `TidegateLoot.StoryContainers`（标记名 → 固定内容）与布局 containers 的 `fixed` 标签逐条对上。
+    布局重导会给箱子重新编号，对不上时日志页、怀表、手轮会静默消失；布局新加了 fixed 而运行时没接也要报。返回问题列表。"""
+    table = set(STORY_ROW.findall(LOOT_SOURCE.read_text(encoding='utf-8-sig')))
+    if not table:
+        return ['%s 里找不到 StoryContainers 表' % LOOT_SOURCE.name]
+    fixed = {(c['id'], tag) for c in layout['containers'] for tag in (c.get('fixed') or [])}
+    problems = ['运行时有、布局里没有：%s=%s' % pair for pair in sorted(table - fixed)]
+    problems += ['布局里有、运行时没接：%s=%s' % pair for pair in sorted(fixed - table)]
+    return problems
+
+
 def markers(layout):
     out = [('spawn', 'PlayerSpawn', (layout['spawn']['x'], layout['spawn']['z']))]
     out += [('exit', 'Exit_' + e['id'], (e['position'][0], e['position'][2])) for e in layout['exits']]
@@ -579,6 +596,9 @@ def main() -> int:
             failures.append('有 %d 条边被三个以上三角形共用' % result['nonManifoldEdges'])
         if result['componentCount'] != 1:
             failures.append('网格不是一整块：%d 个连通块' % result['componentCount'])
+        story = story_containers(grid.layout)
+        if story:
+            failures.append('剧情箱柜与布局对不上（Tidegate/TidegateLoot.cs 的 StoryContainers）：' + '；'.join(story))
     # 耗时只打印不落盘：输出文件内容只由输入决定，同步脚本按 sha256 判断要不要覆盖
     print(json.dumps(dict(stats, seconds=round(time.time() - t0, 1)), ensure_ascii=False))
     if args.check:

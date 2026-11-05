@@ -4,6 +4,9 @@ namespace BossRush
 {
     internal enum TidegateTidePhase { Ebb, Low, Flood, High }
 
+    /// <summary>换相前的提前提示：涨潮警报、渡口的船要走。</summary>
+    internal enum TidegateTideNotice { None, FloodSoon, FerryLeaving }
+
     /// <summary>
     /// 潮闸镇的潮汐规则（纯函数，不读 Unity 状态，离线可测）。潮位挂官方游戏时钟：一轮 4.5 个游戏小时
     /// （官方 `clockTimeScale` 60 时约 4.5 现实分钟），退潮 0.5 h → 低潮 2 h → 涨潮 0.5 h → 高潮 1.5 h，
@@ -27,6 +30,10 @@ namespace BossRush
         internal const float DrainExposedDepth = 0.25f;
         /// <summary>官方一天的游戏秒数（反编译源 `GameClock.SecondsPerDay`，是 86300 不是 86400）。</summary>
         internal const double OfficialSecondsPerDay = 86300.0;
+        /// <summary>涨潮前多少现实秒拉警报（原型 15 秒）：涨潮本身只有 30 秒，滩涂约 16 秒后就是深水。</summary>
+        internal const double FloodWarningSeconds = 15.0;
+        /// <summary>高潮结束前多少现实秒提醒「渡口的船要走」（原型 12 秒）。</summary>
+        internal const double FerryLeavingSeconds = 12.0;
 
         /// <summary>
         /// 潮汐用的跨天连续时钟（游戏小时）：天数 × 86300 + 当天秒数。官方 `TimeOfDay` 每天归零，24 又不是 4.5 的整数倍，
@@ -66,13 +73,33 @@ namespace BossRush
             return HighLevel;
         }
 
-        /// <summary>到下一次换相还有几个游戏小时（HUD 提示「多久涨潮」用）。</summary>
+        /// <summary>到下一次换相还有几个游戏小时（怀表倒计时、淘沙帮撤回与换相前提示用）。</summary>
         internal static double HoursUntilNextPhase(double clockHours)
         {
             double t = CycleOffset(clockHours);
             double[] edges = { EbbHours, EbbHours + LowHours, EbbHours + LowHours + FloodHours, CycleHours };
             foreach (double edge in edges) if (t < edge) return edge - t;
             return CycleHours - t;
+        }
+
+        /// <summary>到下一次换相还有多少现实秒：游戏小时按官方时钟倍速（`clockTimeScale`，游戏秒 / 现实秒）换算。</summary>
+        internal static double RealSecondsUntilNextPhase(double clockHours, double clockScale)
+        {
+            return HoursUntilNextPhase(clockHours) * 3600.0 / Math.Max(1.0, clockScale);
+        }
+
+        /// <summary>
+        /// 此刻该不该有换相前的提示：低潮剩 <see cref="FloodWarningSeconds"/> 秒以内是涨潮警报，高潮剩 <see cref="FerryLeavingSeconds"/> 秒以内
+        /// 是渡口的船要走；其它时候没有。每一轮只提示一次由调用方记。
+        /// </summary>
+        internal static TidegateTideNotice NoticeAt(double clockHours, double clockScale)
+        {
+            if (double.IsNaN(clockHours) || double.IsInfinity(clockHours)) return TidegateTideNotice.None;
+            TidegateTidePhase phase = PhaseAt(clockHours);
+            double left = RealSecondsUntilNextPhase(clockHours, clockScale);
+            if (phase == TidegateTidePhase.Low && left <= FloodWarningSeconds) return TidegateTideNotice.FloodSoon;
+            if (phase == TidegateTidePhase.High && left <= FerryLeavingSeconds) return TidegateTideNotice.FerryLeaving;
+            return TidegateTideNotice.None;
         }
 
         /// <summary>泻湖水位推进一帧：大闸关着恒为满湖；提起后按放水速度降到外海潮位，之后贴着外海走。</summary>

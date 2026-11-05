@@ -6,12 +6,6 @@ using UnityEngine;
 
 namespace BossRush
 {
-    /// <summary>
-    /// 潮闸镇的刷怪 owner。每个刷怪点（`Markers/Spawns/SPAWN_<组>_<种类>_<序号>`）本趟只刷一次，玩家走到 25–75 m 之间才刷
-    /// （官方 `CharacterSpawnerRoot` 同样不在玩家 25 m 内出怪，避免背后刷怪）。拾荒者、水厂守卫和淘沙帮用官方拾荒者预设，
-    /// 沙老大从官方 Boss 池按固定 key 抽一位、保留官方 Boss 掉落。刷出后的六步与天空岛相同：关距离激活 → 官方创建 →
-    /// 导航限定本图 → 解除距离休眠 → 敌对性安全网 `SetTeam(Teams.wolf)` → 挂到世界根下。
-    /// </summary>
     /// <summary>角色销毁时一并销毁它的克隆 preset。</summary>
     internal sealed class TidegatePresetOwner : MonoBehaviour
     {
@@ -19,6 +13,12 @@ namespace BossRush
         private void OnDestroy() { if (Preset != null) Destroy(Preset); Preset = null; }
     }
 
+    /// <summary>
+    /// 潮闸镇的刷怪 owner。每个刷怪点（`Markers/Spawns/SPAWN_<组>_<种类>_<序号>`）本趟只刷一次，玩家走到 25–75 m 之间才刷
+    /// （官方 `CharacterSpawnerRoot` 同样不在玩家 25 m 内出怪，避免背后刷怪）。拾荒者、水厂与灯塔岬的守卫、淘沙帮都用官方拾荒者预设，
+    /// 守卫另按天空岛精英档配枪（`SkyIslandEnemyArmory`，品质 4–5），沙老大从官方 Boss 池按固定 key 抽一位、保留官方 Boss 掉落。
+    /// 刷出后的六步与天空岛相同：关距离激活 → 官方创建 → 导航限定本图 → 解除距离休眠 → 敌对性安全网 `SetTeam(Teams.wolf)` → 挂到世界根下。
+    /// </summary>
     internal sealed class TidegateEnemies : IDisposable
     {
         private const float MinSpawnDistance = 25f, MaxSpawnDistance = 75f, TickInterval = 0.5f;
@@ -53,7 +53,12 @@ namespace BossRush
         private readonly CharacterMainControl player;
         private readonly Func<bool> valid;
         private float nextTick, nextTide, revealUntil = -1f, lureUntil = -1f;
-        private bool closed, spawning;
+        private bool closed;
+        /// <summary>
+        /// 正在官方创建中的角色数。按距离的刷怪等它归零才挑下一个；海堤增援一次刷三个，计数器（不是布尔）
+        /// 保证三个都回来之前不再开新的，也不会被先回来的那个提前清零（CR-2026-11-05-026）。
+        /// </summary>
+        private int inFlight;
 
         internal int SpawnedCount { get; private set; }
 
@@ -81,7 +86,7 @@ namespace BossRush
             if (Time.time >= nextTide) { nextTide = Time.time + TideInterval; TickTide(); }
             if (revealUntil > 0f && Time.time >= revealUntil) { revealUntil = -1f; ClearReveal(); }
             if (lureUntil > 0f && Time.time >= lureUntil) { lureUntil = -1f; EndLure(); }
-            if (spawning || Time.time < nextTick) return;
+            if (inFlight > 0 || Time.time < nextTick) return;
             nextTick = Time.time + TickInterval;
             Vector3 origin = player.transform.position;
             Slot pick = null;
@@ -108,7 +113,7 @@ namespace BossRush
         private async void Spawn(Slot slot)
         {
             slot.Started = true;
-            spawning = true;
+            inFlight++;
             CharacterRandomPreset clone = null;
             CharacterMainControl created = null;
             bool retained = false;
@@ -137,6 +142,8 @@ namespace BossRush
                 SpawnedEnemyActivationHelper.ReleaseFromPlayerDistanceSleep(created);
                 // 根 AGENTS §4.5：官方 preset 的阵营可能是中立，统一挂到 wolf，保证与玩家敌对、彼此不内斗。
                 created.SetTeam(Teams.wolf);
+                // 水厂与灯塔岬的守卫比镇上的拾荒者难打一档：按天空岛精英档换枪补弹（池子进图读条时已预热，可失败的装饰）。
+                if (slot.Kind == "guard") SkyIslandEnemyArmory.Arm(created, SkyIslandEnemyTier.Elite);
                 // 选敌全交给官方感知。不改 forceTracePlayerDistance：官方 AI 在这个距离内无视视线每帧锁定玩家，等于透视。
                 created.transform.SetParent(world.Root.transform, true);
                 slot.Ai = ai;
@@ -158,7 +165,7 @@ namespace BossRush
             {
                 if (!retained && created != null) { created.gameObject.SetActive(false); UnityEngine.Object.Destroy(created.gameObject); }
                 if (clone != null) UnityEngine.Object.Destroy(clone, created != null ? 0.1f : 0f);
-                spawning = false;
+                inFlight--;
             }
         }
 
@@ -203,12 +210,7 @@ namespace BossRush
         private bool DiggersOut()
         {
             TidegateTidePhase phase = tide.Phase;
-            if (phase == TidegateTidePhase.Low)
-            {
-                double hours = TidegateTide.ClockHours();
-                double realSeconds = TidegateTideRules.HoursUntilNextPhase(hours) * 3600.0 / Math.Max(1.0, SkyIslandLighting.ClockScale());
-                return realSeconds > RetreatLeadSeconds;
-            }
+            if (phase == TidegateTidePhase.Low) return TidegateTide.RealSecondsUntilNextPhase() > RetreatLeadSeconds;
             return phase == TidegateTidePhase.Ebb && tide.Level < (TidegateTideRules.HighLevel + TidegateTideRules.LowLevel) * 0.5f;
         }
 
