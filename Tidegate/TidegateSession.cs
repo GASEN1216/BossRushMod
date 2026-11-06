@@ -295,7 +295,11 @@ namespace BossRush
             Safe("water", delegate { water = new TidegateWater(world, tide, player, IsSessionValid); });
             Safe("extraction", delegate { extraction = new TidegateExtraction(world, tide, water, groundMask); });
             Safe("loot", delegate { loot = new TidegateLoot(world, tide, seed, IsSessionValid, Status, prizeCatalog); });
-            Safe("enemies", delegate { enemies = new TidegateEnemies(world, tide, navigation, player, seed, IsSessionValid, unreachable); });
+            Safe("enemies", delegate
+            {
+                enemies = new TidegateEnemies(world, tide, navigation, player, seed, IsSessionValid, unreachable);
+                if (loot != null) enemies.BossSpare = loot.RollBossSpare;
+            });
             Safe("sounds", delegate { sounds = new TidegateSounds(world); });
             Safe("devices", delegate
             {
@@ -491,6 +495,9 @@ namespace BossRush
             TidegateStoryData story = TidegateStory.Current;
             if (carryingWatch && (story == null || !story.WatchDelivered))
                 return L10n.T("带着潮汐怀表撤离，回地堡下水道交给闸伯", "Extract with the tide pocket watch and bring it to Old Zha in the bunker sewer");
+            // 轮班钥匙只在这一趟、不进背包：拿到到开柜之间一直提示去处（M 图上另有金圈）。
+            string shiftKey = loot != null ? loot.ShiftKeyObjective : null;
+            if (shiftKey != null) return shiftKey;
             if (devices != null && tide != null && !tide.SluiceOpen && devices.ValveCount > 0)
             {
                 if (story != null && story.WatchDelivered && devices.OpenValves == 0)

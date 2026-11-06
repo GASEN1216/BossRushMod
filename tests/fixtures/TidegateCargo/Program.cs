@@ -324,11 +324,15 @@ internal static class Program
                 int before=raid.OpenEvents;
                 cabinet.Open();
                 Check(raid.OpenEvents==before,"ignored lock via early loot event");
+                Check(raid.Loot.ShiftKeyObjective==null && !raid.Pins().Any(p=>p.Key==TidegateLoot.ForemanPinKey),"key hint before the key");
                 raid.Box("LOOT_tool_3").Open(); raid.Box("LOOT_tool_4").Open();
                 Check(cabinet.gameObject.activeSelf && raid.Notices.Count(n=>n.Contains("A shift key"))==1,"missing/repeated shift key");
+                // 钥匙不进背包：拿到后 HUD 目标行与 M 图金圈一直指着领班柜，开柜后一起撤掉。
+                Check(raid.Loot.ShiftKeyObjective!=null && raid.Pins().Count(p=>p.Key==TidegateLoot.ForemanPinKey)==1,"carried key left no objective or map pin");
                 int stacks=cabinet.Stocks.Count;
                 cabinet.Open();cabinet.Open();
                 Check(stacks==cabinet.Stocks.Count && raid.Notices.Count(n=>n.Contains("stays in the lock"))==1,"lock reused its key or refilled");
+                Check(raid.Loot.ShiftKeyObjective==null && !raid.Pins().Any(p=>p.Key==TidegateLoot.ForemanPinKey),"key hint outlived the opened cabinet");
             }
         Console.WriteLine("PASS: " + boxes.Count + " authored containers, " + seeds + " seeds, all three route pairs and " + oneSlot +
             " one-stack wins; both choices and discovery orders, same normal losing stocks, exclusive cargo, official failures and cleanup.");

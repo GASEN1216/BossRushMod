@@ -189,7 +189,46 @@ namespace BossRush
             return prizes.Pick(category, preferred, floor, ceiling, random, fallbackCategory);
         }
 
+        // 同一趟里精品不重样：所长柜和船长柜开出同一件 30,000 的东西很扫兴。重抽几次仍撞上就收下（目录太小时不让格子空着）。
+        private readonly HashSet<int> prizesThisRaid = new HashSet<int>();
+        private const int DistinctPrizeAttempts = 6;
+
         private int RolledPrize(Point point, int floor, System.Random random, out Cat category)
+        {
+            int prize = 0;
+            category = Cat.General;
+            for (int attempt = 0; attempt < DistinctPrizeAttempts; attempt++)
+            {
+                prize = RollPrizeOnce(point, floor, random, out category);
+                if (prize <= 0 || prizesThisRaid.Add(prize)) return prize;
+            }
+            return prize;
+        }
+
+        private int DistinctPrize(Cat category, int preferred, int floor, int ceiling, System.Random random, Cat fallback)
+        {
+            int prize = 0;
+            for (int attempt = 0; attempt < DistinctPrizeAttempts; attempt++)
+            {
+                prize = PickPrize(category, preferred, floor, ceiling, random, fallback);
+                if (prize <= 0 || prizesThisRaid.Add(prize)) return prize;
+            }
+            return prize;
+        }
+
+        /// <summary>
+        /// 已经带着响铊的人再打倒沙老大：尸体里换成一件挖沙船私货（品质 5–6 的护具、武器或值钱物），和本趟其它精品不重样。
+        /// 返回 0 表示目录里没有合格的货，调用方照旧给响铊。
+        /// </summary>
+        internal int RollBossSpare()
+        {
+            var random = SkyIslandLootTables.CreateStream(seed, "Tidegate#leadline-spare");
+            int roll = random.Next(100);
+            Cat category = roll < 40 ? Cat.Gear : roll < 70 ? Cat.Weapon : Cat.Valuable;
+            return DistinctPrize(category, random.Next(100) < 70 ? 5 : 6, 5, 6, random, Cat.General);
+        }
+
+        private int RollPrizeOnce(Point point, int floor, System.Random random, out Cat category)
         {
             int ceiling = PrizeCeiling(point.Kind, floor);
             int grade = RollPrizeGrade(floor, ceiling, random);
@@ -237,8 +276,10 @@ namespace BossRush
         private readonly List<Shipment> offers = new List<Shipment>(2);
         private bool cargoHinted;
         private const string ForemanCabinet = "LOOT_safe_35";
+        internal const string ForemanPinKey = "BossRush_TidegateCargo_ForemanCabinet";
         private string shiftKeyBox, luckyBox;
         private bool carryingShiftKey, openedCabinet, lockExplained;
+        private GameObject keyPin;
 
         // 老镇西南红色检修柜的轮班钥匙挂在盖内，码头领班柜用。它属于这趟出击，撤离后不能带去别图开门。
         private void PrepareShift()
@@ -253,6 +294,53 @@ namespace BossRush
         }
 
         private bool Locked(Point p) { return p.Id == ForemanCabinet && shiftKeyBox != null && !carryingShiftKey && !openedCabinet; }
+
+        /// <summary>钥匙不进背包（它只属于这一趟），所以拿到以后 HUD 目标行和 M 图一直指着领班柜，直到打开。</summary>
+        internal string ShiftKeyObjective
+        {
+            get
+            {
+                return carryingShiftKey && !openedCabinet
+                    ? L10n.T("带着轮班钥匙去码头二号仓库，打开领班柜", "Take the shift key to dock warehouse 2 and open the foreman's cabinet")
+                    : null;
+            }
+        }
+
+        private void TakeShiftKey()
+        {
+            carryingShiftKey = true;
+            Point cabinet = points.Find(p => p.Id == ForemanCabinet);
+            if (cabinet != null && cabinet.Box != null && !cabinet.Flooded) cabinet.Box.gameObject.SetActive(true);
+            PinCabinet(cabinet);
+            if (announce != null) announce(L10n.T("箱盖里挂着轮班钥匙：已取下。本趟可开码头二号仓库的领班柜，按 M 看位置。",
+                "A shift key hangs under the lid. Taken: it opens the foreman's cabinet in dock warehouse 2 this raid. Press M to find it."), true);
+        }
+
+        private void PinCabinet(Point cabinet)
+        {
+            ClearKeyPin();
+            if (cabinet == null || cabinet.Marker == null) return;
+            try
+            {
+                keyPin = new GameObject("TidegateForemanPin");
+                keyPin.transform.SetParent(world.Root.transform, false);
+                keyPin.transform.position = cabinet.Marker.position;
+                var pin = keyPin.AddComponent<SimplePointOfInterest>();
+                pin.Color = new Color(0.96f, 0.76f, 0.43f);
+                pin.IsArea = true;
+                pin.AreaRadius = 2f;
+                pin.Setup(null, ForemanPinKey);
+            }
+            catch (Exception e) { ClearKeyPin(); Debug.LogWarning(TidegateRaidScene.LogTag + " 领班柜地图标记：" + e.Message); }
+        }
+
+        private void ClearKeyPin()
+        {
+            if (keyPin == null) return;
+            keyPin.SetActive(false);
+            UnityEngine.Object.Destroy(keyPin);
+            keyPin = null;
+        }
 
         internal string ManifestObjective
         {
@@ -275,6 +363,7 @@ namespace BossRush
         internal static void InjectCargoLabels()
         {
             foreach (Delivery d in Deliveries) LocalizationHelper.InjectLocalization(d.Key, L10n.T(d.Zh, d.En));
+            LocalizationHelper.InjectLocalization(ForemanPinKey, L10n.T("领班柜（轮班钥匙）", "Foreman's cabinet (shift key)"));
         }
 
         private readonly List<Point> points = new List<Point>();
@@ -317,6 +406,7 @@ namespace BossRush
             }
             ChooseDelivery();
             PrepareShift();
+            AssignKits();
             InteractableLootbox.OnStartLoot += OnStartLoot;
             subscribed = true;
         }
@@ -435,25 +525,128 @@ namespace BossRush
             return roll < 5 ? 1 : roll < 48 ? 2 : roll < 85 ? 3 : roll < 97 ? 4 : 5;
         }
 
-        // 一张班次单决定头两格的搭配；ID 仍须在本机官方同类别、同品质带、已过黑名单与价限的池中。
-        private static int ShiftItem(string kind, int variant, int slot, ref Cat category)
+        // 工具柜、渔篓、药柜的头两格成对出：主件看用途（工具 / 鱼 / 药），副件是配套的耗材（零件 / 饵 / 针剂或饮料）。
+        // 两格各自从本机官方同类别、同品质带（已过黑名单与价限）里按官方标签筛出的小池里加权不放回地抽：
+        // 一趟里同类箱子的开头互不相同，池子抽完才轮第二遍；品质越低越常见。池子空了就退回原来的类别随机抽。
+        // 2026-11-07 实机：写死的两套班次单让一趟 7 只渔篓开头全是同一种沙丁鱼、6/10 只工具柜都是螺栓加螺母。
+        private sealed class KitSource
         {
-            if (slot > 1) return 0;
-            int want;
-            if (kind == "tool") { category = Cat.Workshop; want = variant == 0 ? (slot == 0 ? 332 : 335) : (slot == 0 ? 91 : 30); }
-            else if (kind == "fish")
+            internal readonly Cat Category;
+            internal readonly string[] Need, Avoid;
+            /// <summary>这一格最高品质（不超过普通档的 3）。</summary>
+            internal int MaxQuality = 3;
+            internal KitSource(Cat category, string[] need, params string[] avoid) { Category = category; Need = need; Avoid = avoid; }
+        }
+
+        private struct KitItem
+        {
+            internal int Id, Weight;
+            internal Cat Category;
+        }
+
+        private static readonly string[] KitKinds = { "tool", "fish", "med" };
+        private readonly Dictionary<string, KitItem[]> kits = new Dictionary<string, KitItem[]>(StringComparer.Ordinal);
+
+        private static KitSource[] KitRole(string kind, int slot)
+        {
+            switch (kind)
             {
-                category = slot == 0 ? Cat.Fishing : (variant == 0 ? Cat.Workshop : Cat.Pantry);
-                want = slot == 0 ? 1106 : (variant == 0 ? 87 : 13);
+                case "tool":
+                    return slot == 0 ? new[] { new KitSource(Cat.Workshop, new[] { "Tool" }, "Material") }
+                        : new[] { new KitSource(Cat.Workshop, new[] { "Material", "Electric" }) };
+                case "fish":
+                    // 渔篓里是码头的小杂鱼（1–2 档九种，够一趟七只篓不重样）；石斑、竹荚鱼这些 3 档大鱼留给钓鱼，免得普通篓变相涨价。
+                    return slot == 0 ? new[] { new KitSource(Cat.Fishing, new[] { "Fish" }) { MaxQuality = 2 } }
+                        : new[] { new KitSource(Cat.Fishing, new[] { "Bait" }) };
+                case "med":
+                    return slot == 0 ? new[] { new KitSource(Cat.Medical, new[] { "Medic" }, "Injector") }
+                        : new[] { new KitSource(Cat.Medical, new[] { "Injector" }), new KitSource(Cat.Pantry, new[] { "Drink" }) };
             }
-            else if (kind == "med")
+            return null;
+        }
+
+        private static bool HasAnyTag(Item item, string[] names)
+        {
+            if (names == null) return false;
+            foreach (string name in names) if (item.Tags.Contains(name)) return true;
+            return false;
+        }
+
+        private static List<KitItem> KitPool(KitSource[] sources)
+        {
+            var pool = new List<KitItem>();
+            if (sources == null) return pool;
+            int min = SkyIslandLootTables.MinQuality(Tier.Supply), max = SkyIslandLootTables.MaxQuality(Tier.Supply);
+            foreach (KitSource source in sources)
             {
-                category = slot == 0 || variant == 0 ? Cat.Medical : Cat.Pantry;
-                want = variant == 0 ? (slot == 0 ? 10 : 20) : (slot == 0 ? 17 : 428);
+                int[] band = SkyIslandLootPools.GetCategoryBand(source.Category, min, max);
+                if (band == null) continue;
+                foreach (int id in band)
+                {
+                    if (SkyIslandEnemyArmoryRules.IsOwnModItem(id) || pool.Exists(k => k.Id == id)) continue;
+                    Item item;
+                    try { item = ItemAssetsCollection.GetPrefab(id); }
+                    catch (Exception) { continue; }
+                    if (item == null || item.TypeID != id || item.Quality > source.MaxQuality || item.Tags == null
+                        || !HasAnyTag(item, source.Need) || HasAnyTag(item, source.Avoid)) continue;
+                    pool.Add(new KitItem { Id = id, Category = source.Category, Weight = item.Quality <= 1 ? 4 : item.Quality == 2 ? 2 : 1 });
+                }
             }
-            else return 0;
-            var stock = SkyIslandLootPools.GetCategoryBand(category, SkyIslandLootTables.MinQuality(Tier.Supply), SkyIslandLootTables.MaxQuality(Tier.Supply));
-            return stock != null && Array.IndexOf(stock, want) >= 0 ? want : 0;
+            // 抽取只由种子决定，不随官方目录的枚举顺序变化。
+            pool.Sort((a, b) => a.Id.CompareTo(b.Id));
+            return pool;
+        }
+
+        private static List<KitItem> WeightedOrder(List<KitItem> pool, System.Random random)
+        {
+            var left = new List<KitItem>(pool);
+            var order = new List<KitItem>(pool.Count);
+            while (left.Count > 0)
+            {
+                int total = 0;
+                foreach (KitItem k in left) total += k.Weight;
+                int roll = random.Next(total), pick = 0;
+                while (roll >= left[pick].Weight) { roll -= left[pick].Weight; pick++; }
+                order.Add(left[pick]);
+                left.RemoveAt(pick);
+            }
+            return order;
+        }
+
+        // 进图时一次排好：同类箱按标记名排序后依次发牌，结果与玩家先走哪条街无关，日志里的种子能复现。
+        private void AssignKits()
+        {
+            foreach (string kind in KitKinds)
+            {
+                List<Point> sites = points.FindAll(p => p.Kind == kind && !IsFixedContainer(p.Id));
+                if (sites.Count == 0) continue;
+                sites.Sort((a, b) => string.CompareOrdinal(a.Id, b.Id));
+                List<KitItem> first = WeightedOrder(KitPool(KitRole(kind, 0)), SkyIslandLootTables.CreateStream(seed, "Tidegate#kit:" + kind + ":0"));
+                List<KitItem> second = WeightedOrder(KitPool(KitRole(kind, 1)), SkyIslandLootTables.CreateStream(seed, "Tidegate#kit:" + kind + ":1"));
+                int cursor = 0;
+                for (int i = 0; i < sites.Count; i++)
+                {
+                    var pair = new KitItem[2];
+                    if (first.Count > 0) pair[0] = first[i % first.Count];
+                    // 主副件可能同属两个标签（例如带 Electric 的工具）：同一只箱子不放两件一样的。
+                    for (int tries = 0; tries < second.Count; tries++)
+                    {
+                        KitItem candidate = second[cursor++ % second.Count];
+                        if (candidate.Id == pair[0].Id) continue;
+                        pair[1] = candidate;
+                        break;
+                    }
+                    kits[sites[i].Id] = pair;
+                }
+            }
+        }
+
+        private int KitItemFor(string pointId, int slot, ref Cat category)
+        {
+            KitItem[] pair;
+            if (slot > 1 || !kits.TryGetValue(pointId, out pair) || pair[slot].Id <= 0) return 0;
+            category = pair[slot].Category;
+            return pair[slot].Id;
         }
 
         internal static System.Collections.IEnumerator PrewarmThemes()
@@ -558,7 +751,6 @@ namespace BossRush
             Spec spec = SpecOf(point.Kind);
             var random = SkyIslandLootTables.CreateStream(seed, point.Id);
             int count = RollCount(point.Kind, random.Next(100));
-            int kit = SkyIslandLootTables.CreateStream(seed, point.Id + "#shift-kit").Next(3); // 第三种保留杂物和自行搭配
             int prizeFloor = PrizeFloor(point.Id, point.Kind);
             var prizeRandom = prizeFloor > 0 ? SkyIslandLootTables.CreateStream(seed, point.Id + "#prize") : null;
             bool captain = HasFixed(point.Id, "goldbar");
@@ -567,7 +759,7 @@ namespace BossRush
             for (int i = 0; i < count; i++)
             {
                 Cat category = i == 0 ? spec.First : spec.Extras[random.Next(spec.Extras.Length)];
-                int typeId = kit < 2 ? ShiftItem(point.Kind, kit, i, ref category) : 0;
+                int typeId = KitItemFor(point.Id, i, ref category);
                 if (typeId == 0) typeId = SkyIslandLootPools.PickCategory(category, spec.Tier, random);
                 int amount = typeId > 0 && category == Cat.Ammo ? 20 + random.Next(31) : 1;
                 if (typeId == 0) { category = Cat.General; typeId = SkyIslandLootPools.Pick(spec.Tier, false, random); }
@@ -581,7 +773,7 @@ namespace BossRush
                 if (i == 0 && (point.Id == luckyBox || (point.Id == ForemanCabinet && shiftKeyBox != null)))
                 {
                     Cat theme = point.Kind == "med" ? Cat.Medical : point.Kind == "tool" ? Cat.Workshop : Cat.Valuable;
-                    int surprise = PickPrize(theme, 4, 4, 4, random, theme);
+                    int surprise = DistinctPrize(theme, 4, 4, 4, random, theme);
                     if (surprise > 0) { typeId = surprise; amount = 1; category = theme; }
                 }
                 if (DeferCargoSlot(point, i, count, typeId, amount, category)) continue;
@@ -625,16 +817,11 @@ namespace BossRush
                 Action<string> handler = Opened;
                 if (handler != null) handler(point.Id);
                 ReadDelivery(point);
-                if (point.Id == shiftKeyBox && !carryingShiftKey && !openedCabinet)
-                {
-                    carryingShiftKey = true;
-                    Point cabinet = points.Find(p => p.Id == ForemanCabinet);
-                    if (cabinet != null && cabinet.Box != null && !cabinet.Flooded) cabinet.Box.gameObject.SetActive(true);
-                    if (announce != null) announce(L10n.T("箱盖里挂着轮班钥匙：已取下。本趟可开码头二号仓库的领班柜。", "A shift key hangs under the lid. Taken: it opens the foreman's cabinet in dock warehouse 2 this raid."), true);
-                }
+                if (point.Id == shiftKeyBox && !carryingShiftKey && !openedCabinet) TakeShiftKey();
                 else if (point.Id == ForemanCabinet && carryingShiftKey)
                 {
                     openedCabinet = true; carryingShiftKey = false;
+                    ClearKeyPin();
                     if (announce != null) announce(L10n.T("轮班钥匙留在锁孔里。领班柜已打开。", "The shift key stays in the lock. The foreman's cabinet is open."), false);
                 }
                 return;
@@ -739,6 +926,7 @@ namespace BossRush
         {
             if (closed) return;
             closed = true;
+            ClearKeyPin();
             for (int i = offers.Count - 1; i >= 0; i--) RetireOffer(offers[i], false);
             if (subscribed) { InteractableLootbox.OnStartLoot -= OnStartLoot; subscribed = false; }
             Opened = null;
