@@ -97,19 +97,7 @@ namespace BossRush
 
         private void DestroyF3DebugCheatMenuUI()
         {
-            try
-            {
-                EnableF3DebugCheatInput();
-            }
-            catch { }
-
-            f3DebugCheatMenuVisible = false;
-
-            try
-            {
-                RestoreF3DebugCheatPresentationState();
-            }
-            catch { }
+            HideF3DebugCheatMenu();
 
             if (f3DebugCheatMenuRoot != null)
             {
@@ -117,7 +105,6 @@ namespace BossRush
             }
 
             f3DebugCheatMenuRoot = null;
-            f3DebugCheatInputDisabled = false;
             f3DebugCheatContentRoot = null;
             f3DebugCheatSummaryText = null;
             f3DebugCheatStatusText = null;

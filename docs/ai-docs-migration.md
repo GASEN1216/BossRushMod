@@ -446,3 +446,7 @@ owner 要求全面审查计划，并使新窗口可一次授权后完成全部�
 ## 2026-10-13：甩锅许可证 TypeID 与内容接线
 
 合并远端已发布的 500108 回火液后，本任务尚未提交的甩锅许可证顺延为 500109；根规则、contracts、参考表、商店、黑名单、验收登记及双语 Wiki 同步，下一可用号为 500110。此前 2026-10-11 本地实现使用 500108 的记录仅为开发快照，不作为发布编号。补齐参考表中的回火液并保留已有编号与存档字段；兼容性为 COMPAT。
+
+## 2026-11-06：潮闸镇 Dev 演练接进 F3 规则
+
+`DebugAndTools/AGENTS.md` 只读套件那一条补一句：潮闸镇演练（`F3GameplayValidationTidegateDrill*.cs`，钩子 `Tidegate/TidegateDrillHooks.cs`）沿用天空岛演练的纪律，由 `TidegateDrillGuard` 守，纯判据回归 `tests/fixtures/TidegateDrillJudges`。规则本身未改；`tests/SkyIslandValidationSuiteGuard.py` 的运行标记与收尾清理两条断言同步认 `_tidegateDrill`（更严，不是放宽），兼容性 SAFE（Dev 专用）。

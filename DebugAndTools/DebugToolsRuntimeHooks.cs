@@ -368,6 +368,13 @@ namespace BossRush
 
         internal void OnSceneLoadedDebugToolsRuntime(Scene scene, LoadSceneMode mode)
         {
+            if (mode == LoadSceneMode.Single || SceneLoader.IsSceneLoading)
+            {
+                HideF3DebugCheatMenu();
+                HideNPCTeleportUI();
+                InventoryInspector inspector = GetComponent<InventoryInspector>();
+                if (inspector != null) inspector.HideWindow();
+            }
             OnSceneLoaded_F3DebugCheatMenu(scene, mode);
         }
     }

@@ -104,7 +104,7 @@ namespace BossRush
         private bool f3DebugCheatPreviousCursorVisible = false;
         private CursorLockMode f3DebugCheatPreviousCursorLockState = CursorLockMode.Locked;
         private bool f3DebugCheatPresentationStateCaptured = false;
-        private bool f3DebugCheatInputDisabled = false;
+        private InputManager f3DebugCheatInputOwner;
 
         private void CheckF3DebugCheatMenuHotkey()
         {
@@ -127,7 +127,7 @@ namespace BossRush
 
         private void TickF3DebugCheatMenu()
         {
-            if (f3DebugCheatMenuVisible && UnityEngine.Input.GetKeyDown(KeyCode.Escape))
+            if (f3DebugCheatMenuVisible && (SceneLoader.IsSceneLoading || UnityEngine.Input.GetKeyDown(KeyCode.Escape)))
             {
                 HideF3DebugCheatMenu();
                 return;
@@ -189,6 +189,7 @@ namespace BossRush
 
         private void ShowF3DebugCheatMenu()
         {
+            if (SceneLoader.IsSceneLoading || BossRushUIKit.CurrentInputManager == null) return;
             try
             {
                 if (f3DebugCheatMenuRoot == null || f3DebugCheatContentRoot == null || f3DebugCheatSummaryText == null || f3DebugCheatStatusText == null)
@@ -203,6 +204,9 @@ namespace BossRush
                     return;
                 }
 
+                if (npcTeleportUIVisible) HideNPCTeleportUI();
+                InventoryInspector inspector = GetComponent<InventoryInspector>();
+                if (inspector != null) inspector.HideWindow();
                 SkyIslandSession.HideMapBeforeF3(this);
                 CaptureF3DebugCheatPresentationState();
                 f3DebugCheatMenuRoot.SetActive(true);
@@ -216,51 +220,33 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                try
-                {
-                    EnableF3DebugCheatInput();
-                    if (f3DebugCheatMenuRoot != null)
-                    {
-                        f3DebugCheatMenuRoot.SetActive(false);
-                    }
-                }
-                catch { }
-
-                f3DebugCheatMenuVisible = false;
-                try
-                {
-                    RestoreF3DebugCheatPresentationState();
-                }
-                catch { }
-
+                HideF3DebugCheatMenu();
                 DevLog("[BossRush] F3 调试菜单显示失败: " + e.Message);
                 SetF3DebugCheatStatus(L10n.T("打开调试菜单失败", "Failed to open debug menu"), true);
             }
         }
 
+        internal void CloseF3BeforeDebugPanel() { if (f3DebugCheatMenuVisible) HideF3DebugCheatMenu(); }
+
         private void HideF3DebugCheatMenu()
         {
+            f3DebugCheatMenuVisible = false;
             try
             {
                 EnableF3DebugCheatInput();
-
                 if (f3DebugCheatMenuRoot != null)
                 {
                     f3DebugCheatMenuRoot.SetActive(false);
                 }
-
-                f3DebugCheatMenuVisible = false;
-                RestoreF3DebugCheatPresentationState();
             }
             catch (Exception e)
             {
-                f3DebugCheatMenuVisible = false;
-                try
-                {
-                    RestoreF3DebugCheatPresentationState();
-                }
-                catch { }
                 DevLog("[BossRush] F3 调试菜单隐藏失败: " + e.Message);
+            }
+            finally
+            {
+                try { RestoreF3DebugCheatPresentationState(); }
+                catch (Exception e) { DevLog("[BossRush] F3 恢复时速和光标失败: " + e.Message); }
             }
         }
 
@@ -291,32 +277,30 @@ namespace BossRush
                 return;
             }
 
+            f3DebugCheatPresentationStateCaptured = false;
             Time.timeScale = f3DebugCheatPreviousTimeScale;
             Cursor.visible = f3DebugCheatPreviousCursorVisible;
             Cursor.lockState = f3DebugCheatPreviousCursorLockState;
-            f3DebugCheatPresentationStateCaptured = false;
         }
 
         private void DisableF3DebugCheatInput()
         {
-            if (f3DebugCheatInputDisabled || f3DebugCheatMenuRoot == null)
-            {
-                return;
-            }
-
+            InputManager manager = BossRushUIKit.CurrentInputManager;
+            if (manager == null || f3DebugCheatInputOwner != null || f3DebugCheatMenuRoot == null) return;
             InputManager.DisableInput(f3DebugCheatMenuRoot);
-            f3DebugCheatInputDisabled = true;
+            f3DebugCheatInputOwner = manager;
         }
 
         private void EnableF3DebugCheatInput()
         {
-            if (!f3DebugCheatInputDisabled || f3DebugCheatMenuRoot == null)
+            InputManager manager = f3DebugCheatInputOwner;
+            f3DebugCheatInputOwner = null;
+            try
             {
-                return;
+                if (manager != null && manager == BossRushUIKit.CurrentInputManager && f3DebugCheatMenuRoot != null)
+                    InputManager.ActiveInput(f3DebugCheatMenuRoot);
             }
-
-            InputManager.ActiveInput(f3DebugCheatMenuRoot);
-            f3DebugCheatInputDisabled = false;
+            catch (Exception e) { DevLog("[BossRush] F3 调试菜单释放输入失败: " + e.Message); }
         }
 
     }

@@ -27,11 +27,17 @@ namespace BossRush
             get { return _modalInputLeaseCount; }
         }
 
+        // 官方静态 DisableInput 在没有实例时直接返回，ActiveInput 却直接解引用实例。两者都取自当前 LevelManager。
+        internal static InputManager CurrentInputManager
+        {
+            get { LevelManager level = LevelManager.Instance; return level != null ? level.InputManager : null; }
+        }
+
         internal sealed class ModalInputLease
         {
             internal readonly GameObject InputToken;
             internal readonly string OwnerLabel;
-            internal bool InputClaimed;
+            internal InputManager InputOwner;
             private bool active;
 
             internal ModalInputLease(GameObject inputToken, string ownerLabel)
@@ -71,10 +77,11 @@ namespace BossRush
 
             try
             {
-                if (inputToken != null)
+                InputManager manager = CurrentInputManager;
+                if (inputToken != null && manager != null)
                 {
                     InputManager.DisableInput(inputToken);
-                    lease.InputClaimed = true;
+                    lease.InputOwner = manager;
                 }
             }
             catch (Exception e)
@@ -104,19 +111,17 @@ namespace BossRush
                 return;
             }
 
-            if (lease.InputClaimed && lease.InputToken != null)
+            try
             {
-                try
-                {
+                if (lease.InputOwner != null && lease.InputOwner == CurrentInputManager && lease.InputToken != null)
                     InputManager.ActiveInput(lease.InputToken);
-                }
-                catch (Exception e)
-                {
-                    ModBehaviour.DevLog("[ZombieMode] " + lease.OwnerLabel + " 输入释放失败: " + e.Message);
-                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ZombieMode] " + lease.OwnerLabel + " 输入释放失败: " + e.Message);
             }
 
-            lease.InputClaimed = false;
+            lease.InputOwner = null;
             _modalInputLeaseCount = Mathf.Max(0, _modalInputLeaseCount - 1);
             if (_modalInputLeaseCount > 0)
             {

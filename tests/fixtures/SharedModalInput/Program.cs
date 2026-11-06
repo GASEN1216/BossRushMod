@@ -16,11 +16,19 @@ namespace UnityEngine
 
 namespace Duckov.UI
 {
-    internal static class InputManager
+    internal sealed class InputManager
     {
-        internal static void DisableInput(GameObject token) { token.Disabled = true; }
-        internal static void ActiveInput(GameObject token) { token.Reactivated = true; }
+        internal int Releases;
+        internal static int ActivateAttempts;
+        internal static void DisableInput(GameObject token) { if (LevelManager.Instance?.InputManager != null) token.Disabled = true; }
+        internal static void ActiveInput(GameObject token) { ActivateAttempts++; LevelManager.Instance.InputManager.Releases++; token.Reactivated = true; }
     }
+}
+
+internal sealed class LevelManager
+{
+    internal static LevelManager Instance = new LevelManager();
+    internal Duckov.UI.InputManager InputManager = new Duckov.UI.InputManager();
 }
 
 internal static class ModBehaviour
@@ -60,6 +68,33 @@ internal static class Program
         zombie.Release(); confirm.Release();
         Check(BossRushUIKit.ModalInputLeaseCount == 0 && Time.timeScale == 0.7f,
             "duplicate release is idempotent");
+        var oldHost = LevelManager.Instance;
+        var oldToken = new GameObject();
+        var old = BossRushUIKit.ClaimModalInput(oldToken, "previous scene");
+        int attempts = Duckov.UI.InputManager.ActivateAttempts;
+        LevelManager.Instance = null;
+        old.Release();
+        Check(!BossRushUIKit.IsModalInputPaused && Time.timeScale == 0.7f && !Cursor.visible && !oldToken.Reactivated
+            && Duckov.UI.InputManager.ActivateAttempts == attempts,
+            "unloaded manager still closes the last modal and restores presentation");
+        var absentToken = new GameObject();
+        var absent = BossRushUIKit.ClaimModalInput(absentToken, "loading");
+        LevelManager.Instance = new LevelManager();
+        absent.Release();
+        Check(!absentToken.Disabled && !absentToken.Reactivated && LevelManager.Instance.InputManager.Releases == 0,
+            "a silent no-op claim cannot activate input on the next scene");
+        var changedToken = new GameObject();
+        var changed = BossRushUIKit.ClaimModalInput(changedToken, "swap");
+        LevelManager.Instance = oldHost;
+        int oldReleases = oldHost.InputManager.Releases;
+        changed.Release();
+        Check(changedToken.Disabled && !changedToken.Reactivated && oldHost.InputManager.Releases == oldReleases,
+            "a different live manager is never released in place of the original");
+        var gone = BossRushUIKit.ClaimModalInput(new GameObject(), "input component removed");
+        oldHost.InputManager = null;
+        gone.Release();
+        Check(Duckov.UI.InputManager.ActivateAttempts == attempts && BossRushUIKit.ModalInputLeaseCount == 0,
+            "a surviving level without an input manager needs no activation call");
         Console.WriteLine("SharedModalInput regression PASS: " + checks + " checks");
     }
 }

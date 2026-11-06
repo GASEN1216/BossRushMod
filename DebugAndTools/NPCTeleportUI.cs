@@ -23,9 +23,11 @@ namespace BossRush
         // UI相关变量
         private static GameObject npcTeleportUIRoot = null;
         private static bool npcTeleportUIVisible = false;
+        private static BossRushUIKit.ModalInputLease npcTeleportInputLease;
 
         private static void ResetNPCTeleportUIStaticCaches()
         {
+            HideNPCTeleportUI();
             if (npcTeleportUIRoot != null)
             {
                 try
@@ -62,6 +64,7 @@ namespace BossRush
         /// </summary>
         private void ShowNPCTeleportUI()
         {
+            if (npcTeleportUIVisible || SceneLoader.IsSceneLoading || BossRushUIKit.CurrentInputManager == null) return;
             try
             {
                 // 如果UI不存在，创建它
@@ -72,16 +75,11 @@ namespace BossRush
 
                 if (npcTeleportUIRoot != null)
                 {
+                    CloseF3BeforeDebugPanel();
                     npcTeleportUIRoot.SetActive(true);
                     npcTeleportUIVisible = true;
 
-                    // 暂停游戏
-                    Time.timeScale = 0f;
-                    Cursor.visible = true;
-                    Cursor.lockState = CursorLockMode.None;
-
-                    // 禁用游戏输入，阻止 InputManager 更新鼠标状态和玩家射击
-                    InputManager.DisableInput(npcTeleportUIRoot);
+                    npcTeleportInputLease = BossRushUIKit.ClaimModalInput(npcTeleportUIRoot, "NPCTeleportUI");
 
                     // 刷新NPC列表
                     RefreshNPCList();
@@ -91,6 +89,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
+                HideNPCTeleportUI();
                 DevLog("[NPCTeleportUI] 显示UI失败: " + e.Message);
             }
         }
@@ -98,30 +97,20 @@ namespace BossRush
         /// <summary>
         /// 隐藏NPC传送UI
         /// </summary>
-        private void HideNPCTeleportUI()
+        private static void HideNPCTeleportUI()
         {
+            npcTeleportUIVisible = false;
+            BossRushUIKit.ModalInputLease lease = npcTeleportInputLease;
+            npcTeleportInputLease = null;
             try
             {
-                if (npcTeleportUIRoot != null)
-                {
-                    // 恢复游戏输入（必须在隐藏UI之前调用）
-                    InputManager.ActiveInput(npcTeleportUIRoot);
-
-                    npcTeleportUIRoot.SetActive(false);
-                    npcTeleportUIVisible = false;
-
-                    // 恢复游戏
-                    Time.timeScale = 1f;
-                    Cursor.visible = false;
-                    Cursor.lockState = CursorLockMode.Locked;
-
-                    DevLog("[NPCTeleportUI] UI已隐藏，游戏已恢复，输入已启用");
-                }
+                if (lease != null) lease.Release();
             }
             catch (Exception e)
             {
                 DevLog("[NPCTeleportUI] 隐藏UI失败: " + e.Message);
             }
+            finally { if (npcTeleportUIRoot != null) npcTeleportUIRoot.SetActive(false); }
         }
 
         /// <summary>
@@ -456,9 +445,8 @@ namespace BossRush
         {
             if (npcTeleportUIVisible)
             {
-                Time.timeScale = 0f;
-                Cursor.visible = true;
-                Cursor.lockState = CursorLockMode.None;
+                if (npcTeleportUIRoot == null || SceneLoader.IsSceneLoading) HideNPCTeleportUI();
+                else BossRushUIKit.EnforceModalInputPause();
             }
         }
     }
