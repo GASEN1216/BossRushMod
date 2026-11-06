@@ -170,3 +170,6 @@ namespace BossRush
     internal static class TidegateInventory { internal static bool Has(CharacterMainControl p,int id) { return false; } }
     internal static class BossRushItemIds { internal const int TidegateDryBag = 500113, TidegateFlippers = 500114; }
 }
+
+// 屋顶按独立场景包回放验证；水域夹具只覆盖物理与高度查询。
+namespace BossRush { internal sealed class RaidIndoorRoofs : IDisposable { internal RaidIndoorRoofs(UnityEngine.GameObject world, bool pavilions) { } public void Dispose() { } } }

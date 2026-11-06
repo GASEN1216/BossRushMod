@@ -48,6 +48,7 @@ namespace BossRush
         private string assemblyError;
         private bool navigationReady, returning, deathPending, loadStarted, returnRequested;
         private SkyIslandRendering rendering;
+        private RaidIndoorRoofs pavilionRoofs;
         private SkyIslandLighting lighting;
         private SkyIslandStreetLamps streetLamps;
         private ArenaPrototypeNavigation navigation;
@@ -266,6 +267,7 @@ namespace BossRush
                 delegate { var failed = streetLamps; streetLamps = null; if (failed != null) failed.Dispose(); });
             root.SetActive(true);
             Physics.SyncTransforms();
+            pavilionRoofs = new RaidIndoorRoofs(root, true);
             // CR-2026-09-10-006：地形不可见的现场取证。激活当帧 `isVisible` 还没被剔除结果更新过，
             // 所以两处都打：这里是「装配完成」的静态事实，导航扫描之后那次才有真实的可见性。
             SkyIslandRendering.LogDiagnostics(root, groundLayer, wallLayer, "activated");
@@ -665,6 +667,7 @@ namespace BossRush
             SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.StoryRest);
             if (player == null || player != CharacterMainControl.Main || root == null || !entryScene.isLoaded)
             { Close(false, "owner_lost"); return; }
+            if (pavilionRoofs != null) pavilionRoofs.UpdateFeet(player.transform.position);
             if (story != null && !story.IsCurrentSlot) { Close(true, "save_slot_changed"); return; }
             string mode;
             if (host == null || host.ValidationHasActiveMode(out mode))
@@ -952,6 +955,7 @@ namespace BossRush
             streetLamps = null;
             Safe("lighting", delegate { if (lighting != null) lighting.Dispose(); });
             Safe("materials", delegate { if (rendering != null) rendering.Dispose(); });
+            Safe("pavilions", delegate { if (pavilionRoofs != null) pavilionRoofs.Dispose(); pavilionRoofs = null; });
             Safe("hud", delegate { if (hud != null) hud.Dispose(); });
             hud = null;
             if (returnInputBlock != null) Destroy(returnInputBlock);

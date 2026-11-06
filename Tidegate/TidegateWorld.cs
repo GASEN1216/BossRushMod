@@ -29,6 +29,7 @@ namespace BossRush
         internal readonly Dictionary<string, List<Vector3>> Waypoints = new Dictionary<string, List<Vector3>>(StringComparer.Ordinal);
         internal readonly Transform Lighthouse;
         internal readonly Renderer Water;
+        internal readonly RaidIndoorRoofs IndoorRoofs;
         private Texture2D heightTexture;
         private Vector4 heightRect;
         private bool heightReadable;
@@ -79,6 +80,7 @@ namespace BossRush
             Transform water = root.transform.Find("Visual/VIS_Water");
             Water = water == null ? null : water.GetComponent<Renderer>();
             BindHeightTexture();
+            IndoorRoofs = new RaidIndoorRoofs(root, false);
         }
 
         private static void Collect(Transform group, Action<Transform> add)
@@ -251,6 +253,7 @@ namespace BossRush
             return -1;
         }
 
-        public void Dispose() { heightTexture = null; lagoonMask = null; heightReadable = false; }
+        public void Dispose() { IndoorRoofs.Dispose(); heightTexture = null; lagoonMask = null; heightReadable = false; }
     }
+
 }

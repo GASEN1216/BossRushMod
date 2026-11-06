@@ -348,6 +348,7 @@ echo(Tidegate\TidegateText.cs
 echo(Tidegate\TidegateTide.cs
 echo(Tidegate\TidegateTideRules.cs
 echo(Tidegate\TidegateWorld.cs
+echo(Common\World\RaidIndoorRoofs.cs
 echo(Tidegate\TidegateDrillHooks.cs
 echo(Tidegate\TidegateFrameProbe.cs
 echo(DebugAndTools\ArenaPrototype\StoneOutpostMapDataLease.cs

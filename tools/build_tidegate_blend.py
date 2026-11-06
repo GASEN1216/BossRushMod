@@ -548,6 +548,10 @@ def main():
     fbx = []
     if args.fbx:
         fd = out / 'fbx'; fd.mkdir(exist_ok=True)
+        # 标签只写顶点第二套 UV，不改墙体/家具的三角形、材质、阴影或碰撞。
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from tidegate_wall_uv import stamp_wall_uv
+        stamp_wall_uv(colls['buildings'], layout, fd / 'tidegate_wall_faces.json')
         export_material_manifest([colls[k] for k in ['terrain', 'buildings', 'setpieces', 'props', 'containers', 'street', 'vehicles', 'gameplay']] + [bpy.data.collections['TG_scatter_prototypes']], fd)
         for k in ['terrain', 'buildings', 'setpieces', 'props', 'containers', 'street', 'vehicles', 'gameplay']:
             bpy.ops.object.select_all(action='DESELECT')

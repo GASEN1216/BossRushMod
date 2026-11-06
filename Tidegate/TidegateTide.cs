@@ -124,9 +124,10 @@ namespace BossRush
         /// <summary>大闸提起之后泻湖开始放水；提起是单向的，本趟内不会再关。</summary>
         internal void OpenSluice() { sluiceOpen = true; }
 
-        // 与本图其他 shader 全局量共用生命周期。仅在位置改变时发布，不扫描建筑或改碰撞层。
+        // 室内由本栋的官方 ShadowOnly 接管；其它建筑仍可独立挡在玩家与镜头之间。
         internal void SetViewFocus(Vector3 feet)
         {
+            world.IndoorRoofs.UpdateFeet(feet);
             Vector4 focus = new Vector4(feet.x, feet.y, feet.z, 1f);
             if (focus == lastViewFocus) return;
             Shader.SetGlobalVector(ViewFocusId, focus);
