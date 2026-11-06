@@ -71,7 +71,7 @@ namespace BossRush
                 if (entry == null) throw new InvalidOperationException("竹筏交互点创建失败");
                 // 同一个交互组里的第二项：交还潮汐怀表（官方交互组：主项 + 同组子项，滚轮切换）。
                 var group = NPCInteractionGroupHelper.PrepareGroupedInteractionOwner(entry, TidegateRaidScene.LogTag);
-                if (group != null)
+                if (group != null && !TidegateStory.WatchDelivered)
                     NPCInteractionGroupHelper.AddSubInteractable<TidegateWatchInteractable>(entry.transform, "TidegateGiveWatch", group, x => x.Bind(owner));
                 TidegateZhabo.Spawn(scene);
                 root.SetActive(true);

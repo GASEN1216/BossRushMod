@@ -1,4 +1,6 @@
 using System;
+using HarmonyLib;
+using ItemStatsSystem;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -144,40 +146,85 @@ namespace BossRush
     }
 
     /// <summary>
-    /// 竹筏交互组里的第二项：「把潮汐怀表交给闸伯」。只在身上带着怀表、还没交过时可选。
-    /// 「带着」按整棵物品树（收纳容器里的也算），与金库放不放、HUD 倒计时同一判据（CR-2026-11-05-025）。
-    /// 官方每帧都问能不能交互，整树遍历会分配列表，所以半秒查一次。
+    /// 使用官方需求行（物品名、图标、消耗数量与有无颜色）。进入交互由官方拦缺件；扣物与状态变更一起由本模块完成。
+    /// 官方 OnTimeOut 模式会先扣再回调；None 会写 inLevelData。改选 OnFinshed 并在我们的回调完成后主动停止，
+    /// 避免两套路各扣一件或留下「用过钥匙」的场景标记。无需物品的机关仍按原版自动完成。
     /// </summary>
-    public sealed class TidegateWatchInteractable : BossRushBuildingInteractableBase
+    public abstract class TidegateRequirementInteractable : BossRushBuildingInteractableBase
+    {
+        internal void BindRequirement(int itemId)
+        {
+            if (itemId <= 0) return;
+            requireItem = true;
+            requireItemId = itemId;
+            requireOnce = false;
+            whenToUseRequireItem = InteractableBase.WhenToUseRequireItemTypes.OnFinshed;
+            finishWhenTimeOut = false;
+        }
+
+        protected override void Start()
+        {
+            base.Start();
+            // 官方 Start 可能按位置哈希读到其他交互留下的解锁位。我们按剧情 / 本局阀门状态决定有没有需求。
+            if (requireItemId > 0) requireItem = true;
+        }
+
+        protected override void OnTimeOut()
+        {
+            try { base.OnTimeOut(); }
+            finally { if (requireItem && Interacting) StopInteract(); }
+        }
+    }
+
+    // 官方查询只含角色顶层、插槽和宠物，不遍历随身容器。仅对本模块的两项实物交付，
+    // 需求栏与 StartInteract 共同使用和实际扣物相同的主角物品树；宠物和仓库不能替玩家交付。
+    [HarmonyPatch(typeof(InteractableBase), nameof(InteractableBase.TryGetRequiredItem), new Type[] { typeof(CharacterMainControl) })]
+    internal static class TidegateRequiredItemPatch
+    {
+        private static bool Prefix(InteractableBase __instance, CharacterMainControl __0, ref ValueTuple<bool, Item> __result)
+        {
+            if (!(__instance is TidegateRequirementInteractable) || !__instance.requireItem) return true;
+            Item item = TidegateInventory.FindCarried(__0, __instance.requireItemId);
+            __result = new ValueTuple<bool, Item>(item != null, item);
+            return false;
+        }
+    }
+
+    /// <summary>竹筏组里的「交付」：读过信即显示所需怀表，交付成功后收起。</summary>
+    public sealed class TidegateWatchInteractable : TidegateRequirementInteractable
     {
         internal const string NameKey = "BossRush_Tidegate_GiveWatch";
         private ModBehaviour owner;
-        private bool carrying;
-        private float nextCheck;
         protected override string InteractNameKey { get { return NameKey; } }
         protected override string LogPrefix { get { return TidegateRaidScene.LogTag + " "; } }
-        internal void Bind(ModBehaviour host) { owner = host; }
+        internal void Bind(ModBehaviour host) { owner = host; BindRequirement(BossRushItemIds.TidegateTideWatch); }
+
+        protected override void Awake()
+        {
+            base.Awake();
+            // 组员只能由竹筏的主交互点选中；共享建筑基类为独立交互点启用的碰撞体在此关闭。
+            if (interactCollider != null) interactCollider.enabled = false;
+        }
 
         protected override bool IsBuildingInteractable()
         {
-            if (owner == null || TidegateStory.WatchDelivered) return false;
-            if (Time.unscaledTime >= nextCheck)
-            {
-                nextCheck = Time.unscaledTime + 0.5f;
-                carrying = TidegateInventory.Carries(CharacterMainControl.Main, BossRushItemIds.TidegateTideWatch);
-            }
-            return carrying;
+            return owner != null && !TidegateStory.WatchDelivered;
         }
 
         protected override void OnInteractCompleted()
         {
             string reason;
-            if (!TidegateStory.TryDeliverWatch(CharacterMainControl.Main, out reason) && owner != null && reason != null)
+            if (TidegateStory.TryDeliverWatch(CharacterMainControl.Main, out reason))
+            {
+                CharacterMainControl.Main.RefreshInteractTarget();
+                gameObject.SetActive(false);
+            }
+            else if (owner != null && reason != null)
                 owner.ShowMessage(reason);
         }
     }
 
-    /// <summary>竹筏上的交互点：「乘闸伯的竹筏去潮闸镇」。</summary>
+    /// <summary>竹筏上的交互点：「去潮闸镇」。</summary>
     public sealed class TidegateRaftInteractable : BossRushBuildingInteractableBase
     {
         internal const string NameKey = "BossRush_Tidegate_Raft";

@@ -33,6 +33,11 @@ namespace BossRush
         private static bool Prefix(Health __instance, ref bool __result, ref bool __state)
         {
             __state = false;
+            if (TidegateHazards.IsResolving(__instance) && !TidegateHazards.TryEnterImpact())
+            {
+                __result = false;
+                return false;
+            }
 
             // Mode G staging 屏障（加法分支）：先读静态 active bool 快速早返，
             // 未激活时零分配；命中已登记 clone/exact 身份时返回 false 并由 Felix 侧记 blocked-hit。
@@ -57,7 +62,7 @@ namespace BossRush
                 }
             }
 
-            if (ReverseScaleAbilityManager.IsPostTriggerInvincible(__instance))
+            if (!TidegateHazards.IsResolving(__instance) && ReverseScaleAbilityManager.IsPostTriggerInvincible(__instance))
             {
                 __result = false;
                 return false;
@@ -145,6 +150,12 @@ namespace BossRush
         [HarmonyPrefix]
         private static void Prefix(Health __instance, ref float value)
         {
+            // 只有已完成场景警告且实际命中的设施，在当前主角这一次官方 Hurt 内按致死处理。
+            if (TidegateHazards.IsResolving(__instance) && BossRushHealthHurtContextPatch.IsInsideHurt)
+            {
+                value = 0f;
+                return;
+            }
             if (!BossRushHealthHurtContextPatch.IsInsideHurt ||
                 __instance == null ||
                 value > 0f)

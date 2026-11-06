@@ -126,11 +126,18 @@ def generate(name, seconds):
                 rush = (rush_b(rush_a(x)) - rush_lo(x)) * max(0.0, min(1.0, (t - 1.8) / 1.2)) * min(1.0, (seconds - t) / .8) * 2.4
                 value = rumble + chain + rush
             elif name == "lighthouse_ignite.wav":
-                # 灯塔点亮：100 Hz 电流嗡声起势、前半秒几下火花噼啪，接一声灯罩玻璃的叮。
+                # 继电器先响，紧跟两声短号；靠船用另一条长笛音，两件事闭着地图也能分出来。
                 phase += math.tau * 100.0 / RATE
                 hum = sum(math.sin(k * phase) / k for k in (1, 3, 5, 7)) * min(1.0, t / .6) * max(0.0, 1 - max(0.0, t - 1.2) / .8)
                 crackle = spark_lp((rng.uniform(-1, 1) if rng.random() < .04 else 0.0) * (1 - t / .5) if t < .5 else 0.0)
-                value = hum * .55 + crackle * 1.4 + bell(t - .65, 1318.5, 3.5) * .5 + bell(t - .72, 1975.5, 4.5) * .3
+                horn = 0.0
+                for start, length in ((.36, .36), (.97, .55)):
+                    u = t - start
+                    if 0 < u < length:
+                        envelope = min(1.0, u / .055, (length - u) / .10)
+                        for hz, mix in ((185.0, 1.0), (187.5, .46)):
+                            horn += mix * envelope * sum(math.sin(math.tau * hz * k * u) / k**1.3 for k in range(1, 5))
+                value = horn * .68 + hum * .18 + crackle * .9 + bell(t - .16, 1318.5, 4.5) * .28
             else:
                 value = 0.0
             values.append(value)

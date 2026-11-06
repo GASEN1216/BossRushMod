@@ -30,7 +30,7 @@ namespace BossRush
     /// - 提示音：警报与大闸跟着玩家放（全图都得知道），汽笛、阀门、灯塔在事发处放，45 m 外不放。
     /// 循环声不随发声体销毁而停（官方 AudioObject 没有 OnDestroy），销毁前一律先 StopAll。文件缺失或绑定失败只记一次警告，玩法照常。
     /// </summary>
-    internal sealed class TidegateSounds : IDisposable
+    internal sealed partial class TidegateSounds : IDisposable
     {
         private const float NearRadius = 38f, FarRadius = 44f, AudibleRange = 45f;
         private static readonly string[] CueFiles = { "tide_siren.wav", "boat_horn.wav", "valve_turn.wav", "gate_lift.wav", "lighthouse_ignite.wav" };
@@ -145,6 +145,10 @@ namespace BossRush
                 string path = Path.Combine(directory, file);
                 if (!File.Exists(path)) throw new FileNotFoundException("潮闸镇音效未部署", file);
                 bool posted = postSound.Invoke(null, new object[] { path, emitter, loop }) != null;
+#if BOSSRUSH_DEV
+                // Dev 演练按文件数一数各提示音放没放（TidegateDrillHooks.cs）。
+                DevNotePost(file, posted);
+#endif
                 // 官方 PostCustomSFX 经 AudioObject.GetOrCreate 把事件挂在发声体上；趁它活着记住引用，发声体先没了也停得掉。
                 if (posted && (object)audio == null) audio = emitter.GetComponent<Duckov.AudioObject>();
                 return posted;

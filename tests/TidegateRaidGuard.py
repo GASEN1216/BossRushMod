@@ -111,7 +111,10 @@ def main():
     story = read("Tidegate/TidegateStory.cs")
     need(module, "竹筏入口门控", "!TidegateStory.RouteUnlocked", "TidegateStory.TryDeliverLetter()", "TidegateStory.Bind(null)")
     deliver = body(story, "internal static void TryDeliverLetter()") or ""
-    if "data.LetterDelivered" not in deliver or deliver.find("CourierService.QuickDeliverItems") > deliver.find("d.LetterDelivered = true"):
+    if ("data.LetterDelivered" not in deliver or "next.LetterDelivered = true;" not in deliver
+            or deliver.find("CourierService.QuickDeliverItems") > deliver.find("next.LetterDelivered = true;")
+            or deliver.find("if (sent <= 0 && fallback <= 0)") > deliver.find("next.LetterDelivered = true;")
+            or deliver.find("next.LetterDelivered = true;") > deliver.find("persistence.StoreAssetState(next)")):
         errors.append("湿包裹必须先确认送达、再记「已送」，且已送过就不再送")
     need(story, "剧情存档", 'StorageKey = "BossRush_Tidegate_Story_v1"', "new BossRushSlotJsonStore<TidegateStoryData>")
     zhabo = read("Tidegate/TidegateZhabo.cs")
@@ -129,7 +132,9 @@ def main():
     need(read("Integration/Tidegate/TidegateItems.cs"), "信不可出售",
          'if (typeId == BossRushItemIds.TidegateLetter) EquipmentHelper.AddTagToItem(item, "NotSellable");')
     # 谢礼在基地：背包满了进仓库，不落地。
-    need(body(story, "internal static bool GiveToPlayerOrStorage(int typeId)"), "交表谢礼", "ItemUtilities.SendToPlayer(item, false, true)")
+    need(body(story, "internal static bool GiveToPlayerOrStorage(int typeId)"), "交表谢礼委托", "TryGiveToPlayerOrStorage(typeId, out item, out instanceId)")
+    need(body(story, "internal static bool TryGiveToPlayerOrStorage(int typeId, out Item item, out int instanceId)"),
+         "交表谢礼", "ItemUtilities.SendToPlayer(item, false, true)", "tree.rootInstanceID == instanceId", "tree.RootTypeID == typeId")
     # 婚后配偶：交给婚姻接管并挪回主场景，不回收（口径同天空岛居民）。
     release = body(zhabo, "internal static void ReleaseIfMarried()") or ""
     need(release, "闸伯婚后交接", "AffinityManager.IsMarriedToPlayer(BlueprintId)", "owned = null;", "MultiSceneCore.MoveToMainScene(npc.gameObject)")
@@ -138,17 +143,18 @@ def main():
     need(module, "闸伯婚后交接时机", "TidegateZhabo.ReleaseIfMarried();")
     # 图鉴镜像：剧情存档读不了时不拿默认值收回条目。
     need(body(notes, "internal static void Tick()"), "图鉴镜像写屏障", "!TidegateStory.Writable")
-    # 刷怪：先吸到本图导航可走面，再贴地；Boss 不卷走；不给常驻透视锁定；灯塔引怪限时还原。
+    # 刷怪先吸到导航面再贴地。灯塔只交给官方一个匿名声源，不能用改视距代替调查。
     spawn = body(enemies, "private async void Spawn(Slot slot)") or ""
     snap = spawn.find("navigation.TryNearestWalkable(position, out snapped)")
     if snap < 0 or snap > spawn.find("clone.CreateCharacterAsync("):
         errors.append("刷怪必须先吸到本图导航可走面（有刷怪点落在实心碰撞盒里）")
-    if re.search(r"forceTracePlayerDistance\s*=\s*\d", enemies):
-        errors.append("刷怪不得写死 forceTracePlayerDistance（官方 AI 在这个距离内无视视线锁定，等于透视）")
+    if re.search(r"\b(?:forceTracePlayerDistance|searchedEnemy)\s*=(?!=)", enemies):
+        errors.append("潮闸镇不得直接指定侦测距离或敌人目标；现场交火归官方感知")
     need(body(enemies, "private void TickTide()"), "沙老大不卷走", 'slot.Kind != "boss" && !diggersOut')
-    need(body(enemies, "private void EndLure()"), "灯塔引怪还原", "slot.Ai.forceTracePlayerDistance = slot.LureOriginal;")
-    need(enemies, "灯塔引怪限时", "lureUntil = -1f; EndLure();")
-    need(read("Tidegate/TidegateDevices.cs"), "灯塔引怪时长", "enemies.Lure(world.Lighthouse.position, LureRadius, RevealSeconds)")
+    need(body(enemies, "internal void Lure(Vector3 origin, float radius)"), "灯塔交给官方匿名声源",
+         "AIMainBrain.MakeSound(", "pos = origin", "radius = radius", "soundType = SoundTypes.unknowNoise",
+         "fromCharacter = null", "fromObject = null")
+    need(read("Tidegate/TidegateDevices.cs"), "点灯告知灯塔位置", "enemies.Lure(world.Lighthouse.position, LureRadius)")
     # 箱子：只有收起要等玩家走开，水退了马上放出。
     need(read("Tidegate/TidegateLoot.cs"), "箱子放出不等人", "if (flooded != point.Flooded && (!flooded || distance > KeepNearRange * KeepNearRange))")
     # 导航：只写变了的节点（A* setter 每写一次都交分层图重算）。
@@ -210,11 +216,15 @@ def main():
     need(devices, "机关音效", "TidegateCue.Valve", "TidegateCue.Gate", "TidegateCue.Lighthouse", "TidegateCue.Horn")
     if "SetBonus SkyIsland Tidegate items lottery" not in (ROOT / "compile_official.bat").read_text(encoding="utf-8", errors="replace"):
         errors.append("compile_official.bat 的声音目录自检要包含 Tidegate")
-    # 024 交互反馈：被淹的箱柜走近提示一次；缺手轮写进交互名；括号随语言；读信写不进存档时不说竹筏出现了。
+    # 024 交互反馈：潮位站和交表都使用官方需求行，由本模块完成后扣物；其它机关不设物品门槛。
     need(body(loot, "internal void Tick(CharacterMainControl player)"), "被淹箱子提示",
          "if (point.Flooded && !point.FloodHinted && distance <= FloodHintRange * FloodHintRange && announce != null)")
     need(body(devices, "private static string ValveLabel(int index)"), "阀门交互名", 'L10n.T("拧开阀门（", "Open the valve (")',
-         'L10n.T(" · 缺手轮", " · handwheel missing")', 'L10n.T("）", ")")')
+         'ValveName(index)', 'L10n.T("）", ")")')
+    need(devices, "潮位站官方需求", "index == TideGaugeValve ? BossRushItemIds.TidegateHandwheel : 0", "x.BindRequirement(requiredItemId);")
+    need(body(module, "internal void BindRequirement(int itemId)"), "需求栏只查不代扣", "requireItemId = itemId;",
+         "requireItem = true;", "InteractableBase.WhenToUseRequireItemTypes.OnFinshed;", "finishWhenTimeOut = false;")
+    need(body(module, "protected override void OnTimeOut()"), "需求交互主动结束", "base.OnTimeOut();", "if (requireItem && Interacting) StopInteract();")
     need(body(story, "internal static void ReadLetter()"), "读信写入", "bool stored = !first || Mutate(", ": stored")
     # 025 地名按到访半径与滞回；「带着怀表」HUD、交表与金库同一判据（整棵物品树）。
     need(body(session, "private void UpdateRegion(Vector3 position)"), "地名滞回", "distance <= RegionRadius",
@@ -223,7 +233,11 @@ def main():
          "carryingWatch = TidegateInventory.Carries(player, BossRushItemIds.TidegateTideWatch)")
     need(body(story, "internal static bool TryDeliverWatch(CharacterMainControl player, out string reason)"), "交表判据",
          "TidegateInventory.FindCarried(player, BossRushItemIds.TidegateTideWatch)")
-    need(module, "交表选项判据", "TidegateInventory.Carries(CharacterMainControl.Main, BossRushItemIds.TidegateTideWatch)")
+    need(body(module, "public sealed class TidegateWatchInteractable"), "交表选项判据",
+         "BindRequirement(BossRushItemIds.TidegateTideWatch);", "return owner != null && !TidegateStory.WatchDelivered;")
+    need(body(module, "internal static class TidegateRequiredItemPatch"), "官方需求与交表扣物按主角整树",
+         "if (!(__instance is TidegateRequirementInteractable) || !__instance.requireItem) return true;",
+         "TidegateInventory.FindCarried(__0, __instance.requireItemId)")
     # 026 剧情箱柜一张表（布局 fixed 标签由导航检查脚本核对）；沉船保险柜放一件金库档值钱物；增援计数；守卫配枪；游泳隐蔽。
     for row in ('{ "LOOT_safe_68", "page1" }', '{ "LOOT_house_69", "page2" }', '{ "LOOT_house_70", "page3" }',
                 '{ "LOOT_vault_71", "page4" }', '{ "LOOT_vault_71", "tidewatch" }', '{ "LOOT_locker_72", "wheel" }',
@@ -231,14 +245,17 @@ def main():
         need(loot, "剧情箱柜表", row)
     need(body(loot, "internal static int PageIndexOf(string pointId)"), "日志页出处", 'HasFixed(pointId, "page" + (page + 1))')
     need(body(loot, "private void Build(Point point, CharacterMainControl player)"), "沉船保险柜",
-         'if (HasFixed(point.Id, "goldbar"))', "SkyIslandLootTier.Starworks")
+         'if (HasFixed(point.Id, "goldbar"))', "int valuable = RolledPrize(point, prizeFloor, prizeRandom, out prizeCategory);",
+         'SkyIslandRewardCrate.AddOfficialStack(box, valuable, 1, log, "TidegateWreck")')
+    need(body(loot, "internal static int PrizeFloor(string pointId, string kind)"), "船长与所长贵重位",
+         'if (HasFixed(pointId, "goldbar") || HasFixed(pointId, "tidewatch")) return 6;')
     nav_tool = (ROOT / "tools/build_tidegate_navigation.py").read_text(encoding="utf-8")
     if "story = story_containers(grid.layout)" not in nav_tool or "'Tidegate' / 'TidegateLoot.cs'" not in nav_tool:
         errors.append("导航检查脚本要核对剧情箱柜表与布局 fixed 标签")
     need(enemies, "刷怪计数", "if (inFlight > 0 || Time.time < nextTick) return;", "inFlight++;", "inFlight--;")
     if re.search(r"\bspawning\b", enemies):
         errors.append("刷怪节流不得退回布尔（海堤增援三连会提前清零）")
-    need(spawn, "守卫配枪", 'if (slot.Kind == "guard") SkyIslandEnemyArmory.Arm(created, SkyIslandEnemyTier.Elite);')
+    need(spawn, "守卫优先专属武器，缺失时回精英枪", 'if (!TidegateEnemyActors.Equip(slot.Role, created, tide, valid) && slot.Kind == "guard") SkyIslandEnemyArmory.Arm(created, SkyIslandEnemyTier.Elite);')
     need(water, "游泳隐蔽", "ApplyStealth(player.Swimming);", '"VisableDistanceFactor"', "SwimVisibilityMultiplier = -0.5f",
          "ModifierType.PercentageMultiply")
     need(body(water, "public void Dispose()"), "游泳隐蔽清理", "RuntimeStatModifierTracker.RemoveAll(stealthRecords")

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import shutil
 import sys
 from pathlib import Path
@@ -20,6 +21,35 @@ import unity_project_path  # noqa: E402
 REPO = Path(__file__).resolve().parent.parent
 SRC = REPO / 'ArtSource' / 'Tidegate'
 TERRAIN_LAYERS = ['grassTex', 'sandTex', 'mudTex', 'rockTex', 'paving', 'asphalt', 'concrete']
+
+def bake_minimap(src: Path):
+    """按低潮可走的地形、水域、甲板及实际搜集点给正射图画透明岸线，不裁切或改变世界坐标比例。"""
+    import numpy as np
+    from PIL import Image, ImageDraw, ImageFilter
+    md, export = src / 'minimap', src / 'export'
+    raw = Image.open(md / 'tidegate_ortho.png').convert('RGBA')
+    side = int(json.loads((md / 'tidegate_minimap.json').read_text(encoding='utf-8'))['imageWorldSize'])
+    layout = json.loads((export / 'tidegate_layout.json').read_text(encoding='utf-8'))
+    g = layout['grid']
+    h = np.fromfile(export / g['heightFile'], '<f4').reshape(g['H'], g['W'])
+    flags = np.fromfile(export / g['flagFile'], 'u1').reshape(h.shape)
+    zones = np.fromfile(export / g['zoneFile'], 'u1').reshape(h.shape)
+    # 正射图 X 往右、three 的 Z 往下；与官方 M 图 X/+Z 投影对应。地形与标记都用米。
+    # 依地物而非矩形边界描海图：街路、滩涂、码头及内湖保留，远景草坡、岩堆和空海床隐入底色。
+    backdrop = [g['zones'][k] for k in ('GRASS', 'ROCK', 'SEABED')]
+    visible = ((h >= -0.55) & ~np.isin(zones, backdrop)) | ((flags & (g['flags']['LAG'] | g['flags']['DECK'])) != 0)
+    mask = Image.new('L', (side, side))
+    mask.paste(Image.fromarray(visible.astype('uint8') * 255), (side // 2 + g['OX'], side // 2 + g['OZ']))
+    ink = ImageDraw.Draw(mask)
+    for obj in layout['containers'] + layout['exits'] + layout['pois'] + layout['valves']:
+        x, _, z = obj['position']
+        x += side / 2; z += side / 2
+        ink.ellipse((x - 2, z - 2, x + 2, z + 2), fill=255)
+    mask = mask.filter(ImageFilter.MaxFilter(11)).filter(ImageFilter.GaussianBlur(3.0))
+    # 在海岸外缘留下薄薄的水色，而不是把整张海面画成实心方块。缩放时仍同原图共用中心与比例。
+    alpha = mask.resize(raw.size, Image.Resampling.BICUBIC)
+    raw.putalpha(alpha)
+    raw.save(md / 'tidegate_minimap.png', optimize=True)
 
 
 def plan():
@@ -67,6 +97,7 @@ def main() -> int:
         print('找不到 Unity 作者工程：' + unity_project_path.describe_missing() if hasattr(unity_project_path, 'describe_missing') else '找不到 Unity 作者工程')
         return 2
     dest_root = project / 'Assets' / 'Tidegate'
+    bake_minimap(SRC)
     missing, copied, same = [], 0, 0
     for src, rel in plan():
         if not src.is_file():

@@ -39,12 +39,16 @@ namespace BossRush
     internal sealed partial class F3GameplayValidationRunner
     {
         private readonly ResourcePerformanceReport resourcePerformance = new ResourcePerformanceReport();
+        private TidegatePerfWindow tidegatePerfWindow;
 
         /// <summary>5 / 10 秒帧时间窗口与资源窗口共用完整性判据；取消或协程释放也必须关闭岛内分项录制。</summary>
         private IEnumerator SamplePerformanceWindow(string caseId, float seconds, bool baseline)
         {
-            Stopwatch sw = Stopwatch.StartNew();
-            var frames = new List<float>(2048);
+            var tideProbe = tidegatePerfWindow;
+            if (tideProbe != null) tideProbe.CaptureEnemyStart();
+            Stopwatch sw = tideProbe == null ? new Stopwatch() : tideProbe.Timer;
+            sw.Restart();
+            var frames = tideProbe == null ? new List<float>(2048) : tideProbe.FrameTimes;
             long memoryStart = GC.GetTotalMemory(false);
             double started = Time.realtimeSinceStartupAsDouble;
             int sceneHandle = SceneManager.GetActiveScene().handle;
@@ -63,6 +67,7 @@ namespace BossRush
                     if (ShouldAbort() || SceneManager.GetActiveScene().handle != sceneHandle) break;
                     float ms = Time.unscaledDeltaTime * 1000f;
                     if (ms > 0f && !float.IsInfinity(ms)) frames.Add(ms);
+                    if (tideProbe != null) tideProbe.Capture();
                     if (ms > _peakFrameMs)
                     {
                         _peakFrameMs = ms;
@@ -83,7 +88,9 @@ namespace BossRush
                 string metrics = "samples=" + frames.Count + ",p95_ms=" + p95.ToString("F2")
                     + ",memory=" + GC.GetTotalMemory(false) + ",window_seconds=" + elapsed.ToString("F3") + ",required_seconds=" + seconds;
                 string profileReason = AppendSkyIslandFrameProfile(ref metrics, profileStarted);
-                if (complete)
+                string placementError = tideProbe == null ? null : tideProbe.Append(ref metrics);
+                if (profileReason == null) profileReason = placementError;
+                if (complete && placementError == null)
                 {
                     if (baseline) { _baselineP95Ms = p95; _baselineMemory = memoryStart; }
                     else { _finalP95Ms = p95; _finalMemory = GC.GetTotalMemory(false); }
@@ -113,6 +120,83 @@ namespace BossRush
             }
             internal ResourceMetric Finish() { return ResourcePerformanceMetrics.Summarize(Values, Count, Unit, Name); }
             public void Dispose() { Recorder.Dispose(); }
+        }
+
+        /// <summary>三个窗使用相同的诊断。计数器、计时器与缓冲在开窗前分配，采样时只写数组，关窗后再排序与格式化。</summary>
+        private sealed class TidegatePerfWindow : IDisposable
+        {
+            internal readonly Stopwatch Timer = new Stopwatch();
+            internal readonly List<float> FrameTimes = new List<float>(8192);
+            private readonly Counter main = new Counter(ProfilerCategory.Internal, "Main Thread", "ns");
+            private readonly Counter batches = new Counter(ProfilerCategory.Render, "Batches Count", "count/frame");
+            private readonly Counter gc = new Counter(ProfilerCategory.Memory, "GC Allocated In Frame", "bytes/frame");
+            private readonly string target;
+            private readonly Vector3? targetPosition;
+            private readonly CharacterMainControl player;
+            private readonly TidegateEnemies enemies;
+            private int aliveStart, nearStart;
+            private readonly Vector3 start;
+            private bool leftStation;
+            private Vector3? firstOffSite;
+
+            internal TidegatePerfWindow(CharacterMainControl player, TidegateEnemies enemies, string target, Vector3? targetPosition)
+            {
+                this.player = player;
+                this.enemies = enemies;
+                this.target = target ?? "baseline";
+                this.targetPosition = targetPosition;
+                start = player.transform.position;
+            }
+
+            internal void CaptureEnemyStart() { EnemyCounts(out aliveStart, out nearStart); }
+
+            private void EnemyCounts(out int alive, out int near)
+            {
+                if (targetPosition.HasValue && player != null && enemies != null
+                    && enemies.DevCountLivingNear(player.transform.position, 35f, out alive, out near)) return;
+                alive = near = -1;
+            }
+
+            private static string CountText(int count) { return count < 0 ? "unavailable" : count.ToString(); }
+            internal const string MissingEnemyCounts = ",enemies_alive_start=unavailable,enemies_near_35m_start=unavailable,enemies_alive_end=unavailable,enemies_near_35m_end=unavailable";
+
+            internal void Capture()
+            {
+                main.Capture(); batches.Capture(); gc.Capture();
+                if (!leftStation && (player == null || (targetPosition.HasValue && !AtTidegatePerfStation(player.transform.position, targetPosition.Value))))
+                {
+                    leftStation = true;
+                    if (player != null) firstOffSite = player.transform.position;
+                }
+            }
+
+            private static string Metric(Counter counter, double scale, string format)
+            {
+                ResourceMetric metric = counter.Finish();
+                return metric.status == "available" ? (metric.p95 * scale).ToString(format) : "unavailable";
+            }
+
+            internal string Append(ref string metrics)
+            {
+                metrics += ",station=" + target + ",target=" + (targetPosition.HasValue ? targetPosition.Value.ToString("F1") : "baseline")
+                    + ",position_start=" + start.ToString("F1")
+                    + ",position_end=" + TidegatePerfPosition(player)
+                    + ",main_thread_p95_ms=" + Metric(main, 0.000001, "F2")
+                    + ",batches_p95=" + Metric(batches, 1.0, "F0") + ",gc_p95_bytes=" + Metric(gc, 1.0, "F0")
+                    + ",main_thread_samples=" + main.Count + ",batch_samples=" + batches.Count + ",gc_samples=" + gc.Count;
+                if (targetPosition.HasValue)
+                {
+                    int aliveEnd, nearEnd;
+                    EnemyCounts(out aliveEnd, out nearEnd);
+                    metrics += ",enemies_alive_start=" + CountText(aliveStart) + ",enemies_near_35m_start=" + CountText(nearStart)
+                        + ",enemies_alive_end=" + CountText(aliveEnd) + ",enemies_near_35m_end=" + CountText(nearEnd);
+                }
+                if (!leftStation) return null;
+                metrics += ",first_offsite=" + (firstOffSite.HasValue ? firstOffSite.Value.ToString("F1") : "unavailable");
+                return "采样期间玩家离开目标区域或角色丢失";
+            }
+
+            public void Dispose() { main.Dispose(); batches.Dispose(); gc.Dispose(); }
         }
 
         private IEnumerator SampleResourcePerformance(string caseId)

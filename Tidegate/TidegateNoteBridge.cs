@@ -101,6 +101,9 @@ namespace BossRush
         {
             try
             {
+                // 不能信任调用方在检查屏障之前读出的默认值，也不能拿旧槽快照覆盖新槽镜像。
+                data = TidegateStory.Current;
+                if (data == null || !TidegateStory.Writable) { RequestSync(); return false; }
                 NoteIndex index = NoteIndex.Instance;
                 if (index == null || index.Notes == null || data == null) return false;
                 List<Note> notes = index.Notes;
@@ -115,8 +118,8 @@ namespace BossRush
                         note = new Note { key = key, image = null, hide = false };
                         notes.Add(note);
                     }
-                    NoteIndex.SetNoteDynamic(note);
                     bool ours = Recorded(data, id), theirs = NoteIndex.GetNoteUnlocked(key);
+                    NoteIndex.SetNoteDynamic(note);
                     if (ours && !theirs) NoteIndex.SetNoteUnlocked(key);
                     else if (!ours && theirs) Relock(index, key);
                 }
@@ -138,10 +141,10 @@ namespace BossRush
         {
             try
             {
-                if (NoteIndex.Instance == null) { RequestSync(); return; }
-                string key = Key(id);
-                EnsureRegistered(TidegateStory.Current);
-                if (!NoteIndex.GetNoteUnlocked(key)) NoteIndex.SetNoteUnlocked(key);
+                RequestSync();
+                TidegateStoryData data = TidegateStory.Current;
+                if (data == null || !TidegateStory.Writable || !Recorded(data, id)) return;
+                EnsureRegistered(data);
             }
             catch (Exception e)
             {
@@ -168,6 +171,7 @@ namespace BossRush
             }
             syncPending = true;
             warned = false;
+            TidegateJournalArt.ResetStaticCaches();
         }
     }
 }

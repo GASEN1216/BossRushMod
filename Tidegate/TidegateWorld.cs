@@ -32,6 +32,8 @@ namespace BossRush
         private Texture2D heightTexture;
         private Vector4 heightRect;
         private bool heightReadable;
+        private float[] lagoonMask;
+        private int maskWidth, maskHeight;
         private int groundMask;
 
         internal TidegateWorld(GameObject root)
@@ -198,6 +200,14 @@ namespace BossRush
             heightTexture = material.HasProperty("_HeightTex") ? material.GetTexture("_HeightTex") as Texture2D : null;
             heightRect = material.HasProperty("_HeightRect") ? material.GetVector("_HeightRect") : Vector4.zero;
             heightReadable = heightTexture != null && heightTexture.isReadable && heightRect.z > 0f && heightRect.w > 0f;
+            if (heightReadable)
+            {
+                // 一次批量取回；空间水体细分与每帧的水域判定都用这份遮罩，不反复跨 Unity 的原生取样入口。
+                maskWidth = heightTexture.width; maskHeight = heightTexture.height;
+                Color[] pixels = heightTexture.GetPixels();
+                lagoonMask = new float[pixels.Length];
+                for (int i = 0; i < pixels.Length; i++) lagoonMask[i] = pixels[i].g;
+            }
             if (!heightReadable) Debug.LogWarning(TidegateRaidScene.LogTag + " 水面高度图不可读，泻湖判定按外海处理");
         }
 
@@ -207,31 +217,16 @@ namespace BossRush
             if (!heightReadable) return false;
             float u = (position.x - heightRect.x) / heightRect.z, v = (position.z - heightRect.y) / heightRect.w;
             if (u < 0f || v < 0f || u > 1f || v > 1f) return false;
-            return heightTexture.GetPixelBilinear(u, v).g > 0.5f;
+            return TidegateWaterRegions.Sample(lagoonMask, maskWidth, maskHeight, u, v) > 0.5f;
         }
 
-        /// <summary>泻湖在世界 XZ 平面上的包围矩形（高度图 G 通道 &gt; 0.5 的像素）。高度图读不到或没有泻湖时返回 false。</summary>
-        internal bool TryGetLagoonBounds(out Rect bounds)
+        /// <summary>按真实遮罩生成互不重叠的海 / 湖水域；读不到遮罩时保留整片外海兜底。</summary>
+        internal List<TidegateWaterRegion> CreateWaterRegions(out int samples)
         {
-            bounds = default(Rect);
-            if (!heightReadable) return false;
-            int width = heightTexture.width, height = heightTexture.height;
-            Color[] pixels = heightTexture.GetPixels();
-            int minX = int.MaxValue, minY = int.MaxValue, maxX = -1, maxY = -1;
-            for (int y = 0; y < height; y++)
-                for (int x = 0; x < width; x++)
-                {
-                    if (pixels[y * width + x].g <= 0.5f) continue;
-                    if (x < minX) minX = x;
-                    if (x > maxX) maxX = x;
-                    if (y < minY) minY = y;
-                    if (y > maxY) maxY = y;
-                }
-            if (maxX < 0) return false;
-            float cellX = heightRect.z / width, cellZ = heightRect.w / height;
-            bounds = Rect.MinMaxRect(heightRect.x + minX * cellX, heightRect.y + minY * cellZ,
-                heightRect.x + (maxX + 1) * cellX, heightRect.y + (maxY + 1) * cellZ);
-            return true;
+            if (heightReadable)
+                return TidegateWaterRegions.Build(lagoonMask, maskWidth, maskHeight, heightRect.x, heightRect.y, heightRect.z, heightRect.w, out samples);
+            samples = 0;
+            return new List<TidegateWaterRegion> { new TidegateWaterRegion(-170f, -170f, 170f, 150f, false) };
         }
 
         /// <summary>离这一点最近的地标与水平距离；没有地标时返回 null。HUD 地名的到访半径与滞回在会话里判。</summary>
@@ -256,6 +251,6 @@ namespace BossRush
             return -1;
         }
 
-        public void Dispose() { heightTexture = null; }
+        public void Dispose() { heightTexture = null; lagoonMask = null; heightReadable = false; }
     }
 }

@@ -83,6 +83,15 @@ internal IEnumerator Coroutine(string id, Func<IEnumerator> factory) { return Ru
     generated += '''
 namespace BossRush { internal sealed class ProductionPerformance {
 internal bool Cancelled, _skyIslandMode = true;
+internal sealed class TideProbeStub {
+    internal readonly Stopwatch Timer = new Stopwatch();
+    internal readonly List<float> FrameTimes = new List<float>();
+    internal int Count;
+    internal bool WrongPosition;
+    internal void Capture() { Count++; }
+    internal string Append(ref string metrics) { metrics += ",counter_samples=" + Count; return WrongPosition ? "wrong_station" : null; }
+}
+internal TideProbeStub tidegatePerfWindow;
 internal float _peakFrameMs, _baselineP95Ms = 13f, _finalP95Ms = 17f;
 internal long _baselineMemory = 11, _finalMemory = 19;
 private string _peakStage, _status = "probe";

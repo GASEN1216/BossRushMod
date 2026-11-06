@@ -59,6 +59,9 @@ namespace BossRush
             CreateActionButton(rowModeH.transform, font,
                 L10n.T("鸭王杯逐项认证（选人页）", "Duck Cup certification (fighter selection)"),
                 BossRushUIColors.SurfaceRaised, StartModeHCertificationFromF3);
+            // 潮闸镇演练：人在潮闸镇里按，一次跑完全部能自动看的检查，最后还原这一趟（F3GameplayValidationTidegateDrill.cs）。
+            CreateActionButton(rowModeH.transform, font, L10n.T("潮闸镇演练（镇内一次跑完，会改状态）", "Tidegate drill (all-in-one, changes state)"),
+                BossRushUIColors.Warning, StartTidegateDrillFromF3);
 #endif
 
             GameObject row3 = CreateF3Row(section.transform);
@@ -117,6 +120,14 @@ namespace BossRush
         {
             string reason;
             if (F3GameplayValidationRunner.TryStartSkyIslandDrill(this, out reason)) { HideF3DebugCheatMenu(); return; }
+            SetF3DebugCheatStatus(reason, true);
+            RefreshF3GameplayValidationStatus();
+        }
+
+        private void StartTidegateDrillFromF3()
+        {
+            string reason;
+            if (F3GameplayValidationRunner.TryStartTidegateDrill(this, out reason)) { HideF3DebugCheatMenu(); return; }
             SetF3DebugCheatStatus(reason, true);
             RefreshF3GameplayValidationStatus();
         }

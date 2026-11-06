@@ -1,0 +1,1 @@
+直接链接生产 `TidegateEnemyActors.cs` 和 `TidegateGunner.cs`，从角色装配开始传入本次出击的潮汐与有效性检查，再模拟发现玩家、预警、投掷、碰撞和收尾。验证锁点不会跟踪玩家、两发间隔、错位或撞墙时哑火、深水不锁敌、投手死亡或关卡退出时清掉未爆的雷。模拟官方感知、物品与碰撞结果；不模拟 Unity 物理积分或官方伤害计算，弧线、圈可见性和实际伤害仍需实机核对。入口：`python tools/run_runtime_regressions.py --filter TidegateGunner`。

@@ -161,7 +161,8 @@ public class LevelManager
     public void NotifyEvacuated(EvacuationInfo info) { Evacuations++; }
 }
 namespace Duckov.Buffs {public class Buff {}}
-public class AstarPath:UnityEngine.Component {public static AstarPath active;public object data;public bool isScanning;}
+namespace Pathfinding { public enum PathLog { Normal, OnlyErrors } }
+public class AstarPath:UnityEngine.Component {public static AstarPath active;public object data;public bool isScanning;public Pathfinding.PathLog logPathResults;}
 public class GameCamera { public static GameCamera Instance; public object renderCamera; }
 public class TimeOfDayConfig:UnityEngine.MonoBehaviour {}
 public class LevelConfig:UnityEngine.Component {public TimeOfDayConfig timeOfDayConfig;public List<Duckov.Buffs.Buff> startBuffPrefabs;}

@@ -263,6 +263,21 @@ namespace BossRush
                     result.Add(TagNamed(tags, "Injector"));
                     result.Add(TagNamed(tags, "Food"));
                     break;
+                case SkyIslandLootCategory.Pantry:
+                    result.Add(TagNamed(tags, "Food")); result.Add(TagNamed(tags, "Drink"));
+                    break;
+                case SkyIslandLootCategory.Workshop:
+                    result.Add(TagNamed(tags, "Tool")); result.Add(TagNamed(tags, "Material")); result.Add(TagNamed(tags, "Electric"));
+                    break;
+                case SkyIslandLootCategory.Fishing:
+                    result.Add(tags.Bait); result.Add(TagNamed(tags, "Food"));
+                    break;
+                case SkyIslandLootCategory.Medical:
+                    result.Add(TagNamed(tags, "Medic") ?? TagNamed(tags, "Medical")); result.Add(TagNamed(tags, "Injector"));
+                    break;
+                case SkyIslandLootCategory.Valuable:
+                    result.Add(TagNamed(tags, "Luxury")); result.Add(TagNamed(tags, "Gem"));
+                    break;
             }
             return result;
         }

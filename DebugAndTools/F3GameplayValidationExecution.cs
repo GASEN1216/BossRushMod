@@ -16,6 +16,11 @@ namespace BossRush
         private bool _runMarkerWritten;
         /// <summary>本轮是 Dev 演练（F3GameplayValidationSkyIslandDrill.cs，非只读）。只在 Dev 构建里会被置位，复位在 CompleteSession。</summary>
         private bool _skyIslandDrill;
+        /// <summary>
+        /// 本轮是潮闸镇 Dev 演练（F3GameplayValidationTidegateDrill.cs，非只读，在潮闸镇里跑完、不切图）。只在 Dev 构建里会被置位，
+        /// 复位在 CompleteSession。会话外壳按它不写运行标记、不抑制提示条、收尾不跑主套件的全宿主清理；无敌与回满血照主套件。
+        /// </summary>
+        private bool _tidegateDrill;
         private int _sessionSlot, _runtimeErrors, _externalErrors, _errorSamples, _textDiagnostics;
         private float _nextHeartbeat;
         private ValidationCoroutineStack _sessionStack;
@@ -39,7 +44,7 @@ namespace BossRush
                 // - 不接管无敌与血量。主套件每帧给玩家无敌并回满血，搬到岛上就是整段验收期间的免费满血按钮，
                 //   紧接着要人工验的「噬风脉冲伤害」「苔药按缺血计价」全被污染。
                 _runMarkerWritten = false;
-                if (!_skyIslandMode)
+                if (!_skyIslandMode && !_tidegateDrill)
                 {
                     if (!WriteRunMarker()) throw new IOException("run_marker_not_writable");
                     _runMarkerWritten = true;
@@ -58,6 +63,8 @@ namespace BossRush
                     ? (_skyIslandDrill
                         ? "SESSION | slot=" + _sessionSlot + " | assisted=false | read_only=false | drill=true | save_writes=false | player_invincible=false | player_health_refill=false | run_marker=false"
                         : "SESSION | slot=" + _sessionSlot + " | assisted=false | read_only=true | player_invincible=false | player_health_refill=false | run_marker=false")
+                    : _tidegateDrill
+                    ? "SESSION | slot=" + _sessionSlot + " | assisted=true | read_only=false | drill=true | map=tidegate | save_writes=false | player_invincible=true | player_health_refill=true | run_marker=false"
                     : "SESSION | slot=" + _sessionSlot + " | assisted=true | player_invincible=true | player_health_refill=true | combat_balance=MANUAL_PENDING");
                 return true;
             }
@@ -77,7 +84,7 @@ namespace BossRush
 #endif
             // 主套件抑制 Mod 提示条是为了不让几百条用例刷屏；岛内套件只读，玩家这趟出击里的正常提示（如装配失败、
             // 返航说明）照常出，不能被验收吞掉。
-            if (_host != null && !_skyIslandMode) _host.GameplayValidationSuppressNotifications = true;
+            if (_host != null && !_skyIslandMode && !_tidegateDrill) _host.GameplayValidationSuppressNotifications = true;
             _runId = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss_fff");
             _reportPath = Path.Combine(Application.persistentDataPath, "BossRushTestReports",
                 "BossRushValidation_" + _runId + ".log");
@@ -180,12 +187,16 @@ namespace BossRush
             bool skyIsland = _skyIslandMode;
             _skyIslandMode = false;
             _skyIslandDrill = false;
+            bool tidegate = _tidegateDrill;
+            _tidegateDrill = false;
             DisposeSessionStack();
 #if BOSSRUSH_DEV
             // 全自动实机验收收尾阶段没跑到时（宿主销毁、阶段超时、异常）的同步兜底：语言、强制夜里、无敌、时间流速与剧情快照。
             // 出发时的进岛放行窗口也在这里再关一次（出发协程被 Dispose 时 finally 已关，这里防万一）。
             _autotestDepartureOpen = false;
             FinishAutotestRestoreSynchronously();
+            // 潮闸镇演练自己的还原没跑到时（取消、异常、超时）在这里同步还原一次：潮相、游泳覆盖、机关、增援、主角位置。
+            if (tidegate) FinishTidegateDrillRestoreSynchronously();
 #endif
             if (_sessionSubscribed)
             {
@@ -195,7 +206,7 @@ namespace BossRush
             }
             // 换槽后不调用会保存/归还资产的旧模式清理，也不清除新槽的运行标记。
             // 岛内套件同样不调：那是面向主套件的全宿主清理（模式、竞技场、随从…），岛上什么都不该被它碰。
-            if (!skyIsland && !_slotChanged && SavesSystem.CurrentSlot == _sessionSlot)
+            if (!skyIsland && !tidegate && !_slotChanged && SavesSystem.CurrentSlot == _sessionSlot)
             {
                 try { if (_host != null) _host.ValidationSafeCleanup(); }
                 catch (Exception e) { Record("SUITE_EXECUTION", "FAIL", 0L, "final_cleanup=true", e.ToString()); }

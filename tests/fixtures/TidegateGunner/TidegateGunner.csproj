@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../TidegateCargo/UnityStubs.cs" />
+    <Compile Include="../../../Tidegate/TidegateEnemyActors.cs" />
+    <Compile Include="../../../Tidegate/TidegateGunner.cs" />
+  </ItemGroup>
+</Project>

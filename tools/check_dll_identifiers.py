@@ -34,6 +34,13 @@ IDENTIFIERS = (
     "BossRush_Validation_AutotestSnapshot_v1",
     "SkyIslandAutotest.json",
     "bossrush-autotest-manifest/1",
+    # 2026-11-06 潮闸镇 Dev 演练与 F3 潮闸镇区（F3GameplayValidationTidegateDrill*.cs、TidegateDrillHooks.cs、TidegateProgressDebugControls.cs）。
+    "TryStartTidegateDrill",
+    "FinishTidegateDrillRestoreSynchronously",
+    "TidegateProgressDebugControls",
+    "DevTurnValve",
+    "DevResetCurrentSlot",
+    "TIDE_DRILL_ASSEMBLY",
 )
 
 

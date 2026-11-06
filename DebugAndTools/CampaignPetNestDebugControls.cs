@@ -160,6 +160,8 @@ namespace BossRush
             SkyIslandProgressDebugControls.Build(parent, host, report);
             // 同页挂上征程进度区（owner 2026-10-08）；同款自建面板，宿主仍不加行。
             CampaignProgressDebugControls.Build(parent, host, report);
+            // 同页挂上潮闸镇区（owner 2026-11-06）：清空进度、拨潮相；同款自建面板，宿主仍不加行。
+            TidegateProgressDebugControls.Build(parent, host, report);
         }
 
         /// <summary>

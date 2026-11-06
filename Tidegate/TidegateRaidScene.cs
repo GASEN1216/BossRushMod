@@ -26,8 +26,8 @@ namespace BossRush
         internal static void InjectLocalization()
         {
             LocalizationHelper.InjectLocalization("BossRush_Tidegate_SceneName", DisplayName);
-            LocalizationHelper.InjectLocalization(TidegateRaftInteractable.NameKey, L10n.T("乘闸伯的竹筏去潮闸镇", "Take Old Zha's raft to Tidegate"));
-            LocalizationHelper.InjectLocalization(TidegateWatchInteractable.NameKey, L10n.T("把潮汐怀表交给闸伯", "Give Old Zha the tide pocket watch"));
+            LocalizationHelper.InjectLocalization(TidegateRaftInteractable.NameKey, L10n.T("去潮闸镇", "Go to Tidegate"));
+            LocalizationHelper.InjectLocalization(TidegateWatchInteractable.NameKey, L10n.T("交付", "Hand over"));
             TidegateNoteBridge.InjectNoteKeys();
             TidegateText.InjectMapLabels();
         }

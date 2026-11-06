@@ -11,6 +11,9 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT_FIXTURES = (
+    "TidegateHazardFatality",
+    "TidegateStoryTransactions",
+    "TidegateExportOrigin",
     "SandstormChampionPool",
     "DragonBreathZombieRuntime",
     "FieldAdventureMimicRuntime", "FieldAdventureDeliveryRuntime", "FieldAdventurePrototypeRuntime",
@@ -32,7 +35,7 @@ SCRIPT_FIXTURES = (
     "ModeHSceneEntry", "ModeHPlayerFlow", "AchievementRuntime", "ArenaHostRemainder", "ModeGEntryOwners", "AudioRuntime",
     "ResourceProduction", "ZombieModeHostOwners", "ModeEFEnemyRegistry", "SteamPlatformInfo",
     "ManualSeptemberReview", "GardenHarvestNotice",
-    "AffixSelectionUI", "ManualEquipmentRecovery", "AchievementIcons", "DynamicItemInitialization", "SkyIslandSceneReferenceBridge", "TidegateTideRules", "RandomEventsFailure", "RandomEventTempo",
+    "AffixSelectionUI", "ManualEquipmentRecovery", "AchievementIcons", "DynamicItemInitialization", "SkyIslandSceneReferenceBridge", "TidegateTideRules", "TidegateWater", "TidegateDrillJudges", "RandomEventsFailure", "RandomEventTempo",
     "RuntimeOwnership", "BossFilterRuntime", "ModeRuntimeDispatch", "EquipmentConfiguratorRegistry", "SharedModalInput", "NPCShopPayment", "ContentTransactions", "BackMountainLifecycle", "ModeGCombat", "CampaignPlayability", "BossRewardDelivery", "AffixCombat", "ContentSecondReview", "AirdropSecondReview",
     "HarmonyBindingSecondReview", "ModeHReinforcementSecondReview", "modeh_effects",
     "ModeHThirdReviewFixes", "ModeHMarketAudit", "ModeHItemBetLedger", "ModeHGroupRoster", "ContentThirdReviewFixes", "IntegrationThirdReviewFixes", "IntegrationLeafOwners", "DeathBroadcastIsolation",
@@ -43,6 +46,9 @@ SCRIPT_FIXTURES = (
     "SkyIslandValidationJudges", "F3AutotestJudges", "SpawnPositionPolicy", "EnemySpawnRuntime", "EnemyRecoveryRuntime", "RandomEventEffectsOwners", "ModeEFSpawnPreparation", "ModeEFEnemySpawnRuntime", "ModeEFSpawnPostprocessScheduler", "ModeEFVirtualSpawnerRegistry", "ModeEFMerchantCatalog", "FlightTotemRuntimeModule", "EquipmentBootstrapOwners", "AwenLootSweepRuntime", "WavesArenaPresetWeight", "BirthdayCakeGift",
 )
 PROJECT_FIXTURES = {
+    "TidegateTreasure": "TidegateTreasure.csproj",
+    "TidegateCargo": "TidegateCargo.csproj",
+    "TidegateGunner": "TidegateGunner.csproj",
     "PromoRecordingLifecycle": "PromoRecordingLifecycle.csproj",
     "ModeGPersistenceRecovery": "ModeGPersistenceRecovery.csproj",
     "FieldAdventureGate": "FieldAdventureGate.csproj",

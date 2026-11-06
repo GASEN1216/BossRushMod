@@ -10,7 +10,7 @@ namespace BossRush
     /// 光照本体由会话里的 `SkyIslandLighting` 持有（自有太阳光、官方 LightControl、随官方时钟调色），
     /// 这里只把它写出的太阳 / 环境量镜像到 `_Tidegate*`，两套材质与官方角色用同一份光。
     /// </summary>
-    internal sealed class TidegateTide : IDisposable
+    internal sealed partial class TidegateTide : IDisposable
     {
         private const int MaxLamps = 16;
         private const float LampRange = 9f;
@@ -51,6 +51,8 @@ namespace BossRush
         private float nextLamps, nextNavigation;
         private float navigationLevel = float.NaN, navigationLagoon = float.NaN;
         private Vector4 beaconPosition;
+        private static readonly int ViewFocusId = Shader.PropertyToID("_TidegateViewFocus");
+        private Vector4 lastViewFocus;
         private Color beaconColor;
         /// <summary>每 0.5 秒排好的灯（灯塔 + 最近的夜灯）占前几格；手电每帧写在它们后面那一格。</summary>
         private int staticLamps;
@@ -81,7 +83,12 @@ namespace BossRush
         internal static double ClockHours()
         {
             if (GameClock.Instance == null) return double.NaN;
-            return TidegateTideRules.ElapsedHours(GameClock.Day, GameClock.TimeOfDay.TotalSeconds);
+            double hours = TidegateTideRules.ElapsedHours(GameClock.Day, GameClock.TimeOfDay.TotalSeconds);
+#if BOSSRUSH_DEV
+            // Dev 演练 / F3 拨潮相（TidegateDrillHooks.cs）只加在这里：不写官方时钟，也不碰存档里的游戏时间。
+            hours += DevOffsetHours;
+#endif
+            return hours;
         }
 
         /// <summary>到下一次换相还有多少现实秒（官方时钟倍速换算）。</summary>
@@ -116,6 +123,15 @@ namespace BossRush
 
         /// <summary>大闸提起之后泻湖开始放水；提起是单向的，本趟内不会再关。</summary>
         internal void OpenSluice() { sluiceOpen = true; }
+
+        // 与本图其他 shader 全局量共用生命周期。仅在位置改变时发布，不扫描建筑或改碰撞层。
+        internal void SetViewFocus(Vector3 feet)
+        {
+            Vector4 focus = new Vector4(feet.x, feet.y, feet.z, 1f);
+            if (focus == lastViewFocus) return;
+            Shader.SetGlobalVector(ViewFocusId, focus);
+            lastViewFocus = focus;
+        }
 
         /// <summary>某一点的水位：泻湖内侧跟泻湖，其它地方跟外海。</summary>
         internal float WaterLevelAt(Vector3 position)
@@ -274,7 +290,12 @@ namespace BossRush
         {
             if (disposed) return;
             disposed = true;
+#if BOSSRUSH_DEV
+            // 拨过的潮相只属于这一趟：会话收尾清零，下一趟按真实时钟。
+            DevOffsetHours = 0.0;
+#endif
             Shader.SetGlobalFloat(LampCountId, 0f);
+            Shader.SetGlobalVector(ViewFocusId, Vector4.zero);
             Shader.SetGlobalFloat(LightingEnabledId, 0f);
             Shader.SetGlobalFloat(NightId, 0f);
             PhaseChanged = null;

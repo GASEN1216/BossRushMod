@@ -1,0 +1,369 @@
+{
+  "spawn": {
+    "x": -85,
+    "z": -9
+  },
+  "enemies": [
+    {
+      "id": "SPAWN_town_scav_0",
+      "type": "scav",
+      "group": "town",
+      "position": [
+        -60,
+        0.8,
+        -9
+      ]
+    },
+    {
+      "id": "SPAWN_town_scav_1",
+      "type": "scav",
+      "group": "town",
+      "position": [
+        -20,
+        0.8,
+        -20
+      ]
+    },
+    {
+      "id": "SPAWN_town_scav_2",
+      "type": "scav",
+      "group": "town",
+      "position": [
+        5,
+        0.8,
+        0
+      ]
+    },
+    {
+      "id": "SPAWN_town_scav_3",
+      "type": "scav",
+      "group": "town",
+      "position": [
+        -35,
+        0.8,
+        2
+      ]
+    },
+    {
+      "id": "SPAWN_town_scav_4",
+      "type": "scav",
+      "group": "town",
+      "position": [
+        -75,
+        0.8,
+        -30
+      ]
+    },
+    {
+      "id": "SPAWN_town_scav_5",
+      "type": "scav",
+      "group": "town",
+      "position": [
+        15,
+        0.8,
+        -30
+      ]
+    },
+    {
+      "id": "SPAWN_ww_guard_6",
+      "type": "guard",
+      "group": "ww",
+      "position": [
+        -20,
+        2,
+        -48
+      ]
+    },
+    {
+      "id": "SPAWN_ww_guard_7",
+      "type": "guard",
+      "group": "ww",
+      "position": [
+        -1,
+        2,
+        -49
+      ]
+    },
+    {
+      "id": "SPAWN_ww_guard_8",
+      "type": "guard",
+      "group": "ww",
+      "position": [
+        14,
+        2,
+        -54
+      ]
+    },
+    {
+      "id": "SPAWN_ww_guard_9",
+      "type": "guard",
+      "group": "ww",
+      "position": [
+        -5,
+        2,
+        -59
+      ]
+    },
+    {
+      "id": "SPAWN_ww_guard_10",
+      "type": "guard",
+      "group": "ww",
+      "position": [
+        8,
+        2,
+        -44.5
+      ]
+    },
+    {
+      "id": "SPAWN_docks_scav_11",
+      "type": "scav",
+      "group": "docks",
+      "position": [
+        -80,
+        0.75,
+        34
+      ]
+    },
+    {
+      "id": "SPAWN_docks_scav_12",
+      "type": "scav",
+      "group": "docks",
+      "position": [
+        -58,
+        0.75,
+        31
+      ]
+    },
+    {
+      "id": "SPAWN_docks_scav_13",
+      "type": "scav",
+      "group": "docks",
+      "position": [
+        -40,
+        0.75,
+        36
+      ]
+    },
+    {
+      "id": "SPAWN_docks_scav_14",
+      "type": "scav",
+      "group": "docks",
+      "position": [
+        -53,
+        1,
+        55
+      ]
+    },
+    {
+      "id": "SPAWN_reeds_scav_15",
+      "type": "scav",
+      "group": "reeds",
+      "position": [
+        56,
+        0.65,
+        -44
+      ]
+    },
+    {
+      "id": "SPAWN_reeds_scav_16",
+      "type": "scav",
+      "group": "reeds",
+      "position": [
+        70,
+        0.65,
+        -48
+      ]
+    },
+    {
+      "id": "SPAWN_cape_guard_17",
+      "type": "guard",
+      "group": "cape",
+      "position": [
+        70,
+        1.6,
+        46
+      ]
+    },
+    {
+      "id": "SPAWN_cape_guard_18",
+      "type": "guard",
+      "group": "cape",
+      "position": [
+        80,
+        1.6,
+        48
+      ]
+    },
+    {
+      "id": "SPAWN_cape_scav_19",
+      "type": "scav",
+      "group": "cape",
+      "position": [
+        79,
+        1.6,
+        27
+      ]
+    },
+    {
+      "id": "SPAWN_dig_digger_20",
+      "type": "digger",
+      "group": "dig",
+      "position": [
+        32.5,
+        0.75,
+        59.5
+      ]
+    },
+    {
+      "id": "SPAWN_dig_digger_21",
+      "type": "digger",
+      "group": "dig",
+      "position": [
+        34.5,
+        0.75,
+        61.5
+      ]
+    },
+    {
+      "id": "SPAWN_dig_digger_22",
+      "type": "digger",
+      "group": "dig",
+      "position": [
+        38.5,
+        0.75,
+        56.5
+      ]
+    },
+    {
+      "id": "SPAWN_dig_digger_23",
+      "type": "digger",
+      "group": "dig",
+      "position": [
+        31.5,
+        0.75,
+        62.5
+      ]
+    },
+    {
+      "id": "SPAWN_dig_boss_24",
+      "type": "boss",
+      "group": "dig",
+      "position": [
+        33.5,
+        0.75,
+        56.5
+      ]
+    }
+  ],
+  "waypoints": {
+    "town": [
+      [
+        -60,
+        0.8,
+        -9
+      ],
+      [
+        -40,
+        0.8,
+        -9
+      ],
+      [
+        -20,
+        0.8,
+        -9
+      ],
+      [
+        -17,
+        0.8,
+        -24
+      ],
+      [
+        5,
+        0.8,
+        -10
+      ],
+      [
+        5,
+        0.8,
+        8
+      ],
+      [
+        -20,
+        0.8,
+        10
+      ],
+      [
+        -35,
+        0.8,
+        0
+      ],
+      [
+        -35,
+        0.8,
+        -30
+      ],
+      [
+        -60,
+        0.8,
+        -28.5
+      ],
+      [
+        -75,
+        0.8,
+        -30
+      ],
+      [
+        -75,
+        0.8,
+        0
+      ],
+      [
+        15,
+        0.8,
+        -29
+      ],
+      [
+        -48,
+        0.8,
+        10
+      ]
+    ],
+    "docks": [
+      [
+        -80,
+        0.75,
+        35
+      ],
+      [
+        -58,
+        0.75,
+        31
+      ],
+      [
+        -40,
+        0.75,
+        36
+      ],
+      [
+        -53,
+        1,
+        55
+      ],
+      [
+        -70,
+        0.75,
+        30
+      ],
+      [
+        -35,
+        0.75,
+        33
+      ],
+      [
+        -53,
+        1,
+        45
+      ]
+    ]
+  }
+}

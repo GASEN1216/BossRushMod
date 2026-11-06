@@ -177,7 +177,8 @@ namespace BossRush
                 string contractError;
                 if (!ModRaidOfficialContract.VerifyBeforeActivation(profile, scene, services, world, out contractError))
                     throw new InvalidOperationException(contractError);
-                if (global::AstarPath.active == null) services.AddComponent<global::AstarPath>();
+                // 自建组件的默认值会给每条成功路径写完整日志；只配置自己的服务，保留寻路错误。
+                if (global::AstarPath.active == null) services.AddComponent<global::AstarPath>().logPathResults = Pathfinding.PathLog.OnlyErrors;
                 // 这个最小官方服务装配不能依赖已被销毁的会话，否则加载取消后永远无法完成官方初始化。
                 if (releaseRequested) world.SetActive(true);
                 services.SetActive(true);

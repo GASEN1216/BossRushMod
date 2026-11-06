@@ -1,0 +1,173 @@
+{
+  "pois": [
+    {
+      "name": "第三水厂",
+      "position": [
+        -8,
+        2,
+        -52
+      ]
+    },
+    {
+      "name": "栈桥",
+      "position": [
+        -53,
+        1,
+        52
+      ]
+    },
+    {
+      "name": "滩涂",
+      "position": [
+        22,
+        -1.72,
+        36
+      ]
+    }
+  ],
+  "containers": [
+    {
+      "id": "LOOT_house_0",
+      "type": "house",
+      "fixed": [],
+      "position": [
+        -86.5,
+        0.8,
+        -33.5
+      ]
+    },
+    {
+      "id": "LOOT_crate_39",
+      "type": "crate",
+      "fixed": [],
+      "position": [
+        -62.5,
+        0.75,
+        33.5
+      ]
+    },
+    {
+      "id": "LOOT_crate_42",
+      "type": "crate",
+      "fixed": [],
+      "position": [
+        -47.5,
+        1,
+        63.5
+      ]
+    },
+    {
+      "id": "LOOT_tool_43",
+      "type": "tool",
+      "fixed": [],
+      "position": [
+        -14.5,
+        2,
+        -64.5
+      ]
+    },
+    {
+      "id": "LOOT_tool_44",
+      "type": "tool",
+      "fixed": [],
+      "position": [
+        -1.5,
+        2,
+        -64.5
+      ]
+    },
+    {
+      "id": "LOOT_buried_51",
+      "type": "buried",
+      "fixed": [],
+      "position": [
+        14.5,
+        -0.894,
+        40.5
+      ]
+    },
+    {
+      "id": "LOOT_buried_52",
+      "type": "buried",
+      "fixed": [],
+      "position": [
+        28.5,
+        -0.95,
+        56.5
+      ]
+    },
+    {
+      "id": "LOOT_safe_68",
+      "type": "safe",
+      "fixed": [
+        "page1"
+      ],
+      "position": [
+        7.5,
+        2,
+        -64.5
+      ]
+    },
+    {
+      "id": "LOOT_house_69",
+      "type": "house",
+      "fixed": [
+        "page2"
+      ],
+      "position": [
+        24.5,
+        0.8,
+        4.5
+      ]
+    },
+    {
+      "id": "LOOT_house_70",
+      "type": "house",
+      "fixed": [
+        "page3"
+      ],
+      "position": [
+        77.5,
+        1.6,
+        31.5
+      ]
+    },
+    {
+      "id": "LOOT_vault_71",
+      "type": "vault",
+      "fixed": [
+        "page4",
+        "tidewatch"
+      ],
+      "position": [
+        69.5,
+        -0.923,
+        -1.5
+      ]
+    },
+    {
+      "id": "LOOT_locker_72",
+      "type": "locker",
+      "fixed": [
+        "wheel"
+      ],
+      "position": [
+        36.5,
+        0.75,
+        60.5
+      ]
+    },
+    {
+      "id": "LOOT_safe_77",
+      "type": "safe",
+      "fixed": [
+        "goldbar"
+      ],
+      "position": [
+        9.696,
+        -1.22,
+        53.34
+      ]
+    }
+  ]
+}

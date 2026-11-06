@@ -452,17 +452,17 @@ def export_material_manifest(colls, out_dir):
 
 
 def render_minimap(scene, out, layout_cams_coll):
-    """俯视正交图给官方小地图：以原点为中心 180 m 见方（three x −90..90、z −90..90）。"""
-    cd = bpy.data.cameras.new('Cam_Minimap'); cd.type = 'ORTHO'; cd.ortho_scale = 180; cd.clip_end = 500
+    """正北正交原图。可玩区以外留出羽化余地，sync 时按相同米数烘透明岸线。"""
+    cd = bpy.data.cameras.new('Cam_Minimap'); cd.type = 'ORTHO'; cd.ortho_scale = 208; cd.clip_end = 500
     cam = bpy.data.objects.new('Cam_Minimap', cd); layout_cams_coll.objects.link(cam)
     cam.location = (0, 0, 200); cam.rotation_euler = (0, 0, 0)
     old = (scene.camera, scene.render.resolution_x, scene.render.resolution_y)
     scene.camera = cam; scene.render.resolution_x = scene.render.resolution_y = 1440
     md = out / 'minimap'; md.mkdir(exist_ok=True)
-    scene.render.filepath = str(md / 'tidegate_minimap.png'); bpy.ops.render.render(write_still=True)
+    scene.render.filepath = str(md / 'tidegate_ortho.png'); bpy.ops.render.render(write_still=True)
     scene.camera, scene.render.resolution_x, scene.render.resolution_y = old
-    (md / 'tidegate_minimap.json').write_text(json.dumps({'sceneId': 'BossRush_Tidegate', 'imageWorldSize': 180, 'mapWorldCenter': [0, 0, 0], 'note': 'Unity 坐标；图片上方是 three −z（Unity +z，北）'}, ensure_ascii=False), encoding='utf-8')
-    return str(md / 'tidegate_minimap.png')
+    (md / 'tidegate_minimap.json').write_text(json.dumps({'sceneId': 'BossRush_Tidegate', 'imageWorldSize': cd.ortho_scale, 'mapWorldCenter': [0, 0, 0], 'note': 'Unity 坐标；图片上方是 three −z（Unity +z，北）'}, ensure_ascii=False), encoding='utf-8')
+    return str(md / 'tidegate_ortho.png')
 
 
 def layer_collection(name, root=None):

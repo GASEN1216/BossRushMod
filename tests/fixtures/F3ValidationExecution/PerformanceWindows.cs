@@ -117,6 +117,15 @@ internal static class PerformanceWindows
         check(dense.Results[0] == "FAIL" && dense.Reasons[0] == "超过性能阈值",
             "performance: complete slow final window retains existing frame threshold");
 
+        var offSite = Fresh();
+        offSite._skyIslandMode = false;
+        offSite.tidegatePerfWindow = new ProductionPerformance.TideProbeStub { WrongPosition = true };
+        using (var stack = new ValidationCoroutineStack(offSite.Run()))
+            while (stack.MoveNext()) Time.realtimeSinceStartupAsDouble += 0.25;
+        check(offSite.Results[0] == "FAIL" && offSite.Reasons[0] == "wrong_station" && offSite._baselineP95Ms == 13f
+            && offSite.tidegatePerfWindow.Count == 20 && offSite.Metrics[0].EndsWith(",counter_samples=20"),
+            "performance: diagnostic samples align with frame samples; leaving the site fails a fast window and preserves its baseline");
+
         string reason;
         check(ResourcePerformanceMetrics.IsComplete(5, 5, 20, false, true, false, out reason)
             && !ResourcePerformanceMetrics.IsComplete(5, 20, false, true, false, out reason)

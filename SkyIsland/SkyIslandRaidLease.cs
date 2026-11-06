@@ -157,7 +157,7 @@ namespace BossRush
                 string contractError;
                 if (!SkyIslandOfficialContract.VerifyBeforeActivation(scene, services, world, out contractError))
                     throw new InvalidOperationException(contractError);
-                if (global::AstarPath.active == null) services.AddComponent<global::AstarPath>();
+                if (global::AstarPath.active == null) services.AddComponent<global::AstarPath>().logPathResults = Pathfinding.PathLog.OnlyErrors;
                 // 这个最小官方服务装配不能依赖已被销毁的 Session，否则加载取消后永远无法完成官方初始化。
                 if (releaseRequested) world.SetActive(true);
                 services.SetActive(true);

@@ -106,6 +106,19 @@ internal static class Program
         }
         Check(floodAlarms == 2, "exactly one flood alarm per tide cycle");
 
+        // 错过高潮、重装等下一班、抓缆后来回跨潮：直接驱动生产撤离口使用的缆绳状态。
+        var line = new TidegateFerryLine();
+        Check(line.CanBoard(TidegateTidePhase.High), "a laden traveler still boards at high tide without touching the line");
+        Check(!line.TryCatch(TidegateTidePhase.Low, true, true) && !line.CanBoard(TidegateTidePhase.Low), "a late swimmer cannot board at low tide");
+        Check(!line.TryCatch(TidegateTidePhase.Ebb, false, true) && !line.CanBoard(TidegateTidePhase.Ebb), "heavy cargo cannot board the receding ferry");
+        Check(!line.TryCatch(TidegateTidePhase.Ebb, true, false), "a swimmer cannot catch the line away from the pier");
+        Check(line.TryCatch(TidegateTidePhase.Ebb, true, true) && line.CanBoard(TidegateTidePhase.Ebb), "light traveler explicitly catches the line");
+        Check(!line.DropIfNeeded(true, true) && line.CanBoard(TidegateTidePhase.Low), "a swimmer already boarding finishes even as ebb ends");
+        Check(line.DropIfNeeded(false, true) && !line.CanBoard(TidegateTidePhase.Low), "stepping away releases the reservation");
+        Check(!line.CanBoard(TidegateTidePhase.Flood) && line.TryCatch(TidegateTidePhase.Flood, true, true), "next rising tide needs a fresh interaction");
+        Check(line.DropIfNeeded(true, false) && !line.CanBoard(TidegateTidePhase.Flood), "picking up a heavy pack interrupts early boarding");
+        Check(line.CanBoard(TidegateTidePhase.High), "ordinary high tide ferry still accepts the heavy pack");
+
         // 泻湖：闸关着恒满；提起后以固定速度降到外海，之后贴着外海走（外海涨上来时泻湖跟着涨）。
         float lagoon = TidegateTideRules.LagoonFull;
         Check(TidegateTideRules.StepLagoon(lagoon, -1.5f, false, 10f) == TidegateTideRules.LagoonFull, "closed sluice keeps the lagoon full");
@@ -116,6 +129,36 @@ internal static class Program
         Check(Math.Abs(level2 + 1.5f) < 1e-6, "drained lagoon settles at the sea level");
         Check(Math.Abs(TidegateTideRules.StepLagoon(-1.5f, 0.2f, true, 0.016f) - 0.2f) < 1e-6, "drained lagoon follows the rising sea");
         Check(Math.Abs(TidegateTideRules.StepLagoon(lagoon, -1.5f, true, -5f) - lagoon) < 1e-6, "negative time never refills");
+
+        const float bed = -1.36f;
+        Check(!TidegateIntakeHold.Flowing(false, lagoon, drained, -1.5f, bed, 1f, false), "closed gate cannot suck in a swimmer");
+        Check(TidegateIntakeHold.Flowing(true, lagoon, drained, -1.5f, bed, 1f, false), "actual modeled discharge can activate the intake");
+        Check(!TidegateIntakeHold.Flowing(true, drained, drained, -1.5f, bed, 1f, true), "slack water cancels the active intake");
+        Check(!TidegateIntakeHold.Flowing(true, -0.4f, -0.3f, -0.3f, bed, 1f, true), "rising water cannot pull toward the outlet");
+        Check(!TidegateIntakeHold.Flowing(true, -0.95f, -1.1f, -1.5f, bed, 1f, true), "exposed mud is never lethal");
+        Check(TidegateIntakeHold.InCore(true, 0f, -0.25f, 0f, bed), "swimmer inside the marked pool can be warned");
+        Check(!TidegateIntakeHold.InCore(true, 0f, 1.6f, 0.62f, bed), "the dry dam deck is above the intake");
+        Check(!TidegateIntakeHold.InCore(true, 1.75f*1.75f, -0.25f, 0f, bed), "the marked perimeter itself is safe");
+        var intake = new TidegateIntakeHold();
+        Check(!intake.Step(true, 20f) && intake.Held == 0f, "entry always shows the full warning");
+        for (int i = 0; i < 31; i++) Check(!intake.Step(true, 0.125f), "no death before the four seconds expire");
+        Check(!intake.Step(true, 0f) && !intake.Step(false, 1f), "pause and escape at the last instant do not kill");
+        Check(!intake.Step(true, 1f) && !intake.Step(true, 10f) && intake.Held <= 0.2f, "one long frame cannot use up the warning");
+        intake.Step(false, 0f);
+        intake.Step(true, 0.125f);
+        for (int i = 0; i < 31; i++) Check(!intake.Step(true, 0.125f), "reentry starts a fresh full warning");
+        Check(intake.Step(true, 0.125f) && !intake.Step(true, 0.125f), "one fatal event at four seconds per uninterrupted exposure");
+        // 已经排过一次以后，不能变成只去初次开闸的一趟才可能遇见的危险；用真实潮位走过完整的下一次退潮。
+        float lake2 = TidegateTideRules.HighLevel, activeRun = 0f, longest = 0f; bool rushing = false;
+        for (int i = 1; i <= 30*16; i++)
+        {
+            float sea = TidegateTideRules.LevelAt(i / (16.0 * 60.0)), before = lake2;
+            lake2 = TidegateTideRules.StepLagoon(before, sea, true, 1f/16f);
+            rushing = TidegateIntakeHold.Flowing(true, before, lake2, sea, bed, 1f/16f, rushing);
+            activeRun = rushing ? activeRun + 1f/16f : 0f;
+            longest = Math.Max(longest, activeRun);
+        }
+        Check(longest > TidegateIntakeHold.WarningSeconds, "a normal subsequent ebb gives a real, avoidable discharge window");
 
         // 湿痕：水涨立刻跟上，水退按速度回落，不低于水面。
         Check(TidegateTideRules.StepWetLine(-1f, 0.3f, 0.016f) == 0.3f, "wet line follows a rising tide immediately");

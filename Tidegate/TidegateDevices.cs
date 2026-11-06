@@ -11,7 +11,7 @@ namespace BossRush
     /// 泻湖开始放水、低潮时沉没的储蓄所金库露出来，同时海堤那边来一队淘沙帮；灯塔点亮后 45 秒灯塔码头来船，附近的敌人被引过来。
     /// 状态只属于这一趟出击，不进存档。
     /// </summary>
-    internal sealed class TidegateDevices : IDisposable
+    internal sealed partial class TidegateDevices : IDisposable
     {
         private const float ValveSeconds = 3f, LighthouseSeconds = 2f;
         private const float BoatDelay = 45f, LureRadius = 60f, RevealSeconds = 40f;
@@ -43,6 +43,7 @@ namespace BossRush
         internal int OpenValves { get { int open = 0; foreach (bool v in valves) if (v) open++; return open; } }
         /// <summary>潮位站那一处阀门开了没有（没有这处阀门的旧包按「开了」算，不卡引导）。</summary>
         internal bool TideGaugeOpen { get { return valves.Length <= TideGaugeValve || valves[TideGaugeValve]; } }
+        internal bool BeaconLit { get { return lighthouseLit; } }
 
         internal TidegateDevices(TidegateWorld world, TidegateTide tide, TidegateExtraction extraction, TidegateEnemies enemies,
             TidegateSounds sounds, Func<bool> valid, Action<string, bool> announce)
@@ -60,24 +61,35 @@ namespace BossRush
                 int index = i;
                 Add(world.Valves[i], "Valve" + i, new Vector3(0f, 0.4f, 0f), ValveSeconds,
                     delegate { return ValveLabel(index); },
-                    delegate { return !valves[index]; }, delegate { TurnValve(index); });
+                    delegate { return !valves[index]; }, delegate { TurnValve(index); },
+                    index == TideGaugeValve ? BossRushItemIds.TidegateHandwheel : 0);
             }
             if (world.Lighthouse != null)
                 Add(world.Lighthouse, "Lighthouse", new Vector3(0f, 0.4f, 0f), LighthouseSeconds,
-                    delegate { return L10n.T("点亮灯塔", "Light the lighthouse"); },
+                    delegate { return L10n.T("点灯叫船（会惊动守卫）", "Signal the boat (alerts guards)"); },
                     delegate { return !lighthouseLit; }, LightLighthouse);
+            Transform ferry;
+            if (extraction != null && world.Exits.TryGetValue("ferry", out ferry))
+                Add(ferry, "FerryLine", new Vector3(0f, 0.4f, 0f), 0.5f,
+                    delegate { return L10n.T("抓渡船缆绳（轻装登船）", "Catch the ferry line (light load)"); },
+                    delegate { return extraction.FerryLineAvailable; }, CatchFerryLine);
+        }
+
+        private void CatchFerryLine()
+        {
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (disposed || player == null || !valid()) return;
+            string message;
+            bool caught = extraction.TryCatchFerryLine(player.transform.position, out message);
+            announce(message, !caught);
         }
 
         /// <summary>
-        /// 交互名：「拧开阀门（某处）」；潮位站那一处没带手轮时直接写明缺手轮，不让人读完 3 秒条才知道（CR-2026-11-05-024）。
-        /// 括号按语言取（英文不用全角）。
+        /// 阀门名只写地点；潮位站的手轮在原版需求行显示，空手不会开始 3 秒读条。
         /// </summary>
         private static string ValveLabel(int index)
         {
-            string where = ValveName(index);
-            if (index == TideGaugeValve && TidegateInventory.Find(CharacterMainControl.Main, BossRushItemIds.TidegateHandwheel) == null)
-                where += L10n.T(" · 缺手轮", " · handwheel missing");
-            return L10n.T("拧开阀门（", "Open the valve (") + where + L10n.T("）", ")");
+            return L10n.T("拧开阀门（", "Open the valve (") + ValveName(index) + L10n.T("）", ")");
         }
 
         /// <summary>还没拧开的阀门在哪（HUD 目标行用），按语言用顿号或逗号隔开。</summary>
@@ -99,7 +111,8 @@ namespace BossRush
             }
         }
 
-        private void Add(Transform anchor, string id, Vector3 offset, float seconds, Func<string> label, Func<bool> available, Action action)
+        private void Add(Transform anchor, string id, Vector3 offset, float seconds, Func<string> label, Func<bool> available, Action action,
+            int requiredItemId = 0)
         {
             GameObject host = new GameObject("TidegateDevice_" + id);
             host.transform.SetParent(world.Root.transform, false);
@@ -109,6 +122,7 @@ namespace BossRush
                 host.transform, "Interact", offset, x =>
                 {
                     x.Bind(id, seconds, label, delegate { return valid() && available(); }, action);
+                    x.BindRequirement(requiredItemId);
                     SphereCollider sensor = x.GetComponent<SphereCollider>();
                     if (sensor != null) { sensor.radius = 1.1f; sensor.isTrigger = true; }
                 });
@@ -121,8 +135,9 @@ namespace BossRush
             if (index == TideGaugeValve)
             {
                 // 潮位站的手轮被拆走了：身上得带着阀门手轮（挖沙船船舱储物柜），装上就留在阀门上。
-                Item wheel = TidegateInventory.Find(CharacterMainControl.Main, BossRushItemIds.TidegateHandwheel);
-                if (wheel == null)
+                // Dev 演练的旁路不读、也不消耗背包里的手轮（正式构建 DevBypassHandwheel 恒为 false，照常找手轮）。
+                Item wheel = DevBypassHandwheel() ? null : TidegateInventory.FindCarried(CharacterMainControl.Main, BossRushItemIds.TidegateHandwheel);
+                if (wheel == null && !DevBypassHandwheel())
                 {
                     announce(L10n.T("潮位站的阀门手轮被人拆走了。闸伯的信里说，淘沙帮把它扔在了挖沙船船舱里。",
                         "The tide gauge valve has no handwheel. Old Zha's letter says the sand gang tossed it in the dredger's cabin."), true);
@@ -142,22 +157,32 @@ namespace BossRush
             // 大闸在泻湖那头，多半离得远：闷响跟着玩家放，全图都知道闸起来了。
             if (sounds != null) sounds.Play(TidegateCue.Gate, null);
             reinforceAt = Time.time + 4f;
-            announce(L10n.T("三处阀门都开了，大闸提起来了！泻湖开始放水，等退潮储蓄所就露出来了。",
-                "All three valves are open and the tide gate is up! The lagoon is draining; at low tide the sunken bank surfaces."), false);
+            announce(L10n.T("大闸提起来了！等退潮进储蓄所。泻湖在放水，千万别游到闸口。",
+                "The tide gate is up! The bank will surface at low tide. Stay clear of the sluice intake while the lagoon drains."), true);
         }
 
+
+        /// <summary>Dev 演练的旁路（TidegateDrillHooks.cs）：潮位站那一处不发物品、当作已经装上手轮。正式构建恒为 false。</summary>
+        private bool DevBypassHandwheel()
+        {
+#if BOSSRUSH_DEV
+            return devBypassHandwheel;
+#else
+            return false;
+#endif
+        }
 
         private void LightLighthouse()
         {
             if (disposed || lighthouseLit) return;
             lighthouseLit = true;
             boatAt = Time.time + BoatDelay;
-            if (enemies != null) enemies.Lure(world.Lighthouse.position, LureRadius, RevealSeconds);
+            if (enemies != null) enemies.Lure(world.Lighthouse.position, LureRadius);
             if (enemies != null) enemies.RevealOnMap(RevealSeconds);
             if (sounds != null) sounds.Play(TidegateCue.Lighthouse, world.Lighthouse.position);
             LightBeam();
-            announce(L10n.T("灯塔亮了。45 秒后灯塔码头来船——附近的人也都看见了。",
-                "The lighthouse is lit. A boat reaches the lighthouse jetty in 45 seconds — and everyone nearby saw it."), false);
+            announce(L10n.T("灯塔亮了，附近的守卫可能听见了。M 地图显示敌情 40 秒，船 45 秒后到灯塔码头。",
+                "The lighthouse is lit. Nearby guards may have heard it. M shows contacts for 40s. Boat at the jetty in 45s."), false);
         }
 
         /// <summary>
@@ -195,7 +220,7 @@ namespace BossRush
             {
                 reinforceAt = -1f;
                 if (enemies != null) foreach (Vector3 point in Reinforcements) enemies.SpawnExtra(point, "digger");
-                announce(L10n.T("海堤那边来人了：淘沙帮奔着金库去了。", "Movement on the seawall: the sand gang is heading for the vault."), true);
+                announce(L10n.T("海堤有动静：淘沙帮正往金库赶。", "Movement on the seawall: the sand gang is headed for the vault."), true);
             }
             if (!boatArrived && boatAt > 0f && Time.time >= boatAt)
             {
@@ -220,7 +245,7 @@ namespace BossRush
     }
 
     /// <summary>潮闸镇机关的官方交互点：交互名随语言重写，读条时长写进官方私有字段。</summary>
-    public sealed class TidegateDeviceInteractable : BossRushBuildingInteractableBase
+    public sealed class TidegateDeviceInteractable : TidegateRequirementInteractable
     {
         private string key = "BossRush_Tidegate_Device";
         private Func<string> label;
@@ -245,7 +270,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 交互名在靠近时按当前状态取：切了语言、或潮位站那一处缺不缺手轮变了，字才不一样，才重新注入（玩家能在游戏里切语言）。
+        /// 交互名在靠近时按当前语言取，字有变化才重新注入。
         /// </summary>
         private void Relabel()
         {

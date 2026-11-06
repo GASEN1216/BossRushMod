@@ -1,7 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Duckov.MiniMaps;
+using ItemStatsSystem;
 using UnityEngine;
+using Cat = BossRush.SkyIslandLootCategory;
+using Tier = BossRush.SkyIslandLootTier;
 
 namespace BossRush
 {
@@ -10,7 +14,7 @@ namespace BossRush
     /// 物品从官方物资池按档次与类别抽（`SkyIslandLootPools`，带价值上限与黑名单）。走近 60 m 才建，0.5 秒最多建一个；
     /// 泡在深水里的箱子收起来（原型规则：水深超过 0.5 m 不能搜），水退了再放出来——滩涂、沉船、金库的价值来自这一点。
     /// </summary>
-    internal sealed class TidegateLoot : IDisposable
+    internal sealed partial class TidegateLoot : IDisposable
     {
         private const float ActivationRange = 60f;
         private const float TickInterval = 0.5f;
@@ -41,16 +45,218 @@ namespace BossRush
         {
             internal Transform Marker;
             internal string Id, Kind;
-            internal float Yaw;
+            internal float Yaw, Ground;
+            internal bool Lagoon;
             internal InteractableLootbox Box;
             internal bool Built, Failed, Flooded, Opened, FloodHinted;
+            internal Shipment Offer;
         }
 
-        private struct Spec
+        private sealed class Spec
         {
-            internal SkyIslandLootTier Tier;
-            internal SkyIslandLootCategory[] Slots;
-            internal Spec(SkyIslandLootTier tier, params SkyIslandLootCategory[] slots) { Tier = tier; Slots = slots; }
+            internal readonly Tier Tier;
+            internal readonly Cat First;
+            internal readonly Cat[] Extras;
+            internal Spec(Tier tier, Cat first, params Cat[] extras) { Tier = tier; First = first; Extras = extras; }
+        }
+
+        private static readonly Spec House = new Spec(Tier.Supply, Cat.Pantry, Cat.Pantry, Cat.General, Cat.Medical);
+        private static readonly Spec Tool = new Spec(Tier.Supply, Cat.Workshop, Cat.Workshop, Cat.Workshop, Cat.General);
+        private static readonly Spec Fish = new Spec(Tier.Supply, Cat.Fishing, Cat.Fishing, Cat.Fishing, Cat.General);
+        private static readonly Spec Med = new Spec(Tier.Supply, Cat.Medical, Cat.Medical, Cat.Supplies);
+        private static readonly Spec Crate = new Spec(Tier.Supply, Cat.General, Cat.Workshop, Cat.General, Cat.Ammo, Cat.Pantry);
+        private static readonly Spec Buried = new Spec(Tier.Voyage, Cat.General, Cat.General, Cat.Valuable, Cat.Gear);
+        private static readonly Spec Wreck = new Spec(Tier.Voyage, Cat.Gear, Cat.Weapon, Cat.Ammo, Cat.General);
+        private static readonly Spec Safe = new Spec(Tier.Voyage, Cat.Valuable, Cat.General, Cat.General, Cat.Gear);
+        private static readonly Spec Locker = new Spec(Tier.Voyage, Cat.Gear, Cat.General, Cat.Weapon, Cat.Ammo);
+        private static readonly Spec Vault = new Spec(Tier.Starworks, Cat.Valuable, Cat.General, Cat.General, Cat.Gear);
+
+        // 精品只换危险箱原有的一格；剧情物、普通生活物资与其它地图均不使用这张表。
+        internal static int PrizeFloor(string pointId, string kind)
+        {
+            if (HasFixed(pointId, "goldbar") || HasFixed(pointId, "tidewatch")) return 6;
+            if (kind == "vault") return 5;
+            if (kind == "buried" || kind == "wreck" || HasFixed(pointId, "wheel") || HasFixed(pointId, "page1")) return 4;
+            return 0;
+        }
+
+        private static int PrizeCeiling(string kind, int floor)
+        {
+            if (floor >= 5) return floor + 2;
+            return kind == "wreck" || kind == "locker" ? 6 : 5;
+        }
+
+        private static int RollPrizeGrade(int floor, int ceiling, System.Random random)
+        {
+            int roll = random.Next(100);
+            if (floor == 6) return roll < 78 ? 6 : roll < 98 ? 7 : 8;
+            if (floor == 5) return roll < 68 ? 5 : roll < 94 ? 6 : 7;
+            if (ceiling == 6) return roll < 55 ? 4 : roll < 90 ? 5 : 6;
+            return roll < 72 ? 4 : 5;
+        }
+
+        /// <summary>本次进图的官方现货。先掷品质，再在该品质的合法实物中抽样，避免商品目录大的档次变相挤掉稀有档。</summary>
+        internal sealed class PrizeCatalog
+        {
+            private readonly Dictionary<Cat, List<int>[]> stock = new Dictionary<Cat, List<int>[]>();
+            private static readonly Cat[] Themes = { Cat.Valuable, Cat.Gear, Cat.Weapon, Cat.Medical, Cat.Workshop, Cat.General };
+            private const int BatchSize = 32;
+
+            // 高品质的一发子弹或廉价配方仍然不是值钱的一格；按官方标价筛选，可卖性走商店同一个判断。
+            private static int MinPrizeValue(int grade)
+            {
+                return grade >= 7 ? 12000 : grade == 6 ? 7500 : grade == 5 ? 2500 : 1000;
+            }
+
+            internal static bool MeetsPrizeTerms(Item item)
+            {
+                if (item == null || item.Quality < 4 || item.Quality > 8 || !item.CanBeSold
+                    || item.Value < MinPrizeValue(item.Quality) || !SkyIslandLootTables.AllowedInPool(item.Value)) return false;
+                // 某些跨地图通行证可以卖，官方只给 Key / SpecialKey；别用精品槽绕过原版的取得条件。
+                return item.Tags != null && !item.Tags.Contains("Key") && !item.Tags.Contains("SpecialKey");
+            }
+
+            private System.Collections.IEnumerator Prepare(Cat category)
+            {
+                if (stock.ContainsKey(category)) yield break;
+                var grades = new List<int>[9];
+                // 官方类别、查询黑名单及价格上限和天空岛相同；只细分已允许的 4–8 档。
+                int[] ids = SkyIslandLootPools.GetCategoryBand(category, 4, 8);
+                if (ids != null)
+                    for (int i = 0; i < ids.Length; i++)
+                    {
+                        int id = ids[i];
+                        try
+                        {
+                            var item = SkyIslandEnemyArmoryRules.IsOwnModItem(id) ? null : ItemAssetsCollection.GetPrefab(id);
+                            if (item != null && item.TypeID == id && MeetsPrizeTerms(item))
+                            {
+                                var band = grades[item.Quality] ?? (grades[item.Quality] = new List<int>());
+                                band.Add(id);
+                            }
+                        }
+                        catch (Exception) { /* 移除/失效的预制件不是可交付的货。 */ }
+                        if ((i + 1) % BatchSize == 0) yield return null;
+                    }
+                stock[category] = grades;
+            }
+
+            internal System.Collections.IEnumerator Prewarm()
+            {
+                foreach (Cat category in Themes)
+                {
+                    var prepare = Prepare(category);
+                    while (prepare.MoveNext()) yield return prepare.Current;
+                    yield return null;
+                }
+            }
+
+            private List<int>[] Get(Cat category)
+            {
+                List<int>[] result;
+                if (!stock.TryGetValue(category, out result))
+                {
+                    var build = Prepare(category);
+                    while (build.MoveNext()) { }
+                    result = stock[category];
+                }
+                return result;
+            }
+
+            internal int Pick(Cat category, int preferred, int floor, int ceiling, System.Random random, Cat fallback)
+            {
+                if (floor < 4 || ceiling > 8 || preferred < floor || preferred > ceiling) return 0;
+                List<int>[] primary = Get(category), secondary = fallback == category ? primary : Get(fallback);
+                for (int offset = 0; offset <= ceiling - floor; offset++)
+                {
+                    // 同档本类优先，再找指定备用类；目标档缺货时选最近的可用档，不跨过精品底线。
+                    for (int side = 0; side < (offset == 0 ? 1 : 2); side++)
+                    {
+                        int grade = preferred + (side == 0 ? -offset : offset);
+                        if (grade < floor || grade > ceiling) continue;
+                        List<int> band = primary[grade] ?? secondary[grade];
+                        if (band != null) return band[random.Next(band.Count)];
+                    }
+                }
+                return 0;
+            }
+        }
+
+        private readonly PrizeCatalog prizes;
+        internal int PickPrize(Cat category, int preferred, int floor, int ceiling, System.Random random, Cat fallbackCategory = Cat.General)
+        {
+            return prizes.Pick(category, preferred, floor, ceiling, random, fallbackCategory);
+        }
+
+        private int RolledPrize(Point point, int floor, System.Random random, out Cat category)
+        {
+            int ceiling = PrizeCeiling(point.Kind, floor);
+            int grade = RollPrizeGrade(floor, ceiling, random);
+            int theme = random.Next(100);
+            if (HasFixed(point.Id, "goldbar"))
+                // 船长私藏：随身武器、护具、船上专用仪器，有时才是真正的宝石。
+                category = theme < 38 ? Cat.Weapon : theme < 68 ? Cat.Gear : theme < 83 ? Cat.Workshop : theme < 93 ? Cat.Valuable : Cat.General;
+            else if (point.Kind == "vault" && grade >= 6)
+                // 储蓄所收的抵押品不全是珠宝。官方 6 档只有一种珠宝，偶尔见到比每次见到更有意义。
+                category = theme < 41 ? Cat.Gear : theme < 65 ? Cat.Weapon : theme < 78 ? Cat.Valuable : Cat.General;
+            else if (point.Kind == "wreck" || point.Kind == "locker")
+                category = theme < 40 ? Cat.Weapon : Cat.Gear;
+            else if (HasFixed(point.Id, "page1"))
+                category = theme < 75 ? Cat.Workshop : Cat.Gear;
+            else
+                category = Cat.Valuable;
+            return PickPrize(category, grade, floor, ceiling, random, Cat.General);
+        }
+
+        // 两条装运线竞争同一个空船位。先开封的那批留下，另一批上船；两个地方的原有箱子都可以继续搜。
+        private sealed class Delivery
+        {
+            internal readonly string Place, Kind, Key, Zh, En;
+            internal readonly Cat Category;
+            internal Delivery(string place, string kind, string key, Cat category, string zh, string en)
+            { Place = "POI_" + place; Kind = kind; Key = "BossRush_TidegateCargo_" + key; Category = category; Zh = zh; En = en; }
+        }
+        private static readonly Delivery[] Deliveries =
+        {
+            new Delivery("栈桥", "crate", "Pier", Cat.Medical, "栈桥救急货", "Ferry pier: medical supplies"),
+            new Delivery("第三水厂", "tool", "Works", Cat.Workshop, "水厂检修货（有守卫）", "Waterworks: parts (guarded)"),
+            new Delivery("滩涂", "buried", "Flats", Cat.Valuable, "滩涂寄存货（退水可取）", "Mudflats: valuables (ebb access)")
+        };
+        private sealed class Shipment
+        {
+            internal Delivery Route;
+            internal Point Target;
+            internal int Item;
+            internal GameObject Pin;
+            internal bool Reserved;
+            internal int OrdinaryItem, OrdinaryAmount;
+            internal Cat OrdinaryCategory;
+        }
+
+        private readonly List<Shipment> offers = new List<Shipment>(2);
+        private bool cargoHinted;
+
+        internal string ManifestObjective
+        {
+            get
+            {
+                if (offers.Count == 0) return null;
+                if (!cargoHinted) return L10n.T("可选：翻一个普通箱，找今天的装船货单", "Optional: search an ordinary box for today's manifest");
+                if (offers[0].Pin == null || (offers.Count == 2 && offers[1].Pin == null))
+                {
+                    var first = offers[0].Route;
+                    if (offers.Count == 1) return L10n.T("可选：取" + first.Zh, "Optional shipment: " + first.En);
+                    var second = offers[1].Route;
+                    return L10n.T("任选一处：" + first.Zh + " / " + second.Zh, "Choose one: " + first.En + " / " + second.En);
+                }
+                if (offers.Count == 2) return L10n.T("可选：按 M 看两批货，先开哪箱就留哪批", "Optional: press M for two shipments; the first seal you open is yours");
+                return L10n.T("可选：按 M 找到剩下的那批货", "Optional: press M to find the remaining shipment");
+            }
+        }
+
+        internal static void InjectCargoLabels()
+        {
+            foreach (Delivery d in Deliveries) LocalizationHelper.InjectLocalization(d.Key, L10n.T(d.Zh, d.En));
         }
 
         private readonly List<Point> points = new List<Point>();
@@ -68,21 +274,70 @@ namespace BossRush
         internal event Action<string> Opened;
         internal int PointCount { get { return points.Count; } }
 
-        internal TidegateLoot(TidegateWorld world, TidegateTide tide, int seed, Func<bool> valid, Action<string, bool> announce)
+        internal TidegateLoot(TidegateWorld world, TidegateTide tide, int seed, Func<bool> valid, Action<string, bool> announce, PrizeCatalog catalog = null)
         {
             this.world = world;
             this.tide = tide;
             this.seed = seed;
             this.valid = valid;
             this.announce = announce;
+            prizes = catalog ?? new PrizeCatalog();
             foreach (Transform marker in world.LootMarkers)
             {
                 // LOOT_<种类>_<序号>
                 string[] parts = marker.name.Split('_');
                 points.Add(new Point { Marker = marker, Id = marker.name, Kind = parts.Length >= 2 ? parts[1] : "crate", Yaw = marker.eulerAngles.y });
             }
+            ChooseDelivery();
             InteractableLootbox.OnStartLoot += OnStartLoot;
             subscribed = true;
+        }
+
+        private void ChooseDelivery()
+        {
+            var random = SkyIslandLootTables.CreateStream(seed, "Tidegate#manifest");
+            var available = new List<Shipment>(Deliveries.Length);
+            foreach (Delivery d in Deliveries)
+            {
+                Transform place = world.Pois.Find(p => p.name == d.Place);
+                if (place == null) continue;
+                Point target = null;
+                int sites = 0;
+                foreach (Point p in points)
+                {
+                    if (p.Kind != d.Kind || IsFixedContainer(p.Id)) continue;
+                    if ((p.Marker.position - place.position).sqrMagnitude >= 30f * 30f) continue;
+                    if (random.Next(++sites) == 0) target = p;
+                }
+                if (target == null) continue;
+                int floor = d.Category == Cat.Valuable ? 5 : 4;
+                int preferred = floor == 5 || random.Next(100) < 25 ? 5 : 4;
+                int item = PickPrize(d.Category, preferred, floor, 5, random, d.Category);
+                if (!CanShip(item)) continue;
+                available.Add(new Shipment { Route = d, Target = target, Item = item });
+            }
+            while (available.Count > 0 && offers.Count < 2)
+            {
+                int i = random.Next(available.Count);
+                Shipment pick = available[i];
+                available.RemoveAt(i);
+                pick.Target.Offer = pick;
+                offers.Add(pick);
+            }
+        }
+
+        // 官方奖池允许残留没有预制件的旧 ID。不能向玩家报一张实际派不出货的运单。
+        private static bool CanShip(int typeId)
+        {
+            if (typeId <= 0) return false;
+            try { return ItemAssetsCollection.GetPrefab(typeId) != null; }
+            catch (Exception) { return false; }
+        }
+
+        private static bool IsFixedContainer(string id)
+        {
+            for (int i = 0; i < StoryContainers.GetLength(0); i++) if (StoryContainers[i, 0] == id) return true;
+            return false;
         }
 
         /// <summary>这只箱柜在剧情表里有没有这个固定内容标签。</summary>
@@ -127,17 +382,52 @@ namespace BossRush
         {
             switch (kind)
             {
-                case "house": return new Spec(SkyIslandLootTier.Supply, SkyIslandLootCategory.Supplies, SkyIslandLootCategory.General, SkyIslandLootCategory.General);
-                case "tool": return new Spec(SkyIslandLootTier.Supply, SkyIslandLootCategory.General, SkyIslandLootCategory.Ammo);
-                case "fish": return new Spec(SkyIslandLootTier.Supply, SkyIslandLootCategory.Supplies, SkyIslandLootCategory.General);
-                case "med": return new Spec(SkyIslandLootTier.Supply, SkyIslandLootCategory.Supplies, SkyIslandLootCategory.Supplies, SkyIslandLootCategory.Supplies);
-                case "buried": return new Spec(SkyIslandLootTier.Voyage, SkyIslandLootCategory.General, SkyIslandLootCategory.General);
-                case "wreck": return new Spec(SkyIslandLootTier.Voyage, SkyIslandLootCategory.Gear, SkyIslandLootCategory.Weapon, SkyIslandLootCategory.Ammo);
-                case "safe": return new Spec(SkyIslandLootTier.Voyage, SkyIslandLootCategory.General, SkyIslandLootCategory.Weapon, SkyIslandLootCategory.General);
-                case "locker": return new Spec(SkyIslandLootTier.Voyage, SkyIslandLootCategory.General, SkyIslandLootCategory.Gear);
-                case "vault": return new Spec(SkyIslandLootTier.Starworks, SkyIslandLootCategory.General, SkyIslandLootCategory.General, SkyIslandLootCategory.General, SkyIslandLootCategory.Gear);
-                default: return new Spec(SkyIslandLootTier.Supply, SkyIslandLootCategory.General, SkyIslandLootCategory.Ammo);
+                case "house": return House;
+                case "tool": return Tool;
+                case "fish": return Fish;
+                case "med": return Med;
+                case "buried": return Buried;
+                case "wreck": return Wreck;
+                case "safe": return Safe;
+                case "locker": return Locker;
+                case "vault": return Vault;
+                default: return Crate;
             }
+        }
+
+        // 生活区有翻剩的一格和少量整箱；需要等潮的箱子更饱满。普通格数的平均值仍在原来的数量级。
+        internal static int RollCount(SkyIslandLootTier tier, int roll)
+        {
+            if (tier == Tier.Starworks) return roll < 25 ? 3 : roll < 65 ? 4 : roll < 90 ? 5 : 6;
+            if (tier == Tier.Voyage) return roll < 18 ? 1 : roll < 40 ? 2 : roll < 67 ? 3 : roll < 90 ? 4 : 5;
+            return roll < 38 ? 1 : roll < 56 ? 2 : roll < 74 ? 3 : roll < 94 ? 4 : 5;
+        }
+
+        internal static System.Collections.IEnumerator PrewarmThemes()
+        {
+            foreach (Spec spec in new[] { House, Tool, Fish, Med, Crate, Buried, Wreck, Safe, Locker, Vault })
+            {
+                int min = SkyIslandLootTables.MinQuality(spec.Tier), max = SkyIslandLootTables.MaxQuality(spec.Tier);
+                for (int i = -1; i < spec.Extras.Length; i++)
+                {
+                    Cat category = i < 0 ? spec.First : spec.Extras[i];
+                    if (category == Cat.General || SkyIslandLootPools.IsCategoryCached(category, min, max)) continue;
+                    SkyIslandLootPools.GetCategoryBand(category, min, max);
+                    yield return null;
+                }
+            }
+            foreach (Delivery d in Deliveries)
+            {
+                int min = SkyIslandLootTables.MinQuality(Tier.Voyage), max = SkyIslandLootTables.MaxQuality(Tier.Voyage);
+                if (SkyIslandLootPools.IsCategoryCached(d.Category, min, max)) continue;
+                SkyIslandLootPools.GetCategoryBand(d.Category, min, max);
+                yield return null;
+            }
+        }
+
+        private bool IsFlooded(Point point)
+        {
+            return TidegateTideRules.IsDeep(point.Lagoon ? tide.LagoonLevel : tide.Level, point.Ground);
         }
 
         internal void Tick(CharacterMainControl player)
@@ -153,7 +443,10 @@ namespace BossRush
                 float distance = (point.Marker.position - origin).sqrMagnitude;
                 if (point.Built && point.Box != null)
                 {
-                    bool flooded = tide.IsDeepAt(point.Marker.position);
+                    bool flooded = IsFlooded(point);
+                    // 直接摸到目标也先看得到两种选择，开官方搜刮窗才算选了这批。
+                    if (!cargoHinted && point.Offer != null && !flooded && distance <= FloodHintRange * FloodHintRange)
+                        RevealOffers(true);
                     if (flooded != point.Flooded && (!flooded || distance > KeepNearRange * KeepNearRange))
                     {
                         point.Flooded = flooded;
@@ -184,6 +477,7 @@ namespace BossRush
             if (box == null)
             {
                 point.Failed = true;
+                if (point.Offer != null) LoseOffer(point.Offer);
                 Debug.LogWarning(TidegateRaidScene.LogTag + " 搜刮点 " + point.Id + " 准备失败：" + error);
                 return;
             }
@@ -191,27 +485,47 @@ namespace BossRush
             // 场景包里每个搜刮点本来就摆着自己的箱柜模型（TG_containers）；官方尸体箱的模型藏起来，只留交互与库存。
             foreach (Renderer renderer in box.GetComponentsInChildren<Renderer>(true)) renderer.enabled = false;
             Spec spec = SpecOf(point.Kind);
-            var random = new System.Random(unchecked(seed * 486187739 + SkyIslandLootTables.StableHash(point.Id)));
+            var random = SkyIslandLootTables.CreateStream(seed, point.Id);
+            int count = RollCount(spec.Tier, random.Next(100));
+            int prizeFloor = PrizeFloor(point.Id, point.Kind);
+            var prizeRandom = prizeFloor > 0 ? SkyIslandLootTables.CreateStream(seed, point.Id + "#prize") : null;
+            bool captain = HasFixed(point.Id, "goldbar");
             var log = new StringBuilder();
             int added = 0;
-            foreach (SkyIslandLootCategory category in spec.Slots)
+            for (int i = 0; i < count; i++)
             {
+                Cat category = i == 0 ? spec.First : spec.Extras[random.Next(spec.Extras.Length)];
                 int typeId = SkyIslandLootPools.PickCategory(category, spec.Tier, random);
-                if (typeId == 0) typeId = SkyIslandLootPools.Pick(spec.Tier, false, random);
-                int amount = category == SkyIslandLootCategory.Ammo ? 20 + random.Next(31) : 1;
+                int amount = typeId > 0 && category == Cat.Ammo ? 20 + random.Next(31) : 1;
+                if (typeId == 0) { category = Cat.General; typeId = SkyIslandLootPools.Pick(spec.Tier, false, random); }
+                if (i == 0 && prizeFloor > 0 && !captain)
+                {
+                    Cat prizeCategory;
+                    int prize = RolledPrize(point, prizeFloor, prizeRandom, out prizeCategory);
+                    if (prize > 0) { typeId = prize; amount = 1; category = prizeCategory; }
+                    else log.Append(" prize_stock_unavailable");
+                }
+                if (DeferCargoSlot(point, i, count, typeId, amount, category)) continue;
                 if (SkyIslandRewardCrate.AddOfficialStack(box, typeId, amount, log, category.ToString())) added++;
             }
             bool carryingWatch = HasFixed(point.Id, "tidewatch") && TidegateInventory.Carries(player, BossRushItemIds.TidegateTideWatch);
-            int fixedItem = FixedItemOf(point.Id, point.Kind, random, carryingWatch);
+            int fixedItem = FixedItemOf(point.Id, point.Kind, SkyIslandLootTables.CreateStream(seed, point.Id + "#story"), carryingWatch);
             if (fixedItem != 0 && SkyIslandRewardCrate.AddOfficialStack(box, fixedItem, 1, log, "Tidegate")) added++;
             // 沉船船长的保险柜：原型里固定一根小金条（低潮才够得着、涨潮最先淹），正式版从金库档的值钱物里抽一件，同样过价值上限与黑名单。
             if (HasFixed(point.Id, "goldbar"))
             {
-                int valuable = SkyIslandLootPools.PickCategory(SkyIslandLootCategory.General, SkyIslandLootTier.Starworks, random);
+                Cat prizeCategory;
+                int valuable = RolledPrize(point, prizeFloor, prizeRandom, out prizeCategory);
                 if (valuable != 0 && SkyIslandRewardCrate.AddOfficialStack(box, valuable, 1, log, "TidegateWreck")) added++;
+                else log.Append(" captain_prize_unavailable");
             }
-            point.Flooded = tide.IsDeepAt(point.Marker.position);
+            Vector3 position = point.Marker.position;
+            if (!world.TryGroundAt(position, out point.Ground)) point.Ground = position.y;
+            point.Lagoon = world.InLagoon(position);
+            point.Flooded = IsFlooded(point);
             if (point.Flooded) box.gameObject.SetActive(false);
+            else if (!cargoHinted && point.Offer != null && (position - player.transform.position).sqrMagnitude <= FloodHintRange * FloodHintRange)
+                RevealOffers(true);
             Debug.Log(TidegateRaidScene.LogTag + " LOOT_READY id=" + point.Id + " tier=" + spec.Tier + " items=" + added
                 + " flooded=" + point.Flooded + " " + log);
         }
@@ -227,14 +541,110 @@ namespace BossRush
                 opened++;
                 Action<string> handler = Opened;
                 if (handler != null) handler(point.Id);
+                ReadDelivery(point);
                 return;
             }
+        }
+
+        // 正常抽完箱子，再给两条线路各预留末格。只有翻箱时才装入胜出的那份实物；
+        // 无需往另一只库存里伸手删除物品。哪怕两箱都预建、或总共只有一格，也沿用官方原格数。
+        private static bool DeferCargoSlot(Point point, int index, int count, int typeId, int amount, Cat category)
+        {
+            Shipment offer = point.Offer;
+            if (offer == null || index != count - 1) return false;
+            offer.Reserved = true;
+            offer.OrdinaryItem = typeId;
+            offer.OrdinaryAmount = amount;
+            offer.OrdinaryCategory = category;
+            return true;
+        }
+
+        private static void RestoreOrdinary(Shipment offer)
+        {
+            if (!offer.Reserved) return;
+            offer.Reserved = false;
+            if (offer.Target.Box != null && offer.OrdinaryItem > 0)
+                SkyIslandRewardCrate.AddOfficialStack(offer.Target.Box, offer.OrdinaryItem, offer.OrdinaryAmount,
+                    new StringBuilder(), offer.OrdinaryCategory.ToString());
+        }
+
+        private void ReadDelivery(Point point)
+        {
+            if (offers.Count == 0) return;
+            Shipment take = point.Offer;
+            if (take == null)
+            {
+                if (!cargoHinted && !IsFixedContainer(point.Id)) RevealOffers(false);
+                return;
+            }
+            // 此时官方 StartLoot 已核实库存；库存 AddItem 会通知正打开的 LootView 刷新。
+            if (!take.Reserved || !SkyIslandRewardCrate.AddOfficialStack(point.Box, take.Item, 1, new StringBuilder(), "TidegateCargo"))
+            { LoseOffer(take); return; }
+            take.Reserved = false;
+            bool paired = offers.Count > 1;
+            string name = L10n.T(take.Route.Zh, take.Route.En);
+            for (int i = offers.Count - 1; i >= 0; i--) RetireOffer(offers[i], true);
+            if (announce != null) announce(L10n.T("留下了", "Shipment secured: ") + name
+                + (paired ? L10n.T("；另一批已装船。", ". The other shipment is aboard.") : ""), false);
+        }
+
+        private void RevealOffers(bool atSeal)
+        {
+            cargoHinted = true;
+            var text = new StringBuilder(atSeal ? L10n.T("箱上贴着装船封签：", "Shipping seal: ") : L10n.T("箱盖下的装船货单：", "Shipping manifest: "));
+            bool marked = true;
+            foreach (Shipment offer in offers)
+            {
+                if (offer != offers[0]) text.Append(L10n.T(" / ", " / "));
+                text.Append(L10n.T(offer.Route.Zh, offer.Route.En));
+                try
+                {
+                    offer.Pin = new GameObject("TidegateCargoPin_" + offer.Target.Id);
+                    offer.Pin.transform.SetParent(world.Root.transform, false);
+                    offer.Pin.transform.position = offer.Target.Marker.position;
+                    var pin = offer.Pin.AddComponent<SimplePointOfInterest>();
+                    pin.Color = new Color(0.96f, 0.76f, 0.43f);
+                    pin.IsArea = true;
+                    pin.AreaRadius = 3f;
+                    pin.Setup(null, offer.Route.Key);
+                }
+                catch (Exception e) { ClearCargoPin(offer); marked = false; Debug.LogWarning(TidegateRaidScene.LogTag + " 货单地图标记：" + e.Message); }
+            }
+            text.Append(offers.Count == 2 ? L10n.T("。先开哪箱就留哪批，另一批装船。", ". Open either seal; the other shipment sails.")
+                : L10n.T("。只剩这一批。", ". One shipment remains."));
+            if (marked) text.Append(L10n.T(" 按 M 看金圈。", " Press M for the gold circles."));
+            if (announce != null) announce(text.ToString(), false);
+        }
+
+        private static void ClearCargoPin(Shipment offer)
+        {
+            if (offer.Pin == null) return;
+            offer.Pin.SetActive(false);
+            UnityEngine.Object.Destroy(offer.Pin);
+            offer.Pin = null;
+        }
+
+        private void RetireOffer(Shipment offer, bool restore)
+        {
+            offers.Remove(offer);
+            offer.Target.Offer = null;
+            ClearCargoPin(offer);
+            if (restore) RestoreOrdinary(offer);
+        }
+
+        private void LoseOffer(Shipment offer)
+        {
+            RetireOffer(offer, true);
+            if (cargoHinted && announce != null) announce(offers.Count > 0
+                ? L10n.T("这处没取到货；另一批还在。", "This shipment is gone; the other one is still waiting.")
+                : L10n.T("货单上的货已经不在了。", "The shipment is already gone."), false);
         }
 
         public void Dispose()
         {
             if (closed) return;
             closed = true;
+            for (int i = offers.Count - 1; i >= 0; i--) RetireOffer(offers[i], false);
             if (subscribed) { InteractableLootbox.OnStartLoot -= OnStartLoot; subscribed = false; }
             Opened = null;
             foreach (Point point in points)

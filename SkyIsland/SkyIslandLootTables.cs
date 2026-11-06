@@ -29,7 +29,9 @@ namespace BossRush
         /// <summary>装备：护甲、头盔、背包、面罩、耳机。</summary>
         Gear = 3,
         /// <summary>物资：医疗、针剂、食物。</summary>
-        Supplies = 4
+        Supplies = 4,
+        // 潮闸镇专用：只在进入该图时预热所用的品质带。
+        Pantry, Workshop, Fishing, Medical, Valuable
     }
 
     /// <summary>一个搜刮点的稳定身份：锚点标记 + 极坐标偏移 + 档次。落点由运行时地面检查最终决定。</summary>

@@ -7,6 +7,64 @@ namespace BossRush
     /// <summary>换相前的提前提示：涨潮警报、渡口的船要走。</summary>
     internal enum TidegateTideNotice { None, FloodSoon, FerryLeaving }
 
+    /// <summary>涨落途中能够到渡船的缆绳。抓牢之后可以跨过换潮边界登船，离圈或背重则松手。</summary>
+    internal sealed class TidegateFerryLine
+    {
+        internal bool Held { get; private set; }
+        internal static bool InReach(TidegateTidePhase phase)
+        {
+            return phase == TidegateTidePhase.Flood || phase == TidegateTidePhase.Ebb;
+        }
+
+        internal bool TryCatch(TidegateTidePhase phase, bool light, bool atPier)
+        {
+            if (!light || !atPier || !InReach(phase)) return false;
+            Held = true;
+            return true;
+        }
+
+        internal bool CanBoard(TidegateTidePhase phase) { return phase == TidegateTidePhase.High || Held; }
+        internal bool DropIfNeeded(bool atPier, bool light)
+        {
+            if (!Held || (atPier && light)) return false;
+            Held = false;
+            return true;
+        }
+    }
+
+    /// <summary>吸水口只在泻湖实际下降时生效；一帧卡顿不能吞掉玩家看到警告后逃生的时间。</summary>
+    internal sealed class TidegateIntakeHold
+    {
+        internal const float WarningSeconds = 4f;
+        internal const float Radius = 1.75f;
+        internal bool Inside { get; private set; }
+        internal float Held { get; private set; }
+        private bool fired;
+
+        internal static bool Flowing(bool gate, float before, float after, float sea, float floor, float delta, bool wasFlowing)
+        {
+            if (!gate || !(delta > 0f) || after < sea || after - floor < 0.45f) return false;
+            // 取真实下降速率，包括开闸首轮及此后退潮；平潮、涨水、浅滩和微小数值波动均不冒充急流。
+            return before - after > (wasFlowing ? 0.025f : 0.04f) * delta;
+        }
+
+        internal static bool InCore(bool flowing, float flatDistanceSquared, float feet, float lake, float bed)
+        {
+            return flowing && flatDistanceSquared < Radius * Radius && feet <= lake + 0.22f && feet >= bed - 0.65f;
+        }
+
+        internal bool Step(bool exposed, float delta)
+        {
+            if (!exposed) { Inside = fired = false; Held = 0f; return false; }
+            if (!Inside) { Inside = true; return false; } // 第一次警告必须单独占一帧。
+            if (fired || !(delta > 0f)) return false;
+            Held += Math.Min(0.2f, delta);
+            if (Held < WarningSeconds) return false;
+            fired = true;
+            return true;
+        }
+    }
+
     /// <summary>
     /// 潮闸镇的潮汐规则（纯函数，不读 Unity 状态，离线可测）。潮位挂官方游戏时钟：一轮 4.5 个游戏小时
     /// （官方 `clockTimeScale` 60 时约 4.5 现实分钟），退潮 0.5 h → 低潮 2 h → 涨潮 0.5 h → 高潮 1.5 h，

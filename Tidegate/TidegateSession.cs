@@ -16,7 +16,7 @@ namespace BossRush
     /// 官方合同 → 就绪；撤离走官方结算顺序，死亡交给官方 `CharacterDieTask`，清理在场景真正卸载后。
     /// 天空岛的剧情、居民、委托等都不在这里；潮汐、阀门、灯塔等本图玩法各自持有 owner。
     /// </summary>
-    internal sealed class TidegateSession : MonoBehaviour, IInitializedQueryHandler
+    internal sealed partial class TidegateSession : MonoBehaviour, IInitializedQueryHandler
     {
         private ModBehaviour host;
         private Action<string, bool> report;
@@ -39,6 +39,7 @@ namespace BossRush
         private TidegateMap map;
         private TidegateWater water;
         private TidegateDevices devices;
+        private TidegateHazards hazards;
         private TidegateSounds sounds;
         private GameObject returnInputBlock;
         /// <summary>HUD 地名：走进地标这么近才换，离开或在两地标之间保持上一个，新地标要近这么多才换。</summary>
@@ -230,6 +231,11 @@ namespace BossRush
                 yield return current;
             }
             Safe("loot_prewarm_release", delegate { (warm as IDisposable)?.Dispose(); });
+            warm = TidegateLoot.PrewarmThemes();
+            while (warm.MoveNext()) yield return warm.Current;
+            var prizeCatalog = new TidegateLoot.PrizeCatalog();
+            warm = prizeCatalog.Prewarm();
+            while (warm.MoveNext()) yield return warm.Current;
             // 低潮全图连通：从出生点到每个刷怪点探一次路（潮位封锁在下面才挂上，这里看的是完整的图）。
             // 与天空岛不同，这里软失败：够不着的点本趟不刷、记一行日志给场景包那一侧修，不让一个点拖垮整趟出击。
             probe = root.AddComponent<Seeker>();
@@ -281,12 +287,14 @@ namespace BossRush
             safePosition = world.PlayerSpawn.position + Vector3.up * 0.15f;
             moved = ready = true;
             enteredAt = Time.unscaledTime;
-            int seed = unchecked(Environment.TickCount ^ (int)(Time.realtimeSinceStartup * 1000f));
+            // 两个一起向前走的毫秒时钟异或，周期相近的连续出击容易撞到同一布置。
+            int seed = Guid.NewGuid().GetHashCode();
             // 撤离、搜刮、刷怪各自持有 owner：表现层或单项装配失败不拖垮整趟出击，撤离环与公路检查站始终在。
             Safe("map", delegate { map = new TidegateMap(world); });
+            Safe("hazards", delegate { hazards = new TidegateHazards(world, tide, Status); });
             Safe("water", delegate { water = new TidegateWater(world, tide, player, IsSessionValid); });
-            Safe("extraction", delegate { extraction = new TidegateExtraction(world, tide, groundMask); });
-            Safe("loot", delegate { loot = new TidegateLoot(world, tide, seed, IsSessionValid, Status); });
+            Safe("extraction", delegate { extraction = new TidegateExtraction(world, tide, water, groundMask); });
+            Safe("loot", delegate { loot = new TidegateLoot(world, tide, seed, IsSessionValid, Status, prizeCatalog); });
             Safe("enemies", delegate { enemies = new TidegateEnemies(world, tide, navigation, player, seed, IsSessionValid, unreachable); });
             Safe("sounds", delegate { sounds = new TidegateSounds(world); });
             Safe("devices", delegate
@@ -296,7 +304,7 @@ namespace BossRush
             });
             Debug.Log(TidegateRaidScene.LogTag + " ENTER_PASS scene=" + entryScene.path + " nodes=" + navigation.CountWalkableNodes() +
                 " loot=" + world.LootMarkers.Count + " spawns=" + world.SpawnMarkers.Count + " exits=" + world.Exits.Count +
-                " tide=" + tide.Level.ToString("F2") + " phase=" + tide.Phase);
+                " tide=" + tide.Level.ToString("F2") + " phase=" + tide.Phase + " seed=" + seed);
         }
 
         public bool HasInitialized() { return navigationReady || closed; }
@@ -351,11 +359,14 @@ namespace BossRush
             try { if (loot != null) loot.Tick(player); } catch (Exception e) { TickFault("loot", e); }
             try { if (enemies != null) enemies.Tick(); } catch (Exception e) { TickFault("enemies", e); }
             try { if (devices != null) devices.Tick(); } catch (Exception e) { TickFault("devices", e); }
-            try { if (map != null) map.Tick(); } catch (Exception e) { TickFault("map", e); }
+            try { if (map != null) map.Tick(extraction, devices != null && devices.BeaconLit); } catch (Exception e) { TickFault("map", e); }
             Vector3 position = player.transform.position;
+            if (tide != null) tide.SetViewFocus(position);
             try { if (sounds != null) sounds.Tick(position); } catch (Exception e) { TickFault("sounds", e); }
             // 四边有墙（TidegateWorld.AddBoundary），这里只兜物理穿模或掉出世界：出了可玩区 8 m 或掉到 -14 m 以下拉回落脚点。
             if (position.y < -14f || TidegateWorld.OutsidePlayArea(position)) { Rescue(); return; }
+            try { if (hazards != null && hazards.Tick(player, View.ActiveView == null ? Time.deltaTime : 0f)) return; }
+            catch (Exception e) { TickFault("hazards", e); }
             if (Time.unscaledTime >= nextGroundCheck)
             {
                 nextGroundCheck = Time.unscaledTime + 0.25f;
@@ -405,7 +416,7 @@ namespace BossRush
             switch (next)
             {
                 case TidegateTidePhase.Ebb:
-                    Status(L10n.T("开始退潮了。", "The tide is going out."), false);
+                    Status(L10n.T("开始退潮了。渡船离了岸，轻装的还能在栈桥尽头抓缆。", "The tide is going out. The ferry has cast off; light swimmers can still catch its line at the end of the pier."), false);
                     break;
                 case TidegateTidePhase.Low:
                     Status(L10n.T("低潮：滩涂、沉船货舱和排水暗渠都露出来了，淘沙帮下滩了。",
@@ -469,13 +480,24 @@ namespace BossRush
         /// </summary>
         private string Objective()
         {
-            if (carryingWatch && !TidegateStory.WatchDelivered)
+            TidegateStoryData story = TidegateStory.Current;
+            if (carryingWatch && (story == null || !story.WatchDelivered))
                 return L10n.T("带着潮汐怀表撤离，回地堡下水道交给闸伯", "Extract with the tide pocket watch and bring it to Old Zha in the bunker sewer");
             if (devices != null && tide != null && !tide.SluiceOpen && devices.ValveCount > 0)
             {
+                if (story != null && story.WatchDelivered && devices.OpenValves == 0)
+                {
+                    // 日志还没找齐时保留剧情线索；已完成调查后再给这趟的可选货运情报。
+                    if (story.Pages == (1 << TidegateStory.PageCount) - 1 && loot != null)
+                    {
+                        string opportunity = loot.ManifestObjective;
+                        if (opportunity != null) return opportunity;
+                    }
+                    return TidegateText.OptionalJournalObjective(story.Pages);
+                }
                 string count = L10n.T("（", " (") + devices.OpenValves + "/" + devices.ValveCount + L10n.T("）", ")");
                 bool lastIsGauge = !devices.TideGaugeOpen && devices.OpenValves == devices.ValveCount - 1;
-                if (lastIsGauge && TidegateInventory.Find(player, BossRushItemIds.TidegateHandwheel) != null)
+                if (lastIsGauge && TidegateInventory.Carries(player, BossRushItemIds.TidegateHandwheel))
                     return L10n.T("带着阀门手轮去灯塔岬的潮位站，拧开最后一处阀门", "Take the handwheel to the tide gauge station on the cape and open the last valve") + count;
                 if (lastIsGauge)
                     return L10n.T("潮位站的阀门缺手轮：去挖沙船船舱的储物柜拿，跳板涨潮会淹",
@@ -494,12 +516,17 @@ namespace BossRush
             return L10n.T("搜刮后从开着的出口撤离", "Loot, then leave through an open exit");
         }
 
-        /// <summary>搜刮点第一次被翻开：固定箱柜里的闸工日志记进剧情存档（官方笔记图鉴同步点亮），字幕报一下题目。</summary>
+        /// <summary>首次翻到一页才播字幕。可以从任意一页开始，所有线索都能在官方笔记图鉴重读。</summary>
         private void OnLootOpened(string pointId)
         {
             int page = TidegateLoot.PageIndexOf(pointId);
             if (page < 0 || !TidegateStory.RecordPage(page)) return;
-            Status(L10n.T("找到了", "Found ") + TidegateText.PageTitle(page) + L10n.T("（笔记图鉴里能翻）", " (in your notes)"), false);
+            TidegateStoryData story = TidegateStory.Current;
+            if (story == null) return;
+            int next = TidegateText.NextJournalLead(story.Pages, page);
+            string lead = next >= 0 ? L10n.T("笔记线索：", "Notebook lead: ") + TidegateText.JournalLeadPlace(next)
+                : L10n.T("四页齐了，可在笔记图鉴重读。", "All four pages found. Reread them in your notes.");
+            Status(TidegateText.PageTitle(page) + " · " + lead, false);
         }
 
         /// <summary>
@@ -633,6 +660,8 @@ namespace BossRush
             }
             Safe("devices", delegate { if (devices != null) devices.Dispose(); });
             devices = null;
+            Safe("hazards", delegate { if (hazards != null) hazards.Dispose(); });
+            hazards = null;
             // 循环海浪不随发声体销毁而停：先 StopAll 再销毁（TidegateSounds.Dispose）。
             Safe("sounds", delegate { if (sounds != null) sounds.Dispose(); });
             sounds = null;
@@ -677,6 +706,10 @@ namespace BossRush
         private void Status(string message, bool error)
         {
             if (string.IsNullOrEmpty(message)) return;
+#if BOSSRUSH_DEV
+            // Dev 演练按字幕核对提示有没有出、出了几次（TidegateDrillHooks.cs）。
+            DevNoteStatus(message, error);
+#endif
             if (hud != null && ready) { Safe("caption", delegate { hud.Caption(message, error); }); return; }
             if (report != null) report(message, error);
         }

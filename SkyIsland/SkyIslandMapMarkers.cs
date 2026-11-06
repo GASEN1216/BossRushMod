@@ -267,7 +267,7 @@ namespace BossRush
         /// 官方出口在地图上用的图标（<c>ExitCreator</c> 的私有序列化字段 <c>icon</c>，官方 SpawnMapElement 就拿它 Setup）。
         /// 天空岛这张图上没有 ExitCreator、或官方改了字段名时返回 null，地图点退回官方默认图标（纯表现层，不告警）。
         /// </summary>
-        private static Sprite ExitIcon()
+        internal static Sprite ExitIcon()
         {
             try
             {

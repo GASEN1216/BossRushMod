@@ -15,10 +15,10 @@ namespace BossRush
     {
         internal const string BlueprintId = "tidegate_zhabo";
         /// <summary>
-        /// 下水道西侧走道上、竹筏交互点南边约 6.6 m（离井盖交互约 5.6 m、钓鱼笔记约 6.6 m），面朝来人的南边。
-        /// 官方按离玩家最近只选一个交互目标，闸伯的交互体半径 0.6 m，隔开这么远就不会和竹筏上的两项抢。
+        /// 在竹筏南端靠岸的走道上，和栏杆上的登筏感应点沿走道错开 1.95 m。
+        /// 玩家从南面先遇见闸伯，再往北走两步就能登筏；两处各有可独立选中的区域。
         /// </summary>
-        internal static readonly Vector3 Position = new Vector3(96.2f, 0.02f, -45.5f);
+        internal static readonly Vector3 Position = TidegateEntryPoint.Position + new Vector3(-1.85f, 0.62f, -1.95f);
         private static int generation;
         private static bool spawning;
         /// <summary>生成失败（官方生成返回空）后隔 30 秒再试；竹筏还在时模块每秒问一次 <see cref="Spawn"/>。</summary>
@@ -53,7 +53,7 @@ namespace BossRush
                 // 跟着下水道子场景一起卸载：玩家走出下水道时官方卸掉这张子场景，闸伯不能留在主城的同一坐标上。
                 if (npc.transform.parent == null && npc.gameObject.scene.handle != scene.handle)
                     SceneManager.MoveGameObjectToScene(npc.gameObject, scene);
-                Debug.Log(TidegateRaidScene.LogTag + " ZHABO_READY at=" + Position);
+                Debug.Log(TidegateRaidScene.LogTag + " ZHABO_READY at=" + npc.transform.position + " raft=" + TidegateEntryPoint.Position);
             }
             catch (Exception e) { retryAt = Time.unscaledTime + 30f; Debug.LogWarning(TidegateRaidScene.LogTag + " 闸伯没能生成，30 秒后再试：" + e.Message); }
             finally { spawning = false; }

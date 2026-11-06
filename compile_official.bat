@@ -325,8 +325,17 @@ echo(Tidegate\TidegateStory.cs
 echo(Tidegate\TidegateZhabo.cs
 echo(Tidegate\TidegateDevices.cs
 echo(Tidegate\TidegateWater.cs
+echo(Tidegate\TidegateWaterRegions.cs
 echo(Tidegate\TidegateMap.cs
 echo(Tidegate\TidegateEnemies.cs
+echo(Tidegate\TidegateEnemyActors.cs
+echo(Tidegate\TidegateHound.cs
+echo(Tidegate\TidegateMarksman.cs
+echo(Tidegate\TidegateGunner.cs
+echo(Tidegate\TidegateSquadPatrols.cs
+echo(Tidegate\TidegateHazards.cs
+echo(Tidegate\TidegateCraneDanger.cs
+echo(Tidegate\TidegateSluiceDanger.cs
 echo(Tidegate\TidegateEntryRaft.cs
 echo(Tidegate\TidegateExtraction.cs
 echo(Tidegate\TidegateLoot.cs
@@ -338,6 +347,7 @@ echo(Tidegate\TidegateText.cs
 echo(Tidegate\TidegateTide.cs
 echo(Tidegate\TidegateTideRules.cs
 echo(Tidegate\TidegateWorld.cs
+echo(Tidegate\TidegateDrillHooks.cs
 echo(DebugAndTools\ArenaPrototype\StoneOutpostMapDataLease.cs
 echo(DebugAndTools\MarriageTestDebugUI.cs
 echo(DebugAndTools\PermanentDuckNpcDebug.cs
@@ -349,6 +359,7 @@ echo(DebugAndTools\PromoRecording\PromoRecordingDirector.cs
 echo(DebugAndTools\PromoRecording\PromoRecordingControls.cs
 echo(DebugAndTools\CampaignPetNestDebugControls.cs
 echo(DebugAndTools\CampaignProgressDebugControls.cs
+echo(DebugAndTools\TidegateProgressDebugControls.cs
 echo(DebugAndTools\F3DebugCheatMenuPlayerStats.cs
 echo(DebugAndTools\F3DebugCheatMenuActions.cs
 echo(DebugAndTools\F3GameplayValidationRunner.cs
@@ -380,6 +391,8 @@ echo(DebugAndTools\F3GameplayValidationSkyIslandPatrols.cs
 echo(DebugAndTools\F3GameplayValidationSkyIslandCases.cs
 echo(DebugAndTools\F3GameplayValidationSkyIslandRuntimeCases.cs
 echo(DebugAndTools\F3GameplayValidationSkyIslandDrill.cs
+echo(DebugAndTools\F3GameplayValidationTidegateDrill.cs
+echo(DebugAndTools\F3GameplayValidationTidegateDrillCases.cs
 echo(DebugAndTools\F3GameplayValidationAutotestModels.cs
 echo(DebugAndTools\F3GameplayValidationAutotestJudges.cs
 echo(DebugAndTools\F3GameplayValidationAutotest.cs
