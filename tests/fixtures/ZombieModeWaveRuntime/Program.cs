@@ -357,8 +357,85 @@ internal static class Program
         Check(world.State.CurrentWaveKills == 9 && world.Host.Count("reward-selection") == 0, "cleanup unsubscribes global death owner and inactive tick does no work");
     }
 
+    // 玩家反馈 2026-11-06：第 10 波两只 Boss，死亡广播被前面的订阅者异常截断 / Boss 被外部销毁，本波永远不结束。
+    private static void SilentBossDeathSweep()
+    {
+        World world = New(wave: 10);
+        world.State.CurrentWaveKillTarget = 0;
+        world.State.CurrentWaveKills = 0;
+        world.State.CurrentWaveBossesRemaining = 2;
+        var hunter = new CharacterMainControl("hunter");
+        var splitter = new CharacterMainControl("splitter");
+        var hunterSkill = new ZombieModeHunterState();
+        ZombieModeBossInstance first = world.Runtime.TrackBoss(hunter, hunterSkill);
+        ZombieModeBossInstance second = world.Runtime.TrackBoss(splitter);
+        int living = world.State.LivingZombieCount;
+
+        // 截断者先订阅、本模式后订阅（与实机订阅顺序相同）：重新登记一次让本模式排到后面。
+        Health.Reset();
+        Health.OnDead += (h, i) => { throw new NullReferenceException("killnotice reads fromCharacter"); };
+        world.Runtime.RegisterZombieModeEventListeners(world.State.RunId);
+        bool escaped = false;
+        try { hunter.Health.DeliverDeath(null); } catch (NullReferenceException) { escaped = true; }
+        Check(escaped && hunter.Health.IsDead, "bug baseline: death broadcast truncated before zombie handler");
+        Check(world.State.CurrentWaveBossesRemaining == 2 && !first.Marker.DeathSettled, "bug baseline: boss counter not decremented");
+        world.Runtime.TickZombieModeWaveController(0.1f);
+        Check(world.State.CombatPhase == ZombieModeCombatPhase.Combat, "bug baseline: wave tick alone cannot finish the wave");
+
+        world.Runtime.SweepForTest();
+        Check(first.Marker.DeathSettled && !first.Lifecycle.Alive, "sweep settles the dead boss through the death route");
+        Check(world.State.CurrentWaveBossesRemaining == 1, "sweep decrements boss counter once");
+        Check(world.Host.Count("boss-drop") == 1 && world.Host.Count("death-stars") == 1, "settled boss keeps its drop and stars");
+        Check(world.State.CombatPhase == ZombieModeCombatPhase.Combat, "second boss still alive keeps combat");
+
+        // 节流：0.25 秒内再次扫描不做事；随后晚到的官方死亡回调被 DeathSettled 去重。
+        UnityEngine.Object.Destroy(splitter.gameObject);
+        world.Runtime.SweepForTest();
+        Check(world.State.CurrentWaveBossesRemaining == 1 && second.Lifecycle.Alive, "sweep throttled inside its interval");
+        Health.Reset();
+        world.Runtime.RegisterZombieModeEventListeners(world.State.RunId);
+        hunter.Health.IsDead = false;
+        hunter.Health.DeliverDeath(null);
+        Check(world.State.CurrentWaveBossesRemaining == 1 && world.Host.Count("boss-drop") == 1, "late death broadcast deduplicated");
+
+        // 第二只没走死亡就被销毁：按本波扣除、注销记录、不发奖励箱，并推进本波结算。
+        Time.unscaledTime += 0.3f;
+        int splitterId = splitter.GetInstanceID();
+        world.Runtime.SweepForTest();
+        Check(!second.Lifecycle.Alive && second.Marker.DeathSettled, "destroyed boss settled once");
+        Check(!world.Runtime.zombieModeEnemyInstanceIds.Contains(splitterId)
+              && !world.Runtime.zombieModeEnemyMarkersByInstanceId.ContainsKey(splitterId), "destroyed boss unregistered by instance id");
+        Check(world.State.LivingZombieCount == living - 2, "living count reduced for both bosses");
+        Check(world.Host.Count("boss-drop") == 1, "vanished boss gets no loot box");
+        Check(world.State.CurrentWaveBossesRemaining == 0, "boss counter reaches zero");
+        Check(world.State.CombatPhase == ZombieModeCombatPhase.RewardSelection && world.Host.Count("reward-selection") == 1,
+              "wave settles into boss reward selection");
+        Check(world.State.PollutionFromNatural == 1, "boss node credited once");
+        Check(hunterSkill.ModifierRemovals == 0, "dead-boss path leaves frenzy cleanup to the boss-defeated route");
+
+        // 战斗外 / 无 Boss：早返。
+        World idle = New(phase: ZombieModeCombatPhase.Preparation, wave: 10);
+        var parked = new CharacterMainControl("parked");
+        ZombieModeBossInstance parkedBoss = idle.Runtime.TrackBoss(parked);
+        parked.Health.IsDead = true;
+        idle.Runtime.SweepForTest();
+        Check(parkedBoss.Lifecycle.Alive && idle.Host.Count("boss-drop") == 0, "sweep is a no-op outside combat");
+        World vanishedHunter = New(wave: 15);
+        vanishedHunter.State.CurrentWaveKillTarget = 0;
+        vanishedHunter.State.CurrentWaveBossesRemaining = 2;
+        var lost = new CharacterMainControl("lost");
+        var lostSkill = new ZombieModeHunterState();
+        vanishedHunter.Runtime.TrackBoss(lost, lostSkill);
+        vanishedHunter.Runtime.TrackBoss(new CharacterMainControl("alive"));
+        UnityEngine.Object.Destroy(lost.gameObject);
+        vanishedHunter.Runtime.SweepForTest();
+        Check(lostSkill.ModifierRemovals == 1 && vanishedHunter.State.CurrentWaveBossesRemaining == 1
+              && vanishedHunter.State.CombatPhase == ZombieModeCombatPhase.Combat, "vanished hunter: frenzy cleared, other boss keeps combat");
+    }
+
     private static void Main()
     {
+        SilentBossDeathSweep();
         FullProgressTick();
         PreparationAndPhaseGates();
         DeathFailuresAndReentry();

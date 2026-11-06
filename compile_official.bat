@@ -426,6 +426,7 @@ echo(Patches\BaseHub\BaseHubPatchGroup.cs
 echo(Patches\Combat\CharacterOnDeadPatch.cs
 echo(Patches\Combat\ModeHFriendlyFireReceiverPatch.cs
 echo(Patches\Combat\BossLethalHealthProtectionPatch.cs
+echo(Patches\Combat\DeathBroadcastIsolationPatch.cs
 echo(Patches\Combat\ProjectileHalfObstaclePatch.cs
 echo(Patches\Combat\CombatPatchGroup.cs
 echo(Patches\Death\DeadBodyAppendPatch.cs
@@ -770,6 +771,7 @@ echo(ZombieMode\ZombieModeRuntimeModule_Recovery.cs
 echo(ZombieMode\ZombieModeRuntimeModule_InventoryTransfer.cs
 echo(ZombieMode\ZombieModeRuntimeModule_Hud.cs
 echo(ZombieMode\ZombieModeRuntimeModule_BossController.cs
+echo(ZombieMode\ZombieModeRuntimeModule_BossSilentDeathSweep.cs
 echo(ZombieMode\ZombieModeRuntimeModule_Pollution.cs
 echo(ZombieMode\ZombieModeRuntimeModule_PollutionSkills.cs
 echo(ZombieMode\ZombieModeRuntimeModule_PollutionTuning.cs

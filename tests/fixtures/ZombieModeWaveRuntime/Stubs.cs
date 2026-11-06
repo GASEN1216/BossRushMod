@@ -17,6 +17,8 @@ namespace UnityEngine
         public static bool operator !=(Object a, Object b) { return !(a == b); }
         public override bool Equals(object other) { return ReferenceEquals(this, other); }
         public override int GetHashCode() { return base.GetHashCode(); }
+        // 与 Unity 一致：已销毁对象的实例 ID 仍可读。
+        public int GetInstanceID() { return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(this); }
         public static void Destroy(Object value)
         {
             if (ReferenceEquals(value, null)) return;
@@ -152,7 +154,17 @@ namespace BossRush
         public float BeaconChannelStartTime, BeaconChannelDuration;
         public ZombieModeLifecyclePhase LifecyclePhase;
         public ZombieModeCombatPhase CombatPhase;
-        public readonly List<object> CurrentWaveBossInstances = new List<object>();
+        public readonly List<ZombieModeBossInstance> CurrentWaveBossInstances = new List<ZombieModeBossInstance>();
+    }
+    public sealed class ZombieModeBossLifecycle { public bool Alive; }
+    public class ZombieModeBossSkillState { }
+    public sealed class ZombieModeHunterState : ZombieModeBossSkillState { public int ModifierRemovals; }
+    public sealed class ZombieModeBossInstance
+    {
+        public CharacterMainControl Character;
+        public ZombieModeEnemyRuntimeMarker Marker;
+        public ZombieModeBossSkillState SkillState;
+        public readonly ZombieModeBossLifecycle Lifecycle = new ZombieModeBossLifecycle();
     }
     public sealed class ModBehaviour
     {
@@ -228,12 +240,30 @@ namespace BossRush
         {
             var marker = enemy.gameObject.Add(new ZombieModeEnemyRuntimeMarker { RunId = runState.RunId, EnemyKind = kind, IsBoss = boss });
             markers[enemy] = marker;
+            zombieModeEnemyInstanceIds.Add(enemy.GetInstanceID());
+            zombieModeEnemyMarkersByInstanceId[enemy.GetInstanceID()] = marker;
             runState.LivingZombieCount++;
             if (!boss) runState.LivingNormalZombieCount++;
             return marker;
         }
         private bool TryGetZombieModeKnownEnemyMarker(CharacterMainControl enemy, out ZombieModeEnemyRuntimeMarker marker) { return markers.TryGetValue(enemy, out marker); }
-        private void UnregisterZombieModeEnemyInstanceId(CharacterMainControl enemy) { markers.Remove(enemy); }
+        private void UnregisterZombieModeEnemyInstanceId(CharacterMainControl enemy)
+        {
+            markers.Remove(enemy);
+            if (enemy != null) { zombieModeEnemyInstanceIds.Remove(enemy.GetInstanceID()); zombieModeEnemyMarkersByInstanceId.Remove(enemy.GetInstanceID()); }
+        }
+        internal readonly HashSet<int> zombieModeEnemyInstanceIds = new HashSet<int>();
+        internal readonly Dictionary<int, ZombieModeEnemyRuntimeMarker> zombieModeEnemyMarkersByInstanceId = new Dictionary<int, ZombieModeEnemyRuntimeMarker>();
+        private float GetZombieModeRuntimeNow() { return Time.unscaledTime; }
+        private void RemoveZombieModeHunterFrenzyModifiers(ZombieModeHunterState hunter) { if (hunter != null) hunter.ModifierRemovals++; }
+        internal void SweepForTest() { SweepZombieModeSilentBossDeaths(); }
+        internal ZombieModeBossInstance TrackBoss(CharacterMainControl boss, ZombieModeBossSkillState skill = null)
+        {
+            var instance = new ZombieModeBossInstance { Character = boss, Marker = Track(boss, ZombieModeEnemyKind.Normal, true), SkillState = skill };
+            instance.Lifecycle.Alive = true;
+            runState.CurrentWaveBossInstances.Add(instance);
+            return instance;
+        }
         private bool IsZombieModeRuntimePaused() { return owner.Paused; }
         private void RegisterZombieModeRunOnlyObject(int id, ZombieModeRunOnlyObjectKind kind, object root, object target, Action cleanup) { if (cleanup != null) owner.Cleanup.Add(cleanup); }
         private void HandleZombieModeHealthHurt(int id, Health health, DamageInfo damage) { }

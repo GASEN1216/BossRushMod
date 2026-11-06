@@ -35,7 +35,7 @@ SCRIPT_FIXTURES = (
     "AffixSelectionUI", "ManualEquipmentRecovery", "AchievementIcons", "DynamicItemInitialization", "SkyIslandSceneReferenceBridge", "TidegateTideRules", "RandomEventsFailure", "RandomEventTempo",
     "RuntimeOwnership", "BossFilterRuntime", "ModeRuntimeDispatch", "EquipmentConfiguratorRegistry", "SharedModalInput", "NPCShopPayment", "ContentTransactions", "BackMountainLifecycle", "ModeGCombat", "CampaignPlayability", "BossRewardDelivery", "AffixCombat", "ContentSecondReview", "AirdropSecondReview",
     "HarmonyBindingSecondReview", "ModeHReinforcementSecondReview", "modeh_effects",
-    "ModeHThirdReviewFixes", "ModeHMarketAudit", "ModeHItemBetLedger", "ModeHGroupRoster", "ContentThirdReviewFixes", "IntegrationThirdReviewFixes", "IntegrationLeafOwners",
+    "ModeHThirdReviewFixes", "ModeHMarketAudit", "ModeHItemBetLedger", "ModeHGroupRoster", "ContentThirdReviewFixes", "IntegrationThirdReviewFixes", "IntegrationLeafOwners", "DeathBroadcastIsolation",
     "ContentBuildingOwnership", "DailyReportHostUI", "BuildingRestoreCore", "F3ValidationExecution", "SetBonusCoroutines", "GameplayLogFixes",
     "StoneOutpostSceneLease", "StoneOutpostMap", "EquipmentResourceScene", "SkyIslandStory", "SkyIslandDelivery", "SkyIslandOfficialContract", "SkyIslandEncounters", "SkyIslandLighting", "SkyIslandRaidLease", "SkyIslandLoot",
     "SkyIslandFooting", "SkyIslandPatrols",

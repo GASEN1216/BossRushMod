@@ -35,7 +35,8 @@ def main():
     waves = read("ZombieMode/ZombieModeRuntimeModule_WaveController.cs")
     extraction = read("ZombieMode/ZombieModeRuntimeModule_Extraction.cs")
     runtime = read("ZombieMode/ZombieModeRuntimeModule.cs")
-    source = "using System; using System.Collections; using UnityEngine; using UnityEngine.SceneManagement; using Duckov.UI; using Cysharp.Threading.Tasks;\nnamespace BossRush {\n"
+    sweep = read("ZombieMode/ZombieModeRuntimeModule_BossSilentDeathSweep.cs")
+    source ="using System; using System.Collections; using UnityEngine; using UnityEngine.SceneManagement; using Duckov.UI; using Cysharp.Threading.Tasks;\nnamespace BossRush {\n"
     for name in ("ZombieModeLifecyclePhase", "ZombieModeCombatPhase", "ZombieModeEnemyKind", "ZombieModeRunOnlyObjectKind"):
         source += member(models, "public enum " + name) + "\n"
     source += member(tuning, "public static class ZombieModePhaseGuards") + "\n"
@@ -43,7 +44,11 @@ def main():
                             if line.strip().startswith("public const float SettlementMaxWaitSeconds = Pacing.")]
     assert len(settlement_constants) == 1, settlement_constants
     source += "public static class ZombieModeTuning {\n" + member(tuning, "private static class Pacing")
-    source += "\n" + settlement_constants[0] + "\n}\n"
+    sweep_interval = [line.strip() for line in tuning.splitlines()
+                      if line.strip().startswith("public const float BossSilentDeathSweepIntervalSeconds = ")
+                      and "Performance." not in line]
+    assert len(sweep_interval) == 1, sweep_interval
+    source += "\n" + settlement_constants[0] + "\n" + sweep_interval[0] + "\n}\n"
     source += "internal sealed partial class ZombieModeRuntimeModule {\n"
     fields = [line.strip() for line in waves.splitlines() if line.strip().startswith((
         "private float zombieModeLastWaveFailureWarningTime", "private bool zombieModeSettlementRunning",
@@ -79,6 +84,13 @@ def main():
     ):
         source += member(extraction, signature) + "\n"
     source += member(runtime, "internal bool IsZombieModeRunValid(") + "\n"
+    # Boss 波死亡兜底（2026-11-06）：字段与两个方法逐字取自生产文件。
+    sweep_fields = [line.strip() for line in sweep.splitlines()
+                    if line.strip().startswith("private float zombieModeBossSilentDeathSweepNextTime;")]
+    assert len(sweep_fields) == 1, sweep_fields
+    source += sweep_fields[0] + "\n"
+    for signature in ("private void SweepZombieModeSilentBossDeaths(", "private void SettleZombieModeUnroutedBoss("):
+        source += member(sweep, signature) + "\n"
     source += "}}\n"
     generated = OUT / "Production.cs"
     generated.write_text(source, encoding="utf-8")

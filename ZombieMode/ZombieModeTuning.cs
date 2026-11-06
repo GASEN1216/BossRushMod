@@ -92,6 +92,11 @@ namespace BossRush
             /// </summary>
             public const float BossStuckRetryBackoffSeconds = 1f;
             /// <summary>
+            /// Boss 死亡兜底轮询间隔：只看本波几只 Boss 的 IsDead / 是否已销毁，
+            /// 接住没收到死亡回调的 Boss（被别的订阅者截断或被外部销毁），玩家感觉不到这点延迟。
+            /// </summary>
+            public const float BossSilentDeathSweepIntervalSeconds = 0.25f;
+            /// <summary>
             /// Boss 与玩家水平距离小于该值时视为正在交战，不按“位移不足”判定卡死。
             /// 举盾、起手 telegraph 和贴脸近战 Boss 本来就不移动，不能被反复瞬移。
             /// </summary>
@@ -462,6 +467,7 @@ namespace BossRush
         public const float TemporaryNpcProtectionTickIntervalSeconds = Performance.TemporaryNpcProtectionTickIntervalSeconds;
         public const float BossStuckTimeoutSeconds = Performance.BossStuckTimeoutSeconds;
         public const float BossStuckRetryBackoffSeconds = Performance.BossStuckRetryBackoffSeconds;
+        public const float BossSilentDeathSweepIntervalSeconds = Performance.BossSilentDeathSweepIntervalSeconds;
         public const float BossStuckEngagedDistance = Performance.BossStuckEngagedDistance;
         public const float BossStuckEngagedHeightTolerance = Performance.BossStuckEngagedHeightTolerance;
         public const int DropCleanupWaveAge = Performance.DropCleanupWaveAge;

@@ -352,6 +352,16 @@ BossRushMod 的 Harmony 注入体系通过清晰的分组管理与精细化的�
 
 [本节为通用指导，无需特定文件来源]
 
+## 2026-11-06 死亡 / 受伤广播逐订阅者隔离（COMPAT）
+
+官方 `Health.Hurt` 致死时依次发 `OnDeadEvent`（实例 UnityEvent）→ `Health.OnDead`（静态多播）→ `SetActive(false)` → `OnHurtEvent` → `Health.OnHurt`，全程不带 try。任何一个订阅者抛异常（常见于击杀提示类 Mod 在流血、毒区等无攻击者死亡上读空攻击者），后面的订阅者都收不到死亡，`SetActive(false)` 也被跳过，但延迟销毁已经启动。依赖死亡回调推进的模式会表现为「Boss 不见了却卡关」。
+
+[DeathBroadcastIsolationPatch.cs](file://Patches/Combat/DeathBroadcastIsolationPatch.cs) 有两个独立 transpiler：`HealthDeathBroadcastIsolationPatch` 把 `Health.Hurt` 里 `OnDeadEvent`、`Health.OnDead`、`Health.OnHurt` 三处 Invoke 原地换成 `DeathBroadcastIsolation` 的隔离调用；`CharacterLootBroadcastIsolationPatch` 对 `CharacterMainControl.OnDead` 的 `BeforeCharacterSpawnLootOnDead` 做同样处理。隔离调用与原调用栈形相同、顺序不变，逐订阅者 try/catch，异常 5 秒节流记一条 `Debug.LogWarning`（带抛异常的程序集与方法名）。各模式继续用原来的 `Health.OnDead +=` / `OnDeadEvent.AddListener` 写法，自动受保护。
+
+- 性能：静态多播按委托引用缓存调用列表，订阅不变时零分配；`OnDeadEvent` 仅在死亡时通过 `UnityEventBase.PrepareInvoke` 与 `BaseInvokableCall.Invoke(object[])` 逐监听器调用；每击都发的 `OnHurtEvent` 保持官方调用。
+- 失配：找不到预期 IL 时原样返回并告警，不抛异常，不影响其它 Hurt 补丁。官方更新后先跑执行回归 `DeathBroadcastIsolation`（现装 DLL 上核对 IL 命中与真实 UnityEvent 行为）。
+- 守卫：`DeathBroadcastIsolationGuard`；`ModeGSpawnTransactionGuard` 按精确路径 / 类名登记该 Hurt 补丁。
+
 ## 2026-09-07 启动自检报告快照（COMPAT）
 
 `HarmonyBindingSelfCheck` 保留本次启动的完成态、验证/总数/动态跳过数及失败原因，ResetStaticCaches 同步复位；`ValidateStartupSnapshot` 只读这些结果。F3 的 HARMONY_STARTUP_BINDINGS 将早于测试发生的静态绑定缺失带进同一份日志。既有逐类/逐方法身份验证和动态目标明确跳过的口径不变，不重新安装补丁，也不声称验证了所有动态反射或 Unity 行为。

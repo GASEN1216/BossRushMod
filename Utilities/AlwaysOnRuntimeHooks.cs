@@ -347,6 +347,7 @@ namespace BossRush
             SafeRuntime.ResetStaticCaches();
             BossRush.Common.Utils.ReflectionCache.ResetStaticCaches();
             HarmonyBindingSelfCheck.ResetStaticCaches();
+            DeathBroadcastIsolation.ResetStaticCaches();
             ModBehaviour.ResetCriticalLogStaticCaches();
         }
     }

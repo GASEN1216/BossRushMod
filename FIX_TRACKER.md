@@ -2,6 +2,17 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+## 2026-11-06 死亡广播逐订阅者隔离 + 丧尸 Boss 死亡兜底（COMPAT；L1/L2，L3 待验）
+
+玩家反馈「末日丧尸第 10 波 Boss 不见了，卡关」→ owner「确保以后所有模式都不会出现类似问题，并且不会有性能问题」。根因（读码确认，玩家那局的具体抛异常者 UNVERIFIED，需 `Player.log`）：官方 `Health.Hurt` 致死时依次发 `OnDeadEvent` → `Health.OnDead` → `SetActive(false)` → `OnHurtEvent` → `Health.OnHurt`，全程无 try；前面的订阅者抛异常（击杀提示类 Mod 不判空攻击者，流血 / 毒区必抛）就截断后面的所有订阅者，而 `DestroyOnDelay` 已启动，尸体照常消失。丧尸 Boss 波只靠死亡回调扣 `CurrentWaveBossesRemaining`，于是永远不结束；10-16 只给宿命回响和标准竞技场补过轮询兜底。
+
+- **全模式根治**：新增 `Patches/Combat/DeathBroadcastIsolationPatch.cs`，两个独立 transpiler 把 `Health.Hurt` 的 `OnDeadEvent` / `Health.OnDead` / `Health.OnHurt` 与 `CharacterMainControl.OnDead` 的 `BeforeCharacterSpawnLootOnDead` 原地换成逐订阅者 try/catch 的等价调用，顺序与参数不变，异常 5 秒节流记 `Debug.LogWarning`（带抛异常的程序集与方法名）。各模式订阅写法不用改，官方、第三方与本 Mod 订阅者一并受益，以后新写的死亡订阅自动受保护。不改伤害、准入与返回值；`OnHurtEvent` 每击都发，不做反射隔离。
+- **性能**：静态多播按委托引用缓存调用列表，稳态零分配；`OnDeadEvent` 只在死亡时走一次反射（`PrepareInvoke` + 逐监听器 `Invoke(object[])`），每次死亡几个小对象；丧尸兜底 0.25 秒扫本波几只 Boss，战斗外 O(1) 早返。未实机采样，上述为静态预期。
+- **丧尸 Boss 兜底**：`ZombieModeRuntimeModule_BossSilentDeathSweep.cs`，已死未结案的 Boss 走同一条死亡路由（`DeathSettled` 去重），已销毁或登记丢失的按本波扣除、注销、不发奖励箱，扣完推进本波结算。补丁因官方 IL 变化没装上时也能兜住。
+- **守卫与回归**：新守卫 `DeathBroadcastIsolationGuard`（三个探针反向验证转红、按字节还原）；`ModeGSpawnTransactionGuard` 按精确路径 / 类名登记新 Hurt 补丁；新执行回归 `DeathBroadcastIsolation`（官方方法体 + 真实 Harmony，复现截断后验证隔离；现装 DLL 上 IL 各命中一次、真实 `UnityEvent` 逐监听器送达）；`ZombieModeWaveRuntime` 加第 10 波双 Boss 截断 / 销毁场景（83 场景 293 断言）。
+- **验证**：全量守卫 755/755；Windows 正式编译 0 错误、2 条既有 CS0649（隔离 worktree，`GAME_PATH` 指 Managed 拷贝，游戏目录 DLL 哈希不变）；全量执行回归 152/152（首轮 150/2，两条红是未设 `GAME_PATH` / `BOSSRUSH_HARMONY_DLL` 的环境缺失，设好后 `AuditCombatSeptember`、`SkyIslandCombatRuntime` 单跑通过）。
+- **L3 待验**：ZB-A 末日丧尸打到第 10 波，让 Boss 流血 / 毒死（装着击杀提示类 Mod 更好），Boss 倒下后 1 秒内本波不结算即不合格；`Player.log` 搜「订阅者抛异常，已隔离」核对抛异常者。WG-A 游戏加载日志出现「Health.Hurt 广播隔离只命中部分调用点」或「掉落广播隔离未命中」即补丁失配。
+
 ## 2026-11-05 潮闸镇生产水准复审与全部修复（COMPAT / OPERATIONAL；L1/L2，L3 待验）
 
 owner「审核最新代码与 3D 场景是否达到生产水准、UI 交互逻辑特效够不够精致」→「开始全部修复」。复审登记 `CODE_REVIEW_FINDINGS.md` 的 `CR-2026-11-05-017`～`028`，当日全部修复；没有新增存档字段、TypeID 或官方任务，没有改官方存档键。

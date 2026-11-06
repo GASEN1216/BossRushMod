@@ -11,7 +11,8 @@ ModeGSpawnTransactionGuard — Mode G 生成事务守卫（规格 §20 第 13 �
   AllowRandomRetryFallback=false（official/managed 两路均冻结）；
 - 唯一改变 Health.Hurt 准入/事务深度的补丁仍是 BossRushHealthHurtContextPatch；
   仅额外允许精确路径/类名的 SetBonusDamageObservation 只读贡献观察补丁与既有的
-  ModeEHiredBossKillAttributionPatch 击杀归属 transpiler，
+  ModeEHiredBossKillAttributionPatch 击杀归属 transpiler、丧尸模式致死前减伤 transpiler
+  与 HealthDeathBroadcastIsolationPatch 广播隔离 transpiler（均按精确路径 / 类名登记），
   不允许第二个事务补丁、第三个 Hurt 补丁或借观察补丁改写伤害/返回值；
 - __state 配对：BossLethalHealthProtectionPatch Prefix ref bool __state 与
   Finalizer bool __state 成对。
@@ -33,6 +34,9 @@ HURT_OWNERS = {
     # 丧尸模式致死前减伤的 transpiler（2026-09-27 从共享上下文补丁拆出，失配只拆自己）。
     # 不改准入 / 事务深度 / 返回值，只在官方 finalDamage 累加后调用 ZombieModeDamageRuntime。
     "ZombieMode/ZombieModeDamageRuntime.cs": "ZombieModeHealthHurtDamagePatch",
+    # 死亡 / 受伤广播逐订阅者异常隔离的 transpiler（2026-11-06）：只把三处广播 Invoke 原地换成
+    # 等栈形的隔离调用，不改准入 / 事务深度 / 伤害 / 返回值；契约由 DeathBroadcastIsolationGuard 钉住。
+    "Patches/Combat/DeathBroadcastIsolationPatch.cs": "HealthDeathBroadcastIsolationPatch",
 }
 HURT_PATCH_RE = re.compile(
     r'\[HarmonyPatch\s*\(\s*typeof\s*\(\s*(?:global::)?Health\s*\)\s*,\s*'

@@ -85,6 +85,12 @@ namespace BossRush
                 return;
             }
 
+            SweepZombieModeSilentBossDeaths();
+            if (runState.CombatPhase != ZombieModeCombatPhase.Combat)
+            {
+                return;
+            }
+
             float now = GetZombieModeRuntimeNow();
             for (int i = 0; i < runState.CurrentWaveBossInstances.Count; i++)
             {
