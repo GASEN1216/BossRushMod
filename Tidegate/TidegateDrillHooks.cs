@@ -179,7 +179,9 @@ namespace BossRush
         {
             internal string Id, Kind;
             internal Vector3 Position;
-            internal bool Built, Failed, Flooded, Opened, FloodHinted, BoxActive;
+            internal bool Built, Failed, Flooded, Opened, FloodHinted, BoxActive, Locked;
+            /// <summary>埋货的场景模型是否显示；不是埋货或没有模型时为 null。</summary>
+            internal bool? BuriedVisualActive;
             internal readonly List<int> Items = new List<int>();
             internal int BestOrdinaryQuality = -1, BestOrdinaryId, BestOrdinaryUnitValue;
         }
@@ -197,13 +199,14 @@ namespace BossRush
             return null;
         }
 
-        private static DevPointInfo DevDescribe(Point point, bool withItems)
+        private DevPointInfo DevDescribe(Point point, bool withItems)
         {
             var info = new DevPointInfo
             {
                 Id = point.Id, Kind = point.Kind, Position = point.Marker != null ? point.Marker.position : Vector3.zero,
                 Built = point.Built, Failed = point.Failed, Flooded = point.Flooded, Opened = point.Opened, FloodHinted = point.FloodHinted,
-                BoxActive = point.Box != null && point.Box.gameObject.activeSelf,
+                BoxActive = point.Box != null && point.Box.gameObject.activeSelf, Locked = Locked(point),
+                BuriedVisualActive = point.BuriedVisual != null ? point.BuriedVisual.gameObject.activeSelf : (bool?)null,
             };
             if (withItems && point.Box != null && point.Box.Inventory != null)
                 foreach (Item item in point.Box.Inventory.Content)
@@ -219,6 +222,32 @@ namespace BossRush
                     info.BestOrdinaryUnitValue = value;
                 }
             return info;
+        }
+
+        /// <summary>这一趟钥匙挂在哪只红工具柜里（tool_3 / tool_4 之一）；没有锁柜时为 null。</summary>
+        internal string DevShiftKeyBox { get { return shiftKeyBox; } }
+        internal static string DevForemanCabinet { get { return ForemanCabinet; } }
+        internal bool DevKeyPinActive { get { return keyPin != null && keyPin.activeSelf; } }
+        internal bool DevLockExplained { get { return lockExplained; } }
+        internal string DevShiftKeyObjective { get { return ShiftKeyObjective; } }
+
+        /// <summary>演练：不翻箱，直接走生产的「取下钥匙」那一步（开锁、M 图金圈、HUD 目标行、提示）。</summary>
+        internal bool DevTakeShiftKey()
+        {
+            if (shiftKeyBox == null || carryingShiftKey || openedCabinet) return false;
+            TakeShiftKey();
+            return true;
+        }
+
+        /// <summary>演练还原：钥匙放回原处，领班柜重新上锁（没建好或被淹的柜子维持原状），金圈撤掉。</summary>
+        internal void DevResetShift()
+        {
+            if (shiftKeyBox == null) return;
+            carryingShiftKey = false;
+            openedCabinet = false;
+            ClearKeyPin();
+            Point cabinet = points.Find(p => p.Id == ForemanCabinet);
+            if (cabinet != null && cabinet.Box != null) cabinet.Box.gameObject.SetActive(!cabinet.Flooded && !Locked(cabinet));
         }
     }
 
@@ -253,6 +282,37 @@ namespace BossRush
     internal sealed partial class TidegateEnemies
     {
         private readonly Dictionary<string, float> devSpawnDistance = new Dictionary<string, float>(StringComparer.Ordinal);
+
+        /// <summary>
+        /// 演练：把一名淘沙帮按在深水点上，观测「泡满 8 秒卷走」这条生产规则（见 TickTide）。
+        /// 官方寻路会把角色拉回可走面，单靠瞬移一次留不住人（2026-11-07 实机：left_deep=True、deep_s=0）。
+        /// </summary>
+        internal bool DevHoldInDeep(string id, Vector3 at)
+        {
+            foreach (Slot slot in slots)
+            {
+                if (slot.Id != id) continue;
+                CharacterMainControl character = slot.Character;
+                if (character == null || character.Health == null || character.Health.IsDead) return false;
+                slot.DevHoldDeep = true;
+                slot.DevHoldAt = at;
+                character.SetPosition(at);
+                return true;
+            }
+            return false;
+        }
+
+        internal int DevReleaseHolds()
+        {
+            int released = 0;
+            foreach (Slot slot in slots)
+            {
+                if (!slot.DevHoldDeep) continue;
+                slot.DevHoldDeep = false;
+                released++;
+            }
+            return released;
+        }
 
         private static void DevObservePatrol(Slot slot, Vector3 target, bool newLeg)
         {
@@ -365,19 +425,6 @@ namespace BossRush
             return removed;
         }
 
-        /// <summary>演练：把一名敌人挪到 <paramref name="position"/>（看潮水卷走）。找不到或已倒下返回 false。</summary>
-        internal bool DevMoveEnemy(string id, Vector3 position)
-        {
-            foreach (Slot slot in slots)
-            {
-                if (slot.Id != id) continue;
-                CharacterMainControl character = slot.Character;
-                if (character == null || character.Health == null || character.Health.IsDead) return false;
-                character.SetPosition(position);
-                return true;
-            }
-            return false;
-        }
 
         // 只认生产 SweepAway 实际移除的普通淘沙帮成员，不把死亡、卸载或海堤增援计为成功。
         internal int DevDiggerSweeps { get; private set; }
@@ -478,6 +525,16 @@ namespace BossRush
         internal int DevUnreachableSpawns { get { return unreachable.Count; } }
         internal string DevObjective() { return Objective(); }
         internal string DevFieldStatus() { return FieldStatus(); }
+        /// <summary>响铊这一趟的 M 图青圈（25 秒后自毁）。</summary>
+        internal bool DevSoundingPinActive { get { return soundingPin != null && soundingPin.activeSelf; } }
+        internal Vector3 DevSoundingPinPosition { get { return soundingPin != null ? soundingPin.transform.position : Vector3.zero; } }
+        internal void DevClearSoundingPin()
+        {
+            if (soundingPin == null) return;
+            soundingPin.SetActive(false);
+            Destroy(soundingPin);
+            soundingPin = null;
+        }
         internal string DevHudObjective { get { return hud == null ? null : hud.ObjectiveText; } }
         internal string DevRegionPoi { get { return regionPoi == null ? null : regionPoi.name; } }
         internal int DevGroundMask { get { return groundMask; } }

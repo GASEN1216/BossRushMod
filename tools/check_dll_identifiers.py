@@ -41,6 +41,10 @@ IDENTIFIERS = (
     "DevTurnValve",
     "DevResetCurrentSlot",
     "TIDE_DRILL_ASSEMBLY",
+    # 2026-11-07 钥匙柜 / 响铊演练用例与同站位性能开关对比（F3GameplayValidationTidegatePerfAblation.cs）。
+    "TIDE_DRILL_SHIFT_KEY_LEAD",
+    "TIDE_PERF_ABLATION",
+    "DevTakeShiftKey",
 )
 
 

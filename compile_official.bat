@@ -398,6 +398,8 @@ echo(DebugAndTools\F3GameplayValidationTidegateDrill.cs
 echo(DebugAndTools\F3BaseLootboxProbe.cs
 echo(DebugAndTools\F3TidegateAiProbe.cs
 echo(DebugAndTools\F3GameplayValidationTidegateDrillCases.cs
+echo(DebugAndTools\F3GameplayValidationTidegateDrillKeyLead.cs
+echo(DebugAndTools\F3GameplayValidationTidegatePerfAblation.cs
 echo(DebugAndTools\F3GameplayValidationAutotestModels.cs
 echo(DebugAndTools\F3GameplayValidationAutotestJudges.cs
 echo(DebugAndTools\F3GameplayValidationAutotest.cs

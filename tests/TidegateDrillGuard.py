@@ -28,6 +28,8 @@ from cs_source_util import clean_source  # noqa: E402
 
 DRILL = "DebugAndTools/F3GameplayValidationTidegateDrill.cs"
 CASES = "DebugAndTools/F3GameplayValidationTidegateDrillCases.cs"
+ABLATION = "DebugAndTools/F3GameplayValidationTidegatePerfAblation.cs"
+KEYLEAD = "DebugAndTools/F3GameplayValidationTidegateDrillKeyLead.cs"
 HOOKS = "Tidegate/TidegateDrillHooks.cs"
 CONTROLS = "DebugAndTools/TidegateProgressDebugControls.cs"
 PETNEST = "DebugAndTools/CampaignPetNestDebugControls.cs"
@@ -43,12 +45,12 @@ REGRESSIONS = "tools/run_runtime_regressions.py"
 BAT = "compile_official.bat"
 READ_ONLY = ("DebugAndTools/F3GameplayValidationSkyIsland.cs", "DebugAndTools/F3GameplayValidationSkyIslandCases.cs",
              "DebugAndTools/F3GameplayValidationSkyIslandRuntimeCases.cs")
-DEV_FILES = (DRILL, CASES, HOOKS, CONTROLS)
+DEV_FILES = (DRILL, CASES, ABLATION, KEYLEAD, HOOKS, CONTROLS)
 PRODUCTION_HOOKED = (TIDE, DEVICES, WATER, ENEMIES, SESSION, SOUNDS)
 BACKSLASH = chr(92)
 
 # 生产文件里只许出现在 #if BOSSRUSH_DEV 真分支里的钩子标识。
-HOOK_TOKENS = re.compile(r"\b(?:DevOffsetHours|DevNoteSpawn|DevNoteStatus|DevNotePost|DevSwimOverride|devBypassHandwheel|DevSpawning|DevCancelled)\b")
+HOOK_TOKENS = re.compile(r"\b(?:DevOffsetHours|DevNoteSpawn|DevNoteStatus|DevNotePost|DevSwimOverride|devBypassHandwheel|DevSpawning|DevCancelled|DevHoldDeep|DevHoldAt)\b")
 
 # 演练（两份文件）里不许出现的入口（清洗注释后按正则找）。每一条都写明为什么。
 FORBIDDEN = (
@@ -151,7 +153,7 @@ def check(raw):
         errors.append("手轮旁路不得读或消耗背包里真有的手轮（Dev 旁路时 wheel 必须是 null）")
 
     # ---- 2. 演练不写存档、不收录、不开箱、不发物品、不写时钟、不切图 ----
-    for rel in (DRILL, CASES):
+    for rel in (DRILL, CASES, ABLATION, KEYLEAD):
         for pattern, why in FORBIDDEN:
             if re.search(pattern, clean[rel]):
                 errors.append(rel + " 不得" + why + "：/" + pattern + "/")

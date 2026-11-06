@@ -118,6 +118,20 @@ namespace BossRush
             Check(!Runner.TidegateDrillWaterTopsOk(new[] { float.NaN }, 0.45, 0.03, out waterReason), "water_nan_top");
             Check(!Runner.TidegateDrillWaterTopsOk(new[] { float.PositiveInfinity }, 0.45, 0.03, out waterReason), "water_infinite_top");
             Check(!Runner.TidegateDrillWaterTopsOk(new[] { 0.45f }, double.NaN, 0.03, out waterReason), "water_nan_expected");
+
+            // 箱柜状态（2026-11-07 实机误报）：上锁的领班柜在干地上本来就关着；没锁的干箱必须能开，被淹的必须收起；埋货模型跟着淹没显隐。
+            Check(Runner.TidegateDrillLootStateOk(false, false, true, false, null), "loot_locked_dry_closed");
+            Check(!Runner.TidegateDrillLootStateOk(false, false, true, true, null), "loot_locked_but_open");
+            Check(Runner.TidegateDrillLootStateOk(false, false, false, true, null), "loot_dry_open");
+            Check(!Runner.TidegateDrillLootStateOk(false, false, false, false, null), "loot_dry_hidden");
+            Check(Runner.TidegateDrillLootStateOk(true, true, false, false, null), "loot_flooded_hidden");
+            Check(Runner.TidegateDrillLootStateOk(true, true, true, false, null), "loot_flooded_locked_hidden");
+            Check(!Runner.TidegateDrillLootStateOk(true, true, false, true, null), "loot_flooded_but_open");
+            Check(!Runner.TidegateDrillLootStateOk(true, false, false, false, null), "loot_flood_flag_disagrees_with_depth");
+            Check(Runner.TidegateDrillLootStateOk(false, false, false, true, true), "buried_dry_visible");
+            Check(!Runner.TidegateDrillLootStateOk(false, false, false, true, false), "buried_dry_model_missing");
+            Check(Runner.TidegateDrillLootStateOk(true, true, false, false, false), "buried_flooded_model_hidden");
+            Check(!Runner.TidegateDrillLootStateOk(true, true, false, false, true), "buried_flooded_model_still_shown");
             Check(!Runner.TidegateDrillLevelOk(double.NaN, 0.45, 0.03)
                 && !Runner.TidegateDrillLevelOk(0.45, double.PositiveInfinity, 0.03), "shader_levels_require_finite_values");
             foreach (string failure in TidegateEnemies.CheckLateSpawnCancellation()) Check(false, failure);

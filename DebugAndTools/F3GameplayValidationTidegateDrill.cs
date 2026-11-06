@@ -42,7 +42,7 @@ namespace BossRush
         private static readonly string[] TidegateDrillCaseIds =
         {
             "TIDE_DRILL_ASSEMBLY", "TIDE_DRILL_TIDE_PHASES", "TIDE_DRILL_TIDE_NOTICES", "TIDE_DRILL_VALVES_SLUICE",
-            "TIDE_DRILL_STORY_CONTAINERS", "TIDE_DRILL_SWIM", "TIDE_DRILL_FLOOD_HINT", "TIDE_DRILL_DIGGERS", "TIDE_DRILL_LIGHTHOUSE",
+            "TIDE_DRILL_STORY_CONTAINERS", "TIDE_DRILL_SHIFT_KEY_LEAD", "TIDE_DRILL_SWIM", "TIDE_DRILL_FLOOD_HINT", "TIDE_DRILL_DIGGERS", "TIDE_DRILL_LIGHTHOUSE",
             "TIDE_DRILL_EXTRACTION_HOLD", "TIDE_DRILL_ENEMIES", "TIDE_DRILL_REGION_SOUNDS", "TIDE_DRILL_RESTORE",
         };
         /// <summary>单条用例的预算（秒）：灯塔那条要等 45 秒来船，留足余量；超了记 _UNHANDLED 继续下一条。</summary>
@@ -170,6 +170,7 @@ namespace BossRush
             SetStage("潮闸镇演练 3/8 三阀一闸与剧情箱柜");
             yield return RunTidegateDrillCase("TIDE_DRILL_VALVES_SLUICE", RunTidegateDrillValves);
             yield return RunTidegateDrillCase("TIDE_DRILL_STORY_CONTAINERS", RunTidegateDrillStoryContainers);
+            yield return RunTidegateDrillCase("TIDE_DRILL_SHIFT_KEY_LEAD", RunTidegateDrillShiftKeyLead);
             SetStage("潮闸镇演练 4/8 游泳、深水箱子与淘沙帮");
             yield return RunTidegateDrillCase("TIDE_DRILL_SWIM", RunTidegateDrillSwim);
             yield return RunTidegateDrillCase("TIDE_DRILL_FLOOD_HINT", RunTidegateDrillFloodHint);
@@ -183,6 +184,7 @@ namespace BossRush
             yield return RunTidegateDrillCase("TIDE_DRILL_REGION_SOUNDS", RunTidegateDrillRegionSounds);
             yield return SamplePerformance("TIDE_PERF_DOCK_10S", 10f, false, "POI_码头");
             yield return SamplePerformance("TIDE_PERF_TOWN_10S", 10f, false, "POI_老镇");
+            yield return RunTidegatePerfAblation("POI_老镇");
             SetStage("潮闸镇演练 8/8 还原");
             yield return TidegateDrillAwaitSpawns(8f);
             RecordTidegateDrillRestore();
@@ -530,11 +532,13 @@ namespace BossRush
                     // 玩家 4 m 内的箱子按规则不收起（搜刮界面可能开着），不在这里判。
                     if ((point.Position - player.transform.position).sqrMagnitude <= 4.5f * 4.5f) continue;
                     checkedLoot++;
-                    bool deep = tide.IsDeepAt(point.Position);
-                    if (point.Flooded == deep && point.BoxActive != point.Flooded) continue;
+                    // 埋货按「水面高过泥面 0.12 m」算淹（TidegateLoot.IsFlooded），其余箱柜按 0.5 m 深水。
+                    bool deep = point.Kind == "buried" ? TidegateDrillDepthAt(session, point.Position) > 0.12 : tide.IsDeepAt(point.Position);
+                    if (TidegateDrillLootStateOk(point.Flooded, deep, point.Locked, point.BoxActive, point.BuriedVisualActive)) continue;
                     mismatched++;
                     if (mismatched <= 4)
-                        errors.Add(tag + ":loot_" + point.Id + "_flooded_" + point.Flooded + "_deep_" + deep + "_active_" + point.BoxActive);
+                        errors.Add(tag + ":loot_" + point.Id + "_flooded_" + point.Flooded + "_deep_" + deep + "_locked_" + point.Locked
+                            + "_active_" + point.BoxActive + "_visual_" + (point.BuriedVisualActive.HasValue ? point.BuriedVisualActive.Value.ToString() : "none"));
                 }
             int checkedNav = 0;
             if (session.DevNavigation != null)
@@ -575,11 +579,17 @@ namespace BossRush
             _tidegateDrillTide = null;
             TidegateSession session = TidegateSessionOrNull();
             bool alive = session != null && !session.IsClosed && session.Tide != null;
+            // 性能开关对比先撤：被停用的敌人、隐藏的装饰和关掉的阴影都要先回来，后面的还原和人工测试才看得到它们。
+            int undone = UndoTidegatePerfAblation();
+            if (undone > 0) notes.Add("ablation_undone=" + undone);
             if (alive)
             {
                 // 潮相偏移只在这一趟还在时复位：出击已收尾时 TidegateTide.Dispose 已经清零，再写回开跑前的值会带进下一趟。
                 TidegateTide.DevOffsetHours = _tidegateDrillOffsetBefore;
                 if (session.DevWater != null) session.DevWater.DevSwimOverride = 0;
+                if (session.DevLoot != null) session.DevLoot.DevResetShift();
+                session.DevClearSoundingPin();
+                if (session.DevEnemies != null) session.DevEnemies.DevReleaseHolds();
                 if (_tidegateDrillTouched)
                 {
                     if (session.DevDevices != null) session.DevDevices.DevReset();
@@ -606,6 +616,8 @@ namespace BossRush
                 if (session.DevExtraction != null && session.DevExtraction.DevLighthouseBoat) errors.Add("lighthouse_boat_still_there");
                 if (session.DevWater != null && session.DevWater.DevSwimOverride != 0) errors.Add("swim_override_left");
                 if (session.DevEnemies != null && session.DevEnemies.DevRevealActive) errors.Add("reveal_left");
+                if (session.DevLoot != null && (session.DevLoot.DevKeyPinActive || session.DevLoot.DevShiftKeyObjective != null)) errors.Add("shift_key_left");
+                if (session.DevSoundingPinActive) errors.Add("sounding_pin_left");
             }
             else notes.Add("session_gone");
             if (alive && Math.Abs(TidegateTide.DevOffsetHours - _tidegateDrillOffsetBefore) > 1e-9) errors.Add("tide_offset_not_restored");
@@ -703,6 +715,17 @@ namespace BossRush
         }
 
         /// <summary>刷怪在玩家 25–75 m 之间（容差 0.5 m：玩家这一帧与选点那一帧之间挪了一点）。</summary>
+        /// <summary>
+        /// 箱柜状态：淹没判定要和实际水深一致；没淹、也没上锁才可交互（码头领班柜拿到轮班钥匙前故意关着，2026-11-07 实机误报）；
+        /// 埋货的场景模型跟着淹没状态显隐（不是埋货或没有模型传 null）。
+        /// </summary>
+        internal static bool TidegateDrillLootStateOk(bool flooded, bool deep, bool locked, bool boxActive, bool? buriedVisible)
+        {
+            if (flooded != deep) return false;
+            if (boxActive != (!flooded && !locked)) return false;
+            return !buriedVisible.HasValue || buriedVisible.Value == !flooded;
+        }
+
         internal static bool TidegateDrillSpawnDistanceOk(double distance)
         {
             return distance >= 24.5 && distance <= 75.5;

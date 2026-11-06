@@ -666,26 +666,29 @@ namespace BossRush
             if (sweepVerified) notes.Add("sweep_observed_before_probe");
             else if (victim == null) notes.Add("sweep_skipped_no_regular_digger");
             else if (!TidegateDrillFindDeepWater(session, victim.Position, 1.0f, out deep)) notes.Add("sweep_skipped_no_deep_water");
-            else if (!enemies.DevMoveEnemy(victim.Id, deep)) notes.Add("sweep_skipped_move_failed");
+            else if (!enemies.DevHoldInDeep(victim.Id, deep)) notes.Add("sweep_skipped_hold_failed");
             else
             {
-                float deepFor = 0f, last = Time.time;
-                bool swept = false, left = false;
+                // 官方寻路会把人拉回可走面（2026-11-07 实机 left_deep=True、deep_s=0）：生产 TickTide 每次查水深前把他按回深水点，
+                // 这里只等生产规则自己卷走（3 秒一查、泡满 8 秒），不替它判定。
+                float heldFor = 0f, started = Time.time;
+                bool swept = false;
                 float until = Time.realtimeSinceStartup + 16f;
-                while (Time.realtimeSinceStartup < until && !ShouldAbort())
+                try
                 {
-                    yield return WaitSeconds(0.25f);
-                    if (enemies.DevDiggerSweeps > sweepsAtStart && enemies.DevLastSweptDigger == victim.Id) { swept = true; break; }
-                    TidegateEnemies.DevEnemyInfo now = null;
-                    foreach (TidegateEnemies.DevEnemyInfo info in enemies.DevEnemies()) if (info.Id == victim.Id) now = info;
-                    if (now == null || !now.Alive) { notes.Add("sweep_target_died"); break; }
-                    float time = Time.time;
-                    if (session.Tide.IsDeepAt(now.Position)) deepFor += time - last;
-                    else { left = true; deepFor = 0f; }
-                    last = time;
+                    while (Time.realtimeSinceStartup < until && !ShouldAbort())
+                    {
+                        yield return WaitSeconds(0.25f);
+                        heldFor = Time.time - started;
+                        if (enemies.DevDiggerSweeps > sweepsAtStart && enemies.DevLastSweptDigger == victim.Id) { swept = true; break; }
+                        TidegateEnemies.DevEnemyInfo now = null;
+                        foreach (TidegateEnemies.DevEnemyInfo info in enemies.DevEnemies()) if (info.Id == victim.Id) now = info;
+                        if (now == null || !now.Alive) { notes.Add("sweep_target_died"); break; }
+                    }
                 }
-                notes.Add("sweep:" + victim.Id + ",swept=" + swept + ",deep_s=" + deepFor.ToString("F1") + ",left_deep=" + left);
-                if (!swept && deepFor >= 12f) errors.Add("digger_not_swept_after_" + deepFor.ToString("F1") + "s");
+                finally { enemies.DevReleaseHolds(); }
+                notes.Add("sweep:" + victim.Id + ",swept=" + swept + ",held_s=" + heldFor.ToString("F1") + ",held=emulated");
+                if (!swept && heldFor >= 13f) errors.Add("digger_not_swept_after_" + heldFor.ToString("F1") + "s");
                 sweepVerified = enemies.DevDiggerSweeps > sweepsAtStart;
             }
             if (sweepVerified) notes.Add("swept_digger=" + enemies.DevLastSweptDigger + ",count=" + (enemies.DevDiggerSweeps - sweepsAtStart));
