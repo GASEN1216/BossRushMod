@@ -66,7 +66,7 @@ def main():
     assert hit, 'session hazard dispatch missing'
     (out/'SessionGate.cs').write_text('using System; using UnityEngine; namespace BossRush { partial class SessionGate { public void Step() {'
                                     +gates+hit.group()+'} } }', encoding='utf-8')
-    paths = [ROOT/'Tidegate/TidegateHazards.cs', ROOT/'Patches/Combat/BossLethalHealthProtectionPatch.cs',
+    paths = [ROOT/'Tidegate/TidegateHazards.cs', ROOT/'Tidegate/TidegateFrameProbe.cs', ROOT/'Patches/Combat/BossLethalHealthProtectionPatch.cs',
              official/'ElementFactor.cs',official/'ElementTypes.cs',official/'DamageTypes.cs',
              out/'Host.cs', out/'Official.cs', out/'SessionGate.cs', HERE/'Program.cs']
     shutil.copy2(harmony, out/'0Harmony.dll')

@@ -1,0 +1,1 @@
+执行 `python tools/run_runtime_regressions.py --filter TidegateReturnAndFrames`。抽取 F3 真实返航方法，控制官方加载任务结束时机、场景和关卡/玩家就绪状态，未完成或主人缺席不能报成功。链接完整生产采样器，检查 55 ms 长帧中的搜刮计时不会错归下一帧的敌人更新，空窗、重复读与容量也实际执行。场景、计时和 Unity 主循环是替身，不代表实际 P95；安装包层级可用 `tools/audit_tidegate_return.py` 对照。

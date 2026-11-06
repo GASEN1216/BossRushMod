@@ -345,7 +345,9 @@ namespace BossRush
         private void Update()
         {
             if (closed) return;
+            TidegateFrameProbe.Start();
             if (hud != null) hud.Tick(Time.unscaledDeltaTime, !ready || returnRequested || deathPending);
+            TidegateFrameProbe.Mark(TidegateTickPart.Hud);
             if (returnRequested) { DispatchReturnIfReady(); return; }
             if (!ready) return;
             if (player == null || player != CharacterMainControl.Main || root == null || !entryScene.isLoaded)
@@ -356,17 +358,22 @@ namespace BossRush
             try { if (lighting != null) lighting.Tick(); } catch (Exception e) { TickFault("lighting", e); }
             try { if (tide != null) tide.Tick(Time.deltaTime); } catch (Exception e) { TickFault("tide", e); }
             try { if (water != null) water.Tick(); } catch (Exception e) { TickFault("water", e); }
+            TidegateFrameProbe.Mark(TidegateTickPart.TideWater);
             try { if (loot != null) loot.Tick(player); } catch (Exception e) { TickFault("loot", e); }
+            TidegateFrameProbe.Mark(TidegateTickPart.Loot);
             try { if (enemies != null) enemies.Tick(); } catch (Exception e) { TickFault("enemies", e); }
+            TidegateFrameProbe.Mark(TidegateTickPart.EnemyOwner);
             try { if (devices != null) devices.Tick(); } catch (Exception e) { TickFault("devices", e); }
             try { if (map != null) map.Tick(extraction, devices != null && devices.BeaconLit); } catch (Exception e) { TickFault("map", e); }
             Vector3 position = player.transform.position;
             if (tide != null) tide.SetViewFocus(position);
             try { if (sounds != null) sounds.Tick(position); } catch (Exception e) { TickFault("sounds", e); }
+            TidegateFrameProbe.Mark(TidegateTickPart.DevicesMapSound);
             // 四边有墙（TidegateWorld.AddBoundary），这里只兜物理穿模或掉出世界：出了可玩区 8 m 或掉到 -14 m 以下拉回落脚点。
             if (position.y < -14f || TidegateWorld.OutsidePlayArea(position)) { Rescue(); return; }
             try { if (hazards != null && hazards.Tick(player, View.ActiveView == null ? Time.deltaTime : 0f)) return; }
             catch (Exception e) { TickFault("hazards", e); }
+            TidegateFrameProbe.Mark(TidegateTickPart.Hazards);
             if (Time.unscaledTime >= nextGroundCheck)
             {
                 nextGroundCheck = Time.unscaledTime + 0.25f;
@@ -403,6 +410,7 @@ namespace BossRush
                     hud.SetChips(FieldStatus());
                 }
             }
+            TidegateFrameProbe.Mark(TidegateTickPart.GroundExitHud);
         }
 
         /// <summary>

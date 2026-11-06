@@ -19,7 +19,7 @@ public static class LocalizationStub { public static string ToPlainText(this str
 public struct ItemMetaData { public int id; public string DisplayName; }
 public static class ItemAssetsCollection { public static ItemMetaData GetMetaData(int id) { return new ItemMetaData(); } }
 namespace Duckov.Scenes { internal class FixtureNamespace { } }
-namespace UnityEngine { public static class Time { public static float unscaledTime=100, realtimeSinceStartup=100,deltaTime=.05f,unscaledDeltaTime=.05f; } }
+namespace UnityEngine { public static class Time { public static int frameCount; public static float unscaledTime=100, realtimeSinceStartup=100,deltaTime=.05f,unscaledDeltaTime=.05f; } }
 namespace BossRush
 {
     internal sealed class TidegateWorld { }

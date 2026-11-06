@@ -130,6 +130,16 @@ namespace BossRush
             private readonly Counter main = new Counter(ProfilerCategory.Internal, "Main Thread", "ns");
             private readonly Counter batches = new Counter(ProfilerCategory.Render, "Batches Count", "count/frame");
             private readonly Counter gc = new Counter(ProfilerCategory.Memory, "GC Allocated In Frame", "bytes/frame");
+            private readonly Counter render = new Counter(ProfilerCategory.Internal, "Render Thread", "ns");
+            private readonly Counter scripts = new Counter(ProfilerCategory.Scripts, "BehaviourUpdate", "ns");
+            private readonly Counter physics = new Counter(ProfilerCategory.Physics, "Physics.Simulate", "ns");
+            private readonly Counter waitPresent = new Counter(ProfilerCategory.Render, "Gfx.WaitForPresentOnGfxThread", "ns");
+            private readonly TidegateFrameProbe.Window owners = new TidegateFrameProbe.Window();
+            private readonly FrameTiming[] timings = new FrameTiming[1];
+            private readonly double[] gpuMs = new double[8192];
+            private readonly bool gpuTiming = FrameTimingManager.IsFeatureEnabled();
+            private ulong gpuStamp;
+            private int gpuCount;
             private readonly string target;
             private readonly Vector3? targetPosition;
             private readonly CharacterMainControl player;
@@ -163,6 +173,19 @@ namespace BossRush
             internal void Capture()
             {
                 main.Capture(); batches.Capture(); gc.Capture();
+                render.Capture(); scripts.Capture(); physics.Capture(); waitPresent.Capture();
+                owners.CapturePrevious(Time.frameCount, Time.unscaledDeltaTime * 1000.0);
+                if (gpuTiming)
+                {
+                    FrameTimingManager.CaptureFrameTimings();
+                    if (gpuCount < gpuMs.Length && FrameTimingManager.GetLatestTimings(1, timings) > 0
+                        && timings[0].frameStartTimestamp != gpuStamp && timings[0].gpuFrameTime > 0
+                        && !double.IsInfinity(timings[0].gpuFrameTime))
+                    {
+                        gpuStamp = timings[0].frameStartTimestamp;
+                        gpuMs[gpuCount++] = timings[0].gpuFrameTime;
+                    }
+                }
                 if (!leftStation && (player == null || (targetPosition.HasValue && !AtTidegatePerfStation(player.transform.position, targetPosition.Value))))
                 {
                     leftStation = true;
@@ -184,6 +207,15 @@ namespace BossRush
                     + ",main_thread_p95_ms=" + Metric(main, 0.000001, "F2")
                     + ",batches_p95=" + Metric(batches, 1.0, "F0") + ",gc_p95_bytes=" + Metric(gc, 1.0, "F0")
                     + ",main_thread_samples=" + main.Count + ",batch_samples=" + batches.Count + ",gc_samples=" + gc.Count;
+                ResourceMetric gpu = ResourcePerformanceMetrics.Summarize(gpuMs, gpuCount, "ms", "FrameTimingManager.gpuFrameTime");
+                metrics += ",render_thread_p95_ms=" + Metric(render, 0.000001, "F2")
+                    + ",behaviour_update_p95_ms=" + Metric(scripts, 0.000001, "F2")
+                    + ",physics_simulate_p95_ms=" + Metric(physics, 0.000001, "F2")
+                    + ",wait_present_p95_ms=" + Metric(waitPresent, 0.000001, "F2")
+                    + ",gpu_p95_ms=" + (gpu.status == "available" ? gpu.p95.ToString("F2") : "unavailable")
+                    + ",gpu_samples=" + gpuCount + owners.Metrics();
+                // 采到墙钟但没有配上 Update，不能用它下人数结论；允许首尾帧边界与偶发 1 帧丢样。
+                bool ownerCoverage = FrameTimes.Count > 0 && owners.MatchedFrames > 0 && owners.MatchedFrames + 1 >= FrameTimes.Count * .90;
                 if (targetPosition.HasValue)
                 {
                     int aliveEnd, nearEnd;
@@ -191,12 +223,16 @@ namespace BossRush
                     metrics += ",enemies_alive_start=" + CountText(aliveStart) + ",enemies_near_35m_start=" + CountText(nearStart)
                         + ",enemies_alive_end=" + CountText(aliveEnd) + ",enemies_near_35m_end=" + CountText(nearEnd);
                 }
-                if (!leftStation) return null;
+                if (!leftStation) return ownerCoverage ? null : "采样窗内配对到的潮闸镇 Update 不足";
                 metrics += ",first_offsite=" + (firstOffSite.HasValue ? firstOffSite.Value.ToString("F1") : "unavailable");
                 return "采样期间玩家离开目标区域或角色丢失";
             }
 
-            public void Dispose() { main.Dispose(); batches.Dispose(); gc.Dispose(); }
+            public void Dispose()
+            {
+                owners.Dispose(); main.Dispose(); batches.Dispose(); gc.Dispose();
+                render.Dispose(); scripts.Dispose(); physics.Dispose(); waitPresent.Dispose();
+            }
         }
 
         private IEnumerator SampleResourcePerformance(string caseId)

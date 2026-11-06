@@ -349,6 +349,7 @@ echo(Tidegate\TidegateTide.cs
 echo(Tidegate\TidegateTideRules.cs
 echo(Tidegate\TidegateWorld.cs
 echo(Tidegate\TidegateDrillHooks.cs
+echo(Tidegate\TidegateFrameProbe.cs
 echo(DebugAndTools\ArenaPrototype\StoneOutpostMapDataLease.cs
 echo(DebugAndTools\MarriageTestDebugUI.cs
 echo(DebugAndTools\PermanentDuckNpcDebug.cs
@@ -393,6 +394,8 @@ echo(DebugAndTools\F3GameplayValidationSkyIslandCases.cs
 echo(DebugAndTools\F3GameplayValidationSkyIslandRuntimeCases.cs
 echo(DebugAndTools\F3GameplayValidationSkyIslandDrill.cs
 echo(DebugAndTools\F3GameplayValidationTidegateDrill.cs
+echo(DebugAndTools\F3BaseLootboxProbe.cs
+echo(DebugAndTools\F3TidegateAiProbe.cs
 echo(DebugAndTools\F3GameplayValidationTidegateDrillCases.cs
 echo(DebugAndTools\F3GameplayValidationAutotestModels.cs
 echo(DebugAndTools\F3GameplayValidationAutotestJudges.cs

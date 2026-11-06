@@ -129,17 +129,16 @@ namespace BossRush
             {
                 HideF3DebugCheatMenu();
                 ShowMessage(L10n.T("正在返回基地...", "Returning to base..."));
-                await SceneLoader.Instance.LoadScene(
-                    BaseSceneName,
-                    null,
-                    false,
-                    false,
-                    true,
-                    false,
-                    default(MultiSceneLocation),
-                    true,
-                    false
-                );
+                // Base_SceneV2 只有环境与交互箱。必须经官方 Base 主关卡建立 LevelManager、玩家与箱库存字典。
+                await SceneLoader.Instance.LoadBaseScene();
+                if (!IsBaseHubSceneName(SceneManager.GetActiveScene().name) || LevelManager.Instance == null
+                    || !LevelManager.AfterInit || CharacterMainControl.Main == null)
+                {
+                    SetF3DebugCheatStatus(L10n.T("基地还没就绪，请查看回城日志", "Base not ready; check the return log"), true);
+                    DevLog("[BossRush] BASE_RETURN_INCOMPLETE scene=" + SceneManager.GetActiveScene().name
+                        + " manager=" + (LevelManager.Instance != null) + " player=" + (CharacterMainControl.Main != null));
+                    return;
+                }
                 ShowMessage(L10n.T("已返回基地", "Returned to base"));
             }
             catch (Exception e)
