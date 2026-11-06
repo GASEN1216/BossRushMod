@@ -33,6 +33,9 @@ namespace BossRush
             public string Target;
             /// <summary>正文说明；空表示不画。</summary>
             public string Body;
+            /// <summary>读信等带插画的内容使用；不占没有插画的弹窗空间。</summary>
+            public Sprite Illustration;
+            public bool SingleAction;
             /// <summary>后果（红 / 黄字）；空表示不画。</summary>
             public string Warning;
             /// <summary>确认键文案：动词 + 对象（「放弃赛季」），不用「确定」。</summary>
@@ -150,7 +153,25 @@ namespace BossRush
                     catch (Exception e) { ModBehaviour.DevLog("[ConfirmDialog] 对象行装饰失败: " + e.Message); }
                 }
             }
-            if (CreateBlock(surface.transform, "Body", o.Body, 18f, BossRushUIColors.TextSecondary, ref y, 26f) != null) y += 8f;
+            if (o.Illustration != null)
+            {
+                float height = Mathf.Min(180f, TextWidth * o.Illustration.rect.height / Mathf.Max(1f, o.Illustration.rect.width));
+                GameObject art = ZombieModeUIHelper.CreateRect("Illustration", surface.transform, new Vector2(0.5f, 1f), new Vector2(TextWidth, height));
+                RectTransform frame = (RectTransform)art.transform;
+                frame.pivot = new Vector2(0.5f, 1f);
+                frame.anchoredPosition = new Vector2(0f, -y);
+                Image image = art.AddComponent<Image>();
+                image.sprite = o.Illustration;
+                image.preserveAspect = true;
+                image.raycastTarget = false;
+                y += height + 12f;
+            }
+            TextMeshProUGUI body = CreateBlock(surface.transform, "Body", o.Body, 18f, BossRushUIColors.TextSecondary, ref y, 26f);
+            if (body != null)
+            {
+                if (o.SingleAction) body.alignment = TextAlignmentOptions.TopLeft;
+                y += 8f;
+            }
             CreateBlock(surface.transform, "Warning", o.Warning, 18f,
                 o.Danger ? BossRushUIColors.DangerText : BossRushUIColors.WarningText, ref y, 26f);
             y += 22f;
@@ -163,16 +184,19 @@ namespace BossRush
             ZombieModeUIHelper.CreateButton(
                 "Confirm", surface.transform,
                 string.IsNullOrEmpty(o.ConfirmLabel) ? L10n.T("确认", "Confirm") : o.ConfirmLabel,
-                new Vector2(0.5f, 0.5f), new Vector2(-130f, buttonY), new Vector2(220f, 48f),
+                new Vector2(0.5f, 0.5f), new Vector2(o.SingleAction ? 0f : -130f, buttonY), new Vector2(220f, 48f),
                 o.Danger ? BossRushUIColors.Danger : BossRushUIColors.AccentFill, 19f, new Vector2(210f, 44f),
                 delegate { Finish(true); }, true);
-            Button cancel = ZombieModeUIHelper.CreateButton(
-                "Cancel", surface.transform,
-                string.IsNullOrEmpty(o.CancelLabel) ? L10n.T("再想想", "Not now") : o.CancelLabel,
-                new Vector2(0.5f, 0.5f), new Vector2(130f, buttonY), new Vector2(220f, 48f),
-                BossRushUIColors.SurfaceRaised, 19f, new Vector2(210f, 44f),
-                delegate { Finish(false); }, true);
-            BossRushUIKit.StyleSecondaryButton(cancel);
+            if (!o.SingleAction)
+            {
+                Button cancel = ZombieModeUIHelper.CreateButton(
+                    "Cancel", surface.transform,
+                    string.IsNullOrEmpty(o.CancelLabel) ? L10n.T("再想想", "Not now") : o.CancelLabel,
+                    new Vector2(0.5f, 0.5f), new Vector2(130f, buttonY), new Vector2(220f, 48f),
+                    BossRushUIColors.SurfaceRaised, 19f, new Vector2(210f, 44f),
+                    delegate { Finish(false); }, true);
+                BossRushUIKit.StyleSecondaryButton(cancel);
+            }
 
             _modalLease = BossRushUIKit.ClaimModalInput(_canvas.gameObject, "ConfirmDialog");
             _cancelKey = PetNestCancelKey.Attach(_canvas.gameObject, delegate { Finish(false); }, null);
