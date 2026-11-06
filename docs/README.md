@@ -50,6 +50,7 @@ NPC：
 
 场景与地图：
 
+- [新地图与新内容制作流程](guides/新地图与新内容制作流程.md)：问答定稿 → three.js 多轮精修 → Blender（MCP）→ Unity → 游戏；**做新地图从这里开始**（依据潮闸镇）
 - [从零搭建自定义场景：Blender → Unity → Mod](guides/从零搭建自定义场景_Blender到Unity到Mod完整教程.md)：首次做场景从这里开始
 - [自建场景原型试用：石砌遗迹与石堡前哨](guides/石堡前哨独立场景试用.md)
 
