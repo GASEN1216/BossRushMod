@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="10 34 414 414">
+ <g stroke-linecap="round" stroke-linejoin="round">
+  <!-- A sounding line uses a tapered lead, a grease cup underneath and knotted depth marks. -->
+  <g transform="rotate(-18 224 246)" fill="none">
+   <g stroke="#302b32" stroke-width="26">
+    <path d="M273 258 C333 223 353 139 320 101 C279 55 159 83 125 140 C90 200 146 247 209 221 C258 202 280 147 254 128 C217 98 151 151 161 183 C170 210 214 201 227 174"/>
+    <path d="M275 257 Q249 272 240 294"/>
+   </g>
+   <g stroke="#d8b779" stroke-width="17">
+    <path d="M273 258 C333 223 353 139 320 101 C279 55 159 83 125 140 C90 200 146 247 209 221 C258 202 280 147 254 128 C217 98 151 151 161 183 C170 210 214 201 227 174"/>
+    <path d="M275 257 Q249 272 240 294"/>
+   </g>
+   <path d="M273 258 C333 223 353 139 320 101 C279 55 159 83 125 140 C90 200 146 247 209 221 C258 202 280 147 254 128 C217 98 151 151 161 183 C170 210 214 201 227 174" fill="none" stroke="#8e5746" stroke-width="14" stroke-dasharray="3 14"/>
+   <path d="M305 229 L325 231 L321 216 L336 216 L327 198 L311 202 Z" fill="#e05b44" stroke="#362e31" stroke-width="6"/>
+   <path d="M138 116 L160 108 L171 114 L160 133 L142 138 Z" fill="#ece3c5" stroke="#453c35" stroke-width="6"/>
+  </g>
+  <g transform="rotate(-22 259 316)">
+   <path d="M242 275 L242 242 C243 215 281 214 284 240 L285 277 Z M255 251 L271 250 L270 240 C268 233 258 233 256 241 Z" fill="#9b8060" fill-rule="evenodd" stroke="#2c2a30" stroke-width="8"/>
+   <path d="M233 272 L284 268 L307 303 L329 385 L304 416 L228 413 L205 390 L216 304 Z" fill="#56696c" stroke="#282831" stroke-width="9"/>
+   <path d="M235 277 L255 281 L239 388 L211 389 L220 305 Z" fill="#8da6a1"/>
+   <path d="M270 277 L283 275 L302 304 L324 383 L292 391 L276 304 Z" fill="#384b53"/>
+   <path d="M219 308 L302 303 L308 324 L215 332 Z" fill="#ba4938" stroke="#433139" stroke-width="5"/>
+   <path d="M221 310 L250 309 L246 325 L216 327 Z" fill="#f28e58"/>
+   <path d="M211 389 L253 395 L327 382 L303 412 L231 410 Z" fill="#384852" stroke="#2d3134" stroke-width="5"/>
+   <path d="M244 399 L290 397 L279 404 L250 405 Z" fill="#b7976c"/>
+   <path d="M229 352 L240 349 M229 365 L237 362 M258 289 L269 286" fill="none" stroke="#d2c89b" stroke-width="4"/>
+  </g>
+ </g>
+</svg>

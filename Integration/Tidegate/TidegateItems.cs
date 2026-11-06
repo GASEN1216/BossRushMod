@@ -1,7 +1,7 @@
 // ============================================================================
-// TidegateItems.cs - 潮闸镇物品：阀门手轮、潮汐怀表、防水袋、鸭蹼脚掌、闸伯的信
+// TidegateItems.cs - 潮闸镇物品：阀门手轮、潮汐怀表、防水袋、鸭蹼脚掌、闸伯的信、淘沙响铊
 // ============================================================================
-// TypeID 500111-500115（台账见 docs/reference/Bossrush使用物品ID表.md、docs/contracts.md §1 与 AGENTS.md §4.3；
+// TypeID 500111-500116（台账见 docs/reference/Bossrush使用物品ID表.md、docs/contracts.md §1 与 AGENTS.md §4.3；
 // 常量在 Config/ConfigItemIds.cs 的 BossRushItemIds）。
 //
 // 【零新增 bundle】与天空岛物品同一套克隆注册（形态照 Integration/SkyIsland/SkyIslandItems.cs）：
@@ -52,7 +52,7 @@ namespace BossRush
             internal int Value;
             internal int Quality;
             internal float Weight;
-            /// <summary>大于 0 才挂使用行为（只有闸伯的信），值是读条秒数。</summary>
+            /// <summary>读信或测深时的使用读条秒数，其余为 0。</summary>
             internal float UseTime;
         }
 
@@ -91,6 +91,10 @@ namespace BossRush
                     "阿稳转来的湿包裹里夹着的一封信，字被水泡得有点花。\n拿出来读一读，就知道闸伯的竹筏停在哪。读完信还在，随时能再看。",
                     "A letter tucked in the soggy parcel Awen passed along. The ink has run a little.\nRead it to find out where Old Zha's raft is tied up. Reading doesn't use it up.",
                     "tidegate_letter", 50, 1, 0.05f, 1f),
+                Make(BossRushItemIds.TidegateSoundingLead, "BossRush_Tidegate_SoundingLead", "淘沙响铊", "Dredger's Sounding Lead",
+                    "沙老大用红白结绳测量泥滩的深浅。\n在潮闸镇使用：M 图上标出离你最近的一处未搜埋货，持续 25 秒。被水淹的货仍要等退潮。可重复使用。",
+                    "Leadline measured the flats with this red-and-white knotted line.\nUse in Tidegate to mark the nearest unsearched buried cache on your map for 25 seconds. Flooded caches still need an ebb tide. Reusable.",
+                    "tidegate_sounding_lead", 3500, 5, 0.4f, 0.8f),
             };
         }
 
@@ -112,7 +116,7 @@ namespace BossRush
             return null;
         }
 
-        /// <summary>是不是潮闸镇的五件物品之一。</summary>
+        /// <summary>是不是已登记的潮闸镇物品。</summary>
         internal static bool IsTidegateItem(int typeId)
         {
             return GetDefinition(typeId) != null;
@@ -168,7 +172,8 @@ namespace BossRush
                     // 闸伯的信：读了不消耗（耐久同风标罗盘；ClearInheritedUsage 已关掉官方按次扣耐久）。
                     item.MaxDurability = NonConsumableDurability;
                     item.Durability = NonConsumableDurability;
-                    AttachUsage(item, def.UseTime, Component<TidegateLetterUsage>(item));
+                    if (typeId == BossRushItemIds.TidegateSoundingLead) AttachUsage(item, def.UseTime, Component<TidegateLeadUsage>(item));
+                    else AttachUsage(item, def.UseTime, Component<TidegateLetterUsage>(item));
                 }
                 else
                 {

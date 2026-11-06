@@ -640,7 +640,7 @@ namespace BossRush
             foreach (TidegateEnemies.DevEnemyInfo info in TidegateDrillGroup(enemies, "dig", true))
             {
                 bool ok = false;
-                if (info.Kind == "boss") ok = TidegateDrillFlat(info.Patrol, TidegateEnemies.DevBossDigSpot) < 0.6f;
+                if (info.Kind == "boss") ok = info.SandBossBound && info.SandBossFlats && TidegateDrillFlat(info.Patrol, TidegateEnemies.DevBossDigSpot) < 0.6f;
                 else if (dig != null) foreach (Vector3 point in dig) if (TidegateDrillFlat(point, info.Patrol) < 0.6f) ok = true;
                 if (!ok) errors.Add("low_tide_not_digging_" + info.Id);
             }
@@ -649,13 +649,13 @@ namespace BossRush
             yield return WaitSeconds(2.5f);
             foreach (TidegateEnemies.DevEnemyInfo info in TidegateDrillGroup(enemies, "dig", true))
                 if (TidegateDrillFlat(info.Patrol, info.Home) > 0.6f) errors.Add("high_tide_not_home_" + info.Id);
-            // 沙老大是官方 Boss。
+            // 固定底模、专属名和尸体回调已挂，高潮已切回船上招式。
             bool bossObserved = false;
             foreach (TidegateEnemies.DevEnemyInfo info in TidegateDrillGroup(enemies, "dig", false))
             {
                 if (info.Kind != "boss" || !info.Alive) continue;
                 bossObserved = true;
-                if (!info.PresetIsBoss) errors.Add("sand_boss_not_official_boss");
+                if (!info.PresetIsBoss || !info.SandBossBound || info.SandBossFlats) errors.Add("sand_boss_identity_or_deck_stance");
             }
             if (!bossObserved) notes.Add("sand_boss_not_observed");
             // 被潮水卷走：挑一名不是沙老大的，挪进深水，泡满 8 秒（3 秒一查）应当消失，不掉东西。
@@ -994,7 +994,7 @@ namespace BossRush
                 if (info.Kind == "boss")
                 {
                     bosses++;
-                    if (!info.PresetIsBoss) errors.Add("sand_boss_preset_not_boss");
+                    if (!info.PresetIsBoss || !info.SandBossBound) errors.Add("sand_boss_identity_or_drop_missing");
                 }
             }
             // 与作者布局的候选点数分别报告：不能只把选中的槽当作分母而默许一组守备整个消失。

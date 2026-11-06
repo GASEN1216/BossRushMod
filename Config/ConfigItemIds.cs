@@ -138,5 +138,7 @@ namespace BossRush
         public const int TidegateFlippers = 500114;
         /// <summary>潮闸镇：闸伯的信（湿透的包裹里那封）。阿稳快递送达一次；读了才开放地堡下水道的竹筏航线。</summary>
         public const int TidegateLetter = 500115;
+        /// <summary>沙老大专属：在潮闸镇探测未开启的退潮埋货。</summary>
+        public const int TidegateSoundingLead = 500116;
     }
 }

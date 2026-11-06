@@ -17,7 +17,7 @@ namespace BossRush
     /// <summary>
     /// 潮闸镇的刷怪 owner。每趟在作者摆的点位中按地区抽守备队，选中的点只刷一次，玩家走到 25–75 m 之间才刷
     /// （官方 `CharacterSpawnerRoot` 同样不在玩家 25 m 内出怪，避免背后刷怪）。拾荒者、水厂与灯塔岬的守卫、淘沙帮都用官方拾荒者预设，
-    /// 守卫另按天空岛精英档配枪（`SkyIslandEnemyArmory`，品质 4–5），沙老大从官方 Boss 池按固定 key 抽一位、保留官方 Boss 掉落。
+    /// 守卫另按天空岛精英档配枪；沙老大只克隆指定参照，另有随潮相切换的招式和专属响铊。
     /// 刷出后的六步与天空岛相同：关距离激活 → 官方创建 → 导航限定本图 → 解除距离休眠 → 敌对性安全网 `SetTeam(Teams.wolf)` → 挂到世界根下。
     /// </summary>
     internal sealed partial class TidegateEnemies : IDisposable
@@ -226,7 +226,7 @@ namespace BossRush
 
         private CharacterRandomPreset SourceFor(Slot slot)
         {
-            if (slot.Kind == "boss") return SkyIslandEnemySources.ForMinion("Tidegate_SandBoss");
+            if (slot.Kind == "boss") return SkyIslandEnemySources.Named(TidegateSandBoss.SourceName);
             if (scav == null) scav = SkyIslandEnemySources.ScavReference();
             if (slot.Kind == "scav" && (slot.Group == "town" || slot.Group == "reeds"))
             {
@@ -270,6 +270,7 @@ namespace BossRush
                 clone.name = "BossRush_Tidegate_" + slot.Id;
                 clone.dropBoxOnDead = true;
                 clone.setActiveByPlayerDistance = false;
+                if (slot.Kind == "boss") TidegateSandBoss.Tune(clone);
                 // 缩小岸哨无事时的漫游，保留官方选敌、交火与追击。
                 if (slot.Group != "dig" && slot.Group != "vault") clone.patrolRange = Mathf.Min(clone.patrolRange, 3.5f);
                 TidegateEnemyActors.Tune(slot.Role, clone);
@@ -305,6 +306,7 @@ namespace BossRush
                 created.gameObject.AddComponent<TidegatePresetOwner>().Preset = clone;
                 clone = null;
                 slot.Character = created;
+                if (slot.Kind == "boss") created.gameObject.AddComponent<TidegateSandBoss>().Bind(created, ai, tide, world, slot.Home, BossDigSpot, DiggersOut, valid, source.name);
                 slot.JoinedAt = Time.time;
                 if (revealUntil > 0f) MarkOnMap(slot);
                 retained = true;

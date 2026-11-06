@@ -49,6 +49,7 @@ PROJECT_FIXTURES = {
     "TidegateTreasure": "TidegateTreasure.csproj",
     "TidegateCargo": "TidegateCargo.csproj",
     "TidegateGunner": "TidegateGunner.csproj",
+    "TidegateSandBoss": "TidegateSandBoss.csproj",
     "PromoRecordingLifecycle": "PromoRecordingLifecycle.csproj",
     "ModeGPersistenceRecovery": "ModeGPersistenceRecovery.csproj",
     "FieldAdventureGate": "FieldAdventureGate.csproj",

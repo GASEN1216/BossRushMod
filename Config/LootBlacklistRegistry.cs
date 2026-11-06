@@ -207,6 +207,7 @@ namespace BossRush
                 BossRushItemIds.TidegateDryBag,
                 BossRushItemIds.TidegateFlippers,
                 BossRushItemIds.TidegateLetter,
+                BossRushItemIds.TidegateSoundingLead,
             };
         }
     }

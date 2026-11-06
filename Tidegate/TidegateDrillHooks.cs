@@ -273,6 +273,7 @@ namespace BossRush
             internal TidegateEnemyRole Role;
             internal CharacterMainControl Character;
             internal bool Started, Failed, Alive, Extra, MapPoint, PresetIsBoss, Partner, NoticeAnonymous;
+            internal bool SandBossBound, SandBossFlats;
             internal Vector3 Home, Patrol, Position, NoticePosition;
             internal float SpawnDistance = -1f, ForceTrace = -1f, Hearing, JoinedAfter = -1f, PatrolAdvance;
         }
@@ -286,11 +287,15 @@ namespace BossRush
                 bool alive = character != null && character.Health != null && !character.Health.IsDead;
                 float distance;
                 TidegatePresetOwner owner = character == null ? null : character.GetComponent<TidegatePresetOwner>();
+                var boss = slot.Kind == "boss" && character != null ? character.GetComponent<TidegateSandBoss>() : null;
                 var info = new DevEnemyInfo
                 {
                     Id = slot.Id, Group = slot.Group, Kind = slot.Kind, Role = slot.Role, Character = character, Started = slot.Started, Failed = slot.Failed,
                     Alive = alive, Extra = slot.Id.StartsWith("TidegateExtraSpawn_", StringComparison.Ordinal), MapPoint = slot.MapPoint != null,
                     PresetIsBoss = owner != null && owner.Preset != null && owner.Preset.isBoss,
+                    SandBossBound = boss != null && boss.Reference == TidegateSandBoss.SourceName && boss.OwnsDrop &&
+                        owner != null && owner.Preset != null && owner.Preset.nameKey == TidegateText.MapBossKey,
+                    SandBossFlats = boss != null && boss.OnFlats,
                     Home = slot.Home, Patrol = slot.Ai != null ? slot.Ai.patrolPosition : slot.Home,
                     Position = character != null ? character.transform.position : slot.Home,
                     SpawnDistance = devSpawnDistance.TryGetValue(slot.Id, out distance) ? distance : -1f,

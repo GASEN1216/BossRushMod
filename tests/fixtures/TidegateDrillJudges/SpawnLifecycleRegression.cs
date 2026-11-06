@@ -22,6 +22,8 @@ namespace BossRush
         private float revealUntil = -1f;
         internal int SpawnedCount { get; private set; }
         private CharacterRandomPreset SourceFor(Slot slot) { return sources[slot]; }
+        private static readonly Vector3 BossDigSpot = new Vector3(4.5f, 0f, -50.5f);
+        private bool DiggersOut() { return false; } // 此夹具只测异步刷怪；专属战斗由 TidegateSandBoss 夹具驱动。
         private void DevNoteSpawn(Slot slot, Vector3 position) { }
         private bool OnLeadRoute(Slot slot, Vector3 position) { return true; } // 隔离图连通性，只在实机有 A* 节点。
         private bool connected = true;
@@ -243,6 +245,12 @@ namespace BossRush
     internal enum Teams { player, scav, wolf }
     internal static class Team { internal static bool IsEnemy(Teams self, Teams other) { return self != other; } }
     internal static partial class TidegateEnemyActors { internal static bool IsPatrolWolf(CharacterRandomPreset s) { return false; } }
+    internal sealed class TidegateSandBoss : Component
+    {
+        internal static void Tune(CharacterRandomPreset p) { }
+        internal void Bind(CharacterMainControl c, AICharacterController ai, TidegateTide tide, TestWorld world, Vector3 deck,
+            Vector3 flats, Func<bool> posture, Func<bool> valid, string source) { }
+    }
     internal enum SkyIslandEnemyTier { Elite }
     internal static class SkyIslandEnemyArmory { internal static void Arm(CharacterMainControl c, SkyIslandEnemyTier tier) { } }
     internal static class SpawnedEnemyActivationHelper { internal static void ReleaseFromPlayerDistanceSleep(CharacterMainControl c) { } }

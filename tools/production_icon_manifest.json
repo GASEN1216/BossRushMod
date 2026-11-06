@@ -447,6 +447,10 @@
       "maxSize": 512
     },
     {
+      "path": "Assets/Items/tidegate_sounding_lead.png",
+      "maxSize": 512
+    },
+    {
       "path": "Assets/Items/tidegate_tide_watch.png",
       "maxSize": 512
     },

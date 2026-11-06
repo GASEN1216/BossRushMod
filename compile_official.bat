@@ -328,6 +328,7 @@ echo(Tidegate\TidegateWater.cs
 echo(Tidegate\TidegateWaterRegions.cs
 echo(Tidegate\TidegateMap.cs
 echo(Tidegate\TidegateEnemies.cs
+echo(Tidegate\TidegateSandBoss.cs
 echo(Tidegate\TidegateEnemyActors.cs
 echo(Tidegate\TidegateHound.cs
 echo(Tidegate\TidegateMarksman.cs
@@ -1434,6 +1435,7 @@ echo(Integration\SkyIsland\SkyIslandNavInstrumentConfig.cs
 echo(Integration\SkyIsland\SkyIslandCompassUsage.cs
 echo(Integration\SkyIsland\SkyIslandFieldcraftUsage.cs
 echo(Integration\Tidegate\TidegateItems.cs
+echo(Integration\Tidegate\TidegateLeadUsage.cs
 echo(Integration\Tidegate\TidegateLetterUsage.cs
 )>"%OUTPUT_DIR%\bossrush.rsp"
 

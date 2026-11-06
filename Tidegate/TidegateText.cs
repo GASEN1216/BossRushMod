@@ -44,7 +44,8 @@ namespace BossRush
         {
             TidegateLoot.InjectCargoLabels();
             LocalizationHelper.InjectLocalization(MapEnemyKey, L10n.T("敌人", "Enemy"));
-            LocalizationHelper.InjectLocalization(MapBossKey, L10n.T("沙老大", "Sand Boss"));
+            LocalizationHelper.InjectLocalization(MapBossKey, L10n.T("沙老大·铅锤", "Leadline, the Dredge Boss"));
+            LocalizationHelper.InjectLocalization(TidegateLeadUsage.PinKey, L10n.T("响铊：埋货", "Sounding lead: buried cache"));
             foreach (string id in new[] { "road", "ferry", "drain", "lh" })
             {
                 LocalizationHelper.InjectLocalization(ExitMapKey(id), ExitName(id) + " · " + ExitRule(id));
