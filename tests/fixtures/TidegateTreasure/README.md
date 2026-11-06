@@ -2,6 +2,8 @@
 
 运行 `python tools/run_runtime_regressions.py --filter TidegateTreasure`；每个点各试 2,048 个相同种子，统计输出在 `Build/runtime-regressions/TidegateTreasure.log`。统计范围是 9 个实际点位，包括 2 个普通对照、泥滩、沉船、手轮柜、水厂控制室、普通金库以及所长与船长保险柜。
 
+`HarborShiftAudit` 还在每组 256 个相同种子中搜完全部 78 个作者箱子；统计普通区单格率、真实成套物品和全图总标价，检查普通点每趟最多一件惊喜。该统计刻意不放运单、不计剧情物/敌人掉落。箱种清单按布局 ID 顺序保存于 `HarborBoxTypes.txt`；锁柜先搜/后搜、重开和重入由 `TidegateCargo` 验证。
+
 直接编译生产 `TidegateLoot` 完整建箱/开箱/退订流程、`SkyIslandLootPools` 的实际分类及候选过滤、`SkyIslandLootTables` 的品质加权和随机流、`LootExcludeTagPolicy` 及 TypeID 范围规则。固定剧情物不计入标价，但核对手轮与怀表确实装入；每只箱子开两次，不能增加物资或多计探索。危险区需要命中对应品质底线并能出售；两个高级柜跨局要有不同实物，最高品质不能每局必出。普通点不能变精品点。
 
 Unity 场景、箱子容量、商店与玩家均为宿主替身。箱价对比把各点置于干燥近地，不注入装货 POI，避免运货改变箱价。独立的 48 局货单验证使用真实布局摘录：开第一只普通箱后，必须出现两处不同的真实货区，三种组合均可出现；通过控制最后一次抽样，逐项枚举生产挑选器接受的医疗、检修、贵重货。货单胜出、备选箱回填与失败路径由 `TidegateCargo` 单独执行。替身按官方 `ItemFilter` 处理标签及品质查询，使用生产黑名单 JSON；不加载其它 Mod 的动态物品，不代表 Unity 帧耗或游戏内实际装箱一定成功。

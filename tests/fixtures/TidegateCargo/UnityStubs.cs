@@ -51,6 +51,12 @@ namespace UnityEngine
         public Vector3 position, eulerAngles;
         public Transform parent;
         public readonly List<Transform> children = new List<Transform>();
+        public Transform Find(string path)
+        {
+            Transform at = this;
+            foreach (string name in path.Split('/')) { at = at.children.Find(c => c.name == name); if (at == null) break; }
+            return at;
+        }
         public void SetParent(Transform value, bool preserve)
         { if (parent != null) parent.children.Remove(this); parent = value; if (parent != null) parent.children.Add(this); }
     }

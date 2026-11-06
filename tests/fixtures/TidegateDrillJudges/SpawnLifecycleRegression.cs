@@ -171,20 +171,21 @@ namespace BossRush
             }
             if (used.Count != points.Count) errors.Add("some_authored_spawn_positions_never_participate");
             if (errors.Count == 0) Console.WriteLine("Tidegate actual layout: 512 seeds x 27 slots, town 9 / docks 6, 7 delayed partners, 4 guards + 1 boss.");
-            foreach (SkyIslandLootTier tier in new[] { SkyIslandLootTier.Supply, SkyIslandLootTier.Voyage, SkyIslandLootTier.Starworks })
+            foreach (string kind in new[] { "house", "fish", "tool", "med", "crate", "buried", "vault" })
             {
                 int[] counts = new int[8];
                 double mean = 0;
                 for (int roll = 0; roll < 100; roll++)
                 {
-                    int n = TidegateLoot.RollCount(tier, roll);
+                    int n = TidegateLoot.RollCount(kind, roll);
                     if (n < 1 || n >= counts.Length) { errors.Add("box_capacity"); break; }
                     counts[n]++; mean += n * 0.01;
                 }
-                if (counts[2] + counts[3] >= 60 || (tier == SkyIslandLootTier.Supply && (mean > 2.7 || mean < 2.1))
-                    || (tier == SkyIslandLootTier.Starworks && (counts[1] + counts[2] > 0 || mean < 4.0)))
-                    errors.Add("container_quantities_flat_or_unbalanced_" + tier);
-                Console.WriteLine("Tidegate loot " + tier + " roll_count_mean=" + mean.ToString("F2") + " counts_1_to_6="
+                if (counts[1] > 15 || (kind == "fish" && (counts[4]+counts[5]+counts[6]>0 || mean>2.3))
+                    || ((kind=="tool" || kind=="med") && (counts[1]!=0 || counts[4]+counts[5]<20 || mean>3.1))
+                    || (kind=="vault" && (counts[1]+counts[2]>0 || mean<4.0)))
+                    errors.Add("container_capacity_not_matched_" + kind);
+                Console.WriteLine("Tidegate loot " + kind + " roll_count_mean=" + mean.ToString("F2") + " counts_1_to_6="
                     + string.Join("/", Array.ConvertAll(counts, n => n.ToString()), 1, 6));
             }
             return errors;

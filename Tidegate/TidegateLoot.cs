@@ -49,6 +49,7 @@ namespace BossRush
             internal bool Lagoon;
             internal InteractableLootbox Box;
             internal bool Built, Failed, Flooded, Opened, FloodHinted;
+            internal Transform BuriedVisual;
             internal Shipment Offer;
         }
 
@@ -235,6 +236,23 @@ namespace BossRush
 
         private readonly List<Shipment> offers = new List<Shipment>(2);
         private bool cargoHinted;
+        private const string ForemanCabinet = "LOOT_safe_35";
+        private string shiftKeyBox, luckyBox;
+        private bool carryingShiftKey, openedCabinet, lockExplained;
+
+        // 老镇西南红色检修柜的轮班钥匙挂在盖内，码头领班柜用。它属于这趟出击，撤离后不能带去别图开门。
+        private void PrepareShift()
+        {
+            var r = SkyIslandLootTables.CreateStream(seed, "Tidegate#shift");
+            var keySites = points.FindAll(p => p.Id == "LOOT_tool_3" || p.Id == "LOOT_tool_4");
+            if (keySites.Count != 0 && points.Exists(p => p.Id == ForemanCabinet))
+                shiftKeyBox = keySites[r.Next(keySites.Count)].Id;
+            if (r.Next(100) >= 12) return;
+            var candidates = points.FindAll(p => !IsFixedContainer(p.Id) && (p.Kind == "fish" || p.Kind == "med" || p.Kind == "tool"));
+            if (candidates.Count > 0) luckyBox = candidates[r.Next(candidates.Count)].Id;
+        }
+
+        private bool Locked(Point p) { return p.Id == ForemanCabinet && shiftKeyBox != null && !carryingShiftKey && !openedCabinet; }
 
         internal string ManifestObjective
         {
@@ -286,9 +304,19 @@ namespace BossRush
             {
                 // LOOT_<种类>_<序号>
                 string[] parts = marker.name.Split('_');
-                points.Add(new Point { Marker = marker, Id = marker.name, Kind = parts.Length >= 2 ? parts[1] : "crate", Yaw = marker.eulerAngles.y });
+                var point = new Point { Marker = marker, Id = marker.name, Kind = parts.Length >= 2 ? parts[1] : "crate", Yaw = marker.eulerAngles.y };
+                if (point.Kind == "buried")
+                {
+                    point.BuriedVisual = world.Root.transform.Find("Visual/VIS_containers/" + point.Id);
+                    if (!world.TryGroundAt(marker.position, out point.Ground)) point.Ground = marker.position.y;
+                    point.Lagoon = world.InLagoon(marker.position);
+                    point.Flooded = IsFlooded(point);
+                    if (point.BuriedVisual != null) point.BuriedVisual.gameObject.SetActive(!point.Flooded);
+                }
+                points.Add(point);
             }
             ChooseDelivery();
+            PrepareShift();
             InteractableLootbox.OnStartLoot += OnStartLoot;
             subscribed = true;
         }
@@ -395,12 +423,37 @@ namespace BossRush
             }
         }
 
-        // 生活区有翻剩的一格和少量整箱；需要等潮的箱子更饱满。普通格数的平均值仍在原来的数量级。
-        internal static int RollCount(SkyIslandLootTier tier, int roll)
+        // 容量对应作者 kit-props 的实际模型：矮渔篓、三抽屉家柜、方木箱、多屉检修柜/分层医疗柜、整座金库柜。
+        internal static int RollCount(string kind, int roll)
         {
-            if (tier == Tier.Starworks) return roll < 25 ? 3 : roll < 65 ? 4 : roll < 90 ? 5 : 6;
-            if (tier == Tier.Voyage) return roll < 18 ? 1 : roll < 40 ? 2 : roll < 67 ? 3 : roll < 90 ? 4 : 5;
-            return roll < 38 ? 1 : roll < 56 ? 2 : roll < 74 ? 3 : roll < 94 ? 4 : 5;
+            if (kind == "vault") return roll < 25 ? 3 : roll < 65 ? 4 : roll < 90 ? 5 : 6;
+            if (kind == "buried" || kind == "safe" || kind == "wreck" || kind == "locker")
+                return roll < 12 ? 1 : roll < 40 ? 2 : roll < 67 ? 3 : roll < 90 ? 4 : 5;
+            if (kind == "fish") return roll < 15 ? 1 : roll < 70 ? 2 : 3;
+            if (kind == "house") return roll < 12 ? 1 : roll < 62 ? 2 : roll < 94 ? 3 : 4;
+            if (kind == "tool" || kind == "med") return roll < 36 ? 2 : roll < 76 ? 3 : roll < 94 ? 4 : 5;
+            return roll < 5 ? 1 : roll < 48 ? 2 : roll < 85 ? 3 : roll < 97 ? 4 : 5;
+        }
+
+        // 一张班次单决定头两格的搭配；ID 仍须在本机官方同类别、同品质带、已过黑名单与价限的池中。
+        private static int ShiftItem(string kind, int variant, int slot, ref Cat category)
+        {
+            if (slot > 1) return 0;
+            int want;
+            if (kind == "tool") { category = Cat.Workshop; want = variant == 0 ? (slot == 0 ? 332 : 335) : (slot == 0 ? 91 : 30); }
+            else if (kind == "fish")
+            {
+                category = slot == 0 ? Cat.Fishing : (variant == 0 ? Cat.Workshop : Cat.Pantry);
+                want = slot == 0 ? 1106 : (variant == 0 ? 87 : 13);
+            }
+            else if (kind == "med")
+            {
+                category = slot == 0 || variant == 0 ? Cat.Medical : Cat.Pantry;
+                want = variant == 0 ? (slot == 0 ? 10 : 20) : (slot == 0 ? 17 : 428);
+            }
+            else return 0;
+            var stock = SkyIslandLootPools.GetCategoryBand(category, SkyIslandLootTables.MinQuality(Tier.Supply), SkyIslandLootTables.MaxQuality(Tier.Supply));
+            return stock != null && Array.IndexOf(stock, want) >= 0 ? want : 0;
         }
 
         internal static System.Collections.IEnumerator PrewarmThemes()
@@ -427,7 +480,8 @@ namespace BossRush
 
         private bool IsFlooded(Point point)
         {
-            return TidegateTideRules.IsDeep(point.Lagoon ? tide.LagoonLevel : tide.Level, point.Ground);
+            float level = point.Lagoon ? tide.LagoonLevel : tide.Level;
+            return point.Kind == "buried" ? level > point.Ground + 0.12f : TidegateTideRules.IsDeep(level, point.Ground);
         }
 
         internal void Tick(CharacterMainControl player)
@@ -441,16 +495,27 @@ namespace BossRush
             {
                 Point point = points[i];
                 float distance = (point.Marker.position - origin).sqrMagnitude;
+                if (!point.Built && point.BuriedVisual != null)
+                {
+                    point.Flooded = IsFlooded(point);
+                    if (point.BuriedVisual.gameObject.activeSelf == point.Flooded) point.BuriedVisual.gameObject.SetActive(!point.Flooded);
+                }
                 if (point.Built && point.Box != null)
                 {
                     bool flooded = IsFlooded(point);
+                    if (Locked(point) && !lockExplained && distance <= FloodHintRange * FloodHintRange && announce != null)
+                    {
+                        lockExplained = true;
+                        announce(L10n.T("二号仓库领班柜锁着。牌上写着：轮班钥匙留在老镇五金店的红工具柜里。", "Warehouse 2 foreman's cabinet locked. Tag: shift key in a red tool chest at the Old Town hardware store."), false);
+                    }
                     // 直接摸到目标也先看得到两种选择，开官方搜刮窗才算选了这批。
                     if (!cargoHinted && point.Offer != null && !flooded && distance <= FloodHintRange * FloodHintRange)
                         RevealOffers(true);
                     if (flooded != point.Flooded && (!flooded || distance > KeepNearRange * KeepNearRange))
                     {
                         point.Flooded = flooded;
-                        point.Box.gameObject.SetActive(!flooded);
+                        point.Box.gameObject.SetActive(!flooded && !Locked(point));
+                        if (point.BuriedVisual != null) point.BuriedVisual.gameObject.SetActive(!flooded);
                         if (!flooded) point.FloodHinted = false;
                     }
                     // 被淹的箱柜：模型还在、交互没了，走到跟前提示一次，水退之前不再说（CR-2026-11-05-024）。
@@ -477,6 +542,12 @@ namespace BossRush
             if (box == null)
             {
                 point.Failed = true;
+                if (point.Id == shiftKeyBox)
+                {
+                    shiftKeyBox = null; // 唯一钥匙源缺模型时开放普通柜，不能留下无解的锁。
+                    Point cabinet = points.Find(p => p.Id == ForemanCabinet);
+                    if (cabinet != null && cabinet.Box != null && !cabinet.Flooded) cabinet.Box.gameObject.SetActive(true);
+                }
                 if (point.Offer != null) LoseOffer(point.Offer);
                 Debug.LogWarning(TidegateRaidScene.LogTag + " 搜刮点 " + point.Id + " 准备失败：" + error);
                 return;
@@ -486,7 +557,8 @@ namespace BossRush
             foreach (Renderer renderer in box.GetComponentsInChildren<Renderer>(true)) renderer.enabled = false;
             Spec spec = SpecOf(point.Kind);
             var random = SkyIslandLootTables.CreateStream(seed, point.Id);
-            int count = RollCount(spec.Tier, random.Next(100));
+            int count = RollCount(point.Kind, random.Next(100));
+            int kit = SkyIslandLootTables.CreateStream(seed, point.Id + "#shift-kit").Next(3); // 第三种保留杂物和自行搭配
             int prizeFloor = PrizeFloor(point.Id, point.Kind);
             var prizeRandom = prizeFloor > 0 ? SkyIslandLootTables.CreateStream(seed, point.Id + "#prize") : null;
             bool captain = HasFixed(point.Id, "goldbar");
@@ -495,7 +567,8 @@ namespace BossRush
             for (int i = 0; i < count; i++)
             {
                 Cat category = i == 0 ? spec.First : spec.Extras[random.Next(spec.Extras.Length)];
-                int typeId = SkyIslandLootPools.PickCategory(category, spec.Tier, random);
+                int typeId = kit < 2 ? ShiftItem(point.Kind, kit, i, ref category) : 0;
+                if (typeId == 0) typeId = SkyIslandLootPools.PickCategory(category, spec.Tier, random);
                 int amount = typeId > 0 && category == Cat.Ammo ? 20 + random.Next(31) : 1;
                 if (typeId == 0) { category = Cat.General; typeId = SkyIslandLootPools.Pick(spec.Tier, false, random); }
                 if (i == 0 && prizeFloor > 0 && !captain)
@@ -504,6 +577,12 @@ namespace BossRush
                     int prize = RolledPrize(point, prizeFloor, prizeRandom, out prizeCategory);
                     if (prize > 0) { typeId = prize; amount = 1; category = prizeCategory; }
                     else log.Append(" prize_stock_unavailable");
+                }
+                if (i == 0 && (point.Id == luckyBox || (point.Id == ForemanCabinet && shiftKeyBox != null)))
+                {
+                    Cat theme = point.Kind == "med" ? Cat.Medical : point.Kind == "tool" ? Cat.Workshop : Cat.Valuable;
+                    int surprise = PickPrize(theme, 4, 4, 4, random, theme);
+                    if (surprise > 0) { typeId = surprise; amount = 1; category = theme; }
                 }
                 if (DeferCargoSlot(point, i, count, typeId, amount, category)) continue;
                 if (SkyIslandRewardCrate.AddOfficialStack(box, typeId, amount, log, category.ToString())) added++;
@@ -523,7 +602,11 @@ namespace BossRush
             if (!world.TryGroundAt(position, out point.Ground)) point.Ground = position.y;
             point.Lagoon = world.InLagoon(position);
             point.Flooded = IsFlooded(point);
-            if (point.Flooded) box.gameObject.SetActive(false);
+            if (point.Kind == "buried")
+            {
+                if (point.BuriedVisual != null) point.BuriedVisual.gameObject.SetActive(!point.Flooded);
+            }
+            if (point.Flooded || Locked(point)) box.gameObject.SetActive(false);
             else if (!cargoHinted && point.Offer != null && (position - player.transform.position).sqrMagnitude <= FloodHintRange * FloodHintRange)
                 RevealOffers(true);
             Debug.Log(TidegateRaidScene.LogTag + " LOOT_READY id=" + point.Id + " tier=" + spec.Tier + " items=" + added
@@ -536,12 +619,24 @@ namespace BossRush
             for (int i = 0; i < points.Count; i++)
             {
                 Point point = points[i];
-                if (point.Box != box || point.Opened) continue;
+                if (point.Box != box || point.Opened || point.Flooded || Locked(point)) continue;
                 point.Opened = true;
                 opened++;
                 Action<string> handler = Opened;
                 if (handler != null) handler(point.Id);
                 ReadDelivery(point);
+                if (point.Id == shiftKeyBox && !carryingShiftKey && !openedCabinet)
+                {
+                    carryingShiftKey = true;
+                    Point cabinet = points.Find(p => p.Id == ForemanCabinet);
+                    if (cabinet != null && cabinet.Box != null && !cabinet.Flooded) cabinet.Box.gameObject.SetActive(true);
+                    if (announce != null) announce(L10n.T("箱盖里挂着轮班钥匙：已取下。本趟可开码头二号仓库的领班柜。", "A shift key hangs under the lid. Taken: it opens the foreman's cabinet in dock warehouse 2 this raid."), true);
+                }
+                else if (point.Id == ForemanCabinet && carryingShiftKey)
+                {
+                    openedCabinet = true; carryingShiftKey = false;
+                    if (announce != null) announce(L10n.T("轮班钥匙留在锁孔里。领班柜已打开。", "The shift key stays in the lock. The foreman's cabinet is open."), false);
+                }
                 return;
             }
         }

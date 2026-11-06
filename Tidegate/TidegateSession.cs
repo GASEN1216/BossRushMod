@@ -277,12 +277,12 @@ namespace BossRush
             LevelManager.UnregisterWaitForInitialization(this);
             carryingWatch = TidegateInventory.Carries(player, BossRushItemIds.TidegateTideWatch);
             nextWatchCheck = Time.unscaledTime + 2f;
-            // 落地横幅的提示：没带怀表的人告诉他怀表有什么用（倒计时只在带着怀表时出现在小标行）。
-            if (hud != null && !carryingWatch)
+            // 返场的持表玩家同样能读到开场路线；表的倒计时在自己的状态行显示。
+            if (hud != null)
                 Safe("landing_hint", delegate
                 {
-                    hud.SetLandingHint(L10n.T("地图键看全镇 · 站进撤离环读完条返航 · 带潮汐怀表能看涨落倒计时",
-                        "Map key: see the town · stand in an extraction ring until the bar fills · a tide pocket watch shows the countdown"));
+                    hud.SetLandingHint(L10n.T("近处有诊所和五金店。翻箱读货单；五金店的红柜里有码头轮班钥匙。按地图键看路线。",
+                        "Clinic or hardware store first? Search for a manifest; a red tool chest holds the dock shift key. Open the map for a route."));
                 });
             safePosition = world.PlayerSpawn.position + Vector3.up * 0.15f;
             moved = ready = true;

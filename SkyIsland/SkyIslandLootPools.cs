@@ -270,7 +270,7 @@ namespace BossRush
                     result.Add(TagNamed(tags, "Tool")); result.Add(TagNamed(tags, "Material")); result.Add(TagNamed(tags, "Electric"));
                     break;
                 case SkyIslandLootCategory.Fishing:
-                    result.Add(tags.Bait); result.Add(TagNamed(tags, "Food"));
+                    result.Add(tags.Bait); result.Add(TagNamed(tags, "Fish")); result.Add(TagNamed(tags, "Food"));
                     break;
                 case SkyIslandLootCategory.Medical:
                     result.Add(TagNamed(tags, "Medic") ?? TagNamed(tags, "Medical")); result.Add(TagNamed(tags, "Injector"));

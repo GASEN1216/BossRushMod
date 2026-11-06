@@ -94,6 +94,7 @@ internal static partial class Program
         }
         Console.WriteLine(Raids+" seeds per marker, official catalog "+ItemAssetsCollection.Items.Count+" items; totals exclude fixed mod items.");
         foreach(var e in stats) e.Value.Print(e.Key);
+        AuditShift(baseline);
         if(!baseline)
         {
             AuditManifest();

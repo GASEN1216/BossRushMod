@@ -165,6 +165,34 @@ internal static class Program
         }
     }
 
+    private static void CheckEbbCache()
+    {
+        var world=new TidegateWorld();
+        Transform parent=world.Root.transform;
+        foreach(string name in new[]{"Visual","VIS_containers","LOOT_buried_50"})
+        {
+            var part=new GameObject(name).transform;part.SetParent(parent,false);parent=part;
+        }
+        world.LootMarkers.Add(new GameObject("LOOT_buried_50").transform);
+        var player=new GameObject("Duck").AddComponent<CharacterMainControl>();
+        player.transform.position=new Vector3(100,0,0);
+        var tide=new TidegateTide{Level=.5f}; Time.time=1;SkyIslandRewardCrate.Boxes.Clear();
+        using(var owner=new TidegateLoot(world,tide,21,()=>true,(s,w)=>{}))
+        {
+            Check(!parent.gameObject.activeSelf && SkyIslandRewardCrate.Boxes.Count==0,"buried mesh visible before streaming");
+            tide.Level=.1f;owner.Tick(player);Time.time++;
+            Check(parent.gameObject.activeSelf && SkyIslandRewardCrate.Boxes.Count==0,"ebb did not reveal distant mud cache");
+            player.transform.position=new Vector3(5,0,0);owner.Tick(player);Time.time++;
+            var box=SkyIslandRewardCrate.Boxes["LOOT_buried_50"];
+            Check(box.gameObject.activeSelf,"exposed cache not searchable");
+            box.Open();int count=box.Stocks.Count;
+            tide.Level=.6f;owner.Tick(player);Time.time++;
+            Check(!parent.gameObject.activeSelf && !box.gameObject.activeSelf,"reflood left visual or box active");
+            tide.Level=.1f;owner.Tick(player);box.Open();
+            Check(parent.gameObject.activeSelf && box.gameObject.activeSelf && count==box.Stocks.Count,"ebb refilled searched cache");
+        }
+    }
+
     private static void NoDelivery(bool missingPrefabs)
     {
         if (!missingPrefabs) SkyIslandLootPools.Missing.UnionWith(CargoCategories);
@@ -174,7 +202,7 @@ internal static class Program
             using (var raid = new Raid(42))
             {
                 foreach (Marker m in boxes) raid.Box(m.Id).Open();
-                Check(raid.Notices.Count == 0 && raid.Pins().Length == 0 && Raid.CargoCount() == 0 &&
+                Check(!raid.Notices.Any(n => n.Contains("manifest") || n.Contains("seal") || n.Contains("shipment")) && raid.Pins().Length == 0 && Raid.CargoCount() == 0 &&
                       raid.Loot.ManifestObjective == null, "unavailable official items left an unfulfillable offer");
             }
         }
@@ -283,6 +311,25 @@ internal static class Program
         }
         Check(oneSlot > 0, "fixture never exercised an initially empty one-slot shipment box");
         Failures();
+        CheckEbbCache();
+        // 独立于装船货：没有读货单或追封箱，轮班钥匙仍能开柜；重入不会保留开锁状态。
+        if (!boxes.Any(b=>b.Id=="LOOT_safe_35"))
+            foreach (var row in new[]{"LOOT_safe_35","LOOT_tool_3","LOOT_tool_4"})
+                if (!boxes.Any(b=>b.Id==row)) boxes.Add(new Marker {Id=row,Kind=row.Split('_')[1],Position=new Vector3(boxes.Count*2,0,0)});
+        for (int seed=0;seed<8;seed++)
+            using (var raid=new Raid(seed,false))
+            {
+                var cabinet=raid.Box("LOOT_safe_35");
+                Check(!cabinet.gameObject.activeSelf,"locked cabinet was lootable on arrival");
+                int before=raid.OpenEvents;
+                cabinet.Open();
+                Check(raid.OpenEvents==before,"ignored lock via early loot event");
+                raid.Box("LOOT_tool_3").Open(); raid.Box("LOOT_tool_4").Open();
+                Check(cabinet.gameObject.activeSelf && raid.Notices.Count(n=>n.Contains("A shift key"))==1,"missing/repeated shift key");
+                int stacks=cabinet.Stocks.Count;
+                cabinet.Open();cabinet.Open();
+                Check(stacks==cabinet.Stocks.Count && raid.Notices.Count(n=>n.Contains("stays in the lock"))==1,"lock reused its key or refilled");
+            }
         Console.WriteLine("PASS: " + boxes.Count + " authored containers, " + seeds + " seeds, all three route pairs and " + oneSlot +
             " one-stack wins; both choices and discovery orders, same normal losing stocks, exclusive cargo, official failures and cleanup.");
     }
