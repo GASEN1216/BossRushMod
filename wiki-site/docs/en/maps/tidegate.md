@@ -50,14 +50,16 @@ The countdown is the same one the regular extraction points use: it pauses while
 
 Two industrial hazards are lethal:
 
-- **Never swim into an open sluice.** On the lagoon side of the gate, ripples point into a marked intake. Stay in the red core for 4 consecutive seconds while the water is draining and it pulls you under, regardless of armour or load. Swim out to clear the timer. Cross on the dam instead.
-- **Keep clear of the suspended load.** The dock crane's yellow box marks the spot where the load lands. When the bell sounds and the box flashes, step aside. Only the actual impact kills someone underneath. Search the fish crate from outside the lines or cross after the load rises.
+- **Never swim into an open sluice.** On your first approach to a working intake you have 2.5 seconds to read the current and see the warning. After that, four consecutive seconds in the red core will pull you under. Swim sideways out of the ring to reset the timer, or cross on the dam.
+- **Keep clear of the suspended load.** The first cycle tests the crane brakes: the load stops overhead. Use the bell and the yellow box to find a safe spot. Subsequent loads hit the ground and will kill anyone directly underneath. The nearby fish basket is safe from outside the lines.
 
-- Everyday containers roll 1–5 loot stacks. Look for food in homes, parts in toolboxes, fishing gear in fish crates and medicine in medical boxes. Buried caches, the wreck, safes and the dredger's locker also roll 1–5 stacks, with a better chance of finding more than one. The vault rolls 3–6. The handwheel, pocket watch and the captain's guaranteed vault-grade valuable are separate from these rolls.
+- For a quick start, visit the clinic or hardware store. Fish baskets hold 1–3 stacks, home drawers 1–4, shipping crates 1–5 and tool or medical cabinets 2–5. Bolts can come with nuts; the fish catch may be packed with rope for mending nets. Occasionally a work kit hides a valuable item. Deep vault cabinets still hold 3–6 stacks.
+- One of two red tool chests in the Old Town hardware store holds a **shift key**. Take it to the foreman's cabinet in dock warehouse 2. It stays in the lock and cannot be taken home. Buried caches become visible when the tide recedes to the mud.
 - For better loot, watch the tide. Buried caches and the waterworks control-room safe have one quality 4–5 item; the wreck's holds and the dredger's locker have one at quality 4–6. The bank's ordinary vault boxes each hold a quality 5–7 item. Drain the vault to reach the manager's safe, or reach the wreck captain's safe at ebb, for a prize of at least quality 6. Higher grades depend on what's in the game's item catalogue. Other slots still roll normally; the wheel and watch are separate. Homes and street safes have no such guarantee.
 - An ordinary container may have a shipping manifest under its lid. Check M to see which two offers are in town: medical supplies at the pier, guarded maintenance parts at the waterworks, or valuables on the flats as the water recedes. **The first marked container you open secures that shipment.** The other shipment sails, but its ordinary loot stays. Finding a seal by chance works the same way. Both the destinations and the individual containers can change next raid.
 - Up to nine enemies cover the town streets and six cover the docks. Lookouts patrol with partners; one follower in each district can be a wolf. The waterworks has up to three guards. The lookout outside the control building can carry an SV98: the crosswalk is exposed, but the machinery to the north breaks his sightline. The reeds have up to two scavengers, and the cape has a guard and a scavenger.
 - Up to four diggers accompany the **Sand Boss** at the dredger. One can throw ordinary grenades: when a warning ring appears, move out of it. The marked spot stays put. Scavengers in town, at the docks and in the reeds are hostile to the guards and the sand gang, so a firefight can give you a way through. Up to 27 regular enemies appear per raid, with no endless respawns. Opening the gate brings three additional reinforcements.
+- **Leadline, the Dredge Boss** works the flats at ebb. When he calls a hook sweep, step outside the orange ring at his feet. On the dredger at flood tide, the winch drops its weight on a fixed red mark: sidestep or take cover. Search his body for the **Dredger's Sounding Lead**. Use it in Tidegate and check M for a blue-green circle marking the nearest unsearched buried cache for 25 seconds. If it's underwater, wait for the ebb.
 - The sand gang follows the tide: they dig the flats at low tide and head back to the dredger just before the flood. Any of them still standing in deep water when the tide comes in gets swept away.
 
 ## Gatekeeper's logs and the pocket watch
@@ -84,4 +86,6 @@ On your first trip, travel light: learn the tide before you carry loot into deep
 - **Dry Bag** (500113): Old Zha's thanks and his shop; carry it to swim with 6 kg more load.
 - **Duck Flippers** (500114): now and then in the buried caches, and in Old Zha's shop; carry them to swim faster in Tidegate.
 
-None of these five come from random loot pools.
+- **Dredger's Sounding Lead** (500116): search Leadline's body for it. Use in Tidegate to mark the nearest unsearched buried cache on the map for 25 seconds. Reusable.
+
+None of these six come from random loot pools.
