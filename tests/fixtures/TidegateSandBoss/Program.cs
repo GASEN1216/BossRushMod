@@ -45,6 +45,20 @@ internal static class Program
         valid=true;InteractableLootboxInventoryHelper.During=boss.Die;boss.Die();boss.Die();
         Check(boss.CharacterItem.Inventory.Count==1&&boss.CharacterItem.Inventory[0].TypeID==500116,"doubled or missing corpse drop");
         Invoke(bossOwner,"OnDestroy");Check(boss.Subscribers==0,"death handler leak");
+        // 带着响铊再来打：尸体里换成私货；私货目录不可用时照旧给响铊；身上没有响铊（第一次打倒）不换。
+        Func<Func<int>,CharacterMainControl> fight=pick=>{var b=new GameObject("boss").AddComponent<CharacterMainControl>();b.transform.SetParent(root.transform,false);
+            var o=b.gameObject.AddComponent<TidegateSandBoss>();o.Bind(b,new AICharacterController(),tide,new TidegateWorld(),P(30),P(0),()=>flat,()=>true,TidegateSandBoss.SourceName);
+            o.OfferSpare(pick);InteractableLootboxInventoryHelper.During=null;b.Die();return b;};
+        TidegateInventory.CarryingLead=true;
+        var swapped=fight(()=>777);Check(swapped.CharacterItem.Inventory.Count==1&&swapped.CharacterItem.Inventory[0].TypeID==777,"carried lead still dropped a duplicate lead");
+        var noStock=fight(()=>0);Check(noStock.CharacterItem.Inventory.Count==1&&noStock.CharacterItem.Inventory[0].TypeID==500116,"empty spare stock lost the lead");
+        var unwired=fight(null);Check(unwired.CharacterItem.Inventory.Count==1&&unwired.CharacterItem.Inventory[0].TypeID==500116,"unwired spare lost the lead");
+        TidegateInventory.CarryingLead=false;
+        var first=fight(()=>777);Check(first.CharacterItem.Inventory.Count==1&&first.CharacterItem.Inventory[0].TypeID==500116,"first kill swapped the lead away");
+        var model=new GameObject("model");first.characterModel=model.AddComponent<CharacterModel>();TidegateSandBoss.ApplyLook(first);
+        Check(model.transform.localScale.x==TidegateSandBoss.ModelScale&&TidegateSandBoss.ModelScale>1.1f,"boss silhouette not enlarged");
+        TidegateSandBoss.ApplyLook(new GameObject("bare").AddComponent<CharacterMainControl>());
+        Check(prefab.health==TidegateSandBoss.BossHealth&&TidegateSandBoss.BossHealth==1000f,"boss health left the sky island chief floor");
         var sess=root.AddComponent<TidegateSession>();UnityEngine.Object.Session=sess;sess.root=root;sess.player=player;sess.loot=new TidegateLoot();sess.tide=tide;
         var use=root.AddComponent<TidegateLeadUsage>();
         foreach(var spec in new[]{("buried",21,true,false),("crate",20,false,false),("buried",20,false,true),("buried",26,false,false),("buried",45,false,false)})

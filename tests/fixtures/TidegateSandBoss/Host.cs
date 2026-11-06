@@ -15,8 +15,10 @@ namespace UnityEngine
         public float magnitude {get{return (float)Math.Sqrt(sqrMagnitude);}}
         public static Vector3 operator +(Vector3 a,Vector3 b){return new Vector3(a.x+b.x,a.y+b.y,a.z+b.z);}
         public static Vector3 operator *(Vector3 a,float s){return new Vector3(a.x*s,a.y*s,a.z*s);}
+        public static Vector3 one {get{return new Vector3(1,1,1);}}
     }
     public class MonoBehaviour : Component { public bool enabled=true; }
+    public partial class Transform { public Vector3 localScale; }
     public class LineRenderer : MonoBehaviour { }
     internal enum QueryTriggerInteraction { Ignore }
     internal static class Physics { internal static bool Wall; internal static bool Linecast(Vector3 a,Vector3 b,int mask,QueryTriggerInteraction t){return Wall;} }
@@ -37,9 +39,11 @@ namespace ItemStatsSystem
 namespace BossRush
 {
     internal sealed class Health {public bool IsDead;}
+    internal sealed class CharacterModel : Component {}
+    internal static class TidegateInventory {public static bool CarryingLead;public static bool Carries(CharacterMainControl p,int id){return CarryingLead&&p==CharacterMainControl.Main&&id==BossRushItemIds.TidegateSoundingLead;}}
     internal sealed class CharacterItem { public readonly List<Item> Inventory=new List<Item>();}
     internal sealed class CharacterMainControl : Component
-    {public static CharacterMainControl Main; public readonly Health Health=new Health();public readonly object mainDamageReceiver=new object();public readonly CharacterItem CharacterItem=new CharacterItem();
+    {public static CharacterMainControl Main; public readonly Health Health=new Health();public readonly object mainDamageReceiver=new object();public readonly CharacterItem CharacterItem=new CharacterItem();public CharacterModel characterModel;
         public event Action<DamageInfo> BeforeCharacterSpawnLootOnDead;public void Die(){BeforeCharacterSpawnLootOnDead?.Invoke(new DamageInfo());}
         public int Subscribers {get{return BeforeCharacterSpawnLootOnDead?.GetInvocationList().Length??0;}}}
     internal struct DamageInfo {}

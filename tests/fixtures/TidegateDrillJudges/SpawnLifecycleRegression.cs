@@ -21,6 +21,7 @@ namespace BossRush
         private int inFlight;
         private float revealUntil = -1f;
         internal int SpawnedCount { get; private set; }
+        internal Func<int> BossSpare;
         private CharacterRandomPreset SourceFor(Slot slot) { return sources[slot]; }
         private static readonly Vector3 BossDigSpot = new Vector3(4.5f, 0f, -50.5f);
         private bool DiggersOut() { return false; } // 此夹具只测异步刷怪；专属战斗由 TidegateSandBoss 夹具驱动。
@@ -251,6 +252,8 @@ namespace BossRush
         internal static void Tune(CharacterRandomPreset p) { }
         internal void Bind(CharacterMainControl c, AICharacterController ai, TidegateTide tide, TestWorld world, Vector3 deck,
             Vector3 flats, Func<bool> posture, Func<bool> valid, string source) { }
+        internal void OfferSpare(Func<int> pick) { }
+        internal static void ApplyLook(CharacterMainControl c) { }
     }
     internal enum SkyIslandEnemyTier { Elite }
     internal static class SkyIslandEnemyArmory { internal static void Arm(CharacterMainControl c, SkyIslandEnemyTier tier) { } }

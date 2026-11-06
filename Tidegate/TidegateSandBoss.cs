@@ -53,6 +53,7 @@ namespace BossRush
         private TidegateTide tide;
         private TidegateWorld world;
         private Func<bool> flats, valid;
+        private Func<int> spare;
         private Vector3 deck, dig;
         private LineRenderer ring;
         private float nextThink, nextMove;
@@ -61,13 +62,36 @@ namespace BossRush
         internal bool OnFlats { get { return attack.Flats; } }
         internal bool OwnsDrop { get { return subscribed; } }
 
+        /// <summary>
+        /// 血量取天空岛头目 / 岛主的保底（SkyIslandCombatBalance.BossHealthFloor，owner 2026-10-01 定），落在天空岛头目 675–1200 之间。
+        /// 原版 BALeader 250 血、射击前摇 0.15；这里前摇放到 0.4、伤害倍率 1、去掉原 Boss 的专属招式，压力主要来自两招有预警的潮相攻击。
+        /// 离线拿不到官方武器伤害数据，击杀时间只能实机量（实机清单 M_TIDEGATE_12）。
+        /// </summary>
+        internal const float BossHealth = 1000f;
+        /// <summary>只放大模型（碰撞体与导航半径不变），和天空岛同底模的风猎看守（1.0 倍 + 断风兜帽）一眼分得开。</summary>
+        internal const float ModelScale = 1.2f;
+
         internal static void Tune(CharacterRandomPreset clone)
         {
             clone.nameKey = TidegateText.MapBossKey; clone.showName = clone.showHealthBar = clone.isBoss = true;
-            clone.health = 1000f; clone.forceTracePlayerDistance = 0f;
+            clone.health = BossHealth; clone.forceTracePlayerDistance = 0f;
             clone.patrolRange = 2.5f; clone.damageMultiplier = 1f; clone.shootDelay = .4f;
             clone.specialAttachmentBases = new List<AISpecialAttachmentBase>(); // 不带参照 Boss 的独有招式。
         }
+        /// <summary>同天空岛 SkyIslandBossForge.ApplyScale：只放大模型节点，挂在 socket 上的装备跟着放大。可失败的装饰。</summary>
+        internal static void ApplyLook(CharacterMainControl created)
+        {
+            try
+            {
+                if (created != null && created.characterModel != null)
+                    created.characterModel.transform.localScale = Vector3.one * ModelScale;
+            }
+            catch (Exception e) { Debug.LogWarning("[Tidegate] 沙老大体型缩放失败：" + e.Message); }
+        }
+
+        /// <summary>带着响铊再来打的人拿另一件货；没接上时始终给响铊。</summary>
+        internal void OfferSpare(Func<int> pick) { spare = pick; }
+
         internal void Bind(CharacterMainControl character, AICharacterController controller, TidegateTide localTide,
             TidegateWorld site, Vector3 boat, Vector3 flatsPost, Func<bool> whichPost, Func<bool> sessionValid, string reference)
         {
@@ -135,11 +159,19 @@ namespace BossRush
             try
             {
                 var inventory = boss.CharacterItem != null ? boss.CharacterItem.Inventory : null;
-                if (inventory == null || ItemAssetsCollection.GetPrefab(BossRushItemIds.TidegateSoundingLead) == null)
-                    throw new InvalidOperationException("尸体库存或响铊预制件不可用");
-                item = ItemAssetsCollection.InstantiateSync(BossRushItemIds.TidegateSoundingLead);
-                if (item == null || item.TypeID != BossRushItemIds.TidegateSoundingLead ||
-                    !InteractableLootboxInventoryHelper.TryAddExtraItem(inventory, item)) throw new InvalidOperationException("响铊未进入尸体库存");
+                // 响铊能反复用：玩家身上已经带着一把（它只在潮闸镇有用，常用的人会随身带），第二把只剩卖钱的用处，
+                // 换成一件挖沙船私货；第一次打倒他、或者私货目录不可用时照旧给响铊。
+                int typeId = BossRushItemIds.TidegateSoundingLead;
+                if (spare != null && TidegateInventory.Carries(CharacterMainControl.Main, BossRushItemIds.TidegateSoundingLead))
+                {
+                    int alternative = spare();
+                    if (alternative > 0 && ItemAssetsCollection.GetPrefab(alternative) != null) typeId = alternative;
+                }
+                if (inventory == null || ItemAssetsCollection.GetPrefab(typeId) == null)
+                    throw new InvalidOperationException("尸体库存或掉落预制件不可用");
+                item = ItemAssetsCollection.InstantiateSync(typeId);
+                if (item == null || item.TypeID != typeId ||
+                    !InteractableLootboxInventoryHelper.TryAddExtraItem(inventory, item)) throw new InvalidOperationException("专属掉落未进入尸体库存");
                 item = null;
             }
             catch (Exception e) { Debug.LogWarning("[Tidegate] 沙老大专属掉落：" + e.Message); }

@@ -39,7 +39,8 @@ namespace BossRush
             internal bool Started, Failed;
 #if BOSSRUSH_DEV
             // 演练还原可先撤销仍在官方异步创建中的增援；迟到结果由 Spawn 的 finally 销毁。
-            internal bool DevSpawning, DevCancelled;
+            internal bool DevSpawning, DevCancelled, DevHoldDeep;
+            internal Vector3 DevHoldAt;
             internal float DevLegDistance, DevLegAdvance;
 #endif
             internal CharacterMainControl Character;
@@ -76,6 +77,8 @@ namespace BossRush
         private int inFlight;
 
         internal int SpawnedCount { get; private set; }
+        /// <summary>会话在搜刮 owner 建好后接上：带着响铊再打倒沙老大时，尸体里换成的那件私货（见 <see cref="TidegateLoot.RollBossSpare"/>）。</summary>
+        internal Func<int> BossSpare;
 
         internal TidegateEnemies(TidegateWorld world, TidegateTide tide, ArenaPrototypeNavigation navigation, CharacterMainControl player,
             int seed, Func<bool> valid, ICollection<Transform> unreachable)
@@ -306,7 +309,13 @@ namespace BossRush
                 created.gameObject.AddComponent<TidegatePresetOwner>().Preset = clone;
                 clone = null;
                 slot.Character = created;
-                if (slot.Kind == "boss") created.gameObject.AddComponent<TidegateSandBoss>().Bind(created, ai, tide, world, slot.Home, BossDigSpot, DiggersOut, valid, source.name);
+                if (slot.Kind == "boss")
+                {
+                    var boss = created.gameObject.AddComponent<TidegateSandBoss>();
+                    boss.Bind(created, ai, tide, world, slot.Home, BossDigSpot, DiggersOut, valid, source.name);
+                    boss.OfferSpare(BossSpare);
+                    TidegateSandBoss.ApplyLook(created);
+                }
                 slot.JoinedAt = Time.time;
                 if (revealUntil > 0f) MarkOnMap(slot);
                 retained = true;
@@ -422,13 +431,20 @@ namespace BossRush
                 }
                 else if (slot.Group == "vault")
                 {
-                    if (tide.SluiceOpen && tide.LagoonLevel < -0.9f) goal = Pick(vault, slot, slot.Home);
+                    // 开闸后的泻湖跟着外海涨落（TidegateTideRules.StepLagoon）。海堤来的增援也是淘沙帮，和下滩的同伙守同一条
+                    // 「涨潮前 20 秒撤」的规矩，回海堤等下一次退潮；原来等泻湖涨过 -0.9 m 才撤，金库地面先淹，增援会被白白卷走。
+                    if (tide.SluiceOpen && tide.LagoonLevel < -0.9f && diggersOut) goal = Pick(vault, slot, slot.Home);
                 }
                 else { RecoverShorePatrol(slot, character); TickSquadPatrol(slot); continue; }
                 slot.Ai.patrolPosition = goal;
+                Vector3 feet = character.transform.position;
+#if BOSSRUSH_DEV
+                // Dev 演练：把一名淘沙帮按在深水点上（AI 寻路会把人拉回可走面），只为观测下面这条生产规则。
+                if (slot.DevHoldDeep) { character.SetPosition(slot.DevHoldAt); feet = slot.DevHoldAt; }
+#endif
                 // 被潮水卷走：涨潮 / 高潮时还泡在深水里（脚下水深 > 0.5 m）超过 8 秒就消失，不掉东西。
                 // 沙老大不卷：他是官方 Boss，掉落是打他的回报，不能让潮水白白带走。
-                if (slot.Kind != "boss" && !diggersOut && tide.IsDeepAt(character.transform.position))
+                if (slot.Kind != "boss" && !diggersOut && tide.IsDeepAt(feet))
                 {
                     if (slot.DeepSince < 0f) slot.DeepSince = Time.time;
                     else if (Time.time - slot.DeepSince > SweptSeconds) SweepAway(slot);
