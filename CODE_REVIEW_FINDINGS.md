@@ -2,6 +2,36 @@
 
 更早记录见 `archive/`；月度归档索引保留在本文件正文。
 
+## 2026-11-07 潮闸镇第二份实机报告（`BossRushValidation_20261106_154008_887`；001–006 已修复，L1/L2，L3 待复测）
+
+来源是 owner 实机跑的 Dev 演练与 Player.log（Dev MVID `c7f3c516`）。修复与验证见 `FIX_TRACKER.md` 同日节。
+
+- **CR-2026-11-07-001 · P2 / COMPAT · 四相用例把锁着的领班柜判成故障。** `DebugAndTools/F3GameplayValidationTidegateDrill.cs` 的箱柜核对只比 `BoxActive` 与 `Flooded`；`Tidegate/TidegateLoot.cs` 的 `Locked` 让 `LOOT_safe_35` 在拿钥匙前停用交互。实机 `Low/High:loot_LOOT_safe_35_flooded_False_deep_False_active_False`。**修复：**纯判据纳入上锁与埋货模型。
+- **CR-2026-11-07-002 · P3 / COMPAT · 卷走用例依赖瞬移把人留在深水。** 官方寻路把角色拉回可走面，`deep_s=0.0,left_deep=True`，用例长期 WARN。**修复：**Dev 钩子在生产判定前按住深水点。
+- **CR-2026-11-07-003 · P2 / COMPAT · 开闸增援先于撤退阈值被淹。** `Tidegate/TidegateEnemies.cs` 的 `vault` 组等 `LagoonLevel` ≥ −0.9 m 才回海堤，而开闸后泻湖跟随外海，金库地面先超过 0.5 m 深水；实机 `SWEPT_AWAY id=TidegateExtraSpawn_28`。**修复：**与淘沙帮同一「涨潮前 20 秒撤」窗口。
+- **CR-2026-11-07-004 · P2 / COMPAT · 普通工作箱内容公式化。** `TidegateLoot.ShiftItem` 写死两套物品 ID（2/3 概率）；实机一趟 7/7 渔篓以 1106 开头、6/10 工具柜为 332+335。**修复：**按官方标签不放回发牌。
+- **CR-2026-11-07-005 · P3 / COMPAT · 同趟高价值柜精品重复。** 各柜独立抽精品，实机所长柜 `LOOT_vault_71` 与船长柜 `LOOT_safe_77` 都出 12009。**修复：**同趟精品去重。
+- **CR-2026-11-07-006 · P3 / COMPAT · 响铊每杀必掉且可无限使用。** 第二把起只剩卖钱的用处；沙老大与天空岛风猎看守同为 1.0 倍 BALeader。**修复：**已携带时换私货，模型放大 1.2 倍。
+
+## 2026-11-06 新内容审核（`63c9e9df` 之后至 `fc15dbd8`，含未提交的潮闸镇 F3 演练；001–010 已修复）
+
+状态：001–010 全部 Fixed（2026-11-06，L1/L2；L3 待验）。每项保留初审时的调用链和位置，**修复**为当前行为。001–005 影响正式玩法，006–009 影响 Dev 验收，010 影响作者工具。修复与验证见 `FIX_TRACKER.md` 同日节。
+
+- **CR-2026-11-06-001 · P1 / COMPAT · 游泳碰撞体不随潮汐或开闸升降。** `Tidegate/TidegateWater.cs:107`、`:112`：两个缓存初始为 `NaN`，与它的差值取绝对值再比较，首帧和之后都为 false，`SetTop` 一次都不会调用。水盒始终是中心 y=0、高 1 m 的初始形状；官方 `CharacterMainControl.cs:1581` 用 Water 碰撞体检测入水，`:1598` 取其顶面浮起，视觉水位和实际游泳脱节。L1 + .NET 数值复算：−1.5、+0.45、+0.62 m 均不更新。**修复：**首次按真实水位设置海、湖物理顶面，之后各自跟随涨退和开闸。
+- **CR-2026-11-06-002 · P2 / COMPAT · 泻湖用一个包围矩形，覆盖了本应退水的岸边。** `Tidegate/TidegateWater.cs:66` 把遮罩的外接矩形整块设为泻湖，外海四块恰好避开它；`Tidegate/TidegateWorld.cs:210` 和水面材质按实际遮罩区分水域。L1/L2：读取本地 `tidegate_raid` 内的 `TidegateHeight`；Unity `(x=41,z=32)` 命中该矩形，G=0.1917（<0.5，外海），地面 y=0.0375 m，无墙或障碍。即使修完 001，未开闸、低潮时这块干地仍会收到 +0.62 m 的泻湖水盒。**修复：**按材质的纹素中心取样并合并水域；发布遮罩上原四处岸点均判海，海、湖可同时查询。
+- **CR-2026-11-06-003 · P2 / COMPAT · 交怀表可先保存结局、漏掉谢礼。** `Tidegate/TidegateStory.cs:214` 在扣表、发防水袋前 `Mutate`，`:53` 请求落盘，`:76–78` 声明不欠资产快照。官方 `SavesSystem.cs:503` 的 `SaveFile(false)` 只写已有缓存。若剧情已落盘、官方尚未采集新背包就退出或中断，重载可见旧怀表、没有谢礼，`WatchDelivered` 又禁止重领。F3 清空剧情后才移除物品也有同一保存窗口。L1。**修复：**交表、寄信与 Dev 清空先同批发布资产和事实；缓存失败回滚、物理失败重试。外部抢先写盘和重新加载均已回归。
+- **CR-2026-11-06-004 · P2 / COMPAT · 剧情首次读取失败仍能清掉图鉴镜像。** `Tidegate/TidegateNoteBridge.cs:95–96` 在加载前检查可写性；`BossRushSlotJsonStore.LoadOrInitCore` 到加载时才识别坏 JSON 或未知版本，返回全 false 的默认值，随后 `EnsureRegistered` 会收回原有条目。`:143` 的主动点亮也绕过写屏障，读信或翻页写入失败后仍会调用它。官方下次采集可保存错误镜像。L1；是 11-05-007 未覆盖的入口。**修复：**首次加载后再检查写屏障与已记录事实，坏数据不增删官方图鉴。
+- **CR-2026-11-06-005 · P2 / COMPAT · 灯塔漏标揭示期间才刷出来的敌人。** `Tidegate/TidegateEnemies.cs:154` 先调 `MarkOnMap`，`:158` 才登记角色；`:251` 因角色为空直接返回，之后没有补挂路径。点灯后的 40 秒内，刚进入刷怪距离的敌人和海堤增援不会出现在地图上。L1。**修复：**新角色成功登记后再挂灯塔标记；揭示期间的异步生成已加入回归。
+- **CR-2026-11-06-006 · P2 / COMPAT · 没见到守卫或沙老大，刷怪用例仍可 PASS。** `DebugAndTools/F3GameplayValidationTidegateDrillCases.cs:886` 跳过没开始的槽，`:917–919` 只要求至少启动一个槽。只刷出普通拾荒者时，守卫武器和 Boss 身份都未检查，报告仍可通过。L1。**修复：**分别核对守卫、Boss、距离与活体样本，缺失报告 WARN。
+- **CR-2026-11-06-007 · P2 / COMPAT · 演练取消后，尚在创建的增援仍能加入本趟出击。** `Tidegate/TidegateDrillHooks.cs:295` 跳过未返回的创建任务；`DebugAndTools/F3GameplayValidationTidegateDrill.cs:549` 只记错，`:572` 标记已还原。`TidegateEnemies.Spawn` 等待结束仅检查出击会话，取消演练后会话仍有效。L1。**修复：**先取消额外槽，再处理迟到角色与预设；取消后不入场、不加标记。
+- **CR-2026-11-06-008 · P2 / COMPAT · 专用测试档清空进度后，旧快递还能领取。** `Tidegate/TidegateDrillHooks.cs:533` 只统计快递缓冲里的剧情物品。留着阿稳寄来的第一封信再点清空，旧信仍可领，`TidegateStory.TryDeliverLetter` 又按未寄送状态寄一封。L1。**修复：**只清四类目标，保留普通物品和子树；连续清空再重载、补寄只留一封。
+- **CR-2026-11-06-009 · P2 / COMPAT · 缺失泻湖水盒时，装配和潮相用例跳过这一判据。** `DebugAndTools/F3GameplayValidationTidegateDrillCases.cs:65` 只要求有外海盒；`DebugAndTools/F3GameplayValidationTidegateDrill.cs:457` 仅在泻湖盒存在时才校验。遮罩缺失、全空或不可读时，生产端会退为一个外海盒，演练不会报泻湖物理缺件。L1。**修复：**两类水盒均须存在，逐盒核对有限顶面；缺失、NaN、无穷与错高均不能通过。
+- **CR-2026-11-06-010 · P2 / OPERATIONAL · 作者导出服务接受其他网页覆盖导出文件。** `tools/tidegate_dev_server.py:19` 只校验路径和名字，`:26` 直接覆盖同名文件。L2：在临时目录启动原服务，向 `/__save?name=tidegate_layout.json` 发送带不同本机端口 `Origin` 的 `text/plain` POST，实际返回 200 并覆盖测试文件。写入限于配置的导出目录；仅在服务开启时成立。**修复：**合法同源导出可写，异源或伪造 Host 一律拒绝；HTTP 回归确认原文件字节不变。
+
+修复验证：最终全量守卫 756/756、相关执行回归 16/16、Windows 正式与 Dev 真编译通过。隔离部署哈希一致，20 个验收标识只在 Dev DLL 出现。实包水域遮罩与测试输入逐像素一致，另查了两包着色器、导航和音效。
+
+待实机：Dev 专用槽按 `M_TIDEGATE_09`、`M_TIDEGATE_10` 验收，查看文字报告 `BossRushValidation_<runId>.log` 的 `TIDE_DRILL_TIDE_PHASES / SWIM / LIGHTHOUSE / ENEMIES / RESTORE`。四相快进已补足淘沙帮撤回窗口；实际 AI 站位、物理接缝和帧耗仍待实测。未启动游戏或访问玩家存档。
+
 ## 2026-11-05 潮闸镇生产水准复审（HEAD 4f9a1642 之后；017～028 当日全部修复；COMPAT，L1/L2，L3 待验）
 
 owner「审核最新代码与 3D 场景是否达到生产水准、UI 交互逻辑特效够不够精致」，看完报告后「开始全部修复」。在 001～016 已修复的基础上补审：通读 `Tidegate/`、`Integration/Tidegate/`、`Utilities/RaidScenes/`，作者工程四个自研着色器与构建器，导航 / 碰撞 / 布局导出数据与作者预览图；与 001～016 及其未证实线索不重复。修复与验证见 `FIX_TRACKER.md` 同日节。没有启动游戏、没有访问存档。
