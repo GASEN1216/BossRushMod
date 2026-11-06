@@ -140,6 +140,9 @@ internal static class Program
         Check(!TidegateIntakeHold.InCore(true, 0f, 1.6f, 0.62f, bed), "the dry dam deck is above the intake");
         Check(!TidegateIntakeHold.InCore(true, 1.75f*1.75f, -0.25f, 0f, bed), "the marked perimeter itself is safe");
         var intake = new TidegateIntakeHold();
+        var lesson = new TidegateIntakeHold();
+        for (int i=0;i<20;i++) Check(lesson.Teach(true,0.125f), "first discharge teaches before fatal clock");
+        Check(!lesson.Teach(true,0.125f) && !lesson.Teach(false,1f) && !lesson.Teach(true,1f), "discharge grace cannot be farmed by re-entry");
         Check(!intake.Step(true, 20f) && intake.Held == 0f, "entry always shows the full warning");
         for (int i = 0; i < 31; i++) Check(!intake.Step(true, 0.125f), "no death before the four seconds expire");
         Check(!intake.Step(true, 0f) && !intake.Step(false, 1f), "pause and escape at the last instant do not kill");

@@ -130,12 +130,13 @@ namespace BossRush
             for (int i = 0; i < 4000; i++)
             {
                 bool hit = crane.Step(i % 53 == 0 ? 100f : 0.016f);
+                if (!crane.Trained) Check(!hit && !crane.Down && crane.Height >= 2f, "brake rehearsal reached player");
                 if (crane.Warns) { warnedFrames++; warnedBefore = true; }
                 if (!hit) continue;
                 Check(warnedBefore && warnedFrames >= 28 && crane.Down && crane.Height < 0.001f, "crane_warns_then_contacts_ground");
                 warnedBefore = false; warnedFrames = 0; impacts++;
             }
-            Check(impacts >= 3 && impacts <= 5, "crane_single_strike_per_lift");
+            Check(impacts >= 2 && impacts <= 4, "crane_single_strike_after_rehearsal");
             Check(TidegateCraneCycle.UnderLoad(0.65f, 0f, 0.80f) && !TidegateCraneCycle.UnderLoad(0.651f, 0f, 0f)
                 && !TidegateCraneCycle.UnderLoad(0f, 0f, -0.801f) && !TidegateCraneCycle.UnderLoad(0f, 1.51f, 0f)
                 && !TidegateCraneCycle.UnderLoad(0f, -0.56f, 0f), "crane_footprint_and_vertical_bounds");

@@ -19,7 +19,7 @@ namespace BossRush
         private Vector3 center;
         private GameObject marks;
         private LineRenderer boundary;
-        private bool flowing, approached, heardFlow;
+        private bool flowing, approached, heardFlow, inMarkedCore;
 
         internal TidegateSluiceDanger(TidegateWorld world, TidegateTide tide, Action<string, bool> announce)
         {
@@ -83,7 +83,7 @@ namespace BossRush
             // 只在水中；人在坝面、岸上或桥上从警戒线投影经过不会被吸走。
             bool core = TidegateIntakeHold.InCore(active, range, playerPosition.y, lake, bed);
             if (range > (Approach + 3f) * (Approach + 3f)) approached = heardFlow = false;
-            if (core && !hold.Inside)
+            if (core && !inMarkedCore)
             {
                 announce(L10n.T("吸水口！马上横向游出红圈，留满 4 秒会被卷进闸底。", "Intake! Swim sideways out of the red ring. Stay four seconds and the gate pulls you under."), true);
                 PlayAlarm();
@@ -100,7 +100,10 @@ namespace BossRush
                 else announce(L10n.T("大闸警戒线：泻湖放水时，这个圈里会形成致命吸流。", "Sluice warning: when the lagoon drains, the current inside this ring is deadly."), false);
                 approached = true;
             }
-            bool fatal = hold.Step(core, delta);
+            // 第一次在工作中的吸口旁至少能看 2.5 秒水纹与横游提示，才开始 4 秒连续暴露。
+            inMarkedCore = core;
+            bool training = hold.Teach(active && range <= Approach * Approach, delta);
+            bool fatal = hold.Step(core && !training, delta);
             float y = Math.Max(lake, bed) + 0.12f;
             if (Math.Abs(markY - y) > 0.01f)
             {

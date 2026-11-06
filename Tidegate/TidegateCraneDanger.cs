@@ -9,18 +9,20 @@ namespace BossRush
         internal const float HalfX = 0.65f, HalfZ = 0.80f, Hanging = 3f;
         internal const float Idle = 6f, Warning = 3.6f, Drop = 0.80f, Rest = 1.3f, Raise = 2.5f;
         internal float Elapsed;
+        internal bool Trained;
         internal bool Warns { get { return Elapsed >= Idle && Elapsed < Idle + Warning + Drop; } }
-        internal bool Down { get { return Elapsed >= Idle + Warning + Drop && Elapsed < Idle + Warning + Drop + Rest; } }
+        internal bool Down { get { return Trained && Elapsed >= Idle + Warning + Drop && Elapsed < Idle + Warning + Drop + Rest; } }
         internal float Height
         {
             get
             {
                 float t = Elapsed - Idle - Warning;
                 if (t <= 0f) return Hanging;
-                if (t < Drop) { float p = t / Drop; return Hanging * (1f - p * p); }
+                float stop = Trained ? 0f : 2.05f; // 首吊试闸，货底始终高过鸭子；第二吊才接地。
+                if (t < Drop) { float p = t / Drop; return Hanging - (Hanging - stop) * p * p; }
                 t -= Drop + Rest;
-                if (t <= 0f) return 0f;
-                return Math.Min(Hanging, Hanging * t / Raise);
+                if (t <= 0f) return stop;
+                return Math.Min(Hanging, stop + (Hanging - stop) * t / Raise);
             }
         }
         internal bool Step(float delta)
@@ -29,8 +31,8 @@ namespace BossRush
             // 掉帧不能一帧吞掉预警直接砸下去；只在玩家附近的可运行帧推进。
             float before = Elapsed, impact = Idle + Warning + Drop;
             Elapsed += Math.Min(delta, 0.125f);
-            if (Elapsed >= impact + Rest + Raise) Elapsed = 0f;
-            return before < impact && Elapsed >= impact;
+            if (Elapsed >= impact + Rest + Raise) { Elapsed = 0f; Trained = true; }
+            return Trained && before < impact && Elapsed >= impact;
         }
         internal static bool UnderLoad(float dx, float dy, float dz)
         {
@@ -51,7 +53,7 @@ namespace BossRush
         private AudioClip bell;
         private AudioSource audio;
         private Vector3 center;
-        private bool running, warned, disposed;
+        private bool running, warned, disposed, liveHinted;
         private TidegateCraneCycle cycle;
 
         internal TidegateCraneDanger(TidegateWorld world, TidegateTide tide, Action<string, bool> announce)
@@ -112,9 +114,10 @@ namespace BossRush
         {
             if (disposed || root == null) return false;
             Vector3 local = playerPosition - center;
-            if (local.x * local.x + local.z * local.z > 22f * 22f || (tide != null && tide.IsDeepAt(center)))
+            float range = cycle.Trained ? 22f : 9f; // 不能让玩家还在邻街时就把教学轮用掉。
+            if (local.x * local.x + local.z * local.z > range * range || (tide != null && tide.IsDeepAt(center)))
             {
-                if (running) { running = warned = false; cycle = default(TidegateCraneCycle); Pose(); }
+                if (running) { running = warned = false; cycle.Elapsed = 0f; Pose(); }
                 return false;
             }
             running = true;
@@ -123,13 +126,16 @@ namespace BossRush
             if (previous < TidegateCraneCycle.Idle && cycle.Warns)
             {
                 Ring();
-                if (!warned && announce != null)
+                if (!warned && (!cycle.Trained || !liveHinted) && announce != null)
                 {
                     warned = true;
-                    announce(L10n.T("码头起重机要落货了！离开吊钩下的黄框。", "Cargo descending! Clear the yellow box under the dock crane."), true);
+                    if (cycle.Trained) liveHinted = true;
+                    announce(cycle.Trained ? L10n.T("码头落货！躲开黄框，货物砸中会致命。", "Cargo dropping! Clear the yellow box; the impact is fatal.")
+                        : L10n.T("吊机鸣铃试闸：这次停在头顶。往黄框外走，下一吊会砸到地面。", "Crane brake test: this load stops overhead. Step outside the yellow box; the next load hits the ground."), true);
                 }
             }
             else if (previous < TidegateCraneCycle.Idle + 2f && cycle.Elapsed >= TidegateCraneCycle.Idle + 2f) Ring();
+            if (previous > cycle.Elapsed) warned = false;
             Pose();
             return impact && TidegateCraneCycle.UnderLoad(local.x, local.y, local.z);
         }

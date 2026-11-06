@@ -40,6 +40,14 @@ namespace BossRush
         internal bool Inside { get; private set; }
         internal float Held { get; private set; }
         private bool fired;
+        private float trainingLeft = 2.5f;
+
+        internal bool Teach(bool nearbyActive, float delta)
+        {
+            if (!nearbyActive || trainingLeft <= 0f) return false;
+            trainingLeft = Math.Max(0f, trainingLeft - Math.Max(0f, Math.Min(delta, 0.15f)));
+            return true;
+        }
 
         internal static bool Flowing(bool gate, float before, float after, float sea, float floor, float delta, bool wasFlowing)
         {
