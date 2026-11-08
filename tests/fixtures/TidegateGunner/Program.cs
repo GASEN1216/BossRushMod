@@ -58,7 +58,7 @@ internal static class Program
             Check((Grenade.Intended-new Vector3(mark.x,.12f,mark.z)).sqrMagnitude<.001f,"tracked player after warning");
             Check(Physics.IgnoredBody==run.PlayerShell,"player body could turn the incoming grenade into a dud");
             run.Land(false,false); var bomb=Grenade.Last;
-            Check(run.Gunner.Landed && bomb.Stuck && bomb.createExplosion && bomb.delayTime>=2f && bomb.damageInfo.damageValue<=25 &&
+            Check(run.Gunner.Landed && bomb.Stuck && bomb.createExplosion && bomb.delayTime>=2f && bomb.damageInfo.damageValue==TidegateGunner.MaxDamage && TidegateGunner.MaxDamage<=40 &&
                 bomb.damageRange==SkyIslandBossForge.ShapeRadius && (bomb.transform.position-Grenade.Intended).sqrMagnitude<.001f,"armed outside visual or not enough time to escape");
             run.Tick(1.9f); Check(run.Gunner.WarningActive && Grenade.Last!=null,"ring vanished before detonation");
             run.Tick(.7f); Check(!run.Gunner.WarningActive && Grenade.Last==null,"spent round remained");

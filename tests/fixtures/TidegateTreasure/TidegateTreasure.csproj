@@ -10,5 +10,6 @@
     <Compile Include="../../../Tidegate/TidegateLoot.cs;../../../SkyIsland/SkyIslandLootPools.cs;../../../SkyIsland/SkyIslandLootTables.cs" Condition="'$(TidegateSnapshot)' == ''" />
     <Compile Include="$(TidegateSnapshot)/TidegateLoot.cs;$(TidegateSnapshot)/SkyIslandLootPools.cs;$(TidegateSnapshot)/SkyIslandLootTables.cs" Condition="'$(TidegateSnapshot)' != ''" />
     <Compile Include="../../../SkyIsland/SkyIslandEnemyArmoryRules.cs;../../../SkyIsland/SkyIslandEnemyTier.cs;../../../Config/LootExcludeTagPolicy.cs;../../../Config/ConfigItemIds.cs" />
+    <Compile Include="../../../Integration/Items/RelicEggConfig.cs;../../../Integration/Tidegate/TidegateItems.cs" />
   </ItemGroup>
 </Project>

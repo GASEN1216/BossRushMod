@@ -13,7 +13,7 @@ internal static partial class Program
     // Markers present in the shipped layout; leave POIs empty to isolate non-manifest stock.
     private static readonly Dictionary<string,int> Floors = new Dictionary<string,int> {
         {"LOOT_house_0",0}, {"LOOT_crate_39",0}, {"LOOT_safe_68",4}, {"LOOT_buried_51",4},
-        {"LOOT_wreck_73",4}, {"LOOT_locker_72",4}, {"LOOT_vault_65",5}, {"LOOT_vault_71",6}, {"LOOT_safe_77",6}
+        {"LOOT_wreck_73",4}, {"LOOT_locker_72",4}, {"LOOT_vault_65",4}, {"LOOT_vault_71",4}, {"LOOT_safe_77",4}
     };
     private const int Raids = 2048;
     private static void Check(bool ok, string message) { if(!ok) throw new Exception(message); }
@@ -46,7 +46,7 @@ internal static partial class Program
             if(!baseline && floor>0)
             {
                 Check(prize.Quality>=floor && prize.Value>0,id+" quality floor missed, id="+prize.TypeID+" Q="+prize.Quality);
-                Check(prize.CanBeSold && prize.Value>=(floor==6 ? 7500 : floor==5 ? 2500 : 1000),
+                Check(prize.CanBeSold && prize.Value>=(prize.Quality>=7 ? 12000 : prize.Quality==6 ? 7500 : prize.Quality==5 ? 2500 : 1000),
                     id+" low value or unsellable prize: "+prize.TypeID);
                 Check(!prize.Tags.Overlaps(new[]{"Key","SpecialKey"}),id+" off-map access prize: "+prize.TypeID);
             }
@@ -68,7 +68,9 @@ internal static partial class Program
     private static void Main()
     {
         bool baseline = Environment.GetEnvironmentVariable("TIDEGATE_MEASURE_BASELINE")=="1";
-        ItemAssetsCollection.Load(); var stats=Floors.Keys.ToDictionary(id=>id,id=>new Stats());
+        ItemAssetsCollection.Load();
+        if(!baseline) AuditReportedCache();
+        var stats=Floors.Keys.ToDictionary(id=>id,id=>new Stats());
         for(int seed=0;seed<Raids;seed++)
         {
             Time.time=1;
@@ -94,6 +96,7 @@ internal static partial class Program
         }
         Console.WriteLine(Raids+" seeds per marker, official catalog "+ItemAssetsCollection.Items.Count+" items; totals exclude fixed mod items.");
         foreach(var e in stats) e.Value.Print(e.Key);
+        AuditUnderwater(baseline);
         AuditShift(baseline);
         if(!baseline)
         {
@@ -102,16 +105,10 @@ internal static partial class Program
             {
                 int floor = Floors[e.Key];
                 if (floor==0) Check(e.Value.has4==0,"unearned treasure in everyday supply "+e.Key);
-                if (floor==6)
-                {
-                    Check(e.Value.prizes.Count>=7 && e.Value.prizes.Values.Max()<Raids/2,
-                        e.Key+" dominated by one prize across repeat visits");
-                    Check(e.Value.has7>Raids/10 && e.Value.has7<Raids/2,e.Key+" rare grade is absent or commonplace");
-                }
             }
-            Check(stats["LOOT_vault_65"].totals.Average()>stats["LOOT_wreck_73"].totals.Average() &&
+            Check(stats["LOOT_vault_65"].totals.Average()>stats["LOOT_house_0"].totals.Average() &&
                 stats["LOOT_wreck_73"].totals.Average()>stats["LOOT_house_0"].totals.Average(),
-                "stock value no longer tracks route risk");
+                "underwater route lost its advantage over ordinary houses");
         }
     }
 }

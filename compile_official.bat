@@ -328,8 +328,13 @@ echo(Tidegate\TidegateWater.cs
 echo(Tidegate\TidegateWaterRegions.cs
 echo(Tidegate\TidegateMap.cs
 echo(Tidegate\TidegateEnemies.cs
+echo(Tidegate\TidegateEnemyIdentity.cs
+echo(Tidegate\TidegateEnemyAppearance.cs
+echo(Tidegate\TidegateEnemyActivity.cs
+echo(Tidegate\TidegateSwimDashPatch.cs
 echo(Tidegate\TidegateSandBoss.cs
 echo(Tidegate\TidegateEnemyActors.cs
+echo(Tidegate\TidegateCombatTuning.cs
 echo(Tidegate\TidegateHound.cs
 echo(Tidegate\TidegateMarksman.cs
 echo(Tidegate\TidegateGunner.cs

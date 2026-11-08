@@ -48,7 +48,7 @@ namespace BossRush
         public int Subscribers {get{return BeforeCharacterSpawnLootOnDead?.GetInvocationList().Length??0;}}}
     internal struct DamageInfo {}
     internal class AISpecialAttachmentBase {}
-    internal sealed class CharacterRandomPreset {public string nameKey;public bool showName,showHealthBar,isBoss;public float health,forceTracePlayerDistance,patrolRange,damageMultiplier,shootDelay;public List<AISpecialAttachmentBase> specialAttachmentBases;}
+    internal sealed class CharacterRandomPreset {public string nameKey;public bool showName,showHealthBar,isBoss,setMeleeDamageMultiplier;public float health,forceTracePlayerDistance,patrolRange,damageMultiplier,meleeDamageMultiplier,shootDelay;public List<AISpecialAttachmentBase> specialAttachmentBases;}
     internal static class TidegateText {public const string MapBossKey="BossRush_TidegateMap_Boss";}
     internal sealed class AICharacterController {public object searchedEnemy;public float traceTargetChance,combatMoveRange;public Vector3 patrolPosition; public int Moves;public void MoveToPos(Vector3 at){Moves++;patrolPosition=at;}}
     internal sealed class TidegateWorld {public bool Ground=true; public bool TryGroundAt(Vector3 pos,out float y){y=0;return Ground;}}

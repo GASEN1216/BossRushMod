@@ -75,10 +75,29 @@ namespace BossRush
         // 精品只换危险箱原有的一格；剧情物、普通生活物资与其它地图均不使用这张表。
         internal static int PrizeFloor(string pointId, string kind)
         {
+            return IsUnderwaterContainer(pointId, kind) ? 4 : LegacyPrizeFloor(pointId, kind);
+        }
+
+        // 旧抽样仍推进本趟去重状态，保证陆地箱沿原有路线走出的内容不受水下调价影响。
+        private static int LegacyPrizeFloor(string pointId, string kind)
+        {
             if (HasFixed(pointId, "goldbar") || HasFixed(pointId, "tidewatch")) return 6;
             if (kind == "vault") return 5;
             if (kind == "buried" || kind == "wreck" || HasFixed(pointId, "wheel") || HasFixed(pointId, "page1")) return 4;
             return 0;
+        }
+
+        internal static bool IsUnderwaterContainer(string pointId, string kind)
+        {
+            return kind == "buried" || kind == "wreck" || kind == "vault" || HasFixed(pointId, "goldbar");
+        }
+
+        // 按玩家确认，预算只统计数值品质 >= 5；固定怀表豁免。显示光晕可能来自克隆模板或外观 Mod，
+        // 不能混入数值品质判据，否则品质 4 的鸭蹼继承红光晕也会被误报为高级奖。
+        internal static bool CountsAsUnderwaterJackpot(Item item)
+        {
+            return item != null && item.TypeID != BossRushItemIds.TidegateTideWatch
+                && item.Quality >= 5;
         }
 
         private static int PrizeCeiling(string kind, int floor)
@@ -90,10 +109,10 @@ namespace BossRush
         private static int RollPrizeGrade(int floor, int ceiling, System.Random random)
         {
             int roll = random.Next(100);
-            if (floor == 6) return roll < 78 ? 6 : roll < 98 ? 7 : 8;
-            if (floor == 5) return roll < 68 ? 5 : roll < 94 ? 6 : 7;
-            if (ceiling == 6) return roll < 55 ? 4 : roll < 90 ? 5 : 6;
-            return roll < 72 ? 4 : 5;
+            if (floor == 6) return roll < 72 ? 6 : roll < 96 ? 7 : 8;
+            if (floor == 5) return roll < 60 ? 5 : roll < 92 ? 6 : 7;
+            if (ceiling == 6) return roll < 48 ? 4 : roll < 87 ? 5 : 6;
+            return roll < 65 ? 4 : 5;
         }
 
         /// <summary>本次进图的官方现货。先掷品质，再在该品质的合法实物中抽样，避免商品目录大的档次变相挤掉稀有档。</summary>
@@ -101,6 +120,13 @@ namespace BossRush
         {
             private readonly Dictionary<Cat, List<int>[]> stock = new Dictionary<Cat, List<int>[]>();
             private static readonly Cat[] Themes = { Cat.Valuable, Cat.Gear, Cat.Weapon, Cat.Medical, Cat.Workshop, Cat.General };
+            private static readonly Cat[] WaterThemes = { Cat.General, Cat.Valuable, Cat.Gear, Cat.Weapon, Cat.Ammo, Cat.Workshop };
+            private sealed class WaterStock
+            {
+                internal readonly List<int> Ids = new List<int>(), Cumulative = new List<int>();
+                internal readonly List<int>[] Prizes = new List<int>[6];
+            }
+            private readonly Dictionary<Cat, WaterStock> waterStock = new Dictionary<Cat, WaterStock>();
             private const int BatchSize = 32;
 
             // 高品质的一发子弹或廉价配方仍然不是值钱的一格；按官方标价筛选，可卖性走商店同一个判断。
@@ -150,6 +176,68 @@ namespace BossRush
                     while (prepare.MoveNext()) yield return prepare.Current;
                     yield return null;
                 }
+                foreach (Cat category in WaterThemes)
+                {
+                    var prepare = PrepareWater(category);
+                    while (prepare.MoveNext()) yield return prepare.Current;
+                    yield return null;
+                }
+            }
+
+            private System.Collections.IEnumerator PrepareWater(Cat category)
+            {
+                if (waterStock.ContainsKey(category)) yield break;
+                var result = new WaterStock();
+                int running = 0;
+                int[] ids = SkyIslandLootPools.GetCategoryBand(category, 2, 4);
+                if (ids != null)
+                    for (int i = 0; i < ids.Length; i++)
+                    {
+                        try
+                        {
+                            int id = ids[i];
+                            Item item = SkyIslandEnemyArmoryRules.IsOwnModItem(id) ? null : ItemAssetsCollection.GetPrefab(id);
+                            if (item != null && item.TypeID == id && item.Quality >= 2 && item.Quality <= 4
+                                && !CountsAsUnderwaterJackpot(item) && SkyIslandLootTables.AllowedInPool(item.Value))
+                            {
+                                result.Ids.Add(id);
+                                running += SkyIslandLootTables.QualityWeight(item.Quality, 2);
+                                result.Cumulative.Add(running);
+                                if (MeetsPrizeTerms(item))
+                                    (result.Prizes[item.Quality] ?? (result.Prizes[item.Quality] = new List<int>())).Add(id);
+                            }
+                        }
+                        catch (Exception) { /* 缺少实物的条目不进入水下保底池。 */ }
+                        if ((i + 1) % BatchSize == 0) yield return null;
+                    }
+                waterStock[category] = result;
+            }
+
+            private WaterStock Water(Cat category)
+            {
+                WaterStock result;
+                if (!waterStock.TryGetValue(category, out result))
+                {
+                    var prepare = PrepareWater(category);
+                    while (prepare.MoveNext()) { }
+                    result = waterStock[category];
+                }
+                return result;
+            }
+
+            internal int PickWater(Cat category, System.Random random, int prizeGrade = 0)
+            {
+                WaterStock primary = Water(category), fallback = Water(Cat.General);
+                if (prizeGrade > 0)
+                {
+                    List<int> band = primary.Prizes[4] ?? fallback.Prizes[4];
+                    return band != null && band.Count > 0 ? band[random.Next(band.Count)] : 0;
+                }
+                WaterStock pool = primary.Ids.Count > 0 ? primary : fallback;
+                if (pool.Ids.Count == 0) return 0;
+                int roll = random.Next(pool.Cumulative[pool.Cumulative.Count - 1]);
+                int index = pool.Cumulative.BinarySearch(roll + 1);
+                return pool.Ids[index < 0 ? ~index : index];
             }
 
             private List<int>[] Get(Cat category)
@@ -189,7 +277,7 @@ namespace BossRush
             return prizes.Pick(category, preferred, floor, ceiling, random, fallbackCategory);
         }
 
-        // 同一趟里精品不重样：所长柜和船长柜开出同一件 30,000 的东西很扫兴。重抽几次仍撞上就收下（目录太小时不让格子空着）。
+        // 陆地奖励沿用旧的跨箱去重状态；水下独立计划也按同样重试上限避免精品重样。
         private readonly HashSet<int> prizesThisRaid = new HashSet<int>();
         private const int DistinctPrizeAttempts = 6;
 
@@ -232,20 +320,62 @@ namespace BossRush
         {
             int ceiling = PrizeCeiling(point.Kind, floor);
             int grade = RollPrizeGrade(floor, ceiling, random);
-            int theme = random.Next(100);
+            category = PrizeCategory(point, grade, random.Next(100));
+            return PickPrize(category, grade, floor, ceiling, random, Cat.General);
+        }
+
+        private static Cat PrizeCategory(Point point, int grade, int theme)
+        {
             if (HasFixed(point.Id, "goldbar"))
                 // 船长私藏：随身武器、护具、船上专用仪器，有时才是真正的宝石。
-                category = theme < 38 ? Cat.Weapon : theme < 68 ? Cat.Gear : theme < 83 ? Cat.Workshop : theme < 93 ? Cat.Valuable : Cat.General;
+                return theme < 38 ? Cat.Weapon : theme < 68 ? Cat.Gear : theme < 83 ? Cat.Workshop : theme < 93 ? Cat.Valuable : Cat.General;
             else if (point.Kind == "vault" && grade >= 6)
                 // 储蓄所收的抵押品不全是珠宝。官方 6 档只有一种珠宝，偶尔见到比每次见到更有意义。
-                category = theme < 41 ? Cat.Gear : theme < 65 ? Cat.Weapon : theme < 78 ? Cat.Valuable : Cat.General;
+                return theme < 41 ? Cat.Gear : theme < 65 ? Cat.Weapon : theme < 78 ? Cat.Valuable : Cat.General;
             else if (point.Kind == "wreck" || point.Kind == "locker")
-                category = theme < 40 ? Cat.Weapon : Cat.Gear;
+                return theme < 40 ? Cat.Weapon : Cat.Gear;
             else if (HasFixed(point.Id, "page1"))
-                category = theme < 75 ? Cat.Workshop : Cat.Gear;
+                return theme < 75 ? Cat.Workshop : Cat.Gear;
             else
-                category = Cat.Valuable;
-            return PickPrize(category, grade, floor, ceiling, random, Cat.General);
+                return Cat.Valuable;
+        }
+
+        internal const int UnderwaterJackpotChancePercent = 80;
+        private string underwaterJackpotPoint;
+        private int underwaterJackpotItem;
+        private bool underwaterJackpotRolled;
+        private readonly Dictionary<string, int> underwaterPrizes = new Dictionary<string, int>(StringComparer.Ordinal);
+
+        // 一次进图只抽一次，再稳定选一只原有箱子的一格。与建箱先后、开箱次数、货单 POI 是否存在无关。
+        private void PrepareUnderwaterPrizes()
+        {
+            var sites = points.FindAll(p => IsUnderwaterContainer(p.Id, p.Kind));
+            sites.Sort((a, b) => StringComparer.Ordinal.Compare(a.Id, b.Id));
+            if (sites.Count == 0) return;
+            var roll = SkyIslandLootTables.CreateStream(seed, "Tidegate#underwater-jackpot");
+            underwaterJackpotRolled = roll.Next(100) < UnderwaterJackpotChancePercent;
+            if (underwaterJackpotRolled)
+            {
+                underwaterJackpotPoint = sites[roll.Next(sites.Count)].Id;
+                underwaterJackpotItem = PickPrize(Cat.General, roll.Next(100) < 80 ? 5 : 6, 5, 6, roll);
+                if (underwaterJackpotItem == 0)
+                    Debug.LogWarning(TidegateRaidScene.LogTag + " UNDERWATER_JACKPOT_STOCK_UNAVAILABLE seed=" + seed + " point=" + underwaterJackpotPoint);
+            }
+            var seen = new HashSet<int>();
+            foreach (Point point in sites)
+            {
+                var random = SkyIslandLootTables.CreateStream(seed, point.Id + "#water-prize");
+                int item = 0;
+                for (int attempt = 0; attempt < DistinctPrizeAttempts; attempt++)
+                {
+                    int grade = 4;
+                    item = prizes.PickWater(PrizeCategory(point, grade, random.Next(100)), random, grade);
+                    if (item == 0 || seen.Add(item)) break;
+                }
+                underwaterPrizes[point.Id] = point.Id == underwaterJackpotPoint && underwaterJackpotItem > 0 ? underwaterJackpotItem : item;
+            }
+            Debug.Log(TidegateRaidScene.LogTag + " UNDERWATER_JACKPOT_PLAN seed=" + seed + " rolled=" + underwaterJackpotRolled
+                + " point=" + underwaterJackpotPoint + " item=" + underwaterJackpotItem + " sites=" + sites.Count);
         }
 
         // 两条装运线竞争同一个空船位。先开封的那批留下，另一批上船；两个地方的原有箱子都可以继续搜。
@@ -404,6 +534,7 @@ namespace BossRush
                 }
                 points.Add(point);
             }
+            PrepareUnderwaterPrizes();
             ChooseDelivery();
             PrepareShift();
             AssignKits();
@@ -441,6 +572,28 @@ namespace BossRush
                 available.RemoveAt(i);
                 pick.Target.Offer = pick;
                 offers.Add(pick);
+            }
+            // 两条路线的抽选与陆地货物沿用旧流；选定以后才用独立流调整水下货。
+            // 否则避让中奖点会少掷一次 reservoir 随机数，连陆地路线与奖品也一起变了。
+            var waterRandom = SkyIslandLootTables.CreateStream(seed, "Tidegate#manifest-water");
+            for (int i = offers.Count - 1; i >= 0; i--)
+            {
+                Shipment offer = offers[i];
+                if (!IsUnderwaterContainer(offer.Target.Id, offer.Target.Kind)) continue;
+                if (offer.Target.Id == underwaterJackpotPoint)
+                {
+                    Transform place = world.Pois.Find(p => p.name == offer.Route.Place);
+                    var alternatives = points.FindAll(p => p.Kind == offer.Route.Kind && !IsFixedContainer(p.Id)
+                        && p.Id != underwaterJackpotPoint && place != null
+                        && (p.Marker.position - place.position).sqrMagnitude < 30f * 30f);
+                    alternatives.Sort((a, b) => StringComparer.Ordinal.Compare(a.Id, b.Id));
+                    if (alternatives.Count == 0) { RetireOffer(offer, false); continue; }
+                    offer.Target.Offer = null;
+                    offer.Target = alternatives[waterRandom.Next(alternatives.Count)];
+                    offer.Target.Offer = offer;
+                }
+                offer.Item = prizes.PickWater(offer.Route.Category, waterRandom, 4);
+                if (!CanShip(offer.Item)) RetireOffer(offer, false);
             }
         }
 
@@ -513,16 +666,16 @@ namespace BossRush
             }
         }
 
-        // 容量对应作者 kit-props 的实际模型：矮渔篓、三抽屉家柜、方木箱、多屉检修柜/分层医疗柜、整座金库柜。
+        // 容量对应作者 kit-props 的实际模型；略提高多格概率，保持容量上限与普通 / 危险区的品质差异。
         internal static int RollCount(string kind, int roll)
         {
-            if (kind == "vault") return roll < 25 ? 3 : roll < 65 ? 4 : roll < 90 ? 5 : 6;
+            if (kind == "vault") return roll < 20 ? 3 : roll < 57 ? 4 : roll < 87 ? 5 : 6;
             if (kind == "buried" || kind == "safe" || kind == "wreck" || kind == "locker")
-                return roll < 12 ? 1 : roll < 40 ? 2 : roll < 67 ? 3 : roll < 90 ? 4 : 5;
-            if (kind == "fish") return roll < 15 ? 1 : roll < 70 ? 2 : 3;
-            if (kind == "house") return roll < 12 ? 1 : roll < 62 ? 2 : roll < 94 ? 3 : 4;
-            if (kind == "tool" || kind == "med") return roll < 36 ? 2 : roll < 76 ? 3 : roll < 94 ? 4 : 5;
-            return roll < 5 ? 1 : roll < 48 ? 2 : roll < 85 ? 3 : roll < 97 ? 4 : 5;
+                return roll < 8 ? 1 : roll < 32 ? 2 : roll < 60 ? 3 : roll < 88 ? 4 : 5;
+            if (kind == "fish") return roll < 10 ? 1 : roll < 62 ? 2 : 3;
+            if (kind == "house") return roll < 8 ? 1 : roll < 54 ? 2 : roll < 90 ? 3 : 4;
+            if (kind == "tool" || kind == "med") return roll < 28 ? 2 : roll < 70 ? 3 : roll < 92 ? 4 : 5;
+            return roll < 3 ? 1 : roll < 40 ? 2 : roll < 80 ? 3 : roll < 97 ? 4 : 5;
         }
 
         // 工具柜、渔篓、药柜的头两格成对出：主件看用途（工具 / 鱼 / 药），副件是配套的耗材（零件 / 饵 / 针剂或饮料）。
@@ -751,9 +904,11 @@ namespace BossRush
             Spec spec = SpecOf(point.Kind);
             var random = SkyIslandLootTables.CreateStream(seed, point.Id);
             int count = RollCount(point.Kind, random.Next(100));
-            int prizeFloor = PrizeFloor(point.Id, point.Kind);
+            int prizeFloor = LegacyPrizeFloor(point.Id, point.Kind);
             var prizeRandom = prizeFloor > 0 ? SkyIslandLootTables.CreateStream(seed, point.Id + "#prize") : null;
             bool captain = HasFixed(point.Id, "goldbar");
+            bool underwater = IsUnderwaterContainer(point.Id, point.Kind);
+            var waterRandom = underwater ? SkyIslandLootTables.CreateStream(seed, point.Id + "#water-stock") : null;
             var log = new StringBuilder();
             int added = 0;
             for (int i = 0; i < count; i++)
@@ -776,17 +931,26 @@ namespace BossRush
                     int surprise = DistinctPrize(theme, 4, 4, 4, random, theme);
                     if (surprise > 0) { typeId = surprise; amount = 1; category = theme; }
                 }
+                if (underwater)
+                {
+                    // 保留上面的旧随机/去重推进以兼容陆地奖励；水下实际入箱一律走独立、限额后的计划。
+                    typeId = i == 0 && !captain ? underwaterPrizes[point.Id] : prizes.PickWater(category, waterRandom);
+                    amount = typeId > 0 && category == Cat.Ammo ? 20 + waterRandom.Next(31) : 1;
+                    if (i == 0 && !captain) amount = 1;
+                    if (typeId == 0) log.Append(" water_stock_unavailable");
+                }
                 if (DeferCargoSlot(point, i, count, typeId, amount, category)) continue;
                 if (SkyIslandRewardCrate.AddOfficialStack(box, typeId, amount, log, category.ToString())) added++;
             }
             bool carryingWatch = HasFixed(point.Id, "tidewatch") && TidegateInventory.Carries(player, BossRushItemIds.TidegateTideWatch);
             int fixedItem = FixedItemOf(point.Id, point.Kind, SkyIslandLootTables.CreateStream(seed, point.Id + "#story"), carryingWatch);
             if (fixedItem != 0 && SkyIslandRewardCrate.AddOfficialStack(box, fixedItem, 1, log, "Tidegate")) added++;
-            // 沉船船长的保险柜：原型里固定一根小金条（低潮才够得着、涨潮最先淹），正式版从金库档的值钱物里抽一件，同样过价值上限与黑名单。
+            // 沉船船长的保险柜原有额外一格继续保留，但也服从整趟水下高级奖励预算。
             if (HasFixed(point.Id, "goldbar"))
             {
                 Cat prizeCategory;
                 int valuable = RolledPrize(point, prizeFloor, prizeRandom, out prizeCategory);
+                if (underwater) valuable = underwaterPrizes[point.Id];
                 if (valuable != 0 && SkyIslandRewardCrate.AddOfficialStack(box, valuable, 1, log, "TidegateWreck")) added++;
                 else log.Append(" captain_prize_unavailable");
             }
@@ -939,6 +1103,7 @@ namespace BossRush
                 point.Box = null;
             }
             points.Clear();
+            underwaterPrizes.Clear();
         }
     }
 }

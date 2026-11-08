@@ -183,7 +183,10 @@ namespace BossRush
             /// <summary>埋货的场景模型是否显示；不是埋货或没有模型时为 null。</summary>
             internal bool? BuriedVisualActive;
             internal readonly List<int> Items = new List<int>();
+            internal readonly List<string> ItemQualityDetails = new List<string>();
             internal int BestOrdinaryQuality = -1, BestOrdinaryId, BestOrdinaryUnitValue;
+            internal bool Underwater;
+            internal int HighRandomItems, ExpectedHighRandomItems, FixedWatches;
         }
 
         internal List<DevPointInfo> DevPoints(bool withItems)
@@ -206,6 +209,8 @@ namespace BossRush
                 Id = point.Id, Kind = point.Kind, Position = point.Marker != null ? point.Marker.position : Vector3.zero,
                 Built = point.Built, Failed = point.Failed, Flooded = point.Flooded, Opened = point.Opened, FloodHinted = point.FloodHinted,
                 BoxActive = point.Box != null && point.Box.gameObject.activeSelf, Locked = Locked(point),
+                Underwater = IsUnderwaterContainer(point.Id, point.Kind),
+                ExpectedHighRandomItems = point.Id == underwaterJackpotPoint && underwaterJackpotRolled ? 1 : 0,
                 BuriedVisualActive = point.BuriedVisual != null ? point.BuriedVisual.gameObject.activeSelf : (bool?)null,
             };
             if (withItems && point.Box != null && point.Box.Inventory != null)
@@ -213,6 +218,9 @@ namespace BossRush
                 {
                     if (item == null) continue;
                     info.Items.Add(item.TypeID);
+                    info.ItemQualityDetails.Add(item.TypeID + ":Q" + item.Quality + "/DQ" + (int)item.DisplayQuality + "x" + item.StackCount);
+                    if (item.TypeID == BossRushItemIds.TidegateTideWatch) info.FixedWatches += Math.Max(1, item.StackCount);
+                    if (CountsAsUnderwaterJackpot(item)) info.HighRandomItems += Math.Max(1, item.StackCount);
                     if (SkyIslandEnemyArmoryRules.IsOwnModItem(item.TypeID)) continue;
                     int quality = item.Quality, value = item.Value;
                     if (!PrizeCatalog.MeetsPrizeTerms(item)) continue;
@@ -223,6 +231,8 @@ namespace BossRush
                 }
             return info;
         }
+
+        internal bool DevUnderwaterStockMissing { get { return underwaterJackpotRolled && underwaterJackpotItem <= 0; } }
 
         /// <summary>这一趟钥匙挂在哪只红工具柜里（tool_3 / tool_4 之一）；没有锁柜时为 null。</summary>
         internal string DevShiftKeyBox { get { return shiftKeyBox; } }
@@ -372,6 +382,7 @@ namespace BossRush
         }
 
         internal int DevInFlight { get { return inFlight; } }
+        internal int DevSuspendedCount { get { return activitySuspended.Count; } }
         /// <summary>性能采样的起止快照。按当前角色位置量水平距离，不把待生成、被卷走或已死亡的槽算作敌人。</summary>
         internal bool DevCountLivingNear(Vector3 position, float radius, out int all, out int near)
         {

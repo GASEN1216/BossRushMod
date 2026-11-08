@@ -65,6 +65,8 @@ def plan():
         items.append((SRC / 'textures' / n, 'Textures/Terrain/' + n))
     items += [
         (SRC / 'fbx' / 'materials.json', 'Data/materials.json'),
+        (SRC / 'fbx' / 'tidegate_roof_faces.json', 'Data/tidegate_roof_faces.json'),
+        (SRC / 'fbx' / 'tidegate_stair_rails.json', 'Data/tidegate_stair_rails.json'),
         (SRC / 'export' / 'tidegate_layout.json', 'Data/tidegate_layout.json'),
         (SRC / 'export' / 'manifest.json', 'Data/export_manifest.json'),
         (SRC / 'collision_boxes.json', 'Data/collision_boxes.json'),

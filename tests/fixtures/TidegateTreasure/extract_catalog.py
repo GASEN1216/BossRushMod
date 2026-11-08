@@ -1,4 +1,4 @@
-"""Extract only TypeID, quality, value, stack limit and tag names from the installed game.
+"""Extract only TypeID, quality, value, stack limit, tags and display quality from the installed game.
 
 Usage: python extract_catalog.py <Duckov_Data/resources.assets> <catalog.txt>
 Requires UnityPy only to regenerate the snapshot. The fixture itself works without the game.
@@ -66,10 +66,10 @@ def extract(asset, output):
         stack = r.take("i")
         r.take("i")
         r.pointer()
-        r.take("i")
+        display_quality = r.take("i")
         value = r.take("i")
         r.text()
-        data.append((item_id, quality, value, stack, ",".join(tags)))
+        data.append((item_id, quality, value, stack, ",".join(tags), display_quality))
     assert r.pos == len(r.raw) and count == len(set(x[0] for x in data))
     # TagsData is embedded in GameplayDataSettings. Validate its property references and
     # AllTags against serialized data rather than guessing tags by English property names.
@@ -96,7 +96,7 @@ def extract(asset, output):
     head = ["# Extracted from ItemAssetsCollection + GameplayDataSettings.TagsData; no visual assets.",
             "# source SHA256 " + digest,
             "# fixed " + ",".join(fixed), "# all " + ",".join(all_tags),
-            "# TypeID|quality|value|maxStackCount|tags"]
+            "# TypeID|quality|value|maxStackCount|tags|displayQuality"]
     output.write_text("\n".join(head + ["|".join(map(str, x)) for x in data]) + "\n", encoding="utf-8")
     print(f"{len(data)} catalog entries; {len(all_tags)} registered tags")
 

@@ -42,8 +42,8 @@ namespace UnityEngine
         internal readonly List<Component> components = new List<Component>();
         public bool activeSelf = true;
         public GameObject(string name) { this.name = name; transform = AddComponent<Transform>(); }
-        public T AddComponent<T>() where T : Component, new()
-        { var c = new T { gameObject = this }; components.Add(c); return c; }
+        public T AddComponent<T>() where T : Component
+        { var c = (T)Activator.CreateInstance(typeof(T)); c.gameObject = this; components.Add(c); return c; }
         public void SetActive(bool value) { activeSelf = value; }
     }
     public partial class Transform : Component
@@ -70,5 +70,10 @@ namespace UnityEngine
     public struct Color { public Color(float r,float g,float b) { } }
     public class Renderer : Component { public bool enabled; }
     public static class Time { public static float time; }
-    public static class Debug { public static void Log(string s) { } public static void LogWarning(string s) { } }
+    public static class Debug
+    {
+        public static readonly List<string> Warnings = new List<string>();
+        public static void Log(string s) { }
+        public static void LogWarning(string s) { Warnings.Add(s); }
+    }
 }

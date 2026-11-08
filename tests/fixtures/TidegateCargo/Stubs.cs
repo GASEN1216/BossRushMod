@@ -16,9 +16,11 @@ namespace Duckov.MiniMaps
 #if !TIDEGATE_REAL_CATALOG
 namespace ItemStatsSystem
 {
+    internal enum DisplayQuality { None, White, Green, Blue, Purple, Orange, Red, Q7, Q8 }
     internal sealed class Item
     {
         internal int TypeID, Quality, Value;
+        internal DisplayQuality DisplayQuality;
         internal bool CanBeSold = true;
         internal readonly HashSet<string> Tags = new HashSet<string>();
     }
@@ -32,7 +34,7 @@ namespace ItemStatsSystem
             if (NoCargoPrefabs && typeId >= 10000) return null;
             int q = typeId >= 10000 ? (typeId / 100) % 100 : 2;
             int value = q >= 7 ? 18000 : q == 6 ? 9000 : q == 5 ? 3500 : q == 4 ? 1500 : 300;
-            return new Item { TypeID = typeId, Quality = q, Value = value };
+            return new Item { TypeID = typeId, Quality = q, Value = value, DisplayQuality = (DisplayQuality)q };
         }
     }
 }
@@ -53,7 +55,11 @@ namespace BossRush
     internal static class TidegateRaidScene { public const string LogTag="[Tidegate]"; }
     internal static class TidegateInventory { public static bool Carries(CharacterMainControl player,int id) { return false; } }
     internal static class L10n { public static string T(string zh,string en) { return en; } }
-    internal static class LocalizationHelper { public static void InjectLocalization(string k,string v) { } }
+    internal static class LocalizationHelper
+    {
+        public static void InjectLocalization(string k,string v) { }
+        public static void InjectLocalizations(Dictionary<string,string> values) { }
+    }
     internal sealed class InteractableLootbox : Component
     {
         internal static event Action<InteractableLootbox> OnStartLoot;

@@ -647,6 +647,12 @@ namespace BossRush
         // ====================================================================
 
         #region 纯判据
+
+        internal static bool TidegateDrillWaterBudgetOk(int actual, int expected, bool opened)
+        {
+            if (actual < 0 || expected < 0 || expected > 1 || actual > expected) return false;
+            return opened || actual == expected;
+        }
         /// <summary>某一相在一轮里的起点（游戏小时，0 起）：退潮 0、低潮 0.5、涨潮 2.5、高潮 3。</summary>
         internal static double TidegateDrillPhaseStart(TidegateTidePhase phase)
         {
@@ -729,6 +735,14 @@ namespace BossRush
         internal static bool TidegateDrillSpawnDistanceOk(double distance)
         {
             return distance >= 24.5 && distance <= 75.5;
+        }
+
+        /// <summary>完整作者布局的选中阵容；由真实布局的生产选人回归共同核对，不能沿用加密前的 27 人判据。</summary>
+        internal static bool TidegateDrillRosterOk(int total, int town, int docks, int townPartners, int docksPartners,
+            int guards, int bosses)
+        {
+            return total == 31 && town == 10 && docks == 7 && townPartners == 4 && docksPartners == 3
+                && guards == 6 && bosses == 1;
         }
 
         /// <summary>没有实际观测到的敌人检查不能算通过：逐槽开刷与距离样本齐全，守卫配枪和 Boss 标识都有活体证据。</summary>

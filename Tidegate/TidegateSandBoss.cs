@@ -45,7 +45,7 @@ namespace BossRush
 
     internal sealed class TidegateSandBoss : MonoBehaviour
     {
-        internal const string SourceName = "EnemyPreset_Boss_BALeader";
+        internal const string SourceName = "EnemyPreset_Scav";
         private static readonly Color FlatsTint = new Color(.98f, .57f, .17f), DeckTint = new Color(.99f, .28f, .16f);
         private readonly TidegateSandAttack attack = new TidegateSandAttack();
         private CharacterMainControl boss;
@@ -63,11 +63,15 @@ namespace BossRush
         internal bool OwnsDrop { get { return subscribed; } }
 
         /// <summary>
-        /// 血量取天空岛头目 / 岛主的保底（SkyIslandCombatBalance.BossHealthFloor，owner 2026-10-01 定），落在天空岛头目 675–1200 之间。
-        /// 原版 BALeader 250 血、射击前摇 0.15；这里前摇放到 0.4、伤害倍率 1、去掉原 Boss 的专属招式，压力主要来自两招有预警的潮相攻击。
+        /// 原为天空岛头目 / 岛主的保底 1000（SkyIslandCombatBalance.BossHealthFloor）；owner 2026-11-08 发布前要求整体加强，
+        /// 随小兵的 ×1.5（<see cref="TidegateCombatTuning"/>）提到 1500，仍高于保底。
+        /// 与镇上人形敌人同用官方 Scav，再设前摇 0.3、伤害倍率 1.25；压力主要来自两招有预警的潮相攻击（预警时长不变）。
         /// 离线拿不到官方武器伤害数据，击杀时间只能实机量（实机清单 M_TIDEGATE_12）。
         /// </summary>
-        internal const float BossHealth = 1000f;
+        internal const float BossHealth = 1500f;
+        internal const float BossDamage = 1.25f;
+        /// <summary>两招潮相攻击的爆炸伤害：滩上扫钩 / 船上落锤（原 38 / 46）。</summary>
+        internal const float FlatsBlast = 44f, DeckBlast = 52f;
         /// <summary>只放大模型（碰撞体与导航半径不变），和天空岛同底模的风猎看守（1.0 倍 + 断风兜帽）一眼分得开。</summary>
         internal const float ModelScale = 1.2f;
 
@@ -75,7 +79,8 @@ namespace BossRush
         {
             clone.nameKey = TidegateText.MapBossKey; clone.showName = clone.showHealthBar = clone.isBoss = true;
             clone.health = BossHealth; clone.forceTracePlayerDistance = 0f;
-            clone.patrolRange = 2.5f; clone.damageMultiplier = 1f; clone.shootDelay = .4f;
+            clone.patrolRange = 2.5f; clone.damageMultiplier = BossDamage; clone.shootDelay = .3f;
+            clone.setMeleeDamageMultiplier = true; clone.meleeDamageMultiplier = BossDamage;
             clone.specialAttachmentBases = new List<AISpecialAttachmentBase>(); // 不带参照 Boss 的独有招式。
         }
         /// <summary>同天空岛 SkyIslandBossForge.ApplyScale：只放大模型节点，挂在 socket 上的装备跟着放大。可失败的装饰。</summary>
@@ -133,7 +138,7 @@ namespace BossRush
                     if (visible) SkyIslandBossForge.SetRing(ring, attack.Radius, Mathf.Clamp01((now - attack.Start) / attack.Windup), Tint);
                     // 跨墙、涨水、Boss 离阵或死亡都不补发。爆炸的遮蔽与敌我过滤由官方 ExplosionManager 结算。
                     if (attack.Due(now, visible, inPosition && !tide.IsDeepAt(attack.Mark) && ClearSight(attack.Mark)))
-                        SkyIslandBossForge.Detonate(boss, attack.Mark, attack.Radius, onFlats ? 38f : 46f, false, .15f, Tint);
+                        SkyIslandBossForge.Detonate(boss, attack.Mark, attack.Radius, onFlats ? FlatsBlast : DeckBlast, false, .15f, Tint);
                     if (!attack.Pending) DropRing();
                     return;
                 }

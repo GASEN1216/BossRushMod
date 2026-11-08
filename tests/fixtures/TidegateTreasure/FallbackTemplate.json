@@ -1,0 +1,10 @@
+{
+  "typeID": 500058,
+  "quality": 4,
+  "displayQuality": 6,
+  "value": 2400,
+  "source": "Assets/Items/portable_safe_zone_device",
+  "source_sha256": "c86bb5358c305964fa8df7ab6c70d80f7bc08c65b43bbcd5acf764b3ba60010e",
+  "verified_utc": "2026-11-07",
+  "runtime_config": "PortableSafeZoneDeviceConfig.ConfigureItem keeps Quality=4 and does not set DisplayQuality"
+}

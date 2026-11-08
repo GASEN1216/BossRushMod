@@ -177,8 +177,9 @@ namespace BossRush
             if (disposed || lighthouseLit) return;
             lighthouseLit = true;
             boatAt = Time.time + BoatDelay;
-            if (enemies != null) enemies.Lure(world.Lighthouse.position, LureRadius);
             if (enemies != null) enemies.RevealOnMap(RevealSeconds);
+            // 先唤醒远区角色（OnEnable 重订官方声音事件），再发送这次唯一的灯塔声源。
+            if (enemies != null) enemies.Lure(world.Lighthouse.position, LureRadius);
             if (sounds != null) sounds.Play(TidegateCue.Lighthouse, world.Lighthouse.position);
             LightBeam();
             announce(L10n.T("灯塔亮了，附近的守卫可能听见了。M 地图显示敌情 40 秒，船 45 秒后到灯塔码头。",

@@ -379,6 +379,17 @@ namespace BossRush
                 }
                 if (markerId == "LOOT_safe_77" && info.Items.Count < 2) errors.Add("wreck_safe_missing_valuable");
             }
+            // 观察已经建出的真实库存；固定怀表保留且豁免随机奖励概率。未建点不伪装成空奖趟。
+            if (loot.DevUnderwaterStockMissing) errors.Add("underwater_premium_stock_missing");
+            foreach (TidegateLoot.DevPointInfo water in loot.DevPoints(true))
+            {
+                if (!water.Underwater || !water.Built || water.Failed) continue;
+                notes.Add(water.Id + ":q5_random=" + water.HighRandomItems + ",budget=" + water.ExpectedHighRandomItems
+                    + ",fixed_watch_exempt=" + water.FixedWatches + ",opened=" + water.Opened
+                    + ",items=" + string.Join(",", water.ItemQualityDetails.ToArray()));
+                if (!TidegateDrillWaterBudgetOk(water.HighRandomItems, water.ExpectedHighRandomItems, water.Opened))
+                    errors.Add(water.Id + "_underwater_random_budget");
+            }
             // 演练只看不翻：剧情存档里的日志页不能变。
             TidegateStoryData story = TidegateStory.Current;
             if (story != null && _tidegateDrillPagesBefore >= 0 && story.Pages != _tidegateDrillPagesBefore) errors.Add("story_pages_changed_by_drill");
@@ -428,6 +439,13 @@ namespace BossRush
                     if (!player.Swimming) errors.Add("light_not_swimming");
                     if (!water.CanSwimNow) errors.Add("light_no_can_swim");
                     if (!water.Stealthy) errors.Add("light_no_swim_stealth");
+                    float staminaBeforeDash = player.CurrentStamina;
+                    if (player.dashAction == null || !player.dashAction.IsReady() || player.DashSpeed < 0.1f
+                        || staminaBeforeDash < player.dashAction.staminaCost) errors.Add("swim_dash_probe_not_ready");
+                    player.Dash();
+                    notes.Add("swim_dash_blocked=" + !player.Dashing);
+                    if (player.Dashing) errors.Add("swim_dash_started");
+                    if (player.CurrentStamina < staminaBeforeDash - 0.01f) errors.Add("blocked_dash_spent_stamina");
                     if (player.HeadInWater) errors.Add("light_head_under_water");
                     if (!TidegateDrillContainsAny(session.DevFieldStatus(), "游泳中", "swimming")) errors.Add("light_chip_no_swimming");
                     // 可玩区边上有墙：朝最近的那条边看过去，墙层要挡着（高潮时原海侧墙顶比水面低，CR-2026-11-05-019 补的）。
@@ -660,7 +678,9 @@ namespace BossRush
             if (!bossObserved) notes.Add("sand_boss_not_observed");
             // 被潮水卷走：挑一名不是沙老大的，挪进深水，泡满 8 秒（3 秒一查）应当消失，不掉东西。
             TidegateEnemies.DevEnemyInfo victim = null;
-            foreach (TidegateEnemies.DevEnemyInfo info in TidegateDrillGroup(enemies, "dig", true)) if (info.Kind != "boss") { victim = info; break; }
+            // 首个淘沙帮成员正是唯一投掷手；不能在卷走演练里杀掉后续岗位检查的唯一目标。
+            foreach (TidegateEnemies.DevEnemyInfo info in TidegateDrillGroup(enemies, "dig", true))
+                if (info.Kind == "digger" && info.Role == TidegateEnemyRole.Regular) { victim = info; break; }
             Vector3 deep;
             bool sweepVerified = enemies.DevDiggerSweeps > sweepsAtStart;
             if (sweepVerified) notes.Add("sweep_observed_before_probe");
@@ -966,6 +986,10 @@ namespace BossRush
                 if (!info.Alive || info.Character == null) continue;
                 alive++;
                 CharacterMainControl character = info.Character;
+                string appearance;
+                if (!TidegateEnemyIdentity.DescribeAppearance(character, info.Group, info.Kind, info.Role, out appearance))
+                    errors.Add("enemy_appearance_mismatch_" + info.Id);
+                notes.Add("appearance:" + info.Id + "," + appearance);
                 Teams expectedTeam = info.Group == "town" || info.Group == "docks" || info.Group == "reeds" ? Teams.scav : Teams.wolf;
                 if (character.Team != expectedTeam || !Team.IsEnemy(Teams.player, character.Team)) errors.Add("district_team_" + info.Id + "_" + character.Team);
                 Vector3 position = character.transform.position;
@@ -1003,8 +1027,8 @@ namespace BossRush
             // 与作者布局的候选点数分别报告：不能只把选中的槽当作分母而默许一组守备整个消失。
             int authored = session.DevWorld.SpawnMarkers.Count;
             if (authored == 25 && session.DevUnreachableSpawns == 0
-                && (total != 27 || town != 9 || docks != 6 || townPartners != 4 || docksPartners != 3 || expectedGuards != 4 || expectedBosses != 1))
-                errors.Add("encounter_roster_expected_27_town9_docks6_4guards_1boss");
+                && !TidegateDrillRosterOk(total, town, docks, townPartners, docksPartners, expectedGuards, expectedBosses))
+                errors.Add("encounter_roster_expected_31_town10_docks7_6guards_1boss");
             notes.Add("town_started=" + townStarted + "/" + town + ",docks_started=" + docksStarted + "/" + docks
                 + ",partners_arrived=" + arrived + "/" + (townPartners + docksPartners) + ",partners_advanced_3m=" + partnersMoved);
             notes.Add("scav_wolves=" + wolves + ",lookout_rifle=" + sentries + ",lookout_loaded=" + sniperLoaded

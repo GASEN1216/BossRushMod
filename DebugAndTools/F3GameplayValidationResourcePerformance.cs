@@ -145,6 +145,7 @@ namespace BossRush
             private readonly CharacterMainControl player;
             private readonly TidegateEnemies enemies;
             private int aliveStart, nearStart;
+            private int suspendedStart = -1;
             private readonly Vector3 start;
             private bool leftStation;
             private Vector3? firstOffSite;
@@ -158,7 +159,11 @@ namespace BossRush
                 start = player.transform.position;
             }
 
-            internal void CaptureEnemyStart() { EnemyCounts(out aliveStart, out nearStart); }
+            internal void CaptureEnemyStart()
+            {
+                EnemyCounts(out aliveStart, out nearStart);
+                suspendedStart = enemies != null ? enemies.DevSuspendedCount : -1;
+            }
 
             private void EnemyCounts(out int alive, out int near)
             {
@@ -221,7 +226,9 @@ namespace BossRush
                     int aliveEnd, nearEnd;
                     EnemyCounts(out aliveEnd, out nearEnd);
                     metrics += ",enemies_alive_start=" + CountText(aliveStart) + ",enemies_near_35m_start=" + CountText(nearStart)
-                        + ",enemies_alive_end=" + CountText(aliveEnd) + ",enemies_near_35m_end=" + CountText(nearEnd);
+                        + ",enemies_alive_end=" + CountText(aliveEnd) + ",enemies_near_35m_end=" + CountText(nearEnd)
+                        + ",enemies_suspended_start=" + CountText(suspendedStart)
+                        + ",enemies_suspended_end=" + CountText(enemies != null ? enemies.DevSuspendedCount : -1);
                 }
                 if (!leftStation) return ownerCoverage ? null : "采样窗内配对到的潮闸镇 Update 不足";
                 metrics += ",first_offsite=" + (firstOffSite.HasValue ? firstOffSite.Value.ToString("F1") : "unavailable");

@@ -47,6 +47,7 @@ SCRIPT_FIXTURES = (
     "SkyIslandValidationJudges", "F3AutotestJudges", "SpawnPositionPolicy", "EnemySpawnRuntime", "EnemyRecoveryRuntime", "RandomEventEffectsOwners", "ModeEFSpawnPreparation", "ModeEFEnemySpawnRuntime", "ModeEFSpawnPostprocessScheduler", "ModeEFVirtualSpawnerRegistry", "ModeEFMerchantCatalog", "FlightTotemRuntimeModule", "EquipmentBootstrapOwners", "AwenLootSweepRuntime", "WavesArenaPresetWeight", "BirthdayCakeGift",
 )
 PROJECT_FIXTURES = {
+    "TidegateActivity": "TidegateActivity.csproj",
     "TidegateTreasure": "TidegateTreasure.csproj",
     "TidegateCargo": "TidegateCargo.csproj",
     "TidegateGunner": "TidegateGunner.csproj",

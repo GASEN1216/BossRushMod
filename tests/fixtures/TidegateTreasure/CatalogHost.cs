@@ -29,10 +29,18 @@ namespace Duckov.Utilities
 namespace ItemStatsSystem
 {
     using Duckov.Utilities;
-    internal sealed class Item
+    internal enum DisplayQuality { None, White, Green, Blue, Purple, Orange, Red, Q7, Q8 }
+    public sealed class Item : UnityEngine.Component
     {
         internal int TypeID, Quality, Value, MaxStackCount;
+        internal int StackCount;
+        internal string DisplayNameRaw;
+        internal new string name;
+        internal float MaxDurability, Durability;
+        internal readonly ItemVariables Variables = new ItemVariables();
+        internal DisplayQuality DisplayQuality;
         internal HashSet<string> Tags;
+        internal void SetTypeID(int typeId) { TypeID = typeId; }
         public bool CanBeSold { get { return !Tags.Contains("Sticky") && !Tags.Contains("NotSellable"); } }
     }
     internal struct ItemFilter { internal Tag[] requireTags, excludeTags; internal int minQuality, maxQuality; internal string caliber; }
@@ -48,8 +56,9 @@ namespace ItemStatsSystem
             Items = lines.Where(s=>!s.StartsWith("#")).Select(s=>s.Split('|')).Select(c=>new Item
             {
                 TypeID=int.Parse(c[0]), Quality=int.Parse(c[1]), Value=int.Parse(c[2]),
-                MaxStackCount=int.Parse(c[3]), Tags=new HashSet<string>(c[4].Split(','))
+                MaxStackCount=int.Parse(c[3]), Tags=new HashSet<string>(c[4].Split(',')), DisplayQuality=(DisplayQuality)int.Parse(c[5])
             }).ToDictionary(i=>i.TypeID);
+            TidegateItemHost.LoadTemplate();
         }
         public static int[] GetAllTypeIds(ItemFilter f)
         {
@@ -62,10 +71,9 @@ namespace ItemStatsSystem
         {
             Item result;
             if (Items.TryGetValue(id, out result)) return result;
-            if (id==BossRush.BossRushItemIds.TidegateHandwheel || id==BossRush.BossRushItemIds.TidegateTideWatch ||
-                id==BossRush.BossRushItemIds.TidegateFlippers) return new Item {TypeID=id, MaxStackCount=1};
-            return null;
+            return TidegateItemHost.Get(id);
         }
+        internal static void AddDynamicEntry(Item item) { TidegateItemHost.Register(item); }
     }
 }
 namespace BossRush

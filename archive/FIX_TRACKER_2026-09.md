@@ -8435,3 +8435,20 @@ owner 指定生物 Wiki 的原版属性作为参照、要求整体提升 50%，�
 - 第二、三次出包（同日，两次只读材质复测后返工）：第一轮把石木瓦平铺图烘成 512²（路面纹素 128 → 64 px/m）、逐面邻面平均的法线仍留折痕、卵石没吃到新法线、发光底色过曝、深木平色——全部返工。另查出生成器给巡守槽位让位会与导航成环（重跑时 G 岛小屋漂 0.866 m），改为不读导航派生的巡守槽位（`DERIVED_RUNTIME_KINDS`，新断言 `DERIVED_RUNTIME_RESERVED` 已反向验证）。第二次复测又查出瀑布水 / 石分面仍走旧法线（折痕 9–11%）、卵石被 bmesh 在非流形边处整块翻反（相邻绕序冲突 17.2%），第三次出包改为整件扇区法线、源绕序与 bmesh 定向取冲突少者：场景级 Tripo 折痕全 0%、硬边 ≥97.8%、绕序冲突 ≤0.19%。
 - 证据：新实例台账 `tools/sky_island_instance_ledger.py` + 审计 `tools/sky_island_scene_audit.py`：修前 352 条、修后 0 条（23 条设计接触写理由）；新守卫 `SkyIslandSceneCleanlinessPropertyTest`（6 条真实反向探针 + 5 条内存探针）；Unity 碰撞校验 PASS（14,580 次胶囊扫掠 0 失败）、ECM2 移动实跑 PASS（0 失败）；着色器判包 PASS；全量守卫 729/729；天空岛执行回归 16/16；正式编译部署 `BossRush.dll` `cd89f0ce…`，`sky_island_raid` `af85bc0c…` 三份一致（前两次 `ad9dcae9…`、`42f91137…` 已替换；随后 10-01 路灯一条再次部署，见上）。
 - 数字：可见三角形 3,426,285 → 2,904,928；渲染器 840 → 824；材质 99 → 98；导航 4011 → 4073 顶点（余量 22）；包体 160.9 → 232.3 MB（贴图 34.3 → 89.6 MB）。未实机；报告与看图清单 `docs/reports/sky-island/天空岛_场景净空穿模质感审计_20260930.md`。
+
+
+## 2026-09-24 docs 整理收尾：丧尸治疗文案、过时注释与死常量、资源部署描述（SAFE / COMPAT）
+
+**来源 / 分类**：`docs/` 整理时子代理核对出的待拍板项，owner 定「2、4、5 都修，改描述」。治疗文案 `COMPAT`（只改显示文字，本地化 key 不变）；其余 `SAFE`。
+
+**完成**：
+- 丧尸医疗终端「治疗」：玩家看到「恢复缺失生命 50%」，实现是 `min(缺失生命, 最大生命 × 50%)`（`ZombieMode/ZombieModeRewardNpcServices.cs` 的 `ApplyZombieModeNurseServiceEffect`）。按实现改文案为「治疗：恢复 50% 最大生命」/「Heal: Restore 50% Max HP」（`Localization/LocalizationInjector.cs`，key `BossRush_ZombieMode_Npc_NurseService_HealHalf` 不变），价目表规格同步。
+- 过时注释：`DragonBreathBuffHandler.cs` 文件头「每层 2 点」改为按 `BASE_DAMAGE_PER_LAYER`（1 点、对玩家封顶 2 点）；`WishFountainUI.cs` 文件头删去已不存在的 NotificationText 大横幅；`F3GameplayValidationSkyIslandRuntimeCases.cs` 的 21 组 / 61 敌改为引用 `ExpectedEncounterGroups` / `ExpectedEncounterEnemies`；`OfficialQuestBinding.cs` 的 `PayReward` 注释改为现状（天空岛、征程都传 null，发钱归交付事务）。
+- 死常量：删掉 `FenHuangHalberdIds.AssetBundlePath`、`FrostmourneIds.AssetBundlePath`（无调用点，值也不是实际包名 `*_model`）。
+- 资源部署描述：待拍板里说「`compile_official.bat` 没部署 `Assets/npcs`、`Assets/entity`、`Assets/ui/bossrush_wiki`」不成立——编译结尾的 `tools/Deploy-ResourceBundles.ps1` 按 `tools/resource_release_manifest.json`（72 个包，含这 7 个）部署并校验 SHA-256，游戏目录出现清单外 bundle 会让构建失败。构建脚本不改；改正 `Integration/AGENTS.md` 接线第 8 条与 6 篇教程（NPC、交互物、Wiki 书 UI、接线清单、近战武器、头盔），写明新 bundle 要登记进清单。
+
+**验证**：全量守卫 665/665 PASS；Windows 正式编译 `Build succeeded!`（`GAME_PATH` 指向临时 Managed 拷贝，未部署到游戏目录；唯一警告 CS0649 在未改动的 `SkyIslandOfficialQuestTable.cs`）。L1/L2；未实机。
+
+**L3 待 owner 实机**：丧尸模式安全区打开护士医疗终端，服务列表第一项应显示「治疗：恢复 50% 最大生命」（英文 "Heal: Restore 50% Max HP"），文字不溢出按钮；在缺血少于一半时购买应回满、缺血多于一半时回复最大生命的一半。
+
+<!-- End of 2026-11-08 verbatim archive addition. -->

@@ -51,8 +51,6 @@ namespace BossRush
         private float nextLamps, nextNavigation;
         private float navigationLevel = float.NaN, navigationLagoon = float.NaN;
         private Vector4 beaconPosition;
-        private static readonly int ViewFocusId = Shader.PropertyToID("_TidegateViewFocus");
-        private Vector4 lastViewFocus;
         private Color beaconColor;
         /// <summary>每 0.5 秒排好的灯（灯塔 + 最近的夜灯）占前几格；手电每帧写在它们后面那一格。</summary>
         private int staticLamps;
@@ -124,14 +122,10 @@ namespace BossRush
         /// <summary>大闸提起之后泻湖开始放水；提起是单向的，本趟内不会再关。</summary>
         internal void OpenSluice() { sluiceOpen = true; }
 
-        // 室内由本栋的官方 ShadowOnly 接管；其它建筑仍可独立挡在玩家与镜头之间。
+        // 只有主角脚点进入本栋室内才切换官方 ShadowOnly；室外遮挡和准心均不触发建筑虚化。
         internal void SetViewFocus(Vector3 feet)
         {
             world.IndoorRoofs.UpdateFeet(feet);
-            Vector4 focus = new Vector4(feet.x, feet.y, feet.z, 1f);
-            if (focus == lastViewFocus) return;
-            Shader.SetGlobalVector(ViewFocusId, focus);
-            lastViewFocus = focus;
         }
 
         /// <summary>某一点的水位：泻湖内侧跟泻湖，其它地方跟外海。</summary>
@@ -296,7 +290,6 @@ namespace BossRush
             DevOffsetHours = 0.0;
 #endif
             Shader.SetGlobalFloat(LampCountId, 0f);
-            Shader.SetGlobalVector(ViewFocusId, Vector4.zero);
             Shader.SetGlobalFloat(LightingEnabledId, 0f);
             Shader.SetGlobalFloat(NightId, 0f);
             PhaseChanged = null;

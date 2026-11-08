@@ -88,6 +88,8 @@ internal sealed class TideProbeStub {
     internal readonly List<float> FrameTimes = new List<float>();
     internal int Count;
     internal bool WrongPosition;
+    internal int EnemyStarts;
+    internal void CaptureEnemyStart() { EnemyStarts++; }
     internal void Capture() { Count++; }
     internal string Append(ref string metrics) { metrics += ",counter_samples=" + Count; return WrongPosition ? "wrong_station" : null; }
 }

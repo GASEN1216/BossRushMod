@@ -74,6 +74,13 @@ namespace BossRush
                     CharacterMainControl player = CharacterMainControl.Main;
                     if (!AtTidegatePerfStation(player.transform.position, poi.position)) { errors.Add(mode + "_outside_station"); break; }
                     int affected = 0;
+                    // 消融临时关闭对象期间冻结距离 owner，防止它在采样中把测试对象重新激活。
+                    if (session.DevEnemies != null)
+                    {
+                        TidegateEnemies activityOwner = session.DevEnemies;
+                        activityOwner.DevActivityFrozen = true;
+                        _tidegateAblationUndo.Add(delegate { activityOwner.DevActivityFrozen = false; });
+                    }
                     try { affected = ApplyTidegateAblation(session, player.transform.position, mode); }
                     catch (Exception e) { errors.Add(mode + "_apply_threw:" + e.GetType().Name); }
                     yield return WaitSeconds(1f);

@@ -42,6 +42,7 @@ namespace BossRush
 
         internal static void InjectMapLabels()
         {
+            TidegateEnemyIdentity.InjectLabels();
             TidegateLoot.InjectCargoLabels();
             LocalizationHelper.InjectLocalization(MapEnemyKey, L10n.T("敌人", "Enemy"));
             LocalizationHelper.InjectLocalization(MapBossKey, L10n.T("沙老大·铅锤", "Leadline, the Dredge Boss"));

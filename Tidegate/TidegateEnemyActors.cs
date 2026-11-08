@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace BossRush
 {
-    internal enum TidegateEnemyRole { Regular, Hound, Marksman, Gunner }
+    internal enum TidegateEnemyRole { Regular, Hound, Marksman, Gunner, Captain }
 
     // 地图 owner 决定岗位；各角色只负责自己的官方预设、克隆与装备，没接成功就保留普通守备。
     internal static partial class TidegateEnemyActors

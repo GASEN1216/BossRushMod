@@ -289,6 +289,18 @@ def check(raw):
     if not re.search(r"slot\.DevSpawning = false;", spawn_finally) or "if (!retained && created != null)" not in spawn_finally or "if (clone != null) UnityEngine.Object.Destroy(clone," not in spawn_finally:
         errors.append("Spawn finally 要清在建标志，并销毁未保留的迟到角色与 preset")
     enemies_case = body_of(clean[CASES], "private IEnumerator RunTidegateDrillEnemies()") or ""
+    roster_call = "!TidegateDrillRosterOk(total, town, docks, townPartners, docksPartners, expectedGuards, expectedBosses)"
+    roster_pattern = (r'if\s*\(authored == 25 && session\.DevUnreachableSpawns == 0\s*&&\s*'
+                      + re.escape(roster_call) + r'\)\s*errors\.Add\("encounter_roster_expected_31_town10_docks7_6guards_1boss"\);')
+    if not re.search(roster_pattern, enemies_case):
+        errors.append("敌人阵容检查必须调用已回归的当前31人纯判据，并把不符记FAIL")
+    appearance_pattern = (r'if\s*\(!TidegateEnemyIdentity\.DescribeAppearance\(character, info\.Group, info\.Kind, info\.Role, out appearance\)\)'
+                          r'\s*errors\.Add\("enemy_appearance_mismatch_" \+ info\.Id\);')
+    if not re.search(appearance_pattern, enemies_case) or 'notes.Add("appearance:" + info.Id + "," + appearance);' not in enemies_case:
+        errors.append("敌人检查必须读取实际实例捏脸、报告详情，失配记FAIL")
+    digger_case = body_of(clean[CASES], "private IEnumerator RunTidegateDrillDiggers()") or ""
+    if 'if (info.Kind == "digger" && info.Role == TidegateEnemyRole.Regular) { victim = info; break; }' not in digger_case:
+        errors.append("卷走演练必须选普通淘沙帮，不能杀掉后续检查的唯一投掷手")
     incomplete = body_of(enemies_case, "if (errors.Count == 0 && !TidegateDrillEnemyCoverageOk(") or ""
     if not re.search(r'Record\(id, "WARN",', incomplete) or not re.search(r"yield break;", incomplete):
         errors.append("敌人检查没有逐槽刷出 / 距离 / 活守卫 / 活 Boss 的观测时必须 WARN，不能 PASS")
@@ -327,6 +339,12 @@ def main():
     errors = check(raw)
 
     probes = (
+        (CASES, '!TidegateEnemyIdentity.DescribeAppearance(character, info.Group, info.Kind, info.Role, out appearance)',
+         'false', "不检查实际实例捏脸"),
+        (CASES, "!TidegateDrillRosterOk(total, town, docks, townPartners, docksPartners, expectedGuards, expectedBosses)",
+         "(total != 27)", "阵容检查退回旧人数"),
+        (CASES, 'if (info.Kind == "digger" && info.Role == TidegateEnemyRole.Regular) { victim = info; break; }',
+         'if (info.Kind != "boss") { victim = info; break; }', "卷走误选唯一投掷手"),
         (DRILL, "#if BOSSRUSH_DEV\n", "", "拆掉演练文件的 #if"),
         (HOOKS, "#if BOSSRUSH_DEV\n", "", "拆掉钩子文件的 #if"),
         (CONTROLS, "#if BOSSRUSH_DEV\n", "", "拆掉潮闸镇区的 #if"),

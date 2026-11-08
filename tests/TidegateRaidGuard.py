@@ -247,14 +247,32 @@ def main():
     need(body(loot, "private void Build(Point point, CharacterMainControl player)"), "沉船保险柜",
          'if (HasFixed(point.Id, "goldbar"))', "int valuable = RolledPrize(point, prizeFloor, prizeRandom, out prizeCategory);",
          'SkyIslandRewardCrate.AddOfficialStack(box, valuable, 1, log, "TidegateWreck")')
-    need(body(loot, "internal static int PrizeFloor(string pointId, string kind)"), "船长与所长贵重位",
-         'if (HasFixed(pointId, "goldbar") || HasFixed(pointId, "tidewatch")) return 6;')
+    need(body(loot, "internal static int PrizeFloor(string pointId, string kind)"), "水下普通精品底线与陆地兼容",
+         'return IsUnderwaterContainer(pointId, kind) ? 4 : LegacyPrizeFloor(pointId, kind);')
+    need(body(loot, "internal static bool CountsAsUnderwaterJackpot(Item item)"), "水下高级预算口径与固定怀表例外",
+         'item.TypeID != BossRushItemIds.TidegateTideWatch', 'item.Quality >= 5')
+    if 'DisplayQuality' in (body(loot, "internal static bool CountsAsUnderwaterJackpot(Item item)") or ""):
+        errors.append("水下高级预算只读数值 Quality，不能把克隆源/外观 Mod 的 DisplayQuality 当作高级奖")
+    need(body(loot, "private void PrepareUnderwaterPrizes()"), "整趟一次判定并稳定选点",
+         'sites.Sort((a, b) => StringComparer.Ordinal.Compare(a.Id, b.Id));',
+         'underwaterJackpotRolled = roll.Next(100) < UnderwaterJackpotChancePercent;',
+         'underwaterJackpotPoint = sites[roll.Next(sites.Count)].Id;', 'UNDERWATER_JACKPOT_STOCK_UNAVAILABLE')
+    need(loot, "水下高级概率", 'internal const int UnderwaterJackpotChancePercent = 80;')
     nav_tool = (ROOT / "tools/build_tidegate_navigation.py").read_text(encoding="utf-8")
     if "story = story_containers(grid.layout)" not in nav_tool or "'Tidegate' / 'TidegateLoot.cs'" not in nav_tool:
         errors.append("导航检查脚本要核对剧情箱柜表与布局 fixed 标签")
     need(enemies, "刷怪计数", "if (inFlight > 0 || Time.time < nextTick) return;", "inFlight++;", "inFlight--;")
     if re.search(r"\bspawning\b", enemies):
         errors.append("刷怪节流不得退回布尔（海堤增援三连会提前清零）")
+    # 2026-11-08 发布前整体加强：倍率只写克隆、在官方创建之前；沙老大与狙击手的例外由 TidegateDrillJudges / TidegateSandBoss 夹具执行验证。
+    tuned, created = spawn.find("TidegateCombatTuning.Apply(clone, slot.Kind, slot.Role);"), spawn.find("await clone.CreateCharacterAsync(")
+    if tuned < 0 or created < 0 or tuned > created:
+        errors.append("潮闸镇敌人强度倍率要在官方 CreateCharacterAsync 之前写进克隆（TidegateCombatTuning.Apply）")
+    combat = read("Tidegate/TidegateCombatTuning.cs")
+    need(combat, "强度倍率不碰沙老大、狙击手与互打比例", 'if (clone == null || kind == "boss") return;',
+         "if (role == TidegateEnemyRole.Marksman) return;")
+    if "aiCombatFactor =" in combat or "aiCombatFactor *=" in combat:
+        errors.append("潮闸镇强度倍率不改 aiCombatFactor（只管 NPC 互打）")
     need(spawn, "守卫优先专属武器，缺失时回精英枪", 'if (!TidegateEnemyActors.Equip(slot.Role, created, tide, valid) && slot.Kind == "guard") SkyIslandEnemyArmory.Arm(created, SkyIslandEnemyTier.Elite);')
     need(water, "游泳隐蔽", "ApplyStealth(player.Swimming);", '"VisableDistanceFactor"', "SwimVisibilityMultiplier = -0.5f",
          "ModifierType.PercentageMultiply")

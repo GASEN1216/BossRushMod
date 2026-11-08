@@ -32,6 +32,8 @@ namespace BossRush
     {
         internal const int GrenadeId = 67;
         private const float Radius = 2.4f, Fuse = 2.2f, Cooldown = 20f;
+        /// <summary>单颗手雷伤害上限（原 25；owner 2026-11-08 整体加强）。落点预警与引信时长不变。</summary>
+        internal const float MaxDamage = 32f;
         private static readonly Color Orange = new Color(1f, .48f, .12f);
         private CharacterMainControl owner;
         private AICharacterController ai;
@@ -117,7 +119,7 @@ namespace BossRush
             grenade.createExplosion = false;
             grenade.delayFromCollide = true; grenade.delayTime = float.MaxValue; grenade.isLandmine = false;
             grenade.damageRange = Radius;
-            grenade.damageInfo = new DamageInfo(owner) { damageValue = Mathf.Min(25f, skill.damageInfo.damageValue) };
+            grenade.damageInfo = new DamageInfo(owner) { damageValue = Mathf.Min(MaxDamage, skill.damageInfo.damageValue) };
             grenade.explosionShakeStrength = Mathf.Min(.45f,skill.explosionShakeStrength);
             grenade.SetWeaponIdInfo(GrenadeId);
             grenade.gameObject.AddComponent<TidegateGunnerLanding>().Owner = this;

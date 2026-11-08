@@ -142,7 +142,7 @@ internal static class Program
                     var cargo = winner.Stocks.Single(s => s.Source == "TidegateCargo");
                     var cat = (Cat)Enum.Parse(typeof(Cat),routes[lead.Key][2]);
                     int grade = ItemStatsSystem.ItemAssetsCollection.GetPrefab(cargo.Id).Quality;
-                    Check(cargo.Amount == 1 && cargo.Id/10000 == (int)cat+1 && grade >= (cat == Cat.Valuable ? 5 : 4) && grade <= 5,
+                    Check(cargo.Amount == 1 && cargo.Id/10000 == (int)cat+1 && grade >= 4 && grade <= (lead.Key == "Flats" ? 4 : 5),
                         "route promised a different category or grade: " + lead.Key);
                     Check(winner.Stocks.Count == baselineCount, "shipment increased or reduced the number of stacks");
                     if (winner.Stocks.Count == 1) oneSlot++;

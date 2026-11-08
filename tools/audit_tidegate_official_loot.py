@@ -62,7 +62,7 @@ def audit(data, catalog):
     items = {}
     for line in catalog.read_text("utf-8").splitlines():
         if line and not line.startswith("#"):
-            i, q, v, _, tags = line.split("|")
+            i, q, v, _, tags = line.split("|")[:5]
             items[int(i)] = (int(q), int(v), set(tags.split(",")))
     assert len(items) == 1569
     gen = TypeTreeGenerator(resources.unity_version)

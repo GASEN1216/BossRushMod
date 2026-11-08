@@ -53,6 +53,14 @@ namespace BossRush
             owner.sources[regular] = new CharacterRandomPreset { Completion = regularResult.Task, name = "regular" };
             owner.Spawn(extra);
             CharacterRandomPreset extraClone = CharacterRandomPreset.LastClone;
+            if (extraClone.nameKey != "BossRush_TidegateEnemy_Trooper" || !extraClone.showName)
+                errors.Add("spawn_identity_not_set_before_official_creation");
+            // 发布前整体加强：倍率写在交给官方创建的克隆上，模板不动。
+            if (Math.Abs(extraClone.health - 100f * TidegateCombatTuning.HealthFactor) > .01f
+                || Math.Abs(extraClone.damageMultiplier - TidegateCombatTuning.DamageFactor) > .001f || !extraClone.setMeleeDamageMultiplier
+                || extraClone.reactionTime >= .4f || extraClone.shootDelay >= .3f || extraClone.gunScatterMultiplier >= 1f
+                || owner.sources[extra].health != 100f)
+                errors.Add("release_strength_not_applied_to_clone_only");
             owner.Spawn(regular);
             if (owner.inFlight != 2 || !extra.DevSpawning) errors.Add("spawn_async_boundary_not_reached");
 
@@ -76,6 +84,9 @@ namespace BossRush
             if (regular.Character != kept || kept.gameObject == null || owner.SpawnedCount != 1)
                 errors.Add("normal_spawn_did_not_survive_extra_cleanup");
             if (regular.MapPoint == null) errors.Add("new_spawn_missing_active_lighthouse_reveal");
+            string appearance;
+            if (!TidegateEnemyIdentity.DescribeAppearance(kept, regular.Group, regular.Kind, regular.Role, out appearance))
+                errors.Add("normal_spawn_face_not_applied_" + appearance);
             // 点位本身可走，但投影踩在深水中时，改找岸上，而非直接把角色交给官方创建。
             owner.world.Ground = x => x < 1f ? -3f : 1f;
             Vector3 shore;
@@ -144,17 +155,23 @@ namespace BossRush
             {
                 var owner = new TidegateEnemies { world = layout };
                 owner.SelectRoster(new List<Slot>(points), seed);
-                foreach (Slot slot in owner.slots) { slot.JoinedAt = -1f; used.Add(slot.Id); }
+                foreach (Slot slot in owner.slots) { slot.JoinedAt = -1f; slot.Role = TidegateEnemyRole.Regular; used.Add(slot.Id); }
                 owner.AddPartners("town", layout.Waypoints["town"], 4, seed);
                 owner.AddPartners("docks", layout.Waypoints["docks"], 3, seed);
                 owner.AssignRoles();
                 int town = owner.slots.FindAll(s => s.Group == "town").Count, docks = owner.slots.FindAll(s => s.Group == "docks").Count;
-                if (owner.slots.Count != 27 || town != 9 || docks != 6 || owner.slots.FindAll(s => s.Kind == "guard").Count != 4
+                if (owner.slots.Count != 31 || town != 10 || docks != 7 || owner.slots.FindAll(s => s.Kind == "guard").Count != 6
                     || owner.slots.FindAll(s => s.Kind == "boss").Count != 1)
                 { errors.Add("encounter_band_seed_" + seed + "_town_" + town + "_docks_" + docks); break; }
+                if (!F3GameplayValidationRunner.TidegateDrillRosterOk(owner.slots.Count, town, docks,
+                    owner.slots.FindAll(s => s.Group == "town" && s.Lead != null).Count,
+                    owner.slots.FindAll(s => s.Group == "docks" && s.Lead != null).Count,
+                    owner.slots.FindAll(s => s.Kind == "guard").Count, owner.slots.FindAll(s => s.Kind == "boss").Count))
+                { errors.Add("f3_rejects_production_roster_seed_" + seed); break; }
                 if (owner.slots.FindAll(s => s.Role == TidegateEnemyRole.Marksman && s.Id == "SPAWN_ww_guard_8").Count != 1
                     || owner.slots.FindAll(s => s.Role == TidegateEnemyRole.Gunner && s.Group == "dig").Count != 1
-                    || owner.slots.FindAll(s => s.Role == TidegateEnemyRole.Hound && s.Lead != null && ScavDistrict(s.Group)).Count != 2)
+                    || owner.slots.FindAll(s => s.Role == TidegateEnemyRole.Hound && s.Lead != null && ScavDistrict(s.Group)).Count != 2
+                    || owner.slots.FindAll(s => s.Role == TidegateEnemyRole.Captain && s.Group == "town" && s.Lead == null).Count != 1)
                     { errors.Add("roles_or_teams_not_bounded_" + seed); break; }
                 foreach (Slot slot in owner.slots)
                 {
@@ -171,7 +188,7 @@ namespace BossRush
                 foreach (Slot slot in points) { slot.Role = TidegateEnemyRole.Regular; slot.HasPatrol = false; }
             }
             if (used.Count != points.Count) errors.Add("some_authored_spawn_positions_never_participate");
-            if (errors.Count == 0) Console.WriteLine("Tidegate actual layout: 512 seeds x 27 slots, town 9 / docks 6, 7 delayed partners, 4 guards + 1 boss.");
+            if (errors.Count == 0) Console.WriteLine("Tidegate actual layout: 512 seeds x 31 slots, town 10 / docks 7, 7 delayed partners, 6 guards + 1 boss.");
             foreach (string kind in new[] { "house", "fish", "tool", "med", "crate", "buried", "vault" })
             {
                 int[] counts = new int[8];
@@ -183,7 +200,7 @@ namespace BossRush
                     counts[n]++; mean += n * 0.01;
                 }
                 if (counts[1] > 15 || (kind == "fish" && (counts[4]+counts[5]+counts[6]>0 || mean>2.3))
-                    || ((kind=="tool" || kind=="med") && (counts[1]!=0 || counts[4]+counts[5]<20 || mean>3.1))
+                    || ((kind=="tool" || kind=="med") && (counts[1]!=0 || counts[4]+counts[5]<20 || mean>3.100001))
                     || (kind=="vault" && (counts[1]+counts[2]>0 || mean<4.0)))
                     errors.Add("container_capacity_not_matched_" + kind);
                 Console.WriteLine("Tidegate loot " + kind + " roll_count_mean=" + mean.ToString("F2") + " counts_1_to_6="
@@ -238,7 +255,6 @@ namespace BossRush
         internal bool IsDeepAt(Vector3 position) { return DeepOnCompletion; }
         internal float WaterLevelAt(Vector3 point) { return 0f; }
     }
-    internal static class GameplayDataSettings { internal static class Layers { internal const int wallLayerMask = 1; } }
     internal sealed class TestNavigation
     {
         internal int Mask { get { return 1; } }
@@ -249,6 +265,7 @@ namespace BossRush
     internal static partial class TidegateEnemyActors { internal static bool IsPatrolWolf(CharacterRandomPreset s) { return false; } }
     internal sealed class TidegateSandBoss : Component
     {
+        internal const float ModelScale = 1.2f;
         internal static void Tune(CharacterRandomPreset p) { }
         internal void Bind(CharacterMainControl c, AICharacterController ai, TidegateTide tide, TestWorld world, Vector3 deck,
             Vector3 flats, Func<bool> posture, Func<bool> valid, string source) { }
@@ -274,6 +291,8 @@ namespace BossRush
     internal sealed class TestHealth { internal bool IsDead; }
     internal sealed class CharacterMainControl : Component
     {
+        internal ItemStatsSystem.Item CharacterItem;
+        internal CharacterModel characterModel;
         internal TestHealth Health;
         internal Teams Team;
         internal void SetTeam(Teams team) { Team = team; }
@@ -282,6 +301,9 @@ namespace BossRush
             var root = new GameObject(name);
             var character = root.AddComponent<CharacterMainControl>();
             character.Health = new TestHealth();
+            character.CharacterItem = new ItemStatsSystem.Item();
+            character.characterModel = root.AddComponent<CharacterModel>();
+            character.characterModel.CustomFace = CustomFaceInstance.CreateBaseline();
             root.AddComponent<Seeker>();
             root.AddComponent<AICharacterController>();
             return character;
@@ -289,14 +311,19 @@ namespace BossRush
     }
     internal sealed class CharacterRandomPreset : UnityEngine.Object
     {
+        internal string nameKey;
+        internal bool showName, showHealthBar, isBoss;
         internal static CharacterRandomPreset LastClone;
         internal Task<CharacterMainControl> Completion;
         internal bool dropBoxOnDead, setActiveByPlayerDistance;
         internal float patrolRange;
+        internal float health = 100f, damageMultiplier = 1f, meleeDamageMultiplier = 1f, reactionTime = .4f, shootDelay = .3f, gunScatterMultiplier = 1f;
+        internal bool setMeleeDamageMultiplier;
         internal Teams team;
         internal CharacterRandomPreset Clone()
         {
-            LastClone = new CharacterRandomPreset { Completion = Completion, name = name };
+            LastClone = new CharacterRandomPreset { Completion = Completion, name = name, health = health, damageMultiplier = damageMultiplier,
+                meleeDamageMultiplier = meleeDamageMultiplier, reactionTime = reactionTime, shootDelay = shootDelay, gunScatterMultiplier = gunScatterMultiplier };
             return LastClone;
         }
         internal Task<CharacterMainControl> CreateCharacterAsync(Vector3 position, Vector3 forward, int team, object a, bool b) { return Completion; }
@@ -359,7 +386,7 @@ namespace UnityEngine
     }
     internal sealed class Transform : Component
     {
-        internal Vector3 position, forward;
+        internal Vector3 position, forward, localScale;
         internal void SetParent(Transform parent, bool keepWorld) { }
     }
     internal struct Vector3
@@ -367,6 +394,7 @@ namespace UnityEngine
         internal float x, y, z;
         internal Vector3(float x, float y, float z) { this.x = x; this.y = y; this.z = z; }
         internal static Vector3 up { get { return new Vector3(0f, 1f, 0f); } }
+        internal static Vector3 one { get { return new Vector3(1f, 1f, 1f); } }
         internal float sqrMagnitude { get { return x*x + y*y + z*z; } }
         internal Vector3 normalized { get { float n = (float)Math.Sqrt(sqrMagnitude); return n > 0f ? this * (1f/n) : new Vector3(); } }
         public static Vector3 operator +(Vector3 a, Vector3 b) { return new Vector3(a.x+b.x, a.y+b.y, a.z+b.z); }

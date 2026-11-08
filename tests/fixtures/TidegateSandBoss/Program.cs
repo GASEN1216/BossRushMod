@@ -58,7 +58,8 @@ internal static class Program
         var model=new GameObject("model");first.characterModel=model.AddComponent<CharacterModel>();TidegateSandBoss.ApplyLook(first);
         Check(model.transform.localScale.x==TidegateSandBoss.ModelScale&&TidegateSandBoss.ModelScale>1.1f,"boss silhouette not enlarged");
         TidegateSandBoss.ApplyLook(new GameObject("bare").AddComponent<CharacterMainControl>());
-        Check(prefab.health==TidegateSandBoss.BossHealth&&TidegateSandBoss.BossHealth==1000f,"boss health left the sky island chief floor");
+        Check(prefab.health==TidegateSandBoss.BossHealth&&TidegateSandBoss.BossHealth>=1000f,"boss health fell below the sky island chief floor");
+        Check(prefab.damageMultiplier==TidegateSandBoss.BossDamage&&prefab.setMeleeDamageMultiplier&&prefab.meleeDamageMultiplier==TidegateSandBoss.BossDamage&&TidegateSandBoss.BossDamage>1f,"boss release strength not applied to gun and melee");
         var sess=root.AddComponent<TidegateSession>();UnityEngine.Object.Session=sess;sess.root=root;sess.player=player;sess.loot=new TidegateLoot();sess.tide=tide;
         var use=root.AddComponent<TidegateLeadUsage>();
         foreach(var spec in new[]{("buried",21,true,false),("crate",20,false,false),("buried",20,false,true),("buried",26,false,false),("buried",45,false,false)})

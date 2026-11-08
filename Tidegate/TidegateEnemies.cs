@@ -17,7 +17,7 @@ namespace BossRush
     /// <summary>
     /// 潮闸镇的刷怪 owner。每趟在作者摆的点位中按地区抽守备队，选中的点只刷一次，玩家走到 25–75 m 之间才刷
     /// （官方 `CharacterSpawnerRoot` 同样不在玩家 25 m 内出怪，避免背后刷怪）。拾荒者、水厂与灯塔岬的守卫、淘沙帮都用官方拾荒者预设，
-    /// 守卫另按天空岛精英档配枪；沙老大只克隆指定参照，另有随潮相切换的招式和专属响铊。
+    /// 守卫另按天空岛精英档配枪；沙老大也在拾荒者底模上配专属装备、潮相招式和响铊。
     /// 刷出后的六步与天空岛相同：关距离激活 → 官方创建 → 导航限定本图 → 解除距离休眠 → 敌对性安全网 `SetTeam(Teams.wolf)` → 挂到世界根下。
     /// </summary>
     internal sealed partial class TidegateEnemies : IDisposable
@@ -67,7 +67,7 @@ namespace BossRush
         private readonly ArenaPrototypeNavigation navigation;
         private readonly CharacterMainControl player;
         private readonly Func<bool> valid;
-        private CharacterRandomPreset scav, lightScav;
+        private CharacterRandomPreset scav;
         private float nextTick, nextTide, revealUntil = -1f;
         private bool closed;
         /// <summary>
@@ -126,11 +126,12 @@ namespace BossRush
                 int max;
                 switch (squad)
                 {
-                    case "town:scav": max = 5; break;
+                    case "town:scav": max = 6; break;
                     case "dig:digger": max = 4; break;
-                    case "ww:guard": case "docks:scav": max = 3; break;
+                    case "ww:guard": case "docks:scav": max = 4; break;
                     case "reeds:scav": max = 2; break;
-                    case "cape:guard": case "cape:scav": case "dig:boss": max = 1; break;
+                    case "cape:guard": max = 2; break;
+                    case "cape:scav": case "dig:boss": max = 1; break;
                     default: max = 1; break;
                 }
                 int count;
@@ -143,7 +144,7 @@ namespace BossRush
 
         private void AssignRoles()
         {
-            bool townDog = false, dockDog = false, gunner = false;
+            bool townDog = false, dockDog = false, gunner = false, captain = false;
             foreach (Slot slot in slots)
             {
                 if (slot.Id == "SPAWN_ww_guard_8") slot.Role = TidegateEnemyRole.Marksman;
@@ -153,6 +154,8 @@ namespace BossRush
                 { slot.Role = TidegateEnemyRole.Hound; townDog = true; }
                 else if (slot.Lead != null && slot.Group == "docks" && !dockDog)
                 { slot.Role = TidegateEnemyRole.Hound; dockDog = true; }
+                else if (slot.Group == "town" && slot.Lead == null && !captain)
+                { slot.Role = TidegateEnemyRole.Captain; captain = true; }
             }
         }
 
@@ -201,6 +204,7 @@ namespace BossRush
         internal void Tick()
         {
             if (closed || valid == null || !valid() || player == null) return;
+            TickActivity();
             if (Time.time >= nextTide) { nextTide = Time.time + TideInterval; TickTide(); }
             if (revealUntil > 0f && Time.time >= revealUntil) { revealUntil = -1f; ClearReveal(); }
             if (inFlight > 0 || Time.time < nextTick) return;
@@ -229,13 +233,7 @@ namespace BossRush
 
         private CharacterRandomPreset SourceFor(Slot slot)
         {
-            if (slot.Kind == "boss") return SkyIslandEnemySources.Named(TidegateSandBoss.SourceName);
-            if (scav == null) scav = SkyIslandEnemySources.ScavReference();
-            if (slot.Kind == "scav" && (slot.Group == "town" || slot.Group == "reeds"))
-            {
-                if (lightScav == null) lightScav = SkyIslandEnemySources.Named("EnemyPreset_Scav") ?? scav;
-                return lightScav;
-            }
+            if (scav == null) scav = SkyIslandEnemySources.Named(TidegateSandBoss.SourceName) ?? SkyIslandEnemySources.ScavReference();
             return scav; // 普通点绝不退回到 Boss 池；没有官方拾荒者才明确报刷怪失败。
         }
 
@@ -277,6 +275,9 @@ namespace BossRush
                 // 缩小岸哨无事时的漫游，保留官方选敌、交火与追击。
                 if (slot.Group != "dig" && slot.Group != "vault") clone.patrolRange = Mathf.Min(clone.patrolRange, 3.5f);
                 TidegateEnemyActors.Tune(slot.Role, clone);
+                TidegateEnemyIdentity.Tune(clone, slot.Group, slot.Kind, slot.Role);
+                // 岗位调完再整体加强一档（狙击手只加血，沙老大用自己的数值）。
+                TidegateCombatTuning.Apply(clone, slot.Kind, slot.Role);
                 // 拾荒者及其猎犬同阵营；武装守卫和淘沙帮敌视他们，玩家可以借两边的交火转移。
                 clone.team = ScavDistrict(slot.Group) ? Teams.scav : Teams.wolf;
                 created = await clone.CreateCharacterAsync(position, slot.Marker.forward, -1, null, false);
@@ -302,6 +303,7 @@ namespace BossRush
                 created.transform.SetParent(world.Root.transform, true);
                 // 水厂与灯塔岬的守卫比镇上的拾荒者难打一档：按天空岛精英档换枪补弹（池子进图读条时已预热，可失败的装饰）。
                 if (!TidegateEnemyActors.Equip(slot.Role, created, tide, valid) && slot.Kind == "guard") SkyIslandEnemyArmory.Arm(created, SkyIslandEnemyTier.Elite);
+                TidegateEnemyIdentity.Dress(created, slot.Group, slot.Kind, slot.Role);
                 // 选敌全交给官方感知。不改 forceTracePlayerDistance：官方 AI 在这个距离内无视视线每帧锁定玩家，等于透视。
                 slot.Ai = ai;
                 slot.Home = position;
@@ -424,6 +426,7 @@ namespace BossRush
             {
                 CharacterMainControl character = slot.Character;
                 if (character == null || slot.Ai == null || character.Health == null || character.Health.IsDead) continue;
+                if (ActivitySuspended(slot)) continue;
                 Vector3 goal = slot.Home;
                 if (slot.Group == "dig")
                 {
@@ -488,6 +491,7 @@ namespace BossRush
         {
             if (closed) return;
             revealUntil = Time.time + seconds;
+            WakeActivityForBeacon();
             foreach (Slot slot in slots) MarkOnMap(slot);
         }
 
@@ -549,6 +553,7 @@ namespace BossRush
             if (closed) return;
             closed = true;
             ClearReveal();
+            ClearActivity();
             foreach (Slot slot in slots)
             {
                 if (slot.Character == null) continue;

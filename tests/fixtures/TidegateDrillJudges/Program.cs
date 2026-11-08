@@ -21,6 +21,11 @@ namespace BossRush
 
         private static int Main()
         {
+            Check(Runner.TidegateDrillWaterBudgetOk(1,1,false) && Runner.TidegateDrillWaterBudgetOk(0,0,false), "water_budget_valid_unopened");
+            Check(!Runner.TidegateDrillWaterBudgetOk(0,1,false), "water_winning_unopened_cannot_silently_have_no_prize");
+            Check(Runner.TidegateDrillWaterBudgetOk(0,1,true), "water_opened_prize_may_have_been_taken");
+            Check(!Runner.TidegateDrillWaterBudgetOk(2,1,true) && !Runner.TidegateDrillWaterBudgetOk(1,0,true), "water_opening_does_not_hide_over_budget");
+            Check(!Runner.TidegateDrillWaterBudgetOk(-1,0,false) && !Runner.TidegateDrillWaterBudgetOk(2,2,false), "water_budget_invalid_inputs");
             // 相位边界（游戏小时）：退潮 0、低潮 0.5、涨潮 2.5、高潮 3、一轮 4.5；每一相的起点与终点前一点都还在这一相里。
             Check(Runner.TidegateDrillPhaseStart(TidegateTidePhase.Ebb) == 0.0, "ebb_start");
             Check(Math.Abs(Runner.TidegateDrillPhaseStart(TidegateTidePhase.Low) - 0.5) < 1e-9, "low_start");
@@ -102,6 +107,11 @@ namespace BossRush
             Check(!Runner.TidegateDrillBoatOnTime(40.0) && !Runner.TidegateDrillBoatOnTime(50.0), "boat_late_or_early");
 
             // 缺角色或取数时绝不能 PASS：有一名普通敌人不等于守卫 / Boss 均已观测。
+            Check(Runner.TidegateDrillRosterOk(31, 10, 7, 4, 3, 6, 1), "roster_live_report_31_matches_current_density");
+            Check(!Runner.TidegateDrillRosterOk(27, 9, 6, 4, 3, 4, 1), "roster_rejects_previous_density");
+            Check(!Runner.TidegateDrillRosterOk(31, 9, 8, 4, 3, 6, 1), "roster_rejects_wrong_district_even_same_total");
+            Check(!Runner.TidegateDrillRosterOk(31, 10, 7, 3, 4, 6, 1), "roster_rejects_wrong_partner_distribution");
+            Check(!Runner.TidegateDrillRosterOk(31, 10, 7, 4, 3, 5, 2), "roster_rejects_wrong_guard_boss_distribution");
             string coverage;
             Check(Runner.TidegateDrillEnemyCoverageOk(5, 5, 5, 2, 2, 1, 1, 5, out coverage), "enemy_complete_observations");
             Check(!Runner.TidegateDrillEnemyCoverageOk(5, 1, 1, 2, 0, 1, 0, 1, out coverage), "enemy_only_scav_is_incomplete");
@@ -166,6 +176,8 @@ namespace BossRush
             Check(Runner.TidegateDrillCount(null, new[] { "x" }) == 0, "count_null_lines");
             Check(!Runner.TidegateDrillContainsAny(null, "x") && !Runner.TidegateDrillContainsAny("abc"), "contains_any_edges");
 
+            try { IdentityRegression.Run(); }
+            catch (Exception e) { Check(false, "enemy_identity: " + e.Message); }
             Console.WriteLine(failures == 0 ? "PASS TidegateDrillJudges" : "FAIL TidegateDrillJudges failures=" + failures);
             return failures == 0 ? 0 : 1;
         }

@@ -78,7 +78,7 @@ if __name__ == "__main__":
         layout_cs += 'world.Waypoints["%s"] = new List<Vector3> { %s };\n' % (group, ", ".join(vector(p) for p in layout["waypoints"][group]))
     layout_cs += "world.PlayerSpawn.position = %s;\n}" % vector((layout["spawn"]["x"], 0.8, layout["spawn"]["z"]))
     lifecycle = OUT / "SpawnLifecycle.cs"
-    lifecycle.write_text("using System;\nusing System.Collections.Generic;\nusing UnityEngine;\nusing Tier = BossRush.SkyIslandLootTier;\n"
+    lifecycle.write_text("using System;\nusing System.Collections.Generic;\nusing Duckov.Utilities;\nusing UnityEngine;\nusing Tier = BossRush.SkyIslandLootTier;\n"
                          "namespace BossRush { " + declaration(crane, "internal struct TidegateCraneCycle") +
                          "\ninternal sealed partial class TidegateEnemies {\n" +
                          layout_cs + "\n" + declaration(enemies, "private sealed class Slot") + "\n" +
@@ -96,9 +96,9 @@ if __name__ == "__main__":
     exe = OUT / "Regression.exe"
     args = ["/nologo", "/target:exe", "/langversion:7.3", "/define:BOSSRUSH_DEV", "/noconfig", "/nostdlib+", '/out:"' + str(exe) + '"']
     args += ['/r:"' + str(framework / name) + '"' for name in ("mscorlib.dll", "System.dll", "System.Core.dll")]
-    args += ['"' + str(p) + '"' for p in (ROOT / "Tidegate/TidegateTideRules.cs", ROOT / "Tidegate/TidegateEnemyActors.cs",
+    args += ['"' + str(p) + '"' for p in (ROOT / "Tidegate/TidegateTideRules.cs", ROOT / "Tidegate/TidegateEnemyActors.cs", ROOT / "Tidegate/TidegateCombatTuning.cs", ROOT / "Tidegate/TidegateEnemyIdentity.cs", ROOT / "Tidegate/TidegateEnemyAppearance.cs",
                                        ROOT / "Tidegate/TidegateSquadPatrols.cs", ROOT / "SkyIsland/SkyIslandLootTables.cs", generated, lifecycle,
-                                       HERE / "Program.cs", HERE / "SpawnLifecycleRegression.cs")]
+                                       HERE / "Program.cs", HERE / "SpawnLifecycleRegression.cs", HERE / "IdentityRegression.cs")]
     response = OUT / "compile.rsp"
     response.write_text("\n".join(args), encoding="utf-8-sig")
     code = subprocess.call(["dotnet", str(compiler), "@" + str(response)], cwd=ROOT)
