@@ -79,7 +79,7 @@ namespace BossRush
             float now = Time.time;
             if (now < buzzerReady)
             {
-                status(L10n.T("试车蜂鸣器尚在冷却，还需 ", "The test buzzer is cooling down: ") + Mathf.CeilToInt(buzzerReady - now) + L10n.T(" 秒。", " s left."), false);
+                status(L10n.T("蜂鸣器还烫着，再等 ", "The buzzer is still hot. Give it ") + Mathf.CeilToInt(buzzerReady - now) + L10n.T(" 秒。", " s."), false);
                 return;
             }
             buzzerReady = now + BuzzerCooldown;
@@ -108,8 +108,8 @@ namespace BossRush
                 sent++;
             }
             status(sent > 0
-                ? L10n.T("蜂鸣器尖叫起来：", "The buzzer shrieks: ") + sent + L10n.T(" 名巡逻过去查看，十秒后回原处。", " patrol(s) go to look and return in ten seconds.")
-                : L10n.T("蜂鸣器尖叫起来，附近没有巡逻过来。", "The buzzer shrieks, but no patrol is close enough to come."), false);
+                ? L10n.T("蜂鸣器尖叫起来，有人往维修棚这边过来了。", "The buzzer shrieks. Someone's coming over to the shed to look.")
+                : L10n.T("蜂鸣器叫了半天，没人过来。", "The buzzer shrieks away. Nobody comes."), false);
             Debug.Log(LastShiftRaidScene.LogTag + " BUZZER sent=" + sent);
         }
 
@@ -118,15 +118,15 @@ namespace BossRush
             float now = Time.time;
             if (now < steamReady)
             {
-                status(L10n.T("检修蒸汽阀尚在冷却，还需 ", "The steam valve is cooling down: ") + Mathf.CeilToInt(steamReady - now) + L10n.T(" 秒。", " s left."), false);
+                status(L10n.T("阀门还在回压，再等 ", "The valve is still building pressure. Give it ") + Mathf.CeilToInt(steamReady - now) + L10n.T(" 秒。", " s."), false);
                 return;
             }
             steamReady = now + SteamCooldown;
             steamUntil = now + SteamSeconds;
             if (steamBlock != null) steamBlock.gameObject.SetActive(true);
             PlaySteam();
-            status(L10n.T("蒸汽遮住视线约 7 秒，敌人无法重新瞄准；已经锁定的火线照样穿汽伤人。",
-                "Steam blocks sight for about 7 s: enemies can't reacquire you, but a line of fire already locked still cuts through."), false);
+            status(L10n.T("白汽一下涌出来，七八秒里谁也看不清谁。押运长画好的火线照样打得穿。",
+                "Steam floods out. For seven or eight seconds nobody can see anybody, though the chief's line of fire still cuts through it."), false);
         }
 
         private void TickDevices(float now)

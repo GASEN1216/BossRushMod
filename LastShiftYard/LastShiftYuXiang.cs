@@ -1,4 +1,5 @@
 using System;
+using BossRush.Utils;
 using Cysharp.Threading.Tasks;
 using Duckov.MiniMaps;
 using Duckov.UI.DialogueBubbles;
@@ -77,6 +78,85 @@ namespace BossRush
             catch (Exception e) { Debug.LogWarning(LastShiftRaidScene.LogTag + " 余响喊话失败：" + e.Message); }
         }
 
+        /// <summary>台边「和余响说话」的交互点：站在她面前（剪票交互在台子正面，两处错开约 1.4 m）。</summary>
+        private static readonly Vector3 TalkLocal = new Vector3(0f, 1f, 2.3f);
+        private static ModBehaviour talkOwner;
+
+        /// <summary>剪票处搭好时挂上对话点（owner 2026-11-11：故事的主角得能说上话，票根在这里就能交）。</summary>
+        internal static void AddTalk(Transform root, ModBehaviour owner)
+        {
+            talkOwner = owner;
+            LastShiftDeviceInteractable talk = NPCInteractionGroupHelper.GetOrCreateStandaloneInteractable<LastShiftDeviceInteractable>(root, "LastShiftTalk", TalkLocal, x =>
+            {
+                x.Bind("yuxiang_talk", 0f, delegate { return LastShiftText.YuXiangTalkVerb; }, CanTalk, Talk);
+                SphereCollider sensor = x.GetComponent<SphereCollider>();
+                if (sensor != null) { sensor.radius = 1f; sensor.isTrigger = true; }
+            });
+            if (talk == null) Debug.LogWarning(LastShiftRaidScene.LogTag + " 余响对话点创建失败");
+        }
+
+        private static bool CanTalk()
+        {
+            return talkOwner != null && talkOwner.GetComponent<LastShiftSession>() == null;
+        }
+
+        /// <summary>按进度说话：带着票根、故事没收尾就请你交给她；收尾后说现在的事；否则提第一条还没带出去的线索。</summary>
+        private static void Talk()
+        {
+            LastShiftStoryData d = LastShiftStory.Current;
+            if (d == null) return;
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (!d.Journal && TidegateInventory.Carries(player, BossRushItemIds.LastShiftTicketStub))
+            {
+                BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
+                {
+                    Title = LastShiftText.YuXiangName,
+                    Body = LastShiftText.YuXiangSeesStub,
+                    ConfirmLabel = L10n.T("把票根给她", "Give her the stub"),
+                    CancelLabel = L10n.T("先留着", "Not yet"),
+                    Danger = false,
+                    OnConfirm = HandOver,
+                });
+                return;
+            }
+            string body;
+            if (d.Journal) body = LastShiftText.YuXiangAfter(d.Runs);
+            else
+            {
+                int missing = 0;
+                while (missing < LastShiftStory.NoteCount && (d.Notes & (1 << missing)) != 0) missing++;
+                body = LastShiftText.YuXiangHint(missing, d.Notes == 0);
+            }
+            BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
+            {
+                Title = LastShiftText.YuXiangName,
+                Body = body,
+                SingleAction = true,
+                ConfirmLabel = L10n.T("嗯", "Right"),
+                Danger = false,
+                OnConfirm = delegate { },
+            });
+        }
+
+        /// <summary>对话里交票根：和上车时交同一个入口（先写存档再拿走票根），交成了弹收尾页。</summary>
+        private static void HandOver()
+        {
+            if (LastShiftStory.TryHandIn(CharacterMainControl.Main))
+            {
+                LastShiftStory.ShowEnding(L10n.T("收好", "Done"), null);
+                return;
+            }
+            BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
+            {
+                Title = LastShiftText.YuXiangName,
+                Body = L10n.T("她没接，摆摆手：「下回再说。」\n（存档暂时写不进去，票根还在你身上。）", "She doesn't take it, just waves a hand. \"Next time.\"\n(The save can't be written right now. You still have the stub.)"),
+                SingleAction = true,
+                ConfirmLabel = L10n.T("好", "OK"),
+                Danger = false,
+                OnConfirm = delegate { },
+            });
+        }
+
         /// <summary>没去过编组站时在仓库区小地图标出台子（第七轮：「第一次进仓库区时在小地图标出余响的台子」）。根节点激活前加、激活后 Setup。</summary>
         internal static GameObject AddMapMarker(Transform root)
         {
@@ -146,6 +226,7 @@ namespace BossRush
             spawning = false;
             retryAt = 0f;
             calledRaid = bandageRaid = 0;
+            talkOwner = null;
             bandageTypeId = -2;
         }
     }

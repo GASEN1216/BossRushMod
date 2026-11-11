@@ -163,7 +163,7 @@ namespace BossRush
                 trains.DevThrowSwitch();
                 yield return null;
                 if (t.Line != line || t.DispatchChosen) errors.Add("switch_allowed_before_demo");
-                if (LastShiftDrillCount(session.DevStatusSince(mark), new[] { "先在南护栏后看完首班示范", "Watch the first-train demonstration" }) != 1)
+                if (LastShiftDrillCount(session.DevStatusSince(mark), new[] { "看首班车过岔", "watch the first train through" }) != 1)
                     errors.Add("demo_refusal_caption_missing");
                 if (trains.DevArrowCount != 0) errors.Add("arrows_shown_on_refusal");
             }
@@ -195,7 +195,7 @@ namespace BossRush
                 else
                 {
                     List<string> since = session.DevStatusSince(mark);
-                    if (LastShiftDrillCount(since, new[] { "手推车被撞飞", "the cart is smashed aside" }) != 1) errors.Add("cart_hit_caption_missing");
+                    if (LastShiftDrillCount(since, new[] { "手推车被车头撞飞", "smashes the hand cart" }) != 1) errors.Add("cart_hit_caption_missing");
                     yield return LastShiftDrillAdvance(1.3);
                     if (trains.DevHasCart && LastShiftDrillFlat(trains.DevCartPosition, cartBefore) < 1f) errors.Add("cart_not_moved");
                 }
@@ -211,7 +211,7 @@ namespace BossRush
                 int mark = session.DevStatusMark;
                 yield return LastShiftDrillAdvanceTo(x => x.DispatchWait, 20, false, errors, notes, "hold");
                 if (!sawDispatchWaitStart
-                    && LastShiftDrillCount(session.DevStatusSince(mark), new[] { "首班示范已完成", "Demonstration done" }) != 1)
+                    && LastShiftDrillCount(session.DevStatusSince(mark), new[] { "车停在岔心前", "holding before the turnout" }) != 1)
                     errors.Add("dispatch_wait_caption_missing");
                 yield return LastShiftDrillAdvance(5.0);
                 string why;
@@ -284,7 +284,7 @@ namespace BossRush
                 trains.DevThrowSwitch();
                 yield return null;
                 if (t.Line != locked) errors.Add("switch_allowed_while_locked");
-                if (LastShiftDrillCount(session.DevStatusSince(mark), new[] { "本班已锁线", "locked the route" }) != 1) errors.Add("locked_caption_missing");
+                if (LastShiftDrillCount(session.DevStatusSince(mark), new[] { "锁了线", "route locked" }) != 1) errors.Add("locked_caption_missing");
                 yield return LastShiftDrillAdvance(LastShiftTimetable.EastUnloadSeconds + 0.5);
                 if (t.Phase == LastShiftPhase.Dwell) LastShiftDrillSampleExits(session, "dwell_unloaded", errors, notes, seen);
             }
@@ -304,7 +304,7 @@ namespace BossRush
                 yield return null;
                 if (t.BellAt < 0) errors.Add("bell_not_rung");
                 if (trains.Ringing) errors.Add("bell_not_handed_to_patrols");
-                if (LastShiftDrillCount(session.DevStatusSince(mark), new[] { "已拉铃", "Bell rung" }) != 1) errors.Add("bell_caption_missing");
+                if (LastShiftDrillCount(session.DevStatusSince(mark), new[] { "拉了铃", "ring the bell" }) != 1) errors.Add("bell_caption_missing");
                 yield return LastShiftDrillAdvance(LastShiftTimetable.BellWait - 1.0);
                 trains.DevSyncExits(CharacterMainControl.Main);
                 double early = t.Clock - t.BellAt;

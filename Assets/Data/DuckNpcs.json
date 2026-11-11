@@ -2087,7 +2087,7 @@
       "faceSeed": 20261111,
       "baseModel": "",
       "modelScale": 0.92,
-      "team": "player",
+      "team": "middle",
       "invincible": true,
       "showHealthBar": false,
       "pushCharacter": false,

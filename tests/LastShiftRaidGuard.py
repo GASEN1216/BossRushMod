@@ -8,9 +8,11 @@
 - 和潮闸镇、天空岛、试验场、完整 F3 验收互相拒绝。
 - 室内屋顶认 `LastShiftIndoorRooms`；部署段与发布清单登记两个包；运行时模块已注册。
 - 剧情（第三期）：存档键与图鉴前缀不改；本趟进度只在安全撤离时写进存档（阵亡丢本趟线索）；
-  交票根先写存档再拿走票根；交票只发生在上车确认之后。
+  交票根先写存档再拿走票根；交票只发生在上车确认之后，或和余响说话时按了「把票根给她」之后。
+- 余响在官方中立阵营 `middle`（仓库区的原版敌人不会朝她开火）。
 判断前去掉 C# 注释，免得注释里的同名字串骗过子串检查。
 """
+import json
 import re
 import sys
 from pathlib import Path
@@ -88,6 +90,16 @@ required = re.search(r'REQUIRED\s*=\s*\{(.*?)\}', verify, re.S)
 offline = set(re.findall(r'"(BossRush/[^"]+)"\s*:', required.group(1))) if required else set()
 if not runtime or runtime != offline:
     errors.append(f'着色器白名单不一致：运行时 {sorted(runtime)}，判包脚本 {sorted(offline)}')
+
+yuxiang = files.get('LastShiftYuXiang.cs', '')
+hand_over = body(yuxiang, 'private static void HandOver()')
+if 'LastShiftStory.TryHandIn(' not in hand_over or len(re.findall(r'TryHandIn\(', yuxiang)) != 1 \
+        or not re.search(r'OnConfirm\s*=\s*HandOver\s*,', yuxiang):
+    errors.append('LastShiftYuXiang.cs: 对话里交票根只能在确认框按下「把票根给她」之后（OnConfirm = HandOver）')
+npcs = json.loads((ROOT / 'Assets/Data/DuckNpcs.json').read_text(encoding='utf-8-sig'))
+yu = [n for n in npcs.get('npcs', []) if n.get('id') == 'lastshift_yuxiang']
+if len(yu) != 1 or yu[0].get('team') != 'middle':
+    errors.append('Assets/Data/DuckNpcs.json: 余响必须在中立阵营 middle（站在出击图里，别的阵营会朝她开火）')
 
 story = files.get('LastShiftStory.cs', '')
 need('LastShiftStory.cs', story, 'StorageKey = "BossRush_LastShiftYard_Story_v1"', '剧情存档键不改（进存档）')

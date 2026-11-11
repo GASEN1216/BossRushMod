@@ -120,23 +120,35 @@ namespace BossRush
             string reason;
             if (!timetable.TrySwitch(target, out reason))
             {
-                status(reason == "demo" ? L10n.T("先在南护栏后看完首班示范，道岔才交给你。", "Watch the first-train demonstration from behind the south rail first; then the switch is yours.")
-                    : L10n.T("本班已锁线，等列车出清后再改道。", "This train has locked the route. Wait until the line clears."), true);
+                status(reason == "demo" ? L10n.T("道岔还锁着。先回南护栏后面，看首班车过岔。", "The switch is still locked. Go back behind the south rail and watch the first train through.")
+                    : L10n.T("这一班已经锁了线，等车出站再扳。", "This train has the route locked. Wait for it to leave."), true);
                 return;
             }
             noticeLine = target; noticeUntil = Time.time + NoticeSeconds;
             ShowArrows(target);
             RefreshNavigation();
             status(target == 'W'
-                ? L10n.T("站场广播：货车改走西线，押运跟车去西货台。西台在棚内，守卫离得近。", "Yard tannoy: freight routed to the west line, escorts heading for the west platform. The west shed is close quarters.")
-                : L10n.T("站场广播：货车改走东线，押运跟车去东货台。东台要穿过敞坪。", "Yard tannoy: freight routed to the east line, escorts heading for the east platform. The east deck is open ground."), false);
+                ? L10n.T("站场广播：货车改走西线，西货台接车。", "Yard tannoy: freight switched to the west line, west platform receiving.")
+                : L10n.T("站场广播：货车改走东线，东货台接车。", "Yard tannoy: freight switched to the east line, east platform receiving."), false);
         }
 
         private void RingBell()
         {
             timetable.RingBell();
-            status(L10n.T("已拉铃：轨道车约 14 秒后到接客亭，附近巡逻也听到了。", "Bell rung: the railcar reaches the shelter in about 14 s. Nearby patrols heard it too."), false);
+            status(L10n.T("拉了铃，铃声传遍站场。轨道车十几秒后到接客亭。", "You ring the bell and it carries across the yard. The railcar reaches the shelter in about fourteen seconds."), false);
             Ringing = true;
+        }
+
+        /// <summary>
+        /// 故事收尾后余响「跟调度打过招呼」：开局把道岔放到指定一侧（不播广播、不出箭头，只重刷导航）。
+        /// 只在班次表允许扳岔时生效（回访开局总在预告或净空），返回是否改了。
+        /// </summary>
+        internal bool PresetLine(char line)
+        {
+            string reason;
+            if (timetable.Line == line || !timetable.TrySwitch(line, out reason)) return false;
+            RefreshNavigation();
+            return true;
         }
 
         /// <summary>拉过铃（敌人 owner 读它把附近巡逻引过去，读完清零）。</summary>
@@ -146,8 +158,8 @@ namespace BossRush
         {
             string premium = timetable.Premium == 'W' ? L10n.T("西台", "the west platform") : L10n.T("东台", "the east platform");
             status(L10n.T("本趟班单：", "This run's manifest: ") + LastShiftText.ManifestName(Manifest)
-                + L10n.T("。两台是一批货，全趟限签一次；封签货保底 Q4。加价台：", ". One consignment for both platforms, one signature per run; sealed cargo is Q4 or better. Premium: ")
-                + premium + L10n.T("，在那边签收更可能是 Q5。", " (more likely Q5 there).")
+                + L10n.T("。两台同一批货，只签一回。加价台：", ". Both platforms share one consignment; you sign once. Premium platform: ")
+                + premium + L10n.T("，那边的货更好。", ", where the goods are better.")
                 + (ManifestExtra == null ? "" : " " + ManifestExtra()), false);
         }
 
@@ -167,7 +179,7 @@ namespace BossRush
             if (timetable.Training && !timetable.CartHit && timetable.FrontHit(oldLead, LastShiftTimetable.CartX, LastShiftTimetable.CartZ, 0))
             {
                 timetable.MarkCartHit();
-                status(L10n.T("首班演示：手推车被撞飞。下一班起，正面撞击致命。", "First-train demonstration: the cart is smashed aside. From the next train on, a head-on hit is fatal."), true);
+                status(L10n.T("手推车被车头撞飞了。往后别站在车前面。", "The engine smashes the hand cart off the track. Don't stand in front of a train."), true);
             }
             Place(advance);
             if (Time.unscaledTime >= nextExits)
@@ -194,18 +206,17 @@ namespace BossRush
             if (timetable.Phase == LastShiftPhase.Approach && !timetable.CartHit && !LastShiftTimetable.AtSouthRail(px, pz) && !railReminded && timetable.AwayFromRail > 0)
             {
                 railReminded = true;
-                status(L10n.T("首班还没发车：回到南护栏后看演示，列车会等你。", "The first train hasn't left yet: go back behind the south rail to watch; it waits for you."), false);
+                status(L10n.T("首班车还没动。回南护栏后面站好，它才进站。", "The first train hasn't moved. Get back behind the south rail and it'll come in."), false);
             }
             if (timetable.DemoForced && !demoForcedAnnounced)
             {
                 demoForcedAnnounced = true;
-                status(L10n.T("首班不再等了：列车已经动身，演示照常进行。", "The first train won't wait any longer: it's on its way."), false);
+                status(L10n.T("首班车不等了，已经开过来。", "The first train isn't waiting any longer. Here it comes."), false);
             }
             if (timetable.DispatchWait && !dispatchWaitAnnounced)
             {
                 dispatchWaitAnnounced = true;
-                status(L10n.T("首班示范已完成：列车在岔心前等你。上悬车楼司机室扳道岔，货列才会继续进站。",
-                    "Demonstration done: the train is holding before the turnout. Climb to the suspended cab and throw the switch."), false);
+                status(L10n.T("车停在岔心前，等司机室扳道岔。", "The train is holding before the turnout, waiting for the switch in the cab."), false);
             }
         }
 
@@ -217,26 +228,25 @@ namespace BossRush
             switch (next)
             {
                 case LastShiftPhase.Approach:
-                    status(L10n.T("第 ", "Train ") + timetable.Trip + L10n.T(" 班：20 秒后进站，", " arrives in 20 s: ") + label + L10n.T("。", ". ")
-                        + LastShiftText.EventNote(timetable.Event), timetable.IsExpress);
+                    status(L10n.T("站场广播：第 ", "Yard tannoy: train ") + timetable.Trip + L10n.T(" 班，", ", ") + label
+                        + L10n.T("，二十秒后进站。", ", in twenty seconds. ") + LastShiftText.EventNote(timetable.Event), timetable.IsExpress);
                     break;
                 case LastShiftPhase.Arrival:
                     if (timetable.IsExpress)
-                        status(L10n.T("直通快车压过", "The express is coming through on the ") + LastShiftText.LineName(timetable.LineUsed)
-                            + L10n.T("，不停靠！离开轨道。", " line without stopping! Get off the track."), true);
+                        status(L10n.T("直通快车过站！离开股道！", "Express coming through! Get off the track!"), true);
                     else if (timetable.Training && !timetable.DispatchChosen)
-                        status(L10n.T("首班进站，在岔心前减速：到司机室扳道岔选西台或东台，未选前列车会等你。",
-                            "The first train slows before the turnout: throw the switch in the cab to pick a platform. It waits until you do."), false);
+                        status(L10n.T("首班车在岔心前减速了。上司机室扳道岔，选西台还是东台。",
+                            "The first train is slowing before the turnout. Get up to the cab and throw the switch: west or east."), false);
                     else
-                        status(L10n.T("道岔已锁：", "Route locked: ") + LastShiftText.PlatformName(timetable.LineUsed)
-                            + L10n.T("进车。走轨外步道，车身会挡住枪线。", " platform. Use the walkways beside the track; the train blocks lines of fire."), false);
+                        status(L10n.T("车进" + LastShiftText.PlatformName(timetable.LineUsed) + "台了。",
+                            "The train is pulling into the " + LastShiftText.LineName(timetable.LineUsed) + " platform."), false);
                     break;
                 case LastShiftPhase.Dwell:
-                    status(L10n.T("列车停妥：", "The train has stopped: ") + LastShiftText.PlatformName(timetable.LineUsed)
-                        + L10n.T("可签收", " platform, ") + LastShiftText.ManifestName(Manifest) + L10n.T("封签货。", " sealed cargo can be signed for."), false);
+                    status(L10n.T("车停稳了，" + LastShiftText.PlatformName(timetable.LineUsed) + "台卸货。",
+                        "The train has stopped. Unloading at the " + LastShiftText.LineName(timetable.LineUsed) + " platform."), false);
                     break;
                 case LastShiftPhase.Clear:
-                    status(L10n.T("列车出清，西检修便门开放。北公路始终可走。", "The line is clear and the west service gate is open. The north road is always open."), false);
+                    status(L10n.T("车出站了，股道空了。", "The train's gone. The track is clear."), false);
                     break;
             }
         }
@@ -357,7 +367,7 @@ namespace BossRush
         internal string Objective(bool cargoClaimed)
         {
             if (timetable.Training && !timetable.CartHit)
-                return L10n.T("站到南护栏后看首班示范", "Stand behind the south rail and watch the first train");
+                return L10n.T("站到南护栏后面，看首班车进站", "Stand behind the south rail and watch the first train come in");
             if (timetable.Training && !timetable.DispatchChosen)
                 return L10n.T("沿坡道上悬车楼司机室，扳道岔选西台或东台", "Climb the ramp to the suspended cab and throw the switch: west or east platform");
             if (!cargoClaimed)

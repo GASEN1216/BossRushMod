@@ -259,7 +259,7 @@ namespace BossRush
             if (hud != null)
                 Safe("landing_hint", delegate
                 {
-                    hud.SetLandingHint(L10n.T("首班要等你站到南护栏后才发车。看完演示，再上悬车楼司机室扳道岔。",
+                    hud.SetLandingHint(L10n.T("首班车要等你站到南护栏后面才进站。看它过了岔，再上悬车楼司机室扳道岔。",
                         "The first train waits until you stand behind the south rail. Watch it, then climb to the suspended cab to throw the switch."));
                 });
             safePosition = world.PlayerSpawn.position + Vector3.up * 0.15f;
@@ -303,13 +303,15 @@ namespace BossRush
         {
             if (trains == null || trains.Timetable.Training) return;
             LastShiftTimetable t = trains.Timetable;
-            string line = LastShiftText.PlatformName(t.Line) + L10n.T("台", " platform");
-            string head = L10n.T("第 ", "Run ") + (LastShiftStory.Runs + 1) + L10n.T(" 趟：", ": ") + LastShiftText.ManifestName(trains.Manifest)
-                + L10n.T("班单，道岔现在指向", " manifest, the switch is set for the ") + line + L10n.T("。", ".");
+            // 故事收尾后余响替你跟调度打过招呼：开局道岔已经放到加价台（owner 2026-11-11），想换边仍可自己扳。
+            if (LastShiftStory.Journal) trains.PresetLine(t.Premium);
+            string head = L10n.T("第 " + (LastShiftStory.Runs + 1) + " 趟。班单：" + LastShiftText.ManifestName(trains.Manifest) + "。",
+                "Run " + (LastShiftStory.Runs + 1) + ". Manifest: " + LastShiftText.ManifestName(trains.Manifest).ToLowerInvariant() + ".");
             if (LastShiftStory.Journal)
-                Status(head + L10n.T("余响：“下一班是", " Yu Xiang: \"The next one's ") + LastShiftText.EventLabel(t.Event).ToLowerInvariant()
-                    + L10n.T("，加价台在", ", and the premium is on the ") + LastShiftText.PlatformName(t.Premium) + L10n.T("台。”", " platform.\""), false);
-            else Status(head + L10n.T("加价台写在班次运单牌上。", " The premium platform is on the shift manifest board."), false);
+                Status(head + L10n.T("剪票时余响交代过：下一班是" + LastShiftText.EventLabel(t.Event) + "，调度会把它放到" + LastShiftText.PlatformName(t.Line) + "台。",
+                    " Yu Xiang told you at the desk: the next one's a " + LastShiftText.EventLabel(t.Event).ToLowerInvariant()
+                    + ", and dispatch is sending it to the " + LastShiftText.LineName(t.Line) + " platform."), false);
+            else Status(head + L10n.T("加价台写在南班房边的运单牌上。", " The premium platform is posted on the manifest board by the south crew room."), false);
         }
 
         /// <summary>安全撤离：补齐本趟记录（签收、带红、警铃），整趟进度写进本槽剧情存档。阵亡与装配失败不走这里。</summary>

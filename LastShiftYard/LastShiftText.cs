@@ -57,10 +57,10 @@ namespace BossRush
         {
             switch (e)
             {
-                case LastShiftEvent.Slow: return L10n.T("慢车：停靠 70 秒，押运队会到齐。", "Slow train: it stands 70 s and the escorts all turn up.");
-                case LastShiftEvent.Heavy: return L10n.T("重载货列：多挂一节车厢，车影更长。", "Heavy freight: one more car, a longer shadow to hide behind.");
-                case LastShiftEvent.Express: return L10n.T("直通快车：不停靠、不卸货，车头致命，远离轨道。", "Express: no stop, no unloading, and the engine is lethal. Keep off the track.");
-                default: return L10n.T("车头正面撞击致命。", "A head-on hit from the engine is fatal.");
+                case LastShiftEvent.Slow: return L10n.T("停七十秒，押运会到齐。", "It stands for seventy seconds and the whole escort turns up.");
+                case LastShiftEvent.Heavy: return L10n.T("多挂了一节车。", "One car longer than usual.");
+                case LastShiftEvent.Express: return L10n.T("不停站，离股道远点！", "It's not stopping. Get clear of the track!");
+                default: return "";
             }
         }
 
@@ -81,9 +81,9 @@ namespace BossRush
         {
             switch (index)
             {
-                case 0: return L10n.T("打孔钳上缺了一齿，钳口留着最后一班的日期。", "The ticket punch is missing a tooth, and the date of the last shift is still on its jaw.");
-                case 1: return L10n.T("旧录音里，司机把自己的疏散座位让给了候车的人。", "On the old tape, the driver gives his evacuation seat to someone still waiting on the platform.");
-                default: return L10n.T("退件簿上，那张没被领取的末班票还夹在末页。", "In the returns ledger, the uncollected last-shift ticket is still tucked into the back page.");
+                case 0: return L10n.T("钳口缺了一齿，钳柄上刻着最后一班的日期。", "One tooth is missing from the jaw. The date of the last shift is scratched into the handle.");
+                case 1: return L10n.T("磁带转了半天，出来司机的声音：「我的座让给她。」", "The tape hisses for a while, then the driver: \"She can have my seat.\"");
+                default: return L10n.T("退件簿末页夹着一张末班票，只打了两个孔。", "Tucked into the back of the ledger is a last-shift ticket with only two holes punched.");
             }
         }
 
@@ -119,8 +119,8 @@ namespace BossRush
         {
             get
             {
-                return L10n.T("余响接过票根，翻过来看了很久。她从桌下摸出那把缺齿的打孔钳，打完最后一孔。孔边多了一个小豁口，和她自己那张疏散车票上的一模一样。\n「他说下一班他自己开出去。」她把票根夹进验票桌的抽屉，「那我就一直剪票，剪到有人来领。」\n从这以后，每次剪票，她都会把下一班的底细告诉你。",
-                    "Yu Xiang takes the stub and turns it over for a long time. From under the desk she brings out the punch with the missing tooth and makes the last hole. Its edge has a little notch, exactly like the one on her own evacuation ticket.\n\"He said he'd drive the next one out himself.\" She slips the stub into the desk drawer. \"Then I'll keep punching tickets until someone comes for it.\"\nFrom now on, every time she punches your ticket, she tells you what the next train is carrying.");
+                return L10n.T("余响接过票根，翻过来看了很久。她从桌下摸出那把缺齿的打孔钳，打完最后一孔。孔边多了一个小豁口，和她自己那张疏散车票上的一模一样。\n「他说下一班他自己开出去。」她把票根夹进验票桌的抽屉，「那我就一直剪票，剪到有人来领。」",
+                    "Yu Xiang takes the stub and turns it over for a long time. From under the desk she brings out the punch with the missing tooth and makes the last hole. Its edge has a little notch, exactly like the one on her own evacuation ticket.\n\"He said he'd drive the next one out himself.\" She slips the stub into the desk drawer. \"Then I'll keep punching tickets until someone comes for it.\"");
             }
         }
 
@@ -140,8 +140,55 @@ namespace BossRush
             }
         }
 
+        /// <summary>收尾页下方的一行：图鉴多了一页，以及往后剪票的好处（owner 2026-11-11：她替你压道岔）。</summary>
+        internal static string EndingWarning
+        {
+            get
+            {
+                return L10n.T("笔记里多了一页。往后剪票，余响会先跟你说下一班是什么车，还会让调度把首班放到加价台。",
+                    "A new page in your notes. From now on Yu Xiang tells you about the next train when she punches your ticket, and gets dispatch to send the first one to the premium platform.");
+            }
+        }
+
+        /// <summary>M 图上还没找到的线索：只写东西本身。</summary>
+        internal static string ClueMapName(int index)
+        {
+            switch (index)
+            {
+                case 0: return L10n.T("打孔钳", "Ticket punch");
+                case 1: return L10n.T("录音机", "Tape recorder");
+                default: return L10n.T("退件簿", "Returns ledger");
+            }
+        }
+
         // ---------------- 余响 ----------------
         internal static string YuXiangName { get { return L10n.T("余响", "Yu Xiang"); } }
+        internal static string YuXiangTalkVerb { get { return L10n.T("和余响说话", "Talk to Yu Xiang"); } }
+
+        /// <summary>余响按进度说的话：老检票员，话短，只说站里的事。下标 = 第一条还没带出去的线索；3 = 三条都看过。</summary>
+        internal static string YuXiangHint(int missing, bool firstTime)
+        {
+            string open = firstTime ? L10n.T("这站早停了。末班车那晚没开出去，我就一直在这儿剪票。\n", "This station closed years ago. The last train never left that night, and I've been punching tickets here ever since.\n") : "";
+            switch (missing)
+            {
+                case 0: return open + L10n.T("悬车楼司机室，操纵台底下压着把钳子。缺了个齿，一看就是他的。", "Up in the suspended cab there's a punch under the console. Missing a tooth. That's his.");
+                case 1: return L10n.T("维修棚那台录音机，他老在那儿对调度口令。磁带要是还在，你听听。", "He used to rehearse dispatch calls on the recorder in the repair shed. If the tape's still there, have a listen.");
+                case 2: return L10n.T("押运库有本退件簿，没人领的东西都记在上头。押运长守着那儿，当心。", "The bond store keeps a returns ledger, everything nobody came for. The chief escort guards that place. Careful.");
+                default: return L10n.T("钳子、磁带、退件簿……那张票还夹在簿子里吧。带出来给我。", "The punch, the tape, the ledger... The ticket's still in that ledger, isn't it. Bring it out to me.");
+            }
+        }
+
+        internal static string YuXiangAfter(int runs)
+        {
+            switch (runs % 3)
+            {
+                case 0: return L10n.T("票我收着呢。下一班的事，上车前我跟你说。", "I've got the ticket put away. I'll tell you about the next train before you board.");
+                case 1: return L10n.T("他说下一班自己开。我等着就是了。", "He said he'd drive the next one himself. So I wait.");
+                default: return L10n.T("别站在股道上。车头不认人。", "Stay off the track. The engine doesn't care who you are.");
+            }
+        }
+
+        internal static string YuXiangSeesStub { get { return L10n.T("她盯着你手里的票看了一会儿，伸出手：「给我吧。」", "She looks at the ticket in your hand for a while, then holds out her own. \"Give it here.\""); } }
         internal static string YuXiangCallout { get { return L10n.T("末班车，剪票上车。", "Last train. Tickets, please."); } }
 
         internal static string BaseNotice

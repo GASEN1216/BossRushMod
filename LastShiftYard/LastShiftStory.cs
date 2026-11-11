@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using BossRush.Utils;
+using Duckov.MiniMaps;
 using Duckov.NoteIndexs;
 using ItemStatsSystem;
 using Saves;
@@ -23,7 +24,7 @@ namespace BossRush
         internal bool Journal;
         /// <summary>站台记录，按位记（<see cref="LastShiftStory.RecordIds"/> 的下标）。</summary>
         internal int Records;
-        /// <summary>基地的「末班票」告示已经看过（只贴一次）。</summary>
+        /// <summary>剪票上过车（JSON 键仍是 `notice`）：上过车以后基地不再贴「末班票」告示。</summary>
         internal bool Notice;
 
         internal LastShiftStoryData Copy()
@@ -195,12 +196,43 @@ namespace BossRush
             return true;
         }
 
-        /// <summary>基地告示：没去过编组站、没看过告示时贴一次（第七轮：入口要有人告诉你）。</summary>
+        private static long noticeDay = long.MinValue;
+
+        /// <summary>
+        /// 基地告示：还没剪票上过车时，每个官方游戏日回基地最多贴一次（owner 2026-11-11：一次容易被别的提示盖掉）。
+        /// 只读存档，不写；上过车（<see cref="MarkBoarded"/>）以后再也不贴。
+        /// </summary>
         internal static bool TryShowNotice()
         {
             LastShiftStoryData d = Current;
             if (d == null || d.Notice || d.Runs > 0 || !Writable) return false;
-            return Mutate(delegate (LastShiftStoryData x) { x.Notice = true; });
+            long day = GameClock.Instance == null ? -1L : GameClock.Day;
+            if (day < 0 || day == noticeDay) return false;
+            noticeDay = day;
+            return true;
+        }
+
+        /// <summary>剪票上车：记一笔，基地告示从此不贴。</summary>
+        internal static void MarkBoarded()
+        {
+            if (Current == null || Current.Notice) return;
+            if (!Mutate(delegate (LastShiftStoryData x) { x.Notice = true; }))
+                Debug.LogWarning(LastShiftRaidScene.LogTag + " 上车标记没写进存档，基地告示下个游戏日还会贴");
+        }
+
+        /// <summary>收尾页（上车时交票、和余响说话时交票共用）：读完按 <paramref name="confirm"/> 继续。</summary>
+        internal static void ShowEnding(string confirm, Action after)
+        {
+            BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
+            {
+                Title = LastShiftText.EndingTitle,
+                Body = LastShiftText.EndingBody,
+                SingleAction = true,
+                Warning = LastShiftText.EndingWarning,
+                ConfirmLabel = confirm,
+                Danger = false,
+                OnConfirm = delegate { if (after != null) after(); },
+            });
         }
 
         /// <summary>站台记录的一行摘要（运单牌上看）。</summary>
@@ -230,6 +262,7 @@ namespace BossRush
         private readonly Func<bool> valid;
         private readonly List<GameObject> interactables = new List<GameObject>();
         private readonly bool journal;
+        private readonly GameObject[] pins = new GameObject[LastShiftStory.NoteCount];
         private int notes, records;
         private bool stubGiven;
         private float shadowStart = -1f;
@@ -262,7 +295,30 @@ namespace BossRush
                     if (sensor != null) { sensor.radius = 1.2f; sensor.isTrigger = true; }
                 });
                 if (device == null) Debug.LogWarning(LastShiftRaidScene.LogTag + " 线索交互点创建失败：" + LastShiftStory.NoteMarkers[i]);
+                if (!journal && (notes & (1 << i)) == 0) pins[i] = Pin(world, anchor.position, i);
             }
+        }
+
+        /// <summary>M 图上标出还没找到的线索（owner 2026-11-11：用地图标出来，不用字幕指路）。读到就收掉。</summary>
+        private GameObject Pin(LastShiftWorld world, Vector3 at, int index)
+        {
+            GameObject pin = null;
+            try
+            {
+                string key = "BossRush_LastShift_ClueMap_" + (index + 1);
+                LocalizationHelper.InjectLocalization(key, LastShiftText.ClueMapName(index));
+                pin = new GameObject("LastShiftCluePin_" + (index + 1));
+                pin.transform.SetParent(world.Root.transform, false);
+                pin.transform.position = at;
+                interactables.Add(pin);
+                SimplePointOfInterest poi = pin.AddComponent<SimplePointOfInterest>();
+                poi.Color = new Color(0.93f, 0.84f, 0.62f);
+                poi.ScaleFactor = 1f;
+                poi.IsArea = false;
+                poi.Setup(null, key);
+            }
+            catch (Exception e) { Debug.LogWarning(LastShiftRaidScene.LogTag + " 线索地图标记失败：" + e.Message); }
+            return pin;
         }
 
         internal void Record(string id)
@@ -283,20 +339,19 @@ namespace BossRush
         {
             CharacterMainControl player = CharacterMainControl.Main;
             notes |= 1 << index;
+            if (pins[index] != null) { UnityEngine.Object.Destroy(pins[index]); pins[index] = null; }
             string message = LastShiftText.NoteFinding(index);
             int found = LastShiftStory.Count(notes);
             if (!journal && found == LastShiftStory.NoteCount)
             {
-                if (stubGiven || TidegateInventory.Carries(player, BossRushItemIds.LastShiftTicketStub))
-                    message += L10n.T(" 末班票根已经在你身上：带出去，下次剪票时交给余响。", " You already carry the ticket stub. Take it out and hand it to Yu Xiang next time you board.");
+                if (stubGiven || TidegateInventory.Carries(player, BossRushItemIds.LastShiftTicketStub)) { }
                 else if (GiveStub(player))
                 {
                     stubGiven = true;
-                    message += L10n.T(" 三条线索合上，得到末班票根：带出去，下次剪票时交给余响。", " The three clues fit together: you get the last-shift ticket stub. Take it out and hand it to Yu Xiang next time you board.");
+                    message += L10n.T(" 你把那张票揣走了。", " You pocket the ticket.");
                 }
-                else message += L10n.T(" 三条线索合上了，可票根没能放进背包，再看一次试试。", " The three clues fit together, but the stub couldn't go into your pack. Look again to retry.");
+                else message += L10n.T(" 包里塞不下那张票，回头再来翻。", " There's no room for the ticket. Come back for it.");
             }
-            else if (!journal) message += L10n.T(" 末班票 ", " Last ticket ") + found + "/" + LastShiftStory.NoteCount + L10n.T("。", ".");
             status(message, false);
         }
 

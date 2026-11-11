@@ -4,13 +4,14 @@ A railway marshalling yard that stopped running years ago, though freight still 
 
 ### Setting out
 
-- The way in is in the official **Hidden Warehouse** map: outside the rails of the second gantry crane in the west yard there is a ticket desk and a shuttle truck, with Yu Xiang standing beside it. Until you have visited the yard, the warehouse M map marks the "Last train ticket desk", and when you walk up she calls out "Last train. Tickets, please." A notice is also posted once at base.
+- The way in is in the official **Hidden Warehouse** map: outside the rails of the second gantry crane in the west yard there is a ticket desk and a shuttle truck, with Yu Xiang standing beside it. Until you have visited the yard, the warehouse M map marks the "Last train ticket desk", and when you walk up she calls out "Last train. Tickets, please." Until you first board, a notice by the departures at base reminds you (at most once per in-game day).
 - You can only board during a warehouse raid that is still going. "Board the last train" opens a confirmation first: **this run isn't settled here**. Your backpack comes with you, and the only way back to base is to extract from the yard. The ticket is free, and the bandage box on the desk hands you one bandage per run.
 - You can't board while a mode, a Sky Islands trip or a Tidegate trip is running.
 - The loading screen stops at "Click to continue", and you land outside the south crew room.
 
 ### The first-train demonstration
 
+- Yu Xiang is on the neutral side: warehouse enemies leave her alone, and she won't fight for you. Stand in front of her and choose "Talk to Yu Xiang" to hear about the old station.
 - On your first visit, the first train waits until you stand **behind the south rail**. From there you watch the engine smash the hand cart off the track. If you stay away from the rail for more than a minute, the first train leaves anyway.
 - The switch is yours once the demonstration is over. Climb the ramp to the **suspended cab** and use "Throw the switch".
 - From the second train on, **a head-on hit from the engine kills you outright**. The cars are solid and block both people and bullets; brushing against one only pushes you aside.
@@ -52,15 +53,15 @@ Closed exits have no ground ring. Step into one and the top-right corner tells y
 
 ### The ticket nobody came for
 
-- There are three clues in the yard: **the ticket punch in the cab**, **the old tape in the repair shed** and **the returns ledger in the bond store**. Each one you read shows "Last ticket n/3" in the top-right corner.
-- When all three come together in one run (clues you took out on earlier extractions count), you get the **Last Shift Ticket Stub**. Take it out; the next time you board at the warehouse it goes straight to Yu Xiang, and the story is added to your notes.
+- There are three clues in the yard: **the ticket punch in the cab**, **the old tape in the repair shed** and **the returns ledger in the bond store**. The ones you haven't found are marked on the M map; once you've read one, "Last ticket n/3" shows in the top-right corner. If you're stuck, go back and talk to Yu Xiang at the warehouse; she'll point you to the next one.
+- When all three come together in one run (clues you took out on earlier extractions count), you get the **Last Shift Ticket Stub**. Take it out and give it to Yu Xiang: you can hand it over while talking to her, and boarding also hands it over automatically. The story is added to your notes.
 - Clues only count once you extract safely. Clues read on a run where you die are not kept, and you lose the stub you carry.
-- Once the story is finished, every time you land after boarding, Yu Xiang tells you what the next train is and which platform pays the premium.
+- Once the story is finished, Yu Xiang tells you about the next train every time she punches your ticket, and has dispatch send the first train to the premium platform: the switch is already set when you land, though you can still go up to the cab and change it.
 - The story is optional and doesn't affect looting or extraction.
 
 ### Items
 
 - **Escort Steel Stamp** (500117): dropped by the chief escort; opens the sealed side cabinet once on your next trip, then it's gone.
-- **Last Shift Ticket Stub** (500118): from reading all three clues; hand it to Yu Xiang to finish the story. Can't be sold.
+- **Last Shift Ticket Stub** (500118): from reading all three clues; give it to Yu Xiang at the warehouse ticket desk to finish the story. Can't be sold.
 
 Neither item appears in random reward pools.

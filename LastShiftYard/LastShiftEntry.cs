@@ -64,6 +64,7 @@ namespace BossRush
                         if (sensor != null) { sensor.radius = LastShiftEntryPoint.InteractRadius; sensor.isTrigger = true; }
                     });
                 if (entry == null) throw new InvalidOperationException("剪票处交互点创建失败");
+                LastShiftYuXiang.AddTalk(root.transform, owner);
                 GameObject marker = LastShiftYuXiang.AddMapMarker(root.transform);
                 root.SetActive(true);
                 // Setup 必须在激活后调用，避免 OnEnable 与 Setup 双重登记（口径同怪件快递）。
@@ -156,10 +157,10 @@ namespace BossRush
             string body = L10n.T("余响：“票递过来。你身上带的货一起走，到了站还得自己找路回来。”",
                 "Yu Xiang: \"Hand me your ticket. Whatever you're carrying comes with you, and you'll find your own way back.\"");
             if (!LastShiftStory.Journal && TidegateInventory.Carries(player, BossRushItemIds.LastShiftTicketStub))
-                body += L10n.T("\n她看见了你手里的末班票根：“那张……剪票时给我。”", "\nShe spots the last-shift stub in your hand. \"That one... give it to me when I punch your ticket.\"");
+                body += L10n.T("\n她盯着你手里那张票：“那张……给我看看。”", "\nShe's looking at the ticket in your hand. \"That one... let me see it.\"");
             if (TidegateInventory.Carries(player, BossRushItemIds.LastShiftStamp))
-                body += L10n.T("\n余响：“你还带着押运钢印——押运库的铅封侧柜能开一次。”", "\nYu Xiang: \"You've still got the escort stamp. It opens the sealed side cabinet in the bond store once.\"");
-            body += L10n.T("\n台边绷带箱：每趟一卷，剪票时塞给你。", "\nBandage box on the desk: one roll per run, handed over when she punches your ticket.");
+                body += L10n.T("\n余响：“腰上那枚钢印还在？押运库那只封着的柜子，它能开一回。”", "\nYu Xiang: \"Still got the stamp? It'll open that sealed cabinet in the bond store, once.\"");
+            body += L10n.T("\n台边纸箱里有绷带，剪票时她塞给你一卷。", "\nThere are bandages in a box on the desk. She hands you a roll with your ticket.");
             BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
             {
                 Title = L10n.T("上末班车去编组站？", "Take the last train to the yard?"),
@@ -179,16 +180,7 @@ namespace BossRush
             if (!LastShiftSession.CanEnter(owner, out reason)) { Report(reason, true); return; }
             CharacterMainControl player = CharacterMainControl.Main;
             if (!LastShiftStory.TryHandIn(player)) { Depart(player); return; }
-            BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
-            {
-                Title = LastShiftText.EndingTitle,
-                Body = LastShiftText.EndingBody,
-                SingleAction = true,
-                Warning = L10n.T("「没人来领的末班票」收进了笔记图鉴。", "\"The Ticket Nobody Came For\" has been added to your notes."),
-                ConfirmLabel = L10n.T("上车", "Board"),
-                Danger = false,
-                OnConfirm = delegate { Depart(CharacterMainControl.Main); },
-            });
+            LastShiftStory.ShowEnding(L10n.T("上车", "Board"), delegate { Depart(CharacterMainControl.Main); });
         }
 
         private void Depart(CharacterMainControl player)
@@ -197,6 +189,7 @@ namespace BossRush
             string reason;
             if (!LastShiftSession.CanEnter(owner, out reason)) { Report(reason, true); return; }
             LastShiftYuXiang.GiveBandage(player);
+            LastShiftStory.MarkBoarded();
             LastShiftSession.Enter(owner, Report);
         }
 

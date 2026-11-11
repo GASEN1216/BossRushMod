@@ -531,7 +531,7 @@ namespace BossRush
                 Lure(g, Snap(at + new Vector3((g.Index % 3 - 1) * 1.6f, 0f, -1.2f)), until);
                 n++;
             }
-            if (n > 0) status(L10n.T("库房警铃响了：", "The store alarm is ringing: ") + n + L10n.T(" 名押运员正往回赶。", " escorts are hurrying back."), true);
+            if (n > 0) status(L10n.T("库房警铃响了，押运员在往回跑。", "The store alarm is ringing. Escorts are running back."), true);
             Debug.Log(LastShiftRaidScene.LogTag + " STORE_ALARM recalled=" + n);
         }
 

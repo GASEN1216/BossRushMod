@@ -57,8 +57,8 @@ namespace BossRush
                         new Definition
                         {
                             TypeId = BossRushItemIds.LastShiftTicketStub, LocKey = "BossRush_LastShift_TicketStub", NameCN = "末班票根", NameEN = "Last Shift Ticket Stub",
-                            DescCN = "一张没人来领的末班车票，票面还差最后一个孔。\n带出编组站，下次在仓库区剪票时交给余响。",
-                            DescEN = "A last-shift ticket nobody ever came to collect, one hole short of punched.\nCarry it out of the yard and hand it to Yu Xiang the next time you board at the warehouse district.",
+                            DescCN = "一张没人来领的末班车票，票面还差最后一个孔。\n带出编组站，交给仓库区检票台的余响。",
+                            DescEN = "A last-shift ticket nobody ever came to collect, one hole short of punched.\nCarry it out of the yard and give it to Yu Xiang at the warehouse ticket desk.",
                             IconName = "lastshift_ticket_stub", Value = 50, Quality = 2, Weight = 0.02f, NotSellable = true,
                         },
                     };
