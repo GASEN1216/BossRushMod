@@ -109,12 +109,18 @@ namespace BossRush
             bool firstTime = !d.Met;
             LastShiftStory.MarkMet();
             CharacterMainControl player = CharacterMainControl.Main;
+            // 新带出来、她还没接过话的线索：先说她的反应，再往下说（每条只说一次）。
+            int fresh = d.Journal ? 0 : d.Notes & ~d.Told & LastShiftStory.AllNotes;
+            string reactions = "";
+            for (int i = 0; i < LastShiftStory.NoteCount; i++)
+                if ((fresh & (1 << i)) != 0) reactions += LastShiftText.YuXiangReaction(i) + "\n\n";
+            LastShiftStory.MarkTold(fresh);
             if (!d.Journal && TidegateInventory.Carries(player, BossRushItemIds.LastShiftTicketStub))
             {
                 BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
                 {
                     Title = LastShiftText.YuXiangName,
-                    Body = LastShiftText.YuXiangSeesStub,
+                    Body = reactions + LastShiftText.YuXiangSeesStub,
                     ConfirmLabel = L10n.T("把票根给她", "Give her the stub"),
                     CancelLabel = L10n.T("先留着", "Not yet"),
                     Danger = false,
@@ -129,7 +135,7 @@ namespace BossRush
                 int missing = 0;
                 while (missing < LastShiftStory.NoteCount && (d.Notes & (1 << missing)) != 0) missing++;
                 // 第一次只聊站和末班车，不报线索在哪（owner 2026-11-11）；带出第一条线索后她才往下说，线索位置在编组站的地图上。
-                body = d.Notes == 0 ? LastShiftText.YuXiangIntro(firstTime, d.Runs > 0) : LastShiftText.YuXiangHint(missing);
+                body = d.Notes == 0 ? LastShiftText.YuXiangIntro(firstTime, d.Runs > 0) : reactions + LastShiftText.YuXiangHint(missing);
             }
             BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
             {

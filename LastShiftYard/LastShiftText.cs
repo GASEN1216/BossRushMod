@@ -203,6 +203,23 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 带出一条线索后，余响第一次听你说起它时接的话（owner 2026-11-11 交我定：她得对线索有反应，故事才一点点出来）。
+        /// 磁带那句先埋下她口袋里那张疏散车票，收尾时对上。
+        /// </summary>
+        internal static string YuXiangReaction(int index)
+        {
+            switch (index)
+            {
+                case 0: return L10n.T("那把钳子……缺齿是那年冬天磕的。他说这样剪出来的孔好认，我一摸就知道是他剪的。",
+                    "That punch... the tooth broke off that winter. He said it made his holes easy to tell apart. I could tell his by touch.");
+                case 1: return L10n.T("她下意识按了按上衣口袋，半天没说话。「……那晚台上就剩一个人。」",
+                    "Without thinking, she presses a hand to her coat pocket and says nothing for a while. \"...There was only one person left on the platform that night.\"");
+                default: return L10n.T("退件簿？他的票还夹在里面……那就是说，他一直没来领。",
+                    "The ledger? His ticket's still in there... So he never came to collect it.");
+            }
+        }
+
         internal static string YuXiangAfter(int runs)
         {
             switch (runs % 3)

@@ -54,7 +54,7 @@ Closed exits have no ground ring. Step into one and you'll see why it's shut. Th
 
 ## The ticket nobody came for
 
-- There are three clues in the yard: **the ticket punch in the cab**, **the old tape in the repair shed** and **the returns ledger in the bond store**. The ones you haven't found are marked on the M map; once you've read one, "Last ticket n/3" shows in the top-right corner. Once you've read the first one, go back and Talk to Yu Xiang at the warehouse; she'll pick up the story from there.
+- There are three clues in the yard: **the ticket punch in the cab**, **the old tape in the repair shed** and **the returns ledger in the bond store**. The ones you haven't found are marked on the M map; once you've read one, "Last ticket n/3" shows in the top-right corner. Each time you bring one out, go back and Talk to Yu Xiang at the warehouse; she'll tell you what it means to her, then where to look next.
 - When all three come together in one run (clues you took out on earlier extractions count), you get the **Last Shift Ticket Stub**. Take it out and give it to Yu Xiang: you can hand it over when you Talk to her, and boarding also hands it over automatically. The story is added to your notes.
 - Clues only count once you extract safely. Clues read on a run where you die are not kept, and you lose the stub you carry.
 - Once the story is finished, Yu Xiang tells you about the next train every time she punches your ticket, and has dispatch send the first train to the premium platform: the switch is already set when you land, though you can still go up to the cab and change it.

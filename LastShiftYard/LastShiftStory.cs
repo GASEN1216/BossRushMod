@@ -32,11 +32,13 @@ namespace BossRush
         internal bool Met;
         /// <summary>杰夫的引导已交付。</summary>
         internal bool JeffDone;
+        /// <summary>余响已经对哪几条带出来的线索说过话（按位，同 <see cref="Notes"/>）：每条只接一次话。</summary>
+        internal int Told;
 
         internal LastShiftStoryData Copy()
         {
             return new LastShiftStoryData { Runs = Runs, Notes = Notes, Journal = Journal, Records = Records, Notice = Notice,
-                JeffAccepted = JeffAccepted, Met = Met, JeffDone = JeffDone };
+                JeffAccepted = JeffAccepted, Met = Met, JeffDone = JeffDone, Told = Told };
         }
     }
 
@@ -125,8 +127,11 @@ namespace BossRush
             if (!root.TryGetBool("jeffAccepted", out jeffAccepted)) jeffAccepted = false;
             if (!root.TryGetBool("met", out met)) met = false;
             if (!root.TryGetBool("jeffDone", out jeffDone)) jeffDone = false;
+            int told;
+            if (!root.TryGetInt("told", out told)) told = 0;
+            if (told < 0 || told > LastShiftStory.AllNotes) return null;
             return new LastShiftStoryData { Runs = runs, Notes = notes, Journal = journal, Records = records, Notice = notice,
-                JeffAccepted = jeffAccepted, Met = met, JeffDone = jeffDone };
+                JeffAccepted = jeffAccepted, Met = met, JeffDone = jeffDone, Told = told };
         }
 
         internal static string Encode(LastShiftStoryData value)
@@ -135,7 +140,8 @@ namespace BossRush
             return new BossRushJsonWriter().BeginObject().Int("schemaVersion", Schema)
                 .Int("runs", value.Runs).Int("notes", value.Notes).Bool("journal", value.Journal)
                 .Int("records", value.Records).Bool("notice", value.Notice)
-                .Bool("jeffAccepted", value.JeffAccepted).Bool("met", value.Met).Bool("jeffDone", value.JeffDone).EndObject().ToString();
+                .Bool("jeffAccepted", value.JeffAccepted).Bool("met", value.Met).Bool("jeffDone", value.JeffDone)
+                .Int("told", value.Told).EndObject().ToString();
         }
     }
 
@@ -232,6 +238,14 @@ namespace BossRush
                 return;
             }
             if (JeffIntro != null) JeffIntro.NotifyChanged();
+        }
+
+        /// <summary>余响对这几条线索说过话了（对话时调）。写不进存档也不挡对话，下次再说一遍。</summary>
+        internal static void MarkTold(int bits)
+        {
+            if (bits == 0) return;
+            if (!Mutate(delegate (LastShiftStoryData x) { x.Told |= bits & AllNotes; }))
+                Debug.LogWarning(LastShiftRaidScene.LogTag + " 余响的回应没写进存档，下次对话会再说一遍");
         }
 
         /// <summary>杰夫引导的接取 / 交付：只由 <see cref="LastShiftJeffIntro"/> 调。</summary>

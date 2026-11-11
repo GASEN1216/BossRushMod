@@ -305,8 +305,8 @@ namespace BossRush
             LastShiftTimetable t = trains.Timetable;
             // 故事收尾后余响替你跟调度打过招呼：开局道岔已经放到加价台（owner 2026-11-11），想换边仍可自己扳。
             if (LastShiftStory.Journal) trains.PresetLine(t.Premium);
-            string head = L10n.T("第 " + (LastShiftStory.Runs + 1) + " 趟。班单：" + LastShiftText.ManifestName(trains.Manifest) + "。",
-                "Run " + (LastShiftStory.Runs + 1) + ". Manifest: " + LastShiftText.ManifestName(trains.Manifest).ToLowerInvariant() + ".");
+            string head = L10n.T("今晚的班单：" + LastShiftText.ManifestName(trains.Manifest) + "。",
+                "Tonight's manifest: " + LastShiftText.ManifestName(trains.Manifest).ToLowerInvariant() + ".");
             if (LastShiftStory.Journal)
                 Status(head + L10n.T("剪票时余响交代过：下一班是" + LastShiftText.EventLabel(t.Event) + "，调度会把它放到" + LastShiftText.PlatformName(t.Line) + "台。",
                     " Yu Xiang told you at the desk: the next one's a " + LastShiftText.EventLabel(t.Event).ToLowerInvariant()
