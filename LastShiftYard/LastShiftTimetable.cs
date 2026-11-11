@@ -25,6 +25,13 @@ namespace BossRush
     {
         internal const double Approach = 20, Arrival = 26, Dwell = 47, Depart = 19, Clear = 68;
         internal const double SlowDwell = 70, ExpressArrival = 16, ExpressDepart = 12;
+        /// <summary>首班的鸣笛预告只等 8 秒（owner 2026-11-11：站在护栏后干等半分钟太闷）；之后每班仍是 20 秒。</summary>
+        internal const double TrainingApproach = 8;
+        /// <summary>
+        /// 首班停靠 90 秒（之后每班 47 秒）：首班停在岔心等你扳道岔，选东台时车身横在司机室和东台之间，
+        /// 要绕过车尾走约 226 m（导航网格离线量，西台约 121 m），47 秒第一次来的人赶不上（2026-11-11 流程走查）。
+        /// </summary>
+        internal const double TrainingDwell = 90;
         /// <summary>首班在岔心前减速等调度：车头到 z = 20 时停住（原型 TRAINING_HOLD）。</summary>
         internal const double TrainingHold = (78.0 - 20.0) / 116.0 * Arrival;
         /// <summary>首班要等玩家站到南护栏后才发车；离开累计这么久仍照常发车（第七轮 owner 采纳，不会卡死）。</summary>
@@ -106,9 +113,9 @@ namespace BossRush
         {
             switch (p)
             {
-                case LastShiftPhase.Approach: return Approach;
+                case LastShiftPhase.Approach: return Training ? TrainingApproach : Approach;
                 case LastShiftPhase.Arrival: return IsExpress ? ExpressArrival : Arrival;
-                case LastShiftPhase.Dwell: return Event == LastShiftEvent.Slow ? SlowDwell : Dwell;
+                case LastShiftPhase.Dwell: return Training ? TrainingDwell : Event == LastShiftEvent.Slow ? SlowDwell : Dwell;
                 case LastShiftPhase.Depart: return IsExpress ? ExpressDepart : Depart;
                 default: return Clear;
             }

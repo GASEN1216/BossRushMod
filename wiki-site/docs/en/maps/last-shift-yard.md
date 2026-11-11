@@ -13,7 +13,7 @@ A railway marshalling yard that stopped running years ago, though freight still 
 
 ## The first-train demonstration
 
-- On your first visit, the first train waits until you stand **behind the south rail**. From there you watch the engine smash the hand cart off the track. If you stay away from the rail for more than a minute, the first train leaves anyway.
+- On your first visit, the first train waits until you stand **behind the south rail**. From there you watch the engine smash the hand cart off the track. If you stay away from the rail for more than a minute, the first train leaves anyway. The first train only whistles for a few seconds before it comes in, and it stands longer than usual (90 s), so you have time to reach either platform and sign.
 - The switch is yours once the demonstration is over. Climb the ramp to the **suspended cab** and use "Throw the switch".
 - From the second train on, **a head-on hit from the engine kills you outright**. The cars are solid and block both people and bullets; brushing against one only pushes you aside.
 
@@ -38,7 +38,7 @@ A railway marshalling yard that stopped running years ago, though freight still 
 - **East platform escort gate**: opens after a train unloads at the east platform.
 - **Railcar shelter**: ring the railcar bell at the shelter first; the railcar arrives about 14 s later. Nearby patrols can hear the bell too.
 
-Closed exits have no ground ring. Step into one and the top-right corner tells you what opens it. The countdown works like the base game's extraction points: it pauses while your backpack is open or the game is paused, and resets if you leave the circle.
+Closed exits have no ground ring. Step into one and you'll see why it's shut. The countdown works like the base game's extraction points: it pauses while your backpack is open or the game is paused, and resets if you leave the circle.
 
 ## The escorts and the chief escort
 

@@ -460,7 +460,7 @@ namespace BossRush
                 {
                     box.BatchOpened = true;
                     if (box.BatchVoyage && status != null)
-                        status(L10n.T("押运零担：这一批是押运车上卸下来的好货。", "Escort lot: this batch came off the escort van. Better goods."), false);
+                        status(L10n.T("这箱是押运车上卸下来的，封条还新。", "This crate came off the escort van. The seal's still fresh."), false);
                 }
                 if (box.Opened) return;
                 box.Opened = true;
@@ -507,9 +507,9 @@ namespace BossRush
         {
             switch (box.Kind)
             {
-                case "sealed": return CargoClaimed ? L10n.T("封签货（本趟已签收）", "Sealed cargo (already signed for)") : L10n.T("签收封签货", "Sign for the sealed cargo");
+                case "sealed": return CargoClaimed ? L10n.T("封签货（签过了）", "Sealed cargo (signed)") : L10n.T("签收封签货", "Sign for the sealed cargo");
                 case "drop": return L10n.T("零担箱（空）", "Freight-lot crate (empty)");
-                default: return L10n.T("用押运钢印开铅封侧柜", "Open the sealed side cabinet with an escort stamp");
+                default: return L10n.T("用钢印开铅封侧柜", "Open the sealed cabinet with the stamp");
             }
         }
 
@@ -519,8 +519,8 @@ namespace BossRush
             try
             {
                 if (box.Kind == "sealed") ClaimCargo(box);
-                else if (box.Kind == "drop") Say(L10n.T("零担箱是空的。下一班停靠", "The freight-lot crate is empty. The next train to stop at the ")
-                    + LastShiftText.PlatformName(SideOf(box)) + L10n.T("台时会卸新货。", " platform unloads a new lot."), false);
+                else if (box.Kind == "drop") Say(L10n.T("箱子空的。等下一班车停" + LastShiftText.PlatformName(SideOf(box)) + "台。",
+                    "The crate's empty. Wait for the next train to stop at the " + LastShiftText.LineName(SideOf(box)) + " platform."), false);
                 else OpenSideCabinet(box);
             }
             catch (Exception e)
@@ -535,13 +535,13 @@ namespace BossRush
         private void ClaimCargo(Box box)
         {
             char side = SideOf(box);
-            if (CargoClaimed) { Say(L10n.T("这趟封签货已签收，下一班也不会补货。", "This raid's sealed cargo is already signed for. Later trains won't bring more."), false); return; }
+            if (CargoClaimed) { Say(L10n.T("签过了。一趟只签一回。", "Already signed. One signature a run."), false); return; }
             if (timetable.Phase != LastShiftPhase.Dwell)
-            { Say(L10n.T("这里还没有本班货车；只有列车停靠的一侧可以签收。", "No train is standing here. Only the platform with a stopped train can sign for the cargo."), false); return; }
+            { Say(L10n.T("台边没停车，没东西可签。", "No train at the platform. Nothing to sign for."), false); return; }
             if (timetable.LineUsed != side)
             {
-                Say(L10n.T("本班停在", "This train is standing at the ") + LastShiftText.PlatformName(timetable.LineUsed)
-                    + L10n.T("台，去那边签收。", " platform. Sign for the cargo there."), false);
+                Say(L10n.T("车停在" + LastShiftText.PlatformName(timetable.LineUsed) + "台那边。",
+                    "The train's standing at the " + LastShiftText.LineName(timetable.LineUsed) + " platform."), false);
                 return;
             }
             bool premium = timetable.Premium == side;
@@ -554,14 +554,14 @@ namespace BossRush
                 if (box.Loot != null && box.Unlocked && box.Loot.Inventory != null && box.Loot.Inventory.GetItemCount() == 0)
                 { box.Unlocked = false; box.Loot.gameObject.SetActive(false); }
                 Debug.LogWarning(LastShiftRaidScene.LogTag + " 封签货没能装箱 id=" + box.Id + " item=" + item);
-                Say(L10n.T("铅封货单对不上，这一班签不了。等下一班再来。", "The seal doesn't match the manifest. This train can't be signed for; try the next one."), true);
+                Say(L10n.T("铅封和货单对不上，这班签不了。", "The seal doesn't match the manifest. Not this train."), true);
                 return;
             }
             CargoClaimed = true;
             Debug.Log(LastShiftRaidScene.LogTag + " CARGO_CLAIMED id=" + box.Id + " item=" + item + " q=" + grade + " premium=" + premium);
-            Say(L10n.T("已签收", "Signed for the ") + LastShiftText.ManifestName(manifest) + L10n.T("封签货：", " sealed cargo: ") + NameOf(item)
-                + (premium ? L10n.T("（加价台）", " (premium platform)") : "")
-                + L10n.T("。本趟签收完毕，去箱里取货。", ". That's this raid's one signature. Collect it from the crate."), false);
+            // 签完顺手提一句押运库那头的动静：第一趟玩家从这里知道站里还有押运库可去（owner 2026-11-11），不念机制。
+            Say(L10n.T("签好了，柜里是" + NameOf(item) + "。押运库那头亮着灯，有人在点货。",
+                "Signed. The cabinet holds " + NameOf(item) + ". Over at the bond store the lights are on; someone's counting stock."), false);
         }
 
         /// <summary>原型 activate(stamp)：要上一趟带出来的押运钢印（本趟刚拿的不算），消耗一枚开一次。</summary>
@@ -571,10 +571,10 @@ namespace BossRush
             if (player == null) return;
             if (stampsBroughtIn < 0) stampsBroughtIn = CountCarried(player, BossRushItemIds.LastShiftStamp);
             Item stamp = TidegateInventory.FindCarried(player, BossRushItemIds.LastShiftStamp);
-            if (stamp == null) { Say(L10n.T("需要上一趟带出来的押运钢印。", "You need an escort stamp carried out of an earlier raid."), false); return; }
+            if (stamp == null) { Say(L10n.T("柜门压着铅封，得用押运长腰上那枚钢印。", "The door is lead-sealed. It takes the stamp off the chief escort's belt."), false); return; }
             if (stampsBroughtIn < 1)
             {
-                Say(L10n.T("这枚钢印是本趟刚拿到的：带它撤离，下一趟才能开侧柜。", "This stamp was taken this raid. Carry it out; it opens the cabinet on your next trip."), false);
+                Say(L10n.T("钢印刚从押运长身上摘下来，铅封认不出。带出站，下趟再来。", "The stamp's fresh off the chief escort; the seal won't take it. Get it out of the yard and come back next run."), false);
                 return;
             }
             if (!box.Built) Build(box);
@@ -589,7 +589,7 @@ namespace BossRush
             stampsBroughtIn--;
             Unlock(box);
             Debug.Log(LastShiftRaidScene.LogTag + " SIDE_CABINET_OPENED");
-            Say(L10n.T("消耗一枚押运钢印，铅封侧柜打开了。", "One escort stamp used. The sealed side cabinet is open."), false);
+            Say(L10n.T("钢印压下去，铅封裂开了。", "The stamp comes down and the lead seal cracks."), false);
         }
 
         /// <summary>原型 trainArrived：首趟第 2 班起，每列停靠的车在它停的那一台卸一批零担（快车不停靠）；约 1/4 是押运零担（航务档）。</summary>

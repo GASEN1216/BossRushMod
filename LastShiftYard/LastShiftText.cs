@@ -27,6 +27,18 @@ namespace BossRush
             }
         }
 
+        /// <summary>站进关着的出口时看到的样子（owner 2026-11-11：不念规则，写现场）。</summary>
+        internal static string ExitLockedLine(string id)
+        {
+            switch (id)
+            {
+                case "west": return L10n.T("便门挂着锁，西线还有车压着。", "The service gate is padlocked. There's still a train on the west line.");
+                case "east": return L10n.T("押运门从里面闩着，东台那班还没卸完。", "The escort gate is barred from inside. The east platform hasn't finished unloading.");
+                case "bell": return L10n.T("接客亭空着，铃绳垂在柱子边上。", "The shelter is empty. The bell rope hangs by the post.");
+                default: return "";
+            }
+        }
+
         internal static string LineName(char line) { return line == 'W' ? L10n.T("西线", "west") : L10n.T("东线", "east"); }
 
         internal static string PlatformName(char line) { return line == 'W' ? L10n.T("西", "West") : L10n.T("东", "East"); }

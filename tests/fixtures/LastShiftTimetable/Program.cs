@@ -48,8 +48,10 @@ internal static class Program
         Check(t.Training && t.Phase == LastShiftPhase.Approach, "第一趟从鸣笛预告开始、处于教学");
         Run(t, 40, AwayX, AwayZ);
         Check(t.Phase == LastShiftPhase.Approach && t.PhaseTime < 0.01, "玩家不在南护栏后：首班 40 秒仍不发车");
-        Run(t, LastShiftTimetable.Approach + 0.5, RailX, RailZ);
-        Check(t.Phase == LastShiftPhase.Arrival, "站到南护栏后：20 秒鸣笛后进站");
+        Run(t, 7.5, RailX, RailZ);
+        Check(t.Phase == LastShiftPhase.Approach, "首班鸣笛预告不到 8 秒还没进站");
+        Run(t, 1.0, RailX, RailZ);
+        Check(t.Phase == LastShiftPhase.Arrival, "站到南护栏后：首班 8 秒鸣笛后进站（之后每班 20 秒）");
     }
 
     private static void FirstTrainFallsBack()
@@ -78,6 +80,7 @@ internal static class Program
         Check(t.LockedLine == 'E' && !t.DispatchWait, "扳岔后锁到东线、不再等");
         Run(t, LastShiftTimetable.Arrival, AwayX, AwayZ);
         Check(t.Phase == LastShiftPhase.Dwell && t.LineUsed == 'E', "列车开到东台停靠");
+        Check(t.PhaseLength(LastShiftPhase.Dwell) == 90, "首班停靠 90 秒，够第一次来的人绕过车尾去东台签收");
         Check(!t.TrySwitch('W', out reason) && reason == "locked", "停靠中锁线，不能改道");
     }
 

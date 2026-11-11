@@ -461,7 +461,7 @@ namespace BossRush
                 if (hud != null) hud.SetExtraction(extraction.HudFallback);
                 string locked = extraction.LockedNear(position);
                 if (locked != null && locked != lockedExitShown)
-                    Status(LastShiftText.ExitName(locked) + L10n.T("锁着：", " is closed: ") + LastShiftText.ExitRule(locked) + L10n.T("。", "."), false);
+                    Status(LastShiftText.ExitLockedLine(locked), false);
                 lockedExitShown = locked;
             }
             if (Time.unscaledTime >= nextHud)

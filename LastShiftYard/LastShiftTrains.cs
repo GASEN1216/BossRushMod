@@ -230,8 +230,9 @@ namespace BossRush
             {
                 case LastShiftPhase.Approach:
                     LastShiftSounds.PlayAtPlayer(LastShiftSounds.TannoyChime);
+                    int lead = Mathf.RoundToInt((float)timetable.PhaseLength(LastShiftPhase.Approach));
                     status(L10n.T("站场广播：第 ", "Yard tannoy: train ") + timetable.Trip + L10n.T(" 班，", ", ") + label
-                        + L10n.T("，二十秒后进站。", ", in twenty seconds. ") + LastShiftText.EventNote(timetable.Event), timetable.IsExpress);
+                        + L10n.T("，" + lead + " 秒后进站。", ", in " + lead + " seconds. ") + LastShiftText.EventNote(timetable.Event), timetable.IsExpress);
                     break;
                 case LastShiftPhase.Arrival:
                     // 汽笛从车头那节车厢发出（官方事件挂在发声体上做 3D 定位）；进站那一帧车头可能还没摆出来，就跟着玩家放。
@@ -239,9 +240,7 @@ namespace BossRush
                     else LastShiftSounds.PlayAtPlayer(LastShiftSounds.TrainWhistle);
                     if (timetable.IsExpress)
                         status(L10n.T("直通快车过站！离开股道！", "Express coming through! Get off the track!"), true);
-                    else if (timetable.Training && !timetable.DispatchChosen)
-                        status(L10n.T("首班车在岔心前减速了。上司机室扳道岔，选西台还是东台。",
-                            "The first train is slowing before the turnout. Get up to the cab and throw the switch: west or east."), false);
+                    else if (timetable.Training && !timetable.DispatchChosen) { /* 首班：车在岔心停下时另有一句（TickTutorialNotes），这里不重复。 */ }
                     else
                         status(L10n.T("车进" + LastShiftText.PlatformName(timetable.LineUsed) + "台了。",
                             "The train is pulling into the " + LastShiftText.LineName(timetable.LineUsed) + " platform."), false);
