@@ -3,13 +3,15 @@
 
 钉的东西：
 - 场景身份只经共用桥 `ModRaidSceneBridge` 登记，不另装官方 SceneLoader 补丁；进图走 `ModRaidLease`。
-- 入口只在一趟没结束的官方出击里开（`RaidUtilities.CurrentRaid.ended`），上车前必弹确认框、写明本趟不结算，确认后才进会话。
+- 入口只在一趟没结束的官方出击里开（`RaidUtilities.CurrentRaid.ended`），上车前必弹确认框，确认后才进会话（「本趟不结算」一行 owner 2026-11-11 要求去掉）。
 - 入口模型只从 `lastshift_entry` 小包来；着色器不降级（世界与入口都在 `isSupported` 不过时抛错），白名单与判包脚本一致。
 - 和潮闸镇、天空岛、试验场、完整 F3 验收互相拒绝。
 - 室内屋顶认 `LastShiftIndoorRooms`；部署段与发布清单登记两个包；运行时模块已注册。
 - 剧情（第三期）：存档键与图鉴前缀不改；本趟进度只在安全撤离时写进存档（阵亡丢本趟线索）；
   交票根先写存档再拿走票根；交票只发生在上车确认之后，或和余响说话时按了「把票根给她」之后。
-- 余响在官方中立阵营 `middle`（仓库区的原版敌人不会朝她开火）。
+- 余响在官方中立阵营 `middle`（仓库区的原版敌人不会朝她开火），装扮写死在蓝图里。
+- 杰夫的引导是官方任务 590216、发在杰夫身上；和余响对话与剪票上车都记「见过余响」。
+- 不在运行时扫官方物品表（owner 2026-11-11：官方物品编号查官方 Wiki 写死）。
 判断前去掉 C# 注释，免得注释里的同名字串骗过子串检查。
 """
 import json
@@ -55,7 +57,6 @@ for other in ('TidegateSession', 'SkyIslandSession', 'ArenaPrototypeSession'):
 
 entry = files.get('LastShiftEntry.cs', '')
 need('LastShiftEntry.cs', entry, 'BossRushConfirmDialog.Show(', '上车前弹确认框')
-need('LastShiftEntry.cs', entry, '本趟不结算', '确认框写明本趟不结算')
 # 上车链：确认框 OnConfirm = Board → Board（交票根、可能再弹收尾页）→ Depart → LastShiftSession.Enter。
 def body(text, signature):
     m = re.search(re.escape(signature) + r'.*?\n        \}', text, re.S)
@@ -65,10 +66,14 @@ def body(text, signature):
 completed = body(entry, 'protected override void OnInteractCompleted()')
 board = body(entry, 'private void Board()')
 depart = body(entry, 'private void Depart(')
+after_punch = body(entry, 'private System.Collections.IEnumerator EnterAfterPunch(')
 if not re.search(r'OnConfirm\s*=\s*Board\s*,', completed):
     errors.append('LastShiftEntry.cs: 上车确认框的 OnConfirm 必须是 Board')
-if len(re.findall(r'LastShiftSession\.Enter\(', entry)) != 1 or 'LastShiftSession.Enter(' not in depart:
-    errors.append('LastShiftEntry.cs: LastShiftSession.Enter 只能出现一次，且只在 Depart 里')
+# 剪票：Depart 压钳子、放咔哒声，0.6 秒后由 EnterAfterPunch 重新过一遍 CanEnter 再进会话。
+if len(re.findall(r'LastShiftSession\.Enter\(', entry)) != 1 or 'LastShiftSession.Enter(' not in after_punch \
+        or 'LastShiftSession.CanEnter(' not in after_punch or 'StartCoroutine(EnterAfterPunch())' not in depart \
+        or len(re.findall(r'EnterAfterPunch\(\)', entry)) != 2:
+    errors.append('LastShiftEntry.cs: LastShiftSession.Enter 只能出现一次，在 Depart 起的 EnterAfterPunch 里、进会话前再过一遍 CanEnter')
 if re.findall(r'\bDepart\(', entry.replace('private void Depart(', '')) and 'Depart(' not in board:
     errors.append('LastShiftEntry.cs: Depart 只能由 Board 走到')
 if 'Depart(' in completed:
@@ -100,6 +105,16 @@ npcs = json.loads((ROOT / 'Assets/Data/DuckNpcs.json').read_text(encoding='utf-8
 yu = [n for n in npcs.get('npcs', []) if n.get('id') == 'lastshift_yuxiang']
 if len(yu) != 1 or yu[0].get('team') != 'middle':
     errors.append('Assets/Data/DuckNpcs.json: 余响必须在中立阵营 middle（站在出击图里，别的阵营会朝她开火）')
+
+if re.search(r'ItemAssetsCollection\.Instance|\.entries\b|GetAllTypeIds\(|ItemAssetsCollection\.Search\(', everything):
+    errors.append('LastShiftYard: 不在运行时扫官方物品表，官方物品编号查官方 Wiki 写死')
+if len(yu) == 1 and sorted(yu[0].get('equipmentTypeIds') or []) != [791, 1136]:
+    errors.append('Assets/Data/DuckNpcs.json: 余响的站务员装扮（鸭舌帽 1136、皮夹克 791）写在蓝图里')
+jeff = files.get('LastShiftJeffIntro.cs', '')
+need('LastShiftJeffIntro.cs', jeff, 'internal const int QuestId = 590216;', '杰夫引导的官方任务号（进官方存档快照）')
+need('LastShiftJeffIntro.cs', jeff, 'GiverId = (int)QuestGiverID.Jeff', '引导挂在杰夫身上')
+need('LastShiftYuXiang.cs', body(yuxiang, 'private static void Talk()'), 'LastShiftStory.MarkMet();', '和余响对话算见过她')
+need('LastShiftEntry.cs', board, 'LastShiftStory.MarkMet();', '剪票上车算见过她')
 
 story = files.get('LastShiftStory.cs', '')
 need('LastShiftStory.cs', story, 'StorageKey = "BossRush_LastShiftYard_Story_v1"', '剧情存档键不改（进存档）')

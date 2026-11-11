@@ -27,7 +27,8 @@ namespace BossRush
         private static float retryAt;
         private static CharacterMainControl owned;
         private static uint calledRaid, bandageRaid;
-        private static int bandageTypeId = -2;
+        /// <summary>官方止血绷带（物品库 #10，2026-11-11 按 escapefromduckov.net 核对）。</summary>
+        private const int BandageTypeId = 10;
 
         internal static void Spawn(Scene scene)
         {
@@ -105,6 +106,8 @@ namespace BossRush
         {
             LastShiftStoryData d = LastShiftStory.Current;
             if (d == null) return;
+            bool firstTime = !d.Met;
+            LastShiftStory.MarkMet();
             CharacterMainControl player = CharacterMainControl.Main;
             if (!d.Journal && TidegateInventory.Carries(player, BossRushItemIds.LastShiftTicketStub))
             {
@@ -125,7 +128,8 @@ namespace BossRush
             {
                 int missing = 0;
                 while (missing < LastShiftStory.NoteCount && (d.Notes & (1 << missing)) != 0) missing++;
-                body = LastShiftText.YuXiangHint(missing, d.Notes == 0);
+                // 第一次只聊站和末班车，不报线索在哪（owner 2026-11-11）；带出第一条线索后她才往下说，线索位置在编组站的地图上。
+                body = d.Notes == 0 ? LastShiftText.YuXiangIntro(firstTime, d.Runs > 0) : LastShiftText.YuXiangHint(missing);
             }
             BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
             {
@@ -183,12 +187,10 @@ namespace BossRush
         {
             uint raid = RaidUtilities.CurrentRaid.ID;
             if (player == null || raid == bandageRaid) return false;
-            int typeId = BandageTypeId();
-            if (typeId <= 0) return false;
             Item item = null;
             try
             {
-                item = ItemAssetsCollection.InstantiateSync(typeId);
+                item = ItemAssetsCollection.InstantiateSync(BandageTypeId);
                 if (item == null) return false;
                 ItemUtilities.SendToPlayer(item, false, false);
             }
@@ -203,22 +205,7 @@ namespace BossRush
             return true;
         }
 
-        /// <summary>官方止血绷带按本地化键 `Item_Bandage` 查（不硬编码官方 TypeID）；查不到就不发，记一次日志。</summary>
-        private static int BandageTypeId()
-        {
-            if (bandageTypeId != -2) return bandageTypeId;
-            bandageTypeId = -1;
-            try
-            {
-                ItemAssetsCollection collection = ItemAssetsCollection.Instance;
-                if (collection != null && collection.entries != null)
-                    foreach (ItemAssetsCollection.Entry entry in collection.entries)
-                        if (entry != null && entry.metaData.DisplayNameKey == "Item_Bandage") { bandageTypeId = entry.typeID; break; }
-            }
-            catch (Exception e) { Debug.LogWarning(LastShiftRaidScene.LogTag + " 查官方绷带失败：" + e.Message); }
-            if (bandageTypeId <= 0) { Debug.LogWarning(LastShiftRaidScene.LogTag + " 官方物品表里找不到 Item_Bandage，台边绷带箱本次不发"); bandageTypeId = -1; }
-            return bandageTypeId;
-        }
+
 
         internal static void ResetStaticCaches()
         {
@@ -227,7 +214,6 @@ namespace BossRush
             retryAt = 0f;
             calledRaid = bandageRaid = 0;
             talkOwner = null;
-            bandageTypeId = -2;
         }
     }
 }

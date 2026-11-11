@@ -50,6 +50,7 @@ namespace BossRush
                 GameObject model = UnityEngine.Object.Instantiate(prefab, root.transform, false);
                 model.name = "Entry_Model";
                 CheckShaders(model);
+                LastShiftTicketPunch.Attach(model.transform);
                 Transform lamp = model.transform.Find("DeskLamp");
                 if (lamp != null)
                 {
@@ -154,18 +155,17 @@ namespace BossRush
             string reason;
             if (!LastShiftSession.CanEnter(owner, out reason)) { Report(reason, true); return; }
             CharacterMainControl player = CharacterMainControl.Main;
-            string body = L10n.T("余响：“票递过来。你身上带的货一起走，到了站还得自己找路回来。”",
-                "Yu Xiang: \"Hand me your ticket. Whatever you're carrying comes with you, and you'll find your own way back.\"");
+            string body = L10n.T("余响：“注意安全，那里可不是什么和平的仓库区。”",
+                "Yu Xiang: \"Watch yourself. It's nothing like the quiet old warehouse district out there.\"");
             if (!LastShiftStory.Journal && TidegateInventory.Carries(player, BossRushItemIds.LastShiftTicketStub))
                 body += L10n.T("\n她盯着你手里那张票：“那张……给我看看。”", "\nShe's looking at the ticket in your hand. \"That one... let me see it.\"");
             if (TidegateInventory.Carries(player, BossRushItemIds.LastShiftStamp))
                 body += L10n.T("\n余响：“腰上那枚钢印还在？押运库那只封着的柜子，它能开一回。”", "\nYu Xiang: \"Still got the stamp? It'll open that sealed cabinet in the bond store, once.\"");
-            body += L10n.T("\n台边纸箱里有绷带，剪票时她塞给你一卷。", "\nThere are bandages in a box on the desk. She hands you a roll with your ticket.");
+            body += L10n.T("\n她偷偷塞给了你一卷似乎有助于医疗的东西。", "\nShe quietly slips you a roll of something that looks like it might patch you up.");
             BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
             {
                 Title = L10n.T("上末班车去编组站？", "Take the last train to the yard?"),
                 Body = body,
-                Warning = L10n.T("本趟不结算：上车后只能从编组站撤离回基地。", "This run isn't settled here: once aboard, you can only get back to base by extracting from the yard."),
                 ConfirmLabel = L10n.T("剪票上车", "Punch and board"),
                 CancelLabel = L10n.T("再等等", "Not yet"),
                 Danger = false,
@@ -179,6 +179,7 @@ namespace BossRush
             string reason;
             if (!LastShiftSession.CanEnter(owner, out reason)) { Report(reason, true); return; }
             CharacterMainControl player = CharacterMainControl.Main;
+            LastShiftStory.MarkMet();
             if (!LastShiftStory.TryHandIn(player)) { Depart(player); return; }
             LastShiftStory.ShowEnding(L10n.T("上车", "Board"), delegate { Depart(CharacterMainControl.Main); });
         }
@@ -189,7 +190,20 @@ namespace BossRush
             string reason;
             if (!LastShiftSession.CanEnter(owner, out reason)) { Report(reason, true); return; }
             LastShiftYuXiang.GiveBandage(player);
-            LastShiftStory.MarkBoarded();
+            // 剪票：钳子压下去「咔哒」一声，看清楚了再转车（0.6 秒）。
+            LastShiftEntryBundleLease entryRoot = GetComponentInParent<LastShiftEntryBundleLease>();
+            LastShiftTicketPunch punch = entryRoot == null ? null : entryRoot.GetComponentInChildren<LastShiftTicketPunch>();
+            if (punch != null) punch.Press();
+            LastShiftSounds.Play(LastShiftSounds.TicketPunch, gameObject);
+            owner.StartCoroutine(EnterAfterPunch());
+        }
+
+        private System.Collections.IEnumerator EnterAfterPunch()
+        {
+            yield return new WaitForSecondsRealtime(0.6f);
+            if (owner == null) yield break;
+            string reason;
+            if (!LastShiftSession.CanEnter(owner, out reason)) { Report(reason, true); yield break; }
             LastShiftSession.Enter(owner, Report);
         }
 

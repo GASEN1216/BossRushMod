@@ -163,15 +163,28 @@ namespace BossRush
 
         // ---------------- 余响 ----------------
         internal static string YuXiangName { get { return L10n.T("余响", "Yu Xiang"); } }
-        internal static string YuXiangTalkVerb { get { return L10n.T("和余响说话", "Talk to Yu Xiang"); } }
+        internal static string YuXiangTalkVerb { get { return L10n.T("对话", "Talk"); } }
+
+        /// <summary>
+        /// 还没带出过线索时她说的：第一次见面只聊站和末班车，给一个去的理由（今晚还有货车），不报线索在哪；
+        /// 去过编组站以后提一句司机，把人往司机室引，但不说要找什么。
+        /// </summary>
+        internal static string YuXiangIntro(bool firstTime, bool visited)
+        {
+            if (firstTime)
+                return L10n.T("这站早停了。末班车那晚没开出去，我就一直在这儿剪票。\n可货车夜里还是照样进站，封签货堆在台上，没人来签。想去看看，票递过来。",
+                    "This station closed years ago. The last train never left that night, and I've been punching tickets here ever since.\nFreight still pulls in at night, though. Sealed cargo piles up on the platform and nobody comes to sign for it. If you want a look, hand me your ticket.");
+            if (visited)
+                return L10n.T("那晚开车的是个老司机。他的东西，多半还在悬车楼上。", "The one driving that night was an old hand. His things are probably still up in the suspended cab.");
+            return L10n.T("车照样进站。票递过来就行。", "The trains still come in. Just hand me your ticket.");
+        }
 
         /// <summary>余响按进度说的话：老检票员，话短，只说站里的事。下标 = 第一条还没带出去的线索；3 = 三条都看过。</summary>
-        internal static string YuXiangHint(int missing, bool firstTime)
+        internal static string YuXiangHint(int missing)
         {
-            string open = firstTime ? L10n.T("这站早停了。末班车那晚没开出去，我就一直在这儿剪票。\n", "This station closed years ago. The last train never left that night, and I've been punching tickets here ever since.\n") : "";
             switch (missing)
             {
-                case 0: return open + L10n.T("悬车楼司机室，操纵台底下压着把钳子。缺了个齿，一看就是他的。", "Up in the suspended cab there's a punch under the console. Missing a tooth. That's his.");
+                case 0: return L10n.T("悬车楼司机室，操纵台底下压着把钳子。缺了个齿，一看就是他的。", "Up in the suspended cab there's a punch under the console. Missing a tooth. That's his.");
                 case 1: return L10n.T("维修棚那台录音机，他老在那儿对调度口令。磁带要是还在，你听听。", "He used to rehearse dispatch calls on the recorder in the repair shed. If the tape's still there, have a listen.");
                 case 2: return L10n.T("押运库有本退件簿，没人领的东西都记在上头。押运长守着那儿，当心。", "The bond store keeps a returns ledger, everything nobody came for. The chief escort guards that place. Careful.");
                 default: return L10n.T("钳子、磁带、退件簿……那张票还夹在簿子里吧。带出来给我。", "The punch, the tape, the ledger... The ticket's still in that ledger, isn't it. Bring it out to me.");

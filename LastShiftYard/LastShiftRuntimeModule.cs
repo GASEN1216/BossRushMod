@@ -15,6 +15,7 @@ namespace BossRush
         private ModBehaviour owner;
         private GameObject entry;
         private LastShiftStoryPersistence persistence;
+        private LastShiftJeffIntro jeffIntro;
         private bool subscribed, bundleWarned, applicationQuitting, returnLightingPending;
         private float nextAttempt;
 
@@ -29,6 +30,11 @@ namespace BossRush
                 persistence = new LastShiftStoryPersistence(LastShiftNoteBridge.RequestSync);
                 LastShiftStory.Bind(persistence);
                 LastShiftNoteBridge.EnsureRuntime();
+            }
+            if (jeffIntro == null && host != null && host.OfficialQuestRuntime != null)
+            {
+                jeffIntro = new LastShiftJeffIntro(host.OfficialQuestRuntime.Projection);
+                LastShiftStory.JeffIntro = jeffIntro;
             }
             if (!subscribed)
             {
@@ -67,6 +73,7 @@ namespace BossRush
         public override void OnUpdate(float deltaTime, float unscaledDeltaTime)
         {
             LastShiftStory.Tick();
+            if (jeffIntro != null) jeffIntro.Tick();
             if (owner == null) return;
             LastShiftSession active = owner.GetComponent<LastShiftSession>();
             if (active != null) { if (!active.IsClosed) returnLightingPending = true; ClearEntry(); return; }
@@ -134,6 +141,9 @@ namespace BossRush
             ModRaidSceneBridge.Unregister(LastShiftRaidScene.Identity);
             LastShiftYuXiang.ResetStaticCaches();
             LastShiftNoteBridge.ResetStaticCaches();
+            LastShiftSounds.ResetStaticCaches();
+            LastShiftStory.JeffIntro = null;
+            if (jeffIntro != null) { jeffIntro.Dispose(); jeffIntro = null; }
             LastShiftStory.Bind(null);
             if (persistence != null)
             {

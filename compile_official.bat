@@ -354,11 +354,13 @@ echo(LastShiftYard\LastShiftEnemies.cs
 echo(LastShiftYard\LastShiftDrillHooks.cs
 echo(LastShiftYard\LastShiftEnemyIdentity.cs
 echo(LastShiftYard\LastShiftExtraction.cs
+echo(LastShiftYard\LastShiftJeffIntro.cs
 echo(LastShiftYard\LastShiftLighting.cs
 echo(LastShiftYard\LastShiftLoot.cs
 echo(LastShiftYard\LastShiftRaidScene.cs
 echo(LastShiftYard\LastShiftRuntimeModule.cs
 echo(LastShiftYard\LastShiftSession.cs
+echo(LastShiftYard\LastShiftSounds.cs
 echo(LastShiftYard\LastShiftStory.cs
 echo(LastShiftYard\LastShiftText.cs
 echo(LastShiftYard\LastShiftTimetable.cs

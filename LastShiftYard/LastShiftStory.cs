@@ -24,12 +24,19 @@ namespace BossRush
         internal bool Journal;
         /// <summary>站台记录，按位记（<see cref="LastShiftStory.RecordIds"/> 的下标）。</summary>
         internal int Records;
-        /// <summary>剪票上过车（JSON 键仍是 `notice`）：上过车以后基地不再贴「末班票」告示。</summary>
+        /// <summary>基地的「末班票」告示已经贴过（只贴一次，之后交给杰夫的任务引路）。</summary>
         internal bool Notice;
+        /// <summary>接了杰夫的引导（官方任务 590216）。</summary>
+        internal bool JeffAccepted;
+        /// <summary>和余响说过话（对话或剪票上车都算）：杰夫引导的目标。</summary>
+        internal bool Met;
+        /// <summary>杰夫的引导已交付。</summary>
+        internal bool JeffDone;
 
         internal LastShiftStoryData Copy()
         {
-            return new LastShiftStoryData { Runs = Runs, Notes = Notes, Journal = Journal, Records = Records, Notice = Notice };
+            return new LastShiftStoryData { Runs = Runs, Notes = Notes, Journal = Journal, Records = Records, Notice = Notice,
+                JeffAccepted = JeffAccepted, Met = Met, JeffDone = JeffDone };
         }
     }
 
@@ -113,7 +120,13 @@ namespace BossRush
                 || !root.TryGetBool("notice", out notice)
                 || runs < 0 || notes < 0 || notes > LastShiftStory.AllNotes
                 || records < 0 || records >= 1 << LastShiftStory.RecordIds.Length) return null;
-            return new LastShiftStoryData { Runs = runs, Notes = notes, Journal = journal, Records = records, Notice = notice };
+            // 杰夫引导的三个字段是 2026-11-11 同一 schema 里追加的（SCHEMA+）：缺键按「没发生」读。
+            bool jeffAccepted, met, jeffDone;
+            if (!root.TryGetBool("jeffAccepted", out jeffAccepted)) jeffAccepted = false;
+            if (!root.TryGetBool("met", out met)) met = false;
+            if (!root.TryGetBool("jeffDone", out jeffDone)) jeffDone = false;
+            return new LastShiftStoryData { Runs = runs, Notes = notes, Journal = journal, Records = records, Notice = notice,
+                JeffAccepted = jeffAccepted, Met = met, JeffDone = jeffDone };
         }
 
         internal static string Encode(LastShiftStoryData value)
@@ -121,7 +134,8 @@ namespace BossRush
             if (value == null) return null;
             return new BossRushJsonWriter().BeginObject().Int("schemaVersion", Schema)
                 .Int("runs", value.Runs).Int("notes", value.Notes).Bool("journal", value.Journal)
-                .Int("records", value.Records).Bool("notice", value.Notice).EndObject().ToString();
+                .Int("records", value.Records).Bool("notice", value.Notice)
+                .Bool("jeffAccepted", value.JeffAccepted).Bool("met", value.Met).Bool("jeffDone", value.JeffDone).EndObject().ToString();
         }
     }
 
@@ -196,28 +210,34 @@ namespace BossRush
             return true;
         }
 
-        private static long noticeDay = long.MinValue;
-
-        /// <summary>
-        /// 基地告示：还没剪票上过车时，每个官方游戏日回基地最多贴一次（owner 2026-11-11：一次容易被别的提示盖掉）。
-        /// 只读存档，不写；上过车（<see cref="MarkBoarded"/>）以后再也不贴。
-        /// </summary>
+        /// <summary>基地告示：没去过编组站时贴一次（owner 2026-11-11：只第一次提示，后面交给杰夫的任务）。</summary>
         internal static bool TryShowNotice()
         {
             LastShiftStoryData d = Current;
             if (d == null || d.Notice || d.Runs > 0 || !Writable) return false;
-            long day = GameClock.Instance == null ? -1L : GameClock.Day;
-            if (day < 0 || day == noticeDay) return false;
-            noticeDay = day;
-            return true;
+            return Mutate(delegate (LastShiftStoryData x) { x.Notice = true; });
         }
 
-        /// <summary>剪票上车：记一笔，基地告示从此不贴。</summary>
-        internal static void MarkBoarded()
+        /// <summary>杰夫引导（官方任务 590216）的客户端；模块启动时绑定，用来在「见过余响」时刷新任务页。</summary>
+        internal static LastShiftJeffIntro JeffIntro;
+
+        /// <summary>和余响说过话（对话或剪票上车）：杰夫引导的目标。只写一次。</summary>
+        internal static void MarkMet()
         {
-            if (Current == null || Current.Notice) return;
-            if (!Mutate(delegate (LastShiftStoryData x) { x.Notice = true; }))
-                Debug.LogWarning(LastShiftRaidScene.LogTag + " 上车标记没写进存档，基地告示下个游戏日还会贴");
+            LastShiftStoryData d = Current;
+            if (d == null || d.Met) return;
+            if (!Mutate(delegate (LastShiftStoryData x) { x.Met = true; }))
+            {
+                Debug.LogWarning(LastShiftRaidScene.LogTag + " 见过余响没写进存档，下次和她说话再记");
+                return;
+            }
+            if (JeffIntro != null) JeffIntro.NotifyChanged();
+        }
+
+        /// <summary>杰夫引导的接取 / 交付：只由 <see cref="LastShiftJeffIntro"/> 调。</summary>
+        internal static bool SetJeff(bool accepted, bool done)
+        {
+            return Mutate(delegate (LastShiftStoryData x) { x.JeffAccepted = accepted; x.JeffDone = done; });
         }
 
         /// <summary>收尾页（上车时交票、和余响说话时交票共用）：读完按 <paramref name="confirm"/> 继续。</summary>

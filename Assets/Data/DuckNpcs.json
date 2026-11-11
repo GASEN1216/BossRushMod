@@ -2092,7 +2092,7 @@
       "showHealthBar": false,
       "pushCharacter": false,
       "randomEquipment": false,
-      "equipmentTypeIds": [],
+      "equipmentTypeIds": [1136, 791],
       "canWander": false,
       "wanderRadius": 0.0,
       "scenes": []

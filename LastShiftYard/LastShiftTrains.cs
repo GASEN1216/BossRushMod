@@ -126,6 +126,7 @@ namespace BossRush
             }
             noticeLine = target; noticeUntil = Time.time + NoticeSeconds;
             ShowArrows(target);
+            LastShiftSounds.PlayAtPlayer(LastShiftSounds.TannoyChime);
             RefreshNavigation();
             status(target == 'W'
                 ? L10n.T("站场广播：货车改走西线，西货台接车。", "Yard tannoy: freight switched to the west line, west platform receiving.")
@@ -228,10 +229,14 @@ namespace BossRush
             switch (next)
             {
                 case LastShiftPhase.Approach:
+                    LastShiftSounds.PlayAtPlayer(LastShiftSounds.TannoyChime);
                     status(L10n.T("站场广播：第 ", "Yard tannoy: train ") + timetable.Trip + L10n.T(" 班，", ", ") + label
                         + L10n.T("，二十秒后进站。", ", in twenty seconds. ") + LastShiftText.EventNote(timetable.Event), timetable.IsExpress);
                     break;
                 case LastShiftPhase.Arrival:
+                    // 汽笛从车头那节车厢发出（官方事件挂在发声体上做 3D 定位）；进站那一帧车头可能还没摆出来，就跟着玩家放。
+                    if (cars[0] != null && cars[0].activeInHierarchy) LastShiftSounds.Play(LastShiftSounds.TrainWhistle, cars[0]);
+                    else LastShiftSounds.PlayAtPlayer(LastShiftSounds.TrainWhistle);
                     if (timetable.IsExpress)
                         status(L10n.T("直通快车过站！离开股道！", "Express coming through! Get off the track!"), true);
                     else if (timetable.Training && !timetable.DispatchChosen)
