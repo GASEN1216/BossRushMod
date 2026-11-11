@@ -36,7 +36,7 @@ SCRIPT_FIXTURES = (
     "ModeHSceneEntry", "ModeHPlayerFlow", "AchievementRuntime", "ArenaHostRemainder", "ModeGEntryOwners", "AudioRuntime",
     "ResourceProduction", "ZombieModeHostOwners", "ModeEFEnemyRegistry", "SteamPlatformInfo",
     "ManualSeptemberReview", "GardenHarvestNotice",
-    "AffixSelectionUI", "ManualEquipmentRecovery", "AchievementIcons", "DynamicItemInitialization", "SkyIslandSceneReferenceBridge", "TidegateTideRules", "TidegateWater", "TidegateDrillJudges", "RandomEventsFailure", "RandomEventTempo",
+    "AffixSelectionUI", "ManualEquipmentRecovery", "AchievementIcons", "DynamicItemInitialization", "SkyIslandSceneReferenceBridge", "TidegateTideRules", "TidegateWater", "LastShiftTimetable", "TidegateDrillJudges", "LastShiftDrillJudges", "RandomEventsFailure", "RandomEventTempo",
     "RuntimeOwnership", "BossFilterRuntime", "ModeRuntimeDispatch", "EquipmentConfiguratorRegistry", "SharedModalInput", "NPCShopPayment", "ContentTransactions", "BackMountainLifecycle", "ModeGCombat", "CampaignPlayability", "BossRewardDelivery", "AffixCombat", "ContentSecondReview", "AirdropSecondReview",
     "HarmonyBindingSecondReview", "ModeHReinforcementSecondReview", "modeh_effects",
     "ModeHThirdReviewFixes", "ModeHMarketAudit", "ModeHItemBetLedger", "ModeHGroupRoster", "ContentThirdReviewFixes", "IntegrationThirdReviewFixes", "IntegrationLeafOwners", "DeathBroadcastIsolation",

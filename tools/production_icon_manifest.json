@@ -431,6 +431,14 @@
       "maxSize": 512
     },
     {
+      "path": "Assets/Items/lastshift_stamp.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/lastshift_ticket_stub.png",
+      "maxSize": 512
+    },
+    {
       "path": "Assets/Items/tidegate_dry_bag.png",
       "maxSize": 512
     },

@@ -21,7 +21,7 @@ namespace BossRush
     /// 不碰 Unity 对象，口径逐条照 three.js 原型 `docs/design/last-shift-yard/proto/sim.mjs`（第六、七轮），夹具直接编译它跑断言。
     /// 坐标一律用 three.js 的（运行时换算成 Unity 的 (x, y, -z)）。时间是这一趟会话的游戏时间秒（菜单暂停时不走）。
     /// </summary>
-    internal sealed class LastShiftTimetable
+    internal sealed partial class LastShiftTimetable
     {
         internal const double Approach = 20, Arrival = 26, Dwell = 47, Depart = 19, Clear = 68;
         internal const double SlowDwell = 70, ExpressArrival = 16, ExpressDepart = 12;

@@ -19,7 +19,7 @@ namespace BossRush
     /// 落在一只风险柜；12% 幸运箱；精品同趟不重样。封签货、零担箱、铅封侧柜三种「有条件才开」的箱子先停用，
     /// 条件满足前同一位置放一个机关交互，说明为什么还开不了。
     /// </summary>
-    internal sealed class LastShiftLoot : IDisposable
+    internal sealed partial class LastShiftLoot : IDisposable
     {
         private const float ActivationRange = 60f;
         private const float TickInterval = 0.5f;

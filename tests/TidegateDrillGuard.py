@@ -189,18 +189,18 @@ def check(raw):
     fallback_frames = [in_dev for _, code, in_dev in directive_frames(raw[EXECUTION]) if "FinishTidegateDrillRestoreSynchronously" in code]
     if fallback_frames != [True] or "if (tidegate) FinishTidegateDrillRestoreSynchronously();" not in complete:
         errors.append("CompleteSession 要在 #if BOSSRUSH_DEV 里按 tidegate 同步兜底还原一次（取消、异常、超时也走到）")
-    if not re.search(r"if \(!skyIsland && !tidegate && !_slotChanged && SavesSystem\.CurrentSlot == _sessionSlot\)", complete):
+    if not re.search(r"if \(!skyIsland && !tidegate && !lastShift && !_slotChanged && SavesSystem\.CurrentSlot == _sessionSlot\)", complete):
         errors.append("潮闸镇演练收尾不得跑面向主套件的全宿主清理（ValidationSafeCleanup 按 !tidegate 门控）")
 
     # ---- 4. 会话外壳 ----
     begin_body = body_of(execution, "private bool BeginSession(out string reason)") or ""
-    marker = body_of(begin_body, "if (!_skyIslandMode && !_tidegateDrill)")
+    marker = body_of(begin_body, "if (!_skyIslandMode && !_tidegateDrill && !_lastShiftDrill)")
     if marker is None or "WriteRunMarker()" not in marker:
-        errors.append("潮闸镇演练不得写运行标记：WriteRunMarker 必须包在 if (!_skyIslandMode && !_tidegateDrill) 块里")
+        errors.append("潮闸镇演练不得写运行标记：WriteRunMarker 必须包在 if (!_skyIslandMode && !_tidegateDrill && !_lastShiftDrill) 块里")
     if not re.search(r'_tidegateDrill\s*\?\s*"SESSION \| slot=" \+ _sessionSlot \+ " \| assisted=true \| read_only=false \| drill=true \| map=tidegate \| save_writes=false',
                      execution):
         errors.append("会话报告头没有按 _tidegateDrill 如实写 read_only=false / drill=true / save_writes=false")
-    if not re.search(r"if \(_host != null && !_skyIslandMode && !_tidegateDrill\) _host\.GameplayValidationSuppressNotifications = true;", execution):
+    if not re.search(r"if \(_host != null && !_skyIslandMode && !_tidegateDrill && !_lastShiftDrill\) _host\.GameplayValidationSuppressNotifications = true;", execution):
         errors.append("潮闸镇演练不得吞掉这一趟的正常提示（抑制提示条按 !_tidegateDrill 门控）")
 
     # ---- 5. 还原 ----
@@ -347,7 +347,7 @@ def main():
         (CASES, "                TidegateDrillStepAway(session, road.position);\n", "", "撤离读条不离开撤离环"),
         (EXECUTION, "if (tidegate) FinishTidegateDrillRestoreSynchronously();", "", "收尾不兜底还原"),
         (EXECUTION, "read_only=false | drill=true | map=tidegate", "read_only=true | drill=true | map=tidegate", "报告头谎报只读"),
-        (EXECUTION, "if (!_skyIslandMode && !_tidegateDrill)\n", "if (!_skyIslandMode)\n", "演练写运行标记"),
+        (EXECUTION, "if (!_skyIslandMode && !_tidegateDrill && !_lastShiftDrill)\n", "if (!_skyIslandMode && !_lastShiftDrill)\n", "演练写运行标记"),
         (CONTROLS, "            if (!F3GameplayValidationRunner.CanRunManualProgression(host, out reason)) { report(reason, true); return; }\n            string detail;",
          "            string detail;", "清空进度绕过专用测试档门"),
         (REGRESSIONS, '"TidegateDrillJudges", ', "", "纯判据回归没登记"),

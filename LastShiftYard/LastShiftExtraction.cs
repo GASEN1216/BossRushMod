@@ -9,7 +9,7 @@ namespace BossRush
     /// 官方 `CountDownArea` 只借显示）。北公路常开且最远；西线检修便门、东台押运门、轨道车接客亭跟列车与拉铃走，
     /// 由第二期的列车 owner 通过 <see cref="SetOpen"/> 打开——在那之前它们关着，M 图与 HUD 写明开启条件。
     /// </summary>
-    internal sealed class LastShiftExtraction : IDisposable
+    internal sealed partial class LastShiftExtraction : IDisposable
     {
         internal const float RingWidth = 0.24f, Hold = 5f;
         private static readonly Color AlwaysColor = new Color(0.60f, 0.84f, 0.86f, 0.78f);

@@ -30,6 +30,8 @@ NOT_CASE_RUNNERS = {
                           '这条用例的结论由调用它的外壳记',
     'RecordTidegateDrill': '潮闸镇演练用例收尾时把错误 / 备注拼成一条 Record 的小工具：id 是用例自己的常量，'
                            '同一个 id 已经作为字面量经外壳 RunTidegateDrillCase 抽出并要求登记',
+    'RecordLastShiftDrill': '末班编组站演练用例收尾时把错误 / 备注拼成一条 Record 的小工具：id 是用例自己的常量，'
+                            '同一个 id 已经作为字面量经外壳 RunLastShiftDrillCase 抽出并要求登记',
 }
 WRAPPER = re.compile(r'\bprivate\s+(?:static\s+)?(?:void|IEnumerator|bool)\s+(\w+)\s*\(\s*string\s+(?:id|caseId)\b')
 LEGACY_RUNNERS = ('RunSyncCase', 'RunSyncCaseGated', 'RunIsolatedCase', 'VerifyArenaCleanup', 'SamplePerformance',

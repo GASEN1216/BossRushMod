@@ -24,7 +24,7 @@ def load_manifest():
 # tests/GameplayCoverageCaseRunnerGuard.py 反向核对：F3 源码里每一个 `string id` / `string caseId` 外壳都必须在这里或写明不登记的理由。
 CASE_RUNNERS = ('RunSyncCase', 'RunSyncCaseGated', 'RunIsolatedCase', 'VerifyArenaCleanup', 'SamplePerformance',
                 'WaitRuntimeReady', 'RunSkyIslandSync', 'RunSkyIslandCase', 'SampleResourcePerformance', 'SamplePerformanceWindow',
-                'RunTidegateDrillCase')
+                'RunTidegateDrillCase', 'RunLastShiftDrillCase')
 
 
 def f3_source():

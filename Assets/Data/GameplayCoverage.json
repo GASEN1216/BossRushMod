@@ -2108,7 +2108,18 @@
         "LastShiftYard",
         "Integration/LastShift"
       ],
-      "automatic": [],
+      "automatic": [
+        "LSY_DRILL_ASSEMBLY",
+        "LSY_DRILL_FIRST_TRAIN",
+        "LSY_DRILL_SWITCH_AND_EXITS",
+        "LSY_DRILL_TRAIN_BODIES_AND_NAV",
+        "LSY_DRILL_LOOT",
+        "LSY_DRILL_ENEMIES",
+        "LSY_DRILL_STORY",
+        "LSY_DRILL_EXTRACTION_HOLD",
+        "LSY_PERF_SPAWN_10S",
+        "LSY_DRILL_RESTORE"
+      ],
       "wiki": [
         "map__lastshiftyard"
       ],
@@ -2152,6 +2163,11 @@
           "id": "M_LASTSHIFT_08",
           "steps": "新档进基地看横幅；进仓库区开 M 图找剪票处标记，走近检票桌；上车两次（同一趟出击里第二次不可能，就分两趟），每次看背包里的绷带。",
           "expected": "第一次回基地出现「末班票」告示横幅，之后不再出现；去过编组站之前仓库区 M 图标出「末班车剪票处」，去过之后不再标；台边站着余响，走到约 9 米内她头顶冒出「末班车，剪票上车」（每趟一次）；每次剪票背包多一卷止血绷带（每趟一卷）。不合格：横幅每次都出、M 图没有标记、看不到余响或她挡住检票桌、绷带一趟给多卷或不给。"
+        },
+        {
+          "id": "M_LASTSHIFT_09",
+          "steps": "Dev 构建、专用测试档（最好是没在编组站撤离过的档，才有首班教学）。仓库区剪票进编组站，落地后别离开出生点、别翻箱子、别签收，立刻按 F3「验收测试」页的「末班编组站演练」跑完（约 2–3 分钟，会自己瞬移、快进班次、扳道岔、拉一次铃、绕场刷押运队，最后撤铃并送回开跑处），把报告交给 AI 读。演练查不了、要人看的只剩：① 首班车厢、推车被撞飞、箭头与撤离环的画面；② 车厢挡子弹、擦边被推开、站在道上被车头撞死（M_LASTSHIFT_04）；③ 真签收封签货、开风险柜引警铃、零担箱取货（M_LASTSHIFT_05）；④ 押运队交火与押运长技能、钢印（M_LASTSHIFT_06）；⑤ 读三条线索、真撤离写存档与收尾（M_LASTSHIFT_07）；⑥ 北公路站满 5 秒真撤离（M_LASTSHIFT_02）；⑦ 室内屋顶与夜灯（M_LASTSHIFT_03）；⑧ 切英文看一遍交互名与字幕。",
+          "expected": "报告头 SUITE | LAST_SHIFT_DRILL | read_only=false | drill=true，SESSION 行 save_writes=false | story_commit=false；LSY_DRILL_* 与 LSY_PERF_SPAWN_10S 全部 PASS（首班已走过时 LSY_DRILL_FIRST_TRAIN 记 WARN / SKIP 并写明哪几步没覆盖），LSY_DRILL_RESTORE PASS；本槽末班编组站剧情存档（趟数、线索、站台记录）跑完前后不变。不合格：任何 FAIL、演练中途被撤离回基地、剧情存档被改、报告里出现 _UNHANDLED。"
         }
       ]
     }

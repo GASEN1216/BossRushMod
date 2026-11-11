@@ -62,6 +62,10 @@ namespace BossRush
             // 潮闸镇演练：人在潮闸镇里按，一次跑完全部能自动看的检查，最后还原这一趟（F3GameplayValidationTidegateDrill.cs）。
             CreateActionButton(rowModeH.transform, font, L10n.T("潮闸镇演练（镇内一次跑完，会改状态）", "Tidegate drill (all-in-one, changes state)"),
                 BossRushUIColors.Warning, StartTidegateDrillFromF3);
+            // 末班编组站演练：人在编组站里按，一次跑完能自动看的检查（会快进班次），最后还原（F3GameplayValidationLastShiftDrill.cs）。
+            GameObject rowLastShift = CreateF3Row(section.transform);
+            CreateActionButton(rowLastShift.transform, font, L10n.T("末班编组站演练（站内一次跑完，会改状态）", "Last Shift Yard drill (all-in-one, changes state)"),
+                BossRushUIColors.Warning, StartLastShiftDrillFromF3);
 #endif
 
             GameObject row3 = CreateF3Row(section.transform);
@@ -128,6 +132,14 @@ namespace BossRush
         {
             string reason;
             if (F3GameplayValidationRunner.TryStartTidegateDrill(this, out reason)) { HideF3DebugCheatMenu(); return; }
+            SetF3DebugCheatStatus(reason, true);
+            RefreshF3GameplayValidationStatus();
+        }
+
+        private void StartLastShiftDrillFromF3()
+        {
+            string reason;
+            if (F3GameplayValidationRunner.TryStartLastShiftDrill(this, out reason)) { HideF3DebugCheatMenu(); return; }
             SetF3DebugCheatStatus(reason, true);
             RefreshF3GameplayValidationStatus();
         }

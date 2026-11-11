@@ -18,7 +18,7 @@ namespace BossRush
     /// 第一期（2026-11-11）：装配、光照、导航、室内屋顶、HUD、北公路撤离。第二期：列车（<see cref="LastShiftTrains"/>）、
     /// 搜刮（<see cref="LastShiftLoot"/>）、押运队（<see cref="LastShiftEnemies"/>）。第三期：一趟里的剧情进度（<see cref="LastShiftRun"/>），撤离时写进本槽剧情存档。
     /// </summary>
-    internal sealed class LastShiftSession : MonoBehaviour, IInitializedQueryHandler
+    internal sealed partial class LastShiftSession : MonoBehaviour, IInitializedQueryHandler
     {
         private ModBehaviour host;
         private Action<string, bool> report;
@@ -630,6 +630,10 @@ namespace BossRush
         private void Status(string message, bool error)
         {
             if (string.IsNullOrEmpty(message)) return;
+#if BOSSRUSH_DEV
+            // Dev 演练按字幕核对提示有没有出、出了几次（LastShiftDrillHooks.cs）。
+            DevNoteStatus(message, error);
+#endif
             if (hud != null && ready) { Safe("caption", delegate { hud.Caption(message, error); }); return; }
             if (report != null) report(message, error);
         }

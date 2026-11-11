@@ -14,7 +14,7 @@ namespace BossRush
     /// 线上有车时按车体包络封导航三角形；条件出口按班次开关；司机室道岔、轨道车铃、班次运单牌三个交互。
     /// 第七轮 owner 采纳的反馈都在这里：首班等玩家站到南护栏、看完演示才给道岔、扳岔站场广播 + 8 秒地面箭头、锁着的出口说明条件。
     /// </summary>
-    internal sealed class LastShiftTrains : IDisposable
+    internal sealed partial class LastShiftTrains : IDisposable
     {
         private static readonly string[] Bodies = { "31 hood shunter", "Sealed sundries", "Twin coil bolster", "Green brake van", "Twin coil bolster.001" };
         private const string CartBody = "Teaching cart";
@@ -371,7 +371,7 @@ namespace BossRush
             disposed = true;
             timetable.PhaseChanged -= OnPhase;
             HideArrows();
-            if (navigation != null) { try { navigation.SetWalkable(delegate { return true; }); } catch (Exception) { } }
+            if (navigation != null) { try { navigation.SetWalkable(delegate { return true; }); } catch (Exception e) { Debug.LogWarning(LastShiftRaidScene.LogTag + " 收尾恢复导航可走性失败：" + e.Message); } }
             foreach (GameObject g in interactables) if (g != null) UnityEngine.Object.Destroy(g);
             interactables.Clear();
             if (holder != null) UnityEngine.Object.Destroy(holder.gameObject);

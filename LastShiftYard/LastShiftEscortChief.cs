@@ -146,7 +146,7 @@ namespace BossRush
             return Physics.Linecast(a, b, mask, QueryTriggerInteraction.Collide);
         }
 
-        private void Say(string text) { try { DialogueBubblesManager.Show(text, transform, 2.2f, false, false, -1f, 1.2f).Forget(); } catch { } }
+        private void Say(string text) { try { DialogueBubblesManager.Show(text, transform, 2.2f, false, false, -1f, 1.2f).Forget(); } catch (Exception e) { ModBehaviour.DevLog(LastShiftRaidScene.LogTag + " 押运长喊话气泡失败：" + e.Message); } }
 
         private void Stop(float now)
         {

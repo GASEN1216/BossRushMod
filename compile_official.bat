@@ -351,6 +351,7 @@ echo(Tidegate\TidegateWorld.cs
 echo(LastShiftYard\LastShiftEntry.cs
 echo(LastShiftYard\LastShiftEscortChief.cs
 echo(LastShiftYard\LastShiftEnemies.cs
+echo(LastShiftYard\LastShiftDrillHooks.cs
 echo(LastShiftYard\LastShiftEnemyIdentity.cs
 echo(LastShiftYard\LastShiftExtraction.cs
 echo(LastShiftYard\LastShiftLighting.cs
@@ -415,6 +416,8 @@ echo(DebugAndTools\F3GameplayValidationTidegateDrill.cs
 echo(DebugAndTools\F3BaseLootboxProbe.cs
 echo(DebugAndTools\F3TidegateAiProbe.cs
 echo(DebugAndTools\F3GameplayValidationTidegateDrillCases.cs
+echo(DebugAndTools\F3GameplayValidationLastShiftDrill.cs
+echo(DebugAndTools\F3GameplayValidationLastShiftDrillCases.cs
 echo(DebugAndTools\F3GameplayValidationAutotestModels.cs
 echo(DebugAndTools\F3GameplayValidationAutotestJudges.cs
 echo(DebugAndTools\F3GameplayValidationAutotest.cs
