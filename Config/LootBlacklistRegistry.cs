@@ -208,6 +208,9 @@ namespace BossRush
                 BossRushItemIds.TidegateFlippers,
                 BossRushItemIds.TidegateLetter,
                 BossRushItemIds.TidegateSoundingLead,
+                // 末班编组站物品：钢印只从押运长身上出，票根只从三条线索出——不进许愿台、日报与各类品质池。
+                BossRushItemIds.LastShiftStamp,
+                BossRushItemIds.LastShiftTicketStub,
             };
         }
     }

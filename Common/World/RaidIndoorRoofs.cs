@@ -29,7 +29,7 @@ namespace BossRush
             Transform group = pavilions ? world.transform.Find("SkyPavilionRooms") : null;
             if (!pavilions)
                 foreach (GameObject g in world.scene.GetRootGameObjects())
-                    if (g.name == "TidegateIndoorRooms") { group = g.transform; break; }
+                    if (g.name == "TidegateIndoorRooms" || g.name == "LastShiftIndoorRooms") { group = g.transform; break; }
             if (group == null)
             {
                 Debug.LogWarning("[BossRush] " + world.name + " 缺少室内触发区；请更新地图包。");

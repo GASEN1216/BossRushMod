@@ -140,5 +140,9 @@ namespace BossRush
         public const int TidegateLetter = 500115;
         /// <summary>沙老大专属：在潮闸镇探测未开启的退潮埋货。</summary>
         public const int TidegateSoundingLead = 500116;
+        /// <summary>末班编组站：押运钢印。打倒押运长取得；下一趟在押运库开一次铅封侧柜，开柜即消耗。</summary>
+        public const int LastShiftStamp = 500117;
+        /// <summary>末班编组站：末班票根。读齐三条线索得到；下次剪票交给余响，剧情收进图鉴。不可出售。</summary>
+        public const int LastShiftTicketStub = 500118;
     }
 }

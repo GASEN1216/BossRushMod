@@ -19,7 +19,10 @@ namespace BossRush
         private sealed class HazardElements : List<ElementFactor>
         {
             internal readonly bool Sluice;
+            /// <summary>别的独立出击图的致死机关自带死因（末班编组站的进站列车）；空时按潮闸镇的两种机关。</summary>
+            internal readonly Func<string> Description;
             internal HazardElements(bool sluice) { Sluice = sluice; }
+            internal HazardElements(Func<string> description) { Description = description; }
         }
 
         [HarmonyPatch(typeof(DamageInfo), nameof(DamageInfo.GenerateDescription))]
@@ -28,7 +31,9 @@ namespace BossRush
             private static void Postfix(ref DamageInfo __instance, ref string __result)
             {
                 var tag = __instance.elementFactors as HazardElements;
-                if (tag != null) __result = tag.Sluice ? L10n.T("卷入大闸泄洪口", "Swept into the sluice intake")
+                if (tag == null) return;
+                if (tag.Description != null) { __result = tag.Description(); return; }
+                __result = tag.Sluice ? L10n.T("卷入大闸泄洪口", "Swept into the sluice intake")
                     : L10n.T("被码头吊货砸中", "Crushed by the dock crane");
             }
         }
@@ -80,7 +85,21 @@ namespace BossRush
             return dead;
         }
 
+        /// <summary>
+        /// 独立出击图的致死机关共用这一个入口（末班编组站：进站列车正面撞击）：只走一次官方 `Health.Hurt`，保留原版墓碑与结算；
+        /// 全局致死保护补丁认的「正在结算的机关伤害」状态只有这里一份，所以别的图不另写一套。死因按 <paramref name="description"/> 取。
+        /// </summary>
+        internal static bool ResolveLethalImpact(Health health, Vector3 at, Func<string> description)
+        {
+            return ResolveImpact(health, at, new HazardElements(description));
+        }
+
         private static bool ResolveImpact(Health health, Vector3 at, bool swept)
+        {
+            return ResolveImpact(health, at, new HazardElements(swept));
+        }
+
+        private static bool ResolveImpact(Health health, Vector3 at, HazardElements elements)
         {
             if (resolving != null || health == null || health.IsDead || LevelManager.Instance == null
                 || !LevelManager.Instance.IsRaidMap || (MultiSceneCore.Instance != null && MultiSceneCore.Instance.IsLoading)) return false;
@@ -91,7 +110,7 @@ namespace BossRush
             {
                 if (wasInvincible) health.SetInvincible(false);
                 health.Hurt(new DamageInfo(null) { damageType = DamageTypes.realDamage, damageValue = health.CurrentHealth + 1f,
-                    ignoreArmor = true, ignoreDifficulty = true, damagePoint = at, elementFactors = new HazardElements(swept) });
+                    ignoreArmor = true, ignoreDifficulty = true, damagePoint = at, elementFactors = elements });
                 return health.IsDead;
             }
             finally

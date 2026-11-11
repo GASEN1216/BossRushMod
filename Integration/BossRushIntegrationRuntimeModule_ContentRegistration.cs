@@ -53,6 +53,9 @@ namespace BossRush
             TidegateRaidScene.InjectLocalization();
             // 潮闸镇物品的 DisplayNameRaw 注入（AGENTS.md 4.4）
             TidegateItems.InjectLocalization();
+            // 末班编组站：地图名、仓库区剪票处与站内机关的交互名，以及两件物品的 DisplayNameRaw（AGENTS.md 4.4）
+            LastShiftRaidScene.InjectLocalization();
+            LastShiftItems.InjectLocalization();
             SkyIslandSearchPoint.InjectLocalizations();
             // 搜刮箱交互名「搜集 / Search」（官方 displayNameKey 按 key 查表，切语言时随这条链重注入）
             SkyIslandRewardCrate.InjectLocalizations();

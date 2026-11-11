@@ -348,6 +348,23 @@ echo(Tidegate\TidegateText.cs
 echo(Tidegate\TidegateTide.cs
 echo(Tidegate\TidegateTideRules.cs
 echo(Tidegate\TidegateWorld.cs
+echo(LastShiftYard\LastShiftEntry.cs
+echo(LastShiftYard\LastShiftEscortChief.cs
+echo(LastShiftYard\LastShiftEnemies.cs
+echo(LastShiftYard\LastShiftEnemyIdentity.cs
+echo(LastShiftYard\LastShiftExtraction.cs
+echo(LastShiftYard\LastShiftLighting.cs
+echo(LastShiftYard\LastShiftLoot.cs
+echo(LastShiftYard\LastShiftRaidScene.cs
+echo(LastShiftYard\LastShiftRuntimeModule.cs
+echo(LastShiftYard\LastShiftSession.cs
+echo(LastShiftYard\LastShiftStory.cs
+echo(LastShiftYard\LastShiftText.cs
+echo(LastShiftYard\LastShiftTimetable.cs
+echo(LastShiftYard\LastShiftTrains.cs
+echo(LastShiftYard\LastShiftWorld.cs
+echo(LastShiftYard\LastShiftYardDevices.cs
+echo(LastShiftYard\LastShiftYuXiang.cs
 echo(Common\World\RaidIndoorRoofs.cs
 echo(Tidegate\TidegateDrillHooks.cs
 echo(Tidegate\TidegateFrameProbe.cs
@@ -1439,6 +1456,7 @@ echo(Integration\SkyIsland\SkyIslandNavInstrumentConfig.cs
 echo(Integration\SkyIsland\SkyIslandCompassUsage.cs
 echo(Integration\SkyIsland\SkyIslandFieldcraftUsage.cs
 echo(Integration\Tidegate\TidegateItems.cs
+echo(Integration\LastShift\LastShiftItems.cs
 echo(Integration\Tidegate\TidegateLeadUsage.cs
 echo(Integration\Tidegate\TidegateLetterUsage.cs
 )>"%OUTPUT_DIR%\bossrush.rsp"
@@ -1477,6 +1495,18 @@ if %BUILD_EXIT_CODE% EQU 0 (
             if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas"
             copy /Y "Assets\arenas\tidegate_entry" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas\tidegate_entry" >nul 2>nul
             echo Deployed Tidegate entry raft bundle to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas
+        )
+        REM Last Shift Yard raid scene bundle (author project LastShiftBuilder.BuildAndExit)
+        if exist "Assets\arenas\lastshift_raid" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas"
+            copy /Y "Assets\arenas\lastshift_raid" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas\lastshift_raid" >nul 2>nul
+            echo Deployed Last Shift Yard raid scene bundle to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas
+        )
+        REM Last Shift Yard warehouse entry bundle (author project LastShiftBuilder.BuildEntryAndExit)
+        if exist "Assets\arenas\lastshift_entry" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas"
+            copy /Y "Assets\arenas\lastshift_entry" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas\lastshift_entry" >nul 2>nul
+            echo Deployed Last Shift Yard warehouse entry bundle to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas
         )
         if exist "Assets\Data\SkyIsland" (
             if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data\SkyIsland" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data\SkyIsland"

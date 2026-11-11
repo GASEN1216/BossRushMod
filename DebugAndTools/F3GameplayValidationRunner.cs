@@ -475,6 +475,7 @@ namespace BossRush
             if (_host.GetComponent<SkyIslandSession>() != null)
             { reason = "岛内请改用「天空岛验收（岛内）」按钮；完整验收必须先退出天空岛"; return false; }
             if (_host.GetComponent<TidegateSession>() != null) { reason = "完整验收必须先退出潮闸镇"; return false; }
+            if (_host.GetComponent<LastShiftSession>() != null) { reason = "完整验收必须先退出末班编组站"; return false; }
             if (!IsBaseScene()) { reason = "必须从基地场景启动"; return false; }
             if (!IsDedicatedCurrentSlot()) { reason = "当前槽不是专用测试档，请先点击标记按钮"; return false; }
             if (SavesSystem.IsSaving) { reason = "存档系统正忙"; return false; }
