@@ -266,6 +266,8 @@ namespace BossRush
                 ConfirmLabel = confirm,
                 Danger = false,
                 OnConfirm = delegate { if (after != null) after(); },
+                // 单按钮页的 Esc 也走「取消」：票根这时已经交了，Esc 不能把上车 / 后续吞掉，和按按钮一样往下走。
+                OnCancel = delegate { if (after != null) after(); },
             });
         }
 

@@ -256,7 +256,8 @@ namespace BossRush
             playerHealth = player.Health;
             playerHealth.OnDeadEvent.AddListener(OnPlayerDied);
             LevelManager.UnregisterWaitForInitialization(this);
-            if (hud != null)
+            // 首班教学只在第一趟有；回访没有南护栏等车这回事，不写这句。
+            if (hud != null && !ReturnVisit())
                 Safe("landing_hint", delegate
                 {
                     hud.SetLandingHint(L10n.T("首班车要等你站到南护栏后面才进站。看它过了岔，再上悬车楼司机室扳道岔。",

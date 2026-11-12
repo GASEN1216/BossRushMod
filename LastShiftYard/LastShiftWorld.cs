@@ -46,6 +46,10 @@ namespace BossRush
             Collect(markers.Find("NightLamps"), delegate (Transform t) { NightLamps.Add(t.position); });
             if (!Exits.ContainsKey("north")) throw new InvalidOperationException("末班编组站缺少常开撤离点（北公路）");
             if (LootMarkers.Count == 0 || SpawnMarkers.Count == 0) throw new InvalidOperationException("末班编组站搜刮点或刷怪点缺失");
+            // 首班停在岔心等扳道岔，没有超时兜底；三条线索缺一条剧情就合不上。缺了直接装配失败，别让玩家进一张走不完的图。
+            if (!Interacts.ContainsKey("switch")) throw new InvalidOperationException("末班编组站缺少道岔交互标记 switch");
+            foreach (string note in LastShiftStory.NoteMarkers)
+                if (!Interacts.ContainsKey(note)) throw new InvalidOperationException("末班编组站缺少线索标记 " + note);
             SpawnMarkers.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
             LootMarkers.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
             IndoorRoofs = new RaidIndoorRoofs(root, false);

@@ -66,6 +66,8 @@ namespace BossRush
         private void ShowNoticeAtBase()
         {
             if (owner == null || !SceneRuntimeGate.IsBaseHubSceneName(SceneManager.GetActiveScene().name)) return;
+            // 包不在就不贴（告示只贴一次，贴了就指向一个不存在的剪票处）；口径同杰夫引导的 CanOffer。
+            if (!LastShiftRaidScene.IsBundleDeployed() || !LastShiftEntry.IsBundleDeployed()) return;
             try { if (LastShiftStory.TryShowNotice()) owner.ShowBigBanner(LastShiftText.BaseNotice); }
             catch (Exception e) { Debug.LogWarning(LastShiftRaidScene.LogTag + " 基地告示失败: " + e.Message); }
         }

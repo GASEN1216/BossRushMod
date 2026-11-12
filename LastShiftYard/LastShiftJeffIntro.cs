@@ -9,7 +9,7 @@ namespace BossRush
     /// COMPAT / WIRE+：杰夫的末班编组站引导（官方任务 590216，owner 2026-11-11 授权）：去仓库区西场找检票员余响说上话，
     /// 回基地交给杰夫。事实在编组站剧情存档里（<see cref="LastShiftStoryData.JeffAccepted"/> / <see cref="LastShiftStoryData.Met"/> /
     /// <see cref="LastShiftStoryData.JeffDone"/>），官方任务页只是投影（口径同 590215 `EclipseBloomIntroduction`）。
-    /// 和余响说过话（对话或剪票上车）就算完成目标；没有提交物和奖品。只在还没见过她、没去过编组站时发放。
+    /// 和余响说过话（对话或剪票上车）就算完成目标；没有提交物和奖品。没接过、没交过就发；接之前已经见过她，目标直接算完成。
     /// 由 <see cref="LastShiftRuntimeModule"/> 持有。
     /// </summary>
     internal sealed class LastShiftJeffIntro : IOfficialQuestClient
@@ -19,8 +19,8 @@ namespace BossRush
         private const string DescriptionKey = "BossRush_LastShiftYard_Jeff_Description";
         private readonly OfficialQuestProjection projection;
         private QuestGiver jeff;
-        private float nextJeffAttempt;
-        private bool deliveryActive;
+        private float nextJeffAttempt, nextBundleCheck;
+        private bool deliveryActive, bundlesDeployed;
 
         internal LastShiftJeffIntro(OfficialQuestProjection projection)
         {
@@ -77,10 +77,26 @@ namespace BossRush
             return player != null && player.Health != null && !player.Health.IsDead;
         }
 
-        private static bool CanOffer()
+        /// <summary>
+        /// 没接过、没交过就发（口径同天空岛序章 590001：可接只看任务自己的接取 / 交付位，加「包在不在」的运行时门）。
+        /// 2026-11-11 前还要求「没见过余响、没从编组站撤离过」，结果先自己摸去仓库区的玩家（包括 owner 实测档）在杰夫那里永远接不到；
+        /// 现在见过她再接，目标直接显示已完成，回头交给杰夫即可。两个包缺任何一个就不发，免得指去一个不存在的剪票处。
+        /// </summary>
+        private bool CanOffer()
         {
             LastShiftStoryData d = Data;
-            return d != null && LastShiftStory.Writable && !d.JeffAccepted && !d.JeffDone && !d.Met && d.Runs == 0 && InBase() && PlayerAlive();
+            return d != null && LastShiftStory.Writable && !d.JeffAccepted && !d.JeffDone && InBase() && PlayerAlive() && BundlesDeployed();
+        }
+
+        /// <summary>两个包是否都在：基地里官方刷标记会反复问 CanOffer，结果按 5 秒缓存，不每次碰文件系统。</summary>
+        private bool BundlesDeployed()
+        {
+            if (Time.unscaledTime >= nextBundleCheck)
+            {
+                nextBundleCheck = Time.unscaledTime + 5f;
+                bundlesDeployed = LastShiftRaidScene.IsBundleDeployed() && LastShiftEntry.IsBundleDeployed();
+            }
+            return bundlesDeployed;
         }
 
         private bool CanDeliver()
@@ -93,7 +109,10 @@ namespace BossRush
         {
             message = L10n.T("这事待会儿再说。", "Let's talk about this later.");
             if (!CanOffer() || !LastShiftStory.SetJeff(true, false)) return false;
-            message = L10n.T("仓库区西场，第二座龙门吊。去吧。", "Warehouse district, west yard, second gantry crane. Off you go.");
+            LastShiftStoryData d = Data;
+            message = d != null && d.Met
+                ? L10n.T("你已经见过她了？那正好，说来听听。", "You've already met her? Good, then tell me about it.")
+                : L10n.T("仓库区西场，第二座龙门吊。去吧。", "Warehouse district, west yard, second gantry crane. Off you go.");
             if (projection != null) projection.NotifyProgressChanged(this);
             return true;
         }
