@@ -11,7 +11,7 @@
 | 目录 | 放什么 | 读者什么时候来 |
 | --- | --- | --- |
 | [architecture/](architecture) | 长期有效的架构约定与系统设计说明 | 动一个子系统之前 |
-| [guides/](guides) | 制作教程、操作手册、接线清单；天空岛专项在 [guides/sky-island/](guides/sky-island) | 要做一件具体的事 |
+| [guides/](guides) | 制作教程、操作手册、接线清单；天空岛专项在 [guides/sky-island/](guides/sky-island)，新地图全流程在 [guides/new-map/](guides/new-map/README.md) | 要做一件具体的事 |
 | [reference/](reference) | 物品 ID 表、官方本地化表、官方机制笔记、参考图 | 查表 |
 | [contracts.md](contracts.md) | 外部契约与 breaking 边界、TypeID 台账（§1，被守卫解析）、官方 API 静默失败类陷阱（§7.1） | 改存档 / 配置 / TypeID / Harmony 之前 |
 | [design/](design) | 设计稿与提案，文首有「已实现 / 部分实现 / 未实现」状态行；[zombie-mode/](design/zombie-mode)、[roadmap/](design/roadmap)（未实现的拓展） | 想知道为什么这样设计，或要开新系统 |
@@ -50,7 +50,7 @@ NPC：
 
 场景与地图：
 
-- [新地图与新内容制作流程](guides/新地图与新内容制作流程.md)：问答定稿 → three.js 多轮精修 → Blender（MCP）→ Unity → 游戏；**做新地图从这里开始**（依据潮闸镇）
+- [新地图制作全流程（文件夹）](guides/new-map/README.md)：调研问答 → three.js 原型与精修 → Blender（MCP）→ Unity 打包 → 游戏接入 → 验收发布 → 宣传片 → B 站投稿，附潮闸镇时间线与教训；**做新地图从这里开始**
 - [从零搭建自定义场景：Blender → Unity → Mod](guides/从零搭建自定义场景_Blender到Unity到Mod完整教程.md)：首次做场景从这里开始
 - [自建场景原型试用：石砌遗迹与石堡前哨](guides/石堡前哨独立场景试用.md)
 
@@ -65,7 +65,8 @@ NPC：
 
 - [游戏内验收覆盖维护](guides/游戏内验收覆盖维护.md)：F3 验收用例与覆盖表怎么维护
 - [星愿许愿台本地发布与混淆流程](guides/星愿许愿台本地发布与混淆流程.md)
-- [Boss 宣传片制作与 B 站投稿流程](guides/Boss宣传片制作与B站投稿流程.md)：实录挑镜头、合成配乐、字卡、渲染、内置浏览器投稿、章节与互动弹幕；脚本在 [guides/trailer-kit/](guides/trailer-kit)
+- [Boss 宣传片制作流程](guides/Boss宣传片制作与B站投稿流程.md)：实录挑镜头、去 HUD、合成配乐、字卡、渲染、F3「录制视频」；脚本在 [guides/trailer-kit/](guides/trailer-kit)。地图宣传片见 [new-map/07](guides/new-map/07_宣传片制作.md)
+- [B 站投稿](guides/new-map/08_B站投稿.md)：内置浏览器上传、填表、合集、章节、互动弹幕与历次投稿记录（所有宣传片都按它投）
 
 ## reference/ — 查表
 

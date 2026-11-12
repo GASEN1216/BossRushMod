@@ -377,9 +377,9 @@
   {
    "kind": "loot_crate",
    "id": "B3",
-   "x": -13.812,
+   "x": -18.973,
    "y": 5.05,
-   "z": -110.761,
+   "z": -104.61,
    "footprint": 0.66,
    "clearRadius": 1.0,
    "mesh": "crate"
@@ -2543,9 +2543,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_A_01",
-   "x": -37.852,
+   "x": -39.11,
    "y": 0.0,
-   "z": -241.366,
+   "z": -242.361,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2553,9 +2553,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_A_02",
-   "x": 32.663,
+   "x": 32.925,
    "y": 0.0,
-   "z": -195.123,
+   "z": -195.426,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2563,9 +2563,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_A_03",
-   "x": 15.816,
+   "x": 15.057,
    "y": 0.0,
-   "z": -239.725,
+   "z": -243.086,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2573,9 +2573,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_A_04",
-   "x": 39.673,
+   "x": 38.21,
    "y": 0.0,
-   "z": -220.66,
+   "z": -223.22,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2583,9 +2583,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_A_05",
-   "x": -21.052,
+   "x": 41.495,
    "y": 0.0,
-   "z": -247.842,
+   "z": -208.643,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2593,9 +2593,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_A_06",
-   "x": 41.207,
+   "x": -26.4,
    "y": 0.0,
-   "z": -201.013,
+   "z": -248.506,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2603,9 +2603,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_A_07",
-   "x": 41.357,
+   "x": 29.067,
    "y": 0.0,
-   "z": -190.957,
+   "z": -227.251,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2613,9 +2613,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_A_08",
-   "x": 39.861,
+   "x": 39.511,
    "y": 0.0,
-   "z": -211.212,
+   "z": -191.907,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2623,9 +2623,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_A_09",
-   "x": 30.895,
+   "x": -32.349,
    "y": 0.0,
-   "z": -224.125,
+   "z": -245.5,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2633,9 +2633,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_A_10",
-   "x": -42.418,
+   "x": -39.337,
    "y": 0.0,
-   "z": -243.854,
+   "z": -248.796,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2643,9 +2643,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_B_01",
-   "x": 43.827,
+   "x": 48.416,
    "y": 5.0,
-   "z": -65.9,
+   "z": -83.68,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2653,9 +2653,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_B_02",
-   "x": -49.08,
+   "x": -48.561,
    "y": 5.0,
-   "z": -99.338,
+   "z": -88.673,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2663,9 +2663,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_B_03",
-   "x": -49.773,
+   "x": -38.436,
    "y": 5.0,
-   "z": -64.663,
+   "z": -131.031,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2673,9 +2673,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_B_04",
-   "x": -32.86,
+   "x": 24.685,
    "y": 5.0,
-   "z": -131.307,
+   "z": -61.368,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2683,9 +2683,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_B_05",
-   "x": 50.799,
+   "x": -40.505,
    "y": 5.0,
-   "z": -91.975,
+   "z": -54.972,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2693,9 +2693,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_B_06",
-   "x": 20.882,
+   "x": 52.701,
    "y": 5.0,
-   "z": -58.984,
+   "z": -126.273,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2703,9 +2703,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_B_07",
-   "x": -10.289,
+   "x": -21.302,
    "y": 5.0,
-   "z": -133.99,
+   "z": -112.28,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2713,9 +2713,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_B_08",
-   "x": -26.571,
+   "x": -15.157,
    "y": 5.0,
-   "z": -109.84,
+   "z": -133.862,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2723,9 +2723,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_B_09",
-   "x": -52.082,
+   "x": 47.045,
    "y": 5.0,
-   "z": -132.231,
+   "z": -59.378,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2733,9 +2733,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_B_10",
-   "x": -48.579,
+   "x": -51.425,
    "y": 5.0,
-   "z": -116.348,
+   "z": -115.084,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2743,9 +2743,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_B_11",
-   "x": -52.889,
+   "x": -52.95,
    "y": 5.0,
-   "z": -80.005,
+   "z": -71.139,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2753,9 +2753,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_B_12",
-   "x": -38.736,
+   "x": -39.313,
    "y": 5.0,
-   "z": -54.879,
+   "z": -103.607,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2763,9 +2763,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_B_13",
-   "x": 43.462,
+   "x": 43.627,
    "y": 5.0,
-   "z": -79.901,
+   "z": -72.081,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2773,9 +2773,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_B_14",
-   "x": -38.681,
+   "x": -48.563,
    "y": 5.0,
-   "z": -108.116,
+   "z": -128.713,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2783,9 +2783,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_C_01",
-   "x": -141.189,
+   "x": -144.544,
    "y": 10.0,
-   "z": -84.613,
+   "z": -83.753,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2793,9 +2793,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_C_02",
-   "x": -196.413,
+   "x": -173.276,
    "y": 10.0,
-   "z": -89.453,
+   "z": -48.554,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2803,9 +2803,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_C_03",
-   "x": -174.887,
+   "x": -215.702,
    "y": 10.0,
-   "z": -44.994,
+   "z": -100.917,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2813,9 +2813,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_C_04",
-   "x": -115.309,
+   "x": -184.828,
    "y": 10.0,
-   "z": -101.845,
+   "z": -87.761,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2823,9 +2823,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_C_05",
-   "x": -128.137,
+   "x": -115.617,
    "y": 10.0,
-   "z": -40.093,
+   "z": -92.961,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2833,9 +2833,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_C_06",
-   "x": -151.525,
+   "x": -142.853,
    "y": 10.0,
-   "z": -114.859,
+   "z": -53.355,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2843,9 +2843,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_C_07",
-   "x": -205.997,
+   "x": -191.265,
    "y": 10.0,
-   "z": -117.493,
+   "z": -116.599,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2853,9 +2853,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_C_08",
-   "x": -172.177,
+   "x": -116.836,
    "y": 10.0,
-   "z": -73.472,
+   "z": -41.155,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2863,9 +2863,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_C_09",
-   "x": -116.8,
+   "x": -199.812,
    "y": 10.0,
-   "z": -69.585,
+   "z": -56.211,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2873,9 +2873,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_C_10",
-   "x": -199.788,
+   "x": -155.188,
    "y": 10.0,
-   "z": -56.149,
+   "z": -108.566,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2883,9 +2883,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_C_11",
-   "x": -146.999,
+   "x": -164.132,
    "y": 10.0,
-   "z": -54.826,
+   "z": -69.774,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2893,9 +2893,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_C_12",
-   "x": -165.247,
+   "x": -112.939,
    "y": 10.0,
-   "z": -98.931,
+   "z": -116.219,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2903,9 +2903,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_C_13",
-   "x": -215.225,
+   "x": -117.104,
    "y": 10.0,
-   "z": -80.384,
+   "z": -70.035,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2913,9 +2913,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_C_14",
-   "x": -154.78,
+   "x": -154.528,
    "y": 10.0,
-   "z": -36.645,
+   "z": -34.539,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2923,9 +2923,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_C_15",
-   "x": -192.326,
+   "x": -204.884,
    "y": 10.0,
-   "z": -38.177,
+   "z": -79.877,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2933,9 +2933,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_C_16",
-   "x": -190.201,
+   "x": -137.696,
    "y": 10.0,
-   "z": -111.017,
+   "z": -100.568,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2943,9 +2943,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_C_17",
-   "x": -121.342,
+   "x": -181.704,
    "y": 10.0,
-   "z": -86.805,
+   "z": -67.546,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2953,9 +2953,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_C_18",
-   "x": -162.687,
+   "x": -188.492,
    "y": 10.0,
-   "z": -59.587,
+   "z": -40.262,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2963,9 +2963,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_D_01",
-   "x": -205.617,
+   "x": -111.236,
    "y": 16.0,
-   "z": 79.403,
+   "z": 50.703,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2973,9 +2973,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_D_02",
-   "x": -178.063,
+   "x": -209.934,
    "y": 16.0,
-   "z": 49.605,
+   "z": 100.444,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2983,9 +2983,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_D_03",
-   "x": -114.794,
+   "x": -187.274,
    "y": 16.0,
-   "z": 54.289,
+   "z": 70.639,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -2993,9 +2993,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_D_04",
-   "x": -107.188,
+   "x": -107.892,
    "y": 16.0,
-   "z": 83.825,
+   "z": 85.818,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3003,9 +3003,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_D_05",
-   "x": -150.413,
+   "x": -154.947,
    "y": 16.0,
-   "z": 33.435,
+   "z": 40.127,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3013,9 +3013,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_D_06",
-   "x": -208.985,
+   "x": -190.704,
    "y": 16.0,
-   "z": 112.697,
+   "z": 40.482,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3023,9 +3023,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_D_07",
-   "x": -208.217,
+   "x": -168.041,
    "y": 16.0,
-   "z": 45.745,
+   "z": 59.35,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3033,9 +3033,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_D_08",
-   "x": -155.551,
+   "x": -206.824,
    "y": 16.0,
-   "z": 55.92,
+   "z": 76.39,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3043,9 +3043,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_D_09",
-   "x": -186.149,
+   "x": -119.774,
    "y": 16.0,
-   "z": 69.385,
+   "z": 69.044,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3053,9 +3053,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_D_10",
-   "x": -171.739,
+   "x": -113.678,
    "y": 16.0,
-   "z": 29.88,
+   "z": 104.585,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3063,9 +3063,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_D_11",
-   "x": -108.979,
+   "x": -200.916,
    "y": 16.0,
-   "z": 104.492,
+   "z": 55.747,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3073,9 +3073,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_D_12",
-   "x": -133.745,
+   "x": -138.059,
    "y": 16.0,
-   "z": 58.021,
+   "z": 37.841,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3083,9 +3083,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_D_13",
-   "x": -122.888,
+   "x": -176.157,
    "y": 16.0,
-   "z": 38.161,
+   "z": 31.811,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3093,9 +3093,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_D_14",
-   "x": -198.566,
+   "x": -202.905,
    "y": 16.0,
-   "z": 98.146,
+   "z": 115.761,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3103,9 +3103,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_D_15",
-   "x": -188.972,
+   "x": -110.769,
    "y": 16.0,
-   "z": 33.694,
+   "z": 34.728,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3113,9 +3113,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_D_16",
-   "x": -207.53,
+   "x": -178.214,
    "y": 16.0,
-   "z": 63.176,
+   "z": 48.935,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3123,9 +3123,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_D_17",
-   "x": -116.415,
+   "x": -156.552,
    "y": 16.0,
-   "z": 70.946,
+   "z": 55.49,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3133,9 +3133,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_D_18",
-   "x": -193.884,
+   "x": -198.497,
    "y": 16.0,
-   "z": 111.749,
+   "z": 98.053,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3143,9 +3143,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_D_19",
-   "x": -194.551,
+   "x": -108.995,
    "y": 16.0,
-   "z": 58.443,
+   "z": 61.571,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3153,9 +3153,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_D_20",
-   "x": -136.175,
+   "x": -165.929,
    "y": 16.0,
-   "z": 41.501,
+   "z": 38.233,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3163,9 +3163,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_D_21",
-   "x": -167.337,
+   "x": -118.995,
    "y": 16.0,
-   "z": 58.275,
+   "z": 58.788,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3173,9 +3173,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_D_22",
-   "x": -159.381,
+   "x": -152.929,
    "y": 16.0,
-   "z": 40.964,
+   "z": 30.178,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3183,9 +3183,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_E_01",
-   "x": 9.89,
+   "x": 25.713,
    "y": 18.0,
-   "z": 99.913,
+   "z": 80.185,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3193,9 +3193,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_E_02",
-   "x": -25.248,
+   "x": -11.501,
    "y": 18.0,
-   "z": 86.466,
+   "z": 81.456,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3203,9 +3203,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_E_03",
-   "x": 3.627,
+   "x": 4.062,
    "y": 18.0,
-   "z": 62.797,
+   "z": 115.754,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3213,9 +3213,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_E_04",
-   "x": 54.324,
+   "x": -2.85,
    "y": 18.0,
-   "z": 88.667,
+   "z": 52.554,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3223,9 +3223,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_E_05",
-   "x": 43.299,
+   "x": 57.035,
    "y": 18.0,
-   "z": 59.989,
+   "z": 86.718,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3233,9 +3233,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_E_06",
-   "x": -16.228,
+   "x": 44.939,
    "y": 18.0,
-   "z": 40.209,
+   "z": 116.907,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3243,9 +3243,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_E_07",
-   "x": 42.85,
+   "x": 43.254,
    "y": 18.0,
-   "z": 119.516,
+   "z": 59.939,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3253,9 +3253,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_E_08",
-   "x": -12.189,
+   "x": 25.811,
    "y": 18.0,
-   "z": 115.063,
+   "z": 104.646,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3263,9 +3263,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_E_09",
-   "x": 29.261,
+   "x": 20.218,
    "y": 18.0,
-   "z": 81.924,
+   "z": 58.4,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3273,9 +3273,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_E_10",
-   "x": -31.697,
+   "x": -24.748,
    "y": 18.0,
-   "z": 63.694,
+   "z": 54.378,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3283,9 +3283,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_E_11",
-   "x": -0.678,
+   "x": -28.733,
    "y": 18.0,
-   "z": 83.284,
+   "z": 73.1,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3293,9 +3293,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_E_12",
-   "x": 5.125,
+   "x": -14.941,
    "y": 18.0,
-   "z": 42.877,
+   "z": 118.323,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3303,9 +3303,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_E_13",
-   "x": 21.816,
+   "x": -25.277,
    "y": 18.0,
-   "z": 55.562,
+   "z": 93.422,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3313,9 +3313,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_E_14",
-   "x": 62.03,
+   "x": 4.559,
    "y": 18.0,
-   "z": 117.613,
+   "z": 89.958,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3323,9 +3323,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_E_15",
-   "x": 18.042,
+   "x": 7.146,
    "y": 18.0,
-   "z": 117.038,
+   "z": 70.566,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3333,9 +3333,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_E_16",
-   "x": 58.173,
+   "x": 43.978,
    "y": 18.0,
-   "z": 70.912,
+   "z": 99.263,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3343,9 +3343,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_E_17",
-   "x": 36.853,
+   "x": 10.509,
    "y": 18.0,
-   "z": 96.905,
+   "z": 42.216,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3353,9 +3353,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_E_18",
-   "x": -29.687,
+   "x": 41.123,
    "y": 18.0,
-   "z": 102.261,
+   "z": 79.455,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3363,9 +3363,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_E_19",
-   "x": 3.541,
+   "x": 54.032,
    "y": 18.0,
-   "z": 115.895,
+   "z": 71.964,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3373,9 +3373,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_E_20",
-   "x": -13.99,
+   "x": 11.834,
    "y": 18.0,
-   "z": 95.662,
+   "z": 103.913,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3383,9 +3383,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_E_21",
-   "x": 25.107,
+   "x": -4.563,
    "y": 18.0,
-   "z": 104.629,
+   "z": 100.485,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3393,9 +3393,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_E_22",
-   "x": 16.075,
+   "x": 57.972,
    "y": 18.0,
-   "z": 77.759,
+   "z": 117.325,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3403,9 +3403,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_F_01",
-   "x": 125.848,
+   "x": 130.274,
    "y": 15.0,
-   "z": -80.27,
+   "z": -91.369,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3413,7 +3413,7 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_F_02",
-   "x": 145.259,
+   "x": 145.291,
    "y": 15.0,
    "z": -53.185,
    "footprint": 0.0,
@@ -3423,9 +3423,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_F_03",
-   "x": 213.625,
+   "x": 213.219,
    "y": 15.0,
-   "z": -39.964,
+   "z": -46.727,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3433,9 +3433,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_F_04",
-   "x": 179.345,
+   "x": 179.414,
    "y": 15.0,
-   "z": -42.896,
+   "z": -42.903,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3443,9 +3443,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_F_05",
-   "x": 148.619,
+   "x": 146.773,
    "y": 15.0,
-   "z": -102.652,
+   "z": -22.587,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3453,9 +3453,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_F_06",
-   "x": 143.05,
+   "x": 168.447,
    "y": 15.0,
-   "z": -20.049,
+   "z": -106.821,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3463,9 +3463,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_F_07",
-   "x": 226.516,
+   "x": 227.987,
    "y": 15.0,
-   "z": -99.561,
+   "z": -98.537,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3473,9 +3473,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_F_08",
-   "x": 122.556,
+   "x": 220.682,
    "y": 15.0,
-   "z": -109.851,
+   "z": -20.7,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3483,9 +3483,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_F_09",
-   "x": 124.05,
+   "x": 153.335,
    "y": 15.0,
-   "z": -40.394,
+   "z": -82.827,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3493,9 +3493,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_F_10",
-   "x": 225.05,
+   "x": 123.12,
    "y": 15.0,
-   "z": -21.009,
+   "z": -67.594,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3503,9 +3503,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_F_11",
-   "x": 158.472,
+   "x": 124.157,
    "y": 15.0,
-   "z": -34.634,
+   "z": -21.681,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3513,9 +3513,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_F_12",
-   "x": 152.473,
+   "x": 148.433,
    "y": 15.0,
-   "z": -82.737,
+   "z": -103.954,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3523,9 +3523,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_F_13",
-   "x": 168.411,
+   "x": 127.094,
    "y": 15.0,
-   "z": -106.843,
+   "z": -41.033,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3533,9 +3533,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_F_14",
-   "x": 126.965,
+   "x": 217.305,
    "y": 15.0,
-   "z": -59.535,
+   "z": -112.348,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3543,9 +3543,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_F_15",
-   "x": 221.519,
+   "x": 158.465,
    "y": 15.0,
-   "z": -56.623,
+   "z": -34.599,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3553,9 +3553,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_F_16",
-   "x": 217.314,
+   "x": 129.434,
    "y": 15.0,
-   "z": -112.265,
+   "z": -107.225,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3563,9 +3563,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_F_17",
-   "x": 138.973,
+   "x": 142.626,
    "y": 15.0,
-   "z": -34.798,
+   "z": -68.151,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3573,9 +3573,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_F_18",
-   "x": 137.003,
+   "x": 227.84,
    "y": 15.0,
-   "z": -93.551,
+   "z": -33.61,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3583,9 +3583,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_F_19",
-   "x": 226.713,
+   "x": 213.733,
    "y": 15.0,
-   "z": -36.606,
+   "z": -32.761,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3593,9 +3593,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_F_20",
-   "x": 209.964,
+   "x": 132.541,
    "y": 15.0,
-   "z": -27.503,
+   "z": -56.138,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3603,9 +3603,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_F_21",
-   "x": 134.815,
+   "x": 138.599,
    "y": 15.0,
-   "z": -105.453,
+   "z": -35.532,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3613,9 +3613,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_F_22",
-   "x": 124.863,
+   "x": 142.643,
    "y": 15.0,
-   "z": -95.464,
+   "z": -89.582,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3623,9 +3623,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_G_01",
-   "x": 175.346,
+   "x": 175.267,
    "y": 21.0,
-   "z": 54.676,
+   "z": 54.608,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3633,9 +3633,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_G_02",
-   "x": 146.442,
+   "x": 216.749,
    "y": 21.0,
-   "z": 67.607,
+   "z": 74.723,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3643,9 +3643,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_G_03",
-   "x": 218.035,
+   "x": 145.966,
    "y": 21.0,
-   "z": 76.219,
+   "z": 81.212,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3653,9 +3653,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_G_04",
-   "x": 204.737,
+   "x": 136.098,
    "y": 21.0,
-   "z": 111.951,
+   "z": 49.734,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3663,9 +3663,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_G_05",
-   "x": 201.572,
+   "x": 205.262,
    "y": 21.0,
-   "z": 38.102,
+   "z": 111.062,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3673,9 +3673,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_G_06",
-   "x": 165.665,
+   "x": 203.821,
    "y": 21.0,
-   "z": 103.716,
+   "z": 36.378,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3683,9 +3683,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_G_07",
-   "x": 133.406,
+   "x": 163.656,
    "y": 21.0,
-   "z": 108.193,
+   "z": 107.46,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3693,9 +3693,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_G_08",
-   "x": 137.141,
+   "x": 130.452,
    "y": 21.0,
-   "z": 35.773,
+   "z": 108.939,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3703,9 +3703,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_G_09",
-   "x": 131.679,
+   "x": 156.663,
    "y": 21.0,
-   "z": 86.451,
+   "z": 62.55,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3713,26 +3713,6 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_G_10",
-   "x": 160.889,
-   "y": 21.0,
-   "z": 83.197,
-   "footprint": 0.0,
-   "clearRadius": 0.5,
-   "mesh": "character"
-  },
-  {
-   "kind": "patrol_slot",
-   "id": "Patrol_G_11",
-   "x": 219.271,
-   "y": 21.0,
-   "z": 55.175,
-   "footprint": 0.0,
-   "clearRadius": 0.5,
-   "mesh": "character"
-  },
-  {
-   "kind": "patrol_slot",
-   "id": "Patrol_G_12",
    "x": 189.12,
    "y": 21.0,
    "z": 69.533,
@@ -3742,10 +3722,30 @@
   },
   {
    "kind": "patrol_slot",
-   "id": "Patrol_G_13",
-   "x": 177.754,
+   "id": "Patrol_G_11",
+   "x": 213.741,
    "y": 21.0,
-   "z": 36.255,
+   "z": 53.757,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_G_12",
+   "x": 170.143,
+   "y": 21.0,
+   "z": 35.624,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_G_13",
+   "x": 166.532,
+   "y": 21.0,
+   "z": 89.7,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3753,9 +3753,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_G_14",
-   "x": 217.489,
+   "x": 153.479,
    "y": 21.0,
-   "z": 98.63,
+   "z": 41.987,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3763,9 +3763,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_G_15",
-   "x": 134.361,
+   "x": 214.466,
    "y": 21.0,
-   "z": 54.921,
+   "z": 96.852,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3773,9 +3773,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_G_16",
-   "x": 153.482,
+   "x": 187.286,
    "y": 21.0,
-   "z": 41.945,
+   "z": 43.827,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3783,9 +3783,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_G_17",
-   "x": 166.054,
+   "x": 137.458,
    "y": 21.0,
-   "z": 66.618,
+   "z": 65.512,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3793,9 +3793,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_G_18",
-   "x": 193.364,
+   "x": 135.991,
    "y": 21.0,
-   "z": 55.397,
+   "z": 94.41,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3803,6 +3803,26 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_G_19",
+   "x": 130.914,
+   "y": 21.0,
+   "z": 80.044,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_G_20",
+   "x": 132.216,
+   "y": 21.0,
+   "z": 35.334,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_G_21",
    "x": 203.116,
    "y": 21.0,
    "z": 66.867,
@@ -3812,67 +3832,7 @@
   },
   {
    "kind": "patrol_slot",
-   "id": "Patrol_G_20",
-   "x": 133.672,
-   "y": 21.0,
-   "z": 73.207,
-   "footprint": 0.0,
-   "clearRadius": 0.5,
-   "mesh": "character"
-  },
-  {
-   "kind": "patrol_slot",
-   "id": "Patrol_G_21",
-   "x": 143.883,
-   "y": 21.0,
-   "z": 82.116,
-   "footprint": 0.0,
-   "clearRadius": 0.5,
-   "mesh": "character"
-  },
-  {
-   "kind": "patrol_slot",
    "id": "Patrol_G_22",
-   "x": 163.47,
-   "y": 21.0,
-   "z": 50.044,
-   "footprint": 0.0,
-   "clearRadius": 0.5,
-   "mesh": "character"
-  },
-  {
-   "kind": "patrol_slot",
-   "id": "Patrol_G_23",
-   "x": 210.275,
-   "y": 21.0,
-   "z": 86.108,
-   "footprint": 0.0,
-   "clearRadius": 0.5,
-   "mesh": "character"
-  },
-  {
-   "kind": "patrol_slot",
-   "id": "Patrol_G_24",
-   "x": 187.334,
-   "y": 21.0,
-   "z": 43.986,
-   "footprint": 0.0,
-   "clearRadius": 0.5,
-   "mesh": "character"
-  },
-  {
-   "kind": "patrol_slot",
-   "id": "Patrol_G_25",
-   "x": 177.855,
-   "y": 21.0,
-   "z": 66.025,
-   "footprint": 0.0,
-   "clearRadius": 0.5,
-   "mesh": "character"
-  },
-  {
-   "kind": "patrol_slot",
-   "id": "Patrol_G_26",
    "x": 177.122,
    "y": 21.0,
    "z": 105.195,
@@ -3882,10 +3842,50 @@
   },
   {
    "kind": "patrol_slot",
+   "id": "Patrol_G_23",
+   "x": 193.326,
+   "y": 21.0,
+   "z": 55.349,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_G_24",
+   "x": 207.693,
+   "y": 21.0,
+   "z": 85.351,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_G_25",
+   "x": 163.503,
+   "y": 21.0,
+   "z": 50.107,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
+   "id": "Patrol_G_26",
+   "x": 168.265,
+   "y": 21.0,
+   "z": 65.654,
+   "footprint": 0.0,
+   "clearRadius": 0.5,
+   "mesh": "character"
+  },
+  {
+   "kind": "patrol_slot",
    "id": "Patrol_H_01",
-   "x": 37.688,
+   "x": 37.704,
    "y": 26.0,
-   "z": 260.579,
+   "z": 260.61,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3893,9 +3893,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_H_02",
-   "x": -33.143,
+   "x": -33.139,
    "y": 26.0,
-   "z": 197.114,
+   "z": 197.144,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3923,9 +3923,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_H_05",
-   "x": 50.457,
+   "x": 50.487,
    "y": 26.0,
-   "z": 258.942,
+   "z": 259.003,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3933,9 +3933,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_H_06",
-   "x": -40.278,
+   "x": -40.297,
    "y": 26.0,
-   "z": 205.381,
+   "z": 205.353,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3943,9 +3943,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_H_07",
-   "x": 47.565,
+   "x": 47.578,
    "y": 26.0,
-   "z": 248.647,
+   "z": 248.678,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3953,9 +3953,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_H_08",
-   "x": -42.611,
+   "x": -42.658,
    "y": 26.0,
-   "z": 198.307,
+   "z": 198.3,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3973,9 +3973,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S1_01",
-   "x": -277.548,
+   "x": -272.102,
    "y": 7.0,
-   "z": -108.604,
+   "z": -99.424,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3983,9 +3983,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S1_02",
-   "x": -309.569,
+   "x": -307.577,
    "y": 7.0,
-   "z": -110.922,
+   "z": -110.949,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -3993,9 +3993,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S1_03",
-   "x": -298.123,
+   "x": -298.419,
    "y": 7.0,
-   "z": -87.124,
+   "z": -87.138,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4003,9 +4003,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S1_04",
-   "x": -271.143,
+   "x": -275.701,
    "y": 7.0,
-   "z": -89.799,
+   "z": -113.521,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4013,9 +4013,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S1_05",
-   "x": -308.004,
+   "x": -288.94,
    "y": 7.0,
-   "z": -95.716,
+   "z": -95.865,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4023,9 +4023,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S1_06",
-   "x": -288.981,
+   "x": -308.412,
    "y": 7.0,
-   "z": -95.857,
+   "z": -95.387,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4033,9 +4033,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S1_07",
-   "x": -270.312,
+   "x": -271.116,
    "y": 7.0,
-   "z": -105.69,
+   "z": -89.638,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4043,9 +4043,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S1_08",
-   "x": -304.934,
+   "x": -288.81,
    "y": 7.0,
-   "z": -105.133,
+   "z": -87.884,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4053,9 +4053,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S2_01",
-   "x": -280.979,
+   "x": -281.02,
    "y": 13.0,
-   "z": 97.394,
+   "z": 97.639,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4063,9 +4063,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S2_02",
-   "x": -298.529,
+   "x": -299.802,
    "y": 13.0,
-   "z": 116.821,
+   "z": 116.954,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4073,9 +4073,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S2_03",
-   "x": -266.336,
+   "x": -267.514,
    "y": 13.0,
-   "z": 114.145,
+   "z": 114.967,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4083,9 +4083,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S2_04",
-   "x": -265.569,
+   "x": -267.067,
    "y": 13.0,
-   "z": 83.263,
+   "z": 83.112,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4093,9 +4093,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S2_05",
-   "x": -298.121,
+   "x": -265.722,
    "y": 13.0,
-   "z": 100.613,
+   "z": 101.21,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4103,9 +4103,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S2_06",
-   "x": -268.463,
+   "x": -281.587,
    "y": 13.0,
-   "z": 101.751,
+   "z": 89.066,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4113,9 +4113,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S2_07",
-   "x": -277.884,
+   "x": -277.267,
    "y": 13.0,
-   "z": 114.822,
+   "z": 103.704,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4123,9 +4123,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S2_08",
-   "x": -275.302,
+   "x": -274.583,
    "y": 13.0,
-   "z": 86.097,
+   "z": 96.811,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4133,9 +4133,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S3_01",
-   "x": 283.088,
+   "x": 288.973,
    "y": 10.0,
-   "z": -62.039,
+   "z": -68.05,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4143,9 +4143,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S3_02",
-   "x": 323.917,
+   "x": 323.346,
    "y": 10.0,
-   "z": -86.564,
+   "z": -85.715,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4153,9 +4153,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S3_03",
-   "x": 306.349,
+   "x": 280.305,
    "y": 10.0,
-   "z": -62.059,
+   "z": -47.362,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4163,9 +4163,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S3_04",
-   "x": 284.304,
+   "x": 280.946,
    "y": 10.0,
-   "z": -83.888,
+   "z": -86.72,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4173,9 +4173,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S3_05",
-   "x": 291.967,
+   "x": 306.892,
    "y": 10.0,
-   "z": -54.829,
+   "z": -61.889,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4183,9 +4183,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S3_06",
-   "x": 282.546,
+   "x": 322.682,
    "y": 10.0,
-   "z": -72.846,
+   "z": -70.058,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4193,9 +4193,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S3_07",
-   "x": 283.143,
+   "x": 297.873,
    "y": 10.0,
-   "z": -52.861,
+   "z": -53.721,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4203,9 +4203,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S4_01",
-   "x": 282.442,
+   "x": 281.473,
    "y": 26.0,
-   "z": 80.25,
+   "z": 78.328,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4213,9 +4213,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S4_02",
-   "x": 309.453,
+   "x": 311.58,
    "y": 26.0,
-   "z": 61.735,
+   "z": 54.889,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4223,9 +4223,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S4_03",
-   "x": 314.022,
+   "x": 315.288,
    "y": 26.0,
-   "z": 96.265,
+   "z": 93.865,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4233,9 +4233,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S4_04",
-   "x": 275.335,
+   "x": 275.109,
    "y": 26.0,
-   "z": 53.955,
+   "z": 55.551,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4243,9 +4243,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S4_05",
-   "x": 292.552,
+   "x": 272.836,
    "y": 26.0,
-   "z": 60.041,
+   "z": 95.223,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4253,9 +4253,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S4_06",
-   "x": 275.71,
+   "x": 310.763,
    "y": 26.0,
-   "z": 95.211,
+   "z": 76.432,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4263,9 +4263,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S4_07",
-   "x": 275.411,
+   "x": 292.549,
    "y": 26.0,
-   "z": 66.53,
+   "z": 60.0,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4273,9 +4273,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S4_08",
-   "x": 314.297,
+   "x": 306.253,
    "y": 26.0,
-   "z": 71.353,
+   "z": 64.979,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4283,9 +4283,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S4_09",
-   "x": 296.638,
+   "x": 296.645,
    "y": 26.0,
-   "z": 69.501,
+   "z": 69.466,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"
@@ -4293,9 +4293,9 @@
   {
    "kind": "patrol_slot",
    "id": "Patrol_S4_10",
-   "x": 275.083,
+   "x": 281.357,
    "y": 26.0,
-   "z": 75.977,
+   "z": 87.597,
    "footprint": 0.0,
    "clearRadius": 0.5,
    "mesh": "character"

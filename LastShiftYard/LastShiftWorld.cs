@@ -91,11 +91,14 @@ namespace BossRush
             int ground = 0, walls = 0;
             foreach (Collider collider in collision.GetComponentsInChildren<Collider>(true))
             {
-                if (collider.name == "COL_Ground") { collider.gameObject.layer = groundLayer; ground++; }
+                // COL_Ground 是地坪网格，COL_Ground_Overhead 是跨线桥面与司机室楼面（2026-11-12 起架空层单独成一张地面碰撞）
+                if (collider.name.StartsWith("COL_Ground", StringComparison.Ordinal)) { collider.gameObject.layer = groundLayer; ground++; }
                 else { collider.gameObject.layer = wallLayer; walls++; }
             }
             if (ground == 0 || walls == 0) throw new InvalidOperationException("末班编组站地面或墙体碰撞体缺失");
-            Debug.Log(LastShiftRaidScene.LogTag + " LAYERS_READY ground=" + ground + " walls=" + walls + " shaders=" + checkedShaders.Count);
+            Physics.SyncTransforms();
+            int halfCover = RaidHalfCover.Register(collision, wallLayer, TryGroundAt);
+            Debug.Log(LastShiftRaidScene.LogTag + " LAYERS_READY ground=" + ground + " walls=" + walls + " halfCover=" + halfCover + " shaders=" + checkedShaders.Count);
         }
 
         internal static bool OutsidePlayArea(Vector3 position)

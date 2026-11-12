@@ -48,6 +48,19 @@ def bake_minimap(src: Path):
         ink.ellipse((x - 3, z - 3, x + 3, z + 3), fill=255)
     mask = mask.filter(ImageFilter.MaxFilter(9)).filter(ImageFilter.GaussianBlur(3.5))
     raw.putalpha(mask.resize(raw.size, Image.Resampling.BICUBIC))
+    # 站界画成墨色虚线（读图通则 §6.1，2026-11-12）：场景里沿站界是一圈废钢轨栅栏，撤离点处留门口
+    k = raw.size[0] / side
+    pen = ImageDraw.Draw(raw)
+    land = layout['land']
+    pts = [((p[0] if isinstance(p, list) else p['x']) + side / 2, (p[1] if isinstance(p, list) else p['z']) + side / 2) for p in land]
+    dash, gap, width = 5.0, 2.5, max(2, int(round(1.2 * k)))
+    for i in range(len(pts)):
+        (ax, az), (bx, bz) = pts[i], pts[(i + 1) % len(pts)]
+        length, t = ((bx - ax) ** 2 + (bz - az) ** 2) ** 0.5, 0.0
+        while t < length:
+            u0, u1 = t / length, min(length, t + dash) / length
+            pen.line(((ax + (bx - ax) * u0) * k, (az + (bz - az) * u0) * k, (ax + (bx - ax) * u1) * k, (az + (bz - az) * u1) * k), fill=(59, 50, 38, 210), width=width)
+            t += dash + gap
     raw.save(md / 'lastshift_minimap.png', optimize=True)
 
 

@@ -51,6 +51,8 @@ IDENTIFIERS = (
     "DevFastForward",
     "DevCountNodes",
     "LSY_DRILL_ASSEMBLY",
+    # 2026-11-12 三图卡脚探针（DebugAndTools/RaidStuckProbe.cs）。
+    "RaidStuckProbe",
 )
 
 

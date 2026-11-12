@@ -18,6 +18,9 @@ parser.add_argument('--layout',type=Path,default=ROOT/'ArtSource/SkyIsland/layou
 parser.add_argument('--footprints',type=Path,required=True)
 parser.add_argument('--output',type=Path,default=ROOT/'ArtSource/SkyIsland/collision_navigation.json')
 parser.add_argument('--physics-report',type=Path)
+# 2026-11-12：最细档烘出来的三角形更碎，巡守选点（tools/sky_island_patrol_slots.py 只取三角形中心）可能凑不够；
+# 这时从更粗的一档起试，判据不变。用了就写进 NAVIGATION.md 的重建记录。
+parser.add_argument('--min-tolerance',type=float,default=.80)
 args=parser.parse_args();root=ROOT;layout=json.loads(args.layout.read_text(encoding='utf-8-sig'))
 source=json.loads(args.footprints.read_text(encoding='utf-8'))
 byregion=defaultdict(list);object_shapes={};object_regions={}
@@ -83,7 +86,7 @@ if args.physics_report:
    if name in object_shapes:precise_solids.add(name)
 if not precise_solids.issubset(object_shapes):
  raise RuntimeError('A precision-tagged component changed; review the navigation bake inputs')
-for tolerance in (.80,.90,1.0,1.1):
+for tolerance in [t for t in (.80,.90,1.0,1.1) if t>=args.min_tolerance-1e-9]:
  blocked={k:v.buffer(.50+tolerance,quad_segs=1,cap_style=3,join_style=2,mitre_limit=5).simplify(tolerance,preserve_topology=True) for k,v in compact.items()}
  for name in precise_solids:
   region=object_regions[name]

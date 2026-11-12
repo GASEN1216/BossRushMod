@@ -450,3 +450,16 @@ owner 要求全面审查计划，并使新窗口可一次授权后完成全部�
 ## 2026-11-06：潮闸镇 Dev 演练接进 F3 规则
 
 `DebugAndTools/AGENTS.md` 只读套件那一条补一句：潮闸镇演练（`F3GameplayValidationTidegateDrill*.cs`，钩子 `Tidegate/TidegateDrillHooks.cs`）沿用天空岛演练的纪律，由 `TidegateDrillGuard` 守，纯判据回归 `tests/fixtures/TidegateDrillJudges`。规则本身未改；`tests/SkyIslandValidationSuiteGuard.py` 的运行标记与收尾清理两条断言同步认 `_tidegateDrill`（更严，不是放宽），兼容性 SAFE（Dev 专用）。
+
+## 2026-11-11：新地图流程补「3D 场景边缘渐变」
+
+`guides/new-map/02_three.js原型与精修.md` §4.1 规则加一条：玩法区外的地形用同一套公式、同一套地表贴图继续延伸，边界 8 m 内平滑过渡；外圈只放稀疏散布；雾跟镜头距离走，全景与巡览镜头距离设上限并随窗口尺寸重算（依据潮闸镇 `terrain.js` / `world.js` / `build.js`）。§5 第 4 项改为「俯视图与边缘」，自查加上拉到全图、手机竖屏各看一次。起因：末班编组站独立审核发现场景是切出来的台面、竖屏默认视角整屏雾色，而原文只写了 M 图羽化。
+同日把 `guides/new-map/` 复制进 `BossRushMod-raid-scene` 工作树并修好其 `docs/README.md` 的断链（仍指向已不存在的 `guides/新地图与新内容制作流程.md`）。`docs/` 不进公开仓库，新开工作树不会自动带上这些流程文档。
+
+## 2026-11-11：新地图流程 03 补四条 Blender 组装坑
+
+末班编组站阶段 4 组装时查出：glTF 导入器丢实例颜色、FBX 导出器对共享网格只给第一个对象连材质、JSON 串材质名 FBX 往返被截断、`onBeforeCompile` 改动不进 glTF。`guides/new-map/03_Blender组装.md` §9 各加一条（主工作树与 raid-scene 工作树副本同步）。潮闸镇 containers 组有 40 个共享网格、street / setpieces / props 有实例，可能踩了第二条，未核实，未改潮闸镇。
+
+## 2026-11-12：自研出击地图读图通则（三图共用）
+
+玩家反馈「地图边界不明；分不清哪些能挡子弹、哪些是贴图；天空岛太空旷、Boss 扎堆、没掩体；潮闸镇莫名其妙卡脚」。`SkyIsland/AGENTS.md` 新增 §6.1「自研出击地图读图通则」（看得见 = 摸得着、0.12–0.6 m 实体禁区与 0.8–1.4 m 半掩体、碰撞贴模型、边界是实物、战斗区要有掩体与减杂件、离线审计），潮闸镇与末班编组站模块规则已经引用该文件。`guides/new-map/` README 加读图通则总表，02 §4.1 推翻 11-11 那条「边缘无缝渐变、靠空气墙」改为「边界必须有符合环境的实物，铁轨 / 公路 / 撤离点按常理留口」，03 §5.1、04 §5.1、06 §2 / §4.1 各补对应做法（逐件碰撞、栏杆跟坡、架空层、按地块选边界实物、读图审计、Dev 卡脚探针）。

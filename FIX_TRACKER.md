@@ -2,6 +2,18 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+## 2026-11-12 三张自研图读图优化：边界实物、逐件碰撞、半掩体、天空岛掩体与错峰（COMPAT；L1/L2，L3 待 owner）
+
+玩家反馈「地图边界不明；地面无用装饰太多，分不清哪些有实体能挡子弹；天空岛太空旷、Boss 扎堆、没有掩体拉扯；潮闸镇特别容易被莫名其妙的东西卡脚」。owner 追加：边缘空气墙处放符合环境的实物；火车要过的地方别拦，要符合常理；教训写进 `docs/guides/new-map/`。
+
+- 规则：`SkyIsland/AGENTS.md` §6.1 读图通则（三图共用）；新地图流程 README / 02 / 03 / 04 / 06 同步（`docs/ai-docs-migration.md` 有记）。
+- 共用：`Utilities/RaidHalfCover.cs`（0.8–1.4 m 墙层盒挂贴身触发区，主角贴着时子弹越过，复用 ModeF 触发器与 `BossRushProjectileInitPatch`）；Dev 卡脚探针 `DebugAndTools/RaidStuckProbe.cs`（`[RaidStuck] STUCK` / `PARAMS`）；审计 `tools/map_readability_audit.py` 与三个 `*ReadabilityPropertyTest`（反向验证各自转红，登记 `EXTERNAL_ARTIFACT_GUARDS`）。
+- 潮闸镇：碰撞改逐件有向盒（建筑墙 / 家具 / 外梯 / 管道 `tools/build_tidegate_building_colliders.mjs`；散布 / 大件 / 路灯 / 搜刮箱 / 阀门按可见网格），0.6 m 以下杂物无实体、战斗区杂件减半；栏杆网格碰撞阈值 0.3 → 0.6 m、外梯实心块；边界按地块放木栅栏 / 钢栅栏 / 隔离墩 / 警示桩，撤离口留空；三个刷怪 / 巡逻点挪出车与集装箱；导航 3456 → 3708 顶点。包 `25c0db1e…`。
+- 末班编组站：站界废钢轨栅栏，铁轨出站处断开架限界门；栏杆跟坡分段；跨线桥 / 司机室下落回地坪、架空层另起 `COL_Ground_Overhead` 与桥墩立柱盒；押运长火线东侧两高两矮四块掩体；矮实心体去掉或并柱。包 `03f6fa39…`。
+- 天空岛：E 与 S1–S4 头目场各一高一矮 `ArenaCover`（单独成组、登记半掩体）；遭遇组 6.5 m 散开、45 m 错峰、遭遇战 30 m 内不拉新巡守；灌木 / 绿篱压到 0.55 m；岛缘石块改贴地碎石（H / S1 保留，保巡守槽位）；护栏木梁加粗；B3 搜刮箱挪出路缘。发布导航 4073（0.9 档），场景审计 0 开放缺陷，作者碰撞校验 0 失败（顺带放行 `SkyPavilionRooms` 触发盒误报），ECM2 行走模拟 PASS。包 `00765c0c…`。
+- 验证：全量守卫 762 PASS；隔离回归 SkyIsland / Tidegate / LastShift 全 PASS（两个夹具补 `RaidHalfCover` 替身，`TidegateDrillJudges` 点位样本随挪点更新）；Windows 正式编译部署，DLL 与三包按 D 盘游戏目录 SHA-256 一致，正式 DLL 无 Dev 标识。
+- 未做 / 未验证：没开游戏（L3 待 owner：`M_TIDEGATE_READ`、`M_LASTSHIFT_READ`、`M_SKY_ISLAND_24`，回传 `[RaidStuck]` 行）；末班编组站导航单层，AI 不钻桥下；BossRushMod 与作者工程改动均未提交。
+
 ## 2026-11-12 末班编组站并入 main、杰夫引导门槛与流程断点（COMPAT / SCHEMA+；L1/L2，L3 待 owner）
 
 owner 反馈「杰夫也没有开新任务」。查明两层原因：一是游戏目录 11-11 17:01 被移走 `lastshift_raid` / `lastshift_entry`，17:04 换成 main 正式构建（SHA-256 `12DE18F4…460A`，不含本图任何代码），590216 根本不存在；二是 `LastShiftJeffIntro.CanOffer` 要求「没见过余响且没从编组站撤离过」，先自己摸到仓库区的档（含 owner 实测档）永远接不到。对照天空岛序章 590001（可接只看接取 / 交付位 + 包在不在），改为没接没交且两包都在就发；接之前见过余响，目标直接算完成，杰夫换一句「你已经见过她了？」。`docs/contracts.md` 同步。

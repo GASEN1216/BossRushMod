@@ -206,6 +206,20 @@ def make_obstacles(islands):
     }.items():
         for i, (x,z,w,d) in enumerate(entries):
             add(region, "Cover%02d" % (i+1), "cover", x,z,w,d,1.2)
+    # 2026-11-12 玩家反馈「天空岛太空旷、Boss 扎堆、没有掩体拉扯」：噬风 / E_03 与 S1–S4 头目场 15 m 内硬物最少（11–25 格）。
+    # 每处补一块 1.8 m 的全掩体（挡得住招式）和一块 1.2 m 的半掩体（贴着能越过开枪，Utilities/RaidHalfCover.cs）；
+    # 落点离敌群 7–9 m、在岛面内收 4 m 以内、不压路与玩法点，生成器另按 ArenaCover 各自成组（碰撞体单独、可登记半掩体）。
+    # 每块在设计导航上约多 18 个顶点（S 小岛地面三角片细），10 块是 4095 上限内的量；发布导航靠岛缘石块改贴地碎石腾预算。
+    for region, entries in {
+        "E": [(23.07,92.57,"tall"),(16.4,99.71,"half")],
+        "S1": [(-324.1,-241.1,"tall"),(-330.8,-239.2,"half")],
+        "S2": [(-347.2,210.8,"tall"),(-353.9,208.9,"half")],
+        "S3": [(383.0,-186.0,"tall"),(379.5,-179.9,"half")],
+        "S4": [(378.0,294.0,"tall"),(374.5,300.1,"half")],
+    }.items():
+        for i, (x,z,size) in enumerate(entries):
+            w,d,h = (2.2,1.4,1.8) if size == "tall" else (2.6,1.2,1.2)
+            add(region, "ArenaCover%02d" % (i+1), "cover", x,z,w,d,h)
     from sky_island_settlement import load_obstacles
     result.extend(load_obstacles())
     return result

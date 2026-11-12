@@ -5148,6 +5148,11 @@
       "evidence": [
         "SKY_PATROL_RUNTIME"
       ]
+    },
+    {
+      "checklist": "M_SKY_ISLAND_24",
+      "class": "manual",
+      "reason": "手感 / 好不好玩：头目场一高一矮两块掩体能不能绕着拉扯、矮的贴着越射、三人散开与两组错峰的节奏，日志和截图都证不了；半掩体登记数由 RENDER_READY halfCover= 读"
     }
   ]
 }

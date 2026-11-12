@@ -94,9 +94,13 @@ namespace UnityEngine
         public void SetTextureOffset(string key, Vector2 value) { offsets[key] = value; }
         public void SetFloat(string key, float value) { floats[key] = value; }
     }
+    public struct Vector3 { public float x, y, z; }
+    public sealed class Transform : Object { }
+    public static class Physics { public static void SyncTransforms() { } }
     public sealed class GameObject : Object
     {
         public int layer;
+        public Transform transform = new Transform();
         public bool activeInHierarchy = true;
         public MeshRenderer[] Renderers = new MeshRenderer[0];
         public Collider[] Colliders = new Collider[0];
@@ -132,4 +136,14 @@ public sealed class GameCamera
 {
     public static GameCamera Instance;
     public UnityEngine.Camera renderCamera;
+}
+
+// 2026-11-12：Utilities/RaidHalfCover.cs 的替身（半掩体登记只在真场景里有意义，这里只要能编译、返回 0）
+namespace BossRush
+{
+    internal static class RaidHalfCover
+    {
+        internal delegate bool GroundProbe(UnityEngine.Vector3 position, out float y);
+        internal static int Register(UnityEngine.Transform root, int wallLayer, GroundProbe ground, System.Func<UnityEngine.Collider, bool> accept = null) { return 0; }
+    }
 }

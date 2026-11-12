@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import shutil
 import sys
 from pathlib import Path
@@ -49,6 +50,18 @@ def bake_minimap(src: Path):
     # 在海岸外缘留下薄薄的水色，而不是把整张海面画成实心方块。缩放时仍同原图共用中心与比例。
     alpha = mask.resize(raw.size, Image.Resampling.BICUBIC)
     raw.putalpha(alpha)
+    # 可玩区边界画成墨色虚线（读图通则 §6.1，2026-11-12）：场景里沿边是木栅栏和黄顶警示桩，M 图上要能对上
+    k = raw.size[0] / side
+    pen = ImageDraw.Draw(raw)
+    x0, z0 = (side / 2 + g['OX'] + 0.5) * k, (side / 2 + g['OZ'] + 0.5) * k
+    x1, z1 = (side / 2 + g['OX'] + g['W'] - 0.5) * k, (side / 2 + g['OZ'] + g['H'] - 0.5) * k
+    dash, gap, width = 6 * k, 3 * k, max(2, int(round(1.2 * k)))
+    for (ax, az, bx, bz) in ((x0, z0, x1, z0), (x1, z0, x1, z1), (x1, z1, x0, z1), (x0, z1, x0, z0)):
+        length = math.hypot(bx - ax, bz - az); t = 0.0
+        while t < length:
+            u0, u1 = t / length, min(length, t + dash) / length
+            pen.line((ax + (bx - ax) * u0, az + (bz - az) * u0, ax + (bx - ax) * u1, az + (bz - az) * u1), fill=(59, 50, 38, 210), width=width)
+            t += dash + gap
     raw.save(md / 'tidegate_minimap.png', optimize=True)
 
 
@@ -74,6 +87,7 @@ def plan():
         (SRC / 'export' / 'terrain_lagoon.u8', 'Data/terrain_lagoon.bytes'),
         (SRC / 'export' / 'grid_height.f32', 'Data/grid_height.bytes'),
         (SRC / 'export' / 'grid_flag.u8', 'Data/grid_flag.bytes'),
+        (SRC / 'export' / 'grid_zone.u8', 'Data/grid_zone.bytes'),  # TidegateBoundaryBuilder 按地块选边界实物
         (SRC / 'navigation.json', 'Data/navigation.json'),  # tools/build_tidegate_navigation.py
         (SRC / 'minimap' / 'tidegate_minimap.png', 'Minimap/tidegate_minimap.png'),
         (SRC / 'minimap' / 'tidegate_minimap.json', 'Minimap/tidegate_minimap.json'),

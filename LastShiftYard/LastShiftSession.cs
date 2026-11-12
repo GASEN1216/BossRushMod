@@ -396,6 +396,11 @@ namespace BossRush
             pathValid = !path.error && path.vectorPath != null && path.vectorPath.Count >= 2;
         }
 
+#if BOSSRUSH_DEV
+        /// <summary>Dev 卡脚探针（DebugAndTools/RaidStuckProbe.cs），正式构建里不存在。</summary>
+        private readonly RaidStuckProbe stuckProbe = new RaidStuckProbe("lastshift");
+#endif
+
         private void Update()
         {
             if (closed) return;
@@ -442,6 +447,9 @@ namespace BossRush
             catch (Exception e) { TickFault("story", e); }
             // 站界有隐形墙（场景包 `Collision/COL_Boundary`），这里只兜物理穿模或掉出世界。
             if (position.y < -14f || LastShiftWorld.OutsidePlayArea(position)) { Rescue(); return; }
+#if BOSSRUSH_DEV
+            try { stuckProbe.Tick(player); } catch (Exception e) { TickFault("stuck_probe", e); }
+#endif
             if (Time.unscaledTime >= nextGroundCheck)
             {
                 nextGroundCheck = Time.unscaledTime + 0.25f;

@@ -126,7 +126,9 @@ namespace BossRush
             }
             if (ground == 0 || walls == 0) throw new InvalidOperationException("潮闸镇地面或墙体碰撞体缺失");
             AddBoundary(wallLayer);
-            Debug.Log(TidegateRaidScene.LogTag + " LAYERS_READY ground=" + ground + " walls=" + walls + " shaders=" + checkedShaders.Count);
+            Physics.SyncTransforms();
+            int halfCover = RaidHalfCover.Register(Root.transform.Find("Collision"), wallLayer, TryGroundAt);
+            Debug.Log(TidegateRaidScene.LogTag + " LAYERS_READY ground=" + ground + " walls=" + walls + " halfCover=" + halfCover + " shaders=" + checkedShaders.Count);
         }
 
         /// <summary>

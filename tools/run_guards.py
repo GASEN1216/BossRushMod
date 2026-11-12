@@ -55,6 +55,8 @@ EXTERNAL_ARTIFACT_GUARDS = {
     "SkyIslandFxBundleGuard.py", "SkyIslandCollisionNavigationPropertyTest.py",
     "SkyIslandShadowStabilityPropertyTest.py",
     "SkyIslandFloraGeometryPropertyTest.py",
+    # 2026-11-12 读图通则：证据在 local-only 的 ArtSource 下
+    "TidegateReadabilityPropertyTest.py", "LastShiftReadabilityPropertyTest.py", "SkyIslandReadabilityPropertyTest.py",
 }
 
 

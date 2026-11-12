@@ -516,6 +516,7 @@ echo(Utilities\Utilities.cs
 echo(Utilities\BossRushWaitCache.cs
 echo(Utilities\BossStatScaling.cs
 echo(Utilities\BossSkillDamageRules.cs
+echo(Utilities\RaidHalfCover.cs
 echo(Utilities\AlwaysOnRuntimeHooks.cs
 echo(Utilities\PlayerLifecycleRuntimeHooks.cs
 echo(Utilities\EntityModelFactory.cs
@@ -1262,6 +1263,7 @@ echo(Audio\BossRushAudioHooks.cs
 echo(Audio\BossRushAudioRuntimeService.cs
 echo(Audio\BossRushAudioManager.cs
 echo(DebugAndTools\InventoryInspector.cs
+echo(DebugAndTools\RaidStuckProbe.cs
 echo(WavesArena\InfiniteHellCashMagnet.cs
 echo(Integration\Wedding\NPCMarriageSystem.cs
 echo(Integration\Wedding\WeddingChapelInteractable.cs

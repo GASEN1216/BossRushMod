@@ -208,6 +208,21 @@ namespace BossRush
         /// 岛的另一头就会让全岛剧情交互永久不可用。按半径判定既能挡住「开面板当暂停键」，
         /// 又不会因为远处的残敌把主线卡死。活体上限 12，每次遍历开销可忽略。
         /// </summary>
+        /// <summary>自动组错峰半径（米）：这个范围内已有别的组在打，新组先不刷。</summary>
+        internal const float StaggerRange = 45f;
+
+        private bool OtherGroupAliveNear(Encounter self, float radius)
+        {
+            float squared = radius * radius;
+            foreach (Encounter other in encounters)
+            {
+                if (other == self || (other.Marker.position - self.Marker.position).sqrMagnitude > squared) continue;
+                foreach (SkyIslandEnemyRecord actor in other.Actors)
+                    if (!actor.Died && actor.Life != null) return true;
+            }
+            return false;
+        }
+
         internal bool HasLivingEnemiesWithin(Vector3 point, float radius)
         {
             if (closed) return false;
@@ -365,6 +380,8 @@ namespace BossRush
                 int missing = CountMissing(encounter);
                 if (missing == 0 || active + missing > MaxActiveActors) continue;
                 if ((player.transform.position - encounter.Marker.position).sqrMagnitude > AutoSpawnRange * AutoSpawnRange) continue;
+                // 一处只打一组：附近还有别的组活着就先等它（E_03 与噬风相距 21 m、K 中继平台两两相近，原先会一起压上来）。
+                if (OtherGroupAliveNear(encounter, StaggerRange)) continue;
                 Spawn(encounter);
                 break;
             }
@@ -670,12 +687,18 @@ namespace BossRush
             return bossContext;
         }
 
+        /// <summary>
+        /// 带队站在标记点上，其余人散在 6.5 m 外（站不下再收到 4.5 / 3 m）。2026-11-12 玩家反馈「Boss 扎堆」：原先两人贴在 3 m 圈上，
+        /// 三个官方 Boss 底模挤成一团，一梭子能同时打到三个，也没有绕着拉扯的空间。
+        /// </summary>
+        private static readonly float[] SpreadRadii = { 6.5f, 4.5f, 3f };
+
         private Vector3 FindGround(Transform marker, int index)
         {
-            for (int attempt = 0; attempt < 12; attempt++)
+            for (int attempt = 0; attempt < 36; attempt++)
             {
-                float angle = (index * 120 + attempt * 30) * Mathf.Deg2Rad;
-                Vector3 point = marker.position + new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle)) * (index == 0 ? 0 : 3);
+                float angle = (index * 120 + (attempt % 12) * 30) * Mathf.Deg2Rad;
+                Vector3 point = marker.position + new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle)) * (index == 0 ? 0 : SpreadRadii[attempt / 12]);
                 RaycastHit hit;
                 if (Physics.Raycast(point + Vector3.up * 2, Vector3.down, out hit, 4, groundMask, QueryTriggerInteraction.Ignore) &&
                     hit.transform.IsChildOf(root.transform) && !Physics.CheckCapsule(hit.point + Vector3.up * 0.6f,

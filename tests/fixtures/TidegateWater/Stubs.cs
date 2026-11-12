@@ -122,6 +122,7 @@ namespace UnityEngine
     public struct LayerMask { public int value; public static int NameToLayer(string value) { return 4; } }
     public static class Physics
     {
+        public static void SyncTransforms() { }
         internal static readonly List<Collider> Colliders = new List<Collider>();
         public static bool Raycast(Vector3 a, Vector3 b, out RaycastHit hit, float distance, int mask, QueryTriggerInteraction trigger) { hit = new RaycastHit(); return false; }
         public static int OverlapSphereNonAlloc(Vector3 point, float radius, Collider[] results, int mask)
@@ -173,3 +174,13 @@ namespace BossRush
 
 // 屋顶按独立场景包回放验证；水域夹具只覆盖物理与高度查询。
 namespace BossRush { internal sealed class RaidIndoorRoofs : IDisposable { internal RaidIndoorRoofs(UnityEngine.GameObject world, bool pavilions) { } public void Dispose() { } } }
+
+// 2026-11-12：Utilities/RaidHalfCover.cs 的替身（半掩体登记只在真场景里有意义，这里只要能编译、返回 0）
+namespace BossRush
+{
+    internal static class RaidHalfCover
+    {
+        internal delegate bool GroundProbe(UnityEngine.Vector3 position, out float y);
+        internal static int Register(UnityEngine.Transform root, int wallLayer, GroundProbe ground, System.Func<UnityEngine.Collider, bool> accept = null) { return 0; }
+    }
+}

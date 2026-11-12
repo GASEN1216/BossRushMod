@@ -250,11 +250,88 @@ def build_height_collider(src, man, coll):
 
 
 # ---------------- 碰撞：布局里的实心体盒 ----------------
-def build_collision(layout, coll):
+# 读图通则（SkyIsland/AGENTS.md §6.1，2026-11-12）在这里落两条：
+# - 坡道 / 梯段 / 跨线桥引坡两侧的栏杆跟着坡走：原先是一整块水平盒（底高取一个常数），低处悬空、高处埋进坡面，
+#   上半段坡道实际没有侧挡。现在按逻辑网格高度（栏杆内侧 1 m 内的最高格）每 1 m 切一段，写成两端点 `segment`。
+# - 0.12–0.6 m 的矮实心体不给实体：压在另一根柱子下面的（悬车桁架柱脚）并进那根柱子，其余（药箱 0.58 m）去掉。
+LOW_LIMIT = 0.6
+SLOPED_RAILS = ('northRail', 'rampRail')
+
+
+def grid_heights(src, layout):
+    g = layout['grid']
+    h = np.fromfile(src / g['heightFile'], dtype='<f4').reshape(g['depth'], g['width'])
+    ox, oz = g['originX'], g['originZ']
+
+    def at(x, z):
+        i, j = int(math.floor(x - ox + 0.5)), int(math.floor(z - oz + 0.5))
+        if 0 <= i < g['width'] and 0 <= j < g['depth']:
+            return float(h[j, i])
+        return 0.0
+    return at
+
+
+def rail_segments(s, height_at):
+    cx, cz = s['center']; w, h, d = s['size']
+    along_x = w >= d
+    length, thick = (w, d) if along_x else (d, w)
+    n = max(1, int(math.ceil(length - 1e-6)))
+    out = []
+
+    def floor_at(t):
+        x = cx + (t if along_x else 0.0); z = cz + (0.0 if along_x else t)
+        best = 0.0
+        for off in (-1.0, -0.5, 0.0, 0.5, 1.0):  # 栏杆立在边上：取内外 1 m 内最高的那格当脚下
+            best = max(best, height_at(x + (0.0 if along_x else off), z + (off if along_x else 0.0)))
+        return x, best, z
+    for k in range(n):
+        t0, t1 = -length / 2 + length * k / n, -length / 2 + length * (k + 1) / n
+        x0, y0, z0 = floor_at(t0); x1, y1, z1 = floor_at(t1)
+        out.append({'id': '%s_%d' % (s['id'], k), 'segment': [[round(x0, 3), round(y0, 3), round(z0, 3)], [round(x1, 3), round(y1, 3), round(z1, 3)]],
+                    'size': [thick, h, round(math.hypot(x1 - x0, z1 - z0, y1 - y0), 3)]})
+    return out
+
+
+def readable_solids(layout, src):
+    solids = [dict(s) for s in layout['solids']]
+    notes = {'merged': [], 'dropped': []}
+    for s in solids:
+        if not (0.12 < s['size'][1] < LOW_LIMIT):
+            continue
+        top = s['baseY'] + s['size'][1]
+        above = next((o for o in solids if o is not s and abs(o['baseY'] - top) < 0.05
+                      and abs(o['center'][0] - s['center'][0]) < s['size'][0] / 2 and abs(o['center'][1] - s['center'][1]) < s['size'][2] / 2), None)
+        if above is not None:  # 柱脚并进柱子：柱子一直落到地
+            above['size'] = [above['size'][0], round(above['size'][1] + (above['baseY'] - s['baseY']), 3), above['size'][2]]
+            above['baseY'] = s['baseY']
+            notes['merged'].append([s['id'], above['id']])
+        else:
+            notes['dropped'].append(s['id'])
+        s['_skip'] = True
+    return [s for s in solids if not s.get('_skip')], notes
+
+
+def build_collision(layout, coll, src):
     verts, faces, info = [], [], {}
-    for s in layout['solids']:
+    height_at = grid_heights(src, layout)
+    solids, notes = readable_solids(layout, src)
+    for s in solids:
         cx, cz = s['center']; w, h, d = s['size']; y0 = s['baseY']; yaw = s.get('yaw', 0) or 0
         if w <= 0 or d <= 0 or h <= 0:
+            continue
+        if s['type'] == 'rail' and s['id'].startswith(SLOPED_RAILS):
+            segs = rail_segments(s, height_at)
+            info.setdefault('railSegments', []).extend(segs)
+            for seg in segs:
+                (x0, a0, z0), (x1, a1, z1) = seg['segment']
+                b = len(verts); t = seg['size'][0] / 2
+                nx, nz = (0.0, t) if abs(x1 - x0) >= abs(z1 - z0) else (t, 0.0)
+                for (x, y, z) in ((x0, a0, z0), (x1, a1, z1)):
+                    verts.append(T(x - nx, y, z - nz)); verts.append(T(x + nx, y, z + nz))
+                for (x, y, z) in ((x0, a0, z0), (x1, a1, z1)):
+                    verts.append(T(x - nx, y + h, z - nz)); verts.append(T(x + nx, y + h, z + nz))
+                faces += [(b, b + 1, b + 3, b + 2), (b + 4, b + 6, b + 7, b + 5), (b, b + 4, b + 5, b + 1),
+                          (b + 2, b + 3, b + 7, b + 6), (b, b + 2, b + 6, b + 4), (b + 1, b + 5, b + 7, b + 3)]
             continue
         co, sn = math.cos(yaw), math.sin(yaw)
         corners = []
@@ -273,6 +350,8 @@ def build_collision(layout, coll):
     ob.display_type = 'WIRE'; ob.hide_render = True
     coll.hide_render = True
     STATS['collisionBoxes'] = {k: len(v) for k, v in info.items()}
+    STATS['readability'] = notes
+    info['readability'] = notes
     return info
 
 
@@ -625,7 +704,7 @@ def build(src, out, fbx=True, render=True):
     # 入口接驳小景在 three.js 里放在 (400, 0, 400)，不属于出击场景：只保留在 .blend，不进渲染与出击 FBX。
     colls['entrance'].hide_render = True
     build_height_collider(src, man, colls['collision'])
-    boxes = build_collision(layout, colls['collision'])
+    boxes = build_collision(layout, colls['collision'], src)
     build_markers(layout, colls['markers'])
     colls['markers'].hide_render = True
     setup_lighting()

@@ -422,7 +422,8 @@ namespace BossRush
                 // 2026-09-30 场景审计：B1 / B2 / B4 原方位落在路面上，B3 贴着茶水灶；按离线复算挪到路边空地。
                 Anchor("B1", "Lamp_B", 145f, 6.5f, SkyIslandLootTier.Supply, "B"),
                 Anchor("B2", "Lamp_B_02", 270f, 4f, SkyIslandLootTier.Supply, "B"),
-                Anchor("B3", "Search_B", 255f, 7f, SkyIslandLootTier.Supply, "B"),
+                // 2026-11-12 道路按新登记包络重烘后，B3 原方位（255°、7 m）压上路缘 1.4 m²，按实物台账挪到集市西侧空地（避开村里的木桶与路缘）。
+                Anchor("B3", "Search_B", 185f, 7f, SkyIslandLootTier.Supply, "B"),
                 Anchor("B4", "Search_B_02", 50f, 8f, SkyIslandLootTier.Supply, "B"),
                 // C 青穗梯田：西线第一段，仍是生活物资。
                 Anchor("C1", "Lamp_C", 60f, 6f, SkyIslandLootTier.Supply, "C"),

@@ -48,8 +48,9 @@ def geometry(layout, roads, verbose=True):
     require(set(islands) == EXPECTED_ISLANDS, 'must exercise all 12 author regions')
     obstacles = {o['id']: o for o in layout['obstacles']}
     actual = roads['actualRegisteredBounds']
-    require(set(actual) == set(obstacles), 'actual envelope registry must cover all 88 entities')
-    require(len(actual) == 88, 'full registered geometry probe is required')
+    # 88 个登记实体 + 2026-11-12 头目场 10 块 ArenaCover（tools/sky_island_navigation.py）
+    require(set(actual) == set(obstacles), 'actual envelope registry must cover all 98 entities')
+    require(len(actual) == 98, 'full registered geometry probe is required')
     require(fingerprint(actual) == roads['sourceActualBoundsSha256'], 'actual envelope fingerprint stale')
     hard = defaultdict(list)
     envelopes = {}

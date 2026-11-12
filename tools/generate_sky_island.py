@@ -32,6 +32,9 @@ REPLACED_OBSTACLES = set()
 DUPLICATE_EMISSIONS_SKIPPED = set()
 # 2026-09-30：登记障碍的实测顶高（悬空横梁 / 亭顶按它落到真实柱顶上）与壁画实际平移量（叙事标记跟着走）。
 REGISTERED_TOP = {}
+# 读图通则（SkyIsland/AGENTS.md §6.1，2026-11-12）：灌木与门前绿篱在 _Flora 组里、没有实体，原先岛缘一圈高到 2.6 m、
+# 门前 1 m，玩家分不清能不能挡。统一压到 0.6 m 以下的矮花丛（stamp_variant 的参数就是目标高度，单位米）。
+BUSH_LOW = 0.55
 REGISTERED_SPANS = {}
 LAYOUT_MARKERS = []
 LAYOUT_OBSTACLES = []
@@ -921,7 +924,7 @@ def landscape_scatter(islands,obstacles):
                 # 第二轮：有 Tripo 灌木就摆成品，一件都没导入时才退回程序化椭球（见 stamp_variant）。
                 def scatter_bush(xx=xx,zz=zz,i=i,jitter=jitter):
                     if TRIPO_PROPS is None or not TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
-                            ('bush_a','bush_b','bush_c'),xx,y,zz,2.1*jitter.uniform(.8,1.25),('bush',sid,i)):
+                            ('bush_a','bush_b','bush_c'),xx,y,zz,BUSH_LOW*jitter.uniform(.85,1.0),('bush',sid,i)):
                         sphere((xx,y+.7,zz),(2.2*jitter.uniform(.78,1.28),1.2*jitter.uniform(.82,1.35),
                                              2.0*jitter.uniform(.78,1.28)),
                                'Leaf' if i%2 else 'LeafLight',12,6,True)
@@ -929,9 +932,20 @@ def landscape_scatter(islands,obstacles):
             if i%2==0:
                 # 石块保留硬边（岩石本就有棱），但提高分段并打散比例，不再是一排同样的圆球。
                 jitter=random.Random(stable_seed(sid,i,'rock'))
+                # 2026-11-12 读图通则：岛缘石块原高 1.2–2.3 m、算硬物，和护栏叠在一起读、又在导航上挖洞（发布导航余量只剩 22）。
+                # 改成贴地碎石：露出地面不到 0.6 m，进 _GroundDetail 组不出碰撞，看着就是能踩过去的。
                 def scatter_rock(xx=xx,zz=zz,i=i,jitter=jitter):
-                    if TRIPO_PROPS is None or not TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
-                            ('rock_a','rock_b'),xx+2,y-.25,zz-1,1.7*jitter.uniform(.7,1.35),('rock',sid,i)):
+                    global CURRENT
+                    # 钟庭 H 与 S1 例外：岛小，岛缘石块一撤导航三角形合并，巡守槽位（只取三角形中心、间距 ≥ 5 m）凑不够；
+                    # 那里的石块保持原样（又高又硬，本来就不违反读图通则）。
+                    low=sid not in ('H','S1')
+                    region=CURRENT; CURRENT=region+'_GroundDetail' if low else region
+                    try:
+                        stamped=TRIPO_PROPS is not None and TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
+                            ('rock_a','rock_b'),xx+2,y-.25,zz-1,(.8*jitter.uniform(.85,1.0)) if low else 1.7*jitter.uniform(.7,1.35),('rock',sid,i))
+                    finally:
+                        CURRENT=region
+                    if not stamped:
                         sphere((xx+2,y+.6,zz-1),(1.7*jitter.uniform(.65,1.4),1.0*jitter.uniform(.7,1.5),
                                                  1.4*jitter.uniform(.65,1.4)),
                                'RockLight' if i%3 else 'Rock',10,5,False)
@@ -1226,7 +1240,7 @@ def garden_clump(x,y,z,radius=4):
         # 不再是「一个叶球 + 三个花球」，面数与原来持平。候选一件都没导入时退回程序化。
         if i%2:
             if TRIPO_PROPS is None or not TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
-                    ('bush_a','bush_b','bush_c'),px,y,pz,.8,key):
+                    ('bush_a','bush_b','bush_c'),px,y,pz,BUSH_LOW,key):
                 sphere((px,y+.28,pz),(.6,.38,.55),'LeafLight' if i%3 else 'Leaf',7,4,False)
             continue
         if TRIPO_PROPS is None or not TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
@@ -1322,7 +1336,7 @@ def village_life(layout,islands):
                 gz=z+side*rz*distance+fz*along
                 def hedge(gx=gx,gz=gz,side=side,i=i):
                     if not TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
-                            ('bush_b','bush_a','bush_c'),gx,y,gz,1.0,('hedge',index,side,i)):
+                            ('bush_b','bush_a','bush_c'),gx,y,gz,BUSH_LOW,('hedge',index,side,i)):
                         sphere((gx,y+.45,gz),(.64,.5,.65),'LeafLight',8,4,False)
                 PROP_SPACE.capture(sys.modules[__name__],'B','porch_hedge',gx,gz,hedge)
         # This is an attached overhead sign, not floor furniture: its mounting
@@ -1455,7 +1469,8 @@ def terrain_and_boundary(layout):
         # Two-sided vertical mesh (runtime walls) at real walk edge, lower timber in view.
         idx=len(railv); railv.extend([tuple(a-Vector((0,.25,0))),tuple(b-Vector((0,.25,0))),tuple(b+Vector((0,1.7,0))),tuple(a+Vector((0,1.7,0)))])
         railf.extend([(idx,idx+1,idx+2,idx+3),(idx+3,idx+2,idx+1,idx)])
-        for height in [.55,1.05]: beam(tuple(a+Vector((0,height,0))),tuple(b+Vector((0,height,0))),.12,'Wood',6)
+        # 2026-11-12：木梁 0.12 → 0.16，45 m 镜头下读得出「这是护栏、到头了」
+        for height in [.55,1.05]: beam(tuple(a+Vector((0,height,0))),tuple(b+Vector((0,height,0))),.16,'Wood',6)
         count=max(1,math.ceil((b-a).length/4.5))
         for i in range(count):
             p=a+(b-a)*i/count
@@ -1597,6 +1612,8 @@ def emit_registered_obstacle(index,obs,source,islands,settlement_records):
     import sky_island_settlement
     import sky_island_tripo_props
     CURRENT=obs.get('island','Props'); x,y,z=obs['center']; w,h,d=obs['size']; kind=obs['kind'].lower()
+    # 2026-11-12：头目场补的掩体各自成组，作者工程据此给每块单独出碰撞体，运行时才能按块登记半掩体
+    if '_ArenaCover' in obs['id']: CURRENT=obs['id']
     # CR-2026-09-10-007：碰撞盒收敛到 Tripo 替换件的真实投影（只缩不放）。
     # layout 登记的是名义尺寸，模型被 FOOTPRINT 归一化后往往小得多——归航钟单边差 14.8 m，
     # 玩家离得老远就被看不见的墙挡住。导航是按 obs['size'] 挖的，这里不动那份数据。

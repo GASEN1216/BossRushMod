@@ -32,8 +32,18 @@ namespace BossRush
                 || (patrols != null && patrols.HasLivingEnemiesWithin(at, radius));
         }
 
+#if BOSSRUSH_DEV
+        /// <summary>Dev 卡脚探针（DebugAndTools/RaidStuckProbe.cs），正式构建里不存在。</summary>
+        private readonly RaidStuckProbe stuckProbe = new RaidStuckProbe("skyisland");
+#endif
+
         private void TickSubsystems()
         {
+#if BOSSRUSH_DEV
+            try { stuckProbe.Tick(player); } catch (Exception e) { TickFault("stuck_probe", e); }
+#endif
+            if (patrols != null && patrols.Crowded == null && encounters != null)
+                patrols.Crowded = at => encounters.HasLivingEnemiesWithin(at, SkyIslandPatrols.CrowdedRadius);
             try { if (patrols != null) patrols.Tick(); } catch (Exception e) { TickFault("patrols", e); }
             try { if (encounters != null) encounters.Tick(); } catch (Exception e) { TickFault("encounters", e); }
             SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Encounters);

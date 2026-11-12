@@ -36,7 +36,15 @@
 2. 正式生成之外再跑一次 `generate_sky_island.py -- --project <作者工程> --skip-render --audit-ledger <Build 目录>`，然后 `PYTHONPATH=Build/sky-island-python-deps python tools/sky_island_scene_audit.py --ledger <目录> --out <目录> --compact ArtSource/SkyIsland/Validation/sky_island_scene_audit.json`，非设计接触必须为 0；
 3. 调色板材质或平铺贴图变了，先 `python tools/sky_island_surface_textures.py bake --project <作者工程>`，正式生成后还要跑 `generate_sky_island_kit.py`（模型库材质表与整图同源，`SkyIslandSettlementGeometryTests` 核对）。
 
-Unity 碰撞校验报 `navigation_sweep_blocked` 时，把 `raid_collision_validation.json` 交给导航烘焙的 `--physics-report`，阻挡件会按精确截面挖洞，再从第 2 步起重跑。导航顶点现为 4073 / 4095（烘焙器取预算内最细的简化档），余量只有 22，再加实体件前先算这一项。
+Unity 碰撞校验报 `navigation_sweep_blocked` 时，把 `raid_collision_validation.json` 交给导航烘焙的 `--physics-report`，阻挡件会按精确截面挖洞，再从第 2 步起重跑。导航顶点 2026-11-12 起为 4073 / 4095（0.9 档：两轮按 Unity 碰撞报告精确挖洞后 0.8 档超限；烘焙器取预算内最细的简化档，`--min-tolerance` 可指定从更粗的档起试），余量 22，再加实体件前先算这一项。
+
+## 2026-11-12 读图通则：头目场掩体、岛缘碎石、矮灌木（COMPAT）
+
+玩家反馈「太空旷、Boss 扎堆、没有掩体拉扯；分不清哪些能挡」。规则 `SkyIsland/AGENTS.md` §6.1。
+
+- `sky_island_navigation.py` 给 E（噬风 / E_03）与 S1–S4 各登记两块 `ArenaCover`（1.8 m 全掩体 + 1.2 m 半掩体），生成器让每块自成一组（`VIS_<岛>_ArenaCoverNN_*`），作者碰撞构建器因此给每块单独出网格碰撞体，运行时 `SkyIslandRendering` 按名登记半掩体。每块在设计导航上约多 18 个顶点，设计导航 3870 → 4050。
+- 岛缘石块（`landscape_scatter` 的 `scatter_rock`）改成不出碰撞的贴地碎石（`_GroundDetail` 组、露出 < 0.6 m），H 与 S1 例外保持原样：这两座岛小，石块一撤岛缘导航三角形合并，巡守槽位（只取三角形中心、间距 ≥ 5 m）凑不够。灌木与门前绿篱压到 0.55 m（`BUSH_LOW`），护栏木梁 0.12 → 0.16 m。
+- 发布导航 4073（1.0 档）→ 4073（0.9 档；岛缘碎石腾出的余量被 10 块掩体和两轮 `--physics-report` 精确挖洞（E 岛根石、F 岛大屋挡扫掠）用回去了）。作者校验器同时放行 `SkyPavilionRooms` 下两只亭内揭顶触发盒（3635f84 加入时没跟上，报 inactive / unexpected collision）。改了布局要按 roads（`--prepare-roads` + `sky_island_road_layout.py`）→ 聚落 → 布局的顺序反复跑到三者 MD5 不变，这次两轮收敛。
 
 ## 原设计布局重建与检查
 

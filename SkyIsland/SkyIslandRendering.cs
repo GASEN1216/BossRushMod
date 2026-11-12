@@ -101,7 +101,10 @@ namespace BossRush
                 { collider.gameObject.layer = wallLayer; walls++; }
             }
             if (ground == 0 || walls == 0) throw new InvalidOperationException("天空岛地面或边界碰撞体缺失");
-            Debug.Log("[SkyIsland] RENDER_READY materials=" + owned.Count + " textured=" + textures + " ground=" + ground + " walls=" + walls);
+            // 头目场补的掩体（tools/sky_island_navigation.py ArenaCover，各自成组、碰撞体单独）登记半掩体
+            Physics.SyncTransforms();
+            int halfCover = RaidHalfCover.Register(root.transform, wallLayer, null, c => c.name.IndexOf("_ArenaCover", StringComparison.Ordinal) >= 0);
+            Debug.Log("[SkyIsland] RENDER_READY materials=" + owned.Count + " textured=" + textures + " ground=" + ground + " walls=" + walls + " halfCover=" + halfCover);
         }
 
         private static void CopyTexture(Material source, string sourceMap, Material target, string targetMap)

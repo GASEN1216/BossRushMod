@@ -74,6 +74,30 @@ class Grid:
         tide = self.layout['tide']
         self.low, self.high, self.lagoon_full = float(tide['low']), float(tide['high']), float(tide['lagoonFull'])
         self.sources = {name: sha256(src / name) for name in ('tidegate_layout.json', g['heightFile'], g['flagFile'])}
+        # 逐件碰撞盒（tools/build_tidegate_blend.py 写在 ArtSource/Tidegate/collision_boxes.json 的 Obb，2026-11-12）：
+        # 灌木、路灯电线杆、长椅隔离墩、车与划艇、外梯这些物理上挡人的件，逻辑网格里原先没标或标偏了，
+        # 不画进导航 AI 会一头撞上去。盒子外扩 0.25 m 盖到格心的格子按实心物件处理（之后整体还有 0.4 m 离墙内缩，1 m 以下的小件也至少占一格）；
+        # 室内家具与墙不画（它们都贴着墙格，离墙 0.4 m 的内缩已经让开），搜刮箱 / 阀门的格子本来就是实心。
+        boxes_path = src.parent / 'collision_boxes.json'
+        self.obb_cells = 0
+        if boxes_path.is_file():
+            boxes = json.loads(boxes_path.read_text(encoding='utf-8'))
+            self.sources['collision_boxes.json'] = sha256(boxes_path)
+            cx, cz = np.meshgrid(self.OX + np.arange(self.W) + 0.5, self.OZ + np.arange(self.H) + 0.5)
+            hit = np.zeros((self.H, self.W), dtype=bool)
+            for e in boxes.get('Obb', []):
+                if e['source'] == 'building' and e['kind'] != 'stair':
+                    continue
+                # 细立柱和树干（≤0.5 m）不挖洞：AI 擦着会滑过去，挖洞每根要多十来个顶点，顶点上限只有 4095
+                if e['kind'] in ('loot', 'valve') or max(e['size'][0], e['size'][2]) <= 0.5:
+                    continue
+                c, sn = math.cos(-e['yaw']), math.sin(-e['yaw'])
+                dx, dz = cx - e['center'][0], cz - e['center'][2]
+                lx, lz = dx * c + dz * sn, -dx * sn + dz * c
+                hit |= (np.abs(lx) <= e['size'][0] / 2 + 0.25) & (np.abs(lz) <= e['size'][2] / 2 + 0.25)
+            hit &= (self.f & self.F['DECK']) == 0
+            self.obb_cells = int((hit & ((self.f & (self.F['WALL'] | self.F['PROP'])) == 0)).sum())
+            self.f = self.f | (hit.astype(np.uint8) * np.uint8(self.F['PROP']))
         # 物理地面（地形网格）只用来统计顶点高度与它差多少，不参与烘焙
         t = json.loads((src / 'manifest.json').read_text(encoding='utf-8'))['terrain']
         self.terrain = np.fromfile(src / t['heightFile'], dtype='<f4').reshape(int(t['height']), int(t['width']))
@@ -561,6 +585,7 @@ def main() -> int:
         stats['yVsTerrain'] = {'p50': round(float(np.percentile(dev, 50)), 3), 'p95': round(float(np.percentile(dev, 95)), 3),
                                'max': round(float(max(dev)), 3)}
     stats.update(info)
+    stats['obbBlockedCells'] = grid.obb_cells
     doc = {
         'version': 1,
         'generator': 'tools/build_tidegate_navigation.py',

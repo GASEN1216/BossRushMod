@@ -64,8 +64,17 @@ namespace BossRush
         }
 
         private Vector3 Position(Cell cell) { return origin + new Vector3(cell.Slot.X, cell.Slot.Y, cell.Slot.Z); }
-        private bool Allowed(Cell cell)
+        /// <summary>
+        /// 遭遇组正在打的地方附近不再拉起新的巡守（2026-11-12「Boss 扎堆」）：巡守底模也是官方 Boss，
+        /// 岛主场 55 m 内有十几到二十个巡守槽，一开战会接连补上来。已经在场的照旧，只拦新拉起的。会话装配时注入。
+        /// </summary>
+        internal Func<Vector3, bool> Crowded;
+        internal const float CrowdedRadius = 30f;
+
+        private bool Allowed(int index)
         {
+            Cell cell = cells[index];
+            if (Crowded != null && !schedule.IsActive(index) && Crowded(Position(cell))) return false;
             return cell.Slot.RegionId != "H" || content.IsGateOpen("BellCourt", story());
         }
         private bool Nearby(Cell cell, Vector3 at)
@@ -101,7 +110,7 @@ namespace BossRush
                 if (!schedule.IsSpawned(i) || schedule.IsActive(i) || schedule.IsDefeated(i)) continue;
                 if (cell.Character == null || cell.Character.Health == null || cell.Character.Health.IsDead)
                 { MarkDefeated(i, cell.SpawnGeneration); continue; }
-                if (now >= cell.NextRetry && Nearby(cell, at) && Allowed(cell) && schedule.TryActivate(i))
+                if (now >= cell.NextRetry && Nearby(cell, at) && Allowed(i) && schedule.TryActivate(i))
                 {
                     try
                     {
@@ -124,7 +133,7 @@ namespace BossRush
             for (int i = 0; i < cells.Length; i++)
             {
                 Cell cell = cells[i];
-                if (!schedule.CanSpawn(i) || now < cell.NextRetry || !Allowed(cell) || !Nearby(cell, at)) continue;
+                if (!schedule.CanSpawn(i) || now < cell.NextRetry || !Allowed(i) || !Nearby(cell, at)) continue;
                 float candidate = (Position(cell) - at).sqrMagnitude;
                 if (candidate < distance) { distance = candidate; nearest = i; }
             }
@@ -223,7 +232,7 @@ namespace BossRush
                 SkyIslandEnemyArmory.ArmPatrol(created, cell.Profile.Rank);
                 if (closed || root == null || !valid() || generation != schedule.Generation) return;
                 ConfigureNavigation(created);
-                bool activate = !BossRushUI.IsGamePaused() && Nearby(cell, player.transform.position) && Allowed(cell);
+                bool activate = !BossRushUI.IsGamePaused() && Nearby(cell, player.transform.position) && Allowed(index);
                 if (!schedule.CompleteSpawn(index, generation, activate)) return;
                 cell.Character = created; cell.Life = life; cell.SpawnGeneration = generation;
                 life.Bind(this, index, generation, created.Health);
