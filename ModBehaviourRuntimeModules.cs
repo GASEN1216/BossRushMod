@@ -25,6 +25,7 @@ namespace BossRush
             runtimeModuleHost.Register(new DebugToolsRuntimeModule());
             runtimeModuleHost.Register(new SkyIslandRuntimeModule());
             runtimeModuleHost.Register(new TidegateRuntimeModule());
+            runtimeModuleHost.Register(new LastShiftRuntimeModule());
             achievementRuntime = new AchievementRuntimeModule();
             achievementRuntime.BindRuntimeQueries(() => IsActive, () => modeDRuntime.IsActive,
                 () => wavesArenaRuntime.InfiniteHellMode, () => wavesArenaRuntime.BossesPerWave,

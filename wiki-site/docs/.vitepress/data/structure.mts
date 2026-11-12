@@ -630,8 +630,8 @@ export const CATEGORIES: WikiCategory[] = [
     zh: '地图',
     en: 'Maps',
     icon: 'cat-maps',
-    blurbZh: '9 张竞技场地图、天空岛探索旅程与潮闸镇',
-    blurbEn: 'Nine arena maps, a journey through the Sky Islands, and Tidegate',
+    blurbZh: '9 张竞技场地图、天空岛探索旅程、潮闸镇与末班编组站',
+    blurbEn: 'Nine arena maps, a journey through the Sky Islands, Tidegate and Last Shift Yard',
     entries: [
       {
         path: '/maps/',
@@ -656,6 +656,14 @@ export const CATEGORIES: WikiCategory[] = [
         icon: 'cat-maps',
         blurbZh: '跟着潮水搜刮，开闸取回沉没金库里的怀表',
         blurbEn: 'Loot with the tide, lift the gate and recover the watch from the sunken vault',
+      },
+      {
+        path: '/maps/last-shift-yard',
+        zh: '末班编组站',
+        en: 'Last Shift Yard',
+        icon: 'cat-maps',
+        blurbZh: '从仓库区剪票上车，扳道岔挑战场，替余响找回没人来领的末班票',
+        blurbEn: 'Board from the warehouse, pick your battlefield with the switch, and find the ticket nobody came for',
       },
     ],
   },

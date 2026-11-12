@@ -421,6 +421,14 @@ namespace BossRush
                 BossRushItemIds.TidegateLetter,
                 BossRushItemIds.TidegateSoundingLead);
 
+            // 末班编组站物品（押运钢印、末班票根）：零新增 bundle 的克隆兜底，漏登记会让重启后它们退化成官方 FallbackItem。
+            Add(plans, new RegistrationPlan
+            {
+                FallbackLoader = delegate(int typeId) { return LastShiftItems.EnsureRuntimeRegistration(typeId); }
+            },
+                BossRushItemIds.LastShiftStamp,
+                BossRushItemIds.LastShiftTicketStub);
+
             // 回火液：克隆冷淬液 prefab，零新增 bundle；漏登记时仓库里的回火液重启后会退化成官方 FallbackItem。
             Add(plans, new RegistrationPlan
             {

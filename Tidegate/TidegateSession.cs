@@ -75,7 +75,7 @@ namespace BossRush
                 return false;
             }
             if (owner.GetComponent<TidegateSession>() != null || owner.GetComponent<SkyIslandSession>() != null
-                || owner.GetComponent<ArenaPrototypeSession>() != null)
+                || owner.GetComponent<ArenaPrototypeSession>() != null || owner.GetComponent<LastShiftSession>() != null)
             {
                 reason = L10n.T("先结束当前的场景旅程，等它收拾完", "End the current scene journey and wait for it to clean up");
                 return false;

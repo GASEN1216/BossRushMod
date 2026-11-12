@@ -235,7 +235,8 @@ namespace BossRush
 
         protected override bool IsBuildingInteractable()
         {
-            return owner != null && owner.GetComponent<TidegateSession>() == null && owner.GetComponent<SkyIslandSession>() == null;
+            return owner != null && owner.GetComponent<TidegateSession>() == null && owner.GetComponent<SkyIslandSession>() == null
+                && owner.GetComponent<LastShiftSession>() == null;
         }
 
         protected override void OnInteractCompleted()

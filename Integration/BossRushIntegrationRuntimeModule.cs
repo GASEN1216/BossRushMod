@@ -58,6 +58,7 @@ namespace BossRush
             UnsubscribeDragonBreathEffectEvent();
             // 潮闸镇物品的配置器登记与克隆兜底记录：下次装载重新登记（ItemFactory 的配置器表随宿主一起清空）。
             TidegateItems.ResetStaticCaches();
+            LastShiftItems.ResetStaticCaches();
             _owner = null;
         }
 

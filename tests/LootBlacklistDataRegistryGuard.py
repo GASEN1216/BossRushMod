@@ -26,6 +26,8 @@ CONSTANT_SOURCES = {
     "BossRushItemIds.TidegateFlippers": Path("Config/ConfigItemIds.cs"),
     "BossRushItemIds.TidegateLetter": Path("Config/ConfigItemIds.cs"),
     "BossRushItemIds.TidegateSoundingLead": Path("Config/ConfigItemIds.cs"),
+    "BossRushItemIds.LastShiftStamp": Path("Config/ConfigItemIds.cs"),
+    "BossRushItemIds.LastShiftTicketStub": Path("Config/ConfigItemIds.cs"),
 }
 
 CONSTANT_VALUES = {

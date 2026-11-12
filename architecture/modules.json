@@ -729,6 +729,39 @@
       ]
     },
     {
+      "id": "last-shift-yard",
+      "title": "末班编组站独立出击地图（仓库区剪票入口、列车调度、撤离、搜刮与刷怪）",
+      "kind": "map",
+      "paths": [
+        "LastShiftYard/**/*.cs",
+        "Integration/LastShift/*.cs"
+      ],
+      "entry": "LastShiftYard/LastShiftRuntimeModule.cs",
+      "state_owner": "LastShiftRuntimeModule",
+      "public_api": [
+        "LastShiftRuntimeModule",
+        "ModRaidSceneBridge"
+      ],
+      "data": [],
+      "tests": [
+        "tests/LastShift*"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/游戏模式系统/末班编组站独立出击地图.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "SkyIsland/AGENTS.md"
+      ],
+      "depends_on": [
+        "host",
+        "common",
+        "utilities",
+        "sky-island",
+        "tidegate"
+      ]
+    },
+    {
       "id": "devtools",
       "title": "F3、调试与场景原型",
       "kind": "devtools",

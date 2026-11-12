@@ -344,11 +344,11 @@ def main():
     # ---- 5b. 只读纪律：会话外壳 ----
     begin_body = need_body(execution, "private bool BeginSession(out string reason)", "会话开场")
     if begin_body:
-        # 2026-11-06 起潮闸镇 Dev 演练（_tidegateDrill）同样跑在玩家真实的一趟出击上，运行标记块要两者都排除。
-        marker_block = body_of(begin_body, "if (!_skyIslandMode && !_tidegateDrill)")
+        # 2026-11-06 起潮闸镇 Dev 演练（_tidegateDrill）、2026-11-11 起末班编组站 Dev 演练（_lastShiftDrill）同样跑在玩家真实的一趟出击上，运行标记块要三者都排除。
+        marker_block = body_of(begin_body, "if (!_skyIslandMode && !_tidegateDrill && !_lastShiftDrill)")
         if marker_block is None or "WriteRunMarker()" not in marker_block or "_runMarkerWritten = true;" not in marker_block:
             errors.append("岛内套件与潮闸镇演练不得写运行标记（那要 SavesSystem.SaveFile，等于在出击途中绕过战斗落盘门写盘）："
-                          "WriteRunMarker 与 _runMarkerWritten = true 必须包在 if (!_skyIslandMode && !_tidegateDrill) 块里")
+                          "WriteRunMarker 与 _runMarkerWritten = true 必须包在 if (!_skyIslandMode && !_tidegateDrill && !_lastShiftDrill) 块里")
     if len(re.findall(r"(?<!bool )\bWriteRunMarker\s*\(", execution + runner + suite + cases)) != 1:
         errors.append("WriteRunMarker 只许在会话开场按模式门控调用一次")
     for match in re.finditer(r"\bProtectCurrentPlayer\s*\(\s*\)\s*;", execution):
@@ -357,9 +357,9 @@ def main():
     for match in re.finditer(r"GameplayValidationSuppressNotifications\s*=\s*true", execution):
         if "!_skyIslandMode" not in statement_before(execution, match.start()):
             errors.append("岛内套件不得吞掉玩家这趟出击里的正常提示：抑制提示条必须按 !_skyIslandMode 门控")
-    if complete and not re.search(r"if \(!skyIsland && !tidegate && !_slotChanged && SavesSystem\.CurrentSlot == _sessionSlot\)\s*"
+    if complete and not re.search(r"if \(!skyIsland && !tidegate && !lastShift && !_slotChanged && SavesSystem\.CurrentSlot == _sessionSlot\)\s*"
                                   r"\{\s*try \{ if \(_host != null\) _host\.ValidationSafeCleanup\(\); \}", complete):
-        errors.append("岛内套件与潮闸镇演练收尾不得跑面向主套件的全宿主清理：ValidationSafeCleanup 必须按 !skyIsland && !tidegate 门控")
+        errors.append("岛内套件与潮闸镇 / 末班编组站演练收尾不得跑面向主套件的全宿主清理：ValidationSafeCleanup 必须按 !skyIsland && !tidegate && !lastShift 门控")
     if len(re.findall(r"\bValidationSafeCleanup\s*\(", execution)) != 1:
         errors.append("会话侧只许在 CompleteSession 这一处调用 ValidationSafeCleanup")
     if not re.search(r"if \(_runMarkerWritten && !_slotChanged && SavesSystem\.CurrentSlot == _sessionSlot\) ClearRunMarker\(\);",

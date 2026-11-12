@@ -130,6 +130,27 @@ namespace BossRush
             owner.FlushWorkItems();
         }
 
+#if BOSSRUSH_DEV
+        /// <summary>
+        /// Dev 演练只读计数（末班编组站列车封线核对）：三个顶点满足 <paramref name="where"/> 的三角形节点有几个、其中现在可走的有几个。
+        /// 不改任何节点；正式构建里没有这个方法。
+        /// </summary>
+        internal void DevCountNodes(Func<Vector3, Vector3, Vector3, bool> where, out int matched, out int walkable)
+        {
+            int m = 0, w = 0;
+            if (graph != null && where != null)
+                graph.GetNodes((Action<GraphNode>)(node =>
+                {
+                    TriangleMeshNode triangle = node as TriangleMeshNode;
+                    if (triangle == null || !where((Vector3)triangle.GetVertex(0), (Vector3)triangle.GetVertex(1), (Vector3)triangle.GetVertex(2))) return;
+                    m++;
+                    if (node.Walkable) w++;
+                }));
+            matched = m;
+            walkable = w;
+        }
+#endif
+
         public void Dispose()
         {
             if (graph != null && owner != null && owner.data != null)

@@ -45,6 +45,12 @@ IDENTIFIERS = (
     "TIDE_DRILL_SHIFT_KEY_LEAD",
     "TIDE_PERF_ABLATION",
     "DevTakeShiftKey",
+    # 2026-11-11 末班编组站 Dev 演练（F3GameplayValidationLastShiftDrill*.cs、LastShiftDrillHooks.cs、ArenaPrototypeNavigation 的 Dev 计数）。
+    "TryStartLastShiftDrill",
+    "FinishLastShiftDrillRestoreSynchronously",
+    "DevFastForward",
+    "DevCountNodes",
+    "LSY_DRILL_ASSEMBLY",
 )
 
 

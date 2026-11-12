@@ -2078,6 +2078,24 @@
       "canWander": false,
       "wanderRadius": 0.0,
       "scenes": []
+    },
+    {
+      "id": "lastshift_yuxiang",
+      "isPermanent": false,
+      "displayNameKey": "",
+      "faceMode": "randomVaried",
+      "faceSeed": 20261111,
+      "baseModel": "",
+      "modelScale": 0.92,
+      "team": "middle",
+      "invincible": true,
+      "showHealthBar": false,
+      "pushCharacter": false,
+      "randomEquipment": false,
+      "equipmentTypeIds": [1136, 791],
+      "canWander": false,
+      "wanderRadius": 0.0,
+      "scenes": []
     }
   ]
 }

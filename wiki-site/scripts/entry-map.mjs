@@ -35,6 +35,7 @@ export const ENTRY_TO_PATH = {
   'map__overview':              'maps/index.md',
   'map__sky_island':            'maps/sky-island.md',
   'map__tidegate':              'maps/tidegate.md',
+  'map__lastshiftyard':         'maps/last-shift-yard.md',
   'boss__overview':             'bosses/index.md',
   'boss__dragon_descendant':    'bosses/dragon-descendant.md',
   'boss__dragon_king':          'bosses/dragon-king.md',
