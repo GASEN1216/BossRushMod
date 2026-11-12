@@ -101,6 +101,40 @@ namespace BossRush
             Debug.Log(LastShiftRaidScene.LogTag + " LAYERS_READY ground=" + ground + " walls=" + walls + " halfCover=" + halfCover + " shaders=" + checkedShaders.Count);
         }
 
+        /// <summary>
+        /// 交互提示离标记点（物体底面中心）的高度（2026-11-12 实机「交互点不在物体中心」）：以前一律 +1 m。
+        /// 数值是 2026-11-12 在 LastShiftYard.blend 里按标记点 0.5 m 内三角形量的物体顶高，取把手 / 面板 / 盒面中部。
+        /// </summary>
+        internal static Vector3 InteractOffset(string id)
+        {
+            switch (id)
+            {
+                case "switch": return new Vector3(0f, 1.15f, 0f);       // 道岔手柄，工作台面 1.17 m
+                case "manifest": return new Vector3(0f, 1.4f, 0f);      // 班次运单牌，牌面到 2.85 m
+                case "bell": return new Vector3(0f, 1.3f, 0f);          // 轨道车铃的拉绳
+                case "note1": return new Vector3(0f, 1.05f, 0f);        // 工作台上的打孔钳
+                case "note2": return new Vector3(0f, 1.0f, 0f);         // 架子上的旧录音机，顶 1.41 m
+                case "note3": return new Vector3(0f, 0.95f, 0f);        // 退件簿，台面 1.31 m
+                case "repairBuzzer": return new Vector3(0f, 1.15f, 0f); // 蜂鸣器控制柜，顶 1.78 m
+                case "steamValve": return new Vector3(0f, 0.95f, 0f);   // 检修蒸汽阀手轮，顶 1.32 m
+                default: return new Vector3(0f, 1f, 0f);
+            }
+        }
+
+        /// <summary>箱柜按种类的提示高度（布局 loot.size 的箱高：封签货 / 风险箱 1.42、柜 1.05、工具箱 0.8、药箱 0.58、铅封侧柜 1.63）。</summary>
+        internal static Vector3 CrateMarkerOffset(string kind)
+        {
+            switch (kind)
+            {
+                case "sealed": case "risk": return new Vector3(0f, 0.85f, 0f);
+                case "supply": case "drop": return new Vector3(0f, 0.65f, 0f);
+                case "tool": return new Vector3(0f, 0.55f, 0f);
+                case "medical": return new Vector3(0f, 0.45f, 0f);
+                case "side": return new Vector3(0f, 0.9f, 0f);
+                default: return new Vector3(0f, 0.6f, 0f);
+            }
+        }
+
         internal static bool OutsidePlayArea(Vector3 position)
         {
             return position.x < PlayArea.xMin - OutOfBoundsMargin || position.x > PlayArea.xMax + OutOfBoundsMargin

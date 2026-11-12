@@ -16,6 +16,7 @@ namespace BossRush
     /// 这些都只改官方 AI 的 <c>patrolPosition</c> / <c>MoveToPos</c>；发现玩家、交火与追击全交还官方行为树。
     /// 刷出的六步同潮闸镇：关距离激活 → 官方创建 → 导航限定本图 → 解除距离休眠 → 敌对性安全网 `SetTeam(Teams.wolf)` → 挂到世界根下。
     /// 远处安静的敌人整只停用、走近恢复（55 / 65 m 滞回）；押运长、交火中、赶往货台 / 警铃 / 铃声 / 蜂鸣器的人豁免。
+    /// 围圈小队（owner 2026-11-12）在 LastShiftSquads.cs：算进同时活动与全趟人数，不算流动；场上同时一队，没在场时流动给它留 3 个座位。
     /// 坐标：作者标记已是 Unity 坐标；原型里的固定点（货台、甲板、蜂鸣器目标）按 three.js (x, z) → Unity (x, y, -z) 换算。
     /// </summary>
     internal sealed partial class LastShiftEnemies : IDisposable
@@ -61,6 +62,11 @@ namespace BossRush
             internal char CargoLine;
             internal Vector3 CargoGoal;
             internal bool Suspended;
+            /// <summary>围圈小队成员（LastShiftSquads.cs）：所属小队、圈上位次、冻着没有、冻结前的 defaultWeaponOut、错开醒来的时刻。</summary>
+            internal Squad Squad;
+            internal int Slot;
+            internal bool Frozen, SavedWeaponOut, WakeToPlayer;
+            internal float WakeDue = -1f, RestHealth;
         }
 
         private readonly LastShiftWorld world;
@@ -110,6 +116,7 @@ namespace BossRush
             }
             CollectRoutes();
             BuildDevices();
+            BuildSquads();
             timetable.PhaseChanged += OnPhase;
             subscribed = true;
             chiefRides = returnVisit && timetable.Stream("raid#chiefRide").NextDouble() < ChiefRideChance;
@@ -154,6 +161,7 @@ namespace BossRush
         }
 
         // 原型 attachActors：押运长（随车局除外）、北门与南班各一名固定岗、外线与东西场四名流动；此刻不合规的点不补，留给后面的补员。
+        // 2026-11-12 起固定岗之后先开一处围圈小队（开局离出生点 25–75 m 的营地），流动按剩下的座位刷（排队时 CanAdd 判）。
         private void Seed()
         {
             Spot boss = FindSpot("bossSpawn");
@@ -161,6 +169,7 @@ namespace BossRush
             foreach (string post in new[] { "postNorth", "postSouth" })
                 foreach (Spot spot in spots)
                     if (spot.Group == post && Eligible(spot.Marker.position)) { queue.Add(NewGuard(spot, spot.Marker.position, post)); break; }
+            TryBoardSquad(queue.Count);
             SeedMobile("s0", 0f, 0f); SeedMobile("w0", -1.5f, -1f); SeedMobile("w1", 1.6f, 1f); SeedMobile("e0", 0f, 0f);
         }
 
@@ -210,6 +219,7 @@ namespace BossRush
             float now = Time.time;
             TickDevices(now);
             TickActivity(now);
+            TickSquads(now);
             if (now >= nextThink) { nextThink = now + ThinkInterval; Think(now); }
             if (inFlight > 0) return;
             if (queue.Count > 0) { ServeQueue(now); return; }
@@ -224,13 +234,15 @@ namespace BossRush
                 if (g.DwellTrip >= 0 && (timetable.Phase != LastShiftPhase.Dwell || timetable.Trip != g.DwellTrip)) { queue.RemoveAt(i--); continue; }
                 if (now < g.RetryAfter) continue;
                 queue.RemoveAt(i);
-                if (!g.Boss && (!CanAdd(g.Duty) || !Eligible(g.Position))) return; // 原型 newGuard 返回空：这一名不刷。
+                // 小队的座位在开张时已经核过；成员彼此只隔两三米，不走流动的「2.75 m 内没人」那条。
+                if (g.Squad != null) { if (Live() >= LiveCap || spawned + inFlight >= population) { g.Failed = true; return; } }
+                else if (!g.Boss && (!CanAdd(g.Duty) || !Eligible(g.Position))) return; // 原型 newGuard 返回空：这一名不刷。
                 Spawn(g);
                 return;
             }
         }
 
-        // 原型 replenish：先补没人的固定岗，再补流动；返回这一次有没有开刷。
+        // 原型 replenish：先补没人的固定岗，再开围圈小队，再补流动（给还没开张的小队留座）；返回这一次有没有开刷。
         private bool Replenish()
         {
             if (Live() >= LiveCap || spawned + inFlight >= population) return false;
@@ -242,7 +254,8 @@ namespace BossRush
                 Spawn(NewGuard(spot, spot.Marker.position, post));
                 return true;
             }
-            if (MobileLive() >= MobileCap) return false;
+            if (TryBoardSquad(0)) return true;
+            if (MobileLive() >= MobileCap || Live() + PendingSquadSeats() >= LiveCap) return false;
             Spot mobile = PickSpot(null, false);
             if (mobile == null) return false;
             Spawn(NewGuard(mobile, mobile.Marker.position, null));
@@ -292,7 +305,7 @@ namespace BossRush
         private bool CanAdd(string duty)
         {
             if (Live() >= LiveCap || spawned + inFlight >= population) return false;
-            return duty != null ? !PostHeld(duty) : MobileLive() < MobileCap;
+            return duty != null ? !PostHeld(duty) : MobileLive() < MobileCap && Live() + PendingSquadSeats() < LiveCap;
         }
 
         private bool Eligible(Vector3 p)
@@ -330,7 +343,9 @@ namespace BossRush
             try
             {
                 Vector3 position;
-                if (!Footing(g.Position, out position) || (!g.IgnoreRing && !InRing(position)))
+                // 小队成员只站自己那个已核过的位置（不就近挪开，否则圈就散了）。
+                bool stood = g.Squad != null ? CanStand(g.Position, out position) : Footing(g.Position, out position);
+                if (!stood || (!g.IgnoreRing && !InRing(position)))
                 {
                     // 押运长必到：3 秒后再试；其余这一名不刷，名额留给后面的补员。
                     if (g.Boss) { g.RetryAfter = Time.time + 3f; queue.Add(g); }
@@ -346,7 +361,7 @@ namespace BossRush
                 if (g.Boss) LastShiftEscortChief.Tune(clone);
                 else LastShiftCombatTuning.Apply(clone, g.Post);
                 // 固定岗无事时只在岗位附近转，保留官方选敌、交火与追击。
-                if (g.Duty != null && !g.Boss) clone.patrolRange = Mathf.Min(clone.patrolRange, 3.5f);
+                if (g.Duty != null && !g.Boss) clone.patrolRange = Mathf.Min(clone.patrolRange, g.Squad != null ? 2.5f : 3.5f);
                 // 末班押运队是一伙人：同阵营，不互打。
                 clone.team = Teams.scav;
                 created = await clone.CreateCharacterAsync(position, g.Forward, -1, null, false);
@@ -369,10 +384,11 @@ namespace BossRush
                 g.Character = created; g.Ai = ai; g.Home = position; g.GoalKey = 0;
                 g.Wp = NearestWaypoint(g.Route, position);
                 ai.patrolPosition = position;
+                if (g.Squad != null) SquadMemberReady(g);
                 if (g.Boss)
                 {
                     chief = g;
-                    created.gameObject.AddComponent<LastShiftEscortChief>().Bind(created, ai, g.FromTrain, valid, PickSpare, OnChiefDown);
+                    created.gameObject.AddComponent<LastShiftEscortChief>().Bind(created, ai, g.FromTrain, valid, PickSpare, OnChiefDown, world.TryGroundAt);
                     if (g.FromTrain)
                     {
                         BossRodeTrain = true;
@@ -532,6 +548,7 @@ namespace BossRush
                 n++;
             }
             if (n > 0) status(L10n.T("库房警铃响了，押运员在往回跑。", "The store alarm is ringing. Escorts are running back."), true);
+            SquadHearsAlarm(at);
             Debug.Log(LastShiftRaidScene.LogTag + " STORE_ALARM recalled=" + n);
         }
 
@@ -549,6 +566,7 @@ namespace BossRush
                 g.GoalKey = 0;
                 n++;
             }
+            SquadHearsBell(at, until);
             Debug.Log(LastShiftRaidScene.LogTag + " BELL_HEARD patrols=" + n);
         }
 
@@ -575,7 +593,8 @@ namespace BossRush
             bool calls = TrainCalls;
             foreach (Guard g in guards)
             {
-                if (g.Suspended || g.Ai == null || !IsAlive(g)) continue;
+                // 围圈小队由 TickSquads 管（冻着不动、醒了守营），不跟巡逻、货台与引人逻辑。
+                if (g.Suspended || g.Ai == null || g.Squad != null || !IsAlive(g)) continue;
                 // 回到原处（或回程走不通 30 秒）就恢复原任务。
                 if (g.Lured && now >= g.LureUntil && (now >= g.LureUntil + 30f || (g.Character.transform.position - g.LureBack).sqrMagnitude < 2f * 2f))
                 { g.Lured = false; g.GoalKey = 0; }
@@ -652,7 +671,8 @@ namespace BossRush
                 if (character == null || character.Health == null || character.Health.IsDead) { g.Suspended = false; continue; }
                 float radius = g.Suspended ? ActivityWakeRadius : ActivitySleepRadius;
                 bool keepAwake = g.Boss || g.Lured || now < g.BellUntil || (calls && g.Duty == null)
-                    || (g.Ai != null && (g.Ai.aimTarget != null || Engaged(g, 6f)));
+                    || (g.Squad != null && g.Squad.State == SquadState.Roused)
+                    || (g.Ai != null && !g.Frozen && (g.Ai.aimTarget != null || Engaged(g, 6f)));
                 bool near = (character.transform.position - at).sqrMagnitude <= radius * radius;
                 if (g.Suspended)
                 {
@@ -662,6 +682,8 @@ namespace BossRush
                     character.gameObject.SetActive(true);
                     g.Suspended = false;
                     g.GoalKey = 0;
+                    // 冻着的小队成员：AI 子物体一直停着（整只恢复不会把它带起来），只补回 Sleeping 与朝向。
+                    if (g.Frozen) Settle(g);
                 }
                 else if (!near && !keepAwake && character.gameObject.activeSelf)
                 {
@@ -685,6 +707,7 @@ namespace BossRush
             closed = true;
             if (subscribed) { timetable.PhaseChanged -= OnPhase; subscribed = false; }
             DisposeDevices();
+            DisposeSquads();
             foreach (Guard g in guards)
             {
                 if (g.Character == null) continue;

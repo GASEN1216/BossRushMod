@@ -15,6 +15,10 @@ namespace BossRush
         internal const string TicketPunch = "ticket_punch.wav";
         internal const string TannoyChime = "tannoy_chime.wav";
         internal const string TrainWhistle = "train_whistle.wav";
+        /// <summary>押运长的豌豆哨：封线两声短、响墩一声长、半血三声短（站场哨音的停车 / 注意 / 危险）。</summary>
+        internal const string ChiefWhistleTwo = "chief_whistle_two.wav";
+        internal const string ChiefWhistleLong = "chief_whistle_long.wav";
+        internal const string ChiefWhistleThree = "chief_whistle_three.wav";
         private static MethodInfo postSound;
         private static bool resolved, warned;
 

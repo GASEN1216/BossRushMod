@@ -79,8 +79,9 @@ namespace BossRush
             catch (Exception e) { Debug.LogWarning(LastShiftRaidScene.LogTag + " 余响喊话失败：" + e.Message); }
         }
 
-        /// <summary>台边「和余响说话」的交互点：站在她面前（剪票交互在台子正面，两处错开约 1.4 m）。</summary>
-        private static readonly Vector3 TalkLocal = new Vector3(0f, 1f, 2.3f);
+        /// <summary>台边「和余响说话」的交互点：就在她身上、胸口高度（2026-11-12 实机「NPC 的对话在头顶」：鸭子身高约 1.3 m，以前 1 m 高、
+        /// 还往外偏 0.3 m）。她站在台子本地 (0, 0, 2)；剪票交互在台上的打孔钳，两处错开约 2.2 m。</summary>
+        private static readonly Vector3 TalkLocal = new Vector3(0f, 0.62f, 2f);
         private static ModBehaviour talkOwner;
 
         /// <summary>剪票处搭好时挂上对话点（owner 2026-11-11：故事的主角得能说上话，票根在这里就能交）。</summary>

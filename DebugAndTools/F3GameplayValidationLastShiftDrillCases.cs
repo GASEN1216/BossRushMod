@@ -109,7 +109,8 @@ namespace BossRush
             {
                 rooms = indoor.transform.childCount;
                 fades = indoor.GetComponentsInChildren<OcclusionFadeObject>(true).Length;
-                if (rooms == 0 || fades == 0) errors.Add("indoor_roofs_not_bound_" + fades + "_of_" + rooms);
+                // 三栋可进的楼 + 八处顶棚（雨棚、廊桥、悬车，2026-11-12），每个触发区都得绑上屋顶组
+                if (rooms < 11 || fades != rooms) errors.Add("indoor_roofs_not_bound_" + fades + "_of_" + rooms);
             }
             if (world.NightLamps.Count == 0) errors.Add("night_lamps_missing");
 
@@ -598,7 +599,7 @@ namespace BossRush
             SampleLastShiftLive(session);
             int wallMask = GameplayDataSettings.Layers.wallLayerMask.value;
             SkyIslandWeaponBand band = SkyIslandEnemyArmoryRules.For(SkyIslandEnemyTier.Scav);
-            int alive = 0, failed = 0, suspended = 0, armed = 0, fromTrain = 0, duty = 0;
+            int alive = 0, failed = 0, suspended = 0, armed = 0, fromTrain = 0, duty = 0, squadAlive = 0, frozen = 0;
             bool chiefAlive = false, chiefBound = false;
             foreach (LastShiftEnemies.DevEnemyInfo info in enemies.DevEnemies())
             {
@@ -609,6 +610,23 @@ namespace BossRush
                 alive++;
                 if (info.Suspended) suspended++;
                 CharacterMainControl character = info.Character;
+                if (info.Squad != null)
+                {
+                    squadAlive++;
+                    // 冻着的人：官方 AI 子物体应停着、没被带离站位、没转开（醒着的已经交还官方行为树，不查）。
+                    if (info.Frozen && !info.Suspended)
+                    {
+                        frozen++;
+                        AICharacterController squadAi = character.GetComponentInChildren<AICharacterController>(true);
+                        if (squadAi != null && squadAi.isActiveAndEnabled) errors.Add("squad_ai_running_" + info.Id);
+                        Vector3 body = character.characterModel != null ? character.characterModel.transform.forward : character.transform.forward;
+                        body.y = 0f;
+                        double facing = body.sqrMagnitude > 0.0001f ? Vector3.Angle(body, info.Facing) : 180.0;
+                        string squadWhy;
+                        if (!LastShiftDrillSquadHoldOk(LastShiftDrillFlat(character.transform.position, info.Home), facing, out squadWhy))
+                            errors.Add("squad_hold_" + info.Id + "_" + squadWhy);
+                    }
+                }
                 if ((character.Team != Teams.scav && character.Team != Teams.wolf) || !Team.IsEnemy(Teams.player, character.Team))
                     errors.Add("team_" + info.Id + "_" + character.Team);
                 if (!character.transform.IsChildOf(session.DevWorld.Root.transform)) errors.Add("not_under_world_root_" + info.Id);
@@ -639,6 +657,8 @@ namespace BossRush
             notes.Add("population=" + enemies.Population + ",spawned=" + enemies.SpawnedCount + ",live=" + enemies.DevLive + ",live_peak=" + _lastShiftDrillLivePeak
                 + ",mobile=" + enemies.DevMobileLive + ",in_flight=" + enemies.DevInFlight + ",queued=" + enemies.DevQueued + ",alive=" + alive
                 + ",suspended=" + suspended + ",failed=" + failed + ",duty=" + duty + ",from_train=" + fromTrain + ",escorts_armed_q3=" + armed);
+            notes.Add("squads:" + enemies.DevSquadSummary + ",alive=" + squadAlive + ",frozen_checked=" + frozen
+                + "（绕场时站到营地 11 m 内会把它叫醒，醒着的不查站位）");
             notes.Add("chief_preset=" + (chiefPreset ? LastShiftEscortChief.SourceName : "fallback_scav") + ",chief_rides=" + enemies.DevChiefRides
                 + ",chief_alive=" + chiefAlive + ",chief_bound=" + chiefBound + ",spots=" + enemies.DevSpots + ",routes=" + enemies.DevRoutes
                 + ",steam_block=" + enemies.DevSteamBlock + ",boss_defeated=" + enemies.BossDefeated);

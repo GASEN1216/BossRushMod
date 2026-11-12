@@ -172,6 +172,12 @@ namespace BossRush
             Check(!Runner.LastShiftDrillPopulationOk(26, 27, 0, 0, 0, out why), "pop_spawned_over");
             Check(!Runner.LastShiftDrillPopulationOk(26, 9, 7, 9, 0, out why) && why.Contains("live_over_cap_9"), "pop_peak_over_cap");
             Check(!Runner.LastShiftDrillPopulationOk(26, 9, 8, 8, 6, out why) && why.Contains("mobile_over_cap_6"), "pop_mobile_over_cap");
+            // 围圈小队冻结：站位与朝向（2026-11-12）。
+            Check(Runner.LastShiftDrillSquadHoldOk(0.05, 3, out why), "squad_hold_ok " + why);
+            Check(Runner.LastShiftDrillSquadHoldOk(1.0, 35, out why), "squad_hold_boundary " + why);
+            Check(!Runner.LastShiftDrillSquadHoldOk(1.4, 0, out why) && why.StartsWith("drift_"), "squad_drifted");
+            Check(!Runner.LastShiftDrillSquadHoldOk(0.2, 90, out why) && why.StartsWith("facing_"), "squad_turned");
+            Check(!Runner.LastShiftDrillSquadHoldOk(double.NaN, 0, out why), "squad_drift_nan");
         }
 
         private static void ExtractionHold()

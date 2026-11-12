@@ -18,7 +18,9 @@ namespace BossRush
         internal static readonly Vector3 Position = new Vector3(148f, 0f, 245f);
         /// <summary>台面朝东（+X），余响站在台的东侧 2 m；朝向待实机复核。</summary>
         internal const float Yaw = 90f;
-        internal static readonly Vector3 InteractLocal = new Vector3(0f, 1.0f, 0.9f);
+        /// <summary>剪票交互就在台上的打孔钳（转轴在模型本地 (-0.55, 1.53, -0.13)，见 LastShiftTicketPunch；钳口约低 0.3 m），
+        /// 2026-11-12 实机「交互点不在物体中心」前是台前 0.9 m 的半空中。</summary>
+        internal static readonly Vector3 InteractLocal = new Vector3(-0.55f, 1.2f, -0.13f);
         internal const float InteractRadius = 1.3f;
     }
 

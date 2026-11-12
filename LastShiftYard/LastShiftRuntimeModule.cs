@@ -144,6 +144,7 @@ namespace BossRush
             LastShiftYuXiang.ResetStaticCaches();
             LastShiftNoteBridge.ResetStaticCaches();
             LastShiftSounds.ResetStaticCaches();
+            LastShiftChiefFx.ResetStaticCaches();
             LastShiftStory.JeffIntro = null;
             if (jeffIntro != null) { jeffIntro.Dispose(); jeffIntro = null; }
             LastShiftStory.Bind(null);

@@ -14,6 +14,7 @@ namespace BossRush
         {
             internal Bounds Footprint;
             internal OcclusionFadeObject Fade;
+            internal string Name;
         }
         private readonly Dictionary<Vector2Int,List<Room>> cells = new Dictionary<Vector2Int,List<Room>>();
         private readonly List<Room> rooms = new List<Room>();
@@ -56,7 +57,7 @@ namespace BossRush
                 fade.triggers = new OcclusionFadeTrigger[0];
                 fade.fadeType = OcclusionFadeTypes.ShadowOnly;
                 fade.renderers = roofRenderers;
-                var room = new Room { Footprint = box.bounds, Fade = fade };
+                var room = new Room { Footprint = box.bounds, Fade = fade, Name = volume.name };
                 rooms.Add(room);
                 for (int x = Cell(room.Footprint.min.x); x <= Cell(room.Footprint.max.x); x++)
                     for (int z = Cell(room.Footprint.min.z); z <= Cell(room.Footprint.max.z); z++)
@@ -67,6 +68,14 @@ namespace BossRush
                         list.Add(room);
                     }
             }
+        }
+
+        /// <summary>主角此刻所在的室内区（触发区名字 + 范围）；不在任何一间里返回 false。地图自己的室内照明按它点灯。</summary>
+        internal bool TryGetInside(out string name, out Bounds footprint)
+        {
+            name = inside != null ? inside.Name : null;
+            footprint = inside != null ? inside.Footprint : default(Bounds);
+            return inside != null;
         }
 
         internal bool UpdateFeet(Vector3 feet)

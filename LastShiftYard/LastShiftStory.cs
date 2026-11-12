@@ -324,7 +324,7 @@ namespace BossRush
                 host.transform.SetParent(world.Root.transform, false);
                 host.transform.position = anchor.position;
                 interactables.Add(host);
-                var device = NPCInteractionGroupHelper.GetOrCreateStandaloneInteractable<LastShiftDeviceInteractable>(host.transform, "Interact", new Vector3(0f, 1f, 0f), x =>
+                var device = NPCInteractionGroupHelper.GetOrCreateStandaloneInteractable<LastShiftDeviceInteractable>(host.transform, "Interact", LastShiftWorld.InteractOffset(LastShiftStory.NoteMarkers[i]), x =>
                 {
                     x.Bind(LastShiftStory.NoteMarkers[index], 1.2f, delegate { return LastShiftText.NoteVerb(index); }, delegate { return valid(); }, delegate { Read(index); });
                     SphereCollider sensor = x.GetComponent<SphereCollider>();

@@ -2,6 +2,21 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+## 2026-11-12 末班编组站实机八条：闪烁、屋顶、室内灯、围圈小队、押运长、卡脚、司机室楼面、交互点（COMPAT；L1/L2，L3 待 owner）
+
+owner 实机（附 Player.log）：①很多地方一直在闪；②进屋 / 头顶有屋顶时没隐藏；③屋里不亮；④敌人生态要有趣，比如几个小队围成一圈不动、发现玩家才恢复 AI；⑤Boss 特效塑料、机制简单，血可减 1/3；⑥很多连接处卡脚、翻滚才能过；⑦悬空的司机室进去没实体、一进去就掉；⑧交互点不在物体中心，NPC 对话在头顶。
+
+- ①根因是共面重叠：离线在 .blend 里查出 1982 对、2815 m² 同向投影重叠（间距 < 1 cm，435 对完全为 0）。`tools/build_lastshift_blend.py` 新增 `layer_coplanar`：不动几何，给上层排层号写进顶点色 alpha / 实例表 `layers`；作者工程着色器 `LastShiftLayerBias` 按层推深度（GBuffer / Forward / DepthOnly），实例合批把层号烘进 alpha。本次 0–6 层、同层重叠 0。
+- ②除三栋楼外，作者工程 `BuildCanopyRoofs` 把西台雨棚、煤场 / 洗手 / 验货雨棚、南班房后檐、旧候车台、北线廊桥、悬着的 017 号机车切成屋顶组并放触发区（往北多放镜头被挡的一截）；运行时 `RaidIndoorRoofs` 不改逻辑，只加只读 `TryGetInside`。
+- ③`LastShiftLighting`：人在司机室 / 维修棚 / 押运库里时排 2×2 盏不随昼夜的顶灯。
+- ④⑤由子代理做：`LastShiftYard/LastShiftSquads.cs`（五处营地每趟开三处、同时一伙，AI 子物体停用 + 官方 Sleeping，看见 / 听见 / 受伤 / 同伴倒下 / 警铃整队醒，轨道车铃能调开）；`LastShiftEscortChief.cs` 重写 + `LastShiftChiefFx.cs`（1000 血；封线带、响墩两招轮换，半血两条封线 / 三颗响墩、预警缩短；纯色线换成流动斜纹带、弹着点、曳光、红旗、红灯；三个程序化哨音 `tools/gen_lastshift_sfx.py`）。新属性测试 `LastShiftSquadPlacementPropertyTest`、F3 演练加冻结站位与朝向判据、夹具 `LastShiftDrillJudges` 同步；Wiki 中英与站点副本、设计稿已改。
+- ⑥日志里 4 条 `[RaidStuck]` 全是焚皇近战连段时的误报（`RaidStuckProbe` 现在动作进行中不记）。真正的卡点靠新加的作者工程离线走格 `LastShiftWalkSweep` 找到：地面碰撞是格心顶点连成的高度场，梯段 / 坡道侧面、坑沿成了伸进旁边一格的约 77° 隐形陡坡（37 处），司机室南沿两侧还留着 5.2 m 实心柱。构建器改成每格一块平面、落差立墙；走格从 877 次失败 / 37 处地面卡点降到 738 次（全是墙、栏杆、家具、站界）/ 0 处。
+- ⑦构建器把桥面与司机室楼面并成一张碰撞、按第一个三角形整张翻绕序，司机室楼面因此朝下、从上面踩不住。改为逐三角形朝上，坐标探针断言四处楼面 / 桥面先打到架空层。
+- ⑧`LastShiftWorld.InteractOffset` / `CrateMarkerOffset`（按 Blender 量的物体高度）替换各处一律 +1 m，官方箱子的 `interactMarkerOffset` 一并改；余响对话点从头顶（1 m，偏 0.3 m）挪到她胸口 0.62 m；剪票交互从台前半空挪到台上的打孔钳。
+- 规则与文档：`SkyIsland/AGENTS.md` §6.1 加第 7–10 条；新地图流程 README / 03 §5.2 / 04 §5.2；`docs/ai-docs-migration.md`；`ArtSource/LastShiftYard/README.md`；repowiki 末班编组站页。守卫 `LastShiftReadabilityPropertyTest` 加第二轮段（源码 + 组装 / 构建 / 走格报告），反向 9 处破坏全部转红并按字节还原；F3 演练室内判据收紧为 11 个触发区全部绑定。
+- 验证：全量守卫 763 PASS；回归 LastShift 2 / Tidegate 12 / SkyIsland 17 全 PASS；Unity 批处理构建 PASS、判包 PASS；正式编译 `Build succeeded!` 并部署，D 盘游戏目录 DLL `4B794FB1…E37F`、`lastshift_raid` `d1516912…6816`、三个新哨音按 SHA-256 一致，正式 DLL 无 Dev 标识。旧包备份在会话 scratchpad。
+- 未做 / 未验证：没开游戏（L3 待 owner，清单见同日回复）；跨车厢的模型没做共面检查（模板在 Blender 里叠在原点，场上不会同时重叠）；导航仍单层，AI 不钻桥下 / 司机室下；BossRushMod、作者工程、私有资源均未提交。
+
 ## 2026-11-12 三张自研图读图优化：边界实物、逐件碰撞、半掩体、天空岛掩体与错峰（COMPAT；L1/L2，L3 待 owner）
 
 玩家反馈「地图边界不明；地面无用装饰太多，分不清哪些有实体能挡子弹；天空岛太空旷、Boss 扎堆、没有掩体拉扯；潮闸镇特别容易被莫名其妙的东西卡脚」。owner 追加：边缘空气墙处放符合环境的实物；火车要过的地方别拦，要符合常理；教训写进 `docs/guides/new-map/`。

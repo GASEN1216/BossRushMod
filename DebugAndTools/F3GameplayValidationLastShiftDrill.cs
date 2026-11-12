@@ -603,6 +603,17 @@ namespace BossRush
             return problems.Count == 0;
         }
 
+        /// <summary>
+        /// 冻着的围圈小队成员没被官方 AI 带走：离自己的站位水平 ≤ 1 m、身子朝圈心偏差 ≤ 35°（两者都是官方 AI 一旦在冻结期间跑起来就会坏的量）。
+        /// </summary>
+        internal static bool LastShiftDrillSquadHoldOk(double drift, double facingDegrees, out string reason)
+        {
+            reason = null;
+            if (double.IsNaN(drift) || drift > 1.0) reason = "drift_" + drift.ToString("F2");
+            else if (double.IsNaN(facingDegrees) || facingDegrees > 35.0) reason = "facing_" + facingDegrees.ToString("F0");
+            return reason == null;
+        }
+
         /// <summary>撤离读条在北公路读到一截（≥ 0.8 秒）且没读满（5 秒）。</summary>
         internal static bool LastShiftDrillHoldOk(string exit, double held, out string reason)
         {

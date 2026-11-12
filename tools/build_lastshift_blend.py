@@ -224,6 +224,186 @@ def fix_outer_grit(colls):
     STATS['outerGritRemapped'] = fixed
 
 
+# ---------------- 共面分层（2026-11-12 实机「地图上很多地方一直在闪」） ----------------
+# three.js 原型里地面拼块、磨损层、库房地面漆、道岔铺板、相邻实例常常和底下那层完全共面（间距 0）或只隔几毫米，
+# 官方相机臂长 45 m、视角随准心微动，深度缓冲分不清前后，两层颜色来回抢 = 闪。几何上挪开会越挪越高、又撞上别的层，
+# 所以几何一律不动：找出「法线同向、间距 < ZF_GAP、投影重叠」的三角形对，给上层对象排一个层号，写进顶点色 alpha
+# （alpha = 1 - 层号 / 8；实例写进实例表 layers，Unity 构建器烘进合批顶点色），着色器顶点阶段按层号把深度往镜头推一点
+# （Assets/LastShiftYard/Shaders/LastShiftCommon.hlsl 的 LastShiftLayerBias，等效按层的 polygon offset）。
+# 定底：站场地形 > 建筑 > 轨道 / 构筑物 / 地标 > 其余，同档按参与重叠的面积从大到小、再按对象名（每次组装结果一样）。
+# 上层必须高于它压着的底；面积相近的同档件（一串互相压着的枕木、同一原型的两个实例）只要求层号不同，交替 0/1，不越叠越高。
+ZF_GAP, ZF_MIN_TRI, ZF_MIN_OVERLAP, ZF_MAX_LAYER, ZF_PEER_RATIO = 0.01, 0.02, 0.01, 7, 2.0
+ZF_GROUPS = ['terrain', 'buildings', 'landmark', 'track', 'structures', 'props', 'scatter', 'gameplay', 'yard']
+
+
+def _zf_triangles(colls):
+    deps = bpy.context.evaluated_depsgraph_get()
+    objs, parts = [], []
+    for g in ZF_GROUPS:
+        for o in colls[g].all_objects:
+            if o.type != 'MESH':
+                continue
+            ev = o.evaluated_get(deps); me = ev.to_mesh(); me.calc_loop_triangles()
+            n = len(me.loop_triangles)
+            if n:
+                co = np.empty(len(me.vertices) * 3); me.vertices.foreach_get('co', co); co = co.reshape(-1, 3)
+                M = np.array(o.matrix_world); co = co @ M[:3, :3].T + M[:3, 3]
+                idx = np.empty(n * 3, dtype=np.int64); me.loop_triangles.foreach_get('vertices', idx); idx = idx.reshape(-1, 3)
+                parts.append((len(objs), co[idx[:, 0]], co[idx[:, 1]], co[idx[:, 2]], idx)); objs.append(o)
+            ev.to_mesh_clear()
+    O = np.concatenate([np.full(len(a), i, dtype=np.int32) for i, a, _, _, _ in parts])
+    P0 = np.concatenate([q[1] for q in parts]); P1 = np.concatenate([q[2] for q in parts]); P2 = np.concatenate([q[3] for q in parts])
+    V = np.concatenate([q[4] for q in parts])  # 三角形在原网格里的顶点下标（导入的 GLB 没有修改器，求值网格与原网格同序）
+    cr = np.cross(P1 - P0, P2 - P0); area = np.linalg.norm(cr, axis=1) * 0.5
+    keep = area > ZF_MIN_TRI
+    P0, P1, P2, O, V, cr, area = P0[keep], P1[keep], P2[keep], O[keep], V[keep], cr[keep], area[keep]
+    Nf = cr / (2 * area[:, None])  # 原始面法线
+    N = Nf.copy()
+    flip = (N[:, 2] < -1e-6) | ((np.abs(N[:, 2]) <= 1e-6) & (N[:, 1] < -1e-6)) | ((np.abs(N[:, 2]) <= 1e-6) & (np.abs(N[:, 1]) <= 1e-6) & (N[:, 0] < 0))
+    N[flip] *= -1  # 规范朝向：双面渲染（Cull Off）下背对背的两层一样会抢
+    return objs, P0, P1, P2, O, V, area, Nf, N, np.einsum('ij,ij->i', N, P0)
+
+
+def _zf_clip(poly, a, b):
+    out = []
+    for k in range(len(poly)):
+        p, q = poly[k], poly[(k + 1) % len(poly)]
+        sp = (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0])
+        sq = (b[0] - a[0]) * (q[1] - a[1]) - (b[1] - a[1]) * (q[0] - a[0])
+        if sp >= 0:
+            out.append(p)
+        if (sp >= 0) != (sq >= 0):
+            t = sp / (sp - sq); out.append((p[0] + t * (q[0] - p[0]), p[1] + t * (q[1] - p[1])))
+    return out
+
+
+def _zf_area(poly):
+    return 0.5 * sum(poly[k][0] * poly[(k + 1) % len(poly)][1] - poly[(k + 1) % len(poly)][0] * poly[k][1] for k in range(len(poly)))
+
+
+def _zf_overlap(n, a, b):
+    u = np.cross(n, [0, 0, 1.0]) if abs(n[2]) < 0.9 else np.cross(n, [1.0, 0, 0]); u /= np.linalg.norm(u); v = np.cross(n, u)
+    A = [(float(p @ u), float(p @ v)) for p in a]; B = [(float(p @ u), float(p @ v)) for p in b]
+    if max(x for x, _ in A) < min(x for x, _ in B) or max(x for x, _ in B) < min(x for x, _ in A):
+        return 0.0
+    if max(y for _, y in A) < min(y for _, y in B) or max(y for _, y in B) < min(y for _, y in A):
+        return 0.0
+    if _zf_area(A) < 0:
+        A = A[::-1]
+    poly = B if _zf_area(B) >= 0 else B[::-1]
+    for k in range(3):
+        poly = _zf_clip(poly, A[k], A[(k + 1) % 3])
+        if not poly:
+            return 0.0
+    return abs(_zf_area(poly))
+
+
+def _zf_pairs(colls):
+    """返回 (objs, {(平面, 对象i, 对象j): 重叠面积}, {(平面, 对象): (参与重叠的面积, 面积加权原始法线)})。
+    平面 = 规范法线（约 3°）+ 偏移 5 cm 一档；同一档里的对象互相分层。"""
+    objs, P0, P1, P2, O, V, area, Nf, N, D = _zf_triangles(colls)
+    nq = np.round(N * 20).astype(np.int64); dq = np.floor(D / 0.02).astype(np.int64)
+    lo = np.floor(np.minimum(np.minimum(P0, P1), P2) / 4.0).astype(np.int64)
+    hi = np.floor(np.maximum(np.maximum(P0, P1), P2) / 4.0).astype(np.int64)
+    buckets = defaultdict(list)
+    for i in range(len(O)):
+        k = (int(nq[i, 0]), int(nq[i, 1]), int(nq[i, 2]), int(dq[i]))
+        for cx in range(lo[i, 0], hi[i, 0] + 1):
+            for cy in range(lo[i, 1], hi[i, 1] + 1):
+                for cz in range(lo[i, 2], hi[i, 2] + 1):
+                    buckets[k + (cx, cy, cz)].append(i)
+    pairs, seen, tris = defaultdict(float), set(), defaultdict(set)
+    for key, members in buckets.items():
+        nk = key[:3] + (key[3] + 1,) + key[4:]
+        m = sorted(set(members + buckets.get(nk, [])))
+        if len(m) < 2 or len(set(O[m].tolist())) < 2:
+            continue
+        for x in range(len(m)):
+            i = m[x]
+            for j in m[x + 1:]:
+                if O[i] == O[j] or (i, j) in seen or abs(D[i] - D[j]) > ZF_GAP or float(N[i] @ N[j]) < 0.998:
+                    continue
+                seen.add((i, j))
+                ov = _zf_overlap(N[i], (P0[i], P1[i], P2[i]), (P0[j], P1[j], P2[j]))
+                if ov < ZF_MIN_OVERLAP:
+                    continue
+                plane = key[:3] + (int(math.floor(min(D[i], D[j]) / 0.05)),)
+                a, b = sorted((int(O[i]), int(O[j])))
+                pairs[(plane, a, b)] += ov
+                tris[(plane, int(O[i]))].add(i); tris[(plane, int(O[j]))].add(j)
+    sizes = {}
+    for k, v in tris.items():
+        idx = np.array(sorted(v))
+        sizes[k] = (float(area[idx].sum()), Vector((area[idx, None] * Nf[idx]).sum(axis=0).tolist()), sorted({int(x) for x in V[idx].ravel()}))
+    return objs, pairs, sizes
+
+
+def _zf_rank(o):
+    names = {c.name for c in o.users_collection}
+    for rank, group in ((3, 'LSY_terrain'), (2, 'LSY_buildings'), (1, 'LSY_track'), (1, 'LSY_structures'), (1, 'LSY_landmark')):
+        if group in names:
+            return rank
+    return 0
+
+
+def layer_coplanar(colls):
+    objs, pairs, sizes = _zf_pairs(colls)
+    total = defaultdict(float)  # 每个对象参与重叠的总面积（各平面相加）
+    for (plane, o), (a, _, _) in sizes.items():
+        total[o] += a
+    order = sorted({o for _, a, b in pairs for o in (a, b)}, key=lambda o: (-_zf_rank(objs[o]), -total[o], objs[o].name))
+    rank_of = {o: i for i, o in enumerate(order)}
+    bases, peers = defaultdict(set), defaultdict(set)  # 后定者 → 先定者
+    for plane, a, b in pairs:
+        lo, hi = (a, b) if rank_of[a] < rank_of[b] else (b, a)
+        sa, sb = sizes[(plane, lo)][0], sizes[(plane, hi)][0]
+        same = objs[lo].data == objs[hi].data or (_zf_rank(objs[lo]) == _zf_rank(objs[hi]) and max(sa, sb) <= ZF_PEER_RATIO * min(sa, sb))
+        (peers if same else bases)[hi].add(lo)
+    layer, capped = {}, []
+    for o in order:
+        k = 1 + max((layer[x] for x in bases[o]), default=-1)
+        taken = {layer[x] for x in peers[o]}
+        while k in taken:
+            k += 1
+        if k > ZF_MAX_LAYER:
+            capped.append(objs[o].name); k = ZF_MAX_LAYER
+        layer[o] = k
+    # 写回：共享网格的实例组对象记在对象上（实例表 layers）；其余对象整份网格写顶点色 alpha，和别的对象共用网格时先复制一份
+    on_object = on_mesh = 0
+    for o, k in layer.items():
+        ob = objs[o]
+        if any(ob.name in colls[g].all_objects for g in INSTANCE_GROUPS) and ob.data.users > 1:
+            ob['lsy_layer'] = k; on_object += 1
+            continue
+        if k == 0 and not ob.data.color_attributes:
+            continue  # 没有顶点色时 Unity 给白色，alpha 1 就是第 0 层
+        if ob.data.users > 1:
+            ob.data = ob.data.copy()
+        _zf_write_alpha(ob.data, 1.0 - k / 8.0); on_mesh += 1
+    left = sum(v for (plane, a, b), v in pairs.items() if layer[a] == layer[b])
+    hist = defaultdict(int)
+    for k in layer.values():
+        hist[k] += 1
+    STATS['coplanar'] = {'pairs': len(pairs), 'overlap_m2': round(sum(pairs.values()), 2), 'objects': len(layer),
+                         'layers': dict(sorted(hist.items())), 'onInstanceTable': on_object, 'onVertexAlpha': on_mesh,
+                         'capped': capped[:10], 'sameLayerOverlap_m2': round(left, 3)}
+    if left > 0.01:
+        raise RuntimeError('共面分层后仍有 %.3f m² 重叠落在同一层' % left)
+
+
+def _zf_write_alpha(me, alpha):
+    if not me.color_attributes:
+        me.color_attributes.new('Col', 'BYTE_COLOR', 'CORNER')
+        attr = me.color_attributes[0]
+        values = np.ones(len(attr.data) * 4, dtype=np.float32)
+    else:
+        attr = me.color_attributes[0]
+        values = np.empty(len(attr.data) * 4, dtype=np.float32); attr.data.foreach_get('color', values)
+    values[3::4] = alpha
+    attr.data.foreach_set('color', values)
+    me.update()
+
+
 # ---------------- 地形高度场（碰撞 / 导航用，渲染隐藏；可见地面来自 terrain GLB） ----------------
 def build_height_collider(src, man, coll):
     t = man['terrain']; W, H = t['width'], t['height']
@@ -443,7 +623,7 @@ def split_instances(colls, proto_coll):
                 continue
             name = 'PROTO_%s_%02d' % (g, k); k += 1
             proto = bpy.data.objects.new(name, users[0].data); proto_coll.objects.link(proto)
-            rows, tints = [], []
+            rows, tints, layers = [], [], []
             for o in users:
                 skip.add(o.name)
                 if abs(o.matrix_world.to_3x3().determinant()) < 1e-9:
@@ -452,11 +632,13 @@ def split_instances(colls, proto_coll):
                 mu = S_UNITY @ (inv @ o.matrix_world @ C3B) @ S_UNITY
                 rows.append([round(mu[r][c], 5) for r in range(3) for c in range(4)])
                 tints.append(list(o.get('lsy_tint', [1.0, 1.0, 1.0])))
+                layers.append(int(o.get('lsy_layer', 0)))
             me = users[0].data
             table[name] = {'group': g, 'mesh': mname, 'source': source_label(users[0]),
                            'materials': list(me.materials),  # 材质对象；写盘时取名字（导出前会改成短名）
                            'triangles': sum(len(f.vertices) - 2 for f in me.polygons), 'instances': rows,
-                           'tints': tints if any(t != [1.0, 1.0, 1.0] for t in tints) else None}
+                           'tints': tints if any(t != [1.0, 1.0, 1.0] for t in tints) else None,
+                           'layers': layers if any(layers) else None}
     STATS['instancePrototypes'] = len(table); STATS['zeroScaleInstancesDropped'] = zero
     STATS['instances'] = {g: sum(len(v['instances']) for v in table.values() if v['group'] == g) for g in INSTANCE_GROUPS}
     STATS['instanceTriangles'] = sum(v['triangles'] * len(v['instances']) for v in table.values())
@@ -469,6 +651,7 @@ def write_instances(table, out_json):
     out_json.write_text(json.dumps({'matrix': 'Unity 世界坐标 3×4 行优先 [r00 r01 r02 tx, r10 r11 r12 ty, r20 r21 r22 tz]；'
                                               '原型网格在 LastShiftYard_instance_prototypes.fbx，节点名 = 键',
                                     'tints': '与 instances 平行的线性 RGB，乘在材质底色上（three.js instanceColor）；null = 全白',
+                                    'layers': '与 instances 平行的共面层号（build_lastshift_blend.py layer_coplanar），Unity 烘进合批顶点色 alpha = 1 - 层号 / 8；null = 全 0',
                                     'prototypes': table}, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
 
 
@@ -701,6 +884,7 @@ def build(src, out, fbx=True, render=True):
     STATS['blendedToDithered'] = dithered
     apply_instance_colors(src, man, colls)
     fix_outer_grit(colls)
+    layer_coplanar(colls)
     # 入口接驳小景在 three.js 里放在 (400, 0, 400)，不属于出击场景：只保留在 .blend，不进渲染与出击 FBX。
     colls['entrance'].hide_render = True
     build_height_collider(src, man, colls['collision'])

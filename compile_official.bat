@@ -355,6 +355,7 @@ echo(Tidegate\TidegateTideRules.cs
 echo(Tidegate\TidegateWorld.cs
 echo(LastShiftYard\LastShiftEntry.cs
 echo(LastShiftYard\LastShiftEscortChief.cs
+echo(LastShiftYard\LastShiftChiefFx.cs
 echo(LastShiftYard\LastShiftEnemies.cs
 echo(LastShiftYard\LastShiftDrillHooks.cs
 echo(LastShiftYard\LastShiftEnemyIdentity.cs
@@ -366,6 +367,7 @@ echo(LastShiftYard\LastShiftRaidScene.cs
 echo(LastShiftYard\LastShiftRuntimeModule.cs
 echo(LastShiftYard\LastShiftSession.cs
 echo(LastShiftYard\LastShiftSounds.cs
+echo(LastShiftYard\LastShiftSquads.cs
 echo(LastShiftYard\LastShiftStory.cs
 echo(LastShiftYard\LastShiftText.cs
 echo(LastShiftYard\LastShiftTimetable.cs

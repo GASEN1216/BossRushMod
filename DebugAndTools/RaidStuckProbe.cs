@@ -40,7 +40,10 @@ namespace BossRush
             if (!paramsLogged) { paramsLogged = true; LogMovementParams(player); }
             Vector3 input = player.MoveInput; input.y = 0f;
             Vector3 velocity = player.Velocity; velocity.y = 0f;
-            if (Time.timeScale <= 0f || input.sqrMagnitude < 0.25f || velocity.magnitude >= MinSpeed)
+            // 动作进行中（近战挥砍、换弹、使用物品、交互读条……）官方会把人定在原地，不算卡脚。
+            // 2026-11-12 末班编组站实机日志的 4 条 STUCK 都紧挨着焚皇近战连段，是这个误报。
+            bool acting = player.CurrentAction != null && player.CurrentAction.Running;
+            if (Time.timeScale <= 0f || acting || input.sqrMagnitude < 0.25f || velocity.magnitude >= MinSpeed)
             {
                 blocked = 0f;
                 return;

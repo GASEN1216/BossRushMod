@@ -182,6 +182,10 @@ namespace BossRush
             internal int Quality;
             internal bool Boss, FromTrain, Regular, Spawning, Failed, Suspended, Alive;
             internal CharacterMainControl Character;
+            /// <summary>围圈小队：营地 id（不是小队成员为 null）、冻着没有、站位、该朝的方向（指向圈心）。</summary>
+            internal string Squad;
+            internal bool Frozen;
+            internal Vector3 Home, Facing;
         }
 
         internal List<DevEnemyInfo> DevEnemies()
@@ -192,8 +196,21 @@ namespace BossRush
                 {
                     Id = g.Id, Group = g.Group, Duty = g.Duty, Post = g.Post, Quality = g.Quality, Boss = g.Boss, FromTrain = g.FromTrain,
                     Regular = g.Regular, Spawning = g.Spawning, Failed = g.Failed, Suspended = g.Suspended, Alive = IsAlive(g), Character = g.Character,
+                    Squad = g.Squad == null ? null : g.Squad.Site.Def.Id, Frozen = g.Frozen, Home = g.Home, Facing = g.Forward,
                 });
             return list;
+        }
+
+        /// <summary>本趟三处营地（id:站得住的人数，开过张的带 *）与此刻在场那一队的状态。</summary>
+        internal string DevSquadSummary
+        {
+            get
+            {
+                var plan = new List<string>(squadPlan.Count);
+                foreach (SquadSite site in squadPlan) plan.Add(site.Def.Id + ":" + site.Spots.Count + (site.Spent ? "*" : ""));
+                return "plan=" + string.Join("/", plan.ToArray()) + ",board=" + (squad == null ? "-" : squad.Site.Def.Id + "(" + squad.State + ")")
+                    + ",reserve=" + PendingSquadSeats();
+            }
         }
 
         internal int DevLive { get { return Live(); } }

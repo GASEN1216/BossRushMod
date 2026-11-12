@@ -426,6 +426,8 @@ namespace BossRush
             }
             box.Loot = loot;
             foreach (Renderer renderer in loot.GetComponentsInChildren<Renderer>(true)) renderer.enabled = false;
+            // 官方箱子预制件的提示高度是按它自己那只小木箱定的；本图的箱柜高矮不一，提示挪到箱面中部（官方 InteractHUD 每帧读这个偏移）
+            loot.interactMarkerOffset = LastShiftWorld.CrateMarkerOffset(box.Kind);
             try { loot.Inventory.SetCapacity(box.Capacity); } catch (Exception) { /* 容量写不进去就用共享建箱的 12 格 */ }
             var log = new StringBuilder();
             int added = 0;
@@ -487,7 +489,7 @@ namespace BossRush
                 Func<string> label = delegate { return DeviceLabel(box); };
                 Func<bool> available = delegate { return !closed && !box.Unlocked && valid != null && valid(); };
                 Action action = delegate { OnDevice(box); };
-                var device = NPCInteractionGroupHelper.GetOrCreateStandaloneInteractable<LastShiftDeviceInteractable>(host.transform, "Interact", new Vector3(0f, 1f, 0f), x =>
+                var device = NPCInteractionGroupHelper.GetOrCreateStandaloneInteractable<LastShiftDeviceInteractable>(host.transform, "Interact", LastShiftWorld.CrateMarkerOffset(box.Kind), x =>
                 {
                     x.Bind(box.Id, seconds, label, available, action);
                     SphereCollider sensor = x.GetComponent<SphereCollider>();

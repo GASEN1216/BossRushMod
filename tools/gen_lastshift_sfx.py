@@ -21,8 +21,19 @@ DURATIONS = {
     "tannoy_chime.wav": 1.5,
     # 进站汽笛：三音和弦的蒸汽笛，起音带气声。
     "train_whistle.wav": 2.4,
+    # 押运长的豌豆哨（2026-11-12）：封线两声短、响墩一声长、半血三声短。
+    "chief_whistle_two.wav": .62,
+    "chief_whistle_long.wav": .9,
+    "chief_whistle_three.wav": .72,
 }
-TARGETS = {"ticket_punch.wav": .34, "tannoy_chime.wav": .22, "train_whistle.wav": .26}
+TARGETS = {"ticket_punch.wav": .34, "tannoy_chime.wav": .22, "train_whistle.wav": .26,
+           "chief_whistle_two.wav": .3, "chief_whistle_long.wav": .3, "chief_whistle_three.wav": .3}
+# 每一声哨的 (起点秒, 时长秒)。
+WHISTLES = {
+    "chief_whistle_two.wav": ((0.0, .2), (.32, .22)),
+    "chief_whistle_long.wav": ((0.0, .78),),
+    "chief_whistle_three.wav": ((0.0, .14), (.24, .14), (.48, .16)),
+}
 
 
 def bell(t, frequency, decay):
@@ -32,6 +43,15 @@ def bell(t, frequency, decay):
     return attack * sum(math.sin(math.tau * frequency * partial * t) *
                         math.exp(-t * decay * (1 + i * .35)) / (1 + i * 1.5)
                         for i, partial in enumerate((1, 2.01, 2.76, 4.1)))
+
+
+def whistle_env(t, blasts):
+    """一声哨的包络：12 ms 起音（吹进去的那一下），35 ms 收尾。"""
+    for start, length in blasts:
+        u = t - start
+        if 0 <= u < length:
+            return min(1.0, u / .012) * min(1.0, (length - u) / .035)
+    return 0.0
 
 
 class OnePole:
@@ -75,6 +95,15 @@ def generate(name, seconds):
             body = min(1.0, t / .15) * min(1.0, max(0.0, (seconds - .45 - t) / .25)) if t < seconds - .45 else 0.0
             tail = max(0.0, min(1.0, (t - (seconds - .7)) / .1)) * max(0.0, (seconds - t) / .6)
             value = tone * body * .32 + breath * (.25 * body + .9 * tail)
+        elif name in WHISTLES:
+            # 豌豆哨：约 3.1 kHz 的主音被哨腔里滚动的软木珠搅出约 31 Hz 的颤音（频率 ±3.5%、幅度 ±38%），
+            # 珠子滚得不匀（再叠 7 Hz 的慢摆）；外加一点气声。
+            env = whistle_env(t, WHISTLES[name])
+            trill = math.sin(math.tau * 31.0 * t + 1.3 * math.sin(math.tau * 7.0 * t))
+            phases[0] += math.tau * 3150.0 * (1 + .035 * trill) / RATE
+            tone = math.sin(phases[0]) + .18 * math.sin(2 * phases[0]) + .05 * math.sin(3 * phases[0])
+            breath = hiss_lp(rng.uniform(-1, 1))
+            value = env * (tone * (.62 + .38 * trill) * .8 + breath * .22)
         else:
             value = 0.0
         values.append(value)
