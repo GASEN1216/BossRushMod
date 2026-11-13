@@ -31,7 +31,8 @@ def main():
             for value in pixels[row * width:(row + 1) * width]:
                 half_value = struct.unpack("<e", struct.pack("<e", value / 255.0))[0]
                 stream.write(struct.pack("<f", half_value))
-    production = [ROOT / "Tidegate/TidegateWater.cs", ROOT / "Tidegate/TidegateWorld.cs", ROOT / "Tidegate/TidegateWaterRegions.cs"]
+    production = [ROOT / "Tidegate/TidegateWater.cs", ROOT / "Tidegate/TidegateWorld.cs", ROOT / "Tidegate/TidegateWaterRegions.cs",
+                  ROOT / "Tidegate/TidegateBuildingCollision.cs"]
     paths = production + [HERE / "Stubs.cs", HERE / "Program.cs"]
     project = OUT / "Regression.csproj"
     project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType>'

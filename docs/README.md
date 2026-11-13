@@ -28,9 +28,12 @@
 - [游戏模式状态机设计](architecture/游戏模式状态机设计.md)：标准 BossRush / D / E / F / 丧尸的激活标志、转移与清理契约
 - [刷怪与恢复系统设计](architecture/刷怪与恢复系统设计.md)：刷怪核心、落点校正、卡住恢复
 - [Harmony 补丁契约稳定性](architecture/Harmony补丁契约稳定性.md)：动态绑定为什么会静默失效，官方更新后的自检流程
-- [自研着色器与官方渲染管线约定](architecture/自研着色器与官方渲染管线约定.md)：URP Deferred 下自研着色器必须带 `UniversalGBuffer`
+- [官方能力复用与自定义地图接入规范](architecture/官方能力复用与自定义地图接入规范.md)：在立项时对照官方入口和资源归属，涵盖场景、天气、室内、搜刮、AI、撤离和验收
+- [自研着色器与官方渲染管线约定](architecture/自研着色器与官方渲染管线约定.md)：URP Deferred 的不透明与透明 pass、官方光照、数据通道与实包排查
 - [事件订阅生命周期约定](architecture/事件订阅生命周期约定.md) · [Hooks 分层约定](architecture/Hooks分层约定.md) · [Config 归位约定](architecture/Config归位约定.md) · [Utilities 去重约定](architecture/Utilities去重约定.md)
 - [BOSS 模板约定](architecture/BOSS模板约定.md) · [NPC 共性对比记录](architecture/NPC共性对比记录.md) · [长期架构目标](architecture/长期架构目标.md)（non-goal 登记）
+
+- [仓库入口实体、余响官方对话与重进修复](reports/testing/仓库入口_2026-11-13_实体对话与重进.md)（2026-11-13）：本批证据、产物身份与实机步骤。
 
 ## guides/ — 教程与操作手册
 
@@ -51,6 +54,7 @@ NPC：
 场景与地图：
 
 - [新地图制作全流程（文件夹）](guides/new-map/README.md)：调研问答 → three.js 原型与精修 → Blender（MCP）→ Unity 打包 → 游戏接入 → 验收发布 → 宣传片 → B 站投稿，附潮闸镇时间线与教训；**做新地图从这里开始**
+- [官方能力复用与自定义地图接入规范](architecture/官方能力复用与自定义地图接入规范.md)：画白模前先对照官方能力，制作各阶段回查相应接入与验收项
 - [从零搭建自定义场景：Blender → Unity → Mod](guides/从零搭建自定义场景_Blender到Unity到Mod完整教程.md)：首次做场景从这里开始
 - [自建场景原型试用：石砌遗迹与石堡前哨](guides/石堡前哨独立场景试用.md)
 

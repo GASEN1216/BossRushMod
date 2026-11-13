@@ -49,8 +49,8 @@ namespace BossRush
                 WorldRootName = WorldRootName,
                 SpawnMarkerPath = "Markers/PlayerSpawn",
                 RequiredWorldPaths = new[] { "Markers/Exits", "Markers/Loot", "Markers/Spawns", "Collision", "Visual/VIS_Water" },
-                // 潮闸镇是户外海边：基地克隆来的天气副本里，白天 / 黎明的地堡室内 Volume（远景雾纯黑）换成官方户外的。
-                AdjustTimeOfDay = delegate (TimeOfDayConfig clone) { SkyIslandOutdoorDaylight.Apply(clone); },
+                // 基地晴天三时段的室内 Volume 换成官方户外资源，交给原版控制器切换与混合。
+                AdjustTimeOfDay = RaidOfficialLighting.ApplyOutdoorWeather,
                 // 官方爆炸遮挡射线写死在 y=0.5，镇区地面在 0.8 m 上下、灯塔岬更高：不抬就整片爆炸穿墙。补丁按场景句柄门控。
                 SceneLoaded = SkyIslandExplosionObstaclePatch.Arm,
                 SceneUnloaded = delegate (UnityEngine.SceneManagement.Scene scene) { SkyIslandExplosionObstaclePatch.Disarm(); },

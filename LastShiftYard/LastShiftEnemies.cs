@@ -7,25 +7,42 @@ using UnityEngine;
 namespace BossRush
 {
     /// <summary>
-    /// 末班编组站的刷怪 owner（第二期）。规则逐条照 three.js 原型 `docs/design/last-shift-yard/proto/sim.mjs`（第六轮）：
-    /// - 全趟可遇 24–30 人（含押运长与列车送来的押运员），同时活动 ≤ 8，流动（非固定岗）≤ 5；北门、南班、押运库三处固定岗各保一人。
-    /// - 只在离玩家 25–75 m、可走、2.75 m 内没有活人的点刷（原型 eligible）；开局一批，之后每 16 秒（没刷成 2 秒）补一人，先补固定岗。
-    /// - 来车（进站 / 停靠 / 出站）时流动押运跟车去那一台的封签货两侧；停靠时押运车在那一台放下最多 2 名押运员（玩家 25 m 内不放）。
+    /// 末班编组站的刷怪 owner。2026-11-13 快节奏改版（owner「快节奏的多趟火车的激战；走到每个有宝箱的地方都有激战」）后：
+    /// - 三本账（2026-11-13 owner「每趟火车来都会刷新，这样比较有激战的感觉」后分开）：
+    ///   巡逻、固定岗与押运长：全趟可遇 <see cref="PopulationMin"/>–<see cref="PopulationMin"/>+6 人，同时活动 ≤ <see cref="LiveCap"/>，
+    ///   流动（非固定岗）≤ <see cref="MobileCap"/>（封站后 +2）；北门、南班、押运库三处固定岗各保一人。
+    ///   列车押运：不占全趟名额，每班停靠一波，同时在场 ≤ <see cref="TrainLiveCap"/>；新一波下车时，上一波里远在玩家视野外、没在交火的人跟车走了（收掉）。
+    ///   守货岗（LastShiftSquads.cs）：每处有箱子的地方一队，同时在场 ≤ <see cref="GarrisonCap"/> 人、全趟 ≤ <see cref="GarrisonPopulation"/> 人；
+    ///   来车给停靠那一侧打光的守货岗补岗。
+    /// - 只在离玩家 25–75 m、可走、2.75 m 内没有活人的点刷；开局一批，之后补员间隔随签收柜数缩短（16 秒起，每签一柜 −3 秒，最少 8 秒）。
+    /// - 来车时流动押运跟车去那一台的封签货两侧；停靠时押运车厢在车尾放下一波押运员：3 人起，每签一柜多 1 人（最多 5 人），
+    ///   签过两柜起其中一人是小队长；末班车再多 1 人、守在尾梯边（玩家 25 m 内不在车尾放，改在货台放）。首班示范与直通快车不放人。
+    /// - 车头正面撞到押运员：普通押运当场撞死，小队长掉六成血，押运长掉三成（一班车一人只撞一次），算玩家的。
     /// - 库房警铃召回最近 3 名押运员 40 秒；轨道车铃引附近巡逻 35 秒；维修棚蜂鸣器引最多 2 名普通巡逻 10 秒（见 LastShiftYardDevices.cs）。
-    /// - 回访局 30% 押运长不在库前，坐第一班停靠货车的押运车来，在停靠那一台下车。
+    /// - 押运长守封签货：首次锁线后在停靠那一台的铅封柜后面生成，之后随道岔指向换台；
+    ///   押运库那一岗由普通押运员顶。回访局 30% 押运长坐第一班停靠货车的押运车来，在停靠那一台下车。
+    /// - 封站后搜站：每 10 秒把没在交火的流动押运派到玩家附近；北公路设卡（守货岗里的 checkpoint 一队）。
     /// 这些都只改官方 AI 的 <c>patrolPosition</c> / <c>MoveToPos</c>；发现玩家、交火与追击全交还官方行为树。
     /// 刷出的六步同潮闸镇：关距离激活 → 官方创建 → 导航限定本图 → 解除距离休眠 → 敌对性安全网 `SetTeam(Teams.wolf)` → 挂到世界根下。
     /// 远处安静的敌人整只停用、走近恢复（55 / 65 m 滞回）；押运长、交火中、赶往货台 / 警铃 / 铃声 / 蜂鸣器的人豁免。
-    /// 围圈小队（owner 2026-11-12）在 LastShiftSquads.cs：算进同时活动与全趟人数，不算流动；场上同时一队，没在场时流动给它留 3 个座位。
     /// 坐标：作者标记已是 Unity 坐标；原型里的固定点（货台、甲板、蜂鸣器目标）按 three.js (x, z) → Unity (x, y, -z) 换算。
     /// </summary>
     internal sealed partial class LastShiftEnemies : IDisposable
     {
         private const float MinSpawn = 25f, MaxSpawn = 75f, Crowd = 2.75f, ThinkInterval = .5f;
-        internal const int LiveCap = 8, MobileCap = 5, AlarmRecall = 3;
-        private const float ReinforceAfter = 16f, ReinforceRetry = 2f, AlarmSeconds = 40f, BellSeconds = 35f, BellRadius = 50f;
+        internal const int LiveCap = 10, MobileCap = 5, AlarmRecall = 3, PopulationMin = 40;
+        /// <summary>押运车厢每班放下的人：基础、每签一柜加几人、上限；末班车另加。</summary>
+        internal const int DropBase = 3, DropPerSignature = 1, DropMax = 5, DropLastTrainExtra = 1, LeaderDropFrom = 2;
+        /// <summary>列车押运同时在场上限（另一本账，不占巡逻名额与全趟人数）。</summary>
+        internal const int TrainLiveCap = 10;
+        private const float ReinforceAfter = 16f, ReinforceHeatStep = 3f, ReinforceMin = 8f, ReinforceRetry = 2f;
+        private const float AlarmSeconds = 40f, BellSeconds = 35f, BellRadius = 50f, HuntEvery = 10f, HuntSeconds = 10f;
+        /// <summary>车头撞小队长、押运长时掉的血（占满血比例）；普通押运当场撞死。</summary>
+        internal const float StrikeLeaderShare = .6f, StrikeChiefShare = .3f;
         internal const float ActivityWakeRadius = 55f, ActivitySleepRadius = 65f;
         internal const double ChiefRideChance = .3;
+        /// <summary>押运长岗位离铅封柜中心的距离（柜子 2.35 m 宽，站在柜后约 2 m 处）。</summary>
+        internal const float ChiefPostDistance = 3.2f;
         private static readonly string[] DutyPosts = { "postNorth", "postSouth", "postBond" };
         /// <summary>原型守卫跟车时围着封签货站的五个角位（相对货箱背面方向的弧度）。</summary>
         private static readonly float[] CargoAngles = { -1.45f, -.8f, .8f, 1.45f, -1.12f };
@@ -62,11 +79,17 @@ namespace BossRush
             internal char CargoLine;
             internal Vector3 CargoGoal;
             internal bool Suspended;
-            /// <summary>围圈小队成员（LastShiftSquads.cs）：所属小队、圈上位次、冻着没有、冻结前的 defaultWeaponOut、错开醒来的时刻。</summary>
+            /// <summary>守货岗成员（LastShiftSquads.cs）：所属小队、圈上位次、冻着没有、冻结前的 defaultWeaponOut、错开醒来的时刻。</summary>
             internal Squad Squad;
             internal int Slot;
             internal bool Frozen, SavedWeaponOut, WakeToPlayer;
             internal float WakeDue = -1f, RestHealth;
+            /// <summary>小队长的招式状态（LastShiftLeaders.cs）；普通押运为空。</summary>
+            internal LeaderState Lead;
+            /// <summary>末班车放下的押运员：守在押运车厢尾梯边。</summary>
+            internal bool VanGuard;
+            /// <summary>上一次被车头撞到是哪一班（一班车一人只撞一次，进站撞过出站不再撞）。</summary>
+            internal int StruckKey = -1;
         }
 
         private readonly LastShiftWorld world;
@@ -82,41 +105,58 @@ namespace BossRush
         private readonly List<Spot> picks = new List<Spot>();
         private readonly System.Random roster;
         private readonly int population;
+        private readonly Spot chiefSpot;
         private CharacterRandomPreset scav;
         private TidegateLoot.PrizeCatalog spareCatalog;
         private Guard chief;
         private bool chiefRides, closed, subscribed;
-        private int serial, spawned, inFlight, lureSerial, landedTrip = -1;
-        private float nextThink, nextReinforce, nextActivity;
+        private int serial, spawned, garrisonSpawned, trainSpawned, inFlight, lureSerial, landedTrip = -1, leaderSerial;
+        private float nextThink, nextReinforce, nextActivity, nextHunt, nextStrikeLine;
 
         /// <summary>押运长已倒下（站务记录、剧情用）。</summary>
         internal bool BossDefeated { get; private set; }
         /// <summary>押运长这趟是坐押运车来的（站务记录「击倒随车而来的押运长」）。</summary>
         internal bool BossRodeTrain { get; private set; }
+        /// <summary>巡逻、固定岗与押运长已刷出几人（列车押运、守货岗另记，见 <see cref="TrainSpawned"/>、<see cref="GarrisonSpawned"/>）。</summary>
         internal int SpawnedCount { get { return spawned; } }
         internal int Population { get { return population; } }
+        internal int GarrisonSpawned { get { return garrisonSpawned; } }
+        internal int TrainSpawned { get { return trainSpawned; } }
+        /// <summary>被车头撞倒的押运（站务与日志用）。</summary>
+        internal int TrainKills { get; private set; }
         /// <summary>会话可接上搜刮 owner 的私货抽签（带着旧钢印再打倒押运长时换成的那一件）；没接时用本 owner 自带的同口径抽签。</summary>
         internal Func<int> BossSpare { get; set; }
+        /// <summary>押运警戒：本趟已签几柜（会话接 <see cref="LastShiftLoot.Signatures"/>）。签得越多，押运车厢放下的人越多、补员越快。</summary>
+        internal Func<int> Heat { get; set; }
+
+        private int CurrentHeat()
+        {
+            if (Heat == null) return 0;
+            try { return Math.Max(0, Heat()); }
+            catch (Exception) { return 0; }
+        }
 
         internal LastShiftEnemies(LastShiftWorld world, LastShiftTimetable timetable, ArenaPrototypeNavigation navigation, CharacterMainControl player,
             int seed, bool returnVisit, Func<bool> valid, HashSet<Transform> unreachable, Action<string, bool> status)
         {
             this.world = world; this.timetable = timetable; this.navigation = navigation; this.player = player;
             this.valid = valid; this.status = status ?? delegate { };
-            population = 24 + (seed & 0x7fffffff) % 7;
+            population = PopulationMin + (seed & 0x7fffffff) % 7;
             roster = timetable.Stream("enemies#roster");
             LastShiftEnemyIdentity.InjectLabels();
             foreach (Transform marker in world.SpawnMarkers)
             {
-                // 进图时导航探路够不着的点本趟不刷（会话已记日志）。
-                if (marker == null || (unreachable != null && unreachable.Contains(marker))) continue;
+                // 原押运长标记只提供角色档案，铅封柜旁的真实落点在生成前另核地面。
+                if (marker == null || (marker.name != "bossSpawn" && unreachable != null && unreachable.Contains(marker))) continue;
                 string type; int quality;
                 Describe(marker.name, out type, out quality);
                 spots.Add(new Spot { Marker = marker, Id = marker.name, Group = marker.parent != null ? marker.parent.name : "outer", Type = type, Quality = quality });
             }
+            chiefSpot = FindSpot("bossSpawn");
             CollectRoutes();
             BuildDevices();
             BuildSquads();
+            BuildLeaderProps();
             timetable.PhaseChanged += OnPhase;
             subscribed = true;
             chiefRides = returnVisit && timetable.Stream("raid#chiefRide").NextDouble() < ChiefRideChance;
@@ -160,17 +200,24 @@ namespace BossRush
             }
         }
 
-        // 原型 attachActors：押运长（随车局除外）、北门与南班各一名固定岗、外线与东西场四名流动；此刻不合规的点不补，留给后面的补员。
-        // 2026-11-12 起固定岗之后先开一处围圈小队（开局离出生点 25–75 m 的营地），流动按剩下的座位刷（排队时 CanAdd 判）。
+        // 原型 attachActors：北门与南班各一名固定岗、外线与东西场四名流动；此刻不合规的点不补，留给后面的补员。
+        // 守货岗不在这里开：TickGarrisons 按玩家走近每处有箱子的地方逐处开（另一本账）。
         private void Seed()
         {
-            Spot boss = FindSpot("bossSpawn");
-            if (!chiefRides && boss != null) { chief = NewGuard(boss, boss.Marker.position, null); chief.IgnoreRing = true; queue.Add(chief); }
             foreach (string post in new[] { "postNorth", "postSouth" })
                 foreach (Spot spot in spots)
                     if (spot.Group == post && Eligible(spot.Marker.position)) { queue.Add(NewGuard(spot, spot.Marker.position, post)); break; }
-            TryBoardSquad(queue.Count);
             SeedMobile("s0", 0f, 0f); SeedMobile("w0", -1.5f, -1f); SeedMobile("w1", 1.6f, 1f); SeedMobile("e0", 0f, 0f);
+        }
+
+        private void QueueChiefAtAssignedPlatform()
+        {
+            if (chiefRides || chief != null || chiefSpot == null || !timetable.HasAssignedPlatform) return;
+            char line = timetable.LineUsed;
+            chief = NewGuard(chiefSpot, ChiefPost(line), null);
+            chief.IgnoreRing = true;
+            chief.CargoLine = line;
+            queue.Insert(0, chief);
         }
 
         private void SeedMobile(string id, float dx, float dz)
@@ -217,14 +264,27 @@ namespace BossRush
         {
             if (closed || valid == null || !valid() || player == null) return;
             float now = Time.time;
+            TickTrainStrikes(now);
             TickDevices(now);
             TickActivity(now);
             TickSquads(now);
+            TickLeaders(now);
+            QueueChiefAtAssignedPlatform();
             if (now >= nextThink) { nextThink = now + ThinkInterval; Think(now); }
+            if (timetable.YardClosed && now >= nextHunt) { nextHunt = now + HuntEvery; Hunt(now); }
             if (inFlight > 0) return;
             if (queue.Count > 0) { ServeQueue(now); return; }
-            if (now >= nextReinforce) nextReinforce = now + (Replenish() ? ReinforceAfter : ReinforceRetry);
+            if (now >= nextReinforce) nextReinforce = now + (Replenish() ? ReinforceInterval() : ReinforceRetry);
         }
+
+        /// <summary>补员间隔：16 秒起，每签一柜 −3 秒，最少 8 秒；封站后按最短的算。</summary>
+        private float ReinforceInterval()
+        {
+            if (timetable.YardClosed) return ReinforceMin;
+            return Mathf.Max(ReinforceMin, ReinforceAfter - ReinforceHeatStep * CurrentHeat());
+        }
+
+        private int MobileLimit { get { return MobileCap + (timetable.YardClosed ? 2 : 0); } }
 
         private void ServeQueue(float now)
         {
@@ -234,18 +294,18 @@ namespace BossRush
                 if (g.DwellTrip >= 0 && (timetable.Phase != LastShiftPhase.Dwell || timetable.Trip != g.DwellTrip)) { queue.RemoveAt(i--); continue; }
                 if (now < g.RetryAfter) continue;
                 queue.RemoveAt(i);
-                // 小队的座位在开张时已经核过；成员彼此只隔两三米，不走流动的「2.75 m 内没人」那条。
-                if (g.Squad != null) { if (Live() >= LiveCap || spawned + inFlight >= population) { g.Failed = true; return; } }
-                else if (!g.Boss && (!CanAdd(g.Duty) || !Eligible(g.Position))) return; // 原型 newGuard 返回空：这一名不刷。
+                // 守货岗的座位在开张时已经核过；成员彼此只隔两三米，不走流动的「2.75 m 内没人」那条。
+                if (g.Squad != null) { if (GarrisonLive() >= GarrisonCap || garrisonSpawned >= GarrisonPopulation) { g.Failed = true; return; } }
+                else if (!g.Boss && (!CanAdd(g.Duty, g.FromTrain) || !Eligible(g.Position))) return; // 原型 newGuard 返回空：这一名不刷。
                 Spawn(g);
                 return;
             }
         }
 
-        // 原型 replenish：先补没人的固定岗，再开围圈小队，再补流动（给还没开张的小队留座）；返回这一次有没有开刷。
+        // 原型 replenish：先补没人的固定岗，再补流动；返回这一次有没有开刷。守货岗另走 TickGarrisons。
         private bool Replenish()
         {
-            if (Live() >= LiveCap || spawned + inFlight >= population) return false;
+            if (Live() >= LiveCap || PopulationSeats() <= 0) return false;
             foreach (string post in DutyPosts)
             {
                 if (PostHeld(post)) continue;
@@ -254,8 +314,7 @@ namespace BossRush
                 Spawn(NewGuard(spot, spot.Marker.position, post));
                 return true;
             }
-            if (TryBoardSquad(0)) return true;
-            if (MobileLive() >= MobileCap || Live() + PendingSquadSeats() >= LiveCap) return false;
+            if (MobileLive() >= MobileLimit) return false;
             Spot mobile = PickSpot(null, false);
             if (mobile == null) return false;
             Spawn(NewGuard(mobile, mobile.Marker.position, null));
@@ -280,32 +339,60 @@ namespace BossRush
 
         private static bool Counts(Guard g) { return g.Spawning || IsAlive(g); }
 
+        private bool ChiefPending()
+        {
+            return chiefSpot != null && !BossDefeated && (chief == null || (!chief.Failed && !Counts(chief)));
+        }
+
+        /// <summary>列车押运（押运车厢放下的人，押运长随车不算）：另一本账。</summary>
+        private static bool TrainEscort(Guard g) { return g.FromTrain && !g.Boss; }
+
+        private int PopulationSeats()
+        {
+            int flying = 0;
+            foreach (Guard g in guards) if (g.Spawning && g.Squad == null && !TrainEscort(g)) flying++;
+            return population - spawned - flying - (ChiefPending() ? 1 : 0);
+        }
+
+        /// <summary>巡逻、固定岗与押运长此刻在场几人（列车押运、守货岗不算，另见 <see cref="TrainLive"/>、<see cref="GarrisonLive"/>）。</summary>
         private int Live()
         {
-            int n = chiefRides && !BossDefeated && (chief == null || (!chief.Failed && !Counts(chief))) ? 1 : 0; // 随车的押运长也占一个活动名额
-            foreach (Guard g in guards) if (Counts(g)) n++;
+            // 等锁线与等押运车都预留名额；生成中或已在场时由 guards 计数。
+            int n = ChiefPending() ? 1 : 0;
+            foreach (Guard g in guards) if (g.Squad == null && !TrainEscort(g) && Counts(g)) n++;
             return n;
         }
 
+        /// <summary>列车押运此刻在场（含正在生成）几人。</summary>
+        private int TrainLive()
+        {
+            int n = 0;
+            foreach (Guard g in guards) if (TrainEscort(g) && Counts(g)) n++;
+            return n;
+        }
+
+        /// <summary>流动巡逻此刻几人（押运车厢放下的人另算，见 <see cref="CanAdd"/>）。</summary>
         private int MobileLive()
         {
             int n = 0;
-            foreach (Guard g in guards) if (g.Duty == null && !g.Boss && Counts(g)) n++;
+            foreach (Guard g in guards) if (g.Duty == null && !g.Boss && !g.FromTrain && Counts(g)) n++;
             return n;
         }
 
         private bool PostHeld(string post)
         {
-            // 押运长守在库前时就是押运库那一岗；坐车来的不算，库前另补一名。
-            if (post == "postBond" && chief != null && !chief.FromTrain && Counts(chief)) return true;
+            // 押运长守的是封签货（GuardCargo），押运库那一岗由普通押运员顶
             foreach (Guard g in guards) if (g.Duty == post && Counts(g)) return true;
             return false;
         }
 
-        private bool CanAdd(string duty)
+        /// <summary>押运车厢放下的人走自己那本账（同时在场 ≤ <see cref="TrainLiveCap"/>，不占全趟人数）：每班都能下来一波，不被巡逻占满。</summary>
+        private bool CanAdd(string duty, bool fromTrain = false)
         {
-            if (Live() >= LiveCap || spawned + inFlight >= population) return false;
-            return duty != null ? !PostHeld(duty) : MobileLive() < MobileCap && Live() + PendingSquadSeats() < LiveCap;
+            if (fromTrain) return TrainLive() < TrainLiveCap;
+            if (PopulationSeats() <= 0) return false;
+            if (Live() >= LiveCap) return false;
+            return duty != null ? !PostHeld(duty) : MobileLive() < MobileLimit;
         }
 
         private bool Eligible(Vector3 p)
@@ -345,7 +432,9 @@ namespace BossRush
                 Vector3 position;
                 // 小队成员只站自己那个已核过的位置（不就近挪开，否则圈就散了）。
                 bool stood = g.Squad != null ? CanStand(g.Position, out position) : Footing(g.Position, out position);
-                if (!stood || (!g.IgnoreRing && !InRing(position)))
+                // 守货岗成员不走刷怪环（开张时站位已核），只要求不在玩家眼前冒出来。
+                bool tooClose = g.Squad != null && FlatDistance(position, player.transform.position) < GarrisonSpawnMin;
+                if (!stood || tooClose || (!g.IgnoreRing && !InRing(position)))
                 {
                     // 押运长必到：3 秒后再试；其余这一名不刷，名额留给后面的补员。
                     if (g.Boss) { g.RetryAfter = Time.time + 3f; queue.Add(g); }
@@ -375,16 +464,17 @@ namespace BossRush
                 created.SetTeam(clone.team);
                 if (!Team.IsEnemy(created.Team, Teams.player)) created.SetTeam(Teams.wolf);
                 created.transform.SetParent(world.Root.transform, true);
-                // 东台队长与押运护卫按原定武器 Q3（天空岛普通档 3–4，达标的官方原装不换）；其余保留官方原装。
-                if (!g.Boss && g.Quality >= 3) SkyIslandEnemyArmory.Arm(created, SkyIslandEnemyTier.Scav);
+                // 东台队长、押运护卫与三种小队长按原定武器 Q3（天空岛普通档 3–4，达标的官方原装不换）；其余保留官方原装。
+                if (!g.Boss && (g.Quality >= 3 || IsLeaderPost(g.Post))) SkyIslandEnemyArmory.Arm(created, SkyIslandEnemyTier.Scav);
                 LastShiftEnemyIdentity.Dress(created, g.Post);
                 // 克隆 preset 要活到角色销毁：官方死亡掉落、经验都还会读它。
                 created.gameObject.AddComponent<TidegatePresetOwner>().Preset = clone;
                 clone = null;
-                g.Character = created; g.Ai = ai; g.Home = position; g.GoalKey = 0;
+                g.Character = created; g.Ai = ai; g.Home = g.Boss && g.FromTrain ? ChiefPost(g.CargoLine) : position; g.GoalKey = 0;
                 g.Wp = NearestWaypoint(g.Route, position);
                 ai.patrolPosition = position;
                 if (g.Squad != null) SquadMemberReady(g);
+                if (IsLeaderPost(g.Post)) BindLeader(g);
                 if (g.Boss)
                 {
                     chief = g;
@@ -393,7 +483,7 @@ namespace BossRush
                     {
                         BossRodeTrain = true;
                         status(L10n.T("押运长从押运车上跳下来，就在", "The chief escort jumps off the brake van at the ")
-                            + LastShiftText.PlatformName(timetable.LineUsed) + L10n.T("台！", " platform!"), true);
+                            + LastShiftText.PlatformName(g.CargoLine) + L10n.T("台！", " platform!"), true);
                     }
                 }
                 else if (g.FromTrain && landedTrip != timetable.Trip)
@@ -403,9 +493,11 @@ namespace BossRush
                         + L10n.T("台放下了押运员。", " platform."), false);
                 }
                 retained = true;
-                spawned++;
+                if (g.Squad != null) garrisonSpawned++; else if (TrainEscort(g)) trainSpawned++; else spawned++;
                 Debug.Log(LastShiftRaidScene.LogTag + " ENEMY_READY id=" + g.Id + " post=" + g.Post + " duty=" + (g.Duty ?? "-") + " preset=" + source.name
-                    + " team=" + created.Team + " live=" + Live() + " spawned=" + spawned + "/" + population);
+                    + " team=" + created.Team + " live=" + Live() + " spawned=" + spawned + "/" + population
+                    + " train=" + TrainLive() + " trainSpawned=" + trainSpawned
+                    + " garrison=" + GarrisonLive() + " garrisonSpawned=" + garrisonSpawned + "/" + GarrisonPopulation);
             }
             catch (Exception e)
             {
@@ -488,32 +580,98 @@ namespace BossRush
         // ---------------- 列车：送押运员、送押运长 ----------------
         private void OnPhase(LastShiftPhase previous, LastShiftPhase next)
         {
-            if (closed || next != LastShiftPhase.Dwell || valid == null || !valid()) return;
+            if (closed || valid == null || !valid()) return;
             try
             {
+                // 末班车一进站，北公路的卡口就开始拉路障（守货岗里的 checkpoint 一队）；封站后搜站。
+                if (next == LastShiftPhase.Arrival && timetable.IsLastTrain) checkpointWanted = true;
+                if (next == LastShiftPhase.Clear && timetable.YardClosed) { checkpointWanted = true; nextHunt = Time.time + 3f; }
+                if (next == LastShiftPhase.Arrival || (previous == LastShiftPhase.Dwell && next == LastShiftPhase.Depart))
+                {
+                    // 列车 owner 已封线：押运长不能沿净空时的换台路径继续横穿，停靠时的绕车路径也不能带进发车相位。
+                    foreach (Guard g in guards)
+                    {
+                        if (!IsAlive(g) || g.Suspended) continue;
+                        if (next == LastShiftPhase.Arrival && !g.Boss) continue;
+                        PrepareNavigation(g.Character);
+                        g.GoalKey = 0;
+                    }
+                    return;
+                }
+                if (next != LastShiftPhase.Dwell) return;
                 char line = timetable.LineUsed;
                 // 原型 deckPoint：西台 (-35.5, -28)、东台 (35.5, -28)（three.js）。
                 float deckX = line == 'W' ? -35.5f : 35.5f;
-                if (chiefRides && !BossDefeated && (chief == null || (!chief.Failed && !Counts(chief) && !queue.Contains(chief))))
+                if (chiefRides && ChiefPending() && !queue.Contains(chief))
                 {
-                    Spot spot = FindSpot("bossSpawn");
-                    if (spot == null) return;
-                    chief = NewGuard(spot, Snap(Three(deckX, -24f)), null);
+                    chief = NewGuard(chiefSpot, Snap(Three(deckX, -24f)), null);
                     chief.IgnoreRing = true; chief.FromTrain = true; chief.DwellTrip = timetable.Trip;
-                    queue.Add(chief);
+                    chief.CargoLine = line;
+                    queue.Insert(0, chief);
                     return; // 原型 trainArrived：押运长下车的那一班不另送押运员。
                 }
                 if (timetable.Training) return;
+                // 这一班停到哪一侧，那一侧打光的守货岗重新有人；上一波没交过火、远在视野外的列车押运跟车走了，座位留给这一波。
+                RestaffSide(line);
+                int left = SendOffIdleTrainEscorts();
                 Spot reference = FindSpot(line == 'W' ? "w2" : "e2");
                 if (reference == null) return;
-                for (int i = 0; i < 2; i++)
+                // 押运车厢在车尾放人：离签收柜约 30 m，签收的人看不见他们刷出来，却能看见他们从车尾跑过来。
+                // 玩家贴着车尾（25 m 内）时改在货台北端放；两处都不合规的那几名本班不放。
+                int heat = CurrentHeat();
+                int count = Math.Min(DropMax, DropBase + DropPerSignature * heat) + (timetable.IsLastTrain ? DropLastTrainExtra : 0);
+                bool leader = heat >= LeaderDropFrom || timetable.IsLastTrain;
+                LastShiftCar van;
+                bool hasVan = timetable.TryVan(out van);
+                for (int i = 0; i < count; i++)
                 {
-                    Guard g = NewGuard(reference, Snap(Three(deckX, -28f - 2.2f * i)), null);
+                    Vector3 at = hasVan ? VanSlot(van, line, i) : Snap(Three(deckX, -28f - 3f * i));
+                    if (!Eligible(at)) at = Snap(Three(deckX, -28f - 3f * (i % 3)));
+                    Guard g = NewGuard(reference, at, null);
                     g.FromTrain = true; g.DwellTrip = timetable.Trip;
+                    g.VanGuard = timetable.IsLastTrain;
+                    if (leader && i == 0) MakeLeader(g, NextLeaderPost());
                     queue.Add(g);
                 }
+                Debug.Log(LastShiftRaidScene.LogTag + " TRAIN_DROP trip=" + timetable.Trip + " heat=" + heat + " count=" + count + " leader=" + leader + " van=" + hasVan
+                    + " sentOff=" + left + " trainLive=" + TrainLive());
             }
             catch (Exception e) { Debug.LogWarning(LastShiftRaidScene.LogTag + " 列车送人失败：" + e.Message); }
+        }
+
+        /// <summary>
+        /// 新一波下车前，上一波列车押运里离玩家 <see cref="ActivitySleepRadius"/> m 外（屏幕外好几屏）、没被叫走也没在交火的，跟着车走了：
+        /// 整只收掉（列车押运本来就另记一本账，不退全趟名额）。来车时流动押运都醒着跟车，所以按距离判，不看是否挂起。
+        /// 留下的是玩家附近、正在打的那些。返回收掉几人。
+        /// </summary>
+        private int SendOffIdleTrainEscorts()
+        {
+            int n = 0;
+            Vector3 at = player.transform.position;
+            for (int i = guards.Count - 1; i >= 0; i--)
+            {
+                Guard g = guards[i];
+                if (!TrainEscort(g) || !IsAlive(g) || g.Lured || g.Spawning) continue;
+                if (FlatDistance(g.Character.transform.position, at) <= ActivitySleepRadius) continue;
+                if (g.Ai != null && !g.Suspended && Engaged(g, 6f)) continue;
+                queue.Remove(g);
+                guards.RemoveAt(i);
+                DisposeLeader(g);
+                g.Character.gameObject.SetActive(false);
+                UnityEngine.Object.Destroy(g.Character.gameObject);
+                g.Character = null;
+                n++;
+            }
+            return n;
+        }
+
+        /// <summary>押运车厢靠货台一侧、从车尾往车头排开的落脚点（第 <paramref name="index"/> 个，间隔 3 m，避开「2.75 m 内没有活人」）。</summary>
+        private Vector3 VanSlot(LastShiftCar van, char line, int index)
+        {
+            double co = Math.Cos(van.Yaw), sn = Math.Sin(van.Yaw), side = line == 'W' ? -1 : 1;
+            double along = van.Depth * 0.5 - LastShiftTrains.VanStepBack - 3.0 * index, across = van.Width * 0.5 + LastShiftTrains.VanStepAcross + .4;
+            double x = van.X + sn * along + co * side * across, z = van.Z + co * along - sn * side * across;
+            return Snap(new Vector3((float)x, 0f, -(float)z));
         }
 
         private static Vector3 Three(float x, float z) { return new Vector3(x, 0f, -z); }
@@ -599,7 +757,7 @@ namespace BossRush
                 if (g.Lured && now >= g.LureUntil && (now >= g.LureUntil + 30f || (g.Character.transform.position - g.LureBack).sqrMagnitude < 2f * 2f))
                 { g.Lured = false; g.GoalKey = 0; }
                 if (Engaged(g, 4f)) continue;
-                if (g.Boss) { g.Ai.patrolPosition = g.Home; continue; }
+                if (g.Boss) { GuardCargo(g, now); continue; }
                 if (g.Lured)
                 {
                     bool back = now >= g.LureUntil;
@@ -607,6 +765,12 @@ namespace BossRush
                 }
                 else if (g.Duty != null) Patrol(g, now);
                 else if (now < g.BellUntil) Move(g, g.BellTarget, 4000000, now);
+                else if (g.VanGuard && timetable.IsLastTrain && timetable.TrainOnLine)
+                {
+                    // 末班车放下的人守着押运车厢尾梯（车开动后跟着车走一段）。
+                    LastShiftCar van;
+                    if (timetable.TryVan(out van)) Move(g, VanSlot(van, timetable.LineUsed, g.Index % 3), 5100000 + (timetable.Phase == LastShiftPhase.Dwell ? 0 : (int)(now / 2f)), now);
+                }
                 else if (calls)
                 {
                     char line = timetable.LineUsed;
@@ -648,13 +812,113 @@ namespace BossRush
         /// <summary>原型第六轮：押运守在封签货两端（签收位有清楚的射线），不在货箱上排网格。</summary>
         private Vector3 CargoSlot(char line, int index)
         {
-            Vector3 crate = Three(line == 'W' ? -32f : 32f, -33f);
-            foreach (Transform marker in world.LootMarkers)
-                if (marker != null && marker.name == (line == 'W' ? "cargoW" : "cargoE")) { crate = marker.position; break; }
             // 西台货箱面朝 +x（three.js），东台面朝 -x；角位从货箱背面量。
             float back = line == 'W' ? Mathf.PI : 0f;
             float angle = back + CargoAngles[index % CargoAngles.Length], radius = 2.6f + (index * 7 % 5) * .3f;
-            return Snap(crate + new Vector3(Mathf.Cos(angle) * radius, 0f, -Mathf.Sin(angle) * radius));
+            return Snap(CargoCrate(line) + new Vector3(Mathf.Cos(angle) * radius, 0f, -Mathf.Sin(angle) * radius));
+        }
+
+        private Vector3 CargoCrate(char line)
+        {
+            foreach (Transform marker in world.LootMarkers)
+                if (marker != null && marker.name == (line == 'W' ? "cargoW" : "cargoE")) return marker.position;
+            return Three(line == 'W' ? -32f : 32f, -33f);
+        }
+
+        /// <summary>押运长的岗位：铅封柜正背面（签收的人站在靠股道那面，他隔着柜子守着），离柜 <see cref="ChiefPostDistance"/> m。</summary>
+        private Vector3 ChiefPost(char line)
+        {
+            return Snap(CargoCrate(line) + new Vector3(line == 'W' ? -ChiefPostDistance : ChiefPostDistance, 0f, 0f));
+        }
+
+        /// <summary>
+        /// 扳岔后尽早换岗。到停靠和离站时封线形状会改变，用新目标键让官方 AI 按当前导航重寻。
+        /// </summary>
+        private void GuardCargo(Guard g, float now)
+        {
+            if (g.CargoLine != timetable.LineUsed)
+            {
+                g.CargoLine = timetable.LineUsed;
+                g.Home = ChiefPost(g.CargoLine);
+                g.GoalKey = 0;
+                Debug.Log(LastShiftRaidScene.LogTag + " CHIEF_REASSIGNED_CARGO line=" + g.CargoLine + " trip=" + timetable.Trip);
+            }
+            // 正常进出站的封线相同，净空与下一班预告也相同；只在形状确实变了时重寻。
+            int navigationState = timetable.Phase == LastShiftPhase.Dwell ? 2 : timetable.TrainOnLine ? 1 : 0;
+            Move(g, g.Home, 6000000 + navigationState * 100 + g.CargoLine, now);
+        }
+
+        // ---------------- 封站后搜站 ----------------
+        /// <summary>封站后每 <see cref="HuntEvery"/> 秒：没在交火的流动押运往玩家附近赶（各自错开几米），逼人尽快走。</summary>
+        private void Hunt(float now)
+        {
+            if (player == null || player.Health == null || player.Health.IsDead) return;
+            Vector3 at = player.transform.position;
+            int n = 0;
+            foreach (Guard g in guards)
+            {
+                if (!IsAlive(g) || g.Boss || g.Duty != null || g.Squad != null || g.Ai == null || g.Suspended || Engaged(g, 4f)) continue;
+                float angle = (g.Index % 6) * Mathf.PI / 3f;
+                Lure(g, Snap(at + new Vector3(Mathf.Cos(angle) * 6f, 0f, Mathf.Sin(angle) * 6f)), now + HuntSeconds);
+                n++;
+            }
+            if (n > 0) Debug.Log(LastShiftRaidScene.LogTag + " YARD_HUNT guards=" + n);
+        }
+
+        // ---------------- 车头正面撞押运 ----------------
+        /// <summary>
+        /// 进站、出站时车头扫过的窄带（同 <see cref="LastShiftTimetable.FrontHit"/>，判玩家的同一条）里有押运：普通押运当场撞死，
+        /// 小队长掉六成血、押运长掉三成，再被推到车身外侧（一班车一人只撞一次）。伤害记在玩家名下——把追兵引上股道是玩家的打法。
+        /// 只在进出站相位、每帧对活着且没挂起的人算一次，人数小、O(n)。
+        /// </summary>
+        private void TickTrainStrikes(float now)
+        {
+            LastShiftPhase phase = timetable.Phase;
+            if (phase != LastShiftPhase.Arrival && phase != LastShiftPhase.Depart) return;
+            int key = timetable.Trip;
+            double from = timetable.SweptFromZ;
+            List<LastShiftCar> cars = timetable.Cars();
+            if (cars.Count == 0) return;
+            LastShiftCar engine = cars[0];
+            for (int i = 0; i < guards.Count; i++)
+            {
+                Guard g = guards[i];
+                if (g.Suspended || g.StruckKey == key || !IsAlive(g)) continue;
+                Vector3 p = g.Character.transform.position;
+                if (!timetable.FrontHit(engine, from, p.x, -p.z, p.y)) continue;
+                g.StruckKey = key;
+                Strike(g, p, now);
+            }
+        }
+
+        private void Strike(Guard g, Vector3 at, float now)
+        {
+            Health health = g.Character.Health;
+            float damage = g.Boss ? health.MaxHealth * StrikeChiefShare : g.Lead != null ? health.MaxHealth * StrikeLeaderShare : health.CurrentHealth + 1f;
+            CharacterMainControl credit = player != null && player.Health != null && !player.Health.IsDead ? player : null;
+            Vector3 push = Vector3.zero;
+            List<LastShiftCar> cars = timetable.Cars();
+            if (cars.Count > 0)
+            {
+                LastShiftCar c = cars[0];
+                double co = Math.Cos(c.Yaw), sn = Math.Sin(c.Yaw), dx = at.x - c.X, dz = -at.z - c.Z;
+                double side = co * dx - sn * dz < 0 ? -1 : 1, r = c.Width * 0.5 + .7;
+                push = new Vector3((float)(c.X + co * side * r + sn * (sn * dx + co * dz)), at.y, -(float)(c.Z - sn * side * r + co * (sn * dx + co * dz)));
+            }
+            try
+            {
+                health.Hurt(new DamageInfo(credit) { damageType = DamageTypes.realDamage, damageValue = damage, ignoreArmor = true,
+                    fromWeaponItemID = 0, damagePoint = at + Vector3.up, damageNormal = (push - at).sqrMagnitude > .01f ? (push - at).normalized : Vector3.up });
+            }
+            catch (Exception e) { Debug.LogWarning(LastShiftRaidScene.LogTag + " 车头撞押运失败 " + g.Id + "：" + e.Message); return; }
+            SkyIslandImpactFx.Puff(world.Root.transform, at, .7f, 8);
+            SkyIslandImpactFx.Sparks(world.Root.transform, at + Vector3.up * .8f, LastShiftChiefFx.Amber, 6);
+            SkyIslandImpactFx.Shake(at, .35f);
+            bool dead = health.IsDead;
+            if (!dead && push != Vector3.zero) { try { g.Character.SetPosition(push); } catch (Exception) { /* 推不动就留在原地，下一班才会再撞 */ } }
+            if (dead) TrainKills++;
+            if (now >= nextStrikeLine) { nextStrikeLine = now + 15f; status(LastShiftText.TrainStrikeLine, false); }
+            Debug.Log(LastShiftRaidScene.LogTag + " TRAIN_STRIKE id=" + g.Id + " dead=" + dead + " boss=" + g.Boss + " leader=" + (g.Lead != null) + " trip=" + timetable.Trip);
         }
 
         // ---------------- 远处安静的敌人挂起 ----------------
@@ -707,6 +971,7 @@ namespace BossRush
             closed = true;
             if (subscribed) { timetable.PhaseChanged -= OnPhase; subscribed = false; }
             DisposeDevices();
+            DisposeLeaders();
             DisposeSquads();
             foreach (Guard g in guards)
             {

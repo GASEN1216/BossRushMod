@@ -36,6 +36,8 @@
 
 ## NPC 姓名与角色视野
 
+- NPC 的完整对话一律接共享 `DialogueManager` 和官方 `DialogueActor` / `DialogueUI`，不得另用确认弹窗模拟人物交谈；台词、选项与后续提交分开，实际会话 owner 才能响应取消。具体规范在 `Common/UI/AGENTS.md` 与 `docs/architecture/官方能力复用与自定义地图接入规范.md`。
+
 - 自定义友好 NPC 的姓名交给官方对话 / 商店 owner；`NPCNameTagHelper` 只兼容登记与显式语言更新。不为姓名新建 `Health`、常驻屏幕标签，或克隆 `HealthBar` 后绕过其 `Hidden`、镜头前后和 `FadeGroup` 控制。不要按第一 / 第三 / 俯视角分别打补丁。
 - 装备与近战模型经 `EquipmentFactory.EnsureModelSubVisuals` 补缺失的 `CharacterSubVisuals`；模型子树建好后才 `SetRenderers()`，已有组件及其缓存交原 owner 管理。官方装备 / 手持挂载不会自动补此组件，枪的 `BuildAgent` 有自己的补齐流程。运行时近战重新设层、材质和渲染状态后，以 `characterModel.SyncHiddenToMainCharacter()` 收尾。
 - 独立 NPC 模型与沙暴等角色外的附加外形，建好渲染子树后装配 `ModEntityFogVisibility`，复用角色已有的官方迷雾源；不能以改友好阵营、停用整只角色或关闭 AI / 碰撞来隐藏模型。技能收尾只恢复技能自己的状态，不调用 `CharacterMainControl.Show()` 清掉迷雾的 `Hidden`。

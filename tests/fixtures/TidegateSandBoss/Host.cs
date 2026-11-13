@@ -8,7 +8,6 @@ namespace UnityEngine
 {
     public partial class Object { internal static Object Session;public static T FindObjectOfType<T>() where T:Object{return Session as T;}public static void Destroy(Object obj,float delay) { if(delay!=25f) throw new Exception("unexpected marker lifetime"); } }
     public partial class Component { public T GetComponent<T>() where T : Component { return gameObject.components.OfType<T>().FirstOrDefault(); } }
-    public partial class GameObject { public bool activeInHierarchy { get { return activeSelf; } } }
     public partial struct Vector3
     {
         public static Vector3 zero {get{return new Vector3();}} public static Vector3 up {get{return new Vector3(0,1,0);}}

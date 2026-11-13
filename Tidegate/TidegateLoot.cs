@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Duckov.MiniMaps;
+using Duckov.UI;
 using ItemStatsSystem;
 using UnityEngine;
 using Cat = BossRush.SkyIslandLootCategory;
@@ -19,8 +20,7 @@ namespace BossRush
         private const float ActivationRange = 60f;
         private const float TickInterval = 0.5f;
         /// <summary>
-        /// 玩家贴着箱子时不收起：官方搜刮界面可能正开着。只管「收起」这一个方向——被淹的箱子已经停用、没有界面开着它，
-        /// 水退了就马上放出来，站在旁边等退潮的人不用先走开再回来。
+        /// 涨潮时仅允许贴着原箱继续已经打开的官方搜刮界面，水退就马上放出箱子。
         /// </summary>
         private const float KeepNearRange = 4f;
         /// <summary>走到被淹的箱柜跟前这么近，提示一次「等退潮」（模型是场景静态件、照样看得见，交互体却停用了）。</summary>
@@ -46,6 +46,7 @@ namespace BossRush
             internal Transform Marker;
             internal string Id, Kind;
             internal float Yaw, Ground;
+            internal float RetryAt;
             internal bool Lagoon;
             internal InteractableLootbox Box;
             internal bool Built, Failed, Flooded, Opened, FloodHinted;
@@ -440,9 +441,9 @@ namespace BossRush
         {
             carryingShiftKey = true;
             Point cabinet = points.Find(p => p.Id == ForemanCabinet);
-            if (cabinet != null && cabinet.Box != null && !cabinet.Flooded) cabinet.Box.gameObject.SetActive(true);
             PinCabinet(cabinet);
-            if (announce != null) announce(L10n.T("箱盖里挂着轮班钥匙：已取下。本趟可开码头二号仓库的领班柜，按 M 看位置。",
+            if (cabinet != null && cabinet.Box != null && !IsFlooded(cabinet)) cabinet.Box.gameObject.SetActive(true);
+            Say(L10n.T("箱盖里挂着轮班钥匙：已取下。本趟可开码头二号仓库的领班柜，按 M 看位置。",
                 "A shift key hangs under the lid. Taken: it opens the foreman's cabinet in dock warehouse 2 this raid. Press M to find it."), true);
         }
 
@@ -503,6 +504,8 @@ namespace BossRush
         private readonly Func<bool> valid;
         private readonly Action<string, bool> announce;
         private float nextTick;
+        private GameObject staging;
+        private Point pendingLootClose;
         private int opened;
         private bool closed, subscribed;
 
@@ -832,7 +835,17 @@ namespace BossRush
 
         internal void Tick(CharacterMainControl player)
         {
-            if (closed || player == null || Time.time < nextTick || valid == null || !valid()) return;
+            if (closed || player == null || valid == null || !valid()) return;
+            Point pending = pendingLootClose;
+            pendingLootClose = null;
+            // 官方 StartLoot 返回后会覆盖箱子的状态，静态事件的后续订阅者还可能打开界面。
+            // 交互调用栈结束后重置箱子，只关闭仍不合法的界面。
+            if (pending != null && pending.Box != null)
+            {
+                if (IsFlooded(pending) || Locked(pending)) HideLootBox(pending.Box, true);
+                else if (!IsCurrentLootView(pending.Box)) pending.Box.StopInteract();
+            }
+            if (Time.time < nextTick) return;
             nextTick = Time.time + TickInterval;
             Vector3 origin = player.transform.position;
             Point nearest = null;
@@ -857,21 +870,25 @@ namespace BossRush
                     // 直接摸到目标也先看得到两种选择，开官方搜刮窗才算选了这批。
                     if (!cargoHinted && point.Offer != null && !flooded && distance <= FloodHintRange * FloodHintRange)
                         RevealOffers(true);
-                    if (flooded != point.Flooded && (!flooded || distance > KeepNearRange * KeepNearRange))
+                    bool keepOpen = flooded && distance <= KeepNearRange * KeepNearRange && IsCurrentLootView(point.Box);
+                    point.Flooded = flooded;
+                    bool active = (!flooded || keepOpen) && !Locked(point);
+                    if (point.Box.gameObject.activeSelf != active)
                     {
-                        point.Flooded = flooded;
-                        point.Box.gameObject.SetActive(!flooded && !Locked(point));
-                        if (point.BuriedVisual != null) point.BuriedVisual.gameObject.SetActive(!flooded);
-                        if (!flooded) point.FloodHinted = false;
+                        if (active) point.Box.gameObject.SetActive(true);
+                        else HideLootBox(point.Box);
                     }
+                    if (point.BuriedVisual != null && point.BuriedVisual.gameObject.activeSelf == flooded)
+                        point.BuriedVisual.gameObject.SetActive(!flooded);
+                    if (!flooded) point.FloodHinted = false;
                     // 被淹的箱柜：模型还在、交互没了，走到跟前提示一次，水退之前不再说（CR-2026-11-05-024）。
-                    if (point.Flooded && !point.FloodHinted && distance <= FloodHintRange * FloodHintRange && announce != null)
+                    if (point.Flooded && !keepOpen && !point.FloodHinted && distance <= FloodHintRange * FloodHintRange && announce != null)
                     {
                         point.FloodHinted = true;
                         announce(L10n.T("这只箱子泡在深水里，搜不了，等退潮再来。", "This container is under deep water. Come back at low tide."), false);
                     }
                 }
-                if (point.Built || point.Failed || distance >= best) continue;
+                if (point.Built || point.Failed || Time.time < point.RetryAt || distance >= best) continue;
                 best = distance;
                 nearest = point;
             }
@@ -882,23 +899,49 @@ namespace BossRush
         private void Build(Point point, CharacterMainControl player)
         {
             point.Built = true;
+            if (staging == null)
+            {
+                staging = new GameObject("TidegateLootStaging");
+                staging.SetActive(false);
+                staging.transform.SetParent(world.Root.transform, false);
+            }
             string error;
-            InteractableLootbox box = SkyIslandRewardCrate.Build(world.Root.transform, point.Marker.position, point.Yaw,
+            InteractableLootbox box = SkyIslandRewardCrate.Build(staging.transform, point.Marker.position, point.Yaw,
                 "TidegateLoot_" + point.Id, out error, true);
             if (box == null)
             {
-                point.Failed = true;
-                if (point.Id == shiftKeyBox)
+                if (RequiresStock(point)) RetryBuild(point, error);
+                else
                 {
-                    shiftKeyBox = null; // 唯一钥匙源缺模型时开放普通柜，不能留下无解的锁。
-                    Point cabinet = points.Find(p => p.Id == ForemanCabinet);
-                    if (cabinet != null && cabinet.Box != null && !cabinet.Flooded) cabinet.Box.gameObject.SetActive(true);
+                    point.Failed = true;
+                    if (point.Offer != null) LoseOffer(point.Offer);
+                    Debug.LogWarning(TidegateRaidScene.LogTag + " 搜刮点 " + point.Id + " 准备失败：" + error);
                 }
-                if (point.Offer != null) LoseOffer(point.Offer);
-                Debug.LogWarning(TidegateRaidScene.LogTag + " 搜刮点 " + point.Id + " 准备失败：" + error);
                 return;
             }
-            point.Box = box;
+            HashSet<int> priorPrizes = RequiresStock(point) ? new HashSet<int>(prizesThisRaid) : null;
+            try
+            {
+                if (!closed && valid() && StockAndPublish(point, box, player)) return;
+                error = "必要货物未进入库存或场景已关闭";
+            }
+            catch (Exception e) { error = e.Message; }
+            if (box != null)
+            {
+                box.gameObject.SetActive(false);
+                UnityEngine.Object.Destroy(box.gameObject);
+            }
+            point.Box = null;
+            if (!closed)
+            {
+                if (priorPrizes != null) prizesThisRaid.IntersectWith(priorPrizes);
+                if (point.Offer != null) point.Offer.Reserved = false;
+                RetryBuild(point, error);
+            }
+        }
+
+        private bool StockAndPublish(Point point, InteractableLootbox box, CharacterMainControl player)
+        {
             // 场景包里每个搜刮点本来就摆着自己的箱柜模型（TG_containers）；官方尸体箱的模型藏起来，只留交互与库存。
             foreach (Renderer renderer in box.GetComponentsInChildren<Renderer>(true)) renderer.enabled = false;
             Spec spec = SpecOf(point.Kind);
@@ -910,7 +953,7 @@ namespace BossRush
             bool underwater = IsUnderwaterContainer(point.Id, point.Kind);
             var waterRandom = underwater ? SkyIslandLootTables.CreateStream(seed, point.Id + "#water-stock") : null;
             var log = new StringBuilder();
-            int added = 0;
+            int added = 0, foremanPrize = 0;
             for (int i = 0; i < count; i++)
             {
                 Cat category = i == 0 ? spec.First : spec.Extras[random.Next(spec.Extras.Length)];
@@ -930,6 +973,7 @@ namespace BossRush
                     Cat theme = point.Kind == "med" ? Cat.Medical : point.Kind == "tool" ? Cat.Workshop : Cat.Valuable;
                     int surprise = DistinctPrize(theme, 4, 4, 4, random, theme);
                     if (surprise > 0) { typeId = surprise; amount = 1; category = theme; }
+                    if (point.Id == ForemanCabinet) foremanPrize = surprise;
                 }
                 if (underwater)
                 {
@@ -941,10 +985,13 @@ namespace BossRush
                 }
                 if (DeferCargoSlot(point, i, count, typeId, amount, category)) continue;
                 if (SkyIslandRewardCrate.AddOfficialStack(box, typeId, amount, log, category.ToString())) added++;
+                if (closed || box == null) return false;
             }
             bool carryingWatch = HasFixed(point.Id, "tidewatch") && TidegateInventory.Carries(player, BossRushItemIds.TidegateTideWatch);
             int fixedItem = FixedItemOf(point.Id, point.Kind, SkyIslandLootTables.CreateStream(seed, point.Id + "#story"), carryingWatch);
             if (fixedItem != 0 && SkyIslandRewardCrate.AddOfficialStack(box, fixedItem, 1, log, "Tidegate")) added++;
+            if (closed || box == null) return false;
+            if (fixedItem != 0 && (HasFixed(point.Id, "wheel") || HasFixed(point.Id, "tidewatch")) && !ContainsStock(box, fixedItem)) return false;
             // 沉船船长的保险柜原有额外一格继续保留，但也服从整趟水下高级奖励预算。
             if (HasFixed(point.Id, "goldbar"))
             {
@@ -954,6 +1001,15 @@ namespace BossRush
                 if (valuable != 0 && SkyIslandRewardCrate.AddOfficialStack(box, valuable, 1, log, "TidegateWreck")) added++;
                 else log.Append(" captain_prize_unavailable");
             }
+            if (closed || box == null || !valid()) return false;
+            if (underwater && underwaterPrizes.TryGetValue(point.Id, out int plannedPrize) && plannedPrize > 0)
+            {
+                bool jackpot = point.Id == underwaterJackpotPoint && underwaterJackpotItem > 0;
+                bool reservedForCargo = !jackpot && point.Offer != null && point.Offer.Reserved && point.Offer.OrdinaryItem == plannedPrize;
+                if (!reservedForCargo && !ContainsStock(box, plannedPrize, jackpot ? 5 : 4, jackpot ? 6 : 4)) return false;
+            }
+            if (point.Id == ForemanCabinet && shiftKeyBox != null
+                && (added == 0 || foremanPrize > 0 && !ContainsStock(box, foremanPrize, 4, 4))) return false;
             Vector3 position = point.Marker.position;
             if (!world.TryGroundAt(position, out point.Ground)) point.Ground = position.y;
             point.Lagoon = world.InLagoon(position);
@@ -962,11 +1018,16 @@ namespace BossRush
             {
                 if (point.BuriedVisual != null) point.BuriedVisual.gameObject.SetActive(!point.Flooded);
             }
-            if (point.Flooded || Locked(point)) box.gameObject.SetActive(false);
-            else if (!cargoHinted && point.Offer != null && (position - player.transform.position).sqrMagnitude <= FloodHintRange * FloodHintRange)
-                RevealOffers(true);
+            bool active = !point.Flooded && !Locked(point);
+            box.gameObject.SetActive(active);
+            box.transform.SetParent(world.Root.transform, true);
+            if (closed || box == null || !valid() || active && !box.gameObject.activeInHierarchy) return false;
+            point.Box = box;
             Debug.Log(TidegateRaidScene.LogTag + " LOOT_READY id=" + point.Id + " tier=" + spec.Tier + " items=" + added
                 + " flooded=" + point.Flooded + " " + log);
+            if (active && !cargoHinted && point.Offer != null && (position - player.transform.position).sqrMagnitude <= FloodHintRange * FloodHintRange)
+                RevealOffers(true);
+            return true;
         }
 
         private void OnStartLoot(InteractableLootbox box)
@@ -975,19 +1036,31 @@ namespace BossRush
             for (int i = 0; i < points.Count; i++)
             {
                 Point point = points[i];
-                if (point.Box != box || point.Opened || point.Flooded || Locked(point)) continue;
-                point.Opened = true;
-                opened++;
-                Action<string> handler = Opened;
-                if (handler != null) handler(point.Id);
-                ReadDelivery(point);
-                if (point.Id == shiftKeyBox && !carryingShiftKey && !openedCabinet) TakeShiftKey();
-                else if (point.Id == ForemanCabinet && carryingShiftKey)
+                if (point.Box != box) continue;
+                try
                 {
-                    openedCabinet = true; carryingShiftKey = false;
-                    ClearKeyPin();
-                    if (announce != null) announce(L10n.T("轮班钥匙留在锁孔里。领班柜已打开。", "The shift key stays in the lock. The foreman's cabinet is open."), false);
+                    if (!valid() || IsFlooded(point) || Locked(point))
+                    {
+                        pendingLootClose = point;
+                        HideLootBox(box);
+                        return;
+                    }
+                    if (point.Opened) return;
+                    point.Opened = true;
+                    opened++;
+                    if (point.Id == shiftKeyBox && !carryingShiftKey && !openedCabinet) TakeShiftKey();
+                    else if (point.Id == ForemanCabinet && carryingShiftKey)
+                    {
+                        openedCabinet = true;
+                        carryingShiftKey = false;
+                        ClearKeyPin();
+                        Say(L10n.T("轮班钥匙留在锁孔里。领班柜已打开。", "The shift key stays in the lock. The foreman's cabinet is open."), false);
+                    }
+                    if (closed) return;
+                    ReadDelivery(point);
+                    if (!closed) Opened?.Invoke(point.Id);
                 }
+                catch (Exception e) { Debug.LogWarning(TidegateRaidScene.LogTag + " 搜刮回调 " + point.Id + "：" + e.Message); }
                 return;
             }
         }
@@ -1026,11 +1099,12 @@ namespace BossRush
             // 此时官方 StartLoot 已核实库存；库存 AddItem 会通知正打开的 LootView 刷新。
             if (!take.Reserved || !SkyIslandRewardCrate.AddOfficialStack(point.Box, take.Item, 1, new StringBuilder(), "TidegateCargo"))
             { LoseOffer(take); return; }
+            if (closed || point.Box == null) return;
             take.Reserved = false;
             bool paired = offers.Count > 1;
             string name = L10n.T(take.Route.Zh, take.Route.En);
             for (int i = offers.Count - 1; i >= 0; i--) RetireOffer(offers[i], true);
-            if (announce != null) announce(L10n.T("留下了", "Shipment secured: ") + name
+            Say(L10n.T("留下了", "Shipment secured: ") + name
                 + (paired ? L10n.T("；另一批已装船。", ". The other shipment is aboard.") : ""), false);
         }
 
@@ -1059,7 +1133,7 @@ namespace BossRush
             text.Append(offers.Count == 2 ? L10n.T("。先开哪箱就留哪批，另一批装船。", ". Open either seal; the other shipment sails.")
                 : L10n.T("。只剩这一批。", ". One shipment remains."));
             if (marked) text.Append(L10n.T(" 按 M 看金圈。", " Press M for the gold circles."));
-            if (announce != null) announce(text.ToString(), false);
+            Say(text.ToString(), false);
         }
 
         private static void ClearCargoPin(Shipment offer)
@@ -1081,9 +1155,15 @@ namespace BossRush
         private void LoseOffer(Shipment offer)
         {
             RetireOffer(offer, true);
-            if (cargoHinted && announce != null) announce(offers.Count > 0
+            if (cargoHinted) Say(offers.Count > 0
                 ? L10n.T("这处没取到货；另一批还在。", "This shipment is gone; the other one is still waiting.")
                 : L10n.T("货单上的货已经不在了。", "The shipment is already gone."), false);
+        }
+
+        private void Say(string message, bool important)
+        {
+            try { announce?.Invoke(message, important); }
+            catch (Exception e) { Debug.LogWarning(TidegateRaidScene.LogTag + " 搜刮提示：" + e.Message); }
         }
 
         public void Dispose()
@@ -1097,13 +1177,17 @@ namespace BossRush
             foreach (Point point in points)
             {
                 if (point.Box == null) continue;
-                // 官方 LootView 仍可能持有引用；先停用再销毁。
-                point.Box.gameObject.SetActive(false);
-                UnityEngine.Object.Destroy(point.Box.gameObject);
+                // 官方 LootView 仍可能持有引用；退出时先关当前箱的界面，再销毁库存。
+                try { HideLootBox(point.Box); }
+                catch (Exception e) { Debug.LogWarning(TidegateRaidScene.LogTag + " 搜刮界面收起失败：" + e.Message); }
+                if (point.Box != null) UnityEngine.Object.Destroy(point.Box.gameObject);
                 point.Box = null;
             }
             points.Clear();
+            pendingLootClose = null;
             underwaterPrizes.Clear();
+            if (staging != null) UnityEngine.Object.Destroy(staging);
+            staging = null;
         }
     }
 }

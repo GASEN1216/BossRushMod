@@ -24,19 +24,31 @@ import sys
 import time
 from pathlib import Path
 
-import bpy
 import numpy as np
 from collections import defaultdict
 
-from mathutils import Euler, Matrix, Vector, kdtree
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from lastshift_vegetation import GRASS_MESHES
+from lastshift_ground_finish import WORN_GROUND_MESHES
+
+try:
+    import bpy
+except ModuleNotFoundError as error:
+    if error.name != 'bpy':
+        raise
+    bpy = None
+
+if bpy is not None:
+    from mathutils import Euler, Matrix, Vector, kdtree
+
+    C3B = Matrix(((1, 0, 0, 0), (0, 0, -1, 0), (0, 1, 0, 0), (0, 0, 0, 1)))  # three.js → Blender
+    S_UNITY = Matrix.Diagonal((1, 1, -1, 1))                                 # three.js → Unity
 
 GROUPS = ['terrain', 'buildings', 'landmark', 'track', 'structures', 'props', 'scatter', 'gameplay', 'yard', 'vehicles', 'entrance']
 FBX_GROUPS = ['terrain', 'buildings', 'landmark', 'track', 'structures', 'props', 'scatter', 'gameplay', 'yard', 'vehicles']
 # 这几组里共享网格的对象（GPU 实例展开来的轨枕、道砟石、草丛、栏杆柱……）不逐个进 FBX，改出「原型 FBX + 实例矩阵表」，
 # Unity 构建器按区块合批（潮闸镇散布的做法）。其余组实例很少、又要保留层级（列车整列移动、建筑语义），导出前复制成单用户网格。
 INSTANCE_GROUPS = ['scatter', 'track', 'yard', 'structures']
-C3B = Matrix(((1, 0, 0, 0), (0, 0, -1, 0), (0, 1, 0, 0), (0, 0, 0, 1)))  # three.js → Blender
-S_UNITY = Matrix.Diagonal((1, 1, -1, 1))                                 # three.js → Unity
 STATS = {}
 
 
@@ -224,24 +236,72 @@ def fix_outer_grit(colls):
     STATS['outerGritRemapped'] = fixed
 
 
+def bind_yard_atlas(terrain, atlas_path):
+    targets = {'Yard_land', 'Ballast shoulders and poured apron faces'}
+    replaced = set()
+    atlas = bpy.data.images.load(str(atlas_path), check_existing=True)
+    if tuple(atlas.size) != (1344, 1056):
+        raise RuntimeError('Unexpected yard atlas size: ' + str(atlas_path))
+    for obj in terrain.all_objects:
+        if obj.type != 'MESH' or obj.name not in targets:
+            continue
+        for slot in obj.material_slots:
+            shader = principled(slot.material) if slot.material else None
+            links = shader.inputs['Base Color'].links if shader else ()
+            if len(links) != 1 or links[0].from_node.type != 'TEX_IMAGE':
+                raise RuntimeError('Missing yard atlas material on ' + obj.name)
+            links[0].from_node.image = atlas
+        replaced.add(obj.name)
+    if replaced != targets:
+        raise RuntimeError('Yard atlas meshes missing: ' + ', '.join(sorted(targets - replaced)))
+
+
 # ---------------- 共面分层（2026-11-12 实机「地图上很多地方一直在闪」） ----------------
 # three.js 原型里地面拼块、磨损层、库房地面漆、道岔铺板、相邻实例常常和底下那层完全共面（间距 0）或只隔几毫米，
 # 官方相机臂长 45 m、视角随准心微动，深度缓冲分不清前后，两层颜色来回抢 = 闪。几何上挪开会越挪越高、又撞上别的层，
-# 所以几何一律不动：找出「法线同向、间距 < ZF_GAP、投影重叠」的三角形对，给上层对象排一个层号，写进顶点色 alpha
+# 所以几何一律不动：找出「法线同向、间距 < ZF_GAP、投影重叠」的三角形对，给上层排一个层号，写进顶点色 alpha
 # （alpha = 1 - 层号 / 8；实例写进实例表 layers，Unity 构建器烘进合批顶点色），着色器顶点阶段按层号把深度往镜头推一点
 # （Assets/LastShiftYard/Shaders/LastShiftCommon.hlsl 的 LastShiftLayerBias，等效按层的 polygon offset）。
 # 定底：站场地形 > 建筑 > 轨道 / 构筑物 / 地标 > 其余，同档按参与重叠的面积从大到小、再按对象名（每次组装结果一样）。
 # 上层必须高于它压着的底；面积相近的同档件（一串互相压着的枕木、同一原型的两个实例）只要求层号不同，交替 0/1，不越叠越高。
-ZF_GAP, ZF_MIN_TRI, ZF_MIN_OVERLAP, ZF_MAX_LAYER, ZF_PEER_RATIO = 0.01, 0.02, 0.01, 7, 2.0
+# 2026-11-13 第三轮（owner「还是闪」）：分层的单位从「对象」细到「对象里的连通块」。three.js 把一整片院落的地坪、枕木、
+# 废轨、油渍并成一张网格，块与块在同一张网格里互相压着（废弃短线、八处院落地坪……），按对象分层永远查不到。
+# 共享网格的实例（实例表里的轨枕、道砟石……）层号只能记在实例上，仍按对象。顶点 alpha 当透明度用的贴花不分层（见 mark_vertex_alpha_decals）。
+# 面积只滤掉浮点运算产生的零面积：窄板、枕木等实测出现过单面小于 0.02 m² 的可见共面重叠。
+ZF_GAP, ZF_AREA_EPSILON, ZF_MAX_LAYER, ZF_PEER_RATIO = 0.01, 1e-8, 7, 2.0
 ZF_GROUPS = ['terrain', 'buildings', 'landmark', 'track', 'structures', 'props', 'scatter', 'gameplay', 'yard']
 
 
+def _zf_on_object(o, colls):
+    """层号只能记在对象上（实例表）的：实例组里和别的对象共用网格的。其余对象按连通块写顶点 alpha。"""
+    return o.data.users > 1 and any(o.name in colls[g].all_objects for g in INSTANCE_GROUPS)
+
+
+def _zf_components(n_vertices, idx):
+    """按共用顶点求连通块，返回每个顶点的块代表（块内最小顶点号，结果与遍历顺序无关）。"""
+    parent = list(range(n_vertices))
+
+    def find(x):
+        root = x
+        while parent[root] != root:
+            root = parent[root]
+        while parent[x] != root:
+            parent[x], x = root, parent[x]
+        return root
+    for a, b, c in idx.tolist():
+        ra, rb, rc = find(a), find(b), find(c)
+        r = min(ra, rb, rc)
+        parent[ra] = parent[rb] = parent[rc] = r
+    return np.array([find(v) for v in range(n_vertices)], dtype=np.int64)
+
+
 def _zf_triangles(colls):
+    """返回 (objs, nodes, P0, P1, P2, Nd)。nodes[k] = (对象下标, 连通块代表顶点；按对象分层的是 -1)，Nd 是每个三角形的节点。"""
     deps = bpy.context.evaluated_depsgraph_get()
-    objs, parts = [], []
+    objs, nodes, parts = [], [], []
     for g in ZF_GROUPS:
         for o in colls[g].all_objects:
-            if o.type != 'MESH':
+            if o.type != 'MESH' or o.get('lsy_decal'):
                 continue
             ev = o.evaluated_get(deps); me = ev.to_mesh(); me.calc_loop_triangles()
             n = len(me.loop_triangles)
@@ -249,19 +309,30 @@ def _zf_triangles(colls):
                 co = np.empty(len(me.vertices) * 3); me.vertices.foreach_get('co', co); co = co.reshape(-1, 3)
                 M = np.array(o.matrix_world); co = co @ M[:3, :3].T + M[:3, 3]
                 idx = np.empty(n * 3, dtype=np.int64); me.loop_triangles.foreach_get('vertices', idx); idx = idx.reshape(-1, 3)
-                parts.append((len(objs), co[idx[:, 0]], co[idx[:, 1]], co[idx[:, 2]], idx)); objs.append(o)
+                oi = len(objs); objs.append(o)
+                if _zf_on_object(o, colls):
+                    tri_node = np.full(n, len(nodes), dtype=np.int64); nodes.append((oi, -1))
+                else:
+                    # 导入的 GLB 没有修改器，求值网格与原网格同序，块代表顶点号可以直接用在原网格上
+                    comp = _zf_components(len(me.vertices), idx)[idx[:, 0]]
+                    roots, inverse = np.unique(comp, return_inverse=True)
+                    tri_node = inverse.astype(np.int64) + len(nodes)
+                    nodes.extend((oi, int(r)) for r in roots)
+                parts.append((tri_node, co[idx[:, 0]], co[idx[:, 1]], co[idx[:, 2]]))
             ev.to_mesh_clear()
-    O = np.concatenate([np.full(len(a), i, dtype=np.int32) for i, a, _, _, _ in parts])
+    Nd = np.concatenate([q[0] for q in parts])
     P0 = np.concatenate([q[1] for q in parts]); P1 = np.concatenate([q[2] for q in parts]); P2 = np.concatenate([q[3] for q in parts])
-    V = np.concatenate([q[4] for q in parts])  # 三角形在原网格里的顶点下标（导入的 GLB 没有修改器，求值网格与原网格同序）
+    return objs, nodes, P0, P1, P2, Nd
+
+
+def _zf_triangle_planes(P0, P1, P2, Nd):
     cr = np.cross(P1 - P0, P2 - P0); area = np.linalg.norm(cr, axis=1) * 0.5
-    keep = area > ZF_MIN_TRI
-    P0, P1, P2, O, V, cr, area = P0[keep], P1[keep], P2[keep], O[keep], V[keep], cr[keep], area[keep]
-    Nf = cr / (2 * area[:, None])  # 原始面法线
-    N = Nf.copy()
+    keep = area > ZF_AREA_EPSILON
+    P0, P1, P2, Nd, cr, area = P0[keep], P1[keep], P2[keep], Nd[keep], cr[keep], area[keep]
+    N = cr / (2 * area[:, None])
     flip = (N[:, 2] < -1e-6) | ((np.abs(N[:, 2]) <= 1e-6) & (N[:, 1] < -1e-6)) | ((np.abs(N[:, 2]) <= 1e-6) & (np.abs(N[:, 1]) <= 1e-6) & (N[:, 0] < 0))
     N[flip] *= -1  # 规范朝向：双面渲染（Cull Off）下背对背的两层一样会抢
-    return objs, P0, P1, P2, O, V, area, Nf, N, np.einsum('ij,ij->i', N, P0)
+    return P0, P1, P2, Nd, area, N, np.einsum('ij,ij->i', N, P0)
 
 
 def _zf_clip(poly, a, b):
@@ -278,7 +349,10 @@ def _zf_clip(poly, a, b):
 
 
 def _zf_area(poly):
-    return 0.5 * sum(poly[k][0] * poly[(k + 1) % len(poly)][1] - poly[(k + 1) % len(poly)][0] * poly[k][1] for k in range(len(poly)))
+    if len(poly) < 3:
+        return 0.0
+    x, y = poly[0]
+    return 0.5 * sum((ax - x) * (by - y) - (bx - x) * (ay - y) for (ax, ay), (bx, by) in zip(poly[1:], poly[2:]))
 
 
 def _zf_overlap(n, a, b):
@@ -299,14 +373,23 @@ def _zf_overlap(n, a, b):
 
 
 def _zf_pairs(colls):
-    """返回 (objs, {(平面, 对象i, 对象j): 重叠面积}, {(平面, 对象): (参与重叠的面积, 面积加权原始法线)})。
-    平面 = 规范法线（约 3°）+ 偏移 5 cm 一档；同一档里的对象互相分层。"""
-    objs, P0, P1, P2, O, V, area, Nf, N, D = _zf_triangles(colls)
+    """返回 (objs, nodes, {(平面, 节点i, 节点j): 重叠面积}, {(平面, 节点): 参与重叠的面积})。
+    平面 = 规范法线（约 3°）+ 偏移 5 cm 一档；同一档里的节点互相分层。同一连通块内部的三角形不互查（相邻面，不是两层）。"""
+    objs, nodes, P0, P1, P2, Nd = _zf_triangles(colls)
+    pairs, sizes = _zf_overlap_pairs(P0, P1, P2, Nd)
+    return objs, nodes, pairs, sizes
+
+
+def _zf_overlap_pairs(P0, P1, P2, Nd):
+    P0, P1, P2, Nd, area, N, D = _zf_triangle_planes(P0, P1, P2, Nd)
     nq = np.round(N * 20).astype(np.int64); dq = np.floor(D / 0.02).astype(np.int64)
-    lo = np.floor(np.minimum(np.minimum(P0, P1), P2) / 4.0).astype(np.int64)
-    hi = np.floor(np.maximum(np.maximum(P0, P1), P2) / 4.0).astype(np.int64)
+    lo_bound = np.minimum(np.minimum(P0, P1), P2)
+    hi_bound = np.maximum(np.maximum(P0, P1), P2)
+    # 平行面可能在空间格的两边，留出深度容差后再分桶。
+    lo = np.floor((lo_bound - ZF_GAP) / 4.0).astype(np.int64)
+    hi = np.floor(hi_bound / 4.0).astype(np.int64)
     buckets = defaultdict(list)
-    for i in range(len(O)):
+    for i in range(len(Nd)):
         k = (int(nq[i, 0]), int(nq[i, 1]), int(nq[i, 2]), int(dq[i]))
         for cx in range(lo[i, 0], hi[i, 0] + 1):
             for cy in range(lo[i, 1], hi[i, 1] + 1):
@@ -315,27 +398,28 @@ def _zf_pairs(colls):
     pairs, seen, tris = defaultdict(float), set(), defaultdict(set)
     for key, members in buckets.items():
         nk = key[:3] + (key[3] + 1,) + key[4:]
-        m = sorted(set(members + buckets.get(nk, [])))
-        if len(m) < 2 or len(set(O[m].tolist())) < 2:
+        m = np.array(sorted(set(members + buckets.get(nk, []))))
+        if len(m) < 2 or np.all(Nd[m] == Nd[m[0]]):
             continue
-        for x in range(len(m)):
-            i = m[x]
-            for j in m[x + 1:]:
-                if O[i] == O[j] or (i, j) in seen or abs(D[i] - D[j]) > ZF_GAP or float(N[i] @ N[j]) < 0.998:
+        ml, mh = lo_bound[m], hi_bound[m]
+        for x, i in enumerate(m[:-1]):
+            c = m[x + 1:]
+            eligible = ((Nd[i] != Nd[c]) & (abs(D[i] - D[c]) <= ZF_GAP)
+                        & np.all(ml[x + 1:] <= mh[x] + ZF_GAP, axis=1)
+                        & np.all(mh[x + 1:] >= ml[x] - ZF_GAP, axis=1))
+            for j in c[eligible]:
+                if (i, j) in seen or float(N[i] @ N[j]) < 0.998:
                     continue
                 seen.add((i, j))
                 ov = _zf_overlap(N[i], (P0[i], P1[i], P2[i]), (P0[j], P1[j], P2[j]))
-                if ov < ZF_MIN_OVERLAP:
+                if ov <= ZF_AREA_EPSILON:
                     continue
                 plane = key[:3] + (int(math.floor(min(D[i], D[j]) / 0.05)),)
-                a, b = sorted((int(O[i]), int(O[j])))
+                a, b = sorted((int(Nd[i]), int(Nd[j])))
                 pairs[(plane, a, b)] += ov
-                tris[(plane, int(O[i]))].add(i); tris[(plane, int(O[j]))].add(j)
-    sizes = {}
-    for k, v in tris.items():
-        idx = np.array(sorted(v))
-        sizes[k] = (float(area[idx].sum()), Vector((area[idx, None] * Nf[idx]).sum(axis=0).tolist()), sorted({int(x) for x in V[idx].ravel()}))
-    return objs, pairs, sizes
+                tris[(plane, int(Nd[i]))].add(i); tris[(plane, int(Nd[j]))].add(j)
+    sizes = {k: float(area[np.array(sorted(v))].sum()) for k, v in tris.items()}
+    return pairs, sizes
 
 
 def _zf_rank(o):
@@ -346,52 +430,77 @@ def _zf_rank(o):
     return 0
 
 
-def layer_coplanar(colls):
-    objs, pairs, sizes = _zf_pairs(colls)
-    total = defaultdict(float)  # 每个对象参与重叠的总面积（各平面相加）
-    for (plane, o), (a, _, _) in sizes.items():
-        total[o] += a
-    order = sorted({o for _, a, b in pairs for o in (a, b)}, key=lambda o: (-_zf_rank(objs[o]), -total[o], objs[o].name))
-    rank_of = {o: i for i, o in enumerate(order)}
+def _zf_assign_layers(objs, nodes, pairs, sizes):
+    def obj_of(n):
+        return objs[nodes[n][0]]
+    total = defaultdict(float)  # 每个节点参与重叠的总面积（各平面相加）
+    for (plane, n), a in sizes.items():
+        total[n] += a
+    order = sorted({n for _, a, b in pairs for n in (a, b)}, key=lambda n: (-_zf_rank(obj_of(n)), -total[n], obj_of(n).name, nodes[n][1]))
+    rank_of = {n: i for i, n in enumerate(order)}
     bases, peers = defaultdict(set), defaultdict(set)  # 后定者 → 先定者
     for plane, a, b in pairs:
         lo, hi = (a, b) if rank_of[a] < rank_of[b] else (b, a)
-        sa, sb = sizes[(plane, lo)][0], sizes[(plane, hi)][0]
-        same = objs[lo].data == objs[hi].data or (_zf_rank(objs[lo]) == _zf_rank(objs[hi]) and max(sa, sb) <= ZF_PEER_RATIO * min(sa, sb))
+        sa, sb = sizes[(plane, lo)], sizes[(plane, hi)]
+        olo, ohi = obj_of(lo), obj_of(hi)
+        # 同一张网格里的块、同一原型的实例：只要求层号不同（面积大的先定、在下）
+        same = olo.data == ohi.data or (_zf_rank(olo) == _zf_rank(ohi) and max(sa, sb) <= ZF_PEER_RATIO * min(sa, sb))
         (peers if same else bases)[hi].add(lo)
     layer, capped = {}, []
-    for o in order:
-        k = 1 + max((layer[x] for x in bases[o]), default=-1)
-        taken = {layer[x] for x in peers[o]}
+    for n in order:
+        k = 1 + max((layer[x] for x in bases[n]), default=-1)
+        taken = {layer[x] for x in peers[n]}
         while k in taken:
             k += 1
         if k > ZF_MAX_LAYER:
-            capped.append(objs[o].name); k = ZF_MAX_LAYER
-        layer[o] = k
-    # 写回：共享网格的实例组对象记在对象上（实例表 layers）；其余对象整份网格写顶点色 alpha，和别的对象共用网格时先复制一份
-    on_object = on_mesh = 0
-    for o, k in layer.items():
-        ob = objs[o]
-        if any(ob.name in colls[g].all_objects for g in INSTANCE_GROUPS) and ob.data.users > 1:
-            ob['lsy_layer'] = k; on_object += 1
+            capped.append(obj_of(n).name); k = ZF_MAX_LAYER
+        layer[n] = k
+    return layer, capped
+
+
+def layer_coplanar(colls):
+    objs, nodes, pairs, sizes = _zf_pairs(colls)
+    layer, capped = _zf_assign_layers(objs, nodes, pairs, sizes)
+    # 写回：共享网格的实例组对象记在对象上（实例表 layers）；其余对象按连通块写顶点色 alpha，和别的对象共用网格时先复制一份
+    per_object = defaultdict(dict)
+    for n, k in layer.items():
+        oi, root = nodes[n]
+        per_object[oi][root] = k
+    on_object = on_mesh = split = 0
+    for oi, roots in per_object.items():
+        ob = objs[oi]
+        if -1 in roots:
+            ob['lsy_layer'] = roots[-1]; on_object += 1
             continue
-        if k == 0 and not ob.data.color_attributes:
+        if not any(roots.values()) and not ob.data.color_attributes:
             continue  # 没有顶点色时 Unity 给白色，alpha 1 就是第 0 层
         if ob.data.users > 1:
             ob.data = ob.data.copy()
-        _zf_write_alpha(ob.data, 1.0 - k / 8.0); on_mesh += 1
+        me = ob.data
+        me.calc_loop_triangles()
+        idx = np.empty(len(me.loop_triangles) * 3, dtype=np.int64); me.loop_triangles.foreach_get('vertices', idx)
+        comp = _zf_components(len(me.vertices), idx.reshape(-1, 3))
+        vertex_layer = np.zeros(len(me.vertices), dtype=np.float32)
+        for root, k in roots.items():
+            vertex_layer[comp == root] = k
+        if len(set(roots.values())) > 1:
+            split += 1
+        _zf_write_alpha(me, 1.0 - vertex_layer / 8.0); on_mesh += 1
     left = sum(v for (plane, a, b), v in pairs.items() if layer[a] == layer[b])
     hist = defaultdict(int)
     for k in layer.values():
         hist[k] += 1
-    STATS['coplanar'] = {'pairs': len(pairs), 'overlap_m2': round(sum(pairs.values()), 2), 'objects': len(layer),
+    intra = sum(v for (plane, a, b), v in pairs.items() if nodes[a][0] == nodes[b][0])
+    STATS['coplanar'] = {'pairs': len(pairs), 'overlap_m2': round(sum(pairs.values()), 2), 'intraMeshOverlap_m2': round(intra, 2),
+                         'nodes': len(layer), 'objects': len({nodes[n][0] for n in layer}), 'splitObjects': split,
                          'layers': dict(sorted(hist.items())), 'onInstanceTable': on_object, 'onVertexAlpha': on_mesh,
                          'capped': capped[:10], 'sameLayerOverlap_m2': round(left, 3)}
-    if left > 0.01:
-        raise RuntimeError('共面分层后仍有 %.3f m² 重叠落在同一层' % left)
+    if left > 0:
+        raise RuntimeError('共面分层后仍有 %.8f m² 重叠落在同一层' % left)
 
 
 def _zf_write_alpha(me, alpha):
+    """alpha：每个顶点一个值（同一连通块相同）。按颜色属性的存储域写到顶点或面角。"""
     if not me.color_attributes:
         me.color_attributes.new('Col', 'BYTE_COLOR', 'CORNER')
         attr = me.color_attributes[0]
@@ -399,9 +508,59 @@ def _zf_write_alpha(me, alpha):
     else:
         attr = me.color_attributes[0]
         values = np.empty(len(attr.data) * 4, dtype=np.float32); attr.data.foreach_get('color', values)
-    values[3::4] = alpha
+    if attr.domain == 'CORNER':
+        lv = np.empty(len(me.loops), dtype=np.int64); me.loops.foreach_get('vertex_index', lv)
+        values[3::4] = alpha[lv]
+    else:
+        values[3::4] = alpha
     attr.data.foreach_set('color', values)
     me.update()
+
+
+# ---------------- 半透明贴花（2026-11-13 实机「还是闪」） ----------------
+# three.js 的磨损地皮（yard-details.mjs `stain`：Connected yard / worn ground 0–3）是 transparent + depthWrite:false 的顶点 alpha 贴花：
+# 斑心 0.24–0.64、外圈 0，几百块斑在同一高度互相叠着淡淡地染色。第二轮把它们当普通共面层，顶点 alpha 被改写成层号，
+# 进 Unity 又按不透明画，结果是实心的深绿 / 土黄大块，同一张网格里的斑互相压着闪（约 4950 m²，占全图共面重叠的大头）。
+# 判据：材质 Principled 的 Alpha 直接接顶点色。这类对象保留原 alpha、不进共面分层，材质清单记 decal，Unity 构建器建半透明不写深度的贴花材质。
+DECAL_MAX_ALPHA = 0.8
+
+
+def _alpha_from_vertex_color(m):
+    p = principled(m)
+    return p is not None and p.inputs['Alpha'].is_linked and p.inputs['Alpha'].links[0].from_node.type == 'VERTEX_COLOR'
+
+
+def mark_vertex_alpha_decals(colls):
+    decal_mats, names, alphas, cleared = set(), [], [], set()
+    for g in ZF_GROUPS:
+        for o in colls[g].all_objects:
+            if o.type != 'MESH' or not o.data.color_attributes:
+                continue
+            mats = [s.material for s in o.material_slots if s.material]
+            hits = [m for m in mats if _alpha_from_vertex_color(m)]
+            if not hits:
+                continue
+            if len(hits) != len(mats):
+                raise RuntimeError('贴花对象 %s 混着不透明材质' % o.name)
+            attr = o.data.color_attributes[0]
+            v = np.empty(len(attr.data) * 4, dtype=np.float32); attr.data.foreach_get('color', v)
+            if g == 'props' and o.name in WORN_GROUND_MESHES:
+                # Retain the material contract and geometry on old GLB imports.
+                # These four meshes no longer tint the finished yard.
+                v[3::4] = 0.0
+                attr.data.foreach_set('color', v)
+                cleared.add(o.name)
+            o['lsy_decal'] = 1; names.append(o.name); alphas.append(v[3::4]); decal_mats.update(m.name for m in hits)
+    for o in bpy.data.objects:
+        if o.type == 'MESH' and not o.get('lsy_decal') and any(s.material and s.material.name in decal_mats for s in o.material_slots):
+            raise RuntimeError('贴花材质被不透明对象 %s 共用' % o.name)
+    for name in decal_mats:
+        bpy.data.materials[name]['lsy_decal'] = 1
+    a = np.concatenate(alphas) if alphas else np.ones(1, dtype=np.float32)
+    STATS['decals'] = {'objects': sorted(names), 'materials': len(decal_mats), 'alphaMin': round(float(a.min()), 3), 'alphaMax': round(float(a.max()), 3),
+                       'wornGroundCleared': sorted(cleared)}
+    if cleared != WORN_GROUND_MESHES or float(a.max()) > DECAL_MAX_ALPHA or float(a.min()) > 0.01:
+        raise RuntimeError('顶点 alpha 贴花异常：' + json.dumps(STATS['decals'], ensure_ascii=False))
 
 
 # ---------------- 地形高度场（碰撞 / 导航用，渲染隐藏；可见地面来自 terrain GLB） ----------------
@@ -434,7 +593,6 @@ def build_height_collider(src, man, coll):
 # - 坡道 / 梯段 / 跨线桥引坡两侧的栏杆跟着坡走：原先是一整块水平盒（底高取一个常数），低处悬空、高处埋进坡面，
 #   上半段坡道实际没有侧挡。现在按逻辑网格高度（栏杆内侧 1 m 内的最高格）每 1 m 切一段，写成两端点 `segment`。
 # - 0.12–0.6 m 的矮实心体不给实体：压在另一根柱子下面的（悬车桁架柱脚）并进那根柱子，其余（药箱 0.58 m）去掉。
-LOW_LIMIT = 0.6
 SLOPED_RAILS = ('northRail', 'rampRail')
 
 
@@ -472,33 +630,23 @@ def rail_segments(s, height_at):
     return out
 
 
-def readable_solids(layout, src):
-    solids = [dict(s) for s in layout['solids']]
-    notes = {'merged': [], 'dropped': []}
+def authored_solids(layout):
+    """布局只列有体积的硬物，保留每件的真实底高与尺寸，包括低箱和宽柱脚。"""
+    solids = layout['solids']
+    ids = [s['id'] for s in solids]
+    if len(ids) != len(set(ids)):
+        raise ValueError('布局实心体的 ID 重复，无法一对一验证碰撞')
     for s in solids:
-        if not (0.12 < s['size'][1] < LOW_LIMIT):
-            continue
-        top = s['baseY'] + s['size'][1]
-        above = next((o for o in solids if o is not s and abs(o['baseY'] - top) < 0.05
-                      and abs(o['center'][0] - s['center'][0]) < s['size'][0] / 2 and abs(o['center'][1] - s['center'][1]) < s['size'][2] / 2), None)
-        if above is not None:  # 柱脚并进柱子：柱子一直落到地
-            above['size'] = [above['size'][0], round(above['size'][1] + (above['baseY'] - s['baseY']), 3), above['size'][2]]
-            above['baseY'] = s['baseY']
-            notes['merged'].append([s['id'], above['id']])
-        else:
-            notes['dropped'].append(s['id'])
-        s['_skip'] = True
-    return [s for s in solids if not s.get('_skip')], notes
+        if len(s['size']) != 3 or any(not math.isfinite(v) or v <= 0 for v in s['size']):
+            raise ValueError('布局实心体的尺寸无效：' + s['id'])
+    return solids
 
 
 def build_collision(layout, coll, src):
     verts, faces, info = [], [], {}
     height_at = grid_heights(src, layout)
-    solids, notes = readable_solids(layout, src)
-    for s in solids:
+    for s in authored_solids(layout):
         cx, cz = s['center']; w, h, d = s['size']; y0 = s['baseY']; yaw = s.get('yaw', 0) or 0
-        if w <= 0 or d <= 0 or h <= 0:
-            continue
         if s['type'] == 'rail' and s['id'].startswith(SLOPED_RAILS):
             segs = rail_segments(s, height_at)
             info.setdefault('railSegments', []).extend(segs)
@@ -530,8 +678,6 @@ def build_collision(layout, coll, src):
     ob.display_type = 'WIRE'; ob.hide_render = True
     coll.hide_render = True
     STATS['collisionBoxes'] = {k: len(v) for k, v in info.items()}
-    STATS['readability'] = notes
-    info['readability'] = notes
     return info
 
 
@@ -820,6 +966,8 @@ def export_material_manifest(colls, out_dir):
                         entry['roughness'] = round(p.inputs['Roughness'].default_value, 3)
                         entry['metallic'] = round(p.inputs['Metallic'].default_value, 3)
                         entry['alpha'] = round(p.inputs['Alpha'].default_value, 3)
+                    if m.get('lsy_decal'):
+                        entry['decal'] = True  # 顶点 alpha 贴花（mark_vertex_alpha_decals）：Unity 侧半透明、不写深度
                     mats[m.name] = entry
                 if has_vc:
                     entry['meshesWithColors'] += 1
@@ -868,22 +1016,35 @@ def build(src, out, fbx=True, render=True):
     root = new_collection('LastShiftYard')
     colls = {k: new_collection('LSY_' + k, root) for k in GROUPS + ['collision', 'markers', 'cameras']}
     vc_fixed = 0
+    removed_grass = []
     for k in GROUPS:
         g = man['groups'].get(k)
         if not g:
             continue
         objs = import_glb(src / g['file'], colls[k])
+        grass = GRASS_MESHES.get(k, ())
+        retained = []
+        for obj in objs:
+            if obj.type == 'MESH' and obj.name in grass:
+                removed_grass.append(obj.name)
+                bpy.data.objects.remove(obj, do_unlink=True)
+            else:
+                retained.append(obj)
+        objs = retained
         vc_fixed += ensure_vertex_color(objs)
         STATS['group_' + k] = {'objects': len(objs), 'meshes': sum(1 for o in objs if o.type == 'MESH'), 'triangles': tris_of(objs),
                                'exportedTriangles': g.get('triangles')}
     STATS['vertexColorMaterialsPatched'] = vc_fixed
+    STATS['removedDecorativeGrass'] = sorted(removed_grass)
     dithered = 0
     for m in bpy.data.materials:
         if getattr(m, 'surface_render_method', None) == 'BLENDED':
             m.surface_render_method = 'DITHERED'; dithered += 1
     STATS['blendedToDithered'] = dithered
     apply_instance_colors(src, man, colls)
+    bind_yard_atlas(colls['terrain'], src / man['textures']['yardGroundAtlas']['file'])
     fix_outer_grit(colls)
+    mark_vertex_alpha_decals(colls)
     layer_coplanar(colls)
     # 入口接驳小景在 three.js 里放在 (400, 0, 400)，不属于出击场景：只保留在 .blend，不进渲染与出击 FBX。
     colls['entrance'].hide_render = True
@@ -987,5 +1148,8 @@ def main():
         os._exit(0)
 
 
-if __name__ == '__main__' and bpy.app.background:
-    main()
+if __name__ == '__main__':
+    if bpy is None:
+        raise SystemExit('请用 Blender 运行此脚本（--python tools/build_lastshift_blend.py）。')
+    if bpy.app.background:
+        main()

@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""自研出击地图读图审计（SkyIsland/AGENTS.md §6.1 读图通则，2026-11-12）。
+"""自研出击地图读图审计（保留 2026-11-12 走格与发布台账的旧基线）。
 
 玩家反馈「边界不明；分不清哪些能挡子弹、哪些是贴图；没有掩体拉扯；莫名其妙卡脚」。本工具按通则逐件判定
 三张图的碰撞台账，返回违规清单。判据：
 
-  R1 看得见 = 摸得着：无实体的散布种类最大可见高度 ≤ 0.6 m，或属于明确的软类（草、花、芦苇、海带、贝壳、水洼）。
-  R2 实体高度禁区：碰撞顶面离地 0.12–0.6 m 的实体不许存在（可走甲板 / 坡道不在台账里）。
+  R1 潮闸镇散布分类：新台账中的硬物有实体，历史台账仍按当时的低物基线检查。
+  R2 实体盒尺寸为正；潮闸镇历史台账仍保留当时的 0.12–0.6 m 通行基线。
   R3 碰撞贴合可见模型：逻辑网格方盒不得压着按件出实体的物件（潮闸镇）；坡道栏杆必须跟坡分段（末班编组站）。
   R4 边界是实物：Unity 构建报告里有边界实物（潮闸镇按地块：木栅栏 / 钢栅栏 / 路障 / 警示桩）。
   R5 架空层不压实心（末班编组站）：跨线桥与司机室下的地面另起一层，桥墩 / 立柱有实体。
@@ -38,14 +38,19 @@ def _rot(x, z, yaw):
 def audit_tidegate(boxes: dict, report: dict | None) -> list[str]:
     errors = []
     limit = boxes.get('lowLimit', HIGH)
+    by_geometry = boxes.get('collisionPolicy') == 'solid-geometry'
     for e in boxes.get('Obb', []):
+        if len(e['size']) != 3 or any(not math.isfinite(v) or v <= 0 for v in e['size']):
+            errors.append('R2 %s：实体尺寸无效' % e['id'])
         if e['kind'] in ('wall', 'stair'):
             continue
-        if LOW < e['visibleHeight'] < limit:
+        if not by_geometry and LOW < e['visibleHeight'] < limit:
             errors.append('R2 %s：可见 %.2f m 却有实体（0.12–0.6 m 禁区）' % (e['id'], e['visibleHeight']))
     for kind, p in boxes.get('kindPolicy', {}).items():
         top = p['unitHeight'] * p['maxScale']
-        if p['policy'] == 'none' and top > limit and kind not in SOFT_KINDS:
+        if by_geometry and p['policy'] == 'none' and kind not in SOFT_KINDS | {'netPile'}:
+            errors.append('R1 %s：散布硬物无实体分类' % kind)
+        elif not by_geometry and p['policy'] == 'none' and top > limit and kind not in SOFT_KINDS:
             errors.append('R1 %s：最高可见 %.2f m 却没有实体，也不是软类' % (kind, top))
     if 'kindPolicy' not in boxes:
         errors.append('R1 collision_boxes.json 缺 kindPolicy（tools/build_tidegate_blend.py 没重跑）')
@@ -78,9 +83,8 @@ def audit_lastshift(boxes: dict, report: dict | None) -> list[str]:
         if not isinstance(rows, list):
             continue
         for b in rows:
-            h = b['size'][1]
-            if 'segment' not in b and LOW < h < HIGH:
-                errors.append('R2 %s：%.2f m 高的实心体在 0.12–0.6 m 禁区' % (b['id'], h))
+            if len(b['size']) != 3 or any(not math.isfinite(v) or v <= 0 for v in b['size']):
+                errors.append('R2 %s：实体尺寸无效' % b['id'])
             if kind == 'rail' and b['id'].startswith(('northRail', 'rampRail')):
                 errors.append('R3 %s：坡道 / 梯段栏杆还是一整块水平盒' % b['id'])
     if not boxes.get('railSegments'):

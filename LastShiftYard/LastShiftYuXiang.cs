@@ -1,20 +1,21 @@
 using System;
+using System.Collections.Generic;
+using System.Threading;
 using BossRush.Utils;
 using Cysharp.Threading.Tasks;
 using Duckov.MiniMaps;
 using Duckov.UI.DialogueBubbles;
 using ItemStatsSystem;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace BossRush
 {
     /// <summary>
     /// 余响：剪票处台边的捏脸 NPC（蓝图 `lastshift_yuxiang`，`Assets/Data/DuckNpcs.json`，非永久、不进好感与婚姻）。
     /// 跟着剪票处一起生成与回收（scenes 为空，通用刷新不会碰她）。第七轮 owner 采纳的入口引导也在这里：
-    /// 靠近时喊一声「末班车，剪票上车」（每趟一次）、没去过编组站时仓库区小地图标出台子、每趟塞一卷台边绷带。
+    /// 靠近时喊一声「末班车，剪票上车」（每趟一次）、仓库区小地图标出台子、每趟塞一卷台边绷带。
     /// </summary>
-    internal static class LastShiftYuXiang
+    internal sealed class LastShiftYuXiang
     {
         internal const string BlueprintId = "lastshift_yuxiang";
         /// <summary>台的东侧 2 m（2026-11-07 离线选址：余响 (150, 0, 245)），面朝台子；站位与朝向待实机复核。</summary>
@@ -22,53 +23,106 @@ namespace BossRush
         private static readonly Vector3 Facing = Vector3.left;
         private const float CalloutRadius = 9f;
         private const string MapKey = "BossRush_LastShiftYard_MapDesk";
-        private static int generation;
-        private static bool spawning;
-        private static float retryAt;
-        private static CharacterMainControl owned;
-        private static uint calledRaid, bandageRaid;
-        /// <summary>官方止血绷带（物品库 #10，2026-11-11 按 escapefromduckov.net 核对）。</summary>
+        private const string NameKey = "BossRush_Actor_lastshift_yuxiang_Name";
+        private const string DialogueKey = "BossRush_LastShift_YuXiang";
+        // 对话点在她胸口，和台上打孔钳的交互错开约 2.2 m。
+        private static readonly Vector3 TalkLocal = new Vector3(0f, 0.62f, 2f);
+        private static readonly Vector3 ActorOffset = new Vector3(0f, 1.5f, 0f);
+        private int generation;
+        private bool spawning;
+        private float retryAt;
+        private CharacterMainControl owned;
+        private GameObject ownedObject;
+        private DuckovDialogueActor actor;
+        private Conversation conversation;
+        private uint? calledRaid, bandageRaid;
+        /// <summary>官方止血绷带（物品库 #10）。</summary>
         private const int BandageTypeId = 10;
 
-        internal static void Spawn(Scene scene)
+        internal bool IsPresent { get { return owned != null && actor != null && owned.gameObject.activeInHierarchy; } }
+        internal bool IsTalking { get { return conversation != null; } }
+
+        internal void Spawn(GameObject entry)
         {
-            if (spawning || owned != null || Time.unscaledTime < retryAt) return;
-            int request = ++generation;
-            SpawnAsync(scene, request).Forget();
+            if (!ReferenceEquals(ownedObject, null) && (ownedObject == null || !ownedObject.activeInHierarchy)) Despawn();
+            if (spawning || IsPresent || Time.unscaledTime < retryAt) return;
+            if (owned != null || conversation != null) Despawn();
+            spawning = true;
+            SpawnAsync(entry, ++generation).Forget();
         }
 
-        private static async UniTaskVoid SpawnAsync(Scene scene, int request)
+        private async UniTaskVoid SpawnAsync(GameObject entry, int request)
         {
-            spawning = true;
             try
             {
-                CharacterMainControl npc = await DuckNpcSpawner.SpawnAsync(BlueprintId, Position, Facing);
-                if (npc == null) { retryAt = Time.unscaledTime + 30f; return; }
-                owned = npc;
-                if (request != generation || !scene.IsValid() || !scene.isLoaded) { Despawn(); return; }
-                // 跟着仓库区子场景一起卸载（口径同潮闸镇闸伯）。
-                if (npc.transform.parent == null && npc.gameObject.scene.handle != scene.handle)
-                    SceneManager.MoveGameObjectToScene(npc.gameObject, scene);
-                Debug.Log(LastShiftRaidScene.LogTag + " YUXIANG_READY at=" + npc.transform.position);
+                CharacterMainControl npc = await DuckNpcSpawner.SpawnAsync(BlueprintId, Position, Facing,
+                    npcToAdopt => AdoptNpc(entry, request, npcToAdopt));
+                if (request != generation || entry == null || !entry.activeInHierarchy || !entry.scene.isLoaded) return;
+                if (npc == null || owned != npc) throw new InvalidOperationException("角色生成返回空或已失效");
+                actor = DialogueActorFactory.Create(ownedObject, BlueprintId, NameKey, ActorOffset);
+                if (actor == null) throw new InvalidOperationException("官方对话角色创建失败");
+                Debug.Log(LastShiftRaidScene.LogTag + " YUXIANG_READY handle=" + entry.scene.handle
+                    + " raid=" + RaidUtilities.CurrentRaid.ID + " at=" + npc.transform.position);
             }
-            catch (Exception e) { retryAt = Time.unscaledTime + 30f; Debug.LogWarning(LastShiftRaidScene.LogTag + " 余响没能生成，30 秒后再试：" + e.Message); }
-            finally { spawning = false; }
+            catch (Exception e)
+            {
+                if (request == generation)
+                {
+                    ReleaseOwnedNpc();
+                    retryAt = Time.unscaledTime + 30f;
+                    Debug.LogWarning(LastShiftRaidScene.LogTag + " 余响没能生成，30 秒后再试：" + e.Message);
+                }
+            }
+            finally
+            {
+                if (request == generation) spawning = false;
+            }
         }
 
-        internal static void Despawn()
+        private bool AdoptNpc(GameObject entry, int request, CharacterMainControl npc)
+        {
+            if (request != generation || entry == null || !entry.activeInHierarchy || !entry.scene.isLoaded) return false;
+            // 配装还会异步等待。先归入口，卸载时也能清掉这只尚未配完装备的鸭。
+            GameObject npcObject = npc.gameObject;
+            npc.transform.SetParent(entry.transform, true);
+            owned = npc;
+            ownedObject = npcObject;
+            return true;
+        }
+
+        internal void Despawn()
         {
             generation++;
+            spawning = false;
+            retryAt = 0f;
+            Conversation closing = conversation;
+            conversation = null;
+            if (closing != null) closing.Cancel();
+            ReleaseOwnedNpc();
+        }
+
+        private void ReleaseOwnedNpc()
+        {
+            GameObject npcObject = ownedObject;
             CharacterMainControl npc = owned;
+            ownedObject = null;
             owned = null;
-            if (npc == null) return;
-            try { DuckNpcSpawner.Despawn(npc); }
+            actor = null;
+            if (ReferenceEquals(npcObject, null)) return;
+            try
+            {
+                DialogueActorFactory.Remove(npcObject);
+                if (npcObject != null) npcObject.SetActive(false);
+                DuckNpcSpawner.Despawn(npc);
+            }
             catch (Exception e) { Debug.LogWarning(LastShiftRaidScene.LogTag + " 余响回收失败：" + e.Message); }
         }
 
         /// <summary>模块每秒调：玩家走近台子时喊一声，每趟出击一次。</summary>
-        internal static void Tick(CharacterMainControl player)
+        internal void Tick(CharacterMainControl player)
         {
-            if (owned == null || player == null) return;
+            if (conversation != null && !conversation.IsCurrent) conversation.Cancel();
+            if (!IsPresent || IsTalking || player == null) return;
             uint raid = RaidUtilities.CurrentRaid.ID;
             if (raid == calledRaid) return;
             Vector3 offset = player.transform.position - owned.transform.position;
@@ -79,118 +133,211 @@ namespace BossRush
             catch (Exception e) { Debug.LogWarning(LastShiftRaidScene.LogTag + " 余响喊话失败：" + e.Message); }
         }
 
-        /// <summary>台边「和余响说话」的交互点：就在她身上、胸口高度（2026-11-12 实机「NPC 的对话在头顶」：鸭子身高约 1.3 m，以前 1 m 高、
-        /// 还往外偏 0.3 m）。她站在台子本地 (0, 0, 2)；剪票交互在台上的打孔钳，两处错开约 2.2 m。</summary>
-        private static readonly Vector3 TalkLocal = new Vector3(0f, 0.62f, 2f);
-        private static ModBehaviour talkOwner;
-
-        /// <summary>剪票处搭好时挂上对话点（owner 2026-11-11：故事的主角得能说上话，票根在这里就能交）。</summary>
-        internal static void AddTalk(Transform root, ModBehaviour owner)
+        internal void AddTalk(Transform root, LastShiftEntryInteractable entry)
         {
-            talkOwner = owner;
             LastShiftDeviceInteractable talk = NPCInteractionGroupHelper.GetOrCreateStandaloneInteractable<LastShiftDeviceInteractable>(root, "LastShiftTalk", TalkLocal, x =>
             {
-                x.Bind("yuxiang_talk", 0f, delegate { return LastShiftText.YuXiangTalkVerb; }, CanTalk, Talk);
+                x.Bind("yuxiang_talk", 0f, delegate { return LastShiftText.YuXiangTalkVerb; },
+                    delegate { return IsPresent && !IsTalking && entry.CanTalk(); }, delegate { Talk(entry, false); });
                 SphereCollider sensor = x.GetComponent<SphereCollider>();
                 if (sensor != null) { sensor.radius = 1f; sensor.isTrigger = true; }
             });
-            if (talk == null) Debug.LogWarning(LastShiftRaidScene.LogTag + " 余响对话点创建失败");
+            if (talk == null) throw new InvalidOperationException("余响对话点创建失败");
         }
 
-        private static bool CanTalk()
+        internal void Talk(LastShiftEntryInteractable entry, bool boarding)
         {
-            return talkOwner != null && talkOwner.GetComponent<LastShiftSession>() == null;
+            if (!IsPresent || IsTalking || !entry.CanTalk()) return;
+            if (Dialogues.DialogueUI.instance == null)
+            {
+                Debug.LogWarning(LastShiftRaidScene.LogTag + " 余响对话不可用：官方 DialogueUI 未就绪");
+                return;
+            }
+            if (Dialogues.DialogueUI.Active || DialogueManager.IsDialogueActive) return;
+            var request = new Conversation(actor, entry, CharacterMainControl.Main);
+            conversation = request;
+            TalkAsync(request, boarding).Forget();
         }
 
-        /// <summary>按进度说话：带着票根、故事没收尾就请你交给她；收尾后说现在的事；否则提第一条还没带出去的线索。</summary>
-        private static void Talk()
+        private async UniTaskVoid TalkAsync(Conversation request, bool boarding)
+        {
+            try
+            {
+                request.Attach();
+                if (boarding) await Board(request);
+                else await Converse(request);
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception e) { Debug.LogWarning(LastShiftRaidScene.LogTag + " 余响对话失败：" + e.Message); }
+            finally
+            {
+                if (ReferenceEquals(conversation, request)) conversation = null;
+                request.Dispose();
+            }
+        }
+
+        private async UniTask Board(Conversation request)
+        {
+            CharacterMainControl player = request.Player;
+            var lines = new List<string[]>(LastShiftText.YuXiangBoarding);
+            if (!LastShiftStory.Journal && TidegateInventory.Carries(player, BossRushItemIds.LastShiftTicketStub))
+                lines.Add(LastShiftText.YuXiangBoardingStub);
+            if (TidegateInventory.Carries(player, BossRushItemIds.LastShiftStamp))
+                lines.Add(LastShiftText.YuXiangBoardingStamp);
+            lines.Add(LastShiftText.YuXiangBandage);
+            if (!await request.Show(lines.ToArray(), "_Boarding")) return;
+            if (!await request.Choose(LastShiftText.YuXiangBoardingChoices, "_BoardingChoice") || !request.Entry.CanBoard()) return;
+
+            LastShiftStory.MarkMet();
+            if (LastShiftStory.TryHandIn(player) && !await request.Ending()) return;
+            if (request.IsCurrent) request.Entry.Depart(player);
+        }
+
+        /// <summary>先回应新线索，读过回应再标记。票根由官方分支明确选择后交给她。</summary>
+        private async UniTask Converse(Conversation request)
         {
             LastShiftStoryData d = LastShiftStory.Current;
             if (d == null) return;
             bool firstTime = !d.Met;
             LastShiftStory.MarkMet();
-            CharacterMainControl player = CharacterMainControl.Main;
-            // 新带出来、她还没接过话的线索：先说她的反应，再往下说（每条只说一次）。
             int fresh = d.Journal ? 0 : d.Notes & ~d.Told & LastShiftStory.AllNotes;
-            string reactions = "";
+            var lines = new List<string[]>();
             for (int i = 0; i < LastShiftStory.NoteCount; i++)
-                if ((fresh & (1 << i)) != 0) reactions += LastShiftText.YuXiangReaction(i) + "\n\n";
-            LastShiftStory.MarkTold(fresh);
-            if (!d.Journal && TidegateInventory.Carries(player, BossRushItemIds.LastShiftTicketStub))
-            {
-                BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
-                {
-                    Title = LastShiftText.YuXiangName,
-                    Body = reactions + LastShiftText.YuXiangSeesStub,
-                    ConfirmLabel = L10n.T("把票根给她", "Give her the stub"),
-                    CancelLabel = L10n.T("先留着", "Not yet"),
-                    Danger = false,
-                    OnConfirm = HandOver,
-                });
-                return;
-            }
-            string body;
-            if (d.Journal) body = LastShiftText.YuXiangAfter(d.Runs);
+                if ((fresh & (1 << i)) != 0) lines.Add(LastShiftText.YuXiangReaction(i));
+
+            bool canHandIn = !d.Journal && TidegateInventory.Carries(request.Player, BossRushItemIds.LastShiftTicketStub);
+            if (canHandIn) lines.Add(LastShiftText.YuXiangSeesStub);
+            else if (d.Journal) lines.Add(LastShiftText.YuXiangAfter(d.Runs));
+            else if (d.Notes == 0) lines.AddRange(LastShiftText.YuXiangIntro(firstTime, d.Runs > 0));
             else
             {
                 int missing = 0;
                 while (missing < LastShiftStory.NoteCount && (d.Notes & (1 << missing)) != 0) missing++;
-                // 第一次只聊站和末班车，不报线索在哪（owner 2026-11-11）；带出第一条线索后她才往下说，线索位置在编组站的地图上。
-                body = d.Notes == 0 ? LastShiftText.YuXiangIntro(firstTime, d.Runs > 0) : reactions + LastShiftText.YuXiangHint(missing);
+                lines.Add(LastShiftText.YuXiangHint(missing));
             }
-            BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
-            {
-                Title = LastShiftText.YuXiangName,
-                Body = body,
-                SingleAction = true,
-                ConfirmLabel = L10n.T("嗯", "Right"),
-                Danger = false,
-                OnConfirm = delegate { },
-            });
+
+            if (!await request.Show(lines.ToArray(), "_Talk")) return;
+            LastShiftStory.MarkTold(fresh);
+            if (!canHandIn || !await request.Choose(LastShiftText.YuXiangHandInChoices, "_HandInChoice")) return;
+            if (LastShiftStory.TryHandIn(request.Player)) await request.Ending();
+            else await request.Show(LastShiftText.YuXiangHandInFailure, "_HandInFailure");
         }
 
-        /// <summary>对话里交票根：和上车时交同一个入口（先写存档再拿走票根），交成了弹收尾页。</summary>
-        private static void HandOver()
+        private sealed class Conversation : IDisposable
         {
-            if (LastShiftStory.TryHandIn(CharacterMainControl.Main))
+            private readonly DuckovDialogueActor actor;
+            private readonly CancellationTokenSource cancellation = new CancellationTokenSource();
+            private bool subscribed, cancelledByPlayer;
+            internal readonly LastShiftEntryInteractable Entry;
+            internal readonly CharacterMainControl Player;
+
+            internal Conversation(DuckovDialogueActor speaker, LastShiftEntryInteractable entry, CharacterMainControl player)
             {
-                LastShiftStory.ShowEnding(L10n.T("收好", "Done"), null);
-                return;
+                actor = speaker;
+                Entry = entry;
+                Player = player;
             }
-            BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
+
+            internal bool IsCurrent
             {
-                Title = LastShiftText.YuXiangName,
-                Body = L10n.T("她没接，摆摆手：「下回再说。」\n（存档暂时写不进去，票根还在你身上。）", "She doesn't take it, just waves a hand. \"Next time.\"\n(The save can't be written right now. You still have the stub.)"),
-                SingleAction = true,
-                ConfirmLabel = L10n.T("好", "OK"),
-                Danger = false,
-                OnConfirm = delegate { },
-            });
+                get
+                {
+                    return actor != null && actor.isActiveAndEnabled && Entry != null && Entry.CanTalk()
+                        && Player != null && Player == CharacterMainControl.Main;
+                }
+            }
+
+            internal void Attach()
+            {
+                if (subscribed) return;
+                UIInputManager.OnCancelEarly += OnCancel;
+                subscribed = true;
+            }
+
+            internal async UniTask<bool> Show(string[][] lines, string key)
+            {
+                if (!IsCurrent || cancellation.IsCancellationRequested) return false;
+                int failures = DialogueManager.SequenceFailureSerial;
+                await DialogueManager.ShowDialogueSequenceBilingual(actor, lines, DialogueKey + key, cancellation.Token);
+                return IsCurrent && !cancellation.IsCancellationRequested && failures == DialogueManager.SequenceFailureSerial;
+            }
+
+            internal async UniTask<bool> Choose(string[][] choices, string key)
+            {
+                if (!IsCurrent || cancellation.IsCancellationRequested) return false;
+                int choice = await DialogueManager.ShowMultipleChoiceBilingual(actor, choices, 0f, DialogueKey + key, cancellation.Token);
+                return choice == 0 && IsCurrent && !cancellation.IsCancellationRequested;
+            }
+
+            internal async UniTask<bool> Ending()
+            {
+                try { if (await Show(LastShiftText.YuXiangEnding, "_Ending")) return true; }
+                catch (OperationCanceledException) when (cancelledByPlayer) { }
+                // 只跳过已交票后的收尾。先前明确选了上车才会继续发车。
+                return cancelledByPlayer && IsCurrent;
+            }
+
+            private void OnCancel(UIInputEventData data)
+            {
+                if (data == null || data.Used || !IsCurrent || !DialogueManager.IsDialogueActiveFor(actor)) return;
+                data.Use();
+                cancelledByPlayer = true;
+                cancellation.Cancel();
+            }
+
+            internal void Cancel()
+            {
+                Detach();
+                cancelledByPlayer = false;
+                cancellation.Cancel();
+            }
+
+            private void Detach()
+            {
+                if (!subscribed) return;
+                UIInputManager.OnCancelEarly -= OnCancel;
+                subscribed = false;
+            }
+
+            public void Dispose()
+            {
+                Detach();
+                cancellation.Dispose();
+            }
         }
 
-        /// <summary>没去过编组站时在仓库区小地图标出台子（第七轮：「第一次进仓库区时在小地图标出余响的台子」）。根节点激活前加、激活后 Setup。</summary>
-        internal static GameObject AddMapMarker(Transform root)
+        internal static void InjectLocalization()
         {
-            if (LastShiftStory.Runs > 0) return null;
+            LocalizationHelper.InjectLocalization(NameKey, LastShiftText.YuXiangName);
             LocalizationHelper.InjectLocalization(MapKey, L10n.T("末班车剪票处", "Last train ticket desk"));
+        }
+
+        internal static void RefreshMapMarker(GameObject entry)
+        {
+            if (entry == null || !entry.activeInHierarchy) return;
+            SimplePointOfInterest poi = entry.GetComponentInChildren<SimplePointOfInterest>();
+            if (poi != null) SetupMapMarker(poi);
+        }
+
+        /// <summary>每趟都在仓库区地图标出台子。根节点激活前加、激活后 Setup。</summary>
+        internal static SimplePointOfInterest AddMapMarker(Transform root)
+        {
             var marker = new GameObject("LastShiftMapMarker");
             marker.transform.SetParent(root, false);
             SimplePointOfInterest poi = marker.AddComponent<SimplePointOfInterest>();
             poi.Color = BossRushUIColors.WarningText;
             poi.ScaleFactor = 1.25f;
             poi.IsArea = false;
-            return marker;
+            return poi;
         }
 
-        internal static void SetupMapMarker(GameObject marker)
+        internal static void SetupMapMarker(SimplePointOfInterest poi)
         {
-            if (marker == null) return;
-            SimplePointOfInterest poi = marker.GetComponent<SimplePointOfInterest>();
-            if (poi != null) poi.Setup(null, MapKey);
+            poi.Setup(null, MapKey);
         }
 
         /// <summary>台边绷带箱：每趟出击一卷，剪票时塞给你（第七轮：带伤上车回不去，台边先给一卷）。返回给没给成。</summary>
-        internal static bool GiveBandage(CharacterMainControl player)
+        internal bool GiveBandage(CharacterMainControl player)
         {
             uint raid = RaidUtilities.CurrentRaid.ID;
             if (player == null || raid == bandageRaid) return false;
@@ -212,15 +359,5 @@ namespace BossRush
             return true;
         }
 
-
-
-        internal static void ResetStaticCaches()
-        {
-            Despawn();
-            spawning = false;
-            retryAt = 0f;
-            calledRaid = bandageRaid = 0;
-            talkOwner = null;
-        }
     }
 }

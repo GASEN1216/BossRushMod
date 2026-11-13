@@ -11,12 +11,14 @@ namespace BossRush
     /// 末班编组站的列车与调度运行时（第二期）。规则全在 <see cref="LastShiftTimetable"/>，这里只把它落到场景里：
     /// 车厢从场景包 `Templates/VIS_vehicles` 克隆、逐帧摆位；车体是会动的墙层碰撞（挡人挡枪），擦到人只往外推；
     /// 车头正面撞人走 <see cref="TidegateHazards.ResolveLethalImpact"/>（一次官方 Hurt，保留墓碑与结算）；首班撞飞示范推车；
-    /// 线上有车时按车体包络封导航三角形；条件出口按班次开关；司机室道岔、轨道车铃、班次运单牌三个交互。
+    /// 行车时按股道包络封导航，停车时按各节实体车厢封导航；条件出口按班次开关；司机室道岔、轨道车铃、班次运单牌三个交互。
     /// 第七轮 owner 采纳的反馈都在这里：首班等玩家站到南护栏、看完演示才给道岔、扳岔站场广播 + 8 秒地面箭头、锁着的出口说明条件。
     /// </summary>
     internal sealed partial class LastShiftTrains : IDisposable
     {
         private static readonly string[] Bodies = { "31 hood shunter", "Sealed sundries", "Twin coil bolster", "Green brake van", "Twin coil bolster.001" };
+        /// <summary>按班次开关的出口（北公路恒开不在内）；`last` 是末班车押运车厢的尾梯。</summary>
+        internal static readonly string[] ConditionalExits = { "west", "east", "bell", "last" };
         private const string CartBody = "Teaching cart";
         private const float BodyHeight = 3.6f, NoticeSeconds = 8f;
         private static readonly Color ArrowColor = new Color(1f, 0.79f, 0.36f, 0.9f);
@@ -40,9 +42,16 @@ namespace BossRush
         private string navState = "";
         private bool railReminded, demoForcedAnnounced, dispatchWaitAnnounced, disposed;
         private readonly int wallLayer;
+        /// <summary>末班车押运车厢的尾梯（会动的出口 `last` 的锚点）：每帧摆到押运车厢靠货台那一侧的尾部。</summary>
+        private readonly Transform vanStep;
+        /// <summary>尾梯离押运车厢中心线的横向距离、离车尾的纵向距离（米）。</summary>
+        internal const float VanStepAcross = 1.45f, VanStepBack = 1.2f;
+        private static readonly Vector3 VanStepParking = new Vector3(0f, 0f, 105f);
 
         internal LastShiftTimetable Timetable { get { return timetable; } }
         internal string Manifest { get; private set; }
+        /// <summary>故事收尾后余响替你打听加价台：运单牌与开局一句会提前说出下一班的加价台（会话接 <see cref="LastShiftStory.Journal"/>）。</summary>
+        internal Func<bool> KnowsPremium { get; set; }
 
         internal LastShiftTrains(LastShiftWorld world, LastShiftTimetable timetable, ArenaPrototypeNavigation navigation, LastShiftExtraction extraction,
             string manifest, Action<string, bool> status, Func<bool> valid)
@@ -63,9 +72,13 @@ namespace BossRush
             }
             Transform cartTemplate = templates.Find(CartBody);
             if (cartTemplate != null) { cart = Clone(cartTemplate, "TeachingCart", out cartRotation); cart.SetActive(true); }
+            vanStep = new GameObject("LastShiftLastTrainStep").transform;
+            vanStep.SetParent(holder, false);
+            vanStep.position = VanStepParking; // 末班车来之前放在站界外；出口环此时关着。
+            if (extraction != null) extraction.AddMoving("last", vanStep, 2.5f);
             timetable.PhaseChanged += OnPhase;
             AddInteract("switch", 0.8f, SwitchLabel, delegate { return valid(); }, ThrowSwitch);
-            AddInteract("bell", 0.6f, delegate { return L10n.T("拉轨道车铃", "Ring the railcar bell"); }, delegate { return valid() && timetable.BellAt < 0; }, RingBell);
+            AddInteract("bell", 0.6f, delegate { return L10n.T("拉轨道车铃", "Ring the railcar bell"); }, delegate { return valid() && timetable.BellAt < 0 && !timetable.YardClosed; }, RingBell);
             AddInteract("manifest", 0.4f, delegate { return L10n.T("看班次运单牌", "Read the shift manifest"); }, delegate { return valid(); }, ReadManifest);
             Place(0f);
             RefreshNavigation();
@@ -121,6 +134,7 @@ namespace BossRush
             if (!timetable.TrySwitch(target, out reason))
             {
                 status(reason == "demo" ? L10n.T("道岔还锁着。先回南护栏后面，看首班车过岔。", "The switch is still locked. Go back behind the south rail and watch the first train through.")
+                    : reason == "closed" ? L10n.T("手柄用铁丝绑死了。末班车走了，今晚不会再有车。", "The lever's been wired down. The last train's gone; nothing else is coming tonight.")
                     : L10n.T("这一班已经锁了线，等车出站再扳。", "This train has the route locked. Wait for it to leave."), true);
                 return;
             }
@@ -157,11 +171,15 @@ namespace BossRush
 
         private void ReadManifest()
         {
-            string premium = timetable.Premium == 'W' ? L10n.T("西台", "the west platform") : L10n.T("东台", "the east platform");
-            status(L10n.T("本趟班单：", "This run's manifest: ") + LastShiftText.ManifestName(Manifest)
-                + L10n.T("。两台同一批货，只签一回。加价台：", ". Both platforms share one consignment; you sign once. Premium platform: ")
-                + premium + L10n.T("，那边的货更好。", ", where the goods are better.")
-                + (ManifestExtra == null ? "" : " " + ManifestExtra()), false);
+            string head = L10n.T("本趟班单：", "This run's manifest: ") + LastShiftText.ManifestName(Manifest)
+                + L10n.T("。每班车一张签收单。", ". One signature sheet per train. ");
+            string premium;
+            if (timetable.YardClosed) premium = L10n.T("末班车已发出，后面一栏空着。", "The last train has gone; the rest of the board is blank.");
+            else if (KnowsPremium != null && KnowsPremium())
+                premium = L10n.T("余响在下一班那一栏用铅笔圈了", "Yu Xiang has pencilled a ring around the next train's slot: premium tag on the ")
+                    + LastShiftText.PlatformName(timetable.UpcomingPremium) + L10n.T("台的加价签。", " platform.");
+            else premium = L10n.T("加价签那一栏空着，车进站才贴。", "The premium-tag column is blank. They stick it on when the train pulls in.");
+            status(head + premium + (ManifestExtra == null ? "" : " " + ManifestExtra()), false);
         }
 
         /// <summary>运单牌末尾追加的一行（会话接站台记录）。</summary>
@@ -186,7 +204,7 @@ namespace BossRush
             if (Time.unscaledTime >= nextExits)
             {
                 nextExits = Time.unscaledTime + 0.5f;
-                foreach (string id in new[] { "west", "east", "bell" }) extraction.SetOpen(id, timetable.ExitOpen(id));
+                foreach (string id in ConditionalExits) extraction.SetOpen(id, timetable.ExitOpen(id));
             }
             if (noticeUntil >= 0f && Time.time > noticeUntil) { noticeUntil = -1f; HideArrows(); }
             if (advance <= 0f || !valid()) return false;
@@ -225,14 +243,15 @@ namespace BossRush
         {
             RefreshNavigation();
             if (!valid()) return;
-            string label = LastShiftText.EventLabel(timetable.Event);
+            string label = timetable.IsLastTrain ? LastShiftText.LastTrainLabel : LastShiftText.EventLabel(timetable.Event);
             switch (next)
             {
                 case LastShiftPhase.Approach:
                     LastShiftSounds.PlayAtPlayer(LastShiftSounds.TannoyChime);
                     int lead = Mathf.RoundToInt((float)timetable.PhaseLength(LastShiftPhase.Approach));
+                    string note = timetable.IsLastTrain ? LastShiftText.LastTrainNote : LastShiftText.EventNote(timetable.Event);
                     status(L10n.T("站场广播：第 ", "Yard tannoy: train ") + timetable.Trip + L10n.T(" 班，", ", ") + label
-                        + L10n.T("，" + lead + " 秒后进站。", ", in " + lead + " seconds. ") + LastShiftText.EventNote(timetable.Event), timetable.IsExpress);
+                        + L10n.T("，" + lead + " 秒后进站。", ", in " + lead + " seconds. ") + note, timetable.IsExpress || timetable.IsLastTrain);
                     break;
                 case LastShiftPhase.Arrival:
                     // 汽笛从车头那节车厢发出（官方事件挂在发声体上做 3D 定位）；进站那一帧车头可能还没摆出来，就跟着玩家放。
@@ -241,18 +260,36 @@ namespace BossRush
                     if (timetable.IsExpress)
                         status(L10n.T("直通快车过站！离开股道！", "Express coming through! Get off the track!"), true);
                     else if (timetable.Training && !timetable.DispatchChosen) { /* 首班：车在岔心停下时另有一句（TickTutorialNotes），这里不重复。 */ }
-                    else
-                        status(L10n.T("车进" + LastShiftText.PlatformName(timetable.LineUsed) + "台了。",
-                            "The train is pulling into the " + LastShiftText.LineName(timetable.LineUsed) + " platform."), false);
+                    else status(ArrivalLine(), false);
                     break;
                 case LastShiftPhase.Dwell:
-                    status(L10n.T("车停稳了，" + LastShiftText.PlatformName(timetable.LineUsed) + "台卸货。",
-                        "The train has stopped. Unloading at the " + LastShiftText.LineName(timetable.LineUsed) + " platform."), false);
+                    if (timetable.IsLastTrain)
+                        status(L10n.T("末班车停稳了。押运车厢的尾梯放了下来，车上的人在往下跳。", "The last train has stopped. The brake van's rear step is down, and the escorts aboard are jumping off."), true);
+                    else
+                        status(L10n.T("车停稳了，" + LastShiftText.PlatformName(timetable.LineUsed) + "台卸货。",
+                            "The train has stopped. Unloading at the " + LastShiftText.LineName(timetable.LineUsed) + " platform."), false);
                     break;
                 case LastShiftPhase.Clear:
-                    status(L10n.T("车出站了，股道空了。", "The train's gone. The track is clear."), false);
+                    if (timetable.YardClosed)
+                    {
+                        LastShiftSounds.PlayAtPlayer(LastShiftSounds.TannoyChime);
+                        status(L10n.T("末班车出站了。站场广播：封站。便门落了锁，北公路上有人在拉路障。",
+                            "The last train has left. Yard tannoy: the yard is closed. The gates are padlocked and someone is dragging a barricade across the north road."), true);
+                    }
+                    else status(L10n.T("车出站了，股道空了。", "The train's gone. The track is clear."), false);
                     break;
             }
+        }
+
+        /// <summary>进站这一刻揭晓加价签：贴在这一侧就是加价货，贴在另一侧这班就没赶上（只写现场看到的）。</summary>
+        private string ArrivalLine()
+        {
+            char line = timetable.LineUsed;
+            string into = L10n.T("车进" + LastShiftText.PlatformName(line) + "台了。", "The train is pulling into the " + LastShiftText.LineName(line) + " platform. ");
+            if (timetable.Premium == line)
+                return into + L10n.T("车皮上贴着加价签。", "There's a premium tag on the wagon.");
+            return into + L10n.T("加价签贴在" + LastShiftText.PlatformName(timetable.Premium) + "台的调度单上，这班没赶上。",
+                "The premium tag was on the " + LastShiftText.LineName(timetable.Premium) + " platform's dispatch sheet. Not this one.");
         }
 
         // ---------------- 场景落位 ----------------
@@ -277,6 +314,7 @@ namespace BossRush
             }
             for (int i = 0; i < cars.Length; i++)
                 if (!used[i] && cars[i].activeSelf) { cars[i].SetActive(false); bodies[i].gameObject.SetActive(false); }
+            PlaceVanStep();
             if (cart != null)
             {
                 double x, y, z;
@@ -284,6 +322,30 @@ namespace BossRush
                 float spin = timetable.CartHit ? (float)Math.Min(1.2, timetable.Clock - timetable.CartHitClock) * 300f : 0f;
                 cart.transform.SetPositionAndRotation(new Vector3((float)x, (float)y + 0.06f, -(float)z), Quaternion.Euler(spin, spin * 0.4f, 0f) * cartRotation);
             }
+        }
+
+        /// <summary>
+        /// 末班车押运车厢的尾梯：车尾往前 <see cref="VanStepBack"/> m、靠货台那一侧车身外 <see cref="VanStepAcross"/> m，贴地。
+        /// 只在末班车在线时跟车；其余时候不动（出口环由班次表关着）。
+        /// </summary>
+        private void PlaceVanStep()
+        {
+            LastShiftCar van;
+            if (vanStep == null) return;
+            if (!timetable.IsLastTrain || !timetable.TryVan(out van))
+            {
+                // 车不在：锚点回到站界外，关着的出口不留在股道上（走过去也不会冒「封站」那一句）。
+                if (vanStep.position != VanStepParking) vanStep.position = VanStepParking;
+                return;
+            }
+            double co = Math.Cos(van.Yaw), sn = Math.Sin(van.Yaw);
+            double side = timetable.LineUsed == 'W' ? -1 : 1, back = van.Depth * 0.5 - VanStepBack, across = van.Width * 0.5 + VanStepAcross;
+            // 车身坐标：沿车 (sin, cos) 指向车尾（+z），横向 (cos, -sin)。
+            double x = van.X + sn * back + co * side * across, z = van.Z + co * back - sn * side * across;
+            Vector3 at = new Vector3((float)x, 0f, -(float)z);
+            float ground;
+            if (world.TryGroundAt(at, out ground)) at.y = ground;
+            vanStep.position = at;
         }
 
         /// <summary>车体擦到人：只往同一侧推出去，不带着人走、也不让人从车身里穿过去（原型 resolveTrainSides）。司机室楼面与跨线桥上不推。</summary>
@@ -302,21 +364,27 @@ namespace BossRush
             }
         }
 
-        /// <summary>线上有车（进站、停靠、出站）时，把车体包络里的导航三角形设成不可走；楼面与跨线桥（y ≥ 4.75）不受影响。状态变了才重刷。</summary>
+        /// <summary>进出站保留整条股道的封线；车停稳后按实际车厢占地封路，让寻路绕过车头与车尾。</summary>
         private void RefreshNavigation()
         {
             if (navigation == null) return;
             char line = timetable.LineUsed;
-            string state = timetable.TrainOnLine ? "on" + line : "clear";
+            bool stopped = timetable.Phase == LastShiftPhase.Dwell;
+            bool heavy = timetable.IsHeavy;
+            string state = stopped ? "parked" + line + (heavy ? "_heavy" : "") : timetable.TrainOnLine ? "on" + line : "clear";
             if (state == navState) return;
-            navState = state;
-            if (!timetable.TrainOnLine) { navigation.SetWalkable(delegate { return true; }); return; }
-            navigation.SetWalkable(delegate (Vector3 a, Vector3 b, Vector3 c)
+            if (timetable.TrainOnLine)
             {
-                if (Math.Min(a.y, Math.Min(b.y, c.y)) >= 4.75f) return true;
-                Vector3 m = (a + b + c) / 3f;
-                return !LastShiftTimetable.InEnvelope(m.x, -m.z, line);
-            });
+                LastShiftParkedTrain parked = stopped ? LastShiftTimetable.ParkedTrain(line, heavy) : null;
+                navigation.SetWalkable((a, b, c) => !TrainBlocksTriangle(a, b, c, line, parked));
+            }
+            else navigation.SetWalkable(delegate { return true; });
+            navState = state;
+        }
+
+        internal static bool TrainBlocksTriangle(Vector3 a, Vector3 b, Vector3 c, char line, LastShiftParkedTrain parked)
+        {
+            return LastShiftTimetable.TrainBlocksTriangle(a.x, a.y, -a.z, b.x, b.y, -b.z, c.x, c.y, -c.z, line, parked);
         }
 
         // ---------------- 扳岔后的地面箭头（8 秒） ----------------
@@ -353,6 +421,7 @@ namespace BossRush
         /// <summary>HUD 小标行：哪台进车、到哪一步、还剩几秒、班次事件。</summary>
         internal string Chip()
         {
+            if (timetable.YardClosed) return L10n.T("封站 · 不再来车", "Yard closed · no more trains");
             string phase;
             switch (timetable.Phase)
             {
@@ -363,20 +432,37 @@ namespace BossRush
                 default: phase = L10n.T("线路净空", "Line clear"); break;
             }
             string seconds = timetable.DispatchWait ? L10n.T(" · 等你扳岔", " · waiting for the switch") : " " + Mathf.CeilToInt((float)timetable.SecondsLeft) + L10n.T(" 秒", " s");
-            string evt = timetable.Event == LastShiftEvent.Normal ? "" : " · " + LastShiftText.EventLabel(timetable.Event);
-            return LastShiftText.PlatformName(timetable.Line) + L10n.T("台", "") + " · " + phase + seconds + evt;
+            string evt = timetable.IsLastTrain && timetable.Phase != LastShiftPhase.Clear ? " · " + LastShiftText.LastTrainLabel
+                : timetable.Event == LastShiftEvent.Normal || timetable.Phase == LastShiftPhase.Clear ? "" : " · " + LastShiftText.EventLabel(timetable.Event);
+            string premium = timetable.PremiumRevealed && timetable.Premium == timetable.LineUsed ? L10n.T(" · 加价", " · premium") : "";
+            int left = timetable.Phase == LastShiftPhase.Clear ? timetable.TrainsLeft - 1 : timetable.TrainsLeft;
+            string count = timetable.UpcomingIsLast && timetable.Phase == LastShiftPhase.Clear ? L10n.T(" · 下一班是末班", " · next is the last")
+                : left <= 1 ? "" : L10n.T(" · 封站前还有 " + left + " 班", " · " + left + " trains before closing");
+            return LastShiftText.PlatformName(timetable.Line) + L10n.T("台", "") + " · " + phase + seconds + evt + premium + count;
         }
 
-        /// <summary>HUD 目标行：首班教学按步骤给；之后给常态目标。只在字变化时才算「目标更新」（SkyIslandHud 自己去重）。</summary>
-        internal string Objective(bool cargoClaimed)
+        /// <summary>
+        /// HUD 目标行：首班教学按步骤给；之后给常态目标。只在字变化时才算「目标更新」（SkyIslandHud 自己去重）。
+        /// <paramref name="signedThisTrain"/> 是这一班已经签过，<paramref name="signatures"/> 是本趟一共签了几柜。
+        /// </summary>
+        internal string Objective(bool signedThisTrain, int signatures)
         {
             if (timetable.Training && !timetable.CartHit)
                 return L10n.T("站到南护栏后面，看首班车进站", "Stand behind the south rail and watch the first train come in");
             if (timetable.Training && !timetable.DispatchChosen)
                 return L10n.T("沿坡道上悬车楼司机室，扳道岔选西台或东台", "Climb the ramp to the suspended cab and throw the switch: west or east platform");
-            if (!cargoClaimed)
+            if (timetable.YardClosed)
+                return L10n.T("封站了：闯过北公路的路障撤离", "The yard is closed: fight through the north road barricade");
+            bool docked = timetable.Phase == LastShiftPhase.Dwell;
+            if (timetable.IsLastTrain && (docked || timetable.Phase == LastShiftPhase.Depart))
+                return signedThisTrain || !docked
+                    ? L10n.T("扒上末班车押运车厢的尾梯撤离", "Grab the last train's brake-van step to get out")
+                    : L10n.T("签下末班这一柜，再扒上押运车厢的尾梯", "Sign for the last train's cabinet, then grab the brake-van step");
+            if (docked && !signedThisTrain)
                 return L10n.T("在停靠一侧的铅封柜签收", "Sign for the sealed cargo at the platform where the train stops") + "（" + LastShiftText.ManifestName(Manifest) + "）";
-            return L10n.T("带货撤离：北公路常开", "Extract with the cargo: the north road is always open");
+            if (signatures == 0)
+                return L10n.T("扳道岔选台，等下一班进站签收", "Throw the switch, then sign when the next train stops") + "（" + LastShiftText.ManifestName(Manifest) + "）";
+            return L10n.T("再等一班多签一柜，或带货从北公路撤离", "Wait for another train and sign again, or leave with the cargo by the north road");
         }
 
         public void Dispose()

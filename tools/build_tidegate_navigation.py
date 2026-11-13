@@ -48,6 +48,8 @@ import numpy as np
 import shapely
 from shapely import LineString, Point, Polygon, STRtree, box
 
+from tidegate_collision_boxes import PLAYER_STEP
+
 REPO = Path(__file__).resolve().parent.parent
 DEFAULT_SRC = REPO / 'ArtSource' / 'Tidegate' / 'export'
 DEFAULT_OUT = REPO / 'ArtSource' / 'Tidegate' / 'navigation.json'
@@ -64,7 +66,7 @@ def sha256(path: Path) -> str:
 
 
 class Grid:
-    def __init__(self, src: Path):
+    def __init__(self, src: Path, boxes_path=None):
         self.layout = json.loads((src / 'tidegate_layout.json').read_text(encoding='utf-8'))
         g = self.layout['grid']
         self.W, self.H, self.OX, self.OZ = int(g['W']), int(g['H']), float(g['OX']), float(g['OZ'])
@@ -78,7 +80,7 @@ class Grid:
         # 灌木、路灯电线杆、长椅隔离墩、车与划艇、外梯这些物理上挡人的件，逻辑网格里原先没标或标偏了，
         # 不画进导航 AI 会一头撞上去。盒子外扩 0.25 m 盖到格心的格子按实心物件处理（之后整体还有 0.4 m 离墙内缩，1 m 以下的小件也至少占一格）；
         # 室内家具与墙不画（它们都贴着墙格，离墙 0.4 m 的内缩已经让开），搜刮箱 / 阀门的格子本来就是实心。
-        boxes_path = src.parent / 'collision_boxes.json'
+        boxes_path = boxes_path or src.parent / 'collision_boxes.json'
         self.obb_cells = 0
         if boxes_path.is_file():
             boxes = json.loads(boxes_path.read_text(encoding='utf-8'))
@@ -91,6 +93,8 @@ class Grid:
                 # 细立柱和树干（≤0.5 m）不挖洞：AI 擦着会滑过去，挖洞每根要多十来个顶点，顶点上限只有 4095
                 if e['kind'] in ('loot', 'valve') or max(e['size'][0], e['size'][2]) <= 0.5:
                     continue
+                if boxes.get('collisionPolicy') == 'solid-geometry' and e['visibleHeight'] <= PLAYER_STEP:
+                    continue  # 实际薄物仍有碰撞，可跨的高度不在导航面挖洞
                 c, sn = math.cos(-e['yaw']), math.sin(-e['yaw'])
                 dx, dz = cx - e['center'][0], cz - e['center'][2]
                 lx, lz = dx * c + dz * sn, -dx * sn + dz * c
@@ -525,6 +529,7 @@ def main() -> int:
         sys.stdout.reconfigure(encoding='utf-8')
     ap = argparse.ArgumentParser(description='潮闸镇导航网格烘焙')
     ap.add_argument('--src', type=Path, default=DEFAULT_SRC)
+    ap.add_argument('--collision-boxes', type=Path, help='覆盖碰撞台账输入，例如验证隔离构建')
     ap.add_argument('--out', type=Path, default=DEFAULT_OUT)
     ap.add_argument('--clearance', type=float, default=0.4, help='离墙内缩（角色半径）')
     ap.add_argument('--min-clearance', type=float, default=0.25, help='简化后允许的最小离墙距离')
@@ -537,7 +542,7 @@ def main() -> int:
     ap.add_argument('--check', action='store_true')
     args = ap.parse_args()
     t0 = time.time()
-    grid = Grid(args.src)
+    grid = Grid(args.src, args.collision_boxes)
     for tol in list(args.simplify):
         mesh, nb, info = bake(grid, args, tol)
         print('候选 简化容差 %.2f：顶点 %d，三角形 %d' % (tol, len(mesh.vertices), len(mesh.triangles)))

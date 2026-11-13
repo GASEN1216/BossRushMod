@@ -70,11 +70,31 @@ internal static class Program
         Check(!noActor.Active && opened == 3, "missing actor still offers services in valid session");
         Check(UniTask.Pending == 0 && !InputManager.Disabled && !DialogueManager.IsDialogueActive, "all owners release resources");
         CheckOptionalConversation();
+        CheckDialogueActorOwnership();
         CheckDestroyedSceneDialogue();
         CheckLegacyStoryCancellation();
         CheckCleanupStopsOldDrain();
         DialogueManager.Cleanup();
         Console.WriteLine("PASS SkyIslandDialogue (" + checks + " assertions)");
+    }
+
+    private static void CheckDialogueActorOwnership()
+    {
+        var firstActor = new DuckovDialogueActor();
+        var queuedActor = new DuckovDialogueActor();
+        var pages = new[] { new[] { "这一句", "this line" } };
+        var first = DialogueManager.ShowDialogueSequenceBilingual(firstActor, pages).task;
+        var queued = DialogueManager.ShowDialogueSequenceBilingual(queuedActor, pages).task;
+        Check(DialogueManager.IsDialogueActiveFor(firstActor) && !DialogueManager.IsDialogueActiveFor(queuedActor),
+            "only the visible actor owns the current dialogue while another actor waits");
+        FinishLine();
+        first.GetAwaiter().GetResult();
+        UniTask.Pump();
+        Check(!DialogueManager.IsDialogueActiveFor(firstActor) && DialogueManager.IsDialogueActiveFor(queuedActor),
+            "queued actor owns the dialogue after taking over");
+        FinishLine();
+        queued.GetAwaiter().GetResult();
+        Check(!DialogueManager.IsDialogueActiveFor(queuedActor), "normal close releases actor ownership");
     }
 
     private static void CheckDestroyedSceneDialogue()
@@ -84,6 +104,7 @@ internal static class Program
         var oldCallback = DialogueTree.Lines[DialogueTree.Lines.Count - 1];
         UnityEngine.Object.Destroy(oldActor);
         Dialogues.DialogueUI.instance = new Dialogues.DialogueUI();
+        Check(!DialogueManager.IsDialogueActiveFor(oldActor), "destroyed actor and replaced UI lose ownership before the wait resumes");
         UniTask.Pump();
         Check(old.IsCompleted && !DialogueManager.IsDialogueActive && UniTask.Pending == 0, "destroyed actor and replaced UI cancel a legacy tokenless story");
         try { old.GetAwaiter().GetResult(); } catch (OperationCanceledException) { }

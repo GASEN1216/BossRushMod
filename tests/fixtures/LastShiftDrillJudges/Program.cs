@@ -43,6 +43,7 @@ namespace BossRush
             BodiesOnLine();
             Navigation();
             Population();
+            LastShiftEnemies.TestDormantHearing(Check);
             ExtractionHold();
             Counter();
             Captions();
@@ -153,6 +154,9 @@ namespace BossRush
         private static void Navigation()
         {
             string why;
+            Check(Runner.LastShiftDrillMovingNavOk(120, 0), "moving_line_closed");
+            Check(!Runner.LastShiftDrillMovingNavOk(120, 1), "moving_line_leak_detected");
+            Check(!Runner.LastShiftDrillMovingNavOk(0, 0), "moving_line_empty_detected");
             Check(Runner.LastShiftDrillNavOk(120, 110, 0, 110, 3900, 3900, 80, 80, out why), "nav_ok " + why);
             Check(!Runner.LastShiftDrillNavOk(0, 0, 0, 0, 3900, 3900, 0, 0, out why) && why.Contains("no_nav_nodes_on_line"), "nav_empty_envelope");
             Check(!Runner.LastShiftDrillNavOk(120, 0, 0, 0, 3900, 3900, 80, 80, out why) && why.Contains("line_not_walkable_when_clear"), "nav_vacuous");
@@ -165,13 +169,13 @@ namespace BossRush
         private static void Population()
         {
             string why;
-            Check(Runner.LastShiftDrillPopulationOk(24, 0, 0, 0, 0, out why), "pop_min " + why);
-            Check(Runner.LastShiftDrillPopulationOk(30, 30, 8, 8, 5, out why), "pop_max " + why);
-            Check(!Runner.LastShiftDrillPopulationOk(23, 0, 0, 0, 0, out why), "pop_too_small");
-            Check(!Runner.LastShiftDrillPopulationOk(31, 0, 0, 0, 0, out why), "pop_too_large");
-            Check(!Runner.LastShiftDrillPopulationOk(26, 27, 0, 0, 0, out why), "pop_spawned_over");
-            Check(!Runner.LastShiftDrillPopulationOk(26, 9, 7, 9, 0, out why) && why.Contains("live_over_cap_9"), "pop_peak_over_cap");
-            Check(!Runner.LastShiftDrillPopulationOk(26, 9, 8, 8, 6, out why) && why.Contains("mobile_over_cap_6"), "pop_mobile_over_cap");
+            Check(Runner.LastShiftDrillPopulationOk(40, 0, 0, 0, 0, out why), "pop_min " + why);
+            Check(Runner.LastShiftDrillPopulationOk(46, 46, 10, 10, 7, out why), "pop_max " + why);
+            Check(!Runner.LastShiftDrillPopulationOk(39, 0, 0, 0, 0, out why), "pop_too_small");
+            Check(!Runner.LastShiftDrillPopulationOk(47, 0, 0, 0, 0, out why), "pop_too_large");
+            Check(!Runner.LastShiftDrillPopulationOk(42, 43, 0, 0, 0, out why), "pop_spawned_over");
+            Check(!Runner.LastShiftDrillPopulationOk(42, 9, 7, 11, 0, out why) && why.Contains("live_over_cap_11"), "pop_peak_over_cap");
+            Check(!Runner.LastShiftDrillPopulationOk(42, 9, 8, 8, 8, out why) && why.Contains("mobile_over_cap_8"), "pop_mobile_over_cap");
             // 围圈小队冻结：站位与朝向（2026-11-12）。
             Check(Runner.LastShiftDrillSquadHoldOk(0.05, 3, out why), "squad_hold_ok " + why);
             Check(Runner.LastShiftDrillSquadHoldOk(1.0, 35, out why), "squad_hold_boundary " + why);

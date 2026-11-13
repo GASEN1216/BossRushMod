@@ -55,7 +55,7 @@ Breaking:
 
 - `BossRush_EclipseBloom_Introduction_v1` — `EclipseBloomIntroductionPersistence.StorageKey`，独立槽位 JSON，`schemaVersion = 1`（2026-10-22，`SCHEMA+`）。`accepted` / `defeated` / `completed` 均为布尔；缺 key 默认为未接取，未知 schema 或矛盾状态拒绝覆盖。死亡清空接取与击败事实并自动放弃官方任务，回基地可重新接取；交付完成后普通 37 号探索仍可每次出击刷新一只。只保存 Mod 事实，官方任务快照由共享投影核心过滤。
 - `BossRush_Tidegate_Story_v1` — `TidegateStoryPersistence.StorageKey`，独立槽位 JSON，`schemaVersion = 1`（2026-11-05，`SCHEMA+`）。`letterDelivered` / `letterRead` / `watchDelivered` 为布尔，`pages` 为 0–15 的位掩码（闸工日志第 1–4 页）；缺 key 默认为全未发生，未知 schema、越界页码或矛盾态（读过信却没送达）拒绝覆盖。送达后没读、信又哪儿都找不到时每个官方游戏日最多补寄一次，不加字段。信、日志与收尾镜像进官方笔记图鉴（键前缀 `BossRushTidegate_`，见 §7.1 的 NoteIndex 例外）；没有官方任务。
-- `BossRush_LastShiftYard_Story_v1` — `LastShiftStoryPersistence.StorageKey`，独立槽位 JSON，`schemaVersion = 1`（2026-11-11，`SCHEMA+`）。`runs` 为安全撤离次数（≥ 0，大于 0 即回访、跳过首班教学），`notes` 为 0–7 的位掩码（打孔钳 / 旧录音 / 退件簿），`journal` 为票根已交给余响，`records` 为站台记录位掩码（下标见 `LastShiftStory.RecordIds`，只能往后加），`notice` 为基地告示已贴（只贴一次），`jeffAccepted` / `met` / `jeffDone` 为杰夫引导 590216 的接取、见过余响（对话或剪票上车）、交付，`told` 为余响已对哪几条带出的线索说过话（0–7 位掩码）（均 2026-11-11 同 schema 追加，缺键按 false / 0 读，`SCHEMA+`）；缺 key 默认为全未发生，未知 schema 或越界拒绝覆盖。本趟线索与记录只在编组站撤离读条完成时并入，阵亡不写。押运钢印与末班票根是真实物品，不进这个键。线索与收尾镜像进官方笔记图鉴（键前缀 `BossRushLastShift_`，见 §7.1 的 NoteIndex 例外）；没有官方任务。
+- `BossRush_LastShiftYard_Story_v1` — `LastShiftStoryPersistence.StorageKey`，独立槽位 JSON，`schemaVersion = 1`（2026-11-11，`SCHEMA+`）。`runs` 为安全撤离次数（≥ 0，大于 0 即回访、跳过首班教学），`notes` 为 0–7 的位掩码（打孔钳 / 旧录音 / 退件簿），`journal` 为票根已交给余响，`records` 为站台记录位掩码（下标见 `LastShiftStory.RecordIds`，只能往后加），`notice` 为基地告示已贴（只贴一次），`jeffAccepted` / `met` / `jeffDone` 为杰夫引导 590216 的接取、见过余响（对话或剪票上车）、交付，`told` 为余响已对哪几条带出的线索说过话（0–7 位掩码）（均 2026-11-11 同 schema 追加，缺键按 false / 0 读，`SCHEMA+`）；缺 key 默认为全未发生，未知 schema 或越界拒绝覆盖。本趟线索与记录只在编组站撤离读条完成时并入，阵亡不写。押运钢印与末班票根是真实物品，不进这个键。线索与收尾镜像进官方笔记图鉴（键前缀 `BossRushLastShift_`，见 §7.1 的 NoteIndex 例外）；仅已有 owner 授权的 Jeff 官方引导 590216，剧情事实仍以本 Mod 状态为准，不由此扩展其它官方任务。
   寄信、交表与 Dev 专用槽重置涉及物品。当前槽的主角物品、仓库、待取快递及剧情须同批进入缓存；确认谢礼已有归属、剧情写入并回读成功后才消耗怀表。缓存发布失败恢复旧缓存与物品；物理写盘失败保留完整的新状态等待重试，切槽不转移待办。重置只移除指定剧情物品，容器内的普通物品仍可领取；不改变 schema。
 
 新持久化 key 使用 `BossRush_` 前缀，避免与原版或其他 Mod 碰撞。
@@ -739,6 +739,21 @@ Breaking/Operational:
 
 ## 7.1 官方游戏行为：静默失败类陷阱
 
+**独立地图复用官方能力（2026-11-13 核对，COMPAT / WIRE+）**
+
+- 原版 `SodaPointLight` 不是普通 `UnityEngine.Light`：公开属性 setter 调用 `SyncToLight`，向官方网格代理写光色、硬度和衰减。活动相机的 `SodaLight` RenderObjects 在 `BeforeRenderingDeferredLights` 以覆盖材质读取 GBuffer 补光。自研 shader 灯数组只能证明环境通路，不能证明官方角色受光；使用 `Common/World/RaidOfficialIndoorLighting`，核对实际相机的层、队列、事件和覆盖材质，不修改全局 URP 来修一张图。
+- `SodaPointLight` 实际材质为加法混合，多个覆盖球的贡献会相加；组件 READY 不证明曝光正确。按当前 shader、人物高度和房形复算总量及边角覆盖，实际颜色/衰减的原版用途须记录。自研环境灯数组和原生角色灯是不同通路，不把前者 HDR 色逐盏直接复制给后者。
+- `SunFogTD` 由官方相机 overlay 绘制，与 `RenderSettings.fog` 分离。天气 target profile、最终 VolumeStack、LightControl 实际目标、RenderSettings.sun 和 SunFogEntry/全局 shader 雾参数分别取证；没采到现场值时不把灰雾认定为阴天，也不以关闭内置 fog 当作雾已关闭。
+- 官方幕布以 Single 卸载旧场景；`MultiSceneCore.LoadSubScene` 也会先卸旧子场景。不能进入下水道后才从已卸载的基地户外获取唯一太阳。模板须在源存活时捕获为只含安全组件的停用对象，明确 owner；每趟独立复制并释放。原生天气系统保持光照权威，自研材质仅镜像当前场景的 `RenderSettings.sun` 与环境光。检测到副本 bakingOutput.isBaked 时将其转为实时（当前基地源为 Mixed 且已烘焙）；Umbra profile 会被官方写入，须克隆私有副本。不得手动驱动第二套太阳、强占高优先级 Volume 或改写共享 profile。
+- `SubSceneEntry.IsInDoor` 是整个子场景的天气 / AI 语义，不是每间房的角色补光开关；没有已核实的 `CharacterMainControl.SetIndoor` API。脚点入室通过 `RaidIndoorRoofs` 调用官方 `OcclusionFadeObject` 的 `ShadowOnly`；雨棚和桥下的遮挡处理不等于封闭房间照明。
+- 官方脚部 / 身体水体查询与 `Water` 层决定脚步和游泳；可见水面不等于物理水体。可走浅水按真实水面和地面配置触发体，不隔着不可走实心池体加水。跨层探地限定本图非触发地面碰撞、朝上面和接近脚点的高度，避免桥下高射线误中桥面。
+- `SimplePointOfInterest` 的文字与颜色会被官方地图缓存；仅覆盖本地化字典不会刷新已有图钉。按状态或语言变化调用原生 `Setup` 更新登记；`Setup(null, key)` 保留图标。清理自己的图钉，不动官方其它标记。原生撤离图标的 `IsArea` 默认值可保留，不把小出口强改成不可辨认的小面积图形。
+- `ItemAssetsCollection.InstantiateSync` 可能返回非空 `FallbackItem`，搜索品质条件也可能有软回退。关键提交物与奖励先核 prefab，再核实际 TypeID / Quality / StackCount / 所属 Inventory；计划数量和 `added > 0` 不是完整交付证据。停用父节点装箱，用现有 `TidegateInventory.Reservation` 扣费事务，库存完整且激活成功才提交；失败保留重试。“进图前携带”的不可堆叠凭证需冻结实例身份，不能仅冻结数量。
+- `InteractableLootbox.OnStartLoot` 是通知，不是可返回 false 的准入门。官方 LootView 可能已先打开；`StopInteract` 或停用箱子不自动关界面，且原生 `OnUpdate` 会在事件返回后写回 `looting`。事后拒绝须只关闭目标库存对应的官方 LootView，并在原生栈退出后的 owner 更新中恢复被拒箱状态；离场清理和反向订阅顺序也要覆盖。不得全局关闭其它库存或只移远箱子。
+- 休眠队伍的 AI 被停用时不消费官方听觉事件；地图专有唤醒适配仍须遵守官方声源类型、队伍过滤和每个成员的 `hearingAbility`，异步生成中的成员用自己的待生成点，不能以营地中心距离替代成员听力。
+
+官方实现以 `鸭科夫源码/` 及当前游戏 DLL 为准；完整符号定位、失败路径与证据要求见 `docs/architecture/官方能力复用与自定义地图接入规范.md`。版本不吻合时查实际类型，不照抄历史行号。
+
 **野外交互、轻量血量与附加射击（2026-10-23 核对）**
 
 - `HealthSimpleBase.OnHurt` 先重新判定 `crit`，再按暴击倍率与非主玩家倍率扣血；随后发出的 `DamageInfo.damageValue` 仍是原始值。主玩家伤害累计须使用已判定的 `crit` / `critDamageFactor` 或实际血量差，不能把原始值当作最终伤害。核实：`鸭科夫源码/TeamSoda.Duckov.Core/HealthSimpleBase.cs`。
@@ -840,6 +855,7 @@ Breaking/Operational:
 
 - `TimeScaleManager` 在暂停菜单（`GameManager.Paused`，它是 `UIPanel` 不是 `View`）与拍照模式时把 `timeScale` 置 0；`CountDownArea` 按 `Time.time` 计时。
   玩法计时走游戏时间；表现层走 unscaled 时，暂停中要停推进（`BossRushUI.IsGamePaused()`）。
+- NPC 完整对话必须用真实角色的官方 `DialogueActor` / `IDialogueActor`，经共享 `DialogueManager` 驱动 `Dialogues.DialogueUI`；原版气泡只用于短招呼，`BossRushConfirmDialog` 只用于纯操作确认。UI 为单 owner，排队者不消费当前 owner 的取消输入；切图/角色销毁取消本次请求并退订，不能把排空时的默认选项当成真实确认。提交前取消无副作用，提交后的结果页关闭与场景失效分别处理。详见 `Common/UI/AGENTS.md` 和 `docs/architecture/官方能力复用与自定义地图接入规范.md` §6.3。
 - 官方 HUD 显示条件是：无存活隐藏令牌、`View.ActiveView == null`、`!DialogueUI.Active`、`CustomFaceUI.ActiveView == null`、`!CameraMode.Active`，本库判定收在 `BossRushUI.IsOfficialHudHidden()`。
   官方 Views 画在 sortingOrder 100，本库 `HudOverlay` 是 1200，常驻 HUD 不跟随显隐就会压在背包、地图、对话上面。
 - 官方 HUD 画布是 2560×1440 按短边缩放，本库是 1920×1080 Expand，1 本库单位恒等于 4/3 官方单位。避让官方 HUD 按预制体实测，不按截图估。

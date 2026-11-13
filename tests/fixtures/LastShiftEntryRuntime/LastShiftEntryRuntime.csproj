@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>7.3</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../LastShiftYard/LastShiftEntry.cs" />
+    <Compile Include="../../../LastShiftYard/LastShiftYuXiang.cs" />
+    <Compile Include="../../../LastShiftYard/LastShiftRuntimeModule.cs" />
+    <Compile Include="../../../LastShiftYard/LastShiftText.cs" />
+    <Compile Include="../../../LastShiftYard/LastShiftRaidScene.cs" />
+    <Compile Include="../../../Integration/Dialogue/DialogueManager.cs" />
+    <Compile Include="../../../Integration/NPCs/DuckNpc/DuckNpcSpawner.cs" />
+    <Compile Include="../SkyIslandDialogue/UniTaskStubs.cs" />
+    <Compile Include="../SkyIslandDialogue/OfficialDialogueStubs.cs" />
+  </ItemGroup>
+</Project>

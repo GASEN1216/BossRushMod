@@ -6,7 +6,8 @@ using UnityEngine;
 namespace BossRush
 {
     /// <summary>末班押运队的四个岗位与押运长（设计稿「敌人身份与强度」）。</summary>
-    internal enum LastShiftPost { Walker, Inspector, Escort, Captain, Chief }
+    /// <remarks>2026-11-13 追加三种小队长（不是 Boss）：信号工长、调车长、押运班长；只往后追加，旧值不变。</remarks>
+    internal enum LastShiftPost { Walker, Inspector, Escort, Captain, Chief, Signalman, Shunter, Sergeant }
 
     /// <summary>
     /// COMPAT：末班编组站普通敌人的战斗强度（根 AGENTS.md §4.8 第二层）。沿用潮闸镇 v2.4.0 发版时 owner 认可的那一档：
@@ -18,6 +19,8 @@ namespace BossRush
     {
         internal const float HealthFactor = 1.5f;
         internal const float EscortHealthFactor = 1.8f;
+        /// <summary>小队长（2026-11-13）：比押运员厚一截，不到 Boss；伤害、反应与散布同普通档。</summary>
+        internal const float LeaderHealthFactor = 2.6f;
         internal const float DamageFactor = 1.25f;
         internal const float ReflexFactor = 1.3f;
         internal const float AccuracyFactor = 1.2f;
@@ -26,7 +29,8 @@ namespace BossRush
         {
             if (clone == null || post == LastShiftPost.Chief) return;
             bool sturdy = post == LastShiftPost.Escort || post == LastShiftPost.Captain;
-            clone.health *= sturdy ? EscortHealthFactor : HealthFactor;
+            bool leader = post == LastShiftPost.Signalman || post == LastShiftPost.Shunter || post == LastShiftPost.Sergeant;
+            clone.health *= leader ? LeaderHealthFactor : sturdy ? EscortHealthFactor : HealthFactor;
             clone.damageMultiplier *= DamageFactor;
             clone.setMeleeDamageMultiplier = true;
             clone.meleeDamageMultiplier *= DamageFactor;
@@ -68,7 +72,11 @@ namespace BossRush
         private static readonly Outfit Escort = new Outfit("BossRush_LastShiftEnemy_Escort", "押运员", "Escort Guard", 1144, 33, 0);
         private static readonly Outfit Captain = new Outfit("BossRush_LastShiftEnemy_Captain", "押运队长", "Escort Captain", 43, 2, 741);
         private static readonly Outfit Chief = new Outfit(ChiefKey, "押运长", "Chief Escort", 0, 0, 0);
-        private static readonly Outfit[] All = { Walker, Inspector, Escort, Captain, Chief };
+        // 小队长（2026-11-13）：信号工长戴帽子与眼镜、二级甲；调车长戴头灯与护目镜、三级甲；押运班长戴三级盔与护目镜、三级甲。装备 ID 都在 OfficialKey 表里核过。
+        private static readonly Outfit Signalman = new Outfit("BossRush_LastShiftEnemy_Signalman", "信号工长", "Signal Foreman", 104, 33, 741);
+        private static readonly Outfit Shunter = new Outfit("BossRush_LastShiftEnemy_Shunter", "调车长", "Shunting Master", 138, 2, 27);
+        private static readonly Outfit Sergeant = new Outfit("BossRush_LastShiftEnemy_Sergeant", "押运班长", "Escort Sergeant", 43, 2, 27);
+        private static readonly Outfit[] All = { Walker, Inspector, Escort, Captain, Chief, Signalman, Shunter, Sergeant };
 
         // 部件 ID 只取潮闸镇已对照官方 CustomFaceData 核过的那几组（运行时 CheckParts 再核一遍）。服色走羽色 / 翼尾配色，帽盔照穿。
         // 巡道工：圆脸、短喙、浅色羽，瓶绿配色。
@@ -83,6 +91,15 @@ namespace BossRush
         // 押运队长：老派、眉压低，铜色配色，体型 ×1.06。
         private static readonly Look CaptainLook = new Look { Hair = 9, Eye = 5, Brow = 4, Mouth = 1,
             Feather = 0x9B4632, Accent = 0xC08A3E, Beak = 0xD7943F, Iris = 0xF2D77C, Body = 1.06f, Head = .22f, Forehead = .22f, Round = .5f, EyeScale = 1.15f, EyeDistance = 23f, BrowTwist = -26f, MouthScale = 1.6f };
+        // 信号工长：奶白羽、信号红翼尾，细长脸，体型 ×1.04（部件 ID 沿用上面几组核过的）。
+        private static readonly Look SignalmanLook = new Look { Hair = 16, Eye = 13, Brow = 4, Mouth = 25,
+            Feather = 0xE8DCC2, Accent = 0xC0392B, Beak = 0xE3A04F, Iris = 0x1C1C24, Body = 1.04f, Head = .02f, Forehead = .2f, Round = .45f, EyeScale = 1.45f, EyeDistance = 27f, BrowTwist = -18f, MouthScale = 1.1f };
+        // 调车长：橄榄羽、警示黄翼尾，宽脸厚喙，体型 ×1.05。
+        private static readonly Look ShunterLook = new Look { Hair = 14, Eye = 12, Brow = 8, Mouth = 26,
+            Feather = 0x6E7B5A, Accent = 0xE0B030, Beak = 0x4A4652, Iris = 0x2A2118, Body = 1.05f, Head = .16f, Forehead = .06f, Round = .7f, EyeScale = 1.2f, EyeDistance = 31f, BrowTwist = -8f, MouthScale = 1.45f };
+        // 押运班长：深砖红羽、黑翼尾，方脸压眉，体型 ×1.08。
+        private static readonly Look SergeantLook = new Look { Hair = 9, Eye = 5, Brow = 7, Mouth = 1,
+            Feather = 0x7A2E22, Accent = 0x2B2B2B, Beak = 0xD7943F, Iris = 0xF2D77C, Body = 1.08f, Head = .24f, Forehead = .14f, Round = .28f, EyeScale = 1.1f, EyeDistance = 24f, BrowTwist = -30f, MouthScale = 1.55f };
 
         private static Outfit For(LastShiftPost post)
         {
@@ -92,6 +109,9 @@ namespace BossRush
                 case LastShiftPost.Inspector: return Inspector;
                 case LastShiftPost.Escort: return Escort;
                 case LastShiftPost.Captain: return Captain;
+                case LastShiftPost.Signalman: return Signalman;
+                case LastShiftPost.Shunter: return Shunter;
+                case LastShiftPost.Sergeant: return Sergeant;
                 default: return Chief;
             }
         }
@@ -104,6 +124,9 @@ namespace BossRush
                 case LastShiftPost.Inspector: return InspectorLook;
                 case LastShiftPost.Escort: return EscortLook;
                 case LastShiftPost.Captain: return CaptainLook;
+                case LastShiftPost.Signalman: return SignalmanLook;
+                case LastShiftPost.Shunter: return ShunterLook;
+                case LastShiftPost.Sergeant: return SergeantLook;
                 default: return null;
             }
         }

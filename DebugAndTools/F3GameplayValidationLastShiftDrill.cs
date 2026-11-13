@@ -481,8 +481,9 @@ namespace BossRush
                 if (loot != null && loot.CargoClaimed != _lastShiftDrillCargoBefore) errors.Add("cargo_claimed_by_drill");
                 notes.Add("forwarded_game_s=" + _lastShiftDrillForwarded.ToString("F0") + ",trip=" + t.Trip + ",phase=" + t.Phase
                     + ",line=" + t.Line + ",training=" + t.Training + ",bell_cleared=" + _lastShiftDrillBellRung
-                    + ",live_peak=" + _lastShiftDrillLivePeak);
-                notes.Add("班次快进与道岔方向不往回拨；押运队按绕场刷出的保留（这一趟之后照样能打）");
+                    + ",live_peak=" + _lastShiftDrillLivePeak + ",last_train_deferred=" + trains.DevLastTrainDeferred + ",yard_closed=" + t.YardClosed);
+                if (t.YardClosed) errors.Add("drill_forwarded_into_yard_closure");
+                notes.Add("班次快进与道岔方向不往回拨（快进临近末班时把这一趟的末班往后推，不让演练快进进封站）；押运队按绕场刷出的保留（这一趟之后照样能打）");
             }
             else notes.Add("session_gone");
             if (LastShiftStory.Runs != _lastShiftDrillRunsBefore || LastShiftStory.Notes != _lastShiftDrillNotesBefore
@@ -574,7 +575,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 列车封线：本线包络里要有导航三角形、净空时可走；停靠时一个都不可走；线路净空后包络里的可走数与全图可走数回到开车前；
+        /// 停靠封线：实际车厢占地里要有导航三角形、净空时可走；停靠时一个都不可走；线路净空后占地内与全图可走数回到开车前；
         /// 只在另一股道包络里的三角形停靠前后不受影响。
         /// </summary>
         internal static bool LastShiftDrillNavOk(int envelopeNodes, int baselineWalkable, int dwellWalkable, int clearWalkable,
@@ -591,14 +592,22 @@ namespace BossRush
             return problems.Count == 0;
         }
 
-        /// <summary>刷怪账目：全趟 24–30 人，已刷不超过全趟，同时活动（此刻与采样峰值）不超过 8，流动不超过 5。</summary>
+        internal static bool LastShiftDrillMovingNavOk(int nodes, int walkable)
+        {
+            return nodes > 0 && walkable == 0;
+        }
+
+        /// <summary>
+        /// 巡逻这本账（列车押运、守货岗各自另记，不在这里）：全趟 40–46 人，已刷不超过全趟；同时活动（此刻与采样峰值）不超过 10；
+        /// 流动巡逻不超过 5（封站后 7）。数字是 2026-11-13 快节奏改版的 LastShiftEnemies 常量，按字面钉住。
+        /// </summary>
         internal static bool LastShiftDrillPopulationOk(int population, int spawned, int liveNow, int livePeak, int mobile, out string reason)
         {
             var problems = new List<string>();
-            if (population < 24 || population > 30) problems.Add("population_" + population);
+            if (population < 40 || population > 46) problems.Add("population_" + population);
             if (spawned < 0 || spawned > population) problems.Add("spawned_" + spawned + "_of_" + population);
-            if (liveNow > 8 || livePeak > 8) problems.Add("live_over_cap_" + Math.Max(liveNow, livePeak));
-            if (mobile > 5) problems.Add("mobile_over_cap_" + mobile);
+            if (liveNow > 10 || livePeak > 10) problems.Add("live_over_cap_" + Math.Max(liveNow, livePeak));
+            if (mobile > 7) problems.Add("mobile_over_cap_" + mobile);
             reason = string.Join(",", problems.ToArray());
             return problems.Count == 0;
         }

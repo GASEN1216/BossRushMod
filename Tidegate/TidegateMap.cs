@@ -3,6 +3,7 @@ using System.Reflection;
 using Duckov.MiniMaps;
 using Duckov.MiniMaps.UI;
 using HarmonyLib;
+using SodaCraft.Localizations;
 using UnityEngine;
 
 namespace BossRush
@@ -25,6 +26,7 @@ namespace BossRush
         private MiniMapSettings settings;
         private float nextCheck;
         private bool warned, disposed;
+        private SystemLanguage mapLanguage = LocalizationManager.CurrentLanguage;
         private readonly System.Collections.Generic.List<GameObject> points = new System.Collections.Generic.List<GameObject>();
         private sealed class ExitPin
         {
@@ -148,17 +150,20 @@ namespace BossRush
             nextCheck = Time.unscaledTime + 0.5f;
             try
             {
-                if (exits != null)
-                    foreach (ExitPin pin in exitPins)
-                    {
-                        var state = exits.StateForMap(pin.Id, beaconLit);
-                        if (state == pin.State || pin.Poi == null) continue;
-                        pin.Poi.Color = state == TidegateExitState.Open ? new Color(0.62f, 0.88f, 0.74f)
-                            : state == TidegateExitState.LightLoad || state == TidegateExitState.Inbound ? new Color(0.95f, 0.79f, 0.53f)
-                            : new Color(0.64f, 0.69f, 0.73f);
-                        pin.Poi.Setup(null, state == TidegateExitState.Unknown ? TidegateText.ExitMapKey(pin.Id) : TidegateText.ExitStateKey(pin.Id, state));
-                        pin.State = state;
-                    }
+                SystemLanguage language = LocalizationManager.CurrentLanguage;
+                bool languageChanged = language != mapLanguage;
+                if (languageChanged) TidegateText.InjectMapLabels();
+                foreach (ExitPin pin in exitPins)
+                {
+                    var state = exits != null ? exits.StateForMap(pin.Id, beaconLit) : pin.State;
+                    if (pin.Poi == null || (state == pin.State && !languageChanged)) continue;
+                    pin.Poi.Color = state == TidegateExitState.Open ? new Color(0.62f, 0.88f, 0.74f)
+                        : state == TidegateExitState.LightLoad || state == TidegateExitState.Inbound ? new Color(0.95f, 0.79f, 0.53f)
+                        : new Color(0.64f, 0.69f, 0.73f);
+                    pin.Poi.Setup(null, state == TidegateExitState.Unknown ? TidegateText.ExitMapKey(pin.Id) : TidegateText.ExitStateKey(pin.Id, state));
+                    pin.State = state;
+                }
+                mapLanguage = language;
                 Vector3 center = settings.combinedCenter;
                 bool moved = false;
                 foreach (MiniMapSettings.MapEntry entry in settings.maps)

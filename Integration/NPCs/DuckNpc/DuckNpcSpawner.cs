@@ -31,10 +31,20 @@ namespace BossRush
         /// <summary>
         /// 按蓝图 id 生成 NPC。失败返回 null（已自清理）。
         /// </summary>
-        internal static async UniTask<CharacterMainControl> SpawnAsync(
+        internal static UniTask<CharacterMainControl> SpawnAsync(
             string blueprintId,
             Vector3 position,
             Vector3 facing)
+        {
+            return SpawnAsync(blueprintId, position, facing, null);
+        }
+
+        /// <summary>官方角色创建后、异步穿戴前交给场景 owner。拒绝接管时立即回收角色。</summary>
+        internal static async UniTask<CharacterMainControl> SpawnAsync(
+            string blueprintId,
+            Vector3 position,
+            Vector3 facing,
+            Func<CharacterMainControl, bool> adopt)
         {
             DuckNpcBlueprint blueprint;
             if (!DuckNpcRegistry.TryGet(blueprintId, out blueprint))
@@ -43,16 +53,25 @@ namespace BossRush
                 return null;
             }
 
-            return await SpawnAsync(blueprint, position, facing);
+            return await SpawnAsync(blueprint, position, facing, adopt);
         }
 
         /// <summary>
         /// 按蓝图对象生成 NPC。失败返回 null（已自清理）。
         /// </summary>
-        internal static async UniTask<CharacterMainControl> SpawnAsync(
+        internal static UniTask<CharacterMainControl> SpawnAsync(
             DuckNpcBlueprint blueprint,
             Vector3 position,
             Vector3 facing)
+        {
+            return SpawnAsync(blueprint, position, facing, null);
+        }
+
+        private static async UniTask<CharacterMainControl> SpawnAsync(
+            DuckNpcBlueprint blueprint,
+            Vector3 position,
+            Vector3 facing,
+            Func<CharacterMainControl, bool> adopt)
         {
             if (blueprint == null)
             {
@@ -65,6 +84,21 @@ namespace BossRush
             if (npc == null)
             {
                 return null;
+            }
+
+            if (adopt != null)
+            {
+                bool accepted = false;
+                try { accepted = adopt(npc); }
+                finally
+                {
+                    if (!accepted)
+                    {
+                        if (npc != null) npc.gameObject.SetActive(false);
+                        Despawn(npc);
+                    }
+                }
+                if (!accepted) return null;
             }
 
             // 装备失败不算生成失败：一个没穿装备的 NPC 仍然可用，

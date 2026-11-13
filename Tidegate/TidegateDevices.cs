@@ -34,7 +34,7 @@ namespace BossRush
         private readonly TidegateSounds sounds;
         private readonly List<GameObject> owned = new List<GameObject>();
         private readonly bool[] valves;
-        private bool lighthouseLit, boatArrived, disposed;
+        private bool lighthouseLit, boatArrived, disposed, fittingHandwheel;
         private float boatAt = -1f, reinforceAt = -1f;
         private Transform beam;
         private Light beamLight;
@@ -131,7 +131,8 @@ namespace BossRush
 
         private void TurnValve(int index)
         {
-            if (disposed || valves[index]) return;
+            if (disposed || valves[index] || fittingHandwheel) return;
+            TidegateInventory.Reservation handwheel = null;
             if (index == TideGaugeValve)
             {
                 // 潮位站的手轮被拆走了：身上得带着阀门手轮（挖沙船船舱储物柜），装上就留在阀门上。
@@ -143,9 +144,28 @@ namespace BossRush
                         "The tide gauge valve has no handwheel. Old Zha's letter says the sand gang tossed it in the dredger's cabin."), true);
                     return;
                 }
-                TidegateInventory.Consume(wheel);
+                if (wheel != null)
+                {
+                    fittingHandwheel = true;
+                    try
+                    {
+                        if (!TidegateInventory.Reservation.TryCreate(wheel, false, out handwheel))
+                        {
+                            announce(L10n.T("手轮还没装上，留在你身上。", "The handwheel isn't fitted. You still have it."), true);
+                            return;
+                        }
+                    }
+                    finally { fittingHandwheel = false; }
+                }
             }
-            valves[index] = true;
+            using (handwheel)
+            {
+                if (disposed || !valid()) return;
+                valves[index] = true;
+                if (OpenValves == valves.Length) tide.OpenSluice();
+                if (handwheel != null) handwheel.Commit();
+            }
+            if (disposed) return;
             if (sounds != null) sounds.Play(TidegateCue.Valve, world.Valves[index].position);
             int open = OpenValves;
             if (open < valves.Length)
@@ -153,7 +173,6 @@ namespace BossRush
                 announce(ValveName(index) + L10n.T(" 的阀门开了（", " valve opened (") + open + "/" + valves.Length + L10n.T("）", ")"), false);
                 return;
             }
-            tide.OpenSluice();
             // 大闸在泻湖那头，多半离得远：闷响跟着玩家放，全图都知道闸起来了。
             if (sounds != null) sounds.Play(TidegateCue.Gate, null);
             reinforceAt = Time.time + 4f;

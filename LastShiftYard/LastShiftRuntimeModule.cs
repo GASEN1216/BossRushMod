@@ -1,4 +1,5 @@
 using System;
+using SodaCraft.Localizations;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -13,7 +14,9 @@ namespace BossRush
     internal sealed class LastShiftRuntimeModule : BossRushRuntimeModuleBase
     {
         private ModBehaviour owner;
+        private readonly LastShiftYuXiang yuXiang = new LastShiftYuXiang();
         private GameObject entry;
+        private Scene entryScene;
         private LastShiftStoryPersistence persistence;
         private LastShiftJeffIntro jeffIntro;
         private bool subscribed, bundleWarned, applicationQuitting, returnLightingPending;
@@ -39,7 +42,10 @@ namespace BossRush
             if (!subscribed)
             {
                 SceneLoader.onStartedLoadingScene += OnStartedLoading;
+                SceneManager.sceneLoaded += OnSceneLoaded;
+                SceneManager.sceneUnloaded += OnSceneUnloaded;
                 LevelManager.OnAfterLevelInitialized += OnLevelReady;
+                LocalizationManager.OnSetLanguage += OnLanguageChanged;
                 Application.quitting += OnApplicationQuitting;
                 subscribed = true;
             }
@@ -47,11 +53,30 @@ namespace BossRush
 
         private void OnApplicationQuitting() { applicationQuitting = true; }
 
+        private void OnLanguageChanged(SystemLanguage language)
+        {
+            if (entry == null) return;
+            // 地图 UI 缓存 Setup 时的名字，更新本地化字典后刷新已有 POI。
+            LastShiftYuXiang.InjectLocalization();
+            LastShiftYuXiang.RefreshMapMarker(entry);
+        }
+
         private void OnStartedLoading(SceneLoadingContext context) { ClearEntry(); }
+
+        private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            if (scene.name == LastShiftEntryPoint.SceneName) nextAttempt = 0f;
+        }
+
+        private void OnSceneUnloaded(Scene scene)
+        {
+            if (entryScene.handle == scene.handle) ClearEntry();
+        }
 
         /// <summary>回到基地后让引擎按基地自己的设置重算一次环境光（口径同潮闸镇）。</summary>
         private void OnLevelReady()
         {
+            nextAttempt = 0f;
             ShowNoticeAtBase();
             if (!returnLightingPending || owner == null) return;
             LastShiftSession session = owner.GetComponent<LastShiftSession>();
@@ -78,7 +103,12 @@ namespace BossRush
             if (jeffIntro != null) jeffIntro.Tick();
             if (owner == null) return;
             LastShiftSession active = owner.GetComponent<LastShiftSession>();
-            if (active != null) { if (!active.IsClosed) returnLightingPending = true; ClearEntry(); return; }
+            if (active != null && !active.IsClosed)
+            {
+                returnLightingPending = true;
+                ClearEntry();
+                return;
+            }
             if (Time.unscaledTime < nextAttempt) return;
             nextAttempt = Time.unscaledTime + 1f;
             if (SceneLoader.IsSceneLoading || LevelManager.LevelInitializing || !LevelManager.LevelInited) return;
@@ -89,10 +119,11 @@ namespace BossRush
                 ClearEntry();
                 return;
             }
+            if (entryScene.handle != target.handle || entry == null || !entry.activeInHierarchy) ClearEntry();
             if (entry != null)
             {
-                LastShiftYuXiang.Spawn(target);
-                LastShiftYuXiang.Tick(CharacterMainControl.Main);
+                yuXiang.Spawn(entry);
+                yuXiang.Tick(CharacterMainControl.Main);
                 return;
             }
             if (!LastShiftRaidScene.IsBundleDeployed() || !LastShiftEntry.IsBundleDeployed())
@@ -105,7 +136,12 @@ namespace BossRush
                 }
                 return;
             }
-            try { entry = LastShiftEntry.Create(target, owner); }
+            try
+            {
+                entry = LastShiftEntry.Create(target, owner, yuXiang);
+                entryScene = target;
+                yuXiang.Spawn(entry);
+            }
             catch (Exception e)
             {
                 entry = null;
@@ -116,12 +152,14 @@ namespace BossRush
 
         private void ClearEntry()
         {
-            LastShiftYuXiang.Despawn();
-            if (entry == null) return;
-            entry.SetActive(false);
-            LastShiftEntry.Release(entry);
-            UnityEngine.Object.Destroy(entry);
+            GameObject closing = entry;
             entry = null;
+            entryScene = default(Scene);
+            yuXiang.Despawn();
+            if (closing == null) return;
+            closing.SetActive(false);
+            LastShiftEntry.Release(closing);
+            UnityEngine.Object.Destroy(closing);
         }
 
         public override void OnDestroy()
@@ -129,7 +167,10 @@ namespace BossRush
             if (subscribed)
             {
                 SceneLoader.onStartedLoadingScene -= OnStartedLoading;
+                SceneManager.sceneLoaded -= OnSceneLoaded;
+                SceneManager.sceneUnloaded -= OnSceneUnloaded;
                 LevelManager.OnAfterLevelInitialized -= OnLevelReady;
+                LocalizationManager.OnSetLanguage -= OnLanguageChanged;
                 Application.quitting -= OnApplicationQuitting;
                 subscribed = false;
             }
@@ -141,7 +182,6 @@ namespace BossRush
             }
             owner = null;
             ModRaidSceneBridge.Unregister(LastShiftRaidScene.Identity);
-            LastShiftYuXiang.ResetStaticCaches();
             LastShiftNoteBridge.ResetStaticCaches();
             LastShiftSounds.ResetStaticCaches();
             LastShiftChiefFx.ResetStaticCaches();

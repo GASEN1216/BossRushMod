@@ -33,6 +33,9 @@ namespace BossRush
             var errors = new List<string>();
             var notes = new List<string>();
             LastShiftWorld world = session.DevWorld;
+            // 只读采样开跑位置，先于演练搬人/快进；结构 PASS 不能代替天气、雾和角色亮度的目检。
+            notes.Add(RaidOfficialLighting.Describe(world.Root.scene));
+            notes.Add(session.DevIndoorLighting);
             LastShiftTrains trains = session.DevTrains;
             LastShiftExtraction extraction = session.DevExtraction;
             if (session.DevLoot == null) errors.Add("loot_missing");
@@ -118,7 +121,7 @@ namespace BossRush
             yield return WaitSeconds(0.6f);
             if (LastShiftDrillLive(out session, out gone) && session.DevLoot != null)
             {
-                string want = session.DevTrains.Objective(session.DevLoot.CargoClaimed);
+                string want = session.DevTrains.Objective(session.DevLoot.SignedThisTrain, session.DevLoot.Signatures);
                 if (!string.Equals(session.DevHudObjective, want, StringComparison.Ordinal)) errors.Add("hud_objective_stale");
             }
             LastShiftTimetable t = trains.Timetable;
@@ -219,7 +222,7 @@ namespace BossRush
                 if (!LastShiftDrillTrainingHoldOk(t.Phase, t.DispatchWait, t.PhaseTime, t.LeadZ, out why)) errors.Add("hold:" + why);
                 if (trains.DevNavState != "on" + t.LineUsed) errors.Add("hold:nav_state_" + trains.DevNavState);
                 if (!LastShiftDrillContainsAny(trains.Chip(), "等你扳岔", "waiting for the switch")) errors.Add("hold:chip_missing_wait");
-                string objective = trains.Objective(session.DevLoot != null && session.DevLoot.CargoClaimed);
+                string objective = trains.Objective(session.DevLoot != null && session.DevLoot.SignedThisTrain, session.DevLoot == null ? 0 : session.DevLoot.Signatures);
                 if (!LastShiftDrillContainsAny(objective, "扳道岔", "throw the switch")) errors.Add("hold:objective_not_switch");
             }
             else skipped.Add("dispatch_hold");
@@ -383,17 +386,36 @@ namespace BossRush
             trains.DevHideArrows();
             char line = t.Line, other = line == 'W' ? 'E' : 'W';
             if (line == before) errors.Add("switch_refused_while_clear");
-            Func<Vector3, Vector3, Vector3, bool> onLine = (a, b, c) => LastShiftDrillNodeInEnvelope(a, b, c, line);
-            Func<Vector3, Vector3, Vector3, bool> otherOnly = (a, b, c) => LastShiftDrillNodeInEnvelope(a, b, c, other) && !LastShiftDrillNodeInEnvelope(a, b, c, line);
-            int envelopeNodes, baseWalkable, otherNodes, otherBase;
-            nav.DevCountNodes(onLine, out envelopeNodes, out baseWalkable);
-            nav.DevCountNodes(otherOnly, out otherNodes, out otherBase);
+            Func<Vector3, Vector3, Vector3, bool> movingLine = (a, b, c) => LastShiftTrains.TrainBlocksTriangle(a, b, c, line, null);
+            Func<Vector3, Vector3, Vector3, bool> otherOnly = (a, b, c) => LastShiftTrains.TrainBlocksTriangle(a, b, c, other, null) && !movingLine(a, b, c);
+            LastShiftParkedTrain normal = LastShiftTimetable.ParkedTrain(line, false), heavy = LastShiftTimetable.ParkedTrain(line, true);
+            Func<Vector3, Vector3, Vector3, bool> onNormal = (a, b, c) => LastShiftTrains.TrainBlocksTriangle(a, b, c, line, normal);
+            Func<Vector3, Vector3, Vector3, bool> onHeavy = (a, b, c) => LastShiftTrains.TrainBlocksTriangle(a, b, c, line, heavy);
+            int normalNodes, normalBase, heavyNodes, heavyBase;
+            nav.DevCountNodes(onNormal, out normalNodes, out normalBase);
+            nav.DevCountNodes(onHeavy, out heavyNodes, out heavyBase);
             int baseTotal = nav.CountWalkableNodes();
+            int otherNodes, otherBase;
+            nav.DevCountNodes(otherOnly, out otherNodes, out otherBase);
 
+            yield return LastShiftDrillAdvanceTo(x => x.Phase == LastShiftPhase.Arrival && x.LineUsed == line, 400, true, errors, notes, "to_arrival");
+            if (t.Phase == LastShiftPhase.Arrival)
+            {
+                int movingNodes, movingWalkable;
+                nav.DevCountNodes(movingLine, out movingNodes, out movingWalkable);
+                if (!LastShiftDrillMovingNavOk(movingNodes, movingWalkable) || trains.DevNavState != "on" + line) errors.Add("arrival:line_not_closed");
+            }
             yield return LastShiftDrillAdvanceTo(x => x.Phase == LastShiftPhase.Dwell && x.LineUsed == line, 700, true, errors, notes, "to_dwell");
+            bool heavyStopped = t.IsHeavy;
+            int envelopeNodes = heavyStopped ? heavyNodes : normalNodes, baseWalkable = heavyStopped ? heavyBase : normalBase;
             int dwellWalkable = -1, otherDwell = -1, cars = 0;
+            Func<Vector3, Vector3, Vector3, bool> onLine = heavyStopped ? onHeavy : onNormal;
             if (t.Phase == LastShiftPhase.Dwell)
             {
+                int dwellNodes, otherNodesDwell;
+                nav.DevCountNodes(onLine, out dwellNodes, out dwellWalkable);
+                nav.DevCountNodes(otherOnly, out otherNodesDwell, out otherDwell);
+                if (dwellNodes != envelopeNodes || otherNodesDwell != otherNodes) errors.Add("dwell:nav_node_count_changed");
                 Physics.SyncTransforms();
                 List<LastShiftCar> list = t.Cars();
                 List<LastShiftTrains.DevBodyInfo> bodies = trains.DevBodies();
@@ -421,10 +443,18 @@ namespace BossRush
                 for (int i = 0; i < bodies.Count; i++)
                     if (!shown[i] && (bodies[i].BodyActive || bodies[i].CarActive)) errors.Add("car" + i + ":active_while_not_in_train");
                 if (cars == 0) errors.Add("no_cars_during_dwell");
-                int dwellNodes, otherNodesDwell;
-                nav.DevCountNodes(onLine, out dwellNodes, out dwellWalkable);
-                nav.DevCountNodes(otherOnly, out otherNodesDwell, out otherDwell);
-                if (trains.DevNavState != "on" + line) errors.Add("dwell:nav_state_" + trains.DevNavState);
+                string wantNav = "parked" + line + (heavyStopped ? "_heavy" : "");
+                if (trains.DevNavState != wantNav) errors.Add("dwell:nav_state_" + trains.DevNavState);
+            }
+            if (t.Phase == LastShiftPhase.Dwell)
+            {
+                yield return LastShiftDrillAdvanceTo(x => x.Phase == LastShiftPhase.Depart, 150, true, errors, notes, "to_depart");
+                if (t.Phase == LastShiftPhase.Depart)
+                {
+                    int movingNodes, movingWalkable;
+                    nav.DevCountNodes(movingLine, out movingNodes, out movingWalkable);
+                    if (!LastShiftDrillMovingNavOk(movingNodes, movingWalkable) || trains.DevNavState != "on" + line) errors.Add("depart:line_not_closed");
+                }
             }
             yield return LastShiftDrillAdvanceTo(x => x.Phase == LastShiftPhase.Clear, 300, true, errors, notes, "to_clear_after");
             int clearNodes, clearWalkable;
@@ -439,21 +469,14 @@ namespace BossRush
             if (dwellWalkable >= 0)
             {
                 string why;
+                if (envelopeNodes != clearNodes) errors.Add("nav:parked_node_count_changed");
                 if (!LastShiftDrillNavOk(envelopeNodes, baseWalkable, dwellWalkable, clearWalkable, baseTotal, clearTotal, otherBase, otherDwell, out why))
                     errors.Add("nav:" + why);
             }
-            notes.Add("line=" + line + ",cars=" + cars + ",heavy=" + t.IsHeavy + ",envelope_nodes=" + envelopeNodes + ",walkable_clear=" + baseWalkable
+            notes.Add("line=" + line + ",cars=" + cars + ",heavy=" + heavyStopped + ",parked_nodes=" + envelopeNodes + ",walkable_clear=" + baseWalkable
                 + ",walkable_dwell=" + dwellWalkable + ",walkable_after=" + clearWalkable + ",total=" + baseTotal + ">" + clearTotal
                 + ",other_line_only=" + otherNodes + ":" + otherBase + ">" + otherDwell);
             RecordLastShiftDrill(id, sw, errors, notes);
-        }
-
-        /// <summary>导航三角形在不在这股道的车体包络里：口径与列车 owner 封线一致（最低顶点 &lt; 4.75 m、重心在包络里）。</summary>
-        private static bool LastShiftDrillNodeInEnvelope(Vector3 a, Vector3 b, Vector3 c, char line)
-        {
-            if (Mathf.Min(a.y, Mathf.Min(b.y, c.y)) >= 4.75f) return false;
-            Vector3 m = (a + b + c) / 3f;
-            return LastShiftTimetable.InEnvelope(m.x, -m.z, line);
         }
 
         // ====================================================================
@@ -653,8 +676,11 @@ namespace BossRush
             string why;
             if (!LastShiftDrillPopulationOk(enemies.Population, enemies.SpawnedCount, enemies.DevLive, _lastShiftDrillLivePeak, enemies.DevMobileLive, out why))
                 errors.Add(why);
+            // 列车押运另一本账（2026-11-13）：同时在场不超过 LastShiftEnemies.TrainLiveCap。
+            if (enemies.DevTrainLive > LastShiftEnemies.TrainLiveCap) errors.Add("train_escorts_over_cap_" + enemies.DevTrainLive);
             bool chiefPreset = SkyIslandEnemySources.Named(LastShiftEscortChief.SourceName) != null;
             notes.Add("population=" + enemies.Population + ",spawned=" + enemies.SpawnedCount + ",live=" + enemies.DevLive + ",live_peak=" + _lastShiftDrillLivePeak
+                + ",train_live=" + enemies.DevTrainLive + ",train_spawned=" + enemies.TrainSpawned
                 + ",mobile=" + enemies.DevMobileLive + ",in_flight=" + enemies.DevInFlight + ",queued=" + enemies.DevQueued + ",alive=" + alive
                 + ",suspended=" + suspended + ",failed=" + failed + ",duty=" + duty + ",from_train=" + fromTrain + ",escorts_armed_q3=" + armed);
             notes.Add("squads:" + enemies.DevSquadSummary + ",alive=" + squadAlive + ",frozen_checked=" + frozen

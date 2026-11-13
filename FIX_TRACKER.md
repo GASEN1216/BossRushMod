@@ -2,6 +2,86 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+## 2026-11-13 v2.5.0 发版：末班编组站快节奏改版、每班一场仗、审查六条与卡口站位（COMPAT；L2，部分 L3）
+
+- **改版**（owner「做成快节奏的多趟火车的激战……每个有宝箱的地方都有激战……小队长……」）：一班 118 秒；第 8 班末班车尾梯是跟车走的撤离口，出站后 `YardClosed` 封站；车头撞押运；每班可签一柜（续签 4/5 件、Q5 随柜数升）；加价台逐班抽、进站揭晓；守货岗 12 处与三种小队长（`LastShiftLeaders.cs`）。追加「每班一场仗」：列车押运每班 3–5 人、另记一本账，来车给那一侧打光的守货岗补岗。
+- **独立审查六条全修**：守货岗成员不走 25–75 m 刷怪环（只要求 ≥ 18 m）、卡口有开张上限、一个都没刷成不算打光；关着的会动出口补注销官方地图标记；押运班长压上来改整队叫醒；末班车走后尾梯锚点回站界外；一班车一人只撞一次；末班多放那人有座位、封站后不给拉铃；Dev 演练改推后末班、不回拨班号。
+- **实机日志（owner 11-13 一局，旧一版）**：续签与收回、车尾送人、车挡 / 压上来 / 推车误伤都跑了；北公路卡口四个站位压在北跨线桥中间楼梯实心台阶里、整处没开——圈心挪到 (4.5, -46)，`LastShiftSquadPlacementPropertyTest` 加楼梯 / 坡道判据，原坐标反向转红。
+- **验证**：全量守卫 768 PASS；全量执行回归 169 项：首跑 164 PASS，配上游戏程序集环境变量后 `AuditCombatSeptember`、`SkyIslandCombatRuntime` PASS，`TidegateWater` 夹具补链同日新增的 `TidegateBuildingCollision.cs` 与两处 Unity 替身后 PASS；仍红两项与本版无关——`FieldAdventureVisuals`（本机 Unity 无许可证）、`NpcAuditFixes`（夹具缺 UniTask 替身，18 个生产输入均未改动，HEAD 即红，待单独修）。正式 + Dev Windows 真编译通过（仅既有 Mode H 两条 CS0649），游戏目录 DLL 与 `info.ini` 哈希一致。每班一场仗与卡口新位置未实机（L2），实测清单 `M_LASTSHIFT_10`。
+- **发版**：`info.ini` 2.5.0；WikiContent `changelog__v2_5_0` 中英、总览与目录；工坊 `a.md` / `b.md` 换 v2.5.0（7553 / 7699 字节）。宣发片录制计划 `docs/guides/trailer-kit/lastshift/实机视频计划.md`。
+
+## 2026-11-13 仓库入口、官方对话与重进修复（COMPAT / SAFE；L3 待验）
+
+- **CR-012**：入口原包零碰撞，补桌/站牌/接驳车与剪票钳分件；末班补五处门框、两宽柱脚、四药箱。潮闸按真实部件补 279 代理，11 个邻近交互可达、27 个既有门洞净空保留。作者脚本不再按高度或交互 marker 重叠删硬体，新旧包碰撞幂等复用，停用根装配不误建重复体。
+- **CR-013**：余响聊天、交票、登车与收尾接真实官方 Actor / DialogueUI 和共享 DialogueManager。只当前 owner 消费 Esc，选择前取消无交物/登车，已确认登车的提交后结果页关闭沿用既定流程；切图单独取消。未读完回应不提前记已告知，语言刷新现有 M 图标记。
+- **CR-014**：入口按真实 Scene handle 与有效状态重建；余响在角色刚创建、尚待配装时就归入口，旧任务只清自己的对象，销毁后的 actor 缓存也移除。每趟保留剪票处标记。旧日志证实第二次创建过，用户现场后来不可见的唯一根因未证实，仍须连续往返复验。
+- **验证**：全量 768 PASS；四组生产执行回归通过，入口 51 断言、共享对话 42 断言；故障注入按预期转红/还原；Windows 原 bat 正式+Dev 真编译通过，1357 源码输入与工作区一致，29 个 Dev 标识分别全无/全有。未做 L3、不声明性能无回归。
+- **交付**：正式 `33a3abfc8a6074a0cea65cfdd97b3c4a5e8c4ff4d4a22ae0116d9ddd0dfbb203`，Dev `0981f5a0abcfbec9d1d829d95146adb0f31f99f34c449a89bda18204166eef3b`，位于 `Build/warehouse-entry-20261113/`。真实游戏安装件仍为 `8fe6e102f9fd5fd501d52446b5122e1620e8706059877149aab1df6089672a15`，权限外未部署。场景包保持上一轮修复哈希，未完整重打 Blender/Unity。
+- **规范与边界**：根/子系统规则、官方复用规范、新图教程、NPC 手册、contracts、两图知识库和人工覆盖已更新；禁止复制旧“矮硬物免碰撞”与自绘 NPC 全文确认框方案。未启动游戏、未读写存档、未提交；私有同步未运行。详见 [本批报告](docs/reports/testing/仓库入口_2026-11-13_实体对话与重进.md)。
+
+## 2026-11-13 后续实机地面与曝光反馈（COMPAT / SAFE；新画面待 L3）
+
+- **现场口径**：owner 回传 `BossRushValidation_20261113_045031_241`：末班演练 11 PASS / 0 FAIL，COVERAGE 的 387/211 为全项目未通过/未运行及人工待测，不是本图错误数量。原生补光 READY 证实路径，但人物过亮和地面污迹仍为视觉不合格。零性能基线不用于前后对比。
+- **CR-010**：确认官方 SodaPointLight 为加法混合，四盏暖 HDR 灯重叠过强；两图共同改中性 191/255 色、Hardness .5 / FallOff 1.5，覆盖范围保留、后备普通灯强度减半。13 场景含房形和上身叠加峰值，放大灯体积负向命中并按字节还原。
+- **CR-011**：污迹定位到作者四组 worn ground 贴花及 atlas 中深色椭圆/飞溅画笔；精确取消，生产源和实包配套，保留正常铺面结构、轨道/道砟与投影。专用资源检查和恢复路径见后续报告及 ArtSource README。
+- **天气诊断**：原版仓库配置与官方相机链完整，未确认重复主光/错误 Volume。保留官方天气和 fog 阈值；两图 F3 装配在搬人前只读记录天气/时段、真实太阳与绑定、环境色、相机雾及房间灯值。缺现场参数不把灰雾归为阴天。生产日照夹具 10 场景、诊断偷换来源的负向通过。
+- **验证与交付**：Windows 原 bat 正式/Dev 两版真编译通过，7 组相关执行回归通过，29 个 Dev 标识正式全无/Dev 全有。新正式 DLL `924d783cc9071b257a45392207d531dde3c3f0fd3873ecf1183ca370cf462992`，Dev `05a0bb31a5897d19607c606eec06052eeaa927765e2ce8282d76df27ae472535`；文件在 `Build/lastshift-visual-feedback-20261113/`，未覆盖真实游戏目录。最终资源与守卫结果见 [后续报告](docs/reports/testing/末班编组站_2026-11-13_地面与光照反馈.md)。
+- **最终核验**：全量 766 PASS / 0 NEW-FAIL / 0 KNOWN-RED；末班资源包 `6d78eaf76b85d2f104c6f90fcfd9bbae85837e4965f8f197aae47ed4010aba27`，四个 Mesh + 一张 atlas 改动、其余 5466 对象字节一致，旧包/旧PNG/旧FBX独立反向、幂等及原备份重放均通过。编译输入与工作区零差异，20 文档 280 链接存在。实际安装 DLL 仍 D94B…，未把工程修复称为已部署。
+- **规范**：官方复用/渲染规范、new-map 验收指南、contracts、SkyIsland 规则、两图知识库与人工覆盖项同步。当前图不算本批新外观通过；按报告到相同地面与司机室复测，并用新增日志确定实际天气/雾。未启动游戏、未读取或修改玩家存档、未提交；私有同步目录不可写，本批未同步。
+
+
+## 2026-11-13 双地图官方复用及制作规范（COMPAT / WIRE+；L1/L2 完成，未部署 / L3 待验）
+
+- **代码**：两图共享原生主光与 SodaPointLight，潮闸在基地户外卸载前捕获资源；官方驱动天气、自研材质只镜像。补近脚地面选择、末班两处原生浅水、带入钢印实例和奖励事务、潮闸手轮预留/关键库存核验/涨潮 LootView 与原生状态回写复位，以及官方出口标记与语言刷新。
+- **资源**：潮闸实际外露共面修复覆盖 13 节点（8 Mesh / 5 marker Transform），只改已确认视觉层，非目标对象字节一致；最终静态水平扫描外露代表样本为零。作者源未重打，后续重建须按 ArtSource/Tidegate/README.md 重跑定点工具与实包核验。末班去草与透明/分层修复保持。
+- **文档**：新官方复用规范，更新 new-map 各阶段、渲染规范、旧教程、物品接线、contracts、SkyIsland 规则与两图知识库；纠正新品默认进叮当/售货机的旧建议。官方原有能力、地图适配职责、资源所有权、交易时序、反向测试与 L3 条件分列。
+- **验证**：全量 765 PASS；19 组相关执行回归 PASS；新增库存/原生状态/手轮提交三种生产变异及四项守卫变异命中预期并恢复。正式 / Dev Windows 真编译成功，1356 构建输入哈希一致，正式 51 个演练标识全无、Dev 全有。潮闸 shader、23 室内区几何及反向通过；19 份文档 275 条本地链接核验通过。详见 [本批报告](docs/reports/reviews/2026-11-13-双地图官方复用与制作规范复核.md)。
+- **正式产物**：`Build/BossRush.dll` = `16249c1bbba2cf0317848d67d7170f364ef38bdfb00d79cdd8cbffcb44fee014`；潮闸包 = `a268a5f65fe40ed7896b5abae5756e0b00e1b81565da03a827a28b6260bf245c`；末班包 = `499a15401868d7f308de998391723e1e31fa21921e7f915a6e4a31df8904e699`。
+- **边界**：安装目录、原 Unity 工程与私有同步 Git 目录不在可写范围；未部署、未执行私有同步、未启动游戏/访问存档、未提交。精确晴天 profile 缺失时有官方同时段后备与警告；室内实际亮度、天气观感、开窗瞬态与帧耗仍需报告中的 L3 操作验收。
+
+## 2026-11-13 官方室内补光与去装饰草（COMPAT / WIRE+；L1/L2，未部署 / 新画面待验）
+
+owner 反馈室内角色仍暗，并询问从地下冒出的草是否来自官方旧地图。已直接读官方源码、真实仓库资产 / URP 配置 / 草插件 IL，并核对现场安装 DLL 与上一轮地图包一致。
+
+- **官方补光**：替换旧四盏 2.4 强度普通点光为官方 `SodaPointLightMesh` + `ZeroPoint` 占位材质，走活动相机的 `SodaLight` 覆盖渲染。官方着色器从深度重建位置、读法线与 GBuffer 反照率；因此角色获得补光，自研 albedo=0 的环境不再叠亮。使用官方低硬度与近线性衰减，按三间房尺寸设置椭球；不调相机或全局渲染配置，不去掉屋顶阴影。
+- **生命周期**：仓库卸载前捕获并用停用 DDOL 持有节点保留共享资源，入图世界检查之后绑定；只建本图灯体。离屋当帧关、换屋复用、失败 / 离场均清理，不销毁官方共享资源。只读当前 renderer 的 protected `rendererFeatures` 校验官方通道，缺资源 / feature / mask / shader 时明确记录一次回退。成功日志 `INDOOR_FILL_READY mode=SodaPointLight layer=15`。
+- **草**：四组 `Connected yard / grass ribbons 0..3` 加 `Verges and drainage reeds` 是原型细节脚本自动装饰，三版包 Mesh 字节一致；根高 .06 / -.05 / -.04，容易露出地坪。与官方 TastyGrass 全局画质无关，未改全局设置。五个 MeshRenderer 各改一个 enabled 字节，其余 5466 个对象不变；源 `props` / `scatter` FBX 同步去掉这五个 leaf 对象且保留上一轮分层，其它模型 / 材质一致。原型取消五组草的输出但保留其他使用的随机序列；Blender 组装按准确名单过滤旧 GLB。工具 `tools/remove_lastshift_grass.py`、名单 `tools/lastshift_vegetation.py`，报告 `ArtSource/LastShiftYard/lastshift_raid_grass_report.json`。
+- **闪烁判断**：没有证据支持“官方旧地图叠在下面”。原型大块透明度与共面层问题已有独立证明；草面近乎竖直，不将其当成先前地面平行重叠的根因。移除草后，两组已修共面三角与四透明地贴均再次通过读回，135 材质 / 4 pass 保持。
+- **验证**：75 项相关守卫 PASS；4 组 LastShift 回归 PASS，新 `LastShiftLightingRuntime` 内部 8 场景及四项隔离反向验证通过；真实 Windows 正式编译通过（两条既有 Mode H CS0649），正式 DLL 不含 29 个 Dev 标识；5 个渲染器修改、非草原型输出等价、FBX 保留、判包与旧闪面样本复核通过。灯资源跨图与逻辑正确性是 L2，屏幕亮度 / 帧耗仍待 L3。
+- **工程产物**：`Build/BossRush.dll` SHA-256 `bfd7ced29cfcd563bc014574b2eb25e1015153d84f3e83229afceab66b5fcec0`；`Assets/arenas/lastshift_raid` SHA-256 `499a15401868d7f308de998391723e1e31fa21921e7f915a6e4a31df8904e699`。备份 / 编译日志 `Build/lastshift-official-light-20261113/`。本次没有新 Unity 构建，未启动游戏、未读写存档、未提交。
+- **部署**：当前会话可写范围仍不含游戏 / 原 Unity 工程，安装件未被本次替换。owner 本机在仓库根去掉 `BOSSRUSH_DEV_BUILD` 后运行 `compile_official.bat` 部署，再按 M_LASTSHIFT_03 / M_LASTSHIFT_READ 复验；后续 Unity 重建前先同步本目录更新后的 FBX。
+
+## 2026-11-13 末班编组站验收缺陷修复（COMPAT；L1/L2 完成，未部署 / L3 待验）
+
+owner 在独立验收后要求「全部修复」。`CR-2026-11-13-001/002` 的代码缺陷已关闭，最终实机画面及到岗时机保留人工验收，不把离线通过写成已生效。
+
+- **地图**：移除 0.02 m² 单面 / 0.01 m² 交集阈值，改为只排除 1e-8 数值退化面并补空间分桶边界。`tools/rebuild_lastshift_fbx_layers.py` 重算 6 份 FBX 与实例 layers，坐标 / 索引 / RGB / UV 等逐项不变；原 .blend 未重新生成。Blender 启动失败、Unity 许可证 IPC 超时退出 199，因此改用 `tools/rebuild_lastshift_bundle_layers.py` 在既有合法场景包上只重排顶点 alpha。最终包 5471 个对象中 243 Mesh 更新，其余对象、未改场景 member、容器参数、类型树与依赖保持；11 个原无颜色通道的网格所用材质均 `_UseVertexColor=0 / _Decal=0`，新增白 RGB 不影响着色。两个原漏检样本 alpha 255/255 → 223/255、191/223；四磨损贴花几何 / RGBA / UV / 混合均不变；独立低位水平面扫描未检出原有可见同层重叠。判包 135 材质 / 4 pass（含 GBuffer）通过。报告 `ArtSource/LastShiftYard/lastshift_fbx_layer_report.json` 与 `lastshift_raid_layer_report.json`，本次不是 Unity 重构建。
+- **角色补光**：保留每屋四个真点光，`LastShiftSession.Update` 先发布当帧室内脚点再执行 `lights.Tick`，消除进出门慢一帧；反向顺序探针转红并按字节恢复。
+- **Boss**：首个可签收班次锁线后，在对应柜后 3.2 m 生成并预留人数名额；已出场时扳岔即提前换岗。停靠导航按车身加 0.65 m 净空封三角形，进出站仍整线封锁，形状变化取消过期路径；普通 / 重载缓存分开。实际导航包 1217 三角形 × 四种停车状态与独立几何判据无差异、跨台均可达。后续临近锁线换台时正常步行需要时间，不承诺瞬间到柜，最终到岗时机待 L3。
+- **签收**：必须实装普通 8 / 加价 9 件，前两件 Q4 以上、其余 Q2–Q4，才开放并消耗签收。隐藏装柜、实物核验、整柜回滚、重入门控；缺货 / 创建失败 / 库存异常 / 中途关闭均保留签收机会。新 `LastShiftCargoRuntime` 链接生产路径，11 场景（含三班单各两档）通过；移除实物校验的隔离反向转红后按字节恢复。
+- **验证**：全量守卫 764 PASS；LastShift 回归 3 PASS；正式 / Dev 原脚本 Windows 编译通过（仅既有 Mode H 两条 CS0649），1352 个编译源与快照逐字节一致；正式 29 个 Dev 标识全无、Dev 全有；Wiki 构建通过。旧台账一节逐字移入 2026-10 月归档，LedgerSizeGuard 恢复通过，待 L3 状态保留。
+- **产物**：工程 `Build/BossRush.dll` 是正式版，SHA-256 `6b18f9c640a1f9f8928bd67ed7df6785c0e4c7e3941746354d2efb9ff4af4b97`；`Assets/arenas/lastshift_raid` 为修正版，SHA-256 `f2f169469c86f2de393bbc47adf9ff8b83ab7e8b08a6d6f8b4a5bf54143a49fe`。旧包 / FBX 在 `Build/lastshift-fix-before-artifacts/`，编译证据在 `Build/lastshift-fix-compile-20261113/`，地图可重算工具已入源码目录。
+- **交付边界**：游戏与原 Unity 作者工程均不在当前会话可写范围，未覆盖安装件；只读核对游戏 DLL 仍为 `a18b36c0…7af06`、地图仍 `b1b6d708…bc86c`。owner 可在本机仓库根运行 `Remove-Item Env:BOSSRUSH_DEV_BUILD -ErrorAction SilentlyContinue; $env:BOSSRUSH_NO_PAUSE='1'; & "$PWD\compile_official.bat"` 部署正式版，按目标哈希核对后重新进图复测。未启动游戏、未读写存档、未提交。
+
+## 2026-11-13 末班编组站第三轮独立验收初始记录（当时未闭环；后续修复见上节）
+
+- `CR-2026-11-13-001` Open / P1：当前发布导航包在西线或东线占用期间均无法跨台，押运长却到锁线后才换岗，对侧已能签收。生产规则与发布包复算 L1/L2，详见 `CODE_REVIEW_FINDINGS.md`；不能按驻点坐标已改判定完成。
+- `CR-2026-11-13-002` Open / P2：计划为 8/9 件、两件 Q4 以上，但部分装箱失败仍消耗签收；L1 条件路径，未证明正常现货短缺。
+- 地图大地贴修复已在实际部署包，角色真实点光接线通过离线核查；很小的共面几何及最终闪烁 / 人物亮度留 L3，未把 owner 的旧问题截图当新版通过证据。
+- 本轮实跑：`run_guards.py --changed-only` 59 PASS；LastShift 回归 2 PASS；隔离源码 / 游戏 Managed 副本的原正式脚本 Windows 编译通过（两条无关 ModeH CS0649 警告），构建快照与当前 1352 个源文件逐字节相同；未部署该隔离 DLL。作者 / 仓库 / 游戏 `lastshift_raid` SHA-256 一致 `b1b6d708…bc86c`。只补验收台账，不改玩法，不启动游戏、不读写玩家存档，不提交。
+
+## 2026-11-13 末班编组站第三轮：还在闪、人身上没亮、押运长离签收太远、签收太少（COMPAT；L1/L2，L3 待 owner）
+
+owner 实机（六张截图）：①地图上还是闪（截图里锯齿边的深绿 / 土黄 / 青灰大块）；②进屋后周围亮了，玩家身上没亮；③押运长离签收的地方太远，放到签收处；④签收奖励太少，起码 7、8 件，品质不用都好，保底几件好的。
+
+- ①根因：截图里的大块是 three.js 的磨损地皮 `Connected yard / worn ground 0–3`（`yard-details.mjs` `stain`），原型是 `transparent` + `depthWrite:false` 的顶点 alpha 贴花（斑心 0.24–0.64、外圈 0）。第二轮共面分层把它们的顶点 alpha 改写成层号、Unity 按不透明画，成了实心色块，同一张网格里几百块斑在同一高度互相抢深度（约 4950 m²；第二轮只查不同对象之间，查不到）。`tools/build_lastshift_blend.py` 新增 `mark_vertex_alpha_decals`（材质 Alpha 直接接顶点色 ⇒ 贴花：保留原 alpha、不进分层、清单记 `decal`）；作者工程 `LastShiftBuilder` 给贴花建透明队列 3000、SrcAlpha / OneMinusSrcAlpha、不写深度、不投影的材质（清单丢了标记就构建失败），`LastShiftEnvironment.shader` 前向 pass 的 `Blend` / `ZWrite` 走材质属性、`_Decal` 时顶点 alpha 当不透明度。另外共面分层的单位从对象细到「对象 × 连通块」：同一张网格内部还有约 1461 m² 不透明重叠（镜头可见约 186 m²，「废弃短线」等），本次 9718 个节点、0–5 层、同层重叠 0。
+- ②`LastShiftLighting`：人在司机室 / 维修棚 / 押运库时，除了灯数组，在四盏顶灯位置各放一盏真点光（不投影、强度 2.4、出屋当帧关、`Dispose` 销毁）。灯数组只有自研着色器读，官方材质的角色只吃真光源；自研着色器 albedo 为 0，真光源不会把屋里照第二遍。
+- ③`LastShiftEnemies`：押运长不再站押运库前院，守在停靠那一台的铅封柜正背面 3.2 m（`ChiefPost`）；开局在道岔当前指向的那一台，每班车进站锁线后换到停靠那一台、车走了原地等下一班（`GuardCargo`，交火中交给官方行为树）；押运库那一岗改由普通押运员顶（`PostHeld` 去掉押运长特例）。余响提示「押运长守着那儿」改为「库门口有押运员守着」。
+- ④`LastShiftLoot.PlanCargo`：一柜 8 件（加价台 9 件）：头格照旧 Q4 75% / Q5 25%（加价台各半）、第二格保底 Q4，按班单类别抽精品；其余按班单类别补 Q2–Q4（每高一档权重 ×0.6，同风险柜普通格）。箱子 12 格。签收提示改成「满满一柜，最上面压着……」。经济：每趟签收从 1 件精品变成 2 件精品 + 6–7 件杂货，owner 本次明确要求。
+- 文档：Wiki 中英与站点副本、`GameplayCoverage.json` 人工项 M_LASTSHIFT_05 / 06、repowiki 末班编组站页、设计稿、`ArtSource/LastShiftYard/README.md`「第三轮」、`SkyIsland/AGENTS.md` §6.1 第 7 / 10 条、`docs/ai-docs-migration.md`。守卫 `LastShiftReadabilityPropertyTest` 加第三轮段（源码 + 组装 / 构建报告 `decals`），反向 9 处破坏全部转红并按字节还原。
+- 验证：全量守卫 763 PASS；回归 LastShift 2 PASS；Blender 组装 `LASTSHIFT_BLEND_OK`；Unity 批处理 `[LastShiftBuilder] PASS`（日志里那一行 `Build Finished, Result: Failure.` 与以往成功的编组站 / 潮闸镇场景包构建相同）、判包 PASS；UnityPy 读包：4 个贴花材质队列 3000 / 混合 5、10 / ZWrite 0，其余 131 个默认队列，磨损地皮顶点 alpha 字节 0…163，「废弃短线」按块 0–3 层；Wiki 站点构建通过；正式编译 `Build succeeded!` 并部署，D 盘游戏目录 DLL `91455a14…`、`lastshift_raid` `b1b6d708…86c` 与仓库产物逐字节一致。
+- 未做 / 未验证：没开游戏（L3 待 owner）——贴花在官方延迟管线的透明前向 pass 里收不收阴影、真点光 2.4 的亮度在实机里是否合适、押运长换台时走的路线都要看实机；签收在官方 LootView 里 8–9 件的显示；BossRushMod、作者工程、私有资源均未提交。
+
 ## 2026-11-12 末班编组站实机八条：闪烁、屋顶、室内灯、围圈小队、押运长、卡脚、司机室楼面、交互点（COMPAT；L1/L2，L3 待 owner）
 
 owner 实机（附 Player.log）：①很多地方一直在闪；②进屋 / 头顶有屋顶时没隐藏；③屋里不亮；④敌人生态要有趣，比如几个小队围成一圈不动、发现玩家才恢复 AI；⑤Boss 特效塑料、机制简单，血可减 1/3；⑥很多连接处卡脚、翻滚才能过；⑦悬空的司机室进去没实体、一进去就掉；⑧交互点不在物体中心，NPC 对话在头顶。

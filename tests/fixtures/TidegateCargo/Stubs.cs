@@ -13,13 +13,39 @@ namespace Duckov.MiniMaps
         public void Setup(object icon, string key) { Key = key; }
     }
 }
+namespace Duckov.UI
+{
+    internal sealed class LootView
+    {
+        internal static LootView Instance;
+        internal bool open;
+        internal ItemStatsSystem.Inventory TargetInventory;
+        internal Action OnClose;
+        internal void Close()
+        {
+            if (!open) return;
+            open = false;
+            OnClose?.Invoke();
+            TargetInventory = null;
+        }
+    }
+}
+namespace ItemStatsSystem
+{
+    internal sealed class Inventory : Component
+    {
+        internal readonly List<Item> Content = new List<Item>();
+    }
+}
 #if !TIDEGATE_REAL_CATALOG
 namespace ItemStatsSystem
 {
     internal enum DisplayQuality { None, White, Green, Blue, Purple, Orange, Red, Q7, Q8 }
-    internal sealed class Item
+    internal sealed class Item : Component
     {
         internal int TypeID, Quality, Value;
+        internal Inventory InInventory;
+        internal bool IsBeingDestroyed { get { return dead; } }
         internal DisplayQuality DisplayQuality;
         internal bool CanBeSold = true;
         internal readonly HashSet<string> Tags = new HashSet<string>();
@@ -28,8 +54,10 @@ namespace ItemStatsSystem
     {
         internal static bool NoCargoPrefabs;
         internal static int ThrowCategory = -1;
+        internal static int MissingPrefab;
         internal static Item GetPrefab(int typeId)
         {
+            if (typeId == MissingPrefab) return null;
             if (typeId / 10000 == ThrowCategory) throw new InvalidOperationException("catalog lookup unavailable");
             if (NoCargoPrefabs && typeId >= 10000) return null;
             int q = typeId >= 10000 ? (typeId / 100) % 100 : 2;
@@ -64,7 +92,11 @@ namespace BossRush
     {
         internal static event Action<InteractableLootbox> OnStartLoot;
         internal static int Subscribers { get { return OnStartLoot == null ? 0 : OnStartLoot.GetInvocationList().Length; } }
-        internal void Open() { if (OnStartLoot != null) OnStartLoot(this); }
+        internal bool Interacting;
+        internal bool NativeLooting;
+        internal void Open() { Interacting = true; OnStartLoot?.Invoke(this); NativeLooting = true; }
+        internal void StopInteract() { Interacting = false; NativeLooting = false; }
+        internal ItemStatsSystem.Inventory Inventory;
         public readonly List<Stack> Stocks = new List<Stack>();
     }
     internal sealed class Stack { public int Id, Amount; public string Source; }
@@ -73,19 +105,31 @@ namespace BossRush
         public static readonly Dictionary<string, InteractableLootbox> Boxes = new Dictionary<string, InteractableLootbox>();
         public static bool RejectCargo;
         public static string FailBuild;
+        internal static Func<InteractableLootbox, int, bool> Push;
+        internal static int InvalidStockType;
         public static InteractableLootbox Build(Transform parent,Vector3 position,float yaw,string name,out string error,bool pending)
         {
             if (name == "TidegateLoot_" + FailBuild) { error = "simulated missing container"; return null; }
             var go = new GameObject(name); go.transform.SetParent(parent, false); go.transform.position = position;
             var box = go.AddComponent<InteractableLootbox>();
-            Boxes.Add(name.Substring("TidegateLoot_".Length), box);
+            box.Inventory = go.AddComponent<ItemStatsSystem.Inventory>();
+            Boxes[name.Substring("TidegateLoot_".Length)] = box;
             error = null; return box;
         }
         public static bool AddOfficialStack(InteractableLootbox box,int id,int amount,StringBuilder log,string tag)
         {
             if (id <= 0 || (tag == "TidegateCargo" && RejectCargo)) return false;
-            try { if (ItemStatsSystem.ItemAssetsCollection.GetPrefab(id) == null) return false; }
+            ItemStatsSystem.Item prefab;
+            try { prefab = ItemStatsSystem.ItemAssetsCollection.GetPrefab(id); if (prefab == null) return false; }
             catch (InvalidOperationException) { return false; }
+            if (Push != null && !Push(box, id)) return false;
+            if (box == null) return false;
+            var item = new GameObject("Loot item").AddComponent<ItemStatsSystem.Item>();
+            item.TypeID = id == InvalidStockType ? 1 : id;
+            item.Quality = prefab.Quality;
+            item.InInventory = box.Inventory;
+            item.transform.SetParent(box.transform, false);
+            box.Inventory.Content.Add(item);
             box.Stocks.Add(new Stack { Id = id, Amount = amount, Source = tag }); return true;
         }
     }

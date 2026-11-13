@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using Duckov.UI;
 using BossRush;
 using Duckov.MiniMaps;
 using UnityEngine;
@@ -50,6 +51,7 @@ internal static class Program
         internal readonly CharacterMainControl Player = new GameObject("Player").AddComponent<CharacterMainControl>();
         internal readonly List<string> Notices = new List<string>();
         internal readonly TidegateLoot Loot;
+        internal readonly TidegateTide Tide = new TidegateTide();
         internal int OpenEvents;
         internal Raid(int seed, bool withRoutes = true)
         {
@@ -57,15 +59,15 @@ internal static class Program
             SkyIslandRewardCrate.Boxes.Clear();
             World.LootMarkers.AddRange(boxes.OrderBy(x => x.Id,StringComparer.Ordinal).Select(x => x.Spawn()));
             if (withRoutes) World.Pois.AddRange(places.Select(x => x.Spawn()));
-            Loot = new TidegateLoot(World, new TidegateTide(), seed, () => true, (s,w) => Notices.Add(s));
+            Loot = new TidegateLoot(World, Tide, seed, () => true, (s,w) => Notices.Add(s));
             Loot.Opened += id => OpenEvents++;
         }
         internal InteractableLootbox Box(string id)
         {
             Player.transform.position = boxes.First(p => p.Id == id).Position;
-            for (int i = 0; i < boxes.Count + 1 && !SkyIslandRewardCrate.Boxes.ContainsKey(id); i++)
+            for (int i = 0; i < boxes.Count + 1 && (!SkyIslandRewardCrate.Boxes.TryGetValue(id, out var box) || box == null); i++)
             { Time.time += 1; Loot.Tick(Player); }
-            Check(SkyIslandRewardCrate.Boxes.ContainsKey(id), "walking to actual marker did not build " + id);
+            Check(SkyIslandRewardCrate.Boxes.TryGetValue(id, out var stock) && stock != null, "walking to actual marker did not build " + id);
             return SkyIslandRewardCrate.Boxes[id];
         }
         internal SimplePointOfInterest[] Pins()
@@ -100,12 +102,146 @@ internal static class Program
         { return string.Join(";",box.Stocks.Select(s => s.Source + ":" + s.Id + "x" + s.Amount).OrderBy(s => s,StringComparer.Ordinal)); }
         public void Dispose()
         {
+            LootView.Instance = null;
             var components = World.Root.transform.GetComponentsInChildren<SimplePointOfInterest>(true);
             var crateComponents = SkyIslandRewardCrate.Boxes.Values.ToArray();
             Loot.Dispose(); Loot.Dispose();
             Check(components.All(c => c == null) && crateComponents.All(c => c == null) &&
                 InteractableLootbox.Subscribers == 0 && Loot.PointCount == 0, "disposed owner left pin, crate or callback alive");
             UnityEngine.Object.Destroy(World.Root);
+        }
+    }
+
+    private static void CriticalStockFailures()
+    {
+        const string handwheel = "LOOT_locker_72", watch = "LOOT_vault_71";
+        foreach (int failure in new[] { 0, 1, 2, 3 })
+        using (var raid = new Raid(24, false))
+        {
+            int itemId = failure == 3 ? BossRushItemIds.TidegateTideWatch : BossRushItemIds.TidegateHandwheel;
+            string id = failure == 3 ? watch : handwheel;
+            if (failure == 0) ItemStatsSystem.ItemAssetsCollection.MissingPrefab = itemId;
+            if (failure == 1 || failure == 3) SkyIslandRewardCrate.Push = (_, item) => item != itemId;
+            if (failure == 2) SkyIslandRewardCrate.InvalidStockType = itemId;
+            bool publishedWithoutRequiredStock = false;
+            GameObject.Activating = go =>
+            {
+                if (go.name != "TidegateLoot_" + id) return;
+                var box = SkyIslandRewardCrate.Boxes[id];
+                if (!box.Inventory.Content.Any(item => item.TypeID == itemId && item.InInventory == box.Inventory))
+                    publishedWithoutRequiredStock = true;
+            };
+            try
+            {
+                raid.Visit(id);
+                Check(!publishedWithoutRequiredStock, "essential box became visible without required inventory stock");
+                Check(SkyIslandRewardCrate.Boxes.TryGetValue(id, out var failed) && failed == null && raid.OpenEvents == 0,
+                    "failed critical stock left a published or counted crate");
+            }
+            finally
+            {
+                ItemStatsSystem.ItemAssetsCollection.MissingPrefab = 0;
+                SkyIslandRewardCrate.Push = null;
+                SkyIslandRewardCrate.InvalidStockType = 0;
+                GameObject.Activating = null;
+            }
+            InteractableLootbox retry = raid.Box(id);
+            retry.Open(); retry.Open();
+            Check(raid.OpenEvents == 1 && retry.Inventory.Content.Count(item => item.TypeID == itemId) == 1,
+                "recovered critical crate lost or duplicated its fixed item");
+        }
+
+        using (var raid = new Raid(24, false))
+        {
+            InteractableLootbox staging = null;
+            SkyIslandRewardCrate.Push = (box, item) =>
+            {
+                if (item == BossRushItemIds.TidegateHandwheel) { staging = box; raid.Loot.Dispose(); }
+                return true;
+            };
+            try { raid.Visit(handwheel); }
+            finally { SkyIslandRewardCrate.Push = null; }
+            Check(!ReferenceEquals(staging, null) && staging == null && raid.Loot.OpenedCount == 0,
+                "raid close leaked the staged critical crate");
+        }
+
+        using (var raid = new Raid(24, false))
+        {
+            raid.Box("LOOT_tool_3").Open(); raid.Box("LOOT_tool_4").Open();
+            Check(raid.Loot.ShiftKeyObjective != null, "fixture did not acquire the shift key");
+            SkyIslandRewardCrate.Push = (box, _) => box.name != "TidegateLoot_LOOT_safe_35";
+            try { raid.Visit("LOOT_safe_35"); }
+            finally { SkyIslandRewardCrate.Push = null; }
+            Check(SkyIslandRewardCrate.Boxes.TryGetValue("LOOT_safe_35", out var failed) && failed == null && raid.Loot.ShiftKeyObjective != null,
+                "failed stock lost the shift key or published an empty cabinet");
+            InteractableLootbox retry = raid.Box("LOOT_safe_35");
+            int opened = raid.OpenEvents;
+            raid.Loot.Opened += _ => { retry.Open(); throw new InvalidOperationException("fixture story observer"); };
+            retry.Open(); retry.Open();
+            Check(raid.OpenEvents == opened + 1 && retry.Stocks.Count > 0 && raid.Loot.ShiftKeyObjective == null,
+                "reentrant story observer broke cabinet claim");
+            Check(raid.Notices.Count(message => message.Contains("stays in the lock")) == 1, "cabinet key was not consumed exactly once");
+        }
+    }
+
+    private static void FloodedLootView()
+    {
+        using (var raid = new Raid(24, false))
+        {
+            string id = boxes.First(p => p.Kind == "buried").Id;
+            InteractableLootbox box = raid.Box(id);
+            float ground = raid.Player.transform.position.y;
+            raid.Tide.Level = ground + 1f;
+            LootView.Instance = new LootView { open = true, TargetInventory = box.Inventory, OnClose = box.StopInteract };
+            box.Open();
+            Check(!box.gameObject.activeSelf && !LootView.Instance.open && !box.Interacting && raid.OpenEvents == 0,
+                "loot interaction crossing the rising tide was accepted between ticks");
+            Check(box.NativeLooting, "fixture did not simulate native StartLoot overwriting the state");
+            raid.Loot.Tick(raid.Player);
+            Check(!box.NativeLooting, "next tick did not clear the native looting state after rejection");
+
+            raid.Tide.Level = ground - 1f;
+            raid.Visit(id);
+            Check(box.gameObject.activeSelf, "dry box did not reopen while the player stood next to it");
+            box.Open();
+            LootView.Instance = new LootView { open = true, TargetInventory = box.Inventory };
+            raid.Tide.Level = ground + 1f;
+            raid.Visit(id);
+            Check(box.gameObject.activeSelf, "the already open official loot view did not finish safely");
+            LootView.Instance.open = false;
+            raid.Visit(id);
+            Check(!box.gameObject.activeSelf, "standing near a closed deep-water box kept it lootable");
+
+            raid.Tide.Level = ground - 1f;
+            raid.Visit(id);
+            box.Open();
+            LootView.Instance = new LootView { open = true, TargetInventory = box.Inventory, OnClose = box.StopInteract };
+            raid.Tide.Level = ground + 1f;
+            raid.Player.transform.position = new Vector3(raid.Player.transform.position.x + 5f, ground, raid.Player.transform.position.z);
+            Time.time += 1f;
+            raid.Loot.Tick(raid.Player);
+            Check(!box.gameObject.activeSelf && !LootView.Instance.open && !box.Interacting,
+                "moving away left the deep-water loot view accessible");
+
+            raid.Tide.Level = ground - 1f;
+            raid.Visit(id);
+            LootView.Instance = new LootView();
+            box.Open();
+            raid.Tide.Level = ground + 1f;
+            box.Open(); // The owner's subscriber runs before the simulated official view.
+            LootView.Instance = new LootView { open = true, TargetInventory = box.Inventory, OnClose = box.StopInteract };
+            raid.Loot.Tick(raid.Player); // No stock tick due, but the rejected view still has to close.
+            Check(!LootView.Instance.open, "late official subscriber kept a rejected flooded view open");
+
+            raid.Tide.Level = ground - 1f;
+            raid.Visit(id);
+            LootView.Instance = new LootView();
+            raid.Tide.Level = ground + 1f;
+            box.Open();
+            raid.Tide.Level = ground - 1f;
+            LootView.Instance = new LootView { open = true, TargetInventory = box.Inventory, OnClose = box.StopInteract };
+            raid.Loot.Tick(raid.Player);
+            Check(LootView.Instance.open, "pending close affected a box that was legal again");
         }
     }
 
@@ -201,8 +337,14 @@ internal static class Program
         {
             using (var raid = new Raid(42))
             {
-                foreach (Marker m in boxes) raid.Box(m.Id).Open();
-                Check(!raid.Notices.Any(n => n.Contains("manifest") || n.Contains("seal") || n.Contains("shipment")) && raid.Pins().Length == 0 && Raid.CargoCount() == 0 &&
+                Check(raid.Loot.ManifestObjective == null, "empty official catalog advertised a route before building any crate");
+                foreach (Marker m in boxes)
+                {
+                    for (int i = 0; i < boxes.Count && !SkyIslandRewardCrate.Boxes.ContainsKey(m.Id); i++) raid.Visit(m.Id);
+                    if (SkyIslandRewardCrate.Boxes.TryGetValue(m.Id, out var box) && box != null) box.Open();
+                }
+                Check(!raid.Notices.Any(n => n.Contains("Shipping manifest") || n.Contains("Shipping seal") || n.Contains("shipment"))
+                      && raid.Pins().All(pin => pin.Key == TidegateLoot.ForemanPinKey) && Raid.CargoCount() == 0 &&
                       raid.Loot.ManifestObjective == null, "unavailable official items left an unfulfillable offer");
             }
         }
@@ -259,8 +401,11 @@ internal static class Program
                     try { target.Open(); } finally { SkyIslandRewardCrate.RejectCargo = false; }
                     Check(Raid.Stock(target) == baseline, "failed cargo insert did not return the originally rolled slot");
                 }
-                Check(raid.Pins().Length == 1 && !raid.Loot.ManifestObjective.Contains("two") && Raid.CargoCount() == 0,
-                    "late failure eliminated a healthy alternate route");
+                int expectedPins = buildFails ? 2 : 1;
+                Check(raid.Pins().Length == expectedPins && raid.Loot.ManifestObjective.Contains("two") == buildFails && Raid.CargoCount() == 0,
+                    "failed crate must remain retryable without eliminating a healthy alternate route");
+                if (buildFails) Check(raid.Box(ids[0]) != null && raid.Pins().Length == 2,
+                    "recovered crate lost its reserved cargo route");
                 raid.Box(ids[1]).Open();
                 Check(raid.Pins().Length == 0 && raid.Loot.ManifestObjective == null && Raid.CargoCount() == 1,
                     "alternative did not resolve cleanly after a late failure");
@@ -334,6 +479,8 @@ internal static class Program
                 Check(stacks==cabinet.Stocks.Count && raid.Notices.Count(n=>n.Contains("stays in the lock"))==1,"lock reused its key or refilled");
                 Check(raid.Loot.ShiftKeyObjective==null && !raid.Pins().Any(p=>p.Key==TidegateLoot.ForemanPinKey),"key hint outlived the opened cabinet");
             }
+        CriticalStockFailures();
+        FloodedLootView();
         Console.WriteLine("PASS: " + boxes.Count + " authored containers, " + seeds + " seeds, all three route pairs and " + oneSlot +
             " one-stack wins; both choices and discovery orders, same normal losing stocks, exclusive cargo, official failures and cleanup.");
     }

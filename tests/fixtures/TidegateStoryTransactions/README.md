@@ -7,3 +7,5 @@
 另覆盖首次/主动镜像屏障、漏收切槽且官方采集先于下一 Tick，以及 F3 清空缓冲和非目标子树（实例号、变量与格位锁）的保留。反向探针在稀疏副本运行，不临时破坏共享工作树。
 
 入口：`python tools/run_runtime_regressions.py --filter TidegateStoryTransactions`。属于 L2 隔离证据，官方 UI 和真实游戏行为仍需 L3。
+
+2026-11-13 补充：从 TidegateDevices 提取实际 TurnValve 与规则帮助方法，使用生产 TidegateInventory.Reservation；覆盖缺手轮、移除前抛错、移除后会话关闭、重入及移除后回调抛错。成功只消耗原手轮一次，取消恢复原实例和格位，漏 Commit 的生产变异必须令用例转红。

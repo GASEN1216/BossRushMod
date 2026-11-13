@@ -19,6 +19,7 @@ namespace BossRush
         private const float OutOfBoundsMargin = 8f;
         /// <summary>补的边界墙从 y = -12 到 +6：外海最深处与高潮游泳时的身位都在里面。</summary>
         private const float BoundaryBottom = -12f, BoundaryTop = 6f;
+        private const float GroundProbeAbove = 0.25f, GroundProbeBelow = 9f;
         internal readonly GameObject Root;
         internal readonly Transform PlayerSpawn;
         internal readonly Dictionary<string, Transform> Exits = new Dictionary<string, Transform>(StringComparer.Ordinal);
@@ -35,7 +36,7 @@ namespace BossRush
         private bool heightReadable;
         private float[] lagoonMask;
         private int maskWidth, maskHeight;
-        private int groundMask;
+        private readonly List<Collider> groundColliders = new List<Collider>();
 
         internal TidegateWorld(GameObject root)
         {
@@ -96,8 +97,7 @@ namespace BossRush
         /// </summary>
         internal void ApplyLayers()
         {
-            groundMask = GameplayDataSettings.Layers.groundLayerMask.value;
-            int groundLayer = FirstLayer(groundMask);
+            int groundLayer = FirstLayer(GameplayDataSettings.Layers.groundLayerMask.value);
             int wallLayer = FirstLayer(GameplayDataSettings.Layers.wallLayerMask.value);
             if (groundLayer < 0 || wallLayer < 0) throw new InvalidOperationException("游戏碰撞层未就绪");
             var checkedShaders = new HashSet<Shader>();
@@ -116,19 +116,34 @@ namespace BossRush
                         throw new InvalidOperationException("当前显卡不支持潮闸镇着色器 " + shader.name + "，请更新 Mod 资源包");
                 }
             }
-            int ground = 0, walls = 0;
+            TidegateBuildingCollision.RestoreMissingParts(Root.transform);
+            groundColliders.Clear();
+            int walls = 0;
             foreach (Collider collider in Root.GetComponentsInChildren<Collider>(true))
             {
                 string name = collider.name;
-                if (name.StartsWith("COL_Ground", StringComparison.Ordinal)) { collider.gameObject.layer = groundLayer; ground++; }
+                if (name.StartsWith("COL_Ground", StringComparison.Ordinal))
+                {
+                    collider.gameObject.layer = groundLayer;
+                    if (collider.enabled && !collider.isTrigger && LocallyActive(collider.gameObject.transform))
+                        groundColliders.Add(collider);
+                }
                 else if (name.StartsWith("COL_Wall", StringComparison.Ordinal) || name.StartsWith("COL_Prop", StringComparison.Ordinal))
                 { collider.gameObject.layer = wallLayer; walls++; }
             }
-            if (ground == 0 || walls == 0) throw new InvalidOperationException("潮闸镇地面或墙体碰撞体缺失");
+            if (groundColliders.Count == 0 || walls == 0) throw new InvalidOperationException("潮闸镇地面或墙体碰撞体缺失");
             AddBoundary(wallLayer);
             Physics.SyncTransforms();
             int halfCover = RaidHalfCover.Register(Root.transform.Find("Collision"), wallLayer, TryGroundAt);
-            Debug.Log(TidegateRaidScene.LogTag + " LAYERS_READY ground=" + ground + " walls=" + walls + " halfCover=" + halfCover + " shaders=" + checkedShaders.Count);
+            Debug.Log(TidegateRaidScene.LogTag + " LAYERS_READY ground=" + groundColliders.Count + " walls=" + walls + " halfCover=" + halfCover + " shaders=" + checkedShaders.Count);
+        }
+
+        private bool LocallyActive(Transform node)
+        {
+            // 预装配时根可能整体停用，停用的子树仍不能作为地面。
+            for (; node != Root.transform; node = node.parent)
+                if (!node.gameObject.activeSelf) return false;
+            return true;
         }
 
         /// <summary>
@@ -139,8 +154,10 @@ namespace BossRush
         private void AddBoundary(int wallLayer)
         {
             Transform collision = Root.transform.Find("Collision");
+            Transform parent = collision != null ? collision : Root.transform;
+            if (parent.Find("COL_Wall_Boundary") != null) return;
             var holder = new GameObject("COL_Wall_Boundary");
-            holder.transform.SetParent(collision != null ? collision : Root.transform, false);
+            holder.transform.SetParent(parent, false);
             holder.layer = wallLayer;
             float height = BoundaryTop - BoundaryBottom, centerY = (BoundaryTop + BoundaryBottom) * 0.5f;
             Rect a = PlayArea;
@@ -166,9 +183,8 @@ namespace BossRush
                 || position.z < PlayArea.yMin - OutOfBoundsMargin || position.z > PlayArea.yMax + OutOfBoundsMargin;
         }
 
-        internal void VerifyGround(int mask)
+        internal void VerifyGround()
         {
-            groundMask = mask;
             VerifyGround(PlayerSpawn);
             foreach (Transform exit in Exits.Values) VerifyGround(exit);
         }
@@ -179,18 +195,22 @@ namespace BossRush
             if (!TryGroundAt(marker.position, out y)) throw new InvalidOperationException("点位脚下未命中自建地面：" + marker.name);
         }
 
-        /// <summary>脚下地面高度：从上方 3 m 向下打地面层，命中必须属于本图。</summary>
+        /// <summary>按脚点高度探测本图地面，允许一步的高差，并保留桥面下的水床。</summary>
         internal bool TryGroundAt(Vector3 position, out float y)
         {
             y = position.y;
-            RaycastHit hit;
-            if (Physics.Raycast(position + Vector3.up * 3f, Vector3.down, out hit, 12f, groundMask, QueryTriggerInteraction.Ignore)
-                && hit.transform.IsChildOf(Root.transform))
+            float distance = float.PositiveInfinity;
+            var ray = new Ray(position + Vector3.up * GroundProbeAbove, Vector3.down);
+            foreach (Collider collider in groundColliders)
             {
+                RaycastHit hit;
+                if (collider == null || !collider.Raycast(ray, out hit, GroundProbeAbove + GroundProbeBelow) || hit.normal.y <= 0f) continue;
+                float next = Mathf.Abs(hit.point.y - position.y);
+                if (next > distance || (next == distance && hit.point.y >= y)) continue;
+                distance = next;
                 y = hit.point.y;
-                return true;
             }
-            return false;
+            return distance < float.PositiveInfinity;
         }
 
         /// <summary>
@@ -255,7 +275,14 @@ namespace BossRush
             return -1;
         }
 
-        public void Dispose() { IndoorRoofs.Dispose(); heightTexture = null; lagoonMask = null; heightReadable = false; }
+        public void Dispose()
+        {
+            IndoorRoofs.Dispose();
+            groundColliders.Clear();
+            heightTexture = null;
+            lagoonMask = null;
+            heightReadable = false;
+        }
     }
 
 }

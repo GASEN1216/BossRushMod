@@ -33,6 +33,9 @@ namespace BossRush
             var errors = new List<string>();
             var notes = new List<string>();
             TidegateWorld world = session.DevWorld;
+            // 只读采样开跑位置，先于演练搬人/拨潮；不改官方时钟、天气或后处理。
+            notes.Add(RaidOfficialLighting.Describe(world.Root.scene));
+            notes.Add(session.DevIndoorLighting);
             if (session.DevWater == null) errors.Add("water_missing");
             if (session.DevExtraction == null) errors.Add("extraction_missing");
             if (session.DevLoot == null) errors.Add("loot_missing");

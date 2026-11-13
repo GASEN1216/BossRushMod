@@ -23,6 +23,9 @@ import bpy
 import numpy as np
 from mathutils import Vector
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from tidegate_collision_boxes import LOW_SOLID_SCATTER, building_obbs, scatter_parts, verify_standing_markers
+
 GROUPS = ['buildings', 'setpieces', 'props', 'containers', 'street', 'gameplay', 'vehicles', 'scatter']
 STATS = {}
 
@@ -280,18 +283,19 @@ def rects_from_mask(mask):
 # 0.2 m 的轮胎也是 1×1×1.3 m 的挡弹盒，旋转大件取轴对齐包围盒，墙盒比可见墙厚 0.6 m；长椅、路灯、灌木、隔离墩反而没有实体。
 # 现在：建筑墙 / 家具 / 外梯 / 管道来自 tools/build_tidegate_building_colliders.mjs，散布件、大件、路灯电线杆、搜刮箱、阀门
 # 按各自可见网格取有向包围盒；逻辑网格里被它们占的格子不再出方盒（导航仍按逻辑网格 + 这些盒子，见 build_tidegate_navigation.py）。
-LOW_LIMIT = 0.6     # 可见高度不到它的不给实体（规则第 2 条：0.12–0.6 m 正是「看着能跨、实际绊脚」的高度）
 BODY_LAYER = 2.2    # 只用离地这个高度以内的顶点量占地（吊臂、标记圈、树冠不算）
-# 散布种类 → (方式, 水平收缩)。没列出的（草、花、芦苇、海带、贝壳、积水、漂流木、地笼、渔网、托盘、轮胎、系缆桩）不给实体
+# 散布种类 → (方式, 水平收缩)。柔性植被、贴地贝壳、渔网和积水按各自语义处理。
 SCATTER_COLLIDE = {
     'crate': ('box', 1.0), 'barrel': ('box', 1.0), 'barrelRust': ('box', 1.0), 'drumBlue': ('box', 1.0),
     'barrierConcrete': ('box', 1.0), 'bench': ('box', 1.0), 'cableSpool': ('box', 1.0), 'trashBin': ('box', 1.0),
     'gasCylinder': ('box', 1.0), 'floatPile': ('box', 0.9), 'debris': ('box', 0.9),
     'bush': ('box', 0.55),  # 叶边不挡人，按冠幅五成多给一块实心灌丛
-    'rock1': ('box', 0.8), 'rock2': ('box', 0.8), 'rock3': ('box', 0.8),
+    'rock1': ('box', 0.8), 'rock3': ('box', 0.8),
     'pine': ('trunk', 0.4), 'broadleaf': ('trunk', 0.45),
     'crateStack': ('box', 1.0), 'sandbags': ('box', 1.0), 'rockCluster': ('box', 0.85),
+    **{kind: ('box', shrink) for kind, shrink in LOW_SOLID_SCATTER.items()},
 }
+SOFT_SCATTER = {'flowers', 'grassTuft', 'kelp', 'netPile', 'puddle', 'reedClump', 'shells', 'starfish'}
 
 
 # 战斗区减杂件（规则第 5 条）：可玩区里这些种类按位置哈希只留一半。决定只在这里做，写进 collision_boxes.json 的
@@ -380,8 +384,10 @@ def yaw_of(obj):
 def instance_obbs(layout, bounds):
     out = []
     for kind, rows in layout['instances'].items():
+        if rows and kind not in SCATTER_COLLIDE and kind not in SOFT_SCATTER:
+            raise RuntimeError(f'散布种类 {kind} 缺实体或柔性分类')
         rule = SCATTER_COLLIDE.get(kind)
-        if not rule or kind not in bounds:
+        if not rule or not rows:
             continue
         how, shrink = rule
         lo, hi = bounds[kind]
@@ -392,18 +398,12 @@ def instance_obbs(layout, bounds):
             if not (-90 < x < 90 and -70 < z < 70):
                 continue
             top = hi[1] * sy
-            if top < LOW_LIMIT:
-                continue
             if how == 'trunk':
                 w = shrink * sx
                 h = min(top, 3.0)
                 out.append(obb_entry('%s_%d' % (kind, i), kind, (x, y + h / 2, z), (w, h, w), ry, top, 'instance'))
                 continue
-            bottom = max(lo[1] * sy, 0.0)
-            c = ((lo[0] + hi[0]) / 2 * sx, (lo[2] + hi[2]) / 2 * sz)
-            wx, wz = rot_y(c[0], c[1], ry)
-            size = ((hi[0] - lo[0]) * sx * shrink, top - bottom, (hi[2] - lo[2]) * sz * shrink)
-            out.append(obb_entry('%s_%d' % (kind, i), kind, (x + wx, y + (top + bottom) / 2, z + wz), size, ry, top, 'instance'))
+            out.extend(scatter_parts(kind, i, t, lo, hi, shrink))
     return out
 
 
@@ -417,12 +417,12 @@ def object_obbs(colls):
     for o in colls['containers'].all_objects:  # 搜刮箱
         if o.name.startswith('LOOT_') and (o.parent is None or not o.parent.name.startswith('LOOT_')):
             e = obb_from_verts(o.name, 'loot', world_three_verts(o), yaw_of(o))
-            if e and e['visibleHeight'] >= LOW_LIMIT:
+            if e:
                 out.append(e)
     for o in colls['gameplay'].all_objects:  # 阀门
         if o.name.startswith('GP_valve_') and (o.parent is None or not o.parent.name.startswith('GP_valve_')):
             e = obb_from_verts(o.name, 'valve', world_three_verts(o), 0.0)
-            if e and e['visibleHeight'] >= LOW_LIMIT:
+            if e:
                 out.append(e)
     street = bpy.data.objects.get('TG_street')
     n = 0
@@ -445,38 +445,6 @@ def object_obbs(colls):
     return out
 
 
-def building_obbs(src_fbx):
-    path = src_fbx / 'tidegate_building_colliders.json'
-    if not path.is_file():
-        raise RuntimeError('缺少 %s：先跑 node tools/build_tidegate_building_colliders.mjs' % path)
-    data = json.loads(path.read_text(encoding='utf-8'))
-    out = []
-    for bid, b in data['buildings'].items():
-        rows = [('wall', i, q) for i, q in enumerate(b['walls'])] + [('stair', i, q) for i, q in enumerate(b['stairs'])]
-        rows += [('furniture:' + f['name'], i, f['box']) for i, f in enumerate(b['furniture'])]
-        rows += [('pipe', i, q) for i, q in enumerate(b['pipes'])]
-        for kind, i, q in rows:
-            h = q[4] - q[1]
-            if kind not in ('wall', 'stair') and h < LOW_LIMIT:
-                continue
-            out.append(obb_entry('B_%s_%s_%d' % (bid, kind.split(':')[0], i), kind,
-                                 ((q[0] + q[3]) / 2, (q[1] + q[4]) / 2, (q[2] + q[5]) / 2), (q[3] - q[0], h, q[5] - q[2]), 0.0, h, 'building'))
-    return out, data['sourceSha256']
-
-
-def marker_points(layout):
-    pts = [('spawn', (layout['spawn']['x'], 0.8, layout['spawn']['z']))]
-    pts += [(c['id'], c['position']) for c in layout['containers']] + [(v['id'], v['position']) for v in layout['valves']]
-    pts += [(e['id'], e['position']) for e in layout['exits']] + [(e['id'], e['position']) for e in layout['enemies']]
-    pts += [('WP_%s_%d' % (g, i), p) for g, ws in layout['waypoints'].items() for i, p in enumerate(ws)]
-    return pts
-
-
-def obb_contains(e, p, pad):
-    lx, lz = rot_y(p[0] - e['center'][0], p[2] - e['center'][2], -e['yaw'])
-    return abs(lx) <= e['size'][0] / 2 + pad and abs(lz) <= e['size'][2] / 2 + pad
-
-
 def box_faces(b):
     return [(b, b + 3, b + 2, b + 1), (b + 4, b + 5, b + 6, b + 7), (b, b + 1, b + 5, b + 4),
             (b + 1, b + 2, b + 6, b + 5), (b + 2, b + 3, b + 7, b + 6), (b + 3, b, b + 4, b + 7)]
@@ -490,20 +458,11 @@ def build_collision(src, layout, coll, colls):
     # ---- 逐件盒子 ----
     bounds = kind_local_bounds([colls['scatter'], colls['props']])
     obbs = instance_obbs(layout, bounds) + object_obbs(colls)
-    bobbs, kit_sha = building_obbs(src.parent / 'fbx')
-    obbs += bobbs
-    marks = marker_points(layout)
-    dropped, keep = [], []
-    for e in obbs:  # 盖住玩法点的家具 / 散布件不给实体（家具恰好压着搜刮箱之类），记下来交给设计看
-        # 车、集装箱等大件照旧是实体：落在里面的刷怪点运行时会吸到最近的导航面（TidegateEnemies.Spawn）
-        hit = None
-        if e['source'] in ('instance', 'building') and e['kind'] not in ('wall', 'stair'):
-            hit = next((name for name, p in marks if obb_contains(e, p, 0.1)), None)
-        if hit:
-            dropped.append([e['id'], hit])
-        else:
-            keep.append(e)
-    obbs = keep
+    kit = json.loads((src.parent / 'fbx/tidegate_building_colliders.json').read_text(encoding='utf-8'))
+    obbs += building_obbs(kit)
+    spawn = layout['spawn']
+    sy = hg[math.floor(spawn['z'] - g['OZ']), math.floor(spawn['x'] - g['OX'])]
+    verify_standing_markers(layout, obbs, sy)
     # ---- 逻辑网格里被逐件盒子取代的格子 ----
     covered = np.zeros((Hn, Wn), dtype=bool)
     for b in layout['buildings']:  # 建筑墙格
@@ -556,20 +515,19 @@ def build_collision(src, layout, coll, colls):
     me = bpy.data.meshes.new('COL_Obb'); me.from_pydata(verts, [], faces)
     ob = bpy.data.objects.new('COL_Obb', me); coll.objects.link(ob); ob.display_type = 'WIRE'; ob.hide_render = True
     boxes['Obb'] = obbs
-    boxes['obbDropped'] = dropped
     boxes['scatterThinned'] = scatter_thinned(layout)
     # 读图审计（tools/map_readability_audit.py）用：每个散布种类的单位高度与碰撞方式
     boxes['kindPolicy'] = {k: {'unitHeight': round(float(hi[1]), 3), 'policy': SCATTER_COLLIDE.get(k, ('none', 1.0))[0],
                                'maxScale': round(max((t[5] for t in layout['instances'].get(k, [])), default=1.0), 3)}
                            for k, (lo, hi) in bounds.items()}
-    boxes['lowLimit'] = LOW_LIMIT
-    boxes['buildingKitSha256'] = kit_sha
+    boxes['collisionPolicy'] = 'solid-geometry'
+    boxes['buildingKitSha256'] = kit['sourceSha256']
     coll.hide_render = True
     counts = {}
     for e in obbs:
         k = e['kind'].split(':')[0]
         counts[k] = counts.get(k, 0) + 1
-    STATS['collisionBoxes'] = {'Wall': len(boxes['Wall']), 'Prop': len(boxes['Prop']), 'Obb': len(obbs), 'obbDropped': len(dropped), 'obbKinds': counts,
+    STATS['collisionBoxes'] = {'Wall': len(boxes['Wall']), 'Prop': len(boxes['Prop']), 'Obb': len(obbs), 'obbKinds': counts,
                                'scatterThinned': {k: len(v) for k, v in boxes['scatterThinned'].items()}}
     return boxes
 

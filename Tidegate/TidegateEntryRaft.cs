@@ -42,7 +42,7 @@ namespace BossRush
             return File.Exists(Path.Combine(ModBehaviour.GetModPath(), BundleRelativePath));
         }
 
-        internal static GameObject Create(Scene scene, ModBehaviour owner)
+        internal static GameObject Create(Scene scene, ModBehaviour owner, Action<RaidOfficialLighting> prepareLighting)
         {
             GameObject root = new GameObject("BossRush_TidegateRaft");
             try
@@ -63,7 +63,7 @@ namespace BossRush
                 TidegateRaftInteractable entry = NPCInteractionGroupHelper.GetOrCreateStandaloneInteractable<TidegateRaftInteractable>(
                     root.transform, "TidegateRaftEntry", TidegateEntryPoint.InteractLocal, x =>
                     {
-                        x.Bind(owner);
+                        x.Bind(owner, prepareLighting);
                         // 感应球在走道栏杆上方，站在岸上就够得着；不覆盖到水道里。
                         SphereCollider sensor = x.GetComponent<SphereCollider>();
                         if (sensor != null) { sensor.radius = TidegateEntryPoint.InteractRadius; sensor.isTrigger = true; }

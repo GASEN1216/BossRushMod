@@ -56,6 +56,27 @@ def check(root, project):
         errors.append("TidegateWorld: 潮闸镇必须使用室外立即复原路径")
     if "world.IndoorRoofs.UpdateFeet(feet);" not in body(tide, "internal void SetViewFocus("):
         errors.append("TidegateTide: 主角位置必须驱动屋顶 owner")
+    session = clean_source((root / "Tidegate/TidegateSession.cs").read_text("utf-8-sig"))
+    build_session = body(session, "private IEnumerator Build(Action<RaidOfficialLighting> prepareLighting)")
+    update_session = body(session, "private void Update()")
+    prepare_at, load_at = build_session.find("tide.PrepareIndoorFill();"), build_session.find("lease.BeginLoad();")
+    if prepare_at < 0 or load_at < 0 or prepare_at > load_at:
+        errors.append("TidegateSession: 必须在官方卸载前准备室内灯模板")
+    if not re.search(r"world\.ApplyLayers\(\);.*?tide\.Bind\(world\);", build_session, re.S):
+        errors.append("TidegateSession: 官方补光必须在材质图层建立后绑定")
+    if not re.search(r"tide\.SetViewFocus\(position\);.*?tide\.Tick\(Time\.deltaTime\);", update_session, re.S):
+        errors.append("TidegateSession: 当帧脚点判定必须先于灯数组更新")
+    for token in ("indoorFill.ShowRoom(bounds, IndoorLampHeight);", "indoorFill.HideRoom();"):
+        if token not in body(tide, "internal void SetViewFocus("):
+            errors.append("TidegateTide: 进出屋必须驱动官方角色补光：" + token)
+    if "indoorFill.Dispose();" not in body(tide, "public void Dispose()"):
+        errors.append("TidegateTide: 释放房间灯与停用模板")
+    if "indoorFill.Bind(world.Root);" not in body(tide, "internal void Bind("):
+        errors.append("TidegateTide: 必须绑定本图根")
+    if "RaidOfficialLighting.TryRead(world.Root.scene," not in body(tide, "internal void Tick("):
+        errors.append("TidegateTide: 自研材质必须镜像本图官方太阳")
+    if "new SkyIslandLighting(" in session or "lighting.Tick(" in session:
+        errors.append("TidegateSession: 不得再用天空岛自定义日照覆盖官方天气")
     for token in ("_TidegateExterior", "_TidegateRuin", "_TidegateViewFocus"):
         if token in roofs or token in tide:
             errors.append("潮闸镇不得恢复视线/墙体裁切参数 " + token)

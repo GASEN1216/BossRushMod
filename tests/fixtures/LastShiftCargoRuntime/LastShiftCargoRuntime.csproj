@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>7.3</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../LastShiftYard/LastShiftLoot.cs" />
+    <Compile Include="../../../LastShiftYard/LastShiftTimetable.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandLootTables.cs" />
+    <Compile Include="../../../SkyIsland/SkyIslandRewardCrate.cs" />
+  </ItemGroup>
+</Project>

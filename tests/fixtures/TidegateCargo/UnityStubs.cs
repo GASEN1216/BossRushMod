@@ -39,12 +39,19 @@ namespace UnityEngine
     {
         public string name;
         public Transform transform;
+        public static Action<GameObject> Activating;
         internal readonly List<Component> components = new List<Component>();
         public bool activeSelf = true;
+        public bool activeInHierarchy { get { return !dead && activeSelf && (transform.parent == null || transform.parent.gameObject.activeInHierarchy); } }
         public GameObject(string name) { this.name = name; transform = AddComponent<Transform>(); }
         public T AddComponent<T>() where T : Component
         { var c = (T)Activator.CreateInstance(typeof(T)); c.gameObject = this; components.Add(c); return c; }
-        public void SetActive(bool value) { activeSelf = value; }
+        public void SetActive(bool value)
+        {
+            bool wasActive = activeInHierarchy;
+            activeSelf = value;
+            if (!wasActive && activeInHierarchy) Activating?.Invoke(this);
+        }
     }
     public partial class Transform : Component
     {
@@ -58,7 +65,13 @@ namespace UnityEngine
             return at;
         }
         public void SetParent(Transform value, bool preserve)
-        { if (parent != null) parent.children.Remove(this); parent = value; if (parent != null) parent.children.Add(this); }
+        {
+            bool wasActive = gameObject.activeInHierarchy;
+            if (parent != null) parent.children.Remove(this);
+            parent = value;
+            if (parent != null) parent.children.Add(this);
+            if (!wasActive && gameObject.activeInHierarchy) GameObject.Activating?.Invoke(gameObject);
+        }
     }
     public partial struct Vector3
     {

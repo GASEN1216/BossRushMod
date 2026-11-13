@@ -42,6 +42,7 @@ namespace UnityEngine
         public readonly Transform transform;
         public int layer;
         public bool activeSelf = true;
+        public bool activeInHierarchy { get { return activeSelf && (transform.parent == null || transform.parent.gameObject.activeInHierarchy); } }
         public GameObject(string value) { name = value; transform = new Transform { gameObject = this }; Components.Add(transform); }
         public T AddComponent<T>() where T : Component, new() { T c = new T { gameObject = this }; Components.Add(c); if (c is Collider) Physics.Colliders.Add((Collider)(object)c); return c; }
         public T GetComponent<T>() where T : Component { return Components.OfType<T>().FirstOrDefault(c => c != null); }
@@ -55,6 +56,8 @@ namespace UnityEngine
         public readonly List<Transform> Children = new List<Transform>();
         public Transform parent;
         public Vector3 localPosition, localScale = Vector3.one;
+        // 补件（TidegateBuildingCollision）写入的朝向；水区判定不读旋转，替身只存不算。
+        public Quaternion localRotation = Quaternion.identity;
         public Vector3 position { get { return parent == null ? localPosition : parent.TransformPoint(localPosition); } set { localPosition = parent == null ? value : parent.InverseTransformPoint(value); } }
         public void SetParent(Transform value, bool preserve) { Vector3 before = position; if (parent != null) parent.Children.Remove(this); parent = value; if (value != null) value.Children.Add(this); if (preserve) position = before; }
         public Vector3 TransformPoint(Vector3 value) { Vector3 point = localPosition + Vector3.Scale(localScale, value); return parent == null ? point : parent.TransformPoint(point); }
@@ -64,6 +67,12 @@ namespace UnityEngine
         public bool IsChildOf(Transform value) { return this == value || parent != null && parent.IsChildOf(value); }
         public IEnumerator<Transform> GetEnumerator() { return Children.GetEnumerator(); }
         IEnumerator IEnumerable.GetEnumerator() { return GetEnumerator(); }
+    }
+    public struct Quaternion
+    {
+        public float x, y, z, w;
+        public static Quaternion identity { get { return new Quaternion { w = 1f }; } }
+        public static Quaternion Euler(float ex, float ey, float ez) { return new Quaternion { x = ex, y = ey, z = ez, w = 1f }; }
     }
     public struct Vector3
     {
@@ -110,14 +119,15 @@ namespace UnityEngine
     public class Renderer : Component { public Material sharedMaterial; public Material[] sharedMaterials { get { return new[] { sharedMaterial }; } } }
     public sealed class ParticleSystemRenderer : Renderer { }
     public sealed class LineRenderer : Renderer { }
-    public class Collider : Component { public bool enabled = true; public virtual Bounds bounds { get { return new Bounds(); } } }
+    public class Collider : Component { public bool enabled = true, isTrigger; public virtual Bounds bounds { get { return new Bounds(); } } public bool Raycast(Ray ray, out RaycastHit hit, float distance) { return Physics.Raycast(ray.origin, ray.direction, out hit, distance, -1, QueryTriggerInteraction.Ignore); } }
     public sealed class BoxCollider : Collider
     {
-        public bool isTrigger; public Vector3 center, size;
+        public Vector3 center, size;
         public override Bounds bounds { get { Vector3 c = transform.TransformPoint(center), s = Vector3.Scale(transform.lossyScale, size); return new Bounds { min = c-s*.5f, max = c+s*.5f }; } }
     }
     public struct Bounds { public Vector3 min,max; }
-    public struct RaycastHit { public Transform transform; public Vector3 point; }
+    public struct RaycastHit { public Transform transform; public Vector3 point, normal; }
+    public struct Ray { public Vector3 origin, direction; public Ray(Vector3 from, Vector3 toward) { origin = from; direction = toward; } }
     public enum QueryTriggerInteraction { Ignore }
     public struct LayerMask { public int value; public static int NameToLayer(string value) { return 4; } }
     public static class Physics
@@ -142,7 +152,7 @@ namespace UnityEngine
             return count;
         }
     }
-    public static class Mathf { public static float Max(float a,float b) { return Math.Max(a,b); } public static float Sqrt(float value) { return (float)Math.Sqrt(value); } }
+    public static class Mathf { public static float Abs(float value) { return Math.Abs(value); } public static float Max(float a,float b) { return Math.Max(a,b); } public static float Sqrt(float value) { return (float)Math.Sqrt(value); } }
     public static class Time { public static float unscaledTime; }
     public static class Debug { public static readonly List<string> Logs = new List<string>(); public static void Log(string value) { Logs.Add(value); } public static void LogWarning(string value) { Logs.Add(value); } }
 }

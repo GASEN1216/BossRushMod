@@ -30,7 +30,7 @@ namespace BossRush
         private IEnumerator<Progress> scan;
         private Seeker probe;
         private SkyIslandHud hud;
-        private SkyIslandLighting lighting;
+        private RaidOfficialLighting lighting;
         private TidegateWorld world;
         private TidegateTide tide;
         private TidegateExtraction extraction;
@@ -102,7 +102,7 @@ namespace BossRush
             return true;
         }
 
-        internal static void Enter(ModBehaviour owner, Action<string, bool> status)
+        internal static void Enter(ModBehaviour owner, Action<string, bool> status, Action<RaidOfficialLighting> prepareLighting)
         {
             string reason;
             if (!CanEnter(owner, out reason)) { status(reason, true); return; }
@@ -110,7 +110,7 @@ namespace BossRush
             session.host = owner;
             session.report = status;
             session.Subscribe();
-            session.StartCoroutine(session.BuildGuarded());
+            session.StartCoroutine(session.BuildGuarded(prepareLighting));
         }
 
         private void Subscribe()
@@ -122,9 +122,9 @@ namespace BossRush
             subscribed = true;
         }
 
-        private IEnumerator BuildGuarded()
+        private IEnumerator BuildGuarded(Action<RaidOfficialLighting> prepareLighting)
         {
-            IEnumerator steps = Build();
+            IEnumerator steps = Build(prepareLighting);
             while (!closed)
             {
                 bool more;
@@ -144,7 +144,7 @@ namespace BossRush
             }
         }
 
-        private IEnumerator Build()
+        private IEnumerator Build(Action<RaidOfficialLighting> prepareLighting)
         {
             Safe("hud", delegate
             {
@@ -160,6 +160,11 @@ namespace BossRush
             lease = new ModRaidLease(profile);
             lease.BeginPrepare(ModBehaviour.GetModPath(), timeOfDayTemplate);
             while (lease.StepPreparation()) yield return null;
+            // 竹筏所在的下水道没有方向光。用模块此前在基地外景保留的官方模板准备本趟主光。
+            lighting = new RaidOfficialLighting();
+            prepareLighting(lighting);
+            tide = new TidegateTide();
+            tide.PrepareIndoorFill();
             loadStarted = true;
             lease.BeginLoad();
             float deadline = Time.realtimeSinceStartup + 120;
@@ -185,14 +190,12 @@ namespace BossRush
             groundMask = GameplayDataSettings.Layers.groundLayerMask.value;
             world = new TidegateWorld(root);
             world.ApplyLayers();
-            lighting = new SkyIslandLighting();
-            lighting.Apply(root);
-            tide = new TidegateTide(world);
+            tide.Bind(world);
             tide.Tick(0f);
             // 涨退潮是这张图的主机制，换相要有字幕与警报（CR-2026-11-05-017）；首个 Tick 只定相位、不触发。
             tide.PhaseChanged += OnTidePhaseChanged;
             Physics.SyncTransforms();
-            world.VerifyGround(groundMask);
+            world.VerifyGround();
             Transform nav = root.transform.Find("Navigation");
             if (nav == null || nav.localPosition != Vector3.zero || nav.localScale != Vector3.one || nav.localRotation != Quaternion.identity)
                 throw new InvalidOperationException("Navigation 必须位于世界根下且为单位变换");
@@ -328,6 +331,7 @@ namespace BossRush
                 foreach (GameObject candidate in scene.GetRootGameObjects())
                     if (candidate.name == TidegateRaidScene.WorldRootName) root = candidate;
                 if (root == null) throw new InvalidOperationException("独立场景缺少地形根节点");
+                lighting.Apply(root);
                 LevelManager.RegisterWaitForInitialization(this);
             }
             catch (Exception e)
@@ -364,7 +368,9 @@ namespace BossRush
             string mode;
             if (host == null || host.ValidationHasActiveMode(out mode)) { Close(true, "mode_changed"); return; }
             // 各子系统各自隔离异常；直接 try/catch，不在每帧路径上分配委托。
-            try { if (lighting != null) lighting.Tick(); } catch (Exception e) { TickFault("lighting", e); }
+            Vector3 position = player.transform.position;
+            // 本帧脚点先交给官方切顶适配，再更新房间灯，出入门不延后一帧。
+            try { if (tide != null) tide.SetViewFocus(position); } catch (Exception e) { TickFault("indoor", e); }
             try { if (tide != null) tide.Tick(Time.deltaTime); } catch (Exception e) { TickFault("tide", e); }
             try { if (water != null) water.Tick(); } catch (Exception e) { TickFault("water", e); }
             TidegateFrameProbe.Mark(TidegateTickPart.TideWater);
@@ -374,8 +380,6 @@ namespace BossRush
             TidegateFrameProbe.Mark(TidegateTickPart.EnemyOwner);
             try { if (devices != null) devices.Tick(); } catch (Exception e) { TickFault("devices", e); }
             try { if (map != null) map.Tick(extraction, devices != null && devices.BeaconLit); } catch (Exception e) { TickFault("map", e); }
-            Vector3 position = player.transform.position;
-            if (tide != null) tide.SetViewFocus(position);
             try { if (sounds != null) sounds.Tick(position); } catch (Exception e) { TickFault("sounds", e); }
             TidegateFrameProbe.Mark(TidegateTickPart.DevicesMapSound);
             // 四边有墙（TidegateWorld.AddBoundary），这里只兜物理穿模或掉出世界：出了可玩区 8 m 或掉到 -14 m 以下拉回落脚点。

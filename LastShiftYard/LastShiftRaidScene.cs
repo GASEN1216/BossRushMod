@@ -28,6 +28,7 @@ namespace BossRush
             LocalizationHelper.InjectLocalization("BossRush_LastShiftYard_SceneName", DisplayName);
             LocalizationHelper.InjectLocalization(LastShiftEntryInteractable.NameKey, L10n.T("剪票上末班车", "Board the last train"));
             // 「没人来领的末班票」三条线索与收尾的官方笔记标题、正文（随语言刷新）
+            LastShiftYuXiang.InjectLocalization();
             LastShiftNoteBridge.InjectNoteKeys();
         }
 

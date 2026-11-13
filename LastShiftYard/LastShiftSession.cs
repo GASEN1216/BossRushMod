@@ -32,7 +32,7 @@ namespace BossRush
         private IEnumerator<Progress> scan;
         private Seeker probe;
         private SkyIslandHud hud;
-        private SkyIslandLighting lighting;
+        private RaidOfficialLighting lighting;
         private LastShiftWorld world;
         private LastShiftLighting lights;
         private LastShiftExtraction extraction;
@@ -150,6 +150,12 @@ namespace BossRush
             lease = new ModRaidLease(profile);
             lease.BeginPrepare(ModBehaviour.GetModPath(), timeOfDayTemplate);
             while (lease.StepPreparation()) yield return null;
+            // 日照继续交给官方天气 Volume；卸载仓库前保留官方太阳及其独立阴影配置。
+            lighting = new RaidOfficialLighting();
+            lighting.Prepare(SceneManager.GetSceneByName(LastShiftEntryPoint.SceneName));
+            // 官方加载器先卸仓库再载本站；体积补光的网格 / 材质必须在卸图前持有。
+            lights = new LastShiftLighting();
+            lights.PrepareIndoorFill();
             loadStarted = true;
             lease.BeginLoad();
             float deadline = Time.realtimeSinceStartup + 120;
@@ -173,9 +179,7 @@ namespace BossRush
             groundMask = GameplayDataSettings.Layers.groundLayerMask.value;
             world = new LastShiftWorld(root);
             world.ApplyLayers();
-            lighting = new SkyIslandLighting();
-            lighting.Apply(root);
-            lights = new LastShiftLighting(world);
+            lights.Bind(world);
             lights.Tick();
             Physics.SyncTransforms();
             world.VerifyGround(groundMask);
@@ -275,17 +279,22 @@ namespace BossRush
                 string manifest = ManifestFor(timetable, seed);
                 trains = new LastShiftTrains(world, timetable, navigation, extraction, manifest, Status, IsSessionValid);
                 trains.ManifestExtra = delegate { return LastShiftStory.RecordsLine(run == null ? 0 : run.Records); };
+                // 故事收尾后余响替你打听加价签：运单牌上写着下一班的加价台（2026-11-13 起加价台逐班抽、进站才揭晓）。
+                trains.KnowsPremium = delegate { return LastShiftStory.Journal; };
             });
             Safe("loot", delegate
             {
                 if (trains == null) return;
-                loot = new LastShiftLoot(world, trains.Timetable, trains.Manifest, seed, IsSessionValid, Status);
+                loot = new LastShiftLoot(world, trains.Timetable, trains.Manifest, seed, player, IsSessionValid, Status);
                 loot.Opened += OnLootOpened;
+                loot.UiBusy = delegate { return View.ActiveView != null; };
             });
             Safe("enemies", delegate
             {
                 if (trains == null) return;
                 enemies = new LastShiftEnemies(world, trains.Timetable, navigation, player, seed, ReturnVisit(), IsSessionValid, unreachable, Status);
+                // 押运警戒：签得越多，押运车厢放下的人越多、补员越快（签收 owner 是唯一事实源）。
+                enemies.Heat = delegate { return loot == null ? 0 : loot.Signatures; };
             });
             Safe("story", delegate { run = new LastShiftRun(world, Status, IsSessionValid); });
             Safe("boarding_tip", ArrivalTip);
@@ -297,22 +306,22 @@ namespace BossRush
         public bool HasInitialized() { return navigationReady || closed; }
 
         /// <summary>
-        /// 回访开局的一句（第七轮）：故事收尾后余响直接说出下一班的事件和加价台；在那之前只说班单，加价台写在运单牌上。
-        /// 第一趟有首班教学的落地提示，这里不说。
+        /// 回访开局的一句（第七轮）：故事收尾后余响直接说出下一班的事件和加价台，并让调度把道岔先扳过去；在那之前只说班单，
+        /// 加价签要等车进站才贴（2026-11-13 起加价台逐班抽）。第一趟有首班教学的落地提示，这里不说。
         /// </summary>
         private void ArrivalTip()
         {
             if (trains == null || trains.Timetable.Training) return;
             LastShiftTimetable t = trains.Timetable;
-            // 故事收尾后余响替你跟调度打过招呼：开局道岔已经放到加价台（owner 2026-11-11），想换边仍可自己扳。
-            if (LastShiftStory.Journal) trains.PresetLine(t.Premium);
+            // 故事收尾后余响替你跟调度打过招呼：开局道岔已经放到下一班的加价台（owner 2026-11-11），想换边仍可自己扳。
+            if (LastShiftStory.Journal) trains.PresetLine(t.UpcomingPremium);
             string head = L10n.T("今晚的班单：" + LastShiftText.ManifestName(trains.Manifest) + "。",
                 "Tonight's manifest: " + LastShiftText.ManifestName(trains.Manifest).ToLowerInvariant() + ".");
             if (LastShiftStory.Journal)
-                Status(head + L10n.T("剪票时余响交代过：下一班是" + LastShiftText.EventLabel(t.Event) + "，调度会把它放到" + LastShiftText.PlatformName(t.Line) + "台。",
-                    " Yu Xiang told you at the desk: the next one's a " + LastShiftText.EventLabel(t.Event).ToLowerInvariant()
-                    + ", and dispatch is sending it to the " + LastShiftText.LineName(t.Line) + " platform."), false);
-            else Status(head + L10n.T("加价台写在南班房边的运单牌上。", " The premium platform is posted on the manifest board by the south crew room."), false);
+                Status(head + L10n.T("剪票时余响交代过：下一班是" + LastShiftText.EventLabel(t.UpcomingEvent) + "，加价签贴在" + LastShiftText.PlatformName(t.UpcomingPremium) + "台，道岔已经扳过去了。",
+                    " Yu Xiang told you at the desk: the next one's a " + LastShiftText.EventLabel(t.UpcomingEvent).ToLowerInvariant()
+                    + ", the premium tag goes on the " + LastShiftText.LineName(t.UpcomingPremium) + " platform, and the switch is already set."), false);
+            else Status(head + L10n.T("加价签车进站才贴，站场广播会说。末班车一走就封站。", " The premium tag goes on when the train pulls in; the tannoy will say. The yard closes once the last train leaves."), false);
         }
 
         /// <summary>安全撤离：补齐本趟记录（签收、带红、警铃），整趟进度写进本槽剧情存档。阵亡与装配失败不走这里。</summary>
@@ -378,6 +387,8 @@ namespace BossRush
                 foreach (GameObject candidate in scene.GetRootGameObjects())
                     if (candidate.name == LastShiftRaidScene.WorldRootName) root = candidate;
                 if (root == null) throw new InvalidOperationException("独立场景缺少地形根节点");
+                // sceneLoaded 早于官方关卡初始化；太阳在本图成为活动场景时交给 LightControl。
+                lighting.Apply(root);
                 LevelManager.RegisterWaitForInitialization(this);
             }
             catch (Exception e)
@@ -411,10 +422,10 @@ namespace BossRush
             { Close(false, "owner_lost"); return; }
             string mode;
             if (host == null || host.ValidationHasActiveMode(out mode)) { Close(true, "mode_changed"); return; }
-            try { if (lighting != null) lighting.Tick(); } catch (Exception e) { TickFault("lighting", e); }
-            try { if (lights != null) lights.Tick(); } catch (Exception e) { TickFault("lights", e); }
             Vector3 position = player.transform.position;
             try { if (world != null) world.IndoorRoofs.UpdateFeet(position); } catch (Exception e) { TickFault("indoor", e); }
+            // 先发布本帧脚点所在房间，再切换角色补光，避免进出门沿用上一帧的室内状态。
+            try { if (lights != null) lights.Tick(); } catch (Exception e) { TickFault("lights", e); }
             try { if (trains != null && trains.Tick(player, View.ActiveView == null ? Time.deltaTime : 0f)) return; }
             catch (Exception e) { TickFault("trains", e); }
             try { if (loot != null) loot.Tick(player); } catch (Exception e) { TickFault("loot", e); }
@@ -470,7 +481,7 @@ namespace BossRush
                 if (hud != null) hud.SetExtraction(extraction.HudFallback);
                 string locked = extraction.LockedNear(position);
                 if (locked != null && locked != lockedExitShown)
-                    Status(LastShiftText.ExitLockedLine(locked), false);
+                    Status(LastShiftText.ExitLockedLine(locked, trains != null && trains.Timetable.YardClosed), false);
                 lockedExitShown = locked;
             }
             if (Time.unscaledTime >= nextHud)
@@ -479,10 +490,12 @@ namespace BossRush
                 if (hud != null)
                 {
                     UpdateRegion(position);
-                    hud.SetObjective(trains != null ? trains.Objective(loot != null && loot.CargoClaimed)
+                    int signatures = loot == null ? 0 : loot.Signatures;
+                    hud.SetObjective(trains != null ? trains.Objective(loot != null && loot.SignedThisTrain, signatures)
                         : L10n.T("搜刮后从开着的出口撤离：北公路常开", "Loot, then leave through an open exit. The north road is always open"));
                     string counter = run == null ? null : run.Counter();
-                    if (extraction != null) hud.SetChips((trains != null ? trains.Chip() + " · " : "") + (counter == null ? "" : counter + " · ") + extraction.Describe());
+                    string signed = signatures == 0 ? "" : L10n.T("已签 " + signatures + " 柜 · ", signatures + " signed · ");
+                    if (extraction != null) hud.SetChips((trains != null ? trains.Chip() + " · " : "") + signed + (counter == null ? "" : counter + " · ") + extraction.Describe());
                 }
             }
         }

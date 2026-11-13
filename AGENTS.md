@@ -107,7 +107,7 @@ python tools/run_guards.py --filter OfficialCompileList
 
 ### 4.14 UI 走共享库与官方界面
 
-- UI 规则全文在 `Common/UI/AGENTS.md`；共享库 `Common/UI/BossRushUI.cs`，优先复用官方界面。
+- UI 规则全文在 `Common/UI/AGENTS.md`；共享库 `Common/UI/BossRushUI.cs`，优先复用官方界面。 NPC 完整对白与分支必须经真实 `DialogueActor` 和共享 `DialogueManager` 接官方 `DialogueUI`，不得以自绘面板代替。
 - 按钮质感走共享 `BossRushUIFeel`，按钮颜色用 `ZombieModeUIHelper` 入口；面板描边走 `ApplyPanelStroke` / `ApplyFramedPanelSkin`。
 - 主操作填充用 `BossRushUIColors.AccentFill`，`Accent` 只作强调；可见文字遵守 `PlayerFacingGlyphGuard`。
 - 新 UI 按 `docs/architecture/UI制作共识.md` 定页型与按钮归属；确认弹窗统一 `BossRushConfirmDialog`。
@@ -123,7 +123,7 @@ python tools/run_guards.py --filter OfficialCompileList
 
 - 新内容与 `SCHEMA+` 可以自主实现；每件内容要有获取途径、用途和系统接线。后续商品不再放入叮当商店，按背景分配给已有可结婚自定义 NPC；细则见 `Integration/AGENTS.md`「新增物品 / 装备要接的地方」与「原根规则 §4.16」。
 - 存档扩展保留旧档默认值、掩码与版本，复用 `BossRushSaveCoordinatorEngine` 和 `BossRushSlotJsonStore`。
-- 资源重打前核对作者工程，贴图导入和头盔校准按 `Integration/AGENTS.md` 执行；作者工程路径由 `tools/unity_project_path.py` 解析。
+- 资源重打前核对作者工程，贴图导入和头盔校准按 `Integration/AGENTS.md` 执行；作者工程路径由 `tools/unity_project_path.py` 解析。 可见硬实物必须配合形实体，不能用 Trigger 或高度豁免替代；物理语义、空隙和验收见 `SkyIsland/AGENTS.md` §6.1。
 - 历史交付范围不是长期禁令；破坏性事项仍按 §10。
 
 ### 4.17 F3 验收用例与常驻 HUD

@@ -200,8 +200,8 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 上车时交票根：身上带着票根、故事还没收尾就收下它，写剧情收尾。先写存档再拿走票根——存档写不进去时票根留在身上，下次再交。
-        /// 返回 true 表示这一次交成了（调用方弹收尾那一页）。
+        /// 上车或对话时交票根：身上带着票根、故事还没收尾就收下它，写剧情收尾。先写存档再拿走票根——存档写不进去时票根留在身上，下次再交。
+        /// 返回 true 表示这一次交成了（调用方播放收尾对话）。
         /// </summary>
         internal static bool TryHandIn(CharacterMainControl player)
         {
@@ -252,23 +252,6 @@ namespace BossRush
         internal static bool SetJeff(bool accepted, bool done)
         {
             return Mutate(delegate (LastShiftStoryData x) { x.JeffAccepted = accepted; x.JeffDone = done; });
-        }
-
-        /// <summary>收尾页（上车时交票、和余响说话时交票共用）：读完按 <paramref name="confirm"/> 继续。</summary>
-        internal static void ShowEnding(string confirm, Action after)
-        {
-            BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
-            {
-                Title = LastShiftText.EndingTitle,
-                Body = LastShiftText.EndingBody,
-                SingleAction = true,
-                Warning = LastShiftText.EndingWarning,
-                ConfirmLabel = confirm,
-                Danger = false,
-                OnConfirm = delegate { if (after != null) after(); },
-                // 单按钮页的 Esc 也走「取消」：票根这时已经交了，Esc 不能把上车 / 后续吞掉，和按按钮一样往下走。
-                OnCancel = delegate { if (after != null) after(); },
-            });
         }
 
         /// <summary>站台记录的一行摘要（运单牌上看）。</summary>

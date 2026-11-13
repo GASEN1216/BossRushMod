@@ -137,7 +137,7 @@ namespace BossRush
             FadeSteam();
         }
 
-        // 到点先撤官方烟雾的遮挡体、让粒子自然散，再销毁；寿命字段的语义没法离线核对，这一步保证 7 秒后不再遮视线。
+        // 到点先撤官方烟雾的遮挡体，让粒子自然散。这一步让遮挡随阀门计时结束，粒子可以继续淡出。
         private void FadeSteam()
         {
             if (steamFx == null) return;
@@ -155,7 +155,7 @@ namespace BossRush
             steamFx = null;
         }
 
-        // 官方烟雾弹爆开后生成的那团烟（同 Mode E 的 PlaySmokeVFX）：只取一次预制件，临时物品当场销毁。
+        // 按官方物品设置取烟雾技能的爆开预制件，保持物品本体不实例化。
         private void PlaySteam()
         {
             try
@@ -163,14 +163,10 @@ namespace BossRush
                 if (!smokeLookedUp)
                 {
                     smokeLookedUp = true;
-                    Item item = null;
-                    try
-                    {
-                        item = ItemAssetsCollection.InstantiateSync(SmokeGrenadeTypeId);
-                        Skill_Grenade skill = item != null ? item.GetComponentInChildren<Skill_Grenade>() : null;
-                        if (skill != null && skill.grenadePfb != null) smokePrefab = skill.grenadePfb.createOnExlode;
-                    }
-                    finally { if (item != null) UnityEngine.Object.Destroy(item.gameObject); }
+                    Item prefab = ItemAssetsCollection.GetPrefab(SmokeGrenadeTypeId);
+                    ItemSetting_Skill setting = prefab != null ? prefab.GetComponent<ItemSetting_Skill>() : null;
+                    Skill_Grenade skill = setting != null ? setting.Skill as Skill_Grenade : null;
+                    if (skill != null && skill.grenadePfb != null) smokePrefab = skill.grenadePfb.createOnExlode;
                 }
                 if (smokePrefab == null) return;
                 if (steamFx != null) UnityEngine.Object.Destroy(steamFx);

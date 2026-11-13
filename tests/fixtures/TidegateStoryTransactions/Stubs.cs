@@ -28,7 +28,7 @@ namespace UnityEngine
         }
     }
     public sealed class GameObject : Object { public readonly List<Object> Components = new List<Object>(); }
-    public static class Time { public static int frameCount; public static float unscaledTime; }
+    public static class Time { public static int frameCount; public static float unscaledTime; public static float time { get { return unscaledTime; } } }
     public static class Debug { public static void Log(string text) { } public static void LogWarning(string text) { } }
 }
 
@@ -136,6 +136,7 @@ namespace ItemStatsSystem
         public int GetInstanceID() { return Id; }
         public void Detach()
         {
+            InInventory?.BeforeRemove?.Invoke(this);
             if (InInventory != null) { Inventory owner = InInventory; int at = owner.GetIndex(this); owner.Content[at] = null; InInventory = null; owner.AfterRemove?.Invoke(this); }
             if (PluggedIntoSlot != null) { PluggedIntoSlot.Content = null; PluggedIntoSlot = null; }
         }
@@ -156,6 +157,7 @@ namespace ItemStatsSystem
         public readonly List<Item> Content = new List<Item>();
         public int Capacity = 30;
         public Action<Item> AfterRemove;
+        public Action<Item> BeforeRemove;
         public int GetIndex(Item item) { return Content.IndexOf(item); }
         public Item GetItemAt(int index) { return index >= 0 && index < Content.Count ? Content[index] : null; }
         public bool AddAt(Item item, int index)

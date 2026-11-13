@@ -7,13 +7,15 @@ namespace BossRush
     /// <summary>
     /// 潮闸镇的潮汐运行时 owner：按官方游戏时钟推进潮位（规则在 <see cref="TidegateTideRules"/>），
     /// 每帧把潮位、湿痕、昼夜与灯数组（夜灯、点亮后的灯塔、手电）写进三套自研着色器的全局量，并按潮位封住被淹的导航三角形。
-    /// 光照本体由会话里的 `SkyIslandLighting` 持有（自有太阳光、官方 LightControl、随官方时钟调色），
-    /// 这里只把它写出的太阳 / 环境量镜像到 `_Tidegate*`，两套材质与官方角色用同一份光。
+    /// `_Tidegate*` 镜像原版天气驱动的太阳与环境色。进入建筑时，自研材质读室内灯数组，官方角色由 SodaPointLight 补光。
     /// </summary>
     internal sealed partial class TidegateTide : IDisposable
     {
         private const int MaxLamps = 16;
         private const float LampRange = 9f;
+        // 作者触发盒底边比实际楼面低 0.5 m。灯位按楼面以上 2.6 m 放置。
+        private const float IndoorLampHeight = 3.1f;
+        private static readonly Color IndoorColor = new Color(1f, 0.95f, 0.86f) * 1.25f;
         private static readonly int LightingEnabledId = Shader.PropertyToID("_TidegateLightingEnabled");
         private static readonly int SunDirectionId = Shader.PropertyToID("_TidegateSunDirection");
         private static readonly int SunColorId = Shader.PropertyToID("_TidegateSunColor");
@@ -26,10 +28,6 @@ namespace BossRush
         private static readonly int LampCountId = Shader.PropertyToID("_TidegateLampCount");
         private static readonly int LampPositionsId = Shader.PropertyToID("_TidegateLampPositions");
         private static readonly int LampColorsId = Shader.PropertyToID("_TidegateLampColors");
-        private static readonly int SkySunDirectionId = Shader.PropertyToID("_SkyIslandSunDirection");
-        private static readonly int SkySunColorId = Shader.PropertyToID("_SkyIslandSunColor");
-        private static readonly int SkyAmbientId = Shader.PropertyToID("_SkyIslandAmbientColor");
-        private static readonly int SkyEnabledId = Shader.PropertyToID("_SkyIslandLightingEnabled");
         private static readonly Color LampColor = new Color(1f, 0.72f, 0.42f) * 1.6f;
         /// <summary>灯塔灯头那盏灯白天的亮度份额：白天太阳压着看不出来，黄昏到夜里才是一圈暖光。</summary>
         private const float BeaconDayShare = 0.35f;
@@ -40,7 +38,10 @@ namespace BossRush
         private const float FlashlightReach = 3.5f, FlashlightRange = 6.5f, FlashlightMinNight = 0.25f;
         private static readonly Color FlashlightColor = new Color(0.92f, 0.95f, 1f) * 1.3f;
 
-        private readonly TidegateWorld world;
+        private TidegateWorld world;
+        private readonly RaidOfficialIndoorLighting indoorFill = new RaidOfficialIndoorLighting(TidegateRaidScene.LogTag, "TidegateIndoorFill");
+        private string litRoom;
+        private Bounds litBounds;
         private readonly List<Vector3> lamps = new List<Vector3>();
         private readonly Vector4[] lampPositions = new Vector4[MaxLamps];
         private readonly Vector4[] lampColors = new Vector4[MaxLamps];
@@ -63,9 +64,19 @@ namespace BossRush
         /// <summary>换相时触发（老相位、新相位），给刷怪、撤离与提示用。</summary>
         internal event Action<TidegateTidePhase, TidegateTidePhase> PhaseChanged;
 
-        internal TidegateTide(TidegateWorld world)
+        internal TidegateTide() { }
+
+        internal TidegateTide(TidegateWorld world) : this() { Bind(world); }
+
+        internal void PrepareIndoorFill() { indoorFill.Prepare(); }
+
+        internal string DescribeIndoorFill() { return "room=" + (litRoom ?? "none") + " " + indoorFill.DescribeActiveLights(); }
+
+        internal void Bind(TidegateWorld world)
         {
+            if (disposed || this.world != null) return;
             this.world = world;
+            indoorFill.Bind(world.Root);
             Transform group = world.Root.transform.Find("Markers/NightLamps");
             if (group != null) foreach (Transform lamp in group) lamps.Add(lamp.position);
             double hours = ClockHours();
@@ -125,7 +136,15 @@ namespace BossRush
         // 只有主角脚点进入本栋室内才切换官方 ShadowOnly；室外遮挡和准心均不触发建筑虚化。
         internal void SetViewFocus(Vector3 feet)
         {
+            if (disposed || world == null) return;
             world.IndoorRoofs.UpdateFeet(feet);
+            if (!world.IndoorRoofs.TryGetInside(out string room, out Bounds bounds)) room = null;
+            if (room == litRoom) return;
+            litRoom = room;
+            litBounds = bounds;
+            if (room == null) indoorFill.HideRoom();
+            else indoorFill.ShowRoom(bounds, IndoorLampHeight);
+            nextLamps = 0f;
         }
 
         /// <summary>某一点的水位：泻湖内侧跟泻湖，其它地方跟外海。</summary>
@@ -144,7 +163,7 @@ namespace BossRush
 
         internal void Tick(float deltaTime)
         {
-            if (disposed) return;
+            if (disposed || world == null) return;
             double hours = ClockHours();
             level = TidegateTideRules.LevelAt(hours);
             TidegateTidePhase next = TidegateTideRules.PhaseAt(hours);
@@ -152,12 +171,15 @@ namespace BossRush
             lagoon = TidegateTideRules.StepLagoon(lagoon, level, sluiceOpen, deltaTime);
             wetTide = TidegateTideRules.StepWetLine(wetTide, level, deltaTime);
             wetLagoon = TidegateTideRules.StepWetLine(wetLagoon, lagoon, deltaTime);
-            Vector4 sun = Shader.GetGlobalVector(SkySunColorId);
-            night = Shader.GetGlobalFloat(SkyEnabledId) > 0.5f ? SkyIslandStreetLampRules.NightFactor(sun.x, sun.y, sun.z) : 0f;
-            Shader.SetGlobalFloat(LightingEnabledId, Shader.GetGlobalFloat(SkyEnabledId));
-            Shader.SetGlobalVector(SunDirectionId, Shader.GetGlobalVector(SkySunDirectionId));
-            Shader.SetGlobalVector(SunColorId, sun);
-            Shader.SetGlobalVector(AmbientId, Shader.GetGlobalVector(SkyAmbientId));
+            night = SkyIslandLighting.StreetLampNightFactor(SkyIslandLighting.ClockHours());
+            bool hasSun = RaidOfficialLighting.TryRead(world.Root.scene, out Vector3 direction, out Color sun, out Color ambient);
+            Shader.SetGlobalFloat(LightingEnabledId, hasSun ? 1f : 0f);
+            if (hasSun)
+            {
+                Shader.SetGlobalVector(SunDirectionId, new Vector4(direction.x, direction.y, direction.z, 0f));
+                Shader.SetGlobalVector(SunColorId, new Vector4(sun.r, sun.g, sun.b, 1f));
+                Shader.SetGlobalVector(AmbientId, new Vector4(ambient.r, ambient.g, ambient.b, 1f));
+            }
             Shader.SetGlobalFloat(NightId, night);
             Shader.SetGlobalFloat(TideId, level);
             Shader.SetGlobalFloat(LagoonId, lagoon);
@@ -177,8 +199,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 每 0.5 秒排一次灯：灯塔点亮后灯头占第一格，夜里再按离玩家远近排最近的夜灯，最后一格留给手电（<see cref="TickFlashlight"/>）。
-        /// 白天又没点灯塔时只写一次 0 盏。
+        /// 先保留灯塔和当前房间的灯位，夜里再按距离排站外夜灯，最后一格留给手电（<see cref="TickFlashlight"/>）。
         /// </summary>
         private void PublishLamps()
         {
@@ -190,6 +211,16 @@ namespace BossRush
                 lampPositions[count] = beaconPosition;
                 lampColors[count] = new Vector4(beacon.r, beacon.g, beacon.b, 1f);
                 count++;
+            }
+            if (litRoom != null)
+            {
+                float range = Mathf.Max(litBounds.extents.x, litBounds.extents.z) * 1.2f;
+                for (int i = 0; i < RaidOfficialIndoorLighting.LampCount; i++, count++)
+                {
+                    Vector3 at = RaidOfficialIndoorLighting.LampPosition(litBounds, i, IndoorLampHeight);
+                    lampPositions[count] = new Vector4(at.x, at.y, at.z, range);
+                    lampColors[count] = new Vector4(IndoorColor.r, IndoorColor.g, IndoorColor.b, 1f);
+                }
             }
             if (night > 0.01f && player != null && lamps.Count > 0)
             {
@@ -285,13 +316,18 @@ namespace BossRush
         {
             if (disposed) return;
             disposed = true;
+            indoorFill.Dispose();
 #if BOSSRUSH_DEV
             // 拨过的潮相只属于这一趟：会话收尾清零，下一趟按真实时钟。
             DevOffsetHours = 0.0;
 #endif
-            Shader.SetGlobalFloat(LampCountId, 0f);
-            Shader.SetGlobalFloat(LightingEnabledId, 0f);
-            Shader.SetGlobalFloat(NightId, 0f);
+            if (world != null)
+            {
+                Shader.SetGlobalFloat(LampCountId, 0f);
+                Shader.SetGlobalFloat(LightingEnabledId, 0f);
+                Shader.SetGlobalFloat(NightId, 0f);
+                world = null;
+            }
             PhaseChanged = null;
             navigation = null;
         }

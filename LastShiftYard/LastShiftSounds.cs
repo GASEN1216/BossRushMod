@@ -19,6 +19,10 @@ namespace BossRush
         internal const string ChiefWhistleTwo = "chief_whistle_two.wav";
         internal const string ChiefWhistleLong = "chief_whistle_long.wav";
         internal const string ChiefWhistleThree = "chief_whistle_three.wav";
+        /// <summary>小队长（2026-11-13）：调车长放溜放推车时的轮缘尖啸、信号工长点名的站场电铃、押运班长推车挡的一声闷撞。</summary>
+        internal const string CartScreech = "cart_screech.wav";
+        internal const string SignalBell = "signal_bell.wav";
+        internal const string TrolleyShove = "trolley_shove.wav";
         private static MethodInfo postSound;
         private static bool resolved, warned;
 

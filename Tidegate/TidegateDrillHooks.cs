@@ -525,6 +525,7 @@ namespace BossRush
         }
 
         internal TidegateWorld DevWorld { get { return world; } }
+        internal string DevIndoorLighting { get { return tide == null ? "indoor_fill=missing" : tide.DescribeIndoorFill(); } }
         internal TidegateWater DevWater { get { return water; } }
         internal TidegateExtraction DevExtraction { get { return extraction; } }
         internal TidegateLoot DevLoot { get { return loot; } }

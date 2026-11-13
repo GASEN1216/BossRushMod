@@ -57,6 +57,7 @@ namespace BossRush
         private static int sessionOwner;
         private static int lastSessionOwner;
         private static DialogueUI sessionUI;
+        private static IDialogueActor sessionActor;
         private static int requestGeneration;
 
         /// <summary>已经发给官方 DialogueUI、完成回调还没回来的请求数（字幕 + 多选）。不为 0 时新会话排队。</summary>
@@ -76,6 +77,13 @@ namespace BossRush
         /// 当前是否正在显示对话
         /// </summary>
         public static bool IsDialogueActive => isDialogueActive;
+
+        internal static bool IsDialogueActiveFor(IDialogueActor actor)
+        {
+            return sessionOwner != 0 && isDialogueActive && sessionUI != null
+                && ReferenceEquals(sessionUI, DialogueUI.instance)
+                && ReferenceEquals(sessionActor, actor) && IsActorAvailable(actor);
+        }
 
         /// <summary>一次发给官方 DialogueUI 的请求。完成回调与「推完 / 放弃」都只把计数减一次。</summary>
         private sealed class OfficialRequest
@@ -761,17 +769,18 @@ namespace BossRush
             {
                 owner = lastSessionOwner = 1;
             }
-            BeginDialogueSession(owner);
+            BeginDialogueSession(owner, actor);
             return owner;
         }
 
         /// <summary>
         /// 开始对话会话（禁用玩家输入，显示对话UI）
         /// </summary>
-        private static void BeginDialogueSession(int owner)
+        private static void BeginDialogueSession(int owner, IDialogueActor actor)
         {
             sessionOwner = owner;
             sessionUI = DialogueUI.instance;
+            sessionActor = actor;
             if (isDialogueActive) return;
 
             isDialogueActive = true;
@@ -813,6 +822,7 @@ namespace BossRush
 
         private static void CloseDialogueSession()
         {
+            sessionActor = null;
             if (!isDialogueActive) return;
 
             isDialogueActive = false;

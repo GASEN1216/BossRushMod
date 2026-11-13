@@ -1,13 +1,14 @@
 using System;
 using System.Collections.Generic;
+using Duckov.MiniMaps;
+using SodaCraft.Localizations;
 using UnityEngine;
 
 namespace BossRush
 {
     /// <summary>
-    /// 末班编组站的撤离点：判定、贴地环与官方读条显示共用同一份「开没开」（口径同潮闸镇 `TidegateExtraction`：判定只在这里，
-    /// 官方 `CountDownArea` 只借显示）。北公路常开且最远；西线检修便门、东台押运门、轨道车接客亭跟列车与拉铃走，
-    /// 由第二期的列车 owner 通过 <see cref="SetOpen"/> 打开——在那之前它们关着，M 图与 HUD 写明开启条件。
+    /// 撤离判定、贴地环、官方读条和地图标记共用出口状态。北公路常开，条件出口由列车通过 <see cref="SetOpen"/> 更新。
+    /// 官方 CountDownArea 用 Time.time 计算已用时，打开界面期间仍会计入时间；会话用游戏推进量计时，并借官方界面显示读条。
     /// </summary>
     internal sealed partial class LastShiftExtraction : IDisposable
     {
@@ -21,14 +22,18 @@ namespace BossRush
             internal Transform Anchor;
             internal float Radius;
             internal bool Open;
+            /// <summary>锚点会动（末班车押运车厢的尾梯）：环与地图标记挂在锚点下跟着走，判定每帧读锚点。</summary>
+            internal bool Moving;
             internal LineRenderer Ring;
             internal SkyIslandExtractionCountdown Countdown;
+            internal SimplePointOfInterest MapPin;
         }
 
         private readonly List<Exit> exits = new List<Exit>();
         private Exit current;
         private float held = -1f;
         private int fallbackSeconds = -1;
+        private SystemLanguage mapLanguage = LocalizationManager.CurrentLanguage;
         private bool disposed;
 
         internal string HudFallback { get; private set; }
@@ -46,13 +51,32 @@ namespace BossRush
         {
             Transform anchor;
             if (!world.Exits.TryGetValue(id, out anchor)) return;
-            var exit = new Exit { Id = id, Anchor = anchor, Radius = radius, Open = open };
+            Vector3 position = anchor.position;
+            float ground;
+            if (world.TryGroundAt(position, out ground)) position.y = ground;
+            Build(new Exit { Id = id, Anchor = anchor, Radius = radius, Open = open }, world.Root.transform, position + Vector3.up * SkyIslandGroundRing.GroundLift, color);
+        }
+
+        /// <summary>
+        /// 会动的出口（2026-11-13 末班车押运车厢的尾梯）：锚点由列车 owner 每帧贴地摆好；环挂在锚点下跟着走，开始时关着。
+        /// 读条与普通出口同一套（离开圈子清零），所以车停着时站上去最稳，车开动后要跟着车跑。
+        /// </summary>
+        internal void AddMoving(string id, Transform anchor, float radius)
+        {
+            if (disposed || anchor == null) return;
+            foreach (Exit existing in exits) if (existing.Id == id) return;
+            Build(new Exit { Id = id, Anchor = anchor, Radius = radius, Open = false, Moving = true }, anchor, Vector3.up * SkyIslandGroundRing.GroundLift, ConditionalColor);
+        }
+
+        private void Build(Exit exit, Transform ringParent, Vector3 ringLocal, Color color)
+        {
+            string id = exit.Id;
+            Transform anchor = exit.Anchor;
+            float radius = exit.Radius;
+            bool open = exit.Open;
             try
             {
-                Vector3 position = anchor.position;
-                float ground;
-                if (world.TryGroundAt(position, out ground)) position.y = ground;
-                exit.Ring = SkyIslandGroundRing.Create(world.Root.transform, position + Vector3.up * SkyIslandGroundRing.GroundLift);
+                exit.Ring = SkyIslandGroundRing.Create(ringParent, ringLocal);
                 exit.Ring.gameObject.name = "LastShiftExtractionRing_" + id;
                 SkyIslandGroundRing.SetShape(exit.Ring, radius, RingWidth, color);
                 SpriteRenderer fill = SkyIslandGroundRing.AddFill(exit.Ring, radius, new Color(color.r, color.g, color.b, 0f));
@@ -62,7 +86,35 @@ namespace BossRush
             catch (Exception e) { Debug.LogWarning(LastShiftRaidScene.LogTag + " 撤离环创建失败 " + id + "：" + e.Message); }
             try { exit.Countdown = new SkyIslandExtractionCountdown(anchor, Hold); }
             catch (Exception e) { Debug.LogWarning(LastShiftRaidScene.LogTag + " 撤离读条接入失败 " + id + "：" + e.Message); }
+            try
+            {
+                var pin = new GameObject("LastShiftExitMap_" + id);
+                pin.transform.SetParent(anchor, false);
+                exit.MapPin = pin.AddComponent<SimplePointOfInterest>();
+                RefreshMapPin(exit, SkyIslandMapMarkers.ExitIcon());
+                // 会动的出口关着时锚点停在站界外：地图上不留一个指向站外的标记。
+                if (exit.Moving) pin.SetActive(open);
+            }
+            catch (Exception e) { Debug.LogWarning(LastShiftRaidScene.LogTag + " 撤离地图标记创建失败 " + id + "：" + e.Message); }
             exits.Add(exit);
+        }
+
+        private static void RefreshMapPin(Exit exit, Sprite icon = null)
+        {
+            if (exit.MapPin == null) return;
+            try
+            {
+                string key = "BossRush_LastShift_ExitMap_" + exit.Id;
+                string status = exit.Open ? L10n.T("可撤离", "Open for extraction") : LastShiftText.ExitRule(exit.Id);
+                LocalizationHelper.InjectLocalization(key, LastShiftText.ExitName(exit.Id) + " · " + status);
+                exit.MapPin.Color = exit.Open ? AlwaysColor : ConditionalColor;
+                // 官方地图条目在绑定时读取文案和颜色，Setup 会刷新该条目。
+                exit.MapPin.Setup(icon, key);
+                // 官方 Setup 先注销再登记、不看自己启没启用：停用着的标记（关着的末班车尾梯）登记进去会照样画在地图上，
+                // 停用的对象销毁时也不走 OnDisable，残留在静态表里。这里补一次注销。
+                if (!exit.MapPin.isActiveAndEnabled) PointsOfInterests.Unregister(exit.MapPin);
+            }
+            catch (Exception e) { Debug.LogWarning(LastShiftRaidScene.LogTag + " 撤离地图标记刷新失败 " + exit.Id + "：" + e.Message); }
         }
 
         /// <summary>列车 / 拉铃 owner 改变条件出口的开关（北公路恒开，不受影响）。</summary>
@@ -73,6 +125,8 @@ namespace BossRush
                 if (exit.Id != id || exit.Id == "north" || exit.Open == open) continue;
                 exit.Open = open;
                 if (exit.Ring != null) exit.Ring.gameObject.SetActive(open);
+                if (exit.Moving && exit.MapPin != null) exit.MapPin.gameObject.SetActive(open);
+                RefreshMapPin(exit);
             }
         }
 
@@ -95,6 +149,12 @@ namespace BossRush
         {
             exitId = null;
             if (disposed) return false;
+            SystemLanguage language = LocalizationManager.CurrentLanguage;
+            if (language != mapLanguage)
+            {
+                mapLanguage = language;
+                foreach (Exit exit in exits) RefreshMapPin(exit);
+            }
             Exit inside = null;
             foreach (Exit exit in exits)
                 if (exit.Open && Vector3.Distance(position, exit.Anchor.position) < exit.Radius) { inside = exit; break; }
@@ -153,6 +213,11 @@ namespace BossRush
                     catch (Exception e) { Debug.LogWarning(LastShiftRaidScene.LogTag + " 撤离读条释放失败：" + e.Message); }
                 }
                 if (exit.Ring != null) UnityEngine.Object.Destroy(exit.Ring.gameObject);
+                if (exit.MapPin != null)
+                {
+                    exit.MapPin.gameObject.SetActive(false);
+                    UnityEngine.Object.Destroy(exit.MapPin.gameObject);
+                }
             }
             exits.Clear();
             current = null;

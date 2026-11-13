@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using BossRush.Utils;
+using Duckov.MiniMaps;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -27,7 +28,7 @@ namespace BossRush
     /// <summary>
     /// 剪票处本体：从入口小包 `lastshift_entry` 实例化作者工程里的 `LastShiftEntry.prefab`（检票桌、打孔钳、站牌、接驳货车），
     /// 外加官方交互点「剪票上末班车」。包跟着根节点走（<see cref="LastShiftEntryBundleLease"/>）；包缺失、读不出或着色器被剥光时
-    /// 整个入口不开，不拿几何体顶替（同潮闸镇竹筏）。余响本人（捏脸 NPC）在第三期接上。
+    /// 整个入口不开，不拿几何体顶替（同潮闸镇竹筏）。
     /// </summary>
     internal static class LastShiftEntry
     {
@@ -38,7 +39,7 @@ namespace BossRush
 
         internal static bool IsBundleDeployed() { return File.Exists(Path.Combine(ModBehaviour.GetModPath(), BundleRelativePath)); }
 
-        internal static GameObject Create(Scene scene, ModBehaviour owner)
+        internal static GameObject Create(Scene scene, ModBehaviour owner, LastShiftYuXiang yuXiang)
         {
             GameObject root = new GameObject("BossRush_LastShiftEntry");
             try
@@ -52,6 +53,7 @@ namespace BossRush
                 GameObject model = UnityEngine.Object.Instantiate(prefab, root.transform, false);
                 model.name = "Entry_Model";
                 CheckShaders(model);
+                LastShiftEntryCollision.Attach(model.transform);
                 LastShiftTicketPunch.Attach(model.transform);
                 Transform lamp = model.transform.Find("DeskLamp");
                 if (lamp != null)
@@ -62,17 +64,18 @@ namespace BossRush
                 LastShiftEntryInteractable entry = NPCInteractionGroupHelper.GetOrCreateStandaloneInteractable<LastShiftEntryInteractable>(
                     root.transform, "LastShiftEntry", LastShiftEntryPoint.InteractLocal, x =>
                     {
-                        x.Bind(owner);
+                        x.Bind(owner, yuXiang);
                         SphereCollider sensor = x.GetComponent<SphereCollider>();
                         if (sensor != null) { sensor.radius = LastShiftEntryPoint.InteractRadius; sensor.isTrigger = true; }
                     });
                 if (entry == null) throw new InvalidOperationException("剪票处交互点创建失败");
-                LastShiftYuXiang.AddTalk(root.transform, owner);
-                GameObject marker = LastShiftYuXiang.AddMapMarker(root.transform);
+                yuXiang.AddTalk(root.transform, entry);
+                SimplePointOfInterest marker = LastShiftYuXiang.AddMapMarker(root.transform);
                 root.SetActive(true);
-                // Setup 必须在激活后调用，避免 OnEnable 与 Setup 双重登记（口径同怪件快递）。
+                // Setup 会刷新原版地图已生成的标签。
                 LastShiftYuXiang.SetupMapMarker(marker);
-                Debug.Log(LastShiftRaidScene.LogTag + " ENTRY_READY scene=" + scene.name + " position=" + LastShiftEntryPoint.Position);
+                Debug.Log(LastShiftRaidScene.LogTag + " ENTRY_READY scene=" + scene.name + " handle=" + scene.handle
+                    + " raid=" + RaidUtilities.CurrentRaid.ID + " position=" + LastShiftEntryPoint.Position);
                 return root;
             }
             catch
@@ -132,80 +135,70 @@ namespace BossRush
         private void OnDestroy() { Release(); }
     }
 
-    /// <summary>
-    /// 「剪票上末班车」：每次都先弹确认，写明本趟不结算、只能从编组站撤离回基地（第七轮 owner 采纳）。确认后交给 <see cref="LastShiftSession"/>。
-    /// 确认时顺手做三件事：身上带着末班票根就交给余响（剧情收尾那一页先弹出来，读完再上车）、塞一卷台边绷带（每趟一卷）、
-    /// 带着押运钢印时提醒侧柜能开一次。
-    /// </summary>
+    /// <summary>「剪票上末班车」经余响的官方对话确认。读完交票收尾才发绷带、剪票、上车。</summary>
     public sealed class LastShiftEntryInteractable : BossRushBuildingInteractableBase
     {
         internal const string NameKey = "BossRush_LastShiftYard_Board";
         private ModBehaviour owner;
+        private LastShiftYuXiang yuXiang;
+        private bool punching;
         protected override string InteractNameKey { get { return NameKey; } }
         protected override string LogPrefix { get { return LastShiftRaidScene.LogTag + " "; } }
-        internal void Bind(ModBehaviour host) { owner = host; }
+
+        internal void Bind(ModBehaviour host, LastShiftYuXiang conductor)
+        {
+            owner = host;
+            yuXiang = conductor;
+        }
+
+        internal bool CanTalk()
+        {
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (this == null || !isActiveAndEnabled || owner == null || punching || SceneLoader.IsSceneLoading
+                || player == null || player.Health == null || player.Health.IsDead) return false;
+            LastShiftSession session = owner.GetComponent<LastShiftSession>();
+            return (session == null || session.IsClosed)
+                && owner.GetComponent<TidegateSession>() == null && owner.GetComponent<SkyIslandSession>() == null;
+        }
 
         protected override bool IsBuildingInteractable()
         {
-            return owner != null && owner.GetComponent<LastShiftSession>() == null && owner.GetComponent<TidegateSession>() == null
-                && owner.GetComponent<SkyIslandSession>() == null;
+            return CanTalk() && yuXiang != null && yuXiang.IsPresent && !yuXiang.IsTalking;
         }
 
         protected override void OnInteractCompleted()
         {
-            if (owner == null) return;
-            string reason;
-            if (!LastShiftSession.CanEnter(owner, out reason)) { Report(reason, true); return; }
-            CharacterMainControl player = CharacterMainControl.Main;
-            string body = L10n.T("余响：“注意安全，那里可不是什么和平的仓库区。”",
-                "Yu Xiang: \"Watch yourself. It's nothing like the quiet old warehouse district out there.\"");
-            if (!LastShiftStory.Journal && TidegateInventory.Carries(player, BossRushItemIds.LastShiftTicketStub))
-                body += L10n.T("\n她盯着你手里那张票：“那张……给我看看。”", "\nShe's looking at the ticket in your hand. \"That one... let me see it.\"");
-            if (TidegateInventory.Carries(player, BossRushItemIds.LastShiftStamp))
-                body += L10n.T("\n余响：“腰上那枚钢印还在？押运库那只封着的柜子，它能开一回。”", "\nYu Xiang: \"Still got the stamp? It'll open that sealed cabinet in the bond store, once.\"");
-            body += L10n.T("\n她偷偷塞给了你一卷似乎有助于医疗的东西。", "\nShe quietly slips you a roll of something that looks like it might patch you up.");
-            BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options
-            {
-                Title = L10n.T("上末班车去编组站？", "Take the last train to the yard?"),
-                Body = body,
-                ConfirmLabel = L10n.T("剪票上车", "Punch and board"),
-                CancelLabel = L10n.T("再等等", "Not yet"),
-                Danger = false,
-                OnConfirm = Board,
-            });
+            if (!IsBuildingInteractable() || !CanBoard()) return;
+            yuXiang.Talk(this, true);
         }
 
-        private void Board()
+        internal bool CanBoard()
         {
-            if (owner == null) return;
+            if (!CanTalk()) return false;
             string reason;
-            if (!LastShiftSession.CanEnter(owner, out reason)) { Report(reason, true); return; }
-            CharacterMainControl player = CharacterMainControl.Main;
-            LastShiftStory.MarkMet();
-            if (!LastShiftStory.TryHandIn(player)) { Depart(player); return; }
-            LastShiftStory.ShowEnding(L10n.T("上车", "Board"), delegate { Depart(CharacterMainControl.Main); });
+            if (LastShiftSession.CanEnter(owner, out reason)) return true;
+            Report(reason, true);
+            return false;
         }
 
-        private void Depart(CharacterMainControl player)
+        internal void Depart(CharacterMainControl player)
         {
-            if (owner == null) return;
-            string reason;
-            if (!LastShiftSession.CanEnter(owner, out reason)) { Report(reason, true); return; }
-            LastShiftYuXiang.GiveBandage(player);
+            if (!CanBoard() || !yuXiang.IsPresent || player != CharacterMainControl.Main) return;
+            punching = true;
+            yuXiang.GiveBandage(player);
             // 剪票：钳子压下去「咔哒」一声，看清楚了再转车（0.6 秒）。
             LastShiftEntryBundleLease entryRoot = GetComponentInParent<LastShiftEntryBundleLease>();
             LastShiftTicketPunch punch = entryRoot == null ? null : entryRoot.GetComponentInChildren<LastShiftTicketPunch>();
             if (punch != null) punch.Press();
             LastShiftSounds.Play(LastShiftSounds.TicketPunch, gameObject);
-            owner.StartCoroutine(EnterAfterPunch());
+            StartCoroutine(EnterAfterPunch(player));
         }
 
-        private System.Collections.IEnumerator EnterAfterPunch()
+        private System.Collections.IEnumerator EnterAfterPunch(CharacterMainControl player)
         {
             yield return new WaitForSecondsRealtime(0.6f);
-            if (owner == null) yield break;
-            string reason;
-            if (!LastShiftSession.CanEnter(owner, out reason)) { Report(reason, true); yield break; }
+            punching = false;
+            if (!CanBoard() || !yuXiang.IsPresent || player != CharacterMainControl.Main) yield break;
             LastShiftSession.Enter(owner, Report);
         }
 

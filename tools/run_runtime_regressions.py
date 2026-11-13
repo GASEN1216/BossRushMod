@@ -47,6 +47,11 @@ SCRIPT_FIXTURES = (
     "SkyIslandValidationJudges", "F3AutotestJudges", "SpawnPositionPolicy", "EnemySpawnRuntime", "EnemyRecoveryRuntime", "RandomEventEffectsOwners", "ModeEFSpawnPreparation", "ModeEFEnemySpawnRuntime", "ModeEFSpawnPostprocessScheduler", "ModeEFVirtualSpawnerRegistry", "ModeEFMerchantCatalog", "FlightTotemRuntimeModule", "EquipmentBootstrapOwners", "AwenLootSweepRuntime", "WavesArenaPresetWeight", "BirthdayCakeGift",
 )
 PROJECT_FIXTURES = {
+    "LastShiftCargoRuntime": "LastShiftCargoRuntime.csproj",
+    "LastShiftEntryRuntime": "LastShiftEntryRuntime.csproj",
+    "LastShiftLightingRuntime": "LastShiftLightingRuntime.csproj",
+    "LastShiftWorldRuntime": "LastShiftWorldRuntime.csproj",
+    "RaidOfficialLighting": "RaidOfficialLighting.csproj",
     "TidegateActivity": "TidegateActivity.csproj",
     "TidegateTreasure": "TidegateTreasure.csproj",
     "TidegateCargo": "TidegateCargo.csproj",

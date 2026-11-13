@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>7.3</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../LastShiftYard/LastShiftWorld.cs" />
+    <Compile Include="../../../LastShiftYard/LastShiftEntryCollision.cs" />
+    <Compile Include="../../../Tidegate/TidegateWorld.cs" />
+    <Compile Include="../../../Tidegate/TidegateBuildingCollision.cs" />
+    <Compile Include="../../../Tidegate/TidegateWaterRegions.cs" />
+  </ItemGroup>
+</Project>

@@ -5,10 +5,9 @@
 >
 > 适用范围：任何由 Mod 提供的 AssetBundle 独立场景（天空岛、石堡前哨、试验场……）。
 
-## 0. 一句话结论
+## 0. 官方地图组件与地图自己的状态
 
-**官方地图系统是纯场景数据驱动的，接一张新图不需要写任何运行时代码**——
-往场景里放一个 `MiniMapSettings` 组件、配一张烘焙好的俯视图就行。
+原版地图键、界面、底图和投影由场景里的 `MiniMapSettings` 驱动。AssetBundle 独立出击还需通过共用 `ModRaidSceneBridge` 解析场景身份，地图自己的迷雾、条件出口和动态标记接到相应状态即可。
 
 Mod 侧曾经因为不知道这件事，自绘了一整套 F6 地图界面（315 行），
 而官方地图键在那张图上其实是**死键**。这是最贵的一个教训：动手写 UI 之前，
@@ -96,13 +95,15 @@ Start-Process -FilePath $unityExe -ArgumentList $a -PassThru -Wait
 然后把 `SkyIslandRaidExport/sky_island_raid` 拷进仓库 `Assets/arenas/`，
 `compile_official.bat` 的部署段会送进游戏目录。
 
-### 2.4 运行时只做一件事
+### 2.4 运行时更新迷雾与标记状态
 
 `SkyIsland/SkyIslandMapFog.cs`：按存档里的 `visitedRegions` 逐个翻 `hide`。
 装配时刷一次（老档进来时已到访的区域直接是彩色的），之后每新到访一个区域再刷一次。
 
 图层靠 **sprite 名字**认领（`sky_island_minimap_<区域>`），**不靠列表下标**——
 下标会随烘焙脚本的输出顺序悄悄漂移，名字不会。
+
+有条件出口时可参考 `LastShiftYard/LastShiftExtraction.cs`。把 `SimplePointOfInterest` 挂到本图出口锚点，使用官方已有图标。贴地圈、提示、地图颜色、开放条件与倒计时共用出口状态。`Setup` 会在官方 `PointsOfInterests` 中撤销再注册，按状态变化或 `LocalizationManager.CurrentLanguage` 变化调用，当前打开的地图也能刷新标题和颜色。语言文本用稳定的本地化键注入，离场先停用再销毁标记，触发原版 `OnDisable` 撤销注册。
 
 ## 3. 踩过的坑（每条都真的踩过）
 
@@ -130,7 +131,7 @@ SceneInfoCollection.GetSceneID(SceneManager.GetActiveScene().buildIndex)
 且 `UnsafeReason == None` 的条目。bundle 场景的 buildIndex 恒为 **-1**，
 自定义场景又不该注入全局 entries（会和所有其它 -1 场景撞车），所以原实现只会返回 null。
 
-解法：在场景引用桥里加一个 Harmony prefix，**按「当前活动场景是不是这张图」判定**：
+共用 `Utilities/RaidScenes/ModRaidSceneBridge.cs` 的 Harmony 前缀按当前活动场景判定，新地图只登记自己的身份。以下是作用域简化示例：
 
 ```csharp
 private static bool SceneIdByBuildIndexPrefix(int buildIndex, ref string __result)
@@ -216,11 +217,10 @@ private static bool SceneIdByBuildIndexPrefix(int buildIndex, ref string __resul
 1. 写一个烘焙脚本，从你那张图的权威几何产出正方形俯视图 + 元数据（照抄
    `tools/build_sky_island_minimap.py`，主要改投影范围和配色）。
 2. 在场景构建器里加 `BuildMiniMap()`，注意 3.1 / 3.2。
-3. 如果是 bundle 场景，确认场景引用桥有 3.3 那个 prefix。
+3. Bundle 场景在 `ModRaidSceneBridge` 登记，核活动场景能解析对应 sceneID。确认切去其他图不会命中这张图的 `-1` 映射。
 4. 重打包、拷进 `Assets/arenas/`。
 5. 抄一份对齐测试和守卫（注意 3.6 / 3.7 / 3.8 三条）。
-6. **进游戏开一次地图**：确认白点落在你站的那个岛上，南北没反。
-   偏了就是烘焙脚本投影那几行的事，改完重跑脚本 + 重打包，不用动 C#。
+6. 实机开图确认玩家点、右键标记、出口和底图对位，南北一致。开图时切换语言与出口状态，再离场打开另一张图，验证动态标记刷新和回收。偏位先核 `sceneID`、各图层中心、旋转和烘焙投影，再定位代码或资源。
 
 ## 6. 相关文件
 
@@ -230,7 +230,8 @@ private static bool SceneIdByBuildIndexPrefix(int buildIndex, ref string __resul
 | 手绘底图 | `tools/sky_island_minimap_art.py` |
 | 场景构建器 | `<Unity 工程>/Assets/Editor/SkyIslandRaidBuilder.cs` |
 | 运行时分区迷雾 | `SkyIsland/SkyIslandMapFog.cs` |
-| 场景引用桥 | `SkyIsland/SkyIslandSceneReferenceBridge.cs` |
+| 场景引用桥 | `Utilities/RaidScenes/ModRaidSceneBridge.cs`，天空岛身份 `SkyIsland/SkyIslandSceneReferenceBridge.cs` |
+| 动态出口标记 | `LastShiftYard/LastShiftExtraction.cs` |
 | 离线对齐测试 | `tests/SkyIslandMiniMapLayerAlignmentPropertyTest.py` |
 | 守卫 | `tests/SkyIslandMiniMapGuard.py` |
 | 场景合同 | `ArtSource/SkyIsland/OFFICIAL_SCENE_CONTRACT.md` |

@@ -269,6 +269,7 @@ internal static class Program
     private static int Main()
     {
         MirrorBarriers(); DeliveryFailuresAndRetry(); SlotDriftBeforeCollect(); ResetPreservesOtherTrees(); PersistentFailureWithOfficialCollectors(); DisposeKeepsFailedRollback();
+        TidegateDevices.TestHandwheel(Check);
         Console.WriteLine("PASS TidegateStoryTransactions: " + checks + " assertions");
         return 0;
     }

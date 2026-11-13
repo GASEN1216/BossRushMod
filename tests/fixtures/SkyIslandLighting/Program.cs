@@ -51,6 +51,11 @@ internal static class Program
         Check(Weights(SkyIslandNight.EffectiveHours(true, 12))[2] == 1, "开发构建强制夜里时光照走星夜");
         SkyIslandNight.ResetStaticCaches();
         Check(Weights(SkyIslandNight.EffectiveHours(true, 12))[0] == 1, "模块销毁复位强制夜里");
+        float dusk = SkyIslandLighting.StreetLampNightFactor(18);
+        Check(SkyIslandLighting.StreetLampNightFactor(12) == 0f && SkyIslandLighting.StreetLampNightFactor(22) == 1f,
+            "地图工灯的纯钟点调度白天熄灭、入夜全亮");
+        Check(dusk > 0f && dusk < 1f && SkyIslandLighting.StreetLampNightFactor(double.NaN) == 0f,
+            "地图工灯在黄昏渐亮、时钟缺失时熄灭");
         Console.WriteLine("SkyIslandLighting production-linked PASS assertions=" + count);
     }
 }

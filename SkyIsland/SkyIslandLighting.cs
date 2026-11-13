@@ -214,6 +214,14 @@ namespace BossRush
             return scale > 0.0 && !double.IsNaN(scale) && !double.IsInfinity(scale) ? scale : SkyIslandNight.DefaultClockScale;
         }
 
+        /// <summary>复用地图工灯的昼夜渐变；只返回灯具调度系数，官方太阳与天气 Volume 由原版更新。</summary>
+        internal static float StreetLampNightFactor(double hours)
+        {
+            ResolveTimeBlend(hours, out int from, out int to, out float blend);
+            Color tint = Color.Lerp(Presets[from].SunColor, Presets[to].SunColor, blend);
+            return SkyIslandStreetLampRules.NightFactor(tint.r, tint.g, tint.b);
+        }
+
         // 0–6 星夜；6–7 晨光；7–10 晴昼；10–16 晴昼恒定；16–18 晴昼→暮色；18–22 暮色→星夜；22–24 星夜。
         // 星夜整档的起止取 SkyIslandNight（与夜风、云蚋同一份），与官方 TimeOfDayController 运行时的 morningStart=6 / nightStart=22 同相。
         // 以连续小时和 SmoothStep 插值，午夜仍在同一星夜档，不产生跳变。

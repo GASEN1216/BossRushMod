@@ -25,9 +25,14 @@ DURATIONS = {
     "chief_whistle_two.wav": .62,
     "chief_whistle_long.wav": .9,
     "chief_whistle_three.wav": .72,
+    # 小队长（2026-11-13）：调车长的溜放推车（轮缘尖啸 + 钢轮滚动）、信号工长点名的站场电铃、押运班长推车挡的一声闷撞。
+    "cart_screech.wav": 1.3,
+    "signal_bell.wav": 1.1,
+    "trolley_shove.wav": .8,
 }
 TARGETS = {"ticket_punch.wav": .34, "tannoy_chime.wav": .22, "train_whistle.wav": .26,
-           "chief_whistle_two.wav": .3, "chief_whistle_long.wav": .3, "chief_whistle_three.wav": .3}
+           "chief_whistle_two.wav": .3, "chief_whistle_long.wav": .3, "chief_whistle_three.wav": .3,
+           "cart_screech.wav": .26, "signal_bell.wav": .26, "trolley_shove.wav": .34}
 # 每一声哨的 (起点秒, 时长秒)。
 WHISTLES = {
     "chief_whistle_two.wav": ((0.0, .2), (.32, .22)),
@@ -95,6 +100,29 @@ def generate(name, seconds):
             body = min(1.0, t / .15) * min(1.0, max(0.0, (seconds - .45 - t) / .25)) if t < seconds - .45 else 0.0
             tail = max(0.0, min(1.0, (t - (seconds - .7)) / .1)) * max(0.0, (seconds - t) / .6)
             value = tone * body * .32 + breath * (.25 * body + .9 * tail)
+        elif name == "cart_screech.wav":
+            # 溜放推车：钢轮在轨缝上咯噔（约 9 Hz 的闷击）+ 轮缘贴着钢轨的尖啸（2.4–3.1 kHz 来回滑，叠一点不和谐的泛音），
+            # 0.08 秒起音，后半段尖啸淡下去只剩滚动声。
+            roll = math.sin(math.tau * 9.0 * t) ** 8 * math.sin(math.tau * 95 * t) * math.exp(-((t * 9.0) % 1.0) * 6)
+            glide = 2750 + 350 * math.sin(math.tau * 1.7 * t + 0.6)
+            phases[0] += math.tau * glide / RATE
+            phases[1] += math.tau * glide * 1.37 / RATE
+            squeal = (math.sin(phases[0]) + .35 * math.sin(phases[1])) * (.55 + .45 * math.sin(math.tau * 23 * t))
+            env = min(1.0, t / .08) * max(0.0, 1 - t / seconds)
+            hum = hiss_lp(rng.uniform(-1, 1))
+            value = env * (squeal * (.7 if t < .7 else .7 * math.exp(-(t - .7) * 4)) + roll * .9 + hum * .25)
+        elif name == "signal_bell.wav":
+            # 站场电铃：小锤快速敲一只铜铃（约 14 次 / 秒），1 kHz 主音带 2.7 倍泛音，最后 0.25 秒让铃自己响完。
+            strikes = int(min(t, seconds - .25) * 14) + 1
+            value = 0.0
+            for k in range(max(0, strikes - 3), strikes):
+                value += bell(t - k / 14.0, 1046.5, 7.5) * .5
+        elif name == "trolley_shove.wav":
+            # 推车挡：一声沉的铁皮撞地（80 Hz 衰减 + 宽带噪声瞬态），后面一小段钢轮刮地。
+            thud = math.sin(math.tau * 78 * t) * math.exp(-t * 11) + math.sin(math.tau * 131 * t) * math.exp(-t * 16) * .5
+            clank = rng.uniform(-1, 1) * math.exp(-t * 40)
+            scrape = hiss_lp(rng.uniform(-1, 1)) * math.exp(-max(0.0, t - .12) * 7) * (1 if t > .1 else 0)
+            value = thud * 1.1 + clank * .7 + bell(t - .02, 410.0, 18.0) * .4 + scrape * .5
         elif name in WHISTLES:
             # 豌豆哨：约 3.1 kHz 的主音被哨腔里滚动的软木珠搅出约 31 Hz 的颤音（频率 ±3.5%、幅度 ±38%），
             # 珠子滚得不匀（再叠 7 Hz 的慢摆）；外加一点气声。

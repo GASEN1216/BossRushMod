@@ -345,6 +345,7 @@ echo(Tidegate\TidegateSluiceDanger.cs
 echo(Tidegate\TidegateEntryRaft.cs
 echo(Tidegate\TidegateExtraction.cs
 echo(Tidegate\TidegateLoot.cs
+echo(Tidegate\TidegateLootPublication.cs
 echo(Tidegate\TidegateRaidScene.cs
 echo(Tidegate\TidegateRuntimeModule.cs
 echo(Tidegate\TidegateSession.cs
@@ -353,7 +354,9 @@ echo(Tidegate\TidegateText.cs
 echo(Tidegate\TidegateTide.cs
 echo(Tidegate\TidegateTideRules.cs
 echo(Tidegate\TidegateWorld.cs
+echo(Tidegate\TidegateBuildingCollision.cs
 echo(LastShiftYard\LastShiftEntry.cs
+echo(LastShiftYard\LastShiftEntryCollision.cs
 echo(LastShiftYard\LastShiftEscortChief.cs
 echo(LastShiftYard\LastShiftChiefFx.cs
 echo(LastShiftYard\LastShiftEnemies.cs
@@ -361,6 +364,7 @@ echo(LastShiftYard\LastShiftDrillHooks.cs
 echo(LastShiftYard\LastShiftEnemyIdentity.cs
 echo(LastShiftYard\LastShiftExtraction.cs
 echo(LastShiftYard\LastShiftJeffIntro.cs
+echo(LastShiftYard\LastShiftLeaders.cs
 echo(LastShiftYard\LastShiftLighting.cs
 echo(LastShiftYard\LastShiftLoot.cs
 echo(LastShiftYard\LastShiftRaidScene.cs
@@ -376,6 +380,8 @@ echo(LastShiftYard\LastShiftWorld.cs
 echo(LastShiftYard\LastShiftYardDevices.cs
 echo(LastShiftYard\LastShiftYuXiang.cs
 echo(Common\World\RaidIndoorRoofs.cs
+echo(Common\World\RaidOfficialLighting.cs
+echo(Common\World\RaidOfficialIndoorLighting.cs
 echo(Tidegate\TidegateDrillHooks.cs
 echo(Tidegate\TidegateFrameProbe.cs
 echo(DebugAndTools\ArenaPrototype\StoneOutpostMapDataLease.cs

@@ -33,6 +33,8 @@ namespace ItemStatsSystem
     public sealed class Item : UnityEngine.Component
     {
         internal int TypeID, Quality, Value, MaxStackCount;
+        internal Inventory InInventory;
+        internal bool IsBeingDestroyed { get { return dead; } }
         internal int StackCount;
         internal string DisplayNameRaw;
         internal new string name;

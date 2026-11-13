@@ -23,6 +23,17 @@ namespace BossRush
     {
         /// <summary>演练收尾：撤掉演练拉过的铃（接客亭下一次出口同步时关上），玩家之后还能自己再拉一次。</summary>
         internal void DevClearBell() { BellAt = -1; }
+
+        /// <summary>
+        /// 演练快进一次要拨过好几班（2026-11-13 起一趟只有 <see cref="LastTrip"/> 班）：离末班车只剩两班时把这一趟的末班往后推四班，
+        /// 演练用例照旧等得到下一班，不会快进进封站。班号照常往前走（签收、撞击、送人都按班号记，不能往回拨），只改末班是第几班。
+        /// </summary>
+        internal bool DevKeepYardOpen()
+        {
+            if (YardClosed || Trip < lastTrip - 2) return false;
+            lastTrip = Trip + 4;
+            return true;
+        }
     }
 
     internal sealed partial class LastShiftTrains
@@ -41,11 +52,15 @@ namespace BossRush
             {
                 float step = (float)Math.Min(DevStep, seconds - done);
                 done += step;
+                if (timetable.DevKeepYardOpen()) DevLastTrainDeferred++;
                 if (Tick(player, step)) break;
             }
             DevSyncExits(player);
             return done;
         }
+
+        /// <summary>演练快进时为了不进封站把末班往后推过几次（报告用）。</summary>
+        internal int DevLastTrainDeferred { get; private set; }
 
         /// <summary>零推进走一次生产 Tick，并让这一次就把条件出口推给撤离 owner（生产每 0.5 秒推一次）。</summary>
         internal void DevSyncExits(CharacterMainControl player)
@@ -201,19 +216,23 @@ namespace BossRush
             return list;
         }
 
-        /// <summary>本趟三处营地（id:站得住的人数，开过张的带 *）与此刻在场那一队的状态。</summary>
+        /// <summary>本趟守货岗（id:站得住的人数，打光的带 *、在场的带 +）、此刻在场各队的状态，与守货岗这本账。</summary>
         internal string DevSquadSummary
         {
             get
             {
                 var plan = new List<string>(squadPlan.Count);
-                foreach (SquadSite site in squadPlan) plan.Add(site.Def.Id + ":" + site.Spots.Count + (site.Spent ? "*" : ""));
-                return "plan=" + string.Join("/", plan.ToArray()) + ",board=" + (squad == null ? "-" : squad.Site.Def.Id + "(" + squad.State + ")")
-                    + ",reserve=" + PendingSquadSeats();
+                foreach (SquadSite site in squadPlan) plan.Add(site.Def.Id + ":" + site.Spots.Count + (site.Spent ? "*" : "") + (site.Open ? "+" : ""));
+                var open = new List<string>(squads.Count);
+                foreach (Squad s in squads) open.Add(s.Site.Def.Id + "(" + s.State + ")");
+                return "plan=" + string.Join("/", plan.ToArray()) + ",board=" + (open.Count == 0 ? "-" : string.Join("/", open.ToArray()))
+                    + ",garrison=" + GarrisonLive() + "/" + GarrisonCap + ",garrisonSpawned=" + garrisonSpawned + "/" + GarrisonPopulation
+                    + ",leaders=" + leaders.Count + ",trolleys=" + trolleys.Count + ",trainKills=" + TrainKills;
             }
         }
 
         internal int DevLive { get { return Live(); } }
+        internal int DevTrainLive { get { return TrainLive(); } }
         internal int DevMobileLive { get { return MobileLive(); } }
         internal int DevInFlight { get { return inFlight; } }
         internal int DevQueued { get { return queue.Count; } }
@@ -247,6 +266,7 @@ namespace BossRush
         }
 
         internal LastShiftWorld DevWorld { get { return world; } }
+        internal string DevIndoorLighting { get { return lights == null ? "indoor_fill=missing" : lights.DescribeIndoorFill(); } }
         internal LastShiftTrains DevTrains { get { return trains; } }
         internal LastShiftLoot DevLoot { get { return loot; } }
         internal LastShiftEnemies DevEnemies { get { return enemies; } }

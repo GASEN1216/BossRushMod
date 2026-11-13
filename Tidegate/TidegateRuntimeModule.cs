@@ -13,9 +13,11 @@ namespace BossRush
     /// </summary>
     internal sealed class TidegateRuntimeModule : BossRushRuntimeModuleBase
     {
+        private const string BaseOutdoorScene = "Base_SceneV2";
         private ModBehaviour owner;
         private GameObject raft;
         private TidegateStoryPersistence story;
+        private RaidOfficialLighting sunTemplate;
         private bool subscribed, bundleWarned, applicationQuitting, returnLightingPending;
         private float nextAttempt, nextLetterCheck;
 
@@ -32,15 +34,47 @@ namespace BossRush
             if (!subscribed)
             {
                 SceneLoader.onStartedLoadingScene += OnStartedLoading;
+                SceneManager.sceneLoaded += OnSceneLoaded;
                 LevelManager.OnAfterLevelInitialized += OnLevelReady;
                 Application.quitting += OnApplicationQuitting;
                 subscribed = true;
             }
+            CaptureOutdoorSun(SceneManager.GetSceneByName(BaseOutdoorScene));
         }
 
         private void OnApplicationQuitting() { applicationQuitting = true; }
 
         private void OnStartedLoading(SceneLoadingContext context) { ClearEntry(); }
+
+        private void OnSceneLoaded(Scene scene, LoadSceneMode mode) { CaptureOutdoorSun(scene); }
+
+        private void CaptureOutdoorSun(Scene scene)
+        {
+            if (sunTemplate != null || !scene.isLoaded || scene.name != BaseOutdoorScene) return;
+            var template = new RaidOfficialLighting();
+            try
+            {
+                // 进入下水道时原版 MultiSceneCore 会卸载户外子场景。提前保存停用的原版方向光模板。
+                template.Prepare(scene);
+                sunTemplate = template;
+            }
+            catch (Exception e)
+            {
+                template.Dispose();
+                Debug.LogWarning(TidegateRaidScene.LogTag + " 官方基地日光模板未能保留：" + e.Message);
+            }
+        }
+
+        private void PrepareRaidLighting(RaidOfficialLighting lighting)
+        {
+            if (sunTemplate != null)
+            {
+                lighting.PrepareFromTemplate(sunTemplate);
+                return;
+            }
+            Debug.LogWarning(TidegateRaidScene.LogTag + " 官方基地户外主光未加载，使用官方渲染组件接入天气");
+            lighting.PrepareNative();
+        }
 
         /// <summary>
         /// 回到基地后让引擎按基地自己的设置重算一次环境光（口径同天空岛 `RefreshBaseLightingAfterReturn`）：
@@ -101,7 +135,7 @@ namespace BossRush
                 }
                 return;
             }
-            try { raft = TidegateEntryRaft.Create(target, owner); }
+            try { raft = TidegateEntryRaft.Create(target, owner, PrepareRaidLighting); }
             catch (Exception e)
             {
                 raft = null;
@@ -125,11 +159,13 @@ namespace BossRush
             if (subscribed)
             {
                 SceneLoader.onStartedLoadingScene -= OnStartedLoading;
+                SceneManager.sceneLoaded -= OnSceneLoaded;
                 LevelManager.OnAfterLevelInitialized -= OnLevelReady;
                 Application.quitting -= OnApplicationQuitting;
                 subscribed = false;
             }
             ClearEntry();
+            if (sunTemplate != null) { sunTemplate.Dispose(); sunTemplate = null; }
             if (owner != null)
             {
                 TidegateSession session = owner.GetComponent<TidegateSession>();
@@ -229,9 +265,14 @@ namespace BossRush
     {
         internal const string NameKey = "BossRush_Tidegate_Raft";
         private ModBehaviour owner;
+        private Action<RaidOfficialLighting> prepareLighting;
         protected override string InteractNameKey { get { return NameKey; } }
         protected override string LogPrefix { get { return TidegateRaidScene.LogTag + " "; } }
-        internal void Bind(ModBehaviour host) { owner = host; }
+        internal void Bind(ModBehaviour host, Action<RaidOfficialLighting> prepareLighting)
+        {
+            owner = host;
+            this.prepareLighting = prepareLighting;
+        }
 
         protected override bool IsBuildingInteractable()
         {
@@ -242,7 +283,7 @@ namespace BossRush
         protected override void OnInteractCompleted()
         {
             if (owner == null) return;
-            TidegateSession.Enter(owner, Report);
+            TidegateSession.Enter(owner, Report, prepareLighting);
         }
 
         private void Report(string message, bool error)

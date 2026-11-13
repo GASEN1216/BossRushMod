@@ -16,6 +16,8 @@ namespace BossRush
         /// <summary>可玩区：逻辑网格 168 × 132 m、以原点为中心。站界隐形墙在场景包里（`Collision/COL_Boundary`），这里只做越界兜底。</summary>
         internal static readonly Rect PlayArea = Rect.MinMaxRect(-84f, -66f, 84f, 66f);
         private const float OutOfBoundsMargin = 8f;
+        private const float GroundProbeAbove = .25f, GroundProbeBelow = 9f;
+        private const string BasinVisualPath = "Visual/VIS_props/Sediment and wash basins";
         internal readonly GameObject Root;
         internal readonly Transform PlayerSpawn;
         internal readonly Dictionary<string, Transform> Exits = new Dictionary<string, Transform>(StringComparer.Ordinal);
@@ -25,7 +27,7 @@ namespace BossRush
         internal readonly List<Transform> Pois = new List<Transform>();
         internal readonly List<Vector3> NightLamps = new List<Vector3>();
         internal readonly RaidIndoorRoofs IndoorRoofs;
-        private int groundMask;
+        private readonly List<Collider> groundColliders = new List<Collider>();
 
         internal LastShiftWorld(GameObject root)
         {
@@ -67,8 +69,7 @@ namespace BossRush
         /// </summary>
         internal void ApplyLayers()
         {
-            groundMask = GameplayDataSettings.Layers.groundLayerMask.value;
-            int groundLayer = FirstLayer(groundMask);
+            int groundLayer = FirstLayer(GameplayDataSettings.Layers.groundLayerMask.value);
             int wallLayer = FirstLayer(GameplayDataSettings.Layers.wallLayerMask.value);
             if (groundLayer < 0 || wallLayer < 0) throw new InvalidOperationException("游戏碰撞层未就绪");
             var checkedShaders = new HashSet<Shader>();
@@ -88,17 +89,126 @@ namespace BossRush
             }
             Transform collision = Root.transform.Find("Collision");
             if (collision == null) throw new InvalidOperationException("末班编组站缺少 Collision 节点");
-            int ground = 0, walls = 0;
+            AttachBuildingColliders(collision);
+            int walls = 0;
+            groundColliders.Clear();
             foreach (Collider collider in collision.GetComponentsInChildren<Collider>(true))
             {
                 // COL_Ground 是地坪网格，COL_Ground_Overhead 是跨线桥面与司机室楼面（2026-11-12 起架空层单独成一张地面碰撞）
-                if (collider.name.StartsWith("COL_Ground", StringComparison.Ordinal)) { collider.gameObject.layer = groundLayer; ground++; }
+                if (collider.name.StartsWith("COL_Ground", StringComparison.Ordinal))
+                {
+                    collider.gameObject.layer = groundLayer;
+                    if (!collider.isTrigger) groundColliders.Add(collider);
+                }
                 else { collider.gameObject.layer = wallLayer; walls++; }
             }
-            if (ground == 0 || walls == 0) throw new InvalidOperationException("末班编组站地面或墙体碰撞体缺失");
+            if (groundColliders.Count == 0 || walls == 0) throw new InvalidOperationException("末班编组站地面或墙体碰撞体缺失");
             Physics.SyncTransforms();
+            int water = ApplyBasinWater(collision);
             int halfCover = RaidHalfCover.Register(collision, wallLayer, TryGroundAt);
-            Debug.Log(LastShiftRaidScene.LogTag + " LAYERS_READY ground=" + ground + " walls=" + walls + " halfCover=" + halfCover + " shaders=" + checkedShaders.Count);
+            Debug.Log(LastShiftRaidScene.LogTag + " LAYERS_READY ground=" + groundColliders.Count + " walls=" + walls + " water=" + water + " halfCover=" + halfCover + " shaders=" + checkedShaders.Count);
+        }
+
+        private static void AttachBuildingColliders(Transform collision)
+        {
+            if (collision.Find("COL_BuildingDetails") != null) return;
+            var details = new GameObject("COL_BuildingDetails").transform;
+            details.SetParent(collision, false);
+
+            // kit-yard.mjs frameWalls 在布局墙段外加了门柱和横梁。门口中央一直空到横梁下沿。
+            AddDoorFrame(details, "SignalSouth", -10f, 5.2f, -14f, 4.4f, 2.55f, false);
+            AddDoorFrame(details, "RepairSouth", -47f, 0f, -2f, 4.8f, 3.45f, false);
+            AddDoorFrame(details, "RepairEast", -39.5f, 0f, 8f, 4f, 3.45f, true);
+            AddDoorFrame(details, "BondSouth", 48f, 0f, 8.5f, 4.6f, 3.45f, false);
+            AddDoorFrame(details, "BondEast", 61.5f, 0f, 15f, 3.8f, 3.45f, true);
+
+            // 旧包将柱脚并进了细钢柱、剔除了四只药箱。重建后的场景包带回布局原有实体。
+            Vector3 footSize = new Vector3(1.22f, .5f, 1.22f);
+            AddMissingBox(collision, details, "block", "gantryNE", new Vector3(7.2f, .25f, -5.5f), footSize);
+            AddMissingBox(collision, details, "block", "gantrySE", new Vector3(7.2f, .25f, -10.5f), footSize);
+            Vector3 caseSize = new Vector3(.86f, .50f, .60f);
+            AddMissingBox(collision, details, "crate", "crate:signalMed", new Vector3(-16f, .305f, -42f), caseSize);
+            AddMissingBox(collision, details, "crate", "crate:repairMed", new Vector3(-45f, .305f, 11f), caseSize);
+            AddMissingBox(collision, details, "crate", "crate:eastCab", new Vector3(34f, .305f, 41f), caseSize);
+            AddMissingBox(collision, details, "crate", "crate:bellMed", new Vector3(37f, .305f, -40f), caseSize);
+        }
+
+        private static void AddMissingBox(Transform collision, Transform details, string group, string name, Vector3 center, Vector3 size)
+        {
+            Transform node = collision.Find("COL_" + group + "/COL_" + name);
+            BoxCollider authored = node == null ? null : node.GetComponent<BoxCollider>();
+            // 世界根可能尚未激活，只检查 Collision 下的烘焙分组和实体自身。
+            if (authored != null && authored.enabled && !authored.isTrigger &&
+                node.gameObject.activeSelf && node.parent.gameObject.activeSelf) return;
+            AddBuildingBox(details, name, center, size);
+        }
+
+        private static void AddDoorFrame(Transform parent, string name, float x, float floor, float z,
+            float width, float lintelHeight, bool east)
+        {
+            float offset = width * .5f + .12f;
+            for (int side = -1; side <= 1; side += 2)
+            {
+                float postX = east ? x : x + side * offset;
+                float postZ = east ? z + side * offset : z;
+                string post = name + (side < 0 ? "Left" : "Right");
+                AddBuildingBox(parent, post + "Base", new Vector3(postX, floor + .46f, postZ), new Vector3(.33f, .92f, .33f));
+                AddBuildingBox(parent, post, new Vector3(postX, floor + (lintelHeight + .89f) * .5f, postZ),
+                    new Vector3(.29f, lintelHeight - .89f, .29f));
+            }
+            AddBuildingBox(parent, name + "Lintel", new Vector3(x, floor + lintelHeight, z),
+                east ? new Vector3(.49f, .29f, width + .75f) : new Vector3(width + .75f, .29f, .49f));
+            if (floor > 0f) return;
+            // 两栋平地建筑的门楣上还有四条钢板，窄缝按可见间隔保留。
+            Vector3 panelSize = east ? new Vector3(.42f, .10f, width - .1f) : new Vector3(width - .1f, .10f, .42f);
+            for (int panel = 0; panel < 4; panel++)
+                AddBuildingBox(parent, name + "Panel" + panel, new Vector3(x, lintelHeight + .12f + panel * .16f, z), panelSize);
+        }
+
+        private static void AddBuildingBox(Transform parent, string name, Vector3 center, Vector3 size)
+        {
+            var piece = new GameObject("COL_" + name);
+            piece.transform.SetParent(parent, false);
+            piece.transform.localPosition = center;
+            piece.AddComponent<BoxCollider>().size = size;
+        }
+
+        /// <summary>浅水池沿用场景碰撞底与可见水面，交给官方 Water 层的角色检测。</summary>
+        private int ApplyBasinWater(Transform collision)
+        {
+            int waterLayer = LayerMask.NameToLayer("Water");
+            Transform basins = Root.transform.Find(BasinVisualPath);
+            if (waterLayer < 0 || basins == null)
+            {
+                Debug.LogWarning(LastShiftRaidScene.LogTag + " 缺少官方 Water 层或水池模型，浅水池未接入入水检测");
+                return 0;
+            }
+            int count = 0;
+            foreach (Transform surface in basins)
+            {
+                // 水面是池组的平面子模型；池沿与进水格栅在独立的子组内。
+                MeshRenderer renderer = surface.GetComponent<MeshRenderer>();
+                if (renderer == null) continue;
+                Bounds bounds = renderer.bounds;
+                if (bounds.size.y > .01f || bounds.size.x < 1f || bounds.size.z < 1f) continue;
+                float floor;
+                float top = bounds.center.y;
+                if (!TryGroundAt(bounds.center, out floor) || top - floor < .02f) continue;
+                // 放在 Collision 之外，重复 ApplyLayers 时不会被墙层扫描重新归类。
+                string name = "BR_BasinWater_" + surface.name;
+                Transform existing = collision.parent.Find(name);
+                if (existing != null) { count++; continue; }
+                var water = new GameObject(name);
+                water.transform.SetParent(collision.parent, false);
+                water.transform.position = new Vector3(bounds.center.x, (floor + top) * .5f, bounds.center.z);
+                water.layer = waterLayer;
+                var trigger = water.AddComponent<BoxCollider>();
+                trigger.isTrigger = true;
+                trigger.size = new Vector3(bounds.size.x, top - floor, bounds.size.z);
+                count++;
+            }
+            if (count != 2) Debug.LogWarning(LastShiftRaidScene.LogTag + " 水池 Water 触发体数量异常：" + count);
+            return count;
         }
 
         /// <summary>
@@ -143,7 +253,9 @@ namespace BossRush
 
         internal void VerifyGround(int mask)
         {
-            groundMask = mask;
+            foreach (Collider collider in groundColliders)
+                if ((mask & (1 << collider.gameObject.layer)) == 0)
+                    throw new InvalidOperationException("末班编组站地面碰撞体未处于官方地面层：" + collider.name);
             VerifyGround(PlayerSpawn);
             foreach (Transform exit in Exits.Values) VerifyGround(exit);
         }
@@ -154,18 +266,22 @@ namespace BossRush
             if (!TryGroundAt(marker.position, out y)) throw new InvalidOperationException("点位脚下未命中自建地面：" + marker.name);
         }
 
-        /// <summary>脚下地面高度：从上方 3 m 向下打地面层，命中必须属于本图。</summary>
+        /// <summary>探测本图的地面与架空层，选择高度最接近请求脚点的一层。</summary>
         internal bool TryGroundAt(Vector3 position, out float y)
         {
             y = position.y;
-            RaycastHit hit;
-            if (Physics.Raycast(position + Vector3.up * 3f, Vector3.down, out hit, 12f, groundMask, QueryTriggerInteraction.Ignore)
-                && hit.transform.IsChildOf(Root.transform))
+            float distance = float.PositiveInfinity;
+            Ray ray = new Ray(position + Vector3.up * GroundProbeAbove, Vector3.down);
+            foreach (Collider collider in groundColliders)
             {
+                RaycastHit hit;
+                if (collider == null || !collider.Raycast(ray, out hit, GroundProbeAbove + GroundProbeBelow) || hit.normal.y <= 0f) continue;
+                float next = Mathf.Abs(hit.point.y - position.y);
+                if (next > distance || (next == distance && hit.point.y >= y)) continue;
+                distance = next;
                 y = hit.point.y;
-                return true;
             }
-            return false;
+            return distance < float.PositiveInfinity;
         }
 
         internal Transform NearestPoi(Vector3 position, out float distance)

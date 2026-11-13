@@ -56,9 +56,11 @@ EXTERNAL_ARTIFACT_GUARDS = {
     "SkyIslandShadowStabilityPropertyTest.py",
     "SkyIslandFloraGeometryPropertyTest.py",
     # 2026-11-12 读图通则：证据在 local-only 的 ArtSource 下
-    "TidegateReadabilityPropertyTest.py", "LastShiftReadabilityPropertyTest.py", "SkyIslandReadabilityPropertyTest.py",
+    "TidegateReadabilityPropertyTest.py", "TidegateBuildingCollisionPropertyTest.py",
+    "LastShiftReadabilityPropertyTest.py", "SkyIslandReadabilityPropertyTest.py",
     # 2026-11-12 末班编组站围圈小队站位：复算用的导航 / 碰撞 / 布局同在 local-only 的 ArtSource 下
     "LastShiftSquadPlacementPropertyTest.py",
+    "TidegateSurfaceRepairPropertyTest.py", "LastShiftGroundFinishPropertyTest.py", "LastShiftCollisionPropertyTest.py",
 }
 
 

@@ -1,0 +1,32 @@
+## v2.5.0
+
+### Release Date
+- 2026-11-13
+- This update adds **Last Shift Yard**, a new standalone raid map: a railway marshalling yard that closed years ago, yet still runs a freight train every two minutes at night. The way in is in the official Hidden Warehouse, where the ticket inspector Yu Xiang punches your ticket. The switch decides which platform each train stops at, every train that stops is a fight, and once the last train (train 8) leaves, the yard closes. It also brings a short story, "The Ticket Nobody Came For", a new boss (the Chief Escort), three squad leaders and two new items. See the `Last Shift Yard` wiki page for the full guide.
+
+### Added
+
+- **Getting there**: the first time you're back at base there's a "last-train ticketing resumed" notice by the departures; after that, **Jeff** offers "The Last Train's Still Taking Tickets". During a Hidden Warehouse raid that is still going, find the ticket inspector **Yu Xiang** outside the second gantry crane in the west yard and board. Your backpack comes with you, nothing is settled on the way, and the only way back to base is to extract from the yard; each run she also slips you a bandage.
+- **The switch and the timetable**: a train every two minutes: ordinary freight, slow trains, heavy freight and expresses that don't stop. Throw the switch in the suspended cab to send the train to the west or east platform, and the escorts follow the cargo. A head-on hit from the engine kills outright, and that goes for escorts too; it counts as your kill.
+- **Every train is a fight**: every train that stops can be signed for once. The first cabinet holds 8 items; later ones hold 4, but the first item is more likely to be quality 5 the more you sign. The more you sign, the more escorts the brake van drops off each train (3 to start, up to 5), and from two cabinets on they bring a squad leader. The tannoy only tells you which platform has this train's premium tag when it pulls in.
+- **The last train and closing time**: train 8 is the last train. Once it stops, the brake van lowers its rear step; stand in the extraction ring beside it to ride out. When it leaves, the yard closes: the gates are padlocked, the railcar stops running, a checkpoint goes up on the north road and the escorts sweep the yard for you.
+- **Cargo guards**: every place with crates has a crew watching it. Some stand guard, others rest in a circle and chat when you get close. A place you've cleared stays empty until the next train stops on that side.
+- **Three squad leaders**: the Signal Foreman's red lamp calls you out and everyone nearby comes running; the Shunting Master raises a flag and lets a runaway hand cart go that hits anyone in its way, his own crew included; the Escort Sergeant shoves an inspection trolley out as cover, and when you hide he sends his crew round both sides.
+- **The Chief Escort**: a boss with 1000 health who guards the sealed cabinet on the platform where the train stops. He rakes a laid line and throws track torpedoes, and both moves get nastier at half health. Down him for the **Escort Steel Stamp**, which opens the bond store's sealed side cabinet once on your next trip.
+- **Yard devices**: the repair shed's test buzzer draws patrols away, the service steam valve blocks sight lines, and the railcar bell calls a railcar to the shelter.
+- **Extraction**: the north road is always open; the west line service gate, the east platform escort gate and the railcar shelter open and close with the trains; the last train's brake-van step is only there while the last train stands and pulls out.
+- **The Ticket Nobody Came For**: the ticket punch in the cab, the old tape in the repair shed and the returns ledger in the bond store. Bring each clue back to Yu Xiang and piece together who gave up a seat on the evacuation train that night. Once the story is done, she tells you about the next train every time she punches your ticket.
+- **New items**: Escort Steel Stamp (500117) and Last Shift Ticket Stub (500118). Neither appears in random reward pools.
+
+### Improved
+
+- **Easier-to-read home-made maps**: the edges of Sky Islands, Tidegate and Last Shift Yard now use real objects from the scene (fences, walls, embankments), collisions follow the models, and there's waist-high half cover plus cover in boss arenas; the Sky Islands bosses no longer all show up at once.
+- **Tidegate**: building collisions are filled in part by part and nearby interaction points can all be reached; several flickering ground surfaces are fixed; indoor character lighting now uses the game's own fill light, so rooms are no longer pitch dark.
+- **Yu Xiang and the ticket desk**: chatting, handing in the stub and boarding all use the game's own dialogue box, and the desk, sign and shuttle truck now have collision.
+
+### Fixed
+
+- The ticket desk or Yu Xiang sometimes missing when you return to the warehouse district.
+- Large flickering patches on the Last Shift Yard ground, grass poking out of the floor, and characters too dark or too bright indoors.
+
+[tip] This update keeps your existing saves and config. New items use new IDs; existing item IDs are unchanged.

@@ -156,7 +156,8 @@ def main():
          "fromCharacter = null", "fromObject = null")
     need(read("Tidegate/TidegateDevices.cs"), "点灯告知灯塔位置", "enemies.Lure(world.Lighthouse.position, LureRadius)")
     # 箱子：只有收起要等玩家走开，水退了马上放出。
-    need(read("Tidegate/TidegateLoot.cs"), "箱子放出不等人", "if (flooded != point.Flooded && (!flooded || distance > KeepNearRange * KeepNearRange))")
+    need(read("Tidegate/TidegateLoot.cs"), "箱子放出不等人，涨潮时只保留正在看的箱", "bool active = (!flooded || keepOpen) && !Locked(point);",
+         "distance <= KeepNearRange * KeepNearRange && IsCurrentLootView(point.Box)")
     # 导航：只写变了的节点（A* setter 每写一次都交分层图重算）。
     walk = body(read("DebugAndTools/ArenaPrototype/ArenaPrototypeNavigation.cs"), "internal void SetWalkable(Func<Vector3, Vector3, Vector3, bool> walkable)")
     need(walk, "导航只写变化", "if (node.Walkable == next) return;", "if (changed) context.SetGraphDirty(graph);")
@@ -174,7 +175,7 @@ def main():
     tide_rt = read("Tidegate/TidegateTide.cs")
     update = body(session, "private void Update()") or ""
     cleanup = body(session, "private void Cleanup(string reason)") or ""
-    build = body(session, "private IEnumerator Build()") or ""
+    build = body(session, "private IEnumerator Build(Action<RaidOfficialLighting> prepareLighting)") or ""
     # 017 换相有字幕与警报：会话订阅并退订潮汐换相；涨潮警示色加警报；换相前提示每轮一次（15 秒涨潮警报、12 秒渡口要走）。
     need(build, "换相提示订阅", "tide.PhaseChanged += OnTidePhaseChanged;")
     need(cleanup, "换相提示退订", "tide.PhaseChanged -= OnTidePhaseChanged;")
@@ -218,7 +219,7 @@ def main():
         errors.append("compile_official.bat 的声音目录自检要包含 Tidegate")
     # 024 交互反馈：潮位站和交表都使用官方需求行，由本模块完成后扣物；其它机关不设物品门槛。
     need(body(loot, "internal void Tick(CharacterMainControl player)"), "被淹箱子提示",
-         "if (point.Flooded && !point.FloodHinted && distance <= FloodHintRange * FloodHintRange && announce != null)")
+         "if (point.Flooded && !keepOpen && !point.FloodHinted && distance <= FloodHintRange * FloodHintRange && announce != null)")
     need(body(devices, "private static string ValveLabel(int index)"), "阀门交互名", 'L10n.T("拧开阀门（", "Open the valve (")',
          'ValveName(index)', 'L10n.T("）", ")")')
     need(devices, "潮位站官方需求", "index == TideGaugeValve ? BossRushItemIds.TidegateHandwheel : 0", "x.BindRequirement(requiredItemId);")
@@ -244,7 +245,7 @@ def main():
                 '{ "LOOT_safe_77", "goldbar" }'):
         need(loot, "剧情箱柜表", row)
     need(body(loot, "internal static int PageIndexOf(string pointId)"), "日志页出处", 'HasFixed(pointId, "page" + (page + 1))')
-    need(body(loot, "private void Build(Point point, CharacterMainControl player)"), "沉船保险柜",
+    need(body(loot, "private bool StockAndPublish(Point point, InteractableLootbox box, CharacterMainControl player)"), "沉船保险柜",
          'if (HasFixed(point.Id, "goldbar"))', "int valuable = RolledPrize(point, prizeFloor, prizeRandom, out prizeCategory);",
          'SkyIslandRewardCrate.AddOfficialStack(box, valuable, 1, log, "TidegateWreck")')
     need(body(loot, "internal static int PrizeFloor(string pointId, string kind)"), "水下普通精品底线与陆地兼容",
@@ -287,7 +288,11 @@ def main():
     need(body(tide, "internal static double ClockHours()"), "潮汐时钟", "TidegateTideRules.ElapsedHours(GameClock.Day, GameClock.TimeOfDay.TotalSeconds)")
     for rel in ("Tidegate/TidegateTide.cs", "Tidegate/TidegateEnemies.cs", "Tidegate/TidegateSession.cs", "Tidegate/TidegateDevices.cs",
                 "Tidegate/TidegateExtraction.cs"):
-        if "SkyIslandLighting.ClockHours()" in read(rel):
+        source = read(rel)
+        if rel == "Tidegate/TidegateTide.cs":
+            # 夜灯按钟点开关；只排除这条完整赋值，潮位、撤离、机关仍禁止读取截断到当天的时钟。
+            source = source.replace("night = SkyIslandLighting.StreetLampNightFactor(SkyIslandLighting.ClockHours());", "")
+        if "SkyIslandLighting.ClockHours()" in source:
             errors.append(rel + " 的潮汐计时不得读当天时刻（SkyIslandLighting.ClockHours），改用 TidegateTide.ClockHours()")
     need(body(enemies, "private bool DiggersOut()"), "淘沙帮撤回计时", "TidegateTide.RealSecondsUntilNextPhase()")
     need(body(tide, "internal static double RealSecondsUntilNextPhase()"), "换相倒计时", "TidegateTideRules.RealSecondsUntilNextPhase(ClockHours(),")

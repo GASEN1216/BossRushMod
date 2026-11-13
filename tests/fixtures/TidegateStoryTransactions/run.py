@@ -32,10 +32,15 @@ def main():
     partial = member(raw, "internal static partial class TidegateStory")
     shared = ROOT / "Utilities/OfficialQuests/OfficialQuestItems.cs"
     source = clean_source(shared.read_text(encoding="utf-8-sig"))
-    extracted = "using System; using System.Collections.Generic; using ItemStatsSystem; using ItemStatsSystem.Data; using Saves; namespace BossRush {\n"
+    extracted = "using System; using System.Collections.Generic; using ItemStatsSystem; using ItemStatsSystem.Data; using Saves; using UnityEngine; namespace BossRush {\n"
     extracted += partial + "\ninternal static class OfficialQuestItems {\n"
     for signature in ("internal static bool CanCollectAssets(bool inboxOnly)", "internal static Func<bool> AssetCollector(bool inboxOnly)"):
         extracted += member(source, signature) + "\n"
+    extracted += "}\ninternal sealed partial class TidegateDevices {\n"
+    devices = ROOT / "Tidegate/TidegateDevices.cs"
+    device_source = devices.read_text(encoding="utf-8-sig")
+    for signature in ("internal int OpenValves", "private void TurnValve(int index)", "private bool DevBypassHandwheel()", "private static string ValveName(int index)"):
+        extracted += member(device_source, signature) + "\n"
     extracted += "}}\n"
     generated = OUT / "Extracted.cs"
     generated.write_text(extracted, encoding="utf-8")
@@ -44,7 +49,7 @@ def main():
         "Common/Lifecycle/BossRushSlotJsonStore.cs", "Common/Lifecycle/BossRushSaveCoordinatorEngine.cs",
         "Common/Lifecycle/BossRushSaveFileThrottle.cs", "Common/Data/BossRushJsonValue.cs",
         "Utilities/SimpleJsonHelper.cs", "Config/ConfigItemIds.cs")]
-    linked = paths + [generated, HERE / "Program.cs", HERE / "Stubs.cs"]
+    linked = paths + [generated, HERE / "Program.cs", HERE / "Stubs.cs", HERE / "ValveCases.cs"]
     project = OUT / "TidegateStoryTransactions.csproj"
     project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType>'
         '<TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion>'
@@ -52,7 +57,7 @@ def main():
         '</PropertyGroup><ItemGroup>' + ''.join('<Compile Include="' + escape(str(p), {'"': '&quot;'}) + '"/>' for p in linked)
         + '</ItemGroup></Project>', encoding="utf-8")
     (OUT / "production-sha256.json").write_text(json.dumps({str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
-        for p in paths + [hooks, shared]}, indent=2) + "\n", encoding="utf-8")
+        for p in paths + [hooks, shared, devices]}, indent=2) + "\n", encoding="utf-8")
     sys.path.insert(0, str(ROOT / "tools"))
     from run_runtime_regressions import run_project_fixture
     code, output = run_project_fixture(project, OUT, ROOT)

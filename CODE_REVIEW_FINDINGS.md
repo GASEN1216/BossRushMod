@@ -2,6 +2,60 @@
 
 更早记录见 `archive/`；月度归档索引保留在本文件正文。
 
+## 2026-11-13 双地图官方复用复核（004–014；修复已落地，新画面 L3 待验）
+
+详细根因、复用清单、验证与人工步骤见 [双地图报告](docs/reports/reviews/2026-11-13-双地图官方复用与制作规范复核.md)，后续实机反馈见 [地面与光照报告](docs/reports/testing/末班编组站_2026-11-13_地面与光照反馈.md)。维护方没有启动游戏；owner 的旧版 11 PASS 只证明该次演练，产物哈希与视觉结论分别记录。
+
+| ID / 分类 | 已确认问题与修复 | 证据边界 |
+| --- | --- | --- |
+| CR-2026-11-13-004 · P2 / COMPAT / WIRE+ | 两图自定义日照覆盖官方天气，室内环境灯未完整覆盖原生角色。共享原生太阳 owner、SodaPointLight 组件及活动相机通道，潮闸建筑补光；原始场景卸载前捕获资源，profile 私有化。 | L1/L2：官方代码/安装资源，双地图补光 12 场景、日照 9 场景及反向验证；精确晴天 profile 缺失时有显式降级，画面仍待 L3。 |
+| CR-2026-11-13-005 · P2 / COMPAT | 两图高射线探地可能误取桥面；末班可走浅池缺物理 Water。限定本图地面、近脚朝上命中，浅池补原生触发体；潮闸不可走实心池保持原样。 | L1/L2：生产 World 夹具及实际包标记/网格复算；桥上/桥下、脚步和实际通行待 L3。 |
+| CR-2026-11-13-006 · P2 / COMPAT | 末班侧柜只冻结带入钢印数量，可丢旧换新绕过；部分货物创建失败仍可能消耗资格。冻结带入实例、隐藏库存核验和 Reservation 提交；官方成员听觉和技能资源链接线同时补齐。 | L1/L2：生产货箱、失败回滚/换印反向与成员听觉回归；现场交互、音效待 L3。 |
+| CR-2026-11-13-007 · P2 / COMPAT | 潮闸阀门先扣物、关键箱部分失败、临界涨潮只停用物件，可能丢关键物或让已开窗口/箱状态残留。预留后提交、关键库存实物验证、匹配 LootView 关闭和原生栈退出后恢复状态。 | L1：官方事件顺序与独立复核；执行回归及最终构建见详细报告，窗口瞬间开关声/显示仍待 L3。 |
+| CR-2026-11-13-008 · P2 / COMPAT | 潮闸 M 图只按出口状态更新，切换语言不刷新现有标签；末班缺原生撤离图钉。按语言/状态调用官方 Setup，末班按真实条件维护原生出口标记。 | L1：生产入口、官方缓存/注销重登路径；地图双语与状态一致性待 L3。 |
+| CR-2026-11-13-009 · P2 / COMPAT | 潮闸实际包存在外露的异材质共面细节；材质对汇总跨多个节点/高度，首例修复不足。精确分离 13 视觉节点并提供重建后修复工具、实包属性守卫及全图代表点复扫。 | L2：非目标字节一致、重复执行一致、旧包反例、最终包几何/shader/室内检查通过；动态水面与实际相机闪烁待 L3。 |
+| CR-2026-11-13-010 · P2 / COMPAT | 原生 SodaPointLight 四个覆盖球叠加，旧暖 HDR 色使室内身体过亮；“接到官方组件”不能证明曝光。两图共享补光改官方中性色与房灯衰减，后备灯减弱，补充总贡献上限及房形覆盖回归。 | owner 旧画面和实际 shader 为根因证据；修正 L1/L2、13 场景及负向通过，最终曝光待新 L3。 |
+| CR-2026-11-13-011 · P2 / COMPAT | 末班污迹同时来自四组磨损贴花和 atlas 椭圆/飞溅画笔，修好透明不等于观感合格。精确取消目标装饰、同步源和实包，保护非目标像素/对象；天气灰雾仅补只读诊断，不无证据改官方天气。 | 污迹来源已确认，资源重放及反向证据见后续报告；灰雾现场天气未知，不能称已证明是阴天或已修复天气。 |
+| CR-2026-11-13-012 · P2 / COMPAT | 仓库剪票入口包缺实体；末班矮物过滤漏箱柜/宽柱脚、门框未装配；潮闸 marker 重叠删家具碰撞。按作者几何补当前包代理并纠正制作输出，保留实际门路与交互净空。 | 真实制品/生产生成器对照、属性与运行时回归；详见 [本批报告](docs/reports/testing/仓库入口_2026-11-13_实体对话与重进.md)，通行和弹道仍待 L3。 |
+| CR-2026-11-13-013 · P2 / COMPAT | 余响完整对白/交票/登车借自制确认框，未复用官方对话。改真实 DialogueActor + 共享 DialogueManager + 官方 DialogueUI，按显示 owner 处理取消，区分提交前取消与提交后结果页关闭。 | 生产入口回归及共享对话消费者回归，原版 UI 视觉与焦点待 L3；不改存档键/经济。 |
+| CR-2026-11-13-014 · P2 / COMPAT | 去过编组站后入口 M 标记被隐藏；关闭中旧会话与异步全局 owner 存在阻断/误回收风险。改每趟标记、真实 Scene 归属与实例 generation，迟到请求只回收自己。 | L1/L2；旧日志第二次 ENTRY_READY/YUXIANG_READY 已出现，现场“物件消失”的唯一根因仍未证实，三次往返待 L3。 |
+
+## 2026-11-13 后续实机：官方室内灯与装饰草（003 Fixed at L1/L2；新画面待验）
+
+- **CR-2026-11-13-003 · P2 / COMPAT / WIRE+**：owner 新图确认室内环境亮、人物仍暗；现场 DLL 与地图已更新到上一轮版本，排除旧包未替换。此前“建立普通 Light 即能满足角色亮度”的验收依据不充分。官方 `SodaPointLight.cs` 写 `_LightColor/_Hardness/_FallOff/_EnviromentTintOn`，实际仓库有 59 个外场 / 49 个地下室网格灯（单位球 `SodaPointLightMesh`、`ZeroPoint` 占位材质、SodaLight 层），活动 URP renderer 在 `BeforeRenderingDeferredLights` 以官方 `SodaPointLight` 材质覆盖绘制、读取 GBuffer 补光。普通点光与该通路不是同一实现。
+- **修复**：`LastShiftLighting` 改为官方网格灯，转场前用停用 DDOL 节点持有 mesh/material；`LastShiftSession` 在 `lease.BeginLoad` 前准备，世界材质核验后绑定。只读实际相机的 rendererFeatures 校验该 pass；不可用才记录一次回退。三个室内区的角落覆盖按官方球半径 0.91 / 衰减复算，出屋关闭、换屋复用、取消和离场释放自己的节点，官方共享资源不销毁。记录 `INDOOR_FILL_READY mode=SodaPointLight layer=15`，日志不能替代画面验收。
+- **草的来源**：五组草/芦苇共 8451 三角面来自地图原型 `yard-details.mjs` / `ambience.js`；初版、上一轮前及上一轮后包的五个 Mesh 原始字节完全一致。官方幕布 `Single` 会先卸旧图，本图无 Terrain / TastyGrass owner；克隆的官方天气子树也无植被。未发现官方旧图残留证据，不把此草归为旧地面闪烁根因。按 owner 要求关闭五个渲染器，源 FBX 删除对应 leaf 网格、原型停止输出并保留其余随机序列，旧 GLB 组装也过滤；其余 5466 个包对象原始字节一致，地贴与原共面修复复验通过。
+- **验证**：相关守卫 75 PASS；LastShift 4 回归 PASS（新灯光夹具含 8 场景）；缺跨图保护、漏出屋关闭，以及卸图前捕获/官方网格装配的隔离反向均转红后按字节恢复；Windows 正式编译、Dev 标识缺席、场景判包通过。当前修复未在游戏里运行，目标 DLL / 地图哈希与部署边界见 FIX_TRACKER 同日后续条目。
+- **L3**：重新进司机室 / 维修棚 / 押运库，穿同一套装备在门内、中心和远角转身；M_LASTSHIFT_03 看身体是否仍黑与出屋是否残光，回传上述日志。M_LASTSHIFT_READ 到货台院落、沟边和水池边，草叶仍穿出地坪即不合格。此前现场图是旧方案失败证据，不算本次修复通过。
+
+## 2026-11-13 末班编组站第三轮需求验收（001–002 Fixed at L1/L2；实机待验）
+
+范围：owner 四项要求——地面闪烁、室内角色本体照明、押运长靠近签收处、签收至少 7–8 件且保底几件精品。审查当前未提交改动及实际发布包，不把历史修复记录当成验收结果。
+
+- **CR-2026-11-13-001 · P1 / COMPAT · 换台时押运长无法在签收窗口内到达对侧。** `LastShiftYard/LastShiftEnemies.cs:682` 的 `GuardCargo` 到列车进站锁线时才更新驻点，再经 `MoveToPos` 走过去；`LastShiftYard/LastShiftTrains.cs:306` 同时按实际轨道包络封闭导航，`LastShiftYard/LastShiftLoot.cs:547` 在同侧 Dwell 即开放签收。直接读取当前 `lastshift_raid`（SHA-256 `b1b6d708f703bffd5b589888425a5fed93bddae9c70e491f8734e3ed2c0bc86c`），按游戏 A* Int3 坐标焊接及反向共边连接、生产 `InEnvelope` 判据复算 832 顶点 / 1217 三角形：西线占用封 122 节点、东线占用封 119 节点，两种状态均为驻点可站但东西驻点及对侧签收位不连通；空线才全通。作者预烘掩码会给出可达，不能替代这条运行时判据。首班默认西台后扳东即可触发该路径；同侧随车落点可达，不扩大为所有班次都失效。**建议：**保证签收期间的实际跨台路线可达，或在封线前完成换岗，并用运行时封线规则回归。**验证：**主代理复跑 `python Build/lastshift-chief-nav-review.py`，L1 + L2；实机是否被玩家战斗牵引到别处未测，不能消除普通站岗路径缺陷。
+- **CR-2026-11-13-002 · P2 / COMPAT · 部分装箱失败仍消耗整趟签收机会。** `LastShiftYard/LastShiftLoot.cs:560–573` 只检查 `added == 0`，任意一格成功即写 `CargoClaimed = true`，没有核验实际达到 8/9 件及至少两件 Q4 以上；`:591–604` 精品池无货会跳过，再由 Q2–Q4 普通池补位。`SkyIsland/SkyIslandRewardCrate.cs:308–336` 在资源、实例或入箱失败时返回 false，调用方没有补货或保留欠账。**影响边界：**现货与装箱正常时计划满足普通台 8 件、加价台 9 件、头两件 Q4 以上；本次未证明常规现货池发生短缺，不能说每局都会少给。**建议：**按实装件数和精品数完成签收事务，失败补足或保留可重试状态，防重复领取。**验证：**L1 条件路径已确认，当前 LastShift 演练不实际签收，待补故障路径执行回归与实机开柜核数。
+
+**视觉线索（UNVERIFIED，不等于已复现新版闪烁）：**地图包的四块磨损地皮已恢复顶点透明度，透明队列 / 混合 / 不写深度均已进入游戏部署包。最终包仍有很小的同层共面几何：`Connected yard / low objects 2` 子网格 0 的三角 1747 / 1758，重叠约 0.01591 m²，顶点 RGB 不同、alpha 均 255；较小面 0.01982 m² 被 `tools/build_lastshift_blend.py` 的 0.02 m² 单面阈值排除。这不证明原五张图的大色块仍在闪，需现场转镜头复测。室内四点光与官方角色 GBuffer 接线及三间房覆盖未发现阻断项，最终亮度仍待 L3。
+
+本轮验证：相关守卫 59 PASS；LastShift 执行回归 2 PASS；在隔离源码与 Managed 副本上运行原 `compile_official.bat`，正式配置 Windows 真编译通过，未改游戏目录；地图包作者 / 仓库 / 游戏三份哈希一致。未修改玩法代码，未启动游戏或访问玩家存档。
+
+修复追记（2026-11-13，owner「全部修复」）：
+
+- **001 Fixed at L1/L2**：首个可签收班次锁线后才在实际铅封柜后 3.2 m 生成押运长；普通兵和围圈小队预留他的名额。已在场时扳岔提前换岗；进出站仍整线封闭，停靠按每节车身加 0.65 m 净空的三角形相交封路，发车 / 进站撤销过期路径。生产判据复算实际包全部 1217 个三角形，东西 × 普通 / 重载四种状态与独立几何判据零差异、跨台均可达。F3 同步检查封闭区与绕行区，缓存区分普通 / 重载。后续班次临近锁线才切台时仍需正常步行，未承诺停靠瞬间就位；交火与实际走路耗时留 L3。
+- **002 Fixed at L1/L2**：封签货在停用父节点下装柜，实物件数、TypeID、库存归属与品质全部核对后才开放并写签收；缺货、创建 / 入箱失败、监听器异常与会话关闭时整柜取消，保留签收机会，重入不会重复领奖。`LastShiftCargoRuntime` 链接生产 loot / 班次 / 共享建箱与装箱代码，11 场景含 3 班单 × 普通 / 加价、故障及清理路径通过；去掉实物品质校验后用例转红，按字节还原后通过。
+- **补光**：保留已有每屋四盏真实点光，将会话更新改为先更新本帧房间脚点，再开关角色补光；倒置顺序的隔离反向测试准确转红。最终亮度仍待上述人工项。
+- **地图**：去掉会漏小面与窄交集的面积门槛，补空间分桶边界；源脚本、FBX 分层及发布包独立转换均有回读证据。Unity 因许可证服务 IPC 超时退出 199，未取得新 Unity 构建；发布包通过 UnityPy 仅更新不透明网格分层，具体证明与哈希见 FIX_TRACKER 本轮记录，不能称 Unity 重构建成功。
+- 正式 / Dev 两配置均通过原 `compile_official.bat` Windows 真编译，1352 个快照源与当前源码字节一致，29 个 Dev 标识在正式版全无、Dev 版全有；三个 LastShift 回归 PASS。未启动游戏、未访问玩家存档，未提交。
+
+后续实机清单（截图由 owner 目检；以下为建议文件名，尚未生成。M 编号对应 `Assets/Data/GameplayCoverage.json`，V01 为本轮补充项）：
+
+| 步骤 | 操作及观察位置 | 建议文件名 | 不合格条件 |
+| --- | --- | --- | --- |
+| V01 地面 | 回到原五图的候车棚旁、钢轨堆场、仓库外及跨线桥下；用移动键慢走并转动镜头，盯地面深绿 / 土黄边缘 | `LSY_V01_ground_01.png` 至 `LSY_V01_ground_05.png`；动态闪烁另记发生位置 | 色块随镜头跳变或互相覆盖；静态截图本身不能证明不闪 |
+| M_LASTSHIFT_03 人物 | 同一套装备进出司机室、维修棚、押运库，走到门内、中央和最远角并转身；看玩家身体而不只看地板 | `LSY_M03_driver.png`、`LSY_M03_repair.png`、`LSY_M03_bond.png` | 周围已亮而玩家身体仍近黑，或出屋 / 切图后补光残留 |
+| M_LASTSHIFT_06 换台 | 首班允许时用当前绑定的交互键扳东，回访另测换西；列车停靠后到对应签收柜，观察柜后与旧站台 | `LSY_M06_east.png`、`LSY_M06_west.png` | 可签收时押运长仍在另一台，或没有战斗干扰却无法就位 |
+| M_LASTSHIFT_05 奖励 | 普通台、加价台分趟用当前交互键签收并开柜，逐格数物品、鉴定前两件品质 | `LSY_M05_normal.png`、`LSY_M05_premium.png` | 普通台少于 8 件、加价台少于 9 件，或少于两件 Q4 以上；日志 `CARGO_CLAIMED items=实际/计划 q=实物品质` 已取自库存核验，但仍需实机开柜确认显示 |
+
 ## 2026-11-08 潮闸镇敌人捏脸与演练误报（001–004；COMPAT，L1/L2，修正版 L3 待验）
 
 来源：owner 外观反馈、`BossRushValidation_20261107_170000_978.log` 与对应 Player.log、部署 DLL/资源和当前代码。详细验证见 `docs/reports/testing/潮闸镇_2026-11-08_敌人捏脸与演练误报修复.md`。
@@ -185,63 +239,9 @@ owner「全部审核一遍，确保没问题把代码提交了」。按三块分
 - `TidegateSession.OnSceneUnloaded` 可能把已卸载场景句柄写回缓存；两张图登记后未登记的 bundle 场景每次多读一遍 `scene.path`。
 - `ForceSpawnAtAsync` 等待期间若别的 owner 先登记了闸伯，本模块会把它当成自己的。
 
-## 2026-10-29 HEAD a8aed728 全面复审（4 项已于 2026-10-30 修复；COMPAT，L3 待验）
+## 2026-10-29 HEAD a8aed728 全面复审（归档索引；L3 待验）
 
-起点工作区干净，审查对象为 HEAD `a8aed728`。逐调用链复核 `41360aa4..a8aed728` 最新改动及其直接影响面，同时抽查未改动大模块的关键入口、退出、异步回调和存档边界。覆盖共享持久层、遗种巢、成就、好感、野外趣事、霜之哀伤、F3、标准竞技场、Mode D–H、丧尸、征程、天空岛和随机事件；全仓守卫与已有执行回归均运行。大模块采用关键路径抽查，不表示所有源码逐行或所有状态组合穷举。
-
-2026-10-29 仅审查与登记；2026-10-30 按 owner「全部修复」完成以下四项生产修复及回归。下面保留原始触发与审查证据，不将历史报告作为确认依据，也不表示四项均由最后一个提交引入。没有提交、部署到真实游戏目录、启动游戏或访问玩家存档。
-
-### CR-2026-10-29-008 · P1 / COMPAT · 零到账的远征补发失败仍可阻塞出击中的崽包保存
-
-- 状态：Fixed（2026-10-30），L1 + L2，L3 待验；CR-2026-10-29-007 修复后的残余分支。
-- 位置：`PetNest/PetNestExpeditionService.cs:585-590`、`:629-637`；后续阻塞在 `PetNest/PetNestSaveCoordinator.cs:148`。
-- 触发：基地里有已结算欠奖，现金已经到账，但剩余物品的真实 prefab 暂时不可用。补发先调用 `RequireAssetSnapshot` 登记必须采集基地仓库的义务，实际没有调用现金或物品交付；无进展分支只提交诊断计数或中止事务，既不申请物理保存，也不撤销本次空义务。
-- 证据：链接真实远征服务、Bundle、崽包 Store、共享保存引擎和协调器的隔离探针确认 `Adds=0`、无物品交付、`HasDeferredFlush=False`。额外模拟官方 `LevelManager.NotifySaveBeforeLoadScene` 的 Collect + SaveFile，物理写成功一次，义务仍保留；切到没有 `PlayerStorage` 的出击场景后，崽包前置检查和 Store 均成功，`RequestAssetFlush` 返回 `asset_save_not_ready:storage_instance`。官方 SaveFile 没有通知该协调器清义务，`PetNestPersistence.HandleCollectSaveData` 也只采集/flush，因而常规切图保存不能消除此状态。证据：`Build/review-head-20261029/persistence-transition/result.log`；原始探针 `Build/review-persistence-20261029/probe.log`。
-- 影响：一次未到账的奖励重试把后续崽包转移绑定到出击图不存在的基地仓库，造成保存失败并反复提示，符合此前修复想消除的阻塞类型。
-- 建议：补发持有 `AssetSnapshotToken`，在确认尚未调用任何资产变更 API 的失败路径撤销本次新建义务，或在基地妥善结清该批次。不能单凭奖励游标没有前进就撤销，外部通知可能在资产已变更后抛异常；已有真实欠账和重入的新义务必须保留。
-- 修复：持有本次 token，以 `ref assetDeliveryStarted` 在现金/物品外部 API 调用前置位，`finally` 仅在投递尚未开始时撤销。缺 prefab、实例化/身份/盖章失败及计数封顶不再遗留空义务；旧 owner、重入 owner 和可能已变更资产的异常路径保留。ContentTransactions 新回归在旧代码先红、修后 698 条断言通过；两项同步守卫的 6 个隔离反向探针均命中并按字节还原，证据 `Build/fixes-20261030/content-before.log`、`content-after.log`、`asset-guard-negative-results.json`。
-- 验证需求：补齐“现金已领 + 物品 prefab 缺失 + 官方切图前保存成功 + 出击崽包转移”回归，同时保留部分发奖、外部通知抛错、已有义务与重入 owner 的保护。L3 在专用测试档模拟缺资源后进出基地，观察崽包转移是否仍报仓库未就绪，并确认重载后的资产一致性。
-
-### CR-2026-10-29-009 · P2 / COMPAT · 宝箱扑跳落地冲击忽略墙体遮挡
-
-- 状态：Fixed（2026-10-30），L1 + L2，L3 待验；当前既有缺陷，与已修的炮弹撞墙分支不同。
-- 位置：`Integration/FieldAdventures/Mimic/GreedyMimicEncounter.cs:395-396`。
-- 触发与影响：扑跳预警锁定落点后，玩家移动到附近薄墙另一侧，只要仍在落地半径内且高度差小于 2.5 米，就会被直接扣血。落点自身的净空检查不覆盖整个冲击半径，合法落点也能出现这一条件。
-- 证据：真实 Encounter、Rules、官方 HealthSimpleBase / DamageReceiver 隔离执行，落点 z=12、玩家 z=14，墙体位于两者之间；未投喂时身位半径 1.1 米、冲击半径 2.4 米，墙距落点 1.5 米不妨碍落点净空。遮挡查询分别返回无遮挡/有遮挡，当前实现两种情况均造成 26 伤害。只在隔离副本补 `Unblocked(leapTo, p)` 后，无遮挡仍伤 26、有墙伤害为 0。真实 PhysX 未执行。证据：`Build/review-integration-20261029/pounce-evidence.json`、`pounce-current.log`、`pounce-occlusion-counterfactual.log`。
-- 建议：扑跳伤害结算复用舌击和炸弹已有的 `Unblocked` 门控，保留落地视觉、伤害值、半径和后续连招。
-- 修复：落地伤害在原半径/高差判定后增加 `Unblocked(leapTo, p)`。执行回归覆盖薄墙分割冲击范围、无遮挡伤害、半径和高度边界；旧生产先红，4 个隔离反向探针验证承重判据。
-- 验证需求：覆盖墙前/墙后、冲击半径边缘、落点有效但冲击区域被墙分割的情形；L3 在薄墙拐角观察扑跳预警后躲到墙后是否仍掉血。
-
-### CR-2026-10-29-010 · P2 / COMPAT · 烟花试用品异步达标后遗漏完成通知和借用收尾
-
-- 状态：Fixed（2026-10-30），L1 + L2，L3 待验；当前既有缺陷。
-- 位置：`Integration/FieldAdventures/Prototypes/DangerousPrototypeRuntimeModule.cs:93`、`:117-125`；仅有的成功收尾在 `:369-373`。
-- 触发：巨型烟花筒（GrandFinale）的主弹或子弹在后续 `OnUpdate → TickFinales → TryHurt → ObserveHit` 中达到目标，规则立即变成 `Completed=true / Active=false`。OnUpdate 随后从 `!rules.Active` 分支返回；成功的 `EndLease(false)` 和完成通知仅存在于同步的 `OnShot` 尾部。再次开枪又被 `IsHeld()` 内的 Active 条件提前拦截，不能补做收尾。
-- 证据：从生产文件逐字抽取 OnUpdate、OnShot、LaunchFinale、TickFinales、Explode、TryHurt、EndLease 等方法，链接真实 Rules，用隔离宿主/物理/视觉替身执行。真实烟花爆炸达成 10 次命中后，`completed=True, subscribed=True, borrower=True, rig=True, notifications=0`；再开一枪并推进 200 秒仍保持同样残留。证据：`Build/review-head-20261029/finale-completion/result.log`。现有 `FieldAdventurePrototypeRuntime` 只验证射向/后坐，并将 FireSpecial 替身化，已有通过结果不覆盖此路径。
-- 影响：试验已完成却无达标提示，枪上试用品模型和借用事件保持到换枪/切图等后续操作；试验台仍可按 Completed 状态领奖，未证实奖励丢失。
-- 建议：成功收尾由一个幂等入口负责，同步射击和异步爆炸达标均调用，执行退订、清借用引用、收模型与一次性完成通知，同时保留已发射烟花的尾效。
-- 修复：同步 OnShot 与 TickFinales 后共用 `CompleteLeaseIfReady()`，在 Active 早返前通过 lease owner 幂等收尾并通知；保留在途烟花的 Shooter 与尾效。新增 FieldAdventurePrototypeCompletion 执行真实方法，覆盖主弹、子弹、收枪后达标、重复 Tick/开枪、规则领奖、暂停、取消与超时；旧生产先红，81 条断言与 4 个隔离反向探针通过，真实奖励交付仍待实机。
-- 验证需求：覆盖主弹达标、子弹达标、达标后不换枪等待、再次开枪、领奖和切图；L3 观察完成提示及手持模型是否及时撤去。
-
-### CR-2026-10-29-011 · P2 / COMPAT · F3 数字输入会误触发录制快捷键
-
-- 状态：Fixed（2026-10-30），L1 + L2，L3 待验；只影响 Dev 构建。
-- 位置：`DebugAndTools/PromoRecording/PromoRecordingDirector.cs:102`、`:127-133`。
-- 触发与影响：录制模式保持运行时打开 F3 的物品/金额输入框，用小键盘输入数字。HandleKeys 无条件先于暂停门执行，原始 `Input.GetKeyDown` 也不检查官方输入阻塞或输入框焦点：输入 3 会切换拍摄项，0 发起三个靶子生成，1 销毁录制组件。F3 的 `InputManager.DisableInput` 只登记官方输入阻塞源，不会截获 Unity 原始按键查询。
-- 证据：完整生产 PromoRecordingDirector.cs 配现有生命周期夹具的宿主替身，将 `IsGamePaused` 设为 true 后驱动实际 Update：数字 3 令 index 从 -1 变 0，数字 0 产生 3 个敌人请求，数字 1 销毁导演。证据：`Build/review-head-20261029/recording-input/result.log`。输入焦点/实际 UI 尚未 L3。
-- 建议：处理录制快捷键前检查 F3/模态输入与文本框焦点，暂停菜单中不消费拍摄操作；保留正常录制时的小键盘兼容和录制自身暂停键。
-- 修复：快捷键统一检查官方暂停、timeScale、模态租约、官方输入和 legacy/TMP 焦点，录制自身 paused 不屏蔽 Home/7 恢复。真实 Update 回归在旧代码先红、修后 319 条断言通过，7 个隔离反向探针确认各门及恢复键；证据 `Build/fix-recording-input-20261030/`。
-- 验证需求：录制中分别在 F3 金额、数量和属性输入框键入含 0/1/3/7/9 的数值，确认不会刷怪、切项或结束；关闭输入界面后快捷键照常生效。
-
-2026-10-30 修复验证：全量守卫 752 PASS / 0 FAIL；Windows 正式/Dev 隔离真编译通过，独立复核无新增 confirmed issue。全量回归首轮 148 PASS / 1 组视觉夹具超时；单独延长该次等待重跑，真实 Unity 基线和 6 项原生反向验证通过，最终 149 组均有本轮通过证据，是多轮合并。原日志、各次结果、合并清单和源码/DLL 哈希证据见 `Build/fixes-20261030/`，详细修复与 FIX30-01～04 实机步骤见 `FIX_TRACKER.md`。未取得 L3，未提交或部署。
-
-2026-10-29 审查验证：
-
-- `python tools/run_guards.py --verbose`：752 PASS / 0 NEW-FAIL / 0 KNOWN-RED，未使用 source-only；日志 `Build/review-head-20261029/guards.log`。
-- `python tools/run_runtime_regressions.py --jobs 4`：148 组 PASS / 0 FAIL；汇总 `Build/review-head-20261029/regression-results.json`，日志 `regressions.log`。新增审查探针单独执行，现有套件全绿不覆盖上述四项遗漏。
-- Windows 官方脚本正式和 Dev 构建均退出 0，使用本机游戏 Managed 的独立拷贝。只有 ModeHUIPages 两个既有 CS0649 警告。隔离目录没有 Mod 子目录，脚本的自动复制未完成，本轮不将其记为部署或发布资源验证。日志 `Build/review-head-20261029/compile-release.log`、`compile-dev.log`；两种 DLL 分别保留，`Build/BossRush.dll` 已还原为本轮正式产物。
-- `check_dll_identifiers.py`：正式 DLL 不含所检查的 14 个 Dev 专用标识，Dev DLL 能检出全部 14 个，正反对照均通过。
-- 未取得 L3：真实输入栈、场景物理遮挡、过图存档时序和运行帧耗仍需游戏内验证。审查探针模拟宿主，不视作实机证据。
+4 项已在 L1/L2 修复，完整原文移至 [2026-10 月归档](archive/CODE_REVIEW_FINDINGS_2026-10.md)。实机验收事项继续有效，归档不等于实机通过。
 
 ## 2026-10-29 最新代码审核与遗种崽反馈（COMPAT；L1/L2 修复，L3 待验）
 

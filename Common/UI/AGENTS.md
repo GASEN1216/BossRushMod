@@ -4,6 +4,10 @@
 
 ### 4.14 UI 走共享库与官方界面
 
+- **NPC 对话统一原生组件（owner 2026-11-13）**：说话人用 `DialogueActorFactory` / `DialogueActor`，正文和分支用现有 `DialogueManager` 调官方 `DialogueUI` 的字幕/多选。不能以共享确认框、普通消息、HUD 或自绘“大对话”代替闲聊、剧情、交付回应、登车对白；官方气泡仅用于短喊话。纯操作/危险确认继续用 `BossRushConfirmDialog`，NPC 说话不能借“确认”名义绕过。
+- 对话绑定真实说话人和当前场景 owner。只有自己持有的官方会话才消费 Esc；排队期间不得取消前一个 NPC 的会话。场景卸载、人物消失、模块关闭时取消 token，沿共享管理器的官方协程排空机制收尾，释放输入与订阅；不能只藏 UI。取消选择不得当作第一选项、交付或登车；若此前已经明确确认操作，已提交后的收尾页按该流程的既定续接语义处理，并与场景失效取消分开验证。
+- 长文逐句/段分页，中英在显示时解析；姓名、台词、选项均来自同一个说话人。交付成功才推进对应后续，缺官方 UI/actor 时保留可重试资格并报告原因，不通过无 UI 的返回值静默提交。每个新对话至少核对自然结束、拒绝/Esc、重复交互、排队、切图取消、再次生成和语言切换。
+
 - Canvas `sortingOrder` 用 `BossRushUILayers` 常量；颜色用 `BossRushUIColors` token，遮罩用 `Backdrop`。
 - 面板、按钮、卡片底图走 `BossRushUI.ApplyPanelSkin`：卡片、分隔线、滚动滑块与细轨显式传 `BossRushUISkinPart`，`radius <= 3` 的细条程序化绘制（规格见 `docs/guides/BossRushUI_图集规格.md`）。深色面板要有边就调 `BossRushUI.ApplyPanelStroke`（描边色 `BossRushUIColors.Stroke`），或用 `ApplyFramedPanelSkin` 一次套上底图与描边——图集里烤进去的内描边会被深色 token 乘到看不见。
 - 按钮字色用 `BossRushUI.GetButtonTextColor(背景色)`，不写死；对比度按实际合成后的底色算，正文至少 4.5:1。游戏是 Linear 色彩空间，半透明在线性光里混合，复算按线性模型（`docs/contracts.md` §7.1），观感修复以实机截图取色为准。

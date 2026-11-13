@@ -67,6 +67,19 @@ namespace BossRush
         private static readonly int[][] RedGrades = Table(5, 80, 6, 20);
         private static readonly int[][] SealedGrades = Table(4, 75, 5, 25);
         private static readonly int[][] SealedPremiumGrades = Table(4, 50, 5, 50);
+        /// <summary>封签货一柜的件数（普通台 / 加价台）与补货品质带，见 <see cref="PlanCargo"/>。箱子 12 格。</summary>
+        internal const int SealedCount = 8, SealedPremiumCount = 9;
+        /// <summary>
+        /// 续签（2026-11-13「每班可签」）：同一趟第 2 柜起每柜 4 件（加价台 5 件），只保底头格一件精品；
+        /// 头格出 Q5 的概率随本趟已签柜数上涨（第 2 柜 40%，每柜 +10%，封顶 70%；加价台再 +20%，封顶 90%）。
+        /// 签得越多押运来得越多（刷怪 owner 读 <see cref="Signatures"/>），所以奖励也越往后越好。
+        /// </summary>
+        internal const int ResignCount = 4, ResignPremiumCount = 5;
+        internal const int ResignQ5Base = 30, ResignQ5Step = 10, ResignQ5Cap = 70, ResignPremiumBonus = 20, ResignPremiumCap = 90;
+        private const int SealedFillLo = 2, SealedFillHi = 4;
+        private static readonly Cat[] MedicalFill = { Cat.Medical, Cat.Medical, Cat.Pantry, Cat.General };
+        private static readonly Cat[] RepairFill = { Cat.Workshop, Cat.Workshop, Cat.Ammo, Cat.General };
+        private static readonly Cat[] PrecisionFill = { Cat.Gear, Cat.Workshop, Cat.Ammo, Cat.General };
 
         /// <summary>
         /// 箱子 id → 种类与格数（布局 `loot` 的 type / capacity）。场景包的标记只带名字，种类在这里登记；
@@ -241,6 +254,8 @@ namespace BossRush
             internal int BatchTrip;
             internal List<Slot> PendingBatch;
             internal bool BatchVoyage, BatchOpened;
+            /// <summary>签收柜：新一班停到这一侧时，上一班签出来的柜子等官方界面关了再收回、换成新的签收机关。</summary>
+            internal bool RearmPending;
         }
 
         private readonly LastShiftWorld world;
@@ -256,24 +271,36 @@ namespace BossRush
         private readonly Dictionary<string, HashSet<int>> kitsUsed = new Dictionary<string, HashSet<int>>(StringComparer.Ordinal);
         private string redCrate, luckyCrate;
         private int redGrade;
-        private int stampsBroughtIn = -1;
+        private readonly List<Item> stampsBroughtIn;
         private float nextTick;
+        private GameObject cabinetStaging;
+        private bool cargoPreparing;
+        private bool stampPreparing;
         private bool closed, lootSubscribed, phaseSubscribed;
 
-        /// <summary>本趟唯一一次封签货签收已经发生。</summary>
-        internal bool CargoClaimed { get; private set; }
+        /// <summary>本趟至少签过一柜封签货（站务记录、剧情用）。</summary>
+        internal bool CargoClaimed { get { return Signatures > 0; } }
+        /// <summary>本趟一共签了几柜（每班停靠最多一柜）：也是押运加派的警戒度。</summary>
+        internal int Signatures { get; private set; }
+        /// <summary>最近一次签收所在的班次（-1 表示还没签过）。</summary>
+        internal int SignedTrip { get; private set; } = -1;
+        /// <summary>当前这一班已经签过了。</summary>
+        internal bool SignedThisTrain { get { return SignedTrip == timetable.Trip; } }
+        /// <summary>官方界面（搜刮、背包）开着：签收柜换班时等它关上再收回（会话接 `View.ActiveView`）。</summary>
+        internal Func<bool> UiBusy { get; set; }
         /// <summary>某只箱柜第一次被打开（参数是箱子 id；铅封侧柜是 `stamp`）。</summary>
         internal event Action<string> Opened;
         /// <summary>风险柜（布局 pool == 'risk'）：打开会拉响库房警铃。</summary>
         internal IEnumerable<string> RiskContainerIds { get { return riskIds; } }
 
-        internal LastShiftLoot(LastShiftWorld world, LastShiftTimetable timetable, string manifest, int seed, Func<bool> valid, Action<string, bool> status)
+        internal LastShiftLoot(LastShiftWorld world, LastShiftTimetable timetable, string manifest, int seed, CharacterMainControl player, Func<bool> valid, Action<string, bool> status)
         {
             this.world = world;
             this.timetable = timetable;
             this.manifest = manifest ?? "medical";
             this.valid = valid;
             this.status = status;
+            stampsBroughtIn = CarriedStamps(player);
             // seed 由班次表持有（Stream 已按它派生），这里不再单独用；留在签名里与潮闸镇一致。
             foreach (Transform marker in world.LootMarkers)
             {
@@ -374,17 +401,20 @@ namespace BossRush
         /// 精品一格：Q4 只出 Q4（不越过红的限额）；Q5 / Q6 是红，目标档缺货时退到最近的红档。同一趟不重样，最多重抽 6 次（原型 prize）。
         /// 现货与筛选（可卖、按品质的最低标价、不给钥匙）全用潮闸镇的 <see cref="TidegateLoot.PrizeCatalog"/>。
         /// </summary>
-        private int PickPrize(System.Random r, int[][] theme, int grade, out Cat category)
+        private int PickPrize(System.Random r, int[][] theme, int grade, out Cat category,
+            TidegateLoot.PrizeCatalog catalog = null, HashSet<int> used = null)
         {
+            catalog = catalog ?? prizes;
+            used = used ?? prizesUsed;
             int floor = grade >= 5 ? 5 : 4, id = 0;
             category = Cat.General;
             for (int attempt = 0; attempt < DistinctAttempts; attempt++)
             {
                 category = (Cat)PickTable(r, theme);
-                id = prizes.Pick(category, grade, floor, grade, r, Cat.General);
-                if (id > 0 && !prizesUsed.Contains(id)) break;
+                id = catalog.Pick(category, grade, floor, grade, r, Cat.General);
+                if (id > 0 && !used.Contains(id)) break;
             }
-            if (id > 0) prizesUsed.Add(id);
+            if (id > 0) used.Add(id);
             return id;
         }
 
@@ -394,15 +424,16 @@ namespace BossRush
         {
             if (closed || player == null || Time.time < nextTick || valid == null || !valid()) return;
             nextTick = Time.time + TickInterval;
-            if (stampsBroughtIn < 0) stampsBroughtIn = CountCarried(player, BossRushItemIds.LastShiftStamp);
             Vector3 origin = player.transform.position;
             Box nearest = null;
             float best = ActivationRange * ActivationRange;
             for (int i = 0; i < boxes.Count; i++)
             {
                 Box box = boxes[i];
-                // 机关在完成回调里不直接停用自己，留到这里收起。
+                if (box.RearmPending) Rearm(box);
+                // 机关在完成回调里不直接停用自己，留到这里收起；签收柜收回重挂后机关再亮出来。
                 if (box.Unlocked && box.Device != null && box.Device.activeSelf) box.Device.SetActive(false);
+                else if (!box.Unlocked && box.Gated && box.Device != null && !box.Device.activeSelf) box.Device.SetActive(true);
                 if (box.Built || box.Failed) continue;
                 float distance = (box.Anchor.position - origin).sqrMagnitude;
                 if (distance >= best) continue;
@@ -416,8 +447,20 @@ namespace BossRush
         private void Build(Box box)
         {
             box.Built = true;
+            Transform parent = world.Root.transform;
+            if (box.Kind == "sealed" || box.Kind == "side")
+            {
+                // 共享建箱会立即启用新对象，先挂在停用父节点下隔离交互和库存。
+                if (cabinetStaging == null)
+                {
+                    cabinetStaging = new GameObject("LastShiftCabinetStaging");
+                    cabinetStaging.SetActive(false);
+                    cabinetStaging.transform.SetParent(parent, false);
+                }
+                parent = cabinetStaging.transform;
+            }
             string error;
-            InteractableLootbox loot = SkyIslandRewardCrate.Build(world.Root.transform, box.Anchor.position, box.Yaw, "LastShiftLoot_" + box.Id, out error, true);
+            InteractableLootbox loot = SkyIslandRewardCrate.Build(parent, box.Anchor.position, box.Yaw, "LastShiftLoot_" + box.Id, out error, true);
             if (loot == null)
             {
                 box.Failed = true;
@@ -509,7 +552,7 @@ namespace BossRush
         {
             switch (box.Kind)
             {
-                case "sealed": return CargoClaimed ? L10n.T("封签货（签过了）", "Sealed cargo (signed)") : L10n.T("签收封签货", "Sign for the sealed cargo");
+                case "sealed": return SignedThisTrain ? L10n.T("封签货（这一班签过了）", "Sealed cargo (signed for this train)") : L10n.T("签收封签货", "Sign for the sealed cargo");
                 case "drop": return L10n.T("零担箱（空）", "Freight-lot crate (empty)");
                 default: return L10n.T("用钢印开铅封侧柜", "Open the sealed cabinet with the stamp");
             }
@@ -533,11 +576,12 @@ namespace BossRush
 
         private static char SideOf(Box box) { return box.Id.EndsWith("E", StringComparison.Ordinal) ? 'E' : 'W'; }
 
-        /// <summary>原型 activate(cargoW / cargoE)：本班停在这一侧才签得了，全趟只签一次；货单物品 Q4 75% / Q5 25%，加价台 50% / 50%。</summary>
+        /// <summary>本班停在这一侧才签得了，每班停靠最多签一柜（2026-11-13 起不再一趟只签一次）；一柜货见 <see cref="PlanCargo"/>。</summary>
         private void ClaimCargo(Box box)
         {
+            if (cargoPreparing) return;
             char side = SideOf(box);
-            if (CargoClaimed) { Say(L10n.T("签过了。一趟只签一回。", "Already signed. One signature a run."), false); return; }
+            if (SignedThisTrain) { Say(L10n.T("这一班签过了，等下一班。", "Already signed for this train. Wait for the next one."), false); return; }
             if (timetable.Phase != LastShiftPhase.Dwell)
             { Say(L10n.T("台边没停车，没东西可签。", "No train at the platform. Nothing to sign for."), false); return; }
             if (timetable.LineUsed != side)
@@ -547,57 +591,243 @@ namespace BossRush
                 return;
             }
             bool premium = timetable.Premium == side;
-            System.Random r = timetable.Stream("sealed#" + manifest + (premium ? "#premium" : ""));
-            int grade = PickTable(r, premium ? SealedPremiumGrades : SealedGrades);
-            Cat category;
-            int item = PickPrize(r, SealedTheme(manifest), grade, out category);
-            if (item <= 0 || !Unlock(box) || !SkyIslandRewardCrate.AddOfficialStack(box.Loot, item, 1, new StringBuilder(), "LastShiftSealed"))
+            Item head = null;
+            cargoPreparing = true;
+            try { head = DeliverCargo(box, premium); }
+            catch (Exception e) { Debug.LogWarning(LastShiftRaidScene.LogTag + " 封签货装柜失败 id=" + box.Id + "：" + e.Message); }
+            finally
             {
-                if (box.Loot != null && box.Unlocked && box.Loot.Inventory != null && box.Loot.Inventory.GetItemCount() == 0)
-                { box.Unlocked = false; box.Loot.gameObject.SetActive(false); }
-                Debug.LogWarning(LastShiftRaidScene.LogTag + " 封签货没能装箱 id=" + box.Id + " item=" + item);
-                Say(L10n.T("铅封和货单对不上，这班签不了。", "The seal doesn't match the manifest. Not this train."), true);
+                cargoPreparing = false;
+                if (!SignedThisTrain) RemoveCargoBox(box);
+            }
+            if (head == null)
+            {
+                if (!closed) Say(L10n.T("货还没点齐，等会儿再签。", "The cargo isn't ready. Try signing again in a moment."), true);
                 return;
             }
-            CargoClaimed = true;
-            Debug.Log(LastShiftRaidScene.LogTag + " CARGO_CLAIMED id=" + box.Id + " item=" + item + " q=" + grade + " premium=" + premium);
-            // 签完顺手提一句押运库那头的动静：第一趟玩家从这里知道站里还有押运库可去（owner 2026-11-11），不念机制。
-            Say(L10n.T("签好了，柜里是" + NameOf(item) + "。押运库那头亮着灯，有人在点货。",
-                "Signed. The cabinet holds " + NameOf(item) + ". Over at the bond store the lights are on; someone's counting stock."), false);
+            // 第一柜顺手提一句押运库那头的动静（owner 2026-11-11），之后几柜写押运加派的动静；都不念数字。
+            Say(LastShiftText.SignedLine(Signatures, NameOf(head.TypeID)), false);
+        }
+
+        /// <summary>第 <paramref name="index"/> 柜（0 起）的件数：第一柜 8 / 9，续签 4 / 5。</summary>
+        internal static int CargoCount(bool premium, int index)
+        {
+            if (index == 0) return premium ? SealedPremiumCount : SealedCount;
+            return premium ? ResignPremiumCount : ResignCount;
+        }
+
+        /// <summary>第 <paramref name="index"/> 柜保底几格精品：第一柜两格（Q4+ 头格、Q4 第二格），续签只有头格。</summary>
+        internal static int PrizeSlots(int index) { return index == 0 ? 2 : 1; }
+
+        /// <summary>续签头格出 Q5 的百分比（第 <paramref name="index"/> 柜，1 起）。</summary>
+        internal static int ResignQ5Chance(bool premium, int index)
+        {
+            int chance = Math.Min(ResignQ5Cap, ResignQ5Base + ResignQ5Step * Math.Max(1, index));
+            return premium ? Math.Min(ResignPremiumCap, chance + ResignPremiumBonus) : chance;
+        }
+
+        private Item DeliverCargo(Box box, bool premium)
+        {
+            int index = Signatures;
+            int total = CargoCount(premium, index);
+            int grade;
+            List<Slot> cargo = PlanCargo(premium, index, out grade);
+            if (cargo.Count != total)
+            {
+                Debug.LogWarning(LastShiftRaidScene.LogTag + " 封签货没排齐 id=" + box.Id + " planned=" + cargo.Count + "/" + total);
+                return null;
+            }
+            if (box.Loot == null) Build(box);
+            InteractableLootbox loot = box.Loot;
+            if (loot == null) return null;
+            Inventory inventory = loot.Inventory;
+            if (inventory == null || inventory.gameObject != loot.gameObject) return null;
+            var log = new StringBuilder();
+            foreach (Slot slot in cargo)
+                if (!SkyIslandRewardCrate.AddOfficialStack(loot, slot.TypeId, slot.Amount, log, slot.Category.ToString()) || closed)
+                    return null;
+            int prizeSlots = PrizeSlots(index);
+            if (!CargoMatches(inventory, cargo, grade, prizeSlots))
+            {
+                Debug.LogWarning(LastShiftRaidScene.LogTag + " 封签货实装与货单不符 id=" + box.Id + " " + log);
+                return null;
+            }
+            if (!valid() || timetable.Phase != LastShiftPhase.Dwell || timetable.LineUsed != SideOf(box)) return null;
+            Item head = inventory.GetItemAt(0), second = inventory.GetItemAt(1);
+            // 箱子保持停用，等挪出暂存节点后再开放。开放前的失败可销毁整个本地库存，下次重试仍从空箱开始。
+            loot.transform.SetParent(world.Root.transform, true);
+            loot.gameObject.SetActive(true);
+            if (closed || !loot.gameObject.activeInHierarchy) return null;
+            box.Unlocked = true;
+            box.RearmPending = false;
+            Signatures = index + 1;
+            SignedTrip = timetable.Trip;
+            prizesUsed.Add(head.TypeID);
+            if (prizeSlots > 1) prizesUsed.Add(second.TypeID);
+            Debug.Log(LastShiftRaidScene.LogTag + " CARGO_CLAIMED id=" + box.Id + " items=" + total + "/" + total + " sig=" + Signatures
+                + " trip=" + SignedTrip + " q=" + head.Quality + "," + second.Quality + " premium=" + premium + " " + log);
+            return head;
+        }
+
+        private static bool CargoMatches(Inventory inventory, List<Slot> cargo, int headGrade, int prizeSlots)
+        {
+            if (inventory == null || inventory.GetItemCount() != cargo.Count) return false;
+            for (int i = 0; i < cargo.Count; i++)
+            {
+                Item item = inventory.GetItemAt(i);
+                if (item == null || item.InInventory != inventory || item.IsBeingDestroyed || item.TypeID != cargo[i].TypeId) return false;
+                if (i < prizeSlots)
+                {
+                    if (item.Quality != (i == 0 ? headGrade : PrizeGrade)) return false;
+                }
+                else if (item.Quality < SealedFillLo || item.Quality > SealedFillHi) return false;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// 新一班停到这一侧：把上一班签出来的柜子收回去（官方界面开着时等它关上），换回签收机关。
+        /// 柜里还剩东西就说一句「被押运车收回去了」——想要就得在下一班进站前搬空。
+        /// </summary>
+        private void Rearm(Box box)
+        {
+            if (!box.RearmPending) return;
+            if (UiBusy != null && UiBusy()) return;
+            box.RearmPending = false;
+            if (!box.Unlocked) return;
+            int left = 0;
+            try { if (box.Loot != null && box.Loot.Inventory != null) left = box.Loot.Inventory.GetItemCount(); }
+            catch (Exception) { /* 数不到就当空柜 */ }
+            RemoveCargoBox(box);
+            box.Unlocked = false;
+            box.Opened = false; // 新一柜是新箱子：开箱回调照常再报一次
+            if (box.Device != null && !box.Device.activeSelf) box.Device.SetActive(true);
+            if (left > 0) Say(LastShiftText.CargoReclaimedLine, false);
+            Debug.Log(LastShiftRaidScene.LogTag + " CARGO_REARMED id=" + box.Id + " trip=" + timetable.Trip + " reclaimed=" + left);
+        }
+
+        private static void RemoveCargoBox(Box box)
+        {
+            InteractableLootbox loot = box.Loot;
+            box.Loot = null;
+            if (loot == null) return;
+            try { loot.gameObject.SetActive(false); }
+            finally { UnityEngine.Object.Destroy(loot.gameObject); }
+        }
+
+        /// <summary>
+        /// 封签货一柜（owner 2026-11-13「签收奖励太少，起码 7、8 件；品质不用都好，保底几件好的」）：
+        /// 第一柜头格照旧（Q4 75% / Q5 25%，加价台各半），第二格保底 Q4，都按班单类别抽精品；其余按班单类别补到 <see cref="SealedCount"/> 件
+        /// （加价台 <see cref="SealedPremiumCount"/> 件），品质 Q2–Q4、每高一档权重 ×0.6（同风险柜普通格）。
+        /// 续签（第 2 柜起，<paramref name="index"/> ≥ 1）只保底头格，Q5 概率见 <see cref="ResignQ5Chance"/>，件数见 <see cref="CargoCount"/>。
+        /// 同一趟同一柜号同一侧结果固定，与签收时刻无关。
+        /// </summary>
+        private List<Slot> PlanCargo(bool premium, int index, out int headGrade)
+        {
+            bool first = index == 0;
+            System.Random r = timetable.Stream("sealed#" + manifest + (first ? "" : "#" + index) + (premium ? "#premium" : ""));
+            int total = CargoCount(premium, index), prizeSlots = PrizeSlots(index);
+            var slots = new List<Slot>(total);
+            headGrade = first ? PickTable(r, premium ? SealedPremiumGrades : SealedGrades) : (r.Next(100) < ResignQ5Chance(premium, index) ? 5 : PrizeGrade);
+            int[][] theme = SealedTheme(manifest);
+            // 先在尝试自己的目录与去重集合里抽，空池可重查，失败的货也不占用本趟已发放的精品记录。
+            var catalog = new TidegateLoot.PrizeCatalog();
+            var used = new HashSet<int>(prizesUsed);
+            foreach (int grade in new[] { headGrade, PrizeGrade })
+            {
+                if (slots.Count >= prizeSlots) break; // 续签只保底头格
+                Cat category;
+                int prize = PickPrize(r, theme, grade, out category, catalog, used);
+                if (prize <= 0) return slots;
+                slots.Add(new Slot { TypeId = prize, Amount = 1, Category = category });
+            }
+            Cat[] fill = SealedFill(manifest);
+            var cargoStock = new GradeStock();
+            for (int attempt = 0; slots.Count < total && attempt < total * 3; attempt++)
+            {
+                Cat category = fill[r.Next(fill.Length)];
+                int typeId = cargoStock.Pick(category, PickGrade(r, SealedFillLo, SealedFillHi), SealedFillLo, SealedFillHi, r, null);
+                if (typeId > 0) slots.Add(new Slot { TypeId = typeId, Amount = category == Cat.Ammo ? AmmoMin + r.Next(AmmoMax - AmmoMin + 1) : 1, Category = category });
+            }
+            return slots;
+        }
+
+        /// <summary>封签货补货的类别（等概率抽一项）：医务 = 医疗为主带口粮，抢修 = 工具为主带弹药，精械 = 护具 / 工具 / 弹药。</summary>
+        private static Cat[] SealedFill(string manifest)
+        {
+            if (manifest == "medical") return MedicalFill;
+            if (manifest == "repair") return RepairFill;
+            return PrecisionFill;
         }
 
         /// <summary>原型 activate(stamp)：要上一趟带出来的押运钢印（本趟刚拿的不算），消耗一枚开一次。</summary>
         private void OpenSideCabinet(Box box)
         {
+            if (stampPreparing) return;
             CharacterMainControl player = CharacterMainControl.Main;
             if (player == null) return;
-            if (stampsBroughtIn < 0) stampsBroughtIn = CountCarried(player, BossRushItemIds.LastShiftStamp);
-            Item stamp = TidegateInventory.FindCarried(player, BossRushItemIds.LastShiftStamp);
-            if (stamp == null) { Say(L10n.T("柜门压着铅封，得用押运长腰上那枚钢印。", "The door is lead-sealed. It takes the stamp off the chief escort's belt."), false); return; }
-            if (stampsBroughtIn < 1)
+            List<Item> carried = CarriedStamps(player);
+            if (carried.Count == 0) { Say(L10n.T("柜门压着铅封，得用押运长腰上那枚钢印。", "The door is lead-sealed. It takes the stamp off the chief escort's belt."), false); return; }
+            Item stamp = carried.Find(stampsBroughtIn.Contains);
+            if (stamp == null)
             {
                 Say(L10n.T("钢印刚从押运长身上摘下来，铅封认不出。带出站，下趟再来。", "The stamp's fresh off the chief escort; the seal won't take it. Get it out of the yard and come back next run."), false);
                 return;
             }
-            if (!box.Built) Build(box);
-            if (box.Loot == null) { Say(L10n.T("侧柜卡住了，钢印还在你身上。", "The cabinet is stuck. You keep the stamp."), true); return; }
-            try { TidegateInventory.Consume(stamp); }
-            catch (Exception e)
+            stampPreparing = true;
+            bool opened = false;
+            try { opened = TryOpenStampedBox(box, stamp); }
+            catch (Exception e) { Debug.LogWarning(LastShiftRaidScene.LogTag + " 铅封侧柜开启失败：" + e.Message); }
+            finally { stampPreparing = false; }
+            if (!opened)
             {
-                Debug.LogWarning(LastShiftRaidScene.LogTag + " 押运钢印消耗失败：" + e.Message);
-                Say(L10n.T("钢印没压上，侧柜还锁着。", "The stamp didn't take. The cabinet is still sealed."), true);
+                if (!closed) Say(L10n.T("侧柜卡住了，钢印仍归你。", "The cabinet is stuck. The stamp stays yours."), true);
                 return;
             }
-            stampsBroughtIn--;
-            Unlock(box);
             Debug.Log(LastShiftRaidScene.LogTag + " SIDE_CABINET_OPENED");
             Say(L10n.T("钢印压下去，铅封裂开了。", "The stamp comes down and the lead seal cracks."), false);
+        }
+
+        private bool TryOpenStampedBox(Box box, Item stamp)
+        {
+            if (box.Loot == null) Build(box);
+            InteractableLootbox loot = box.Loot;
+            if (closed || loot == null || loot.Inventory == null || loot.Inventory.gameObject != loot.gameObject
+                || loot.Inventory.GetItemCount() == 0) return false;
+            TidegateInventory.Reservation stampReservation;
+            if (!TidegateInventory.Reservation.TryCreate(stamp, false, out stampReservation)) return false;
+            using (stampReservation)
+            {
+                try
+                {
+                    if (closed || loot == null || !valid()) return false;
+                    loot.transform.SetParent(world.Root.transform, true);
+                    loot.gameObject.SetActive(true);
+                    if (closed || loot == null || !loot.gameObject.activeInHierarchy || !valid()) return false;
+                    box.Unlocked = true;
+                    stampReservation.Commit();
+                    return true;
+                }
+                finally
+                {
+                    if (!box.Unlocked && loot != null && loot.gameObject.activeSelf) loot.gameObject.SetActive(false);
+                }
+            }
         }
 
         /// <summary>原型 trainArrived：首趟第 2 班起，每列停靠的车在它停的那一台卸一批零担（快车不停靠）；约 1/4 是押运零担（航务档）。</summary>
         private void OnPhase(LastShiftPhase previous, LastShiftPhase next)
         {
-            if (closed || next != LastShiftPhase.Dwell || timetable.Training || timetable.IsExpress) return;
+            if (closed || next != LastShiftPhase.Dwell || timetable.IsExpress) return;
+            // 每班可签：这一侧上一班签出来的柜子收回，换成这一班的签收机关。
+            Box signed = Find(timetable.LineUsed == 'E' ? "cargoE" : "cargoW");
+            if (signed != null && signed.Unlocked)
+            {
+                signed.RearmPending = true;
+                try { Rearm(signed); }
+                catch (Exception e) { Debug.LogWarning(LastShiftRaidScene.LogTag + " 签收柜换班失败：" + e.Message); }
+            }
+            if (timetable.Training) return;
             try
             {
                 char line = timetable.LineUsed;
@@ -649,19 +879,20 @@ namespace BossRush
             return L10n.T("货单物品", "the listed goods");
         }
 
-        /// <summary>主角整棵物品树里这件物品一共几枚。整树遍历会分配列表，只在开局一次与开侧柜时用。</summary>
-        private static int CountCarried(CharacterMainControl player, int typeId)
+        /// <summary>钢印不能堆叠；进图和开柜时扫描官方物品树，按物品实例识别带入本站的钢印。</summary>
+        private static List<Item> CarriedStamps(CharacterMainControl player)
         {
-            int count = 0;
             try
             {
-                if (player == null || player.CharacterItem == null) return 0;
-                List<Item> all = player.CharacterItem.GetAllChildren(true, true);
-                for (int i = 0; i < all.Count; i++)
-                    if (all[i] != null && all[i].TypeID == typeId && !all[i].IsBeingDestroyed) count += Math.Max(1, all[i].StackCount);
+                if (player != null && player.CharacterItem != null)
+                {
+                    List<Item> items = player.CharacterItem.GetAllChildren(true, true);
+                    items.RemoveAll(item => item == null || item.TypeID != BossRushItemIds.LastShiftStamp || item.IsBeingDestroyed);
+                    return items;
+                }
             }
-            catch (Exception) { /* 数不清就当没带 */ }
-            return count;
+            catch (Exception e) { Debug.LogWarning(LastShiftRaidScene.LogTag + " 读取随身钢印失败：" + e.Message); }
+            return new List<Item>();
         }
 
         public void Dispose()
@@ -681,6 +912,9 @@ namespace BossRush
                 box.Loot = null;
             }
             boxes.Clear();
+            stampsBroughtIn.Clear();
+            if (cabinetStaging != null) UnityEngine.Object.Destroy(cabinetStaging);
+            cabinetStaging = null;
         }
     }
 }
