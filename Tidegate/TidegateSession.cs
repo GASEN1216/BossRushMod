@@ -191,6 +191,9 @@ namespace BossRush
             world = new TidegateWorld(root);
             world.ApplyLayers();
             tide.Bind(world);
+            // 北墙、西墙的门背对官方镜头，门外那条地被楼挡住：站到门前也收起本栋上部（只限这一栋，和进屋同一套官方 ShadowOnly）。
+            try { Debug.Log(TidegateRaidScene.LogTag + " 背向镜头的门前区 " + TidegateDoorways.Register(world.IndoorRoofs) + " 处"); }
+            catch (Exception e) { Debug.LogWarning(TidegateRaidScene.LogTag + " 门前区登记失败：" + e.Message); }
             tide.Tick(0f);
             // 涨退潮是这张图的主机制，换相要有字幕与警报（CR-2026-11-05-017）；首个 Tick 只定相位、不触发。
             tide.PhaseChanged += OnTidePhaseChanged;

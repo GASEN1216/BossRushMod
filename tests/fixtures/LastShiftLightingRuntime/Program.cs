@@ -31,6 +31,7 @@ internal static class Program
         Run("environment follows official weather without retiming the station lamps", ReadOfficialLighting);
         Run("Tidegate builds, switches and cleans up its official room lamps", TidegateRooms);
         Run("Tidegate retains beacon and flashlight slots with four indoor lamps", TidegateLampBudget);
+        Run("Tidegate back-door zone hides only that roof and never lights the room", TidegateDoorway);
         Console.WriteLine("LastShiftLightingRuntime: " + passed + " scenarios passed");
     }
 
@@ -290,6 +291,59 @@ internal static class Program
             world.IndoorRoofs.Dispose();
             Check(first.All(lamp => lamp == null) && setup.Mesh != null && setup.Proxy != null
                 && !GameObject.All.Any(go => go != null && go.name == "TidegateIndoorFillSource"), "Tidegate cleanup leaked lamps or destroyed a shared asset");
+        }
+    }
+
+    private static void TidegateDoorway()
+    {
+        using (var setup = new Setup())
+        using (var tide = new TidegateTide())
+        {
+            tide.PrepareIndoorFill();
+            setup.OpenRaidCamera();
+            var world = new TidegateWorld();
+            Transform rooms = CreateRooms(world.Root, "TidegateIndoorRooms", out Transform buildings);
+            var hall = new Bounds(new Vector3(-18f, 2.3f, 32.5f), new Vector3(20f, 4f, 7f));
+            var cabin = new Bounds(new Vector3(38f, 2.25f, -60.5f), new Vector3(6f, 4f, 5f));
+            MeshRenderer hallRoof = CreateRoom(rooms, buildings, "hall", hall);
+            MeshRenderer cabinRoof = CreateRoom(rooms, buildings, "cabin", cabin);
+            world.IndoorRoofs = new RaidIndoorRoofs(world.Root, false);
+            tide.Bind(world);
+            OcclusionFadeObject hallFade = rooms.Find("hall").GetComponent<OcclusionFadeObject>();
+            OcclusionFadeObject cabinFade = rooms.Find("cabin").GetComponent<OcclusionFadeObject>();
+            // 门前区贴着北墙（z 36）往外 4 m，和室内触发区重叠 0.2 m。
+            var door = new Bounds(new Vector3(-18f, 2.3f, 37.8f), new Vector3(5f, 5f, 4f));
+            Check(world.IndoorRoofs.AddDoorway("hall", door) && !world.IndoorRoofs.AddDoorway("missing", door),
+                "doorways must bind only to an existing room");
+            Vector3 atDoor = new Vector3(-18f, 0.8f, 38.5f), street = new Vector3(-18f, 0.8f, 45f);
+            tide.SetViewFocus(atDoor);
+            tide.Tick(0f);
+            Check(hallRoof.shadowCastingMode == ShadowCastingMode.ShadowsOnly && cabinRoof.shadowCastingMode == ShadowCastingMode.On
+                && hallFade.EnterCount == 1 && ActiveTidegateLights().Length == 0,
+                "standing at a back door should hide only that roof, without the indoor lamps");
+            tide.SetViewFocus(hall.center);
+            tide.Tick(0f);
+            Check(hallFade.EnterCount == 1 && ActiveTidegateLights().Length == 4, "stepping from the doorway inside must not enter the official fade twice");
+            tide.SetViewFocus(atDoor);
+            tide.Tick(0f);
+            Check(hallFade.EnterCount == 1 && hallRoof.shadowCastingMode == ShadowCastingMode.ShadowsOnly && ActiveTidegateLights().Length == 0,
+                "stepping back out to the doorway keeps the roof hidden and turns the room lamps off");
+            tide.SetViewFocus(street);
+            tide.Tick(0f);
+            Check(hallFade.EnterCount == 0 && hallRoof.shadowCastingMode == ShadowCastingMode.On, "leaving the doorway must restore the roof");
+            tide.SetViewFocus(cabin.center);
+            tide.SetViewFocus(atDoor);
+            Check(hallFade.EnterCount == 1 && cabinFade.EnterCount == 0,
+                "switching from one room to another building's doorway must leave the first fade balanced");
+            // 别栋的门前区盖进这一栋时，人在屋里就认这一栋（屋里优先于门前区）。
+            Check(world.IndoorRoofs.AddDoorway("hall", new Bounds(cabin.center, new Vector3(3f, 5f, 3f))), "overlapping doorway should register");
+            tide.SetViewFocus(cabin.center);
+            Check(cabinFade.EnterCount == 1 && hallFade.EnterCount == 0, "being inside a room must win over another building's overlapping doorway");
+            tide.SetViewFocus(atDoor);
+            tide.Dispose();
+            world.IndoorRoofs.Dispose();
+            Check(hallFade.EnterCount == 0 && cabinFade.EnterCount == 0 && hallRoof.shadowCastingMode == ShadowCastingMode.On,
+                "dispose while at a doorway must restore that roof");
         }
     }
 

@@ -1,4 +1,4 @@
-"""潮闸镇只在脚点入室时隐藏本栋上部建筑，保留低墙/家具；源码接线不证明实机画面。"""
+"""潮闸镇只在脚点入室、或站在本栋背对镜头的门前时隐藏本栋上部建筑，保留低墙/家具；源码接线不证明实机画面。"""
 import argparse
 from pathlib import Path
 import re
@@ -19,6 +19,12 @@ def body(source, signature):
         if depth == 0:
             return source[start + 1:pos]
     raise ValueError("unterminated " + signature)
+
+
+def compiled_sources(root):
+    """正式编译清单里的源码（`compile_official.bat` 的 echo( 行），不遍历仓库目录。"""
+    text = (root / "compile_official.bat").read_text("utf-8", errors="ignore")
+    return [m.group(1).replace("\\", "/") for m in re.finditer(r"^echo\((\S+\.cs)\s*$", text, re.M)]
 
 
 def check(root, project):
@@ -44,10 +50,28 @@ def check(root, project):
         errors.append("RaidIndoorRoofs: 不得给整片建筑安装常驻属性块")
     if "roof.parent.GetComponentsInChildren" in roofs or "SetWalls(" in roofs:
         errors.append("RaidIndoorRoofs: 非屋顶节点不得进入室内虚化")
-    if not re.search(r"if\s*\(room\.Footprint\.Contains\(feet\)\)\s*\{\s*inside\s*=\s*room;\s*room\.Fade\.OnEnter\(\);", update):
-        errors.append("RaidIndoorRoofs: 只有脚点在本屋范围内才可调用 OnEnter")
-    if update.count(".OnEnter();") != 1 or "inside.Fade.OnLeave();" not in update:
-        errors.append("RaidIndoorRoofs: 入室单次进入与离室还原必须成对")
+    # 收起哪一栋只有两个来源：脚点在本屋范围内，或在登记过的门前区（背对镜头的门，2026-11-17）。
+    if not re.search(r"if\s*\(room\.Footprint\.Contains\(feet\)\)\s*return\s+room;", body(roofs, "private Room FindRoom(")):
+        errors.append("RaidIndoorRoofs: 只有脚点在本屋范围内才算入室")
+    if not re.search(r"if\s*\(doorways\[i\]\.Zone\.Contains\(feet\)\)\s*return\s+doorways\[i\]\.Room;", body(roofs, "private Room FindDoorway(")):
+        errors.append("RaidIndoorRoofs: 门前区只按脚点落在登记范围内取本栋")
+    if not re.search(r"Room\s+show\s*=\s*inside\s*\?\?\s*FindDoorway\(feet\);", update):
+        errors.append("RaidIndoorRoofs: 屋里优先于门前区，室外其余地方不收屋顶")
+    if update.count(".OnEnter();") != 1 or update.count(".OnLeave();") != 1 or not re.search(
+            r"if\s*\(faded\s*!=\s*null\)\s*faded\.Fade\.OnLeave\(\);\s*faded\s*=\s*show;\s*if\s*\(faded\s*!=\s*null\)\s*faded\.Fade\.OnEnter\(\);", update):
+        errors.append("RaidIndoorRoofs: 官方 Fade 按计数，进出只经 faded 成对调用")
+    if "faded.Fade.OnLeave();" not in body(roofs, "public void Dispose()"):
+        errors.append("RaidIndoorRoofs: 清理时必须还原正收起的那一栋")
+    doorways = clean_source((root / "Tidegate/TidegateDoorways.cs").read_text("utf-8-sig"))
+    register = body(doorways, "internal static int Register(")
+    if not re.search(r"if\s*\(!FacesAway\(door\.Side\)\)\s*continue;", register) or "roofs.AddDoorway(" not in register:
+        errors.append("TidegateDoorways: 只给背对镜头的门登记门前区")
+    for rel in compiled_sources(root):
+        if rel == "Tidegate/TidegateDoorways.cs":
+            continue
+        path = root / rel
+        if path.is_file() and ".AddDoorway(" in clean_source(path.read_text("utf-8-sig", errors="ignore")):
+            errors.append("门前区只能由 TidegateDoorways 登记：" + rel)
     if "restoreTransition = pavilions;" not in create or "if (restoreTransition) foreach" not in update:
         errors.append("RaidIndoorRoofs: 潮闸镇室外不能继续屋顶过渡")
     if "UnityEngine.Object.Destroy(room.Fade);" not in body(roofs, "public void Dispose()"):
@@ -64,6 +88,8 @@ def check(root, project):
         errors.append("TidegateSession: 必须在官方卸载前准备室内灯模板")
     if not re.search(r"world\.ApplyLayers\(\);.*?tide\.Bind\(world\);", build_session, re.S):
         errors.append("TidegateSession: 官方补光必须在材质图层建立后绑定")
+    if not re.search(r"tide\.Bind\(world\);.*?TidegateDoorways\.Register\(world\.IndoorRoofs\).*?tide\.Tick\(0f\);", build_session, re.S):
+        errors.append("TidegateSession: 门前区要在世界与图层建好后、首个潮汐 Tick 前登记")
     if not re.search(r"tide\.SetViewFocus\(position\);.*?tide\.Tick\(Time\.deltaTime\);", update_session, re.S):
         errors.append("TidegateSession: 当帧脚点判定必须先于灯数组更新")
     for token in ("indoorFill.ShowRoom(bounds, IndoorLampHeight);", "indoorFill.HideRoom();"):

@@ -407,8 +407,11 @@ internal sealed class OcclusionFadeObject : Component
     internal OcclusionFadeTrigger[] triggers;
     internal Renderer[] renderers;
     internal OcclusionFadeTypes fadeType;
-    internal void OnEnter() { foreach (Renderer renderer in renderers) renderer.shadowCastingMode = ShadowCastingMode.ShadowsOnly; }
-    internal void OnLeave() { foreach (Renderer renderer in renderers) renderer.shadowCastingMode = ShadowCastingMode.On; }
+    // 同官方：按进出计数，计数 > 0 才隐藏；进出不成对时 EnterCount 会露馅。
+    internal int EnterCount;
+    internal void OnEnter() { EnterCount++; Sync(); }
+    internal void OnLeave() { EnterCount--; Sync(); }
+    private void Sync() { foreach (Renderer renderer in renderers) renderer.shadowCastingMode = EnterCount > 0 ? ShadowCastingMode.ShadowsOnly : ShadowCastingMode.On; }
 }
 
 internal sealed class GameClock

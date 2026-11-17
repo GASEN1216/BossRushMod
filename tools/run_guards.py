@@ -61,6 +61,8 @@ EXTERNAL_ARTIFACT_GUARDS = {
     # 2026-11-12 末班编组站围圈小队站位：复算用的导航 / 碰撞 / 布局同在 local-only 的 ArtSource 下
     "LastShiftSquadPlacementPropertyTest.py",
     "TidegateSurfaceRepairPropertyTest.py", "LastShiftGroundFinishPropertyTest.py", "LastShiftCollisionPropertyTest.py",
+    # 2026-11-17 背对镜头的门前区：门表比对用的布局在 local-only 的 ArtSource 下
+    "TidegateDoorwayPropertyTest.py",
 }
 
 

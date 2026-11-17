@@ -327,6 +327,7 @@ echo(Tidegate\TidegateDevices.cs
 echo(Tidegate\TidegateWater.cs
 echo(Tidegate\TidegateWaterRegions.cs
 echo(Tidegate\TidegateMap.cs
+echo(Tidegate\TidegateDoorways.cs
 echo(Tidegate\TidegateEnemies.cs
 echo(Tidegate\TidegateEnemyIdentity.cs
 echo(Tidegate\TidegateEnemyAppearance.cs
