@@ -4,8 +4,10 @@
 // 为什么自绘：官方没有「按系列排的收藏图册」界面，笔记图鉴只放文字条目。骨架照鸭皇图鉴（CodexView）：
 // 共享画布与遮罩、带框面板、幽灵关闭钮、模态输入租约、ESC 走 PetNestCancelKey。
 //   - 左列：12 个系列（页签式分段按钮），写已登记 / 总数；
-//   - 右侧：这个系列的收集品卡片（没登记的只给剪影），点卡片在下方看描述；
-//   - 底栏：左边是这一页的来处与集齐奖励，右边唯一的主操作「登记」（只在基地、存档可写时挂）。
+//   - 右侧：系列标题 + 进度条 + 集齐奖励，下面是这个系列的收集品卡片（没登记的只给剪影）；
+//     打开就默认选中第一张，选中的卡片 WarningText 描边，紧贴卡片下方的详情卡写大图、档次、价值与见闻；
+//   - 底栏：左边是这一页的来处，右边唯一的主操作「登记收集品」（只在基地、存档可写时挂），
+//     点了打开单格登记容器（CollectionRegisterContainer，送礼同款）。
 // 打开时只读事实快照，事实或语言变了才重建，平时不分配。
 // ============================================================================
 
@@ -25,10 +27,18 @@ namespace BossRush
         private const float FooterHeight = 74f;
         private const float SideWidth = 228f;
         private const float Padding = 20f;
+        private const float CloseSize = 36f;
         private const float CardWidth = 108f;
         private const float CardHeight = 136f;
         private const float CardSpacing = 8f;
         private const int Columns = 6;
+        /// <summary>内容区自上而下：系列标题 0–30、进度条 34–40、奖励行 42–68、卡片网格从 76 起两行。</summary>
+        private const float GridTop = 76f;
+        private const float DetailGap = 12f;
+        private const float DetailPadding = 14f;
+        /// <summary>面板高度只取放得下两行卡片与详情卡的范围：太高时详情卡下面只剩一大片空。</summary>
+        private const float MinPanelHeight = 640f;
+        private const float MaxPanelHeight = 700f;
         private const float TitleFontSize = 28f;
         private const float NameFontSize = 17f;
         private const float BodyFontSize = 15f;
@@ -41,11 +51,14 @@ namespace BossRush
         private CanvasGroup canvasGroup;
         private Image backdrop;
         private GameObject panel;
-        private TextMeshProUGUI titleText, progressText, seriesTitleText, seriesRewardText, detailText, footerText;
+        private TextMeshProUGUI titleText, progressText, seriesTitleText, seriesRewardText, footerText;
+        private TextMeshProUGUI detailName, detailMeta, detailText;
+        private Image seriesFill, detailIcon;
         private RectTransform seriesList, grid;
         private Button registerButton;
         private readonly List<Button> seriesButtons = new List<Button>();
-        private readonly List<GameObject> cards = new List<GameObject>();
+        private readonly List<CardView> cards = new List<CardView>();
+        private CardView selectedCard;
         private ZombieModeUIHelper.ModalInputLease lease;
         private PetNestCancelKey cancelKey;
         private Coroutine closeFade;
@@ -53,6 +66,16 @@ namespace BossRush
         private bool built, open, destroying, chinese;
         private CollectionBookData rendered;
         private CollectibleSeries selected = CollectibleSeries.GroundZero;
+        private int selectedTypeId;
+
+        private sealed class CardView
+        {
+            internal GameObject Root;
+            internal CollectibleDefinition Def;
+            internal bool Registered;
+            internal Image Stroke;
+            internal Color StrokeColor;
+        }
 
         // ---------------- 静态入口 ----------------
 
@@ -74,6 +97,13 @@ namespace BossRush
             {
                 ModBehaviour.DevLog(CollectibleTuning.LogPrefix + "[WARNING] 收藏册界面打开失败: " + e.Message);
             }
+        }
+
+        /// <summary>没开着才打开（登记容器关上后回到收藏册用）；开着时什么都不做。</summary>
+        internal static void Show(CollectiblesRuntimeModule owner)
+        {
+            if (instance != null && instance.open) return;
+            Toggle(owner);
         }
 
         internal static void CloseIfOpen()
@@ -102,7 +132,7 @@ namespace BossRush
             try
             {
                 float screenHeight = ZombieModeUIHelper.GetReferenceViewportSize().y;
-                panelHeight = Mathf.Clamp(screenHeight * 0.82f, 600f, 820f);
+                panelHeight = Mathf.Clamp(screenHeight * 0.82f, MinPanelHeight, MaxPanelHeight);
                 Build();
                 built = true;
             }
@@ -213,12 +243,15 @@ namespace BossRush
             progressText = ZombieModeUIHelper.CreateText("Progress", header.transform, string.Empty, NameFontSize, Vector2.zero, Vector2.one,
                 Vector2.zero, Vector2.zero, TextAlignmentOptions.Right, BossRushUIColors.TextSecondary);
             progressText.rectTransform.offsetMin = new Vector2(Padding, 0f);
-            progressText.rectTransform.offsetMax = new Vector2(-64f, 0f);
+            progressText.rectTransform.offsetMax = new Vector2(-(Padding + CloseSize + 10f), 0f);
             progressText.raycastTarget = false;
 
             Color ghost = new Color(BossRushUIColors.Danger.r, BossRushUIColors.Danger.g, BossRushUIColors.Danger.b, 0f);
+            // CreateButton 的轴心在中心：x 是按钮中心离右沿的距离。旧值 -14 让 36 宽的按钮右半边伸出面板描边 4px，
+            // 「×」压在边框上；改成右沿对齐页边距（与下面卡片网格的右边线同一条）。
             Button closeButton = ZombieModeUIHelper.CreateButton("CloseButton", header.transform, "×", new Vector2(1f, 0.5f),
-                new Vector2(-14f, 0f), new Vector2(36f, 36f), ghost, 24f, new Vector2(36f, 36f), Close, true);
+                new Vector2(-(Padding + CloseSize * 0.5f), 0f), new Vector2(CloseSize, CloseSize), ghost, 24f,
+                new Vector2(CloseSize, CloseSize), Close, true);
             IntegrationUIFeedback.StyleGhostCloseButton(closeButton, closeButton.GetComponentInChildren<TextMeshProUGUI>(true));
 
             GameObject divider = ZombieModeUIHelper.CreateSeparator("HeaderDivider", panel.transform, new Vector2(0f, 1f), new Vector2(1f, 1f),
@@ -254,15 +287,29 @@ namespace BossRush
             rect.offsetMax = new Vector2(-Padding, -(HeaderHeight + 8f));
 
             seriesTitleText = ZombieModeUIHelper.CreateText("SeriesTitle", content.transform, string.Empty, NameFontSize, new Vector2(0f, 1f), new Vector2(1f, 1f),
-                new Vector2(0f, -16f), new Vector2(0f, 30f), TextAlignmentOptions.Left, BossRushUIColors.TextPrimary);
+                new Vector2(0f, -15f), new Vector2(0f, 30f), TextAlignmentOptions.Left, BossRushUIColors.TextPrimary);
             seriesTitleText.fontStyle = FontStyles.Bold;
             seriesTitleText.raycastTarget = false;
+
+            // 系列进度条（UI 共识 §8「进度用进度条 + 数字」，画法同图鉴进度行）：凑齐换 Success。
+            GameObject track = ZombieModeUIHelper.CreateRect("SeriesTrack", content.transform, new Vector2(0f, 1f), new Vector2(1f, 1f),
+                new Vector2(0f, -34f), new Vector2(0f, 6f), new Vector2(0.5f, 1f));
+            Image trackImage = track.AddComponent<Image>();
+            trackImage.color = BossRushUIColors.Disabled;
+            BossRushUI.ApplyPanelSkin(trackImage, 4, BossRushUISkinPart.ScrollHandle);
+            trackImage.raycastTarget = false;
+            GameObject fill = ZombieModeUIHelper.CreateRect("SeriesFill", track.transform, Vector2.zero, new Vector2(0f, 1f), Vector2.zero, Vector2.zero, new Vector2(0f, 0.5f));
+            seriesFill = fill.AddComponent<Image>();
+            seriesFill.color = BossRushUIColors.Accent;
+            BossRushUI.ApplyPanelSkin(seriesFill, 4, BossRushUISkinPart.ScrollHandle);
+            seriesFill.raycastTarget = false;
+
             seriesRewardText = ZombieModeUIHelper.CreateText("SeriesReward", content.transform, string.Empty, NoteFontSize, new Vector2(0f, 1f), new Vector2(1f, 1f),
-                new Vector2(0f, -42f), new Vector2(0f, 24f), TextAlignmentOptions.Left, BossRushUIColors.TextSecondary);
+                new Vector2(0f, -55f), new Vector2(0f, 26f), TextAlignmentOptions.Left, BossRushUIColors.TextSecondary);
             seriesRewardText.raycastTarget = false;
 
             GameObject gridObject = ZombieModeUIHelper.CreateRect("Grid", content.transform, new Vector2(0f, 1f), new Vector2(1f, 1f),
-                new Vector2(0f, -60f), new Vector2(0f, CardHeight * 2f + CardSpacing), new Vector2(0.5f, 1f));
+                new Vector2(0f, -GridTop), new Vector2(0f, CardHeight * 2f + CardSpacing), new Vector2(0.5f, 1f));
             grid = gridObject.GetComponent<RectTransform>();
             GridLayoutGroup layout = gridObject.AddComponent<GridLayoutGroup>();
             layout.cellSize = new Vector2(CardWidth, CardHeight);
@@ -271,10 +318,69 @@ namespace BossRush
             layout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
             layout.constraintCount = Columns;
 
-            detailText = ZombieModeUIHelper.CreateText("Detail", content.transform, string.Empty, BodyFontSize, new Vector2(0f, 0f), new Vector2(1f, 0f),
-                new Vector2(0f, 56f), new Vector2(0f, 104f), TextAlignmentOptions.TopLeft, BossRushUIColors.TextSecondary);
+            BuildDetailCard(content.transform);
+        }
+
+        /// <summary>
+        /// 详情卡紧贴卡片网格下方、铺满内容区剩下的高度（旧版是一段贴在内容区底边的字，和卡片之间空出一大块）：
+        /// 左边大图（没登记是剪影），右边名字、档次与价值、见闻。
+        /// </summary>
+        private void BuildDetailCard(Transform parent)
+        {
+            float top = GridTop + CardHeight * 2f + CardSpacing + DetailGap;
+            float height = panelHeight - HeaderHeight - FooterHeight - 16f - top;
+            float iconSize = Mathf.Clamp(height - DetailPadding * 2f, 56f, 120f);
+
+            GameObject card = ZombieModeUIHelper.CreateRect("Detail", parent, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+            RectTransform rect = card.GetComponent<RectTransform>();
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = new Vector2(0f, -top);
+            Image background = card.AddComponent<Image>();
+            background.color = BossRushUIColors.SurfaceRaised;
+            BossRushUI.ApplyFramedPanelSkin(background, 10, BossRushUISkinPart.Card);
+            background.raycastTarget = false;
+
+            GameObject icon = ZombieModeUIHelper.CreateRect("Icon", card.transform, new Vector2(0f, 1f), new Vector2(0f, 1f),
+                new Vector2(DetailPadding, -DetailPadding), new Vector2(iconSize, iconSize), new Vector2(0f, 1f));
+            detailIcon = icon.AddComponent<Image>();
+            detailIcon.preserveAspect = true;
+            detailIcon.raycastTarget = false;
+            detailIcon.enabled = false;
+
+            float textLeft = DetailPadding * 2f + iconSize + 2f;
+            detailName = ZombieModeUIHelper.CreateText("Name", card.transform, string.Empty, NameFontSize, new Vector2(0f, 1f), new Vector2(1f, 1f),
+                Vector2.zero, Vector2.zero, TextAlignmentOptions.Left, BossRushUIColors.TextPrimary);
+            detailName.fontStyle = FontStyles.Bold;
+            detailName.overflowMode = TextOverflowModes.Ellipsis;
+            detailName.raycastTarget = false;
+            Place(detailName.rectTransform, textLeft, DetailPadding, 30f);
+
+            detailMeta = ZombieModeUIHelper.CreateText("Meta", card.transform, string.Empty, NoteFontSize, new Vector2(0f, 1f), new Vector2(1f, 1f),
+                Vector2.zero, Vector2.zero, TextAlignmentOptions.Left, BossRushUIColors.TextSecondary);
+            detailMeta.raycastTarget = false;
+            Place(detailMeta.rectTransform, textLeft, DetailPadding + 32f, 26f);
+
+            detailText = ZombieModeUIHelper.CreateText("Story", card.transform, string.Empty, BodyFontSize, Vector2.zero, Vector2.one,
+                Vector2.zero, Vector2.zero, TextAlignmentOptions.TopLeft, BossRushUIColors.TextPrimary);
+            detailText.rectTransform.offsetMin = new Vector2(textLeft, DetailPadding);
+            detailText.rectTransform.offsetMax = new Vector2(-DetailPadding, -(DetailPadding + 66f));
             detailText.enableWordWrapping = true;
+            // 矮屏（面板 640）时详情卡只剩两行的高度：自动缩字兜住英文长句，再不够才省略。
+            detailText.enableAutoSizing = true;
+            detailText.fontSizeMin = 12f;
+            detailText.fontSizeMax = BodyFontSize;
+            detailText.overflowMode = TextOverflowModes.Ellipsis;
             detailText.raycastTarget = false;
+        }
+
+        /// <summary>顶边对齐的单行字：左右撑满，距顶 <paramref name="fromTop"/>。</summary>
+        private static void Place(RectTransform rect, float left, float fromTop, float height)
+        {
+            rect.anchorMin = new Vector2(0f, 1f);
+            rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(0.5f, 1f);
+            rect.offsetMin = new Vector2(left, -(fromTop + height));
+            rect.offsetMax = new Vector2(-DetailPadding, -fromTop);
         }
 
         private void BuildFooter()
@@ -333,12 +439,17 @@ namespace BossRush
 
                 CollectibleSeriesInfo current = CollectibleCatalog.GetSeries(selected);
                 int haveCurrent = data != null ? data.RegisteredInSeries(selected) : 0;
-                seriesTitleText.text = (current != null ? current.Name : string.Empty) + "  " + haveCurrent + " / " + CollectionRegistration.SeriesSize(selected);
+                int sizeCurrent = CollectionRegistration.SeriesSize(selected);
+                seriesTitleText.text = (current != null ? current.Name : string.Empty) + "  " + haveCurrent + " / " + sizeCurrent;
+                float ratio = sizeCurrent > 0 ? Mathf.Clamp01((float)haveCurrent / sizeCurrent) : 0f;
+                seriesFill.rectTransform.anchorMax = new Vector2(ratio, 1f);
+                seriesFill.enabled = ratio > 0f;
+                seriesFill.color = ratio >= 1f ? BossRushUIColors.Success : BossRushUIColors.Accent;
                 seriesRewardText.text = RewardLine(selected, data);
                 footerText.text = WhereLine(current);
                 bool canRegister = module != null && module.CanRegisterNow;
                 registerButton.gameObject.SetActive(canRegister);
-                SetLabel(registerButton, L10n.T("登记", "Register"));
+                SetLabel(registerButton, L10n.T("登记收集品", "Register Items"));
                 if (!canRegister) footerText.text += L10n.T("\n回到基地才能登记。", "\nRegister at base.");
 
                 RebuildCards(data);
@@ -368,20 +479,27 @@ namespace BossRush
             return L10n.T("哪张图都可能有，但极少有人见过。", "Could be anywhere, but hardly anyone has seen one.");
         }
 
+        /// <summary>重建这一页的卡片，并保住选中（同一件还在这页就继续选它，否则默认选第一张，UI 共识 §6）。</summary>
         private void RebuildCards(CollectionBookData data)
         {
-            for (int i = 0; i < cards.Count; i++) if (cards[i] != null) Destroy(cards[i]);
+            for (int i = 0; i < cards.Count; i++) if (cards[i].Root != null) Destroy(cards[i].Root);
             cards.Clear();
-            detailText.text = L10n.T("点一件看看它的来历。", "Pick one to read about it.");
+            selectedCard = null;
+            CardView first = null, keep = null;
             for (int i = 0; i < CollectibleCatalog.Count; i++)
             {
                 CollectibleDefinition def = CollectibleCatalog.At(i);
                 if (def == null || def.Series != selected) continue;
-                cards.Add(CreateCard(def, data != null && data.Registered.Contains(def.TypeId)));
+                var view = new CardView { Def = def, Registered = data != null && data.Registered.Contains(def.TypeId) };
+                view.Root = CreateCard(def, view.Registered, view);
+                cards.Add(view);
+                if (first == null) first = view;
+                if (def.TypeId == selectedTypeId) keep = view;
             }
+            SelectCard(keep ?? first);
         }
 
-        private GameObject CreateCard(CollectibleDefinition def, bool registered)
+        private GameObject CreateCard(CollectibleDefinition def, bool registered, CardView view)
         {
             GameObject card = ZombieModeUIHelper.CreateRect("Card_" + def.Key, grid, new Vector2(0.5f, 0.5f), new Vector2(CardWidth, CardHeight));
             Image background = card.AddComponent<Image>();
@@ -391,9 +509,7 @@ namespace BossRush
             button.targetGraphic = background;
             ZombieModeUIHelper.ApplyButtonColors(button, background.color,
                 Color.Lerp(background.color, BossRushUIColors.Accent, 0.22f), BossRushUIColors.Disabled);
-            CollectibleDefinition captured = def;
-            bool capturedRegistered = registered;
-            button.onClick.AddListener(delegate { ShowDetail(captured, capturedRegistered); });
+            button.onClick.AddListener(delegate { SelectCard(view); });
 
             GameObject bar = ZombieModeUIHelper.CreateRect("Rarity", card.transform, new Vector2(0f, 1f), new Vector2(1f, 1f),
                 new Vector2(0f, -6f), new Vector2(-24f, 3f), new Vector2(0.5f, 1f));
@@ -412,7 +528,7 @@ namespace BossRush
                 image.preserveAspect = true;
                 image.raycastTarget = false;
                 // 没登记的只给剪影：认得出形状，看不清细节。
-                image.color = registered ? Color.white : new Color(0f, 0f, 0f, 0.55f);
+                image.color = registered ? Color.white : Silhouette;
             }
 
             TextMeshProUGUI name = ZombieModeUIHelper.CreateText("Name", card.transform, CollectiblesLocalization.Name(def), NoteFontSize,
@@ -430,16 +546,48 @@ namespace BossRush
                 bar.SetActive(false);
                 CollectibleSlotFrame.AttachToCard(card.GetComponent<RectTransform>(), def.Quality, iconHolder.transform, stroke);
             }
+            // 记下描边的本色（金框卡片的描边已被改过），取消选中时还原。
+            view.Stroke = stroke;
+            view.StrokeColor = stroke != null ? stroke.color : BossRushUIColors.Stroke;
             return card;
+        }
+
+        /// <summary>选中一张卡：上一张描边还原，这一张换 WarningText 描边（UI 共识 §6），详情卡跟着换。</summary>
+        private void SelectCard(CardView view)
+        {
+            if (selectedCard != null && selectedCard.Stroke != null) selectedCard.Stroke.color = selectedCard.StrokeColor;
+            selectedCard = view;
+            if (view == null || view.Def == null)
+            {
+                detailIcon.enabled = false;
+                detailName.text = string.Empty;
+                detailMeta.text = string.Empty;
+                detailText.text = string.Empty;
+                return;
+            }
+            selectedTypeId = view.Def.TypeId;
+            if (view.Stroke != null) view.Stroke.color = BossRushUIColors.WarningText;
+            ShowDetail(view.Def, view.Registered);
         }
 
         private void ShowDetail(CollectibleDefinition def, bool registered)
         {
-            if (def == null) return;
-            string head = CollectiblesLocalization.Name(def) + L10n.T("  ·  ", "  ·  ") + def.Quality + L10n.T(" 档  ·  价值 ", "-tier  ·  Value ")
-                + def.Value.ToString("N0") + (registered ? L10n.T("  ·  已登记", "  ·  Logged") : string.Empty);
-            detailText.text = head + "\n" + CollectiblesLocalization.Description(def);
+            Sprite icon = ResolveIcon(def.TypeId);
+            detailIcon.sprite = icon;
+            detailIcon.enabled = icon != null;
+            detailIcon.color = registered ? Color.white : Silhouette;
+            detailName.text = CollectiblesLocalization.Name(def);
+            detailName.color = registered ? BossRushUIColors.TextPrimary : BossRushUIColors.TextSecondary;
+            string tier = "<color=#" + ColorUtility.ToHtmlStringRGB(RarityColor(def.Quality)) + ">"
+                + def.Quality + L10n.T(" 档", "-tier") + "</color>";
+            string status = registered
+                ? "<color=#" + ColorUtility.ToHtmlStringRGB(BossRushUIColors.SuccessText) + ">" + L10n.T("已登记", "Logged") + "</color>"
+                : L10n.T("未登记", "Not logged");
+            detailMeta.text = tier + "  ·  " + L10n.T("价值 ", "Value ") + def.Value.ToString("N0") + "  ·  " + status;
+            detailText.text = CollectiblesLocalization.Description(def);
         }
+
+        private static readonly Color Silhouette = new Color(0f, 0f, 0f, 0.55f);
 
         private static Sprite ResolveIcon(int typeId)
         {

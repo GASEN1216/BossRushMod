@@ -63,7 +63,7 @@ namespace BossRush
             { "AttackSpeed", 1.56f },
             { "AttackRange", PhantomWitchScytheConfig.BaseAttackRange },
             { "DealDamageTime", 0.09f },
-            { "StaminaCost", 6.5f },
+            { "StaminaCost", 5f },   // 2026-11-19：6.5 → 5，攻速 1.56 时持续消耗从 10.1/秒降到 7.8/秒
             { "BleedChance", 0.08f }
         };
 

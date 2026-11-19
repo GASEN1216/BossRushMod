@@ -40,7 +40,7 @@ namespace BossRush
         public const float CritRate = 0.04f;
         public const float CritDamageFactor = 1.3f;
         public const float ArmorPiercing = 1f;
-        public const float StaminaCost = 6f;
+        public const float StaminaCost = 5f;   // 2026-11-19：6 → 5（普攻；右键施法 12 不变）
         public const float DealDamageTime = 0.1f;
         public const float BleedChance = 0f;
         public const float MoveSpeedMultiplier = 1.05f;

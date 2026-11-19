@@ -32,7 +32,7 @@ namespace BossRush
         public const float CritRate = 0.08f;
         public const float CritDamageFactor = 1.5f;
         public const float ArmorPiercing = 2f;
-        public const float StaminaCost = 4f;       // 低体力消耗（快速连击）
+        public const float StaminaCost = 2f;       // 低体力消耗（快速连击）。2026-11-19 owner：4 → 2，攻速 2.1 时持续消耗从 8.4/秒降到 4.2/秒
         public const float DealDamageTime = 0.06f;
         public const float BleedChance = 0f;       // 不流血，改为叠毒
         public const float MoveSpeedMultiplier = 1.12f; // 持匕首移速加成

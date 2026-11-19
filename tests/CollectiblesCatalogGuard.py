@@ -13,7 +13,8 @@
 5. 登记事务先写存档、写成功才发奖金；写成功后的步骤逐个 try，物品照常收走。
 6. 注册链：配置器、按需注册、本地化、模块装配都接上；送礼系统查收集品偏好。
 7. 2026-11-19 审核加固：显示品质按档次写、官方路径按箱子所在场景排除 Mod 图、售货机挂上才收工、
-   登记容器不随场景卸载并在读条开始时结算、过图收起收藏册。
+   登记容器不随场景卸载并在读条开始时结算、过图收起收藏册；登记容器照送礼做成单格、点「登记」按钮才登记、
+   关上只退回不登记、克隆的按钮随容器销毁；收藏册关闭钮不伸出面板描边。
 8. 6–8 档格子边框（owner 2026-11-19 问答）：只有 6、7、8 档有；唯一接点是 ItemDisplay.Setup(Item) 的后置补丁；
    金框层插在官方选中高亮之前（选中照样看得清）、图元不吃点击不进布局；暂停菜单停推进、格子换物品即收起；
    出货标记只在交付成功之后打；模块销毁时清理、过图清出货标记；收藏册只给已登记的卡片挂。
@@ -203,6 +204,24 @@ def main():
     if container.count("SceneLoader.onStartedLoadingScene += OnStartedLoadingScene;") != 1 or \
             container.count("SceneLoader.onStartedLoadingScene -= OnStartedLoadingScene;") != 1:
         errors.append("登记容器开着时要订阅读条开始事件先结算，订阅与退订各一处")
+    # 2026-11-19 owner：登记照 NPC 送礼的单格容器做——只有一格、点「登记」才登记，关上界面只退回不登记。
+    if "private const int Capacity = 1;" not in container:
+        errors.append("登记容器只能有一格（照送礼的单格容器）")
+    clicked = compact(method_body(sources["CollectionRegisterContainer.cs"], "private void OnRegisterClicked()"))
+    closing = compact(method_body(sources["CollectionRegisterContainer.cs"], "internal void CloseAndReturn(bool byPlayer)"))
+    if "register(new List<Item> { item })" not in clicked or container.count("register(") != 1:
+        errors.append("登记只能由「登记」按钮的点击触发，一次一件")
+    if not closing or "register" in closing.replace("registeredAny", "") or "ReturnToPlayer(item);" not in closing:
+        errors.append("关上登记容器只退回格子里的物品，不能再自动登记")
+    if "DestroyButton();" not in compact(method_body(sources["CollectionRegisterContainer.cs"], "private void Close()")):
+        errors.append("克隆的「登记」按钮挂在常驻的官方 LootView 下，关容器时必须销毁，否则普通箱子会带着它")
+    on_update = compact(method_body(sources["CollectiblesRuntimeModule.cs"], "public override void OnUpdate(float deltaTime, float unscaledDeltaTime)"))
+    if "container.Tick();" not in on_update:
+        errors.append("登记按钮要靠模块每帧 Tick 在 LootView 摆好后克隆")
+    # 关闭钮轴心在中心：中心离右沿至少半个按钮宽，否则「×」伸出面板描边（2026-11-19 实机反馈）。
+    close = re.search(r'CreateButton\("CloseButton",[^;]*?new Vector2\(1f, 0\.5f\),\s*new Vector2\(([^,]+), 0f\)', sources["CollectionBookView.cs"], re.S)
+    if not close or "Padding + CloseSize * 0.5f" not in close.group(1):
+        errors.append("收藏册关闭钮要右沿对齐页边距（x = -(Padding + CloseSize * 0.5f)），不能伸出面板描边")
 
     # 8. 6–8 档格子边框
     frame_src = sources.get("CollectibleSlotFrame.cs", "")

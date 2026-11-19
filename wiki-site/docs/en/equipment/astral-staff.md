@@ -21,7 +21,7 @@ Heavy attacks can break the champion's bubbles and sand sharks. These projectile
 
 - Quality 6, base damage 42, attack speed 1.45, light attack range 2.3.
 - Durability 100; supports repair and reforging. Base value 78000.
-- Light attacks cost 5 stamina each; heavy attacks cost 4, 7, or 11. Insufficient stamina prevents release.
+- Light attacks cost 4 stamina each; heavy attacks cost 4, 7, or 11. Insufficient stamina prevents release.
 - Accept Chapter 6, enter the arena, and interact with the sign-up stone while no other mode is running.
 
 ::: tip

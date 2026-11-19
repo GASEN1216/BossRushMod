@@ -1,12 +1,14 @@
 // ============================================================================
-// CollectionRegisterContainer.cs - 收藏册「登记」用的临时容器（官方搜刮界面）
+// CollectionRegisterContainer.cs - 收藏册「登记」用的单格容器（官方搜刮界面）
 // ============================================================================
-// 打开一个空容器（官方 LootView），玩家把收集品放进去，关上界面就登记：
-//   - 还没登记过的收集品记入收藏册，物品收走；
-//   - 已经登记过的、不是收集品的，退回背包，背包放不下进仓库。
-// 容器形态照 Integration/Affinity/Services/NPCGiftContainerService.cs（本地库存 + 反射触发 OnStartLoot），
+// 照 NPC 送礼的单格容器（Integration/Affinity/Services/NPCGiftContainerService.cs）：
+//   - 打开只有一格的本地库存（官方 LootView），玩家放进一件收集品；
+//   - 容器栏里克隆官方「整理」按钮当「登记」按钮：格子里是还没登记过的收集品才点得动，按钮字写明为什么点不动；
+//   - 点了才登记：收走这一件，格子空出来，可以接着放下一件；
+//   - 关上界面、开始读条、换存档槽、模块卸载时，格子里没登记的那件退回背包（放不下进仓库），关上不再自动登记。
 // 本地库存不挂在 LootBoxInventoriesParent 下，开箱掉落判定天然不碰它。
-// 事实先写存档再收物品：存档写不进去时一件不收、全部退回。
+// 事实先写存档再收物品：存档写不进去时这一件留在格子里，关上时退回。
+// 按钮挂在官方 LootView 的层级里（LootView 常驻），关容器时必须一并销毁，否则下一个普通箱子会带着它。
 // ============================================================================
 
 using System;
@@ -14,37 +16,56 @@ using System.Collections.Generic;
 using System.Reflection;
 using Duckov.UI;
 using ItemStatsSystem;
+using TMPro;
 using UnityEngine;
+using UnityEngine.Events;
+using UnityEngine.UI;
 
 namespace BossRush
 {
     internal sealed class CollectionRegisterContainer
     {
         internal const string TitleKey = "BossRush_CollectionBook_RegisterTitle";
-        private const int Capacity = 24;
+        private const int Capacity = 1;
+        /// <summary>等 LootView 把容器栏摆好再克隆按钮（口径同送礼的 0.15 秒）。</summary>
+        private const float ButtonDelay = 0.15f;
+        /// <summary>这么久 LootView 还没打开，就当打不开：退回物品、收工。</summary>
+        private const float OpenTimeout = 3f;
 
         private static FieldInfo inventoryReferenceField;
         private static FieldInfo displayNameKeyField;
         private static FieldInfo onStartLootField;
+        private static FieldInfo targetDisplayField;
+        private static FieldInfo sortButtonField;
         private static bool reflectionReady;
 
         private readonly Func<List<Item>, List<Item>> register;
+        private readonly Func<int, bool> isRegistered;
+        private readonly Action<bool> onClosed;
         private GameObject root;
         private Inventory inventory;
         private InteractableLootbox lootbox;
+        private GameObject buttonObject;
+        private Button button;
+        private float openedAt;
         private bool subscribed;
+        private bool registeredAny;
 
-        /// <param name="onRegister">交给收藏册：传入容器里的全部物品，返回已登记、应当收走的那些。</param>
-        internal CollectionRegisterContainer(Func<List<Item>, List<Item>> onRegister)
+        /// <param name="onRegister">交给收藏册：传入格子里的那一件，返回已登记、应当收走的那些（写存档失败返回 null）。</param>
+        /// <param name="isRegisteredTypeId">这件收集品是否已经登记过（决定按钮能不能点）。</param>
+        /// <param name="onClosedByPlayer">玩家自己关上界面时回调，参数是这一趟有没有登记成功过。</param>
+        internal CollectionRegisterContainer(Func<List<Item>, List<Item>> onRegister, Func<int, bool> isRegisteredTypeId, Action<bool> onClosedByPlayer)
         {
             register = onRegister;
+            isRegistered = isRegisteredTypeId;
+            onClosed = onClosedByPlayer;
         }
 
         internal bool IsOpen { get { return root != null; } }
 
         internal static void InjectLocalization()
         {
-            LocalizationHelper.InjectLocalization(TitleKey, L10n.T("收藏册登记：把收集品放进来，关上就登记", "Album registry: put collectibles in, close to register"));
+            LocalizationHelper.InjectLocalization(TitleKey, L10n.T("收藏册登记", "Album Registry"));
         }
 
         internal bool Open()
@@ -57,7 +78,7 @@ namespace BossRush
                 InjectLocalization();
                 root = new GameObject("BossRush_CollectionRegister");
                 root.SetActive(false);
-                // 放进的物品挂在这个库存下：根对象不跟基地场景一起卸载，切图时由 OnStartedLoadingScene 先登记、退回再关。
+                // 放进的物品挂在这个库存下：根对象不跟基地场景一起卸载，切图时由 OnStartedLoadingScene 先退回再关。
                 UnityEngine.Object.DontDestroyOnLoad(root);
                 inventory = root.AddComponent<Inventory>();
                 inventory.SetCapacity(Capacity);
@@ -72,36 +93,171 @@ namespace BossRush
                 inventoryReferenceField.SetValue(lootbox, inventory);
                 if (displayNameKeyField != null) displayNameKeyField.SetValue(lootbox, TitleKey);
                 root.SetActive(true);
+                registeredAny = false;
+                openedAt = Time.unscaledTime;
+                inventory.onContentChanged += OnContentChanged;
                 InteractableLootbox.OnStopLoot += OnStopLoot;
                 SceneLoader.onStartedLoadingScene += OnStartedLoadingScene;
                 subscribed = true;
                 Action<InteractableLootbox> start = onStartLootField != null ? onStartLootField.GetValue(null) as Action<InteractableLootbox> : null;
-                if (start == null) { Close(); return false; }
+                if (start == null) { CloseAndReturn(false); return false; }
                 start(lootbox);
                 return true;
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog(CollectibleTuning.LogPrefix + "[WARNING] 打开登记容器失败: " + e.Message);
-                Close();
+                Debug.LogWarning(CollectibleTuning.LogPrefix + "打开登记容器失败: " + e.Message);
+                CloseAndReturn(false);
                 return false;
             }
         }
 
+        /// <summary>每帧由模块调用；容器没开时 O(1) 早返。LootView 摆好后克隆一次「登记」按钮。</summary>
+        internal void Tick()
+        {
+            if (root == null || buttonObject != null) return;
+            LootView view = LootView.Instance;
+            bool showing = view != null && view.open && inventory != null && view.TargetInventory == inventory;
+            if (!showing)
+            {
+                if (Time.unscaledTime - openedAt > OpenTimeout) CloseAndReturn(false);
+                return;
+            }
+            if (Time.unscaledTime - openedAt < ButtonDelay) return;
+            if (!CreateButton(view))
+            {
+                // 没有按钮就没法登记：不退回到「关上就登记」，退回物品、关掉界面，留日志查原因。
+                Debug.LogWarning(CollectibleTuning.LogPrefix + "登记按钮创建失败，关闭登记容器");
+                CloseAndReturn(false);
+            }
+        }
+
+        // ---------------- 按钮 ----------------
+
+        /// <summary>克隆容器栏的官方「整理」按钮，盖在它原来的位置上（送礼同一手法）。</summary>
+        private bool CreateButton(LootView view)
+        {
+            try
+            {
+                InventoryDisplay display = targetDisplayField != null ? targetDisplayField.GetValue(view) as InventoryDisplay : null;
+                Button sort = display != null && sortButtonField != null ? sortButtonField.GetValue(display) as Button : null;
+                if (sort == null) return false;
+                buttonObject = UnityEngine.Object.Instantiate(sort.gameObject, sort.transform.parent);
+                buttonObject.name = "BossRush_CollectionRegisterButton";
+                RectTransform rect = buttonObject.GetComponent<RectTransform>();
+                RectTransform sortRect = sort.GetComponent<RectTransform>();
+                if (rect != null && sortRect != null)
+                {
+                    rect.anchorMin = sortRect.anchorMin;
+                    rect.anchorMax = sortRect.anchorMax;
+                    rect.pivot = sortRect.pivot;
+                    rect.anchoredPosition = sortRect.anchoredPosition;
+                    rect.sizeDelta = sortRect.sizeDelta;
+                }
+                buttonObject.SetActive(true);
+                button = buttonObject.GetComponent<Button>();
+                if (button == null) { DestroyButton(); return false; }
+                // 克隆不带官方运行时挂的「整理」回调；预制体里若有持久回调也关掉，免得点「登记」顺手整理。
+                button.onClick.RemoveAllListeners();
+                for (int i = 0; i < button.onClick.GetPersistentEventCount(); i++)
+                    button.onClick.SetPersistentListenerState(i, UnityEventCallState.Off);
+                button.onClick.AddListener(OnRegisterClicked);
+                TextMeshProUGUI label = buttonObject.GetComponentInChildren<TextMeshProUGUI>(true);
+                if (label != null)
+                {
+                    // 官方按钮宽度是给「整理」两个字的，英文与五个字的状态要能缩进去。
+                    float size = label.fontSize;
+                    label.enableAutoSizing = true;
+                    label.fontSizeMax = size;
+                    label.fontSizeMin = Mathf.Min(size, 12f);
+                }
+                RefreshButton();
+                return true;
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning(CollectibleTuning.LogPrefix + "克隆登记按钮失败: " + e.Message);
+                DestroyButton();
+                return false;
+            }
+        }
+
+        private void OnContentChanged(Inventory changed, int index)
+        {
+            RefreshButton();
+        }
+
+        /// <summary>按钮字随格子里的东西走：空格、不是收集品、已经登记过都点不动，字里写明原因。</summary>
+        private void RefreshButton()
+        {
+            if (button == null) return;
+            try
+            {
+                Item item = FirstItem();
+                string text;
+                bool ready = false;
+                if (item == null) text = L10n.T("放入收集品", "Place Item");
+                else if (CollectibleCatalog.Get(item.TypeID) == null) text = L10n.T("不是收集品", "Not Collectible");
+                else if (isRegistered != null && isRegistered(item.TypeID)) text = L10n.T("已登记过", "Already Logged");
+                else { text = L10n.T("登记", "Register"); ready = true; }
+
+                button.interactable = ready;
+                if (ready) ZombieModeUIHelper.SetButtonBaseColor(button, BossRushUIColors.AccentFill);
+                else ZombieModeUIHelper.ApplyButtonColors(button, BossRushUIColors.Disabled, BossRushUIColors.Disabled, BossRushUIColors.Disabled);
+                TextMeshProUGUI label = buttonObject.GetComponentInChildren<TextMeshProUGUI>(true);
+                if (label != null) label.text = text;
+                else
+                {
+                    Text legacy = buttonObject.GetComponentInChildren<Text>(true);
+                    if (legacy != null) legacy.text = text;
+                }
+            }
+            catch (Exception e) { ModBehaviour.DevLog(CollectibleTuning.LogPrefix + "刷新登记按钮失败: " + e.Message); }
+        }
+
+        private void OnRegisterClicked()
+        {
+            Item item = FirstItem();
+            if (item == null || CollectibleCatalog.Get(item.TypeID) == null || (isRegistered != null && isRegistered(item.TypeID)))
+            {
+                RefreshButton();
+                return;
+            }
+            List<Item> taken = null;
+            try { taken = register != null ? register(new List<Item> { item }) : null; }
+            catch (Exception e) { Debug.LogWarning(CollectibleTuning.LogPrefix + "登记失败，物品留在格子里: " + e.Message); taken = null; }
+            if (taken != null && taken.Contains(item))
+            {
+                registeredAny = true;
+                try
+                {
+                    item.Detach();
+                    item.DestroyTree();
+                }
+                catch (Exception e) { ModBehaviour.DevLog(CollectibleTuning.LogPrefix + "收走已登记物品失败: " + e.Message); }
+            }
+            RefreshButton();
+        }
+
+        // ---------------- 关闭 ----------------
+
         private void OnStopLoot(InteractableLootbox box)
         {
             if (box == null || box != lootbox) return;
-            Finish();
+            CloseAndReturn(true);
         }
 
-        /// <summary>界面开着时开始读条（回主菜单、换图）：趁基地和主角都还在，先登记、退回，免得物品跟着场景走。</summary>
+        /// <summary>界面开着时开始读条（回主菜单、换图）：趁基地和主角都还在，先退回，免得物品跟着场景走。</summary>
         private void OnStartedLoadingScene(SceneLoadingContext context)
         {
-            Finish();
+            CloseAndReturn(false);
         }
 
-        /// <summary>界面关上：登记、退回、清理。场景切换或模块卸载时也走这里，物品不会丢。</summary>
-        internal void Finish()
+        /// <summary>
+        /// 关上：格子里没登记的退回背包（放不下进仓库），再清理。场景切换、换槽或模块卸载时也走这里，物品不会丢。
+        /// <paramref name="byPlayer"/> 为真表示玩家自己关的界面，才回调 owner（决定要不要回到收藏册）。
+        /// </summary>
+        internal void CloseAndReturn(bool byPlayer)
         {
             if (root == null) return;
             var items = new List<Item>();
@@ -117,21 +273,32 @@ namespace BossRush
             }
             catch (Exception e) { ModBehaviour.DevLog(CollectibleTuning.LogPrefix + "读取登记容器失败: " + e.Message); }
 
-            List<Item> taken = null;
-            try { taken = items.Count > 0 && register != null ? register(items) : null; }
-            catch (Exception e) { ModBehaviour.DevLog(CollectibleTuning.LogPrefix + "登记失败，全部退回: " + e.Message); taken = null; }
-
             foreach (Item item in items)
             {
                 try
                 {
                     item.Detach();
-                    if (taken != null && taken.Contains(item)) item.DestroyTree();
-                    else ReturnToPlayer(item);
+                    ReturnToPlayer(item);
                 }
-                catch (Exception e) { ModBehaviour.DevLog(CollectibleTuning.LogPrefix + "退回物品失败: " + e.Message); }
+                catch (Exception e) { Debug.LogWarning(CollectibleTuning.LogPrefix + "退回物品失败: " + e.Message); }
             }
+            bool any = registeredAny;
             Close();
+            if (byPlayer && onClosed != null)
+            {
+                try { onClosed(any); }
+                catch (Exception e) { ModBehaviour.DevLog(CollectibleTuning.LogPrefix + "登记容器关闭回调失败: " + e.Message); }
+            }
+        }
+
+        private Item FirstItem()
+        {
+            if (inventory == null) return null;
+            foreach (Item item in inventory)
+            {
+                if (item != null) return item;
+            }
+            return null;
         }
 
         private static void ReturnToPlayer(Item item)
@@ -141,14 +308,23 @@ namespace BossRush
             ItemUtilities.SendToPlayerStorage(item, false);
         }
 
+        private void DestroyButton()
+        {
+            if (buttonObject != null) UnityEngine.Object.Destroy(buttonObject);
+            buttonObject = null;
+            button = null;
+        }
+
         private void Close()
         {
             if (subscribed)
             {
+                if (inventory != null) inventory.onContentChanged -= OnContentChanged;
                 InteractableLootbox.OnStopLoot -= OnStopLoot;
                 SceneLoader.onStartedLoadingScene -= OnStartedLoadingScene;
                 subscribed = false;
             }
+            DestroyButton();
             if (root != null)
             {
                 try
@@ -161,6 +337,7 @@ namespace BossRush
             root = null;
             inventory = null;
             lootbox = null;
+            registeredAny = false;
         }
 
         private static void EnsureReflection()
@@ -171,6 +348,8 @@ namespace BossRush
             inventoryReferenceField = typeof(InteractableLootbox).GetField("inventoryReference", instance);
             displayNameKeyField = typeof(InteractableLootbox).GetField("displayNameKey", instance);
             onStartLootField = typeof(InteractableLootbox).GetField("OnStartLoot", BindingFlags.NonPublic | BindingFlags.Static);
+            targetDisplayField = typeof(LootView).GetField("lootTargetInventoryDisplay", instance);
+            sortButtonField = typeof(InventoryDisplay).GetField("sortButton", instance);
         }
     }
 }

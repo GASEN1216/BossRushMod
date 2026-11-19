@@ -11,11 +11,11 @@ A **summoner melee staff** with modest personal damage, but its right-click drop
 ## Stats
 
 - Dmg 18 / Speed 1.2 / Range 1.8m / Crit 4% / Crit Dmg 1.3x / Pierce 1 / Hit Delay 0.1s
-- Block 0.3 / Stamina 6/hit / Bleed 0% / Move Speed 105%
+- Block 0.3 / Stamina 5/hit / Bleed 0% / Move Speed 105%
 
 ## Soul Projection (Right Click)
 
-- **Cooldown**: 12s / **Cast cost**: 12 stamina (separate from 6 per melee swing)
+- **Cooldown**: 12s / **Cast cost**: 12 stamina (separate from 5 per melee swing)
 - Summons **3 soul warriors** **6m ahead of your aim**, spread 2.2m around the drop point
 - A wall in the way shortens the throw automatically; if no ground is found the drop falls back to your feet
 - Each has **80 HP**, fights on your side, pursues enemies

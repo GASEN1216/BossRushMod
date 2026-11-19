@@ -105,7 +105,8 @@ namespace BossRush
                 StockShop.Entry wrapped = new StockShop.Entry(itemEntry);
                 wrapped.CurrentStock = CollectibleTuning.BookShopMaxStock;
                 wrapped.Show = true;
-                shop.entries.Add(wrapped);
+                // 和成就勋章、冒险家日志、鸭皇图鉴一样排在货架最前面（owner 2026-11-19；旧版 Add 落在末尾）。
+                shop.entries.Insert(0, wrapped);
                 return true;
             }
             catch (Exception e)

@@ -11,7 +11,7 @@ A **poison-element short blade** that stacks venom layers on every hit. Single-h
 ## Stats
 
 - Dmg 22 / Speed 2.1 / Range 1.4m / Crit 8% / Crit Dmg 1.5x / Pierce 2
-- Block 0.2 / Stamina 4/hit / Hit Delay 0.06s / Bleed 0% / Move Speed 112%
+- Block 0.2 / Stamina 2/hit / Hit Delay 0.06s / Bleed 0% / Move Speed 112%
 
 ## Venom Injection (Passive)
 

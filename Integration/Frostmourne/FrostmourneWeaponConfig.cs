@@ -55,7 +55,7 @@ namespace BossRush
         private const float STAT_ATTACK_SPEED = 1.54f;
         private const float STAT_ATTACK_RANGE = FrostmourneConfig.BaseAttackRange;
         private const float STAT_DEAL_DAMAGE_TIME = 0.084f;
-        private const float STAT_STAMINA_COST = 7f;
+        private const float STAT_STAMINA_COST = 5f;   // 2026-11-19：7 → 5，攻速 1.54 时持续消耗从 10.8/秒降到 7.7/秒
         private const float STAT_BLEED_CHANCE = 0.105f;
         private const float STAT_MOVE_SPEED_MULTIPLIER = 1.07f;
 

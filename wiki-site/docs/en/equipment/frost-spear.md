@@ -11,7 +11,7 @@ An **ice-element spear** with the longest attack range of all the new weapons. E
 ## Stats
 
 - Dmg 32 / Speed 1.3 / Range **2.4m** / Crit 3% / Crit Dmg 1.2x / Pierce 3
-- Block 0.5 / Stamina 8/hit / Hit Delay 0.09s / Bleed 0% / Move Speed 104% / Cold Protection **+1**
+- Block 0.5 / Stamina 6/hit / Hit Delay 0.09s / Bleed 0% / Move Speed 104% / Cold Protection **+1**
 
 ## Frost Thrust (Passive)
 

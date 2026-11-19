@@ -55,7 +55,7 @@ namespace BossRush
         internal const float CritDamageFactor = 1.6f;
         internal const float ArmorPiercing = 6f;
         // 2026-10-08 实测反馈「耐力一下子就没了都攒不到豆」：轻击 7 → 5，重击同步下调。
-        internal const float StaminaCost = 5f;
+        internal const float StaminaCost = 4f;   // 2026-11-19：5 → 4（轻击；重击 4 / 7 / 11 不变）
         internal const float DealDamageTime = 0.1f;
         internal const float BleedChance = 0f;
         internal const float MoveSpeedMultiplier = 1.05f;

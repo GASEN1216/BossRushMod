@@ -47,6 +47,7 @@ namespace BossRush
         /// <summary>滚轮灵敏度。卡片高 236px（CodexTuning.CardHeight），取 8 约等于一格滚过半张卡。</summary>
         private const float ScrollSensitivity = 8f;
         private const float PanelSidePadding = 20f;
+        private const float CloseButtonSize = 36f;
         private const float GridPadding = 12f;
 
         private const float PanelHeightRatio = 0.82f;
@@ -525,17 +526,19 @@ namespace BossRush
 
             // 关闭按钮：幽灵按钮，常态只有一个「×」，悬停才显出 Danger 底（审美审查 UD-32）。
             // 建的时候就传透明底色：先传实色的话共享层会先挂上投影与斜面，改色后也摘不掉。
+            // CreateButton 的轴心在中心：x 是按钮中心离右沿的距离。旧值 -14 让 36 宽的按钮右半边伸出面板描边 4px，
+            // 「×」压在边框上（2026-11-19，同收藏册）；改成右沿对齐页边距。
             Color ghost = new Color(BossRushUIColors.Danger.r, BossRushUIColors.Danger.g, BossRushUIColors.Danger.b, 0f);
             Button closeButton = ZombieModeUIHelper.CreateButton(
                 "CloseButton",
                 header.transform,
                 "×",
                 new Vector2(1f, 0.5f),
-                new Vector2(-14f, 0f),
-                new Vector2(36f, 36f),
+                new Vector2(-(PanelSidePadding + CloseButtonSize * 0.5f), 0f),
+                new Vector2(CloseButtonSize, CloseButtonSize),
                 ghost,
                 24f,
-                new Vector2(36f, 36f),
+                new Vector2(CloseButtonSize, CloseButtonSize),
                 Close,
                 true);
             IntegrationUIFeedback.StyleGhostCloseButton(

@@ -58,6 +58,8 @@ def main():
     assert "Close();" in body(view, "void OnDestroy("), "destroying an open view must release input"
     assert "card.SetActive(false);" in body(grid, "void ClearCards("), "old cards cannot affect this-frame layout"
     assert "locked ? BossRushUIColors.Disabled : BossRushUIColors.Accent" not in grid, "locked labels need readable text tokens"
+    # The close button pivots at its centre: x must keep the right edge inside the panel padding (2026-11-19 overflow).
+    assert "new Vector2(-(PanelSidePadding + CloseButtonSize * 0.5f), 0f)," in view, "close button must stay inside the panel frame"
     print("CodexPresentationGuard: PASS (UI wiring only; Unity rendering requires in-game checks)")
 
 

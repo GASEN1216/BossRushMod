@@ -29,7 +29,7 @@ namespace BossRush
         public const float CritRate = 0.03f;       // 低暴击（代价）
         public const float CritDamageFactor = 1.2f; // 低暴击伤害（代价）
         public const float ArmorPiercing = 3f;
-        public const float StaminaCost = 8f;
+        public const float StaminaCost = 6f;   // 2026-11-19：8 → 6，攻速 1.3 时持续消耗从 10.4/秒降到 7.8/秒
         public const float DealDamageTime = 0.09f;
         public const float BleedChance = 0f;
         public const float MoveSpeedMultiplier = 1.04f;
