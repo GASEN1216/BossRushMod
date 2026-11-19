@@ -49,7 +49,7 @@ At the start of every run, the system draws a handful of mutators from a pool of
 #### ★ Player Boons (11)
 
 - **Fleet Footed** — Effect: Player walk/run speed **+35%**
-- **Sharpshooter** — Effect: Player gun crit rate **+30%**
+- **Sharpshooter** — Effect: Player headshot damage **+25%**, gun scatter **-15%**
 - **Trigger Discipline** — Effect: Player fire rate **+25%**
 - **Steady Aim** — Effect: Player gun scatter **-30%**
 - **Fast Hands** — Effect: Player reload speed **+40%**
@@ -58,7 +58,7 @@ At the start of every run, the system draws a handful of mutators from a pool of
 - **Melee Master** — Effect: Player melee damage **+40%**
 - **Tank** — Effect: Player max HP **+30%**
 - **Field Medic** — Effect: Player healing effectiveness **+50%**
-- **Lucky Star** — Effect: Player gun and melee crit rate **+20%**
+- **Lucky Star** — Effect: Player melee crit rate and headshot damage **+20%**
 
 #### ※ Environment Rules (8)
 

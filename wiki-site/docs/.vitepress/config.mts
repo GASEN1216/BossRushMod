@@ -4,6 +4,8 @@ import { fileURLToPath } from 'url'
 import { defineConfig, type HeadConfig } from 'vitepress'
 import { CATEGORIES, localizePath, type Locale } from './data/structure.mts'
 import { INFOBOX } from './data/infobox.mts'
+import { ENEMY_TABLES } from './data/enemy-tables.mts'
+import { ENTITY_ANCHOR_PREFIX, enemyTableAnchor, slugify } from './data/slug.mts'
 import { getRoute, readCatalog } from '../../scripts/entry-map.mjs'
 import { SEARCH } from './search.mts'
 import { decoratePage, headFor, siteUrl } from './seo.mts'
@@ -57,7 +59,7 @@ const SKIN_THEME_INIT =
 const EDIT_LINK_PATTERN = (page: { frontmatter: Record<string, any> }) =>
   'https://github.com/GASEN1216/BossRushMod/edit/main/' + page.frontmatter.editSource
 
-// ── 列表项里的实体名 → 小图标 + 链接 ─────────────────────
+// ── 正文里的实体名 → 小图标 + 链接 ───────────────────────
 /**
  * 泰拉瑞亚 Wiki 最认得出来的一件事，是**正文里每次提到一件装备都带着它的贴图**：
  * 掉落表、合成表、清单，名字前面永远有个 32px 小图。我们的总览页此前是
@@ -70,60 +72,272 @@ const EDIT_LINK_PATTERN = (page: { frontmatter: Record<string, any> }) =>
  *   那个 guard 立刻红，而且以后每改一次装饰规则都要同步改它的 Python 镜像。
  *   放在渲染层，生成的 .md 一个字节都不变，装饰只存在于 HTML 里。
  *
- * 匹配范围刻意收得很窄——只认「列表项开头（或表格单元格整格）、独占一个 **加粗**、
- * 且文字与 structure.mts 里某个条目名（或 catalog.tsv 里的标题）**完全相等**」这一种形态：
- *   ✓ - **逆鳞** — 焚天龙皇掉落…        （逆鳞是条目名）
- *   ✗ - **火焰伤害转治疗**的核心被动…   （不是条目名，原样保留）
- *   ✗ …掉落：赤龙首、焰鳞甲、龙息        （不在行首加粗位，不碰）
- * 宁可漏，不可错：漏了只是少一个图标，错了会把正文里的普通强调变成乱链接。
+ * 认得的名字（索引）有四个来源，前面的优先：
+ *   1. structure.mts 的条目名（模式、Boss、装备、系统……整页）；
+ *   2. catalog.tsv 的标题，当别名（「百战留痕（黑市鸭王杯）」）；
+ *   3. scripts/wiki-entities.json：物品、装备部件、人物，落在某页的某一节；
+ *   4. data/enemy-stats.json：头目、岛主、地图敌人（与抗性表同一份数据）。
+ * 3、4 两类会落到目标页里的具体位置：同名小节标题，或者以这个名字开头的加粗列表项
+ * （渲染那一页时给该列表项补 id，见 LIST_IDS）。都没有时退到抗性表或指定的小节。
+ *
+ * 三种落点，宁可漏，不可错：
+ *   ✓ 列表项开头 / 表格整格的 **加粗**（原规则，每处都换）；
+ *   ✓ 正文任意位置的 **加粗**，文字与索引里的名字**完全相等**；
+ *   ✓ 纯文字里**两头都是标点或句首句尾**的名字（「掉落：赤龙首、焰鳞甲、龙息」）。
+ *     中文另放行几个虚词（左：打、用、把、给……；右：的、和、与、等），
+ *     英文要求两头不是字母数字。后两种在同一小节里只换第一次，免得一段话里满屏链接。
+ *   ✗ 标题、表头、已有链接、行内代码里一律不动；不指向自己所在的页（落点在本页某处的除外）。
  */
-type EntityHit = { href: string; icon: string | null; canonical: string }
+type EntityHit = {
+  /** 不带 base；落到小节时带 #锚点 */
+  href: string
+  icon: string | null
+  /** 目标页的规范路径（无尾斜杠），悬停预览与「不自指」判断用 */
+  canonical: string
+  anchor: string | null
+  tier?: number
+}
+
+const DOCS_DIR = resolve(__dirname, '..')
+const SCRIPTS_DIR = resolve(__dirname, '..', '..', 'scripts')
+
+function readJson<T>(path: string, fallback: T): T {
+  try {
+    return JSON.parse(readFileSync(path, 'utf-8')) as T
+  } catch {
+    return fallback // 清单缺失时退化成「只加链接不加图标」，不阻断构建
+  }
+}
+
+const ICON_SRC = new Map<string, string>()
+for (const group of Object.values(
+  readJson<Record<string, { key: string; src: string }[]>>(resolve(SCRIPTS_DIR, 'image-manifest.json'), {})
+)) {
+  for (const item of group ?? []) ICON_SRC.set(item.key, item.src)
+}
+
+interface RegistryEntity {
+  kind: string
+  zh?: string
+  en?: string
+  page: string
+  icon?: string
+  tier?: number
+  anchorZh?: string
+  anchorEn?: string
+}
+const REGISTRY = readJson<{ entities: RegistryEntity[] }>(resolve(SCRIPTS_DIR, 'wiki-entities.json'), {
+  entities: [],
+}).entities
+
+interface EnemyRecord {
+  id: string
+  group: string
+  zh: string
+  en: string
+  page: string
+  icon?: string
+  anchor?: { zh: string; en: string }
+  members?: { zh: string; en: string }[]
+}
+const ENEMIES = readJson<{ enemies: EnemyRecord[] }>(resolve(__dirname, 'data', 'enemy-stats.json'), {
+  enemies: [],
+}).enemies
+
+const norm = (p: string) => (p.length > 1 ? p.replace(/\/$/, '') : p)
+
+/** 生成页（sync 产物）里能当落点的东西：各级标题，以及开头加粗的列表项。 */
+interface PageMarks {
+  headings: { text: string; slug: string }[]
+  listHeads: string[]
+}
+const PAGE_MARKS = new Map<string, PageMarks | null>()
+
+function marksFor(canonical: string, locale: Locale): PageMarks | null {
+  const key = locale + ':' + canonical
+  if (PAGE_MARKS.has(key)) return PAGE_MARKS.get(key)!
+  const rel = canonical === '/' ? 'index' : canonical.replace(/^\//, '')
+  const base = locale === 'en' ? resolve(DOCS_DIR, 'en') : DOCS_DIR
+  let src: string | null = null
+  for (const candidate of [resolve(base, rel + '.md'), resolve(base, rel, 'index.md')]) {
+    try {
+      src = readFileSync(candidate, 'utf-8')
+      break
+    } catch {
+      // 下一个候选
+    }
+  }
+  if (src === null) {
+    PAGE_MARKS.set(key, null)
+    return null
+  }
+  const headings: PageMarks['headings'] = []
+  const listHeads: string[] = []
+  const used = new Map<string, number>()
+  let fence = false
+  for (const line of src.split(/\r?\n/)) {
+    if (/^\s*(```|~~~)/.test(line)) fence = !fence
+    if (fence) continue
+    const h = /^#{1,6}\s+(.+?)\s*$/.exec(line)
+    if (h) {
+      const text = h[1].replace(/\*\*/g, '').replace(/`/g, '')
+      // 与 markdown-it-anchor 的去重一致：第二个同名标题是 slug-1
+      let slug = slugify(text)
+      const n = used.get(slug) ?? 0
+      used.set(slug, n + 1)
+      if (n > 0) slug = slug + '-' + n
+      headings.push({ text, slug })
+      continue
+    }
+    const li = /^\s*- \*\*(.+?)\*\*/.exec(line)
+    if (li) listHeads.push(li[1].trim())
+  }
+  const marks = { headings, listHeads }
+  PAGE_MARKS.set(key, marks)
+  return marks
+}
+
+/** 「赤龙首（头盔）」「折翎 / 无声钟守」「浮舟（登云码头）· 渡口整备」都算「浮舟」等名字的落点。 */
+function namesTheSpot(text: string, name: string): boolean {
+  if (text === name) return true
+  if (text.split(/\s*\/\s*/).includes(name)) return true
+  return ['（', '(', ' · ', '·', ' / ', '：', ':', ' '].some((d) => text.startsWith(name + d))
+}
+
+/** locale:canonical -> 列表项加粗原文 -> 要补的 id。渲染那一页时由 entityLinkPlugin 写到 <li> 上。 */
+const LIST_IDS = new Map<string, Map<string, string>>()
+
+function resolveAnchor(
+  name: string,
+  canonical: string,
+  locale: Locale,
+  fallbackHeading?: string,
+  fallbackId?: string | null
+): string | null {
+  const marks = marksFor(canonical, locale)
+  if (!marks) return fallbackId ?? null
+  // 跳过页面标题（h1）：落到页顶不需要锚点
+  const heading = marks.headings.slice(1).find((h) => namesTheSpot(h.text, name))
+  if (heading) return heading.slug
+  const li = marks.listHeads.find((text) => namesTheSpot(text, name))
+  if (li) {
+    const key = locale + ':' + canonical
+    let ids = LIST_IDS.get(key)
+    if (!ids) LIST_IDS.set(key, (ids = new Map()))
+    if (!ids.has(li)) ids.set(li, ENTITY_ANCHOR_PREFIX + slugify(name))
+    return ids.get(li)!
+  }
+  if (fallbackHeading) {
+    const fh = marks.headings.find((h) => h.text === fallbackHeading)
+    if (fh) return fh.slug
+  }
+  return fallbackId ?? null
+}
 
 function buildEntityIndex(locale: Locale): Map<string, EntityHit> {
-  const iconSrc = new Map<string, string>()
-  try {
-    const raw = readFileSync(resolve(__dirname, '..', '..', 'scripts', 'image-manifest.json'), 'utf-8')
-    for (const group of Object.values(JSON.parse(raw) as Record<string, { key: string; src: string }[]>)) {
-      for (const item of group ?? []) iconSrc.set(item.key, item.src)
-    }
-  } catch {
-    // 清单缺失时退化成「只加链接不加图标」，不阻断构建
+  const index = new Map<string, EntityHit>()
+  const add = (name: string | undefined, hit: EntityHit) => {
+    const n = (name ?? '').trim()
+    if (n.length >= 2 && !index.has(n)) index.set(n, hit)
   }
 
-  const index = new Map<string, EntityHit>()
+  // 1. structure.mts：整页
   for (const category of CATEGORIES) {
     for (const entry of category.entries) {
-      const name = locale === 'en' ? entry.en : entry.zh
-      if (!name || index.has(name)) continue
-      const src = entry.icon ? iconSrc.get(entry.icon) ?? null : null
+      const canonical = norm(entry.path)
       // href / src 都**不带 base**：交给 VitePress 自己的 link_open 与 image
       // 渲染规则去补前缀。自己拼 base 会让 Vite 把 <img src> 当模块去解析，
       // 报 "Rollup failed to resolve import /BossRushMod/images/..." —— 这正是
       // sync-content.mjs 里 renderImageBlock() 那段注释警告过的同一个坑。
-      index.set(name, {
+      add(locale === 'en' ? entry.en : entry.zh, {
         href: localizePath(entry.path, locale),
-        icon: src,
-        canonical: entry.path.replace(/\/$/, ''),
+        icon: entry.icon ? ICON_SRC.get(entry.icon) ?? null : null,
+        canonical,
+        anchor: null,
+        tier: INFOBOX[canonical]?.rows.find((r) => r.tier)?.tier,
       })
     }
   }
 
-  // catalog.tsv 里的标题也算别名：目录写「百战留痕（黑市鸭王杯）」而 structure.mts 写「百战留痕」，
-  // 模式总览的清单用的是前者。别名只补不覆盖，structure.mts 的名字优先。
+  // 2. catalog.tsv 的标题当别名：目录写「百战留痕（黑市鸭王杯）」而 structure.mts 写「百战留痕」。
+  //    别名只补不覆盖，structure.mts 的名字优先。
   const byCanonical = new Map<string, EntityHit>()
-  for (const hit of index.values()) byCanonical.set(hit.canonical, hit)
+  for (const hit of index.values()) if (!byCanonical.has(hit.canonical)) byCanonical.set(hit.canonical, hit)
   for (const row of readCatalog()) {
     const route = getRoute(row.entryId)
     if (!route) continue
     const canonical = '/' + route.replace(/\.md$/, '').replace(/\/index$/, '')
-    const alias = (locale === 'en' ? row.titleEn : row.titleZh).trim()
     const hit = byCanonical.get(canonical)
-    if (alias && hit && !index.has(alias)) index.set(alias, hit)
+    if (hit) add(locale === 'en' ? row.titleEn : row.titleZh, hit)
+  }
+
+  // 3. 物品、装备部件、人物
+  for (const e of REGISTRY) {
+    const name = locale === 'en' ? e.en : e.zh
+    if (!name) continue
+    const canonical = norm(e.page)
+    const anchor = resolveAnchor(name, canonical, locale, locale === 'en' ? e.anchorEn : e.anchorZh)
+    add(name, {
+      href: localizePath(e.page, locale) + (anchor ? '#' + anchor : ''),
+      icon: e.icon ? ICON_SRC.get(e.icon) ?? null : null,
+      canonical,
+      anchor,
+      tier: e.tier,
+    })
+  }
+
+  // 4. 敌人：名字与抗性表同源；没有专门落点的退到那一页的抗性表
+  for (const e of ENEMIES) {
+    if (e.group === 'sky-island-pool' || e.group === 'zombie') continue
+    const canonical = norm(e.page)
+    const table = ENEMY_TABLES.find((p) => p.group === e.group && norm(p.page) === canonical)
+    const names = e.members ?? [{ zh: e.zh, en: e.en }]
+    for (const m of names) {
+      const name = locale === 'en' ? m.en : m.zh
+      const anchor = resolveAnchor(
+        name,
+        canonical,
+        locale,
+        e.anchor ? (locale === 'en' ? e.anchor.en : e.anchor.zh) : undefined,
+        table ? enemyTableAnchor(e.group) : null
+      )
+      add(name, {
+        href: localizePath(e.page, locale) + (anchor ? '#' + anchor : ''),
+        icon: e.icon ? ICON_SRC.get(e.icon) ?? null : null,
+        canonical,
+        anchor,
+      })
+    }
   }
   return index
 }
 
 const ENTITY_INDEX = { zh: buildEntityIndex('zh'), en: buildEntityIndex('en') }
+
+/** 纯文字匹配用的正则：长名字在前，「噬风之核」不会被「噬风」截胡。 */
+function buildMatcher(index: Map<string, EntityHit>, locale: Locale): RegExp | null {
+  const names = [...index.keys()].filter((n) => (locale === 'en' ? n.length >= 3 && /[A-Z]/.test(n) : true))
+  if (!names.length) return null
+  names.sort((a, b) => b.length - a.length)
+  return new RegExp(names.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g')
+}
+const ENTITY_MATCHER = { zh: buildMatcher(ENTITY_INDEX.zh, 'zh'), en: buildMatcher(ENTITY_INDEX.en, 'en') }
+
+// 名字两头允许出现的字符。中文放行几个最常见的虚词与动词，其余汉字一律当成「名字还没完」。
+const EDGE_PUNCT = '\\s、，。：；！？（）()「」『』《》【】“”‘’"\'/,;:!?—–·×+=*|<>\\[\\]'
+const ZH_LEFT = new RegExp('[' + EDGE_PUNCT + '和与或及打用把给带拿找去在从向跟对被是到让]')
+const ZH_RIGHT = new RegExp('[' + EDGE_PUNCT + '的和与或及等]')
+const WORDISH = /[A-Za-z0-9]/
+
+function edgeOk(text: string, start: number, end: number, name: string): boolean {
+  const before = start > 0 ? text[start - 1] : ''
+  const after = end < text.length ? text[end] : ''
+  const latinHead = WORDISH.test(name[0])
+  const latinTail = WORDISH.test(name[name.length - 1])
+  const leftOk = !before || (latinHead ? !WORDISH.test(before) && !/[一-龥]/.test(before) : ZH_LEFT.test(before))
+  const rightOk = !after || (latinTail ? !WORDISH.test(after) : ZH_RIGHT.test(after))
+  return leftOk && rightOk
+}
 
 /** 'en/equipment/dragon-set.md' → { locale:'en', canonical:'/equipment/dragon-set' } */
 function pageIdentity(relativePath: string) {
@@ -136,37 +350,32 @@ function pageIdentity(relativePath: string) {
 
 export function entityLinkPlugin(md: any) {
   md.core.ruler.push('brs_entity_links', (state: any) => {
+    // md.parseInline() 也会跑 core 规则（VitePress 推断页面标题时就会调它），不给标题加链接
+    if (state.inlineMode) return
     const { locale, canonical } = pageIdentity(state.env?.relativePath ?? '')
     const index = ENTITY_INDEX[locale]
+    const matcher = ENTITY_MATCHER[locale]
+    const listIds = LIST_IDS.get(locale + ':' + canonical)
+    const idsDone = new Set<string>()
     const tokens = state.tokens
+    let seen = new Set<string>()
 
-    for (let i = 0; i < tokens.length; i++) {
-      if (tokens[i].type !== 'inline') continue
-      // 两种落点，都用 token 结构定位而不是正则扫原文，才不会误伤代码块里的同名文字：
-      //   「列表项里的第一段」＝ list_item_open, paragraph_open, inline；
-      //   「表格单元格」      ＝ td_open, inline —— 给 sync 列表转表格后的首列用
-      //                        （模式总览那张表的首列就是 **模式名**）。
-      const inListItem =
-        tokens[i - 1]?.type === 'paragraph_open' && tokens[i - 2]?.type === 'list_item_open'
-      const inCell = tokens[i - 1]?.type === 'td_open'
-      if (!inListItem && !inCell) continue
-
-      const kids = tokens[i].children
-      if (!kids) continue
-
-      // 加粗前面常常挂着一个**空 text token**（markdown-it 切 inline 时留下的），
-      // 直接按 kids[0] 判断会全线不匹配——这里先跳过开头的空文本。
-      let s = 0
-      while (s < kids.length && kids[s].type === 'text' && kids[s].content === '') s++
-      if (kids[s]?.type !== 'strong_open') continue
-      if (kids[s + 1]?.type !== 'text' || kids[s + 2]?.type !== 'strong_close') continue
-
-      const hit = index.get(kids[s + 1].content.trim())
-      if (!hit || hit.canonical === canonical) continue // 不自指
-
-      // 用 markdown-it 原生 token 而不是裸 HTML：这样 VitePress 的
-      // link_open / image 渲染规则会照常补 base、走客户端路由、纳入死链扫描。
-      const linkOpen = new state.Token('link_open', 'a', 1)
+    const Token = state.Token
+    const iconToken = (src: string) => {
+      const image = new Token('image', 'img', 0)
+      image.attrs = [
+        ['class', 'brs-eref__icon'],
+        ['src', src],
+        ['alt', ''],
+      ]
+      image.children = []
+      image.content = ''
+      return image
+    }
+    // 用 markdown-it 原生 token 而不是裸 HTML：这样 VitePress 的
+    // link_open / image 渲染规则会照常补 base、走客户端路由、纳入死链扫描。
+    const wrap = (inner: any[], hit: EntityHit) => {
+      const linkOpen = new Token('link_open', 'a', 1)
       linkOpen.attrs = [
         // `i` 是 MediaWiki / 泰拉瑞亚 Wiki 里「带贴图的物品链接」那个类；
         // `brs-eref` 留着不动，悬停预览与稀有度上色都靠它认人。
@@ -176,27 +385,178 @@ export function entityLinkPlugin(md: any) {
         // 写规范路径而不是 href：href 带了 base 与语言前缀，组件那边还要再剥一次。
         ['data-brs-ref', hit.canonical],
       ]
-      // 稀有度：物品名按档上色（extras.css §0 的 [data-tier] 规则）。
-      // 只有 infobox.mts 给了 tier 的条目才写这个属性，Boss / 模式 / 系统没有稀有度。
-      const tier = INFOBOX[hit.canonical]?.rows.find((r) => r.tier)?.tier
-      if (tier) linkOpen.attrs.push(['data-tier', String(tier)])
-      const linkClose = new state.Token('link_close', 'a', -1)
-
+      // 稀有度：物品名按档上色（widgets.css §0 的 [data-tier] 规则）
+      if (hit.tier) linkOpen.attrs.push(['data-tier', String(hit.tier)])
+      linkOpen.meta = { brsEntity: true }
       const pieces: any[] = [linkOpen]
-      if (hit.icon) {
-        const image = new state.Token('image', 'img', 0)
-        image.attrs = [
-          ['class', 'brs-eref__icon'],
-          ['src', hit.icon],
-          ['alt', ''],
-        ]
-        image.children = []
-        image.content = ''
-        pieces.push(image)
+      if (hit.icon) pieces.push(iconToken(hit.icon))
+      pieces.push(...inner, new Token('link_close', 'a', -1))
+      return pieces
+    }
+    /** 指向本页本身（且没有页内落点）的不链；同一小节第二次出现的也不链。 */
+    const takeOnce = (hit: EntityHit) => {
+      if (hit.canonical === canonical && !hit.anchor) return false
+      if (seen.has(hit.href)) return false
+      seen.add(hit.href)
+      return true
+    }
+
+    const splitText = (tok: any): any[] => {
+      if (!matcher || !tok.content) return [tok]
+      const text: string = tok.content
+      const out: any[] = []
+      let last = 0
+      matcher.lastIndex = 0
+      let m: RegExpExecArray | null
+      while ((m = matcher.exec(text))) {
+        const name = m[0]
+        const start = m.index
+        const end = start + name.length
+        const hit = index.get(name)
+        if (!hit || !edgeOk(text, start, end, name) || !takeOnce(hit)) continue
+        if (start > last) {
+          const before = new Token('text', '', 0)
+          before.content = text.slice(last, start)
+          out.push(before)
+        }
+        const label = new Token('text', '', 0)
+        label.content = name
+        out.push(...wrap([label], hit))
+        last = end
       }
-      // 原来的 strong_open / text / strong_close 直接复用，加粗语义不丢
-      pieces.push(kids[s], kids[s + 1], kids[s + 2], linkClose)
-      kids.splice(s, 3, ...pieces)
+      if (!out.length) return [tok]
+      if (last < text.length) {
+        const rest = new Token('text', '', 0)
+        rest.content = text.slice(last)
+        out.push(rest)
+      }
+      return out
+    }
+
+    for (let i = 0; i < tokens.length; i++) {
+      const tok = tokens[i]
+      if (tok.type === 'heading_open') {
+        seen = new Set() // 每个小节重新计「第一次」
+        continue
+      }
+      if (tok.type !== 'inline' || !tok.children) continue
+      const prev = tokens[i - 1]?.type
+      if (prev === 'heading_open' || prev === 'th_open') continue
+
+      const kids = tok.children
+      const inListItem = prev === 'paragraph_open' && tokens[i - 2]?.type === 'list_item_open'
+      const inCell = prev === 'td_open'
+
+      // 第一种落点：列表项开头 / 表格整格的加粗——每处都换
+      // 加粗前面常常挂着一个**空 text token**（markdown-it 切 inline 时留下的），先跳过。
+      let s = 0
+      while (s < kids.length && kids[s].type === 'text' && kids[s].content === '') s++
+      if (
+        (inListItem || inCell) &&
+        kids[s]?.type === 'strong_open' &&
+        kids[s + 1]?.type === 'text' &&
+        kids[s + 2]?.type === 'strong_close'
+      ) {
+        const text = kids[s + 1].content.trim()
+        kids[s].meta = { ...(kids[s].meta ?? {}), brsHead: true }
+        // 本页是这个名字的落点：给 <li> 补 id，让别处的链接能跳到这一条
+        const id = inListItem ? listIds?.get(text) : undefined
+        if (id && !idsDone.has(id)) {
+          tokens[i - 2].attrSet('id', id)
+          idsDone.add(id)
+        }
+        const hit = index.get(text)
+        if (hit) {
+          if (hit.canonical === canonical && (!hit.anchor || hit.anchor === id)) {
+            // 落点本身：只补图标，不链自己
+            if (hit.icon && hit.anchor) kids.splice(s, 0, iconToken(hit.icon))
+          } else {
+            kids.splice(s, 3, ...wrap(kids.slice(s, s + 3), hit))
+            seen.add(hit.href)
+          }
+        }
+      }
+
+      // 第二、三种落点：正文里的加粗与纯文字，同一小节只换第一次
+      const out: any[] = []
+      let inLink = 0
+      for (let k = 0; k < kids.length; k++) {
+        const c = kids[k]
+        if (c.type === 'link_open') inLink++
+        if (c.type === 'link_close') inLink--
+        if (inLink > 0 || c.type === 'link_close') {
+          out.push(c)
+          continue
+        }
+        if (c.type === 'strong_open') {
+          // 加粗：整段等于名字才换；加粗里的文字不做纯文字匹配（多半是强调，不是专名）
+          let close = k + 1
+          while (close < kids.length && kids[close].type !== 'strong_close') close++
+          const inner = kids.slice(k, close + 1)
+          const single = close === k + 2 && kids[k + 1].type === 'text'
+          const hit = single && !c.meta?.brsHead ? index.get(kids[k + 1].content.trim()) : undefined
+          if (hit && takeOnce(hit)) out.push(...wrap(inner, hit))
+          else out.push(...inner)
+          k = close
+          continue
+        }
+        if (c.type === 'text') {
+          out.push(...splitText(c))
+          continue
+        }
+        out.push(c)
+      }
+      tok.children = out
+    }
+  })
+}
+
+/**
+ * 抗性表：按 data/enemy-tables.mts 把 `<WikiEnemyTable />` 插进指定小节。
+ *
+ * 和速查框同一套办法（渲染期往 token 流里塞 html_block），sync 产物一个字节不变。
+ * 按标题**文字**找小节：几张地图页的中英小节并不一一对应，序号靠不住；
+ * 标题改名时这里只 warn，tests/WikiEnemyStatsGuard.py 会先红。
+ */
+export function enemyStatsSlotPlugin(md: any) {
+  md.core.ruler.push('brs_enemy_tables', (state: any) => {
+    if (state.inlineMode) return
+    const { locale, canonical } = pageIdentity(state.env?.relativePath ?? '')
+    const placements = ENEMY_TABLES.map((p, order) => ({ ...p, order })).filter((p) => norm(p.page) === canonical)
+    if (!placements.length) return
+    const tokens = state.tokens
+    const inserts: { at: number; order: number; html: string }[] = []
+    for (const p of placements) {
+      const title = locale === 'en' ? p.en : p.zh
+      const h = tokens.findIndex(
+        (t: any, i: number) =>
+          t.type === 'heading_open' && tokens[i + 1]?.type === 'inline' && tokens[i + 1].content.trim() === title
+      )
+      if (h < 0) {
+        console.warn(`[enemy-tables] ${locale}${canonical} 找不到小节「${title}」，抗性表 ${p.group} 没插上`)
+        continue
+      }
+      const level = Number(tokens[h].tag.slice(1))
+      let at = tokens.length
+      if (p.at === 'start') at = h + 3
+      else {
+        for (let j = h + 3; j < tokens.length; j++) {
+          if (tokens[j].type === 'heading_open' && Number(tokens[j].tag.slice(1)) <= level) {
+            at = j
+            break
+          }
+        }
+      }
+      const ids = p.ids ? ` ids="${p.ids.join(',')}"` : ''
+      inserts.push({ at, order: p.order, html: `<WikiEnemyTable group="${p.group}"${ids} />\n` })
+    }
+    // 倒序插：后面的位置先插，前面的下标不受影响；同一位置按登记顺序排
+    inserts.sort((a, b) => b.at - a.at || b.order - a.order)
+    for (const ins of inserts) {
+      const slot = new state.Token('html_block', '', 0)
+      slot.content = ins.html
+      slot.block = true
+      tokens.splice(ins.at, 0, slot)
     }
   })
 }
@@ -398,6 +758,7 @@ export default defineConfig({
       // 顺序要紧：contentSub 后登记，才会排在速查框**之前**（两者插入点同为 h1 之后）
       md.use(contentSubSlotPlugin)
       md.use(tocSlotPlugin)
+      md.use(enemyStatsSlotPlugin)
 
       /*
        * 正文配图一律懒加载。

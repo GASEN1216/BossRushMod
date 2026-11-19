@@ -79,7 +79,7 @@ Each affix only goes on certain gear types, noted after the name.
   `2.5 / 3.0 / 3.5` metre radius. **It never hurts you**, so feel free to blow it up in your face.
 - **Frenzy** (all) — Fire rate and mobility `+4% / +6% / +9%` for 6s after a kill, up to 5
   stacks. Fully stacked that's `+20%` to `+45%`; you get faster the deeper into the pile you go.
-- **Hawk Eye** (weapons) — Passive: gun and melee crit chance `+4% / +7% / +11%`. Nothing to
+- **Hawk Eye** (weapons) — Passive: melee crit chance and headshot damage `+4% / +7% / +11%`. Nothing to
   trigger; just hold it.
 - **Overcharge** (weapons) — Hits add an electric strike for `12% / 20% / 30%` of the damage
   dealt, 0.25s cooldown.

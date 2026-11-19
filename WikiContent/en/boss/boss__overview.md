@@ -18,6 +18,12 @@ On raid maps, custom Boss models, gear and weapons hide and reappear with player
 
 - **Eclipse Bloom** — 7500 base HP. Follow Jeff's quest to Experimental Area 37, or encounter it through compatible Boss pools. Intact petals shield the core; break them individually with guns or melee to open safe gaps. At 60% health the crown unfolds and rotates; at 25% the core takes over. Every victory drops 1 Residual Sun Shield Shard. Death abandons an unfinished introduction, which can be accepted again. The map encounter appears on every raid during the introduction and on roughly 30% of Area 37 raids afterwards, at most once per raid.
 
+### Resistances and Weak Spots
+
+The same gun can take several times more health off one boss than another, because each boss takes each damage type at its own multiplier. 1 is normal damage, below 1 it shrugs some of it off, above 1 it takes extra, and immune means that damage doesn't get through at all. The exact numbers are in the Base Stats section of each boss's page.
+
+Two of them catch people out. Fire damage on the Dragon Descendant and the Skyburner Dragon Lord is healed straight back the next frame, so fire weapons do nothing to them. The Phantom Witch is built on the vanilla ghost: physical damage barely scratches her and fire and poison don't get through at all, while ice and Psionic damage land in full.
+
 ### When Do Wave Bosses Appear?
 
 - **Standard** — At the start, the mode tries to move the Four Horsemen, Koko Koko, Dragon Descendant and Skyburner Dragon Lord beyond the first 20 candidate positions. Short pools, too few ordinary Bosses and player filtering can defeat that protection. The Phantom Witch is not excluded

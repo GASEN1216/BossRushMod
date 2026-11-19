@@ -47,6 +47,11 @@ The countdown is the same one the regular extraction points use: it pauses while
 
 - Light the lighthouse on the cape (2 seconds) to call a boat. The horn sounds at the tower; enemies who hear it can investigate that location. Hold the tower or slip towards the jetty while they look. Press M for 40 seconds of enemy positions; the boat docks after 45 seconds. Gunfire and being seen can still give you away.
 
+### The sluice and the crane: two ways to die
+
+- **Don't swim into the sluice while the lagoon drains.** The first time you get near a working intake you get 2.5 seconds to read the current and the swim-across hint. After that, staying inside the red ring for 4 seconds straight pulls you under; swimming out resets the count. The top of the dam is always a safe way round.
+- **Don't stand under the load.** The first bell from the dockside crane is a test lift: the load stops over your head. Use it to find the yellow box on the ground and step outside it. From the next lift on, the load kills whoever is directly underneath the moment it lands; the fish crates outside the line can be searched as normal.
+
 ### Loot and enemies
 
 Two industrial hazards are lethal:

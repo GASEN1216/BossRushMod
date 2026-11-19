@@ -6,6 +6,7 @@ import WikiInfobox from './components/WikiInfobox.vue'
 import WikiContentSub from './components/WikiContentSub.vue'
 import WikiToc from './components/WikiToc.vue'
 import WikiIcon from './components/WikiIcon.vue'
+import WikiEnemyTable from './components/WikiEnemyTable.vue'
 
 /* 样式分层，顺序即层叠顺序：令牌 → 重置 → 图标 → 骨架 → 正文 → 构件 → 首页
    → 响应式 → 打印。--vp-* 的桥接单独一份，只服务搜索弹层那个 fork。 */
@@ -32,5 +33,7 @@ export default {
     app.component('WikiContentSub', WikiContentSub)
     app.component('WikiToc', WikiToc)
     app.component('WikiIcon', WikiIcon)
+    // 抗性表：config.mts 的 enemyStatsSlotPlugin 按 data/enemy-tables.mts 插进正文
+    app.component('WikiEnemyTable', WikiEnemyTable)
   },
 } satisfies Theme

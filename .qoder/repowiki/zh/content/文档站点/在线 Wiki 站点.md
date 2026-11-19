@@ -13,6 +13,12 @@
 - [wiki-site/docs/.vitepress/feed.mts](file://wiki-site/docs/.vitepress/feed.mts)
 - [wiki-site/docs/.vitepress/data/structure.mts](file://wiki-site/docs/.vitepress/data/structure.mts)
 - [wiki-site/docs/.vitepress/data/infobox.mts](file://wiki-site/docs/.vitepress/data/infobox.mts)
+- [wiki-site/docs/.vitepress/data/enemy-stats.json](file://wiki-site/docs/.vitepress/data/enemy-stats.json)
+- [wiki-site/docs/.vitepress/data/enemy-tables.mts](file://wiki-site/docs/.vitepress/data/enemy-tables.mts)
+- [wiki-site/docs/.vitepress/theme/components/WikiEnemyTable.vue](file://wiki-site/docs/.vitepress/theme/components/WikiEnemyTable.vue)
+- [wiki-site/scripts/wiki-entities.json](file://wiki-site/scripts/wiki-entities.json)
+- [tools/build_wiki_enemy_stats.py](file://tools/build_wiki_enemy_stats.py)
+- [tools/build_wiki_images.py](file://tools/build_wiki_images.py)
 - [wiki-site/docs/.vitepress/theme/index.ts](file://wiki-site/docs/.vitepress/theme/index.ts)
 - [wiki-site/docs/.vitepress/theme/Layout.vue](file://wiki-site/docs/.vitepress/theme/Layout.vue)
 - [wiki-site/docs/.vitepress/theme/css/tokens.css](file://wiki-site/docs/.vitepress/theme/css/tokens.css)
@@ -21,6 +27,8 @@
 - [.github/workflows/deploy.yml](file://.github/workflows/deploy.yml)
 </cite>
 
+> 2026-11-19 同步：正文里提到物品、装备部件、人物、敌人时自动带游戏图标与链接（登记表 `wiki-site/scripts/wiki-entities.json`，物品图标由 `build_wiki_images.py --only items` 从 `Assets/Items` 转出）；新增敌人抗性表——`tools/build_wiki_enemy_stats.py` 从代码常量与官方生物图鉴快照算出生命、七种承伤倍率与免疫异常，写成 `enemy-stats.json`，抗性表、Boss 速查框与 Boss 页「基础数据」都只读它，`WikiEnemyStatsGuard` / `WikiEntityRegistryGuard` 守着。细节见 wiki-site/AGENTS.md §4.5、§4.12、§5。
+>
 > 2026-09-07 同步：站点做了一次**整站换皮**——不再继承 VitePress 默认主题，版式改为
 > 参照 Official Terraria Wiki（terraria.wiki.gg，MediaWiki Vector-legacy 皮肤）逐值测量后
 > 净室重写的自绘骨架：网络顶栏 + Logo 带 + 左侧门户框 + 标签行 + 内容面板 + 分类栏 + 页脚，
@@ -91,7 +99,7 @@ F --> G[".github/workflows/deploy.yml<br/>GitHub Actions 部署"]
 2026-09-06 导航修复：`theme/composables/useWiki.ts` 的 `href` 必须保留规范路径前导 `/`，先添加语言前缀再调用 `withBase`，避免深层页面把 `bosses/...` 相对链接拼成重复目录。`npm --prefix wiki-site run test:navigation` 执行真实组合函数与 VitePress URL 适配器，覆盖中英、根部署和 `/BossRushMod/` 部署；`python tools/check_wiki_links.py` 对构建 HTML 按浏览器 URL 规则检查目标与锚点（根部署追加 `--base /`）。这两项验证独立于页面能否构建成功，不改 WikiContent 正文或线上部署。
 
 - 内容同步脚本：将 WikiContent 中的 Markdown 转换为 VitePress 文档结构——标题层级提升、Callout 转换、链接清理、按 IMAGE_PLACEMENT 注入配图、按 TABLEIZE 把固定句式列表转成表格（成就大全、模式总览），并把 hubs/ 下的类目主页复制进 docs/。
-- VitePress 配置：站点标题、基础路径、多语言（中文根路径、英文 /en）；导航与侧边栏由 structure.mts 生成；本地搜索接入 search.mts 的中文二元分词；sitemap、逐页 description / Open Graph / canonical / hreflang（seo.mts）、「编辑此页」指向 WikiContent 源文件、更新日志 RSS（feed.mts）、中文 404 文案；markdown-it 层的 entityLinkPlugin 把列表项与表格首列里的实体名换成图标 + 链接。
+- VitePress 配置：站点标题、基础路径、多语言（中文根路径、英文 /en）；导航与侧边栏由 structure.mts 生成；本地搜索接入 search.mts 的中文二元分词；sitemap、逐页 description / Open Graph / canonical / hreflang（seo.mts）、「编辑此页」指向 WikiContent 源文件、更新日志 RSS（feed.mts）、中文 404 文案；markdown-it 层的 entityLinkPlugin 把正文里的条目、物品、装备部件、人物、敌人名换成游戏图标 + 链接（列表项开头与表格整格的加粗每处都换；正文其余位置的加粗与两头是标点的纯文字，同一小节只换第一次），enemyStatsSlotPlugin 按 data/enemy-tables.mts 把抗性表插进指定小节。
 - 主题层：Layout.vue 自己搭骨架（`.mw-layout` 是一张具名 CSS 网格），正文用 `<Content class="mw-parser-output" />`，页尾依次是对比表（WikiCompare）、条目清单（WikiCardGrid）、导航盒（WikiNavbox）、分类栏（WikiCatlinks）。三样东西由 config.mts 的 markdown-it 插件在**渲染期**插进正文，因此生成的 .md 一个字节不变：位置提示（contentSubSlotPlugin，h1 之后）、速查框（infoboxSlotPlugin，紧随其后）、目录框（tocSlotPlugin，第一个 h2 之前）；三者的组件都在 theme/index.ts 全局注册。首页是 layout: page + WikiHome（抬头 + 站点数据 + 最新版本 + 一排类目盒）。
 - 自动化部署：GitHub Actions 在推送 main 分支或手动触发时以 fetch-depth: 0 检出（页面「最后更新」与 RSS 日期取 git 时间），安装依赖、执行构建并上传至 GitHub Pages。
 
@@ -359,6 +367,7 @@ Build --> Deploy["deploy.yml"]
   - 使用统一的标题层级与 Callout 语法，以便同步脚本正确转换。
   - 新增条目需在 catalog.tsv 中注册、在 entry-map.mjs 的 ENTRY_TO_PATH 中补充路由映射，并在 structure.mts 对应类目的 entries 中登记（三步缺一不可）。
   - 速查框与中英文正文一起对照生产代码校准；改数值时 infobox.mts 同步改，类目主页的对比表自动跟随。
+  - Boss 的生命、抗性、弱点、免疫异常不手写：速查框取 enemy-stats.json，Boss 页「基础数据」那四行由 `python tools/build_wiki_enemy_stats.py --write-content` 回写；改了 Boss 血量或底模后重跑它（2026-11-19 起）。
 - 贡献流程
   - 修改 WikiContent 后，运行同步脚本验证生成结果。
   - 提交 PR 并等待 CI 构建与预览。

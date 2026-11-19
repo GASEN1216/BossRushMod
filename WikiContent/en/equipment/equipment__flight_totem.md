@@ -6,7 +6,7 @@ Equip this totem and **you can fly**. Actual flight. Ascend, glide, and hop over
 
 ### Stats
 
-- **Type**: Totem / **Quality**: 6 (Legendary) / **Drop**: Dragon Lord (15%) / Protected from death drops while equipped in its slot; not protected merely by being in the backpack
+- **Type**: Totem / **Quality**: 6 (Epic) / **Drop**: Dragon Lord (15%) / Protected from death drops while equipped in its slot; not protected merely by being in the backpack
 
 ### Controls
 

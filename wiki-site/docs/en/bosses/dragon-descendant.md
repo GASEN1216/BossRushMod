@@ -7,7 +7,9 @@ Dragon Descendant is the first custom boss in this mod, with two phases. Beat it
 - HP: 500
 - Contact Damage: 20 (1.5m range, 0.5s cooldown, knockback force 10)
 - Equipment: Crimson Dragon Helm, Flame Scale Armor, Dragon's Breath
-- **Fire Immune**: Fire damage heals it instead of hurting it
+- Resists: fire damage is healed back the next frame, so it does nothing; Electric ×0.3; Physical ×0.8
+- Weak to: Ice, Poison, Space ×1.35
+- Status immunities: none
 
 ## Combat Phases
 
@@ -63,7 +65,7 @@ several kills, and Dragon's Breath is the stubborn one.
 - Phase 1 pressure is low; keeping 5m+ away avoids most damage
 - Watch for the incendiary arc — move away from your current spot when you see the throw
 - On first lethal hit, **don't rush in to loot**. Back off and watch for gaps in the eight-way incendiaries
-- Don't use fire DoT during the revival sequence; it only heals the boss
+- Leave fire weapons at home: whatever fire takes off is healed back the next frame, revival sequence included
 - In Phase 2, read the loop: strafe during straight shots, dodge the rush, then use the short pause after the fan sweep as your best damage window
 - Melee players shouldn't facetank: the 1.5m contact hitbox stacked on rapid volleys and incendiaries means taking multiple damage instances at once
 - **Ice weapons/ammo shine in Phase 2**: stack up the slow threshold, attack from the side while it's slowed, then disengage before the next rush

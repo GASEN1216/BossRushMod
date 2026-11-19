@@ -8,6 +8,9 @@ The Phantom Witch is the third custom Boss in this mod. She flips between blinki
 - Damage Multiplier: 1.1x
 - Size: 2x a regular ghost
 - Held Weapon: Soulreaper's Requiem
+- Resists: Fire, Poison ×0 (immune); Physical ×0.15; Electric, Space ×0.2
+- Weak to: none
+- Status immunities: Bleed, Poison, Electric Shock, Ignite, Disturbance, Pain
 
 ### Phase Thresholds
 - Phase 1: 100% ~ 60% HP (attack interval 1.2s)

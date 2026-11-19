@@ -1,0 +1,3812 @@
+{
+ "schema": 1,
+ "generatedBy": "tools/build_wiki_enemy_stats.py",
+ "snapshot": {
+  "source": "https://escapefromduckov.net/zh/wiki/creatures",
+  "fetchedAt": "2026-09-25"
+ },
+ "elements": [
+  {
+   "key": "physics",
+   "zh": "物理",
+   "en": "Physical"
+  },
+  {
+   "key": "fire",
+   "zh": "火",
+   "en": "Fire"
+  },
+  {
+   "key": "ice",
+   "zh": "冰",
+   "en": "Ice"
+  },
+  {
+   "key": "poison",
+   "zh": "毒",
+   "en": "Poison"
+  },
+  {
+   "key": "electricity",
+   "zh": "电",
+   "en": "Electric"
+  },
+  {
+   "key": "space",
+   "zh": "空间",
+   "en": "Space"
+  },
+  {
+   "key": "ghost",
+   "zh": "灵",
+   "en": "Psionic"
+  }
+ ],
+ "statuses": [
+  {
+   "key": "Bleeding",
+   "zh": "出血",
+   "en": "Bleed"
+  },
+  {
+   "key": "Poison",
+   "zh": "中毒",
+   "en": "Poison"
+  },
+  {
+   "key": "Electric",
+   "zh": "触电",
+   "en": "Electric Shock"
+  },
+  {
+   "key": "Burning",
+   "zh": "点燃",
+   "en": "Ignite"
+  },
+  {
+   "key": "Space",
+   "zh": "扰动",
+   "en": "Disturbance"
+  },
+  {
+   "key": "Freeze",
+   "zh": "冰冻",
+   "en": "Chilled"
+  },
+  {
+   "key": "Stun",
+   "zh": "震慑",
+   "en": "Stun"
+  },
+  {
+   "key": "Pain",
+   "zh": "疼痛",
+   "en": "Pain"
+  }
+ ],
+ "groups": [
+  {
+   "id": "custom-bosses",
+   "zh": "原创 Boss 承伤倍率",
+   "en": "Original bosses: damage taken",
+   "enemies": [
+    "dragon-descendant",
+    "dragon-king",
+    "phantom-witch",
+    "eclipse-bloom",
+    "sandstorm-champion"
+   ]
+  },
+  {
+   "id": "sky-island-bosses",
+   "zh": "天空岛头目、岛主与剧情对手",
+   "en": "Sky Islands chiefs, lords and story rivals",
+   "enemies": [
+    "sky-foreman",
+    "sky-stargazer",
+    "sky-root-hunter",
+    "sky-waylayer",
+    "sky-sickle",
+    "sky-listener",
+    "sky-piper",
+    "sky-mirror",
+    "sky-windhunter-chaser",
+    "sky-windhunter-stalker",
+    "sky-windhunter-warden",
+    "sky-zheling",
+    "sky-bellkeeper",
+    "sky-windeater"
+   ],
+   "note": {
+    "zh": "生命按参照 Boss 的原版 ×1.5 算，不足 1000 的抬到 1000。",
+    "en": "Health is the reference boss's vanilla value ×1.5, raised to 1000 if lower."
+   }
+  },
+  {
+   "id": "sky-island-pool",
+   "zh": "岛上小兵与巡守可能抽到的官方 Boss",
+   "en": "Vanilla bosses that can fill island patrol slots",
+   "enemies": [
+    "pool-boss_baleader",
+    "pool-boss_killa",
+    "pool-boss_killa_basaka",
+    "pool-boss_tagilla",
+    "pool-boss_tagilla_basaka",
+    "pool-boss_3shot",
+    "pool-boss_snow_igny",
+    "pool-prison_boss",
+    "pool-boss_deng",
+    "pool-boss_storm_5_space",
+    "pool-boss_pmcleader",
+    "pool-boss_storm_2_poison",
+    "pool-boss_storm_3_fire",
+    "pool-boss_island_shot",
+    "pool-boss_storm_1_breakarmor",
+    "pool-boss_xing",
+    "pool-boss_snow_bigice",
+    "pool-boss_snow_fleeze",
+    "pool-boss_speedy_ice",
+    "pool-boss_island_speedy",
+    "pool-boss_arcade",
+    "pool-boss_snowman",
+    "pool-bossmelee_schoolbully",
+    "pool-boss_storm_4_electric",
+    "pool-boss_grenade",
+    "pool-boss_hunter",
+    "pool-boss_shorteagle",
+    "pool-boss_serverguardian",
+    "pool-boss_island_vida",
+    "pool-boss_alex",
+    "pool-boss_fly",
+    "pool-snow_raider",
+    "pool-boss_roadblock",
+    "pool-boss_rpg",
+    "pool-boss_island_snowman",
+    "pool-boss_senorengineer"
+   ],
+   "note": {
+    "zh": "生命已按岛上的 ×1.5 算好。",
+    "en": "Health already includes the islands' ×1.5."
+   }
+  },
+  {
+   "id": "tidegate",
+   "zh": "潮闸镇的敌人",
+   "en": "Tidegate enemies",
+   "enemies": [
+    "tidegate-regular",
+    "tidegate-sturdy",
+    "tidegate-hound",
+    "tidegate-boss"
+   ]
+  },
+  {
+   "id": "last-shift",
+   "zh": "末班编组站的敌人",
+   "en": "Last Shift Yard enemies",
+   "enemies": [
+    "lastshift-regular",
+    "lastshift-escort",
+    "lastshift-leader",
+    "lastshift-chief"
+   ]
+  },
+  {
+   "id": "zombie",
+   "zh": "丧尸的承伤倍率",
+   "en": "Zombie damage taken",
+   "enemies": [
+    "zombie"
+   ]
+  },
+  {
+   "id": "mimic",
+   "zh": "贪吃宝箱怪",
+   "en": "Gluttonous Mimic",
+   "enemies": [
+    "mimic"
+   ]
+  }
+ ],
+ "enemies": [
+  {
+   "id": "dragon-descendant",
+   "group": "custom-bosses",
+   "zh": "龙裔遗族",
+   "en": "Dragon Descendant",
+   "page": "/bosses/dragon-descendant",
+   "health": 500,
+   "elements": {
+    "physics": 0.8,
+    "fire": 0,
+    "ice": 1.35,
+    "poison": 1.35,
+    "electricity": 0.3,
+    "space": 1.35,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_Red",
+    "zh": "???",
+    "nameKey": "Cname_Boss_Red"
+   },
+   "refs": [
+    {
+     "file": "Integration/DragonDescendant/DragonDescendantConfig.cs",
+     "literal": "龙裔遗族"
+    },
+    {
+     "file": "Integration/DragonDescendant/DragonDescendantConfig.cs",
+     "literal": "Dragon Descendant"
+    },
+    {
+     "file": "Integration/DragonDescendant/DragonDescendantConfig.cs",
+     "symbol": "BaseHealth",
+     "value": 500
+    },
+    {
+     "file": "Integration/DragonDescendant/DragonDescendantConfig.cs",
+     "literal": "Cname_Boss_Red"
+    },
+    {
+     "file": "Integration/DragonDescendant/DragonDescendantBoss_RuntimeAndCleanup.cs",
+     "contains": "ElementTypes.fire, 0f"
+    }
+   ],
+   "icon": "dragondescendant",
+   "role": {
+    "zh": "本 Mod 原创 Boss",
+    "en": "Original boss"
+   },
+   "elementNotes": {
+    "fire": {
+     "zh": "火焰打掉的血下一帧原数补回，等于免疫",
+     "en": "fire damage is healed back the next frame, so it does nothing"
+    }
+   },
+   "summary": {
+    "zh": {
+     "resist": "火焰打掉的血下一帧原数补回，等于免疫；电 ×0.3；物理 ×0.8",
+     "weak": "冰、毒、空间 ×1.35",
+     "status": "无"
+    },
+    "en": {
+     "resist": "fire damage is healed back the next frame, so it does nothing; Electric ×0.3; Physical ×0.8",
+     "weak": "Ice, Poison, Space ×1.35",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "dragon-king",
+   "group": "custom-bosses",
+   "zh": "焚天龙皇",
+   "en": "Skyburner Dragon Lord",
+   "page": "/bosses/dragon-king",
+   "health": 800,
+   "elements": {
+    "physics": 0.8,
+    "fire": 0,
+    "ice": 1.35,
+    "poison": 1.35,
+    "electricity": 0.3,
+    "space": 1.35,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_Red",
+    "zh": "???",
+    "nameKey": "Cname_Boss_Red"
+   },
+   "refs": [
+    {
+     "file": "Integration/DragonKing/DragonKingConfig.cs",
+     "literal": "焚天龙皇"
+    },
+    {
+     "file": "Integration/DragonKing/DragonKingConfig.cs",
+     "literal": "Skyburner Dragon Lord"
+    },
+    {
+     "file": "Integration/DragonKing/DragonKingConfig.cs",
+     "symbol": "BaseHealth",
+     "value": 800
+    },
+    {
+     "file": "Integration/DragonKing/DragonKingBoss.cs",
+     "contains": "ElementTypes.fire, 0f"
+    }
+   ],
+   "icon": "boss_dragonking",
+   "role": {
+    "zh": "本 Mod 原创 Boss",
+    "en": "Original boss"
+   },
+   "elementNotes": {
+    "fire": {
+     "zh": "火焰打掉的血下一帧原数补回，等于免疫",
+     "en": "fire damage is healed back the next frame, so it does nothing"
+    }
+   },
+   "summary": {
+    "zh": {
+     "resist": "火焰打掉的血下一帧原数补回，等于免疫；电 ×0.3；物理 ×0.8",
+     "weak": "冰、毒、空间 ×1.35",
+     "status": "无"
+    },
+    "en": {
+     "resist": "fire damage is healed back the next frame, so it does nothing; Electric ×0.3; Physical ×0.8",
+     "weak": "Ice, Poison, Space ×1.35",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "phantom-witch",
+   "group": "custom-bosses",
+   "zh": "幽灵女巫",
+   "en": "Phantom Witch",
+   "page": "/bosses/phantom-witch",
+   "health": 1000,
+   "elements": {
+    "physics": 0.15,
+    "fire": 0,
+    "ice": 1,
+    "poison": 0,
+    "electricity": 0.2,
+    "space": 0.2,
+    "ghost": 1
+   },
+   "status": [
+    "Bleeding",
+    "Poison",
+    "Electric",
+    "Burning",
+    "Space",
+    "Pain"
+   ],
+   "base": {
+    "preset": "EnemyPreset_Animal_Ghost",
+    "zh": "幽灵",
+    "nameKey": "Cname_Ghost"
+   },
+   "refs": [
+    {
+     "file": "Integration/PhantomWitch/PhantomWitchConfig.cs",
+     "literal": "幽灵女巫"
+    },
+    {
+     "file": "Integration/PhantomWitch/PhantomWitchConfig.cs",
+     "literal": "Phantom Witch"
+    },
+    {
+     "file": "Integration/PhantomWitch/PhantomWitchConfig.cs",
+     "symbol": "BaseHealth",
+     "value": 1000
+    },
+    {
+     "file": "Integration/PhantomWitch/PhantomWitchConfig.cs",
+     "literal": "Cname_Ghost"
+    },
+    {
+     "file": "Integration/PhantomWitch/PhantomWitchAbilityController.cs",
+     "contains": "GetStat(\"ElementFactor_Ghost\")"
+    }
+   ],
+   "icon": "boss_phantomwitch",
+   "role": {
+    "zh": "本 Mod 原创 Boss",
+    "en": "Original boss"
+   },
+   "note": {
+    "zh": "底模是官方幽灵：原版灵伤 ×6.5，女巫改回 ×1",
+    "en": "built on the vanilla ghost, which takes ×6.5 Psionic; the witch is set back to ×1"
+   },
+   "summary": {
+    "zh": {
+     "resist": "火、毒 ×0（完全免疫）；物理 ×0.15；电、空间 ×0.2",
+     "weak": "无",
+     "status": "出血、中毒、触电、点燃、扰动、疼痛"
+    },
+    "en": {
+     "resist": "Fire, Poison ×0 (immune); Physical ×0.15; Electric, Space ×0.2",
+     "weak": "none",
+     "status": "Bleed, Poison, Electric Shock, Ignite, Disturbance, Pain"
+    }
+   }
+  },
+  {
+   "id": "eclipse-bloom",
+   "group": "custom-bosses",
+   "zh": "蚀日花冠",
+   "en": "Eclipse Bloom",
+   "page": "/bosses/eclipse-bloom",
+   "health": 7500,
+   "elements": {
+    "physics": 0.8,
+    "fire": 0.8,
+    "ice": 1.35,
+    "poison": 1.35,
+    "electricity": 0.3,
+    "space": 1.35,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_Red",
+    "zh": "???",
+    "nameKey": "Cname_Boss_Red"
+   },
+   "refs": [
+    {
+     "file": "Integration/EclipseBloom/EclipseBloomPoolAdapter.cs",
+     "literal": "蚀日花冠"
+    },
+    {
+     "file": "Integration/EclipseBloom/EclipseBloomPoolAdapter.cs",
+     "literal": "Eclipse Bloom"
+    },
+    {
+     "file": "Integration/EclipseBloom/EclipseBloomRules.cs",
+     "symbol": "BaseHealth",
+     "value": 7500
+    },
+    {
+     "file": "Integration/EclipseBloom/EclipseBloomBoss.cs",
+     "literal": "Cname_Boss_Red"
+    }
+   ],
+   "role": {
+    "zh": "独立挑战 Boss",
+    "en": "Standalone boss"
+   },
+   "healthNote": {
+    "zh": "鸭王征程里另乘章节倍率",
+    "en": "campaign chapters apply their own multiplier"
+   },
+   "note": {
+    "zh": "四片花瓣没碎时替核心挡伤害",
+    "en": "unbroken petals shield the core"
+   },
+   "summary": {
+    "zh": {
+     "resist": "电 ×0.3；物理、火 ×0.8",
+     "weak": "冰、毒、空间 ×1.35",
+     "status": "无"
+    },
+    "en": {
+     "resist": "Electric ×0.3; Physical, Fire ×0.8",
+     "weak": "Ice, Poison, Space ×1.35",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "sandstorm-champion",
+   "group": "custom-bosses",
+   "zh": "冠军之影",
+   "en": "Shadow of the Champion",
+   "page": "/systems/campaign",
+   "health": 5000,
+   "elements": {
+    "physics": 0.8,
+    "fire": 0.8,
+    "ice": 1.35,
+    "poison": 1.35,
+    "electricity": 0.3,
+    "space": 1.35,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_Red",
+    "zh": "???",
+    "nameKey": "Cname_Boss_Red"
+   },
+   "refs": [
+    {
+     "file": "Integration/SandstormChampion/SandstormChampionPoolAdapter.cs",
+     "literal": "冠军之影"
+    },
+    {
+     "file": "Integration/SandstormChampion/SandstormChampionPoolAdapter.cs",
+     "literal": "Shadow of the Champion"
+    },
+    {
+     "file": "Integration/SandstormChampion/SandstormChampionConfig.cs",
+     "symbol": "BaseHealth",
+     "value": 5000
+    },
+    {
+     "file": "Integration/SandstormChampion/SandstormChampionConfig.cs",
+     "literal": "Cname_Boss_Red"
+    }
+   ],
+   "anchor": {
+    "zh": "第 6 章 · 守擂的那个",
+    "en": "Chapter 6 · The One Holding the Ring"
+   },
+   "icon": "portrait-champion",
+   "role": {
+    "zh": "鸭王征程第 6 章",
+    "en": "Duck King Campaign, chapter 6"
+   },
+   "healthNote": {
+    "zh": "鸭王征程里另乘章节倍率",
+    "en": "campaign chapters apply their own multiplier"
+   },
+   "note": {
+    "zh": "转阶段时短暂无敌",
+    "en": "briefly invulnerable while changing phase"
+   },
+   "summary": {
+    "zh": {
+     "resist": "电 ×0.3；物理、火 ×0.8",
+     "weak": "冰、毒、空间 ×1.35",
+     "status": "无"
+    },
+    "en": {
+     "resist": "Electric ×0.3; Physical, Fire ×0.8",
+     "weak": "Ice, Poison, Space ×1.35",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "sky-foreman",
+   "group": "sky-island-bosses",
+   "zh": "残星匠首",
+   "en": "Starforge Foreman",
+   "page": "/maps/sky-island",
+   "health": 1200,
+   "elements": {
+    "physics": 1,
+    "fire": 1.5,
+    "ice": 1,
+    "poison": 1.5,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_Alex",
+    "zh": "艾力克斯",
+    "nameKey": "Character_Alex"
+   },
+   "refs": [
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "Multiplier",
+     "value": 1.5
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "BossHealthFloor",
+     "value": 1000
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "PreludeWardenHealthFactor",
+     "value": 2
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "baseline": "EnemyPreset_Boss_Alex",
+     "value": 800
+    },
+    {
+     "file": "SkyIsland/SkyIslandBossRules.cs",
+     "symbol": "ShieldArmor",
+     "value": 6
+    },
+    {
+     "file": "SkyIsland/SkyIslandBossRules.cs",
+     "symbol": "OverheatDamageTaken",
+     "value": 0.25
+    }
+   ],
+   "role": {
+    "zh": "岛主",
+    "en": "Island lord"
+   },
+   "note": {
+    "zh": "护甲 头 3 / 身 3（专属装备）；供能桩立着时头身护甲各 +6；过热几秒内物理承伤 +0.25",
+    "en": "armor head 3 / body 3 (signature gear); +6 head and body armor while a pylon stands; +0.25 physical damage taken while overheated"
+   },
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "火、毒 ×1.5",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "Fire, Poison ×1.5",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "sky-stargazer",
+   "group": "sky-island-bosses",
+   "zh": "瞭台观星手",
+   "en": "Overlook Stargazer",
+   "page": "/maps/sky-island",
+   "health": 1000,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_3Shot",
+    "zh": "三枪哥",
+    "nameKey": "Cname_Boss_3Shot"
+   },
+   "refs": [
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "Multiplier",
+     "value": 1.5
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "BossHealthFloor",
+     "value": 1000
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "PreludeWardenHealthFactor",
+     "value": 2
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "baseline": "EnemyPreset_Boss_3Shot",
+     "value": 400
+    }
+   ],
+   "role": {
+    "zh": "头目",
+    "en": "Chief"
+   },
+   "note": {
+    "zh": "护甲 头 2 / 身 0（专属装备）",
+    "en": "armor head 2 / body 0 (signature gear)"
+   },
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "无",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "none",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "sky-root-hunter",
+   "group": "sky-island-bosses",
+   "zh": "悬根猎首",
+   "en": "Hanging-Root Huntmaster",
+   "page": "/maps/sky-island",
+   "health": 1000,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [
+    "Stun"
+   ],
+   "base": {
+    "preset": "EnemyPreset_Boss_Hunter",
+    "zh": "猎户",
+    "nameKey": "Cname_Hunter"
+   },
+   "refs": [
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "Multiplier",
+     "value": 1.5
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "BossHealthFloor",
+     "value": 1000
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "PreludeWardenHealthFactor",
+     "value": 2
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "baseline": "EnemyPreset_Boss_Hunter",
+     "value": 450
+    }
+   ],
+   "role": {
+    "zh": "岛主",
+    "en": "Island lord"
+   },
+   "note": {
+    "zh": "护甲 头 1 / 身 3（专属装备）",
+    "en": "armor head 1 / body 3 (signature gear)"
+   },
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "无",
+     "status": "震慑"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "none",
+     "status": "Stun"
+    }
+   }
+  },
+  {
+   "id": "sky-waylayer",
+   "group": "sky-island-bosses",
+   "zh": "截信人",
+   "en": "The Waylayer",
+   "page": "/maps/sky-island",
+   "health": 1000,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 2,
+    "electricity": 1,
+    "space": 2,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_Speedy",
+    "zh": "急速团长",
+    "nameKey": "Cname_Speedy"
+   },
+   "refs": [
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "Multiplier",
+     "value": 1.5
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "BossHealthFloor",
+     "value": 1000
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "PreludeWardenHealthFactor",
+     "value": 2
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "baseline": "EnemyPreset_Boss_Speedy",
+     "value": 170
+    }
+   ],
+   "role": {
+    "zh": "头目",
+    "en": "Chief"
+   },
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "毒、空间 ×2",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "Poison, Space ×2",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "sky-sickle",
+   "group": "sky-island-bosses",
+   "zh": "穗镰",
+   "en": "Grain Sickle",
+   "page": "/maps/sky-island",
+   "health": 1000,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [
+    "Pain"
+   ],
+   "base": {
+    "preset": "EnemyPreset_Boss_Tagilla",
+    "zh": "Tagilla",
+    "nameKey": "Cname_Tagilla"
+   },
+   "refs": [
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "Multiplier",
+     "value": 1.5
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "BossHealthFloor",
+     "value": 1000
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "PreludeWardenHealthFactor",
+     "value": 2
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "baseline": "EnemyPreset_Boss_Tagilla",
+     "value": 610
+    }
+   ],
+   "role": {
+    "zh": "岛主",
+    "en": "Island lord"
+   },
+   "note": {
+    "zh": "护甲 头 2 / 身 3（专属装备）",
+    "en": "armor head 2 / body 3 (signature gear)"
+   },
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "无",
+     "status": "疼痛"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "none",
+     "status": "Pain"
+    }
+   }
+  },
+  {
+   "id": "sky-listener",
+   "group": "sky-island-bosses",
+   "zh": "听雨人",
+   "en": "Rain Listener",
+   "page": "/maps/sky-island",
+   "health": 1000,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [
+    "Poison",
+    "Electric",
+    "Burning"
+   ],
+   "base": {
+    "preset": "EnemyPreset_Boss_Grenade",
+    "zh": "炸弹狂人",
+    "nameKey": "Cname_Grenade"
+   },
+   "refs": [
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "Multiplier",
+     "value": 1.5
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "BossHealthFloor",
+     "value": 1000
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "PreludeWardenHealthFactor",
+     "value": 2
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "baseline": "EnemyPreset_Boss_Grenade",
+     "value": 300
+    }
+   ],
+   "role": {
+    "zh": "头目",
+    "en": "Chief"
+   },
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "无",
+     "status": "中毒、触电、点燃"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "none",
+     "status": "Poison, Electric Shock, Ignite"
+    }
+   }
+  },
+  {
+   "id": "sky-piper",
+   "group": "sky-island-bosses",
+   "zh": "蚋笛翁",
+   "en": "Gnat Piper",
+   "page": "/maps/sky-island",
+   "health": 1000,
+   "elements": {
+    "physics": 1,
+    "fire": 1.25,
+    "ice": 1,
+    "poison": 0,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [
+    "Poison"
+   ],
+   "base": {
+    "preset": "EnemyPreset_Boss_Fly",
+    "zh": "蝇蝇队长",
+    "nameKey": "Cname_Boss_Fly"
+   },
+   "refs": [
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "Multiplier",
+     "value": 1.5
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "BossHealthFloor",
+     "value": 1000
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "PreludeWardenHealthFactor",
+     "value": 2
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "baseline": "EnemyPreset_Boss_Fly",
+     "value": 160
+    }
+   ],
+   "role": {
+    "zh": "头目",
+    "en": "Chief"
+   },
+   "note": {
+    "zh": "护甲 头 1 / 身 0（专属装备）",
+    "en": "armor head 1 / body 0 (signature gear)"
+   },
+   "summary": {
+    "zh": {
+     "resist": "毒 ×0（完全免疫）",
+     "weak": "火 ×1.25",
+     "status": "中毒"
+    },
+    "en": {
+     "resist": "Poison ×0 (immune)",
+     "weak": "Fire ×1.25",
+     "status": "Poison"
+    }
+   }
+  },
+  {
+   "id": "sky-mirror",
+   "group": "sky-island-bosses",
+   "zh": "镜中客",
+   "en": "Mirror Guest",
+   "page": "/maps/sky-island",
+   "health": 1000,
+   "elements": {
+    "physics": 1,
+    "fire": 1.5,
+    "ice": 1,
+    "poison": 1.5,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_Vida",
+    "zh": "维达",
+    "nameKey": "Cname_Vida"
+   },
+   "refs": [
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "Multiplier",
+     "value": 1.5
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "BossHealthFloor",
+     "value": 1000
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "PreludeWardenHealthFactor",
+     "value": 2
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "baseline": "EnemyPreset_Boss_Vida",
+     "value": 220
+    }
+   ],
+   "role": {
+    "zh": "头目",
+    "en": "Chief"
+   },
+   "note": {
+    "zh": "护甲 头 0 / 身 2（专属装备）",
+    "en": "armor head 0 / body 2 (signature gear)"
+   },
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "火、毒 ×1.5",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "Fire, Poison ×1.5",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "sky-windhunter-chaser",
+   "group": "sky-island-bosses",
+   "zh": "断风游猎 · 追",
+   "en": "Galebreaker Chaser",
+   "page": "/maps/sky-island",
+   "health": 1000,
+   "elements": {
+    "physics": 0.9,
+    "fire": 0.75,
+    "ice": 0.5,
+    "poison": 1.5,
+    "electricity": 1,
+    "space": 1.5,
+    "ghost": 1
+   },
+   "status": [
+    "Freeze"
+   ],
+   "base": {
+    "preset": "EnemyPreset_Boss_Speedy_Ice",
+    "zh": "急冻团长",
+    "nameKey": "Cname_Speedy_Ice"
+   },
+   "refs": [
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "Multiplier",
+     "value": 1.5
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "BossHealthFloor",
+     "value": 1000
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "PreludeWardenHealthFactor",
+     "value": 2
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "baseline": "EnemyPreset_Boss_Speedy_Ice",
+     "value": 226
+    }
+   ],
+   "role": {
+    "zh": "头目",
+    "en": "Chief"
+   },
+   "note": {
+    "zh": "护甲 头 0 / 身 2（专属装备）",
+    "en": "armor head 0 / body 2 (signature gear)"
+   },
+   "summary": {
+    "zh": {
+     "resist": "冰 ×0.5；火 ×0.75；物理 ×0.9",
+     "weak": "毒、空间 ×1.5",
+     "status": "冰冻"
+    },
+    "en": {
+     "resist": "Ice ×0.5; Fire ×0.75; Physical ×0.9",
+     "weak": "Poison, Space ×1.5",
+     "status": "Chilled"
+    }
+   }
+  },
+  {
+   "id": "sky-windhunter-stalker",
+   "group": "sky-island-bosses",
+   "zh": "断风游猎 · 伏",
+   "en": "Galebreaker Stalker",
+   "page": "/maps/sky-island",
+   "health": 1000,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 2,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_Deng",
+    "zh": "劳登",
+    "nameKey": "Cname_Boss_Sniper"
+   },
+   "refs": [
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "Multiplier",
+     "value": 1.5
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "BossHealthFloor",
+     "value": 1000
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "PreludeWardenHealthFactor",
+     "value": 2
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "baseline": "EnemyPreset_Boss_Deng",
+     "value": 190
+    }
+   ],
+   "role": {
+    "zh": "头目",
+    "en": "Chief"
+   },
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "空间 ×2",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "Space ×2",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "sky-windhunter-warden",
+   "group": "sky-island-bosses",
+   "zh": "断风游猎 · 守",
+   "en": "Galebreaker Warden",
+   "page": "/maps/sky-island",
+   "health": 1000,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_BALeader",
+    "zh": "BA队长",
+    "nameKey": "Cname_BALeader"
+   },
+   "refs": [
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "Multiplier",
+     "value": 1.5
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "BossHealthFloor",
+     "value": 1000
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "PreludeWardenHealthFactor",
+     "value": 2
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "baseline": "EnemyPreset_Boss_BALeader",
+     "value": 250
+    }
+   ],
+   "role": {
+    "zh": "头目",
+    "en": "Chief"
+   },
+   "note": {
+    "zh": "护甲 头 2 / 身 0（专属装备）；零号区序章那一位血量再 ×2（2000）",
+    "en": "armor head 2 / body 0 (signature gear); ×2 health (2000) in the Ground Zero prelude"
+   },
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "无",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "none",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "sky-zheling",
+   "group": "sky-island-bosses",
+   "zh": "折翎",
+   "en": "Zheling",
+   "page": "/maps/sky-island",
+   "health": 1000,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_Killa",
+    "zh": "Killa",
+    "nameKey": "Cname_Killa"
+   },
+   "refs": [
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "Multiplier",
+     "value": 1.5
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "BossHealthFloor",
+     "value": 1000
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "PreludeWardenHealthFactor",
+     "value": 2
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "literal": "EnemyPreset_Boss_Killa"
+    },
+    {
+     "file": "SkyIsland/SkyIslandEncounters.cs",
+     "literal": "折翎"
+    },
+    {
+     "file": "SkyIsland/SkyIslandEncounters.cs",
+     "literal": "Zheling"
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "baseline": "EnemyPreset_Boss_Killa",
+     "value": 415
+    }
+   ],
+   "role": {
+    "zh": "剧情对手",
+    "en": "Story rival"
+   },
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "无",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "none",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "sky-bellkeeper",
+   "group": "sky-island-bosses",
+   "zh": "失控的守钟装置",
+   "en": "Runaway Bell Engine",
+   "page": "/maps/sky-island",
+   "health": 1000,
+   "elements": {
+    "physics": 1,
+    "fire": 0.8,
+    "ice": 0.3,
+    "poison": 0,
+    "electricity": 1.5,
+    "space": 1,
+    "ghost": 0.1
+   },
+   "status": [
+    "Bleeding",
+    "Poison",
+    "Freeze"
+   ],
+   "base": {
+    "preset": "EnemyPreset_Boss_SnowMan",
+    "zh": "机械雪人",
+    "nameKey": "Cname_SnowMan"
+   },
+   "refs": [
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "Multiplier",
+     "value": 1.5
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "BossHealthFloor",
+     "value": 1000
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "PreludeWardenHealthFactor",
+     "value": 2
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "literal": "EnemyPreset_Boss_SnowMan"
+    },
+    {
+     "file": "SkyIsland/SkyIslandEncounters.cs",
+     "literal": "失控的守钟装置"
+    },
+    {
+     "file": "SkyIsland/SkyIslandEncounters.cs",
+     "literal": "Runaway Bell Engine"
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "baseline": "EnemyPreset_Boss_SnowMan",
+     "value": 320
+    }
+   ],
+   "role": {
+    "zh": "剧情对手",
+    "en": "Story rival"
+   },
+   "summary": {
+    "zh": {
+     "resist": "毒 ×0（完全免疫）；灵 ×0.1；冰 ×0.3；火 ×0.8",
+     "weak": "电 ×1.5",
+     "status": "出血、中毒、冰冻"
+    },
+    "en": {
+     "resist": "Poison ×0 (immune); Psionic ×0.1; Ice ×0.3; Fire ×0.8",
+     "weak": "Electric ×1.5",
+     "status": "Bleed, Poison, Chilled"
+    }
+   }
+  },
+  {
+   "id": "sky-windeater",
+   "group": "sky-island-bosses",
+   "zh": "噬风",
+   "en": "Windeater",
+   "page": "/maps/sky-island",
+   "health": 3000,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 3,
+    "ghost": 1.5
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_Island_Koukou",
+    "zh": "口口口口",
+    "nameKey": "Cname_IslandBoss"
+   },
+   "refs": [
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "Multiplier",
+     "value": 1.5
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "BossHealthFloor",
+     "value": 1000
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "symbol": "PreludeWardenHealthFactor",
+     "value": 2
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "literal": "EnemyPreset_Boss_Island_Koukou"
+    },
+    {
+     "file": "SkyIsland/SkyIslandEnemyTiers.cs",
+     "literal": "噬风"
+    },
+    {
+     "file": "SkyIsland/SkyIslandEnemyTiers.cs",
+     "literal": "Windeater"
+    },
+    {
+     "file": "SkyIsland/SkyIslandCombatBalance.cs",
+     "baseline": "EnemyPreset_Boss_Island_Koukou",
+     "value": 2000
+    }
+   ],
+   "anchor": {
+    "zh": "噬风",
+    "en": "The Windeater"
+   },
+   "role": {
+    "zh": "风灾",
+    "en": "The storm"
+   },
+   "note": {
+    "zh": "回响与首战同一套数值",
+    "en": "its echo uses the same numbers"
+   },
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "空间 ×3；灵 ×1.5",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "Space ×3; Psionic ×1.5",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_baleader",
+   "group": "sky-island-pool",
+   "zh": "BA队长",
+   "en": "Security Captain",
+   "page": "/maps/sky-island",
+   "health": 375,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_BALeader",
+    "zh": "BA队长",
+    "nameKey": "Cname_BALeader",
+    "presets": [
+     "EnemyPreset_Boss_BALeader"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_baleader",
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "无",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "none",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_killa",
+   "group": "sky-island-pool",
+   "zh": "Killa",
+   "en": "Killa",
+   "page": "/maps/sky-island",
+   "health": 622.5,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_Killa",
+    "zh": "Killa",
+    "nameKey": "Cname_Killa",
+    "presets": [
+     "EnemyPreset_Boss_Killa"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_killa",
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "无",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "none",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_killa_basaka",
+   "group": "sky-island-pool",
+   "zh": "Killa",
+   "en": "Killa",
+   "page": "/maps/sky-island",
+   "health": 720,
+   "elements": {
+    "physics": 1,
+    "fire": 1.5,
+    "ice": 1,
+    "poison": 1.5,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_Killa_Basaka",
+    "zh": "Killa",
+    "nameKey": "Cname_Killa",
+    "presets": [
+     "EnemyPreset_Boss_Killa_Basaka"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_killa",
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "火、毒 ×1.5",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "Fire, Poison ×1.5",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_tagilla",
+   "group": "sky-island-pool",
+   "zh": "Tagilla",
+   "en": "Tagilla",
+   "page": "/maps/sky-island",
+   "health": 915,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [
+    "Pain"
+   ],
+   "base": {
+    "preset": "EnemyPreset_Boss_Tagilla",
+    "zh": "Tagilla",
+    "nameKey": "Cname_Tagilla",
+    "presets": [
+     "EnemyPreset_Boss_Tagilla"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_tagilla",
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "无",
+     "status": "疼痛"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "none",
+     "status": "Pain"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_tagilla_basaka",
+   "group": "sky-island-pool",
+   "zh": "Tagilla",
+   "en": "Tagilla",
+   "page": "/maps/sky-island",
+   "health": 1050,
+   "elements": {
+    "physics": 1,
+    "fire": 1.5,
+    "ice": 1,
+    "poison": 1.5,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_Tagilla_Basaka",
+    "zh": "Tagilla",
+    "nameKey": "Cname_Tagilla",
+    "presets": [
+     "EnemyPreset_Boss_Tagilla_Basaka"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_tagilla",
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "火、毒 ×1.5",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "Fire, Poison ×1.5",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_3shot",
+   "group": "sky-island-pool",
+   "zh": "三枪哥",
+   "en": "Triple-Shot Man",
+   "page": "/maps/sky-island",
+   "health": 600,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_3Shot",
+    "zh": "三枪哥",
+    "nameKey": "Cname_Boss_3Shot",
+    "presets": [
+     "EnemyPreset_Boss_3Shot",
+     "EnemyPreset_Boss_Island_3Shot"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_boss_3shot",
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "无",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "none",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_snow_igny",
+   "group": "sky-island-pool",
+   "zh": "伊格尼",
+   "en": "Igny",
+   "page": "/maps/sky-island",
+   "health": 525,
+   "elements": {
+    "physics": 1,
+    "fire": 0.35,
+    "ice": 1.3,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [
+    "Burning",
+    "Stun"
+   ],
+   "base": {
+    "preset": "EnemyPreset_Boss_Snow_Igny",
+    "zh": "伊格尼",
+    "nameKey": "Cname_Snow_Igny",
+    "presets": [
+     "EnemyPreset_Boss_Snow_Igny"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_snow_igny",
+   "summary": {
+    "zh": {
+     "resist": "火 ×0.35",
+     "weak": "冰 ×1.3",
+     "status": "点燃、震慑"
+    },
+    "en": {
+     "resist": "Fire ×0.35",
+     "weak": "Ice ×1.3",
+     "status": "Ignite, Stun"
+    }
+   }
+  },
+  {
+   "id": "pool-prison_boss",
+   "group": "sky-island-pool",
+   "zh": "典狱长",
+   "en": "Warden",
+   "page": "/maps/sky-island",
+   "health": 202.5,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Prison_Boss",
+    "zh": "典狱长",
+    "nameKey": "Cname_Prison_Boss",
+    "presets": [
+     "EnemyPreset_Prison_Boss"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_prison_boss",
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "无",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "none",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_deng",
+   "group": "sky-island-pool",
+   "zh": "劳登",
+   "en": "Lordon",
+   "page": "/maps/sky-island",
+   "health": 285,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 2,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_Deng",
+    "zh": "劳登",
+    "nameKey": "Cname_Boss_Sniper",
+    "presets": [
+     "EnemyPreset_Boss_Deng"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_boss_sniper",
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "空间 ×2",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "Space ×2",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_storm_5_space",
+   "group": "sky-island-pool",
+   "zh": "口口口口",
+   "en": "Koko Koko",
+   "page": "/maps/sky-island",
+   "health": 1188,
+   "elements": {
+    "physics": 0.33,
+    "fire": 0.33,
+    "ice": 0.33,
+    "poison": 0.33,
+    "electricity": 0.33,
+    "space": 1.3,
+    "ghost": 0.66
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_Storm_5_Space",
+    "zh": "口口口口",
+    "nameKey": "Cname_StormBoss5",
+    "presets": [
+     "EnemyPreset_Boss_Storm_5_Space"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_stormboss5",
+   "summary": {
+    "zh": {
+     "resist": "物理、火、冰、毒、电 ×0.33；灵 ×0.66",
+     "weak": "空间 ×1.3",
+     "status": "无"
+    },
+    "en": {
+     "resist": "Physical, Fire, Ice, Poison, Electric ×0.33; Psionic ×0.66",
+     "weak": "Space ×1.3",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_pmcleader",
+   "group": "sky-island-pool",
+   "zh": "呆头鹅",
+   "en": "Goofy Goose",
+   "page": "/maps/sky-island",
+   "health": 825,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [
+    "Freeze"
+   ],
+   "base": {
+    "preset": "EnemyPreset_Boss_PMCLeader",
+    "zh": "呆头鹅",
+    "nameKey": "Cname_PMCLeader",
+    "presets": [
+     "EnemyPreset_Boss_PMCLeader"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_pmcleader",
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "无",
+     "status": "冰冻"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "none",
+     "status": "Chilled"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_storm_2_poison",
+   "group": "sky-island-pool",
+   "zh": "咕噜咕噜",
+   "en": "Gulu Gulu",
+   "page": "/maps/sky-island",
+   "health": 667.5,
+   "elements": {
+    "physics": 1,
+    "fire": 0.75,
+    "ice": 1,
+    "poison": 0,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [
+    "Poison",
+    "Burning"
+   ],
+   "base": {
+    "preset": "EnemyPreset_Boss_Storm_2_Poison",
+    "zh": "咕噜咕噜",
+    "nameKey": "Cname_StormBoss2",
+    "presets": [
+     "EnemyPreset_Boss_Storm_2_Poison"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_stormboss2",
+   "summary": {
+    "zh": {
+     "resist": "毒 ×0（完全免疫）；火 ×0.75",
+     "weak": "无",
+     "status": "中毒、点燃"
+    },
+    "en": {
+     "resist": "Poison ×0 (immune); Fire ×0.75",
+     "weak": "none",
+     "status": "Poison, Ignite"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_storm_3_fire",
+   "group": "sky-island-pool",
+   "zh": "啪啦啪啦",
+   "en": "Pala Pala",
+   "page": "/maps/sky-island",
+   "health": 517.5,
+   "elements": {
+    "physics": 0.5,
+    "fire": 0,
+    "ice": 1.35,
+    "poison": 1.1,
+    "electricity": 0.75,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [
+    "Electric",
+    "Burning"
+   ],
+   "base": {
+    "preset": "EnemyPreset_Boss_Storm_3_Fire",
+    "zh": "啪啦啪啦",
+    "nameKey": "Cname_StormBoss3",
+    "presets": [
+     "EnemyPreset_Boss_Storm_3_Fire"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_stormboss3",
+   "summary": {
+    "zh": {
+     "resist": "火 ×0（完全免疫）；物理 ×0.5；电 ×0.75",
+     "weak": "冰 ×1.35；毒 ×1.1",
+     "status": "触电、点燃"
+    },
+    "en": {
+     "resist": "Fire ×0 (immune); Physical ×0.5; Electric ×0.75",
+     "weak": "Ice ×1.35; Poison ×1.1",
+     "status": "Electric Shock, Ignite"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_island_shot",
+   "group": "sky-island-pool",
+   "zh": "喷子",
+   "en": "Shotgunner",
+   "page": "/maps/sky-island",
+   "health": 540,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1.5,
+    "poison": 1,
+    "electricity": 1,
+    "space": 2,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_Island_Shot",
+    "zh": "喷子",
+    "nameKey": "Cname_Boss_Shot",
+    "presets": [
+     "EnemyPreset_Boss_Island_Shot",
+     "EnemyPreset_Boss_Shot"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_boss_shot",
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "空间 ×2；冰 ×1.5",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "Space ×2; Ice ×1.5",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_storm_1_breakarmor",
+   "group": "sky-island-pool",
+   "zh": "噗咙噗咙",
+   "en": "Pulu Pulu",
+   "page": "/maps/sky-island",
+   "health": 555,
+   "elements": {
+    "physics": 0.45,
+    "fire": 1.1,
+    "ice": 1,
+    "poison": 0.75,
+    "electricity": 1.1,
+    "space": 1.1,
+    "ghost": 1
+   },
+   "status": [
+    "Bleeding",
+    "Poison"
+   ],
+   "base": {
+    "preset": "EnemyPreset_Boss_Storm_1_BreakArmor",
+    "zh": "噗咙噗咙",
+    "nameKey": "Cname_StormBoss1",
+    "presets": [
+     "EnemyPreset_Boss_Storm_1_BreakArmor"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_stormboss1",
+   "summary": {
+    "zh": {
+     "resist": "物理 ×0.45；毒 ×0.75",
+     "weak": "火、电、空间 ×1.1",
+     "status": "出血、中毒"
+    },
+    "en": {
+     "resist": "Physical ×0.45; Poison ×0.75",
+     "weak": "Fire, Electric, Space ×1.1",
+     "status": "Bleed, Poison"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_xing",
+   "group": "sky-island-pool",
+   "zh": "大兴兴",
+   "en": "Big Xing",
+   "page": "/maps/sky-island",
+   "health": 525,
+   "elements": {
+    "physics": 1,
+    "fire": 2,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 2,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_XING",
+    "zh": "大兴兴",
+    "nameKey": "Cname_XING",
+    "presets": [
+     "EnemyPreset_Boss_XING"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_xing",
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "火、空间 ×2",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "Fire, Space ×2",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_snow_bigice",
+   "group": "sky-island-pool",
+   "zh": "大冰冰",
+   "en": "Big Ice",
+   "page": "/maps/sky-island",
+   "health": 450,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1.25,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [
+    "Freeze",
+    "Stun"
+   ],
+   "base": {
+    "preset": "EnemyPreset_Boss_Snow_BigIce",
+    "zh": "大冰冰",
+    "nameKey": "Cname_Snow_BigIce",
+    "presets": [
+     "EnemyPreset_Boss_Snow_BigIce"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_snow_bigice",
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "毒 ×1.25",
+     "status": "冰冻、震慑"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "Poison ×1.25",
+     "status": "Chilled, Stun"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_snow_fleeze",
+   "group": "sky-island-pool",
+   "zh": "弗里兹",
+   "en": "Fleeze",
+   "page": "/maps/sky-island",
+   "health": 525,
+   "elements": {
+    "physics": 1,
+    "fire": 1.3,
+    "ice": 0.35,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [
+    "Freeze",
+    "Stun"
+   ],
+   "base": {
+    "preset": "EnemyPreset_Boss_Snow_Fleeze",
+    "zh": "弗里兹",
+    "nameKey": "Cname_Snow_Fleeze",
+    "presets": [
+     "EnemyPreset_Boss_Snow_Fleeze"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_snow_fleeze",
+   "summary": {
+    "zh": {
+     "resist": "冰 ×0.35",
+     "weak": "火 ×1.3",
+     "status": "冰冻、震慑"
+    },
+    "en": {
+     "resist": "Ice ×0.35",
+     "weak": "Fire ×1.3",
+     "status": "Chilled, Stun"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_speedy_ice",
+   "group": "sky-island-pool",
+   "zh": "急冻团长",
+   "en": "Frost Commander",
+   "page": "/maps/sky-island",
+   "health": 339,
+   "elements": {
+    "physics": 0.9,
+    "fire": 0.75,
+    "ice": 0.5,
+    "poison": 1.5,
+    "electricity": 1,
+    "space": 1.5,
+    "ghost": 1
+   },
+   "status": [
+    "Freeze"
+   ],
+   "base": {
+    "preset": "EnemyPreset_Boss_Speedy_Ice",
+    "zh": "急冻团长",
+    "nameKey": "Cname_Speedy_Ice",
+    "presets": [
+     "EnemyPreset_Boss_Speedy_Ice"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_speedy_ice",
+   "summary": {
+    "zh": {
+     "resist": "冰 ×0.5；火 ×0.75；物理 ×0.9",
+     "weak": "毒、空间 ×1.5",
+     "status": "冰冻"
+    },
+    "en": {
+     "resist": "Ice ×0.5; Fire ×0.75; Physical ×0.9",
+     "weak": "Poison, Space ×1.5",
+     "status": "Chilled"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_island_speedy",
+   "group": "sky-island-pool",
+   "zh": "急速团长",
+   "en": "Speedy Group Commander",
+   "page": "/maps/sky-island",
+   "health": {
+    "min": 255,
+    "max": 330
+   },
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 2,
+    "electricity": 1,
+    "space": 2,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_Island_Speedy",
+    "zh": "急速团长",
+    "nameKey": "Cname_Speedy",
+    "presets": [
+     "EnemyPreset_Boss_Island_Speedy",
+     "EnemyPreset_Boss_Speedy"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_speedy",
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "毒、空间 ×2",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "Poison, Space ×2",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_arcade",
+   "group": "sky-island-pool",
+   "zh": "暴走街机",
+   "en": "Rampaging Arcade",
+   "page": "/maps/sky-island",
+   "health": 360,
+   "elements": {
+    "physics": 0.85,
+    "fire": 1.4,
+    "ice": 1,
+    "poison": 0.5,
+    "electricity": 2,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [
+    "Bleeding",
+    "Poison"
+   ],
+   "base": {
+    "preset": "EnemyPreset_Boss_Arcade",
+    "zh": "暴走街机",
+    "nameKey": "Cname_Boss_Arcade",
+    "presets": [
+     "EnemyPreset_Boss_Arcade",
+     "EnemyPreset_Boss_Island_Arcade"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_boss_arcade",
+   "summary": {
+    "zh": {
+     "resist": "毒 ×0.5；物理 ×0.85",
+     "weak": "电 ×2；火 ×1.4",
+     "status": "出血、中毒"
+    },
+    "en": {
+     "resist": "Poison ×0.5; Physical ×0.85",
+     "weak": "Electric ×2; Fire ×1.4",
+     "status": "Bleed, Poison"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_snowman",
+   "group": "sky-island-pool",
+   "zh": "机械雪人",
+   "en": "Snow-Bot",
+   "page": "/maps/sky-island",
+   "health": 480,
+   "elements": {
+    "physics": 1,
+    "fire": 0.8,
+    "ice": 0.3,
+    "poison": 0,
+    "electricity": 1.5,
+    "space": 1,
+    "ghost": 0.1
+   },
+   "status": [
+    "Bleeding",
+    "Poison",
+    "Freeze"
+   ],
+   "base": {
+    "preset": "EnemyPreset_Boss_SnowMan",
+    "zh": "机械雪人",
+    "nameKey": "Cname_SnowMan",
+    "presets": [
+     "EnemyPreset_Boss_SnowMan",
+     "EnemyPreset_Boss_SnowMan 2"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_snowman",
+   "summary": {
+    "zh": {
+     "resist": "毒 ×0（完全免疫）；灵 ×0.1；冰 ×0.3；火 ×0.8",
+     "weak": "电 ×1.5",
+     "status": "出血、中毒、冰冻"
+    },
+    "en": {
+     "resist": "Poison ×0 (immune); Psionic ×0.1; Ice ×0.3; Fire ×0.8",
+     "weak": "Electric ×1.5",
+     "status": "Bleed, Poison, Chilled"
+    }
+   }
+  },
+  {
+   "id": "pool-bossmelee_schoolbully",
+   "group": "sky-island-pool",
+   "zh": "校霸",
+   "en": "School Bully",
+   "page": "/maps/sky-island",
+   "health": {
+    "min": 405,
+    "max": 600
+   },
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [
+    "Pain"
+   ],
+   "base": {
+    "preset": "EnemyPreset_BossMelee_SchoolBully",
+    "zh": "校霸",
+    "nameKey": "Cname_SchoolBully",
+    "presets": [
+     "EnemyPreset_BossMelee_SchoolBully",
+     "EnemyPreset_Boss_Island_SchoolBully"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_schoolbully",
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "无",
+     "status": "疼痛"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "none",
+     "status": "Pain"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_storm_4_electric",
+   "group": "sky-island-pool",
+   "zh": "比利比利",
+   "en": "Billy Billy",
+   "page": "/maps/sky-island",
+   "health": 922.5,
+   "elements": {
+    "physics": 0.5,
+    "fire": 1.1,
+    "ice": 1.2,
+    "poison": 1,
+    "electricity": 0,
+    "space": 0.5,
+    "ghost": 1
+   },
+   "status": [
+    "Electric",
+    "Space"
+   ],
+   "base": {
+    "preset": "EnemyPreset_Boss_Storm_4_Electric",
+    "zh": "比利比利",
+    "nameKey": "Cname_StormBoss4",
+    "presets": [
+     "EnemyPreset_Boss_Storm_4_Electric"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_stormboss4",
+   "summary": {
+    "zh": {
+     "resist": "电 ×0（完全免疫）；物理、空间 ×0.5",
+     "weak": "冰 ×1.2；火 ×1.1",
+     "status": "触电、扰动"
+    },
+    "en": {
+     "resist": "Electric ×0 (immune); Physical, Space ×0.5",
+     "weak": "Ice ×1.2; Fire ×1.1",
+     "status": "Electric Shock, Disturbance"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_grenade",
+   "group": "sky-island-pool",
+   "zh": "炸弹狂人",
+   "en": "Mad Bomber",
+   "page": "/maps/sky-island",
+   "health": 450,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [
+    "Poison",
+    "Electric",
+    "Burning"
+   ],
+   "base": {
+    "preset": "EnemyPreset_Boss_Grenade",
+    "zh": "炸弹狂人",
+    "nameKey": "Cname_Grenade",
+    "presets": [
+     "EnemyPreset_Boss_Grenade"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_grenade",
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "无",
+     "status": "中毒、触电、点燃"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "none",
+     "status": "Poison, Electric Shock, Ignite"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_hunter",
+   "group": "sky-island-pool",
+   "zh": "猎户",
+   "en": "Hunter",
+   "page": "/maps/sky-island",
+   "health": 675,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [
+    "Stun"
+   ],
+   "base": {
+    "preset": "EnemyPreset_Boss_Hunter",
+    "zh": "猎户",
+    "nameKey": "Cname_Hunter",
+    "presets": [
+     "EnemyPreset_Boss_Hunter"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_hunter",
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "无",
+     "status": "震慑"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "none",
+     "status": "Stun"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_shorteagle",
+   "group": "sky-island-pool",
+   "zh": "矮鸭",
+   "en": "Pato Chapo",
+   "page": "/maps/sky-island",
+   "health": 240,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 2,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_ShortEagle",
+    "zh": "矮鸭",
+    "nameKey": "Cname_ShortEagle",
+    "presets": [
+     "EnemyPreset_Boss_ShortEagle"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_shorteagle",
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "空间 ×2",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "Space ×2",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_serverguardian",
+   "group": "sky-island-pool",
+   "zh": "矿长",
+   "en": "Mine Manager",
+   "page": "/maps/sky-island",
+   "health": 300,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_ServerGuardian",
+    "zh": "矿长",
+    "nameKey": "Cname_ServerGuardian",
+    "presets": [
+     "EnemyPreset_Boss_ServerGuardian"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_serverguardian",
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "无",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "none",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_island_vida",
+   "group": "sky-island-pool",
+   "zh": "维达",
+   "en": "Vida",
+   "page": "/maps/sky-island",
+   "health": {
+    "min": 330,
+    "max": 390
+   },
+   "elements": {
+    "physics": 1,
+    "fire": 1.5,
+    "ice": 1,
+    "poison": 1.5,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_Island_Vida",
+    "zh": "维达",
+    "nameKey": "Cname_Vida",
+    "presets": [
+     "EnemyPreset_Boss_Island_Vida",
+     "EnemyPreset_Boss_Vida"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_vida",
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "火、毒 ×1.5",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "Fire, Poison ×1.5",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_alex",
+   "group": "sky-island-pool",
+   "zh": "艾力克斯",
+   "en": "Alex",
+   "page": "/maps/sky-island",
+   "health": 1200,
+   "elements": {
+    "physics": 1,
+    "fire": 1.5,
+    "ice": 1,
+    "poison": 1.5,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_Alex",
+    "zh": "艾力克斯",
+    "nameKey": "Character_Alex",
+    "presets": [
+     "EnemyPreset_Boss_Alex"
+    ]
+   },
+   "refs": [],
+   "icon": "character_alex",
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "火、毒 ×1.5",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "Fire, Poison ×1.5",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_fly",
+   "group": "sky-island-pool",
+   "zh": "蝇蝇队长",
+   "en": "Fly Captain",
+   "page": "/maps/sky-island",
+   "health": {
+    "min": 240,
+    "max": 285
+   },
+   "elements": {
+    "physics": 1,
+    "fire": 1.25,
+    "ice": 1,
+    "poison": 0,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [
+    "Poison"
+   ],
+   "base": {
+    "preset": "EnemyPreset_Boss_Fly",
+    "zh": "蝇蝇队长",
+    "nameKey": "Cname_Boss_Fly",
+    "presets": [
+     "EnemyPreset_Boss_Fly",
+     "EnemyPreset_Boss_Island_Fly"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_boss_fly",
+   "summary": {
+    "zh": {
+     "resist": "毒 ×0（完全免疫）",
+     "weak": "火 ×1.25",
+     "status": "中毒"
+    },
+    "en": {
+     "resist": "Poison ×0 (immune)",
+     "weak": "Fire ×1.25",
+     "status": "Poison"
+    }
+   }
+  },
+  {
+   "id": "pool-snow_raider",
+   "group": "sky-island-pool",
+   "zh": "观测者",
+   "en": "Observer",
+   "page": "/maps/sky-island",
+   "health": 270,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 0.5,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Snow_Raider",
+    "zh": "观测者",
+    "nameKey": "Cname_RaiderIce",
+    "presets": [
+     "EnemyPreset_Snow_Raider"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_raiderice",
+   "summary": {
+    "zh": {
+     "resist": "空间 ×0.5",
+     "weak": "无",
+     "status": "无"
+    },
+    "en": {
+     "resist": "Space ×0.5",
+     "weak": "none",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_roadblock",
+   "group": "sky-island-pool",
+   "zh": "路障",
+   "en": "Roadblock",
+   "page": "/maps/sky-island",
+   "health": 600,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1.35,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_Roadblock",
+    "zh": "路障",
+    "nameKey": "Cname_Roadblock",
+    "presets": [
+     "EnemyPreset_Boss_Roadblock"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_roadblock",
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "冰 ×1.35",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "Ice ×1.35",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_rpg",
+   "group": "sky-island-pool",
+   "zh": "迷塞尔",
+   "en": "Misel",
+   "page": "/maps/sky-island",
+   "health": 420,
+   "elements": {
+    "physics": 1,
+    "fire": 1.5,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_RPG",
+    "zh": "迷塞尔",
+    "nameKey": "Cname_RPG",
+    "presets": [
+     "EnemyPreset_Boss_RPG"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_rpg",
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "火 ×1.5",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "Fire ×1.5",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_island_snowman",
+   "group": "sky-island-pool",
+   "zh": "雪人",
+   "en": "Snowman",
+   "page": "/maps/sky-island",
+   "health": 240,
+   "elements": {
+    "physics": 1,
+    "fire": 0.8,
+    "ice": 0.3,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 0.1
+   },
+   "status": [
+    "Bleeding",
+    "Poison",
+    "Freeze"
+   ],
+   "base": {
+    "preset": "EnemyPreset_Boss_Island_SnowMan",
+    "zh": "雪人",
+    "nameKey": "Cname_SnowMan_Island",
+    "presets": [
+     "EnemyPreset_Boss_Island_SnowMan"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_snowman_island",
+   "summary": {
+    "zh": {
+     "resist": "灵 ×0.1；冰 ×0.3；火 ×0.8",
+     "weak": "无",
+     "status": "出血、中毒、冰冻"
+    },
+    "en": {
+     "resist": "Psionic ×0.1; Ice ×0.3; Fire ×0.8",
+     "weak": "none",
+     "status": "Bleed, Poison, Chilled"
+    }
+   }
+  },
+  {
+   "id": "pool-boss_senorengineer",
+   "group": "sky-island-pool",
+   "zh": "高级工程师",
+   "en": "Senior Engineer",
+   "page": "/maps/sky-island",
+   "health": 375,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [
+    "Stun"
+   ],
+   "base": {
+    "preset": "EnemyPreset_Boss_SenorEngineer",
+    "zh": "高级工程师",
+    "nameKey": "Cname_SenorEngineer",
+    "presets": [
+     "EnemyPreset_Boss_SenorEngineer"
+    ]
+   },
+   "refs": [],
+   "icon": "cname_senorengineer",
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "无",
+     "status": "震慑"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "none",
+     "status": "Stun"
+    }
+   }
+  },
+  {
+   "id": "tidegate-regular",
+   "group": "tidegate",
+   "zh": "突击队员、码头游荡者、芦苇伏兵、淘沙帮伙计、淘沙帮投掷手、岬角巡哨、水厂狙击手",
+   "en": "Assault Trooper / Dock Prowler / Reed Ambusher / Dredge Gang Hand / Dredge Grenadier / Cape Scout / Waterworks Marksman",
+   "page": "/maps/tidegate",
+   "health": 67.5,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Scav",
+    "zh": "拾荒者",
+    "nameKey": "Cname_Scav"
+   },
+   "refs": [
+    {
+     "file": "Tidegate/TidegateEnemyIdentity.cs",
+     "literal": "突击队员"
+    },
+    {
+     "file": "Tidegate/TidegateEnemyIdentity.cs",
+     "literal": "Assault Trooper"
+    },
+    {
+     "file": "Tidegate/TidegateEnemyIdentity.cs",
+     "literal": "码头游荡者"
+    },
+    {
+     "file": "Tidegate/TidegateEnemyIdentity.cs",
+     "literal": "Dock Prowler"
+    },
+    {
+     "file": "Tidegate/TidegateEnemyIdentity.cs",
+     "literal": "芦苇伏兵"
+    },
+    {
+     "file": "Tidegate/TidegateEnemyIdentity.cs",
+     "literal": "Reed Ambusher"
+    },
+    {
+     "file": "Tidegate/TidegateEnemyIdentity.cs",
+     "literal": "淘沙帮伙计"
+    },
+    {
+     "file": "Tidegate/TidegateEnemyIdentity.cs",
+     "literal": "Dredge Gang Hand"
+    },
+    {
+     "file": "Tidegate/TidegateEnemyIdentity.cs",
+     "literal": "淘沙帮投掷手"
+    },
+    {
+     "file": "Tidegate/TidegateEnemyIdentity.cs",
+     "literal": "Dredge Grenadier"
+    },
+    {
+     "file": "Tidegate/TidegateEnemyIdentity.cs",
+     "literal": "岬角巡哨"
+    },
+    {
+     "file": "Tidegate/TidegateEnemyIdentity.cs",
+     "literal": "Cape Scout"
+    },
+    {
+     "file": "Tidegate/TidegateEnemyIdentity.cs",
+     "literal": "水厂狙击手"
+    },
+    {
+     "file": "Tidegate/TidegateEnemyIdentity.cs",
+     "literal": "Waterworks Marksman"
+    },
+    {
+     "file": "Tidegate/TidegateCombatTuning.cs",
+     "symbol": "HealthFactor",
+     "value": 1.5
+    },
+    {
+     "file": "Tidegate/TidegateSandBoss.cs",
+     "literal": "EnemyPreset_Scav"
+    }
+   ],
+   "healthNote": {
+    "zh": "官方拾荒者 45 血 ×1.5",
+    "en": "vanilla scavenger 45 HP ×1.5"
+   },
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "无",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "none",
+     "status": "none"
+    }
+   },
+   "members": [
+    {
+     "zh": "突击队员",
+     "en": "Assault Trooper"
+    },
+    {
+     "zh": "码头游荡者",
+     "en": "Dock Prowler"
+    },
+    {
+     "zh": "芦苇伏兵",
+     "en": "Reed Ambusher"
+    },
+    {
+     "zh": "淘沙帮伙计",
+     "en": "Dredge Gang Hand"
+    },
+    {
+     "zh": "淘沙帮投掷手",
+     "en": "Dredge Grenadier"
+    },
+    {
+     "zh": "岬角巡哨",
+     "en": "Cape Scout"
+    },
+    {
+     "zh": "水厂狙击手",
+     "en": "Waterworks Marksman"
+    }
+   ]
+  },
+  {
+   "id": "tidegate-sturdy",
+   "group": "tidegate",
+   "zh": "突击队长、水厂警卫、灯塔守卫",
+   "en": "Assault Captain / Waterworks Guard / Lighthouse Guard",
+   "page": "/maps/tidegate",
+   "health": 81,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Scav",
+    "zh": "拾荒者",
+    "nameKey": "Cname_Scav"
+   },
+   "refs": [
+    {
+     "file": "Tidegate/TidegateEnemyIdentity.cs",
+     "literal": "突击队长"
+    },
+    {
+     "file": "Tidegate/TidegateEnemyIdentity.cs",
+     "literal": "Assault Captain"
+    },
+    {
+     "file": "Tidegate/TidegateEnemyIdentity.cs",
+     "literal": "水厂警卫"
+    },
+    {
+     "file": "Tidegate/TidegateEnemyIdentity.cs",
+     "literal": "Waterworks Guard"
+    },
+    {
+     "file": "Tidegate/TidegateEnemyIdentity.cs",
+     "literal": "灯塔守卫"
+    },
+    {
+     "file": "Tidegate/TidegateEnemyIdentity.cs",
+     "literal": "Lighthouse Guard"
+    },
+    {
+     "file": "Tidegate/TidegateCombatTuning.cs",
+     "symbol": "GuardHealthFactor",
+     "value": 1.8
+    },
+    {
+     "file": "Tidegate/TidegateSandBoss.cs",
+     "literal": "EnemyPreset_Scav"
+    }
+   ],
+   "healthNote": {
+    "zh": "官方拾荒者 45 血 ×1.8",
+    "en": "vanilla scavenger 45 HP ×1.8"
+   },
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "无",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "none",
+     "status": "none"
+    }
+   },
+   "members": [
+    {
+     "zh": "突击队长",
+     "en": "Assault Captain"
+    },
+    {
+     "zh": "水厂警卫",
+     "en": "Waterworks Guard"
+    },
+    {
+     "zh": "灯塔守卫",
+     "en": "Lighthouse Guard"
+    }
+   ]
+  },
+  {
+   "id": "tidegate-hound",
+   "group": "tidegate",
+   "zh": "巡街猎犬",
+   "en": "Patrol Hound",
+   "page": "/maps/tidegate",
+   "health": 60,
+   "elements": {
+    "physics": 1,
+    "fire": 1.5,
+    "ice": 1,
+    "poison": 0.8,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 0.1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Animal_Wolf",
+    "zh": "狼",
+    "nameKey": "Cname_Wolf"
+   },
+   "refs": [
+    {
+     "file": "Tidegate/TidegateEnemyIdentity.cs",
+     "literal": "巡街猎犬"
+    },
+    {
+     "file": "Tidegate/TidegateEnemyIdentity.cs",
+     "literal": "Patrol Hound"
+    },
+    {
+     "file": "Tidegate/TidegateCombatTuning.cs",
+     "symbol": "HealthFactor",
+     "value": 1.5
+    },
+    {
+     "file": "Tidegate/TidegateHound.cs",
+     "literal": "EnemyPreset_Animal_Wolf"
+    }
+   ],
+   "healthNote": {
+    "zh": "官方狼 40 血 ×1.5",
+    "en": "vanilla wolf 40 HP ×1.5"
+   },
+   "summary": {
+    "zh": {
+     "resist": "灵 ×0.1；毒 ×0.8",
+     "weak": "火 ×1.5",
+     "status": "无"
+    },
+    "en": {
+     "resist": "Psionic ×0.1; Poison ×0.8",
+     "weak": "Fire ×1.5",
+     "status": "none"
+    }
+   },
+   "members": [
+    {
+     "zh": "巡街猎犬",
+     "en": "Patrol Hound"
+    }
+   ]
+  },
+  {
+   "id": "tidegate-boss",
+   "group": "tidegate",
+   "zh": "沙老大·铅锤",
+   "en": "Leadline, the Dredge Boss",
+   "page": "/maps/tidegate",
+   "health": 1500,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Scav",
+    "zh": "拾荒者",
+    "nameKey": "Cname_Scav"
+   },
+   "refs": [
+    {
+     "file": "Tidegate/TidegateEnemyIdentity.cs",
+     "literal": "沙老大·铅锤"
+    },
+    {
+     "file": "Tidegate/TidegateEnemyIdentity.cs",
+     "literal": "Leadline, the Dredge Boss"
+    },
+    {
+     "file": "Tidegate/TidegateSandBoss.cs",
+     "symbol": "BossHealth",
+     "value": 1500
+    },
+    {
+     "file": "Tidegate/TidegateSandBoss.cs",
+     "literal": "EnemyPreset_Scav"
+    }
+   ],
+   "role": {
+    "zh": "地图 Boss",
+    "en": "Map boss"
+   },
+   "note": {
+    "zh": "底模是官方拾荒者，只把血量定成 1500",
+    "en": "a vanilla scavenger body with health set to 1500"
+   },
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "无",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "none",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "lastshift-regular",
+   "group": "last-shift",
+   "zh": "巡道工、检车员",
+   "en": "Track Walker / Carriage Inspector",
+   "page": "/maps/last-shift-yard",
+   "health": 67.5,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Scav",
+    "zh": "拾荒者",
+    "nameKey": "Cname_Scav"
+   },
+   "refs": [
+    {
+     "file": "LastShiftYard/LastShiftEnemyIdentity.cs",
+     "literal": "巡道工"
+    },
+    {
+     "file": "LastShiftYard/LastShiftEnemyIdentity.cs",
+     "literal": "Track Walker"
+    },
+    {
+     "file": "LastShiftYard/LastShiftEnemyIdentity.cs",
+     "literal": "检车员"
+    },
+    {
+     "file": "LastShiftYard/LastShiftEnemyIdentity.cs",
+     "literal": "Carriage Inspector"
+    },
+    {
+     "file": "LastShiftYard/LastShiftEnemyIdentity.cs",
+     "symbol": "HealthFactor",
+     "value": 1.5
+    },
+    {
+     "file": "LastShiftYard/LastShiftEnemies.cs",
+     "literal": "EnemyPreset_Scav"
+    }
+   ],
+   "healthNote": {
+    "zh": "官方拾荒者 45 血 ×1.5",
+    "en": "vanilla scavenger 45 HP ×1.5"
+   },
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "无",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "none",
+     "status": "none"
+    }
+   },
+   "members": [
+    {
+     "zh": "巡道工",
+     "en": "Track Walker"
+    },
+    {
+     "zh": "检车员",
+     "en": "Carriage Inspector"
+    }
+   ]
+  },
+  {
+   "id": "lastshift-escort",
+   "group": "last-shift",
+   "zh": "押运员、押运队长",
+   "en": "Escort Guard / Escort Captain",
+   "page": "/maps/last-shift-yard",
+   "health": 81,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Scav",
+    "zh": "拾荒者",
+    "nameKey": "Cname_Scav"
+   },
+   "refs": [
+    {
+     "file": "LastShiftYard/LastShiftEnemyIdentity.cs",
+     "literal": "押运员"
+    },
+    {
+     "file": "LastShiftYard/LastShiftEnemyIdentity.cs",
+     "literal": "Escort Guard"
+    },
+    {
+     "file": "LastShiftYard/LastShiftEnemyIdentity.cs",
+     "literal": "押运队长"
+    },
+    {
+     "file": "LastShiftYard/LastShiftEnemyIdentity.cs",
+     "literal": "Escort Captain"
+    },
+    {
+     "file": "LastShiftYard/LastShiftEnemyIdentity.cs",
+     "symbol": "EscortHealthFactor",
+     "value": 1.8
+    },
+    {
+     "file": "LastShiftYard/LastShiftEnemies.cs",
+     "literal": "EnemyPreset_Scav"
+    }
+   ],
+   "healthNote": {
+    "zh": "官方拾荒者 45 血 ×1.8",
+    "en": "vanilla scavenger 45 HP ×1.8"
+   },
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "无",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "none",
+     "status": "none"
+    }
+   },
+   "members": [
+    {
+     "zh": "押运员",
+     "en": "Escort Guard"
+    },
+    {
+     "zh": "押运队长",
+     "en": "Escort Captain"
+    }
+   ]
+  },
+  {
+   "id": "lastshift-leader",
+   "group": "last-shift",
+   "zh": "信号工长、调车长、押运班长",
+   "en": "Signal Foreman / Shunting Master / Escort Sergeant",
+   "page": "/maps/last-shift-yard",
+   "health": 117,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Scav",
+    "zh": "拾荒者",
+    "nameKey": "Cname_Scav"
+   },
+   "refs": [
+    {
+     "file": "LastShiftYard/LastShiftEnemyIdentity.cs",
+     "literal": "信号工长"
+    },
+    {
+     "file": "LastShiftYard/LastShiftEnemyIdentity.cs",
+     "literal": "Signal Foreman"
+    },
+    {
+     "file": "LastShiftYard/LastShiftEnemyIdentity.cs",
+     "literal": "调车长"
+    },
+    {
+     "file": "LastShiftYard/LastShiftEnemyIdentity.cs",
+     "literal": "Shunting Master"
+    },
+    {
+     "file": "LastShiftYard/LastShiftEnemyIdentity.cs",
+     "literal": "押运班长"
+    },
+    {
+     "file": "LastShiftYard/LastShiftEnemyIdentity.cs",
+     "literal": "Escort Sergeant"
+    },
+    {
+     "file": "LastShiftYard/LastShiftEnemyIdentity.cs",
+     "symbol": "LeaderHealthFactor",
+     "value": 2.6
+    },
+    {
+     "file": "LastShiftYard/LastShiftEnemies.cs",
+     "literal": "EnemyPreset_Scav"
+    }
+   ],
+   "healthNote": {
+    "zh": "官方拾荒者 45 血 ×2.6",
+    "en": "vanilla scavenger 45 HP ×2.6"
+   },
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "无",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "none",
+     "status": "none"
+    }
+   },
+   "members": [
+    {
+     "zh": "信号工长",
+     "en": "Signal Foreman"
+    },
+    {
+     "zh": "调车长",
+     "en": "Shunting Master"
+    },
+    {
+     "zh": "押运班长",
+     "en": "Escort Sergeant"
+    }
+   ]
+  },
+  {
+   "id": "lastshift-chief",
+   "group": "last-shift",
+   "zh": "押运长",
+   "en": "Chief Escort",
+   "page": "/maps/last-shift-yard",
+   "health": 1000,
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1.35,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [],
+   "base": {
+    "preset": "EnemyPreset_Boss_Roadblock",
+    "zh": "路障",
+    "nameKey": "Cname_Roadblock"
+   },
+   "refs": [
+    {
+     "file": "LastShiftYard/LastShiftEnemyIdentity.cs",
+     "literal": "押运长"
+    },
+    {
+     "file": "LastShiftYard/LastShiftEnemyIdentity.cs",
+     "literal": "Chief Escort"
+    },
+    {
+     "file": "LastShiftYard/LastShiftEscortChief.cs",
+     "symbol": "BossHealth",
+     "value": 1000
+    },
+    {
+     "file": "LastShiftYard/LastShiftEscortChief.cs",
+     "literal": "EnemyPreset_Boss_Roadblock"
+    }
+   ],
+   "role": {
+    "zh": "地图 Boss",
+    "en": "Map boss"
+   },
+   "note": {
+    "zh": "底模是官方「路障」",
+    "en": "built on the vanilla Roadblock boss"
+   },
+   "summary": {
+    "zh": {
+     "resist": "无",
+     "weak": "冰 ×1.35",
+     "status": "无"
+    },
+    "en": {
+     "resist": "none",
+     "weak": "Ice ×1.35",
+     "status": "none"
+    }
+   }
+  },
+  {
+   "id": "zombie",
+   "group": "zombie",
+   "zh": "丧尸（全部种类）",
+   "en": "Zombies (every type)",
+   "page": "/game-modes/zombie-mode",
+   "health": {
+    "zh": "见上文倍率",
+    "en": "see the multipliers above"
+   },
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": [
+     0.1,
+     1
+    ],
+    "electricity": 1,
+    "space": 1,
+    "ghost": 0
+   },
+   "status": [
+    "Bleeding",
+    "Poison"
+   ],
+   "base": {
+    "preset": "EnemyPreset_Zombie",
+    "zh": "？？？",
+    "nameKey": "Cname_Zombie",
+    "presets": [
+     "EnemyPreset_Zombie",
+     "EnemyPreset_Zombie_Big",
+     "EnemyPreset_Zombie_Range",
+     "EnemyPreset_Zombie_SelfDestruction",
+     "EnemyPreset_Zombie_Snow"
+    ]
+   },
+   "refs": [
+    {
+     "file": "ZombieMode/ZombieModeSpawner.cs",
+     "literal": "Cname_Zombie"
+    }
+   ],
+   "note": {
+    "zh": "普通、特殊、精英和五种 Boss 共用这一底模；毒伤倍率随游戏载入的丧尸变体在 0.1–1 之间",
+    "en": "normal, special, elite zombies and all five bosses share this body; poison varies 0.1–1 with the zombie variant the game loads"
+   },
+   "summary": {
+    "zh": {
+     "resist": "灵 ×0（完全免疫）；毒 ×0.1–1",
+     "weak": "无",
+     "status": "出血、中毒"
+    },
+    "en": {
+     "resist": "Psionic ×0 (immune); Poison ×0.1–1",
+     "weak": "none",
+     "status": "Bleed, Poison"
+    }
+   }
+  },
+  {
+   "id": "mimic",
+   "group": "mimic",
+   "zh": "贪吃宝箱怪",
+   "en": "Gluttonous Mimic",
+   "page": "/systems/field-adventures",
+   "health": {
+    "min": 900,
+    "max": 1800
+   },
+   "healthNote": {
+    "zh": "每喂一样东西 +300，最多喂 3 次",
+    "en": "+300 per meal, up to 3 meals"
+   },
+   "elements": {
+    "physics": 1,
+    "fire": 1,
+    "ice": 1,
+    "poison": 1,
+    "electricity": 1,
+    "space": 1,
+    "ghost": 1
+   },
+   "status": [],
+   "statusAll": true,
+   "note": {
+    "zh": "闭着嘴时所有伤害 ×0.45，张嘴时全额；只有你打的伤害算数",
+    "en": "all damage ×0.45 while its mouth is shut, full damage while open; only your own hits count"
+   },
+   "base": {
+    "preset": "",
+    "zh": "",
+    "nameKey": ""
+   },
+   "refs": [
+    {
+     "file": "Integration/FieldAdventures/Mimic/GreedyMimicEncounter.cs",
+     "literal": "贪吃宝箱怪"
+    },
+    {
+     "file": "Integration/FieldAdventures/Mimic/GreedyMimicEncounter.cs",
+     "literal": "Gluttonous Mimic"
+    },
+    {
+     "file": "Integration/FieldAdventures/Mimic/GreedyMimicRules.cs",
+     "symbol": "MaximumMeals",
+     "value": 3
+    },
+    {
+     "file": "Integration/FieldAdventures/Mimic/GreedyMimicRules.cs",
+     "symbol": "ShellArmor",
+     "value": 0.45
+    },
+    {
+     "file": "Integration/FieldAdventures/Mimic/GreedyMimicRules.cs",
+     "contains": "MaximumHealth { get { return 900f + Meals * 300f; } }"
+    }
+   ],
+   "anchor": {
+    "zh": "贪吃宝箱怪",
+    "en": "Gluttonous Mimic"
+   },
+   "summary": {
+    "zh": {
+     "resist": "闭嘴时所有伤害 ×0.45",
+     "weak": "无",
+     "status": "全部（挂不上异常）"
+    },
+    "en": {
+     "resist": "all damage ×0.45 while its mouth is shut",
+     "weak": "none",
+     "status": "all (statuses never stick)"
+    }
+   }
+  }
+ ]
+}

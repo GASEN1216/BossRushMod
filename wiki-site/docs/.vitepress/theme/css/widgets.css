@@ -752,3 +752,99 @@ mark {
   background: var(--theme-text-background-color-highlight);
   color: var(--theme-text-color-highlight);
 }
+
+/* ── §8 抗性表（WikiEnemyTable）────────────────────────── */
+/* 表格本身走 table.terraria；这里只管名字格、倍率着色与下面那行图例。
+   倍率着色只用两个令牌：低于 1 绿、高于 1 红，免疫加粗。×1 降成说明色，
+   一眼扫过去只剩「它抗什么、怕什么」。 */
+.brs-enemy {
+  display: flow-root;
+  clear: both;
+  margin: var(--layout-gap-l) 0;
+}
+.brs-enemy__title {
+  margin: 0 0 4px;
+  font-weight: bold;
+}
+details.brs-enemy__box > summary.brs-enemy__title {
+  cursor: pointer;
+  color: var(--theme-link-color);
+}
+.brs-enemy__table {
+  font-size: var(--font-size-s);
+}
+/* 表头不折行：窄屏上宁可整表在框里横向滚动，也别把「免疫异常」压成一字一行 */
+.brs-enemy__table thead th {
+  white-space: nowrap;
+}
+.brs-enemy__status {
+  min-width: 6em;
+}
+.brs-enemy__table th.brs-enemy__name {
+  text-align: left;
+  font-weight: normal;
+  background: var(--theme-background);
+  color: var(--theme-text-color);
+  min-width: 9em;
+}
+.brs-enemy__who {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.brs-enemy__names {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 0.6em;
+}
+.brs-enemy__n {
+  white-space: nowrap;
+}
+.brs-enemy__role,
+.brs-enemy__sub,
+.brs-enemy__note {
+  display: block;
+  font-size: var(--font-size-xs);
+  color: var(--theme-text-color-note);
+}
+/* 说明栏是要读的整句，不是附注，按表格正文字号 */
+.brs-enemy__note {
+  font-size: var(--font-size-s);
+}
+.brs-enemy__note + .brs-enemy__note {
+  margin-top: 2px;
+}
+.brs-enemy__hp,
+.brs-enemy__f {
+  text-align: center;
+  white-space: nowrap;
+}
+.brs-enemy__hp .brs-enemy__sub {
+  white-space: normal;
+  min-width: 7em;
+}
+.brs-enemy__f.is-neutral {
+  color: var(--theme-text-color-note);
+}
+.brs-enemy__f.is-resist {
+  color: var(--theme-text-color-green);
+}
+.brs-enemy__f.is-weak {
+  color: var(--theme-text-color-red);
+  font-weight: bold;
+}
+.brs-enemy__f.is-immune {
+  color: var(--theme-text-color-green);
+  font-weight: bold;
+}
+.brs-enemy__f[title] {
+  cursor: help;
+}
+.brs-enemy__notes {
+  min-width: 12em;
+}
+.brs-enemy__legend {
+  margin: 4px 0 0;
+  font-size: var(--font-size-s);
+  color: var(--theme-text-color-note);
+}

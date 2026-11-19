@@ -56,6 +56,12 @@ WEBP_QUALITY = 82
 PORTRAIT_MAX = 512          # 图鉴立绘（源图上限）
 POSTER_MAX = 1024           # 章节海报（源图上限）
 ICON_MAX = 256              # 建筑/物品图标
+# 正文实体链接里的物品小图标（2026-11-19 加）：content.css 的 .brs-eref__icon 最高 28px、
+# 悬停预览 26px，64 是两倍密度屏上的两倍余量。同一件东西若还当条目页的图标用
+# （速查框里按 128px 显示），走 ENTITY_REGISTRY 的 pageIcons，按 ICON_MAX 出图。
+ITEM_ICON_MAX = 64
+# 实体登记表：哪些游戏图标要进在线站、key 叫什么。站点（config.mts 的实体链接）与本工具读同一份。
+ENTITY_REGISTRY = os.path.join(REPO, "wiki-site", "scripts", "wiki-entities.json")
 
 # ── 本 Mod 自己的 Boss 名（代码常量逐字抄，改名时这里要跟）────────────
 MOD_BOSS_NAMES = {
@@ -87,7 +93,7 @@ ICON_FIGURES = [
     ("buildings/bossrush_campaign_board.png",    "icons/campaign-board", "征程公告板", "Campaign Board"),
     ("buildings/bossrush_backmountain_showcase.png", "icons/showcase",   "战利品展示柜", "Trophy Showcase"),
     ("buildings/petnest_relic_nest.png",         "icons/petnest",        "遗种巢", "The Relic Nest"),
-    ("Items/codex_book.png",                     "icons/codex-book",     "鸭皇图鉴", "Duck King Codex"),
+    ("Items/codex_book.png",                     "icons/codex-book",     "鸭皇图鉴", "Duckov Codex"),
     ("Items/affix_forge_stone.png",              "icons/forge-stone",    "词缀熔石", "Affix Forge Stone"),
     ("Items/relic_egg.png",                      "icons/relic-egg",      "遗种蛋", "Relic Egg"),
     ("Items/roll_call_ledger_icon.png",           "icons/eq-roll-call-ledger", "教导主任的点名册", "Headmaster's Roll-Call Ledger"),
@@ -174,6 +180,31 @@ def load_ui_sidecar():
     return [e for e in data if isinstance(e, dict) and e.get("key") and e.get("src")]
 
 
+def load_entity_icons():
+    """wiki-entities.json 里带 src 的条目 -> [(Assets 相对路径, key, zh, en, 最长边)]。
+
+    同一个 key 只转一次（营旗「随机」那条和「营旗」共用一张图）；pageIcons 按 ICON_MAX，
+    其余按 ITEM_ICON_MAX。缺文件或坏 JSON 时返回空表：这一组是可选的。"""
+    if not os.path.isfile(ENTITY_REGISTRY):
+        return []
+    try:
+        with open(ENTITY_REGISTRY, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (ValueError, OSError) as err:
+        print("build_wiki_images: 警告 - wiki-entities.json 读取失败，本次不登记 items 组：%s" % err)
+        return []
+    out, seen = [], set()
+    for entry in data.get("pageIcons", []):
+        if entry.get("src") and entry.get("icon") and entry["icon"] not in seen:
+            seen.add(entry["icon"])
+            out.append((entry["src"], entry["icon"], "", "", ICON_MAX))
+    for entry in data.get("entities", []):
+        if entry.get("src") and entry.get("icon") and entry["icon"] not in seen:
+            seen.add(entry["icon"])
+            out.append((entry["src"], entry["icon"], entry.get("zh", ""), entry.get("en", ""), ITEM_ICON_MAX))
+    return out
+
+
 def build_favicon(check_only):
     """config.mts 的 head 里写死了 ${base}images/favicon.ico，但 public/ 此前根本不存在
     ——图标一直 404。用图鉴书的图标补上。"""
@@ -193,12 +224,17 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true",
                         help="只校验产物与清单是否齐全，不写文件")
+    parser.add_argument("--only", choices=["codex", "campaign", "icons", "items"],
+                        help="只重新转换这一组；其余组按已有产物登记，不重新编码"
+                             "（避免换了 Pillow 版本后整批 WebP 字节变化）")
     args = parser.parse_args()
 
     official = load_official_names()
-    manifest = {"codex": [], "campaign": [], "icons": [], "ui": []}
+    manifest = {"codex": [], "campaign": [], "icons": [], "ui": [], "items": []}
     total_bytes = 0
     missing = []
+    # 某一组「只登记不重转」：沿用 convert() 的 check_only 分支，只认已有产物
+    keep = lambda group: args.check or (args.only is not None and args.only != group)
 
     # ── 图鉴立绘 ──────────────────────────────────────────────────
     codex_dir = os.path.join(ASSETS, "ui", "Codex")
@@ -211,7 +247,7 @@ def main():
         key = name[len("codex_portrait_"):-len(".png")]
         zh, en = resolve_boss_name(key, official)
         url, size = convert(os.path.join(codex_dir, name),
-                            "codex/" + key.replace("_", "-"), PORTRAIT_MAX, args.check)
+                            "codex/" + key.replace("_", "-"), PORTRAIT_MAX, keep("codex"))
         if url is None:
             missing.append(name)
             continue
@@ -221,7 +257,7 @@ def main():
     # ── 战役海报与立绘 ────────────────────────────────────────────
     for fname, rel, zh, en in CAMPAIGN_FIGURES:
         url, size = convert(os.path.join(ASSETS, "ui", "Campaign", fname),
-                            rel, POSTER_MAX, args.check)
+                            rel, POSTER_MAX, keep("campaign"))
         if url is None:
             missing.append(fname)
             continue
@@ -230,7 +266,7 @@ def main():
 
     # ── 建筑与物品图标 ────────────────────────────────────────────
     for relsrc, rel, zh, en in ICON_FIGURES:
-        url, size = convert(os.path.join(ASSETS, relsrc), rel, ICON_MAX, args.check)
+        url, size = convert(os.path.join(ASSETS, relsrc), rel, ICON_MAX, keep("icons"))
         if url is None:
             missing.append(relsrc)
             continue
@@ -248,7 +284,17 @@ def main():
         total_bytes += os.path.getsize(path)
         manifest["ui"].append(entry)
 
-    ok_icon = build_favicon(args.check)
+    # ── 正文实体链接的物品图标（wiki-entities.json）──────────────
+    for relsrc, key, zh, en, edge in load_entity_icons():
+        url, size = convert(os.path.join(ASSETS, relsrc.replace("/", os.sep)),
+                            "items/" + key, edge, keep("items"))
+        if url is None:
+            missing.append(relsrc)
+            continue
+        total_bytes += size
+        manifest["items"].append({"key": key, "src": url, "zh": zh, "en": en})
+
+    ok_icon = build_favicon(args.check or args.only is not None)
 
     if args.check:
         if missing or not ok_icon:
@@ -257,9 +303,10 @@ def main():
             for m in missing[:10]:
                 print("  " + m)
             return 1
-        print("build_wiki_images: OK - 产物齐全（%d 图鉴 / %d 战役 / %d 图标 / %d 站点图标），共 %.1f MB"
+        print("build_wiki_images: OK - 产物齐全（%d 图鉴 / %d 战役 / %d 图标 / %d 站点图标 / %d 物品），共 %.1f MB"
               % (len(manifest["codex"]), len(manifest["campaign"]),
-                 len(manifest["icons"]), len(manifest["ui"]), total_bytes / 1048576.0))
+                 len(manifest["icons"]), len(manifest["ui"]), len(manifest["items"]),
+                 total_bytes / 1048576.0))
         return 0
 
     with open(MANIFEST, "w", encoding="utf-8", newline="\n") as fh:

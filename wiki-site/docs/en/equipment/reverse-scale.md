@@ -6,7 +6,7 @@ Touch a dragon's reverse scale and it bites back. **A one-time lifesaver totem**
 
 ## Stats
 
-- **Type**: Totem / **Quality**: 6 (Legendary) / **Drop**: Dragon Lord (39%) / Protected from death drops while equipped in its slot; not protected merely by being in the backpack
+- **Type**: Totem / **Quality**: 6 (Epic) / **Drop**: Dragon Lord (39%) / Protected from death drops while equipped in its slot; not protected merely by being in the backpack
 
 ## How It Works
 

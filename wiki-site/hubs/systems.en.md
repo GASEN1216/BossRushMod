@@ -25,6 +25,7 @@ A run doesn't end when you leave the arena. What you get afterwards, how you res
 - **Arena Backyard** — Farm, display trophies, pick your battle anthem; unlocked chapter by chapter through the campaign
 - **The Duckov Daily** — One issue per in-game day, reporting on what you did yesterday
 - **Duckov Codex** — A boss collection book that keeps its own records
+- **Collectibles & Album** — 100 old odds and ends from crates: log them, complete sets for cash and small bonuses, or give them to whoever likes them
 
 ## Story and relationships
 

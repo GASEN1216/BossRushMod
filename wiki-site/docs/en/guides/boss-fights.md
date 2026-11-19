@@ -11,11 +11,11 @@
 ### Phase 2 (First Lethal Hit → Revival at 50% HP)
 - **Don't celebrate.** It comes back harder: 1.1x dmg, 1.5x crit, 1.5x chase speed
 - Contact damage now active — don't let it touch you. Before each rush it kicks up dust, throws sparks and charges for about 0.3s: sidestep the moment you see it. Rolling through the rush takes no damage
-- Firebombs every 1s, always aimed at your feet; it can heal by standing in the fire
+- Firebombs every 1s, always aimed at your feet; standing in its own fire doesn't hurt it
 - **Key: out-DPS the self-healing**
 
 ### Counters
-- Dragon Set / Dragon King Set = fire heals you. Fight becomes trivial
+- Dragon Set / Dragon King Set = 80% of the fire damage you take comes back the next frame. The fight gets much easier
 - Ice weapons slow it in Phase 2
 - Reverse Scale as safety net
 
@@ -77,5 +77,5 @@
 - Kill speed affects drop quality
 
 ::: tip
-Dragon Set / Dragon King Set = fire heals you. Huge advantage against both dragon Bosses.
+Dragon Set / Dragon King Set: 80% of the fire damage you take comes back the next frame. Huge advantage against both dragon Bosses.
 :::

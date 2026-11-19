@@ -690,5 +690,547 @@
       "zh": "竞技场后山",
       "en": "Arena Backyard"
     }
+  ],
+  "items": [
+    {
+      "key": "it-astral-staff",
+      "src": "/images/items/it-astral-staff.webp",
+      "zh": "",
+      "en": ""
+    },
+    {
+      "key": "it-pass-the-bomb",
+      "src": "/images/items/it-pass-the-bomb.webp",
+      "zh": "",
+      "en": ""
+    },
+    {
+      "key": "it-reload-metronome",
+      "src": "/images/items/it-reload-metronome.webp",
+      "zh": "",
+      "en": ""
+    },
+    {
+      "key": "it-empty-magazine-mine",
+      "src": "/images/items/it-empty-magazine-mine.webp",
+      "zh": "",
+      "en": ""
+    },
+    {
+      "key": "it-residual-sun-shield",
+      "src": "/images/items/it-residual-sun-shield.webp",
+      "zh": "",
+      "en": ""
+    },
+    {
+      "key": "it-bossrush-ticket",
+      "src": "/images/items/it-bossrush-ticket.webp",
+      "zh": "BossRush 船票",
+      "en": "BossRush Ticket"
+    },
+    {
+      "key": "it-adventure-journal",
+      "src": "/images/items/it-adventure-journal.webp",
+      "zh": "冒险家日志",
+      "en": "Adventurer's Journal"
+    },
+    {
+      "key": "it-achievement-medal",
+      "src": "/images/items/it-achievement-medal.webp",
+      "zh": "成就勋章",
+      "en": "Achievement Medal"
+    },
+    {
+      "key": "it-bloodhunt-transponder",
+      "src": "/images/items/it-bloodhunt-transponder.webp",
+      "zh": "血猎收发器",
+      "en": "Bloodhunt Transponder"
+    },
+    {
+      "key": "it-fate-echo-relic",
+      "src": "/images/items/it-fate-echo-relic.webp",
+      "zh": "宿命回响信物",
+      "en": "Fate Echo Relic"
+    },
+    {
+      "key": "it-zombie-tide-invitation",
+      "src": "/images/items/it-zombie-tide-invitation.webp",
+      "zh": "尸潮邀请函",
+      "en": "Zombie Tide Invitation"
+    },
+    {
+      "key": "it-faction-flag-random",
+      "src": "/images/items/it-faction-flag-random.webp",
+      "zh": "营旗",
+      "en": "Faction Flag"
+    },
+    {
+      "key": "it-faction-flag-scav",
+      "src": "/images/items/it-faction-flag-scav.webp",
+      "zh": "拾荒者营旗",
+      "en": ""
+    },
+    {
+      "key": "it-faction-flag-usec",
+      "src": "/images/items/it-faction-flag-usec.webp",
+      "zh": "USEC 营旗",
+      "en": ""
+    },
+    {
+      "key": "it-faction-flag-bear",
+      "src": "/images/items/it-faction-flag-bear.webp",
+      "zh": "BEAR 营旗",
+      "en": ""
+    },
+    {
+      "key": "it-faction-flag-lab",
+      "src": "/images/items/it-faction-flag-lab.webp",
+      "zh": "实验室营旗",
+      "en": ""
+    },
+    {
+      "key": "it-faction-flag-wolf",
+      "src": "/images/items/it-faction-flag-wolf.webp",
+      "zh": "狼群营旗",
+      "en": ""
+    },
+    {
+      "key": "it-faction-flag-player",
+      "src": "/images/items/it-faction-flag-player.webp",
+      "zh": "爷的营旗",
+      "en": ""
+    },
+    {
+      "key": "it-wind-vane-compass",
+      "src": "/images/items/it-wind-vane-compass.webp",
+      "zh": "风标罗盘",
+      "en": "Wind-Vane Compass"
+    },
+    {
+      "key": "it-homecoming-badge",
+      "src": "/images/items/it-homecoming-badge.webp",
+      "zh": "晴岚航徽",
+      "en": "Qinglan Homecoming Badge"
+    },
+    {
+      "key": "it-windeater-core",
+      "src": "/images/items/it-windeater-core.webp",
+      "zh": "噬风之核",
+      "en": "Windeater Core"
+    },
+    {
+      "key": "it-cloudmoss-veil",
+      "src": "/images/items/it-cloudmoss-veil.webp",
+      "zh": "云苔纱笠",
+      "en": "Cloudmoss Veil"
+    },
+    {
+      "key": "it-smoke-fan",
+      "src": "/images/items/it-smoke-fan.webp",
+      "zh": "药烟蒲扇",
+      "en": "Remedy-Smoke Fan"
+    },
+    {
+      "key": "it-cloudmoss-fiber",
+      "src": "/images/items/it-cloudmoss-fiber.webp",
+      "zh": "云苔纤维",
+      "en": "Cloudmoss Fiber"
+    },
+    {
+      "key": "it-greenear-sheaf",
+      "src": "/images/items/it-greenear-sheaf.webp",
+      "zh": "青穗草",
+      "en": "Greenear Sheaf"
+    },
+    {
+      "key": "it-driftwood",
+      "src": "/images/items/it-driftwood.webp",
+      "zh": "浮木",
+      "en": "Driftwood"
+    },
+    {
+      "key": "it-brass-scrap",
+      "src": "/images/items/it-brass-scrap.webp",
+      "zh": "残铜片",
+      "en": "Brass Scrap"
+    },
+    {
+      "key": "it-windcrystal-shard",
+      "src": "/images/items/it-windcrystal-shard.webp",
+      "zh": "风晶碎片",
+      "en": "Windcrystal Shard"
+    },
+    {
+      "key": "it-stardust",
+      "src": "/images/items/it-stardust.webp",
+      "zh": "星屑",
+      "en": "Stardust"
+    },
+    {
+      "key": "it-qinglan-windcrystal",
+      "src": "/images/items/it-qinglan-windcrystal.webp",
+      "zh": "晴岚风晶",
+      "en": "Qinglan Windcrystal"
+    },
+    {
+      "key": "it-diamond",
+      "src": "/images/items/it-diamond.webp",
+      "zh": "钻石",
+      "en": "Diamond"
+    },
+    {
+      "key": "it-brick-stone",
+      "src": "/images/items/it-brick-stone.webp",
+      "zh": "砖石",
+      "en": "Brick Stone"
+    },
+    {
+      "key": "it-diamond-ring",
+      "src": "/images/items/it-diamond-ring.webp",
+      "zh": "钻石戒指",
+      "en": "Diamond Ring"
+    },
+    {
+      "key": "it-cold-quench-fluid",
+      "src": "/images/items/it-cold-quench-fluid.webp",
+      "zh": "冷淬液",
+      "en": "Cold Quench Fluid"
+    },
+    {
+      "key": "it-tempering-solvent",
+      "src": "/images/items/it-tempering-solvent.webp",
+      "zh": "回火液",
+      "en": "Tempering Solvent"
+    },
+    {
+      "key": "it-calming-drops",
+      "src": "/images/items/it-calming-drops.webp",
+      "zh": "安神滴剂",
+      "en": "Calming Drops"
+    },
+    {
+      "key": "it-peace-charm",
+      "src": "/images/items/it-peace-charm.webp",
+      "zh": "平安护身符",
+      "en": "Peace Charm"
+    },
+    {
+      "key": "it-awen-courier-token",
+      "src": "/images/items/it-awen-courier-token.webp",
+      "zh": "阿稳快递牌",
+      "en": "Awen Courier Token"
+    },
+    {
+      "key": "it-awen-loot-sweep-token",
+      "src": "/images/items/it-awen-loot-sweep-token.webp",
+      "zh": "阿稳扫箱令",
+      "en": "Awen Loot Sweep Token"
+    },
+    {
+      "key": "it-dingdang-drawing",
+      "src": "/images/items/it-dingdang-drawing.webp",
+      "zh": "叮当涂鸦",
+      "en": "Dingdang's Doodle"
+    },
+    {
+      "key": "it-wild-horn",
+      "src": "/images/items/it-wild-horn.webp",
+      "zh": "荒野号角",
+      "en": "Wild Horn"
+    },
+    {
+      "key": "it-birthday-cake",
+      "src": "/images/items/it-birthday-cake.webp",
+      "zh": "生日蛋糕",
+      "en": "Birthday Cake"
+    },
+    {
+      "key": "it-homecoming-bento",
+      "src": "/images/items/it-homecoming-bento.webp",
+      "zh": "归航菜便当",
+      "en": "Homecoming Bento"
+    },
+    {
+      "key": "it-starmoss-salve",
+      "src": "/images/items/it-starmoss-salve.webp",
+      "zh": "星苔药膏",
+      "en": "Starmoss Salve"
+    },
+    {
+      "key": "it-wind-lantern",
+      "src": "/images/items/it-wind-lantern.webp",
+      "zh": "风灯",
+      "en": "Wind Lantern"
+    },
+    {
+      "key": "it-windward-incense",
+      "src": "/images/items/it-windward-incense.webp",
+      "zh": "驱风香",
+      "en": "Windward Incense"
+    },
+    {
+      "key": "it-qinglan-charm",
+      "src": "/images/items/it-qinglan-charm.webp",
+      "zh": "晴岚护符",
+      "en": "Qinglan Charm"
+    },
+    {
+      "key": "it-gnat-zapper",
+      "src": "/images/items/it-gnat-zapper.webp",
+      "zh": "风晶灭蚊灯",
+      "en": "Windcrystal Gnat Zapper"
+    },
+    {
+      "key": "it-taunt-smoke",
+      "src": "/images/items/it-taunt-smoke.webp",
+      "zh": "挑衅烟雾弹",
+      "en": "Taunt Smoke"
+    },
+    {
+      "key": "it-chaos-detonator",
+      "src": "/images/items/it-chaos-detonator.webp",
+      "zh": "混沌引爆器",
+      "en": "Chaos Detonator"
+    },
+    {
+      "key": "it-bosscall-whistle",
+      "src": "/images/items/it-bosscall-whistle.webp",
+      "zh": "猎王响哨",
+      "en": "Bosscall Whistle"
+    },
+    {
+      "key": "it-bloodhunt-beacon",
+      "src": "/images/items/it-bloodhunt-beacon.webp",
+      "zh": "血狩烽火",
+      "en": "Bloodhunt Beacon"
+    },
+    {
+      "key": "it-foldable-cover-pack",
+      "src": "/images/items/it-foldable-cover-pack.webp",
+      "zh": "折叠掩体包",
+      "en": "Foldable Cover Pack"
+    },
+    {
+      "key": "it-barbed-wire-pack",
+      "src": "/images/items/it-barbed-wire-pack.webp",
+      "zh": "阻滞铁丝网包",
+      "en": "Barbed Wire Pack"
+    },
+    {
+      "key": "it-reinforced-roadblock-pack",
+      "src": "/images/items/it-reinforced-roadblock-pack.webp",
+      "zh": "加固路障包",
+      "en": "Reinforced Roadblock Pack"
+    },
+    {
+      "key": "it-emergency-repair-spray",
+      "src": "/images/items/it-emergency-repair-spray.webp",
+      "zh": "应急维修喷剂",
+      "en": "Emergency Repair Spray"
+    },
+    {
+      "key": "it-portable-safe-zone-device",
+      "src": "/images/items/it-portable-safe-zone-device.webp",
+      "zh": "便携安全区装置",
+      "en": "Portable Safe-Zone Device"
+    },
+    {
+      "key": "it-tidegate-letter",
+      "src": "/images/items/it-tidegate-letter.webp",
+      "zh": "闸伯的信",
+      "en": "Old Zha's Letter"
+    },
+    {
+      "key": "it-tidegate-handwheel",
+      "src": "/images/items/it-tidegate-handwheel.webp",
+      "zh": "阀门手轮",
+      "en": "Valve Handwheel"
+    },
+    {
+      "key": "it-tidegate-tide-watch",
+      "src": "/images/items/it-tidegate-tide-watch.webp",
+      "zh": "潮汐怀表",
+      "en": "Tide Pocket Watch"
+    },
+    {
+      "key": "it-tidegate-dry-bag",
+      "src": "/images/items/it-tidegate-dry-bag.webp",
+      "zh": "防水袋",
+      "en": "Dry Bag"
+    },
+    {
+      "key": "it-tidegate-flippers",
+      "src": "/images/items/it-tidegate-flippers.webp",
+      "zh": "鸭蹼脚掌",
+      "en": "Duck Flippers"
+    },
+    {
+      "key": "it-tidegate-sounding-lead",
+      "src": "/images/items/it-tidegate-sounding-lead.webp",
+      "zh": "淘沙响铊",
+      "en": "Dredger's Sounding Lead"
+    },
+    {
+      "key": "it-lastshift-stamp",
+      "src": "/images/items/it-lastshift-stamp.webp",
+      "zh": "押运钢印",
+      "en": "Escort Steel Stamp"
+    },
+    {
+      "key": "it-lastshift-ticket-stub",
+      "src": "/images/items/it-lastshift-ticket-stub.webp",
+      "zh": "末班票根",
+      "en": "Last Shift Ticket Stub"
+    },
+    {
+      "key": "it-dragon-helm",
+      "src": "/images/items/it-dragon-helm.webp",
+      "zh": "赤龙首",
+      "en": "Crimson Dragon Helm"
+    },
+    {
+      "key": "it-dragon-armor",
+      "src": "/images/items/it-dragon-armor.webp",
+      "zh": "焰鳞甲",
+      "en": "Flame Scale Armor"
+    },
+    {
+      "key": "it-dragon-king-helm",
+      "src": "/images/items/it-dragon-king-helm.webp",
+      "zh": "龙王之冕",
+      "en": "Dragon King's Crown"
+    },
+    {
+      "key": "it-dragon-king-armor",
+      "src": "/images/items/it-dragon-king-armor.webp",
+      "zh": "龙王鳞铠",
+      "en": "Dragon King's Scale Mail"
+    },
+    {
+      "key": "it-frost-crown",
+      "src": "/images/items/it-frost-crown.webp",
+      "zh": "霜冠",
+      "en": "Frost Crown"
+    },
+    {
+      "key": "it-ice-armor",
+      "src": "/images/items/it-ice-armor.webp",
+      "zh": "寒冰铠甲",
+      "en": "Ice Armor"
+    },
+    {
+      "key": "it-thunder-horn",
+      "src": "/images/items/it-thunder-horn.webp",
+      "zh": "雷神之角",
+      "en": "Thunder Horn"
+    },
+    {
+      "key": "it-thunder-armor",
+      "src": "/images/items/it-thunder-armor.webp",
+      "zh": "雷霆战甲",
+      "en": "Thunder Armor"
+    },
+    {
+      "key": "it-starbrass-visor-helm",
+      "src": "/images/items/it-starbrass-visor-helm.webp",
+      "zh": "星铜护目盔",
+      "en": "Starbrass Visor Helm"
+    },
+    {
+      "key": "it-starfurnace-harness",
+      "src": "/images/items/it-starfurnace-harness.webp",
+      "zh": "星炉背甲",
+      "en": "Starfurnace Harness"
+    },
+    {
+      "key": "it-starfurnace-pack",
+      "src": "/images/items/it-starfurnace-pack.webp",
+      "zh": "星炉背囊",
+      "en": "Starfurnace Pack"
+    },
+    {
+      "key": "it-stargazer-lens-helm",
+      "src": "/images/items/it-stargazer-lens-helm.webp",
+      "zh": "观星镜盔",
+      "en": "Stargazer's Lens Helm"
+    },
+    {
+      "key": "it-rootweave-mask",
+      "src": "/images/items/it-rootweave-mask.webp",
+      "zh": "根须面罩",
+      "en": "Rootweave Mask"
+    },
+    {
+      "key": "it-vinewoven-cuirass",
+      "src": "/images/items/it-vinewoven-cuirass.webp",
+      "zh": "藤编甲",
+      "en": "Vinewoven Cuirass"
+    },
+    {
+      "key": "it-hangroot-quiver",
+      "src": "/images/items/it-hangroot-quiver.webp",
+      "zh": "悬根箭囊",
+      "en": "Hanging-Root Quiver"
+    },
+    {
+      "key": "it-greenear-straw-hat",
+      "src": "/images/items/it-greenear-straw-hat.webp",
+      "zh": "青穗斗笠",
+      "en": "Greenear Straw Hat"
+    },
+    {
+      "key": "it-straw-raincoat",
+      "src": "/images/items/it-straw-raincoat.webp",
+      "zh": "蓑衣甲",
+      "en": "Straw Raincoat"
+    },
+    {
+      "key": "it-grain-sack",
+      "src": "/images/items/it-grain-sack.webp",
+      "zh": "谷囊",
+      "en": "Grain Sack"
+    },
+    {
+      "key": "it-old-mailbag",
+      "src": "/images/items/it-old-mailbag.webp",
+      "zh": "旧邮包",
+      "en": "Old Mailbag"
+    },
+    {
+      "key": "it-rainhush-earmuffs",
+      "src": "/images/items/it-rainhush-earmuffs.webp",
+      "zh": "静听耳罩",
+      "en": "Rainhush Earmuffs"
+    },
+    {
+      "key": "it-mossgauze-mask",
+      "src": "/images/items/it-mossgauze-mask.webp",
+      "zh": "苔纱面罩",
+      "en": "Mossgauze Mask"
+    },
+    {
+      "key": "it-mirrorgrain-plate",
+      "src": "/images/items/it-mirrorgrain-plate.webp",
+      "zh": "镜纹甲",
+      "en": "Mirrorgrain Plate"
+    },
+    {
+      "key": "it-windbreak-hood",
+      "src": "/images/items/it-windbreak-hood.webp",
+      "zh": "断风兜帽",
+      "en": "Galebreaker Hood"
+    },
+    {
+      "key": "it-windbreak-mantle",
+      "src": "/images/items/it-windbreak-mantle.webp",
+      "zh": "断风披甲",
+      "en": "Galebreaker Mantle"
+    },
+    {
+      "key": "it-windbreak-pack",
+      "src": "/images/items/it-windbreak-pack.webp",
+      "zh": "断风行囊",
+      "en": "Galebreaker Pack"
+    }
   ]
 }

@@ -9,7 +9,9 @@ Skyburner Dragon Lord is the strongest custom boss in this mod. It hovers in the
 - Contact Damage: 15 (1.5m range, 0.5s cooldown)
 - Hover Height: 3-5m (above the player)
 - Follow Speed: 8 units/sec
-- **Fire Immune**: Fire damage heals it instead of hurting it
+- Resists: fire damage is healed back the next frame, so it does nothing; Electric ×0.3; Physical ×0.8
+- Weak to: Ice, Poison, Space ×1.35
+- Status immunities: none
 
 ### Attack Skills
 

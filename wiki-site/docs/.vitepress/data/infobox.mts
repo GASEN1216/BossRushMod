@@ -15,6 +15,8 @@
  * links 里写路径不写标题：标题从 structure.mts 取，避免两处改名漂移。
  */
 
+import ENEMY_STATS from './enemy-stats.json'
+
 export interface InfoboxRow {
   zh: string
   en: string
@@ -38,16 +40,49 @@ export interface Infobox {
   links?: string[]
 }
 
+/**
+ * 敌人的生命与承伤三行（抗性 / 弱点 / 免疫异常）不手写：取 enemy-stats.json，
+ * 那份由 tools/build_wiki_enemy_stats.py 从代码常量与官方 preset 快照生成。
+ * 曾经手写的「免疫：火焰（受火伤反而回血）」与代码对不上（火焰是打掉后下一帧补回，净零），
+ * 蚀日花冠的生命也写成了 5000（代码 7500），都是手抄的代价。
+ */
+interface EnemyStat {
+  id: string
+  health: number | { min: number; max: number } | { zh: string; en: string }
+  summary: Record<'zh' | 'en', { resist: string; weak: string; status: string }>
+}
+const ENEMY = new Map<string, EnemyStat>(
+  (ENEMY_STATS.enemies as unknown as EnemyStat[]).map((e) => [e.id, e])
+)
+
+function enemyHealth(id: string): string {
+  const h = ENEMY.get(id)?.health as any
+  if (typeof h === 'number') return String(h)
+  if (h && typeof h.min === 'number') return `${h.min}–${h.max}`
+  return '?'
+}
+
+function enemyRows(id: string): InfoboxRow[] {
+  const e = ENEMY.get(id)
+  if (!e) return []
+  const { zh, en } = e.summary
+  return [
+    { zh: '抗性', en: 'Resists', vz: zh.resist, ve: en.resist },
+    { zh: '弱点', en: 'Weak to', vz: zh.weak, ve: en.weak },
+    { zh: '免疫异常', en: 'Status immunities', vz: zh.status, ve: en.status },
+  ]
+}
+
 export const INFOBOX: Record<string, Infobox> = {
   // ── Boss ────────────────────────────────────────────────
   '/bosses/dragon-descendant': {
     eyebrowZh: '自定义 Boss',
     eyebrowEn: 'Custom Boss',
     rows: [
-      { zh: '生命值', en: 'Health', vz: '500' },
+      { zh: '生命值', en: 'Health', vz: enemyHealth('dragon-descendant') },
+      ...enemyRows('dragon-descendant'),
       { zh: '碰撞伤害', en: 'Contact damage', vz: '20（1.5 米）', ve: '20 (1.5 m)' },
       { zh: '阶段', en: 'Phases', vz: '2（致命伤时假死复活）', ve: '2 (fakes death on lethal hit)' },
-      { zh: '免疫', en: 'Immunity', vz: '火焰（受火伤反而回血）', ve: 'Fire (heals from it)' },
       { zh: '持有装备', en: 'Wields', vz: '赤龙首 / 焰鳞甲 / 龙息', ve: "Dragon set + Dragon's Breath" },
     ],
     links: ['/equipment/dragon-set', '/equipment/dragon-breath', '/guides/boss-fights'],
@@ -56,12 +91,12 @@ export const INFOBOX: Record<string, Infobox> = {
     eyebrowZh: '自定义 Boss · 最终',
     eyebrowEn: 'Custom Boss · Final',
     rows: [
-      { zh: '生命值', en: 'Health', vz: '800' },
+      { zh: '生命值', en: 'Health', vz: enemyHealth('dragon-king') },
+      ...enemyRows('dragon-king'),
       { zh: '伤害倍率', en: 'Damage scale', vz: '0.3x' },
       { zh: '碰撞伤害', en: 'Contact damage', vz: '15（1.5 米）', ve: '15 (1.5 m)' },
       { zh: '悬浮高度', en: 'Hover height', vz: '3–5 米（玩家上方）', ve: '3–5 m above player' },
       { zh: '技能数', en: 'Skills', vz: '7' },
-      { zh: '免疫', en: 'Immunity', vz: '火焰（受火伤反而回血）', ve: 'Fire (heals from it)' },
     ],
     links: [
       '/equipment/dragon-king-set',
@@ -75,7 +110,8 @@ export const INFOBOX: Record<string, Infobox> = {
     eyebrowZh: '自定义 Boss',
     eyebrowEn: 'Custom Boss',
     rows: [
-      { zh: '生命值', en: 'Health', vz: '1000' },
+      { zh: '生命值', en: 'Health', vz: enemyHealth('phantom-witch') },
+      ...enemyRows('phantom-witch'),
       { zh: '伤害倍率', en: 'Damage scale', vz: '1.1x' },
       { zh: '体型', en: 'Size', vz: '普通幽灵的 2 倍', ve: '2× a normal ghost' },
       { zh: '阶段', en: 'Phases', vz: '3（100% / 60% / 25%）', ve: '3 (100% / 60% / 25%)' },
@@ -88,7 +124,8 @@ export const INFOBOX: Record<string, Infobox> = {
     eyebrowZh: '37 号实验区 · 兼容 Boss 池',
     eyebrowEn: 'Experimental Area 37 · Compatible Boss pool',
     rows: [
-      { zh: '基础生命', en: 'Base health', vz: '5000' },
+      { zh: '基础生命', en: 'Base health', vz: enemyHealth('eclipse-bloom') },
+      ...enemyRows('eclipse-bloom'),
       { zh: '阶段', en: 'Phases', vz: '3（60% / 25% 转阶段）', ve: '3 (transitions at 60% / 25%)' },
       { zh: '可破坏部位', en: 'Breakable parts', vz: '4 片花瓣', ve: '4 petals' },
       { zh: '扇区范围', en: 'Sector range', vz: '0.6–13 米 · 60°', ve: '0.6–13 m · 60°' },
@@ -242,7 +279,7 @@ export const INFOBOX: Record<string, Infobox> = {
     eyebrowZh: '图腾',
     eyebrowEn: 'Totem',
     rows: [
-      { zh: '品质', en: 'Rarity', vz: '6（传说）', ve: '6 (Legendary)', tier: 6 },
+      { zh: '品质', en: 'Rarity', vz: '6（史诗）', ve: '6 (Epic)', tier: 6 },
       { zh: '效果', en: 'Effect', vz: '按住冲刺键起飞，松开滑翔', ve: 'Hold dash to fly, release to glide' },
       { zh: '代价', en: 'Cost', vz: '持续消耗体力', ve: 'Drains stamina while airborne' },
       { zh: '死亡掉落', en: 'Drops on death', vz: '装备在槽位时保留', ve: 'Kept while equipped in its slot' },
@@ -255,7 +292,7 @@ export const INFOBOX: Record<string, Infobox> = {
     eyebrowZh: '图腾 · 一次性',
     eyebrowEn: 'Totem · One-shot',
     rows: [
-      { zh: '品质', en: 'Rarity', vz: '6（传说）', ve: '6 (Legendary)', tier: 6 },
+      { zh: '品质', en: 'Rarity', vz: '6（史诗）', ve: '6 (Epic)', tier: 6 },
       { zh: '触发', en: 'Trigger', vz: '血量降到 1 或以下', ve: 'HP drops to 1 or below' },
       { zh: '回复', en: 'Heal', vz: '最大生命值 50%', ve: '50% of max HP' },
       { zh: '反击', en: 'Counter', vz: '8 向棱彩弹，每颗 15 伤害', ve: '8 prism bolts, 15 damage each' },
@@ -344,7 +381,7 @@ export const INFOBOX: Record<string, Infobox> = {
       { zh: '品质', en: 'Rarity', vz: '6', tier: 6 },
       { zh: '部件', en: 'Pieces', vz: '赤龙首（头盔）/ 焰鳞甲（护甲）', ve: 'Dragon Helm / Flamescale Armor' },
       { zh: '护甲 / 耐久', en: 'Armor / Durability', vz: '7 / 200（每件）', ve: '7 / 200 each' },
-      { zh: '套装效果', en: 'Set bonus', vz: '火伤免疫，按火焰部分实际伤害的 80% 治疗', ve: 'Fire immunity; heal for 80% of the fire damage component' },
+      { zh: '套装效果', en: 'Set bonus', vz: '挨的火焰伤害下一帧补回 80%（不是免伤）', ve: '80% of the fire damage you take is healed back the next frame (not immunity)' },
       { zh: '冲刺', en: 'Dash', vz: '3 米 / 冷却 1.5 秒', ve: '3 m / 1.5 s cooldown' },
       { zh: '定位', en: 'Role', vz: '过渡装', ve: 'Mid-game set' },
       { zh: '来源', en: 'Source', vz: '龙裔遗族', ve: 'Dragon Descendant' },
@@ -360,7 +397,7 @@ export const INFOBOX: Record<string, Infobox> = {
       { zh: '品质', en: 'Rarity', vz: '8', tier: 8 },
       { zh: '部件', en: 'Pieces', vz: '龙王之冕（头盔）/ 龙王鳞铠（护甲）', ve: 'Dragon Crown / Dragon Scale Mail' },
       { zh: '护甲 / 耐久', en: 'Armor / Durability', vz: '7 / 200（每件）', ve: '7 / 200 each' },
-      { zh: '套装效果', en: 'Set bonus', vz: '火伤免疫，按火焰部分实际伤害的 80% 治疗', ve: 'Fire immunity; heal for 80% of the fire damage component' },
+      { zh: '套装效果', en: 'Set bonus', vz: '挨的火焰伤害下一帧补回 80%（不是免伤）', ve: '80% of the fire damage you take is healed back the next frame (not immunity)' },
       { zh: '冲刺', en: 'Dash', vz: '6 米 + 3 米二段 / 冷却 0.5 秒', ve: '6 m + 3 m second dash / 0.5 s cooldown' },
       { zh: '定位', en: 'Role', vz: '毕业装', ve: 'Endgame set' },
       { zh: '来源', en: 'Source', vz: '焚天龙皇（每件 15% 掉率）', ve: 'Skyburner Dragon Lord (15% per piece)' },

@@ -48,8 +48,9 @@ tells you what just opened.
 ### Display bonus
 
 - It uses the game's own buildings: build a `Weapon Display Rack` or a `Dummy` from the construction
-  menu (either kind, as many as you like). The vanilla "Display Cabinet" is an abandoned building that
-  never appears in the menu, so don't go looking for it.
+  menu (either kind, as many as you like). The vanilla `Display Cabinet` only takes exhibits, so Boss
+  trophies don't fit in it. It shows up in the menu once you have built the Bitcoin Miner and finished
+  "Toy Collector II", and it's where collectibles go.
 - Open the rack and **double-click** a mod Boss trophy onto it: guns go on the weapon rack; melee weapons,
   helmets, armor, face masks and headsets go on a dummy. The rack really shows the item's model.
 - Displayed items stay on the rack: they don't come on raids and can't be lost on death. Move
@@ -59,6 +60,8 @@ tells you what just opened.
 
 - Only mod trophies count (quality `5` or above: Boss gear, the new weapons, Sky Island boss gear
   and the like). A rack full of vanilla items gives nothing.
+- Collectibles of quality `5` or above count too when they sit in the Display Cabinet, ranked
+  together with the trophies on your racks.
 - Each piece gives max health by quality: `+0.5%` for every level above quality 4.
   Quality 5 is `+0.5%`, quality 8 is `+2%`.
 - One of each kind counts. At most `8` pieces count; beyond that, the best 8 by quality are used.

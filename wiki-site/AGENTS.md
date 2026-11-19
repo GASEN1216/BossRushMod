@@ -113,15 +113,30 @@ WikiContent/zh|en/*.md ─┬─→ 游戏内 Wiki 书（WikiContentManager 自�
   换皮之后侧栏 188、目录改成正文里的方框，正文宽度回来了，门槛也就跟着
   目标站回到「窄屏才通栏」。
 
-## 4.5 正文列表里的实体名 → 图标 + 链接
+## 4.5 正文里的实体名 → 图标 + 链接
 
-`config.mts` 的 `entityLinkPlugin` 是一条 markdown-it core 规则：把
-**列表项开头（或表格单元格整格）、独占一个 `**加粗**`、且文字与 `structure.mts`
-某条目名（或 `catalog.tsv` 里的标题，如「百战留痕（黑市鸭王杯）」）完全相等**
-的地方，换成「小图标 + 加粗名 + 链接」。总览页因此长成泰拉瑞亚那种带贴图的清单；
-`sync-content.mjs` 的 `TABLEIZE` 把列表转成表格时首列保留加粗，也是为了让这条规则接手。
+`config.mts` 的 `entityLinkPlugin` 是一条 markdown-it core 规则，把正文里提到的条目、
+物品、装备部件、人物、敌人换成「游戏图标 + 名字 + 链接」。
 
-三条不能动的约束：
+认得的名字有四个来源，前面的优先：`structure.mts` 的条目名（整页）、`catalog.tsv` 的标题（别名）、
+`scripts/wiki-entities.json`（物品 / 装备部件 / 人物，手写登记）、`data/enemy-stats.json`（敌人，生成）。
+后两类会落到目标页的具体位置：同名小节标题，或以这个名字开头的加粗列表项——渲染目标页时给那一项
+`<li>` 补 `id="e-…"`（`LIST_IDS`）。都没有时退到 `anchorZh` / `anchorEn` 指定的小节或那一页的抗性表。
+落点规则（`namesTheSpot`）认「赤龙首（头盔）」「折翎 / 无声钟守」「浮舟（登云码头）· 渡口整备」这类写法。
+
+三种落点：
+
+- 列表项开头 / 表格整格的 `**加粗**`：每处都换（原规则，总览页的清单靠它）；
+- 正文任意位置的 `**加粗**`，文字与名字**完全相等**；
+- 纯文字里两头都是标点、空白或句首句尾的名字（「掉落：赤龙首、焰鳞甲、龙息」）。中文另放行几个
+  虚词（左：和与或及打用把给带拿找去在从向跟对被是到让；右：的和与或及等），英文要求两头不是字母数字。
+
+后两种在同一小节里只换第一次。标题、表头、已有链接、行内代码里不动；指向本页且没有页内落点的不链。
+登记表新增一条要满足：`page` 在 `structure.mts` 里、图标在配图清单里、名字在目标页有落点、
+不与条目名或别的登记重名——`tests/WikiEntityRegistryGuard.py` 逐条核对。想让某个东西带图标，
+优先在正文里把它写成独立的名字（加粗、或放在顿号列表里），而不是去放宽匹配。
+
+四条不能动的约束：
 
 1. **必须放在渲染层，不能放进 `sync-content.mjs`。**
    sync 的产物 `docs/game-modes/zombie-mode.md` 被 `ZombieModeMutantWikiGuard.py`
@@ -134,9 +149,13 @@ WikiContent/zh|en/*.md ─┬─→ 游戏内 Wiki 书（WikiContentManager 自�
    token，VitePress 自己的渲染规则会补 base、走客户端路由。
    这和 `sync-content.mjs` 里 `renderImageBlock()` 坚持用 markdown 图片语法是同一个坑。
 
-3. **匹配要宁漏勿错。** 只认「完全相等」的条目名，且不自指。
+3. **匹配要宁漏勿错。** 只认「完全相等」的名字，纯文字还要过两头的边界检查。
    漏了只是少个图标；错了会把正文里的普通强调变成乱链接。
-   加宽匹配范围前先想清楚 `**火焰伤害转治疗**` 这类加粗会不会被误伤。
+   加宽匹配范围前先想清楚 `**火焰伤害转治疗**` 这类加粗会不会被误伤；登记名字太泛的东西
+   （比如英文里的「Hunter」同时是丧尸 Boss 和官方猎户）宁可不登。
+
+4. **索引在 `config.mts` 加载时建一次**，读的是 sync 产物里的标题与列表项。
+   所以 `npm run dev` / `build` 必须先跑 sync（两条脚本都是这样写的），否则锚点全部退化成页面级链接。
 
 改完跑一遍抽查，确认没有多链：
 
@@ -284,6 +303,32 @@ a.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
   没有更多细节，而且点它们应该跳转不是弹窗。
 - 不用 `<Transition>`，理由同 §4.10 的悬停预览。
 
+## 4.12 敌人抗性（承伤倍率）
+
+数据只有 `docs/.vitepress/data/enemy-stats.json` 一份，由 `tools/build_wiki_enemy_stats.py` 生成并提交：
+官方底模的 `elementFactor_*` / `buffResist` 取自官方 Wiki 生物图鉴快照
+（`docs/reference/duckov-creatures-*.html`，local-only），本 Mod 的改动（血量、龙系的火焰补回、
+幽灵女巫的灵伤归一、天空岛 ×1.5 与保底、潮闸镇 / 末班编组站的血量倍率……）读当前代码常量，
+每个数的出处记在条目的 `refs` 里。三处展示都只读它：
+
+- `WikiEnemyTable.vue`：各页的抗性表，摆在哪一节由 `data/enemy-tables.mts` 决定，
+  `config.mts` 的 `enemyStatsSlotPlugin` 渲染期插入（sync 产物不变，同速查框的办法）；
+  按**小节标题文字**定位，因为几张地图页的中英小节并不一一对应。
+- `infobox.mts` 的 Boss 速查框：生命、抗性、弱点、免疫异常四行走 `enemyHealth()` / `enemyRows()`，不手写。
+- WikiContent 里各 Boss 页「基础数据」的生命 / 抗性 / 弱点 / 免疫异常四行：生成器 `--write-content` 回写，
+  游戏内那本书也能看到。**不要手改这几行**，改了守卫会红。
+
+改了 Boss 血量、换了底模、改了天空岛倍率之后：
+
+```bash
+python tools/build_wiki_enemy_stats.py --write-content   # 需要本机有官方快照
+python tests/WikiEnemyStatsGuard.py                      # 没有快照也能跑：逐条复核 refs 与生成行
+```
+
+游戏更新了官方敌人数值时，重新抓一份生物图鉴快照放进 `docs/reference/`，改生成器里的
+`SNAPSHOT` / `SNAPSHOT_DATE` 再重跑。官方「游戏难度」对血量的影响反编译源里看不到（工厂方法的状态机没解出来），
+表上只写代码里查得到的倍率。
+
 ## 5. 图标
 
 `structure.mts` 与 `infobox.mts` 的 `icon` 字段写的是
@@ -311,7 +356,13 @@ a.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
 | 来源 | 生成工具 | 源图位置 |
 | --- | --- | --- |
 | 图鉴立绘、战役海报、建筑物品图标 | `tools/build_wiki_images.py` | `Assets/`（local-only） |
+| 正文实体链接的物品图标（`items` 组） | `tools/build_wiki_images.py --only items` | `Assets/Items/`，清单在 `scripts/wiki-entities.json` |
 | 站点导航小图标（`ui` 组） | `tools/gen_wiki_icons.py` | `Assets/wiki_icons/`（local-only） |
+
+`items` 组用的就是游戏里的物品图标，和原版画风一致，不另画。行内小图标出 64px（`ITEM_ICON_MAX`），
+同时当条目页图标用的（速查框按 128px 显示）登记在 `pageIcons`，按 `ICON_MAX` 出图。
+`--only <组>` 只重转这一组、其余组按已有产物登记，避免换了 Pillow 版本后整批 WebP 字节都变。
+收集品（500119 起）的新图还没画，暂不登记。
 
 两者的 **WebP 产物与清单都要提交**：`Assets/` 被 `.gitignore` 挡着，
 GitHub Actions 构建时看不到源图。`gen_wiki_icons.py` 额外写一份
@@ -351,6 +402,8 @@ npm --prefix wiki-site run preview           # 看构建产物（版式改动要
 | `WikiThemeAssetGuard.py` | 版式贴图的在场 / 归属 / 字节数 / 每套皮肤的下载预算，外加「没有网络字体」，以及三个生图脚本的角色风格串逐字一致 |
 | `WikiA11yLandmarkGuard.py` | 每个 `<nav>` / `role="navigation"` 都有名字、`role="banner"` 唯一、aria 用到的词表键中英两份都在（见 §8.5） |
 | `WikiImageAssetGuard.py` | 图片清单、产物、引用三者对得上 |
+| `WikiEntityRegistryGuard.py` | `wiki-entities.json` 每条的页面、图标、中英落点都在，名字不重复 |
+| `WikiEnemyStatsGuard.py` | `enemy-stats.json` 的每个数仍等于代码常量、Boss 页生成行与产物一致、抗性表的目标小节中英都在、接线齐全 |
 | `WikiCalloutSingleLineGuard.py` | `WikiContent` 的 callout 必须单行 |
 | `ZombieModeMutantWikiGuard.py` | 丧尸模式页与生成产物逐字节一致（**改 `transformContent` 必须同步改它的 Python 镜像**） |
 | `BossWikiGuideContentGuard.py` | Boss 攻略页内容约束 |
