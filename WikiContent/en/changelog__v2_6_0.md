@@ -10,14 +10,26 @@
 - **Vanilla loot untouched**: collectibles have their own pool and never take a vanilla slot or vanilla odds, **so vanilla items are not any harder to find**. They also stay out of the Wishing Fountain, the Daily and every random reward pool. Corpse boxes, airdrops, reward crates, storage and the Boss Rush modes never hold them.
 - **100 collectibles**: 8 each for Ground Zero, Hidden Warehouse, Farm Town, J-Lab, Storm Zone, Test Area 37, the Qinglan Archipelago, Tidegate and Last Shift Yard, found only on their own map; 11 each for "Arena Legends" and "Companions' Keepsakes", found anywhere. Values follow official collectibles and luxuries of the same tier.
 - **Treasures**: five tier-7 treasures and one tier-8 **First Duck King's Golden Egg** (worth 29,470,423, more than the crown, and rarer too).
-- **The album and a new quest from Jeff**: talk to Jeff at base and take "Odds and Ends". Jeff gives you a Collector's Album, and the vending machine starts selling it too. At base, open the album, press Register, put collectibles in and close it to log them; logged items are taken.
+- **The album and a new quest from Jeff**: talk to Jeff at base and take "Odds and Ends". Jeff gives you a Collector's Album, and the vending machine starts selling it too. At base, open the album, press Register, put a collectible in the one-slot crate and press the crate's Register button to log it, one after another; logged items are taken, and anything left in the slot goes back to your backpack when you close it.
 - **Set rewards**: completing a set pays cash once (30,000 for map sets, 150,000 for global sets) and grants a small permanent bonus such as max stamina +5, carry weight +1 kg or one more backpack slot; completing all 11 sets pays another 500,000.
+- **On display**: every collectible counts as an exhibit and can go in the base Display Cabinet; both in the cabinet and on the ground you see the object's own 3D model.
+- **Top tiers stand out**: tier 6 to 8 collectibles get an inventory slot frame that turns more golden with each tier. In the cabinet or on the ground they glow red-gold with rising motes and rune rings, cast a beam of light on the ground, and the tier-8 piece is the brightest of all, floating in mid-air with a slow spin.
 - **Gifts**: Dingdang, Yu Zhi, Old Zha and the Qinglan residents each have favourite collectibles that raise affinity more.
 - **New items**: 100 collectibles (500119 to 500218) and the Collector's Album (500219).
 
+### Balance
+
+- Melee light attacks cost less stamina, so a combo no longer drains you in seconds: Viper Dagger 4 → 2, Inferno Emperor's Realm-Breaking Halberd 10 → 6, Frostmourne 7 → 5, Soulreaper's Requiem 6.5 → 5, Frost Spear 8 → 6, Summoning Staff 6 → 5, Astral Staff 5 → 4 (heavy attacks and spell costs unchanged).
+
 ### Improvements
 
+- Every mod item icon has been redrawn in the vanilla art style.
+- The album now sits first in the base vending machine, and each set in the album shows a progress bar.
 - Collectibles on the Qinglan Archipelago top out at tier 6, keeping the island's 100,000-per-item limit; Tidegate's underwater crates top out at tier 4, so the underwater jackpot works as before.
 - The Hawk Eye affix, the Sharpshooter and Lucky Star mutators, and Zombie Mode's Crit Focus used to add gun crit chance, which did nothing for the player (your shots only crit on a headshot). They now add headshot damage instead.
+
+### Fixes
+
+- The Skyburner Dragon Lord's gunfire sound never played; you can hear it now.
 
 [tip] Existing saves and settings carry over; new items use new IDs and old item IDs are unchanged. Album progress is stored per save slot.

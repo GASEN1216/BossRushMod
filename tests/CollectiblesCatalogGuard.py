@@ -20,6 +20,9 @@
    出货标记只在交付成功之后打；模块销毁时清理、过图清出货标记；收藏册只给已登记的卡片挂。
 9. 陈列模型（2026-11-19）：唯一接点是 ItemGraphicInfo.CreateAGraphic 前置补丁，只给还没有模型的收集品按需挂；
    材质复制官方奖杯、不 Shader.Find、不在运行时解码图片；模块销毁时清理；编译脚本部署 .brcm。
+10. 陈列 / 地面特效（2026-11-19）：只给 6–8 档（复用 FrameTier）模型模板挂锚点；锚点没有每帧方法，进了镜头才建特效、
+   出镜头由特效根自己停用（父物体停用途中不改激活状态）；暂停停推进、unscaled 时间；只用共享特效材质、URP 粒子着色器
+   不可用就不画；越高越金、不偏紫偏蓝、逐档更强、只有 8 档浮空；模块销毁时拆光并还原模型。
 """
 
 from pathlib import Path
@@ -304,6 +307,101 @@ def main():
     bat = (ROOT / "compile_official.bat").read_text(encoding="utf-8", errors="replace")
     if 'xcopy /Y /I "Assets\\Collectibles\\Models\\*.brcm"' not in bat:
         errors.append("compile_official.bat 要部署 Assets\\Collectibles\\Models\\*.brcm，否则游戏里读不到模型")
+
+    # 10. 陈列 / 地面特效（6–8 档模型：光晕、符文环、光柱、金点、星芒、扫光环、点光；8 档浮空自转）
+    fx_src = sources.get("CollectibleShowcaseFx.cs", "")
+    if not fx_src:
+        errors.append("缺少 CollectibleShowcaseFx.cs（6–8 档收集品模型的陈列 / 地面特效）")
+    else:
+        if "return CollectibleSlotFrame.FrameTier(quality);" not in compact(method_body(fx_src, "internal static int Tier(int quality)")):
+            errors.append("陈列特效档位必须复用格子边框的 FrameTier（只有 6、7、8 档）")
+        if "CollectibleShowcaseFx.Tier(quality) <= 0) return;" not in compact(method_body(fx_src, "internal static void AttachToTemplate(GameObject model, int quality)")):
+            errors.append("只给 6–8 档模型模板挂特效锚点")
+        if "CollectibleShowcaseFxAnchor.AttachToTemplate(model, def.Quality);" not in compact(method_body(models, "private static ItemGraphicInfo BuildModelTemplate(CollectibleDefinition def)")):
+            errors.append("特效锚点要在建模型模板时挂到 Model 上（随官方 CreateAGraphic 复制到每个实例）")
+        for name, text in sources.items():
+            if name != "CollectibleShowcaseFx.cs" and re.search(r"AddComponent<\s*(?:global::)?(?:[\w.]+\.)?CollectibleShowcaseFx(?:Anchor)?\s*>", text):
+                errors.append(name + " 不能另挂陈列特效组件：锚点只经 AttachToTemplate、特效根只经 Create")
+        # §4.12：锚点没有每帧方法，没进镜头零成本；进了镜头才建；出镜头由特效根自己的 Update 停用。
+        anchor_class = method_body(fx_src, "internal sealed class CollectibleShowcaseFxAnchor : MonoBehaviour")
+        if not anchor_class or re.search(r"\bvoid\s+(?:Update|LateUpdate|FixedUpdate|OnGUI)\s*\(", anchor_class):
+            errors.append("特效锚点不能有每帧方法：模型没进镜头时不能有任何每帧成本（§4.12）")
+        set_visible = compact(method_body(fx_src, "private void SetVisible(bool visible)"))
+        guard_at, create_at = set_visible.find("if (!visible) return;"), set_visible.find("fx = CollectibleShowcaseFx.Create(")
+        if fx_src.count("CollectibleShowcaseFx.Create(") != 1 or guard_at < 0 or create_at < 0 or guard_at > create_at:
+            errors.append("陈列特效只能在模型进了镜头时才建（SetVisible(true) 一处）")
+        if "SetVisible(modelRenderer.isVisible);" not in compact(method_body(fx_src, "private void Start()")) \
+                or "SetVisible(true);" not in compact(method_body(fx_src, "private void OnBecameVisible()")):
+            errors.append("锚点按 Renderer.isVisible / OnBecameVisible 决定建不建特效")
+        for sig in ("private void OnBecameInvisible()", "private void OnDisable()"):
+            body = method_body(fx_src, sig)
+            if body and ("SetActive" in body or "Show(" in body):
+                errors.append(sig + " 里不能改特效根的激活状态：父物体停用 / 销毁途中同步发来，改兄弟物体会报错")
+        fx_tick = compact(method_body(fx_src, "private void Tick()"))
+        for token in ("CollectiblesRuntimeModule.Current == null", "!modelRenderer.isVisible", "BossRushUI.IsGamePaused()", "Time.unscaledDeltaTime"):
+            if token not in fx_tick:
+                errors.append("陈列特效每帧要先核对模块在场、模型仍在镜头里、暂停，并走 unscaled 时间：缺少 " + token)
+        if "Time.deltaTime" in fx_src or "useUnscaledTime = true;" not in fx_src:
+            errors.append("陈列特效与粒子都走 unscaled 时间（陈列柜镜头、拍照模式照样动），暂停菜单另行暂停")
+        if "gameObject.SetActive(false);" not in compact(method_body(fx_src, "internal void Show(bool on)")):
+            errors.append("出镜头时特效根要整棵停用（粒子、面片、灯、Update 一起停）")
+        # 材质：只用共享特效材质，不改共享材质本身；URP 粒子着色器不可用就不画（owner：不做降级）。
+        if "Shader.Find" in fx_src or re.search(r"new\s+Material\s*\(\s*Shader", fx_src):
+            errors.append("陈列特效不 Shader.Find、不自建着色器材质，只用 BossRushFxMaterials / BossRushFxKit 的共享材质")
+        if "if (!BossRushFxMaterials.SupportsAdditive)" not in compact(method_body(fx_src, "private bool Resolve()")):
+            errors.append("URP 粒子着色器不可用时陈列特效整套不画（不退成半透明）")
+        if any(target != "block" for target in re.findall(r"(\w+)\.SetVector\(", fx_src)):
+            errors.append("陈列特效调色只写 MaterialPropertyBlock，不能改共享材质")
+        if "GetComponentInParent<InteractablePickup>()" not in compact(method_body(fx_src, "private bool Resolve()")):
+            errors.append("地上 / 陈列只看父链上有没有 InteractablePickup（不做场景查找）")
+        # 配色：越高越金，任何一档都不偏紫偏蓝（owner：金色才是最高级）。
+        for array_name in ("TierMain", "TierLight"):
+            decl = re.search(r"Color\[\]\s+%s\s*=\s*\{(.*?)\};" % array_name, fx_src, re.S)
+            colors = [tuple(float(v) for v in m) for m in
+                      re.findall(r"new Color\(\s*([\d.]+)f\s*,\s*([\d.]+)f\s*,\s*([\d.]+)f\s*,\s*[\d.]+f\s*\)", decl.group(1))] if decl else []
+            if len(colors) != 4:
+                errors.append(array_name + " 必须按档写死 4 项（下标 0 不用），不在运行时查官方样式")
+                continue
+            for index, (r, g, b) in enumerate(colors[1:], 1):
+                if not (r >= g >= b):
+                    errors.append("%s 第 %d 档偏紫 / 偏蓝 / 偏绿：必须是暖色（红 ≥ 绿 ≥ 蓝）" % (array_name, index))
+            if not (colors[1][1] <= colors[2][1] <= colors[3][1]):
+                errors.append(array_name + " 必须越高越金（绿分量逐档不减）")
+            r8, g8, b8 = colors[3]
+            if not (r8 >= 0.95 and g8 >= 0.75 and b8 <= 0.6):
+                errors.append(array_name + " 8 档必须是金色")
+        # 逐档更强，只有 8 档浮空。
+        looks_decl = re.search(r"Look\[\]\s+Looks\s*=\s*\{(.*?)\};", fx_src, re.S)
+        entries = re.findall(r"new Look \{(.*?)\}", looks_decl.group(1), re.S) if looks_decl else []
+
+        def look_value(entry, field):
+            m = re.search(r"\b%s = ([\w.]+?)f?\s*[,}]" % field, entry + "}")
+            return m.group(1) if m else None
+
+        if len(entries) != 3:
+            errors.append("陈列特效 Looks 必须按 6、7、8 档写 3 项")
+        else:
+            if [look_value(e, "Float") for e in entries] != ["false", "false", "true"]:
+                errors.append("只有 8 档浮空（owner：超高品质的再加上缓慢浮空）")
+            for field, rising in (("MoteRate", True), ("LightIntensity", True), ("HaloMax", True), ("BeamGround", True), ("SheenPeriod", False)):
+                values = [float(look_value(e, field) or "nan") for e in entries]
+                ordered = values[0] < values[1] < values[2] if rising else values[0] > values[1] > values[2]
+                if not ordered:
+                    errors.append("陈列特效 %s 必须一档比一档强：%s" % (field, values))
+            if [int(look_value(e, "Runes") or -1) for e in entries] != [0, 1, 2]:
+                errors.append("符文环 6 档没有、7 档一圈、8 档两圈")
+        # 清理：模块销毁时拆光、还原模型；锚点随实例销毁时注销。
+        if "CollectibleShowcaseFx.ResetStaticCaches();" not in compact(method_body(models, "internal static void ResetStaticCaches()")):
+            errors.append("收集品模型清理时必须先拆掉活着的陈列特效（CollectibleShowcaseFx.ResetStaticCaches）")
+        fx_reset = compact(method_body(fx_src, "internal static void ResetStaticCaches()"))
+        for token in ("CollectibleShowcaseFxAnchor.TeardownAll();", "Destroy(beamMaterial);", "Destroy(beamTexture);", "Destroy(flatQuad);"):
+            if token not in fx_reset:
+                errors.append("陈列特效 ResetStaticCaches 缺少：" + token)
+        if "Teardown(false);" not in compact(method_body(fx_src, "private void OnDestroy()")):
+            errors.append("锚点随实例销毁（捡起、换位、切图）时要注销并拆掉特效")
+        fx_dispose = compact(method_body(fx_src, "internal void Dispose()"))
+        if "model.localPosition = restPosition;" not in fx_dispose or "model.localRotation = restRotation;" not in fx_dispose:
+            errors.append("拆陈列特效时要把浮空的模型放回原位")
 
     for error in errors:
         print("  - " + error)

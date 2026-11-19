@@ -14,7 +14,9 @@
 //   - 没有或读坏了：退回官方图标立牌（ItemGraphicInfo.spriteGraphicPfb 的复制品，换成这件的图标），陈列柜里至少看得到东西。
 // 模板挂在一个停用的 DontDestroyOnLoad 根下：模板自身 activeSelf 为真，复制出来的实例换了父物体就显示，模板本身不显示。
 // .brcm 是离线压好的原始数据，运行时只做内存拷贝（不解码图片、不留 CPU 副本）；第一次用到某件时才读，不用不占内存（§4.12）。
-// 模块销毁时 ResetStaticCaches 销毁模板、网格、贴图与材质。
+// 6–8 档的模型模板另挂特效锚点（CollectibleShowcaseFx：光晕、符文环、光柱、金点、星芒、扫光环、点光，8 档浮空自转），
+// 只在实例进了镜头时才建特效；图标立牌兜底不挂。
+// 模块销毁时 ResetStaticCaches 先拆活着的特效，再销毁模板、网格、贴图与材质。
 // ============================================================================
 
 using System;
@@ -140,6 +142,8 @@ namespace BossRush
                 model.AddComponent<MeshFilter>().sharedMesh = mesh;
                 MeshRenderer renderer = model.AddComponent<MeshRenderer>();
                 renderer.sharedMaterial = material;
+                // 6–8 档：模型上挂特效锚点，随官方复制到每个实例，进了镜头才建特效（CollectibleShowcaseFx）。
+                CollectibleShowcaseFxAnchor.AttachToTemplate(model, def.Quality);
                 ItemGraphicInfo info = root.AddComponent<ItemGraphicInfo>();
                 info.groundPoint = ground.transform;   // 模型原点就在底面中心，贴地不用再偏移
                 ownedObjects.Add(mesh);
@@ -304,6 +308,8 @@ namespace BossRush
 
         internal static void ResetStaticCaches()
         {
+            // 先拆场景里活着的陈列特效并还原模型，再销毁模板与它们共用的网格、贴图、材质。
+            CollectibleShowcaseFx.ResetStaticCaches();
             templates.Clear();
             unavailable.Clear();
             for (int i = 0; i < ownedObjects.Count; i++)

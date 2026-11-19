@@ -1493,6 +1493,7 @@ echo(Integration\Collectibles\CollectibleSlotFrame.cs
 echo(Integration\Collectibles\CollectibleSlotFramePatch.cs
 echo(Integration\Collectibles\CollectibleShowcaseModels.cs
 echo(Integration\Collectibles\CollectibleShowcasePatch.cs
+echo(Integration\Collectibles\CollectibleShowcaseFx.cs
 echo(Integration\Collectibles\CollectiblesRuntimeModule.cs
 echo(Localization\CollectiblesLocalization.cs
 echo(Integration\Tidegate\TidegateLeadUsage.cs

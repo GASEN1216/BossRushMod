@@ -43,8 +43,9 @@ Tiers 1 to 6 follow the value range of official collectibles and luxuries of the
 ## The album
 
 - Talk to **Jeff** at base and take "Odds and Ends". Jeff hands you a **Collector's Album** when you accept (into storage if your backpack is full), and from then on the base vending machine sells it too.
-- Right-click the album in your inventory to open it. Sets are listed on the left and the current set's pieces on the right; unlogged pieces show their icon as a silhouette, but you can still read their name and story. Reading it uses nothing up.
-- At base, press **Register** to open an empty crate: put collectibles in and close it to log them. **Logged items are taken**, so hold back anything you would rather sell or give away. Anything already logged, or not a collectible, goes back to your backpack (or to storage if it's full).
+- Right-click the album in your inventory to open it. Sets are listed on the left and the current set's pieces and progress bar on the right; unlogged pieces show their icon as a silhouette, but you can still read their name and story. Reading it uses nothing up.
+- At base, press **Register** to open a one-slot crate: put a collectible in, then press the crate's **Register** button to log it. The slot empties so you can log the next one. **Logged items are taken**, so hold back anything you would rather sell or give away. If the piece is already logged or isn't a collectible, the button stays greyed out and says why.
+- Closing the window does not log anything: whatever is still in the slot goes back to your backpack (or to storage if it's full).
 - Log one piece, then go back to Jeff to turn in the quest. There's no extra reward; the album is the reward.
 - You can browse the album during a raid, but you can only register at base.
 
@@ -68,6 +69,8 @@ Completing a set pays its cash at once and grants a small permanent bonus (appli
 ## On display
 
 Every collectible counts as an **exhibit**, so it can go in the base **Display Cabinet**, which shows the object itself. The cabinet only shows up in the build menu once you have built the **Bitcoin Miner** and finished "Toy Collector II". A collectible dropped on the ground looks like itself too.
+
+Tiers 6 to 8 stand out more: their inventory slot gets a frame that turns more golden with each tier. In the cabinet or on the ground, tier 6 sits in a red-gold glow with rising gold motes, tier 7 adds a slowly turning rune ring and the odd twinkle, and tier 8 is the brightest and most golden, floating in mid-air with a slow bob and spin. On the ground they also cast a beam of light, taller with each tier, that you can spot from a distance.
 
 ## Gifts
 
