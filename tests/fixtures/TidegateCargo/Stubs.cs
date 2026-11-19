@@ -153,3 +153,26 @@ namespace BossRush
     }
 #endif
 }
+namespace BossRush
+{
+    // 收集品开箱接口桩（生产实现 Integration/Collectibles/CollectibleLootRuntime.cs）：本夹具只验本图搜刮，
+    // 记一下首开回调交给收集品判定的次数与上限：回归 CollectibleHook 断言首开一次、重开不交、水下 4 档、陆地 8 档。
+    internal enum CollectibleSeries { SkyIsland = 6, Tidegate = 7, LastShift = 8 }
+    internal enum CollectibleBoxTier { Normal = 0, High = 1 }
+    internal static class CollectibleTuning
+    {
+        internal const int MaxQuality = 8;
+        internal const int SkyIslandQualityCap = 6;
+        internal const int TidegateUnderwaterQualityCap = 4;
+    }
+    internal static class CollectibleLootRuntime
+    {
+        internal static int Notified;
+        internal static int LastCap;
+        internal static void NotifyModBoxFirstOpened(InteractableLootbox box, CollectibleSeries series, CollectibleBoxTier tier, int qualityCap)
+        {
+            Notified++;
+            LastCap = qualityCap;
+        }
+    }
+}

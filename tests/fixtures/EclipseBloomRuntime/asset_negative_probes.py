@@ -26,8 +26,6 @@ def main():
     manager = "Integration/EclipseBloom/EclipseBloomAssetManager.cs"
     visuals = "Integration/EclipseBloom/EclipseBloomVisuals.cs"
     shield = "Integration/EclipseBloom/ResidualSunShieldModel.cs"
-    icon = "Integration/EclipseBloom/ResidualSunShieldIcon.cs"
-    factory = "Integration/EquipmentFactory_RuntimeModels.cs"
     probes = (
         ("lease_does_not_accumulate", assets, "references++;", "references = 1;",
          "concurrent flower instances borrow one loaded authored bundle with two leases"),
@@ -55,23 +53,11 @@ def main():
         ("shield_pickup_reverts_to_sprite", shield, "item.useSpriteForPickup = false;", "item.useSpriteForPickup = true;",
          "real shield bind and factory registration connect the native pickup graphic and equipment model before disabling sprite pickup"),
         ("shield_template_missing_ground_accepted", shield, '|| model.transform.Find("GroundPoint") == null', "",
-         "shield template without the authored GroundPoint is rejected before caching or icon attachment"),
+         "shield template without the authored GroundPoint is rejected before caching"),
         ("shield_template_missing_part_accepted", shield, "|| model.GetComponentsInChildren<MeshFilter>(true).Length != 6", "",
-         "shield template missing an authored mesh part is rejected before caching or icon attachment"),
+         "shield template missing an authored mesh part is rejected before caching"),
         ("shield_reset_destroys_factory_wrapper", shield, "template = null;", "if (template != null) UnityEngine.Object.Destroy(template.gameObject); template = null;",
          "shield cache reset cannot destroy the factory wrapper still borrowed by existing item agents"),
-        ("owned_asset_ignores_bundle_identity", factory,
-         "bundle != null && string.Equals(bundle.name, bundleName, System.StringComparison.OrdinalIgnoreCase)", "bundle != null",
-         "factory lookup borrows the exact asset from its named owned bundle without acquiring a new bundle"),
-        ("owned_asset_query_unloads_factory_bundle", factory,
-         "return bundle.LoadAsset<T>(assetPath);", "{ T result = bundle.LoadAsset<T>(assetPath); bundle.Unload(true); return result; }",
-         "repeated factory asset queries share the existing resource without unloading its owner"),
-        ("shield_icon_ignores_dimensions", icon,
-         "|| loaded.texture.width != Size || loaded.texture.height != Size", "",
-         "real shield icon rejects incorrect production dimensions without destroying the borrowed resource"),
-        ("shield_icon_destroys_borrowed_sprite", icon,
-         "private void OnDestroy() { sprite = null; }", "private void OnDestroy() { UnityEngine.Object.Destroy(sprite); sprite = null; }",
-         "shield icon component destruction cannot destroy the Sprite texture or equipment factory bundle it borrowed"),
     )
     results = {}
     for name, target, original, replacement, expected in probes:

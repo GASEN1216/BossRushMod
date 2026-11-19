@@ -12,7 +12,6 @@
 
 using System;
 using System.IO;
-using System.Reflection;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Video;
@@ -576,31 +575,17 @@ namespace BossRush
 
         /// <summary>
         /// 过场音频：与 ModBehaviour.PlaySoundEffect 同一条官方路径（AudioManager.PostCustomSFX，挂在玩家身上），
-        /// 但留住返回的 FMOD EventInstance，回放跳过时能压音量并停掉。
-        /// 编译清单没有 FMOD 引用（见 IntegrationUIFeedback 的注释），EventInstance 的 setVolume / stop 走反射；
-        /// MethodInfo 解析一次缓存，只在过场开始与淡出的那几帧调用。任何一步失败都静默降级（音频不是关键路径）。
+        /// 但留住返回的 FMOD EventInstance，回放跳过时能压音量并停掉（STOP_MODE.ALLOWFADEOUT，按事件自带的淡出停，不硬切）。
+        /// 编译清单没有 FMOD 引用，PostCustomSFX 与 EventInstance 的 setVolume / stop 都经 BossRushOfficialAudio 反射，
+        /// 只在过场开始与淡出的那几帧调用。任何一步失败都静默降级（音频不是关键路径）。
         /// </summary>
         private static class MarriageCutsceneAudio
         {
-            private static MethodInfo postCustomSfx;
-            private static bool postResolved;
-            private static MethodInfo setVolumeMethod;
-            private static MethodInfo stopMethod;
-            private static object stopAllowFadeOut;
-            private static Type handleType;
-
             internal static object Play(string filePath)
             {
                 try
                 {
-                    if (!postResolved)
-                    {
-                        postResolved = true;
-                        postCustomSfx = typeof(global::Duckov.AudioManager).GetMethod("PostCustomSFX",
-                            BindingFlags.Public | BindingFlags.Static, null,
-                            new Type[] { typeof(string), typeof(GameObject), typeof(bool) }, null);
-                    }
-                    if (postCustomSfx == null)
+                    if (!BossRushOfficialAudio.HasPostCustomSfx)
                     {
                         return null;
                     }
@@ -611,7 +596,10 @@ namespace BossRush
                         target = main.gameObject;
                     }
                     // 返回 EventInstance?：有值时装箱成 EventInstance，没有时为 null。
-                    return postCustomSfx.Invoke(null, new object[] { filePath, target, false });
+                    object instance;
+                    Exception error;
+                    if (!BossRushOfficialAudio.TryPostCustomSfx(filePath, target, false, out instance, out error)) throw error;
+                    return instance;
                 }
                 catch (Exception e)
                 {
@@ -622,67 +610,16 @@ namespace BossRush
 
             internal static void SetVolume(object handle, float volume)
             {
-                if (handle == null || !Resolve(handle) || setVolumeMethod == null)
-                {
-                    return;
-                }
-                try
-                {
-                    setVolumeMethod.Invoke(handle, new object[] { Mathf.Clamp01(volume) });
-                }
-                catch (Exception)
-                {
-                    // 音频不是关键路径：FMOD 句柄已失效（事件已自然结束并回收）时静默跳过
-                }
+                // FMOD 句柄已失效（事件已自然结束并回收）时静默跳过
+                Exception error;
+                BossRushOfficialAudio.TrySetEventVolume(handle, Mathf.Clamp01(volume), out error);
             }
 
             internal static void Stop(object handle)
             {
-                if (handle == null || !Resolve(handle) || stopMethod == null)
-                {
-                    return;
-                }
-                try
-                {
-                    stopMethod.Invoke(handle, new object[] { stopAllowFadeOut });
-                }
-                catch (Exception)
-                {
-                    // 同上：句柄失效或 FMOD 未就绪时静默跳过，过场收尾不能因为停音频抛异常
-                }
-            }
-
-            private static bool Resolve(object handle)
-            {
-                Type type = handle.GetType();
-                if (type == handleType)
-                {
-                    return true;
-                }
-                try
-                {
-                    handleType = type;
-                    setVolumeMethod = type.GetMethod("setVolume", new Type[] { typeof(float) });
-                    stopMethod = null;
-                    stopAllowFadeOut = null;
-                    MethodInfo[] methods = type.GetMethods(BindingFlags.Public | BindingFlags.Instance);
-                    for (int i = 0; i < methods.Length; i++)
-                    {
-                        ParameterInfo[] parameters = methods[i].GetParameters();
-                        if (methods[i].Name == "stop" && parameters.Length == 1 && parameters[0].ParameterType.IsEnum)
-                        {
-                            stopMethod = methods[i];
-                            // FMOD.Studio.STOP_MODE.ALLOWFADEOUT = 0：按事件自带的淡出停，不硬切。
-                            stopAllowFadeOut = Enum.ToObject(parameters[0].ParameterType, 0);
-                            break;
-                        }
-                    }
-                    return true;
-                }
-                catch (Exception)
-                {
-                    return false;
-                }
+                // 句柄失效或 FMOD 未就绪时静默跳过，过场收尾不能因为停音频抛异常
+                Exception error;
+                BossRushOfficialAudio.TryStopEvent(handle, out error);
             }
         }
 

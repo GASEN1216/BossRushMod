@@ -36,7 +36,6 @@ namespace BossRush
         private static readonly object _lock = new object();
         private static Dictionary<string, Rect> _rects;
         private static Dictionary<string, Rect> _icons;
-        private static bool _loadedFromJson;
 
         // 网格与图例
         private static float _gridX, _gridY, _cellWidth, _cellHeight, _cellGap;
@@ -44,8 +43,6 @@ namespace BossRush
         private static float _legendSwatch, _legendItemWidth;
         private static int _legendCount;
         private static float _pillTextIndent, _iconTextGap;
-
-        internal static bool LoadedFromJson { get { EnsureBuilt(); return _loadedFromJson; } }
 
         internal static float GridX { get { EnsureBuilt(); return _gridX; } }
         internal static float GridY { get { EnsureBuilt(); return _gridY; } }
@@ -110,7 +107,6 @@ namespace BossRush
             {
                 _rects = null;
                 _icons = null;
-                _loadedFromJson = false;
             }
         }
 
@@ -155,7 +151,6 @@ namespace BossRush
 
                 _icons = icons;
                 _rects = rects;
-                _loadedFromJson = fromJson;
             }
         }
 

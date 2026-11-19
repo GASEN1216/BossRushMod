@@ -484,78 +484,87 @@ namespace BossRush
         
         // ========== 音效路径 ==========
         
-        /// <summary>
-        /// 音效文件基础路径
-        /// </summary>
-        public static readonly string SoundBasePath = Path.Combine(
-            Path.GetDirectoryName(typeof(DragonKingConfig).Assembly.Location),
-            "Assets", "Sounds", "DragonKing"
-        );
+        // 用时才拼（2026-11-19）：静态字段初始化器里取程序集位置，取不到时会抛 TypeInitializationException，
+        // 把承载全部龙王常量与攻击序列的本类型永久毒化（见 NewWeaponSfx 的注释）。路径统一走带兜底的
+        // ModBehaviour.GetModPath()；Mod 根目录取不到时下列属性返回 null，PlaySoundEffect 照样静默跳过。
+        // Mod 根目录在进程内不变，取到一次就记住（取不到不记，下次再取）。
+        private static string soundDirectory;
+
+        private static string SoundPath(string fileName)
+        {
+            if (soundDirectory == null)
+            {
+                string modPath = ModBehaviour.GetModPath();
+                if (string.IsNullOrEmpty(modPath)) return null;
+                soundDirectory = Path.Combine(modPath, "Assets", "Sounds", "DragonKing");
+            }
+            return Path.Combine(soundDirectory, fileName);
+        }
         
         /// <summary>
         /// Boss登场音效
         /// </summary>
-        public static readonly string Sound_Spawn = Path.Combine(SoundBasePath, "common_spawn.mp3");
+        public static string Sound_Spawn { get { return SoundPath("common_spawn.mp3"); } }
         
         /// <summary>
         /// Boss死亡音效
         /// </summary>
-        public static readonly string Sound_Death = Path.Combine(SoundBasePath, "common_death.mp3");
+        public static string Sound_Death { get { return SoundPath("common_death.mp3"); } }
         
         /// <summary>
         /// 碰撞/受击音效
         /// </summary>
-        public static readonly string Sound_Hit = Path.Combine(SoundBasePath, "common_hit.mp3");
+        public static string Sound_Hit { get { return SoundPath("common_hit.mp3"); } }
         
         /// <summary>
         /// 二阶段转换音效
         /// </summary>
-        public static readonly string Sound_Phase2 = Path.Combine(SoundBasePath, "phase2_transition.mp3");
+        public static string Sound_Phase2 { get { return SoundPath("phase2_transition.mp3"); } }
         
         /// <summary>
         /// 冲刺蓄力音效
         /// </summary>
-        public static readonly string Sound_DashCharge = Path.Combine(SoundBasePath, "dash_charge.mp3");
+        public static string Sound_DashCharge { get { return SoundPath("dash_charge.mp3"); } }
         
         /// <summary>
         /// 冲刺爆发音效
         /// </summary>
-        public static readonly string Sound_DashBurst = Path.Combine(SoundBasePath, "dash_burst.mp3");
+        public static string Sound_DashBurst { get { return SoundPath("dash_burst.mp3"); } }
         
         /// <summary>
         /// 太阳舞警告音效
         /// </summary>
-        public static readonly string Sound_SunWarning = Path.Combine(SoundBasePath, "sun_warning.mp3");
+        public static string Sound_SunWarning { get { return SoundPath("sun_warning.mp3"); } }
         
         /// <summary>
         /// 长矛警告音效
         /// </summary>
-        public static readonly string Sound_LanceWarning = Path.Combine(SoundBasePath, "lance_warning.mp3");
+        public static string Sound_LanceWarning { get { return SoundPath("lance_warning.mp3"); } }
         
         /// <summary>
         /// 长矛发射音效
         /// </summary>
-        public static readonly string Sound_LanceFire = Path.Combine(SoundBasePath, "lance_fire.mp3");
+        public static string Sound_LanceFire { get { return SoundPath("lance_fire.mp3"); } }
         
         /// <summary>
         /// 棱彩弹1生成音效
         /// </summary>
-        public static readonly string Sound_BoltSpawn = Path.Combine(SoundBasePath, "bolt_spawn.mp3");
+        public static string Sound_BoltSpawn { get { return SoundPath("bolt_spawn.mp3"); } }
         
         /// <summary>
         /// 棱彩弹2生成音效
         /// </summary>
-        public static readonly string Sound_BoltSpawn2 = Path.Combine(SoundBasePath, "bolt_spawn2.mp3");
+        public static string Sound_BoltSpawn2 { get { return SoundPath("bolt_spawn2.mp3"); } }
         
         /// <summary>
         /// 棱彩弹命中音效
         /// </summary>
-        public static readonly string Sound_BoltHit = Path.Combine(SoundBasePath, "bolt_hit.mp3");
+        public static string Sound_BoltHit { get { return SoundPath("bolt_hit.mp3"); } }
         
         /// <summary>
         /// 永恒彩虹生成音效
         /// </summary>
-        public static readonly string Sound_RainbowSpawn = Path.Combine(SoundBasePath, "rainbow_spawn.mp3");
+        public static string Sound_RainbowSpawn { get { return SoundPath("rainbow_spawn.mp3"); } }
         
         // ========== 攻击序列 ==========
         

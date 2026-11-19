@@ -87,7 +87,7 @@
 // ============================================================================
 //
 //   方式一：自动加载（推荐）
-//   EquipmentFactory.LoadAllEquipment();  // 自动扫描并加载所有 bundle
+//   yield return EquipmentFactory.LoadAllEquipmentAsync(owner);  // 延迟 bootstrap 逐个异步预载并注册（FactoryResourceLoading）
 //
 //   方式二：手动加载单个 bundle
 //   EquipmentFactory.LoadBundle("my_equipment");
@@ -210,47 +210,6 @@ namespace BossRush
         // ========== 公开 API ==========
 
         /// <summary>
-        /// 自动加载 Assets/Equipment/ 目录下所有 AssetBundle（推荐）
-        /// </summary>
-        /// <returns>加载的物品总数</returns>
-        public static int LoadAllEquipment()
-        {
-            if (modDirectory == null)
-            {
-                modDirectory = Path.GetDirectoryName(typeof(EquipmentFactory).Assembly.Location);
-            }
-
-            string equipmentDir = Path.Combine(modDirectory, EQUIPMENT_PATH);
-
-            if (!Directory.Exists(equipmentDir))
-            {
-                ModBehaviour.DevLog("[EquipmentFactory] 装备目录不存在，跳过自动加载: " + equipmentDir);
-                return 0;
-            }
-
-            int totalCount = 0;
-            string[] files = Directory.GetFiles(equipmentDir);
-
-            foreach (string filePath in files)
-            {
-                string fileName = Path.GetFileName(filePath);
-
-                // 跳过 .manifest 文件和其他非 bundle 文件
-                if (fileName.Contains(".")) continue;
-
-                // 跳过已加载的 bundle
-                if (loadedBundles.Contains(fileName)) continue;
-
-                ModBehaviour.DevLog("[EquipmentFactory] 自动加载 bundle: " + fileName);
-                int count = LoadBundle(fileName);
-                totalCount += count;
-            }
-
-            ModBehaviour.DevLog("[EquipmentFactory] 自动加载完成，共 " + totalCount + " 个物品");
-            return totalCount;
-        }
-
-        /// <summary>
         /// 从 AssetBundle 加载装备/武器（自动识别类型）
         /// </summary>
         public static int LoadBundle(string bundleName)
@@ -263,7 +222,7 @@ namespace BossRush
 
             if (modDirectory == null)
             {
-                modDirectory = Path.GetDirectoryName(typeof(EquipmentFactory).Assembly.Location);
+                modDirectory = ModBehaviour.GetModPath();
             }
 
             string bundlePath = Path.Combine(modDirectory, EQUIPMENT_PATH, bundleName);
@@ -543,16 +502,34 @@ namespace BossRush
         // ========== 核心加载逻辑 ==========
 
         /// <summary>
+        /// 本工厂已持有的同名包（上次加载保留了包、却因计数为 0 没进 loadedBundles）；没有返回 null。
+        /// </summary>
+        private static AssetBundle FindOwnedBundle(string bundleName)
+        {
+            foreach (AssetBundle owned in ownedBundles)
+            {
+                if (ResourceBundleLoader.IsNamed(owned, bundleName)) return owned;
+            }
+            return null;
+        }
+
+        /// <summary>
         /// 加载 AssetBundle 并自动检测所有资源类型
         /// </summary>
         private static int LoadBundleInternal(string bundlePath, string bundleName)
         {
             AssetBundle bundle = null;
-            bool retained = false;
+            bool acquired = false, retained = false;
 
             try
             {
-                bundle = ResourceBundleLoader.LoadFromFile(bundlePath);
+                // 先复用本工厂已持有的同名包：同一文件再 LoadFromFile 会被 Unity 拒绝并报错。
+                bundle = FindOwnedBundle(bundleName);
+                if (bundle == null)
+                {
+                    bundle = ResourceBundleLoader.LoadFromFile(bundlePath);
+                    acquired = bundle != null;
+                }
                 if (bundle == null)
                 {
                     ModBehaviour.DevLog("[EquipmentFactory] 加载 AssetBundle 失败: " + bundlePath);
@@ -752,7 +729,7 @@ namespace BossRush
                             FinalizeCustomMeleeWeapon(itemPrefab, modelAgent, baseName);
                         }
 
-                        ItemAssetsCollection.AddDynamicEntry(itemPrefab);
+                        BossRushDynamicItemRegistry.Publish(itemPrefab);
                         loadedCount++;
 
                         ModBehaviour.DevLog("[EquipmentFactory] 成功加载: " + itemPrefab.gameObject.name +
@@ -776,8 +753,8 @@ namespace BossRush
             }
             finally
             {
-                // Before publication no external object can own this failed/empty bundle.
-                if (!retained && bundle != null) bundle.Unload(true);
+                // Before publication no external object can own this failed/empty bundle; a reused owned bundle stays owned.
+                if (acquired && !retained && bundle != null) bundle.Unload(true);
             }
         }
 

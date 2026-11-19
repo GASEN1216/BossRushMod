@@ -23,10 +23,5 @@ namespace BossRush
         /// 3D 模型基础名（对应 Frostmourne_Melee_Model）
         /// </summary>
         public const string ModelBaseName = "Frostmourne_Melee";
-
-        /// <summary>
-        /// 图标资源名称
-        /// </summary>
-        public const string IconAssetName = "frostmourne_icon";
     }
 }

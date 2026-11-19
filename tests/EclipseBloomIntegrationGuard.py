@@ -27,6 +27,7 @@ FIXED_PATHS = (
     "WavesArena/WavesArenaRuntimeModule_EnemyMaintenance.cs",
     "Patches/Combat/CharacterOnDeadPatch.cs",
     "Integration/EquipmentFactory_RuntimeModels.cs",
+    "Integration/ModItemIcons.cs",
     "WavesArena/WavesArenaRuntimeModule_EnemyPresets.cs", "WavesArena/WavesArenaRuntimeModule_LegacySpawn.cs",
     "Utilities/EnemySpawnHostBridge.cs", "Utilities/BossPoolSpawnBindings.cs", "Utilities/EnemySpawnCore.cs", "Integration/IntegrationHostCompatibility.cs",
     "Audio/BossBgmCoordinator.cs", "Assets/Data/Audio/BgmTracks.json",
@@ -84,7 +85,6 @@ def validate(root=ROOT):
     ground = PREFIX + "EclipseBloomGroundProjection.cs"
     visuals = PREFIX + "EclipseBloomVisuals.cs"
     model = PREFIX + "ResidualSunShieldModel.cs"
-    icon = PREFIX + "ResidualSunShieldIcon.cs"
     authored = PREFIX + "EclipseBloomAuthoredAssets.cs"
     assets = PREFIX + "EclipseBloomAssetManager.cs"
     pool = PREFIX + "EclipseBloomPoolAdapter.cs"
@@ -309,18 +309,10 @@ def validate(root=ROOT):
     require("Integration/EquipmentFactory_RuntimeModels.cs", "internal static bool RegisterRuntimeEquipmentModel(",
             'SetAgentUtilityPrefab(item, "EquipmentModel", model);', "InjectItemGraphicForEquipment(item, model, true);",
             "if (item.ItemGraphic == null || item.ItemGraphic.gameObject != model.gameObject) return false;")
-    borrowed = require("Integration/EquipmentFactory_RuntimeModels.cs", "internal static T GetLoadedEquipmentAsset<T>(",
-            "foreach (UnityEngine.AssetBundle bundle in ownedBundles)", "System.StringComparison.OrdinalIgnoreCase",
-            "return bundle.LoadAsset<T>(assetPath);")
-    check("Unload(" not in borrowed and "Destroy(" not in borrowed and "LoadFromFile(" not in borrowed,
-          "工厂已拥有资源查询只借用，不得再加载或卸载 bundle")
-    require(icon, "internal static Sprite GetSprite(", "ResidualSunShieldModel.GetTemplate()", "owner.EnsureSprite()")
-    require(icon, "private Sprite EnsureSprite()", "EquipmentFactory.GetLoadedEquipmentAsset<Sprite>(ResidualSunShieldModel.BundleName, BundleIconAssetPath)",
-            "loaded.texture.width != Size", "loaded.texture.height != Size", "sprite = loaded;")
-    check("private const int Size = 512;" in compact(source(icon)), "正式盾片图标尺寸必须保持 512")
-    check(re.search(r"\bDestroy\s*\(", source(icon)) is None and "ProductionIconCache" not in source(icon) and "File.ReadAllBytes" not in source(icon),
-          "正式盾片图标只借用专属包资源，不得销毁工厂资产或回退旧图标")
-    require(icon, "private void OnDestroy()", "sprite = null;")
+    # 盾片图标与其他 Mod 物品同一条路：名字登记在 ModItemIcons，注册时由 Publish 套用（ModItemIconGuard）；配置器不碰图标。
+    check(not (root / PREFIX / "ResidualSunShieldIcon.cs").exists(), "盾片不再保留专属图标组件")
+    check('case BossRushItemIds.ResidualSunShield: return "residual_sun_shield_icon";' in source("Integration/ModItemIcons.cs"),
+          "盾片图标名登记在 ModItemIcons")
     require(authored, "internal static void Acquire()", "File.Exists(path)", "ResourceBundleLoader.LoadFromFile(path)",
             "Petal = LoadMesh(\"petal\");", "Core = LoadMesh(\"core\");", "Fragment = LoadMesh(\"fragment\");", "references++;")
     require(authored, "internal static void Release()", "if (references > 0) references--;", "if (references == 0) ResetStaticCaches();")
@@ -345,8 +337,8 @@ def validate(root=ROOT):
     require(central, "internal void InjectLocalization_Extra_Integration()",
             "ResidualSunShieldWeaponConfig.InjectLocalization();", "EclipseBloomLocalization.Inject();")
     require(config, "public static bool Configure(Item item)", "item.Value = ResidualSunShieldConfig.ItemValue;",
-            "ModeFItemConfigHelper.ClearInheritedUsage(item);", "if (!ResidualSunShieldModel.Bind(item)) return false;",
-            "ResidualSunShieldIcon.GetSprite(item)", "if (icon == null) return false;", "item.Icon = icon;")
+            "ModeFItemConfigHelper.ClearInheritedUsage(item);", "if (!ResidualSunShieldModel.Bind(item)) return false;")
+    check(".Icon" not in compact(source(config)), "盾片配置器不直接写物品图标")
     require(config, "public static bool TryConfigure(Item item)", "return TryConfigure(item, ResidualSunShieldConfig.BaseName);")
     require(config, "public static bool TryConfigure(Item item, string baseName)",
             "NewWeaponConfiguratorCore.ConfigureTotem(item, baseName, Spec)", "return Configure(item);")

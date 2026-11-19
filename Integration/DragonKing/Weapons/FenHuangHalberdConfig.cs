@@ -25,7 +25,6 @@ namespace BossRush
         public override string DescriptionEN => "A heavy halberd forged in a dragon core's embers. Fire seeps through its runes.\n<color=#FF6347>[3-Hit Combo]</color> Sweep, launch, slam. Each hit burns; the last pulls enemies in.\n<color=#FF4500>[Dragon Emperor Fissure]</color> Right-click to leap and slam, raising six fire pillars ahead.\n<color=#FFD700>[Dragon Flame Mark]</color> Attacks apply up to 5 marks. The slam detonates them; more marks deal more damage.";
         public override int ItemQuality => 7;
         public override string[] ItemTags => new string[] { "Weapon", "MeleeWeapon", "DontDropOnDeadInSlot", "Special", "DragonKing" };
-        public override string IconAssetName => FenHuangHalberdIds.IconAssetName;
 
         /// <summary>
         /// 断界戟默认基础攻击范围。

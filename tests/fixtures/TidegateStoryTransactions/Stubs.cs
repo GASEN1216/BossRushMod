@@ -294,7 +294,7 @@ namespace BossRush
         public sealed class Options { public string Title, Body, Warning, ConfirmLabel, CancelLabel; public bool Danger, SingleAction; public object Illustration; public Action OnConfirm; }
         public static void Show(Options options) { }
     }
-    public static class TidegateJournalArt { public static object Get(string id) { return null; } public static void ResetStaticCaches() { } }
+    public static class TidegateJournalArt { public static object Get(string id) { return null; } }
     public static class CourierService
     {
         public static int QuickDeliverItems(Item[] items, string banner, bool notify, out int fallback)

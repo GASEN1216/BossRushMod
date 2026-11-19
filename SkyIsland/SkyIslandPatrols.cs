@@ -47,7 +47,10 @@ namespace BossRush
                 throw new ArgumentException("巡守 owner 未就绪");
             root = map; player = mainPlayer; graphMask = mask; groundMask = floorMask;
             origin = offset; content = definitions; valid = sessionValid; story = currentStory;
-            SkyIslandPatrolData data = SkyIslandPatrolRules.Load(ModBehaviour.GetModPath());
+            // 读文件走共享 JsonDataRegistry（缺文件 / 读失败记 CriticalLog），解析与整表回退留在纯规则里。
+            string raw;
+            SkyIslandPatrolData data = SkyIslandPatrolRules.FromText(
+                JsonDataRegistry.TryReadDataFile(SkyIslandPatrolRules.DataSubDirectory, SkyIslandPatrolRules.DataFileName, out raw) ? raw : null);
             DataSource = data.Source;
             cells = new Cell[data.Slots.Length];
             for (int i = 0; i < cells.Length; i++)

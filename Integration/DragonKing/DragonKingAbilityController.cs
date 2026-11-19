@@ -208,19 +208,7 @@ namespace BossRush
         private float cachedWeaponBulletSpeed = 30f;
         private float lastWeaponShootSoundTime = float.NegativeInfinity;
 
-        // ========== 反射缓存（避免重复反射） ==========
-
-        private delegate void AudioPostDelegate(string eventName, GameObject target);
-
-        /// <summary>
-        /// 缓存的AudioManager.Post委托
-        /// </summary>
-        private static AudioPostDelegate cachedAudioPostDelegate = null;
-
-        /// <summary>
-        /// 是否已尝试解析AudioManager.Post
-        /// </summary>
-        private static bool cachedAudioPostResolved = false;
+        // ========== 音效节流 ==========
 
         /// <summary>
         /// 跨龙皇共享的音效节流时间表，避免同一帧堆出多次相同事件
@@ -479,8 +467,6 @@ namespace BossRush
             ClearStaticMaterialCache();
             cachedWarningCircleUnitPoints = null;
             nextAttackDesyncSeed = 0;
-            cachedAudioPostDelegate = null;
-            cachedAudioPostResolved = false;
             sharedSoundThrottleTimestamps.Clear();
             sharedTrackedTarget = null;
             sharedTrackedTargetRigidbody = null;
@@ -793,7 +779,7 @@ namespace BossRush
         {
             try
             {
-                string modBasePath = System.IO.Path.GetDirectoryName(GetType().Assembly.Location);
+                string modBasePath = ModBehaviour.GetModPath();
                 DragonKingAssetManager.LoadAssetBundleSync(modBasePath);
             }
             catch (Exception e)

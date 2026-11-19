@@ -31,10 +31,8 @@ namespace BossRush
         private const float MODEF_BOUNTY_RADAR_GUIDE_SIZE = 760f;
         private const float MODEF_BOUNTY_RADAR_EDGE_MARGIN = 54f;
         private const int MODEF_BOUNTY_RADAR_CANVAS_ORDER = BossRushUILayers.ModeFBountyRadar;
-        private const string MODEF_BOUNTY_RADAR_REGULAR_SPRITE_PATH = "Assets/ui/modef_bounty_radar/bounty_circle_regular.png";
-        private const string MODEF_BOUNTY_RADAR_LEADER_SPRITE_PATH = "Assets/ui/modef_bounty_radar/bounty_circle_leader.png";
-        private const string MODEF_BOUNTY_RADAR_REGULAR_SPRITE_PATH_LEGACY = "Assets/ui/bounty_circle_regular.png";
-        private const string MODEF_BOUNTY_RADAR_LEADER_SPRITE_PATH_LEGACY = "Assets/ui/bounty_circle_leader.png";
+        private const string MODEF_BOUNTY_RADAR_REGULAR_SPRITE_PATH = "Assets/ui/bounty_circle_regular.png";
+        private const string MODEF_BOUNTY_RADAR_LEADER_SPRITE_PATH = "Assets/ui/bounty_circle_leader.png";
 
         private string modeFCachedPlayerName = null;
         private float modeFNextPlayerNameRefreshTime = 0f;

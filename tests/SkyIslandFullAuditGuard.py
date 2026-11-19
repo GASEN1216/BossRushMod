@@ -109,11 +109,16 @@ def main():
         forbid(panel, token, "SKY_PANEL_ART 又在玩家帧上解码插图并写缓存")
     art = read(SKY + "SkyIslandUiArt.cs")
     has_art = need_body(art, "internal static bool HasArt(string assetName)", "插图只读探测")
-    require(has_art, "bundle.Contains(assetName)", "插图探测只能查 bundle 目录")
-    for token in ("LoadAsset", "LoadImage", "FromBundle(", "FromRawPng(", "sprites["):
+    # 插图取图走 ModSprites，探测也问同一个入口的只读版：缓存 → 包目录（Contains）→ 允许散图时文件在不在。
+    require(has_art, "ModSprites.Exists(ArtPath(assetName))", "插图探测必须问取图的同一个入口 ModSprites.Exists")
+    for token in ("LoadAsset", "LoadImage", "ModSprites.Get(", "sprites["):
         forbid(has_art, token, "插图探测不得加载资源或写缓存")
     if has_art and re.search(r"(?<![\w.])Get\(", has_art):
         errors.append("插图探测不得调用会解码并缓存的 Get")
+    exists = need_body(read("Integration/ModSprites.cs"), "internal static bool Exists(string relativePath)", "ModSprites 只读探测")
+    require(exists, "ProductionIconCache.Contains(key)", "探测只能查压缩包目录")
+    for token in ("Decode(", "Load(", "LoadImage", "LoadAsset", "ProductionIconCache.Get(", "sprites["):
+        forbid(exists, token, "ModSprites.Exists 不得解码、加载资源或写缓存")
 
     countdown = need_body(cases, "private bool ValidateSkyIslandOfficialCountdown(out string metrics, out string reason)",
                           "SKY_EXTRACTION_OFFICIAL_UI")

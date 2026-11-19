@@ -8,7 +8,7 @@
 //   - 元素爆发环 + 放射碎片：转调 NewWeaponFx.PlayBurst（与新武器同一份实现）
 //   - 折线电弧：委托 Common/Effects/SetBonusArcPool（独立 MonoBehaviour 池，惰性建、停用即销毁）
 //   - 击杀过滤（照 CodexKillCollector.OnGlobalDead 的过滤序）与敌人扫描（照 PlayerLavaZone）
-//   - 音效路径常量（照 DragonKingConfig.SoundBasePath）
+//   - 音效路径（与 DragonKingConfig 的音效路径同一做法：用时经 ModBehaviour.GetModPath() 拼）
 //
 // 设计约束（AGENTS.md 4.12）：
 //   所有对象都由套装 Activate 时惰性创建、Deactivate 时销毁；不穿套装时零对象、零订阅、零每帧工作。
@@ -26,17 +26,29 @@ namespace BossRush
     /// <summary>
     /// 套装音效文件路径。文件由 tools/gen_setbonus_sfx.py 生成到 Assets/Sounds/SetBonus/，
     /// 由 compile_official.bat 随构建部署；缺文件时 PlaySoundEffect 静默返回，不影响玩法。
+    /// 用时才拼（2026-11-19）：静态字段初始化器里取程序集位置，取不到时会抛 TypeInitializationException
+    /// 永久毒化本类型（见 NewWeaponSfx 的注释）。Mod 根目录取不到时返回 null，PlaySoundEffect 照样静默跳过。
     /// </summary>
     internal static class SetBonusSfx
     {
-        public static readonly string BasePath = Path.Combine(
-            Path.GetDirectoryName(typeof(SetBonusSfx).Assembly.Location),
-            "Assets", "Sounds", "SetBonus");
+        // Mod 根目录在进程内不变，取到一次就记住（取不到不记，下次再取）。
+        private static string directory;
 
-        public static readonly string ThunderChain = Path.Combine(BasePath, "thunder_chain.wav");
-        public static readonly string ThunderCounter = Path.Combine(BasePath, "thunder_counter.wav");
-        public static readonly string FrostNova = Path.Combine(BasePath, "frost_nova.wav");
-        public static readonly string FrostCounter = Path.Combine(BasePath, "frost_counter.wav");
+        public static string ThunderChain { get { return Resolve("thunder_chain.wav"); } }
+        public static string ThunderCounter { get { return Resolve("thunder_counter.wav"); } }
+        public static string FrostNova { get { return Resolve("frost_nova.wav"); } }
+        public static string FrostCounter { get { return Resolve("frost_counter.wav"); } }
+
+        private static string Resolve(string fileName)
+        {
+            if (directory == null)
+            {
+                string modPath = ModBehaviour.GetModPath();
+                if (string.IsNullOrEmpty(modPath)) return null;
+                directory = Path.Combine(modPath, "Assets", "Sounds", "SetBonus");
+            }
+            return Path.Combine(directory, fileName);
+        }
     }
 
     internal partial class SetBonusRuntimeModule

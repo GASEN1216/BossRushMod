@@ -91,7 +91,7 @@ namespace BossRush
         internal static void BindUsageUtilitiesToItem(Item item,Duckov.ItemUsage.UsageUtilities usage,float time) { }
     }
     internal static class EquipmentHelper { internal static void AddTagToItem(Item item,string tag) { item.Tags.Add(tag); } }
-    internal static class EquipmentHelperIcon { internal static void TryInjectIcon(Item item,object bundle,string name) { } }
+    internal static class BossRushDynamicItemRegistry { internal static bool Publish(Item item) { ItemAssetsCollection.AddDynamicEntry(item); return true; } }
     internal sealed class TidegateLeadUsage : Duckov.ItemUsage.UsageBehavior { }
     internal sealed class TidegateLetterUsage : Duckov.ItemUsage.UsageBehavior { }
 }

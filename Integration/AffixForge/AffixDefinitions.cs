@@ -151,7 +151,7 @@ namespace BossRush
         /// <summary>词缀描述本地化键前缀。</summary>
         public const string DescLocKeyPrefix = "BossRush_AffixForge_Desc_";
 
-        /// <summary>词缀图标目录（相对 Mod 根，走 ItemFactory.GetSpriteFromFile）。</summary>
+        /// <summary>词缀图标目录（相对 Mod 根，走 ModSprites.Get）。</summary>
         public const string IconRelativeDirectory = "Assets/ui/AffixForge";
 
         /// <summary>单件装备最多的词缀槽位数。</summary>
@@ -275,7 +275,7 @@ namespace BossRush
         /// <summary>狂潮：击杀后的射速 / 机动性增益（每层）。</summary>
         private static readonly float[] Val_Frenzy = { 0.04f, 0.06f, 0.09f };
 
-        /// <summary>鹰目：常驻暴击率加成。</summary>
+        /// <summary>鹰目：常驻近战暴击率与爆头伤害加成（主角枪械只有爆头算暴击，枪械暴击率对玩家无效）。</summary>
         private static readonly float[] Val_HawkEye = { 0.04f, 0.07f, 0.11f };
 
         /// <summary>灌能：追加电系伤害占本次实伤的比例。</summary>
@@ -412,8 +412,8 @@ namespace BossRush
                 IconFileName = "affix_" + Id_HawkEye + ".png",
                 TierValues = Val_HawkEye,
                 NameCN = "鹰目", NameEN = "Hawk Eye",
-                DescCN = "常驻：枪械与近战暴击率各 +{0}。",
-                DescEN = "Passive: gun and melee crit chance +{0}."
+                DescCN = "常驻：近战暴击率与爆头伤害各 +{0}。",
+                DescEN = "Passive: melee crit chance and headshot damage +{0}."
             },
             new AffixDefinition
             {
@@ -634,7 +634,7 @@ namespace BossRush
             return "Ⅲ";
         }
 
-        /// <summary>图标相对路径（供 ItemFactory.GetSpriteFromFile 使用）。</summary>
+        /// <summary>图标相对路径（供 ModSprites.Get 使用）。</summary>
         public static string GetIconRelativePath(AffixDefinition def)
         {
             if (def == null || string.IsNullOrEmpty(def.IconFileName)) return null;

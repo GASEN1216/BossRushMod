@@ -158,6 +158,42 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// Mod 物品 prefab 进官方动态表的唯一出口：先套声明的图标，再 AddDynamicEntry。
+        /// 官方第一次读元数据时会缓存 prefab.Icon，所以图标必须在注册前就位（ModItemIcons 文件头）。
+        /// </summary>
+        internal static bool Publish(Item prefab)
+        {
+            if (prefab == null) return false;
+            ModItemIcons.ApplyBeforePublish(prefab);
+            return ItemAssetsCollection.AddDynamicEntry(prefab);
+        }
+
+        /// <summary>
+        /// Mod 重新启用时调用（生产图标包准备好之后、加载物品包之前）。
+        /// 上一轮注册的 prefab 还留在官方动态表里，但它们借的图标随生产包卸载一起销毁了；
+        /// 这里补上图标并重新注册，官方缓存的元数据也随之刷新。首次启动时表里没有 Mod 物品，什么都不做。
+        /// </summary>
+        internal static int RefreshPublishedIcons()
+        {
+            int refreshed = 0;
+            foreach (int typeId in Plans.Keys)
+            {
+                Item prefab = GetRegisteredPrefabWithoutEnsuring(typeId);
+                if (prefab == null || prefab.Icon != null) continue;
+                try
+                {
+                    if (Publish(prefab)) refreshed++;
+                }
+                catch (Exception e)
+                {
+                    Debug.LogWarning("[BossRushDynamicItemRegistry] 重新启用时补图标失败 " + typeId + ": " + e.Message);
+                }
+            }
+            if (refreshed > 0) ModBehaviour.DevLog("[BossRushDynamicItemRegistry] 重新启用：补回 " + refreshed + " 件物品的图标");
+            return refreshed;
+        }
+
         internal static void ResetStaticCaches()
         {
             InProgress.Clear();
@@ -429,6 +465,17 @@ namespace BossRush
                 BossRushItemIds.LastShiftStamp,
                 BossRushItemIds.LastShiftTicketStub);
 
+            // 收集品 100 件与收藏册：零新增 bundle 的克隆兜底。玩家仓库、背包与收藏册存档里都有这些 TypeID，
+            // 漏登记会让重启后它们退化成官方 FallbackItem（AGENTS 契约第 6 节）。
+            Add(plans, new RegistrationPlan
+            {
+                FallbackLoader = delegate(int typeId) { return CollectibleItems.EnsureRuntimeRegistration(typeId); }
+            }, CollectibleTypeIds());
+            Add(plans, new RegistrationPlan
+            {
+                FallbackLoader = delegate(int typeId) { return CollectionBookItem.EnsureRuntimeRegistration(); }
+            }, BossRushItemIds.CollectionBook);
+
             // 回火液：克隆冷淬液 prefab，零新增 bundle；漏登记时仓库里的回火液重启后会退化成官方 FallbackItem。
             Add(plans, new RegistrationPlan
             {
@@ -515,6 +562,14 @@ namespace BossRush
             };
         }
 
+        /// <summary>收集品 TypeID 连续占 CollectibleFirst..CollectibleLast（定义表按号排列）。</summary>
+        private static int[] CollectibleTypeIds()
+        {
+            int[] ids = new int[BossRushItemIds.CollectibleLast - BossRushItemIds.CollectibleFirst + 1];
+            for (int i = 0; i < ids.Length; i++) ids[i] = BossRushItemIds.CollectibleFirst + i;
+            return ids;
+        }
+
         private static void Add(Dictionary<int, RegistrationPlan> plans, RegistrationPlan plan, params int[] typeIds)
         {
             for (int i = 0; i < typeIds.Length; i++)
@@ -577,8 +632,7 @@ namespace BossRush
             AssetBundle bundle = null;
             try
             {
-                string assemblyLocation = typeof(ModBehaviour).Assembly.Location;
-                string modDir = Path.GetDirectoryName(assemblyLocation);
+                string modDir = ModBehaviour.GetModPath();
                 string bundlePath = Path.Combine(modDir, "Assets", "bossrush_ticket");
 
                 if (!File.Exists(bundlePath))
@@ -618,7 +672,7 @@ namespace BossRush
                     }
 
                     AddTagsToItem(itemPrefab, new string[] { "Key", "SpecialKey" });
-                    ItemAssetsCollection.AddDynamicEntry(itemPrefab);
+                    BossRushDynamicItemRegistry.Publish(itemPrefab);
                     itemCount++;
 
                     if (itemPrefab.TypeID == BossRushItemIds.BossRushTicket)

@@ -1,19 +1,17 @@
 // ============================================================================
 // SimpleJsonHelper.cs - 轻量级JSON工具类
 // ============================================================================
-// 模块说明：
-//   提供简单的JSON序列化和反序列化功能。
-//   由于 Unity JsonUtility 对普通C#类支持不完善，使用手动实现。
-//   
-// 使用场景：
-//   - 需要持久化的简单数据结构
-//   - 不想引入第三方JSON库
-//   - 数据量较小，性能要求不高
-//   
+// 模块说明（2026-11-19 核对现状）：
+//   嵌套 JSON 的解析一律用 Common/Data/BossRushJsonValue.cs 的 BossRushJsonParser，这里不再扩展读侧。
+//   本文件只剩两类用途：
+//   - 扁平写出：GetBuilder + Append* + EscapeString（存档编码、配置写回、许愿台请求体等）；
+//   - 许愿台飞书接口返回的扁平取值：ExtractString / ExtractInt / UnescapeString / ForEachObject
+//     （WishFountainConfigAndValidation / SendPipeline / FetchPipeline；按原文本搜键，只适合这些已知形状的小响应）。
+//   不再使用的 ExtractLong / ExtractFloat / ExtractBool / FindArrayBounds 已删除。
+//
 // 性能说明：
-//   - 序列化：调用方使用独立 StringBuilder，避免嵌套序列化互相清空
-//   - 反序列化：基于字符串查找，适合小数据量
-//   - 不适合大量数据或高频调用场景
+//   - 写出：调用方使用独立 StringBuilder，避免嵌套序列化互相清空
+//   - 取值：基于字符串查找，适合小数据量，不适合大量数据或高频调用场景
 // ============================================================================
 
 using System;
@@ -202,110 +200,6 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 从JSON字符串中提取长整数值
-        /// </summary>
-        public static long ExtractLong(string json, string key, int searchStart = 0, int searchEnd = -1)
-        {
-            if (string.IsNullOrEmpty(json)) return 0;
-            if (searchEnd < 0) searchEnd = json.Length;
-            
-            string pattern = "\"" + key + "\":";
-            int keyPos = json.IndexOf(pattern, searchStart);
-            
-            if (keyPos < 0 || keyPos >= searchEnd)
-                return 0;
-            
-            int valueStart = keyPos + pattern.Length;
-            
-            while (valueStart < searchEnd && valueStart < json.Length && char.IsWhiteSpace(json[valueStart]))
-                valueStart++;
-            
-            int valueEnd = valueStart;
-            if (valueEnd < json.Length && json[valueEnd] == '-')
-                valueEnd++;
-            
-            while (valueEnd < searchEnd && valueEnd < json.Length && char.IsDigit(json[valueEnd]))
-                valueEnd++;
-            
-            if (valueEnd == valueStart)
-                return 0;
-            
-            long.TryParse(json.Substring(valueStart, valueEnd - valueStart), out long result);
-            return result;
-        }
-        
-        /// <summary>
-        /// 从JSON字符串中提取浮点数值
-        /// </summary>
-        public static float ExtractFloat(string json, string key, int searchStart = 0, int searchEnd = -1)
-        {
-            if (string.IsNullOrEmpty(json)) return 0f;
-            if (searchEnd < 0) searchEnd = json.Length;
-            
-            string pattern = "\"" + key + "\":";
-            int keyPos = json.IndexOf(pattern, searchStart);
-            
-            if (keyPos < 0 || keyPos >= searchEnd)
-                return 0f;
-            
-            int valueStart = keyPos + pattern.Length;
-            
-            while (valueStart < searchEnd && valueStart < json.Length && char.IsWhiteSpace(json[valueStart]))
-                valueStart++;
-            
-            int valueEnd = valueStart;
-            if (valueEnd < json.Length && json[valueEnd] == '-')
-                valueEnd++;
-            
-            while (valueEnd < searchEnd && valueEnd < json.Length && 
-                   (char.IsDigit(json[valueEnd]) || json[valueEnd] == '.' || json[valueEnd] == 'e' || json[valueEnd] == 'E' || json[valueEnd] == '+' || json[valueEnd] == '-'))
-            {
-                // 防止读取到下一个负数
-                if ((json[valueEnd] == '-' || json[valueEnd] == '+') && valueEnd > valueStart && 
-                    json[valueEnd - 1] != 'e' && json[valueEnd - 1] != 'E')
-                    break;
-                valueEnd++;
-            }
-            
-            if (valueEnd == valueStart)
-                return 0f;
-            
-            float.TryParse(json.Substring(valueStart, valueEnd - valueStart), 
-                System.Globalization.NumberStyles.Float, 
-                System.Globalization.CultureInfo.InvariantCulture, 
-                out float result);
-            return result;
-        }
-        
-        /// <summary>
-        /// 从JSON字符串中提取布尔值
-        /// </summary>
-        public static bool ExtractBool(string json, string key, int searchStart = 0, int searchEnd = -1)
-        {
-            if (string.IsNullOrEmpty(json)) return false;
-            if (searchEnd < 0) searchEnd = json.Length;
-            
-            string pattern = "\"" + key + "\":";
-            int keyPos = json.IndexOf(pattern, searchStart);
-            
-            if (keyPos < 0 || keyPos >= searchEnd)
-                return false;
-            
-            int valueStart = keyPos + pattern.Length;
-            
-            while (valueStart < searchEnd && valueStart < json.Length && char.IsWhiteSpace(json[valueStart]))
-                valueStart++;
-            
-            // 检查是否为 true
-            if (valueStart + 4 <= json.Length && valueStart + 4 <= searchEnd)
-            {
-                return json.Substring(valueStart, 4).Equals("true", StringComparison.OrdinalIgnoreCase);
-            }
-            
-            return false;
-        }
-        
-        /// <summary>
         /// 反转义JSON字符串
         /// </summary>
         public static string UnescapeString(string str)
@@ -344,20 +238,6 @@ namespace BossRush
         #endregion
         
         #region 数组解析辅助
-        
-        /// <summary>
-        /// 查找JSON数组的边界
-        /// </summary>
-        /// <param name="json">JSON字符串</param>
-        /// <param name="arrayStart">输出：数组起始位置（'['的位置）</param>
-        /// <param name="arrayEnd">输出：数组结束位置（']'的位置）</param>
-        /// <returns>是否找到有效数组</returns>
-        public static bool FindArrayBounds(string json, out int arrayStart, out int arrayEnd)
-        {
-            arrayStart = json?.IndexOf('[') ?? -1;
-            arrayEnd = json?.LastIndexOf(']') ?? -1;
-            return arrayStart >= 0 && arrayEnd > arrayStart;
-        }
         
         /// <summary>
         /// 遍历JSON数组中的对象

@@ -11,6 +11,7 @@ namespace BossRush
             host.Register(new OddParcelRuntimeModule());
             host.Register(new DangerousPrototypeCommission());
             host.Register(new DangerousPrototypeRuntimeModule());
+            host.Register(new CollectiblesRuntimeModule());
         }
     }
 }

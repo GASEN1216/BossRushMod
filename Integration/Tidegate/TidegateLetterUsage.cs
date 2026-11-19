@@ -7,7 +7,6 @@
 // ============================================================================
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using Duckov.NoteIndexs;
 using Duckov.UI;
@@ -18,10 +17,10 @@ using UnityEngine.UI;
 
 namespace BossRush
 {
-    // 正文仍由中英本地化绘制。横幅是独立插画，不走背包方形图标的压缩、裁切规则。
+    // 正文仍由中英本地化绘制。横幅是独立插画，不走背包方形图标的压缩、裁切规则：
+    // 这几张 jpg 不在 production_icons 里，正式构建也读散图，经 ModSprites.GetUnpacked 解码并由它持有、缓存。
     internal static class TidegateJournalArt
     {
-        private static readonly Dictionary<string, Sprite> loaded = new Dictionary<string, Sprite>(StringComparer.Ordinal);
         internal static Sprite Get(string id)
         {
             string name;
@@ -35,25 +34,7 @@ namespace BossRush
                 case "Ending": name = "ending"; break;
                 default: return null;
             }
-            Sprite sprite;
-            if (loaded.TryGetValue(id, out sprite)) return sprite;
-            string directory = ModBehaviour.GetModPath();
-            if (string.IsNullOrEmpty(directory)) return null;
-            sprite = RawImageLoader.LoadSprite(Path.Combine(directory, "Assets", "Items", "tidegate_" + name + "_art.jpg"), "Tidegate_" + id);
-            loaded.Add(id, sprite);
-            return sprite;
-        }
-
-        internal static void ResetStaticCaches()
-        {
-            foreach (Sprite art in loaded.Values)
-            {
-                if (art == null) continue;
-                Texture2D texture = art.texture;
-                UnityEngine.Object.Destroy(art);
-                if (texture != null) UnityEngine.Object.Destroy(texture);
-            }
-            loaded.Clear();
+            return ModSprites.GetUnpacked(Path.Combine("Assets", "Items", "tidegate_" + name + "_art.jpg"));
         }
     }
 

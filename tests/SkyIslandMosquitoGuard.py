@@ -199,8 +199,13 @@ def main():
     require(on_destroy, "SkyIslandGnats.ResetStaticCaches();", "云蚋的精灵表、材质与单例要随模块销毁清掉")
     require(on_destroy, "SkyIslandNight.ResetStaticCaches();", "强制夜里开关要随模块销毁复位")
     reset = need_body(gnats, "internal static void ResetStaticCaches()", "云蚋静态缓存复位")
-    for token in ("Current = null;", "frames = null;", "sheet = null;", "spriteMaterial = trailMaterial = null;", "artAttempted = false;"):
+    for token in ("Current = null;", "frames = null;", "spriteMaterial = trailMaterial = null;", "artAttempted = false;"):
         require(reset, token, "云蚋静态缓存复位不全")
+    # 精灵表贴图借自 ModSprites（生产图标包 / Dev 散图），由它在 Mod 卸载时释放；这里只销毁切出来的帧与材质。
+    require(need_body(gnats, "private static bool EnsureArt()", "精灵表"), "ModSprites.Get(SheetFolder + \"/\" + SheetFile)",
+            "云蚋精灵表必须经 ModSprites 取（生产图标包优先，Dev 或缺包读散图）")
+    if re.search(r"Destroy\((?:sheet|texture)\)", reset) or re.search(r"\bsheet\s*=", gnats):
+        errors.append("云蚋不得持有或销毁借自 ModSprites 的精灵表贴图")
     require(need_body(night, "internal static void ResetStaticCaches()", "判夜开关复位"), "DevForceNight = false;", "强制夜里开关不许跨进程残留")
 
     # ---- 1. 判夜只有一个口径 ----

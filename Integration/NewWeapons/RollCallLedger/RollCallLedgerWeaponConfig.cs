@@ -38,9 +38,6 @@ namespace BossRush
                 item.MaxDurability = 0f;
                 ModeFItemConfigHelper.SetHiddenMember(item, "weight", RollCallLedgerConfig.ItemWeight);
                 ModeFItemConfigHelper.ClearInheritedUsage(item);
-                UnityEngine.Sprite icon = RollCallLedgerIcon.GetSprite(item,
-                    ProductionIconCache.Get(RollCallLedgerConfig.IconPath));
-                if (icon != null) item.Icon = icon;
                 InjectLocalization();
                 return true;
             }

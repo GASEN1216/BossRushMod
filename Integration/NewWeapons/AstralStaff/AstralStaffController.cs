@@ -1087,11 +1087,6 @@ namespace BossRush
         private static float lastCustomTime = -1f;
         private static string lastCustomFile;
 
-        private static MethodInfo postMethod;
-        private static MethodInfo setPitchMethod;
-        private static MethodInfo setVolumeMethod;
-        private static bool resolved;
-
         internal static void PostSwing(CharacterMainControl at, int tier, bool second = false)
         {
             float pitch = tier == 1 ? 1.02f : tier == 2 ? (second ? 0.81f : 0.91f) : 0.66f;
@@ -1126,26 +1121,15 @@ namespace BossRush
         {
             try
             {
-                if (!resolved)
+                if (BossRushOfficialAudio.HasPost && at != null)
                 {
-                    resolved = true;
-                    postMethod = typeof(global::Duckov.AudioManager).GetMethod("Post",
-                        BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(string), typeof(GameObject) }, null);
-                }
-                if (postMethod != null && at != null)
-                {
-                    object handle = postMethod.Invoke(null, new object[] { eventName, at.gameObject });
+                    object handle = BossRushOfficialAudio.Post(eventName, at.gameObject);
                     if (handle == null) return;
                     // 已对照本机 FMODUnity：EventInstance.setPitch/Volume(float)。
-                    // 只调整这次官方事件，音量仍经过游戏的 Master / SFX bus。
-                    if (setPitchMethod == null)
-                    {
-                        Type eventType = handle.GetType();
-                        setPitchMethod = eventType.GetMethod("setPitch", new[] { typeof(float) });
-                        setVolumeMethod = eventType.GetMethod("setVolume", new[] { typeof(float) });
-                    }
-                    if (setPitchMethod != null) setPitchMethod.Invoke(handle, new object[] { pitch });
-                    if (setVolumeMethod != null) setVolumeMethod.Invoke(handle, new object[] { volume });
+                    // 只调整这次官方事件，音量仍经过游戏的 Master / SFX bus；调音高抛出时不再调音量（同从前）。
+                    Exception error;
+                    if (!BossRushOfficialAudio.TrySetEventPitch(handle, pitch, out error) && error != null) return;
+                    BossRushOfficialAudio.TrySetEventVolume(handle, volume, out error);
                 }
             }
             catch { /* 音效不是关键路径 */ }
@@ -1153,10 +1137,6 @@ namespace BossRush
 
         internal static void ResetStaticCaches()
         {
-            postMethod = null;
-            setPitchMethod = null;
-            setVolumeMethod = null;
-            resolved = false;
             lastCustomTime = -1f;
             lastCustomFile = null;
         }

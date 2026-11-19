@@ -314,7 +314,7 @@ namespace BossRush
         internal static readonly Color Danger = new Color(1f, 0f, 0f);
     }
     internal static class BossRushUIKit { internal static void ApplyWorldTextOutline(TMPro.TextMeshProUGUI text) { } }
-    internal static class ProductionIconCache { internal static Sprite Get(string path) { return new Sprite(); } }
+    internal static class ModSprites { internal static Sprite Get(string path) { return new Sprite(); } }
     internal static class BossRushFxKit { internal static Sprite GetSoftCircleSprite() { return new Sprite(); } }
     internal static class BossRushProceduralSprites { internal static Sprite GetRingSprite() { return new Sprite(); } }
     internal static class EmptyMagazineMineFx

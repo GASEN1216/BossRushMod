@@ -438,3 +438,26 @@ namespace BossRush
 
 namespace BossRush.Utils { }
 namespace Duckov.Utilities { }
+namespace BossRush
+{
+    // 收集品开箱接口桩（生产实现 Integration/Collectibles/CollectibleLootRuntime.cs）：本夹具只验本图搜刮，
+    // 记一下首开回调交给收集品判定的次数：本夹具只有封签柜与铅封侧柜，回归断言它们一次都不交。
+    internal enum CollectibleSeries { SkyIsland = 6, Tidegate = 7, LastShift = 8 }
+    internal enum CollectibleBoxTier { Normal = 0, High = 1 }
+    internal static class CollectibleTuning
+    {
+        internal const int MaxQuality = 8;
+        internal const int SkyIslandQualityCap = 6;
+        internal const int TidegateUnderwaterQualityCap = 4;
+    }
+    internal static class CollectibleLootRuntime
+    {
+        internal static int Notified;
+        internal static int LastCap;
+        internal static void NotifyModBoxFirstOpened(InteractableLootbox box, CollectibleSeries series, CollectibleBoxTier tier, int qualityCap)
+        {
+            Notified++;
+            LastCap = qualityCap;
+        }
+    }
+}

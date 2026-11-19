@@ -150,7 +150,8 @@ namespace Duckov.ItemUsage
     }
 }
 
-#if !MISSING_AUDIO
+// 生产统一入口 BossRushOfficialAudio 按编译期类型 typeof(Duckov.AudioManager) 绑定，所以三种形态都要有这个类型；
+// MISSING_AUDIO 形态是「类型在、PostCustomSFX 入口不在」（生产里官方类型整个缺失时由入口的 TypeLoadException 兜底，同样视为入口缺失）。
 namespace Duckov
 {
     public static class AudioManager
@@ -160,15 +161,15 @@ namespace Duckov
         {
             Probe.RecordPost(path, target, loop); return null;
         }
-#else
+#elif !MISSING_AUDIO
         public static void PostCustomSFX(string path, GameObject target, bool loop)
         {
             Probe.RecordPost(path, target, loop);
         }
 #endif
     }
+    public class AudioObject : MonoBehaviour { }
 }
-#endif
 
 namespace FMOD.Studio { public struct EventInstance { } }
 

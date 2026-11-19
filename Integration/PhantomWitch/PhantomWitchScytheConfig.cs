@@ -43,7 +43,6 @@ namespace BossRush
             "PhantomWitch"
         };
 
-        public override string IconAssetName => PhantomWitchScytheIds.IconAssetName;
 
         /// <summary>
         /// 基础攻击范围（与 WeaponStats 中的 AttackRange 保持一致）

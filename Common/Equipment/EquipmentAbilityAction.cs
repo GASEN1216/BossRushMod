@@ -45,8 +45,6 @@ namespace BossRush.Common.Equipment
 
         protected static Type characterMovementType = null;
         protected static MethodInfo pauseGroundConstraintMethod = null;
-        protected static MethodInfo playSoundMethod = null;
-        protected static Type audioManagerType = null;
 
         // ========== 实例缓存（每帧使用的反射结果） ==========
 
@@ -85,22 +83,7 @@ namespace BossRush.Common.Equipment
                     );
                 }
 
-                // 缓存 AudioManager 类型
-                audioManagerType = Utils.ReflectionCache.GetType("AudioManager", "TeamSoda.Duckov.Core");
-                if (audioManagerType == null)
-                {
-                    audioManagerType = Utils.ReflectionCache.GetType("Duckov.AudioManager", "TeamSoda.Duckov.Core");
-                }
-
-                // 缓存 Play/Post 方法
-                if (audioManagerType != null)
-                {
-                    playSoundMethod = Utils.ReflectionCache.GetMethod(
-                        audioManagerType,
-                        "Post",
-                        new Type[] { typeof(string), typeof(GameObject) }
-                    );
-                }
+                // 官方 AudioManager.Post 由 BossRushOfficialAudio 统一反射（见 PlaySound）
             }
             catch (Exception e)
             {
@@ -452,17 +435,8 @@ namespace BossRush.Common.Equipment
         {
             if (string.IsNullOrWhiteSpace(soundKey)) return;
 
-            try
-            {
-                if (playSoundMethod != null)
-                {
-                    playSoundMethod.Invoke(null, new object[] { soundKey, gameObject });
-                }
-            }
-            catch
-            {
-                // 静默失败
-            }
+            // 经 BossRushOfficialAudio 调官方 AudioManager.Post(string, GameObject)；入口缺失或抛出时静默失败
+            BossRushOfficialAudio.Post(soundKey, gameObject);
         }
 
         /// <summary>

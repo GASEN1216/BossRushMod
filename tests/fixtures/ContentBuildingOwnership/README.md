@@ -7,3 +7,5 @@
 真实建筑注入器由官方 Windows 构建校验绑定；`ContentBuildingOwnershipGuard.py` 锁定模块归属、显式 owner、共享工具、协程与事件退订接线。夹具不能替代 Unity 建造 UI、存档建筑恢复、重绘、模型 shader 或协程实机测试。
 
 2026-09-26 宿主载体同步：宿主桥由 `integration_host_source.py` 从 `IntegrationHostCompatibility.cs` 的 ContentBuildingBridges 区域逐字生成，共享反射 helper 继续直接链接。
+
+2026-11-19：宿主桥新增 HasCampaignBoardBundle / HasBackMountainShowcaseBundle（基地装配管线的 alreadyLoaded 判据），回归验证它们只读本宿主已有的建筑模块字段、不为探测创建模块。

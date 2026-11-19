@@ -27,11 +27,6 @@ namespace BossRush
             "ArmorPiercing", "AttackSpeed", "AttackRange", "StaminaCost"
         };
 
-        private static Texture2D iconTexture;
-        private static Sprite iconSprite;
-        // 借用生产包里的 Sprite（与 ItemFactory 同口径），借来的不归本类销毁。
-        private static bool iconBorrowed;
-
         // ====================================================================
         // 注册
         // ====================================================================
@@ -80,7 +75,7 @@ namespace BossRush
                 if (utility != null) UnityEngine.Object.DestroyImmediate(utility, true);
 
                 EquipmentFactory.RegisterMeleeWeapon(AstralStaffConfig.TypeId);
-                ItemAssetsCollection.AddDynamicEntry(clone);
+                BossRushDynamicItemRegistry.Publish(clone);
 
                 bool configured = TryConfigure(clone);
                 ModBehaviour.DevLog(AstralStaffConfig.LogPrefix + " 已注册 (TypeID=" + AstralStaffConfig.TypeId
@@ -131,7 +126,6 @@ namespace BossRush
                 ApplyMeleeSetting(item);
                 ApplyTags(item);
                 ApplyAttributes(item);
-                ApplyIcon(item);
                 DisableItemRenderers(item);
                 InjectLocalization();
                 return true;
@@ -296,111 +290,6 @@ namespace BossRush
         }
 
         // ====================================================================
-        // 图标（代码绘制）
-        // ====================================================================
-
-        private static void ApplyIcon(Item item)
-        {
-            Sprite sprite = GetIconSprite();
-            if (sprite != null) item.Icon = sprite;
-        }
-
-        /// <summary>生图图标在 production_icons 包里的键（tools/gen_codex_art.py + production_icon_manifest.json）。</summary>
-        internal const string IconAssetPath = "Assets/Items/astral_staff_icon.png";
-
-        internal static Sprite GetIconSprite()
-        {
-            if (iconSprite != null && (iconTexture != null || iconBorrowed)) return iconSprite;
-            // 2026-10-08 owner「图好丑」：优先用生图图标，直接借用生产包里的 Sprite（与 ItemFactory 的 300 多个
-            // 图标同口径）。不复制贴图：包内贴图压缩且不可读，Instantiate 只得到空壳，实测图标空白。
-            // 包缺失时回落下面的程序化图。
-            Sprite production = null;
-            try { production = ProductionIconCache.Get(IconAssetPath); }
-            catch (Exception e) { ModBehaviour.DevLog(AstralStaffConfig.LogPrefix + " 生产图标读取失败: " + e.Message); }
-            if (production != null)
-            {
-                iconSprite = production;
-                iconTexture = null;
-                iconBorrowed = true;
-                return iconSprite;
-            }
-            const int size = 256;
-            Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
-            texture.name = "AstralStaff_Icon";
-            texture.wrapMode = TextureWrapMode.Clamp;
-            texture.filterMode = FilterMode.Bilinear;
-            texture.hideFlags = HideFlags.HideAndDontSave;
-
-            Vector2 a = new Vector2(40f, 36f);
-            Vector2 b = new Vector2(216f, 220f);
-            Vector2[] beans = { new Vector2(70f, 190f), new Vector2(98f, 214f), new Vector2(46f, 160f) };
-            Color32[] pixels = new Color32[size * size];
-            for (int y = 0; y < size; y++)
-            {
-                for (int x = 0; x < size; x++)
-                {
-                    Vector2 p = new Vector2(x + 0.5f, y + 0.5f);
-                    float d = DistanceToSegment(p, a, b);
-                    // 白芯 + 金辉 + 青色外晕，层层加色
-                    float core = Mathf.Clamp01(1f - d / 3.2f);
-                    float glow = Mathf.Exp(-d * d / 90f);
-                    float halo = Mathf.Exp(-d * d / 700f) * 0.45f;
-                    float r = core + glow * 1f + halo * 0.35f;
-                    float g = core + glow * 0.78f + halo * 0.9f;
-                    float bl = core + glow * 0.3f + halo * 1f;
-                    float alpha = Mathf.Clamp01(core + glow * 0.95f + halo);
-
-                    // 两端星芒
-                    alpha = AddStar(p, a, 26f, ref r, ref g, ref bl, alpha);
-                    alpha = AddStar(p, b, 30f, ref r, ref g, ref bl, alpha);
-                    for (int i = 0; i < beans.Length; i++)
-                    {
-                        alpha = AddStar(p, beans[i], 13f, ref r, ref g, ref bl, alpha);
-                    }
-
-                    pixels[y * size + x] = new Color32(
-                        (byte)(Mathf.Clamp01(r) * 255f), (byte)(Mathf.Clamp01(g) * 255f),
-                        (byte)(Mathf.Clamp01(bl) * 255f), (byte)(alpha * 255f));
-                }
-            }
-            texture.SetPixels32(pixels);
-            texture.Apply(false, true);
-
-            if (iconSprite != null && !iconBorrowed) UnityEngine.Object.Destroy(iconSprite);
-            if (iconTexture != null) UnityEngine.Object.Destroy(iconTexture);
-            iconBorrowed = false;
-            iconTexture = texture;
-            iconSprite = Sprite.Create(texture, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f), 100f);
-            iconSprite.name = "AstralStaff_IconSprite";
-            iconSprite.hideFlags = HideFlags.HideAndDontSave;
-            return iconSprite;
-        }
-
-        private static float AddStar(Vector2 p, Vector2 c, float radius, ref float r, ref float g, ref float b, float alpha)
-        {
-            Vector2 d = p - c;
-            float dist = d.magnitude;
-            if (dist > radius * 1.6f) return alpha;
-            // 四芒星：两条细长十字 + 圆形亮核
-            float cross = Mathf.Max(
-                Mathf.Exp(-(d.x * d.x) / 4f) * Mathf.Clamp01(1f - Mathf.Abs(d.y) / radius),
-                Mathf.Exp(-(d.y * d.y) / 4f) * Mathf.Clamp01(1f - Mathf.Abs(d.x) / radius));
-            float dot = Mathf.Exp(-dist * dist / (radius * 1.8f));
-            float s = Mathf.Clamp01(cross + dot);
-            r += s;
-            g += s * 0.92f;
-            b += s * 0.7f;
-            return Mathf.Clamp01(alpha + s);
-        }
-
-        private static float DistanceToSegment(Vector2 p, Vector2 a, Vector2 b)
-        {
-            Vector2 ab = b - a;
-            float t = Mathf.Clamp01(Vector2.Dot(p - a, ab) / ab.sqrMagnitude);
-            return (p - (a + ab * t)).magnitude;
-        }
-
-        // ====================================================================
         // 本地化
         // ====================================================================
 
@@ -424,12 +313,6 @@ namespace BossRush
 
         internal static void ResetStaticCaches()
         {
-            // 借来的 Sprite 归生产包所有，由 ProductionIconCache 卸载时一并回收。
-            if (iconSprite != null && !iconBorrowed) UnityEngine.Object.Destroy(iconSprite);
-            if (iconTexture != null) UnityEngine.Object.Destroy(iconTexture);
-            iconSprite = null;
-            iconTexture = null;
-            iconBorrowed = false;
             AstralStaffSlashStub.ResetStaticCaches();
         }
     }

@@ -21,7 +21,7 @@
 
 ## 图标和获取
 
-正式图标键为 `Assets/Items/roll_call_ledger_icon.png`，经 `production_icons` 包加载。[RollCallLedgerIcon.cs](file://Integration/NewWeapons/RollCallLedger/RollCallLedgerIcon.cs) 让动态 prefab 拥有 GPU 复制的纹理和 Sprite，避免卸包后失效；克隆的物品组件不能释放原 owner 的资源。
+正式图标键为 `Assets/Items/roll_call_ledger_icon.png`，经 `production_icons` 包加载；图标名登记在 [ModItemIcons](file://Integration/ModItemIcons.cs)，注册前由 Publish 套用（2026-11-19 起不再有自持副本组件，见《物品图标统一入口》）。
 
 浮舟的货物来自 `Assets/Data/DuckNpcs.json` 中 `sky_fuzhou` 的可选 `permanent.shop`；岛上本人位于登云码头的 `POI_A`。商店名为「浮舟的航前杂货 / Fuzhou's Departure Supplies」，按原价 20000 出售，婚后仍沿用原身份和商品配置。解析、通用互动与婚后访问见 [捏脸 NPC 工具链](file://.qoder/repowiki/zh/content/NPC 关系系统/捏脸 NPC 工具链.md)。旧蓝图缺少 shop 时继续没有商店。
 

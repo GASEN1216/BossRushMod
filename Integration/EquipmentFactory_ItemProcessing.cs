@@ -87,7 +87,7 @@
 // ============================================================================
 //
 //   方式一：自动加载（推荐）
-//   EquipmentFactory.LoadAllEquipment();  // 自动扫描并加载所有 bundle
+//   yield return EquipmentFactory.LoadAllEquipmentAsync(owner);  // 延迟 bootstrap 逐个异步预载并注册（FactoryResourceLoading）
 //
 //   方式二：手动加载单个 bundle
 //   EquipmentFactory.LoadBundle("my_equipment");

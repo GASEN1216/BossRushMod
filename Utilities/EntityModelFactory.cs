@@ -49,9 +49,6 @@ namespace BossRush
         // 初始化状态
         private static bool _isInitialized = false;
 
-        // Mod 根目录路径
-        private static string _modPath;
-
         // 预定义的路牌预制体名称
         private const string SIGNPOST_PREFAB_NAME = "BossRush_Signpost_Model";
 
@@ -73,7 +70,6 @@ namespace BossRush
                 return;
             }
 
-            _modPath = modPath;
             _prefabCache = new Dictionary<string, GameObject>(16);
             _bundleInfos = new List<BundleInfo>(4);
 
@@ -474,102 +470,6 @@ namespace BossRush
 
         #endregion
 
-        #region 查询方法
-
-        /// <summary>
-        /// 检查指定预制体是否存在
-        /// </summary>
-        /// <param name="prefabName">预制体名称</param>
-        /// <returns>是否存在</returns>
-        public static bool HasPrefab(string prefabName)
-        {
-            if (!_isInitialized || _prefabCache == null)
-            {
-                return false;
-            }
-
-            // 先检查缓存
-            if (_prefabCache.ContainsKey(prefabName))
-            {
-                return true;
-            }
-
-            // 尝试从未加载的 bundle 中查找
-            TryLoadPrefabFromBundles(prefabName);
-
-            return _prefabCache.ContainsKey(prefabName);
-        }
-
-        /// <summary>
-        /// 获取所有已加载的预制体名称
-        /// </summary>
-        /// <returns>预制体名称列表（只读）</returns>
-        public static IReadOnlyList<string> GetLoadedPrefabNames()
-        {
-            if (!_isInitialized || _prefabCache == null)
-            {
-                return new List<string>();
-            }
-
-            // 先加载所有 bundle
-            LoadAllBundles();
-
-            // 返回所有缓存的预制体名称
-            List<string> names = new List<string>(_prefabCache.Count);
-            foreach (var kvp in _prefabCache)
-            {
-                names.Add(kvp.Key);
-            }
-            return names;
-        }
-
-        /// <summary>
-        /// 加载所有未加载的 Bundle
-        /// </summary>
-        private static void LoadAllBundles()
-        {
-            if (_bundleInfos == null)
-            {
-                return;
-            }
-
-            for (int i = 0; i < _bundleInfos.Count; i++)
-            {
-                BundleInfo info = _bundleInfos[i];
-
-                if (!info.loadAttempted)
-                {
-                    info.loadAttempted = true;
-
-                    try
-                    {
-                        info.bundle = ResourceBundleLoader.LoadFromFile(info.path);
-
-                        if (info.bundle != null)
-                        {
-                            CacheBundlePrefabs(info.bundle);
-                        }
-                    }
-                    catch
-                    {
-                        info.bundle = null;
-                    }
-
-                    _bundleInfos[i] = info;
-                }
-            }
-        }
-
-        /// <summary>
-        /// 检查工厂是否已初始化
-        /// </summary>
-        public static bool IsInitialized
-        {
-            get { return _isInitialized; }
-        }
-
-        #endregion
-
         #region 资源释放
 
         /// <summary>
@@ -611,7 +511,6 @@ namespace BossRush
                 }
 
                 _isInitialized = false;
-                _modPath = null;
 
                 ModBehaviour.DevLog("[EntityModelFactory] 已卸载所有资源");
             }

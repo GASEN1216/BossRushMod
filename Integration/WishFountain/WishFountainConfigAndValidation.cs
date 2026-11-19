@@ -6,7 +6,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -27,7 +26,7 @@ namespace BossRush
 
             try
             {
-                string modDir = GetModDirectory();
+                string modDir = ModBehaviour.GetModPath();
                 if (string.IsNullOrEmpty(modDir))
                 {
                     ModBehaviour.DevLog("[WishFountain] 无法获取 Mod 目录");
@@ -91,23 +90,8 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 获取 Mod 目录路径
-        /// </summary>
-        private static string GetModDirectory()
-        {
-            try
-            {
-                string assemblyLocation = typeof(ModBehaviour).Assembly.Location;
-                return Path.GetDirectoryName(assemblyLocation);
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// 获取当前 Mod 版本号
+        /// 获取当前 Mod 版本号：取 WikiContent 下最新的 changelog__v*.md 文件名，都取不到时为 "unknown"。
+        /// 不读程序集版本：编译清单不写任何 Assembly*Version 特性，程序集版本恒为 0.0.0.0（2026-11-19 删掉了那段死分支）。
         /// </summary>
         private static string GetModVersion()
         {
@@ -116,78 +100,16 @@ namespace BossRush
                 return cachedModVersion;
             }
 
-            try
-            {
-                Assembly assembly = typeof(ModBehaviour).Assembly;
-
-                object[] informationalAttrs = assembly.GetCustomAttributes(
-                    typeof(AssemblyInformationalVersionAttribute), false);
-                if (informationalAttrs != null && informationalAttrs.Length > 0)
-                {
-                    string informational = ((AssemblyInformationalVersionAttribute)informationalAttrs[0]).InformationalVersion;
-                    if (!string.IsNullOrEmpty(informational))
-                    {
-                        cachedModVersion = NormalizeVersionText(informational);
-                        return cachedModVersion;
-                    }
-                }
-
-                object[] fileVersionAttrs = assembly.GetCustomAttributes(
-                    typeof(AssemblyFileVersionAttribute), false);
-                if (fileVersionAttrs != null && fileVersionAttrs.Length > 0)
-                {
-                    string fileVersion = ((AssemblyFileVersionAttribute)fileVersionAttrs[0]).Version;
-                    if (!string.IsNullOrEmpty(fileVersion))
-                    {
-                        cachedModVersion = NormalizeVersionText(fileVersion);
-                        return cachedModVersion;
-                    }
-                }
-
-                Version version = assembly.GetName().Version;
-                if (version != null && version.ToString() != "0.0.0.0")
-                {
-                    cachedModVersion = NormalizeVersionText(version.ToString());
-                    return cachedModVersion;
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[WishFountain] 获取 Mod 版本失败: " + e.Message);
-            }
-
             string latestWikiVersion = GetLatestWikiChangelogVersion();
-            if (!string.IsNullOrEmpty(latestWikiVersion))
-            {
-                cachedModVersion = latestWikiVersion;
-                return cachedModVersion;
-            }
-
-            cachedModVersion = "unknown";
+            cachedModVersion = string.IsNullOrEmpty(latestWikiVersion) ? "unknown" : latestWikiVersion;
             return cachedModVersion;
-        }
-
-        private static string NormalizeVersionText(string rawVersion)
-        {
-            if (string.IsNullOrEmpty(rawVersion))
-            {
-                return null;
-            }
-
-            Match match = Regex.Match(rawVersion, @"\d+\.\d+\.\d+");
-            if (match.Success)
-            {
-                return "v" + match.Value;
-            }
-
-            return rawVersion.Trim();
         }
 
         private static string GetLatestWikiChangelogVersion()
         {
             try
             {
-                string modDir = GetModDirectory();
+                string modDir = ModBehaviour.GetModPath();
                 if (string.IsNullOrEmpty(modDir))
                 {
                     return null;

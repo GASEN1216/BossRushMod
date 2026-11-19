@@ -262,6 +262,9 @@ internal static class Program
             InteractableLootbox box = run.ActiveBoxes().Single();
             Check(box.name == "LastShiftLoot_stamp" && box.Inventory.GetItemCount() > 0, "retry did not publish the stocked cabinet");
             Check(stamp == null && !device.Available, "successful cabinet did not commit the stamp exactly once");
+            int offered = CollectibleLootRuntime.Notified;
+            box.Open();
+            Check(CollectibleLootRuntime.Notified == offered, "the lead-sealed side cabinet was offered to collectibles");
         }
     }
 
@@ -345,10 +348,13 @@ internal static class Program
         Check(Debug.Messages.Any(message => message.Contains("CARGO_CLAIMED") && message.Contains("items=" + run.ExpectedCount + "/" + run.ExpectedCount)),
             "missing committed cargo record");
         int opened = 0;
+        int offered = CollectibleLootRuntime.Notified;
         run.Loot.Opened += id => { if (id == "cargo" + run.Side) opened++; };
         box.Open();
         box.Open();
         Check(opened == 1, "official open callback is not connected exactly once");
+        // 封签柜签收时要核对头两格，先塞收集品会让签收报「货没点齐」：首开也不交收集品判定（CR-2026-11-19-006）。
+        Check(CollectibleLootRuntime.Notified == offered, "the sealed cargo cabinet was offered to collectibles");
         return box;
     }
 

@@ -210,7 +210,9 @@ def main():
     need(build, "音效装配", "sounds = new TidegateSounds(world)")
     need(update, "音效推进", "sounds.Tick(position)")
     need(cleanup, "音效清理", "sounds.Dispose()")
-    need(sounds_src, "音效目录", '"Assets", "Sounds", "Tidegate"', '"PostCustomSFX"', '"StopAll"')
+    # 2026-11-19：官方 PostCustomSFX / StopAll 的反射统一到 Audio/BossRushOfficialAudio.cs。
+    need(sounds_src, "音效目录", '"Assets", "Sounds", "Tidegate"', 'BossRushOfficialAudio.TryPostCustomSfx(path, emitter, loop, out instance, out error)',
+         'BossRushOfficialAudio.TryStopAll(audio, out error)')
     dispose_sounds = body(sounds_src, "public void Dispose()") or ""
     if dispose_sounds.find("StopAll(null, go);") < 0 or dispose_sounds.find("StopAll(null, go);") > dispose_sounds.find("Destroy(go)"):
         errors.append("潮闸镇音效必须先 StopAll 再销毁发声体（循环声不随 GameObject 停）")

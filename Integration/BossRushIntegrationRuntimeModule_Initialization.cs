@@ -33,7 +33,7 @@ namespace BossRush
             // 初始化 ItemFactory（加载消耗品等非装备类物品）
             try
             {
-                // 注册物品配置器（必须在 LoadAllItems 之前）
+                // 注册物品配置器（必须在 LoadAllItemsAsync 之前）
                 EnsureItemContentConfiguratorsRegisteredForDynamicRegistry();
 
                 int itemCount = ItemFactory.LoadedItemCount;

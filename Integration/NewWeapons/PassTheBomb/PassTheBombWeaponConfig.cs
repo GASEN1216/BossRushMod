@@ -38,9 +38,6 @@ namespace BossRush
                 item.MaxDurability = 0f;
                 ModeFItemConfigHelper.SetHiddenMember(item, "weight", PassTheBombConfig.ItemWeight);
                 ModeFItemConfigHelper.ClearInheritedUsage(item);
-                UnityEngine.Sprite icon = PassTheBombIcon.GetSprite(item,
-                    ProductionIconCache.Get(PassTheBombConfig.IconPath));
-                if (icon != null) item.Icon = icon;
                 InjectLocalization();
                 return true;
             }

@@ -10,8 +10,8 @@ namespace BossRush
     /// 硬约束：
     /// - bundle 路径 &lt;modRoot&gt;/Assets/ui/modeg_presentation，每 runtime 至多 LoadFromFile 一次；
     /// - 资源：modeg_echo_emblem（徽记 256x256）、modeg_echo_banner（横幅 1024x576）；
-    /// - raw PNG fallback（Assets/ui/ModeG/*.png）仅开发构建（AllowDevTestEntry）可用；
-    /// - 生产环境缺包 fail-closed（TryPreflight 返回 false，入口不呈现）；
+    /// - 只认 bundle，不读散图（不得用 raw PNG 冒充发布包）；
+    /// - 缺包 fail-closed（TryPreflight 返回 false，入口不呈现）；
     /// - Unload 幂等（CleanupController 终局调用）。
     /// </summary>
     public static class ModeGPresentationAssetCache
@@ -22,9 +22,7 @@ namespace BossRush
         private const string BundleRelativePath = "Assets/ui/modeg_presentation";
         private const string EmblemAssetName = "modeg_echo_emblem";
         private const string BannerAssetName = "modeg_echo_banner";
-        private const string DevRawRelativeDir = "Assets/ui/ModeG";
 
-        private static readonly System.Collections.Generic.List<Sprite> ownedRawSprites = new System.Collections.Generic.List<Sprite>();
         private static AssetBundle _bundle;
         private static bool _loadAttempted;
         private static bool _preflightAttempted;
@@ -38,7 +36,7 @@ namespace BossRush
 
         /// <summary>
         /// 展示资源可用性预检（no-throw，缓存结果，Unload 后重置）。
-        /// 生产：bundle 必须可加载；开发：允许 raw PNG fallback。
+        /// bundle 必须可加载且两张 Sprite 都在。
         /// </summary>
         public static bool TryPreflight()
         {
@@ -70,7 +68,7 @@ namespace BossRush
         #region Sprite Accessors（带缓存）
 
         /// <summary>
-        /// 宿命回响徽记 Sprite（bundle 优先；开发构建 raw PNG fallback）。
+        /// 宿命回响徽记 Sprite（只从 bundle 取）。
         /// </summary>
         public static Sprite GetEmblemSprite()
         {
@@ -78,8 +76,7 @@ namespace BossRush
             _emblemAttempted = true;
             try
             {
-                _emblemSprite = LoadBundleSprite(EmblemAssetName)
-                    ?? LoadDevRawSprite(EmblemAssetName);
+                _emblemSprite = LoadBundleSprite(EmblemAssetName);
             }
             catch (Exception e)
             {
@@ -90,7 +87,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 宿命回响横幅 Sprite（bundle 优先；开发构建 raw PNG fallback）。
+        /// 宿命回响横幅 Sprite（只从 bundle 取）。
         /// </summary>
         public static Sprite GetBannerSprite()
         {
@@ -98,8 +95,7 @@ namespace BossRush
             _bannerAttempted = true;
             try
             {
-                _bannerSprite = LoadBundleSprite(BannerAssetName)
-                    ?? LoadDevRawSprite(BannerAssetName);
+                _bannerSprite = LoadBundleSprite(BannerAssetName);
             }
             catch (Exception e)
             {
@@ -121,14 +117,11 @@ namespace BossRush
             try
             {
                 // 复用已加载实例（避免与其他代码并发加载冲突）
-                foreach (AssetBundle loaded in AssetBundle.GetAllLoadedAssetBundles())
+                AssetBundle loaded = ResourceBundleLoader.FindLoaded(PresentationBundleName);
+                if (loaded != null)
                 {
-                    if (loaded != null && loaded.name != null
-                        && loaded.name.IndexOf(PresentationBundleName, StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        _bundle = loaded;
-                        return true;
-                    }
+                    _bundle = loaded;
+                    return true;
                 }
 
                 string modPath = ModBehaviour.GetModPath();
@@ -174,46 +167,6 @@ namespace BossRush
 
         #endregion
 
-        #region Dev Raw PNG Fallback（仅开发构建）
-
-        private static Sprite LoadDevRawSprite(string assetName)
-        {
-            if (!ModeGAvailability.AllowDevRawPngFallback) return null;
-            string path = System.IO.Path.Combine(ModBehaviour.GetModPath(), DevRawRelativeDir, assetName + ".png");
-            Sprite sprite = RawImageLoader.LoadSprite(path, assetName);
-            if (sprite != null) ownedRawSprites.Add(sprite);
-            return sprite;
-        }
-
-        private static string DevRawEmblemPath()
-        {
-            return DevRawPath(EmblemAssetName + ".png");
-        }
-
-        private static string DevRawBannerPath()
-        {
-            return DevRawPath(BannerAssetName + ".png");
-        }
-
-        private static string DevRawPath(string fileName)
-        {
-            try
-            {
-                string modPath = ModBehaviour.GetModPath();
-                if (string.IsNullOrEmpty(modPath)) return null;
-                return System.IO.Path.Combine(
-                    modPath,
-                    DevRawRelativeDir.Replace('/', System.IO.Path.DirectorySeparatorChar),
-                    fileName);
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        #endregion
-
         #region Unload（幂等；CleanupController 终局调用）
 
         /// <summary>
@@ -222,14 +175,6 @@ namespace BossRush
         /// </summary>
         public static void Unload()
         {
-            foreach (Sprite sprite in ownedRawSprites)
-            {
-                if (sprite == null) continue;
-                Texture2D texture = sprite.texture;
-                UnityEngine.Object.Destroy(sprite);
-                if (texture != null) UnityEngine.Object.Destroy(texture);
-            }
-            ownedRawSprites.Clear();
             try
             {
                 if (_bundle != null)

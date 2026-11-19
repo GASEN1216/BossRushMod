@@ -69,7 +69,7 @@ namespace BossRush
                     Debug.LogWarning("[SkyIslandBoss] 特效小包缺失，热浪与泥面只用粒子版：" + path);
                     return;
                 }
-                bundle = AssetBundle.LoadFromFile(path);
+                bundle = ResourceBundleLoader.LoadFromFile(path);
                 if (bundle == null)
                 {
                     Debug.LogWarning("[SkyIslandBoss] 特效小包读取失败，热浪与泥面只用粒子版：" + path);
@@ -137,7 +137,7 @@ namespace BossRush
     }
 
     /// <summary>
-    /// 头目 / 岛主招式音效。正式构建不引用 FMOD：与 <see cref="SkyIslandAmbience"/> 同一套 `AudioManager.PostCustomSFX` 反射绑定。
+    /// 头目 / 岛主招式音效。正式构建不引用 FMOD：与 <see cref="SkyIslandAmbience"/> 一样经 <see cref="BossRushOfficialAudio"/> 调官方 `AudioManager.PostCustomSFX`。
     /// 发声体是几只挂在地图根下的空物体，挪到位置再播（官方把事件挂在物体上做 3D 定位），轮流用，
     /// 免得挪走正在响的那只。同一种音效 0.08 s 内只响一次（三圈星焰齐落只响一声），45 m 外不播。
     /// 文件缺失或绑定失败只记一次警告，招式照打。静态状态由 <see cref="SkyIslandImpactFx.ResetStaticCaches"/> 收。
@@ -155,7 +155,6 @@ namespace BossRush
         private static readonly float[] nextAllowed = new float[Files.Length];
         private static readonly bool[] present = new bool[Files.Length];
         private static readonly GameObject[] emitters = new GameObject[EmitterCount];
-        private static MethodInfo post;
         private static string directory;
         private static bool resolved, warned;
         private static int next;
@@ -175,21 +174,23 @@ namespace BossRush
                 if (emitter == null) return;
                 nextAllowed[index] = now + MinInterval;
                 emitter.transform.position = at + Vector3.up;
-                post.Invoke(null, new object[] { Path.Combine(directory, Files[index]), emitter, false });
+                object instance;
+                Exception error;
+                if (!BossRushOfficialAudio.TryPostCustomSfx(Path.Combine(directory, Files[index]), emitter, false, out instance, out error)
+                    && error != null) Warn(error.Message);
             }
             catch (Exception e) { Warn(e.Message); }
         }
 
         private static bool Resolve()
         {
-            if (resolved) return post != null;
+            if (resolved) return BossRushOfficialAudio.HasPostCustomSfx;
             resolved = true;
-            post = typeof(Duckov.AudioManager).GetMethod("PostCustomSFX", BindingFlags.Public | BindingFlags.Static,
-                null, new[] { typeof(string), typeof(GameObject), typeof(bool) }, null);
+            bool available = BossRushOfficialAudio.HasPostCustomSfx;
             directory = Path.Combine(ModBehaviour.GetModPath(), "Assets", "Sounds", "SkyIsland");
             for (int i = 0; i < Files.Length; i++) present[i] = File.Exists(Path.Combine(directory, Files[i]));
-            if (post == null) Warn("官方 PostCustomSFX 入口缺失");
-            return post != null;
+            if (!available) Warn("官方 PostCustomSFX 入口缺失");
+            return available;
         }
 
         private static GameObject Emitter(Transform root)
@@ -223,7 +224,6 @@ namespace BossRush
             for (int i = 0; i < nextAllowed.Length; i++) nextAllowed[i] = 0f;
             resolved = false;
             warned = false;
-            post = null;
             next = 0;
         }
     }

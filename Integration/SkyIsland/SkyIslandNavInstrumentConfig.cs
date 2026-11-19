@@ -11,7 +11,7 @@
 // 【串到哪条线】天空岛主线的第一环：接取 → 零号区取物 → 回基地交付 → 开船点。
 //
 // 零新增 bundle：形态照 Integration/AffixForge/AffixForgeStoneConfig.cs，从既有 Mod 物品克隆一个
-// prefab 顶上，图标读 Assets/Items/<IconName>.png，缺图时退回风标罗盘的图（同为航海仪器，观感不跑偏）。
+// prefab 顶上；图标 sky_island_nav_instrument 登记在 ModItemIcons，注册时统一套用。
 // ============================================================================
 
 using System;
@@ -27,9 +27,6 @@ namespace BossRush
         public const int TYPE_ID = 500103;
         public const string PREFAB_NAME = "BossRush_SkyIsland_NavInstrument";
         public const string LOC_KEY_DISPLAY = "BossRush_SkyIsland_NavInstrument";
-        private const string ICON_NAME = "sky_island_nav_instrument";
-        /// <summary>缺专属图标时的退路：风标罗盘也是航海仪器，不会让任务物品顶着别的物品的脸。</summary>
-        private const string ICON_FALLBACK = "sky_island_wind_vane_compass";
         private const string LogPrefix = "[SkyIslandNavInstrument] ";
 
         private static bool runtimeFallbackRegistered;
@@ -72,8 +69,6 @@ namespace BossRush
                 EquipmentHelper.AddTagToItem(item, "Key");
                 EquipmentHelper.AddTagToItem(item, "SpecialKey");
                 EquipmentHelper.AddTagToItem(item, "Special");
-                if (!EquipmentHelperIcon.TryInjectIcon(item, null, ICON_NAME))
-                    EquipmentHelperIcon.TryInjectIcon(item, null, ICON_FALLBACK);
             }
             catch (Exception e)
             {
@@ -106,7 +101,7 @@ namespace BossRush
                 if (existing != null)
                 {
                     ConfigureItem(existing);
-                    try { ItemAssetsCollection.AddDynamicEntry(existing); }
+                    try { BossRushDynamicItemRegistry.Publish(existing); }
                     catch (Exception)
                     {
                         // 已在表内时重复登记会抛，忽略即可
@@ -135,7 +130,7 @@ namespace BossRush
                 UnityEngine.Object.DontDestroyOnLoad(clone.gameObject);
                 clone.SetTypeID(TYPE_ID);
                 ConfigureItem(clone);
-                ItemAssetsCollection.AddDynamicEntry(clone);
+                BossRushDynamicItemRegistry.Publish(clone);
                 runtimeFallbackRegistered = true;
                 ModBehaviour.DevLog(LogPrefix + "运行时兜底物品已注册");
                 return true;
@@ -299,7 +294,6 @@ namespace BossRush
                 // 回收失败只丢引用，不阻断流程
             }
         }
-
 
         #endregion
 

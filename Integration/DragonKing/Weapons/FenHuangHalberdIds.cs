@@ -26,10 +26,5 @@ namespace BossRush
         /// 3D 模型基础名（对应 FenHuangHalberd_Melee_Model）
         /// </summary>
         public const string ModelBaseName = "FenHuangHalberd_Melee";
-
-        /// <summary>
-        /// 图标资源名称
-        /// </summary>
-        public const string IconAssetName = "fenhuang_halberd_icon";
     }
 }

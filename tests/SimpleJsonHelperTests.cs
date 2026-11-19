@@ -36,13 +36,10 @@ internal static class SimpleJsonHelperTests
 
     private static void TestExtractorsDoNotMatchKeyPrefixes()
     {
-        const string json = "{\"npcId\":\"wrong\",\"id\":\"right\",\"pointsBonus\":99,\"points\":7,\"enabledExtra\":true,\"enabled\":false,\"ratioValue\":1.5,\"ratio\":2.5,\"ticksExtra\":1000,\"ticks\":42}";
+        const string json = "{\"npcId\":\"wrong\",\"id\":\"right\",\"pointsBonus\":99,\"points\":7}";
 
         AssertEqual("ExtractString exact key", SimpleJsonHelper.ExtractString(json, "id"), "right");
         AssertEqual("ExtractInt exact key", SimpleJsonHelper.ExtractInt(json, "points"), 7);
-        AssertEqual("ExtractBool exact key", SimpleJsonHelper.ExtractBool(json, "enabled"), false);
-        AssertEqual("ExtractFloat exact key", SimpleJsonHelper.ExtractFloat(json, "ratio"), 2.5f);
-        AssertEqual("ExtractLong exact key", SimpleJsonHelper.ExtractLong(json, "ticks"), 42L);
     }
 
     private static void TestStringEscapeRoundTrip()
@@ -63,26 +60,11 @@ internal static class SimpleJsonHelperTests
         AssertEqual("ExtractString escaped quotes", text, "say \"hi\" and keep \\ slash");
     }
 
-    private static void TestExtractFloatSupportsScientificNotation()
-    {
-        const string json = "{\"value\": -1.25e+2, \"other\": 3}";
-        float value = SimpleJsonHelper.ExtractFloat(json, "value");
-
-        AssertEqual("ExtractFloat scientific notation", value, -125f);
-    }
-
-    private static void TestExtractBoolIgnoresCase()
-    {
-        const string json = "{\"enabled\": TRUE, \"disabled\": false}";
-
-        AssertTrue("ExtractBool case insensitive", SimpleJsonHelper.ExtractBool(json, "enabled"));
-        AssertEqual("ExtractBool false", SimpleJsonHelper.ExtractBool(json, "disabled"), false);
-    }
-
     private static void TestForEachObjectSkipsBracesInsideStrings()
     {
         const string json = "{\"npcDataList\":[{\"npcId\":\"npc{1}\",\"points\":1},{\"npcId\":\"npc2\",\"points\":2}]}";
-        AssertTrue("FindArrayBounds", SimpleJsonHelper.FindArrayBounds(json, out int arrayStart, out int arrayEnd));
+        int arrayStart = json.IndexOf('[');
+        int arrayEnd = json.LastIndexOf(']');
 
         List<string> ids = new List<string>();
         SimpleJsonHelper.ForEachObject(json, arrayStart, arrayEnd, (source, start, end) =>
@@ -100,8 +82,6 @@ internal static class SimpleJsonHelperTests
         TestGetBuilderReturnsIndependentBuilders();
         TestStringEscapeRoundTrip();
         TestExtractStringHandlesEscapedQuotes();
-        TestExtractFloatSupportsScientificNotation();
-        TestExtractBoolIgnoresCase();
         TestExtractorsDoNotMatchKeyPrefixes();
         TestForEachObjectSkipsBracesInsideStrings();
         Console.WriteLine("SimpleJsonHelperTests: PASS");

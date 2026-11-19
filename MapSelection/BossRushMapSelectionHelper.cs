@@ -875,44 +875,7 @@ namespace BossRush
         /// </summary>
         private static Sprite LoadCustomBackgroundSpriteByName(string imageName)
         {
-            return MapThumbnailCache.GetOrLoad(GetModPath(), imageName);
-        }
-        
-        /// <summary>
-        /// 获取 Mod 目录路径
-        /// </summary>
-        private static string GetModPath()
-        {
-            try
-            {
-                // 通过 ModBehaviour.info.path 获取 Mod 路径
-                ModBehaviour mod = ModBehaviour.Instance;
-                if (mod != null)
-                {
-                    // 获取 info 属性（类型为 ModInfo）
-                    PropertyInfo infoProp = typeof(Duckov.Modding.ModBehaviour).GetProperty("info");
-                    if (infoProp != null)
-                    {
-                        object infoObj = infoProp.GetValue(mod, null);
-                        if (infoObj != null)
-                        {
-                            // 获取 ModInfo.path 字段
-                            FieldInfo pathField = infoObj.GetType().GetField("path");
-                            if (pathField != null)
-                            {
-                                string path = pathField.GetValue(infoObj) as string;
-                                ModBehaviour.DevLog("[BossRush] Mod 路径: " + path);
-                                return path;
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[BossRush] GetModPath 失败: " + e.Message);
-            }
-            return null;
+            return MapThumbnailCache.GetOrLoad(imageName);
         }
         
         /// <summary>

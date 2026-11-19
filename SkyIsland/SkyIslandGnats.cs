@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using Duckov.Utilities;
 using UnityEngine;
 using UnityEngine.Events;
@@ -34,6 +33,7 @@ namespace BossRush
         internal const int FrameCount = 7;
         internal const int FramePixels = 16;
         internal const string SheetFile = "sky_island_gnat_sheet.png";
+        private const string SheetFolder = "Assets/ui/SkyIsland";
         internal const string BuzzFile = "gnat_buzz.wav";
         /// <summary>16 像素对应约 0.48 m：1080p 下约 32 px。</summary>
         internal const float PixelsPerUnit = FramePixels / 0.48f;
@@ -89,7 +89,7 @@ namespace BossRush
             internal float Until;
         }
 
-        private static Texture2D sheet;
+        // 精灵表贴图借自 ModSprites（不归这里销毁）；切出来的帧与材质归本类。
         private static Sprite[] frames;
         private static Material spriteMaterial, trailMaterial;
         private static bool artAttempted;
@@ -105,8 +105,6 @@ namespace BossRush
         private readonly Splat[] splats = new Splat[SkyIslandMosquitoRules.MaxAlive];
         private readonly List<BossRushStatModifierRecord> itchRecords = new List<BossRushStatModifierRecord>();
         private readonly object modifierSource = new object();
-        private readonly MethodInfo postSound, stopAll;
-        private readonly object stopImmediately;
         private readonly bool usable;
         private GameObject buzzEmitter;
         private Collider playerCollider;
@@ -130,11 +128,6 @@ namespace BossRush
             wallMask = GameplayDataSettings.Layers.wallLayerMask.value;
             receiverLayer = LayerMask.NameToLayer("DamageReceiver");
             random = new System.Random(unchecked(Environment.TickCount ^ 0x51A7));
-            // 正式构建不引用 FMOD：与 SkyIslandAmbience 同一套反射绑定。
-            postSound = typeof(Duckov.AudioManager).GetMethod("PostCustomSFX", BindingFlags.Public | BindingFlags.Static,
-                null, new[] { typeof(string), typeof(GameObject), typeof(bool) }, null);
-            stopAll = typeof(Duckov.AudioObject).GetMethod("StopAll", BindingFlags.NonPublic | BindingFlags.Instance);
-            if (stopAll != null) stopImmediately = Enum.ToObject(stopAll.GetParameters()[0].ParameterType, 1);
             usable = EnsureArt();
             if (usable)
             {
@@ -1040,10 +1033,14 @@ namespace BossRush
             nextBuzzAttempt = now + 5f;
             try
             {
-                if (postSound == null || stopAll == null) throw new InvalidOperationException("官方空间音效生命周期入口缺失");
+                // 官方入口经 BossRushOfficialAudio 反射（与 SkyIslandAmbience 同一套绑定，正式构建不引用 FMOD）。
+                if (!BossRushOfficialAudio.HasPostCustomSfx || !BossRushOfficialAudio.HasStopAll) throw new InvalidOperationException("官方空间音效生命周期入口缺失");
                 string path = Path.Combine(Path.Combine(ModBehaviour.GetModPath(), "Assets/Sounds/SkyIsland"), BuzzFile);
                 if (!File.Exists(path)) throw new FileNotFoundException("云蚋嗡声未部署", BuzzFile);
-                buzzing = postSound.Invoke(null, new object[] { path, buzzEmitter, true }) != null;
+                object instance;
+                Exception error;
+                if (!BossRushOfficialAudio.TryPostCustomSfx(path, buzzEmitter, true, out instance, out error)) throw error;
+                buzzing = instance != null;
             }
             catch (Exception e)
             {
@@ -1062,7 +1059,8 @@ namespace BossRush
             {
                 // AudioObject 不承诺销毁时停掉循环：先 StopAll，再销毁发声体（与 SkyIslandAmbience 同一口径）。
                 Duckov.AudioObject audio = buzzEmitter == null ? null : buzzEmitter.GetComponent<Duckov.AudioObject>();
-                if (audio != null && stopAll != null) stopAll.Invoke(audio, new[] { stopImmediately });
+                Exception error;
+                if (audio != null && BossRushOfficialAudio.HasStopAll && !BossRushOfficialAudio.TryStopAll(audio, out error)) throw error;
             }
             catch (Exception e) { ModBehaviour.DevLog("[SkyIslandGnats] [WARNING] 嗡声停止失败：" + e.Message); }
         }
@@ -1101,19 +1099,16 @@ namespace BossRush
             if (frames != null) return true;
             if (artAttempted) return false;
             artAttempted = true;
-            Texture2D texture = null;
             Sprite[] sliced = null;
             try
             {
-                string path = Path.Combine(Path.Combine(ModBehaviour.GetModPath(), "Assets/ui/SkyIsland"), SheetFile);
-                Sprite packedSheet = ProductionIconCache.Get("Assets/ui/SkyIsland/" + SheetFile);
-                texture = packedSheet != null ? packedSheet.texture : null;
-                if (texture == null && !ProductionIconCache.AllowRawFallback) throw new InvalidOperationException("Packed gnat sheet missing");
-                if (texture == null && !File.Exists(path)) throw new FileNotFoundException("云蚋精灵表未部署", path);
-                if (texture == null) texture = new Texture2D(2, 2, TextureFormat.RGBA32, false, false);
-                if (packedSheet == null && !texture.LoadImage(File.ReadAllBytes(path), true)) throw new InvalidOperationException("精灵表解码失败");
+                // 生产图标包优先，Dev 或缺包读散图；取不到（未部署、解码失败）就硬失败。
+                Sprite packedSheet = ModSprites.Get(SheetFolder + "/" + SheetFile);
+                Texture2D texture = packedSheet != null ? packedSheet.texture : null;
+                if (texture == null) throw new InvalidOperationException("精灵表不可用：" + SheetFolder + "/" + SheetFile);
                 if (texture.width != FramePixels * FrameCount || texture.height != FramePixels)
                     throw new InvalidOperationException("精灵表尺寸不对：" + texture.width + "x" + texture.height);
+                // 这张图只给云蚋用，下面改名与采样参数改的是 ModSprites / 生产包共享的贴图（旧版对包里的贴图也这样改）。
                 texture.name = "SkyIslandGnatSheet";
                 // 像素画必须点采样：双线性会把 1 px 描边糊成灰边，夜里就看不清轮廓。
                 texture.filterMode = FilterMode.Point;
@@ -1129,7 +1124,6 @@ namespace BossRush
                 }
                 spriteMaterial = new Material(shader) { name = "SkyIslandGnatSprite" };
                 trailMaterial = new Material(shader) { name = "SkyIslandGnatTrail" };
-                sheet = texture;
                 frames = sliced;
                 return true;
             }
@@ -1139,7 +1133,6 @@ namespace BossRush
                 if (spriteMaterial != null) UnityEngine.Object.Destroy(spriteMaterial);
                 if (trailMaterial != null) UnityEngine.Object.Destroy(trailMaterial);
                 spriteMaterial = trailMaterial = null;
-                if (texture != null && !ProductionIconCache.IsBorrowed(texture)) UnityEngine.Object.Destroy(texture);
                 ModBehaviour.CriticalLog("sky-island-gnat-art", "[SkyIsland] 云蚋精灵表不可用，本进程不刷云蚋：" + e.Message);
                 return false;
             }
@@ -1185,8 +1178,6 @@ namespace BossRush
                 for (int i = 0; i < frames.Length; i++)
                     if (frames[i] != null) UnityEngine.Object.Destroy(frames[i]);
             frames = null;
-            if (sheet != null && !ProductionIconCache.IsBorrowed(sheet)) UnityEngine.Object.Destroy(sheet);
-            sheet = null;
             if (spriteMaterial != null) UnityEngine.Object.Destroy(spriteMaterial);
             if (trailMaterial != null) UnityEngine.Object.Destroy(trailMaterial);
             spriteMaterial = trailMaterial = null;

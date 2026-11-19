@@ -126,14 +126,11 @@ namespace BossRush
             try
             {
                 // 复用已加载实例：同一个 bundle 被 LoadFromFile 两次会直接失败
-                foreach (AssetBundle loaded in AssetBundle.GetAllLoadedAssetBundles())
+                AssetBundle loaded = ResourceBundleLoader.FindLoaded(SkinBundleName);
+                if (loaded != null)
                 {
-                    if (loaded != null && loaded.name != null
-                        && loaded.name.IndexOf(SkinBundleName, StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        _bundle = loaded;
-                        return true;
-                    }
+                    _bundle = loaded;
+                    return true;
                 }
 
                 string modPath = ModBehaviour.GetModPath();

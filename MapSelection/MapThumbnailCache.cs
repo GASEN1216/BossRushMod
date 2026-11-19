@@ -5,13 +5,12 @@
 //   地图选择菜单的自定义背景图（缩略图）此前每次打开菜单都重新 File.ReadAllBytes
 //   + new Texture2D + Sprite.Create，N 张图 = N 次同步读盘 + N 次纹理上传，全压在
 //   菜单打开帧，且纹理从不复用 = 内存泄漏。
-//   本缓存按 imageName 复用已加载的 Sprite/Texture2D，加载一次永久复用，
-//   并在 ResetStaticCaches 时显式销毁纹理，避免泄漏。
+//   现在取图走 ModSprites（生产图标包优先，Dev 或缺包读散图，解码出来的图由它持有并在卸载时销毁），
+//   本缓存只按 imageName 记住结果（含「找不到」），菜单再开不再探盘。
 // ============================================================================
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using UnityEngine;
 
 namespace BossRush
@@ -21,21 +20,17 @@ namespace BossRush
     /// </summary>
     public static class MapThumbnailCache
     {
-        // imageName -> Sprite（加载一次复用）。null 值也缓存，表示「该图找不到/加载失败」，
+        // imageName -> Sprite（借自 ModSprites，不归这里销毁）。null 值也缓存，表示「该图找不到/加载失败」，
         // 避免反复对不存在的文件做磁盘探测。
         private static readonly Dictionary<string, Sprite> spriteCache =
             new Dictionary<string, Sprite>(StringComparer.Ordinal);
 
-        // 同时持有创建出来的纹理，便于 Reset 时显式销毁，杜绝泄漏。
-        private static readonly List<Texture2D> ownedTextures = new List<Texture2D>();
-
         /// <summary>
-        /// 按文件名加载缩略图，命中缓存则直接复用。
+        /// 按文件名取缩略图，命中缓存则直接复用。依次找 Assets/preview、Assets、Mod 根目录。
         /// </summary>
-        /// <param name="modPath">Mod 根目录</param>
         /// <param name="imageName">图片文件名</param>
         /// <returns>Sprite，找不到或失败返回 null（结果同样会被缓存）</returns>
-        public static Sprite GetOrLoad(string modPath, string imageName)
+        public static Sprite GetOrLoad(string imageName)
         {
             if (string.IsNullOrEmpty(imageName))
             {
@@ -46,7 +41,7 @@ namespace BossRush
             if (spriteCache.TryGetValue(imageName, out cached))
             {
                 // 命中缓存（包含「曾经加载失败」的 null 记录）。
-                // 防御：纹理可能在场景卸载时被引擎回收，若 sprite 已失效则重新加载。
+                // 防御：图可能随 Mod 卸载被销毁，若 sprite 已失效则重新取。
                 if (cached != null)
                 {
                     return cached;
@@ -56,96 +51,18 @@ namespace BossRush
                 if (ReferenceEquals(cached, null)) return null;
             }
 
-            Sprite loaded = LoadFromDisk(modPath, imageName);
+            Sprite loaded = ModSprites.Get("Assets/preview/" + imageName)
+                ?? ModSprites.Get("Assets/" + imageName)
+                ?? ModSprites.Get(imageName);
             spriteCache[imageName] = loaded; // 同时缓存成功与失败结果
             return loaded;
         }
 
-        private static Sprite LoadFromDisk(string modPath, string imageName)
-        {
-            Sprite compressed = ProductionIconCache.Get("Assets/preview/" + imageName)
-                ?? ProductionIconCache.Get("Assets/" + imageName);
-            if (compressed != null) return compressed;
-            if (!ProductionIconCache.AllowRawFallback) return null;
-            Texture2D texture = null;
-            Sprite sprite = null;
-            bool retained = false;
-            try
-            {
-                if (string.IsNullOrEmpty(modPath))
-                {
-                    return null;
-                }
-
-                // 尝试 Assets/preview 子目录 -> Assets -> 根目录
-                string imagePath = Path.Combine(modPath, "Assets", "preview", imageName);
-                if (!File.Exists(imagePath))
-                {
-                    imagePath = Path.Combine(modPath, "Assets", imageName);
-                    if (!File.Exists(imagePath))
-                    {
-                        imagePath = Path.Combine(modPath, imageName);
-                        if (!File.Exists(imagePath))
-                        {
-                            return null;
-                        }
-                    }
-                }
-
-                byte[] imageData = File.ReadAllBytes(imagePath);
-                texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                if (ImageConversion.LoadImage(texture, imageData, true))
-                {
-                    sprite = Sprite.Create(
-                        texture,
-                        new Rect(0, 0, texture.width, texture.height),
-                        new Vector2(0.5f, 0.5f));
-                    if (sprite == null) return null;
-                    ownedTextures.Add(texture);
-                    retained = true;
-                    return sprite;
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[BossRush] MapThumbnailCache 加载失败(" + imageName + "): " + e.Message);
-            }
-            finally
-            {
-                if (!retained)
-                {
-                    if (sprite != null && ownedTextures.Contains(sprite.texture)) UnityEngine.Object.Destroy(sprite);
-                    if (texture != null) UnityEngine.Object.Destroy(texture);
-                }
-            }
-
-            return null;
-        }
-
         /// <summary>
-        /// 清空缓存并销毁持有的纹理（卸载时调用，杜绝纹理泄漏）。
+        /// 清空缓存（卸载时调用）。缩略图借自 ModSprites，由它释放。
         /// </summary>
         public static void ResetStaticCaches()
         {
-            try
-            {
-                foreach (Sprite sprite in spriteCache.Values)
-                    if (sprite != null && ownedTextures.Contains(sprite.texture)) UnityEngine.Object.Destroy(sprite);
-                for (int i = 0; i < ownedTextures.Count; i++)
-                {
-                    Texture2D tex = ownedTextures[i];
-                    if (tex != null)
-                    {
-                        UnityEngine.Object.Destroy(tex);
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[BossRush] MapThumbnailCache 销毁纹理异常: " + e.Message);
-            }
-
-            ownedTextures.Clear();
             spriteCache.Clear();
         }
     }

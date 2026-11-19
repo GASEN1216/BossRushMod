@@ -17,7 +17,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using UnityEngine;
 
 namespace BossRush
@@ -135,64 +134,6 @@ namespace BossRush
             
             ModBehaviour.DevLog("[NPCBubbleAnimator] 创建成功，帧数: " + frames.Length);
             return animator;
-        }
-        
-        /// <summary>
-        /// 从AssetBundle加载序列帧并创建动画
-        /// </summary>
-        public static NPCBubbleAnimator CreateFromBundle(
-            Transform target,
-            string bundleName,
-            string[] spriteNames,
-            float heightOffset = 2.5f,
-            float duration = 2.5f,
-            bool loop = false)
-        {
-            try
-            {
-                // 加载AssetBundle
-                string modDir = Path.GetDirectoryName(typeof(ModBehaviour).Assembly.Location);
-                string bundlePath = Path.Combine(modDir, "Assets", "ui", bundleName);
-                
-                if (!File.Exists(bundlePath))
-                {
-                    ModBehaviour.DevLog("[NPCBubbleAnimator] AssetBundle不存在: " + bundlePath);
-                    return null;
-                }
-                
-                AssetBundle bundle = ResourceBundleLoader.LoadFromFile(bundlePath);
-                if (bundle == null)
-                {
-                    ModBehaviour.DevLog("[NPCBubbleAnimator] 加载AssetBundle失败");
-                    return null;
-                }
-                
-                // 加载所有Sprite
-                List<Sprite> spriteList = new List<Sprite>();
-                foreach (string spriteName in spriteNames)
-                {
-                    Sprite sprite = bundle.LoadAsset<Sprite>(spriteName);
-                    if (sprite != null)
-                    {
-                        spriteList.Add(sprite);
-                    }
-                }
-                
-                bundle.Unload(false);
-                
-                if (spriteList.Count == 0)
-                {
-                    ModBehaviour.DevLog("[NPCBubbleAnimator] 未加载到任何Sprite");
-                    return null;
-                }
-                
-                return Create(target, spriteList.ToArray(), heightOffset, duration, loop);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[NPCBubbleAnimator] 从Bundle创建失败: " + e.Message);
-                return null;
-            }
         }
         
         // ============================================================================

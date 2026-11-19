@@ -35,6 +35,7 @@ namespace BossRush
             SkyIslandNavInstrumentConfig.RegisterConfigurator();
             TidegateItems.RegisterConfigurators();
             LastShiftItems.RegisterConfigurators();
+            CollectibleItems.RegisterConfigurators();
             ItemFactory.RegisterConfigurator(BossRushItemIds.AdventureJournal, OnAdventureJournalLoaded);
             ItemFactory.RegisterConfigurator(FenHuangHalberdIds.WeaponTypeId, OnFenHuangHalberdLoaded);
             ItemFactory.RegisterConfigurator(FrostmourneIds.WeaponTypeId, OnFrostmourneLoaded);

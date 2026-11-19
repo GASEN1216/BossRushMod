@@ -130,7 +130,7 @@ namespace BossRush
         {
             hud = ArenaPrototypeControls.CreateHud(out hudRoot);
             Status(outpost ? "正在加载石堡前哨…" : "正在加载石砌遗迹…", false);
-            string modDir = System.IO.Path.GetDirectoryName(typeof(ModBehaviour).Assembly.Location);
+            string modDir = ModBehaviour.GetModPath();
             GameObject prefab = null;
             if (outpost)
             {

@@ -19,6 +19,7 @@
 7. **获取途径**：至少一条玩家实际走得到的产出（商店、掉落、奖励、配方、剧情）。「类型存在」不等于「拿得到」，编译和守卫都查不出零获取途径。
 8. **资源部署**：新 bundle 登记进 `tools/resource_release_manifest.json` 的 `bundles`（`compile_official.bat` 结尾由 `tools/Deploy-ResourceBundles.ps1` 按它部署并校验 SHA-256，游戏目录出现清单外的 bundle 会让构建失败）；新的 JSON / PNG 目录才需要在 `compile_official.bat` 部署段补 copy 行（`Assets/Sounds` 整树已自动复制），否则只在作者本机能用。
 9. **Wiki**：玩家可见的内容同步 `WikiContent/{zh,en}/`（规则见 `wiki-site/AGENTS.md`）。
+10. **图标**：PNG 放 `Assets/Items/<图标名>.png` 并登记 `tools/production_icon_manifest.json`；图标名只声明一次——有定义表的模块写在定义表（经模块的 `IconNameOf` 交出），其余写进 `Integration/ModItemIcons.cs` 的 `LegacyIconName`。prefab 一律经 `BossRushDynamicItemRegistry.Publish` 注册，由它在 `AddDynamicEntry` 之前套图标；配置器和界面不写 `Item.Icon`、不按路径读物品图标，界面要图标调 `ModItemIcons.ForType`（`ModItemIconGuard`）。其它按路径取的图（UI 插图、建筑图标、贴图）一律调 `ModSprites.Get`，拿到的是借用对象、调用方不销毁，不手抄压缩包 / 散图回退（`ModSpritesGuard`）。
 
 内容设计上，每件新东西写清「从哪来 / 拿来做什么（卖钱不算）/ 串到哪条系统线」，功能重叠的拉开定位。
 新增物品的出售途径优先分配给主题贴合的自定义 NPC，不默认全部加入叮当商店；永久捏脸 NPC 可通过 `permanent.shop` 配置接通通用商店，未配置者不自动获得库存。

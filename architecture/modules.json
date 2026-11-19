@@ -1525,6 +1525,47 @@
       ]
     },
     {
+      "id": "collectibles",
+      "title": "收集品与收藏册（开箱额外一格、系列集齐、杰夫引导 590217）",
+      "kind": "content",
+      "paths": [
+        "Integration/Collectibles/**/*.cs",
+        "Localization/CollectiblesLocalization.cs",
+        "DebugAndTools/CollectiblesDebugControls.cs"
+      ],
+      "entry": "Integration/Collectibles/CollectiblesRuntimeModule.cs",
+      "state_owner": "CollectiblesRuntimeModule",
+      "public_api": [
+        "CollectiblesRuntimeModule",
+        "CollectibleLootRuntime.NotifyModBoxFirstOpened",
+        "CollectibleTuning.LikedGiftAffinity"
+      ],
+      "data": [
+        "Assets/Data/LootBlacklist.json"
+      ],
+      "tests": [
+        "tests/CollectiblesCatalogGuard.py",
+        "tests/fixtures/CollectibleLoot"
+      ],
+      "docs": [
+        ".qoder/repowiki/zh/content/装备与物品系统/收集品与收藏册.md"
+      ],
+      "rules": [
+        "AGENTS.md",
+        "Integration/AGENTS.md",
+        "Common/UI/AGENTS.md"
+      ],
+      "depends_on": [
+        "integration-core",
+        "common",
+        "utilities",
+        "affinity",
+        "sky-island",
+        "tidegate",
+        "last-shift-yard"
+      ]
+    },
+    {
       "id": "mutators",
       "title": "变异词条",
       "kind": "system",

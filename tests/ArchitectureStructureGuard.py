@@ -901,19 +901,17 @@ def main() -> int:
         "internal void TryPlayNgmSound()": [
             'Path.Combine(baseDir, "Assets")',
             'Path.Combine(baseDir, "ngm.mp3")',
+            "BossRushOfficialAudio.PostCustomSfx(filePath, target, false);",
         ],
         "private static bool SoundFileExistsCached(string filePath)": [
             "_cachedSoundFileExists",
             "File.Exists(filePath);",
         ],
-        "private static bool TryGetPostCustomSfxDelegate(out PostCustomSfxDelegate postCustomSfx)": [
-            'Type.GetType("Duckov.AudioManager, TeamSoda.Duckov.Core")',
-            "Delegate.CreateDelegate",
-        ],
+        # 2026-11-19：官方 PostCustomSFX 统一经 Audio/BossRushOfficialAudio.cs 反射（原 void 委托绑不上官方的非 void 返回值）。
         "public void PlaySoundEffect(string filePath)": [
             "SoundFileExistsCached(filePath)",
-            "TryGetPostCustomSfxDelegate(out postCustomSfx)",
-            'DevLog("[BossRush] PlaySoundEffect: AudioManager类型未找到");',
+            "BossRushOfficialAudio.TryPostCustomSfx(filePath, target, false, out posted, out error)",
+            '"[BossRush] PlaySoundEffect: PostCustomSFX方法未找到"',
         ],
     }.items():
         body = extract_method_body(audio_runtime_hooks, signature)

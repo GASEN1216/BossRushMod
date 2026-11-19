@@ -109,27 +109,17 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 通用 Boss 战 BGM 起播。曲目表没条目或文件缺失时静默无操作。
+        /// 通用 Boss 战 BGM 起播（按 owner 记租约）。曲目表没条目或文件缺失时静默无操作。
         /// 幂等：同一 Boss 重复调用不会把曲子掐回开头。
         /// </summary>
-        public void PlayBossBGM(string bossKey)
-        {
-            BossBgmCoordinator.PlayBossBgm(bossKey);
-        }
-
         public bool PlayBossBGM(string bossKey, UnityEngine.Object owner)
         {
             return BossBgmCoordinator.AcquireBossBgm(bossKey, owner);
         }
 
         /// <summary>
-        /// 通用 Boss 战 BGM 停止。只在当前正播的就是该 Boss 时才真正停止。
+        /// 通用 Boss 战 BGM 停止：归还该 owner 的租约，只在当前正播的就是该 Boss 时才真正停止。
         /// </summary>
-        public void StopBossBGM(string bossKey)
-        {
-            BossBgmCoordinator.StopBossBgm(bossKey);
-        }
-
         public void StopBossBGM(string bossKey, UnityEngine.Object owner)
         {
             BossBgmCoordinator.ReleaseBossBgm(bossKey, owner);
@@ -153,27 +143,6 @@ namespace BossRush
             {
                 handler?.Invoke();
             }
-        }
-
-        public void RegisterNPCInteractSFXHandler(string npcId, Action handler)
-        {
-            if (string.IsNullOrEmpty(npcId) || handler == null)
-            {
-                return;
-            }
-
-            EnsureNPCInteractSfxHandlers();
-            npcInteractSfxHandlers[npcId] = handler;
-        }
-
-        public void UnregisterNPCInteractSFXHandler(string npcId)
-        {
-            if (string.IsNullOrEmpty(npcId))
-            {
-                return;
-            }
-
-            npcInteractSfxHandlers.Remove(npcId);
         }
 
         private void EnsureNPCInteractSfxHandlers()

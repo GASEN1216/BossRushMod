@@ -156,7 +156,7 @@ F3 调试菜单可导出目录清单（nameKey + 显示名），用于核对立�
 ## 7. 资源与实机验证状态
 
 - 2026-09-18 已确认工作区 `Assets/ui/codex_portraits` 与 `Assets/Items/codex_book.png` 存在，构建脚本有部署接线。
-  `AllowDevRawPngFallback` 在发布构建恒 false，缺包时仍按占位链显示；文件存在不等于游戏内资源加载成功。
+  立绘只认 bundle（2026-11-19 删除了恒 false 的 `AllowDevRawPngFallback` 散图回退），缺包时仍按占位链显示；文件存在不等于游戏内资源加载成功。
 - 本轮实机步骤 C01～C07 尚待 owner，见下方生产审核报告；不能以旧版 smoke 或离线检查替代。
 
 ## 2026-09-18 生产审核同步（COMPAT / SAFE）

@@ -56,6 +56,8 @@ namespace BossRush
             // 末班编组站：地图名、仓库区剪票处与站内机关的交互名，以及两件物品的 DisplayNameRaw（AGENTS.md 4.4）
             LastShiftRaidScene.InjectLocalization();
             LastShiftItems.InjectLocalization();
+            // 收集品 100 件与收藏册的 DisplayNameRaw、杰夫引导 590217 与登记容器标题（AGENTS.md 4.4）
+            CollectiblesLocalization.Inject(); CollectionJeffIntro.InjectLocalizations(); CollectionRegisterContainer.InjectLocalization();
             SkyIslandSearchPoint.InjectLocalizations();
             // 搜刮箱交互名「搜集 / Search」（官方 displayNameKey 按 key 查表，切语言时随这条链重注入）
             SkyIslandRewardCrate.InjectLocalizations();
@@ -89,9 +91,9 @@ namespace BossRush
             int equipCount = EquipmentFactory.LoadedBundleCount;
             ModBehaviour.DevLog("[BossRush] 自动加载装备完成，共 " + equipCount + " 个");
 
-            // P0 新武器、P1 套装占位符注册：必须在 EquipmentFactory.LoadAllEquipment 之后执行，
+            // P0 新武器、P1 套装占位符注册：必须在 EquipmentFactory.LoadAllEquipmentAsync 完成之后执行，
             // 因为它们要把飞行图腾(500010) / 逆鳞(500013) / 龙裔头盔(500003) 等真实装备
-            // 作为克隆源；这些装备此时已通过 LoadAllEquipment 进入 ItemAssetsCollection。
+            // 作为克隆源；这些装备此时已通过 LoadAllEquipmentAsync 进入 ItemAssetsCollection。
             // NewWeaponPlaceholderRegistry 内部会在创建占位符后直接调用对应 WeaponConfig.TryConfigure，
             // 因此 AssetBundle 缺失时占位符也能拿到完整 Stats / 标签 / Buff 配置。
             // ConfigureNewWeaponsAfterLoad 只针对真正从 AssetBundle 加载到 ItemFactory.loadedItems 的物品生效，

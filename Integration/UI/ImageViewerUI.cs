@@ -428,15 +428,9 @@ namespace BossRush
                     return sprite;
                 }
 
-                // 回退：自己在 Assets/items、Assets/ui 下找 bundle
-                string assemblyLocation = typeof(ModBehaviour).Assembly.Location;
-                string modDir = Path.GetDirectoryName(assemblyLocation);
+                // 回退：自己在 Assets/items 下找 bundle
+                string modDir = ModBehaviour.GetModPath();
                 string bundlePath = Path.Combine(modDir, "Assets", "items", bundleName);
-
-                if (!File.Exists(bundlePath))
-                {
-                    bundlePath = Path.Combine(modDir, "Assets", "ui", bundleName);
-                }
 
                 if (!File.Exists(bundlePath))
                 {
@@ -488,7 +482,7 @@ namespace BossRush
                 fallbackBundles.Remove(key);
             }
 
-            AssetBundle bundle = ItemFactory.FindAlreadyLoadedAssetBundle(bundleName);
+            AssetBundle bundle = ResourceBundleLoader.FindLoaded(bundleName);
             bool owned = false;
             if (bundle == null)
             {

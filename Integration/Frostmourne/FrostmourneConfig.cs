@@ -23,7 +23,6 @@ namespace BossRush
         public override string DescriptionEN => "Blue frost coats the blade. Hold it long enough and your whole arm stiffens.\n<color=#4FC3F7>[Frost Power]</color> Ice attacks. Cold Protection +2.\n<color=#81D4FA>[Undead Summoning]</color> Right-click to summon 5 undead servants. Cooldown: 10s.";
         public override int ItemQuality => 6;
         public override string[] ItemTags => new string[] { "Weapon", "MeleeWeapon", "DontDropOnDeadInSlot", "Special", "DragonKing" };
-        public override string IconAssetName => FrostmourneIds.IconAssetName;
 
         /// <summary>
         /// 基础攻击范围

@@ -26,8 +26,9 @@
 //   - 每批至多一次 SaveFile，且经 BossRushSaveFileThrottle 的跨子系统每帧闸；
 //   - SaveFile(false) 不触发 OnCollectSaveData，因此不能拿它当「采集已完成」的证明。
 //
-// 这是四个内容子系统**唯一**的 SavesSystem.SaveFile 调用点。Mode G / Mode H 的协调器
-// 因战斗帧顺延与多 key 屏障语义不同，仍各自独立。
+// 接入本引擎的内容子系统（最初是上面四个，此后天空岛、潮闸镇、末班编组站、成就奖励、鸭王杯押注等也陆续接入，
+// 以 `new BossRushSaveCoordinatorEngine(` 的调用点为准）都只经这里调 SavesSystem.SaveFile，不各自直调。
+// Mode G / Mode H 的主存档协调器因战斗帧顺延与多 key 屏障语义不同，仍各自独立。
 // ============================================================================
 
 using System;

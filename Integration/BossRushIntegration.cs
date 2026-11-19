@@ -240,7 +240,7 @@ namespace BossRush
 // 设计要点：
 //   - **零新增 bundle**：没有专属模型，走 BossRushDynamicItemRegistry 的
 //     FallbackLoader 从既有物品克隆一份 prefab 顶上（形态照 RelicEggConfig），
-//     图标由 EquipmentHelperIcon 从 Assets/Items/codex_book.png 注入。
+//     图标 codex_book 登记在 ModItemIcons，注册时统一套用。
 //   - **使用后不消耗**：耐久模式 MaxDurability/Durability = 999f，
 //     UsageBehavior 只打开面板，不 Consume（形态照 AchievementMedalConfig）。
 //   - **DisplayNameRaw 必须配本地化注入**（AGENTS.md 4.4）：本物品的全部 key

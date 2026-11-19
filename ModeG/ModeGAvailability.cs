@@ -2,7 +2,7 @@ namespace BossRush
 {
     /// <summary>
     /// Mode G 正式可用性门控。
-    /// 正式发布由 owner 显式裁决；开发直入和 raw PNG fallback 与正式入口独立。
+    /// 正式发布由 owner 显式裁决；开发直入与正式入口独立。展示资源只认 bundle，没有散图回退。
     /// </summary>
     public static class ModeGAvailability
     {
@@ -12,12 +12,6 @@ namespace BossRush
         // Owner release decision: the configured Boss pool and every map exposed by
         // the BossRush map-selection UI are approved for Mode G production use.
         public const bool IsProductionReady = true;
-
-        /// <summary>
-        /// 开发构建是否允许通过 raw PNG fallback 验证布局。
-        /// 正式构建不得静默使用 raw 文件冒充发布 bundle。
-        /// </summary>
-        public const bool AllowDevRawPngFallback = false;
 
         /// <summary>
         /// 开发构建是否允许通过独立测试入口（F9/direct/debug）进入中间阶段。

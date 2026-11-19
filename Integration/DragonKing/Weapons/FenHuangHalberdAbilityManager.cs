@@ -801,12 +801,10 @@ namespace BossRush
         private float pulseTime;
         private bool currentValid = true;
 
-        // 禁止图标（ban.png）
+        // 禁止图标（ban.png）：贴图借自 ModSprites；按本实例的 PPU 现造的 Sprite 归本实例，OnDestroy 销毁。
         private GameObject banIconObject;
         private SpriteRenderer banIconRenderer;
-        private Texture2D banTexture;
-        private static Texture2D cachedBanTexture;
-        private static bool banTextureLoadAttempted;
+        private Sprite banSprite;
         private static Camera cachedMainCamera;
         private static Transform cachedMainCameraTransform;
         private static int cachedMainCameraFrame = -1;
@@ -1016,76 +1014,25 @@ namespace BossRush
             banIconRenderer = banIconObject.AddComponent<SpriteRenderer>();
             banIconRenderer.sortingOrder = 100;
 
-            // 加载 ban.png 贴图
-            LoadBanTexture();
-
+            // ban.png 每次按路径问 ModSprites（命中缓存）：Mod 停用再启用后旧贴图成了 Unity-null，这里会重新取到新的。
+            Sprite source = ModSprites.Get("Assets/ban.png");
+            Texture2D banTexture = source != null ? source.texture : null;
             if (banTexture != null)
             {
-                Sprite sprite = Sprite.Create(
+                banSprite = Sprite.Create(
                     banTexture,
                     new Rect(0f, 0f, banTexture.width, banTexture.height),
                     new Vector2(0.5f, 0.5f),
                     banTexture.width // 1 像素 = 1 单位，后续用 localScale 控制大小
                 );
-                banIconRenderer.sprite = sprite;
+                banIconRenderer.sprite = banSprite;
+            }
+            else
+            {
+                ModBehaviour.DevLog("[FenHuangHalberd] ban.png 不可用，落点禁止图标不显示");
             }
 
             banIconObject.SetActive(false);
-        }
-
-        private void LoadBanTexture()
-        {
-            // 优先使用缓存
-            if (cachedBanTexture != null)
-            {
-                banTexture = cachedBanTexture;
-                return;
-            }
-
-            if (banTextureLoadAttempted)
-            {
-                return;
-            }
-
-            try
-            {
-                string modPath = ModBehaviour.GetModPath();
-                if (string.IsNullOrEmpty(modPath))
-                {
-                    return;
-                }
-
-                banTextureLoadAttempted = true;
-                Sprite compressed = ProductionIconCache.Get("Assets/ban.png");
-                if (compressed != null) { banTexture = cachedBanTexture = compressed.texture; return; }
-                if (!ProductionIconCache.AllowRawFallback) return;
-
-                string banPath = System.IO.Path.Combine(modPath, "Assets", "ban.png");
-                if (!System.IO.File.Exists(banPath))
-                {
-                    ModBehaviour.DevLog("[FenHuangHalberd] ban.png 未找到: " + banPath);
-                    return;
-                }
-
-                byte[] data = System.IO.File.ReadAllBytes(banPath);
-                banTexture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                banTexture.filterMode = FilterMode.Bilinear;
-                if (ImageConversion.LoadImage(banTexture, data, true))
-                {
-                    cachedBanTexture = banTexture;
-                }
-                else
-                {
-                    if (!ProductionIconCache.IsBorrowed(banTexture)) Destroy(banTexture);
-                    banTexture = null;
-                }
-            }
-            catch (System.Exception e)
-            {
-                if (banTexture != null && banTexture != cachedBanTexture && !ProductionIconCache.IsBorrowed(banTexture)) Destroy(banTexture);
-                banTexture = cachedBanTexture;
-                ModBehaviour.DevLog("[FenHuangHalberd] 加载 ban.png 失败: " + e.Message);
-            }
         }
 
         private void UpdateBanIcon(Vector3 landingPoint, bool valid)
@@ -1146,10 +1093,9 @@ namespace BossRush
 
         private void OnDestroy()
         {
-            if (banTexture != null && banTexture != cachedBanTexture)
-            {
-                if (!ProductionIconCache.IsBorrowed(banTexture)) Destroy(banTexture);
-            }
+            // 只销毁本实例现造的 Sprite；贴图借自 ModSprites，不归这里。
+            if (banSprite != null) Destroy(banSprite);
+            banSprite = null;
         }
     }
 }

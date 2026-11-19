@@ -27,7 +27,6 @@ namespace BossRush
         private const float ICON_SIZE = 56f;
         private const float FRAME_SIZE = 64f;
         private const float FRAME_BORDER = 4f;
-        private const float GLOW_SIZE = 140f;
         private const float PADDING_LEFT = 12f;
         private const float ICON_TEXT_GAP = 14f;
         private const float POPUP_SPACING = 8f;
@@ -59,11 +58,6 @@ namespace BossRush
         private static Canvas sharedCanvas;
         private static List<PopupInstance> activePopups = new List<PopupInstance>();
         private static List<PopupInstance> toRemoveBuffer = new List<PopupInstance>(); // 复用缓冲区避免每帧分配
-        private static Texture2D glowTexture;
-
-        // 音效反射缓存
-        private static System.Reflection.MethodInfo cachedPostCustomSFXMethod;
-        private static bool audioReflectionCached;
 
         #endregion
 
@@ -77,7 +71,6 @@ namespace BossRush
             public GameObject panelObj;
             public RectTransform panelRect;
             public Image frameImage;      // 图标框的描边环（用于稀有成就的脉冲动画）
-            public Image glowImage;       // 光效图片（稀有成就）
             public CanvasGroup group;     // 退场淡出
             public float targetY;
             public float currentY;
@@ -115,10 +108,6 @@ namespace BossRush
         {
             if (instance == this)
             {
-                foreach (var popup in activePopups)
-                    if (popup.glowImage != null && popup.glowImage.sprite != null) Destroy(popup.glowImage.sprite);
-                if (glowTexture != null && !ProductionIconCache.IsBorrowed(glowTexture)) Destroy(glowTexture);
-                glowTexture = null;
                 instance = null;
                 sharedCanvas = null;
                 activePopups.Clear();
@@ -200,12 +189,6 @@ namespace BossRush
             ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
 
             canvasObj.AddComponent<GraphicRaycaster>();
-
-            // 加载稀有成就光效纹理
-            if (glowTexture == null)
-            {
-                glowTexture = LoadTexture("steam_rare_glow.png");
-            }
         }
 
         #endregion
@@ -239,7 +222,7 @@ namespace BossRush
 
             activePopups.Insert(0, newPopup);
 
-            // 启动光效动画（仅稀有成就）
+            // 启动边框脉冲动画（仅稀有成就）
             if (isRare)
             {
                 StartCoroutine(GlowPulseAnimation(newPopup));
@@ -276,12 +259,6 @@ namespace BossRush
             Texture2D iconTex = LoadAchievementIcon(achievement.iconFile);
             bool hasIcon = iconTex != null;
 
-            // 稀有成就光效（在边框后面）
-            if (hasIcon && isRare && glowTexture != null)
-            {
-                CreateGlowEffect(popup);
-            }
-
             // 创建边框和图标
             if (hasIcon)
             {
@@ -292,26 +269,6 @@ namespace BossRush
             CreateTexts(popup, achievement, hasIcon);
 
             return popup;
-        }
-
-        /// <summary>
-        /// 创建稀有成就光效
-        /// </summary>
-        private void CreateGlowEffect(PopupInstance popup)
-        {
-            GameObject glowObj = new GameObject("GlowOverlay");
-            glowObj.transform.SetParent(popup.panelObj.transform, false);
-            
-            RectTransform glowRect = glowObj.AddComponent<RectTransform>();
-            glowRect.anchorMin = new Vector2(0, 0.5f);
-            glowRect.anchorMax = new Vector2(0, 0.5f);
-            glowRect.pivot = new Vector2(0.5f, 0.5f);
-            glowRect.anchoredPosition = new Vector2(PADDING_LEFT + ICON_SIZE / 2f, 0);
-            glowRect.sizeDelta = new Vector2(GLOW_SIZE, GLOW_SIZE);
-
-            popup.glowImage = glowObj.AddComponent<Image>();
-            popup.glowImage.sprite = Sprite.Create(glowTexture, new Rect(0, 0, glowTexture.width, glowTexture.height), new Vector2(0.5f, 0.5f));
-            popup.glowImage.color = new Color(1f, 0.8f, 0f, 0f);
         }
 
         /// <summary>
@@ -476,13 +433,12 @@ namespace BossRush
             foreach (var popup in toRemoveBuffer)
             {
                 activePopups.Remove(popup);
-                if (popup.glowImage != null && popup.glowImage.sprite != null) Destroy(popup.glowImage.sprite);
                 Destroy(popup.panelObj);
             }
         }
 
         /// <summary>
-        /// 稀有成就光效脉冲动画
+        /// 稀有成就边框脉冲动画
         /// </summary>
         private IEnumerator GlowPulseAnimation(PopupInstance popup)
         {
@@ -496,15 +452,6 @@ namespace BossRush
                 }
                 time += Time.unscaledDeltaTime * GLOW_PULSE_SPEED;
                 float pulse = (Mathf.Sin(time * Mathf.PI) + 1f) * 0.5f;
-
-                // 光效透明度动画
-                if (popup.glowImage != null)
-                {
-                    Color c = popup.glowImage.color;
-                    c.a = Mathf.Lerp(0.3f, 0.7f, pulse);
-                    popup.glowImage.color = c;
-                    popup.glowImage.rectTransform.Rotate(Vector3.forward, Time.unscaledDeltaTime * 10f);
-                }
 
                 // 边框亮度动画
                 if (popup.frameImage != null)
@@ -525,44 +472,6 @@ namespace BossRush
         #endregion
 
         #region 资源加载
-
-        /// <summary>
-        /// 加载UI纹理（用于光效等非成就图标资源）
-        /// </summary>
-        private Texture2D LoadTexture(string filename)
-        {
-            Sprite compressed = ProductionIconCache.Get("Assets/Textures/UI/" + filename);
-            if (compressed != null) return compressed.texture;
-            if (!ProductionIconCache.AllowRawFallback) return null;
-            Texture2D texture = null;
-            bool retained = false;
-            try
-            {
-                string modPath = ModBehaviour.GetModPath();
-                if (string.IsNullOrEmpty(modPath)) return null;
-
-                string path = System.IO.Path.Combine(modPath, "Assets", "Textures", "UI", filename);
-                if (System.IO.File.Exists(path))
-                {
-                    byte[] fileData = System.IO.File.ReadAllBytes(path);
-                    texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                    if (texture.LoadImage(fileData, true))
-                    {
-                        retained = true;
-                        return texture;
-                    }
-                }
-            }
-            catch (System.Exception e)
-            {
-                ModBehaviour.LogError("[Achievement] 加载纹理失败 " + filename + ": " + e.Message);
-            }
-            finally
-            {
-                if (!retained && texture != null) Destroy(texture);
-            }
-            return null;
-        }
 
         /// <summary>
         /// 加载成就图标（使用共享的 AchievementIconLoader）
@@ -596,45 +505,21 @@ namespace BossRush
         #region 音效
 
         /// <summary>
-        /// 缓存音频管理器反射
-        /// </summary>
-        private static void CacheAudioManagerReflection()
-        {
-            if (audioReflectionCached) return;
-            try
-            {
-                var type = System.Type.GetType("Duckov.AudioManager, TeamSoda.Duckov.Core");
-                if (type != null)
-                {
-                    cachedPostCustomSFXMethod = type.GetMethod("PostCustomSFX",
-                        System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-                }
-            }
-            catch { }
-            audioReflectionCached = true;
-        }
-
-        /// <summary>
-        /// 播放解锁音效
+        /// 播放解锁音效（Assets/Sounds/Achievement/default.wav，不挂发声体）
         /// </summary>
         private void PlayUnlockSound()
         {
             try
             {
-                if (!audioReflectionCached) CacheAudioManagerReflection();
-                if (cachedPostCustomSFXMethod == null) return;
+                if (!BossRushOfficialAudio.HasPostCustomSfx) return;
 
                 string modPath = ModBehaviour.GetModPath();
                 if (string.IsNullOrEmpty(modPath)) return;
 
                 string soundPath = System.IO.Path.Combine(modPath, "Assets", "Sounds", "Achievement", "default.wav");
-                if (!System.IO.File.Exists(soundPath))
-                {
-                    soundPath = System.IO.Path.Combine(modPath, "Assets", "Sounds", "Achievement", "default.mp3");
-                }
                 if (!System.IO.File.Exists(soundPath)) return;
 
-                cachedPostCustomSFXMethod.Invoke(null, new object[] { soundPath, null, false });
+                BossRushOfficialAudio.PostCustomSfx(soundPath, null, false);
             }
             catch { }
         }

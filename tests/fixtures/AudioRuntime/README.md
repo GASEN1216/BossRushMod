@@ -2,9 +2,9 @@
 
 运行 `python tools/run_runtime_regressions.py --filter AudioRuntime`。构建、临时音频文件与记录只写 `Build/runtime-regressions/AudioRuntime/`，不启动游戏、不读取玩家存档。
 
-夹具直接编译完整 `Audio/BossRushAudioRuntimeService.cs` 与兼容桥 `Audio/BossRushAudioHooks.cs`。从当前生产源抽取根实例字段、注册入口最前的查询绑定、RandomEvents 与 `WavesArena/WavesArena.cs` 中的 Arena 缓存桥，以及 AlwaysOn 卸载中 MagicBlend → 音频清缓存 → NPC/Dialogue 清缓存的实际语句。输入文件 SHA-256 记录在输出目录。
+夹具直接编译完整 `Audio/BossRushAudioRuntimeService.cs`、兼容桥 `Audio/BossRushAudioHooks.cs` 与官方音频统一入口 `Audio/BossRushOfficialAudio.cs`。从当前生产源抽取根实例字段、注册入口最前的查询绑定、RandomEvents 与 `WavesArena/WavesArena.cs` 中的 Arena 缓存桥，以及 AlwaysOn 卸载中 MagicBlend → 音频清缓存 → NPC/Dialogue 清缓存的实际语句。输入文件 SHA-256 记录在输出目录。
 
-真实执行的逻辑包括按需读取、Assets/root 下 ngm 的选择、普通音效的大小写无关正负文件缓存、委托与反射 fallback、静态共享下蛋配置、玩家 fallback、生成/碰撞/Init 顺序、原参数与异常边界。文件存在检查使用真实临时文件。三个独立进程分别覆盖官方非 void 返回形态、兼容 void 委托形态和 AudioManager 不存在的形态。
+真实执行的逻辑包括按需读取、Assets/root 下 ngm 的选择、普通音效的大小写无关正负文件缓存、官方入口的一次性惰性解析（2026-11-19 起不再走 void 委托：它绑不上官方的非 void 返回值）、静态共享下蛋配置、玩家 fallback、生成/碰撞/Init 顺序、原参数与异常边界。文件存在检查使用真实临时文件。三个独立进程分别覆盖官方非 void 返回形态、兼容 void 返回形态和 PostCustomSFX 入口缺失的形态（统一入口按编译期类型绑定，`AudioManager` 类型本身在替身里始终存在）。
 
 Unity 对象、Resources、Instantiate、Physics 与官方音频播放是记录替身。替身模拟 destroyed-null 及销毁 GameObject 连带销毁组件，过图销毁是必经执行用例。生产注入查询在替身中没有非空默认值，使用实际根绑定代码装配。官方音频的非 void 返回只模拟委托兼容性，不执行 FMOD；蛋孵化、实际音量/听感、真实资源扫描与游戏完整卸载仍需 L3。
 

@@ -25,7 +25,6 @@ namespace BossRush
         public override string DescriptionEN => "A short staff capped with a pale violet glow that never stops swirling. Hold it a while and your palm goes numb.\n<color=#BA68C8>[Soul Projection]</color> Right-click to summon 3 soul warriors 6m ahead of your aim; they draw enemy fire for 12s. 12s cooldown.\n<color=#CE93D8>[Soul Burst]</color> When a warrior fades or falls it bursts for 45 ghost damage in a 3m radius. Never harms you or your allies.\n<color=#CE93D8>[Trade-off]</color> Low personal melee damage.\n<color=#BBBBBB>Source: 20% drop from Big Xing / Dingdang's Shop (Affinity 5)</color>";
         public override int ItemQuality => 5;
         public override string[] ItemTags => new string[] { "Weapon", "MeleeWeapon", "DontDropOnDeadInSlot", "Special" };
-        public override string IconAssetName => NewWeaponIds.SummonStaffIconAssetName;
 
         // ========== 右键技能参数 ==========
 

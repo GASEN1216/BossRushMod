@@ -318,7 +318,6 @@ namespace BossRush
         public static readonly List<KeyValuePair<int, string>> Tagged = new List<KeyValuePair<int, string>>();
         public static void AddTagToItem(Item item, string tag) { Tagged.Add(new KeyValuePair<int, string>(item.TypeID, tag)); }
     }
-    public static class EquipmentHelperIcon { public static void TryInjectIcon(Item item, object unused, string icon) { } }
     public static class ModeFItemUsageHelper { public static void AttachToItem(Item item) { } }
     public static class L10n { public static bool Chinese = true; public static bool IsChinese { get { return Chinese; } } public static string T(string cn, string en) { return Chinese ? cn : en; } }
     public static class LocalizationHelper
@@ -377,6 +376,7 @@ namespace BossRush
         internal static readonly List<int> Published = new List<int>();
         internal static int[] GetPublishedTypeIds() { var ids = Published.ToArray(); Array.Sort(ids); return ids; }
         internal static Item GetRegisteredPrefabWithoutEnsuring(int typeId) { return ItemAssetsCollection.GetPrefab(typeId); }
+        internal static bool Publish(Item item) { return ItemAssetsCollection.AddDynamicEntry(item); }
     }
     internal static class BossBgmCoordinator
     {

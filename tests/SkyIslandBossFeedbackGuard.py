@@ -95,7 +95,7 @@ def check(code):
     need(errors, fx, "private const float AudibleRange = 45f;", "音效距离门常量缺失或被改")
     play = body_of(fx, "internal static void Play(Transform root, SkyIslandBossCue cue, Vector3 at)")
     ordered(errors, play, ["if (now < nextAllowed[index]) return;", "> AudibleRange * AudibleRange) return;",
-                           "nextAllowed[index] = now + MinInterval;", "post.Invoke("],
+                           "nextAllowed[index] = now + MinInterval;", "BossRushOfficialAudio.TryPostCustomSfx("],
             "SkyIslandBossSfx.Play 必须先过节流与距离门再播")
     need(errors, fx, "private const int FlashCap = 4;", "闪光同时盏数上限缺失或被改")
     flash = body_of(fx, "internal static void Flash(Transform root, Vector3 at, float range, Color tint, float intensity, float seconds)")

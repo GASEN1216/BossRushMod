@@ -29,7 +29,8 @@ def main() -> int:
     effects = read_effects() if EFFECTS.exists() else ""
 
     for snippet in [
-        'public const string GunCritRateGain = "GunCritRateGain";',
+        # 暴击专注加爆头伤害：主角开枪只有爆头算暴击，GunCritRateGain 对玩家无效（2026-11-19）。
+        'public const string GunCritDamageGain = "GunCritDamageGain";',
         'public const string ReloadSpeedGain = "ReloadSpeedGain";',
         'public const string DashSpeed = "DashSpeed";',
         'public const string ElementFactorPhysics = "ElementFactor_Physics";',
@@ -41,7 +42,7 @@ def main() -> int:
         return fail("ZombieModeRewardStatNameGuard: missing ZombieModeRewardEffects.cs")
 
     required_effect_tokens = [
-        "ZombieModeStatNames.GunCritRateGain",
+        "ZombieModeStatNames.GunCritDamageGain",
         "ZombieModeStatNames.ReloadSpeedGain",
         "ZombieModeStatNames.DashSpeed",
         "ZombieModeStatNames.ElementFactorPhysics",

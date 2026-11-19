@@ -44,7 +44,6 @@ namespace BossRush
 
         public override string[] ItemTags => new string[] { "Totem", "DontDropOnDeadInSlot" };
 
-        public override string IconAssetName => "birthday_cake";
 
         public override string LogPrefix => "[FlightTotem]";
 

@@ -150,8 +150,7 @@ namespace BossRush.Utils
 
         private static string BuildBundlePath(string bundleName)
         {
-            string assemblyLocation = typeof(ModBehaviour).Assembly.Location;
-            string modDir = Path.GetDirectoryName(assemblyLocation);
+            string modDir = ModBehaviour.GetModPath();
             return Path.Combine(modDir, "Assets", "ui", bundleName);
         }
 

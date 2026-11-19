@@ -8,7 +8,7 @@ ModeHConfigApiGuard — Mode H 配置与运行时门守卫（设计提案 §24.1
 - Mode H 属默认内容：旧 ModConfig 键仅保留兼容识别，不注册、不读取历史 false，
   并由 ForceContentSystemSwitchesOn 恒定拉回开启；
 - ModeHRuntimeGates 暴露且只暴露五个 no-throw 只读结果；
-- 编译期开发门 AllowDevRawPngFallback / AllowDevControlPointHarness 恒为 false；
+- 编译期开发门 AllowDevControlPointHarness 恒为 false；散图回退门 AllowDevRawPngFallback 已随散图回退删除，不得加回；
 - 全仓不得出现 modeHRealWarehouseStakeEnabled / IsModeHRealWarehouseStakeConfiguredEnabled /
   ModeHStakeJournal.GatePassed 三个符号（§22.1 明确禁止重新引入真实资产开关）；
 - 不得存在第二个静态 Config 源，ModeHConfig 不得声明可写 Enabled。
@@ -133,8 +133,8 @@ def main():
         errors.append("[File] 缺少 ModeH/ModeHAvailability.cs")
     else:
         code = strip_cs_comments(availability)
-        if not re.search(r"public const bool AllowDevRawPngFallback = false;", code):
-            errors.append("[DevGate] AllowDevRawPngFallback 必须是恒 false 的编译期常量")
+        if "AllowDevRawPngFallback" in code:
+            errors.append("[DevGate] 散图回退已删除（展示资源只认 bundle），不得加回 AllowDevRawPngFallback")
         if not re.search(r"public const bool AllowDevControlPointHarness = false;", code):
             errors.append("[DevGate] AllowDevControlPointHarness 必须是恒 false 的编译期常量")
 

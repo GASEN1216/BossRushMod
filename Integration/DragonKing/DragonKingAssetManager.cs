@@ -93,25 +93,7 @@ namespace BossRush
         private static Transform effectPoolRoot = null;
         
         // ========== 公开方法 ==========
-        
-        /// <summary>
-        /// 异步预载 Bundle 与 Prefab，完成后交给既有引用计数 owner。
-        /// </summary>
-        /// <param name="modBasePath">Mod基础路径</param>
-        /// <returns>是否加载成功</returns>
-        public static async UniTask<bool> LoadAssetBundle(string modBasePath)
-        {
-            if (loadedBundle != null) return LoadAssetBundleSync(modBasePath);
-            ModBehaviour owner = ModBehaviour.Instance;
-            bool result = false;
-            System.Collections.IEnumerator load = ResourceBundleLoader.Prepare(
-                Path.Combine(modBasePath, DragonKingConfig.AssetBundlePath), true,
-                () => owner == null, () => result = LoadAssetBundleSync(modBasePath));
-            try { while (load.MoveNext()) await UniTask.Yield(); }
-            finally { (load as IDisposable)?.Dispose(); }
-            return result;
-        }
-        
+
         /// <summary>
         /// 同步加载AssetBundle
         /// </summary>
@@ -724,31 +706,7 @@ namespace BossRush
         }
         
         /// <summary>
-        /// 卸载AssetBundle
-        /// </summary>
-        /// <param name="unloadAllLoadedObjects">是否卸载所有已加载的对象</param>
-        public static void UnloadAssetBundle(bool unloadAllLoadedObjects = false)
-        {
-            assetGeneration++;
-            DestroyEffectPools();
-
-            if (loadedBundle != null)
-            {
-                loadedBundle.Unload(unloadAllLoadedObjects);
-                loadedBundle = null;
-                ModBehaviour.DevLog("[DragonKing] AssetBundle已卸载");
-            }
-
-            prefabCache.Clear();
-            missingPrefabCache.Clear();
-            loadAttempted = false;
-            loadSucceeded = false;
-            assetBundleRefCount = 0;
-        }
-
-        /// <summary>
-        /// 清理缓存（Boss销毁时调用）
-        /// 使用引用计数管理，只有当所有Boss实例都销毁后才真正卸载
+        /// 清理缓存（Boss销毁时调用）：引用计数减一，不卸包。包留着给下一只龙皇复用，换场景时由 ForceCleanup 卸载。
         /// </summary>
         public static void ClearCache()
         {
@@ -758,13 +716,6 @@ namespace BossRush
                 assetBundleRefCount = 0;
             }
             ModBehaviour.DevLog($"[DragonKing] 资源缓存清理，引用计数: {assetBundleRefCount}");
-
-            // 只有当引用计数为0时才真正清理
-            if (assetBundleRefCount <= 0)
-            {
-                assetBundleRefCount = 0;
-                ModBehaviour.DevLog("[DragonKing] 所有资源已清理，AssetBundle仍保持加载以便复用");
-            }
         }
 
         /// <summary>

@@ -41,7 +41,7 @@ source_files:
 - 菜地：官方基地的菜地是一个 `ConstructionSite`（`GardenConstruct`，`_key = "GardenConstruction"`），付费交互父物体 `Interactparent` 默认 inactive、官方代码从不引用它，
   玩家原本没有途径建成。第一章交付后 `GardenConstructionSite.EnsureSiteOpen` 只 `SetActive(true)` 那一个父物体（判据 `GardenSiteJudges.ShouldOpenSite`，必须排在 `GardenSeedInjector.EnsureInjected()` 之后），
   付款 / `wasBuilt` / 存档全走官方，Mod 只读官方键 `ConstructionSite_GardenConstruction`（守卫禁止写）。官方将来默认打开或直接建成 → 自动 no-op。开门单向，关总开关不回滚。
-- 展示柜：自建柜退役（`ShowcaseUI.cs` 删除，`ShowcaseBuildingBuilder` 只在老档已建过时注入，互动只提示）。官方「陈列柜」是废弃建筑、建不了（owner 2026-09-22 实机确认），能建的是枪械展示架与假人，Mod 枪甲自带槽位标签，不补标签；`ShowcaseTrophyCatalog` 只判哪些 Mod 物品算战利品
+- 展示柜：自建柜退役（`ShowcaseUI.cs` 删除，`ShowcaseBuildingBuilder` 只在老档已建过时注入，互动只提示）。官方「陈列柜」能建，但要先建比特币矿机并完成任务 940「玩具收藏家-2」，前置没满足时建造菜单直接隐藏（2026-11-19 更正 09-22「废弃建筑」旧结论），它只收带 `ShowCase` 标签的物品；后山用的是枪械展示架与假人，Mod 枪甲自带槽位标签，不补标签；`ShowcaseTrophyCatalog` 只判哪些 Mod 物品算战利品
   （枚举源 `BossRushDynamicItemRegistry`），`ShowcaseDisplayScanner` 订阅场上各官方 `Showcase.Item.onSlotContentChanged`（未解锁 / 局内零订阅），
   `ShowcaseService.ApplyDisplaySnapshot` 把「官方柜里实际摆着的 Mod 战利品」整体覆盖为陈列（判据 `ShowcaseDisplayJudges`：去重、按品质降序、截 8 件；公式不变，上限 +21%）。
   存档 `BossRush_BackMountain_Showcase_v1` 新增可选 `sourceVersion`（缺失 / 0 = 老登记簿，2 = 官方柜实摆），`schemaVersion` 保持 1（升版会让老档永久写保护）；老登记簿只在基地找到官方柜时被覆盖。

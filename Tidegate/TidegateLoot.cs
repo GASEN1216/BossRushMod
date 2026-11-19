@@ -1058,6 +1058,13 @@ namespace BossRush
                     }
                     if (closed) return;
                     ReadDelivery(point);
+                    if (closed) return;
+                    // 收集品额外一格排在货单装货之后：货单占的是预留的末格，先塞收集品会把它挤掉。
+                    // 危险箱算高价值；水下箱已有 5–6 档大奖预算，收集品最高 4 档。
+                    bool risky = point.Kind == "buried" || point.Kind == "wreck" || point.Kind == "safe" || point.Kind == "locker" || point.Kind == "vault";
+                    CollectibleLootRuntime.NotifyModBoxFirstOpened(box, CollectibleSeries.Tidegate,
+                        risky ? CollectibleBoxTier.High : CollectibleBoxTier.Normal,
+                        IsUnderwaterContainer(point.Id, point.Kind) ? CollectibleTuning.TidegateUnderwaterQualityCap : CollectibleTuning.MaxQuality);
                     if (!closed) Opened?.Invoke(point.Id);
                 }
                 catch (Exception e) { Debug.LogWarning(TidegateRaidScene.LogTag + " 搜刮回调 " + point.Id + "：" + e.Message); }

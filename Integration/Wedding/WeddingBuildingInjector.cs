@@ -333,8 +333,7 @@ namespace BossRush
         // ============================================================================
 
         /// <summary>
-        /// 加载建筑图标 PNG 文件为 Sprite
-        /// 用于建造UI按钮上的图标显示
+        /// 取建筑图标 Sprite（建造UI按钮上的图标）。借自 ModSprites：生产图标包优先，Dev 或缺包读散图。
         /// </summary>
         private void LoadWeddingBuildingIcon()
         {
@@ -344,33 +343,10 @@ namespace BossRush
                 return;
             }
 
-            try
+            weddingBuildingIcon = ModSprites.Get("Assets/buildings/wedding_chapel.png");
+            if (weddingBuildingIcon == null)
             {
-                string assemblyLocation = typeof(ModBehaviour).Assembly.Location;
-                string modDir = Path.GetDirectoryName(assemblyLocation);
-                string iconPath = Path.Combine(modDir, "Assets", "buildings", "wedding_chapel.png");
-
-                if (File.Exists(iconPath))
-                {
-                    weddingBuildingIcon = ItemFactory.GetSpriteFromFile(Path.Combine("Assets", "buildings", Path.GetFileName(iconPath)));
-                    if (weddingBuildingIcon != null)
-                    {
-                        Texture2D texture = weddingBuildingIcon.texture;
-                        ModBehaviour.DevLog("[WeddingBuilding] 建筑图标加载成功: " + iconPath + " (" + texture.width + "x" + texture.height + ")");
-                    }
-                    else
-                    {
-                        ModBehaviour.DevLog("[WeddingBuilding] 图标 PNG 解码失败: " + iconPath);
-                    }
-                }
-                else
-                {
-                    ModBehaviour.DevLog("[WeddingBuilding] 未找到建筑图标文件: " + iconPath + "，建造UI将显示空白图标");
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[WeddingBuilding] 加载建筑图标异常: " + e.Message);
+                ModBehaviour.DevLog("[WeddingBuilding] 建筑图标不可用，建造UI将显示空白图标");
             }
         }
 
@@ -393,8 +369,7 @@ namespace BossRush
             // 尝试从 AssetBundle 加载
             try
             {
-                string assemblyLocation = typeof(ModBehaviour).Assembly.Location;
-                string modDir = Path.GetDirectoryName(assemblyLocation);
+                string modDir = ModBehaviour.GetModPath();
                 string bundlePath = Path.Combine(modDir, "Assets", "buildings", "weddingchapel");
 
                 if (File.Exists(bundlePath))

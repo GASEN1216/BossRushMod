@@ -108,7 +108,7 @@ namespace BossRush
             {
                 TryAddZombieModeOptionModifier(
                     player,
-                    ZombieModeStatNames.GunCritRateGain,
+                    ZombieModeStatNames.GunCritDamageGain,
                     0.15f * Mathf.Min(3, options.MutatorCritFocusStacks),
                     ModifierType.Add,
                     options.ModifierRecords,

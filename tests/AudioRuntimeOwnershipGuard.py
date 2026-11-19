@@ -40,8 +40,6 @@ def main():
         'private static SpawnEgg cachedSpawnEggBehavior = null;',
         'private static CharacterRandomPreset eggSpawnPreset = null;',
         'private static readonly Dictionary<string, bool> _cachedSoundFileExists = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);',
-        'private static PostCustomSfxDelegate _cachedPostCustomSfx;',
-        'private static bool _postCustomSfxResolved = false;',
     ):
         assert compact(field) in compact(service), 'audio static cache lifetime changed: ' + field
     assert 'cachedSpawnEggBehavior' not in host and 'eggSpawnPreset' not in host, 'root must not retain audio cache fields'
@@ -58,7 +56,10 @@ def main():
     ):
         assert compact(body(hooks, signature)) == compact(call), 'audio compatibility entry must be a single forward: ' + signature
     reset = compact(body(service, 'internal static void ResetBossRushAudioHooksStaticCaches()'))
-    assert reset == compact('cachedSpawnEggBehavior = null; eggSpawnPreset = null; _cachedSoundFileExists.Clear(); _cachedPostCustomSfx = null; _postCustomSfxResolved = false;'), 'audio reset must retain all original cache writes and order'
+    # 2026-11-19：官方 PostCustomSFX 的反射移到 Audio/BossRushOfficialAudio.cs（元数据只解析一次、不随清理重置），
+    # 本服务不再持有委托与解析标记；其余缓存写入与顺序不变。
+    assert reset == compact('cachedSpawnEggBehavior = null; eggSpawnPreset = null; _cachedSoundFileExists.Clear();'), 'audio reset must retain all original cache writes and order'
+    assert 'PostCustomSfxDelegate' not in service and 'CreateDelegate' not in service, 'audio service must call the shared official audio entry instead of its own delegate'
     teardown = compact(body(cleanup, 'internal void CleanupAlwaysOnRuntimeOnDestroy()'))
     assert teardown.index('MagicBlendInitializationOrderPatch.ResetStaticCaches();') < teardown.index('ModBehaviour.ResetBossRushAudioHooksStaticCaches();') < teardown.index('BossRush.Utils.NPCUIAssetCache.ResetStaticCaches();'), 'audio reset must retain its original always-on cleanup slot'
     for source, expression in (

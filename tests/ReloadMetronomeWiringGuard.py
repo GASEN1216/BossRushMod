@@ -69,13 +69,13 @@ def main():
     patches = source(BASE + "ReloadMetronomePatches.cs")
     assert "ref float ___stateTimer" in patches, "Harmony must bind the original gun timer"
     assert "return false;" not in patches, "metronome must not skip vanilla methods"
-    require(BASE + "ReloadMetronomeIcon.cs", "Sprite GetSprite(Item item)", "return owner.EnsureSprite();")
-    require(BASE + "ReloadMetronomeIcon.cs", "Sprite EnsureSprite()", "Sprite authored = ReloadMetronomeAssets.Icon;")
-    require(BASE + "ReloadMetronomeIcon.cs", "Sprite EnsureSprite()", "if (authored != null && TryCopyProductionSprite(authored)) return sprite;")
-    require(BASE + "ReloadMetronomeIcon.cs", "bool TryCopyProductionSprite(Sprite source)",
-            'created = ProductionIconCache.CloneTexture(source.texture, "ReloadMetronome_ProductionIcon");')
-    require(BASE + "ReloadMetronomeIcon.cs", "void OnDestroy()", "if (resourceOwnerId != GetInstanceID()) return;")
-    require(BASE + "ReloadMetronomeAssets.cs", "void EnsureLoaded()", 'icon = bundle.LoadAsset<Sprite>("metronome_icon");')
+    # 物品图标与其他 Mod 物品同一条路（ModItemIcons + Publish，ModItemIconGuard 守卫）；
+    # 独立小包只剩换弹 HUD 的反馈资源，不再取图标。
+    assert not (ROOT / (BASE + "ReloadMetronomeIcon.cs")).exists(), "no per-item icon owner component"
+    assets = source(BASE + "ReloadMetronomeAssets.cs")
+    assert "metronome_icon" not in assets and "Icon" not in re.sub(r"ModItemIcons", "", assets), "presentation bundle no longer supplies the item icon"
+    assert ".Icon" not in source(BASE + "ReloadMetronomeWeaponConfig.cs"), "configurator must not write the item icon"
+    require(BASE + "ReloadMetronomeAssets.cs", "void EnsureFeedback()", 'trail = bundle.LoadAsset<Sprite>("metronome_trail");')
     require("Integration/NewWeapons/Common/NewWeaponRuntime.cs", "void CleanupOnDestroy()",
             "ReloadMetronomeAssets.ResetStaticCaches();")
     require(BASE + "ReloadMetronomeRuntime.cs", "void FinishReload()", "if (showFinish) hud.FinishReload();")

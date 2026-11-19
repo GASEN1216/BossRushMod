@@ -287,6 +287,13 @@ namespace BossRush
                 return bonus;
             }
 
+            // 收集品里「物归原主 / 同乡之物」的那几件：喜欢谁写在 CollectibleCatalog 的 LikedBy，好感按品质给
+            int collectibleBonus = CollectibleTuning.LikedGiftAffinity(npcId, typeId);
+            if (collectibleBonus > 0)
+            {
+                return collectibleBonus;
+            }
+
             // 检查正向标签列表（哥布林特殊：喜欢配方和蓝图）
             if (HasPositiveTag(npcId, item))
             {
@@ -322,6 +329,11 @@ namespace BossRush
             }
 
             if (giftConfig.PositiveItems != null && giftConfig.PositiveItems.ContainsKey(typeId))
+            {
+                return GiftReactionType.Positive;
+            }
+
+            if (CollectibleTuning.LikedGiftAffinity(npcId, typeId) > 0)
             {
                 return GiftReactionType.Positive;
             }

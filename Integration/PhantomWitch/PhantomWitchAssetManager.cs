@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Reflection;
 using Duckov.Buffs;
 using ItemStatsSystem;
@@ -12,7 +11,9 @@ namespace BossRush
     {
         private static GameObject cachedCurseBuffGO = null;
         private static Buff cachedCurseBuff = null;
+        // 借自 ModSprites；只有 curseBuffIconIsFallback 为 true（程序化兜底）时归本类销毁。
         private static Sprite cachedCurseBuffIcon = null;
+        private static bool curseBuffIconIsFallback = false;
 
         private static bool buffReflectionInitialized = false;
         private static FieldInfo buffIdField = null;
@@ -37,15 +38,7 @@ namespace BossRush
         private static int activeReferenceCount = 0;
         private static bool pendingCacheCleanup = false;
 
-        private static readonly string[] PreferredCurseIconRelativePaths = new string[]
-        {
-            Path.Combine("Assets", "ui", "Buffs", "PhantomWitch_CurseBuff.png"),
-            Path.Combine("Assets", "ui", "Buffs", "phantomwitch_cursebuff.png"),
-            Path.Combine("Assets", "ui", "Buffs", "phantom_witch_curse_buff.png"),
-            Path.Combine("Assets", "ui", "Buffs", "PhantomWitchCurseBuff.png")
-        };
-
-        private const string CurseIconFolderRelativePath = "Assets/ui/Buffs";
+        private const string CurseIconRelativePath = "Assets/ui/Buffs/PhantomWitch_CurseBuff.png";
         private const string CurseBuffDisplayNameKey = "Buff_PhantomWitch_Curse_Name";
         private const string CurseBuffDescriptionKey = "Buff_PhantomWitch_Curse_Desc";
         private const string CurseBuffDisplayNameCN = "幽灵诅咒";
@@ -131,111 +124,14 @@ namespace BossRush
                 return cachedCurseBuffIcon;
             }
 
-            try
+            // 生产图标包优先，Dev 或缺包读散图；都没有时画一个程序化兜底。
+            cachedCurseBuffIcon = ModSprites.Get(CurseIconRelativePath);
+            curseBuffIconIsFallback = cachedCurseBuffIcon == null;
+            if (curseBuffIconIsFallback)
             {
-                string modPath = ModBehaviour.GetModPath();
-                if (!string.IsNullOrEmpty(modPath))
-                {
-                    for (int i = 0; i < PreferredCurseIconRelativePaths.Length; i++)
-                    {
-                        string fullPath = Path.Combine(modPath, PreferredCurseIconRelativePaths[i]);
-                        Sprite loadedSprite = TryLoadSpriteFromFile(fullPath, "PhantomWitch_CurseBuffIcon");
-                        if (loadedSprite != null)
-                        {
-                            cachedCurseBuffIcon = loadedSprite;
-                            return cachedCurseBuffIcon;
-                        }
-                    }
-
-                    string iconFolderPath = Path.Combine(modPath, CurseIconFolderRelativePath);
-                    if (Directory.Exists(iconFolderPath))
-                    {
-                        string[] pngFiles = Directory.GetFiles(iconFolderPath, "*.png", SearchOption.TopDirectoryOnly);
-                        for (int i = 0; i < pngFiles.Length; i++)
-                        {
-                            string fileName = Path.GetFileNameWithoutExtension(pngFiles[i]);
-                            if (string.IsNullOrEmpty(fileName))
-                            {
-                                continue;
-                            }
-
-                            string lowered = fileName.ToLowerInvariant();
-                            if (lowered.Contains("curse") || lowered.Contains("witch") || lowered.Contains("ghost"))
-                            {
-                                Sprite loadedSprite = TryLoadSpriteFromFile(pngFiles[i], "PhantomWitch_CurseBuffIcon");
-                                if (loadedSprite != null)
-                                {
-                                    cachedCurseBuffIcon = loadedSprite;
-                                    return cachedCurseBuffIcon;
-                                }
-                            }
-                        }
-                    }
-                }
+                cachedCurseBuffIcon = CreateFallbackCurseBuffIcon();
             }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[PhantomWitch] [WARNING] 加载诅咒Buff图标失败: " + e.Message);
-            }
-
-            cachedCurseBuffIcon = CreateFallbackCurseBuffIcon();
             return cachedCurseBuffIcon;
-        }
-
-        private static Sprite TryLoadSpriteFromFile(string fullPath, string spriteName)
-        {
-            string root = ModBehaviour.GetModPath();
-            if (!string.IsNullOrEmpty(fullPath) && fullPath.StartsWith(root, StringComparison.OrdinalIgnoreCase))
-            {
-                Sprite compressed = ProductionIconCache.Get(fullPath.Substring(root.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
-                if (compressed != null) return compressed;
-            }
-            if (!ProductionIconCache.AllowRawFallback) return null;
-            if (string.IsNullOrEmpty(fullPath) || !File.Exists(fullPath))
-            {
-                return null;
-            }
-
-            Texture2D texture = null;
-            Sprite sprite = null;
-            bool retained = false;
-            try
-            {
-                byte[] bytes = File.ReadAllBytes(fullPath);
-                if (bytes == null || bytes.Length == 0)
-                {
-                    return null;
-                }
-
-                texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                if (!texture.LoadImage(bytes, true))
-                {
-                    return null;
-                }
-
-                texture.name = spriteName;
-                sprite = Sprite.Create(
-                    texture,
-                    new Rect(0f, 0f, texture.width, texture.height),
-                    new Vector2(0.5f, 0.5f));
-                if (sprite == null) return null;
-                sprite.name = spriteName;
-                retained = true;
-                return sprite;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[PhantomWitch] [WARNING] 从文件加载Sprite失败: " + fullPath + " - " + e.Message);
-                return null;
-            }
-            finally
-            {
-                if (!retained)
-                {
-                    if (sprite != null) UnityEngine.Object.Destroy(sprite);
-                    if (texture != null) UnityEngine.Object.Destroy(texture);
-                }
-            }
         }
 
         private static Sprite CreateFallbackCurseBuffIcon()
@@ -967,7 +863,7 @@ namespace BossRush
                 cachedEffectTemplate = null;
             }
 
-            if (cachedCurseBuffIcon != null && !ProductionIconCache.IsBorrowed(cachedCurseBuffIcon))
+            if (curseBuffIconIsFallback && cachedCurseBuffIcon != null)
             {
                 Texture2D iconTexture = cachedCurseBuffIcon.texture;
                 UnityEngine.Object.Destroy(cachedCurseBuffIcon);
@@ -978,6 +874,7 @@ namespace BossRush
             }
 
             cachedCurseBuffIcon = null;
+            curseBuffIconIsFallback = false;
 
             if (cachedEffectMaterial != null)
             {

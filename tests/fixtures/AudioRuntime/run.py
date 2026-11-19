@@ -29,7 +29,7 @@ def main():
         raw = (ROOT / relative).read_bytes()
         hashes[relative] = hashlib.sha256(raw).hexdigest()
         return raw.decode('utf-8-sig')
-    production = ['Audio/BossRushAudioHooks.cs', 'Audio/BossRushAudioRuntimeService.cs']
+    production = ['Audio/BossRushAudioHooks.cs', 'Audio/BossRushAudioRuntimeService.cs', 'Audio/BossRushOfficialAudio.cs']
     for relative in production:
         read(relative)
     registration = read('ModBehaviourRuntimeModules.cs')

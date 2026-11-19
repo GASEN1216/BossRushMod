@@ -35,7 +35,9 @@ namespace BossRush
         private const string StatHeadArmor = "HeadArmor";
         private const string StatGunDamageMultiplier = "GunDamageMultiplier";
         private const string StatMeleeDamageMultiplier = "MeleeDamageMultiplier";
-        private const string StatGunCritRateGain = "GunCritRateGain";
+        // 主角开枪只有爆头算暴击（官方 ItemAgent_Gun 把主角的暴击率改成「瞄头 = 1，否则 = 0」），
+        // 枪械暴击率对玩家无效；鹰目的枪械一半改加爆头伤害（2026-11-19）。
+        private const string StatGunCritDamageGain = "GunCritDamageGain";
         private const string StatMeleeCritRateGain = "MeleeCritRateGain";
 
         private static readonly System.Action<string, System.Exception> ModifierFailureLogger = LogAffixModifierFailure;
@@ -375,8 +377,8 @@ namespace BossRush
 
                 if (id == AffixDefinitions.Id_HawkEye)
                 {
-                    // 暴击率增益是加点型 stat，必须用 Add，不能用 PercentageAdd
-                    RuntimeStatModifierTracker.TryAdd(main, StatGunCritRateGain, value, ModifierSource, _persistentModifiers, LogPrefix, ModifierType.Add, ModifierFailureLogger);
+                    // 暴击类增益基础值是 0，必须用 Add，不能用 PercentageAdd；枪械加爆头伤害，近战加暴击率
+                    RuntimeStatModifierTracker.TryAdd(main, StatGunCritDamageGain, value, ModifierSource, _persistentModifiers, LogPrefix, ModifierType.Add, ModifierFailureLogger);
                     RuntimeStatModifierTracker.TryAdd(main, StatMeleeCritRateGain, value, ModifierSource, _persistentModifiers, LogPrefix, ModifierType.Add, ModifierFailureLogger);
                     continue;
                 }

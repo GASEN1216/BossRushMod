@@ -212,6 +212,8 @@ namespace BossRush
         internal bool IsValidBossRushArenaScene(string scene) { return ValidArena; }
         internal static Vector3[] GetSharedCommonNPCSpawnPointsForScene(string scene) { return Shared; }
         internal Vector3[] GetCurrentSceneSpawnPoints() { return Fallback; }
+        // 生产 GetModPath 的首选分支：程序集所在目录（夹具里就是本夹具的输出目录，Ticket 用例在那里放 Assets/bossrush_ticket）。
+        public static string GetModPath() { return System.IO.Path.GetDirectoryName(typeof(ModBehaviour).Assembly.Location); }
         public static void DevLog(string message) { }
         internal void SetupAIAggro(CharacterMainControl character) { Probe.Add("aggro"); }
         internal void UnregisterDragonDescendantEnemyRecovery(CharacterMainControl character) { Probe.Add("recovery"); }
@@ -247,7 +249,7 @@ namespace BossRush
         internal static void SetLayerRecursively(GameObject value, int layer) { Probe.Add("layer"); }
     }
     internal static class BossRushItemIds { internal const int BossRushTicket = 500001, BirthdayCake = 500002, AdventureJournal = 500003; }
-    internal static class BossRushDynamicItemRegistry { internal static bool HasRegisteredPrefabWithoutEnsuring(int id) { return ItemStatsSystem.ItemAssetsCollection.Registered.Contains(id); } }
+    internal static class BossRushDynamicItemRegistry { internal static bool HasRegisteredPrefabWithoutEnsuring(int id) { return ItemStatsSystem.ItemAssetsCollection.Registered.Contains(id); } internal static bool Publish(ItemStatsSystem.Item item) { ItemStatsSystem.ItemAssetsCollection.AddDynamicEntry(item); return true; } }
     internal sealed partial class IntegrationRuntimeModule
     {
         internal void RegisterItemContentConfigurators() { Probe.Add("configurators"); }

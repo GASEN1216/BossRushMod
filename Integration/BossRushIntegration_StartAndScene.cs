@@ -177,7 +177,6 @@ namespace BossRush
             BossRush.Utils.NPCNameTagHelper.ResetStaticCaches();
             NPCPlayerLookupCache.ResetStaticCaches();
             PhantomWitchPerformancePolicy.ResetStaticCaches();
-            EquipmentHelperIcon.ResetStaticCaches();
             ProductionIconCache.ResetStaticCaches();
             ModBehaviour.ResetDragonDescendantBossStaticCaches();
             ModBehaviour.ResetLootAndRewardsStaticCaches();

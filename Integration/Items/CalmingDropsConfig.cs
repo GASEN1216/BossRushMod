@@ -9,7 +9,6 @@ namespace BossRush
     {
         public const int TYPE_ID = 500030;
         public const string BUNDLE_NAME = "calming_drops";
-        public const string ICON_NAME = "CalmingDrops";
         public const int REWARD_COUNT = 5;
         public const string LOC_KEY_DISPLAY = "BossRush_CalmingDrops";
         public const string DISPLAY_NAME_CN = "安神滴剂";

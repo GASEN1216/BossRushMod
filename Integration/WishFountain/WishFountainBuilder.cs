@@ -39,9 +39,6 @@ namespace BossRush
         /// <summary>建筑预制体名称</summary>
         private const string STARWISH_PREFAB_NAME = "StarWishFountain";
 
-        /// <summary>占位 AssetBundle 文件标记</summary>
-        private const string STARWISH_BUNDLE_PLACEHOLDER_MARKER = "STARWISH_PLACEHOLDER_BUNDLE";
-
         /// <summary>建筑占地尺寸</summary>
         private static readonly Vector2Int STARWISH_BUILDING_SIZE = new Vector2Int(2, 2);
 
@@ -221,29 +218,9 @@ namespace BossRush
         {
             if (starwishBuildingIcon != null) return;
 
-            try
-            {
-                string assemblyLocation = typeof(ModBehaviour).Assembly.Location;
-                string modDir = Path.GetDirectoryName(assemblyLocation);
-                string iconPath = Path.Combine(modDir, "Assets", "buildings", "starwish_fountain.png");
-
-                if (File.Exists(iconPath))
-                {
-                    starwishBuildingIcon = ItemFactory.GetSpriteFromFile(Path.Combine("Assets", "buildings", Path.GetFileName(iconPath)));
-                    if (starwishBuildingIcon != null)
-                    {
-                        DevLog("[WishFountain] 建筑图标加载成功");
-                    }
-                }
-                else
-                {
-                    DevLog("[WishFountain] 未找到建筑图标: " + iconPath);
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[WishFountain] 加载图标异常: " + e.Message);
-            }
+            // 借自 ModSprites：生产图标包优先，Dev 或缺包读散图。
+            starwishBuildingIcon = ModSprites.Get("Assets/buildings/starwish_fountain.png");
+            DevLog(starwishBuildingIcon != null ? "[WishFountain] 建筑图标加载成功" : "[WishFountain] 建筑图标不可用");
         }
 
         private void LoadStarwishBuildingModel()
@@ -255,19 +232,12 @@ namespace BossRush
 
             try
             {
-                string assemblyLocation = typeof(ModBehaviour).Assembly.Location;
-                string modDir = Path.GetDirectoryName(assemblyLocation);
+                string modDir = ModBehaviour.GetModPath();
                 string bundlePath = Path.Combine(modDir, "Assets", "buildings", "starwish_fountain");
 
                 if (!File.Exists(bundlePath))
                 {
                     DevLog("[WishFountain] 未找到 AssetBundle 文件，使用占位模型: " + bundlePath);
-                    return;
-                }
-
-                if (IsStarwishPlaceholderBundle(bundlePath))
-                {
-                    DevLog("[WishFountain] 检测到占位 AssetBundle 标记文件，使用占位模型");
                     return;
                 }
 
@@ -307,35 +277,6 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog("[WishFountain] 加载 AssetBundle 异常，使用占位模型: " + e.Message);
-            }
-        }
-
-        private bool IsStarwishPlaceholderBundle(string bundlePath)
-        {
-            try
-            {
-                FileInfo fileInfo = new FileInfo(bundlePath);
-                if (!fileInfo.Exists)
-                {
-                    return false;
-                }
-
-                if (fileInfo.Length == 0)
-                {
-                    return true;
-                }
-
-                if (fileInfo.Length > 128)
-                {
-                    return false;
-                }
-
-                string content = File.ReadAllText(bundlePath).Trim();
-                return string.Equals(content, STARWISH_BUNDLE_PLACEHOLDER_MARKER, StringComparison.Ordinal);
-            }
-            catch
-            {
-                return false;
             }
         }
 

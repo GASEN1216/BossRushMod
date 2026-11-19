@@ -18,7 +18,7 @@
 // 图标约定：
 //   Assets/ui/random_events/evt_<id>.png（id = RandomEventId 的整数值，如 evt_1.png）。
 //   缺图直接 fallback 成纯文字徽章：不报错、不刷屏、不重复尝试读盘。
-//   自造 Sprite/Texture 带 HideAndDontSave，必须在 ResetStaticCaches 里显式销毁。
+//   取图走 ModSprites（生产图标包优先，Dev 或缺包读散图），图标是借用的，ResetStaticCaches 只清引用。
 //
 // 性能：Tick 是每帧路径。只在「秒数整数值变化」或「事件切换」时才写 TMP.text，
 //       其余帧只有几次引用比较与一次 int 比较，零分配、零日志。
@@ -26,7 +26,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -60,9 +59,9 @@ namespace BossRush
         private static float _fadeOutElapsed = -1f;
         private static float _fadeOutFrom = 1f;
 
+        // 事件图标借自 ModSprites（不归这里销毁）；null 也缓存，表示本局不再尝试。
         private static readonly Dictionary<RandomEventId, Sprite> _iconCache =
             new Dictionary<RandomEventId, Sprite>();
-        private static readonly List<UnityEngine.Object> _ownedAssets = new List<UnityEngine.Object>();
 
         /// <summary>由运行时模块 OnUpdate 调用。Director 无活动事件时隐藏并早返。</summary>
         internal static void Tick(RandomEventDirector director)
@@ -281,22 +280,9 @@ namespace BossRush
             ResetStaticCaches();
         }
 
-        /// <summary>释放自造的 Sprite / Texture（HideAndDontSave 不随场景回收）。幂等。</summary>
+        /// <summary>清掉图标引用缓存。图标借自 ModSprites，由它在 Mod 卸载时释放。幂等。</summary>
         internal static void ResetStaticCaches()
         {
-            for (int i = _ownedAssets.Count - 1; i >= 0; i--)
-            {
-                try
-                {
-                    if (_ownedAssets[i] != null)
-                    {
-                        UnityEngine.Object.Destroy(_ownedAssets[i]);
-                    }
-                }
-                catch (Exception) { }
-            }
-
-            _ownedAssets.Clear();
             _iconCache.Clear();
         }
 
@@ -477,37 +463,7 @@ namespace BossRush
                 return cached;
             }
 
-            Sprite sprite = null;
-            try
-            {
-                string modPath = ModBehaviour.GetModPath();
-                if (!string.IsNullOrEmpty(modPath))
-                {
-                    string relative = RandomEventsTuning.HudIconDirectory
-                        .Replace('/', Path.DirectorySeparatorChar);
-                    string path = Path.Combine(
-                        Path.Combine(modPath, "Assets"),
-                        Path.Combine(relative, "evt_" + ((int)id) + ".png"));
-
-                    sprite = ProductionIconCache.Get("Assets/" + RandomEventsTuning.HudIconDirectory + "/evt_" + ((int)id) + ".png");
-                    if (sprite == null && ProductionIconCache.AllowRawFallback && File.Exists(path))
-                    {
-                        sprite = RawImageLoader.LoadSprite(path, "evt_" + ((int)id));
-                        if (sprite != null)
-                        {
-                            sprite.hideFlags = HideFlags.HideAndDontSave;
-                            sprite.texture.hideFlags = HideFlags.HideAndDontSave;
-                            _ownedAssets.Add(sprite.texture);
-                            _ownedAssets.Add(sprite);
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 事件图标加载失败 " + id + ": " + e.Message);
-                sprite = null;
-            }
+            Sprite sprite = ModSprites.Get("Assets/" + RandomEventsTuning.HudIconDirectory + "/evt_" + ((int)id) + ".png");
 
             // null 也入缓存：这是「本局不再尝试读盘」的结论
             _iconCache[id] = sprite;

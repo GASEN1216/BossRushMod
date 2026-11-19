@@ -5,7 +5,7 @@ ModeHPresentationAssetGuard — Mode H 展示资源守卫（设计提案 §23.3�
 不变式：
 - bundle / 路径 / 两个 Sprite 短名冻结；
 - 运行时缓存每 runtime 最多一次 LoadFromFile，入口预检必须同时取到两张 Sprite；
-- 生产缺包 fail-closed；AllowDevRawPngFallback 是编译期常量且恒为 false；
+- 缺包 fail-closed；只认 bundle，散图回退整条删除（开发构建也不读 raw PNG，不得重新加回开发门）；
 - 幂等 Unload(true)：先销毁引用徽记/横幅的 UI 根、清空 Sprite 引用，再卸载；
 - compile_official.bat / test_bossrush_official.bat 都有 bundle 部署路径，
   且缺包时明确失败或把 Mode H 标成不可用，不能静默打包；
@@ -58,11 +58,12 @@ def check_cache(errors):
         (r"ResourceBundleLoader\.LoadFromFile", "经官方 API 加载"),
         (r"LoadAsset<Sprite>", "按短名取 Sprite"),
         (r"Unload\(true\)", "幂等卸载"),
-        (r"ModeHAvailability\.AllowDevRawPngFallback", "raw fallback 只由编译期常量控制"),
     ]
     for pattern, desc in checks:
         if not re.search(pattern, code):
             errors.append("[Cache] 不满足: " + desc)
+    if re.search(r"LoadDevRawSprite|DevRaw|AllowDevRawPngFallback|ModSprites|RawImageLoader|LoadImage|ReadAllBytes", code):
+        errors.append("[Cache] 展示资源只认 bundle，不得有散图回退（不得用 raw PNG 冒充发布包）")
 
     # 每 runtime 最多一次 LoadFromFile
     if len(re.findall(r"ResourceBundleLoader\.LoadFromFile", code)) != 1:
@@ -94,8 +95,8 @@ def check_dev_gate(errors):
         errors.append("[File] 缺少 ModeH/ModeHAvailability.cs")
         return
     code = strip_cs_comments(source)
-    if not re.search(r"public const bool AllowDevRawPngFallback = false;", code):
-        errors.append("[DevGate] AllowDevRawPngFallback 必须是编译期常量且为 false")
+    if "AllowDevRawPngFallback" in code:
+        errors.append("[DevGate] 散图回退已删除，不得重新加回 AllowDevRawPngFallback 开发门")
     if not re.search(r"public const bool AllowDevControlPointHarness = false;", code):
         errors.append("[DevGate] AllowDevControlPointHarness 必须是编译期常量且为 false")
 

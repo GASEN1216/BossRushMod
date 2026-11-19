@@ -19,6 +19,8 @@ internal static class Program
     private static void Reset(string name)
     {
         AchievementIconLoader.ResetStaticCaches();
+        ModSprites.ResetStaticCaches();
+        ProductionIconCache.ResetStaticCaches();
         AssetBundle.Loaded.Clear();
         UnityObject.Created.Clear();
         AssetBundle.FindCalls = AssetBundle.LoadCalls = Texture2D.DecodeCalls = 0;
@@ -62,13 +64,16 @@ internal static class Program
         Texture2D pngTexture = sprite.texture;
         AchievementIconLoader.ClearCache();
         AchievementIconLoader.ClearCache();
-        Assert(sprite.destroyCalls == 1 && pngTexture.destroyCalls == 1, "PNG cleanup destroys both owned objects once");
+        Assert(sprite.destroyCalls == 0 && pngTexture.destroyCalls == 0, "loader clear leaves the PNG borrowed from ModSprites alive");
         Assert(bundle.Sprites.Values.All(x => x.destroyCalls == 0) && bundle.Textures.Values.All(x => x.destroyCalls == 0), "PNG cleanup leaves unused bundle assets alone");
         Sprite refreshed = AchievementIconLoader.GetSprite("new_icon");
-        Assert(refreshed != null && !ReferenceEquals(sprite, refreshed), "PNG reload succeeds after repeated clear");
+        Assert(ReferenceEquals(sprite, refreshed) && Texture2D.DecodeCalls == 1, "PNG is reused after repeated clear without a second decode");
         AchievementIconLoader.Unload();
         AchievementIconLoader.Unload();
-        Assert(refreshed.destroyCalls == 1 && refreshed.texture.destroyCalls == 1, "repeated unload releases reloaded PNG once");
+        Assert(refreshed.destroyCalls == 0, "loader unload does not destroy the borrowed PNG");
+        ModSprites.ResetStaticCaches();
+        ModSprites.ResetStaticCaches();
+        Assert(sprite.destroyCalls == 1 && pngTexture.destroyCalls == 1, "ModSprites releases the decoded PNG exactly once");
     }
 
     private static void CheckTextureFirstAndDestroyedCache()
@@ -84,8 +89,9 @@ internal static class Program
         Texture2D reloaded = AchievementIconLoader.GetTexture("tex_first");
         Assert(reloaded != null && !ReferenceEquals(reloaded, texture), "destroyed cached Unity objects are reloaded");
         AchievementIconLoader.ClearCache();
+        ModSprites.ResetStaticCaches();
         Assert(sprite.destroyCalls == 1 && texture.destroyCalls == 1, "already-destroyed objects are not destroyed again");
-        Assert(reloaded.destroyCalls == 1, "replacement PNG is owned");
+        Assert(reloaded.destroyCalls == 1, "replacement PNG is owned by ModSprites");
     }
 
     private static void CheckBundleOwnership()
@@ -128,6 +134,7 @@ internal static class Program
         Assert(failed.destroyCalls == 1, name + ": failed allocation is destroyed immediately");
         Assert(borrowed.destroyCalls == 0 && borrowed.texture.destroyCalls == 0, name + ": fallback remains valid");
         AchievementIconLoader.ClearCache();
+        ModSprites.ResetStaticCaches();
         Assert(failed.destroyCalls == 1, name + ": failed allocation was not retained");
     }
 
@@ -160,6 +167,7 @@ internal static class Program
         CheckFailedPngCleanup(1, 2, "sprite-exception");
         CheckMissingAndInvalidNames();
         AchievementIconLoader.ResetStaticCaches();
+        ModSprites.ResetStaticCaches();
         ProductionIconCache.ResetStaticCaches();
         ResourceOwnershipTests.Run(root);
         Console.WriteLine("AchievementIcons: " + passed + " PASS");

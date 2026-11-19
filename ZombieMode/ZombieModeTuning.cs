@@ -22,7 +22,8 @@ namespace BossRush
         // 注意：不要再加 "ReloadSpeedMultiplier" —— 官方源码里没有这个 stat，
         // 挂上去会被 RuntimeStatModifierTracker 静默丢弃（AGENTS §14）。
         // 换弹一律用下面的 ReloadSpeedGain，由 StatKeyExistenceGuard 守卫。
-        public const string GunCritRateGain = "GunCritRateGain";
+        // 暴击专注加的是爆头伤害：主角开枪只有爆头算暴击，GunCritRateGain 对玩家无效（2026-11-19）。
+        public const string GunCritDamageGain = "GunCritDamageGain";
         public const string ReloadSpeedGain = "ReloadSpeedGain";
         public const string DashSpeed = "DashSpeed";
         public const string ElementFactorPhysics = "ElementFactor_Physics";

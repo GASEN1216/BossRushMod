@@ -7,7 +7,7 @@ ModeGPresentationAssetGuard — Mode G 展示资源守卫（规格 §20 第 10 �
 - 首版 bundle <256 KiB（磁盘文件存在时实测）；
 - 缺包 fail-closed：TryPreflight 失败返回 false 且缓存结果；
 - 每 runtime 至多一次 LoadFromFile（_loadAttempted 单次闸门）；
-- raw PNG fallback 仅开发构建（AllowDevRawPngFallback 门控）；
+- 只认 bundle：缓存里没有任何散图回退（不得用 raw PNG 冒充发布包，开发构建也一样）；
 - Unload 幂等（终局调用，重置全部缓存标记）；
 - 徽记/横幅资产名冻结：modeg_echo_emblem / modeg_echo_banner。
 """
@@ -59,9 +59,6 @@ def main():
         ("SingleLoadGate",
          r"if \(_loadAttempted\) return false;\s*\n\s*_loadAttempted = true;",
          "每 runtime 至多一次 LoadFromFile"),
-        ("RawFallbackDevOnly",
-         r"if \(!ModeGAvailability\.AllowDevRawPngFallback\) return null;",
-         "raw PNG fallback仅开发构建"),
         ("UnloadIdempotent",
          r"public static void Unload\(\)[\s\S]*?_loadAttempted = false;"
          r"[\s\S]*?_preflightAttempted = false;",
@@ -77,6 +74,13 @@ def main():
     ]
     for name, pattern, desc in checks:
         if not re.search(pattern, content):
+            errors.append("[{}] 不满足: {}".format(name, desc))
+
+    # 散图回退整条删除（2026-11-19）：只认 bundle，开发构建也不读 Assets/ui/ModeG/*.png。
+    for name, pattern, desc in [
+            ("NoRawFallback", r"LoadDevRawSprite|DevRaw|AllowDevRawPngFallback|ModSprites|RawImageLoader|LoadImage|ReadAllBytes",
+             "展示资源只认 bundle，不得有散图回退")]:
+        if re.search(pattern, content):
             errors.append("[{}] 不满足: {}".format(name, desc))
 
     if interactable:

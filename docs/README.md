@@ -32,6 +32,7 @@
 - [自研着色器与官方渲染管线约定](architecture/自研着色器与官方渲染管线约定.md)：URP Deferred 的不透明与透明 pass、官方光照、数据通道与实包排查
 - [事件订阅生命周期约定](architecture/事件订阅生命周期约定.md) · [Hooks 分层约定](architecture/Hooks分层约定.md) · [Config 归位约定](architecture/Config归位约定.md) · [Utilities 去重约定](architecture/Utilities去重约定.md)
 - [BOSS 模板约定](architecture/BOSS模板约定.md) · [NPC 共性对比记录](architecture/NPC共性对比记录.md) · [长期架构目标](architecture/长期架构目标.md)（non-goal 登记）
+- [收集品格子边框与陈列模型](architecture/收集品格子边框与陈列模型.md)：6–8 档物品格边框（唯一接点 `ItemDisplay.Setup`）与收集品 3D 模型（唯一接点 `ItemGraphicInfo.CreateAGraphic`）的运行时设计、档次与配色、生命周期、守卫
 
 - [仓库入口实体、余响官方对话与重进修复](reports/testing/仓库入口_2026-11-13_实体对话与重进.md)（2026-11-13）：本批证据、产物身份与实机步骤。
 
@@ -44,6 +45,10 @@
 - [自定义近战武器 Unity 资源制作指南](guides/焚皇断界戟_Unity资源制作指南.md)（焚皇断界戟 / 霜之哀伤）
 - [自定义交互物模型制作教程](guides/自定义交互物模型制作教程.md) · [便携安全区装置 Unity 资源制作约定](guides/便携安全区装置_Unity资源制作约定.md)
 - [AI 图片生成与 Unity 自动打包流程](guides/AI图片生成与Unity自动打包流程.md) · [BossRushUI 图集规格](guides/BossRushUI_图集规格.md) · [Wiki 书 UI 资源契约](guides/WikiBookUI_Guide.md)
+- [Tripo 网页版批量建模流程](guides/Tripo网页版批量建模流程.md)：用 owner 的网页版积分在内置浏览器里全自动批量出模型（WebRTC 传图、排队提交、拦截导出、免费重试、参数与花费）；脚手架在 [guides/tripo-kit/](guides/tripo-kit/README.md)
+- [收集品陈列模型制作与接入](guides/收集品陈列模型制作与接入.md)：Tripo GLB → Blender 规范化 → DXT1 `.brcm` → 游戏里按需挂到陈列柜 / 地上掉落；新增收集品怎么补模型
+- [鸭科夫官方资源离线探针](guides/duckov-probes/README.md)：UnityPy 读官方预制体层级、品质色、建造清单、展示位标签、标签引用，IL 引用扫描；动官方 UI / 建筑 / 标签前先用它读事实
+- [UI 特效离线原型](guides/ui-fx-kit/README.md)：按生产代码的形状与配色在本机出预览图（收集品边框）
 
 NPC：
 
@@ -77,6 +82,7 @@ NPC：
 - [物品 ID 表](reference/Bossrush使用物品ID表.md)：全部自定义 TypeID 与建筑 ID（与 `contracts.md` §1、根 `AGENTS.md` §4.3 三处一致）
 - [官方本地化表快照](reference/official-localization/README.md)：查官方文本键（守卫与 Wiki 生图工具读取）
 - [官方战利品掉落机制](reference/战利品掉落机制.md) · [官方 V1.3.10 Mod 相关更新笔记](reference/V1.3.10.md) · [BossRush 学习笔记](reference/BossRush_学习笔记.md)
+- [官方陈列柜与物品格机制](reference/官方陈列柜与物品格机制.md)：物品格层级与品质光晕色、陈列柜建造前置与展示位、官方展示模型的结构与材质、展示品 / 收藏品标签、随机选物排除「特殊」（2026-11-19 核对）
 - [ModBehaviour.Instance 分类表](reference/2026-05-14-modbehaviour-instance-classification.md)（进 git，被守卫读取）
 - `reference/images/日报UI参考图.png`：日报 UI 取色参考，`tools/gen_daily_report_ui.py` 读取
 

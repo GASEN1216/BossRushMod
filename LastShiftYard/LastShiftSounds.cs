@@ -1,14 +1,13 @@
 using System;
 using System.IO;
-using System.Reflection;
 using UnityEngine;
 
 namespace BossRush
 {
     /// <summary>
     /// COMPAT：末班编组站的提示音。文件由 `tools/gen_lastshift_sfx.py` 程序化生成，放 `Assets/Sounds/LastShift`，
-    /// 随正式编译的 `Assets\Sounds` 整树部署。正式构建不引用 FMOD：与潮闸镇 `TidegateSounds` 同一套 `AudioManager.PostCustomSFX`
-    /// 反射绑定（官方把事件挂在发声体上做 3D 定位）。文件缺了只记一次警告，玩法照常。
+    /// 随正式编译的 `Assets\Sounds` 整树部署。正式构建不引用 FMOD：与潮闸镇 `TidegateSounds` 一样经 `BossRushOfficialAudio`
+    /// 调官方 `AudioManager.PostCustomSFX`（官方把事件挂在发声体上做 3D 定位）。文件缺了只记一次警告，玩法照常。
     /// </summary>
     internal static class LastShiftSounds
     {
@@ -23,8 +22,7 @@ namespace BossRush
         internal const string CartScreech = "cart_screech.wav";
         internal const string SignalBell = "signal_bell.wav";
         internal const string TrolleyShove = "trolley_shove.wav";
-        private static MethodInfo postSound;
-        private static bool resolved, warned;
+        private static bool warned;
 
         /// <summary>在 <paramref name="emitter"/> 上放一次。发声体为空时什么都不做。</summary>
         internal static void Play(string file, GameObject emitter)
@@ -32,16 +30,12 @@ namespace BossRush
             if (emitter == null) return;
             try
             {
-                if (!resolved)
-                {
-                    resolved = true;
-                    postSound = typeof(Duckov.AudioManager).GetMethod("PostCustomSFX", BindingFlags.Public | BindingFlags.Static,
-                        null, new[] { typeof(string), typeof(GameObject), typeof(bool) }, null);
-                }
-                if (postSound == null) throw new InvalidOperationException("官方音效入口缺失");
+                if (!BossRushOfficialAudio.HasPostCustomSfx) throw new InvalidOperationException("官方音效入口缺失");
                 string path = Path.Combine(Path.Combine(Path.Combine(ModBehaviour.GetModPath(), "Assets"), "Sounds"), Path.Combine("LastShift", file));
                 if (!File.Exists(path)) throw new FileNotFoundException("末班编组站音效未部署", file);
-                postSound.Invoke(null, new object[] { path, emitter, false });
+                object instance;
+                Exception error;
+                if (!BossRushOfficialAudio.TryPostCustomSfx(path, emitter, false, out instance, out error)) throw error;
             }
             catch (Exception e)
             {
@@ -58,7 +52,7 @@ namespace BossRush
             if (main != null) Play(file, main.gameObject);
         }
 
-        internal static void ResetStaticCaches() { postSound = null; resolved = false; warned = false; }
+        internal static void ResetStaticCaches() { warned = false; }
     }
 
     /// <summary>

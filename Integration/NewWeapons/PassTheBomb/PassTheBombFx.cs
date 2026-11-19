@@ -50,7 +50,7 @@ namespace BossRush
             markerRoot.anchorMin = markerRoot.anchorMax = markerRoot.pivot = new Vector2(0.5f, 0.5f);
             markerRoot.sizeDelta = new Vector2(62f, 82f);
 
-            if (markerSprite == null) markerSprite = ProductionIconCache.Get("Assets/Icons/pass_the_bomb_marker.png");
+            if (markerSprite == null) markerSprite = ModSprites.Get("Assets/Icons/pass_the_bomb_marker.png");
             marker = CreateImage(root.transform, "Bomb", markerSprite, new Vector2(50f, 50f), new Vector2(0f, 10f));
             // 图标损坏时仍留醒目的圆形警告和数字，不让资源问题变成隐形伤害。
             if (marker.sprite == null)

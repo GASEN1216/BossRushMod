@@ -167,7 +167,6 @@ namespace BossRush
             // 而 UseDurability 就是 MaxDurability > 0——这四件耐久 100，允许官方维修。
             // 不打这个标签，维修台会直接显示「无法维修」，磨损只能永久带着（龙王套装同款处理）。
             EquipmentHelper.AddRepairableTag(item);
-            EquipmentHelperIcon.TryInjectIcon(item, bundleName, iconAssetName);
             ApplyModelFit(modelBaseName, slotTag == "Armor");
 
             if (bindSupportingResources)

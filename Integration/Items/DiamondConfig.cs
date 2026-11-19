@@ -32,12 +32,7 @@ namespace BossRush
         /// AssetBundle 名称
         /// </summary>
         public const string BUNDLE_NAME = "diamond";
-        
-        /// <summary>
-        /// 图标资源名称
-        /// </summary>
-        public const string ICON_NAME = "Diamond";
-        
+
         // ============================================================================
         // 本地化配置
         // ============================================================================

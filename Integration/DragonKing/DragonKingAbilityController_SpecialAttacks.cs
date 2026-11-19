@@ -164,54 +164,14 @@ namespace BossRush
                 }
 
                 lastWeaponShootSoundTime = Time.time;
-                if (CacheAudioPostMethod() && cachedAudioPostDelegate != null)
-                {
-                    cachedAudioPostDelegate(cachedWeaponShootEventName, bossCharacter.gameObject);
-                }
+                // 与官方 ItemAgent_Gun.PostShootSound 同一个事件（SFX/Combat/Gun/Shoot/<shootKey>），挂在龙皇身上。
+                // 2026-11-19 修复：以前用 void 委托绑官方 Post，绑不上它 EventInstance? 的返回值，这条音从未响过。
+                BossRushOfficialAudio.Post(cachedWeaponShootEventName, bossCharacter.gameObject);
             }
             catch
             {
                 // 音效播放失败不影响游戏逻辑
             }
-        }
-
-        /// <summary>
-        /// 缓存AudioManager.Post方法（只反射一次）
-        /// </summary>
-        private static bool CacheAudioPostMethod()
-        {
-            if (cachedAudioPostResolved)
-            {
-                return cachedAudioPostDelegate != null;
-            }
-
-            cachedAudioPostResolved = true;
-
-            try
-            {
-                var audioManagerType = typeof(LevelManager).Assembly.GetType("Duckov.AudioManager");
-                if (audioManagerType != null)
-                {
-                    var method = audioManagerType.GetMethod("Post",
-                        System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static,
-                        null,
-                        new System.Type[] { typeof(string), typeof(GameObject) },
-                        null);
-                    if (method != null)
-                    {
-                        cachedAudioPostDelegate = Delegate.CreateDelegate(
-                            typeof(AudioPostDelegate),
-                            method,
-                            false) as AudioPostDelegate;
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog($"[DragonKing] [WARNING] 缓存AudioManager.Post异常: {e.Message}");
-            }
-
-            return cachedAudioPostDelegate != null;
         }
 
         /// <summary>

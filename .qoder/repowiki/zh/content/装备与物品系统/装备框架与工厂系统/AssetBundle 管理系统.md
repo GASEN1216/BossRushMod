@@ -2,306 +2,103 @@
 
 <cite>
 **本文引用的文件**
+- [ResourceBundleLoader.cs](file://Utilities/ResourceBundleLoader.cs)
+- [FactoryResourceLoading.cs](file://Integration/FactoryResourceLoading.cs)
 - [EquipmentFactory.cs](file://Integration/EquipmentFactory.cs)
 - [EquipmentFactory_ItemProcessing.cs](file://Integration/EquipmentFactory_ItemProcessing.cs)
+- [ItemFactory.cs](file://Integration/ItemFactory.cs)
+- [BossRushIntegrationRuntimeModule_DeferredBootstrap.cs](file://Integration/BossRushIntegrationRuntimeModule_DeferredBootstrap.cs)
+- [BuildingModelHelper.cs](file://Common/Buildings/BuildingModelHelper.cs)
 - [DragonKingAssetManager.cs](file://Integration/DragonKing/DragonKingAssetManager.cs)
 - [NPCAssetBundleHelper.cs](file://Integration/Utils/NPCAssetBundleHelper.cs)
 - [AssetBundleUnloadHelper.cs](file://Utilities/AssetBundleUnloadHelper.cs)
 - [EntityModelFactory.cs](file://Utilities/EntityModelFactory.cs)
+- [BundleLoadingGuard.py](file://tests/BundleLoadingGuard.py)
 </cite>
 
 ## 目录
-1. [简介](#简介)
-2. [项目结构](#项目结构)
-3. [核心组件](#核心组件)
-4. [架构总览](#架构总览)
-5. [详细组件分析](#详细组件分析)
-6. [依赖关系分析](#依赖关系分析)
-7. [性能考量](#性能考量)
-8. [故障排除指南](#故障排除指南)
-9. [结论](#结论)
-10. [附录](#附录)
+1. [现状（2026-11-19 统一）](#现状2026-11-19-统一)
+2. [核心组件](#核心组件)
+3. [装备 / 物品工厂的加载流程](#装备--物品工厂的加载流程)
+4. [防重复打开](#防重复打开)
+5. [缓存与卸载](#缓存与卸载)
+6. [NPC 与实体模型的 Bundle 加载](#npc-与实体模型的-bundle-加载)
+7. [资源装配与注入](#资源装配与注入)
+8. [故障排除](#故障排除)
+9. [附录：组织与命名](#附录组织与命名)
 
-## 简介
-本文件系统性地梳理并文档化 BossRush Mod 中的 AssetBundle 管理体系，重点覆盖：
-- Bundle 自动发现机制：Assets/Equipment 目录扫描、文件扩展名过滤、manifest 文件处理。
-- Bundle 加载流程：路径构建、文件存在性检查、加载状态跟踪与缓存。
-- 缓存机制：loadedBundles 集合的作用、重复加载防护、内存管理策略（含引用计数与卸载）。
-- Bundle 组织与命名规范：最佳实践与常见陷阱。
-- 调试技巧与故障排除方法。
+## 现状（2026-11-19 统一）
 
-该体系由多个子系统协作完成：装备工厂负责“自动发现 + 统一加载 + 资源装配”，龙王资源管理器负责“特效预制体缓存与对象池”，NPC 辅助器提供“通用 NPC Bundle 加载流程”，通用卸载助手提供“安全卸载入口”，实体模型工厂提供“按名称懒加载与预缓存”。
+本文的底子是 2026-08 的生成快照；本节是 2026-11-19 按现码重写的部分，与下文冲突时以本节和代码为准。
 
-## 项目结构
-从代码层面看，AssetBundle 管理相关职责分布在以下模块：
-- Integration/EquipmentFactory.cs：装备/武器/图腾的自动发现与加载主入口，维护 loadedBundles 去重缓存。
-- Integration/EquipmentFactory_ItemProcessing.cs：对已加载资源的类型识别、关联装配（如 Buff/Bullet/ItemGraphic）与运行时包装。
-- Integration/DragonKing/DragonKingAssetManager.cs：龙王 Boss 特效 Bundle 的加载、预制体缓存、对象池与引用计数卸载。
-- Integration/Utils/NPCAssetBundleHelper.cs：NPC 模型的通用 Bundle 加载流程（路径拼接、枚举资源、回退策略）。
-- Utilities/AssetBundleUnloadHelper.cs：统一的 AssetBundle 卸载封装，避免重复 try/catch。
-- Utilities/EntityModelFactory.cs：按 prefab 名称懒加载 Bundle，预缓存所有 .prefab 资源，供场景实体创建复用。
+- **打开只有一个入口**：`ResourceBundleLoader`。
+  - `Prepare(path, prefabs, cancelled, consumer)`：异步预载（`LoadFromFileAsync` + 可选的 `LoadAllAssetsAsync<GameObject>`）。约定是 consumer 必须在回调里**同步**对同一文件调 `ResourceBundleLoader.LoadFromFile` 才算接管；没接管、取消、超时或换场景，预载的包会被 `Unload(true)` 回收，迟到的原生结果也会在完成回调里卸掉。
+  - `LoadFromFile(path)`：同步兜底。同一文件正有一次未作废的异步 `Prepare` 时直接接管那次请求，不发第二次原生加载；那次请求作废但还没排空时返回 null。
+  - 生产代码别处不直接调 `AssetBundle.LoadFromFile / LoadFromFileAsync / LoadFromMemory(Async) / LoadFromStream(Async)`，也不用字符串反射它们（`BundleLoadingGuard`）。2026-11-19 天空岛特效小包 `SkyIslandFxAssets` 从直接 `AssetBundle.LoadFromFile` 改走这里，一次性闸门 `attempted` 不变。
+- **找已加载的包只有一个入口**：`ResourceBundleLoader.FindLoaded(bundleFileName)`，全仓库唯一的 `AssetBundle.GetAllLoadedAssetBundles` 调用点。匹配规则 `IsNamed`：`bundle.name` 按 `/` 与 `\` 切分取最后一段，与包文件名 OrdinalIgnoreCase **全等**；已销毁或无名的包不算；查询异常返回 null，不抛给调用方。
+  - 调用点：`ItemFactory`（取图与注册的借用兜底）、`ImageViewerUI` 回退看图、`CodexPortraitCache`、`BossRushUISkinLoader`、`CampaignAssetCache`、`ModeGPresentationAssetCache`、`ModeHPresentationAssetCache`、`AchievementIconLoader`。
+  - 旧写法有三种（全等 / `IndexOf` 子串 / 区分大小写的 `Contains`）。改全等前用 UnityPy 核对过 `Assets/` 与游戏 Mod 目录下的全部包（两边各 81 个，同一批文件）：包内名都等于文件名，没有哪个包名是另一个目标名的超串，所以原来能命中的包现在都还能命中。守卫另外钉住每处传入的名字常量等于旁边包路径常量的最后一段。
+- **防重复打开**（同一文件第二次打开会被 Unity 拒绝并报 "another AssetBundle with the same files is already loaded"），见下文「防重复打开」。
+- **卸载语义本次未动**：借来的包仍按各 owner 原来的写法处理（例如成就图标加载器借到的包也照旧 `Unload(true)`），NPC 模型包、龙王「换场景 `ForceCleanup` 卸包」、天空岛 raid 租约都照旧。
+- **已删除的死代码**（编译清单里没有调用方）：同步 `ItemFactory.LoadAllItems`、`EquipmentFactory.LoadAllEquipment`（异步替代 `LoadAllItemsAsync` / `LoadAllEquipmentAsync` 早已在用）、`ItemFactory.DebugListBundleAssets`、`ItemFactory.FindAlreadyLoadedAssetBundle`（并入 `FindLoaded`）、`EntityModelFactory` 的 `HasPrefab` / `GetLoadedPrefabNames` / `LoadAllBundles` / `IsInitialized` 与只写不读的 `_modPath`、`NPCBubbleAnimator.CreateFromBundle`、`DragonKingAssetManager` 的异步 `LoadAssetBundle` / `UnloadAssetBundle` 与 `ClearCache` 里计数归零后只写日志的分支、`PhantomWitchScytheIds.AssetBundlePath`，以及许愿台 / 遗种巢 / 日报箱的「占位 bundle」判断（≤128 字节当文本读、比对 `*_PLACEHOLDER_BUNDLE` 标记串，全仓库没有这种文件）。删掉占位判断后「文件不存在」的处理不变；文件存在就按真包加载。
 
-```mermaid
-graph TB
-A["EquipmentFactory<br/>自动发现与加载"] --> B["EquipmentFactory_ItemProcessing<br/>资源装配与注入"]
-A --> C["loadedBundles<br/>去重缓存"]
-D["DragonKingAssetManager<br/>特效Bundle与对象池"] --> E["prefabCache / missingPrefabCache<br/>预制体缓存"]
-F["NPCAssetBundleHelper<br/>NPC Bundle加载"] --> G["bundle路径: Assets/npcs/*"]
-H["AssetBundleUnloadHelper<br/>安全卸载"] --> I["各模块卸载入口"]
-J["EntityModelFactory<br/>按名称懒加载"] --> K[".prefab预缓存"]
-```
-
-图表来源
-- [EquipmentFactory.cs:176-249](file://Integration/EquipmentFactory.cs#L176-L249)
-- [EquipmentFactory_ItemProcessing.cs:121-222](file://Integration/EquipmentFactory_ItemProcessing.cs#L121-L222)
-- [DragonKingAssetManager.cs:22-59](file://Integration/DragonKing/DragonKingAssetManager.cs#L22-L59)
-- [NPCAssetBundleHelper.cs:20-138](file://Integration/Utils/NPCAssetBundleHelper.cs#L20-L138)
-- [AssetBundleUnloadHelper.cs:17-38](file://Utilities/AssetBundleUnloadHelper.cs#L17-L38)
-- [EntityModelFactory.cs:140-241](file://Utilities/EntityModelFactory.cs#L140-L241)
-
-章节来源
-- [EquipmentFactory.cs:176-249](file://Integration/EquipmentFactory.cs#L176-L249)
-- [EquipmentFactory_ItemProcessing.cs:121-222](file://Integration/EquipmentFactory_ItemProcessing.cs#L121-L222)
-- [DragonKingAssetManager.cs:22-59](file://Integration/DragonKing/DragonKingAssetManager.cs#L22-L59)
-- [NPCAssetBundleHelper.cs:20-138](file://Integration/Utils/NPCAssetBundleHelper.cs#L20-L138)
-- [AssetBundleUnloadHelper.cs:17-38](file://Utilities/AssetBundleUnloadHelper.cs#L17-L38)
-- [EntityModelFactory.cs:140-241](file://Utilities/EntityModelFactory.cs#L140-L241)
+验证：`BundleLoadingGuard` 钉结构；`ResourceProduction` 执行回归跑真实的 `FindLoaded` 匹配与 `RunSpecial` 重试判据；`ContentBuildingOwnership` 跑宿主的公告板 / 展示柜判据。这些都是 L2，实机（基地反复进出不再刷 already loaded、各界面取图正常）没有采样。
 
 ## 核心组件
-- EquipmentFactory：实现“自动发现”和“统一加载”，维护 loadedBundles 防止重复加载，并通过 LoadAllEquipment() 扫描 Assets/Equipment 目录。
-- EquipmentFactory_ItemProcessing：在加载后对资源进行类型识别与装配，包括自动关联 Buff/Bullet、注入 ItemGraphic、修复 Layer/Shader、创建运行时包装等。
-- DragonKingAssetManager：为龙王 Boss 特效提供 Bundle 加载、预制体缓存、对象池预热与引用计数卸载，确保多实例共享且可安全释放。
-- NPCAssetBundleHelper：将 NPC 的 Bundle 加载流程标准化，包含路径构建、文件存在性检查、资源枚举、Animator 校验与日志输出。
-- AssetBundleUnloadHelper：提供 TryUnload(bundle, logPrefix) 的统一卸载入口，捕获异常并记录日志。
-- EntityModelFactory：按 prefab 名称懒加载 Bundle，预缓存所有 .prefab，支持 Create(prefabName, pos, rot) 快速实例化。
+- `ResourceBundleLoader`：打开、接管与「找已加载」的唯一入口，记录有界的加载历史（`Snapshot()` 供 F3 资源采样）。
+- `FactoryResourceLoading`：延迟 bootstrap 的异步装配。`LoadDirectory` 按目录逐个文件 `RunSpecial`；`RunSpecial` 包一次 `Prepare`，换场景作废后等场景稳定再重试。
+- `EquipmentFactory` / `ItemFactory`：`LoadBundle(name)` 用 `loadedBundles` 去重，`LoadBundleInternal` 打开、分类、配置并 `BossRushDynamicItemRegistry.Publish`。
+- `EquipmentFactory_ItemProcessing`：类型识别与装配（Buff / Bullet / ItemGraphic / Layer / Shader / 运行时包装）。
+- `BuildingModelHelper.TryInstantiateBundle`：公告板、展示柜按建筑 ID 打开模型包并实例化，成功时把包作为租约交给建筑。
+- `DragonKingAssetManager`：龙王特效包、预制体缓存与对象池。
+- `NPCAssetBundleHelper`：NPC 模型包的通用加载流程。
+- `AssetBundleUnloadHelper.TryUnload(bundle, prefix)`：`Unload(false)` 的安全封装。
+- `EntityModelFactory`：`Initialize` 扫描 `Assets/entity`（跳过 `.manifest` / `.meta`），`Create` 首次用到时懒加载并预缓存 `.prefab`。
 
-章节来源
-- [EquipmentFactory.cs:176-249](file://Integration/EquipmentFactory.cs#L176-L249)
-- [EquipmentFactory_ItemProcessing.cs:121-222](file://Integration/EquipmentFactory_ItemProcessing.cs#L121-L222)
-- [DragonKingAssetManager.cs:110-154](file://Integration/DragonKing/DragonKingAssetManager.cs#L110-L154)
-- [NPCAssetBundleHelper.cs:20-138](file://Integration/Utils/NPCAssetBundleHelper.cs#L20-L138)
-- [AssetBundleUnloadHelper.cs:17-38](file://Utilities/AssetBundleUnloadHelper.cs#L17-L38)
-- [EntityModelFactory.cs:140-241](file://Utilities/EntityModelFactory.cs#L140-L241)
-
-## 架构总览
-整体架构围绕“自动发现 → 加载 → 装配 → 缓存 → 卸载”的主线展开：
-- 自动发现：EquipmentFactory.LoadAllEquipment() 扫描 Assets/Equipment，跳过带扩展名的文件（如 manifest），仅处理无扩展名的 bundle。
-- 加载与装配：LoadBundleInternal() 加载 Bundle，分类收集 Item/Buff/Projectile/Model，并进行二次装配（如自动关联 Buff/Bullet、注入 ItemGraphic）。
-- 缓存与去重：loadedBundles 防止重复加载；DragonKingAssetManager 使用 prefabCache/missingPrefabCache 与 effectPools；EntityModelFactory 预缓存 .prefab。
-- 卸载与清理：DragonKingAssetManager 引用计数卸载；AssetBundleUnloadHelper 提供安全卸载；EntityModelFactory 按需加载与缓存。
+## 装备 / 物品工厂的加载流程
 
 ```mermaid
 sequenceDiagram
-participant Caller as "调用方"
-participant EF as "EquipmentFactory"
-participant EP as "EquipmentFactory_ItemProcessing"
-participant AB as "AssetBundle"
-participant Cache as "loadedBundles/其他缓存"
-Caller->>EF : LoadAllEquipment()
-EF->>EF : 扫描 Assets/Equipment
-loop 遍历文件
-EF->>EF : 跳过带扩展名(如manifest)
-EF->>Cache : 检查是否已加载
-alt 未加载
-EF->>AB : LoadFromFile(bundlePath)
-AB-->>EF : bundle
-EF->>EP : LoadBundleInternal(bundle, name)
-EP->>AB : LoadAllAssets<GameObject>()
-EP->>EP : 分类(Item/Buff/Projectile/Model)
-EP->>EP : 装配(Buff/Bullet/ItemGraphic/Layer/Shader)
-EP->>Cache : 更新缓存
-else 已加载
-EF-->>Caller : 跳过
-end
-end
-EF-->>Caller : 返回加载总数
-```
-
-图表来源
-- [EquipmentFactory.cs:176-249](file://Integration/EquipmentFactory.cs#L176-L249)
-- [EquipmentFactory.cs:498-749](file://Integration/EquipmentFactory.cs#L498-L749)
-- [EquipmentFactory_ItemProcessing.cs:121-222](file://Integration/EquipmentFactory_ItemProcessing.cs#L121-L222)
-
-章节来源
-- [EquipmentFactory.cs:176-249](file://Integration/EquipmentFactory.cs#L176-L249)
-- [EquipmentFactory.cs:498-749](file://Integration/EquipmentFactory.cs#L498-L749)
-- [EquipmentFactory_ItemProcessing.cs:121-222](file://Integration/EquipmentFactory_ItemProcessing.cs#L121-L222)
-
-## 详细组件分析
-
-### 自动发现机制（Assets/Equipment 目录扫描、扩展名过滤、manifest 处理）
-- 目录定位：通过 Assembly.Location 获取 modDirectory，再拼接固定路径 EQUIPMENT_PATH = "Assets/Equipment"。
-- 文件扫描：Directory.GetFiles(equipmentDir)，逐个文件名判断是否包含 "."，若包含则跳过（用于忽略 manifest 或其他非 bundle 文件）。
-- 去重检查：loadedBundles.Contains(fileName) 跳过已加载 bundle。
-- 加载触发：调用 LoadBundle(bundleName) 进入统一加载流程。
-
-```mermaid
-flowchart TD
-Start(["开始"]) --> GetModDir["获取mod目录"]
-GetModDir --> JoinPath["拼接 Assets/Equipment"]
-JoinPath --> DirExists{"目录存在?"}
-DirExists -- 否 --> EndSkip["跳过自动加载"]
-DirExists -- 是 --> ScanFiles["扫描文件列表"]
-ScanFiles --> ForEachFile{"遍历每个文件"}
-ForEachFile --> CheckExt{"文件名包含'.'?"}
-CheckExt -- 是 --> SkipFile["跳过(可能是manifest)"]
-CheckExt -- 否 --> CheckLoaded{"已加载?"}
-CheckLoaded -- 是 --> NextFile["下一个文件"]
-CheckLoaded -- 否 --> LoadBundle["调用 LoadBundle"]
-LoadBundle --> NextFile
-NextFile --> ForEachFile
-ForEachFile --> Done["完成"]
-```
-
-图表来源
-- [EquipmentFactory.cs:176-215](file://Integration/EquipmentFactory.cs#L176-L215)
-
-章节来源
-- [EquipmentFactory.cs:176-215](file://Integration/EquipmentFactory.cs#L176-L215)
-
-### Bundle 加载流程（路径构建、文件存在性检查、加载状态跟踪）
-- 路径构建：modDirectory + EQUIPMENT_PATH + bundleName。
-- 存在性检查：File.Exists(bundlePath) 失败时记录日志并返回。
-- 加载与分类：LoadBundleInternal() 中 LoadFromFile -> LoadAllAssets<GameObject>() -> 分类收集 Item/Buff/Projectile/Model。
-- 状态跟踪：成功加载后将 bundleName 加入 loadedBundles，后续重复调用直接跳过。
-
-```mermaid
-sequenceDiagram
-participant Caller as "调用方"
-participant EF as "EquipmentFactory"
-participant FS as "文件系统"
-participant AB as "AssetBundle"
-participant EP as "装配逻辑"
-Caller->>EF : LoadBundle(bundleName)
-EF->>FS : File.Exists(bundlePath)
-alt 不存在
-FS-->>EF : false
-EF-->>Caller : 返回0
-else 存在
-FS-->>EF : true
-EF->>AB : LoadFromFile(bundlePath)
-AB-->>EF : bundle
-EF->>EP : LoadBundleInternal(bundle, name)
-EP->>AB : LoadAllAssets<GameObject>()
-EP->>EP : 分类与装配
-EP-->>EF : 返回加载条目数
-EF->>EF : loadedBundles.Add(name)
-EF-->>Caller : 返回数量
+participant Boot as "延迟 bootstrap"
+participant FRL as "FactoryResourceLoading"
+participant RBL as "ResourceBundleLoader"
+participant EF as "EquipmentFactory / ItemFactory"
+Boot->>FRL : LoadAllEquipmentAsync / LoadAllItemsAsync
+loop Assets/Equipment（或 Assets/Items）下每个无扩展名文件
+FRL->>FRL : 已在 loadedBundles 里则跳过
+FRL->>RBL : RunSpecial → Prepare(path)（异步打开 + 异步取全部 GameObject）
+RBL->>EF : consumer → LoadBundle(name)
+EF->>EF : 先查本工厂已持有的同名包
+EF->>RBL : 没有才 LoadFromFile(path)，接管这次 Prepare
+EF->>RBL : LoadAllAssets<GameObject>（直接拿预载好的数组）
+EF->>EF : 分类、配置器、Publish；计数 > 0 记入 loadedBundles
 end
 ```
 
-图表来源
-- [EquipmentFactory.cs:217-249](file://Integration/EquipmentFactory.cs#L217-L249)
-- [EquipmentFactory.cs:498-749](file://Integration/EquipmentFactory.cs#L498-L749)
+- 路径：`Path.GetDirectoryName(程序集位置) + Assets/Equipment|Assets/Items + 文件名`，文件不存在返回 0。
+- 只卸本次打开的：`LoadBundleInternal` 用 `acquired` 记住包是不是这一次打开的，资源为空或异常时只 `Unload(true)` 自己打开的包，复用来的包不动。
+- 按需注册（`BossRushDynamicItemRegistry.EnsureRegistered`）、飞行图腾、残日盾片模板也会同步调 `LoadBundle`；已计数的包直接返回 0。
 
-章节来源
-- [EquipmentFactory.cs:217-249](file://Integration/EquipmentFactory.cs#L217-L249)
-- [EquipmentFactory.cs:498-749](file://Integration/EquipmentFactory.cs#L498-L749)
+## 防重复打开
+- **工厂先复用自持包**：`ItemFactory.FindHeldBundle` 查 `loadedAssetBundles`（`GetSprite` 先打开过，或上次注册保留了包却计数为 0），`EquipmentFactory.FindOwnedBundle` 按 `IsNamed` 查 `ownedBundles`（上次保留了包却计数为 0）。有就直接用，不再对同一文件 `LoadFromFile`。`ItemFactory` 仍保留「打开失败再 `FindLoaded` 借用」的兜底。
+- **基地建筑带 `alreadyLoaded`**：基地装配管线每次进基地都会重跑六个建筑的 `RunSpecial`。婚礼、许愿台、遗种巢、日报箱、公告板、展示柜都传入「建筑自己还持有模型包」的判据（公告板 / 展示柜经宿主 `HasCampaignBoardBundle` / `HasBackMountainShowcaseBundle` 只读已有模块，不为探测去创建模块），持有中直接交给建筑的初始化入口，不再异步重开。
+- **重试前再判**：`RunSpecial` 换场景作废一次尝试后，等场景加载完、重试前重新判一次 `alreadyLoaded`——等待期间建筑可能已经经早期注入同步拿到了包。
+- **重载先卸旧句柄**：婚礼、许愿台、遗种巢、日报箱的模型加载方法在重新 `LoadFromFile` 前先 `AssetBundleUnloadHelper.TryUnload` 旧句柄并置空。
 
-### 缓存机制（loadedBundles 集合、重复加载防护、内存管理）
-- loadedBundles：HashSet<string> 记录已加载 bundle 名称，LoadBundle 前检查以避免重复加载。
-- 其他缓存：
-  - DragonKingAssetManager：prefabCache、missingPrefabCache、effectPools、dynamicMaterials。
-  - EntityModelFactory：_prefabCache 预缓存 .prefab，减少重复加载成本。
-- 内存管理：
-  - DragonKingAssetManager：assetBundleRefCount 引用计数，ClearCache() 递减并在 <=0 时保持 Bundle 以便复用；ForceCleanup() 强制卸载并清理动态材质。
-  - AssetBundleUnloadHelper：TryUnload(bundle, logPrefix) 统一卸载并捕获异常。
-  - EquipmentFactory：不主动 Unload bundle，因为资源仍在被使用。
+## 缓存与卸载
+- `loadedBundles`（两个工厂各一份）：按传入名去重，计数 > 0 才记。
+- `EquipmentFactory.ownedBundles` / `ItemFactory.loadedAssetBundles`：工厂持有的包，`ResetStaticCaches` / `Shutdown` 时卸载（都是 `Unload(false)`，保留已发布的资源）。
+- `DragonKingAssetManager`：`assetBundleRefCount` 只是计数，`ClearCache()`（Boss 销毁时）只减一、不卸包，包留给下一只龙皇复用；换场景由 `ForceCleanup()` 卸包、清对象池与动态材质。手持武器预载走 `PrepareForHeldWeapon`。
+- `EntityModelFactory`：`_prefabCache` 预缓存 `.prefab`，`Shutdown` 时 `Unload(true)` 全部已加载的实体包。
 
-```mermaid
-classDiagram
-class EquipmentFactory {
-+loadedBundles : HashSet~string~
-+LoadAllEquipment() int
-+LoadBundle(string) int
-}
-class DragonKingAssetManager {
-+loadedBundle : AssetBundle
-+prefabCache : Dictionary~string, GameObject~
-+missingPrefabCache : HashSet~string~
-+effectPools : Dictionary~string, Info~
-+assetBundleRefCount : int
-+LoadAssetBundleSync(path) bool
-+ClearCache() void
-+ForceCleanup() void
-}
-class EntityModelFactory {
-+_prefabCache : Dictionary~string, GameObject~
-+Create(name, pos, rot) GameObject
-}
-class AssetBundleUnloadHelper {
-+TryUnload(bundle, prefix) void
-}
-EquipmentFactory --> DragonKingAssetManager : "独立模块"
-EquipmentFactory --> EntityModelFactory : "独立模块"
-DragonKingAssetManager --> AssetBundleUnloadHelper : "可复用卸载"
-```
+## NPC 与实体模型的 Bundle 加载
+- `NPCAssetBundleHelper`：路径 `modDir + Assets/npcs/ + bundleFileName`；`File.Exists` → `ResourceBundleLoader.LoadFromFile` → 按名取预制体（失败依次试小写名、`LoadAllAssets<GameObject>` 第一个）→ Animator 检查。
+- `EntityModelFactory`：`Create(prefabName, pos, rot)` 先查缓存，未命中再遍历未加载的包（`TryLoadPrefabFromBundles`），仍没有就返回只有 Transform 的后备对象（调用方据此走自己的几何后备）。
 
-图表来源
-- [EquipmentFactory.cs:134-157](file://Integration/EquipmentFactory.cs#L134-L157)
-- [DragonKingAssetManager.cs:22-59](file://Integration/DragonKing/DragonKingAssetManager.cs#L22-L59)
-- [DragonKingAssetManager.cs:638-700](file://Integration/DragonKing/DragonKingAssetManager.cs#L638-L700)
-- [AssetBundleUnloadHelper.cs:17-38](file://Utilities/AssetBundleUnloadHelper.cs#L17-L38)
-- [EntityModelFactory.cs:190-241](file://Utilities/EntityModelFactory.cs#L190-L241)
-
-章节来源
-- [EquipmentFactory.cs:134-157](file://Integration/EquipmentFactory.cs#L134-L157)
-- [DragonKingAssetManager.cs:22-59](file://Integration/DragonKing/DragonKingAssetManager.cs#L22-L59)
-- [DragonKingAssetManager.cs:638-700](file://Integration/DragonKing/DragonKingAssetManager.cs#L638-L700)
-- [AssetBundleUnloadHelper.cs:17-38](file://Utilities/AssetBundleUnloadHelper.cs#L17-L38)
-- [EntityModelFactory.cs:190-241](file://Utilities/EntityModelFactory.cs#L190-L241)
-
-### NPC 与实体模型的 Bundle 加载
-- NPCAssetBundleHelper：
-  - 路径：modDir + "Assets/npcs/" + bundleFileName。
-  - 流程：File.Exists -> LoadFromFile -> GetAllAssetNames -> LoadAsset<GameObject>(prefabName) -> 小写回退 -> LoadAllAssets<GameObject>() -> Animator 检查。
-- EntityModelFactory：
-  - 懒加载：TryLoadPrefabFromBundles(prefabName) 遍历 _bundleInfos，首次加载并预缓存所有 .prefab。
-  - 创建：Create(prefabName, pos, rot) 先查缓存，未命中则尝试加载，仍不存在则创建后备对象。
-
-```mermaid
-sequenceDiagram
-participant NPC as "NPC系统"
-participant Helper as "NPCAssetBundleHelper"
-participant FS as "文件系统"
-participant AB as "AssetBundle"
-NPC->>Helper : LoadNPCPrefab(bundleFileName, prefabName, ...)
-Helper->>FS : File.Exists(bundlePath)
-alt 不存在
-FS-->>Helper : false
-Helper-->>NPC : 返回false
-else 存在
-FS-->>Helper : true
-Helper->>AB : LoadFromFile(bundlePath)
-AB-->>Helper : bundle
-Helper->>AB : GetAllAssetNames()
-Helper->>AB : LoadAsset<GameObject>(prefabName)
-alt 未找到
-Helper->>AB : LoadAsset<GameObject>(prefabName.ToLower())
-alt 仍未找到
-Helper->>AB : LoadAllAssets<GameObject>()
-end
-end
-Helper->>Helper : Animator 检查与日志
-Helper-->>NPC : 返回true/false
-end
-```
-
-图表来源
-- [NPCAssetBundleHelper.cs:20-138](file://Integration/Utils/NPCAssetBundleHelper.cs#L20-L138)
-- [EntityModelFactory.cs:140-241](file://Utilities/EntityModelFactory.cs#L140-L241)
-
-章节来源
-- [NPCAssetBundleHelper.cs:20-138](file://Integration/Utils/NPCAssetBundleHelper.cs#L20-L138)
-- [EntityModelFactory.cs:140-241](file://Utilities/EntityModelFactory.cs#L140-L241)
-
-### 资源装配与注入（Buff/Bullet/ItemGraphic/Layer/Shader）
-- 类型识别：ParseEquipmentTypeFromName() 根据 prefab 名称后缀推断类型（Gun/MeleeWeapon/Totem/Helmet/Armor/Backpack/FaceMask/Headset）。
-- 自动关联：
-  - 武器：ExtractWeaponPrefix(baseName) 匹配同名 _Bullet 与 _Buff，注入到 ItemSetting_Gun。
-  - 装备：ProcessEquipmentItem() 添加 Tag、注入 EquipmentModel、注入 ItemGraphic（假人显示备用）。
-- 运行时包装：CreateModelWrapper() 为缺少 DuckovItemAgent 的模型创建运行时副本并添加组件，设置 Layer 与 Shader。
-- 枪械图形：InjectItemGraphic() 创建 ItemGraphicInfo_Gun，设置 groundPoint、Sockets、手动画类型，修正 Muzzle/Tec 位置。
+## 资源装配与注入
+- 类型识别：`ParseEquipmentTypeFromName()` 按 prefab 名中段推断 Gun / MeleeWeapon / Totem / Helmet / Armor / Backpack / FaceMask / Headset。
+- 自动关联：武器按 `ExtractWeaponPrefix(baseName)` 匹配同名 `_Bullet` 与 `_Buff` 注入 `ItemSetting_Gun`；装备由 `ProcessEquipmentItem()` 加 Tag、注入 EquipmentModel 与 ItemGraphic。
+- 运行时包装：`CreateModelWrapper()` 为缺少 `DuckovItemAgent` 的模型建运行时副本，修 Layer 与 Shader；装备与近战模型经 `EnsureModelSubVisuals` 补 `CharacterSubVisuals`。
 
 ```mermaid
 flowchart TD
@@ -318,126 +115,14 @@ H --> J
 J --> K["注册到游戏物品系统"]
 ```
 
-图表来源
-- [EquipmentFactory.cs:498-749](file://Integration/EquipmentFactory.cs#L498-L749)
-- [EquipmentFactory_ItemProcessing.cs:121-222](file://Integration/EquipmentFactory_ItemProcessing.cs#L121-L222)
-- [EquipmentFactory_ItemProcessing.cs:313-401](file://Integration/EquipmentFactory_ItemProcessing.cs#L313-L401)
-- [EquipmentFactory_ItemProcessing.cs:645-800](file://Integration/EquipmentFactory_ItemProcessing.cs#L645-L800)
+## 故障排除
+- **日志里 "another AssetBundle with the same files is already loaded"**：说明有路径绕开了上面的复用 / `alreadyLoaded` 判据。先看是哪个 owner 第二次打开（`ResourceBundleLoader.Snapshot()` 里 `sync_compatibility` / `bundle_async` 记录带路径与状态），再看它有没有先查自持包或 `FindLoaded`。
+- **Bundle 未找到**：确认文件在 `Assets/Equipment`、`Assets/Items`、`Assets/npcs` 等约定目录下且没有扩展名（工厂跳过带 `.` 的文件），并已登记 `tools/resource_release_manifest.json`（部署按 SHA-256 校验）。
+- **预制体不存在**：核对 prefab 名与包内资源一致；龙王看 `missingPrefabCache` 是否记了缺失名。
+- **显示异常**：检查 ItemGraphic、Layer 与 Shader 是否已修复。
 
-章节来源
-- [EquipmentFactory.cs:498-749](file://Integration/EquipmentFactory.cs#L498-L749)
-- [EquipmentFactory_ItemProcessing.cs:121-222](file://Integration/EquipmentFactory_ItemProcessing.cs#L121-L222)
-- [EquipmentFactory_ItemProcessing.cs:313-401](file://Integration/EquipmentFactory_ItemProcessing.cs#L313-L401)
-- [EquipmentFactory_ItemProcessing.cs:645-800](file://Integration/EquipmentFactory_ItemProcessing.cs#L645-L800)
-
-## 依赖关系分析
-- EquipmentFactory 依赖：
-  - 文件系统（Directory/File）进行目录扫描与存在性检查。
-  - Unity AssetBundle API 进行加载与资源枚举。
-  - 游戏内部类型（Item、ItemAgent、ItemSetting_Gun、Buff、Projectile）进行装配。
-- DragonKingAssetManager 依赖：
-  - Unity AssetBundle API、对象池与渲染组件（Renderer、Light、ParticleSystem）。
-  - 配置常量（DragonKingConfig）定义资源路径与初始池大小。
-- NPCAssetBundleHelper 依赖：
-  - 文件系统与 Unity 资源系统，以及 Animator 校验。
-- EntityModelFactory 依赖：
-  - 预定义的 Bundle 信息列表，按名称懒加载并缓存 .prefab。
-
-```mermaid
-graph LR
-EF["EquipmentFactory"] --> FS["文件系统"]
-EF --> AB["Unity AssetBundle"]
-EF --> GameTypes["游戏类型(Item/ItemAgent/Buff/Projectile)"]
-DKAM["DragonKingAssetManager"] --> AB
-DKAM --> Config["DragonKingConfig"]
-NPCAH["NPCAssetBundleHelper"] --> FS
-NPCAH --> AB
-EMF["EntityModelFactory"] --> AB
-EMF --> PrefabCache[".prefab缓存"]
-```
-
-图表来源
-- [EquipmentFactory.cs:176-249](file://Integration/EquipmentFactory.cs#L176-L249)
-- [DragonKingAssetManager.cs:110-154](file://Integration/DragonKing/DragonKingAssetManager.cs#L110-L154)
-- [NPCAssetBundleHelper.cs:20-138](file://Integration/Utils/NPCAssetBundleHelper.cs#L20-L138)
-- [EntityModelFactory.cs:140-241](file://Utilities/EntityModelFactory.cs#L140-L241)
-
-章节来源
-- [EquipmentFactory.cs:176-249](file://Integration/EquipmentFactory.cs#L176-L249)
-- [DragonKingAssetManager.cs:110-154](file://Integration/DragonKing/DragonKingAssetManager.cs#L110-L154)
-- [NPCAssetBundleHelper.cs:20-138](file://Integration/Utils/NPCAssetBundleHelper.cs#L20-L138)
-- [EntityModelFactory.cs:140-241](file://Utilities/EntityModelFactory.cs#L140-L241)
-
-## 性能考量
-- 避免重复加载：
-  - EquipmentFactory.loadedBundles 防止重复扫描与加载。
-  - DragonKingAssetManager.prefabCache/missingPrefabCache 避免重复查找与失败重试。
-  - EntityModelFactory._prefabCache 预缓存 .prefab，减少跨 Bundle 查找成本。
-- 对象池与预热：
-  - DragonKingAssetManager 使用 initialPoolSizes/maxPoolSizes 预热高频特效，降低首帧卡顿。
-  - dynamicMaterials 列表跟踪动态材质，便于集中清理。
-- 资源卸载：
-  - DragonKingAssetManager 引用计数卸载，确保多实例共享且可安全释放。
-  - AssetBundleUnloadHelper 统一卸载入口，避免分散的 try/catch 影响性能。
-- 渲染优化：
-  - FixModelLayerAndShader() 批量替换 Standard/URP 着色器为游戏专用着色器，避免阴影可见但模型不可见的问题。
-  - Sockets 节点整理确保枪口火焰与配件正确挂载，减少运行时计算。
-
-[本节为通用性能讨论，无需具体文件分析]
-
-## 故障排除指南
-- Bundle 未找到：
-  - 检查路径是否正确（Assets/Equipment 或 Assets/npcs），确认文件名不含扩展名（EquipmentFactory 会跳过带 "." 的文件）。
-  - 查看日志输出，确认 File.Exists 与 LoadFromFile 的结果。
-- Bundle 加载失败：
-  - 可能已被加载或文件损坏，参考 NPCAssetBundleHelper 的日志提示。
-  - 使用 AssetBundleUnloadHelper.TryUnload 尝试安全卸载后重新加载。
-- 预制体不存在：
-  - 检查 prefab 名称是否与 Bundle 内资源一致，必要时使用小写回退或 LoadAllAssets 查找第一个 GameObject。
-  - 查看 DragonKingAssetManager.missingPrefabCache 是否记录了缺失名称。
-- 动画无法播放：
-  - 确认 NPC 预制体包含 Animator 组件且 runtimeAnimatorController 不为空。
-  - 检查 Weapon 的 ItemSetting_Gun 是否注入了正确的 Bullet 与 Buff。
-- 显示异常：
-  - 检查 ItemGraphic 是否有效（已有但无渲染器时需强制替换）。
-  - 确认 Layer 与 Shader 已修复，尤其是从 Standard/URP 切换到游戏专用着色器。
-- 内存泄漏：
-  - 定期调用 DragonKingAssetManager.ForceCleanup() 或 ClearCache()，确保引用计数归零。
-  - 清理 dynamicMaterials 列表中的材质，避免累积。
-
-章节来源
-- [EquipmentFactory.cs:176-249](file://Integration/EquipmentFactory.cs#L176-L249)
-- [EquipmentFactory.cs:498-749](file://Integration/EquipmentFactory.cs#L498-L749)
-- [NPCAssetBundleHelper.cs:20-138](file://Integration/Utils/NPCAssetBundleHelper.cs#L20-L138)
-- [DragonKingAssetManager.cs:22-59](file://Integration/DragonKing/DragonKingAssetManager.cs#L22-L59)
-- [DragonKingAssetManager.cs:638-700](file://Integration/DragonKing/DragonKingAssetManager.cs#L638-L700)
-- [AssetBundleUnloadHelper.cs:17-38](file://Utilities/AssetBundleUnloadHelper.cs#L17-L38)
-
-## 结论
-本 AssetBundle 管理系统通过“自动发现 + 统一加载 + 资源装配 + 缓存与卸载”的完整链路，实现了高效、稳定、可扩展的资源管理。关键要点包括：
-- 严格的路径与命名规范，确保自动发现与装配的正确性。
-- 多层缓存与去重机制，显著降低重复加载成本。
-- 对象池与预热策略，提升高频特效的性能表现。
-- 引用计数与安全卸载，保障内存健康与生命周期可控。
-- 完善的日志与回退策略，便于问题定位与容错处理。
-
-建议在实际开发中遵循上述规范与最佳实践，并结合日志与调试工具持续优化资源管理与性能表现。
-
-[本节为总结，无需具体文件分析]
-
-## 附录
-- Bundle 组织结构建议：
-  - 装备/武器/图腾：放置于 Assets/Equipment/{bundleName}（无扩展名），每个 bundle 可包含多个 Item/Buff/Projectile/Model。
-  - NPC 模型：放置于 Assets/npcs/{bundleName}，遵循 NPCAssetBundleHelper 的路径约定。
-  - 特效资源：按模块划分（如 DragonKing），使用独立 Bundle 与配置常量管理。
-- 命名规范建议：
-  - 装备：{名称}_Helmet_Item / {名称}_Armor_Item / ...
-  - 武器：{名称}_Gun_Item / {名称}_Bullet / {名称}_Buff
-  - 模型：{名称}_Model（可选），或内嵌于 Item 中。
-- 常见陷阱：
-  - 在 Assets/Equipment 下放置带扩展名的文件（会被跳过）。
-  - 未正确配置 ItemGraphic 或 Animator，导致显示或动画异常。
-  - 忘记注入 Buff/Bullet，导致武器功能不完整。
-  - 未清理动态材质或对象池，造成内存泄漏。
-
-[本节为概念性内容，无需具体文件分析]
+## 附录：组织与命名
+- 装备 / 武器 / 图腾：`Assets/Equipment/{bundleName}`（无扩展名），一个包可含多个 Item / Buff / Projectile / Model。
+- 物品：`Assets/Items/{bundleName}`。NPC 模型：`Assets/npcs/{bundleName}`。界面展示包：`Assets/ui/{bundleName}`。
+- 包内名（打包时的 AssetBundle 名）必须等于文件名：`FindLoaded` 和工厂的自持包复用都按文件名全等匹配。改名只改文件不重打包会让它们找不到已加载的包。
+- 命名：装备 `{名称}_Helmet_Item` / `{名称}_Armor_Item` …；武器 `{名称}_Gun_Item` / `{名称}_Bullet` / `{名称}_Buff`；模型 `{名称}_Model`（可选，或内嵌于 Item）。

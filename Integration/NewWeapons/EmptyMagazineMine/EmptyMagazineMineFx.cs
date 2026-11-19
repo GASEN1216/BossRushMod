@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -17,7 +16,6 @@ namespace BossRush
         private LineRenderer fuse;
         private SpriteRenderer lamp;
         private int lastBeep = -1;
-        private MethodInfo audioPost;
 
         internal static EmptyMagazineMineFx Create(Vector3 position, float yaw, float radius)
         {
@@ -41,9 +39,6 @@ namespace BossRush
 
         private void Build(float yaw, float radius)
         {
-            // 沿用项目调用官方音频的反射边界，避免引用 Post 返回值的 FMOD 程序集。
-            audioPost = typeof(Duckov.AudioManager).GetMethod("Post", BindingFlags.Public | BindingFlags.Static,
-                null, new Type[] { typeof(string), typeof(GameObject) }, null);
             GameObject body = new GameObject("SpentMagazine");
             body.transform.SetParent(transform, false);
             body.transform.localRotation = Quaternion.Euler(0f, yaw + 25f, 0f);
@@ -135,8 +130,8 @@ namespace BossRush
             if (beep > lastBeep)
             {
                 lastBeep = beep;
-                try { if (audioPost != null) audioPost.Invoke(null, new object[] { "SFX/Special/Radar/Beep", gameObject }); }
-                catch (Exception) { }
+                // 经 BossRushOfficialAudio 调官方 Post（不引用 Post 返回值的 FMOD 程序集）；失败静默。
+                BossRushOfficialAudio.Post("SFX/Special/Radar/Beep", gameObject);
             }
         }
 

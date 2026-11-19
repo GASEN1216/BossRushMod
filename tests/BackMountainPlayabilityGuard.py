@@ -21,7 +21,8 @@ def validate(root):
             errors.append(message)
 
     # 2026-09-22 自建登记簿退役：陈列改接官方枪械展示架 / 假人（ShowcaseDisplayScanner 采集、ShowcaseTrophyCatalog 判战利品）。
-    # 官方「陈列柜」（要 ShowCase 标签）是废弃建筑，建不了（owner 实机确认）：不得再给 Mod 物品补任何官方展示标签。
+    # 官方「陈列柜」（要 ShowCase 标签）能建，前置是比特币矿机 + 任务 940，未满足时建造菜单隐藏（2026-11-19 更正 09-22
+    # 「废弃建筑」旧结论）。owner 2026-11-19 拍板维持：名录不给 Mod 物品补展示标签（枪甲自带枪架 / 假人标签，其余多半没有自己的模型）。
     interactable = compact(read('Integration/BackMountain/ShowcaseInteractable.cs'))
     require('NotificationText.Push(' in interactable and 'OpenShowcaseUI' not in interactable,
             'ShowcaseInteractable: 退役的自建柜只提示去官方柜摆放，不再开自绘面板')
@@ -30,7 +31,7 @@ def validate(root):
             and 'ShowcaseDisplayJudges.ShouldCountAsTrophy(' in catalog,
             'ShowcaseTrophyCatalog: 枚举源必须是物品注册表、判据走纯函数 ShouldCountAsTrophy、排除后山自产种子/餐食')
     require('AddTagToItem(' not in catalog and '"ShowCase"' not in catalog,
-            'ShowcaseTrophyCatalog: 官方陈列柜是废弃建筑，不得再给 Mod 物品补 ShowCase 一类展示标签')
+            'ShowcaseTrophyCatalog: 名录只判战利品，不给 Mod 物品补 ShowCase 一类展示标签（owner 2026-11-19 拍板维持）')
     require('ItemAssetsCollection.GetPrefab(' not in catalog
             and 'BossRushDynamicItemRegistry.GetRegisteredPrefabWithoutEnsuring(typeId)' in catalog,
             'ShowcaseTrophyCatalog: 取 prefab 只能走 GetRegisteredPrefabWithoutEnsuring；补丁过的 GetPrefab 会对每个 TypeID 强制同步加载 bundle')
@@ -75,9 +76,12 @@ def validate(root):
             and 'if(!prefabsList.Contains(buildingComp))prefabsList.Add(buildingComp);' in building,
             'Building: 真实注入成功才锁存，跨槽不能重复追加 prefab')
     require('Shader.Find("UniversalRenderPipeline/Lit")' in building
-            and 'renderer.sharedMaterial=material;' in building and '_materials.Clear();' in building
-            and 'UnityEngine.Object.Destroy(_iconTexture);' in building,
-            'Building: 使用 URP 材质，卸载释放材质/纹理 owner')
+            and 'renderer.sharedMaterial=material;' in building and '_materials.Clear();' in building,
+            'Building: 使用 URP 材质，卸载释放材质 owner')
+    # 建筑图标借自 ModSprites（生产图标包 / Dev 散图），由它在 Mod 卸载时释放；建造器只放下引用。
+    require('backMountainShowcaseIcon=ModSprites.Get("Assets/buildings/"+BACKMOUNTAIN_SHOWCASE_BUILDING_ID+".png");' in building
+            and 'Destroy(backMountainShowcaseIcon)' not in building and 'backMountainShowcaseIcon=null;' in building,
+            'Building: 展示柜图标借自 ModSprites，卸载只清引用、不销毁借来的图')
 
     f3 = compact(read('DebugAndTools/F3GameplayValidationBackMountain.cs'))
     require(not any(token in f3 for token in ('ShowcaseService.TryDisplay(', 'ShowcaseService.TryRemoveRecord(',

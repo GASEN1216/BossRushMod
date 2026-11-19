@@ -215,7 +215,6 @@ namespace BossRush
                 item.Quality = def.Quality;
                 // DescriptionRaw is derived by the game from DisplayNameRaw + "_Desc".
                 EquipmentHelper.AddTagToItem(item, "Special");
-                EquipmentHelperIcon.TryInjectIcon(item, null, def.IconName);
                 // 克隆源（遗种蛋 ← 便携安全区装置）带着自己的 3D 模型：官方 Crop.RefreshDisplayInstance 与 InteractablePickup
                 // 都走 item.ItemGraphic，不清掉就会「龙息果长在地里是个装置」。清成 null 后官方走 spriteGraphicPfb，
                 // 用物品自己的图标立牌显示（官方无模型物品同一条路），菜地里与掉在地上都认得出是什么。
@@ -309,7 +308,7 @@ namespace BossRush
                 if (existing != null)
                 {
                     ConfigureItem(typeId, existing);
-                    try { ItemAssetsCollection.AddDynamicEntry(existing); }
+                    try { BossRushDynamicItemRegistry.Publish(existing); }
                     catch (Exception)
                     {
                         // 已在表内时重复登记会抛，忽略即可
@@ -340,7 +339,7 @@ namespace BossRush
                 clone.SetTypeID(typeId);
                 ConfigureItem(typeId, clone);
                 // 官方在 ItemAssetsCollection 尚未就绪时返回 false 而不是抛异常；照实报告，交给下一次注入重试。
-                if (!ItemAssetsCollection.AddDynamicEntry(clone))
+                if (!BossRushDynamicItemRegistry.Publish(clone))
                 {
                     UnityEngine.Object.Destroy(clone.gameObject);
                     ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "官方物品表尚未就绪，兜底物品稍后重试: " + typeId);

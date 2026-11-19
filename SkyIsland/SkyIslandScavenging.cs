@@ -258,6 +258,10 @@ namespace BossRush
                 if (point.Box != box || point.Opened) continue;
                 point.Opened = true;
                 openedCount++;
+                // 收集品额外一格：星工遗存算高价值；岛上单件不超过 10 万，收集品最高 6 档。
+                CollectibleLootRuntime.NotifyModBoxFirstOpened(box, CollectibleSeries.SkyIsland,
+                    point.Anchor.Tier == SkyIslandLootTier.Starworks ? CollectibleBoxTier.High : CollectibleBoxTier.Normal,
+                    CollectibleTuning.SkyIslandQualityCap);
                 // 委托进度由会话持有的 owner 记账，本类不持有跨系统静态状态。
                 if (scavenged != null) scavenged();
                 Debug.Log("[SkyIslandLoot] POINT_OPENED id=" + point.Anchor.Id + " total=" + openedCount);

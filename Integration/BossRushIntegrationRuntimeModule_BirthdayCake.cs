@@ -90,8 +90,7 @@ namespace BossRush
             AssetBundle bundle = null;
             try
             {
-                string assemblyLocation = typeof(ModBehaviour).Assembly.Location;
-                string modDir = Path.GetDirectoryName(assemblyLocation);
+                string modDir = ModBehaviour.GetModPath();
                 string bundlePath = Path.Combine(modDir, "Assets", BIRTHDAY_CAKE_BUNDLE_NAME);
 
                 if (!File.Exists(bundlePath))
@@ -127,7 +126,7 @@ namespace BossRush
                     ConfigureBirthdayCakeItem(itemPrefab);
 
                     // 注册到物品系统
-                    ItemAssetsCollection.AddDynamicEntry(itemPrefab);
+                    BossRushDynamicItemRegistry.Publish(itemPrefab);
                     itemCount++;
 
                     if (birthdayCakeTypeId <= 0 && itemPrefab.TypeID > 0)

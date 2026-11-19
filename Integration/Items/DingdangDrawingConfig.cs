@@ -37,9 +37,6 @@ namespace BossRush
         /// <summary>高清大图资源名称</summary>
         public const string IMAGE_NAME = "DingdangDrawing";
 
-        /// <summary>图标资源名称</summary>
-        public const string ICON_NAME = "DingdangDrawing_icon";
-
         /// <summary>本地化键 - 显示名称</summary>
         public const string LOC_KEY_DISPLAY = "item_dingdang_drawing_name";
 

@@ -36,8 +36,6 @@ namespace BossRush
                 DuckovItemAgent model = loaded as DuckovItemAgent;
                 if (model == null || model.transform.Find("GroundPoint") == null
                     || model.GetComponentsInChildren<MeshFilter>(true).Length != 6) return null;
-                // 工厂已创建可修改的运行时 wrapper，不能向只读 bundle prefab 添加组件。
-                if (model.GetComponent<ResidualSunShieldIcon>() == null) model.gameObject.AddComponent<ResidualSunShieldIcon>();
                 template = model;
                 return template;
             }

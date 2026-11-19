@@ -18,7 +18,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -51,8 +50,9 @@ namespace BossRush
         private bool backMountainShowcaseInjected;
         private GameObject backMountainShowcasePrefabGO;
         private AssetBundle showcaseModelBundle;
+        /// <summary>模型 bundle 是否仍由本建筑持有（基地装配管线据此跳过重复的异步加载）。</summary>
+        internal bool HasAssetBundle { get { return showcaseModelBundle != null; } }
         private Sprite backMountainShowcaseIcon;
-        private Texture2D _iconTexture;
         private readonly List<Material> _materials = new List<Material>();
 
         #endregion
@@ -134,23 +134,8 @@ namespace BossRush
         private void LoadShowcaseBuildingIcon()
         {
             if (backMountainShowcaseIcon != null) return;
-            backMountainShowcaseIcon = ProductionIconCache.Get("Assets/buildings/" + BACKMOUNTAIN_SHOWCASE_BUILDING_ID + ".png");
-            if (backMountainShowcaseIcon != null || !ProductionIconCache.AllowRawFallback) return;
-            try
-            {
-                string modDir = Path.GetDirectoryName(typeof(ModBehaviour).Assembly.Location);
-                if (string.IsNullOrEmpty(modDir)) return;
-                string iconPath = Path.Combine(modDir, Path.Combine("Assets", "buildings"));
-                iconPath = Path.Combine(iconPath, BACKMOUNTAIN_SHOWCASE_BUILDING_ID + ".png");
-                if (!File.Exists(iconPath)) return;
-
-                backMountainShowcaseIcon = RawImageLoader.LoadSprite(iconPath, BACKMOUNTAIN_SHOWCASE_BUILDING_ID);
-                if (backMountainShowcaseIcon != null) _iconTexture = backMountainShowcaseIcon.texture;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "展示柜图标加载失败: " + e.Message);
-            }
+            // 借自 ModSprites（生产图标包优先，Dev 或缺包读散图），清理时只放下引用。
+            backMountainShowcaseIcon = ModSprites.Get("Assets/buildings/" + BACKMOUNTAIN_SHOWCASE_BUILDING_ID + ".png");
         }
 
         private void CreateShowcaseBuildingPrefab()
@@ -546,10 +531,7 @@ namespace BossRush
                 showcaseModelBundle = null;
                 foreach (Material material in _materials) if (material != null) UnityEngine.Object.Destroy(material);
                 _materials.Clear();
-                if (backMountainShowcaseIcon != null && !ProductionIconCache.IsBorrowed(backMountainShowcaseIcon)) UnityEngine.Object.Destroy(backMountainShowcaseIcon);
-                if (_iconTexture != null) UnityEngine.Object.Destroy(_iconTexture);
                 backMountainShowcaseIcon = null;
-                _iconTexture = null;
                 backMountainShowcaseInjected = false;
             }
         }

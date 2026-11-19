@@ -429,19 +429,30 @@ namespace BossRush
                 Id = "player_sharpshooter",
                 NameCn = "百步穿杨",
                 NameEn = "Sharpshooter",
-                DescCn = "玩家枪械暴击率 +30%",
-                DescEn = "Player gun crit rate +30%",
+                DescCn = "玩家爆头伤害 +25%，枪械散射 -15%",
+                DescEn = "Player headshot damage +25%, gun scatter -15%",
                 Category = MutatorCategory.PlayerBoon,
                 OnApply = ctx =>
                 {
                     Item playerItem = ctx.Player.CharacterItem;
                     if (playerItem == null) return;
-                    Stat critStat = playerItem.GetStat("GunCritRateGain");
-                    if (critStat == null) return;
-                    // GunCritRateGain 走加法（与 ZombieMode 暴击专注同款）
-                    var mod = new Modifier(ModifierType.Add, 0.3f, MutatorSource);
-                    critStat.AddModifier(mod);
-                    ctx.PlayerAppliedModifiers.Add((critStat, mod));
+                    // 主角开枪只有爆头算暴击（官方把主角的暴击率改成「瞄头 = 1，否则 = 0」），原来的枪械暴击率 +30% 对玩家无效。
+                    // 改成准头 + 爆头：和「致命一击」（纯暴伤 +50%）、「稳定瞄准」（纯散射 -30%）各有分工（2026-11-19）。
+                    Stat critDamageStat = playerItem.GetStat("GunCritDamageGain");
+                    if (critDamageStat != null)
+                    {
+                        // GunCritDamageGain 基础值 0、进 (1f + gain) 乘区，必须用加法
+                        var mod = new Modifier(ModifierType.Add, 0.25f, MutatorSource);
+                        critDamageStat.AddModifier(mod);
+                        ctx.PlayerAppliedModifiers.Add((critDamageStat, mod));
+                    }
+                    Stat scatterStat = playerItem.GetStat("GunScatterMultiplier");
+                    if (scatterStat != null)
+                    {
+                        var mod = new Modifier(ModifierType.PercentageAdd, -0.15f, MutatorSource);
+                        scatterStat.AddModifier(mod);
+                        ctx.PlayerAppliedModifiers.Add((scatterStat, mod));
+                    }
                 },
                 OnRemove = ctx => { /* 由 MutatorManager.RemoveAll 集中清理 PlayerAppliedModifiers */ }
             },
@@ -627,20 +638,21 @@ namespace BossRush
                 Id = "player_lucky_crit",
                 NameCn = "幸运星",
                 NameEn = "Lucky Star",
-                DescCn = "玩家枪械与近战暴击率各 +20%",
-                DescEn = "Player gun and melee crit rate +20%",
+                DescCn = "玩家近战暴击率与爆头伤害各 +20%",
+                DescEn = "Player melee crit rate and headshot damage +20%",
                 Category = MutatorCategory.PlayerBoon,
                 OnApply = ctx =>
                 {
                     Item playerItem = ctx.Player.CharacterItem;
                     if (playerItem == null) return;
 
-                    Stat gunCritStat = playerItem.GetStat("GunCritRateGain");
-                    if (gunCritStat != null)
+                    // 主角开枪只有爆头算暴击，枪械暴击率对玩家无效：枪械一半改加爆头伤害（2026-11-19）。
+                    Stat gunCritDamageStat = playerItem.GetStat("GunCritDamageGain");
+                    if (gunCritDamageStat != null)
                     {
                         var mod = new Modifier(ModifierType.Add, 0.2f, MutatorSource);
-                        gunCritStat.AddModifier(mod);
-                        ctx.PlayerAppliedModifiers.Add((gunCritStat, mod));
+                        gunCritDamageStat.AddModifier(mod);
+                        ctx.PlayerAppliedModifiers.Add((gunCritDamageStat, mod));
                     }
 
                     Stat meleeCritStat = playerItem.GetStat("MeleeCritRateGain");

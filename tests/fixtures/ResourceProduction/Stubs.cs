@@ -57,12 +57,16 @@ namespace UnityEngine
         public bool UnloadedObjects;
         public AssetBundleRequest Assets = new AssetBundleRequest();
         public Dictionary<string,Sprite> Sprites = new Dictionary<string,Sprite>();
+        public static readonly List<AssetBundle> Loaded = new List<AssetBundle>();
+        public static bool FailEnumeration;
+        public static IEnumerable<AssetBundle> GetAllLoadedAssetBundles() { if (FailEnumeration) throw new Exception("enumeration"); return Loaded; }
         public static AssetBundle LoadFromFile(string path) { Loads++; return Sync; }
         public static AssetBundleCreateRequest LoadFromFileAsync(string path) { Loads++; return Next; }
         public AssetBundleRequest LoadAllAssetsAsync<T>() where T:Object { return Assets; }
         public T[] LoadAllAssets<T>() where T:Object { return new T[0]; }
         public readonly Dictionary<string, GameObject> Prefabs = new Dictionary<string, GameObject>();
         public T LoadAsset<T>(string key) where T:Object { if(typeof(T)==typeof(GameObject)) { GameObject p; return Prefabs.TryGetValue(key,out p) ? p as T : null; } Sprite s; return Sprites.TryGetValue(key,out s) ? s as T : null; }
+        public bool Contains(string key) { return Sprites.ContainsKey(key) || Prefabs.ContainsKey(key); }
         public void Unload(bool objects) { Unloads++; UnloadedObjects=objects; Destroyed=true; if(objects) foreach(var s in Sprites.Values) { s.Destroyed=true; s.texture.Destroyed=true; } }
     }
 }
@@ -75,7 +79,7 @@ namespace BossRush
         public static void DevLog(string s) { }
         internal void EnsureItemContentConfiguratorsRegisteredForDynamicRegistry() { }
     }
-    internal static class BossRushDynamicItemRegistry { internal static void EnsureRegistered(int id) { } }
+    internal static class BossRushDynamicItemRegistry { internal static void EnsureRegistered(int id) { } internal static int RefreshPublishedIcons() { return 0; } }
     internal static class BossRushItemIds { internal const int BossRushTicket = 500001; }
     public static partial class EquipmentFactory
     {

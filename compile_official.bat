@@ -397,6 +397,7 @@ echo(DebugAndTools\PromoRecording\PromoRecordingControls.cs
 echo(DebugAndTools\CampaignPetNestDebugControls.cs
 echo(DebugAndTools\CampaignProgressDebugControls.cs
 echo(DebugAndTools\TidegateProgressDebugControls.cs
+echo(DebugAndTools\CollectiblesDebugControls.cs
 echo(DebugAndTools\F3DebugCheatMenuPlayerStats.cs
 echo(DebugAndTools\F3DebugCheatMenuActions.cs
 echo(DebugAndTools\F3GameplayValidationRunner.cs
@@ -502,7 +503,7 @@ echo(Integration\EquipmentFactory.cs
 echo(Integration\EquipmentFactory_ItemProcessing.cs
 echo(Integration\EquipmentFactoryStaticCacheReset.cs
 echo(Integration\EquipmentHelper.cs
-echo(Integration\EquipmentHelperIcon.cs
+echo(Integration\ModItemIcons.cs
 echo(Integration\Bonus\DragonSetBonus.cs
 echo(Integration\Bonus\DragonSetBonus_Dash.cs
 echo(Integration\Bonus\SetBonusManager.cs
@@ -1052,7 +1053,6 @@ echo(Integration\EclipseBloom\EclipseBloomVisuals.cs
 echo(Integration\EclipseBloom\EclipseBloomVisuals_Geometry.cs
 echo(Integration\EclipseBloom\ResidualSunShieldConfig.cs
 echo(Integration\EclipseBloom\ResidualSunShieldFx.cs
-echo(Integration\EclipseBloom\ResidualSunShieldIcon.cs
 echo(Integration\EclipseBloom\ResidualSunShieldRules.cs
 echo(Integration\EclipseBloom\ResidualSunShieldRuntime.cs
 echo(Integration\EclipseBloom\ResidualSunShieldWeaponConfig.cs
@@ -1064,23 +1064,19 @@ echo(Integration\NewWeapons\ReloadMetronome\ReloadMetronomeRuntime.cs
 echo(Integration\NewWeapons\ReloadMetronome\ReloadMetronomePatches.cs
 echo(Integration\NewWeapons\ReloadMetronome\ReloadMetronomeHud.cs
 echo(Integration\NewWeapons\ReloadMetronome\ReloadMetronomeWeaponConfig.cs
-echo(Integration\NewWeapons\ReloadMetronome\ReloadMetronomeIcon.cs
 echo(Integration\NewWeapons\ReloadMetronome\ReloadMetronomeAssets.cs
 echo(Integration\NewWeapons\ReloadMetronome\ReloadMetronomeShop.cs
 echo(Integration\NewWeapons\EmptyMagazineMine\EmptyMagazineMineWeaponConfig.cs
 echo(Integration\NewWeapons\EmptyMagazineMine\EmptyMagazineMineRules.cs
 echo(Integration\NewWeapons\EmptyMagazineMine\EmptyMagazineMineRuntime.cs
 echo(Integration\NewWeapons\EmptyMagazineMine\EmptyMagazineMineFx.cs
-echo(Integration\NewWeapons\EmptyMagazineMine\EmptyMagazineMineIcon.cs
 echo(Integration\NewWeapons\RollCallLedger\RollCallLedgerConfig.cs
 echo(Integration\NewWeapons\RollCallLedger\RollCallLedgerWeaponConfig.cs
 echo(Integration\NewWeapons\RollCallLedger\RollCallLedgerRules.cs
 echo(Integration\NewWeapons\RollCallLedger\RollCallLedgerRuntime.cs
 echo(Integration\NewWeapons\RollCallLedger\RollCallLedgerFx.cs
-echo(Integration\NewWeapons\RollCallLedger\RollCallLedgerIcon.cs
 echo(Integration\NewWeapons\PassTheBomb\PassTheBombConfig.cs
 echo(Integration\NewWeapons\PassTheBomb\PassTheBombWeaponConfig.cs
-echo(Integration\NewWeapons\PassTheBomb\PassTheBombIcon.cs
 echo(Integration\NewWeapons\PassTheBomb\PassTheBombRules.cs
 echo(Integration\NewWeapons\PassTheBomb\PassTheBombRuntime.cs
 echo(Integration\NewWeapons\PassTheBomb\PassTheBombFx.cs
@@ -1172,7 +1168,7 @@ echo(Integration\Reforge\CustomItemRuntimeStateHelperStaticCacheReset.cs
 echo(Integration\ItemFactory.cs
 echo(Utilities\ResourceBundleLoader.cs
 echo(Integration\ProductionIconCache.cs
-echo(Integration\RawImageLoader.cs
+echo(Integration\ModSprites.cs
 echo(DebugAndTools\ResourcePerformanceMetrics.cs
 echo(DebugAndTools\F3GameplayValidationResourcePerformance.cs
 echo(Integration\FactoryResourceLoading.cs
@@ -1270,6 +1266,7 @@ echo(Achievement\AchievementMedalConfig.cs
 echo(Achievement\AchievementMedalItem.cs
 echo(Audio\BossRushAudioHooks.cs
 echo(Audio\BossRushAudioRuntimeService.cs
+echo(Audio\BossRushOfficialAudio.cs
 echo(Audio\BossRushAudioManager.cs
 echo(DebugAndTools\InventoryInspector.cs
 echo(DebugAndTools\RaidStuckProbe.cs
@@ -1480,6 +1477,24 @@ echo(Integration\SkyIsland\SkyIslandCompassUsage.cs
 echo(Integration\SkyIsland\SkyIslandFieldcraftUsage.cs
 echo(Integration\Tidegate\TidegateItems.cs
 echo(Integration\LastShift\LastShiftItems.cs
+echo(Integration\Collectibles\CollectibleCatalog.cs
+echo(Integration\Collectibles\CollectibleTuning.cs
+echo(Integration\Collectibles\CollectibleLootRoller.cs
+echo(Integration\Collectibles\CollectibleItems.cs
+echo(Integration\Collectibles\CollectionBookItem.cs
+echo(Integration\Collectibles\CollectionBookPersistence.cs
+echo(Integration\Collectibles\CollectibleLootRuntime.cs
+echo(Integration\Collectibles\CollectionSeriesBonus.cs
+echo(Integration\Collectibles\CollectionRegisterContainer.cs
+echo(Integration\Collectibles\CollectionJeffIntro.cs
+echo(Integration\Collectibles\CollectionBookView.cs
+echo(Integration\Collectibles\CollectibleSlotFrameArt.cs
+echo(Integration\Collectibles\CollectibleSlotFrame.cs
+echo(Integration\Collectibles\CollectibleSlotFramePatch.cs
+echo(Integration\Collectibles\CollectibleShowcaseModels.cs
+echo(Integration\Collectibles\CollectibleShowcasePatch.cs
+echo(Integration\Collectibles\CollectiblesRuntimeModule.cs
+echo(Localization\CollectiblesLocalization.cs
 echo(Integration\Tidegate\TidegateLeadUsage.cs
 echo(Integration\Tidegate\TidegateLetterUsage.cs
 )>"%OUTPUT_DIR%\bossrush.rsp"
@@ -1592,6 +1607,16 @@ if %BUILD_EXIT_CODE% EQU 0 (
                 echo WARNING: item icon deploy failed.
             ) else (
                 echo Deployed item icons to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Items
+            )
+        )
+        REM Collectible showcase models are .brcm files, read on demand by CollectibleShowcaseModels from <modDir>\Assets\Collectibles\Models.
+        if exist "Assets\Collectibles\Models\*.brcm" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Collectibles\Models" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Collectibles\Models"
+            xcopy /Y /I "Assets\Collectibles\Models\*.brcm" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Collectibles\Models\" >nul
+            if errorlevel 1 (
+                echo WARNING: collectible model deploy failed.
+            ) else (
+                echo Deployed collectible models to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Collectibles\Models
             )
         )
         REM WikiContent is read at runtime from <modDir>\WikiContent by WikiContentManager.

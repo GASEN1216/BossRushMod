@@ -262,8 +262,10 @@ def main():
     ordered(give, ["finally", "SkyIslandInventoryTransaction.DestroyUnowned(item);"], "未转移的纪念品实例必须回收")
     configure = need_body(items, "private static void ConfigureItem(int typeId, Item item)", "物品配置")
     for token in ("ModeFItemConfigHelper.ClearInheritedUsage(item);", "item.MaxDurability = NonConsumableDurability;",
-                  "Component<FoodDrink>(item)", "Component<Drug>(item)", "EquipmentHelperIcon.TryInjectIcon(item, null, def.IconName);"):
-        require(configure, token, "物品配置：清克隆源用法、罗盘不消耗、特产复用官方行为、专属图标")
+                  "Component<FoodDrink>(item)", "Component<Drug>(item)"):
+        require(configure, token, "物品配置：清克隆源用法、罗盘不消耗、特产复用官方行为")
+    require(need_body(items, "internal static string IconNameOf(int typeId)", "图标名出口"), "def.IconName",
+            "定义表里的图标名经 IconNameOf 交给 ModItemIcons")
     icon_names = set(re.findall(r'"(sky_island_[a-z_]+)"', items))
     generator = set(re.findall(r'\("(sky_island_[a-z_]+)",', read("tools/gen_sky_island_item_icons.py")))
     # 批次二 5 件 + 批次三 10 件 + 批次四 3 件（批次三、四的逐件接线由 SkyIslandFieldcraftGuard / SkyIslandMosquitoGuard 另钉）。
@@ -360,8 +362,9 @@ def main():
     play = need_body(ambience, "private bool Play(Device device, string file, bool loop)", "局部音效发声")
     require(play, "device.Audio = device.Root.GetComponent<Duckov.AudioObject>();", "发声成功后必须记下官方 AudioObject 引用")
     stop = need_body(ambience, "private void Stop(Device device)", "局部音效停止")
-    ordered(stop, ["Duckov.AudioObject audio = device.Audio;", "if (!ReferenceEquals(audio, null) && stopAll != null)",
-                   "stopAll.Invoke(audio, new[] { stopImmediately });"],
+    # 2026-11-19：StopAll 的反射统一到 BossRushOfficialAudio.TryStopAll（同样按 ReferenceEquals 判空）。
+    ordered(stop, ["Duckov.AudioObject audio = device.Audio;",
+                   "if (!ReferenceEquals(audio, null) && BossRushOfficialAudio.HasStopAll && !BossRushOfficialAudio.TryStopAll(audio, out error)) throw error;"],
             "停止优先用记下的引用并绕开 Unity 判空，发声体先销毁也停得掉")
     tick = need_body(ambience, "internal void Tick(Vector3 position)", "声场逐帧")
     require(tick, "if (device.Root == null) { if (device.Looping) Stop(device); continue; }", "发声体被别处销毁时要补停循环音")

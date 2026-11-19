@@ -21,8 +21,8 @@
 //      赋值无效。文案必须走本地化注入，见 `InjectNoteKeys`。
 //
 // 【为什么条目不带图】`Note.image` 指向的 Sprite 必须活得比 NoteIndex 久，而天空岛的场景插图
-//   由 `SkyIslandUiArt` 持有、在 `SkyIslandRuntimeModule.OnDestroy` 里**显式销毁**。
-//   把它塞进 Note，出击一结束官方图鉴里留的就是一个已销毁的 Sprite 引用（回基地翻图鉴看到破图）。
+//   借自 `ModSprites`（生产图标包或 Dev 散图），Mod 停用时随包与散图缓存一起**显式销毁**。
+//   把它塞进 Note，官方图鉴里就会留下一个可能已销毁的 Sprite 引用（翻图鉴看到破图）。
 //   另外 12 张区域横幅全读进来约 13.5 MB，为一个主要在基地翻的图鉴前载这些也不划算。
 //   所以见闻条目是纯文本的——而这正好是它的价值：**长文案从面板搬到这里**（见 §文案分层）。
 //
@@ -174,8 +174,8 @@ namespace BossRush
                         {
                             note = new Note();
                             note.key = key;
-                            // 条目不带图，理由见文件头：插图由 SkyIslandUiArt 持有并在出击结束时销毁，
-                            // 塞进 Note 会在回基地时变成一个已销毁的 Sprite 引用。
+                            // 条目不带图，理由见文件头：插图借自 ModSprites，Mod 停用时随之销毁，
+                            // 塞进 Note 会留下一个可能已销毁的 Sprite 引用。
                             note.image = null;
                             note.hide = false;
                             // 两边都写：列表决定界面列不列得出来，字典决定按 key 查不查得到。

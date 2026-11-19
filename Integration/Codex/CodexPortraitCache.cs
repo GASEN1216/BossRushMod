@@ -2,8 +2,7 @@
 // CodexPortraitCache.cs - 鸭皇图鉴立绘缓存
 // ============================================================================
 // 形态照 ModeG/ModeGPresentationAssetCache.cs（bundle 复用既有实例 → 每 runtime
-// 至多一次 LoadFromFile → 开发期 raw PNG fallback → 幂等 Unload），但有一处
-// **刻意偏离**：
+// 至多一次 LoadFromFile → 幂等 Unload），但有一处 **刻意偏离**：
 //
 //   ★ 本缓存 fail-open，ModeG 那份 fail-closed。★
 //   ModeG 缺包时 TryPreflight 返回 false、入口整个不呈现，因为那是"入口呈现的
@@ -14,12 +13,9 @@
 //   三级占位链（bundle sprite → preset.GetCharacterIcon() → 名字首字 + 圆底）。
 //
 // 其它硬约束：
-//   - 资产命名冻结：bundle 内 asset 名 = "codex_portrait_" + bossKey 全小写；
-//     开发期 raw PNG 同名放 Assets/ui/Codex/*.png。
-//   - raw PNG fallback 由**编译期常量**门控，发布构建恒 false，绝不静默用
-//     raw 文件冒充发布 bundle（与 ModeGAvailability.AllowDevRawPngFallback 同源纪律）。
-//   - Unload 幂等：程序化创建的 Sprite/Texture 带 DontSave，切场景不会自动回收，
-//     必须显式 Destroy，否则每次开关面板都漏一份贴图。
+//   - 资产命名冻结：bundle 内 asset 名 = "codex_portrait_" + bossKey 全小写。
+//   - 只认 bundle，不读散图，绝不用 raw 文件冒充发布 bundle（与 Mode G 展示包同源纪律）。
+//   - Unload 幂等：Unload(true) 卸掉 bundle 后清空全部缓存。
 //   - 官方图标回落只消费既有缓存 ObjectCache.GetCharacterPresets()，
 //     不新增反射绑定、不新增 Resources 扫描策略。
 // ============================================================================
@@ -33,13 +29,6 @@ namespace BossRush
     /// <summary>图鉴立绘缓存。bundle 优先 → 官方角色图标 → null（由 View 画首字圆底）。</summary>
     internal static class CodexPortraitCache
     {
-        /// <summary>
-        /// 开发构建是否允许 raw PNG fallback。发布恒 false。
-        /// 与 ModeGAvailability.AllowDevRawPngFallback 同款纪律：正式构建不得静默
-        /// 使用 raw 文件冒充发布 bundle。
-        /// </summary>
-        internal const bool AllowDevRawPngFallback = false;
-
         #region 状态
 
         private static AssetBundle _bundle;
@@ -55,9 +44,6 @@ namespace BossRush
 
         /// <summary>nameKey -&gt; preset。惰性建一次，Unload 时清。</summary>
         private static Dictionary<string, CharacterRandomPreset> _presetsByNameKey;
-
-        /// <summary>开发期 raw PNG 现造的 Sprite。Unload 必须逐个 Destroy。</summary>
-        private static readonly List<Sprite> _devCreatedSprites = new List<Sprite>();
 
         #endregion
 
@@ -86,12 +72,7 @@ namespace BossRush
                     return cached;
                 }
 
-                string assetName = BuildAssetName(bossKey);
-                Sprite sprite = LoadBundleSprite(assetName);
-                if (sprite == null)
-                {
-                    sprite = LoadDevRawSprite(assetName);
-                }
+                Sprite sprite = LoadBundleSprite(BuildAssetName(bossKey));
 
                 // 失败也写进字典：下次刷新直接命中 null，不再重试文件系统
                 _portraits[bossKey] = sprite;
@@ -156,30 +137,6 @@ namespace BossRush
         /// <summary>幂等卸载。宿主销毁调用。</summary>
         internal static void Unload()
         {
-            // 顺序是硬约束：先销毁自造资源，再卸 bundle。
-            // 反过来的话 bundle.Unload(true) 会先把 sprite 置空，
-            // 自造列表里的引用变成"已销毁的 Unity 对象"，Destroy 静默无效。
-            try
-            {
-                for (int i = 0; i < _devCreatedSprites.Count; i++)
-                {
-                    Sprite sprite = _devCreatedSprites[i];
-                    if (sprite == null) continue;
-
-                    Texture2D texture = sprite.texture;
-                    UnityEngine.Object.Destroy(sprite);
-                    if (texture != null)
-                    {
-                        UnityEngine.Object.Destroy(texture);
-                    }
-                }
-            }
-            catch (Exception)
-            {
-                // no-throw：销毁失败不得拖崩宿主的清理链
-            }
-            _devCreatedSprites.Clear();
-
             try
             {
                 if (_bundle != null)
@@ -222,15 +179,11 @@ namespace BossRush
             try
             {
                 // 复用已加载实例，避免与其它代码并发加载同一个包时冲突
-                foreach (AssetBundle loaded in AssetBundle.GetAllLoadedAssetBundles())
+                AssetBundle loaded = ResourceBundleLoader.FindLoaded(CodexTuning.PortraitBundleName);
+                if (loaded != null)
                 {
-                    if (loaded != null && loaded.name != null
-                        && loaded.name.IndexOf(CodexTuning.PortraitBundleName,
-                            StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        _bundle = loaded;
-                        return true;
-                    }
+                    _bundle = loaded;
+                    return true;
                 }
 
                 string modPath = ModBehaviour.GetModPath();
@@ -277,15 +230,6 @@ namespace BossRush
                     + assetName + ": " + e.Message);
                 return null;
             }
-        }
-
-        /// <summary>开发期 raw PNG 回落。发布构建里 AllowDevRawPngFallback 恒 false。</summary>
-        private static Sprite LoadDevRawSprite(string assetName)
-        {
-            if (!AllowDevRawPngFallback) return null;
-            Sprite sprite = RawImageLoader.LoadSprite(System.IO.Path.Combine(ModBehaviour.GetModPath(), CodexTuning.PortraitDevRawRelativeDir, assetName + ".png"), assetName);
-            if (sprite != null) _devCreatedSprites.Add(sprite);
-            return sprite;
         }
 
         /// <summary>资产名：codex_portrait_ + bossKey 全小写（命名已冻结）。</summary>

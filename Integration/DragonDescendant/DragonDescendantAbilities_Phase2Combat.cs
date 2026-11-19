@@ -390,7 +390,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 播放开枪音效（使用缓存的反射）
+        /// 播放开枪音效（经 BossRushOfficialAudio 调官方 Post）
         /// </summary>
         private void PlayShootSound(string shootKey)
         {
@@ -398,13 +398,7 @@ namespace BossRush
             {
                 if (bossCharacter == null || string.IsNullOrEmpty(shootKey)) return;
 
-                // 缓存AudioManager反射（只执行一次）
-                if (!audioManagerReflectionCached)
-                {
-                    CacheAudioManagerReflection();
-                }
-
-                if (cachedAudioPostMethod == null) return;
+                if (!BossRushOfficialAudio.HasPost) return;
 
                 // 提取纯 shootKey（去除可能存在的路径前缀）
                 string pureKey = shootKey;
@@ -429,37 +423,15 @@ namespace BossRush
                 // 构建音效路径（使用原版格式，不带 event:/ 前缀）
                 string eventName = "SFX/Combat/Gun/Shoot/" + pureKey.ToLower();
 
-                // 使用缓存的方法调用
-                cachedAudioPostMethod.Invoke(null, new object[] { eventName, bossCharacter.gameObject });
+                object instance;
+                Exception error;
+                if (!BossRushOfficialAudio.TryPost(eventName, bossCharacter.gameObject, out instance, out error)) throw error;
             }
             catch (Exception e)
             {
                 // 音效播放失败不影响游戏逻辑
                 ModBehaviour.DevLog("[DragonDescendant] [WARNING] 播放开枪音效失败: " + e.Message);
             }
-        }
-
-        /// <summary>
-        /// 缓存AudioManager的反射信息（只执行一次）
-        /// </summary>
-        private static void CacheAudioManagerReflection()
-        {
-            if (audioManagerReflectionCached) return;
-
-            try
-            {
-                cachedAudioManagerType = System.Type.GetType("Duckov.AudioManager, TeamSoda.Duckov.Core");
-                if (cachedAudioManagerType != null)
-                {
-                    cachedAudioPostMethod = cachedAudioManagerType.GetMethod("Post",
-                        new System.Type[] { typeof(string), typeof(GameObject) });
-                    cachedAudioPostCustomSFXMethod = cachedAudioManagerType.GetMethod("PostCustomSFX",
-                        BindingFlags.Public | BindingFlags.Static);
-                }
-            }
-            catch { }
-
-            audioManagerReflectionCached = true;
         }
 
         /// <summary>

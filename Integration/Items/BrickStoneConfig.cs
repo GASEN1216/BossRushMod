@@ -31,12 +31,7 @@ namespace BossRush
         /// AssetBundle 名称
         /// </summary>
         public const string BUNDLE_NAME = "brick_stone";
-        
-        /// <summary>
-        /// 图标资源名称
-        /// </summary>
-        public const string ICON_NAME = "BrickStone";
-        
+
         // ============================================================================
         // 本地化配置
         // ============================================================================

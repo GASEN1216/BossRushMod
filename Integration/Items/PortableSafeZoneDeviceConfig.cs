@@ -94,7 +94,7 @@ namespace BossRush
                 if (existing != null)
                 {
                     ConfigureItem(existing);
-                    try { ItemAssetsCollection.AddDynamicEntry(existing); } catch { }
+                    try { BossRushDynamicItemRegistry.Publish(existing); } catch { }
                     return true;
                 }
 
@@ -122,7 +122,7 @@ namespace BossRush
                 UnityEngine.Object.DontDestroyOnLoad(clone.gameObject);
                 clone.SetTypeID(TYPE_ID);
                 ConfigureItem(clone);
-                ItemAssetsCollection.AddDynamicEntry(clone);
+                BossRushDynamicItemRegistry.Publish(clone);
                 runtimeFallbackRegistered = true;
                 ModBehaviour.DevLog("[PortableSafeZoneDeviceConfig] Runtime fallback item registered");
                 return true;

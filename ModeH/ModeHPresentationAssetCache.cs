@@ -11,7 +11,7 @@ namespace BossRush
     /// - bundle 文件名/运行路径固定为 Assets/ui/modeh_presentation，恰好两张 Sprite；
     /// - 每个 runtime 最多一次 AssetBundle.LoadFromFile；
     /// - 入口预检必须同时取到徽记与横幅，生产缺包 fail-closed；
-    /// - AllowDevRawPngFallback 是编译期开发门，发布构建恒 false，不得用 raw PNG 冒充发布包；
+    /// - 只认 bundle，不读散图（不得用 raw PNG 冒充发布包）；
     /// - 正常终止 / OnDestroy / Mod 卸载 / 宿主重建时先销毁引用再幂等 Unload(true)。
     /// </summary>
     public static class ModeHPresentationAssetCache
@@ -30,15 +30,11 @@ namespace BossRush
         /// <summary>横幅 Sprite 短名。</summary>
         public const string BannerAssetName = "ModeH_BlackMarketCup_Banner";
 
-        /// <summary>开发期 raw PNG 目录（仅在编译期开发门开启时使用）。</summary>
-        public const string DevRawRelativeDir = "Assets/ui/ModeH";
-
         #endregion
 
         #region 状态
 
         private static readonly object _lock = new object();
-        private static readonly System.Collections.Generic.List<Sprite> ownedRawSprites = new System.Collections.Generic.List<Sprite>();
         private static AssetBundle _bundle;
         private static Sprite _emblemSprite;
         private static Sprite _bannerSprite;
@@ -92,7 +88,7 @@ namespace BossRush
             _emblemAttempted = true;
             try
             {
-                _emblemSprite = LoadBundleSprite(EmblemAssetName) ?? LoadDevRawSprite(EmblemAssetName);
+                _emblemSprite = LoadBundleSprite(EmblemAssetName);
             }
             catch (Exception e)
             {
@@ -110,7 +106,7 @@ namespace BossRush
             _bannerAttempted = true;
             try
             {
-                _bannerSprite = LoadBundleSprite(BannerAssetName) ?? LoadDevRawSprite(BannerAssetName);
+                _bannerSprite = LoadBundleSprite(BannerAssetName);
             }
             catch (Exception e)
             {
@@ -131,14 +127,11 @@ namespace BossRush
             _loadAttempted = true;
             try
             {
-                foreach (AssetBundle loaded in AssetBundle.GetAllLoadedAssetBundles())
+                AssetBundle loaded = ResourceBundleLoader.FindLoaded(PresentationBundleName);
+                if (loaded != null)
                 {
-                    if (loaded != null && loaded.name != null
-                        && loaded.name.IndexOf(PresentationBundleName, StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        _bundle = loaded;
-                        return true;
-                    }
+                    _bundle = loaded;
+                    return true;
                 }
 
                 string modPath = ModBehaviour.GetModPath();
@@ -185,19 +178,6 @@ namespace BossRush
 
         #endregion
 
-        #region 开发期 raw PNG fallback（发布构建恒关闭）
-
-        private static Sprite LoadDevRawSprite(string assetName)
-        {
-            if (!ModeHAvailability.AllowDevRawPngFallback) return null;
-            string path = System.IO.Path.Combine(ModBehaviour.GetModPath(), DevRawRelativeDir, assetName + ".png");
-            Sprite sprite = RawImageLoader.LoadSprite(path, assetName);
-            if (sprite != null) ownedRawSprites.Add(sprite);
-            return sprite;
-        }
-
-        #endregion
-
         #region 卸载
 
         /// <summary>
@@ -205,14 +185,6 @@ namespace BossRush
         /// </summary>
         public static void Unload()
         {
-            foreach (Sprite sprite in ownedRawSprites)
-            {
-                if (sprite == null) continue;
-                Texture2D texture = sprite.texture;
-                UnityEngine.Object.Destroy(sprite);
-                if (texture != null) UnityEngine.Object.Destroy(texture);
-            }
-            ownedRawSprites.Clear();
             lock (_lock)
             {
                 // §23.3 冻结顺序：先清空 Sprite 引用，再 Unload(true)。

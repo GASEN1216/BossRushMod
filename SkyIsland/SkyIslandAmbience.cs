@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using UnityEngine;
 
 namespace BossRush
@@ -26,8 +25,6 @@ namespace BossRush
 
         private readonly List<Device> devices = new List<Device>();
         private readonly string soundDirectory;
-        private readonly MethodInfo postSound, stopAll;
-        private readonly object stopImmediately;
         private int flags = -1;
         private SkyIslandStoryData appliedStory;
         private bool frogsHome;
@@ -42,11 +39,7 @@ namespace BossRush
             try
             {
                 soundDirectory = Path.Combine(ModBehaviour.GetModPath(), "Assets", "Sounds", "SkyIsland");
-                // 正式构建不引用 FMOD：绑定官方音效入口及其 owner 的停止方法，不持有全局音源。
-                postSound = typeof(Duckov.AudioManager).GetMethod("PostCustomSFX", BindingFlags.Public | BindingFlags.Static,
-                    null, new[] { typeof(string), typeof(GameObject), typeof(bool) }, null);
-                stopAll = typeof(Duckov.AudioObject).GetMethod("StopAll", BindingFlags.NonPublic | BindingFlags.Instance);
-                if (stopAll != null) stopImmediately = Enum.ToObject(stopAll.GetParameters()[0].ParameterType, 1);
+                // 官方音效入口及其 owner 的停止方法经 BossRushOfficialAudio 反射（正式构建不引用 FMOD），不持有全局音源。
                 Add(root, "POI_B", 0, new Color(1f, .82f, .50f), "wind_chimes.wav", 5f);
                 Add(root, "Search_D", (int)SkyIslandStoryFlag.WindBeacon, new Color(.45f, .90f, .78f), "island_wind.wav", 48f);
                 Add(root, "Search_G", (int)SkyIslandStoryFlag.StarLamp, new Color(.62f, .90f, 1f), null, 15f);
@@ -222,10 +215,13 @@ namespace BossRush
         {
             try
             {
-                if (postSound == null || stopAll == null) throw new InvalidOperationException("官方空间音效生命周期入口缺失");
+                if (!BossRushOfficialAudio.HasPostCustomSfx || !BossRushOfficialAudio.HasStopAll) throw new InvalidOperationException("官方空间音效生命周期入口缺失");
                 string path = Path.Combine(soundDirectory, file);
                 if (!File.Exists(path)) throw new FileNotFoundException("天空岛音效未部署", file);
-                bool posted = postSound.Invoke(null, new object[] { path, device.Root, loop }) != null;
+                object instance;
+                Exception error;
+                if (!BossRushOfficialAudio.TryPostCustomSfx(path, device.Root, loop, out instance, out error)) throw error;
+                bool posted = instance != null;
                 // 官方 PostCustomSFX 经 AudioObject.GetOrCreate 把事件挂在发声体的组件上；趁它活着记住引用。
                 if (posted && (object)device.Audio == null) device.Audio = device.Root.GetComponent<Duckov.AudioObject>();
                 return posted;
@@ -247,7 +243,8 @@ namespace BossRush
                 // 列表调 FMOD，不碰已销毁的原生对象（CR-2026-09-30-012）。ReferenceEquals 绕开 Unity 的判空重载。
                 Duckov.AudioObject audio = device.Audio;
                 if (ReferenceEquals(audio, null) && device.Root != null) audio = device.Root.GetComponent<Duckov.AudioObject>();
-                if (!ReferenceEquals(audio, null) && stopAll != null) stopAll.Invoke(audio, new[] { stopImmediately });
+                Exception error;
+                if (!ReferenceEquals(audio, null) && BossRushOfficialAudio.HasStopAll && !BossRushOfficialAudio.TryStopAll(audio, out error)) throw error;
             }
             catch (Exception e) { ModBehaviour.DevLog("[SkyIsland] [WARNING] 局部音效停止失败：" + e.Message); }
             device.Looping = false;

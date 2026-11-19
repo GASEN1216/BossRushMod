@@ -1,5 +1,9 @@
 # AI 协作文档收敛迁移记录
 
+## 2026-11-19 收集品 TypeID 台账与收藏册引导授权（SCHEMA+ / COMPAT）
+
+新增 100 件收集品（500119-500218）与收藏册（500219），根 §4.3 登记范围推到 500219、下一可用 500220，`docs/contracts.md` §1 与物品 ID 表同步；根 §10 已授权例外追加 owner 2026-11-19 授权的 Jeff 收藏册引导 590217，contracts 记下 `BossRush_CollectionBook_v1` 存档键与 590217 的口径。`architecture/modules.json` 新增 `collectibles` 模块并重生成 `MODULES.md`。
+
 ## 2026-11-13 仓库入口实体、官方对话与重进规范（COMPAT / SAFE）
 
 按 owner 要求，把 NPC 完整对话统一复用真实 DialogueActor + 共享 DialogueManager + 官方 DialogueUI 写入根 §4.14、Common/UI 与 Integration 规则；纯操作确认仍用共享确认框。新增对话取消所有权、已确认事务/未确认选择、切图取消、双语分页与重入验收说明。将“所有可见硬实物必须有合形实体”落入根 §4.16 和 SkyIsland §6.1，纠正教程把 0.12–0.6 m 一律无碰撞、玩法点重叠就只删家具 collider 当作通用方案的旧句；低矮物改按实际胶囊通行与视觉语义处理，历史审计口径显式分开。详细规范扩充 §4.1、§6.3、§6.4；new-map 原型/组装/接入/验收、contracts、两图知识库与人工覆盖同步。入口 READY 仅证明创建时刻，不再用它推断持续可见；同名 Scene 重进按实例与请求 generation 核验。修复和本次证据见 `docs/reports/testing/仓库入口_2026-11-13_实体对话与重进.md`。
@@ -493,3 +497,9 @@ owner 实机反馈「很多地方一直在闪；进屋 / 头顶有屋顶没隐�
 - 2026-11-17：复核 11-05～11-13 提交的教训落地情况，补四处缺口：SkyIsland/AGENTS.md §6.1 第 9 条补站位避开楼梯 / 坡道占地；DebugAndTools/AGENTS.md 登记末班编组站演练与「推后末班、班号不回拨」；new-map 05 补站位楼梯判据、引导任务可接条件不用历史门槛（590216 初版接不到）、演练快进不回拨计数；new-map 07 补 owner 两次否片的口径（字幕不讲规则、叙事优先不闪、配乐换写法、出片前查穿模）与实录素材处理，并更新路线 B 状态。
 
 - 2026-11-17：SkyIsland/AGENTS.md §6.1 新增第 15 条「门要从游戏镜头看得见」（官方机位下北墙、西墙背对镜头；背向门登记门前区，不恢复全图视线裁切）。按 owner「以上所有的都要写进 docs 下新地图制作流程里」，new-map README 加 11-11～11-17 教训索引，02 §4.1 / §5 加门朝向与逐栋找门，05 §3 / §15、06 §2 加门前区与验收；repowiki 潮闸镇专题与 ArtSource/Tidegate/README 同步。
+
+- 2026-11-19：wiki-site/AGENTS.md §4.5 改写实体链接规则（四个名字来源、三种落点、列表项补 id、登记表 `scripts/wiki-entities.json` 与 WikiEntityRegistryGuard），新增 §4.12 敌人抗性（`tools/build_wiki_enemy_stats.py` 生成 enemy-stats.json，抗性表 / Boss 速查框 / Boss 页「基础数据」只读它，WikiEnemyStatsGuard），§5 补物品图标组与 `build_wiki_images.py --only`，§7 登记两个新守卫。依据：玩家反馈敌怪抗性没标；核对时发现蚀日花冠速查框血量手抄成 5000（代码 7500）、龙系 Boss「受火反而回血」与代码不符（实为下一帧原数补回，净零）。
+
+- 2026-11-19：物品图标统一入口。`Integration/AGENTS.md` 新增物品清单加第 10 项「图标」：图标名只声明一次（模块定义表或 `Integration/ModItemIcons.cs` 的 `LegacyIconName`），prefab 一律经 `BossRushDynamicItemRegistry.Publish` 注册并在 `AddDynamicEntry` 前套图标，配置器与界面不写 `Item.Icon`、不按路径读物品图标（新守卫 `ModItemIconGuard`）。repowiki 新增《物品图标统一入口》，工厂架构、空仓地雷盒、点名册、残日盾片、星阙专题里指向已删除的 `EquipmentHelperIcon` 与五个物品专属图标组件的链接与说明同步改写；`docs/contracts.md` 遗种蛋图标一行改口径。依据：owner 要求重画的旧图标按最佳设计接线、并统一旧代码里不一致的写法；盘点发现同一件物品有五六种设图标方式、先注册后配图标会被官方元数据缓存住旧图、Mod 重新启用时借用的图标随生产包一起失效。
+
+- 2026-11-19：更正「官方陈列柜 `Showcase01` 是废弃建筑、建不了」（2026-09-22 结论，owner 当时实机看不到）。按字节读 `resources.assets` 的 `BuildingDataCollection` 并对照官方 `BuildingSelectionPanel.GetBuildingsToDisplay` / `BuildingInfo.RequirementsSatisfied` / `Showcase.RefreshSlot`：陈列柜在官方建造清单里，前置是比特币矿机 + 任务 940「玩具收藏家-2」，没满足前置就被建造菜单隐藏；12 个展示位全要 `ShowCase`，没有 ItemGraphic 的物品不摆。改了后山 `ShowcaseTrophyCatalog` / `ShowcaseService` / `ShowcaseDisplayJudges` / `BackMountainRuntimeModule` 注释、`BackMountainPlayabilityGuard` 注释与报错文案（断言不变）、`BackMountainLifecycle` 夹具注释、repowiki《竞技场后山修复约定》（新增 11-19 节，09-22 节划掉旧句）与后山知识库条目；`CODE_REVIEW_FINDINGS.md` 的 CR-2026-09-22-001 / 006 只追加更正。行为不变（SAFE）。owner 同日拍板维持现状：不给后山战利品补展示标签；5 档以上收集品摆进陈列柜照常计后山加成与征程第三章目标。中英 Wiki 后山页原写「陈列柜是废弃建筑，不用找」，与收藏册页矛盾，同步改为「只收展示品、要矿机 + 任务 940 才出现、收集品可计入」。

@@ -171,7 +171,6 @@ namespace BossRush
             }
             syncPending = true;
             warned = false;
-            TidegateJournalArt.ResetStaticCaches();
         }
     }
 }

@@ -25,6 +25,11 @@ internal static class Program
     {
         return typeof(BossRushAudioRuntimeService).GetField(name, BindingFlags.NonPublic | BindingFlags.Static).GetValue(null);
     }
+    // 官方音频入口的一次性解析标记（BossRushOfficialAudio 只解析一次、不随清理重置）。
+    private static bool OfficialAudioResolved()
+    {
+        return (bool)typeof(BossRushOfficialAudio).GetField("resolved", BindingFlags.NonPublic | BindingFlags.Static).GetValue(null);
+    }
     private static string NewPath(string name)
     {
         string path = Path.Combine(folder, Guid.NewGuid().ToString("N"), name);
@@ -68,7 +73,7 @@ internal static class Program
     {
         Reset();
         ModBehaviour host = Host();
-        Check(Probe.PathReads == 0 && Probe.PlayerReads == 0 && Probe.Scans == 0 && !(bool)Cached("_postCustomSfxResolved"),
+        Check(Probe.PathReads == 0 && Probe.PlayerReads == 0 && Probe.Scans == 0 && !OfficialAudioResolved(),
             "Binding must not sample queries, scan resources or resolve audio");
         string rootFile = NewPath("ngm.mp3");
         File.WriteAllText(rootFile, "fixture root audio");
@@ -85,6 +90,7 @@ internal static class Program
         Probe.Resources = new[] { first, second };
         host.TrySpawnEggForPlayer();
         Posts(1, "Ngm must play once before egg creation");
+        Check(OfficialAudioResolved(), "The first existing sound must resolve the official audio entry lazily");
         if (HasAudio) Check(Probe.Posts[0].Path == assetFile && ReferenceEquals(Probe.Posts[0].Target, main.gameObject) && !Probe.Posts[0].Loop,
             "Ngm must prefer Assets/ngm.mp3 and pass the current player without looping");
         Check(Probe.PathReads == 1 && Probe.PlayerReads == 0 && Probe.Scans == 1 && Probe.Instantiates == 1 && Probe.Collisions == 1,
@@ -154,15 +160,14 @@ internal static class Program
         Check(Probe.Scans == 0 && Probe.Eggs.Count == 1, "Random event cache must feed player egg spawning without a second scan");
         string path = NewPath("cleanup.wav"); File.WriteAllText(path, "fixture");
         first.PlaySoundEffect(path);
-        Check((bool)Cached("_postCustomSfxResolved"), "Existing sound file must resolve the audio method lazily");
         Probe.Trace.Clear();
         first.CleanupProductionAudioForFixture();
         Check(ReferenceEquals(Probe.BeforeReset, behavior) && ReferenceEquals(Probe.BeforeResetPreset, behavior.spawnCharacter)
             && Probe.CacheEmptyAfterReset && string.Join(",", Probe.Trace) == "magic-reset,npc-reset,dialogue-reset",
             "Actual audio reset must execute between the original MagicBlend and NPC cleanup slots");
-        Check(Cached("_cachedPostCustomSfx") == null && !(bool)Cached("_postCustomSfxResolved")
-            && ((System.Collections.IDictionary)Cached("_cachedSoundFileExists")).Count == 0,
-            "Audio cleanup must clear file cache, delegate and resolution marker");
+        Check(((System.Collections.IDictionary)Cached("_cachedSoundFileExists")).Count == 0,
+            "Audio cleanup must clear the sound file cache");
+        Check(OfficialAudioResolved(), "Official audio metadata is resolved once and is not discarded by cleanup");
         first.CleanupProductionAudioForFixture();
         Check(Probe.CacheEmptyAfterReset, "Repeated original cleanup must remain safe");
     }
@@ -176,17 +181,12 @@ internal static class Program
         File.WriteAllText(path, "fixture audio");
         host.PlaySoundEffect(path);
         Posts(0, "Missing sound results must stay cached until cleanup");
-        Check(!(bool)Cached("_postCustomSfxResolved"), "Missing files must not resolve the audio method");
         host.CleanupProductionAudioForFixture();
         CharacterMainControl main = Player(); Probe.Main = main;
         host.PlaySoundEffect(path);
         Posts(1, "Cleanup must allow a previously missing sound file to be discovered");
-        Check((bool)Cached("_postCustomSfxResolved"), "First existing sound must set the lazy resolution marker");
-#if COMPATIBLE_VOID
-        Check(Cached("_cachedPostCustomSfx") != null, "Void-compatible audio must use the cached delegate");
-#else
-        Check(Cached("_cachedPostCustomSfx") == null, "Official non-void or missing audio must keep the delegate empty");
-#endif
+        Check(BossRushOfficialAudio.HasPostCustomSfx == HasAudio,
+            "Official non-void and compatible void PostCustomSFX must both bind; a missing entry must stay unbound");
         if (HasAudio) Check(ReferenceEquals(Probe.Posts[0].Target, main.gameObject) && !Probe.Posts[0].Loop,
             "Active main player sound must preserve target and loop false");
         File.Move(path, path + ".moved");

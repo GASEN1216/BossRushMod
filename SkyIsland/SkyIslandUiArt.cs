@@ -1,16 +1,16 @@
 // ============================================================================
 // SkyIslandUiArt.cs - 天空岛交互面板的插图资源
 // ============================================================================
-// 形态照 Campaign/CampaignAssetCache.cs：bundle 优先 → 开发期 raw PNG → 无。
+// 取图走 ModSprites：production_icons 压缩包优先 → Dev 或缺包时读散图 → 无。
 //
 // 【fail-open，且这里比战役更该 fail-open】
 //   插图缺失只是「面板没有配图」，面板本身、正文与全部选项照常工作。
 //   天空岛的装置面板挂着 K1/K2/K3 与敲响归航钟，绝不能因为一张图没出来就打不开。
 //
-// 【raw PNG 在这里是允许的】
+// 【Dev 构建读散图是允许的】
 //   与 BossRushUISkin 的九宫格底图不同，立绘与横幅都是整图显示、不需要 border 信息，
-//   运行时 LoadImage 出来的散图与 bundle 里效果一致。这让美术可以边出图边看效果，
-//   定稿后再打 bundle，调用方零改动（见 tools/gen_sky_island_ui_art.py）。
+//   散图与压缩包里效果一致。这让美术可以边出图边看效果，定稿后再重打 production_icons，
+//   调用方零改动（见 tools/gen_sky_island_ui_art.py）。
 //
 // 【两类图对应面板的两种形态】
 //   - `skyisland_portrait_<npcId>.png` 512×512 抠图立绘：居民对话面板的头像位。
@@ -19,17 +19,16 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using UnityEngine;
 
 namespace BossRush
 {
     /// <summary>
-    /// 天空岛面板插图缓存。全静态，每 runtime 至多 LoadFromFile 一次。
+    /// 天空岛面板插图缓存。全静态，插图本身借自 <see cref="ModSprites"/>，这里只记资源名与程序化小图。
     ///
     /// 【常驻内存代价，以及为什么仍按模块 owner 释放】
     ///   全部读满是 13 张横幅（含手记，1024×288×4B ≈ 1.13 MiB）+ 6 张立绘（512×512×4B = 1 MiB）
-    ///   + 13 张面板底图（220×236×4B ≈ 0.2 MiB）≈ **23 MiB**。这是 GPU 上的那一份；CPU 端拷贝读图时已经丢掉（见 FromRawPng）。
+    ///   + 13 张面板底图（220×236×4B ≈ 0.2 MiB）≈ **23 MiB**（散图口径；压缩包里更小）。这是 GPU 上的那一份；CPU 端拷贝读图时已经丢掉（见 ModSprites）。
     ///   按需加载，所以只有玩家真的开过那个区域的面板才会占；
     ///   但一旦读进来就活到模块销毁，回基地也不释放。
     ///
@@ -40,19 +39,14 @@ namespace BossRush
     /// </summary>
     internal static class SkyIslandUiArt
     {
-        internal const string BundleName = "skyisland_ui";
-        private const string BundleRelativePath = "Assets/ui/skyisland_ui";
-        private const string RawRelativeDir = "Assets/ui/SkyIsland";
+        private const string ArtRelativeDir = "Assets/ui/SkyIsland";
         private const string LogPrefix = "[SkyIslandUiArt] ";
 
-        private static AssetBundle bundle;
-        private static bool bundleLoadAttempted;
-
-        /// <summary>资源名 → Sprite。**null 也缓存**，否则每次开面板都要打一次盘找不存在的文件。</summary>
+        /// <summary>资源名 → Sprite。**null 也缓存**，否则每次开面板都要打一次盘找不存在的文件。插图借自 ModSprites，不归这里销毁。</summary>
         private static readonly Dictionary<string, Sprite> sprites =
             new Dictionary<string, Sprite>(StringComparer.Ordinal);
 
-        /// <summary>运行时 new 出来的 Sprite/Texture，Reset 时必须显式销毁。</summary>
+        /// <summary>这里程序化 new 出来的 Sprite/Texture（渐隐条、压暗底、柔光），Reset 时必须显式销毁。</summary>
         private static readonly List<UnityEngine.Object> owned = new List<UnityEngine.Object>();
 
         /// <summary>居民立绘。没有就返回 null，面板会退成无头像布局。</summary>
@@ -78,25 +72,12 @@ namespace BossRush
         ///
         /// 旧用例直接调 <see cref="GetScene"/> / <see cref="GetPortrait"/>：在玩家真实的出击上一帧内同步解码约 20 MB 贴图
         /// （这次卡顿还不进性能采样），而且查不到的结果（null）也被永久缓存——验收时美术若还没拷完，
-        /// 面板从此到进程结束都没有插图。这里只问：已缓存的真图？bundle 目录里有没有这个名字（`Contains`
-        /// 只读目录不加载资源）？散图文件在不在？首次调用会像打开面板一样加载 bundle 本身（目录与头信息）。
+        /// 面板从此到进程结束都没有插图。这里问取图的同一个入口 <see cref="ModSprites.Exists"/>：已缓存的图？
+        /// production_icons 包目录里有没有（只读目录不加载资源）？允许散图时散图文件在不在？
         /// </summary>
         internal static bool HasArt(string assetName)
         {
-            if (string.IsNullOrEmpty(assetName)) return false;
-            Sprite cached;
-            if (sprites.TryGetValue(assetName, out cached) && cached != null) return true;
-            try
-            {
-                EnsureBundleLoadAttempted();
-                if (bundle != null && bundle.Contains(assetName)) return true;
-                return File.Exists(Path.Combine(Path.Combine(ModBehaviour.GetModPath(), RawRelativeDir),
-                    assetName + ".png"));
-            }
-            catch (Exception)
-            {
-                return false;
-            }
+            return !string.IsNullOrEmpty(assetName) && ModSprites.Exists(ArtPath(assetName));
         }
 
         /// <summary>
@@ -115,7 +96,7 @@ namespace BossRush
         /// 倍率下会出现带状阶梯。底图是**为模糊而生**的，所以小图反而正确。
         ///
         /// 【区域从哪来】<paramref name="banner"/> 的 <c>Sprite.name</c> 就是资源名
-        /// （bundle 与散图两条路径都显式赋过），形如 <c>skyisland_scene_B</c>，取后缀即可——
+        /// （压缩包与 ModSprites 解码的散图都以文件名命名），形如 <c>skyisland_scene_B</c>，取后缀即可——
         /// 不必给 <c>Show</c> 加一个新参数、也就不用动任何调用点。
         /// 没有横幅（居民面板只有立绘）时退到群岛总览那张，它是中性的全群岛远景。
         /// 一张都没有时返回 null，面板退回纯色底（fail-open）。
@@ -411,7 +392,7 @@ namespace BossRush
             Sprite result = null;
             try
             {
-                result = FromBundle(assetName) ?? FromRawPng(assetName);
+                result = ModSprites.Get(ArtPath(assetName));
             }
             catch (Exception e)
             {
@@ -422,41 +403,16 @@ namespace BossRush
             return result;
         }
 
-        private static Sprite FromBundle(string assetName)
+        private static string ArtPath(string assetName)
         {
-            EnsureBundleLoadAttempted();
-            return bundle == null ? null : bundle.LoadAsset<Sprite>(assetName);
-        }
-
-        private static void EnsureBundleLoadAttempted()
-        {
-            if (bundleLoadAttempted) return;
-            bundleLoadAttempted = true;
-            try
-            {
-                string path = Path.Combine(ModBehaviour.GetModPath(), BundleRelativePath);
-                if (File.Exists(path)) bundle = ResourceBundleLoader.LoadFromFile(path);
-            }
-            catch (Exception e)
-            {
-                Debug.LogWarning(LogPrefix + "插图 bundle 加载失败，退回散图：" + e.Message);
-            }
-        }
-
-        private static Sprite FromRawPng(string assetName)
-        {
-            Sprite compressed = ProductionIconCache.Get(RawRelativeDir + "/" + assetName + ".png");
-            if (compressed != null) return compressed;
-            if (!ProductionIconCache.AllowRawFallback) return null;
-            Sprite sprite = RawImageLoader.LoadSprite(Path.Combine(ModBehaviour.GetModPath(), RawRelativeDir, assetName + ".png"), assetName);
-            if (sprite != null) { owned.Add(sprite.texture); owned.Add(sprite); }
-            return sprite;
+            return ArtRelativeDir + "/" + assetName + ".png";
         }
 
         /// <summary>
         /// 由 <c>SkyIslandRuntimeModule.OnDestroy</c> 调用，与其它天空岛静态缓存同一个 owner。
-        /// 运行时 new 出来的 Texture/Sprite 必须显式 Destroy，只置 null 是丢给
+        /// 这里程序化 new 出来的 Texture/Sprite 必须显式 Destroy，只置 null 是丢给
         /// <c>Resources.UnloadUnusedAssets</c> 碰运气（口径同 <see cref="SkyIslandRendering"/>）。
+        /// 借自 ModSprites 的插图只清引用。
         /// </summary>
         internal static void ResetStaticCaches()
         {
@@ -464,9 +420,6 @@ namespace BossRush
                 if (owned[i] != null) UnityEngine.Object.Destroy(owned[i]);
             owned.Clear();
             sprites.Clear();
-            if (bundle != null) bundle.Unload(true);
-            bundle = null;
-            bundleLoadAttempted = false;
         }
     }
 }

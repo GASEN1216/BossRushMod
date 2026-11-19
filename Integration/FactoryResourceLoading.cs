@@ -11,6 +11,8 @@ namespace BossRush
         internal static IEnumerator InitializeItems(ModBehaviour owner, Action finish)
         {
             yield return ProductionIconCache.Prepare(() => owner == null);
+            if (owner == null) yield break;
+            BossRushDynamicItemRegistry.RefreshPublishedIcons();
             yield return RunSpecial(owner, "Assets/bossrush_ticket", () => BossRushDynamicItemRegistry.EnsureRegistered(BossRushItemIds.BossRushTicket));
             if (owner == null) yield break;
             owner.EnsureItemContentConfiguratorsRegisteredForDynamicRegistry();
@@ -22,6 +24,7 @@ namespace BossRush
         /// alreadyLoaded：消费方自己还持有这个 bundle（基地建筑每次进基地都会重跑装配）时直接交给消费方，
         /// 不再 LoadFromFileAsync——同一文件二次加载会被 Unity 拒绝并报 "another AssetBundle with the same files
         /// is already loaded"（2026-09-22 实机每次进基地四条）。判据与消费方「已注入，跳过」的持有字段同源。
+        /// 换场景作废一次尝试后，重试前再判一次：等场景期间消费方可能已经自己拿到了这个包（如早期注入的同步加载）。
         /// </summary>
         internal static IEnumerator RunSpecial(ModBehaviour owner, string relativePath, Action consume, Func<bool> alreadyLoaded = null)
         {
@@ -44,6 +47,11 @@ namespace BossRush
                 if (!cancelled()) yield break;
                 // A scene transition invalidates this attempt, but not the published content catalog.
                 while (owner != null && (SceneLoader.IsSceneLoading || LevelManager.LevelInitializing)) yield return null;
+                if (owner != null && alreadyLoaded != null && alreadyLoaded())
+                {
+                    guardedConsume();
+                    yield break;
+                }
             }
         }
 

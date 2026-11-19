@@ -17,7 +17,6 @@
 // ============================================================================
 
 using System.Collections;
-using System.Reflection;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -47,9 +46,6 @@ namespace BossRush
         /// <summary>任务类小完成。</summary>
         internal const string SoundMissionSmall = "UI/mission_small";
 
-        private static MethodInfo postMethod;
-        private static bool postResolved;
-
         /// <summary>
         /// 播一条官方 UI 事件音效。没有 AudioManager 实例、FMOD 未就绪、事件名不存在时静默跳过——
         /// 音效不是关键路径，绝不能让揭晓 / 领取流程因为它抛异常。
@@ -60,23 +56,8 @@ namespace BossRush
             {
                 return;
             }
-            try
-            {
-                if (!postResolved)
-                {
-                    postResolved = true;
-                    postMethod = typeof(global::Duckov.AudioManager).GetMethod("Post",
-                        BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(string) }, null);
-                }
-                if (postMethod != null)
-                {
-                    postMethod.Invoke(null, new object[] { eventName });
-                }
-            }
-            catch (System.Exception)
-            {
-                // 音效失败静默降级
-            }
+            // 经 BossRushOfficialAudio 调官方 Post(string)；失败静默降级
+            BossRushOfficialAudio.Post(eventName);
         }
 
         // ---------------- 常驻单例面板的关闭淡出 ----------------

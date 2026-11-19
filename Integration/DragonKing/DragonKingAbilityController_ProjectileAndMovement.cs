@@ -205,7 +205,7 @@ namespace BossRush
                 if (!hurtSoundPathChecked)
                 {
                     hurtSoundPathChecked = true;
-                    string modBasePath = System.IO.Path.GetDirectoryName(GetType().Assembly.Location);
+                    string modBasePath = ModBehaviour.GetModPath();
 
                     // 优先查找Assets目录（标准资源位置）
                     string assetsPath = System.IO.Path.Combine(modBasePath, "Assets", "hurt.mp3");

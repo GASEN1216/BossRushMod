@@ -144,5 +144,11 @@ namespace BossRush
         public const int LastShiftStamp = 500117;
         /// <summary>末班编组站：末班票根。读齐三条线索得到；下次剪票交给余响，剧情收进图鉴。不可出售。</summary>
         public const int LastShiftTicketStub = 500118;
+        /// <summary>收集品第一件。100 件连续占 500119-500218，定义表在 Integration/Collectibles/CollectibleCatalog.cs。</summary>
+        public const int CollectibleFirst = 500119;
+        /// <summary>收集品最后一件。</summary>
+        public const int CollectibleLast = 500218;
+        /// <summary>收藏册：登记收集品的可用书。杰夫引导 590217 送一本，之后基地售货机上架；不可出售。</summary>
+        public const int CollectionBook = 500219;
     }
 }

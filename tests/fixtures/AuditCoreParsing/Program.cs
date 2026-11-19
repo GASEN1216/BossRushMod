@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Text;
 using BossRush;
 
 namespace UnityEngine
@@ -28,8 +30,32 @@ internal static class Program
     {
         return "{\"sceneName\":\"test\",\"sceneID\":\"test-id\",\"displayNameCN\":\"test\",\"displayNameEN\":\"test\",\"spawnPoints\":" + points + ",\"customSpawnPos\":" + optional + "}";
     }
-    private static void Main()
+    // 2026-11-19：标量改从解析树取后，钉住实际刷新点文件的读取格式（期望值由 run.py 用 Python json 独立读出）。
+    private static void SpawnPointFilesReadAsJson(string expectedPath)
     {
+        string[] lines = File.ReadAllLines(expectedPath, Encoding.UTF8);
+        Check(lines.Length > 0, "spawn point expectations present");
+        foreach (string line in lines)
+        {
+            string[] f = line.Split('\t');
+            Check(f.Length == 8, "spawn expectation row shape: " + line);
+            string json = File.ReadAllText(Path.Combine("Assets", "SpawnPoints", f[0]), Encoding.UTF8);
+            BossRushMapConfig map = MapSpawnPointRegistry.DeserializeFromJson(json);
+            Check(map != null, "actual spawn file loads: " + f[0]);
+            Check(map.sceneName == f[1] && map.sceneID == f[2] && map.displayNameCN == f[3] && map.displayNameEN == f[4],
+                "string fields read from the parsed tree: " + f[0]);
+            Check(map.previewImageName == (f[5] == "\u0001" ? null : f[5]), "nullable preview image name: " + f[0]);
+            Check(map.sortOrder == int.Parse(f[6]) && map.beaconIndex == int.Parse(f[7]), "integer fields: " + f[0]);
+        }
+        // 只认顶层键、按标准 JSON 解转义（旧的原文本搜索会命中嵌套键、不解 \uXXXX）。
+        var nested = MapSpawnPointRegistry.DeserializeFromJson("{\"meta\":{\"sceneName\":\"wrong\"},\"sceneName\":\"right\",\"sceneID\":\"id\",\"displayNameCN\":\"\\u4e2d\",\"displayNameEN\":\"e\",\"spawnPoints\":[[1,2,3]]}");
+        Check(nested != null && nested.sceneName == "right" && nested.displayNameCN == "\u4e2d" && nested.sortOrder == int.MaxValue && nested.beaconIndex == 0,
+            "top-level keys, standard escapes and integer defaults");
+    }
+
+    private static void Main(string[] args)
+    {
+        SpawnPointFilesReadAsJson(args[0]);
         foreach (string value in new[] { "9223372036854775808", "9.223372036854776e18", "-9.223372036854778e18" })
         {
             BossRushJsonValue root; string error;

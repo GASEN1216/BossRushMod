@@ -53,6 +53,7 @@ namespace BossRush
     class CampaignBoardBuilder : BuilderSpy
     {
         internal CampaignBoardBuilder(ModBehaviour owner) : base(owner) {}
+        internal bool HasAssetBundle;
         public void InitCampaignBoardBuilding() { Calls.Add("init"); }
         internal void TryInitializeCampaignBoardEarly() { Calls.Add("early"); }
         internal void RegisterCampaignNotesForScene() { Calls.Add("notes"); }
@@ -61,6 +62,7 @@ namespace BossRush
     class ShowcaseBuildingBuilder : BuilderSpy
     {
         internal ShowcaseBuildingBuilder(ModBehaviour owner) : base(owner) {}
+        internal bool HasAssetBundle;
         public void InitBackMountainShowcase() { Calls.Add("init"); }
         internal void TryInitializeBackMountainShowcaseEarly() { Calls.Add("early"); }
         internal void NotifyShowcaseSlotChanged() { Calls.Add("slot"); }
@@ -144,6 +146,16 @@ class Program
             && ReferenceEquals(other.StarwishBuildingModelPrefab, other.wishFountainRuntime.ModelPrefab)
             && !ReferenceEquals(owner.StarwishBuildingModelPrefab, other.StarwishBuildingModelPrefab),
             "mailbox borrows its creating host's WishFountain module resource without a second loader");
+        // 基地装配管线的 alreadyLoaded 判据：只读本宿主已有的建筑模块，不为探测去创建模块。
+        var probe = new ModBehaviour();
+        Check(!probe.HasCampaignBoardBundle && !probe.HasBackMountainShowcaseBundle
+            && !BuilderSpy.Created.Exists(spy => ReferenceEquals(spy.Owner, probe)), "bundle probes never create a building module");
+        probe.InitCampaignBoardBuilding(); probe.InitBackMountainShowcase();
+        ((CampaignBoardBuilder)Spy<CampaignBoardBuilder>(probe)).HasAssetBundle = true;
+        Check(probe.HasCampaignBoardBundle && !probe.HasBackMountainShowcaseBundle && !owner.HasCampaignBoardBundle,
+            "campaign board probe forwards its own host's module bundle field");
+        ((ShowcaseBuildingBuilder)Spy<ShowcaseBuildingBuilder>(probe)).HasAssetBundle = true;
+        Check(probe.HasBackMountainShowcaseBundle && !owner.HasBackMountainShowcaseBundle, "showcase probe forwards its own host's module bundle field");
         var cleanupOnly = new ModBehaviour();
         cleanupOnly.CleanupDailyReportMailbox(); cleanupOnly.CleanupCampaignBoardBuilding(); cleanupOnly.CleanupBackMountainShowcase(); cleanupOnly.CleanupPetNestBuilding();
         Check(Spy<DailyReportMailboxBuilder>(cleanupOnly).Calls[0] == "cleanup"

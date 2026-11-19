@@ -2,7 +2,7 @@
 // AchievementIconLoader.cs - 成就图标加载服务（共享单例）
 // ============================================================================
 // 模块说明：
-//   统一管理成就图标的 PNG 与 AssetBundle 加载、缓存和自有资源
+//   统一管理成就图标的取图、缓存和自有资源：按路径走 ModSprites，取不到再回退旧 achievement_icons 包
 //   供 SteamAchievementPopup 和 AchievementEntryUI 共同使用
 // ============================================================================
 
@@ -12,7 +12,8 @@ using UnityEngine;
 namespace BossRush
 {
     /// <summary>
-    /// 成就图标加载服务：优先生产压缩图标，保留缺包/Dev PNG 与旧 AssetBundle 回退。
+    /// 成就图标加载服务：ModSprites（生产压缩图标，Dev 或缺包读散图）优先，保留旧 AssetBundle 回退。
+    /// 借自 ModSprites 与旧包的图不归这里销毁；只销毁用旧包 Texture2D 现造的 Sprite。
     /// </summary>
     public static class AchievementIconLoader
     {
@@ -31,7 +32,6 @@ namespace BossRush
         private static Dictionary<string, Sprite> spriteCache = new Dictionary<string, Sprite>();
         private static Dictionary<string, Texture2D> textureCache = new Dictionary<string, Texture2D>();
         private static readonly HashSet<Sprite> ownedSprites = new HashSet<Sprite>();
-        private static readonly HashSet<Texture2D> ownedTextures = new HashSet<Texture2D>();
 
         #endregion
 
@@ -49,8 +49,7 @@ namespace BossRush
                 return cached;
             }
 
-            Sprite sprite = ProductionIconCache.Get(PNG_RELATIVE_PATH + "/" + iconName + ".png");
-            if (sprite == null && ProductionIconCache.AllowRawFallback) sprite = LoadSpriteFromPng(iconName);
+            Sprite sprite = ModSprites.Get(PNG_RELATIVE_PATH + "/" + iconName + ".png");
             if (sprite == null)
             {
                 EnsureBundleLoaded();
@@ -107,17 +106,12 @@ namespace BossRush
             spriteCache.Clear();
             textureCache.Clear();
 
-            // Bundle 中借用的资源由 Bundle 管理，只销毁本加载器创建的对象。
+            // 借自 ModSprites 与旧包的资源由各自 owner 管理，只销毁本加载器创建的对象。
             foreach (Sprite sprite in ownedSprites)
             {
                 if (sprite != null) UnityEngine.Object.Destroy(sprite);
             }
             ownedSprites.Clear();
-            foreach (Texture2D texture in ownedTextures)
-            {
-                if (texture != null) UnityEngine.Object.Destroy(texture);
-            }
-            ownedTextures.Clear();
         }
 
         /// <summary>
@@ -155,49 +149,6 @@ namespace BossRush
             return true;
         }
 
-        private static Sprite LoadSpriteFromPng(string iconName)
-        {
-            Texture2D texture = null;
-            Sprite sprite = null;
-            bool retained = false;
-            try
-            {
-                string modPath = ModBehaviour.GetModPath();
-                if (string.IsNullOrEmpty(modPath)) return null;
-                string path = System.IO.Path.Combine(modPath, PNG_RELATIVE_PATH, iconName + ".png");
-                if (!System.IO.File.Exists(path)) return null;
-
-                byte[] bytes = System.IO.File.ReadAllBytes(path);
-                texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                if (!texture.LoadImage(bytes, true)) return null;
-                texture.hideFlags = HideFlags.DontSave;
-                texture.name = iconName;
-                texture.wrapMode = TextureWrapMode.Clamp;
-                sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
-                if (sprite == null) return null;
-                sprite.hideFlags = HideFlags.DontSave;
-                sprite.name = iconName;
-                ownedTextures.Add(texture);
-                ownedSprites.Add(sprite);
-                retained = true;
-                return sprite;
-            }
-            catch (System.Exception e)
-            {
-                ModBehaviour.DevLog("[AchievementIconLoader] 加载 PNG 失败: " + iconName + " - " + e.Message);
-                return null;
-            }
-            finally
-            {
-                // 解码或 Sprite 创建中途失败时，不能把未缓存的原生对象留到下一次加载。
-                if (!retained)
-                {
-                    if (sprite != null) UnityEngine.Object.Destroy(sprite);
-                    if (texture != null) UnityEngine.Object.Destroy(texture);
-                }
-            }
-        }
-
         /// <summary>
         /// 确保 AssetBundle 已加载
         /// </summary>
@@ -207,7 +158,7 @@ namespace BossRush
             loadAttempted = true;
 
             // 先检查是否已被其他代码加载
-            iconBundle = FindLoadedBundle(BUNDLE_NAME);
+            iconBundle = ResourceBundleLoader.FindLoaded(BUNDLE_NAME);
             if (iconBundle != null)
             {
                 ModBehaviour.DevLog("[AchievementIconLoader] 使用已加载的 AssetBundle");
@@ -241,7 +192,7 @@ namespace BossRush
                 else
                 {
                     // 再次检查是否被并发加载
-                    iconBundle = FindLoadedBundle(BUNDLE_NAME);
+                    iconBundle = ResourceBundleLoader.FindLoaded(BUNDLE_NAME);
                     if (iconBundle != null)
                     {
                         ModBehaviour.DevLog("[AchievementIconLoader] 从已加载列表获取 AssetBundle");
@@ -256,28 +207,6 @@ namespace BossRush
             {
                 ModBehaviour.LogError("[AchievementIconLoader] 加载 AssetBundle 失败: " + e.Message);
             }
-        }
-
-        /// <summary>
-        /// 查找已加载的 AssetBundle
-        /// </summary>
-        private static AssetBundle FindLoadedBundle(string bundleName)
-        {
-            try
-            {
-                foreach (var bundle in AssetBundle.GetAllLoadedAssetBundles())
-                {
-                    if (bundle != null && bundle.name.Contains(bundleName))
-                    {
-                        return bundle;
-                    }
-                }
-            }
-            catch (System.Exception e)
-            {
-                ModBehaviour.DevLog("[AchievementIconLoader] 查找已加载 AssetBundle 失败: " + e.Message);
-            }
-            return null;
         }
 
         /// <summary>

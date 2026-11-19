@@ -739,7 +739,7 @@ namespace BossRush
                     return null;
                 }
 
-                return ItemFactory.GetSpriteFromFile(relativePath);
+                return ModSprites.Get(relativePath);
             }
             catch
             {
@@ -751,7 +751,7 @@ namespace BossRush
         {
             try
             {
-                return ItemFactory.GetSpriteFromFile("Assets/Items/" + AffixForgeStoneConfig.ICON_NAME + ".png");
+                return ModItemIcons.ForType(BossRushItemIds.AffixForgeStone);
             }
             catch
             {

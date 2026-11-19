@@ -648,6 +648,8 @@ namespace BossRush
             context.critRate = gun != null
                 ? gun.CritRate * (1f + gun.CharacterGunCritRateGain)
                 : 0f;
+            // 有意和官方不同（owner 2026-11-19 拍板保留）：官方对主角是「瞄头 = 1，否则 = 0」，只有爆头算暴击；
+            // 焚天龙铳不瞄头时保留武器自身暴击率，身体也能暴击，算这把枪的特色。不要按官方规则「修正」它。
             if (isMainCharacterShot && LevelManager.Instance != null && LevelManager.Instance.InputManager != null)
             {
                 context.critRate = LevelManager.Instance.InputManager.AimingEnemyHead ? 1f : context.critRate;

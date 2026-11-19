@@ -398,7 +398,7 @@ namespace BossRush
                     return null;
                 }
 
-                return ItemFactory.GetSpriteFromFile(relativePath);
+                return ModSprites.Get(relativePath);
             }
             catch
             {

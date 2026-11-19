@@ -173,8 +173,6 @@ namespace BossRush
     {
         private bool buzzing;
         private GameObject buzzEmitter;
-        private readonly MethodInfo stopAll = typeof(Duckov.AudioObject).GetMethod("StopAll", BindingFlags.Instance | BindingFlags.NonPublic);
-        private readonly object stopImmediately = Duckov.StopMode.Immediate;
         internal static void RemedyClearsItch() { }
         internal Duckov.AudioObject StartBuzzForTest()
         {

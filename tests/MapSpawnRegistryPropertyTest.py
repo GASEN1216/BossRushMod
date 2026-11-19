@@ -1,12 +1,16 @@
 """
-属性测试: MapSpawnPointRegistry JSON 序列化与 TryGet 行为验证
+属性测试: MapSpawnPointRegistry JSON 读取格式与 TryGet 行为验证
 
-本脚本通过两种互补方式验证 MapSpawnPointRegistry 的核心属性：
-1. 静态分析 C# 源码，确认序列化/反序列化逻辑结构正确
-2. 在 Python 中建模序列化逻辑，用随机输入验证属性（200+ 次迭代）
-3. 读取实际 JSON 文件验证往返一致性与 TryGet 行为
+本脚本通过互补方式验证 MapSpawnPointRegistry 的核心属性：
+1. 静态分析 C# 源码，确认读取逻辑结构正确：整份解析成树，每个字段都从树的顶层键取，不在原文本上搜
+2. 在 Python 中建模读取口径（顶层键、标准 JSON 转义、缺失 / 类型不符取默认），
+   用随机 JSON 排版（键序、缩进、ASCII 转义、嵌套干扰键）验证读取与排版无关（200+ 次迭代）
+3. 读取实际 JSON 文件验证字段类型符合读取格式与 TryGet 行为
+生产代码对实际文件的逐字段执行比对在执行回归 AuditCoreParsing（C# 链接生产 MapSpawnPointRegistry）。
+2026-11-19：生产侧删除了从未被调用的导出器 / 序列化器（ExportFromHardcoded / SerializeToJson），
+Property 3 从「导出格式往返」改为「读取格式」。
 
-# Feature: architecture-extensibility-refactor, Property 3: JSON 序列化往返一致性
+# Feature: architecture-extensibility-refactor, Property 3: JSON 读取格式
 # Feature: architecture-extensibility-refactor, Property 4: TryGet 对已注册地图返回非 null
 # Feature: architecture-extensibility-refactor, Property 5: TryGet 对未注册地图返回 null
 """
@@ -17,6 +21,9 @@ import random
 import re
 import string
 import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from cs_source_util import clean_source  # noqa: E402
 
 # ============================================================
 # 配置
@@ -42,100 +49,73 @@ ALL_FIELDS = [
 
 
 # ============================================================
-# 辅助：Python 模型 - 模拟 C# 序列化逻辑
+# 辅助：Python 模型 - 模拟 C# 读取口径（MapSpawnPointRegistry.DeserializeFromJson）
 # ============================================================
 
-def float_to_r_format(f: float) -> str:
-    """
-    模拟 C# float.ToString("R", CultureInfo.InvariantCulture)
-    使用 repr() 获取足够精度的浮点表示，然后去除多余尾零
-    """
-    # Python 的 repr 对 float 已经保证往返精度
-    s = repr(f)
-    # 确保格式与 C# "R" 格式一致（无尾随零的科学计数法或小数）
-    return s
+INT_MAX = 2147483647
+DEFAULT_NORTH = [-0.959, 0.0, 0.284]
+STRING_FIELDS = ["sceneName", "sceneID", "displayNameCN", "displayNameEN"]
+NULLABLE_VECTOR_FIELDS = ["customSpawnPos", "defaultSignPos", "modeEPlayerSpawnPos",
+                          "modeHStagingPos", "modeHSpectatorPos", "modeHPlayerSpawnPos", "modeHExitPos"]
+VECTOR_ARRAY_FIELDS = ["spawnPoints", "modeESpawnPoints", "modeHSpawnPoints"]
 
 
-def serialize_vector3(v: list) -> str:
-    """序列化 Vector3 为 [x, y, z] 格式"""
-    return "[" + ", ".join(float_to_r_format(c) for c in v) + "]"
+def read_int(value, default):
+    """BossRushJsonValue.GetInt：整数直接取；浮点四舍五入（与 C# Math.Round 同为银行家舍入）；其它类型取默认。"""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return default
+    rounded = round(value)
+    return rounded if -2147483648 <= rounded <= INT_MAX else default
 
 
-def serialize_nullable_vector3(v) -> str:
-    """序列化可空 Vector3"""
-    if v is None:
-        return "null"
-    return serialize_vector3(v)
+def read_vector(value):
+    if not isinstance(value, list) or len(value) != 3:
+        return None
+    if any(isinstance(c, bool) or not isinstance(c, (int, float)) for c in value):
+        return None
+    return [float(c) for c in value]
 
 
-def serialize_vector3_array(arr) -> str:
-    """序列化 Vector3 数组"""
-    if arr is None:
-        return "null"
-    return "[" + ", ".join(serialize_vector3(v) for v in arr) + "]"
-
-
-def serialize_json_string(s) -> str:
-    """序列化 JSON 字符串（带转义）"""
-    if s is None:
-        return "null"
-    escaped = s.replace("\\", "\\\\").replace('"', '\\"')
-    escaped = escaped.replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
-    return '"' + escaped + '"'
-
-
-def serialize_config(config: dict) -> str:
-    """
-    模拟 C# MapSpawnPointRegistry.SerializeToJson 的输出格式
-    """
-    lines = []
-    lines.append("{")
-    lines.append(f'  "sceneName": {serialize_json_string(config["sceneName"])},')
-    lines.append(f'  "sceneID": {serialize_json_string(config["sceneID"])},')
-    lines.append(f'  "displayNameCN": {serialize_json_string(config["displayNameCN"])},')
-    lines.append(f'  "displayNameEN": {serialize_json_string(config["displayNameEN"])},')
-    lines.append(f'  "spawnPoints": {serialize_vector3_array(config["spawnPoints"])},')
-    lines.append(f'  "customSpawnPos": {serialize_nullable_vector3(config.get("customSpawnPos"))},')
-    lines.append(f'  "defaultSignPos": {serialize_nullable_vector3(config.get("defaultSignPos"))},')
-    lines.append(f'  "beaconIndex": {config["beaconIndex"]},')
-
-    preview = config.get("previewImageName")
-    if preview is None:
-        lines.append('  "previewImageName": null,')
-    else:
-        lines.append(f'  "previewImageName": {serialize_json_string(preview)},')
-
-    lines.append(f'  "mapNorth": {serialize_vector3(config["mapNorth"])},')
-    lines.append(f'  "modeESpawnPoints": {serialize_vector3_array(config.get("modeESpawnPoints"))},')
-    lines.append(f'  "modeEPlayerSpawnPos": {serialize_nullable_vector3(config.get("modeEPlayerSpawnPos"))}')
-    lines.append("}")
-    return "\n".join(lines)
+def read_vector_array(value):
+    if not isinstance(value, list) or not value:
+        return None
+    points = [read_vector(item) for item in value]
+    return None if any(p is None for p in points) else points
 
 
 def deserialize_config(json_str: str) -> dict:
     """
-    模拟 C# MapSpawnPointRegistry.DeserializeFromJson
-    使用 Python json 模块解析，然后映射到 config 字典
+    模拟 C# MapSpawnPointRegistry.DeserializeFromJson：只认顶层键；字符串字段缺失 / null / 非字符串为 ""，
+    previewImageName 为 None；sortOrder 缺失取 int.MaxValue、beaconIndex 缺失取 0；必填字段缺失返回 None。
     """
     data = json.loads(json_str)
-    if not data or not data.get("sceneName"):
+    if not isinstance(data, dict):
         return None
-
-    config = {
-        "sceneName": data.get("sceneName", ""),
-        "sceneID": data.get("sceneID", ""),
-        "displayNameCN": data.get("displayNameCN", ""),
-        "displayNameEN": data.get("displayNameEN", ""),
-        "spawnPoints": data.get("spawnPoints"),
-        "customSpawnPos": data.get("customSpawnPos"),
-        "defaultSignPos": data.get("defaultSignPos"),
-        "beaconIndex": data.get("beaconIndex", 0),
-        "previewImageName": data.get("previewImageName"),
-        "mapNorth": data.get("mapNorth", [-0.959, 0.0, 0.284]),
-        "modeESpawnPoints": data.get("modeESpawnPoints"),
-        "modeEPlayerSpawnPos": data.get("modeEPlayerSpawnPos"),
-    }
+    config = {field: data.get(field) if isinstance(data.get(field), str) else "" for field in STRING_FIELDS}
+    preview = data.get("previewImageName")
+    config["previewImageName"] = preview if isinstance(preview, str) else None
+    config["sortOrder"] = read_int(data.get("sortOrder"), INT_MAX)
+    config["beaconIndex"] = read_int(data.get("beaconIndex"), 0)
+    for field in VECTOR_ARRAY_FIELDS:
+        config[field] = read_vector_array(data.get(field))
+    for field in NULLABLE_VECTOR_FIELDS:
+        config[field] = read_vector(data.get(field))
+    north = read_vector(data.get("mapNorth"))
+    config["mapNorth"] = north if north is not None else list(DEFAULT_NORTH)
+    if not all(config[field] for field in STRING_FIELDS) or not config["spawnPoints"]:
+        return None
     return config
+
+
+def write_config(config: dict, rng: random.Random) -> str:
+    """把 config 写成任意合法排版的 JSON：随机键序、缩进、ASCII 转义，并在嵌套对象里放同名干扰键。"""
+    items = [(key, value) for key, value in config.items() if value is not None or rng.random() < 0.5]
+    rng.shuffle(items)
+    if rng.random() < 0.5:
+        decoy = {"sceneName": "decoy", "sortOrder": -1, "beaconIndex": 99, "previewImageName": "decoy.png"}
+        items.insert(rng.randint(0, len(items)), ("meta", decoy))
+    indent = rng.choice([None, 2, 4])
+    return json.dumps(dict(items), ensure_ascii=rng.random() < 0.5, indent=indent)
 
 
 # ============================================================
@@ -176,24 +156,20 @@ def configs_equal(original: dict, restored: dict) -> tuple:
     """
     diffs = []
 
-    # 字符串字段
-    for field in ["sceneName", "sceneID", "displayNameCN", "displayNameEN", "previewImageName"]:
+    # 字符串与整数字段
+    for field in STRING_FIELDS + ["previewImageName", "sortOrder", "beaconIndex"]:
         orig_val = original.get(field)
         rest_val = restored.get(field)
         if orig_val != rest_val:
             diffs.append(f"  {field}: 原始={orig_val!r}, 还原={rest_val!r}")
 
-    # 整数字段
-    if original.get("beaconIndex", 0) != restored.get("beaconIndex", 0):
-        diffs.append(f"  beaconIndex: 原始={original.get('beaconIndex')}, 还原={restored.get('beaconIndex')}")
-
     # Vector3 字段
-    for field in ["customSpawnPos", "defaultSignPos", "modeEPlayerSpawnPos", "mapNorth"]:
+    for field in NULLABLE_VECTOR_FIELDS + ["mapNorth"]:
         if not vectors_equal(original.get(field), restored.get(field)):
             diffs.append(f"  {field}: 原始={original.get(field)}, 还原={restored.get(field)}")
 
     # Vector3[] 字段
-    for field in ["spawnPoints", "modeESpawnPoints"]:
+    for field in VECTOR_ARRAY_FIELDS:
         if not vector_arrays_equal(original.get(field), restored.get(field)):
             orig_len = len(original.get(field) or [])
             rest_len = len(restored.get(field) or [])
@@ -243,16 +219,17 @@ def random_config(rng: random.Random) -> dict:
         "displayNameCN": random_string(rng, 2, 10),
         "displayNameEN": random_string(rng, 2, 15),
         "spawnPoints": random_vector3_array(rng, 3, 25),
+        "sortOrder": rng.randint(-5, 40),
         "beaconIndex": rng.randint(0, 10),
         "mapNorth": random_vector3(rng),
     }
 
     # 可选字段随机为 null 或有值
-    config["customSpawnPos"] = random_vector3(rng) if rng.random() > 0.4 else None
-    config["defaultSignPos"] = random_vector3(rng) if rng.random() > 0.4 else None
     config["previewImageName"] = random_string(rng, 5, 20) + ".png" if rng.random() > 0.5 else None
-    config["modeESpawnPoints"] = random_vector3_array(rng, 5, 50) if rng.random() > 0.3 else None
-    config["modeEPlayerSpawnPos"] = random_vector3(rng) if rng.random() > 0.4 else None
+    for field in NULLABLE_VECTOR_FIELDS:
+        config[field] = random_vector3(rng) if rng.random() > 0.4 else None
+    for field in ("modeESpawnPoints", "modeHSpawnPoints"):
+        config[field] = random_vector3_array(rng, 5, 50) if rng.random() > 0.3 else None
 
     return config
 
@@ -297,25 +274,37 @@ class MapSpawnPointRegistryModel:
 # 静态分析验证
 # ============================================================
 
-def static_analysis_serialization(source_text: str) -> tuple:
+def static_analysis_read_format(source_text: str) -> tuple:
     """
-    静态分析：确认 SerializeToJson 使用 "R" 格式化保证浮点往返精度
+    静态分析：DeserializeFromJson 先把整份 JSON 解析成树，每个字段都从树的顶层键取；
+    不再在原文本上 IndexOf 搜键（会命中嵌套键、不解 \\uXXXX）。已删的导出器 / 序列化器不得回来。
     """
-    # 检查 SerializeToJson 方法存在
-    if "SerializeToJson" not in source_text:
-        return False, "未找到 SerializeToJson 方法"
-
-    # 检查使用 "R" 格式化
-    if '"R"' not in source_text:
-        return False, "未找到 float.ToString(\"R\") 格式化调用"
-
-    # 检查 CultureInfo.InvariantCulture 使用
-    if "InvariantCulture" not in source_text:
-        return False, "未找到 CultureInfo.InvariantCulture 使用"
-
-    # 检查 DeserializeFromJson 方法存在
-    if "DeserializeFromJson" not in source_text:
+    code = clean_source(source_text)
+    if "DeserializeFromJson" not in code:
         return False, "未找到 DeserializeFromJson 方法"
+    if "BossRushJsonParser.TryParse(json, out jsonRoot, out parseError)" not in code \
+            or "jsonRoot.Kind != BossRushJsonKind.Object" not in code:
+        return False, "DeserializeFromJson 必须先用共享 BossRushJsonParser 解析整份 JSON 并要求根是对象"
+
+    required_reads = [
+        'jsonRoot.GetString("sceneName", "")',
+        'jsonRoot.GetString("sceneID", "")',
+        'jsonRoot.GetString("displayNameCN", "")',
+        'jsonRoot.GetString("displayNameEN", "")',
+        'jsonRoot.GetString("previewImageName", null)',
+        'jsonRoot.GetInt("sortOrder", int.MaxValue)',
+        'jsonRoot.GetInt("beaconIndex", 0)',
+    ]
+    required_reads += ['ExtractVector3Array(jsonRoot, "%s")' % field for field in VECTOR_ARRAY_FIELDS]
+    required_reads += ['ExtractNullableVector3(jsonRoot, "%s")' % field for field in NULLABLE_VECTOR_FIELDS + ["mapNorth"]]
+    for token in required_reads:
+        if code.count(token) != 1:
+            return False, f"DeserializeFromJson 应恰好一次从解析树读取: {token}"
+
+    for forbidden in ("json.IndexOf(", "ExtractStringValue", "ExtractNullableStringValue", "ExtractIntValue",
+                      "SerializeToJson", "ExportFromHardcoded", "AppendJsonString", "AppendVector3"):
+        if forbidden in code:
+            return False, f"原文本搜键 / 已删除的导出代码又出现了: {forbidden}"
 
     # 缺少关键字段时必须拒绝注册表配置，让调用方回退硬编码表。
     # 否则只有 sceneName 的坏 JSON 会覆盖硬编码配置并返回空 spawnPoints。
@@ -326,14 +315,14 @@ def static_analysis_serialization(source_text: str) -> tuple:
         'spawnPoints == null || spawnPoints.Length == 0',
     ]
     for guard in required_guards:
-        if guard not in source_text:
+        if guard not in code:
             return False, f"DeserializeFromJson 缺少必填字段守护: {guard}"
 
     # Initialize 重入时必须清空旧缓存，避免删除/修坏 JSON 后仍返回旧注册项。
-    if "_configs.Clear();" not in source_text:
+    if "_configs.Clear();" not in code:
         return False, "Initialize 未清空 _configs，重入时可能保留陈旧地图配置"
 
-    return True, "序列化/反序列化方法结构正确，使用 \"R\" 格式化、InvariantCulture 与必填字段守护"
+    return True, "读取结构正确：整份解析成树、全部字段取顶层键，必填字段守护与重入清空在位"
 
 
 def static_analysis_tryget(source_text: str) -> tuple:
@@ -366,7 +355,8 @@ def static_analysis_tryget(source_text: str) -> tuple:
 def property_test_3_actual_files() -> tuple:
     """
     Property 3 - 实际文件验证：
-    读取 Assets/SpawnPoints/*.json，解析后重新序列化，验证往返一致性
+    Assets/SpawnPoints/*.json 每个字段的类型都符合读取格式（读取口径下不会落到默认值或被拒），
+    且换任意 JSON 排版重写后按读取口径读出的值不变。
     """
     if not SPAWN_POINTS_DIR.exists():
         return False, f"目录不存在: {SPAWN_POINTS_DIR}"
@@ -375,73 +365,83 @@ def property_test_3_actual_files() -> tuple:
     if not json_files:
         return False, f"目录为空: {SPAWN_POINTS_DIR}"
 
+    rng = random.Random(SEED)
     failures = []
     for json_file in json_files:
         try:
             text = json_file.read_text(encoding="utf-8")
-            # 解析
             data = json.loads(text)
-            if not data or not data.get("sceneName"):
-                failures.append(f"  {json_file.name}: 解析结果无效（缺少 sceneName）")
+            if not isinstance(data, dict):
+                failures.append(f"  {json_file.name}: 根不是对象")
+                continue
+            problems = []
+            for field in STRING_FIELDS:
+                if not isinstance(data.get(field), str) or not data[field]:
+                    problems.append(f"{field} 必须是非空字符串")
+            if "previewImageName" in data and data["previewImageName"] is not None \
+                    and not isinstance(data["previewImageName"], str):
+                problems.append("previewImageName 必须是字符串或 null")
+            for field in ("sortOrder", "beaconIndex"):
+                value = data.get(field)
+                if field in data and (isinstance(value, bool) or not isinstance(value, int)):
+                    problems.append(f"{field} 必须是整数（浮点会被四舍五入、字符串会落到默认值）")
+            if read_vector_array(data.get("spawnPoints")) is None:
+                problems.append("spawnPoints 必须是非空的 [x, y, z] 数组")
+            for field in VECTOR_ARRAY_FIELDS[1:]:
+                if data.get(field) is not None and read_vector_array(data[field]) is None:
+                    problems.append(f"{field} 必须是 null 或非空的 [x, y, z] 数组")
+            for field in NULLABLE_VECTOR_FIELDS + ["mapNorth"]:
+                if data.get(field) is not None and read_vector(data[field]) is None:
+                    problems.append(f"{field} 必须是 null 或 [x, y, z]")
+            if problems:
+                failures.append(f"  {json_file.name}: " + "；".join(problems))
                 continue
 
-            # 构建 config 字典
             config = deserialize_config(text)
             if config is None:
-                failures.append(f"  {json_file.name}: 反序列化返回 None")
+                failures.append(f"  {json_file.name}: 读取口径下被拒")
                 continue
-
-            # 重新序列化
-            reserialized = serialize_config(config)
-
-            # 再次反序列化
-            restored = deserialize_config(reserialized)
+            restored = deserialize_config(write_config(config, rng))
             if restored is None:
-                failures.append(f"  {json_file.name}: 二次反序列化返回 None")
+                failures.append(f"  {json_file.name}: 换排版后读取口径下被拒")
                 continue
-
-            # 比较字段
             equal, diff_msg = configs_equal(config, restored)
             if not equal:
-                failures.append(f"  {json_file.name}: 往返不一致\n{diff_msg}")
+                failures.append(f"  {json_file.name}: 换排版后读出值变化\n{diff_msg}")
 
         except Exception as e:
             failures.append(f"  {json_file.name}: 异常 - {e}")
 
     if failures:
-        return False, f"发现 {len(failures)} 个文件往返不一致:\n" + "\n".join(failures[:5])
+        return False, f"发现 {len(failures)} 个文件不符合读取格式:\n" + "\n".join(failures[:5])
 
-    return True, f"{len(json_files)} 个实际 JSON 文件往返验证全部通过"
+    return True, f"{len(json_files)} 个实际 JSON 文件字段类型符合读取格式，换排版读出值不变"
 
 
 def property_test_3_random(iterations: int, rng: random.Random) -> tuple:
     """
     Property 3 - 随机迭代验证：
-    生成随机 BossRushMapConfig 实例，序列化 → 反序列化，验证所有字段按位一致
+    生成随机 BossRushMapConfig 实例，按任意排版写成 JSON（键序、缩进、ASCII 转义、嵌套同名干扰键），
+    按读取口径读回，验证所有字段按位一致。
 
     **Validates: Requirements 4.2, 4.8**
     """
     failures = []
 
     for i in range(iterations):
-        # 生成随机 config
         config = random_config(rng)
+        json_str = write_config(config, rng)
 
-        # 序列化
-        json_str = serialize_config(config)
-
-        # 反序列化
         try:
             restored = deserialize_config(json_str)
         except Exception as e:
-            failures.append(f"  迭代 {i}: 反序列化异常 - {e}")
+            failures.append(f"  迭代 {i}: 读取异常 - {e}")
             continue
 
         if restored is None:
-            failures.append(f"  迭代 {i}: 反序列化返回 None (sceneName={config['sceneName']})")
+            failures.append(f"  迭代 {i}: 读取返回 None (sceneName={config['sceneName']})")
             continue
 
-        # 比较所有字段
         equal, diff_msg = configs_equal(config, restored)
         if not equal:
             failures.append(f"  迭代 {i} (sceneName={config['sceneName']}): 字段不一致\n{diff_msg}")
@@ -449,7 +449,7 @@ def property_test_3_random(iterations: int, rng: random.Random) -> tuple:
     if failures:
         return False, f"发现 {len(failures)} 次违反:\n" + "\n".join(failures[:5])
 
-    return True, f"{iterations} 次随机迭代全部通过"
+    return True, f"{iterations} 次随机排版迭代全部通过"
 
 
 # ============================================================
@@ -594,12 +594,12 @@ def main() -> int:
     # ===========================================================
     # Property 3: JSON 序列化往返一致性
     # ===========================================================
-    print("# Feature: architecture-extensibility-refactor, Property 3: JSON 序列化往返一致性")
+    print("# Feature: architecture-extensibility-refactor, Property 3: JSON 读取格式")
     print("# Validates: Requirements 4.2, 4.8")
     print()
 
     # 静态分析
-    ok, msg = static_analysis_serialization(source_text)
+    ok, msg = static_analysis_read_format(source_text)
     if ok:
         print(f"  [静态分析] PASS - {msg}")
     else:

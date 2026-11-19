@@ -66,7 +66,7 @@ namespace BossRush
                 if (existing != null)
                 {
                     ConfigureItem(existing);
-                    try { ItemAssetsCollection.AddDynamicEntry(existing); } catch { }
+                    try { BossRushDynamicItemRegistry.Publish(existing); } catch { }
                     return true;
                 }
 
@@ -97,7 +97,7 @@ namespace BossRush
 
                 clone.SetTypeID(TYPE_ID);
                 ConfigureItem(clone);
-                ItemAssetsCollection.AddDynamicEntry(clone);
+                BossRushDynamicItemRegistry.Publish(clone);
                 runtimeFallbackRegistered = true;
 
                 ModBehaviour.DevLog("[ZombieTideInvitationConfig] Runtime fallback item registered");

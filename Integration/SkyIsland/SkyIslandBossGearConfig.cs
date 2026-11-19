@@ -101,7 +101,6 @@ namespace BossRush
                 item.Value = SkyIslandItemRules.ValueOf(spec.TypeId);
                 // 官方 Item.Repairable = UseDurability && Tags.Contains("Repairable")：不打这个标签维修台会显示「无法维修」。
                 if (spec.Durability > 0f) EquipmentHelper.AddRepairableTag(item);
-                EquipmentHelperIcon.TryInjectIcon(item, SkyIslandBossRules.GearBundle, spec.IconName);
                 if (bindLoadedModel) EquipmentFactory.TryBindLoadedEquipmentModel(item, spec.ModelBaseName);
             }
             catch (Exception e)
@@ -159,7 +158,7 @@ namespace BossRush
                     // 同上，耐久由配置器重写
                 }
                 Configure(clone, spec, true);
-                ItemAssetsCollection.AddDynamicEntry(clone);
+                BossRushDynamicItemRegistry.Publish(clone);
                 placeholders.Add(typeId);
                 ModBehaviour.DevLog(LogPrefix + "占位装备已注册: " + typeId + "（克隆源 " + source.TypeID + "）");
                 return true;
@@ -171,7 +170,7 @@ namespace BossRush
             }
         }
 
-        /// <summary>全部专属装备的预注册（EquipmentFactory.LoadAllEquipment 之后调用；幂等）。</summary>
+        /// <summary>全部专属装备的预注册（EquipmentFactory.LoadAllEquipmentAsync 完成之后调用；幂等）。</summary>
         public static void EnsureAllRegistered()
         {
             int[] ids = SkyIslandBossRules.AllGearTypeIds;

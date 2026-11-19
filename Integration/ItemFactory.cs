@@ -25,7 +25,7 @@
 // ============================================================================
 //
 //   方式一：自动加载（推荐）
-//   ItemFactory.LoadAllItems();  // 自动扫描并加载所有 bundle
+//   yield return ItemFactory.LoadAllItemsAsync(owner);  // 延迟 bootstrap 逐个异步预载并注册（FactoryResourceLoading）
 //
 //   方式二：手动加载单个 bundle
 //   ItemFactory.LoadBundle("cold_quench_fluid");
@@ -62,10 +62,10 @@ namespace BossRush
         // 已加载的 AssetBundle 缓存（用于加载图标等资源）
         private static Dictionary<string, AssetBundle> loadedAssetBundles = new Dictionary<string, AssetBundle>();
 
-        // 已加载的图标缓存
+        // GetSprite 的图标缓存；按路径取图走 ModSprites
         private static Dictionary<string, Sprite> loadedSprites = new Dictionary<string, Sprite>();
+        // GetSprite 用包内 Texture2D 现造的 Sprite（包内原生 Sprite 归 bundle）
         private static readonly HashSet<Sprite> ownedSprites = new HashSet<Sprite>();
-        private static readonly HashSet<Texture2D> ownedTextures = new HashSet<Texture2D>();
 
         // 物品配置回调（TypeID -> 配置方法）
         private static Dictionary<int, Action<Item>> itemConfigurators = new Dictionary<int, Action<Item>>();
@@ -75,37 +75,6 @@ namespace BossRush
 
         // 物品资源目录（固定路径）
         private const string ITEMS_PATH = "Assets/Items";
-
-        private static string GetModDirectory()
-        {
-            if (modDirectory == null)
-            {
-                modDirectory = Path.GetDirectoryName(typeof(ItemFactory).Assembly.Location);
-            }
-
-            return modDirectory;
-        }
-
-        // ImageViewerUI 的回退看图也借它找已打开的同名 bundle，避免同一文件 LoadFromFile 两次（2026-09-24）
-        internal static AssetBundle FindAlreadyLoadedAssetBundle(string bundleName)
-        {
-            if (string.IsNullOrEmpty(bundleName)) return null;
-
-            try
-            {
-                foreach (var bundle in AssetBundle.GetAllLoadedAssetBundles())
-                {
-                    if (bundle == null) continue;
-                    if (string.Equals(bundle.name, bundleName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return bundle;
-                    }
-                }
-            }
-            catch { }
-
-            return null;
-        }
 
         // ========== 公开 API ==========
 
@@ -117,47 +86,6 @@ namespace BossRush
         public static void RegisterConfigurator(int typeId, Action<Item> configurator)
         {
             itemConfigurators[typeId] = configurator;
-        }
-
-        /// <summary>
-        /// 自动加载 Assets/Items/ 目录下所有 AssetBundle（推荐）
-        /// </summary>
-        /// <returns>加载的物品总数</returns>
-        public static int LoadAllItems()
-        {
-            if (modDirectory == null)
-            {
-                modDirectory = Path.GetDirectoryName(typeof(ItemFactory).Assembly.Location);
-            }
-
-            string itemsDir = Path.Combine(modDirectory, ITEMS_PATH);
-
-            if (!Directory.Exists(itemsDir))
-            {
-                ModBehaviour.DevLog("[ItemFactory] 物品目录不存在，跳过自动加载: " + itemsDir);
-                return 0;
-            }
-
-            int totalCount = 0;
-            string[] files = Directory.GetFiles(itemsDir);
-
-            foreach (string filePath in files)
-            {
-                string fileName = Path.GetFileName(filePath);
-
-                // 跳过 .manifest 文件和其他非 bundle 文件
-                if (fileName.Contains(".")) continue;
-
-                // 跳过已加载的 bundle
-                if (loadedBundles.Contains(fileName)) continue;
-
-                ModBehaviour.DevLog("[ItemFactory] 自动加载 bundle: " + fileName);
-                int count = LoadBundle(fileName);
-                totalCount += count;
-            }
-
-            ModBehaviour.DevLog("[ItemFactory] 自动加载完成，共 " + totalCount + " 个物品");
-            return totalCount;
         }
 
         /// <summary>
@@ -173,7 +101,7 @@ namespace BossRush
 
             if (modDirectory == null)
             {
-                modDirectory = Path.GetDirectoryName(typeof(ItemFactory).Assembly.Location);
+                modDirectory = ModBehaviour.GetModPath();
             }
 
             string bundlePath = Path.Combine(modDirectory, ITEMS_PATH, bundleName);
@@ -215,9 +143,6 @@ namespace BossRush
         /// <returns>Sprite 对象，如果未找到则返回 null</returns>
         public static Sprite GetSprite(string bundleName, string spriteName)
         {
-            Sprite compressed = ProductionIconCache.Get("Assets/Items/" + bundleName + "/" + spriteName + ".png")
-                ?? ProductionIconCache.Get("Assets/Items/" + spriteName + ".png");
-            if (compressed != null) return compressed;
             // 检查缓存
             string cacheKey = bundleName + "/" + spriteName;
             if (loadedSprites.TryGetValue(cacheKey, out Sprite cachedSprite))
@@ -233,7 +158,7 @@ namespace BossRush
                     // 尝试加载 bundle
                     if (modDirectory == null)
                     {
-                        modDirectory = Path.GetDirectoryName(typeof(ItemFactory).Assembly.Location);
+                        modDirectory = ModBehaviour.GetModPath();
                     }
 
                     string bundlePath = Path.Combine(modDirectory, ITEMS_PATH, bundleName);
@@ -247,7 +172,7 @@ namespace BossRush
                     AssetBundle bundle = ResourceBundleLoader.LoadFromFile(bundlePath);
                     if (bundle == null)
                     {
-                        AssetBundle existingBundle = FindAlreadyLoadedAssetBundle(bundleName);
+                        AssetBundle existingBundle = ResourceBundleLoader.FindLoaded(bundleName);
                         if (existingBundle == null)
                         {
                             ModBehaviour.DevLog("[ItemFactory] 加载 AssetBundle 失败: " + bundlePath);
@@ -293,147 +218,12 @@ namespace BossRush
                     loadedSprites[cacheKey] = sprite;
                 }
 
-                if (sprite == null)
-                {
-                    Sprite fileSprite = GetSpriteFromFile(Path.Combine("Assets", "Items", bundleName, spriteName + ".png"));
-                    if (fileSprite == null)
-                    {
-                        fileSprite = GetSpriteFromFile(Path.Combine("Assets", "Items", spriteName + ".png"));
-                    }
-                    if (fileSprite != null)
-                    {
-                        loadedSprites[cacheKey] = fileSprite;
-                        return fileSprite;
-                    }
-                }
-
                 return sprite;
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[ItemFactory] 加载 Sprite 失败: " + cacheKey + " - " + e.Message);
                 return null;
-            }
-        }
-
-        public static Sprite GetSpriteFromFile(string relativePath)
-        {
-            if (string.IsNullOrEmpty(relativePath)) return null;
-
-            string cacheKey = "file://" + relativePath.Replace('\\', '/');
-            if (loadedSprites.TryGetValue(cacheKey, out Sprite cachedSprite) && cachedSprite != null)
-            {
-                return cachedSprite;
-            }
-
-            Sprite compressed = ProductionIconCache.Get(relativePath);
-            if (compressed != null) { loadedSprites[cacheKey] = compressed; return compressed; }
-            if (!ProductionIconCache.AllowRawFallback) return null;
-
-            Texture2D texture = null;
-            Sprite sprite = null;
-            bool retained = false;
-            try
-            {
-                string baseDir = GetModDirectory();
-                string fullPath = Path.Combine(baseDir, relativePath);
-                if (!File.Exists(fullPath))
-                {
-                    return null;
-                }
-
-                byte[] bytes = File.ReadAllBytes(fullPath);
-                if (bytes == null || bytes.Length == 0) return null;
-
-                texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                // 展示图标只由 GPU 采样，不保留解码后的 CPU 像素副本。
-                if (!texture.LoadImage(bytes, true))
-                {
-                    return null;
-                }
-
-                texture.name = Path.GetFileNameWithoutExtension(fullPath);
-                texture.hideFlags = HideFlags.DontSave;
-                sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
-                if (sprite == null) return null;
-                sprite.hideFlags = HideFlags.DontSave;
-                ownedTextures.Add(texture);
-                ownedSprites.Add(sprite);
-                loadedSprites[cacheKey] = sprite;
-                retained = true;
-                return sprite;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ItemFactory] 从文件加载 Sprite 失败: " + relativePath + " - " + e.Message);
-                return null;
-            }
-            finally
-            {
-                if (!retained)
-                {
-                    if (sprite != null) UnityEngine.Object.Destroy(sprite);
-                    if (texture != null) UnityEngine.Object.Destroy(texture);
-                }
-            }
-        }
-
-        /// <summary>
-        /// 调试方法：列出 AssetBundle 中的所有资源（仅在 DevMode 下输出）
-        /// </summary>
-        public static void DebugListBundleAssets(string bundleName)
-        {
-            // 仅在 DevMode 下执行
-            if (!ModBehaviour.DevModeEnabled) return;
-
-            try
-            {
-                if (modDirectory == null)
-                {
-                    modDirectory = Path.GetDirectoryName(typeof(ItemFactory).Assembly.Location);
-                }
-
-                string bundlePath = Path.Combine(modDirectory, ITEMS_PATH, bundleName);
-
-                if (!File.Exists(bundlePath))
-                {
-                    ModBehaviour.DevLog("[ItemFactory] Bundle 文件不存在: " + bundlePath);
-                    return;
-                }
-
-                // 检查是否已加载
-                AssetBundle bundle;
-                if (loadedAssetBundles.ContainsKey(bundleName))
-                {
-                    bundle = loadedAssetBundles[bundleName];
-                }
-                else
-                {
-                    bundle = ResourceBundleLoader.LoadFromFile(bundlePath);
-                    if (bundle == null)
-                    {
-                        bundle = FindAlreadyLoadedAssetBundle(bundleName);
-                        if (bundle == null)
-                        {
-                            ModBehaviour.DevLog("[ItemFactory] 加载 Bundle 失败: " + bundleName);
-                            return;
-                        }
-                    }
-                    loadedAssetBundles[bundleName] = bundle;
-                }
-
-                // 列出所有资源名称
-                string[] allAssetNames = bundle.GetAllAssetNames();
-                ModBehaviour.DevLog("[ItemFactory] Bundle '" + bundleName + "' 包含 " + allAssetNames.Length + " 个资源");
-
-                foreach (string assetName in allAssetNames)
-                {
-                    ModBehaviour.DevLog("[ItemFactory]   - " + assetName);
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ItemFactory] 列出 Bundle 内容失败: " + e.Message);
             }
         }
 
@@ -558,6 +348,15 @@ namespace BossRush
         // ========== 核心加载逻辑 ==========
 
         /// <summary>
+        /// 本工厂已持有的同名包（GetSprite 先打开过，或上次注册保留了包却没计数进 loadedBundles）；没有返回 null。
+        /// </summary>
+        private static AssetBundle FindHeldBundle(string bundleName)
+        {
+            AssetBundle held;
+            return loadedAssetBundles.TryGetValue(bundleName, out held) && held != null ? held : null;
+        }
+
+        /// <summary>
         /// 加载 AssetBundle 并注册所有物品
         /// </summary>
         private static int LoadBundleInternal(string bundlePath, string bundleName)
@@ -567,11 +366,16 @@ namespace BossRush
 
             try
             {
-                bundle = ResourceBundleLoader.LoadFromFile(bundlePath);
-                acquired = bundle != null;
+                // 先复用本工厂已持有的同名包：同一文件再 LoadFromFile 会被 Unity 拒绝并报错。
+                bundle = FindHeldBundle(bundleName);
                 if (bundle == null)
                 {
-                    bundle = FindAlreadyLoadedAssetBundle(bundleName);
+                    bundle = ResourceBundleLoader.LoadFromFile(bundlePath);
+                    acquired = bundle != null;
+                }
+                if (bundle == null)
+                {
+                    bundle = ResourceBundleLoader.FindLoaded(bundleName);
                     if (bundle == null)
                     {
                         ModBehaviour.DevLog("[ItemFactory] 加载 AssetBundle 失败: " + bundlePath);
@@ -615,7 +419,7 @@ namespace BossRush
                         }
 
                         // 注册到游戏物品系统
-                        ItemAssetsCollection.AddDynamicEntry(item);
+                        BossRushDynamicItemRegistry.Publish(item);
                         loadedCount++;
 
                         ModBehaviour.DevLog("[ItemFactory] 成功加载物品: " + goName +
@@ -653,9 +457,8 @@ namespace BossRush
             foreach (Sprite sprite in ownedSprites)
                 if (sprite != null) UnityEngine.Object.Destroy(sprite);
             ownedSprites.Clear();
-            foreach (Texture2D texture in ownedTextures)
-                if (texture != null) UnityEngine.Object.Destroy(texture);
-            ownedTextures.Clear();
+            // 按路径取图的散图归 ModSprites；必须先于 ProductionIconCache.ResetStaticCaches，在包卸载前放下对压缩图的借用。
+            ModSprites.ResetStaticCaches();
             itemConfigurators.Clear();
             modDirectory = null;
 

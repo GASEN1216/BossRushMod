@@ -25,7 +25,7 @@ EXPECTED_CN_PHRASES = {
     "BossRush_ZombieMode_Reward_ProjectileCold": ["命中有概率减速", "冰霜概率 +25%", "最高60%", "代价：换弹速度"],
     "BossRush_ZombieMode_Reward_ProjectilePoison": ["命中有概率中毒", "毒化概率 +35%", "最高75%", "代价：最大生命"],
     "BossRush_ZombieMode_Reward_ProjectileArmorBreak": ["穿甲 +25%", "破甲 +10%", "代价：承受伤害"],
-    "BossRush_ZombieMode_Reward_MutatorCritFocus": ["暴击率 +15%", "最多45%", "代价：换弹速度"],
+    "BossRush_ZombieMode_Reward_MutatorCritFocus": ["爆头伤害 +15%", "最多45%", "代价：换弹速度"],
     "BossRush_ZombieMode_Reward_TriggerCritBurst": ["暴击时爆炸", "本次伤害30%", "代价：承受伤害"],
     "BossRush_ZombieMode_Reward_TriggerPurificationSiphon": ["击杀额外掉", "净化星", "代价：污染"],
     "BossRush_ZombieMode_Reward_TriggerSecondWind": ["击杀回血", "每层 2", "代价：最大生命"],

@@ -206,6 +206,7 @@ def generate():
     linked.append(ROOT / "Config/ConfigItemIds.cs")  # quest reward items use the shared TypeID constants
     linked.extend(ROOT / SKY / n for n in ("SkyIslandItemRules.cs", "SkyIslandPointText.cs"))
     linked.append(ROOT / "Integration/NewWeapons/ReloadMetronome/ReloadMetronomeConfig.cs")
+    linked.append(ROOT / "Audio/BossRushOfficialAudio.cs")  # StopBuzz 经统一入口反射调官方 AudioObject.StopAll
     hashes = {SKY + n: hashlib.sha256((ROOT / SKY / n).read_bytes()).hexdigest() for n in sources}
     hashes.update({p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in linked})
     hashes[helper_path.relative_to(ROOT).as_posix()] = hashlib.sha256(helper_path.read_bytes()).hexdigest()

@@ -48,12 +48,6 @@ namespace BossRush
             + "Bring it to the goblin for affix forging and that temper gets etched into your "
             + "weapon or armor. A reroll costs one stone per unlocked affix slot; locking an affix you want to keep costs two.";
 
-        /// <summary>
-        /// 图标资源名。EquipmentHelperIcon 会按 Assets/Items/{ICON_NAME}.png 找 PNG，
-        /// 缺文件时保持克隆源的图标（不 fail）。
-        /// </summary>
-        public const string ICON_NAME = "affix_forge_stone";
-
         public const int VALUE = 8000;
         public const int MAX_STACK = 20;
         public const int QUALITY = 5;
@@ -105,7 +99,6 @@ namespace BossRush
                 ModeFItemConfigHelper.SetHiddenMember(item, "DescriptionRaw", GetDescription());
                 EquipmentHelper.AddTagToItem(item, "Special");
                 // 专属图标：没有它就会顶着克隆源物品的脸出现在背包里
-                EquipmentHelperIcon.TryInjectIcon(item, null, ICON_NAME);
             }
             catch (Exception e)
             {
@@ -141,7 +134,7 @@ namespace BossRush
                 if (existing != null)
                 {
                     ConfigureItem(existing);
-                    try { ItemAssetsCollection.AddDynamicEntry(existing); }
+                    try { BossRushDynamicItemRegistry.Publish(existing); }
                     catch (Exception)
                     {
                         // 已在表内时重复登记会抛，忽略即可
@@ -174,7 +167,7 @@ namespace BossRush
                 UnityEngine.Object.DontDestroyOnLoad(clone.gameObject);
                 clone.SetTypeID(TYPE_ID);
                 ConfigureItem(clone);
-                ItemAssetsCollection.AddDynamicEntry(clone);
+                BossRushDynamicItemRegistry.Publish(clone);
                 runtimeFallbackRegistered = true;
                 ModBehaviour.DevLog("[AffixForgeStoneConfig] Runtime fallback item registered");
                 return true;

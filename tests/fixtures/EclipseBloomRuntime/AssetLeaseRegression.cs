@@ -23,7 +23,7 @@ internal static class AssetLeaseProgram
             string bundlePath = Path.Combine(validPath, EclipseBloomAuthoredAssets.BundleRelativePath);
             Directory.CreateDirectory(Path.GetDirectoryName(bundlePath)); File.WriteAllText(bundlePath, "host bundle IO boundary");
             ModBehaviour.ModPath = validPath;
-            IndependentOwners(); FailedLoads(); VisibleGroundWarning(); ShieldFactoryBorrowing(); FactoryOwnedAssetBorrowing(); ShieldIconBorrowing();
+            IndependentOwners(); FailedLoads(); VisibleGroundWarning(); ShieldFactoryBorrowing();
             Console.WriteLine("PASS EclipseBloomAuthoredAssets: " + assertions + " assertions");
             return 0;
         }
@@ -148,15 +148,13 @@ internal static class AssetLeaseProgram
         EquipmentFactory.Reset();
         var missingGround = ShieldTemplate("shield without authored ground point", false, 6);
         EquipmentFactory.Loaded = missingGround;
-        Check(ResidualSunShieldModel.GetTemplate() == null && missingGround != null
-            && missingGround.GetComponent<ResidualSunShieldIcon>() == null,
-            "shield template without the authored GroundPoint is rejected before caching or icon attachment");
+        Check(ResidualSunShieldModel.GetTemplate() == null && missingGround != null,
+            "shield template without the authored GroundPoint is rejected before caching");
         UnityEngine.Object.Destroy(missingGround.gameObject);
         var missingPart = ShieldTemplate("shield missing one authored mesh part", true, 5);
         EquipmentFactory.Loaded = missingPart;
-        Check(ResidualSunShieldModel.GetTemplate() == null && missingPart != null
-            && missingPart.GetComponent<ResidualSunShieldIcon>() == null,
-            "shield template missing an authored mesh part is rejected before caching or icon attachment");
+        Check(ResidualSunShieldModel.GetTemplate() == null && missingPart != null,
+            "shield template missing an authored mesh part is rejected before caching");
         UnityEngine.Object.Destroy(missingPart.gameObject);
         EquipmentFactory.Reset();
         var model = ShieldTemplate("factory authored shield wrapper");
@@ -165,9 +163,8 @@ internal static class AssetLeaseProgram
         Check(ResidualSunShieldModel.GetTemplate() == model && EquipmentFactory.Loads == 1,
             "shield lazily borrows the model from the established factory bundle owner");
         int queries = EquipmentFactory.Queries;
-        Check(ResidualSunShieldModel.GetTemplate() == model && EquipmentFactory.Queries == queries
-            && model.GetComponents<ResidualSunShieldIcon>().Length == 1,
-            "repeated shield template use reuses one factory wrapper and one icon component");
+        Check(ResidualSunShieldModel.GetTemplate() == model && EquipmentFactory.Queries == queries,
+            "repeated shield template use reuses one factory wrapper");
         var item = new GameObject("runtime shield item").AddComponent<ItemStatsSystem.Item>(); item.TypeID = 500110;
         Check(ResidualSunShieldModel.Bind(item) && !item.useSpriteForPickup && item.ItemGraphic == graphic
             && item.AgentUtilities.GetPrefab("EquipmentModel") == model && EquipmentFactory.loadedModels[500110] == model
@@ -181,8 +178,8 @@ internal static class AssetLeaseProgram
         ResidualSunShieldModel.ResetStaticCaches();
         Check(model != null && graphic != null && item.ItemGraphic == graphic,
             "shield cache reset cannot destroy the factory wrapper still borrowed by existing item agents");
-        Check(ResidualSunShieldModel.GetTemplate() == model && model.GetComponents<ResidualSunShieldIcon>().Length == 1,
-            "shield cache reset reborrows the factory wrapper without duplicating its icon");
+        Check(ResidualSunShieldModel.GetTemplate() == model,
+            "shield cache reset reborrows the same factory wrapper");
         UnityEngine.Object.Destroy(model.gameObject); ResidualSunShieldModel.ResetStaticCaches(); EquipmentFactory.Reset();
     }
     private static DuckovItemAgent ShieldTemplate(string name, bool withGroundPoint = true, int parts = 6)
@@ -202,66 +199,5 @@ internal static class AssetLeaseProgram
             if (i == 0) part.SetActive(false);
         }
         return model;
-    }
-    private static void FactoryOwnedAssetBorrowing()
-    {
-        const string path = "assets/eclipsebloom/ui/residual_sun_shield_icon.png";
-        Check(EquipmentFactory.GetLoadedEquipmentAsset<Sprite>(null, path) == null
-            && EquipmentFactory.GetLoadedEquipmentAsset<Sprite>("residual_sun_shield_model", null) == null,
-            "factory owned asset lookup rejects empty identity without loading any bundle");
-        var foreign = new AssetBundle { name = "unrelated_equipment" };
-        var expected = new AssetBundle { name = "RESIDUAL_SUN_SHIELD_MODEL" };
-        var sprite = new Sprite(); var wrongSprite = new Sprite();
-        foreign.Assets.Add(path, wrongSprite); expected.Assets.Add(path, sprite);
-        EquipmentFactory.ownedBundles.Add(foreign); EquipmentFactory.ownedBundles.Add(expected);
-        int loads = ResourceBundleLoader.Loads;
-        Check(EquipmentFactory.GetLoadedEquipmentAsset<Sprite>("residual_sun_shield_model", path) == sprite
-            && foreign.Requests.Count == 0 && expected.Requests.Count == 1 && ResourceBundleLoader.Loads == loads,
-            "factory lookup borrows the exact asset from its named owned bundle without acquiring a new bundle");
-        Check(EquipmentFactory.GetLoadedEquipmentAsset<Sprite>("residual_sun_shield_model", path) == sprite
-            && expected.Unloads == 0 && sprite != null,
-            "repeated factory asset queries share the existing resource without unloading its owner");
-        Check(EquipmentFactory.GetLoadedEquipmentAsset<Sprite>("missing-bundle", path) == null
-            && EquipmentFactory.GetLoadedEquipmentAsset<Sprite>("residual_sun_shield_model", "missing.asset") == null
-            && EquipmentFactory.GetLoadedEquipmentAsset<Mesh>("residual_sun_shield_model", path) == null,
-            "missing bundle asset or incompatible type cannot borrow an unrelated fallback");
-        expected.Unload(true);
-        Check(EquipmentFactory.GetLoadedEquipmentAsset<Sprite>("residual_sun_shield_model", path) == null
-            && expected.Unloads == 1,
-            "destroyed factory bundle is skipped without an extra unload or stale resource return");
-        foreign.Unload(true); EquipmentFactory.Reset();
-    }
-    private static void ShieldIconBorrowing()
-    {
-        ResidualSunShieldModel.ResetStaticCaches(); EquipmentFactory.Reset();
-        var model = ShieldTemplate("authored shield icon owner");
-        EquipmentFactory.Loaded = model;
-        var item = new GameObject("shield icon item").AddComponent<ItemStatsSystem.Item>();
-        var correct = new AssetBundle { name = ResidualSunShieldModel.BundleName };
-        var stale = new AssetBundle { name = "production_icons" };
-        var texture = new Texture2D { width = 512, height = 512 };
-        var sprite = new Sprite { texture = texture };
-        correct.Assets.Add(ResidualSunShieldIcon.BundleIconAssetPath, sprite);
-        stale.Assets.Add(ResidualSunShieldIcon.BundleIconAssetPath, new Sprite { texture = new Texture2D { width = 512, height = 512 } });
-        EquipmentFactory.ownedBundles.Add(stale); EquipmentFactory.ownedBundles.Add(correct);
-        Check(ResidualSunShieldIcon.GetSprite(null) == null && ResidualSunShieldIcon.GetSprite(item) == sprite
-            && stale.Requests.Count == 0 && correct.Requests.Count == 1,
-            "real shield icon borrows the authored 512 Sprite from its dedicated bundle and cannot use a stale production icon");
-        Check(ResidualSunShieldIcon.GetSprite(item) == sprite && correct.Requests.Count == 1,
-            "repeated shield icon requests reuse one borrowed Sprite without reload or allocation");
-        UnityEngine.Object.Destroy(model.GetComponent<ResidualSunShieldIcon>());
-        Check(sprite != null && texture != null && correct.Unloads == 0,
-            "shield icon component destruction cannot destroy the Sprite texture or equipment factory bundle it borrowed");
-        ResidualSunShieldModel.ResetStaticCaches();
-        texture.width = 256;
-        Check(ResidualSunShieldIcon.GetSprite(item) == null && sprite != null && texture != null,
-            "real shield icon rejects incorrect production dimensions without destroying the borrowed resource");
-        texture.width = 512;
-        Check(ResidualSunShieldIcon.GetSprite(item) == sprite && correct.Unloads == 0,
-            "invalid icon dimensions remain retryable when the authored resource becomes valid");
-        UnityEngine.Object.Destroy(model.gameObject);
-        Check(sprite != null && texture != null && correct.Unloads == 0,
-            "destroying all shield wrappers leaves icon ownership with the equipment factory");
-        correct.Unload(true); stale.Unload(true); EquipmentFactory.Reset(); ResidualSunShieldModel.ResetStaticCaches();
     }
 }

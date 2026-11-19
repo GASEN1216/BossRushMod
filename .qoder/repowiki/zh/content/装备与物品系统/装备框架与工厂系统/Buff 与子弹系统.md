@@ -80,7 +80,7 @@ participant Mod as "模组代码"
 participant EF as "EquipmentFactory"
 participant AB as "AssetBundle"
 participant Game as "游戏系统"
-Mod->>EF : LoadAllEquipment() / LoadBundle(...)
+Mod->>EF : LoadAllEquipmentAsync(owner) / LoadBundle(...)
 EF->>AB : 加载并枚举 GameObject
 AB-->>EF : 返回资源列表
 EF->>EF : 检测 Buff/Projectile/Item/Model
@@ -234,7 +234,7 @@ DKR["DragonKingBossGunRuntime"] --> EF
 ## 故障排查指南
 - 未检测到 Buff：确认预制体包含 Buff 组件且名称符合 {名称}_Buff；检查日志中的“发现 Buff”条目。
 - 未关联子弹：确认武器基础名前缀与子弹基础名一致（例如 Dragon_Gun -> Dragon_Bullet）；检查 ProcessGunItem 日志。
-- 查询为空：确认已调用 LoadAllEquipment 或 LoadBundle；检查 GetLoadedBuff/GetLoadedBullet 返回值是否为 null。
+- 查询为空：确认已调用 LoadAllEquipmentAsync 或 LoadBundle；检查 GetLoadedBuff/GetLoadedBullet 返回值是否为 null。
 - 特效异常：检查 DragonBreathBuffHandler 的特效替换是否成功，关注反射字段与原版 Buff 可用性。
 
 章节来源
@@ -293,7 +293,7 @@ BossRushMod 的 Buff 与子弹系统通过 EquipmentFactory 实现了从 AssetBu
 ### 自定义 Buff 开发步骤
 - 创建 Buff 预制体，添加 Buff 组件并填写必要属性（id、maxLayers、持续时间、本地化键等）。
 - 命名为 {名称}_Buff，放入 Assets/Equipment 下的某个 AssetBundle。
-- 调用 EquipmentFactory.LoadAllEquipment() 或 LoadBundle(...) 完成加载。
+- 调用 EquipmentFactory.LoadAllEquipmentAsync(owner) 或 LoadBundle(...) 完成加载。
 - 在运行时通过 GetLoadedBuff 获取并应用到目标。
 
 章节来源

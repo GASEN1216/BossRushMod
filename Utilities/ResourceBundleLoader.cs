@@ -91,6 +91,36 @@ namespace BossRush
 
         internal static LoadRecord[] Snapshot() { return history.ToArray(); }
 
+        private static readonly char[] NameSeparators = { '/', '\\' };
+
+        /// <summary>
+        /// 找已加载的同名包（不论哪个 owner 打开的），是全仓库唯一的 GetAllLoadedAssetBundles 调用点；查询失败返回 null，不抛给调用方。
+        /// 匹配规则见 <see cref="IsNamed"/>。2026-11-19 用 UnityPy 核对过 Assets/ 与游戏目录下全部包：包内名都等于文件名。
+        /// </summary>
+        internal static AssetBundle FindLoaded(string bundleFileName)
+        {
+            if (string.IsNullOrEmpty(bundleFileName)) return null;
+            try
+            {
+                foreach (AssetBundle loaded in AssetBundle.GetAllLoadedAssetBundles())
+                {
+                    if (IsNamed(loaded, bundleFileName)) return loaded;
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        /// <summary>bundle.name 按 / 与 \ 切分后的最后一段与包文件名 OrdinalIgnoreCase 全等；已销毁或无名的包不算。</summary>
+        internal static bool IsNamed(AssetBundle bundle, string bundleFileName)
+        {
+            if (bundle == null || string.IsNullOrEmpty(bundleFileName)) return false;
+            string name = bundle.name;
+            if (string.IsNullOrEmpty(name)) return false;
+            int cut = name.LastIndexOfAny(NameSeparators);
+            return string.Equals(cut < 0 ? name : name.Substring(cut + 1), bundleFileName, StringComparison.OrdinalIgnoreCase);
+        }
+
         /// <summary>同步官方 GetPrefab 契约保留兜底；正常 bootstrap 已经异步准备好。</summary>
         internal static AssetBundle LoadFromFile(string path)
         {

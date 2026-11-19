@@ -54,9 +54,6 @@ namespace BossRush
                 ModeFItemConfigHelper.SetHiddenMember(item, "weight", ResidualSunShieldConfig.ItemWeight);
                 ModeFItemConfigHelper.ClearInheritedUsage(item);
                 if (!ResidualSunShieldModel.Bind(item)) return false;
-                UnityEngine.Sprite icon = ResidualSunShieldIcon.GetSprite(item);
-                if (icon == null) return false;
-                item.Icon = icon;
                 InjectLocalization();
                 return true;
             }

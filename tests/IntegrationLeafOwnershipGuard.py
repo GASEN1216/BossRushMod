@@ -76,7 +76,7 @@ def main():
     assert "internal static bool DynamicItemsInitialized { get; set; }" in registry
     assert "internal static int BossRushTicketTypeId { get; set; } = -1;" in registry
     ticket = body(registry, "internal bool EnsureBossRushTicketItemRegisteredForDynamicRegistry()")
-    ordered(ticket, ["HasRegisteredPrefabWithoutEnsuring", "BossRushTicketTypeId = BossRushItemIds.BossRushTicket", "ResourceBundleLoader.LoadFromFile", "ResourceBundleLoader.LoadAllAssets", 'AddTagsToItem(itemPrefab, new string[] { "Key", "SpecialKey" })', "ItemAssetsCollection.AddDynamicEntry", "itemPrefab.TypeID == BossRushItemIds.BossRushTicket", "BossRushTicketTypeId <= 0 && itemPrefab.TypeID > 0", "finally", "AssetBundleUnloadHelper.TryUnload"], "ticket registration")
+    ordered(ticket, ["HasRegisteredPrefabWithoutEnsuring", "BossRushTicketTypeId = BossRushItemIds.BossRushTicket", "ResourceBundleLoader.LoadFromFile", "ResourceBundleLoader.LoadAllAssets", 'AddTagsToItem(itemPrefab, new string[] { "Key", "SpecialKey" })', "BossRushDynamicItemRegistry.Publish(itemPrefab)", "itemPrefab.TypeID == BossRushItemIds.BossRushTicket", "BossRushTicketTypeId <= 0 && itemPrefab.TypeID > 0", "finally", "AssetBundleUnloadHelper.TryUnload"], "ticket registration")
     integration_host = read("Integration/BossRushIntegration.cs")
     for name in ("EnsureItemContentConfiguratorsRegisteredForDynamicRegistry", "EnsureBossRushTicketItemRegisteredForDynamicRegistry", "EnsureBirthdayCakeItemRegisteredForDynamicRegistry", "EnsureAdventureJournalItemRegisteredForDynamicRegistry"):
         assert compact(body(integration_host, "internal bool " + name + "()")) == "returnbossRushIntegrationRuntime." + name + "();", "item registration bridge disconnected: " + name

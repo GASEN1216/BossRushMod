@@ -16,7 +16,6 @@ namespace BossRush
         public const int TYPE_ID = 500042;
         public const string BUNDLE_NAME = "awen_loot_sweep_token";
         public const string PREFAB_NAME = "BossRush_AwenLootSweepToken";
-        public const string ICON_NAME = "BossRush_AwenLootSweepToken_Icon";
         public const string LOC_KEY_DISPLAY = "BossRush_AwenLootSweepToken";
         public const string DISPLAY_NAME_CN = "阿稳扫箱令";
         public const string DISPLAY_NAME_EN = "Awen Loot Sweep Token";
@@ -91,7 +90,7 @@ namespace BossRush
                 if (existing != null)
                 {
                     ConfigureItem(existing);
-                    try { ItemAssetsCollection.AddDynamicEntry(existing); } catch { }
+                    try { BossRushDynamicItemRegistry.Publish(existing); } catch { }
                     return true;
                 }
 
@@ -122,7 +121,7 @@ namespace BossRush
 
                 SetItemTypeId(clone, TYPE_ID);
                 ConfigureItem(clone);
-                ItemAssetsCollection.AddDynamicEntry(clone);
+                BossRushDynamicItemRegistry.Publish(clone);
                 runtimeFallbackRegistered = true;
 
                 ModBehaviour.DevLog("[AwenLootSweepTokenConfig] Runtime fallback item registered");

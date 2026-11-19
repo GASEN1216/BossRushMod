@@ -5,8 +5,9 @@
 //   2026-09-06 复审（D-3）确认它早已被 Audio / Campaign / DuckNpc / F3 验收等 9 个
 //   ModeH 之外的文件依赖，事实上就是全 Mod 的共享解析器，因此原样迁到 Common/Data 并去掉
 //   ModeH 前缀；遗种巢自带的 PetNestJson（节点 + PetNestJsonBuilder 写出器）一并并入，
-//   仓库从此只有这一套嵌套 JSON 解析器（Utilities/SimpleJsonHelper.cs 只保留扁平写出与
-//   转义工具，Codex / 日报的存档读侧也改走这里）。
+//   仓库从此只有这一套嵌套 JSON 解析器（Codex / 日报的存档读侧也改走这里）。
+//   Utilities/SimpleJsonHelper.cs 现在只剩扁平写出（Append* / EscapeString）与许愿台飞书接口响应的
+//   扁平取值（ExtractString / ExtractInt / UnescapeString / ForEachObject，2026-11-19 核对），不做嵌套解析。
 //
 // 契约（与 ModeHCanonicalDigest 的冻结依赖）：
 //   - 规范摘要必须先解析成 token 再重新写出，禁止直接对来源 JSON 文本做哈希；

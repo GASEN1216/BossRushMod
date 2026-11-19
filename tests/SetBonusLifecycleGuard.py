@@ -388,7 +388,6 @@ def main() -> int:
         "public static bool TryConfigure(Item item, string baseName)",
         "public static bool TryConfigureByTypeId(Item item)",
         "EquipmentFactory.TryBindLoadedEquipmentModel(item, modelBaseName);",
-        "EquipmentHelperIcon.TryInjectIcon(item, bundleName, iconAssetName);",
         # 2026-09-06：售价（商店价格 = Value × 耐久比 × priceFactor）与天气防护走幂等路径
         "item.Value = SET_PIECE_VALUE;",
         '"StormProtection" : "ColdProtection"',

@@ -5,8 +5,8 @@
 // 常量在 Config/ConfigItemIds.cs 的 BossRushItemIds）。
 //
 // 【零新增 bundle】与天空岛物品同一套克隆注册（形态照 Integration/SkyIsland/SkyIslandItems.cs）：
-// 从既有 Mod 物品克隆 prefab、改 TypeID、配属性、AddDynamicEntry；图标读 Assets/Items/<IconName>.png，
-// 缺图时保持克隆源的图标，不 fail。
+// 从既有 Mod 物品克隆 prefab、改 TypeID、配属性、经 BossRushDynamicItemRegistry.Publish 注册；
+// 图标名写在定义表，由 ModItemIcons 在注册时统一套用。
 //
 // 【本文件只管物品本体】定义、配置、注册、本地化与数值。获取途径（挖沙船船舱、所长的保险柜、闸伯的谢礼与商店、
 // 滩涂埋货、阿稳快递）和局内效果（潮位站阀门、涨落倒计时、游泳负重上限、游速）都在 Tidegate/ 的运行时里接：
@@ -116,6 +116,13 @@ namespace BossRush
             return null;
         }
 
+        /// <summary>本模块物品的图标名（声明在定义表里），由 ModItemIcons 统一取用。</summary>
+        internal static string IconNameOf(int typeId)
+        {
+            Definition def = GetDefinition(typeId);
+            return def != null ? def.IconName : null;
+        }
+
         /// <summary>是不是已登记的潮闸镇物品。</summary>
         internal static bool IsTidegateItem(int typeId)
         {
@@ -166,7 +173,6 @@ namespace BossRush
                 EquipmentHelper.AddTagToItem(item, "Special");
                 // 闸伯的信是剧情钥匙：读了才开航线，不让顺手卖给商人（口径同鸭皇图鉴；丢了还有补寄，见 TidegateStory.TryDeliverLetter）。
                 if (typeId == BossRushItemIds.TidegateLetter) EquipmentHelper.AddTagToItem(item, "NotSellable");
-                EquipmentHelperIcon.TryInjectIcon(item, null, def.IconName);
                 if (def.UseTime > 0f)
                 {
                     // 闸伯的信：读了不消耗（耐久同风标罗盘；ClearInheritedUsage 已关掉官方按次扣耐久）。
@@ -232,7 +238,7 @@ namespace BossRush
                 if (existing != null)
                 {
                     ConfigureItem(typeId, existing);
-                    try { ItemAssetsCollection.AddDynamicEntry(existing); }
+                    try { BossRushDynamicItemRegistry.Publish(existing); }
                     catch (Exception)
                     {
                         // 已在表内时重复登记会抛，忽略即可
@@ -261,7 +267,7 @@ namespace BossRush
                 UnityEngine.Object.DontDestroyOnLoad(clone.gameObject);
                 clone.SetTypeID(typeId);
                 ConfigureItem(typeId, clone);
-                ItemAssetsCollection.AddDynamicEntry(clone);
+                BossRushDynamicItemRegistry.Publish(clone);
                 _runtimeRegistered.Add(typeId);
                 ModBehaviour.DevLog(LogPrefix + "运行时兜底物品已注册: " + typeId);
                 return true;

@@ -6,7 +6,7 @@
 // 设计要点：
 //   - **零新增 bundle**：没有专属模型，走 BossRushDynamicItemRegistry 的
 //     FallbackLoader 从既有物品克隆一份 prefab 顶上（形态照 RelicEggConfig），
-//     图标由 EquipmentHelperIcon 从 Assets/Items/codex_book.png 注入。
+//     图标 codex_book 登记在 ModItemIcons，注册时统一套用。
 //   - **使用后不消耗**：耐久模式 MaxDurability/Durability = 999f，
 //     UsageBehavior 只打开面板，不 Consume（形态照 AchievementMedalConfig）。
 //   - **DisplayNameRaw 必须配本地化注入**（AGENTS.md 4.4）：本物品的全部 key
@@ -46,9 +46,6 @@ namespace BossRush
         public const string DESCRIPTION_EN = "A heavy tome that writes itself. Every boss you bring down "
             + "in person earns a new page: portrait, kill count, fastest clear, and where and when you "
             + "first met. Right-click to open the codex.";
-
-        /// <summary>图标资源名。EquipmentHelperIcon 按 Assets/Items/{ICON_NAME}.png 找 PNG。</summary>
-        public const string ICON_NAME = "codex_book";
 
         public const int VALUE = 4000;
         public const int MAX_STACK = 1;
@@ -118,7 +115,6 @@ namespace BossRush
                 // 图鉴是一次性入口物，不参与玩家向商人出售，避免买入后倒卖套利。
                 EquipmentHelper.AddTagToItem(item, "NotSellable");
                 // 专属图标：没有它就会顶着克隆源物品的脸出现在背包里
-                EquipmentHelperIcon.TryInjectIcon(item, null, ICON_NAME);
             }
             catch (Exception e)
             {
@@ -194,7 +190,7 @@ namespace BossRush
                 if (existing != null)
                 {
                     ConfigureItem(existing);
-                    try { ItemAssetsCollection.AddDynamicEntry(existing); }
+                    try { BossRushDynamicItemRegistry.Publish(existing); }
                     catch (Exception)
                     {
                         // 已在表内时重复登记会抛，忽略即可
@@ -227,7 +223,7 @@ namespace BossRush
                 UnityEngine.Object.DontDestroyOnLoad(clone.gameObject);
                 clone.SetTypeID(TYPE_ID);
                 ConfigureItem(clone);
-                ItemAssetsCollection.AddDynamicEntry(clone);
+                BossRushDynamicItemRegistry.Publish(clone);
                 runtimeFallbackRegistered = true;
                 ModBehaviour.DevLog(CodexTuning.LogPrefix + "运行时兜底物品已注册");
                 return true;

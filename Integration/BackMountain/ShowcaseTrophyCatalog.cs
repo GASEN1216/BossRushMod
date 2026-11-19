@@ -1,11 +1,14 @@
 // ============================================================================
-// ShowcaseTrophyCatalog.cs - 哪些 Mod 物品算「战利品」：摆上官方枪械展示架 / 假人才计陈列加成
+// ShowcaseTrophyCatalog.cs - 哪些 Mod 物品算「战利品」：摆上官方展示建筑才计陈列加成
 // ============================================================================
-// 官方的「陈列柜」（Showcase_01，槽位要 ShowCase 标签）是废弃建筑，建造菜单里没有
-// （owner 2026-09-22 实机确认）。基地里真能建的官方展示建筑是枪械展示架（槽位要 Gun）、
-// 假人（槽位按枪 / 近战 / 头盔 / 护甲 / 面罩 / 耳机）与基地皮肤柜（壁纸 / 摆件）。
-// Mod 武器与装备由 EquipmentFactory 克隆官方件，自带这些槽位标签（F3 探针实测 Mod 枪甲已能上架），
-// 所以不需要也不再补任何标签；这里只维护「算不算战利品」的判定（纯判据
+// 官方展示建筑：枪械展示架（槽位要 Gun）、假人（槽位按枪 / 近战 / 头盔 / 护甲 / 面罩 / 耳机）、
+// 基地皮肤柜（壁纸 / 摆件），以及「陈列柜」Showcase01（12 个展示位全要 ShowCase 标签，摆物品自己的
+// ItemGraphic，没有模型就空着）。陈列柜能建，但前置是已建比特币矿机 + 完成任务 940「玩具收藏家-2」，
+// 官方建造菜单对前置未满足的建筑直接隐藏，所以 2026-09-22 实机看不到；当时「废弃建筑」的结论有误，
+// 2026-11-19 按字节读 BuildingDataCollection 更正。ShowcaseDisplayScanner 采集场上全部官方 Showcase，
+// 本身带 ShowCase 的 Mod 物品（如 5 档以上收集品）摆进陈列柜同样计入。
+// Mod 武器与装备由 EquipmentFactory 克隆官方件，自带枪架 / 假人的槽位标签（F3 探针实测 Mod 枪甲已能上架），
+// 名录不给战利品补 ShowCase（owner 2026-11-19 拍板维持）；这里只维护「算不算战利品」的判定（纯判据
 // ShowcaseDisplayJudges.ShouldCountAsTrophy），供 ShowcaseDisplayScanner 采集官方展示建筑里的
 // 槽位内容时筛选。枚举源是 BossRushDynamicItemRegistry，新 Boss 装备 / 新武器自动纳入。
 // 取 prefab 只走 BossRushDynamicItemRegistry.GetRegisteredPrefabWithoutEnsuring：ItemAssetsCollection.GetPrefab

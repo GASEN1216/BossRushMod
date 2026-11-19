@@ -5,7 +5,7 @@
 // 常量在 Config/ConfigItemIds.cs 的 BossRushItemIds）。设计只允许这两件新物品（2026-11-07 第五批「就做钢印和票根」）。
 //
 // 【零新增 bundle】与潮闸镇物品同一套克隆注册（形态照 Integration/Tidegate/TidegateItems.cs）：从既有 Mod 物品克隆 prefab、
-// 改 TypeID、配属性、AddDynamicEntry；图标读 Assets/Items/<IconName>.png，缺图时保持克隆源的图标，不 fail。
+// 改 TypeID、配属性、经 BossRushDynamicItemRegistry.Publish 注册；图标名写在定义表，由 ModItemIcons 在注册时统一套用。
 //
 // 【来路 / 用途 / 串到哪】
 //   - 押运钢印：打倒押运长（编组站专属头目）后从他身上取得。下一趟凭它在押运库开一次铅封侧柜（头格保底 Q4 的贵重物），开柜即消耗。
@@ -73,6 +73,13 @@ namespace BossRush
             return null;
         }
 
+        /// <summary>本模块物品的图标名（声明在定义表里），由 ModItemIcons 统一取用。</summary>
+        internal static string IconNameOf(int typeId)
+        {
+            Definition def = GetDefinition(typeId);
+            return def != null ? def.IconName : null;
+        }
+
         internal static string Name(int typeId)
         {
             Definition def = GetDefinition(typeId);
@@ -113,7 +120,6 @@ namespace BossRush
                 ModeFItemConfigHelper.SetHiddenMember(item, "weight", def.Weight);
                 EquipmentHelper.AddTagToItem(item, "Special");
                 if (def.NotSellable) EquipmentHelper.AddTagToItem(item, "NotSellable");
-                EquipmentHelperIcon.TryInjectIcon(item, null, def.IconName);
                 // 两件都没有使用行为，也不带克隆源的耐久条。
                 item.MaxDurability = 0f;
             }
@@ -146,7 +152,7 @@ namespace BossRush
                 if (existing != null)
                 {
                     ConfigureItem(typeId, existing);
-                    try { ItemAssetsCollection.AddDynamicEntry(existing); }
+                    try { BossRushDynamicItemRegistry.Publish(existing); }
                     catch (Exception)
                     {
                         // 已在表内时重复登记会抛，忽略即可
@@ -168,7 +174,7 @@ namespace BossRush
                 UnityEngine.Object.DontDestroyOnLoad(clone.gameObject);
                 clone.SetTypeID(typeId);
                 ConfigureItem(typeId, clone);
-                ItemAssetsCollection.AddDynamicEntry(clone);
+                BossRushDynamicItemRegistry.Publish(clone);
                 _runtimeRegistered.Add(typeId);
                 ModBehaviour.DevLog(LogPrefix + "运行时兜底物品已注册: " + typeId);
                 return true;

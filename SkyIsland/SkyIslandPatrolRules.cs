@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Text;
 
 namespace BossRush
 {
@@ -48,12 +46,15 @@ namespace BossRush
     /// <summary>
     /// COMPAT：普通巡逻专用内容表。坐标取 collision_navigation.json 岛区三角形中心，运行时不随机选点；
     /// 选点（tools/sky_island_patrol_slots.py）只取离岛缘够远、靠路网 / 桥头 / 地标、不贴墙的中心，判据在属性测试里。
-    /// 每个巡逻 owner 入图时 Load 一次并持有结果；本类型不持有缓存、场景、活体或存档，不需要静态清理。
+    /// 每个巡逻 owner 入图时经 JsonDataRegistry 读一次 Patrols.json、交给 FromText 解析并持有结果；
+    /// 本类型只做纯规则（不读文件、不依赖 Unity 或宿主），不持有缓存、场景、活体或存档，不需要静态清理。
     /// JSON 缺失或结构/身份/数值无效时整表回退；离线几何由 SkyIslandPatrolPlacementPropertyTest 独立复算。
     /// </summary>
     internal static class SkyIslandPatrolRules
     {
-        internal const string RelativePath = "Assets/Data/SkyIsland/Patrols.json";
+        /// <summary>Assets/Data 下的子目录与文件名（经 JsonDataRegistry.TryReadDataFile 读取）。</summary>
+        internal const string DataSubDirectory = "SkyIsland";
+        internal const string DataFileName = "Patrols.json";
         internal const int Version = 1;
         // 固定坐标的采样来源；与 JSON 一起由定向几何验收核对当前 NAV。
         internal const string SourceNavigationSha256 = "dc446f697e2eb6846b7b73dad499ab01e14877c10908abe9382767dc97605d4f";
@@ -87,25 +88,22 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 调用方明确传入 Mod 根目录。只做文件读取，继续复用共享 JSON token/parser；不依赖 Unity 或宿主。
-        /// 缺失/无效时返回 Source=Fallback，由 Runtime 决定如何报告。岛区门控也由 Runtime 持有：
-        /// 只有 H 需要 content.IsGateOpen("BellCourt", story)，不把场景/剧情状态引入纯规则。
+        /// 解析 Patrols.json 的文本（由宿主经 JsonDataRegistry 读出；读不到时传 null）。继续复用共享 JSON token/parser，
+        /// 不读文件、不依赖 Unity 或宿主。null / 空文本、结构或数值无效、解析异常时返回 Source=Fallback，由 Runtime 决定如何报告。
+        /// 岛区门控也由 Runtime 持有：只有 H 需要 content.IsGateOpen("BellCourt", story)，不把场景/剧情状态引入纯规则。
         /// </summary>
-        internal static SkyIslandPatrolData Load(string modPath)
+        internal static SkyIslandPatrolData FromText(string raw)
         {
-            if (string.IsNullOrEmpty(modPath)) return CreateFallback();
+            if (string.IsNullOrEmpty(raw)) return CreateFallback();
             try
             {
-                string path = Path.Combine(modPath, "Assets", "Data", "SkyIsland", "Patrols.json");
-                if (!File.Exists(path)) return CreateFallback();
-                string raw = File.ReadAllText(path, Encoding.UTF8);
                 SkyIslandPatrolData result;
                 string error;
                 if (TryParse(raw, out result, out error)) return result;
             }
             catch (Exception)
             {
-                // 路径、权限与部署错误均回退；不在纯数据层引用游戏日志或吞掉整份巡逻内容。
+                // 结构异常一律回退；不在纯数据层引用游戏日志或吞掉整份巡逻内容。
             }
             return CreateFallback();
         }

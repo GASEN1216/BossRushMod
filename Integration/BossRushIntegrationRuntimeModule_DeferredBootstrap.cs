@@ -320,8 +320,10 @@ namespace BossRush
             {
                 yield break;
             }
-            yield return FactoryResourceLoading.RunSpecial(_owner, "Assets/buildings/bossrush_campaign_board", _owner.InitCampaignBoardBuilding);
-            yield return FactoryResourceLoading.RunSpecial(_owner, "Assets/buildings/bossrush_backmountain_showcase", _owner.InitBackMountainShowcase);
+            yield return FactoryResourceLoading.RunSpecial(_owner, "Assets/buildings/bossrush_campaign_board", _owner.InitCampaignBoardBuilding,
+                () => _owner.HasCampaignBoardBundle);
+            yield return FactoryResourceLoading.RunSpecial(_owner, "Assets/buildings/bossrush_backmountain_showcase", _owner.InitBackMountainShowcase,
+                () => _owner.HasBackMountainShowcaseBundle);
 
             if (!ShouldContinueDeferredBaseSceneSetup_Integration(sceneName, sceneHandle))
             {

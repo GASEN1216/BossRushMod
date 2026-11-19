@@ -4,7 +4,8 @@ ModeGReleaseAvailabilityGuard — Mode G 发布可用性门控守卫（规格 §
 
 不变式：
 - IsProductionReady 为 const bool（切换只能显式改源码）；
-- 正式构建 AllowDevTestEntry / AllowDevRawPngFallback 必须 false；
+- 正式构建 AllowDevTestEntry 必须 false；
+- 展示资源只认 bundle：散图回退整条删除（不再有 AllowDevRawPngFallback 门，也不得重新长出来）；
 - CurrentVerificationRevision 非空冻结字符串；
 - 独立交互入口与 TryStartModeG 均消费 IsProductionReady 门控；
 - 生产池不得使用开发署名兜底（!IsProductionReady && AllowDevTestEntry 双条件）。
@@ -25,10 +26,6 @@ CHECKS = [
      "ModeGAvailability.cs",
      r"public const bool AllowDevTestEntry = false",
      "正式构建不得开放开发测试入口"),
-    ("DevRawPngFallbackFrozenOff",
-     "ModeGAvailability.cs",
-     r"public const bool AllowDevRawPngFallback = false",
-     "正式构建不得静默使用 raw PNG 冒充发布 bundle"),
     ("VerificationRevisionFrozen",
      "ModeGAvailability.cs",
      r'public const string CurrentVerificationRevision = "2026-08-10\.v1"',
@@ -50,10 +47,18 @@ CHECKS = [
      "ModeGEncounterVariation.cs",
      r"!ModeGAvailability\.IsProductionReady\s+&&\s*ModeGAvailability\.AllowDevTestEntry",
      "开发署名兜底仅在 !IsProductionReady && AllowDevTestEntry"),
-    ("RawPngFallbackGated",
+]
+
+# 不得出现的写法：(名字, 文件, 正则, 说明)
+FORBIDDEN = [
+    ("NoRawPngFallbackGate",
+     "ModeGAvailability.cs",
+     r"AllowDevRawPngFallback",
+     "散图回退已删除，不得重新加回开发门"),
+    ("NoRawPngFallback",
      "ModeGPresentationAssetCache.cs",
-     r"if\s*\(!ModeGAvailability\.AllowDevRawPngFallback\)\s*return null",
-     "raw PNG fallback 受 AllowDevRawPngFallback 门控"),
+     r"LoadDevRawSprite|AllowDevRawPngFallback|ModSprites|RawImageLoader|LoadImage|ReadAllBytes",
+     "正式构建不得用 raw PNG 冒充发布 bundle：展示缓存只认 bundle"),
 ]
 
 
@@ -68,6 +73,14 @@ def main():
             content = fh.read()
         if not re.search(pattern, content):
             errors.append("[{}] 不满足 ({}): {}".format(name, desc, filename))
+    for name, filename, pattern, desc in FORBIDDEN:
+        path = os.path.join(MODEG_DIR, filename)
+        if not os.path.exists(path):
+            errors.append("[{}] 文件不存在: {}".format(name, filename))
+            continue
+        with open(path, "r", encoding="utf-8", errors="replace") as fh:
+            if re.search(pattern, fh.read()):
+                errors.append("[{}] 不满足 ({}): {}".format(name, desc, filename))
 
     if errors:
         print("ModeGReleaseAvailabilityGuard: FAIL ({} errors)".format(len(errors)))
@@ -76,7 +89,7 @@ def main():
         return 1
 
     print("ModeGReleaseAvailabilityGuard: PASS")
-    print("  门控检查: {} 项".format(len(CHECKS)))
+    print("  门控检查: {} 项，禁止项: {} 项".format(len(CHECKS), len(FORBIDDEN)))
     return 0
 
 

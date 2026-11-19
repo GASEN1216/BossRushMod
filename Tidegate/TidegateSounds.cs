@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using UnityEngine;
 
 namespace BossRush
@@ -23,8 +22,8 @@ namespace BossRush
 
     /// <summary>
     /// COMPAT：潮闸镇的声音（CR-2026-11-05-021）。文件由 `tools/gen_tidegate_sfx.py` 程序化生成，放 `Assets/Sounds/Tidegate`，
-    /// 随正式编译的 `Assets\Sounds` 整树部署。正式构建不引用 FMOD：与 `SkyIslandAmbience` 同一套
-    /// `AudioManager.PostCustomSFX` / `AudioObject.StopAll` 反射绑定（官方把事件挂在发声体上做 3D 定位）。
+    /// 随正式编译的 `Assets\Sounds` 整树部署。正式构建不引用 FMOD：与 `SkyIslandAmbience` 一样经 `BossRushOfficialAudio`
+    /// 调官方 `AudioManager.PostCustomSFX` / `AudioObject.StopAll`（官方把事件挂在发声体上做 3D 定位）。
     /// - 海浪：沿岸几处发声体循环，进 38 m 起播、出 44 m 停（滞回，口径同天空岛），只在近处响；
     /// - 浮标钟：栈桥渡口一只，近处每 14–20 秒一声；
     /// - 提示音：警报与大闸跟着玩家放（全图都得知道），汽笛、阀门、灯塔在事发处放，45 m 外不放。
@@ -50,8 +49,6 @@ namespace BossRush
         private readonly List<Emitter> ambient = new List<Emitter>();
         private readonly List<GameObject> owned = new List<GameObject>();
         private readonly string directory;
-        private readonly MethodInfo postSound, stopAll;
-        private readonly object stopImmediately;
         private readonly GameObject follow, spot;
         private readonly System.Random random = new System.Random(20261105);
         private float nextDistanceCheck;
@@ -63,10 +60,6 @@ namespace BossRush
             try
             {
                 directory = Path.Combine(ModBehaviour.GetModPath(), "Assets", "Sounds", "Tidegate");
-                postSound = typeof(Duckov.AudioManager).GetMethod("PostCustomSFX", BindingFlags.Public | BindingFlags.Static,
-                    null, new[] { typeof(string), typeof(GameObject), typeof(bool) }, null);
-                stopAll = typeof(Duckov.AudioObject).GetMethod("StopAll", BindingFlags.NonPublic | BindingFlags.Instance);
-                if (stopAll != null) stopImmediately = Enum.ToObject(stopAll.GetParameters()[0].ParameterType, 1);
                 follow = Own(world.Root.transform, "TidegateSound_Player");
                 spot = Own(world.Root.transform, "TidegateSound_Spot");
                 foreach (Transform poi in world.Pois)
@@ -141,10 +134,13 @@ namespace BossRush
             try
             {
                 if (emitter == null) return false;
-                if (postSound == null || stopAll == null) throw new InvalidOperationException("官方空间音效生命周期入口缺失");
+                if (!BossRushOfficialAudio.HasPostCustomSfx || !BossRushOfficialAudio.HasStopAll) throw new InvalidOperationException("官方空间音效生命周期入口缺失");
                 string path = Path.Combine(directory, file);
                 if (!File.Exists(path)) throw new FileNotFoundException("潮闸镇音效未部署", file);
-                bool posted = postSound.Invoke(null, new object[] { path, emitter, loop }) != null;
+                object instance;
+                Exception error;
+                if (!BossRushOfficialAudio.TryPostCustomSfx(path, emitter, loop, out instance, out error)) throw error;
+                bool posted = instance != null;
 #if BOSSRUSH_DEV
                 // Dev 演练按文件数一数各提示音放没放（TidegateDrillHooks.cs）。
                 DevNotePost(file, posted);
@@ -172,7 +168,8 @@ namespace BossRush
             {
                 // ReferenceEquals 绕开 Unity 的判空重载：发声体被别处先销毁时仍能停掉手里的 FMOD 事件（口径同 SkyIslandAmbience.Stop）。
                 if (ReferenceEquals(audio, null) && root != null) audio = root.GetComponent<Duckov.AudioObject>();
-                if (!ReferenceEquals(audio, null) && stopAll != null) stopAll.Invoke(audio, new[] { stopImmediately });
+                Exception error;
+                if (!ReferenceEquals(audio, null) && BossRushOfficialAudio.HasStopAll && !BossRushOfficialAudio.TryStopAll(audio, out error)) throw error;
             }
             catch (Exception e) { Debug.LogWarning(TidegateRaidScene.LogTag + " 音效停止失败：" + e.Message); }
         }

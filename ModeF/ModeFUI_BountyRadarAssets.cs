@@ -9,9 +9,7 @@ namespace BossRush
         {
             if (modeFBountyRadarRegularSprite == null)
             {
-                modeFBountyRadarRegularSprite = LoadModeFBountyRadarSpriteFromFile(
-                    MODEF_BOUNTY_RADAR_REGULAR_SPRITE_PATH,
-                    MODEF_BOUNTY_RADAR_REGULAR_SPRITE_PATH_LEGACY);
+                modeFBountyRadarRegularSprite = LoadModeFBountyRadarSprite(MODEF_BOUNTY_RADAR_REGULAR_SPRITE_PATH);
                 if (modeFBountyRadarRegularSprite == null)
                 {
                     // 找不到贴图时的程序化兜底也走 token（B-31）：普通悬赏 DangerText、榜首 WarningText。
@@ -30,9 +28,7 @@ namespace BossRush
         {
             if (modeFBountyRadarLeaderSprite == null)
             {
-                modeFBountyRadarLeaderSprite = LoadModeFBountyRadarSpriteFromFile(
-                    MODEF_BOUNTY_RADAR_LEADER_SPRITE_PATH,
-                    MODEF_BOUNTY_RADAR_LEADER_SPRITE_PATH_LEGACY);
+                modeFBountyRadarLeaderSprite = LoadModeFBountyRadarSprite(MODEF_BOUNTY_RADAR_LEADER_SPRITE_PATH);
                 if (modeFBountyRadarLeaderSprite == null)
                 {
                     modeFBountyRadarLeaderSprite = CreateModeFBountyRadarSprite(
@@ -137,37 +133,15 @@ namespace BossRush
                 texture.width);
         }
 
-        private static Sprite LoadModeFBountyRadarSpriteFromFile(params string[] relativePaths)
+        /// <summary>借自 ModSprites（生产图标包优先，Dev 或缺包读散图）；取不到时调用方画程序化兜底。</summary>
+        private static Sprite LoadModeFBountyRadarSprite(string relativePath)
         {
-            if (relativePaths == null || relativePaths.Length <= 0)
+            Sprite sprite = ModSprites.Get(relativePath);
+            if (sprite != null)
             {
-                return null;
+                ModBehaviour.DevLog("[ModeF] 已加载悬赏雷达贴图: " + relativePath);
             }
-
-            for (int i = 0; i < relativePaths.Length; i++)
-            {
-                string relativePath = relativePaths[i];
-                if (string.IsNullOrEmpty(relativePath))
-                {
-                    continue;
-                }
-
-                try
-                {
-                    Sprite sprite = ItemFactory.GetSpriteFromFile(relativePath);
-                    if (sprite != null)
-                    {
-                        ModBehaviour.DevLog("[ModeF] 已加载悬赏雷达贴图: " + relativePath);
-                        return sprite;
-                    }
-                }
-                catch (Exception e)
-                {
-                    ModBehaviour.DevLog("[ModeF] 加载悬赏雷达贴图失败: " + relativePath + " - " + e.Message);
-                }
-            }
-
-            return null;
+            return sprite;
         }
     }
 }

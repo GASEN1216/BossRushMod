@@ -98,9 +98,6 @@ namespace BossRush
         /// <summary>立绘资产名前缀。完整名 = 前缀 + bossKey 全小写。</summary>
         internal const string PortraitAssetPrefix = "codex_portrait_";
 
-        /// <summary>开发期散图目录（仅开发构建走，缺失即跳过）。</summary>
-        internal const string PortraitDevRawRelativeDir = "Assets/ui/Codex";
-
         #endregion
 
         #region 里程碑（成就 id 在 BossRushAchievementManager 注册）

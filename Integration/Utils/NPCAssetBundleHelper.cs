@@ -41,8 +41,7 @@ namespace BossRush.Utils
 
             try
             {
-                string assemblyLocation = typeof(ModBehaviour).Assembly.Location;
-                string modDir = Path.GetDirectoryName(assemblyLocation);
+                string modDir = ModBehaviour.GetModPath();
                 string bundlePath = Path.Combine(modDir, "Assets", "npcs", bundleFileName);
 
                 ModBehaviour.DevLog(logPrefix + " 尝试加载 AssetBundle: " + bundlePath);

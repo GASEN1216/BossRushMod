@@ -29,8 +29,6 @@ namespace BossRush
             item.DisplayNameRaw = LocKey;
             ModeFItemConfigHelper.SetHiddenMember(item, "weight", 0.3f);
             ModeFItemConfigHelper.ClearInheritedUsage(item);
-            UnityEngine.Sprite icon = ReloadMetronomeIcon.GetSprite(item);
-            if (icon != null) item.Icon = icon;
             InjectLocalization();
             return true;
         }

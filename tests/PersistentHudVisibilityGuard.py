@@ -157,6 +157,7 @@ MODAL = {
     "SkyIsland/SkyIslandStoryPresentation.cs": "天空岛剧情面板（Modal）：交互打开，注册官方 HUD 隐藏令牌",
     "Integration/Codex/CodexView.cs": "图鉴界面（Panel）：玩家主动打开",
     "Integration/Codex/CodexView_Grid.cs": "图鉴详情确认弹窗（ModalConfirm）",
+    "Integration/Collectibles/CollectionBookView.cs": "收藏册界面（Panel）：玩家右键收藏册主动打开",
     "Integration/DailyReport/DailyReportUI.cs": "日报界面（Panel）：玩家主动打开",
     "Integration/NPCs/Courier/OriginalConfirmDialogueAdapter.cs": "快递员确认对话（ModalConfirm）",
     "Integration/UI/ImageViewerUI.cs": "看图器（Modal）：玩家主动打开",

@@ -19,7 +19,6 @@ namespace BossRush
     {
         public const int TYPE_ID = BossRushItemIds.TemperingSolvent;
         public const string PREFAB_NAME = "BossRush_TemperingSolvent";
-        public const string ICON_NAME = "tempering_solvent";
         public const string LOC_KEY_DISPLAY = "BossRush_TemperingSolvent";
 
         public const string DISPLAY_NAME_CN = "回火液";
@@ -65,7 +64,6 @@ namespace BossRush
                 ModeFItemConfigHelper.SetHiddenMember(item, "DescriptionRaw", GetDescription());
                 Tag reforgeTag = ColdQuenchFluidConfig.GetReforgeTag();
                 if (reforgeTag != null && !item.Tags.Contains(reforgeTag)) item.Tags.Add(reforgeTag);
-                EquipmentHelperIcon.TryInjectIcon(item, null, ICON_NAME);
             }
             catch (Exception e)
             {
@@ -112,7 +110,7 @@ namespace BossRush
                 UnityEngine.Object.DontDestroyOnLoad(clone.gameObject);
                 clone.SetTypeID(TYPE_ID);
                 ConfigureItem(clone);
-                ItemAssetsCollection.AddDynamicEntry(clone);
+                BossRushDynamicItemRegistry.Publish(clone);
                 runtimeFallbackRegistered = true;
                 ModBehaviour.DevLog(LogPrefix + "运行时物品已注册");
                 return true;

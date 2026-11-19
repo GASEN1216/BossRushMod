@@ -9,3 +9,5 @@ FactoryResourceLoading 的真实协程通过递归驱动器测试：切换 scene
 四建筑补充：逐字抽取 BuildingModelHelper.TryInstantiateBundle，验证缺文件、缺指定 prefab、成功转交、实例激活异常后的实例与包清理；Unity 替身不验证实际渲染或原生内存释放。
 
 2026-10-10：共享贴图复制 API 由 `tests/fixtures/TextureCopyStubs.cs` 补齐显式替身。ResourceProduction 执行生产 CloneTexture，覆盖不支持、复制参数、成功归属与异常释放；替身不验证真实 GPU 像素。
+
+2026-11-19：ResourceBundleLoader.FindLoaded 是找已加载包的唯一入口，执行生产实现：包内名按 / 与 \ 取最后一段、OrdinalIgnoreCase 全等，子串、已销毁、无名不算，枚举抛错返回 null。RunSpecial 在换场景作废一次尝试后重新判 alreadyLoaded：等场景期间消费方已持有包时直接交给消费方，不发第二次原生加载，迟到的旧请求照常卸载一次。

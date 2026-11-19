@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>7.3</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs;Stubs.cs" />
+    <Compile Include="../../../Integration/Collectibles/CollectibleCatalog.cs" />
+    <Compile Include="../../../Integration/Collectibles/CollectibleTuning.cs" />
+    <Compile Include="../../../Integration/Collectibles/CollectibleLootRoller.cs" />
+    <Compile Include="../../../Integration/Collectibles/CollectionBookPersistence.cs" />
+    <Compile Include="../../../Localization/CollectiblesLocalization.cs" />
+    <Compile Include="../../../Config/ConfigItemIds.cs" />
+    <Compile Include="../../../Common/Data/BossRushJsonValue.cs" />
+    <Compile Include="../../../Utilities/SimpleJsonHelper.cs" />
+  </ItemGroup>
+</Project>

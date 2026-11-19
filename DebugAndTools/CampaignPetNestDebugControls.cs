@@ -162,6 +162,8 @@ namespace BossRush
             CampaignProgressDebugControls.Build(parent, host, report);
             // 同页挂上潮闸镇区（owner 2026-11-06）：清空进度、拨潮相；同款自建面板，宿主仍不加行。
             TidegateProgressDebugControls.Build(parent, host, report);
+            // 同页挂上收集品区（owner 2026-11-19）：必出、倍率、给物品、收藏册全登记 / 清空；同款自建面板，宿主仍不加行。
+            CollectiblesDebugControls.Build(parent, host, report);
         }
 
         /// <summary>

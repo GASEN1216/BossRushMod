@@ -11,7 +11,7 @@
 //   - AssetBundle 只提供模型：仍创建占位 Item，并绑定已加载模型
 //   - AssetBundle 提供完整 Item Prefab：占位符跳过；ConfigureNewWeaponsAfterLoad 仍然处理
 // 调用时机要求：
-//   必须在 EquipmentFactory.LoadAllEquipment() 之后（让 500010 飞行图腾 / 500013 逆鳞 /
+//   必须在 EquipmentFactory.LoadAllEquipmentAsync 完成之后（让 500010 飞行图腾 / 500013 逆鳞 /
 //   500003 龙裔头盔等克隆源已注册到 ItemAssetsCollection），
 //   并在 ConfigureNewWeaponsAfterLoad 之前。
 // ============================================================================
@@ -189,7 +189,7 @@ namespace BossRush
                 existing = ItemFactory.GetLoadedItem(typeId);
                 if (existing != null)
                 {
-                    try { ItemAssetsCollection.AddDynamicEntry(existing); } catch  { /* best-effort fallback intentionally ignored */ }
+                    try { BossRushDynamicItemRegistry.Publish(existing); } catch  { /* best-effort fallback intentionally ignored */ }
                     return true;
                 }
 
@@ -250,7 +250,7 @@ namespace BossRush
                 }
 
                 // 注册到物品系统（在 TryConfigure 之前完成，TryConfigure 内可能依赖 AddDynamicEntry）
-                ItemAssetsCollection.AddDynamicEntry(clone);
+                BossRushDynamicItemRegistry.Publish(clone);
 
                 // 直接走对应 WeaponConfig.TryConfigure 写入 Stats / 标签 / Buff，
                 // 不再依赖 ConfigureNewWeaponsAfterLoad（它走 ItemFactory.loadedItems 缓存路径）
@@ -266,10 +266,6 @@ namespace BossRush
                 {
                     EquipmentHelper.AddTagToItem(clone, tag);
                 }
-
-                // 注入用户提供的图标 PNG（用户只供贴图/模型/音效，物品 prefab 由占位创建）。
-                // 失败时保留克隆源的图标，不影响功能。
-                TryInjectWeaponIcon(clone, typeId);
 
                 ModBehaviour.DevLog("[NewWeaponPlaceholder] 占位符已注册并配置完成: " + prefabName + " (TypeID=" + typeId + ")");
                 return true;
@@ -385,46 +381,6 @@ namespace BossRush
 
             // 实在找不到再退回到通用源（玩家会得到一个能装备但属性接近船票的物品）
             return FindFallbackSource();
-        }
-
-        /// <summary>
-        /// 按 TypeID 路由到对应 Bundle/Icon 名，并尝试从 Equipment/Items PNG 或 Equipment Bundle 读图标
-        /// </summary>
-        private static void TryInjectWeaponIcon(Item clone, int typeId)
-        {
-            string bundle = null;
-            string icon = null;
-
-            if (typeId == NewWeaponIds.ViperDaggerTypeId)
-            {
-                bundle = NewWeaponIds.ViperDaggerBundleName;
-                icon = NewWeaponIds.ViperDaggerIconAssetName;
-            }
-            else if (typeId == NewWeaponIds.SummonStaffTypeId)
-            {
-                bundle = NewWeaponIds.SummonStaffBundleName;
-                icon = NewWeaponIds.SummonStaffIconAssetName;
-            }
-            else if (typeId == NewWeaponIds.EnergyShieldTypeId)
-            {
-                bundle = NewWeaponIds.EnergyShieldBundleName;
-                icon = NewWeaponIds.EnergyShieldIconAssetName;
-            }
-            else if (typeId == NewWeaponIds.FrostSpearTypeId)
-            {
-                bundle = NewWeaponIds.FrostSpearBundleName;
-                icon = NewWeaponIds.FrostSpearIconAssetName;
-            }
-            else if (typeId == NewWeaponIds.ThunderRingTypeId)
-            {
-                bundle = NewWeaponIds.ThunderRingBundleName;
-                icon = NewWeaponIds.ThunderRingIconAssetName;
-            }
-
-            if (!string.IsNullOrEmpty(icon))
-            {
-                EquipmentHelperIcon.TryInjectIcon(clone, bundle, icon);
-            }
         }
 
         /// <summary>

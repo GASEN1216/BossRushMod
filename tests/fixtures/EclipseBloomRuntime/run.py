@@ -35,7 +35,6 @@ INTRO_PRODUCTION = (
     "Utilities/OfficialQuests/OfficialQuestBinding.cs",
 )
 ASSET_PRODUCTION = (
-    "Integration/EclipseBloom/ResidualSunShieldIcon.cs",
     "Integration/EclipseBloom/ResidualSunShieldModel.cs",
     "Integration/EclipseBloom/ResidualSunShieldConfig.cs",
     "Integration/EquipmentFactory_RuntimeModels.cs",

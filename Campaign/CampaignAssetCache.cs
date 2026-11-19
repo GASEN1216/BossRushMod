@@ -1,16 +1,16 @@
 // ============================================================================
 // CampaignAssetCache.cs - 战役立绘与海报加载
 // ============================================================================
-// 形态照 ModeG/ModeGPresentationAssetCache.cs：bundle 优先 → 开发期 raw PNG → 无。
+// 形态照 ModeG/ModeGPresentationAssetCache.cs：campaign_presentation 包优先 → ModSprites（生产图标包 / Dev 散图）→ 无。
 //
 // 【与 Mode G 的关键差别：这里是 fail-open】
 //   Mode G 缺展示资源就拒绝进入模式（fail-closed），因为那是模式的核心呈现。
 //   战役立绘缺失只是「对话没有头像」——官方 DialogueUI 会自动隐藏立绘容器，
 //   对话照常播完，玩法一点不少。所以美术未就绪绝不能挡住战役上线。
 //
-// 【raw PNG fallback 在这里是允许的】
+// 【散图回退在这里是允许的】
 //   与 UI 九宫格图集不同，立绘/海报是整图显示，不需要 border 信息，
-//   运行时 LoadImage 出来的散图与 bundle 里的效果一致。
+//   ModSprites 解码出来的散图与 bundle 里的效果一致。
 //   这让美术可以边出图边看效果，定稿后再打 bundle，调用方零改动。
 // ============================================================================
 
@@ -31,9 +31,6 @@ namespace BossRush
 
         private const string BundleRelativePath = "Assets/ui/campaign_presentation";
         private const string RawRelativeDir = "Assets/ui/Campaign";
-
-        /// <summary>中间人立绘资源名。</summary>
-        internal const string BrokerPortraitAsset = "campaign_portrait_broker";
 
         /// <summary>前冠军立绘资源名。</summary>
         internal const string ChampionPortraitAsset = "campaign_portrait_champion";
@@ -59,7 +56,7 @@ namespace BossRush
         private static readonly Dictionary<string, Sprite> _sprites =
             new Dictionary<string, Sprite>(StringComparer.Ordinal);
 
-        /// <summary>程序化创建的 Sprite/Texture，Unload 时必须显式销毁。</summary>
+        /// <summary>程序化创建的材质等资源，Unload 时必须显式销毁（借自 ModSprites 的图不在这里）。</summary>
         private static readonly List<UnityEngine.Object> _ownedObjects = new List<UnityEngine.Object>();
 
         #endregion
@@ -114,12 +111,6 @@ namespace BossRush
             return _altarMaterial;
         }
 
-        /// <summary>中间人立绘。缺失返回 null（对话会自动隐藏立绘位）。</summary>
-        internal static Sprite GetBrokerPortrait()
-        {
-            return GetSprite(BrokerPortraitAsset);
-        }
-
         /// <summary>前冠军立绘。缺失返回 null。</summary>
         internal static Sprite GetChampionPortrait()
         {
@@ -132,7 +123,7 @@ namespace BossRush
             return GetSprite("campaign_poster_ch" + order);
         }
 
-        /// <summary>按资源名取图。bundle 优先，其次 raw PNG，都没有返回 null。</summary>
+        /// <summary>按资源名取图。bundle 优先，其次 ModSprites，都没有返回 null。</summary>
         internal static Sprite GetSprite(string assetName)
         {
             if (string.IsNullOrEmpty(assetName)) return null;
@@ -144,7 +135,7 @@ namespace BossRush
             try
             {
                 loaded = LoadBundleSprite(assetName);
-                if (loaded == null) loaded = LoadRawSprite(assetName);
+                if (loaded == null) loaded = ModSprites.Get(RawRelativeDir + "/" + assetName + ".png");
             }
             catch (Exception e)
             {
@@ -170,14 +161,11 @@ namespace BossRush
             try
             {
                 // 复用已加载实例：同一个 bundle 被 LoadFromFile 两次会直接失败
-                foreach (AssetBundle loaded in AssetBundle.GetAllLoadedAssetBundles())
+                AssetBundle loaded = ResourceBundleLoader.FindLoaded(PresentationBundleName);
+                if (loaded != null)
                 {
-                    if (loaded != null && loaded.name != null
-                        && loaded.name.IndexOf(PresentationBundleName, StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        _bundle = loaded;
-                        return true;
-                    }
+                    _bundle = loaded;
+                    return true;
                 }
 
                 string modPath = ModBehaviour.GetModPath();
@@ -208,16 +196,6 @@ namespace BossRush
             {
                 return null;
             }
-        }
-
-        private static Sprite LoadRawSprite(string assetName)
-        {
-            Sprite compressed = ProductionIconCache.Get(RawRelativeDir + "/" + assetName + ".png");
-            if (compressed != null) return compressed;
-            if (!ProductionIconCache.AllowRawFallback) return null;
-            Sprite sprite = RawImageLoader.LoadSprite(Path.Combine(ModBehaviour.GetModPath(), RawRelativeDir, assetName + ".png"), assetName);
-            if (sprite != null) { _ownedObjects.Add(sprite.texture); _ownedObjects.Add(sprite); }
-            return sprite;
         }
 
         #endregion

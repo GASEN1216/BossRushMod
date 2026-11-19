@@ -45,7 +45,7 @@ namespace BossRush
                 // 使用 EquipmentFactory 加载飞行图腾 AssetBundle
                 int count = EquipmentFactory.LoadBundle("flight_totem");
 
-                // flight_totem 也可能已经被 LoadAllEquipment 自动加载
+                // flight_totem 也可能已经被 LoadAllEquipmentAsync 自动加载
                 // 此时 LoadBundle 会返回 0，但资源本身是可用的
                 flightTotemPrefab = GetLoadedFlightTotem();
 

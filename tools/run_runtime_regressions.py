@@ -66,6 +66,7 @@ PROJECT_FIXTURES = {
     "SandstormChampionPattern": "SandstormChampionPattern.csproj",
     "EmptyMagazineMine": "EmptyMagazineMine.csproj",
     "RollCallLedger": "RollCallLedger.csproj",
+    "CollectibleLoot": "CollectibleLoot.csproj",
     "ReloadMetronome": "ReloadMetronome.csproj",
     "ModeHCombatRelease": "ModeHCombatRelease.csproj",
     "ReviewSeptember": "ReviewSeptember.csproj",

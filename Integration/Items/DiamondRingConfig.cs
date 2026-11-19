@@ -33,12 +33,7 @@ namespace BossRush
         /// AssetBundle 名称
         /// </summary>
         public const string BUNDLE_NAME = "diamond_ring";
-        
-        /// <summary>
-        /// 图标资源名称
-        /// </summary>
-        public const string ICON_NAME = "DiamondRing";
-        
+
         /// <summary>
         /// 解锁所需好感度等级
         /// </summary>

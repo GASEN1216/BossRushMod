@@ -203,8 +203,7 @@ namespace BossRush
             try
             {
                 // 确定内容目录路径
-                string assemblyLocation = typeof(ModBehaviour).Assembly.Location;
-                string modDir = Path.GetDirectoryName(assemblyLocation);
+                string modDir = ModBehaviour.GetModPath();
                 contentBasePath = Path.Combine(modDir, "WikiContent");
                 
                 string catalogPath = Path.Combine(contentBasePath, "catalog.tsv");

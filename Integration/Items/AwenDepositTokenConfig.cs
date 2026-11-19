@@ -16,7 +16,6 @@ namespace BossRush
         public const int TYPE_ID = 500008;
         public const string BUNDLE_NAME = "awen_courier_token";
         public const string PREFAB_NAME = "AwenCourierToken";
-        public const string ICON_NAME = "AwenCourierToken";
         public const int DEFAULT_MAX_STOCK = 5;
         public const string LOC_KEY_DISPLAY = "BossRush_AwenCourierToken";
         public const string TAG_NAME = "Courier";

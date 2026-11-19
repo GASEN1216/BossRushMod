@@ -609,8 +609,8 @@ namespace BossRush
                 iconLayout.preferredWidth = COLD_QUENCH_ICON_SIZE;
                 iconLayout.preferredHeight = COLD_QUENCH_ICON_SIZE;
 
-                // 尝试加载图标：自带 bundle → 官方物品元数据图标；都取不到就不画这一格（UD-30，不再顶一个「◇」字符）
-                Sprite iconSprite = ItemFactory.GetSprite(ColdQuenchFluidConfig.BUNDLE_NAME, ColdQuenchFluidConfig.ICON_NAME);
+                // 与物品格同一张图标（ModItemIcons）→ 官方物品元数据图标；都取不到就不画这一格（UD-30，不再顶一个「◇」字符）
+                Sprite iconSprite = ModItemIcons.ForType(ColdQuenchFluidConfig.TYPE_ID);
                 if (iconSprite == null)
                 {
                     iconSprite = TryGetItemMetaIcon(ColdQuenchFluidConfig.TYPE_ID);

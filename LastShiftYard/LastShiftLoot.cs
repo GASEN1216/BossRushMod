@@ -509,6 +509,11 @@ namespace BossRush
                 }
                 if (box.Opened) return;
                 box.Opened = true;
+                // 收集品额外一格：只给建箱时就装好的箱子。封签柜、铅封侧柜、落货箱之后还要按班次装货、
+                // 封签柜还要核对头两格，先塞一件收集品会让签收报「货没点齐」，所以这三种不参与；风险柜算高价值。
+                if (box.Kind != "sealed" && box.Kind != "side" && box.Kind != "drop")
+                    CollectibleLootRuntime.NotifyModBoxFirstOpened(loot, CollectibleSeries.LastShift,
+                        box.Kind == "risk" ? CollectibleBoxTier.High : CollectibleBoxTier.Normal, CollectibleTuning.MaxQuality);
                 Action<string> handler = Opened;
                 if (handler != null)
                 {

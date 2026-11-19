@@ -26,7 +26,6 @@
 // ============================================================================
 
 using System.Collections.Generic;
-using System.Reflection;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -385,18 +384,16 @@ namespace BossRush
     /// 官方 UI 音效。官方按钮（<c>Duckov.UI.Animations.ButtonAnimation</c>）悬停播 <c>UI/hover</c>、按下播 <c>UI/click</c>，
     /// 本 Mod 的按钮照同一口径，玩家在官方界面和我们的界面之间来回切，手感一致。
     ///
-    /// 【为什么走反射】<c>AudioManager.Post</c> 的返回值是 FMOD 类型，编译清单没有 FMOD 引用（见 RandomEventEffectsBridge 的注释）。
-    /// MethodInfo 解析一次缓存；只在玩家悬停 / 点击时调用，不在每帧路径上。
+    /// 【为什么走反射】<c>AudioManager.Post</c> 的返回值是 FMOD 类型，编译清单没有 FMOD 引用，统一经 <see cref="BossRushOfficialAudio"/> 调用。
+    /// 只在玩家悬停 / 点击时调用，不在每帧路径上。
     /// </summary>
     internal static class BossRushUISound
     {
-        private static readonly object[] HoverArgs = { "UI/hover" };
-        private static readonly object[] ClickArgs = { "UI/click" };
+        private const string HoverEvent = "UI/hover";
+        private const string ClickEvent = "UI/click";
         /// <summary>鼠标快速扫过一列按钮时的悬停音最小间隔（秒）。</summary>
         private const float HoverInterval = 0.06f;
 
-        private static MethodInfo postMethod;
-        private static bool postResolved;
         private static float nextHoverTime;
 
         internal static void PlayHover()
@@ -407,39 +404,17 @@ namespace BossRush
                 return;
             }
             nextHoverTime = now + HoverInterval;
-            Post(HoverArgs);
+            // 音效不是关键路径：没有 AudioManager 实例或 FMOD 未就绪时静默跳过
+            BossRushOfficialAudio.Post(HoverEvent);
         }
 
         internal static void PlayClick()
         {
-            Post(ClickArgs);
-        }
-
-        private static void Post(object[] args)
-        {
-            try
-            {
-                if (!postResolved)
-                {
-                    postResolved = true;
-                    postMethod = typeof(global::Duckov.AudioManager).GetMethod("Post",
-                        BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(string) }, null);
-                }
-                if (postMethod != null)
-                {
-                    postMethod.Invoke(null, args);
-                }
-            }
-            catch (System.Exception)
-            {
-                // 音效不是关键路径：没有 AudioManager 实例或 FMOD 未就绪时静默跳过
-            }
+            BossRushOfficialAudio.Post(ClickEvent);
         }
 
         internal static void ResetStaticCaches()
         {
-            postMethod = null;
-            postResolved = false;
             nextHoverTime = 0f;
         }
     }

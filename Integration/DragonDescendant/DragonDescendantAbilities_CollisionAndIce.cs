@@ -61,7 +61,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 播放自定义音效（通用方法，使用缓存的反射）
+        /// 播放自定义音效（通用方法，经 BossRushOfficialAudio 调官方 PostCustomSFX）
         /// </summary>
         /// <param name="fileName">音效文件名</param>
         /// <param name="target">播放目标GameObject</param>
@@ -69,22 +69,10 @@ namespace BossRush
         {
             try
             {
-                // 缓存AudioManager反射（只执行一次）
-                if (!audioManagerReflectionCached)
-                {
-                    CacheAudioManagerReflection();
-                }
-
-                if (cachedAudioPostCustomSFXMethod == null) return;
+                if (!BossRushOfficialAudio.HasPostCustomSfx) return;
 
                 // 获取mod基础路径
-                string baseDir = null;
-                try
-                {
-                    baseDir = System.IO.Path.GetDirectoryName(GetType().Assembly.Location);
-                }
-                catch { }
-
+                string baseDir = ModBehaviour.GetModPath();
                 if (string.IsNullOrEmpty(baseDir)) return;
 
                 // 查找音效文件
@@ -107,9 +95,9 @@ namespace BossRush
                     return;
                 }
 
-                // 使用缓存的方法调用
-                object[] args = new object[] { filePath, target, false };
-                cachedAudioPostCustomSFXMethod.Invoke(null, args);
+                object instance;
+                Exception error;
+                if (!BossRushOfficialAudio.TryPostCustomSfx(filePath, target, false, out instance, out error)) throw error;
                 ModBehaviour.DevLog("[DragonDescendant] 播放音效: " + filePath);
             }
             catch (Exception e)

@@ -99,7 +99,7 @@ namespace BossRush
                 if (existing != null)
                 {
                     FrostThunderSetConfig.TryConfigureByTypeId(existing);
-                    try { ItemAssetsCollection.AddDynamicEntry(existing); } catch  { /* best-effort fallback intentionally ignored */ }
+                    try { BossRushDynamicItemRegistry.Publish(existing); } catch  { /* best-effort fallback intentionally ignored */ }
                     return true;
                 }
 
@@ -144,7 +144,7 @@ namespace BossRush
                 FrostThunderSetConfig.TryConfigureByTypeId(clone);
 
                 // 注册到物品系统
-                ItemAssetsCollection.AddDynamicEntry(clone);
+                BossRushDynamicItemRegistry.Publish(clone);
 
                 ModBehaviour.DevLog("[SetBonusPlaceholder] 占位符已注册: " + prefabName + " (TypeID=" + typeId + ")");
                 return true;

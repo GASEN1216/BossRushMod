@@ -64,6 +64,45 @@ static class Program
         {
             Check(flow.Step() && AssetBundle.Loads == loadsBefore + 1, "released bundle loads again");
         }
+        // 2026-11-19：换场景作废一次尝试后，重试前重新判 alreadyLoaded——等场景期间消费方已自己持有包时不再发原生加载。
+        AssetBundle.Next.Finish(); // drain the request the previous case left behind
+        owner = new ModBehaviour(); old = NewRequest(); oldRequest = AssetBundle.Next; consumed = 0;
+        bool held = false;
+        UnityEngine.SceneManagement.SceneManager.ActiveHandle = 3;
+        int loads = AssetBundle.Loads;
+        using (var flow = new Flow(FactoryResourceLoading.RunSpecial(owner, "fixture", () => consumed++, () => held)))
+        {
+            Check(flow.Step() && AssetBundle.Loads == loads + 1, "not-yet-held bundle starts one async load");
+            UnityEngine.SceneManagement.SceneManager.ActiveHandle = 4;
+            held = true;
+            Check(!flow.Step() && consumed == 1 && AssetBundle.Loads == loads + 1, "retry re-checks the holder and hands over without a second native load");
+            Check(old.Unloads == 0, "abandoned first request is still draining");
+            oldRequest.Finish();
+            Check(old.Unloads == 1 && consumed == 1, "abandoned first request still releases its late result exactly once");
+        }
+    }
+    // 2026-11-19：找已加载包的唯一入口。名字最后一段 OrdinalIgnoreCase 全等；子串、已销毁、无名都不算，枚举抛错返回 null。
+    static void FindLoadedMatching()
+    {
+        var plain = new AssetBundle { name = "codex_portraits" };
+        var nested = new AssetBundle { name = "assets/ui\\Modeh_Presentation" };
+        var longer = new AssetBundle { name = "codex_portraits_v2" };
+        var gone = new AssetBundle { name = "achievement_icons", Destroyed = true };
+        var nameless = new AssetBundle { name = null };
+        AssetBundle.Loaded.Clear();
+        AssetBundle.Loaded.AddRange(new[] { nameless, gone, longer, plain, nested });
+        Check(ResourceBundleLoader.FindLoaded("codex_portraits") == plain, "exact file name is found");
+        Check(ResourceBundleLoader.FindLoaded("CODEX_PORTRAITS") == plain, "file name comparison ignores case");
+        Check(ResourceBundleLoader.FindLoaded("modeh_presentation") == nested, "only the last / or \\ segment of the bundle name is compared");
+        Check(ResourceBundleLoader.FindLoaded("codex") == null && ResourceBundleLoader.FindLoaded("portraits_v2") == null, "a substring of a loaded name is not a match");
+        Check(ResourceBundleLoader.FindLoaded("achievement_icons") == null, "destroyed bundle is not returned");
+        Check(ResourceBundleLoader.FindLoaded(null) == null && ResourceBundleLoader.FindLoaded("") == null, "empty file name finds nothing");
+        Check(ResourceBundleLoader.IsNamed(longer, "codex_portraits_v2") && !ResourceBundleLoader.IsNamed(longer, "codex_portraits")
+            && !ResourceBundleLoader.IsNamed(null, "codex_portraits") && !ResourceBundleLoader.IsNamed(nameless, ""), "shared name rule");
+        AssetBundle.FailEnumeration = true;
+        Check(ResourceBundleLoader.FindLoaded("codex_portraits") == null, "enumeration failure returns null instead of throwing");
+        AssetBundle.FailEnumeration = false;
+        AssetBundle.Loaded.Clear();
     }
     static AssetBundle NewRequest()
     {
@@ -135,28 +174,12 @@ static class Program
         ProductionIconCache.ResetStaticCaches();
         Check(ProductionIconCache.Get("Assets\\Items\\icon.png")==icon,"legacy path alias resolves");
         Check(ProductionIconCache.Get("assets/items/icon.png")==icon,"cached sprite reused");
-        Check(ProductionIconCache.IsBorrowed(icon)&&ProductionIconCache.IsBorrowed(icon.texture),"bundle ownership");
+        Check(ProductionIconCache.Contains("Assets\\Items\\icon.png")&&!ProductionIconCache.Contains("assets/items/none.png")&&!ProductionIconCache.Contains("../icon.png"),"read-only directory probe");
         Check(!ProductionIconCache.AllowRawFallback,"release build with bundle forbids PNG fallback");
         Check(ProductionIconCache.Get("../icon.png")==null,"path traversal rejected");
         ProductionIconCache.ResetStaticCaches();ProductionIconCache.ResetStaticCaches();
         Check(b.Unloads==1&&icon.Destroyed&&icon.texture.Destroyed,"idempotent bundle release");
         AssetBundle.Sync=null;Check(ProductionIconCache.AllowRawFallback,"missing bundle preserves fallback");
-        var sourceTexture = new Texture2D { width = 256, height = 128, mipmapCount = 3,
-            filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp, anisoLevel = 2 };
-        SystemInfo.copyTextureSupport = UnityEngine.Rendering.CopyTextureSupport.None;
-        Check(ProductionIconCache.CloneTexture(sourceTexture, "unsupported") == null, "unsupported GPU copy preserves fallback");
-        SystemInfo.copyTextureSupport = UnityEngine.Rendering.CopyTextureSupport.Basic;
-        var copy = ProductionIconCache.CloneTexture(sourceTexture, "owned-copy");
-        Check(copy != null && copy != sourceTexture && copy.CopiedFrom == sourceTexture && copy.name == "owned-copy",
-            "shared texture copier creates an independent owned target and requests GPU copy");
-        Check(copy.width == 256 && copy.height == 128 && copy.mipmapCount == 3 && copy.graphicsFormat == sourceTexture.graphicsFormat
-            && copy.filterMode == sourceTexture.filterMode && copy.wrapMode == sourceTexture.wrapMode && copy.anisoLevel == 2,
-            "GPU copy preserves dimensions format mip count and sampling settings");
-        Graphics.FailCopy = true;
-        Check(ProductionIconCache.CloneTexture(sourceTexture, "failed-copy") == null && Graphics.LastTarget.Destroyed && !sourceTexture.Destroyed,
-            "failed GPU copy releases only the new target and preserves the source");
-        Graphics.FailCopy = false;
-        UnityEngine.Object.Destroy(copy); UnityEngine.Object.Destroy(sourceTexture);
         var m=ResourcePerformanceMetrics.Summarize(new double[]{5,1,3,2,4},5,"ms","test");
         Check(m.p50==3&&m.p95==5&&m.mean==3,"nearest-rank quantiles");
         Check(ResourcePerformanceMetrics.Summarize(new double[]{double.NaN},1,"ms","test").status=="unavailable","NaN unavailable");
@@ -166,6 +189,7 @@ static class Program
             Check(!ResourcePerformanceMetrics.IsComplete(10,600,flags[0],flags[1],flags[2],out reason),"interrupted windows fail");
         Check(!ResourcePerformanceMetrics.IsComplete(9.999,600,false,true,false,out reason),"short window fails");
         FactoryTransitions(path);
-        Console.WriteLine("ResourceProduction PASS: native late completion, disposal, timeout, failure, aliases/ownership, metric judges");
+        FindLoadedMatching();
+        Console.WriteLine("ResourceProduction PASS: native late completion, disposal, timeout, failure, aliases/ownership, loaded-bundle lookup, metric judges");
     }
 }

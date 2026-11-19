@@ -198,11 +198,13 @@ namespace BossRush
         public void CleanupDailyReportMailbox() { DailyReportMailbox.CleanupDailyReportMailbox(); }
 
         public void InitCampaignBoardBuilding() { CampaignBoard.InitCampaignBoardBuilding(); }
+        internal bool HasCampaignBoardBundle { get { return _campaignBoardBuilder != null && _campaignBoardBuilder.HasAssetBundle; } }
         internal void TryInitializeCampaignBoardEarly() { CampaignBoard.TryInitializeCampaignBoardEarly(); }
         internal void RegisterCampaignNotesForScene() { CampaignBoard.RegisterCampaignNotesForScene(); }
         public void CleanupCampaignBoardBuilding() { CampaignBoard.CleanupCampaignBoardBuilding(); }
 
         public void InitBackMountainShowcase() { ShowcaseBuilding.InitBackMountainShowcase(); }
+        internal bool HasBackMountainShowcaseBundle { get { return _showcaseBuildingBuilder != null && _showcaseBuildingBuilder.HasAssetBundle; } }
         internal void TryInitializeBackMountainShowcaseEarly() { ShowcaseBuilding.TryInitializeBackMountainShowcaseEarly(); }
         internal void NotifyShowcaseSlotChanged() { ShowcaseBuilding.NotifyShowcaseSlotChanged(); }
         public void CleanupBackMountainShowcase() { ShowcaseBuilding.CleanupBackMountainShowcase(); }

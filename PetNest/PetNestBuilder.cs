@@ -48,9 +48,6 @@ namespace BossRush
         /// （官方 GetPrefab 按 e.name == prefabName 匹配）。</summary>
         private const string PETNEST_PREFAB_NAME = "PetNestRelicNest";
 
-        /// <summary>占位 AssetBundle 文件标记（bundle 尚未产出时的占位内容）。</summary>
-        private const string PETNEST_BUNDLE_PLACEHOLDER_MARKER = "PETNEST_PLACEHOLDER_BUNDLE";
-
         /// <summary>建筑占地尺寸。</summary>
         private static readonly Vector2Int PETNEST_BUILDING_SIZE = new Vector2Int(2, 2);
 
@@ -183,24 +180,10 @@ namespace BossRush
         private void LoadPetNestBuildingIcon()
         {
             if (petNestBuildingIcon != null) return;
-            try
-            {
-                string modDir = Path.GetDirectoryName(typeof(ModBehaviour).Assembly.Location);
-                if (string.IsNullOrEmpty(modDir)) return;
-                string iconPath = Path.Combine(modDir, Path.Combine("Assets", "buildings"));
-                iconPath = Path.Combine(iconPath, PETNEST_BUILDING_ID + ".png");
-                if (!File.Exists(iconPath))
-                {
-                    ModBehaviour.DevLog("[PetNest] 建筑图标缺失，使用官方默认图标");
-                    return;
-                }
-
-                petNestBuildingIcon = ItemFactory.GetSpriteFromFile(Path.Combine("Assets", "buildings", Path.GetFileName(iconPath)));
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[PetNest] 建筑图标加载失败: " + e.Message);
-            }
+            // 借自 ModSprites：生产图标包优先，Dev 或缺包读散图。
+            petNestBuildingIcon = ModSprites.Get("Assets/buildings/" + PETNEST_BUILDING_ID + ".png");
+            if (petNestBuildingIcon == null)
+                ModBehaviour.DevLog("[PetNest] 建筑图标缺失，使用官方默认图标");
         }
 
         private void LoadPetNestBuildingModel()
@@ -208,15 +191,22 @@ namespace BossRush
             if (petNestModelPrefab != null) return;
             try
             {
-                string modDir = Path.GetDirectoryName(typeof(ModBehaviour).Assembly.Location);
+                string modDir = ModBehaviour.GetModPath();
                 if (string.IsNullOrEmpty(modDir)) return;
                 string bundlePath = Path.Combine(modDir, Path.Combine("Assets", "buildings"));
                 bundlePath = Path.Combine(bundlePath, PETNEST_BUILDING_ID);
 
-                if (!File.Exists(bundlePath) || IsPetNestPlaceholderBundle(bundlePath))
+                if (!File.Exists(bundlePath))
                 {
-                    ModBehaviour.DevLog("[PetNest] 建筑模型 bundle 缺失或为占位，使用占位圆柱体");
+                    ModBehaviour.DevLog("[PetNest] 建筑模型 bundle 缺失，使用占位圆柱体");
                     return;
+                }
+
+                // 重载前先放下旧句柄（同许愿台 / 婚礼教堂）：同一文件还开着时再 LoadFromFile 会被 Unity 拒绝。
+                if (petNestAssetBundle != null)
+                {
+                    AssetBundleUnloadHelper.TryUnload(petNestAssetBundle, "[PetNest]");
+                    petNestAssetBundle = null;
                 }
 
                 petNestAssetBundle = ResourceBundleLoader.LoadFromFile(bundlePath);
@@ -235,24 +225,6 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[PetNest] 建筑模型加载失败: " + e.Message);
-            }
-        }
-
-        private static bool IsPetNestPlaceholderBundle(string bundlePath)
-        {
-            try
-            {
-                FileInfo info = new FileInfo(bundlePath);
-                if (!info.Exists) return false;
-                if (info.Length == 0L) return true;
-                if (info.Length > 128L) return false;
-                string text = File.ReadAllText(bundlePath);
-                return string.Equals(
-                    text.Trim(), PETNEST_BUNDLE_PLACEHOLDER_MARKER, StringComparison.Ordinal);
-            }
-            catch (Exception)
-            {
-                return false;
             }
         }
 

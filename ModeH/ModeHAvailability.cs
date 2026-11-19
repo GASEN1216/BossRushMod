@@ -6,7 +6,7 @@ namespace BossRush
     /// Mode H 入口可用性与编译期开发门（设计提案 §16、§18.1、§25.1、§29.14）。
     ///
     /// 说明：
-    /// - 这里的两个 Allow* 常量是**编译期开发门**，不进配置、不进存档、不进 ModConfig，
+    /// - 这里的 Allow* 常量是**编译期开发门**，不进配置、不进存档、不进 ModConfig，
     ///   发布构建恒为 false，由 ModeHConfigApiGuard 断言；
     /// - 可用性结果是不持久化的只读派生（三态见 <see cref="ModeHAvailabilityStatus"/>）；
     /// - 真实仓库抵押**没有开关**：进入模式即知情同意（§22.1），
@@ -15,12 +15,6 @@ namespace BossRush
     public static class ModeHAvailability
     {
         #region 编译期开发门（发布构建恒为 false）
-
-        /// <summary>
-        /// 开发构建是否允许用 raw PNG 冒充正式展示 bundle。
-        /// 正式构建必须为 false，缺 bundle 时 fail-closed。
-        /// </summary>
-        public const bool AllowDevRawPngFallback = false;
 
         /// <summary>
         /// 是否暴露 §29.14 的编译期控制点诊断 harness。

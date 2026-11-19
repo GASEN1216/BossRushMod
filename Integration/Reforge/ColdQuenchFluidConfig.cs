@@ -34,17 +34,7 @@ namespace BossRush
         /// AssetBundle 名称
         /// </summary>
         public const string BUNDLE_NAME = "cold_quench_fluid";
-        
-        /// <summary>
-        /// 彩色图标资源名称
-        /// </summary>
-        public const string ICON_NAME = "ColdQuenchFluid";
-        
-        /// <summary>
-        /// 灰色图标资源名称
-        /// </summary>
-        public const string ICON_GRAY_NAME = "ColdQuenchFluid_Gray";
-        
+
         // ============================================================================
         // 本地化配置
         // ============================================================================

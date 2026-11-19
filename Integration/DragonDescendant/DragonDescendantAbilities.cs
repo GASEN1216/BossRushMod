@@ -153,28 +153,6 @@ namespace BossRush
         /// </summary>
         private float accumulatedIceDamage = 0f;
 
-        // ========== 性能优化：AudioManager反射缓存 ==========
-
-        /// <summary>
-        /// 缓存的AudioManager类型
-        /// </summary>
-        private static System.Type cachedAudioManagerType = null;
-
-        /// <summary>
-        /// 缓存的Post方法
-        /// </summary>
-        private static MethodInfo cachedAudioPostMethod = null;
-
-        /// <summary>
-        /// 缓存的PostCustomSFX方法
-        /// </summary>
-        private static MethodInfo cachedAudioPostCustomSFXMethod = null;
-
-        /// <summary>
-        /// 是否已缓存AudioManager反射
-        /// </summary>
-        private static bool audioManagerReflectionCached = false;
-
         /// <summary>
         /// 是否处于冰冻减速状态
         /// </summary>

@@ -270,3 +270,106 @@
 - 未取得 L3：真实输入栈、场景物理遮挡、过图存档时序和运行帧耗仍需游戏内验证。审查探针模拟宿主，不视作实机证据。
 
 <!-- 2026-11-13 archive byte SHA-256: 04652d5ce38170410f167fc908553bd4016a9e12aedf9d1bdac83decee7d2057 -->
+
+## 2026-10-11 最近五次提交审查修复（COMPAT / SAFE，L1/L2）
+
+| ID | 等级 / 状态 / 分类 | 修复与验证边界 |
+| --- | --- | --- |
+| CR-2026-10-11-001 | P2 / Fixed / COMPAT | 冠军有效战斗遇到零游戏帧时长时不推进 Update 内招式；暂停与拍照保留冲锋，失效 owner 仍清理。真实 Update / Dashes 暂停与恢复回归通过。 |
+| CR-2026-10-11-002 | P2 / Fixed / COMPAT | 穿墙冲锋以不超过 50 ms 的子步消费整帧时间，逐段验证地面；超时采用位移帧的已消费时间，途中取消停止剩余子步。120/60/30/20/10 FPS、交替长帧、断崖/高度、穿墙、翻滚与部分安全段伤害回归通过。 |
+| CR-2026-10-11-003 | P2 / Fixed / COMPAT | 棍卫三档地面光带显式启用游戏时间；玩家默认仍用未缩放时间，光带几何、颜色与寿命参数不变。完整生产光带与棍卫前摇回归覆盖拍照、慢动作、结束与销毁。 |
+| CR-2026-10-11-004 | P2 / Fixed / SAFE | 两个 2026-09-23 已闭环章节逐字追加到既有月归档，正文留索引；原文 SHA-256 与归档字节一致，1500 行上限未放宽。LedgerSizeGuard 通过。 |
+
+新增执行入口 `SandstormCombatTiming`，旧代码先有 8 个场景失败，修复后通过；原 SandstormCombatRuntime / SandstormChampionPattern 继续覆盖完整调度表。只增加普通分支与小步地面检查，不改伤害、招式数值、音效、资源、存档或 Harmony 目标。最终守卫、正式编译及回归证据见 FIX_TRACKER 同日条目；没有实机 L3，不以离线通过承诺观感或性能。
+
+## 2026-10-10 提交前复核（COMPAT / SAFE / OPERATIONAL，L1/L2）
+
+- CR-2026-10-10-004，P1 / Fixed：钟守的商品原仅挂本人交互，`SkyIslandResidents.SpawnOneAsync` 会跳过婚后居民，缺席时岛内无法兑换。`SkyIslandWorldStoryServices` 现让 `Search_H` 复用同一 `ReloadMetronomeShopInteractable`，装配/清理与渡口商店共用方法，不增加 Tick。真实方法回归 955 项通过；断开钟庭入口的隔离探针准确转红，字节与 SHA-256 还原后通过。本人及婚后基地入口保持不变，实机可见性待验。
+- CR-2026-10-10-005，P2 / Fixed：AchievementIcons 与 ResourceProduction 的旧 Unity 替身缺少共享 `ProductionIconCache.CloneTexture` 使用的 GraphicsFormat / CopyTexture API，导致两组回归编译失败。仅补共享测试替身，新增不支持、尺寸/格式/mip/采样参数与异常释放断言；两组回归均通过，不改变生产复制逻辑，不代表真实 GPU 像素或耗时通过。
+
+- CR-2026-10-10-006，P2 / Fixed：已提交的点名册资源清单要求原图和正式包 alias，但本机两者均缺，导致 DailyReportArt 正式资源校验失败。复用 owner 指定作者工程原 PNG，以现有 IconsBuild 重建并只替换本地 production_icons；349 个 alias/Sprite 与压缩、预算、日报像素检查通过，旧包已备份。未部署实机，私有资源不进公开 commit。完整证据见[提交前审核报告](docs/reports/reviews/2026-10-10-提交前全面审核.md)。
+
+## 2026-10-10 节拍器生产图标持有（COMPAT，L1/L2）
+
+- CR-2026-10-10-003，P2 / Fixed：节拍器接入独立资源包时直接把包内 Sprite 交给持久物品 prefab，`ReloadMetronomeAssets.ResetStaticCaches()` 的 `Unload(true)` 会销毁其依赖贴图。已改为 `ReloadMetronomeIcon` 经 `ProductionIconCache.CloneTexture` 持有 GPU 副本，并以组件实例 ID 限定释放 owner；普通物品克隆销毁不释放副本。守卫删除实际 GPU 复制调用后按预期转红，按字节恢复、SHA-256 核对后通过。此项为交付前静态发现，热重载实机仍待验。
+
+## 2026-10-10 点名册获取与商店收口（COMPAT，L1/L2）
+
+- CR-2026-10-10-001，P1 / Fixed：先前把唯一获取途径接到普通玩家无法正常遇到的小满示例蓝图。商品迁至天空岛浮舟 sky_fuzhou，好感 3 级、售价 20000；Search_A 渡口工台追加同配置商店，兜底婚后离岛和居民生成失败。数据回归 666 条、婚姻 949 条、交互 949 条通过；删除装配/清理接线与错误 NPC ID 等 6 个隔离探针准确转红。
+- CR-2026-10-10-002，P2 / Fixed：NPCShopSystem.Cleanup 销毁店铺对象却未关闭官方 StockShopView，owner 回收或 runtime 清理后仍可能残留窗口与输入屏蔽。现先停服务、退订，再仅关闭显示当前店且仍打开的 View；NPCShopPayment 18 条通过，旧 Cleanup 与删 Target 归属检查均在隔离副本转红。
+
+743 项守卫、Windows 正式编译和 73 包部署哈希通过；13 个关键部署文件另行匹配。L3 待 RC-FZ-01～05，见[浮舟商店修正报告](docs/reports/testing/2026-10-10-点名册浮舟商店修正.md)。
+
+## 2026-10-09 小满商店升级提示（COMPAT，L1/L2）
+
+- CR-2026-10-09-001，P2 / Fixed：PermanentDuckNpcAffinityConfig.UnlocksByLevel 与 AffinityUIManager 都添加“解锁”/“Unlocked”前缀，导致好感升级横幅重复显示。配置改为仅返回 ShopName；中英文完整名称回归先确认旧实现失败，修正后 PermanentDuckNpcDialogue 666 checks 通过。正式编译部署完成；真实横幅与婚后购买待 RC-05 实机检查。见[点名册交付报告](docs/reports/testing/2026-10-09-点名册与小满商店交付.md)。
+
+## 2026-10-08 噬魂挽歌内部名称显示（COMPAT，L1/L2）
+
+- CR-2026-10-08-021，P1 / Fixed：500044 专属包走 EquipmentFactory，旧装配只登记 ItemFactory 与实例恢复；文本位于配置末段，未接统一启动/语言刷新。首次查看可能漏出 PhantomScythe_Melee_Item，切语言保留旧文本。补装备配置器 TypeID 过滤、统一文本注入及实际 raw key/历史别名，先命名再配置组件；保留编号和资源身份。实际包字段已读回；28 项生产入口/文本断言、4 个行为与 1 个登记守卫反向探针通过。见[文本修复报告](docs/reports/testing/2026-10-08-噬魂挽歌内部名称显示修复.md)。
+
+提交前再次独立复核 CR-2026-10-08-018～021，未发现新增 confirmed issue。提交候选全量 743 项守卫、122 组回归与 Windows 正式编译通过；竞技场另做重入取消及 MoveNext / Current 异常释放探针，57 项通过。L3、完整 Unity 生命周期及自定义位置地图旧流程的边界见[提交前复核报告](docs/reports/reviews/2026-10-08-天空岛与镰刀提交前复核.md)。
+
+## 2026-10-08 天空岛入场与兼容恢复（COMPAT / WIRE+，L1/L2）
+
+- CR-2026-10-08-018，P1 / Fixed：旧竞技场等待跨图迟到派发，可能在岛上误启动裸装 Mode D。由 Integration owner 绑定原场景、请求代数和角色，在切图、后继请求与销毁时取消；超时不派发，嵌套协程透传并释放。LegacyArenaEntry 53 项及模式 / 征程接线回归通过，旧码与归属 / 取消变异准确转红。
+- CR-2026-10-08-019，P1 / Fixed：不支持或缺少 GBuffer 的世界 shader 原来直接阻断整趟入场。现按支持与 GBuffer 检查选择本机官方材质，岛面 / 水面优先双面 Mask，保留世界材质名、贴图与参数；全部候选不可用及碰撞缺失仍拒绝。完整生产渲染类 180 项与旧码 / 7 类变异通过。本机官方 Cull、GBuffer 及当前包 alpha / 单位 ST 已核实，GPU 等价与新增图形后端支持未承诺。
+- CR-2026-10-08-020，P1 / Fixed：慢读包挤占相机激活预算、导航 owner / data 延迟以及可选表现失败均可能误返航。激活独立计时，导航真实就绪后再扫描；HUD / 灰显 / 路灯 / 音景 / 居民 / 预热隔离，失败清理，居民装置任务兜底。预热 Build 上层与 owner 取消均释放，首个失败原因在基地黑幕后提示。租约 100、婚姻 949、战斗 64 条执行验证及 9 个隔离反向探针通过。
+
+Fixed 表示代码与 L2 闭环；全量 743 项守卫、122 组回归、Windows 正式构建与 73 包部署哈希验证通过，最终引用清理另复跑相关验证。尚未取得反馈玩家当次日志或 L3，不能宣称已经确认玩家当次根因、实际画面或性能通过。证据与 SI-01～06 人工步骤见 [入场修复报告](docs/reports/sky-island/2026-10-08-天空岛入场与兼容修复.md)。
+
+## 2026-10-08 未提交改动全面审核（COMPAT / OPERATIONAL，L1/L2）
+
+| ID | 级别 / 状态 | 证据、根因与修复 |
+| --- | --- | --- |
+| CR-2026-10-08-014 | P1 / Fixed | F3 清空失败仍留下默认 pending，后续 Tick 可能真正清空。生产事务回归确认；改候选 store 保存，失败恢复原快照与重试义务，确认槽号再次核对，提交成功后的界面异常不误报失败，并清旧对白队列。 |
+| CR-2026-10-08-015 | P2 / Fixed | 原磁盘诊断走官方内存缓存。改 ES3 File 显式读回；遗漏物理更新的故障注入与改回 Cache 的反向探针准确失败。Dev 真编译补齐 EasySave3 引用和构造器重载。 |
+| CR-2026-10-08-016 | P1 / Fixed | 三 Boss 补注册时配置尚未载入，单纯作废筛选或立即读默认配置均不闭环。按真实宿主 Awake → LoadConfig → OnStart 顺序回归，由 BossFilter.OnStart 统一恢复实际禁用状态/因子；20 项反向探针通过。 |
+| CR-2026-10-08-017 | P2 / Fixed | 共享包卸载摧毁地雷盒持久 prefab 借用的图标。生产 Config/Icon 回归重现，由 prefab 持有独立压缩 Texture/Sprite 副本；4 项资源所有权反向探针通过。 |
+
+全量 743 项守卫、120 组回归、最终征程专项回归、Windows Dev/正式编译及部署哈希验证通过；保留 L3 与实际性能采样缺口。逐项需求、制品哈希与人工验收见 [审核报告](docs/reports/reviews/2026-10-08-未提交改动全面审核.md)。
+
+## 2026-10-08 实档章节缺失、沙圈出生点与末阶段调度（COMPAT，L1/L2）
+
+- CR-2026-10-08-008，P1 / Fixed：授权只读的实际征程 JSON 缺少整个 chapters 字段，前五章交付 token 仍在。以共享显式 JSON 编解码替换 Unity DTO 序列化，按持久化交付凭据兼容恢复，不重新发奖。
+- CR-2026-10-08-009，P2 / Fixed：双生沙圈把 target 作为出生位置，直接落在玩家两侧。现统一使用 Boss 发射点贴地，并保持接触或到时凝柱。
+
+末阶段停在首次换侧为日志确认的症状，宿主触发点尚未复现；局部改为 Update 驱动嵌套招式及定时等待，隔离回归验证宿主停止协程不会中断主攻击。泡泡官方 Hurt / HealthSimpleBase / OnShotDown 接线执行回归通过，外观更新为空心薄弧及细砂裂光。证据边界及人工验收见 [本轮报告](docs/reports/testing/2026-10-08-实档章节恢复与沙暴战斗修复.md)。没有离线修改玩家存档，未启动游戏。
+
+## 2026-10-08 首次读档时机、沙暴持续与星阙命中（COMPAT，L1/L2）
+
+- CR-2026-10-08-005，P1 / Fixed：征程主菜单阶段缓存未就绪的槽位并提前锁定初始化；对齐天空岛序章的关卡就绪门，已加载同槽保留退出保存，未知事实不反锁线索。真实生产读写/延迟加载/退出/换槽及 9 对独立写读进程回归通过。
+- CR-2026-10-08-006，P1 / Fixed：召卫清除沙柱且存活门禁止喷弹；改并行召卫与沙柱独立寿命，转阶段也保留场上柱。
+- CR-2026-10-08-007，P2 / Fixed：星阙重击没有核验 Hurt 结果及实际掉血，空砸仍强反馈；现真实伤害才触发停顿、震屏、击退，兼容沙泡简单生命并移除重复提示。
+
+Fixed 为代码和离线闭环，真实重启与战斗尚待 L3。新制品、机制来源和实机步骤见 [升级报告](docs/reports/testing/2026-10-08-征程重启进度与猪鲨机制升级.md)。
+
+## 2026-10-08 沙暴冠军接管与移动（COMPAT，L1/L2）
+
+- CR-2026-10-08-012，P1 / Fixed：NodeCanvas BehaviourTree 继承 ScriptableObject，旧暂停辅助类转 Component 得空，原图可继续跑。新冠军/棍卫局部显式 Stop 四图与 owner，停 AI 子树、剥原武器和技能；未整体替换共享辅助类。
+- CR-2026-10-08-013，P1 / Fixed：新冠军连续移动使用 SetPosition，官方每次暂停贴地并清速度，且每米近点 0.8 门槛可拒绝正常地板；改用官方 SetForceMoveVelocity / ECM2 与低频 A* 绕障，根碰撞体不放大，受阻后结束整组连冲转绕障。
+
+用户反馈站桩，日志确认生成成功及 BehaviourTrees:0；没有记录具体地形拒绝分支。Fixed 表示代码与 L2 验证闭环，未宣称新 DLL 实机移动通过。小弟无掉落创建窗口、额外奖励过滤和清理接线已检查；证据见 [修复报告](docs/reports/testing/2026-10-08-沙暴冠军站桩与召唤修复.md)。
+
+## 2026-10-08 进入竞技场的额外预热（COMPAT，L1/L2）
+
+- CR-2026-10-08-010，P2 / Fixed：普通 DEMO 场景无条件启动整套 Mode E 预热；已删除场景公共路径的启动，E/F 实际入口仍保留按需准备。
+- CR-2026-10-08-011，P2 / Fixed：焚皇戟管理器切图时同步加载龙王包，背包闲置也承担成本；现由主玩家手持事件触发异步加载并分帧扩池，离手/死亡/切图/停用取消，预览不抢同步请求。
+
+本轮日志可证旧戟初始化时载包，Mode E 的 1607.5 ms 仅来自此前对话，本轮未重获竞技场样本。报名石无主因证据，性能提升比例和视觉手感等待 L3。守卫、回归、正式构建及部署核对记录见 [交付报告](docs/reports/testing/2026-10-08-沙暴冠军与星阙交付.md)。
+
+## 2026-10-08 空仓地雷盒全面复审（COMPAT / SAFE，L1/L2）
+
+| ID | 级别 / 状态 / 分类 | 根因与最小修复 |
+| --- | --- | --- |
+| CR-2026-10-08-002 | P2 / Fixed / COMPAT | ManualEquipmentRecovery 夹具未链接新增引用的 BossRushItemIds，导致 CS0103；补链接真实 Config/ConfigItemIds.cs，复跑 57 checks 通过。 |
+| CR-2026-10-08-003 | P2 / Fixed / COMPAT | 地雷只等待目标场景 LevelBeginInitializing 取消，官方旧场景黑幕渐变期间仍可引爆。订阅 SceneLoader.onStartedLoadingScene 即时取消，使用判据检查 IsSceneLoading，阻断回调中开始切图后的剩余目标。旧生产代码失败后补修，地雷回归扩为 17 场景 / 223 断言。 |
+| CR-2026-10-08-004 | P2 / Fixed / SAFE | 中英 Mod 简介仍写 37 / 20 件装备，和本轮 38 / 21 不一致。同步 WikiContent 源文并补全掉落专题与切图取消说明。 |
+
+全量守卫 738 / 738、执行回归 118 / 118、Windows 正式编译、Wiki 构建与 80 项导航检查通过；未发现剩余 confirmed issue，L3 尚未运行。证据与剩余实机步骤见 [全面复审记录](docs/reports/reviews/2026-10-08-空仓地雷盒全面复审.md)。
+
+## 2026-10-08 空仓地雷盒实现期复核（COMPAT，L1）
+
+CR-2026-10-08-001：P2 / Fixed。新图腾动态 prefab 使用 DontDestroyOnLoad 并留在 ItemAssetsCollection；初版却由 NewWeaponRuntime cleanup 销毁程序化 Sprite/Texture，同进程重新启用时复用旧 prefab 会继续引用失效图标。改由动态 prefab 上的组件拥有资源，用创建者 instanceId 保护共享图标，宿主 cleanup 不再释放它。当前代码审查与正式编译通过；实际热重载未做 L3，证据和验收步骤见 [交付记录](docs/reports/testing/2026-10-08-空仓地雷盒交付与验收.md)。
+
+<!-- 2026-11-19 archive byte SHA-256: f5df1df2845bea8b8a3983e42c3d73eb0cf99451fb47ea8eb608684a6257eaee -->

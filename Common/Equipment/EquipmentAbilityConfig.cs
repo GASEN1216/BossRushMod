@@ -52,10 +52,6 @@ namespace BossRush.Common.Equipment
         /// </summary>
         public virtual string[] ItemTags => Array.Empty<string>();
 
-        /// <summary>
-        /// 图标资源名称（AssetBundle 中的名称）
-        /// </summary>
-        public virtual string IconAssetName => null;
 
         // ========== 能力参数 ==========
 

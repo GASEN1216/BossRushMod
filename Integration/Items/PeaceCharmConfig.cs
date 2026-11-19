@@ -8,7 +8,6 @@ namespace BossRush
     {
         public const int TYPE_ID = 500031;
         public const string BUNDLE_NAME = "peace_charm";
-        public const string ICON_NAME = "PeaceCharm";
         public const string LOC_KEY_DISPLAY = "BossRush_PeaceCharm";
         public const string DISPLAY_NAME_CN = "平安护身符";
         public const string DISPLAY_NAME_EN = "Peace Charm";

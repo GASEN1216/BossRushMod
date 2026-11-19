@@ -8,6 +8,17 @@ namespace BossRush
     internal static class ResourceBundleLoader
     {
         internal static UnityEngine.AssetBundle LoadFromFile(string path) { return UnityEngine.AssetBundle.LoadFromFile(path); }
+        // Same rule as production FindLoaded (last name segment, case-insensitive full match); the real body runs in ResourceProduction.
+        internal static UnityEngine.AssetBundle FindLoaded(string bundleFileName)
+        {
+            foreach (UnityEngine.AssetBundle loaded in UnityEngine.AssetBundle.GetAllLoadedAssetBundles())
+            {
+                if (loaded == null || string.IsNullOrEmpty(loaded.name)) continue;
+                int cut = loaded.name.LastIndexOfAny(new[] { '/', '\\' });
+                if (string.Equals(cut < 0 ? loaded.name : loaded.name.Substring(cut + 1), bundleFileName, StringComparison.OrdinalIgnoreCase)) return loaded;
+            }
+            return null;
+        }
         internal static System.Collections.IEnumerator Prepare(string path, bool prefabs, Func<bool> cancelled, Action consumer)
         { if (!cancelled()) consumer(); yield break; }
     }
@@ -97,14 +108,18 @@ namespace UnityEngine
         public static readonly List<AssetBundle> Loaded = new List<AssetBundle>();
         public static int FindCalls;
         public static int LoadCalls;
+        public static AssetBundle FileResult;
         public int UnloadCalls;
+        public int AssetLoads;
         public readonly Dictionary<string, Sprite> Sprites = new Dictionary<string, Sprite>();
         public readonly Dictionary<string, Texture2D> Textures = new Dictionary<string, Texture2D>();
         public static IEnumerable<AssetBundle> GetAllLoadedAssetBundles() { FindCalls++; return Loaded; }
-        public static AssetBundle LoadFromFile(string path) { LoadCalls++; return null; }
+        public static AssetBundle LoadFromFile(string path) { LoadCalls++; return FileResult; }
+        public bool Contains(string path) { return Sprites.ContainsKey(path) || Textures.ContainsKey(path); }
         public string[] GetAllAssetNames() { return new string[0]; }
         public T LoadAsset<T>(string path) where T : Object
         {
+            AssetLoads++;
             if (typeof(T) == typeof(Sprite)) return Sprites.TryGetValue(path, out Sprite sprite) ? sprite as T : null;
             return Textures.TryGetValue(path, out Texture2D texture) ? texture as T : null;
         }

@@ -816,7 +816,7 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Reward_ProjectileCold", "命中有概率减速：冰霜概率 +25%，最高60%（代价：换弹速度 -5%）", "Chance to slow on hit: Frost Chance +25%, Max 60% (Cost: Reload Speed -5%)");
             InjectZombieModeString("BossRush_ZombieMode_Reward_ProjectilePoison", "命中有概率中毒：毒化概率 +35%，最高75%（代价：最大生命 -5%）", "Chance to poison on hit: Poison Chance +35%, Max 75% (Cost: Max Health -5%)");
             InjectZombieModeString("BossRush_ZombieMode_Reward_ProjectileArmorBreak", "穿甲 +25%，破甲 +10%（代价：承受伤害 +6%）", "Armor Pierce +25%, Armor Break +10% (Cost: Damage Taken +6%)");
-            InjectZombieModeString("BossRush_ZombieMode_Reward_MutatorCritFocus", "暴击率 +15%，最多45%（代价：换弹速度 -8%）", "Crit Rate +15%, Max 45% (Cost: Reload Speed -8%)");
+            InjectZombieModeString("BossRush_ZombieMode_Reward_MutatorCritFocus", "爆头伤害 +15%，最多45%（代价：换弹速度 -8%）", "Headshot Damage +15%, Max 45% (Cost: Reload Speed -8%)");
             InjectZombieModeString("BossRush_ZombieMode_Reward_TriggerLifesteal", "命中回血 I：10% 概率恢复 1 生命（代价：移动速度 -11%）", "Hit Heal I: 10% chance to restore 1 HP (Cost: Move Speed -11%)");
             InjectZombieModeString("BossRush_ZombieMode_Reward_TriggerLifestealMedium", "命中回血 II：20% 概率恢复 1 生命（代价：移动速度 -22%）", "Hit Heal II: 20% chance to restore 1 HP (Cost: Move Speed -22%)");
             InjectZombieModeString("BossRush_ZombieMode_Reward_TriggerLifestealLarge", "命中回血 III：30% 概率恢复 1 生命（代价：移动速度 -33%）", "Hit Heal III: 30% chance to restore 1 HP (Cost: Move Speed -33%)");

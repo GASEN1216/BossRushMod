@@ -184,6 +184,31 @@ internal static class Program
         }
     }
 
+    // CR-2026-11-19-006：首开交一次收集品判定、重开不交、淹着的箱子不交；水下箱上限 4 档，陆地箱 8 档。
+    private static void CollectibleHook()
+    {
+        using (var raid = new Raid(24, false))
+        {
+            int before = CollectibleLootRuntime.Notified;
+            string buried = boxes.First(p => p.Kind == "buried").Id;
+            InteractableLootbox wet = raid.Box(buried);
+            float ground = raid.Player.transform.position.y;
+            raid.Tide.Level = ground + 1f;
+            wet.Open();
+            Check(CollectibleLootRuntime.Notified == before, "a flooded box was offered to collectibles");
+            raid.Tide.Level = ground - 1f;
+            raid.Visit(buried);
+            wet.Open();
+            Check(CollectibleLootRuntime.Notified == before + 1 && CollectibleLootRuntime.LastCap == 4,
+                "the first dry open of an underwater box must offer one collectible capped at tier 4");
+            wet.Open();
+            Check(CollectibleLootRuntime.Notified == before + 1, "re-opening the same box offered another collectible");
+            raid.Box(boxes.First(p => p.Kind == "house" && !p.Fixed).Id).Open();
+            Check(CollectibleLootRuntime.Notified == before + 2 && CollectibleLootRuntime.LastCap == 8,
+                "a land box must offer one collectible with the full cap");
+        }
+    }
+
     private static void FloodedLootView()
     {
         using (var raid = new Raid(24, false))
@@ -457,6 +482,7 @@ internal static class Program
         Check(oneSlot > 0, "fixture never exercised an initially empty one-slot shipment box");
         Failures();
         CheckEbbCache();
+        CollectibleHook();
         // 独立于装船货：没有读货单或追封箱，轮班钥匙仍能开柜；重入不会保留开锁状态。
         if (!boxes.Any(b=>b.Id=="LOOT_safe_35"))
             foreach (var row in new[]{"LOOT_safe_35","LOOT_tool_3","LOOT_tool_4"})

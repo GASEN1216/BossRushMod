@@ -230,7 +230,7 @@ static class Program
         Check(!ShowcaseDisplayJudges.ShouldOverwriteLegacyLedger(1, false, true) && !ShowcaseDisplayJudges.ShouldOverwriteLegacyLedger(1, true, false),
             "legacy ledger kept outside base or without official showcase");
 
-        // ---- 战利品名录：注册表枚举、prefab 级、幂等、排除后山自产；不补任何官方展示标签（陈列柜是废弃建筑） ----
+        // ---- 战利品名录：注册表枚举、prefab 级、幂等、排除后山自产；名录不补任何官方展示标签（owner 2026-11-19 拍板维持不补） ----
         Reset(); Item(100, 5); Item(200, 8); Item(50, 3);
         BossRushDynamicItemRegistry.Published.Clear();
         BossRushDynamicItemRegistry.Published.AddRange(new[] { 100, 200, 50, BossRushItemIds.DragonFruit, 999 });

@@ -23,7 +23,6 @@
 
 using System;
 using System.Collections;
-using System.IO;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -65,6 +64,8 @@ namespace BossRush
         private bool campaignBoardInjected;
         private GameObject campaignBoardPrefabGO;
         private AssetBundle campaignBoardModelBundle;
+        /// <summary>模型 bundle 是否仍由本建筑持有（基地装配管线据此跳过重复的异步加载）。</summary>
+        internal bool HasAssetBundle { get { return campaignBoardModelBundle != null; } }
         private static Sprite campaignBoardIcon;
 
         #endregion
@@ -159,29 +160,10 @@ namespace BossRush
         private void LoadCampaignBoardIcon()
         {
             if (campaignBoardIcon != null) return;
-            campaignBoardIcon = ProductionIconCache.Get("Assets/buildings/" + CAMPAIGN_BOARD_BUILDING_ID + ".png");
-            if (campaignBoardIcon != null || !ProductionIconCache.AllowRawFallback) return;
-            try
-            {
-                string modDir = Path.GetDirectoryName(typeof(ModBehaviour).Assembly.Location);
-                if (string.IsNullOrEmpty(modDir)) return;
-                string iconPath = Path.Combine(modDir, Path.Combine("Assets", "buildings"));
-                iconPath = Path.Combine(iconPath, CAMPAIGN_BOARD_BUILDING_ID + ".png");
-                if (!File.Exists(iconPath))
-                {
-                    ModBehaviour.DevLog(CampaignTuning.LogPrefix + "建筑图标缺失，使用官方默认图标");
-                    return;
-                }
-
-                campaignBoardIcon = RawImageLoader.LoadSprite(iconPath, CAMPAIGN_BOARD_BUILDING_ID);
-                if (campaignBoardIcon == null) return;
-                CampaignAssetCache.Own(campaignBoardIcon.texture);
-                CampaignAssetCache.Own(campaignBoardIcon);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "建筑图标加载失败: " + e.Message);
-            }
+            // 借自 ModSprites（生产图标包优先，Dev 或缺包读散图），不归这里销毁。
+            campaignBoardIcon = ModSprites.Get("Assets/buildings/" + CAMPAIGN_BOARD_BUILDING_ID + ".png");
+            if (campaignBoardIcon == null)
+                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "建筑图标缺失，使用官方默认图标");
         }
 
         #endregion

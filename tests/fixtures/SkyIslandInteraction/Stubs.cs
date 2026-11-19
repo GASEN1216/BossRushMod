@@ -275,6 +275,8 @@ namespace Duckov.Economy
 namespace Duckov
 {
     internal enum StopMode { Immediate = 1 }
+    // 统一入口 BossRushOfficialAudio 按 typeof 绑定；本夹具只验证停止，不需要 PostCustomSFX。
+    internal static class AudioManager { }
     internal class AudioObject : UnityEngine.Component
     {
         internal int Stops;

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using UnityEngine;
 using Duckov.ItemUsage;
 
@@ -206,50 +205,19 @@ namespace BossRush
                 }
                 catch {}
 
-                try
-                {
-                    PostCustomSfxDelegate postCustomSfx;
-                    if (TryGetPostCustomSfxDelegate(out postCustomSfx))
-                    {
-                        postCustomSfx(filePath, target, false);
-                        return;
-                    }
-
-                    System.Type audioManagerType = System.Type.GetType("Duckov.AudioManager, TeamSoda.Duckov.Core");
-                    if (audioManagerType == null)
-                    {
-                        return;
-                    }
-                    var method = audioManagerType.GetMethod("PostCustomSFX", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-                    if (method == null)
-                    {
-                        return;
-                    }
-                    object[] args = new object[] { filePath, target, false };
-                    try
-                    {
-                        method.Invoke(null, args);
-                    }
-                    catch {}
-                }
-                catch {}
+                // 官方入口缺失或抛出都静默跳过，不影响随后的下蛋。
+                BossRushOfficialAudio.PostCustomSfx(filePath, target, false);
             }
             catch {}
         }
 
-        private delegate void PostCustomSfxDelegate(string filePath, GameObject target, bool loop);
-
         private static readonly Dictionary<string, bool> _cachedSoundFileExists = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
-        private static PostCustomSfxDelegate _cachedPostCustomSfx;
-        private static bool _postCustomSfxResolved = false;
 
         internal static void ResetBossRushAudioHooksStaticCaches()
         {
             cachedSpawnEggBehavior = null;
             eggSpawnPreset = null;
             _cachedSoundFileExists.Clear();
-            _cachedPostCustomSfx = null;
-            _postCustomSfxResolved = false;
         }
 
         private static bool SoundFileExistsCached(string filePath)
@@ -268,40 +236,6 @@ namespace BossRush
             exists = File.Exists(filePath);
             _cachedSoundFileExists[filePath] = exists;
             return exists;
-        }
-
-        private static bool TryGetPostCustomSfxDelegate(out PostCustomSfxDelegate postCustomSfx)
-        {
-            if (!_postCustomSfxResolved)
-            {
-                _postCustomSfxResolved = true;
-
-                try
-                {
-                    Type audioManagerType = Type.GetType("Duckov.AudioManager, TeamSoda.Duckov.Core");
-                    if (audioManagerType != null)
-                    {
-                        MethodInfo method = audioManagerType.GetMethod(
-                            "PostCustomSFX",
-                            BindingFlags.Public | BindingFlags.Static,
-                            null,
-                            new Type[] { typeof(string), typeof(GameObject), typeof(bool) },
-                            null);
-
-                        if (method != null)
-                        {
-                            _cachedPostCustomSfx = Delegate.CreateDelegate(typeof(PostCustomSfxDelegate), method, false) as PostCustomSfxDelegate;
-                        }
-                    }
-                }
-                catch
-                {
-                    _cachedPostCustomSfx = null;
-                }
-            }
-
-            postCustomSfx = _cachedPostCustomSfx;
-            return postCustomSfx != null;
         }
 
         /// <summary>
@@ -328,29 +262,14 @@ namespace BossRush
                 }
                 catch {}
 
-                PostCustomSfxDelegate postCustomSfx;
-                if (TryGetPostCustomSfxDelegate(out postCustomSfx))
+                object posted;
+                Exception error;
+                if (!BossRushOfficialAudio.TryPostCustomSfx(filePath, target, false, out posted, out error))
                 {
-                    postCustomSfx(filePath, target, false);
-                    return;
+                    ModBehaviour.DevLog(error != null
+                        ? "[BossRush] PlaySoundEffect异常: " + error.Message
+                        : "[BossRush] PlaySoundEffect: PostCustomSFX方法未找到");
                 }
-
-                System.Type audioManagerType = System.Type.GetType("Duckov.AudioManager, TeamSoda.Duckov.Core");
-                if (audioManagerType == null)
-                {
-                    ModBehaviour.DevLog("[BossRush] PlaySoundEffect: AudioManager类型未找到");
-                    return;
-                }
-
-                var method = audioManagerType.GetMethod("PostCustomSFX", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-                if (method == null)
-                {
-                    ModBehaviour.DevLog("[BossRush] PlaySoundEffect: PostCustomSFX方法未找到");
-                    return;
-                }
-
-                object[] args = new object[] { filePath, target, false };
-                method.Invoke(null, args);
             }
             catch (Exception e)
             {

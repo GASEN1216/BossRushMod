@@ -169,6 +169,7 @@ namespace BossRush
     internal static class ModeGMapSupportRegistry { internal static bool IsVerifiedSceneName(string name) { return true; } }
     internal static class TidegateItems { internal static void ResetStaticCaches() { } }
     internal static class LastShiftItems { internal static void ResetStaticCaches() { } }
+    internal static class CollectibleItems { internal static void ResetStaticCaches() { } }
     internal static class ModeGInteractable
     {
         internal static bool IsConfirmationOpen { get { return false; } }
