@@ -2,13 +2,18 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+## 2026-11-19 v2.6.0 发版收口（COMPAT；L1/L2/L3）
+
+- **内容**：26da41b4 加入 6–8 档收集品陈列柜与地面特效（`CollectibleShowcaseFx.cs`），收集品页与 v2.6.0 更新日志按「点登记才登记、关上只退回」改写并补齐陈列柜、格框、特效、近战体力下调、图标重画与焚天龙皇射击声；5d6dd583 改写实机清单 `M_COLLECTIBLES_03`。
+- **验证**：全量守卫 777 PASS；全量执行回归首跑 166/170，配游戏程序集环境变量后 `AuditCombatSeptember`、`SkyIslandCombatRuntime` PASS，`NpcAuditFixes` 另修（见下条），`FieldAdventureVisuals` 因作者工程被另一 Unity 实例占用未跑成；Wiki 构建通过；工坊简介 a.md 7675、b.md 7671 字节（b.md 原本超 121，压缩英文玩法细节）。owner 2026-11-19 回复已完成实机验收（`M_COLLECTIBLES_01`–`08`）并换回正式构建；游戏目录 DLL 与 `Build/BossRush.dll` SHA-256 一致（`4816af54dbda7ca1…`），`info.ini` 2.6.0 一致。
+
 ## 2026-11-19 执行回归 NpcAuditFixes 恢复（SAFE；L2）
 
 - **起因**：v2.5.0（f97177e7a，2026-11-13）删掉了 `tests/fixtures/SkyIslandDialogue/Stubs.cs` 里的 UniTask 替身；`NpcAuditFixes/run.py` 一直截取那份文件 `namespace UnityEngine` 之前的一段当异步宿主，于是 Transactions 组从那天起编不过（CS0246 找不到 `Cysharp` / `UniTask<>`），全量回归恒红一项。生产代码无关。
 - **改动**：替身原样搬进本夹具自带的 `tests/fixtures/NpcAuditFixes/AsyncHost.cs`（内容取自 f97177e7a 之前那份），`run.py` 改读它，不再跨夹具借用；README 的「net10 要临时改 net8」过期说明同步改掉。
 - **验证**：`NpcAuditFixes` 5 组全绿（Affinity 44、Daily 12、Presentation 11、Transactions 22、Reforge 21）。反向探针：把替身 `UniTaskBuilder<T>.SetResult` 改成写默认值，Transactions 转红（「stable identity removes exactly the delivered record」），按字节还原（SHA-256 前缀 `1262bf00d4423fd6` 一致）后转绿。
 
-## 2026-11-19 主角枪械暴击率加成改为爆头伤害（COMPAT；L1/L2，已部署，L3 待 owner）
+## 2026-11-19 主角枪械暴击率加成改为爆头伤害（COMPAT；L1/L2/L3，已部署，owner 2026-11-19 实机确认）
 
 - **起因**：owner 提醒「这游戏只有爆头才有暴击伤害」。官方 `ItemAgent_Gun.cs:1459-1463` 按 `CritRate × (1 + GunCritRateGain + 子弹加成)` 算完暴击率后，只要持枪的是主角，就改成 `AimingEnemyHead ? 1 : 0`。挂在主角身上的 `GunCritRateGain` 因此完全无效。近战暴击率 `MeleeCritRateGain` 官方没有改写，照常有效。
 - **改动**（枪械那一半一律换成爆头伤害 `GunCritDamageGain`，基础值 0，用 Add；近战部分不动）：
@@ -37,7 +42,7 @@
   - 带鹰目或变异「百步穿杨 / 幸运星」爆头，伤害数字应明显高于不带时；打身体不暴击，和原来一样。
   - 丧尸模式拿「暴击专注」后，爆头伤害随层数上升。
 
-## 2026-11-19 收集品与收藏册审核七条全修（COMPAT；L1/L2，已部署，L3 待 owner）
+## 2026-11-19 收集品与收藏册审核七条全修（COMPAT；L1/L2/L3，已部署，owner 2026-11-19 实机确认）
 
 owner 看过审核清单后说「全部修复」，修的是 CR-2026-11-19-001～007，审核报告见 `docs/reports/reviews/2026-11-19-收集品与收藏册审核.md`。仍未提交。
 
