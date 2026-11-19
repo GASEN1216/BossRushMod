@@ -2,6 +2,12 @@
 
 更早的完整记录见 `archive/`；近期已闭环的大篇幅审计正文也按月份存档，当前文件保留索引与未闭环条目。
 
+## 2026-11-19 执行回归 NpcAuditFixes 恢复（SAFE；L2）
+
+- **起因**：v2.5.0（f97177e7a，2026-11-13）删掉了 `tests/fixtures/SkyIslandDialogue/Stubs.cs` 里的 UniTask 替身；`NpcAuditFixes/run.py` 一直截取那份文件 `namespace UnityEngine` 之前的一段当异步宿主，于是 Transactions 组从那天起编不过（CS0246 找不到 `Cysharp` / `UniTask<>`），全量回归恒红一项。生产代码无关。
+- **改动**：替身原样搬进本夹具自带的 `tests/fixtures/NpcAuditFixes/AsyncHost.cs`（内容取自 f97177e7a 之前那份），`run.py` 改读它，不再跨夹具借用；README 的「net10 要临时改 net8」过期说明同步改掉。
+- **验证**：`NpcAuditFixes` 5 组全绿（Affinity 44、Daily 12、Presentation 11、Transactions 22、Reforge 21）。反向探针：把替身 `UniTaskBuilder<T>.SetResult` 改成写默认值，Transactions 转红（「stable identity removes exactly the delivered record」），按字节还原（SHA-256 前缀 `1262bf00d4423fd6` 一致）后转绿。
+
 ## 2026-11-19 主角枪械暴击率加成改为爆头伤害（COMPAT；L1/L2，已部署，L3 待 owner）
 
 - **起因**：owner 提醒「这游戏只有爆头才有暴击伤害」。官方 `ItemAgent_Gun.cs:1459-1463` 按 `CritRate × (1 + GunCritRateGain + 子弹加成)` 算完暴击率后，只要持枪的是主角，就改成 `AimingEnemyHead ? 1 : 0`。挂在主角身上的 `GunCritRateGain` 因此完全无效。近战暴击率 `MeleeCritRateGain` 官方没有改写，照常有效。
