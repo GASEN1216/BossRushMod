@@ -1,0 +1,618 @@
+{
+  "schema": 1,
+  "bundles": {
+    "Assets/Equipment/dragon_equipment": {
+      "sha256": "9a94165c633d92dbe7b6719adfe7a2aab3d5c1b41ce249f31746b4b8bc0d9f1d",
+      "items": [
+        [
+          500003,
+          "dargon_Helmet_Item"
+        ],
+        [
+          500004,
+          "dargon_Armor_Item"
+        ],
+        [
+          500005,
+          "dragon_Gun_Item"
+        ]
+      ],
+      "models": [
+        "dargon_Armor_Model",
+        "dargon_Helmet_Model",
+        "dragon_Gun_Model"
+      ]
+    },
+    "Assets/Equipment/dragonking_equipment": {
+      "sha256": "2f1c7102f727055dbbc44f58efb7af2d32175daa41d8d34207c68a575e987fde",
+      "items": [
+        [
+          500011,
+          "dragonking_Helmet_Item"
+        ],
+        [
+          500012,
+          "dragonking_Armor_Item"
+        ],
+        [
+          500013,
+          "ReverseScale_Lv1_Totem_Item"
+        ],
+        [
+          500035,
+          "dragonking_Gun_Item"
+        ]
+      ],
+      "models": [
+        "dragonking_Armor_Model",
+        "dragonking_Gun_Model",
+        "dragonking_Helmet_Model"
+      ]
+    },
+    "Assets/Equipment/energyshield_totem_model": {
+      "sha256": "0350f873896dc515957628e52e6492f65eb025c677062c9cc2ba5a0033cdcb6f",
+      "items": [],
+      "models": [
+        "EnergyShield_Totem_Model"
+      ]
+    },
+    "Assets/Equipment/fenhuang_halberd_model": {
+      "sha256": "19ef5205e08e6a21d32974fa81af15a9063ee2119965ae8d866c91a2e8947f10",
+      "items": [],
+      "models": [
+        "FenHuangHalberd_Melee_Model"
+      ]
+    },
+    "Assets/Equipment/flight_totem": {
+      "sha256": "60a5d1f780856554dc99dea21f468c39a8e74bf53ee367603adb1ff55f237588",
+      "items": [
+        [
+          500010,
+          "FlightTotem_Lv1_Item"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Equipment/frost_set": {
+      "sha256": "a323666417cd170f1941f5d616ec0750442426990aeae80ae52879b64fa4e553",
+      "items": [
+        [
+          500053,
+          "FrostCrown_Helmet_Item"
+        ],
+        [
+          500054,
+          "IceArmor_Armor_Item"
+        ]
+      ],
+      "models": [
+        "FrostCrown_Helmet_Model",
+        "IceArmor_Armor_Model"
+      ]
+    },
+    "Assets/Equipment/frostmourne_model": {
+      "sha256": "2afe7198ee69439b5604317064d8e98e9c47dd1a76d599f9750f1a457babcbb0",
+      "items": [],
+      "models": [
+        "Frostmourne_Melee_Model"
+      ]
+    },
+    "Assets/Equipment/frostspear_melee_model": {
+      "sha256": "804053bf827a9bf0d6fe7ede9caba4efcdcce75949ca43f7e2be13cd30129c96",
+      "items": [],
+      "models": [
+        "FrostSpear_Melee_Model"
+      ]
+    },
+    "Assets/Equipment/phantom_scythe": {
+      "sha256": "a627a8784baf768399d9707b51a688ec2f76a6030ccd114155f96824fc723eb2",
+      "items": [
+        [
+          500044,
+          "PhantomScythe_Melee_Item"
+        ]
+      ],
+      "models": [
+        "PhantomScythe_Melee_Model"
+      ]
+    },
+    "Assets/Equipment/residual_sun_shield_model": {
+      "sha256": "67b0212fe30b9c67bc17884a903335acfdb37abcfbbd51941df026ccb2bb3a69",
+      "items": [],
+      "models": [
+        "ResidualSunShield_Totem_Model"
+      ]
+    },
+    "Assets/Equipment/skyisland_boss_gear": {
+      "sha256": "e50cd68bbdb0eff0a8a571b61f26216ad9d1e513fa1f62c5f62ee70f2a0d32dc",
+      "items": [
+        [
+          500086,
+          "StarbrassVisor_Helmet_Item"
+        ],
+        [
+          500087,
+          "StarfurnaceHarness_Armor_Item"
+        ],
+        [
+          500088,
+          "StarfurnacePack_Backpack_Item"
+        ],
+        [
+          500089,
+          "StargazerLens_Helmet_Item"
+        ],
+        [
+          500090,
+          "RootweaveMask_FaceMask_Item"
+        ],
+        [
+          500091,
+          "VinewovenCuirass_Armor_Item"
+        ],
+        [
+          500092,
+          "HangrootQuiver_Backpack_Item"
+        ],
+        [
+          500093,
+          "OldMailbag_Backpack_Item"
+        ],
+        [
+          500094,
+          "GreenearStrawHat_Helmet_Item"
+        ],
+        [
+          500095,
+          "StrawRaincoat_Armor_Item"
+        ],
+        [
+          500096,
+          "GrainSack_Backpack_Item"
+        ],
+        [
+          500097,
+          "RainhushEarmuffs_Headset_Item"
+        ],
+        [
+          500098,
+          "MossgauzeMask_FaceMask_Item"
+        ],
+        [
+          500099,
+          "MirrorgrainPlate_Armor_Item"
+        ],
+        [
+          500100,
+          "WindbreakHood_Helmet_Item"
+        ],
+        [
+          500101,
+          "WindbreakMantle_Armor_Item"
+        ],
+        [
+          500102,
+          "WindbreakPack_Backpack_Item"
+        ]
+      ],
+      "models": [
+        "GrainSack_Backpack_Model",
+        "GreenearStrawHat_Helmet_Model",
+        "HangrootQuiver_Backpack_Model",
+        "MirrorgrainPlate_Armor_Model",
+        "MossgauzeMask_FaceMask_Model",
+        "OldMailbag_Backpack_Model",
+        "RainhushEarmuffs_Headset_Model",
+        "RootweaveMask_FaceMask_Model",
+        "StarbrassVisor_Helmet_Model",
+        "StarfurnaceHarness_Armor_Model",
+        "StarfurnacePack_Backpack_Model",
+        "StargazerLens_Helmet_Model",
+        "StrawRaincoat_Armor_Model",
+        "VinewovenCuirass_Armor_Model",
+        "WindbreakHood_Helmet_Model",
+        "WindbreakMantle_Armor_Model",
+        "WindbreakPack_Backpack_Model"
+      ]
+    },
+    "Assets/Equipment/summonstaff_melee_model": {
+      "sha256": "d2a37f5ebc24fff637099e4967497143e391b3ff1b5fd04a190afadb498a0be0",
+      "items": [],
+      "models": [
+        "SummonStaff_Melee_Model"
+      ]
+    },
+    "Assets/Equipment/thunder_set": {
+      "sha256": "dea13dd12d34c0db3a25a879de9e7147ab4bf12105c1bdaa63f41490dac04070",
+      "items": [
+        [
+          500055,
+          "ThunderHorn_Helmet_Item"
+        ],
+        [
+          500056,
+          "ThunderArmor_Armor_Item"
+        ]
+      ],
+      "models": [
+        "ThunderArmor_Armor_Model",
+        "ThunderHorn_Helmet_Model"
+      ]
+    },
+    "Assets/Equipment/viperdagger_melee_model": {
+      "sha256": "561e382ec9e6933fbb9ba251feaa572902462c50827307603350b5cc08a81f25",
+      "items": [],
+      "models": [
+        "ViperDagger_Melee_Model"
+      ]
+    },
+    "Assets/Items/achievement_medal": {
+      "sha256": "7d3587b6220a71e152767df580e7e0bad1554aa1a8c2a41503d0b135ea19bf26",
+      "items": [
+        [
+          500018,
+          "AchievementMedal"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/awen_courier_token": {
+      "sha256": "32779f66df301e52d60a9406b0c5213151540fb2a99275e2183de7be2c9eba4c",
+      "items": [
+        [
+          500008,
+          "AwenCourierToken"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/awen_loot_sweep_token": {
+      "sha256": "38e56217361377bb10b057fdc00be78f5afe1af8c8e8cc6aa4803cba31a775ad",
+      "items": [
+        [
+          500042,
+          "BossRush_AwenLootSweepToken"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/barbed_wire_pack": {
+      "sha256": "dec8c2e04b271f953fd5e0207952047b8eea9d245b6d3a24a3d99f5472dee2df",
+      "items": [
+        [
+          500039,
+          "BossRush_ModeF_BarbedWirePack"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/bloodhunt_beacon": {
+      "sha256": "3eb062018701cec46e9f66a27b7264ba4d64181f488e3aa646397d371ab085c0",
+      "items": [
+        [
+          500033,
+          "BloodhuntBeacon"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/bloodhunt_transponder": {
+      "sha256": "cc55182dd12c6abc268c4ae5715a08eb20c71efd7bb5be1d6aa63b9535e1d617",
+      "items": [
+        [
+          500036,
+          "BossRush_ModeF_BloodhuntTransponder"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/bosscall_whistle": {
+      "sha256": "dd7a42f3aa97732c15dba568be82aea695faf89d1bd19f61eaf2798964b2657f",
+      "items": [
+        [
+          500032,
+          "BosscallWhistle"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/brick_stone": {
+      "sha256": "39a3ceccc57c36e518213c1a57408fe77672ecece3dc7531fbce87dd6aac23cb",
+      "items": [
+        [
+          500015,
+          "BrickStone"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/calming_drops": {
+      "sha256": "401d2764552218fcb11f813df4d2fc253b343f0ae973a1b1c53a14a959356598",
+      "items": [
+        [
+          500030,
+          "CalmingDrops"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/cold_quench_fluid": {
+      "sha256": "6c3d4b2803ce3a83f75be26b847c05263659ee5fb98dc3928a454349033b300e",
+      "items": [
+        [
+          500014,
+          "ColdQuenchFluid"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/diamond": {
+      "sha256": "be228e965de4610275e9dd3c77c6dcb06398191355780db5184ba2d184d17011",
+      "items": [
+        [
+          500017,
+          "Diamond"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/diamond_ring": {
+      "sha256": "252d6edf547e4e34e2bdbdc360fefdd63a1769e7f8f598e657861b56bb70fd3e",
+      "items": [
+        [
+          500029,
+          "DiamondRing "
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/dingdang_drawing": {
+      "sha256": "7f7a6e57ba6e8a49d53a5a8f7e46c35ed5fd1473026672ed59fd6322efa7b6fa",
+      "items": [
+        [
+          500016,
+          "DingdangDrawing"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/emergency_repair_spray": {
+      "sha256": "23318381eaeaf7064f4063f3fd3d757c510986359a018aaa8ba79a086f3a67fe",
+      "items": [
+        [
+          500040,
+          "BossRush_ModeF_EmergencyRepairSpray"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/energyshield_item": {
+      "sha256": "731fb8812fe4d7ccff52a0fc039034ee96b12c75cdf69772c213679329f893a2",
+      "items": [
+        [
+          500050,
+          "EnergyShield_Item"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/faction_flags": {
+      "sha256": "889bbb69eaad84c4343897edbb45c7c683221ca26e7051ef666736c5c7ddcf2e",
+      "items": [
+        [
+          500020,
+          "FactionFlagRandom"
+        ],
+        [
+          500021,
+          "FactionFlagScav"
+        ],
+        [
+          500022,
+          "FactionFlagUsec"
+        ],
+        [
+          500023,
+          "FactionFlagBear"
+        ],
+        [
+          500024,
+          "FactionFlagLab"
+        ],
+        [
+          500025,
+          "FactionFlagWolf"
+        ],
+        [
+          500026,
+          "faction_flag_player"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/fate_echo_relic": {
+      "sha256": "42b7f3771f9034faf0cddc7e3a5cc1d8b9d5582b454ebbfb52fca3ba9a512561",
+      "items": [
+        [
+          500057,
+          "BossRush_ModeG_FateEchoRelic"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/fenhuang_halberd_item": {
+      "sha256": "0a8ac0755eb4555f7f99570e688db24af5d83db35446fe04b46110f249be5660",
+      "items": [
+        [
+          500034,
+          "FenHuangHalberd_Item"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/foldable_cover_pack": {
+      "sha256": "3c88ad70514ac725b7f1f1058d73582380a3688669ab5b0e5b9bb4094e77bdd3",
+      "items": [
+        [
+          500037,
+          "BossRush_ModeF_FoldableCoverPack"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/frostmourne_item": {
+      "sha256": "9d235e63720746816283be394af2926ff6640913d215ba180efe139db34a1c54",
+      "items": [
+        [
+          500041,
+          "Frostmourne_Item"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/frostspear_item": {
+      "sha256": "cc9c808067fa7660808ea4966344833ed41262017c8319037c814c47b13db3db",
+      "items": [
+        [
+          500051,
+          "FrostSpear_Item"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/peace_charm": {
+      "sha256": "3c6fe353c7af47f574152a2172087ba04f99e7ed9f014b90a633636cd9f9c989",
+      "items": [
+        [
+          500031,
+          "PeaceCharm"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/portable_safe_zone_device": {
+      "sha256": "c86bb5358c305964fa8df7ab6c70d80f7bc08c65b43bbcd5acf764b3ba60010e",
+      "items": [
+        [
+          500058,
+          "BossRush_PortableSafeZoneDevice"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/reinforced_roadblock_pack": {
+      "sha256": "eea036c32e2e03d298fb5b6628f8c191cd3656878bee34e6547ddfcc8246d8b9",
+      "items": [
+        [
+          500038,
+          "BossRush_ModeF_ReinforcedRoadblockPack"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/respawn_items": {
+      "sha256": "3a5c0de15975dcacc8bdd7100453066c0d494ac833e4c908ff5d9576ef18780f",
+      "items": [
+        [
+          500027,
+          "taunt_smoke"
+        ],
+        [
+          500028,
+          "chaos_detonator"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/summonstaff_item": {
+      "sha256": "dad5d35097402a4c80dac7871a5e7477c8cb7adbe02581ff9848b865af0911e9",
+      "items": [
+        [
+          500049,
+          "SummonStaff_Item"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/thunderring_item": {
+      "sha256": "aa5ccb6622608c42e88aade9381167a6a6cf7681fe8b0f0998030408507d72ad",
+      "items": [
+        [
+          500052,
+          "ThunderRing_Item"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/viperdagger_item": {
+      "sha256": "561c0bff2398dff0f0277ec466e1376ab41c7dbd7a5f72436c1a1c174d2c1c14",
+      "items": [
+        [
+          500048,
+          "ViperDagger_Item"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/wild_horn": {
+      "sha256": "4c2b3ffb1ee5b6c81f45db8b6a3ac1d3622f493866f155267c5fdbab8a6a576d",
+      "items": [
+        [
+          500019,
+          "wild_horn"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/zombie_tide_beacon": {
+      "sha256": "22871938cd259cbb8ef6c3855bfd60d749d386614deeaccbac59ba3725626b09",
+      "items": [
+        [
+          500046,
+          "BossRush_ZombieTideBeacon"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/Items/zombie_tide_invitation": {
+      "sha256": "92ae0480688e9a7d66c6437898dce9585d8fcc79a64d54f657ac678b9b3677f8",
+      "items": [
+        [
+          500045,
+          "BossRush_ZombieTideInvitation"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/birthday_cake": {
+      "sha256": "5a9361cb2ce18ea928c6a9556ebc6a14327c8adfa4703a8c91bc95780055f6db",
+      "items": [
+        [
+          500002,
+          "BirthdayCake"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/bossrush_ticket": {
+      "sha256": "8b5000792833551b0007d6e9fe329c7e71af37f6f72aedd9644b94272d4a3fd0",
+      "items": [
+        [
+          500001,
+          "BossRushTicket"
+        ]
+      ],
+      "models": []
+    },
+    "Assets/ui/bossrush_wiki": {
+      "sha256": "e5178407e164b2dc5c1ccd974a1d9e7241ec0667fe6f54e50ff94b47a5b58559",
+      "items": [
+        [
+          500007,
+          "WikiBook"
+        ]
+      ],
+      "models": []
+    }
+  }
+}

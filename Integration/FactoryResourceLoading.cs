@@ -43,7 +43,7 @@ namespace BossRush
             {
                 int scene = SceneManager.GetActiveScene().handle;
                 Func<bool> cancelled = () => owner == null || SceneManager.GetActiveScene().handle != scene;
-                yield return ResourceBundleLoader.Prepare(path, true, cancelled, guardedConsume);
+                yield return ResourceBundleLoader.Prepare(path, true, cancelled, guardedConsume, alreadyLoaded: alreadyLoaded);
                 if (!cancelled()) yield break;
                 // A scene transition invalidates this attempt, but not the published content catalog.
                 while (owner != null && (SceneLoader.IsSceneLoading || LevelManager.LevelInitializing)) yield return null;
@@ -55,7 +55,7 @@ namespace BossRush
             }
         }
 
-        internal static IEnumerator LoadDirectory(ModBehaviour owner, string relativeDirectory, Func<string, bool> loaded, Func<string, int> load)
+        internal static IEnumerator LoadDirectory(ModBehaviour owner, string relativeDirectory, Func<string, bool> loaded, Func<string, int> load, Func<string, bool> held)
         {
             string path = Path.Combine(ModBehaviour.GetModPath(), relativeDirectory);
             if (!Directory.Exists(path)) yield break;
@@ -66,7 +66,7 @@ namespace BossRush
                 if (owner == null) yield break;
                 string name = Path.GetFileName(file);
                 if (name.Contains(".") || loaded(name)) continue;
-                yield return RunSpecial(owner, relativeDirectory + "/" + name, () => load(name));
+                yield return RunSpecial(owner, relativeDirectory + "/" + name, () => load(name), () => held(name));
                 yield return null;
             }
         }
@@ -76,13 +76,13 @@ namespace BossRush
     {
         internal static int LoadedBundleCount { get { return loadedBundles.Count; } }
         internal static IEnumerator LoadAllEquipmentAsync(ModBehaviour owner)
-        { return FactoryResourceLoading.LoadDirectory(owner, EQUIPMENT_PATH, loadedBundles.Contains, LoadBundle); }
+        { return FactoryResourceLoading.LoadDirectory(owner, EQUIPMENT_PATH, IsBundleReady, LoadBundle, name => FindOwnedBundle(name) != null); }
     }
 
     public static partial class ItemFactory
     {
         internal static int LoadedItemCount { get { return loadedItems.Count; } }
         internal static IEnumerator LoadAllItemsAsync(ModBehaviour owner)
-        { return FactoryResourceLoading.LoadDirectory(owner, ITEMS_PATH, loadedBundles.Contains, LoadBundle); }
+        { return FactoryResourceLoading.LoadDirectory(owner, ITEMS_PATH, IsBundleReady, LoadBundle, name => FindHeldBundle(name) != null); }
     }
 }

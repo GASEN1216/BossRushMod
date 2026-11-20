@@ -20,6 +20,8 @@ namespace BossRush
             public string[] ItemBundles = BossRushDynamicItemRegistry.EmptyBundles;
             public Func<bool> SpecialLoader;
             public Func<int, bool> FallbackLoader;
+            public string SplitModelBaseName;
+            public bool SplitModelIsMelee;
         }
 
         private static readonly string[] EmptyBundles = new string[0];
@@ -37,6 +39,11 @@ namespace BossRush
         internal static bool IsBossRushDynamicItemType(int typeId)
         {
             return Plans.ContainsKey(typeId);
+        }
+
+        internal static bool IsRegistrationInProgress(int typeId)
+        {
+            return InProgress.Contains(typeId);
         }
 
         internal static int PublishedTypeCount
@@ -60,46 +67,64 @@ namespace BossRush
                 return false;
             }
 
-            if (HasRegisteredPrefabWithoutEnsuring(typeId))
+            Item prefab = GetRegisteredPrefabWithoutEnsuring(typeId);
+            if (prefab != null && (plan.SplitModelBaseName == null || HasSplitModel(plan, prefab)))
             {
                 return true;
             }
 
             if (InProgress.Contains(typeId))
             {
-                return false;
+                return prefab != null;
             }
 
             InProgress.Add(typeId);
             try
             {
-                bool attempted = false;
-
-                if (plan.SpecialLoader != null)
+                // 物品与装备配置器由同一个入口登记，首次读档可能先请求仅有装备包的 TypeID。
+                if ((plan.EquipmentBundles.Length > 0 || plan.ItemBundles.Length > 0) && !EnsureItemConfiguratorsRegistered())
                 {
-                    attempted = TryRunLoader(typeId, "special", plan.SpecialLoader) || attempted;
+                    LogFailureOnce(typeId, "按需注册前未能登记内容配置器");
+                    return false;
                 }
 
-                if (plan.EquipmentBundles.Length > 0)
+                using (ResourceBundleLoader.BeginSynchronousRestore())
                 {
-                    attempted = true;
-                    LoadEquipmentBundles(typeId, plan.EquipmentBundles);
+                    if (plan.SpecialLoader != null)
+                    {
+                        TryRunLoader(typeId, "special", plan.SpecialLoader);
+                    }
+
+                    if (plan.EquipmentBundles.Length > 0)
+                    {
+                        LoadEquipmentBundles(typeId, plan.EquipmentBundles);
+                    }
+
+                    if (prefab == null && plan.ItemBundles.Length > 0)
+                    {
+                        LoadItemBundles(typeId, plan.ItemBundles);
+                    }
+
+                    if (!HasRegisteredPrefabWithoutEnsuring(typeId) && plan.FallbackLoader != null)
+                    {
+                        TryRunLoader(typeId, "fallback", plan.FallbackLoader);
+                    }
+
+                    prefab = GetRegisteredPrefabWithoutEnsuring(typeId);
+                    if (prefab != null && plan.SplitModelBaseName != null && !HasSplitModel(plan, prefab))
+                    {
+                        ItemAgent model;
+                        if (EquipmentFactory.TryGetLoadedModel(plan.SplitModelBaseName, out model) && model != null)
+                        {
+                            // 只补配官方登记的源 prefab，使下一次实例化带正确模型。玩家物品树由官方还原。
+                            ItemFactory.ConfigureItemPrefab(prefab);
+                        }
+                        if (!HasSplitModel(plan, prefab)) LogFailureOnce(typeId, "指定装备模型未绑定: " + plan.SplitModelBaseName);
+                    }
                 }
 
-                if (plan.ItemBundles.Length > 0)
-                {
-                    attempted = true;
-                    EnsureItemConfiguratorsRegistered();
-                    LoadItemBundles(typeId, plan.ItemBundles);
-                }
-
-                if (!HasRegisteredPrefabWithoutEnsuring(typeId) && plan.FallbackLoader != null)
-                {
-                    attempted = TryRunLoader(typeId, "fallback", plan.FallbackLoader) || attempted;
-                }
-
-                bool ready = HasRegisteredPrefabWithoutEnsuring(typeId);
-                if (!ready && attempted)
+                bool ready = prefab != null;
+                if (!ready)
                 {
                     LogFailureOnce(typeId, "按需注册后仍未找到 prefab");
                 }
@@ -110,6 +135,14 @@ namespace BossRush
             {
                 InProgress.Remove(typeId);
             }
+        }
+
+        private static bool HasSplitModel(RegistrationPlan plan, Item prefab)
+        {
+            ItemAgent model;
+            if (!EquipmentFactory.TryGetLoadedModel(plan.SplitModelBaseName, out model) || model == null) return false;
+            if (plan.SplitModelIsMelee) return EquipmentFactory.HasBoundMeleeModel(prefab, model);
+            return EquipmentFactory.HasBoundEquipmentModel(prefab, model);
         }
 
         internal static int EnsureRegistered(IEnumerable<int> typeIds)
@@ -143,6 +176,15 @@ namespace BossRush
 
         internal static Item GetRegisteredPrefabWithoutEnsuring(int typeId)
         {
+            // 对 Mod TypeID 直接核对官方动态表，与原版实际实例化读取的是同一条记录。
+            if (IsBossRushDynamicItemType(typeId))
+            {
+                ItemAssetsCollection.DynamicEntry entry;
+                if (!ItemAssetsCollection.TryGetDynamicEntry(typeId, out entry)) return null;
+                Item prefab = entry.prefab;
+                return prefab != null && prefab.TypeID == typeId ? prefab : null;
+            }
+
             prefabCheckDepth++;
             try
             {
@@ -165,7 +207,13 @@ namespace BossRush
         internal static bool Publish(Item prefab)
         {
             if (prefab == null) return false;
-            ModItemIcons.ApplyBeforePublish(prefab);
+            try { ModItemIcons.ApplyBeforePublish(prefab); }
+            catch (Exception e)
+            {
+                // 图标资源出了问题，仍让官方读档拿到带槽位、标签与手持组件的真物品。
+                ModBehaviour.CriticalLog("dynamic-item-icon-" + prefab.TypeID,
+                    "[BossRushDynamicItemRegistry] 物品图标加载失败: " + prefab.TypeID + ", " + e.Message);
+            }
             return ItemAssetsCollection.AddDynamicEntry(prefab);
         }
 
@@ -202,17 +250,17 @@ namespace BossRush
             itemConfiguratorsRegistered = false;
         }
 
-        private static void EnsureItemConfiguratorsRegistered()
+        private static bool EnsureItemConfiguratorsRegistered()
         {
             if (itemConfiguratorsRegistered)
             {
-                return;
+                return true;
             }
 
             ModBehaviour instance = ModBehaviour.Instance;
             if (instance == null)
             {
-                return;
+                return false;
             }
 
             try
@@ -224,8 +272,9 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[BossRushDynamicItemRegistry] [WARNING] 注册 Item configurator 失败: " + e.Message);
+                ModBehaviour.CriticalLog("dynamic-item-configurators", "[BossRushDynamicItemRegistry] [ERROR] 登记物品与装备配置器失败: " + e.Message);
             }
+            return itemConfiguratorsRegistered;
         }
 
         private static void LoadEquipmentBundles(int typeId, string[] bundleNames)
@@ -274,29 +323,27 @@ namespace BossRush
             }
         }
 
-        private static bool TryRunLoader(int typeId, string label, Func<bool> loader)
+        private static void TryRunLoader(int typeId, string label, Func<bool> loader)
         {
             try
             {
-                return loader != null && loader();
+                loader();
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[BossRushDynamicItemRegistry] [WARNING] " + label + " 注册失败: TypeID=" + typeId + ", " + e.Message);
-                return false;
+                LogFailureOnce(typeId, label + " 注册异常: " + e.Message);
             }
         }
 
-        private static bool TryRunLoader(int typeId, string label, Func<int, bool> loader)
+        private static void TryRunLoader(int typeId, string label, Func<int, bool> loader)
         {
             try
             {
-                return loader != null && loader(typeId);
+                loader(typeId);
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[BossRushDynamicItemRegistry] [WARNING] " + label + " 注册失败: TypeID=" + typeId + ", " + e.Message);
-                return false;
+                LogFailureOnce(typeId, label + " 注册异常: " + e.Message);
             }
         }
 
@@ -307,7 +354,7 @@ namespace BossRush
                 return;
             }
 
-            ModBehaviour.DevLog("[BossRushDynamicItemRegistry] [WARNING] " + message + ": TypeID=" + typeId);
+            ModBehaviour.CriticalLog("dynamic-item-prefab-" + typeId, "[BossRushDynamicItemRegistry] [WARNING] " + message + ": TypeID=" + typeId);
         }
 
         private static Dictionary<int, RegistrationPlan> BuildPlans()
@@ -328,12 +375,10 @@ namespace BossRush
                 DragonKingConfig.DRAGON_KING_ARMOR_TYPE_ID,
                 DragonKingConfig.REVERSE_SCALE_TYPE_ID,
                 DragonKingBossGunConfig.WeaponTypeId);
-            Add(plans, EquipmentAndItem(
-                new string[] { "fenhuang_halberd_model" },
-                new string[] { "fenhuang_halberd_item" }), DragonKingConfig.FEN_HUANG_HALBERD_TYPE_ID);
-            Add(plans, EquipmentAndItem(
-                new string[] { "frostmourne_model" },
-                new string[] { "frostmourne_item" }), FrostmourneIds.WeaponTypeId);
+            Add(plans, SplitWeaponPlan("fenhuang_halberd_model", "fenhuang_halberd_item",
+                FenHuangHalberdIds.ModelBaseName, true), DragonKingConfig.FEN_HUANG_HALBERD_TYPE_ID);
+            Add(plans, SplitWeaponPlan("frostmourne_model", "frostmourne_item",
+                FrostmourneIds.ModelBaseName, true), FrostmourneIds.WeaponTypeId);
             Add(plans, EquipmentOnly("phantom_scythe"), PhantomWitchScytheIds.WeaponTypeId);
 
             Add(plans, ItemOnly(AwenCourierTokenConfig.BUNDLE_NAME), AwenCourierTokenConfig.TYPE_ID);
@@ -488,10 +533,14 @@ namespace BossRush
                 FallbackLoader = delegate(int typeId) { return AstralStaffWeaponConfig.EnsureRuntimeRegistration(); }
             }, BossRushItemIds.AstralStaff);
 
-            Add(plans, NewWeaponPlan("viperdagger_melee_model", "viperdagger_item"), NewWeaponIds.ViperDaggerTypeId);
-            Add(plans, NewWeaponPlan("summonstaff_melee_model", "summonstaff_item"), NewWeaponIds.SummonStaffTypeId);
-            Add(plans, NewWeaponPlan("energyshield_totem_model", "energyshield_item"), NewWeaponIds.EnergyShieldTypeId);
-            Add(plans, NewWeaponPlan("frostspear_melee_model", "frostspear_item"), NewWeaponIds.FrostSpearTypeId);
+            Add(plans, SplitWeaponPlan("viperdagger_melee_model", "viperdagger_item",
+                NewWeaponIds.ViperDaggerModelBaseName, true, EnsureNewWeaponPlaceholder), NewWeaponIds.ViperDaggerTypeId);
+            Add(plans, SplitWeaponPlan("summonstaff_melee_model", "summonstaff_item",
+                NewWeaponIds.SummonStaffModelBaseName, true, EnsureNewWeaponPlaceholder), NewWeaponIds.SummonStaffTypeId);
+            Add(plans, SplitWeaponPlan("energyshield_totem_model", "energyshield_item",
+                NewWeaponIds.EnergyShieldModelBaseName, false, EnsureNewWeaponPlaceholder), NewWeaponIds.EnergyShieldTypeId);
+            Add(plans, SplitWeaponPlan("frostspear_melee_model", "frostspear_item",
+                NewWeaponIds.FrostSpearModelBaseName, true, EnsureNewWeaponPlaceholder), NewWeaponIds.FrostSpearTypeId);
             Add(plans, new RegistrationPlan
             {
                 ItemBundles = new string[] { "thunderring_item" },
@@ -532,7 +581,11 @@ namespace BossRush
                 EquipmentBundles = new string[] { "thunder_set" },
                 FallbackLoader = EnsureSetBonusPlaceholder
             }, 500055, 500056);
-            Add(plans, EquipmentOnly("skyisland_boss_gear"), SkyIslandBossRules.AllGearTypeIds);
+            Add(plans, new RegistrationPlan
+            {
+                EquipmentBundles = new string[] { "skyisland_boss_gear" },
+                FallbackLoader = SkyIslandBossGearConfig.EnsureRegistered
+            }, SkyIslandBossRules.AllGearTypeIds);
 
             return plans;
         }
@@ -547,18 +600,16 @@ namespace BossRush
             return new RegistrationPlan { ItemBundles = new string[] { bundleName } };
         }
 
-        private static RegistrationPlan EquipmentAndItem(string[] equipmentBundles, string[] itemBundles)
-        {
-            return new RegistrationPlan { EquipmentBundles = equipmentBundles, ItemBundles = itemBundles };
-        }
-
-        private static RegistrationPlan NewWeaponPlan(string equipmentBundle, string itemBundle)
+        private static RegistrationPlan SplitWeaponPlan(string equipmentBundle, string itemBundle, string modelBaseName,
+            bool isMeleeModel, Func<int, bool> fallback = null)
         {
             return new RegistrationPlan
             {
                 EquipmentBundles = new string[] { equipmentBundle },
                 ItemBundles = new string[] { itemBundle },
-                FallbackLoader = EnsureNewWeaponPlaceholder
+                SplitModelBaseName = modelBaseName,
+                SplitModelIsMelee = isMeleeModel,
+                FallbackLoader = fallback
             };
         }
 
@@ -574,7 +625,14 @@ namespace BossRush
         {
             for (int i = 0; i < typeIds.Length; i++)
             {
-                plans[typeIds[i]] = plan;
+                int typeId = typeIds[i];
+                if (plans.ContainsKey(typeId))
+                {
+                    ModBehaviour.CriticalLog("dynamic-item-plan-duplicate-" + typeId,
+                        "[BossRushDynamicItemRegistry] [ERROR] TypeID=" + typeId + " 重复登记注册计划，保留首次登记");
+                    continue;
+                }
+                plans.Add(typeId, plan);
             }
         }
 
@@ -607,10 +665,58 @@ namespace BossRush
         }
     }
 
+    /// <summary>包内物品配置完成和官方接收是两步。失败重试时复用已配置的 prefab。</summary>
+    internal sealed class FactoryBundleRegistration
+    {
+        private readonly Dictionary<int, Item> configuredItems = new Dictionary<int, Item>();
+        private readonly HashSet<int> publishedTypes = new HashSet<int>();
+
+        internal bool Loading { get; set; }
+
+        internal bool IsConfigured(Item prefab)
+        {
+            Item configured;
+            return configuredItems.TryGetValue(prefab.TypeID, out configured) && configured == prefab;
+        }
+
+        internal bool IsPublished(Item prefab)
+        {
+            return IsConfigured(prefab) && publishedTypes.Contains(prefab.TypeID)
+                && BossRushDynamicItemRegistry.HasRegisteredPrefabWithoutEnsuring(prefab.TypeID);
+        }
+
+        internal bool TryPublish(Item prefab, string bundleName)
+        {
+            int typeId = prefab.TypeID;
+            configuredItems[typeId] = prefab;
+            publishedTypes.Remove(typeId);
+            if (!BossRushDynamicItemRegistry.Publish(prefab)
+                || BossRushDynamicItemRegistry.GetRegisteredPrefabWithoutEnsuring(typeId) != prefab)
+            {
+                ModBehaviour.CriticalLog("bundle-item-publish-" + typeId,
+                    "[BossRushDynamicItemRegistry] 官方拒绝注册: bundle=" + bundleName + ", TypeID=" + typeId);
+                return false;
+            }
+            publishedTypes.Add(typeId);
+            return true;
+        }
+
+        internal bool AllPrefabsLive()
+        {
+            foreach (int typeId in configuredItems.Keys)
+            {
+                if (!publishedTypes.Contains(typeId) || !BossRushDynamicItemRegistry.HasRegisteredPrefabWithoutEnsuring(typeId))
+                    return false;
+            }
+            return true;
+        }
+    }
+
     internal sealed partial class IntegrationRuntimeModule
     {
         internal static bool DynamicItemsInitialized { get; set; }
         internal static int BossRushTicketTypeId { get; set; } = -1;
+        private bool bossRushTicketRegistering;
 
         internal bool EnsureItemContentConfiguratorsRegisteredForDynamicRegistry()
         {
@@ -622,12 +728,11 @@ namespace BossRush
         {
             if (BossRushDynamicItemRegistry.HasRegisteredPrefabWithoutEnsuring(BossRushItemIds.BossRushTicket))
             {
-                if (BossRushTicketTypeId <= 0)
-                {
-                    BossRushTicketTypeId = BossRushItemIds.BossRushTicket;
-                }
+                BossRushTicketTypeId = BossRushItemIds.BossRushTicket;
                 return true;
             }
+            if (bossRushTicketRegistering) return false;
+            bossRushTicketRegistering = true;
 
             AssetBundle bundle = null;
             try
@@ -656,7 +761,6 @@ namespace BossRush
                 }
 
                 int itemCount = 0;
-                bool targetRegistered = false;
                 foreach (UnityEngine.Object obj in assets)
                 {
                     GameObject go = obj as GameObject;
@@ -671,13 +775,16 @@ namespace BossRush
                         continue;
                     }
 
-                    AddTagsToItem(itemPrefab, new string[] { "Key", "SpecialKey" });
-                    BossRushDynamicItemRegistry.Publish(itemPrefab);
-                    itemCount++;
+                    if (BossRushDynamicItemRegistry.GetRegisteredPrefabWithoutEnsuring(itemPrefab.TypeID) != itemPrefab)
+                    {
+                        AddTagsToItem(itemPrefab, new string[] { "Key", "SpecialKey" });
+                        if (!BossRushDynamicItemRegistry.Publish(itemPrefab)
+                            || BossRushDynamicItemRegistry.GetRegisteredPrefabWithoutEnsuring(itemPrefab.TypeID) != itemPrefab) continue;
+                        itemCount++;
+                    }
 
                     if (itemPrefab.TypeID == BossRushItemIds.BossRushTicket)
                     {
-                        targetRegistered = true;
                         BossRushTicketTypeId = itemPrefab.TypeID;
                     }
                     else if (BossRushTicketTypeId <= 0 && itemPrefab.TypeID > 0)
@@ -687,7 +794,7 @@ namespace BossRush
                 }
 
                 ModBehaviour.DevLog("[BossRushDynamicItemRegistry] bossrush_ticket 按需注册完成：Item=" + itemCount + ", BossRushTicketTypeId=" + BossRushTicketTypeId);
-                return targetRegistered || BossRushDynamicItemRegistry.HasRegisteredPrefabWithoutEnsuring(BossRushItemIds.BossRushTicket);
+                return BossRushDynamicItemRegistry.HasRegisteredPrefabWithoutEnsuring(BossRushItemIds.BossRushTicket);
             }
             catch (Exception e)
             {
@@ -697,6 +804,7 @@ namespace BossRush
             finally
             {
                 AssetBundleUnloadHelper.TryUnload(bundle, "[BossRushDynamicItemRegistry]");
+                bossRushTicketRegistering = false;
             }
         }
 

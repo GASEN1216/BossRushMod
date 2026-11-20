@@ -15,16 +15,13 @@
 // ============================================================================
 
 using System;
-using System.Collections.Generic;
 using ItemStatsSystem;
-using UnityEngine;
 
 namespace BossRush
 {
     internal static class CollectibleItems
     {
         private static bool _configuratorsRegistered;
-        private static readonly HashSet<int> _runtimeRegistered = new HashSet<int>();
 
         internal static string IconName(CollectibleDefinition def)
         {
@@ -95,66 +92,8 @@ namespace BossRush
         /// <summary>收集品与收藏册共用的克隆注册（形态照 LastShiftItems.EnsureRuntimeRegistration）。</summary>
         internal static bool EnsureClone(int typeId, string objectName, Action<Item> configure)
         {
-            try
-            {
-                Item existing = null;
-                try { existing = ItemAssetsCollection.GetPrefab(typeId); }
-                catch (Exception)
-                {
-                    // prefab 查询失败按「尚未注册」处理，继续走克隆路径
-                }
-                if (existing != null) { configure(existing); return true; }
-                existing = ItemFactory.GetLoadedItem(typeId);
-                if (existing != null)
-                {
-                    configure(existing);
-                    try { BossRushDynamicItemRegistry.Publish(existing); }
-                    catch (Exception)
-                    {
-                        // 已在表内时重复登记会抛，忽略即可
-                    }
-                    return true;
-                }
-                if (_runtimeRegistered.Contains(typeId))
-                {
-                    try { return ItemAssetsCollection.GetPrefab(typeId) != null; }
-                    catch (Exception) { return false; }
-                }
-                Item source = FindRuntimeFallbackSource();
-                if (source == null) { ModBehaviour.DevLog(CollectibleTuning.LogPrefix + "找不到可克隆的兜底物品: " + typeId); return false; }
-                Item clone = UnityEngine.Object.Instantiate(source);
-                if (clone == null || clone.gameObject == null) return false;
-                clone.gameObject.name = objectName;
-                clone.gameObject.SetActive(false);
-                clone.gameObject.hideFlags = HideFlags.HideAndDontSave;
-                UnityEngine.Object.DontDestroyOnLoad(clone.gameObject);
-                clone.SetTypeID(typeId);
-                configure(clone);
-                BossRushDynamicItemRegistry.Publish(clone);
-                _runtimeRegistered.Add(typeId);
-                return true;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(CollectibleTuning.LogPrefix + "兜底注册失败 " + typeId + ": " + e.Message);
-                return false;
-            }
-        }
-
-        /// <summary>克隆源与潮闸镇、末班编组站物品同一份顺序：都是零新增 bundle 的小件 Mod 物品。</summary>
-        private static Item FindRuntimeFallbackSource()
-        {
-            int[] fallbackIds = { BossRushItemIds.RelicEgg, BossRushItemIds.PortableSafeZoneDevice, BossRushItemIds.ZombieTideBeacon, BossRushItemIds.ZombieTideInvitation };
-            foreach (int id in fallbackIds)
-            {
-                try
-                {
-                    Item prefab = ItemAssetsCollection.GetPrefab(id);
-                    if (prefab != null) return prefab;
-                }
-                catch (Exception e) { ModBehaviour.DevLog(CollectibleTuning.LogPrefix + "[WARNING] 查找兜底模板物品失败: " + e.Message); }
-            }
-            return null;
+            return RuntimeItemFallback.Ensure(typeId, objectName, CollectibleTuning.LogPrefix,
+                RuntimeItemFallback.FindSmallItemSource, configure, configure);
         }
 
         /// <summary>按 TypeID 同步实例化一件收集品；拿不到真 prefab（只会出 FallbackItem）时返回 null。</summary>
@@ -179,7 +118,6 @@ namespace BossRush
 
         internal static void ResetStaticCaches()
         {
-            _runtimeRegistered.Clear();
             _configuratorsRegistered = false;
             CollectionBookItem.ResetStaticCaches();
         }

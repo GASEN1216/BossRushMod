@@ -71,11 +71,17 @@ namespace ItemStatsSystem
         }
         public static Item GetPrefab(int id)
         {
+            Item prefab = GetRegisteredPrefab(id);
+            if (prefab == null && TidegateItemHost.Ensure(id)) prefab = GetRegisteredPrefab(id);
+            return prefab;
+        }
+        internal static Item GetRegisteredPrefab(int id)
+        {
             Item result;
             if (Items.TryGetValue(id, out result)) return result;
             return TidegateItemHost.Get(id);
         }
-        internal static void AddDynamicEntry(Item item) { TidegateItemHost.Register(item); }
+        internal static bool RemoveDynamicEntry(Item item) { return TidegateItemHost.Remove(item); }
     }
 }
 namespace BossRush

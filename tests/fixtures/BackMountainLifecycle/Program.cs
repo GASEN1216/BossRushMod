@@ -41,6 +41,7 @@ static class Program
         ShowcaseDisplayScanner.ResetStaticCaches(); GardenConstructionSite.ResetStaticCaches(); ShowcaseTrophyCatalog.ResetStaticCaches();
         CampaignBaseObjectives.Providers.Clear(); DialogueManager.IsDialogueActive = false; BossRushUI.Hidden = BossRushUI.Paused = false;
         BackMountainUnlocks.ResetStaticCaches(); BackMountainItems.ResetStaticCaches();
+        RuntimeItemFallback.ResetStaticCaches();
         SavesSystem.Reset(); ItemAssetsCollection.Prefabs.Clear(); CampaignFacilityUnlocks.Tokens.Clear();
         ItemUtilities.Sent.Clear(); ItemUtilities.Fail = false; ItemAssetsCollection.Instantiated = 0; Duckov.UI.NotificationText.Pushed.Clear();
         BossBgmCoordinator.Tracks.Clear(); UnityEngine.Object.Selector = null; UnityEngine.Object.FindCalls = 0;

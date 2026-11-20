@@ -2,7 +2,6 @@
 from pathlib import Path
 import hashlib
 import json
-import subprocess
 from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -28,6 +27,7 @@ def block(source, signature):
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     linked = [ROOT / path for path in (
+        "Config/ConfigItemIds.cs",
         "Integration/NPCs/Nurse/NurseNPC.cs",
         "Integration/Mutators/MutatorModeFlow.cs",
         "Integration/ModeGManagedCharacterService.cs",
@@ -38,6 +38,9 @@ def main():
     init_path = ROOT / "Integration/BossRushIntegrationRuntimeModule_Initialization.cs"
     host_path = ROOT / "Integration/BossRushIntegration.cs"
     map_path = ROOT / "MapSelection/BossRushMapSelectionHelper.cs"
+    debug_path = ROOT / "DebugAndTools/DebugAndTools.cs"
+    cake_path = ROOT / "Integration/BossRushIntegrationRuntimeModule_BirthdayCake.cs"
+    wiki_path = ROOT / "Integration/BossRushIntegrationRuntimeModule_WikiBook.cs"
     registry = block(registry_path.read_text(encoding="utf-8-sig"), "internal sealed partial class IntegrationRuntimeModule")
     initializer = block(init_path.read_text(encoding="utf-8-sig"), "internal void InitializeDynamicItems_Integration()")
     bridges = "\n".join(block(host_path.read_text(encoding="utf-8-sig"), "internal bool " + name + "()") for name in (
@@ -50,7 +53,30 @@ def main():
         "public static int GetBossRushTicketTypeId()", "public static Cost CreateBossRushCost()"))
     map_generated = OUT / "MapTicketProduction.cs"
     map_generated.write_text("using System; using System.Reflection; using Duckov.Economy; namespace BossRush { public static class BossRushMapSelectionHelper {\n" + map_methods + "\n}}", encoding="utf-8")
-    sources = linked + [generated, map_generated, HERE / "Program.cs", HERE / "Stubs.cs"]
+    path_generated = OUT / "ModPathProduction.cs"
+    get_mod_path = block(debug_path.read_text(encoding="utf-8-sig"), "public static string GetModPath()")
+    path_generated.write_text("using System; namespace BossRush { public partial class ModBehaviour {\n"
+                              + get_mod_path + "\n}}", encoding="utf-8")
+    special_generated = OUT / "SpecialItemProduction.cs"
+    special_source = []
+    for path, start, methods in (
+        (cake_path, "private const int BIRTHDAY_CAKE_TYPE_ID", (
+            "internal void InitializeBirthdayCakeItem()", " ConfigureBirthdayCakeItem(Item itemPrefab)", "private Buff FindHappyBuff()")),
+        (wiki_path, "private const int WIKI_BOOK_TYPE_ID", (
+            "internal void InitializeWikiBookItem()", "private bool LoadWikiAssetBundle()", " ConfigureWikiBookItem(Item itemPrefab)")),
+    ):
+        source = path.read_text(encoding="utf-8-sig")
+        fields = source[source.index(start):source.index(methods[0])]
+        special_source.append(fields)
+        for signature in methods:
+            if signature.startswith(" "):
+                signature = source[source.rindex("private ", 0, source.index(signature)):source.index(signature)] + signature
+            special_source.append(block(source, signature))
+    special_generated.write_text(
+        "using System; using System.Collections.Generic; using System.IO; using System.Reflection; "
+        "using BossRush.Utils; using UnityEngine; using Duckov.ItemUsage; using Duckov.Buffs; using ItemStatsSystem; "
+        "namespace BossRush { internal sealed partial class IntegrationRuntimeModule {\n" + "\n".join(special_source) + "\n}}", encoding="utf-8")
+    sources = linked + [generated, map_generated, path_generated, special_generated, HERE / "Program.cs", HERE / "Stubs.cs", HERE / "SpecialItems.cs"]
     includes = "".join('<Compile Include="' + escape(str(path), {'"': '&quot;'}) + '" />' for path in sources)
     project = OUT / "Regression.csproj"
     project.write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType>'
@@ -58,8 +84,12 @@ def main():
                        '<EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup><ItemGroup>' +
                        includes + '</ItemGroup></Project>', encoding="utf-8")
     (OUT / "production-sha256.json").write_text(json.dumps({path.relative_to(ROOT).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
-                                                          for path in linked + [registry_path, init_path, host_path, map_path]}, indent=2), encoding="utf-8")
-    return subprocess.call(["dotnet", "run", "--project", str(project), "--configuration", "Release"], cwd=ROOT)
+                                                          for path in linked + [registry_path, init_path, host_path, map_path, debug_path, cake_path, wiki_path]}, indent=2), encoding="utf-8")
+    sys.path.insert(0, str(ROOT / "tools"))
+    from run_runtime_regressions import run_project_fixture
+    code, output = run_project_fixture(project, OUT / "execution", ROOT)
+    print(output)
+    return code
 
 
 if __name__ == "__main__":

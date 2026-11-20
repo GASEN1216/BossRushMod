@@ -52,7 +52,7 @@ namespace BossRush
                 return true;
 #else
                 EnsureLoaded();
-                return bundle == null;
+                return bundle == null && attempted;
 #endif
             }
         }
@@ -68,16 +68,28 @@ namespace BossRush
         private static void EnsureLoaded()
         {
             if (bundle != null || attempted) return;
-            attempted = true;
             string path = Path.Combine(ModBehaviour.GetModPath(), BundleRelativePath);
-            try { if (File.Exists(path)) bundle = ResourceBundleLoader.LoadFromFile(path); }
-            catch (Exception e) { Debug.LogWarning("[ProductionIconCache] " + e.Message); }
+            try
+            {
+                if (File.Exists(path)) bundle = ResourceBundleLoader.LoadFromFile(path);
+                // 旧宿主的取消请求仍可能在排空。这次查询不构成缺包，也不能让散图进正式缓存。
+                attempted = bundle != null || !ResourceBundleLoader.IsPreparationDraining(path);
+            }
+            catch (Exception e)
+            {
+                attempted = true;
+                Debug.LogWarning("[ProductionIconCache] " + e.Message);
+            }
         }
 
         internal static IEnumerator Prepare(Func<bool> cancelled)
         {
             if (bundle != null) yield break;
-            yield return ResourceBundleLoader.Prepare(Path.Combine(ModBehaviour.GetModPath(), BundleRelativePath), false, cancelled, EnsureLoaded);
+            yield return ResourceBundleLoader.Prepare(Path.Combine(ModBehaviour.GetModPath(), BundleRelativePath), false, cancelled, () =>
+            {
+                attempted = false;
+                EnsureLoaded();
+            }, alreadyLoaded: () => bundle != null);
         }
 
         internal static void ResetStaticCaches()

@@ -397,9 +397,9 @@ def main() -> int:
         return rc
 
     rc = require(placeholder, (
-        "FrostThunderSetConfig.TryConfigureByTypeId(existing);",
+        "RuntimeItemFallback.Ensure(typeId, prefabName,",
+        "existing => FrostThunderSetConfig.TryConfigureByTypeId(existing)",
         "FrostThunderSetConfig.TryConfigureByTypeId(clone);",
-        "Item clone = UnityEngine.Object.Instantiate(source);",
     ), "set bonus placeholder fallback-delegation")
     if rc:
         return rc

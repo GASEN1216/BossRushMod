@@ -22,17 +22,19 @@ fail-fast 的写法还会让第一个红项遮蔽后面所有守卫。
 
 - 已知红项登记在 `tests/known_red_guards.txt`：失败不计入退出码但会单独列出；登记后又转绿的报 STALE-BASELINE 并判失败，要及时移除。新写的守卫不进这里。
 - CI（`.github/workflows/guards.yml`）跑 `--source-only`：依赖 local-only 制品（AssetBundle）的检查标 PARTIAL，清单见 runner 的 `EXTERNAL_ARTIFACT_GUARDS`。发布验证不要用这个参数。干净签出上缺少这些资源不算代码回归，不能据 PARTIAL 宣称发布资源通过。
-- CI 不跑编译。只能在 Linux / WSL 跑时，写明「未做 Windows 编译验证」。
+- CI 的 Windows 作业编译并执行隔离的物品恢复夹具。正式 Mod 编译另需本机游戏程序集。
 
 ## 2. 执行回归
 
 ```bash
 python tools/run_runtime_regressions.py --list
 python tools/run_runtime_regressions.py --filter SkyIsland
+python tools/run_runtime_regressions.py --fixtures DynamicItemInitialization EquipmentConfiguratorRegistry ResourceProduction IntegrationLeafOwners TidegateTreasure
 python tools/run_runtime_regressions.py --jobs 1          # 串行排查
 ```
 
 - 入口显式登记 `tests/fixtures/` 下的工程，聚合结果；日志与 `results.json` 写入 `Build/runtime-regressions/`。新增夹具要同步入口清单，并在夹具 README 里写清「真实生产逻辑」与「宿主替身」的边界。
+- 上面的物品恢复组合在 PR 和 main 推送的 Guards 工作流中自动执行。它覆盖角色与仓库冷启动、装备和模型、资源预载交接、特殊物品及克隆。新增物品时，公开编号台账与生产注册计划必须同时通过校验。
 - `PROJECT_FIXTURES` 每次使用独立输出目录，显式构建成功后只执行 MSBuild 返回的本次 `TargetPath`；日志记录路径与 SHA-256。不能用 `dotnet run` 配输出属性覆盖来推定执行对象，也不能以默认 bin 中已有 exe 充当本次回归。
 - 需要本机 .NET SDK。依赖官方程序集的夹具这样找 DLL：`GAME_PATH`（游戏根目录；不设时读 Windows 编译生成的 `Build/BossRush.rsp`）；Harmony 类夹具另读 `BOSSRUSH_GAME_MANAGED`、`BOSSRUSH_HARMONY_DLL`。报「缺少官方 DLL」是环境没配好，不能据此宣称通过，也不算代码失败。
 - 只用聚合入口跑，不要在夹具目录里直接 `dotnet run`：会留下 `bin/obj`。`tests/fixtures/Directory.Build.props` 已把夹具本地的 `obj/`、`bin/` 排除出编译（编辑器的设计时构建也会生成 `obj/Debug`，2026-09-25 曾让整组回归报 CS0579 特性重复）；自带 `Directory.Build.props` 的夹具（如 F3ValidationExecution）不继承它，仍要守这条。

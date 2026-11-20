@@ -7,12 +7,15 @@ using ItemStatsSystem;
 using UnityEngine;
 using BossRush;
 
-// The clone/registration/configuration code is the real RelicEggConfig + TidegateItems.
-// This host replaces Unity object cloning, the dynamic-entry store, icons and usage plumbing only.
+// The real RelicEggConfig, TidegateItems and RuntimeItemFallback run against this host.
 internal static class TidegateItemHost
 {
     private static readonly Dictionary<int,Item> custom = new Dictionary<int,Item>();
     private static readonly HashSet<int> registering = new HashSet<int>();
+    internal static readonly Dictionary<int,Item> Bundled = new Dictionary<int,Item>();
+    internal static int RejectedTypeId, PublishCalls;
+    internal static Item RejectedPrefab;
+    internal static Action<Item> BeforePublish;
     internal static void LoadTemplate()
     {
         var d = JsonDocument.Parse(File.ReadAllText("tests/fixtures/TidegateTreasure/FallbackTemplate.json")).RootElement;
@@ -22,17 +25,36 @@ internal static class TidegateItemHost
         source.Value=d.GetProperty("value").GetInt32(); source.MaxStackCount=1; source.StackCount=1;
         source.Tags=new HashSet<string>{"Special"}; custom[source.TypeID]=source;
     }
-    internal static void Register(Item item) { custom[item.TypeID]=item; }
+    internal static bool Register(Item item)
+    {
+        PublishCalls++;
+        BeforePublish?.Invoke(item);
+        if (item.TypeID == RejectedTypeId) { RejectedPrefab = item; return false; }
+        custom[item.TypeID] = item;
+        return true;
+    }
+    internal static bool Remove(Item item)
+    {
+        Item registered;
+        return custom.TryGetValue(item.TypeID, out registered) && registered == item && custom.Remove(item.TypeID);
+    }
     internal static Item Get(int id)
     {
         Item result;
-        if (custom.TryGetValue(id,out result)) return result;
-        if (!registering.Add(id)) return null;
+        return custom.TryGetValue(id, out result) ? result : null;
+    }
+    internal static bool InProgress(int id) { return registering.Contains(id); }
+    internal static bool Ensure(int id)
+    {
+        if (Get(id) != null) return true;
+        if (!registering.Add(id)) return false;
         try
         {
-            if (id==BossRushItemIds.RelicEgg) RelicEggConfig.EnsureRuntimeRegistration();
-            else if (TidegateItems.IsTidegateItem(id)) TidegateItems.EnsureRuntimeRegistration(id);
-            return custom.TryGetValue(id,out result) ? result : null;
+            Item bundled;
+            if (Bundled.TryGetValue(id, out bundled) && Register(bundled)) return true;
+            if (id == BossRushItemIds.RelicEgg) return RelicEggConfig.EnsureRuntimeRegistration();
+            if (TidegateItems.IsTidegateItem(id)) return TidegateItems.EnsureRuntimeRegistration(id);
+            return false;
         }
         finally { registering.Remove(id); }
     }
@@ -82,7 +104,8 @@ namespace BossRush
     internal static class ItemFactory
     {
         internal static void RegisterConfigurator(int id,Action<Item> configure) { }
-        internal static Item GetLoadedItem(int id) { return null; }
+        internal static readonly Dictionary<int, Item> Loaded = new Dictionary<int, Item>();
+        internal static Item GetLoadedItem(int id) { Item item; return Loaded.TryGetValue(id, out item) ? item : null; }
     }
     internal static class ModeFItemConfigHelper
     {
@@ -91,7 +114,13 @@ namespace BossRush
         internal static void BindUsageUtilitiesToItem(Item item,Duckov.ItemUsage.UsageUtilities usage,float time) { }
     }
     internal static class EquipmentHelper { internal static void AddTagToItem(Item item,string tag) { item.Tags.Add(tag); } }
-    internal static class BossRushDynamicItemRegistry { internal static bool Publish(Item item) { ItemAssetsCollection.AddDynamicEntry(item); return true; } }
+    internal static class BossRushDynamicItemRegistry
+    {
+        internal static bool Publish(Item item) { return TidegateItemHost.Register(item); }
+        internal static bool IsRegistrationInProgress(int id) { return TidegateItemHost.InProgress(id); }
+        internal static Item GetRegisteredPrefabWithoutEnsuring(int id) { return ItemAssetsCollection.GetRegisteredPrefab(id); }
+        internal static bool EnsureRegistered(int id) { return TidegateItemHost.Ensure(id); }
+    }
     internal sealed class TidegateLeadUsage : Duckov.ItemUsage.UsageBehavior { }
     internal sealed class TidegateLetterUsage : Duckov.ItemUsage.UsageBehavior { }
 }

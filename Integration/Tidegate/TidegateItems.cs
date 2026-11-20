@@ -214,94 +214,14 @@ namespace BossRush
 
         #region 运行时兜底注册（零新增 bundle）
 
-        private static readonly HashSet<int> _runtimeRegistered = new HashSet<int>();
-
         /// <summary>从既有物品克隆一个 prefab 顶上。形态照 SkyIslandItems.EnsureRuntimeRegistration；供 BossRushDynamicItemRegistry 调用。</summary>
         public static bool EnsureRuntimeRegistration(int typeId)
         {
-            try
-            {
-                if (GetDefinition(typeId) == null) return false;
-                Item existing = null;
-                try { existing = ItemAssetsCollection.GetPrefab(typeId); }
-                catch (Exception)
-                {
-                    // prefab 查询失败按「尚未注册」处理，继续走克隆路径
-                }
-                if (existing != null)
-                {
-                    ConfigureItem(typeId, existing);
-                    return true;
-                }
-
-                existing = ItemFactory.GetLoadedItem(typeId);
-                if (existing != null)
-                {
-                    ConfigureItem(typeId, existing);
-                    try { BossRushDynamicItemRegistry.Publish(existing); }
-                    catch (Exception)
-                    {
-                        // 已在表内时重复登记会抛，忽略即可
-                    }
-                    return true;
-                }
-
-                if (_runtimeRegistered.Contains(typeId))
-                {
-                    try { return ItemAssetsCollection.GetPrefab(typeId) != null; }
-                    catch (Exception) { return false; }
-                }
-
-                Item source = FindRuntimeFallbackSource();
-                if (source == null)
-                {
-                    ModBehaviour.DevLog(LogPrefix + "找不到可克隆的兜底物品: " + typeId);
-                    return false;
-                }
-
-                Item clone = UnityEngine.Object.Instantiate(source);
-                if (clone == null || clone.gameObject == null) return false;
-                clone.gameObject.name = GetDefinition(typeId).LocKey;
-                clone.gameObject.SetActive(false);
-                clone.gameObject.hideFlags = HideFlags.HideAndDontSave;
-                UnityEngine.Object.DontDestroyOnLoad(clone.gameObject);
-                clone.SetTypeID(typeId);
-                ConfigureItem(typeId, clone);
-                BossRushDynamicItemRegistry.Publish(clone);
-                _runtimeRegistered.Add(typeId);
-                ModBehaviour.DevLog(LogPrefix + "运行时兜底物品已注册: " + typeId);
-                return true;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(LogPrefix + "兜底注册失败 " + typeId + ": " + e.Message);
-                return false;
-            }
-        }
-
-        /// <summary>克隆源与天空岛物品同一份顺序：都是零新增 bundle 的小件 Mod 物品，没有专属模型。</summary>
-        private static Item FindRuntimeFallbackSource()
-        {
-            int[] fallbackIds =
-            {
-                BossRushItemIds.RelicEgg,
-                BossRushItemIds.PortableSafeZoneDevice,
-                BossRushItemIds.ZombieTideBeacon,
-                BossRushItemIds.ZombieTideInvitation,
-            };
-            for (int i = 0; i < fallbackIds.Length; i++)
-            {
-                try
-                {
-                    Item prefab = ItemAssetsCollection.GetPrefab(fallbackIds[i]);
-                    if (prefab != null) return prefab;
-                }
-                catch (Exception e)
-                {
-                    ModBehaviour.DevLog(LogPrefix + "[WARNING] 查找兜底模板物品失败: " + e.Message);
-                }
-            }
-            return null;
+            Definition def = GetDefinition(typeId);
+            if (def == null) return false;
+            Action<Item> configure = item => ConfigureItem(typeId, item);
+            return RuntimeItemFallback.Ensure(typeId, def.LocKey, LogPrefix,
+                RuntimeItemFallback.FindSmallItemSource, configure, configure);
         }
 
         #endregion
@@ -331,7 +251,6 @@ namespace BossRush
         /// <summary>Integration 运行时模块销毁时调用：下次装载要重新登记配置器与兜底注册。</summary>
         internal static void ResetStaticCaches()
         {
-            _runtimeRegistered.Clear();
             _configuratorsRegistered = false;
         }
 

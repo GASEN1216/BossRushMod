@@ -821,10 +821,11 @@ namespace BossRush
             }
         }
 
-        private static void FinalizeCustomMeleeWeapon(Item itemPrefab, ItemAgent modelAgent, string baseName)
+        private static bool FinalizeCustomMeleeWeapon(Item itemPrefab, ItemAgent modelAgent, string baseName)
         {
             try
             {
+                if (HasBoundMeleeModel(itemPrefab, modelAgent)) return true;
                 EquipmentHelper.AddTagToItem(itemPrefab, "Weapon");
                 EquipmentHelper.AddTagToItem(itemPrefab, "MeleeWeapon");
 
@@ -845,7 +846,7 @@ namespace BossRush
                 if (modelAgent == null)
                 {
                     ModBehaviour.DevLog("[EquipmentFactory] 近战武器缺少模型，跳过 Handheld 注入: " + itemPrefab.name);
-                    return;
+                    return false;
                 }
 
                 ItemAgent_MeleeWeapon meleeTemplate = itemPrefab.GetComponent<ItemAgent_MeleeWeapon>();
@@ -856,20 +857,35 @@ namespace BossRush
 
                 ApplyMeleeAgentDefaults(meleeTemplate, null);
 
-                ItemAgent_MeleeWeapon handheldPrefab =
-                    CreateMeleeHandheldPrefab(itemPrefab, modelAgent, meleeTemplate, baseName);
+                ItemAgent_MeleeWeapon handheldPrefab;
+                ItemAgent sourceModel;
+                bool needsHandheld = !meleeHandheldsByType.TryGetValue(itemPrefab.TypeID, out handheldPrefab)
+                    || handheldPrefab == null || !meleeModelsByHandheld.TryGetValue(handheldPrefab, out sourceModel) || sourceModel != modelAgent;
+                if (needsHandheld) handheldPrefab = CreateMeleeHandheldPrefab(itemPrefab, modelAgent, meleeTemplate, baseName);
                 if (handheldPrefab == null)
                 {
                     ModBehaviour.DevLog("[EquipmentFactory] 近战 Handheld prefab 创建失败: " + itemPrefab.name);
-                    return;
+                    return false;
                 }
 
                 SetAgentUtilityPrefab(itemPrefab, HANDHELD_AGENT_KEY, handheldPrefab);
+                if (GetHandheldPrefab(itemPrefab) != handheldPrefab)
+                {
+                    if (needsHandheld) UnityEngine.Object.Destroy(handheldPrefab.gameObject);
+                    return false;
+                }
+                if (needsHandheld)
+                {
+                    meleeHandheldsByType[itemPrefab.TypeID] = handheldPrefab;
+                    meleeModelsByHandheld[handheldPrefab] = modelAgent;
+                }
                 ModBehaviour.DevLog("[EquipmentFactory] 已从工厂源头注册近战 Handheld: " + itemPrefab.name);
+                return true;
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[EquipmentFactory] FinalizeCustomMeleeWeapon 失败: " + itemPrefab.name + " - " + e.Message);
+                return false;
             }
         }
 
@@ -879,9 +895,10 @@ namespace BossRush
             ItemAgent_MeleeWeapon meleeTemplate,
             string baseName)
         {
+            GameObject runtimeCopy = null;
             try
             {
-                GameObject runtimeCopy = UnityEngine.Object.Instantiate(modelAgent.gameObject);
+                runtimeCopy = UnityEngine.Object.Instantiate(modelAgent.gameObject);
                 runtimeCopy.name = baseName + "_Handheld_Model";
                 runtimeCopy.hideFlags = HideFlags.HideAndDontSave;
                 runtimeCopy.transform.position = new Vector3(0f, -9999f, 0f);
@@ -909,6 +926,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
+                if (runtimeCopy != null) UnityEngine.Object.Destroy(runtimeCopy);
                 ModBehaviour.DevLog("[EquipmentFactory] 创建近战 Handheld prefab 失败: " + itemPrefab.name + " - " + e.Message);
                 return null;
             }

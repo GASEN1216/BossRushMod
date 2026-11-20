@@ -1,5 +1,27 @@
-# 动态物品初始化回归
+# 动态物品读档回归
 
-逐字抽取生产 `InitializeInstance`，覆盖非激活克隆、重复初始化、错误主人、原版物品隔离和宿主异常诊断。适配器模拟官方 `Item.Initialize` 的幂等状态与 Agent 主人绑定；不模拟 Unity 场景、渲染或 Harmony 安装。异步返回链和三种创建入口另由 `DynamicItemInitializationGuard` 检查。
+夹具编译生产动态注册表、包内发布状态和 Harmony 补丁文件。注册计划引用的 TypeID、包名和数组来自生产声明，实际计划与台账中的物品 TypeID 逐项比对。台账保留空洞及历史占用该号段的两项 Buff 均排除在物品集合之外。
 
-运行：`python tools/run_runtime_regressions.py --filter DynamicItemInitialization`。
+重复登记即使保持 TypeID 集合一致，回归也会依据构表诊断报出具体编号。正式运行时保留最先登记的计划，继续构建其余条目。
+
+- 冷启动用角色物品树首次请求焚天龙铳。检查配置器先于装备包登记，主武器槽接纳武器，手持实例绑定一次，耐久、嵌套配件及配件变量能随角色再次序列化。
+- 仓库冷加载经过库存和物品树补丁，检查真实物品、原库存格和数量。第二次冷加载交换两条入口顺序，同一进程再次读档不重复注册配置器或加载资产包。
+- 拒绝发布一个同包 prefab 时，其他已成功发布的 prefab 保持可用，失败项重试后只补发布。
+- 六件独立模型包武器和图腾沿用已发布的物品 prefab。模型缺失时保留物品，模型可用后只补绑定目标模型，当次官方实例化和后续热读使用已绑定模型。
+- 官方同步调用绕过已知缺失的 Mod 条目。官方异步调用绕过已销毁的动态 prefab，遇到空壳等一帧后再交付。覆盖恢复成功并销毁未装配空壳、持续缺件后正常返回，以及旧 owner 已更换时终止本次恢复。
+- 起始场景已经卸载时不为旧请求发布新物品；切换活跃场景而起始场景仍加载时允许完成恢复。
+- 官方物品表持续不可用时，空返回会成为同 TypeID 的占位物，仓库能恢复原格位和数量并再次写出该身份。
+- 单件图标加载抛异常时，仍发布并保留真实装备 prefab。
+- 保留原有非激活克隆、重复初始化、错误主人、原版物品隔离和宿主异常诊断检查。
+
+宿主替身按官方游戏 DLL 的顺序先创建节点、复制实例变量，再用 `Slot.Plug` 和库存位置装配，槽标签不匹配时忽略失败。替身提供装备包、标签、手持代理、仓库与角色数据，只模拟本回归涉及的分支。补丁由替身在对应调用点显式执行。原生 AssetBundle 加载、Harmony 实际安装、完整存档格式、场景和 Unity 手持显示仍需实机验证。
+
+运行 `python tools/run_runtime_regressions.py --filter DynamicItemInitialization`。
+
+## 发行包来源
+
+同一夹具用真实 `BuildPlans`、`tools/resource_release_manifest.json` 和 `tools/item_bundle_inventory.json` 检查按需注册来源。按精确路径核对发行清单及快照，由包中的根 Item 核对 TypeID，由装备工厂实际的名称规则核对分包模型键。有已发行根 Item 的类型不能只剩克隆兜底。冒险家日志按 special loader 认可的根物件名称接受会在注册时校正的旧 ID，残日盾片按作者模型和运行时物品分开核对。
+
+更新最终发布包后，在安装了 UnityPy 的环境从仓库根目录运行 `python tools/item_bundle_inventory.py --root <发行包所在目录>`。默认读取当前目录的 `Assets`（从仓库根执行），也可用 `--output Build/item_bundle_inventory.json` 生成到临时文件比对。每个相对路径只记一次，快照内容来自包内导出的根 GameObject、Item 的 `typeID` 字段和模型根名称，并附实际文件 SHA-256。
+
+公开 CI 读取快照即可复算代码接线。夹具有包时比对 SHA-256，缺私有包时仍核查注册计划与快照。`python tools/verify_unity_resource_release.py --root <发行包所在目录> --report Build/resource-release-audit.json` 在本地用全部真实发行包复算根数据与哈希，过期快照使核验失败。范围是注册表直接引用的物品包及模型来源，不验证 Unity 运行时绑定、视觉、`FallbackLoader` 的传递依赖或玩家存档。

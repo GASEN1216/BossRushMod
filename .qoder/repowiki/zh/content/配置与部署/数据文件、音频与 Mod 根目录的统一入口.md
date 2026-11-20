@@ -25,6 +25,7 @@
 - [MapSpawnRegistryPropertyTest.py](file://tests/MapSpawnRegistryPropertyTest.py)
 - [AudioRuntime 执行回归](file://tests/fixtures/AudioRuntime/README.md)
 - [AuditCoreParsing 执行回归](file://tests/fixtures/AuditCoreParsing/README.md)
+- [IntegrationLeafOwners 执行回归](file://tests/fixtures/IntegrationLeafOwners/README.md)
 </cite>
 
 ## 一句话
@@ -33,7 +34,7 @@ Mod 根目录只经 `ModBehaviour.GetModPath()` 取；调官方音频只经 `Bos
 
 ## Mod 根目录
 
-- `GetModPath()`（`DebugAndTools/DebugAndTools.cs`）：先取程序集所在目录、`Directory.Exists` 通过就返回；不行再读官方 `ModBehaviour.info.path`；都不行返回 null，不抛。官方 `ModManager` 用 `Assembly.LoadFrom` 加载 Mod，程序集位置总有值，所以正常运行时它和从前各处自己拼的 `Path.GetDirectoryName(typeof(X).Assembly.Location)` 是同一个目录。
+- `GetModPath()`（`DebugAndTools/DebugAndTools.cs`）：优先使用官方启用副本的 `ModBehaviour.info.path`，并确认目录存在。官方 `ModManager` 先 `Assembly.LoadFrom`，再 `AddComponent` 触发 `Awake`，随后 `Setup` 写入公开的 `info` 属性，其 `ModInfo.path` 是字段。Setup 前或官方目录不可用时，回退到有效的程序集目录；两路独立处理异常，无可用目录时返回 null。按调用时状态判断，允许从启动回退切换到实际启用副本。
 - 建筑（婚礼、许愿台、遗种巢、日报箱）、生日蛋糕、Wiki 书与 `WikiContentManager`、动态物品注册、图片查看器、NPC 资源包、`ItemFactory` / `EquipmentFactory`、龙王 / 龙裔、竞技场原型都改调它；返回 null 时各处原来的处理照旧（`string.IsNullOrEmpty` 早退，或 `Path.Combine(null, …)` 抛出后被原有 `try` 接住）。
 - 静态字段初始化器里不取 Mod 根目录：取不到时会抛 `TypeInitializationException`，把整个类型永久毒化。套装音效 `SetBonusSfx` 与龙王的 13 个 `DragonKingConfig.Sound_*` 改成用时才拼的属性（目录取到一次就记住），取不到返回 null，`PlaySoundEffect` 静默跳过。
 - 守卫白名单只有两处：`GetModPath` 自身；`ModeHCanonicalDigest.TryComputeAssemblyFileDigest`（对已加载的程序集文件本身算摘要，不是取 Mod 根目录）。
@@ -69,5 +70,5 @@ Mod 根目录只经 `ModBehaviour.GetModPath()` 取；调官方音频只经 `Bos
 ## 守卫与回归
 
 - `tests/ModPathAndAudioGuard.py`：上述三条入口规则、各调用点改调统一入口、统一入口不抛 / 只解析一次 / 按 `ReferenceEquals` 停止、巡逻规则不读文件、死代码不回来（含夹具）。2026-11-19 在副本上做了 19 条反向探针，全部转红在预期断言、按字节还原。
-- 执行回归：`AudioRuntime`（服务 + 统一入口，三种官方签名形态）、`SkyIslandInteraction`（云蚋停声先于发声体销毁）、`AuditCoreParsing`（每个实际刷新点文件的标量字段与 Python json 独立读出的值逐个比对）。
+- 执行回归：`IntegrationLeafOwners`（Setup 前后目录优先级、无效或不可读元数据、船票从启用副本载包）、`AudioRuntime`（服务 + 统一入口，三种官方签名形态）、`SkyIslandInteraction`（云蚋停声先于发声体销毁）、`AuditCoreParsing`（每个实际刷新点文件的标量字段与 Python json 独立读出的值逐个比对）。
 - 证据级别 L2：实际音量、听感、FMOD 句柄行为与 3D 定位仍需实机。

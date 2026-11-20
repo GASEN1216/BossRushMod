@@ -29,8 +29,6 @@ namespace BossRush
         public const string LOC_KEY_DISPLAY = "BossRush_SkyIsland_NavInstrument";
         private const string LogPrefix = "[SkyIslandNavInstrument] ";
 
-        private static bool runtimeFallbackRegistered;
-
         public static string GetDisplayName()
         {
             return L10n.T("失落的航向仪", "Lost Navigation Instrument");
@@ -83,63 +81,8 @@ namespace BossRush
         /// <summary>从既有物品克隆一个 prefab 顶上。形态照 AffixForgeStoneConfig.EnsureRuntimeRegistration。</summary>
         public static bool EnsureRuntimeRegistration()
         {
-            try
-            {
-                Item existing = null;
-                try { existing = ItemAssetsCollection.GetPrefab(TYPE_ID); }
-                catch (Exception)
-                {
-                    // prefab 查询失败按「尚未注册」处理，继续走克隆路径
-                }
-                if (existing != null)
-                {
-                    ConfigureItem(existing);
-                    return true;
-                }
-
-                existing = ItemFactory.GetLoadedItem(TYPE_ID);
-                if (existing != null)
-                {
-                    ConfigureItem(existing);
-                    try { BossRushDynamicItemRegistry.Publish(existing); }
-                    catch (Exception)
-                    {
-                        // 已在表内时重复登记会抛，忽略即可
-                    }
-                    return true;
-                }
-
-                if (runtimeFallbackRegistered)
-                {
-                    try { return ItemAssetsCollection.GetPrefab(TYPE_ID) != null; }
-                    catch (Exception) { return false; }
-                }
-
-                Item source = FindRuntimeFallbackSource();
-                if (source == null)
-                {
-                    ModBehaviour.DevLog(LogPrefix + "找不到可克隆的兜底物品");
-                    return false;
-                }
-
-                Item clone = UnityEngine.Object.Instantiate(source);
-                if (clone == null || clone.gameObject == null) return false;
-                clone.gameObject.name = PREFAB_NAME;
-                clone.gameObject.SetActive(false);
-                clone.gameObject.hideFlags = HideFlags.HideAndDontSave;
-                UnityEngine.Object.DontDestroyOnLoad(clone.gameObject);
-                clone.SetTypeID(TYPE_ID);
-                ConfigureItem(clone);
-                BossRushDynamicItemRegistry.Publish(clone);
-                runtimeFallbackRegistered = true;
-                ModBehaviour.DevLog(LogPrefix + "运行时兜底物品已注册");
-                return true;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(LogPrefix + "兜底注册失败: " + e.Message);
-                return false;
-            }
+            return RuntimeItemFallback.Ensure(TYPE_ID, PREFAB_NAME, LogPrefix,
+                FindRuntimeFallbackSource, ConfigureItem, ConfigureItem);
         }
 
         /// <summary>供 BossRushDynamicItemRegistry 的 FallbackLoader 调用。</summary>
@@ -150,36 +93,14 @@ namespace BossRush
 
         private static Item FindRuntimeFallbackSource()
         {
-            int[] fallbackIds =
+            return RuntimeItemFallback.FindSource(new int[]
             {
                 BossRushItemIds.SkyIslandWindVaneCompass,
                 BossRushItemIds.RelicEgg,
                 BossRushItemIds.PortableSafeZoneDevice,
                 BossRushItemIds.ZombieTideBeacon,
                 BossRushItemIds.ZombieTideInvitation,
-            };
-            for (int i = 0; i < fallbackIds.Length; i++)
-            {
-                try
-                {
-                    Item prefab = ItemAssetsCollection.GetPrefab(fallbackIds[i]);
-                    if (prefab != null) return prefab;
-                }
-                catch (Exception)
-                {
-                    // 该候选不可用，继续下一个
-                }
-                try
-                {
-                    Item loaded = ItemFactory.GetLoadedItem(fallbackIds[i]);
-                    if (loaded != null) return loaded;
-                }
-                catch (Exception)
-                {
-                    // 同上
-                }
-            }
-            return null;
+            });
         }
 
         #endregion
@@ -313,11 +234,6 @@ namespace BossRush
             {
                 ModBehaviour.DevLog(LogPrefix + "本地化注入失败: " + e.Message);
             }
-        }
-
-        internal static void ResetStaticCaches()
-        {
-            runtimeFallbackRegistered = false;
         }
 
         #endregion

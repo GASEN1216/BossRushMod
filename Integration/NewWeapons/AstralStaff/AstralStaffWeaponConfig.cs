@@ -36,32 +36,9 @@ namespace BossRush
         /// </summary>
         internal static bool EnsureRuntimeRegistration()
         {
-            try
+            return RuntimeItemFallback.Ensure(AstralStaffConfig.TypeId, AstralStaffConfig.PrefabName,
+                AstralStaffConfig.LogPrefix, FindCloneSource, clone =>
             {
-                Item existing = null;
-                try { existing = ItemAssetsCollection.GetPrefab(AstralStaffConfig.TypeId); } catch { /* 未注册时官方会抛 */ }
-                if (existing != null)
-                {
-                    TryConfigure(existing);
-                    return true;
-                }
-
-                Item source = FindCloneSource();
-                if (source == null)
-                {
-                    ModBehaviour.DevLog(AstralStaffConfig.LogPrefix + " 找不到克隆源物品，跳过注册");
-                    return false;
-                }
-
-                Item clone = UnityEngine.Object.Instantiate(source);
-                if (clone == null) return false;
-
-                clone.gameObject.name = AstralStaffConfig.PrefabName;
-                clone.gameObject.SetActive(false);
-                clone.gameObject.hideFlags = HideFlags.HideAndDontSave;
-                UnityEngine.Object.DontDestroyOnLoad(clone.gameObject);
-                clone.SetTypeID(AstralStaffConfig.TypeId);
-
                 try { clone.Variables.Clear(); } catch { /* 克隆源没有变量表时忽略 */ }
                 try { if (clone.Modifiers != null) clone.Modifiers.Clear(); } catch { /* 同上 */ }
                 if (clone.Tags != null) clone.Tags.Clear();
@@ -75,40 +52,14 @@ namespace BossRush
                 if (utility != null) UnityEngine.Object.DestroyImmediate(utility, true);
 
                 EquipmentFactory.RegisterMeleeWeapon(AstralStaffConfig.TypeId);
-                BossRushDynamicItemRegistry.Publish(clone);
-
-                bool configured = TryConfigure(clone);
-                ModBehaviour.DevLog(AstralStaffConfig.LogPrefix + " 已注册 (TypeID=" + AstralStaffConfig.TypeId
-                    + ", configured=" + configured + ")");
-                return configured;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(AstralStaffConfig.LogPrefix + " [WARNING] 注册失败: " + e.Message);
-                return false;
-            }
+                if (!TryConfigure(clone))
+                    throw new InvalidOperationException("星陨法杖配置未完成");
+            }, existing => TryConfigure(existing));
         }
 
         private static Item FindCloneSource()
         {
-            int[] ids = { BossRushItemIds.BossRushTicket, BossRushItemIds.AdventureJournal, 500014 };
-            for (int i = 0; i < ids.Length; i++)
-            {
-                try
-                {
-                    Item prefab = ItemAssetsCollection.GetPrefab(ids[i]);
-                    if (prefab != null) return prefab;
-                }
-                catch { /* 继续找下一个 */ }
-
-                try
-                {
-                    Item loaded = ItemFactory.GetLoadedItem(ids[i]);
-                    if (loaded != null) return loaded;
-                }
-                catch { /* 继续找下一个 */ }
-            }
-            return null;
+            return RuntimeItemFallback.FindSource(new[] { BossRushItemIds.BossRushTicket, BossRushItemIds.AdventureJournal, 500014 });
         }
 
         // ====================================================================

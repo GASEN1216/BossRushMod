@@ -38,16 +38,28 @@ namespace UnityEngine
     public class AsyncOperation
     {
         public bool isDone;
+        public bool DispatchOnForcedCompletion = true;
         public event Action<AsyncOperation> completed;
-        public void Finish() { isDone=true; completed?.Invoke(this); }
+        public void Finish(bool dispatch = true) { isDone = true; if (dispatch) DispatchCompleted(); }
+        public void DispatchCompleted()
+        {
+            var handlers = completed;
+            completed = null;
+            handlers?.Invoke(this);
+        }
     }
     public class AssetBundleCreateRequest : AsyncOperation
     {
         public AssetBundle Result;
         public int ForcedReads;
-        public AssetBundle assetBundle { get { if (!isDone) { ForcedReads++; Finish(); } return Result; } }
+        public AssetBundle assetBundle { get { if (!isDone) { ForcedReads++; Finish(DispatchOnForcedCompletion); } return Result; } }
     }
-    public class AssetBundleRequest : AsyncOperation { public Object[] allAssets = new Object[0]; }
+    public class AssetBundleRequest : AsyncOperation
+    {
+        public Object[] Result = new Object[0];
+        public int ForcedReads;
+        public Object[] allAssets { get { if (!isDone) { ForcedReads++; Finish(DispatchOnForcedCompletion); } return Result; } }
+    }
     public class AssetBundle : Object
     {
         public static AssetBundleCreateRequest Next;
@@ -86,6 +98,8 @@ namespace BossRush
         private static readonly HashSet<string> loadedBundles = new HashSet<string>();
         private const string EQUIPMENT_PATH = "Assets/Equipment";
         private static int LoadBundle(string name) { return 0; }
+        private static bool IsBundleReady(string name) { return loadedBundles.Contains(name); }
+        private static UnityEngine.AssetBundle FindOwnedBundle(string name) { return null; }
     }
     public static partial class ItemFactory
     {
@@ -93,6 +107,8 @@ namespace BossRush
         private static readonly Dictionary<int,object> loadedItems = new Dictionary<int,object>();
         private const string ITEMS_PATH = "Assets/items";
         private static int LoadBundle(string name) { return 0; }
+        private static bool IsBundleReady(string name) { return loadedBundles.Contains(name); }
+        private static UnityEngine.AssetBundle FindHeldBundle(string name) { return null; }
     }
 }
 public static class SceneLoader { public static bool IsSceneLoading; }

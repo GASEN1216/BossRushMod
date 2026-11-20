@@ -13,12 +13,12 @@ def main():
             if token not in code: errors.append(label+': '+token)
     loader=source('Utilities/ResourceBundleLoader.cs')
     require(loader,['AssetBundle.LoadFromFileAsync(path)','operation.Request.completed += operation.Complete;',
-        'Assets.completed +=','epoch != generation','operation.Cancel(','consumer();','if (Bundle != null && !Taken) Bundle.Unload(true);'], 'loader lifecycle')
+        'Assets.completed +=','epoch != generation','operation.Cancel(','consumer();','if (Taken) return;\n                if (Bundle != null) Bundle.Unload(true);'], 'loader lifecycle')
     bootstrap=source('Integration/FactoryResourceLoading.cs')
     require(bootstrap,['yield return ProductionIconCache.Prepare(', 'yield return ItemFactory.LoadAllItemsAsync(owner);',
-        'SceneManager.GetActiveScene().handle != scene','yield return ResourceBundleLoader.Prepare(path, true, cancelled, guardedConsume);'], 'factory async wiring')
+        'SceneManager.GetActiveScene().handle != scene','yield return ResourceBundleLoader.Prepare(path, true, cancelled, guardedConsume, alreadyLoaded: alreadyLoaded);'], 'factory async wiring')
     icon=source('Integration/ProductionIconCache.cs')
-    require(icon,['bundle.LoadAsset<Sprite>(key)','return bundle == null;','sprites.Clear();','bundle.Unload(true);'], 'icon ownership')
+    require(icon,['bundle.LoadAsset<Sprite>(key)','return bundle == null && attempted;','sprites.Clear();','bundle.Unload(true);'], 'icon ownership')
     # 按路径取图的唯一入口：压缩包优先，正式构建且包在时不读散图（顺序与其它不变式见 ModSpritesGuard）。
     sprites=source('Integration/ModSprites.cs')
     require(sprites,['sprite = ProductionIconCache.Get(key);','if (sprite == null && !ProductionIconCache.AllowRawFallback) return null;','if (!retained)'], 'raw fallback')

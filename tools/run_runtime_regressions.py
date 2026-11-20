@@ -117,12 +117,16 @@ def run_project_fixture(project, output_root, cwd):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--filter", default="", help="Run names containing this text")
+    available = sorted((*SCRIPT_FIXTURES, *PROJECT_FIXTURES))
+    selection = parser.add_mutually_exclusive_group()
+    selection.add_argument("--filter", default="", help="Run names containing this text")
+    selection.add_argument("--fixtures", nargs="+", choices=available, metavar="NAME",
+                           help="Run these exact registered fixtures together")
     parser.add_argument("--jobs", type=int, default=3, help="Concurrent fixtures (default 3)")
     parser.add_argument("--list", action="store_true", help="List selected fixtures without running")
     args = parser.parse_args()
-    names = sorted(name for name in (*SCRIPT_FIXTURES, *PROJECT_FIXTURES)
-                   if args.filter.casefold() in name.casefold())
+    names = (sorted(set(args.fixtures)) if args.fixtures else
+             [name for name in available if args.filter.casefold() in name.casefold()])
     if not names:
         parser.error("No matching fixtures")
     if args.list:

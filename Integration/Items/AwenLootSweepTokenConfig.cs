@@ -25,8 +25,6 @@ namespace BossRush
         public const string USE_DESC_EN = "Use: Call Awen to clear the lootboxes already on the field";
         public const float USE_TIME_SECONDS = 1f;
 
-        private static bool runtimeFallbackRegistered = false;
-
         public static string GetDisplayName()
         {
             return L10n.T(DISPLAY_NAME_CN, DISPLAY_NAME_EN);
@@ -77,61 +75,8 @@ namespace BossRush
 
         public static bool EnsureRuntimeRegistration()
         {
-            try
-            {
-                Item existing = null;
-                try { existing = ItemAssetsCollection.GetPrefab(TYPE_ID); } catch { }
-                if (existing != null)
-                {
-                    return true;
-                }
-
-                existing = ItemFactory.GetLoadedItem(TYPE_ID);
-                if (existing != null)
-                {
-                    ConfigureItem(existing);
-                    try { BossRushDynamicItemRegistry.Publish(existing); } catch { }
-                    return true;
-                }
-
-                if (runtimeFallbackRegistered)
-                {
-                    try { return ItemAssetsCollection.GetPrefab(TYPE_ID) != null; } catch { }
-                    return false;
-                }
-
-                Item source = FindRuntimeFallbackSource();
-                if (source == null)
-                {
-                    ModBehaviour.DevLog("[AwenLootSweepTokenConfig] No runtime fallback source item was found");
-                    return false;
-                }
-
-                Item clone = UnityEngine.Object.Instantiate(source);
-                if (clone == null || clone.gameObject == null)
-                {
-                    ModBehaviour.DevLog("[AwenLootSweepTokenConfig] Failed to clone runtime fallback item");
-                    return false;
-                }
-
-                clone.gameObject.name = PREFAB_NAME;
-                clone.gameObject.SetActive(false);
-                clone.gameObject.hideFlags = HideFlags.HideAndDontSave;
-                UnityEngine.Object.DontDestroyOnLoad(clone.gameObject);
-
-                SetItemTypeId(clone, TYPE_ID);
-                ConfigureItem(clone);
-                BossRushDynamicItemRegistry.Publish(clone);
-                runtimeFallbackRegistered = true;
-
-                ModBehaviour.DevLog("[AwenLootSweepTokenConfig] Runtime fallback item registered");
-                return true;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[AwenLootSweepTokenConfig] EnsureRuntimeRegistration failed: " + e.Message);
-                return false;
-            }
+            return RuntimeItemFallback.Ensure(TYPE_ID, PREFAB_NAME, "[AwenLootSweepTokenConfig] ",
+                FindRuntimeFallbackSource, ConfigureItem);
         }
 
         public static void InjectLocalization()
@@ -160,37 +105,12 @@ namespace BossRush
 
         private static Item FindRuntimeFallbackSource()
         {
-            int[] fallbackIds = new int[]
+            return RuntimeItemFallback.FindSource(new int[]
             {
                 AwenCourierTokenConfig.TYPE_ID,
                 RespawnItemConfig.BOSSCALL_WHISTLE_TYPE_ID,
                 RespawnItemConfig.TAUNT_SMOKE_TYPE_ID
-            };
-
-            for (int i = 0; i < fallbackIds.Length; i++)
-            {
-                try
-                {
-                    Item prefab = ItemAssetsCollection.GetPrefab(fallbackIds[i]);
-                    if (prefab != null)
-                    {
-                        return prefab;
-                    }
-                }
-                catch { }
-
-                try
-                {
-                    Item loaded = ItemFactory.GetLoadedItem(fallbackIds[i]);
-                    if (loaded != null)
-                    {
-                        return loaded;
-                    }
-                }
-                catch { }
-            }
-
-            return null;
+            });
         }
 
         private static void ConfigureUsage(Item item)
@@ -220,22 +140,5 @@ namespace BossRush
             ModeFItemConfigHelper.BindUsageUtilitiesToItem(item, usageUtils, USE_TIME_SECONDS);
         }
 
-        private static void SetItemTypeId(Item item, int typeId)
-        {
-            if (item == null)
-            {
-                return;
-            }
-
-            // Item 类提供公开方法 SetTypeID 来安全设置 TypeID，无需反射。
-            try
-            {
-                item.SetTypeID(typeId);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[AwenLootSweepTokenConfig] SetTypeID failed: " + e.Message);
-            }
-        }
     }
 }

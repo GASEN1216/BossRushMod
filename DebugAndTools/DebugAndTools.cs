@@ -583,7 +583,24 @@ namespace BossRush
         {
             try
             {
-                // 方法1：通过程序集位置获取
+                // 官方 AddComponent 先触发 Awake，随后 Setup 才把启用副本的目录写进 info。
+                ModBehaviour mod = Instance;
+                if (mod != null)
+                {
+                    string path = mod.info.path;
+                    if (!string.IsNullOrWhiteSpace(path) && System.IO.Directory.Exists(path))
+                    {
+                        return path;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] GetModPath 读取官方目录失败: " + e.Message);
+            }
+
+            try
+            {
                 string assemblyLocation = typeof(ModBehaviour).Assembly.Location;
                 if (!string.IsNullOrEmpty(assemblyLocation))
                 {
@@ -593,34 +610,10 @@ namespace BossRush
                         return modDir;
                     }
                 }
-
-                // 方法2：通过 ModBehaviour.info.path 获取
-                ModBehaviour mod = ModBehaviour.Instance;
-                if (mod != null)
-                {
-                    var infoField = typeof(Duckov.Modding.ModBehaviour).GetField("info",
-                        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
-                    if (infoField != null)
-                    {
-                        object infoObj = infoField.GetValue(mod);
-                        if (infoObj != null)
-                        {
-                            var pathField = infoObj.GetType().GetField("path");
-                            if (pathField != null)
-                            {
-                                string path = pathField.GetValue(infoObj) as string;
-                                if (!string.IsNullOrEmpty(path))
-                                {
-                                    return path;
-                                }
-                            }
-                        }
-                    }
-                }
             }
             catch (Exception e)
             {
-                DevLog("[BossRush] GetModPath 失败: " + e.Message);
+                DevLog("[BossRush] GetModPath 读取程序集目录失败: " + e.Message);
             }
             return null;
         }

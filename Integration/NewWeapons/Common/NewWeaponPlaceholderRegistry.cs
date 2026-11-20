@@ -10,10 +10,8 @@
 //   - AssetBundle 不存在：占位符 + 配置全部齐全（功能可用，仅外观/模型缺失）
 //   - AssetBundle 只提供模型：仍创建占位 Item，并绑定已加载模型
 //   - AssetBundle 提供完整 Item Prefab：占位符跳过；ConfigureNewWeaponsAfterLoad 仍然处理
-// 调用时机要求：
-//   必须在 EquipmentFactory.LoadAllEquipmentAsync 完成之后（让 500010 飞行图腾 / 500013 逆鳞 /
-//   500003 龙裔头盔等克隆源已注册到 ItemAssetsCollection），
-//   并在 ConfigureNewWeaponsAfterLoad 之前。
+// 装配期在装备 bundle 加载后、ConfigureNewWeaponsAfterLoad 之前批量补齐占位件。
+// 按需注册先走目标 TypeID 的注册计划，再按原顺序加载飞行图腾、逆鳞等克隆源。
 // ============================================================================
 
 using System;
@@ -28,15 +26,11 @@ namespace BossRush
     /// </summary>
     public static class NewWeaponPlaceholderRegistry
     {
-        private static bool initialized = false;
-
         /// <summary>
         /// 确保所有 P0 新武器已注册到物品系统（AssetBundle 缺失时使用占位符）
         /// </summary>
         public static void EnsureAllRegistered()
         {
-            if (initialized) return;
-
             // 毒蛇匕首 - 近战武器
             EnsureRegistered(NewWeaponIds.ViperDaggerTypeId);
 
@@ -57,9 +51,10 @@ namespace BossRush
             EnsureRegistered(BossRushItemIds.ReloadMetronome);
             EnsureRegistered(BossRushItemIds.PassTheBomb);
             EnsureRegistered(BossRushItemIds.ResidualSunShield);
-
-            initialized = true;
         }
+
+        // 保留原公开入口；批量注册随当前 prefab 状态运行，克隆由集成运行时清理。
+        public static void ResetStaticCaches() { }
 
         /// <summary>
         /// 按 TypeID 确保单个 P0 新武器已注册，供 BossRushDynamicItemRegistry 按需调用。
@@ -179,47 +174,11 @@ namespace BossRush
             bool isMelee,
             string tag = null)
         {
-            try
+            Func<Item> findSource = !isMelee && tag == "Totem"
+                ? (Func<Item>)FindTotemFallbackSource
+                : FindFallbackSource;
+            return RuntimeItemFallback.Ensure(typeId, prefabName, "[NewWeaponPlaceholder] ", findSource, clone =>
             {
-                // 检查是否已通过 AssetBundle 加载
-                Item existing = null;
-                try { existing = ItemAssetsCollection.GetPrefab(typeId); } catch  { /* best-effort fallback intentionally ignored */ }
-                if (existing != null) return true;
-
-                existing = ItemFactory.GetLoadedItem(typeId);
-                if (existing != null)
-                {
-                    try { BossRushDynamicItemRegistry.Publish(existing); } catch  { /* best-effort fallback intentionally ignored */ }
-                    return true;
-                }
-
-                // 查找克隆源：图腾用真图腾物品（500010 飞行图腾 / 500013 逆鳞）作源，
-                // 这样占位符天然带 Totem 槽位匹配；近战类则继续用通用源
-                Item source = !isMelee && tag == "Totem"
-                    ? FindTotemFallbackSource()
-                    : FindFallbackSource();
-                if (source == null)
-                {
-                    ModBehaviour.DevLog("[NewWeaponPlaceholder] 无法找到克隆源物品，跳过: " + prefabName);
-                    return false;
-                }
-
-                // 克隆并配置
-                Item clone = UnityEngine.Object.Instantiate(source);
-                if (clone == null)
-                {
-                    ModBehaviour.DevLog("[NewWeaponPlaceholder] 克隆失败: " + prefabName);
-                    return false;
-                }
-
-                clone.gameObject.name = prefabName;
-                clone.gameObject.SetActive(false);
-                clone.gameObject.hideFlags = HideFlags.HideAndDontSave;
-                UnityEngine.Object.DontDestroyOnLoad(clone.gameObject);
-
-                // 设置 TypeID
-                clone.SetTypeID(typeId);
-
                 // 清空从克隆源继承下来的自定义变量（如飞行图腾的 Flight_MaxUpwardSpeed 等），
                 // 避免在新武器物品详情里显示与本武器无关的属性。
                 try { clone.Variables.Clear(); } catch  { /* best-effort fallback intentionally ignored */ }
@@ -249,15 +208,15 @@ namespace BossRush
                     EquipmentFactory.RegisterMeleeWeapon(typeId);
                 }
 
-                // 注册到物品系统（在 TryConfigure 之前完成，TryConfigure 内可能依赖 AddDynamicEntry）
-                BossRushDynamicItemRegistry.Publish(clone);
-
+            }, afterPublish: clone =>
+            {
+                // TryConfigure 会按 TypeID 缓存模型绑定，发布失败时不建立这些缓存。
                 // 直接走对应 WeaponConfig.TryConfigure 写入 Stats / 标签 / Buff，
                 // 不再依赖 ConfigureNewWeaponsAfterLoad（它走 ItemFactory.loadedItems 缓存路径）
                 bool configured = TryConfigureWeapon(clone, baseName, typeId);
                 if (!configured)
                 {
-                    // TryConfigure 内部已打日志；占位符仍然进了 ItemAssetsCollection，但功能不全
+                    // 配置器未匹配时仍允许已有基础属性的占位件注册。
                     ModBehaviour.DevLog("[NewWeaponPlaceholder] [WARNING] " + prefabName + " 配置器未匹配 baseName=" + baseName);
                 }
 
@@ -266,20 +225,7 @@ namespace BossRush
                 {
                     EquipmentHelper.AddTagToItem(clone, tag);
                 }
-
-                ModBehaviour.DevLog("[NewWeaponPlaceholder] 占位符已注册并配置完成: " + prefabName + " (TypeID=" + typeId + ")");
-                return true;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[NewWeaponPlaceholder] 注册失败 " + prefabName + ": " + e.Message);
-                return false;
-            }
-        }
-
-        public static void ResetStaticCaches()
-        {
-            initialized = false;
+            });
         }
 
         /// <summary>
@@ -322,31 +268,7 @@ namespace BossRush
         /// </summary>
         private static Item FindFallbackSource()
         {
-            int[] fallbackIds = new int[]
-            {
-                BossRushItemIds.BossRushTicket,
-                BossRushItemIds.AdventureJournal,
-                500014 // 冷淬液
-            };
-
-            for (int i = 0; i < fallbackIds.Length; i++)
-            {
-                try
-                {
-                    Item prefab = ItemAssetsCollection.GetPrefab(fallbackIds[i]);
-                    if (prefab != null) return prefab;
-                }
-                catch  { /* best-effort fallback intentionally ignored */ }
-
-                try
-                {
-                    Item loaded = ItemFactory.GetLoadedItem(fallbackIds[i]);
-                    if (loaded != null) return loaded;
-                }
-                catch  { /* best-effort fallback intentionally ignored */ }
-            }
-
-            return null;
+            return RuntimeItemFallback.FindSource(new[] { BossRushItemIds.BossRushTicket, BossRushItemIds.AdventureJournal, 500014 });
         }
 
         /// <summary>
@@ -356,31 +278,7 @@ namespace BossRush
         /// </summary>
         private static Item FindTotemFallbackSource()
         {
-            int[] totemIds = new int[]
-            {
-                500010, // 腾云驾雾 I（飞行图腾）
-                500013  // 逆鳞
-            };
-
-            for (int i = 0; i < totemIds.Length; i++)
-            {
-                try
-                {
-                    Item prefab = ItemAssetsCollection.GetPrefab(totemIds[i]);
-                    if (prefab != null) return prefab;
-                }
-                catch  { /* best-effort fallback intentionally ignored */ }
-
-                try
-                {
-                    Item loaded = ItemFactory.GetLoadedItem(totemIds[i]);
-                    if (loaded != null) return loaded;
-                }
-                catch  { /* best-effort fallback intentionally ignored */ }
-            }
-
-            // 实在找不到再退回到通用源（玩家会得到一个能装备但属性接近船票的物品）
-            return FindFallbackSource();
+            return RuntimeItemFallback.FindSource(new[] { 500010, 500013 }) ?? FindFallbackSource();
         }
 
         /// <summary>

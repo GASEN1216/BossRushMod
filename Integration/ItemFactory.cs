@@ -58,6 +58,7 @@ namespace BossRush
 
         // 已加载的 bundle 列表（避免重复加载）
         private static HashSet<string> loadedBundles = new HashSet<string>();
+        private static readonly Dictionary<string, FactoryBundleRegistration> bundleRegistrations = new Dictionary<string, FactoryBundleRegistration>();
 
         // 已加载的 AssetBundle 缓存（用于加载图标等资源）
         private static Dictionary<string, AssetBundle> loadedAssetBundles = new Dictionary<string, AssetBundle>();
@@ -69,9 +70,6 @@ namespace BossRush
 
         // 物品配置回调（TypeID -> 配置方法）
         private static Dictionary<int, Action<Item>> itemConfigurators = new Dictionary<int, Action<Item>>();
-
-        // Mod 目录路径
-        private static string modDirectory = null;
 
         // 物品资源目录（固定路径）
         private const string ITEMS_PATH = "Assets/Items";
@@ -93,17 +91,14 @@ namespace BossRush
         /// </summary>
         public static int LoadBundle(string bundleName)
         {
-            if (loadedBundles.Contains(bundleName))
+            if (IsBundleReady(bundleName))
             {
                 ModBehaviour.DevLog("[ItemFactory] Bundle 已加载，跳过: " + bundleName);
                 return 0;
             }
 
-            if (modDirectory == null)
-            {
-                modDirectory = ModBehaviour.GetModPath();
-            }
-
+            string modDirectory = ModBehaviour.GetModPath();
+            if (string.IsNullOrEmpty(modDirectory)) return 0;
             string bundlePath = Path.Combine(modDirectory, ITEMS_PATH, bundleName);
 
             if (!File.Exists(bundlePath))
@@ -112,14 +107,29 @@ namespace BossRush
                 return 0;
             }
 
-            int count = LoadBundleInternal(bundlePath, bundleName);
-
-            if (count > 0)
+            FactoryBundleRegistration registration;
+            if (!bundleRegistrations.TryGetValue(bundleName, out registration))
             {
-                loadedBundles.Add(bundleName);
+                registration = new FactoryBundleRegistration();
+                bundleRegistrations.Add(bundleName, registration);
             }
+            if (registration.Loading) return 0;
 
-            return count;
+            loadedBundles.Remove(bundleName);
+            registration.Loading = true;
+            try { return LoadBundleInternal(bundlePath, bundleName); }
+            finally { registration.Loading = false; }
+        }
+
+        private static bool IsBundleReady(string bundleName)
+        {
+            return loadedBundles.Contains(bundleName) && bundleRegistrations[bundleName].AllPrefabsLive();
+        }
+
+        internal static void ConfigureItemPrefab(Item item)
+        {
+            Action<Item> configurator;
+            if (itemConfigurators.TryGetValue(item.TypeID, out configurator)) configurator(item);
         }
 
         /// <summary>
@@ -145,7 +155,7 @@ namespace BossRush
         {
             // 检查缓存
             string cacheKey = bundleName + "/" + spriteName;
-            if (loadedSprites.TryGetValue(cacheKey, out Sprite cachedSprite))
+            if (loadedSprites.TryGetValue(cacheKey, out Sprite cachedSprite) && cachedSprite != null)
             {
                 return cachedSprite;
             }
@@ -153,14 +163,12 @@ namespace BossRush
             try
             {
                 // 确保 bundle 已加载
-                if (!loadedAssetBundles.ContainsKey(bundleName))
+                AssetBundle assetBundle = FindHeldBundle(bundleName);
+                if (assetBundle == null)
                 {
                     // 尝试加载 bundle
-                    if (modDirectory == null)
-                    {
-                        modDirectory = ModBehaviour.GetModPath();
-                    }
-
+                    string modDirectory = ModBehaviour.GetModPath();
+                    if (string.IsNullOrEmpty(modDirectory)) return null;
                     string bundlePath = Path.Combine(modDirectory, ITEMS_PATH, bundleName);
 
                     if (!File.Exists(bundlePath))
@@ -183,10 +191,8 @@ namespace BossRush
                     }
 
                     loadedAssetBundles[bundleName] = bundle;
+                    assetBundle = bundle;
                 }
-
-                // 从 bundle 加载 Sprite
-                AssetBundle assetBundle = loadedAssetBundles[bundleName];
 
                 // 尝试多种加载方式
                 Sprite sprite = assetBundle.LoadAsset<Sprite>(spriteName);
@@ -391,6 +397,9 @@ namespace BossRush
                 }
 
                 int loadedCount = 0;
+                int itemCount = 0;
+                bool allPublished = true;
+                FactoryBundleRegistration registration = bundleRegistrations[bundleName];
 
                 // 注册器会查询同包图标；发布任何 Item 引用之前先交给缓存 owner。
                 loadedAssetBundles[bundleName] = bundle;
@@ -399,27 +408,32 @@ namespace BossRush
 
                 foreach (var go in assets)
                 {
+                    if (go == null)
+                    {
+                        allPublished = false;
+                        continue;
+                    }
                     // 检查是否是 Item 预制体
                     Item item = go.GetComponent<Item>();
                     if (item == null) continue;
+                    itemCount++;
 
                     string goName = go.name;
 
                     try
                     {
-                        // 缓存物品
-                        loadedItems[item.TypeID] = item;
+                        if (registration.IsPublished(item)) continue;
 
                         // 调用配置器（如果有）
-                        Action<Item> configurator;
-                        if (itemConfigurators.TryGetValue(item.TypeID, out configurator))
-                        {
-                            configurator(item);
-                            ModBehaviour.DevLog("[ItemFactory] 已应用配置器: TypeID=" + item.TypeID);
-                        }
+                        if (!registration.IsConfigured(item)) ConfigureItemPrefab(item);
 
                         // 注册到游戏物品系统
-                        BossRushDynamicItemRegistry.Publish(item);
+                        if (!registration.TryPublish(item, bundleName))
+                        {
+                            allPublished = false;
+                            continue;
+                        }
+                        loadedItems[item.TypeID] = item;
                         loadedCount++;
 
                         ModBehaviour.DevLog("[ItemFactory] 成功加载物品: " + goName +
@@ -427,10 +441,12 @@ namespace BossRush
                     }
                     catch (Exception e)
                     {
+                        allPublished = false;
                         ModBehaviour.DevLog("[ItemFactory] 处理物品失败: " + goName + " - " + e.Message);
                     }
                 }
 
+                if (allPublished && itemCount > 0 && registration.AllPrefabsLive()) loadedBundles.Add(bundleName);
                 ModBehaviour.DevLog("[ItemFactory] Bundle '" + bundleName + "' 加载完成，共 " + loadedCount + " 个物品");
                 return loadedCount;
             }
@@ -452,6 +468,7 @@ namespace BossRush
         {
             loadedItems.Clear();
             loadedBundles.Clear();
+            bundleRegistrations.Clear();
             loadedSprites.Clear();
             // 只释放本工厂创建的对象，借用的 bundle Sprite/Texture 仍由原 owner 管理。
             foreach (Sprite sprite in ownedSprites)
@@ -460,7 +477,6 @@ namespace BossRush
             // 按路径取图的散图归 ModSprites；必须先于 ProductionIconCache.ResetStaticCaches，在包卸载前放下对压缩图的借用。
             ModSprites.ResetStaticCaches();
             itemConfigurators.Clear();
-            modDirectory = null;
 
             // 卸载 AssetBundle（但不卸载已加载的资源）
             foreach (var bundle in loadedAssetBundles.Values)

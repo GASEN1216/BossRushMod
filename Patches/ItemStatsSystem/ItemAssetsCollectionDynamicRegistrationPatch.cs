@@ -38,9 +38,17 @@ namespace BossRush.Patches.ItemStatsSystem
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[BossRushDynamicItemRegistry] [ERROR] TypeID=" + typeID + " 注册入口异常: " + e);
+                ModBehaviour.CriticalLog("dynamic-item-ensure-" + typeID,
+                    "[BossRushDynamicItemRegistry] [ERROR] TypeID=" + typeID + " 注册入口异常: " + e);
                 return false;
             }
+        }
+
+        // 官方同步实现对查不到的常规条目直接取 entry.prefab；同步/异步实现还会
+        // 对已销毁的 dynamicEntry.prefab 调 Instantiate。两者都到不了官方 fallback。
+        internal static bool NeedsFallback(int typeID)
+        {
+            return BossRushDynamicItemRegistry.IsBossRushDynamicItemType(typeID) && !Ensure(typeID);
         }
 
         // 非激活的运行时克隆 prefab 不执行 Awake；官方 InstantiateSync/Async 也只 Instantiate。
@@ -66,6 +74,51 @@ namespace BossRush.Patches.ItemStatsSystem
             Item item = await operation;
             InitializeInstance(item);
             return item;
+        }
+
+        // 官方先取实例，再写存档变量、组装槽位。只在首次注册失败时进入这里，
+        // 让同一帧稍后执行的 Mod.Setup / 资源回调有机会完成。永久缺件不能卡住整个读档。
+        internal static async UniTask<Item> RecoverUnregisteredAsyncInstance(int typeID, UniTask<Item> operation)
+        {
+            ModBehaviour owner = ModBehaviour.Instance;
+            var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            Item original = await operation;
+            if (owner != null && (original == null || (original.TypeID == typeID
+                && original.name == "FallbackItem_" + typeID && original.ParentObject == null)))
+            {
+                await UniTask.NextFrame();
+                if (owner == null || ModBehaviour.Instance != owner || !scene.isLoaded
+                    || (original != null && original.ParentObject != null)) return original;
+                if (Ensure(typeID))
+                {
+                    Item prefab = BossRushDynamicItemRegistry.GetRegisteredPrefabWithoutEnsuring(typeID);
+                    if (prefab != null && prefab.TypeID == typeID)
+                    {
+                        try
+                        {
+                            Item replacement = UnityEngine.Object.Instantiate(prefab);
+                            if (replacement != null)
+                            {
+                                InitializeInstance(replacement);
+                                if (original != null) UnityEngine.Object.Destroy(original.gameObject);
+                                return replacement;
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            ModBehaviour.CriticalLog("dynamic-item-retry-clone-" + typeID,
+                                "[BossRushDynamicItemRegistry] [ERROR] 读档补建实例失败: " + typeID + ", " + e);
+                        }
+                    }
+                }
+                ModBehaviour.CriticalLog("dynamic-item-load-unresolved-" + typeID,
+                    "[BossRushDynamicItemRegistry] [ERROR] 读档仍缺少真实物品 prefab，TypeID=" + typeID
+                    + "，Mod 路径=" + ModBehaviour.GetModPath());
+                // 连官方物品表都还未就绪时，其静态异步入口会返回 null，仓库将跳过该节点。
+                if (original == null) original = ItemAssetsCollection.InstantiateFallbackItem(typeID);
+            }
+            InitializeInstance(original);
+            return original;
         }
 
         internal static void EnsureTree(ItemTreeData data)
@@ -231,9 +284,11 @@ namespace BossRush.Patches.ItemStatsSystem
     internal static class ItemAssetsCollectionInstantiateSyncDynamicRegistrationPatch
     {
         [HarmonyPrefix]
-        private static void Prefix(int typeID)
+        private static bool Prefix(int typeID, ref Item __result)
         {
-            DynamicItemRegistrationPatchSupport.Ensure(typeID);
+            if (!DynamicItemRegistrationPatchSupport.NeedsFallback(typeID)) return true;
+            __result = ItemAssetsCollection.InstantiateFallbackItem(typeID);
+            return false;
         }
 
         [HarmonyPostfix]
@@ -247,18 +302,20 @@ namespace BossRush.Patches.ItemStatsSystem
     internal static class ItemAssetsCollectionInstantiateAsyncDynamicRegistrationPatch
     {
         [HarmonyPrefix]
-        private static void Prefix(int typeID)
+        private static void Prefix(int typeID, out bool __state)
         {
-            DynamicItemRegistrationPatchSupport.Ensure(typeID);
+            __state = DynamicItemRegistrationPatchSupport.NeedsFallback(typeID);
         }
 
         // 静态 InstantiateAsync 的方法体是编译器生成的状态机，反编译源里看不到它到底
         // 走不走 InstantiateAsync_Local。不能靠猜：这里也包一层，InitializeInstance
         // 自身幂等（Master 已经是自己就早返），重复初始化没有代价，漏一条路径就是崩溃。
         [HarmonyPostfix]
-        private static void Postfix(int typeID, ref UniTask<Item> __result)
+        private static void Postfix(int typeID, bool __state, ref UniTask<Item> __result)
         {
-            if (BossRushDynamicItemRegistry.IsBossRushDynamicItemType(typeID))
+            if (__state)
+                __result = DynamicItemRegistrationPatchSupport.RecoverUnregisteredAsyncInstance(typeID, __result);
+            else if (BossRushDynamicItemRegistry.IsBossRushDynamicItemType(typeID))
                 __result = DynamicItemRegistrationPatchSupport.InitializeAsyncInstance(__result);
         }
     }
@@ -267,9 +324,11 @@ namespace BossRush.Patches.ItemStatsSystem
     internal static class ItemAssetsCollectionInstantiateAsyncLocalDynamicRegistrationPatch
     {
         [HarmonyPrefix]
-        private static void Prefix(int typeID)
+        private static bool Prefix(int typeID, ref UniTask<Item> __result)
         {
-            DynamicItemRegistrationPatchSupport.Ensure(typeID);
+            if (!DynamicItemRegistrationPatchSupport.NeedsFallback(typeID)) return true;
+            __result = UniTask.FromResult(ItemAssetsCollection.InstantiateFallbackItem(typeID));
+            return false;
         }
 
         [HarmonyPostfix]

@@ -170,6 +170,8 @@ namespace BossRush
 
         // 已加载的模型缓存（TypeID -> ItemAgent）
         private static Dictionary<int, ItemAgent> loadedModels = new Dictionary<int, ItemAgent>();
+        private static readonly Dictionary<ItemAgent, ItemAgent> meleeModelsByHandheld = new Dictionary<ItemAgent, ItemAgent>();
+        private static readonly Dictionary<int, ItemAgent_MeleeWeapon> meleeHandheldsByType = new Dictionary<int, ItemAgent_MeleeWeapon>();
 
         // 已加载的模型缓存（BaseName -> ItemAgent），支持模型与物品分桶加载
         private static Dictionary<string, ItemAgent> loadedModelsByBaseName =
@@ -187,12 +189,12 @@ namespace BossRush
         // 已加载的 bundle 列表（避免重复加载）
         private static HashSet<string> loadedBundles = new HashSet<string>();
         private static readonly HashSet<AssetBundle> ownedBundles = new HashSet<AssetBundle>();
+        private static readonly Dictionary<string, FactoryBundleRegistration> bundleRegistrations = new Dictionary<string, FactoryBundleRegistration>();
+        private static readonly Dictionary<string, List<ItemAgent>> bundleModels = new Dictionary<string, List<ItemAgent>>();
+        private static readonly Dictionary<GameObject, ItemAgent> modelWrappers = new Dictionary<GameObject, ItemAgent>();
 
         // 自定义近战武器 TypeID 列表（防止被 ItemSetting_Gun 误识别为枪械）
         private static HashSet<int> customMeleeWeaponTypeIds = new HashSet<int>();
-
-        // Mod 目录路径
-        private static string modDirectory = null;
 
         // 装备资源目录（固定路径）
         private const string EQUIPMENT_PATH = "Assets/Equipment";
@@ -214,17 +216,14 @@ namespace BossRush
         /// </summary>
         public static int LoadBundle(string bundleName)
         {
-            if (loadedBundles.Contains(bundleName))
+            if (IsBundleReady(bundleName))
             {
                 ModBehaviour.DevLog("[EquipmentFactory] Bundle 已加载，跳过: " + bundleName);
                 return 0;
             }
 
-            if (modDirectory == null)
-            {
-                modDirectory = ModBehaviour.GetModPath();
-            }
-
+            string modDirectory = ModBehaviour.GetModPath();
+            if (string.IsNullOrEmpty(modDirectory)) return 0;
             string bundlePath = Path.Combine(modDirectory, EQUIPMENT_PATH, bundleName);
 
             if (!File.Exists(bundlePath))
@@ -233,14 +232,28 @@ namespace BossRush
                 return 0;
             }
 
-            int count = LoadBundleInternal(bundlePath, bundleName);
-
-            if (count > 0)
+            FactoryBundleRegistration registration;
+            if (!bundleRegistrations.TryGetValue(bundleName, out registration))
             {
-                loadedBundles.Add(bundleName);
+                registration = new FactoryBundleRegistration();
+                bundleRegistrations.Add(bundleName, registration);
             }
+            if (registration.Loading) return 0;
 
-            return count;
+            loadedBundles.Remove(bundleName);
+            registration.Loading = true;
+            try { return LoadBundleInternal(bundlePath, bundleName); }
+            finally { registration.Loading = false; }
+        }
+
+        private static bool IsBundleReady(string bundleName)
+        {
+            if (!loadedBundles.Contains(bundleName) || !bundleRegistrations[bundleName].AllPrefabsLive()) return false;
+            foreach (ItemAgent model in bundleModels[bundleName])
+            {
+                if (model == null) return false;
+            }
+            return true;
         }
 
         /// <summary>
@@ -336,20 +349,32 @@ namespace BossRush
                 return false;
             }
 
-            // 同一个模型已经绑定过就直接返回：FinalizeCustomMeleeWeapon 内部的
-            // CreateMeleeHandheldPrefab 每次都无条件 Instantiate 一个 DontDestroyOnLoad 的隐藏手持体，
-            // 随后覆盖引用把上一个孤立掉，本场次不会再被回收。配置器与补配调用会对同一个 Item
-            // 各跑一次（霜之哀伤 / 焚皇断界戟 / 三把新近战同款），没有这道判重就是每把泄漏一个。
-            ItemAgent alreadyBound;
-            if (loadedModels.TryGetValue(itemPrefab.TypeID, out alreadyBound) && alreadyBound == modelAgent)
-            {
-                return true;
-            }
-
-            loadedModels[itemPrefab.TypeID] = modelAgent;
+            if (HasBoundMeleeModel(itemPrefab, modelAgent)) return true;
             InjectItemGraphicForEquipment(itemPrefab, modelAgent, true);
-            FinalizeCustomMeleeWeapon(itemPrefab, modelAgent, handheldBaseName);
+            if (!FinalizeCustomMeleeWeapon(itemPrefab, modelAgent, handheldBaseName)) return false;
+            loadedModels[itemPrefab.TypeID] = modelAgent;
             return true;
+        }
+
+        internal static bool HasBoundMeleeModel(Item item, ItemAgent model)
+        {
+            if (item == null || model == null) return false;
+            // 克隆可继承同一个真实 Handheld，但同 TypeID 的新 prefab 可能还没有绑定。
+            ItemAgent handheld = GetHandheldPrefab(item);
+            ItemAgent source;
+            return handheld != null && meleeModelsByHandheld.TryGetValue(handheld, out source) && source == model;
+        }
+
+        private static ItemAgent GetHandheldPrefab(Item item)
+        {
+            try { return item.AgentUtilities.GetPrefab(HANDHELD_AGENT_KEY); }
+            catch { return null; }
+        }
+
+        internal static bool HasBoundEquipmentModel(Item item, ItemAgent model)
+        {
+            try { return item != null && model != null && item.AgentUtilities.GetPrefab("EquipmentModel") == model; }
+            catch { return false; }
         }
 
         /// <summary>
@@ -552,10 +577,17 @@ namespace BossRush
                 Dictionary<string, Buff> buffsByPrefix = new Dictionary<string, Buff>();
                 Dictionary<string, Projectile> bulletsByPrefix = new Dictionary<string, Projectile>();
                 Dictionary<string, ItemSetting_Gun> gunSettingsByBaseName = new Dictionary<string, ItemSetting_Gun>();
+                FactoryBundleRegistration registration = bundleRegistrations[bundleName];
+                bool allPublished = true;
 
                 // 第一遍：分类所有资源
                 foreach (var go in assets)
                 {
+                    if (go == null)
+                    {
+                        allPublished = false;
+                        continue;
+                    }
                     string goName = go.name;
                     string baseName = ExtractBaseName(goName);
 
@@ -625,9 +657,14 @@ namespace BossRush
                         {
                             // AssetBundle 中缺少 DuckovItemAgent 组件
                             // 创建一个运行时包装器 prefab，而不是直接修改原始对象
-                            agent = CreateModelWrapper(go, goName);
+                            if (!modelWrappers.TryGetValue(go, out agent) || agent == null)
+                            {
+                                agent = CreateModelWrapper(go, goName);
+                                if (agent != null) modelWrappers[go] = agent;
+                            }
                             if (agent == null)
                             {
+                                allPublished = false;
                                 ModBehaviour.DevLog("[EquipmentFactory] 无法为 Model 创建包装器: " + goName);
                                 continue;
                             }
@@ -669,6 +706,14 @@ namespace BossRush
 
                     try
                     {
+                        if (registration.IsPublished(itemPrefab)) continue;
+                        if (registration.IsConfigured(itemPrefab))
+                        {
+                            if (registration.TryPublish(itemPrefab, bundleName)) loadedCount++;
+                            else allPublished = false;
+                            continue;
+                        }
+
                         // 获取物品类型
                         EquipmentType equipType = EquipmentType.Helmet; // 默认
                         if (typesByBaseName.ContainsKey(baseName))
@@ -729,7 +774,11 @@ namespace BossRush
                             FinalizeCustomMeleeWeapon(itemPrefab, modelAgent, baseName);
                         }
 
-                        BossRushDynamicItemRegistry.Publish(itemPrefab);
+                        if (!registration.TryPublish(itemPrefab, bundleName))
+                        {
+                            allPublished = false;
+                            continue;
+                        }
                         loadedCount++;
 
                         ModBehaviour.DevLog("[EquipmentFactory] 成功加载: " + itemPrefab.gameObject.name +
@@ -737,11 +786,17 @@ namespace BossRush
                     }
                     catch (Exception e)
                     {
+                        allPublished = false;
                         ModBehaviour.DevLog("[EquipmentFactory] 处理 Item 失败: " + itemPrefab.gameObject.name + " - " + e.Message);
                     }
                 }
 
                 loadedCount += standaloneModelCount;
+                if (allPublished && (itemsByBaseName.Count > 0 || standaloneModelCount > 0) && registration.AllPrefabsLive())
+                {
+                    bundleModels[bundleName] = new List<ItemAgent>(modelsByBaseName.Values);
+                    loadedBundles.Add(bundleName);
+                }
 
                 ModBehaviour.DevLog("[EquipmentFactory] Bundle '" + bundleName + "' 加载完成，共 " + loadedCount + " 个条目");
                 return loadedCount;

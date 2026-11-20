@@ -193,6 +193,7 @@ namespace ItemStatsSystem
         // Official returns false (does not throw) while ItemAssetsCollection.Instance is null.
         public static bool Unavailable;
         public static bool AddDynamicEntry(Item item) { if (Unavailable) return false; Prefabs[item.TypeID] = item; return true; }
+        public static bool RemoveDynamicEntry(Item item) { return GetPrefab(item.TypeID) == item && Prefabs.Remove(item.TypeID); }
         public static int Instantiated;
         public static Item InstantiateSync(int id)
         {
@@ -374,8 +375,18 @@ namespace BossRush
     internal static class BossRushDynamicItemRegistry
     {
         internal static readonly List<int> Published = new List<int>();
+        private static readonly HashSet<int> Registering = new HashSet<int>();
         internal static int[] GetPublishedTypeIds() { var ids = Published.ToArray(); Array.Sort(ids); return ids; }
         internal static Item GetRegisteredPrefabWithoutEnsuring(int typeId) { return ItemAssetsCollection.GetPrefab(typeId); }
+        internal static bool HasRegisteredPrefabWithoutEnsuring(int typeId) { return GetRegisteredPrefabWithoutEnsuring(typeId) != null; }
+        internal static bool IsRegistrationInProgress(int typeId) { return Registering.Contains(typeId); }
+        internal static bool EnsureRegistered(int typeId)
+        {
+            if (HasRegisteredPrefabWithoutEnsuring(typeId)) return true;
+            if (BackMountainItems.GetDefinition(typeId) == null || !Registering.Add(typeId)) return false;
+            try { return BackMountainItems.EnsureRuntimeRegistration(typeId); }
+            finally { Registering.Remove(typeId); }
+        }
         internal static bool Publish(Item item) { return ItemAssetsCollection.AddDynamicEntry(item); }
     }
     internal static class BossBgmCoordinator

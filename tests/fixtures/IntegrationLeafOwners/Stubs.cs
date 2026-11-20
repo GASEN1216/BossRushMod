@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using Duckov.Buffs;
 
 namespace Duckov.Economy
 {
@@ -120,7 +121,7 @@ namespace UnityEngine
         { Probe.Add("raycast"); hit = new RaycastHit { point = new Vector3(8, 0, 9) }; return true; }
     }
     public static class LayerMask { public static int NameToLayer(string name) { return 0; } }
-    public class AssetBundle : Object { }
+    public class AssetBundle : Object { public string[] GetAllAssetNames() { return new string[0]; } }
     public static class Random { public static int Calls; public static int Range(int min, int max) { Calls++; return min; } }
     public static class Mathf { public static int Clamp(int value, int min, int max) { return Math.Min(max, Math.Max(min, value)); } }
 }
@@ -136,7 +137,6 @@ public class Health : UnityEngine.Component
     public void SetInvincible(bool value) { Invincible = value; Probe.Add(value ? "invincible" : "vulnerable"); }
     public void RequestHealthBar() { Probe.Add("healthbar"); }
 }
-public class Buff { public CharacterMainControl fromWho; }
 public class BuffManager { public readonly List<Buff> Buffs = new List<Buff>(); }
 public class CharacterMainControl : UnityEngine.Component
 {
@@ -173,13 +173,75 @@ namespace ItemStatsSystem
     public class Item : UnityEngine.Component
     {
         public int TypeID, Exp;
+        private UsageUtilities usageUtilities = null;
+        public UsageUtilities AppliedUsage { get { return usageUtilities; } }
+        public float MaxDurability, Durability;
+        public void SetTypeID(int id) { TypeID = id; }
+        public T GetComponent<T>() where T : UnityEngine.Component { return gameObject.GetComponent<T>(); }
         public void SetInt(string key, int value, bool notify) { Exp = value; Probe.Add("exp"); }
+    }
+    public class UsageBehavior : UnityEngine.Component { }
+    public class UsageUtilities : UnityEngine.Component
+    {
+        public List<UsageBehavior> behaviors;
+        public string actionSound, useSound;
+        public bool hasSound;
     }
     public static class ItemAssetsCollection
     {
-        public static readonly HashSet<int> Registered = new HashSet<int>();
-        public static bool ThrowAdd;
-        public static void AddDynamicEntry(Item item) { Probe.Add("register:" + item.TypeID); if (ThrowAdd) throw new Exception("register"); Registered.Add(item.TypeID); }
+        public static readonly Dictionary<int, Item> Registered = new Dictionary<int, Item>();
+        public static readonly HashSet<int> Rejected = new HashSet<int>();
+        public static Action<Item> BeforePublish;
+        public static bool ThrowAdd, PublishWithoutLivePrefab;
+        public static bool AddDynamicEntry(Item item)
+        {
+            Probe.Add("register:" + item.TypeID);
+            if (ThrowAdd) throw new Exception("register");
+            BeforePublish?.Invoke(item);
+            if (Rejected.Contains(item.TypeID)) return false;
+            if (!PublishWithoutLivePrefab) Registered[item.TypeID] = item;
+            return true;
+        }
+    }
+}
+
+namespace Duckov.ItemUsage
+{
+    public class FoodDrink : ItemStatsSystem.UsageBehavior { public float energyValue, waterValue, UseDurability; }
+    public class AddBuff : ItemStatsSystem.UsageBehavior { public Duckov.Buffs.Buff buffPrefab; public float chance; }
+}
+
+namespace Duckov.Buffs
+{
+    public class Buff : UnityEngine.Object
+    {
+        public CharacterMainControl fromWho;
+        public string DisplayName, DisplayNameKey;
+        public float TotalLifeTime;
+        public int ID;
+    }
+}
+
+internal static class GameplayDataSettings
+{
+    internal sealed class BuffSettings { public readonly List<Duckov.Buffs.Buff> allBuffs = new List<Duckov.Buffs.Buff>(); }
+    internal static readonly BuffSettings Buffs = new BuffSettings();
+}
+
+namespace Duckov.Modding
+{
+    public struct ModInfo { public string path; }
+    public sealed class ModManager { }
+    public abstract class ModBehaviour : UnityEngine.Component
+    {
+        private ModInfo installedInfo;
+        public bool FailInfoRead;
+        public ModInfo info
+        {
+            get { if (FailInfoRead) throw new InvalidOperationException("mod metadata unavailable"); return installedInfo; }
+            private set { installedInfo = value; }
+        }
+        public void Setup(ModManager manager, ModInfo info) { this.info = info; }
     }
 }
 
@@ -192,8 +254,9 @@ namespace BossRush
         public virtual void OnAwake(ModBehaviour owner) { }
         public virtual void OnDestroy() { }
     }
-    public partial class ModBehaviour
+    public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
+        public static ModBehaviour Instance { get; internal set; }
         private GameObject courierNPCInstance, goblinNPCInstance;
         internal bool Arena, ValidArena = true;
         internal static Vector3[] Shared = { new Vector3(3, 0, 4) };
@@ -212,8 +275,6 @@ namespace BossRush
         internal bool IsValidBossRushArenaScene(string scene) { return ValidArena; }
         internal static Vector3[] GetSharedCommonNPCSpawnPointsForScene(string scene) { return Shared; }
         internal Vector3[] GetCurrentSceneSpawnPoints() { return Fallback; }
-        // 生产 GetModPath 的首选分支：程序集所在目录（夹具里就是本夹具的输出目录，Ticket 用例在那里放 Assets/bossrush_ticket）。
-        public static string GetModPath() { return System.IO.Path.GetDirectoryName(typeof(ModBehaviour).Assembly.Location); }
         public static void DevLog(string message) { }
         internal void SetupAIAggro(CharacterMainControl character) { Probe.Add("aggro"); }
         internal void UnregisterDragonDescendantEnemyRecovery(CharacterMainControl character) { Probe.Add("recovery"); }
@@ -248,13 +309,24 @@ namespace BossRush
         internal static void FixShaders(GameObject value, string prefix) { Probe.Add("shaders"); }
         internal static void SetLayerRecursively(GameObject value, int layer) { Probe.Add("layer"); }
     }
-    internal static class BossRushItemIds { internal const int BossRushTicket = 500001, BirthdayCake = 500002, AdventureJournal = 500003; }
-    internal static class BossRushDynamicItemRegistry { internal static bool HasRegisteredPrefabWithoutEnsuring(int id) { return ItemStatsSystem.ItemAssetsCollection.Registered.Contains(id); } internal static bool Publish(ItemStatsSystem.Item item) { ItemStatsSystem.ItemAssetsCollection.AddDynamicEntry(item); return true; } }
+    internal static class BossRushDynamicItemRegistry
+    {
+        internal static ItemStatsSystem.Item GetRegisteredPrefabWithoutEnsuring(int id)
+        { ItemStatsSystem.Item item; return ItemStatsSystem.ItemAssetsCollection.Registered.TryGetValue(id, out item) ? item : null; }
+        internal static bool HasRegisteredPrefabWithoutEnsuring(int id) { return GetRegisteredPrefabWithoutEnsuring(id) != null; }
+        internal static bool Publish(ItemStatsSystem.Item item) { return ItemStatsSystem.ItemAssetsCollection.AddDynamicEntry(item); }
+    }
+    internal static class L10n { internal static string T(string cn, string en) { return en; } }
+    internal sealed class WikiBookUsageBehavior : ItemStatsSystem.UsageBehavior { }
+    internal sealed class WikiUIManager
+    {
+        internal static readonly WikiUIManager Instance = new WikiUIManager();
+        internal GameObject UIPrefab;
+        internal void SetUIPrefab(GameObject prefab) { UIPrefab = prefab; }
+    }
     internal sealed partial class IntegrationRuntimeModule
     {
         internal void RegisterItemContentConfigurators() { Probe.Add("configurators"); }
-        internal void InitializeBirthdayCakeItem() { Probe.Add("cake"); }
-        internal void InitializeWikiBookItem() { Probe.Add("journal"); }
         internal void AddTagsToItem(ItemStatsSystem.Item item, string[] tags) { Probe.Add("tags:" + item.TypeID + ":" + string.Join(",", tags)); }
     }
     internal static class ItemFactory { internal static int LoadedItemCount { get { Probe.Add("loaded-count"); return 0; } } }
@@ -304,7 +376,8 @@ namespace BossRush.Utils
     internal static class ResourceBundleLoader
     {
         internal static Object[] Assets; internal static bool CanLoad = true;
-        internal static AssetBundle LoadFromFile(string path) { Probe.Add("load-ticket"); return CanLoad ? new AssetBundle() : null; }
+        internal static string LastPath;
+        internal static AssetBundle LoadFromFile(string path) { LastPath = path; Probe.Add("load-ticket"); return CanLoad ? new AssetBundle() : null; }
         internal static T[] LoadAllAssets<T>(AssetBundle bundle) where T : Object { return Assets as T[]; }
     }
     internal static class AssetBundleUnloadHelper { internal static void TryUnload(AssetBundle bundle, string tag) { Probe.Add(bundle != null ? "unload-ticket" : "unload-null"); } }

@@ -8,6 +8,7 @@ namespace BossRush
     internal static class ResourceBundleLoader
     {
         internal static UnityEngine.AssetBundle LoadFromFile(string path) { return UnityEngine.AssetBundle.LoadFromFile(path); }
+        internal static bool IsPreparationDraining(string path) { return false; }
         // Same rule as production FindLoaded (last name segment, case-insensitive full match); the real body runs in ResourceProduction.
         internal static UnityEngine.AssetBundle FindLoaded(string bundleFileName)
         {
@@ -19,7 +20,8 @@ namespace BossRush
             }
             return null;
         }
-        internal static System.Collections.IEnumerator Prepare(string path, bool prefabs, Func<bool> cancelled, Action consumer)
+        internal static System.Collections.IEnumerator Prepare(string path, bool prefabs, Func<bool> cancelled, Action consumer,
+            float timeoutSeconds = 60f, Func<bool> alreadyLoaded = null)
         { if (!cancelled()) consumer(); yield break; }
     }
     internal static class ModBehaviour

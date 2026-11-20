@@ -63,8 +63,7 @@ namespace BossRush
         /// </summary>
         private const float ENERGY_RESTORE_VALUE = 100f;
 
-        // 生日蛋糕物品是否已初始化
-        private bool birthdayCakeInitialized = false;
+        private bool birthdayCakeInitializing;
 
         // 生日蛋糕物品 TypeID（运行时确认）
         private int birthdayCakeTypeId = BIRTHDAY_CAKE_TYPE_ID;
@@ -81,11 +80,11 @@ namespace BossRush
         /// </summary>
         internal void InitializeBirthdayCakeItem()
         {
-            if (birthdayCakeInitialized)
+            if (birthdayCakeInitializing || BossRushDynamicItemRegistry.HasRegisteredPrefabWithoutEnsuring(BIRTHDAY_CAKE_TYPE_ID))
             {
                 return;
             }
-            birthdayCakeInitialized = true;
+            birthdayCakeInitializing = true;
 
             AssetBundle bundle = null;
             try
@@ -122,11 +121,9 @@ namespace BossRush
                     Item itemPrefab = go.GetComponent<Item>();
                     if (itemPrefab == null) continue;
 
-                    // 配置生日蛋糕物品
-                    ConfigureBirthdayCakeItem(itemPrefab);
-
-                    // 注册到物品系统
-                    BossRushDynamicItemRegistry.Publish(itemPrefab);
+                    if (BossRushDynamicItemRegistry.GetRegisteredPrefabWithoutEnsuring(itemPrefab.TypeID) == itemPrefab) continue;
+                    if (!ConfigureBirthdayCakeItem(itemPrefab) || !BossRushDynamicItemRegistry.Publish(itemPrefab)
+                        || BossRushDynamicItemRegistry.GetRegisteredPrefabWithoutEnsuring(itemPrefab.TypeID) != itemPrefab) continue;
                     itemCount++;
 
                     if (birthdayCakeTypeId <= 0 && itemPrefab.TypeID > 0)
@@ -146,16 +143,15 @@ namespace BossRush
             finally
             {
                 AssetBundleUnloadHelper.TryUnload(bundle, "[BirthdayCake]");
+                birthdayCakeInitializing = false;
             }
         }
 
         /// <summary>
         /// 配置生日蛋糕物品（添加食物功能、Buff、Tag）
         /// </summary>
-        private void ConfigureBirthdayCakeItem(Item itemPrefab)
+        private bool ConfigureBirthdayCakeItem(Item itemPrefab)
         {
-            if (itemPrefab == null) return;
-
             try
             {
                 // 1. 添加 UsageUtilities 组件
@@ -178,36 +174,23 @@ namespace BossRush
                 ModBehaviour.DevLog("[BirthdayCake] 已配置音效: actionSound=" + usageUtils.actionSound + ", useSound=" + usageUtils.useSound);
 
                 // 2. 添加 FoodDrink 行为（恢复100%饱食度）
-                FoodDrink foodBehavior = itemPrefab.gameObject.AddComponent<FoodDrink>();
+                FoodDrink foodBehavior = itemPrefab.GetComponent<FoodDrink>();
+                if (foodBehavior == null) foodBehavior = itemPrefab.gameObject.AddComponent<FoodDrink>();
                 foodBehavior.energyValue = ENERGY_RESTORE_VALUE;
                 foodBehavior.waterValue = 0f;  // 不恢复水分
                 foodBehavior.UseDurability = 0f;  // 一次性消耗品
-                usageUtils.behaviors.Add(foodBehavior);
+                if (!usageUtils.behaviors.Contains(foodBehavior)) usageUtils.behaviors.Add(foodBehavior);
                 ModBehaviour.DevLog("[BirthdayCake] 已添加食物功能: 饱食度+" + ENERGY_RESTORE_VALUE);
 
                 // 3. 添加 AddBuff 行为（高兴 Buff）
                 Buff happyBuff = FindHappyBuff();
                 if (happyBuff != null)
                 {
-                    AddBuff buffBehavior = itemPrefab.gameObject.AddComponent<AddBuff>();
-
-                    // 设置 buffPrefab 字段
-                    var buffPrefabField = typeof(AddBuff).GetField("buffPrefab",
-                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                    if (buffPrefabField != null)
-                    {
-                        buffPrefabField.SetValue(buffBehavior, happyBuff);
-                    }
-
-                    // 设置 chance 为 100%
-                    var chanceField = typeof(AddBuff).GetField("chance",
-                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                    if (chanceField != null)
-                    {
-                        chanceField.SetValue(buffBehavior, 1f);
-                    }
-
-                    usageUtils.behaviors.Add(buffBehavior);
+                    AddBuff buffBehavior = itemPrefab.GetComponent<AddBuff>();
+                    if (buffBehavior == null) buffBehavior = itemPrefab.gameObject.AddComponent<AddBuff>();
+                    buffBehavior.buffPrefab = happyBuff;
+                    buffBehavior.chance = 1f;
+                    if (!usageUtils.behaviors.Contains(buffBehavior)) usageUtils.behaviors.Add(buffBehavior);
                     ModBehaviour.DevLog("[BirthdayCake] 已添加高兴Buff: " + happyBuff.DisplayName + " " + happyBuff.TotalLifeTime + "s");
                 }
                 else
@@ -218,19 +201,19 @@ namespace BossRush
                 // 4. 关联 UsageUtilities 到 Item
                 var usageField = typeof(Item).GetField("usageUtilities",
                     BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                if (usageField != null)
-                {
-                    usageField.SetValue(itemPrefab, usageUtils);
-                }
+                if (usageField == null) throw new MissingFieldException(typeof(Item).FullName, "usageUtilities");
+                usageField.SetValue(itemPrefab, usageUtils);
 
                 // 5. 添加 Tag（食物）
                 AddTagsToItem(itemPrefab, new string[] { "Food", "食物" });
 
                 ModBehaviour.DevLog("[BirthdayCake] 物品配置完成");
+                return true;
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[BirthdayCake] 配置物品失败: " + e.Message);
+                return false;
             }
         }
 

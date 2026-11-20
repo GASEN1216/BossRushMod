@@ -11,3 +11,5 @@ FactoryResourceLoading 的真实协程通过递归驱动器测试：切换 scene
 2026-10-10：共享贴图复制 API 由 `tests/fixtures/TextureCopyStubs.cs` 补齐显式替身。ResourceProduction 执行生产 CloneTexture，覆盖不支持、复制参数、成功归属与异常释放；替身不验证真实 GPU 像素。
 
 2026-11-19：ResourceBundleLoader.FindLoaded 是找已加载包的唯一入口，执行生产实现：包内名按 / 与 \ 取最后一段、OrdinalIgnoreCase 全等，子串、已销毁、无名不算，枚举抛错返回 null。RunSpecial 在换场景作废一次尝试后重新判 alreadyLoaded：等场景期间消费方已持有包时直接交给消费方，不发第二次原生加载，迟到的旧请求照常卸载一次。
+
+2026-11-20 增加同步恢复接管超时包请求和预制体请求的覆盖，同时验证嵌套作用域退出、迟到回调与同一路径的新请求，以及普通查询跳过预载暂持的包。已经开始等待的 `RunSpecial` 会在恢复接管后重新检查持有状态，压缩图标会在普通查询遇到排空后重试。替身可延迟派发完成事件并记录强制读取次数，真实 Unity 的等待时长和素材显示仍需实机核对。

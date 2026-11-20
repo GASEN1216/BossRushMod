@@ -34,8 +34,6 @@ namespace BossRush
         /// <summary>官方物品 TypeID 都远小于这个数；克隆兜底只找官方装备（模型对齐官方挂点）。</summary>
         private const int OfficialTypeIdCeiling = 100000;
 
-        private static readonly HashSet<int> placeholders = new HashSet<int>();
-
         /// <summary>EquipmentFactory 主路径：bundle 里的 Item 预制体按基名配置。</summary>
         public static bool TryConfigure(Item item, string baseName)
         {
@@ -117,57 +115,22 @@ namespace BossRush
         {
             SkyIslandBossGearSpec spec = SkyIslandBossRules.GearSpec(typeId);
             if (spec == null) return false;
-            try
-            {
-                Item existing = null;
-                try { existing = ItemAssetsCollection.GetPrefab(typeId); }
-                catch (Exception)
+            return RuntimeItemFallback.Ensure(typeId, spec.ModelBaseName + "_Placeholder", LogPrefix,
+                () => FindOfficialSource(spec.Slot), clone =>
                 {
-                    // prefab 查询失败按「尚未注册」处理，继续走克隆路径
-                    existing = null;
-                }
-                if (existing != null)
-                {
-                    Configure(existing, spec, true);
-                    return true;
-                }
-                if (placeholders.Contains(typeId)) return false;
-
-                Item source = FindOfficialSource(spec.Slot);
-                if (source == null)
-                {
-                    ModBehaviour.DevLog(LogPrefix + "找不到同槽位的官方装备当克隆源，跳过: " + spec.Slot + " / " + typeId);
-                    return false;
-                }
-                Item clone = UnityEngine.Object.Instantiate(source);
-                if (clone == null || clone.gameObject == null) return false;
-                clone.gameObject.name = spec.ModelBaseName + "_Placeholder";
-                clone.gameObject.SetActive(false);
-                clone.gameObject.hideFlags = HideFlags.HideAndDontSave;
-                UnityEngine.Object.DontDestroyOnLoad(clone.gameObject);
-                clone.SetTypeID(typeId);
-                // 清掉官方源继承下来的属性修饰与显示变量，否则占位件会带着官方那件的护甲、负重等全部数值。
-                try { if (clone.Modifiers != null) clone.Modifiers.Clear(); }
-                catch (Exception)
-                {
-                    // 清理失败时由 EnsureModifierOnItem 保证至少有本件自己的那一条
-                }
-                try { clone.Variables.Clear(); }
-                catch (Exception)
-                {
-                    // 同上，耐久由配置器重写
-                }
-                Configure(clone, spec, true);
-                BossRushDynamicItemRegistry.Publish(clone);
-                placeholders.Add(typeId);
-                ModBehaviour.DevLog(LogPrefix + "占位装备已注册: " + typeId + "（克隆源 " + source.TypeID + "）");
-                return true;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(LogPrefix + "占位注册失败 " + typeId + ": " + e.Message);
-                return false;
-            }
+                    // 清掉官方源继承下来的属性修饰与显示变量，否则占位件会带着官方那件的护甲、负重等全部数值。
+                    try { if (clone.Modifiers != null) clone.Modifiers.Clear(); }
+                    catch (Exception)
+                    {
+                        // 清理失败时由 EnsureModifierOnItem 保证至少有本件自己的那一条
+                    }
+                    try { clone.Variables.Clear(); }
+                    catch (Exception)
+                    {
+                        // 同上，耐久由配置器重写
+                    }
+                    Configure(clone, spec, true);
+                }, existing => Configure(existing, spec, true));
         }
 
         /// <summary>全部专属装备的预注册（EquipmentFactory.LoadAllEquipmentAsync 完成之后调用；幂等）。</summary>
@@ -314,9 +277,6 @@ namespace BossRush
             }
         }
 
-        internal static void ResetStaticCaches()
-        {
-            placeholders.Clear();
-        }
+
     }
 }

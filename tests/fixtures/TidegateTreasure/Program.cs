@@ -69,6 +69,7 @@ internal static partial class Program
     {
         bool baseline = Environment.GetEnvironmentVariable("TIDEGATE_MEASURE_BASELINE")=="1";
         ItemAssetsCollection.Load();
+        AuditCloneRegistration();
         if(!baseline) AuditReportedCache();
         var stats=Floors.Keys.ToDictionary(id=>id,id=>new Stats());
         for(int seed=0;seed<Raids;seed++)
@@ -110,5 +111,69 @@ internal static partial class Program
                 stats["LOOT_wreck_73"].totals.Average()>stats["LOOT_house_0"].totals.Average(),
                 "underwater route lost its advantage over ordinary houses");
         }
+    }
+
+    private static void AuditCloneRegistration()
+    {
+        const int id = BossRushItemIds.TidegateFlippers;
+        TidegateItemHost.RejectedTypeId = id;
+        Check(!TidegateItems.EnsureRuntimeRegistration(id), "official refusal must reach the caller");
+        Check(!ReferenceEquals(TidegateItemHost.RejectedPrefab, null) && TidegateItemHost.RejectedPrefab == null,
+            "refused clone must be destroyed");
+        Check(TidegateItemHost.Get(id) == null, "refused clone must remain unpublished");
+        TidegateItemHost.RejectedTypeId = 0;
+
+        bool sawNestedCall = false;
+        TidegateItemHost.BeforePublish = prefab =>
+        {
+            if (prefab.TypeID != id) return;
+            sawNestedCall = true;
+            Check(!TidegateItems.EnsureRuntimeRegistration(id), "reentrant caller cannot publish a second clone");
+        };
+        Check(TidegateItems.EnsureRuntimeRegistration(id) && sawNestedCall, "next attempt must register after a cold refusal");
+        TidegateItemHost.BeforePublish = null;
+        Item first = TidegateItemHost.Get(id);
+        Check(first != null && first.TypeID == id && first.Quality == 4, "retry must register configured flippers");
+        int writes = TidegateItemHost.PublishCalls;
+        Check(TidegateItems.EnsureRuntimeRegistration(id) && TidegateItemHost.PublishCalls == writes,
+            "repeat ensure must reuse current entry without publishing again");
+
+        Check(TidegateItemHost.Remove(first), "test must remove the live entry");
+        Check(TidegateItems.EnsureRuntimeRegistration(id) && TidegateItemHost.Get(id) == first,
+            "the surviving clone must be republished after its official entry is lost");
+        UnityEngine.Object.Destroy(first.gameObject);
+        Check(TidegateItems.EnsureRuntimeRegistration(id), "a destroyed clone must be rebuilt");
+        Item rebuilt = TidegateItemHost.Get(id);
+        Check(rebuilt != null && rebuilt != first, "rebuilt entry must have a live replacement prefab");
+
+        Check(TidegateItemHost.Remove(rebuilt), "test must remove the rebuilt entry");
+        Item bundled = new GameObject("BundleFlippers").AddComponent<Item>();
+        bundled.TypeID = id;
+        TidegateItemHost.Bundled[id] = bundled;
+        Check(TidegateItems.EnsureRuntimeRegistration(id) && TidegateItemHost.Get(id) == bundled,
+            "direct entry must try the real bundle before republishing its own clone");
+        Item egg = TidegateItemHost.Get(BossRushItemIds.RelicEgg);
+        Check(egg != null, "fixture must have already cloned the egg source");
+        RuntimeItemFallback.ResetStaticCaches();
+        Check(rebuilt == null && TidegateItemHost.Get(id) == bundled && bundled != null,
+            "teardown must destroy the displaced clone while preserving the bundle prefab");
+        Check(egg == null && ReferenceEquals(TidegateItemHost.Get(BossRushItemIds.RelicEgg), null),
+            "teardown must remove the owned egg entry before destroying its prefab");
+        Check(TidegateItemHost.Remove(bundled), "test must remove the bundle replacement");
+        TidegateItemHost.Bundled.Clear();
+
+        ItemFactory.Loaded[id] = bundled;
+        TidegateItemHost.RejectedTypeId = id;
+        Check(!TidegateItems.EnsureRuntimeRegistration(id) && bundled != null,
+            "unpublished factory prefab must survive rejection and report failure");
+        TidegateItemHost.RejectedTypeId = 0;
+        Check(TidegateItems.EnsureRuntimeRegistration(id) && TidegateItemHost.Get(id) == bundled,
+            "retry must publish the existing factory prefab");
+        RuntimeItemFallback.ResetStaticCaches();
+        Check(TidegateItemHost.Get(id) == bundled && bundled != null, "teardown must not own factory prefabs");
+        TidegateItemHost.Remove(bundled);
+        ItemFactory.Loaded.Clear();
+        UnityEngine.Object.Destroy(bundled.gameObject);
+        Console.WriteLine("Clone registration: PASS (cold rejection, retry, reentry, missing and destroyed entries, ownership)");
     }
 }

@@ -20,6 +20,22 @@ namespace BossRush
         private static readonly Dictionary<string, Pending> pending = new Dictionary<string, Pending>(StringComparer.OrdinalIgnoreCase);
         private static readonly Dictionary<AssetBundle, UnityEngine.Object[]> preparedAssets = new Dictionary<AssetBundle, UnityEngine.Object[]>();
         private static int generation;
+        private static int synchronousRestoreDepth;
+
+        /// <summary>官方同步读档及其嵌套的物品依赖可以接管尚在排空的同一原生请求。仅用在 Unity 主线程的同步代码中。</summary>
+        internal static IDisposable BeginSynchronousRestore() { return new SynchronousRestoreScope(); }
+
+        private sealed class SynchronousRestoreScope : IDisposable
+        {
+            private bool disposed;
+            internal SynchronousRestoreScope() { synchronousRestoreDepth++; }
+            public void Dispose()
+            {
+                if (disposed) return;
+                disposed = true;
+                synchronousRestoreDepth--;
+            }
+        }
 
         private sealed class Pending
         {
@@ -31,18 +47,30 @@ namespace BossRush
             internal LoadRecord Record;
             internal string Key;
             internal bool Drained { get { return Finished && (Assets == null || Assets.isDone); } }
-            private void ReleaseOwned()
+            internal bool IsCurrent()
             {
-                if (Bundle != null && !Taken) Bundle.Unload(true);
-                Bundle = null;
                 Pending current;
-                if (pending.TryGetValue(Key, out current) && ReferenceEquals(current, this)) pending.Remove(Key);
+                return pending.TryGetValue(Key, out current) && ReferenceEquals(current, this);
             }
+
+            internal void ReleaseOwned()
+            {
+                if (Taken) return;
+                if (Bundle != null) Bundle.Unload(true);
+                Bundle = null;
+                if (IsCurrent()) pending.Remove(Key);
+            }
+
             internal void Complete(AsyncOperation unused)
+            {
+                if (!Finished) Finish(Request.assetBundle);
+            }
+
+            private void Finish(AssetBundle bundle)
             {
                 if (Finished) return;
                 Finished = true;
-                Bundle = Request.assetBundle;
+                Bundle = bundle;
                 Record.endedSeconds = Time.realtimeSinceStartupAsDouble;
                 if (Abandoned)
                 {
@@ -50,6 +78,27 @@ namespace BossRush
                 }
                 else { Record.failed = Bundle == null; Record.status = Bundle == null ? "failed" : "complete"; }
             }
+
+            internal AssetBundle Take()
+            {
+                // 原生 getter 可同步完成并触发回调，先转移卸载责任。
+                Taken = true;
+                try
+                {
+                    if (!Finished) Finish(Request.assetBundle);
+                    // 新 owner 可能立即卸包。交付前完成已经发出的 prefab 请求。
+                    if (Assets != null && !Assets.isDone) _ = Assets.allAssets;
+                }
+                catch
+                {
+                    Taken = false;
+                    if (Abandoned && Drained) ReleaseOwned();
+                    throw;
+                }
+                if (IsCurrent()) pending.Remove(Key);
+                return Bundle;
+            }
+
             internal void Cancel(string reason)
             {
                 if (Taken || Abandoned || (Finished && Bundle == null)) return;
@@ -104,11 +153,23 @@ namespace BossRush
             {
                 foreach (AssetBundle loaded in AssetBundle.GetAllLoadedAssetBundles())
                 {
-                    if (IsNamed(loaded, bundleFileName)) return loaded;
+                    if (IsNamed(loaded, bundleFileName) && !IsPendingBundle(loaded, bundleFileName)) return loaded;
                 }
             }
             catch { }
             return null;
+        }
+
+        private static bool IsPendingBundle(AssetBundle bundle, string bundleFileName)
+        {
+            foreach (Pending operation in pending.Values)
+            {
+                if (operation.Bundle == bundle) return true;
+                // Unity 可能先公开已加载的包，到下一帧才派发 completed。
+                if (!operation.Finished && string.Equals(System.IO.Path.GetFileName(operation.Key), bundleFileName, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            return false;
         }
 
         /// <summary>bundle.name 按 / 与 \ 切分后的最后一段与包文件名 OrdinalIgnoreCase 全等；已销毁或无名的包不算。</summary>
@@ -126,21 +187,17 @@ namespace BossRush
         {
             string key = NormalizeKey(path);
             Pending operation;
-            if (pending.TryGetValue(key, out operation) && operation.Abandoned && !operation.Drained)
+            if (pending.TryGetValue(key, out operation))
             {
-                var draining = Begin(path, "sync_compatibility");
-                draining.failed = true; draining.cancelled = true; draining.status = "cancel_draining";
-                draining.endedSeconds = Time.realtimeSinceStartupAsDouble;
-                return null;
-            }
-            if (pending.TryGetValue(key, out operation) && !operation.Abandoned)
-            {
-                operation.Taken = true;
-                // 仅官方同步查询抢在预载结束之前触发；Unity 会完成同一个请求，不发第二次加载。
-                AssetBundle result = operation.Request.assetBundle;
-                operation.Complete(null);
-                pending.Remove(key);
-                return result;
+                if (!operation.Abandoned || synchronousRestoreDepth > 0) return operation.Take();
+                if (!operation.Drained)
+                {
+                    var draining = Begin(path, "sync_compatibility");
+                    draining.failed = true; draining.cancelled = true; draining.status = "cancel_draining";
+                    draining.endedSeconds = Time.realtimeSinceStartupAsDouble;
+                    return null;
+                }
+                operation.ReleaseOwned();
             }
             var record = Begin(path, "sync_compatibility");
             try
@@ -152,6 +209,12 @@ namespace BossRush
             }
             catch { record.failed = true; record.status = "exception"; throw; }
             finally { record.endedSeconds = Time.realtimeSinceStartupAsDouble; }
+        }
+
+        internal static bool IsPreparationDraining(string path)
+        {
+            Pending operation;
+            return pending.TryGetValue(NormalizeKey(path), out operation) && operation.Abandoned && !operation.Drained;
         }
 
         internal static T[] LoadAllAssets<T>(AssetBundle bundle) where T : UnityEngine.Object
@@ -171,7 +234,8 @@ namespace BossRush
         }
 
         /// <summary>持有资源直到 consumer 转交给现有 owner；任何退出都回收未转交的租约。</summary>
-        internal static IEnumerator Prepare(string path, bool prefabs, Func<bool> cancelled, Action consumer, float timeoutSeconds = 60f)
+        internal static IEnumerator Prepare(string path, bool prefabs, Func<bool> cancelled, Action consumer,
+            float timeoutSeconds = 60f, Func<bool> alreadyLoaded = null)
         {
             int epoch = generation;
             string key = NormalizeKey(path);
@@ -185,7 +249,7 @@ namespace BossRush
             }
             double deadline = Time.realtimeSinceStartupAsDouble + timeoutSeconds;
             Pending existing;
-            if (pending.TryGetValue(key, out existing))
+            while (pending.TryGetValue(key, out existing))
             {
                 // Abandoned native work must drain before re-opening the same bundle.
                 while (!existing.Drained && !cancelled() && epoch == generation && Time.realtimeSinceStartupAsDouble < deadline) yield return null;
@@ -196,8 +260,10 @@ namespace BossRush
                     waiting.failed = true; waiting.status = "timeout"; waiting.endedSeconds = Time.realtimeSinceStartupAsDouble;
                     yield break;
                 }
-                if (pending.TryGetValue(key, out existing) && !existing.Abandoned) { consumer(); yield break; }
-                pending.Remove(key);
+                if (alreadyLoaded != null && alreadyLoaded()) { consumer(); yield break; }
+                if (!existing.IsCurrent()) continue;
+                if (!existing.Abandoned) { consumer(); yield break; }
+                existing.ReleaseOwned();
             }
             var operation = new Pending { Record = Begin(path, "bundle_async"), Key = key };
             try { operation.Request = AssetBundle.LoadFromFileAsync(path); }
@@ -268,8 +334,7 @@ namespace BossRush
                 // Remove even a destroyed Unity wrapper, before cancellation clears its owned reference.
                 if (!ReferenceEquals(operation.Bundle, null)) preparedAssets.Remove(operation.Bundle);
                 if (!operation.Taken) operation.Cancel("cancelled");
-                Pending current;
-                if (operation.Finished && (assets == null || assets.isDone) && pending.TryGetValue(key, out current) && ReferenceEquals(current, operation)) pending.Remove(key);
+                if (operation.Drained && operation.IsCurrent()) pending.Remove(key);
             }
         }
 

@@ -169,6 +169,14 @@ def main() -> int:
         if token not in registry:
             return fail("registry missing mapping token: " + token)
 
+    ensure = extract_method(registry, "internal static bool EnsureRegistered(int typeId)")
+    setup = ensure.find("&& !EnsureItemConfiguratorsRegistered())")
+    restore = ensure.find("using (ResourceBundleLoader.BeginSynchronousRestore())")
+    equipment_load = ensure.find("LoadEquipmentBundles(typeId, plan.EquipmentBundles)")
+    item_load = ensure.find("LoadItemBundles(typeId, plan.ItemBundles)")
+    if not 0 <= setup < restore < equipment_load < item_load:
+        return fail("prepare both configurator sets before loading bundles in the synchronous restore scope")
+
     if 'ItemOnly("respawn_items"), RespawnItemConfig.ALL_RESPAWN_ITEM_TYPE_IDS' in registry:
         return fail("500032/500033 must not map to respawn_items")
 
@@ -207,7 +215,7 @@ def main() -> int:
     if "LocalizationInjector.InjectWikiBookLocalization(wikiBookTypeId);" not in wiki_book_runtime:
         return fail("WikiBook localization must use the runtime-confirmed item TypeID")
     for field in (
-        "private bool wikiBookInitialized = false;",
+        "private bool wikiBookInitializing;",
         "private int wikiBookTypeId = WIKI_BOOK_TYPE_ID;",
         "private GameObject wikiUIPrefab = null;",
         "private GameObject wikiBookPrefab = null;",
@@ -241,7 +249,7 @@ def main() -> int:
     if 'AddTagsToItem(itemPrefab, new string[] { "Key", "SpecialKey" });' not in registry:
         return fail("BossRush Ticket must keep its original Key/SpecialKey tag injection")
     for field in (
-        "private bool birthdayCakeInitialized = false;",
+        "private bool birthdayCakeInitializing;",
         "private int birthdayCakeTypeId = BIRTHDAY_CAKE_TYPE_ID;",
         "private Buff happyBuffPrefab = null;",
     ):
@@ -250,6 +258,25 @@ def main() -> int:
     birthday_registration = extract_method(registry, "internal bool EnsureBirthdayCakeItemRegisteredForDynamicRegistry()")
     if "InitializeBirthdayCakeItem();" not in birthday_registration:
         return fail("dynamic registry fallback must still initialize the Birthday Cake through its host bridge")
+    for source, item, loading, type_id, behaviors in (
+        (wiki_book_runtime, "WikiBook", "wikiBookInitializing", "WIKI_BOOK_TYPE_ID", (("WikiBookUsageBehavior", "wikiUsage"),)),
+        (birthday_cake_runtime, "BirthdayCake", "birthdayCakeInitializing", "BIRTHDAY_CAKE_TYPE_ID", (("FoodDrink", "foodBehavior"), ("AddBuff", "buffBehavior"))),
+    ):
+        registration = "".join(extract_method(source, "internal void Initialize" + item + "Item()").split())
+        if not registration.startswith("internalvoidInitialize" + item + "Item(){if(" + loading + "||"):
+            return fail(item + " initialization must reject reentry before touching the bundle")
+        for token in (loading + "=true;", "HasRegisteredPrefabWithoutEnsuring(" + type_id + ")",
+                      "!Configure" + item + "Item(itemPrefab)||!BossRushDynamicItemRegistry.Publish(itemPrefab)||"
+                      "BossRushDynamicItemRegistry.GetRegisteredPrefabWithoutEnsuring("):
+            if token not in registration:
+                return fail(item + " initialization must confirm a live configured prefab after Publish: " + token)
+        if "finally{" not in registration or not registration.endswith(loading + "=false;}}"):
+            return fail(item + " initialization must release its reentry guard on every exit")
+        configuration = "".join(extract_method(source, "private bool Configure" + item + "Item(Item itemPrefab)").split())
+        for behavior, variable in behaviors:
+            if ("GetComponent<" + behavior + ">()" not in configuration
+                    or ("if(!usageUtils.behaviors.Contains(" + variable + "))usageUtils.behaviors.Add(" + variable + ");") not in configuration):
+                return fail(item + " retry must reuse the existing usage behavior: " + behavior)
     for signature, target in (
         ("private void InitializeBirthdayCakeItem()", "bossRushIntegrationRuntime.InitializeBirthdayCakeItem();"),
         ("private void InjectBirthdayCakeLocalization()", "bossRushIntegrationRuntime.InjectBirthdayCakeLocalization();"),

@@ -38,7 +38,7 @@ python tools/run_guards.py --filter OfficialCompileList
 
 ### 4.2 只有 Windows 上的真编译才算编译通过
 
-编译依赖本机游戏程序集与 Harmony。WSL、Linux、CI 只能读代码、跑守卫与语法探针，不能据此声称「已编译通过」。语法探针有结构性盲区：缺游戏程序集时 Roslyn 不分析迭代器方法体，CS16xx 一类错误根本不会产出。csc 在中文 Windows 下输出 GBK，用 grep 解析它的输出可能静默失配，别拿空结果当「无错误」。
+正式编译依赖本机游戏程序集与 Harmony。源码守卫、语法探针和 CI 的隔离执行回归各自单列结果。语法探针有结构性盲区：缺游戏程序集时 Roslyn 不分析迭代器方法体，CS16xx 一类错误根本不会产出。csc 在中文 Windows 下输出 GBK，用 grep 解析它的输出可能静默失配，别拿空结果当「无错误」。
 
 ### 4.3 TypeID 严格递增、不复用
 

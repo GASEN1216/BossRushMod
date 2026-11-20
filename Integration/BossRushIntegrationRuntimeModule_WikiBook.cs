@@ -34,8 +34,7 @@ namespace BossRush
         /// </summary>
         private const string WIKI_BUNDLE_NAME = "bossrush_wiki";
 
-        // Wiki Book 物品是否已初始化
-        private bool wikiBookInitialized = false;
+        private bool wikiBookInitializing;
 
         // Wiki Book 物品 TypeID（运行时确认）
         private int wikiBookTypeId = WIKI_BOOK_TYPE_ID;
@@ -55,11 +54,11 @@ namespace BossRush
         /// </summary>
         internal void InitializeWikiBookItem()
         {
-            if (wikiBookInitialized)
+            if (wikiBookInitializing || (wikiUIPrefab != null && BossRushDynamicItemRegistry.HasRegisteredPrefabWithoutEnsuring(WIKI_BOOK_TYPE_ID)))
             {
                 return;
             }
-            wikiBookInitialized = true;
+            wikiBookInitializing = true;
 
             try
             {
@@ -70,42 +69,43 @@ namespace BossRush
                     return;
                 }
 
-                // 配置并注册物品
-                if (wikiBookPrefab != null)
-                {
-                    Item itemPrefab = wikiBookPrefab.GetComponent<Item>();
-                    if (itemPrefab != null)
-                    {
-                        if (itemPrefab.TypeID != WIKI_BOOK_TYPE_ID)
-                        {
-                            itemPrefab.SetTypeID(WIKI_BOOK_TYPE_ID);
-                        }
-
-                        ConfigureWikiBookItem(itemPrefab);
-                        BossRushDynamicItemRegistry.Publish(itemPrefab);
-
-                        wikiBookTypeId = itemPrefab.TypeID;
-
-                        ModBehaviour.DevLog("[WikiBook] 成功注册 Wiki Book 物品: TypeID=" + itemPrefab.TypeID);
-                    }
-                    else
-                    {
-                        ModBehaviour.DevLog("[WikiBook] WikiBook.prefab 上未找到 Item 组件");
-                    }
-                }
-
-                // 初始化 UI 管理器
+                // 重新启用时物品可能仍在官方表里，但本轮仍需给 WikiUIManager 绑定界面。
                 if (wikiUIPrefab != null)
                 {
                     WikiUIManager.Instance.SetUIPrefab(wikiUIPrefab);
                     ModBehaviour.DevLog("[WikiBook] Wiki UI Prefab 已设置");
                 }
 
-                ModBehaviour.DevLog("[WikiBook] 初始化完成");
+                if (BossRushDynamicItemRegistry.HasRegisteredPrefabWithoutEnsuring(WIKI_BOOK_TYPE_ID) || wikiBookPrefab == null)
+                {
+                    return;
+                }
+                Item itemPrefab = wikiBookPrefab.GetComponent<Item>();
+                if (itemPrefab == null)
+                {
+                    ModBehaviour.DevLog("[WikiBook] WikiBook.prefab 上未找到 Item 组件");
+                    return;
+                }
+                if (itemPrefab.TypeID != WIKI_BOOK_TYPE_ID)
+                {
+                    itemPrefab.SetTypeID(WIKI_BOOK_TYPE_ID);
+                }
+
+                if (!ConfigureWikiBookItem(itemPrefab) || !BossRushDynamicItemRegistry.Publish(itemPrefab)
+                    || BossRushDynamicItemRegistry.GetRegisteredPrefabWithoutEnsuring(WIKI_BOOK_TYPE_ID) != itemPrefab)
+                {
+                    return;
+                }
+                wikiBookTypeId = itemPrefab.TypeID;
+                ModBehaviour.DevLog("[WikiBook] 成功注册 Wiki Book 物品: TypeID=" + itemPrefab.TypeID);
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[WikiBook] 初始化失败: " + e.Message);
+            }
+            finally
+            {
+                wikiBookInitializing = false;
             }
         }
 
@@ -202,10 +202,8 @@ namespace BossRush
         /// <summary>
         /// 配置 Wiki Book 物品（添加使用行为）
         /// </summary>
-        private void ConfigureWikiBookItem(Item itemPrefab)
+        private bool ConfigureWikiBookItem(Item itemPrefab)
         {
-            if (itemPrefab == null) return;
-
             try
             {
                 // 0. 设置物品为使用耐久度模式，防止使用后被消耗
@@ -234,23 +232,24 @@ namespace BossRush
                 }
 
                 // 2. 添加 WikiBookUsageBehavior（打开 UI，不消耗物品）
-                WikiBookUsageBehavior wikiUsage = itemPrefab.gameObject.AddComponent<WikiBookUsageBehavior>();
-                usageUtils.behaviors.Add(wikiUsage);
+                WikiBookUsageBehavior wikiUsage = itemPrefab.GetComponent<WikiBookUsageBehavior>();
+                if (wikiUsage == null) wikiUsage = itemPrefab.gameObject.AddComponent<WikiBookUsageBehavior>();
+                if (!usageUtils.behaviors.Contains(wikiUsage)) usageUtils.behaviors.Add(wikiUsage);
                 ModBehaviour.DevLog("[WikiBook] 已添加 WikiBookUsageBehavior");
 
                 // 3. 关联 UsageUtilities 到 Item
                 var usageField = typeof(Item).GetField("usageUtilities",
                     BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                if (usageField != null)
-                {
-                    usageField.SetValue(itemPrefab, usageUtils);
-                }
+                if (usageField == null) throw new MissingFieldException(typeof(Item).FullName, "usageUtilities");
+                usageField.SetValue(itemPrefab, usageUtils);
 
                 ModBehaviour.DevLog("[WikiBook] 物品配置完成");
+                return true;
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[WikiBook] 配置物品失败: " + e.Message);
+                return false;
             }
         }
 

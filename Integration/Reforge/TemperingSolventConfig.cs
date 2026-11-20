@@ -38,7 +38,6 @@ namespace BossRush
         public const string GIFT_REWARD_KEY = "tempering_solvent_lv6_gift";
 
         private const string LogPrefix = "[TemperingSolvent] ";
-        private static bool runtimeFallbackRegistered;
 
         public static string GetDisplayName() { return L10n.T(DISPLAY_NAME_CN, DISPLAY_NAME_EN); }
         public static string GetDescription() { return L10n.T(DESCRIPTION_CN, DESCRIPTION_EN); }
@@ -74,52 +73,8 @@ namespace BossRush
         /// <summary>克隆冷淬液 prefab 顶上。形态照 SkyIslandNavInstrumentConfig.EnsureRuntimeRegistration。</summary>
         public static bool EnsureRuntimeRegistration()
         {
-            try
-            {
-                Item existing = null;
-                try { existing = ItemAssetsCollection.GetPrefab(TYPE_ID); }
-                catch (Exception) { /* 查询失败按尚未注册处理 */ }
-                if (existing != null)
-                {
-                    ConfigureItem(existing);
-                    return true;
-                }
-                if (runtimeFallbackRegistered)
-                {
-                    try { return ItemAssetsCollection.GetPrefab(TYPE_ID) != null; }
-                    catch (Exception) { return false; }
-                }
-
-                Item source = null;
-                try { BossRushDynamicItemRegistry.EnsureRegistered(ColdQuenchFluidConfig.TYPE_ID); }
-                catch (Exception) { /* 冷淬液按需注册失败时继续找已加载实例 */ }
-                try { source = ItemAssetsCollection.GetPrefab(ColdQuenchFluidConfig.TYPE_ID); }
-                catch (Exception) { /* 继续找已加载实例 */ }
-                if (source == null) source = ItemFactory.GetLoadedItem(ColdQuenchFluidConfig.TYPE_ID);
-                if (source == null)
-                {
-                    ModBehaviour.DevLog(LogPrefix + "找不到冷淬液作为克隆源");
-                    return false;
-                }
-
-                Item clone = UnityEngine.Object.Instantiate(source);
-                if (clone == null || clone.gameObject == null) return false;
-                clone.gameObject.name = PREFAB_NAME;
-                clone.gameObject.SetActive(false);
-                clone.gameObject.hideFlags = HideFlags.HideAndDontSave;
-                UnityEngine.Object.DontDestroyOnLoad(clone.gameObject);
-                clone.SetTypeID(TYPE_ID);
-                ConfigureItem(clone);
-                BossRushDynamicItemRegistry.Publish(clone);
-                runtimeFallbackRegistered = true;
-                ModBehaviour.DevLog(LogPrefix + "运行时物品已注册");
-                return true;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(LogPrefix + "兜底注册失败: " + e.Message);
-                return false;
-            }
+            return RuntimeItemFallback.Ensure(TYPE_ID, PREFAB_NAME, LogPrefix,
+                () => RuntimeItemFallback.FindSource(new[] { ColdQuenchFluidConfig.TYPE_ID }), ConfigureItem, ConfigureItem);
         }
 
         /// <summary>中英文名称、描述与物品 ID 键；语言切换后由 InjectLocalization_Extra_Integration 重新注入。</summary>

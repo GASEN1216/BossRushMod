@@ -3,9 +3,7 @@ name: Guards
 # tests/ 下的 Python 守卫是本仓库最大的质量资产（数百个结构不变式脚本，数量以 runner 输出为准），
 # 但此前只能靠本地手动跑——CI 里只有 Wiki 部署，没有任何 guard。
 #
-# 这里只跑 guard，**不跑编译**：compile_official.bat 需要
-# Duckov_Data\Managed 下的游戏程序集，CI runner 上没有，也不该有。
-# 编译与实机 smoke 仍然只能在装有《鸭科夫》的 Windows 机器上做。
+# CI 运行源码守卫和物品冷读档执行回归。正式 Mod 编译仍使用本机游戏程序集。
 
 on:
   push:
@@ -18,6 +16,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  item-restore:
+    name: 角色装备与仓库冷读档
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: 运行无游戏依赖的物品恢复回归
+        run: >-
+          python tools/run_runtime_regressions.py --fixtures
+          DynamicItemInitialization EquipmentConfiguratorRegistry ResourceProduction
+          IntegrationLeafOwners TidegateTreasure
+
   guards:
     runs-on: ubuntu-latest
     steps:

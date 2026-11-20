@@ -16,6 +16,7 @@ def main():
         'GardenSeedInjector', 'GardenSiteJudges', 'JukeboxTrackInjector', 'RaidMealService', 'RaidMealUsageBehavior',
         'ShowcaseService', 'ShowcaseDisplayJudges', 'ShowcaseTrophyCatalog')]
     linked += ['Audio/BossBgmTrackTable.cs', 'Common/Data/BossRushJsonValue.cs', 'Utilities/SimpleJsonHelper.cs', 'Common/Stats/RuntimeStatModifierTracker.cs', 'Integration/Items/ModeFItemConfigHelper.cs']
+    linked += ['Integration/Items/RuntimeItemFallback.cs']
     paths = [ROOT / p for p in linked] + [HERE / 'Program.cs', HERE / 'Stubs.cs']
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649;0067;0414</NoWarn></PropertyGroup><ItemGroup>'
     project += ''.join('<Compile Include="' + escape(str(p), {'"': '&quot;'}) + '" />' for p in paths)

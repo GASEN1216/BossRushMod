@@ -3,10 +3,11 @@ using System.IO;
 using System.Threading.Tasks;
 using BossRush;
 using BossRush.Utils;
+using Duckov.Buffs;
 using ItemStatsSystem;
 using UnityEngine;
 
-internal static class Program
+internal static partial class Program
 {
     private static int checks;
     private static void Check(bool value, string message) { checks++; if (!value) throw new Exception(message); }
@@ -23,7 +24,9 @@ internal static class Program
         Probe.Events.Clear(); NPCAssetBundleHelper.CanLoad = true; AffinityManager.Married = false;
         NPCSpawnConfig.Configured = true; NPCSpawnConfig.Avoided = true; GameObject.ThrowOnComponent = null;
         ModBehaviour.Shared = new[] { new Vector3(3, 0, 4) }; UnityEngine.Random.Calls = 0;
-        ItemAssetsCollection.Registered.Clear(); ItemAssetsCollection.ThrowAdd = false;
+        ItemAssetsCollection.Registered.Clear(); ItemAssetsCollection.Rejected.Clear(); ItemAssetsCollection.ThrowAdd = false;
+        ItemAssetsCollection.PublishWithoutLivePrefab = false;
+        ItemAssetsCollection.BeforePublish = null;
         IntegrationRuntimeModule.BossRushTicketTypeId = -1; IntegrationRuntimeModule.DynamicItemsInitialized = false;
         ResourceBundleLoader.CanLoad = true; ResourceBundleLoader.Assets = new UnityEngine.Object[0];
         CharacterMainControl.Main = new CharacterMainControl(); MutatorManager.Throw = false;
@@ -58,11 +61,44 @@ internal static class Program
     }
     private static GameObject Prefab(int id)
     { var go = new GameObject(); go.AddComponent<Item>().TypeID = id; return go; }
+    private static void ModResourceDirectory()
+    {
+        string assemblyFile = typeof(ModBehaviour).Assembly.Location;
+        string assemblyRoot = Path.GetDirectoryName(assemblyFile);
+        string enabledRoot = Path.Combine(assemblyRoot, "Enabled Mod");
+        Directory.CreateDirectory(enabledRoot);
+
+        Check(ModBehaviour.GetModPath() == assemblyRoot, "before Awake, assembly directory applies");
+        var owner = new ModBehaviour();
+        ModBehaviour.Instance = owner;
+        Check(ModBehaviour.GetModPath() == assemblyRoot, "before Setup, default metadata leaves assembly fallback available");
+        owner.Setup(null, new Duckov.Modding.ModInfo { path = enabledRoot });
+        Check(ModBehaviour.GetModPath() == enabledRoot, "Setup directory must win over the existing assembly directory");
+        owner.FailInfoRead = true;
+        Check(ModBehaviour.GetModPath() == assemblyRoot, "metadata failure cannot suppress the assembly fallback");
+        owner.FailInfoRead = false;
+        foreach (string invalid in new[] { " ", assemblyFile, Path.Combine(enabledRoot, "missing") })
+        {
+            owner.Setup(null, new Duckov.Modding.ModInfo { path = invalid });
+            Check(ModBehaviour.GetModPath() == assemblyRoot, "only an existing directory may replace the assembly fallback: " + invalid);
+        }
+        owner.Setup(null, new Duckov.Modding.ModInfo { path = enabledRoot });
+        UnityEngine.Object.Destroy(owner);
+        Check(ModBehaviour.GetModPath() == assemblyRoot, "destroyed Unity owner cannot contribute stale metadata");
+        ModBehaviour.Instance = null;
+    }
+
     private static void Ticket()
     {
-        string assets = Path.Combine(Path.GetDirectoryName(typeof(ModBehaviour).Assembly.Location), "Assets");
-        Directory.CreateDirectory(assets); File.WriteAllText(Path.Combine(assets, "bossrush_ticket"), "fixture marker");
-        Reset(); var owner = new ModBehaviour(); ItemAssetsCollection.Registered.Add(BossRushItemIds.BossRushTicket);
+        string enabledRoot = Path.Combine(Path.GetDirectoryName(typeof(ModBehaviour).Assembly.Location), "Enabled Mod");
+        string assets = Path.Combine(enabledRoot, "Assets");
+        string ticketPath = Path.Combine(assets, "bossrush_ticket");
+        Directory.CreateDirectory(assets); File.WriteAllText(ticketPath, "fixture marker");
+        Reset(); var owner = new ModBehaviour();
+        ModBehaviour.Instance = owner;
+        owner.Setup(null, new Duckov.Modding.ModInfo { path = enabledRoot });
+        ItemAssetsCollection.Registered.Add(BossRushItemIds.BossRushTicket, Prefab(BossRushItemIds.BossRushTicket).GetComponent<Item>());
+        Probe.Events.Clear();
         Check(owner.EnsureBossRushTicketItemRegisteredForDynamicRegistry() && IntegrationRuntimeModule.BossRushTicketTypeId == 500001, "ticket registered fast path lost published ID"); Sequence();
         Check(BossRushMapSelectionHelper.GetBossRushTicketTypeId() == 500001, "map ticket lookup lost registered runtime owner ID");
         var cost = BossRushMapSelectionHelper.CreateBossRushCost();
@@ -74,6 +110,7 @@ internal static class Program
         Check(!owner.EnsureBossRushTicketItemRegisteredForDynamicRegistry(), "failed ticket load returned true"); Sequence("load-ticket", "unload-null");
         Reset(); ResourceBundleLoader.Assets = new UnityEngine.Object[] { null, new AssetBundle(), new GameObject(), Prefab(91), Prefab(500001), Prefab(92) }; Probe.Events.Clear();
         Check(owner.EnsureBossRushTicketItemRegisteredForDynamicRegistry(), "ticket target not registered");
+        Check(ResourceBundleLoader.LastPath == ticketPath, "cold ticket registration loaded the active Mod's bundle path");
         Sequence("load-ticket", "tags:91:Key,SpecialKey", "register:91", "tags:500001:Key,SpecialKey", "register:500001", "tags:92:Key,SpecialKey", "register:92", "unload-ticket");
         Check(IntegrationRuntimeModule.BossRushTicketTypeId == 500001, "later non-target overwrote published ticket ID");
         Reset(); ResourceBundleLoader.Assets = new UnityEngine.Object[] { Prefab(0), Prefab(42), Prefab(43) }; Probe.Events.Clear();
@@ -83,11 +120,36 @@ internal static class Program
         Check(BossRushMapSelectionHelper.CreateBossRushCost().items[0].id == 500001, "map cost cached a stale registration ID");
         Reset(); ResourceBundleLoader.Assets = new UnityEngine.Object[] { Prefab(500001) }; ItemAssetsCollection.ThrowAdd = true; Probe.Events.Clear();
         Check(!owner.EnsureBossRushTicketItemRegisteredForDynamicRegistry(), "ticket registration failure escaped"); Ordered("load-ticket", "register:500001", "unload-ticket");
+        Reset(); var liveFallback = Prefab(42);
+        ItemAssetsCollection.Registered.Add(42, liveFallback.GetComponent<Item>());
+        ResourceBundleLoader.Assets = new UnityEngine.Object[] { liveFallback };
+        Probe.Events.Clear();
+        Check(!owner.EnsureBossRushTicketItemRegisteredForDynamicRegistry() && IntegrationRuntimeModule.BossRushTicketTypeId == 42,
+            "previously accepted fallback remains available after resetting the ticket owner");
+        Sequence("load-ticket", "unload-ticket");
+        Reset(); ResourceBundleLoader.Assets = new UnityEngine.Object[] { Prefab(41), Prefab(42), Prefab(BossRushItemIds.BossRushTicket) };
+        ItemAssetsCollection.Rejected.UnionWith(new[] { 41, BossRushItemIds.BossRushTicket });
+        Check(!owner.EnsureBossRushTicketItemRegisteredForDynamicRegistry() && IntegrationRuntimeModule.BossRushTicketTypeId == 42,
+            "ticket ignores rejected entries and preserves the first accepted fallback ID");
+        ItemAssetsCollection.Rejected.Clear();
+        ItemAssetsCollection.PublishWithoutLivePrefab = true;
+        Check(!owner.EnsureBossRushTicketItemRegisteredForDynamicRegistry() && IntegrationRuntimeModule.BossRushTicketTypeId == 42,
+            "ticket cannot replace its accepted fallback until the target is live in the official table");
+        ItemAssetsCollection.PublishWithoutLivePrefab = false;
+        bool reentered = false;
+        ItemAssetsCollection.BeforePublish = item =>
+        {
+            reentered = true;
+            Check(!owner.EnsureBossRushTicketItemRegisteredForDynamicRegistry(), "ticket cannot reenter an uncommitted registration");
+        };
+        Check(owner.EnsureBossRushTicketItemRegisteredForDynamicRegistry() && reentered && IntegrationRuntimeModule.BossRushTicketTypeId == BossRushItemIds.BossRushTicket,
+            "live target takes precedence over the first accepted fallback on retry");
         Reset(); ResourceBundleLoader.CanLoad = false; new IntegrationRuntimeModule().InitializeDynamicItems_Integration();
         Ordered("load-ticket", "unload-null", "configurators", "loaded-count", "awen", "invitation", "beacon", "safe-zone", "peace");
         Probe.Events.Clear(); new IntegrationRuntimeModule().InitializeDynamicItems_Integration(); Sequence();
         Check(IntegrationRuntimeModule.DynamicItemsInitialized, "dynamic registration latch lost static lifetime");
-        owner.EnsureItemContentConfiguratorsRegisteredForDynamicRegistry(); owner.EnsureBirthdayCakeItemRegisteredForDynamicRegistry(); owner.EnsureAdventureJournalItemRegisteredForDynamicRegistry(); Sequence("configurators", "cake", "journal");
+        owner.EnsureItemContentConfiguratorsRegisteredForDynamicRegistry(); Sequence("configurators");
+        ModBehaviour.Instance = null;
     }
     private static void Mutators()
     {
@@ -151,7 +213,7 @@ internal static class Program
     }
     private static async Task Main()
     {
-        Nurse(); Ticket(); Mutators(); await Managed();
+        ModResourceDirectory(); Nurse(); Ticket(); SpecialItemRegistrations(); Mutators(); await Managed();
         Console.WriteLine("IntegrationLeafOwners: PASS (" + checks + " assertions)");
     }
 }

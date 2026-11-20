@@ -6,6 +6,7 @@ import gc
 import hashlib
 import json
 import sys
+from item_bundle_inventory import SNAPSHOT, inspect_prefab_roots, published_item_bundle_paths
 
 ROOT = Path(__file__).resolve().parents[1]
 # 已安装/显式 PYTHONPATH 的运行时优先；旧检查目录可能留着另一 Python ABI 的扩展。
@@ -109,7 +110,7 @@ def validate_sky_materials(row):
     return errors
 
 
-def inspect(path):
+def inspect(path, item_bundle=False):
     import UnityPy
     from UnityPy.files.BundleFile import BundleFile
     from UnityPy.enums import TextureFormat
@@ -129,6 +130,8 @@ def inspect(path):
         'uncompressed_bytes':sum(len(r[1]) for r in records[1:]),
         'compression':sorted({r[0] for r in records[1:]}),
         'container':sorted(env.container),'textures':[],'meshes':[],'sprites':[]}
+    if item_bundle:
+        row['item_bundle'] = inspect_prefab_roots(env)
     for obj in env.objects:
         if obj.type.name=='Texture2D':
             d=obj.read()
@@ -229,12 +232,23 @@ def main():
     p.add_argument('--report',type=Path,required=True)
     args=p.parse_args()
     manifest=json.loads((ROOT/'tools/resource_release_manifest.json').read_text(encoding='utf8'))
+    snapshot=json.loads(SNAPSHOT.read_text(encoding='utf8'))
+    if snapshot['schema'] != 1:
+        raise ValueError('Unsupported item bundle inventory schema')
+    item_bundles=published_item_bundle_paths(manifest)
+    expected=snapshot['bundles']
     rows=[]; failures=[]
+    for relative in sorted(item_bundles ^ expected.keys()):
+        failures.append(relative + ': release manifest and item bundle inventory have different paths')
     for relative in manifest['bundles']:
         file=args.root/relative
         try:
-            row=inspect(file); row['path']=relative
+            row=inspect(file, item_bundle=relative in item_bundles); row['path']=relative
             errors=validate(row,file.name)
+            if relative in expected and relative in item_bundles:
+                actual={'sha256': row['sha256'], **row['item_bundle']}
+                if actual != expected[relative]:
+                    errors.append('Item bundle inventory differs from the actual file and prefab roots; regenerate the inventory after verifying the bundle')
             if args.work:
                 rebuilt=args.work/'rebuilt'/file.name
                 before=inspect(rebuilt if rebuilt.is_file() else ROOT/relative)

@@ -28,8 +28,6 @@ namespace BossRush
         public const int MAX_STACK = 1;
         public const float USE_TIME_SECONDS = 0.25f;
 
-        private static bool runtimeFallbackRegistered = false;
-
         public static string GetDisplayName()
         {
             return L10n.T(DISPLAY_NAME_CN, DISPLAY_NAME_EN);
@@ -53,61 +51,8 @@ namespace BossRush
 
         public static bool EnsureRuntimeRegistration()
         {
-            try
-            {
-                Item existing = null;
-                try { existing = ItemAssetsCollection.GetPrefab(TYPE_ID); } catch { }
-                if (existing != null)
-                {
-                    return true;
-                }
-
-                existing = ItemFactory.GetLoadedItem(TYPE_ID);
-                if (existing != null)
-                {
-                    ConfigureItem(existing);
-                    try { BossRushDynamicItemRegistry.Publish(existing); } catch { }
-                    return true;
-                }
-
-                if (runtimeFallbackRegistered)
-                {
-                    try { return ItemAssetsCollection.GetPrefab(TYPE_ID) != null; } catch { }
-                    return false;
-                }
-
-                Item source = FindRuntimeFallbackSource();
-                if (source == null)
-                {
-                    ModBehaviour.DevLog("[ZombieTideInvitationConfig] No runtime fallback source item was found");
-                    return false;
-                }
-
-                Item clone = UnityEngine.Object.Instantiate(source);
-                if (clone == null || clone.gameObject == null)
-                {
-                    ModBehaviour.DevLog("[ZombieTideInvitationConfig] Failed to clone runtime fallback item");
-                    return false;
-                }
-
-                clone.gameObject.name = PREFAB_NAME;
-                clone.gameObject.SetActive(false);
-                clone.gameObject.hideFlags = HideFlags.HideAndDontSave;
-                UnityEngine.Object.DontDestroyOnLoad(clone.gameObject);
-
-                clone.SetTypeID(TYPE_ID);
-                ConfigureItem(clone);
-                BossRushDynamicItemRegistry.Publish(clone);
-                runtimeFallbackRegistered = true;
-
-                ModBehaviour.DevLog("[ZombieTideInvitationConfig] Runtime fallback item registered");
-                return true;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ZombieTideInvitationConfig] EnsureRuntimeRegistration failed: " + e.Message);
-                return false;
-            }
+            return RuntimeItemFallback.Ensure(TYPE_ID, PREFAB_NAME, "[ZombieTideInvitationConfig] ",
+                FindRuntimeFallbackSource, ConfigureItem);
         }
 
         public static void ConfigureItem(Item item)
@@ -256,37 +201,12 @@ namespace BossRush
 
         private static Item FindRuntimeFallbackSource()
         {
-            int[] fallbackIds = new int[]
+            return RuntimeItemFallback.FindSource(new int[]
             {
                 BossRushItemIds.BossRushTicket,
                 BloodhuntTransponderConfig.TYPE_ID,
                 AwenCourierTokenConfig.TYPE_ID
-            };
-
-            for (int i = 0; i < fallbackIds.Length; i++)
-            {
-                try
-                {
-                    Item prefab = ItemAssetsCollection.GetPrefab(fallbackIds[i]);
-                    if (prefab != null)
-                    {
-                        return prefab;
-                    }
-                }
-                catch { }
-
-                try
-                {
-                    Item loaded = ItemFactory.GetLoadedItem(fallbackIds[i]);
-                    if (loaded != null)
-                    {
-                        return loaded;
-                    }
-                }
-                catch { }
-            }
-
-            return null;
+            });
         }
 
         private static void ConfigureUsage(Item item)

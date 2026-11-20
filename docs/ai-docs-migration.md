@@ -1,5 +1,9 @@
 # AI 协作文档收敛迁移记录
 
+## 2026-11-20 物品冷读档的自动回归（COMPAT）
+
+根 §4.2 与 `tests/AGENTS.md` 同步 Guards 工作流的 Windows 隔离回归入口。物品恢复夹具在公开源码上执行，正式 DLL 仍按本机游戏程序集构建。重复编号和保存后再次读档的约束见 `docs/contracts.md` §6。
+
 ## 2026-11-19 收集品 TypeID 台账与收藏册引导授权（SCHEMA+ / COMPAT）
 
 新增 100 件收集品（500119-500218）与收藏册（500219），根 §4.3 登记范围推到 500219、下一可用 500220，`docs/contracts.md` §1 与物品 ID 表同步；根 §10 已授权例外追加 owner 2026-11-19 授权的 Jeff 收藏册引导 590217，contracts 记下 `BossRush_CollectionBook_v1` 存档键与 590217 的口径。`architecture/modules.json` 新增 `collectibles` 模块并重生成 `MODULES.md`。

@@ -80,6 +80,21 @@ static class Program
             oldRequest.Finish();
             Check(old.Unloads == 1 && consumed == 1, "abandoned first request still releases its late result exactly once");
         }
+
+        old = NewRequest(); held = false; consumed = 0;
+        loads = AssetBundle.Loads;
+        using (var flow = new Flow(FactoryResourceLoading.RunSpecial(owner, "fixture", () => consumed++, () => held)))
+        {
+            Check(flow.Step(), "factory starts another attempt");
+            UnityEngine.SceneManagement.SceneManager.ActiveHandle = 5;
+            Check(flow.Step(), "factory retry waits for native drain");
+            using (ResourceBundleLoader.BeginSynchronousRestore())
+                held = ResourceBundleLoader.LoadFromFile(path) == old;
+            Check(!flow.Step() && held && consumed == 1 && AssetBundle.Loads == loads + 1,
+                "retry rechecks its holder after restoration takes the pending bundle");
+            Check(old.Unloads == 0, "factory retry does not release the restored owner");
+            old.Unload(true);
+        }
     }
     // 2026-11-19：找已加载包的唯一入口。名字最后一段 OrdinalIgnoreCase 全等；子串、已销毁、无名都不算，枚举抛错返回 null。
     static void FindLoadedMatching()
@@ -111,6 +126,94 @@ static class Program
         var b=new AssetBundle {name="fixture"};
         AssetBundle.Next=new AssetBundleCreateRequest {Result=b};
         return b;
+    }
+
+    static void RestoreCancelledRequests(string path)
+    {
+        foreach (bool prefabs in new[] { false, true })
+        {
+            var old = NewRequest();
+            var request = AssetBundle.Next;
+            request.DispatchOnForcedCompletion = false;
+            old.Assets.DispatchOnForcedCompletion = false;
+            var prepare = ResourceBundleLoader.Prepare(path, prefabs, () => false,
+                () => { throw new Exception("expired prepare must not consume"); }, 1);
+            Check(prepare.MoveNext(), "restoration case starts the container request");
+            if (prefabs)
+            {
+                request.Finish();
+                AssetBundle.Loaded.Add(old);
+                Check(prepare.MoveNext(), "restoration case starts the prefab request");
+                Check(ResourceBundleLoader.FindLoaded("fixture") == null, "ordinary lookup cannot borrow an unclaimed live preparation");
+            }
+            Time.realtimeSinceStartupAsDouble = 2;
+            Check(!prepare.MoveNext(), "timeout abandons the native work immediately");
+            Dispose(prepare);
+            int loads = AssetBundle.Loads;
+            Check(ResourceBundleLoader.IsPreparationDraining(path) && ResourceBundleLoader.LoadFromFile(path) == null
+                && ResourceBundleLoader.FindLoaded("fixture") == null && request.ForcedReads == 0 && old.Assets.ForcedReads == 0,
+                "ordinary consumers neither borrow nor wait for the cancelled native work");
+            using (ResourceBundleLoader.BeginSynchronousRestore())
+            {
+                using (ResourceBundleLoader.BeginSynchronousRestore()) { }
+                Check(ResourceBundleLoader.LoadFromFile(path) == old, "outer restoration scope takes the same timed-out native request");
+            }
+            if (!prefabs) AssetBundle.Loaded.Add(old);
+            Check(AssetBundle.Loads == loads && old.Unloads == 0 && !ResourceBundleLoader.IsPreparationDraining(path)
+                && ResourceBundleLoader.FindLoaded("fixture") == old,
+                "transferred bundle is visible to ordinary borrowers and no second native open was started");
+            Check(request.ForcedReads == (prefabs ? 0 : 1) && old.Assets.ForcedReads == (prefabs ? 1 : 0),
+                "restoration waits only on the existing unfinished native phase");
+            old.Unload(true);
+
+            AssetBundle replacement = new AssetBundle { name = "fixture" };
+            AssetBundle.Next = new AssetBundleCreateRequest { Result = replacement };
+            prepare = ResourceBundleLoader.Prepare(path, false, () => false,
+                () => Check(ResourceBundleLoader.LoadFromFile(path) == replacement, "replacement owner receives its own bundle"));
+            Check(prepare.MoveNext(), "same path can start a new native operation after owner unload");
+            request.DispatchCompleted();
+            old.Assets.DispatchCompleted();
+            Check(old.Unloads == 1 && replacement.Unloads == 0, "late callbacks never unload a transferred or replacement bundle");
+            AssetBundle.Next.Finish();
+            Check(!prepare.MoveNext(), "replacement remains tracked after the old callback");
+            Dispose(prepare);
+            replacement.Unload(true);
+            AssetBundle.Loaded.Clear();
+        }
+
+        var delayed = NewRequest();
+        var delayedRequest = AssetBundle.Next;
+        var cancelled = ResourceBundleLoader.Prepare(path, false, () => false, () => { });
+        Check(cancelled.MoveNext(), "deferred dispatch case starts async work");
+        Dispose(cancelled);
+        delayedRequest.Finish(false);
+        AssetBundle.Loaded.Add(delayed);
+        Check(ResourceBundleLoader.FindLoaded("fixture") == null, "already visible native result remains hidden until completed callback");
+        Check(ResourceBundleLoader.LoadFromFile(path) == null, "restoration scope was released after both nested scopes ended");
+        delayedRequest.DispatchCompleted();
+        Check(delayed.Unloads == 1 && ResourceBundleLoader.FindLoaded("fixture") == null, "untaken deferred result is unloaded once");
+        AssetBundle.Loaded.Clear();
+    }
+
+    static void IconDrainIsRetryable()
+    {
+        var old = NewRequest();
+        var request = AssetBundle.Next;
+        using (var flow = new Flow(ProductionIconCache.Prepare(() => false)))
+            Check(flow.Step(), "compressed icon bootstrap starts asynchronously");
+        int loads = AssetBundle.Loads;
+        Check(ProductionIconCache.Get("Assets/Items/icon.png") == null && !ProductionIconCache.AllowRawFallback
+            && AssetBundle.Loads == loads && request.ForcedReads == 0,
+            "an early icon query during drain neither waits nor treats the bundle as missing");
+        request.Finish();
+        var fresh = new AssetBundle();
+        var icon = new Sprite { texture = new Texture2D() };
+        fresh.Sprites["assets/items/icon.png"] = icon;
+        AssetBundle.Sync = fresh;
+        Check(ProductionIconCache.Get("Assets/Items/icon.png") == icon && old.Unloads == 1,
+            "icon cache retries and acquires the actual icon after drain");
+        ProductionIconCache.ResetStaticCaches();
+        AssetBundle.Sync = null;
     }
     static void Main(string[] args)
     {
@@ -180,6 +283,8 @@ static class Program
         ProductionIconCache.ResetStaticCaches();ProductionIconCache.ResetStaticCaches();
         Check(b.Unloads==1&&icon.Destroyed&&icon.texture.Destroyed,"idempotent bundle release");
         AssetBundle.Sync=null;Check(ProductionIconCache.AllowRawFallback,"missing bundle preserves fallback");
+        ProductionIconCache.ResetStaticCaches();
+        IconDrainIsRetryable();
         var m=ResourcePerformanceMetrics.Summarize(new double[]{5,1,3,2,4},5,"ms","test");
         Check(m.p50==3&&m.p95==5&&m.mean==3,"nearest-rank quantiles");
         Check(ResourcePerformanceMetrics.Summarize(new double[]{double.NaN},1,"ms","test").status=="unavailable","NaN unavailable");
@@ -189,7 +294,8 @@ static class Program
             Check(!ResourcePerformanceMetrics.IsComplete(10,600,flags[0],flags[1],flags[2],out reason),"interrupted windows fail");
         Check(!ResourcePerformanceMetrics.IsComplete(9.999,600,false,true,false,out reason),"short window fails");
         FactoryTransitions(path);
+        RestoreCancelledRequests(path);
         FindLoadedMatching();
-        Console.WriteLine("ResourceProduction PASS: native late completion, disposal, timeout, failure, aliases/ownership, loaded-bundle lookup, metric judges");
+        Console.WriteLine("ResourceProduction PASS: cancellation, restoration transfer, icon retry, aliases/ownership, loaded-bundle lookup, metric judges");
     }
 }

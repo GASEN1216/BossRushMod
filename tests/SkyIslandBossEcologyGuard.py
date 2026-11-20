@@ -429,10 +429,10 @@ def check(raw):
             errors.append("掉落黑名单（代码 / JSON）缺 %s：专属装备只该从 Boss 身上来" % name)
         if "case BossRushItemIds.%s:" % name not in code["gear_config"]:
             errors.append("SkyIslandBossGearConfig.Description 缺 %s 的玩家描述（从哪来、穿上做什么）" % name)
-    # 动态注册表与装配期入口都在 ModBehaviour partial 预算里：注册表只许一行（按专属装备表登记 bundle），
-    # 克隆占位与物品配置器挂在预算之外的同类 owner 上（套装占位注册器、岛上物品配置器）。
-    require(errors, registry_plan, 'Add(plans, EquipmentOnly("skyisland_boss_gear"), SkyIslandBossRules.AllGearTypeIds);',
-            "动态注册表要按专属装备表登记 bundle（重启后背包里的它才不会退化成 FallbackItem）")
+    require(errors, registry_plan, 'Add(plans, new RegistrationPlan { '
+            'EquipmentBundles = new string[] { "skyisland_boss_gear" }, '
+            'FallbackLoader = SkyIslandBossGearConfig.EnsureRegistered }, SkyIslandBossRules.AllGearTypeIds);',
+            "动态注册表要按专属装备表登记 bundle 和读档克隆兜底")
     hooks = {rel: clean_source((ROOT / rel).read_text(encoding="utf-8-sig", errors="ignore"))
              for rel in ("Integration/Bonus/SetBonusPlaceholderRegistry.cs", "Integration/SkyIsland/SkyIslandItems.cs")}
     require(errors, body_of(hooks["Integration/Bonus/SetBonusPlaceholderRegistry.cs"], "public static void EnsureAllRegistered()"),
@@ -491,7 +491,7 @@ def reverse_probes(raw):
          "// 【五栏】核心招式：立星炉供能桩给自己加护甲，星焰落点封左右走位，放完两招星炉过热", "两位 Boss 的核心招式写成同一句"),
         ("rules", "            // 【五栏】克制：躲进掩体断开视线就打断标记；贴到 8 米内它不再标记；锁定后 0.6 秒内出圈\n", "", "观星手的五栏少一栏"),
         ("rules", "NightOnly = true,", "", "蚋笛翁不再夜限定"),
-        ("registry", 'Add(plans, EquipmentOnly("skyisland_boss_gear"), SkyIslandBossRules.AllGearTypeIds);', "", "动态注册表漏登记专属装备"),
+        ("registry", "FallbackLoader = SkyIslandBossGearConfig.EnsureRegistered", "FallbackLoader = null", "动态注册表漏登记专属装备克隆兜底"),
         ("props", "if (path != null && path.seeker != null) path.seeker.CancelCurrentPathRequest(true);", "", "换位不掐在途寻路"),
         ("props", "skin.BakeMesh(mesh, true);", "UnityEngine.Object.Instantiate(skin.gameObject);", "倒影改成克隆角色"),
         ("story_rules", "!source.wearsMirrorArmor && ", "", "镜纹甲不放行折翎"),

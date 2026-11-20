@@ -195,7 +195,7 @@ def validate(root=ROOT):
             errors.append(path + ": 不得用字符串反射 AssetBundle." + m.group(1))
     loader = codes.get(LOADER, "")
     load_sync = compact(body(loader, "internal static AssetBundle LoadFromFile(string path)") or "")
-    prepare = compact(body(loader, "internal static IEnumerator Prepare(string path, bool prefabs, Func<bool> cancelled, Action consumer, float timeoutSeconds = 60f)") or "")
+    prepare = compact(body(loader, "internal static IEnumerator Prepare(string path, bool prefabs, Func<bool> cancelled, Action consumer,") or "")
     if "AssetBundleresult=AssetBundle.LoadFromFile(path);" not in load_sync:
         errors.append(LOADER + ": 同步 LoadFromFile 必须在 ResourceBundleLoader.LoadFromFile 里调 AssetBundle.LoadFromFile(path)")
     if "operation.Request=AssetBundle.LoadFromFileAsync(path);" not in prepare:
@@ -211,7 +211,7 @@ def validate(root=ROOT):
     find_c = compact(find or "")
     for token in ("if(string.IsNullOrEmpty(bundleFileName))returnnull;",
                   "foreach(AssetBundleloadedinAssetBundle.GetAllLoadedAssetBundles())",
-                  "if(IsNamed(loaded,bundleFileName))returnloaded;", "catch{}", "returnnull;"):
+                  "if(IsNamed(loaded,bundleFileName)&&!IsPendingBundle(loaded,bundleFileName))returnloaded;", "catch{}", "returnnull;"):
         if token not in find_c:
             errors.append("ResourceBundleLoader.FindLoaded 缺少 " + token + "（失败要返回 null，不抛给调用方）")
     named = compact(body(loader, "internal static bool IsNamed(AssetBundle bundle, string bundleFileName)") or "")

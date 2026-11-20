@@ -27,6 +27,7 @@ namespace BossRush
             catch (ArgumentException) { badKeyRejected = true; }
             Check(badKeyRejected, "empty registration key rejected");
             EquipmentBootstrapProbe.Run();
+            FactoryProbe.FactoryRegistrationProbe.Run();
             Console.WriteLine("EquipmentConfiguratorRegistry: PASS");
         }
     }

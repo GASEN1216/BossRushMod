@@ -33,9 +33,9 @@
 
 - **打开只有一个入口**：`ResourceBundleLoader`。
   - `Prepare(path, prefabs, cancelled, consumer)`：异步预载（`LoadFromFileAsync` + 可选的 `LoadAllAssetsAsync<GameObject>`）。约定是 consumer 必须在回调里**同步**对同一文件调 `ResourceBundleLoader.LoadFromFile` 才算接管；没接管、取消、超时或换场景，预载的包会被 `Unload(true)` 回收，迟到的原生结果也会在完成回调里卸掉。
-  - `LoadFromFile(path)`：同步兜底。同一文件正有一次未作废的异步 `Prepare` 时直接接管那次请求，不发第二次原生加载；那次请求作废但还没排空时返回 null。
+  - `LoadFromFile(path)`：同一文件有未作废的预载时直接接管。预载作废后，普通同步调用在排空期间立即返回 null；按 TypeID 同步注册在 `BeginSynchronousRestore()` 作用域内可接管原请求，并在交付前完成尚未结束的原生请求。旧的完成回调不会卸载已交给新 owner 的包。
   - 生产代码别处不直接调 `AssetBundle.LoadFromFile / LoadFromFileAsync / LoadFromMemory(Async) / LoadFromStream(Async)`，也不用字符串反射它们（`BundleLoadingGuard`）。2026-11-19 天空岛特效小包 `SkyIslandFxAssets` 从直接 `AssetBundle.LoadFromFile` 改走这里，一次性闸门 `attempted` 不变。
-- **找已加载的包只有一个入口**：`ResourceBundleLoader.FindLoaded(bundleFileName)`，全仓库唯一的 `AssetBundle.GetAllLoadedAssetBundles` 调用点。匹配规则 `IsNamed`：`bundle.name` 按 `/` 与 `\` 切分取最后一段，与包文件名 OrdinalIgnoreCase **全等**；已销毁或无名的包不算；查询异常返回 null，不抛给调用方。
+- **找已加载的包只有一个入口**：`ResourceBundleLoader.FindLoaded(bundleFileName)`，全仓库唯一的 `AssetBundle.GetAllLoadedAssetBundles` 调用点。匹配规则 `IsNamed`：`bundle.name` 按 `/` 与 `\` 切分取最后一段，与包文件名 OrdinalIgnoreCase **全等**。已销毁、无名和仍由预载持有的包都会跳过；查询异常返回 null。
   - 调用点：`ItemFactory`（取图与注册的借用兜底）、`ImageViewerUI` 回退看图、`CodexPortraitCache`、`BossRushUISkinLoader`、`CampaignAssetCache`、`ModeGPresentationAssetCache`、`ModeHPresentationAssetCache`、`AchievementIconLoader`。
   - 旧写法有三种（全等 / `IndexOf` 子串 / 区分大小写的 `Contains`）。改全等前用 UnityPy 核对过 `Assets/` 与游戏 Mod 目录下的全部包（两边各 81 个，同一批文件）：包内名都等于文件名，没有哪个包名是另一个目标名的超串，所以原来能命中的包现在都还能命中。守卫另外钉住每处传入的名字常量等于旁边包路径常量的最后一段。
 - **防重复打开**（同一文件第二次打开会被 Unity 拒绝并报 "another AssetBundle with the same files is already loaded"），见下文「防重复打开」。
@@ -83,6 +83,7 @@ end
 - **工厂先复用自持包**：`ItemFactory.FindHeldBundle` 查 `loadedAssetBundles`（`GetSprite` 先打开过，或上次注册保留了包却计数为 0），`EquipmentFactory.FindOwnedBundle` 按 `IsNamed` 查 `ownedBundles`（上次保留了包却计数为 0）。有就直接用，不再对同一文件 `LoadFromFile`。`ItemFactory` 仍保留「打开失败再 `FindLoaded` 借用」的兜底。
 - **基地建筑带 `alreadyLoaded`**：基地装配管线每次进基地都会重跑六个建筑的 `RunSpecial`。婚礼、许愿台、遗种巢、日报箱、公告板、展示柜都传入「建筑自己还持有模型包」的判据（公告板 / 展示柜经宿主 `HasCampaignBoardBundle` / `HasBackMountainShowcaseBundle` 只读已有模块，不为探测去创建模块），持有中直接交给建筑的初始化入口，不再异步重开。
 - **重试前再判**：`RunSpecial` 换场景作废一次尝试后，等场景加载完、重试前重新判一次 `alreadyLoaded`——等待期间建筑可能已经经早期注入同步拿到了包。
+- `Prepare` 等旧请求结束后，会在发出新请求前再次检查消费方是否已持有该包。`production_icons` 的普通查询遇到排空会保留重试资格，正式构建会等排空结束后再决定是否回退到散图。
 - **重载先卸旧句柄**：婚礼、许愿台、遗种巢、日报箱的模型加载方法在重新 `LoadFromFile` 前先 `AssetBundleUnloadHelper.TryUnload` 旧句柄并置空。
 
 ## 缓存与卸载

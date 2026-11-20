@@ -255,6 +255,9 @@ Breaking:
 - 历史拼写如 `dargon_Helmet`、`dargon_Armor` 不要随手纠正。
 - 头盔 EquipmentModel 根节点为单位变换；官方挂载清零根节点位置/旋转而保留缩放，校准放网格子节点。源网格轴向、尺寸/中心及子节点姿态以 `tools/helmet_fit_profiles.json` 为准，经 `tools/helmet_fit.py --sync` 同步作者工程。生成时只绝对赋值一次，不能同时烤入 FBX。新增头盔或换源网格必须重校准；全量构建与头盔构建都先验证，包内清单/姿态须回读。盔壳定位不等于整体包围盒居中，实机捏脸与动作另行验收。
 - 已发布自定义物品/装备 TypeID 必须登记到 `Integration/BossRushDynamicItemRegistry.cs`。官方存档、仓库、商店和 UI 可能早于延迟 bootstrap 调用 `ItemAssetsCollection.GetMetaData/GetPrefab/Instantiate*`，统一注册表是避免白底问号和 `FallbackItem_<id>` 的按需兜底入口。
+- 冷读档先登记配置器，再交付资源。包内逐个确认官方动态表里的真实 prefab，单个发布失败可以重试。官方物品树先创建实例、再写入变量和装配槽位，槽位拒收的空壳可能在下次保存时丢失。执行回归 `DynamicItemInitialization` 核对发布清单、主武器和嵌套配件、仓库格位及二次保存。
+- 同一物品 TypeID 只声明一份注册计划。重复登记时正式版保留首条并记录编号，自动回归报错。PR 与 main 推送会执行物品恢复回归，覆盖角色先读、仓库先读、分包模型以及首次资源获取失败后重试。
+- 物品包、装备包与特殊物品包的来源依据实际导出的根 prefab 核对。公开回归使用 `tools/item_bundle_inventory.json` 核对 TypeID、独立模型和发行路径。更新包后运行 `python tools/item_bundle_inventory.py` 重生成清单，并用 `tools/verify_unity_resource_release.py` 核对待交付文件的 SHA-256 与包内内容。
 
 Breaking:
 

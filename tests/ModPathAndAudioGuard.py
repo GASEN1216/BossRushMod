@@ -8,6 +8,7 @@
    - ModeH/ModeHCanonicalDigest.cs：TryComputeAssemblyFileDigest 要对已加载的程序集文件本身算摘要，取的是 DLL 文件，不是 Mod 根目录。
    静态字段初始化器里不得取 Mod 根目录：抛出会变成 TypeInitializationException 永久毒化类型（NewWeaponSfx 的注释）。
    套装与龙王的音效路径改成用时才拼的属性。
+   官方 Setup 写入的有效 info.path 优先；程序集位置是独立的回退，覆盖 Setup 前及目录信息无效的情况。
 2. 官方音频的反射（AudioManager.PostCustomSFX / Post、AudioObject.StopAll、FMOD EventInstance 的 setVolume / setPitch / stop）
    只在 Audio/BossRushOfficialAudio.cs：首次用到时解析一次，失败返回 null / false，整个文件不抛异常。
    各调用点改调它（下表逐处钉住调用），没有例外。龙王武器射击音原来用 void 委托绑官方 Post，绑不上它的非 void
@@ -19,7 +20,8 @@
    NPC 交互音注册口，音频服务的 void 委托，成就弹窗的 default.mp3 兜底，许愿台版本号的程序集特性分支与 GetModDirectory，
    DailyReportLayoutTable.LoadedFromJson，SkyIslandPatrolRules.Load。
 
-文本守卫防不住「保留 token、杀掉执行路径」：统一入口与各调用点的行为由 AudioRuntime、SkyIslandInteraction 执行回归覆盖，
+文本守卫防不住「保留 token、杀掉执行路径」：Mod 路径与船票接线由 IntegrationLeafOwners 执行回归覆盖，
+音频入口与各调用点的行为由 AudioRuntime、SkyIslandInteraction 执行回归覆盖，
 刷新点读取格式由 AuditCoreParsing 执行回归与 MapSpawnRegistryPropertyTest 覆盖。
 """
 
@@ -201,10 +203,16 @@ def validate(root=ROOT):
             errors.append("%s:%d: 静态字段初始化器里不得取 Mod 根目录（会抛 TypeInitializationException 毒化类型），改成用时才取"
                           % (path, code.count("\n", 0, m.start()) + 1))
     get_mod_path = compact(body(codes.get("DebugAndTools/DebugAndTools.cs", ""), "public static string GetModPath()") or "")
-    for token in ("stringassemblyLocation=typeof(ModBehaviour).Assembly.Location;",
-                  "if(!string.IsNullOrEmpty(modDir)&&System.IO.Directory.Exists(modDir))", "returnnull;"):
-        if token not in get_mod_path:
-            errors.append("DebugAndTools/DebugAndTools.cs: GetModPath 缺少 " + token + "（统一入口本身不改）")
+    metadata, separator, assembly = get_mod_path.partition("}try{")
+    if not separator or "catch(Exceptione){" not in metadata or "catch(Exceptione){" not in assembly:
+        errors.append("DebugAndTools/DebugAndTools.cs: GetModPath 官方目录与程序集回退必须单独处理异常")
+    if ("stringpath=mod.info.path;" not in metadata
+            or "if(!string.IsNullOrWhiteSpace(path)&&System.IO.Directory.Exists(path)){returnpath;}" not in metadata):
+        errors.append("DebugAndTools/DebugAndTools.cs: GetModPath 必须优先直读官方 info.path 并校验目录")
+    if ("stringassemblyLocation=typeof(ModBehaviour).Assembly.Location;" not in assembly
+            or "if(!string.IsNullOrEmpty(modDir)&&System.IO.Directory.Exists(modDir)){returnmodDir;}" not in assembly
+            or not assembly.endswith("returnnull;")):
+        errors.append("DebugAndTools/DebugAndTools.cs: GetModPath 必须回退有效程序集目录，两处都不可用时返回 null")
     for path, signature in (("Integration/Bonus/SetBonusVisuals.cs", "private static string Resolve(string fileName)"),
                             ("Integration/DragonKing/DragonKingConfig.cs", "private static string SoundPath(string fileName)")):
         resolver = compact(body(codes.get(path, ""), signature) or "")

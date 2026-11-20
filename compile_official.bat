@@ -1175,6 +1175,7 @@ echo(Integration\FactoryResourceLoading.cs
 echo(Integration\Items\AwenDepositTokenConfig.cs
 echo(Integration\Items\AwenDepositTokenUsage.cs
 echo(Integration\Items\ItemContentRegistry.cs
+echo(Integration\Items\RuntimeItemFallback.cs
 echo(Integration\Items\RelicEggConfig.cs
 echo(Integration\Items\AwenLootSweepTokenConfig.cs
 echo(Integration\Items\AwenLootSweepTokenUsage.cs
