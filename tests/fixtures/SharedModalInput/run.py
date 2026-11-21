@@ -13,7 +13,7 @@ def generate():
                          shared.index("        /// <summary>\n        /// 获取游戏 TMP 字体资产")]
     wrapper_body = zombie[zombie.index("        // 旧调用方保留 API"):
                           zombie.index("        internal static TMP_FontAsset GetGameFont()")]
-    production = ("using System; using UnityEngine; using Duckov.UI;\n"
+    production = ("using System; using System.Collections.Generic; using UnityEngine; using Duckov.UI;\n"
                   "internal static class BossRushUIKit {\n" + shared_body + "\n}\n"
                   "internal static class ZombieModeUIHelper {\n" + wrapper_body + "\n}\n")
     target = ROOT / "Build/shared-modal-input-fixture"

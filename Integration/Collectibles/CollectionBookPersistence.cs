@@ -163,6 +163,7 @@ namespace BossRush
 
         internal bool HasWriteBarrier { get { return store.HasWriteBarrier; } }
         internal bool Writable { get { return !store.HasWriteBarrier && !store.IsStoreFaulted; } }
+        internal string LastError { get { return store.LastError; } }
         internal CollectionBookData Load() { return store.LoadOrInit(); }
 
         internal bool Store(CollectionBookData value, bool requestFlush = true)

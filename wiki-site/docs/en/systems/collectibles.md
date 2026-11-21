@@ -46,6 +46,7 @@ Tiers 1 to 6 follow the value range of official collectibles and luxuries of the
 - Right-click the album in your inventory to open it. Sets are listed on the left and the current set's pieces and progress bar on the right; unlogged pieces show their icon as a silhouette, but you can still read their name and story. Reading it uses nothing up.
 - At base, press **Register** to open a one-slot crate: put a collectible in, then press the crate's **Register** button to log it. The slot empties so you can log the next one. **Logged items are taken**, so hold back anything you would rather sell or give away. If the piece is already logged or isn't a collectible, the button stays greyed out and says why.
 - Closing the window does not log anything: whatever is still in the slot goes back to your backpack (or to storage if it's full).
+- If the crate doesn't pop up, you'll get a short notice and land back in the album; just press it again. If you can't register right now, the bottom of the album says why.
 - Log one piece, then go back to Jeff to turn in the quest. There's no extra reward; the album is the reward.
 - You can browse the album during a raid, but you can only register at base.
 

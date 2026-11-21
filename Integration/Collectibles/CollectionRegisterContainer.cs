@@ -9,6 +9,8 @@
 // 本地库存不挂在 LootBoxInventoriesParent 下，开箱掉落判定天然不碰它。
 // 事实先写存档再收物品：存档写不进去时这一件留在格子里，关上时退回。
 // 按钮挂在官方 LootView 的层级里（LootView 常驻），关容器时必须一并销毁，否则下一个普通箱子会带着它。
+// 打开走官方 OnStartLoot：逐个订阅者调用、互相隔离（别的 Mod 抛异常不能拦住排在后面的 LootView），
+// 调完 LootView 还没开就直接设目标箱子再开；还是打不开、超时或按钮没建出来，都告诉玩家并回到收藏册，不静默收场。
 // ============================================================================
 
 using System;
@@ -37,11 +39,13 @@ namespace BossRush
         private static FieldInfo onStartLootField;
         private static FieldInfo targetDisplayField;
         private static FieldInfo sortButtonField;
+        private static FieldInfo targetLootBoxField;
         private static bool reflectionReady;
 
         private readonly Func<List<Item>, List<Item>> register;
         private readonly Func<int, bool> isRegistered;
         private readonly Action<bool> onClosed;
+        private readonly Action<string> onFailed;
         private GameObject root;
         private Inventory inventory;
         private InteractableLootbox lootbox;
@@ -54,11 +58,14 @@ namespace BossRush
         /// <param name="onRegister">交给收藏册：传入格子里的那一件，返回已登记、应当收走的那些（写存档失败返回 null）。</param>
         /// <param name="isRegisteredTypeId">这件收集品是否已经登记过（决定按钮能不能点）。</param>
         /// <param name="onClosedByPlayer">玩家自己关上界面时回调，参数是这一趟有没有登记成功过。</param>
-        internal CollectionRegisterContainer(Func<List<Item>, List<Item>> onRegister, Func<int, bool> isRegisteredTypeId, Action<bool> onClosedByPlayer)
+        /// <param name="onOpenFailed">登记格子没能打开（打不开、超时、按钮没建出来）时回调，参数是给玩家看的提示。</param>
+        internal CollectionRegisterContainer(Func<List<Item>, List<Item>> onRegister, Func<int, bool> isRegisteredTypeId,
+            Action<bool> onClosedByPlayer, Action<string> onOpenFailed)
         {
             register = onRegister;
             isRegistered = isRegisteredTypeId;
             onClosed = onClosedByPlayer;
+            onFailed = onOpenFailed;
         }
 
         internal bool IsOpen { get { return root != null; } }
@@ -74,7 +81,12 @@ namespace BossRush
             try
             {
                 EnsureReflection();
-                if (LootView.Instance == null || inventoryReferenceField == null) return false;
+                if (LootView.Instance == null || inventoryReferenceField == null)
+                {
+                    Debug.LogWarning(CollectibleTuning.LogPrefix + "登记容器打不开：" + (LootView.Instance == null ? "LootView 不在" : "缺 inventoryReference 字段"));
+                    NotifyOpenFailed();
+                    return false;
+                }
                 InjectLocalization();
                 root = new GameObject("BossRush_CollectionRegister");
                 root.SetActive(false);
@@ -100,16 +112,76 @@ namespace BossRush
                 SceneLoader.onStartedLoadingScene += OnStartedLoadingScene;
                 subscribed = true;
                 Action<InteractableLootbox> start = onStartLootField != null ? onStartLootField.GetValue(null) as Action<InteractableLootbox> : null;
-                if (start == null) { CloseAndReturn(false); return false; }
-                start(lootbox);
+                if (start != null) RaiseStartLootIsolated(start);
+                if (root == null) { NotifyOpenFailed(); return false; }
+                if (!IsShowing(LootView.Instance) && !OpenLootViewDirectly(LootView.Instance))
+                {
+                    Debug.LogWarning(CollectibleTuning.LogPrefix + "登记容器打不开：OnStartLoot 之后 LootView 仍未打开");
+                    Fail();
+                    return false;
+                }
                 return true;
             }
             catch (Exception e)
             {
                 Debug.LogWarning(CollectibleTuning.LogPrefix + "打开登记容器失败: " + e.Message);
-                CloseAndReturn(false);
+                Fail();
                 return false;
             }
+        }
+
+        /// <summary>
+        /// 逐个调用官方 OnStartLoot 的订阅者，一个抛异常不拦后面的。
+        /// 官方多播链里谁先抛，排在后面的就收不到；LootView 在关卡 UI 醒来时才订阅，总排在 Mod 的订阅者后面，
+        /// 前面任何一个订阅者（多半是别的 Mod）对这个没有掉落表的单格箱子抛异常，登记格子就开不出来（2026-11-21 玩家反馈）。
+        /// </summary>
+        private void RaiseStartLootIsolated(Action<InteractableLootbox> start)
+        {
+            Delegate[] handlers = start.GetInvocationList();
+            for (int i = 0; i < handlers.Length && root != null; i++)
+            {
+                Action<InteractableLootbox> handler = handlers[i] as Action<InteractableLootbox>;
+                if (handler == null) continue;
+                try { handler(lootbox); }
+                catch (Exception e)
+                {
+                    string who = handler.Method != null && handler.Method.DeclaringType != null
+                        ? handler.Method.DeclaringType.FullName + "." + handler.Method.Name : "?";
+                    Debug.LogWarning(CollectibleTuning.LogPrefix + "开箱事件订阅者对登记格子抛异常，已跳过: " + who + " " + e.GetType().Name + ": " + e.Message);
+                }
+            }
+        }
+
+        private bool IsShowing(LootView view)
+        {
+            return view != null && view.open && inventory != null && view.TargetInventory == inventory;
+        }
+
+        /// <summary>OnStartLoot 没把 LootView 打开时，直接把目标箱子设成登记格子再开（送礼容器同一条后备路）。</summary>
+        private bool OpenLootViewDirectly(LootView view)
+        {
+            if (view == null || targetLootBoxField == null || lootbox == null) return false;
+            try
+            {
+                targetLootBoxField.SetValue(view, lootbox);
+                view.Open(null);
+            }
+            catch (Exception e) { Debug.LogWarning(CollectibleTuning.LogPrefix + "直接打开 LootView 失败: " + e.Message); }
+            return IsShowing(view);
+        }
+
+        /// <summary>登记格子开不出来：退回格子里的东西、收工，再告诉玩家（不静默收场）。</summary>
+        private void Fail()
+        {
+            CloseAndReturn(false);
+            NotifyOpenFailed();
+        }
+
+        private void NotifyOpenFailed()
+        {
+            if (onFailed == null) return;
+            try { onFailed(L10n.T("登记格子没打开，过一会儿再点一次「登记收集品」。", "The register slot didn't open. Try \"Register Items\" again in a moment.")); }
+            catch (Exception e) { ModBehaviour.DevLog(CollectibleTuning.LogPrefix + "登记失败提示回调异常: " + e.Message); }
         }
 
         /// <summary>每帧由模块调用；容器没开时 O(1) 早返。LootView 摆好后克隆一次「登记」按钮。</summary>
@@ -117,10 +189,13 @@ namespace BossRush
         {
             if (root == null || buttonObject != null) return;
             LootView view = LootView.Instance;
-            bool showing = view != null && view.open && inventory != null && view.TargetInventory == inventory;
-            if (!showing)
+            if (!IsShowing(view))
             {
-                if (Time.unscaledTime - openedAt > OpenTimeout) CloseAndReturn(false);
+                if (Time.unscaledTime - openedAt > OpenTimeout)
+                {
+                    Debug.LogWarning(CollectibleTuning.LogPrefix + "登记容器 " + OpenTimeout + " 秒内没在 LootView 里出现，关闭");
+                    Fail();
+                }
                 return;
             }
             if (Time.unscaledTime - openedAt < ButtonDelay) return;
@@ -128,7 +203,7 @@ namespace BossRush
             {
                 // 没有按钮就没法登记：不退回到「关上就登记」，退回物品、关掉界面，留日志查原因。
                 Debug.LogWarning(CollectibleTuning.LogPrefix + "登记按钮创建失败，关闭登记容器");
-                CloseAndReturn(false);
+                Fail();
             }
         }
 
@@ -350,6 +425,7 @@ namespace BossRush
             onStartLootField = typeof(InteractableLootbox).GetField("OnStartLoot", BindingFlags.NonPublic | BindingFlags.Static);
             targetDisplayField = typeof(LootView).GetField("lootTargetInventoryDisplay", instance);
             sortButtonField = typeof(InventoryDisplay).GetField("sortButton", instance);
+            targetLootBoxField = typeof(LootView).GetField("targetLootBox", instance);
         }
     }
 }

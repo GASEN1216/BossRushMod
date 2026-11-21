@@ -216,8 +216,11 @@ namespace BossRush
                 _nextSaveTime = Time.unscaledTime + 2f;
                 // 故障后先关闭物品转移，避免继续修改一个已进入持久化屏障的背包。
                 if (open && LootView.Instance != null) LootView.Instance.Close();
-                NotifyFailure(error);
+                // 每 2 秒的自动重试只在原因变化时冒字：同一原因反复弹会盖住整局画面（2026-11-21 玩家反馈）。
+                NotifyFailure(error, false);
+                return;
             }
+            _lastFailure = null;
         }
 
         private bool Capture(out string error)
@@ -370,15 +373,17 @@ namespace BossRush
             _inventory = null;
         }
 
-        private void NotifyFailure(string error)
+        /// <param name="playerAction">玩家自己点了「背包」：每次都给反馈；自动重试只在原因变化时提示。</param>
+        private void NotifyFailure(string error, bool playerAction = true)
         {
             // 同一故障可由每两秒的封存重试持续触发，只在原因变化时记录一次。
-            if (!string.Equals(_lastFailure, error, StringComparison.Ordinal))
+            bool changed = !string.Equals(_lastFailure, error, StringComparison.Ordinal);
+            if (changed)
             {
                 Debug.LogWarning("[PetNest] 背包暂不可用: " + error);
                 _lastFailure = error;
             }
-            if (CharacterMainControl.Main != null)
+            if ((changed || playerAction) && CharacterMainControl.Main != null)
                 CharacterMainControl.Main.PopText(PetNestLocalization.DescribeFailure(error), -1f);
         }
 

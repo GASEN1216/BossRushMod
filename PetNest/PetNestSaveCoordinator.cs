@@ -163,6 +163,44 @@ namespace BossRush
             catch (Exception e) { error = "asset_collect_failed:" + e.GetType().Name; return false; }
         }
 
+        /// <summary>
+        /// 官方采集（OnCollectSaveData）专用入口。采集成功说明主角物品 / 仓库 / 缓冲区 / 经济数据已经和巢数据
+        /// 一起进了官方存档缓存，之后不管谁调 SaveFile 都会把它们一并写出：基地资产义务从「必须连同仓库再采一次」
+        /// 降为「还欠一次 SaveFile」，交给引擎的待写盘重试。
+        /// 不降级的话，玩家在基地孵化 / 远征到账后协调器还没来得及自己写盘就出门（官方出门前那次采集已经把仓库带上了），
+        /// 出击图里没有仓库实例，崽背包每 2 秒一次的封存都卡在 storage_instance 上，
+        /// 一直弹「背包与仓库还没就绪」、背包也用不了（2026-11-21 玩家反馈）。
+        /// 返回的 <paramref name="collected"/> 是这次采集覆盖的那份义务；巢数据也写进缓存之后再交给
+        /// <see cref="SettleOfficiallyCollectedAssets"/>，巢数据没写进去就不降级。
+        /// </summary>
+        internal static bool CollectPendingAssetsForOfficialSave(out string error, out AssetSnapshotToken collected)
+        {
+            collected = null;
+            AssetSnapshotToken owner;
+            bool required;
+            lock (_lock) { required = _assetSnapshotRequired; owner = _assetSnapshotOwner; }
+            if (!CollectPendingAssets(out error)) return false;
+            if (required) collected = owner;
+            return true;
+        }
+
+        /// <summary>只撤采集时那一份义务：采集过程中新建的义务换了 owner，原样保留。</summary>
+        internal static void SettleOfficiallyCollectedAssets(AssetSnapshotToken collected)
+        {
+            if (collected == null) return;
+            bool downgraded = false;
+            lock (_lock)
+            {
+                if (_assetSnapshotRequired && ReferenceEquals(_assetSnapshotOwner, collected))
+                {
+                    _assetSnapshotRequired = false;
+                    _assetSnapshotOwner = null;
+                    downgraded = true;
+                }
+            }
+            if (downgraded) _engine.NotifyPendingWriteFlushed();
+        }
+
         /// <summary>实物资产屏障的同步 durable 落盘：绕过每帧闸立即写。</summary>
         internal static bool RequestAssetFlush(out string error)
         {

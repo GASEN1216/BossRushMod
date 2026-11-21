@@ -801,8 +801,10 @@ namespace BossRush
             {
                 // 官方收集时把唯一 Bundle_v2 pending 合并进存档，但不单独 SaveFile。
                 string assetError;
-                if (!PetNestSaveCoordinator.CollectPendingAssets(out assetError)) return;
-                _bundle.FlushPending(true);
+                PetNestSaveCoordinator.AssetSnapshotToken collected;
+                if (!PetNestSaveCoordinator.CollectPendingAssetsForOfficialSave(out assetError, out collected)) return;
+                // 实物和巢数据都进了官方缓存，基地资产义务降为「还欠一次 SaveFile」（出击图里的崽背包不再卡仓库）。
+                if (_bundle.FlushPending(true)) PetNestSaveCoordinator.SettleOfficiallyCollectedAssets(collected);
             }
             catch (Exception)
             {

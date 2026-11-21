@@ -1,5 +1,6 @@
 // 全 Mod 字体、缩放与模态输入租约的唯一实现。ZombieModeUIHelper 仅保留兼容转发。
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using Duckov.UI;
 using TMPro;
@@ -15,6 +16,8 @@ namespace BossRush
         private static float _modalPreviousTimeScale = 1f;
         private static bool _modalPreviousCursorVisible;
         private static CursorLockMode _modalPreviousCursorLockState;
+        /// <summary>还没归还的租约，供每帧补占输入（<see cref="EnforceModalInputPause"/>）。</summary>
+        private static readonly List<ModalInputLease> _activeModalLeases = new List<ModalInputLease>();
 
         internal static bool IsModalInputPaused
         {
@@ -74,6 +77,7 @@ namespace BossRush
             }
 
             _modalInputLeaseCount++;
+            _activeModalLeases.Add(lease);
 
             try
             {
@@ -102,6 +106,34 @@ namespace BossRush
             Time.timeScale = 0f;
             Cursor.visible = true;
             Cursor.lockState = CursorLockMode.None;
+            ReassertModalInputBlocks();
+        }
+
+        /// <summary>
+        /// 每帧把没归还的租约 token 补进当前官方 InputManager 的输入阻断。
+        /// 官方 InputManager.UpdateCursor 每帧按「输入是否被挡」重写 Cursor.visible：只在打开那一刻挡一次的话，
+        /// token 丢了（打开时还没有当前 InputManager、关卡换了 InputManager）官方就判定可以操作角色、把光标藏起来，
+        /// 和上面的 Cursor.visible = true 每帧来回拉扯，玩家看到的就是模态面板开着却没有鼠标指针，
+        /// 要开一下地图（官方 View）才出来（2026-11-21 玩家反馈：收藏册）。
+        /// blockInputSources 是 HashSet，重复 DisableInput 幂等；记下实际挡住的 InputManager，归还时才在它身上放开。
+        /// </summary>
+        private static void ReassertModalInputBlocks()
+        {
+            InputManager manager;
+            try { manager = CurrentInputManager; }
+            catch (Exception) { return; }
+            if (manager == null) return;
+            for (int i = 0; i < _activeModalLeases.Count; i++)
+            {
+                ModalInputLease lease = _activeModalLeases[i];
+                if (lease == null || lease.InputToken == null) continue;
+                try
+                {
+                    InputManager.DisableInput(lease.InputToken);
+                    lease.InputOwner = manager;
+                }
+                catch (Exception) { /* 补占失败只是光标可能被官方藏起，不阻断模态 */ }
+            }
         }
 
         private static void ReleaseModalInput(ModalInputLease lease)
@@ -122,6 +154,7 @@ namespace BossRush
             }
 
             lease.InputOwner = null;
+            _activeModalLeases.Remove(lease);
             _modalInputLeaseCount = Mathf.Max(0, _modalInputLeaseCount - 1);
             if (_modalInputLeaseCount > 0)
             {

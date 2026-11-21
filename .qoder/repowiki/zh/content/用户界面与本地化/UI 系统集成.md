@@ -587,3 +587,5 @@ BossRushUI.ApplyPanelStroke(surface, 18, BossRushUISkinPart.Panel, BossRushUICol
 `tests/PersistentHudVisibilityGuard.py` 钉住：清单里每块 HUD 都经过两份判定并落到显隐、每帧入口有驱动，
 **全仓引用 HUD 层级常量的文件都必须归类**（常驻或写明理由的排除）——新加一块 HUD 忘了跟随，守卫会直接点名。
 `BossRushUI.cs` 没有行数余量，两份判定分开调用，不另加合并函数。
+
+**2026-11-21 模态租约每帧补占输入（COMPAT，L2，未实机）**：`BossRushUIKit.EnforceModalInputPause`（每帧 LateUpdate）在压 timeScale、开光标之后，把还没归还的租约 token 重新 `InputManager.DisableInput` 到当前 InputManager（官方 `blockInputSources` 是 HashSet，重复调用幂等），并记下实际挡住的 InputManager，归还时只在它身上 `ActiveInput`。原因：官方 `InputManager.UpdateCursor` 每帧按「输入是否被挡」重写 `Cursor.visible`，打开时还没有当前 InputManager 或关卡换了 InputManager 时 token 就丢了，光标和租约每帧来回拉扯，玩家看到收藏册开着却没有鼠标指针，要开一下地图才出来。执行回归 `SharedModalInput` 覆盖晚到的 InputManager、token 丢失后补占、已归还租约不补占，去掉补占调用时实跑转红。

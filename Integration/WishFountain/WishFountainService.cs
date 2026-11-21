@@ -119,13 +119,25 @@ namespace BossRush
         /// <summary>许愿奖励存档键</summary>
         private const string WISH_REWARD_NEXT_AVAILABLE_SAVE_KEY = "BossRush_WishReward_NextAvailableTicks";
 
-        /// <summary>基础品质权重（Q1~Q8）</summary>
-        private const int WISH_REWARD_MIN_QUALITY = 4;
+        /// <summary>奖池最低品质。2026-11-21 削弱：从 4 档放宽到 3 档垫底。</summary>
+        private const int WISH_REWARD_MIN_QUALITY = 3;
 
+        /// <summary>
+        /// 基础品质权重（Q1~Q8），合计 100 即百分比。
+        /// 2026-11-21 玩家反馈许愿太容易出好东西（旧表 4 档起步、7 档以上约 16%）：
+        /// 改为 Q3 45 / Q4 33 / Q5 15 / Q6 5.5 / Q7 1.2 / Q8 0.3，再按本档游玩时长封顶（见下）。
+        /// </summary>
         private static readonly float[] WishRewardBaseQualityWeights =
         {
-            0f, 0f, 0f, 13f, 9f, 5f, 3f, 2f
+            0f, 0f, 45f, 33f, 15f, 5.5f, 1.2f, 0.3f
         };
+
+        /// <summary>
+        /// 按本档累计游玩时长封顶品质：不满 5 / 15 / 30 / 60 小时分别最高 4 / 5 / 6 / 7 档，满 60 小时才可能出 8 档。
+        /// 时长读官方存档里的 GameClock（每次存档更新）；读不出来按最低一档封顶。
+        /// </summary>
+        private static readonly float[] WishRewardPlayHoursThresholds = { 5f, 15f, 30f, 60f };
+        private static readonly int[] WishRewardQualityCapBelowThreshold = { 4, 5, 6, 7 };
 
         private const float WISH_REWARD_QUALITY_BIAS_CAP = 1.6f;
         private const float WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER = 2f;

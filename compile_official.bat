@@ -1282,6 +1282,7 @@ echo(Integration\WishFountain\WishFountainService.cs
 echo(Integration\WishFountain\WishFountainConfigAndValidation.cs
 echo(Integration\WishFountain\WishFountainRewardPoolBuild.cs
 echo(Integration\WishFountain\WishFountainRewardSelection.cs
+echo(Integration\WishFountain\WishFountainRewardOdds.cs
 echo(Integration\WishFountain\WishFountainSendPipeline.cs
 echo(Integration\WishFountain\WishFountainFetchPipeline.cs
 echo(Integration\WishFountain\WishFountainInteractable.cs

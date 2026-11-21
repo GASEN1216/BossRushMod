@@ -8620,3 +8620,33 @@ owner 指定生物 Wiki 的原版属性作为参照、要求整体提升 50%，�
 验证（L1/L2）：全量守卫 663 PASS；最终补修后 167 项相关守卫 PASS。58 组隔离回归全部通过，其中 ModeHPlayerFlow 153 条、菜地横幅 76 条；新改守卫的稀疏副本反向验证转红、按字节恢复后转绿。Windows 正式版和 Dev 版编译成功，仅既有 RuntimeGate CS0649；14 个 Dev 专用标识在正式版缺席、Dev 版齐全。正式 DLL 已部署且 SHA-256 一致：`6377310021E1F3DC66D16620F5D1E1FB7B9980A94692C85436CE5F79D2B8FBAE`；72 个包部署哈希核对通过。Wiki 构建、80 项导航与 237 页链接检查通过（0 缺失、0 断锚）；额外图片总表检查发现本机已有 51 份图鉴源图尚无对应站点产物，当前页面引用检查无缺失，本轮未扩展站点图库。
 
 环境说明：使用自带 Pillow 的 bundled Python；本机仅 .NET 10，夹具以 `DOTNET_ROLL_FORWARD=Major` 运行，分配测量关闭分层编译；三组官方绑定夹具显式指定实际 Harmony 路径后通过，未放宽断言。日志及聚合结果在 `Build/thread-resume-20260924/`。无 L3、未启动游戏或读写玩家存档；复测操作与看图清单见 `docs/reports/testing/20260924会话续接与提交记录.md`，其余六项沿用 `20260923人工复查续修记录.md`。
+
+## 2026-09-30 天空岛桥栏凸挡块：修角色被模型「弹」出地图（COMPAT，L2）
+
+- 根因：官方角色移动 ECM2（半径 0.30、跨步 0.25、贴边悬停 0）的解穿插不扫掠。角色一旦压进栏杆边的木梁 / 柱子（瞬移、头目换位、刷怪落点），最小平移方向可能指向虚空；零厚度双面栏杆是空壳，挡不住这一步。作者工程新增 `SkyIslandMovementSimulation`，用游戏自带 ECM2 与官方预制体参数在最终 raid 包里真跑：外边冲撞 6157 次、起步穿插 5959 次、随机游走 1473 人，修前 18 处穿插起步被推出桥栏坠落（BF / FG / FS3 / GE / GS4 / K2 桥），边界冲撞与游走本身 0 越界。
+- 修：`tools/generate_sky_island.py` `rail_buttresses` 沿 926 条外边在栏杆外侧生成 0.8 m 厚、-0.25～+1.7 m、随坡抬升、2 m 分段的定向凸挡块（3318 只），反折角处逐段内收不侵入可走域；元数据写进 `geometry.json` `railButtress`，作者 `SkyIslandBundleBuilder.AddRailButtresses` 建 `COL_Rail_Buttress_*` BoxCollider（走既有 `COL_Rail_` 前缀，运行时分墙体层），`SkyIslandCollisionValidation` 只放行这批声明过的盒子并逐只核对位置与尺寸。
+- 验证（L2）：Unity 碰撞校验 PASS failures=0；ECM2 实跑 PASS 0 失败；反向验证（注释掉建挡块）实跑转红 18 处坠落，还原后字节一致；着色器判包、73 包资源校验、SkyIsland 守卫 57/58（唯一红为 `SkyIslandRoadPlacementPropertyTest` 在 runner 下找不到 shapely，带依赖路径单跑 PASS）。raid 包作者 / 仓库 / 游戏三份 `5f8b6c3a…` 一致（`Validation/buttress_deployment_hashes_20260930.json`）；本轮只换资源包，未重编 DLL，未启动游戏。
+- 未覆盖：飞行图腾可越过 1.7 m 栏杆（玩法取舍，待 owner 定）；头目瞬移不查导航连通（审计线索，未改）。L3 人工：贴着 BF、FG、GE、K2 桥栏来回冲刺翻滚、被镜中客换位到桥边，不应掉出。
+
+## 2026-09-30 天空岛主题曲更名「人鱼湾」（COMPAT，L1/L2）
+
+owner 决定继续用洛克王国原曲，只改显示名：`BgmTracks.json` 点唱机条目 `晴岚群岛 / Qinglan Archipelago` → `人鱼湾 / Mermaid Bay`，作者仍为「洛克王国 / Roco Kingdom」，文件 `sky_island_theme.ogg` 与场景曲条目不变。点唱机按音频路径判重，旧条目原位换标题，存档 index 不移位。WikiContent 中英 6 处曲名同步，站点重建。owner 本地另存的 90 秒 `sky_island_theme.wav`（未入库、无引用）按 owner 要求删除；程序化原创替代曲草稿经 owner 否决，未入库。**验证**：`BossBgm` / `BackMountain` / `Wiki` 守卫 19 PASS，Wiki 站点构建通过；未 Windows 编译（无代码改动，JSON 随正式构建部署）。**未实机（L3 待 owner）**：基地点唱机曲目列表显示「人鱼湾」、切英文显示 Mermaid Bay。
+
+## 2026-09-30 天空岛敌人与头目武器品质（COMPAT，L1/L2）
+
+- owner 反馈精英和 Boss 拿品质 1 的斧头。根因：全岛敌人（含头目 / 岛主、序章断风游猎·守、普通巡守）都从官方普通拾荒者 preset 克隆，武器沿用官方随机装配；`SkyIslandBossForge` 只换护甲，`VanillaPresetId` 只供数值参照；巡守底模还是血量最低的拾荒者。
+- 修：新增 `SkyIslandEnemyArmory`（运行时）与 `SkyIslandEnemyArmoryRules`（纯规则），官方创建完成后按档次补齐主武器与近战——拾荒者 3–4、精英 4–5、具名对手 / 头目 5–6、岛主 / 噬风 6–7（下限 3 / 5，不再往下退），巡守 Rank 1–4 走拾荒者档、5+ 走精英档。只发官方静态物品表武器，过掉落排除标签、黑名单、岛上 10 万价值上限，排除控心与粘手物品；枪限小口径 / 大口径 / 霰弹 / 狙击，装满弹匣 + 两匣备弹，弹药品质不低于档次下限（该口径没有就取最高品质）。达标原装不换，换下的销毁，换上的随官方尸体箱掉落。接线：遭遇组身份层后、序章 Forge 后、巡守固定外形后；武器池随物资池读条预热，模块 OnDestroy 复位。
+- 经济：每名敌人尸体箱里的武器档次随之上升（头目 / 岛主每趟一把品质 5+ 枪），owner 本次要求内；数值只在 `SkyIslandEnemyArmoryRules` 一处，可回退。
+- 验证：新守卫 `SkyIslandEnemyArmoryGuard`（9 条内存反向探针）；`SkyIslandEncounters` 执行回归新增 `ArmoryRegression`（全部遭遇组逐位档次 + 序章），真实删掉遭遇组配枪调用后转红、按字节还原；SkyIsland 守卫 56/58（红项为缺 shapely 与作者工程着色器函数缺失，与本次无关）；隔离正式编译通过；17:31 正式构建部署到游戏目录，`BossRush.dll` SHA-256 `71EFAFE8…DE04FC` 与 `Build/` 一致（非 Dev，含同工作区另一会话未提交的天空岛剧情改动）。未实机：清单「2026-09-30 敌人武器品质」W-01…W-05。
+
+## 2026-09-30 天空岛模型碰撞修复续接（COMPAT / SCHEMA+ / OPERATIONAL，L1/L2）
+
+修复建筑底部实体地面洞、硬物碰撞漏配与名义包围盒误挡、岛边双面碰撞、斜桥柱顶及连捞落脚净空；重新烘焙 4,004 顶点 / 4,774 面的连通导航。最终 raid 包 Unity PlayMode 静态物理验证通过；CR-2026-09-30-001 的新增硬物与桥梁指纹漏检已修复，11 项生产调用反例及两个内存变异通过；全硬物来源重绑后再次 PhysX 复验通过。完整数字、部署哈希与 COLL-01～06 人工验收见 [交付报告](docs/reports/sky-island/2026-09-30-天空岛模型碰撞修复与交付.md)。Windows 正式构建已替换上一轮 Dev DLL，实际 raid 包及 DLL 哈希一致，73 个发布资源包校验通过；未启动游戏或访问玩家存档，L3 待验。
+
+## 2026-09-30 鸭王杯模组 Boss 战力、丧尸模式 Boss 波补刷、WikiContent 全量对照代码（COMPAT，L1/L2）
+
+- 鸭王杯模组 Boss 战力（owner 定）：龙裔遗族 1500、幻影女巫 500，焚天龙皇仍为 2000（`ModeHGroupConfig.DragonDescendantPower` / `PhantomWitchPower`）；夹具 ModeHGroupRoster 断言同步，改值反向验证转红后按字节还原。
+- 丧尸模式（玩家反馈「第 30 波 6 只 Boss 只出来 5 只」）：没有波数上限，是无尽模式；Boss 数 = 1 + (波数-1)/5，第 30 波确是 6 只。单只 Boss 生成失败（落点解析不到可达点、生成核心重试耗尽）原先直接按「已击败」扣掉，HUD 写 6 只、场上少一只。现在每只最多尝试 4 次（首次 Boss 专属落点，之后随机可靠落点，间隔 15 帧），全部失败才扣并打 `[WARNING]`（`ZombieModeTuning.BossSpawnAttempts`）。具体是哪种失败没有日志，未证实。
+- WikiContent：以 cf64459c（09-27 对照审校）之后的提交为线索，中英两份全量对照当前代码更新：鸭王杯（群战、战力、押注退出口径、本场总结、名人堂、自定义 Boss 表现）、三只模组 Boss 页、Mode G 确认页与英文名、丧尸模式开局装备与技能预警、词条面板位置、Boss 筛选因子页签、随机事件「Boss 乱入」、遗种巢放生、天空岛奖励去向与首杀、龙铳寒冷、腾云驾雾翻滚键、叮当 Lv.5/6 限量上架、征程奖励表改列表（WikiContent 不支持表格）、龙皇台词英文与代码一致；在线站速查框同步。
+- 补（owner 定）：断界戟英文名统一为代码里的「Inferno Emperor's Realm-Breaking Halberd」（WikiContent、`catalog.tsv`、在线站结构与图标清单、README_EN）；v2.3.0 更新日志未发版，鸭王杯一节改写为群战、「不速之客」改为「Boss 乱入」。
+- 验证：正式编译（部署 SHA 与 `Build/` 一致）、718 守卫、111 执行回归、`npm --prefix wiki-site run build` 通过；未实机。L3：丧尸模式打到第 30 波，Boss 应出齐 6 只；若 Player.log（Dev 构建）出现「Boss 生成失败，换落点重试」，把日志发回来查失败原因。

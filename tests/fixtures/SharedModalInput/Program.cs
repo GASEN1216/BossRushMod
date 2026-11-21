@@ -95,6 +95,27 @@ internal static class Program
         gone.Release();
         Check(Duckov.UI.InputManager.ActivateAttempts == attempts && BossRushUIKit.ModalInputLeaseCount == 0,
             "a surviving level without an input manager needs no activation call");
+        // 打开那一刻还没有当前 InputManager：之后每帧补占，归还时在实际挡住的那个上放开（收藏册无指针）。
+        LevelManager.Instance = null;
+        var lateToken = new GameObject();
+        var late = BossRushUIKit.ClaimModalInput(lateToken, "late manager");
+        Check(!lateToken.Disabled, "a claim without a current manager blocks nothing yet");
+        LevelManager.Instance = new LevelManager();
+        BossRushUIKit.EnforceModalInputPause();
+        Check(lateToken.Disabled && Cursor.visible && Time.timeScale == 0f,
+            "the per-frame enforcement blocks input once a manager exists");
+        late.Release();
+        Check(lateToken.Reactivated && LevelManager.Instance.InputManager.Releases == 1 && BossRushUIKit.ModalInputLeaseCount == 0,
+            "the re-asserted block is released on the manager that holds it");
+        var lostToken = new GameObject();
+        var lost = BossRushUIKit.ClaimModalInput(lostToken, "lost block");
+        lostToken.Disabled = false;
+        BossRushUIKit.EnforceModalInputPause();
+        Check(lostToken.Disabled, "a dropped block is re-asserted every frame while the lease is held");
+        lost.Release();
+        lostToken.Disabled = false;
+        BossRushUIKit.EnforceModalInputPause();
+        Check(!lostToken.Disabled && BossRushUIKit.ModalInputLeaseCount == 0, "a released lease is never re-asserted");
         Console.WriteLine("SharedModalInput regression PASS: " + checks + " checks");
     }
 }

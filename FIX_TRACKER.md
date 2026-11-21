@@ -4,6 +4,15 @@
 
 **2026-11-20 · COMPAT · L1/L2**　玩家反馈退出重进后武器消失、仓库物品变问号。修复冷启动注册、分包手持模型绑定、部分失败重试和克隆/异步资源归属。角色和仓库合成档往返、重复 TypeID 与真实包来源已纳入自动回归。故障证据与玩家侧验证边界见 [CR-2026-11-20-001 至 003](CODE_REVIEW_FINDINGS.md)。随 v2.6.1 发版：`info.ini` 升 2.6.1，WikiContent 新增中英 `changelog__v2_6_1` 并补总览，工坊简介同步；L3 待玩家侧确认。
 
+## 2026-11-21 玩家反馈四项 + v2.6.2 发版准备（COMPAT；L1/L2，L3 待 owner）
+
+- **收藏册没鼠标**：`BossRushUIKit.EnforceModalInputPause` 每帧把未归还租约的 token 补进当前 InputManager（`ReassertModalInputBlocks`；`blockInputSources` 是 HashSet，幂等），记下实际挡住的那个 InputManager，归还时只在它身上放开。官方 `InputManager.UpdateCursor` 每帧按「输入是否被挡」重写光标，token 一丢就和租约来回拉扯。执行回归 `SharedModalInput` 新增晚到的 InputManager、token 丢失补占、已归还不补占三项；去掉补占调用实跑转红，还原后转绿。
+- **出击图崽背包反复「背包与仓库还没就绪」**：官方 `OnCollectSaveData` 采集成功且巢数据进了缓存后，`PetNestSaveCoordinator.SettleOfficiallyCollectedAssets` 只撤采集那一刻 owner 的基地资产义务，降为引擎「还欠一次 SaveFile」；失败提示只在原因变了或玩家主动操作时弹。`AssetSnapshotBoundaryGuard` 同步；`ContentTransactions` 新增 `PetNestOfficialCollectSettlesBaseObligation`（基地采集后出击可封存 / 出击图采集不降级 / 巢数据没进缓存不降级），去掉降级调用实跑转红。
+- **首次登记格子没弹出**：`CollectionRegisterContainer` 逐个调用 `OnStartLoot` 订阅者、各自 try；调完 LootView 没开就直接设 `targetLootBox` 再开；打不开、3 秒超时、按钮没建出来都走 `Fail()`，提示并回到收藏册。收藏册页脚写真实原因（`RegisterBlockedReason`），人在基地却登记不了时打 `Debug.LogWarning`；「能不能登记」变了就重刷。根因没在实机复现，这是对所有失败路径的加固。`CollectiblesCatalogGuard` 新增 5 条断言，4 处破坏实跑转红。
+- **许愿抽奖削弱**（玩法数值，owner 要求「狠狠削弱，按游玩时长限制品质」）：下限 Q3，权重 Q3..Q8 = 45/33/15/5.5/1.2/0.3（旧表 Q4 起步 13:9:5:3:2，Q7 以上约 16%）；按本档游玩时长封顶，不满 5/15/30/60 小时最高 Q4/Q5/Q6/Q7，读不出按 Q4；品质改为对整个奖池掷，关键词筛出的池子只决定同品质里挑哪件。品质掷骰原样提到新 partial `WishFountainRewardOdds.cs`（Selection 超了 1200 行新文件预算），已登记编译清单。新守卫 `tests/WishRewardOddsGuard.py`，5 处破坏实跑转红。
+- **发版准备**：`info.ini` 升 2.6.2 并拷进游戏目录（SHA-256 一致）；WikiContent 新增中英 `changelog__v2_6_2`，补总览与 catalog；收藏册、许愿台 Wiki 中英同步；工坊简介 `../a.md` / `../b.md` 换成 v2.6.2，超预算按规则删掉 v2.6.1 段（7587 / 7648 ≤ 7700）；repowiki 收集品、许愿台、遗种巢、UI 系统集成四篇同步。
+- **验证**：全量守卫 778 PASS；Windows 正式编译 0 错误（2 条既有 CS0649），游戏目录 DLL SHA-256 与 `Build/BossRush.dll` 一致；全量执行回归 167/170，补设游戏程序集环境变量后 `AuditCombatSeptember`、`SkyIslandCombatRuntime` PASS，`FieldAdventureVisuals` 因本机 Unity 批处理没有许可证（No ULF license）产不出报告，它不编译本次改动的任何文件，记为未验证；Wiki 站点构建通过。没有启动游戏，也没有读写玩家存档，四项都待 L3。
+
 ## 2026-11-19 v2.6.0 发版收口（COMPAT；L1/L2/L3）
 
 - **内容**：26da41b4 加入 6–8 档收集品陈列柜与地面特效（`CollectibleShowcaseFx.cs`），收集品页与 v2.6.0 更新日志按「点登记才登记、关上只退回」改写并补齐陈列柜、格框、特效、近战体力下调、图标重画与焚天龙皇射击声；5d6dd583 改写实机清单 `M_COLLECTIBLES_03`。
@@ -926,17 +935,6 @@ Windows 正式构建与部署 SHA-256：`54DB13829D47F1D6D4BDC62CF51A8FDEDCDB427
 
 实现期审查 CR-2026-10-08-001 已修正：程序化图标资源归动态 prefab 组件持有，避免宿主热重载销毁存活物品的共享图标。380 项相关守卫、新增 13 场景/171 断言及 3 项现有执行回归、Wiki 构建、Windows 正式编译通过；本地部署 DLL 哈希一致。L3 待验，详见 [交付与验收记录](docs/reports/testing/2026-10-08-空仓地雷盒交付与验收.md)。
 
-## 2026-09-30 天空岛桥栏凸挡块：修角色被模型「弹」出地图（COMPAT，L2）
-
-- 根因：官方角色移动 ECM2（半径 0.30、跨步 0.25、贴边悬停 0）的解穿插不扫掠。角色一旦压进栏杆边的木梁 / 柱子（瞬移、头目换位、刷怪落点），最小平移方向可能指向虚空；零厚度双面栏杆是空壳，挡不住这一步。作者工程新增 `SkyIslandMovementSimulation`，用游戏自带 ECM2 与官方预制体参数在最终 raid 包里真跑：外边冲撞 6157 次、起步穿插 5959 次、随机游走 1473 人，修前 18 处穿插起步被推出桥栏坠落（BF / FG / FS3 / GE / GS4 / K2 桥），边界冲撞与游走本身 0 越界。
-- 修：`tools/generate_sky_island.py` `rail_buttresses` 沿 926 条外边在栏杆外侧生成 0.8 m 厚、-0.25～+1.7 m、随坡抬升、2 m 分段的定向凸挡块（3318 只），反折角处逐段内收不侵入可走域；元数据写进 `geometry.json` `railButtress`，作者 `SkyIslandBundleBuilder.AddRailButtresses` 建 `COL_Rail_Buttress_*` BoxCollider（走既有 `COL_Rail_` 前缀，运行时分墙体层），`SkyIslandCollisionValidation` 只放行这批声明过的盒子并逐只核对位置与尺寸。
-- 验证（L2）：Unity 碰撞校验 PASS failures=0；ECM2 实跑 PASS 0 失败；反向验证（注释掉建挡块）实跑转红 18 处坠落，还原后字节一致；着色器判包、73 包资源校验、SkyIsland 守卫 57/58（唯一红为 `SkyIslandRoadPlacementPropertyTest` 在 runner 下找不到 shapely，带依赖路径单跑 PASS）。raid 包作者 / 仓库 / 游戏三份 `5f8b6c3a…` 一致（`Validation/buttress_deployment_hashes_20260930.json`）；本轮只换资源包，未重编 DLL，未启动游戏。
-- 未覆盖：飞行图腾可越过 1.7 m 栏杆（玩法取舍，待 owner 定）；头目瞬移不查导航连通（审计线索，未改）。L3 人工：贴着 BF、FG、GE、K2 桥栏来回冲刺翻滚、被镜中客换位到桥边，不应掉出。
-
-## 2026-09-30 天空岛主题曲更名「人鱼湾」（COMPAT，L1/L2）
-
-owner 决定继续用洛克王国原曲，只改显示名：`BgmTracks.json` 点唱机条目 `晴岚群岛 / Qinglan Archipelago` → `人鱼湾 / Mermaid Bay`，作者仍为「洛克王国 / Roco Kingdom」，文件 `sky_island_theme.ogg` 与场景曲条目不变。点唱机按音频路径判重，旧条目原位换标题，存档 index 不移位。WikiContent 中英 6 处曲名同步，站点重建。owner 本地另存的 90 秒 `sky_island_theme.wav`（未入库、无引用）按 owner 要求删除；程序化原创替代曲草稿经 owner 否决，未入库。**验证**：`BossBgm` / `BackMountain` / `Wiki` 守卫 19 PASS，Wiki 站点构建通过；未 Windows 编译（无代码改动，JSON 随正式构建部署）。**未实机（L3 待 owner）**：基地点唱机曲目列表显示「人鱼湾」、切英文显示 Mermaid Bay。
-
 ## 2026-09-30 天空岛搜刮箱三种木箱外观（COMPAT / OPERATIONAL，L1/L2）
 
 - owner 选方案 A：复用岛上已有的 Tripo 木箱，打进特效小包。生活物资＝桶箱堆（1.04×0.88×1.05 m）、航务补给＝一排长货箱（1.29×0.47×0.50 m）、星工遗存＝长着风晶的小货箱（1.08×0.91×0.43 m，加青色点光）。
@@ -954,13 +952,6 @@ owner 决定继续用洛克王国原曲，只改显示名：`BgmTracks.json` 点
 - 搜刮箱外观（owner 问要不要换）：现在用的是官方 `LootBoxPrefab`（敌人死亡掉的包），全局预制体里没有别的容器；方案待拍板，未动。
 - 验证：守卫 changed-only 除缺 shapely 外全绿；天空岛 16 个执行回归全过；正式编译并部署，`BossRush.dll` SHA-256 `422984C2…` 与 `Build/` 一致（非 Dev；同时含另一会话正在改的 `SkyIslandWorldStory.cs`）。未实机。
 
-## 2026-09-30 天空岛敌人与头目武器品质（COMPAT，L1/L2）
-
-- owner 反馈精英和 Boss 拿品质 1 的斧头。根因：全岛敌人（含头目 / 岛主、序章断风游猎·守、普通巡守）都从官方普通拾荒者 preset 克隆，武器沿用官方随机装配；`SkyIslandBossForge` 只换护甲，`VanillaPresetId` 只供数值参照；巡守底模还是血量最低的拾荒者。
-- 修：新增 `SkyIslandEnemyArmory`（运行时）与 `SkyIslandEnemyArmoryRules`（纯规则），官方创建完成后按档次补齐主武器与近战——拾荒者 3–4、精英 4–5、具名对手 / 头目 5–6、岛主 / 噬风 6–7（下限 3 / 5，不再往下退），巡守 Rank 1–4 走拾荒者档、5+ 走精英档。只发官方静态物品表武器，过掉落排除标签、黑名单、岛上 10 万价值上限，排除控心与粘手物品；枪限小口径 / 大口径 / 霰弹 / 狙击，装满弹匣 + 两匣备弹，弹药品质不低于档次下限（该口径没有就取最高品质）。达标原装不换，换下的销毁，换上的随官方尸体箱掉落。接线：遭遇组身份层后、序章 Forge 后、巡守固定外形后；武器池随物资池读条预热，模块 OnDestroy 复位。
-- 经济：每名敌人尸体箱里的武器档次随之上升（头目 / 岛主每趟一把品质 5+ 枪），owner 本次要求内；数值只在 `SkyIslandEnemyArmoryRules` 一处，可回退。
-- 验证：新守卫 `SkyIslandEnemyArmoryGuard`（9 条内存反向探针）；`SkyIslandEncounters` 执行回归新增 `ArmoryRegression`（全部遭遇组逐位档次 + 序章），真实删掉遭遇组配枪调用后转红、按字节还原；SkyIsland 守卫 56/58（红项为缺 shapely 与作者工程着色器函数缺失，与本次无关）；隔离正式编译通过；17:31 正式构建部署到游戏目录，`BossRush.dll` SHA-256 `71EFAFE8…DE04FC` 与 `Build/` 一致（非 Dev，含同工作区另一会话未提交的天空岛剧情改动）。未实机：清单「2026-09-30 敌人武器品质」W-01…W-05。
-
 ## 2026-09-30 天空岛普通巡守密度与固定外形（COMPAT / SCHEMA+ / OPERATIONAL，L1/L2）
 
 新增独立巡守 owner 与 112 个固定点，A6/B8、C10、D/E/F各12、G/H各14、四小岛各6；十二套固定外形、八档由弱到强。原 22 个 Boss/剧情遭遇组不改，普通 active+pending上限24；近远恢复同 Actor/HP/装备，死亡本趟不重刷，晚到创建回收。724个不同守卫、Windows正式编译、16组相关执行回归及Wiki构建通过；调度器346断言与7变异、点位18反例、3修改守卫反向验证通过。实际DLL与配置已部署并核SHA，源码/完整观察步骤见 [密度交付报告](docs/reports/sky-island/2026-09-30-天空岛普通敌人密度与固定外形.md)。没有运行游戏或读写玩家存档，DENS-01～05待L3；此前生产审查问题仍未闭环。
@@ -968,18 +959,6 @@ owner 决定继续用洛克王国原曲，只改显示名：`BgmTracks.json` 点
 ## 2026-09-30 天空岛整体生产审查（未闭环，SAFE 审查记录）
 
 候选 `a8d4c694` / 作者 `8bda2f38` 当前不能整体生产验收通过。CR-2026-09-30-002～012 为 3 项 P1、8 项 P2：主菜单/死亡/撤离的资产结算边界，两居民配偶跟随，婚后衰减，加载异常恢复，长帧漏采，警示恢复，总状态漏红、Shader 默认路径和音频异常停止。完整发现、资源核对、两个生产逻辑 L2 反例及 PROD-SKY-01～09 清单见 [审查报告](docs/reports/sky-island/2026-09-30-天空岛整体生产标准审查.md)。本轮只审查，未改生产代码或运行游戏；L3 待验，旧 F3 PASS 不作为当前候选通过证据。
-
-## 2026-09-30 天空岛模型碰撞修复续接（COMPAT / SCHEMA+ / OPERATIONAL，L1/L2）
-
-修复建筑底部实体地面洞、硬物碰撞漏配与名义包围盒误挡、岛边双面碰撞、斜桥柱顶及连捞落脚净空；重新烘焙 4,004 顶点 / 4,774 面的连通导航。最终 raid 包 Unity PlayMode 静态物理验证通过；CR-2026-09-30-001 的新增硬物与桥梁指纹漏检已修复，11 项生产调用反例及两个内存变异通过；全硬物来源重绑后再次 PhysX 复验通过。完整数字、部署哈希与 COLL-01～06 人工验收见 [交付报告](docs/reports/sky-island/2026-09-30-天空岛模型碰撞修复与交付.md)。Windows 正式构建已替换上一轮 Dev DLL，实际 raid 包及 DLL 哈希一致，73 个发布资源包校验通过；未启动游戏或访问玩家存档，L3 待验。
-
-## 2026-09-30 鸭王杯模组 Boss 战力、丧尸模式 Boss 波补刷、WikiContent 全量对照代码（COMPAT，L1/L2）
-
-- 鸭王杯模组 Boss 战力（owner 定）：龙裔遗族 1500、幻影女巫 500，焚天龙皇仍为 2000（`ModeHGroupConfig.DragonDescendantPower` / `PhantomWitchPower`）；夹具 ModeHGroupRoster 断言同步，改值反向验证转红后按字节还原。
-- 丧尸模式（玩家反馈「第 30 波 6 只 Boss 只出来 5 只」）：没有波数上限，是无尽模式；Boss 数 = 1 + (波数-1)/5，第 30 波确是 6 只。单只 Boss 生成失败（落点解析不到可达点、生成核心重试耗尽）原先直接按「已击败」扣掉，HUD 写 6 只、场上少一只。现在每只最多尝试 4 次（首次 Boss 专属落点，之后随机可靠落点，间隔 15 帧），全部失败才扣并打 `[WARNING]`（`ZombieModeTuning.BossSpawnAttempts`）。具体是哪种失败没有日志，未证实。
-- WikiContent：以 cf64459c（09-27 对照审校）之后的提交为线索，中英两份全量对照当前代码更新：鸭王杯（群战、战力、押注退出口径、本场总结、名人堂、自定义 Boss 表现）、三只模组 Boss 页、Mode G 确认页与英文名、丧尸模式开局装备与技能预警、词条面板位置、Boss 筛选因子页签、随机事件「Boss 乱入」、遗种巢放生、天空岛奖励去向与首杀、龙铳寒冷、腾云驾雾翻滚键、叮当 Lv.5/6 限量上架、征程奖励表改列表（WikiContent 不支持表格）、龙皇台词英文与代码一致；在线站速查框同步。
-- 补（owner 定）：断界戟英文名统一为代码里的「Inferno Emperor's Realm-Breaking Halberd」（WikiContent、`catalog.tsv`、在线站结构与图标清单、README_EN）；v2.3.0 更新日志未发版，鸭王杯一节改写为群战、「不速之客」改为「Boss 乱入」。
-- 验证：正式编译（部署 SHA 与 `Build/` 一致）、718 守卫、111 执行回归、`npm --prefix wiki-site run build` 通过；未实机。L3：丧尸模式打到第 30 波，Boss 应出齐 6 只；若 Player.log（Dev 构建）出现「Boss 生成失败，换落点重试」，把日志发回来查失败原因。
 
 ## 2026-09-29 玩家文案去人机味：全部修复（COMPAT）
 
@@ -1135,6 +1114,11 @@ owner 决定继续用洛克王国原曲，只改显示名：`BgmTracks.json` 点
 
 ## 归档索引
 
+- 2026-09-30 天空岛桥栏凸挡块：修角色被模型「弹」出地图（COMPAT，L2）（2026-11-21 台账将超 1500 行时逐字归档） → `archive/FIX_TRACKER_2026-09.md`
+- 2026-09-30 天空岛主题曲更名「人鱼湾」（COMPAT，L1/L2）（2026-11-21 台账将超 1500 行时逐字归档） → `archive/FIX_TRACKER_2026-09.md`
+- 2026-09-30 天空岛敌人与头目武器品质（COMPAT，L1/L2）（2026-11-21 台账将超 1500 行时逐字归档） → `archive/FIX_TRACKER_2026-09.md`
+- 2026-09-30 天空岛模型碰撞修复续接（COMPAT / SCHEMA+ / OPERATIONAL，L1/L2）（2026-11-21 台账将超 1500 行时逐字归档） → `archive/FIX_TRACKER_2026-09.md`
+- 2026-09-30 鸭王杯模组 Boss 战力、丧尸模式 Boss 波补刷、WikiContent 全量对照代码（COMPAT，L1/L2）（2026-11-21 台账将超 1500 行时逐字归档） → `archive/FIX_TRACKER_2026-09.md`
 - 2026-10-07 日志复现的报名石位置与女巫误清场（COMPAT，L1/L2）（2026-11-19 台账将超 1500 行时逐字归档） → `archive/FIX_TRACKER_2026-10.md`
 - 2026-10-07 征程直接关闭与第六章报名石复核（COMPAT，L1/L2）（2026-11-19 台账将超 1500 行时逐字归档） → `archive/FIX_TRACKER_2026-10.md`
 - 2026-10-07 远端合并与全部改动复审收尾（COMPAT / WIRE+ / OPERATIONAL，L1/L2）（2026-11-19 台账将超 1500 行时逐字归档） → `archive/FIX_TRACKER_2026-10.md`

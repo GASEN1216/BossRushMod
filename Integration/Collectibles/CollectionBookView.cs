@@ -65,6 +65,7 @@ namespace BossRush
         private float panelHeight;
         private bool built, open, destroying, chinese;
         private CollectionBookData rendered;
+        private bool renderedCanRegister;
         private CollectibleSeries selected = CollectibleSeries.GroundZero;
         private int selectedTypeId;
 
@@ -154,7 +155,9 @@ namespace BossRush
         {
             if (!open) return;
             CollectionBookData data = module != null ? module.Data : null;
-            if (chinese != L10n.IsChinese || !ReferenceEquals(rendered, data)) Refresh();
+            // 能不能登记也会自己变（读条结束、存档恢复可写）：变了就重刷，按钮和页脚不停在打开那一刻。
+            bool canRegister = module != null && module.CanRegisterNow;
+            if (chinese != L10n.IsChinese || !ReferenceEquals(rendered, data) || renderedCanRegister != canRegister) Refresh();
         }
 
         private void Open()
@@ -448,9 +451,14 @@ namespace BossRush
                 seriesRewardText.text = RewardLine(selected, data);
                 footerText.text = WhereLine(current);
                 bool canRegister = module != null && module.CanRegisterNow;
+                renderedCanRegister = canRegister;
                 registerButton.gameObject.SetActive(canRegister);
                 SetLabel(registerButton, L10n.T("登记收集品", "Register Items"));
-                if (!canRegister) footerText.text += L10n.T("\n回到基地才能登记。", "\nRegister at base.");
+                if (!canRegister)
+                {
+                    footerText.text += "\n" + (module != null ? module.RegisterBlockedReason : L10n.T("回到基地才能登记。", "Register at base."));
+                    if (module != null) module.LogRegisterBlocked();
+                }
 
                 RebuildCards(data);
             }

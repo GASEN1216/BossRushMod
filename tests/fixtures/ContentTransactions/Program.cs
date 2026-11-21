@@ -597,6 +597,7 @@ partial class Program
         PetNestRewardAssetObligation();
         PetNestFailedRewardAssetObligation();
         PetNestUnusedHatchObligation();
+        PetNestOfficialCollectSettlesBaseObligation();
         PetNestBackpackPersistence();
         PetNestBackpackTreeRoundTrip();
         PetNestBackpackOwnedRestoration();
@@ -956,6 +957,42 @@ partial class Program
         PetProxy.PetInventory = new Inventory();
         return PetNestSaveCoordinator.RequireBackpackAssetSnapshot(out error)
             && PetNestSaveCoordinator.RequestAssetFlush(out error);
+    }
+
+    // 2026-11-21 玩家反馈：基地里孵化 / 远征到账后，协调器还没自己写盘就出门，出击图里崽背包一直弹「背包与仓库还没就绪」。
+    // 官方出门前那次采集已经把仓库和巢数据一起写进缓存，基地义务只该剩「还欠一次 SaveFile」。
+    static void PetNestOfficialCollectSettlesBaseObligation()
+    {
+        string error;
+        Reset(); PrepareNest(); PetNestPersistence.EnsureSubscribed();
+        Check(PetNestSaveCoordinator.RequireAssetSnapshot(out error), "a real base asset change owns a warehouse obligation");
+        EconomyManager.Money += 31;
+        SavesSystem.Collect(); SavesSystem.SaveFile(false);
+        Check(SavesSystem.Disk.ContainsKey("PlayerStorage") && SavesSystem.Disk.ContainsKey("EconomyData"),
+            "the official base save carries the warehouse and economy that the obligation protects");
+        Check(FlushBackpackAfterLeavingBase(out error),
+            "an official base collection settles the warehouse obligation for the next raid backpack: " + error);
+
+        Reset(); PrepareNest(); PetNestPersistence.EnsureSubscribed();
+        Check(PetNestSaveCoordinator.RequireAssetSnapshot(out error), "a base obligation exists before an official collection outside base");
+        EconomyManager.Money += 17;
+        LevelManager.Instance.IsBaseLevel = false; PlayerStorage.Instance = null;
+        SavesSystem.Collect();
+        Check(!FlushBackpackAfterLeavingBase(out error) && error == "asset_save_not_ready:storage_instance",
+            "an official collection without the warehouse keeps the obligation");
+
+        Reset(); PrepareNest(); PetNestPersistence.EnsureSubscribed();
+        Check(PetNestSaveCoordinator.RequireAssetSnapshot(out error), "a base obligation exists before the bundle refuses to flush");
+        EconomyManager.Money += 13;
+        SetPrivate(PetNestPersistence.Bundle, "_writeBarrier", true);
+        SetPrivate(PetNestPersistence.Bundle, "_pendingActive", true);
+        SetPrivate(PetNestPersistence.Bundle, "_pendingJson", "{}");
+        SavesSystem.Collect();
+        SetPrivate(PetNestPersistence.Bundle, "_writeBarrier", false);
+        SetPrivate(PetNestPersistence.Bundle, "_pendingActive", false);
+        SetPrivate(PetNestPersistence.Bundle, "_pendingJson", null);
+        Check(!FlushBackpackAfterLeavingBase(out error) && error == "asset_save_not_ready:storage_instance",
+            "a collection whose nest bundle did not reach the cache keeps the obligation");
     }
 
     static void PetNestUnusedHatchObligation()

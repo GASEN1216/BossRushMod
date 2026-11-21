@@ -532,118 +532,6 @@ namespace BossRush
             return WISH_REWARD_ITEM_BIAS_CAP_Q8;
         }
 
-        private static int RollWishRewardQuality(WishRewardMatchResult match, Dictionary<int, List<int>> availableBuckets)
-        {
-            float[] weights = new float[WishRewardBaseQualityWeights.Length];
-            float[] multipliers = new float[WishRewardBaseQualityWeights.Length];
-
-            for (int i = 0; i < WishRewardBaseQualityWeights.Length; i++)
-            {
-                weights[i] = WishRewardBaseQualityWeights[i];
-                multipliers[i] = 1f;
-            }
-
-            foreach (string categoryId in match.matchedCategoryIds)
-            {
-                WishRewardCategoryDefinition category;
-                if (!wishRewardCategoriesById.TryGetValue(categoryId, out category) || category == null)
-                {
-                    continue;
-                }
-
-                for (int i = 0; i < category.preferredQualities.Length; i++)
-                {
-                    int quality = category.preferredQualities[i];
-                    if (quality < 1 || quality > weights.Length)
-                    {
-                        continue;
-                    }
-
-                    multipliers[quality - 1] = Mathf.Min(
-                        WISH_REWARD_QUALITY_BIAS_CAP,
-                        multipliers[quality - 1] * Mathf.Max(1f, category.qualityBiasMultiplier));
-                }
-            }
-
-            foreach (int typeId in match.matchedItemTypeIds)
-            {
-                WishRewardCandidate candidate;
-                if (!wishRewardCandidatesByTypeId.TryGetValue(typeId, out candidate) || candidate == null)
-                {
-                    continue;
-                }
-
-                int qualityIndex = candidate.quality - 1;
-                if (qualityIndex < 0 || qualityIndex >= multipliers.Length)
-                {
-                    continue;
-                }
-
-                multipliers[qualityIndex] = Mathf.Min(
-                    WISH_REWARD_QUALITY_BIAS_CAP,
-                    multipliers[qualityIndex] * WISH_REWARD_EXACT_ITEM_QUALITY_BIAS);
-            }
-
-            for (int i = 0; i < weights.Length; i++)
-            {
-                List<int> bucket;
-                if (availableBuckets != null && availableBuckets.TryGetValue(i + 1, out bucket) && bucket != null && bucket.Count > 0)
-                {
-                    continue;
-                }
-
-                weights[i] = 0f;
-            }
-
-            for (int i = 0; i < weights.Length; i++)
-            {
-                weights[i] *= multipliers[i];
-            }
-
-            return RollWishRewardWeightedIndex(weights) + 1;
-        }
-
-        private static int RollWishRewardWeightedIndex(float[] weights)
-        {
-            if (weights == null || weights.Length == 0)
-            {
-                return -1;
-            }
-
-            float totalWeight = 0f;
-            for (int i = 0; i < weights.Length; i++)
-            {
-                if (weights[i] > 0f)
-                {
-                    totalWeight += weights[i];
-                }
-            }
-
-            if (totalWeight <= 0f)
-            {
-                return 0;
-            }
-
-            float roll = UnityEngine.Random.Range(0f, totalWeight);
-            float cursor = 0f;
-
-            for (int i = 0; i < weights.Length; i++)
-            {
-                if (weights[i] <= 0f)
-                {
-                    continue;
-                }
-
-                cursor += weights[i];
-                if (roll <= cursor)
-                {
-                    return i;
-                }
-            }
-
-            return weights.Length - 1;
-        }
-
         private static int RollWishRewardItemInQuality(
             int rolledQuality,
             WishRewardMatchResult match,
@@ -741,9 +629,18 @@ namespace BossRush
             WishRewardMatchResult effectiveMatch = ShouldUseLegacyWishRewardOdds(selection)
                 ? new WishRewardMatchResult()
                 : match;
-            int rolledQuality = RollWishRewardQuality(effectiveMatch, activeBuckets);
-            int selectedTypeId = RollWishRewardItemInQuality(rolledQuality, effectiveMatch, activeBuckets, out rewardDisplayName);
+            double playedHours;
+            int qualityCap = GetWishRewardQualityCapByPlayTime(out playedHours);
+            // 品质按整个奖池掷（2026-11-21 削弱）：愿望里点名的东西只提高同品质里抽中它的机会，
+            // 不能靠点名高档物品把低档整段筛掉——筛过的池里只有高档时，旧逻辑等于保底高档。
+            int rolledQuality = RollWishRewardQuality(effectiveMatch, wishRewardQualityBuckets, qualityCap);
+            Dictionary<int, List<int>> itemBuckets = HasWishRewardBucket(activeBuckets, rolledQuality)
+                ? activeBuckets
+                : wishRewardQualityBuckets;
+            int selectedTypeId = RollWishRewardItemInQuality(rolledQuality, effectiveMatch, itemBuckets, out rewardDisplayName);
             LogWishRewardRoll(wishText, match, selection, rolledQuality, selectedTypeId, rewardDisplayName);
+            ModBehaviour.DevLog("[WishFountain] reward quality cap=Q" + qualityCap + " playedHours=" + playedHours.ToString("F1")
+                + " itemPool=" + (ReferenceEquals(itemBuckets, activeBuckets) ? "selection" : "full"));
             return selectedTypeId;
         }
 

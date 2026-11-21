@@ -30,6 +30,11 @@ def main():
             r'CharacterItem.Save\("MainCharacterItemData"\)', r'Inventory.Save\("PlayerStorage"\)',
             r"PlayerStorageBuffer.SaveBuffer\(\)", r"EconomyManager.Instance.GenerateSaveData\(\)",
             r"CollectPendingAssets\(out error\)[\s\S]*?Bundle.FlushPending\(\)",
+            # 降级只认采集前读到的那份义务，且采集失败时一份都不降。
+            r"lock \(_lock\) \{ required = _assetSnapshotRequired; owner = _assetSnapshotOwner; \}\s*"
+            r"if \(!CollectPendingAssets\(out error\)\) return false;\s*if \(required\) collected = owner;",
+            r"if \(_assetSnapshotRequired && ReferenceEquals\(_assetSnapshotOwner, collected\)\)[\s\S]{0,160}?"
+            r"downgraded = true;[\s\S]{0,80}?if \(downgraded\) _engine.NotifyPendingWriteFlushed\(\);",
         ],
         "PetNest/PetNestExpeditionService.cs": [
             r"RequireAssetSnapshot\(out assetError, out unusedSnapshot\)[\s\S]*?GrantRewards\(r, ref assetDeliveryStarted\)",
@@ -38,7 +43,11 @@ def main():
             r"assetDeliveryStarted = true;\s*ok = validation != null\s*\? validation.TryGrantCash\(record.outcomeCash\)\s*: EconomyManager.Add\(record.outcomeCash\);",
             r"assetDeliveryStarted = true;\s*ItemUtilities.SendToPlayer\(item\);",
         ],
-        "PetNest/PetNestPersistence.cs": [r"CollectPendingAssets\(out assetError\)[\s\S]*?_bundle.FlushPending\(true\)"],
+        # 官方采集：实物与巢数据都进了官方缓存才把基地义务降为「还欠一次 SaveFile」（2026-11-21 出击图崽背包卡仓库）。
+        "PetNest/PetNestPersistence.cs": [
+            r"CollectPendingAssetsForOfficialSave\(out assetError, out collected\)\) return;\s*"
+            r"[\s\S]{0,200}?if \(_bundle.FlushPending\(true\)\) PetNestSaveCoordinator.SettleOfficiallyCollectedAssets\(collected\);",
+        ],
         # 天空岛纪念品（CR-2026-09-11-017）：发放前必须先立实物快照义务，落盘时四样官方资产
         # 与剧情手记进同一批；否则「已记账、物品未持久化」会在跨重启窗口里吞掉纪念品。
         "SkyIsland/SkyIslandWorldStoryRewards.cs": [

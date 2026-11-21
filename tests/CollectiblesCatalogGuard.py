@@ -221,6 +221,27 @@ def main():
     on_update = compact(method_body(sources["CollectiblesRuntimeModule.cs"], "public override void OnUpdate(float deltaTime, float unscaledDeltaTime)"))
     if "container.Tick();" not in on_update:
         errors.append("登记按钮要靠模块每帧 Tick 在 LootView 摆好后克隆")
+    # 2026-11-21 玩家反馈：首次登记格子没开出来、界面一关什么都没有。
+    # 官方 OnStartLoot 多播链被前面的订阅者抛异常打断时 LootView 收不到；打不开也不能静默收场。
+    opening = compact(method_body(sources["CollectionRegisterContainer.cs"], "internal bool Open()"))
+    isolated = compact(method_body(sources["CollectionRegisterContainer.cs"], "private void RaiseStartLootIsolated(Action<InteractableLootbox> start)"))
+    if "start(lootbox)" in opening or "RaiseStartLootIsolated(start);" not in opening \
+            or not re.search(r"GetInvocationList\(\);.*try \{ handler\(lootbox\); \} catch \(Exception e\)", isolated):
+        errors.append("登记容器要逐个调用 OnStartLoot 订阅者并各自 try：一个抛异常不能拦住排在后面的 LootView")
+    if "!IsShowing(LootView.Instance) && !OpenLootViewDirectly(LootView.Instance)" not in opening:
+        errors.append("OnStartLoot 之后 LootView 还没开，登记容器要直接设目标箱子再开（送礼容器同一条后备路）")
+    tick = compact(method_body(sources["CollectionRegisterContainer.cs"], "internal void Tick()"))
+    if "CloseAndReturn(false)" in tick or tick.count("Fail();") != 2:
+        errors.append("登记格子超时没出现、按钮没建出来都要走 Fail()：告诉玩家并回到收藏册，不静默关掉")
+    failed = compact(method_body(sources["CollectiblesRuntimeModule.cs"], "private void OnRegisterOpenFailed(string text)"))
+    if "ShowMessage(text);" not in failed or "reopenBookPending = true;" not in failed \
+            or "new CollectionRegisterContainer(RegisterItems, IsRegistered, OnRegisterClosed, OnRegisterOpenFailed)" not in compact(sources["CollectiblesRuntimeModule.cs"]):
+        errors.append("登记格子没开出来时，模块要提示玩家并回到收藏册（OnRegisterOpenFailed）")
+    book_refresh = compact(method_body(sources["CollectionBookView.cs"], "private void Refresh()"))
+    if "module.RegisterBlockedReason" not in book_refresh or "回到基地才能登记" in book_refresh.replace('L10n.T("回到基地才能登记。", "Register at base.")', ""):
+        errors.append("收藏册页脚要写真实的登记不可用原因（RegisterBlockedReason），人在基地时不能只写「回到基地才能登记」")
+    if "renderedCanRegister != canRegister" not in compact(method_body(sources["CollectionBookView.cs"], "private void Update()")):
+        errors.append("收藏册开着时能不能登记变了要重刷，按钮和页脚不能停在打开那一刻")
     # 关闭钮轴心在中心：中心离右沿至少半个按钮宽，否则「×」伸出面板描边（2026-11-19 实机反馈）。
     close = re.search(r'CreateButton\("CloseButton",[^;]*?new Vector2\(1f, 0\.5f\),\s*new Vector2\(([^,]+), 0f\)', sources["CollectionBookView.cs"], re.S)
     if not close or "Padding + CloseSize * 0.5f" not in close.group(1):

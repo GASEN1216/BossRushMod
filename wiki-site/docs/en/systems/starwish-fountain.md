@@ -35,8 +35,11 @@
 - The reward cooldown is a global `4 hours`, not tracked per individual fountain.
 - If the reward cooldown is ready, a successful submission will trigger the `Starwish Draw` animation and grant 1 reward item when it finishes.
 - If the reward is still on cooldown, your wish is still submitted normally, but the game only shows the remaining cooldown and does not grant another reward.
+- Reward quality starts at tier 3 and gets rarer as it climbs: about 45% tier 3, 33% tier 4, 15% tier 5, 5.5% tier 6, 1.2% tier 7, and 0.3% tier 8.
+- The highest tier you can draw depends on this save's play time: under 5 hours caps at tier 4, under 15 hours at tier 5, under 30 hours at tier 6, and under 60 hours at tier 7. Tier 8 needs 60 hours or more. Odds for tiers you haven't unlocked are spread over the tiers below.
 - The content of your wish influences the reward direction:
   - Mentioning certain item types or keywords makes related rewards more likely.
+  - What you write mostly decides which kind of item you get. It only nudges quality a little and never goes past the play-time cap.
   - The current bias can lean toward weapons, melee gear, armor, helmets, totems, gifts, healing, faction flags, summon items, fortification items, and travel-related items.
 - You can press `Esc` to skip the draw animation, and the reward will still be granted normally.
 

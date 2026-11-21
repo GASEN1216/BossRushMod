@@ -41,7 +41,7 @@ namespace BossRush
             Current = this;
             persistence = new CollectionBookPersistence(OnSlotChanged, () => !registering);
             loot = new CollectibleLootRuntime(host);
-            container = new CollectionRegisterContainer(RegisterItems, IsRegistered, OnRegisterClosed);
+            container = new CollectionRegisterContainer(RegisterItems, IsRegistered, OnRegisterClosed, OnRegisterOpenFailed);
             OfficialQuestProjection projection = host != null && host.OfficialQuestRuntime != null ? host.OfficialQuestRuntime.Projection : null;
             jeffIntro = new CollectionJeffIntro(this, projection);
         }
@@ -113,6 +113,32 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 现在登记不了的原因（给收藏册页脚）。人在基地却登记不了时写清是存档的事，
+        /// 不能一律写「回到基地才能登记」：玩家明明站在基地里，只会当成登记坏了（2026-11-21 玩家反馈）。
+        /// </summary>
+        internal string RegisterBlockedReason
+        {
+            get
+            {
+                LevelManager level = LevelManager.Instance;
+                if (level == null || !level.IsBaseLevel) return L10n.T("回到基地才能登记。", "Register at base.");
+                if (SceneLoader.IsSceneLoading) return L10n.T("读条结束后再登记。", "Register once loading finishes.");
+                if (Data == null || !Writable) return L10n.T("收藏册这会儿读写不了存档，稍后再来登记。", "The album can't reach your save right now. Try registering later.");
+                return string.Empty;
+            }
+        }
+
+        /// <summary>人在基地却登记不了时留一条日志（收藏册页脚变化时才调，不是每帧），玩家发来 Player.log 就能看出卡在哪一步。</summary>
+        internal void LogRegisterBlocked()
+        {
+            LevelManager level = LevelManager.Instance;
+            if (persistence == null || level == null || !level.IsBaseLevel) return;
+            Debug.LogWarning(CollectibleTuning.LogPrefix + "基地里登记不可用：afterInit=" + LevelManager.AfterInit
+                + " loading=" + SceneLoader.IsSceneLoading + " data=" + (data != null) + " writeBarrier=" + persistence.HasWriteBarrier
+                + " writable=" + persistence.Writable + " lastError=" + persistence.LastError);
+        }
+
         /// <summary>收起收藏册、打开单格登记容器（送礼同款）：放进一件，点「登记」才登记。</summary>
         internal bool OpenRegisterContainer()
         {
@@ -126,6 +152,14 @@ namespace BossRush
         private void OnRegisterClosed(bool registeredAny)
         {
             reopenBookPending = registeredAny;
+            reopenBookAfterFrame = Time.frameCount;
+        }
+
+        /// <summary>登记格子没开出来：提示一句，回到收藏册（收藏册已先收起，不回去玩家就两手空空）。</summary>
+        private void OnRegisterOpenFailed(string text)
+        {
+            ShowMessage(text);
+            reopenBookPending = true;
             reopenBookAfterFrame = Time.frameCount;
         }
 
