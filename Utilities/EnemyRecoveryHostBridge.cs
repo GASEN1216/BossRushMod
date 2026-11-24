@@ -17,7 +17,7 @@ namespace BossRush
                 zombieRuntime.MonitorZombieModeEnemyRecovery, wavesArenaRuntime.MonitorNormalBossRushRecovery);
             enemyRecoveryMonitor.BindSpawnPositions(() => modeESpawnAllocation, GetModeEFlattenedSpawnPoints,
                 GetCurrentSceneSpawnPoints, position => GenerateFallbackSpawnPointsAroundPlayer(position),
-                zombieRuntime.AppendZombieModeRecoverySpawnCandidates, zombieRuntime.TryGetZombieModeReliableSpawnPosition);
+                zombieRuntime.AppendZombieModeRecoverySpawnCandidates, zombieRuntime.TryGetZombieModeSpreadRecoveryPosition);
             enemyRecoveryMonitor.BindRecoveryPolicies(marker => ((ZombieModeEnemyRuntimeMarker)marker).IsBoss,
                 () => ZombieModeTuning.NormalZombieDistantRecoveryDistance,
                 () => ZombieModeTuning.NormalZombieDistantRecoveryDelaySeconds,

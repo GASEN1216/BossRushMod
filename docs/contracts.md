@@ -712,6 +712,11 @@ Breaking/Operational:
 
 官方更新后按 `docs/architecture/Harmony补丁契约稳定性.md` 复查。
 
+丧尸模式寻路节流（2026-11-24，COMPAT / WIRE+）：`ZombieModePathRequestThrottlePatch` 是官方 `AI_PathControl.MoveToPos(Vector3)`
+的前缀，显式指定 `Vector3` 重载，只在丧尸模式激活、调用者是本局在册且未结算的丧尸时生效。前缀返回 false 只是这一拍不重新寻路：
+保留官方已算好的路径或在途请求，不改写 `path`、`seeker` 与 `waitingForPathResult`。官方更新后核对 `MoveToPos` 仍先取消在途请求、
+`WaitingForPathResult` / `ReachedEndOfPath` / `path` 仍是公开成员；判定抛异常时放行官方寻路。
+
 天空岛租约放下官方加载忙标志（2026-10-01，CR-2026-09-30-007，`COMPAT` / `WIRE+`）：官方 `SceneLoader.LoadScene` 的状态机
 置起静态 `IsSceneLoading` 后若抛异常，catch 只 `SetException` 不复位，之后所有切图入口早返、Esc 菜单也打不开。
 `SkyIslandRaidLease.ReleaseStuckOfficialLoadingFlag` 只在租约自己等待的那次进岛 / 返航加载抛异常后，用反射调这个属性的

@@ -55,6 +55,7 @@ namespace BossRush
                 }
 
                 enemyRecoveryMonitor.MonitorEnemyRecovery(enemy, player, marker);
+                CheckZombieModeStackedEnemy(enemy, marker);
             }
         }
 

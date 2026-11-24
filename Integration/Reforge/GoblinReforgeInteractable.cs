@@ -410,7 +410,7 @@ namespace BossRush
                 {
                     if (controller != null)
                     {
-                        controller.EndDialogueWithStay(10f);
+                        controller.EndDialogueWithStay(BossRush.Constants.GoblinNPCConstants.DEFAULT_DIALOGUE_STAY_DURATION);
                     }
                     return;
                 }
@@ -464,20 +464,20 @@ namespace BossRush
                 string dialogue = NPCDialogueSystem.GetDialogue(GoblinAffinityConfig.NPC_ID, DialogueCategory.Greeting);
                 NPCDialogueSystem.ShowDialogue(GoblinAffinityConfig.NPC_ID, controller?.transform, dialogue);
                 
-                // 延迟结束对话（使用10秒停留）
+                // 延迟结束对话（原地停留默认时长）
                 if (controller != null)
                 {
-                    controller.EndDialogueWithStay(10f);
+                    controller.EndDialogueWithStay(BossRush.Constants.GoblinNPCConstants.DEFAULT_DIALOGUE_STAY_DURATION);
                 }
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[GoblinNPC] [ERROR] 执行对话失败: " + e.Message);
                 
-                // 结束对话（使用10秒停留）
+                // 结束对话（原地停留默认时长）
                 if (controller != null)
                 {
-                    controller.EndDialogueWithStay(10f);
+                    controller.EndDialogueWithStay(BossRush.Constants.GoblinNPCConstants.DEFAULT_DIALOGUE_STAY_DURATION);
                 }
             }
         }

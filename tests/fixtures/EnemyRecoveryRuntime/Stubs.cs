@@ -234,6 +234,9 @@ namespace BossRush
     {
         private ZombieModeRunState runState;
         internal ZombieModeRuntimeModule(ZombieModeRunState run) { runState = run; }
+        // 叠罗汉拨离由恢复巡检逐只调用；这里只记录调用，拨离本身由实机验证。
+        internal int StackChecks; internal CharacterMainControl LastStackCheck;
+        internal void CheckZombieModeStackedEnemy(CharacterMainControl enemy, ZombieModeEnemyRuntimeMarker marker) { if (enemy != null && marker != null) { StackChecks++; LastStackCheck = enemy; } }
     }
     internal sealed partial class WavesArenaRuntimeModule
     {

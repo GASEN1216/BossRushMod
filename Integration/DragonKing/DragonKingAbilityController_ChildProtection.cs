@@ -583,14 +583,81 @@ namespace BossRush
                 ModBehaviour.DevLog($"[DragonKing] [WARNING] 获取刷怪点失败: {e.Message}");
             }
 
-            // 后备方案：使用龙王位置附近
+            // 后备方案：龙皇起飞点附近。以前固定取世界 +Z 5 米且不做任何落地校验，
+            // 鸭王杯黑市这类窄场地里经常正好落进墙体（2026-11-24 玩家反馈「龙皇召唤儿子卡墙里」）。
             Transform bossRoot = BossTransform;
             if (bossRoot != null)
             {
-                return bossRoot.position + Vector3.forward * 5f + Vector3.down * DragonKingConfig.ChildProtectionFlyHeight;
+                Vector3 ground = preFlyPosition != Vector3.zero
+                    ? preFlyPosition
+                    : bossRoot.position + Vector3.down * DragonKingConfig.ChildProtectionFlyHeight;
+                return ResolveDescendantSpawnNear(ground);
             }
 
             return Vector3.zero;
+        }
+
+        private static readonly float[] DescendantSpawnRadii = { 5f, 3.5f, 2.2f };
+        private const float DescendantSpawnSnapRadius = 1.5f;
+        private const float DescendantSpawnMaxHeightDelta = 1.5f;
+        private const float DescendantSpawnLiftOffset = 0.05f;
+
+        /// <summary>
+        /// 龙裔落点：以龙皇起飞点为圆心，8 个方向由远到近找一个导航面上、与起飞点连通、同一层、
+        /// 中间没有墙的位置；都找不到就落在起飞点本身（龙皇刚站在那里，必然在场内）。
+        /// 连通性以起飞点为锚而不是玩家：鸭王杯里玩家可能在看台，和擂台不在一块导航区。
+        /// </summary>
+        private Vector3 ResolveDescendantSpawnNear(Vector3 ground)
+        {
+            int wallMask = 0;
+            try
+            {
+                wallMask = GameplayDataSettings.Layers.wallLayerMask.value;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog($"[DragonKing] [WARNING] 读取墙体层失败，龙裔落点只做可达性检查: {e.Message}");
+            }
+
+            Vector3 lift = Vector3.up * 0.8f;
+            int startDirection = UnityEngine.Random.Range(0, 8);
+            for (int r = 0; r < DescendantSpawnRadii.Length; r++)
+            {
+                for (int i = 0; i < 8; i++)
+                {
+                    float angle = (startDirection + i) * 45f * Mathf.Deg2Rad;
+                    Vector3 candidate = ground + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * DescendantSpawnRadii[r];
+                    if (wallMask != 0 && Physics.Linecast(ground + lift, candidate + lift, wallMask, QueryTriggerInteraction.Ignore))
+                    {
+                        continue;
+                    }
+
+                    Vector3 resolved;
+                    if (!SpawnPositionHelper.TryResolveReachableFrom(candidate, ground, DescendantSpawnSnapRadius,
+                            DescendantSpawnLiftOffset, out resolved))
+                    {
+                        continue;
+                    }
+
+                    // 吸附可能把点挪到墙另一侧或别的楼层，落定后再查一次。
+                    if (Mathf.Abs(resolved.y - ground.y) > DescendantSpawnMaxHeightDelta ||
+                        (wallMask != 0 && Physics.Linecast(ground + lift, resolved + lift, wallMask, QueryTriggerInteraction.Ignore)))
+                    {
+                        continue;
+                    }
+
+                    return resolved;
+                }
+            }
+
+            Vector3 snapped;
+            if (SpawnPositionHelper.TryResolveReachableFrom(ground, ground, DescendantSpawnSnapRadius, DescendantSpawnLiftOffset, out snapped))
+            {
+                return snapped;
+            }
+
+            ModBehaviour.DevLog("[DragonKing] [WARNING] 龙裔附近找不到可用落点，落在龙皇起飞点");
+            return ground;
         }
 
         /// <summary>

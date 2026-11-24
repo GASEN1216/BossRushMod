@@ -186,6 +186,7 @@ namespace BossRush
             scans = GameObject.TreeScans;
             for (int i = 0; i < 8; i++) recoveryOwner.Tick(1);
             Check(zombie.Teleports == 0 && GameObject.TreeScans == scans && Debug.Warnings.Count == 0, "healthy enemies have no tree rescans, teleports, or diagnostics within cache lifetime");
+            Check(recoveryOwner.Zombie.StackChecks > 0 && recoveryOwner.Zombie.LastStackCheck == zombie, "zombie recovery sweep must run the stacked-zombie check on each tracked zombie with its marker");
             var unusedWeapon = new GameObject { name = "unused weapon collider" }; unusedWeapon.transform.parent = zombie.transform;
             unusedWeapon.Add(new Collider()); unusedWeapon.transform.localScale = new Vector3(float.NaN, 1, 1);
             var lateHead = new GameObject { name = "LateHead" }; lateHead.transform.parent = zombie.transform;

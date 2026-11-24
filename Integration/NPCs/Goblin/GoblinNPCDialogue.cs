@@ -58,11 +58,11 @@ namespace BossRush
         
         /// <summary>
         /// 结束对话（UI关闭）
-        /// 哥布林停留10秒后恢复走路
+        /// 哥布林原地停留默认时长后恢复走路
         /// </summary>
         public void EndDialogue()
         {
-            // 使用带停留时间的方法，默认停留10秒
+            // 使用带停留时间的方法，停留 GoblinNPCConstants.DEFAULT_DIALOGUE_STAY_DURATION
             EndDialogueWithStay(GoblinNPCConstants.DEFAULT_DIALOGUE_STAY_DURATION);
         }
         
@@ -79,10 +79,17 @@ namespace BossRush
         /// 结束对话并在原地停留指定时间后恢复走路
         /// 用于交互后让哥布林停留一段时间
         /// </summary>
-        /// <param name="stayDuration">停留时间（秒），默认10秒</param>
+        /// <param name="stayDuration">停留时间（秒）；商店、重铸界面关闭时（showFarewell）至少停留默认时长</param>
         /// <param name="showFarewell">是否显示告别对话，默认false（只有商店和重铸UI关闭时才传true）</param>
         public void EndDialogueWithStay(float stayDuration = 10f, bool showFarewell = false)
         {
+            // 商店 / 重铸界面关闭后玩家常要翻背包挑下一件，至少站够默认停留（2026-11-24 玩家反馈）。
+            // 通用商店关闭只传 10 秒，在这里按叮当自己的口径抬高；婚礼、跟随等脚本化短停留不带 showFarewell，不受影响。
+            if (showFarewell && stayDuration < GoblinNPCConstants.DEFAULT_DIALOGUE_STAY_DURATION)
+            {
+                stayDuration = GoblinNPCConstants.DEFAULT_DIALOGUE_STAY_DURATION;
+            }
+
             if (ModBehaviour.Instance != null)
             {
                 stayDuration = ModBehaviour.Instance.AdjustDialogueStayDurationForSpouseFollow(

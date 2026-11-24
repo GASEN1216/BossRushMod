@@ -589,7 +589,7 @@ namespace BossRush
             // 通知哥布林对话结束，显示告别对话
             if (currentController != null)
             {
-                currentController.EndDialogueWithStay(10f, true);  // 重铸UI关闭时显示告别对话
+                currentController.EndDialogueWithStay(BossRush.Constants.GoblinNPCConstants.DEFAULT_DIALOGUE_STAY_DURATION, true);  // 重铸UI关闭时显示告别对话
                 currentController = null;
             }
 

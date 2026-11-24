@@ -102,6 +102,14 @@ namespace BossRush
         public ZombieModeCommanderAuraTargetRuntime CommanderAuraTargetRuntime;
         public float SuppressedForceTraceDistance;
         public bool HasSuppressedForceTraceDistance;
+        // 重新寻路节流（ZombieModeCrowdNavigation）：上一次放行的寻路请求时刻、目标与出发点。
+        public bool HasPathRequest;
+        public float LastPathRequestTime;
+        public Vector3 LastPathRequestTarget;
+        public Vector3 LastPathRequestOrigin;
+        // 叠罗汉检测：恢复巡检连续看到脚下是别的角色的次数；ECM2 移动组件缓存。
+        public int StackedSampleCount;
+        public ECM2.CharacterMovement CachedMovement;
         internal ZombieModeBossVisuals BossVisuals;
         public bool VisualIdentityApplied;
         public bool VisualScaleApplied;

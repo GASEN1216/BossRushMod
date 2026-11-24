@@ -284,6 +284,7 @@ namespace BossRush
                 return;
             }
 
+            CancelPostDialogueStayForSummon();
             StopIdleAnimation();
             isRunningToPlayer = true;
             showDialogueOnArrival = false;  // 普通召唤不显示对话
@@ -298,6 +299,24 @@ namespace BossRush
             }
 
             ModBehaviour.DevLog("[GoblinNPC] 开始跑向玩家");
+        }
+
+        /// <summary>
+        /// 召唤打断对话后的原地停留。停留期间 isInDialogue 仍为 true，GoblinMovement 不走、丢弃寻路结果，
+        /// 停留结束还会 ResumeWalking 盖掉跑向玩家；停留改为 2.5 分钟后，召唤道具会像失效一样（2026-11-24）。
+        /// 剧情对话中和婚礼教堂里的站桩不打断。
+        /// </summary>
+        private void CancelPostDialogueStayForSummon()
+        {
+            if (currentStayCoroutine == null || isInStoryDialogue || ShouldRemainStationaryAtWeddingChapel())
+            {
+                return;
+            }
+
+            StopCoroutine(currentStayCoroutine);
+            currentStayCoroutine = null;
+            isInDialogue = false;
+            ModBehaviour.DevLog("[GoblinNPC] 召唤打断对话后停留");
         }
 
         /// <summary>
@@ -320,6 +339,7 @@ namespace BossRush
                 return;
             }
 
+            CancelPostDialogueStayForSummon();
             StopIdleAnimation();
             isRunningToPlayer = true;
             showDialogueOnArrival = true;  // 需要显示对话

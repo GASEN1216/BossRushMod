@@ -264,7 +264,8 @@ namespace BossRush
             }
             else
             {
-                if (!TryGetZombieModeReliableSpawnPosition(out resolved) ||
+                // 兜底点是离玩家最近的同一个刷怪点，一次弹出多只时要散开，否则落地叠罗汉（2026-11-24）。
+                if (!TryGetZombieModeSpreadRecoveryPosition(out resolved) ||
                     IsZombieModePositionInsideSafeZoneEnemyExclusion(resolved))
                 {
                     return false;

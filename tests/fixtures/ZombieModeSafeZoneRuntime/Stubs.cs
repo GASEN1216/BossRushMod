@@ -219,6 +219,9 @@ namespace BossRush
             result=new UnityEngine.Vector3(30,0,0);
             return !SpawnPositionHelper.RejectFallback;
         }
+        // 安全区兜底弹出走落点散开入口（2026-11-24）；散开本身由 ZombieModeSpawnRuntime 验证。
+        internal int SpreadFallbackCalls;
+        private bool TryGetZombieModeSpreadRecoveryPosition(out UnityEngine.Vector3 result) { SpreadFallbackCalls++; return TryGetZombieModeReliableSpawnPosition(out result); }
         private readonly ZombieModeRunState runState;
         internal ZombieModeRuntimeModule(ZombieModeRunState state) { runState = state; }
         private void UpdateZombieModeSafeZoneVisual() { Probe.Trace.Add("visual:" + runState.RunId); }

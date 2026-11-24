@@ -116,6 +116,36 @@ namespace BossRush
             public const float NormalZombieDistantRecoveryDelaySeconds = 8f;
             public const float StarMagnetRadius = 30f;
             public const float StarPickupDistance = 0.3f;
+
+            /// <summary>
+            /// 丧尸重新寻路节流。官方 TraceTarget 每 0.15 秒调一次 MoveToPos，而 MoveToPos 会先清空当前路径、
+            /// 取消还没算完的请求再重新排队。尸潮把上百只丧尸同时锁定玩家，A* 队列一旦积压超过 0.15 秒，
+            /// 几乎每条路径都在算完前被取消，丧尸只能沿上一次的移动输入直走：一抽一抽、贴墙角、堵门
+            /// （2026-11-24 玩家反馈第 5 波起出现）。改为：在途请求不取消；近身保持官方频率，越远间隔越长；
+            /// 玩家明显挪位、丧尸走完路径或被瞬移时立即重算。
+            /// </summary>
+            public const float PathRepathMinIntervalSeconds = 0.15f;
+            public const float PathRepathMaxIntervalSeconds = 1f;
+            public const float PathRepathNearDistance = 8f;
+            public const float PathRepathFarDistance = 40f;
+            public const float PathRepathTargetShiftMinDistance = 2f;
+            public const float PathRepathTargetShiftFraction = 0.2f;
+            /// <summary>间隔比较的余量（约一帧）：官方计时器按帧累加，0.15 秒的整点可能读成 0.1499，不能因此把近身频率减半。</summary>
+            public const float PathRepathTimingSlackSeconds = 0.03f;
+            /// <summary>在途请求超过该时长仍无回调（被外部取消、回调丢失）时允许重新发起。</summary>
+            public const float PathRequestPendingTimeoutSeconds = 2.5f;
+            /// <summary>两次请求之间位移超过「间隔 × 该速度 + 余量」视为被瞬移（恢复、聚怪、安全区弹出），旧路径作废。</summary>
+            public const float PathRepathTeleportSpeed = 12f;
+            public const float PathRepathTeleportSlack = 3f;
+
+            /// <summary>
+            /// 叠罗汉：站在别的角色头顶的丧尸高出子弹平面，打不到也下不来，堆在门口把整波卡住。
+            /// 每秒一次的恢复巡检里连续两次看到脚下是角色，就把它拨到旁边可达的地面上。
+            /// </summary>
+            public const int StackedSamplesBeforeUnstack = 2;
+            public const float UnstackRadius = 1.4f;
+            public const float UnstackSnapRadius = 1f;
+            public const float UnstackMaxHeightDelta = 1.5f;
         }
 
         private static class Spawn
@@ -162,6 +192,21 @@ namespace BossRush
             public const int LateWaveEliteWeightPerWave = 3;
             public const int LateWaveSpecialWeightPerWave = 5;
             public const float NormalZombieForceTraceDistance = 500f;
+
+            /// <summary>
+            /// 落点分散：刷怪总取离玩家最近的那个可达点，同一批 2–6 只以前全落在同一坐标，
+            /// 被物理互相顶成「叠罗汉」，高处的够不着子弹（2026-11-24 玩家反馈）。
+            /// 近期落过怪的位置周围再落怪时，换到点位外围的环上（每个环位仍过可达与玩家距离判据）。
+            /// </summary>
+            public const float SpawnSpreadCrowdRadius = 1.2f;
+            public const float SpawnSpreadMemorySeconds = 2f;
+            public const int SpawnSpreadMemoryCapacity = 48;
+            public const float SpawnSpreadInnerRadius = 1.6f;
+            public const float SpawnSpreadRingStep = 1.4f;
+            public const int SpawnSpreadRingCount = 3;
+            public const int SpawnSpreadMaxQueries = 8;
+            public const float SpawnSpreadSnapRadius = 1.2f;
+            public const float SpawnSpreadMaxHeightDelta = 1.5f;
         }
 
         private static class Reward
@@ -478,6 +523,20 @@ namespace BossRush
         public const float NormalZombieDistantRecoveryDelaySeconds = Performance.NormalZombieDistantRecoveryDelaySeconds;
         public const float StarMagnetRadius = Performance.StarMagnetRadius;
         public const float StarPickupDistance = Performance.StarPickupDistance;
+        public const float PathRepathMinIntervalSeconds = Performance.PathRepathMinIntervalSeconds;
+        public const float PathRepathMaxIntervalSeconds = Performance.PathRepathMaxIntervalSeconds;
+        public const float PathRepathNearDistance = Performance.PathRepathNearDistance;
+        public const float PathRepathFarDistance = Performance.PathRepathFarDistance;
+        public const float PathRepathTargetShiftMinDistance = Performance.PathRepathTargetShiftMinDistance;
+        public const float PathRepathTargetShiftFraction = Performance.PathRepathTargetShiftFraction;
+        public const float PathRepathTimingSlackSeconds = Performance.PathRepathTimingSlackSeconds;
+        public const float PathRequestPendingTimeoutSeconds = Performance.PathRequestPendingTimeoutSeconds;
+        public const float PathRepathTeleportSpeed = Performance.PathRepathTeleportSpeed;
+        public const float PathRepathTeleportSlack = Performance.PathRepathTeleportSlack;
+        public const int StackedSamplesBeforeUnstack = Performance.StackedSamplesBeforeUnstack;
+        public const float UnstackRadius = Performance.UnstackRadius;
+        public const float UnstackSnapRadius = Performance.UnstackSnapRadius;
+        public const float UnstackMaxHeightDelta = Performance.UnstackMaxHeightDelta;
 
         // Spawn
         public const float BossSpreadMinDistance = Spawn.BossSpreadMinDistance;
@@ -518,6 +577,15 @@ namespace BossRush
         public const int LateWaveEliteWeightPerWave = Spawn.LateWaveEliteWeightPerWave;
         public const int LateWaveSpecialWeightPerWave = Spawn.LateWaveSpecialWeightPerWave;
         public const float NormalZombieForceTraceDistance = Spawn.NormalZombieForceTraceDistance;
+        public const float SpawnSpreadCrowdRadius = Spawn.SpawnSpreadCrowdRadius;
+        public const float SpawnSpreadMemorySeconds = Spawn.SpawnSpreadMemorySeconds;
+        public const int SpawnSpreadMemoryCapacity = Spawn.SpawnSpreadMemoryCapacity;
+        public const float SpawnSpreadInnerRadius = Spawn.SpawnSpreadInnerRadius;
+        public const float SpawnSpreadRingStep = Spawn.SpawnSpreadRingStep;
+        public const int SpawnSpreadRingCount = Spawn.SpawnSpreadRingCount;
+        public const int SpawnSpreadMaxQueries = Spawn.SpawnSpreadMaxQueries;
+        public const float SpawnSpreadSnapRadius = Spawn.SpawnSpreadSnapRadius;
+        public const float SpawnSpreadMaxHeightDelta = Spawn.SpawnSpreadMaxHeightDelta;
 
         // Reward
         public const int CashToPurificationRatio = Reward.CashToPurificationRatio;

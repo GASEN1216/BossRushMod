@@ -74,12 +74,13 @@ namespace UnityEngine
         public static Vector3 zero { get { return new Vector3(); } }
         public static Vector3 up { get { return new Vector3(0,1,0); } }
         public float sqrMagnitude { get { return x*x+y*y+z*z; } }
+        public float magnitude { get { return (float)Math.Sqrt(sqrMagnitude); } }
         public Vector3 normalized { get { return this*(1f/(float)Math.Sqrt(sqrMagnitude)); } }
         public static Vector3 operator +(Vector3 a,Vector3 b) { return new Vector3(a.x+b.x,a.y+b.y,a.z+b.z); }
         public static Vector3 operator -(Vector3 a,Vector3 b) { return new Vector3(a.x-b.x,a.y-b.y,a.z-b.z); }
         public static Vector3 operator *(Vector3 a,float b) { return new Vector3(a.x*b,a.y*b,a.z*b); }
     }
-    public static class Mathf { public static int Max(int a,int b) { return Math.Max(a,b); } public static float Max(float a,float b) { return Math.Max(a,b); } public static float Abs(float a) { return Math.Abs(a); } public static int Abs(int a) { return Math.Abs(a); } }
+    public static class Mathf { public static int Max(int a,int b) { return Math.Max(a,b); } public static float Max(float a,float b) { return Math.Max(a,b); } public static float Min(float a,float b) { return Math.Min(a,b); } public static float Abs(float a) { return Math.Abs(a); } public static int Abs(int a) { return Math.Abs(a); } }
 }
 
 namespace Duckov.Buffs { public sealed class Buff { } }
@@ -157,7 +158,9 @@ namespace BossRush
         public readonly List<ZombieModeSpawnPoint> EffectiveSpawnPoints=new List<ZombieModeSpawnPoint>();
     }
     public sealed class ZombieModeSpawnPoint { public Vector3 Position; }
-    public static class ZombieModeTuning { public const int MaxNormalZombieCount=20; public const float NormalZombieForceTraceDistance=120,NavMeshVirtualSpawnRadius=3,SpawnPointNavMeshSampleRadius=2,NavMeshLiftOffset=0.1f,SpawnPointMinPlayerDistance=12,BossSpreadMinDistance=8; }
+    public static partial class ZombieModeTuning { public const int MaxNormalZombieCount=20; public const float NormalZombieForceTraceDistance=120,NavMeshVirtualSpawnRadius=3,SpawnPointNavMeshSampleRadius=2,NavMeshLiftOffset=0.1f,SpawnPointMinPlayerDistance=12,BossSpreadMinDistance=8; }
+    /// <summary>隔墙检查替身：Wall 为空时不拦；WallChecks 统计进入隔墙判定（即可达性已通过）的候选数。</summary>
+    internal static class ZombieModeCrowdNavigation { internal static Func<Vector3,Vector3,bool> Wall; internal static int WallChecks; internal static bool IsBlockedByWall(Vector3 from,Vector3 to) { WallChecks++; return Wall!=null && Wall(from,to); } }
     internal static partial class SpawnPositionHelper { public static bool PassesMinPlayerDistance(Vector3 point,float distance) { return (point-CharacterMainControl.Main.transform.position).sqrMagnitude>=distance*distance; } }
     public enum DamageTypes { normal }
     public struct DamageInfo

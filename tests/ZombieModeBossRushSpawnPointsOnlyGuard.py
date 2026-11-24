@@ -65,9 +65,11 @@ def main() -> int:
     reliable = extract_method_body(clean_source(spawner), "TryGetZombieModeReliableSpawnPosition")
     if reliable.find("TryGetNearestZombieModeMapSpawnPositionToPlayer(out position)") > reliable.find("TryFindZombieModeVirtualSpawnAroundPlayer(main.transform.position, out position)"):
         return fail("official/map points must precede virtual ring fallback")
-    for name in ("TrySpawnZombieModeNormalZombieAsync", "TrySpawnZombieModeBossAsync"):
+    # 普通 / 分裂丧尸验证后还要走落点散开，散开只在已验证的点上做（2026-11-24 叠罗汉反馈）。
+    for name, assignment in (("TrySpawnZombieModeNormalZombieAsync", "position = SpreadZombieModeSpawnPlacement(reachablePosition);"),
+                             ("TrySpawnZombieModeBossAsync", "position = reachablePosition;")):
         body = extract_method_body(clean_source(spawner), name)
-        if "!TryResolveZombieModeSpawnPoint(position, false, out reachablePosition)" not in body or "position = reachablePosition;" not in body:
+        if "!TryResolveZombieModeSpawnPoint(position, false, out reachablePosition)" not in body or assignment not in body:
             return fail("all final spawn calls, including splits and bosses, must validate the submitted position -> " + name)
 
     if "GetCurrentMapConfig()" in collect_method:

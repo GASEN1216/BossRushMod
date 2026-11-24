@@ -847,6 +847,7 @@ echo(ZombieMode\ZombieModePlayerSlowRuntime.cs
 echo(ZombieMode\ZombieModeSpawner.cs
 echo(ZombieMode\ZombieModeRuntimeModule_WaveController.cs
 echo(ZombieMode\ZombieModeEnemyRuntime.cs
+echo(ZombieMode\ZombieModeCrowdNavigation.cs
 echo(ZombieMode\ZombieModeRewards.cs
 echo(ZombieMode\ZombieModeRewardSelectionView.cs
 echo(ZombieMode\ZombieModeTemporaryNpcServiceView.cs

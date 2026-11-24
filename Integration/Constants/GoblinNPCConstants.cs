@@ -62,9 +62,10 @@ namespace BossRush.Constants
         public const float IDLE_DURATION_AFTER_STOP = 3f;
         
         /// <summary>
-        /// 默认对话停留时间
+        /// 默认对话停留时间：聊天、重铸、商店结束后原地站住的秒数。玩家常在关掉界面后翻背包挑下一件再回来，
+        /// 10 秒时人早走远了（2026-11-24 玩家反馈「翻背包人就没了」），改为 2.5 分钟；再次交互、剧情触发会提前打断。
         /// </summary>
-        public const float DEFAULT_DIALOGUE_STAY_DURATION = 10f;
+        public const float DEFAULT_DIALOGUE_STAY_DURATION = 150f;
         
         // ============================================================================
         // 气泡显示配置

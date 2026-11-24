@@ -76,8 +76,10 @@ internal static class Program
         enemy.transform.position = new Vector3(10, 0, 0);
         SpawnPositionHelper.RejectCandidates = true;
         SpawnPositionHelper.RejectFallback = true;
+        int spreadCallsBefore = module.SpreadFallbackCalls;
         Assert(!module.TryMoveZombieModeEnemyOutsideSafeZone(enemy.gameObject, enemy, false) && enemy.transform.position.x == 10,
             "Failed navigation must leave enemy in place, never eject onto raw terrain outside the map");
+        Assert(module.SpreadFallbackCalls == spreadCallsBefore + 1, "Fallback ejection must go through the spread recovery position, not the shared nearest point");
         SpawnPositionHelper.RejectCandidates = false;
         SpawnPositionHelper.RejectFallback = false;
     }

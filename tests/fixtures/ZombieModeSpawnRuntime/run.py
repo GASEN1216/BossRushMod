@@ -2,6 +2,7 @@
 from pathlib import Path
 import hashlib
 import json
+import re
 import subprocess
 from xml.sax.saxutils import escape
 
@@ -35,7 +36,13 @@ def main():
                   'internal Vector3 GetZombieModeSpawnPosition(',
                   'internal bool TryGetZombieModeReliableSpawnPosition(',
                   'internal bool TryGetNearestZombieModeMapSpawnPositionToPlayer(',
-                  'internal Vector3 GetZombieModeBossSpawnPosition(']
+                  'internal Vector3 GetZombieModeBossSpawnPosition(',
+                  # 落点散开与恢复散开（2026-11-24 叠罗汉反馈）。
+                  'internal bool TryGetZombieModeSpreadRecoveryPosition(',
+                  'private Vector3 SpreadZombieModeSpawnPlacement(',
+                  'private bool TryFindZombieModeSpreadSpawnPlacement(',
+                  'private void PruneZombieModeRecentSpawnPlacements(',
+                  'private bool IsZombieModeSpawnPlacementCrowded(']
     damage_path = ROOT / 'ZombieMode/ZombieModeRuntimeModule_PollutionSkills.cs'
     damage_raw = damage_path.read_bytes()
     production = 'using System; using System.Collections.Generic; using Pathfinding; using UnityEngine; using UnityEngine.AI; using Duckov.Buffs; using Cysharp.Threading.Tasks;\nnamespace BossRush { internal sealed partial class ZombieModeRuntimeModule {\n'
@@ -43,11 +50,15 @@ def main():
     # 由近到远扫与同帧失败记忆用到的字段、排序结构（2026-10-17 J-Lab 掉帧）。
     production += '\n' + member(text, 'private struct ZombieModeSpawnScanEntry')
     production += '\n' + member(text, 'private static int CompareZombieModeSpawnScanEntries(')
+    production += '\n' + member(text, 'private struct ZombieModeSpawnPlacement')
     fields = [line.strip() for line in text.splitlines()
               if line.strip().startswith(('private int zombieModeReliableSpawnFailedFrame',
                                           'private readonly List<ZombieModeSpawnScanEntry> zombieModeSpawnScanEntries',
-                                          'private static readonly System.Comparison<ZombieModeSpawnScanEntry> ZombieModeSpawnScanOrder'))]
-    assert len(fields) == 3, fields
+                                          'private static readonly System.Comparison<ZombieModeSpawnScanEntry> ZombieModeSpawnScanOrder',
+                                          'private static readonly Vector3[] ZombieModeSpawnSpreadDirections',
+                                          'private readonly List<ZombieModeSpawnPlacement> zombieModeRecentSpawnPlacements',
+                                          'private int zombieModeSpawnSpreadCursor'))]
+    assert len(fields) == 6, fields
     production += '\n' + '\n'.join(fields) + '\n'
     wave_path = ROOT / 'ZombieMode/ZombieModeRuntimeModule_WaveController.cs'
     wave_text = wave_path.read_text(encoding='utf-8-sig')
@@ -71,11 +82,16 @@ def main():
     production += '\ninternal static partial class SpawnPositionHelper {\n' + '\n'.join(constants) + '\n'
     production += member(helper_text, 'internal static bool TryResolveReachableFrom(') + '\n'
     production += member(helper_text, 'internal static bool IsReachableAnchor(') + '\n'
-    production += member(helper_text, 'private static bool IsNearWalkableNode(') + '\n}}'
+    production += member(helper_text, 'private static bool IsNearWalkableNode(') + '\n}\n'
+    # 散开常量按生产 ZombieModeTuning.Spawn 的原值生成，调参后夹具跟着走。
+    tuning_path = ROOT / 'ZombieMode/ZombieModeTuning.cs'
+    spread_constants = re.findall(r'public const (?:float|int) SpawnSpread\w+ = [0-9.]+f?;', tuning_path.read_text(encoding='utf-8-sig'))
+    assert len(spread_constants) == 9, spread_constants
+    production += 'public static partial class ZombieModeTuning {\n' + '\n'.join(spread_constants) + '\n}}'
     generated = OUT / 'Production.cs'
     generated.write_text(production, encoding='utf-8')
     (OUT / 'production-sha256.json').write_text(json.dumps({str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
-                                                         for p in (path, damage_path, helper_path, wave_path, isolation_path)}, indent=2), encoding='utf-8')
+                                                         for p in (path, damage_path, helper_path, wave_path, isolation_path, tuning_path)}, indent=2), encoding='utf-8')
     sources = [generated, HERE / 'Program.cs', HERE / 'Stubs.cs']
     includes = ''.join('<Compile Include="' + escape(str(path), {'"': '&quot;'}) + '" />' for path in sources)
     project = OUT / 'Regression.csproj'

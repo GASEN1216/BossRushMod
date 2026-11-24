@@ -179,5 +179,52 @@ internal static class Program
         Assert(module.TryGetZombieModeReliableSpawnPosition(out result) && result.x==25,"Snappable anchor resumes the normal nearest-point search");
         module.VirtualSpawnAvailable=false; AstarPath.active=null;
     }
-    public static void Main() { NormalOrder(); GateAndSlot(); PauseRetry(); BossOrder(); NavigationAndPoison(); BossSpawnNearPlayer(); NearestScanAndAnchor(); CompanionIsolationAndKills(); Console.WriteLine("PASS ZombieModeSpawnRuntime"); }
+    private static float HorizontalDistance(Vector3 a,Vector3 b) { float dx=a.x-b.x,dz=a.z-b.z; return (float)Math.Sqrt(dx*dx+dz*dz); }
+    private static Vector3 SpawnAt(ZombieModeRuntimeModule module,ModBehaviour host,Vector3 position)
+    {
+        var task=module.TrySpawnZombieModeNormalZombieAsync(1,position).Inner;
+        var request=host.Requests.Dequeue(); request.Failure();
+        Assert(task.IsCompleted && task.GetAwaiter().GetResult()==null,"Spread test spawn must release its slot");
+        return request.Position;
+    }
+    private static void SpreadPlacement()
+    {
+        // 同一个最近刷怪点连续出怪不能叠在一起（2026-11-24：实验室挤满复活大厅、雪地图堵在门外）。
+        ModBehaviour host; ZombieModeRunState state; var module=New(out host,out state);
+        ZombieModeCrowdNavigation.Wall=null; ZombieModeCrowdNavigation.WallChecks=0;
+        UnityEngine.Time.unscaledTime=50f;
+        Vector3 first=SpawnAt(module,host,new Vector3(20,0,0));
+        Assert(first.x==20 && first.z==0,"An unoccupied spawn point is used as-is");
+        Vector3 second=SpawnAt(module,host,new Vector3(20,0,0));
+        Assert(HorizontalDistance(second,first)>=ZombieModeTuning.SpawnSpreadCrowdRadius,"A repeated spawn point must move the next zombie off the occupied spot");
+        Assert(HorizontalDistance(second,first)<=ZombieModeTuning.SpawnSpreadInnerRadius+ZombieModeTuning.SpawnSpreadRingStep*(ZombieModeTuning.SpawnSpreadRingCount-1)+0.01f,"Spread stays within the configured rings");
+        Assert(HorizontalDistance(second,new Vector3())>=ZombieModeTuning.SpawnPointMinPlayerDistance,"Spread never moves a safe spawn inside the player-safe distance");
+
+        // 隔墙的空位一律不要；查询有上限，找不到就沿用原点。
+        ZombieModeCrowdNavigation.Wall=(from,to)=>true; ZombieModeCrowdNavigation.WallChecks=0;
+        Vector3 walled=SpawnAt(module,host,new Vector3(20,0,0));
+        Assert(walled.x==20 && walled.z==0,"Without a wall-free free slot the original validated point is kept");
+        Assert(ZombieModeCrowdNavigation.WallChecks==ZombieModeTuning.SpawnSpreadMaxQueries,"Spread search must stop at the query budget");
+        ZombieModeCrowdNavigation.Wall=null;
+
+        // 落点记忆只保留短时间，过期后原点重新可用。
+        UnityEngine.Time.unscaledTime+=ZombieModeTuning.SpawnSpreadMemorySeconds+0.5f;
+        Vector3 later=SpawnAt(module,host,new Vector3(20,0,0));
+        Assert(later.x==20 && later.z==0,"Expired placements no longer crowd the spawn point");
+
+        // 原点本身贴近安全距离时，散开不能往玩家方向挪进 12 m。
+        Vector3 edge=SpawnAt(module,host,new Vector3(12.2f,0,0));
+        Vector3 edgeSpread=SpawnAt(module,host,new Vector3(12.2f,0,0));
+        Assert(HorizontalDistance(edgeSpread,edge)>=ZombieModeTuning.SpawnSpreadCrowdRadius && HorizontalDistance(edgeSpread,new Vector3())>=ZombieModeTuning.SpawnPointMinPlayerDistance,"Edge spawn spreads outward only");
+
+        // 恢复监控拉回的丧尸同样散开。
+        state.SpawnPoints.Clear(); state.SpawnPoints.Add(new ZombieModeSpawnPoint { Position=new Vector3(30,0,0) });
+        UnityEngine.Time.unscaledTime+=ZombieModeTuning.SpawnSpreadMemorySeconds+0.5f; UnityEngine.Time.frameCount++;
+        Vector3 recoverA,recoverB;
+        Assert(module.TryGetZombieModeSpreadRecoveryPosition(out recoverA) && recoverA.x==30,"Recovery takes the reliable point first");
+        Assert(module.TryGetZombieModeSpreadRecoveryPosition(out recoverB) && HorizontalDistance(recoverA,recoverB)>=ZombieModeTuning.SpawnSpreadCrowdRadius,"Back-to-back recoveries must not land on the same spot");
+        state.SpawnPoints.Clear();
+        Assert(!module.TryGetZombieModeSpreadRecoveryPosition(out recoverB),"No reliable point means no recovery position");
+    }
+    public static void Main() { NormalOrder(); GateAndSlot(); PauseRetry(); BossOrder(); NavigationAndPoison(); BossSpawnNearPlayer(); NearestScanAndAnchor(); CompanionIsolationAndKills(); SpreadPlacement(); Console.WriteLine("PASS ZombieModeSpawnRuntime"); }
 }

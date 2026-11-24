@@ -391,6 +391,165 @@ namespace BossRush
             return !virtualPoint || SpawnPositionHelper.PassesMinPlayerDistance(resolved, ZombieModeTuning.SpawnPointMinPlayerDistance);
         }
 
+        private struct ZombieModeSpawnPlacement
+        {
+            public Vector3 Position;
+            public float SpawnedAt;
+        }
+
+        private static readonly Vector3[] ZombieModeSpawnSpreadDirections = { new Vector3(1f, 0f, 0f), new Vector3(0.7071f, 0f, 0.7071f), new Vector3(0f, 0f, 1f), new Vector3(-0.7071f, 0f, 0.7071f), new Vector3(-1f, 0f, 0f), new Vector3(-0.7071f, 0f, -0.7071f), new Vector3(0f, 0f, -1f), new Vector3(0.7071f, 0f, -0.7071f) };
+        private readonly List<ZombieModeSpawnPlacement> zombieModeRecentSpawnPlacements = new List<ZombieModeSpawnPlacement>();
+        private int zombieModeSpawnSpreadCursor;
+
+        /// <summary>
+        /// 恢复监控把掉队 / 卡住的丧尸拉回时也走同一个最近刷怪点，需要同样散开，否则拉回来又叠成一摞。
+        /// </summary>
+        internal bool TryGetZombieModeSpreadRecoveryPosition(out Vector3 position)
+        {
+            if (!TryGetZombieModeReliableSpawnPosition(out position))
+            {
+                return false;
+            }
+
+            position = SpreadZombieModeSpawnPlacement(position);
+            return true;
+        }
+
+        /// <summary>
+        /// 刷怪点选的是离玩家最近的可达点，一波几十只会在同一个坐标连续生成，落地即叠罗汉、堵门
+        /// （2026-11-24 玩家反馈：实验室全挤在复活大厅、雪地图挤在门外空地）。
+        /// 记住最近 2 秒的落点；目标点已经被占时，按环向外找一个可达、同层、不隔墙、不更贴近玩家的空位，
+        /// 找不到就沿用原点。每只最多 8 次可达性查询。
+        /// </summary>
+        private Vector3 SpreadZombieModeSpawnPlacement(Vector3 position)
+        {
+            float now = Time.unscaledTime;
+            PruneZombieModeRecentSpawnPlacements(now);
+            Vector3 placed = position;
+            Vector3 spread;
+            if (IsZombieModeSpawnPlacementCrowded(position) && TryFindZombieModeSpreadSpawnPlacement(position, out spread))
+            {
+                placed = spread;
+            }
+
+            if (zombieModeRecentSpawnPlacements.Count >= ZombieModeTuning.SpawnSpreadMemoryCapacity)
+            {
+                zombieModeRecentSpawnPlacements.RemoveAt(0);
+            }
+
+            ZombieModeSpawnPlacement placement;
+            placement.Position = placed;
+            placement.SpawnedAt = now;
+            zombieModeRecentSpawnPlacements.Add(placement);
+            return placed;
+        }
+
+        private bool TryFindZombieModeSpreadSpawnPlacement(Vector3 center, out Vector3 resolved)
+        {
+            resolved = center;
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (player == null)
+            {
+                return false;
+            }
+
+            Vector3 playerPos = player.transform.position;
+            Vector3 toPlayer = center - playerPos;
+            toPlayer.y = 0f;
+            // 不把出生点挪得比原点更贴近玩家；原点本身已在安全距离外时只要求不进安全距离。
+            float minPlayerDistance = Mathf.Min(ZombieModeTuning.SpawnPointMinPlayerDistance, toPlayer.magnitude);
+            int directionCount = ZombieModeSpawnSpreadDirections.Length;
+            int start = zombieModeSpawnSpreadCursor;
+            zombieModeSpawnSpreadCursor = (zombieModeSpawnSpreadCursor + 3) % directionCount;
+            int queries = 0;
+            for (int ring = 0; ring < ZombieModeTuning.SpawnSpreadRingCount; ring++)
+            {
+                float radius = ZombieModeTuning.SpawnSpreadInnerRadius + ring * ZombieModeTuning.SpawnSpreadRingStep;
+                for (int i = 0; i < directionCount; i++)
+                {
+                    Vector3 candidate = center + ZombieModeSpawnSpreadDirections[(start + i) % directionCount] * radius;
+                    // 先用落点记忆排除已占的格子，不为它们花 A* 查询。
+                    if (IsZombieModeSpawnPlacementCrowded(candidate))
+                    {
+                        continue;
+                    }
+
+                    if (queries >= ZombieModeTuning.SpawnSpreadMaxQueries)
+                    {
+                        return false;
+                    }
+
+                    queries++;
+                    Vector3 sampled;
+                    if (!SpawnPositionHelper.TryResolveReachableFrom(
+                            candidate,
+                            playerPos,
+                            ZombieModeTuning.SpawnSpreadSnapRadius,
+                            ZombieModeTuning.NavMeshLiftOffset,
+                            out sampled,
+                            zombieModeSpawnReachabilityPath))
+                    {
+                        continue;
+                    }
+
+                    if (Mathf.Abs(sampled.y - center.y) > ZombieModeTuning.SpawnSpreadMaxHeightDelta ||
+                        IsZombieModeSpawnPlacementCrowded(sampled) ||
+                        !SpawnPositionHelper.PassesMinPlayerDistance(sampled, minPlayerDistance) ||
+                        ZombieModeCrowdNavigation.IsBlockedByWall(center, sampled))
+                    {
+                        continue;
+                    }
+
+                    resolved = sampled;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void PruneZombieModeRecentSpawnPlacements(float now)
+        {
+            int keepFrom = 0;
+            while (keepFrom < zombieModeRecentSpawnPlacements.Count)
+            {
+                float age = now - zombieModeRecentSpawnPlacements[keepFrom].SpawnedAt;
+                // 时钟回拨（换局重置）时 age 为负，同样清掉。
+                if (age >= 0f && age <= ZombieModeTuning.SpawnSpreadMemorySeconds)
+                {
+                    break;
+                }
+
+                keepFrom++;
+            }
+
+            if (keepFrom > 0)
+            {
+                zombieModeRecentSpawnPlacements.RemoveRange(0, keepFrom);
+            }
+        }
+
+        private bool IsZombieModeSpawnPlacementCrowded(Vector3 position)
+        {
+            float crowdRadiusSqr = ZombieModeTuning.SpawnSpreadCrowdRadius * ZombieModeTuning.SpawnSpreadCrowdRadius;
+            for (int i = 0; i < zombieModeRecentSpawnPlacements.Count; i++)
+            {
+                Vector3 delta = zombieModeRecentSpawnPlacements[i].Position - position;
+                if (Mathf.Abs(delta.y) > ZombieModeTuning.SpawnSpreadMaxHeightDelta)
+                {
+                    continue;
+                }
+
+                delta.y = 0f;
+                if (delta.sqrMagnitude < crowdRadiusSqr)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         internal async UniTask<CharacterMainControl> TrySpawnZombieModeNormalZombieAsync(
             int runId,
             Vector3 position,
@@ -422,7 +581,7 @@ namespace BossRush
                 {
                     return null;
                 }
-                position = reachablePosition;
+                position = SpreadZombieModeSpawnPlacement(reachablePosition);
 
                 if (!TryReserveZombieModeNormalSpawnSlot(runId))
                 {
