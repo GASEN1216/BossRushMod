@@ -3,7 +3,9 @@
 - Harmony 前缀挂在官方 AI_PathControl.MoveToPos(Vector3) 上，模式未激活时第一句就放行（§4.12 关闭时 O(1)）；
   判定异常一律放行官方寻路，不能让 Mod 异常把丧尸寻路整体卡死。
 - 只拦本局登记、未结算、未移除的丧尸；放行后才记录请求时刻、目标与出发点。
-- 叠罗汉检测复用每秒一次的恢复巡检，不新增 Update；拨离走 ECM2 SetPositionAndRotation 同步控制器，
+- 叠罗汉源头预防：登记时给丧尸挂共享的 ECM2 碰撞行为回调，别的角色不可站、不可跨上、不可停靠、不随其移动；
+  回调在 ECM2 每帧移动里执行，不记日志、不分配、不查场景，不覆盖别的系统已挂的回调。
+- 叠罗汉兜底检测复用每秒一次的恢复巡检，不新增 Update；拨离走 ECM2 SetPositionAndRotation 同步控制器，
   并在可达性之外做隔墙检查。
 - 刷怪落点散开与拨离共用同一个隔墙判定。
 """
@@ -20,6 +22,7 @@ CROWD = Path("ZombieMode/ZombieModeCrowdNavigation.cs")
 RECOVERY = Path("ZombieMode/ZombieModeRuntimeModule_Recovery.cs")
 SPAWNER = Path("ZombieMode/ZombieModeSpawner.cs")
 SAFE_ZONE = Path("ZombieMode/ZombieModeSafeZoneController.cs")
+ENEMY_RUNTIME = Path("ZombieMode/ZombieModeRuntimeModule_EnemyRuntime.cs")
 
 
 def fail(message: str) -> int:
@@ -109,6 +112,34 @@ def main() -> int:
                   "ZombieModeCrowdNavigation.IsBlockedByWall(basePosition, resolved)"):
         if token not in finder:
             return fail("unstack destination must be reachable, same-floor and wall-free -> " + token)
+
+    # 叠罗汉源头预防：登记时给丧尸挂 ECM2 碰撞行为，别的角色不可站 / 跨上 / 停靠 / 跟随（2026-11-24 复查补）。
+    callback_decl = "internal static readonly ECM2.CharacterMovement.CollisionBehaviourCallback ZombieCollisionBehaviour = ResolveZombieCollisionBehaviour;"
+    if compact(callback_decl) not in compact(crowd):
+        return fail("stacking prevention must share one static ECM2 collision callback (no per-zombie allocation)")
+    const_at = crowd.find("private const ECM2.CollisionBehaviour OtherCharacterCollisionBehaviour =")
+    const_decl = crowd[const_at:crowd.find(";", const_at)] if const_at >= 0 else ""
+    for flag in ("NotWalkable", "CanNotStepOn", "CanNotPerchOn", "CanNotRideOn"):
+        if "ECM2.CollisionBehaviour." + flag not in const_decl:
+            return fail("other characters must not be standable / steppable / perchable / rideable for zombies -> " + flag)
+    resolve = method_body(crowd, "private static ECM2.CollisionBehaviour ResolveZombieCollisionBehaviour(Collider collider)")
+    for token in ("collider.attachedRigidbody", "body.TryGetComponent(out other)",
+                  "OtherCharacterCollisionBehaviour", "ECM2.CollisionBehaviour.Default", "catch"):
+        if token not in resolve:
+            return fail("collision callback must detect ECM2 characters by rigidbody and fall back to Default -> " + token)
+    for forbidden in ("DevLog", "new ", "GetComponent<", "FindObject", "Physics."):
+        if forbidden in resolve:
+            return fail("collision callback runs inside ECM2 per-frame movement; no logging, allocation or scene queries -> " + forbidden)
+    apply_crowd = method_body(crowd, "internal void ApplyZombieModeCrowdMovement(CharacterMainControl enemy, ZombieModeEnemyRuntimeMarker marker)")
+    for token in ("marker.HasPathRequest = false;", "marker.StackedSampleCount = 0;", "marker.CachedMovement = movement;",
+                  "movement.collisionBehaviourCallback == null",
+                  "movement.collisionBehaviourCallback = ZombieModeCrowdNavigation.ZombieCollisionBehaviour;"):
+        if token not in apply_crowd:
+            return fail("registration must reset crowd state and install the callback without overwriting a foreign one -> " + token)
+    enemy_runtime = clean_source(ENEMY_RUNTIME.read_text(encoding="utf-8-sig"))
+    register = method_body(enemy_runtime, "internal ZombieModeEnemyRuntimeMarker RegisterZombieModeEnemyRuntimeShell(")
+    if compact("RegisterZombieModeEnemyInstanceId(enemy, marker); ApplyZombieModeCrowdMovement(enemy, marker);") not in compact(register):
+        return fail("every registered zombie (normal, special, boss) must get the crowd collision behaviour")
 
     spawner = clean_source(SPAWNER.read_text(encoding="utf-8-sig"))
     spread = method_body(spawner, "private bool TryFindZombieModeSpreadSpawnPlacement(Vector3 center, out Vector3 resolved)")

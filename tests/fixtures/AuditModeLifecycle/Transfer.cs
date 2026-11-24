@@ -210,6 +210,8 @@ static class Program {
    "registered marker lookup uses the index and cached component without another GetComponent");
   Check(mode.WasIndexedAtRunOnlyRegistrationForTest && mode.RunOnlyRegistrationCountForTest == 1,
    "enemy instance ID is registered before its RunOnly cleanup record");
+  Check(mode.CrowdMovementApplyCountForTest == 1,
+   "enemy registration applies the crowd collision behaviour exactly once");
   string[] order = TransferTrace.Events.ToArray();
   Check(Array.IndexOf(order, "calculate-points:False:Special") >= 0 &&
    Array.IndexOf(order, "foot-marker-release") < Array.IndexOf(order, "runonly-register"),

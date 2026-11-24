@@ -140,6 +140,37 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 丧尸的 ECM2 碰撞行为：别的角色（刚体上挂着 ECM2 CharacterMovement）不可站、不可跨上、不可停在边缘、不随它移动，
+        /// 叠罗汉从源头上站不住，会顺着下面那只的胶囊滑下去（聚怪奖励每 0.2 秒往一点拉，也不再摞起来）。
+        /// ECM2 只在脚下命中、台阶判定、边缘停靠、平台跟随时回调；地面和墙没有刚体，一次原生属性读取就返回 Default。
+        /// 静态委托，所有丧尸共用一个实例，登记时不分配。
+        /// </summary>
+        internal static readonly ECM2.CharacterMovement.CollisionBehaviourCallback ZombieCollisionBehaviour = ResolveZombieCollisionBehaviour;
+
+        private const ECM2.CollisionBehaviour OtherCharacterCollisionBehaviour =
+            ECM2.CollisionBehaviour.NotWalkable |
+            ECM2.CollisionBehaviour.CanNotStepOn |
+            ECM2.CollisionBehaviour.CanNotPerchOn |
+            ECM2.CollisionBehaviour.CanNotRideOn;
+
+        private static ECM2.CollisionBehaviour ResolveZombieCollisionBehaviour(Collider collider)
+        {
+            // ECM2 每帧移动里调用：不记日志、不分配；异常只退回默认行为，不能打断官方移动。
+            try
+            {
+                Rigidbody body = collider != null ? collider.attachedRigidbody : null;
+                ECM2.CharacterMovement other;
+                return body != null && body.TryGetComponent(out other)
+                    ? OtherCharacterCollisionBehaviour
+                    : ECM2.CollisionBehaviour.Default;
+            }
+            catch
+            {
+                return ECM2.CollisionBehaviour.Default;
+            }
+        }
+
+        /// <summary>
         /// 两点之间（抬到腰高）是否隔着官方墙体层。导航面两侧可能都可达，但隔墙挪过去就是穿墙；
         /// 读不到墙体层时不拦，退回只看可达性。刷怪散开与叠罗汉拨离共用。
         /// </summary>
@@ -186,7 +217,36 @@ namespace BossRush
         private int zombieModeUnstackCursor;
 
         /// <summary>
-        /// 叠罗汉兜底：站在别的角色头顶的丧尸高出子弹平面，打不到也下不来，堆在门口把整波卡住。
+        /// 登记丧尸时挂上 ECM2 碰撞行为（<see cref="ZombieModeCrowdNavigation.ZombieCollisionBehaviour"/>），
+        /// 缓存移动组件，并清掉复用 marker 上的寻路节流与叠罗汉计数。
+        /// 回调已被别的系统占用时不覆盖；丧尸是局内对象，随局销毁，回调跟着对象走，不需要退订。
+        /// </summary>
+        internal void ApplyZombieModeCrowdMovement(CharacterMainControl enemy, ZombieModeEnemyRuntimeMarker marker)
+        {
+            if (enemy == null || marker == null)
+            {
+                return;
+            }
+
+            marker.HasPathRequest = false;
+            marker.StackedSampleCount = 0;
+            try
+            {
+                ECM2.CharacterMovement movement = enemy.GetComponent<ECM2.CharacterMovement>();
+                marker.CachedMovement = movement;
+                if (movement != null && movement.collisionBehaviourCallback == null)
+                {
+                    movement.collisionBehaviourCallback = ZombieModeCrowdNavigation.ZombieCollisionBehaviour;
+                }
+            }
+            catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[ZombieMode] 挂载丧尸碰撞行为失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 叠罗汉兜底：站不上去之后，仍可能有丧尸卡在两只中间的缝里下不来，高出子弹平面就打不到。
         /// 由每秒一次的恢复巡检逐只调用（不新增 Update）；连续两次看到脚下是别的角色，
         /// 就把它拨到下面那只旁边可达、没有隔墙的地面上，并让它立即重新寻路。
         /// </summary>

@@ -133,6 +133,7 @@ namespace BossRush
             }
 
             RegisterZombieModeEnemyInstanceId(enemy, marker);
+            ApplyZombieModeCrowdMovement(enemy, marker);
 
             RegisterZombieModeRunOnlyObject(
                 runId,

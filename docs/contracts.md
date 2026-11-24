@@ -716,6 +716,7 @@ Breaking/Operational:
 的前缀，显式指定 `Vector3` 重载，只在丧尸模式激活、调用者是本局在册且未结算的丧尸时生效。前缀返回 false 只是这一拍不重新寻路：
 保留官方已算好的路径或在途请求，不改写 `path`、`seeker` 与 `waitingForPathResult`。官方更新后核对 `MoveToPos` 仍先取消在途请求、
 `WaitingForPathResult` / `ReachedEndOfPath` / `path` 仍是公开成员；判定抛异常时放行官方寻路。
+同一批的叠罗汉预防依赖 ECM2 `CharacterMovement.collisionBehaviourCallback`（`Collider → ECM2.CollisionBehaviour`）：官方不使用该回调，丧尸登记时仅在它为空时写入。ECM2 升级后核对 `IsWalkable(Collider, Vector3)`、`CanStepUp`、`CanPerchOn`、`CanRideOn` 仍读取它，且 `NotWalkable` 仍让该面不可站。
 
 天空岛租约放下官方加载忙标志（2026-10-01，CR-2026-09-30-007，`COMPAT` / `WIRE+`）：官方 `SceneLoader.LoadScene` 的状态机
 置起静态 `IsSceneLoading` 后若抛异常，catch 只 `SetException` 不复位，之后所有切图入口早返、Esc 菜单也打不开。

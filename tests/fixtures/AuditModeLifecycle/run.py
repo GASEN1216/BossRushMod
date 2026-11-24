@@ -135,6 +135,7 @@ internal sealed partial class ZombieModeRuntimeModule {
   WasIndexedAtLastRunOnlyRegistration = marker != null && IsZombieModeKnownEnemy(marker.Owner);
   TransferTrace.Add("runonly-register");
  }
+ internal int CrowdMovementApplyCount; internal void ApplyZombieModeCrowdMovement(CharacterMainControl enemy, ZombieModeEnemyRuntimeMarker marker) { CrowdMovementApplyCount++; }
 '''+enemy_module_methods+'''
 '''+transfer_module_methods+'''
 }
@@ -153,6 +154,7 @@ public partial class ModBehaviour {
  public void ClearEnemyIndexForTest() { ClearZombieModeEnemyInstanceIds(); }
  public ZombieModeEnemyRuntimeMarker RegisterEnemyForTest(int runId, CharacterMainControl enemy, bool isBoss = false, ZombieModeBossKind bossKind = ZombieModeBossKind.Titan, int overridePointValue = -1, ZombieModeEnemyKind enemyKind = ZombieModeEnemyKind.Normal, ZombieModeSpecialKind specialKind = ZombieModeSpecialKind.None, List<ZombieModeEliteAffix> eliteAffixes = null) { return RegisterZombieModeEnemyRuntimeShell(runId, enemy, isBoss, bossKind, overridePointValue, enemyKind, specialKind, eliteAffixes); }
  public int RunOnlyRegistrationCountForTest { get { return zombieModeRuntimeModule == null ? 0 : zombieModeRuntimeModule.RunOnlyRegistrationCount; } }
+ public int CrowdMovementApplyCountForTest { get { return zombieModeRuntimeModule == null ? 0 : zombieModeRuntimeModule.CrowdMovementApplyCount; } }
  public bool WasIndexedAtRunOnlyRegistrationForTest { get { return zombieModeRuntimeModule != null && zombieModeRuntimeModule.WasIndexedAtLastRunOnlyRegistration; } }
  public void RunLastCleanupForTest() { if (zombieModeRuntimeModule != null && zombieModeRuntimeModule.LastRunOnlyCleanup != null) zombieModeRuntimeModule.LastRunOnlyCleanup(); }
  public bool Prepare() { return PrepareZombieModeInventoryTransferShell(1); }
