@@ -68,6 +68,7 @@ namespace BossRush
         private Canvas _canvas;
         private GameObject _panel;
         private Image _rail;
+        private float _portraitX = 12f;
         private Image _portrait;
         private GameObject _portraitFrame;
         private TextMeshProUGUI _nameText;
@@ -152,11 +153,14 @@ namespace BossRush
             if (plate != null) plate.raycastTarget = false;
             Transform rail = _panel.transform.Find("Panel_Accent");
             _rail = rail != null ? rail.GetComponent<Image>() : null;
+            // 立绘从身份色条右侧 6 起排（水墨主题下色条在 9–14，旧的 x=12 会让立绘墨边压住色条）。
+            RectTransform railRect = rail as RectTransform;
+            _portraitX = Mathf.Max(12f, railRect != null ? railRect.anchoredPosition.x + railRect.sizeDelta.x + 6f : 12f);
 
             // 左侧立绘（取不到就不画，名字与血条左移）
             _portraitFrame = ZombieModeUIHelper.CreateRect(
                 "Portrait", _panel.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
-                new Vector2(12f, 0f), new Vector2(PortraitSize, PortraitSize), new Vector2(0f, 0.5f));
+                new Vector2(_portraitX, 0f), new Vector2(PortraitSize, PortraitSize), new Vector2(0f, 0.5f));
             Image frameImage = _portraitFrame.AddComponent<Image>();
             frameImage.color = BossRushUIColors.SurfaceRaised;
             frameImage.raycastTarget = false;
@@ -181,18 +185,20 @@ namespace BossRush
             _nameText.rectTransform.pivot = new Vector2(0f, 1f);
             BossRushUI.ApplyGameFont(_nameText);
 
-            // 血条：底轨 Divider + 填充（Filled 必须有 sprite，否则 fillAmount 被忽略、永远满格）
+            // 血条：墨底糟 + 笔触填充（Filled 必须有 sprite，否则 fillAmount 被忽略、永远满格）
             GameObject track = ZombieModeUIHelper.CreateRect(
                 "HpTrack", _panel.transform, new Vector2(0f, 1f), new Vector2(0f, 1f),
                 new Vector2(0f, -40f), new Vector2(200f, BarHeight), new Vector2(0f, 1f));
             Image trackImage = track.AddComponent<Image>();
+            trackImage.sprite = BossRushInkSkin.GetSurfaceSprite();
+            trackImage.type = Image.Type.Sliced;
+            trackImage.pixelsPerUnitMultiplier = 2f;
             trackImage.color = BossRushUIColors.Divider;
             trackImage.raycastTarget = false;
-            BossRushUI.ApplyPanelSkin(trackImage, 3, BossRushUISkinPart.Hairline);
             GameObject fill = ZombieModeUIHelper.CreateRect(
                 "HpFill", track.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0f, 0.5f));
             _barFill = fill.AddComponent<Image>();
-            _barFill.sprite = BossRushUI.GetSolidSprite();
+            _barFill.sprite = BossRushInkSkin.GetBrushSprite();
             _barFill.type = Image.Type.Filled;
             _barFill.fillMethod = Image.FillMethod.Horizontal;
             _barFill.fillOrigin = (int)Image.OriginHorizontal.Left;
@@ -201,18 +207,20 @@ namespace BossRush
             _barFill.raycastTarget = false;
             _barSmoother = fill.AddComponent<PetNestHudBarSmoother>();
 
-            // 经验条：血条下方细轨 + Accent 填充，满级时整条 Success
+            // 经验条：血条下方墨槽 + 金笔填充，满级时整条 Success
             GameObject expTrack = ZombieModeUIHelper.CreateRect(
                 "ExpTrack", _panel.transform, new Vector2(0f, 1f), new Vector2(0f, 1f),
                 new Vector2(0f, -49f), new Vector2(200f, ExpBarHeight), new Vector2(0f, 1f));
             Image expTrackImage = expTrack.AddComponent<Image>();
-            expTrackImage.sprite = BossRushUI.GetSolidSprite();
+            expTrackImage.sprite = BossRushInkSkin.GetSurfaceSprite();
+            expTrackImage.type = Image.Type.Sliced;
+            expTrackImage.pixelsPerUnitMultiplier = 2f;
             expTrackImage.color = BossRushUIColors.Divider;
             expTrackImage.raycastTarget = false;
             GameObject expFill = ZombieModeUIHelper.CreateRect(
                 "ExpFill", expTrack.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0f, 0.5f));
             _expFill = expFill.AddComponent<Image>();
-            _expFill.sprite = BossRushUI.GetSolidSprite();
+            _expFill.sprite = BossRushInkSkin.GetBrushSprite();
             _expFill.type = Image.Type.Filled;
             _expFill.fillMethod = Image.FillMethod.Horizontal;
             _expFill.fillOrigin = (int)Image.OriginHorizontal.Left;
@@ -241,7 +249,7 @@ namespace BossRush
         /// <summary>有立绘时文字与血条从立绘右侧起排，没有时贴左边。只在换崽时调。</summary>
         private void LayoutText(bool hasPortrait)
         {
-            float left = hasPortrait ? 12f + PortraitSize + 12f : 16f;
+            float left = hasPortrait ? _portraitX + PortraitSize + 12f : Mathf.Max(16f, _portraitX);
             float width = PanelWidth - left - 14f;
             SetRow(_nameText != null ? _nameText.rectTransform : null, left, width);
             SetRow(_barFill != null ? _barFill.rectTransform.parent as RectTransform : null, left, width);

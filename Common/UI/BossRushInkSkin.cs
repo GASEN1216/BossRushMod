@@ -260,6 +260,42 @@ namespace BossRush
             return brushSprite;
         }
 
+        private static Sprite verticalBrushSprite;
+
+        /// <summary>一笔竖画：与横笔同源的自上而下起行收笔（border 0/96/0/72），用于随卡片动态拉伸的侧边笔触。</summary>
+        internal static Sprite GetVerticalBrushSprite()
+        {
+            if (verticalBrushSprite != null) return verticalBrushSprite;
+            const int width = 64;
+            const int height = 512;
+            Color32[] pixels = new Color32[width * height];
+            for (int y = 0; y < height; y++)
+            {
+                float u = 1f - y / (float)(height - 1);
+                float head = Mathf.Clamp01(u / 0.07f);
+                head = Mathf.Sqrt(head);
+                float tail = Mathf.Clamp01((1f - u) / 0.24f);
+                tail = Mathf.Pow(tail, 0.75f);
+                float swell = 1f + 0.12f * Mathf.Sin(u * 7.3f) + 0.25f * Mathf.Clamp01(1f - u / 0.15f);
+                float half = width * 0.34f * Mathf.Min(head, tail) * swell;
+                float wobble = 2.2f * (Fbm(u * 3.1f, 0.5f, Seed + 10, 2) - 0.5f) - 2.5f * (1f - tail);
+                float centerX = width * 0.5f + wobble;
+                float dry = 0.12f + 0.88f * Smooth01((u - 0.45f) / 0.5f);
+                for (int x = 0; x < width; x++)
+                {
+                    float rag = 1f + 0.18f * (Fbm(u * 18f, x * 0.12f, Seed + 11, 2) - 0.5f);
+                    float dx = Mathf.Abs(x - centerX) / Mathf.Max(0.5f, half * rag);
+                    float alpha = dx >= 1f ? 0f : 1f - Smooth01((dx - 0.78f) / 0.22f);
+                    float bristle = Fbm(y * 0.012f, x * 0.55f, Seed + 12, 2);
+                    if (bristle < dry * 0.62f) alpha *= 0.12f + 0.3f * bristle;
+                    alpha *= 0.86f + 0.14f * Fbm(y * 0.08f, x * 0.4f, Seed + 13, 1);
+                    pixels[y * width + x] = ToPixel(1f, Mathf.Clamp01(alpha));
+                }
+            }
+            verticalBrushSprite = BuildSprite("BossRushInk_BrushVertical", width, height, pixels, new Vector4(0, 96, 0, 72));
+            return verticalBrushSprite;
+        }
+
         /// <summary>朱印底：方印崩边、内框一道、印泥不匀的斑驳。白文印：字由调用方叠在上面。</summary>
         internal static Sprite GetSealSprite()
         {
@@ -416,6 +452,13 @@ namespace BossRush
                 rect.offsetMin = new Vector2(-4f, -4f);
                 rect.offsetMax = new Vector2(4f, 4f);
             }
+            else
+            {
+                // 复用的可能是主题按钮档挂的墨笔边（ButtonFrame 变体自带高 PPU）：换回原图，倍率才是调用方要的笔宽，不会叠乘成细丝。
+                frame.sprite = GetFrameSprite();
+                frame.type = Image.Type.Sliced;
+                frame.fillCenter = false;
+            }
             frame.pixelsPerUnitMultiplier = pixelsPerUnitMultiplier;
             frame.color = color;
             return frame;
@@ -471,13 +514,20 @@ namespace BossRush
             GameObject root = ZombieModeUIHelper.CreateRect("InkTitle", parent, new Vector2(0.5f, 0.5f), new Vector2(900f, fontSize * 2.4f));
             RectTransform rootRect = root.GetComponent<RectTransform>();
 
+            bool latinTitle = BossRushInkWidgets.IsMostlyLatin(zh);
             TextMeshProUGUI title = ZombieModeUIHelper.CreateText("Title", root.transform, zh, fontSize,
                 new Vector2(0f, fontSize * 0.28f), new Vector2(900f, fontSize * 1.45f + 4f), TextAlignmentOptions.Center, BossRushInkColors.Paper);
-            title.characterSpacing = 28f;
+            title.characterSpacing = latinTitle ? 4f : 28f;
             title.fontStyle = FontStyles.Bold;
             title.enableWordWrapping = false;
-            title.overflowMode = TextOverflowModes.Overflow;
-            float textWidth = Mathf.Max(fontSize * 2f, title.GetPreferredValues(zh).x);
+            title.overflowMode = TextOverflowModes.Ellipsis;
+            float textWidth = Mathf.Clamp(Mathf.Max(fontSize * 2f, title.GetPreferredValues(zh).x), fontSize * 2f, 680f);
+            if (textWidth >= 675f)
+            {
+                title.enableAutoSizing = true;
+                title.fontSizeMin = Mathf.Max(18f, fontSize * 0.65f);
+                title.fontSizeMax = fontSize;
+            }
 
             Image underlay = CreateLayer(root.transform, "TitleUnderlay", GetBrushSprite());
             underlay.type = Image.Type.Sliced;
@@ -485,11 +535,11 @@ namespace BossRush
             underlay.color = new Color(BossRushInkColors.InkWash.r, BossRushInkColors.InkWash.g, BossRushInkColors.InkWash.b, 0.82f);
             RectTransform underlayRect = underlay.rectTransform;
             underlayRect.anchorMin = underlayRect.anchorMax = new Vector2(0.5f, 0.5f);
-            underlayRect.sizeDelta = new Vector2(textWidth + fontSize * 3.2f, fontSize * 1.9f);
+            underlayRect.sizeDelta = new Vector2(Mathf.Min(860f, textWidth + fontSize * (latinTitle ? 2.4f : 3.2f)), fontSize * 1.9f);
             underlayRect.anchoredPosition = new Vector2(-fontSize * 0.2f, fontSize * 0.22f);
             underlay.transform.SetSiblingIndex(0);
 
-            RectTransform stroke = CreateBrushStroke(root.transform, "TitleStroke", new Vector2(textWidth + fontSize * 1.2f, 12f),
+            RectTransform stroke = CreateBrushStroke(root.transform, "TitleStroke", new Vector2(Mathf.Min(800f, textWidth + fontSize * 1.2f), 12f),
                 new Vector2(0f, -fontSize * 0.62f), BossRushInkColors.Gold);
             stroke.gameObject.AddComponent<BossRushInkRevealStroke>();
 
@@ -498,7 +548,7 @@ namespace BossRush
                 TextMeshProUGUI sub = ZombieModeUIHelper.CreateText("Subtitle", root.transform, en.ToUpperInvariant(), Mathf.Round(fontSize * 0.36f),
                     new Vector2(0f, -fontSize * 0.98f), new Vector2(900f, Mathf.Round(fontSize * 0.36f) * 1.45f + 4f),
                     TextAlignmentOptions.Center, BossRushInkColors.GoldSoft);
-                sub.characterSpacing = 36f;
+                sub.characterSpacing = latinTitle ? 16f : 36f;
                 sub.enableWordWrapping = false;
             }
             return rootRect;
@@ -525,22 +575,45 @@ namespace BossRush
             return maskRect;
         }
 
+        /// <summary>
+        /// 一道静态竖笔（普通 Image + <see cref="GetVerticalBrushSprite"/>，不带遮罩）。
+        /// 不要把 <see cref="CreateBrushStroke"/> 转 90° 当竖笔：RectMask2D 按世界角点算裁剪框，转过之后宽度为负，整笔被剔除。
+        /// </summary>
+        internal static RectTransform CreateVerticalBrushStroke(Transform parent, string name, Vector2 size, Vector2 position, Color color)
+        {
+            GameObject stroke = ZombieModeUIHelper.CreateRect(name, parent, new Vector2(0.5f, 0.5f), size);
+            RectTransform rect = stroke.GetComponent<RectTransform>();
+            rect.anchoredPosition = position;
+            Image image = stroke.AddComponent<Image>();
+            image.sprite = GetVerticalBrushSprite();
+            image.type = Image.Type.Sliced;
+            image.pixelsPerUnitMultiplier = 64f / Mathf.Max(4f, size.x);
+            image.color = color;
+            image.raycastTarget = false;
+            return rect;
+        }
+
         /// <summary>白文朱印：朱砂印底 + 宣纸色字。一字或两字横排，四字两行。</summary>
         internal static RectTransform CreateSeal(Transform parent, string zh, float size)
         {
             GameObject seal = ZombieModeUIHelper.CreateRect("InkSeal", parent, new Vector2(0.5f, 0.5f), new Vector2(size, size));
+            // 印章、墨环都是叠在内容上的装饰：父物体带 LayoutGroup 时不能被当成一行排进去。
+            seal.AddComponent<LayoutElement>().ignoreLayout = true;
             Image image = seal.AddComponent<Image>();
             image.sprite = GetSealSprite();
             image.type = Image.Type.Simple;
             image.color = BossRushInkColors.Cinnabar;
             image.raycastTarget = false;
             string text = zh ?? string.Empty;
-            if (text.Length == 4) text = text.Substring(0, 2) + "\n" + text.Substring(2, 2);
-            float glyph = text.Length <= 1 ? size * 0.56f : (text.Contains("\n") ? size * 0.30f : size * 0.34f);
+            if (text.Length == 4 && !BossRushInkWidgets.IsMostlyLatin(text)) text = text.Substring(0, 2) + "\n" + text.Substring(2, 2);
+            float glyph = text.Length <= 1 ? size * 0.56f : (text.Contains("\n") ? size * 0.30f : (BossRushInkWidgets.IsMostlyLatin(text) ? size * 0.24f : size * 0.34f));
             TextMeshProUGUI label = ZombieModeUIHelper.CreateText("SealText", seal.transform, text, glyph,
                 Vector2.zero, new Vector2(size * 0.86f, size * 0.86f), TextAlignmentOptions.Center, BossRushInkColors.Paper);
             label.fontStyle = FontStyles.Bold;
             label.enableWordWrapping = false;
+            label.enableAutoSizing = true;
+            label.fontSizeMin = Mathf.Max(9f, glyph * 0.55f);
+            label.fontSizeMax = glyph;
             label.lineSpacing = -18f;
             label.characterSpacing = text.Length == 2 ? -4f : 0f;
             return seal.GetComponent<RectTransform>();
@@ -646,9 +719,9 @@ namespace BossRush
 
         /// <summary>
         /// 落印：印从 1.7 倍快速按下到 1（缓出、不回弹），落定时外圈一道朱色墨环散开、
-        /// <paramref name="shake"/> 轻震一下，配印泥声。
+        /// <paramref name="shake"/> 轻震一下，配印泥声（同一帧落一批印时只让第一枚 <paramref name="playSfx"/>）。
         /// </summary>
-        internal static void StampSeal(RectTransform seal, RectTransform shake, float delay)
+        internal static void StampSeal(RectTransform seal, RectTransform shake, float delay, bool playSfx = true)
         {
             if (seal == null) return;
             BossRushInkMotion motion = BossRushInkMotion.For(seal.gameObject);
@@ -664,8 +737,10 @@ namespace BossRush
             }, () =>
             {
                 if (seal == null) return;
-                PlaySfx(SfxSealStamp);
-                SpawnRing(seal.parent, seal.anchoredPosition, seal.sizeDelta.x * 1.1f, BossRushInkColors.Cinnabar, 0.4f, 1.7f, 0.42f);
+                if (playSfx) PlaySfx(SfxSealStamp);
+                Image sealImage = seal.GetComponent<Image>();
+                Color ringColor = sealImage != null && sealImage.color.a > 0.05f ? sealImage.color : BossRushInkColors.Cinnabar;
+                SpawnRing(seal.parent, CenterInParent(seal), seal.sizeDelta.x * 1.1f, ringColor, 0.42f, 1.7f, 0.42f);
                 if (shake != null)
                 {
                     Vector2 origin = shake.anchoredPosition;
@@ -679,11 +754,24 @@ namespace BossRush
             });
         }
 
+        /// <summary>
+        /// <paramref name="rect"/> 的实际中心，换算成父物体里「中心锚点」的 anchoredPosition（<see cref="SpawnRing"/> 用的坐标）。
+        /// 印章挂在角锚点上时（成就卡、弹窗、邸报）它的 anchoredPosition 不是这个坐标，直接拿去放墨环会炸到卡片中部。
+        /// </summary>
+        internal static Vector2 CenterInParent(RectTransform rect)
+        {
+            if (rect == null) return Vector2.zero;
+            Vector2 center = (Vector2)rect.localPosition + (Vector2)(rect.localRotation * (Vector3)rect.rect.center);
+            RectTransform parent = rect.parent as RectTransform;
+            return parent != null ? center - parent.rect.center : center;
+        }
+
         /// <summary>在 <paramref name="parent"/> 下放一圈散开的墨环（只做表现，结束自毁）。</summary>
         internal static void SpawnRing(Transform parent, Vector2 position, float size, Color color, float alpha, float growTo, float seconds)
         {
             if (parent == null) return;
             GameObject ringObject = ZombieModeUIHelper.CreateRect("InkRing", parent, new Vector2(0.5f, 0.5f), new Vector2(size, size));
+            ringObject.AddComponent<LayoutElement>().ignoreLayout = true;
             RectTransform ring = ringObject.GetComponent<RectTransform>();
             ring.anchoredPosition = position;
             Image image = ringObject.AddComponent<Image>();
@@ -911,6 +999,7 @@ namespace BossRush
             DestroySprite(ref fiberSprite);
             DestroySprite(ref frameSprite);
             DestroySprite(ref brushSprite);
+            DestroySprite(ref verticalBrushSprite);
             DestroySprite(ref sealSprite);
             DestroySprite(ref blotSprite);
             DestroySprite(ref ringSprite);

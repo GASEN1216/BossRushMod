@@ -588,20 +588,25 @@ namespace BossRush
             LayoutElement factorContainerLE = factorContainer.AddComponent<LayoutElement>();
             factorContainerLE.preferredWidth = 180f;
 
-            Button buttonPrefab = GameplayDataSettings.UIPrefabs.Button;
             string bossName = preset.name;
 
-            // 左箭头按钮 <
-            if (buttonPrefab != null)
-            {
-                Button leftBtn = UnityEngine.Object.Instantiate(buttonPrefab, factorContainer.transform);
-                LayoutElement leftLE = leftBtn.gameObject.AddComponent<LayoutElement>();
-                leftLE.preferredWidth = 30f;
-                leftLE.preferredHeight = 30f;
-                TextMeshProUGUI leftTxt = leftBtn.GetComponentInChildren<TextMeshProUGUI>();
-                if (leftTxt != null) leftTxt.text = "<";
-                leftBtn.onClick.AddListener(() => DecreaseBossFactor(bossName));
-            }
+            // 左箭头按钮 <（走共享水墨次级按钮，不再克隆官方 Prefab）
+            Button leftBtn = ZombieModeUIHelper.CreateButton(
+                "DecreaseFactor",
+                factorContainer.transform,
+                "<",
+                new Vector2(0.5f, 0.5f),
+                Vector2.zero,
+                new Vector2(30f, 30f),
+                BossRushUIColors.SurfaceRaised,
+                16f,
+                new Vector2(24f, 24f),
+                () => DecreaseBossFactor(bossName),
+                true);
+            BossRushUIKit.StyleSecondaryButton(leftBtn);
+            LayoutElement leftLE = leftBtn.gameObject.AddComponent<LayoutElement>();
+            leftLE.preferredWidth = 30f;
+            leftLE.preferredHeight = 30f;
 
             // 因子等级文本
             GameObject factorTextObj = new GameObject("FactorText");
@@ -616,16 +621,22 @@ namespace BossRush
             factorTextLE.preferredWidth = 100f;
 
             // 右箭头按钮 >
-            if (buttonPrefab != null)
-            {
-                Button rightBtn = UnityEngine.Object.Instantiate(buttonPrefab, factorContainer.transform);
-                LayoutElement rightLE = rightBtn.gameObject.AddComponent<LayoutElement>();
-                rightLE.preferredWidth = 30f;
-                rightLE.preferredHeight = 30f;
-                TextMeshProUGUI rightTxt = rightBtn.GetComponentInChildren<TextMeshProUGUI>();
-                if (rightTxt != null) rightTxt.text = ">";
-                rightBtn.onClick.AddListener(() => IncreaseBossFactor(bossName));
-            }
+            Button rightBtn = ZombieModeUIHelper.CreateButton(
+                "IncreaseFactor",
+                factorContainer.transform,
+                ">",
+                new Vector2(0.5f, 0.5f),
+                Vector2.zero,
+                new Vector2(30f, 30f),
+                BossRushUIColors.SurfaceRaised,
+                16f,
+                new Vector2(24f, 24f),
+                () => IncreaseBossFactor(bossName),
+                true);
+            BossRushUIKit.StyleSecondaryButton(rightBtn);
+            LayoutElement rightLE = rightBtn.gameObject.AddComponent<LayoutElement>();
+            rightLE.preferredWidth = 30f;
+            rightLE.preferredHeight = 30f;
 
             bossFactorSelectors[preset.name] = selectorObj;
         }
@@ -750,63 +761,42 @@ namespace BossRush
         /// </summary>
         private void CreateScrollView(Transform parent)
         {
-            // 尝试使用官方 ScrollRect prefab
-            ScrollRect scrollRectPrefab = GameplayDataSettings.UIPrefabs.ScrollRect;
+            // 纯共享水墨滚动视口（RectMask2D + BossRushUI.ConfigureScrollRect，不再混用官方 ScrollRect 灰底框）
+            GameObject scrollViewObj = new GameObject("BossScrollView");
+            scrollViewObj.transform.SetParent(parent, false);
+            ScrollRect scrollRect = scrollViewObj.AddComponent<ScrollRect>();
 
-            GameObject scrollViewObj;
-            ScrollRect scrollRect;
+            GameObject viewport = new GameObject("Viewport");
+            viewport.transform.SetParent(scrollViewObj.transform, false);
+            viewport.AddComponent<RectMask2D>();
+            RectTransform vpRect = viewport.GetComponent<RectTransform>();
+            vpRect.anchorMin = Vector2.zero;
+            vpRect.anchorMax = Vector2.one;
+            vpRect.offsetMin = Vector2.zero;
+            vpRect.offsetMax = Vector2.zero;
+            scrollRect.viewport = vpRect;
 
-            if (scrollRectPrefab != null)
-            {
-                // 使用官方 prefab
-                scrollRect = UnityEngine.Object.Instantiate(scrollRectPrefab, parent);
-                scrollViewObj = scrollRect.gameObject;
-                scrollViewObj.name = "BossScrollView";
-            }
-            else
-            {
-                // 回退：手动创建
-                scrollViewObj = new GameObject("BossScrollView");
-                scrollViewObj.transform.SetParent(parent, false);
-                scrollRect = scrollViewObj.AddComponent<ScrollRect>();
+            GameObject content = new GameObject("Content");
+            content.transform.SetParent(viewport.transform, false);
+            bossPoolContent = content.AddComponent<RectTransform>();
+            bossPoolContent.anchorMin = new Vector2(0f, 1f);
+            bossPoolContent.anchorMax = new Vector2(1f, 1f);
+            bossPoolContent.pivot = new Vector2(0.5f, 1f);
+            bossPoolContent.anchoredPosition = Vector2.zero;
 
-                // 创建 Viewport
-                GameObject viewport = new GameObject("Viewport");
-                viewport.transform.SetParent(scrollViewObj.transform, false);
-                Image vpImage = viewport.AddComponent<Image>();
-                vpImage.color = BossRushUIColors.Surface;
-                Mask mask = viewport.AddComponent<Mask>();
-                mask.showMaskGraphic = true;
-                RectTransform vpRect = viewport.GetComponent<RectTransform>();
-                vpRect.anchorMin = Vector2.zero;
-                vpRect.anchorMax = Vector2.one;
-                vpRect.offsetMin = Vector2.zero;
-                vpRect.offsetMax = Vector2.zero;
-                scrollRect.viewport = vpRect;
+            VerticalLayoutGroup vlg = content.AddComponent<VerticalLayoutGroup>();
+            vlg.spacing = 6f;
+            vlg.padding = new RectOffset(10, 22, 10, 10);
+            vlg.childAlignment = TextAnchor.UpperLeft;
+            vlg.childForceExpandWidth = true;
+            vlg.childForceExpandHeight = false;
+            vlg.childControlWidth = true;
+            vlg.childControlHeight = true;
 
-                // 创建 Content
-                GameObject content = new GameObject("Content");
-                content.transform.SetParent(viewport.transform, false);
-                bossPoolContent = content.AddComponent<RectTransform>();
-                bossPoolContent.anchorMin = new Vector2(0f, 1f);
-                bossPoolContent.anchorMax = new Vector2(1f, 1f);
-                bossPoolContent.pivot = new Vector2(0.5f, 1f);
-                bossPoolContent.anchoredPosition = Vector2.zero;
+            ContentSizeFitter csf = content.AddComponent<ContentSizeFitter>();
+            csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-                VerticalLayoutGroup vlg = content.AddComponent<VerticalLayoutGroup>();
-                vlg.spacing = 5f;
-                vlg.padding = new RectOffset(10, 10, 10, 10);
-                vlg.childAlignment = TextAnchor.UpperLeft;
-                vlg.childForceExpandWidth = true;
-                vlg.childForceExpandHeight = false;
-                vlg.childControlWidth = true;
-                vlg.childControlHeight = true;
-
-                ContentSizeFitter csf = content.AddComponent<ContentSizeFitter>();
-                csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-                scrollRect.content = bossPoolContent;
-            }
+            scrollRect.content = bossPoolContent;
 
             // 设置 ScrollRect 位置和大小
             RectTransform scrollRectTransform = scrollViewObj.GetComponent<RectTransform>();
@@ -815,49 +805,12 @@ namespace BossRush
             scrollRectTransform.offsetMin = new Vector2(10f, 100f);
             scrollRectTransform.offsetMax = new Vector2(-10f, -100f);
 
-            // 滚动手感走共享口径（UB-27：旧版灵敏度 0.5，滚轮一格几乎不动）：纵向、Clamped、灵敏度 32、空白处也能滚
+            // 滚动手感走共享口径：纵向、Clamped、灵敏度 32、空白处也能滚、共享自动显隐滚动条
             BossRushUI.ConfigureScrollRect(scrollRect);
-            scrollRect.inertia = true;  // 启用惯性
-            scrollRect.decelerationRate = 0.135f;  // 惯性减速率
+            scrollRect.inertia = true;
+            scrollRect.decelerationRate = 0.135f;
 
-            // 保存 ScrollRect 引用，用于后续重置滚动位置
             bossPoolScrollRect = scrollRect;
-
-            // 如果使用了官方 prefab，需要找到或创建 Content
-            if (scrollRectPrefab != null)
-            {
-                bossPoolContent = scrollRect.content;
-                if (bossPoolContent == null)
-                {
-                    // 创建 Content
-                    GameObject content = new GameObject("Content");
-                    content.transform.SetParent(scrollRect.viewport != null ? scrollRect.viewport : scrollViewObj.transform, false);
-                    bossPoolContent = content.AddComponent<RectTransform>();
-                    bossPoolContent.anchorMin = new Vector2(0f, 1f);
-                    bossPoolContent.anchorMax = new Vector2(1f, 1f);
-                    bossPoolContent.pivot = new Vector2(0.5f, 1f);
-                    scrollRect.content = bossPoolContent;
-                }
-
-                // 确保有布局组件
-                if (bossPoolContent.GetComponent<VerticalLayoutGroup>() == null)
-                {
-                    VerticalLayoutGroup vlg = bossPoolContent.gameObject.AddComponent<VerticalLayoutGroup>();
-                    vlg.spacing = 5f;
-                    vlg.padding = new RectOffset(10, 10, 10, 10);
-                    vlg.childAlignment = TextAnchor.UpperLeft;
-                    vlg.childForceExpandWidth = true;
-                    vlg.childForceExpandHeight = false;
-                    vlg.childControlWidth = true;
-                    vlg.childControlHeight = true;
-                }
-
-                if (bossPoolContent.GetComponent<ContentSizeFitter>() == null)
-                {
-                    ContentSizeFitter csf = bossPoolContent.gameObject.AddComponent<ContentSizeFitter>();
-                    csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-                }
-            }
         }
 
         /// <summary>

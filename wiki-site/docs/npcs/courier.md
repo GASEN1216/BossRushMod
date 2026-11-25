@@ -6,6 +6,17 @@
 
 ## 他能帮你啥？
 
+<div class="brs-gallery">
+
+![阿稳快递牌](/images/scenes/sc-awen-token.webp)
+*阿稳快递牌*
+
+![阿稳扫箱令](/images/scenes/sc-awen-sweep.webp)
+*阿稳扫箱令*
+
+</div>
+
+
 - **快递服务** — 把物品扔进快递箱，付运费送回家
 - **一键存入** — 背包里的东西一键全塞进快递箱（锁定格自动跳过）
 - **物品寄存** — 存入寄存点，跨场景保存，换地图也不丢

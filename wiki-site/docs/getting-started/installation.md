@@ -9,6 +9,20 @@
 - 3. 一键 **订阅**
 - 4. 启动游戏，Mod 自动加载，完事
 
+<div class="brs-gallery">
+
+![BossRush 船票](/images/scenes/sc-bossrush-ticket.webp)
+*BossRush 船票*
+
+![冒险家日志](/images/scenes/sc-adventure-journal.webp)
+*冒险家日志*
+
+![鸭皇图鉴](/images/icons/codex-book.webp)
+*鸭皇图鉴*
+
+</div>
+
+
 ## 怎么知道装上了？
 
 进游戏后看三个地方，有一个对上就说明没问题：

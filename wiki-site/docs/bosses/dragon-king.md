@@ -1,5 +1,13 @@
 # 焚天龙皇
 
+<div class="brs-icon">
+
+![焚天龙皇](/images/codex/boss-dragonking.webp)
+*焚天龙皇*
+
+</div>
+
+
 ## 概述
 焚天龙皇是本 Mod 中最强的自定义 Boss。它悬浮在空中，拥有 7 种攻击技能和双阶段战斗机制。击败它可以获得 Mod 中最顶级的装备，包括龙王套装、腾云驾雾图腾、逆鳞和焚皇断界戟。
 
@@ -70,6 +78,29 @@
 :::
 
 ## 掉落物
+
+<div class="brs-gallery">
+
+![龙王之冕（头盔）](/images/scenes/sc-dragon-king-helm.webp)
+*龙王之冕（头盔）*
+
+![龙王鳞铠（护甲）](/images/scenes/sc-dragon-king-armor.webp)
+*龙王鳞铠（护甲）*
+
+![焚皇断界戟](/images/scenes/sc-halberd.webp)
+*焚皇断界戟*
+
+![焚天龙铳](/images/scenes/sc-dragon-cannon.webp)
+*焚天龙铳*
+
+![腾云驾雾图腾](/images/scenes/sc-flight-totem.webp)
+*腾云驾雾图腾*
+
+![逆鳞](/images/scenes/sc-reverse-scale.webp)
+*逆鳞*
+
+</div>
+
 
 击杀后从以下 6 件中**加权随机一件**（不是各自独立判定）。无间炼狱没有战利品箱，这一件会直接掉在龙皇倒下的地方：
 

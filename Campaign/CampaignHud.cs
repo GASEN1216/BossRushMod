@@ -194,6 +194,10 @@ namespace BossRush
             _flashElapsed = 0f;
             _flash.enabled = true;
             StepFlash(0f);
+            if (_panel != null && BossRushInkTheme.Active)
+            {
+                BossRushInkSkin.SpawnRing(_panel.transform, Vector2.zero, 110f, BossRushInkColors.Gold, 0.5f, 1.9f, 0.45f);
+            }
         }
 
         /// <summary>闪光推进：SmoothStep 从峰值落到 0，播完关掉 Image。</summary>
@@ -317,6 +321,14 @@ namespace BossRush
                 _titleText.fontStyle = FontStyles.Bold;
                 _titleText.raycastTarget = false;
                 BossRushUI.ApplyGameFont(_titleText);
+                RectTransform titleBrush = BossRushInkSkin.CreateBrushStroke(
+                    _panel.transform, "TitleBrush", new Vector2(160f, 4f),
+                    new Vector2(12f, -38f), BossRushInkColors.Gold);
+                if (titleBrush != null)
+                {
+                    titleBrush.anchorMin = titleBrush.anchorMax = new Vector2(0f, 1f);
+                    titleBrush.pivot = new Vector2(0f, 0.5f);
+                }
 
                 _bodyText = ZombieModeUIHelper.CreateText(
                     "Body", _panel.transform, string.Empty, 15f,

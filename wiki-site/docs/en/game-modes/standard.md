@@ -1,5 +1,13 @@
 # Standard BossRush
 
+<div class="brs-figure">
+
+![DEMO Ultimate Challenge arena](/images/scenes/map-preview-demo.webp)
+*DEMO Ultimate Challenge arena*
+
+</div>
+
+
 ## How It Plays
 
 The bread-and-butter mode. Buy a ticket, pick a map, walk into the arena, choose your difficulty at the signpost, and start fighting Bosses. Kill 'em all, grab your loot, and evacuate.

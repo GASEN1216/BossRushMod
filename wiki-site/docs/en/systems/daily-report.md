@@ -1,5 +1,13 @@
 # The Duckov Daily
 
+<div class="brs-icon">
+
+![The Mailbox](/images/icons/daily-mailbox.webp)
+*The Mailbox*
+
+</div>
+
+
 ## Overview
 
 The Duckov Daily is a newspaper delivered to your base automatically, one issue per game day,
@@ -15,14 +23,6 @@ Fortunes and gossip are flavor text. They grant no hidden stats and do not unloc
 - Walk up to it and you'll see the interact option `Read today's paper`.
 - That opens the full newspaper panel.
 
-<div class="brs-icon">
-
-![The Mailbox](/images/icons/daily-mailbox.webp)
-*The Mailbox*
-
-</div>
-
-
 ## How long is a day
 
 - One game day is roughly `24` minutes of real time (the in-game clock runs 60x).
@@ -35,6 +35,14 @@ Fortunes and gossip are flavor text. They grant no hidden stats and do not unloc
   the next issue is.
 
 ## What's in an issue
+
+<div class="brs-figure">
+
+![The Duckov Daily newspaper layout](/images/scenes/daily-paper-bg.webp)
+*The Duckov Daily newspaper layout*
+
+</div>
+
 
 - **Front-page headline**: picked automatically from what you did yesterday. Killing a boss,
   wiping out dozens of enemies, dying repeatedly, or making a lot of money each get their own

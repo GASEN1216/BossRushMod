@@ -16,9 +16,12 @@ Armor 7 / Durability 200 / Physical damage taken -20% / Storm +1 / Cold +1 / Fir
 
 ### Set Effect (Both Equipped)
 
+#### Passive: Fire Refund
 - **Fire refund** — Fire damage still hits you first; a frame later you get back 80% of the fire portion as healing. Net loss is roughly 20%, not zero
 - Burning (the DoT debuff) is untouched by this: if you're on fire, you're still on fire
 - **Dragon Eye** — Red breathing glow on your head (cosmetic)
+
+#### Active: Dragon Dash
 - **Dash** — Double-tap direction key, 3m distance, 1.5s cooldown, orange-red afterimage. Pure repositioning, no invincibility frames: you can still get hit mid-dash
 
 [tip] Dash can be disabled in config (`enableDragonDash`).

@@ -6,6 +6,17 @@ The Dragon Set, but **better in every way**. Dropped by Skyburner Dragon Lord. K
 
 ## Pieces
 
+<div class="brs-gallery">
+
+![Dragon King's Crown](/images/scenes/sc-dragon-king-helm.webp)
+*Dragon King's Crown*
+
+![Dragon King's Scale Mail](/images/scenes/sc-dragon-king-armor.webp)
+*Dragon King's Scale Mail*
+
+</div>
+
+
 ### Dragon King's Crown
 Armor 7 / Durability 200 / Physical damage taken -15% / Storm +1 / Cold +1 / Gun Crit Dmg **+15%** / Fire damage taken -20% / Shock damage taken -20%
 - Drop: Dragon Lord (15%)

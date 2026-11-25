@@ -1,5 +1,13 @@
 # 词缀锻造
 
+<div class="brs-icon">
+
+![词缀熔石](/images/icons/forge-stone.webp)
+*词缀熔石*
+
+</div>
+
+
 ## 概述
 
 重铸改的是**数值**：多几点护甲、多一点射速。词缀锻造改的是**行为**：
@@ -31,14 +39,6 @@
 所以「稀有档的 T3」大约是 `3%` 的事，「诅咒档的 T3」不到 `1%`。
 下面表里给的是 **T1 / T2 / T3** 三个档的数值，你抽到的多半是最左边那个。
 
-<div class="brs-icon">
-
-![词缀熔石](/images/icons/forge-stone.webp)
-*词缀熔石*
-
-</div>
-
-
 ## 熔石哪来
 
 - **叮当商店** — 好感度 **Lv.10** 才上架，每次刷新最多 5 颗；前期主要靠挑战 BossRush 获取。
@@ -55,6 +55,26 @@
 
 ### 普通档（5 条）
 
+<div class="brs-gallery">
+
+![吸血](/images/scenes/affix-lifesteal.webp)
+*吸血*
+
+![嗜血收割](/images/scenes/affix-slaughter.webp)
+*嗜血收割*
+
+![壁垒](/images/scenes/affix-bulwark.webp)
+*壁垒*
+
+![疾手](/images/scenes/affix-swifthand.webp)
+*疾手*
+
+![反伤棘刺](/images/scenes/affix-thorns.webp)
+*反伤棘刺*
+
+</div>
+
+
 - **汲血**（武器）— 命中敌人回复最大生命的 `0.6% / 1.0% / 1.5%`，打死敌人的那一下也算，冷却 0.4 秒。
   霰弹一次开火只算一次，别指望一枪回满。
 - **屠戮**（全部）— 击杀回复最大生命的 `3% / 5% / 8%`。没有冷却，清杂兵时的续航很舒服。
@@ -65,6 +85,23 @@
 
 ### 稀有档（4 条）
 
+<div class="brs-gallery">
+
+![亡爆（稀有）](/images/scenes/affix-deathburst.webp)
+*亡爆（稀有）*
+
+![狂热（稀有）](/images/scenes/affix-frenzy.webp)
+*狂热（稀有）*
+
+![鹰眼（稀有）](/images/scenes/affix-hawkeye.webp)
+*鹰眼（稀有）*
+
+![超载电弧（稀有）](/images/scenes/affix-overcharge.webp)
+*超载电弧（稀有）*
+
+</div>
+
+
 - **殉爆**（全部）— 击杀时引爆尸体，`35 / 55 / 80` 点火焰伤害，半径 `2.5 / 3.0 / 3.5` 米。
   **不会伤到你自己**，可以贴脸炸。
 - **狂潮**（全部）— 击杀后 6 秒内射速与机动性各 `+4% / +6% / +9%`，最多叠 5 层。
@@ -73,6 +110,20 @@
 - **灌能**（武器）— 命中时追加一次电击，伤害为本次实际伤害的 `12% / 20% / 30%`，冷却 0.25 秒。
 
 ### 诅咒档（3 条，强力但有代价）
+
+<div class="brs-gallery">
+
+![血怒（诅咒）](/images/scenes/affix-bloodrage.webp)
+*血怒（诅咒）*
+
+![玻璃大炮（诅咒）](/images/scenes/affix-glasscannon.webp)
+*玻璃大炮（诅咒）*
+
+![死契（诅咒）](/images/scenes/affix-deathpact.webp)
+*死契（诅咒）*
+
+</div>
+
 
 三条都能打在任何支持的装备上，效果也都是常驻的，只要拿着或穿着就在生效。
 

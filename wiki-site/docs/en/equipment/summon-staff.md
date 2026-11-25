@@ -1,5 +1,13 @@
 # Summoning Staff
 
+<div class="brs-icon">
+
+![Summoning Staff](/images/scenes/sc-summon-staff.webp)
+*Summoning Staff*
+
+</div>
+
+
 ## Role
 
 A **summoner melee staff** with modest personal damage, but its right-click drops 3 soul warriors straight into the enemy pack **6m ahead of your aim**. They soak fire, and when they fade or fall they detonate on the spot. The skill is in where and when you throw them, not in pressing right-click for three more bodies.

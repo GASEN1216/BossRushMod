@@ -266,6 +266,7 @@ namespace BossRush
                 fadeGroup.Show();
             }
 
+            PlayWishInkOpen();
             AdjustPanelForResolution();
             RefreshDanmakuDisplay();
             StartCoroutine(FocusInputFieldNextFrame());
@@ -405,8 +406,6 @@ namespace BossRush
             panelLayout.childControlWidth = true;
             panelLayout.childForceExpandHeight = false;
             panelLayout.childForceExpandWidth = true;
-
-            AddTopTrace(panelRect);   // 顶边左段 Accent 细线，代替全宽 4px 亮天蓝条（UD-19）
 
             GameObject headerBlock = CreateUIObject("HeaderBlock", panelRect, typeof(VerticalLayoutGroup));
             RectTransform headerRect = headerBlock.GetComponent<RectTransform>();
@@ -578,7 +577,7 @@ namespace BossRush
             GameObject statusCard = CreateUIObject("StatusCard", contentCardRect);
             RectTransform statusCardRect = statusCard.GetComponent<RectTransform>();
             SetPreferredHeight(statusCardRect, 48f);
-            statusRail = CreateStatusRail(statusCardRect);
+            CreateStatusRail(statusCardRect);
 
             statusText = CreateText("StatusText", statusCardRect, defaultFont, BODY_FONT_SIZE, FontStyles.Normal, TextAlignmentOptions.Left);
             statusText.enableWordWrapping = true;
@@ -917,6 +916,8 @@ namespace BossRush
             if (titleText != null)
             {
                 titleText.text = L10n.T("写下你的心愿", "Write Your Wish");
+                // 打开路径由 PlayWishInkOpen 在面板激活后算一次金笔（未激活时量不准字宽）；这里只管开着时切语言。
+                if (open) RefreshWishTitleStroke();
             }
 
             RefreshConstellationTexts();

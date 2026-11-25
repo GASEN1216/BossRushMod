@@ -6,9 +6,40 @@ Found on seven Sky Islands chiefs, plus the Galebreaker Warden in Jeff's prelude
 
 ## At a Glance
 
-**The single piece each of seven chiefs wears**: the Old Mailbag comes from the Waylayer at the Upturned Post Hut, the Rainhush Earmuffs from the Rain Listener in the Rainlisten Grotto, the Mossgauze Mask from the Gnat Piper at Frogsong Pool and the Mirrorgrain Plate from the Mirror Guest at Mirrorwater Temple; the Galebreaker Mantle, Galebreaker Pack and Galebreaker Hood make up the Galebreaker set and come from the Galebreaker Chaser, Stalker and Warden holding the three return relay platforms. Worn, they give the game's usual pack capacity, hearing, head armor or body armor; on the isles each also has a use: an extra pigeon letter, longer chief warnings, gnats that stop dodging, reconciling with Zheling without the old letter or route chart, and any two Galebreaker pieces make you quicker on bridges. The Overlook Stargazer's lens helm is under "Starworks Gear".
+**Single signature pieces worn by seven Sky Islands chiefs:**
+- **The Waylayer** (Upturned Post Hut) -> **Old Mailbag** / **Rain Listener** (Rainlisten Grotto) -> **Rainhush Earmuffs**
+- **Gnat Piper** (Frogsong Pool, night) -> **Mossgauze Mask** / **Mirror Guest** (Mirrorwater Temple, night) -> **Mirrorgrain Plate**
+- **Galebreaker Chaser / Stalker / Warden** (K1 / K2 / K3 relay platforms) -> **Galebreaker Mantle / Pack / Hood**
+
+Worn on the islands they add utility (extra pigeon letter, longer boss telegraphs, non-dodging gnats, reconciling with Zheling directly, +12% speed on bridges/platforms with 2 Galebreaker pieces). Starfall Overlook's lens helm is on the **Starworks Gear** page.
 
 ## The Seven Pieces
+
+<div class="brs-gallery">
+
+![Old Mailbag](/images/scenes/sc-old-mailbag.webp)
+*Old Mailbag*
+
+![Rainhush Earmuffs](/images/scenes/sc-rainhush-earmuffs.webp)
+*Rainhush Earmuffs*
+
+![Mossgauze Mask](/images/scenes/sc-mossgauze-mask.webp)
+*Mossgauze Mask*
+
+![Mirrorgrain Plate](/images/scenes/sc-mirrorgrain-plate.webp)
+*Mirrorgrain Plate*
+
+![Galebreaker Hood](/images/scenes/sc-windbreak-hood.webp)
+*Galebreaker Hood*
+
+![Galebreaker Mantle](/images/scenes/sc-windbreak-mantle.webp)
+*Galebreaker Mantle*
+
+![Galebreaker Pack](/images/scenes/sc-windbreak-pack.webp)
+*Galebreaker Pack*
+
+</div>
+
 
 - **Old Mailbag** (backpack): quality 4, pack capacity +4, item ID 500093
 - **Rainhush Earmuffs** (headset): quality 4, Hearing +1, Sound Localization +1, durability 40, item ID 500097

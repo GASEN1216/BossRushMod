@@ -1,5 +1,13 @@
 # Dragon Descendant
 
+<div class="brs-icon">
+
+![Dragon Descendant](/images/codex/dragondescendant.webp)
+*Dragon Descendant*
+
+</div>
+
+
 ## Overview
 Dragon Descendant is the first custom boss in this mod, with two phases. Beat it for the Dragon Set and the Dragon's Breath gun; it's the first stop for custom boss loot.
 
@@ -41,6 +49,20 @@ After revival it enters a frenzied state with a completely new rhythm:
 - **Ice Vulnerability**: After taking cumulative ice damage equal to 10% of max HP, it's slowed for 10 seconds
 
 ## Drops
+
+<div class="brs-gallery">
+
+![Crimson Dragon Helm](/images/scenes/sc-dragon-helm.webp)
+*Crimson Dragon Helm*
+
+![Flame Scale Armor](/images/scenes/sc-dragon-armor.webp)
+*Flame Scale Armor*
+
+![Dragon's Breath](/images/scenes/sc-dragon-breath.webp)
+*Dragon's Breath*
+
+</div>
+
 
 **Exclusive equipment** - each kill drops **exactly one** of the three, weighted (not independent rolls):
 

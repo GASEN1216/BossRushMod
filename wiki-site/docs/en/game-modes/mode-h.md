@@ -1,5 +1,13 @@
 # Black Market Duck Cup
 
+<div class="brs-figure">
+
+![Black Market Duck Cup — Blue vs Red](/images/scenes/mode-cup-banner.webp)
+*Black Market Duck Cup — Blue vs Red*
+
+</div>
+
+
 ## How It Plays
 
 You don't fight. You bet.
@@ -28,10 +36,6 @@ Every match, two teams of bosses brawl at once: Blue on the left, Red on the rig
 - Don't like the draw? **"Redraw"** rerolls both teams, up to **3 times** per match; the button shows how many are left. The screen swaps in place instead of closing and reopening.
 - **Back a side**: pick "Blue Team xN" or "Red Team xN"; Blue is the default and your pick carries over between matches. The number is the payout for backing that team and depends only on the gap between the two total powers: the stronger team pays less, the weaker one more.
 - Pick a bet in the footer row, then hit **"Start Match"**. The side you back is locked in at that moment; changing it afterwards doesn't affect this match.
-
-::: tip
-The old "Adjust before the match" button (swap fighters, gear, calls) is gone: group fights have no prep step. Your only decisions are which team to back, and how much.
-:::
 
 ### The fight
 

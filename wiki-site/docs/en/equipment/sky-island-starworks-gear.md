@@ -6,9 +6,28 @@ The Starforge Foreman wears the full Starworks set and always leaves one piece: 
 
 ## At a Glance
 
-**The gear worn by the Starforge Foreman, island lord of the Fallen Star Workshop, and the Overlook Stargazer, chief of the Starfall Overlook**: the Starbrass Visor Helm, Starfurnace Harness and Starfurnace Pack come from the Foreman; the Stargazer's Lens Helm comes from the Stargazer. Worn, they give the game's usual head armor / body armor / pack capacity; on the isles each also has a use: any two Starworks pieces make Fuzhou's dock workbench take one less Brass Scrap, and the lens helm spots nearby enemies for you while you stand still.
+**Craftsman & lookout gear from Fallen Star Workshop and Starfall Overlook:**
+- **Starworks Set** (**Starbrass Visor Helm / Starfurnace Harness / Starfurnace Pack**) from **Starforge Foreman**: wearing any 2 cuts Brass Scrap cost by 1 at Fuzhou's dock workbench (for recipes needing 2+)
+- **Stargazer's Lens Helm** (30% drop from **Overlook Stargazer**): standing still for 2s marks all enemies within 40m for 4s (8s cooldown, requires durability)
 
 ## The Four Pieces
+
+<div class="brs-gallery">
+
+![Starbrass Visor Helm](/images/scenes/sc-starbrass-helm.webp)
+*Starbrass Visor Helm*
+
+![Starfurnace Harness](/images/scenes/sc-starfurnace-harness.webp)
+*Starfurnace Harness*
+
+![Starfurnace Pack](/images/scenes/sc-starfurnace-pack.webp)
+*Starfurnace Pack*
+
+![Stargazer's Lens Helm](/images/scenes/sc-stargazer-helm.webp)
+*Stargazer's Lens Helm*
+
+</div>
+
 
 - **Starbrass Visor Helm** (helmet): quality 5, Head Armor +3, durability 70, item ID 500086
 - **Starfurnace Harness** (body armor): quality 5, Body Armor +3, durability 100, item ID 500087

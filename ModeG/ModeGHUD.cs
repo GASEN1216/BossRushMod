@@ -201,11 +201,13 @@ namespace BossRush
             float width = CardWidth - TextInsetLeft - TextInsetRight;
             _barTrack = ZombieModeUIHelper.CreateRect("ModeG_ObjectiveTrack", card,
                 Vector2.zero, Vector2.zero, new Vector2(TextInsetLeft, TextInsetY),
-                new Vector2(width, BarHeight), Vector2.zero);
+                new Vector2(width, BarHeight + 2f), Vector2.zero);
             Image track = _barTrack.AddComponent<Image>();
+            track.sprite = BossRushInkSkin.GetSurfaceSprite();
+            track.type = Image.Type.Sliced;
+            track.pixelsPerUnitMultiplier = 2f;
             track.color = BossRushUIColors.Divider;
             track.raycastTarget = false;
-            BossRushUI.ApplyPanelSkin(track, 2, BossRushUISkinPart.Hairline);
 
             GameObject fill = ZombieModeUIHelper.CreateRect("ModeG_ObjectiveFill", _barTrack.transform,
                 Vector2.zero, new Vector2(0f, 1f), Vector2.zero, Vector2.zero, new Vector2(0f, 0.5f));
@@ -213,9 +215,10 @@ namespace BossRush
             _barFill.offsetMin = Vector2.zero;
             _barFill.offsetMax = Vector2.zero;
             _barFillImage = fill.AddComponent<Image>();
+            _barFillImage.sprite = BossRushInkSkin.GetBrushSprite();
+            _barFillImage.type = Image.Type.Simple;
             _barFillImage.color = BossRushUIColors.WarningText;
             _barFillImage.raycastTarget = false;
-            BossRushUI.ApplyPanelSkin(_barFillImage, 2, BossRushUISkinPart.Hairline);
             fill.SetActive(false);
             _barTrack.SetActive(false);
         }

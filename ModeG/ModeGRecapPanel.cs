@@ -193,6 +193,8 @@ namespace BossRush
                     BossRushUIColors.WarningText);
                 ModeGInteractable.MakeSurfaceOpaque(surface);
                 Transform st = surface.transform;
+                RectTransform stRect = surface.GetComponent<RectTransform>();
+                BossRushInkSkin.PlaySfx(victory ? BossRushInkSkin.SfxPaperTurn : BossRushInkSkin.SfxBrushSweep);
 
                 // 标题：胜利金色、失败红色，左侧 Mode G 徽记
                 float cursor = PadTop;
@@ -200,6 +202,12 @@ namespace BossRush
                     victory ? L10n.T("BossRush_ModeG_Recap_VictoryTitle") : L10n.T("BossRush_ModeG_Recap_DefeatTitle"),
                     32f, victory ? BossRushUIColors.WarningText : BossRushUIColors.DangerText,
                     ContentWidth, EmblemSize) + 4f;
+                // cursor 从面板顶边往下量：金笔锚在顶边中央（照 ModeGInteractable 的分隔笔）。
+                RectTransform titleBrush = BossRushInkSkin.CreateBrushStroke(
+                    st, "TitleBrush", new Vector2(280f, 6f), new Vector2(0f, -(cursor - 1f)),
+                    victory ? BossRushInkColors.Gold : BossRushInkColors.Cinnabar);
+                titleBrush.anchorMin = titleBrush.anchorMax = new Vector2(0.5f, 1f);
+                cursor += 6f;
 
                 // 概要：第 X/9 波 · Resolve Y/11（± 新纪录）
                 int wave = module.State != null ? module.State.waveEpoch + 1 : 0;
@@ -255,6 +263,28 @@ namespace BossRush
                 cursor += CloseButtonSize.y + PadBottom;
 
                 surface.GetComponent<RectTransform>().sizeDelta = new Vector2(PanelWidth, Mathf.Ceil(cursor));
+                RectTransform seal = BossRushInkWidgets.CreateSealBadge(
+                    stRect,
+                    victory ? L10n.T("凯旋", "VICTORY") : L10n.T("饮恨", "FALLEN"),
+                    78f,
+                    victory ? BossRushInkColors.Gold : BossRushInkColors.Cinnabar,
+                    Vector2.zero,
+                    -9f,
+                    true,
+                    stRect,
+                    0.14f,
+                    victory ? (Color?)BossRushInkColors.InkWash : null);
+                if (seal != null)
+                {
+                    seal.anchorMin = seal.anchorMax = new Vector2(1f, 1f);
+                    seal.anchoredPosition = new Vector2(-62f, -58f);
+                }
+                if (victory)
+                {
+                    BossRushInkEmberField embers = BossRushInkWidgets.AttachEmberField(
+                        stRect, BossRushInkColors.Gold, BossRushInkColors.Ember, true, 10, 0.16f);
+                    if (embers != null) embers.SpawnBurst(8);
+                }
                 BossRushUI.PlayOpenAnimation(surface);
 
                 // 自动关闭（不阻塞官方死亡/回城流程）

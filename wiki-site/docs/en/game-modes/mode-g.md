@@ -1,5 +1,13 @@
 # Fate Echo
 
+<div class="brs-figure">
+
+![Fate Echo — Three-Act Adaptive Arena](/images/scenes/mode-fate-banner.webp)
+*Fate Echo — Three-Act Adaptive Arena*
+
+</div>
+
+
 ## How It Plays
 
 Fate Echo is a nine-wave challenge that **remembers how you fight**. Bring your own weapons and supplies into the arena. The run samples your range, ammo, and damage style, then turns those habits into the next questions. You can brute-force the counter, or change your approach and convert the break into Resolve.
@@ -27,6 +35,14 @@ The fixed Boss count is **1 / 2 / 1 Nemesis / 1 / 3 / 1 Nemesis / 1 / 3 / 1 Neme
 Normal intermissions last 8 seconds. Intermissions after waves 3 and 6 last 20 seconds. The wave plan is frozen at run start and does not change mid-run.
 
 ## Three Counter Axes
+
+<div class="brs-figure">
+
+![Fate Echo 9-wave counter axes and Resolve reward cycle](/images/diagrams/mode_g_counter_en.webp)
+*Fate Echo 9-wave counter axes and Resolve reward cycle*
+
+</div>
+
 
 The axis schedule repeats across the run:
 

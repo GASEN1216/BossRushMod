@@ -207,14 +207,11 @@ namespace BossRush
                 _fireValue = CreateLine("FireValue", card.transform, 13f, TextAlignmentOptions.MidlineRight,
                     BossRushUIColors.TextPrimary, CardWidth - PadRight, 49f, inner * 0.5f, 23f, true);
 
-                // 进度条：细轨 + 圆角填充，填充长度由 anchorMax.x 驱动（Filled 配不了九宫格圆角，方头会戳出轨道）。
+                // 进度条：墨槽 + 水墨笔触填充，填充长度由 anchorMax.x 驱动
                 GameObject track = ZombieModeUIHelper.CreateRect("FireTrack", card.transform,
                     new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(PadLeft, -BarTop),
-                    new Vector2(inner, BarHeight), new Vector2(0f, 1f));
+                    new Vector2(inner, BarHeight + 2f), new Vector2(0f, 1f));
                 Image trackImage = track.AddComponent<Image>();
-                trackImage.color = BossRushUIColors.Divider;
-                trackImage.raycastTarget = false;
-                BossRushUI.ApplyPanelSkin(trackImage, 3, BossRushUISkinPart.Hairline);
 
                 GameObject fill = ZombieModeUIHelper.CreateRect("FireFill", track.transform,
                     Vector2.zero, new Vector2(0f, 1f), Vector2.zero, Vector2.zero, new Vector2(0f, 0.5f));
@@ -222,9 +219,8 @@ namespace BossRush
                 _barFill.offsetMin = Vector2.zero;
                 _barFill.offsetMax = Vector2.zero;
                 _barFillImage = fill.AddComponent<Image>();
-                _barFillImage.color = BossRushUIColors.WarningText;
-                _barFillImage.raycastTarget = false;
-                BossRushUI.ApplyPanelSkin(_barFillImage, 3, BossRushUISkinPart.Hairline);
+                BossRushInkWidgets.StyleInkBarPair(
+                    trackImage, _barFillImage, BossRushUIColors.Divider, BossRushUIColors.WarningText);
                 fill.SetActive(false);
                 _barShown = 0f;
                 _barTarget = 0f;

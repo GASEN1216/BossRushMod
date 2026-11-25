@@ -56,6 +56,7 @@ namespace BossRush
         private TextMeshProUGUI hintText;
         private Image winnerGlowImage;
         private Image flashImage;
+        private BossRushInkEmberField stageEmbers;
         private bool skipRequested;
         private bool revealStarted;
         private float revealElapsed;
@@ -189,6 +190,7 @@ namespace BossRush
             if (titleText != null)
             {
                 titleText.text = L10n.T("获得", "You Got");
+                BossRushInkWidgets.AddLeftOrAlignedStroke(titleText, qualityColor, 8f, true);
                 BossRushUIEntranceAnimation.Play(titleText.gameObject, 0f, 0.2f, 0f);
             }
 
@@ -206,6 +208,11 @@ namespace BossRush
             GameObject banner = CreateUiObject("ResultBanner", stageRect, typeof(RectTransform));
             PlaceCentered(banner.GetComponent<RectTransform>(), new Vector2(0f, -168f), new Vector2(1200f, 96f));
 
+            BossRushInkSkin.CreateBrushStroke(
+                banner.transform, "BannerTopBrush", new Vector2(340f, 5f), new Vector2(0f, 44f), qualityColor);
+            BossRushInkSkin.CreateBrushStroke(
+                banner.transform, "BannerBotBrush", new Vector2(460f, 7f), new Vector2(0f, -46f), BossRushInkColors.Gold);
+
             // 品质行：「品质」用次要字色，星级用品质色；星级字符 ★ 在 GBK 内，官方中文字体有字形
             TextMeshProUGUI qualityLine = CreateRevealLabel("Quality", banner.transform, 18f, BossRushUIColors.TextSecondary,
                 new Vector2(0f, 26f), new Vector2(1200f, 32f));
@@ -218,6 +225,24 @@ namespace BossRush
             nameLine.fontStyle = FontStyles.Bold;
             nameLine.richText = false;
             nameLine.text = rewardDisplayName;
+
+            BossRushInkWidgets.CreateSealBadge(
+                banner.transform,
+                L10n.T("得赐", "GRANTED"),
+                76f,
+                quality >= FlashMinQuality ? BossRushInkColors.Gold : BossRushInkColors.Cinnabar,
+                new Vector2(360f, 0f),
+                -8f,
+                true,
+                stageRect,
+                0.08f,
+                quality >= FlashMinQuality ? (Color?)BossRushInkColors.InkWash : null);
+
+            BossRushInkSkin.SpawnRing(stageRect, new Vector2(0f, 36f), 110f, qualityColor, 0.6f, 2.6f, 0.55f);
+            if (stageEmbers != null)
+            {
+                stageEmbers.SpawnBurst(quality >= FlashMinQuality ? 16 : 8);
+            }
 
             BossRushUIEntranceAnimation.Play(banner, 0.1f, 0.25f, 16f);
         }

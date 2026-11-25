@@ -401,18 +401,19 @@ namespace BossRush
                     _timerText.richText = true;
                 }
 
-                // 底边 3 单位进度条：剩余 / 总时长，一眼看出「还剩多少」（UA-28）。
-                // Filled 必须有 sprite（GetSolidSprite），否则 fillAmount 被忽略、永远满格。
+                // 底边水墨进度槽与笔触填充：剩余 / 总时长，一眼看出「还剩多少」（UA-28）。
                 GameObject track = ZombieModeUIHelper.CreateRect(
                     "ProgressTrack",
                     _badge.transform,
                     new Vector2(0f, 0f),
                     new Vector2(1f, 0f),
                     new Vector2(0f, 7f),
-                    new Vector2(-28f, 3f),
+                    new Vector2(-28f, 4f),
                     new Vector2(0.5f, 0f));
                 Image trackImage = track.AddComponent<Image>();
-                trackImage.sprite = BossRushUI.GetSolidSprite();
+                trackImage.sprite = BossRushInkSkin.GetSurfaceSprite();
+                trackImage.type = Image.Type.Sliced;
+                trackImage.pixelsPerUnitMultiplier = 3f;
                 trackImage.color = BossRushUIColors.Divider;
                 trackImage.raycastTarget = false;
 
@@ -425,7 +426,7 @@ namespace BossRush
                     Vector2.zero,
                     new Vector2(0.5f, 0.5f));
                 _progressFill = fillObj.AddComponent<Image>();
-                _progressFill.sprite = BossRushUI.GetSolidSprite();
+                _progressFill.sprite = BossRushInkSkin.GetBrushSprite();
                 _progressFill.type = Image.Type.Filled;
                 _progressFill.fillMethod = Image.FillMethod.Horizontal;
                 _progressFill.fillOrigin = (int)Image.OriginHorizontal.Left;

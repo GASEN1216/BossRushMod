@@ -1,8 +1,26 @@
 # 模式专属物品
 
-## 划地为营专属
+<div class="brs-gallery">
 
-### 战术消耗品——搞事用的
+![挑衅烟雾弹](/images/scenes/sc-taunt-smoke.webp)
+*挑衅烟雾弹*
+
+![混沌引爆器](/images/scenes/sc-chaos-detonator.webp)
+*混沌引爆器*
+
+![折叠掩体包](/images/scenes/sc-cover-pack.webp)
+*折叠掩体包*
+
+![加固路障包](/images/scenes/sc-roadblock-pack.webp)
+*加固路障包*
+
+![便携安全区装置](/images/scenes/sc-portable-safezone.webp)
+*便携安全区装置*
+
+</div>
+
+
+## 划地为营 — 战术消耗品
 
 只能在划地为营里用，神秘商人的"其他"商店有卖：
 
@@ -19,9 +37,7 @@
 
 ---
 
-## 血猎追击专属
-
-### 工事道具——修碉堡用的
+## 血猎追击 — 防御工事
 
 血猎追击限定道具，击杀 Boss 获取，神秘商人也有卖：
 

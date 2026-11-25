@@ -1,5 +1,13 @@
 # 焚天龙铳
 
+<div class="brs-icon">
+
+![焚天龙铳](/images/scenes/sc-dragon-cannon.webp)
+*焚天龙铳*
+
+</div>
+
+
 ## 武器定位
 
 焚天龙皇自己用的枪，兼容 17 种弹药，玩家可通过弹药类型 UI 选择并装填；每一种都会被龙铳改写成不同的龙焰弹幕。

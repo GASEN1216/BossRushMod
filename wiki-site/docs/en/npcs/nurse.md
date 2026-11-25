@@ -6,6 +6,17 @@ A nurse who came out of J-Lab, with the marks of its experiments still on her le
 
 ## Services
 
+<div class="brs-gallery">
+
+![Calming Drops](/images/scenes/sc-calming-drops.webp)
+*Calming Drops*
+
+![Peace Charm](/images/scenes/sc-peace-charm.webp)
+*Peace Charm*
+
+</div>
+
+
 - **Chat** (from start) — Daily chat, Affinity +30/day
 - **Gift** (from start) — 1 gift/day
 - **Healing** (from start) — Restores full HP + removes treatable debuffs. Cost drops with Affinity

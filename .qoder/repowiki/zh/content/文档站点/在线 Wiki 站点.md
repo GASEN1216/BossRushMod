@@ -6,6 +6,8 @@
 - [wiki-site/AGENTS.md](file://wiki-site/AGENTS.md)
 - [wiki-site/scripts/sync-content.mjs](file://wiki-site/scripts/sync-content.mjs)
 - [wiki-site/scripts/entry-map.mjs](file://wiki-site/scripts/entry-map.mjs)
+- [WikiContent/illustrations.json](file://WikiContent/illustrations.json)
+- [tools/gen_wiki_diagrams.py](file://tools/gen_wiki_diagrams.py)
 - [wiki-site/hubs/](file://wiki-site/hubs/)
 - [wiki-site/docs/.vitepress/config.mts](file://wiki-site/docs/.vitepress/config.mts)
 - [wiki-site/docs/.vitepress/search.mts](file://wiki-site/docs/.vitepress/search.mts)
@@ -27,6 +29,8 @@
 - [.github/workflows/deploy.yml](file://.github/workflows/deploy.yml)
 </cite>
 
+> 2026-11-25 同步：正文配图清单与插入表从 `sync-content.mjs` 内联对象统一迁入 [WikiContent/illustrations.json](file://WikiContent/illustrations.json)，由站点与游戏内《冒险家日志》共用；[tools/gen_wiki_diagrams.py](file://tools/gen_wiki_diagrams.py) 新增 5 张中英双语机制图，经 `tools/build_wiki_images.py` 转码 `diagrams` 与 `scenes` WebP 并通过 `WikiImageAssetGuard` 校验 `webSrcEn` 双语产物与清单对齐。
+>
 > 2026-11-19 同步：正文里提到物品、装备部件、人物、敌人时自动带游戏图标与链接（登记表 `wiki-site/scripts/wiki-entities.json`，物品图标由 `build_wiki_images.py --only items` 从 `Assets/Items` 转出）；新增敌人抗性表——`tools/build_wiki_enemy_stats.py` 从代码常量与官方生物图鉴快照算出生命、七种承伤倍率与免疫异常，写成 `enemy-stats.json`，抗性表、Boss 速查框与 Boss 页「基础数据」都只读它，`WikiEnemyStatsGuard` / `WikiEntityRegistryGuard` 守着。细节见 wiki-site/AGENTS.md §4.5、§4.12、§5。
 >
 > 2026-09-07 同步：站点做了一次**整站换皮**——不再继承 VitePress 默认主题，版式改为

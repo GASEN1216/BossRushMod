@@ -34,6 +34,22 @@ Dingdang also runs a separate service called **Affix Forging**: reforging change
 - Base cost = **equipment value / 100**, minimum **100**. That's the bench fee for one attempt.
 - Dingdang Affinity discount: Lv.3 = 10% off, Lv.6 = 15% off, Lv.10 = 20% off.
 
+## How much money to invest
+
+On top of the bench fee you can **invest extra money** to favor larger changes. The
+curve scales with **multiples of the item's value**, not with an absolute amount:
+
+- Invest **10x** the item's value → roughly **+10%** to the magnitude factor
+- Invest **100x** → roughly **+30%**
+- Invest **1000x** → roughly **+100%**
+
+So the returns fall off fast: going from 10x to 100x costs ten times the money and buys twenty
+percentage points.
+
+::: tip
+In practice: on cheap gear just throw 1000x at it, the base is small anyway. On valuable gear **100x** is usually the sweet spot - beyond that, your money buys more by funding extra attempts than by pushing one roll.
+:::
+
 ## Reforge Results
 - Each Reforge changes all unlocked stats simultaneously. Results are influenced by:
   - Investment amount: higher amounts favor larger changes; benefit tendency separately controls whether a change is helpful or harmful
@@ -41,16 +57,28 @@ Dingdang also runs a separate service called **Affix Forging**: reforging change
   - Equipment value: affects the baseline change magnitude
 
 - Green means a benefit and red means a penalty; arrows show the numeric direction. Reduced recoil has a green down arrow, increased recoil a red up arrow.
-- Existing reforged values are preserved. This correction does not automatically reverse old values.
 
 ### Stat Change Range
 - Every Reforge rolls again from the item's **original value**. It does not build on the previous result, so rerolling many times does not keep pushing a stat higher.
 - Each stat stays within **50%-150%** of its original value. Stats that start at 0 stay within **±0.25**; armor stays within **±1** of its original value.
 - When a stat reaches its extreme value, a "Max" or "Min" tag is displayed.
 - Lock a value you like with Cold Quench Fluid, or the next Reforge will roll it again.
-- Values from older versions that are outside these ranges are brought within the new range when the save loads.
 
 ## Cold Quench Fluid Lock
+
+<div class="brs-gallery">
+
+![Cold Quench Fluid](/images/scenes/sc-cold-quench.webp)
+*Cold Quench Fluid*
+
+![Tempering Solvent](/images/scenes/sc-tempering-solvent.webp)
+*Tempering Solvent*
+
+![Achievement Medal](/images/scenes/sc-ach-medal.webp)
+*Achievement Medal*
+
+</div>
+
 - Cold Quench Fluid is the most critical material in the Reforge system.
 - In the Reforge interface, you can use Cold Quench Fluid to lock individual stats.
 - Locked stats will not change during Reforge.
@@ -69,24 +97,7 @@ Dingdang also runs a separate service called **Affix Forging**: reforging change
 ## Reforge Data Persistence
 - Reforge results are permanently saved on the equipment.
 - Supported reforged stats are automatically restored after scene changes or save/load.
-- If an old item still carries a reforge result this version no longer supports, it is cleared on load and that stat returns to the value the item originally shipped with.
 - No need to worry about losing Reforge results.
-
-## How much money to invest
-
-On top of the bench fee you can **invest extra money** to favor larger changes. The
-curve scales with **multiples of the item's value**, not with an absolute amount:
-
-- Invest **10x** the item's value → roughly **+10%** to the magnitude factor
-- Invest **100x** → roughly **+30%**
-- Invest **1000x** → roughly **+100%**
-
-So the returns fall off fast: going from 10x to 100x costs ten times the money and buys twenty
-percentage points.
-
-::: tip
-In practice: on cheap gear just throw 1000x at it, the base is small anyway. On valuable gear **100x** is usually the sweet spot - beyond that, your money buys more by funding extra attempts than by pushing one roll.
-:::
 
 ## Tips
 - Don't waste Reforge resources on temporary equipment. First decide which equipment you'll use long-term.

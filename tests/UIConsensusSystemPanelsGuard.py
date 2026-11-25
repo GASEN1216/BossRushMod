@@ -139,20 +139,25 @@ def check_boss_pool(errors):
 
 
 def check_wiki(errors):
-    wiki = read("Integration/WikiUIManager.cs")
-    categories = body(wiki, "private void RefreshCategoryList()")
+    wiki_main = read("Integration/WikiUIManager.cs")
+    wiki_view = read("Integration/WikiUIManager_InkView.cs")
+    wiki = wiki_main + "\n" + wiki_view
+    categories = body(wiki_main, "private void RefreshCategoryList()")
     if "category.Id == ExternalWikiCategoryId && btnOnlineWiki != null" not in categories:
-        errors.append("百科：外链有页眉按钮时不得再进分类列表（A-31）")
-    if "SetActive(showIndex)" not in body(wiki, "private void SetPageVisibility(bool showIndex, bool showArticle)"):
-        errors.append("百科：「在线 Wiki」只在目录页显示（A-31）")
-    if "[内容为空]" in wiki:
-        errors.append("百科：空正文提示只有中文（A-32）")
-    if "text.fontSizeMin = 10f" in wiki:
-        errors.append("百科：条目名缩字下限又回到 10（A-33）")
-    if "BossRush.PlayOpenAnimation(uiRoot)" not in wiki.replace("BossRushUI.", "BossRush.") \
-            or "FadeOutAndDeactivate" not in body(wiki, "public void CloseUI()"):
-        errors.append("百科：打开淡入 / 关闭淡出缺失（A-34）")
-    check_modal_lease(errors, "百科", wiki, "ClaimModalInput(uiRoot, \"Wiki\")", cancel_key=False)
+        errors.append("百科：外链有底栏按钮时不得再进分类列表（A-31）")
+    footer = body(wiki_main, "private void BuildScrollFooter()")
+    if '"Btn_OnlineWiki"' not in footer or '"Btn_Close"' not in footer:
+        errors.append("百科：卷轴底栏必须包含「在线 Wiki」与「合卷」按钮（A-31）")
+    if "[内容为空]" in wiki or "This page has no content yet." not in wiki:
+        errors.append("百科：空正文提示必须双语（A-32）")
+    if "fontSizeMin = 10f" in wiki or "fontSizeMin = Mathf.Min(14f, maxSize);" not in wiki:
+        errors.append("百科：分类/条目名缩字下限必须为 14（A-33）")
+    open_ui = body(wiki_main, "public void OpenUI()")
+    close_ui = body(wiki_main, "public void CloseUI()")
+    if "BossRushInkSkin.PlayInkReveal(sheet);" not in open_ui or "PlayUnroll(" not in open_ui \
+            or "BossRushInkSkin.PlayInkDismiss(uiRoot, sheet);" not in close_ui:
+        errors.append("百科：水墨打开（墨晕 + 展开卷轴）与关闭（墨池收拢淡出）动效缺失（A-34）")
+    check_modal_lease(errors, "百科", wiki, 'ClaimModalInput(uiRoot, "Wiki")', cancel_key=True)
 
 
 def check_misc(errors):
@@ -175,7 +180,7 @@ def check_misc(errors):
                   "DestructiveFooterSpacing"):
         if token not in show:
             errors.append("通用确认框：不可逆时确认键要换 Danger 实心并与取消拉开（A-37）: " + token)
-    if "BossRushUIColors.Danger," not in body(adapter, "private static void CreateFooter(Transform parent, Button buttonPrefab)"):
+    if "BossRushUIColors.Danger," not in body(adapter, "private static void CreateFooter(Transform parent)"):
         errors.append("通用确认框：缺 Danger 实心的危险确认键（A-37）")
     sweep = read("Integration/NPCs/Courier/CourierPaidLootSweepService.cs")
     prompt = body(sweep, "private static bool ShowFreshSweepPrompt(Transform npcTransform, List<PaidSweepBoxPlan> plans, int cost)")

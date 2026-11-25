@@ -1,5 +1,13 @@
 # 鸭皇图鉴
 
+<div class="brs-icon">
+
+![鸭皇图鉴](/images/icons/codex-book.webp)
+*鸭皇图鉴*
+
+</div>
+
+
 ## 它能帮你做什么
 
 图鉴记录你击败过的 Boss，方便你寻找还没挑战过的对手，或重打熟悉的 Boss 改善用时。首次击杀点亮条目，重复击杀累计次数并更新最快纪录；不需要为了完成图鉴反复刷同一只。
@@ -10,14 +18,6 @@
 - 在背包里右键使用，打开图鉴；翻阅不消耗物品或耐久。
 - 书是查看入口。**没有书也会自动记录击杀、解锁图鉴成就**，不必先买书再开打。
 - 丢失书后可以等商店正常补货再买；收藏进度保存在当前存档槽位里，不在书上。
-
-<div class="brs-icon">
-
-![鸭皇图鉴](/images/icons/codex-book.webp)
-*鸭皇图鉴*
-
-</div>
-
 
 ## 找到下一只想打的 Boss
 
@@ -39,6 +39,23 @@
 
 已收集的条目不会因为筛选禁用而消失；能解析当前名字时使用当前语言，无法解析时保留历史名字。
 
+<div class="brs-gallery">
+
+![龙裔遗族](/images/codex/dragondescendant.webp)
+*龙裔遗族*
+
+![焚天龙皇](/images/codex/boss-dragonking.webp)
+*焚天龙皇*
+
+![幽灵女巫](/images/codex/boss-phantomwitch.webp)
+*幽灵女巫*
+
+![巨坦](/images/codex/zombie-boss-titan.webp)
+*巨坦*
+
+</div>
+
+
 ## 击杀与用时怎么算
 
 - 只接收**归属于主玩家的致命一击**。普通宠物、遗种巢随从、环境补刀不算；玩家自己的死亡、友军和基地演示角色都不记。
@@ -47,122 +64,6 @@
 - **最快用时**从观测到你的首次有效伤害算到死亡，使用游戏时间，暂停不增加用时。躲避、换弹和治疗仍算战斗时间。
 - 一击致死、缺少首击观测等情况会记击杀，但不猜测用时，显示 **—**。同帧观测到首击与击杀的有效记录显示 **<0.1 秒**。
 - 初见日期和初见场景只在第一次记录时确定；场景名走官方地图名，切换语言会跟着变。所有模式共用该 Boss 的同一条最快纪录，不是同难度排行榜。
-
-<div class="brs-gallery">
-
-![焚天龙皇](/images/codex/boss-dragonking.webp)
-*焚天龙皇*
-
-![幽灵女巫](/images/codex/boss-phantomwitch.webp)
-*幽灵女巫*
-
-![三枪哥](/images/codex/cname-boss-3shot.webp)
-*三枪哥*
-
-![暴走街机](/images/codex/cname-boss-arcade.webp)
-*暴走街机*
-
-![???](/images/codex/cname-boss-blue.webp)
-*???*
-
-![蝇蝇队长](/images/codex/cname-boss-fly.webp)
-*蝇蝇队长*
-
-![???](/images/codex/cname-boss-red.webp)
-*???*
-
-![喷子](/images/codex/cname-boss-shot.webp)
-*喷子*
-
-![劳登](/images/codex/cname-boss-sniper.webp)
-*劳登*
-
-![幽灵](/images/codex/cname-ghost.webp)
-*幽灵*
-
-![炸弹狂人](/images/codex/cname-grenade.webp)
-*炸弹狂人*
-
-![猎户](/images/codex/cname-hunter.webp)
-*猎户*
-
-![测试对象](/images/codex/cname-labtestobjective.webp)
-*测试对象*
-
-![呆头鹅](/images/codex/cname-pmcleader.webp)
-*呆头鹅*
-
-![典狱长](/images/codex/cname-prison-boss.webp)
-*典狱长*
-
-![路障](/images/codex/cname-roadblock.webp)
-*路障*
-
-![校霸](/images/codex/cname-schoolbully.webp)
-*校霸*
-
-![矮鸭](/images/codex/cname-shorteagle.webp)
-*矮鸭*
-
-![大冰冰](/images/codex/cname-snow-bigice.webp)
-*大冰冰*
-
-![弗里兹](/images/codex/cname-snow-fleeze.webp)
-*弗里兹*
-
-![机械雪人](/images/codex/cname-snowman.webp)
-*机械雪人*
-
-![急速团长](/images/codex/cname-speedy.webp)
-*急速团长*
-
-![急冻团长](/images/codex/cname-speedy-ice.webp)
-*急冻团长*
-
-![噗咙噗咙](/images/codex/cname-stormboss1.webp)
-*噗咙噗咙*
-
-![咕噜咕噜](/images/codex/cname-stormboss2.webp)
-*咕噜咕噜*
-
-![啪啦啪啦](/images/codex/cname-stormboss3.webp)
-*啪啦啪啦*
-
-![比利比利](/images/codex/cname-stormboss4.webp)
-*比利比利*
-
-![口口口口](/images/codex/cname-stormboss5.webp)
-*口口口口*
-
-![光之男](/images/codex/cname-ultraman.webp)
-*光之男*
-
-![维达](/images/codex/cname-vida.webp)
-*维达*
-
-![大兴兴](/images/codex/cname-xing.webp)
-*大兴兴*
-
-![龙裔遗族](/images/codex/dragondescendant.webp)
-*龙裔遗族*
-
-![腐蚀地面](/images/codex/zombie-boss-corruptor.webp)
-*腐蚀地面*
-
-![极速追猎](/images/codex/zombie-boss-hunter.webp)
-*极速追猎*
-
-![护盾统御](/images/codex/zombie-boss-shielder.webp)
-*护盾统御*
-
-![分裂尸群](/images/codex/zombie-boss-splitter.webp)
-*分裂尸群*
-
-![巨坦](/images/codex/zombie-boss-titan.webp)
-*巨坦*
-
-</div>
-
 
 ## 里程碑奖励
 

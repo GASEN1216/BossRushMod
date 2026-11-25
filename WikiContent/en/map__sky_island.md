@@ -1,34 +1,29 @@
 ## Sky Islands · Qinglan Archipelago
 
-At affinity level 5, choose **Bell Keeper's Keepsakes** from the Silent Bell Keeper's interaction group to exchange 20 seashells from your backpack for a **Bell Keeper's Metronome**. The shop follows the Keeper home after marriage at the same price and currency. Take stored shells out of storage first; a failed delivery returns the shells.
+The Qinglan Archipelago is a standalone raid you launch from the base dock. Cross the village, terraces, and root-wrapped isles above the cloud sea, restore the wind beacon and the star lamp, then reach the Homecoming Bell Court and light the shipping lanes again.
 
-The Qinglan Archipelago is a standalone raid you launch from the base dock. Cross the village, terraces and root-wrapped isles above the cloud sea, restore the wind beacon and the star lamp, then reach the Homecoming Bell Court and light the shipping lanes again. A single run can be pure story, or it can be scavenging, contracts, and the storm that never quite blew over.
+A single trip can focus purely on the main route, or turn into scavenging, contracts, and settling the lingering storm.
 
 ### Setting out
 
-On a first install, the route is not yet in the base route table. Find the official NPC **Jeff** at base, open his normal quest screen, and accept **Coordinates Above the Clouds** from the Available tab. The details page lists what to bring back (Lost Navigation Instrument x1) and the reward: Currency +5000 plus Starmoss Salve x2, Windward Incense x2 and Wind Lantern x1. The quest enters the regular journal, and Jeff's original quests remain available as usual.
+On a fresh save, find **Jeff** at base and accept **Coordinates Above the Clouds** from his normal quest screen:
+- Turn in **Lost Navigation Instrument ×1** for **5,000 cash + Starmoss Salve ×2, Windward Incense ×2, Wind Lantern ×1** (leaves Jeff's regular quests intact)
+- Head into Ground Zero and approach the **Lost Navigation Instrument** circle (~70 m): **Galebreaker Warden** (2,000 base HP, guaranteed good firearm — bring ammo and meds) wakes up to guard it
+- Loot the **Lost Navigation Instrument** from its crate (or salvage one from the wrecked instrument at the center if needed) and complete the quest at Jeff back at base to unlock the boat route and starter supplies
 
-Enter an ordinary Ground Zero raid and open the map: a ring marks **Lost Navigation Instrument**. Get close to it (within about 70 m) and a Qinglan boss, **Galebreaker Warden**, wakes up. It shoots, has 2000 base health (twice the one on the island relay platform) and always drops a good gun, so on a fresh save bring enough ammo and meds before you take it on. Beat it and **the instrument is in its loot box**. Pick it up and the objective completes. Carry it back to Jeff, open his In Progress tab and choose Complete. He takes the instrument, pays 5000, puts supplies for your first trip up (Starmoss Salve x2, Windward Incense x2, Wind Lantern x1) straight into your backpack (storage if it is full), and writes the Qinglan route into the table.
+[tip]Losing the instrument is not a dead end: while you carry none, the guard returns on your next raid or the wrecked instrument at center provides a spare. It has no sell value and exists purely for Jeff.
 
-[tip]Losing the instrument is not a dead end: while you carry none, the guard returns on your next raid and its box holds another one; if it falls without the instrument in its box, salvage one from the downed instrument at the centre of the ring. With a full pack the salvaged one goes to the locker: take it out of the Wasp Pickup Locker at base before handing it in. The instrument cannot be sold; handing it to Jeff is its only use.
-
-Once unlocked, wait for your character and the level to finish loading, then pick "Depart for Sky Islands · Qinglan" at the existing dock. The normal build is enough: no developer mode, and no BossRush ticket is spent. End any other active mode first (the notice names which mode is still running). If the Sky Islands scene bundle is missing, Jeff does not offer Coordinates Above the Clouds and the boat route does not appear, so the game never sends you into an impossible chain.
-
-A save that already played the Sky Islands in an older version keeps access automatically when existing visits, story facts, encounter clears or journal entries are found. Only a save with no previous Sky Islands progress starts with Jeff.
+Once unlocked, wait for your character and level to finish loading and pick **"Depart for Sky Islands · Qinglan"** at the boat (**no BossRush ticket required**; finish any other active mode first).
 
 On the isles the main line is three proper quests, all in the regular quest journal:
 
-- **Light Both Beacons**: take it from **Weibai** at Windchime Market and hand it in to her once both burn. Reward: 3000, Wind Lantern x2, Windward Incense x2.
-- **The Bell Court Standoff**: take it from **Fuzhou** at the dock, then talk the Bell Keeper down or stop his bell engine. Reward: 5000, Starmoss Salve x3, Homecoming Bento x2.
-- **The Homecoming Bell**: once the standoff is settled, take it from the **Bell Keeper** right there, ring the bell and hand it in on the spot, then report to Fuzhou on the way home. Reward: 8000, Qinglan Charm x1, Stardust x3.
+- **Light Both Beacons**: take it from **Weibai** at Windchime Market and hand it in to her once both burn. Reward: 3,000, Wind Lantern x2, Windward Incense x2.
+- **The Bell Court Standoff**: take it from **Fuzhou** at the dock, then talk the Bell Keeper down or stop his bell engine. Reward: 5,000, Starmoss Salve x3, Homecoming Bento x2.
+- **The Homecoming Bell**: once the standoff is settled, take it from the **Bell Keeper** right there, ring the bell and hand it in on the spot, then report to Fuzhou on the way home. Reward: 8,000, Qinglan Charm x1, Stardust x3.
 
-Quests are taken and handed in on the isles, never back at base. When a resident is away, the same quest hangs on the commission board, the dock workbench or the bell engine. The money arrives at hand-in; the reward items do not go into your backpack but are sent to Package Pickup at base (a notice says so), to collect once you are home. Rewards are paid only once, even after a reload. The HUD and map objective mark where to take, do and hand in each quest, and the Wind-Vane Compass follows the same line after frogspawn and pigeons. To take or hand in a quest, walk up to the resident and switch the interaction to **Route quests**; when that is the person you need, the objective card and their panel text say so first. Older saves get finished stretches filled in once (no gold back-paid); a quest you have already taken still has to be handed in by you, and reloading never completes it for you.
+Island quests are accepted and completed directly on the isles (the market noticeboard, dock workbench, or bell engine stand in whenever a resident is away). Cash arrives on hand-in while item rewards deliver to **Package Pickup** back at base; switch a resident's menu to **Route quests** when the prompt points you there.
 
-"The existing dock" is the boat you already use to head out, with the same interaction menu that holds the vanilla challenge maps. **Even after unlocking it, you have to walk over to the boat before the option appears**: that part of the base streams in separately, so while you are standing in the main base area the boat does not exist yet and not seeing "Depart for Sky Islands" is expected.
-
-There is combat on the islands, so prepare weapons, ammo and supplies at base. You bring your own gear and backpack.
-
-Departing and returning work exactly like any other map: loading ends on the usual "click to continue" prompt before you actually land (waiting there never counts toward the loading timeout, so click whenever you like), and extracting shows the familiar evacuation summary before you get back to base.
+Walk all the way over to the dock boat before looking for the option (the dock streams in separately from the main bunker), and bring your own combat gear and supplies — arrival and extraction work just like any vanilla raid map.
 
 ### Map and getting home
 
@@ -72,21 +67,17 @@ There are **39 scavenging points** across the map (3–4 in each of the eight ma
 
 ### Who you'll fight
 
-**Lane threats respawn every raid.** Come back a second time and the ordinary encounters are there again. The archipelago never turns into an empty island just because you cleared it once. Only the **named story opponents** (Zheling, the Silent Bell Keeper, the Windeater) are one-off: settle them and they stay settled.
+**Lane threats respawn every raid.** Only the **named story opponents** (Zheling, the Silent Bell Keeper, the Windeater) are one-off: settle them and they stay settled.
 
-The enemies here talk too. They came up to make a living after the storm cut the lanes, and they are not monsters: walk near one of their camps and you will hear someone reckon what the brass is worth, say nobody dares gather crystal out by the cloud sea, or notice that people used to live in this house. One of them shouts when it first spots you, and says something when a mate goes down beside it. The Galebreakers have their own lines and only talk about the bridge, the wind and the toll. None of it is chatty: the same speaker waits over half a minute before opening its mouth again, and at most two bubbles show at once, so do not count on overhearing intel. Chiefs and island lords each have their own lines at three moments: turning up, crossing a health threshold, and going down. Those never compete with the mechanic warnings at the bottom of the screen. The Windeater is a gust of wind left by the storm and never speaks; the runaway bell engine at the Bell Court is a machine and only rings. Before a chief or island lord strikes, its warning ring fills in from the center while a rising charge-up tone plays, so you can hear it coming even with your back turned; when an island lord (or the Windeater) crosses a health threshold a wave of light ripples out from its feet, and when a chief or lord falls a bell tolls.
+**Enemy chatter & warning cues:**
+- Islanders came to scavenge after the storm (at most 2 speech bubbles at once, never useful as stealth radar), while chiefs and island lords speak at entry, phase shifts, and defeat.
+- Before a chief or lord strikes, its ground circle fills from center alongside a rising charge tone; phase crossings ripple a light wave outward and defeats toll a bell.
 
-**Every enemy on the islands is an official boss.** Each grunt, patrol and Galebreaker is a fixed pick from the game's bosses for that spot (Killa, Tagilla, the School Bully, Triple Shot, the speedsters and so on): its looks, fighting style, skills and name tag are that boss's own, and melee bosses rush you with their melee weapons. Their numbers are 1.5 times that boss's original (see below). Chiefs, island lords, Zheling, the bell engine and the Windeater are each their own reference boss. NPC look-alike bosses such as Jeff, the 2000-health Koukou and this mod's own large bosses never appear. Grunts and patrols drop an ordinary scavenger's loot and experience and do not count towards "kill bosses" objectives; chiefs and island lords keep their boss loot and experience.
+**Every enemy on the islands is an official boss** scaled to `1.5x` base numbers (nearest official match per slot, no Jeff doppelgängers, 2000-HP Koko Koko, or Mod giant bosses). Grunts and patrols drop ordinary scavenger loot and skip boss-kill counters; chiefs and lords count as proper Bosses.
 
-Ordinary patrols occupy fixed positions on every island, including the dock and Windchime Market. They stand by the roads, bridgeheads and landmarks rather than in the corners of the islands, never right next to a resident (at least 35 m away, 45 m at the dock), and each spot is the same boss every trip. The dock is easier; later regions increase health, damage and alertness (a regional factor on top of 1.5 times the boss's original). Returning to a region resumes the same living character with the same injuries and equipment. A patrol defeated during an outing does not respawn until the next outing. At most 32 patrols are active at once.
-
-- Cloudrise Dock: 10.
-- Windchime Market: 14.
-- Greenear Terraces: 18.
-- Hanging Root Forest, Windsong Boardwalk and Mirrorwater Temple: 22 each.
-- Fallen Star Workshop: 26.
-- Homecoming Bell Court: 9.
-- Frogsong Pool and Upturned Post Hut: 8 each; Rainlisten Grotto 7; Starfall Overlook 10.
+**Ordinary patrols (at most 32 active, kept ≥35m from residents / 45m from dock, never respawning mid-raid):**
+- Cloudrise Dock 10 / Windchime Market 14 / Greenear Terraces 18 / Fallen Star Workshop 26 / Bell Court 9
+- Hanging Root Forest, Windsong Boardwalk & Mirrorwater Temple 22 each / Frogsong Pool & Upturned Post Hut 8 each / Rainlisten Grotto 7 / Starfall Overlook 10
 
 [tip]While a living enemy is within 5 m of you, residents will not talk, quests cannot be handed in, and search points and workbenches will not open. Patrols never stand right next to a resident, but enemies that chase you right up close still count, so deal with them before you get busy.
 
@@ -107,9 +98,11 @@ The existing enemy groups, chiefs, island lords and story challenges below retai
 - **Galebreaker Warden** (chief) — leads the group on the relay platform of the Windsong Boardwalk return shortcut (K3), wears the Galebreaker Hood, and is just as hostile to the scavengers. It lunges only once and its line stays lit longest, the easiest of the three to read, so learn the lunge on it first; shoot its hood through and the line stays lit twice as long. It drops that **Galebreaker Hood** 40% of the time. See "Island Chief Gear" for the seven chief pieces and what they do.
 - **Zheling / the Silent Bell Keeper** — named story opponents. They use Killa and the Mechanical Snowman as their respective references, and both have 1000 base health. Both still have a peaceful resolution. What you fight at the Bell Court is the **runaway bell engine**, not the keeper himself. The bell engine is cast in the likeness of the keeper on duty, which is why it wears his face; the Homecoming Bell’s own message explains it. Each has a signature move: Zheling **blocks the road with three cuts**, lighting four blade rings along a straight line from him towards you that fall one after another from near to far, so sidestep rather than backing away down the line, and below half health he cuts more often; the bell engine stands still and **strikes the hour**, alternating near and far strikes: a near strike covers the ring around it, a far strike covers the band between an inner and an outer ring (inside the inner ring and outside the outer one are safe). The first strike is whichever one covers you; it strikes three times, or five times in quick succession below half health. Getting caught hurts and deafens (slows) you for two seconds, and a wall also blocks it. It stands still and holds its fire while striking, which is your window to hit back.
 
-Island enemies have **1.5 times** the health and damage of the corresponding original enemy or boss, react and fire after two thirds of the delay, and shoot more accurately; movement, bullet speed, range, sight and hearing are 1.5 times the original (any higher and they would shoot from off-screen). Grunts, patrols and Galebreakers use the original numbers of the boss they drew; chiefs and island lords use fixed references. This mod's own chiefs, island lords, Zheling, the bell engine and the Windeater have **at least 1000** base health: the Starforge Foreman has 1200, while the Hanging-Root Huntmaster and Grain Sickle are raised from 1.5 times the original to 1000. Game difficulty still affects final health. Equipment armor and signature attacks retain their own rules. Enemies do not target the island residents.
+**Combat Scaling & Weapon Floors:**
 
-**Island enemies carry weapons with a quality floor**: grunts and the patrols of the early regions carry quality 3–4, the Galebreakers and the patrols of Windsong Boardwalk, Mirrorwater Temple, Fallen Star Workshop, the Bell Court, Rainlisten Grotto and Starfall Overlook carry 4–5, Zheling, the Silent Bell Keeper and the chiefs carry 5–6, and the island lords and the Windeater carry 6–7 (if nothing fits that band it drops back to the floor of 3 or 5, and only then keeps the original). A weapon that already meets the bar is left alone; a replacement can be an official weapon or one from another mod, but never one of this mod's own. A replacement gun comes with a full magazine plus two more magazines of matching ammo in the backpack (at least 20 rounds), and the weapon and ammo end up in the loot box when the enemy goes down. A boss with an empty primary slot is a melee boss: it is not handed a gun and comes at you with its own melee weapon.
+Island enemies scale health, damage, speed, projectile velocity, range, and awareness to **1.5×** their reference enemy, with two-thirds reaction/windup delay. Mod chiefs, Zheling, the bell engine, and the Windeater start at **1,000+ base HP** (Starforge Foreman 1,200; Huntmaster and Grain Sickle raised to 1,000; still scaled by difficulty) and never aggro residents.
+
+Weapons follow regional quality floors (Q3–4 grunts/early patrols -> Q4–5 Galebreakers/late patrols -> Q5–6 Zheling/Bell Keeper/chiefs -> Q6–7 lords/Windeater) stocked with a full mag + 2 spare mags in loot (using official or third-party weapons, never Mod weapons; empty-primary melee Bosses keep their blades).
 
 ### The Windeater
 
@@ -151,7 +144,7 @@ Four of them offer a practical service; the other two are story branches:
 - **Qinghe (Windchime Market; her garden is on the Green Terraces) · Homecoming meal** — once you've returned her planting record, ask for one free meal per raid: higher maximum health and movement speed for that run. The health the raised cap adds is filled in, but actual wounds still need Miantai. If Qinghe herself is away from the island (after marrying her, for instance), the **terrace garden plot** serves the same meal.
 - **Zheling / the Silent Bell Keeper** — story branches: peace or a fight.
 
-At affinity Lv.3, Fuzhou opens Fuzhou's Departure Supplies, selling the exclusive Headmaster's Roll-Call Ledger totem with one in stock for 20,000. Trade with Fuzhou or select Shop at the Cloudrise Dock workbench; both require affinity Lv.3 with Fuzhou. The workbench remains available when he leaves the island after marriage or is otherwise absent.
+At affinity Lv.3, Fuzhou's Departure Supplies (at Fuzhou or the Cloudrise Dock workbench, even after marriage) sells **Headmaster's Roll-Call Ledger** (20,000, stock 1). From affinity Lv.5, the **Silent Bell Keeper** (or the Bell Court device / at base after marriage) also exchanges backpack seashells for **Bell Keeper's Metronome** (20 shells) and **Hushbell Ward** (30 shells).
 
 ### Lane contracts
 
@@ -215,7 +208,7 @@ The archipelago has five items of its own (TypeID 500068–500072), plus ten gat
 - **Homecoming Bento** (food): restores energy and water, and a little health. **Once Qinghe has her planting record back**, eating one on the islands counts as her homecoming meal (a little more max health and running speed for the raid, shared with her own meal), so you can pack one ahead and eat it before a hard fight; from then on her stove cooks them too. Occasionally found in island crates of every tier.
 - **Starmoss Salve** (medicine): restores health without paying for Miantai's remedy or waiting out her cooldown. Rubbed on anywhere on the isles it stops cloud-gnat itching, and **for about a minute and a half afterwards new bites will not itch**. **You do not have to wait until you itch; applying it before you head out at night counts just the same**. Ground at Miantai's mortar; often the guaranteed island item in Voyage Supplies and Starworks Cache crates.
 
-Each keepsake is granted once per save, and the grant is recorded with the Sky Islands story save. Saves that had already rung the bell, beaten the Windeater or kept a letter before this update receive theirs on the next trip to the islands. Every scavenging crate guarantees one slot of island goods, counted in its slots; a small extra roll can add one more island item, which only displaces another item when the crate is already at 7 slots.
+Each keepsake is granted once per save and recorded with the Sky Islands story save. Every scavenging crate guarantees one slot of island goods counted in its capacity, plus a small chance for one extra island item (which only displaces another roll when already at 7 slots).
 
 ### Gathering, crafting, the isles' lights and the night wind
 
@@ -257,7 +250,9 @@ Each recipe button shows how many of each material you have against how many it 
 - **Once all ten lights are burning, the islands' nights stop blowing** (the bridges keep a little wind).
 - The journal's "About the isles → Lights on the isles" page lists every lamp and what it still needs, and the crew on the homecoming boat notice the lamp at their own place. A lamp is recorded before its materials are taken, so a save that cannot be written right now never costs you anything.
 
-**The night wind**: at night (game time 22:00 to 06:00, in step with the game's own day/night), and whenever you stand on a bridge or relay platform, you slowly build up **chill**; once both beacons are lit and the Windeater is still out there (or while its echo is), Windsong Boardwalk and the bridges are in a **gale**. A full chill (about two and a half minutes in a breeze, about one minute in a gale) gives you **wind chill**: stamina recovers slower and you get hungry faster, with **no health loss and no slower running**. Captions tell you when the wind first picks up, when the chill is halfway, and when wind chill sets in and wears off. By day, the isles are calm except on bridges and relay platforms, where a light breeze still blows in daylight; if both beacons are lit and the Windeater is still out there, those same spots reach a full gale by day too.
+**The night wind**: at night (22:00–06:00 in-game), and whenever standing on a bridge or relay platform, you slowly build **chill**; with both beacons lit before the Windeater is beaten (or during the Windeater's echo), Windsong Boardwalk and bridges escalate into a **gale**.
+
+Full chill (~2.5 min in a breeze, ~1 min in a gale) causes **wind chill** — slower stamina recovery and faster hunger, with **no HP loss or speed penalty** (captions announce changes). Daytime islands stay calm apart from bridges and relay platforms.
 
 **In-raid consumables** each hold off one layer of wind. They only work on the Qinglan isles (away from them the use button is greyed out, so none are wasted), and their effects end when you leave. Their timers run on game time, so they do not burn down behind the pause menu:
 
@@ -287,15 +282,19 @@ At night (game time 22:00 to 06:00) swarms of **cloud gnats** come out on the is
 - **Starmoss Salve** — Where: Miantai · moss mortar; What it does: stops the itch, and for about 90 seconds after it goes on new bites will not itch; **applying it before you set out counts**
 - **Miantai's moss remedy** — Where: Miantai; What it does: clears the current itch along with your wounds; new bites itch as usual
 
-**The frogs of Frogsong Pool**: in the letter to the frogs of Frogsong Pool, a child asks the frogs to count the lights for them, but the pool went quiet long ago. At night, go to **Mirrorwater Temple · a rubbing in the pool** and wrap a clutch of frogspawn in a handful of Cloudmoss Fiber (the frogs gather in the shallows to breed at night), then carry it during that raid to **the note by Frogsong Pool ("Qinghe's planting record")** and release it; **release still works after dawn**. While you carry it, the Wind-Vane Compass points to Frogsong Pool before other targets. **If you fall or leave the isles, the spawn in your hands is lost**, but every clutch already released is saved: deliver the three clutches on separate trips as you pass, without repeating the route in one raid. Each clutch lowers **the chance of gnats spawning near water**; after all three, frogs can be heard near the pool at night and water's extra attraction is gone, but **lamps and sheltered ground can still draw gnats**. The roster, that letter and several residents mention Frogsong Pool croaking again and the frogs that grew there spreading along the waterline. Progress is shown in the journal under "About the isles → This run · journey progress".
+**The frogs of Frogsong Pool**: a child's letter asks the frogs to count ten lights, though the pool fell silent long ago.
+
+At night, wrap a clutch of frogspawn in Cloudmoss Fiber at **Mirrorwater Temple · a rubbing in the pool**, then carry it during the same raid to **Frogsong Pool ("Qinghe's planting record")** (dawn release still counts, Wind-Vane Compass guides there first; **falling or extracting loses any held clutch**, though delivered clutches save across up to three casual trips).
+
+Each released clutch reduces **near-water gnat spawns**; all three bring the frogs back at night and clear water's extra gnat attraction (lamps and shelter still draw them), tracked in your journal progress page.
 
 [tip] Heading out at night, burn incense or wait by a hearth until a swarm scatters; for work by the water, carry the veil and set down a zapper; rub on starmoss salve before you leave and bites will not itch for a while. Incense means "none come"; the lantern means "the ones that come stay on the lamp". For its four minutes they only circle the flame, biting nothing and dodging nothing, so clear them with the fan or a shotgun while it burns. Remember it too late and the whole ring drops onto you at once.
 
 ### What the run records
 
-Beacons, side paths, the named opponents' and the Windeater's outcomes, visited regions, notes and the ending are all recorded per save slot. Ordinary encounter clears are recorded too (repairing the beacons and calibrating the telescope read those as prerequisites), but they do **not** stop those encounters from returning next raid. Chiefs and island lords come back every raid too; the first time you bring one down **yourself**, a caption plays and it goes into the journal under "This run · journey progress". A kill by scavengers, Galebreakers or anything else does not count. Leaving or dying never clears recorded story facts, and an unfinished fight is never written down as a permanent failure.
+**Saved per save slot**: beacon & side-path state, named opponent & Windeater outcomes, visited islands, twenty notes, pigeon letters, roster pages, keepsake grants, lit windcrystal lamps, and released frogspawn clutches. Normal encounter clears log as prerequisites and your own first chief/lord kills record in your journal, though every non-story opponent returns next raid.
 
-Crate contents, contract progress, the homecoming meal, gathering spots, consumable effects and chill, cloud gnats, itching and frogspawn in your hands are **per raid** and are not saved: every departure starts a fresh round. Loot, boss trophies and contract rewards are still mostly the game's existing items; the archipelago's own items are listed under "Sky Islands items", "Gathering, crafting, the isles' lights and the night wind" and "Cloud gnats at night" above. Pigeon letters, roster pages, keepsake grants, lit windcrystal lamps and frogspawn released into Frogsong Pool are saved per slot as well; a puzzle left half-solved starts again from step one next raid.
+**Reset each raid**: crate loot, lane contracts, homecoming meals, gathering nodes, consumable timers, chill/gnat/itch state, un-released frogspawn in your hands, and half-solved three-step puzzles. Most crates and rewards pay standard items alongside the Sky Islands gear detailed above.
 
 [tip] A region only counts as visited once you actually set foot on that island. Eyeing it from the far bridgehead, or walking along the bridge, does not light it up on the map.
 

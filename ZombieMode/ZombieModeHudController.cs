@@ -75,12 +75,10 @@ namespace BossRush
             mainText.rectTransform.offsetMin = new Vector2(16f, 16f);
             mainText.rectTransform.offsetMax = new Vector2(-12f, -8f);
             Transform mainPanel = mainText.transform.parent;
-            GameObject rail = ZombieModeUIHelper.CreateRect("AccentRail", mainPanel, new Vector2(0f, 0f), new Vector2(0f, 1f),
-                new Vector2(3f, 0f), new Vector2(3f, -18f), new Vector2(0f, 0.5f));
-            Image railImage = rail.AddComponent<Image>();
-            railImage.color = BossRushUIColors.Accent;
-            railImage.raycastTarget = false;
-            BossRushUI.ApplyPanelSkin(railImage, 2, BossRushUISkinPart.Hairline);
+            RectTransform mainBrush = BossRushInkSkin.CreateBrushStroke(
+                mainPanel, "TopBrush", new Vector2(148f, 4f),
+                new Vector2(-106f, -3f), BossRushInkColors.Gold);
+            if (mainBrush != null) mainBrush.anchorMin = mainBrush.anchorMax = new Vector2(0.5f, 1f);
             killBar = new ZombieModeHudBar(mainPanel, "KillBar", new Vector2(0f, 0f), new Vector2(1f, 0f),
                 new Vector2(2f, 8f), new Vector2(-32f, 4f));
 

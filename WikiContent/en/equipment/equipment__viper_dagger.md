@@ -31,7 +31,7 @@ Swings leave a **venom-green trail**. When the 5th stack triggers the toxic burs
 
 ### Tips
 
-- Fast attack speed (2.1) and low stamina cost (4/hit) let you stack venom quickly
+- Fast attack speed (2.1) and low stamina cost (2/hit) let you stack venom quickly
 - On base stats a burst lands around 50-57; reforges, affixes and set bonuses push it up with everything else
 - 1.4m range means you have to be right on top of enemies, which is risky when surrounded
 - Low crit stats mean early single hits feel weak; the venom stacks are what make up the difference

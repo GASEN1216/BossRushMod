@@ -197,6 +197,30 @@ namespace BossRush
             frameFitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
             frameFitter.aspectRatio = 1f;
 
+            // 上下鎏金书画卷轴眉栏 + 右上落印
+            RectTransform topMount = BossRushInkSkin.CreateBrushStroke(
+                imageFrame.transform, "TopScrollBrush", new Vector2(360f, 5f),
+                new Vector2(0f, -4f), BossRushInkColors.Gold);
+            if (topMount != null)
+            {
+                topMount.anchorMin = topMount.anchorMax = new Vector2(0.5f, 1f);
+            }
+            RectTransform botMount = BossRushInkSkin.CreateBrushStroke(
+                imageFrame.transform, "BotScrollBrush", new Vector2(360f, 5f),
+                new Vector2(0f, 4f), BossRushInkColors.Gold);
+            if (botMount != null)
+            {
+                botMount.anchorMin = botMount.anchorMax = new Vector2(0.5f, 0f);
+            }
+            RectTransform artSeal = BossRushInkWidgets.CreateSealBadge(
+                imageFrame.transform, L10n.T("墨藏", "ART"), 46f,
+                BossRushInkColors.Cinnabar, Vector2.zero, -9f, false);
+            if (artSeal != null)
+            {
+                artSeal.anchorMin = artSeal.anchorMax = new Vector2(1f, 1f);
+                artSeal.anchoredPosition = new Vector2(-28f, -28f);
+            }
+
             GameObject imgObj = new GameObject("MainImage");
             imgObj.transform.SetParent(imageFrame.transform, false);
 
@@ -209,6 +233,8 @@ namespace BossRush
             mainRect.anchorMax = Vector2.one;
             mainRect.offsetMin = new Vector2(FRAME_PADDING, FRAME_PADDING);
             mainRect.offsetMax = new Vector2(-FRAME_PADDING, -FRAME_PADDING);
+            // 印章比图先建，压在图下面只露一角：挪到最上层。
+            if (artSeal != null) artSeal.SetAsLastSibling();
 
             // 4. 创建标题文本
             GameObject titleObj = new GameObject("Title");
@@ -402,16 +428,22 @@ namespace BossRush
             isOpen = true;
             if (wasVisible)
             {
+                // 开着时换图不重播动画，但标题可能换了：金笔按新标题宽度重画（静态，不再从左写一遍）。
+                if (titleText.gameObject.activeSelf)
+                {
+                    BossRushInkWidgets.AddLeftOrAlignedStroke(titleText, BossRushInkColors.Gold, 8f, false);
+                }
                 return;
             }
 
             BossRushUIEntranceAnimation.Play(backgroundImage.gameObject, 0f, BACKDROP_FADE_SECONDS, 0f);
             if (imageFrame.activeSelf)
             {
-                BossRushUI.PlayOpenAnimation(imageFrame);
+                BossRushInkWidgets.PlayInkSurfaceOpen(imageFrame, BossRushInkSkin.SfxPaperTurn);
             }
             if (titleText.gameObject.activeSelf)
             {
+                BossRushInkWidgets.AddLeftOrAlignedStroke(titleText, BossRushInkColors.Gold, 8f, true);
                 BossRushUIEntranceAnimation.Play(titleText.gameObject, 0.06f, 0.2f, 8f);
             }
             BossRushUIEntranceAnimation.Play(hintText.gameObject, 0.12f, 0.2f, 0f);

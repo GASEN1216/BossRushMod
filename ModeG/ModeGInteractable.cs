@@ -260,6 +260,8 @@ namespace BossRush
             MakeSurfaceOpaque(surface);
 
             Transform st = surface.transform;
+            RectTransform stRect = surface.GetComponent<RectTransform>();
+            BossRushInkSkin.PlaySfx(BossRushInkSkin.SfxBrushSweep);
             // 纵向游标：从面板顶边往下量的距离。下面每一段都挂在面板顶边上、排完把游标往下推。
             float cursor = HeroInset;
 
@@ -292,6 +294,11 @@ namespace BossRush
             RectTransform emblemRect = CreateEmblem(st, EmblemSize);
             cursor += PlaceTitleRow(st, emblemRect, cursor, L10n.T("宿命回响", "Fate Echo"), 32f,
                 BossRushUIColors.WarningText, ContentWidth, EmblemSize) + 8f;
+            // cursor 是从面板顶边往下量的：金笔要锚在顶边中央，否则 y 按面板中心算，落到面板中段（同下面分隔笔）。
+            RectTransform titleBrush = BossRushInkSkin.CreateBrushStroke(
+                st, "TitleBrush", new Vector2(260f, 6f), new Vector2(0f, -(cursor - 4f)), BossRushInkColors.Gold);
+            titleBrush.anchorMin = titleBrush.anchorMax = new Vector2(0.5f, 1f);
+            cursor += 6f;
 
             // 玩法说明：三句大白话——怎么打、敌人会怎样、能拿到什么。「决意」金色标出，和局内 HUD 同一个词。
             // 三条玩法说明居中，与标题及契约选择区对齐。
@@ -325,6 +332,8 @@ namespace BossRush
             {
                 cursor += PlaceText(CreateBodyText("Nemesis", st, nemesisLine, 16f, BossRushUIColors.DangerText),
                     ContentWidth, 0f, cursor) + 10f;
+                BossRushInkWidgets.AttachEmberField(
+                    stRect, BossRushInkColors.Cinnabar, BossRushInkColors.Ember, true, 8, 0.22f);
             }
 
             // 契约二选一：标题后面用次级字补一句「只是额外目标」，免得玩家以为选了会变难
@@ -612,34 +621,22 @@ namespace BossRush
             return height;
         }
 
-        /// <summary>「√ 已选」角标：WarningText 底 + 深字（GetButtonTextColor），单行不换行、不省略，宽度按字量。</summary>
+        /// <summary>「契合」鎏金印章角标：选中契约后盖章落印。</summary>
         private static GameObject BuildSelectedBadge(Transform card)
         {
-            string text = L10n.T("√ 已选", "√ Selected");
-            // 与名称首行垂直居中：名称一行高 20×1.45，角标高 BadgeHeight。
-            float top = CardPadY + (20f * LineHeightFactor - BadgeHeight) * 0.5f;
-            GameObject badge = ZombieModeUIHelper.CreateRect("SelectedBadge", card,
-                new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-CardPadX, -top),
-                new Vector2(80f, BadgeHeight), new Vector2(1f, 1f));
-            Image fill = badge.AddComponent<Image>();
-            fill.color = BossRushUIColors.WarningText;
-            fill.raycastTarget = false;
-            BossRushUI.ApplyPanelSkin(fill, 8, BossRushUISkinPart.Button);
-            TextMeshProUGUI label = ZombieModeUIHelper.CreateText("Label", badge.transform, text, 14f,
-                Vector2.zero, new Vector2(80f, BadgeHeight), TextAlignmentOptions.Center,
-                BossRushUI.GetButtonTextColor(BossRushUIColors.WarningText));
-            label.enableAutoSizing = false;
-            label.enableWordWrapping = false;
-            label.overflowMode = TextOverflowModes.Overflow;
-            label.margin = Vector4.zero;
-            RectTransform labelRect = label.rectTransform;
-            labelRect.anchorMin = Vector2.zero;
-            labelRect.anchorMax = Vector2.one;
-            labelRect.offsetMin = Vector2.zero;
-            labelRect.offsetMax = Vector2.zero;
-            float width = Mathf.Ceil(label.GetPreferredValues(text).x) + 16f;
-            badge.GetComponent<RectTransform>().sizeDelta = new Vector2(width, BadgeHeight);
-            return badge;
+            RectTransform seal = BossRushInkSkin.CreateSeal(card, L10n.T("契合", "SET"), 40f);
+            seal.name = "SelectedBadge";
+            seal.anchorMin = new Vector2(1f, 1f);
+            seal.anchorMax = new Vector2(1f, 1f);
+            seal.pivot = new Vector2(1f, 1f);
+            // 40 见方、转 -9 度后最低角约在卡顶下 43.5，说明首行从 CardPadY + 名称行高 + 4（约 45）起，不压字。
+            seal.anchoredPosition = new Vector2(-CardPadX + 4f, -CardPadY + 8f);
+            seal.localRotation = Quaternion.Euler(0f, 0f, -9f);
+            Image bg = seal.GetComponent<Image>();
+            if (bg != null) bg.color = BossRushInkColors.Gold;
+            TextMeshProUGUI label = seal.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (label != null) label.color = BossRushInkColors.InkWash;
+            return seal.gameObject;
         }
 
         private static Color GetCardColor(bool selected)
@@ -688,6 +685,15 @@ namespace BossRush
             {
                 _selectedCandidateIndex = index;
                 RefreshContractCards();
+                if (_cardBadges != null && index < _cardBadges.Length && _cardBadges[index] != null
+                    && _cardButtons != null && index < _cardButtons.Length && _cardButtons[index] != null)
+                {
+                    RectTransform badgeRect = _cardBadges[index].GetComponent<RectTransform>();
+                    RectTransform cardRect = _cardButtons[index].GetComponent<RectTransform>();
+                    BossRushInkSkin.StampSeal(badgeRect, cardRect, 0f);
+                    BossRushInkWidgets.PlayActionRipple(
+                        cardRect, Vector2.zero, 120f, BossRushInkColors.Gold, BossRushInkSkin.SfxSealStamp);
+                }
             }
             catch (Exception e)
             {
@@ -899,11 +905,16 @@ namespace BossRush
                 BossRushUIColors.DangerText);
             ModeGInteractable.MakeSurfaceOpaque(surface);
             Transform st = surface.transform;
+            BossRushInkSkin.PlaySfx(BossRushInkSkin.SfxBrushSweep);
 
             float cursor = TopPad;
             cursor += ModeGInteractable.PlaceTitleRow(st, ModeGInteractable.CreateEmblem(st, EmblemSize), cursor,
                 L10n.T("放弃宿命回响挑战？", "Abandon the Fate Echo run?"), 28f, BossRushUIColors.TextPrimary,
-                ContentWidth, EmblemSize) + 14f;
+                ContentWidth, EmblemSize) + 10f;
+            RectTransform abandonBrush = BossRushInkSkin.CreateBrushStroke(
+                st, "AbandonTitleBrush", new Vector2(240f, 6f), new Vector2(0f, -(cursor - 2f)), BossRushInkColors.Cinnabar);
+            abandonBrush.anchorMin = abandonBrush.anchorMax = new Vector2(0.5f, 1f);
+            cursor += 8f;
 
             // §3.1 强制披露：放弃的全部代价一次讲清，不得只写「确认放弃」
             cursor += ModeGInteractable.PlaceText(ModeGInteractable.CreateParagraphText("Disclosure", st,
@@ -913,10 +924,11 @@ namespace BossRush
                     + "and your contract win streak resets."),
                 16f, BossRushUIColors.TextSecondary), ContentWidth, 0f, cursor) + 12f;
 
-            GameObject divider = ZombieModeUIHelper.CreateSeparator("Divider", st,
-                new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -(cursor + 4f)), 1f, BossRushUIColors.Divider);
-            RectTransform dividerRect = divider.GetComponent<RectTransform>();
-            dividerRect.sizeDelta = new Vector2(-PadX * 2f, dividerRect.sizeDelta.y);
+            RectTransform inkDiv = BossRushInkSkin.CreateInkDivider(st, ContentWidth, new Vector2(0f, -(cursor + 4f)));
+            if (inkDiv != null)
+            {
+                inkDiv.anchorMin = inkDiv.anchorMax = new Vector2(0.5f, 1f);
+            }
             cursor += 22f;
 
             float buttonY = -(cursor + ButtonHeight * 0.5f);

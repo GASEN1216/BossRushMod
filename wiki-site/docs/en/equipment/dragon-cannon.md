@@ -1,5 +1,13 @@
 # Skyburner Dragon Cannon
 
+<div class="brs-icon">
+
+![Skyburner Dragon Cannon](/images/scenes/sc-dragon-cannon.webp)
+*Skyburner Dragon Cannon*
+
+</div>
+
+
 ## Role
 
 The Skyburner Dragon Lord's personal firearm. It supports 17 ammo types that can be selected through the normal ammo-type UI; every one is rewritten into a distinct dragonfire barrage.

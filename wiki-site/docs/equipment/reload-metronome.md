@@ -2,6 +2,17 @@
 
 铜牌上刻着：装填有时，开火有节。把换弹等待变成一次抓准节拍的小操作。
 
+<div class="brs-gallery">
+
+![钟守节拍器](/images/scenes/sc-reload-metronome.webp)
+*钟守节拍器*
+
+![急速团长](/images/codex/cname-speedy.webp)
+*急速团长*
+
+</div>
+
+
 ## 从哪拿？
 
 击败原版 Boss **急速团长**，有 **20%** 概率额外掉落一件，原版地图同样可得。不替换他的原有掉落；急冻团长和普通随从不在此掉落范围。

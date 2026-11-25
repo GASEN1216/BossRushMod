@@ -34,6 +34,8 @@ MIGRATED = [
     # 日报面板：纸张是浅色的，但那只是调用方传给 ApplyPanelSkin 的颜色参数
     # （皮肤只给形状不给色），层级常量与遮罩色仍然必须走共享库。
     Path("Integration/DailyReport/DailyReportUI.cs"),
+    # 冒险家日志（游戏内百科）水墨书卷界面：模态层级与暗角遮罩统一走共享库。
+    Path("Integration/WikiUIManager.cs"),
 ]
 
 # CanvasScaler 的参数只在 BossRushUIKit.ConfigureCanvasScaler 维护，旧帮助类转发。

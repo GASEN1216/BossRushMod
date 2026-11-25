@@ -4,11 +4,22 @@ A light staff dropped by the Shadow of the Champion. Obtain it from the Chapter 
 
 Summoned sand guards also wield Astral Staffs of light, but drop no items when defeated.
 
-The staff and its attacks are entirely procedural light: a fine champagne-gold core, twin spiral filaments, and pale cyan echoes. The tip leaves afterimages while swinging, and broken rings contract toward the staff while charging. Every hit has a star flash, shock ring, slash mark, sparks, and its own impact sound; kills scatter stars and hold the pause a little longer. The three heavy attacks escalate in layers: the sweep adds an afterimage blade and meteor streaks flung from the arc; the spin alternates gold and cyan beats, each with a rising dragon spiral of stars; Starfall brings a falling meteor, a two-stage light pillar, star shards skimming outward, and an aftershock ring. Hit pauses and camera feedback require actual damage; misses and invulnerable targets do not trigger them.
+The weapon and its strikes are crafted out of animated light: a champagne-gold core with twin spiral filaments and pale cyan afterimages, trailing arcs on swings and contracting light rings while charging.
+
+- **Hits & kills**: real hits trigger a star flash, shock ring, sparks, and bespoke impact audio, while kills scatter stars with an extended hitstop (misses and invulnerable targets trigger neither)
+- **Escalating heavy visuals**: Meteor Sweep flings meteor streaks off a golden blade arc; Twin Dragon Spin alternates gold and cyan sweeps wrapped in rising dragon spirals; Starfall drops a falling meteor into a two-stage light pillar and outward star shards
 
 Heavy attacks can break the champion's bubbles and sand sharks. These projectiles do not grant Focus.
 
-# Focus and controls
+<div class="brs-icon">
+
+![Astral Staff](/images/scenes/sc-astral-staff.webp)
+*Astral Staff*
+
+</div>
+
+
+## Focus and controls
 
 - Left-click for light attacks. Every two successful swings grant one Focus point, and the third hit of a combo counts twice, up to three points. Hitting several targets in one swing only counts once.
 - Hold right-click to charge one point every 0.45 seconds. Release to spend your Focus on a heavy attack. With no Focus or too little stamina, a hint appears above your head and your Focus is kept.
@@ -17,7 +28,7 @@ Heavy attacks can break the champion's bubbles and sand sharks. These projectile
 - Three points, Starfall: surge forward and slam a giant staff of light, hitting a forward line and the impact circle once per target.
 - Unequipping, death, or changing scenes clears Focus and cancels charging.
 
-# Stats and acquisition
+## Stats and acquisition
 
 - Quality 6, base damage 42, attack speed 1.45, light attack range 2.3.
 - Durability 100; supports repair and reforging. Base value 78000.

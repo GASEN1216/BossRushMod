@@ -2,6 +2,14 @@
 
 Responsibility is transferable. Equip this totem to plant a ticking bomb above an enemy you hit. Whoever the carrier hits next gets the bomb. That includes you.
 
+<div class="brs-icon">
+
+![License to Pass the Buck](/images/scenes/sc-pass-the-bomb.webp)
+*License to Pass the Buck*
+
+</div>
+
+
 ## Where to get it
 
 Reach affinity Lv.3 with Fuzhou at Cloudrise Dock in the Sky Islands, then buy the license from Fuzhou's Departure Supplies for 18,000, with one in stock per shop session. Fuzhou still sells it at the base after marriage. When Fuzhou is away, the dock workbench offers the same Shop interaction, goods and affinity requirement.

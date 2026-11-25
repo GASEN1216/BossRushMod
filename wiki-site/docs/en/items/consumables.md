@@ -1,5 +1,31 @@
 # Consumables
 
+<div class="brs-gallery">
+
+![Birthday Cake](/images/scenes/sc-birthday-cake.webp)
+*Birthday Cake*
+
+![Calming Drops](/images/scenes/sc-calming-drops.webp)
+*Calming Drops*
+
+![Cold Quench Fluid](/images/scenes/sc-cold-quench.webp)
+*Cold Quench Fluid*
+
+![Homecoming Bento](/images/scenes/sc-bento.webp)
+*Homecoming Bento*
+
+![Starmoss Salve](/images/scenes/sc-salve.webp)
+*Starmoss Salve*
+
+![Wind Lantern](/images/scenes/sc-lantern.webp)
+*Wind Lantern*
+
+![Windward Incense](/images/scenes/sc-incense.webp)
+*Windward Incense*
+
+</div>
+
+
 ## Birthday Cake
 
 - **Source**: the normal Wish Fountain reward pool; a one-time save gift during real-world December (not renewed each year) / **Affinity**: +150 to Dingdang or Yu Zhi

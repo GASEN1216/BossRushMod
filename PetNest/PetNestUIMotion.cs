@@ -232,7 +232,8 @@ namespace BossRush
         #region 选中态
 
         /// <summary>
-        /// 选中描边：选中 = Accent（不再借 WarningText 的黄，审查 A-9），没选中 = 默认描边。
+        /// 选中描边：选中 = WarningText（UI 制作共识「选中统一 WarningText 描边」），没选中 = 默认描边。
+        /// 水墨主题下 Stroke 与 Accent 同为鎏金、只差透明度，选中与否分不出，所以不用 Accent。
         /// 同页重绘时「刚被选中 / 刚取消」的那一项淡过去，没变的直接落定，不重播。
         /// </summary>
         private void ApplySelectedStroke(GameObject card, string key, bool selected)
@@ -242,7 +243,7 @@ namespace BossRush
             Image image = stroke != null ? stroke.GetComponent<Image>() : null;
             if (image == null) return;
             if (selected && key != null) _selectedKeysNext.Add(key);
-            Color target = selected ? BossRushUIColors.Accent : BossRushUIColors.Stroke;
+            Color target = selected ? BossRushUIColors.WarningText : BossRushUIColors.Stroke;
             bool wasSelected = key != null && _selectedKeys.Contains(key);
             if (_animateSelection && key != null && selected != wasSelected)
             {

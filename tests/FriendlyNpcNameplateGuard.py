@@ -117,9 +117,10 @@ def main():
                              "Object.Instantiate(manager.healthBarPrefab.gameObject,canvas.transform,false);",
                              "NameTextField.GetValue(bar)asTextMeshProUGUI",
                              "bar.enabled=false;", "Object.Destroy(bar);",
-                             "if(graphics[i]==label)continue;", "graphics[i].enabled=false;",
+                             "if(graphics[i].transform.IsChildOf(label.transform))continue;", "graphics[i].enabled=false;",
                              "label.text=name;"]),
-            "[外观] 名牌克隆官方血条、只留官方那行名字（血条逻辑拆掉、别的图形不画）")
+            "[外观] 名牌克隆官方血条、只留官方那行名字（血条逻辑拆掉、别的图形不画；"
+            "名字自己与它底下回退字体的 TMP_SubMeshUI 整棵子树都不关）")
     for forbidden in ("CreateBrushStroke", "AddComponent<Image>", "CreateImage", "BossRushInkSkin.", "ZombieModeUIHelper.CreateText",
                       "ApplyGameFont", "fontSize="):
         require(forbidden not in create, "[外观] 名牌用官方那行名字，不自己画字、不画线、不改字号：" + forbidden)

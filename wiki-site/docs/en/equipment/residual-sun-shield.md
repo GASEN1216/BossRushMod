@@ -2,6 +2,14 @@
 
 Residual Sun Shield Shard is a totem built around dodge timing. Dodge toward an incoming attack, catch one hit inside the brief guard window, then return the absorbed damage with your next direct hit.
 
+<div class="brs-icon">
+
+![Residual Sun Shield Shard](/images/scenes/sc-residual-sun.webp)
+*Residual Sun Shield Shard*
+
+</div>
+
+
 ## Obtaining and Equipping
 
 - **Source**: follow Jeff's introduction to Experimental Area 37, or defeat Eclipse Bloom in a supported Boss-pool mode. Every victory drops 1 shard.

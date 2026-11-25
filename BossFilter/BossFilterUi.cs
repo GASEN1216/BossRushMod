@@ -85,37 +85,26 @@ namespace BossRush
             TextMeshProUGUI titleText = titleTextObj.AddComponent<TextMeshProUGUI>();
             BossRushUI.ApplyGameFont(titleText);
             titleText.text = L10n.T("Boss池设置", "Boss Pool Settings");
-            titleText.fontSize = 28;
+            titleText.fontSize = 26f;
+            titleText.fontStyle = FontStyles.Bold;
             titleText.alignment = TextAlignmentOptions.Center;
-            titleText.color = BossRushUIColors.TextPrimary;
+            titleText.color = BossRushInkColors.Paper;
+            titleText.characterSpacing = BossRushInkWidgets.IsMostlyLatin(titleText.text) ? 2f : 6f;
+            titleText.raycastTarget = false;
             RectTransform titleTextRect = titleTextObj.GetComponent<RectTransform>();
             titleTextRect.anchorMin = Vector2.zero;
             titleTextRect.anchorMax = Vector2.one;
-            titleTextRect.offsetMin = new Vector2(10f, 0f);
-            titleTextRect.offsetMax = new Vector2(-40f, 0f);
+            titleTextRect.offsetMin = new Vector2(44f, 0f);
+            titleTextRect.offsetMax = new Vector2(-44f, 0f);
+            BossRushInkWidgets.AddLeftOrAlignedStroke(titleText, BossRushInkColors.Gold, 7f);
 
-            // 关闭按钮（使用官方 Button prefab）
-            Button buttonPrefab = GameplayDataSettings.UIPrefabs.Button;
-            if (buttonPrefab != null)
-            {
-                Button closeBtn = UnityEngine.Object.Instantiate(buttonPrefab, titleBar.transform);
-                RectTransform closeBtnRect = closeBtn.GetComponent<RectTransform>();
-                closeBtnRect.anchorMin = new Vector2(1f, 0.5f);
-                closeBtnRect.anchorMax = new Vector2(1f, 0.5f);
-                closeBtnRect.pivot = new Vector2(1f, 0.5f);
-                closeBtnRect.anchoredPosition = new Vector2(-10f, 0f);
-                closeBtnRect.sizeDelta = new Vector2(35f, 35f);
-
-                // 设置按钮文本
-                TextMeshProUGUI btnText = closeBtn.GetComponentInChildren<TextMeshProUGUI>();
-                if (btnText != null)
-                {
-                    btnText.text = "×";   // 乘号（GBK 有字形），不再拿字母 X 当关闭图标（UB-26）
-                    btnText.fontSize = 22;
-                }
-
-                closeBtn.onClick.AddListener(() => SaveAndCloseBossPoolWindow());
-            }
+            // 关闭按钮（共享幽灵水墨关闭键，消除官方 Button prefab 混搭）
+            BossRushInkWidgets.CreateInkCloseButton(
+                titleBar.transform,
+                new Vector2(1f, 0.5f),
+                new Vector2(-14f - 17.5f, 0f),
+                () => SaveAndCloseBossPoolWindow(),
+                35f);
         }
 
         /// <summary>

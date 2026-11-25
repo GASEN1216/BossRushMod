@@ -1,5 +1,13 @@
 # 无间炼狱
 
+<div class="brs-figure">
+
+![黑市挑战迷宫布局](/images/scenes/map-preview-maze.webp)
+*黑市挑战迷宫布局*
+
+</div>
+
+
 ## 玩法机制
 
 标准 BossRush 的"我不想回家"版本。Boss 一波接一波，每波都比上一波强，**没有终点，没有通关，没有撤离**，要做的只有一件事：再多撑一波。

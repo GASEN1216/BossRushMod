@@ -1,0 +1,1404 @@
+{
+  "schema": 1,
+  "assets": {
+    "diag-sky-island": {
+      "asset": "Assets/wiki_diagrams/sky_island_route_zh.png",
+      "assetEn": "Assets/wiki_diagrams/sky_island_route_en.png",
+      "webSrc": "/images/diagrams/sky_island_route_zh.webp",
+      "webSrcEn": "/images/diagrams/sky_island_route_en.webp",
+      "maxSize": 1024,
+      "zh": "晴岚群岛航路、双航标与中继捷径总览图",
+      "en": "Qinglan Archipelago routes, twin beacons, and shortcut relays"
+    },
+    "diag-tidegate": {
+      "asset": "Assets/wiki_diagrams/tidegate_map_zh.png",
+      "assetEn": "Assets/wiki_diagrams/tidegate_map_en.png",
+      "webSrc": "/images/diagrams/tidegate_map_zh.webp",
+      "webSrcEn": "/images/diagrams/tidegate_map_en.webp",
+      "maxSize": 1024,
+      "zh": "潮闸镇潮位周期、三阀地点与四处撤离时机图",
+      "en": "Tidegate tidal stages, valve sites, and extraction timing"
+    },
+    "diag-lastshift": {
+      "asset": "Assets/wiki_diagrams/lastshift_yard_zh.png",
+      "assetEn": "Assets/wiki_diagrams/lastshift_yard_en.png",
+      "webSrc": "/images/diagrams/lastshift_yard_zh.webp",
+      "webSrcEn": "/images/diagrams/lastshift_yard_en.webp",
+      "maxSize": 1024,
+      "zh": "末班编组站东西台道岔、加价台与押运波次图",
+      "en": "Last Shift Yard track switches, premium platform, and escort flow"
+    },
+    "diag-eclipse-bloom": {
+      "asset": "Assets/wiki_diagrams/eclipse_bloom_zh.png",
+      "assetEn": "Assets/wiki_diagrams/eclipse_bloom_en.png",
+      "webSrc": "/images/diagrams/eclipse_bloom_zh.webp",
+      "webSrcEn": "/images/diagrams/eclipse_bloom_en.webp",
+      "maxSize": 1024,
+      "zh": "蚀日花冠四瓣护核、安全缺口与 9.5m 日珥距离图",
+      "en": "Eclipse Bloom four-petal ward, safe gaps, and 9.5m flare threshold"
+    },
+    "diag-mode-g": {
+      "asset": "Assets/wiki_diagrams/mode_g_counter_zh.png",
+      "assetEn": "Assets/wiki_diagrams/mode_g_counter_en.png",
+      "webSrc": "/images/diagrams/mode_g_counter_zh.webp",
+      "webSrcEn": "/images/diagrams/mode_g_counter_en.webp",
+      "maxSize": 1024,
+      "zh": "宿命回响三幕九波、三轴反制与决意结算循环图",
+      "en": "Fate Echo 9-wave counter axes and Resolve reward cycle"
+    },
+    "dragondescendant": {
+      "asset": "Assets/ui/Codex/codex_portrait_dragondescendant.png",
+      "webSrc": "/images/codex/dragondescendant.webp",
+      "zh": "龙裔遗族",
+      "en": "Dragon Descendant"
+    },
+    "boss_dragonking": {
+      "asset": "Assets/ui/Codex/codex_portrait_boss_dragonking.png",
+      "webSrc": "/images/codex/boss-dragonking.webp",
+      "zh": "焚天龙皇",
+      "en": "Skyburner Dragon Lord"
+    },
+    "boss_phantomwitch": {
+      "asset": "Assets/ui/Codex/codex_portrait_boss_phantomwitch.png",
+      "webSrc": "/images/codex/boss-phantomwitch.webp",
+      "zh": "幽灵女巫",
+      "en": "Phantom Witch"
+    },
+    "zombie_boss_titan": {
+      "asset": "Assets/ui/Codex/codex_portrait_zombie_boss_titan.png",
+      "webSrc": "/images/codex/zombie-boss-titan.webp",
+      "zh": "巨坦（丧尸 Boss）",
+      "en": "Titan (Zombie Boss)"
+    },
+    "zombie_boss_hunter": {
+      "asset": "Assets/ui/Codex/codex_portrait_zombie_boss_hunter.png",
+      "webSrc": "/images/codex/zombie-boss-hunter.webp",
+      "zh": "极速追猎（丧尸 Boss）",
+      "en": "Hunter (Zombie Boss)"
+    },
+    "zombie_boss_splitter": {
+      "asset": "Assets/ui/Codex/codex_portrait_zombie_boss_splitter.png",
+      "webSrc": "/images/codex/zombie-boss-splitter.webp",
+      "zh": "分裂尸群（丧尸 Boss）",
+      "en": "Splitter (Zombie Boss)"
+    },
+    "zombie_boss_shielder": {
+      "asset": "Assets/ui/Codex/codex_portrait_zombie_boss_shielder.png",
+      "webSrc": "/images/codex/zombie-boss-shielder.webp",
+      "zh": "护盾统御（丧尸 Boss）",
+      "en": "Shielder (Zombie Boss)"
+    },
+    "zombie_boss_corruptor": {
+      "asset": "Assets/ui/Codex/codex_portrait_zombie_boss_corruptor.png",
+      "webSrc": "/images/codex/zombie-boss-corruptor.webp",
+      "zh": "腐蚀地面（丧尸 Boss）",
+      "en": "Corruptor (Zombie Boss)"
+    },
+    "cname_stormboss5": {
+      "asset": "Assets/ui/Codex/codex_portrait_cname_stormboss5.png",
+      "webSrc": "/images/codex/cname-stormboss5.webp",
+      "zh": "岚域噬风原型（口口口口）",
+      "en": "Windeater reference (Koko Koko)"
+    },
+    "cname-snowpmc": {
+      "asset": "Assets/ui/Codex/codex_portrait_character_snowpmc.png",
+      "webSrc": "/images/scenes/codex-snowpmc.webp",
+      "maxSize": 512,
+      "zh": "可召唤随从：煤球",
+      "en": "Summon companion: Coal Briquette"
+    },
+    "myst-merchant": {
+      "asset": "Assets/ui/Codex/codex_portrait_merchantname_myst.png",
+      "webSrc": "/images/scenes/codex-myst-merchant.webp",
+      "maxSize": 512,
+      "zh": "神秘商人",
+      "en": "Mystery Merchant"
+    },
+    "cname_speedy": {
+      "asset": "Assets/ui/Codex/codex_portrait_cname_speedy.png",
+      "webSrc": "/images/codex/cname-speedy.webp",
+      "zh": "急速团长（掉落节拍器）",
+      "en": "Speedy (drops Metronome)"
+    },
+    "poster-ch1": {
+      "asset": "Assets/ui/Campaign/campaign_poster_ch1.png",
+      "webSrc": "/images/campaign/poster-ch1.webp",
+      "zh": "第 1 章 · 擂台旧影",
+      "en": "Chapter 1 — Echoes of the Ring"
+    },
+    "poster-ch2": {
+      "asset": "Assets/ui/Campaign/campaign_poster_ch2.png",
+      "webSrc": "/images/campaign/poster-ch2.webp",
+      "zh": "第 2 章 · 白手起家的誓言",
+      "en": "Chapter 2 — Vow of the Empty-Handed"
+    },
+    "poster-ch3": {
+      "asset": "Assets/ui/Campaign/campaign_poster_ch3.png",
+      "webSrc": "/images/campaign/poster-ch3.webp",
+      "zh": "第 3 章 · 立旗为界",
+      "en": "Chapter 3 — Planting the Banner"
+    },
+    "poster-ch4": {
+      "asset": "Assets/ui/Campaign/campaign_poster_ch4.png",
+      "webSrc": "/images/campaign/poster-ch4.webp",
+      "zh": "第 4 章 · 猎杀名单",
+      "en": "Chapter 4 — The Kill List"
+    },
+    "poster-ch5": {
+      "asset": "Assets/ui/Campaign/campaign_poster_ch5.png",
+      "webSrc": "/images/campaign/poster-ch5.webp",
+      "zh": "第 5 章 · 末日信标",
+      "en": "Chapter 5 — The Last Beacon"
+    },
+    "poster-ch6": {
+      "asset": "Assets/ui/Campaign/campaign_poster_ch6.png",
+      "webSrc": "/images/campaign/poster-ch6.webp",
+      "zh": "第 6 章 · 冠军之影",
+      "en": "Chapter 6 — Shadow of the Champion"
+    },
+    "portrait-broker": {
+      "asset": "Assets/ui/Campaign/campaign_portrait_broker.png",
+      "webSrc": "/images/campaign/portrait-broker.webp",
+      "zh": "中间人",
+      "en": "The Broker"
+    },
+    "portrait-champion": {
+      "asset": "Assets/ui/Campaign/campaign_portrait_champion.png",
+      "webSrc": "/images/campaign/portrait-champion.webp",
+      "zh": "冠军之影",
+      "en": "Shadow of the Champion"
+    },
+    "daily-mailbox": {
+      "asset": "Assets/buildings/bossrush_daily_mailbox.png",
+      "webSrc": "/images/icons/daily-mailbox.webp",
+      "zh": "鸭科夫日报报箱",
+      "en": "The Mailbox"
+    },
+    "campaign-board": {
+      "asset": "Assets/buildings/bossrush_campaign_board.png",
+      "webSrc": "/images/icons/campaign-board.webp",
+      "zh": "鸭王征程",
+      "en": "Duck King Campaign"
+    },
+    "showcase": {
+      "asset": "Assets/buildings/bossrush_backmountain_showcase.png",
+      "webSrc": "/images/icons/showcase.webp",
+      "zh": "战利品陈列",
+      "en": "Trophy Display"
+    },
+    "petnest": {
+      "asset": "Assets/buildings/petnest_relic_nest.png",
+      "webSrc": "/images/icons/petnest.webp",
+      "zh": "遗种巢",
+      "en": "PetNest"
+    },
+    "codex-book": {
+      "asset": "Assets/Items/codex_book.png",
+      "webSrc": "/images/icons/codex-book.webp",
+      "zh": "鸭皇图鉴",
+      "en": "Duckov Codex"
+    },
+    "forge-stone": {
+      "asset": "Assets/Items/affix_forge_stone.png",
+      "webSrc": "/images/icons/forge-stone.webp",
+      "zh": "词缀熔石",
+      "en": "Affix Forge Stone"
+    },
+    "relic-egg": {
+      "asset": "Assets/Items/relic_egg.png",
+      "webSrc": "/images/icons/relic-egg.webp",
+      "zh": "遗种蛋",
+      "en": "Relic Egg"
+    },
+    "eq-roll-call-ledger": {
+      "asset": "Assets/Items/roll_call_ledger_icon.png",
+      "webSrc": "/images/icons/eq-roll-call-ledger.webp",
+      "zh": "教导主任的点名册",
+      "en": "Headmaster's Roll-Call Ledger"
+    },
+    "bld-chapel": {
+      "asset": "Assets/buildings/wedding_chapel.png",
+      "webSrc": "/images/scenes/bld-chapel.webp",
+      "maxSize": 256,
+      "zh": "婚礼教堂",
+      "en": "Wedding Chapel"
+    },
+    "bld-fountain": {
+      "asset": "Assets/buildings/starwish_fountain.png",
+      "webSrc": "/images/scenes/bld-fountain.webp",
+      "maxSize": 256,
+      "zh": "星愿许愿台",
+      "en": "Dust-Covered StarWish Fountain"
+    },
+    "mode-fate-banner": {
+      "asset": "Assets/ui/ModeG/modeg_echo_banner.png",
+      "webSrc": "/images/scenes/mode-fate-banner.webp",
+      "maxSize": 1024,
+      "zh": "宿命回响 · 三幕反制竞技场",
+      "en": "Fate Echo — Three-Act Adaptive Arena"
+    },
+    "mode-cup-banner": {
+      "asset": "Assets/ui/ModeH/ModeH_BlackMarketCup_Banner.png",
+      "webSrc": "/images/scenes/mode-cup-banner.webp",
+      "maxSize": 1024,
+      "zh": "黑市鸭王杯 · 红蓝两队押注观战",
+      "en": "Black Market Duck Cup — Blue vs Red"
+    },
+    "daily-paper-bg": {
+      "asset": "Assets/ui/DailyReport/daily_report_bg.png",
+      "webSrc": "/images/scenes/daily-paper-bg.webp",
+      "maxSize": 1024,
+      "zh": "鸭科夫日报头版版式",
+      "en": "The Duckov Daily newspaper layout"
+    },
+    "map-preview-zero": {
+      "asset": "Assets/preview/zero-preview.png",
+      "webSrc": "/images/scenes/map-preview-zero.webp",
+      "maxSize": 1024,
+      "zh": "零号区竞技场预览",
+      "en": "Ground Zero arena preview"
+    },
+    "map-preview-demo": {
+      "asset": "Assets/preview/demo-preview.png",
+      "webSrc": "/images/scenes/map-preview-demo.webp",
+      "maxSize": 1024,
+      "zh": "DEMO 终极挑战场地",
+      "en": "DEMO Ultimate Challenge arena"
+    },
+    "map-preview-maze": {
+      "asset": "Assets/preview/maze-preview.png",
+      "webSrc": "/images/scenes/map-preview-maze.webp",
+      "maxSize": 1024,
+      "zh": "黑市挑战迷宫布局",
+      "en": "Black Market Challenge labyrinth"
+    },
+    "sky-scene-dock": {
+      "asset": "Assets/ui/SkyIsland/skyisland_scene_A.png",
+      "webSrc": "/images/scenes/sky-scene-dock.webp",
+      "maxSize": 1024,
+      "zh": "登云码头",
+      "en": "Cloudrise Dock"
+    },
+    "sky-scene-market": {
+      "asset": "Assets/ui/SkyIsland/skyisland_scene_B.png",
+      "webSrc": "/images/scenes/sky-scene-market.webp",
+      "maxSize": 1024,
+      "zh": "风铃集",
+      "en": "Windchime Market"
+    },
+    "sky-scene-terraces": {
+      "asset": "Assets/ui/SkyIsland/skyisland_scene_C.png",
+      "webSrc": "/images/scenes/sky-scene-terraces.webp",
+      "maxSize": 1024,
+      "zh": "青穗梯田",
+      "en": "Greenear Terraces"
+    },
+    "sky-scene-roots": {
+      "asset": "Assets/ui/SkyIsland/skyisland_scene_D.png",
+      "webSrc": "/images/scenes/sky-scene-roots.webp",
+      "maxSize": 1024,
+      "zh": "悬根林",
+      "en": "Hanging Root Wood"
+    },
+    "sky-scene-boardwalk": {
+      "asset": "Assets/ui/SkyIsland/skyisland_scene_E.png",
+      "webSrc": "/images/scenes/sky-scene-boardwalk.webp",
+      "maxSize": 1024,
+      "zh": "鸣风栈道",
+      "en": "Windsong Boardwalk"
+    },
+    "sky-scene-temple": {
+      "asset": "Assets/ui/SkyIsland/skyisland_scene_F.png",
+      "webSrc": "/images/scenes/sky-scene-temple.webp",
+      "maxSize": 1024,
+      "zh": "镜水寺",
+      "en": "Mirrorwater Temple"
+    },
+    "sky-scene-workshop": {
+      "asset": "Assets/ui/SkyIsland/skyisland_scene_G.png",
+      "webSrc": "/images/scenes/sky-scene-workshop.webp",
+      "maxSize": 1024,
+      "zh": "残星工坊",
+      "en": "Fallen Star Workshop"
+    },
+    "sky-scene-bellcourt": {
+      "asset": "Assets/ui/SkyIsland/skyisland_scene_H.png",
+      "webSrc": "/images/scenes/sky-scene-bellcourt.webp",
+      "maxSize": 1024,
+      "zh": "归航钟庭",
+      "en": "Homecoming Bell Court"
+    },
+    "sky-scene-journal": {
+      "asset": "Assets/ui/SkyIsland/skyisland_scene_journal.png",
+      "webSrc": "/images/scenes/sky-scene-journal.webp",
+      "maxSize": 1024,
+      "zh": "晴岚群岛手记",
+      "en": "Qinglan Archipelago Journal"
+    },
+    "sky-portrait-weibai": {
+      "asset": "Assets/ui/SkyIsland/skyisland_portrait_sky_weibai.png",
+      "webSrc": "/images/scenes/sky-portrait-weibai.webp",
+      "maxSize": 512,
+      "zh": "苇白（修灯人与委托）",
+      "en": "Weibai (Lamp-keeper & Contracts)"
+    },
+    "sky-portrait-fuzhou": {
+      "asset": "Assets/ui/SkyIsland/skyisland_portrait_sky_fuzhou.png",
+      "webSrc": "/images/scenes/sky-portrait-fuzhou.webp",
+      "maxSize": 512,
+      "zh": "浮舟（渡口整备与商店）",
+      "en": "Fuzhou (Dock Refit & Supplies)"
+    },
+    "sky-portrait-qinghe": {
+      "asset": "Assets/ui/SkyIsland/skyisland_portrait_sky_qinghe.png",
+      "webSrc": "/images/scenes/sky-portrait-qinghe.webp",
+      "maxSize": 512,
+      "zh": "晴禾（灶台与归航菜）",
+      "en": "Qinghe (Stove & Homecoming Meal)"
+    },
+    "sky-portrait-miantai": {
+      "asset": "Assets/ui/SkyIsland/skyisland_portrait_sky_miantai.png",
+      "webSrc": "/images/scenes/sky-portrait-miantai.webp",
+      "maxSize": 512,
+      "zh": "眠苔（药臼与苔药调理）",
+      "en": "Miantai (Mortar & Moss Remedy)"
+    },
+    "sky-portrait-zheling": {
+      "asset": "Assets/ui/SkyIsland/skyisland_portrait_sky_zheling.png",
+      "webSrc": "/images/scenes/sky-portrait-zheling.webp",
+      "maxSize": 512,
+      "zh": "折翎（镜水寺旧路守望）",
+      "en": "Zheling (Mirrorwater Temple)"
+    },
+    "sky-portrait-bellkeeper": {
+      "asset": "Assets/ui/SkyIsland/skyisland_portrait_sky_bellkeeper.png",
+      "webSrc": "/images/scenes/sky-portrait-bellkeeper.webp",
+      "maxSize": 512,
+      "zh": "无声钟守（归航钟庭）",
+      "en": "Silent Bell Keeper (Bell Court)"
+    },
+    "affix-lifesteal": {
+      "asset": "Assets/ui/AffixForge/affix_lifesteal.png",
+      "webSrc": "/images/scenes/affix-lifesteal.webp",
+      "maxSize": 256,
+      "zh": "吸血",
+      "en": "Lifesteal"
+    },
+    "affix-slaughter": {
+      "asset": "Assets/ui/AffixForge/affix_slaughter.png",
+      "webSrc": "/images/scenes/affix-slaughter.webp",
+      "maxSize": 256,
+      "zh": "嗜血收割",
+      "en": "Slaughter"
+    },
+    "affix-bulwark": {
+      "asset": "Assets/ui/AffixForge/affix_bulwark.png",
+      "webSrc": "/images/scenes/affix-bulwark.webp",
+      "maxSize": 256,
+      "zh": "壁垒",
+      "en": "Bulwark"
+    },
+    "affix-swifthand": {
+      "asset": "Assets/ui/AffixForge/affix_swifthand.png",
+      "webSrc": "/images/scenes/affix-swifthand.webp",
+      "maxSize": 256,
+      "zh": "疾手",
+      "en": "Swift Hand"
+    },
+    "affix-thorns": {
+      "asset": "Assets/ui/AffixForge/affix_thorns.png",
+      "webSrc": "/images/scenes/affix-thorns.webp",
+      "maxSize": 256,
+      "zh": "反伤棘刺",
+      "en": "Thorns"
+    },
+    "affix-deathburst": {
+      "asset": "Assets/ui/AffixForge/affix_deathburst.png",
+      "webSrc": "/images/scenes/affix-deathburst.webp",
+      "maxSize": 256,
+      "zh": "亡爆（稀有）",
+      "en": "Death Burst (Rare)"
+    },
+    "affix-frenzy": {
+      "asset": "Assets/ui/AffixForge/affix_frenzy.png",
+      "webSrc": "/images/scenes/affix-frenzy.webp",
+      "maxSize": 256,
+      "zh": "狂热（稀有）",
+      "en": "Frenzy (Rare)"
+    },
+    "affix-hawkeye": {
+      "asset": "Assets/ui/AffixForge/affix_hawkeye.png",
+      "webSrc": "/images/scenes/affix-hawkeye.webp",
+      "maxSize": 256,
+      "zh": "鹰眼（稀有）",
+      "en": "Hawk Eye (Rare)"
+    },
+    "affix-overcharge": {
+      "asset": "Assets/ui/AffixForge/affix_overcharge.png",
+      "webSrc": "/images/scenes/affix-overcharge.webp",
+      "maxSize": 256,
+      "zh": "超载电弧（稀有）",
+      "en": "Overcharge (Rare)"
+    },
+    "affix-bloodrage": {
+      "asset": "Assets/ui/AffixForge/affix_bloodrage.png",
+      "webSrc": "/images/scenes/affix-bloodrage.webp",
+      "maxSize": 256,
+      "zh": "血怒（诅咒）",
+      "en": "Blood Rage (Cursed)"
+    },
+    "affix-glasscannon": {
+      "asset": "Assets/ui/AffixForge/affix_glasscannon.png",
+      "webSrc": "/images/scenes/affix-glasscannon.webp",
+      "maxSize": 256,
+      "zh": "玻璃大炮（诅咒）",
+      "en": "Glass Edge (Cursed)"
+    },
+    "affix-deathpact": {
+      "asset": "Assets/ui/AffixForge/affix_deathpact.png",
+      "webSrc": "/images/scenes/affix-deathpact.webp",
+      "maxSize": 256,
+      "zh": "死契（诅咒）",
+      "en": "Death Pact (Cursed)"
+    },
+    "evt-airdrop": {
+      "asset": "Assets/ui/random_events/evt_1.png",
+      "webSrc": "/images/scenes/evt-airdrop.webp",
+      "maxSize": 128,
+      "zh": "空投补给",
+      "en": "Airdrop Supply"
+    },
+    "evt-bloodmoon": {
+      "asset": "Assets/ui/random_events/evt_2.png",
+      "webSrc": "/images/scenes/evt-bloodmoon.webp",
+      "maxSize": 128,
+      "zh": "血月凶兆",
+      "en": "Blood Moon"
+    },
+    "evt-intrusion": {
+      "asset": "Assets/ui/random_events/evt_3.png",
+      "webSrc": "/images/scenes/evt-intrusion.webp",
+      "maxSize": 128,
+      "zh": "Boss 乱入",
+      "en": "Boss Intrusion"
+    },
+    "evt-merchant": {
+      "asset": "Assets/ui/random_events/evt_4.png",
+      "webSrc": "/images/scenes/evt-merchant.webp",
+      "maxSize": 128,
+      "zh": "神秘商人路过",
+      "en": "Wandering Merchant"
+    },
+    "evt-feint": {
+      "asset": "Assets/ui/random_events/evt_5.png",
+      "webSrc": "/images/scenes/evt-feint.webp",
+      "maxSize": 128,
+      "zh": "声东击西",
+      "en": "Feint"
+    },
+    "evt-fireworks": {
+      "asset": "Assets/ui/random_events/evt_6.png",
+      "webSrc": "/images/scenes/evt-fireworks.webp",
+      "maxSize": 128,
+      "zh": "鸭王的烟花",
+      "en": "Duck King's Fireworks"
+    },
+    "evt-duckrain": {
+      "asset": "Assets/ui/random_events/evt_7.png",
+      "webSrc": "/images/scenes/evt-duckrain.webp",
+      "maxSize": 128,
+      "zh": "金鸭雨",
+      "en": "Golden Duck Rain"
+    },
+    "evt-parade": {
+      "asset": "Assets/ui/random_events/evt_8.png",
+      "webSrc": "/images/scenes/evt-parade.webp",
+      "maxSize": 128,
+      "zh": "鸭群巡游",
+      "en": "Duck Parade"
+    },
+    "evt-wildchase": {
+      "asset": "Assets/ui/random_events/evt_9.png",
+      "webSrc": "/images/scenes/evt-wildchase.webp",
+      "maxSize": 128,
+      "zh": "疾风追逐",
+      "en": "Wild Chase"
+    },
+    "evt-melee": {
+      "asset": "Assets/ui/random_events/evt_10.png",
+      "webSrc": "/images/scenes/evt-melee.webp",
+      "maxSize": 128,
+      "zh": "近战狂欢",
+      "en": "Melee Carnival"
+    },
+    "evt-heavysteps": {
+      "asset": "Assets/ui/random_events/evt_11.png",
+      "webSrc": "/images/scenes/evt-heavysteps.webp",
+      "maxSize": 128,
+      "zh": "沉重脚步",
+      "en": "Heavy Steps"
+    },
+    "sc-dragon-helm": {
+      "asset": "Assets/Items/dragon_helm.png",
+      "webSrc": "/images/scenes/sc-dragon-helm.webp",
+      "maxSize": 256,
+      "zh": "赤龙首（头盔）",
+      "en": "Crimson Dragon Helm"
+    },
+    "sc-dragon-armor": {
+      "asset": "Assets/Items/dragon_armor.png",
+      "webSrc": "/images/scenes/sc-dragon-armor.webp",
+      "maxSize": 256,
+      "zh": "焰鳞甲（护甲）",
+      "en": "Flame Scale Armor"
+    },
+    "sc-dragon-breath": {
+      "asset": "Assets/Items/dragon_breath.png",
+      "webSrc": "/images/scenes/sc-dragon-breath.webp",
+      "maxSize": 256,
+      "zh": "龙息",
+      "en": "Dragon's Breath"
+    },
+    "sc-dragon-king-helm": {
+      "asset": "Assets/Items/dragon_king_helm.png",
+      "webSrc": "/images/scenes/sc-dragon-king-helm.webp",
+      "maxSize": 256,
+      "zh": "龙王之冕（头盔）",
+      "en": "Dragon King's Crown"
+    },
+    "sc-dragon-king-armor": {
+      "asset": "Assets/Items/dragon_king_armor.png",
+      "webSrc": "/images/scenes/sc-dragon-king-armor.webp",
+      "maxSize": 256,
+      "zh": "龙王鳞铠（护甲）",
+      "en": "Dragon King's Scale Mail"
+    },
+    "sc-dragon-cannon": {
+      "asset": "Assets/Items/dragon_king_gun.png",
+      "webSrc": "/images/scenes/sc-dragon-cannon.webp",
+      "maxSize": 256,
+      "zh": "焚天龙铳",
+      "en": "Skyburner Dragon Cannon"
+    },
+    "sc-halberd": {
+      "asset": "Assets/Items/fenhuang_halberd.png",
+      "webSrc": "/images/scenes/sc-halberd.webp",
+      "maxSize": 256,
+      "zh": "焚皇断界戟",
+      "en": "Inferno Emperor's Halberd"
+    },
+    "sc-flight-totem": {
+      "asset": "Assets/Items/flight_totem.png",
+      "webSrc": "/images/scenes/sc-flight-totem.webp",
+      "maxSize": 256,
+      "zh": "腾云驾雾图腾",
+      "en": "Cloud Soar I"
+    },
+    "sc-reverse-scale": {
+      "asset": "Assets/Items/reverse_scale.png",
+      "webSrc": "/images/scenes/sc-reverse-scale.webp",
+      "maxSize": 256,
+      "zh": "逆鳞",
+      "en": "Reverse Scale"
+    },
+    "sc-phantom-scythe": {
+      "asset": "Assets/Items/phantom_scythe.png",
+      "webSrc": "/images/scenes/sc-phantom-scythe.webp",
+      "maxSize": 256,
+      "zh": "噬魂挽歌",
+      "en": "Soulreaper's Requiem"
+    },
+    "sc-astral-staff": {
+      "asset": "Assets/Items/astral_staff_icon.png",
+      "webSrc": "/images/scenes/sc-astral-staff.webp",
+      "maxSize": 256,
+      "zh": "星阙",
+      "en": "Astral Staff"
+    },
+    "sc-frostmourne": {
+      "asset": "Assets/Items/frostmourne.png",
+      "webSrc": "/images/scenes/sc-frostmourne.webp",
+      "maxSize": 256,
+      "zh": "霜之哀伤",
+      "en": "Frostmourne"
+    },
+    "sc-frost-crown": {
+      "asset": "Assets/Items/frost_crown.png",
+      "webSrc": "/images/scenes/sc-frost-crown.webp",
+      "maxSize": 256,
+      "zh": "霜冠（头盔）",
+      "en": "Frost Crown"
+    },
+    "sc-ice-armor": {
+      "asset": "Assets/Items/ice_armor.png",
+      "webSrc": "/images/scenes/sc-ice-armor.webp",
+      "maxSize": 256,
+      "zh": "寒冰铠甲（护甲）",
+      "en": "Ice Armor"
+    },
+    "sc-thunder-horn": {
+      "asset": "Assets/Items/thunder_horn.png",
+      "webSrc": "/images/scenes/sc-thunder-horn.webp",
+      "maxSize": 256,
+      "zh": "雷神之角（头盔）",
+      "en": "Thunder Horn"
+    },
+    "sc-thunder-armor": {
+      "asset": "Assets/Items/thunder_armor.png",
+      "webSrc": "/images/scenes/sc-thunder-armor.webp",
+      "maxSize": 256,
+      "zh": "雷霆战甲（护甲）",
+      "en": "Thunder Armor"
+    },
+    "sc-viper-dagger": {
+      "asset": "Assets/Items/viper_dagger_icon.png",
+      "webSrc": "/images/scenes/sc-viper-dagger.webp",
+      "maxSize": 256,
+      "zh": "毒蛇匕首",
+      "en": "Viper Dagger"
+    },
+    "sc-summon-staff": {
+      "asset": "Assets/Items/summon_staff_icon.png",
+      "webSrc": "/images/scenes/sc-summon-staff.webp",
+      "maxSize": 256,
+      "zh": "召唤法杖",
+      "en": "Summoning Staff"
+    },
+    "sc-energy-shield": {
+      "asset": "Assets/Items/energy_shield_icon.png",
+      "webSrc": "/images/scenes/sc-energy-shield.webp",
+      "maxSize": 256,
+      "zh": "能量盾",
+      "en": "Energy Shield"
+    },
+    "sc-frost-spear": {
+      "asset": "Assets/Items/frost_spear_icon.png",
+      "webSrc": "/images/scenes/sc-frost-spear.webp",
+      "maxSize": 256,
+      "zh": "冰霜长矛",
+      "en": "Frost Spear"
+    },
+    "sc-thunder-ring": {
+      "asset": "Assets/Items/thunder_ring_icon.png",
+      "webSrc": "/images/scenes/sc-thunder-ring.webp",
+      "maxSize": 256,
+      "zh": "雷电戒指",
+      "en": "Thunder Ring"
+    },
+    "sc-empty-mine": {
+      "asset": "Assets/Items/empty_magazine_mine_icon.png",
+      "webSrc": "/images/scenes/sc-empty-mine.webp",
+      "maxSize": 256,
+      "zh": "空仓地雷盒",
+      "en": "Empty-Mag Mine Box"
+    },
+    "sc-residual-sun": {
+      "asset": "Assets/Items/residual_sun_shield_icon.png",
+      "webSrc": "/images/scenes/sc-residual-sun.webp",
+      "maxSize": 256,
+      "zh": "残日盾片",
+      "en": "Residual Sun Shield Shard"
+    },
+    "sc-reload-metronome": {
+      "asset": "Assets/Items/reload_metronome.png",
+      "webSrc": "/images/scenes/sc-reload-metronome.webp",
+      "maxSize": 256,
+      "zh": "钟守节拍器",
+      "en": "Bell Keeper's Metronome"
+    },
+    "sc-pass-the-bomb": {
+      "asset": "Assets/Items/pass_the_bomb.png",
+      "webSrc": "/images/scenes/sc-pass-the-bomb.webp",
+      "maxSize": 256,
+      "zh": "甩锅许可证",
+      "en": "License to Pass the Buck"
+    },
+    "sc-starbrass-helm": {
+      "asset": "Assets/Items/sky_island_starbrass_visor_helm.png",
+      "webSrc": "/images/scenes/sc-starbrass-helm.webp",
+      "maxSize": 256,
+      "zh": "星铜护目盔",
+      "en": "Starbrass Visor Helm"
+    },
+    "sc-starfurnace-harness": {
+      "asset": "Assets/Items/sky_island_starfurnace_harness.png",
+      "webSrc": "/images/scenes/sc-starfurnace-harness.webp",
+      "maxSize": 256,
+      "zh": "星炉背甲",
+      "en": "Starfurnace Harness"
+    },
+    "sc-starfurnace-pack": {
+      "asset": "Assets/Items/sky_island_starfurnace_pack.png",
+      "webSrc": "/images/scenes/sc-starfurnace-pack.webp",
+      "maxSize": 256,
+      "zh": "星炉背囊",
+      "en": "Starfurnace Pack"
+    },
+    "sc-stargazer-helm": {
+      "asset": "Assets/Items/sky_island_stargazer_lens_helm.png",
+      "webSrc": "/images/scenes/sc-stargazer-helm.webp",
+      "maxSize": 256,
+      "zh": "观星镜盔",
+      "en": "Stargazer's Lens Helm"
+    },
+    "sc-rootweave-mask": {
+      "asset": "Assets/Items/sky_island_rootweave_mask.png",
+      "webSrc": "/images/scenes/sc-rootweave-mask.webp",
+      "maxSize": 256,
+      "zh": "根须面罩",
+      "en": "Rootweave Mask"
+    },
+    "sc-vinewoven-cuirass": {
+      "asset": "Assets/Items/sky_island_vinewoven_cuirass.png",
+      "webSrc": "/images/scenes/sc-vinewoven-cuirass.webp",
+      "maxSize": 256,
+      "zh": "藤编甲",
+      "en": "Vinewoven Cuirass"
+    },
+    "sc-hangroot-quiver": {
+      "asset": "Assets/Items/sky_island_hangroot_quiver.png",
+      "webSrc": "/images/scenes/sc-hangroot-quiver.webp",
+      "maxSize": 256,
+      "zh": "悬根箭囊",
+      "en": "Hanging-Root Quiver"
+    },
+    "sc-greenear-hat": {
+      "asset": "Assets/Items/sky_island_greenear_straw_hat.png",
+      "webSrc": "/images/scenes/sc-greenear-hat.webp",
+      "maxSize": 256,
+      "zh": "青穗斗笠",
+      "en": "Greenear Straw Hat"
+    },
+    "sc-straw-raincoat": {
+      "asset": "Assets/Items/sky_island_straw_raincoat.png",
+      "webSrc": "/images/scenes/sc-straw-raincoat.webp",
+      "maxSize": 256,
+      "zh": "蓑衣甲",
+      "en": "Straw Raincoat"
+    },
+    "sc-grain-sack": {
+      "asset": "Assets/Items/sky_island_grain_sack.png",
+      "webSrc": "/images/scenes/sc-grain-sack.webp",
+      "maxSize": 256,
+      "zh": "谷囊",
+      "en": "Grain Sack"
+    },
+    "sc-old-mailbag": {
+      "asset": "Assets/Items/sky_island_old_mailbag.png",
+      "webSrc": "/images/scenes/sc-old-mailbag.webp",
+      "maxSize": 256,
+      "zh": "旧邮包",
+      "en": "Old Mailbag"
+    },
+    "sc-rainhush-earmuffs": {
+      "asset": "Assets/Items/sky_island_rainhush_earmuffs.png",
+      "webSrc": "/images/scenes/sc-rainhush-earmuffs.webp",
+      "maxSize": 256,
+      "zh": "静听耳罩",
+      "en": "Rainhush Earmuffs"
+    },
+    "sc-mossgauze-mask": {
+      "asset": "Assets/Items/sky_island_mossgauze_mask.png",
+      "webSrc": "/images/scenes/sc-mossgauze-mask.webp",
+      "maxSize": 256,
+      "zh": "苔纱面罩",
+      "en": "Mossgauze Mask"
+    },
+    "sc-mirrorgrain-plate": {
+      "asset": "Assets/Items/sky_island_mirrorgrain_plate.png",
+      "webSrc": "/images/scenes/sc-mirrorgrain-plate.webp",
+      "maxSize": 256,
+      "zh": "镜纹甲",
+      "en": "Mirrorgrain Plate"
+    },
+    "sc-windbreak-hood": {
+      "asset": "Assets/Items/sky_island_windbreak_hood.png",
+      "webSrc": "/images/scenes/sc-windbreak-hood.webp",
+      "maxSize": 256,
+      "zh": "断风兜帽",
+      "en": "Galebreaker Hood"
+    },
+    "sc-windbreak-mantle": {
+      "asset": "Assets/Items/sky_island_windbreak_mantle.png",
+      "webSrc": "/images/scenes/sc-windbreak-mantle.webp",
+      "maxSize": 256,
+      "zh": "断风披甲",
+      "en": "Galebreaker Mantle"
+    },
+    "sc-windbreak-pack": {
+      "asset": "Assets/Items/sky_island_windbreak_pack.png",
+      "webSrc": "/images/scenes/sc-windbreak-pack.webp",
+      "maxSize": 256,
+      "zh": "断风行囊",
+      "en": "Galebreaker Pack"
+    },
+    "sc-bossrush-ticket": {
+      "asset": "Assets/Items/bossrush_ticket.png",
+      "webSrc": "/images/scenes/sc-bossrush-ticket.webp",
+      "maxSize": 256,
+      "zh": "BossRush 船票",
+      "en": "BossRush Ticket"
+    },
+    "sc-adventure-journal": {
+      "asset": "Assets/Items/adventure_journal.png",
+      "webSrc": "/images/scenes/sc-adventure-journal.webp",
+      "maxSize": 256,
+      "zh": "冒险家日志",
+      "en": "Adventurer's Journal"
+    },
+    "sc-ach-medal": {
+      "asset": "Assets/Items/achievement_medal.png",
+      "webSrc": "/images/scenes/sc-ach-medal.webp",
+      "maxSize": 256,
+      "zh": "成就勋章",
+      "en": "Achievement Medal"
+    },
+    "sc-transponder": {
+      "asset": "Assets/Items/bloodhunt_transponder.png",
+      "webSrc": "/images/scenes/sc-transponder.webp",
+      "maxSize": 256,
+      "zh": "血猎收发器",
+      "en": "Bloodhunt Transponder"
+    },
+    "sc-fate-relic": {
+      "asset": "Assets/Items/fate_echo_relic.png",
+      "webSrc": "/images/scenes/sc-fate-relic.webp",
+      "maxSize": 256,
+      "zh": "宿命回响信物",
+      "en": "Fate Echo Relic"
+    },
+    "sc-zombie-invite": {
+      "asset": "Assets/Items/zombie_tide_invitation.png",
+      "webSrc": "/images/scenes/sc-zombie-invite.webp",
+      "maxSize": 256,
+      "zh": "尸潮邀请函",
+      "en": "Zombie Tide Invitation"
+    },
+    "sc-flag-random": {
+      "asset": "Assets/Items/faction_flag_random.png",
+      "webSrc": "/images/scenes/sc-flag-random.webp",
+      "maxSize": 256,
+      "zh": "随机营旗",
+      "en": "Random Faction Flag"
+    },
+    "sc-flag-wolf": {
+      "asset": "Assets/Items/faction_flag_wolf.png",
+      "webSrc": "/images/scenes/sc-flag-wolf.webp",
+      "maxSize": 256,
+      "zh": "狼群营旗",
+      "en": "Wolf Pack Flag"
+    },
+    "sc-flag-bear": {
+      "asset": "Assets/Items/faction_flag_bear.png",
+      "webSrc": "/images/scenes/sc-flag-bear.webp",
+      "maxSize": 256,
+      "zh": "BEAR 营旗",
+      "en": "BEAR Flag"
+    },
+    "sc-cold-quench": {
+      "asset": "Assets/Items/cold_quench_fluid.png",
+      "webSrc": "/images/scenes/sc-cold-quench.webp",
+      "maxSize": 256,
+      "zh": "冷淬液",
+      "en": "Cold Quench Fluid"
+    },
+    "sc-tempering-solvent": {
+      "asset": "Assets/Items/tempering_solvent.png",
+      "webSrc": "/images/scenes/sc-tempering-solvent.webp",
+      "maxSize": 256,
+      "zh": "回火液",
+      "en": "Tempering Solvent"
+    },
+    "sc-diamond": {
+      "asset": "Assets/Items/diamond.png",
+      "webSrc": "/images/scenes/sc-diamond.webp",
+      "maxSize": 256,
+      "zh": "钻石",
+      "en": "Diamond"
+    },
+    "sc-brick-stone": {
+      "asset": "Assets/Items/brick_stone.png",
+      "webSrc": "/images/scenes/sc-brick-stone.webp",
+      "maxSize": 256,
+      "zh": "砖石",
+      "en": "Brick Stone"
+    },
+    "sc-diamond-ring": {
+      "asset": "Assets/Items/diamond_ring.png",
+      "webSrc": "/images/scenes/sc-diamond-ring.webp",
+      "maxSize": 256,
+      "zh": "钻石戒指",
+      "en": "Diamond Ring"
+    },
+    "sc-calming-drops": {
+      "asset": "Assets/Items/calming_drops.png",
+      "webSrc": "/images/scenes/sc-calming-drops.webp",
+      "maxSize": 256,
+      "zh": "安神滴剂",
+      "en": "Calming Drops"
+    },
+    "sc-peace-charm": {
+      "asset": "Assets/Items/peace_charm.png",
+      "webSrc": "/images/scenes/sc-peace-charm.webp",
+      "maxSize": 256,
+      "zh": "平安护身符",
+      "en": "Peace Charm"
+    },
+    "sc-awen-token": {
+      "asset": "Assets/Items/awen_courier_token.png",
+      "webSrc": "/images/scenes/sc-awen-token.webp",
+      "maxSize": 256,
+      "zh": "阿稳快递牌",
+      "en": "Awen Courier Token"
+    },
+    "sc-awen-sweep": {
+      "asset": "Assets/Items/awen_loot_sweep_token.png",
+      "webSrc": "/images/scenes/sc-awen-sweep.webp",
+      "maxSize": 256,
+      "zh": "阿稳扫箱令",
+      "en": "Awen Loot Sweep Token"
+    },
+    "sc-dingdang-drawing": {
+      "asset": "Assets/Items/dingdang_drawing.png",
+      "webSrc": "/images/scenes/sc-dingdang-drawing.webp",
+      "maxSize": 256,
+      "zh": "叮当涂鸦",
+      "en": "Dingdang's Doodle"
+    },
+    "sc-wild-horn": {
+      "asset": "Assets/Items/wild_horn.png",
+      "webSrc": "/images/scenes/sc-wild-horn.webp",
+      "maxSize": 256,
+      "zh": "荒野号角",
+      "en": "Wild Horn"
+    },
+    "sc-birthday-cake": {
+      "asset": "Assets/Items/birthday_cake.png",
+      "webSrc": "/images/scenes/sc-birthday-cake.webp",
+      "maxSize": 256,
+      "zh": "生日蛋糕",
+      "en": "Birthday Cake"
+    },
+    "sc-collect-book": {
+      "asset": "Assets/Items/collection_book.png",
+      "webSrc": "/images/scenes/sc-collect-book.webp",
+      "maxSize": 256,
+      "zh": "收集品图鉴",
+      "en": "Collector's Album"
+    },
+    "sc-rare-king-egg": {
+      "asset": "Assets/Items/collectible_rare_first_king_egg.png",
+      "webSrc": "/images/scenes/sc-rare-king-egg.webp",
+      "maxSize": 256,
+      "zh": "一代鸭王的金蛋",
+      "en": "First Duck King's Golden Egg"
+    },
+    "sc-rare-star-core": {
+      "asset": "Assets/Items/collectible_rare_qinglan_star_core.png",
+      "webSrc": "/images/scenes/sc-rare-star-core.webp",
+      "maxSize": 256,
+      "zh": "晴岚星核",
+      "en": "Qinglan Star Core"
+    },
+    "sc-rare-dragon-pearl": {
+      "asset": "Assets/Items/collectible_rare_dragon_pearl.png",
+      "webSrc": "/images/scenes/sc-rare-dragon-pearl.webp",
+      "maxSize": 256,
+      "zh": "焚天龙珠",
+      "en": "Skyburner's Dragon Pearl"
+    },
+    "sc-dragon-seed": {
+      "asset": "Assets/Items/dragon_seed.png",
+      "webSrc": "/images/scenes/sc-dragon-seed.webp",
+      "maxSize": 256,
+      "zh": "龙裔之种",
+      "en": "Dragon Seed"
+    },
+    "sc-ember-seed": {
+      "asset": "Assets/Items/ember_seed.png",
+      "webSrc": "/images/scenes/sc-ember-seed.webp",
+      "maxSize": 256,
+      "zh": "龙皇焰种",
+      "en": "Ember Seed"
+    },
+    "sc-phantom-spore": {
+      "asset": "Assets/Items/phantom_spore.png",
+      "webSrc": "/images/scenes/sc-phantom-spore.webp",
+      "maxSize": 256,
+      "zh": "幽魂孢子",
+      "en": "Phantom Spore"
+    },
+    "sc-dragon-fruit": {
+      "asset": "Assets/Items/dragon_fruit.png",
+      "webSrc": "/images/scenes/sc-dragon-fruit.webp",
+      "maxSize": 256,
+      "zh": "龙息果",
+      "en": "Dragonbreath Fruit"
+    },
+    "sc-ember-chili": {
+      "asset": "Assets/Items/ember_chili.png",
+      "webSrc": "/images/scenes/sc-ember-chili.webp",
+      "maxSize": 256,
+      "zh": "焚心椒",
+      "en": "Emberheart Chili"
+    },
+    "sc-phantom-mushroom": {
+      "asset": "Assets/Items/phantom_mushroom.png",
+      "webSrc": "/images/scenes/sc-phantom-mushroom.webp",
+      "maxSize": 256,
+      "zh": "幽影蘑菇",
+      "en": "Umbral Mushroom"
+    },
+    "sc-cover-pack": {
+      "asset": "Assets/Items/foldable_cover_pack.png",
+      "webSrc": "/images/scenes/sc-cover-pack.webp",
+      "maxSize": 256,
+      "zh": "折叠掩体包",
+      "en": "Foldable Cover Pack"
+    },
+    "sc-roadblock-pack": {
+      "asset": "Assets/Items/reinforced_roadblock_pack.png",
+      "webSrc": "/images/scenes/sc-roadblock-pack.webp",
+      "maxSize": 256,
+      "zh": "加固路障包",
+      "en": "Reinforced Roadblock Pack"
+    },
+    "sc-wire-pack": {
+      "asset": "Assets/Items/barbed_wire_pack.png",
+      "webSrc": "/images/scenes/sc-wire-pack.webp",
+      "maxSize": 256,
+      "zh": "阻滞铁丝网包",
+      "en": "Barbed Wire Pack"
+    },
+    "sc-repair-spray": {
+      "asset": "Assets/Items/emergency_repair_spray.png",
+      "webSrc": "/images/scenes/sc-repair-spray.webp",
+      "maxSize": 256,
+      "zh": "应急维修喷剂",
+      "en": "Emergency Repair Spray"
+    },
+    "sc-taunt-smoke": {
+      "asset": "Assets/Items/taunt_smoke.png",
+      "webSrc": "/images/scenes/sc-taunt-smoke.webp",
+      "maxSize": 256,
+      "zh": "挑衅烟雾弹",
+      "en": "Taunt Smoke"
+    },
+    "sc-chaos-detonator": {
+      "asset": "Assets/Items/chaos_detonator.png",
+      "webSrc": "/images/scenes/sc-chaos-detonator.webp",
+      "maxSize": 256,
+      "zh": "混沌引爆器",
+      "en": "Chaos Detonator"
+    },
+    "sc-portable-safezone": {
+      "asset": "Assets/Items/portable_safe_zone_device.png",
+      "webSrc": "/images/scenes/sc-portable-safezone.webp",
+      "maxSize": 256,
+      "zh": "便携安全区装置",
+      "en": "Portable Safe-Zone Device"
+    },
+    "sc-tidegate-letter": {
+      "asset": "Assets/Items/tidegate_letter.png",
+      "webSrc": "/images/scenes/sc-tidegate-letter.webp",
+      "maxSize": 256,
+      "zh": "闸伯的信",
+      "en": "Old Zha's Letter"
+    },
+    "sc-tidegate-handwheel": {
+      "asset": "Assets/Items/tidegate_handwheel.png",
+      "webSrc": "/images/scenes/sc-tidegate-handwheel.webp",
+      "maxSize": 256,
+      "zh": "阀门手轮",
+      "en": "Valve Handwheel"
+    },
+    "sc-tidegate-watch": {
+      "asset": "Assets/Items/tidegate_tide_watch.png",
+      "webSrc": "/images/scenes/sc-tidegate-watch.webp",
+      "maxSize": 256,
+      "zh": "潮汐怀表",
+      "en": "Tide Pocket Watch"
+    },
+    "sc-tidegate-lead": {
+      "asset": "Assets/Items/tidegate_sounding_lead.png",
+      "webSrc": "/images/scenes/sc-tidegate-lead.webp",
+      "maxSize": 256,
+      "zh": "淘沙响铊",
+      "en": "Dredger's Sounding Lead"
+    },
+    "sc-lastshift-stamp": {
+      "asset": "Assets/Items/lastshift_stamp.png",
+      "webSrc": "/images/scenes/sc-lastshift-stamp.webp",
+      "maxSize": 256,
+      "zh": "押运钢印",
+      "en": "Escort Steel Stamp"
+    },
+    "sc-lastshift-stub": {
+      "asset": "Assets/Items/lastshift_ticket_stub.png",
+      "webSrc": "/images/scenes/sc-lastshift-stub.webp",
+      "maxSize": 256,
+      "zh": "末班票根",
+      "en": "Last Shift Ticket Stub"
+    },
+    "sc-bento": {
+      "asset": "Assets/Items/sky_island_homecoming_bento.png",
+      "webSrc": "/images/scenes/sc-bento.webp",
+      "maxSize": 256,
+      "zh": "归航菜便当",
+      "en": "Homecoming Bento"
+    },
+    "sc-salve": {
+      "asset": "Assets/Items/sky_island_starmoss_salve.png",
+      "webSrc": "/images/scenes/sc-salve.webp",
+      "maxSize": 256,
+      "zh": "星苔药膏",
+      "en": "Starmoss Salve"
+    },
+    "sc-lantern": {
+      "asset": "Assets/Items/sky_island_wind_lantern.png",
+      "webSrc": "/images/scenes/sc-lantern.webp",
+      "maxSize": 256,
+      "zh": "风灯",
+      "en": "Wind Lantern"
+    },
+    "sc-incense": {
+      "asset": "Assets/Items/sky_island_windward_incense.png",
+      "webSrc": "/images/scenes/sc-incense.webp",
+      "maxSize": 256,
+      "zh": "驱风香",
+      "en": "Windward Incense"
+    }
+  },
+  "entries": {
+    "start__overview": [
+      { "at": 0, "mode": "section-end", "kind": "gallery", "keys": ["mode-fate-banner", "mode-cup-banner", "sky-scene-dock", "bld-fountain"] }
+    ],
+    "start__how_to_enter": [
+      { "at": 1, "mode": "section-end", "kind": "gallery", "keys": ["sc-bossrush-ticket", "sc-adventure-journal", "codex-book"] }
+    ],
+    "map__overview": [
+      { "at": 1, "mode": "section-end", "kind": "gallery", "keys": ["map-preview-zero", "map-preview-demo", "map-preview-maze", "sky-scene-dock"] }
+    ],
+    "map__sky_island": [
+      { "at": 0, "mode": "section-end", "kind": "figure", "keys": ["diag-sky-island"] },
+      { "at": 3, "mode": "section-end", "kind": "gallery", "keys": ["sky-scene-dock", "sky-scene-market", "sky-scene-terraces", "sky-scene-roots"] },
+      { "at": 6, "mode": "after-heading", "kind": "icon", "keys": ["cname_stormboss5"] },
+      { "at": 7, "mode": "after-heading", "kind": "gallery", "keys": ["sky-portrait-weibai", "sky-portrait-fuzhou", "sky-portrait-qinghe", "sky-portrait-miantai", "sky-portrait-zheling", "sky-portrait-bellkeeper"] },
+      { "at": 9, "mode": "section-end", "kind": "figure", "keys": ["sky-scene-bellcourt"] },
+      { "at": 11, "mode": "after-heading", "kind": "gallery", "keys": ["sky-scene-temple", "sky-scene-workshop", "sky-scene-boardwalk", "sky-scene-journal"] }
+    ],
+    "map__tidegate": [
+      { "at": 2, "mode": "section-end", "kind": "figure", "keys": ["diag-tidegate"] },
+      { "at": 11, "mode": "after-heading", "kind": "gallery", "keys": ["sc-tidegate-letter", "sc-tidegate-handwheel", "sc-tidegate-watch", "sc-tidegate-lead"] }
+    ],
+    "map__lastshiftyard": [
+      { "at": 3, "mode": "section-end", "kind": "figure", "keys": ["diag-lastshift"] },
+      { "at": 10, "mode": "after-heading", "kind": "gallery", "keys": ["sc-lastshift-stamp", "sc-lastshift-stub"] }
+    ],
+    "boss__overview": [
+      { "at": 2, "mode": "after-heading", "kind": "gallery", "keys": ["dragondescendant", "boss_dragonking", "boss_phantomwitch", "portrait-champion"] }
+    ],
+    "boss__dragon_descendant": [
+      { "at": 0, "mode": "section-end", "kind": "icon", "keys": ["dragondescendant"] },
+      { "at": 7, "mode": "after-heading", "kind": "gallery", "keys": ["sc-dragon-helm", "sc-dragon-armor", "sc-dragon-breath"] }
+    ],
+    "boss__dragon_king": [
+      { "at": 0, "mode": "section-end", "kind": "icon", "keys": ["boss_dragonking"] },
+      { "at": 15, "mode": "after-heading", "kind": "gallery", "keys": ["sc-dragon-king-helm", "sc-dragon-king-armor", "sc-halberd", "sc-dragon-cannon", "sc-flight-totem", "sc-reverse-scale"] }
+    ],
+    "boss__phantom_witch": [
+      { "at": 0, "mode": "section-end", "kind": "icon", "keys": ["boss_phantomwitch"] },
+      { "at": 18, "mode": "after-heading", "kind": "icon", "keys": ["sc-phantom-scythe"] }
+    ],
+    "boss__eclipse_bloom": [
+      { "at": 2, "mode": "section-end", "kind": "figure", "keys": ["diag-eclipse-bloom"] },
+      { "at": 5, "mode": "section-end", "kind": "icon", "keys": ["sc-residual-sun"] }
+    ],
+    "mode__overview": [
+      { "at": 0, "mode": "section-end", "kind": "gallery", "keys": ["mode-fate-banner", "mode-cup-banner"] }
+    ],
+    "mode__mode_a": [
+      { "at": 0, "mode": "section-end", "kind": "figure", "keys": ["map-preview-demo"] }
+    ],
+    "mode__mode_c": [
+      { "at": 0, "mode": "section-end", "kind": "figure", "keys": ["map-preview-maze"] }
+    ],
+    "mode__mode_d": [
+      { "at": 2, "mode": "after-heading", "kind": "icon", "keys": ["sc-bossrush-ticket"] }
+    ],
+    "mode__mode_e": [
+      { "at": 3, "mode": "after-heading", "kind": "gallery", "keys": ["sc-flag-random", "sc-flag-wolf", "sc-flag-bear", "cname-snowpmc", "myst-merchant"] }
+    ],
+    "mode__mode_f": [
+      { "at": 2, "mode": "after-heading", "kind": "icon", "keys": ["sc-transponder"] },
+      { "at": 11, "mode": "after-heading", "kind": "gallery", "keys": ["sc-cover-pack", "sc-roadblock-pack", "sc-wire-pack", "sc-repair-spray"] }
+    ],
+    "mode__mode_g": [
+      { "at": 0, "mode": "section-end", "kind": "figure", "keys": ["mode-fate-banner"] },
+      { "at": 4, "mode": "after-heading", "kind": "figure", "keys": ["diag-mode-g"] }
+    ],
+    "mode__mode_h": [
+      { "at": 0, "mode": "section-end", "kind": "figure", "keys": ["mode-cup-banner"] }
+    ],
+    "mode__zombie_mode": [
+      { "at": 17, "mode": "after-heading", "kind": "gallery", "keys": ["zombie_boss_titan", "zombie_boss_hunter", "zombie_boss_splitter", "zombie_boss_shielder", "zombie_boss_corruptor"] }
+    ],
+    "system__codex": [
+      { "at": 0, "mode": "section-end", "kind": "icon", "keys": ["codex-book"] },
+      { "at": 4, "mode": "section-end", "kind": "gallery", "keys": ["dragondescendant", "boss_dragonking", "boss_phantomwitch", "zombie_boss_titan"] }
+    ],
+    "system__campaign": [
+      { "at": 1, "mode": "after-heading", "kind": "icon", "keys": ["campaign-board"] },
+      { "at": 8, "mode": "section-end", "kind": "figure", "keys": ["poster-ch1"] },
+      { "at": 9, "mode": "section-end", "kind": "figure", "keys": ["poster-ch2"] },
+      { "at": 10, "mode": "section-end", "kind": "figure", "keys": ["poster-ch3"] },
+      { "at": 11, "mode": "section-end", "kind": "figure", "keys": ["poster-ch4"] },
+      { "at": 12, "mode": "section-end", "kind": "figure", "keys": ["poster-ch5"] },
+      { "at": 13, "mode": "section-end", "kind": "figure", "keys": ["poster-ch6"] },
+      { "at": 14, "mode": "after-heading", "kind": "icon", "keys": ["portrait-champion"] },
+      { "at": 15, "mode": "after-heading", "kind": "icon", "keys": ["portrait-broker"] }
+    ],
+    "system__daily_report": [
+      { "at": 0, "mode": "section-end", "kind": "icon", "keys": ["daily-mailbox"] },
+      { "at": 4, "mode": "after-heading", "kind": "figure", "keys": ["daily-paper-bg"] }
+    ],
+    "system__back_mountain": [
+      { "at": 4, "mode": "after-heading", "kind": "icon", "keys": ["showcase"] },
+      { "at": 7, "mode": "after-heading", "kind": "gallery", "keys": ["sc-dragon-seed", "sc-ember-seed", "sc-phantom-spore", "sc-dragon-fruit", "sc-ember-chili", "sc-phantom-mushroom"] }
+    ],
+    "system__pet_nest": [
+      { "at": 1, "mode": "section-end", "kind": "icon", "keys": ["petnest"] },
+      { "at": 3, "mode": "after-heading", "kind": "icon", "keys": ["relic-egg"] }
+    ],
+    "system__affix_forge": [
+      { "at": 0, "mode": "section-end", "kind": "icon", "keys": ["forge-stone"] },
+      { "at": 6, "mode": "after-heading", "kind": "gallery", "keys": ["affix-lifesteal", "affix-slaughter", "affix-bulwark", "affix-swifthand", "affix-thorns"] },
+      { "at": 7, "mode": "after-heading", "kind": "gallery", "keys": ["affix-deathburst", "affix-frenzy", "affix-hawkeye", "affix-overcharge"] },
+      { "at": 8, "mode": "after-heading", "kind": "gallery", "keys": ["affix-bloodrage", "affix-glasscannon", "affix-deathpact"] }
+    ],
+    "system__random_events": [
+      { "at": 2, "mode": "after-heading", "kind": "gallery", "keys": ["evt-airdrop", "evt-bloodmoon", "evt-intrusion", "evt-merchant", "evt-feint", "evt-fireworks", "evt-duckrain", "evt-parade", "evt-wildchase", "evt-melee", "evt-heavysteps"] }
+    ],
+    "system__wish_fountain": [
+      { "at": 0, "mode": "section-end", "kind": "icon", "keys": ["bld-fountain"] }
+    ],
+    "system__collectibles": [
+      { "at": 0, "mode": "section-end", "kind": "icon", "keys": ["sc-collect-book"] },
+      { "at": 4, "mode": "after-heading", "kind": "gallery", "keys": ["sc-rare-king-egg", "sc-rare-star-core", "sc-rare-dragon-pearl"] }
+    ],
+    "system__boss_filter_and_wiki": [
+      { "at": 0, "mode": "section-end", "kind": "gallery", "keys": ["sc-adventure-journal", "codex-book"] }
+    ],
+    "system__reforge_and_achievements": [
+      { "at": 9, "mode": "after-heading", "kind": "gallery", "keys": ["sc-cold-quench", "sc-tempering-solvent", "sc-ach-medal"] }
+    ],
+    "npc__overview": [
+      { "at": 2, "mode": "after-heading", "kind": "gallery", "keys": ["sky-portrait-fuzhou", "sky-portrait-bellkeeper", "myst-merchant"] }
+    ],
+    "npc__affinity_and_marriage": [
+      { "at": 7, "mode": "after-heading", "kind": "gallery", "keys": ["bld-chapel", "sc-diamond-ring", "sc-birthday-cake"] }
+    ],
+    "npc__goblin": [
+      { "at": 2, "mode": "after-heading", "kind": "gallery", "keys": ["sc-cold-quench", "sc-tempering-solvent", "forge-stone", "sc-diamond", "sc-brick-stone", "sc-dingdang-drawing"] }
+    ],
+    "npc__nurse": [
+      { "at": 2, "mode": "after-heading", "kind": "gallery", "keys": ["sc-calming-drops", "sc-peace-charm"] }
+    ],
+    "npc__courier": [
+      { "at": 2, "mode": "after-heading", "kind": "gallery", "keys": ["sc-awen-token", "sc-awen-sweep"] }
+    ],
+    "item__key_items": [
+      { "at": 0, "mode": "section-end", "kind": "gallery", "keys": ["sc-bossrush-ticket", "sc-adventure-journal", "codex-book", "sc-fate-relic", "sc-zombie-invite", "sc-transponder"] }
+    ],
+    "item__consumables": [
+      { "at": 0, "mode": "section-end", "kind": "gallery", "keys": ["sc-birthday-cake", "sc-calming-drops", "sc-cold-quench", "sc-bento", "sc-salve", "sc-lantern", "sc-incense"] }
+    ],
+    "item__npc_items": [
+      { "at": 0, "mode": "section-end", "kind": "gallery", "keys": ["sc-diamond-ring", "sc-brick-stone", "sc-peace-charm", "sc-awen-token", "sc-dingdang-drawing", "sc-wild-horn"] }
+    ],
+    "item__mode_f_items": [
+      { "at": 0, "mode": "section-end", "kind": "gallery", "keys": ["sc-taunt-smoke", "sc-chaos-detonator", "sc-cover-pack", "sc-roadblock-pack", "sc-portable-safezone"] }
+    ],
+    "equipment__overview": [
+      { "at": 0, "mode": "section-end", "kind": "gallery", "keys": ["sc-dragon-king-helm", "sc-halberd", "sc-astral-staff", "sc-phantom-scythe", "sc-frost-crown", "sc-thunder-horn"] }
+    ],
+    "equipment__dragon_set": [
+      { "at": 2, "mode": "after-heading", "kind": "gallery", "keys": ["sc-dragon-helm", "sc-dragon-armor"] }
+    ],
+    "equipment__dragon_king_set": [
+      { "at": 2, "mode": "after-heading", "kind": "gallery", "keys": ["sc-dragon-king-helm", "sc-dragon-king-armor"] }
+    ],
+    "equipment__frost_set": [
+      { "at": 2, "mode": "after-heading", "kind": "gallery", "keys": ["sc-frost-crown", "sc-ice-armor"] }
+    ],
+    "equipment__thunder_set": [
+      { "at": 2, "mode": "after-heading", "kind": "gallery", "keys": ["sc-thunder-horn", "sc-thunder-armor"] }
+    ],
+    "equipment__sky_island_starworks_set": [
+      { "at": 2, "mode": "after-heading", "kind": "gallery", "keys": ["sc-starbrass-helm", "sc-starfurnace-harness", "sc-starfurnace-pack", "sc-stargazer-helm"] }
+    ],
+    "equipment__sky_island_lords_gear": [
+      { "at": 2, "mode": "after-heading", "kind": "gallery", "keys": ["sc-rootweave-mask", "sc-vinewoven-cuirass", "sc-hangroot-quiver", "sc-greenear-hat", "sc-straw-raincoat", "sc-grain-sack"] }
+    ],
+    "equipment__sky_island_chiefs_gear": [
+      { "at": 2, "mode": "after-heading", "kind": "gallery", "keys": ["sc-old-mailbag", "sc-rainhush-earmuffs", "sc-mossgauze-mask", "sc-mirrorgrain-plate", "sc-windbreak-hood", "sc-windbreak-mantle", "sc-windbreak-pack"] }
+    ],
+    "equipment__astral_staff": [
+      { "at": 0, "mode": "section-end", "kind": "icon", "keys": ["sc-astral-staff"] }
+    ],
+    "equipment__dragon_breath": [
+      { "at": 0, "mode": "section-end", "kind": "icon", "keys": ["sc-dragon-breath"] }
+    ],
+    "equipment__dragon_cannon": [
+      { "at": 0, "mode": "section-end", "kind": "icon", "keys": ["sc-dragon-cannon"] }
+    ],
+    "equipment__empty_magazine_mine": [
+      { "at": 0, "mode": "section-end", "kind": "icon", "keys": ["sc-empty-mine"] }
+    ],
+    "equipment__energy_shield": [
+      { "at": 0, "mode": "section-end", "kind": "icon", "keys": ["sc-energy-shield"] }
+    ],
+    "equipment__flight_totem": [
+      { "at": 0, "mode": "section-end", "kind": "icon", "keys": ["sc-flight-totem"] }
+    ],
+    "equipment__frost_spear": [
+      { "at": 0, "mode": "section-end", "kind": "icon", "keys": ["sc-frost-spear"] }
+    ],
+    "equipment__frostmourne": [
+      { "at": 0, "mode": "section-end", "kind": "icon", "keys": ["sc-frostmourne"] }
+    ],
+    "equipment__halberd": [
+      { "at": 0, "mode": "section-end", "kind": "icon", "keys": ["sc-halberd"] }
+    ],
+    "equipment__pass_the_bomb": [
+      { "at": 0, "mode": "section-end", "kind": "icon", "keys": ["sc-pass-the-bomb"] }
+    ],
+    "equipment__phantom_scythe": [
+      { "at": 0, "mode": "section-end", "kind": "icon", "keys": ["sc-phantom-scythe"] }
+    ],
+    "equipment__reload_metronome": [
+      { "at": 0, "mode": "section-end", "kind": "gallery", "keys": ["sc-reload-metronome", "cname_speedy"] }
+    ],
+    "equipment__residual_sun_shield": [
+      { "at": 0, "mode": "section-end", "kind": "icon", "keys": ["sc-residual-sun"] }
+    ],
+    "equipment__reverse_scale": [
+      { "at": 0, "mode": "section-end", "kind": "icon", "keys": ["sc-reverse-scale"] }
+    ],
+    "equipment__roll_call_ledger": [
+      { "at": 0, "mode": "section-end", "kind": "icon", "keys": ["eq-roll-call-ledger"] }
+    ],
+    "equipment__silence_bell": [
+      { "at": 0, "mode": "section-end", "kind": "icon", "keys": ["sky-portrait-bellkeeper"] }
+    ],
+    "equipment__summon_staff": [
+      { "at": 0, "mode": "section-end", "kind": "icon", "keys": ["sc-summon-staff"] }
+    ],
+    "equipment__thunder_ring": [
+      { "at": 0, "mode": "section-end", "kind": "icon", "keys": ["sc-thunder-ring"] }
+    ],
+    "equipment__viper_dagger": [
+      { "at": 0, "mode": "section-end", "kind": "icon", "keys": ["sc-viper-dagger"] }
+    ]
+  }
+}

@@ -618,6 +618,16 @@ owner 看过出征令后要求「项目已有的 UI……都改成出征令这�
   整排页签下托一道淡金横笔。`UILayoutReadabilityGuard` 按 `CreateBrushTitle` 的固定版式复算标题不越过面板上边、英文小字不压页签行。
 - **共享确认框、遗种巢改名框**：`BossRushInkTheme.AddTitleStroke` 按 TMP 实际字形边界在标题下配一笔金（幂等、`ignoreLayout`），返回伸出标题框的高度让竖排布局让位。
   标题下已有分隔线的丧尸模式面板不加，分隔线本身已是淡金横笔。
+- **水墨高阶构件与去混搭统一（2026-11-25 续，COMPAT）**：新增 [BossRushInkWidgets.cs](file://Common/UI/BossRushInkWidgets.cs) 并将 `GetVerticalBrushSprite()` 并入 `BossRushInkSkin.cs`；撤除阿稳原版确认框、成就、图鉴、收藏册、Boss 筛选与 Mode H 中的 `UIPrefabs.Button`/`ScrollRect` 及 `TitleRail`/`TopTrace`/`Hairline` 混搭；《鸭科夫日报》全面重制为深墨古宣水墨邸报，许愿台/遗种巢揭晓/成就/图鉴/看图/Mode G/Mode H/丧尸与战局 HUD 同步完成水墨落印、火点、震环与毛笔条统一。
 
-守卫 `tests/BossRushInkThemeGuard.py` 锁住全部接管点、动效时长与起始缩放（慢而沉、不回弹）、墨晕自毁、缓存清理链与色板同色，16 个内存反向检查。
-观感（墨笔边粗细、页签金笔节奏、确认框标题金笔位置）只有实机能看，待 owner 验收。
+- **审查全修后的用法约定（2026-11-25，CR-2026-11-25-002～021）**：
+  - 竖笔用 `BossRushInkSkin.CreateVerticalBrushStroke`（普通 Image + 竖笔贴图）。不要把 `CreateBrushStroke` 转 90°：它带 `RectMask2D`，裁剪框按世界角点算，转过之后宽度为负，整笔被剔除（日志书缝、许愿抽奖指针曾整条不显示）。
+  - 印章挂在角锚点上时，墨环 / 波纹的位置用 `BossRushInkSkin.CenterInParent(seal)` 换算，不能直接拿 `anchoredPosition`；`StampSeal` 已按此落环，同帧落一批印时只让第一枚出声（`playSfx`）。
+  - 印章、墨环、余烬粒子创建时自带 `LayoutElement.ignoreLayout`，挂在带 LayoutGroup 的面板上不会被排成一行；常驻复用的面板只 `SpawnBurst`，不让粒子场常燃。
+  - 打开动效只放一滴墨：`BossRushUI.PlayOpenAnimation` 已经放了，调用方与 `PlayInkSurfaceOpen` 不再另调 `SpawnOpenBloom`；墨晕固定中心锚点、按面板实际矩形定位。
+  - 同一帧可能重画两次的标题金笔走 `AddLeftOrAlignedStroke`（先摘下再销毁旧笔）；面板未激活时量不准字宽，金笔放到激活之后算。
+  - 选中 / 焦点描边一律 `WarningText`（UI 共识）：水墨主题下 `Accent` 与 `Stroke` 同为鎏金、只差透明度，约 1.35:1 分不出。
+  - 主题皮肤（`ApplyInkPanel` / `StyleInkButton`）会改底色：页面自己的底色要在皮肤之后设，守卫复算对比度的才是屏幕上的颜色（邸报）。
+  - 冒险家日志的游戏内插图从 `production_icons` 压缩包按原路径取（正式构建包在时不读散图）；新插图必须登记 `tools/production_icon_manifest.json` 并重打包，`WikiImageAssetGuard` 判据 5 守着。
+
+守卫 `tests/BossRushInkThemeGuard.py` 锁住全部接管点、动效时长与起始缩放（慢而沉、不回弹）、墨晕自毁、缓存清理链与色板同色，16 个内存反向检查；`tests/DailyReportPresentationGuard.py` 复算古宣邸报水墨对比度与结构契约。观感与动画节奏需在实机内由 owner 最终确认。

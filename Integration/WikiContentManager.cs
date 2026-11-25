@@ -330,26 +330,34 @@ namespace BossRush
         /// </summary>
         public string ParseMarkdown(string markdown)
         {
+            return ParseMarkdown(markdown, true);
+        }
+
+        /// <summary>
+        /// 解析 Markdown 文本；stripLeadingTitle=false 用于分段渲染后续章节时保留小节标题。
+        /// </summary>
+        public string ParseMarkdown(string markdown, bool stripLeadingTitle)
+        {
             if (string.IsNullOrEmpty(markdown))
             {
                 return "";
             }
 
             // 去掉首行与 TopBar 标题重复的 H1/H2（几乎所有条目都以 `## Title` 开头，与 entry.Title 重复）
-            string result = StripLeadingTitle(markdown);
+            string result = stripLeadingTitle ? StripLeadingTitle(markdown) : markdown;
 
             try
             {
-                // 先处理特殊标记（在标题处理之前，避免被标题正则误匹配）
+                // 先处理特殊标记（在标题处理之前，避免被标题正则误匹配）：统一水墨卷轴配色
                 // 1) 优先匹配闭合形式 [tip]...[/tip]（支持多行）
-                result = RxWarnBlock.Replace(result, "\n<color=#CC0000><b>[!]</b> $1</color>\n");
-                result = RxTipBlock.Replace(result,  "\n<color=#0066CC><b>[i]</b> $1</color>\n");
+                result = RxWarnBlock.Replace(result, "\n<color=#8A1E16><b>" + L10n.T("[警]", "[!]") + "</b> $1</color>\n");
+                result = RxTipBlock.Replace(result,  "\n<color=#1A4A3E><b>" + L10n.T("[注]", "[i]") + "</b> $1</color>\n");
                 // 2) 再匹配行级形式 [tip] text（无闭合，md 实际主要用法）
-                result = RxWarnLine.Replace(result,  "<color=#CC0000><b>[!]</b> $1</color>");
-                result = RxTipLine.Replace(result,   "<color=#0066CC><b>[i]</b> $1</color>");
+                result = RxWarnLine.Replace(result,  "<color=#8A1E16><b>" + L10n.T("[警]", "[!]") + "</b> $1</color>");
+                result = RxTipLine.Replace(result,   "<color=#1A4A3E><b>" + L10n.T("[注]", "[i]") + "</b> $1</color>");
 
-                // 处理分隔线 --- -> 用短横线模拟
-                result = RxHr.Replace(result, "<color=#C0B090>────────────────</color>");
+                // 处理分隔线 --- -> 焦墨淡笔
+                result = RxHr.Replace(result, "<color=#6B5842>────────────────</color>");
 
                 // 标题：根据标题视觉宽度动态选择字号，避免长标题（如纯中文 10+ 字）被左栏宽度逼得换行。
                 // 标题内普通空格替换为 NBSP 防止中英混排在空格处断行（如 "标准 BossRush"）。
@@ -370,14 +378,14 @@ namespace BossRush
                     return new string(' ', level * 4) + bullet + " " + m.Groups[2].Value;
                 });
 
-                // 处理代码块 `code` -> 灰色
-                result = RxCode.Replace(result, "<color=#A0A0A0>$1</color>");
+                // 处理行内代码 `code` -> 淡墨批注色（在旧宣纸底上保持 ≥4.5:1 对比度）
+                result = RxCode.Replace(result, "<color=#4D4136>$1</color>");
 
-                // 处理Markdown链接 [text](url) -> TMP link标签
-                result = RxMdLink.Replace(result, "<color=#0066CC><u><link=\"$2\">$1</link></u></color>");
+                // 处理Markdown链接 [text](url) -> 古铜赭金 TMP link标签
+                result = RxMdLink.Replace(result, "<color=#6B4310><u><link=\"$2\">$1</link></u></color>");
 
                 // 处理纯URL链接（排除已在link标签或引号中的URL）
-                result = RxRawUrl.Replace(result, "<color=#0066CC><u><link=\"$1\">$1</link></u></color>");
+                result = RxRawUrl.Replace(result, "<color=#6B4310><u><link=\"$1\">$1</link></u></color>");
 
                 // 清理多余空行（最多保留1个空行）
                 result = RxBlankLines.Replace(result, "\n\n");
@@ -440,19 +448,19 @@ namespace BossRush
             switch (level)
             {
                 case 1:
-                    color = "#3A1F0D";
+                    color = "#1A120D";
                     sizeOffset = w <= 10 ? 5 : (w <= 16 ? 3 : (w <= 22 ? 1 : 0));
                     break;
                 case 2:
-                    color = "#5B3010";
+                    color = "#6E1D15";
                     sizeOffset = w <= 12 ? 3 : (w <= 18 ? 2 : (w <= 24 ? 1 : 0));
                     break;
                 case 3:
-                    color = "#6B4226";
+                    color = "#4B3116";
                     sizeOffset = w <= 16 ? 2 : (w <= 24 ? 1 : 0);
                     break;
                 default: // level 4
-                    color = "#5C4033";
+                    color = "#3D2F24";
                     sizeOffset = w <= 20 ? 1 : 0;
                     break;
             }
@@ -511,6 +519,7 @@ namespace BossRush
         /// </summary>
         private void ParseCatalog(string[] lines)
         {
+            WikiIllustrations.ResetStaticCaches();
             categories.Clear();
             entriesByCategory.Clear();
             entriesById.Clear();

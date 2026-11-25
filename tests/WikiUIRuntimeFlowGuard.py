@@ -23,7 +23,10 @@ def main() -> int:
         "WikiContentManager.Instance.LoadCatalog();",
         "currentCategoryId = ResolveContentCategoryId(categories);",
         "categories[i].Id != ExternalWikiCategoryId",
-        "toggle.SetIsOnWithoutNotify(false);",
+        "currentEntryId = ResolveEntryIdForCategory(currentCategoryId, currentEntryId);",
+        "ApplyCategorySelectionStates(false);",
+        "ApplyEntrySelectionStates(false);",
+        "ShowArticlePage(currentEntryId, false);",
         "Application.OpenURL(ExternalWikiUrl);",
     )
     for pattern in required:

@@ -23,6 +23,23 @@ Zombie Mode uses its own entry flow and doesn't read this map list.
 - **Zone 37 Experimental Area**
 - **Maze**: Complex terrain, limited visibility
 
+<div class="brs-gallery">
+
+![Ground Zero arena preview](/images/scenes/map-preview-zero.webp)
+*Ground Zero arena preview*
+
+![DEMO Ultimate Challenge arena](/images/scenes/map-preview-demo.webp)
+*DEMO Ultimate Challenge arena*
+
+![Black Market Challenge labyrinth](/images/scenes/map-preview-maze.webp)
+*Black Market Challenge labyrinth*
+
+![Cloudrise Dock](/images/scenes/sky-scene-dock.webp)
+*Cloudrise Dock*
+
+</div>
+
+
 ## How to Select a Map
 
 - 1. Have a BossRush Ticket in your inventory

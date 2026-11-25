@@ -2,6 +2,14 @@
 
 ## Overview
 
+<div class="brs-icon">
+
+![Campaign Board](/images/icons/campaign-board.webp)
+*Campaign Board*
+
+</div>
+
+
 - The mod's first story campaign: six quests, each with a story beat, a line in the ledger, and a payout.
 - It **does not add a new mode**. You keep playing the modes you already play; there's just one
   extra layer of "and while I'm in here, do this too."
@@ -16,14 +24,6 @@
   bout: the one holding the ring wears the old champions' armor, the ledger only prints a
   silhouette for him, and you have to go through him to sign.
 
-<div class="brs-figure">
-
-![The Broker](/images/campaign/portrait-broker.webp)
-*The Broker*
-
-</div>
-
-
 ## Getting started
 
 ### 1. See Jeff at base
@@ -31,14 +31,6 @@
 - Walk up to Jeff at your base and open his quest page. Chapter 1 is under "Available".
 - The title, description, objective lines and reward all show on the official quest page, like any vanilla quest.
 - Locked chapters don't appear at all. The next one shows up only after you hand in the current one.
-
-<div class="brs-icon">
-
-![Campaign Board](/images/icons/campaign-board.webp)
-*Campaign Board*
-
-</div>
-
 
 ### 2. Take a quest
 
@@ -75,6 +67,10 @@ Forgot what the chapter wants? Check the top-right tracker in a run, or open Jef
 In-run objectives must be met **in the same run**; base-side objectives can be done any time. The payout lands when you hand in.
 
 ### Chapter 1 · Sign Us Up
+- Go to **Standard BossRush** (the quest calls it "Standard Arena")
+- Clear one run
+- Take zero damage through wave 2. If your filtered run has fewer than two waves, finish the whole run without damage.
+- Reward **20,000** + BossRush Ticket x2. Handing in opens the base's **garden site** for you.
 
 <div class="brs-figure">
 
@@ -83,12 +79,14 @@ In-run objectives must be met **in the same run**; base-side objectives can be d
 
 </div>
 
-- Go to **Standard BossRush** (the quest calls it "Standard Arena")
-- Clear one run
-- Take zero damage through wave 2. If your filtered run has fewer than two waves, finish the whole run without damage.
-- Reward **20,000** + BossRush Ticket x2. Handing in opens the base's **garden site** for you.
 
 ### Chapter 2 · The Fighter With a Garden
+- Base: build the backyard garden (pay at the site to start construction)
+- Base: give Jeff 2 backyard harvests (Dragonbreath Fruit, Emberheart Chili or Umbral Mushroom, any mix). Carry them in your backpack; they are taken when you hand in. Crops need watering and ripen in about 20 minutes.
+- Go to **From Scratch**
+- Enter with only a ticket, including an empty pet bag, and reach wave 5. Equip anything you find during the run.
+- Kill 5 with a melee weapon. While this quest is active, the starter kit includes a melee weapon.
+- Reward **35,000** + Dragon Seed, Ember Seed and Phantom Spore x2 each. Handing in unlocks the **display bonus**.
 
 <div class="brs-figure">
 
@@ -97,14 +95,12 @@ In-run objectives must be met **in the same run**; base-side objectives can be d
 
 </div>
 
-- Base: build the backyard garden (pay at the site to start construction)
-- Base: give Jeff 2 backyard harvests (Dragonbreath Fruit, Emberheart Chili or Umbral Mushroom, any mix). Carry them in your backpack; they are taken when you hand in. Crops need watering and ripen in about 20 minutes.
-- Go to **From Scratch**
-- Enter with only a ticket, including an empty pet bag, and reach wave 5. Equip anything you find during the run.
-- Kill 5 with a melee weapon. While this quest is active, the starter kit includes a melee weapon.
-- Reward **35,000** + Dragon Seed, Ember Seed and Phantom Spore x2 each. Handing in unlocks the **display bonus**.
 
 ### Chapter 3 · A Proper Front
+- Go to **Faction War**
+- Defeat 8 hostile bosses. Allies and neutral characters do not count; hand in as soon as the tally is met.
+- Base: put 1 Boss trophy on a weapon display rack or a dummy
+- Reward **50,000** + Affix Forge Stone x2. Handing in unlocks the **jukebox tracks**.
 
 <div class="brs-figure">
 
@@ -113,12 +109,12 @@ In-run objectives must be met **in the same run**; base-side objectives can be d
 
 </div>
 
-- Go to **Faction War**
-- Defeat 8 hostile bosses. Allies and neutral characters do not count; hand in as soon as the tally is met.
-- Base: put 1 Boss trophy on a weapon display rack or a dummy
-- Reward **50,000** + Affix Forge Stone x2. Handing in unlocks the **jukebox tracks**.
 
 ### Chapter 4 · Collect and Leave
+- Go to **Blood Hunt**
+- Kill 3 targets carrying a bounty mark
+- Extract successfully once
+- Reward **75,000** + Cold Quench Fluid x2 + Bloodhunt Transponder x1
 
 <div class="brs-figure">
 
@@ -127,12 +123,12 @@ In-run objectives must be met **in the same run**; base-side objectives can be d
 
 </div>
 
-- Go to **Blood Hunt**
-- Kill 3 targets carrying a bounty mark
-- Extract successfully once
-- Reward **75,000** + Cold Quench Fluid x2 + Bloodhunt Transponder x1
 
 ### Chapter 5 · The Match Nobody Takes
+- Go to **Zombie Mode**
+- Hold the tide to wave 5
+- Extract successfully once (the extraction opens once the wave 5 Boss is down)
+- Reward **100,000** + Zombie Tide Invitation x1 + Portable Safe-Zone Device x1
 
 <div class="brs-figure">
 
@@ -141,12 +137,10 @@ In-run objectives must be met **in the same run**; base-side objectives can be d
 
 </div>
 
-- Go to **Zombie Mode**
-- Hold the tide to wave 5
-- Extract successfully once (the extraction opens once the wave 5 Boss is down)
-- Reward **100,000** + Zombie Tide Invitation x1 + Portable Safe-Zone Device x1
 
 ### Chapter 6 · The One Holding the Ring
+- Beat the **Shadow of the Champion** in the arena
+- Reward **200,000** + Relic Egg x2 + Affix Forge Stone x3
 
 <div class="brs-figure">
 
@@ -155,12 +149,10 @@ In-run objectives must be met **in the same run**; base-side objectives can be d
 
 </div>
 
-- Beat the **Shadow of the Champion** in the arena
-- Reward **200,000** + Relic Egg x2 + Affix Forge Stone x3
 
 ## How the final showdown works
 
-<div class="brs-figure">
+<div class="brs-icon">
 
 ![Shadow of the Champion](/images/campaign/portrait-champion.webp)
 *Shadow of the Champion*
@@ -168,23 +160,21 @@ In-run objectives must be met **in the same run**; base-side objectives can be d
 </div>
 
 
-- With the final quest active, head into the arena, but **don't touch the central signpost to
-  start a run**. The showdown can't begin while any mode is running.
-- A **sign-up stone** rises next to you. Hold it to start. The one holding the ring has a few words before the fight.
-- The Shadow of the Champion takes the form of a **sandstorm spirit**, with swirling sand, orbiting debris, and amber eyes.
-- Phase one cycles through five dashes, 21 breakable sand bubbles, five dashes, and twin tornado seeds. Below 50% health, phase two uses three faster dashes, an orbit that fires 31 bubbles inward toward you, three more dashes, then a homing seed that creates a large cyclone near the player.
-- Twin sandstorms launch two ground rings from either side of the boss, which then chase you. They become stationary tornadoes upon contact or after three seconds, with a ground warning before damage begins. Walls block the rings without triggering them early. Small tornadoes have a 3.4 m radius and stand 12 m tall; large cyclones have a 5.6 m radius and stand 24 m tall. Layered sand clouds and fine grains form the storm, with ground-level sand marking its danger zone. Rising sand crystals crown the boss, while dashes shed short-lived dust and bubbles carry soft membrane highlights.
-- Sand-spirit guards pursue and react faster, and randomly use all three Astral Staff heavy attacks: a wide forward sweep, a two-beat spin whose second beat pulls you in, and a leaping slam. A warm orange fan or ring lights up on the ground before each one; roll on time to avoid it, and walls block the hit. Layered dust, broken sand streams, and fine golden grains shape the storms; ground circles mark their danger radius.
-- The champion's dashes lead your movement: while it winds up, the ground warning turns to follow where you are heading and only locks in a moment before release. Running in a straight line will not save you; roll as it locks.
-- Below 15% health, the champion fades into the storm with its eyes still visible, briefly revealing itself during its one-, two-, and three-dash chains. These dashes **pass through walls** and keep steering toward you. After each dash chain it rotates between twin sand funnels, an unseen circling bubble barrage, and a full sandstorm.
-- The champion summons sand spirits wielding Astral Staffs of light without interrupting its tornadoes. Tornadoes fire fast sand sharks shaped like sand dragons with sandy wings and swaying tails; bubbles and sharks can be destroyed by attacks. Guards drop no items; defeat the champion to obtain the staff.
-- Stay within the arena around the sign-up stone. Leaving the battle area enrages the champion; returning calms it. Phase transitions briefly grant invulnerability. Watch its eyes and ground warnings.
-- Victory guarantees the **Astral Staff**, a melee staff of light with Focus built by left-click hits or holding right-click. Release right-click for one of three heavy finishers.
-- Losing or walking away doesn't lock you out. The quest stays, the sign-up stone comes back when
-  you return to the arena, and you can try as many times as you like.
-- If you start another mode mid-showdown, the showdown stands down and cleans itself up.
+- With Chapter 6 active, enter the arena **without starting any other mode at the signpost**, and hold the **sign-up stone** beside you to challenge the **Shadow of the Champion** (sandstorm spirit with amber eyes).
+- **Phase 1 (100%–50%) & Phase 2 (<50%)**: alternates 3–5 wall-free movement dashes with breakable sand bubbles (21 / 31) and **twin tornado seeds** (`3.4m` small tornadoes or `5.6m` large cyclones; walls block traveling rings cleanly). Stay mobile when dash lines lock in — dashes lead your movement!
+- **Below 15% HP (Sandstorm Ambush)**: fades into the storm with glowing eyes visible, weaving **wall-piercing 1/2/3-dash chains** between sand funnels and circling bubbles.
+- **Sand-Spirit Guards & Projectiles**: guards wield Astral Staffs using sweep, two-beat spin, and leaping slam telegraphs; tornado sharks and bubbles can both be shot or swung down to clear space.
+- **Bounds & Rewards**: stay inside the stone's arena ring to avoid enraging it. Victory guarantees the **Astral Staff** (drops on defeat? Never — retry free anytime via the sign-up stone). Starting another mode cleanly aborts an active bout.
 
 ## What you walk away with
+
+<div class="brs-icon">
+
+![The Broker](/images/campaign/portrait-broker.webp)
+*The Broker*
+
+</div>
+
 
 - **Cash**: **480,000** across all six chapters. Each chapter also pays an item reward (see above), delivered to your backpack first, then storage.
 - **Clues**: one per chapter, written into the game's own **notes**. They are the six lines of the
@@ -211,16 +201,15 @@ In-run objectives must be met **in the same run**; base-side objectives can be d
 - **What's a "bounty mark"?** The marked bounty targets in Blood Hunt. Only kills on marked targets
   are counted.
 - **Can I farm the same chapter's reward?** No. Each chapter can be handed in once.
-- **I already built a Campaign Board in an old save. What now?** Keep it as a souvenir or tear it
-  down; your progress is safe either way. Quests now come from Jeff, and old progress carries over.
-- **What happens across save slots?** Campaign progress follows the **save slot**, so each save
-  runs its own campaign.
+- **What happens across save slots?** Campaign progress follows the **save slot**, so each save runs its own campaign.
 
 ## Jeff's new-content introductions
 
-Alongside the six campaign chapters, Jeff offers fourteen one-time introductions. They come **one at a time**: Jeff only hands you the next one after you turn in the current one. The garden and display introductions wait until campaign chapters 1 and 2 are turned in (which unlock the garden and the display bonus), and the Sky Island gear introduction waits until Coordinates Above the Clouds is turned in and the route is open. None of them holds up the rest. Accept them at base, follow the quest log, then return and hand them in yourself. Acceptance, trial completion and hand-in survive reloading. These introductions do not change chapter order.
+Alongside the six main chapters, Jeff hands out **14 one-time introductory quests** one by one, paying **74,000 cash total** plus entry items for upcoming systems (backpack first, then storage).
 
-Every hand-in pays a reward, and the item is usually what the next introduction needs, so you can go straight on without buying it first. Reward items go to your backpack first, then storage. The fourteen together pay **74,000** cash.
+- **Garden, Display, and Sky Island gear introductions** wait for Campaign Ch.1, Ch.2, and *Coordinates Above the Clouds* respectively without blocking anything else
+- Existing cubs, built facilities, or matching forged gear already qualify — simply claim at Jeff
+- Handing in one unlocks the next; accepted and completed progress persists across reloads
 
 - **Bring Your Own Gear (Fate Echo)** — 3,000 + BossRush Ticket x2
 - **Your Turn in the Stands (Black Market Duck Cup)** — 3,000 + Relic Egg x1

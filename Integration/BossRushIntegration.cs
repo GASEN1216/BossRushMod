@@ -355,6 +355,7 @@ namespace BossRush
         internal void CleanupIntegrationRuntimeOnDestroy()
         {
             SafeRuntime.Run("WikiUIManager.Shutdown", WikiUIManager.Shutdown);
+            SafeRuntime.Run("WikiIllustrations.ResetStaticCaches", () => WikiIllustrations.ResetStaticCaches());
             SafeRuntime.Run("ImageViewerUI.ResetStaticCaches", () => ImageViewerUI.ResetStaticCaches());
             OnDestroy_Integration();
         }

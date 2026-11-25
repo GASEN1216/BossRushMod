@@ -1,5 +1,16 @@
 # Boss Filter
 
+<div class="brs-gallery">
+
+![Adventurer's Journal](/images/scenes/sc-adventure-journal.webp)
+*Adventurer's Journal*
+
+![Duckov Codex](/images/icons/codex-book.webp)
+*Duckov Codex*
+
+</div>
+
+
 ## Overview
 - The Boss Filter allows you to customize the Boss pool by disabling Bosses you don't want to encounter or adjusting the appearance weight of specific Bosses in Infinite Hell.
 - Disabled entries affect the Boss pools used by **Standard BossRush, Infinite Hell, From Scratch, Faction War, Blood Hunt and Fate Echo**, plus the pool the "Boss Intrusion" random event draws its intruder from; Infinite Hell additionally supports its own per-Boss weight multipliers.

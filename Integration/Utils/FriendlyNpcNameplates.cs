@@ -207,11 +207,12 @@ namespace BossRush
                 groups[i].blocksRaycasts = false;
                 groups[i].interactable = false;
             }
-            // 只有那行名字：血条底、填充、等级图标、伤害条这些图形全部不画
+            // 只有那行名字：血条底、填充、等级图标、伤害条这些图形全部不画。
+            // 名字底下的 TMP_SubMeshUI（回退字体的字形）也是 Graphic，关掉会让用到回退字体的名字缺字：跳过 label 整棵子树。
             Graphic[] graphics = root.GetComponentsInChildren<Graphic>(true);
             for (int i = 0; i < graphics.Length; i++)
             {
-                if (graphics[i] == label) continue;
+                if (graphics[i].transform.IsChildOf(label.transform)) continue;
                 graphics[i].enabled = false;
                 graphics[i].raycastTarget = false;
             }

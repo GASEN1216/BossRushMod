@@ -6,6 +6,14 @@ A lite roguelike run. You enter **completely naked**, get a random starter kit, 
 
 ## Entry
 
+<div class="brs-icon">
+
+![BossRush Ticket](/images/scenes/sc-bossrush-ticket.webp)
+*BossRush Ticket*
+
+</div>
+
+
 - **Naked** — no equipment, empty backpack and pet bag
 - Carry a **BossRush Ticket**
 - No Faction Flag or Transponder (those trigger other modes)

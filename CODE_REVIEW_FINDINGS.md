@@ -2,6 +2,37 @@
 
 更早记录见 `archive/`；月度归档索引保留在本文件正文。
 
+## 2026-11-25 水墨 UI 改动审查（62b03a57 + 未提交工作区；002、004–021 Fixed L1/L2，003 撤回；正式真编译通过，L3 待 owner）
+
+范围：已提交 `62b03a57` 的共享水墨库与调用方，加上未提交的冒险家日志墨卷 / 插图、各集成界面、模式 HUD 与面板。002 由 owner 截图与代码坐标互证；003 已对照本机游戏 Mod 目录逐文件核对；其余由代码与坐标计算确认。审查时另一会话正在同一工作区写这些文件，未改代码。
+
+| ID / 状态 | 可复现条件与影响 | 修复与证据 |
+| --- | --- | --- |
+| CR-2026-11-25-002 · P1 / COMPAT · Fixed L1/L2 | 冒险家日志每一篇的正文都左右甩出纸面：左栏被卷轴遮罩切掉开头，右栏越过右边，底行压到页脚线；插图卡在原位。正文 TMP 是 `Page_Article_*`（已在 ±222, −27）的子物体，`ApplyColumnBox` 又写入同一组坐标，实际落在 ±444, −54。 | `WikiUIManager_InkView.cs` `CreateArticleColumn` 把正文 TMP 直接挂到 `pagesGroup`、按栏中心定位；`WikiUIManager.cs` 分页右栏只同步 `sizeDelta`，不再抄左栏偏移。证据：正式真编译 0 错、全量守卫通过；L3 待 owner。 |
+| CR-2026-11-25-003 · P2 / OPERATIONAL · Withdrawn（误报） | 插图清单引用的 `Assets/wiki_diagrams`（5）、`Assets/ui/Codex`（12）、`Assets/ui/ModeG`、`Assets/ui/ModeH`（各 1）没有部署规则，本机游戏目录 19 张全缺；`ResolveAssets` 静默跳过，天空岛 / 潮闸镇 / 末班编组站 / 蚀日花冠 / Mode G 战术图在游戏里不出现。`WikiImageAssetGuard` 只查网页端。 | 撤回：19 张插图都在已部署的 `production_icons` 包里（UnityPy 列包 0 缺，包与游戏目录 SHA-256 一致）；正式构建 `ModSprites.Get` 按原路径先取包、包在时不读散图，审查只查了散图目录。仍给 `WikiImageAssetGuard` 加判据 5（插图路径必须登记 `tools/production_icon_manifest.json`），反向验证转红后按字节还原。 |
+| CR-2026-11-25-004 · P2 / COMPAT · Fixed L1/L2 | `CreateButton` 先由主题挂上按钮档墨笔边（ppu 240），`StyleInkButton` 复用同一节点只把 ppum 改成 2.4，边宽从约 16.7 缩到约 6.9 单位：日志目录卡、出征令、邸报、确认框、成就页的墨笔边成了细丝，选中金边几乎看不见。 | `BossRushInkSkin.AddInkFrame` 复用分支换回 `GetFrameSprite()`、Sliced、不填中心，墨笔边恢复原宽。证据：正式真编译 0 错、全量守卫通过；L3 待 owner。 |
+| CR-2026-11-25-005 · P2 / COMPAT · Fixed L1/L2 | 水墨主题下 Stroke 与 Accent 同为鎏金，只差 alpha（0.70 / 1.0），在 SurfaceRaised 上约 1.35:1：遗种巢当前崽、Mode H 选卡、许愿台输入焦点的选中与未选中分不出。 | 选中 / 焦点描边改用 UI 共识的 `WarningText`：`PetNestUIMotion`、`ModeHUIPageParts`（悬停时选中卡保持）、`WishFountainUI_Feel` 输入框。证据：正式真编译 0 错、全量守卫通过；L3 待 owner。 |
+| CR-2026-11-25-006 · P2 / COMPAT · Fixed L1/L2 | 许愿成功后「愿成」印章、余烬粒子挂在带 `VerticalLayoutGroup` + `ContentSizeFitter` 的面板下且没设 `ignoreLayout`，被当成布局行：面板末尾多出整宽金条，粒子每颗占一行；粒子场 `startBurning=true` 不熄，复用面板后每次打开都冒。 | `CreateSeal`、`SpawnRing`、余烬 `SpawnMote` 创建时自带 `LayoutElement.ignoreLayout`；许愿台余烬场改为只爆一次、不常燃。证据：正式真编译 0 错、全量守卫通过；L3 待 owner。 |
+| CR-2026-11-25-007 · P2 / COMPAT · Fixed L1/L2 | 许愿台打开时同一帧调两次 `AddLeftOrAlignedStroke`，第二次 `Find` 到待销毁的旧笔，第一次新建的笔永不删除：每开一次标题下多一道金笔并泄漏对象。 | `AddLeftOrAlignedStroke` 循环找旧笔，先 `SetParent(null,false)` 再销毁；`RefreshLocalizedTexts` 只在面板开着时重画金笔。证据：正式真编译 0 错、全量守卫通过；L3 待 owner。 |
+| CR-2026-11-25-008 · P2 / COMPAT · Fixed L1/L2 | 宿命回响入场页、弃局页、战报的标题金笔锚在面板中心，却按「从顶边往下」的 cursor 定位，落到面板中段横穿说明或契约卡（入场页约低 350 像素）。 | 入场页、弃局页、战报的 `TitleBrush` 改 `anchorMin = anchorMax = (0.5, 1)`，与顶边 cursor 一致。证据：正式真编译 0 错、全量守卫通过；L3 待 owner。 |
+| CR-2026-11-25-009 · P2 / COMPAT · Fixed L1/L2 | 装填节拍器判定窗口创建时宽 0 高 4，被判成竖条选了竖笔贴图；运行时拉成横条后两端约 22% 是软边，金色判定区看着比实际窄且边界模糊，影响按键时机。 | 判定窗口改用纯色硬边条（`SolidBar`，空贴图 Image），不再按尺寸猜朝向选墨笔。证据：正式真编译 0 错、全量守卫通过；L3 待 owner。 |
+| CR-2026-11-25-010 · P3 / COMPAT · Fixed L1/L2 | 带 `RectMask2D` 的墨笔旋转 90° 后，裁剪框按世界角点 [0]/[2] 算出负宽，整条被剔除：日志书缝、左栏典籍 / 篇目竖分隔线、许愿抽奖指针主线不显示（截图里纸面中间确实没有书缝）。 | 新增 `BossRushInkSkin.CreateVerticalBrushStroke`（普通 Image + 竖笔贴图）；书缝、左栏竖分隔、抽奖指针主线改用它，不再把遮罩笔转 90°。证据：正式真编译 0 错、全量守卫通过；L3 待 owner。 |
+| CR-2026-11-25-011 · P3 / COMPAT · Fixed L1/L2 | 打开面板时墨晕叠两层（峰值约 0.75），第一层按排版前尺寸画；`ImageViewerUI` 的 imageFrame 是拉伸锚点，墨晕被算成「父尺寸 + 1.22 倍」，成了全屏暗斑。 | 删掉 Mode G 入场 / 弃局、战报、Mode H 恢复页、Codex 详情的显式 `SpawnOpenBloom`，`PlayInkSurfaceOpen` 也不再另放；`SpawnOpenBloom` 固定中心锚点、按面板实际矩形定位（拉伸的看图器框不再成全屏暗斑）。证据：正式真编译 0 错、全量守卫通过；L3 待 owner。 |
+| CR-2026-11-25-012 · P3 / COMPAT · Fixed L1/L2 | `SpawnRing` 拿印章的 `anchoredPosition` 当中心锚点坐标，印章改成角锚点后墨环炸在卡片中部（成就领取、Steam 弹窗、邸报、宿命回响选中印与战报印）。 | 新增 `BossRushInkSkin.CenterInParent`；`StampSeal` 落印完成时按印章实际中心落环（调用方改锚点之后才算），成就领取波纹同样换算。证据：正式真编译 0 错、全量守卫通过；L3 待 owner。 |
+| CR-2026-11-25-013 · P3 / COMPAT · Fixed L1/L2 | `CreateCard` 强调竖条从 x 3–7 挪到 8–11（工作区又到 9–14），调用方仍按旧位置排：异色崽第二色条压住第一条只剩一色，且高度按建卡时 80 算死；伴宠 HUD 立绘框墨边压住身份色条。 | `AddIdentityRail` 读强调竖条实际贴图、宽度与位置，按槽位排在右侧并竖向拉伸，返回右沿；立绘与文字随右沿右移；伴宠 HUD 同步 `_portraitX`。证据：正式真编译 0 错、全量守卫通过；L3 待 owner。 |
+| CR-2026-11-25-014 · P3 / COMPAT · Fixed L1/L2 | 孵化揭晓标题框占 y 256–300，卡片顶边 285 且后建在上层，「遗种破壳」下沿与金笔被挡 15–29 像素。 | 标题 y 改 `SurfaceSize.y * 0.5 − 26`（上移 16），下沿与金笔不再被卡片挡。证据：正式真编译 0 错、全量守卫通过；L3 待 owner。 |
+| CR-2026-11-25-015 · P3 / COMPAT · Fixed L1/L2 | 远征翻牌共用一张卡，阵亡时挂上的余烬场不关，之后归巢的崽（连背面）也飘红灰余烬。 | 新增 `StopCardEmbers()`，翻到背面和非阵亡正面时熄火。证据：正式真编译 0 错、全量守卫通过；L3 待 owner。 |
+| CR-2026-11-25-016 · P3 / COMPAT · Fixed L1/L2 | 音效重复：一键领取 N 个成就同帧 N 声落印（注释写整批一次）；收藏册 `RebuildCards` 每次刷新都走 `SelectCard`，打开、切系列、状态变化自己出声和墨环；邸报落印音放两次。 | `StampSeal` 增 `playSfx`，一键领取只第一枚出落印声；收藏册 `SelectCard(byPlayer)` 只在点卡时出墨环与笔扫；邸报签到波纹不再带音效。证据：正式真编译 0 错、全量守卫通过；L3 待 owner。 |
+| CR-2026-11-25-017 · P3 / COMPAT · Fixed L1/L2 | 看图器「墨藏」印章比 MainImage 先建，被图盖住大半；看图器开着时换图在 `wasVisible` 早返，标题金笔还是旧标题宽度。 | 印章在 MainImage 建好后 `SetAsLastSibling`；`ShowRoot` 在 `wasVisible` 时也按新标题重画金笔（不重放书写）。证据：正式真编译 0 错、全量守卫通过；L3 待 owner。 |
+| CR-2026-11-25-018 · P3 / SAFE · Fixed L1/L2 | 邸报先设 `PaperBase` / `PaperCard` 与按钮色，随后被 `ApplyInkPanel` / `StyleInkButton` 覆盖；`DailyReportPresentationGuard` 仍断言并按这些未渲染的颜色算对比度（§4.10），按其模型 `PaperInkSoft` 在实际墨底上约 3.7:1。 | 纸色、卡面色挪到 `ApplyInkPanel` 之后设，`ButtonIdle = CinnabarFill`；`DailyReportPresentationGuard` 加先后顺序与按钮色断言，守卫复算的是屏幕上的颜色，反向验证转红。证据：正式真编译 0 错、全量守卫通过；L3 待 owner。 |
+| CR-2026-11-25-019 · P3 / COMPAT · Fixed L1/L2 | 危险确认键标签色按调用方原始 Danger 算，底色却已换成 DangerFill，打开即宣纸白字而非设计的浅朱字。 | `CreateButton` 标签色改按 `button.colors.normalColor`（已换成 DangerFill 的实际底色）算。证据：正式真编译 0 错、全量守卫通过；L3 待 owner。 |
+| CR-2026-11-25-020 · P3 / COMPAT · Fixed L1/L2 | 出征令 HUD 变天时天象行先全不透明显示，0.35 秒后突然变透明再淡入，「出现、消失、再出现」。 | 加动效前先 `label.alpha = 0`。证据：正式真编译 0 错、全量守卫通过；L3 待 owner。 |
+| CR-2026-11-25-021 · P3 / COMPAT · Fixed L1/L2 | 宿命回响「契合」印（52 像素）下沿在卡顶下 58 像素，压住从 45 像素起的契约说明第一行右端。 | 印章缩到 40 见方、上移 2，不再压说明首行。证据：正式真编译 0 错、全量守卫通过；L3 待 owner。 |
+
+未证实线索（UNVERIFIED，2026-11-25 已按防御式修法一并处理，L3 待 owner）：关面板淡出与复位不再写根画布缩放（`IntegrationUIFeedback.ScalableRect` 跳过带 CanvasScaler 的根画布）；邸报报头右侧让出 60 像素印宽，报头金笔随居中点左移 30；友好名牌关克隆体 Graphic 时跳过名字整棵子树（`FriendlyNpcNameplateGuard` 同步改断言并反向验证）；`SpawnOpenBloom` 固定中心锚点（并入 011）；`CreateHeaderTitle` 框高不低于字号×1.45+4；日志图库页脚框高 20。
+
+顺带（不影响运行，2026-11-25 已改）：天空岛警示线高度收成常量 `WarningRuleHeight = 5`，创建与字幕显示都用它；`ModeHUIPages.cs` 的滚动列表改用共享库属有意取舍，在 `Common/UI/AGENTS.md` 补「滚动列表用共享库 ScrollRect」例外并记 `docs/ai-docs-migration.md`；出征令 HUD 静态缓存注释改成与 `Hide()` 清空一致。审查时全量守卫 790 PASS / 2 FAIL（另一会话 `ArenaTrialsFx.cs` 未登记），修复后全量 796 PASS / 0 FAIL。
+
 ## 2026-11-25 玩家反馈：叮当重铸强度过高（001 Fixed at L1/L2；L3 待验）
 
 | ID / 状态 | 可复现条件与影响 | 修复与证据 |
@@ -493,41 +524,6 @@ CR-2026-10-21-003，P2 / COMPAT / Fixed at L1/L2，Needs runtime smoke：旧 `NP
 
 验证（2026-10-20）：全量守卫 747/747 通过；最终失败重试 / 层级排序补丁后 changed-only 114/114 通过。隔离反向验证 8 个变异全部按预期转红并还原；相关生产执行回归 12/12 通过（ZombieMode 七项、EnemyRecoveryRuntime、IntegrationThirdReviewFixes、SpawnPositionPolicy、EnemySpawnRuntime、ModeEFEnemySpawnRuntime），恢复夹具 117 条断言。Windows 正式编译退出码 0，无 Dev 定义，2 条既有 ModeHPageContent 未赋值警告；使用 Managed 实体拷贝，游戏目录 DLL SHA-256 未变。正式产物 `Build/BossRush.dll` SHA-256 `C0159A3BAED3DF957265B79D500D824DB1FD1677B7AB2876259CF6BB816AC7DC`，完整证据在 `Build/zombie-invincible-20261020/` 和 `Build/runtime-regressions/`。L3 待验证：正常入场打过 22→23→24 波，命中身体 / 头部应掉血、波次可推进；发生恢复时怪的剩余血量应保留。持续无敌、恢复后满血或重复 Collider NaN 均为不合格，不把编译与隔离回归写成实机通过。
 
-## 2026-10-18 v2.3.5 之后五个提交审查（001～023 全部 Fixed，COMPAT / OPERATIONAL，L1/L2，L3 待 owner）
-
-范围 `3abfddcc..e25005ee`：`5a835089`、`9f9f9449`、`1170e834`、`c09c53cb`、`e25005ee`。审查时 HEAD 隔离签出 Windows 正式编译 0 错误；全量守卫 747/747；相关执行回归 7 项全过。没有 P0 / P1。下列位置按审查时 HEAD 行号；owner 要求全部修复，钻戒限量与官方存档键两条授权按好玩优先自定。
-
-| ID | 级 / 分类 | 问题 | 位置 |
-| --- | --- | --- | --- |
-| CR-2026-10-18-001 | P2 / COMPAT | 丧尸模式减伤按负数累加，判上限用正数 0.40，满级后仍出卡、选了不加 | `ZombieMode/ZombieModeRuntimeModule_RewardCatalogAndSelection.cs:329`、`ZombieModeRewardItemGrants.cs:534` |
-| CR-2026-10-18-002 | P2 / COMPAT | 商人「下次购买保底 6 品」在该口径没有 6 品弹药时被回退成最低品质弹药并清掉保底 | `ZombieModeRewardItemGrants.cs:653-681`、`ZombieModeRewardNpcServices.cs:183-195` |
-| CR-2026-10-18-003 | P2 / COMPAT（PLAUSIBLE） | 弹药补给 / 弹雨：手上口径发不出弹药时不再退回开局口径，直接发随机弹（是否存在无弹药口径的枪未核实） | `ZombieModeRewardItemGrants.cs:89-99,560-569`、`ZombieModeRewardTriggerEffects.cs:307-318` |
-| CR-2026-10-18-004 | P2 / COMPAT | 钻石戒指终身限 1 枚，离婚不重置，求婚 / 丢失后只能赌许愿池，离婚后基本无法再婚 | `Integration/Affinity/NPCs/GoblinAffinityConfig.cs:805`、`NPCShopStockLedger.cs:96` |
-| CR-2026-10-18-005 | P2 / COMPAT | 好感页对所有 NPC 读 `DiscountsByLevel` 并写「商店折扣」，羽织的治疗折扣被写成商店折扣 | `Integration/Affinity/UI/AffinityTabData.cs:101,195-198` |
-| CR-2026-10-18-006 | P2 / COMPAT | 「全部孵化」每枚蛋各走一次 `RequestAssetFlush(bypassGates)`，一次点击同步整档写盘 N 次 | `PetNest/PetNestHatchService.cs:123-138,156-180` |
-| CR-2026-10-18-007 | P2 / COMPAT | 刚归来未揭晓的崽再派出后，巢页按 petId 取到旧的已结算记录，显示「远征已归来 / 查看结果」 | `PetNest/PetNestUINestPage.cs:265-284,372-380` |
-| CR-2026-10-18-008 | P3 / COMPAT | 弹药区间回退一律取最低品质；请求区间高于可用品质时应取最接近的那档 | `ZombieModeRewardItemGrants.cs:669-681` |
-| CR-2026-10-18-009 | P3 / SAFE | 「按手上的枪配口径」实际是主武器槽优先，没读当前手持 | `ZombieModeRewardNpcServices.cs:210-228` |
-| CR-2026-10-18-010 | P3 / SAFE | 弹药夹具替身降级语义与官方 `Search` 不一致，缺保底 (6,6) 与区间高于可用品质用例 | `tests/fixtures/ZombieModeAmmoSelection/Stubs.cs:84-93` |
-| CR-2026-10-18-011 | P3 / SAFE | 衰减提示直接赋值，未聊天期间第二次衰减覆盖第一次，提示天数 / 扣分偏少 | `Integration/Affinity/AffinityManagerPersistenceAndDecay.cs:118` |
-| CR-2026-10-18-012 | P3 / OPERATIONAL | 动态 `StockShop` 的 `Awake` 已订阅 `SavesSystem.OnCollectSaveData`，商店开着时会写官方存档键 `StockShop_BossRushNpc_<npcId>`（Mod 不读） | `Integration/Affinity/Systems/NPCShopSystem.cs:85-87,776-777` |
-| CR-2026-10-18-013 | P3 / COMPAT | 永久 NPC 折扣上限 0.5 超过低买高卖临界 1/3（现有数据最高 0.20） | `Integration/NPCs/DuckNpc/Permanent/PermanentDuckNpcData.cs:109,172` |
-| CR-2026-10-18-014 | P3 / SAFE | 对话系统吞掉非取消异常后，剧情仍被记成看过并发奖 | `PermanentDuckNpcStoryPlayer.cs:148-150`、`Integration/Dialogue/DialogueManager.cs:424-427` |
-| CR-2026-10-18-015 | P3 / SAFE | 远征队满时巢页仍挂「派去远征」，点进去才被拒 | `PetNest/PetNestUINestPage.cs:326-334` |
-| CR-2026-10-18-016 | P3 / SAFE | 「治一道疤」遗魂不够时不挂、按钮不写价钱，不符合付费服务口径 | `PetNest/PetNestUINestPage.cs:308-324` |
-| CR-2026-10-18-017 | P3 / COMPAT | 摸摸脉冲结束时把体型还原成开始时的值，期间升级的新体型被盖回；曲线用 `Mathf.Sin` | `PetNest/PetNestUIMotionParts.cs:138-172`、`PetNestCompanionCare.cs:265` |
-| CR-2026-10-18-018 | P3 / COMPAT | 远征到期提醒去重集合跨存档槽不清，换槽后同 id 的远征不提醒 | `PetNest/PetNestRuntimeModule.cs:324,340,354-364` |
-| CR-2026-10-18-019 | P3 / COMPAT | 「全部孵化」孵出过一枚后吞掉后续失败原因；写盘失败但已提交的那枚不进揭晓 | `PetNest/PetNestUIPages.cs:546`、`PetNestHatchService.cs:138,175-177` |
-| CR-2026-10-18-020 | P3 / SAFE | 博物馆驯养成就行复用 `Shiny`，给白字标题挂每帧流光 | `PetNest/PetNestUIMuseumPage.cs:222` |
-| CR-2026-10-18-021 | P3 / SAFE | 守卫缺口：三份新 PetNestUI 文件不在分层守卫清单；丧尸反制守卫只断言子串 `IsPlayerOwnHit(`，加 `|| IsPlayerSideAttack` 仍能过 | `tests/PetNestUILayerGuard.py:130-134`、`tests/ZombieModeCompanionCounterplayGuard.py:39-44` |
-| CR-2026-10-18-022 | P3 / SAFE | 页签指示条用 `AccentFill`（应为 `Accent`）；`RollNewPet` 的 summary 错挂到 `TryHatchAll` 头上 | `PetNest/PetNestUIMotion.cs:84`、`PetNestHatchService.cs:148-156` |
-| CR-2026-10-18-023 | P2 / SAFE | 修复阶段全量回归发现：`1170e834` 后 HEAD 上两份执行回归就是红的（当轮只跑了按名过滤的回归）。`ManualSeptemberReview` 抽取的揭晓 / 归巢方法引用新成员却没有替身，编译失败；`IntegrationThirdReviewFixes` 仍断言「崽的远程命中吃刚硬减伤」，与有意改成「反制只认玩家本人」的设计相反 | `tests/fixtures/ManualSeptemberReview/Stubs.cs`、`HomecomingStubs.cs`；`tests/fixtures/IntegrationThirdReviewFixes/ZombieBossCases.cs:235` |
-
-修复闭环（详见 `FIX_TRACKER.md` 同日节）：001 `IsZombieModeAttributeBonusAtCap` 比绝对值；002 / 008 `allowQualityFallback` + 取离区间最近的品质；003 `TryGiveZombieModeSupplyAmmo` 退回开局口径；009 先读 `GetGun()`；010 替身按官方 `DownGradeSearch`、补用例；004（拍板）戒指 `RestockOnlyWhenSingle` + 3 天，已婚不补、单身补；005 羽织标「治疗折扣」；011 衰减提示累加；012（拍板）开店摘掉官方 `Save` / `Load` 回调；013 折扣上限 0.30；014 `DialogueManager.SequenceFailureSerial`；006 / 019 整批单次落盘、部分孵化写原因；007 按 `lockedByExpeditionId` 找本趟；015 队满不挂；016 治疤有疤就挂并写价钱；017 `PetNestPulse.Rebase` + 共享缓动；018 换槽清空、键带出发时间；020 `ShinyFrameOnly`；021 两个守卫补强；022 `Accent` 与 summary 归位；023 补替身、断言随设计更新。为满足大文件预算，`NPCShopSystem` 改 partial，官方商店钩子三方法原样移到 `NPCShopSystemOfficialShopHooks.cs`（已登记编译清单）。
-
-- Refuted：「好感写屏障期间剧情奖励能反复领、钻戒限量守不住」。屏障只在读档失败时保持，反序列化先进候选表、失败不写入，内存好感表为空且加分同样被拦，等级停在 0，到不了 3 级以上剧情与 7 级戒指。
-- UNVERIFIED / Needs runtime smoke：没有 `GameClock` 的场景里 `GameClock.Day` 为 0，可能被当成「日子倒退」补满每日商品；好感页签克隆自笔记按钮，笔记未解锁时是否随模板隐藏、是否带「笔记」悬浮字；好感页根节点盖住 `ViewArea` 是否挡页签栏点击；批量孵化揭晓汇总 9–10 行时是否压住关闭按钮；博物馆首次打开全谱系头像同步加载耗时；白手起家小怪池按实例 ID 正负排除运行时 preset 的假设，以及 Mode E/F 阵营小怪表是否因排除 `isBoss` 变空；平安档现金期望实际上调约 16%（文字口径写的是不变）。
-
 ## 2026-10-13 推送后跨平台门禁修复（Fixed，COMPAT / SAFE，L2）
 
 - CR-2026-10-13-012，P2 / COMPAT：天空岛导航、道路与摆放审计将 Windows CRLF 原字节 SHA 带入公开仓库，Linux LF 签出误报布局/证据过期；生产 `apply_navigation` 同样误拒绝。复用 `sky_island_road_layout` 的纯函数，新签名只统一 CRLF→LF，读取兼容既有原字节、LF 和 CRLF。真实坐标、字段、空白、BOM 与字符串变化仍拒绝；不重写现有地图或审计 JSON。三项旧码在真实 Ubuntu LF 环境均复现，修后两种换行及生产拒绝路径完成反向验证。
@@ -578,6 +574,7 @@ UNVERIFIED 不计入上述六项：嵌套 Sticky 押品需要 `AcceptSticky=true
 
 ## 归档索引
 
+- 2026-10-18 v2.3.5 之后五个提交审查（001～023 全部 Fixed，COMPAT / OPERATIONAL，L1/L2，L3 待 owner）（2026-11-25 台账超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-10.md`
 - 2026-10-11 最近五次提交审查修复（COMPAT / SAFE，L1/L2）（Fixed，L3 待 owner；2026-11-19 台账超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-10.md`
 - 2026-10-10 提交前复核（COMPAT / SAFE / OPERATIONAL，L1/L2）（Fixed，L3 待 owner；2026-11-19 台账超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-10.md`
 - 2026-10-10 节拍器生产图标持有（COMPAT，L1/L2）（Fixed，L3 待 owner；2026-11-19 台账超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-10.md`

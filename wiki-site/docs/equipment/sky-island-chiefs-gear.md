@@ -10,6 +10,32 @@
 
 ## 七件装备
 
+<div class="brs-gallery">
+
+![旧邮包](/images/scenes/sc-old-mailbag.webp)
+*旧邮包*
+
+![静听耳罩](/images/scenes/sc-rainhush-earmuffs.webp)
+*静听耳罩*
+
+![苔纱面罩](/images/scenes/sc-mossgauze-mask.webp)
+*苔纱面罩*
+
+![镜纹甲](/images/scenes/sc-mirrorgrain-plate.webp)
+*镜纹甲*
+
+![断风兜帽](/images/scenes/sc-windbreak-hood.webp)
+*断风兜帽*
+
+![断风披甲](/images/scenes/sc-windbreak-mantle.webp)
+*断风披甲*
+
+![断风行囊](/images/scenes/sc-windbreak-pack.webp)
+*断风行囊*
+
+</div>
+
+
 - **旧邮包**（背包）：品质 4，背包容量 +4，物品 ID 500093
 - **静听耳罩**（耳机）：品质 4，听力 +1、听声辨位 +1，耐久 40，物品 ID 500097
 - **苔纱面罩**（面罩）：品质 4，头甲 +1，耐久 40，物品 ID 500098

@@ -6,6 +6,17 @@
 
 ## 套装部件
 
+<div class="brs-gallery">
+
+![龙王之冕（头盔）](/images/scenes/sc-dragon-king-helm.webp)
+*龙王之冕（头盔）*
+
+![龙王鳞铠（护甲）](/images/scenes/sc-dragon-king-armor.webp)
+*龙王鳞铠（护甲）*
+
+</div>
+
+
 ### 龙王之冕（头盔）
 - 护甲：7 / 耐久：200 / 物理承伤倍率：-15% / 枪械暴击伤害：+15%
 - 风暴抗性：+1 / 寒冷抗性：+1 / 火焰承伤倍率：-20% / 电击承伤倍率：-20%

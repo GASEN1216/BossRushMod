@@ -32,7 +32,9 @@ The Bloom stops during warnings and damage windows. During a rest, it moves clos
 
 ### Solar Flares
 
-If you are more than 9.5 metres from the Bloom when a new warning starts, solar flares also fall at your feet: 1 in phase one, 2 in phase two and 3 in phase three, with the extra flares leading your movement. Each warning circle is about 2.4 metres wide; once its inner fill burns out to the edge (about 1.35 / 1.2 / 1.05 seconds) a pillar of sunfire strikes and damages you once inside it (26, or 34 in phase three, scaled by Boss damage). In phase three a flare also falls on every other attack even at close range. Keep moving if you fight from a distance.
+Standing more than **9.5 metres** away adds solar flares at your feet with every new warning: 1 in Phase 1, 2 in Phase 2, and 3 in Phase 3 (plus 1 every other attack even at close range in Phase 3; extra flares lead your movement).
+
+Each ~2.4m circle burns inward (about 1.35s / 1.2s / 1.05s) before striking once for 26 damage (34 in Phase 3, scaled by Boss damage). Keep moving when fighting at range.
 
 ### Exclusive Drop
 

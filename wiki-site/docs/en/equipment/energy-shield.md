@@ -1,5 +1,13 @@
 # Energy Shield
 
+<div class="brs-icon">
+
+![Energy Shield](/images/scenes/sc-energy-shield.webp)
+*Energy Shield*
+
+</div>
+
+
 ## At a Glance
 
 A **totem-slot defensive item** that converts frontal incoming damage into health. It's not a weapon: your attacks don't change, you just take hits from the front better. Side and rear attacks get nothing.

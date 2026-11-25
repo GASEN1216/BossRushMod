@@ -30,52 +30,18 @@ def method(text, signature):
     return text[begin:end]
 
 
-def check_single_source_chrome(dashboard):
-    """底图与运行时不得画同一处（2026-09-20 第三轮）。
+def check_ink_gazette_chrome(ui, dashboard):
+    """古宣水墨邸报呈现契约：运行时使用水墨底板、金/朱毛笔底衬与印章，不再混合浅色烤图或现代细条。"""
+    assert "BossRushUISkinPart.Hairline" not in dashboard, "古宣邸报不得残留 Hairline 现代细条"
+    for token in ("BossRushInkSkin.ApplyInkPanel", "BossRushInkSkin.GetSurfaceSprite()",
+                  "BossRushInkSkin.GetBrushSprite()", "BossRushInkWidgets.CreateSealBadge"):
+        assert token in dashboard, "古宣邸报版面缺少水墨构件: " + token
+    assert "BossRushInkSkin.StampSeal" in ui or "BossRushInkWidgets.CreateSealBadge" in ui, "签到成功缺少落印特效"
 
-    分工：底图只画不会变的装饰；会变色 / 会响应状态的（签到格、签到按钮、图例色块）
-    一律归运行时。两边都画会叠出双描边，而且颜色有两个来源必然漂移
-    （实测曾漂：C# CellEmpty 是 199,189,166，脚本里写的是 226,219,205）。
-
-    判据不是「脚本里有没有这些字」，而是**照版面表去底图上取色**：
-    签到格中心、按钮中心、图例色块中心必须仍是卡片底色，不能被烤上别的颜色。
-    """
-    generator = (ROOT / "tools/gen_daily_report_ui.py").read_text(encoding="utf-8")
-    # 只看模块级**赋值**，注释里提到这些名字是解释历史，不算持有副本
-    for name in ("CELL_EMPTY", "CELL_EDGE", "BUTTON", "BUTTON_EDGE"):
-        duplicated = re.search(r"^" + name + r"\s*=", generator, re.M)
-        assert not duplicated, "底图脚本不得再持有运行时颜色的第二份副本: " + name
-
-    # 运行时必须真的画这三样（否则底图不画就等于谁都不画）
+    # 运行时仍须唯一驱动全部动态格与图例
     for token in ("signInCells.Add(image);", "signInButton.targetGraphic = buttonImage;",
                   "image.color = colors[i];"):
         assert token in dashboard, "运行时缺少动态控件绘制: " + token
-
-    layout_path = ROOT / "Assets/Data/DailyReportLayout.json"
-    image_path = ROOT / "Assets/ui/DailyReport/daily_report_bg.png"
-    if not layout_path.exists() or not image_path.exists():
-        return  # 散图 local-only：fresh clone 上缺文件只跳过取色，不红
-    try:
-        from PIL import Image
-    except ImportError:
-        return  # 没装 Pillow 的环境只跑结构断言
-
-    spec = json.loads(layout_path.read_text(encoding="utf-8"))
-    image = Image.open(image_path).convert("RGBA")
-    rects, grid, legend = spec["rects"], spec["grid"], spec["legend"]
-    card = image.getpixel((int(rects["signin"][0] + rects["signin"][2] - 30),
-                           int(rects["signin"][1] + 12)))
-    samples = {
-        "签到格": (int(grid["x"] + grid["cellWidth"] / 2), int(grid["y"] + grid["cellHeight"] / 2)),
-        "签到按钮": (int(rects["button"][0] + rects["button"][2] / 2),
-                     int(rects["button"][1] + rects["button"][3] / 2)),
-        "图例色块": (int(rects["legend"][0] + legend["swatch"] / 2),
-                     int(rects["legend"][1] + rects["legend"][3] / 2)),
-    }
-    for name, point in samples.items():
-        assert image.getpixel(point) == card, (
-            name + " 被烤进了底图（" + str(image.getpixel(point)) + " != 卡片底色 "
-            + str(card) + "），运行时会在上面再画一层")
 
 
 def check_scrollable_body(dashboard):
@@ -159,22 +125,22 @@ def check_layout_fallback_sync():
     assert legend.get("count", 4) * legend["itemWidth"] <= spec["rects"]["legend"][2], "图例项排出了图例行"
 
 
-def check_ribbon_contrast(colors):
-    """三条标题缎带是底图里的渐变色块，字色 PillInk 对缎带**两端**都要 ≥ 4.5:1（2026-09-23）。
-
-    缎带色只在生成器里，C# 只知道字色；这里从生成器读 RIBBON_* 常量复算，缎带调亮或字色调暗都会转红。
-    """
-    generator = (ROOT / "tools/gen_daily_report_ui.py").read_text(encoding="utf-8")
-    ink = luminance(colors["PillInk"][:3])
-    found = 0
-    for name, body in re.findall(r"^(RIBBON_\w+)\s*=\s*\((.*?)\)\s*#", generator, re.M):
-        ends = re.findall(r"\((\d+),\s*(\d+),\s*(\d+)", body)
-        assert len(ends) == 2, name + " 必须是左右两端两个颜色"
-        for end in ends:
-            contrast = ratio(ink, luminance(tuple(int(v) / 255.0 for v in end)))
-            assert contrast >= 4.5, "%s 缎带标题对比度 %.2f < 4.5" % (name, contrast)
-        found += 1
-    assert found == 3, "应有三条缎带颜色（收益 / 状态 / 签到），实际 %d" % found
+def check_ink_banner_contrast(colors):
+    """水墨古宣邸报的分区毛笔底衬字色（PillInk on PillInkBrushBg）与已签字色（SignedTagInk on PaperCard）必须 ≥ 4.5:1。"""
+    pill_fg = luminance(colors["PillInk"][:3])
+    brush_bg = colors["PillInkBrushBg"]
+    card = colors["PaperCard"]
+    for scene in (0, 1):
+        card_rgb = tuple(card[i] * card[3] + scene * (1.0 - card[3]) for i in range(3))
+        blended_brush = tuple(brush_bg[i] * brush_bg[3] + card_rgb[i] * (1.0 - brush_bg[3]) for i in range(3))
+        contrast = ratio(pill_fg, luminance(blended_brush))
+        assert contrast >= 4.5, f"水墨毛笔标题对比度 {contrast:.2f} < 4.5"
+    signed_fg = luminance(colors["SignedTagInk"][:3])
+    for name in ("PaperBase", "PaperCard"):
+        bg = colors[name]
+        for scene in (0, 1):
+            c = ratio(signed_fg, blend(scene, bg[:3], bg[3]))
+            assert c >= 4.5, f"SignedTagInk on {name} contrast {c:.2f} < 4.5"
 
 
 def check_runtime_icons(dashboard):
@@ -253,8 +219,12 @@ def main():
     ui = source("Integration/DailyReport/DailyReportUI.cs")
     dashboard = source("Integration/DailyReport/DailyReportUI_Dashboard.cs")
     shared = source("Common/UI/BossRushUI.cs")
+    ink_skin = source("Common/UI/BossRushInkSkin.cs")
     colors = {name: tuple(float(v or 1) for v in values)
-              for name, *values in COLOR.findall(ui + shared)}
+              for name, *values in COLOR.findall(ui + shared + ink_skin)}
+    for alias, target in re.findall(r"(\w+)\s*=\s*BossRushInkColors\.(\w+)\s*;", ui):
+        if target in colors:
+            colors[alias] = colors[target]
     threshold = float(re.search(r"LightBackgroundLuminance\s*=\s*([\d.]+)f", shared)[1])
     for background in ("CellEmpty", "CellSigned", "CellToday", "CellTodayBright", "CellMilestone", "CellMilestoneDone",
                        "ButtonIdle", "ButtonDisabled"):
@@ -265,29 +235,40 @@ def main():
         for scale in states:
             contrast = ratio(luminance(fg), luminance(tuple(c * scale for c in bg[:3])))
             assert contrast >= 4.5, f"{background} label contrast {contrast:.2f} < 4.5"
-    for ink in ("PaperInk", "PaperInkSoft", "PaperInkDanger", "CellSigned"):
-        for scene in (0, 1):
-            contrast = ratio(luminance(colors[ink]), blend(scene, colors["PaperBase"][:3], colors["PaperBase"][3]))
-            assert contrast >= 4.5, f"{ink} on paper contrast {contrast:.2f} < 4.5"
+    for ink in ("PaperInk", "PaperInkSoft", "PaperInkDanger", "SignedTagInk"):
+        for surface_name in ("PaperBase", "PaperCard"):
+            surface = colors[surface_name]
+            for scene in (0, 1):
+                contrast = ratio(luminance(colors[ink]), blend(scene, surface[:3], surface[3]))
+                assert contrast >= 4.5, f"{ink} on {surface_name} contrast {contrast:.2f} < 4.5"
     grid = method(ui, "private void RefreshSignInGrid(")
     assert "label.color = BossRushUI.GetButtonTextColor(cell.color);" in grid
-    # 版面来自与底图同源的坐标表：不允许在 C# 里另写一份魔法坐标
+    # 版面来自与底图同源的坐标表，并在运行时渲染古宣水墨邸报底板与分卡
     layout = method(dashboard, "private void BuildDashboard(")
-    for token in ("DailyReportLayoutTable.PanelWidth", "DailyReportBackground.Load()",
+    for token in ("DailyReportLayoutTable.PanelWidth", "BossRushInkSkin.ApplyInkPanel", "CreateInkCard(",
                   "BuildHeader();", "BuildIncomeCard();", "BuildStatusCard();", "BuildSignInCard();"):
         assert token in layout, "日报版面缺接线: " + token
-    assert "background.color = PaperBase;" in layout, "底图缺席必须退回纯纸色底（fail-open）"
+    assert "background.color = PaperBase;" in layout, "底图主色必须取水墨深纸色 PaperBase"
+    # 对比度按 PaperBase / PaperCard / ButtonIdle 复算，前提是它们真的被渲染：ApplyInkPanel 会把底色改成主题 Surface，
+    # StyleInkButton(Primary) 会把按钮底换成 CinnabarFill。所以底色必须在皮肤之后设，ButtonIdle 必须就是 CinnabarFill。
+    assert layout.index("BossRushInkSkin.ApplyInkPanel(background") < layout.index("background.color = PaperBase;"), (
+        "PaperBase 必须在 ApplyInkPanel 之后设，否则被主题 Surface 覆盖、守卫算的是没渲染的颜色")
+    ink_card = method(dashboard, "private void CreateInkCard(")
+    assert ink_card.index("BossRushInkSkin.ApplyInkPanel(img") < ink_card.index("img.color = raised ? PaperCard : PaperBase;"), (
+        "分区卡面色必须在 ApplyInkPanel 之后设")
+    assert re.search(r"ButtonIdle\s*=\s*BossRushInkColors\.CinnabarFill\s*;", ui), (
+        "签到按钮 ButtonIdle 必须是 StyleInkButton(Primary) 实际铺的 CinnabarFill")
     signin = method(dashboard, "private void BuildSignInCard(")
     for token in ("DailyReportLayoutTable.GetCell(i)", "signInButton.onClick.AddListener(OnSignInClicked)",
                   "BuildLegend();"):
         assert token in signin, "签到卡缺接线: " + token
     # 所有摆位必须经版面表转换，禁止直接写 anchoredPosition 常量
     assert "DailyReportLayoutTable.ToAnchored(" in dashboard
-    check_single_source_chrome(dashboard)
+    check_ink_gazette_chrome(ui, dashboard)
     check_scrollable_body(dashboard)
     check_bounty_and_close(ui, dashboard)
     check_layout_fallback_sync()
-    check_ribbon_contrast(colors)
+    check_ink_banner_contrast(colors)
     check_runtime_icons(dashboard)
     refresh = method(ui, "public void Refresh()")
     assert "RefreshLabels();" in refresh
@@ -312,7 +293,7 @@ def main():
     assert announce.index("_announcedDayIndex == data.DayIndex && _announcedSlot == slot") < announce.index("ShowBigBanner")
     assert announce.index("_announcedDayIndex = data.DayIndex;") < announce.index("ShowBigBanner")
     check_ui_consensus(ui, dashboard)
-    print("DailyReportPresentationGuard: PASS (colors, ribbons, layout table, runtime icons, localization, notification deduplication)")
+    print("DailyReportPresentationGuard: PASS (ink gazette colors, brush banners, layout table, runtime icons, localization, notification deduplication)")
 
 
 if __name__ == "__main__":

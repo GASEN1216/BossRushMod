@@ -74,22 +74,33 @@ namespace BossRush
             paperFrame = panel.GetComponent<RectTransform>();
             panelRect = paperFrame;
 
-            // 底图只含固定装饰；图标、签到格、按钮和图例色块由后续运行时控件绘制。
+            // 古宣水墨邸报外底板：崩边深墨底 + 宣纸纤维 + 双道墨金外框
             Image background = panel.AddComponent<Image>();
             background.raycastTarget = true;
-            Sprite sprite = DailyReportBackground.Load();
-            if (sprite != null)
-            {
-                background.sprite = sprite;
-                background.type = Image.Type.Simple;
-                background.color = Color.white;
-            }
-            else
-            {
-                // 底图缺席：退回纯纸色底，文字位置不变，面板照常可用
-                background.color = PaperBase;
-                BossRushUI.ApplyPanelSkin(background, 12);
-            }
+            BossRushInkSkin.ApplyInkPanel(background, false, BossRushUIColors.Stroke);
+            // ApplyInkPanel 会把底色换成主题 Surface：邸报自己的深纸色放在它之后设（守卫按这个色复算对比度）。
+            background.color = PaperBase;
+            BossRushUIDepth.ApplySurfaceDepth(background, 14, BossRushUISkinPart.Panel);
+
+            GameObject fiberObj = ZombieModeUIHelper.CreateRect(
+                "GazetteFiber", paperFrame, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+            RectTransform fiberRect = fiberObj.GetComponent<RectTransform>();
+            fiberRect.offsetMin = new Vector2(12f, 12f);
+            fiberRect.offsetMax = new Vector2(-12f, -12f);
+            Image fiber = fiberObj.AddComponent<Image>();
+            fiber.sprite = BossRushInkSkin.GetFiberSprite();
+            fiber.type = Image.Type.Tiled;
+            fiber.color = new Color(0.75f, 0.62f, 0.42f, 0.09f);
+            fiber.raycastTarget = false;
+
+            CreateScrollMountTrim(paperFrame, "ScrollRodTop", DailyReportLayoutTable.PanelHeight * 0.5f + 2f);
+            CreateScrollMountTrim(paperFrame, "ScrollRodBot", -DailyReportLayoutTable.PanelHeight * 0.5f - 2f);
+
+            // 分区墨纸卡面（沿用 DailyReportLayoutTable 几何真值，彻底取代烤色浅底图）
+            CreateInkCard("CardHeader", DailyReportLayoutTable.Get("header"), true, BossRushInkColors.GoldSoft);
+            CreateInkCard("CardIncome", DailyReportLayoutTable.Get("income"), true, BossRushInkColors.GoldSoft);
+            CreateInkCard("CardStatus", DailyReportLayoutTable.Get("status"), true, BossRushInkColors.GoldSoft);
+            CreateInkCard("CardSignIn", DailyReportLayoutTable.Get("signin"), true, BossRushInkColors.GoldSoft);
 
             BuildHeader();
             BuildIncomeCard();
@@ -97,21 +108,75 @@ namespace BossRush
             BuildSignInCard();
         }
 
+        private void CreateInkCard(string name, Rect box, bool raised, Color strokeColor)
+        {
+            GameObject obj = ZombieModeUIHelper.CreateRect(
+                name, panelRect, new Vector2(0.5f, 0.5f), new Vector2(box.width, box.height));
+            obj.GetComponent<RectTransform>().anchoredPosition = DailyReportLayoutTable.ToAnchored(box);
+            Image img = obj.AddComponent<Image>();
+            img.raycastTarget = false;
+            BossRushInkSkin.ApplyInkPanel(img, raised, strokeColor);
+            img.color = raised ? PaperCard : PaperBase;   // 同上：皮肤之后再落邸报卡面色
+        }
+
+        private static void CreateScrollMountTrim(RectTransform parent, string name, float y)
+        {
+            float w = DailyReportLayoutTable.PanelWidth + 36f;
+            GameObject rod = ZombieModeUIHelper.CreateRect(name, parent, new Vector2(0.5f, 0.5f), new Vector2(w, 16f));
+            RectTransform rect = rod.GetComponent<RectTransform>();
+            rect.anchoredPosition = new Vector2(0f, y);
+            Image wood = rod.AddComponent<Image>();
+            wood.sprite = BossRushInkSkin.GetSurfaceSprite();
+            wood.type = Image.Type.Sliced;
+            wood.pixelsPerUnitMultiplier = 3f;
+            wood.color = BossRushInkParchmentColors.RodWood;
+            wood.raycastTarget = false;
+            BossRushInkSkin.CreateBrushStroke(rect, "GoldSheen", new Vector2(w - 32f, 3f), new Vector2(0f, 3f),
+                new Color(BossRushInkColors.Gold.r, BossRushInkColors.Gold.g, BossRushInkColors.Gold.b, 0.42f));
+            for (int side = -1; side <= 1; side += 2)
+            {
+                GameObject cap = ZombieModeUIHelper.CreateRect("Cap", rect, new Vector2(0.5f, 0.5f), new Vector2(14f, 24f));
+                cap.GetComponent<RectTransform>().anchoredPosition = new Vector2(side * (w * 0.5f + 4f), 0f);
+                Image capImg = cap.AddComponent<Image>();
+                capImg.sprite = BossRushInkSkin.GetSurfaceSprite();
+                capImg.type = Image.Type.Sliced;
+                capImg.pixelsPerUnitMultiplier = 4f;
+                capImg.color = BossRushInkParchmentColors.RodCap;
+                capImg.raycastTarget = false;
+            }
+        }
+
         private void BuildHeader()
         {
-            // 吉祥物：整只鸭压在报头左侧（参考图口径，不再套圆框）
+            // 吉祥物：整只鸭压在报头左侧
             CreateArt("Mascot", DailyReportBackground.LoadArt(DailyReportBackground.MascotFile),
                 DailyReportLayoutTable.Get("mascot"), panelRect);
 
-            // 报名做成参考图那样的大号粗体压满报头，「— DUCK NEWS —」居中排在下面（两侧横线烤在底图里）
+            // 报头：古宣大字 + 鎏金笔触 + 朱砂「邸报」落印
             Rect title = DailyReportLayoutTable.Get("title");
             mastheadText = CreateText("Masthead", title, 0f, 0.70f, MastheadFontSize,
                 TextAlignmentOptions.Bottom, PaperInk, false);
             mastheadText.fontStyle = FontStyles.Bold;
             mastheadText.characterSpacing = 8f;
+            // 报头框右端落着 56 见方的「邸报 / NEWS」印：右边让出印宽，英文报头自动缩字后也不会顶到印上。
+            mastheadText.margin = new Vector4(0f, 0f, 60f, 0f);
 
             subtitleText = CreateText("Subtitle", title, 0.76f, 1f, BodyFontSize,
                 TextAlignmentOptions.Center, PaperInkSoft, false);
+            Vector2 titleCenter = DailyReportLayoutTable.ToAnchored(title);
+            BossRushInkSkin.CreateBrushStroke(panelRect, "MastheadBrush",
+                new Vector2(360f, 5f), titleCenter + new Vector2(-30f, -20f), BossRushInkColors.Gold);   // 报头字让出右边距 60，居中点左移 30，金笔跟着移
+            BossRushInkWidgets.CreateSealBadge(
+                panelRect,
+                L10n.T("邸报", "NEWS"),
+                56f,
+                BossRushInkColors.Cinnabar,
+                titleCenter + new Vector2(title.width * 0.5f - 28f, 16f),
+                -9f,
+                false);
+
+            Rect infoRect = DailyReportLayoutTable.Get("info");
+            CreateInkCard("CardInfo", infoRect, false, new Color(BossRushInkColors.GoldSoft.r, BossRushInkColors.GoldSoft.g, BossRushInkColors.GoldSoft.b, 0.65f));
 
             Rect meta = DailyReportLayoutTable.Get("infoMeta");
             metaIssueText = CreateIconText("MetaIssue", meta, 0f, MetaSplit, BodyFontSize, PaperInk, "issue", true);
@@ -130,7 +195,8 @@ namespace BossRush
             statsText = CreateIconText("Income", DailyReportLayoutTable.Get("incomeLeft"), 0f, 1f, HeadingFontSize, PaperInk, "income", false);
             bountyText = CreateIconText("Bounty", DailyReportLayoutTable.Get("incomeRight"), 0f, 1f, HeadingFontSize, PaperInk, "bounty", false);
 
-            // 撤掉关闭按钮后，版面表把空出的高度给悬赏；全文直接显示，滚轮不再移动悬赏（长英文整块缩到 16 号）。
+            // 悬赏区加柔暗墨底衬与金笔细边，不与普通文本混成一片
+            CreateInkCard("CardBountyTip", DailyReportLayoutTable.Get("incomeTip"), false, BossRushInkColors.Gold);
             headlineText = CreateIconText("Tip", DailyReportLayoutTable.Get("incomeTip"), 0f, 1f, BodyFontSize, PaperInk, "tip", true, false);
             // 战绩表按两列排（DailyReportView.JoinColumns），18 号三行正好装进这块，不再露半行
             Rect note = DailyReportLayoutTable.Get("incomeNote");
@@ -165,12 +231,20 @@ namespace BossRush
                 cell.GetComponent<RectTransform>().anchoredPosition = DailyReportLayoutTable.ToAnchored(cellRect);
 
                 Image image = cell.AddComponent<Image>();
+                image.sprite = BossRushInkSkin.GetSurfaceSprite();
+                image.type = Image.Type.Sliced;
+                image.pixelsPerUnitMultiplier = 2.4f;
                 image.color = CellEmpty;
-                // 圆角胶囊：Hairline 档一律程序化圆角，不吃图集——图集卡片图 panel_raised 烤进去的内描边
-                // 在浅色乘色下会显出一圈框，30 格排出来就是「灰方块墙」（审美审查 UA-07）。
-                BossRushUI.ApplyPanelSkin(image, CellRadius, BossRushUISkinPart.Hairline);
-                // 格子是运行时画的，底图里没有它的投影；这里挂共享的柔和投影 + 顶边高光，与参考图的立体胶囊一致。
                 BossRushUIDepth.ApplySurfaceDepth(image, CellRadius, BossRushUISkinPart.Card);
+                GameObject edge = ZombieModeUIHelper.CreateRect("CellFrame", cell.transform,
+                    Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+                Image edgeImg = edge.AddComponent<Image>();
+                edgeImg.sprite = BossRushInkSkin.GetFrameSprite();
+                edgeImg.type = Image.Type.Sliced;
+                edgeImg.fillCenter = false;
+                edgeImg.pixelsPerUnitMultiplier = 2.6f;
+                edgeImg.color = new Color(BossRushInkColors.Gold.r, BossRushInkColors.Gold.g, BossRushInkColors.Gold.b, 0.35f);
+                edgeImg.raycastTarget = false;
                 signInCells.Add(image);
 
                 TextMeshProUGUI label = ZombieModeUIHelper.CreateText(
@@ -183,8 +257,7 @@ namespace BossRush
                 signInCellLabels.Add(label);
             }
 
-            // 签到按钮：底图**不画**它（颜色随 idle / hover / disabled 变），
-            // 这里画的这一层就是玩家看到的唯一一层。
+            // 签到按钮：朱砂水墨主按钮 + 鎏金笔框
             Rect buttonRect = DailyReportLayoutTable.Get("button");
             GameObject buttonObj = ZombieModeUIHelper.CreateRect(
                 "SignIn", panelRect, new Vector2(0.5f, 0.5f),
@@ -197,10 +270,8 @@ namespace BossRush
             signInButton = buttonObj.AddComponent<Button>();
             signInButton.targetGraphic = buttonImage;
             signInButton.onClick.AddListener(OnSignInClicked);
-            // 悬停色走共享口径（白字底提亮会跌破 4.5:1 时改压暗），按钮手感、音效与投影由 ApplyButtonColors 挂上
             ZombieModeUIHelper.ApplyButtonColors(signInButton, ButtonIdle, BossRushUI.GetHoverColor(ButtonIdle), ButtonDisabled);
-            // 参考图的签到按钮有一圈暖金边
-            BossRushUI.ApplyPanelStroke(buttonImage, ButtonRadius, BossRushUISkinPart.Button, ButtonEdge);
+            BossRushInkSkin.StyleInkButton(signInButton, BossRushInkButtonRole.Primary);
 
             // 礼盒图标压在按钮文字左侧；取不到图标时文字照常居中
             float labelShift = 0f;
@@ -218,13 +289,12 @@ namespace BossRush
             LockFontSize(signInButtonText, HeadingFontSize);
             signInButtonText.fontStyle = FontStyles.Bold;
 
-            // 签过之后按钮收起，同一块位置换成状态字（A-13：不挂灰按钮）。不是按钮、不吃点击。
+            // 签过之后按钮收起，同一块位置换成鎏金状态字（A-13：不挂灰按钮）。不是按钮、不吃点击。
             signedTagText = CreateText("SignedTag", buttonRect, 0f, 1f, HeadingFontSize,
-                TextAlignmentOptions.Center, CellSigned, false);
+                TextAlignmentOptions.Center, SignedTagInk, false);
             signedTagText.fontStyle = FontStyles.Bold;
             signedTagText.gameObject.SetActive(false);
 
-            // 参考图：按钮下的期数 / 连签信息居中排，不套盒子（首行两侧的细线烤在底图里）
             signInStatusText = CreateText("SignInStatus", DailyReportLayoutTable.Get("sideText"), 0f, 1f, BodyFontSize,
                 TextAlignmentOptions.Top, PaperInkSoft, true);
 
@@ -240,8 +310,6 @@ namespace BossRush
             Color[] colors = { CellSigned, CellEmpty, CellToday, CellMilestone, CellMilestoneDone };
             int count = Mathf.Min(colors.Length, DailyReportLayoutTable.LegendCount);
 
-            // 图例色块与签到格共用同一组颜色常量：它们必须始终一致，
-            // 所以只能有一个来源，底图不再烤第二份。
             for (int i = 0; i < count; i++)
             {
                 Rect box = new Rect(legend.x + i * itemWidth,
@@ -251,10 +319,11 @@ namespace BossRush
                 swatchObj.GetComponent<RectTransform>().anchoredPosition =
                     DailyReportLayoutTable.ToAnchored(box);
                 Image image = swatchObj.AddComponent<Image>();
+                image.sprite = BossRushInkSkin.GetSurfaceSprite();
+                image.type = Image.Type.Sliced;
+                image.pixelsPerUnitMultiplier = 3f;
                 image.color = colors[i];
                 image.raycastTarget = false;
-                // 圆点（参考图口径）：半径取色块边长一半，Hairline 档程序化，不会被图集 border 压成歪圆
-                BossRushUI.ApplyPanelSkin(image, Mathf.Max(1, Mathf.RoundToInt(swatch * 0.5f)), BossRushUISkinPart.Hairline);
 
                 Rect labelRect = new Rect(legend.x + i * itemWidth + swatch + 8f, legend.y,
                     itemWidth - swatch - 14f, legend.height);
@@ -371,16 +440,27 @@ namespace BossRush
                 TextAlignmentOptions.Left, color, wrap, scrollBody);
         }
 
-        /// <summary>标题缎带上的文字：底图已经画好缎带，这里摆缎带头上的图标并写字。</summary>
+        /// <summary>标题水墨横笔底衬 + 标题头图标 + 象牙宣纸字。</summary>
         private TextMeshProUGUI CreatePillText(string name, Rect pill, string iconId)
         {
+            GameObject brush = ZombieModeUIHelper.CreateRect(
+                name + "_Brush", panelRect, new Vector2(0.5f, 0.5f),
+                new Vector2(pill.width + 24f, pill.height + 10f));
+            brush.GetComponent<RectTransform>().anchoredPosition =
+                DailyReportLayoutTable.ToAnchored(pill) + new Vector2(4f, 0f);
+            Image brushImg = brush.AddComponent<Image>();
+            brushImg.sprite = BossRushInkSkin.GetBrushSprite();
+            brushImg.type = Image.Type.Simple;
+            brushImg.color = PillInkBrushBg;
+            brushImg.raycastTarget = false;
+
             float indent = 18f;
             if (CreateArt("Icon_" + iconId, DailyReportBackground.LoadIcon(iconId),
                     DailyReportLayoutTable.GetIcon(iconId), panelRect) != null)
             {
                 indent = DailyReportLayoutTable.PillTextIndent;
             }
-            // 右侧让出缎带的斜切段（约 20）
+            // 右侧让出毛笔收锋余韵
             Rect inset = new Rect(pill.x + indent, pill.y, pill.width - indent - 24f, pill.height);
             TextMeshProUGUI text = CreateText(name, inset, 0f, 1f, HeadingFontSize,
                 TextAlignmentOptions.Left, PillInk, false);

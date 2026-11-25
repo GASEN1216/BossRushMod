@@ -1,5 +1,13 @@
 # Collectibles & Album
 
+<div class="brs-icon">
+
+![Collector's Album](/images/scenes/sc-collect-book.webp)
+*Collector's Album*
+
+</div>
+
+
 ## What they are
 
 Every now and then a crate holds one extra old object: a missing-duck poster, a community-games bronze medal, a chunk of lighthouse lens. These are **collectibles**: 100 in total, grouped into nine map sets, two global sets and a handful of treasures.
@@ -33,6 +41,20 @@ A map set only appears on its own map and has 8 pieces; a global set can turn up
 - **Companions' Keepsakes** (global): Awen's Old Staff Badge, Daily First Issue, Wishing Fountain Coin, Yu Zhi's Nurse Cap Pin, Dingdang's First Hammer, Relic Nest Eggshell Fossil, Chapel Stained-Glass Shard, Jeff's Old Photo, Dingdang's Heirloom Anvil, Duckov Codex Manuscript, Starwish Star
 
 ## Treasures
+
+<div class="brs-gallery">
+
+![First Duck King's Golden Egg](/images/scenes/sc-rare-king-egg.webp)
+*First Duck King's Golden Egg*
+
+![Qinglan Star Core](/images/scenes/sc-rare-star-core.webp)
+*Qinglan Star Core*
+
+![Skyburner's Dragon Pearl](/images/scenes/sc-rare-dragon-pearl.webp)
+*Skyburner's Dragon Pearl*
+
+</div>
+
 
 Six treasures can appear anywhere, though hardly anyone has seen one: the Savings Vault Gold Bar, the Solid Gold Rubber Duck, the Qinglan Star Core, the Duck King's Scepter and Skyburner's Dragon Pearl (tier 7, worth about 340,000 to 760,000), and the **First Duck King's Golden Egg** (tier 8, worth 29,470,423, more than the crown). Tier 8 only comes from high-value crates and is rarer than the crown. Treasures can be logged but don't count toward set rewards.
 

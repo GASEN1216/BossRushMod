@@ -15,6 +15,44 @@
 
 ## 事件清单
 
+<div class="brs-gallery">
+
+![空投补给](/images/scenes/evt-airdrop.webp)
+*空投补给*
+
+![血月凶兆](/images/scenes/evt-bloodmoon.webp)
+*血月凶兆*
+
+![Boss 乱入](/images/scenes/evt-intrusion.webp)
+*Boss 乱入*
+
+![神秘商人路过](/images/scenes/evt-merchant.webp)
+*神秘商人路过*
+
+![声东击西](/images/scenes/evt-feint.webp)
+*声东击西*
+
+![鸭王的烟花](/images/scenes/evt-fireworks.webp)
+*鸭王的烟花*
+
+![金鸭雨](/images/scenes/evt-duckrain.webp)
+*金鸭雨*
+
+![鸭群巡游](/images/scenes/evt-parade.webp)
+*鸭群巡游*
+
+![疾风追逐](/images/scenes/evt-wildchase.webp)
+*疾风追逐*
+
+![近战狂欢](/images/scenes/evt-melee.webp)
+*近战狂欢*
+
+![沉重脚步](/images/scenes/evt-heavysteps.webp)
+*沉重脚步*
+
+</div>
+
+
 下列概率按首次抽取计算；调度器不会连续抽同一事件，后续概率随上次事件略有变化。空投补给与金鸭雨每次各不超过 `5%`。
 
 ### 空投补给（约 4.35%，持续 45 秒）

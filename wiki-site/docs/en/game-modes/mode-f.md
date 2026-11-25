@@ -6,6 +6,14 @@ The hardest mode in BossRush. **You're bleeding out from the moment you enter.**
 
 ## Entry
 
+<div class="brs-icon">
+
+![Bloodhunt Transponder](/images/scenes/sc-transponder.webp)
+*Bloodhunt Transponder*
+
+</div>
+
+
 - **Naked** — no equipment
 - **BossRush Ticket** + **Bloodhunt Transponder** (both consumed)
 - No Faction Flag (otherwise you enter Faction War)
@@ -70,6 +78,23 @@ Also spawns in Blood Hunt with categorized shops + `Repair` option + `Sell All` 
 
 ## Fortifications
 
+<div class="brs-gallery">
+
+![Foldable Cover Pack](/images/scenes/sc-cover-pack.webp)
+*Foldable Cover Pack*
+
+![Reinforced Roadblock Pack](/images/scenes/sc-roadblock-pack.webp)
+*Reinforced Roadblock Pack*
+
+![Barbed Wire Pack](/images/scenes/sc-wire-pack.webp)
+*Barbed Wire Pack*
+
+![Emergency Repair Spray](/images/scenes/sc-repair-spray.webp)
+*Emergency Repair Spray*
+
+</div>
+
+
 4 deployable items:
 
 - **Foldable Cover** (250 HP) — Light cover, most common
@@ -102,7 +127,9 @@ Boss Filter also applies to Blood Hunt; disabled Bosses will not enter this mode
 - **Win**: Evacuate during Extraction
 - **Lose**: Die (bleed, Boss attacks, hubris)
 
-::: warning
+## Tips
+
+::: tip
 Extraction = 3%/sec bleed. Hesitation is death.
 :::
 

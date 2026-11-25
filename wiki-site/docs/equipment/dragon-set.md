@@ -6,6 +6,17 @@
 
 ## 单件属性
 
+<div class="brs-gallery">
+
+![赤龙首（头盔）](/images/scenes/sc-dragon-helm.webp)
+*赤龙首（头盔）*
+
+![焰鳞甲（护甲）](/images/scenes/sc-dragon-armor.webp)
+*焰鳞甲（护甲）*
+
+</div>
+
+
 ### 赤龙首（头盔）
 - 护甲：7
 - 耐久：200

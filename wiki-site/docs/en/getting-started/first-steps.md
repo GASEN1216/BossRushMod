@@ -2,7 +2,12 @@
 
 ## Step 1: Buy a Ticket
 
-Buy a **BossRush Ticket** from the base merchant to enter the Boss arena. To begin the Sky Islands journey, find the official NPC **Jeff** at base and accept **Coordinates Above the Clouds** in his normal quest screen. Defeat the guard in the marked area of Ground Zero and take the Lost Navigation Instrument from its loot box. Bring it back to Jeff's Active tab to hand it in; you get 5000 cash plus a starter supply kit for the trip (2 Starmoss Salve, 2 Windward Incense, 1 Wind Lantern), and only then does **Depart for Sky Islands · Qinglan** appear at the base boat. The journey does not require a ticket. See the Sky Islands · Qinglan entry.
+Buy a **BossRush Ticket** from the base merchant to enter the Boss arena.
+
+To unlock the Sky Islands instead, accept **Coordinates Above the Clouds** from **Jeff** at base (no ticket needed):
+- Defeat the guard in the marked area of Ground Zero and take the Lost Navigation Instrument from its loot box
+- Hand it back to Jeff at base to receive 5,000 cash plus starter island supplies (2 Starmoss Salve, 2 Windward Incense, 1 Wind Lantern)
+- Interact with the base boat and select **Depart for Sky Islands · Qinglan** (see Sky Islands · Qinglan)
 
 Also grab:
 - **Achievement Medal** — Free. Right-click to open achievements

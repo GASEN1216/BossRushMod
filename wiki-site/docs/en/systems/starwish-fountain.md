@@ -1,5 +1,13 @@
 # Dust-Covered StarWish Fountain
 
+<div class="brs-icon">
+
+![Dust-Covered StarWish Fountain](/images/scenes/bld-fountain.webp)
+*Dust-Covered StarWish Fountain*
+
+</div>
+
+
 ## Overview
 
 - The Dust-Covered StarWish Fountain is a buildable structure at base.

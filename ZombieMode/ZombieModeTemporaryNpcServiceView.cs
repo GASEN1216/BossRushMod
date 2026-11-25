@@ -189,10 +189,11 @@ namespace BossRush
                 TextAlignmentOptions.Center, BossRushUIColors.TextPrimary);
             titleText.fontStyle = FontStyles.Bold;
 
-            // ── 标题装饰线 ──
-            ZombieModeUIHelper.CreateSeparator("AccentLine", panel.transform,
-                new Vector2(0f, 1f), new Vector2(1f, 1f),
-                new Vector2(0f, -headerH), 2f, new Color(serviceAccent.r, serviceAccent.g, serviceAccent.b, 0.6f));
+            // ── 标题水墨笔触下划 ──
+            RectTransform npcBrush = BossRushInkSkin.CreateBrushStroke(
+                panel.transform, "AccentLine", new Vector2(420f, 5f), new Vector2(0f, -headerH),
+                new Color(serviceAccent.r, serviceAccent.g, serviceAccent.b, 0.78f));
+            if (npcBrush != null) npcBrush.anchorMin = npcBrush.anchorMax = new Vector2(0.5f, 1f);
 
             // ── 副标题（净化点余额，购买后原地更新）──
             subtitleText = ZombieModeUIHelper.CreateText(
@@ -349,18 +350,20 @@ namespace BossRush
             button.targetGraphic = image;
             ZombieModeUIHelper.SetButtonBaseColor(button, BossRushUIColors.SurfaceRaised);
 
-            // 左侧状态细条
+            // 左侧状态笔触
             GameObject accent = ZombieModeUIHelper.CreateRect(
                 "Accent",
                 obj.transform,
                 new Vector2(0f, 0.20f),
                 new Vector2(0f, 0.80f),
                 new Vector2(3f, 0f),
-                new Vector2(3f, 0f),
+                new Vector2(5f, 0f),
                 new Vector2(0f, 0.5f));
             Image accentImage = accent.AddComponent<Image>();
+            accentImage.sprite = BossRushInkSkin.GetVerticalBrushSprite();
+            accentImage.type = Image.Type.Sliced;
+            accentImage.pixelsPerUnitMultiplier = 3f;
             accentImage.raycastTarget = false;
-            BossRushUI.ApplyPanelSkin(accentImage, 2, BossRushUISkinPart.Hairline);
 
             ServiceCell cell = new ServiceCell();
             cell.Index = index;

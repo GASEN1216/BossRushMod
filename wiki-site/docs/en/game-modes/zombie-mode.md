@@ -209,6 +209,26 @@ Examples below assume pollution 0; higher pollution raises the Elite and Special
 
 ## Boss System
 
+<div class="brs-gallery">
+
+![Titan](/images/codex/zombie-boss-titan.webp)
+*Titan*
+
+![Hunter](/images/codex/zombie-boss-hunter.webp)
+*Hunter*
+
+![Splitter](/images/codex/zombie-boss-splitter.webp)
+*Splitter*
+
+![Shielder](/images/codex/zombie-boss-shielder.webp)
+*Shielder*
+
+![Corruptor](/images/codex/zombie-boss-corruptor.webp)
+*Corruptor*
+
+</div>
+
+
 Boss Waves appear every 5 waves. There are 5 Boss types. Each drops **8** purification stars (300–700 points total).
 
 - **Titan** — HP Mult: ×35; Dmg Mult: ×1.8; Scale: ×1.8; Speed: ×0.7; Traits: Slow but extremely tanky, shockwave + damage reduction

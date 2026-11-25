@@ -6,6 +6,17 @@ Awen handles deliveries, storage and loot sweeping. His services need no affinit
 
 ## Services
 
+<div class="brs-gallery">
+
+![Awen Courier Token](/images/scenes/sc-awen-token.webp)
+*Awen Courier Token*
+
+![Awen Loot Sweep Token](/images/scenes/sc-awen-sweep.webp)
+*Awen Loot Sweep Token*
+
+</div>
+
+
 - **Courier Service** — Move items to the courier box + pay delivery fee to ship home
 - **`Store All`** — One-click: all root items → courier box (skips locked slots)
 - **Storage Service** — Store items directly to the Storage Point (persistent, cross-scene)

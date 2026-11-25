@@ -372,9 +372,11 @@ namespace BossRush
                 new Vector2(-Padding - SlotWidth * 0.5f, -14f),
                 new Vector2(SlotWidth - 8f, SlotBarHeight), new Vector2(0.5f, 0.5f));
             Image track = progressTrack.AddComponent<Image>();
+            track.sprite = BossRushInkSkin.GetSurfaceSprite();
+            track.type = Image.Type.Sliced;
+            track.pixelsPerUnitMultiplier = 2f;
             track.color = BossRushUIColors.Surface;
             track.raycastTarget = false;
-            BossRushUI.ApplyPanelSkin(track, 3, BossRushUISkinPart.Hairline);
 
             GameObject fillObj = ZombieModeUIHelper.CreateRect("ProgressFill", progressTrack.transform,
                 Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
@@ -497,7 +499,32 @@ namespace BossRush
                 claimedText.gameObject.SetActive(showClaimed);
                 if (showClaimed)
                 {
+                    claimedText.rectTransform.anchoredPosition = new Vector2(-Padding - SlotWidth * 0.5f, -15f);
                     claimedText.text = "√ " + AchievementUIStrings.GetText(AchievementUIStrings.CN_Claimed, AchievementUIStrings.EN_Claimed);
+                }
+                Transform parent = claimedText.transform.parent;
+                Transform sealTrans = parent != null ? parent.Find("ClaimedSeal") : null;
+                if (showClaimed && sealTrans == null && parent != null)
+                {
+                    RectTransform badge = BossRushInkWidgets.CreateSealBadge(
+                        parent,
+                        AchievementUIStrings.IsChinese() ? "已授" : "DONE",
+                        38f,
+                        BossRushInkColors.Cinnabar,
+                        Vector2.zero,
+                        -9f,
+                        false);
+                    if (badge != null)
+                    {
+                        badge.name = "ClaimedSeal";
+                        badge.anchorMin = badge.anchorMax = new Vector2(1f, 0.5f);
+                        badge.anchoredPosition = new Vector2(-Padding - SlotWidth * 0.5f, 14f);
+                        sealTrans = badge;
+                    }
+                }
+                if (sealTrans != null)
+                {
+                    sealTrans.gameObject.SetActive(showClaimed);
                 }
             }
 
@@ -611,11 +638,27 @@ namespace BossRush
         /// 卡片描边从传说金淡回 Stroke。音效由 AchievementView 播（一键领取整批只播一次）。
         /// 走 unscaled 时间并过暂停门；在 Refresh 之后调用，终点就是新状态的颜色。
         /// </summary>
-        internal void PlayClaimFeedback()
+        internal void PlayClaimFeedback(bool stampSfx = true)
         {
             if (!isActiveAndEnabled)
             {
                 return;
+            }
+            if (claimedText != null && claimedText.transform.parent != null)
+            {
+                Transform seal = claimedText.transform.parent.Find("ClaimedSeal");
+                if (seal != null)
+                {
+                    RectTransform sealRect = seal as RectTransform;
+                    RectTransform cardRect = transform as RectTransform;
+                    BossRushInkSkin.StampSeal(sealRect, cardRect, 0f, stampSfx);
+                    BossRushInkWidgets.PlayActionRipple(
+                        claimedText.transform.parent,
+                        BossRushInkSkin.CenterInParent(sealRect),
+                        110f,
+                        BossRushInkColors.Gold,
+                        null);
+                }
             }
             if (claimFeedback != null)
             {

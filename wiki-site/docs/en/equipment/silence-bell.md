@@ -2,6 +2,14 @@
 
 The Bell Keeper scratched on the brass: It stays silent. It only rings when it takes a hit for you. Equipped, it wraps you in a bronze bell ward that refills on its own and takes enemy blows before your health does.
 
+<div class="brs-icon">
+
+![Silent Bell Keeper (Bell Court)](/images/scenes/sky-portrait-bellkeeper.webp)
+*Silent Bell Keeper (Bell Court)*
+
+</div>
+
+
 ## Where to get it
 
 Reach **affinity level 5** with the Silent Bell Keeper, then select **Bell Keeper's Bronze Ward** from the interaction group. Exchange **30 seashells** for one ward. It sits beside Bell Keeper's Keepsakes as the Keeper's second box. Only shells in your backpack count; take stored shells out first. Failed item delivery returns the shells.
@@ -14,7 +22,10 @@ The bell-court device offers the same Bronze Ward box with the Keeper's affinity
 2. A thin bronze bar appears above your head. It shows the ward, which holds **80 points** when full.
 3. When an enemy hits you, the damage lands on the ward first. Only what breaks through reaches your health.
 
-While you wear it, a pale golden bell stays over you: its rim glows brightest, the ribs fade toward the crown, it turns slowly, a bell seal turns at your feet, and a few gold motes drift up its walls. The height of the bell is how much ward is left. A hit makes the whole bell flare with a low hum, then it sinks a little. When the ward shatters, the bell bursts outward and turns from gold to vermilion, gold shards scatter with ink smoke, a deep bell tolls, and only a dim red ember ring stays at the rim. Once it starts refilling, the bell is recast ring by ring from the rim upward; when it is whole again it flares, a thin gold ring rises at your feet with a clear ding, and the bar fades away.
+**Visual & audio cues:**
+- **Active ward**: a pale golden bell rotates above a turning foot seal while golden motes rise; its height tracks remaining capacity, flaring with a low hum and shrinking on each hit
+- **Shattered**: the bell bursts outward from gold to vermilion with ink smoke and a deep toll, leaving only a dim ember rim
+- **Reforging**: once recovery begins, the bell rebuilds ring by ring from rim to crown; at full charge it chimes a clear ding and the bar fades away
 
 ## Rules
 

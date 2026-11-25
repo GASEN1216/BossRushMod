@@ -217,10 +217,12 @@ namespace BossRush
             bloomObject.transform.SetParent(parent, false);
             bloomObject.AddComponent<LayoutElement>().ignoreLayout = true;
             RectTransform bloom = bloomObject.GetComponent<RectTransform>();
-            bloom.anchorMin = panel.anchorMin;
-            bloom.anchorMax = panel.anchorMax;
-            bloom.pivot = panel.pivot;
-            bloom.anchoredPosition = panel.anchoredPosition;
+            // 固定中心锚点、按面板实际矩形定位：照抄拉伸锚点时 sizeDelta 是相对父物体的增量，墨晕会变成全屏暗斑；
+            // 照抄非中心轴心时墨晕偏到一角。
+            bloom.anchorMin = bloom.anchorMax = bloom.pivot = new Vector2(0.5f, 0.5f);
+            RectTransform parentRect = parent as RectTransform;
+            Vector2 panelCenter = (Vector2)panel.localPosition + panel.rect.center;
+            bloom.anchoredPosition = parentRect != null ? panelCenter - parentRect.rect.center : panelCenter;
             float side = Mathf.Max(size.x, size.y) * 1.22f;
             bloom.sizeDelta = new Vector2(side, side * Mathf.Clamp(size.y / Mathf.Max(1f, size.x), 0.55f, 1f));
             bloom.SetSiblingIndex(panel.GetSiblingIndex());

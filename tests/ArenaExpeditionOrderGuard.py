@@ -16,9 +16,10 @@
 8. 战帖战规（2026-11-25 难度多元化）：借用的变异词条由 `ExpeditionForcedMutators` 交给开波抽词条先上，
    一路经宿主 → MutatorModeFlow → MutatorManager 透传，关掉随机词条也照样上；
    出征令开的局不抽随机词条（owner 2026-11-25「打出征令时不开变异词条吧」：allowRandom = expeditionOrder == null），
-   战帖借用的词条是战规，不进变异词条栏；
-   每条借用的词条都要在词条池里、不限模式；四条治疗类词条同在 `healing` 互斥组；标准档不加任何战规。
-9. 波间休整倍率进倒计时（两处）与每 5 波额外休整；盲战挡在烽烟圈的竞技场来源入口；两者都经
+   战帖借用的词条是战规，不进变异词条栏；标准档不加任何战规。
+   同日第二次拍板「战规机制化」：只有轻松的「治疗 +50%」还借 player_swift_heal（在词条池里、不限模式、`healing` 组）；
+   困难 6 条 / 噩梦 10 条全是竞技场自己的机制（局内服务对象由 ArenaTrialsGuard 钉），撤掉的六条借用词条不得回来。
+9. 波间休整倍率进倒计时（两处）与每 5 波额外休整；失明（原盲战）挡在烽烟圈的竞技场来源入口；两者都经
    `LiveExpeditionTier`，Mode D 借用本模块时不受影响。
 10. 面板：卡片下不再写结论，悬赏令列出战规与赏格，按钮是「等等 / 立誓」（「收起」改名），ESC = 等等。
 
@@ -99,20 +100,49 @@ def check_tuning(errors):
             "[Rules] 标准档不加任何战规（标准 = 改版前的竞技场原样）")
     require(errors, "KeepsMilestoneRest(ArenaExpeditionTiertier){returntier<=ArenaExpeditionTier.Standard;}" in c
             and "HidesMapBeacons(ArenaExpeditionTiertier){returntier==ArenaExpeditionTier.Nightmare;}" in c,
-            "[Rules] 急行军只取消困难 / 噩梦的额外休整，盲战只在噩梦")
+            "[Rules] 急行军只取消困难 / 噩梦的额外休整，失明只在噩梦")
 
-    # 借用的变异词条：每条都要在词条池里、不限模式（否则 RollAndApply 会静默跳过，战规写了却没生效）
+    # 借用的变异词条（2026-11-25 战规机制化后只剩轻松的 player_swift_heal）：
+    # 在词条池里、不限模式（否则 RollAndApply 会静默跳过，战规写了却没生效），归 healing 组。
     defs = read("Integration", "Mutators", "MutatorDefinitions.cs")
     ids = re.findall(r'ArenaExpeditionRule\.Mutator\(\s*ArenaExpeditionRuleKind\.\w+\s*,\s*(?:true|false)\s*,\s*"([a-z_]+)"\s*\)', tuning)
-    require(errors, len(set(ids)) >= 5, "[Rules] 战帖借用的变异词条少于 5 条，战规表可能被改坏了")
+    require(errors, sorted(set(ids)) == ["player_swift_heal"],
+            "[Rules] 战帖借用的变异词条只应剩轻松的 player_swift_heal（实际：%s）" % sorted(set(ids)))
     for mutator_id in sorted(set(ids)):
         block = mutator_block(defs, mutator_id)
         require(errors, block is not None, "[Rules] 战规借用的变异词条 %s 不在 MutatorPool 里" % mutator_id)
         require(errors, block is None or "IsAllowedForMode" not in block,
                 "[Rules] 战规借用的变异词条 %s 限定了模式，竞技场里会被静默跳过" % mutator_id)
-    for mutator_id in ("player_swift_heal", "heal_reduced", "lifesteal_on_kill", "blood_pact"):
-        require(errors, 'ExclusiveGroup="healing",' in compact(mutator_block(defs, mutator_id)),
+        require(errors, 'ExclusiveGroup="healing",' in compact(block),
                 "[Rules] %s 必须归入 healing 互斥组（免得随机再抽一条同类治疗词条叠上去）" % mutator_id)
+    for retired in ("enemy_sharpshooter", "heal_reduced", "boss_regen", "lifesteal_on_kill", "blood_pact", "explode_on_death"):
+        require(errors, '"' + retired + '"' not in tuning,
+                "[Rules] 撤掉的借用词条 %s 又回到了战帖（owner 2026-11-25：困难 / 噩梦改成竞技场自己的机制）" % retired)
+    require(errors, '"盲战"' not in tuning, "[Rules] 盲战已并入失明，不再单列一条")
+
+    def rule_names(array):
+        body = body_of(tuning, "private static readonly ArenaExpeditionRule[] " + array + " =")
+        if body is None:
+            return None
+        names = []
+        for m in re.finditer(r'ArenaExpeditionRule\.Own\(\s*ArenaExpeditionRuleKind\.\w+\s*,\s*false\s*,\s*"([^"]+)"|Hex\((true|false)\)|(ForcedMarch)|(?:Omens|Calamity)\(\s*"([^"]+)"', body):
+            if m.group(1):
+                names.append(m.group(1))
+            elif m.group(2):
+                names.append("厄运（重）" if m.group(2) == "true" else "厄运")
+            elif m.group(3):
+                names.append("急行军")
+            else:
+                names.append(m.group(4))
+        return names
+
+    hard = ["磨刀", "凶相", "厄运", "急行军", "天象无常", "天灾"]
+    nightmare = ["杀心", "凶煞", "失明", "断补", "血债", "厄运（重）", "急行军", "焚城", "天翻地覆", "天灾连环"]
+    require(errors, rule_names("HardRules") == hard,
+            "[Rules] 困难战规应为 %s（实际 %s）" % ("、".join(hard), rule_names("HardRules")))
+    require(errors, rule_names("NightmareRules") == nightmare,
+            "[Rules] 噩梦战规应为 %s（实际 %s）" % ("、".join(nightmare), rule_names("NightmareRules")))
+    require(errors, '"急行军","ForcedMarch"' in c, "[Rules] 急行军战规缺失")
 
     for rel in (("Config", "Config.cs"), ("Config", "ModConfigApi.cs")):
         src = read(*rel)
@@ -140,7 +170,7 @@ def check_run_wiring(errors):
 
     legacy = compact(read("WavesArena", module + "LegacySpawn.cs"))
     stat_at = legacy.find("ApplyBossStatMultiplier(character);")
-    tier_at = legacy.find("ApplyExpeditionTierToSpawnedBoss(character);")
+    tier_at = legacy.find("ApplyExpeditionTierToSpawnedBoss(character,preset);")
     require(errors, stat_at >= 0 and tier_at > stat_at,
             "[Scale] LegacySpawn 必须在 ApplyBossStatMultiplier 之后调用 ApplyExpeditionTierToSpawnedBoss")
 
@@ -207,7 +237,7 @@ def check_run_wiring(errors):
     beacon = compact(body_of(read("WavesArena", module + "BossAccess.cs"),
                              "internal void CopyMapBeaconBossesTo(ICollection<CharacterMainControl> destination)"))
     require(errors, beacon.startswith("if(ArenaExpeditionTuning.HidesMapBeacons(LiveExpeditionTier()))return;"),
-            "[Rules] 盲战必须挡在烽烟圈竞技场来源的入口（CopyMapBeaconBossesTo 第一句）")
+            "[Rules] 失明必须挡在烽烟圈竞技场来源的入口（CopyMapBeaconBossesTo 第一句）")
 
     arena_host = compact(read("WavesArena", "WavesArena.cs"))
     require(errors, "internalvoidTryRollMutatorsForArena(stringmode,System.Collections.Generic.IList<string>forcedIds=null,boolallowRandom=true){TryRollMutatorsForMode(mode,forcedIds,allowRandom);}" in arena_host,

@@ -1,5 +1,28 @@
 # NPC 相关物品
 
+<div class="brs-gallery">
+
+![钻石戒指](/images/scenes/sc-diamond-ring.webp)
+*钻石戒指*
+
+![砖石](/images/scenes/sc-brick-stone.webp)
+*砖石*
+
+![平安护身符](/images/scenes/sc-peace-charm.webp)
+*平安护身符*
+
+![阿稳快递牌](/images/scenes/sc-awen-token.webp)
+*阿稳快递牌*
+
+![叮当涂鸦](/images/scenes/sc-dingdang-drawing.webp)
+*叮当涂鸦*
+
+![荒野号角](/images/scenes/sc-wild-horn.webp)
+*荒野号角*
+
+</div>
+
+
 ## 钻石
 
 货真价实的钻石。直接使用可以召唤叮当跑过来（好感度 +5），也能当礼物送（+80）。

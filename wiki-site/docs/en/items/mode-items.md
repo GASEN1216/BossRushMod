@@ -1,5 +1,25 @@
 # Mode-Exclusive Items
 
+<div class="brs-gallery">
+
+![Taunt Smoke](/images/scenes/sc-taunt-smoke.webp)
+*Taunt Smoke*
+
+![Chaos Detonator](/images/scenes/sc-chaos-detonator.webp)
+*Chaos Detonator*
+
+![Foldable Cover Pack](/images/scenes/sc-cover-pack.webp)
+*Foldable Cover Pack*
+
+![Reinforced Roadblock Pack](/images/scenes/sc-roadblock-pack.webp)
+*Reinforced Roadblock Pack*
+
+![Portable Safe-Zone Device](/images/scenes/sc-portable-safezone.webp)
+*Portable Safe-Zone Device*
+
+</div>
+
+
 ## Faction War — Tactical Consumables
 
 Purchasable from Mystery Merchant "Other" shop. **Faction War only.**

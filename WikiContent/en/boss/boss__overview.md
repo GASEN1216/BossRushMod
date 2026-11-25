@@ -16,7 +16,8 @@ On raid maps, custom Boss models, gear and weapons hide and reappear with player
 
 ### Official Map and Boss Pool: Eclipse Bloom
 
-- **Eclipse Bloom** — 7500 base HP. Follow Jeff's quest to Experimental Area 37, or encounter it through compatible Boss pools. Intact petals shield the core; break them individually with guns or melee to open safe gaps. At 60% health the crown unfolds and rotates; at 25% the core takes over. Every victory drops 1 Residual Sun Shield Shard. Death abandons an unfinished introduction, which can be accepted again. The map encounter appears on every raid during the introduction and on roughly 30% of Area 37 raids afterwards, at most once per raid.
+- **Eclipse Bloom** (7,500 base HP) — Follow Jeff's quest to Experimental Area 37 (guaranteed while active, ~30% per raid afterwards; death abandons the intro so you can re-accept anytime) or meet it in compatible Boss pools.
+- Break its four shielding petals with guns or melee to open safe gaps: at 60% HP the crown rotates, and at 25% the core drops and attacks directly. Every kill awards 1 **Residual Sun Shield Shard**.
 
 ### Resistances and Weak Spots
 

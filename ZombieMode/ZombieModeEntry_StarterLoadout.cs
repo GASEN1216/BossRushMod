@@ -297,9 +297,10 @@ namespace BossRush
                 new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -34f), new Vector2(-48f, 44f),
                 TextAlignmentOptions.Center, BossRushUIColors.TextPrimary);
             title.fontStyle = FontStyles.Bold;
-            ZombieModeUIHelper.CreateSeparator("AccentLine", panel.transform,
-                new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -64f), 2f,
-                new Color(BossRushUIColors.Accent.r, BossRushUIColors.Accent.g, BossRushUIColors.Accent.b, 0.6f));
+            RectTransform starterBrush = BossRushInkSkin.CreateBrushStroke(
+                panel.transform, "AccentLine", new Vector2(360f, 5f), new Vector2(0f, -64f),
+                new Color(BossRushInkColors.Gold.r, BossRushInkColors.Gold.g, BossRushInkColors.Gold.b, 0.80f));
+            if (starterBrush != null) starterBrush.anchorMin = starterBrush.anchorMax = new Vector2(0.5f, 1f);
             ZombieModeUIHelper.CreateText("Subtitle", panel.transform,
                 L10n.T("BossRush_ZombieMode_Starter_Subtitle"), 15,
                 new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -90f), new Vector2(-48f, 30f),

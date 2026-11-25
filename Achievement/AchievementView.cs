@@ -41,12 +41,9 @@ namespace BossRush
         // 现在三条都不铺底色，层级靠留白 + 分隔线；标题白字，前面一根传说金竖条（成就 = 金）。
         private static readonly Color PanelBgColor = BossRushUIColors.Surface;
         private static readonly Color TitleColor = BossRushUIColors.TextPrimary;
-        private static readonly Color TitleRailColor = BossRushUIColors.RarityLegendary;
         private static readonly Color StatsColor = BossRushUIColors.TextSecondary;
         private static readonly Color ProgressBarBgColor = BossRushUIColors.Disabled;
         private static readonly Color ProgressBarFillColor = BossRushUIColors.Accent;
-        /// <summary>一键领取是这一屏唯一的主操作：AccentFill 底（全 Mod 按钮口径 2026-09-23）。只用在官方按钮 prefab 取不到时的回退按钮上。</summary>
-        private static readonly Color ClaimAllFallbackColor = BossRushUIColors.AccentFill;
         private const float SideInset = 20f;
         // 字号只用三级（A-25）：标题 28 / 条目名字与奖励 18（AchievementEntryUI）/ 其余 15。
         private const float BodyFontSize = 15f;
@@ -264,28 +261,14 @@ namespace BossRush
             headerRect.anchoredPosition = Vector2.zero;
             headerRect.sizeDelta = new Vector2(0f, HeaderHeight);
 
-            // 页头不铺底色（UD-01），标题前一根传说金竖条
-            GameObject railObj = ZombieModeUIHelper.CreateRect(
-                "TitleRail",
-                headerObj.transform,
-                new Vector2(0f, 0.5f),
-                new Vector2(0f, 0.5f),
-                new Vector2(SideInset, 0f),
-                new Vector2(3f, 24f),
-                new Vector2(0f, 0.5f));
-            Image railImage = railObj.AddComponent<Image>();
-            railImage.color = TitleRailColor;
-            BossRushUI.ApplyPanelSkin(railImage, 2, BossRushUISkinPart.Hairline);
-            railImage.raycastTarget = false;
-
-            // 标题
+            // 标题（纯水墨题头：宣纸粗字 + 标题金笔 + 下方淡金分隔笔）
             GameObject titleObj = new GameObject("Title");
             titleObj.transform.SetParent(headerObj.transform, false);
 
             RectTransform titleRect = titleObj.AddComponent<RectTransform>();
             titleRect.anchorMin = new Vector2(0f, 0f);
             titleRect.anchorMax = new Vector2(1f, 1f);
-            titleRect.offsetMin = new Vector2(SideInset + 12f, 0f);
+            titleRect.offsetMin = new Vector2(SideInset, 0f);
             titleRect.offsetMax = new Vector2(-56f, 0f);
 
             titleText = titleObj.AddComponent<TextMeshProUGUI>();
@@ -299,48 +282,13 @@ namespace BossRush
             titleText.alignment = TextAlignmentOptions.Left;
             titleText.raycastTarget = false;
 
-            // 关闭按钮
-            Button buttonPrefab = GetButtonPrefab();
-            if (buttonPrefab != null)
-            {
-                Button closeBtn = UnityEngine.Object.Instantiate(buttonPrefab, headerObj.transform);
-                RectTransform closeBtnRect = closeBtn.GetComponent<RectTransform>();
-                closeBtnRect.anchorMin = new Vector2(1f, 0.5f);
-                closeBtnRect.anchorMax = new Vector2(1f, 0.5f);
-                closeBtnRect.pivot = new Vector2(1f, 0.5f);
-                closeBtnRect.anchoredPosition = new Vector2(-10f, 0f);
-                closeBtnRect.sizeDelta = new Vector2(35f, 35f);
-
-                TextMeshProUGUI btnText = closeBtn.GetComponentInChildren<TextMeshProUGUI>();
-                if (btnText != null)
-                {
-                    btnText.text = "×";
-                    btnText.fontSize = 20;
-                }
-
-                exitButton = closeBtn;
-                exitButton.onClick.AddListener(Close);
-            }
-            else
-            {
-                // 回退：共享按钮 + 幽灵关闭样式（常态透明、悬停显出 Danger 底，审美审查 UD-32）。
-                // 旧回退是手搓的 35px 平涂暗红块，没走 ApplyButtonColors，悬停几乎看不出、也没有音效。
-                Color ghost = new Color(BossRushUIColors.Danger.r, BossRushUIColors.Danger.g, BossRushUIColors.Danger.b, 0f);
-                exitButton = ZombieModeUIHelper.CreateButton(
-                    "CloseButton",
-                    headerObj.transform,
-                    "×",
-                    new Vector2(1f, 0.5f),
-                    new Vector2(-10f - 17.5f, 0f),
-                    new Vector2(35f, 35f),
-                    ghost,
-                    24f,
-                    new Vector2(35f, 35f),
-                    Close,
-                    true);
-                IntegrationUIFeedback.StyleGhostCloseButton(
-                    exitButton, exitButton.GetComponentInChildren<TextMeshProUGUI>(true));
-            }
+            // 关闭按钮（共享水墨幽灵关闭键，彻底消除官方 Prefab 混搭）
+            exitButton = BossRushInkWidgets.CreateInkCloseButton(
+                headerObj.transform,
+                new Vector2(1f, 0.5f),
+                new Vector2(-SideInset - 17.5f, 0f),
+                Close,
+                35f);
 
             GameObject divider = ZombieModeUIHelper.CreateSeparator(
                 "HeaderDivider",
@@ -361,21 +309,6 @@ namespace BossRush
             if (rect != null)
             {
                 rect.sizeDelta = new Vector2(-24f, rect.sizeDelta.y);
-            }
-        }
-
-        /// <summary>
-        /// 获取按钮预制件
-        /// </summary>
-        private Button GetButtonPrefab()
-        {
-            try
-            {
-                return Duckov.Utilities.GameplayDataSettings.UIPrefabs.Button;
-            }
-            catch
-            {
-                return null;
             }
         }
 
@@ -461,122 +394,50 @@ namespace BossRush
         /// </summary>
         private void CreateScrollArea()
         {
-            // 尝试使用官方 ScrollRect prefab
-            ScrollRect scrollRectPrefab = GetScrollRectPrefab();
+            // 纯共享水墨滚动视口（RectMask2D + ConfigureScrollRect，不克隆官方 ScrollRect）
+            GameObject scrollViewObj = new GameObject("AchievementScrollView");
+            scrollViewObj.transform.SetParent(panelRoot.transform, false);
+            scrollRect = scrollViewObj.AddComponent<ScrollRect>();
 
-            GameObject scrollViewObj;
+            GameObject viewport = new GameObject("Viewport");
+            viewport.transform.SetParent(scrollViewObj.transform, false);
+            viewport.AddComponent<RectMask2D>();
+            RectTransform vpRect = viewport.GetComponent<RectTransform>();
+            vpRect.anchorMin = Vector2.zero;
+            vpRect.anchorMax = Vector2.one;
+            vpRect.offsetMin = Vector2.zero;
+            vpRect.offsetMax = Vector2.zero;
+            scrollRect.viewport = vpRect;
 
-            if (scrollRectPrefab != null)
-            {
-                scrollRect = UnityEngine.Object.Instantiate(scrollRectPrefab, panelRoot.transform);
-                scrollViewObj = scrollRect.gameObject;
-                scrollViewObj.name = "AchievementScrollView";
-            }
-            else
-            {
-                // 手动创建
-                scrollViewObj = new GameObject("AchievementScrollView");
-                scrollViewObj.transform.SetParent(panelRoot.transform, false);
-                scrollRect = scrollViewObj.AddComponent<ScrollRect>();
+            GameObject contentObj = new GameObject("Content");
+            contentObj.transform.SetParent(viewport.transform, false);
+            contentContainer = contentObj.AddComponent<RectTransform>();
+            contentContainer.anchorMin = new Vector2(0f, 1f);
+            contentContainer.anchorMax = new Vector2(1f, 1f);
+            contentContainer.pivot = new Vector2(0.5f, 1f);
+            contentContainer.anchoredPosition = Vector2.zero;
 
-                // 创建 Viewport
-                GameObject viewport = new GameObject("Viewport");
-                viewport.transform.SetParent(scrollViewObj.transform, false);
-                Image vpImage = viewport.AddComponent<Image>();
-                vpImage.color = BossRushUIColors.Surface;   // 只作遮罩形状（showMaskGraphic=false），不显示
-                Mask mask = viewport.AddComponent<Mask>();
-                mask.showMaskGraphic = false;
-                RectTransform vpRect = viewport.GetComponent<RectTransform>();
-                vpRect.anchorMin = Vector2.zero;
-                vpRect.anchorMax = Vector2.one;
-                vpRect.offsetMin = Vector2.zero;
-                vpRect.offsetMax = Vector2.zero;
-                scrollRect.viewport = vpRect;
+            VerticalLayoutGroup vlg = contentObj.AddComponent<VerticalLayoutGroup>();
+            vlg.spacing = 8f;
+            vlg.padding = new RectOffset(10, 22, 10, 10);
+            vlg.childAlignment = TextAnchor.UpperLeft;
+            vlg.childForceExpandWidth = true;
+            vlg.childForceExpandHeight = false;
+            vlg.childControlWidth = true;
+            vlg.childControlHeight = false;
 
-                // 创建 Content
-                GameObject contentObj = new GameObject("Content");
-                contentObj.transform.SetParent(viewport.transform, false);
-                contentContainer = contentObj.AddComponent<RectTransform>();
-                contentContainer.anchorMin = new Vector2(0f, 1f);
-                contentContainer.anchorMax = new Vector2(1f, 1f);
-                contentContainer.pivot = new Vector2(0.5f, 1f);
-                contentContainer.anchoredPosition = Vector2.zero;
+            ContentSizeFitter csf = contentObj.AddComponent<ContentSizeFitter>();
+            csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-                VerticalLayoutGroup vlg = contentObj.AddComponent<VerticalLayoutGroup>();
-                vlg.spacing = 8f;
-                vlg.padding = new RectOffset(10, 10, 10, 10);
-                vlg.childAlignment = TextAnchor.UpperLeft;
-                vlg.childForceExpandWidth = true;
-                vlg.childForceExpandHeight = false;
-                vlg.childControlWidth = true;
-                vlg.childControlHeight = false;
+            scrollRect.content = contentContainer;
 
-                ContentSizeFitter csf = contentObj.AddComponent<ContentSizeFitter>();
-                csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-                scrollRect.content = contentContainer;
-            }
-
-            // 设置 ScrollRect 位置和大小（考虑统计栏高度）
             RectTransform scrollRectTransform = scrollViewObj.GetComponent<RectTransform>();
             scrollRectTransform.anchorMin = new Vector2(0f, 0f);
             scrollRectTransform.anchorMax = new Vector2(1f, 1f);
             scrollRectTransform.offsetMin = new Vector2(8f, FooterHeight + 5f);
             scrollRectTransform.offsetMax = new Vector2(-8f, -(HeaderHeight + StatsHeight + 5f));
 
-            scrollRect.horizontal = false;
-            scrollRect.vertical = true;
-            scrollRect.movementType = ScrollRect.MovementType.Elastic;
-
-            // 如果使用了官方 prefab，获取 Content
-            if (scrollRectPrefab != null)
-            {
-                contentContainer = scrollRect.content;
-                if (contentContainer == null)
-                {
-                    GameObject contentObj = new GameObject("Content");
-                    contentObj.transform.SetParent(scrollRect.viewport != null ? scrollRect.viewport : scrollViewObj.transform, false);
-                    contentContainer = contentObj.AddComponent<RectTransform>();
-                    contentContainer.anchorMin = new Vector2(0f, 1f);
-                    contentContainer.anchorMax = new Vector2(1f, 1f);
-                    contentContainer.pivot = new Vector2(0.5f, 1f);
-                    scrollRect.content = contentContainer;
-                }
-
-                // 确保有布局组件
-                if (contentContainer.GetComponent<VerticalLayoutGroup>() == null)
-                {
-                    VerticalLayoutGroup vlg = contentContainer.gameObject.AddComponent<VerticalLayoutGroup>();
-                    vlg.spacing = 8f;
-                    vlg.padding = new RectOffset(10, 10, 10, 10);
-                    vlg.childAlignment = TextAnchor.UpperLeft;
-                    vlg.childForceExpandWidth = true;
-                    vlg.childForceExpandHeight = false;
-                    vlg.childControlWidth = true;
-                    vlg.childControlHeight = false;
-                }
-
-                if (contentContainer.GetComponent<ContentSizeFitter>() == null)
-                {
-                    ContentSizeFitter csf = contentContainer.gameObject.AddComponent<ContentSizeFitter>();
-                    csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-                }
-            }
-        }
-
-        /// <summary>
-        /// 获取ScrollRect预制件
-        /// </summary>
-        private ScrollRect GetScrollRectPrefab()
-        {
-            try
-            {
-                return Duckov.Utilities.GameplayDataSettings.UIPrefabs.ScrollRect;
-            }
-            catch
-            {
-                return null;
-            }
+            BossRushUI.ConfigureScrollRect(scrollRect);
         }
 
         /// <summary>
@@ -625,48 +486,27 @@ namespace BossRush
             totalRewardText.alignment = TextAlignmentOptions.Left;
             totalRewardText.raycastTarget = false;
 
-            // 一键领取按钮
-            Button buttonPrefab = GetButtonPrefab();
-            if (buttonPrefab != null)
+            // 一键领取按钮（统一共享水墨主操作朱砂钮，不再克隆官方 Prefab）
+            claimAllButton = ZombieModeUIHelper.CreateButton(
+                "ClaimAllButton",
+                footerObj.transform,
+                string.Empty,
+                new Vector2(1f, 0.5f),
+                new Vector2(-15f - 84f, 0f),
+                new Vector2(168f, 40f),
+                BossRushUIColors.AccentFill,
+                BodyFontSize,
+                new Vector2(152f, 32f),
+                ClaimAllRewards,
+                true);
+            BossRushInkSkin.StyleInkButton(claimAllButton, BossRushInkButtonRole.Primary);
+            claimAllButtonText = claimAllButton.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (claimAllButtonText != null)
             {
-                Button claimBtn = UnityEngine.Object.Instantiate(buttonPrefab, footerObj.transform);
-                RectTransform claimBtnRect = claimBtn.GetComponent<RectTransform>();
-                claimBtnRect.anchorMin = new Vector2(1f, 0.5f);
-                claimBtnRect.anchorMax = new Vector2(1f, 0.5f);
-                claimBtnRect.pivot = new Vector2(1f, 0.5f);
-                claimBtnRect.anchoredPosition = new Vector2(-15f, 0f);
-                // 放得下「一键领取 (12)」/「Claim All (12)」：可领数量写进按钮（UD-36）
-                claimBtnRect.sizeDelta = new Vector2(156f, 40f);
-
-                TextMeshProUGUI btnText = claimBtn.GetComponentInChildren<TextMeshProUGUI>();
-                if (btnText != null)
-                {
-                    claimAllButtonText = btnText;
-                }
-
-                claimAllButton = claimBtn;
-                claimAllButton.onClick.AddListener(ClaimAllRewards);
-            }
-            else
-            {
-                // 回退：共享按钮（三态、音效、按下回弹、投影斜面都由共享层给），主操作 AccentFill 底
-                claimAllButton = ZombieModeUIHelper.CreateButton(
-                    "ClaimAllButton",
-                    footerObj.transform,
-                    string.Empty,
-                    new Vector2(1f, 0.5f),
-                    new Vector2(-15f - 78f, 0f),
-                    new Vector2(156f, 40f),
-                    ClaimAllFallbackColor,
-                    BodyFontSize,
-                    new Vector2(140f, 32f),
-                    ClaimAllRewards,
-                    true);
-                claimAllButtonText = claimAllButton.GetComponentInChildren<TextMeshProUGUI>(true);
-                if (claimAllButtonText != null)
-                {
-                    claimAllButtonText.fontStyle = FontStyles.Bold;
-                }
+                claimAllButtonText.fontStyle = FontStyles.Bold;
+                claimAllButtonText.enableAutoSizing = true;
+                claimAllButtonText.fontSizeMin = 12f;
+                claimAllButtonText.fontSizeMax = BodyFontSize;
             }
         }
 
@@ -830,8 +670,8 @@ namespace BossRush
                         claimedCount++;
                         totalCash += achievement.reward != null ? achievement.reward.cashReward : 0;
                         entry.Refresh();
-                        // 每行照样有「到账」的一拍（金框淡回、奖励数字回弹），音效整批只播一次
-                        entry.PlayClaimFeedback();
+                        // 每行照样有「到账」的一拍（金框淡回、奖励数字回弹），音效整批只播一次：落印声只给第一枚
+                        entry.PlayClaimFeedback(claimedCount == 1);
                     }
                 }
 

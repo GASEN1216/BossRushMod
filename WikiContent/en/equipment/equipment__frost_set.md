@@ -1,6 +1,6 @@
 ## Frost Set
 
-[tip] Now obtainable: the "???" boss drops it on vanilla maps and in BossRush runs alike, or buy it from Dingdang's Shop at affinity level 6 (limited stock).
+[tip] How to get it: drops from the "???" boss on vanilla raids and in BossRush alike, or buy it at Dingdang's Shop from Affinity 6 (limited stock).
 
 ### At a Glance
 

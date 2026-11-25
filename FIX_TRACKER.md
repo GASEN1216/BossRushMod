@@ -4,6 +4,40 @@
 
 **2026-11-20 · COMPAT · L1/L2**　玩家反馈退出重进后武器消失、仓库物品变问号。修复冷启动注册、分包手持模型绑定、部分失败重试和克隆/异步资源归属。角色和仓库合成档往返、重复 TypeID 与真实包来源已纳入自动回归。故障证据与玩家侧验证边界见 [CR-2026-11-20-001 至 003](CODE_REVIEW_FINDINGS.md)。随 v2.6.1 发版：`info.ini` 升 2.6.1，WikiContent 新增中英 `changelog__v2_6_1` 并补总览，工坊简介同步；L3 待玩家侧确认。
 
+## 2026-11-25 水墨 UI 审查全修（CR-2026-11-25-002～021 与线索、顺带项；COMPAT / SAFE；L2 + 正式真编译；L3 待 owner）
+
+- 依据：owner「等它停下就全修」。另一会话停下后改；只动本批的行，不碰别的会话同文件里的其它改动。
+- 共享库（一处改、全项目受益）：
+  - `BossRushInkSkin`：新增 `CreateVerticalBrushStroke`（普通 Image + 竖笔贴图，代替转 90° 的遮罩笔，010）；`AddInkFrame` 复用主题按钮边时换回原图（004）；新增 `CenterInParent`，`StampSeal` 墨环按印章实际中心落（012），可选不出声（016）；印章、墨环、余烬粒子一律 `ignoreLayout`（006）。
+  - `BossRushInkWidgets`：`AddLeftOrAlignedStroke` 先摘下再销毁旧笔（007）；`PlayInkSurfaceOpen` 不再多放一滴墨（011）；`CreateHeaderTitle` 框高不低于字号×1.45+4。
+  - `BossRushInkTheme.SpawnOpenBloom`：固定中心锚点、按面板实际矩形定位（拉伸 / 非中心轴心面板不再成全屏暗斑）。
+  - `IntegrationUIFeedback`：关闭淡出与复位不写根画布缩放（成就、收藏册、图鉴的根画布由 CanvasScaler 驱动）。
+- 调用方：日志正文挂到 pagesGroup、右栏不再抄左栏偏移、书缝与竖分隔改竖笔、图库页脚框高 20（002 / 010）；宿命回响三处标题金笔锚顶边（008）、「契合」印 40 见方上移（021）；节拍器判定窗口纯色硬边（009）；身份色条读强调竖条实际位置排在右侧、竖向拉伸，立绘与文字随之右移（013）；孵化标题上移 16（014）；远征翻下一张前熄余烬（015）；一键领取只第一枚出落印声、收藏册只在点卡时出墨环与笔扫、邸报不再双响（016）；看图器印章挪到图上层、开着换图重画标题金笔（017）；邸报纸色在皮肤之后设、`ButtonIdle` 取实际铺的 `CinnabarFill`（018）；危险键字色按落下的底色算（019）；天象行先藏再淡入（020）；遗种巢 / 鸭王杯 / 许愿输入框选中改 `WarningText`（005，照 UI 共识）；Codex 详情、宿命回响三面板、鸭王杯恢复页删掉多放的一滴墨（011）；报头让出印宽（线索）；友好名牌不关名字底下的回退字形（线索）。
+- 顺带：天空岛警示线高度常量改 5；出征令 HUD 静态缓存注释改成与 `Hide()` 一致；`Common/UI/AGENTS.md` 补「滚动列表用共享库」例外并记 `docs/ai-docs-migration.md`；repowiki《UI 系统集成》附录五补「审查全修后的用法约定」。
+- 003 撤回：19 张插图都在已部署的 `production_icons` 包里（UnityPy 列包 0 缺，包与游戏目录 SHA-256 一致），正式构建按路径取图走包、不读散图，审查时只查了散图目录。`WikiImageAssetGuard` 加判据 5「游戏内插图都登记进 production_icons 清单」，防真正会漏的那种情况。
+- 守卫：`WikiImageAssetGuard` 加判据 5；`DailyReportPresentationGuard` 加「纸色在皮肤之后设 / ButtonIdle 是 CinnabarFill」；`FriendlyNpcNameplateGuard` 改为断言跳过名字整棵子树。三处都做了反向验证（破坏转红，按字节还原后 SHA-256 一致）。
+- 验证：
+  - 守卫：全量 `python tools/run_guards.py` `PASS=796 NEW-FAIL=0 KNOWN-RED=0`；回填台账、补夹具替身后 `--changed-only` 与 `LedgerSize` 复跑通过。
+  - 正式编译：去掉 `BOSSRUSH_DEV_BUILD` 后 `& "$PWD\compile_official.bat"` 0 错误 0 警告，81 个资源包 SHA-256 校验通过；`Build\BossRush.dll` 与游戏目录同为 `69E867781C2C2595170BF3DC0D16FE18A1759A23A6072B000F8CB14141AE4B9D`，`check_dll_identifiers --expect absent` 两份都 PASS（无 Dev 标识）。
+  - 隔离执行回归：相关 17 个夹具 17 PASS。`ManualSeptemberReview` 首跑红：另一会话给孵化揭晓新增 `PlayInkResultAccents()`，夹具只抽 `ShowResult` 等五个方法，不认识它；在夹具 `Stubs.cs` 补惰性替身（与 `PlayRevealBurst` 同类，纯表现），复跑通过。
+  - 未进游戏，以下为 L3 待 owner。
+- L3 实机清单（正式构建；不合格即记回本节）：
+  - [L3-INK-01] 冒险家日志任翻一篇：两栏正文都在纸面内，纸中间有书缝、左栏典籍 / 篇目之间有竖分隔。不合格：正文越出纸边或压到页脚线，纸中间没有书缝。
+  - [L3-INK-02] 装填节拍器：金色判定窗两端是硬边，宽度与实际判定一致。不合格：两端发虚、看着比判定窄。
+  - [L3-INK-03] 遗种巢异色 / 炫彩崽的卡片与伴宠 HUD：两条身份色条都看得见、贯通卡高，立绘和文字不压色条。不合格：只剩一色或色条只到半高。
+  - [L3-INK-04] 孵化揭晓：「遗种破壳」标题与金笔完整，不被卡片挡；远征翻牌出现阵亡后，后面归巢的崽与卡背不飘红灰余烬。
+  - [L3-INK-05] 许愿台连开三次：标题下始终只有一道金笔；许愿成功后「愿成」印不在面板末尾多出整宽金条，粒子不排成一列，再开面板不冒火星；抽奖指针主线可见。
+  - [L3-INK-06] 成就页一键领取多个：只响一声落印，墨环落在各自印章上（不在卡片中部）；收藏册打开、切系列时无声无墨环，点卡才有。
+  - [L3-INK-07] 邸报：签到只响一声；切英文后报头 "THE DUCKOV DAILY" 不压右侧「NEWS」印；纸面是暖宣纸色，签到按钮是朱砂底。
+  - [L3-INK-08] 宿命回响入场页、弃局页、战报：标题金笔紧贴标题下方，不横穿说明或契约卡；选中卡的「契合」印不压说明首行右端。
+  - [L3-INK-09] 任一带危险键（朱红底）的确认框：危险键文字是浅朱色。不合格：宣纸白字。
+  - [L3-INK-10] 出征令变天：天象行直接淡入。不合格：先整行显示、突然消失、再淡入。
+  - [L3-INK-11] 2560×1440 或 4K：反复开关成就、收藏册、图鉴，关闭时不闪、不缩错。
+  - [L3-INK-12] 友好 NPC 名牌：带回退字形的名字（生僻字、日文假名等）完整显示，不缺字。
+  - [L3-INK-13] 看图器：「墨藏」印在图片上层；开着时切换图片，标题金笔宽度跟着新标题变。
+  - [L3-INK-14] 日志目录卡、出征令、确认框、成就页的按钮：墨笔边是粗笔触，不是细丝；遗种巢当前崽、鸭王杯选中卡、许愿输入框获得焦点时的描边明显比未选中亮。
+  - [L3-INK-15] 打开宿命回响、鸭王杯恢复页、图鉴详情、看图器：只有一层墨晕，没有全屏暗斑；天空岛警示字幕下的警示线约 5 像素高。
+
 ## 2026-11-25 文案去 AI 味与机制对齐（COMPAT；不改 Key / TypeID / 存档；L2 + 正式隔离真编译；L3 待 owner）
 
 - 依据：owner 2026-11-25 审定的文案优化方案（同条数改写，梗、彩虹字、颜文字与配色保留；机制照代码写，不许诺没有的东西；中英逐句对应）。
@@ -78,6 +112,27 @@
   - T16 圈外灼烧：站到圈外，每 0.5 秒掉一跳火伤，屏幕四周出现橙红热浪晕，回到圈内后逐渐消退；敌人站在圈外不掉血。不合格：圈内也掉血，翻滚能躲开灼烧，或敌人被烧。
   - T17 退去与清理：收波后火墙 4 秒内退去、热浪归零，M 图上两枚圈都消失；切图或中途退出不残留火线和灯光。不合格：残留任何火线、光斑或 M 图圈。
   - T18 性能：噩梦第 10 波以后（天灾 + 焚城 + 4 条词缀同屏）帧率与不开出征令时对比。本条未采样，没有数据。
+
+## 2026-11-25 全项目 UI 纯水墨升级：彻底消弭官方预制件与现代细条混搭（COMPAT；L2 + 正式真编译；L3 待 owner）
+
+- owner 原话：「全部都做了！不要混搭，我也看到了混搭的效果并不是很好看。并且都以最高水平做了」。
+- 共享底座扩展（`Common/UI/BossRushInkWidgets.cs` 新文件已登记 `compile_official.bat`；同步扩充 `Common/UI/BossRushInkSkin.cs` 与 `Common/UI/BossRushUI.cs`、`Integration/UI/IntegrationUIFeedback.cs`）：
+  - 新增 `GetVerticalBrushSprite()` 纵向尖锋毛笔 Sprite 并在 `ResetStaticCaches()` 销毁释放。
+  - 新增共享组件 `CreateSealBadge`、`CreateHeaderTitle`、`SetSegmentUnderline`、`PlayActionRipple`、`PlayInkSurfaceOpen`、`StyleInkBarPair`、`CreateScrollShell`、`PlayScrollUnroll`、`BossRushInkEmberField`，统一印章落印、金笔底划、展卷、水墨渐强栏与火星粒子。
+- 彻底清除独立界面中的 `GameplayDataSettings.UIPrefabs.Button`/`ScrollRect`、`TitleRail`/`TopTrace`/`AccentRail`/`AccentLine` 与几何 `Hairline` 混搭（原生贴合系统 `ReforgeUIManager*`、`AffinityTabView`、`FriendlyNpcNameplates`、`LootView`、`ModeEMerchantSellAllUI` 保持原版融入；独立弹窗 `OriginalConfirmDialogueAdapter` 改为全水墨自绘）：
+  - 系统界面：`AchievementView`、`BossFilterUi`、`CodexView`/`CodexView_Grid`（已诛/未逢印章 + 详情金笔）、`CollectionBookView`、`AchievementEntryUI`（已授印章）、`SteamAchievementPopup`（达成/绝响印章 + 墨环/火星）、`ImageViewerUI`（金轴边框 + 墨藏印章 + 墨晕开屏）、`OriginalConfirmDialogueAdapter`、`MutatorUI`。
+  - 许愿台与遗种巢：`WishFountainUI`/`WishFountainUI_Feel`（去顶条、去状态竖条、愿成金印 + 火星粒子）、`WishFountainRewardAnimationView`/`_Reveal`（品质笔触条、得赐金印 + 墨环 + 爆发微粒）、`PetNestHatchRevealView`（异色/炫彩/初鸣印章 + 墨环 + 粒子、斜削毛笔侧条）、`PetNestExpeditionRevealView`（展卷摘要 `InkScrollShell` + 铭记/凯旋/陨落/负伤/归巢落印 + 灰烬微粒）、`PetNestUILayout` / `PetNestCompanionHudView`。
+  - 擂台模式：`ModeGInteractable` / `ModeGRecapPanel` / `ModeGHUD`（契合/凯旋/饮恨印章、噩梦卡火星、进度条毛笔化）；`ModeHUI` / `ModeHUIPages`（移除独立 `UIPrefabs.ScrollRect` 实例化并加 `#pragma warning disable 0649` 守住已停用风险横幅兼容字段）/ `ModeHUIPageParts` / `ModeHUIFighterDetails` / `ModeHRecoveryPanel`（钟罩敲响墨环、胜出/败绩/待决印章、水墨条）。
+  - 《鸭科夫日报》改版古宣水墨邸报：`DailyReportUI.cs` / `DailyReportUI_Dashboard.cs` 弃用浅色烤纸底图 `daily_report_bg.png`，改用近黑崩边墨底 + `GetFiberSprite()` 宣纸纤维 + 木金轴杆 + 鎏金/暗朱毛笔分栏条 + 「邸报」/「阅」朱印，并保留 `DailyReportLayoutTable` 与 `dr_icon_*`/`dr_mascot.png`；`DailyReportPresentationGuard.py` 同步改用线性色彩对比度与古宣构件检查。
+  - 天空岛与战术/独立 HUD：`SkyIslandHud`（水墨主题下切换纵向毛笔指示条 + 横幅金环）、`ModeFStatusHud`、`ZombieModeHudController`/`ZombieModeUiWidgets`/各确认与选卡视图、`CampaignHud`、`RandomEventHud`、`ReloadMetronomeHud`。
+- 守卫与文档同步：
+  - `AwenOriginalConfirmDialogueGuard.py`、`UIConsensusSystemPanelsGuard.py`、`DailyReportPresentationGuard.py` 同步并在盘上用破坏探针反向验证（全部实跑 `rc=1` 转红、恢复后 SHA-256 逐字节一致 `cdd23ad3f781` / `5d489fb3d7b2`）。
+  - 更新 `docs/architecture/UI制作共识.md` §12、`.qoder/repowiki/zh/content/用户界面与本地化/UI 系统集成.md` 附录五、`.qoder/repowiki/knowledge/zh/BossRushMod 鸭科夫日报：自算游戏日、签到梯度与报箱建筑/...md`（`RepowikiReferenceGuard` 309 篇 / 994 目标 PASS）。
+- 验证：
+  - 正式编译：`& "$PWD\compile_official.bat"` 0 错误 0 警告，81 个资源 bundle 校验通过；`Build\BossRush.dll` 与游戏目录 `D:\software\steam\steamapps\common\Escape from Duckov\Duckov_Data\Mods\BossRush\BossRush.dll` SHA-256 一致为 `428DF3655674826E2425FC92E68D06A785371AC60233CF1D31F01FE7BF5B5B5C`。
+  - 守卫：`python tools/run_guards.py --changed-only` 跑通全部 468 个脚本（`PASS=468 NEW-FAIL=0 KNOWN-RED=0`）；另有 25 项核心 UI/编译/契约守卫 + `StaticCacheLifecycleGuard.py` 逐项 PASS。
+  - 隔离执行回归：`python tools/run_runtime_regressions.py` 所选 17 项 UI/宿主/模式夹具全部通过（`17 PASS / 0 FAIL`）。
+- L3 实机核对清单：见本次交付说明中的 `[L3-UI-*]` 分项核对点、位置与不合格判据。
 
 ## 2026-11-25 owner 实机反馈：名牌照原版、出征令不开变异词条、噩梦加码、全项目统一水墨 UI（COMPAT；L2 + Dev 真编译；L3 待 owner）
 

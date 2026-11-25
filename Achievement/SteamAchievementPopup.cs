@@ -268,6 +268,43 @@ namespace BossRush
             // 创建文字
             CreateTexts(popup, achievement, hasIcon);
 
+            // 水墨氛围：底边金/朱笔扫痕 + 图标震环 + 右上小印 + 稀有火点
+            RectTransform bottomBrush = BossRushInkSkin.CreateBrushStroke(
+                popup.panelObj.transform, "PopupBrush", new Vector2(POPUP_WIDTH - 48f, 4f),
+                new Vector2(0f, 5f), isRare ? BossRushInkColors.Gold : BossRushInkColors.Cinnabar);
+            if (bottomBrush != null)
+            {
+                bottomBrush.anchorMin = bottomBrush.anchorMax = new Vector2(0.5f, 0f);
+            }
+            RectTransform badge = BossRushInkWidgets.CreateSealBadge(
+                popup.panelObj.transform,
+                isRare ? L10n.T("绝响", "RARE") : L10n.T("达成", "FEAT"),
+                40f,
+                isRare ? BossRushInkColors.Gold : BossRushInkColors.Cinnabar,
+                Vector2.zero,
+                -9f,
+                true,
+                popup.panelRect,
+                0.12f,
+                isRare ? (Color?)BossRushInkColors.InkWash : null);
+            if (badge != null)
+            {
+                badge.anchorMin = badge.anchorMax = new Vector2(1f, 1f);
+                badge.anchoredPosition = new Vector2(-26f, -24f);
+            }
+            Vector2 ringOrigin = new Vector2(
+                hasIcon ? PADDING_LEFT + FRAME_SIZE * 0.5f - POPUP_WIDTH * 0.5f : -POPUP_WIDTH * 0.5f + 32f,
+                0f);
+            BossRushInkSkin.SpawnRing(
+                popup.panelObj.transform, ringOrigin, 90f,
+                isRare ? BossRushInkColors.Gold : BossRushInkColors.Cinnabar, 0.5f, 2.0f, 0.45f);
+            if (isRare)
+            {
+                BossRushInkEmberField embers = BossRushInkWidgets.AttachEmberField(
+                    popup.panelRect, BossRushInkColors.Gold, BossRushInkColors.Ember, true, 8, 0.18f);
+                if (embers != null) embers.SpawnBurst(7);
+            }
+
             return popup;
         }
 
@@ -320,7 +357,7 @@ namespace BossRush
             float textStartX = hasIcon ? PADDING_LEFT + FRAME_SIZE + ICON_TEXT_GAP : PADDING_LEFT + 6f;
             bool isChinese = IsChinese();
 
-            // 标题
+            // 标题（右侧给水墨印章留出空间）
             GameObject titleObj = new GameObject("TitleText");
             titleObj.transform.SetParent(popup.panelObj.transform, false);
             
@@ -329,7 +366,7 @@ namespace BossRush
             titleRect.anchorMax = new Vector2(0, 0.5f);
             titleRect.pivot = new Vector2(0, 0.5f);
             titleRect.anchoredPosition = new Vector2(textStartX, 26f);
-            titleRect.sizeDelta = new Vector2(POPUP_WIDTH - textStartX - PADDING_LEFT, 30f);
+            titleRect.sizeDelta = new Vector2(POPUP_WIDTH - textStartX - 54f, 30f);
 
             TMPro.TextMeshProUGUI titleText = titleObj.AddComponent<TMPro.TextMeshProUGUI>();
             BossRushUI.ApplyGameFont(titleText);

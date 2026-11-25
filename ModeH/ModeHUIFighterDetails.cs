@@ -36,22 +36,6 @@ namespace BossRush
 
         #region 滚动容器
 
-        /// <summary>
-        /// 摘掉官方 prefab 自带的布局组件（竖排 / 网格 / 自适应高度）。克隆体上的组件、不是资源；
-        /// 同帧紧接着要写尺寸与子物体位置，延迟 Destroy 来不及，只能 DestroyImmediate（与 CodexView 同一处理）。
-        /// </summary>
-        private static void StripLayoutControllers(GameObject content)
-        {
-            if (content == null) return;
-            LayoutGroup[] groups = content.GetComponents<LayoutGroup>();
-            for (int i = 0; i < groups.Length; i++)
-            {
-                if (groups[i] != null) UnityEngine.Object.DestroyImmediate(groups[i]);
-            }
-            ContentSizeFitter fitter = content.GetComponent<ContentSizeFitter>();
-            if (fitter != null) UnityEngine.Object.DestroyImmediate(fitter);
-        }
-
         /// <summary>把已建好的滚动区收成 <paramref name="height"/> 高、顶边仍在 <paramref name="topY"/>（内容比视口矮时用）。</summary>
         private static void ShrinkScrollHost(GameObject host, float topY, float height, float offsetX)
         {
@@ -122,18 +106,21 @@ namespace BossRush
                 value.margin = Vector4.zero;
                 GameObject track = ZombieModeUIHelper.CreateRect("StatTrack_" + i, parent,
                     new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-                    new Vector2(left, rowTop - rowHeight + (stacked ? 3f : (grid ? 5f : 2f))), new Vector2(cellWidth, 2f), new Vector2(0f, 1f));
+                    new Vector2(left, rowTop - rowHeight + (stacked ? 3f : (grid ? 5f : 2f))), new Vector2(cellWidth, 3f), new Vector2(0f, 1f));
                 Image trackImage = track.AddComponent<Image>();
+                trackImage.sprite = BossRushInkSkin.GetSurfaceSprite();
+                trackImage.type = Image.Type.Sliced;
+                trackImage.pixelsPerUnitMultiplier = 3f;
                 trackImage.color = grid ? BossRushUIColors.Divider : BossRushUIColors.Stroke;
                 trackImage.raycastTarget = false;
-                BossRushUI.ApplyPanelSkin(trackImage, 1, BossRushUISkinPart.Hairline);
                 float fraction = stat.Maximum > 0f ? Mathf.Clamp01(stat.Value / stat.Maximum) : 0f;
                 GameObject fill = ZombieModeUIHelper.CreateRect("Fill", track.transform,
                     Vector2.zero, new Vector2(fraction, 1f), Vector2.zero, Vector2.zero, new Vector2(0f, 0.5f));
                 Image fillImage = fill.AddComponent<Image>();
+                fillImage.sprite = BossRushInkSkin.GetBrushSprite();
+                fillImage.type = Image.Type.Simple;
                 fillImage.color = fillColor;
                 fillImage.raycastTarget = false;
-                BossRushUI.ApplyPanelSkin(fillImage, 1, BossRushUISkinPart.Hairline);
             }
             if (!drawGear) return;
             float gearTop = top - rowHeight * rows - 8f;

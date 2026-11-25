@@ -130,9 +130,10 @@ namespace BossRush
             titleText.fontStyle = FontStyles.Bold;
             yPos += headerH;
 
-            ZombieModeUIHelper.CreateSeparator("AccentLine", panel.transform,
-                new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -yPos), 2f,
-                new Color(BossRushUIColors.Accent.r, BossRushUIColors.Accent.g, BossRushUIColors.Accent.b, 0.6f));
+            RectTransform rewardBrush = BossRushInkSkin.CreateBrushStroke(
+                panel.transform, "AccentLine", new Vector2(420f, 5f), new Vector2(0f, -yPos),
+                new Color(BossRushInkColors.Gold.r, BossRushInkColors.Gold.g, BossRushInkColors.Gold.b, 0.80f));
+            if (rewardBrush != null) rewardBrush.anchorMin = rewardBrush.anchorMax = new Vector2(0.5f, 1f);
             yPos += 8f;
 
             // ── 信息行：只留当前净化点（UI 共识对照审查 B-27）；免费次数与付费价钱已经写在底部两颗刷新按钮上，不再重复 ──
@@ -423,11 +424,12 @@ namespace BossRush
             ZombieModeCardHover.Attach(card, stroke);
 
             GameObject band = ZombieModeUIHelper.CreateRect("TopBand", card.transform,
-                new Vector2(0.08f, 1f), new Vector2(0.92f, 1f), new Vector2(0f, -1.5f), new Vector2(0f, 2f), new Vector2(0.5f, 1f));
+                new Vector2(0.08f, 1f), new Vector2(0.92f, 1f), new Vector2(0f, -2f), new Vector2(0f, 4f), new Vector2(0.5f, 1f));
             Image bandImage = band.AddComponent<Image>();
-            bandImage.color = new Color(strokeTint.r, strokeTint.g, strokeTint.b, 0.45f);
+            bandImage.sprite = BossRushInkSkin.GetBrushSprite();
+            bandImage.type = Image.Type.Simple;
+            bandImage.color = new Color(strokeTint.r, strokeTint.g, strokeTint.b, 0.65f);
             bandImage.raycastTarget = false;
-            BossRushUI.ApplyPanelSkin(bandImage, 1, BossRushUISkinPart.Hairline);
 
             // ── 类别 chip（替代「[属性]」方括号文字）──
             float top = 12f;

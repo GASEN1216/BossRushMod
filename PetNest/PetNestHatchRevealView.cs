@@ -223,6 +223,17 @@ namespace BossRush
             image.color = BossRushUIColors.Surface;
             BossRushUI.ApplyFramedPanelSkin(image, 14, BossRushUISkinPart.Panel);
 
+            BossRushInkWidgets.CreateHeaderTitle(
+                surface.transform,
+                "HatchHeader",
+                L10n.T("遗种破壳", "Hatching"),
+                // 卡片顶边在 CardCenterY + CardSize/2 = 285 且后建在上层：标题中心放到 294，字底金笔（约 275–283）落在卡顶之上。
+                new Vector2(0f, SurfaceSize.y * 0.5f - 26f),
+                new Vector2(SurfaceSize.x - 120f, 44f),
+                28f,
+                TextAlignmentOptions.Center,
+                true);
+
             BuildCard(surface.transform);
 
             _rollText = ZombieModeUIHelper.CreateText(
@@ -454,11 +465,46 @@ namespace BossRush
             }
             AddChromaRails();
             PlayRevealBurst();
+            PlayInkResultAccents();
 
             // 音效按稀有度分三档（审查 A-5）：异色放大奖音乐、炫彩用官方升级音、普通用官方弹出音
             if (_result.Shiny) PlayJackpotMusic();
             else if (PetNestChroma.HasChroma(_result.Pet)) IntegrationUIFeedback.PlaySound(IntegrationUIFeedback.SoundLevelUp);
             else IntegrationUIFeedback.PlaySound(IntegrationUIFeedback.SoundPop);
+        }
+
+        private void PlayInkResultAccents()
+        {
+            RectTransform surface = _card != null ? _card.transform.parent as RectTransform : null;
+            if (surface == null && _resultText != null) surface = _resultText.transform.parent as RectTransform;
+            if (surface == null) return;
+
+            bool shiny = _result != null && _result.Shiny;
+            bool chroma = _result != null && _result.Pet != null && PetNestChroma.HasChroma(_result.Pet);
+            Color sealColor = shiny ? BossRushInkColors.Gold : (chroma ? new Color(0.18f, 0.42f, 0.62f, 1f) : BossRushInkColors.Cinnabar);
+            Color? sealInk = shiny ? (Color?)BossRushInkColors.InkWash : null;
+            string sealText = shiny ? L10n.T("异色", "SHINY") : (chroma ? L10n.T("炫彩", "CHROMA") : L10n.T("初鸣", "BORN"));
+
+            bool cardActive = _card != null && _card.activeSelf;
+            Vector2 center = cardActive ? new Vector2(0f, CardCenterY) : new Vector2(0f, -20f);
+            BossRushInkSkin.SpawnRing(surface, center, 150f, sealColor, 0.55f, 2.35f, 0.52f);
+
+            Transform oldSeal = surface.Find("HatchResultSeal");
+            if (oldSeal != null) UnityEngine.Object.Destroy(oldSeal.gameObject);
+            Vector2 sealPos = cardActive ? new Vector2(CardSize * 0.5f - 8f, CardCenterY + CardSize * 0.5f - 10f) : new Vector2(228f, -16f);
+            RectTransform seal = BossRushInkWidgets.CreateSealBadge(
+                surface, sealText, 76f, sealColor, sealPos, -9f, true, surface, 0.06f, sealInk);
+            if (seal != null) seal.name = "HatchResultSeal";
+
+            if (_card != null)
+            {
+                BossRushInkEmberField embers = _card.GetComponent<BossRushInkEmberField>();
+                if (embers != null)
+                {
+                    embers.SpawnBurst(shiny ? 14 : 8);
+                    embers.SetBurning(shiny);
+                }
+            }
         }
 
         /// <summary>按结果稀有度定预兆色：普通不亮（预兆只给稀有结果，普通蛋不该「假紧张」）。</summary>
@@ -471,14 +517,21 @@ namespace BossRush
                 _telegraph = true;
                 _telegraphA = BossRushUIColors.RarityLegendary;
                 _telegraphB = BossRushUIColors.RarityLegendary;
-                return;
             }
-            Color a, b;
-            if (TryChromaColors(out a, out b))
+            else
             {
-                _telegraph = true;
-                _telegraphA = a;
-                _telegraphB = b;
+                Color a, b;
+                if (TryChromaColors(out a, out b))
+                {
+                    _telegraph = true;
+                    _telegraphA = a;
+                    _telegraphB = b;
+                }
+            }
+            if (_telegraph && _card != null)
+            {
+                BossRushInkWidgets.AttachEmberField(
+                    _card.GetComponent<RectTransform>(), _telegraphA, _telegraphB, true, 10, 0.14f);
             }
         }
 
@@ -560,12 +613,14 @@ namespace BossRush
             int r, g, b;
             if (!PetNestChroma.TryParseHex(hex, out r, out g, out b)) return;
             GameObject rail = ZombieModeUIHelper.CreateRect(
-                name, _card.transform, new Vector2(anchor.x, 0f), new Vector2(anchor.x, 1f),
-                new Vector2(x, 0f), new Vector2(5f, -28f), new Vector2(0.5f, 0.5f));
+                name, _card.transform, new Vector2(anchor.x, 0.5f), new Vector2(anchor.x, 0.5f),
+                new Vector2(x, 0f), new Vector2(CardSize - 24f, 7f), new Vector2(0.5f, 0.5f));
+            rail.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
             Image railImage = rail.AddComponent<Image>();
+            railImage.sprite = BossRushInkSkin.GetBrushSprite();
+            railImage.type = Image.Type.Simple;
             railImage.color = new Color(r / 255f, g / 255f, b / 255f, 1f);
             railImage.raycastTarget = false;
-            BossRushUI.ApplyPanelSkin(railImage, 2, BossRushUISkinPart.Hairline);
         }
 
         private void CompleteReveal()

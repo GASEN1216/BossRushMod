@@ -43,7 +43,8 @@ namespace BossRush
                     Image tick = Bar(track.transform, "Tick", 1f, i % 5 == 0 ? 4f : 2f, BossRushUIColors.TextSecondary);
                     tick.rectTransform.anchoredPosition = new Vector2((i / 10f - 0.5f) * TrackWidth, 7f);
                 }
-                hud.windowImage = Bar(track.transform, "TimingWindow", 0f, 4f, BossRushUIColors.WarningText);
+                // 判定窗口是按键时机的依据：纯色硬边，不用两端软化的墨笔（宽度运行时才定，也不能按尺寸猜朝向）。
+                hud.windowImage = SolidBar(track.transform, "TimingWindow", 0f, 4f, BossRushUIColors.WarningText);
                 hud.window = hud.windowImage.rectTransform;
                 hud.trailImage = Art(track.transform, "NeedleTrail", ReloadMetronomeAssets.Trail, 22f, 12f);
                 hud.trailRect = hud.trailImage.rectTransform;
@@ -93,10 +94,22 @@ namespace BossRush
 
         private static Image Bar(Transform parent, string name, float width, float height, Color color)
         {
+            bool vertical = height > width + 1f;
+            bool horizontal = width > height + 2f;
+            Sprite sprite = vertical ? BossRushInkSkin.GetVerticalBrushSprite()
+                : (horizontal ? BossRushInkSkin.GetBrushSprite() : BossRushInkSkin.GetSurfaceSprite());
+            Image image = Art(parent, name, sprite, width, height);
+            image.enabled = true;
+            image.type = Image.Type.Simple;
+            image.color = color;
+            return image;
+        }
+
+        private static Image SolidBar(Transform parent, string name, float width, float height, Color color)
+        {
             Image image = Art(parent, name, null, width, height);
             image.enabled = true;
             image.color = color;
-            BossRushUI.ApplyPanelSkin(image, 1, BossRushUISkinPart.Hairline);
             return image;
         }
 

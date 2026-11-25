@@ -1791,6 +1791,46 @@
       "maxSize": 1024
     },
     {
+      "path": "Assets/wiki_diagrams/eclipse_bloom_en.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_diagrams/eclipse_bloom_zh.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_diagrams/lastshift_yard_en.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_diagrams/lastshift_yard_zh.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_diagrams/mode_g_counter_en.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_diagrams/mode_g_counter_zh.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_diagrams/sky_island_route_en.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_diagrams/sky_island_route_zh.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_diagrams/tidegate_map_en.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_diagrams/tidegate_map_zh.png",
+      "maxSize": 1024
+    },
+    {
       "path": "Assets/wiki_icons/cat-achievements.png",
       "maxSize": 1024
     },

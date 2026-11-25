@@ -1,5 +1,13 @@
 # Frost Spear
 
+<div class="brs-icon">
+
+![Frost Spear](/images/scenes/sc-frost-spear.webp)
+*Frost Spear*
+
+</div>
+
+
 ## Role
 
 An **ice-element spear** with the longest attack range of all the new weapons. Every hit applies a guaranteed vanilla Cold slow. Steady mid-range damage, low crits. Built for fighting at arm's length.

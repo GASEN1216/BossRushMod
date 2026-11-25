@@ -1,5 +1,16 @@
 # Boss 筛选器
 
+<div class="brs-gallery">
+
+![冒险家日志](/images/scenes/sc-adventure-journal.webp)
+*冒险家日志*
+
+![鸭皇图鉴](/images/icons/codex-book.webp)
+*鸭皇图鉴*
+
+</div>
+
+
 ## 概述
 - Boss 筛选器允许你自定义 Boss 池，禁用不想遇到的 Boss 或调整特定 Boss 在无间炼狱中的出现权重。
 - 禁用结果会同步作用于 **标准 BossRush、无间炼狱、白手起家、划地为营、血猎追击、宿命回响** 的 Boss 池，

@@ -1,5 +1,31 @@
 # 消耗品
 
+<div class="brs-gallery">
+
+![生日蛋糕](/images/scenes/sc-birthday-cake.webp)
+*生日蛋糕*
+
+![安神滴剂](/images/scenes/sc-calming-drops.webp)
+*安神滴剂*
+
+![冷淬液](/images/scenes/sc-cold-quench.webp)
+*冷淬液*
+
+![归航菜便当](/images/scenes/sc-bento.webp)
+*归航菜便当*
+
+![星苔药膏](/images/scenes/sc-salve.webp)
+*星苔药膏*
+
+![风灯](/images/scenes/sc-lantern.webp)
+*风灯*
+
+![驱风香](/images/scenes/sc-incense.webp)
+*驱风香*
+
+</div>
+
+
 ## 生日蛋糕
 
 可吃也可送礼的蛋糕，送给叮当或羽织好感度 **+150**，仅次于钻石戒指（+500）。拿到就送，别留着落灰。

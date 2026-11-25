@@ -245,7 +245,8 @@ namespace BossRush
         /// </summary>
         private const float WarningPulse = 0.12f;
         private const float WarningPulseScale = 1.04f;
-        private const float WarningRuleHeight = 2f;
+        // 水墨笔触贴图要 5 高才看得出笔形（2 高只剩一根发丝）；建线与每次显示都用它，免得显示时写回细线。
+        private const float WarningRuleHeight = 5f;
         private const float WarningRuleOffset = -5f;
 
         /// <summary>「目标更新」眉题的停留秒数。</summary>
@@ -369,6 +370,13 @@ namespace BossRush
             // （32×32 / border 10），Unity 会把 10+10 等比压进 3px 并把中心区归零，
             // 画出来是按钮圆角的一道糊痕——比程序化还差。
             BossRushUI.ApplyPanelSkin(barImage, 2, BossRushUISkinPart.Hairline);
+            if (BossRushInkTheme.Active)
+            {
+                bar.GetComponent<RectTransform>().sizeDelta = new Vector2(5f, -16f);
+                barImage.sprite = BossRushInkSkin.GetVerticalBrushSprite();
+                barImage.type = Image.Type.Sliced;
+                barImage.pixelsPerUnitMultiplier = 2f;
+            }
             cardAccentBar = barImage;
             card.SetActive(false);
 
@@ -473,16 +481,17 @@ namespace BossRush
             captionText.overflowMode = TextOverflowModes.Ellipsis;
             BossRushUI.ApplyGameFont(captionText);
 
-            // 警示字幕下方的琥珀细线（UE-25）：锚在字幕根底边之下，随字幕一起淡；宽度每条按实测字宽的一半给（StartCaption）。
+            // 警示字幕下方的鎏金笔触线（UE-25）：锚在字幕根底边之下，随字幕一起淡
             GameObject warningRule = ZombieModeUIHelper.CreateRect("WarningRule", root.transform,
                 new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
                 new Vector2(0f, WarningRuleOffset), new Vector2(120f, WarningRuleHeight), new Vector2(0.5f, 1f));
             Image warningImage = warningRule.AddComponent<Image>();
             Color warningColor = BossRushUIColors.WarningText;
             warningColor.a = BannerRuleAlpha;
+            warningImage.sprite = BossRushInkSkin.GetBrushSprite();
+            warningImage.type = Image.Type.Simple;
             warningImage.color = warningColor;
             warningImage.raycastTarget = false;
-            BossRushUI.ApplyPanelSkin(warningImage, 1, BossRushUISkinPart.Hairline);
             captionWarningRule = warningRule.GetComponent<RectTransform>();
             warningRule.SetActive(false);
         }
@@ -949,6 +958,11 @@ namespace BossRush
             if (bannerRect != null) bannerRect.anchoredPosition = new Vector2(0f, AreaTitleY - AreaTitleRise);
             // 细横线从 0 宽度揭示，和淡入同步收尾。
             if (bannerRule != null) bannerRule.sizeDelta = new Vector2(0f, BannerRuleHeight);
+            if (bannerRect != null && BossRushInkTheme.Active)
+            {
+                BossRushInkSkin.SpawnRing(bannerRect, Vector2.zero, 210f, BossRushInkColors.Gold, 0.55f, 2.5f, 0.72f);
+                if (!BossRushUI.IsOfficialHudHidden()) BossRushInkSkin.PlaySfx(BossRushInkSkin.SfxBrushSweep);
+            }
         }
 
         /// <summary>

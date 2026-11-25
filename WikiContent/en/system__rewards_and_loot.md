@@ -14,8 +14,8 @@
 - The number of drops is determined by the Boss's health, ranging from 7 to 15 items (higher health = more drops).
 
 #### Quality Distribution Modes
-The config option `useLegacyBossLootProbabilities` controls the quality distribution algorithm. Default is `true` (Legacy Probability Mode).
-- This setting no longer affects only Standard BossRush; it also applies to the corresponding regular loot-quality paths in From Scratch / Faction War / Blood Hunt as described below.
+The config option `useLegacyBossLootProbabilities` controls the quality distribution algorithm, defaulting to `true` (Legacy Probability Mode).
+- Alongside Standard BossRush crates, it also governs the quality distribution of extra backpack drops from defeated enemies in From Scratch, Faction War, and Blood Hunt.
 
 ##### Legacy Probability Mode (Default)
 - Each quality tier has an independent drop probability determined by a `bonusFactor`.
@@ -39,19 +39,18 @@ The config option `useLegacyBossLootProbabilities` controls the quality distribu
 - Internal high quality distribution: quality 5 : 6 : 7 : 8 = 4 : 3 : 2 : 1
 - No Q5+ guarantee mechanism.
 
-> **Note**: The main gameplay-facing differences between the two modes are the probability distribution algorithm and the Q5+ guarantee behavior. Candidate-pool filtering details can also differ between the two paths.
+> **Note**: The key gameplay difference is the probability curve and whether a Q5+ floor exists; candidate filtering details (such as quest-item exclusions) also differ slightly between paths.
 
 #### Completion Reward Crate
-- After defeating all waves, the completion reward crate no longer appears instantly by the signpost.
-- It now first shows up as a highlighted ghost crate above the player, then materializes and descends slowly before becoming a normal interactable reward crate:
-- Easy (1 Boss/wave): 3 high quality items
-- Normal (multiple Bosses/wave): 10 high quality items
+- After defeating all waves, the completion crate appears as a glowing ghost chest above you, settles onto the ground, and becomes interactable:
+  - Easy (1 Boss/wave): 3 high quality items
+  - Normal (multiple Bosses/wave): 10 high quality items
 
 #### Loot Blacklist
 - The following types of items will not appear in the loot pool:
   - Items flagged as non-droppable
   - Demo-locked items
-- Quest-tagged item handling depends on the active loot-probability path; Legacy mode applies the stricter exclusion rule
+  - Quest-tagged items (Legacy mode excludes them more strictly)
 - Crown drop weight is reduced to 0.1x, lowering its appearance frequency.
 
 ### Infinite Hell Rewards
@@ -82,22 +81,17 @@ The config option `useLegacyBossLootProbabilities` controls the quality distribu
 - Enemies carry random equipment, all of which drops in a loot crate on kill.
 - Equipment quality increases with waves: quality = 1 + (wave/5) + (enemy health/500).
 - Later enemies may drop equipment better than what you currently have.
-- When `useLegacyBossLootProbabilities = true`, From Scratch uses the Legacy Probability Mode for the quality distribution of enemy backpack bonus items, backpack refill items, and extra backpack ammo stacks.
-- This toggle does not change drop counts, equipped weapons, melee weapons, equipped gear, or the ammo currently loaded for combat.
+- When `useLegacyBossLootProbabilities` is enabled, extra backpack supplies and spare ammo stacks roll quality using Legacy Probability Mode (equipped gear, melee, and chambered ammo are unaffected).
 
 ### Faction War Loot
-- Killing an enemy faction's Boss drops a loot crate.
-- Killing a same-faction Boss does not drop a loot crate.
-- Dragon Descendant and BEAR faction promoted minions carry random equipment.
-- When `useLegacyBossLootProbabilities = true`, regular on-death backpack loot in Faction War also switches to the Legacy Probability Mode.
-- The toggle only affects backpack bonus items / backpack refill items / extra backpack ammo stacks, not the enemy's live combat loadout.
+- Killing an enemy faction's Boss drops a loot crate; same-faction kills drop none.
+- Dragon Descendant and BEAR promoted minions carry random equipment.
+- When `useLegacyBossLootProbabilities` is enabled, regular backpack drops follow Legacy Probability Mode (active combat loadouts are unaffected).
 
 ### Blood Hunt Loot
-- When `useLegacyBossLootProbabilities = true`, regular on-death backpack loot in Blood Hunt also switches to the Legacy Probability Mode.
-- This only affects regular backpack loot quality. It does not affect drop counts, bounty bonus drops, extraction rewards, or any other shared high-quality reward-pool payouts.
-- Killing a bounty Boss drops extra items from the shared high-quality reward pool, with the quantity equal to the number of Bounty Marks on that Boss.
-- Upon successful extraction, each Bounty Mark on a player = 1 item from the shared high-quality reward pool, sent to the Storage Point.
-- Both reward sources currently reuse the same shared reward-pool rules.
+- When `useLegacyBossLootProbabilities` is enabled, regular backpack drops follow Legacy Probability Mode; drop counts, bounty bonus drops, and extraction payouts remain untouched.
+- Killing a bounty Boss drops extra items from the shared high-quality reward pool equal to its Bounty Marks.
+- On extraction, each Bounty Mark you hold pays 1 item from that same shared high-quality pool into your Storage Point.
 
 ### Custom Boss Exclusive Drops
 

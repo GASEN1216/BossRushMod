@@ -100,6 +100,8 @@ Dead Bosses auto-replaced with new ones.
 - **Win**: Evacuate during Extraction
 - **Lose**: Die (bleed, Boss attacks, hubris)
 
-[warn] Extraction = 3%/sec bleed. Hesitation is death.
+### Tips
+
+[tip] Extraction = 3%/sec bleed. Hesitation is death.
 
 [tip] See the Blood Hunt strategy guide for detailed tips.

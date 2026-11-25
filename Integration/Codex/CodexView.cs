@@ -493,21 +493,6 @@ namespace BossRush
                 new Vector2(0f, HeaderHeight),
                 new Vector2(0.5f, 1f));
 
-            // 标题栏不铺底色（审美审查 UD-01）：旧的圆角 Header 色块压在面板顶上，四角的弧和面板的弧对不上，
-            // 下面再接直角的进度行，交界处露出两个缺口。层级改靠留白 + 一条分隔线，框线由面板描边一圈画完。
-            GameObject rail = ZombieModeUIHelper.CreateRect(
-                "TitleRail",
-                header.transform,
-                new Vector2(0f, 0.5f),
-                new Vector2(0f, 0.5f),
-                new Vector2(PanelSidePadding, 0f),
-                new Vector2(3f, 24f),
-                new Vector2(0f, 0.5f));
-            Image railImage = rail.AddComponent<Image>();
-            railImage.color = BossRushUIColors.Accent;
-            BossRushUI.ApplyPanelSkin(railImage, 2, BossRushUISkinPart.Hairline);
-            railImage.raycastTarget = false;
-
             _titleText = ZombieModeUIHelper.CreateText(
                 "Title",
                 header.transform,
@@ -520,8 +505,7 @@ namespace BossRush
                 TextAlignmentOptions.Left,
                 BossRushUIColors.TextPrimary);
             _titleText.fontStyle = FontStyles.Bold;
-            // 与下面「已解锁 X / Y」同一条左边线（旧写法 sizeDelta 居中收缩，标题比正文往右缩进了 60px）
-            _titleText.rectTransform.offsetMin = new Vector2(PanelSidePadding + 10f, 0f);
+            _titleText.rectTransform.offsetMin = new Vector2(PanelSidePadding, 0f);
             _titleText.rectTransform.offsetMax = new Vector2(-64f, 0f);
 
             // 关闭按钮：幽灵按钮，常态只有一个「×」，悬停才显出 Danger 底（审美审查 UD-32）。
@@ -648,43 +632,28 @@ namespace BossRush
 
         private void CreateScrollArea()
         {
-            ScrollRect prefab = GetScrollRectPrefab();
-            GameObject scrollViewObj;
+            GameObject scrollViewObj = new GameObject("CodexScrollView");
+            scrollViewObj.transform.SetParent(_panelRoot.transform, false);
+            _scrollRect = scrollViewObj.AddComponent<ScrollRect>();
 
-            if (prefab != null)
-            {
-                _scrollRect = Instantiate(prefab, _panelRoot.transform);
-                scrollViewObj = _scrollRect.gameObject;
-                scrollViewObj.name = "CodexScrollView";
-            }
-            else
-            {
-                scrollViewObj = new GameObject("CodexScrollView");
-                scrollViewObj.transform.SetParent(_panelRoot.transform, false);
-                _scrollRect = scrollViewObj.AddComponent<ScrollRect>();
+            GameObject viewport = new GameObject("Viewport");
+            viewport.transform.SetParent(scrollViewObj.transform, false);
+            viewport.AddComponent<RectMask2D>();
+            RectTransform viewportRect = viewport.GetComponent<RectTransform>();
+            viewportRect.anchorMin = Vector2.zero;
+            viewportRect.anchorMax = Vector2.one;
+            viewportRect.offsetMin = Vector2.zero;
+            viewportRect.offsetMax = Vector2.zero;
+            _scrollRect.viewport = viewportRect;
 
-                GameObject viewport = new GameObject("Viewport");
-                viewport.transform.SetParent(scrollViewObj.transform, false);
-                Image viewportImage = viewport.AddComponent<Image>();
-                viewportImage.color = BossRushUIColors.Surface;
-                Mask mask = viewport.AddComponent<Mask>();
-                mask.showMaskGraphic = false;
-                RectTransform viewportRect = viewport.GetComponent<RectTransform>();
-                viewportRect.anchorMin = Vector2.zero;
-                viewportRect.anchorMax = Vector2.one;
-                viewportRect.offsetMin = Vector2.zero;
-                viewportRect.offsetMax = Vector2.zero;
-                _scrollRect.viewport = viewportRect;
-
-                GameObject content = new GameObject("Content");
-                content.transform.SetParent(viewport.transform, false);
-                _contentContainer = content.AddComponent<RectTransform>();
-                _contentContainer.anchorMin = new Vector2(0f, 1f);
-                _contentContainer.anchorMax = new Vector2(1f, 1f);
-                _contentContainer.pivot = new Vector2(0.5f, 1f);
-                _contentContainer.anchoredPosition = Vector2.zero;
-                _scrollRect.content = _contentContainer;
-            }
+            GameObject content = new GameObject("Content");
+            content.transform.SetParent(viewport.transform, false);
+            _contentContainer = content.AddComponent<RectTransform>();
+            _contentContainer.anchorMin = new Vector2(0f, 1f);
+            _contentContainer.anchorMax = new Vector2(1f, 1f);
+            _contentContainer.pivot = new Vector2(0.5f, 1f);
+            _contentContainer.anchoredPosition = Vector2.zero;
+            _scrollRect.content = _contentContainer;
 
             RectTransform scrollRectTransform = scrollViewObj.GetComponent<RectTransform>();
             scrollRectTransform.anchorMin = new Vector2(0f, 0f);
@@ -692,29 +661,10 @@ namespace BossRush
             scrollRectTransform.offsetMin = new Vector2(8f, FooterHeight);
             scrollRectTransform.offsetMax = new Vector2(-8f, -(HeaderHeight + ProgressHeight + 4f));
 
+            BossRushUI.ConfigureScrollRect(_scrollRect);
             _scrollRect.horizontal = false;
             _scrollRect.vertical = true;
-            _scrollRect.movementType = ScrollRect.MovementType.Elastic;
-            // 取消分页之后整册都在这一条滚动里，滚轮灵敏度必须按「一格滚过多少行卡片」来定：
-            // 旧值 28 在 210px 高的卡片上一下就翻过大半屏（owner 2026-09-20 实测「轻轻一滚就好远」）。
             _scrollRect.scrollSensitivity = ScrollSensitivity;
-
-            if (prefab != null)
-            {
-                _contentContainer = _scrollRect.content;
-                if (_contentContainer == null)
-                {
-                    GameObject content = new GameObject("Content");
-                    content.transform.SetParent(
-                        _scrollRect.viewport != null ? _scrollRect.viewport : scrollViewObj.transform,
-                        false);
-                    _contentContainer = content.AddComponent<RectTransform>();
-                    _contentContainer.anchorMin = new Vector2(0f, 1f);
-                    _contentContainer.anchorMax = new Vector2(1f, 1f);
-                    _contentContainer.pivot = new Vector2(0.5f, 1f);
-                    _scrollRect.content = _contentContainer;
-                }
-            }
 
             EnsureGridLayout(_contentContainer);
         }
@@ -768,19 +718,6 @@ namespace BossRush
             if (button == null) return;
             TextMeshProUGUI label = button.GetComponentInChildren<TextMeshProUGUI>(true);
             if (label != null) label.text = value;
-        }
-
-        private static ScrollRect GetScrollRectPrefab()
-        {
-            try
-            {
-                return Duckov.Utilities.GameplayDataSettings.UIPrefabs.ScrollRect;
-            }
-            catch (Exception)
-            {
-                // 官方 prefab 取不到就走手写回退，不 fail
-                return null;
-            }
         }
 
         #endregion
@@ -864,17 +801,17 @@ namespace BossRush
                 new Vector2(ratio, 0f),
                 new Vector2(ratio, 1f),
                 Vector2.zero,
-                new Vector2(2f, 0f),
+                new Vector2(3f, 0f),
                 new Vector2(0.5f, 0.5f));
 
             Image tickImage = tick.AddComponent<Image>();
-            // 已达成的刻度点亮成 SuccessText（压在 Accent 填充上也分得清），未达成用 Stroke——
-            // 旧的 Divider(α0.32) 压在 Disabled 轨道上几乎看不见。
+            // 已达成的刻度点亮成 SuccessText（压在 Accent 填充上也分得清），未达成用 Stroke
+            tickImage.sprite = BossRushInkSkin.GetVerticalBrushSprite();
+            tickImage.type = Image.Type.Sliced;
+            tickImage.pixelsPerUnitMultiplier = 3f;
             tickImage.color = unlocked >= threshold
                 ? BossRushUIColors.SuccessText
                 : BossRushUIColors.Stroke;
-            // 2px 细条走细条档：没有 sprite 的裸 quad 在非整数画布缩放下时有时无（审美审查 UD-33）
-            BossRushUI.ApplyPanelSkin(tickImage, 1, BossRushUISkinPart.Hairline);
             tickImage.raycastTarget = false;
         }
 

@@ -261,6 +261,20 @@ namespace BossRush
             fastestText.enableAutoSizing = false;
             fastestText.raycastTarget = false;
 
+            RectTransform slainSeal = BossRushInkWidgets.CreateSealBadge(
+                card.transform,
+                L10n.T("已诛", "SLAIN"),
+                36f,
+                BossRushInkColors.Cinnabar,
+                Vector2.zero,
+                -10f,
+                false);
+            if (slainSeal != null)
+            {
+                slainSeal.anchorMin = slainSeal.anchorMax = new Vector2(1f, 1f);
+                slainSeal.anchoredPosition = new Vector2(-24f, -24f);
+            }
+
             return card;
         }
 
@@ -395,6 +409,9 @@ namespace BossRush
                 Button surfaceButton = surface.AddComponent<Button>();
                 surfaceButton.transition = Selectable.Transition.None;
 
+                RectTransform surfaceRect = surface.GetComponent<RectTransform>();
+                BossRushInkSkin.PlaySfx(BossRushInkSkin.SfxPaperTurn);
+
                 CreatePortraitBlock(
                     surface.transform,
                     info,
@@ -402,6 +419,18 @@ namespace BossRush
                     locked,
                     new Vector2(0f, -24f),
                     DetailPortraitSize);
+
+                BossRushInkWidgets.CreateSealBadge(
+                    surface.transform,
+                    locked ? L10n.T("未逢", "UNSEEN") : L10n.T("已诛", "SLAIN"),
+                    64f,
+                    locked ? BossRushInkParchmentColors.Bronze : BossRushInkColors.Cinnabar,
+                    new Vector2(DetailPanelWidth * 0.5f - 62f, DetailPanelHeight * 0.5f - 62f),
+                    -9f,
+                    !locked,
+                    surfaceRect,
+                    0.08f,
+                    locked ? (Color?)BossRushInkParchmentColors.Paper : null);
 
                 TextMeshProUGUI title = ZombieModeUIHelper.CreateText(
                     "DetailName",
@@ -420,14 +449,16 @@ namespace BossRush
                 title.fontSizeMax = TitleFontSize;
                 title.overflowMode = TextOverflowModes.Ellipsis;
 
-                ZombieModeUIHelper.CreateSeparator(
-                    "DetailDivider",
+                RectTransform detailBrush = BossRushInkSkin.CreateBrushStroke(
                     surface.transform,
-                    new Vector2(0f, 1f),
-                    new Vector2(1f, 1f),
+                    "DetailDivider",
+                    new Vector2(DetailPanelWidth - 84f, 6f),
                     new Vector2(0f, -(DetailPortraitSize + 92f)),
-                    2f,
-                    BossRushUIColors.Divider);
+                    locked ? BossRushUIColors.Stroke : BossRushInkColors.Gold);
+                if (detailBrush != null)
+                {
+                    detailBrush.anchorMin = detailBrush.anchorMax = new Vector2(0.5f, 1f);
+                }
 
                 float rowTop = DetailPortraitSize + 116f;
                 CreateDetailRow(surface.transform, rowTop, L10n.T("分类", "Category"), FormatCategory(info));

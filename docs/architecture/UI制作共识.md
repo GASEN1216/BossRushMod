@@ -211,10 +211,14 @@ owner 在逐项商讨玩家愿望时要求「UI、交互逻辑、特效一定要
 | `PlayOpenAnimation` | 0.42 秒从 0.97 缓出到 1、0.3 秒淡入，大面板背后一滴墨洇开再散（自毁，不留墨斑）；面板里的墨笔标题金笔随后写出 |
 | `BossRushUIColors` | 与 `BossRushInkColors` 同色：宣纸字、鎏金强调、朱砂主操作、朱砂危险 |
 
-在这个基础上，旗舰界面按出征令的版式再做一层：
+在这个基础上，全项目界面按出征令（`ArenaExpeditionOrderPanel`）与冒险家日志（`WikiUIManager_InkView`）标杆消除官方旧预制件（`UIPrefabs.Button` / `ScrollRect`）、`TitleRail` / `TopTrace` 装饰竖横线及 `Hairline` 几何进度条的混搭，由 `BossRushInkWidgets` 统一收口水墨高阶件：
 
-- 遗种巢：标题换成 `CreateBrushTitle`；页签改成一行字（不铺底、不描边，悬停字后洇一小片淡金），选中页签是宣纸粗字，下面一笔鎏金切页时边滑边从左重写，配翻纸声；整排页签下托一道淡金横笔。
-- 共享确认框、遗种巢改名框：`BossRushInkTheme.AddTitleStroke` 在标题下配一笔金，随打开动效写出。标题下已经有分隔线的面板（丧尸模式各面板）不再加，分隔线本身已经是淡金横笔。
+- 遗种巢与孵化 / 远征揭晓：标题换成 `CreateBrushTitle`；页签居中改成一行字（常态透明、悬停字后洇淡金、选中宣纸粗字配滑动从左重写的金笔）；孵化预兆 / 揭晓挂水墨火点与振铃落印；远征结算汇总迁至可自上而下展卷的深墨金框卷轴壳（`CreateScrollShell` + 凯旋 / 铭记落印）。
+- 许愿台与星愿揭晓：打开播墨晕与金笔写出，许愿成真戳「愿成」金印与星火爆发；星愿揭晓底部品质笔刷、得赐落印与震环冲击。
+- 独立弹窗与目录系（阿稳原版确认框、成就、鸭皇图鉴、收藏册、全屏看图、Boss 筛选）：撤除全部独立 `UIPrefabs` 预制件与 `TitleRail`，改用 `CreateInkCloseButton`、`CreateHeaderTitle` / `AddLeftOrAlignedStroke`、已诛 / 已授 / 墨藏朱砂印章及水墨卷轴装裱。
+- 《鸭科夫日报》：整体重制为「古宣水墨邸报」（深墨崩边底板 + 宣纸纹理 + 双木卷轴杆 + 朱砂「邸报」印 + 暗朱铜横笔标题底衬 + 墨金签到格 + 朱砂落印签到）；保留 `DailyReportLayoutTable` 坐标与运行时图标，不再加载浅色报纸烤图。
+- Mode G / Mode H / 丧尸模式与战局 HUD：卡片竖条与进度条统一走水墨纵/横毛笔贴图；拍铃与契约落印发墨环鸣响；丧尸 / ModeF / 随机事件 / 装填节拍条维持各自现代/末世文案与配色语义，底板与线框全部融入深墨金笔体系。
+- 共享确认框、遗种巢改名框：`BossRushInkTheme.AddTitleStroke` 在标题下配一笔金，随打开动效写出。标题下已有横笔分隔线的面板不重复添加。
 
 **禁止**：
 

@@ -1,5 +1,13 @@
 # 布满了灰尘的星愿许愿台
 
+<div class="brs-icon">
+
+![星愿许愿台](/images/scenes/bld-fountain.webp)
+*星愿许愿台*
+
+</div>
+
+
 ## 概述
 
 - 布满了灰尘的星愿许愿台是基地里的可建造建筑。

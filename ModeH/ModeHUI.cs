@@ -316,19 +316,20 @@ namespace BossRush
                 _bellButton.onClick.AddListener(delegate { onRingBell(); });
             }
 
-            // 口令窗口倒计时：卡片底边一条圆头细条，按剩余比例从右往左收（改锚点宽度，圆角两端不被压扁）
+            // 口令窗口倒计时：卡片底边一笔水墨倒计时槽，按剩余比例从右往左收
             GameObject track = ZombieModeUIHelper.CreateRect(
                 "ModeH_BellWindow", card.transform,
                 new Vector2(0f, 0f), new Vector2(1f, 0f),
-                new Vector2(0f, 6f), new Vector2(-BellInnerPadding * 2f, BellWindowHeight), new Vector2(0.5f, 0f));
+                new Vector2(0f, 6f), new Vector2(-BellInnerPadding * 2f, BellWindowHeight + 2f), new Vector2(0.5f, 0f));
             GameObject fill = ZombieModeUIHelper.CreateRect(
                 "Fill", track.transform, Vector2.zero, new Vector2(0f, 1f), Vector2.zero, Vector2.zero,
                 new Vector2(0f, 0.5f));
             _bellWindowFill = fill.GetComponent<RectTransform>();
             _bellWindowFillImage = fill.AddComponent<Image>();
+            _bellWindowFillImage.sprite = BossRushInkSkin.GetBrushSprite();
+            _bellWindowFillImage.type = Image.Type.Simple;
             _bellWindowFillImage.color = BossRushUIColors.SuccessText;
             _bellWindowFillImage.raycastTarget = false;
-            BossRushUI.ApplyPanelSkin(_bellWindowFillImage, 2, BossRushUISkinPart.Hairline);
             _bellWindowFillImage.enabled = false;
             _bellWindowShown = -1f;
 
@@ -527,8 +528,14 @@ namespace BossRush
             else
             {
                 StartBellTween();
-                // 拍下去那一下的回执：徽章弹一下（只在「可拍 → 照做中」这条边上）
-                if (previous == BellStateReady && state == BellStateActive) _bellPunchElapsed = 0f;
+                // 拍下去那一下的回执：徽章弹一下 + 墨环鸣响（只在「可拍 → 照做中」这条边上）
+                if (previous == BellStateReady && state == BellStateActive)
+                {
+                    _bellPunchElapsed = 0f;
+                    BossRushInkWidgets.PlayActionRipple(
+                        _bellButton.transform, Vector2.zero, 160f,
+                        BossRushUIColors.SuccessText, BossRushInkSkin.SfxChimeStone);
+                }
             }
             UpdateBellWindowBar(windowRemaining);
         }
@@ -701,20 +708,16 @@ namespace BossRush
 
             GameObject track = ZombieModeUIHelper.CreateRect(
                 "ModeH_ProgressTrack", surface.transform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                new Vector2(0f, -56f), new Vector2(innerWidth, 8f), new Vector2(0.5f, 0.5f));
+                new Vector2(0f, -56f), new Vector2(innerWidth, 10f), new Vector2(0.5f, 0.5f));
             Image trackImage = track.AddComponent<Image>();
-            trackImage.color = BossRushUIColors.Header;
-            trackImage.raycastTarget = false;
-            BossRushUI.ApplyPanelSkin(trackImage, 3, BossRushUISkinPart.Hairline);
-            // 填充与轨道同一圆头细条，按进度改锚点宽度（旧写法是直角 Filled 条，满格时四角戳出圆角轨道）
+            // 水墨笔刷填充，按进度改锚点宽度
             GameObject fill = ZombieModeUIHelper.CreateRect(
                 "Fill", track.transform, Vector2.zero, new Vector2(0f, 1f), Vector2.zero, Vector2.zero,
                 new Vector2(0f, 0.5f));
             _diagProgressFill = fill.GetComponent<RectTransform>();
             _diagProgressFillImage = fill.AddComponent<Image>();
-            _diagProgressFillImage.color = BossRushUIColors.Accent;
-            _diagProgressFillImage.raycastTarget = false;
-            BossRushUI.ApplyPanelSkin(_diagProgressFillImage, 3, BossRushUISkinPart.Hairline);
+            BossRushInkWidgets.StyleInkBarPair(
+                trackImage, _diagProgressFillImage, BossRushUIColors.Header, BossRushUIColors.Accent);
             _diagProgressShown = 0f;
             _diagProgressTarget = 0f;
             ApplyDiagnosticsFill(0f);
@@ -819,7 +822,7 @@ namespace BossRush
             ModeHUIPages.Build(page, surface.transform, size, content);
             SyncCancelKey(content);
             if (refresh) RestoreScroll(surface, scroll);
-            else if (!fillPlaceholder) BossRushUI.PlayOpenAnimation(surface);
+            else if (!fillPlaceholder) BossRushInkWidgets.PlayInkSurfaceOpen(surface);
         }
 
         /// <summary>

@@ -49,6 +49,14 @@ Seeds and the food you harvest are not trophies. They can't go on a rack and giv
 
 ## Display bonus
 
+<div class="brs-icon">
+
+![Trophy Showcase](/images/icons/showcase.webp)
+*Trophy Showcase*
+
+</div>
+
+
 - It uses the game's own buildings: build a `Weapon Display Rack` or a `Dummy` from the construction
   menu (either kind, as many as you like). The vanilla `Display Cabinet` only takes exhibits, so Boss
   trophies don't fit in it. It shows up in the menu once you have built the Bitcoin Miner and finished
@@ -72,18 +80,6 @@ Seeds and the food you harvest are not trophies. They can't go on a rack and giv
   **always on**: it counts in the base and in a run.
 - **One of Chapter 3's objectives is to display one trophy first**, then hand in to Jeff.
 
-::: tip
-If you recorded trophies in the old self-built "Trophy Showcase": that cabinet is retired. Once you enter the base, the bonus is recomputed from what is actually displayed on the vanilla racks and dummies. An old cabinet you already built can stay as decoration; it is no longer in the build menu.
-:::
-
-<div class="brs-icon">
-
-![Trophy Showcase](/images/icons/showcase.webp)
-*Trophy Showcase*
-
-</div>
-
-
 ## Jukebox
 
 - Once unlocked, mod battle tracks are appended to the base jukebox's playlist, sitting alongside
@@ -103,9 +99,31 @@ Both shooting and melee trigger these abilities. Allies and targets behind walls
 
 - Wait for the current form to end before eating another harvest.
 - Pausing stops the timer. Expiration, death and scene changes restore your appearance. Forms do not persist between runs.
-- Meals already prepared in an older version still apply their original bonuses on the next run. Newly eaten harvests transform you immediately.
 
 ## Seeds and food
+
+<div class="brs-gallery">
+
+![Dragon Seed](/images/scenes/sc-dragon-seed.webp)
+*Dragon Seed*
+
+![Ember Seed](/images/scenes/sc-ember-seed.webp)
+*Ember Seed*
+
+![Phantom Spore](/images/scenes/sc-phantom-spore.webp)
+*Phantom Spore*
+
+![Dragonbreath Fruit](/images/scenes/sc-dragon-fruit.webp)
+*Dragonbreath Fruit*
+
+![Emberheart Chili](/images/scenes/sc-ember-chili.webp)
+*Emberheart Chili*
+
+![Umbral Mushroom](/images/scenes/sc-phantom-mushroom.webp)
+*Umbral Mushroom*
+
+</div>
+
 
 **Seeds** (2 of each in the starter pack; sold at the base vendor; each Boss drops its own at roughly `25%`)
 
@@ -127,7 +145,7 @@ Both shooting and melee trigger these abilities. Allies and targets behind walls
 - **Do two copies of the same item count twice?** No. One of each kind counts.
 - **What if I display more than 8?** Only the best 8 by quality count, and eight is exactly what earns the extra `+5%`.
 - **Can I eat all three harvests during a run?** Yes. Each transforms you immediately for 30 seconds.
-- **Can I eat before deploying?** New harvests act immediately and end on scene changes. Eat when needed. Meals prepared in an older version still apply on your next run.
+- **Can I eat before deploying?** Harvest buffs start immediately and end on scene changes, so eat them during the run when needed.
 - **Can I stack two forms?** No. Wait for the current transformation to end before eating another harvest.
 - **Are Boss drops the only way to get seeds?** No. You get a starter pack when the Garden opens,
   and the base vendor always stocks them after that. Boss drops are a free bonus.

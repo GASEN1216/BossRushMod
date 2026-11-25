@@ -1,5 +1,13 @@
 # 标准 BossRush
 
+<div class="brs-figure">
+
+![DEMO 终极挑战场地](/images/scenes/map-preview-demo.webp)
+*DEMO 终极挑战场地*
+
+</div>
+
+
 ## 玩法机制
 
 最基础的模式：买张船票，选个地图，进去打 Boss，打完撤离。

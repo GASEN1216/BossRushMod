@@ -52,16 +52,39 @@ namespace BossRush
             RectTransform emblem = BossRushUIHero.CreateEmblem(hero, "ModeH_TitleEmblem",
                 ModeHPresentationAssetCache.GetEmblemSprite(), result ? 56f : 48f);
             BossRushUIHero.PlaceTitleRow(title, emblem, 14f, size.x - 96f, new Vector2(0f, rowY));
+            BossRushInkSkin.CreateBrushStroke(
+                hero, "HeroTitleBrush", new Vector2(result ? 340f : 280f, 5f),
+                new Vector2(0f, rowY - (result ? 28f : 24f)),
+                result ? tone : BossRushInkColors.Gold);
             if (result)
             {
                 TextMeshProUGUI caption = CreateHeroText(hero, "ModeH_TitleCaption", content.Title, 16f,
                     BossRushUIColors.TextSecondary, size.x - 48f);
                 caption.rectTransform.anchoredPosition = new Vector2(0f, rowY + 46f);
+                bool victory = content.ResultTone == ModeHResultTone.Victory;
+                RectTransform seal = BossRushInkWidgets.CreateSealBadge(
+                    hero,
+                    victory ? L10n.T("胜出", "VICTORY") : L10n.T("败绩", "DEFEAT"),
+                    68f,
+                    victory ? BossRushInkColors.Gold : BossRushInkColors.Cinnabar,
+                    new Vector2(size.x * 0.5f - 78f, rowY),
+                    -8f,
+                    !content.Refresh,
+                    surface as RectTransform,
+                    0.12f,
+                    victory ? (Color?)BossRushInkColors.InkWash : null);
                 if (!content.Refresh)
                 {
                     // 胜负是这一页的主角：稍晚半拍升起来，读起来像「揭晓」
                     BossRushUIEntranceAnimation.Play(title.gameObject, 0.1f, 0.3f, 10f);
                     if (emblem != null) BossRushUIEntranceAnimation.Play(emblem.gameObject, 0.06f, 0.3f, 10f);
+                    BossRushInkSkin.SpawnRing(hero, new Vector2(0f, rowY), 160f, tone, 0.6f, 2.5f, 0.55f);
+                    if (victory)
+                    {
+                        BossRushInkEmberField embers = BossRushInkWidgets.AttachEmberField(
+                            hero, BossRushInkColors.Gold, BossRushInkColors.Ember, true, 12, 0.16f);
+                        if (embers != null) embers.SpawnBurst(8);
+                    }
                 }
             }
             contentTop = panelSize.y * 0.5f - HeroInset - height - 16f;
@@ -98,6 +121,18 @@ namespace BossRush
                 new Vector2(width - 48f, ResultCardHeight - 8f), TextAlignmentOptions.Center, tone);
             text.enableAutoSizing = false;
             BossRushUI.ApplyGameFont(text);
+            bool victory = content.ResultTone == ModeHResultTone.Victory;
+            BossRushInkWidgets.CreateSealBadge(
+                card.transform,
+                victory ? L10n.T("胜出", "VICTORY") : L10n.T("败绩", "DEFEAT"),
+                56f,
+                victory ? BossRushInkColors.Gold : BossRushInkColors.Cinnabar,
+                new Vector2(width * 0.5f - 54f, 0f),
+                -8f,
+                !content.Refresh,
+                card.GetComponent<RectTransform>(),
+                0.08f,
+                victory ? (Color?)BossRushInkColors.InkWash : null);
             if (!content.Refresh) BossRushUIEntranceAnimation.Play(card, 0f, 0.28f, 12f);
             return topY - ResultCardHeight - 16f;
         }
@@ -133,7 +168,8 @@ namespace BossRush
             if (stroke != null)
             {
                 Image strokeImage = stroke.GetComponent<Image>();
-                Color rest = selected ? BossRushUIColors.Accent : BossRushUIColors.Stroke;
+                // 选中描边用 WarningText：水墨主题下 Accent 与 Stroke 同为鎏金、只差透明度，分不出选中（UI 制作共识）。
+                Color rest = selected ? BossRushUIColors.WarningText : BossRushUIColors.Stroke;
                 if (strokeImage != null) strokeImage.color = rest;
                 card.gameObject.AddComponent<ModeHCardHover>().Bind(button, strokeImage, rest);
             }
@@ -449,7 +485,8 @@ namespace BossRush
         {
             if (_stroke != null && _target != null && _target.IsInteractable())
             {
-                _stroke.color = BossRushUIColors.Accent;
+                // 选中卡（常亮 WarningText）悬停时不褪成更暗的 Accent。
+                _stroke.color = _rest == BossRushUIColors.WarningText ? _rest : BossRushUIColors.Accent;
             }
         }
 

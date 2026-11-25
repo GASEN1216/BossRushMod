@@ -80,6 +80,17 @@ namespace BossRush
             title.overflowMode = TextOverflowModes.Ellipsis;
             BossRushUI.ApplyGameFont(title);
             if (detail.Shiny) PetNestShinyTextShimmer.Attach(title);
+            BossRushInkWidgets.AddLeftOrAlignedStroke(title, detail.Shiny ? BossRushInkColors.Gold : BossRushInkColors.GoldSoft, 7f, true);
+            BossRushInkWidgets.CreateSealBadge(
+                card.transform,
+                detail.Shiny ? L10n.T("异种", "SHINY") : L10n.T("血脉", "LORE"),
+                48f,
+                detail.Shiny ? BossRushInkColors.Gold : BossRushInkColors.Cinnabar,
+                new Vector2(LineageCardSize.x * 0.5f - 48f, LineageCardSize.y * 0.5f - 44f),
+                -9f,
+                true,
+                card.GetComponent<RectTransform>(),
+                0.10f);
 
             TextMeshProUGUI subtitle = ZombieModeUIHelper.CreateText("Subtitle", card.transform, detail.Subtitle ?? string.Empty, 18f,
                 new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(left, -78f), new Vector2(textWidth, 30f),

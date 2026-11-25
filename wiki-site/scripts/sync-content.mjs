@@ -45,64 +45,41 @@ const CONTENT_FILES = ['easter-eggs.md'];
 
 // ── 配图 ────────────────────────────────────────────────
 // 清单由 tools/build_wiki_images.py 生成；缺文件时降级为「不配图」，不阻断同步。
+// 放置表与多图文案的单一事实源为 WikiContent/illustrations.json（供站点与游戏内百科共用）。
 const MANIFEST_PATH = join(__dirname, 'image-manifest.json');
-let IMAGES = { codex: [], campaign: [], icons: [] };
+const ILLUSTRATIONS_PATH = join(MOD_ROOT, 'WikiContent', 'illustrations.json');
+let IMAGES = { codex: [], campaign: [], icons: [], diagrams: [], scenes: [] };
 try {
   IMAGES = JSON.parse(readFileSync(MANIFEST_PATH, 'utf-8'));
 } catch {
   console.warn('[sync] image-manifest.json 缺失或损坏，本次不注入配图');
 }
 
-const imageByKey = new Map();
-for (const group of Object.values(IMAGES)) {
-  for (const item of group ?? []) imageByKey.set(item.key, item);
+let IMAGE_PLACEMENT = {};
+let ILLUSTRATION_ASSETS = {};
+try {
+  const illData = JSON.parse(readFileSync(ILLUSTRATIONS_PATH, 'utf-8'));
+  IMAGE_PLACEMENT = illData.entries ?? {};
+  ILLUSTRATION_ASSETS = illData.assets ?? {};
+} catch {
+  console.warn('[sync] WikiContent/illustrations.json 缺失或损坏，本次不注入配图');
 }
 
-/**
- * entryId → 配图位置。
- *
- * `at` 是**标题序号**（从 0 数，含页面标题），不是标题文字：
- * 中英两版的标题层级序列逐条一致（同步时会校验，不一致直接报错），
- * 所以同一个序号在两种语言里指向同一小节，比匹配标题文字稳得多。
- *
- * `mode`：
- *   'after-heading' —— 插在该标题行的正下方（配图先于正文，适合章节海报）
- *   'section-end'   —— 插在该小节末尾、下一个标题之前（适合总结性的画廊）
- */
-const IMAGE_PLACEMENT = {
-  equipment__roll_call_ledger: [
-    { at: 0, mode: 'section-end', kind: 'icon', keys: ['eq-roll-call-ledger'] },
-  ],
-  system__codex: [
-    // [2] = 「怎么打开」：讲在商店买书，旁边就给出书长什么样
-    { at: 2, mode: 'section-end', kind: 'icon', keys: ['codex-book'] },
-    // [5] = 「哪些 Boss 会进图鉴」：讲完收录范围紧接着摆立绘，正好对上
-    { at: 5, mode: 'section-end', kind: 'gallery', group: 'codex' },
-  ],
-  system__campaign: [
-    { at: 1, mode: 'section-end', kind: 'figure', keys: ['portrait-broker'] },
-    { at: 3, mode: 'section-end', kind: 'icon', keys: ['campaign-board'] },
-    { at: 8, mode: 'after-heading', kind: 'figure', keys: ['poster-ch1'] },
-    { at: 9, mode: 'after-heading', kind: 'figure', keys: ['poster-ch2'] },
-    { at: 10, mode: 'after-heading', kind: 'figure', keys: ['poster-ch3'] },
-    { at: 11, mode: 'after-heading', kind: 'figure', keys: ['poster-ch4'] },
-    { at: 12, mode: 'after-heading', kind: 'figure', keys: ['poster-ch5'] },
-    { at: 13, mode: 'after-heading', kind: 'figure', keys: ['poster-ch6'] },
-    { at: 14, mode: 'after-heading', kind: 'figure', keys: ['portrait-champion'] },
-  ],
-  system__daily_report: [
-    { at: 2, mode: 'section-end', kind: 'icon', keys: ['daily-mailbox'] },
-  ],
-  system__back_mountain: [
-    { at: 4, mode: 'section-end', kind: 'icon', keys: ['showcase'] },
-  ],
-  system__pet_nest: [
-    { at: 4, mode: 'section-end', kind: 'icon', keys: ['petnest', 'relic-egg'] },
-  ],
-  system__affix_forge: [
-    { at: 3, mode: 'section-end', kind: 'icon', keys: ['forge-stone'] },
-  ],
-};
+const imageByKey = new Map();
+for (const group of Object.values(IMAGES)) {
+  for (const item of group ?? []) {
+    const assetMeta = ILLUSTRATION_ASSETS[item.key];
+    const enriched = assetMeta
+      ? {
+          ...item,
+          srcEn: item.srcEn || assetMeta.webSrcEn || undefined,
+          zh: item.zh || assetMeta.zh,
+          en: item.en || assetMeta.en,
+        }
+      : item;
+    imageByKey.set(item.key, enriched);
+  }
+}
 
 const KIND_CLASS = { gallery: 'brs-gallery', figure: 'brs-figure', icon: 'brs-icon' };
 
@@ -120,9 +97,11 @@ const KIND_CLASS = { gallery: 'brs-gallery', figure: 'brs-figure', icon: 'brs-ic
 function renderImageBlock(kind, items, lang) {
   if (!items.length) return '';
   const cells = items.map((item) => {
-    const caption = (lang === 'en' ? item.en : item.zh) || item.key;
+    const meta = ILLUSTRATION_ASSETS[item.key];
+    const caption = (lang === 'en' ? (item.en || meta?.en) : (item.zh || meta?.zh)) || item.key;
     const alt = caption.replace(/[[\]]/g, '');
-    return `![${alt}](${item.src})\n*${caption}*`;
+    const src = (lang === 'en' && (item.srcEn || meta?.webSrcEn)) || item.src;
+    return `![${alt}](${src})\n*${caption}*`;
   });
   return `<div class="${KIND_CLASS[kind]}">\n\n${cells.join('\n\n')}\n\n</div>`;
 }
@@ -148,9 +127,9 @@ function injectImages(content, entryId, lang) {
       continue;
     }
 
-    const items = spec.kind === 'gallery'
-      ? (IMAGES[spec.group] ?? [])
-      : spec.keys.map((k) => imageByKey.get(k)).filter(Boolean);
+    const items = (spec.keys && spec.keys.length)
+      ? spec.keys.map((k) => imageByKey.get(k)).filter(Boolean)
+      : (spec.group ? (IMAGES[spec.group] ?? []) : []);
     if (!items.length) {
       console.warn(`[sync] ${entryId}: 配图 ${spec.keys ?? spec.group} 在清单里找不到，跳过`);
       continue;

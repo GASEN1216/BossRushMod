@@ -15,6 +15,44 @@ Put simply: the rules of the run stay the same, but for the next minute you'll h
 
 ## Event list
 
+<div class="brs-gallery">
+
+![Airdrop Supply](/images/scenes/evt-airdrop.webp)
+*Airdrop Supply*
+
+![Blood Moon](/images/scenes/evt-bloodmoon.webp)
+*Blood Moon*
+
+![Boss Intrusion](/images/scenes/evt-intrusion.webp)
+*Boss Intrusion*
+
+![Wandering Merchant](/images/scenes/evt-merchant.webp)
+*Wandering Merchant*
+
+![Feint](/images/scenes/evt-feint.webp)
+*Feint*
+
+![Duck King's Fireworks](/images/scenes/evt-fireworks.webp)
+*Duck King's Fireworks*
+
+![Golden Duck Rain](/images/scenes/evt-duckrain.webp)
+*Golden Duck Rain*
+
+![Duck Parade](/images/scenes/evt-parade.webp)
+*Duck Parade*
+
+![Wild Chase](/images/scenes/evt-wildchase.webp)
+*Wild Chase*
+
+![Melee Carnival](/images/scenes/evt-melee.webp)
+*Melee Carnival*
+
+![Heavy Steps](/images/scenes/evt-heavysteps.webp)
+*Heavy Steps*
+
+</div>
+
+
 The percentages below describe the first draw. Consecutive repeats are excluded, so later probabilities vary slightly. Airdrop Supply and Golden Duck Rain each stay at or below `5%` on every draw.
 
 ### Airdrop Supply (about 4.35%, 45 seconds)

@@ -6,6 +6,29 @@ A goblin created by J-Lab, way smarter than your average green dude. **Your go-t
 
 ## Services
 
+<div class="brs-gallery">
+
+![Cold Quench Fluid](/images/scenes/sc-cold-quench.webp)
+*Cold Quench Fluid*
+
+![Tempering Solvent](/images/scenes/sc-tempering-solvent.webp)
+*Tempering Solvent*
+
+![Affix Forge Stone](/images/icons/forge-stone.webp)
+*Affix Forge Stone*
+
+![Diamond](/images/scenes/sc-diamond.webp)
+*Diamond*
+
+![Brick Stone](/images/scenes/sc-brick-stone.webp)
+*Brick Stone*
+
+![Dingdang's Doodle](/images/scenes/sc-dingdang-drawing.webp)
+*Dingdang's Doodle*
+
+</div>
+
+
 - **Chat** (from start) — Daily chat, Affinity +40/day
 - **Gift** (from start) — 1 gift/day
 - **Shop** (Lv.2) — Stock unlocks with affinity, including Diamond and Cold Quench Fluid. Affix Forge Stones arrive at Lv.10; higher affinity also gives discounts

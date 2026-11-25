@@ -12,6 +12,26 @@ BossRush 里最自由、也最乱的模式：选一个阵营，满地图 Boss �
 
 ## 选阵营——你是哪一伙的？
 
+<div class="brs-gallery">
+
+![随机营旗](/images/scenes/sc-flag-random.webp)
+*随机营旗*
+
+![狼群营旗](/images/scenes/sc-flag-wolf.webp)
+*狼群营旗*
+
+![BEAR 营旗](/images/scenes/sc-flag-bear.webp)
+*BEAR 营旗*
+
+![可召唤随从：煤球](/images/scenes/codex-snowpmc.webp)
+*可召唤随从：煤球*
+
+![神秘商人](/images/scenes/codex-myst-merchant.webp)
+*神秘商人*
+
+</div>
+
+
 买什么旗就加什么阵营：
 
 - **随机营旗** — 随机分到 5 个阵营之一，开盲盒式体验
@@ -27,7 +47,10 @@ BossRush 里最自由、也最乱的模式：选一个阵营，满地图 Boss �
 ### 敌我识别
 
 - 同阵营不会互相伤害，不同阵营自动敌对
+### 界面显示
+
 - 血条名字后面会显示阵营标签，谁是敌人谁是队友一目了然
+- 你自己的血条上会显示名称与当前所属阵营
 - 独狼？满屏都是红名，习惯就好
 
 ### 越杀越强——成长系统

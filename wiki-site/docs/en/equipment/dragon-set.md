@@ -6,6 +6,17 @@ Your first custom set. Dropped by Dragon Descendant. Equip both pieces and fire 
 
 ## Pieces
 
+<div class="brs-gallery">
+
+![Crimson Dragon Helm](/images/scenes/sc-dragon-helm.webp)
+*Crimson Dragon Helm*
+
+![Flame Scale Armor](/images/scenes/sc-dragon-armor.webp)
+*Flame Scale Armor*
+
+</div>
+
+
 ### Crimson Dragon Helm
 Armor 7 / Durability 200 / Physical damage taken -10% / Storm +1 / Cold +1 / Gun Crit Dmg +10% / Fire damage taken -15% / Shock damage taken -15% / **Poison vuln +30%** / **FOV -20%**
 - Drop: Dragon Descendant (30%)
@@ -16,9 +27,12 @@ Armor 7 / Durability 200 / Physical damage taken -20% / Storm +1 / Cold +1 / Fir
 
 ## Set Effect (Both Equipped)
 
+### Passive: Fire Refund
 - **Fire refund** — Fire damage still hits you first; a frame later you get back 80% of the fire portion as healing. Net loss is roughly 20%, not zero
 - Burning (the DoT debuff) is untouched by this: if you're on fire, you're still on fire
 - **Dragon Eye** — Red breathing glow on your head (cosmetic)
+
+### Active: Dragon Dash
 - **Dash** — Double-tap direction key, 3m distance, 1.5s cooldown, orange-red afterimage. Pure repositioning, no invincibility frames: you can still get hit mid-dash
 
 ::: tip

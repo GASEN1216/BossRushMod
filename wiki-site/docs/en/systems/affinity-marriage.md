@@ -24,7 +24,7 @@ Every NPC in the affinity tab has a "Gift notes" section with a Likes line and a
 - a collectible whose card says who likes it is recorded as that item when you give it to the right person;
 - neutral gifts record nothing.
 
-The first time you learn something, a small paper slip reading "Gift notes updated" sticks to the affinity popup. Entries you haven't found only show how many remain, never what they are. Gift notes are saved with affinity; older saves load with empty notes.
+The first time you learn something, a small paper slip reading "Gift notes updated" sticks to the affinity popup. Entries you haven't found only show how many remain, never what they are, and discovered notes save alongside affinity.
 
 Walk up to Dingdang, Yu Zhi, the courier or the residents of Sky Island and Tidegate and their name floats above their head: it fades in within 8 m and fades out beyond 10 m. Nothing shows from afar, and names hide with the game HUD or when paused.
 
@@ -39,6 +39,20 @@ See individual Dingdang and Yu Zhi pages.
 ---
 
 ## Marriage
+
+<div class="brs-gallery">
+
+![Wedding Chapel](/images/scenes/bld-chapel.webp)
+*Wedding Chapel*
+
+![Diamond Ring](/images/scenes/sc-diamond-ring.webp)
+*Diamond Ring*
+
+![Birthday Cake](/images/scenes/sc-birthday-cake.webp)
+*Birthday Cake*
+
+</div>
+
 
 ### Requirements
 

@@ -260,9 +260,6 @@ namespace BossRush
             root = ZombieModeUIHelper.CreateRect(name, parent, anchorMin, anchorMax, position, size, new Vector2(0.5f, 0.5f));
             root.AddComponent<LayoutElement>().ignoreLayout = true;
             Image track = root.AddComponent<Image>();
-            track.color = new Color(BossRushUIColors.Stroke.r, BossRushUIColors.Stroke.g, BossRushUIColors.Stroke.b, 0.28f);
-            track.raycastTarget = false;
-            BossRushUI.ApplyPanelSkin(track, 2, BossRushUISkinPart.Hairline);
 
             GameObject fillObject = ZombieModeUIHelper.CreateRect("Fill", root.transform, Vector2.zero, new Vector2(0f, 1f),
                 Vector2.zero, Vector2.zero, new Vector2(0f, 0.5f));
@@ -270,9 +267,10 @@ namespace BossRush
             fillRect.offsetMin = Vector2.zero;
             fillRect.offsetMax = Vector2.zero;
             fill = fillObject.AddComponent<Image>();
-            fill.color = BossRushUIColors.Accent;
-            fill.raycastTarget = false;
-            BossRushUI.ApplyPanelSkin(fill, 2, BossRushUISkinPart.Hairline);
+            BossRushInkWidgets.StyleInkBarPair(
+                track, fill,
+                new Color(BossRushUIColors.Stroke.r, BossRushUIColors.Stroke.g, BossRushUIColors.Stroke.b, 0.28f),
+                BossRushUIColors.Accent);
             fillObject.SetActive(false);
             root.SetActive(false);
         }

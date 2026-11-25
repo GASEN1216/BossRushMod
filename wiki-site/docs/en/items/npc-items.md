@@ -1,5 +1,28 @@
 # NPC Related Items
 
+<div class="brs-gallery">
+
+![Diamond Ring](/images/scenes/sc-diamond-ring.webp)
+*Diamond Ring*
+
+![Brick Stone](/images/scenes/sc-brick-stone.webp)
+*Brick Stone*
+
+![Peace Charm](/images/scenes/sc-peace-charm.webp)
+*Peace Charm*
+
+![Awen Courier Token](/images/scenes/sc-awen-token.webp)
+*Awen Courier Token*
+
+![Dingdang's Doodle](/images/scenes/sc-dingdang-drawing.webp)
+*Dingdang's Doodle*
+
+![Wild Horn](/images/scenes/sc-wild-horn.webp)
+*Wild Horn*
+
+</div>
+
+
 ## Diamond
 
 Real diamond. Use it to summon Dingdang (+5 Affinity), or gift it (+80 to either NPC).

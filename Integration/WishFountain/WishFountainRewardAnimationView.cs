@@ -185,9 +185,12 @@ namespace BossRush
             stageRect = stage.GetComponent<RectTransform>();
             StretchRect(stageRect);
 
-            titleText = CreateRevealLabel("Title", stageRect, 32f, BossRushUIColors.TextPrimary, new Vector2(0f, 150f), new Vector2(720f, 54f));
+            titleText = CreateRevealLabel("Title", stageRect, 32f, BossRushInkColors.Paper, new Vector2(0f, 154f), new Vector2(720f, 54f));
             titleText.fontStyle = FontStyles.Bold;
             titleText.text = L10n.T("星愿抽奖", "Starwish Draw");
+            titleText.characterSpacing = L10n.IsChinese ? 6f : 2f;
+            BossRushInkWidgets.AddLeftOrAlignedStroke(titleText, BossRushInkColors.Gold, 8f, true);
+            stageEmbers = BossRushInkWidgets.AttachEmberField(stageRect, BossRushInkColors.Gold, BossRushInkColors.Ember, true, 6, 0.22f);
 
             GameObject plate = CreateUiObject("ReelPlate", stageRect, typeof(Image));
             PlaceCentered(plate.GetComponent<RectTransform>(), Vector2.zero, new Vector2(ViewportWidth + 24f, ViewportHeight + 24f));
@@ -212,14 +215,16 @@ namespace BossRush
             reelContentRect = reelContent.GetComponent<RectTransform>();
             PlaceCentered(reelContentRect, Vector2.zero, new Vector2(GetSequenceTotalWidth(), ViewportHeight));
 
-            // 指示器：柔光竖条（程序化横向渐隐）+ 暗色背衬 + 亮芯，上下两个圆角定位点
-            Color markerColor = BossRushUIColors.WarningText;
-            Image markerGlow = CreateMarkerPiece("MarkerGlow", Vector2.zero, new Vector2(24f, MarkerHeight + 16f), WithAlpha(markerColor, 0.32f));
+            // 指示器：水墨竖笔 + 柔光辉晕 + 上下鎏金短笔（消除机械细线感）
+            Color markerColor = BossRushInkColors.Gold;
+            Image markerGlow = CreateMarkerPiece("MarkerGlow", Vector2.zero, new Vector2(26f, MarkerHeight + 18f), WithAlpha(markerColor, 0.30f));
             markerGlow.sprite = GetMarkerBeamSprite();
-            ApplyHairline(CreateMarkerPiece("MarkerShadow", Vector2.zero, new Vector2(4f, MarkerHeight + 8f), WithAlpha(BossRushUIColors.BackdropStrong, 0.6f)));
-            ApplyHairline(CreateMarkerPiece("Marker", Vector2.zero, new Vector2(2f, MarkerHeight + 8f), WithAlpha(markerColor, 0.96f)));
-            ApplyHairline(CreateMarkerPiece("MarkerTopLocator", new Vector2(0f, MarkerHeight * 0.5f + 7f), new Vector2(14f, 4f), markerColor));
-            ApplyHairline(CreateMarkerPiece("MarkerBotLocator", new Vector2(0f, -MarkerHeight * 0.5f - 7f), new Vector2(14f, 4f), markerColor));
+            BossRushInkSkin.CreateVerticalBrushStroke(stageRect, "MarkerBrush",
+                new Vector2(6f, MarkerHeight + 16f), Vector2.zero, WithAlpha(markerColor, 0.92f));
+            BossRushInkSkin.CreateBrushStroke(stageRect, "MarkerTopStroke",
+                new Vector2(24f, 5f), new Vector2(0f, MarkerHeight * 0.5f + 10f), BossRushInkColors.Cinnabar);
+            BossRushInkSkin.CreateBrushStroke(stageRect, "MarkerBotStroke",
+                new Vector2(24f, 5f), new Vector2(0f, -MarkerHeight * 0.5f - 10f), BossRushInkColors.Cinnabar);
 
             hintText = CreateRevealLabel("Hint", stageRect, 15f, BossRushUIColors.TextSecondary, new Vector2(0f, -262f), new Vector2(720f, 28f));
             hintText.text = L10n.T("按 Esc 直接揭晓", "Press Esc to reveal now");
@@ -235,11 +240,6 @@ namespace BossRush
             image.color = color;
             image.raycastTarget = false;
             return image;
-        }
-
-        private static void ApplyHairline(Image image)
-        {
-            BossRushUI.ApplyPanelSkin(image, 1, BossRushUISkinPart.Hairline);
         }
 
         private void BuildSlots()
@@ -271,18 +271,19 @@ namespace BossRush
                 CanvasGroup slotCanvasGroup = slot.GetComponent<CanvasGroup>();
                 slotCanvasGroup.alpha = 0.95f;
 
-                // 品质细条：内缩的圆角细条，贴在卡片底部、不碰圆角
+                // 品质笔刷：内缩的水墨笔触，贴在卡片底部、不碰边框
                 GameObject qualityBar = CreateUiObject("QualityBar", slotRect, typeof(Image));
                 RectTransform qualityBarRect = qualityBar.GetComponent<RectTransform>();
                 qualityBarRect.anchorMin = new Vector2(0f, 0f);
                 qualityBarRect.anchorMax = new Vector2(1f, 0f);
                 qualityBarRect.pivot = new Vector2(0.5f, 0f);
                 qualityBarRect.anchoredPosition = new Vector2(0f, 7f);
-                qualityBarRect.sizeDelta = new Vector2(-28f, QualityBarHeight);
+                qualityBarRect.sizeDelta = new Vector2(-28f, QualityBarHeight + 2f);
                 Image qualityBarImage = qualityBar.GetComponent<Image>();
+                qualityBarImage.sprite = BossRushInkSkin.GetBrushSprite();
+                qualityBarImage.type = Image.Type.Simple;
                 qualityBarImage.color = qualityColor;
                 qualityBarImage.raycastTarget = false;
-                ApplyHairline(qualityBarImage);
 
                 GameObject iconObject = CreateUiObject("Icon", slotRect, typeof(Image));
                 RectTransform iconRect = iconObject.GetComponent<RectTransform>();

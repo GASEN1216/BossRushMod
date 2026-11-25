@@ -47,7 +47,9 @@ def main() -> int:
     adapter_text = ADAPTER.read_text(encoding="utf-8")
 
     for required in (
-        "GameplayDataSettings.UIPrefabs.Button",
+        'ZombieModeUIHelper.CreateButton("ConfirmButton"',
+        'ZombieModeUIHelper.CreateButton("DangerConfirm"',
+        'ZombieModeUIHelper.CreateButton("CancelButton"',
         "CanvasScaler",
         "GraphicRaycaster",
         "RenderMode.ScreenSpaceOverlay",
@@ -73,6 +75,9 @@ def main() -> int:
         if required not in adapter_text:
             return fail("AwenOriginalConfirmDialogueGuard: adapter missing " + required)
 
+    if "GameplayDataSettings.UIPrefabs.Button" in adapter_text:
+        return fail("AwenOriginalConfirmDialogueGuard: adapter regressed to official Button prefab mix-and-match")
+
     hide_index = adapter_text.find("private static void HideDialog()")
     hide_body = adapter_text[hide_index:hide_index + 400] if hide_index >= 0 else ""
     if "UnsubscribeCancelEarly();" not in hide_body:
@@ -86,8 +91,8 @@ def main() -> int:
         if legacy_look in adapter_text:
             return fail("AwenOriginalConfirmDialogueGuard: adapter regressed to legacy look -> " + legacy_look)
 
-    confirm_index = adapter_text.find("confirmButton = UnityEngine.Object.Instantiate(buttonPrefab, footer.transform);")
-    cancel_index = adapter_text.find("cancelButton = UnityEngine.Object.Instantiate(buttonPrefab, footer.transform);")
+    confirm_index = adapter_text.find('confirmButton = ZombieModeUIHelper.CreateButton("ConfirmButton"')
+    cancel_index = adapter_text.find('cancelButton = ZombieModeUIHelper.CreateButton("CancelButton"')
     if confirm_index < 0 or cancel_index < 0:
         return fail("AwenOriginalConfirmDialogueGuard: missing footer button instantiation")
     if confirm_index > cancel_index:

@@ -21,6 +21,23 @@
 - **37 号实验区**（Zone 37 Experimental Area）
 - **迷宫**（Maze）：复杂地形，视野受限
 
+<div class="brs-gallery">
+
+![零号区竞技场预览](/images/scenes/map-preview-zero.webp)
+*零号区竞技场预览*
+
+![DEMO 终极挑战场地](/images/scenes/map-preview-demo.webp)
+*DEMO 终极挑战场地*
+
+![黑市挑战迷宫布局](/images/scenes/map-preview-maze.webp)
+*黑市挑战迷宫布局*
+
+![登云码头](/images/scenes/sky-scene-dock.webp)
+*登云码头*
+
+</div>
+
+
 ## 地图选择方式
 
 - 1. 持有 BossRush 船票

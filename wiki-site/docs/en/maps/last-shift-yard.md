@@ -27,6 +27,14 @@ A railway marshalling yard that stopped running years ago, though freight still 
 - The **last train** is train 8 (the demonstration train counts as train 1). It is always heavy freight and always stops. Once it has stopped, the brake van lowers its rear step on the platform side and an extraction ring appears there: stand in it until the bar fills and you ride out. When the train pulls away, the ring moves north with it for a while, so you can still finish by running alongside.
 - **Yard closed**: after the last train leaves, no more trains come and the switch lever is wired down. The west service gate and the east escort gate are padlocked and the railcar stops running, leaving only the north road. As soon as the last train pulls in, a checkpoint goes up on the north road (an escort sergeant and three escorts). Once the yard is closed, escorts who aren't already fighting sweep toward you every 10 seconds, and replacements come fastest.
 
+<div class="brs-figure">
+
+![Last Shift Yard track switches, premium platform, and escort flow](/images/diagrams/lastshift_yard_en.webp)
+*Last Shift Yard track switches, premium platform, and escort flow*
+
+</div>
+
+
 ## Sealed cargo and looting
 
 - Each run has a manifest: medical, repair or precision. **Every train that stops can be signed for once**: follow the HUD objective to the sealed cabinet on the side where the train stops.
@@ -51,30 +59,20 @@ Closed exits have no ground ring. Step into one and you'll see why it's shut. Th
 
 ## The escorts, the cargo guards and the chief escort
 
-- Escorts patrol, hold posts and follow the freight to whichever platform it stops at. Up to 10 patrols and post guards are out at once (roaming patrols are capped at 5, 7 once the yard closes), 40-46 over a whole run, and the ones you take down are gradually replaced; train escorts are counted separately (see above).
-- **Cargo guards**: every place with crates has a crew watching it: the west unloading shed, the east platform, the inspection shed, the weigh shed by the repair shed, the bond store door, the escort yard, the east crew room, under the north bridge and the returns stack in the northeast. The canteen table and the relay stock have no crates; each has an even chance of a crew resting there each run. A crew only takes up its post once you're about seventy metres away. Cargo guards are counted separately: up to 10 at once, 80 over a run.
-  - The crews by the risk cabinets (inspection shed, bond store, northeast returns) and the checkpoint are always awake on guard; at the other places with crates, each run it's an even chance between standing guard and resting in a circle.
-  - Crews on guard stay awake near their post and shoot when they see you.
-  - Resting crews can see you within about 11 m in front of them if no wall or steam is in the way, or if you get within 3.5 m. They can hear you: footsteps (walking while aiming down sights makes none), gunfire within 30 m, a grenade landing. The store alarm going off within 30 m wakes them too. When you get within a dozen-odd metres they chat for a moment; they haven't noticed you yet.
-  - If one of them gets shot or goes down, the whole crew wakes up and comes after you.
-  - Ringing the railcar bell brings a resting crew within 50 m of the bell over to look. After about 35 seconds they walk back and settle down again, unless they spot you on the way. The store alarm, the repair shed buzzer and incoming trains don't move them.
-  - A crew you haven't fought stands down once you're more than 85 m away, and is back on post when you return.
-  - A place whose crew you wiped out stays empty until the next train stops on that side (west or east): a squad gets off the brake van to restaff it, so going back there later means another fight.
-  - The important places are led by a squad leader; see the next section.
-- The **chief escort** stands guard behind the sealed cabinet on the platform where the train stops, and has 1000 health. He appears behind the cabinet once the first stopping train is assigned a platform. Later switch changes send him walking to the other platform, though he will still engage enemies on the way. An ordinary escort watches the bond store door. He fights with his gun as usual, and once he's spotted you he alternates two moves:
-  - **Line closed**: he stands still, raises a red flag, gives two short whistles and lays a yellow-and-black striped lane on the ground toward you (about 2.6 m wide, up to 40 m long, cut short by a wall, cover or a train car pulling in). About 1.5 seconds later he rakes it for 1.5 seconds, 10 damage every 0.3 s. The lane doesn't turn to follow you: step sideways out of it, or get behind a wall or a car. Service steam can stop him starting one, but it won't stop a lane that's already laid.
-  - **Track torpedoes**: one long whistle, then he throws 2 torpedoes at your feet (a little ahead of where you're running) and to one side. Each lands with a red glow on the ground and goes off about 1.3 seconds later (2.2 m radius, 25 damage, walls block it). Step out of the red ring.
-  - At half health he gives three short whistles and switches to a hand lamp. From then on he lays two lanes at once (the second angled toward the side you're moving to; stand between them or get into cover) with only about 1.2 seconds' warning, throws 3 torpedoes in a row that go off after about 1.05 seconds, and waits less between moves.
-  - The lane drives you into cover; the torpedoes flush you out of it. On return visits he sometimes rides in on the brake van and jumps off at the platform.
-- Down the chief escort to take the **Escort Steel Stamp** from him.
+- **Escorts & cargo guards**: up to 10 roaming/post escorts at once (40–46 per run; roaming patrols scale from 5 to 7 after closing). Cargo guards are tracked separately across 9 crate posts and 2 rest spots (up to 10 active, 80 per run).
+  - Risk-cabinet crews (inspection shed, bond store, NE returns) and the checkpoint stay alert; other crate posts flip a coin between standing guard and resting (detect you within 11m ahead / 3.5m proximity, footsteps, gunfire or store alarm within 30m, or the railcar bell within 50m for 35s).
+  - Unengaged crews pull off beyond 85m and return when you do; cleared posts stay empty until the next train docks on that platform side.
+- **Chief Escort** (1,000 HP): guards behind the docked train's sealed cabinet and crosses platforms whenever you flip the switch; drops the **Escort Steel Stamp** (consumed to unlock the bond store's sealed side cabinet on your *next* run; lost on death).
+  - **Line closed**: raises a red flag, blows two short whistles, and sweeps a 2.6m yellow-black lane (1.5s warning; step sideways or use walls/train cars; below 50% HP lays two angled lanes simultaneously after 1.2s).
+  - **Track torpedoes**: one long whistle throws 2 glowing rings onto your path (1.3s fuse, 2.2m blast, 25 dmg; below 50% HP throws 3 in 1.05s).
 
 ## Squad leaders
 
-The three squad leaders aren't bosses (no boss health bar, no special drop), but they're tougher than escorts (about 2.6 times the ordinary health) and each has a move nobody else uses. They lead cargo guards, the brake van brings them once you've signed two cabinets, and the last train always carries one.
+None of the three are full Bosses, though they pack ~2.6× normal escort HP and lead cargo posts, two-cabinet train waves, and the Last Train:
 
-- **Signal Foreman** (carries a red lamp): when he can see you, a red beam reaches out from his lamp. Hold it on you for about 1.4 seconds and he has **called you out**: every resting or guarding crew within 40 m wakes up, nearby escorts who aren't already fighting rush you, and a red ring follows your feet for 6 seconds. Get behind a wall, a train car or service steam and the beam breaks; he tries again after about 5 seconds, and once he has called you out he waits about 16 seconds. Take him first.
-- **Shunting Master** (raises a red flag): he stands still, raises the flag, gives one long whistle and lays a yellow-and-black warning strip from his feet toward you (up to 34 m, cut short by a wall, cover or a train car pulling in). About 1.1 seconds later he lets a runaway hand cart go down it at 15 m/s: it does 35 damage to you (armour applies) and 60 to any escort it hits, his own crew included. Step out of the strip, or stand behind his crew and let the cart do the work. About once every 8 seconds.
-- **Escort Sergeant**: when he can see you, he shoves an inspection trolley out in front of him as cover (it blocks bullets, is taken away after 22 seconds, and you can use it too). If you stay behind cover for about 2.5 seconds, he shouts "Push up!" and up to 5 escorts within 25 m flank you from both sides. Take him down and the flanking stops.
+- **Signal Foreman** (red lamp): tracking you for ~1.4s **calls you out**, waking every post within 40m and painting a 6s red target ring under you (break line of sight with walls, wagons, or steam — kill first).
+- **Shunting Master** (red flag): every ~8s lays a 34m strip and launches a 15 m/s runaway hand cart after ~1.1s — hits you for 35 dmg and **his own escorts for 60 dmg** (lure his squad into the lane).
+- **Escort Sergeant**: pushes out an inspection trolley for 22s bullet cover; hug your own cover for ~2.5s and up to 5 escorts within 25m flank you from both sides.
 
 ## The stamp and the sealed side cabinet
 
@@ -91,6 +89,17 @@ The three squad leaders aren't bosses (no boss health bar, no special drop), but
 - The story is optional and doesn't affect looting or extraction.
 
 ## Items
+
+<div class="brs-gallery">
+
+![Escort Steel Stamp](/images/scenes/sc-lastshift-stamp.webp)
+*Escort Steel Stamp*
+
+![Last Shift Ticket Stub](/images/scenes/sc-lastshift-stub.webp)
+*Last Shift Ticket Stub*
+
+</div>
+
 
 - **Escort Steel Stamp** (500117): dropped by the chief escort; opens the sealed side cabinet once on your next trip, then it's gone.
 - **Last Shift Ticket Stub** (500118): from reading all three clues; give it to Yu Xiang at the warehouse ticket desk to finish the story. Can't be sold.

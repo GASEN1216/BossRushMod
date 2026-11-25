@@ -4,11 +4,23 @@ Three regular NPC companions have their own services and personality, alongside 
 
 ## Names and Vision
 
-Custom NPCs follow vanilla name display: no extra permanent overhead names, while dialogue, shops and interaction screens still show their names. The same rule applies to top-down, first-person and third-person views.
-
-On raid maps, NPC models hide and reappear with player vision instead of remaining visible through walls or fog of war. They remain available for interaction when back in view. This fog hiding does not apply at base.
+Custom NPCs follow vanilla visibility rules: names appear in dialogue, shops, and interaction prompts, and on raid maps their models follow your line of sight instead of showing through walls (disabled at base).
 
 ## The Cast
+
+<div class="brs-gallery">
+
+![Fuzhou (Dock Refit & Supplies)](/images/scenes/sky-portrait-fuzhou.webp)
+*Fuzhou (Dock Refit & Supplies)*
+
+![Silent Bell Keeper (Bell Court)](/images/scenes/sky-portrait-bellkeeper.webp)
+*Silent Bell Keeper (Bell Court)*
+
+![Mystery Merchant](/images/scenes/codex-myst-merchant.webp)
+*Mystery Merchant*
+
+</div>
+
 
 - **Dingdang** (Goblin Smith) — Reforge, affix forging, shop, daily chat
 - **Yu Zhi** (Nurse) — Healing, debuff removal
@@ -16,9 +28,13 @@ On raid maps, NPC models hide and reappear with player vision instead of remaini
 
 ## Sky Islands Residents
 
-The Qinglan Archipelago has six residents: Qinghe, Weibai, Fuzhou, Miantai, Zheling and the Silent Bell Keeper. All six support daily chat, gifts, affinity and marriage, using the existing level-10 affinity, Wedding Chapel, Diamond Ring and single-spouse rules. See Sky Islands · Qinglan Archipelago for their services, gift preferences, visits and quests. After a challenge, Zheling rests for that raid; you can continue building the relationship on your next visit. The locations below describe Dingdang, Yu Zhi and Awen.
+The Qinglan Archipelago has six residents — Qinghe, Weibai, Fuzhou, Miantai, Zheling, and the Silent Bell Keeper — all supporting chat, gifts, Lv.10 affinity, the Wedding Chapel, and single-spouse marriage (see Sky Islands · Qinglan Archipelago).
 
-At affinity Lv.3, Fuzhou at Cloudrise Dock opens Fuzhou's Departure Supplies, selling the exclusive Headmaster's Roll-Call Ledger totem with one in stock for 20,000. You can still trade with Fuzhou after marriage. The dock workbench offers the same shop with the same affinity requirement.
+- **Fuzhou** (Cloudrise Dock) — Affinity Lv.3 unlocks Fuzhou's Departure Supplies, selling **Headmaster's Roll-Call Ledger** (20,000; still available after marriage and at the dock workbench)
+- **Silent Bell Keeper** (Homecoming Bell Court) — Affinity Lv.5 trades seashells for **Bell Keeper's Metronome** and **Hushbell Ward** (also at base after marriage)
+- **Zheling** — Rests for the rest of that raid after a challenge; resumes next trip
+
+The spawn table below covers Dingdang, Yu Zhi, and Awen.
 
 ## Affinity System
 

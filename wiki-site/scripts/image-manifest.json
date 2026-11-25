@@ -13,6 +13,84 @@
       "en": "Phantom Witch"
     },
     {
+      "key": "character_alex",
+      "src": "/images/codex/character-alex.webp",
+      "zh": "艾力克斯",
+      "en": "Alex"
+    },
+    {
+      "key": "character_fo",
+      "src": "/images/codex/character-fo.webp",
+      "zh": "佛哥",
+      "en": "Vogo"
+    },
+    {
+      "key": "character_jeff",
+      "src": "/images/codex/character-jeff.webp",
+      "zh": "杰夫",
+      "en": "Jeff"
+    },
+    {
+      "key": "character_ming",
+      "src": "/images/codex/character-ming.webp",
+      "zh": "小明",
+      "en": "Xiaoming"
+    },
+    {
+      "key": "character_mud",
+      "src": "/images/codex/character-mud.webp",
+      "zh": "泥巴",
+      "en": "Mud"
+    },
+    {
+      "key": "character_orange",
+      "src": "/images/codex/character-orange.webp",
+      "zh": "橘子",
+      "en": "Orange"
+    },
+    {
+      "key": "character_snowpmc",
+      "src": "/images/codex/character-snowpmc.webp",
+      "zh": "煤球",
+      "en": "Coal Briquette"
+    },
+    {
+      "key": "character_xavier",
+      "src": "/images/codex/character-xavier.webp",
+      "zh": "老吴",
+      "en": "Xavier"
+    },
+    {
+      "key": "cname_3shot_child",
+      "src": "/images/codex/cname-3shot-child.webp",
+      "zh": "三枪弟",
+      "en": "Triple-Shot Kid"
+    },
+    {
+      "key": "cname_baleader",
+      "src": "/images/codex/cname-baleader.webp",
+      "zh": "BA队长",
+      "en": "Security Captain"
+    },
+    {
+      "key": "cname_baleader_child",
+      "src": "/images/codex/cname-baleader-child.webp",
+      "zh": "普通BA",
+      "en": "Security Guard"
+    },
+    {
+      "key": "cname_bear",
+      "src": "/images/codex/cname-bear.webp",
+      "zh": "熊",
+      "en": "Bear"
+    },
+    {
+      "key": "cname_boomcar",
+      "src": "/images/codex/cname-boomcar.webp",
+      "zh": "炸弹小车",
+      "en": "Explosive RC Car"
+    },
+    {
       "key": "cname_boss_3shot",
       "src": "/images/codex/cname-boss-3shot.webp",
       "zh": "三枪哥",
@@ -37,6 +115,24 @@
       "en": "Fly Captain"
     },
     {
+      "key": "cname_boss_fly_alone",
+      "src": "/images/codex/cname-boss-fly-alone.webp",
+      "zh": "落单的蝇蝇队员",
+      "en": "Isolated Fly Member"
+    },
+    {
+      "key": "cname_boss_fly_child",
+      "src": "/images/codex/cname-boss-fly-child.webp",
+      "zh": "蝇蝇队员",
+      "en": "Fly Member"
+    },
+    {
+      "key": "cname_boss_lionhead",
+      "src": "/images/codex/cname-boss-lionhead.webp",
+      "zh": "狮子头",
+      "en": "Lion Head"
+    },
+    {
       "key": "cname_boss_red",
       "src": "/images/codex/cname-boss-red.webp",
       "zh": "???",
@@ -55,6 +151,30 @@
       "en": "Lordon"
     },
     {
+      "key": "cname_crazyrob",
+      "src": "/images/codex/cname-crazyrob.webp",
+      "zh": "失控机械蜘蛛",
+      "en": "Lost Spider-Bot"
+    },
+    {
+      "key": "cname_dengwolf",
+      "src": "/images/codex/cname-dengwolf.webp",
+      "zh": "劳登的狗",
+      "en": "Lordon's Dog"
+    },
+    {
+      "key": "cname_football_1",
+      "src": "/images/codex/cname-football-1.webp",
+      "zh": "足球队长",
+      "en": "Football Captain"
+    },
+    {
+      "key": "cname_football_2",
+      "src": "/images/codex/cname-football-2.webp",
+      "zh": "足球队员",
+      "en": "Football Player"
+    },
+    {
       "key": "cname_ghost",
       "src": "/images/codex/cname-ghost.webp",
       "zh": "幽灵",
@@ -67,10 +187,34 @@
       "en": "Mad Bomber"
     },
     {
+      "key": "cname_gunturret",
+      "src": "/images/codex/cname-gunturret.webp",
+      "zh": "自动炮台",
+      "en": "Auto Turret"
+    },
+    {
+      "key": "cname_horse",
+      "src": "/images/codex/cname-horse.webp",
+      "zh": "马",
+      "en": "Horse"
+    },
+    {
       "key": "cname_hunter",
       "src": "/images/codex/cname-hunter.webp",
       "zh": "猎户",
       "en": "Hunter"
+    },
+    {
+      "key": "cname_islandboss",
+      "src": "/images/codex/cname-islandboss.webp",
+      "zh": "口口口口",
+      "en": "Koko Koko"
+    },
+    {
+      "key": "cname_killa",
+      "src": "/images/codex/cname-killa.webp",
+      "zh": "Killa",
+      "en": "Killa"
     },
     {
       "key": "cname_labtestobjective",
@@ -79,10 +223,28 @@
       "en": "Test Object"
     },
     {
+      "key": "cname_monsterclimb",
+      "src": "/images/codex/cname-monsterclimb.webp",
+      "zh": "风暴虫",
+      "en": "Storm Bug"
+    },
+    {
+      "key": "cname_mushroom",
+      "src": "/images/codex/cname-mushroom.webp",
+      "zh": "行走菇",
+      "en": "Walking Mushroom"
+    },
+    {
       "key": "cname_pmcleader",
       "src": "/images/codex/cname-pmcleader.webp",
       "zh": "呆头鹅",
       "en": "Goofy Goose"
+    },
+    {
+      "key": "cname_prison",
+      "src": "/images/codex/cname-prison.webp",
+      "zh": "狱卒",
+      "en": "Jailer"
     },
     {
       "key": "cname_prison_boss",
@@ -91,16 +253,70 @@
       "en": "Warden"
     },
     {
+      "key": "cname_raider",
+      "src": "/images/codex/cname-raider.webp",
+      "zh": "游荡者",
+      "en": "Wanderer"
+    },
+    {
+      "key": "cname_raiderice",
+      "src": "/images/codex/cname-raiderice.webp",
+      "zh": "观测者",
+      "en": "Observer"
+    },
+    {
       "key": "cname_roadblock",
       "src": "/images/codex/cname-roadblock.webp",
       "zh": "路障",
       "en": "Roadblock"
     },
     {
+      "key": "cname_robspider",
+      "src": "/images/codex/cname-robspider.webp",
+      "zh": "机械蜘蛛",
+      "en": "Spider-Bot"
+    },
+    {
+      "key": "cname_rpg",
+      "src": "/images/codex/cname-rpg.webp",
+      "zh": "迷塞尔",
+      "en": "Misel"
+    },
+    {
+      "key": "cname_scav",
+      "src": "/images/codex/cname-scav.webp",
+      "zh": "拾荒者",
+      "en": "Scavenger"
+    },
+    {
+      "key": "cname_scavrage",
+      "src": "/images/codex/cname-scavrage.webp",
+      "zh": "暴走拾荒者",
+      "en": "Rampaging Scavenger"
+    },
+    {
       "key": "cname_schoolbully",
       "src": "/images/codex/cname-schoolbully.webp",
       "zh": "校霸",
       "en": "School Bully"
+    },
+    {
+      "key": "cname_schoolbully_child",
+      "src": "/images/codex/cname-schoolbully-child.webp",
+      "zh": "校友",
+      "en": "Alumnus"
+    },
+    {
+      "key": "cname_senorengineer",
+      "src": "/images/codex/cname-senorengineer.webp",
+      "zh": "高级工程师",
+      "en": "Senior Engineer"
+    },
+    {
+      "key": "cname_serverguardian",
+      "src": "/images/codex/cname-serverguardian.webp",
+      "zh": "矿长",
+      "en": "Mine Manager"
     },
     {
       "key": "cname_shorteagle",
@@ -121,10 +337,22 @@
       "en": "Fleeze"
     },
     {
+      "key": "cname_snow_igny",
+      "src": "/images/codex/cname-snow-igny.webp",
+      "zh": "伊格尼",
+      "en": "Igny"
+    },
+    {
       "key": "cname_snowman",
       "src": "/images/codex/cname-snowman.webp",
       "zh": "机械雪人",
       "en": "Snow-Bot"
+    },
+    {
+      "key": "cname_snowman_island",
+      "src": "/images/codex/cname-snowman-island.webp",
+      "zh": "雪人",
+      "en": "Snowman"
     },
     {
       "key": "cname_speedy",
@@ -139,10 +367,28 @@
       "en": "Frost Commander"
     },
     {
+      "key": "cname_speedychild",
+      "src": "/images/codex/cname-speedychild.webp",
+      "zh": "急速团成员",
+      "en": "Speedy Group Member"
+    },
+    {
+      "key": "cname_speedychild_ice",
+      "src": "/images/codex/cname-speedychild-ice.webp",
+      "zh": "急冻团员",
+      "en": "Frost Trooper"
+    },
+    {
       "key": "cname_stormboss1",
       "src": "/images/codex/cname-stormboss1.webp",
       "zh": "噗咙噗咙",
       "en": "Pulu Pulu"
+    },
+    {
+      "key": "cname_stormboss1_child",
+      "src": "/images/codex/cname-stormboss1-child.webp",
+      "zh": "噗咙",
+      "en": "Pulu"
     },
     {
       "key": "cname_stormboss2",
@@ -169,10 +415,40 @@
       "en": "Koko Koko"
     },
     {
+      "key": "cname_stormcreature",
+      "src": "/images/codex/cname-stormcreature.webp",
+      "zh": "风暴生物",
+      "en": "Storm Creature"
+    },
+    {
+      "key": "cname_stormvirus",
+      "src": "/images/codex/cname-stormvirus.webp",
+      "zh": "风暴？",
+      "en": "Storm?"
+    },
+    {
+      "key": "cname_superrob",
+      "src": "/images/codex/cname-superrob.webp",
+      "zh": "超级蜘蛛",
+      "en": "Super Spider-Bot"
+    },
+    {
+      "key": "cname_tagilla",
+      "src": "/images/codex/cname-tagilla.webp",
+      "zh": "Tagilla",
+      "en": "Tagilla"
+    },
+    {
       "key": "cname_ultraman",
       "src": "/images/codex/cname-ultraman.webp",
       "zh": "光之男",
       "en": "Man of Light"
+    },
+    {
+      "key": "cname_usec",
+      "src": "/images/codex/cname-usec.webp",
+      "zh": "雇佣兵",
+      "en": "Mercenary"
     },
     {
       "key": "cname_vida",
@@ -181,16 +457,46 @@
       "en": "Vida"
     },
     {
+      "key": "cname_wolf",
+      "src": "/images/codex/cname-wolf.webp",
+      "zh": "狼",
+      "en": "Wolf"
+    },
+    {
+      "key": "cname_wolfking_ice",
+      "src": "/images/codex/cname-wolfking-ice.webp",
+      "zh": "雪原狼王",
+      "en": "Tundra Wolf King"
+    },
+    {
       "key": "cname_xing",
       "src": "/images/codex/cname-xing.webp",
       "zh": "大兴兴",
       "en": "Big Xing"
     },
     {
+      "key": "cname_xings",
+      "src": "/images/codex/cname-xings.webp",
+      "zh": "小小兴",
+      "en": "Little Xing"
+    },
+    {
+      "key": "cname_zombie",
+      "src": "/images/codex/cname-zombie.webp",
+      "zh": "？？？",
+      "en": "???"
+    },
+    {
       "key": "dragondescendant",
       "src": "/images/codex/dragondescendant.webp",
       "zh": "龙裔遗族",
       "en": "Dragon Descendant"
+    },
+    {
+      "key": "merchantname_myst",
+      "src": "/images/codex/merchantname-myst.webp",
+      "zh": "神秘商人",
+      "en": "Mysterious Merchant"
     },
     {
       "key": "zombie_boss_corruptor",
@@ -1231,6 +1537,898 @@
       "src": "/images/items/it-windbreak-pack.webp",
       "zh": "断风行囊",
       "en": "Galebreaker Pack"
+    }
+  ],
+  "diagrams": [
+    {
+      "key": "diag-sky-island",
+      "src": "/images/diagrams/sky_island_route_zh.webp",
+      "zh": "晴岚群岛航路、双航标与中继捷径总览图",
+      "en": "Qinglan Archipelago routes, twin beacons, and shortcut relays"
+    },
+    {
+      "key": "diag-sky-island-en",
+      "src": "/images/diagrams/sky_island_route_en.webp",
+      "zh": "晴岚群岛航路、双航标与中继捷径总览图",
+      "en": "Qinglan Archipelago routes, twin beacons, and shortcut relays"
+    },
+    {
+      "key": "diag-tidegate",
+      "src": "/images/diagrams/tidegate_map_zh.webp",
+      "zh": "潮闸镇潮位周期、三阀地点与四处撤离时机图",
+      "en": "Tidegate tidal stages, valve sites, and extraction timing"
+    },
+    {
+      "key": "diag-tidegate-en",
+      "src": "/images/diagrams/tidegate_map_en.webp",
+      "zh": "潮闸镇潮位周期、三阀地点与四处撤离时机图",
+      "en": "Tidegate tidal stages, valve sites, and extraction timing"
+    },
+    {
+      "key": "diag-lastshift",
+      "src": "/images/diagrams/lastshift_yard_zh.webp",
+      "zh": "末班编组站东西台道岔、加价台与押运波次图",
+      "en": "Last Shift Yard track switches, premium platform, and escort flow"
+    },
+    {
+      "key": "diag-lastshift-en",
+      "src": "/images/diagrams/lastshift_yard_en.webp",
+      "zh": "末班编组站东西台道岔、加价台与押运波次图",
+      "en": "Last Shift Yard track switches, premium platform, and escort flow"
+    },
+    {
+      "key": "diag-eclipse-bloom",
+      "src": "/images/diagrams/eclipse_bloom_zh.webp",
+      "zh": "蚀日花冠四瓣护核、安全缺口与 9.5m 日珥距离图",
+      "en": "Eclipse Bloom four-petal ward, safe gaps, and 9.5m flare threshold"
+    },
+    {
+      "key": "diag-eclipse-bloom-en",
+      "src": "/images/diagrams/eclipse_bloom_en.webp",
+      "zh": "蚀日花冠四瓣护核、安全缺口与 9.5m 日珥距离图",
+      "en": "Eclipse Bloom four-petal ward, safe gaps, and 9.5m flare threshold"
+    },
+    {
+      "key": "diag-mode-g",
+      "src": "/images/diagrams/mode_g_counter_zh.webp",
+      "zh": "宿命回响三幕九波、三轴反制与决意结算循环图",
+      "en": "Fate Echo 9-wave counter axes and Resolve reward cycle"
+    },
+    {
+      "key": "diag-mode-g-en",
+      "src": "/images/diagrams/mode_g_counter_en.webp",
+      "zh": "宿命回响三幕九波、三轴反制与决意结算循环图",
+      "en": "Fate Echo 9-wave counter axes and Resolve reward cycle"
+    }
+  ],
+  "scenes": [
+    {
+      "key": "cname-snowpmc",
+      "src": "/images/scenes/codex-snowpmc.webp",
+      "zh": "可召唤随从：煤球",
+      "en": "Summon companion: Coal Briquette"
+    },
+    {
+      "key": "myst-merchant",
+      "src": "/images/scenes/codex-myst-merchant.webp",
+      "zh": "神秘商人",
+      "en": "Mystery Merchant"
+    },
+    {
+      "key": "bld-chapel",
+      "src": "/images/scenes/bld-chapel.webp",
+      "zh": "婚礼教堂",
+      "en": "Wedding Chapel"
+    },
+    {
+      "key": "bld-fountain",
+      "src": "/images/scenes/bld-fountain.webp",
+      "zh": "星愿许愿台",
+      "en": "Dust-Covered StarWish Fountain"
+    },
+    {
+      "key": "mode-fate-banner",
+      "src": "/images/scenes/mode-fate-banner.webp",
+      "zh": "宿命回响 · 三幕反制竞技场",
+      "en": "Fate Echo — Three-Act Adaptive Arena"
+    },
+    {
+      "key": "mode-cup-banner",
+      "src": "/images/scenes/mode-cup-banner.webp",
+      "zh": "黑市鸭王杯 · 红蓝两队押注观战",
+      "en": "Black Market Duck Cup — Blue vs Red"
+    },
+    {
+      "key": "daily-paper-bg",
+      "src": "/images/scenes/daily-paper-bg.webp",
+      "zh": "鸭科夫日报头版版式",
+      "en": "The Duckov Daily newspaper layout"
+    },
+    {
+      "key": "map-preview-zero",
+      "src": "/images/scenes/map-preview-zero.webp",
+      "zh": "零号区竞技场预览",
+      "en": "Ground Zero arena preview"
+    },
+    {
+      "key": "map-preview-demo",
+      "src": "/images/scenes/map-preview-demo.webp",
+      "zh": "DEMO 终极挑战场地",
+      "en": "DEMO Ultimate Challenge arena"
+    },
+    {
+      "key": "map-preview-maze",
+      "src": "/images/scenes/map-preview-maze.webp",
+      "zh": "黑市挑战迷宫布局",
+      "en": "Black Market Challenge labyrinth"
+    },
+    {
+      "key": "sky-scene-dock",
+      "src": "/images/scenes/sky-scene-dock.webp",
+      "zh": "登云码头",
+      "en": "Cloudrise Dock"
+    },
+    {
+      "key": "sky-scene-market",
+      "src": "/images/scenes/sky-scene-market.webp",
+      "zh": "风铃集",
+      "en": "Windchime Market"
+    },
+    {
+      "key": "sky-scene-terraces",
+      "src": "/images/scenes/sky-scene-terraces.webp",
+      "zh": "青穗梯田",
+      "en": "Greenear Terraces"
+    },
+    {
+      "key": "sky-scene-roots",
+      "src": "/images/scenes/sky-scene-roots.webp",
+      "zh": "悬根林",
+      "en": "Hanging Root Wood"
+    },
+    {
+      "key": "sky-scene-boardwalk",
+      "src": "/images/scenes/sky-scene-boardwalk.webp",
+      "zh": "鸣风栈道",
+      "en": "Windsong Boardwalk"
+    },
+    {
+      "key": "sky-scene-temple",
+      "src": "/images/scenes/sky-scene-temple.webp",
+      "zh": "镜水寺",
+      "en": "Mirrorwater Temple"
+    },
+    {
+      "key": "sky-scene-workshop",
+      "src": "/images/scenes/sky-scene-workshop.webp",
+      "zh": "残星工坊",
+      "en": "Fallen Star Workshop"
+    },
+    {
+      "key": "sky-scene-bellcourt",
+      "src": "/images/scenes/sky-scene-bellcourt.webp",
+      "zh": "归航钟庭",
+      "en": "Homecoming Bell Court"
+    },
+    {
+      "key": "sky-scene-journal",
+      "src": "/images/scenes/sky-scene-journal.webp",
+      "zh": "晴岚群岛手记",
+      "en": "Qinglan Archipelago Journal"
+    },
+    {
+      "key": "sky-portrait-weibai",
+      "src": "/images/scenes/sky-portrait-weibai.webp",
+      "zh": "苇白（修灯人与委托）",
+      "en": "Weibai (Lamp-keeper & Contracts)"
+    },
+    {
+      "key": "sky-portrait-fuzhou",
+      "src": "/images/scenes/sky-portrait-fuzhou.webp",
+      "zh": "浮舟（渡口整备与商店）",
+      "en": "Fuzhou (Dock Refit & Supplies)"
+    },
+    {
+      "key": "sky-portrait-qinghe",
+      "src": "/images/scenes/sky-portrait-qinghe.webp",
+      "zh": "晴禾（灶台与归航菜）",
+      "en": "Qinghe (Stove & Homecoming Meal)"
+    },
+    {
+      "key": "sky-portrait-miantai",
+      "src": "/images/scenes/sky-portrait-miantai.webp",
+      "zh": "眠苔（药臼与苔药调理）",
+      "en": "Miantai (Mortar & Moss Remedy)"
+    },
+    {
+      "key": "sky-portrait-zheling",
+      "src": "/images/scenes/sky-portrait-zheling.webp",
+      "zh": "折翎（镜水寺旧路守望）",
+      "en": "Zheling (Mirrorwater Temple)"
+    },
+    {
+      "key": "sky-portrait-bellkeeper",
+      "src": "/images/scenes/sky-portrait-bellkeeper.webp",
+      "zh": "无声钟守（归航钟庭）",
+      "en": "Silent Bell Keeper (Bell Court)"
+    },
+    {
+      "key": "affix-lifesteal",
+      "src": "/images/scenes/affix-lifesteal.webp",
+      "zh": "吸血",
+      "en": "Lifesteal"
+    },
+    {
+      "key": "affix-slaughter",
+      "src": "/images/scenes/affix-slaughter.webp",
+      "zh": "嗜血收割",
+      "en": "Slaughter"
+    },
+    {
+      "key": "affix-bulwark",
+      "src": "/images/scenes/affix-bulwark.webp",
+      "zh": "壁垒",
+      "en": "Bulwark"
+    },
+    {
+      "key": "affix-swifthand",
+      "src": "/images/scenes/affix-swifthand.webp",
+      "zh": "疾手",
+      "en": "Swift Hand"
+    },
+    {
+      "key": "affix-thorns",
+      "src": "/images/scenes/affix-thorns.webp",
+      "zh": "反伤棘刺",
+      "en": "Thorns"
+    },
+    {
+      "key": "affix-deathburst",
+      "src": "/images/scenes/affix-deathburst.webp",
+      "zh": "亡爆（稀有）",
+      "en": "Death Burst (Rare)"
+    },
+    {
+      "key": "affix-frenzy",
+      "src": "/images/scenes/affix-frenzy.webp",
+      "zh": "狂热（稀有）",
+      "en": "Frenzy (Rare)"
+    },
+    {
+      "key": "affix-hawkeye",
+      "src": "/images/scenes/affix-hawkeye.webp",
+      "zh": "鹰眼（稀有）",
+      "en": "Hawk Eye (Rare)"
+    },
+    {
+      "key": "affix-overcharge",
+      "src": "/images/scenes/affix-overcharge.webp",
+      "zh": "超载电弧（稀有）",
+      "en": "Overcharge (Rare)"
+    },
+    {
+      "key": "affix-bloodrage",
+      "src": "/images/scenes/affix-bloodrage.webp",
+      "zh": "血怒（诅咒）",
+      "en": "Blood Rage (Cursed)"
+    },
+    {
+      "key": "affix-glasscannon",
+      "src": "/images/scenes/affix-glasscannon.webp",
+      "zh": "玻璃大炮（诅咒）",
+      "en": "Glass Edge (Cursed)"
+    },
+    {
+      "key": "affix-deathpact",
+      "src": "/images/scenes/affix-deathpact.webp",
+      "zh": "死契（诅咒）",
+      "en": "Death Pact (Cursed)"
+    },
+    {
+      "key": "evt-airdrop",
+      "src": "/images/scenes/evt-airdrop.webp",
+      "zh": "空投补给",
+      "en": "Airdrop Supply"
+    },
+    {
+      "key": "evt-bloodmoon",
+      "src": "/images/scenes/evt-bloodmoon.webp",
+      "zh": "血月凶兆",
+      "en": "Blood Moon"
+    },
+    {
+      "key": "evt-intrusion",
+      "src": "/images/scenes/evt-intrusion.webp",
+      "zh": "Boss 乱入",
+      "en": "Boss Intrusion"
+    },
+    {
+      "key": "evt-merchant",
+      "src": "/images/scenes/evt-merchant.webp",
+      "zh": "神秘商人路过",
+      "en": "Wandering Merchant"
+    },
+    {
+      "key": "evt-feint",
+      "src": "/images/scenes/evt-feint.webp",
+      "zh": "声东击西",
+      "en": "Feint"
+    },
+    {
+      "key": "evt-fireworks",
+      "src": "/images/scenes/evt-fireworks.webp",
+      "zh": "鸭王的烟花",
+      "en": "Duck King's Fireworks"
+    },
+    {
+      "key": "evt-duckrain",
+      "src": "/images/scenes/evt-duckrain.webp",
+      "zh": "金鸭雨",
+      "en": "Golden Duck Rain"
+    },
+    {
+      "key": "evt-parade",
+      "src": "/images/scenes/evt-parade.webp",
+      "zh": "鸭群巡游",
+      "en": "Duck Parade"
+    },
+    {
+      "key": "evt-wildchase",
+      "src": "/images/scenes/evt-wildchase.webp",
+      "zh": "疾风追逐",
+      "en": "Wild Chase"
+    },
+    {
+      "key": "evt-melee",
+      "src": "/images/scenes/evt-melee.webp",
+      "zh": "近战狂欢",
+      "en": "Melee Carnival"
+    },
+    {
+      "key": "evt-heavysteps",
+      "src": "/images/scenes/evt-heavysteps.webp",
+      "zh": "沉重脚步",
+      "en": "Heavy Steps"
+    },
+    {
+      "key": "sc-dragon-helm",
+      "src": "/images/scenes/sc-dragon-helm.webp",
+      "zh": "赤龙首（头盔）",
+      "en": "Crimson Dragon Helm"
+    },
+    {
+      "key": "sc-dragon-armor",
+      "src": "/images/scenes/sc-dragon-armor.webp",
+      "zh": "焰鳞甲（护甲）",
+      "en": "Flame Scale Armor"
+    },
+    {
+      "key": "sc-dragon-breath",
+      "src": "/images/scenes/sc-dragon-breath.webp",
+      "zh": "龙息",
+      "en": "Dragon's Breath"
+    },
+    {
+      "key": "sc-dragon-king-helm",
+      "src": "/images/scenes/sc-dragon-king-helm.webp",
+      "zh": "龙王之冕（头盔）",
+      "en": "Dragon King's Crown"
+    },
+    {
+      "key": "sc-dragon-king-armor",
+      "src": "/images/scenes/sc-dragon-king-armor.webp",
+      "zh": "龙王鳞铠（护甲）",
+      "en": "Dragon King's Scale Mail"
+    },
+    {
+      "key": "sc-dragon-cannon",
+      "src": "/images/scenes/sc-dragon-cannon.webp",
+      "zh": "焚天龙铳",
+      "en": "Skyburner Dragon Cannon"
+    },
+    {
+      "key": "sc-halberd",
+      "src": "/images/scenes/sc-halberd.webp",
+      "zh": "焚皇断界戟",
+      "en": "Inferno Emperor's Halberd"
+    },
+    {
+      "key": "sc-flight-totem",
+      "src": "/images/scenes/sc-flight-totem.webp",
+      "zh": "腾云驾雾图腾",
+      "en": "Cloud Soar I"
+    },
+    {
+      "key": "sc-reverse-scale",
+      "src": "/images/scenes/sc-reverse-scale.webp",
+      "zh": "逆鳞",
+      "en": "Reverse Scale"
+    },
+    {
+      "key": "sc-phantom-scythe",
+      "src": "/images/scenes/sc-phantom-scythe.webp",
+      "zh": "噬魂挽歌",
+      "en": "Soulreaper's Requiem"
+    },
+    {
+      "key": "sc-astral-staff",
+      "src": "/images/scenes/sc-astral-staff.webp",
+      "zh": "星阙",
+      "en": "Astral Staff"
+    },
+    {
+      "key": "sc-frostmourne",
+      "src": "/images/scenes/sc-frostmourne.webp",
+      "zh": "霜之哀伤",
+      "en": "Frostmourne"
+    },
+    {
+      "key": "sc-frost-crown",
+      "src": "/images/scenes/sc-frost-crown.webp",
+      "zh": "霜冠（头盔）",
+      "en": "Frost Crown"
+    },
+    {
+      "key": "sc-ice-armor",
+      "src": "/images/scenes/sc-ice-armor.webp",
+      "zh": "寒冰铠甲（护甲）",
+      "en": "Ice Armor"
+    },
+    {
+      "key": "sc-thunder-horn",
+      "src": "/images/scenes/sc-thunder-horn.webp",
+      "zh": "雷神之角（头盔）",
+      "en": "Thunder Horn"
+    },
+    {
+      "key": "sc-thunder-armor",
+      "src": "/images/scenes/sc-thunder-armor.webp",
+      "zh": "雷霆战甲（护甲）",
+      "en": "Thunder Armor"
+    },
+    {
+      "key": "sc-viper-dagger",
+      "src": "/images/scenes/sc-viper-dagger.webp",
+      "zh": "毒蛇匕首",
+      "en": "Viper Dagger"
+    },
+    {
+      "key": "sc-summon-staff",
+      "src": "/images/scenes/sc-summon-staff.webp",
+      "zh": "召唤法杖",
+      "en": "Summoning Staff"
+    },
+    {
+      "key": "sc-energy-shield",
+      "src": "/images/scenes/sc-energy-shield.webp",
+      "zh": "能量盾",
+      "en": "Energy Shield"
+    },
+    {
+      "key": "sc-frost-spear",
+      "src": "/images/scenes/sc-frost-spear.webp",
+      "zh": "冰霜长矛",
+      "en": "Frost Spear"
+    },
+    {
+      "key": "sc-thunder-ring",
+      "src": "/images/scenes/sc-thunder-ring.webp",
+      "zh": "雷电戒指",
+      "en": "Thunder Ring"
+    },
+    {
+      "key": "sc-empty-mine",
+      "src": "/images/scenes/sc-empty-mine.webp",
+      "zh": "空仓地雷盒",
+      "en": "Empty-Mag Mine Box"
+    },
+    {
+      "key": "sc-residual-sun",
+      "src": "/images/scenes/sc-residual-sun.webp",
+      "zh": "残日盾片",
+      "en": "Residual Sun Shield Shard"
+    },
+    {
+      "key": "sc-reload-metronome",
+      "src": "/images/scenes/sc-reload-metronome.webp",
+      "zh": "钟守节拍器",
+      "en": "Bell Keeper's Metronome"
+    },
+    {
+      "key": "sc-pass-the-bomb",
+      "src": "/images/scenes/sc-pass-the-bomb.webp",
+      "zh": "甩锅许可证",
+      "en": "License to Pass the Buck"
+    },
+    {
+      "key": "sc-starbrass-helm",
+      "src": "/images/scenes/sc-starbrass-helm.webp",
+      "zh": "星铜护目盔",
+      "en": "Starbrass Visor Helm"
+    },
+    {
+      "key": "sc-starfurnace-harness",
+      "src": "/images/scenes/sc-starfurnace-harness.webp",
+      "zh": "星炉背甲",
+      "en": "Starfurnace Harness"
+    },
+    {
+      "key": "sc-starfurnace-pack",
+      "src": "/images/scenes/sc-starfurnace-pack.webp",
+      "zh": "星炉背囊",
+      "en": "Starfurnace Pack"
+    },
+    {
+      "key": "sc-stargazer-helm",
+      "src": "/images/scenes/sc-stargazer-helm.webp",
+      "zh": "观星镜盔",
+      "en": "Stargazer's Lens Helm"
+    },
+    {
+      "key": "sc-rootweave-mask",
+      "src": "/images/scenes/sc-rootweave-mask.webp",
+      "zh": "根须面罩",
+      "en": "Rootweave Mask"
+    },
+    {
+      "key": "sc-vinewoven-cuirass",
+      "src": "/images/scenes/sc-vinewoven-cuirass.webp",
+      "zh": "藤编甲",
+      "en": "Vinewoven Cuirass"
+    },
+    {
+      "key": "sc-hangroot-quiver",
+      "src": "/images/scenes/sc-hangroot-quiver.webp",
+      "zh": "悬根箭囊",
+      "en": "Hanging-Root Quiver"
+    },
+    {
+      "key": "sc-greenear-hat",
+      "src": "/images/scenes/sc-greenear-hat.webp",
+      "zh": "青穗斗笠",
+      "en": "Greenear Straw Hat"
+    },
+    {
+      "key": "sc-straw-raincoat",
+      "src": "/images/scenes/sc-straw-raincoat.webp",
+      "zh": "蓑衣甲",
+      "en": "Straw Raincoat"
+    },
+    {
+      "key": "sc-grain-sack",
+      "src": "/images/scenes/sc-grain-sack.webp",
+      "zh": "谷囊",
+      "en": "Grain Sack"
+    },
+    {
+      "key": "sc-old-mailbag",
+      "src": "/images/scenes/sc-old-mailbag.webp",
+      "zh": "旧邮包",
+      "en": "Old Mailbag"
+    },
+    {
+      "key": "sc-rainhush-earmuffs",
+      "src": "/images/scenes/sc-rainhush-earmuffs.webp",
+      "zh": "静听耳罩",
+      "en": "Rainhush Earmuffs"
+    },
+    {
+      "key": "sc-mossgauze-mask",
+      "src": "/images/scenes/sc-mossgauze-mask.webp",
+      "zh": "苔纱面罩",
+      "en": "Mossgauze Mask"
+    },
+    {
+      "key": "sc-mirrorgrain-plate",
+      "src": "/images/scenes/sc-mirrorgrain-plate.webp",
+      "zh": "镜纹甲",
+      "en": "Mirrorgrain Plate"
+    },
+    {
+      "key": "sc-windbreak-hood",
+      "src": "/images/scenes/sc-windbreak-hood.webp",
+      "zh": "断风兜帽",
+      "en": "Galebreaker Hood"
+    },
+    {
+      "key": "sc-windbreak-mantle",
+      "src": "/images/scenes/sc-windbreak-mantle.webp",
+      "zh": "断风披甲",
+      "en": "Galebreaker Mantle"
+    },
+    {
+      "key": "sc-windbreak-pack",
+      "src": "/images/scenes/sc-windbreak-pack.webp",
+      "zh": "断风行囊",
+      "en": "Galebreaker Pack"
+    },
+    {
+      "key": "sc-bossrush-ticket",
+      "src": "/images/scenes/sc-bossrush-ticket.webp",
+      "zh": "BossRush 船票",
+      "en": "BossRush Ticket"
+    },
+    {
+      "key": "sc-adventure-journal",
+      "src": "/images/scenes/sc-adventure-journal.webp",
+      "zh": "冒险家日志",
+      "en": "Adventurer's Journal"
+    },
+    {
+      "key": "sc-ach-medal",
+      "src": "/images/scenes/sc-ach-medal.webp",
+      "zh": "成就勋章",
+      "en": "Achievement Medal"
+    },
+    {
+      "key": "sc-transponder",
+      "src": "/images/scenes/sc-transponder.webp",
+      "zh": "血猎收发器",
+      "en": "Bloodhunt Transponder"
+    },
+    {
+      "key": "sc-fate-relic",
+      "src": "/images/scenes/sc-fate-relic.webp",
+      "zh": "宿命回响信物",
+      "en": "Fate Echo Relic"
+    },
+    {
+      "key": "sc-zombie-invite",
+      "src": "/images/scenes/sc-zombie-invite.webp",
+      "zh": "尸潮邀请函",
+      "en": "Zombie Tide Invitation"
+    },
+    {
+      "key": "sc-flag-random",
+      "src": "/images/scenes/sc-flag-random.webp",
+      "zh": "随机营旗",
+      "en": "Random Faction Flag"
+    },
+    {
+      "key": "sc-flag-wolf",
+      "src": "/images/scenes/sc-flag-wolf.webp",
+      "zh": "狼群营旗",
+      "en": "Wolf Pack Flag"
+    },
+    {
+      "key": "sc-flag-bear",
+      "src": "/images/scenes/sc-flag-bear.webp",
+      "zh": "BEAR 营旗",
+      "en": "BEAR Flag"
+    },
+    {
+      "key": "sc-cold-quench",
+      "src": "/images/scenes/sc-cold-quench.webp",
+      "zh": "冷淬液",
+      "en": "Cold Quench Fluid"
+    },
+    {
+      "key": "sc-tempering-solvent",
+      "src": "/images/scenes/sc-tempering-solvent.webp",
+      "zh": "回火液",
+      "en": "Tempering Solvent"
+    },
+    {
+      "key": "sc-diamond",
+      "src": "/images/scenes/sc-diamond.webp",
+      "zh": "钻石",
+      "en": "Diamond"
+    },
+    {
+      "key": "sc-brick-stone",
+      "src": "/images/scenes/sc-brick-stone.webp",
+      "zh": "砖石",
+      "en": "Brick Stone"
+    },
+    {
+      "key": "sc-diamond-ring",
+      "src": "/images/scenes/sc-diamond-ring.webp",
+      "zh": "钻石戒指",
+      "en": "Diamond Ring"
+    },
+    {
+      "key": "sc-calming-drops",
+      "src": "/images/scenes/sc-calming-drops.webp",
+      "zh": "安神滴剂",
+      "en": "Calming Drops"
+    },
+    {
+      "key": "sc-peace-charm",
+      "src": "/images/scenes/sc-peace-charm.webp",
+      "zh": "平安护身符",
+      "en": "Peace Charm"
+    },
+    {
+      "key": "sc-awen-token",
+      "src": "/images/scenes/sc-awen-token.webp",
+      "zh": "阿稳快递牌",
+      "en": "Awen Courier Token"
+    },
+    {
+      "key": "sc-awen-sweep",
+      "src": "/images/scenes/sc-awen-sweep.webp",
+      "zh": "阿稳扫箱令",
+      "en": "Awen Loot Sweep Token"
+    },
+    {
+      "key": "sc-dingdang-drawing",
+      "src": "/images/scenes/sc-dingdang-drawing.webp",
+      "zh": "叮当涂鸦",
+      "en": "Dingdang's Doodle"
+    },
+    {
+      "key": "sc-wild-horn",
+      "src": "/images/scenes/sc-wild-horn.webp",
+      "zh": "荒野号角",
+      "en": "Wild Horn"
+    },
+    {
+      "key": "sc-birthday-cake",
+      "src": "/images/scenes/sc-birthday-cake.webp",
+      "zh": "生日蛋糕",
+      "en": "Birthday Cake"
+    },
+    {
+      "key": "sc-collect-book",
+      "src": "/images/scenes/sc-collect-book.webp",
+      "zh": "收集品图鉴",
+      "en": "Collector's Album"
+    },
+    {
+      "key": "sc-rare-king-egg",
+      "src": "/images/scenes/sc-rare-king-egg.webp",
+      "zh": "一代鸭王的金蛋",
+      "en": "First Duck King's Golden Egg"
+    },
+    {
+      "key": "sc-rare-star-core",
+      "src": "/images/scenes/sc-rare-star-core.webp",
+      "zh": "晴岚星核",
+      "en": "Qinglan Star Core"
+    },
+    {
+      "key": "sc-rare-dragon-pearl",
+      "src": "/images/scenes/sc-rare-dragon-pearl.webp",
+      "zh": "焚天龙珠",
+      "en": "Skyburner's Dragon Pearl"
+    },
+    {
+      "key": "sc-dragon-seed",
+      "src": "/images/scenes/sc-dragon-seed.webp",
+      "zh": "龙裔之种",
+      "en": "Dragon Seed"
+    },
+    {
+      "key": "sc-ember-seed",
+      "src": "/images/scenes/sc-ember-seed.webp",
+      "zh": "龙皇焰种",
+      "en": "Ember Seed"
+    },
+    {
+      "key": "sc-phantom-spore",
+      "src": "/images/scenes/sc-phantom-spore.webp",
+      "zh": "幽魂孢子",
+      "en": "Phantom Spore"
+    },
+    {
+      "key": "sc-dragon-fruit",
+      "src": "/images/scenes/sc-dragon-fruit.webp",
+      "zh": "龙息果",
+      "en": "Dragonbreath Fruit"
+    },
+    {
+      "key": "sc-ember-chili",
+      "src": "/images/scenes/sc-ember-chili.webp",
+      "zh": "焚心椒",
+      "en": "Emberheart Chili"
+    },
+    {
+      "key": "sc-phantom-mushroom",
+      "src": "/images/scenes/sc-phantom-mushroom.webp",
+      "zh": "幽影蘑菇",
+      "en": "Umbral Mushroom"
+    },
+    {
+      "key": "sc-cover-pack",
+      "src": "/images/scenes/sc-cover-pack.webp",
+      "zh": "折叠掩体包",
+      "en": "Foldable Cover Pack"
+    },
+    {
+      "key": "sc-roadblock-pack",
+      "src": "/images/scenes/sc-roadblock-pack.webp",
+      "zh": "加固路障包",
+      "en": "Reinforced Roadblock Pack"
+    },
+    {
+      "key": "sc-wire-pack",
+      "src": "/images/scenes/sc-wire-pack.webp",
+      "zh": "阻滞铁丝网包",
+      "en": "Barbed Wire Pack"
+    },
+    {
+      "key": "sc-repair-spray",
+      "src": "/images/scenes/sc-repair-spray.webp",
+      "zh": "应急维修喷剂",
+      "en": "Emergency Repair Spray"
+    },
+    {
+      "key": "sc-taunt-smoke",
+      "src": "/images/scenes/sc-taunt-smoke.webp",
+      "zh": "挑衅烟雾弹",
+      "en": "Taunt Smoke"
+    },
+    {
+      "key": "sc-chaos-detonator",
+      "src": "/images/scenes/sc-chaos-detonator.webp",
+      "zh": "混沌引爆器",
+      "en": "Chaos Detonator"
+    },
+    {
+      "key": "sc-portable-safezone",
+      "src": "/images/scenes/sc-portable-safezone.webp",
+      "zh": "便携安全区装置",
+      "en": "Portable Safe-Zone Device"
+    },
+    {
+      "key": "sc-tidegate-letter",
+      "src": "/images/scenes/sc-tidegate-letter.webp",
+      "zh": "闸伯的信",
+      "en": "Old Zha's Letter"
+    },
+    {
+      "key": "sc-tidegate-handwheel",
+      "src": "/images/scenes/sc-tidegate-handwheel.webp",
+      "zh": "阀门手轮",
+      "en": "Valve Handwheel"
+    },
+    {
+      "key": "sc-tidegate-watch",
+      "src": "/images/scenes/sc-tidegate-watch.webp",
+      "zh": "潮汐怀表",
+      "en": "Tide Pocket Watch"
+    },
+    {
+      "key": "sc-tidegate-lead",
+      "src": "/images/scenes/sc-tidegate-lead.webp",
+      "zh": "淘沙响铊",
+      "en": "Dredger's Sounding Lead"
+    },
+    {
+      "key": "sc-lastshift-stamp",
+      "src": "/images/scenes/sc-lastshift-stamp.webp",
+      "zh": "押运钢印",
+      "en": "Escort Steel Stamp"
+    },
+    {
+      "key": "sc-lastshift-stub",
+      "src": "/images/scenes/sc-lastshift-stub.webp",
+      "zh": "末班票根",
+      "en": "Last Shift Ticket Stub"
+    },
+    {
+      "key": "sc-bento",
+      "src": "/images/scenes/sc-bento.webp",
+      "zh": "归航菜便当",
+      "en": "Homecoming Bento"
+    },
+    {
+      "key": "sc-salve",
+      "src": "/images/scenes/sc-salve.webp",
+      "zh": "星苔药膏",
+      "en": "Starmoss Salve"
+    },
+    {
+      "key": "sc-lantern",
+      "src": "/images/scenes/sc-lantern.webp",
+      "zh": "风灯",
+      "en": "Wind Lantern"
+    },
+    {
+      "key": "sc-incense",
+      "src": "/images/scenes/sc-incense.webp",
+      "zh": "驱风香",
+      "en": "Windward Incense"
     }
   ]
 }

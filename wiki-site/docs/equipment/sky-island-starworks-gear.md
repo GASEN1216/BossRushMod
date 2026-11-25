@@ -10,6 +10,23 @@
 
 ## 四件装备
 
+<div class="brs-gallery">
+
+![星铜护目盔](/images/scenes/sc-starbrass-helm.webp)
+*星铜护目盔*
+
+![星炉背甲](/images/scenes/sc-starfurnace-harness.webp)
+*星炉背甲*
+
+![星炉背囊](/images/scenes/sc-starfurnace-pack.webp)
+*星炉背囊*
+
+![观星镜盔](/images/scenes/sc-stargazer-helm.webp)
+*观星镜盔*
+
+</div>
+
+
 - **星铜护目盔**（头盔）：品质 5，头甲 +3，耐久 70，物品 ID 500086
 - **星炉背甲**（护甲）：品质 5，体甲 +3，耐久 100，物品 ID 500087
 - **星炉背囊**（背包）：品质 5，背包容量 +6，物品 ID 500088

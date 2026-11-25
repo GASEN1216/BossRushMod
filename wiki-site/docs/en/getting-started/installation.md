@@ -7,6 +7,20 @@
 3. Click **Subscribe**
 4. Launch the game. The mod loads automatically
 
+<div class="brs-gallery">
+
+![BossRush Ticket](/images/scenes/sc-bossrush-ticket.webp)
+*BossRush Ticket*
+
+![Adventurer's Journal](/images/scenes/sc-adventure-journal.webp)
+*Adventurer's Journal*
+
+![Duckov Codex](/images/icons/codex-book.webp)
+*Duckov Codex*
+
+</div>
+
+
 ## Confirm It's Working
 
 - **BossRush Ticket** appears at the base merchant

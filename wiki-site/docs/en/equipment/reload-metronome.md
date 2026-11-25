@@ -2,6 +2,17 @@
 
 The brass plate reads: A time to reload, a beat to fire. Turn the wait between magazines into a small timing challenge.
 
+<div class="brs-gallery">
+
+![Bell Keeper's Metronome](/images/scenes/sc-reload-metronome.webp)
+*Bell Keeper's Metronome*
+
+![Speedy Group Commander](/images/codex/cname-speedy.webp)
+*Speedy Group Commander*
+
+</div>
+
+
 ## Where to get it
 
 Defeat the vanilla boss **Speedy** for a **20%** chance of one extra metronome, including on vanilla maps. This does not replace his normal loot; the ice variant and regular followers are excluded.

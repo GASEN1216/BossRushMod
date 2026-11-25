@@ -294,6 +294,8 @@ namespace BossRush
         bool _telegraph;
         void PrepareTelegraph() { _telegraph = false; }
         void PlayRevealBurst() { }
+        // 2026-11-25 水墨揭晓落印（墨环 + 稀有度印 + 余烬）：纯表现，替身保持惰性
+        void PlayInkResultAccents() { }
         string BuildBatchSummary() { return BuildDetailText(); }
         public void Click() { OnDismiss(); }
         public bool Complete { get { return _finished && _detailText.text==BuildDetailText(); } }

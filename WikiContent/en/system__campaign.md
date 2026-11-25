@@ -94,21 +94,11 @@ In-run objectives must be met **in the same run**; base-side objectives can be d
 
 ### How the final showdown works
 
-- With the final quest active, head into the arena, but **don't touch the central signpost to
-  start a run**. The showdown can't begin while any mode is running.
-- A **sign-up stone** rises next to you. Hold it to start. The one holding the ring has a few words before the fight.
-- The Shadow of the Champion takes the form of a **sandstorm spirit**, with swirling sand, orbiting debris, and amber eyes.
-- Phase one cycles through five dashes, 21 breakable sand bubbles, five dashes, and twin tornado seeds. Below 50% health, phase two uses three faster dashes, an orbit that fires 31 bubbles inward toward you, three more dashes, then a homing seed that creates a large cyclone near the player.
-- Twin sandstorms launch two ground rings from either side of the boss, which then chase you. They become stationary tornadoes upon contact or after three seconds, with a ground warning before damage begins. Walls block the rings without triggering them early. Small tornadoes have a 3.4 m radius and stand 12 m tall; large cyclones have a 5.6 m radius and stand 24 m tall. Layered sand clouds and fine grains form the storm, with ground-level sand marking its danger zone. Rising sand crystals crown the boss, while dashes shed short-lived dust and bubbles carry soft membrane highlights.
-- Sand-spirit guards pursue and react faster, and randomly use all three Astral Staff heavy attacks: a wide forward sweep, a two-beat spin whose second beat pulls you in, and a leaping slam. A warm orange fan or ring lights up on the ground before each one; roll on time to avoid it, and walls block the hit. Layered dust, broken sand streams, and fine golden grains shape the storms; ground circles mark their danger radius.
-- The champion's dashes lead your movement: while it winds up, the ground warning turns to follow where you are heading and only locks in a moment before release. Running in a straight line will not save you; roll as it locks.
-- Below 15% health, the champion fades into the storm with its eyes still visible, briefly revealing itself during its one-, two-, and three-dash chains. These dashes **pass through walls** and keep steering toward you. After each dash chain it rotates between twin sand funnels, an unseen circling bubble barrage, and a full sandstorm.
-- The champion summons sand spirits wielding Astral Staffs of light without interrupting its tornadoes. Tornadoes fire fast sand sharks shaped like sand dragons with sandy wings and swaying tails; bubbles and sharks can be destroyed by attacks. Guards drop no items; defeat the champion to obtain the staff.
-- Stay within the arena around the sign-up stone. Leaving the battle area enrages the champion; returning calms it. Phase transitions briefly grant invulnerability. Watch its eyes and ground warnings.
-- Victory guarantees the **Astral Staff**, a melee staff of light with Focus built by left-click hits or holding right-click. Release right-click for one of three heavy finishers.
-- Losing or walking away doesn't lock you out. The quest stays, the sign-up stone comes back when
-  you return to the arena, and you can try as many times as you like.
-- If you start another mode mid-showdown, the showdown stands down and cleans itself up.
+- With Chapter 6 active, enter the arena **without starting any other mode at the signpost**, and hold the **sign-up stone** beside you to challenge the **Shadow of the Champion** (sandstorm spirit with amber eyes).
+- **Phase 1 (100%–50%) & Phase 2 (<50%)**: alternates 3–5 wall-free movement dashes with breakable sand bubbles (21 / 31) and **twin tornado seeds** (`3.4m` small tornadoes or `5.6m` large cyclones; walls block traveling rings cleanly). Stay mobile when dash lines lock in — dashes lead your movement!
+- **Below 15% HP (Sandstorm Ambush)**: fades into the storm with glowing eyes visible, weaving **wall-piercing 1/2/3-dash chains** between sand funnels and circling bubbles.
+- **Sand-Spirit Guards & Projectiles**: guards wield Astral Staffs using sweep, two-beat spin, and leaping slam telegraphs; tornado sharks and bubbles can both be shot or swung down to clear space.
+- **Bounds & Rewards**: stay inside the stone's arena ring to avoid enraging it. Victory guarantees the **Astral Staff** (drops on defeat? Never — retry free anytime via the sign-up stone). Starting another mode cleanly aborts an active bout.
 
 ### What you walk away with
 
@@ -137,16 +127,15 @@ In-run objectives must be met **in the same run**; base-side objectives can be d
 - **What's a "bounty mark"?** The marked bounty targets in Blood Hunt. Only kills on marked targets
   are counted.
 - **Can I farm the same chapter's reward?** No. Each chapter can be handed in once.
-- **I already built a Campaign Board in an old save. What now?** Keep it as a souvenir or tear it
-  down; your progress is safe either way. Quests now come from Jeff, and old progress carries over.
-- **What happens across save slots?** Campaign progress follows the **save slot**, so each save
-  runs its own campaign.
+- **What happens across save slots?** Campaign progress follows the **save slot**, so each save runs its own campaign.
 
 ### Jeff's new-content introductions
 
-Alongside the six campaign chapters, Jeff offers fourteen one-time introductions. They come **one at a time**: Jeff only hands you the next one after you turn in the current one. The garden and display introductions wait until campaign chapters 1 and 2 are turned in (which unlock the garden and the display bonus), and the Sky Island gear introduction waits until Coordinates Above the Clouds is turned in and the route is open. None of them holds up the rest. Accept them at base, follow the quest log, then return and hand them in yourself. Acceptance, trial completion and hand-in survive reloading. These introductions do not change chapter order.
+Alongside the six main chapters, Jeff hands out **14 one-time introductory quests** one by one, paying **74,000 cash total** plus entry items for upcoming systems (backpack first, then storage).
 
-Every hand-in pays a reward, and the item is usually what the next introduction needs, so you can go straight on without buying it first. Reward items go to your backpack first, then storage. The fourteen together pay **74,000** cash.
+- **Garden, Display, and Sky Island gear introductions** wait for Campaign Ch.1, Ch.2, and *Coordinates Above the Clouds* respectively without blocking anything else
+- Existing cubs, built facilities, or matching forged gear already qualify — simply claim at Jeff
+- Handing in one unlocks the next; accepted and completed progress persists across reloads
 
 - **Bring Your Own Gear (Fate Echo)** — 3,000 + BossRush Ticket x2
 - **Your Turn in the Stands (Black Market Duck Cup)** — 3,000 + Relic Egg x1

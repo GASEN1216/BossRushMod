@@ -6,6 +6,14 @@
 
 ## 入场条件
 
+<div class="brs-icon">
+
+![血猎收发器](/images/scenes/sc-transponder.webp)
+*血猎收发器*
+
+</div>
+
+
 - **裸装**：脱个精光
 - 带一张 **BossRush 船票**
 - 带一个 **血猎收发器**（基地商人处购买）
@@ -76,6 +84,23 @@
 血猎追击也有神秘商人，提供战斗补给分类商店、维修入口，以及**「一键卖出」**功能（锁定和愿望清单物品不会误卖）。
 
 ## 工事系统——你的移动堡垒
+
+<div class="brs-gallery">
+
+![折叠掩体包](/images/scenes/sc-cover-pack.webp)
+*折叠掩体包*
+
+![加固路障包](/images/scenes/sc-roadblock-pack.webp)
+*加固路障包*
+
+![阻滞铁丝网包](/images/scenes/sc-wire-pack.webp)
+*阻滞铁丝网包*
+
+![应急维修喷剂](/images/scenes/sc-repair-spray.webp)
+*应急维修喷剂*
+
+</div>
+
 
 4 种可部署的防御工事：
 

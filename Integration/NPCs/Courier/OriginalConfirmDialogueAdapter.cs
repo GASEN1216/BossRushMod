@@ -194,13 +194,6 @@ namespace BossRush
             {
                 DestroyUi();
 
-                Button buttonPrefab = GameplayDataSettings.UIPrefabs.Button;
-                if (buttonPrefab == null)
-                {
-                    ModBehaviour.DevLog("[OriginalConfirmDialogueAdapter] [ERROR] GameplayDataSettings.UIPrefabs.Button is null");
-                    return false;
-                }
-
                 canvasRoot = new GameObject(CanvasName);
                 Canvas canvas = canvasRoot.AddComponent<Canvas>();
                 canvas.renderMode = RenderMode.ScreenSpaceOverlay;
@@ -235,7 +228,7 @@ namespace BossRush
 
                 CreateTitle(panelRoot.transform);
                 CreateMessageArea(panelRoot.transform);
-                CreateFooter(panelRoot.transform, buttonPrefab);
+                CreateFooter(panelRoot.transform);
 
                 canvasRoot.SetActive(false);
                 return true;
@@ -300,7 +293,7 @@ namespace BossRush
             messageRect.offsetMax = new Vector2(-28f, -TitleBarHeight - 14f);
         }
 
-        private static void CreateFooter(Transform parent, Button buttonPrefab)
+        private static void CreateFooter(Transform parent)
         {
             GameObject footer = new GameObject("Footer");
             footer.transform.SetParent(parent, false);
@@ -317,31 +310,33 @@ namespace BossRush
             footerRect.anchoredPosition = Vector2.zero;
             footerRect.sizeDelta = new Vector2(0f, FooterHeight);
 
-            confirmButton = UnityEngine.Object.Instantiate(buttonPrefab, footer.transform);
+            confirmButton = ZombieModeUIHelper.CreateButton("ConfirmButton", footer.transform, string.Empty,
+                new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(ButtonWidth, ButtonHeight), BossRushUIColors.AccentFill,
+                18f, new Vector2(ButtonWidth - 16f, ButtonHeight - 8f), () => Resolve(true), true);
             LayoutElement confirmLayout = confirmButton.gameObject.AddComponent<LayoutElement>();
             confirmLayout.preferredWidth = ButtonWidth;
             confirmLayout.preferredHeight = ButtonHeight;
+            BossRushInkSkin.StyleInkButton(confirmButton, BossRushInkButtonRole.Primary);
             confirmButtonText = confirmButton.GetComponentInChildren<TextMeshProUGUI>(true);
-            confirmButton.onClick.RemoveAllListeners();
-            confirmButton.onClick.AddListener(() => Resolve(true));
 
-            // 危险确认键（A-37）：官方按钮 prefab 的配色由它自己的动画组件管，不另染色；不可逆时换这颗共享 Danger 实心键。
+            // 危险确认键（A-37）：不可逆时使用共享 Danger 角色按钮（水墨主题自动转换为墨底朱边浅朱字）。
             dangerConfirmButton = ZombieModeUIHelper.CreateButton("DangerConfirm", footer.transform, string.Empty,
                 new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(ButtonWidth, ButtonHeight), BossRushUIColors.Danger,
-                18f, new Vector2(ButtonWidth - 12f, ButtonHeight - 6f), () => Resolve(true), true);
+                18f, new Vector2(ButtonWidth - 16f, ButtonHeight - 8f), () => Resolve(true), true);
             LayoutElement dangerLayout = dangerConfirmButton.gameObject.AddComponent<LayoutElement>();
             dangerLayout.preferredWidth = ButtonWidth;
             dangerLayout.preferredHeight = ButtonHeight;
             dangerConfirmButtonText = dangerConfirmButton.GetComponentInChildren<TextMeshProUGUI>(true);
             dangerConfirmButton.gameObject.SetActive(false);
 
-            cancelButton = UnityEngine.Object.Instantiate(buttonPrefab, footer.transform);
+            cancelButton = ZombieModeUIHelper.CreateButton("CancelButton", footer.transform, string.Empty,
+                new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(ButtonWidth, ButtonHeight), BossRushUIColors.SurfaceRaised,
+                18f, new Vector2(ButtonWidth - 16f, ButtonHeight - 8f), () => Resolve(false), true);
             LayoutElement cancelLayout = cancelButton.gameObject.AddComponent<LayoutElement>();
             cancelLayout.preferredWidth = ButtonWidth;
             cancelLayout.preferredHeight = ButtonHeight;
+            BossRushInkSkin.StyleInkButton(cancelButton, BossRushInkButtonRole.Secondary);
             cancelButtonText = cancelButton.GetComponentInChildren<TextMeshProUGUI>(true);
-            cancelButton.onClick.RemoveAllListeners();
-            cancelButton.onClick.AddListener(() => Resolve(false));
         }
 
         private static void ShowDialog(string title, string message, string confirmText, string cancelText)
@@ -361,9 +356,9 @@ namespace BossRush
                 messageText.text = message ?? string.Empty;
             }
 
-            ApplyButtonText(confirmButtonText, confirmText ?? L10n.T("确认", "Confirm"));
-            ApplyButtonText(dangerConfirmButtonText, confirmText ?? L10n.T("确认", "Confirm"));
-            ApplyButtonText(cancelButtonText, cancelText ?? L10n.T("取消", "Cancel"));
+            ApplyButtonText(confirmButtonText, confirmText ?? L10n.T("确认", "Confirm"), BossRushInkColors.Paper);
+            ApplyButtonText(dangerConfirmButtonText, confirmText ?? L10n.T("确认", "Confirm"), BossRushInkColors.CinnabarText);
+            ApplyButtonText(cancelButtonText, cancelText ?? L10n.T("取消", "Cancel"), BossRushInkColors.Paper);
             // 不可逆：危险实心键在左、「取消」在右并拉开（A-37）；可逆：官方按钮、原间距
             bool destructive = defaultToCancel;
             if (confirmButton != null) confirmButton.gameObject.SetActive(!destructive);
@@ -507,13 +502,16 @@ namespace BossRush
             }
         }
 
-        private static void ApplyButtonText(TextMeshProUGUI label, string text)
+        private static void ApplyButtonText(TextMeshProUGUI label, string text, Color color)
         {
             if (label == null)
             {
                 return;
             }
 
+            BossRushUI.ApplyGameFont(label);
+            label.color = color;
+            label.fontStyle = FontStyles.Bold;
             label.text = text ?? string.Empty;
             label.fontSize = 18f;
             label.enableAutoSizing = true;

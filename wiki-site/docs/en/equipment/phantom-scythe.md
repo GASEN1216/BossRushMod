@@ -1,5 +1,13 @@
 # Soulreaper's Requiem
 
+<div class="brs-icon">
+
+![Soulreaper's Requiem](/images/scenes/sc-phantom-scythe.webp)
+*Soulreaper's Requiem*
+
+</div>
+
+
 ## Role
 
 The Phantom Witch's scythe. Ghost-element melee with **50% curse chance on every hit** and a right-click Curse Realm. All about mobility and crowd control.

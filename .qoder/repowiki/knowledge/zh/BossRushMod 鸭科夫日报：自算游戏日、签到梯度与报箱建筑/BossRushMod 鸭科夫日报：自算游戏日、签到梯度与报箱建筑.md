@@ -262,3 +262,7 @@ Dev F3 在专用测试档真实执行签到、跨日、物理保存、清缓存�
 `dailyReportView` 与首次创建、复用和打开逻辑现在由既有 `DailyReportRuntimeModule` 的 `DailyReportRuntimeModule_UI.cs` 持有。`IntegrationHostCompatibility.cs` 保留公开 `OpenDailyReportUI()`，每次读取一次原配置门并转发。官方 UI 管理器缺失或创建返回 null 时仍可重试；切图销毁父对象后按 Unity 对象语义重建。保存、退订、View、报箱与静态缓存的卸载顺序维持原模块顺序。
 
 `python tools/run_runtime_regressions.py --filter DailyReportHostUI` 完整编译真实模块和 UI owner，执行当前宿主装配/入口及真实 `DailyReportView.CleanupRuntime`。夹具覆盖 16 条行为断言，包含 Flush/Close 抛异常时继续清理和父对象销毁重建；存档、UI 呈现与 Unity 调度为替身，证据为 L2。L3 检查应从基地报箱打开日报，ESC 关闭后重开，再切图返回重开；打不开、重复面板、遗留遮罩或异常日志均不合格。
+
+## 2026-11-25 古宣水墨邸报 UI 重构（COMPAT）
+
+为消除浅色烤图报纸与全项目水墨主题的混搭，`DailyReportUI.cs` 与 `DailyReportUI_Dashboard.cs` 全面重制为深墨古宣邸报：沿用 `DailyReportLayoutTable` 与 `DailyReportBackground` 运行时图标/吉祥物坐标，运行时以 `BossRushInkSkin.ApplyInkPanel` 绘制外盘与四张墨纸卡、双端卷轴杆装饰、古宣标题「邸报」朱砂印、暗朱铜横向毛笔标题底衬、墨金描边签到格与朱砂主操作按钮；签到成功播放「阅」字印章落地与金墨波纹（`PlaySignedStamp`）。所有状态机、存档、悬赏、里程碑欠奖、滚轮/ESC/三档字号规范不变，`DailyReportArtPropertyTest` 原有资产契约保持完整，`DailyReportPresentationGuard` 同步更新水墨对比度与构造校验。

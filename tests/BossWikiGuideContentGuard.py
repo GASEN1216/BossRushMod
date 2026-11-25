@@ -50,7 +50,8 @@ def fail(message: str) -> int:
 
 
 def normalize_generated_content(raw: str) -> str:
-    """Ignore only the heading and callout markup changed by the site sync."""
+    """Ignore heading, callout, and injected brs-* illustration blocks changed by the site sync."""
+    raw = re.sub(r'\n*<div class="brs-(?:figure|gallery|icon)">\n[\s\S]*?\n</div>\n*', "\n\n", raw)
     normalized = []
     for line in raw.splitlines():
         line = re.sub(r"^#{1,6}\s+", "", line)

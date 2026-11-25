@@ -1,5 +1,13 @@
 # Phantom Witch
 
+<div class="brs-icon">
+
+![Phantom Witch](/images/codex/boss-phantomwitch.webp)
+*Phantom Witch*
+
+</div>
+
+
 ## Overview
 The Phantom Witch is the third custom Boss in this mod. She flips between blinking and stealth, and fights in three phases with Curse Realms, scythe sweeps and undead summons. Killing her has a 50% chance to drop her exclusive melee weapon, Soulreaper's Requiem.
 
@@ -89,6 +97,14 @@ After Tracked Teleport, Requiem Arc and Wraith Trail she stands still for about 
 You can roll through Tracked Teleport, Requiem Arc, Wraith Trail and the heavy slash. Curse Realm is lingering ground damage; rolling doesn't stop it, so walk out of the warning ring.
 
 ## Drops
+
+<div class="brs-icon">
+
+![Soulreaper's Requiem](/images/scenes/sc-phantom-scythe.webp)
+*Soulreaper's Requiem*
+
+</div>
+
 
 **Exclusive equipment**
 

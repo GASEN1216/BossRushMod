@@ -38,7 +38,8 @@ namespace BossRush
         private const float SealSize = 58f;
 
         private static ArenaExpeditionHud instance;
-        // HUD 重建（Show 先 Hide）时把战规那几行补回去
+        // 战规写进来的那几行：HUD 在时立刻画，Build 时也从这里读（ApplyLines）。
+        // Show 先 Hide，Hide 会把它们清空——新一局开 HUD 不继承上一局的天象 / 诅咒 / 禁药读秒。
         private static string omenText = string.Empty;
         private static string curseText = string.Empty;
         private static string sealedText = string.Empty;
@@ -107,6 +108,8 @@ namespace BossRush
             {
                 BossRushInkMotion motion = BossRushInkMotion.For(hud.gameObject);
                 TextMeshProUGUI label = hud.omenLabel;
+                // 动效 0.35 秒后才起：先藏起来，免得新天象名先满色亮一下、再跳回透明淡入。
+                label.alpha = 0f;
                 motion.Add(0.35f, 0.5f, true, t =>
                 {
                     if (label == null) return;

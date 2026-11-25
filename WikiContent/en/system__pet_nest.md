@@ -61,10 +61,10 @@ The cub only scales its visual root, never its collider. At level 1 its body is 
 #### Behavior, feeding and petting
 Walk up to your deployed cub; besides "Backpack", its interaction group has three more entries:
 
-- **Behavior** (saved on the cub; new cubs and old saves default to Follow). In a raid, tapping it moves to the next behavior and the option name says which one; on the nest page you can pick any of the three directly:
-  - **Follow**: tags along and never starts a fight. It joins in once you hit an enemy or an enemy hits you or it, then breaks off and returns **10 seconds** after combat ends.
-  - **Aggressive**: engages any enemy it sees (the behavior before this option existed).
-  - **Evasive**: never fights, stays close, **takes no damage**, and every **5 seconds** shakes off bleeding, poison, nausea, pain, burning, shock, freeze and stun. Good for using it as a pack mule.
+- **Behavior** (saved per cub, defaulting to Follow). Click in-raid to cycle modes, or choose directly on the nest page:
+  - **Follow**: stays with you without picking fights; engages once you attack or either of you takes a hit, then disengages **10 seconds** after combat ends.
+  - **Aggressive**: attacks any spotted enemy on sight.
+  - **Evasive**: never attacks, stays close, **takes no damage**, and clears bleeding, poison, nausea, pain, burn, shock, freeze, and stun every **5 seconds** (great as a pack mule).
 - **Feed**: picks the **cheapest food** in your pack for **+20 experience** and **10%** health. **10-minute** cooldown per cub (real time). Multi-use foods are skipped so a whole item is never eaten at once. The option name shows which food it will eat, or how many minutes are left on the cooldown.
 - **Pet**: a short reaction that depends on its temperament, plus a little hop; no stats.
 
@@ -117,7 +117,7 @@ Successful trips also roll an extra item: **one quality-3 item** for Rough, or *
 After a Desperate trip survives and succeeds, it has a further `20%` chance to award a Relic Egg of that bloodline. This is not the overall egg chance per departure.
 Returning empty-handed still awards survival experience; dying awards neither experience nor loot.
 
-**The death rate is written on the button before you commit**, and it is frozen into that departure; later changes can only lower it (when Rough stopped being lethal, Rough trips already under way settled as non-lethal too). The card also lists the cash range, souls, and loot quality and count on success.
+**The death rate is printed directly on the departure button** and locked in for that trip, alongside the cash range, souls, and loot quality.
 
 #### Countdown and settlement
 - The countdown runs on **real time**: it keeps ticking while the game is closed.
@@ -141,21 +141,21 @@ Cubs grow by working with you, capping at level 10 ("Adult"), after which they s
   - Each kill by the cub, **or by you within 30 m of it**: **4**, plus **1 per 100 actual max health** of the victim (up to **16** total per kill), capped at **80** kill experience per run. Weak cubs no longer need the last hit to grow
   - Feeding: **+20** (once every 10 minutes per cub)
   - Surviving a Disaster Expedition, by tier: Safe **+15**, Rough **+30**, Desperate **+60**
-  - **Offering souls**: select a cub on the nest page and press "Offer souls" under its Growth section. It spends only souls of **the cub's own bloodline**, **2 souls per experience point**, and fills the cub straight to its next level (twice the missing experience in souls, at most 200 right after a level-up). **Each cub can take one offering per in-game day**; cubs at max level or away on an expedition can't. The button shows how many souls that bloodline has, and the confirmation shows the level change and the cost
+  - **Offering souls**: under Growth on the nest details panel. Spends only **that bloodline's souls** (**2 souls per XP**) to advance straight to the next level (1 offering per cub per in-game day; unavailable at Lv.10 or on expedition; shows current bloodline souls and confirmation prompt).
 - **100 experience per level**, capped at level 10.
-- **Bloodline baseline** — 0.25 × the square root of the source boss character damage multiplier, bounded to 0.12-0.8 (sources 0.8 / 1.35 / 12 give about 0.22 / 0.29 / 0.80; older versions flattened every bloodline above 1.35 to 0.28). This is a character stat, not a share of final damage or DPS: weapons, fire rate and AI still matter. Custom bloodlines use their boss's base health and signature equipment.
-- **Combat growth** — each level above level 1 adds +6% max health and +8% to both gun and melee damage multipliers. At level 10, level bonuses total +54% max health and +72% to each damage multiplier, applied alongside endowments, temperament and scars.
-- **Mid-raid growth** — a committed level-up immediately updates combat bonuses and visual size, preserving the current health fraction. The nest detail page shows the health, damage and size bonuses provided by levels.
-- **Backpack growth** — +1 cub-backpack slot at levels 3 / 6 / 9, so +3 at max, stacking with the base slots, endowment slots and temperament slots.
+- **Bloodline baseline**: `0.25 × sqrt(source boss damage multiplier)` clamped between `0.12` and `0.8` (matching ~0.22 / 0.29 / 0.80 tiers; custom bloodlines inherit their boss's base health and signature gear); weapons, fire rate, and AI still matter.
+- **Combat growth**: each level above Lv.1 adds +6% max HP and +8% gun and melee damage (+54% HP and +72% damage at Lv.10), combined with endowments, temperament, and scars.
+- **Mid-raid growth**: leveling up in the field updates combat stats and visual size at once while keeping your HP ratio intact.
+- **Backpack growth**: +1 cub-backpack slot at levels 3 / 6 / 9 (+3 total), stacking with base, endowment, and temperament slots.
 - The index records the highest level reached for each bloodline.
 
 ### Nest capacity and releasing
 
-- **The nest starts with 12 places.** It expands by +4 each time your index reaches 10 / 20 / 30 unlocked bloodlines, up to 24.
-- **Releasing** — click a cub's card on the nest page to select it (no need to deploy it first), then press "Release" at the bottom of the right-hand panel and confirm to get back 60 relic souls of its bloodline. Releasing is permanent and the cub is not memorialized; a cub away on an expedition cannot be released, and a cub with items still in its backpack must empty it first. When the nest is full, this is how you make room; no need to send a cub on a Desperate expedition and hope.
-- **Batch release** — "Select" at the top right of the nest page switches to ticking mode: click cards to tick or untick. "Tick all common cubs" on the right ticks every ordinary cub at once; the deployed cub and shiny or chroma cubs are never ticked that way and have to be ticked one by one. Press "Release N" and confirm to release them all in one go, 60 souls back per cub. Cubs that can't be ticked say why (on an expedition, items in the backpack, favorite).
-- **Favorite** — press "Favorite" next to the name in the details. Favorites can't be released, are never ticked by "tick all", and can't take Desperate runs.
-- **Sort** — the Sort button above the nest list cycles arrival order, level, bloodline and rarity. It only changes the display order.
+- **Starts at 12 slots**, expanding by +4 at 10 / 20 / 30 unlocked bloodlines (up to 24).
+- **Release** — Select any idle cub (empty its bag first) and press Release to recover 60 souls of its bloodline permanently without memorializing it — great for freeing nest slots cleanly.
+- **Batch release** — Enter Select mode and use "Tick all common cubs" (skips deployed, shiny, chroma, and favorited cubs; blocked cubs state why).
+- **Favorite** — Toggle the star/Favorite button on important cubs to lock them out of release and Desperate expeditions.
+- **Sort** — Cycle between arrival order, level, bloodline, and rarity in the nest header.
 
 ### Tips
 - Souls condense eggs, treat scars and feed growth. Bank **240** of one bloodline and you can target that boss's egg directly, so unlucky players can still complete the index; treating one scar costs 40; an offering lifts one cub one level per day.

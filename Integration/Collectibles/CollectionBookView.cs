@@ -230,17 +230,11 @@ namespace BossRush
         {
             GameObject header = ZombieModeUIHelper.CreateRect("Header", panel.transform, new Vector2(0f, 1f), new Vector2(1f, 1f),
                 Vector2.zero, new Vector2(0f, HeaderHeight), new Vector2(0.5f, 1f));
-            GameObject rail = ZombieModeUIHelper.CreateRect("TitleRail", header.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
-                new Vector2(Padding, 0f), new Vector2(3f, 24f), new Vector2(0f, 0.5f));
-            Image railImage = rail.AddComponent<Image>();
-            railImage.color = BossRushUIColors.Accent;
-            BossRushUI.ApplyPanelSkin(railImage, 2, BossRushUISkinPart.Hairline);
-            railImage.raycastTarget = false;
 
             titleText = ZombieModeUIHelper.CreateText("Title", header.transform, string.Empty, TitleFontSize, Vector2.zero, Vector2.one,
                 Vector2.zero, Vector2.zero, TextAlignmentOptions.Left, BossRushUIColors.TextPrimary);
             titleText.fontStyle = FontStyles.Bold;
-            titleText.rectTransform.offsetMin = new Vector2(Padding + 10f, 0f);
+            titleText.rectTransform.offsetMin = new Vector2(Padding, 0f);
             titleText.rectTransform.offsetMax = new Vector2(-260f, 0f);
 
             progressText = ZombieModeUIHelper.CreateText("Progress", header.transform, string.Empty, NameFontSize, Vector2.zero, Vector2.one,
@@ -517,13 +511,14 @@ namespace BossRush
             button.targetGraphic = background;
             ZombieModeUIHelper.ApplyButtonColors(button, background.color,
                 Color.Lerp(background.color, BossRushUIColors.Accent, 0.22f), BossRushUIColors.Disabled);
-            button.onClick.AddListener(delegate { SelectCard(view); });
+            button.onClick.AddListener(delegate { SelectCard(view, true); });
 
             GameObject bar = ZombieModeUIHelper.CreateRect("Rarity", card.transform, new Vector2(0f, 1f), new Vector2(1f, 1f),
-                new Vector2(0f, -6f), new Vector2(-24f, 3f), new Vector2(0.5f, 1f));
+                new Vector2(0f, -6f), new Vector2(-20f, 5f), new Vector2(0.5f, 1f));
             Image barImage = bar.AddComponent<Image>();
+            barImage.sprite = BossRushInkSkin.GetBrushSprite();
+            barImage.type = Image.Type.Simple;
             barImage.color = RarityColor(def.Quality);
-            BossRushUI.ApplyPanelSkin(barImage, 1, BossRushUISkinPart.Hairline);
             barImage.raycastTarget = false;
 
             GameObject iconHolder = ZombieModeUIHelper.CreateRect("Icon", card.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
@@ -560,8 +555,11 @@ namespace BossRush
             return card;
         }
 
-        /// <summary>选中一张卡：上一张描边还原，这一张换 WarningText 描边（UI 共识 §6），详情卡跟着换。</summary>
-        private void SelectCard(CardView view)
+        /// <summary>
+        /// 选中一张卡：上一张描边还原，这一张换 WarningText 描边（UI 共识 §6），详情卡跟着换。
+        /// 墨环与笔扫声只在玩家点卡时放（<paramref name="byPlayer"/>）：打开、切系列、登记状态变化重建卡片时静默选中。
+        /// </summary>
+        private void SelectCard(CardView view, bool byPlayer = false)
         {
             if (selectedCard != null && selectedCard.Stroke != null) selectedCard.Stroke.color = selectedCard.StrokeColor;
             selectedCard = view;
@@ -575,6 +573,11 @@ namespace BossRush
             }
             selectedTypeId = view.Def.TypeId;
             if (view.Stroke != null) view.Stroke.color = BossRushUIColors.WarningText;
+            if (byPlayer && view.Root != null)
+            {
+                BossRushInkWidgets.PlayActionRipple(
+                    view.Root.transform, Vector2.zero, 96f, BossRushInkColors.Gold, BossRushInkSkin.SfxBrushSweep);
+            }
             ShowDetail(view.Def, view.Registered);
         }
 
@@ -586,6 +589,8 @@ namespace BossRush
             detailIcon.color = registered ? Color.white : Silhouette;
             detailName.text = CollectiblesLocalization.Name(def);
             detailName.color = registered ? BossRushUIColors.TextPrimary : BossRushUIColors.TextSecondary;
+            BossRushInkWidgets.AddLeftOrAlignedStroke(
+                detailName, registered ? BossRushInkColors.Gold : BossRushUIColors.Stroke, 8f, true);
             string tier = "<color=#" + ColorUtility.ToHtmlStringRGB(RarityColor(def.Quality)) + ">"
                 + def.Quality + L10n.T(" 档", "-tier") + "</color>";
             string status = registered

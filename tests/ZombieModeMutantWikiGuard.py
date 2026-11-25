@@ -327,7 +327,13 @@ def main() -> int:
             generated = read(GENERATED[language])
         except FileNotFoundError as error:
             return fail("missing generated page -> " + str(error))
-        expected = transform_content(read(CANONICAL[language]))
+        generated = re.sub(
+            r'\n*<div class="brs-(?:figure|gallery|icon)">\n[\s\S]*?\n</div>\n*',
+            "\n\n",
+            generated,
+        )
+        generated = re.sub(r"\n{3,}", "\n\n", generated).strip()
+        expected = re.sub(r"\n{3,}", "\n\n", transform_content(read(CANONICAL[language]))).strip()
         if generated != expected:
             return fail("generated page is out of sync -> " + language)
 

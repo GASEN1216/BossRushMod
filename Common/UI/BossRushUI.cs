@@ -1130,6 +1130,15 @@ namespace BossRush
                 Image railImage = rail.AddComponent<Image>();
                 railImage.color = accentColor;
                 ApplyPanelSkin(railImage, 2, BossRushUISkinPart.Hairline);
+                if (BossRushInkTheme.Active)
+                {
+                    RectTransform railRect = rail.GetComponent<RectTransform>();
+                    railRect.anchoredPosition = new Vector2(9f, 0f);
+                    railRect.sizeDelta = new Vector2(5f, -20f);
+                    railImage.sprite = BossRushInkSkin.GetVerticalBrushSprite();
+                    railImage.type = Image.Type.Sliced;
+                    railImage.pixelsPerUnitMultiplier = 2f;
+                }
                 railImage.raycastTarget = false;
             }
 

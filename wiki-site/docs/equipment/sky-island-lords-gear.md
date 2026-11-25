@@ -10,6 +10,29 @@
 
 ## 六件装备
 
+<div class="brs-gallery">
+
+![根须面罩](/images/scenes/sc-rootweave-mask.webp)
+*根须面罩*
+
+![藤编甲](/images/scenes/sc-vinewoven-cuirass.webp)
+*藤编甲*
+
+![悬根箭囊](/images/scenes/sc-hangroot-quiver.webp)
+*悬根箭囊*
+
+![青穗斗笠](/images/scenes/sc-greenear-hat.webp)
+*青穗斗笠*
+
+![蓑衣甲](/images/scenes/sc-straw-raincoat.webp)
+*蓑衣甲*
+
+![谷囊](/images/scenes/sc-grain-sack.webp)
+*谷囊*
+
+</div>
+
+
 - **根须面罩**（面罩）：品质 5，头甲 +1，耐久 40，物品 ID 500090
 - **藤编甲**（护甲）：品质 5，体甲 +3，耐久 100，物品 ID 500091
 - **悬根箭囊**（背包）：品质 5，背包容量 +6，物品 ID 500092

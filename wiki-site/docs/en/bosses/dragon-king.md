@@ -1,5 +1,13 @@
 # Skyburner Dragon Lord
 
+<div class="brs-icon">
+
+![Skyburner Dragon Lord](/images/codex/boss-dragonking.webp)
+*Skyburner Dragon Lord*
+
+</div>
+
+
 ## Overview
 Skyburner Dragon Lord is the strongest custom boss in this mod. It hovers in the air, has 7 attack skills and fights in two phases. Beating it drops the mod's top-tier equipment, including the Dragon King Set, Cloud Soar I totem, Reverse Scale, and Inferno Emperor's Realm-Breaking Halberd.
 
@@ -70,6 +78,29 @@ Do not ignore the "My child, protect me!" phase. Prioritize killing the Dragon D
 :::
 
 ## Drops
+
+<div class="brs-gallery">
+
+![Dragon King's Crown](/images/scenes/sc-dragon-king-helm.webp)
+*Dragon King's Crown*
+
+![Dragon King's Scale Mail](/images/scenes/sc-dragon-king-armor.webp)
+*Dragon King's Scale Mail*
+
+![Inferno Emperor's Halberd](/images/scenes/sc-halberd.webp)
+*Inferno Emperor's Halberd*
+
+![Skyburner Dragon Cannon](/images/scenes/sc-dragon-cannon.webp)
+*Skyburner Dragon Cannon*
+
+![Cloud Soar I](/images/scenes/sc-flight-totem.webp)
+*Cloud Soar I*
+
+![Reverse Scale](/images/scenes/sc-reverse-scale.webp)
+*Reverse Scale*
+
+</div>
+
 
 On kill, **one item is chosen via weighted random** from these six (not six independent rolls). Infinite Hell has no loot box, so the item drops on the ground where the Dragon King falls:
 

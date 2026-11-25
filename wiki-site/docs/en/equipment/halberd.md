@@ -1,5 +1,13 @@
 # Inferno Emperor's Realm-Breaking Halberd
 
+<div class="brs-icon">
+
+![Inferno Emperor's Halberd](/images/scenes/sc-halberd.webp)
+*Inferno Emperor's Halberd*
+
+</div>
+
+
 ## Role
 
 The most mechanically rich melee weapon in the mod. Three-hit combo + Dragon Emperor Fissure leap attack. Dropped by the Dragon Lord. **High skill ceiling, massive reward.**

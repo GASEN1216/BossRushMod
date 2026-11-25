@@ -1,12 +1,20 @@
 # Cloud Soar I
 
+<div class="brs-icon">
+
+![Cloud Soar I](/images/scenes/sc-flight-totem.webp)
+*Cloud Soar I*
+
+</div>
+
+
 ## At a Glance
 
 Equip this totem and **you can fly**. Actual flight. Ascend, glide, and hop over ground attacks.
 
-## Stats
-
-- **Type**: Totem / **Quality**: 6 (Epic) / **Drop**: Dragon Lord (15%) / Protected from death drops while equipped in its slot; not protected merely by being in the backpack
+- **Type**: Totem / **Quality**: 6 (Epic)
+- **Drop**: Dragon Lord (15%)
+- **On death**: Protected from death drops while equipped in its slot; not protected merely by being in the backpack
 
 ## Controls
 
@@ -31,15 +39,14 @@ Flying replaces your normal dash: with this totem equipped, the Dash key lifts y
 Out of stamina = auto-glide (slow descent). You won't freefall, but you can't fly back up.
 :::
 
-## Visual Effects
-- Cloud and mist effects appear beneath your feet while flying
-
 ## Use Cases
 
 - Scout large maps from above
 - Gain height advantage in complex terrain
 - **Dodge ground Boss attacks** by flying over them
 - Aerial overview in Faction War to track faction positions
+
+Cloud and mist effects appear beneath your feet while flying.
 
 ## Related Achievement
 - **Wind Rider** — First flight ($50K)

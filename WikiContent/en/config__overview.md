@@ -23,11 +23,8 @@
 #### useLegacyBossLootProbabilities
 - Default: true
 - Range: true/false
-- Quality distribution algorithm: `true` uses Legacy Probability Mode (per-quality independent probabilities + Q5+ guarantee), `false` uses Simplified Probability Mode (combined high-quality probability, no guarantee)
-- Scope:
-  - Standard BossRush: affects the quality distribution of Boss loot crates and keeps the guarantee that adds one Q5+ when a Boss over 250 max HP leaves no Q5+ in its crate
-  - From Scratch / Faction War / Blood Hunt: affects the quality distribution of regular on-death backpack bonus items, backpack refill items, and extra backpack ammo stacks
-  - Does not affect drop counts, currently equipped weapons, equipped armor/helmets/accessories, melee weapons, current bullet type, or Blood Hunt bounty / extraction bonus rewards
+- Quality distribution algorithm: `true` uses Legacy Probability Mode (per-quality odds + one Q5+ added when a Boss over 250 max HP leaves no Q5+ in its crate); `false` uses Simplified Probability Mode (combined high-tier pool, no Q5+ guarantee)
+- Scope: controls Standard BossRush crates plus extra enemy backpack drops in From Scratch, Faction War, and Blood Hunt (never affects drop counts, equipped gear, chambered ammo, or Blood Hunt bounty/extraction payouts)
 
 #### useInteractBetweenWaves
 - Default: false

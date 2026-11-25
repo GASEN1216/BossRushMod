@@ -2,6 +2,14 @@
 
 Leave a parting gift for anyone chasing you. With this totem equipped, fire the same gun at least **6 times** during one loading cycle, then empty its magazine to leave a mine at your feet. It explodes after **1.5 seconds**.
 
+<div class="brs-icon">
+
+![Empty-Mag Mine Box](/images/scenes/sc-empty-mine.webp)
+*Empty-Mag Mine Box*
+
+</div>
+
+
 ## Where to Get It
 
 Defeat the official boss **Mad Bomber** for a **20% extra drop chance**. This also works during normal raids on vanilla maps; a BossRush run is not required. The Empty-Mag Mine Box is not sold at Dingdang's Shop and is excluded from general random reward pools.

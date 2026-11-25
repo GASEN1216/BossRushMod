@@ -184,13 +184,15 @@ namespace BossRush
             image.color = BossRushUIColors.Surface;
             BossRushUI.ApplyFramedPanelSkin(image, 14, BossRushUISkinPart.Panel);
 
-            _titleText = ZombieModeUIHelper.CreateText(
-                "Title", surface.transform,
+            _titleText = BossRushInkWidgets.CreateHeaderTitle(
+                surface.transform,
+                "Title",
                 LocalizationHelper.GetLocalizedText(PetNestTuning.LocalizationPrefix + "Page_Expedition"),
-                30f, new Vector2(0f, 212f), new Vector2(760f, 46f),
-                TextAlignmentOptions.Center, BossRushUIColors.TextPrimary);
-            _titleText.fontStyle = FontStyles.Bold;
-            BossRushUI.ApplyGameFont(_titleText);
+                new Vector2(0f, 212f),
+                new Vector2(760f, 46f),
+                30f,
+                TextAlignmentOptions.Center,
+                true);
 
             BuildCard(surface.transform);
 
@@ -272,15 +274,16 @@ namespace BossRush
             _frontFace.SetActive(false);
         }
 
-        /// <summary>牌底边的一条色条（档位 / 结果色）。</summary>
+        /// <summary>牌底边的一笔水墨色带（档位 / 结果色）。</summary>
         private static Image CreateBar(Transform parent, string name)
         {
             GameObject bar = ZombieModeUIHelper.CreateRect(
                 name, parent, new Vector2(0f, 0f), new Vector2(1f, 0f),
-                new Vector2(0f, 14f), new Vector2(-40f, 4f), new Vector2(0.5f, 0.5f));
+                new Vector2(0f, 14f), new Vector2(-36f, 6f), new Vector2(0.5f, 0.5f));
             Image image = bar.AddComponent<Image>();
+            image.sprite = BossRushInkSkin.GetBrushSprite();
+            image.type = Image.Type.Simple;
             image.raycastTarget = false;
-            BossRushUI.ApplyPanelSkin(image, 2, BossRushUISkinPart.Hairline);
             return image;
         }
 
@@ -330,9 +333,56 @@ namespace BossRush
             if (_summaryText != null)
             {
                 _summaryText.text = BuildSummary(_pending);
+                Transform surface = _summaryText.transform.parent;
+                if (surface != null && surface.Find("ExpeditionSummaryScroll") == null)
+                {
+                    bool anyDead = false;
+                    for (int i = 0; _pending != null && i < _pending.Count; i++)
+                    {
+                        if (_pending[i] != null && _pending[i].outcomeDead) { anyDead = true; break; }
+                    }
+                    InkScrollShell shell = BossRushInkWidgets.CreateScrollShell(
+                        surface, "ExpeditionSummaryScroll", new Vector2(0f, -6f), new Vector2(736f, 330f), anyDead, false);
+                    if (shell != null)
+                    {
+                        if (shell.PaperImage != null)
+                        {
+                            shell.PaperImage.color = anyDead
+                                ? new Color(0.115f, 0.088f, 0.086f, 0.985f)
+                                : BossRushInkColors.SurfaceRaised;
+                        }
+                        RetintInkSummaryBorder(shell.Paper, "Border", new Color(0.76f, 0.62f, 0.34f, 0.55f));
+                        RetintInkSummaryBorder(shell.Paper, "BorderInner", new Color(0.76f, 0.62f, 0.34f, 0.22f));
+                        RetintInkSummaryBorder(shell.Paper, "Fiber", new Color(0.85f, 0.72f, 0.45f, 0.06f));
+                        _summaryText.rectTransform.SetParent(shell.Writ, false);
+                        _summaryText.rectTransform.anchorMin = _summaryText.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+                        _summaryText.rectTransform.anchoredPosition = new Vector2(0f, -6f);
+                        _summaryText.rectTransform.sizeDelta = new Vector2(676f, 290f);
+                        BossRushInkWidgets.CreateSealBadge(
+                            shell.Writ,
+                            anyDead ? L10n.T("铭记", "MEMORY") : L10n.T("凯旋", "REPORT"),
+                            68f,
+                            anyDead ? BossRushInkColors.Cinnabar : BossRushInkColors.Gold,
+                            new Vector2(286f, -104f),
+                            -9f,
+                            true,
+                            shell.Root,
+                            0.42f,
+                            anyDead ? (Color?)BossRushInkParchmentColors.Paper : BossRushInkColors.InkWash);
+                        BossRushInkWidgets.PlayScrollUnroll(shell, 0.04f, 0.40f);
+                    }
+                }
                 _summaryText.gameObject.SetActive(true);
             }
             Finish();
+        }
+
+        private static void RetintInkSummaryBorder(RectTransform paper, string childName, Color color)
+        {
+            if (paper == null) return;
+            Transform t = paper.Find(childName);
+            Image img = t != null ? t.GetComponent<Image>() : null;
+            if (img != null) img.color = color;
         }
 
         /// <summary>演出收尾：「跳过」变「关闭」，这一屏唯一的主操作（AccentFill）。</summary>
@@ -502,6 +552,8 @@ namespace BossRush
             if (_card == null) return;
             _backFace.SetActive(true);
             _frontFace.SetActive(false);
+            // 几只崽共用这一张卡：上一只阵亡时点起的余烬在翻下一张前熄掉（连背面也不再飘灰）。
+            StopCardEmbers();
             if (_cardGroup != null) _cardGroup.alpha = 1f;
             if (_cardStroke != null) _cardStroke.color = BossRushUIColors.Stroke;
             Color tier = TierColor(record.riskTier);
@@ -512,6 +564,12 @@ namespace BossRush
             if (_backTier != null) _backTier.color = tier;
             if (_backBar != null) _backBar.color = tier;
             SetCardWidthScale(1f);
+        }
+
+        private void StopCardEmbers()
+        {
+            BossRushInkEmberField embers = _card != null ? _card.GetComponent<BossRushInkEmberField>() : null;
+            if (embers != null) embers.SetBurning(false);
         }
 
         /// <summary>正面：崽的立绘（取不到就不画）+ 装饰名 + 结果字与结果色条；阵亡整卡压暗。</summary>
@@ -553,6 +611,32 @@ namespace BossRush
 
             Image bar = CreateBar(_frontFace.transform, "OutcomeBar");
             bar.color = outcome;
+            string frontSealText = record.outcomeDead
+                ? L10n.T("陨落", "FALLEN")
+                : (record.outcomeInjured ? L10n.T("负伤", "WOUNDED") : L10n.T("归巢", "SAFE"));
+            Color frontSealColor = record.outcomeDead
+                ? BossRushInkColors.Cinnabar
+                : (record.outcomeInjured ? BossRushInkParchmentColors.Bronze : BossRushInkColors.Gold);
+            Color? frontSealInk = (!record.outcomeDead && !record.outcomeInjured)
+                ? (Color?)BossRushInkColors.InkWash : null;
+            RectTransform cardRect = _card != null ? _card.GetComponent<RectTransform>() : null;
+            BossRushInkWidgets.CreateSealBadge(
+                _frontFace.transform, frontSealText, 56f, frontSealColor,
+                new Vector2(CardSize.x * 0.5f - 38f, CardSize.y * 0.5f - 36f), -9f,
+                true, cardRect, 0.04f, frontSealInk);
+            if (_card != null && _card.transform.parent != null)
+            {
+                BossRushInkSkin.SpawnRing(_card.transform.parent, new Vector2(0f, CardCenterY), 150f, outcome, 0.55f, 2.25f, 0.45f);
+                if (record.outcomeDead)
+                {
+                    BossRushInkWidgets.AttachEmberField(
+                        cardRect, new Color(0.75f, 0.36f, 0.30f, 0.65f), new Color(0.55f, 0.48f, 0.42f, 0.45f), true, 8, 0.16f);
+                }
+                else
+                {
+                    StopCardEmbers();
+                }
+            }
             if (_cardStroke != null) _cardStroke.color = record.outcomeDead ? BossRushUIColors.DangerText : BossRushUIColors.Stroke;
             if (_cardGroup != null) _cardGroup.alpha = record.outcomeDead ? DeadCardAlpha : 1f;
         }

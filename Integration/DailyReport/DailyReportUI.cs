@@ -36,38 +36,37 @@ namespace BossRush
     /// <summary>《鸭科夫日报》阅读面板。</summary>
     public partial class DailyReportView : View
     {
-        #region 纸张配色（局部，不进共享 token）
+        #region 水墨古宣邸报配色（与 BossRushInkColors 同系，由 DailyReportPresentationGuard 复算对比度）
 
-        // 2026-09-23 第五轮按参考图 docs/reference/images/日报UI参考图.png 取色：纸面与底图生成器的 PAPER 同值
-        // （底图缺席时的纯色兜底要和底图一个颜色），签到格是浅米色胶囊 / 深绿 / 暖黄，按钮是深金棕。
-        private static readonly Color PaperBase = new Color(0.925f, 0.89f, 0.82f, 0.99f);
-        private static readonly Color PaperInk = new Color(0.13f, 0.11f, 0.09f, 1f);
-        private static readonly Color PaperInkSoft = new Color(0.34f, 0.30f, 0.25f, 1f);
-        private static readonly Color CellEmpty = new Color(0.89f, 0.86f, 0.80f, 1f);
-        private static readonly Color CellSigned = new Color(0.22f, 0.40f, 0.18f, 1f);
-        private static readonly Color CellMilestone = new Color(0.86f, 0.70f, 0.34f, 1f);
-        private static readonly Color CellMilestoneDone = new Color(0.45f, 0.35f, 0.12f, 1f);
-        /// <summary>今天还没签时，下一格（今天要签的那一格）点亮成暖黄，参考图的「当日签到」。</summary>
-        private static readonly Color CellToday = new Color(0.97f, 0.79f, 0.36f, 1f);
-        /// <summary>今日可签那一格呼吸到的最亮色（两端都走深字，对比度与 CellToday 同档）。</summary>
-        private static readonly Color CellTodayBright = new Color(1f, 0.87f, 0.52f, 1f);
-        /// <summary>标题缎带上的字色。缎带是墨绿 / 炭灰 / 暖棕，字必须是浅色（对比度由 DailyReportPresentationGuard 复算）。</summary>
-        private static readonly Color PillInk = new Color(0.97f, 0.95f, 0.91f, 1f);
-        /// <summary>
-        /// 签到按钮：深金棕底 + 宣纸字（L 约 0.137，约 4.7:1）。旧的亮金底配白字只有约 3:1；
-        /// 2026-11-25 全项目水墨主题把按钮字换成宣纸色（L≈0.821，比旧白字暗一档），铜底跟着压暗一点。
-        /// </summary>
-        private static readonly Color ButtonIdle = new Color(0.50f, 0.39f, 0.20f, 1f);
-        private static readonly Color ButtonDisabled = new Color(0.44f, 0.395f, 0.32f, 1f);
-        /// <summary>签到按钮的暖金描边（参考图的按钮有一圈金边）。</summary>
-        private static readonly Color ButtonEdge = new Color(0.86f, 0.70f, 0.34f, 0.9f);
+        private static readonly Color PaperBase = new Color(0.070f, 0.068f, 0.072f, 0.99f);
+        private static readonly Color PaperCard = new Color(0.105f, 0.098f, 0.096f, 0.99f);
+        private static readonly Color PaperInk = BossRushInkColors.Paper;
+        private static readonly Color PaperInkSoft = new Color(0.80f, 0.75f, 0.65f, 1f);
+        private static readonly Color CellEmpty = new Color(0.145f, 0.138f, 0.142f, 1f);
+        private static readonly Color CellSigned = new Color(0.49f, 0.12f, 0.10f, 1f);
+        private static readonly Color CellMilestone = new Color(0.80f, 0.62f, 0.24f, 1f);
+        private static readonly Color CellMilestoneDone = new Color(0.38f, 0.27f, 0.10f, 1f);
+        /// <summary>今天还没签时，下一格（今天要签的那一格）点亮成鎏金，配深墨黑字。</summary>
+        private static readonly Color CellToday = new Color(0.82f, 0.65f, 0.25f, 1f);
+        /// <summary>今日可签那一格呼吸到的最亮金（两端都走深墨字）。</summary>
+        private static readonly Color CellTodayBright = new Color(0.92f, 0.77f, 0.36f, 1f);
+        /// <summary>标题笔触底衬上的字色（宣纸浅象牙白）。</summary>
+        private static readonly Color PillInk = new Color(0.96f, 0.93f, 0.87f, 1f);
+        /// <summary>分区标题横向毛笔底衬的暗朱铜色。</summary>
+        private static readonly Color PillInkBrushBg = new Color(0.36f, 0.12f, 0.10f, 0.94f);
+        /// <summary>今日已签状态字（鎏金亮字，在深墨卡面上高对比清晰可读）。</summary>
+        private static readonly Color SignedTagInk = BossRushInkColors.Gold;
+        /// <summary>签到按钮：朱砂主漆底 + 宣纸白字。取 StyleInkButton（Primary）实际铺的 CinnabarFill，守卫按它复算字色。</summary>
+        private static readonly Color ButtonIdle = BossRushInkColors.CinnabarFill;
+        private static readonly Color ButtonDisabled = new Color(0.22f, 0.20f, 0.19f, 1f);
+        /// <summary>签到按钮的鎏金描边。</summary>
+        private static readonly Color ButtonEdge = new Color(0.86f, 0.70f, 0.34f, 0.92f);
         /// <summary>富文本里的次要墨色（标签、注脚）。预先转好，不每次刷新拼。</summary>
         private static readonly string InkSoftHex = "#" + ColorUtility.ToHtmlStringRGB(PaperInkSoft);
         /// <summary>
-        /// 纸面上的失败提示色（A-14）：共享的 DangerText 是给深色面板用的浅红，写在米色纸上几乎看不见；
-        /// 这里是压深的砖红，对纸面约 6:1（DailyReportPresentationGuard 复算）。
+        /// 纸面上的失败提示色（A-14）：深墨底上的浅朱红。
         /// </summary>
-        private static readonly Color PaperInkDanger = new Color(0.60f, 0.16f, 0.12f, 1f);
+        private static readonly Color PaperInkDanger = BossRushInkColors.CinnabarText;
         private static readonly string InkDangerHex = "#" + ColorUtility.ToHtmlStringRGB(PaperInkDanger);
 
         #endregion
@@ -458,13 +457,26 @@ namespace BossRush
             todayCell.color = Color.Lerp(CellToday, CellTodayBright, wave);
         }
 
-        /// <summary>签到成功：刚签的那一格从下方淡入落位，像盖了一个章（共享入场动画）。</summary>
+        /// <summary>签到成功：在刚签的那一格落下一枚朱砂「阅」字印章并激起金墨环（含官方音效）。</summary>
         private void PlaySignedStamp(DailyReportData data)
         {
             if (data == null) return;
             int index = data.PeriodSignedCount - 1;
             if (index < 0 || index >= signInCells.Count || signInCells[index] == null) return;
-            BossRushUIEntranceAnimation.Play(signInCells[index].gameObject, 0f, 0.28f, 10f);
+            RectTransform cellRect = signInCells[index].rectTransform;
+            Transform oldSeal = cellRect.Find("SignedCellSeal");
+            if (oldSeal != null) Destroy(oldSeal.gameObject);
+            RectTransform seal = BossRushInkWidgets.CreateSealBadge(
+                cellRect, L10n.T("阅", "OK"), 30f, BossRushInkColors.Cinnabar,
+                Vector2.zero, -10f, true, paperFrame, 0.02f);
+            if (seal != null)
+            {
+                seal.name = "SignedCellSeal";
+                seal.anchorMin = seal.anchorMax = new Vector2(1f, 1f);
+                seal.anchoredPosition = new Vector2(-12f, -12f);
+            }
+            // 落印声由 StampSeal 放，墨环不再带一声。
+            BossRushInkWidgets.PlayActionRipple(cellRect, Vector2.zero, 90f, BossRushInkColors.Gold, null);
         }
 
         private void FitPaper()
@@ -578,6 +590,12 @@ namespace BossRush
             if (transform.parent != null) transform.parent.SetAsLastSibling();
             transform.SetAsLastSibling();
             if (fadeGroup != null) fadeGroup.Show();
+            if (paperFrame != null)
+            {
+                BossRushInkTheme.SpawnOpenBloom(paperFrame);
+                BossRushInkTheme.WriteRevealStrokes(paperFrame);
+                BossRushInkSkin.PlaySfx(BossRushInkSkin.SfxPaperTurn);
+            }
         }
 
         /// <summary>

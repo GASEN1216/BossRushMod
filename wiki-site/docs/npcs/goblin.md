@@ -6,6 +6,29 @@
 
 ## 他能帮你啥？
 
+<div class="brs-gallery">
+
+![冷淬液](/images/scenes/sc-cold-quench.webp)
+*冷淬液*
+
+![回火液](/images/scenes/sc-tempering-solvent.webp)
+*回火液*
+
+![词缀熔石](/images/icons/forge-stone.webp)
+*词缀熔石*
+
+![钻石](/images/scenes/sc-diamond.webp)
+*钻石*
+
+![砖石](/images/scenes/sc-brick-stone.webp)
+*砖石*
+
+![叮当涂鸦](/images/scenes/sc-dingdang-drawing.webp)
+*叮当涂鸦*
+
+</div>
+
+
 - **聊天**（初始就有）— 每天聊一次，好感度 +40。天天聊就完了
 - **送礼**（初始就有）— 每天送一件，喜欢的东西加更多分
 - **商店**（好感度 Lv.2 解锁）— 随好感度陆续上架钻石、冷淬液等物品；词缀熔石到 Lv.10 才开放，越熟越打折

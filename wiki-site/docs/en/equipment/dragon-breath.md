@@ -1,5 +1,13 @@
 # Dragon's Breath
 
+<div class="brs-icon">
+
+![Dragon's Breath](/images/scenes/sc-dragon-breath.webp)
+*Dragon's Breath*
+
+</div>
+
+
 ## Role
 
 Your first custom gun. Dropped by Dragon Descendant. Looks modest on paper, but the **% max HP burn** does the real work against high-HP bosses. Comes with its own fire muzzle flash and trailing sparks.

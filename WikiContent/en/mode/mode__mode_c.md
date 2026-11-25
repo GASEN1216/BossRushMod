@@ -23,15 +23,12 @@ No loot crates. Instead, every Boss kill adds cash to a pool displayed on the si
 #### Milestone Rewards
 
 - **Every 5 waves** — 1 high-quality random item (prefers Q5+ and value ≥ 10,000)
-- **Every 100 waves** — Grand prize: Crown(s) + massive cash reward (exponential growth)
-
-#### 100-Wave Milestones
-
-- Wave 100: 1 Crown + 10M cash
-- Wave 200: 2 Crowns + 20M cash
-- Wave 300: 4 Crowns + 40M cash
-- Wave 400: 8 Crowns + 80M cash
-- Pattern: Crowns ×2, Cash ×2 each time. **The longer you last, the richer you get.**
+- **Every 100 waves** — Grand prize: Crown(s) + massive cash reward (exponential growth):
+  - Wave 100: 1 Crown + 10M cash
+  - Wave 200: 2 Crowns + 20M cash
+  - Wave 300: 4 Crowns + 40M cash
+  - Wave 400: 8 Crowns + 80M cash
+  - Pattern: Crowns ×2, Cash ×2 each time. **The longer you last, the richer you get.**
 
 ### Signpost Features
 

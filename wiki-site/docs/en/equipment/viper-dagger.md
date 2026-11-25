@@ -1,5 +1,13 @@
 # Viper Dagger
 
+<div class="brs-icon">
+
+![Viper Dagger](/images/scenes/sc-viper-dagger.webp)
+*Viper Dagger*
+
+</div>
+
+
 ## Role
 
 A **poison-element short blade** that stacks venom layers on every hit. Single-hit damage is modest, but landing 5 consecutive hits detonates them. Part of that detonation is a share of the damage those 5 hits actually dealt, and another part scales with the target's max HP, so the stronger the dagger and the tougher the target, the harder it bursts. Built for close-quarters rapid strikes.
@@ -31,7 +39,7 @@ Swings leave a **venom-green trail**. When the 5th stack triggers the toxic burs
 
 ## Tips
 
-- Fast attack speed (2.1) and low stamina cost (4/hit) let you stack venom quickly
+- Fast attack speed (2.1) and low stamina cost (2/hit) let you stack venom quickly
 - On base stats a burst lands around 50-57; reforges, affixes and set bonuses push it up with everything else
 - 1.4m range means you have to be right on top of enemies, which is risky when surrounded
 - Low crit stats mean early single hits feel weak; the venom stacks are what make up the difference

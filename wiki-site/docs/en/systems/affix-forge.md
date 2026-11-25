@@ -1,5 +1,13 @@
 # Affix Forging
 
+<div class="brs-icon">
+
+![Affix Forge Stone](/images/icons/forge-stone.webp)
+*Affix Forge Stone*
+
+</div>
+
+
 ## Overview
 
 Reforging changes **numbers**: a few more points of armor, a little more fire rate.
@@ -36,14 +44,6 @@ A single piece can carry both reforged stats and affixes. The two systems never 
 So "a Rare at T3" is about a `3%` outcome, and "a Cursed at T3" is under `1%`. The tables
 below list **T1 / T2 / T3**, and you will usually get the leftmost number.
 
-<div class="brs-icon">
-
-![Affix Forge Stone](/images/icons/forge-stone.webp)
-*Affix Forge Stone*
-
-</div>
-
-
 ## Where stones come from
 
 - **Dingdang's shop** — stocks stones at affinity **Lv.10**, up to 5 per restock. BossRush is the main source before then.
@@ -62,6 +62,26 @@ Each affix only goes on certain gear types, noted after the name.
 
 ### Common (5)
 
+<div class="brs-gallery">
+
+![Lifesteal](/images/scenes/affix-lifesteal.webp)
+*Lifesteal*
+
+![Slaughter](/images/scenes/affix-slaughter.webp)
+*Slaughter*
+
+![Bulwark](/images/scenes/affix-bulwark.webp)
+*Bulwark*
+
+![Swift Hand](/images/scenes/affix-swifthand.webp)
+*Swift Hand*
+
+![Thorns](/images/scenes/affix-thorns.webp)
+*Thorns*
+
+</div>
+
+
 - **Lifesteal** (weapons) — Hits restore `0.6% / 1.0% / 1.5%` of max health, the killing blow included, 0.4s cooldown.
   A shotgun blast counts once, so don't expect a full heal per trigger.
 - **Slaughter** (all) — Kills restore `3% / 5% / 8%` of max health. No cooldown, and very
@@ -75,6 +95,23 @@ Each affix only goes on certain gear types, noted after the name.
 
 ### Rare (4)
 
+<div class="brs-gallery">
+
+![Death Burst (Rare)](/images/scenes/affix-deathburst.webp)
+*Death Burst (Rare)*
+
+![Frenzy (Rare)](/images/scenes/affix-frenzy.webp)
+*Frenzy (Rare)*
+
+![Hawk Eye (Rare)](/images/scenes/affix-hawkeye.webp)
+*Hawk Eye (Rare)*
+
+![Overcharge (Rare)](/images/scenes/affix-overcharge.webp)
+*Overcharge (Rare)*
+
+</div>
+
+
 - **Death Burst** (all) — Kills detonate the corpse for `35 / 55 / 80` fire damage in a
   `2.5 / 3.0 / 3.5` metre radius. **It never hurts you**, so feel free to blow it up in your face.
 - **Frenzy** (all) — Fire rate and mobility `+4% / +6% / +9%` for 6s after a kill, up to 5
@@ -85,6 +122,20 @@ Each affix only goes on certain gear types, noted after the name.
   dealt, 0.25s cooldown.
 
 ### Cursed (3 - strong, with a price)
+
+<div class="brs-gallery">
+
+![Blood Rage (Cursed)](/images/scenes/affix-bloodrage.webp)
+*Blood Rage (Cursed)*
+
+![Glass Edge (Cursed)](/images/scenes/affix-glasscannon.webp)
+*Glass Edge (Cursed)*
+
+![Death Pact (Cursed)](/images/scenes/affix-deathpact.webp)
+*Death Pact (Cursed)*
+
+</div>
+
 
 All three go on any supported gear, and all three are passive: they apply as long as you're
 holding or wearing the piece.

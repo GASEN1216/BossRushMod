@@ -21,57 +21,60 @@ namespace BossRush
         /// <summary>许愿成功后停顿多久再关闭（秒，unscaled，暂停菜单开着时不计）。</summary>
         private const float SuccessBeatSeconds = 0.6f;
 
-        private Image statusRail;
         private bool rewardPendingOnClose;
+        private RectTransform wishSuccessSeal;
+        private BossRushInkEmberField wishEmberField;
         // 对勾贴图（DontSave），随 View 的 OnDestroy 销毁；下次新建 View 时按需重画。
         private static Sprite checkmarkSprite;
 
         // ====================================================================
-        // 层级：细线与竖条
+        // 水墨仪式感：开屏墨晕 + 标题金笔 + 状态去竖条 + 愿成落印
         // ====================================================================
 
-        /// <summary>顶边左段 36% 宽、2px 的 Accent 细线（与 CreateModalSurface 的 topTrace 同一视觉语言），避开左上圆角。</summary>
-        private static void AddTopTrace(RectTransform panel)
+        private void PlayWishInkOpen()
         {
-            GameObject trace = new GameObject("TopTrace", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
-            trace.transform.SetParent(panel, false);
-            trace.GetComponent<LayoutElement>().ignoreLayout = true;
-            RectTransform rect = trace.GetComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0f, 1f);
-            rect.anchorMax = new Vector2(0.36f, 1f);
-            rect.pivot = new Vector2(0.5f, 1f);
-            rect.offsetMin = new Vector2(18f, -3f);
-            rect.offsetMax = new Vector2(0f, -1f);
-            Image image = trace.GetComponent<Image>();
-            image.color = WithAlpha(BossRushUIColors.Accent, 0.45f);
-            image.raycastTarget = false;
-            BossRushUI.ApplyPanelSkin(image, 1, BossRushUISkinPart.Hairline);
+            if (panelRectTransform == null)
+            {
+                return;
+            }
+            if (wishSuccessSeal != null)
+            {
+                Destroy(wishSuccessSeal.gameObject);
+                wishSuccessSeal = null;
+            }
+            BossRushInkTheme.SpawnOpenBloom(panelRectTransform);
+            panelRectTransform.localScale = Vector3.one * 0.97f;
+            RectTransform target = panelRectTransform;
+            BossRushInkMotion.For(panelRectTransform.gameObject).Add(0f, 0.42f, true, t =>
+            {
+                if (target != null)
+                {
+                    target.localScale = Vector3.one * Mathf.Lerp(0.97f, 1f, t);
+                }
+            });
+            RefreshWishTitleStroke();
+            BossRushInkTheme.WriteRevealStrokes(panelRectTransform);
+            BossRushInkSkin.PlaySfx(BossRushInkSkin.SfxBrushSweep);
         }
 
-        /// <summary>状态行左侧 3px 状态色竖条；没有状态文字时透明。</summary>
+        private void RefreshWishTitleStroke()
+        {
+            if (titleText == null)
+            {
+                return;
+            }
+            BossRushInkWidgets.AddLeftOrAlignedStroke(titleText, BossRushInkColors.Gold, 8f, true);
+        }
+
+        /// <summary>状态行在全水墨方案下取消现代细竖条，保留状态文字与轻微墨环呼吸。</summary>
         private static Image CreateStatusRail(RectTransform statusCard)
         {
-            GameObject rail = new GameObject("StatusRail", typeof(RectTransform), typeof(Image));
-            rail.transform.SetParent(statusCard, false);
-            RectTransform rect = rail.GetComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0f, 0f);
-            rect.anchorMax = new Vector2(0f, 1f);
-            rect.pivot = new Vector2(0f, 0.5f);
-            rect.offsetMin = new Vector2(0f, 10f);
-            rect.offsetMax = new Vector2(3f, -10f);
-            Image image = rail.GetComponent<Image>();
-            image.color = Color.clear;
-            image.raycastTarget = false;
-            BossRushUI.ApplyPanelSkin(image, 1, BossRushUISkinPart.Hairline);
-            return image;
+            return null;
         }
 
         private void ApplyStatusRail(string text, Color color)
         {
-            if (statusRail != null)
-            {
-                statusRail.color = string.IsNullOrWhiteSpace(text) ? Color.clear : color;
-            }
+            // 纯文字水墨状态行，不再驱动细竖条
         }
 
         /// <summary>滚动条：轨道与滑块都用胶囊档（与 BossRushUI.ConfigureScrollRect 同口径），滑块三态由 ColorBlock 承担。</summary>
@@ -124,7 +127,7 @@ namespace BossRush
                 inputContainerStroke.color = successDisplayed
                     ? BossRushUIColors.SuccessText
                     : (sending ? WithAlpha(BossRushUIColors.Accent, 0.55f)
-                        : (inputFocused ? BossRushUIColors.Accent : BossRushUIColors.Stroke));
+                        : (inputFocused ? BossRushUIColors.WarningText : BossRushUIColors.Stroke));
             }
 
             if (placeholderText != null && !successDisplayed)
@@ -250,6 +253,28 @@ namespace BossRush
 
             IntegrationUIFeedback.PlaySound(IntegrationUIFeedback.SoundConfirm);
             PlayConstellationMeteor();   // 流星从点亮的一宿划进星泉（WishFountainUI_Constellations.cs）
+            if (panelRectTransform != null)
+            {
+                if (wishSuccessSeal != null)
+                {
+                    Destroy(wishSuccessSeal.gameObject);
+                }
+                wishSuccessSeal = BossRushInkWidgets.CreateSealBadge(
+                    panelRectTransform, L10n.T("愿成", "WISHED"), 84f,
+                    BossRushInkColors.Gold, new Vector2(215f, 152f), -9f,
+                    true, panelRectTransform, 0.04f, BossRushInkColors.InkWash);
+                if (wishEmberField == null)
+                {
+                    // 只放一簇不常燃：面板会被复用，常燃的话之后每次打开都在冒火星。
+                    wishEmberField = BossRushInkWidgets.AttachEmberField(
+                        panelRectTransform, BossRushInkColors.Gold, BossRushInkColors.Ember, false, 12, 0.12f);
+                }
+                if (wishEmberField != null)
+                {
+                    wishEmberField.SpawnBurst(10);
+                }
+                BossRushInkSkin.PlaySfx(BossRushInkSkin.SfxChimeStone);
+            }
             if (statusText != null)
             {
                 BossRushUIEntranceAnimation.Play(statusText.gameObject, 0f, 0.25f, 0f);

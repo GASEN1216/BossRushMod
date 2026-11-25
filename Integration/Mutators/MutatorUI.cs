@@ -345,19 +345,21 @@ namespace BossRush
                 _rowBackgrounds.Add(rowImage);
                 _rowWeights.Add(0f);
 
-                // 分类色竖条：沿用奖励卡/模态标题的 accent rail 视觉语言（≤3px 细条走 Hairline 档，程序化绘制）。
+                // 分类色竖笔：水墨垂直笔触（代替平直细竖条）
                 GameObject accent = ZombieModeUIHelper.CreateRect(
                     "Accent",
                     row.transform,
                     new Vector2(0f, 0f),
                     new Vector2(0f, 1f),
                     new Vector2(4f, 0f),
-                    new Vector2(3f, -12f),
+                    new Vector2(5f, -10f),
                     new Vector2(0f, 0.5f));
                 Image accentImage = accent.AddComponent<Image>();
+                accentImage.sprite = BossRushInkSkin.GetVerticalBrushSprite();
+                accentImage.type = Image.Type.Sliced;
+                accentImage.pixelsPerUnitMultiplier = 3f;
                 accentImage.color = GetCategoryColor(info.Category);
                 accentImage.raycastTarget = false;
-                BossRushUI.ApplyPanelSkin(accentImage, 2, BossRushUISkinPart.Hairline);
 
                 TextMeshProUGUI nameText = CreateLabel(
                     "Name",
@@ -469,6 +471,16 @@ namespace BossRush
                 BossRushUIColors.TextPrimary);
             _detailTitleText.enableWordWrapping = false;
             _detailTitleText.overflowMode = TextOverflowModes.Ellipsis;
+            RectTransform detailBrush = BossRushInkSkin.CreateBrushStroke(
+                _detailRoot.transform, "DetailTitleBrush",
+                new Vector2(DetailWidth - DetailPadding * 2f, 4f),
+                new Vector2(DetailPadding, -(DetailPadding + DetailTitleHeight - 2f)),
+                BossRushInkColors.Gold);
+            if (detailBrush != null)
+            {
+                detailBrush.anchorMin = detailBrush.anchorMax = new Vector2(0f, 1f);
+                detailBrush.pivot = new Vector2(0f, 0.5f);
+            }
 
             // 正文按内容量高（MeasureTextHeight），卡片跟着长；长段落左对齐。
             _detailBodyText = CreateLabel(

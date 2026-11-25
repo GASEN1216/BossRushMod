@@ -1,11 +1,29 @@
 # Equipment Overview
 
-- **Bell Keeper's Metronome**: A 20% extra drop from Speedy, or trade 20 seashells from your backpack with the Silent Bell Keeper at affinity level 5. Time a second reload press to finish early. Available at home after marriage.
-- **Hushbell Ward**: Trade 30 seashells from your backpack with the Silent Bell Keeper at affinity level 5. An 80-point bronze ward takes enemy hits before your health and refills after 5 quiet seconds. Available at home after marriage.
+There are **42 obtainable custom equipment pieces** (sets counted piece by piece): 25 regular pieces plus 17 Sky Islands wearable pieces. Regular gear drops from custom Bosses, official Boss extra drops, and NPC shops; island gear mainly comes from island lords and chiefs (and the prelude Warden can drop a Galebreaker Hood).
 
-There are **42 obtainable custom equipment pieces** (sets counted piece by piece): 25 regular pieces plus 17 Sky Islands wearable pieces. Regular gear comes from custom Bosses, extra official Boss drops and NPC shops; island gear mainly comes from island lords and chiefs, and the prelude Warden can also drop a Galebreaker Hood.
+<div class="brs-gallery">
 
-The 5 new weapons from v2.2.0 and the Frost and Thunder sets from the same batch are **all obtainable now** (see below): each weapon drops at 20% from one official boss (vanilla maps included), or can be bought from Dingdang's Shop at Affinity 5.
+![Dragon King's Crown](/images/scenes/sc-dragon-king-helm.webp)
+*Dragon King's Crown*
+
+![Inferno Emperor's Halberd](/images/scenes/sc-halberd.webp)
+*Inferno Emperor's Halberd*
+
+![Astral Staff](/images/scenes/sc-astral-staff.webp)
+*Astral Staff*
+
+![Soulreaper's Requiem](/images/scenes/sc-phantom-scythe.webp)
+*Soulreaper's Requiem*
+
+![Frost Crown](/images/scenes/sc-frost-crown.webp)
+*Frost Crown*
+
+![Thunder Horn](/images/scenes/sc-thunder-horn.webp)
+*Thunder Horn*
+
+</div>
+
 
 ## Full List
 
@@ -13,32 +31,37 @@ The 5 new weapons from v2.2.0 and the Frost and Thunder sets from the same batch
 - **Dragon King Set** — Helmet + Armor (Dragon Lord) — **direct upgrade**
 - **Cloud Soar I** — Flight totem (Dragon Lord)
 - **Reverse Scale** — One-time lifesave totem (Dragon Lord)
-- **Residual Sun Shield Shard** — Totem; Eclipse Bloom always drops 1. Dodging opens a brief frontal guard, and a successful block empowers your next direct hit with an afterglow riposte
-- **Empty-Mag Mine Box** — Exclusive 20% extra drop from Mad Bomber; fire at least 6 times, then empty the magazine to leave a delayed mine at your feet
-- **Headmaster's Roll-Call Ledger** — Sold by Fuzhou at Cloudrise Dock in the Sky Islands at affinity Lv.3; directly hit 3 different enemies within 5 seconds for a group strike
+- **Residual Sun Shield Shard** — Totem; Eclipse Bloom always drops 1. Dodging opens a brief frontal guard, and blocking empowers your next direct hit with an afterglow riposte
+- **Empty-Mag Mine Box** — 20% extra drop from Mad Bomber; fire at least 6 times then empty the mag to leave a delayed mine at your feet
+- **Headmaster's Roll-Call Ledger** — Sold by Fuzhou at Cloudrise Dock at affinity Lv.3; directly hit 3 different enemies within 5s for a group strike
+- **Bell Keeper's Metronome** — 20% extra drop from Speedy, or trade 20 seashells at Silent Bell Keeper affinity Lv.5; time a second reload press to finish early (still traded at base after marriage)
+- **Hushbell Ward** — Trade 30 seashells at Silent Bell Keeper affinity Lv.5; an 80-point bronze ward blocks hits first and refills after 5 quiet seconds (still traded at base after marriage)
+- **Astral Staff** — Light melee staff guaranteed from the Shadow of the Champion in Campaign Chapter 6; builds Focus for three heavy finishers
 - **Inferno Emperor's Realm-Breaking Halberd** — Fire melee with 3-hit combo (Dragon Lord)
 - **Dragon's Breath** — Fire gun with burn DOT (Dragon Descendant)
 - **Skyburner Dragon Cannon** — 17 selectable ammo types (Dragon Lord, 1%)
 - **Soulreaper's Requiem** — Ghost scythe with curse (Phantom Witch, 50%)
 - **Frostmourne** — Ice melee with undead summon (vanilla "???" Boss, 50%)
 
-## New Equipment (v2.2.0)
+## Specialty Weapons & Elemental Sets
 
-**P0 New Weapons (5) · 20% drop from one official boss each (works on vanilla maps too), or Dingdang's Shop at Affinity 5**
+Five standalone weapons and two 2-piece sets drop from designated official Bosses on vanilla raids too (20% extra chance each), or unlock in Dingdang's Shop as his Affinity rises:
+
+**Specialty Weapons (5) · 20% drop from designated official Boss / Dingdang Shop at Affinity 5**
 
 - **Viper Dagger** — Poison dagger; stack 5 poison layers for a burst
 - **Summoning Staff** — Right-click summons 3 soul warriors to soak aggro
 - **Energy Shield** — Totem; frontal hits restore part of the damage as HP
-- **Frost Spear** — Ice spear with long reach and guaranteed vanilla Cold effect on hit (not a hard freeze every hit)
+- **Frost Spear** — Ice spear with long reach and guaranteed vanilla Cold effect on hit
 - **Thunder Ring** — Totem; charge on hits taken, release lightning burst at max
 
-**P1 Sets (2 sets, 4 pieces) · Obtainable Now**
+**Elemental Sets (2 sets, 4 pieces) · 20% per piece / Dingdang Shop at Affinity 6**
 
-- **Frost Set** (Frost Crown + Ice Armor) — Ice resistance + reactive freeze counter. Drops from the vanilla "???" boss (20% per piece), or buy it from Dingdang's Shop at affinity level 6
-- **Thunder Set** (Thunder Horn + Thunder Armor) — Electricity resistance + reactive lightning AOE. Drops from Storm Zone bosses (Four Horsemen, Koko Koko and friends; 20% per piece), or buy it from Dingdang's Shop at affinity level 6
+- **Frost Set** (Frost Crown + Ice Armor) — Ice resistance + reactive freeze counter. Drops from the vanilla "???" boss, or buy at Dingdang's Shop (Affinity 6)
+- **Thunder Set** (Thunder Horn + Thunder Armor) — Electricity resistance + reactive lightning AOE. Drops from Storm Zone bosses (Four Horsemen, Koko Koko and friends), or buy at Dingdang's Shop (Affinity 6)
 
 ::: tip
-Both sets drop on vanilla raids too, no BossRush run needed. See their own pages for details.
+All of these drop on vanilla raids as well as in BossRush. See their individual pages for drop owners and mechanics.
 :::
 
 ## Sky Islands Gear (17 Pieces)

@@ -148,11 +148,11 @@ namespace BossRush
 
             yPos += headerH;
 
-            // ── 标题装饰线 ──
-            ZombieModeUIHelper.CreateSeparator("AccentLine", panel.transform,
-                new Vector2(0f, 1f), new Vector2(1f, 1f),
-                new Vector2(0f, -yPos), 2f,
-                new Color(BossRushUIColors.Accent.r, BossRushUIColors.Accent.g, BossRushUIColors.Accent.b, 0.6f));
+            // ── 标题水墨笔触下划 ──
+            RectTransform cashBrush = BossRushInkSkin.CreateBrushStroke(
+                panel.transform, "AccentLine", new Vector2(360f, 5f), new Vector2(0f, -yPos),
+                new Color(BossRushInkColors.Gold.r, BossRushInkColors.Gold.g, BossRushInkColors.Gold.b, 0.80f));
+            if (cashBrush != null) cashBrush.anchorMin = cashBrush.anchorMax = new Vector2(0.5f, 1f);
             yPos += 8f;
 
             // ── 正文说明 ──

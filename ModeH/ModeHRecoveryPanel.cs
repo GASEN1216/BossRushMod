@@ -111,12 +111,18 @@ namespace BossRush
             GameObject surface = ZombieModeUIHelper.CreateModalSurface(
                 "ModeH_RecoverySurface", _root.transform,
                 ModeHUI.RecoverySize, BossRushUIColors.Warning, createBackdrop: false);
+            RectTransform stRect = surface.GetComponent<RectTransform>();
+            BossRushInkSkin.PlaySfx(BossRushInkSkin.SfxBrushSweep);
 
             ModeHUI.CreateTitle(surface.transform,
                 !string.IsNullOrEmpty(headline)
                     ? headline
                     : L10n.T(ModeHConfig.LocalizationKeyPrefix + "Page_Recovery"),
                 ModeHUI.RecoverySize);
+            BossRushInkWidgets.CreateSealBadge(
+                surface.transform, L10n.T("待决", "HOLD"), 66f, BossRushInkParchmentColors.Bronze,
+                new Vector2(ModeHUI.RecoverySize.x * 0.5f - 66f, ModeHUI.RecoverySize.y * 0.5f - 54f),
+                -9f, true, stRect, 0.08f);
             _body = CreateScrollingBody(surface.transform);
             // 全屏遮罩挡住了点击，就要同时挡住角色输入：占模态租约，收起时释放（审查 B-10）
             _lease = ZombieModeUIHelper.ClaimModalInput(_root, "ModeHRecovery");

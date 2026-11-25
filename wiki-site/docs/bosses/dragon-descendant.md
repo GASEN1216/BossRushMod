@@ -1,5 +1,13 @@
 # 龙裔遗族
 
+<div class="brs-icon">
+
+![龙裔遗族](/images/codex/dragondescendant.webp)
+*龙裔遗族*
+
+</div>
+
+
 ## 概述
 龙裔遗族是本 Mod 的第一个自定义 Boss，有两个阶段。打它能拿到龙裔套装和龙息，是自定义 Boss 掉落的入门一站。
 
@@ -41,6 +49,20 @@
 - **冰冻减速**：累计受到最大生命 10% 的冰属性伤害后会被减速 10 秒
 
 ## 掉落物
+
+<div class="brs-gallery">
+
+![赤龙首（头盔）](/images/scenes/sc-dragon-helm.webp)
+*赤龙首（头盔）*
+
+![焰鳞甲（护甲）](/images/scenes/sc-dragon-armor.webp)
+*焰鳞甲（护甲）*
+
+![龙息](/images/scenes/sc-dragon-breath.webp)
+*龙息*
+
+</div>
+
 
 **专属装备**：击杀后从以下 3 件中**加权随机一件**（不是各自独立判定）：
 

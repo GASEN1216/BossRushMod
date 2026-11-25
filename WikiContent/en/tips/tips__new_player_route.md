@@ -80,7 +80,7 @@ By the official difficulty rating, lowest first:
 - **Early**: sell items from reward crates
 - **Early-mid**: **Codex milestones** (1/10/20 entries pay 50k / 150k / 400k) and **daily bounties**.
   Neither costs you extra time - you earn them on the way
-- **Mid**: chase achievements. All 45 together are worth nearly 20 million
+- **Mid**: chase achievements. All 46 together pay out `$20,640,000`
 - **Late**: Infinite Hell cash pool + milestone rewards; the six campaign chapters total 480,000
 - **Always**: Affinity discounts cut reforge, affix and healing costs
 

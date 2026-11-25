@@ -11,6 +11,26 @@ Multi-faction sandbox chaos. Pick a faction, watch Bosses from different faction
 
 ## Factions
 
+<div class="brs-gallery">
+
+![Random Faction Flag](/images/scenes/sc-flag-random.webp)
+*Random Faction Flag*
+
+![Wolf Pack Flag](/images/scenes/sc-flag-wolf.webp)
+*Wolf Pack Flag*
+
+![BEAR Flag](/images/scenes/sc-flag-bear.webp)
+*BEAR Flag*
+
+![Summon companion: Coal Briquette](/images/scenes/codex-snowpmc.webp)
+*Summon companion: Coal Briquette*
+
+![Mystery Merchant](/images/scenes/codex-myst-merchant.webp)
+*Mystery Merchant*
+
+</div>
+
+
 - **Random** — Surprise assignment to 1 of 5 NPC factions
 - **Scav / USEC / Lab** — Standard factions, balanced Boss pools
 - **BEAR** — The base game has no BEAR units, so allies are filled in from regular enemies and get x2.5 HP and damage to compensate. **Beefy allies**

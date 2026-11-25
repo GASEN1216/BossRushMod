@@ -190,6 +190,7 @@ MODAL = {
     "ZombieMode/ZombieModeRewardSelectionView.cs": "丧尸模式奖励选择面板（ZombieModal）：每波结束的必答模态",
     "ZombieMode/ZombieModeTemporaryNpcServiceView.cs": "丧尸模式补给 / 医疗终端服务面板（ZombieService）：交互打开",
     "WavesArena/ArenaExpeditionOrderPanel.cs": "出征令面板（Modal）：玩家在竞技场路牌上交互打开，立誓或等等即关",
+    "Integration/WikiUIManager.cs": "冒险家日志水墨书卷面板（Modal）：玩家使用书本物品主动打开",
 }
 
 # 写了 OnGUI 的生产文件。IMGUI 画在所有 uGUI 画布之上，常驻内容走这里同样会压住官方界面。

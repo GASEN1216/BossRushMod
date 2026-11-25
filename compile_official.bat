@@ -151,6 +151,7 @@ echo(Common\UI\BossRushUIAnimation.cs
 echo(Common\UI\BossRushUIFeel.cs
 echo(Common\UI\BossRushInkSkin.cs
 echo(Common\UI\BossRushInkTheme.cs
+echo(Common\UI\BossRushInkWidgets.cs
 echo(Common\UI\BossRushLocalPrefs.cs
 echo(Common\UI\BossRushUIFoundation.cs
 echo(Common\UI\BossRushUIHero.cs
@@ -1284,6 +1285,9 @@ echo(Integration\Dialogue\DialogueManager.cs
 echo(Integration\Dialogue\DialogueActorFactory.cs
 echo(Integration\WikiBookItem.cs
 echo(Integration\WikiUIManager.cs
+echo(Integration\WikiUIManager_InkView.cs
+echo(Integration\WikiUIManager_Illustrations.cs
+echo(Integration\WikiIllustrations.cs
 echo(Integration\WikiContentManager.cs
 echo(Integration\ReverseScale\ReverseScaleConfig.cs
 echo(Integration\ReverseScale\ReverseScaleEffectManager.cs

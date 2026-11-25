@@ -1,10 +1,16 @@
 # Reverse Scale
 
+<div class="brs-icon">
+
+![Reverse Scale](/images/scenes/sc-reverse-scale.webp)
+*Reverse Scale*
+
+</div>
+
+
 ## At a Glance
 
 A palm-sized dragon scale that grows against the grain, warm as a held-back temper. **A one-time lifesaver totem**: it triggers when you're about to die, heals you, fires counterattack bolts, then shatters.
-
-## Stats
 
 - **Type**: Totem / **Quality**: 6 (Epic) / **Drop**: Dragon Lord (39%) / Protected from death drops while equipped in its slot; not protected merely by being in the backpack
 

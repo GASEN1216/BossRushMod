@@ -430,11 +430,14 @@ namespace BossRush
             GameObject card = BossRushUI.CreateCard("Row", parent, Vector2.zero, new Vector2(width, 80f),
                 BossRushUIColors.SurfaceRaised, accent, true);
             _spawned.Add(card);
+            // 身份色条排在 CreateCard 强调竖条右侧；立绘与文字从最右一条后面起排，不压色条。
+            float railsRight = CardAccentRailRight(card.transform);
             if (chroma)
             {
-                AddIdentityRail(card.transform, "Row_Accent2", 8f, chromaB);
-                if (data.Shiny) AddIdentityRail(card.transform, "Row_ShinyMark", 13f, BossRushUIColors.RarityLegendary);
+                railsRight = AddIdentityRail(card.transform, "Row_Accent2", 1, chromaB);
+                if (data.Shiny) railsRight = AddIdentityRail(card.transform, "Row_ShinyMark", 2, BossRushUIColors.RarityLegendary);
             }
+            float portraitX = Mathf.Max(20f, railsRight + 6f);
             // 选中态用描边点出来（当前崽 / 批量已勾选），否则玩家无从判断「作用在哪只」
             if (data.Selected || data.Key != null) ApplySelectedStroke(card, data.Key, data.Selected);
             if (data.OnCardClick != null) MakeCardClickable(card, data.OnCardClick);
@@ -445,12 +448,12 @@ namespace BossRush
             {
                 Color frameStroke = data.Shiny ? BossRushUIColors.RarityLegendary : (chroma ? chromaA : BossRushUIColors.Stroke);
                 CreateIconFrame(card.transform, "Portrait", data.Icon,
-                    new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(20f, -10f),
+                    new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(portraitX, -10f),
                     iconSize, frameStroke, data.IconLocked);
             }
 
             bool hasAction = !string.IsNullOrEmpty(data.ActionLabel) && data.OnClick != null;
-            float left = hasIcon ? 20f + iconSize + 14f : 22f;
+            float left = hasIcon ? portraitX + iconSize + 14f : Mathf.Max(22f, railsRight + 8f);
             float right = hasAction ? RowActionWidth + 30f : (data.Checkbox ? 56f : 16f);
             float textWidth = Mathf.Max(80f, width - left - right);
 
@@ -543,14 +546,16 @@ namespace BossRush
                 new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(left, -top - 7f),
                 new Vector2(barWidth, 8f), new Vector2(0f, 0.5f));
             Image trackImage = track.AddComponent<Image>();
+            trackImage.sprite = BossRushInkSkin.GetSurfaceSprite();
+            trackImage.type = Image.Type.Sliced;
+            trackImage.pixelsPerUnitMultiplier = 2f;
             trackImage.color = BossRushUIColors.Surface;
             trackImage.raycastTarget = false;
-            BossRushUI.ApplyPanelSkin(trackImage, 3, BossRushUISkinPart.Hairline);
 
             GameObject fillObject = ZombieModeUIHelper.CreateRect("ProgressFill", track.transform,
                 Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
             Image fill = fillObject.AddComponent<Image>();
-            fill.sprite = BossRushUI.GetSolidSprite();
+            fill.sprite = BossRushInkSkin.GetBrushSprite();
             fill.type = Image.Type.Filled;
             fill.fillMethod = Image.FillMethod.Horizontal;
             fill.fillAmount = Mathf.Clamp01(progress);
@@ -737,17 +742,35 @@ namespace BossRush
             cardButton.onClick.AddListener(new UnityEngine.Events.UnityAction(onClick));
         }
 
-        /// <summary>第二 / 第三条身份色条：与 CreateCard 的强调竖条同形，挨着排。</summary>
-        private static void AddIdentityRail(Transform card, string name, float x, Color color)
+        /// <summary>CreateCard 强调竖条（"Row_Accent"）的右边缘；没有竖条时按旧口径 7。</summary>
+        private static float CardAccentRailRight(Transform card)
         {
+            RectTransform baseRail = card != null ? card.Find("Row_Accent") as RectTransform : null;
+            return baseRail != null ? baseRail.anchoredPosition.x + baseRail.sizeDelta.x : 7f;
+        }
+
+        /// <summary>
+        /// 第二 / 第三条身份笔触（<paramref name="slot"/> = 1 / 2）：照 CreateCard 强调竖条的笔触、宽度与上下留白，
+        /// 依次排在它右侧、竖向拉伸跟着卡高走。竖条位置读实际值，共享库挪了竖条也不会压住。返回这一条的右边缘。
+        /// </summary>
+        private static float AddIdentityRail(Transform card, string name, int slot, Color color)
+        {
+            RectTransform baseRail = card != null ? card.Find("Row_Accent") as RectTransform : null;
+            Image baseImage = baseRail != null ? baseRail.GetComponent<Image>() : null;
+            float width = baseRail != null ? baseRail.sizeDelta.x : 4f;
+            float inset = baseRail != null ? baseRail.sizeDelta.y : -12f;
+            float left = (baseRail != null ? baseRail.anchoredPosition.x : 3f) + (width + 2f) * slot;
             GameObject rail = ZombieModeUIHelper.CreateRect(
                 name, card,
                 new Vector2(0f, 0f), new Vector2(0f, 1f),
-                new Vector2(x, 0f), new Vector2(4f, -12f), new Vector2(0f, 0.5f));
+                new Vector2(left, 0f), new Vector2(width, inset), new Vector2(0f, 0.5f));
             Image railImage = rail.AddComponent<Image>();
+            railImage.sprite = baseImage != null ? baseImage.sprite : BossRushInkSkin.GetVerticalBrushSprite();
+            railImage.type = baseImage != null ? baseImage.type : Image.Type.Sliced;
+            railImage.pixelsPerUnitMultiplier = baseImage != null ? baseImage.pixelsPerUnitMultiplier : 2f;
             railImage.color = color;
-            BossRushUI.ApplyPanelSkin(railImage, 2, BossRushUISkinPart.Hairline);
             railImage.raycastTarget = false;
+            return left + width;
         }
 
         /// <summary>

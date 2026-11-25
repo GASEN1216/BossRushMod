@@ -74,6 +74,8 @@ namespace BossRush
                 yield break;
             }
             float from = group.alpha;
+            RectTransform targetRect = ScalableRect(target);
+            Vector3 fromScale = targetRect != null ? targetRect.localScale : Vector3.one;
             float duration = Mathf.Max(0.01f, seconds);
             float elapsed = 0f;
             group.blocksRaycasts = false;
@@ -89,7 +91,12 @@ namespace BossRush
                 {
                     elapsed += Time.unscaledDeltaTime;
                 }
-                group.alpha = Mathf.Lerp(from, 0f, BossRushUI.SmoothStep(elapsed / duration));
+                float eased = BossRushUI.SmoothStep(elapsed / duration);
+                group.alpha = Mathf.Lerp(from, 0f, eased);
+                if (targetRect != null)
+                {
+                    targetRect.localScale = Vector3.Lerp(fromScale, new Vector3(0.98f, 0.98f, 1f), eased);
+                }
                 yield return null;
             }
             if (target != null)
@@ -109,6 +116,23 @@ namespace BossRush
             group.alpha = 1f;
             group.blocksRaycasts = true;
             group.interactable = true;
+            RectTransform rect = ScalableRect(group.gameObject);
+            if (rect != null)
+            {
+                rect.localScale = Vector3.one;
+            }
+        }
+
+        /// <summary>
+        /// 能缩放的面板矩形；根画布返回 null（只淡出不缩放）。根画布 RectTransform 的缩放由 CanvasScaler 驱动，
+        /// 1440p / 4K 下缩放系数不是 1，写 0.98 或复位成 1 都会让整块面板缩错、闪一帧（与 BossRushUIOpenAnimation 同口径）。
+        /// </summary>
+        private static RectTransform ScalableRect(GameObject target)
+        {
+            if (target == null) return null;
+            Canvas canvas = target.GetComponent<Canvas>();
+            if (canvas != null && (canvas.isRootCanvas || target.GetComponent<CanvasScaler>() != null)) return null;
+            return target.GetComponent<RectTransform>();
         }
 
         // ---------------- 幽灵关闭按钮 ----------------
@@ -159,11 +183,22 @@ namespace BossRush
                 ZombieModeUIHelper.SetButtonBaseColor(button,
                     Color.Lerp(BossRushUIColors.SurfaceRaised, BossRushUIColors.Accent, 0.22f));
             }
-            SetButtonStrokeColor(button, selected ? BossRushUIColors.WarningText : BossRushUIColors.Stroke);
+            Color strokeColor = selected
+                ? (BossRushInkTheme.Active ? BossRushInkColors.Gold : BossRushUIColors.WarningText)
+                : (BossRushInkTheme.Active ? new Color(BossRushInkColors.Gold.r, BossRushInkColors.Gold.g, BossRushInkColors.Gold.b, 0.30f) : BossRushUIColors.Stroke);
+            SetButtonStrokeColor(button, strokeColor);
+            if (BossRushInkTheme.Active)
+            {
+                BossRushInkWidgets.SetSegmentUnderline(button, selected, true);
+            }
             TextMeshProUGUI label = button.GetComponentInChildren<TextMeshProUGUI>(true);
             if (label != null)
             {
                 label.fontStyle = selected ? FontStyles.Bold : FontStyles.Normal;
+                if (BossRushInkTheme.Active)
+                {
+                    label.color = selected ? BossRushInkColors.Paper : BossRushInkColors.PaperDim;
+                }
             }
         }
 
@@ -178,7 +213,7 @@ namespace BossRush
                 return;
             }
             BossRushUIKit.StyleSecondaryButton(button);
-            SetButtonStrokeColor(button, BossRushUIColors.DangerText);
+            SetButtonStrokeColor(button, BossRushInkTheme.Active ? BossRushInkColors.Cinnabar : BossRushUIColors.DangerText);
             TextMeshProUGUI label = button.GetComponentInChildren<TextMeshProUGUI>(true);
             if (label != null)
             {
@@ -194,6 +229,10 @@ namespace BossRush
             if (stroke != null)
             {
                 stroke.color = color;
+            }
+            if (image != null)
+            {
+                BossRushInkSkin.SetFrameColor(image, color);
             }
         }
     }

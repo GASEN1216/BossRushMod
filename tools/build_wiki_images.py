@@ -62,6 +62,7 @@ ICON_MAX = 256              # 建筑/物品图标
 ITEM_ICON_MAX = 64
 # 实体登记表：哪些游戏图标要进在线站、key 叫什么。站点（config.mts 的实体链接）与本工具读同一份。
 ENTITY_REGISTRY = os.path.join(REPO, "wiki-site", "scripts", "wiki-entities.json")
+ILLUSTRATIONS = os.path.join(REPO, "WikiContent", "illustrations.json")
 
 # ── 本 Mod 自己的 Boss 名（代码常量逐字抄，改名时这里要跟）────────────
 MOD_BOSS_NAMES = {
@@ -205,6 +206,30 @@ def load_entity_icons():
     return out
 
 
+def load_illustration_extras():
+    """从 WikiContent/illustrations.json 收集新增流程图 (/images/diagrams/) 与场景配图 (/images/scenes/)。"""
+    if not os.path.isfile(ILLUSTRATIONS):
+        return []
+    with open(ILLUSTRATIONS, "r", encoding="utf-8") as fh:
+        data = json.load(fh)
+    extras = []
+    for key, item in (data.get("assets") or {}).items():
+        zh = item.get("zh", "")
+        en = item.get("en", "")
+        max_edge = int(item.get("maxSize") or POSTER_MAX)
+        for src_field, web_field, key_suffix in (("asset", "webSrc", ""), ("assetEn", "webSrcEn", "-en")):
+            src_rel = item.get(src_field, "")
+            web_url = item.get(web_field, "")
+            if not src_rel or not web_url:
+                continue
+            if not (web_url.startswith("/images/diagrams/") or web_url.startswith("/images/scenes/")):
+                continue
+            group = "diagrams" if web_url.startswith("/images/diagrams/") else "scenes"
+            rel_out = web_url[len("/images/"):-len(".webp")]
+            extras.append((group, src_rel, rel_out, key + key_suffix, zh, en, max_edge))
+    return extras
+
+
 def build_favicon(check_only):
     """config.mts 的 head 里写死了 ${base}images/favicon.ico，但 public/ 此前根本不存在
     ——图标一直 404。用图鉴书的图标补上。"""
@@ -224,13 +249,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true",
                         help="只校验产物与清单是否齐全，不写文件")
-    parser.add_argument("--only", choices=["codex", "campaign", "icons", "items"],
+    parser.add_argument("--only", choices=["codex", "campaign", "icons", "items", "diagrams", "scenes"],
                         help="只重新转换这一组；其余组按已有产物登记，不重新编码"
                              "（避免换了 Pillow 版本后整批 WebP 字节变化）")
     args = parser.parse_args()
 
     official = load_official_names()
-    manifest = {"codex": [], "campaign": [], "icons": [], "ui": [], "items": []}
+    manifest = {"codex": [], "campaign": [], "icons": [], "ui": [], "items": [], "diagrams": [], "scenes": []}
     total_bytes = 0
     missing = []
     # 某一组「只登记不重转」：沿用 convert() 的 check_only 分支，只认已有产物
@@ -294,6 +319,16 @@ def main():
         total_bytes += size
         manifest["items"].append({"key": key, "src": url, "zh": zh, "en": en})
 
+    # ── 双语机制流程图与场景配图（WikiContent/illustrations.json）──
+    for group, relsrc, rel_out, item_key, zh, en, edge in load_illustration_extras():
+        src_path = os.path.join(REPO, relsrc.replace("/", os.sep))
+        url, size = convert(src_path, rel_out, edge, keep(group))
+        if url is None:
+            missing.append(relsrc)
+            continue
+        total_bytes += size
+        manifest[group].append({"key": item_key, "src": url, "zh": zh, "en": en})
+
     ok_icon = build_favicon(args.check or args.only is not None)
 
     if args.check:
@@ -303,9 +338,10 @@ def main():
             for m in missing[:10]:
                 print("  " + m)
             return 1
-        print("build_wiki_images: OK - 产物齐全（%d 图鉴 / %d 战役 / %d 图标 / %d 站点图标 / %d 物品），共 %.1f MB"
+        print("build_wiki_images: OK - 产物齐全（%d 图鉴 / %d 战役 / %d 图标 / %d 站点图标 / %d 物品 / %d 机制图 / %d 场景图），共 %.1f MB"
               % (len(manifest["codex"]), len(manifest["campaign"]),
                  len(manifest["icons"]), len(manifest["ui"]), len(manifest["items"]),
+                 len(manifest["diagrams"]), len(manifest["scenes"]),
                  total_bytes / 1048576.0))
         return 0
 
@@ -313,9 +349,11 @@ def main():
         json.dump(manifest, fh, ensure_ascii=False, indent=2, sort_keys=False)
         fh.write("\n")
 
-    print("build_wiki_images: 写出 %d 图鉴立绘 / %d 战役图 / %d 图标 / %d 站点图标，合计 %.1f MB"
+    print("build_wiki_images: 写出 %d 图鉴立绘 / %d 战役图 / %d 图标 / %d 站点图标 / %d 机制图 / %d 场景图，合计 %.1f MB"
           % (len(manifest["codex"]), len(manifest["campaign"]),
-             len(manifest["icons"]), len(manifest["ui"]), total_bytes / 1048576.0))
+             len(manifest["icons"]), len(manifest["ui"]),
+             len(manifest["diagrams"]), len(manifest["scenes"]),
+             total_bytes / 1048576.0))
     print("  产物: wiki-site/docs/public/images/")
     print("  清单: wiki-site/scripts/image-manifest.json")
     if missing:

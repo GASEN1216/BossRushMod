@@ -511,3 +511,5 @@ owner 实机反馈「很多地方一直在闪；进屋 / 头顶有屋顶没隐�
 - 2026-11-24：`docs/architecture/UI制作共识.md` 新增第 12 节「水墨主题」，`Common/UI/AGENTS.md` 加一条指向它。新增内容：配色 token、构件入口（`Common/UI/BossRushInkSkin.cs`）、动效和音效口径，以及禁止清单。依据：owner 在玩家愿望批次里要求「高级高端大气史诗感，无塑料感」，美术方向选定水墨东方。
 
 - 2026-11-25：水墨主题改为全项目统一。`Common/UI/AGENTS.md` 的「水墨主题」一条改写为「`BossRushInkTheme` 接管共享库入口，调用方不用改」，补接管点清单、`AddTitleStroke` 用法与新守卫 `BossRushInkThemeGuard`；「质感层」一条注明水墨主题下投影与顶边高光换成按角色的墨笔边。`docs/architecture/UI制作共识.md` 第 12 节加「全局接管」表与遗种巢、确认框的旗舰改法。依据：owner 看过出征令后要求「项目已有的 UI……都改成出征令这种 UI……统一一下我们项目的风格……极简化，但是已有的功能都要有」。
+
+- 2026-11-25：`Common/UI/AGENTS.md`「复用官方 prefab」一条补滚动列表例外。依据：水墨主题改动把成就、Boss 池、图鉴、鸭王杯的滚动容器从官方 `UIPrefabs.ScrollRect` 换成共享库自建 `ScrollRect` + `ConfigureScrollRect`（代码为准），旧条文与代码冲突（UI 审查 CR-2026-11-25 顺带项）。

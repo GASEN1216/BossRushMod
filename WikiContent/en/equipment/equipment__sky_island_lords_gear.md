@@ -4,7 +4,11 @@
 
 ### At a Glance
 
-**The two sets worn by the Hanging-Root Huntmaster, island lord of the Hanging Root Wood, and Grain Sickle, island lord of the Green Terraces**: the Rootweave Mask, Vinewoven Cuirass and Hanging-Root Quiver are the rootweave hunting gear and come from the Huntmaster; the Greenear Straw Hat, Straw Raincoat and Grain Sack are the straw-cloak farm gear and come from Grain Sickle. Worn, they give the game's usual head armor / body armor / pack capacity; on the isles each set also has a use: any two rootweave pieces double the chance of an island good turning up in scavenging crates, and any two straw-cloak pieces add one sheaf to every cut of greenear. The Starforge Foreman's set is under "Starworks Gear", and the single pieces the chiefs wear are under "Island Chief Gear".
+**Two 3-piece sets dropped by island lords:**
+- **Rootweave gear** (**Rootweave Mask / Vinewoven Cuirass / Hanging-Root Quiver**) from **Hanging-Root Huntmaster** (Hanging Root Wood): any 2 worn double the extra island-good roll in scavenging crates
+- **Straw-cloak gear** (**Greenear Straw Hat / Straw Raincoat / Grain Sack**) from **Grain Sickle** (Green Terraces): any 2 worn yield +1 Greenear Sheaf per harvest
+
+See **Starworks Gear** for Starforge Foreman's set and **Island Chief Gear** for chief drops.
 
 ### The Six Pieces
 

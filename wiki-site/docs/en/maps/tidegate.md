@@ -16,6 +16,14 @@ A seaside town that rises and falls with the tide. At low tide the mudflats, a s
 - Every turn of the tide comes with a message: a tide alarm sounds 15 seconds before the flood and again when it starts, and near the end of high tide you are told the ferry is about to leave.
 - Water deeper than half a metre counts as deep. Submerged crates cannot be searched; walk up to one and you'll be prompted to wait for low tide. Enemies spawn outside deep water, but diggers already on the flats can get caught by the rising water.
 
+<div class="brs-figure">
+
+![Tidegate tidal stages, valve sites, and extraction timing](/images/diagrams/tidegate_map_en.webp)
+*Tidegate tidal stages, valve sites, and extraction timing*
+
+</div>
+
+
 ## Swimming and load
 
 - You can swim in Tidegate, but only light: you float only while your total load is **14 kg** or less, and carrying a **Dry Bag** adds 6 kg to that. The card shows "Load x/14 · can swim" or "will sink".
@@ -54,23 +62,14 @@ The countdown is the same one the regular extraction points use: it pauses while
 
 ## Loot and enemies
 
-Two industrial hazards are lethal:
-
-- **Never swim into an open sluice.** On your first approach to a working intake you have 2.5 seconds to read the current and see the warning. After that, four consecutive seconds in the red core will pull you under. Swim sideways out of the ring to reset the timer, or cross on the dam.
-- **Keep clear of the suspended load.** The first cycle tests the crane brakes: the load stops overhead. Use the bell and the yellow box to find a safe spot. Subsequent loads hit the ground and will kill anyone directly underneath. The nearby fish basket is safe from outside the lines.
-
-- For a quick start, visit the clinic or hardware store. Fish baskets hold 1–3 stacks, home drawers 1–4, shipping crates 1–5 and tool or medical cabinets 2–5. A tool cabinet usually pairs a tool with a pack of parts, a fish basket a small fish with bait, and a medical cabinet medicine with an injector or a drink; within one raid, no two boxes of the same kind open with the same item. Occasionally a work kit hides a valuable item. Deep vault cabinets still hold 3–6 stacks.
-- One of two red tool chests in the Old Town hardware store holds a **shift key**. Take it to the foreman's cabinet in dock warehouse 2; once you have it, your objective and a gold circle on M point there. It stays in the lock and cannot be taken home. Buried caches become visible when the tide recedes to the mud.
-- For better loot, watch the tide. The waterworks control-room safe has one quality 4–5 item, and the dredger's locker has one at quality 4–6.
-- Underwater containers (buried caches, the wreck, the bank vault and the wreck captain's safe) hold quality 4 finds. In about eight raids out of ten, one of them also hides a single quality 5–6 jackpot; some raids have none, and the container changes every time. The Tide Watch in the manager's safe is always there and does not count as the jackpot.
-- Higher grades depend on what's in the game's item catalogue. Other slots still roll normally; the wheel and watch are separate. Homes and street safes have no such guarantee.
-- An ordinary container may have a shipping manifest under its lid. Check M to see which two offers are in town: medical supplies at the pier, guarded maintenance parts at the waterworks, or valuables on the flats as the water recedes. **The first marked container you open secures that shipment.** The other shipment sails, but its ordinary loot stays. Finding a seal by chance works the same way. Both the destinations and the individual containers can change next raid.
-- Everyone in town has a name above their health bar: Assault Troopers and an Assault Captain hold the streets, Dock Prowlers work the harbour, Reed Ambushers hide in the reeds, Waterworks Guards, a Waterworks Marksman, Lighthouse Guards and a Cape Scout hold the two strongpoints, and Dredge Gang Hands and a Dredge Grenadier follow the Sand Boss. Patrol Hounds are the wolves that walk with the squads. Each post has its own helmet, armour, beak and feathers, so you can tell them apart at a distance.
-- Up to ten enemies cover the town streets and seven cover the docks. Lookouts patrol with partners; one follower in each district can be a wolf. The Assault Captain is tougher than the rest. The waterworks has up to four guards. The lookout outside the control building can carry an SV98: the crosswalk is exposed, but the machinery to the north breaks his sightline. The reeds have up to two scavengers, and the cape has two guards and a scavenger.
-- Enemies here are tougher than their counterparts on other maps: about 1.5× health (about 1.8× for guards and the Assault Captain) and 1.25× damage, and they react faster and shoot straighter once they spot you. The Waterworks Marksman only gets the extra health; his firing rhythm is unchanged.
-- Up to four diggers accompany the **Sand Boss** at the dredger. One can throw ordinary grenades: when a warning ring appears, move out of it. The marked spot stays put. Scavengers in town, at the docks and in the reeds are hostile to the guards and the sand gang, so a firefight can give you a way through. Up to 30 regular enemies plus the Sand Boss appear per raid, with no endless respawns. Opening the gate brings three additional reinforcements.
-- **Leadline, the Dredge Boss** is a size larger than his crew, has 1500 health and works the flats at ebb. When he calls a hook sweep, step outside the orange ring at his feet. On the dredger at flood tide, the winch drops its weight on a fixed red mark: sidestep or take cover. Search his body for the **Dredger's Sounding Lead**; if you already carry one, his body holds a dredger's spare (quality 5–6) instead. Use it in Tidegate and check M for a blue-green circle marking the nearest unsearched buried cache for 25 seconds. If it's underwater, wait for the ebb.
-- The sand gang follows the tide: they dig the flats at low tide and head back to the dredger just before the flood. Any of them still standing in deep water when the tide comes in gets swept away.
+- **Early stops**: start at the **clinic** for meds or the **hardware store** for parts (containers scale from 1–3 slot baskets to 3–6 slot vault cases). One of Old Town hardware store's two red chests holds the **Shift Key** for pier warehouse #2's foreman cabinet (marked on M, left in the lock).
+- **Split-shipment manifests**: normal crate lids occasionally hold a shipping manifest highlighting two active sealed-crate routes on M (pier meds, waterworks parts, or ebb-tide flats storage). **Opening the first sealed crate claims that batch** while the rival shipment sails away; ordinary boxes everywhere stay lootable.
+- **Tide-gated high loot**: the Third Waterworks control-room safe guarantees Q4–5, and the dredger's cabin locker guarantees Q4–6. **Underwater crates** (buried caches, shipwreck, sunken vault) always carry Q4, and ~80% of runs hide a single **Q5–6 jackpot** in one of them (the Tide Pocket Watch in the manager's safe is separate).
+- **Town hostiles**: enemies carry ~1.5× HP (1.8× on guards/captains), ~1.25× damage, and sharper reaction speed; town scavengers, pier drifters, guards, and the Sand Gang fight each other around the shoals. Total cap is 30 regular hostiles plus **Sand Boss · Leadline** (and 3 sluice-opening reinforcements); watch for an SV98 lookout outside the waterworks control building.
+- **Leadline, the Dredge Boss** (1,500 HP, oversized frame) follows the tide and drops the **Dredger's Sounding Lead** (reusable M-map radar pointing to the nearest unopened buried cache for 25s; swaps to a Q5–6 spare if you already carry one):
+  - *Ebb tide (flats)*: hear **"Gaff sweep"** -> step outside the orange ring at his feet
+  - *Flood tide (dredger)*: the winch drops its weight on a fixed red mark -> sidestep or use solid cover
+  - Sand Gang members still standing in deep water when flood tide arrives get swept away.
 
 ## Gatekeeper's logs and the pocket watch
 
@@ -89,6 +88,23 @@ On your first trip, travel light: learn the tide before you carry loot into deep
 - From affinity 1, "Old Zha's Waterproof Goods" sells the **Dry Bag**; from affinity 4 it also sells **Duck Flippers**.
 
 ## Items
+
+<div class="brs-gallery">
+
+![Old Zha's Letter](/images/scenes/sc-tidegate-letter.webp)
+*Old Zha's Letter*
+
+![Valve Handwheel](/images/scenes/sc-tidegate-handwheel.webp)
+*Valve Handwheel*
+
+![Tide Pocket Watch](/images/scenes/sc-tidegate-watch.webp)
+*Tide Pocket Watch*
+
+![Dredger's Sounding Lead](/images/scenes/sc-tidegate-lead.webp)
+*Dredger's Sounding Lead*
+
+</div>
+
 
 - **Old Zha's Letter** (500115): delivered by Awen. Reading it opens the raft route, and you can read it again.
 - **Valve Handwheel** (500111): in the dredger cabin locker, one per run; used up at the tide gauge valve.

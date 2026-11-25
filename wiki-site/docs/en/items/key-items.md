@@ -1,5 +1,28 @@
 # Entry & Utility Items
 
+<div class="brs-gallery">
+
+![BossRush Ticket](/images/scenes/sc-bossrush-ticket.webp)
+*BossRush Ticket*
+
+![Adventurer's Journal](/images/scenes/sc-adventure-journal.webp)
+*Adventurer's Journal*
+
+![Duckov Codex](/images/icons/codex-book.webp)
+*Duckov Codex*
+
+![Fate Echo Relic](/images/scenes/sc-fate-relic.webp)
+*Fate Echo Relic*
+
+![Zombie Tide Invitation](/images/scenes/sc-zombie-invite.webp)
+*Zombie Tide Invitation*
+
+![Bloodhunt Transponder](/images/scenes/sc-transponder.webp)
+*Bloodhunt Transponder*
+
+</div>
+
+
 ## BossRush Ticket
 
 The entry item for ticket-based arena modes. Faction War uses a Flag, Zombie Mode uses an invitation, and the unlocked Sky Islands route is free.
@@ -120,11 +143,14 @@ See Faction War for details.
 
 ## Wind-Vane Compass
 
-Fuzhou's old compass, its needle replaced with a tiny wind vane. Use it on the Sky Islands and it reads out a bearing and a rough distance: to **Frogsong Pool** first while carrying frogspawn; otherwise to an uncollected **carrier pigeon**, then to your nearest current objective, and after the ending to an unfinished side path; when there is nothing left, to **a place still missing its windcrystal lamp** if you carry a Qinglan Windcrystal, or else to **a wind crystal cluster you have not gathered this trip**.
+Fuzhou's old compass, its needle replaced with a tiny wind vane. Right-click on the Sky Islands to read a bearing and rough distance in priority order:
 
-- **Source**: arrives with your first kept pigeon letter on the Sky Islands; Starworks crates occasionally hold one; if you lose it, Fuzhou's dock workbench can make another from Brass Scrap ×4 + Windcrystal Shard ×2 (once you have had the first one)
-- **Use**: reusable, never consumed; does not stack
-- Used anywhere else, it only tells you the vane is spinning
+1. While carrying frogspawn: points first to **Frogsong Pool**
+2. Active progression: uncollected **carrier pigeons** -> nearest **current objective** -> post-ending **side paths**
+3. Cleanup phase: **unlit windcrystal lamps** (if carrying a Qinglan Windcrystal), or **unharvested wind crystal clusters**
+
+- **Source**: arrives with your first kept pigeon letter, or rarely in Starworks crates; craft replacements at Fuzhou's dock workbench (Brass Scrap ×4 + Windcrystal Shard ×2) after receiving your first one
+- **Use**: reusable, never stacked; anywhere else it only spins idly
 
 See Sky Islands · Qinglan Archipelago.
 

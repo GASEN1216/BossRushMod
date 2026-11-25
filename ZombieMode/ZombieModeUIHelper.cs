@@ -184,8 +184,9 @@ namespace BossRush
             ApplyButtonColors(button, backgroundColor,
                 BossRushUI.GetHoverColor(backgroundColor),
                 BossRushUI.GetDisabledColor(backgroundColor));
+            // 字色按实际落下的常态底色算：水墨主题会把 Danger 底换成 DangerFill（浅朱字），按调用方原色算会是宣纸白字。
             TextMeshProUGUI label = CreateText("Text", obj.transform, text, fontSize, Vector2.zero,
-                textSize, TextAlignmentOptions.Center, BossRushUI.GetButtonTextColor(backgroundColor));
+                textSize, TextAlignmentOptions.Center, BossRushUI.GetButtonTextColor(button.colors.normalColor));
             // 布局组改变按钮宽度时，标签随点击区拉伸；不能保留创建时的固定宽度。
             // 内边距只取 size 与 textSize 的实际差值：套 8/4 的下限会让两者相差不足
             // 16px 的窄按钮（押品格、配装行）标签反而比调用方要的还窄。

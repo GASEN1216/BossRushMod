@@ -1,5 +1,13 @@
 # Frostmourne
 
+<div class="brs-icon">
+
+![Frostmourne](/images/scenes/sc-frostmourne.webp)
+*Frostmourne*
+
+</div>
+
+
 ## Role
 
 Ice-element melee with an icy aura and a right-click **undead army summon**. Drops from a vanilla Boss so nameless the game just calls it "???" (50% extra chance). Stable, reliable, and brings friends.

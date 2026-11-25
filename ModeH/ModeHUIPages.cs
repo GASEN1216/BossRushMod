@@ -45,12 +45,14 @@ namespace BossRush
         /// </summary>
         public List<ModeHActionData> RealStakeSlots = new List<ModeHActionData>();
         public List<ModeHActionData> PreparationOptions = new List<ModeHActionData>();
+#pragma warning disable 0649 // 兼容字段默认恒 false（ModeHPrematchDeclutterGuard 禁止在任何 Mode H 页面再开启风险横幅）
         /// <summary>是否在顶部显示真实资产风险行（选人页不启用）。</summary>
         public bool ShowRealStakeNotice;
         /// <summary>
         /// 兼容旧页面的紧凑风险行样式；只有 ShowRealStakeNotice 启用时才读取，选人页不启用。
         /// </summary>
         public bool CompactRiskNotice;
+#pragma warning restore 0649
         /// <summary>押品选择器是否可用；不可用时原位显示 DisabledReason。</summary>
         public bool RealStakeSelectorEnabled;
         /// <summary>押品选择器禁用原因（已本地化）。</summary>
@@ -904,12 +906,14 @@ namespace BossRush
                 {
                     inset = NoteRailInset;
                     GameObject rail = ZombieModeUIHelper.CreateRect("Rail", row.transform,
-                        new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0f), new Vector2(3f, -4f),
+                        new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0f), new Vector2(5f, -4f),
                         new Vector2(0f, 0.5f));
                     Image railImage = rail.AddComponent<Image>();
+                    railImage.sprite = BossRushInkSkin.GetVerticalBrushSprite();
+                    railImage.type = Image.Type.Sliced;
+                    railImage.pixelsPerUnitMultiplier = 3f;
                     railImage.color = BossRushUIColors.WarningText;
                     railImage.raycastTarget = false;
-                    BossRushUI.ApplyPanelSkin(railImage, 2, BossRushUISkinPart.Hairline);
                 }
                 TextMeshProUGUI text = CreateRowText(row.transform, "Text", line,
                     kind == RowKind.Lead ? 18f : 16f,
@@ -925,35 +929,10 @@ namespace BossRush
             return top + height + LineRowGap;
         }
 
-        /// <summary>官方 ScrollRect prefab 优先；不可用时回退共享库手搓一个可滚动容器。</summary>
+        /// <summary>共享水墨滚轮列表容器。</summary>
         private static GameObject CreateScrollHost(
             Transform surface, Vector2 panelSize, float topY, float viewportHeight, float contentHeight)
         {
-            ScrollRect official = TryInstantiateOfficialScrollRect(surface);
-            if (official != null)
-            {
-                RectTransform rect = official.GetComponent<RectTransform>();
-                rect.anchorMin = new Vector2(0.5f, 0.5f);
-                rect.anchorMax = new Vector2(0.5f, 0.5f);
-                rect.pivot = new Vector2(0.5f, 0.5f);
-                rect.sizeDelta = new Vector2(
-                    panelSize.x - ModeHUI.SafeMargin * 2f, viewportHeight);
-                rect.anchoredPosition = new Vector2(0f, topY - viewportHeight * 0.5f);
-                if (official.content != null)
-                {
-                    // 官方 prefab 的 content 自带竖排布局与自适应高度（图鉴同样要先摘，见 CodexView.EnsureGridLayout）。
-                    // 本页所有内容都是手动定位的：不摘的话卡片被压成一列小圆点、属性与装备挤在左边被裁掉
-                    // （2026-09-25 owner 实测赛前看盘 / 押物品 / 结算三页）。同帧还要写尺寸，只能 DestroyImmediate。
-                    StripLayoutControllers(official.content.gameObject);
-                    official.content.anchorMin = official.content.anchorMax = official.content.pivot = new Vector2(0.5f, 1f);
-                    official.content.anchoredPosition = new Vector2(-10f, 0f);
-                    official.content.sizeDelta = new Vector2(rect.sizeDelta.x - 20f, contentHeight);
-                    BossRushUI.ConfigureScrollRect(official);
-                    return official.content.gameObject;
-                }
-                UnityEngine.Object.Destroy(official.gameObject);
-            }
-
             GameObject viewport = ZombieModeUIHelper.CreateRect(
                 "ModeH_Scroll", surface, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
                 new Vector2(0f, topY - viewportHeight * 0.5f),
@@ -998,22 +977,6 @@ namespace BossRush
                 float x = -width * 0.5f + cellWidth * 0.5f + (i % columns) * (cellWidth + CardGap);
                 CreatePreparationRow(host.transform, content.PreparationOptions[i], i, cellWidth, rowHeight,
                     !content.Refresh, x, i / columns);
-            }
-        }
-
-        private static ScrollRect TryInstantiateOfficialScrollRect(Transform parent)
-        {
-            try
-            {
-                if (GameplayDataSettings.UIPrefabs == null) return null;
-                ScrollRect prefab = GameplayDataSettings.UIPrefabs.ScrollRect;
-                if (prefab == null) return null;
-                return UnityEngine.Object.Instantiate(prefab, parent, false);
-            }
-            catch (Exception)
-            {
-                // 官方 prefab 不可用：回退共享库手搓
-                return null;
             }
         }
 
