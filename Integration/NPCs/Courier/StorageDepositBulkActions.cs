@@ -878,7 +878,7 @@ namespace BossRush
         {
             return IsZombieModeTemporaryCourierPurificationService()
                 ? L10n.T("净化点 ", "Purification ")
-                : "￥";
+                : L10n.T("￥", "$");
         }
 
         private static bool IsZombieModeTemporaryCourierPurificationService()
@@ -890,7 +890,7 @@ namespace BossRush
 
         private static string GetTemporaryCourierPurificationInsufficientText()
         {
-            return L10n.T("净化点不足。", "Not enough Purification.");
+            return L10n.T("净化点不足。打倒敌人后捡起掉落的净化星就能攒点，攒够再来。", "Not enough Purification. Pick up the Purification stars enemies drop to earn more, then come back.");
         }
 
         private static IEnumerator UpdateSingleRetrieveUiNextFrame()

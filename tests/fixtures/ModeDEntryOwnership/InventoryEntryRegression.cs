@@ -40,6 +40,7 @@ namespace BossRush
     }
     static class L10n { public static string T(string cn, string en) { return en; } }
     static class FactionFlagConfig { public static readonly int[] ALL_FLAG_TYPE_IDS = { 500010 }; }
+    static class BloodhuntTransponderConfig { public const int TYPE_ID = 500036; }
     public partial class ModBehaviour
     {
         private int bossRushTicketTypeId;
@@ -121,6 +122,36 @@ internal static class InventoryEntryProgram
         Check(!host.IsPlayerNaked() && ModBehaviour.Messages.Count == before, "geared normal-challenge players get no From Scratch notice");
         CharacterMainControl.Main.CharacterItem.Slots.Content.Clear();
         Check(host.ResolvesFromScratch(), "clearing every container restores Mode D admission");
+
+        // 2026-11-25：带着营旗没脱干净 → 按划地为营说清卡在哪（穿着护甲也说），不再说成白手起家。
+        UnityEngine.Time.unscaledTime += 30f;
+        bag.Content.Add(new Item { TypeID = 500010, DisplayName = "banner" });
+        CharacterMainControl.Main.CharacterItem.Slots.Content["Armor"] = new ItemStatsSystem.Items.Slot { Content = new Item { TypeID = 2, DisplayName = "vest" } };
+        before = ModBehaviour.Messages.Count;
+        Check(!host.IsPlayerNaked() && ModBehaviour.Messages.Count == before + 1
+              && ModBehaviour.Messages[before].Contains("vest") && ModBehaviour.Messages[before].Contains("Faction War")
+              && !ModBehaviour.Messages[before].Contains("From Scratch"),
+            "banner carrier blocked by gear is told it is not Faction War");
+        Check(!host.IsPlayerNaked() && ModBehaviour.Messages.Count == before + 1, "Faction War notice is not repeated within the window");
+        CharacterMainControl.Main.CharacterItem.Slots.Content.Clear();
+        Check(host.IsPlayerNaked(), "banner alone stays allowed by the shared naked check");
+        bag.Content.RemoveAt(bag.Content.Count - 1);
+
+        // 船票 + 血猎收发器但狗子背包有东西 → 按血猎追击说；同一轮后面白手起家那句不再补。
+        UnityEngine.Time.unscaledTime += 30f;
+        bag.Content.Add(new Item { TypeID = 500036, DisplayName = "transponder" });
+        PetProxy.PetInventory.Content.Add(new Item { TypeID = 2, DisplayName = "bandage" });
+        before = ModBehaviour.Messages.Count;
+        ModeDNakedEntryNotice.NotifyBloodHuntBlocked(host, 500001);
+        Check(ModBehaviour.Messages.Count == before + 1 && ModBehaviour.Messages[before].Contains("bandage")
+              && ModBehaviour.Messages[before].Contains("Blood Hunt"),
+            "transponder carrier blocked by the dog pack is told it is not Blood Hunt");
+        Check(!host.IsPlayerNaked() && ModBehaviour.Messages.Count == before + 1, "From Scratch notice stays quiet right after the Blood Hunt notice");
+        PetProxy.PetInventory.Content.Clear();
+        before = ModBehaviour.Messages.Count;
+        ModeDNakedEntryNotice.NotifyBloodHuntBlocked(host, 500001);
+        Check(ModBehaviour.Messages.Count == before, "a clean Blood Hunt loadout gets no notice");
+        bag.Content.RemoveAt(bag.Content.Count - 1);
         Console.WriteLine("ModeD inventory entry: PASS (real resolver, ticket bridge, inventory and equipment traversal)");
         return 0;
     }

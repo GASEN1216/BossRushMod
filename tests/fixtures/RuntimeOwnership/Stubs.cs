@@ -84,6 +84,8 @@ public static class PermanentDuckNpcRegistry
 {
     public static CharacterMainControl Instance;
     public static bool TryGetBlueprint(string id, out DuckNpcBlueprint value) { value=new DuckNpcBlueprint(); return true; }
+    // testNpc 的 Dev 门控由 TestNpcDevOnlySpawnGuard 钉住；本夹具只验配偶恢复时序，按可自动出现处理。
+    public static bool AllowsAutoSpawn(DuckNpcBlueprint blueprint) { return blueprint != null; }
     public static CharacterMainControl GetInstance(string id) => Instance;
     public static void RegisterInstance(string id, CharacterMainControl npc) { Instance=npc; }
 }

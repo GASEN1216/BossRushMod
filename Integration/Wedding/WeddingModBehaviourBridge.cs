@@ -605,6 +605,9 @@ namespace BossRush
 
         private void RequestPermanentSpouseRestore(string npcId, Vector3 position, bool following)
         {
+            // 测试 NPC（小满）在正式构建里不自动出现，已婚也一样（owner 2026-11-25）
+            DuckNpcBlueprint blueprint;
+            if (PermanentDuckNpcRegistry.TryGetBlueprint(npcId, out blueprint) && !PermanentDuckNpcRegistry.AllowsAutoSpawn(blueprint)) return;
             int sceneHandle = UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle;
             PermanentSpouseRestoreRequest pending = permanentSpouseRestoreRequest;
             if (pending != null && pending.NpcId == npcId && pending.SceneHandle == sceneHandle

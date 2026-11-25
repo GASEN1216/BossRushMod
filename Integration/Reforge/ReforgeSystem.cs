@@ -818,7 +818,10 @@ namespace BossRush
 
             if (!CanExecuteReforge(item))
             {
-                result.ErrorMessage = L10n.T("该物品没有未固定的可重铸属性", "This item has no unlocked reforgeable properties.");
+                // 能重铸但全被冷淬液固定：说清缺什么、怎么解；本来就没有可重铸属性的另给一句
+                result.ErrorMessage = CanReforge(item)
+                    ? L10n.T("这件物品能重铸的属性都已固定，没有可改的了。用回火液解开一项再来。", "Every reforgeable stat on this item is locked, so there's nothing to change. Unlock one with Tempering Solvent first.")
+                    : L10n.T("这件物品无法重铸。", "This item can't be reforged.");
                 return result;
             }
 
@@ -828,7 +831,7 @@ namespace BossRush
 
             if (moneyInvested < baseCost)
             {
-                result.ErrorMessage = string.Format(L10n.T("投入金额不足（最低 {0}）", "Investment is too low (minimum {0})."), baseCost);
+                result.ErrorMessage = string.Format(L10n.T("投入金额不足：这件至少要投 {0}。", "Investment is too low: this item needs at least {0}."), baseCost);
                 return result;
             }
 

@@ -134,8 +134,8 @@ namespace BossRush
                     config.randomEventsFrequency = freqValue;
 
                     string freqLabel = L10n.T(
-                        "随机事件频率（1 低 / 2 中 / 3 高）",
-                        "Random event frequency (1 low / 2 mid / 3 high)");
+                        "鸭生无常：每局事件上限（1=2 次 / 2=3 次 / 3=5 次，烟花与巡游不占）",
+                        "Duck's Uncertainty: events per run (1=2 / 2=3 / 3=5; fireworks and parades don't count)");
                     string freqKey = ModName + RandomEventsFrequencyModConfigKeySuffix;
                     addSliderMethod.Invoke(null, new object[] {
                         ModName, freqKey, freqLabel, typeof(int), freqValue,

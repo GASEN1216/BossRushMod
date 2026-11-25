@@ -641,6 +641,7 @@ echo(LootAndRewards\ModeEFLootboxTracker.cs
 echo(LootAndRewards\AwenLootSweepRuntime.cs
 echo(Interactables\BossRushBuildingInteractableBase.cs
 echo(Interactables\BossRushInteractables.cs
+echo(Interactables\BossRushSignOptionInteractables.cs
 echo(Interactables\BossRushLootboxInteractables.cs
 echo(Interactables\BossRushReturnInteractable.cs
 echo(ModeD\ModeD.cs

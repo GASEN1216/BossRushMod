@@ -106,5 +106,5 @@ Kills in the Black Market Duck Cup do not enter the codex and do not advance thi
 | Completionist | Unlock all achievements | $5,000,000 | ★★★★★ |
 
 ## Statistics
-- Total achievements: 45 (including 3 hidden)
-- Total reward amount: `$19,840,000`
+- Total achievements: 46 (including 3 hidden)
+- Total reward amount: `$20,640,000`

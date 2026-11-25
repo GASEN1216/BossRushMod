@@ -46,10 +46,10 @@ namespace BossRush
         private static readonly string DragonDescendantResurrectionEN = DragonDescendantConfig.ResurrectionDialogueEN;
         private static readonly string DragonDescendantResurrectionPreludeCN = "我……";
         private static readonly string DragonDescendantResurrectionPreludeEN = "I...";
-        private static readonly string DragonDescendantIceSlowCN = "此等极寒之力，也被你压住了吗……可恶！";
-        private static readonly string DragonDescendantIceSlowEN = "So even this bitter cold bows to you? Damn...";
-        private static readonly string DragonDescendantIceRecoveryCN = "哈哈哈，用完了吗？轮到我了！";
-        private static readonly string DragonDescendantIceRecoveryEN = "Ha! Done already? My turn!";
+        private static readonly string DragonDescendantIceSlowCN = "这点冷，冻得住火吗……";
+        private static readonly string DragonDescendantIceSlowEN = "You think a little cold can put this fire out...?";
+        private static readonly string DragonDescendantIceRecoveryCN = "喘够气了？轮到我了！";
+        private static readonly string DragonDescendantIceRecoveryEN = "Caught your breath? My turn!";
         
         #endregion
         
@@ -598,14 +598,14 @@ namespace BossRush
         // 霜冠（冰霜头盔）
         private static readonly string FrostHelmNameCN = "霜冠";
         private static readonly string FrostHelmNameEN = "Frost Crown";
-        private static readonly string FrostHelmDescCN = "冠沿结着白霜，隔着手套也冷。\n<color=#87CEEB>【寒冰之护】穿齐 2 件</color>\n<color=#AADDFF>冰抗 +50%，冰伤半转治疗。\n命中追加冰伤并概率冻结。受击概率冻结攻击者。</color>\n<color=#BBBBBB>来源：??? Boss / 叮当的小店（好感 6）</color>";
-        private static readonly string FrostHelmDescEN = "Frost rims the crown. Cold even through gloves.\n<color=#87CEEB>[Frost Ward] Requires 2 pieces</color>\n<color=#AADDFF>Ice Resist +50%. Half of ice damage heals you.\nHits add ice damage and may freeze. Hits taken may freeze the attacker.</color>\n<color=#BBBBBB>Source: ??? boss / Dingdang's Shop (affinity 6)</color>";
+        private static readonly string FrostHelmDescCN = "冠沿结着白霜，隔着手套也冷。\n<color=#87CEEB>【寒冰之护】穿齐 2 件</color>\n<color=#AADDFF>冰抗 +50%，受到的冰伤有一半转成治疗。\n命中时追加冰伤，可能冻住目标；被近身打中时，可能把攻击者冻住。</color>\n<color=#BBBBBB>来源：??? Boss / 叮当的小店（好感 6）</color>";
+        private static readonly string FrostHelmDescEN = "Frost rims the crown. Cold even through gloves.\n<color=#87CEEB>[Frost Ward] Requires 2 pieces</color>\n<color=#AADDFF>Ice Resist +50%; half the ice damage you take heals you.\nYour hits add ice damage and may freeze the target. Close-range attackers who hit you may get frozen.</color>\n<color=#BBBBBB>Source: ??? boss / Dingdang's Shop (affinity 6)</color>";
 
         // 寒冰铠甲
         private static readonly string FrostArmorNameCN = "寒冰铠甲";
         private static readonly string FrostArmorNameEN = "Ice Armor";
-        private static readonly string FrostArmorDescCN = "铠甲内侧凝着冰，走动时簌簌作响。\n<color=#87CEEB>【寒冰之护】穿齐 2 件</color>\n<color=#AADDFF>冰抗 +50%，冰伤半转治疗。\n命中追加冰伤并概率冻结。受击概率冻结攻击者。</color>\n<color=#BBBBBB>来源：??? Boss / 叮当的小店（好感 6）</color>";
-        private static readonly string FrostArmorDescEN = "Ice lines the armor, crackling with each step.\n<color=#87CEEB>[Frost Ward] Requires 2 pieces</color>\n<color=#AADDFF>Ice Resist +50%. Half of ice damage heals you.\nHits add ice damage and may freeze. Hits taken may freeze the attacker.</color>\n<color=#BBBBBB>Source: ??? boss / Dingdang's Shop (affinity 6)</color>";
+        private static readonly string FrostArmorDescCN = "铠甲内侧凝着冰，走动时簌簌作响。\n<color=#87CEEB>【寒冰之护】穿齐 2 件</color>\n<color=#AADDFF>冰抗 +50%，受到的冰伤有一半转成治疗。\n命中时追加冰伤，可能冻住目标；被近身打中时，可能把攻击者冻住。</color>\n<color=#BBBBBB>来源：??? Boss / 叮当的小店（好感 6）</color>";
+        private static readonly string FrostArmorDescEN = "Ice lines the armor, crackling with each step.\n<color=#87CEEB>[Frost Ward] Requires 2 pieces</color>\n<color=#AADDFF>Ice Resist +50%; half the ice damage you take heals you.\nYour hits add ice damage and may freeze the target. Close-range attackers who hit you may get frozen.</color>\n<color=#BBBBBB>Source: ??? boss / Dingdang's Shop (affinity 6)</color>";
 
         // 冰冻 Buff
         private static readonly string FrostBuffNameCN = "冰冻";
@@ -620,14 +620,14 @@ namespace BossRush
         // 雷神之角（雷霆头盔）
         private static readonly string ThunderHelmNameCN = "雷神之角";
         private static readonly string ThunderHelmNameEN = "Thunder Horn";
-        private static readonly string ThunderHelmDescCN = "角尖不时跳出电弧。\n<color=#FFD700>【雷霆之怒】穿齐 2 件</color>\n<color=#FFEE88>电抗 +50%，电伤半转治疗。\n命中向附近敌人放电弧。受击概率触发雷霆反震。</color>\n<color=#BBBBBB>来源：风暴区 Boss / 叮当的小店（好感 6）</color>";
-        private static readonly string ThunderHelmDescEN = "Arcs flicker between the horns.\n<color=#FFD700>[Thunder's Wrath] Requires 2 pieces</color>\n<color=#FFEE88>Shock Resist +50%. Half of shock damage heals you.\nHits arc to nearby foes. Hits taken may trigger a counter-shock.</color>\n<color=#BBBBBB>Source: Storm Zone boss / Dingdang's Shop (affinity 6)</color>";
+        private static readonly string ThunderHelmDescCN = "角尖不时跳出电弧。\n<color=#FFD700>【雷霆之怒】穿齐 2 件</color>\n<color=#FFEE88>电抗 +50%，受到的电伤有一半转成治疗。\n命中时电弧会跳向附近的敌人；被近身打中时，可能在身边炸开一圈雷霆反震。</color>\n<color=#BBBBBB>来源：风暴区 Boss / 叮当的小店（好感 6）</color>";
+        private static readonly string ThunderHelmDescEN = "Arcs flicker between the horns.\n<color=#FFD700>[Thunder's Wrath] Requires 2 pieces</color>\n<color=#FFEE88>Shock Resist +50%; half the shock damage you take heals you.\nYour hits arc to nearby foes. Close-range attackers who hit you may set off a counter-shock around you.</color>\n<color=#BBBBBB>Source: Storm Zone boss / Dingdang's Shop (affinity 6)</color>";
 
         // 雷霆战甲
         private static readonly string ThunderArmorNameCN = "雷霆战甲";
         private static readonly string ThunderArmorNameEN = "Thunder Armor";
-        private static readonly string ThunderArmorDescCN = "甲片间藏着电光，碰一下就麻手。\n<color=#FFD700>【雷霆之怒】穿齐 2 件</color>\n<color=#FFEE88>电抗 +50%，电伤半转治疗。\n命中向附近敌人放电弧。受击概率触发雷霆反震。</color>\n<color=#BBBBBB>来源：风暴区 Boss / 叮当的小店（好感 6）</color>";
-        private static readonly string ThunderArmorDescEN = "Sparks hide between the plates. A touch numbs your fingers.\n<color=#FFD700>[Thunder's Wrath] Requires 2 pieces</color>\n<color=#FFEE88>Shock Resist +50%. Half of shock damage heals you.\nHits arc to nearby foes. Hits taken may trigger a counter-shock.</color>\n<color=#BBBBBB>Source: Storm Zone boss / Dingdang's Shop (affinity 6)</color>";
+        private static readonly string ThunderArmorDescCN = "甲片间藏着电光，碰一下就麻手。\n<color=#FFD700>【雷霆之怒】穿齐 2 件</color>\n<color=#FFEE88>电抗 +50%，受到的电伤有一半转成治疗。\n命中时电弧会跳向附近的敌人；被近身打中时，可能在身边炸开一圈雷霆反震。</color>\n<color=#BBBBBB>来源：风暴区 Boss / 叮当的小店（好感 6）</color>";
+        private static readonly string ThunderArmorDescEN = "Sparks hide between the plates. A touch numbs your fingers.\n<color=#FFD700>[Thunder's Wrath] Requires 2 pieces</color>\n<color=#FFEE88>Shock Resist +50%; half the shock damage you take heals you.\nYour hits arc to nearby foes. Close-range attackers who hit you may set off a counter-shock around you.</color>\n<color=#BBBBBB>Source: Storm Zone boss / Dingdang's Shop (affinity 6)</color>";
 
         #endregion
 

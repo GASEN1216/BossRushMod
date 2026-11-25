@@ -143,7 +143,7 @@ namespace BossRush
             for (int i = 0; i < permanents.Count; i++)
             {
                 DuckNpcBlueprint blueprint = permanents[i];
-                if (blueprint == null || !blueprint.AllowsScene(sceneName))
+                if (blueprint == null || !blueprint.AllowsScene(sceneName) || !PermanentDuckNpcRegistry.AllowsAutoSpawn(blueprint))
                 {
                     continue;
                 }
@@ -254,7 +254,7 @@ namespace BossRush
                         return;
                     }
                     DuckNpcBlueprint blueprint = permanents[i];
-                    if (blueprint == null || !blueprint.AllowsScene(request.SceneName))
+                    if (blueprint == null || !blueprint.AllowsScene(request.SceneName) || !PermanentDuckNpcRegistry.AllowsAutoSpawn(blueprint))
                     {
                         continue;
                     }

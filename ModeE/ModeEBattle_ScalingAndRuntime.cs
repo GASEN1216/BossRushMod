@@ -502,7 +502,7 @@ namespace BossRush
                 {
                     string text = L10n.T(
                         "贝壳 +" + reward + "（持有 " + balance + "）",
-                        "Shells +" + reward + " (Held " + balance + ")");
+                        "Seashells +" + reward + " (Held " + balance + ")");
                     DialogueBubblesManager.Show(
                         text,
                         currentPlayer.transform,

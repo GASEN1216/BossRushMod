@@ -781,11 +781,11 @@ namespace BossRush
             int shellPrice = 0;
             if (TryGetModeEShellPrice(shop, entry.ItemTypeID, out shellPrice))
             {
-                priceText.text = L10n.T("贝壳 ", "Shells ") + shellPrice.ToString("N0");
+                priceText.text = L10n.T("贝壳 ", "Seashells ") + shellPrice.ToString("N0");
             }
             else
             {
-                priceText.text = L10n.T("贝壳载入中", "Shell price loading");
+                priceText.text = L10n.T("贝壳载入中", "Seashell price loading");
                 EnsureModeEShellPriceScheduled(shop, entry.ItemTypeID);
             }
         }
@@ -840,9 +840,9 @@ namespace BossRush
             }
 
             priceText.text = priceReady
-                ? L10n.T("贝壳 ", "Shells ") + shellPrice.ToString("N0") +
+                ? L10n.T("贝壳 ", "Seashells ") + shellPrice.ToString("N0") +
                   L10n.T(" / 持有 ", " / Held ") + modeEShellBalance.ToString("N0")
-                : L10n.T("贝壳价格不可用", "Shell price unavailable");
+                : L10n.T("贝壳价格不可用", "Seashell price unavailable");
             if (image != null)
             {
                 // 官方自己的「可买 / 不可买」两色，旧版刷成荧光绿 / Color.gray（UB-21，见 GetModeEShellOfficialButtonColor）

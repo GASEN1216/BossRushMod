@@ -570,7 +570,7 @@ namespace BossRush
             bool interactable = enough && !modeEShellOwner.IsModeEShellTransactionGateBusy;
             string displayText = ready
                 ? L10n.T("抽奖 ", "Lottery ") + price.ToString("N0") +
-                    L10n.T(" 贝壳", " Shells")
+                    L10n.T(" 贝壳", " Seashells")
                 : L10n.T("抽奖载入中", "Lottery loading");
             ApplyButtonState(
                 lotteryButton,
@@ -586,7 +586,7 @@ namespace BossRush
             string amount = modeEShellOwner.CurrentModeEShellBalance.ToString("N0");
             shellBalanceText.text = shellBalanceHasShellIcon
                 ? amount
-                : L10n.T("贝壳 ", "Shells ") + amount;
+                : L10n.T("贝壳 ", "Seashells ") + amount;
         }
 
     }

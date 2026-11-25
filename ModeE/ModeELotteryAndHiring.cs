@@ -668,7 +668,7 @@ namespace BossRush
                 if (shortBy > 0)
                 {
                     return L10n.T("贝壳不足（还差 " + shortBy.ToString("N0") + "）",
-                        "Not enough Shells (" + shortBy.ToString("N0") + " short)");
+                        "Not enough Seashells (" + shortBy.ToString("N0") + " short)");
                 }
             }
             return L10n.T("当前无法雇佣该 Boss", "This Boss cannot be hired right now");
@@ -735,7 +735,7 @@ namespace BossRush
                 RefreshModeEBossHireOffers();
                 NotificationText.Push(L10n.T(
                     "雇佣成功，花费 " + price + " 贝壳",
-                    "Boss hired for " + price + " Shells"));
+                    "Boss hired for " + price + " Seashells"));
                 return true;
             }
             catch (Exception e)
@@ -1020,7 +1020,7 @@ namespace BossRush
             string key = "BossRush_ModeE_Hire_" + safePrice;
             string text = L10n.T(
                 "雇佣（" + safePrice + " 贝壳）",
-                "Hire (" + safePrice + " Shells)");
+                "Hire (" + safePrice + " Seashells)");
             LocalizationHelper.InjectLocalization(key, text);
             overrideInteractName = true;
             _overrideInteractNameKey = key;

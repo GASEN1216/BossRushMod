@@ -237,15 +237,8 @@ namespace BossRush
                             {
                                 indicator.SetActive(!canReforge);
 
-                                // 修复"无法分解"文本
-                                TextMeshProUGUI[] indicatorTexts = indicator.GetComponentsInChildren<TextMeshProUGUI>(true);
-                                foreach (var t in indicatorTexts)
-                                {
-                                    if (t.text.Contains("分解"))
-                                    {
-                                        t.text = t.text.Replace("分解", "重铸");
-                                    }
-                                }
+                                // 修复"无法分解"文本（中英文都写入重铸版文案）
+                                RelabelDecomposeIndicator(indicator, false);
                             }
                         }
                     }
@@ -257,18 +250,8 @@ namespace BossRush
                 }
             }
 
-            // 修复"请选择要分解的物品"文本
-            if (noItemSelectedIndicator != null)
-            {
-                TextMeshProUGUI[] noItemTexts = noItemSelectedIndicator.GetComponentsInChildren<TextMeshProUGUI>(true);
-                foreach (var t in noItemTexts)
-                {
-                    if (t.text.Contains("分解"))
-                    {
-                        t.text = t.text.Replace("分解", "重铸");
-                    }
-                }
-            }
+            // 修复"请选择要分解的物品"文本（英文原文的 decompose 大小写不定，直接写入重铸版文案）
+            RelabelDecomposeIndicator(noItemSelectedIndicator, true);
 
             // 确保结果显示被隐藏，概率显示可见
             if (resultDisplayObj != null)

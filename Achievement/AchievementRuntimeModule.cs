@@ -108,9 +108,12 @@ namespace BossRush
                     return;
                 }
                 UnityEngine.KeyCode achievementKey = UnityEngine.KeyCode.L;
-                if (hasAchievementConfiguration() && getAchievementHotkey() > 0)
+                if (hasAchievementConfiguration())
                 {
-                    achievementKey = (UnityEngine.KeyCode)getAchievementHotkey();
+                    // 配置里选「禁用」存 0：不响应，也不退回默认 L（与宿命回响放弃热键同一口径）
+                    int configuredHotkey = getAchievementHotkey();
+                    if (configuredHotkey <= 0) return;
+                    achievementKey = (UnityEngine.KeyCode)configuredHotkey;
                 }
 
                 if (UnityEngine.Input.GetKeyDown(achievementKey))

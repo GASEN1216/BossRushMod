@@ -10,13 +10,13 @@
 [![Game](https://img.shields.io/badge/Game-Escape%20from%20Duckov-orange)](https://store.steampowered.com/app/3167020)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-**BossRush · Qinglan Archipelago** (Chinese name: BossRush · 晴岚群岛) is a large gameplay mod for Escape from Duckov; the mod id, namespace and repository are still `BossRush` / `BossRushMod`. It started as a BossRush arena and now includes eight game modes, a standalone raid map, original bosses and gear, NPC relationship lines, a story campaign, base buildings, and a long list of runtime stability fixes.
+**BossRush · Qinglan Archipelago** (Chinese name: BossRush · 晴岚群岛) is a large gameplay mod for Escape from Duckov; the mod id, namespace and repository are still `BossRush` / `BossRushMod`. It started as a BossRush arena and now includes eight game modes, three standalone raid maps (Sky Islands, Tidegate, Last Shift Yard), original bosses and gear, NPC relationship lines, a story campaign, base buildings, and a long list of runtime stability fixes.
 
 - **Player docs**: [online wiki](https://bossrushmod.pages.dev/) (same text as the in-game wiki, Chinese and English)
 - **Subscribe**: [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3612465423)
 - **Contributing / AI collaboration**: read [AGENTS.md](AGENTS.md) first (written in Chinese)
 
-**v2.3.9** fixes cub names and backpack saving, improves recovery after save failures and cleanup during transitions, and makes field-adventure placement require a route the player can actually walk. Mimic attacks respect walls, and completed firework prototypes are recalled with a completion message. See the [v2.3.9 changelog](WikiContent/en/changelog__v2_3_9.md).
+**v2.6.2** fixes the missing mouse cursor in the album, the cub backpack on raid maps saying it isn't ready over and over, and the register crate not popping up on your first collectible; the wish draw is also cut back hard. See the [v2.6.2 changelog](WikiContent/en/changelog__v2_6_2.md).
 
 ## What's Inside
 
@@ -24,8 +24,8 @@
 
 | Mode | How to enter | What it is |
 | --- | --- | --- |
-| Standard BossRush | Carry a BossRush Ticket | 1 or 3 bosses per wave |
-| Infinite Hell | Carry a BossRush Ticket | Endless waves, configurable bosses per wave, cash pool and auto-collection |
+| Standard BossRush | Carry a BossRush Ticket and open the War Writ at the arena signpost | Lineup (A Snap: 1 boss per wave / Getting Interesting: 3) × challenge (Relaxed / Standard / Hard / Nightmare) × campaign length (Short / Long / Full) |
+| Infinite Hell | Carry a BossRush Ticket and pick Infinite Hell as the War Writ lineup | Endless waves, configurable bosses per wave, cash pool and auto-collection |
 | From Scratch (Mode D) | Enter naked with a Ticket | Random starting loadout, separate enemy pool, drops and growth curve |
 | Faction War (Mode E) | Enter naked with a faction flag | Multi-faction sandbox battle |
 | Blood Hunt (Mode F) | Enter naked with a Ticket and a Bloodhunt Transponder | Four-phase battle royale: constant bleed, kill-to-heal, bounty tracking, fortifications, extraction |
@@ -37,16 +37,18 @@
 
 - **9 BossRush arena maps**, selected through the original map UI.
 - **Sky Islands · Qinglan**: a standalone raid map reached from the base boat; no ticket needed. Twelve islands with a main story of repairing wind vanes and star lamps, scavenging and gathering, recipes, resident requests, and the boss the Windeater.
+- **Tidegate**: a seaside town that rises and falls with the tide, reached by raft from the bunker sewer, with the NPC Old Zha, a short story about a lost tide watch, and the boss Sand Boss · Leadline.
+- **Last Shift Yard**: board in the official Hidden Warehouse map by getting your ticket punched by the inspector Yu Xiang. The switch decides which platform each freight train stops at, every stop is a fight, and the yard closes once train 8, the last train, leaves.
 
 ### Bosses, NPCs and Gear
 
 - **Original bosses**: Dragon Descendant, Skyburner Dragon Lord, Phantom Witch.
-- **NPCs**: Awen (courier), Dingdang (goblin smith, reforging), Yu Zhi (nurse), plus permanent NPCs made with the duck-face NPC tool; affinity, gifts and marriage.
+- **NPCs**: Awen (courier), Dingdang (goblin smith, reforging), Yu Zhi (nurse), Old Zha in Tidegate, the ticket inspector Yu Xiang at Last Shift Yard, plus permanent NPCs such as the Sky Islands residents made with the duck-face NPC tool; affinity, gifts and marriage.
 - **Gear**: Dragon Set, Dragon King Set, Frost Set, Thunder Set, Cloud Soar I, Reverse Scale, Inferno Emperor's Realm-Breaking Halberd, Dragon Breath, Dragon Cannon, Soulreaper's Requiem, Frostmourne, Viper Dagger, Summoning Staff, Energy Shield, Frost Spear, Thunder Ring.
 
 ### Systems
 
-Duck King Campaign (six-chapter story), Arena Backyard (garden, trophy registry, jukebox), PetNest (raise boss hatchlings), The Duckov Daily, Duck King Codex, random events, affix forging, reforging, StarWish Fountain, death wraiths, mutators, achievements, boss filter, in-game wiki.
+Duck King Campaign (six-chapter story), War Writ (pick lineup, challenge and campaign length before an arena run), Arena Backyard (garden, trophy registry, jukebox), PetNest (raise boss hatchlings), collectibles and the album (100 old curios), Field Adventures (greedy chests, odd parcels and risky prototypes), The Duckov Daily, Duck King Codex, random events, affix forging, reforging, StarWish Fountain, death wraiths, mutators, achievements, boss filter, in-game wiki.
 
 Rules, numbers and how to get each item are on the online wiki.
 
@@ -63,14 +65,14 @@ Two entry points: `ModConfig`, and `StreamingAssets/BossRushModConfig.txt` (JSON
 | `bossStatMultiplier` | `1.0` | Global boss stat multiplier |
 | `modeDEnemiesPerWave` | `3` | Enemies per From Scratch wave |
 | `enableRandomBossLoot` | `true` | Randomized boss loot bonus |
-| `useLegacyBossLootProbabilities` | `true` | Vanilla quality odds for standard boss loot boxes, plus one Q6+ guarantee when none rolled |
+| `useLegacyBossLootProbabilities` | `true` | Vanilla quality odds for standard boss loot boxes; if a high-HP boss (max HP above 250) drops nothing at Q5+, one Q5+ item is added |
 | `lootBoxBlocksBullets` | `false` | Loot boxes act as bullet-blocking cover |
 | `disabledBosses` | `[]` | Disabled boss list |
 | `bossInfiniteHellFactors` | `{}` | Infinite Hell boss spawn weights |
 | `enableDragonDash` | `true` | Dragon Dash abilities |
 | `enableDeathWraithSystem` | `true` | Death wraith system |
 | `useWolfModelForWildHorn` | `true` | Wolf model for the Wild Horn |
-| `achievementHotkey` | `L` | Achievement panel hotkey (stored as a `KeyCode` integer) |
+| `achievementHotkey` | `L` | Achievement panel hotkey (stored as a `KeyCode` integer; "None" stores `0`) |
 
 The full list is on the wiki's Configuration page.
 
@@ -129,7 +131,7 @@ These exist only in dev builds (`compile_dev.bat`):
 | `F11` | Inventory inspector |
 | `F12` | NPC teleport UI |
 
-Also available in release builds: `Ctrl+F10` opens the boss filter, `L` (configurable) opens the achievement panel.
+Also available in release builds: `Ctrl+F10` opens Boss Pool Settings (the boss filter), `L` (configurable) opens the achievement panel.
 
 ## License
 

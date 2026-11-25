@@ -31,7 +31,7 @@ namespace BossRush
             // 随机事件商人的交互提示。写入点：
             // RandomEvents/RandomEventEffectsBridge_Spawn.cs 的
             // RandomEventMerchantShopInteractable.Setup（经 _overrideInteractNameKey）。
-            Add(map, "MerchantShop", "神秘商人", "Mysterious Trader");
+            Add(map, "MerchantShop", "神秘商人", "Mysterious Merchant");
 
             LocalizationHelper.InjectLocalizations(map);
         }

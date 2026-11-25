@@ -219,17 +219,17 @@ namespace BossRush
             switch (category)
             {
                 case DialogueCategory.Greeting:
-                    return L10n.T("嗨，又见面了。", "Hey, good to see you again.");
+                    return L10n.T("又见面了，今天还顺利吧？", "Hey, you again. Things going all right?");
                 case DialogueCategory.AfterGift:
-                    return L10n.T("你居然记得给我带东西……谢了。", "You actually brought me something... thanks.");
+                    return L10n.T("还给我带了东西？谢了。", "You brought me something? Thanks.");
                 case DialogueCategory.LevelUp:
-                    return L10n.T("看来咱俩越来越熟了。", "Guess we're getting pretty close, huh.");
+                    return L10n.T("咱俩算是混熟了。", "Guess we're on good terms now.");
                 case DialogueCategory.Shopping:
-                    return L10n.T("想看看有什么？随便挑。", "Wanna see what I've got? Take your pick.");
+                    return L10n.T("要看看货吗？慢慢挑。", "Want a look at what I've got? Take your time.");
                 case DialogueCategory.AlreadyGifted:
-                    return L10n.T("今天的心意我已经收到了，明天再来吧。", "I already got your gift today. Come back tomorrow.");
+                    return L10n.T("今天已经收过了，留着明天吧。", "Already got one from you today. Save it for tomorrow.");
                 case DialogueCategory.Farewell:
-                    return L10n.T("走了啊，下次再来。", "See you around. Come back anytime.");
+                    return L10n.T("路上小心，回头见。", "Take care out there. See you.");
                 default:
                     return "";
             }

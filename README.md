@@ -10,13 +10,13 @@
 [![Game](https://img.shields.io/badge/Game-Escape%20from%20Duckov-orange)](https://store.steampowered.com/app/3167020)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-**BossRush · 晴岚群岛** 是《逃离鸭科夫》（Escape from Duckov）的综合玩法 Mod（Mod 标识、命名空间与仓库名仍是 `BossRush` / `BossRushMod`）。以 BossRush 竞技场为起点，现在有八种游戏模式、一张独立出击地图、原创 Boss 与装备、NPC 关系线、剧情战役、基地建筑，以及大量运行时稳定性修复。
+**BossRush · 晴岚群岛** 是《逃离鸭科夫》（Escape from Duckov）的综合玩法 Mod（Mod 标识、命名空间与仓库名仍是 `BossRush` / `BossRushMod`）。以 BossRush 竞技场为起点，现在有八种游戏模式、三张独立出击地图（天空岛、潮闸镇、末班编组站）、原创 Boss 与装备、NPC 关系线、剧情战役、基地建筑，以及大量运行时稳定性修复。
 
 - **玩家文档**：[在线 Wiki](https://bossrushmod.pages.dev/)（与游戏内百科同一份正文，中英双语）
 - **订阅**：[Steam 创意工坊](https://steamcommunity.com/sharedfiles/filedetails/?id=3612465423)
 - **参与开发 / AI 协作**：先读 [AGENTS.md](AGENTS.md)
 
-**v2.3.9** 修复遗种崽名字与背包保存阻塞，改善保存异常后的恢复和切图清理；野外趣事的落点须玩家实际走得到，宝箱攻击遵守墙体遮挡，烟花试用品达标后及时回收并提示。详见 [v2.3.9 更新说明](WikiContent/zh/changelog__v2_3_9.md)。
+**v2.6.2** 修复收藏册里看不到鼠标、地图上的崽背包一直提示没就绪、第一次登记收集品时箱子没弹出来；许愿抽奖大幅削弱。详见 [v2.6.2 更新说明](WikiContent/zh/changelog__v2_6_2.md)。
 
 ## 内容一览
 
@@ -24,8 +24,8 @@
 
 | 模式 | 怎么进 | 玩法 |
 | --- | --- | --- |
-| 标准 BossRush（弹指可灭 / 有点意思） | 携带 BossRush 船票 | 每波 1 个 / 3 个 Boss |
-| 无间炼狱 | 携带 BossRush 船票 | 无限波次，每波 Boss 数可配置，带现金池与自动吸附 |
+| 标准 BossRush | 携带 BossRush 船票，在竞技场路牌「出征令」开打 | 阵容（弹指可灭每波 1 个 / 有点意思每波 3 个 Boss）× 战帖（轻松 / 标准 / 困难 / 噩梦）× 征程（短征 / 长征 / 全征） |
+| 无间炼狱 | 携带 BossRush 船票，「出征令」阵容选无间炼狱 | 无限波次，每波 Boss 数可配置，带现金池与自动吸附 |
 | 白手起家（Mode D） | 裸装携带船票 | 随机起装，独立的敌池、掉落与成长节奏 |
 | 划地为营（Mode E） | 裸装携带营旗 | 多阵营沙盒混战 |
 | 血猎追击（Mode F） | 裸装携带船票与血猎收发器 | 四阶段大逃杀：持续失血、击杀回血、赏金追踪、工事与撤离 |
@@ -37,16 +37,18 @@
 
 - **9 张 BossRush 竞技场地图**，地图选择走原版界面。
 - **天空岛 · 晴岚群岛**：从基地船点出发的独立出击地图，不消耗船票。十二座岛上有修复风标与星灯的主线、搜刮与采集、配方、居民委托，以及 Boss「噬风」。
+- **潮闸镇**：从地堡下水道竹筏出发、跟着潮水涨落的海边小镇，有 NPC 闸伯、找回潮汐怀表的小剧情和 Boss 沙老大·铅锤。
+- **末班编组站**：入口在官方仓库区，找检票员余响剪票上车；扳道岔决定货车停西台还是东台，每班停靠都是一场仗，第 8 班末班车一走就封站。
 
 ### Boss、NPC 与装备
 
 - **原创 Boss**：龙裔遗族、焚天龙皇、幽灵女巫。
-- **NPC**：阿稳（快递员）、叮当（哥布林工匠，负责重铸）、羽织（护士），以及用捏脸工具做的永久 NPC；好感度、送礼与婚姻线。
+- **NPC**：阿稳（快递员）、叮当（哥布林工匠，负责重铸）、羽织（护士）、潮闸镇的闸伯、末班编组站的检票员余响，以及用捏脸工具做的天空岛居民等永久 NPC；好感度、送礼与婚姻线。
 - **装备**：龙裔 / 龙王套装、霜冠 / 雷神套装、腾云驾雾图腾、逆鳞、焚皇断界戟、龙息、焚天龙铳、噬魂挽歌、霜之哀伤，以及毒蛇匕首、召唤法杖、能量盾、冰霜长矛、雷电戒指。
 
 ### 系统
 
-鸭王征程（六章剧情战役）、竞技场后山（菜地、战利品登记簿、点唱机）、遗种巢（养崽）、鸭科夫日报、鸭皇图鉴、局内随机事件、词缀锻造、重铸、星愿许愿台、死亡亡魂、变异词条、成就、Boss 筛选器、游戏内百科。
+鸭王征程（六章剧情战役）、出征令（竞技场开打前选阵容、战帖与征程）、竞技场后山（菜地、战利品登记簿、点唱机）、遗种巢（养崽）、收集品与收藏册（100 件老物件）、野外趣事（贪吃宝箱、怪件快递与危险试用品）、鸭科夫日报、鸭皇图鉴、局内随机事件、词缀锻造、重铸、星愿许愿台、死亡亡魂、变异词条、成就、Boss 筛选器、游戏内百科。
 
 每一项的规则、数值与获取方式见在线 Wiki。
 
@@ -63,14 +65,14 @@
 | `bossStatMultiplier` | `1.0` | Boss 全局数值倍率 |
 | `modeDEnemiesPerWave` | `3` | 白手起家每波敌人数 |
 | `enableRandomBossLoot` | `true` | Boss 随机掉落加成 |
-| `useLegacyBossLootProbabilities` | `true` | 标准 Boss 战利品箱用原版概率区间；没出 Q6+ 时额外追加 1 件保底 |
+| `useLegacyBossLootProbabilities` | `true` | 标准 Boss 战利品箱用原版概率区间；高血量 Boss（最大生命超过 250）的箱里没有 Q5+ 时，追加 1 件 Q5+ 保底 |
 | `lootBoxBlocksBullets` | `false` | 掉落箱可作为掩体挡子弹 |
 | `disabledBosses` | `[]` | 被禁用的 Boss 列表 |
 | `bossInfiniteHellFactors` | `{}` | 无间炼狱 Boss 刷新权重因子 |
 | `enableDragonDash` | `true` | 龙冲刺相关能力 |
 | `enableDeathWraithSystem` | `true` | 死亡亡魂系统 |
 | `useWolfModelForWildHorn` | `true` | 荒野号角使用狼模型 |
-| `achievementHotkey` | `L` | 成就面板热键（内部存 `KeyCode` 整数） |
+| `achievementHotkey` | `L` | 成就面板热键（内部存 `KeyCode` 整数，选「禁用」存 `0`） |
 
 完整选项见 Wiki 的「配置选项」页。
 
@@ -129,7 +131,7 @@ BossRushMod/
 | `F11` | 背包检查器 |
 | `F12` | NPC 传送界面 |
 
-正式构建里也有的：`Ctrl+F10` 打开 Boss 筛选器，`L`（可在配置里改）打开成就面板。
+正式构建里也有的：`Ctrl+F10` 打开「Boss池设置」（Boss 筛选器），`L`（可在配置里改）打开成就面板。
 
 ## 许可
 

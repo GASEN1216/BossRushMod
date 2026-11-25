@@ -151,6 +151,8 @@ namespace BossRush
     {
         private static readonly HashSet<string> FORCE_ABSOLUTE_RANGE_KEYS = new HashSet<string> { "HeadArmor", "BodyArmor" };
         public static bool CanExecuteReforge(Item item) { return item != null; }
+        // Reforge() 报错时区分「全部已固定」与「本来没有可重铸属性」；夹具里有可重铸属性的物品都算前者
+        public static bool CanReforge(Item item) { return item != null; }
         private static float GetItemValue(Item item) { return 100; }
         private static int GetDiscountedCost(Item item) { return 1; }
         private static float FinalProbability(int r, float v, int m) { return 0.5f; }

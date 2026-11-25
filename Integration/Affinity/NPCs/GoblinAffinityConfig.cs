@@ -216,47 +216,47 @@ namespace BossRush
                     _positiveBubbles = new string[]
                     {
                         // 傲娇反应（表面嫌弃实际开心）
-                        L10n.T("哼...还、还行吧，叮当勉强收下了！", "Hmph... it's o-okay, Dingdang will reluctantly accept it!"),
+                        L10n.T("成色挺正，敲起来声音脆！叮当先收进抽屉，谁也不给看。", "Good metal. Rings clean! Into Dingdang's drawer, and nobody else gets to see it."),
                         L10n.T("别、别误会！叮当只是觉得扔掉可惜！", "D-don't get the wrong idea! Dingdang just thinks it's a waste to throw away!"),
                         L10n.T("你...你怎么知道叮当喜欢这个的！", "H-how did you know Dingdang likes this!"),
                         L10n.T("哼，算你有点眼光...", "Hmph, you have some taste..."),
                         L10n.T("叮当才、才没有很开心呢！", "Dingdang is n-not happy at all!"),
-                        L10n.T("这个...叮当会好好保管的，别多想！", "This... Dingdang will keep it safe, don't overthink!"),
+                        L10n.T("放这儿。不对，放这儿。……算了，叮当揣兜里。", "Put it here. No, here. ...Forget it, it's going in Dingdang's pocket."),
 
                         // 真情流露
                         L10n.T("哇！闪闪发光的！叮当最喜欢了！", "Wow! So shiny! Dingdang loves it!"),
                         L10n.T("这个...比实验室里那些冷冰冰的东西好多了...", "This... is much better than those cold things in the lab..."),
-                        L10n.T("你是第一个送叮当礼物的人...", "You're the first person to give Dingdang a gift..."),
-                        L10n.T("叮当...叮当好开心...", "Dingdang... Dingdang is so happy..."),
-                        L10n.T("谢谢你...不像那些哥布林只会欺负叮当...", "Thank you... unlike those goblins who only bully Dingdang..."),
-                        L10n.T("你真的...真的很好...", "You're really... really nice..."),
+                        L10n.T("等等，叮当先把手上的油擦干净再拿。", "Wait. Dingdang has to wipe the grease off before touching it."),
+                        L10n.T("叮当……叮当这会儿手有点抖，锤子都拿不稳了。", "Dingdang... Dingdang's hands are a bit shaky. Can't even hold the hammer straight."),
+                        L10n.T("叮当把锤子放下了。这个得用两只手接。", "Dingdang put the hammer down. This one needs both hands."),
+                        L10n.T("这个叮当舍不得用。摆架子上，每天看一眼。", "Too nice to use. It goes on Dingdang's shelf. One look a day."),
 
                         // 活泼反应
-                        L10n.T("太棒了太棒了！叮当要把它藏起来！", "Amazing! Dingdang will hide it away!"),
+                        L10n.T("太棒了太棒了！叮当今天敲铁都要哼歌了！", "Amazing, amazing! Dingdang's going to hum while hammering all day!"),
                         L10n.T("嘿嘿，这个叮当超级喜欢！", "Hehe, Dingdang super likes this!"),
-                        L10n.T("哇哦！你真懂叮当的心！", "Wow! You really understand Dingdang!"),
-                        L10n.T("叮当要把这个当宝贝！", "Dingdang will treasure this!"),
+                        L10n.T("哇哦！你从哪儿找来的？叮当翻了好几个垃圾堆都没翻到！", "Whoa! Where'd you find this? Dingdang dug through a bunch of junk piles and never found one!"),
+                        L10n.T("叮当先咬一口验验……是真的！不是假货！", "Dingdang's giving it a bite to check... It's real! Not a fake!"),
                         L10n.T("这个比叮当见过的都好看！", "This is prettier than anything Dingdang has ever seen!"),
-                        L10n.T("叮当决定了，你是好人！", "Dingdang has decided, you're a good person!"),
+                        L10n.T("叮当决定了！你今天进门不用敲门。", "Dingdang has decided! You don't have to knock today."),
 
                         // 背景相关
                         L10n.T("这个能换叮当一整个下午的好心情！", "This is worth a whole afternoon of good mood for Dingdang!"),
                         L10n.T("那些哥布林只会抢叮当的东西，你却送给叮当...", "Those goblins only steal from Dingdang, but you give to Dingdang..."),
                         L10n.T("叮当的宝贝盒子以前是空的。现在有东西了。", "Dingdang's treasure box used to be empty. Not anymore."),
                         L10n.T("你...你不觉得叮当是怪物吗？", "You... don't think Dingdang is a monster?"),
-                        L10n.T("叮当虽然是哥布林，但叮当有智慧的！谢谢你理解！", "Even though Dingdang is a goblin, Dingdang has intelligence! Thanks for understanding!"),
-                        L10n.T("其他哥布林都说叮当是异类...但你不一样...", "Other goblins say Dingdang is a freak... but you're different..."),
+                        L10n.T("叮当认得这个！叮当识字，也识货。", "Dingdang knows what this is! Dingdang can read, and knows good stuff on sight."),
+                        L10n.T("别的哥布林管叮当叫怪胎。怪胎今天收到礼物了，气死他们。", "The other goblins call Dingdang a freak. Well, the freak got a present today. Bet that stings."),
 
                         // 可爱反应
-                        L10n.T("呜...叮当眼睛进沙子了，才不是感动哭了！", "Ugh... Dingdang got sand in eyes, not crying from emotion!"),
+                        L10n.T("呜……叮当鼻子有点酸。是炉灰，是炉灰！", "Ugh... Dingdang's nose stings. It's forge ash. Forge ash!"),
                         L10n.T("叮当的心扑通扑通的...一定是吃坏肚子了！", "Dingdang's heart is pounding... must have eaten something bad!"),
                         L10n.T("你、你下次还可以再送...如果你想的话！", "Y-you can give more next time... if you want!"),
-                        L10n.T("叮当把这个放好啦...才没有偷偷开心呢！", "Dingdang put it away safely... not secretly happy or anything!"),
+                        L10n.T("叮当把它跟最亮的那颗螺丝摆在一起了。它俩挺配。", "Dingdang put it next to the shiniest screw. They look good together."),
                         L10n.T("哼哼，叮当就知道你会送好东西！", "Hmph, Dingdang knew you'd give something good!"),
-                        L10n.T("这个叮当要放在最珍贵的地方！", "Dingdang will put this in the most precious place!"),
+                        L10n.T("叮当得给它腾个地方。边角料挪挪……再挪挪。", "Dingdang needs to make room for it. Shove the scrap over... a bit more."),
 
                         // 笑脸背景相关
-                        L10n.T("叮当真的很开心...这次是真的在笑，不是那张假笑脸...", "Dingdang is really happy... this time it's a real smile, not that fake one..."),
+                        L10n.T("这次是真的在笑。你分不出来吧？叮当自己分得出来。", "This time it's a real smile. You can't tell, can you? Dingdang can."),
                         L10n.T("叮当要把它挂在锤柄上！走到哪里都带着！", "Dingdang will hang it on the hammer handle! It goes everywhere with Dingdang!"),
                         L10n.T("今晚叮当要抱着它睡……不对，是放在枕头边守着！", "Tonight Dingdang will sleep hugging it... no, keeping it by the pillow to guard it!")
                     };
@@ -278,13 +278,13 @@ namespace BossRush
                     {
                         // 傲娇生气
                         L10n.T("哼！你是故意的对不对！", "Hmph! You did this on purpose, right!"),
-                        L10n.T("叮当讨厌你！...才怪，但叮当真的很生气！", "Dingdang hates you! ...just kidding, but Dingdang is really angry!"),
+                        L10n.T("这玩意儿丢炉子里都嫌冒黑烟。别搁砧子上占地方。", "Even the furnace would choke on this. Get it off the anvil."),
                         L10n.T("你、你是不是看不起叮当！", "A-are you looking down on Dingdang!"),
                         L10n.T("叮当才不稀罕这种东西！", "Dingdang doesn't want this kind of thing!"),
                         L10n.T("哼，叮当要记住这笔账！", "Hmph, Dingdang will remember this!"),
                         
                         // 委屈反应
-                        L10n.T("呜...叮当还以为你是好人...", "Ugh... Dingdang thought you were a good person..."),
+                        L10n.T("呜……叮当今天特意早早开了门，就等来这个。", "Ugh... Dingdang opened up early today, and this is what shows up."),
                         L10n.T("这个...让叮当想起以前被当实验品的日子...", "This... reminds Dingdang of being treated like a test subject..."),
                         L10n.T("你也觉得叮当只配收到垃圾吗...", "Do you also think Dingdang only deserves trash..."),
                         L10n.T("那些哥布林也是这样对叮当的...", "Those goblins treated Dingdang the same way..."),
@@ -293,19 +293,19 @@ namespace BossRush
                         // 愤怒反应
                         L10n.T("这是什么破烂！拿走！", "What is this junk! Take it away!"),
                         L10n.T("你在逗叮当玩吗！", "Are you messing with Dingdang!"),
-                        L10n.T("叮当虽然是哥布林但叮当有尊严的！", "Dingdang may be a goblin but Dingdang has dignity!"),
+                        L10n.T("哥布林也是要面子的！你当叮当这儿是废品站？", "Goblins have pride too! You think this place is a scrapyard?"),
                         L10n.T("哼！叮当不想理你了！", "Hmph! Dingdang doesn't want to talk to you anymore!"),
-                        L10n.T("叮当生气了！后果很严重！", "Dingdang is angry! The consequences are serious!"),
+                        L10n.T("叮当生气了！今天的铁都要替你挨揍！", "Dingdang's mad! Today's iron is taking the beating for you!"),
                         
                         // 失望反应
                         L10n.T("叮当还以为...算了...", "Dingdang thought... never mind..."),
-                        L10n.T("原来你也是这样看叮当的...", "So you see Dingdang this way too..."),
-                        L10n.T("叮当不需要你的施舍！", "Dingdang doesn't need your charity!"),
+                        L10n.T("叮当把它放门口了。门口是放不要的东西的地方。", "Dingdang left it by the door. The door's where unwanted stuff goes."),
+                        L10n.T("叮当看了一眼。就一眼，够了。", "Dingdang looked at it once. Once was plenty."),
                         L10n.T("这种东西...叮当在垃圾堆里见多了...", "This kind of thing... Dingdang has seen plenty in the trash..."),
-                        L10n.T("你下次要是还送这个，叮当就不理你了！", "If you give this again, Dingdang won't talk to you!"),
+                        L10n.T("下回再送这个，叮当就拿它垫桌脚。", "Bring this again and Dingdang's using it to prop up the table leg."),
                         
                         // 笑脸背景相关
-                        L10n.T("叮当很难过...但叮当的脸还是在笑...你看不出来吗...", "Dingdang is sad... but Dingdang's face is still smiling... can't you tell..."),
+                        L10n.T("叮当很难过……可叮当的脸还是在笑。你看不出来，对吧。", "Dingdang is upset... but Dingdang's face is still smiling. You can't tell, can you?"),
                         L10n.T("这个……叮当碰都不想碰。拿走啦。", "This... Dingdang doesn't even want to touch it. Take it away."),
                         L10n.T("叮当今天不想说话了……锤子也不想敲了。", "Dingdang doesn't feel like talking today... or hammering either.")
                     };
@@ -335,34 +335,34 @@ namespace BossRush
                         
                         // 平淡接受
                         L10n.T("谢谢...叮当会收好的。", "Thanks... Dingdang will keep it safe."),
-                        L10n.T("嗯，叮当知道了。", "Hmm, Dingdang understands."),
+                        L10n.T("嗯。放那儿吧，叮当忙完再看。", "Mm. Leave it there. Dingdang will look once the work's done."),
                         L10n.T("这个叮当可以用得上。", "Dingdang can use this."),
-                        L10n.T("叮当收到了，谢谢你。", "Dingdang received it, thank you."),
+                        L10n.T("这个叮当收了。不问来路。", "Dingdang will take it. No questions asked."),
                         L10n.T("还不错，叮当喜欢收集东西。", "Not bad, Dingdang likes collecting things."),
-                        L10n.T("叮当会把它放在安全的地方。", "Dingdang will put it somewhere safe."),
+                        L10n.T("叮当拿锤子敲了一下。嗯，结实。", "Dingdang gave it a tap with the hammer. Mm. Sturdy."),
                         
                         // 好奇反应
                         L10n.T("这是什么？叮当以前没见过...", "What's this? Dingdang hasn't seen this before..."),
                         L10n.T("嗯？这个东西有什么用？", "Hmm? What's this thing for?"),
                         L10n.T("叮当要研究研究这个...", "Dingdang needs to study this..."),
-                        L10n.T("有意思...叮当从没见过这种东西。", "Interesting... Dingdang has never seen this before."),
-                        L10n.T("这个...叮当得想想怎么用。", "This... Dingdang needs to think about how to use it."),
-                        L10n.T("叮当的智慧告诉叮当，这个有点用处。", "Dingdang's intelligence tells Dingdang this is somewhat useful."),
+                        L10n.T("有意思……叮当翻过来看看底下有没有刻字。", "Interesting... Dingdang's flipping it over to check for markings underneath."),
+                        L10n.T("这个拆开能有几颗螺丝？叮当数数。", "How many screws if Dingdang takes this apart? Let's count."),
+                        L10n.T("叮当估摸着，回炉能出小半块好铁。", "Dingdang reckons it'd melt down into a decent little lump of iron."),
 
                         // 背景相关
                         L10n.T("比那些哥布林抢来的东西好多了...", "Much better than what those goblins steal..."),
                         L10n.T("有人记得给叮当带东西……叮当不太会应付这种事。", "Someone remembered to bring Dingdang something... Dingdang doesn't know what to do with that."),
                         L10n.T("你...你为什么要对叮当这么好？", "Why... why are you so nice to Dingdang?"),
-                        L10n.T("叮当不习惯收礼物...但谢谢你。", "Dingdang isn't used to receiving gifts... but thanks."),
+                        L10n.T("谢……谢谢。这两个字叮当说得还不太顺。", "Th-thanks. Dingdang still isn't great at saying that."),
                         L10n.T("这个叮当会好好珍惜的...才怪！", "Dingdang will treasure this... not!"),
-                        L10n.T("叮当虽然是实验品，但也懂得感谢的！", "Even though Dingdang is a test subject, Dingdang knows gratitude!"),
+                        L10n.T("实验室里只有领东西，没有收东西。这俩不一样，叮当现在知道了。", "At the lab, things got issued. Nobody ever gave anything. Dingdang knows the difference now."),
                         
                         // 可爱反应
                         L10n.T("嘿嘿...叮当又有新东西了~", "Hehe... Dingdang has something new~"),
-                        L10n.T("叮当的收藏又多了一件！", "Dingdang's collection has grown!"),
+                        L10n.T("叮当的架子快放不下了，得再钉一层板子。", "Dingdang's shelf is almost full. Gonna need to nail up another board."),
                         L10n.T("这个叮当要藏在秘密基地里！", "Dingdang will hide this in the secret base!"),
                         L10n.T("叮当今天心情好，不跟你计较。", "Dingdang is in a good mood today, so no grudges."),
-                        L10n.T("你还记得给叮当送东西，叮当有点感动...", "You remembered to give Dingdang something, Dingdang is a bit touched..."),
+                        L10n.T("叮当把它摆工作台上了，干活一抬头就能看见。", "It's going on the workbench. Dingdang can see it every time Dingdang looks up."),
                         L10n.T("叮当会记住你的！...好的方面！", "Dingdang will remember you! ...in a good way!")
                     };
                 }
@@ -385,22 +385,22 @@ namespace BossRush
                     L10n.T("哼，今天的礼物叮当已经收到了...还、还不错啦！", "Hmph, Dingdang already received today's gift... it's n-not bad!"),
                     L10n.T("你今天已经送过了！别、别以为叮当会更喜欢你！", "You already gave today! D-don't think Dingdang will like you more!"),
                     L10n.T("叮当才没有一直在看今天的礼物呢！", "Dingdang hasn't been looking at today's gift all the time!"),
-                    L10n.T("今天的礼物...叮当会好好珍藏的，别多想！", "Today's gift... Dingdang will treasure it, don't overthink!"),
+                    L10n.T("今天那份叮当已经擦了两遍了。再送，叮当擦不过来。", "Dingdang's already polished today's gift twice. Any more and Dingdang can't keep up."),
                     L10n.T("哼哼，你今天的表现叮当很满意~", "Hmph, Dingdang is satisfied with your performance today~"),
                     
                     // 真情流露
                     L10n.T("今天的礼物叮当超级喜欢！谢谢你~", "Dingdang loves today's gift! Thanks~"),
                     L10n.T("嘿嘿，今天的礼物叮当已经藏在秘密基地了~", "Hehe, Dingdang has hidden today's gift in the secret base~"),
-                    L10n.T("你怎么知道叮当喜欢这个的！叮当好感动...", "How did you know Dingdang likes this! Dingdang is so touched..."),
+                    L10n.T("今天那份还在叮当兜里揣着，热乎的。明天再说吧。", "Today's gift is still in Dingdang's pocket. Still warm. Tomorrow, okay?"),
                     L10n.T("今天的礼物让叮当想起了...算了，谢谢你！", "Today's gift reminds Dingdang of... never mind, thanks!"),
-                    L10n.T("叮当从来没收到过这么好的东西...", "Dingdang never received anything this nice before..."),
+                    L10n.T("今天那份叮当量过了，刚好塞进宝贝盒子那个空格。", "Dingdang measured today's gift. It fits the empty slot in the treasure box exactly."),
                     
                     // 活泼反应
                     L10n.T("今天的礼物太棒了！明天还要送哦！", "Today's gift is amazing! Give more tomorrow!"),
-                    L10n.T("叮当已经把今天的礼物放在最珍贵的地方了！", "Dingdang has put today's gift in the most precious place!"),
+                    L10n.T("今天的够了！叮当手上还沾着油，别再递了。", "That's enough for today! Dingdang's hands are still greasy. Stop handing things over."),
                     L10n.T("嘿嘿，叮当今天心情超好~", "Hehe, Dingdang is in a super good mood today~"),
-                    L10n.T("你是叮当见过最懂叮当的人！", "You're the person who understands Dingdang the most!"),
-                    L10n.T("叮当决定今天对你特别好！...才怪！", "Dingdang decided to be extra nice to you today! ...not!")
+                    L10n.T("今天那份挑得准。叮当都怀疑你偷看过叮当的架子。", "Good pick today. Dingdang suspects you've been peeking at Dingdang's shelf."),
+                    L10n.T("叮当今天走路都是蹦着的。……你没看见。", "Dingdang's been bouncing around all day. ...You didn't see that.")
                 };
             }
             else if (lastReaction == GiftReactionType.Negative)
@@ -417,15 +417,15 @@ namespace BossRush
                     
                     // 委屈反应
                     L10n.T("今天的礼物...让叮当想起被哥布林欺负的日子...", "Today's gift... reminds Dingdang of being bullied by goblins..."),
-                    L10n.T("叮当还以为你和其他人不一样...", "Dingdang thought you were different from others..."),
+                    L10n.T("叮当把今天那份翻来覆去看了三遍，还是没看出好在哪。", "Dingdang turned today's gift over three times. Still can't see what's good about it."),
                     L10n.T("那种东西...叮当在垃圾堆里见多了...", "That kind of thing... Dingdang has seen plenty in the trash..."),
-                    L10n.T("叮当不需要你的施舍...呜...", "Dingdang doesn't need your charity... ugh..."),
+                    L10n.T("叮当把它塞砧子底下了。眼不见，心不烦。", "Dingdang shoved it under the anvil. Out of sight, out of mind."),
                     L10n.T("以前的研究员也是这样对叮当的...", "The researchers treated Dingdang the same way..."),
                     
                     // 期待改变
                     L10n.T("明天...明天你会送好东西的对吧？", "Tomorrow... you'll give something good tomorrow, right?"),
                     L10n.T("叮当给你一次机会，明天别再让叮当失望了！", "Dingdang gives you one chance, don't disappoint Dingdang tomorrow!"),
-                    L10n.T("哼，叮当大人有大量，明天再看你表现！", "Hmph, Dingdang is generous, will see your performance tomorrow!"),
+                    L10n.T("哼，这笔叮当记着。明天带对了，就划掉。", "Hmph. Dingdang's writing this one down. Get it right tomorrow and it gets crossed out."),
                     L10n.T("你下次要是还送那种东西...叮当就真的生气了！", "If you give that kind of thing again... Dingdang will really be angry!"),
                     L10n.T("叮当相信你只是一时糊涂...对吧？", "Dingdang believes you were just confused for a moment... right?")
                 };
@@ -438,23 +438,23 @@ namespace BossRush
                     // 傲娇反应
                     L10n.T("今天已经收到礼物了！别、别以为叮当在期待！", "Already received a gift today! D-don't think Dingdang is expecting more!"),
                     L10n.T("哼，你今天已经送过了，叮当记得很清楚！", "Hmph, you already gave today, Dingdang remembers clearly!"),
-                    L10n.T("叮当的口袋已经装满了！...才怪，但今天够了！", "Dingdang's pocket is full! ...not really, but enough for today!"),
+                    L10n.T("叮当的口袋满了！……才怪。不过一天就收一份，这是叮当的规矩。", "Dingdang's pockets are full! ...Not really. But it's one gift a day. Dingdang's rule."),
                     L10n.T("你是不是太闲了？今天已经送过了啦！", "Don't you have anything better to do? You already gave today!"),
-                    L10n.T("叮当才没有在等你明天的礼物呢！", "Dingdang is not waiting for tomorrow's gift!"),
+                    L10n.T("明天的明天再说。今天叮当还得打三把锄头。", "Tomorrow's gift can wait till tomorrow. Dingdang has three hoes to forge today."),
                     
                     // 平淡反应
                     L10n.T("今天已经收到你的礼物啦~", "Already received your gift today~"),
                     L10n.T("嘿嘿，今天的礼物叮当已经收好了~", "Hehe, Dingdang has kept today's gift~"),
-                    L10n.T("叮当今天已经收到礼物了，谢谢你！", "Dingdang has received a gift today, thanks!"),
+                    L10n.T("今天的收过了。你要是手痒，帮叮当拉两下风箱？", "Already got today's. If your hands are itching for work, give the bellows a couple of pulls?"),
                     L10n.T("今天的份已经收到了，明天再来吧！", "That's today's share! Come back tomorrow!"),
-                    L10n.T("叮当会记住你今天送的东西的~", "Dingdang will remember what you gave today~"),
+                    L10n.T("你今天送的那个，叮当拿去压图纸了，正好用。", "That thing you brought today? Dingdang's using it to weigh down blueprints. Perfect fit."),
                     
                     // 可爱反应
                     L10n.T("叮当今天已经很满足了！...虽然还想要更多...", "Dingdang is satisfied today! ...though wanting more..."),
                     L10n.T("你今天对叮当很好！叮当会记住的！", "You were nice to Dingdang today! Dingdang will remember!"),
                     L10n.T("嘿嘿，叮当喜欢收礼物~明天还要哦！", "Hehe, Dingdang likes receiving gifts~ More tomorrow!"),
                     L10n.T("叮当把今天的礼物和其他宝贝放在一起了！", "Dingdang put today's gift with other treasures!"),
-                    L10n.T("你是叮当为数不多的朋友之一！", "You're one of Dingdang's few friends!")
+                    L10n.T("叮当的朋友，掰着指头数，一只手就够了。你算一个。", "Dingdang can count friends on one hand. You're one of them.")
                 };
             }
         }
@@ -527,11 +527,11 @@ namespace BossRush
             {
                 if (level >= 5)
                 {
-                    return L10n.T("又是假钻石...算了，看在老朋友的份上。", "Fake diamond again... Fine, for old friend's sake.");
+                    return L10n.T("又是假钻石...算了，看在老朋友的份上。", "Another fake diamond... Fine. For an old friend.");
                 }
                 else
                 {
-                    return L10n.T("这不是真钻石！叮当生气了！", "This is not real diamond! Dingdang is angry!");
+                    return L10n.T("这不是真钻石！叮当生气了！", "That's no real diamond! Dingdang is angry!");
                 }
             }
             
@@ -591,24 +591,24 @@ namespace BossRush
         {
             return GetRandomRelationshipDialogue(new string[]
             {
-                L10n.T("你来啦！叮当刚刚还在想你今天会不会来找我！", "You're here! Dingdang was just wondering if you'd come see me today!"),
+                L10n.T("你来啦！叮当刚刚还在想你今天会不会来找叮当！", "You're here! Dingdang was just wondering if you'd come by today!"),
                 L10n.T("嘿嘿，叮当的专属客人到场！心情直接变好了！", "Hehe, Dingdang's one and only customer is here! Mood fixed, just like that!"),
                 L10n.T("别站那么远嘛，叮当又不会咬你。今天最多只是想黏着你一点。", "Don't stand so far away. Dingdang won't bite you. At most, Dingdang just wants to stick close to you today."),
-                L10n.T("你一出现，叮当就不想理别的人类了。", "Once you show up, Dingdang doesn't want to deal with any other humans."),
+                L10n.T("你一出现，叮当就懒得搭理别的鸭子了。", "Once you show up, Dingdang can't be bothered with any other duck."),
                 L10n.T("听见你的脚步声，叮当连锤子都放下啦。快过来！", "Dingdang heard your footsteps and put the hammer down. Come here!"),
                 L10n.T("叮当刚把手边的活收好，就猜你会过来。", "Dingdang had just put the work aside and already guessed you'd come over."),
                 L10n.T("今天也让叮当好好看看你，好不好？", "Let Dingdang get a good look at you today too, okay?"),
                 L10n.T("你靠近一点，叮当就安心一点。", "The closer you are, the calmer Dingdang feels."),
-                L10n.T("有你在这里，叮当连那些乱糟糟的记忆都没那么吵了。", "With you here, even those messy memories don't feel so loud anymore."),
+                L10n.T("有你在，叮当脑子里那盏白灯就没那么亮了。", "With you here, that white light in Dingdang's head isn't so bright."),
                 L10n.T("叮当刚刚还在数屋顶木纹，现在改成数你眨了几次眼。", "Dingdang was counting the wood grain on the ceiling just now. Now Dingdang is counting how many times you blink."),
-                L10n.T("你来了就好，叮当今天不想装得很坚强。", "It's enough that you're here. Dingdang doesn't want to pretend to be strong today."),
-                L10n.T("叮当记得你的脚步声，跟别人都不一样。", "Dingdang remembers your footsteps. They never sound like anyone else's."),
+                L10n.T("你来了就好。今天风箱漏气，叮当一个人跟它较劲了半天。", "Good, you're here. The bellows sprang a leak today. Dingdang spent ages fighting with it alone."),
+                L10n.T("叮当认得你敲门的声音。三下，第二下最轻。", "Dingdang knows your knock. Three taps, the second one softest."),
                 L10n.T("嘘，别笑叮当。刚才还在对着门口发呆，你就来了。", "Shh, don't laugh. Dingdang was staring at the door, and then you walked in."),
-                L10n.T("叮当以前最怕等人，现在等你倒觉得甜甜的。", "Dingdang used to hate waiting for people. Waiting for you feels sweet instead."),
+                L10n.T("以前叮当最烦等人。等你嘛……叮当先把炉子烧热了等。", "Dingdang used to hate waiting on anyone. For you, Dingdang gets the forge hot first and waits."),
                 L10n.T("如果今天哪儿都不去，陪叮当站一会儿也很好。", "If we go nowhere today, just standing here with Dingdang would already be nice."),
                 L10n.T("叮当把最软的位置留给你了，谁来也不给。", "Dingdang saved the softest spot for you. Nobody else gets it."),
                 L10n.T("你别总让叮当先开口呀……虽然叮当其实很愿意。", "Don't always make Dingdang speak first... even though Dingdang actually doesn't mind."),
-                L10n.T("每次你一回头看叮当，叮当都会想再靠近一点。", "Every time you look back at Dingdang, Dingdang wants to move a little closer."),
+                L10n.T("你回头那会儿，叮当正好在看你。……看锤子，叮当在看锤子。", "When you turned around, Dingdang was looking at you. ...At the hammer. Dingdang was looking at the hammer."),
                 L10n.T("以前叮当讨厌别人盯着脸看，只有你看过来时不难受。", "Dingdang used to hate people staring at the face. You're the only one who doesn't make it hurt."),
                 L10n.T("来吧，今天的第一句好话，叮当想先听你说。", "Come on, Dingdang wants the first nice thing of today to come from you.")
             });
@@ -618,25 +618,25 @@ namespace BossRush
         {
             return GetRandomRelationshipDialogue(new string[]
             {
-                L10n.T("哇！这是给叮当的？你果然最懂叮当了！", "Wow! This is for Dingdang? You really do know Dingdang best!"),
+                L10n.T("哇！这是给叮当的？你怎么挑的，正好是叮当缺的那块！", "Whoa! For Dingdang? How'd you know? It's exactly the piece Dingdang was missing!"),
                 L10n.T("叮当要把它藏到最安全的地方，谁都不给看！", "Dingdang is going to hide this in the safest place. Nobody else gets to see it!"),
                 L10n.T("你送的东西，叮当会一直留着。一直一直留着！", "If it's from you, Dingdang will keep it forever. Forever forever!"),
-                L10n.T("嘿嘿，这种被偏爱的感觉，叮当超喜欢！", "Hehe, Dingdang loves being the favorite!"),
+                L10n.T("嘿嘿，叮当要把它别在围裙上，干活低头就能看见！", "Hehe, Dingdang's pinning it to the apron. One look down while working and there it is!"),
                 L10n.T("你怎么这么会哄叮当……再这样叮当会越来越贪心的。", "How are you so good at making Dingdang happy... keep this up and Dingdang will only get greedier for it."),
-                L10n.T("这个礼物就像在说“我知道你喜欢什么”，叮当听见了。", "This gift feels like it's saying, 'I know what you like.' Dingdang heard that clearly."),
+                L10n.T("叮当刚把边角料扫成堆，最亮那块还没舍得回炉。现在有更亮的了。", "Dingdang just swept the scrap into a pile and couldn't bear to melt the shiniest piece. Now there's something shinier."),
                 L10n.T("叮当要给它做个专门的小盒子，还要写上“不许别人碰”。", "Dingdang is making a special little box for this, with 'Hands Off' written on it."),
                 L10n.T("嘿嘿，叮当本来还想装一下不在乎的……没忍住。", "Hehe, Dingdang was going to pretend not to care... Couldn't manage it."),
-                L10n.T("这东西亮晶晶的，像你看叮当时的眼神。", "This thing sparkles, just like the way you look at Dingdang."),
+                L10n.T("这东西亮晶晶的。叮当举着它对炉火照了好几遍。", "It sparkles. Dingdang held it up to the forge light again and again."),
                 L10n.T("叮当今天可以开心很久很久了，都是你害的。", "Now Dingdang gets to stay happy for a very long time today. That's your fault."),
-                L10n.T("收到这个以后，叮当想把今天记成节日。", "After getting this, Dingdang wants to mark today as a holiday."),
+                L10n.T("叮当要在锤柄上再刻一道。今天值得刻。", "Dingdang's carving another notch in the hammer handle. Today earns one."),
                 L10n.T("如果有人敢碰它，叮当就咬人。真的。", "If anyone dares to touch it, Dingdang will bite. Really."),
-                L10n.T("你总能把礼物挑到叮当心尖上，太犯规了。", "You always pick gifts that land right on Dingdang's heart. That's unfair."),
+                L10n.T("你每回都挑得这么准，太犯规了。叮当得把愿望单藏严实点。", "You get it right every single time. That's cheating. Dingdang needs to hide the wish list better."),
                 L10n.T("叮当要炫耀一下……不对，只给自己偷偷看。", "Dingdang wants to show it off... no, Dingdang will keep it for private admiring."),
-                L10n.T("实验室里可没人这样对过叮当。", "Nobody back at the lab ever treated Dingdang like this."),
+                L10n.T("实验室里只发编号牌，从来不发礼物。", "The lab handed out number tags. Never presents."),
                 L10n.T("你一出手就这么厉害，叮当根本招架不住。", "When you go all out like this, Dingdang doesn't stand a chance."),
                 L10n.T("叮当现在想亲你一下……咳，先记账！", "Dingdang kind of wants to kiss you right now... ahem, putting that on the tab first!"),
-                L10n.T("好喜欢……喜欢礼物，也喜欢送礼物的你。", "Dingdang likes this so much... likes the gift, and likes you for giving it."),
-                L10n.T("叮当会把它和最重要的宝贝放在一起，你也是。", "Dingdang will keep this with the most important treasures. You belong there too."),
+                L10n.T("好喜欢……叮当说的是礼物。也不全是礼物。", "Love it... Dingdang means the gift. Not only the gift."),
+                L10n.T("叮当会把它跟最重要的宝贝放一起。那个盒子在哪儿，只有你知道。", "Dingdang's putting it with the most important treasures. Only you know where that box is."),
                 L10n.T("今天不许别人惹叮当生气，叮当已经被你宠满了。", "Nobody is allowed to ruin Dingdang's mood today. You've already spoiled Dingdang plenty.")
             });
         }
@@ -646,17 +646,17 @@ namespace BossRush
             return GetRandomRelationshipDialogue(new string[]
             {
                 L10n.T("给叮当的礼物就是好礼物！这是叮当特批的！", "Any gift for Dingdang is a good gift! Dingdang's special approval!"),
-                L10n.T("叮当收下啦！你来找我，顺便带礼物，完美！", "Dingdang accepts! You came to see me and brought a gift too. Perfect!"),
-                L10n.T("嗯嗯，叮当会好好放起来的。因为是你送的。", "Mm-hmm, Dingdang will store it carefully. Because it's from you."),
+                L10n.T("叮当收下啦！人来了，还顺手带了礼物，完美！", "Dingdang accepts! You came by and brought a gift too. Perfect!"),
+                L10n.T("嗯嗯，叮当找个铁盒装起来，防潮。", "Mm-hmm. Dingdang's putting it in a tin. Keeps the damp out."),
                 L10n.T("只要是你挑的，叮当都会认真看一眼，再认真喜欢一下。", "If you picked it, Dingdang will look at it seriously, then like it seriously too."),
                 L10n.T("你每次带东西来，叮当都会觉得今天没白等。", "Whenever you bring something, Dingdang feels the waiting was worth it today."),
                 L10n.T("这个好，跟你一样，不吵不闹的，叮当看着就高兴。", "This is nice. Like you, quiet and steady, and it makes Dingdang happy."),
-                L10n.T("叮当喜欢这种小小的惊喜，暖暖的。", "Dingdang likes little surprises like this. They feel warm."),
+                L10n.T("叮当喜欢这种小东西。挂工具墙上，跟钳子挤一块儿。", "Dingdang likes little things like this. It's going on the tool wall, right next to the pliers."),
                 L10n.T("谢谢啦，你今天也很会照顾叮当。", "Thanks. You take good care of Dingdang today too."),
                 L10n.T("收到啦~叮当决定今天对你更温柔一点。", "Received~ Dingdang decides to be a little gentler with you today."),
-                L10n.T("你送的不一定最贵，但一定会被叮当放在前面。", "It may not be the most expensive thing, but Dingdang will always put it up front."),
+                L10n.T("不贵也没关系，叮当把它摆架子最前排。", "Doesn't matter if it's cheap. It goes on the front of Dingdang's shelf."),
                 L10n.T("嗯，叮当闻一下就知道这是“你来过”的味道。", "Mm. One sniff and Dingdang can tell this carries the smell of 'you were here.'"),
-                L10n.T("叮当喜欢你边说话边递给我的样子。", "Dingdang likes the way you hand things over while talking."),
+                L10n.T("叮当喜欢你边说话边把东西递过来的样子。", "Dingdang likes how you hand things over while you're still talking."),
                 L10n.T("这种礼物最适合现在了，叮当会好好用。", "This kind of gift suits today perfectly. Dingdang will use it well."),
                 L10n.T("你总会记得给叮当带点什么，真好。", "You always remember to bring something for Dingdang. That's nice."),
                 L10n.T("叮当先收着，晚上还要拿出来再看一遍。", "Dingdang will keep it for now, then take it out again tonight for another look."),
@@ -674,13 +674,13 @@ namespace BossRush
             {
                 L10n.T("这个不太对味...不过叮当知道你不是故意的。", "This isn't quite Dingdang's taste... but Dingdang knows you didn't mean it badly."),
                 L10n.T("唔，今天挑得有点失手。没关系，下次再来！", "Mm, your pick was a little off today. That's okay, try again next time!"),
-                L10n.T("叮当不喜欢这个，但还是更喜欢送它来的你。", "Dingdang doesn't like this, but still likes the one who brought it more."),
+                L10n.T("这个嘛……叮当拿它当锤子的靶子，也算没浪费。", "Well... Dingdang can use it for hammer practice. Not a total waste."),
                 L10n.T("这次礼物不太行，幸好你的表情很可爱，勉强抵消了。", "This gift isn't really it, but your expression is cute enough to almost make up for it."),
                 L10n.T("嗯...这个会让叮当想皱眉，但叮当不想对你皱眉。", "Mm... this makes Dingdang want to frown, but Dingdang doesn't want to frown at you."),
                 L10n.T("你是不是太急着来见叮当，才拿错了？", "Were you in too much of a hurry to see Dingdang and grabbed the wrong thing?"),
                 L10n.T("这东西留着也行，就当提醒你下次要更懂叮当一点。", "Keeping this is fine. It'll just remind you to understand Dingdang a little better next time."),
                 L10n.T("叮当先收下，但要记你一笔“补偿抱抱”。", "Dingdang will take it anyway, but this goes on your 'compensation hug' tab."),
-                L10n.T("礼物有点失败，心意倒是送到了。", "The gift missed a bit, but the intention made it through."),
+                L10n.T("挑得有点偏。叮当先收着，回头熔了打钉子。", "That pick was a little off. Dingdang will hang onto it, maybe melt it into nails later."),
                 L10n.T("唔，不喜欢这个味道...不过喜欢你站在这儿解释。", "Mm, Dingdang doesn't like the feel of this... but does like you standing here trying to explain."),
                 L10n.T("这个叮当用不太上。下次先来问叮当嘛。", "Dingdang can't do much with this. Ask Dingdang before picking the next one."),
                 L10n.T("叮当会诚实告诉你：下次别选这个啦。", "Dingdang will be honest with you: don't pick this one next time."),
@@ -690,7 +690,7 @@ namespace BossRush
                 L10n.T("叮当现在有一点点失望，只有一点点，别怕。", "Dingdang is a tiny bit disappointed right now. Just a tiny bit, don't panic."),
                 L10n.T("这次不合口味，回头叮当给你列个喜欢清单？", "Not Dingdang's taste this time. Want Dingdang to make you a favorites list later?"),
                 L10n.T("别露出那种紧张表情，叮当不会因为一次失手就生气。", "Don't make that nervous face. Dingdang isn't going to get mad over one miss."),
-                L10n.T("礼物不合适，但你愿意花心思来，叮当看见了。", "The gift isn't right, but Dingdang sees that you put thought into coming here."),
+                L10n.T("这回不对。没事，叮当的炉子也不是每回一点就着。", "Not this time. That's fine. Dingdang's forge doesn't light on the first try every time either."),
                 L10n.T("不用急着找别的礼物。先听叮当说说喜欢什么嘛。", "No need to rush off for another gift. Let Dingdang tell you what Dingdang likes.")
             });
         }
@@ -702,7 +702,7 @@ namespace BossRush
                 L10n.T("今天的礼物已经让叮当开心到转圈圈了，明天再来！", "Today's gift already made Dingdang happy enough to spin in circles. Come again tomorrow!"),
                 L10n.T("先停一下！再送下去，叮当就要把你抱住不放了！", "Hold it right there! If you keep going, Dingdang might hug you and refuse to let go!"),
                 L10n.T("今天这份叮当还没看够呢，下一份明天再拆！", "Dingdang isn't done admiring this one. The next can wait until tomorrow!"),
-                L10n.T("不许再加码了，叮当的心已经被塞得满满的。", "No more adding to it. Dingdang's heart is already stuffed full."),
+                L10n.T("不许再加码了！叮当今天已经够飘了，锤子都抡歪两回了。", "No more raising the stakes! Dingdang's already floating today. Swung the hammer crooked twice."),
                 L10n.T("今天这份已经是大成功，再送就要溢出来了。", "Today's one was already a huge success. Any more and it'll overflow."),
                 L10n.T("叮当要留一点期待到明天，不然今晚会兴奋得睡不着。", "Dingdang needs to save some anticipation for tomorrow or Dingdang won't be able to sleep tonight."),
                 L10n.T("够啦够啦，叮当脸都笑酸了。你摸摸！", "Enough, enough! Dingdang's cheeks hurt from smiling. Feel them!"),
@@ -713,10 +713,10 @@ namespace BossRush
                 L10n.T("叮当得先消化一下这份开心，不然会傻笑一整晚。", "Dingdang has to digest all this happiness first, or the silly smile will last all night."),
                 L10n.T("你想把今天变成纪念日吗？已经差不多成功了。", "Are you trying to turn today into an anniversary? You're almost succeeding."),
                 L10n.T("先别送啦，叮当要腾出手来牵你。", "No more gifts for now. Dingdang needs both hands free to hold yours."),
-                L10n.T("再继续的话，叮当会开始怀疑你是不是打算把我宠坏。", "If you keep going, Dingdang will start thinking you're trying to spoil Dingdang rotten."),
-                L10n.T("你最懂叮当啦！今天不用再挑了，过来歇会儿。", "You know Dingdang best! No more gift hunting today. Come sit for a bit."),
-                L10n.T("够啦，叮当要留着这份开心慢慢乐。", "That's plenty. Dingdang wants to enjoy this one slowly."),
-                L10n.T("暂停一下，让叮当先把这份礼物抱够再说。", "Pause a little. Let Dingdang hug this gift enough first."),
+                L10n.T("再继续的话，叮当会开始怀疑你是不是打算把叮当宠坏。", "If you keep going, Dingdang will start thinking you're trying to spoil Dingdang rotten."),
+                L10n.T("今天挑得这么准，不用再挑了。过来歇会儿。", "You nailed it today. No more hunting. Come sit a bit."),
+                L10n.T("够啦，叮当要把它搁炉子边上，暖着慢慢看。", "That's plenty. Dingdang's setting it by the forge to keep warm and look at slowly."),
+                L10n.T("暂停一下，叮当得先给它找颗合适的钉子挂起来。", "Hold on. Dingdang needs to find a good nail to hang it on first."),
                 L10n.T("等一下，叮当还在高兴呢。让叮当先抱你一下！", "Wait, Dingdang is still grinning over this one. Let Dingdang hug you first!"),
                 L10n.T("明天再来，叮当想把想你的时间也留一点出来。", "Come again tomorrow. Dingdang wants to leave some room to miss you too.")
             });
@@ -730,7 +730,7 @@ namespace BossRush
                 L10n.T("礼物先欠着，今天多陪叮当说说话。", "Put the gift on hold. Spend today talking with Dingdang a little more instead."),
                 L10n.T("叮当已经收到了，接下来你的人留下就行！", "Dingdang already got the gift. Now all that's left is for you to stay!"),
                 L10n.T("一天一份，说好了的。叮当可舍不得你把东西都送光。", "One a day, remember? Dingdang doesn't want you giving away everything you have."),
-                L10n.T("先停一停，让叮当把今天的开心整理好。", "Pause for a bit and let Dingdang sort through today's happiness."),
+                L10n.T("先停一停，炉子要添炭了。你帮叮当递一下？", "Hold on, the forge needs more coal. Pass some to Dingdang?"),
                 L10n.T("你坐近一点，比再递一份东西更有用。", "Sit a little closer. That helps more than handing over another gift."),
                 L10n.T("东西先收回去嘛。叮当想空着手牵你。", "Put that away for now. Dingdang wants a free hand to hold yours."),
                 L10n.T("今天先这样，明天记得继续想叮当。", "Let's leave it here for today. Just remember to keep thinking about Dingdang tomorrow."),
@@ -738,9 +738,9 @@ namespace BossRush
                 L10n.T("不急不急，慢慢来，叮当喜欢你天天来一点点。", "No rush. Take it slow. Dingdang likes you coming a little bit every day."),
                 L10n.T("今天这次已经足够暖了，再多就太贪心啦。", "This was warm enough for one day. Any more would be too greedy."),
                 L10n.T("留点机会给明天的叮当，不然明天会空落落的。", "Save a little for tomorrow's Dingdang, or tomorrow will feel empty."),
-                L10n.T("先把礼物省下来，陪叮当站一会儿。", "Save the gift for later and just stand here with Dingdang for a while."),
+                L10n.T("先把礼物省下来。叮当打铁，你在旁边坐着就行。", "Save the gift. Dingdang hammers, you just sit nearby."),
                 L10n.T("嗯，今天收工啦，接下来轮到你陪聊。", "Mm, gift work is done for today. Now it's your turn to stay and chat."),
-                L10n.T("叮当不缺下一份，叮当现在更想要你多待一会儿。", "Dingdang doesn't need the next gift right now. Dingdang wants you to stay a little longer instead."),
+                L10n.T("叮当不缺下一份礼物。缺个帮忙扶铁钳的。", "Dingdang doesn't need another gift. Dingdang needs someone to hold the tongs."),
                 L10n.T("礼物明天再带。今天陪叮当把这颗螺丝找出来，好不好？", "Bring it tomorrow. Help Dingdang find this missing screw today, will you?"),
                 L10n.T("把东西留到明天吧，叮当想多赚一天期待。", "Leave the next thing for tomorrow. Dingdang wants to earn one more day of anticipation."),
                 L10n.T("今天先不收啦。手空着的话，摸摸叮当的头嘛。", "No more gifts today. If your hands are free, pat Dingdang's head."),
@@ -766,10 +766,10 @@ namespace BossRush
                 L10n.T("再送也不会马上变对，不如明天带着好心情来。", "Sending more right now won't magically make it right. Come back tomorrow in a better mood instead."),
                 L10n.T("今天先放过这个礼物话题，陪叮当待会儿就行。", "Let's let the gift topic go for today. Just stay with Dingdang for a bit."),
                 L10n.T("别一直翻背包啦，叮当没生气。过来坐。", "Stop rummaging through your bag. Dingdang isn't angry. Come sit down."),
-                L10n.T("暂停一下，叮当想先把你安抚好。", "Pause for a moment. Dingdang wants to calm you down first."),
-                L10n.T("继续硬试的话，叮当怕你把自己都绕晕了。", "If you keep forcing it, Dingdang worries you'll just spin yourself dizzy."),
+                L10n.T("暂停一下。叮当给你倒杯凉水，炉子边上热。", "Pause. Dingdang will get you some cold water. It's hot by the forge."),
+                L10n.T("硬试没用。叮当打铁打歪了，也是先停手，不是接着砸。", "Forcing it won't help. When Dingdang's hammer goes crooked, Dingdang stops. Doesn't keep pounding."),
                 L10n.T("今天就不收第二份啦，明天来之前可别忘了吃饭。", "No second gift today. Don't forget to eat before coming over tomorrow."),
-                L10n.T("你已经够紧张了，再试只会更乱。", "You're tense enough already. Trying again now will only make it messier."),
+                L10n.T("你手心都出汗了。来，拿叮当的抹布擦擦。", "Your palms are sweaty. Here, use Dingdang's rag."),
                 L10n.T("叮当宁愿你明天笑着来，也不想看你今天硬撑。", "Dingdang would rather see you come tomorrow with a smile than watch you force it today."),
                 L10n.T("好啦，东西收起来。叮当刚修好个小玩意儿，给你看看？", "All right, put it away. Dingdang just fixed a little gadget. Want to see?"),
                 L10n.T("不喜欢礼物，又不是不喜欢你。明天记得再来呀。", "Dingdang doesn't like the gift, not you. Come see Dingdang again tomorrow.")
@@ -864,11 +864,11 @@ namespace BossRush
                     L10n.T("哼哼，叮当最好的朋友来了~", "Hmph, Dingdang's best friend is here~"),
                     L10n.T("你终于来了！叮当正好在门口透气！", "You finally came! Dingdang just happened to be getting fresh air at the door!"),
                     L10n.T("嘿！叮当就知道你会来找叮当！", "Hey! Dingdang knew you'd come find Dingdang!"),
-                    L10n.T("叮当今天心情很好...跟、跟你没关系！", "Dingdang is in a good mood today... i-it has nothing to do with you!"),
+                    L10n.T("叮当今天把门口的台阶扫了。……顺手扫的。", "Dingdang swept the front step today. ...Just happened to."),
                     L10n.T("你来啦~叮当有好多话想跟你说！", "You're here~ Dingdang has so much to tell you!"),
-                    L10n.T("叮当的好朋友！快来快来！", "Dingdang's good friend! Come come!"),
+                    L10n.T("快来快来！今天的铁打得特别顺，叮当要你听听这声儿！", "Come, come! The iron's ringing just right today. Dingdang wants you to hear it!"),
                     L10n.T("哼，你怎么才来！叮当都在这站了好久了……因为喜欢站这！", "Hmph, why so late! Dingdang's been standing here forever... because Dingdang likes standing here!"),
-                    L10n.T("是叮当最喜欢的人类！...别、别误会！", "It's Dingdang's favorite human! ...d-don't misunderstand!"),
+                    L10n.T("跑那么快干嘛，鞋底都快磨平了。过来，炉子还热着。", "What's the rush? You'll wear your boots through. Come in, the forge is still hot."),
                     L10n.T("太好了你来了！叮当有东西要给你看！", "Great you're here! Dingdang has something to show you!")
                 };
             }
@@ -882,11 +882,11 @@ namespace BossRush
                     L10n.T("你来了啊，叮当正好有点无聊。", "You're here, Dingdang was just a bit bored."),
                     L10n.T("哼，叮当就知道你会来。", "Hmph, Dingdang knew you'd come."),
                     L10n.T("是你啊~叮当今天愿意跟你聊聊。", "It's you~ Dingdang is willing to chat today."),
-                    L10n.T("来了啊，叮当刚在想你会不会来。", "You came, Dingdang was just wondering if you'd come."),
+                    L10n.T("来了啊。正好，帮叮当看看这把刀刃磨得直不直。", "There you are. Good timing. Tell Dingdang if this blade's ground straight."),
                     L10n.T("哦~叮当认识的人来了！", "Oh~ Someone Dingdang knows is here!"),
                     L10n.T("你还记得来找叮当，不错不错。", "You remembered to find Dingdang, not bad."),
                     L10n.T("嘿，叮当正想找人说话呢。", "Hey, Dingdang was just looking for someone to talk to."),
-                    L10n.T("是你啊，叮当今天心情还行。", "It's you, Dingdang is in an okay mood today.")
+                    L10n.T("叮当今天心情还行。别问为什么，问了就不行了。", "Dingdang's in an okay mood today. Don't ask why, or it won't be.")
                 };
             }
             else if (level >= 2)
@@ -903,7 +903,7 @@ namespace BossRush
                     L10n.T("嗯...叮当见过你。", "Hmm... Dingdang has seen you before."),
                     L10n.T("你来找叮当干嘛？", "Why are you looking for Dingdang?"),
                     L10n.T("叮当不太想说话...但你来了就说吧。", "Dingdang doesn't want to talk... but since you're here, speak."),
-                    L10n.T("哦，是之前那个人类。", "Oh, it's that human from before.")
+                    L10n.T("哦，是上回那个外头来的。", "Oh. The outsider from last time.")
                 };
             }
             else
@@ -914,7 +914,7 @@ namespace BossRush
                     L10n.T("嗯？你是谁？叮当不认识你。", "Hmm? Who are you? Dingdang doesn't know you."),
                     L10n.T("你...你想干什么？叮当可不好欺负！", "What... what do you want? Dingdang is not easy to bully!"),
                     L10n.T("别、别靠近叮当！叮当警告你！", "D-don't come near Dingdang! Dingdang warns you!"),
-                    L10n.T("又是人类...你们都一样...", "Another human... you're all the same..."),
+                    L10n.T("白大褂最爱笑眯眯说话。你少来这一套。", "Lab coats always talked with a smile too. Save it."),
                     L10n.T("叮当不想跟陌生人说话。", "Dingdang doesn't want to talk to strangers."),
                     L10n.T("你是那些研究员派来的吗？叮当不会回去的！", "Are you sent by those researchers? Dingdang won't go back!"),
                     L10n.T("哼，叮当才不怕你！", "Hmph, Dingdang is not afraid of you!"),
@@ -939,10 +939,10 @@ namespace BossRush
                 dialogues = new string[]
                 {
                     L10n.T("谢谢你...叮当真的很开心...", "Thank you... Dingdang is really happy..."),
-                    L10n.T("你对叮当太好了...叮当不知道该怎么报答...", "You're too good to Dingdang... Dingdang doesn't know how to repay..."),
-                    L10n.T("叮当会永远记住你的好的！", "Dingdang will always remember your kindness!"),
-                    L10n.T("有你真好...叮当从来没有这样的朋友...", "It's great to have you... Dingdang never had a friend like this..."),
-                    L10n.T("叮当...叮当好感动...", "Dingdang... Dingdang is so touched...")
+                    L10n.T("你老这样，叮当都不知道手往哪儿放了。", "You keep doing this. Dingdang doesn't even know what to do with these hands."),
+                    L10n.T("叮当记仇，也记好。这个记在好的那本上。", "Dingdang holds grudges. Holds onto the good stuff too. This goes in the good book."),
+                    L10n.T("以前叮当的朋友只有锤子。现在锤子得排第二了。", "Dingdang's only friend used to be the hammer. Now the hammer's in second place."),
+                    L10n.T("叮当……叮当先转过去一下。别问。", "Dingdang... Dingdang needs to turn around for a sec. Don't ask.")
                 };
             }
             else if (level >= 5)
@@ -950,7 +950,7 @@ namespace BossRush
                 dialogues = new string[]
                 {
                     L10n.T("谢谢你的礼物！叮当很喜欢！", "Thanks for the gift! Dingdang likes it!"),
-                    L10n.T("嘿嘿，你还挺懂叮当的~", "Hehe, you understand Dingdang quite well~"),
+                    L10n.T("嘿嘿，这个挑得不赖嘛~", "Hehe, not a bad pick~"),
                     L10n.T("叮当收到了！谢谢~", "Dingdang received it! Thanks~"),
                     L10n.T("你对叮当真好~", "You're so nice to Dingdang~"),
                     L10n.T("叮当会好好保管的！", "Dingdang will keep it safe!")
@@ -962,7 +962,7 @@ namespace BossRush
                 {
                     L10n.T("嗯...谢谢。", "Hmm... thanks."),
                     L10n.T("叮当收到了。", "Dingdang received it."),
-                    L10n.T("还不错...吧。", "Not bad... I guess."),
+                    L10n.T("还不错...吧。", "Not bad... maybe."),
                     L10n.T("你为什么要送叮当东西？", "Why are you giving Dingdang things?"),
                     L10n.T("叮当...叮当会收下的。", "Dingdang... Dingdang will accept it.")
                 };
@@ -975,7 +975,7 @@ namespace BossRush
                     L10n.T("你...你想要什么？", "What... what do you want?"),
                     L10n.T("叮当不需要你的施舍！...但叮当会收下。", "Dingdang doesn't need your charity! ...but Dingdang will take it."),
                     L10n.T("哼...叮当勉强收下了。", "Hmph... Dingdang reluctantly accepts."),
-                    L10n.T("你是第一个送叮当东西的人...", "You're the first person to give Dingdang something...")
+                    L10n.T("陌生人送的东西……叮当得先翻过来看看有没有机关。", "A gift from a stranger... Dingdang's checking it for traps first.")
                 };
             }
             
@@ -993,22 +993,22 @@ namespace BossRush
             {
                 dialogues = new string[]
                 {
-                    L10n.T("你是叮当最好最好的朋友！叮当...叮当好开心！", "You're Dingdang's best best friend! Dingdang... Dingdang is so happy!"),
-                    L10n.T("叮当从来没有这么信任过一个人...谢谢你...", "Dingdang has never trusted anyone this much... thank you..."),
+                    L10n.T("你是叮当最好最好的朋友！叮当想敲锣……没有锣，敲锅也行！", "You're Dingdang's best, best friend! Dingdang wants to bang a gong... no gong, a pot will do!"),
+                    L10n.T("叮当以前睡觉都抱着锤子。现在敢放下了。", "Dingdang used to sleep holding the hammer. Now Dingdang can put it down."),
                     L10n.T("叮当决定了！你是叮当一辈子的朋友！", "Dingdang has decided! You're Dingdang's friend for life!"),
-                    L10n.T("呜...叮当太感动了...才、才没有哭！", "Ugh... Dingdang is so touched... n-not crying!"),
-                    L10n.T("叮当会把最好的东西都给你！因为你是叮当最重要的人！", "Dingdang will give you the best things! Because you're Dingdang's most important person!")
+                    L10n.T("呜……叮当要是能哭，现在就哭了。还好不能。", "Ugh... if Dingdang could cry, it'd be right now. Good thing Dingdang can't."),
+                    L10n.T("叮当那块编号牌，一直压在箱底。今天拿出来给你看了。", "Dingdang's number tag has been at the bottom of the chest all this time. Today Dingdang took it out to show you.")
                 };
             }
             else if (level >= 7)
             {
                 dialogues = new string[]
                 {
-                    L10n.T("叮当越来越喜欢你了！好东西先给你留着！", "Dingdang likes you more and more! The good stuff is yours first!"),
+                    L10n.T("叮当的账本上，你那页的字写得比谁都工整。", "In Dingdang's ledger, your page has the neatest handwriting of all."),
                     L10n.T("哼哼，你在叮当心里的地位又提高了~", "Hmph, your position in Dingdang's heart has risen~"),
                     L10n.T("叮当决定对你更好一点！...才不是因为喜欢你！", "Dingdang decided to be nicer to you! ...not because Dingdang likes you!"),
-                    L10n.T("你是叮当见过最好的人类！", "You're the best human Dingdang has ever met!"),
-                    L10n.T("叮当要给你特别的优惠！因为你特别！", "Dingdang will give you special deals! Because you're special!")
+                    L10n.T("别人进店只看价签。你嘛……叮当把你的记号刻在铁砧边上了。", "Everyone else just reads the price tags. You, though... Dingdang scratched your mark into the side of the anvil."),
+                    L10n.T("叮当现在敢让你站在背后看着干活了。这可不是小事。", "Dingdang can work with you standing right behind now. That's a big deal.")
                 };
             }
             else if (level >= 3)
@@ -1028,7 +1028,7 @@ namespace BossRush
                 {
                     L10n.T("叮当开始觉得你不是坏人了...", "Dingdang is starting to think you're not a bad person..."),
                     L10n.T("哼，叮当勉强承认你还行。", "Hmph, Dingdang reluctantly admits you're okay."),
-                    L10n.T("你...你好像跟其他人类不一样...", "You... you seem different from other humans..."),
+                    L10n.T("你……你身上没有消毒水味。白大褂身上都有。", "You... don't smell like disinfectant. The lab coats always did."),
                     L10n.T("叮当愿意再给你一次机会。", "Dingdang is willing to give you another chance."),
                     L10n.T("也许...叮当可以稍微相信你一点。", "Maybe... Dingdang can trust you a little bit.")
                 };
@@ -1048,18 +1048,18 @@ namespace BossRush
             {
                 dialogues = new string[]
                 {
-                    L10n.T("老朋友专属折扣！叮当只对你这样！", "Special discount for old friend! Dingdang only does this for you!"),
+                    L10n.T("老朋友专属折扣！叮当只对你这样！", "Special discount for an old friend! Dingdang only does this for you!"),
                     L10n.T("嘿嘿，叮当给你最好的价格~", "Hehe, Dingdang gives you the best price~"),
                     L10n.T("叮当的好东西都给你看！别人可看不到！", "Dingdang shows you all the good stuff! Others can't see!"),
                     L10n.T("你是叮当最常来的客人！", "You're Dingdang's best regular!"),
-                    L10n.T("叮当把最好的都留给你了~", "Dingdang saved the best for you~")
+                    L10n.T("这批货叮当一件件敲过，声儿都对。", "Dingdang tapped every piece in this batch. They all ring true.")
                 };
             }
             else if (level >= 3)
             {
                 dialogues = new string[]
                 {
-                    L10n.T("给你便宜一点~叮当今天心情好！", "A little cheaper for you~ Dingdang is in a good mood today!"),
+                    L10n.T("随便看，叮当刚擦过一遍架子。", "Look around. Dingdang just wiped down the shelves."),
                     L10n.T("看看叮当的好东西！保证你喜欢！", "Check out Dingdang's good stuff! Guaranteed you'll like it!"),
                     L10n.T("叮当的东西都是好东西！不骗你！", "Dingdang's stuff is all good stuff! Not lying!"),
                     L10n.T("嘿嘿，叮当给你打个折~", "Hehe, Dingdang will give you a discount~"),
@@ -1094,15 +1094,15 @@ namespace BossRush
                 // 高好感度 - 亲密朋友，依依不舍
                 dialogues = new string[]
                 {
-                    L10n.T("下次再来找叮当玩！叮当会等你的！...才不会！", "Come play with Dingdang again! Dingdang will wait! ...will not!"),
+                    L10n.T("下次再来找叮当！……叮当是说，店还开着。", "Come see Dingdang again! ...Dingdang means the shop. The shop's open."),
                     L10n.T("嘿，路上小心！叮当...叮当会想你的...", "Hey, be careful! Dingdang... Dingdang will miss you..."),
                     L10n.T("再见~叮当期待下次见面！", "Bye~ Dingdang looks forward to next time!"),
                     L10n.T("你要走了吗...叮当有点舍不得...", "You're leaving... Dingdang is a bit reluctant..."),
                     L10n.T("下次带好吃的来！叮当喜欢好吃的！", "Bring something tasty next time! Dingdang likes tasty things!"),
                     L10n.T("拜拜~叮当会好好的！你也要好好的！", "Bye~ Dingdang will be fine! You be fine too!"),
                     L10n.T("哼，走吧走吧...叮当才不会想你...", "Hmph, go go... Dingdang won't miss you..."),
-                    L10n.T("记得常来看叮当！叮当一个人很无聊的...", "Remember to visit Dingdang often! Dingdang is lonely alone..."),
-                    L10n.T("你是叮当最好的朋友！下次一定要来！", "You're Dingdang's best friend! Come again for sure!"),
+                    L10n.T("记得常来看叮当！叮当一个人很无聊的...", "Remember to visit Dingdang often! Dingdang gets bored alone..."),
+                    L10n.T("路上要是捡到亮闪闪的铁片，记得给叮当带回来！", "If you find any shiny scrap on the way, bring it back for Dingdang!"),
                     L10n.T("叮当会把你的位置留着的！快点回来！", "Dingdang will save your spot! Come back soon!")
                 };
             }
@@ -1130,7 +1130,7 @@ namespace BossRush
                     L10n.T("哦，你要走了。", "Oh, you're leaving."),
                     L10n.T("嗯，再见。", "Hmm, goodbye."),
                     L10n.T("走好。", "Take care."),
-                    L10n.T("下次见...吧。", "See you next time... I guess."),
+                    L10n.T("下次见...吧。", "See you next time... maybe."),
                     L10n.T("哼，走吧。", "Hmph, go."),
                     L10n.T("叮当要继续忙了。", "Dingdang needs to get back to work."),
                     L10n.T("再见，陌生人。", "Goodbye, stranger.")
@@ -1153,18 +1153,18 @@ namespace BossRush
                 dialogues = new string[]
                 {
                     L10n.T("叮当在等你呢~...才、才没有！", "Dingdang is waiting for you~ ...n-not!"),
-                    L10n.T("你知道吗，叮当以前一直很孤单...", "You know, Dingdang used to be very lonely..."),
+                    L10n.T("以前叮当一个人吃饭，就把锤子摆在对面。", "Dingdang used to eat alone. Put the hammer across the table."),
                     L10n.T("叮当有时候会想，为什么叮当和其他哥布林不一样...", "Dingdang sometimes wonders why Dingdang is different from other goblins..."),
                     L10n.T("嘿嘿，叮当今天收集了很多闪闪发光的东西~", "Hehe, Dingdang collected many shiny things today~"),
                     L10n.T("叮当喜欢这里...比以前待的地方好多了...", "Dingdang likes it here... much better than where Dingdang used to be..."),
-                    L10n.T("你是叮当第一个真正的朋友...", "You're Dingdang's first real friend..."),
-                    L10n.T("叮当在想，如果没有遇到你会怎样...", "Dingdang is thinking, what would happen if Dingdang never met you..."),
-                    L10n.T("那些哥布林还是会欺负叮当...但有你在叮当不怕！", "Those goblins still bully Dingdang... but with you Dingdang is not afraid!"),
-                    L10n.T("叮当虽然是被造出来的...但叮当的心是自己的！", "Even though Dingdang was made... Dingdang's heart is Dingdang's own!"),
-                    L10n.T("嘿，你有没有觉得今天的天气很好~", "Hey, don't you think the weather is nice today~"),
+                    L10n.T("叮当今天多打了一把小板凳。……多的那把，你坐。", "Dingdang made an extra little stool today. ...The extra one's yours."),
+                    L10n.T("叮当在想，那天要是没在路边捡到这把锤子，现在会在哪儿……", "Dingdang was thinking... if Dingdang hadn't found this hammer by the road that day, where would Dingdang be now..."),
+                    L10n.T("那些哥布林今天又在外头转悠。叮当把门闩上了……才不是怕。", "Those goblins were hanging around outside again. Dingdang bolted the door... not because Dingdang's scared."),
+                    L10n.T("叮当是被造出来的。可锤子是叮当自己捡的，手艺是叮当自己练的。", "Dingdang was made in a lab. But Dingdang found the hammer, and Dingdang learned the trade."),
+                    L10n.T("今天风从北边来，炉子好烧。叮当喜欢这种天。", "Wind's from the north today. The forge burns easy. Dingdang likes days like this."),
                     // 笑脸背景相关
                     L10n.T("你问叮当为什么总是笑？...这张脸不是叮当自己选的...", "You ask why Dingdang always smiles? ...Dingdang didn't choose this face..."),
-                    L10n.T("叮当的笑脸...是别人刻上去的...叮当想哭也哭不出来...", "Dingdang's smile... was carved by someone... Dingdang can't cry even if wanting to..."),
+                    L10n.T("叮当的笑脸...是别人刻上去的...叮当想哭也哭不出来...", "Dingdang's smile... someone carved it... Dingdang can't cry, even when Dingdang wants to..."),
                     L10n.T("今天工作台擦了三遍，亮得能照见你的脸，快来看！", "Dingdang wiped the workbench three times. It's so shiny you can see your face in it. Come look!"),
                     L10n.T("叮当在秘密基地又藏了一颗亮晶晶的石头。只告诉你一个人哦。", "Dingdang hid another sparkly stone in the secret base. You're the only one Dingdang will tell."),
                     L10n.T("锤子敲得比以前稳了。叮当觉得，是因为有人在旁边看着。", "Dingdang's hammer swings steadier than before. Dingdang thinks it's because someone is watching.")
@@ -1181,8 +1181,8 @@ namespace BossRush
                     L10n.T("那些哥布林又在远处看叮当了...", "Those goblins are watching Dingdang from afar again..."),
                     L10n.T("叮当不是怪物...叮当只是不一样...", "Dingdang is not a monster... Dingdang is just different..."),
                     L10n.T("以前的日子...叮当不想回忆...", "The old days... Dingdang doesn't want to remember..."),
-                    L10n.T("叮当一个人也可以的...", "Dingdang can be alone..."),
-                    L10n.T("为什么大家都不理解叮当...", "Why doesn't anyone understand Dingdang..."),
+                    L10n.T("叮当一个人也可以的...", "Dingdang can manage alone..."),
+                    L10n.T("编号……不对，叮当有名字。叮当有名字的。", "Number... no. Dingdang has a name. Dingdang has a name."),
                     L10n.T("叮当要是笨一点，会不会好过些...", "Would Dingdang have it easier if Dingdang were dumber..."),
                     L10n.T("叮当好无聊...", "Dingdang is so bored..."),
                     // 笑脸背景相关

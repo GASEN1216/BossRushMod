@@ -155,12 +155,20 @@ internal static class Program
         Input.Pressed = true;
         Probe.Trace.Clear();
         host.achievementRuntime.OnUpdate(1, 2);
-        Assert(Input.LastKey == KeyCode.P && Probe.HotkeyReads == 2 && Probe.Trace.SequenceEqual(new[] { "toggle" }),
-            "Configured hotkey must preserve both original reads and toggle when no view is active");
+        Assert(Input.LastKey == KeyCode.P && Probe.HotkeyReads == 1 && Probe.Trace.SequenceEqual(new[] { "toggle" }),
+            "Configured hotkey must be read once and toggle when no view is active");
         Duckov.UI.View.ActiveView = new Duckov.UI.View();
         Probe.Trace.Clear();
         host.achievementRuntime.OnUpdate(1, 2);
         Assert(Probe.Trace.Count == 0, "Active official views must suppress the achievement hotkey");
+        Duckov.UI.View.ActiveView = null;
+        host.config.Hotkey = 0;
+        Input.LastKey = KeyCode.None;
+        Probe.Trace.Clear();
+        host.achievementRuntime.OnUpdate(1, 2);
+        Assert(Probe.Trace.Count == 0 && Input.LastKey == KeyCode.None,
+            "Hotkey 0 (None) must disable the achievement hotkey instead of falling back to L");
+        host.config.Hotkey = (int)KeyCode.P;
         host.config = null;
         Duckov.UI.View.ActiveView = null;
         host.achievementRuntime.OnUpdate(1, 2);

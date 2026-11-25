@@ -1064,10 +1064,11 @@ namespace BossRush
                 modeEHost.SpawnCourierNPC();
                 profiler.Mark("SpawnCourier");
 
-                modeEHost.ShowMessage(L10n.T(
-                    "划地为营模式已激活！阵营：" + GetFactionDisplayName(faction),
-                    "Faction War activated! Faction: " + GetFactionDisplayName(faction)
-                ));
+                modeEHost.ShowMessage(faction == Teams.player
+                    ? L10n.T("划地为营开始了！你是独狼：满场 Boss 都是敌人，没有友军。",
+                        "Faction War has begun! You're a Lone Wolf: every Boss here is hostile, and you have no allies.")
+                    : L10n.T("划地为营开始了！你的阵营：" + GetFactionDisplayName(faction) + "。同阵营是友军，别的阵营见面就打。",
+                        "Faction War has begun! Your faction: " + GetFactionDisplayName(faction) + ". Same-faction units are allies; every other faction is hostile."));
                 modeEHost.ShowBigBanner(L10n.T(
                     "欢迎来到 <color=red>划地为营</color>！",
                     "Welcome to <color=red>Faction War</color>!"

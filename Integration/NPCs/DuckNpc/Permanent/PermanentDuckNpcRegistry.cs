@@ -78,6 +78,16 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 能否自动出现（基地 / 普通图刷新、配偶恢复）。testNpc（小满）是 Dev 专用测试 NPC：
+        /// 正式构建一律不自动刷，只在 Dev 构建里按 scenes 自动出现或经 F3 刷出（owner 2026-11-25；
+        /// 正式版已和她结婚的存档接受她不再出现，好感 / 婚姻存档不删不改）。
+        /// </summary>
+        internal static bool AllowsAutoSpawn(DuckNpcBlueprint blueprint)
+        {
+            return blueprint != null && (!blueprint.testNpc || ModBehaviour.DevModeEnabled);
+        }
+
         /// <summary>全部永久蓝图。</summary>
         internal static List<DuckNpcBlueprint> GetAllPermanent()
         {

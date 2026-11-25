@@ -21,7 +21,7 @@ Dragon Descendant is the first custom boss in this mod, with two phases. Beat it
 ### Revival Mechanic
 Dragon Descendant doesn't die when its HP first hits zero. When it takes lethal damage:
 
-1. HP locks at 1, and it says: **"I... will not fall!"**
+1. HP locks at 1, and it says: **"I... my fire's not out!"**
 2. Throws incendiary grenades in eight directions
 3. Restores to 50% of maximum HP and enters the frenzied Phase 2
 

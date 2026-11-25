@@ -80,7 +80,7 @@ namespace BossRush
             {
                 if (addDropdownMethod == null || hotkeyOptions == null || config == null) return;
                 string key = ModName + ModeGAbandonHotkeyModConfigKeySuffix;
-                string label = ModConfigOptionLocalization.Label(key, "宿命回响放弃挑战快捷键", "Fate Echo Abandon Hotkey");
+                string label = ModConfigOptionLocalization.Label(key, "宿命回响：放弃挑战热键", "Fate Echo: abandon hotkey");
                 addDropdownMethod.Invoke(null, new object[]
                 {
                     ModName, key, label, hotkeyOptions, typeof(int), config.modeGAbandonHotkey

@@ -106,8 +106,8 @@ namespace BossRush
             switch (mode)
             {
                 case CampaignContentCatalog.ModeStandard:
-                    return L10n.T("带装备和船票进标准竞技场，路牌选标准那一档，前两波稳着打，通关回基地找杰夫交任务。",
-                        "Bring gear and a ticket into the Standard Arena, pick a standard tier at the sign, play the first two waves safe, then hand in to Jeff at base.");
+                    return L10n.T("带装备和船票进标准竞技场，在路牌「出征令」里任选阵容开打（无间炼狱不算），前两波别掉血，通关回基地找杰夫交任务。",
+                        "Bring gear and a ticket into the Standard Arena and open the War Writ at the sign: any lineup but Infinite Hell. Take no damage in the first two waves, clear the run, then hand in to Jeff at base.");
                 case CampaignContentCatalog.ModeModeD:
                     return L10n.T("先带铲子 ×1、粑粑 ×9 去基地的菜地工地交钱动工，再只带船票空手进白手起家，用开局发的近战刀砍 5 个并打到第 5 波。",
                         "Pay for the garden site at base first (Shovel ×1, Poop ×9), then enter From Scratch with only a ticket, no gear. Use the starter melee knife for 5 kills and push to wave 5.");

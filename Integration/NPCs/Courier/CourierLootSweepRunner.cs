@@ -372,7 +372,7 @@ namespace BossRush
             try
             {
                 DialogueBubblesManager.Show(
-                    L10n.T("爽吃x<color=" + SweepCountHex + ">" + clearedCount + "</color>", "Nom x<color=" + SweepCountHex + ">" + clearedCount + "</color>"),
+                    L10n.T("清箱 x<color=" + SweepCountHex + ">" + clearedCount + "</color>", "Swept x<color=" + SweepCountHex + ">" + clearedCount + "</color>"),
                     transform,
                     1.5f,
                     false,

@@ -1032,7 +1032,7 @@ namespace BossRush
             if (!currentPaymentStrategy.TrySpend(price))
             {
                 RollbackTemporaryPurificationShopPurchase(purchasedItem, "NotEnoughPurification");
-                NotificationText.Push(L10n.T("净化点不足。", "Not enough purification."));
+                NotificationText.Push(L10n.T("净化点不足。打倒敌人后捡起掉落的净化星就能攒点，攒够再来。", "Not enough Purification. Pick up the Purification stars enemies drop to earn more, then come back."));
             }
 
             UpdateTemporaryShopCurrencyUiDeferred();

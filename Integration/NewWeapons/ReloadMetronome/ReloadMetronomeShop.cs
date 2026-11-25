@@ -26,7 +26,7 @@ namespace BossRush
                 Target = L10n.T(ReloadMetronomeConfig.NameCN, ReloadMetronomeConfig.NameEN),
                 Body = L10n.T("铜牌上写着：把耳朵贴近贝壳，里面也有钟声。\n装备在图腾槽，换弹时踩准金色窗口，再按换弹键即可提前完成。每次兑换一件，只收背包里的贝壳。",
                     "The brass plate reads: Hold a shell to your ear. There are bells inside, too.\nEquip in a totem slot and tap reload in the gold window to finish early. One item per exchange; seashells must be in your backpack."),
-                ConfirmLabel = L10n.T("兑换 · ", "Exchange · ") + ReloadMetronomeConfig.ShellCost + L10n.T(" 贝壳", " seashells"),
+                ConfirmLabel = L10n.T("兑换 · ", "Exchange · ") + ReloadMetronomeConfig.ShellCost + L10n.T(" 贝壳", " Seashells"),
                 CancelLabel = L10n.T("合上匣子", "Close the box"),
                 Danger = false,
                 Anchor = gameObject,

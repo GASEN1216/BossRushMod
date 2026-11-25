@@ -297,14 +297,14 @@
         "positiveItemTypeIds": [],
         "negativeItemTypeIds": [],
         "positiveBubbles": [
-          { "cn": "这个正合用，谢谢你。", "en": "This is just what I needed. Thank you." },
-          { "cn": "你还记得我喜欢什么。", "en": "You remembered what I like." }
+          { "cn": "这个好，今晚就下锅。汤里正缺这一味。", "en": "Oh, good. Into the pot tonight. The soup's been missing this." },
+          { "cn": "够煮一大锅了，下一船来的人也有口热的。", "en": "That's a whole potful. The next boat in gets something hot too." }
         ],
         "negativeBubbles": [
           { "cn": "心意我领了，这个地里用不上。", "en": "Kind of you, but it's no use in the fields." }
         ],
         "normalBubbles": [
-          { "cn": "我收下了，谢谢。", "en": "I'll take it. Thank you." }
+          { "cn": "先搁菜篮里，等我腾出手来。", "en": "Into the basket for now, till my hands are free." }
         ],
         "dialogues": {
           "greeting": [
@@ -340,25 +340,25 @@
             { "cn": "菜篮要补个底，不然一路捡菜回来。", "en": "Need to mend this basket, or I'll be picking greens off the path." }
           ],
           "afterGift": [
-            { "cn": "我会好好收着的。", "en": "I'll keep it safe." }
+            { "cn": "我拿草帽压着了，风刮不走。", "en": "It's under my straw hat. The wind won't get it." }
           ],
           "levelUp": [
             { "cn": "跟你说话，手上的活儿都做快了。", "en": "Work goes faster with you to talk to." }
           ],
           "farewell": [
-            { "cn": "路上当心，等你回来。", "en": "Mind the road. I'll be waiting." }
+            { "cn": "风要起了，帽子按紧点。", "en": "Wind's coming up. Keep a hand on your hat." }
           ],
           "alreadyGifted": [
-            { "cn": "今天已经收过你的礼物啦。", "en": "You already gave me something today." }
+            { "cn": "今天的收过啦。再拿，菜篮可装不下了。", "en": "I already took today's. Any more and the basket won't hold it." }
           ],
           "alreadyGiftedPositive": [
-            { "cn": "今天已经送过了，留一些给自己吧。", "en": "That's plenty for today, save some for yourself." }
+            { "cn": "锅里还炖着今天那份呢，够了够了。", "en": "Today's is still simmering in the pot. That's plenty, really." }
           ],
           "alreadyGiftedNormal": [
             { "cn": "今天收过啦，给自己留点。", "en": "You gave me something today. Keep some for yourself." }
           ],
           "alreadyGiftedNegative": [
-            { "cn": "今天就不再麻烦你了。", "en": "Don't trouble yourself any more today." }
+            { "cn": "那件啊……我还没想好搁哪儿，先别送啦。", "en": "That one... I still haven't worked out where to put it. Hold off for now." }
           ]
         },
         "marriedDialogues": {
@@ -465,14 +465,14 @@
         "positiveItemTypeIds": [],
         "negativeItemTypeIds": [],
         "positiveBubbles": [
-          { "cn": "这个正合用，谢谢你。", "en": "This is just what I needed. Thank you." },
-          { "cn": "你还记得我喜欢什么。", "en": "You remembered what I like." }
+          { "cn": "趁手！西边那串风铃，今晚就拿它收拾。", "en": "Handy! The west chimes get sorted with this tonight." },
+          { "cn": "正缺这个。灯罩那颗螺丝，我拧了三天了。", "en": "Just what I needed. That lamp-cover screw's beaten me for three days." }
         ],
         "negativeBubbles": [
-          { "cn": "心意我领了，这个修灯用不上。", "en": "Kind of you, but it's no use for lamp work." }
+          { "cn": "这个修不了灯，也调不了铃……先放那儿吧。", "en": "Can't fix a lamp with it, can't tune a chime... Just set it there." }
         ],
         "normalBubbles": [
-          { "cn": "我收下了，谢谢。", "en": "I'll take it. Thank you." }
+          { "cn": "收到，记上一笔。谢啦。", "en": "Got it. Noted in the ledger. Thanks." }
         ],
         "dialogues": {
           "greeting": [
@@ -508,25 +508,25 @@
             { "cn": "东边的铃先响，就该收工具了。", "en": "When the east chimes ring first, I pack up my tools." }
           ],
           "afterGift": [
-            { "cn": "我会好好收着的。", "en": "I'll keep it safe." }
+            { "cn": "放工具箱最上层了，伸手就拿得到。", "en": "Top tray of the toolbox. Right where I can reach it." }
           ],
           "levelUp": [
             { "cn": "这回我不用放下工具防着你了。", "en": "I don't have to watch my tools around you anymore." }
           ],
           "farewell": [
-            { "cn": "路上当心，等你回来。", "en": "Mind the road. I'll be waiting." }
+            { "cn": "去吧。路上哪串铃响得不对，回来告诉我。", "en": "Off you go. If any chimes sound off out there, come tell me." }
           ],
           "alreadyGifted": [
-            { "cn": "今天已经收过你的礼物啦。", "en": "You already gave me something today." }
+            { "cn": "今天的已经登记过了，明天请早。", "en": "Today's is already logged. Come early tomorrow." }
           ],
           "alreadyGiftedPositive": [
-            { "cn": "今天已经送过了，留一些给自己吧。", "en": "That's plenty for today, save some for yourself." }
+            { "cn": "今天那件还没用够呢，别急着再送。", "en": "Haven't put today's through its paces yet. No rush on another." }
           ],
           "alreadyGiftedNormal": [
             { "cn": "今天的收好了，别又掏空口袋。", "en": "Today's gift is put away. Don't empty your pockets again." }
           ],
           "alreadyGiftedNegative": [
-            { "cn": "今天就不再麻烦你了。", "en": "Don't trouble yourself any more today." }
+            { "cn": "今天那个……我还在想派它干什么活。明天再说。", "en": "Today's... still working out what job to give it. Tomorrow." }
           ]
         },
         "marriedDialogues": {
@@ -653,14 +653,14 @@
         ],
         "negativeBubbles": [
           {
-            "cn": "心意收到了，这件暂时用不上。",
-            "en": "Thank you for thinking of me. I have no use for this right now."
+            "cn": "这个上不了船，一泡水就完了。",
+            "en": "This won't last on a boat. One soaking and it's done."
           }
         ],
         "normalBubbles": [
           {
-            "cn": "收下了，谢谢你。",
-            "en": "Thank you. I will keep it."
+            "cn": "嗯，挂桩子上了，回头收进舱。",
+            "en": "Right. On the post for now. I'll stow it later."
           }
         ],
         "dialogues": {
@@ -705,14 +705,14 @@
           ],
           "afterGift": [
             {
-              "cn": "这份心意，我记着。",
-              "en": "I will remember your kindness."
+              "cn": "收进舱里了，干的那一格。",
+              "en": "Stowed below. In the dry locker."
             }
           ],
           "levelUp": [
             {
-              "cn": "与你相处，越来越自在了。",
-              "en": "I feel more at ease with you now."
+              "cn": "点名念到你，不用再翻册子了。",
+              "en": "At roll call, I don't need the ledger for your name anymore."
             }
           ],
           "farewell": [
@@ -723,26 +723,26 @@
           ],
           "alreadyGifted": [
             {
-              "cn": "今天已经收到你的礼物了。",
-              "en": "You have already given me a gift today."
+              "cn": "今天这一格，已经打过勾了。",
+              "en": "Today's box is already ticked."
             }
           ],
           "alreadyGiftedPositive": [
             {
-              "cn": "今天这份够了，你也留些给自己。",
-              "en": "That is plenty for today. Keep some for yourself."
+              "cn": "够用好一阵了，别再往码头搬了。",
+              "en": "That'll last me a good while. Quit hauling stuff to the dock."
             }
           ],
           "alreadyGiftedNormal": [
             {
-              "cn": "礼物收好了，今天不必再送。",
-              "en": "Your gift is safe. No need for another today."
+              "cn": "桩子上已经挂着一件了。明天吧。",
+              "en": "There's one hanging on the post already. Tomorrow."
             }
           ],
           "alreadyGiftedNegative": [
             {
-              "cn": "今天就先这样吧。",
-              "en": "Let us leave it there for today."
+              "cn": "船上实在腾不出地方了。缓一天吧。",
+              "en": "No room left aboard. Give it a day."
             }
           ]
         },
@@ -755,32 +755,32 @@
           ],
           "dialogue_idle_married": [
             {
-              "cn": "风急就多绕一道绳，急着赶路最容易出事。",
-              "en": "In a strong wind, add another loop. Rushing is how accidents happen."
+              "cn": "家里有人晚归，缆绳就得多绕一道。",
+              "en": "When someone at home runs late, the line gets an extra wrap."
             }
           ],
           "dialogue_farewell_married": [
             {
-              "cn": "走多远都行，记得咱们一起回来。",
-              "en": "We can go as far as we like, as long as we come home together."
+              "cn": "回来先到码头报到。你那格的勾，我亲手打。",
+              "en": "Check in at the dock when you're back. I'll tick your box myself."
             }
           ],
           "dialogue_after_gift_married": [
             {
-              "cn": "有你记挂着，真好。",
-              "en": "It is good to know you are thinking of me."
+              "cn": "舱里那格干的，快被你塞满了。",
+              "en": "You've nearly filled the dry locker."
             }
           ],
           "gift_positive_married": [
             {
-              "cn": "这料结实，正好补船。记着你的心意了。",
-              "en": "Solid material. Just right for the boat. I appreciate it."
+              "cn": "好东西。今晚补船舷，你在边上给我递钉子。",
+              "en": "Good stuff. I'm patching the hull tonight. You can pass me the nails."
             }
           ],
           "gift_normal_married": [
             {
-              "cn": "我收好了。下回也给你带一份。",
-              "en": "I will keep it safe. Next time I will bring something for you too."
+              "cn": "收了，挂门口那根桩子上，进出都看得见。",
+              "en": "Got it. On the post by the door, where we'll see it coming and going."
             }
           ]
         }
@@ -876,14 +876,14 @@
         ],
         "negativeBubbles": [
           {
-            "cn": "心意收到了，这件暂时用不上。",
-            "en": "Thank you for thinking of me. I have no use for this right now."
+            "cn": "入不了药。拿开，别搁我药臼边上。",
+            "en": "No use in medicine. Move it away from my mortar."
           }
         ],
         "normalBubbles": [
           {
-            "cn": "收下了，谢谢你。",
-            "en": "Thank you. I will keep it."
+            "cn": "放那儿。我洗了手再看。",
+            "en": "Put it there. I'll look once I've washed my hands."
           }
         ],
         "dialogues": {
@@ -924,14 +924,14 @@
           ],
           "afterGift": [
             {
-              "cn": "这份心意，我记着。",
-              "en": "I will remember your kindness."
+              "cn": "收下了。手上那道口子，回头给我看看。",
+              "en": "Taken. Show me that cut on your hand later."
             }
           ],
           "levelUp": [
             {
-              "cn": "与你相处，越来越自在了。",
-              "en": "I feel more at ease with you now."
+              "cn": "你哪处旧伤好得慢，我已经记下了。",
+              "en": "I've noted which of your old wounds heal slowly."
             }
           ],
           "farewell": [
@@ -942,26 +942,26 @@
           ],
           "alreadyGifted": [
             {
-              "cn": "今天已经收到你的礼物了。",
-              "en": "You have already given me a gift today."
+              "cn": "收过了。东西不用天天送，药得天天换。",
+              "en": "Already had one. Gifts can wait. Dressings can't."
             }
           ],
           "alreadyGiftedPositive": [
             {
-              "cn": "今天这份够了，你也留些给自己。",
-              "en": "That is plenty for today. Keep some for yourself."
+              "cn": "今天那份够配一副药了。不必再送。",
+              "en": "Today's was enough for a full batch. No need for more."
             }
           ],
           "alreadyGiftedNormal": [
             {
-              "cn": "礼物收好了，今天不必再送。",
-              "en": "Your gift is safe. No need for another today."
+              "cn": "坐着，别乱翻我的药柜。今天的已经收了。",
+              "en": "Sit, and stay out of my cabinet. I already took today's."
             }
           ],
           "alreadyGiftedNegative": [
             {
-              "cn": "今天就先这样吧。",
-              "en": "Let us leave it there for today."
+              "cn": "药台上还占着今天那件。别再添了。",
+              "en": "Today's is still taking up my workbench. Don't add to it."
             }
           ]
         },
@@ -974,32 +974,32 @@
           ],
           "dialogue_idle_married": [
             {
-              "cn": "药要分清，伤口和蚊子不是一回事。",
-              "en": "Sort the remedies carefully. Wounds and gnat bites need different care."
+              "cn": "你睡着的时候，我数过你身上的疤。没多。",
+              "en": "I counted your scars while you slept. No new ones."
             }
           ],
           "dialogue_farewell_married": [
             {
-              "cn": "药箱带着，人要完整地回来。",
-              "en": "Take the medicine kit, and come back in one piece."
+              "cn": "晚饭前回来。我不想一个人分药。",
+              "en": "Be back before dinner. I don't like sorting remedies alone."
             }
           ],
           "dialogue_after_gift_married": [
             {
-              "cn": "有你记挂着，真好。",
-              "en": "It is good to know you are thinking of me."
+              "cn": "东西收了。下回先把自己完整地带回来。",
+              "en": "I'll take it. Next time, bring yourself back in one piece first."
             }
           ],
           "gift_positive_married": [
             {
-              "cn": "干净，没受潮。正合用。",
-              "en": "Clean and dry. Just what I needed."
+              "cn": "成色好。挑药材的眼光，是跟我学的吧。",
+              "en": "Good quality. You learned to pick herbs from me, didn't you?"
             }
           ],
           "gift_normal_married": [
             {
-              "cn": "我收好了。下回也给你带一份。",
-              "en": "I will keep it safe. Next time I will bring something for you too."
+              "cn": "收着。手伸过来，指甲缝里全是泥。",
+              "en": "I'll keep it. Hands out. There's dirt under your nails."
             }
           ]
         }
@@ -1093,14 +1093,14 @@
         ],
         "negativeBubbles": [
           {
-            "cn": "心意收到了，这件暂时用不上。",
-            "en": "Thank you for thinking of me. I have no use for this right now."
+            "cn": "这东西挡不住风，也护不了人。收回去吧。",
+            "en": "This won't stop the wind or guard anyone. Take it back."
           }
         ],
         "normalBubbles": [
           {
-            "cn": "收下了，谢谢你。",
-            "en": "Thank you. I will keep it."
+            "cn": "放下吧。我记得是你给的。",
+            "en": "Set it down. I'll remember it came from you."
           }
         ],
         "dialogues": {
@@ -1141,14 +1141,14 @@
           ],
           "afterGift": [
             {
-              "cn": "这份心意，我记着。",
-              "en": "I will remember your kindness."
+              "cn": "搁在刀架旁了。那儿没人敢碰。",
+              "en": "It's by the blade rack. Nobody dares touch anything there."
             }
           ],
           "levelUp": [
             {
-              "cn": "与你相处，越来越自在了。",
-              "en": "I feel more at ease with you now."
+              "cn": "刀鞘上那道豁口，我磨平了。握着没那么沉了。",
+              "en": "Ground down that nick in the scabbard. It sits lighter in my hand now."
             }
           ],
           "farewell": [
@@ -1159,26 +1159,26 @@
           ],
           "alreadyGifted": [
             {
-              "cn": "今天已经收到你的礼物了。",
-              "en": "You have already given me a gift today."
+              "cn": "一天一件就够。东西不在多。",
+              "en": "One a day is enough. It's not about how many."
             }
           ],
           "alreadyGiftedPositive": [
             {
-              "cn": "今天这份够了，你也留些给自己。",
-              "en": "That is plenty for today. Keep some for yourself."
+              "cn": "还没舍得用呢。够了。",
+              "en": "Haven't had the heart to use it yet. That's enough."
             }
           ],
           "alreadyGiftedNormal": [
             {
-              "cn": "礼物收好了，今天不必再送。",
-              "en": "Your gift is safe. No need for another today."
+              "cn": "刀架边已经搁着今天那件了。",
+              "en": "Today's is already sitting by the blade rack."
             }
           ],
           "alreadyGiftedNegative": [
             {
-              "cn": "今天就先这样吧。",
-              "en": "Let us leave it there for today."
+              "cn": "今天那件……不提了。明天吧。",
+              "en": "Today's... let's leave it. Tomorrow."
             }
           ]
         },
@@ -1191,32 +1191,32 @@
           ],
           "dialogue_idle_married": [
             {
-              "cn": "旧事不必替我扛。把眼前的路走稳就好。",
-              "en": "You do not have to carry my past. Keep your footing on the road ahead."
+              "cn": "刀挂到墙上了。家里用不着拿它挡人。",
+              "en": "The blade's on the wall now. No one to keep out at home."
             }
           ],
           "dialogue_farewell_married": [
             {
-              "cn": "这回不拦你。累了就回来，我在。",
-              "en": "I will not bar your way. Come home when you are tired. I will be here."
+              "cn": "前面那段路我一早走过了。风不大，去吧。",
+              "en": "I walked the stretch ahead first thing. Wind's mild. Go on."
             }
           ],
           "dialogue_after_gift_married": [
             {
-              "cn": "有你记挂着，真好。",
-              "en": "It is good to know you are thinking of me."
+              "cn": "寺里的老人说礼要还。我还不起，就守着你吧。",
+              "en": "The temple's old sweeper says gifts get repaid. I can't, so I'll guard you."
             }
           ],
           "gift_positive_married": [
             {
-              "cn": "合我心意。我会好好用。",
-              "en": "Well chosen. I will put it to good use."
+              "cn": "比我自己挑的还合意。",
+              "en": "Better than anything I'd have picked myself."
             }
           ],
           "gift_normal_married": [
             {
-              "cn": "我收好了。下回也给你带一份。",
-              "en": "I will keep it safe. Next time I will bring something for you too."
+              "cn": "家里又多了一样东西。……挺好。",
+              "en": "One more thing in the house. ...That's good."
             }
           ]
         }
@@ -1320,8 +1320,8 @@
         ],
         "negativeBubbles": [
           {
-            "cn": "（他点头收下，在铜牌上写下：谢谢。）",
-            "en": "(He accepts it with a nod and writes: Thank you.)"
+            "cn": "（他犹豫了一下，在铜牌上写：心领了。）",
+            "en": "(He hesitates, then writes: Thank you all the same.)"
           }
         ],
         "normalBubbles": [
@@ -1368,14 +1368,14 @@
           ],
           "afterGift": [
             {
-              "cn": "（他点头，把今天收到的礼物仔细收好。）",
-              "en": "(He nods and carefully puts away today's gift.)"
+              "cn": "（他把礼物擦了擦，摆在钟架边上，又回头看了一眼。）",
+              "en": "(He wipes the gift clean, sets it by the bell frame, and glances back at it.)"
             }
           ],
           "levelUp": [
             {
-              "cn": "（他点头，把今天收到的礼物仔细收好。）",
-              "en": "(He nods and carefully puts away today's gift.)"
+              "cn": "（他在铜牌角上添了一道刻痕，又指了指你。）",
+              "en": "(He scratches another notch into the corner of the plate, then points at you.)"
             }
           ],
           "farewell": [
@@ -1386,26 +1386,26 @@
           ],
           "alreadyGifted": [
             {
-              "cn": "（他点头，把今天收到的礼物仔细收好。）",
-              "en": "(He nods and carefully puts away today's gift.)"
+              "cn": "（他摇摇头，指了指铜牌上今天的日期。）",
+              "en": "(He shakes his head and points to today's date on the plate.)"
             }
           ],
           "alreadyGiftedPositive": [
             {
-              "cn": "（他点头，把今天收到的礼物仔细收好。）",
-              "en": "(He nods and carefully puts away today's gift.)"
+              "cn": "（他拍了拍贴身的小盒，摆了摆手。）",
+              "en": "(He pats the little box he keeps close and waves it off.)"
             }
           ],
           "alreadyGiftedNormal": [
             {
-              "cn": "（他点头，把今天收到的礼物仔细收好。）",
-              "en": "(He nods and carefully puts away today's gift.)"
+              "cn": "（他指了指钟架边今天那件，摆摆手。）",
+              "en": "(He points at today's gift by the bell frame and waves it off.)"
             }
           ],
           "alreadyGiftedNegative": [
             {
-              "cn": "（他点头，把今天收到的礼物仔细收好。）",
-              "en": "(He nods and carefully puts away today's gift.)"
+              "cn": "（他在铜牌上写：今天的，够了。字写得很轻。）",
+              "en": "(He writes: Today's was enough. The letters are faint.)"
             }
           ]
         },
@@ -1418,14 +1418,14 @@
           ],
           "dialogue_idle_married": [
             {
-              "cn": "（他擦净铜牌，留下一小块给你写字。）",
-              "en": "(He polishes the brass plate and leaves a small space for your words.)"
+              "cn": "（他在铜牌上写：今天不记船期。晚上想吃什么？）",
+              "en": "(He writes on the brass plate: No ship schedules today. What do you want for dinner?)"
             }
           ],
           "dialogue_farewell_married": [
             {
-              "cn": "（他握了一下你的手，指向牌上的字：我等你。）",
-              "en": "(He squeezes your hand and points to the words on the plate: I will wait for you.)"
+              "cn": "（他敲了一下钟，在铜牌上写：回来也敲一下。我在家。）",
+              "en": "(He rings the bell once and writes: Ring it when you're back. I'll be home.)"
             }
           ],
           "dialogue_after_gift_married": [
@@ -1436,8 +1436,8 @@
           ],
           "gift_positive_married": [
             {
-              "cn": "（他轻轻点头，把礼物放进贴身的小盒。）",
-              "en": "(He nods and puts your gift in the little box he keeps close.)"
+              "cn": "（他把礼物放进小盒。盒盖上现在刻着两个名字。）",
+              "en": "(He puts it in his little box. The lid bears two names now.)"
             }
           ],
           "gift_normal_married": [
@@ -1863,8 +1863,8 @@
           ],
           "gift_normal_married": [
             {
-              "cn": "收着了。下回给你带条鱼。",
-              "en": "Got it. I'll bring you a fish next time."
+              "cn": "收着了。搁闸房窗台上，晒得着太阳。",
+              "en": "Got it. It goes on the sluice-house sill, where the sun hits."
             }
           ],
           "ring_reject": [

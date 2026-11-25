@@ -42,9 +42,9 @@ namespace BossRush
 
         public override string DisplayNameEN => "Reverse Scale";
 
-        public override string DescriptionCN => "龙之逆鳞，触之必怒。装备后濒死时触发：回复50%最大生命，向四周射出8颗棱彩弹，然后图腾碎掉。";
+        public override string DescriptionCN => "巴掌大的一片逆生龙鳞，摸着像压着一肚子火。装备后濒死时触发：回复50%最大生命，向四周射出8颗棱彩弹，然后图腾碎掉。";
 
-        public override string DescriptionEN => "A dragon's reverse scale. Touch it and it bites back. Equipped, it triggers when you'd die: restores 50% max HP, fires 8 prismatic bolts in all directions, then shatters.";
+        public override string DescriptionEN => "A palm-sized dragon scale that grows against the grain, warm as a held-back temper. Equipped, it triggers when you'd die: restores 50% max HP, fires 8 prismatic bolts in all directions, then shatters.";
 
         public override int ItemQuality => 6;
 

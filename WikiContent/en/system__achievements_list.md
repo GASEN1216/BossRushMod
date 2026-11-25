@@ -78,5 +78,5 @@ This mod currently contains 46 achievements across 9 categories. Completing achi
 - Completionist: Unlock all achievements. Reward `$5,000,000`, difficulty `★★★★★`
 
 ### Statistics
-- Total achievements: 45 (including 3 hidden)
-- Total reward amount: `$19,840,000`
+- Total achievements: 46 (including 3 hidden)
+- Total reward amount: `$20,640,000`

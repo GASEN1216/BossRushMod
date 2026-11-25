@@ -714,7 +714,7 @@ namespace BossRush
         {
             if (mapConfig == null)
             {
-                return "未知地图";
+                return L10n.T("未知地图", "Unknown Map");
             }
 
             if (!string.IsNullOrEmpty(mapConfig.displayName))
@@ -723,7 +723,7 @@ namespace BossRush
             }
 
             SceneInfoEntry sceneInfo = SceneInfoCollection.GetSceneInfo(mapConfig.sceneID);
-            return sceneInfo != null ? sceneInfo.DisplayName : "未知地图";
+            return sceneInfo != null ? sceneInfo.DisplayName : L10n.T("未知地图", "Unknown Map");
         }
 
         private static void SetupBossRushCostDisplay(GameObject entryObject)

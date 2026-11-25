@@ -1257,15 +1257,14 @@ namespace BossRush
                         text.text = originalText == "分解" ? "重铸" : "Reforge";
                         ModBehaviour.DevLog("[ReforgeUI] 按钮文本已修改: " + originalText + " -> " + text.text);
                     }
-                    else if (originalText.Contains("分解") || originalText.Contains("Decompose") ||
+                    else if (originalText.Contains("分解") || MentionsDecomposeEn(originalText) ||
                         originalText.Contains("选择") || originalText.Contains("Select"))
                     {
-                        string newText = originalText
+                        string newText = ReplaceDecomposeWordsEn(originalText
                             .Replace("无法分解", "无法重铸")
                             .Replace("分解", "重铸")
-                            .Replace("Decompose", "Reforge")
                             .Replace("请选择要分解的物品", "请选择要重铸的物品")
-                            .Replace("选择要分解", "选择要重铸");
+                            .Replace("选择要分解", "选择要重铸"));
                         text.text = newText;
                         ModBehaviour.DevLog("[ReforgeUI] 文本已修改: " + originalText + " -> " + newText);
                     }
@@ -1275,40 +1274,55 @@ namespace BossRush
                 FieldInfo cannotField = typeof(ItemDecomposeView).GetField("cannotDecomposeIndicator", BindingFlags.NonPublic | BindingFlags.Instance);
                 if (cannotField != null)
                 {
-                    var indicator = cannotField.GetValue(decomposeView) as GameObject;
-                    if (indicator != null)
-                    {
-                        TextMeshProUGUI[] indicatorTexts = indicator.GetComponentsInChildren<TextMeshProUGUI>(true);
-                        foreach (var t in indicatorTexts)
-                        {
-                            string origText = t.text;
-                            if (origText.Contains("分解") || origText.Contains("Decompose") || origText.Contains("无法"))
-                            {
-                                t.text = origText.Replace("分解", "重铸").Replace("Decompose", "Reforge").Replace("无法分解", "无法重铸");
-                                ModBehaviour.DevLog("[ReforgeUI] 指示器文本已修改: " + origText + " -> " + t.text);
-                            }
-                        }
-                    }
+                    RelabelDecomposeIndicator(cannotField.GetValue(decomposeView) as GameObject, false);
                 }
 
                 // 修改noItemSelectedIndicator的文本
-                if (noItemSelectedIndicator != null)
-                {
-                    TextMeshProUGUI[] noItemTexts = noItemSelectedIndicator.GetComponentsInChildren<TextMeshProUGUI>(true);
-                    foreach (var t in noItemTexts)
-                    {
-                        string origText = t.text;
-                        if (origText.Contains("分解") || origText.Contains("选择"))
-                        {
-                            t.text = origText.Replace("分解", "重铸").Replace("请选择要分解的物品", "请选择要重铸的物品");
-                            ModBehaviour.DevLog("[ReforgeUI] noItem文本已修改: " + origText + " -> " + t.text);
-                        }
-                    }
-                }
+                RelabelDecomposeIndicator(noItemSelectedIndicator, true);
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[ReforgeUI] [ERROR] 修改标题失败: " + e.Message);
+            }
+        }
+
+        // 官方英文里「分解」的写法大小写不定（如 Select an item to decompose），子串 Replace("Decompose") 换不掉小写，
+        // 英文玩家会以为点下去要分解装备（2026-11-25）。
+        private static readonly System.Text.RegularExpressions.Regex DecomposeWordEn =
+            new System.Text.RegularExpressions.Regex(@"\bdecompose\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        private static bool MentionsDecomposeEn(string text)
+        {
+            return !string.IsNullOrEmpty(text) && text.IndexOf("decompos", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static string ReplaceDecomposeWordsEn(string text)
+        {
+            if (!MentionsDecomposeEn(text)) return text;
+            return DecomposeWordEn.Replace(text, m => char.IsUpper(m.Value[0]) ? "Reforge" : "reforge");
+        }
+
+        /// <summary>
+        /// 官方分解台的两个提示（未选物品 / 无法分解）直接写入重铸版文案，不再靠子串替换。
+        /// 只认官方原文里的「分解」/ decompose：词缀锻造共用这两个提示框、写的是锻造文案，不能被改回重铸。
+        /// </summary>
+        private static void RelabelDecomposeIndicator(GameObject indicator, bool noItemSelected)
+        {
+            if (indicator == null) return;
+            string label = noItemSelected
+                ? L10n.T("请选择要重铸的物品", "Select an item to reforge")
+                : L10n.T("这件物品无法重铸", "This item can't be reforged");
+            TextMeshProUGUI[] texts = indicator.GetComponentsInChildren<TextMeshProUGUI>(true);
+            for (int i = 0; i < texts.Length; i++)
+            {
+                TextMeshProUGUI t = texts[i];
+                if (t == null) continue;
+                string s = t.text;
+                if (string.IsNullOrEmpty(s) || s == label) continue;
+                if (s.Contains("分解") || MentionsDecomposeEn(s))
+                {
+                    t.text = label;
+                }
             }
         }
 

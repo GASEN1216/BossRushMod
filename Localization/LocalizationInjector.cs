@@ -41,8 +41,8 @@ namespace BossRush
         // ============================================================================
         private const string WIKI_BOOK_NAME_CN = "冒险家日志";
         private const string WIKI_BOOK_NAME_EN = "Adventurer's Journal";
-        private const string WIKI_BOOK_DESC_CN = "一本皱皱巴巴的冒险家日志，看得出阿稳已经翻了又翻、开了又开。";
-        private const string WIKI_BOOK_DESC_EN = "A crumpled adventurer's journal. You can tell Awen has flipped through it again and again.";
+        private const string WIKI_BOOK_DESC_CN = "封皮磨毛了的厚本子，边角卷着折痕，看得出阿稳一路翻了又翻。";
+        private const string WIKI_BOOK_DESC_EN = "A thick notebook with a scuffed cover and dog-eared corners. Awen has clearly flipped through it again and again.";
 
         // ============================================================================
         // 龙裔遗族Boss本地化数据
@@ -623,7 +623,7 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_NotInitialized", "末日丧尸模式尚未初始化。", "Zombie Mode is not initialized.");
             InjectZombieModeString("BossRush_ZombieMode_OtherModeActive", "已经有另一个模式在进行。", "Another mode is already running.");
             InjectZombieModeString("BossRush_ZombieMode_CashPrompt_Title", "投入现金兑换初始净化点数", "Convert Cash to Initial Purification Points");
-            InjectZombieModeString("BossRush_ZombieMode_CashPrompt_Body", "兑换比例：100 现金 = 1 局内净化点数。失败/死亡全部损失；撤离时剩余净化点按点数结算为现金奖励。", "Rate: 100 cash = 1 run-only Purification Point. All lost on failure or death; remaining points are settled as cash rewards on extraction.");
+            InjectZombieModeString("BossRush_ZombieMode_CashPrompt_Body", "兑换比例：100 现金 = 1 点局内净化点。撤离时剩下的净化点按 1 点 = 1 现金结算，失败或阵亡全部清空。也可以不投入直接出发。", "Rate: 100 cash = 1 run-only Purification Point. Points left when you extract pay out 1:1 as cash; failing or dying loses them all. You can also go in with nothing.");
             InjectZombieModeString("BossRush_ZombieMode_CashPrompt_AmountLabel", "投入金额", "Investment Amount");
             InjectZombieModeString("BossRush_ZombieMode_CashPrompt_Confirm", "投入并出发", "Invest & Deploy");
             InjectZombieModeString("BossRush_ZombieMode_CashPrompt_SkipZero", "不投入，直接出发", "Deploy Without Cash");
@@ -696,7 +696,7 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Notify_BeaconNotZombieMode", "尸潮信标只能在末日丧尸模式中使用。", "Zombie Tide Beacon only works in Zombie Mode.");
             InjectZombieModeString("BossRush_ZombieMode_Notify_BeaconExtractionLocked", "撤离读条进行中，无法使用信标。", "Extraction is in progress; beacon unavailable.");
             InjectZombieModeString("BossRush_ZombieMode_Notify_ExtractionBeaconLocked", "信标读条进行中，无法开始撤离。", "Beacon is channeling; extraction unavailable.");
-            InjectZombieModeString("BossRush_ZombieMode_Notify_ExtractionAreaFailed", "撤离点没能建起来，请再点一次。", "Could not set up the extraction zone. Try again.");
+            InjectZombieModeString("BossRush_ZombieMode_Notify_ExtractionAreaFailed", "撤离点没立住，再点一次试试。", "The extraction zone didn't take. Try again.");
             InjectZombieModeString("BossRush_ZombieMode_Notify_RefreshNoPoints", "净化点数不足以刷新。", "Not enough Purification Points to refresh.");
             InjectZombieModeString("BossRush_ZombieMode_Notify_NpcServiceNoPoints", "净化点数不足。", "Not enough Purification Points.");
             InjectZombieModeString("BossRush_ZombieMode_Notify_PointsShort", "还差 {0} 净化点", "Need {0} more Purification");
@@ -793,12 +793,12 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Reward_TempGoblinNpc", "召唤叮当：可花净化点重铸", "Summon Dingdang: Reforge with Purification");
             InjectZombieModeString("BossRush_ZombieMode_Reward_TempNurseNpc", "召唤羽织：可花净化点治疗", "Summon Yu Zhi: Heal with Purification");
             InjectZombieModeString("BossRush_ZombieMode_Reward_TempCourierNpc", "召唤阿稳：可花净化点使用服务", "Summon Awen: Services with Purification");
-            InjectZombieModeString("BossRush_ZombieMode_Reward_FortificationPack", "给掩体/路障/铁丝网/维修喷剂", "Cover/Roadblock/Wire/Repair Spray Pack");
+            InjectZombieModeString("BossRush_ZombieMode_Reward_FortificationPack", "工事补给：掩体、路障、铁丝网、维修喷剂", "Fortification supplies: cover, roadblock, barbed wire, repair spray");
             InjectZombieModeString("BossRush_ZombieMode_Reward_ContractPollutionDeal", "污染 +1/+2，净化点 -80/-150", "Pollution +1/+2, Purification -80/-150");
             InjectZombieModeString("BossRush_ZombieMode_Reward_ContractGearDeal", "污染 +2/+3，净化点 -60/-120，给高阶枪械和护甲/头盔", "Pollution +2/+3, Purification -60/-120, High-Tier Gun and Armor/Helmet");
             InjectZombieModeString("BossRush_ZombieMode_Reward_ContractHugePurification", "污染 +3，净化点 -200，保险 +30%", "Pollution +3, Purification -200, Insurance +30%");
-            InjectZombieModeString("BossRush_ZombieMode_Reward_ContractInsurance", "污染 +2，净化点 -80，失败指定保留+随机20%", "Pollution +2, Purification -80, Keep Chosen Item + Random 20% on Failure");
-            InjectZombieModeString("BossRush_ZombieMode_Reward_InsuranceKeepOne", "失败时保留指定物品，并随机保留10%", "On Failure: Keep Chosen Item and Random 10%");
+            InjectZombieModeString("BossRush_ZombieMode_Reward_ContractInsurance", "污染 +2，净化点 -80，失败时保住 1 件（首次领保险时背包第一件），另随机保留 20%", "Pollution +2, Purification -80. On failure: keep 1 item (your first backpack item when you first took insurance) + a random 20%");
+            InjectZombieModeString("BossRush_ZombieMode_Reward_InsuranceKeepOne", "失败时保住 1 件（首次领保险时背包第一件），另随机保留 10%", "On failure: keep 1 item (your first backpack item when you first took insurance) + a random 10%");
             InjectZombieModeString("BossRush_ZombieMode_Reward_InsuranceRandom10", "失败时随机保留 10% 物品", "On Failure: Keep Random 10% of Items");
             InjectZombieModeString("BossRush_ZombieMode_Reward_InsuranceRandom20", "失败时随机保留 20% 物品", "On Failure: Keep Random 20% of Items");
             InjectZombieModeString("BossRush_ZombieMode_Reward_InsuranceNearFull", "污染 +5，失败时随机保留 80% 物品", "Pollution +5, On Failure Keep Random 80% of Items");
@@ -836,15 +836,15 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Reward_ProjectileTrident", "当前枪至少3发散射，单颗伤害分摊（代价：换弹速度 -7%）", "Current gun fires at least 3 spread shots, damage split per pellet (Cost: Reload Speed -7%)");
             InjectZombieModeString("BossRush_ZombieMode_Reward_ProjectileShotgunSpray", "当前枪至少5发散射，单颗伤害分摊（代价：枪械伤害 -5%）", "Current gun fires at least 5 spread shots, damage split per pellet (Cost: Gun Damage -5%)");
             InjectZombieModeString("BossRush_ZombieMode_Reward_ProjectileStasis", "命中普通敌人减速65% 1秒（代价：移动速度 -5%）", "Hit Normal Enemies: Slow 65% for 1s (Cost: Move Speed -5%)");
-            InjectZombieModeString("BossRush_ZombieMode_Reward_ProjectileRicochet", "命中后追加一发追向附近敌人的子弹，命中后弹向附近敌人（代价：换弹速度 -6%）", "On hit, add a shot that seeks and ricochets to a nearby enemy (Cost: Reload Speed -6%)");
-            InjectZombieModeString("BossRush_ZombieMode_Reward_ProjectileFork", "命中后分裂：命中后分出两发支援弹（2发斜向子弹，代价：枪械伤害 -5%）", "On hit, split into two support rounds (2 angled shots, Cost: Gun Damage -5%)");
-            InjectZombieModeString("BossRush_ZombieMode_Reward_ProjectileReturn", "命中后回射玩家方向：命中后向你飞回支援弹（代价：最大生命 -5%）", "On hit, fire a support round back toward you (Cost: Max Health -5%)");
+            InjectZombieModeString("BossRush_ZombieMode_Reward_ProjectileRicochet", "命中后从目标身上弹出一发子弹，追向附近另一个敌人（代价：换弹速度 -6%）", "On hit, a round bounces off the target toward another nearby enemy (Cost: Reload Speed -6%)");
+            InjectZombieModeString("BossRush_ZombieMode_Reward_ProjectileFork", "命中后从目标身上向前斜分出 2 发支援弹（代价：枪械伤害 -5%）", "On hit, 2 support rounds split off the target at an angle (Cost: Gun Damage -5%)");
+            InjectZombieModeString("BossRush_ZombieMode_Reward_ProjectileReturn", "命中后从目标身上朝你的方向折返 1 发支援弹（代价：最大生命 -5%）", "On hit, 1 support round flies back from the target toward you (Cost: Max Health -5%)");
             InjectZombieModeString("BossRush_ZombieMode_Reward_ProjectileHelix", "子弹螺旋飞行（代价：移动速度 -6%）", "Bullets Fly in a Helix (Cost: Move Speed -6%)");
             InjectZombieModeString("BossRush_ZombieMode_Reward_ProjectileTrail", "子弹沿途造成小范围伤害（代价：承受伤害 +6%）", "Bullets deal small area damage along the path (Cost: Damage Taken +6%)");
             InjectZombieModeString("BossRush_ZombieMode_Reward_BattlefieldPurgeAura", "每3秒造成身边范围伤害（代价：污染 +1）", "Area Damage Around You Every 3s (Cost: Pollution +1)");
             InjectZombieModeString("BossRush_ZombieMode_Reward_BattlefieldCurseTrap", "每18秒在前方延迟爆炸（代价：最大生命 -8%）", "Delayed Blast Ahead Every 18s (Cost: Max Health -8%)");
-            InjectZombieModeString("BossRush_ZombieMode_Reward_BattlefieldBlackHole", "每12秒定期在前方生成牵引场（前方牵引黑洞，代价：净化点 -180）", "Every 12s, create a pull field ahead (black hole, Cost: Purification -180)");
-            InjectZombieModeString("BossRush_ZombieMode_Reward_BattlefieldGravityDrag", "每16秒定期把小怪往前方拉（前方弱牵引区，代价：移动速度 -7%）", "Every 16s, pull small enemies ahead (weak pull zone, Cost: Move Speed -7%)");
+            InjectZombieModeString("BossRush_ZombieMode_Reward_BattlefieldBlackHole", "每12秒在你前方展开牵引黑洞，把小怪吸过去（代价：净化点 -180）", "Every 12s, opens a pull vortex ahead of you that drags small enemies in (Cost: Purification -180)");
+            InjectZombieModeString("BossRush_ZombieMode_Reward_BattlefieldGravityDrag", "每16秒在你前方张开一片弱牵引区，把小怪往里拉（代价：移动速度 -7%）", "Every 16s, opens a weak pull zone ahead of you that drags small enemies in (Cost: Move Speed -7%)");
             InjectZombieModeString("BossRush_ZombieMode_Reward_FreeQuota", "免费 {0}/{1}", "Free {0}/{1}");
             InjectZombieModeString("BossRush_ZombieMode_Reward_NextPaidPrice", "付费下次价 {0}", "Next paid price {0}");
             InjectZombieModeString("BossRush_ZombieMode_Npc_TempMerchant", "补给终端已部署", "Supply Terminal deployed");

@@ -108,7 +108,7 @@ namespace BossRush
                 // 初始状态保持为生小鸡（EntryAndDifficulty），波次开始时再切换到加油状态
 
                 lastStartSucceeded = true;
-                owner.ShowMessage(L10n.T("白手起家模式已激活！通过路牌开始挑战！", "From Scratch mode activated! Start the challenge via the signpost!"));
+                owner.ShowMessage(L10n.T("白手起家开始了！开局装备已随机发好，去路牌开第一波；敌人越打越强，扒它们身上的装备武装自己。", "From Scratch has begun! Your random starter kit is on you. Start wave one at the signpost; enemies get tougher each wave, so take their gear."));
                 owner.ShowBigBanner(L10n.T("欢迎来到 <color=red>白手起家</color>！", "Welcome to <color=red>From Scratch</color>!"));
             }
             catch (Exception e)

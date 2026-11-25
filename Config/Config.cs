@@ -734,7 +734,7 @@ namespace BossRush
                 try
                 {
                     string lootKey = ModName + "_EnableRandomBossLoot";
-                    string lootLabel = ModConfigOptionLocalization.Label(lootKey, "Boss掉落随机化（时间加成）", "Boss loot randomization (time bonus)");
+                    string lootLabel = ModConfigOptionLocalization.Label(lootKey, "随机 Boss 战利品（血越厚、杀得越快，品质越好）", "Random Boss loot (tougher bosses and faster kills roll better)");
                     
                     if (addBoolMethod != null)
                     {
@@ -751,7 +751,7 @@ namespace BossRush
                 try
                 {
                     string legacyLootKey = ModName + "_UseLegacyBossLootProbabilities";
-                    string legacyLootLabel = ModConfigOptionLocalization.Label(legacyLootKey, "战利品原版概率掉落", "Legacy boss loot probabilities");
+                    string legacyLootLabel = ModConfigOptionLocalization.Label(legacyLootKey, "战利品用原版品质分布（生命超过 250 的 Boss 保底 1 件 Q5+）", "Vanilla loot quality odds (bosses over 250 HP guarantee one Q5+)");
 
                     if (addBoolMethod != null)
                     {
@@ -785,7 +785,7 @@ namespace BossRush
                 try
                 {
                     string interactKey = ModName + "_UseInteractBetweenWaves";
-                    string interactLabel = ModConfigOptionLocalization.Label(interactKey, "波次间使用交互点开启下一波", "Use interact point between waves");
+                    string interactLabel = ModConfigOptionLocalization.Label(interactKey, "波次间改为手动在路牌开下一波", "Start the next wave manually at the signpost");
                     
                     if (addBoolMethod != null)
                     {
@@ -919,7 +919,7 @@ namespace BossRush
                     float bossStatValue = Mathf.Clamp(config.bossStatMultiplier, 0.1f, 10f);
                     config.bossStatMultiplier = bossStatValue;
                     
-                    string bossStatLabel = L10n.T("Boss全局数值倍率", "Boss global stat multiplier");
+                    string bossStatLabel = L10n.T("Boss 数值倍率（血量、伤害、反应；伤害最高 3 倍）", "Boss stat multiplier (HP, damage, reaction; damage caps at 3x)");
                     string bossStatKey = ModName + "_BossStatMultiplier";
                     
                     if (addSliderMethod != null)
@@ -938,7 +938,7 @@ namespace BossRush
                     config.bossHealthPercent = Mathf.Clamp(config.bossHealthPercent, 10, 200);
                     if (addSliderMethod != null)
                         addSliderMethod.Invoke(null, new object[] { ModName, ModName + "_BossHealthPercent",
-                            L10n.T("敌人难度：Boss生命比例(%，新生成生效)", "Enemy difficulty: Boss health (%, new spawns)"),
+                            L10n.T("Boss 生命比例（%，100 为原样，新生成生效）", "Boss HP (% of normal, 100 = unchanged; new spawns)"),
                             typeof(int), config.bossHealthPercent, new Vector2(10f, 200f) });
                 }
                 catch (Exception ex) { DevLog("[BossRush] 注册 Boss 生命比例失败: " + ex.Message); }
@@ -1012,7 +1012,7 @@ namespace BossRush
                     if (addDropdownMethod != null)
                     {
                         string hotkeyKey = ModName + "_AchievementHotkey";
-                        string hotkeyLabel = ModConfigOptionLocalization.Label(hotkeyKey, "成就界面快捷键", "Achievement Hotkey");
+                        string hotkeyLabel = ModConfigOptionLocalization.Label(hotkeyKey, "成就面板热键", "Achievement panel hotkey");
                         
                         // 创建按键选项列表
                         var hotkeyOptions = new System.Collections.Generic.SortedDictionary<string, object>();
@@ -1029,6 +1029,8 @@ namespace BossRush
                         hotkeyOptions.Add("F6", (int)UnityEngine.KeyCode.F6);
                         hotkeyOptions.Add("F7", (int)UnityEngine.KeyCode.F7);
                         hotkeyOptions.Add("F8", (int)UnityEngine.KeyCode.F8);
+                        // 「禁用」存 0（KeyCode.None）：成就与宿命回响两处轮询都按 <= 0 早返，不退回默认键
+                        hotkeyOptions.Add(L10n.T("禁用", "None"), (int)UnityEngine.KeyCode.None);
                         
                         addDropdownMethod.Invoke(null, new object[] { ModName, hotkeyKey, hotkeyLabel, hotkeyOptions, typeof(int), config.achievementHotkey });
                         DevLog("[BossRush] 成就界面快捷键配置项注册成功");

@@ -41,7 +41,7 @@ namespace UnityEngine
         internal readonly List<Component> Components = new List<Component>();
         public GameObject(string name) { this.name = name; }
     }
-    public enum KeyCode { L = 76, P = 80 }
+    public enum KeyCode { None = 0, L = 76, P = 80 }
     public static class Input
     {
         public static bool Pressed;

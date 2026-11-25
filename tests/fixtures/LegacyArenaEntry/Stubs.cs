@@ -157,6 +157,8 @@ namespace BossRush
         internal static string T(string cn, string en) { return en; }
     }
     internal static class BossRushInitialSpawn { internal static bool HasArrived(Vector3 value) { return false; } }
+    // 入场判定里 Mode F 未满足裸装时的提示；本夹具只走模式分流，提示内容由 ModeDEntryOwnership 真链接验证。
+    internal static class ModeDNakedEntryNotice { internal static void NotifyBloodHuntBlocked(ModBehaviour host, int ticketTypeId) { } }
     internal static class BossRushMapSelectionHelper
     {
         internal static bool HasPendingModeHEntryIntent() { return Probe.Entry == "H"; }
@@ -223,6 +225,7 @@ namespace BossRush
         private ItemStatsSystem.Item DetectBloodhuntTransponder() { return Probe.Entry == "F" ? new ItemStatsSystem.Item() : null; }
         private ItemStatsSystem.Item DetectFateEchoRelic() { return Probe.Entry == "G" ? new ItemStatsSystem.Item() : null; }
         private bool IsPlayerNakedForModeF() { return Probe.Entry == "F"; }
+        private int GetBossRushTicketTypeId() { return 500001; }
         private bool IsModeGLoadoutEligible() { return Probe.Entry == "G"; }
         private void ScheduleModeEStartupWarmup(string value) { Probe.Touch("warmup"); }
         private void PreCacheMapSpawnerPositions() { Probe.Touch("precache"); }

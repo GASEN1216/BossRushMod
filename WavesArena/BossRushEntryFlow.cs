@@ -57,6 +57,7 @@ namespace BossRush
                     }
 
                     DevLog("[BossRush] " + context + ": 检测到船票+血猎收发器，但玩家不满足 Mode F 裸装条件，不进入 Mode F，继续后续入场判定");
+                    ModeDNakedEntryNotice.NotifyBloodHuntBlocked(this, GetBossRushTicketTypeId());
                 }
 
                 // Mode G 检测：发布闸关闭时完全不劫持旧入口。FreezeEntryIntent

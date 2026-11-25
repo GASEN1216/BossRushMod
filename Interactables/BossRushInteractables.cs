@@ -5,13 +5,13 @@
 //   定义 BossRush 模组的所有交互组件，包括：
 //   - BossRushInteractable: 难度选择交互（弹指可灭/有点意思/无间炼狱）
 //   - BossRushSignInteractable: 路牌主交互（包含所有子选项）
-//   - BossRushNextWaveInteractable: 下一波交互
+//   - BossRushNextWaveInteractable / BossRushEntryInteractable（生小鸡）: 见 BossRushSignOptionInteractables.cs
 //   - BossRushAmmoRefillInteractable: 弹药补给交互
 //   - BossRushTeleportBubble: 传送气泡交互
 //   - BossRushClearLootboxesInteractable: 清空箱子交互
 //
 // 交互流程：
-//   1. 玩家与路牌交互，选择难度
+//   1. 玩家与路牌交互，主交互「出征令」打开面板选阵容 / 战帖 / 征程（生小鸡在子选项）
 //   2. 开始第一波后，路牌切换到"加油"模式
 //   3. 波次间可通过路牌开始下一波或购买弹药
 //   4. 通关后路牌显示"凯旋"状态
@@ -178,6 +178,16 @@ namespace BossRush
             {
                 return false;
             }
+        }
+
+        /// <summary>
+        /// 路牌主交互代为触发（2026-11-25：出征令升为路牌主交互，自身不进交互组列表）。
+        /// 与玩家直接交互这个选项走同一套门控与 OnTimeOut。
+        /// </summary>
+        internal void InteractFromSign()
+        {
+            if (!IsInteractable()) return;
+            OnTimeOut();
         }
 
         /// <summary>
@@ -565,83 +575,6 @@ namespace BossRush
         }
     }
 
-    public class BossRushEntryInteractable : InteractableBase
-    {
-        protected override void Awake()
-        {
-            try
-            {
-                // 入口显示为“哎哟~你干嘛~”，鼓励玩家多按几次下蛋
-                this.overrideInteractName = true;
-                this._overrideInteractNameKey = "BossRush_Sign_Entry";
-                this.InteractName = "BossRush_Sign_Entry";
-            }
-            catch {}
-            try
-            {
-                this.interactCollider = GetComponent<Collider>();
-            }
-            catch {}
-            try
-            {
-                // 将交互标记放在路牌中部（模型已向上偏移1米，所以这里用0）
-                this.interactMarkerOffset = new Vector3(0f, 0f, 0f);
-            }
-            catch {}
-            try
-            {
-                base.Awake();
-            }
-            catch {}
-            try
-            {
-                if (this.interactCollider != null)
-                {
-                    this.interactCollider.enabled = true;
-                }
-            }
-            catch {}
-            try
-            {
-                this.MarkerActive = false;
-            }
-            catch {}
-        }
-
-        protected override void Start()
-        {
-            try
-            {
-                base.Start();
-            }
-            catch {}
-            try
-            {
-                this.overrideInteractName = true;
-                this._overrideInteractNameKey = "BossRush_Sign_Entry";
-                this.InteractName = "BossRush_Sign_Entry";
-            }
-            catch {}
-        }
-
-        protected override bool IsInteractable()
-        {
-            return true;
-        }
-
-        protected override void OnTimeOut()
-        {
-            try
-            {
-                if (BossRush.ModBehaviour.Instance != null)
-                {
-                    BossRush.ModBehaviour.Instance.TrySpawnEggForPlayer();
-                }
-            }
-            catch {}
-        }
-    }
-
     /// <summary>
     /// 路牌上的主交互组件，包含生小鸡、难度选项、下一波等所有交互选项
     /// </summary>
@@ -660,6 +593,19 @@ namespace BossRush
 
         private SignState _state = SignState.EntryAndDifficulty;
 
+        // 出征令（2026-11-25 起为路牌主交互）与生小鸡子选项；Mode D 收起难度选项后主交互回到生小鸡
+        private BossRushInteractable _expeditionOrderOption;
+
+        private bool ExpeditionOrderIsPrimary
+        {
+            get
+            {
+                return _expeditionOrderOption != null
+                    && _expeditionOrderOption.gameObject != null
+                    && _expeditionOrderOption.gameObject.activeSelf;
+            }
+        }
+
         private void UpdateMainInteractName()
         {
             try
@@ -667,6 +613,14 @@ namespace BossRush
                 switch (_state)
                 {
                     case SignState.EntryAndDifficulty:
+                        if (ExpeditionOrderIsPrimary)
+                        {
+                            // 开波前主交互是「出征令」，生小鸡在子选项里
+                            this.overrideInteractName = true;
+                            this._overrideInteractNameKey = "BossRush_ExpeditionOrder";
+                            this.InteractName = "BossRush_ExpeditionOrder";
+                            break;
+                        }
                         // 使用本地化键显示"哎哟~你干嘛~"，避免显示"*"
                         this.overrideInteractName = true;
                         this._overrideInteractNameKey = "BossRush_Sign_Entry";
@@ -746,10 +700,10 @@ namespace BossRush
                     field.SetValue(this, list);
                 }
 
-                // 主选项 "哎哟~你干嘛~" 由 OnTimeOut 处理（生小鸡），这里只添加难度子选项
-
                 // 出征令（2026-11-24）：原来的弹指可灭 / 有点意思 / 无间炼狱三个子选项收进出征令面板的「阵容」一栏，
                 // 路牌上只留这一个入口；交互完成打开面板，立誓后按所选阵容、战帖、征程开波。
+                // 2026-11-25：出征令升为路牌主交互（由 OnTimeOut 代为触发，不进交互组列表），
+                // 「哎哟~你干嘛~」生小鸡挪到子选项，两段文字都不改。
                 GameObject orderObj = new GameObject("BossRushOption_ExpeditionOrder");
                 orderObj.transform.SetParent(transform);
                 orderObj.transform.localPosition = Vector3.zero;
@@ -757,10 +711,18 @@ namespace BossRush
                 orderInteract.useCustomName = true;
                 orderInteract.customName = "出征令";
                 orderInteract.opensExpeditionOrder = true;
-                list.Add(orderInteract);
+                _expeditionOrderOption = orderInteract;
                 groupOptions.Add(orderInteract);
 
-                ModBehaviour.DevLog("[BossRush] BossRushSignInteractable: 已注入出征令选项");
+                GameObject eggObj = new GameObject("BossRushOption_Egg");
+                eggObj.transform.SetParent(transform);
+                eggObj.transform.localPosition = Vector3.zero;
+                var eggInteract = eggObj.AddComponent<BossRushEntryInteractable>();
+                list.Add(eggInteract);
+                groupOptions.Add(eggInteract);
+
+                UpdateMainInteractName();
+                ModBehaviour.DevLog("[BossRush] BossRushSignInteractable: 已注入出征令主交互与生小鸡子选项");
 
                 // 路牌晚于白手起家启动才 Start 时，上面刚注入的难度选项会盖掉 Mode D 的布置，
                 // 玩家就会在白手起家里看到「选难度」。此时按 Mode D 重新布置一次（幂等）。
@@ -894,6 +856,8 @@ namespace BossRush
                 }
             }
             catch {}
+            // 出征令收起后，入口状态的主交互回到生小鸡（Mode D 布置路牌也走这里）
+            UpdateMainInteractName();
         }
 
         public void SetCheerMode()
@@ -1019,7 +983,12 @@ namespace BossRush
                 switch (_state)
                 {
                     case SignState.EntryAndDifficulty:
-                        // 初始状态：主选项生小鸡
+                        // 开波前：主选项是出征令（打开面板）；出征令已收起（如白手起家）时主选项生小鸡
+                        if (ExpeditionOrderIsPrimary)
+                        {
+                            _expeditionOrderOption.InteractFromSign();
+                            break;
+                        }
                         BossRush.ModBehaviour.Instance.TrySpawnEggForPlayer();
                         break;
                     case SignState.Cheer:
@@ -1035,83 +1004,6 @@ namespace BossRush
                         // 凯旋状态：纯展示，没有实际效果
                         break;
                 }
-            }
-            catch {}
-        }
-    }
-
-    public class BossRushNextWaveInteractable : InteractableBase
-    {
-        protected override void Awake()
-        {
-            try
-            {
-                // 使用本地化键，避免两边出现 *，并保持与其他难度选项一致的颜色风格
-                this.overrideInteractName = true;
-                this._overrideInteractNameKey = "BossRush_Sign_NextWave";
-                this.InteractName = "BossRush_Sign_NextWave";
-            }
-            catch {}
-            try
-            {
-                this.interactCollider = GetComponent<Collider>();
-            }
-            catch {}
-            try
-            {
-                base.Awake();
-            }
-            catch {}
-            try
-            {
-                if (this.interactCollider != null)
-                {
-                    this.interactCollider.enabled = false;
-                }
-            }
-            catch {}
-            try
-            {
-                this.MarkerActive = false;
-            }
-            catch {}
-        }
-
-        protected override void Start()
-        {
-            try
-            {
-                base.Start();
-            }
-            catch {}
-            try
-            {
-                // 使用本地化键，避免两边出现 *，并保持与其他难度选项一致的颜色风格
-                this.overrideInteractName = true;
-                this._overrideInteractNameKey = "BossRush_Sign_NextWave";
-                this.InteractName = "BossRush_Sign_NextWave";
-            }
-            catch {}
-        }
-
-        protected override bool IsInteractable()
-        {
-            return true;
-        }
-
-        protected override void OnTimeOut()
-        {
-            try
-            {
-                if (BossRush.ModBehaviour.Instance != null)
-                {
-                    BossRush.ModBehaviour.Instance.StartNextWaveCountdown();
-                }
-            }
-            catch {}
-            try
-            {
-                UnityEngine.Object.Destroy(base.gameObject);
             }
             catch {}
         }

@@ -17,7 +17,7 @@ namespace BossRush
                 var availablePresets = owner.GetFilteredEnemyPresets();
                 if (availablePresets == null || availablePresets.Count == 0)
                 {
-                    owner.ShowMessage(L10n.T("Boss池为空！请至少启用一个Boss。(Ctrl+F10 打开设置)", "Boss pool is empty! Enable at least one Boss. (Ctrl+F10 to open settings)"));
+                    owner.ShowMessage(L10n.T("一个 Boss 都没启用：按 Ctrl+F10 打开「Boss池设置」，至少启用一个再开战。", "No Boss enabled: press Ctrl+F10 to open Boss Pool Settings and enable at least one."));
                     return;
                 }
                 // 记录玩家当前位置作为出生点（BossRush失败时传送回此处）

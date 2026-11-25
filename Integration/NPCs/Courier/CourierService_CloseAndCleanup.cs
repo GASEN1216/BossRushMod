@@ -662,7 +662,7 @@ namespace BossRush
                 {
                     bool usePurification = IsZombieModeTemporaryCourierPurificationService(npcTransform);
                     string currencyTextCn = usePurification ? "净化点 " : "￥";
-                    string currencyTextEn = usePurification ? "Purification " : "￥";
+                    string currencyTextEn = usePurification ? "Purification " : "$";
 
                     // 格式：已送达x件物品，共花费x，欢迎下次光临~
                     // x 用数字高亮色（WarningText）显示：这是一条正面消息，旧写法用纯红 #FF0000 像是报错（审美审查 UA-31）
@@ -695,11 +695,11 @@ namespace BossRush
                     bool usePurification = IsZombieModeTemporaryCourierPurificationService(npcTransform);
                     string bubbleText = usePurification
                         ? L10n.T(
-                            "净化点不够？别在这儿耗我的时间。",
-                            "No Purification, no service. Quit wasting my time.")
+                            "不寄？行。净化点一点没动，柜子我锁了。",
+                            "Nothing to send? Fine. Your Purification's untouched. Locking up.")
                         : L10n.T(
-                            "没钱就别在这儿耗我的时间。",
-                            "No money? Then quit wasting my time.");
+                            "不寄？行。柜子我锁了。",
+                            "Nothing to send? Fine. Locking up.");
 
                     // 使用原版气泡系统显示对话
                     Cysharp.Threading.Tasks.UniTaskExtensions.Forget(

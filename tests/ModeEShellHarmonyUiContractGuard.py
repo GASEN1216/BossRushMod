@@ -86,7 +86,7 @@ def main() -> int:
         "public static class ModeEShellInteractionButtonPatch",
         "internal bool AreAllModeEShopOfficialSamplesReady(StockShop shop)",
         "GetItemInstanceDirect",
-        'L10n.T("贝壳 ", "Shells ")',
+        'L10n.T("贝壳 ", "Seashells ")',
         'L10n.T("出售到账户", "Sell to account")',
         "ApplyModeEShellItemEntryUi",
         "ApplyModeEShellInteractionButtonUi",

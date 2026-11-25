@@ -50,7 +50,7 @@ namespace BossRush
             AddQuest(map, "ch1",
                 "报个名", "Sign Us Up",
                 "册子上没咱的名。带船票打一场标准，头两波别挨揍。回来找我结钱。",
-                "Our name's missing from the book. Take a ticket into Standard and survive the first two waves. Come back for your pay.");
+                "Our name's missing from the book. Take a ticket into Standard and don't take a hit in the first two waves. Come back for your pay.");
 
             AddQuest(map, "ch2",
                 "种地的选手", "The Fighter With a Garden",

@@ -249,7 +249,7 @@ namespace BossRush
         /// </summary>
         private static string GetCourierCurrencyPrefix(bool usePurification)
         {
-            return usePurification ? L10n.T("净化点 ", "Purification ") : "￥";
+            return usePurification ? L10n.T("净化点 ", "Purification ") : L10n.T("￥", "$");
         }
 
         /// <summary>

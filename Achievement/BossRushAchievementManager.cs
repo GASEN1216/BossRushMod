@@ -70,15 +70,15 @@ namespace BossRush
 
             // ========== 基础通关成就 ==========
             Register("first_clear", "初出茅庐", "First Steps",
-                "首次在 BossRush 中成功撤离", "Extract successfully from BossRush for the first time",
+                "首次全征通关 BossRush（标准及以上战帖）", "Clear a Full Campaign for the first time (Standard+)",
                 AchievementCategory.Basic, 5000, 1);
 
             Register("easy_clear", "弹指可灭", "Easy Peasy",
-                "在[弹指可灭]难度成功撤离", "Complete BossRush on Easy difficulty",
+                "以[弹指可灭]阵容全征通关（标准及以上战帖）", "Clear a Full Campaign with A Snap (Standard+)",
                 AchievementCategory.Basic, 10000, 1);
 
             Register("normal_clear", "有点意思", "Getting Serious",
-                "在[有点意思]难度成功撤离", "Complete BossRush on Normal difficulty",
+                "以[有点意思]阵容全征通关（标准及以上战帖）", "Clear a Full Campaign with Getting Interesting (Standard+)",
                 AchievementCategory.Basic, 25000, 2);
 
             // 出征令（2026-11-24）：噩梦战帖、全征（启用的首领全部登场）通关；短征 / 长征不算。
@@ -93,45 +93,45 @@ namespace BossRush
 
             // ========== 累计通关成就 ==========
             Register("clear_10_times", "常客", "Regular",
-                "累计通关10次", "Complete BossRush 10 times in total",
+                "累计全征通关10次（标准及以上战帖）", "Clear 10 Full Campaigns in total (Standard+)",
                 AchievementCategory.Cumulative, 50000, 2);
 
             Register("clear_50_times", "资深挑战者", "Seasoned Challenger",
-                "累计通关50次", "Complete BossRush 50 times in total",
+                "累计全征通关50次（标准及以上战帖）", "Clear 50 Full Campaigns in total (Standard+)",
                 AchievementCategory.Cumulative, 250000, 3);
 
             Register("clear_100_times", "传奇猎人", "Legendary Hunter",
-                "累计通关100次", "Complete BossRush 100 times in total",
+                "累计全征通关100次（标准及以上战帖）", "Clear 100 Full Campaigns in total (Standard+)",
                 AchievementCategory.Cumulative, 800000, 4);
 
             // ========== 无间炼狱成就 ==========
             Register("hell_10", "无间炼狱·十", "Hell Wave 10",
-                "在无间炼狱模式完成10波", "Survive 10 waves in Infinite Hell mode",
+                "在无间炼狱完成10波（标准及以上战帖）", "Survive 10 waves in Infinite Hell (Standard+)",
                 AchievementCategory.Basic, 50000, 3);
 
             Register("hell_25", "无间炼狱·廿五", "Hell Wave 25",
-                "在无间炼狱模式完成25波", "Survive 25 waves in Infinite Hell mode",
+                "在无间炼狱完成25波（标准及以上战帖）", "Survive 25 waves in Infinite Hell (Standard+)",
                 AchievementCategory.Basic, 150000, 3);
 
             Register("hell_50", "无间炼狱·五十", "Hell Wave 50",
-                "在无间炼狱模式完成50波", "Survive 50 waves in Infinite Hell mode",
+                "在无间炼狱完成50波（标准及以上战帖）", "Survive 50 waves in Infinite Hell (Standard+)",
                 AchievementCategory.Basic, 350000, 4);
 
             Register("hell_100", "无间炼狱·百", "Hell Wave 100",
-                "在无间炼狱模式完成100波", "Survive 100 waves in Infinite Hell mode",
+                "在无间炼狱完成100波（标准及以上战帖）", "Survive 100 waves in Infinite Hell (Standard+)",
                 AchievementCategory.Basic, 800000, 5);
 
             Register("hell_200", "无间炼狱·双百", "Hell Wave 200",
-                "在无间炼狱模式完成200波", "Survive 200 waves in Infinite Hell mode",
+                "在无间炼狱完成200波（标准及以上战帖）", "Survive 200 waves in Infinite Hell (Standard+)",
                 AchievementCategory.Ultimate, 2000000, 5);
 
             // ========== 无伤通关成就 ==========
             Register("flawless_easy", "完美弹指", "Flawless Easy",
-                "在[弹指可灭]难度无伤通关", "Complete Easy difficulty without taking damage",
+                "以[弹指可灭]阵容无伤全征通关（标准及以上）", "Flawless Full Campaign with A Snap (Standard+)",
                 AchievementCategory.Flawless, 80000, 3);
 
             Register("flawless_normal", "完美有点意思", "Flawless Normal",
-                "在[有点意思]难度无伤通关", "Complete Normal difficulty without taking damage",
+                "以[有点意思]阵容无伤全征通关（标准及以上）", "Flawless Full Campaign with Getting Interesting (Standard+)",
                 AchievementCategory.Flawless, 250000, 4);
 
             Register("flawless_mode_d", "完美白手", "Flawless From Scratch",
@@ -139,20 +139,20 @@ namespace BossRush
                 AchievementCategory.Flawless, 350000, 4);
 
             Register("flawless_hell_10", "钢铁意志", "Iron Will",
-                "在无间炼狱无伤完成10波", "Survive 10 waves in Infinite Hell without taking damage",
+                "在无间炼狱无伤完成10波（标准及以上战帖）", "Survive 10 Hell waves without taking damage (Standard+)",
                 AchievementCategory.Flawless, 500000, 5);
 
             // ========== 速通成就 ==========
             Register("speedrun_5min", "闪电战", "Lightning Run",
-                "5分钟内达成任意模式的通关条件", "Reach the clear condition of any mode within 5 minutes",
+                "5分钟内全征通关、无间10波（标准及以上）或白手起家通关", "In 5 min: Standard+ full clear, Hell wave 10, or From Scratch",
                 AchievementCategory.Speedrun, 30000, 2);
 
             Register("speedrun_3min", "光速通关", "Speed Demon",
-                "3分钟内达成任意模式的通关条件", "Reach the clear condition of any mode within 3 minutes",
+                "3分钟内全征通关、无间10波（标准及以上）或白手起家通关", "In 3 min: Standard+ full clear, Hell wave 10, or From Scratch",
                 AchievementCategory.Speedrun, 120000, 4);
 
             Register("speedrun_2min", "时间刺客", "Time Assassin",
-                "2分钟内达成任意模式的通关条件", "Reach the clear condition of any mode within 2 minutes",
+                "2分钟内全征通关、无间10波（标准及以上）或白手起家通关", "In 2 min: Standard+ full clear, Hell wave 10, or From Scratch",
                 AchievementCategory.Speedrun, 400000, 5);
 
             // ========== Boss击杀成就 ==========
@@ -195,11 +195,11 @@ namespace BossRush
 
             // ========== 特殊挑战成就（隐藏）==========
             Register("hell_no_heal", "铁人挑战", "Iron Man",
-                "在无间炼狱不使用治疗物品完成10波", "Survive 10 waves in Infinite Hell without using healing items",
+                "在无间炼狱不用治疗物品完成10波（标准及以上）", "Survive 10 Hell waves without healing items (Standard+)",
                 AchievementCategory.Special, 250000, 4, true);
 
             Register("speedrun_1min", "瞬杀", "Instant Kill",
-                "1分钟内达成任意模式的通关条件", "Reach the clear condition of any mode within 1 minute",
+                "1分钟内全征通关、无间10波（标准及以上）或白手起家通关", "In 1 min: Standard+ full clear, Hell wave 10, or From Scratch",
                 AchievementCategory.Special, 800000, 5, true);
 
             // ========== 收藏类成就 ==========
