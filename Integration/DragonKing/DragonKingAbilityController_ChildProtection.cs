@@ -606,8 +606,9 @@ namespace BossRush
         /// 龙裔落点：以龙皇起飞点为圆心，8 个方向由远到近找一个导航面上、与起飞点连通、同一层、
         /// 中间没有墙的位置；都找不到就落在起飞点本身（龙皇刚站在那里，必然在场内）。
         /// 连通性以起飞点为锚而不是玩家：鸭王杯里玩家可能在看台，和擂台不在一块导航区。
+        /// 不读实例状态，所以是静态的，F3 验收（DRAGON_DESCENDANT_SPAWN_PLACEMENT）在竞技场里直接调它。
         /// </summary>
-        private Vector3 ResolveDescendantSpawnNear(Vector3 ground)
+        internal static Vector3 ResolveDescendantSpawnNear(Vector3 ground)
         {
             int wallMask = 0;
             try

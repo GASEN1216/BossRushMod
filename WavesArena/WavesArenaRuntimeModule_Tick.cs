@@ -36,7 +36,7 @@ namespace BossRush
 
                 WaveCountdown -= deltaTime;
 
-                float interval = owner.GetWaveIntervalSeconds();
+                float interval = ExpeditionRestSeconds(owner.GetWaveIntervalSeconds());
 
                 // 显示倒计时（每秒更新一次）：仅大横幅
                 if (interval > 5f)

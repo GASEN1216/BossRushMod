@@ -355,6 +355,15 @@ export const CATEGORIES: WikiCategory[] = [
         tagEn: 'Totem',
       },
       {
+        path: '/equipment/silence-bell',
+        zh: '止语钟罩',
+        en: 'Hushbell Ward',
+        blurbZh: '先替你挨打的铜钟护罩，静下来就自己回满',
+        blurbEn: 'A bronze ward that takes hits first and refills when things go quiet',
+        tagZh: '图腾',
+        tagEn: 'Totem',
+      },
+      {
         path: '/equipment/empty-magazine-mine',
         zh: '空仓地雷盒',
         en: 'Empty-Mag Mine Box',

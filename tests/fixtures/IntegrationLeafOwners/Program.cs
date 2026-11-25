@@ -162,6 +162,13 @@ internal static partial class Program
             Probe.Events.Clear(); owner.config.mutatorCount = count; owner.TryRollMutatorsForMode("ModeF"); Sequence("roll", "banner");
             Check(MutatorManager.Count == Math.Min(10, Math.Max(1, count)) && MutatorManager.Mode == "ModeF", "mutator range/mode changed");
         }
+        // 出征令战帖指定的词条：关掉随机词条也照样上，随机条数为 0
+        Probe.Events.Clear(); owner.config.enableMutators = false; owner.TryRollMutatorsForMode("BossRush", new[] { "heal_reduced" }); Sequence("roll", "banner");
+        Check(MutatorManager.Count == 0 && MutatorManager.Forced != null && MutatorManager.Forced.Count == 1 && MutatorManager.Mode == "BossRush", "writ mutators must roll with random mutators off");
+        Probe.Events.Clear(); owner.TryRollMutatorsForMode("BossRush", new string[0]); Sequence();
+        owner.config.enableMutators = true;
+        Probe.Events.Clear(); owner.config.mutatorCount = 3; owner.TryRollMutatorsForMode("BossRush", new[] { "heal_reduced" }); Sequence("roll", "banner");
+        Check(MutatorManager.Count == 3 && MutatorManager.Forced != null && MutatorManager.Forced.Count == 1, "writ mutators must ride along with the random roll");
         Probe.Events.Clear(); MutatorManager.Throw = true; owner.TryRollMutatorsForMode(null); Sequence("roll");
         Probe.Events.Clear(); owner.ClearMutatorsForMode("ModeD"); Sequence("remove");
         Probe.Events.Clear(); MutatorManager.Throw = false; owner.ClearMutatorsForMode("ModeD"); Sequence("remove", "hide");

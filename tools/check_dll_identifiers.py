@@ -51,6 +51,8 @@ IDENTIFIERS = (
     "DevFastForward",
     "DevCountNodes",
     "LSY_DRILL_ASSEMBLY",
+    # 2026-11-25「只跑本次改动」专项（DebugAndTools/F3GameplayValidationWishFocus.cs）。
+    "TryStartWishFocus",
     # 2026-11-12 三图卡脚探针（DebugAndTools/RaidStuckProbe.cs）。
     "RaidStuckProbe",
 )

@@ -851,6 +851,104 @@ namespace BossRush
             }
         }
 
+        /// <summary>献魂补满到下一级要花的同血脉遗魂；满级返回 0。</summary>
+        internal static int SoulFeedCost(PetNestPetRecord pet)
+        {
+            if (pet == null || pet.level >= PetNestTuning.PetMaxLevel) return 0;
+            int missing = Math.Max(1, PetNestTuning.PetExpPerLevel - pet.exp);
+            return missing * PetNestTuning.SoulFeedSoulsPerExp;
+        }
+
+        /// <summary>今天的献魂日戳（GameClock.Day + 1）；游戏时钟不在（主菜单、读档中）返回 0。</summary>
+        internal static long SoulFeedDayStamp()
+        {
+            return GameClock.Instance != null ? GameClock.Day + 1L : 0L;
+        }
+
+        /// <summary>这只崽今天是否已经献过魂（时钟不在时按「已献过」处理，宁可不给）。</summary>
+        internal static bool SoulFedToday(PetNestPetRecord pet)
+        {
+            long today = SoulFeedDayStamp();
+            return pet != null && (today <= 0L || pet.lastSoulFeedDay == today);
+        }
+
+        /// <summary>
+        /// 献魂（2026-11-24 玩家许愿第 5 项）：花这只崽**自己血脉**的遗魂，一次补满到下一级（每点经验
+        /// <see cref="PetNestTuning.SoulFeedSoulsPerExp"/> 遗魂）。每只崽每个游戏日只能献一次；满级、远征中不能献。
+        /// 扣遗魂、加经验、记日戳在同一候选包里，要么都成、要么都不动。
+        /// </summary>
+        internal static bool TryFeedSouls(string petId, out string failureReasonId)
+        {
+            failureReasonId = null;
+            PetNestPetRecord pet = TryGetPet(petId);
+            if (pet == null)
+            {
+                failureReasonId = "pet_not_found";
+                return false;
+            }
+            if (pet.state == (int)PetNestPetState.OnExpedition)
+            {
+                failureReasonId = "pet_locked_by_expedition";
+                return false;
+            }
+            if (pet.level >= PetNestTuning.PetMaxLevel)
+            {
+                failureReasonId = "pet_max_level";
+                return false;
+            }
+            long today = SoulFeedDayStamp();
+            if (today <= 0L)
+            {
+                failureReasonId = "soul_feed_clock_missing";
+                return false;
+            }
+            if (pet.lastSoulFeedDay == today)
+            {
+                failureReasonId = "soul_fed_today";
+                return false;
+            }
+            if (GetSouls(pet.lineageKey) < SoulFeedCost(pet))
+            {
+                failureReasonId = "souls_insufficient";
+                return false;
+            }
+
+            try
+            {
+                if (!BeginCandidate(out failureReasonId)) return false;
+                // 从候选包重新解析实体；候选包与权威内存是两份对象。
+                pet = TryGetPet(petId);
+                PetNestSoulLedgerEntry ledger = null;
+                List<PetNestSoulLedgerEntry> entries = Nest.soulLedger;
+                for (int i = 0; pet != null && entries != null && i < entries.Count; i++)
+                {
+                    if (entries[i] != null && string.Equals(entries[i].lineageKey, pet.lineageKey, StringComparison.Ordinal))
+                    {
+                        ledger = entries[i];
+                        break;
+                    }
+                }
+                int cost = SoulFeedCost(pet);
+                if (pet == null || cost <= 0 || pet.lastSoulFeedDay == today || ledger == null || ledger.souls < cost)
+                {
+                    PetNestPersistenceAccess.AbortTransaction();
+                    failureReasonId = pet == null ? "pet_not_found"
+                        : (cost <= 0 ? "pet_max_level" : (pet.lastSoulFeedDay == today ? "soul_fed_today" : "souls_insufficient"));
+                    return false;
+                }
+                ledger.souls -= cost;
+                PetNestProgressionService.AddExp(pet, cost / PetNestTuning.SoulFeedSoulsPerExp);
+                pet.lastSoulFeedDay = today;
+                return CommitCandidate(out failureReasonId);
+            }
+            catch (Exception e)
+            {
+                PetNestPersistenceAccess.AbortTransaction();
+                failureReasonId = "soul_feed_failed:" + e.GetType().Name;
+                return false;
+            }
+        }
+
         #endregion
 
         #region 落档

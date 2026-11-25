@@ -61,6 +61,7 @@ namespace BossRush
             TidegateItems.ResetStaticCaches();
             LastShiftItems.ResetStaticCaches();
             CollectibleItems.ResetStaticCaches();
+            ModConfigOptionLocalization.ResetStaticCaches();
             _owner = null;
         }
 

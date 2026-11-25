@@ -106,6 +106,8 @@ internal static class Program
         Near(20f, player.Health.CurrentHealth, "140 damage reduced by capped 60 before death");
         Expect(!player.Health.IsDead && ResidualSunShieldRuntime.HasCharge, "lethal guard survives and charges");
         Near(80f, player.Health.Hits[0].finalDamage, "finalDamage includes guard");
+        Expect(SilenceBellRuntime.Seen.Count > 0, "the bell ward runs after the shield on the same entry");
+        Near(80f, SilenceBellRuntime.Seen[SilenceBellRuntime.Seen.Count - 1], "the bell ward sees what the shield left");
         Expect(ResidualSunShieldFx.Absorbs == 1, "block feedback");
     }
 

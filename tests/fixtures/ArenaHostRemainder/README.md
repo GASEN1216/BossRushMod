@@ -11,3 +11,5 @@ Unity 对象、官方角色工厂、异步任务桥、Stats/AI/资源查找是�
 宿主的终章状态、官方 spawner 停用和等待对象是明确替身；清场、缓存刷新、角色筛选和协程执行都来自完整生产文件，销毁真实触发替身 GameObject 与所有所挂组件的 Unity 假 null 语义。没有用测试再实现一套清场判据，也不证明实际女巫工厂、粒子、对白或游戏调度。旧实现在未认领 ghost 存活断言实跑转红，前后日志分别保留于 `Build/runtime-regressions/ArenaHostRemainder-campaign-preclear-before.log` 和 `Build/runtime-regressions/ArenaHostRemainder-campaign-preclear-after.log`。
 
 同轮反向验证在独立稀疏副本分别移除直接 Clear 门、循环暂停门和首次扫描门，均在对应行为断言转红；每次按字节还原并核对 SHA-256，恢复后全部 661 条断言通过。共享生产文件没有被变异。证据汇总为 `Build/runtime-regressions/ArenaHostRemainder-campaign-preclear-mutations.json`，各次日志为同名前缀的 `mutation-direct-gate.log`、`mutation-pause-gate.log`、`mutation-initial-gate.log` 和 `mutation-restored.log`。
+
+2026-11-24 出征令：生产 LegacySpawn 在全局倍率之后调用 `ApplyExpeditionTierToSpawnedBoss`，真实 OnDestroy 调 `EndExpeditionRun` 并重置 `ArenaExpeditionState` 与 `ArenaExpeditionOrderPanel` 的静态状态。三者在 Stubs.cs 里是只记顺序的替身（战帖倍率数值、面板与标题幕不在本夹具范围），断言普通生成的事件序列为 `multiplier,tier,active,…`、销毁序列为 `expedition-end,expedition-reset,panel-reset`。反向验证在 scratchpad 稀疏副本完成：把战帖调用挪到全局倍率之前、删掉面板重置，两条断言分别转红；共享生产文件没有被变异。

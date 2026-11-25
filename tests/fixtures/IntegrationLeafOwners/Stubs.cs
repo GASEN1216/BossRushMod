@@ -337,8 +337,8 @@ namespace BossRush
     internal static class PeaceCharmRuntime { internal static void InitializeRuntime() { Probe.Add("peace"); } }
     internal static class MutatorManager
     {
-        internal static int Count; internal static string Mode; internal static bool Throw;
-        internal static void RollAndApply(CharacterMainControl player, int count, object seed, string mode) { Probe.Add("roll"); Count = count; Mode = mode; if (seed != null || Throw) throw new Exception("roll"); }
+        internal static int Count; internal static string Mode; internal static bool Throw; internal static System.Collections.Generic.IList<string> Forced;
+        internal static void RollAndApply(CharacterMainControl player, int count, object seed, string mode, System.Collections.Generic.IList<string> forcedIds = null) { Probe.Add("roll"); Count = count; Mode = mode; Forced = forcedIds; if (seed != null || Throw) throw new Exception("roll"); }
         internal static void RemoveAll() { Probe.Add("remove"); if (Throw) throw new Exception("remove"); }
     }
     internal static class MutatorUI { internal static void ShowBanner() { Probe.Add("banner"); } internal static void HideAll() { Probe.Add("hide"); } }

@@ -1,8 +1,9 @@
 ## Equipment Overview
 
 - **Bell Keeper's Metronome**: A 20% extra drop from Speedy, or trade 20 seashells from your backpack with the Silent Bell Keeper at affinity level 5. Time a second reload press to finish early. Available at home after marriage.
+- **Hushbell Ward**: Trade 30 seashells from your backpack with the Silent Bell Keeper at affinity level 5. An 80-point bronze ward takes enemy hits before your health and refills after 5 quiet seconds. Available at home after marriage.
 
-There are **41 obtainable custom equipment pieces** (sets counted piece by piece): 24 regular pieces plus 17 Sky Islands wearable pieces. Regular gear comes from custom Bosses, extra official Boss drops and NPC shops; island gear mainly comes from island lords and chiefs, and the prelude Warden can also drop a Galebreaker Hood.
+There are **42 obtainable custom equipment pieces** (sets counted piece by piece): 25 regular pieces plus 17 Sky Islands wearable pieces. Regular gear comes from custom Bosses, extra official Boss drops and NPC shops; island gear mainly comes from island lords and chiefs, and the prelude Warden can also drop a Galebreaker Hood.
 
 The 5 new weapons from v2.2.0 and the Frost and Thunder sets from the same batch are **all obtainable now** (see below): each weapon drops at 20% from one official boss (vanilla maps included), or can be bought from Dingdang's Shop at Affinity 5.
 

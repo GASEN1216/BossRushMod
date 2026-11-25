@@ -116,6 +116,8 @@ namespace Duckov.Economy
 }
 namespace Duckov.UI { static class NotificationText { public static void Push(string value) { } } }
 enum ElementTypes { electricity, poison, ice }
+// 2026-11-24 献魂：PetNestService 读官方 GameClock.Day 作每日一次的印记（官方 Day 是静态属性，替身用静态字段）。
+public sealed class GameClock { public static GameClock Instance = new GameClock(); public static long Day; }
 class LevelManager { public static LevelManager Instance = new LevelManager(); public static bool AfterInit = true, LevelInited = true, LevelInitializing; public bool IsBaseLevel = true; }
 static class ItemUtilities
 {

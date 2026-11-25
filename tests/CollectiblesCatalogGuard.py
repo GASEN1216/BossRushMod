@@ -183,7 +183,12 @@ def main():
             errors.append(rel + " 缺少接线：" + token)
     gifts = compact(read("Integration/Affinity/Systems/NPCGiftSystem.cs"))
     value = compact(method_body(read("Integration/Affinity/Systems/NPCGiftSystem.cs"), "public static int CalculateGiftValue(string npcId, Item item)"))
-    reaction = compact(method_body(read("Integration/Affinity/Systems/NPCGiftSystem.cs"), "public static GiftReactionType GetGiftReactionType(string npcId, Item item)"))
+    # 2026-11-24 心意簿：反应类型与心意簿共用一份判定 ResolveGiftPreference，收集品偏好在那里查；
+    # GetGiftReactionType 只许转发给它，不另写一份。
+    reaction_entry = compact(method_body(read("Integration/Affinity/Systems/NPCGiftSystem.cs"), "public static GiftReactionType GetGiftReactionType(string npcId, Item item)"))
+    reaction = compact(method_body(read("Integration/Affinity/Systems/NPCGiftSystem.cs"), "internal static string ResolveGiftPreference(string npcId, Item item, out bool liked)"))
+    if "ReactionOf(ResolveGiftPreference(npcId, item, out liked), liked)" not in reaction_entry:
+        errors.append("GetGiftReactionType 要转发给 ResolveGiftPreference（反应与心意簿共用一份判定）")
     if "CollectibleTuning.LikedGiftAffinity(npcId, typeId)" not in value or "CollectibleTuning.LikedGiftAffinity(npcId, typeId) > 0" not in reaction:
         errors.append("NPCGiftSystem 的好感值与反应都要查收集品偏好（CollectibleTuning.LikedGiftAffinity）")
     elif value.find("LikedGiftAffinity") < value.find("PositiveItems.TryGetValue"):

@@ -25,6 +25,8 @@ namespace BossRush
         private List<InteractableBase> dockShopGroup;
         private NPCShopInteractable bellShop;
         private List<InteractableBase> bellShopGroup;
+        private NPCShopInteractable bellWardShop;
+        private List<InteractableBase> bellWardShopGroup;
 
         /// <summary>居民缺席时装置仍可交易；复用本人组件、好感门槛和会话清理。</summary>
         private void AttachDockShop()
@@ -33,6 +35,8 @@ namespace BossRush
                 ref dockShop, ref dockShopGroup);
             AttachDeviceShop<ReloadMetronomeShopInteractable>("Search_H", "BellKeeperShopOption", ReloadMetronomeConfig.VendorNpcId,
                 ref bellShop, ref bellShopGroup);
+            AttachDeviceShop<SilenceBellShopInteractable>("Search_H", "BellKeeperWardOption", SilenceBellConfig.VendorNpcId,
+                ref bellWardShop, ref bellWardShopGroup);
         }
 
         private void AttachDeviceShop<T>(string key, string optionName, string npcId,
@@ -58,6 +62,7 @@ namespace BossRush
         {
             DisposeDeviceShop(ref dockShop, ref dockShopGroup);
             DisposeDeviceShop(ref bellShop, ref bellShopGroup);
+            DisposeDeviceShop(ref bellWardShop, ref bellWardShopGroup);
         }
 
         private static void DisposeDeviceShop(ref NPCShopInteractable shop, ref List<InteractableBase> group)

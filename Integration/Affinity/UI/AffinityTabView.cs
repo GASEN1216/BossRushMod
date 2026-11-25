@@ -507,6 +507,13 @@ namespace BossRush
                     : L10n.T("结婚于 ", "Married on ") + entry.MarriageDate;
             }
 
+            if (entry.HasGiftJournal)
+            {
+                text += "\n\n" + Section(L10n.T("心意", "Gift notes"), head);
+                text += L10n.T("喜欢：", "Likes: ") + DescribeJournalSide(entry.KnownLikes, entry.UnknownLikes, soft) + "\n";
+                text += L10n.T("不喜欢：", "Dislikes: ") + DescribeJournalSide(entry.KnownDislikes, entry.UnknownDislikes, soft);
+            }
+
             if (entry.Unlocks.Count > 0)
             {
                 text += "\n\n" + Section(L10n.T("好感奖励", "Affinity rewards"), head);
@@ -519,6 +526,18 @@ namespace BossRush
                         : "<color=" + soft + ">Lv." + unlock.Level + "  " + unlock.Text + "</color>";
                 }
             }
+            return text;
+        }
+
+        /// <summary>心意簿一行：摸清的写名字，没摸清的只写还有几样（淡字）；一样都没有写「无」。</summary>
+        private static string DescribeJournalSide(List<string> known, int unknown, string softHex)
+        {
+            if (known.Count == 0 && unknown <= 0) return "<color=" + softHex + ">" + L10n.T("无", "None") + "</color>";
+            if (known.Count == 0)
+                return "<color=" + softHex + ">" + L10n.T("还没摸清，共 " + unknown + " 样", "Not figured out yet (" + unknown + ")") + "</color>";
+            string text = string.Join(L10n.T("、", ", "), known.ToArray());
+            if (unknown > 0)
+                text += "<color=" + softHex + ">" + L10n.T("，还有 " + unknown + " 样没摸清", "; " + unknown + " more to find") + "</color>";
             return text;
         }
 

@@ -217,7 +217,8 @@ namespace BossRush
                 {
                     if (bossMain.Health != null)
                     {
-                        maxHealth = bossMain.Health.MaxHealth;
+                        // 按「未乘出征令战帖」的生命算：每只 Boss 自带的掉落在所有战帖下都不变
+                        maxHealth = ExpeditionLootHealth(bossMain, bossMain.Health.MaxHealth);
                     }
                 }
                 catch (Exception e)

@@ -170,6 +170,7 @@ namespace BossRush
     internal static class TidegateItems { internal static void ResetStaticCaches() { } }
     internal static class LastShiftItems { internal static void ResetStaticCaches() { } }
     internal static class CollectibleItems { internal static void ResetStaticCaches() { } }
+    internal static class ModConfigOptionLocalization { internal static void ResetStaticCaches() { } }
     internal static class RuntimeItemFallback { internal static void ResetStaticCaches() { } }
     internal static class ModeGInteractable
     {

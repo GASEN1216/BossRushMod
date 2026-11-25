@@ -95,6 +95,8 @@ namespace BossRush
                 case BossRushItemIds.TemperingSolvent: return "tempering_solvent";
                 case BossRushItemIds.PassTheBomb: return "pass_the_bomb";
                 case BossRushItemIds.ResidualSunShield: return "residual_sun_shield_icon";
+                // 过渡：止语钟罩的专属图标（silence_bell.png）交生图师后再换名、登记清单并重打图标包；之前借岛上铜风铃。
+                case BossRushItemIds.SilenceBell: return "collectible_sky_bronze_windbell";
                 default: return null;
             }
         }

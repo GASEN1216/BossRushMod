@@ -72,6 +72,7 @@ export const ENTRY_TO_PATH = {
   'equipment__roll_call_ledger': 'equipment/roll-call-ledger.md',
   'equipment__pass_the_bomb': 'equipment/pass-the-bomb.md',
   'equipment__reload_metronome': 'equipment/reload-metronome.md',
+  'equipment__silence_bell': 'equipment/silence-bell.md',
   'item__overview':             'items/index.md',
   'item__key_items':            'items/key-items.md',
   'item__npc_items':            'items/npc-items.md',

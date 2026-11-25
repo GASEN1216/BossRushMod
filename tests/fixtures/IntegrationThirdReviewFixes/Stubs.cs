@@ -214,6 +214,12 @@ namespace BossRush
         internal static void ModifyFinalDamage(Health health, ref DamageInfo info)
         { Calls++; LastHealth = health; LastFinalDamage = info.finalDamage; }
     }
+    // 止语钟罩同在致死前入口、排在盾片之后；行为由 SilenceBellRules 与 ResidualSunShield 夹具覆盖，这里只计数。
+    internal static class SilenceBellRuntime
+    {
+        internal static int Calls;
+        internal static void ModifyFinalDamage(Health health, ref DamageInfo info) { Calls++; }
+    }
 
     internal partial class SetBonusRuntimeModule
     {

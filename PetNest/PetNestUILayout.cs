@@ -202,6 +202,7 @@ namespace BossRush
                 header.fontStyle = FontStyles.Bold;
                 SpawnLine(_nestDetailRoot, detail.Sections[i].Value ?? string.Empty, 16f,
                     BossRushUIColors.TextSecondary, NestDetailTextWidth);
+                if (i == detail.InlineAfterSection) RenderInlineAction(detail);
             }
             RenderDetailChoices(detail);
             RenderFooter(detail);
@@ -309,6 +310,7 @@ namespace BossRush
                 height += BossRushUI.MeasureTextHeight(subtitle, textWidth, 28f);
             }
             SetLayoutHeight(header, Mathf.Max(hasIcon ? NestPortraitSize : 0f, height) + 6f);
+            PlayPendingSoulFeedFx(header.transform);
         }
 
         /// <summary>

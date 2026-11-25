@@ -29,6 +29,7 @@ The Black Market Duck Cup is not on this list: like Standard BossRush it just ne
 
 - Standard BossRush, Infinite Hell, From Scratch, Faction War, Blood Hunt and Fate Echo can use any of the 9 maps; the Black Market Duck Cup's map screen only lists maps that can fit an arena: DEMO Ultimate Challenge's arena and stands are hand-tuned, the rest get one auto-built from their existing Boss spawn points; Zombie Mode has its own entry flow and ignores this map list
 - Arenas include ammo shop, repair station, and trash can
+- In Standard BossRush, Infinite Hell, From Scratch, Faction War and Fate Echo, the map (M) shows a **beacon smoke circle** for each Boss: a vermilion area with the Boss somewhere inside it, its centre drifting every 8 seconds. Go a minute without trading blows and the circle tightens a step (35 m, 20 m, 10 m). Get within 40 m, or leave it at 10 m for another minute, and the circle settles onto the Boss's live position; a dark red column of ink smoke rises from the Boss and a war drum sounds in the distance. Up to the 8 nearest Bosses are marked at once; Faction War only marks enemy-faction Bosses, and Blood Hunt, the Black Market Duck Cup and Zombie Mode have none
 - Standard, From Scratch, and Blood Hunt drop loot crates from Boss kills; Infinite Hell uses a cash pool; Faction War only drops crates from **enemy-faction** Bosses; Fate Echo pays its strict reward only after wave 9 victory
 - Zombie Mode is a **standalone survival mode**: no ticket entry, its own purification-point economy. See the "Zombie Mode" page for full rules
 

@@ -451,28 +451,11 @@ namespace BossRush
                 return false;
             }
 
-            // === 规则 2：长度下限 ===
-            if (text.Length < MIN_CHARS)
+            // === 规则 2 / 4：有效字数（字母、数字、汉字）≥ MIN_CHARS；界面计数用同一口径（CountWishChars） ===
+            int effectiveChars = CountEffectiveWishChars(text);
+            if (effectiveChars < MIN_CHARS)
             {
-                errorMsg = L10n.T(
-                    "最少输入 " + MIN_CHARS + " 个字符哦",
-                    "At least " + MIN_CHARS + " characters required");
-                return false;
-            }
-
-            // === 规则 4：有效文字数 ≥ 5 ===
-            int effectiveChars = 0;
-            for (int i = 0; i < text.Length; i++)
-            {
-                char c = text[i];
-                if (char.IsLetterOrDigit(c) || (c >= 0x4E00 && c <= 0x9FFF))
-                {
-                    effectiveChars++;
-                }
-            }
-            if (effectiveChars < 5)
-            {
-                errorMsg = L10n.T("请输入有意义的内容哦~", "Please enter meaningful content~");
+                errorMsg = string.Format(L10n.T("至少写 {0} 个字", "Write at least {0} characters"), MIN_CHARS);
                 return false;
             }
 
@@ -489,6 +472,28 @@ namespace BossRush
             if (!CheckNoProfanity(text, out errorMsg)) return false;
 
             return true;
+        }
+
+        /// <summary>界面计数：先按提交口径标准化，再数有效字（与 ValidateWishText 的下限同一口径）。</summary>
+        internal static int CountWishChars(string raw)
+        {
+            return CountEffectiveWishChars(StandardizeText(raw));
+        }
+
+        private static int CountEffectiveWishChars(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return 0;
+            int count = 0;
+            for (int i = 0; i < text.Length; i++)
+            {
+                if (IsEffectiveWishChar(text[i])) count++;
+            }
+            return count;
+        }
+
+        private static bool IsEffectiveWishChar(char c)
+        {
+            return char.IsLetterOrDigit(c) || (c >= 0x4E00 && c <= 0x9FFF);
         }
 
         /// <summary>规则 5：检查字符多样性</summary>

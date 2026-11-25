@@ -570,6 +570,10 @@ namespace BossRush
                 EquipmentBundles = new string[] { "residual_sun_shield_model" },
                 FallbackLoader = EnsureNewWeaponPlaceholder
             }, BossRushItemIds.ResidualSunShield);
+            Add(plans, new RegistrationPlan
+            {
+                FallbackLoader = EnsureNewWeaponPlaceholder
+            }, BossRushItemIds.SilenceBell);
 
             Add(plans, new RegistrationPlan
             {

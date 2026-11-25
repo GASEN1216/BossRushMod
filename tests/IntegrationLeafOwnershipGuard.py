@@ -92,7 +92,7 @@ def main():
         assert compact(body(integration_host, "internal bool " + name + "()")) == "returnbossRushIntegrationRuntime." + name + "();", "item registration bridge disconnected: " + name
 
     flow = read("Integration/Mutators/MutatorModeFlow.cs")
-    ordered(body(flow, "internal static void TryRollMutatorsForMode("), ["if (!enabled)", "CharacterMainControl.Main", "if (player == null)", "Mathf.Clamp(requestedCount, minimumCount, maximumCount)", "MutatorManager.RollAndApply(player, count, null, modeTag)", "MutatorUI.ShowBanner()"], "mutator roll")
+    ordered(body(flow, "internal static void TryRollMutatorsForMode("), ["if (!enabled && !hasForced)", "CharacterMainControl.Main", "if (player == null)", "enabled ? Mathf.Clamp(requestedCount, minimumCount, maximumCount) : 0", "MutatorManager.RollAndApply(player, count, null, modeTag, forcedIds)", "MutatorUI.ShowBanner()"], "mutator roll")
     ordered(body(flow, "internal static void ClearMutatorsForMode("), ["MutatorManager.RemoveAll()", "MutatorUI.HideAll()"], "mutator cleanup")
     managed = read("Integration/ModeGManagedCharacterService.cs")
     assert "internal static class ModeGManagedCharacterService" in managed and "partial class ModBehaviour" not in managed

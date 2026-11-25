@@ -214,6 +214,9 @@ namespace BossRush
                 // 应用全局 Boss 数值倍率（所有模式生效）
                 ApplyBossStatMultiplier(character);
 
+                // 出征令战帖：叠乘在全局倍率之后（只在竞技场出征令这局生效，标准档不挂任何东西）
+                ApplyExpeditionTierToSpawnedBoss(character);
+
                 // 多Boss模式下，将本次生成的敌人加入当前波列表，便于统一统计死亡
                 if (BossesPerWave > 1)
                 {

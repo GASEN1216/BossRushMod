@@ -86,8 +86,8 @@ namespace BossRush
             try
             {
                 if (addBoolMethod == null || config == null) return;
-                string label = L10n.T("词缀锻造：给武器护甲附加词缀", "Affix Forging: add affixes to gear");
                 string key = ModName + AffixForgeModConfigKeySuffix;
+                string label = ModConfigOptionLocalization.Label(key, "词缀锻造：给武器护甲附加词缀", "Affix Forging: add affixes to gear");
                 addBoolMethod.Invoke(null, new object[] { ModName, key, label, config.affixForgeEnabled });
                 DevLog("[BossRush] 词缀锻造配置项注册成功");
             }

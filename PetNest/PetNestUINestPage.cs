@@ -181,6 +181,53 @@ namespace BossRush
         }
 
         /// <summary>右栏：一只崽的详情与作用在它身上的操作。</summary>
+        /// <summary>
+        /// 「成长」区下面的献魂一行（玩家许愿第 5 项）：同脉遗魂换经验，一次补满这一级，每只崽每个游戏日一次。
+        /// 满级不挂；今天献过、辨不清时辰只留一句话；遗魂不够照挂，点了由服务层回 souls_insufficient（同治疤）。
+        /// </summary>
+        private static void AddSoulFeedRow(PetNestDetailData detail, PetNestPetRecord pet, PetNestNestPageContext ctx)
+        {
+            if (ctx.FeedSouls == null || PetNestProgressionService.IsAdult(pet)) return;
+            detail.InlineAfterSection = detail.Sections.Count - 1;
+            if (PetNestService.SoulFeedDayStamp() <= 0L)
+            {
+                detail.InlineCaption = PetNestLocalization.DescribeFailure("soul_feed_clock_missing");
+                return;
+            }
+            if (PetNestService.SoulFedToday(pet))
+            {
+                detail.InlineCaption = PetNestLocalization.DescribeFailure("soul_fed_today");
+                return;
+            }
+            string petId = pet.id;
+            int cost = PetNestService.SoulFeedCost(pet);
+            int souls = PetNestService.GetSouls(pet.lineageKey);
+            Action<string> feed = ctx.FeedSouls;
+            detail.InlineAction = new PetNestActionData
+            {
+                Label = L10n.T("献魂（" + cost + " 遗魂）", "Offer souls (" + cost + ")"),
+                OnClick = delegate { feed(petId); },
+            };
+            detail.InlineCaption = souls >= cost
+                ? L10n.T("这条血脉还有 " + souls + " 遗魂", "This bloodline holds " + souls + " souls")
+                : L10n.T("这条血脉只有 " + souls + " 遗魂，还不够", "This bloodline holds only " + souls + " souls; not enough");
+        }
+
+        /// <summary>献魂并记下结果（确认框确认后调）。成功时 <paramref name="level"/> 是献完后的等级。</summary>
+        internal static bool TryFeedSoulsAndNote(string petId, out int level)
+        {
+            level = 0;
+            PetNestPetRecord before = PetNestService.TryGetPet(petId);
+            int cost = before != null ? PetNestService.SoulFeedCost(before) : 0;
+            string failure;
+            bool ok = PetNestService.TryFeedSouls(petId, out failure);
+            PetNestPetRecord after = ok ? PetNestService.TryGetPet(petId) : null;
+            if (after != null) level = after.level;
+            NoteResult(ok, failure, L10n.T("献了 " + cost + " 遗魂，它长到 Lv" + level + " 了",
+                "Offered " + cost + " souls; it grew to Lv" + level));
+            return ok;
+        }
+
         private static PetNestDetailData BuildPetDetail(PetNestPetRecord pet, string deployedId, PetNestNestPageContext ctx)
         {
             PetNestDetailData detail = new PetNestDetailData();
@@ -233,6 +280,7 @@ namespace BossRush
                         + (PetNestTuning.PetLevelMaxHealthBonusPerLevel * 100f).ToString("0")
                         + L10n.T("%、伤害 +", "%, damage +") + (PetNestTuning.PetLevelDamageBonusPerLevel * 100f).ToString("0")
                         + L10n.T("%，还差 ", "%, ") + (PetNestTuning.PetExpPerLevel - pet.exp) + L10n.T(" 经验", " exp to go"))));
+            if (!onExpedition) AddSoulFeedRow(detail, pet, ctx);
             detail.Sections.Add(new KeyValuePair<string, string>(L10n.T("性格", "Temperament"), DescribePersonality(pet)));
             detail.Sections.Add(new KeyValuePair<string, string>(L10n.T("出身", "Endowments"), DescribeTalents(pet)));
             detail.Sections.Add(new KeyValuePair<string, string>(L10n.T("战痕", "Scars"), DescribeScars(pet)));

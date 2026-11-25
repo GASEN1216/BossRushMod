@@ -120,6 +120,7 @@ namespace BossRush
                 BossRushItemIds.TemperingSolvent,
                 BossRushItemIds.PassTheBomb,
                 BossRushItemIds.ResidualSunShield,
+                BossRushItemIds.SilenceBell,
                 500053, 500054, 500055, 500056,
 
                 FactionFlagConfig.RANDOM_FLAG_TYPE_ID,

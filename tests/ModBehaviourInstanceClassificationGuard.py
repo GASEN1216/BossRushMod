@@ -21,9 +21,9 @@ EXCLUDE_DIRS = {
     "鸭科夫源码",
 }
 
-EXPECTED_COUNTS = {'Audio': 9, 'Campaign': 12, 'SkyIsland': 3, 'Integration': 270, 'Interactables': 23, 'MapSelection': 3, 'ModeD': 1, 'ModeE': 26, 'ModeF': 6, 'ModeG': 4, 'ModeH': 1, 'Patches': 10, 'PetNest': 1, 'RandomEvents': 5, 'ZombieMode': 40}
+EXPECTED_COUNTS = {'Audio': 9, 'Campaign': 12, 'SkyIsland': 3, 'Integration': 270, 'Interactables': 22, 'MapSelection': 3, 'ModeD': 1, 'ModeE': 26, 'ModeF': 6, 'ModeG': 4, 'ModeH': 1, 'Patches': 10, 'PetNest': 1, 'RandomEvents': 5, 'WavesArena': 2, 'ZombieMode': 40}
 
-EXPECTED_TOTAL = 414
+EXPECTED_TOTAL = 415
 
 
 def fail(message: str) -> int:

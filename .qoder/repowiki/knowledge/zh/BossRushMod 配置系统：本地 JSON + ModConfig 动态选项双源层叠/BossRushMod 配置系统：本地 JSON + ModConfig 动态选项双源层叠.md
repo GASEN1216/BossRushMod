@@ -43,6 +43,7 @@ BossRushMod 采用**双源配置层叠**策略：
 2. `LoadConfigFromModConfig()` 中的键名与加载逻辑
 3. `SetupModConfig()` 中的 UI 注册（`AddInputWithSlider` / `AddBoolDropdownList`）
 4. `TryLoadSingleModConfigValue()` 与 `IsHandledModConfigOptionKey()` 的热更新分支
+5. 下拉项（`AddDropdownList` / `AddBoolDropdownList`）的标题经 `ModConfigOptionLocalization.Label(配置键, 中文, 英文)` 取（见 3.5）
 
 ### 3.2 双源层叠机制
 - **本地文件优先**：`LoadConfigFromFile()` 先尝试读取 `StreamingAssets/BossRushModConfig.txt`，若不存在则调用 `SaveConfigToFile()` 写出默认值。
@@ -56,6 +57,13 @@ BossRushMod 采用**双源配置层叠**策略：
 
 ### 3.4 配置键命名约定
 所有 ModConfig 键遵循 `<ModName>_<OptionName>` 形式，其中 `ModName = "BossRush"`，例如 `BossRush_waveIntervalSeconds`、`BossRush_EnableRandomBossLoot`、`BossRush_MutatorCount`。该约定贯穿 `LoadConfigFromModConfig`、`TryLoadSingleModConfigValue`、`IsHandledModConfigOptionKey` 三处。
+
+### 3.5 下拉项标题的本地化键（2026-11-24）
+ModConfig 的下拉项（布尔开关也走这条路）实例化的是官方 `OptionsUIEntry_Dropdown`。ModConfig 只在创建时把说明文字 `SetText` 一次；官方组件在 Awake、OnValidate 和每次切语言时，都把标题重设为 `("Options_" + 配置键).ToPlainText()`，键缺失时显示 `*Options_BossRush_xxx*`。
+- `Localization/ModConfigOptionLocalization.cs`：`Label` 返回当前语言的文字给 ModConfig，同时登记并注入 `Options_<配置键>`；`Inject()` 挂在 `InjectLocalization_Extra_Integration()`，宿主切语言时按新语言重注入；`ResetStaticCaches()` 随 `IntegrationRuntimeModule.OnDestroy` 清空。
+- ModConfig 自己的滑块条目（`OptionsUIEntry_Slider_Mod`）不查键，标题一直是说明文字，不需要注入。
+- 下拉选项文字在注册时按当时语言定稿，切语言后要重启才会跟着变；布尔项的 True / False 是 ModConfig 写死的。
+- `tests/ModConfigOptionLabelLocalizationGuard.py` 守卫：每个下拉项注册点的说明文字都必须经 `Label`。
 
 ## 4. 约定与约束
 

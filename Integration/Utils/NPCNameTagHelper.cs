@@ -11,6 +11,14 @@ using TMPro;
 
 namespace BossRush.Utils
 {
+    /// <summary>名牌选项（FriendlyNpcNameplates）读到的一位在场友好 NPC：头顶锚点、名字、名牌高度。</summary>
+    internal struct NpcNameplateTarget
+    {
+        public Transform Target;
+        public string Name;
+        public float Height;
+    }
+
     public static class NPCNameTagHelper
     {
         private const float DEFAULT_FONT_SIZE = 4f;
@@ -23,6 +31,8 @@ namespace BossRush.Utils
         {
             public Transform Target;
             public string DisplayName;
+            /// <summary>登记时给的名字高度（米）；供友好 NPC 名牌（走近显示）定位。</summary>
+            public float Height;
             public string LogPrefix;
             public DuckovDialogueActor Actor;
             public bool PendingNameUpdate;
@@ -61,6 +71,7 @@ namespace BossRush.Utils
             }
             entry.Target = parent;
             entry.DisplayName = displayName ?? string.Empty;
+            entry.Height = height > 0f ? height : 2.2f;
             entry.LogPrefix = logPrefix ?? "[NPCNameTagHelper]";
             RefreshOriginalHealthBarName(parent);
             return true;
@@ -89,6 +100,21 @@ namespace BossRush.Utils
             if (!OriginalHealthBarEntriesByTransformId.TryGetValue(parent.GetInstanceID(), out entry) || entry == null)
                 return;
             TryApplyOfficialDialogueName(entry);
+        }
+
+        /// <summary>
+        /// 友好 NPC 名牌（2026-11-24 玩家许愿第 6 项，2026-11-25 起恒为走近显示）读登记表：把仍在场的友好 NPC 抄进 <paramref name="into"/>。
+        /// 只读快照、不建任何东西；目标已销毁的跳过（注销仍由各 NPC 自己的销毁路径做）。
+        /// </summary>
+        internal static void CopyNameplateTargets(List<NpcNameplateTarget> into)
+        {
+            if (into == null) return;
+            into.Clear();
+            foreach (OriginalHealthBarEntry entry in OriginalHealthBarEntriesByTransformId.Values)
+            {
+                if (entry == null || entry.Target == null || string.IsNullOrEmpty(entry.DisplayName)) continue;
+                into.Add(new NpcNameplateTarget { Target = entry.Target, Name = entry.DisplayName, Height = entry.Height });
+            }
         }
 
         /// <summary>注销只释放本 helper 的登记；官方 actor 由原有对话 owner 管理。</summary>

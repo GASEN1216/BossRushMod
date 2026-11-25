@@ -13,8 +13,16 @@
 
 ### Writing a Wish
 
-- `20 ~ 10000` characters, with a 30-second cooldown.
+- At least `4` and at most `10000` characters, with a 30-second cooldown. Only letters, digits and Chinese characters count; punctuation and spaces don't.
 - The anonymous toggle is off by default.
+
+### Constellations
+
+- Under the panel title is a dome of twelve constellations, one per reward category: Spear (Arms), Bow (Guns), Axe (Melee), Mail (Armor), Canopy (Helms), Shrine (Totems), Weaver (Gifts), Healer (Heals), Banner (Flags), Wolf (Summon), Rampart (Forts) and Ship (Travel).
+- Light one and this draw leans toward that category, the same as writing one of its keywords in your wish. Click it again to put it out. Only one can be lit at a time.
+- Lighting none is fine too; the draw reads your words as before.
+- A constellation only steers the category. It doesn't change the tier odds or lift the play-time cap, and it isn't uploaded with your wish.
+- When the wish is sent, a shooting star flies from the lit constellation into the spring.
 
 ### Feedback After Submission
 
@@ -23,10 +31,12 @@
 - The panel pauses for a moment after success, then closes automatically.
 - The cooldown is currently a global `30 seconds`, not per individual fountain.
 
-### Background Danmaku
+### Lanterns
 
-- When you open the wish panel, wishes that have already been submitted scroll across the background from right to left like danmaku (scrolling comments). Only the wish text is shown, with no names, and each line is cut off with an ellipsis after 40 characters.
-- They drift only in the bands along the top and bottom of the screen, so the panel in the middle stays clear.
+- When you open the wish panel, other players' wishes are written on paper lanterns that rise slowly on both sides of the panel, swaying a little and fading out at the top. Only the wish text is shown, with no names; each lantern holds up to three lines (about 40 Latin characters or 21 Chinese characters) and longer wishes end with an ellipsis.
+- Up to 12 lanterns are shown at once, in three depth layers; far ones are smaller, fainter and slower.
+- Wishes are screened again before they go up: ones with contact info, banned words or almost a single repeated character are skipped, a phrase repeated three or more times in a row is cut down to two, and identical wishes appear only once.
+- The `Lanterns` switch in the top-right corner of the panel puts them out. While off, nothing is fetched or shown, and the choice is remembered.
 - The newest fetched results are used first; if the network is down for a moment, the game falls back to the local cache.
 
 ### Wish Reward
@@ -41,6 +51,7 @@
   - Mentioning certain item types or keywords makes related rewards more likely.
   - What you write mostly decides which kind of item you get. It only nudges quality a little and never goes past the play-time cap.
   - The current bias can lean toward weapons, melee gear, armor, helmets, totems, gifts, healing, faction flags, summon items, fortification items, and travel-related items.
+  - Lighting a constellation works the same as writing one of that category's keywords.
 - You can press `Esc` to skip the draw animation, and the reward will still be granted normally.
 
 ### Privacy
@@ -56,4 +67,4 @@
 - Links, contact info, and traffic-pulling text are rejected.
 - Profanity, abusive language, and ad-like content are rejected.
 
-[tip] If the submit button is disabled, first check whether you have at least 20 characters or whether the shared 30-second cooldown is still active. If your wish submits successfully but no reward appears, check whether the 4-hour reward cooldown is still active.
+[tip] If the submit button is disabled, first check whether you have written at least 4 characters (punctuation and spaces don't count) or whether the shared 30-second cooldown is still active. If your wish submits successfully but no reward appears, check whether the 4-hour reward cooldown is still active.

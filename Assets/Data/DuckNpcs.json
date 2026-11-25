@@ -1300,7 +1300,8 @@
           "unlockLevel": 5,
           "discountsByLevel": { "5": 0.10, "8": 0.15, "10": 0.20 },
           "items": [
-            { "typeId": 500107, "requiredLevel": 5, "maxStock": 1 }
+            { "typeId": 500107, "requiredLevel": 5, "maxStock": 1 },
+            { "typeId": 500220, "requiredLevel": 5, "maxStock": 1 }
           ]
         },
         "dailyChatAffinity": 30,

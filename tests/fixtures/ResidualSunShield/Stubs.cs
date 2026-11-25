@@ -228,6 +228,12 @@ namespace BossRush
         public static void DevLog(string value) { Logs.Add(value); }
     }
     internal static class BossRushUI { internal static bool Paused; internal static bool IsGamePaused() { return Paused; } }
+    // 止语钟罩排在残日盾片之后：替身只记下它收到的本击最终伤害，用来核对接力顺序。
+    internal static class SilenceBellRuntime
+    {
+        internal static readonly List<float> Seen = new List<float>();
+        internal static void ModifyFinalDamage(Health health, ref DamageInfo info) { Seen.Add(info.finalDamage); }
+    }
     internal static class NewWeaponEquipState
     {
         internal static bool Equipped;

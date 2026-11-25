@@ -45,6 +45,7 @@ namespace BossRush
                 ItemFactory.RegisterConfigurator(BossRushItemIds.ReloadMetronome, ConfigureReloadMetronome);
                 ItemFactory.RegisterConfigurator(BossRushItemIds.PassTheBomb, ConfigurePassTheBomb);
                 ItemFactory.RegisterConfigurator(BossRushItemIds.ResidualSunShield, item => ResidualSunShieldWeaponConfig.TryConfigure(item));
+                ItemFactory.RegisterConfigurator(BossRushItemIds.SilenceBell, ConfigureSilenceBell);
             }
             catch (Exception e)
             {
@@ -95,6 +96,11 @@ namespace BossRush
         private static void ConfigurePassTheBomb(Item itemPrefab)
         {
             PassTheBombWeaponConfig.TryConfigure(itemPrefab, PassTheBombConfig.BaseName);
+        }
+
+        private static void ConfigureSilenceBell(Item itemPrefab)
+        {
+            SilenceBellWeaponConfig.TryConfigure(itemPrefab, SilenceBellConfig.BaseName);
         }
     }
 }

@@ -141,6 +141,7 @@ Cubs grow by working with you, capping at level 10 ("Adult"), after which they s
   - Each kill by the cub, **or by you within 30 m of it**: **4**, plus **1 per 100 actual max health** of the victim (up to **16** total per kill), capped at **80** kill experience per run. Weak cubs no longer need the last hit to grow
   - Feeding: **+20** (once every 10 minutes per cub)
   - Surviving a Disaster Expedition, by tier: Safe **+15**, Rough **+30**, Desperate **+60**
+  - **Offering souls**: select a cub on the nest page and press "Offer souls" under its Growth section. It spends only souls of **the cub's own bloodline**, **2 souls per experience point**, and fills the cub straight to its next level (twice the missing experience in souls, at most 200 right after a level-up). **Each cub can take one offering per in-game day**; cubs at max level or away on an expedition can't. The button shows how many souls that bloodline has, and the confirmation shows the level change and the cost
 - **100 experience per level**, capped at level 10.
 - **Bloodline baseline** — 0.25 × the square root of the source boss character damage multiplier, bounded to 0.12-0.8 (sources 0.8 / 1.35 / 12 give about 0.22 / 0.29 / 0.80; older versions flattened every bloodline above 1.35 to 0.28). This is a character stat, not a share of final damage or DPS: weapons, fire rate and AI still matter. Custom bloodlines use their boss's base health and signature equipment.
 - **Combat growth** — each level above level 1 adds +6% max health and +8% to both gun and melee damage multipliers. At level 10, level bonuses total +54% max health and +72% to each damage multiplier, applied alongside endowments, temperament and scars.
@@ -157,7 +158,7 @@ Cubs grow by working with you, capping at level 10 ("Adult"), after which they s
 - **Sort** — the Sort button above the nest list cycles arrival order, level, bloodline and rarity. It only changes the display order.
 
 ### Tips
-- Souls condense eggs and treat scars. Bank **240** of one bloodline and you can target that boss's egg directly, so unlucky players can still complete the index; treating one scar costs 40.
+- Souls condense eggs, treat scars and feed growth. Bank **240** of one bloodline and you can target that boss's egg directly, so unlucky players can still complete the index; treating one scar costs 40; an offering lifts one cub one level per day.
   Releasing a cub refunds 60 souls, so four released cubs pay for a fresh egg.
 - When the nest is full, expand or release: unlocking more bloodlines raises the cap, releasing frees a place immediately and refunds some souls.
 - Eggs are easiest to track in the top level of your bag or storage. Eggs tucked inside crates and containers are now found too, but the outer level keeps the count obvious.

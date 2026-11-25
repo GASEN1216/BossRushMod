@@ -26,17 +26,20 @@ namespace BossRush
         /// modeTag 用于过滤只在特定模式生效的词条（如流血加速仅 ModeF）。
         /// </summary>
         /// <param name="modeTag">日志前缀兼模式过滤标签，例如 "BossRush" / "ModeD" / "ModeE" / "ModeF"</param>
-        internal static void TryRollMutatorsForMode(string modeTag, bool enabled, int requestedCount, int minimumCount, int maximumCount)
+        /// <param name="forcedIds">出征令战帖指定的词条：关掉随机词条时也照样上（那是玩家自己选的难度）。</param>
+        internal static void TryRollMutatorsForMode(string modeTag, bool enabled, int requestedCount, int minimumCount, int maximumCount,
+            System.Collections.Generic.IList<string> forcedIds = null)
         {
             try
             {
-                if (!enabled) return;
+                bool hasForced = forcedIds != null && forcedIds.Count > 0;
+                if (!enabled && !hasForced) return;
 
                 CharacterMainControl player = CharacterMainControl.Main;
                 if (player == null) return;
 
-                int count = Mathf.Clamp(requestedCount, minimumCount, maximumCount);
-                MutatorManager.RollAndApply(player, count, null, modeTag);
+                int count = enabled ? Mathf.Clamp(requestedCount, minimumCount, maximumCount) : 0;
+                MutatorManager.RollAndApply(player, count, null, modeTag, forcedIds);
                 MutatorUI.ShowBanner();
 
                 ModBehaviour.DevLog("[" + (string.IsNullOrEmpty(modeTag) ? "Mutator" : modeTag) +

@@ -196,6 +196,7 @@ namespace BossRush
         {
             waveGeneration++;
             milestoneDelivery = null;
+            EndExpeditionRun();
         }
 
         public override string ModuleName
@@ -213,6 +214,9 @@ namespace BossRush
         {
             waveGeneration++;
             ReleaseBossRandomLootTrackingOnDestroy();
+            EndExpeditionRun();
+            ArenaExpeditionState.ResetStaticCaches();
+            ArenaExpeditionOrderPanel.ResetStaticCaches();
             if (current == this) current = null;
             milestoneDelivery = null;
             owner = null;

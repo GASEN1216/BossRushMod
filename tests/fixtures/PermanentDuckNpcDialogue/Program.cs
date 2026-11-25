@@ -318,11 +318,14 @@ internal static class Program
                 shops++;
                 Check(config.ShopEnabled && config.ShopUnlockLevel == 5, "钟守旧物匣在好感 5 级解锁");
                 var keepsakes = config.GetShopItems();
-                Check(keepsakes.Count == 1 && keepsakes[0].TypeID == BossRushItemIds.ReloadMetronome
-                      && keepsakes[0].TypeID != BossRushItemIds.RollCallLedger,
-                      "钟守只提供节拍器，不能与点名册共用 TypeID");
-                Check(keepsakes[0].RequiredLevel == 5 && keepsakes[0].MaxStock == 1,
-                      "节拍器解锁等级和单件兑换保持一致");
+                // 2026-11-24：钟守的第二只匣子卖止语钟罩，与节拍器同为 5 级、各一件。
+                Check(keepsakes.Count == 2 && keepsakes[0].TypeID == BossRushItemIds.ReloadMetronome
+                      && keepsakes[0].TypeID != BossRushItemIds.RollCallLedger
+                      && keepsakes[1].TypeID == BossRushItemIds.SilenceBell,
+                      "钟守只提供节拍器与止语钟罩，不能与点名册共用 TypeID");
+                Check(keepsakes[0].RequiredLevel == 5 && keepsakes[0].MaxStock == 1
+                      && keepsakes[1].RequiredLevel == 5 && keepsakes[1].MaxStock == 1,
+                      "节拍器与止语钟罩解锁等级和单件兑换保持一致");
                 Check(config.GetDiscountForLevel(4) == 0f && config.GetDiscountForLevel(5) == 0.10f
                       && config.GetDiscountForLevel(9) == 0.15f && config.GetDiscountForLevel(10) == 0.20f,
                       "钟守的好感折扣按蓝图 5/8/10 级取档");
@@ -333,7 +336,7 @@ internal static class Program
                 Check(config.ShopName == "Bell Keeper's Keepsakes" && config.UnlocksByLevel[5][0] == "Bell Keeper's Keepsakes",
                       "钟守商店与解锁提示随语言切换");
                 keepsakes.Clear();
-                Check(config.GetShopItems().Count == 1, "钟守库存副本不能修改蓝图");
+                Check(config.GetShopItems().Count == 2, "钟守库存副本不能修改蓝图");
                 continue;
             }
             // 2026-11-05 潮闸镇闸伯：初见（好感 1 级）就卖防水袋（库存 2），4 级加鸭蹼脚掌（库存 1）；折扣照浮舟 3/6/10 级。

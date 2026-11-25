@@ -15,6 +15,19 @@
 - **Liked gift**: +80 / **Neutral gift**: +20 / **Disliked**: -40 (Yu Zhi -60 for Brick Stone)
 - **Diamond Ring or Crown**: +500 / **Birthday Cake**: +150
 
+### Gift Notes
+
+Every NPC in the affinity tab has a "Gift notes" section with a Likes line and a Dislikes line. Both start as "not figured out yet", and each gift that hits a preference adds it:
+
+- a specific item the NPC loves or hates is recorded as that item;
+- an item from a category the NPC likes (recipes, consumables, medicine and so on) is recorded as that category;
+- a collectible whose card says who likes it is recorded as that item when you give it to the right person;
+- neutral gifts record nothing.
+
+The first time you learn something, a small paper slip reading "Gift notes updated" sticks to the affinity popup. Entries you haven't found only show how many remain, never what they are. Gift notes are saved with affinity; older saves load with empty notes.
+
+Walk up to Dingdang, Yu Zhi, the courier or the residents of Sky Island and Tidegate and their name floats above their head: it fades in within 8 m and fades out beyond 10 m. Nothing shows from afar, and names hide with the game HUD or when paused.
+
 ### Decay
 
 Skip a day (no chat or gift) = **-15 Affinity** next day. Don't neglect your NPCs.

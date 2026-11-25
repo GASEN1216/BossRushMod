@@ -45,6 +45,8 @@ namespace BossRush
             // 2026-10-18 审查修复：属性满级、弹药回退与保底、手持枪优先（只取数，F3GameplayValidationReviewFixes.cs）
             yield return RunIsolatedCase("MODE_ZOMBIE_REWARD_FIXES", RunZombieRewardFixes);
             yield return VerifyArenaCleanup("CLEANUP_AFTER_ZOMBIE_REWARD_FIXES");
+            // 2026-11-24：尸潮防叠罗汉与寻路节流、出征令一局（烽烟圈、止语钟罩）、龙裔落点（F3GameplayValidationWishes.cs）
+            yield return RunWishArenaCases();
 #endif
 
             yield return RunIsolatedCase("STANDARD_VICTORY_REWARD", RunStandardVictoryReward);

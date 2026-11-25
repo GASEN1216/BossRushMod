@@ -12,6 +12,8 @@ namespace BossRush
 
             if (!owner.IsActive)
             {
+                // 出征令面板立誓时放下的选择；没走面板（旧交互点、Dev 验收）时为 null，按「标准 · 全征」开
+                ArenaExpeditionOrder expeditionOrder = ArenaExpeditionState.TakePending();
                 var availablePresets = owner.GetFilteredEnemyPresets();
                 if (availablePresets == null || availablePresets.Count == 0)
                 {
@@ -77,15 +79,19 @@ namespace BossRush
                 owner.SetBossRushRuntimeActiveForArena(true);
                 WavesArenaRuntimeModule.ResetMilestones(owner);
 
-                // 抽取并应用本局变异词条（必须在生成第一个敌人之前，敌人增益才能作用到首波）
-                owner.TryRollMutatorsForArena(InfiniteHellMode ? "InfiniteHell" : "BossRush");
+                // 抽取并应用本局变异词条（必须在生成第一个敌人之前，敌人增益才能作用到首波）；
+                // 出征令战帖指定的词条一起先上（不占随机条数，关掉随机词条也照样上）
+                owner.TryRollMutatorsForArena(InfiniteHellMode ? "InfiniteHell" : "BossRush", ExpeditionForcedMutators(expeditionOrder));
 
                 CurrentEnemyIndex = 0;
                 DefeatedEnemies = 0;
 
-                // 使用过滤后的 Boss 池计算总数，确保横幅显示正确的 Boss 数量
+                // 使用过滤后的 Boss 池计算总数，确保横幅显示正确的 Boss 数量；
+                // 出征令选了短征 / 长征时在这里定队列（洗牌与前 20 波保护之后），总数按队列计
                 var filteredPresetsForCount = owner.GetFilteredEnemyPresets();
-                TotalEnemies = (filteredPresetsForCount != null) ? filteredPresetsForCount.Count : 0;
+                BeginExpeditionRun(expeditionOrder, filteredPresetsForCount);
+                TotalEnemies = ArenaExpeditionState.Current != null ? ArenaExpeditionState.Current.Waves
+                    : (filteredPresetsForCount != null) ? filteredPresetsForCount.Count : 0;
 
                 BossesInCurrentWaveTotal = 0;
                 BossesInCurrentWaveRemaining = 0;

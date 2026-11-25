@@ -50,7 +50,7 @@ namespace BossRush
             Check(actual==enemy&&preset.Calls==1&&enemy.Team==Teams.wolf,"exact preset factory and neutral-team safety net");
             Check(owner.Runtime.CurrentBoss==enemy&&owner.Runtime.CurrentWaveBosses.Single()==enemy&&owner.Runtime.OwnedDaXingXing.Contains(enemy),"ordinary spawn records current, wave and owned identities");
             Check(Math.Abs(enemy.Health.CurrentHealth-110)<.001f&&Math.Abs(enemy.CharacterItem.GetStat("GunDamageMultiplier").BaseValue-110)<.001f&&Math.Abs(enemy.CharacterItem.GetStat("MeleeDamageMultiplier").BaseValue-110)<.001f,"infinite scaling preserves health and both damage stats");
-            Check(string.Join(",",Probe.Events)=="factory,team,multiplier,active,wake,mutator,loot,target,notice,coroutine,anchor","ordinary spawn preserves activation mutator loot aggro and recovery order");
+            Check(string.Join(",",Probe.Events)=="factory,team,multiplier,tier,active,wake,mutator,loot,target,notice,coroutine,anchor","ordinary spawn applies expedition tier after global multiplier and preserves activation mutator loot aggro and recovery order");
             Check(ai.noticed&&ai.forceTracePlayerDistance==500&&ai.searchedEnemy==CharacterMainControl.Main.mainDamageReceiver,"ordinary spawn restores full player aggro");
 
             foreach(var key in new[]{"descendant","king","witch"})
@@ -72,6 +72,7 @@ namespace BossRush
             bool active=true;var pending=owner.Runtime.SpawnEnemyAtPositionAsync(Info("late"),Vector3.zero,()=>active).AsTask();
             Check(!pending.IsCompleted&&preset.Calls==1,"official factory remains asynchronously awaited");
             active=false;owner.Runtime.OnDestroy();UnityEngine.Object.Destroy(owner.Host.gameObject);gate.SetResult(enemy);
+            Check(string.Join(",",Probe.Events.Where(e=>e.StartsWith("expedition")||e=="panel-reset"))=="expedition-end,expedition-reset,panel-reset","real OnDestroy ends the expedition run and resets its static state");
             Check(await pending==null&&enemy==null&&!Probe.Events.Contains("active"),"late factory result after real module teardown is destroyed before postprocessing");
             Check(await owner.Runtime.SpawnEnemyAtPositionAsync(Info("late"),Vector3.zero,()=>false)==null&&preset.Calls==1,"inactive request returns before factory work");
 

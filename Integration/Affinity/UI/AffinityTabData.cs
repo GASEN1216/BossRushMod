@@ -9,6 +9,7 @@
 
 using System;
 using System.Collections.Generic;
+using ItemStatsSystem;
 
 namespace BossRush
 {
@@ -41,6 +42,15 @@ namespace BossRush
         /// <summary>折扣是治疗折扣（羽织不开商店，DiscountsByLevel 用在治疗上）。</summary>
         public bool DiscountIsHealing;
         public readonly List<AffinityTabUnlock> Unlocks = new List<AffinityTabUnlock>();
+        /// <summary>
+        /// 心意簿（2026-11-24 玩家许愿第 6 项）：送礼摸清的喜欢 / 不喜欢（显示名），与还没摸清的条数。
+        /// 这位 NPC 没有任何礼物偏好配置时 HasGiftJournal 为 false，详情里不画这一节。
+        /// </summary>
+        public bool HasGiftJournal;
+        public readonly List<string> KnownLikes = new List<string>();
+        public readonly List<string> KnownDislikes = new List<string>();
+        public int UnknownLikes;
+        public int UnknownDislikes;
 
         public bool IsMaxLevel { get { return Level >= MaxLevel; } }
     }
@@ -136,6 +146,7 @@ namespace BossRush
                     unlock.Reached = entry.Level >= levels[i];
                     entry.Unlocks.Add(unlock);
                 }
+                FillGiftJournal(entry, npcId, config as INPCGiftConfig);
                 return entry;
             }
             catch (Exception e)
@@ -143,6 +154,86 @@ namespace BossRush
                 ModBehaviour.DevLog("[AffinityTab] [WARNING] 组装 " + npcId + " 失败: " + e.Message);
                 return null;
             }
+        }
+
+        /// <summary>
+        /// 心意簿：按这位 NPC 当前的礼物配置列出全部心意规则（与 NPCGiftSystem.ResolveGiftPreference 同一判定顺序：
+        /// 厌恶物品优先，其次喜欢物品、收集品 LikedBy、喜欢的标签），再对照心意簿里已摸清的令牌。
+        /// 配置里已经没有的旧令牌不显示，也不算进「已摸清」。
+        /// </summary>
+        private static void FillGiftJournal(AffinityTabEntry entry, string npcId, INPCGiftConfig gift)
+        {
+            if (gift == null) return;
+            List<string> dislikes = new List<string>();
+            List<string> likes = new List<string>();
+            Dictionary<int, int> negative = gift.NegativeItems;
+            Dictionary<int, int> positive = gift.PositiveItems;
+            if (negative != null)
+            {
+                foreach (int typeId in negative.Keys) dislikes.Add(AffinityManager.GiftItemToken(typeId));
+            }
+            if (positive != null)
+            {
+                foreach (int typeId in positive.Keys)
+                {
+                    if (negative == null || !negative.ContainsKey(typeId)) likes.Add(AffinityManager.GiftItemToken(typeId));
+                }
+            }
+            for (int i = 0; i < CollectibleCatalog.Count; i++)
+            {
+                CollectibleDefinition def = CollectibleCatalog.At(i);
+                if (def == null || Array.IndexOf(def.LikedBy, npcId) < 0) continue;
+                if ((negative != null && negative.ContainsKey(def.TypeId)) || (positive != null && positive.ContainsKey(def.TypeId))) continue;
+                likes.Add(AffinityManager.GiftItemToken(def.TypeId));
+            }
+            if (gift.PositiveTags != null)
+            {
+                foreach (string tag in gift.PositiveTags)
+                {
+                    if (!string.IsNullOrEmpty(tag)) likes.Add(AffinityManager.GiftTagToken(tag));
+                }
+            }
+            entry.HasGiftJournal = likes.Count + dislikes.Count > 0;
+            entry.UnknownLikes = FillJournalSide(entry.KnownLikes, likes, AffinityManager.GetKnownGiftPreferences(npcId, true));
+            entry.UnknownDislikes = FillJournalSide(entry.KnownDislikes, dislikes, AffinityManager.GetKnownGiftPreferences(npcId, false));
+        }
+
+        /// <summary>把仍在配置里的已摸清令牌换成显示名放进 names，返回还没摸清的条数。</summary>
+        private static int FillJournalSide(List<string> names, List<string> configured, List<string> known)
+        {
+            int found = 0;
+            for (int i = 0; i < known.Count; i++)
+            {
+                if (!configured.Contains(known[i])) continue;
+                names.Add(DescribeGiftToken(known[i]));
+                found++;
+            }
+            return configured.Count - found;
+        }
+
+        /// <summary>item:&lt;TypeID&gt; → 物品名；tag:&lt;标签名&gt; → 「配方类」。在取用时解析，跟着当前语言走。</summary>
+        private static string DescribeGiftToken(string token)
+        {
+            if (token.StartsWith(AffinityManager.GiftTagTokenPrefix, StringComparison.Ordinal))
+            {
+                string tag = token.Substring(AffinityManager.GiftTagTokenPrefix.Length);
+                string key = "Tag_" + tag;
+                string text = LocalizationHelper.GetLocalizedText(key);
+                if (string.IsNullOrEmpty(text) || text == key || (text.StartsWith("*") && text.EndsWith("*"))) text = tag;
+                return L10n.T(text + "类", "any " + text);
+            }
+            int typeId;
+            if (!int.TryParse(token.Substring(AffinityManager.GiftItemTokenPrefix.Length), out typeId)) return token;
+            try
+            {
+                string name = ItemAssetsCollection.GetMetaData(typeId).DisplayName;
+                if (!string.IsNullOrEmpty(name)) return name;
+            }
+            catch (Exception)
+            {
+                // 元数据读不到（物品被移除）时退回编号
+            }
+            return "#" + typeId;
         }
 
         private static void AddUnlockText(Dictionary<int, List<string>> byLevel, int level, string text)

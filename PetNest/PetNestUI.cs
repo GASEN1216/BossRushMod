@@ -571,6 +571,7 @@ namespace BossRush
                     context.SortMode = _sortMode;
                     context.CycleSort = CycleSort;
                     context.ShowResults = ShowExpeditionResults;
+                    context.FeedSouls = RequestSoulFeed;
                     return PetNestUIPages.BuildNestPage(context);
             }
         }

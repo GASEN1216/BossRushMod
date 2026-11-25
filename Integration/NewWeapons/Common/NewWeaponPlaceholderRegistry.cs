@@ -51,6 +51,7 @@ namespace BossRush
             EnsureRegistered(BossRushItemIds.ReloadMetronome);
             EnsureRegistered(BossRushItemIds.PassTheBomb);
             EnsureRegistered(BossRushItemIds.ResidualSunShield);
+            EnsureRegistered(BossRushItemIds.SilenceBell);
         }
 
         // 保留原公开入口；批量注册随当前 prefab 状态运行，克隆由集成运行时清理。
@@ -160,6 +161,12 @@ namespace BossRush
                     tag: "Totem");
             }
 
+            if (typeId == BossRushItemIds.SilenceBell)
+            {
+                return EnsureWeaponRegistered(BossRushItemIds.SilenceBell, "SilenceBell_Placeholder",
+                    "BossRush_SilenceBell", SilenceBellConfig.BaseName, isMelee: false, tag: "Totem");
+            }
+
             return false;
         }
 
@@ -255,6 +262,8 @@ namespace BossRush
                     return ResidualSunShieldWeaponConfig.TryConfigure(clone, baseName);
                 if (typeId == BossRushItemIds.PassTheBomb)
                     return PassTheBombWeaponConfig.TryConfigure(clone, baseName);
+                if (typeId == BossRushItemIds.SilenceBell)
+                    return SilenceBellWeaponConfig.TryConfigure(clone, baseName);
             }
             catch (Exception e)
             {

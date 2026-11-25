@@ -180,7 +180,8 @@ namespace BossRush
               .Str("backpackJson", pet.backpackJson)
               .Int("behaviour", pet.behaviour)
               .Long("lastFeedUtcTicks", pet.lastFeedUtcTicks)
-              .Bool("favorite", pet.favorite);
+              .Bool("favorite", pet.favorite)
+              .Long("lastSoulFeedDay", pet.lastSoulFeedDay);
 
             sb.BeginArray("talents");
             if (pet.talents != null)
@@ -300,6 +301,8 @@ namespace BossRush
             pet.lastFeedUtcTicks = node.GetLong("lastFeedUtcTicks", 0L);
             // SCHEMA+（2026-10-17）：旧档没有收藏字段，缺省为未收藏
             pet.favorite = node.GetBool("favorite", false);
+            // SCHEMA+（2026-11-24）：旧档没有献魂日戳，缺省为「从没献过」
+            pet.lastSoulFeedDay = node.GetLong("lastSoulFeedDay", 0L);
 
             pet.talents = new List<PetNestTalentEntry>();
             List<BossRushJsonValue> talentNodes = node.GetArray("talents");

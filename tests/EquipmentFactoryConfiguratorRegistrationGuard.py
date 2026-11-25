@@ -25,6 +25,7 @@ CONFIGS = (
     ("Integration/NewWeapons/ReloadMetronome/ReloadMetronomeWeaponConfig.cs", "ReloadMetronomeWeaponConfig", "RegisterConfigurator"),
     ("Integration/NewWeapons/PassTheBomb/PassTheBombWeaponConfig.cs", "PassTheBombWeaponConfig", "RegisterConfigurator"),
     ("Integration/EclipseBloom/ResidualSunShieldWeaponConfig.cs", "ResidualSunShieldWeaponConfig", "RegisterConfigurator"),
+    ("Integration/NewWeapons/SilenceBell/SilenceBellWeaponConfig.cs", "SilenceBellWeaponConfig", "RegisterConfigurator"),
     ("Integration/PhantomWitch/PhantomWitchScytheWeaponConfig.cs", "PhantomWitchScytheWeaponConfig", "RegisterConfigurator"),
 )
 

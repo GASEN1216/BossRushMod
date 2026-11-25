@@ -137,8 +137,8 @@ namespace BossRush
             if (inputFocusHintText != null)
             {
                 inputFocusHintText.text = L10n.T(
-                    "请不要输入无效/垃圾内容哦~",
-                    "Please don't enter invalid or spam content~");
+                    "心愿会写上星灯，给后来的人看",
+                    "Your wish rises as a lantern");
                 inputFocusHintText.color = BossRushUIColors.TextSecondary;   // 常驻提醒用次色（2026-09-24 A-10）
             }
         }
@@ -249,6 +249,7 @@ namespace BossRush
             }
 
             IntegrationUIFeedback.PlaySound(IntegrationUIFeedback.SoundConfirm);
+            PlayConstellationMeteor();   // 流星从点亮的一宿划进星泉（WishFountainUI_Constellations.cs）
             if (statusText != null)
             {
                 BossRushUIEntranceAnimation.Play(statusText.gameObject, 0f, 0.25f, 0f);

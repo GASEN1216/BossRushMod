@@ -65,6 +65,10 @@ namespace BossRush
         public string DescEn;          // 英文描述
         public MutatorCategory Category;
         public Func<string, bool> IsAllowedForMode; // null = 全模式可抽
+        /// <summary>抽取权重（默认 1）：越低越少见。2026-11-24 玩家许愿「群鼠战术太烦」后加。</summary>
+        public float Weight = 1f;
+        /// <summary>互斥组（null = 不互斥）：同组词条一局最多出一个，例如巨灵兵和群鼠战术不会同局叠体型。</summary>
+        public string ExclusiveGroup;
         public Action<MutatorContext> OnApply;   // 应用回调
         public Action<MutatorContext> OnRemove;  // 清理回调
 
@@ -201,6 +205,7 @@ namespace BossRush
                 DescCn = "敌人体型变大，血量 +40%",
                 DescEn = "Enemies grow huge, HP +40%",
                 Category = MutatorCategory.EnemyBuff,
+                ExclusiveGroup = "enemy_size",
                 OnApply = ctx =>
                 {
                     ctx.EnemySpawnCallbacks.Add(enemy =>
@@ -233,16 +238,20 @@ namespace BossRush
                 Id = "enemy_swarm",
                 NameCn = "群鼠战术",
                 NameEn = "Ratswarm",
-                DescCn = "敌人体型缩小，移动速度 +45%",
-                DescEn = "Enemies shrink, move speed +45%",
+                DescCn = "敌人体型缩小，移动速度 +30%",
+                DescEn = "Enemies shrink, move speed +30%",
                 Category = MutatorCategory.EnemyBuff,
+                // 2026-11-24 玩家许愿：缩到 0.6 倍又快 45% 的 Boss 很难瞄、出现得又勤。
+                // 轻削到 0.75 倍、+30%，出现概率减半，并与巨灵兵互斥。
+                Weight = 0.5f,
+                ExclusiveGroup = "enemy_size",
                 OnApply = ctx =>
                 {
                     ctx.EnemySpawnCallbacks.Add(enemy =>
                     {
                         if (enemy.transform != null)
                         {
-                            enemy.transform.localScale = enemy.transform.localScale * 0.6f;
+                            enemy.transform.localScale = enemy.transform.localScale * 0.75f;
                         }
 
                         Item enemyItem = enemy.CharacterItem;
@@ -251,13 +260,13 @@ namespace BossRush
                         Stat run = enemyItem.GetStat("RunSpeed");
                         if (walk != null)
                         {
-                            var mod = new Modifier(ModifierType.PercentageAdd, 0.45f, MutatorSource);
+                            var mod = new Modifier(ModifierType.PercentageAdd, 0.30f, MutatorSource);
                             walk.AddModifier(mod);
                             ctx.EnemyAppliedModifiers.Add((walk, mod));
                         }
                         if (run != null)
                         {
-                            var mod = new Modifier(ModifierType.PercentageAdd, 0.45f, MutatorSource);
+                            var mod = new Modifier(ModifierType.PercentageAdd, 0.30f, MutatorSource);
                             run.AddModifier(mod);
                             ctx.EnemyAppliedModifiers.Add((run, mod));
                         }
@@ -620,6 +629,8 @@ namespace BossRush
                 DescCn = "治疗效果 +50%",
                 DescEn = "Healing +50%",
                 Category = MutatorCategory.PlayerBoon,
+                // 回复类一局只出一条（2026-11-25）：免得随机抽到的与出征令战帖指定的叠成 -70% 或两份击杀回血
+                ExclusiveGroup = "healing",
                 OnApply = ctx =>
                 {
                     Item playerItem = ctx.Player.CharacterItem;
@@ -691,6 +702,8 @@ namespace BossRush
                 DescCn = "治疗效果 -40%",
                 DescEn = "Healing -40%",
                 Category = MutatorCategory.EnvironmentRule,
+                // 回复类一局只出一条（2026-11-25）：免得随机抽到的与出征令战帖指定的叠成 -70% 或两份击杀回血
+                ExclusiveGroup = "healing",
                 OnApply = ctx =>
                 {
                     // 注意：用 player.CharacterItem 属性，不是 GetComponent<Item>()
@@ -812,6 +825,8 @@ namespace BossRush
                 DescCn = "击杀敌人回复 8% 最大生命",
                 DescEn = "Killing an enemy heals 8% max HP",
                 Category = MutatorCategory.EnvironmentRule,
+                // 回复类一局只出一条（2026-11-25）：免得随机抽到的与出征令战帖指定的叠成 -70% 或两份击杀回血
+                ExclusiveGroup = "healing",
                 OnApply = ctx =>
                 {
                     // 注册到死亡回调，由 MutatorManager 统一订阅 Health.OnDead（玩家击杀才触发）
@@ -835,6 +850,8 @@ namespace BossRush
                 DescCn = "玩家直接击杀回复 16% 最大生命，但治疗效果 -30%",
                 DescEn = "Direct player kills heal 16% max HP, but healing -30%",
                 Category = MutatorCategory.EnvironmentRule,
+                // 回复类一局只出一条（2026-11-25）：免得随机抽到的与出征令战帖指定的叠成 -70% 或两份击杀回血
+                ExclusiveGroup = "healing",
                 OnApply = ctx =>
                 {
                     Item playerItem = ctx.Player.CharacterItem;

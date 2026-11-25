@@ -1023,7 +1023,8 @@ namespace BossRush
             ShowWishRewardResultBubble(rewardDisplayName);
         }
 
-        internal static void TryStartWishRewardAnimationAfterSuccessfulSend(string wishText)
+        /// <param name="chosenCategoryId">星宿穹顶上点亮的一宿（没选为 null），按写中该类别的关键词处理。</param>
+        internal static void TryStartWishRewardAnimationAfterSuccessfulSend(string wishText, string chosenCategoryId = null)
         {
             if (!IsWishRewardReady())
             {
@@ -1031,7 +1032,9 @@ namespace BossRush
                 return;
             }
 
+            EnsureWishRewardPoolInitialized();   // 关键词要对照类别表与自定义物品表：先确保奖池已建（幂等）
             WishRewardMatchResult match = MatchWishRewardKeywords(wishText);
+            AddChosenWishCategory(match, chosenCategoryId);
             string rewardDisplayName;
             WishRewardPoolSelection selection;
             int rewardTypeId = RollWishRewardTypeIdCore(wishText, match, out rewardDisplayName, out selection);

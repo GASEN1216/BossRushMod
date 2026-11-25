@@ -50,6 +50,8 @@ namespace BossRush
         public string customName = null;
         // 是否为无间炼狱模式入口
         public bool isInfiniteHell = false;
+        // 竞技场路牌上的「出征令」：交互完成先开出征令面板，立誓后才开波（2026-11-24）
+        public bool opensExpeditionOrder = false;
 
         protected override void Awake()
         {
@@ -142,6 +144,8 @@ namespace BossRush
                     return "BossRush_Hard";
                 case "无间炼狱":
                     return "BossRush_InfiniteHell";
+                case "出征令":
+                    return "BossRush_ExpeditionOrder";
                 default:
                     return cnName;
             }
@@ -176,6 +180,93 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 出征令立誓后由面板回调：按所选阵容配置并开第一波，与旧难度选项走同一条开波与路牌收尾路径。
+        /// 面板开着的这段时间里场景、Boss Rush 状态或 Mode G 门控变了就不开。
+        /// </summary>
+        internal void BeginFromExpeditionOrder(ArenaExpeditionOrder order)
+        {
+            BossRush.ModBehaviour host = BossRush.ModBehaviour.Instance;
+            if (host == null || order == null) return;
+            if (!host.IsCurrentSceneValidBossRushArena() || host.IsActive || IsModeGEntryBlockedSafe()) return;
+            int perWave = order.Lineup == ArenaExpeditionLineup.Triple ? ArenaExpeditionTuning.TripleBossesPerWave : 1;
+            if (order.IsHell)
+            {
+                perWave = host.GetInfiniteHellBossesPerWaveFromConfig();
+                if (perWave < 1) perWave = 1;
+            }
+            ArenaExpeditionState.SetPending(order);
+            StartInArena(host, perWave, order.IsHell);
+        }
+
+        /// <summary>竞技场内开第一波，并把同一菜单下的难度 / 出征令选项收起、路牌切到加油状态。</summary>
+        private void StartInArena(BossRush.ModBehaviour host, int perWave, bool infiniteHell)
+        {
+            host.ConfigureBossRushMode(perWave, infiniteHell);
+            host.StartFirstWave();
+            if (!host.IsActive) return;
+
+            // 交互后隐藏同一菜单下的所有难度选项（包括自己和另一个），防止玩家重复选择
+            try
+            {
+                Transform parent = transform.parent;
+                if (parent != null)
+                {
+                    var siblings = parent.GetComponentsInChildren<BossRushInteractable>(true);
+                    if (siblings != null)
+                    {
+                        foreach (var sibling in siblings)
+                        {
+                            if (sibling != null && sibling.gameObject != null)
+                            {
+                                sibling.gameObject.SetActive(false);
+                            }
+                        }
+                        if (parent.gameObject != null)
+                        {
+                            // 地面难度入口容器仍然在选完难度后整体销毁
+                            if (parent.gameObject.name == "BossRush_DifficultyEntry")
+                            {
+                                UnityEngine.Object.Destroy(parent.gameObject);
+                            }
+                            // 路牌本体不再销毁，只移除其中的难度/生小鸡选项，给“下一波”选项腾位置
+                            else if (parent.gameObject.name == "BossRush_Roadsign")
+                            {
+                                var sign = parent.GetComponent<BossRushSignInteractable>();
+                                if (sign != null)
+                                {
+                                    sign.RemoveDifficultyOptions();
+
+                                    // 普通难度：切换到加油模式，并添加加油站选项
+                                    if (!infiniteHell)
+                                    {
+                                        sign.SetCheerMode();
+                                        sign.AddAmmoRefillOption(); // 弹指可灭/有点意思也添加加油站
+                                    }
+                                    else
+                                    {
+                                        // 无间炼狱：主交互改为显示现金池累计
+                                        sign.SetCheerMode(); // 保持状态逻辑为 Cheer
+                                        sign.UpdateInfiniteHellCashDisplay(0L);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // 没有父节点时至少隐藏自身
+                    gameObject.SetActive(false);
+                }
+            }
+            catch
+            {
+                // 兜底：如果出现异常，至少隐藏自身
+                gameObject.SetActive(false);
+            }
+        }
+
         protected override void OnTimeOut()
         {
             base.OnTimeOut();
@@ -187,70 +278,14 @@ namespace BossRush
                 // 如果已经在有效的 BossRush 竞技场场景内（DEMO竞技场或零号区等），直接开始第一波
                 if (host.IsCurrentSceneValidBossRushArena())
                 {
+                    // 竞技场路牌上的「出征令」：先开面板，立誓后由面板回调 BeginFromExpeditionOrder 开波
+                    if (opensExpeditionOrder)
+                    {
+                        ArenaExpeditionOrderPanel.Open(this);
+                        return;
+                    }
                     // 通过交互点配置当前模式（默认1，只在使用自定义难度时生效）
-                    host.ConfigureBossRushMode(bossesPerWave, isInfiniteHell);
-                    host.StartFirstWave();
-                    if (!host.IsActive) return;
-
-                    // 交互后隐藏同一菜单下的所有难度选项（包括自己和另一个），防止玩家重复选择
-                    try
-                    {
-                        Transform parent = transform.parent;
-                        if (parent != null)
-                        {
-                            var siblings = parent.GetComponentsInChildren<BossRushInteractable>(true);
-                            if (siblings != null)
-                            {
-                                foreach (var sibling in siblings)
-                                {
-                                    if (sibling != null && sibling.gameObject != null)
-                                    {
-                                        sibling.gameObject.SetActive(false);
-                                    }
-                                }
-                                if (parent.gameObject != null)
-                                {
-                                    // 地面难度入口容器仍然在选完难度后整体销毁
-                                    if (parent.gameObject.name == "BossRush_DifficultyEntry")
-                                    {
-                                        UnityEngine.Object.Destroy(parent.gameObject);
-                                    }
-                                    // 路牌本体不再销毁，只移除其中的难度/生小鸡选项，给“下一波”选项腾位置
-                                    else if (parent.gameObject.name == "BossRush_Roadsign")
-                                    {
-                                        var sign = parent.GetComponent<BossRushSignInteractable>();
-                                        if (sign != null)
-                                        {
-                                            sign.RemoveDifficultyOptions();
-
-                                            // 普通难度：切换到加油模式，并添加加油站选项
-                                            if (!isInfiniteHell)
-                                            {
-                                                sign.SetCheerMode();
-                                                sign.AddAmmoRefillOption(); // 弹指可灭/有点意思也添加加油站
-                                            }
-                                            else
-                                            {
-                                                // 无间炼狱：主交互改为显示现金池累计
-                                                sign.SetCheerMode(); // 保持状态逻辑为 Cheer
-                                                sign.UpdateInfiniteHellCashDisplay(0L);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        else
-                        {
-                            // 没有父节点时至少隐藏自身
-                            gameObject.SetActive(false);
-                        }
-                    }
-                    catch
-                    {
-                        // 兜底：如果出现异常，至少隐藏自身
-                        gameObject.SetActive(false);
-                    }
+                    StartInArena(host, bossesPerWave, isInfiniteHell);
                 }
                 else
                 {
@@ -713,47 +748,19 @@ namespace BossRush
 
                 // 主选项 "哎哟~你干嘛~" 由 OnTimeOut 处理（生小鸡），这里只添加难度子选项
 
-                // 1. 弹指可灭（每波 1 个Boss）
-                GameObject easyObj = new GameObject("BossRushOption_Easy");
-                easyObj.transform.SetParent(transform);
-                easyObj.transform.localPosition = Vector3.zero;
-                var easyInteract = easyObj.AddComponent<BossRushInteractable>();
-                easyInteract.useCustomName = true;
-                easyInteract.customName = "弹指可灭";
-                easyInteract.bossesPerWave = 1;
-                list.Add(easyInteract);
-                groupOptions.Add(easyInteract);
+                // 出征令（2026-11-24）：原来的弹指可灭 / 有点意思 / 无间炼狱三个子选项收进出征令面板的「阵容」一栏，
+                // 路牌上只留这一个入口；交互完成打开面板，立誓后按所选阵容、战帖、征程开波。
+                GameObject orderObj = new GameObject("BossRushOption_ExpeditionOrder");
+                orderObj.transform.SetParent(transform);
+                orderObj.transform.localPosition = Vector3.zero;
+                var orderInteract = orderObj.AddComponent<BossRushInteractable>();
+                orderInteract.useCustomName = true;
+                orderInteract.customName = "出征令";
+                orderInteract.opensExpeditionOrder = true;
+                list.Add(orderInteract);
+                groupOptions.Add(orderInteract);
 
-                // 2. 有点意思（每波 3 个Boss）
-                GameObject hardObj = new GameObject("BossRushOption_Hard");
-                hardObj.transform.SetParent(transform);
-                hardObj.transform.localPosition = Vector3.zero;
-                var hardInteract = hardObj.AddComponent<BossRushInteractable>();
-                hardInteract.useCustomName = true;
-                hardInteract.customName = "有点意思";
-                hardInteract.bossesPerWave = 3;
-                list.Add(hardInteract);
-                groupOptions.Add(hardInteract);
-
-                // 3. 无间炼狱（每波使用配置中的Boss数量）
-                GameObject hellObj = new GameObject("BossRushOption_InfiniteHell");
-                hellObj.transform.SetParent(transform);
-                hellObj.transform.localPosition = Vector3.zero;
-                var hellInteract = hellObj.AddComponent<BossRushInteractable>();
-                hellInteract.useCustomName = true;
-                hellInteract.customName = "无间炼狱";
-                hellInteract.isInfiniteHell = true;
-                int hellBosses = 3;
-                if (BossRush.ModBehaviour.Instance != null)
-                {
-                    hellBosses = BossRush.ModBehaviour.Instance.GetInfiniteHellBossesPerWaveFromConfig();
-                }
-                if (hellBosses < 1) hellBosses = 1;
-                hellInteract.bossesPerWave = hellBosses;
-                list.Add(hellInteract);
-                groupOptions.Add(hellInteract);
-
-                ModBehaviour.DevLog("[BossRush] BossRushSignInteractable: 已注入 3 个难度子选项（含无间炼狱）");
+                ModBehaviour.DevLog("[BossRush] BossRushSignInteractable: 已注入出征令选项");
 
                 // 路牌晚于白手起家启动才 Start 时，上面刚注入的难度选项会盖掉 Mode D 的布置，
                 // 玩家就会在白手起家里看到「选难度」。此时按 Mode D 重新布置一次（幂等）。

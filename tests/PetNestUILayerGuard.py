@@ -135,7 +135,9 @@ def check_pages(errors):
             # 2026-10-18（CR-2026-10-18-021）：动效与博物馆详情是同一 partial 的画法文件，同样只在既有 surface 里摆东西
             ("PetNestUIMotion.cs", ["CreateCanvasRoot", "sortingOrder", "AddComponent<Canvas>", "BossRushUILayers."]),
             ("PetNestUIMotionParts.cs", ["CreateCanvasRoot", "sortingOrder", "AddComponent<Canvas>", "BossRushUILayers."]),
-            ("PetNestUIMuseumDetail.cs", ["CreateCanvasRoot", "sortingOrder", "AddComponent<Canvas>", "BossRushUILayers."])):
+            ("PetNestUIMuseumDetail.cs", ["CreateCanvasRoot", "sortingOrder", "AddComponent<Canvas>", "BossRushUILayers."]),
+            # 2026-11-24：献魂的确认、内嵌行与魂火演出也是同一 partial 的画法文件，演出挂在立绘框下
+            ("PetNestUISoulFeed.cs", ["CreateCanvasRoot", "sortingOrder", "AddComponent<Canvas>", "BossRushUILayers.", "new GameObject("])):
         other = read_petnest(name)
         if other is None:
             errors.append("[File] 缺少 PetNest/" + name)

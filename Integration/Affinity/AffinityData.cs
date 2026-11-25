@@ -24,6 +24,10 @@ namespace BossRush
         public int lastDecayCheckDay = -1;
         // NPC 商店库存（NPCShopStockLedger 编码）；旧档没有这个字段，按满库存处理。
         public string shopStockTokens = "";
+        // 心意簿（2026-11-24 玩家许愿第 6 项）：送礼时摸清的喜好，逗号分隔的 item:<TypeID> / tag:<标签名>。
+        // 旧档没有这两个字段，按「什么都还没摸清」处理。
+        public string knownLikes = "";
+        public string knownDislikes = "";
 
         public AffinityData()
         {
@@ -55,7 +59,9 @@ namespace BossRush
                 cheatingIncidentCount = this.cheatingIncidentCount,
                 hasPendingCheatingRebuke = this.hasPendingCheatingRebuke,
                 lastDecayCheckDay = this.lastDecayCheckDay,
-                shopStockTokens = this.shopStockTokens
+                shopStockTokens = this.shopStockTokens,
+                knownLikes = this.knownLikes,
+                knownDislikes = this.knownDislikes
             };
         }
     }

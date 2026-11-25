@@ -44,7 +44,7 @@ def main() -> int:
     if "return ResolveDescendantSpawnNear(ground);" not in spawn_point or "preFlyPosition" not in spawn_point:
         return fail("fallback must resolve around the pre-flight ground position")
 
-    resolver = method_body(child, "private Vector3 ResolveDescendantSpawnNear(Vector3 ground)")
+    resolver = method_body(child, "internal static Vector3 ResolveDescendantSpawnNear(Vector3 ground)")
     if not resolver:
         return fail("ResolveDescendantSpawnNear missing")
     for token in (

@@ -56,6 +56,19 @@ namespace BossRush
         /// 同一只 NPC 接下来的事件直接命中。只在好感事件时用，不在每帧路径上；Cleanup 时清空。
         /// </summary>
         private static MonoBehaviour _interactionController;
+
+        /// <summary>
+        /// 心意簿（2026-11-24）：送礼第一次摸清一条喜好时，NPCGiftSystem 在 AddPoints 前后登记 / 清掉这位 NPC，
+        /// 这一次好感浮字下面多挂一枚纸笺「心意簿添了一笔」并多停一会儿。只在这一次同步调用里有效。
+        /// </summary>
+        private static string _journalNoteNpcId;
+        private const float JOURNAL_NOTE_HOLD = 0.9f;
+        private const float JOURNAL_NOTE_FONT_SIZE = 14f;
+
+        internal static void NoteGiftJournalEntry(string npcId)
+        {
+            _journalNoteNpcId = npcId;
+        }
         
         /// <summary>
         /// 显示好感度变化动画
@@ -84,9 +97,15 @@ namespace BossRush
                 }
 
                 GameObject popup = BuildFloat(canvas.transform, npcId, delta);
+                bool journal = _journalNoteNpcId != null && string.Equals(_journalNoteNpcId, npcId, StringComparison.Ordinal);
+                if (journal)
+                {
+                    _journalNoteNpcId = null;
+                    AddJournalNote(popup.transform);
+                }
                 AffinityFloatText floatText = popup.AddComponent<AffinityFloatText>();
                 floatText.Begin(canvas.transform as RectTransform, anchor, FLOAT_ANCHOR_HEIGHT,
-                    FloatScreenOffset, FloatFallbackPosition);
+                    FloatScreenOffset, FloatFallbackPosition, journal ? JOURNAL_NOTE_HOLD : 0f);
             }
             catch (Exception e)
             {
@@ -210,6 +229,21 @@ namespace BossRush
                 FLOAT_PROGRESS_FONT_SIZE, new Vector2(textLeft, -19f), new Vector2(200f, 25f),
                 BossRushUIColors.TextSecondary);
             return popup;
+        }
+
+        /// <summary>浮字下方的一枚小纸笺：墨底鎏金描边、宣纸色字，配一声翻纸。</summary>
+        private static void AddJournalNote(Transform popup)
+        {
+            GameObject note = ZombieModeUIHelper.CreateRect("JournalNote", popup,
+                new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, -50f), new Vector2(128f, 26f), new Vector2(0f, 0.5f));
+            Image paper = note.AddComponent<Image>();
+            paper.raycastTarget = false;
+            BossRushInkSkin.ApplyInkPanel(paper, true);
+            TextMeshProUGUI label = CreateFloatLabel("JournalText", note.transform,
+                L10n.T("心意簿添了一笔", "Gift notes updated"), JOURNAL_NOTE_FONT_SIZE,
+                new Vector2(10f, 0f), new Vector2(116f, 25f), BossRushInkColors.Paper);
+            label.alignment = TextAlignmentOptions.MidlineLeft;
+            BossRushInkSkin.PlaySfx(BossRushInkSkin.SfxPaperTurn);
         }
 
         private static TextMeshProUGUI CreateFloatLabel(string name, Transform parent, string text, float fontSize,
@@ -386,6 +420,7 @@ namespace BossRush
                 _floatCanvas = null;
             }
             _interactionController = null;
+            _journalNoteNpcId = null;
         }
         
         /// <summary>
@@ -430,8 +465,12 @@ namespace BossRush
         private Camera cachedCamera;
         private float elapsed;
 
-        internal void Begin(RectTransform canvasRectTransform, Transform worldAnchor, float height, Vector2 offset, Vector2 fallback)
+        /// <summary>多停的秒数（心意簿纸笺要读得完）：淡出整体往后推。</summary>
+        private float hold;
+
+        internal void Begin(RectTransform canvasRectTransform, Transform worldAnchor, float height, Vector2 offset, Vector2 fallback, float holdSeconds = 0f)
         {
+            hold = Mathf.Max(0f, holdSeconds);
             rect = transform as RectTransform;
             canvasRect = canvasRectTransform;
             anchor = worldAnchor;
@@ -458,7 +497,7 @@ namespace BossRush
             }
 
             elapsed += Time.unscaledDeltaTime;
-            if (elapsed >= FadeStart + FadeSeconds)
+            if (elapsed >= FadeStart + hold + FadeSeconds)
             {
                 Destroy(gameObject);
                 return;
@@ -497,7 +536,7 @@ namespace BossRush
             rect.anchoredPosition = basePosition + new Vector2(0f, rise);
             float pop = BossRushUI.EaseOut(elapsed / PopSeconds);
             rect.localScale = Vector3.one * Mathf.Lerp(PopScale, 1f, pop);
-            float alpha = 1f - BossRushUI.SmoothStep((elapsed - FadeStart) / FadeSeconds);
+            float alpha = 1f - BossRushUI.SmoothStep((elapsed - FadeStart - hold) / FadeSeconds);
             group.alpha = visible ? alpha : 0f;
         }
 

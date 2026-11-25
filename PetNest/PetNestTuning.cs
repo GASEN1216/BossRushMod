@@ -208,6 +208,13 @@ namespace BossRush
         /// </summary>
         internal const int ScarHealSoulCost = 40;
 
+        /// <summary>
+        /// 献魂（2026-11-24 玩家许愿第 5 项）：只扣这只崽自己血脉的遗魂，每点经验花多少遗魂。
+        /// 一按补满到下一级，花费 = 还差的经验 × 本值；每只崽每个游戏日（GameClock.Day）只能献一次。
+        /// 2 魂 / 经验：整整一级 200 遗魂，约五趟风浪档的收成——遗魂有了出口，但不替代带崽打仗。
+        /// </summary>
+        internal const int SoulFeedSoulsPerExp = 2;
+
         /// <summary>重伤退场前的短无敌时长（秒），避免钳血后同帧被连击打死。</summary>
         internal const float DownedInvincibleSeconds = 1.5f;
 

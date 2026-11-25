@@ -515,6 +515,8 @@ namespace BossRush
                 { "BossRush_Easy", L10n.T("<color=#00FF00>弹指可灭</color>", "<color=#00FF00>Easy Mode</color>") },
                 { "BossRush_Hard", L10n.T("<color=#FFA500>有点意思</color>", "<color=#FFA500>Hard Mode</color>") },
                 { "BossRush_InfiniteHell", L10n.T("<color=#FF0000>无间炼狱</color>", "<color=#FF0000>Infinite Hell</color>") },
+                // 出征令（2026-11-24）：竞技场路牌上唯一的开波入口，打开阵容 × 战帖 × 征程面板
+                { "BossRush_ExpeditionOrder", L10n.T("<color=#C9A24A>出征令</color>", "<color=#C9A24A>War Writ</color>") },
 
                 // 路牌状态
                 { "BossRush_Sign_Cheer", L10n.T("<color=#FFD700>加油！！！</color>", "<color=#FFD700>Go! Go! Go!</color>") },

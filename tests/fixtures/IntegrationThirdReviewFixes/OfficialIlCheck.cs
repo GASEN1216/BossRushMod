@@ -16,6 +16,12 @@ namespace BossRush
         internal static void ModifyFinalDamage(Health health, ref DamageInfo info) { Calls++; }
     }
 
+    // 止语钟罩同一入口，IL 探针只需它可编译。
+    internal static class SilenceBellRuntime
+    {
+        internal static void ModifyFinalDamage(Health health, ref DamageInfo info) { }
+    }
+
     // IL 接线探针不创建宠物，身份查询保持未上膛；防御行为由 ZombieBossCases 实跑。
     internal static class PetNestCompanionAgent
     {

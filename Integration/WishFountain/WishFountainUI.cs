@@ -32,7 +32,6 @@ namespace BossRush
         private Button confirmButton;
         private Button cancelButton;
         private TextMeshProUGUI titleText;
-        private TextMeshProUGUI hintText;
         private TextMeshProUGUI placeholderText;
         private TextMeshProUGUI inputFocusHintText;
         private TextMeshProUGUI countText;
@@ -215,6 +214,7 @@ namespace BossRush
         public void ResetAndOpen()
         {
             ReleaseSuccessBeatOnClose();   // 成功停顿中被重开：先把抽奖发出去，再清输入
+            ResetConstellations();
 
             sending = false;
             successDisplayed = false;
@@ -420,10 +420,9 @@ namespace BossRush
             titleText = CreateText("Title", headerRect, defaultFont, TITLE_FONT_SIZE, FontStyles.Bold, TextAlignmentOptions.Center);
             SetPreferredHeight(titleText.rectTransform, 44f);
 
-            hintText = CreateText("Hint", headerRect, defaultFont, BODY_FONT_SIZE, FontStyles.Normal, TextAlignmentOptions.Center);
-            hintText.enableWordWrapping = true;
-            hintText.color = BossRushUIColors.TextSecondary;
-            SetPreferredHeight(hintText.rectTransform, BODY_LINE_HEIGHT);
+            // 标题下原有一行说明字，owner 2026-11-25 要求去掉：星宿穹顶紧接标题。
+
+            BuildConstellationBand(panelRect, defaultFont);   // 星宿穹顶（WishFountainUI_Constellations.cs）
 
             GameObject contentCard = CreateUIObject("ContentCard", panelRect, typeof(Image), typeof(VerticalLayoutGroup));
             RectTransform contentCardRect = contentCard.GetComponent<RectTransform>();
@@ -614,6 +613,7 @@ namespace BossRush
             // 主操作放最右（A-08，UI 共识第 4 节）：先建次级「取消」，再建 AccentFill 的「许愿」
             cancelButton = CreateButton(buttonRow.GetComponent<RectTransform>(), defaultFont, out cancelButtonText, 180f, 46f, false);
             confirmButton = CreateButton(buttonRow.GetComponent<RectTransform>(), defaultFont, out confirmButtonText, 248f, 46f, true);
+            BuildStarRiverToggle(panelRect, defaultFont);
         }
 
         private void AdjustPanelForResolution()
@@ -639,7 +639,7 @@ namespace BossRush
             panelRectTransform.sizeDelta = new Vector2(panelWidth, panelRectTransform.sizeDelta.y);
 
             float maxPanelHeight = availHeight * MAX_HEIGHT_RATIO;
-            float defaultTotalHeight = FIXED_CONTENT_HEIGHT + BASE_INPUT_HEIGHT;
+            float defaultTotalHeight = FIXED_CONTENT_HEIGHT + BASE_INPUT_HEIGHT + LayoutConstellationBand(panelWidth - 64f);
 
             if (inputContainerLayoutElement != null)
             {
@@ -681,6 +681,13 @@ namespace BossRush
 
         private void RefreshDanmakuDisplay()
         {
+            if (!IsStarRiverEnabled())
+            {
+                CancelDanmakuFetch();   // 「星灯」熄了：不拉取、不预热、不显示
+                HideDanmaku();
+                return;
+            }
+
             EnsureDanmakuLayer();
             ScheduleDanmakuWarmup();
             if (danmakuView == null)
@@ -784,7 +791,7 @@ namespace BossRush
         private void ScheduleDanmakuWarmup()
         {
             EnsureDanmakuLayer();
-            if (danmakuWarmupScheduled || danmakuView == null || ModBehaviour.Instance == null)
+            if (danmakuWarmupScheduled || danmakuView == null || ModBehaviour.Instance == null || !IsStarRiverEnabled())
             {
                 return;
             }
@@ -855,7 +862,7 @@ namespace BossRush
         private void NotifyClosedAfterSuccessfulWish()
         {
             string standardized = WishFountainService.StandardizeText(inputField != null ? inputField.text : "");
-            WishFountainService.TryStartWishRewardAnimationAfterSuccessfulSend(standardized);
+            WishFountainService.TryStartWishRewardAnimationAfterSuccessfulSend(standardized, chosenConstellationId);
         }
 
         private void OnConfirmButtonClicked()
@@ -912,12 +919,7 @@ namespace BossRush
                 titleText.text = L10n.T("写下你的心愿", "Write Your Wish");
             }
 
-            if (hintText != null)
-            {
-                hintText.text = L10n.T(
-                    "心愿越具体，越容易落到你想要的东西上。想要的功能也可以写，我会看。",
-                    "The more specific the wish, the closer the reward. Feature ideas welcome too. I read them.");
-            }
+            RefreshConstellationTexts();
 
             if (placeholderText != null)
             {
@@ -946,13 +948,12 @@ namespace BossRush
                 return;
             }
 
-            int charCount = !string.IsNullOrEmpty(inputField.text) ? inputField.text.Length : 0;
+            // 与提交校验同一口径：标准化后数有效字（字母、数字、汉字）
+            int charCount = WishFountainService.CountWishChars(inputField.text);
 
             if (countText != null)
             {
-                countText.text = L10n.T(
-                    "已输入 " + charCount + " / " + WishFountainService.MAX_CHARS + " 字",
-                    "Typed " + charCount + " / " + WishFountainService.MAX_CHARS + " chars");
+                countText.text = L10n.T("已写 " + charCount + " 字", charCount + " characters");
                 // 还没开始写时不先亮红（A-11）：要求写在状态行，计数只在写了但不够时才标红
                 countText.color = charCount > 0 && charCount < WishFountainService.MIN_CHARS
                     ? BossRushUIColors.DangerText
@@ -981,6 +982,8 @@ namespace BossRush
             {
                 anonymousToggle.interactable = !sending && !successDisplayed;
             }
+
+            SetConstellationsInteractable(!sending && !successDisplayed);
 
             if (confirmButton != null)
             {
@@ -1029,7 +1032,7 @@ namespace BossRush
                 else if (charCount > 0 && charCount < WishFountainService.MIN_CHARS)
                 {
                     SetStatus(
-                        L10n.T("最少输入 " + WishFountainService.MIN_CHARS + " 个字符哦", "At least " + WishFountainService.MIN_CHARS + " characters required"),
+                        string.Format(L10n.T("至少写 {0} 个字", "Write at least {0} characters"), WishFountainService.MIN_CHARS),
                         BossRushUIColors.WarningText,
                         false);
                 }

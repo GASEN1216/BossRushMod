@@ -190,6 +190,11 @@ namespace BossRush
         /// SCHEMA+：旧档缺字段即未收藏。
         /// </summary>
         public bool favorite;
+        /// <summary>
+        /// 上次献魂的游戏日戳：存 GameClock.Day + 1，0 = 从没献过（新档第 0 天也能和「没献过」区分）。
+        /// SCHEMA+（2026-11-24）：旧档缺字段即从没献过。
+        /// </summary>
+        public long lastSoulFeedDay;
 
         /// <summary>容器兜底，反序列化后必须调用。</summary>
         public void Normalize()
@@ -198,6 +203,7 @@ namespace BossRush
             if (scars == null) scars = new List<PetNestScarRecord>();
             if (behaviour < 0 || behaviour > 2) behaviour = 0;
             if (lastFeedUtcTicks < 0) lastFeedUtcTicks = 0;
+            if (lastSoulFeedDay < 0) lastSoulFeedDay = 0;
             if (level < 1) level = 1;
             if (level > PetNestTuning.PetMaxLevel) level = PetNestTuning.PetMaxLevel;
             if (exp < 0) exp = 0;
@@ -233,6 +239,7 @@ namespace BossRush
             clone.behaviour = behaviour;
             clone.lastFeedUtcTicks = lastFeedUtcTicks;
             clone.favorite = favorite;
+            clone.lastSoulFeedDay = lastSoulFeedDay;
 
             clone.talents = new List<PetNestTalentEntry>(talents != null ? talents.Count : 0);
             if (talents != null)

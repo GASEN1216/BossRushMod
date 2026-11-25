@@ -518,7 +518,7 @@ def main() -> int:
     for required in [
         "WaitingForNextWave && WaveCountdown > 0f",
         "WaveCountdown -= deltaTime;",
-        "owner.GetWaveIntervalSeconds();",
+        "ExpeditionRestSeconds(owner.GetWaveIntervalSeconds());",
         "owner.ShowNextWaveCountdownBanner(seconds);",
         "owner.SpawnNextEnemy();",
         "owner.TryFixStuckWaveIfNoBossAlive();",

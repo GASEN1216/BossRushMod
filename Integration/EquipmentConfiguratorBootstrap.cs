@@ -23,6 +23,7 @@ namespace BossRush
             ReloadMetronomeWeaponConfig.RegisterEquipmentConfigurator();
             PassTheBombWeaponConfig.RegisterEquipmentConfigurator();
             ResidualSunShieldWeaponConfig.RegisterEquipmentConfigurator();
+            SilenceBellWeaponConfig.RegisterEquipmentConfigurator();
             PhantomWitchScytheWeaponConfig.RegisterEquipmentConfigurator();
         }
     }

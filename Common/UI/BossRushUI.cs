@@ -327,6 +327,8 @@ namespace BossRush
             BossRushConfirmDialog.ResetStaticCaches();  // 共享确认弹窗（DontDestroyOnLoad 宿主 + 模态租约），卸载时收掉
             BossRushFxMaterials.ResetStaticCaches();   // 共享程序化特效材质（Common/Effects），同样是 DontSave，挂在这条已有的卸载路径上
             BossRushFxKit.ResetStaticCaches();          // 共享特效小件（含粒子贴图），与特效材质同一条卸载路径
+            BossRushInkSkin.ResetStaticCaches();        // 水墨主题的程序化贴图（Common/UI/BossRushInkSkin.cs）
+            BossRushLocalPrefs.ResetStaticCaches();     // 界面本地偏好（出征令上次的选择等），卸载后下次重读文件
 
             cachedLegacyFont = null;
             legacyFontResolved = false;

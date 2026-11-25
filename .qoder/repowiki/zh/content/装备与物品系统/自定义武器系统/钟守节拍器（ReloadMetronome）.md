@@ -32,3 +32,5 @@
 执行回归入口：`python tools/run_runtime_regressions.py --filter ReloadMetronome`。结构接线、纯节拍与宿主替身中的事件路径属于 L1/L2；编译不能证明 Harmony 实机安装、鼠标附近布局、手感或婚后 UI 正确。人工验收步骤见 `docs/reports/testing/2026-10-10-钟守节拍器验收.md`。
 
 2026-10-10 合并：物品编号经 owner 授权改为 500107，点名册继续使用 500106。商品与好感解锁接入 permanent.shop 蓝图；钟守专属贝壳交互优先装配，浮舟的现金商店保持独立。
+
+2026-11-24：钟守的第二只匣子「钟守的铜钟罩」出售 [止语钟罩](file://.qoder/repowiki/zh/content/装备与物品系统/自定义武器系统/止语钟罩（SilenceBell）.md)；兑换事务从 `TryExchange` 提成 `ReloadMetronomeTrade.TryExchangeForShells(typeId, shellCost)`、门槛提成 `CanTradeAt`，节拍器入口只转发，行为不变。

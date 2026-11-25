@@ -66,6 +66,9 @@ namespace BossRush
             GameObject rowLastShift = CreateF3Row(section.transform);
             CreateActionButton(rowLastShift.transform, font, L10n.T("末班编组站演练（站内一次跑完，会改状态）", "Last Shift Yard drill (all-in-one, changes state)"),
                 BossRushUIColors.Warning, StartLastShiftDrillFromF3);
+            // 只跑本次改动：基地核对、进竞技场跑场内几条、回基地收尾，开跑门同完整验收（F3GameplayValidationWishFocus.cs）。
+            CreateActionButton(rowLastShift.transform, font, L10n.T("只跑本次改动（许愿七项、尸潮、龙裔、叮当）", "This round only (wishes, crowd, dragon, goblin)"),
+                BossRushUIColors.Warning, () => F3GameplayValidationRunner.StartWishFocusFromPanel(this));
 #endif
 
             GameObject row3 = CreateF3Row(section.transform);
@@ -529,8 +532,9 @@ namespace BossRush
             RunSyncCase("SKY_KEEPSAKE_ITEMS_BASE", ValidateSkyIslandKeepsakesAtBase);
             yield return RunPublishedItemCases();
 #if BOSSRUSH_DEV
-            // 2026-10-18 审查修复的基地侧核对（F3GameplayValidationReviewFixes.cs）：内存改动当帧还原，不写存档
+            // 2026-10-18 审查修复与 2026-11-24 许愿七项 / 叮当停留的基地侧核对（F3GameplayValidationReviewFixes.cs、F3GameplayValidationWishes.cs）：不写存档
             RunReviewFixBaseCases();
+            yield return RunWishBaseCases();
 #endif
 
             SetStage("3/7 后山与经济");

@@ -47,7 +47,7 @@ namespace BossRush
         private const int TOKEN_REFRESH_BUFFER_SECONDS = 60;
 
         /// <summary>最小字符数</summary>
-        internal const int MIN_CHARS = 20;
+        internal const int MIN_CHARS = 4;   // 2026-11-24 玩家许愿第 3 项：心意长短不计较，按有效字数（字母、数字、汉字）算
 
         /// <summary>最大字符数</summary>
         internal const int MAX_CHARS = 10000;

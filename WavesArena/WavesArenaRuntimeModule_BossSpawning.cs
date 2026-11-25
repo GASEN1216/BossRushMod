@@ -47,10 +47,13 @@ namespace BossRush
                 return;
             }
 
+            // 出征令短征 / 长征：按开波时定好的队列（末波压轴）；全征照旧逐波读过滤池
+            var runPresets = ResolveRunPresets(filteredPresets);
+
             // 普通模式：跑完列表后直接通关
             if (!InfiniteHellMode)
             {
-                if (CurrentEnemyIndex >= filteredPresets.Count)
+                if (CurrentEnemyIndex >= runPresets.Count)
                 {
                     // 所有敌人已击败，显示完成对话
                     owner.OnAllEnemiesDefeatedForArena();
@@ -73,7 +76,7 @@ namespace BossRush
             {
                 // 弹指可灭/有点意思模式：按顺序选取Boss
                 // 强力Boss已在挑战开始时预处理，前20波不会出现
-                preset = filteredPresets[CurrentEnemyIndex];
+                preset = runPresets[CurrentEnemyIndex];
             }
 
             ModBehaviour.DevLog("[BossRush] 生成第 " + (CurrentEnemyIndex + 1) + "/" + TotalEnemies + " 波: " + preset.displayName);
@@ -95,6 +98,9 @@ namespace BossRush
                     ModBehaviour.DevLog("[BossRush] [ERROR] 当前地图刷新点为空，无法生成敌人");
                     return;
                 }
+
+                // 压轴 / 噩梦：水墨标题幕（一次性演出，不影响生成）
+                PlayExpeditionTitleCard(preset);
 
                 Func<bool> isSpawnCurrent = WavesArenaRuntimeModule.CaptureValidity(owner, true, true);
                 if (BossesPerWave <= 1)

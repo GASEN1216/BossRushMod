@@ -23,8 +23,11 @@ namespace BossRush
                 // 增加波次
                 InfiniteHellWaveIndex++;
 
-                // 检查无间炼狱波次成就
-                owner.CheckInfiniteHellAchievementsForArena(InfiniteHellWaveIndex);
+                // 检查无间炼狱波次成就（出征令轻松档不计）
+                if (ExpeditionCountsForHellAchievements())
+                {
+                    owner.CheckInfiniteHellAchievementsForArena(InfiniteHellWaveIndex);
+                }
 
                 long cashThisWave = InfiniteHellWaveCashThisWave;
                 InfiniteHellWaveCashThisWave = 0L;

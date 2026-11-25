@@ -42,6 +42,8 @@ namespace BossRush
         internal static void ReduceFinalDamage(Health health, ref DamageInfo info)
         {
             ResidualSunShieldRuntime.ModifyFinalDamage(health, ref info);
+            // 止语钟罩吃残日盾片挡剩下的那部分（两件可以同戴）；未佩戴时首行返回。
+            SilenceBellRuntime.ModifyFinalDamage(health, ref info);
             ModBehaviour owner = ModBehaviour.Instance;
             if (owner == null || !owner.IsZombieModeActive || health == null || health.IsDead
                 || info.fromCharacter == null

@@ -112,7 +112,14 @@ namespace BossRush
         private readonly Dictionary<CharacterMainControl, int> bossOriginalLootCounts = new Dictionary<CharacterMainControl, int>();
         internal float Clock { get { return WaveIntegrityCheckTimer; } }
         internal bool HasRecord(CharacterMainControl c, float time, int count) { return bossSpawnTimes[c] == time && bossOriginalLootCounts[c] == count; }
+        // 出征令战帖倍率（WavesArenaRuntimeModule_Expedition.cs）不在本夹具范围：只记次数，钉住「内容 Boss 登记时先乘战帖」这一接线。
+        internal int ExpeditionTierCalls;
+        private void ApplyExpeditionTierToContentBoss(CharacterMainControl character) { ExpeditionTierCalls++; }
+        // 噩梦盲战挡在烽烟圈来源入口（CopyMapBeaconBossesTo），本夹具不走它，只给编译用的替身。
+        private ArenaExpeditionTier LiveExpeditionTier() { return ArenaExpeditionTier.Standard; }
     }
+    internal enum ArenaExpeditionTier { Easy, Standard, Hard, Nightmare }
+    internal static class ArenaExpeditionTuning { internal static bool HidesMapBeacons(ArenaExpeditionTier tier) { return tier == ArenaExpeditionTier.Nightmare; } }
     public sealed class FlightConfig : Common.Equipment.EquipmentAbilityConfig { public static readonly FlightConfig Instance = new FlightConfig(); }
     public sealed class ReverseScaleConfig : Common.Equipment.EquipmentAbilityConfig { public static readonly ReverseScaleConfig Instance = new ReverseScaleConfig(); }
     public class FlightAbilityManager : MonoBehaviour
@@ -263,6 +270,7 @@ internal static class Program
         d.TickModeDIntegrity(1f); host.IsActive = false; d.TickModeDIntegrity(1f); Check(arena.Clock == 0f && d.Fixes == 1, "inactive D must reset shared clock without integrity action");
         var first = new CharacterMainControl(); var second = new CharacterMainControl(); host.RegisterArenaWaveBossFromContent(first); Check(arena.CurrentBoss == first && arena.CurrentWaveBosses.Count == 0, "single boss registration must not append multi-boss list");
         arena.BossesPerWave = 2; host.RegisterArenaWaveBossFromContent(first); host.RegisterArenaWaveBossFromContent(first); host.RegisterArenaWaveBossFromContent(second); Check(arena.CurrentBoss == second && arena.CurrentWaveBosses.SequenceEqual(new MonoBehaviour[] { first, second }), "multi-boss registration must preserve order and deduplicate");
+        Check(arena.ExpeditionTierCalls == 4, "every content boss registration applies the expedition tier first");
         host.ClearArenaCurrentBossFromContent(first); Check(arena.CurrentBoss == second, "foreign cleanup must not clear current boss"); host.RemoveArenaWaveBossFromContent(first); host.ClearArenaCurrentBossFromContent(second); Check(arena.CurrentBoss == null && arena.CurrentWaveBosses.Count == 1, "separate clear/remove actions must preserve original slots");
         var preset = new EnemyPresetInfo { name = "boss" }; host.AddArenaEnemyPreset(preset); Check(ReferenceEquals(host.FindArenaEnemyPreset("boss"), preset) && host.FindArenaEnemyPreset("BOSS") == null, "preset lookup must preserve exact match and object identity");
         host.RecordArenaBossLoot(first, 42f, 5); Check(arena.HasRecord(first, 42f, 5) && host.ArenaBossLootRecordCount == 1, "content loot bookkeeping must keep exact time and count"); var copied = new HashSet<CharacterMainControl>(); host.CopyArenaTrackedBossCharactersTo(copied); copied.Clear(); Check(host.ArenaBossLootRecordCount == 1, "cleanup query must not expose owner dictionary"); host.RemoveArenaBossLootRecord(first); Check(host.ArenaBossLootRecordCount == 0, "content cleanup must remove both loot records");

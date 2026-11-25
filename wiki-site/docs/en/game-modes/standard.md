@@ -8,17 +8,54 @@ The bread-and-butter mode. Buy a ticket, pick a map, walk into the arena, choose
 
 - **BossRush Ticket** (from the base merchant)
 
-## Difficulty
+## War Writ: Set Your Own Terms
 
-Interact with the arena signpost to pick:
+In the arena, pick **War Writ** at the signpost. Choose one option in each of the three rows on the left; the notice on the right spells out that challenge's rules and rewards. Press **Swear** on the notice to start, or **Wait** to put it away. Next time it opens on whatever you picked last.
 
-- **Easy** — 1 Boss/wave, limited waves. The tutorial difficulty
-- **Normal** — 3 Bosses/wave, limited waves. The real deal
-- **Infinite Hell** — See Infinite Hell mode. Unlimited waves, no escape
+**Lineup**
+
+- **A Snap (Easy)** — 1 Boss per wave. The tutorial difficulty
+- **Getting Interesting (Normal)** — 3 Bosses per wave. The real deal
+- **Infinite Hell** — Unlimited waves, no escape. See Infinite Hell mode
+
+**Challenge** (arena only, stacked on top of the global multiplier in settings)
+
+Each challenge is a stack of rules, and like roguelike ascensions every step adds more. Rules come in four kinds: **Foes** (enemies get stronger), **Self** (you get weaker; on Relaxed these are graces), **Field** (arena and pacing) and **Omen** (the same for everyone; it's how you use it).
+
+- **Relaxed** — 3 graces
+  - Holding Back: Boss HP ×0.6, damage ×0.7
+  - Field Medic: healing +50%
+  - At Ease: rest between waves ×1.5
+  - Clear crate holds half as many items (at least 1), Hell cash ×0.5
+- **Standard** — No extra rules, same as before
+- **Hard** — 5 rules
+  - Whetted Blades: Boss HP ×1.3, damage ×1.15, 15% quicker to act
+  - Enemy Marksman: enemy gun scatter -25%
+  - Festering Wounds: healing -40%
+  - Forced March: rest between waves halved, no extra rest every 5 waves
+  - Bloodlust (Omen): killing an enemy heals 8% max HP
+  - Clear crate items start at tier 6, Hell cash ×1.25
+- **Nightmare** — 8 rules
+  - Killing Intent: Boss HP ×1.6, damage ×1.3, 30% quicker to act
+  - Enemy Marksman, Festering Wounds and Forced March, as on Hard
+  - Regenerating Bosses: Bosses regenerate 5% HP every 10s
+  - Fighting Blind: no boss beacons on the map; find them yourself
+  - Blood Pact (Omen): direct player kills heal 16% max HP, but healing another -30%
+  - Volatile Remains (Omen): enemies explode on death
+  - Clear crate items ×1.5 starting at tier 6, Hell cash ×1.5; every Boss gets an ink banner on entry
+- Borrowed mutators carry a **Writ** tag in the mutator list and apply even with random mutators turned off; random rolls won't stack another healing mutator on top
+- Each Boss's own drop crates are the same on every challenge, so Relaxed doesn't cost you loot
+
+**March** (fixed to the end on Infinite Hell)
+
+- **Short March** — 12 waves, the last one is a strong headliner Boss
+- **Long March** — 24 waves, also ending on a headliner
+- **Full Campaign** — Every enabled Boss, same as before
+- Short and Long March clear crates hold base items × √(waves ÷ enabled Bosses), rounded up, then adjusted by the challenge. Dying or leaving mid-run still pays nothing
 
 ## How It Works
 
-1. Pick difficulty → first wave spawns
+1. Swear the writ → first wave spawns
 2. Kill all Bosses in the wave
 3. Loot crates drop at death locations
 4. Next wave auto-starts after 15s (or rush it via signpost if enabled in config)
@@ -38,6 +75,7 @@ Screen suddenly going red, a supply crate falling out of the sky, or a Boss that
 - After the last wave, the reward crate shows up as a glowing ghost crate above you, follows you down, and becomes a normal crate you can open once it lands.
 - **Easy**: Reward crate with 3 high-quality items
 - **Normal**: Reward crate with 10 high-quality items
+- These counts are for Standard challenge on a Full Campaign; other choices scale as described under War Writ
 
 After clearing, an evacuation point opens. Interact to return to base.
 
@@ -59,5 +97,7 @@ After clearing, an evacuation point opens. Interact to return to base.
 - **Easy Peasy / Getting Serious** — Clear the respective difficulty
 - **Flawless Easy / Flawless Normal** — No-damage clears
 - **Lightning Run / Speed Demon / Time Assassin** — Speedrun achievements
+- **Nightmare Cleared** — Clear a Full Campaign on the Nightmare challenge
+- Clear achievements only count on a Full Campaign with Standard or harder
 
 See the full achievement list for details.

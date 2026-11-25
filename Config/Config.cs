@@ -733,8 +733,8 @@ namespace BossRush
                 // Boss 掉落随机化（时间加成）
                 try
                 {
-                    string lootLabel = L10n.T("Boss掉落随机化（时间加成）", "Boss loot randomization (time bonus)");
                     string lootKey = ModName + "_EnableRandomBossLoot";
+                    string lootLabel = ModConfigOptionLocalization.Label(lootKey, "Boss掉落随机化（时间加成）", "Boss loot randomization (time bonus)");
                     
                     if (addBoolMethod != null)
                     {
@@ -750,8 +750,8 @@ namespace BossRush
                 // 标准 Boss 战利品原版概率掉落
                 try
                 {
-                    string legacyLootLabel = L10n.T("战利品原版概率掉落", "Legacy boss loot probabilities");
                     string legacyLootKey = ModName + "_UseLegacyBossLootProbabilities";
+                    string legacyLootLabel = ModConfigOptionLocalization.Label(legacyLootKey, "战利品原版概率掉落", "Legacy boss loot probabilities");
 
                     if (addBoolMethod != null)
                     {
@@ -767,8 +767,8 @@ namespace BossRush
                 // Boss 掉落箱作为掩体
                 try
                 {
-                    string coverLabel = L10n.T("Boss掉落箱作为掩体（挡子弹）", "Boss loot box blocks bullets");
                     string coverKey = ModName + "_LootBoxBlocksBullets";
+                    string coverLabel = ModConfigOptionLocalization.Label(coverKey, "Boss掉落箱作为掩体（挡子弹）", "Boss loot box blocks bullets");
                     
                     if (addBoolMethod != null)
                     {
@@ -784,8 +784,8 @@ namespace BossRush
                 // 波次间使用交互点开启下一波
                 try
                 {
-                    string interactLabel = L10n.T("波次间使用交互点开启下一波", "Use interact point between waves");
                     string interactKey = ModName + "_UseInteractBetweenWaves";
+                    string interactLabel = ModConfigOptionLocalization.Label(interactKey, "波次间使用交互点开启下一波", "Use interact point between waves");
                     
                     if (addBoolMethod != null)
                     {
@@ -801,8 +801,8 @@ namespace BossRush
                 // 龙套装：双击冲刺
                 try
                 {
-                    string dragonDashLabel = L10n.T("龙套装：双击冲刺", "Dragon Set: Double-tap Dash");
                     string dragonDashKey = ModName + "_EnableDragonDash";
+                    string dragonDashLabel = ModConfigOptionLocalization.Label(dragonDashKey, "龙套装：双击冲刺", "Dragon Set: Double-tap Dash");
                     
                     if (addBoolMethod != null)
                     {
@@ -818,8 +818,8 @@ namespace BossRush
                 // 荒野号角使用狼模型
                 try
                 {
-                    string wolfModelLabel = L10n.T("荒野号角：使用狼模型", "Wild Horn: Use Wolf Model");
                     string wolfModelKey = ModName + "_UseWolfModelForWildHorn";
+                    string wolfModelLabel = ModConfigOptionLocalization.Label(wolfModelKey, "荒野号角：使用狼模型", "Wild Horn: Use Wolf Model");
                     
                     if (addBoolMethod != null)
                     {
@@ -835,8 +835,8 @@ namespace BossRush
                 // 死亡亡魂系统
                 try
                 {
-                    string deathWraithLabel = L10n.T("死亡亡魂系统", "Death Wraith System");
                     string deathWraithKey = ModName + "_EnableDeathWraithSystem";
+                    string deathWraithLabel = ModConfigOptionLocalization.Label(deathWraithKey, "死亡亡魂系统", "Death Wraith System");
 
                     if (addBoolMethod != null)
                     {
@@ -852,8 +852,8 @@ namespace BossRush
                 // 变异词条系统：默认开启，玩家可在此关闭
                 try
                 {
-                    string mutatorsLabel = L10n.T("每局变异词条系统", "Run Mutators");
                     string mutatorsKey = ModName + "_EnableMutators";
+                    string mutatorsLabel = ModConfigOptionLocalization.Label(mutatorsKey, "每局变异词条系统", "Run Mutators");
 
                     if (addBoolMethod != null)
                     {
@@ -1011,8 +1011,8 @@ namespace BossRush
                     MethodInfo addDropdownMethod = modBehaviourType.GetMethod("AddDropdownList", BindingFlags.Public | BindingFlags.Static);
                     if (addDropdownMethod != null)
                     {
-                        string hotkeyLabel = L10n.T("成就界面快捷键", "Achievement Hotkey");
                         string hotkeyKey = ModName + "_AchievementHotkey";
+                        string hotkeyLabel = ModConfigOptionLocalization.Label(hotkeyKey, "成就界面快捷键", "Achievement Hotkey");
                         
                         // 创建按键选项列表
                         var hotkeyOptions = new System.Collections.Generic.SortedDictionary<string, object>();

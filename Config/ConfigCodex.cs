@@ -82,8 +82,8 @@ namespace BossRush
             try
             {
                 if (addBoolMethod == null || config == null) return;
-                string label = L10n.T("鸭皇图鉴：Boss 击杀收集图鉴", "Duckov Codex: boss kill collection");
                 string key = ModName + CodexModConfigKeySuffix;
+                string label = ModConfigOptionLocalization.Label(key, "鸭皇图鉴：Boss 击杀收集图鉴", "Duckov Codex: boss kill collection");
                 addBoolMethod.Invoke(null, new object[] { ModName, key, label, config.codexEnabled });
                 DevLog("[BossRush] 图鉴配置项注册成功");
             }

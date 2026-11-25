@@ -29,6 +29,12 @@ namespace BossRush
         /// <summary>当前局生效的词条列表</summary>
         private static readonly List<MutatorDefinition> _activeMutators = new List<MutatorDefinition>();
 
+        /// <summary>
+        /// 本局由出征令战帖指定的词条（2026-11-25）：先上、不占随机条数、不看「启用变异词条」开关，
+        /// 词条角标上标「战帖」。退局随 RemoveAll 一起清。
+        /// </summary>
+        private static readonly HashSet<MutatorDefinition> _forcedMutators = new HashSet<MutatorDefinition>();
+
         /// <summary>当前局的运行时上下文</summary>
         private static MutatorContext _currentContext;
 
@@ -68,7 +74,32 @@ namespace BossRush
         /// <param name="count">抽取词条数量（默认2）</param>
         /// <param name="seed">随机种子（null=随机）</param>
         /// <param name="modeTag">当前模式标签，用于过滤只在特定模式生效的词条</param>
-        public static void RollAndApply(CharacterMainControl player, int count = 2, int? seed = null, string modeTag = null)
+        /// <summary>按 <see cref="MutatorDefinition.Weight"/> 选一个下标；权重全为 0 时退回均匀抽取。</summary>
+        internal static int PickWeightedIndex(List<MutatorDefinition> pool, System.Random rng)
+        {
+            double total = 0d;
+            for (int i = 0; i < pool.Count; i++)
+            {
+                if (pool[i] != null && pool[i].Weight > 0f) total += pool[i].Weight;
+            }
+            if (total <= 0d) return rng.Next(pool.Count);
+            double roll = rng.NextDouble() * total;
+            for (int i = 0; i < pool.Count; i++)
+            {
+                if (pool[i] == null || !(pool[i].Weight > 0f)) continue;
+                roll -= pool[i].Weight;
+                if (roll < 0d) return i;
+            }
+            for (int i = pool.Count - 1; i >= 0; i--)
+            {
+                if (pool[i] != null && pool[i].Weight > 0f) return i;
+            }
+            return rng.Next(pool.Count);
+        }
+
+        /// <param name="forcedIds">战帖指定的词条 ID（出征令）：先上，不占 <paramref name="count"/>，同互斥组退出随机候选。</param>
+        public static void RollAndApply(CharacterMainControl player, int count = 2, int? seed = null, string modeTag = null,
+            IList<string> forcedIds = null)
         {
             // 先清理上一局残留（防御性）
             RemoveAll();
@@ -91,20 +122,44 @@ namespace BossRush
                 pool.Add(definition);
             }
 
-            if (pool.Count == 0)
+            // 战帖指定的词条先上：它们是玩家在出征令上选的难度，不占随机条数；同互斥组的退出随机候选，
+            // 免得随机再抽到一条同类的叠上去（例如伤口难愈之外又抽到血之契约）。
+            _activeMutators.Clear();
+            _forcedMutators.Clear();
+            for (int f = 0; forcedIds != null && f < forcedIds.Count; f++)
+            {
+                MutatorDefinition forced = FindDefinition(forcedIds[f]);
+                if (forced == null || !forced.AllowsMode(modeTag) || _forcedMutators.Contains(forced)) continue;
+                _activeMutators.Add(forced);
+                _forcedMutators.Add(forced);
+                pool.Remove(forced);
+                if (!string.IsNullOrEmpty(forced.ExclusiveGroup))
+                {
+                    string forcedGroup = forced.ExclusiveGroup;
+                    pool.RemoveAll(other => other != null && other.ExclusiveGroup == forcedGroup);
+                }
+            }
+
+            if (pool.Count == 0 && _activeMutators.Count == 0)
             {
                 ModBehaviour.DevLog("[Mutator] RollAndApply: 当前模式无可用词条，modeTag=" + (modeTag ?? "null"));
                 return;
             }
 
-            int actualCount = Mathf.Min(count, pool.Count);
+            int actualCount = Mathf.Min(Mathf.Max(0, count), pool.Count);
 
-            _activeMutators.Clear();
-            for (int i = 0; i < actualCount; i++)
+            // 按权重不放回抽取；抽中一条后，同一互斥组的其余词条退出本局候选（例如巨灵兵与群鼠战术）
+            for (int i = 0; i < actualCount && pool.Count > 0; i++)
             {
-                int idx = rng.Next(pool.Count);
-                _activeMutators.Add(pool[idx]);
+                int idx = PickWeightedIndex(pool, rng);
+                MutatorDefinition picked = pool[idx];
+                _activeMutators.Add(picked);
                 pool.RemoveAt(idx);
+                if (!string.IsNullOrEmpty(picked.ExclusiveGroup))
+                {
+                    string group = picked.ExclusiveGroup;
+                    pool.RemoveAll(other => other != null && other.ExclusiveGroup == group);
+                }
             }
 
             // 创建上下文
@@ -183,6 +238,7 @@ namespace BossRush
             }
 
             _activeMutators.Clear();
+            _forcedMutators.Clear();
             _currentContext = null;
 
             // 4. 强制重置所有全局修改器（双保险）
@@ -217,6 +273,23 @@ namespace BossRush
                     ModBehaviour.DevLog("[Mutator] ApplyToEnemy 回调失败: " + e.Message);
                 }
             }
+        }
+
+        /// <summary>这条词条是不是本局战帖指定的（词条角标标「战帖」）。</summary>
+        public static bool IsForcedMutator(MutatorDefinition definition)
+        {
+            return definition != null && _forcedMutators.Contains(definition);
+        }
+
+        private static MutatorDefinition FindDefinition(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return null;
+            for (int i = 0; i < MutatorPool.All.Length; i++)
+            {
+                MutatorDefinition definition = MutatorPool.All[i];
+                if (definition != null && string.Equals(definition.Id, id, StringComparison.Ordinal)) return definition;
+            }
+            return null;
         }
 
         /// <summary>

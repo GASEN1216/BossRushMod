@@ -54,6 +54,8 @@ namespace BossRush
             mutatorBossRegenRuntime.BindModeDQueries(() => modeDRuntime.IsActive, () => modeDRuntime.modeDCurrentWaveEnemies);
             mutatorBossRegenRuntime.BindModeEQueries(() => modeERuntime.IsModeEActive, () => modeERuntime.ModeEAliveEnemies, modeERuntime.GetModeEBossRegenCache);
             mutatorBossRegenRuntime.BindModeFQueries(() => modeFRuntime.IsModeFActive, () => modeFActiveBossSet, modeFRuntime.GetModeFBossRegenCache);
+            runtimeModuleHost.Register(new BossMapBeaconRuntimeModule(() => IsActive || modeDRuntime.IsActive,
+                wavesArenaRuntime.CopyMapBeaconBossesTo, () => modeERuntime.IsModeEActive, () => modeERuntime.ModeEAliveEnemies));
             BindAwenLootSweepRuntime();
             var modeEFVirtualSpawnerRegistry = new ModeEFVirtualSpawnerRegistry();
             modeERuntime.BindVirtualSpawnerRegistry(modeEFVirtualSpawnerRegistry);

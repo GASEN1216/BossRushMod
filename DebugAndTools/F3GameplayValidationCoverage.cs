@@ -150,6 +150,31 @@ namespace BossRush
             }
         }
 
+#if BOSSRUSH_DEV
+        /// <summary>
+        /// 专项运行（F3GameplayValidationWishFocus.cs）只跑清单里的一部分：自动项只留 automaticIds 里的，人工项只留 manualIds 里的，
+        /// 两样都不剩的功能整条移出本轮账本。移出的不算「未跑」，全量覆盖仍以完整验收为准。
+        /// 返回请求了、清单里却找不到的 id（写错或清单漏登记），由调用方记红。
+        /// </summary>
+        internal List<string> Focus(ICollection<string> automaticIds, ICollection<string> manualIds)
+        {
+            HashSet<string> seen = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = _features.Count - 1; i >= 0; i--)
+            {
+                Feature feature = _features[i];
+                feature.Automatic.RemoveAll(id => !automaticIds.Contains(id));
+                feature.Manual.RemoveAll(test => !manualIds.Contains(test.Id));
+                seen.UnionWith(feature.Automatic);
+                foreach (ManualCase test in feature.Manual) seen.Add(test.Id);
+                if (feature.Automatic.Count + feature.Manual.Count == 0) _features.RemoveAt(i);
+            }
+            List<string> missing = new List<string>();
+            foreach (string id in automaticIds) if (!seen.Contains(id)) missing.Add(id);
+            foreach (string id in manualIds) if (!seen.Contains(id)) missing.Add(id);
+            return missing;
+        }
+#endif
+
         internal void Record(string id, string outcome)
         {
             string previous;

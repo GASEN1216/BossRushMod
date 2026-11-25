@@ -122,6 +122,13 @@ namespace BossRush
         protected override void DoInteract(CharacterMainControl character) { ExchangesOpened++; }
     }
 
+    // 钟守的第二只匣子（止语钟罩）：兑换走同一条贝壳事务，这里同样只隔离弹窗。
+    internal sealed class SilenceBellShopInteractable : NPCShopInteractable
+    {
+        internal static int ExchangesOpened;
+        protected override void DoInteract(CharacterMainControl character) { ExchangesOpened++; }
+    }
+
     internal static partial class NPCShopSystem
     {
         private static bool isServiceActive;
@@ -255,16 +262,25 @@ internal static class DockShopRegression
         check(bellShop != null && bellGroup.Contains(bellShop) && bellShop.IdAtAwake == ReloadMetronomeConfig.VendorNpcId,
             "bell device adds the same shell exchange component before Awake without a resident");
         AffinityManager.Change("sky_fuzhou", 5);
+        var wardChild = bellDevice.transform.Find("BellKeeperWardOption");
+        var wardShop = wardChild == null ? null : wardChild.GetComponent<SilenceBellShopInteractable>();
+        check(wardShop != null && bellGroup.Contains(wardShop) && wardShop.IdAtAwake == SilenceBellConfig.VendorNpcId,
+            "bell device adds the bronze ward box beside the keepsakes without a resident");
         check(!bellShop.gameObject.activeSelf, "Fuzhou affinity cannot unlock bell exchange");
+        check(!wardShop.gameObject.activeSelf, "Fuzhou affinity cannot unlock the bronze ward box");
         AffinityManager.Change(ReloadMetronomeConfig.VendorNpcId, 4);
         check(!bellShop.gameObject.activeSelf, "bell device exchange stays hidden below affinity five");
+        check(!wardShop.gameObject.activeSelf, "bronze ward box stays hidden below affinity five");
         AffinityManager.Change(ReloadMetronomeConfig.VendorNpcId, 5);
         check(bellShop.InteractForTest() && ReloadMetronomeShopInteractable.ExchangesOpened == 1 && NPCShopSystem.Opens == 0,
             "bell device opens the shell exchange instead of the cash shop");
+        check(wardShop.InteractForTest() && SilenceBellShopInteractable.ExchangesOpened == 1 && NPCShopSystem.Opens == 0,
+            "bronze ward box opens its own shell exchange instead of the cash shop");
         world.AttachDockShopForTest();
-        check(bellGroup.Count == 2 && AffinityManager.ListenerCount == 4, "both device shops attach once with independent listeners");
+        check(bellGroup.Count == 3 && AffinityManager.ListenerCount == 6, "all three device shops attach once with independent listeners");
         world.Dispose(); world.Dispose();
-        check(bellShop == null && bellShop.InactiveAtDestroy && bellGroup.Count == 1 && bellGroup[0] == storyOption
+        check(bellShop == null && bellShop.InactiveAtDestroy && wardShop == null && wardShop.InactiveAtDestroy
+            && bellGroup.Count == 1 && bellGroup[0] == storyOption
             && AffinityManager.ListenerCount == 0, "bell exchange disposal preserves story options and releases listeners");
         UnityEngine.Object.Destroy(root); UnityEngine.Object.Destroy(storyOption.gameObject);
         Reset();

@@ -7,11 +7,12 @@ namespace BossRush
     {
         public void StartNextWaveCountdown(bool showInitialBanner = true, bool suppressImmediateRepeatBanner = false)
         {
-            float interval = owner.GetWaveIntervalSeconds();
+            // 出征令战帖：轻松从容（休整 ×1.5），困难 / 噩梦急行军（休整减半、每 5 波的额外休整取消）
+            float interval = ExpeditionRestSeconds(owner.GetWaveIntervalSeconds());
             bool milestoneBonusApplied = false;
 
             // 每5波额外休息时间
-            float milestoneBonus = owner.GetMilestoneRestBonusSeconds();
+            float milestoneBonus = ExpeditionMilestoneRestSeconds(owner.GetMilestoneRestBonusSeconds());
             if (milestoneBonus > 0f)
             {
                 // 模式A/B: CurrentEnemyIndex 已在 ProceedAfterWaveFinished 中自增，代表已完成波数
@@ -32,10 +33,11 @@ namespace BossRush
                     NextWaveBossName = null;
                     // 使用过滤后的 Boss 列表，确保预告的 Boss 与实际生成的一致
                     var filteredPresets = owner.GetFilteredEnemyPresets();
-                    int presetCount = (filteredPresets != null) ? filteredPresets.Count : 0;
+                    var runPresets = filteredPresets != null ? ResolveRunPresets(filteredPresets) : null;
+                    int presetCount = (runPresets != null) ? runPresets.Count : 0;
                     if (CurrentEnemyIndex >= 0 && CurrentEnemyIndex < presetCount)
                     {
-                        EnemyPresetInfo nextPreset = filteredPresets[CurrentEnemyIndex];
+                        EnemyPresetInfo nextPreset = runPresets[CurrentEnemyIndex];
                         if (nextPreset != null)
                         {
                             NextWaveBossName = nextPreset.displayName;

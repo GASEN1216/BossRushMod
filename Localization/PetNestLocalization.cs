@@ -122,6 +122,10 @@ namespace BossRush
             Add(map, "Fail_souls_insufficient", "遗魂不够", "Not enough relic souls");
             Add(map, "Fail_no_scars", "它身上没有要治的战痕", "This cub has no scars to treat");
             Add(map, "Fail_heal_scar_failed", "治疗未能保存", "The treatment could not be stored");
+            Add(map, "Fail_pet_max_level", "它已经长成了，魂火添不进去", "It's fully grown; the soul fire won't take");
+            Add(map, "Fail_soul_fed_today", "今日魂火已燃，明天再来", "Its soul fire already burned today; come back tomorrow");
+            Add(map, "Fail_soul_feed_clock_missing", "此刻辨不清时辰，回基地再献", "Can't tell the hour right now; try again at base");
+            Add(map, "Fail_soul_feed_failed", "献魂未能保存", "The offering could not be stored");
             Add(map, "Fail_pet_favorite", "收藏的崽不能放生，先取消收藏", "Favorite cubs can't be released; unfavorite it first");
             Add(map, "Fail_pet_favorite_desperate", "收藏的崽不走亡命档", "Favorite cubs don't take Desperate runs");
             Add(map, "Fail_favorite_failed", "收藏未能保存", "The favorite could not be stored");

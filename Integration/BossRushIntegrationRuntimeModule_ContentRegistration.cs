@@ -80,9 +80,12 @@ namespace BossRush
             ReloadMetronomeWeaponConfig.InjectLocalization();
             PassTheBombWeaponConfig.InjectLocalization();
             ResidualSunShieldWeaponConfig.InjectLocalization();
+            SilenceBellWeaponConfig.InjectLocalization();
             EclipseBloomLocalization.Inject();
             _owner.InjectReverseScaleLocalizationFromRuntimeModule();
             LocalizationInjector.InjectWeddingBuildingLocalization();
+            // ModConfig 下拉项标题：官方下拉框切语言时按 Options_<配置键> 查表，按新语言重注入登记过的标题
+            ModConfigOptionLocalization.Inject();
             ModBehaviour.DevLog("[BossRush] extension localization injected");
         }
 

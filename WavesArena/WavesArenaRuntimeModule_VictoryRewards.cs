@@ -48,8 +48,12 @@ namespace BossRush
             // 取消敌人死亡监听
             owner.UnsubscribeArenaBossDeathsForArena();
 
-            // 触发通关成就检查
-            owner.CheckClearAchievementsForArena();
+            // 触发通关成就检查（出征令：旧通关 / 无伤 / 速通 / 累计成就只认全征 + 标准及以上；噩梦全征另解锁噩梦通关）
+            if (ExpeditionCountsForClearAchievements())
+            {
+                owner.CheckClearAchievementsForArena();
+            }
+            UnlockExpeditionNightmareClear();
 
             // 通知快递员 BossRush 通关
             owner.NotifyCourierBossRushCompleted();
@@ -79,8 +83,10 @@ namespace BossRush
             // 根据本次难度播放通关横幅，并启动延迟落地的奖励箱虚影演出
             try
             {
-                int rewardHighCount = (BossesPerWave <= 1) ? 3 : 10;
+                // 出征令：件数按征程折算（√(L/全池数)）、按战帖增减；全征标准档仍是 3 / 10
+                int rewardHighCount = ExpeditionVictoryChestCount((BossesPerWave <= 1) ? 3 : 10);
                 string diffName = (BossesPerWave <= 1) ? L10n.T("弹指可灭", "A Snap") : L10n.T("有点意思", "Getting Interesting");
+                diffName += ExpeditionBannerSuffix();
 
                 string banner = L10n.T(
                     "<color=#FF0000>恭</color><color=#FF7F00>喜</color><color=#FFFF00>通</color><color=#00FF00>关</color> " +
@@ -658,7 +664,8 @@ namespace BossRush
                             {
                                 qualities.entries.Clear();
                                 // 使用内部常量定义的高品质范围
-                                int highQualityMin = ModBehaviour.LOOT_HIGH_QUALITY_MIN;
+                                // 出征令困难、噩梦：通关箱从 6 档起
+                                int highQualityMin = ExpeditionVictoryQualityMin(ModBehaviour.LOOT_HIGH_QUALITY_MIN);
                                 int highQualityMax = ModBehaviour.LOOT_HIGH_QUALITY_MAX;
                                 for (int q = highQualityMin; q <= highQualityMax; q++)
                                 {

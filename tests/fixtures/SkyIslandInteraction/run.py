@@ -158,7 +158,7 @@ def generate():
         "private void AttachDeviceShop<T>(", "private static void DisposeDeviceShop(",
         "private string Repair()", "private string Heal()", "private string Meal()",
         "private void RepairChoice(", "private void HealChoice(", "private void MealChoice(", "private static string ServiceTag("))
-    parts.append("\n".join(re.findall(r"^        private [^;{}]*\b(?:dockShop|bellShop)(?:Group)?\b[^;{}]*;", world_services, re.M)))
+    parts.append("\n".join(re.findall(r"^        private [^;{}]*\b(?:dockShop|bellShop|bellWardShop)(?:Group)?\b[^;{}]*;", world_services, re.M)))
     parts.append("}\n" + member(service, "internal enum SkyIslandServiceReadiness") + "\ninternal sealed partial class SkyIslandServices {\n" + constants)
     parts.extend(member(service, s) for s in (
         "internal static int HealPriceFor(", "internal SkyIslandServiceReadiness HealReadiness(",
@@ -184,7 +184,9 @@ def generate():
                  + "\n" + member(prelude, "internal static void InjectLocalizations()") + "\n}\n}\n")
     helper_path = ROOT / "Integration/Utils/NPCNameTagHelper.cs"
     helper = helper_path.read_text(encoding="utf-8-sig")
-    parts.append("namespace BossRush.Utils { internal static partial class NPCNameTagHelper {\n"
+    # 2026-11-24：名牌选项读登记表的只读快照（NpcNameplateTarget + CopyNameplateTargets）一起原样编译
+    parts.append("namespace BossRush.Utils {\n" + member(helper, "internal struct NpcNameplateTarget") + "\n"
+                 + "internal static partial class NPCNameTagHelper {\n"
                  + member(helper, "private sealed class OriginalHealthBarEntry") + "\n"
                  + field(helper, "OriginalHealthBarEntriesByTransformId") + "\n"
                  + "\n".join(field(helper, name) for name in ("_cachedCamera", "_cachedCameraTransform", "_nextCameraRefreshTime")) + "\n"
@@ -194,6 +196,7 @@ def generate():
                      "internal static bool UpdateOriginalHealthBarDisplayName(",
                      "public static void RefreshOriginalHealthBarName(",
                      "public static void UnregisterOriginalHealthBarName(",
+                     "internal static void CopyNameplateTargets(",
                      "private static void TryApplyOfficialDialogueName(")) + "\n}\n}\n")
     localization, localization_paths = localization_sources()
     parts.append(localization)
@@ -206,6 +209,7 @@ def generate():
     linked.append(ROOT / "Config/ConfigItemIds.cs")  # quest reward items use the shared TypeID constants
     linked.extend(ROOT / SKY / n for n in ("SkyIslandItemRules.cs", "SkyIslandPointText.cs"))
     linked.append(ROOT / "Integration/NewWeapons/ReloadMetronome/ReloadMetronomeConfig.cs")
+    linked.append(ROOT / "Integration/NewWeapons/SilenceBell/SilenceBellConfig.cs")  # 钟守第二只匣子的卖家与价格
     linked.append(ROOT / "Audio/BossRushOfficialAudio.cs")  # StopBuzz 经统一入口反射调官方 AudioObject.StopAll
     hashes = {SKY + n: hashlib.sha256((ROOT / SKY / n).read_bytes()).hexdigest() for n in sources}
     hashes.update({p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in linked})

@@ -65,6 +65,9 @@ PERSISTENT = (
     ("Integration/NewWeapons/PassTheBomb/PassTheBombFx.cs", None, "private void LateUpdate()",
      "canvas.enabled = visible;", ("unity", r"class PassTheBombFx\s*:\s*MonoBehaviour"),
      "甩锅许可证：待爆期间跟随携带者的头顶倒计时"),
+    ("Integration/NewWeapons/SilenceBell/SilenceBellFx.cs", None, "private void LateUpdate()",
+     "canvas.enabled = visible;", ("unity", r"class SilenceBellFx\s*:\s*MonoBehaviour"),
+     "止语钟罩：佩戴期间压在官方血条上沿的头顶护罩条"),
     ("Integration/NewWeapons/AstralStaff/AstralStaffFx.cs", "internal sealed class AstralStaffBeanHud",
      "internal void Tick(CharacterMainControl player, float beans, float charge01, bool charging)",
      "if (!visible) { HideAll(); return; }",
@@ -126,6 +129,14 @@ PERSISTENT = (
      ("call", "SkyIsland/SkyIslandSession.cs", "hud.Tick(Time.unscaledDeltaTime, HudSuppressed())",
       "private void Update()", [], "if (hud != null)", 1),
      "天空岛右上卡片、区域大标题与字幕"),
+    # 2026-11-24 出征令：竞技场局内右侧的战帖小朱印
+    ("WavesArena/ArenaExpeditionHud.cs", None, "private void Update()",
+     "canvas.enabled = visible;", ("unity", r"class ArenaExpeditionHud\s*:\s*MonoBehaviour"),
+     "出征令战帖角标"),
+    # 2026-11-24 友好 NPC 名牌（2026-11-25 起恒为走近显示、无配置项）：友好 NPC 头上的一行名字
+    ("Integration/Utils/FriendlyNpcNameplates.cs", None, "private void Update()",
+     "canvas.enabled = visible;", ("unity", r"class FriendlyNpcNameplates\s*:\s*MonoBehaviour"),
+     "友好 NPC 名牌（WorldOverlay）"),
 )
 
 # 引用了 HUD 层级常量、但不是屏幕常驻 HUD 的文件。每一条都要写明理由。
@@ -143,6 +154,9 @@ EXCLUDED = {
     "Integration/Affinity/AffinityUIManager.cs":
         "好感变化浮字（HudOverlay）：好感事件触发、约 1.2 秒后自毁的一次性浮字，不是常驻 HUD；"
         "浮字每帧仍跟随 IsOfficialHudHidden 隐藏、IsGamePaused 停推进（AffinityFloatText.Update）",
+    "WavesArena/ArenaInkTitleCard.cs":
+        "出征令水墨标题幕（HudOverlay）：压轴 / 噩梦 Boss 登场时约 2 秒的一次性演出，播完自毁，不是常驻 HUD；"
+        "演出期间每帧仍跟随 IsOfficialHudHidden 与 IsGamePaused 隐藏（ArenaInkTitleCard.Update）",
 }
 
 # 只引用非 HUD 层级（Panel / Modal / Toast / 过场……）的文件：模态、玩家主动打开的面板或一次性演出，
@@ -175,6 +189,7 @@ MODAL = {
     "ZombieMode/ZombieModeExtractionController.cs": "丧尸模式撤离确认（ZombieModal）",
     "ZombieMode/ZombieModeRewardSelectionView.cs": "丧尸模式奖励选择面板（ZombieModal）：每波结束的必答模态",
     "ZombieMode/ZombieModeTemporaryNpcServiceView.cs": "丧尸模式补给 / 医疗终端服务面板（ZombieService）：交互打开",
+    "WavesArena/ArenaExpeditionOrderPanel.cs": "出征令面板（Modal）：玩家在竞技场路牌上交互打开，立誓或等等即关",
 }
 
 # 写了 OnGUI 的生产文件。IMGUI 画在所有 uGUI 画布之上，常驻内容走这里同样会压住官方界面。

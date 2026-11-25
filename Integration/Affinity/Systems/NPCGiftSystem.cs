@@ -208,11 +208,22 @@ namespace BossRush
             // 计算好感度增益
             int giftValue = CalculateGiftValue(npcId, item);
             
-            // 获取反应类型
-            GiftReactionType reactionType = GetGiftReactionType(npcId, item);
-            
-            // 增加好感度
-            AffinityManager.AddPoints(npcId, giftValue);
+            // 获取反应类型；心意簿记下决定这次反应的那条规则（物品 / 标签 / 收集品 LikedBy），普通反应不记
+            bool liked;
+            string preferenceToken = ResolveGiftPreference(npcId, item, out liked);
+            GiftReactionType reactionType = ReactionOf(preferenceToken, liked);
+            bool journalAdded = preferenceToken != null && AffinityManager.TryRecordGiftPreference(npcId, liked, preferenceToken);
+
+            // 增加好感度（第一次摸清时，这次的好感浮字下面多一枚「心意簿添了一笔」纸笺）
+            if (journalAdded) AffinityUIManager.NoteGiftJournalEntry(npcId);
+            try
+            {
+                AffinityManager.AddPoints(npcId, giftValue);
+            }
+            finally
+            {
+                AffinityUIManager.NoteGiftJournalEntry(null);
+            }
             
             // 更新上次赠送日期和反应类型
             int currentDay2 = GetCurrentGameDay();
@@ -314,37 +325,53 @@ namespace BossRush
         /// </summary>
         public static GiftReactionType GetGiftReactionType(string npcId, Item item)
         {
-            if (item == null) return GiftReactionType.Normal;
+            bool liked;
+            return ReactionOf(ResolveGiftPreference(npcId, item, out liked), liked);
+        }
 
-            var config = AffinityManager.GetNPCConfig(npcId);
-            var giftConfig = config as INPCGiftConfig;
+        /// <summary>
+        /// 这件礼物命中了这位 NPC 的哪条心意规则：返回心意簿令牌（item:&lt;TypeID&gt; / tag:&lt;标签名&gt;），
+        /// <paramref name="liked"/> 是喜欢还是不喜欢；落在类型基础值（普通反应）时返回 null。
+        /// 判定顺序就是反应判定的顺序：厌恶物品 → 喜欢物品 → 收集品 LikedBy → 喜欢的标签。
+        /// 反应类型与心意簿都只读这里，两边不会各说各话。
+        /// </summary>
+        internal static string ResolveGiftPreference(string npcId, Item item, out bool liked)
+        {
+            liked = false;
+            if (item == null) return null;
 
-            if (giftConfig == null) return GiftReactionType.Normal;
+            var giftConfig = AffinityManager.GetNPCConfig(npcId) as INPCGiftConfig;
+            if (giftConfig == null) return null;
 
             int typeId = GetItemTypeId(item);
-
             if (giftConfig.NegativeItems != null && giftConfig.NegativeItems.ContainsKey(typeId))
             {
-                return GiftReactionType.Negative;
+                return AffinityManager.GiftItemToken(typeId);
             }
 
+            liked = true;
             if (giftConfig.PositiveItems != null && giftConfig.PositiveItems.ContainsKey(typeId))
             {
-                return GiftReactionType.Positive;
+                return AffinityManager.GiftItemToken(typeId);
             }
 
             if (CollectibleTuning.LikedGiftAffinity(npcId, typeId) > 0)
             {
-                return GiftReactionType.Positive;
+                return AffinityManager.GiftItemToken(typeId);
             }
 
             // 检查正向标签列表
-            if (HasPositiveTag(npcId, item))
-            {
-                return GiftReactionType.Positive;
-            }
+            string tag = FindPositiveTag(npcId, item);
+            if (tag != null) return AffinityManager.GiftTagToken(tag);
 
-            return GiftReactionType.Normal;
+            liked = false;
+            return null;
+        }
+
+        private static GiftReactionType ReactionOf(string preferenceToken, bool liked)
+        {
+            if (preferenceToken == null) return GiftReactionType.Normal;
+            return liked ? GiftReactionType.Positive : GiftReactionType.Negative;
         }
         
         /// <summary>
@@ -508,26 +535,32 @@ namespace BossRush
         /// </summary>
         private static bool HasPositiveTag(string npcId, Item item)
         {
+            return FindPositiveTag(npcId, item) != null;
+        }
+
+        /// <summary>物品身上第一个这位 NPC 喜欢的标签名；没有返回 null。</summary>
+        private static string FindPositiveTag(string npcId, Item item)
+        {
             if (item == null || item.Tags == null || item.Tags.Count == 0)
-                return false;
+                return null;
 
             var config = AffinityManager.GetNPCConfig(npcId);
             var giftConfig = config as INPCGiftConfig;
-            if (giftConfig == null) return false;
+            if (giftConfig == null) return null;
 
             var positiveTags = giftConfig.PositiveTags;
-            if (positiveTags == null || positiveTags.Count == 0) return false;
+            if (positiveTags == null || positiveTags.Count == 0) return null;
 
             foreach (var tag in item.Tags)
             {
                 if (tag != null && positiveTags.Contains(tag.name))
                 {
                     ModBehaviour.DevLog("[NPCGift] " + npcId + " 物品拥有喜欢的标签: " + tag.name);
-                    return true;
+                    return tag.name;
                 }
             }
 
-            return false;
+            return null;
         }
 
         /// <summary>

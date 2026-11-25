@@ -93,6 +93,22 @@ namespace BossRush.Utils
             check(vanillaActor.DisplayedName == "Jeff" && LocalizationHelper.Writes == writes,
                 "official actor name keys cannot be overwritten by the helper");
 
+            // 2026-11-24 友好 NPC 名牌（2026-11-25 起恒为走近显示）只读这份快照：读到最新名字与登记高度，自己不建任何东西
+            var snapshot = new System.Collections.Generic.List<NpcNameplateTarget>();
+            var flat = new GameObject("no height given");
+            RegisterOriginalHealthBarName(flat.transform, "Flat", 0f, "test");
+            objects = GameObject.CreatedCount;
+            components = target.Components.Count;
+            CopyNameplateTargets(snapshot);
+            NpcNameplateTarget seen = snapshot.Find(t => t.Target == target.transform);
+            check(seen.Target == target.transform && seen.Name == "隐藏姓名" && seen.Height == 2.2f,
+                "nameplate snapshot reads the registered NPC, its latest name and registration height");
+            check(snapshot.Find(t => t.Target == flat.transform).Height == 2.2f,
+                "nameplate snapshot falls back to 2.2 m when a caller registered no height");
+            check(GameObject.CreatedCount == objects && target.Components.Count == components,
+                "nameplate snapshot creates no objects or components");
+            UnityEngine.Object.Destroy(flat);
+
             UnregisterOriginalHealthBarName(target.transform);
             writes = LocalizationHelper.Writes;
             check(actor != null && target.GetComponent<DuckovDialogueActor>() == actor,

@@ -132,6 +132,7 @@ echo(Localization\PhantomWitchScytheLocalization.cs
 echo(Localization\ModeHLocalization.cs
 echo(Localization\PetNestLocalization.cs
 echo(Localization\RandomEventsLocalization.cs
+echo(Localization\ModConfigOptionLocalization.cs
 echo(Localization\DailyReportLocalization.cs
 echo(Common\Lifecycle\IBossRushRuntimeModule.cs
 echo(Common\Lifecycle\SceneRuntimeContext.cs
@@ -148,6 +149,8 @@ echo(Common\UI\BossRushUI.cs
 echo(Common\UI\BossRushUISlider.cs
 echo(Common\UI\BossRushUIAnimation.cs
 echo(Common\UI\BossRushUIFeel.cs
+echo(Common\UI\BossRushInkSkin.cs
+echo(Common\UI\BossRushLocalPrefs.cs
 echo(Common\UI\BossRushUIFoundation.cs
 echo(Common\UI\BossRushUIHero.cs
 echo(Common\UI\BossRushConfirmDialog.cs
@@ -408,6 +411,9 @@ echo(DebugAndTools\F3GameplayValidationCoverage.cs
 echo(DebugAndTools\F3GameplayValidationItems.cs
 echo(DebugAndTools\F3GameplayValidationZombie.cs
 echo(DebugAndTools\F3GameplayValidationReviewFixes.cs
+echo(DebugAndTools\F3GameplayValidationWishes.cs
+echo(DebugAndTools\F3GameplayValidationWishFocus.cs
+echo(DebugAndTools\F3GameplayValidationModConfigLabels.cs
 echo(DebugAndTools\F3GameplayValidationModeHKits.cs
 echo(DebugAndTools\F3GameplayValidationModeHErrorSwap.cs
 echo(DebugAndTools\F3GameplayValidationScenes.cs
@@ -568,6 +574,9 @@ echo(Utilities\OriginalCharacterIsolationHelper.cs
 echo(Utilities\OriginalExtractionPointIsolationHelper.cs
 echo(Utilities\ModeExtractionPointFactory.cs
 echo(Utilities\MapPointSceneResolver.cs
+echo(Utilities\BossMapBeacon\BossMapBeaconRules.cs
+echo(Utilities\BossMapBeacon\BossMapBeaconFx.cs
+echo(Utilities\BossMapBeacon\BossMapBeaconRuntimeModule.cs
 echo(Utilities\MapSelectionEntryInjectionHelper.cs
 echo(Utilities\OfficialQuests\OfficialQuestBinding.cs
 echo(Utilities\OfficialQuests\OfficialQuestProjection.cs
@@ -613,6 +622,12 @@ echo(WavesArena\WavesArenaRuntimeModule_RandomBossLoot.cs
 echo(WavesArena\WavesArenaRuntimeModule_BossLootEvent.cs
 echo(WavesArena\WavesArenaRuntimeModule_SpecialLoot.cs
 echo(WavesArena\WavesArenaRuntimeModule_VictoryRewards.cs
+echo(WavesArena\WavesArenaRuntimeModule_Expedition.cs
+echo(WavesArena\ArenaExpeditionTuning.cs
+echo(WavesArena\ArenaExpeditionOrder.cs
+echo(WavesArena\ArenaExpeditionHud.cs
+echo(WavesArena\ArenaInkTitleCard.cs
+echo(WavesArena\ArenaExpeditionOrderPanel.cs
 echo(WavesArena\BossRushEntryFlow.cs
 echo(WavesArena\WavesArenaSpawnerControl.cs
 echo(LootAndRewards\LegacyBossLootProbabilityModel.cs
@@ -1081,6 +1096,12 @@ echo(Integration\NewWeapons\PassTheBomb\PassTheBombWeaponConfig.cs
 echo(Integration\NewWeapons\PassTheBomb\PassTheBombRules.cs
 echo(Integration\NewWeapons\PassTheBomb\PassTheBombRuntime.cs
 echo(Integration\NewWeapons\PassTheBomb\PassTheBombFx.cs
+echo(Integration\NewWeapons\SilenceBell\SilenceBellConfig.cs
+echo(Integration\NewWeapons\SilenceBell\SilenceBellRules.cs
+echo(Integration\NewWeapons\SilenceBell\SilenceBellRuntime.cs
+echo(Integration\NewWeapons\SilenceBell\SilenceBellFx.cs
+echo(Integration\NewWeapons\SilenceBell\SilenceBellWeaponConfig.cs
+echo(Integration\NewWeapons\SilenceBell\SilenceBellShop.cs
 echo(Integration\FlightTotem\FlightConfig.cs
 echo(Integration\FlightTotem\FlightTotemFactory.cs
 echo(Integration\FlightTotem\FlightTotemBootstrap.cs
@@ -1097,6 +1118,7 @@ echo(Integration\Utils\NPCAssetBundleHelper.cs
 echo(Integration\Utils\NPCUIAssetCache.cs
 echo(Integration\Utils\NPCHeartBubbleHelper.cs
 echo(Integration\Utils\NPCNameTagHelper.cs
+echo(Integration\Utils\FriendlyNpcNameplates.cs
 echo(Integration\Utils\NPCPathingHelper.cs
 echo(Integration\Utils\NPCFollowMovementBase.cs
 echo(Integration\Utils\NPCInteractionGroupHelper.cs
@@ -1215,6 +1237,7 @@ echo(Integration\Affinity\AffinityJsonSerializer.cs
 echo(Integration\Affinity\AffinityManager.cs
 echo(Integration\Affinity\AffinityManagerPersistenceAndDecay.cs
 echo(Integration\Affinity\AffinityManagerStaticCacheReset.cs
+echo(Integration\Affinity\AffinityManagerGiftJournal.cs
 echo(Integration\Affinity\NPCShopStockLedger.cs
 echo(Integration\Affinity\Core\INPCGiftConfig.cs
 echo(Integration\Affinity\Core\INPCDialogueConfig.cs
@@ -1290,6 +1313,9 @@ echo(Integration\WishFountain\WishFountainInteractable.cs
 echo(Integration\WishFountain\WishFountainDanmakuView.cs
 echo(Integration\WishFountain\WishFountainUI.cs
 echo(Integration\WishFountain\WishFountainUI_Feel.cs
+echo(Integration\WishFountain\WishFountainUI_Constellations.cs
+echo(Integration\WishFountain\WishFountainConstellations.cs
+echo(Integration\WishFountain\WishFountainLanternFilter.cs
 echo(Integration\WishFountain\WishFountainUIBridge.cs
 echo(Integration\WishFountain\WishFountainRewardAnimationView.cs
 echo(Integration\WishFountain\WishFountainRewardAnimationView_Reveal.cs
@@ -1331,6 +1357,7 @@ echo(PetNest\PetNestUIPages.cs
 echo(PetNest\PetNestUINestPage.cs
 echo(PetNest\PetNestUI.cs
 echo(PetNest\PetNestUILayout.cs
+echo(PetNest\PetNestUISoulFeed.cs
 echo(PetNest\PetNestUIMotion.cs
 echo(PetNest\PetNestUIMotionParts.cs
 echo(PetNest\PetNestUIMuseumPage.cs
@@ -1683,7 +1710,7 @@ if %BUILD_EXIT_CODE% EQU 0 (
                 echo Deployed sound tree to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds
             )
             rem Fail loud per folder: a missing folder here means the feature reading it is mute.
-            for %%S in (Achievement BGM DragonKing Goblin NewWeapons Nurse SetBonus SkyIsland Tidegate items lottery) do (
+            for %%S in (Achievement BGM DragonKing Goblin InkUI NewWeapons Nurse SetBonus SkyIsland Tidegate items lottery) do (
                 if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\%%S" echo WARNING: sound folder missing after deploy: %%S
             )
         ) else (

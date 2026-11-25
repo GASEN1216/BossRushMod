@@ -49,6 +49,7 @@ namespace BossRush
 
         private NPCGiftInteractable _giftInteractable;
         private NPCShopInteractable _shopInteractable;
+        private NPCShopInteractable _wardShopInteractable;
         private NPCSpouseFollowInteractable _spouseFollowInteractable;
         private NPCDivorceInteractable _divorceInteractable;
         private NPCSpouseHomeInteractable _spouseHomeInteractable;
@@ -250,6 +251,14 @@ namespace BossRush
                 _shopInteractable = NPCInteractionGroupHelper.AddSubInteractable(
                     transform, "ShopOption", groupList,
                     (ReloadMetronomeShopInteractable component) => component.NpcId = npcId);
+            }
+
+            if (_wardShopInteractable == null && npcId == SilenceBellConfig.VendorNpcId)
+            {
+                // 钟守的第二只匣子：止语钟罩。与旧物匣同一好感门槛、同一条贝壳兑换。
+                _wardShopInteractable = NPCInteractionGroupHelper.AddSubInteractable(
+                    transform, "WardShopOption", groupList,
+                    (SilenceBellShopInteractable component) => component.NpcId = npcId);
             }
 
             INPCShopConfig shopConfig = AffinityManager.GetNPCConfig(npcId) as INPCShopConfig;

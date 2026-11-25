@@ -208,7 +208,7 @@ def main():
         "owner.BeginAchievementSessionForArena(InfiniteHellMode ? \"InfiniteHell\" : \"BossRush\");",
         "owner.SetBossRushRuntimeActiveForArena(true);",
         "WavesArenaRuntimeModule.ResetMilestones(owner);",
-        "owner.TryRollMutatorsForArena(InfiniteHellMode ? \"InfiniteHell\" : \"BossRush\");",
+        "owner.TryRollMutatorsForArena(InfiniteHellMode ? \"InfiniteHell\" : \"BossRush\", ExpeditionForcedMutators(expeditionOrder));",
         "CurrentEnemyIndex = 0;",
         "CountedDeadBosses.Clear();",
         "owner.SubscribeArenaBossDeaths();",
@@ -233,8 +233,8 @@ def main():
     if "wavesArenaRuntime.ShowNextWaveCountdownBanner(secondsInt);" not in ARENA:
         raise AssertionError("legacy banner entry must forward to arena module")
     for token in (
-        "float interval = owner.GetWaveIntervalSeconds();",
-        "float milestoneBonus = owner.GetMilestoneRestBonusSeconds();",
+        "float interval = ExpeditionRestSeconds(owner.GetWaveIntervalSeconds());",
+        "float milestoneBonus = ExpeditionMilestoneRestSeconds(owner.GetMilestoneRestBonusSeconds());",
         "int completedWave = InfiniteHellMode ? InfiniteHellWaveIndex : CurrentEnemyIndex;",
         "if (completedWave > 0 && completedWave % 5 == 0)",
         "WaitingForNextWave = false;",

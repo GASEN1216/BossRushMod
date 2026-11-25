@@ -36,12 +36,7 @@ namespace BossRush
 
         private bool CanTrade(CharacterMainControl player)
         {
-            return this != null && isActiveAndEnabled && npcId == ReloadMetronomeConfig.VendorNpcId
-                && player != null && ReferenceEquals(player, CharacterMainControl.Main)
-                && player.Health != null && !player.Health.IsDead && !SceneLoader.IsSceneLoading
-                && player.gameObject.scene == gameObject.scene
-                && Vector3.Distance(player.transform.position, transform.position) <= 6f
-                && NPCShopSystem.IsShopUnlocked(npcId);
+            return ReloadMetronomeTrade.CanTradeAt(this, npcId, ReloadMetronomeConfig.VendorNpcId, player);
         }
 
         private void Exchange(CharacterMainControl player)
@@ -52,10 +47,22 @@ namespace BossRush
         }
     }
 
+    /// <summary>钟守的两只匣子（旧物匣 · 节拍器、铜钟罩 · 止语钟罩）共用的贝壳兑换：同一道门槛、同一条事务。</summary>
     internal static class ReloadMetronomeTrade
     {
-        // 库存回调可以重入交互；同一帧也只能结算一份兑换。
+        // 库存回调可以重入交互；同一帧也只能结算一份兑换（两只匣子共用这把锁）。
         private static bool busy;
+
+        /// <summary>本人在场景里、6 米内、同场景、未在读图，且好感已解锁钟守的商店。</summary>
+        internal static bool CanTradeAt(NPCShopInteractable shop, string shopNpcId, string vendorNpcId, CharacterMainControl player)
+        {
+            return shop != null && shop.isActiveAndEnabled && shopNpcId == vendorNpcId
+                && player != null && ReferenceEquals(player, CharacterMainControl.Main)
+                && player.Health != null && !player.Health.IsDead && !SceneLoader.IsSceneLoading
+                && player.gameObject.scene == shop.gameObject.scene
+                && Vector3.Distance(player.transform.position, shop.transform.position) <= 6f
+                && NPCShopSystem.IsShopUnlocked(shopNpcId);
+        }
 
         private static bool TryDeliverToBackpack(Item output, Inventory pack)
         {
@@ -68,6 +75,14 @@ namespace BossRush
 
         internal static bool TryExchange(CharacterMainControl player, Func<bool> valid, out string message)
         {
+            return TryExchangeForShells(player, valid, BossRushItemIds.ReloadMetronome, ReloadMetronomeConfig.ShellCost,
+                L10n.T("收下节拍器，试着踩准下一拍。", "Take the metronome. Catch the next beat."), out message);
+        }
+
+        /// <summary>预留背包贝壳 → 交付进背包 → 提交；任何一步失败都退回贝壳、销毁未交付的商品。</summary>
+        internal static bool TryExchangeForShells(CharacterMainControl player, Func<bool> valid, int typeId, int shellCost,
+            string successMessage, out string message)
+        {
             message = L10n.T("现在无法兑换。", "Cannot trade right now.");
             if (busy || valid == null || !valid() || player == null || player.CharacterItem == null
                 || player.CharacterItem.Inventory == null) return false;
@@ -78,10 +93,10 @@ namespace BossRush
             {
                 int shellId = ItemAssetsCollection.TryGetIDByName(SkyIslandShellLottery.ShellItemName, false);
                 if (shellId <= 0) return false;
-                output = ItemAssetsCollection.InstantiateSync(BossRushItemIds.ReloadMetronome);
+                output = ItemAssetsCollection.InstantiateSync(typeId);
                 if (output == null) return false;
                 if (!SkyIslandInventoryTransaction.TryReserve(player,
-                    new[] { new SkyIslandIngredient(shellId, ReloadMetronomeConfig.ShellCost) }, out payment))
+                    new[] { new SkyIslandIngredient(shellId, shellCost) }, out payment))
                 {
                     message = L10n.T("背包里的贝壳不够。", "Not enough seashells in your backpack.");
                     return false;
@@ -94,7 +109,7 @@ namespace BossRush
                 }
                 output = null;
                 payment.Commit();
-                message = L10n.T("收下节拍器，试着踩准下一拍。", "Take the metronome. Catch the next beat.");
+                message = successMessage;
                 return true;
             }
             catch (Exception e)

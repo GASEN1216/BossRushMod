@@ -112,5 +112,28 @@ class Program {
   AffinityManager.Load();Check(AffinityManager.GetShopStockTokens("shop")=="7:0:100:1","stock tokens survive reload");
   string barrier="{bad}";Saves.SavesSystem.Reset(barrier);AffinityManager.Initialize();
   AffinityManager.SetShopStockTokens("shop","7:1:100:1");Check(AffinityManager.GetShopStockTokens("shop")=="","write barrier blocks stock writes");
+  // 2026-11-24 心意簿：第一次记下返回 true、重复不记、坏令牌拒收；随好感存档往返；旧档缺字段读成空；写屏障挡住记录
+  Check(!AffinityManager.TryRecordGiftPreference("npc",true,AffinityManager.GiftItemToken(7)),"write barrier blocks gift journal writes");
+  Saves.SavesSystem.Reset(null);AffinityManager.Initialize();
+  Check(AffinityManager.TryRecordGiftPreference("npc",true,AffinityManager.GiftItemToken(500123)),"first liked item is recorded");
+  Check(!AffinityManager.TryRecordGiftPreference("npc",true,"item:500123"),"same liked item is recorded once");
+  Check(AffinityManager.TryRecordGiftPreference("npc",true,AffinityManager.GiftTagToken("Formula")),"liked tag is recorded");
+  Check(AffinityManager.TryRecordGiftPreference("npc",false,AffinityManager.GiftItemToken(7)),"disliked item is recorded on its own side");
+  Check(!AffinityManager.TryRecordGiftPreference("npc",true,"item:") && !AffinityManager.TryRecordGiftPreference("npc",true,"tag:a,b")
+   && !AffinityManager.TryRecordGiftPreference("npc",true,"bogus"),"malformed journal tokens are rejected");
+  var likes=AffinityManager.GetKnownGiftPreferences("npc",true);var dislikes=AffinityManager.GetKnownGiftPreferences("npc",false);
+  Check(likes.Count==2 && likes[0]=="item:500123" && likes[1]=="tag:Formula" && dislikes.Count==1 && dislikes[0]=="item:7","journal keeps discovery order per side");
+  Saves.SavesSystem.Collect();
+  Check(Saves.SavesSystem.Raw.Contains("\"knownLikes\":\"item:500123,tag:Formula\"") && Saves.SavesSystem.Raw.Contains("\"knownDislikes\":\"item:7\""),"journal rides the affinity save");
+  AffinityManager.Load();
+  Check(AffinityManager.GetKnownGiftPreferences("npc",true).Count==2 && AffinityManager.GetKnownGiftPreferences("npc",false).Count==1,"journal survives reload");
+  const string legacyNoJournal="{\"npcDataList\":[{\"npcId\":\"npc\",\"points\":2300,\"lastGiftDay\":99,\"lastChatDay\":99,\"isMarriedToPlayer\":true}]}";
+  Saves.SavesSystem.Reset(legacyNoJournal);AffinityManager.Initialize();AffinityManager.Load();
+  Check(AffinityManager.GetPoints("npc")==2300 && AffinityManager.GetKnownGiftPreferences("npc",true).Count==0
+   && AffinityManager.GetKnownGiftPreferences("npc",false).Count==0,"legacy save without journal fields loads with an empty journal");
+  var clone=new AffinityData("c"){knownLikes="item:1",knownDislikes="tag:X"}.Clone();
+  Check(clone.knownLikes=="item:1" && clone.knownDislikes=="tag:X","clone carries the journal");
+  var map=new Dictionary<string,AffinityData>();
+  Check(!AffinityJsonSerializer.Deserialize("{\"npcDataList\":[{\"npcId\":\"npc\",\"knownLikes\":3}]}",map) && map.Count==0,"a corrupt journal field rejects the whole record set");
  }
 }

@@ -594,6 +594,7 @@ partial class Program
         PityGuarantees();
         PetNestLifecycleRepairs();
         PetNestCarePersistenceCompatibility();
+        PetNestSoulFeed();
         PetNestRewardAssetObligation();
         PetNestFailedRewardAssetObligation();
         PetNestUnusedHatchObligation();

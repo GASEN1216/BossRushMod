@@ -10,9 +10,9 @@
 //   - 正负号由倾向滑块决定（0=必定负，1=必定正，0.5=各50%）
 //   - 属性范围：预制体值≤1时用0~1，>1时用0~100%预制体值
 //   - 整数属性保持整数
-//   - 每次重铸保证至少有一个属性被修改
-//   - 基础重铸费用为物品价值的1/1000
-//   - 保底机制：连续失败后提升成功率
+//   - 每次重铸改动全部未固定的可重铸属性（概率p只决定幅度，不决定改不改）
+//   - 基础重铸费用为物品价值的1/100（最低 MIN_REFORGE_COST，再按哥布林好感度打折）
+//   - 没有保底机制：不记录连续失败次数，也不随失败提升概率
 // ============================================================================
 
 using System;
@@ -223,7 +223,7 @@ namespace BossRush
         private const float MAX_DELTA_ABSOLUTE = 1.0f;
 
         /// <summary>
-        /// 属性值相对于原值的最大偏移比例（±100%，即最终值在0~200%原值范围内）
+        /// 单次重铸相对预制体值的最大改变量（±100%）；最终值另由 GetPropertyValueBounds 夹在预制体值的 30%~200%
         /// </summary>
         private const float MAX_VALUE_OFFSET_PERCENT = 1.0f;
 
@@ -808,14 +808,14 @@ namespace BossRush
 
         /// <summary>
         /// 执行重铸 - 新概率系统
-        /// 1. 检查基础费用（物品价值的1/1000）
-        /// 2. 每个属性独立判定是否修改（rand < p + 保底加成）
-        /// 3. 保证至少有一个属性被修改
+        /// 1. 检查基础费用（物品价值的1/100，含哥布林折扣）
+        /// 2. 全部未固定的可重铸属性都会被修改
+        /// 3. （无保底：不按连续失败调整概率）
         /// 4. 触发后用 u^expo 抽幅度
         /// 5. 收益方向由 tendencyChance 控制（0~1），再按属性极性换算数值正负号
         /// 6. 属性范围：预制体值≤1时用0~1，>1时用预制体值的30%~200%（针对非强制值）
         /// 7. 整数属性保持整数
-        /// 8. 保底机制：连续失败后提升成功率
+        /// 8. 投入金额只通过 FinalProbability 影响幅度
         /// </summary>
         public static ReforgeResult Reforge(Item item, int moneyInvested, string userId, float tendencyChance = 0.5f)
         {
@@ -829,7 +829,7 @@ namespace BossRush
                 return result;
             }
 
-            // 计算基础费用（物品价值的1/1000，应用哥布林好感度折扣）
+            // 计算基础费用（物品价值的1/100，应用哥布林好感度折扣）
             float itemValue = GetItemValue(item);
             int baseCost = GetDiscountedCost(item);
 
@@ -845,7 +845,7 @@ namespace BossRush
                 int rarity = item.Quality;
                 int itemId = item.GetInstanceID();
 
-                // 计算原始概率（不含保底，用于幅度计算）
+                // 计算概率p（用于幅度计算）
                 float baseP = FinalProbability(rarity, itemValue, moneyInvested);
 
                 // 创建随机种子
@@ -966,7 +966,7 @@ namespace BossRush
                     bool isSmallValue = Mathf.Abs(prefabValue) <= SMALL_VALUE_THRESHOLD ||
                                         FORCE_ABSOLUTE_RANGE_KEYS.Contains(prop.Key);
 
-                    // Step 2: 抽幅度（使用原始概率baseP，保底不影响幅度）
+                    // Step 2: 抽幅度（使用概率baseP）
                     float mag01 = RollMagnitude(baseP, random);
 
                     // Step 3: 先抽收益方向，再按官方属性极性转换成数值方向（后坐力越低越好）

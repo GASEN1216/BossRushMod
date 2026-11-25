@@ -624,10 +624,10 @@ namespace BossRush
 
         #region MutatorRuntimeBridge
 
-        internal void TryRollMutatorsForMode(string modeTag)
+        internal void TryRollMutatorsForMode(string modeTag, System.Collections.Generic.IList<string> forcedIds = null)
         {
             MutatorModeFlow.TryRollMutatorsForMode(modeTag, config != null && config.enableMutators,
-                config != null ? config.mutatorCount : 0, MutatorCountMin, MutatorCountMax);
+                config != null ? config.mutatorCount : 0, MutatorCountMin, MutatorCountMax, forcedIds);
         }
 
         internal void ClearMutatorsForMode(string modeTag) { MutatorModeFlow.ClearMutatorsForMode(modeTag); }

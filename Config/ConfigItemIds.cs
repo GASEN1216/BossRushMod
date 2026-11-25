@@ -150,5 +150,7 @@ namespace BossRush
         public const int CollectibleLast = 500218;
         /// <summary>收藏册：登记收集品的可用书。杰夫引导 590217 送一本，之后基地售货机上架；不可出售。</summary>
         public const int CollectionBook = 500219;
+        /// <summary>止语钟罩：无声钟守好感 5 级的回充式护罩图腾（玩家许愿第 10 项）。</summary>
+        public const int SilenceBell = 500220;
     }
 }

@@ -8650,3 +8650,11 @@ owner 决定继续用洛克王国原曲，只改显示名：`BgmTracks.json` 点
 - WikiContent：以 cf64459c（09-27 对照审校）之后的提交为线索，中英两份全量对照当前代码更新：鸭王杯（群战、战力、押注退出口径、本场总结、名人堂、自定义 Boss 表现）、三只模组 Boss 页、Mode G 确认页与英文名、丧尸模式开局装备与技能预警、词条面板位置、Boss 筛选因子页签、随机事件「Boss 乱入」、遗种巢放生、天空岛奖励去向与首杀、龙铳寒冷、腾云驾雾翻滚键、叮当 Lv.5/6 限量上架、征程奖励表改列表（WikiContent 不支持表格）、龙皇台词英文与代码一致；在线站速查框同步。
 - 补（owner 定）：断界戟英文名统一为代码里的「Inferno Emperor's Realm-Breaking Halberd」（WikiContent、`catalog.tsv`、在线站结构与图标清单、README_EN）；v2.3.0 更新日志未发版，鸭王杯一节改写为群战、「不速之客」改为「Boss 乱入」。
 - 验证：正式编译（部署 SHA 与 `Build/` 一致）、718 守卫、111 执行回归、`npm --prefix wiki-site run build` 通过；未实机。L3：丧尸模式打到第 30 波，Boss 应出齐 6 只；若 Player.log（Dev 构建）出现「Boss 生成失败，换落点重试」，把日志发回来查失败原因。
+
+## 2026-09-30 天空岛搜刮箱三种木箱外观（COMPAT / OPERATIONAL，L1/L2）
+
+- owner 选方案 A：复用岛上已有的 Tripo 木箱，打进特效小包。生活物资＝桶箱堆（1.04×0.88×1.05 m）、航务补给＝一排长货箱（1.29×0.47×0.50 m）、星工遗存＝长着风晶的小货箱（1.08×0.91×0.43 m，加青色点光）。
+- 链路：`tools/sky_island_loot_crates.py`（Blender 5.2 后台，退出码 0 + `SKY_ISLAND_LOOT_CRATES_OK`）→ 作者工程 `Assets/SkyIsland/Fx/Crates/`（JSON + 三个 Mesh 资产，未提交）→ `SkyIslandFxBundleBuilder.BuildOnlyAndExit`（Unity 2022.3.62f3 批处理，退出码 0，包内回读三件网格）→ UnityPy 判包：两个材质与两份着色器 d3d11 产物与旧包等长，新增三件网格，199,122 字节（上限 256 KiB）→ 复制 `Assets/ui/skyisland_fx`。
+- 第一次导出绕序全反（叉积与法线一致 0/1400）：世界那条链是 FBX 导入器替它翻的，自己写 Unity 网格要反转每个三角形；脚本已加自检（< 95% 一致即失败）。
+- 运行时：`SkyIslandLootCrateLook` 按名字取场景材质（`Sky_TripoCrateBarrel` / `Sky_TripoCoverCrates` / `Sky_TripoCrystalCluster`，已用 UnityPy 核对场景包里都有），只藏官方包渲染器（不碰交互气泡），三个候选朝向里挑不压墙的，不加实体碰撞，搜空不消失；缺网格或材质保留官方包。只作用于搜刮点，Boss 奖励箱与委托谢礼箱不变。
+- 验证：新守卫 `SkyIslandLootCrateLookGuard`（6 条反向探针）、`SkyIslandFxBundleGuard` 扩到三件网格（+2 条反向探针）；changed-only 守卫除缺 shapely 外全绿；`verify_sky_island_bundle_shaders.py` PASS；正式编译部署，`BossRush.dll` `B2CDF181…`、`skyisland_fx` `1699BADD…` 作者产物 / 仓库 / 游戏目录三份一致。未实机：箱子在 URP Deferred 下的明暗、贴图是否对位、朝向是否压墙要看。

@@ -73,8 +73,8 @@ namespace BossRush
             try
             {
                 if (addBoolMethod == null || config == null) return;
-                string label = L10n.T("鸭科夫日报：每日战绩、签到与悬赏", "Duckov Daily: Recap, Check-in and Bounties");
                 string key = ModName + DailyReportModConfigKeySuffix;
+                string label = ModConfigOptionLocalization.Label(key, "鸭科夫日报：每日战绩、签到与悬赏", "Duckov Daily: Recap, Check-in and Bounties");
                 addBoolMethod.Invoke(null, new object[] { ModName, key, label, config.dailyReportEnabled });
                 DevLog("[BossRush] 日报配置项注册成功");
             }

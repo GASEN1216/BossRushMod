@@ -144,7 +144,8 @@ namespace BossRush
                     Category = category,
                     DisplayName = displayName,
                     Description = description,
-                    CategoryLabel = GetCategoryLabel(category)
+                    // 出征令战帖指定的词条标「战帖」，和随机抽到的分开
+                    CategoryLabel = MutatorManager.IsForcedMutator(mutators[i]) ? L10n.T("战帖", "Writ") : GetCategoryLabel(category)
                 });
             }
 

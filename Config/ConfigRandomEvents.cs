@@ -125,7 +125,8 @@ namespace BossRush
                 if (addToggleMethod != null)
                     addToggleMethod.Invoke(null, new object[] {
                         ModName, ModName + RandomEventsEnabledModConfigKeySuffix,
-                        L10n.T("鸭生无常：局内随机事件", "Duck's Uncertainty: random events"), config.randomEventsEnabled });
+                        ModConfigOptionLocalization.Label(ModName + RandomEventsEnabledModConfigKeySuffix,
+                            "鸭生无常：局内随机事件", "Duck's Uncertainty: random events"), config.randomEventsEnabled });
 
                 if (addSliderMethod != null)
                 {

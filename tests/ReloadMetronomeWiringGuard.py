@@ -52,12 +52,19 @@ def main():
     assert "public const int RollCallLedger = 500106;" in ids, "published ledger TypeID must stay unchanged"
     rows = json.loads((ROOT / "Assets/Data/DuckNpcs.json").read_text(encoding="utf-8-sig"))["npcs"]
     shop = next(row for row in rows if row["id"] == "sky_bellkeeper")["permanent"]["shop"]
-    assert shop["unlockLevel"] == 5 and shop["items"] == [{"typeId": 500107, "requiredLevel": 5, "maxStock": 1}], "bell keeper blueprint must expose only the metronome at level 5"
+    # 2026-11-24 钟守的第二只匣子：止语钟罩（500220）与节拍器同为 5 级、各一件。
+    assert shop["unlockLevel"] == 5 and shop["items"] == [{"typeId": 500107, "requiredLevel": 5, "maxStock": 1},
+                                                         {"typeId": 500220, "requiredLevel": 5, "maxStock": 1}], \
+        "bell keeper blueprint must expose exactly the metronome and the bell ward at level 5"
     assert shop["nameCn"] == "钟守的旧物匣" and shop["nameEn"] == "Bell Keeper's Keepsakes", "shop labels must be bilingual"
     require("Integration/NPCs/DuckNpc/Permanent/PermanentDuckNpcAffinityConfig.cs", "List<ShopItemEntry> GetShopItems()",
             "return ShopEnabled ? new List<ShopItemEntry>(_data.shop.items) : new List<ShopItemEntry>();")
     assert "BossRushItemIds.ReloadMetronome" not in source("Integration/Affinity/NPCs/GoblinAffinityConfig.cs"), "new item must not enter Dingdang's shop"
-    trade = body(BASE + "ReloadMetronomeShop.cs", "bool TryExchange(")
+    # 节拍器入口只转发到两只匣子共用的贝壳事务，事务本身的顺序在 TryExchangeForShells 里钉。
+    require(BASE + "ReloadMetronomeShop.cs", "bool TryExchange(",
+            "return TryExchangeForShells(player, valid, BossRushItemIds.ReloadMetronome, ReloadMetronomeConfig.ShellCost,")
+    trade = body(BASE + "ReloadMetronomeShop.cs", "bool TryExchangeForShells(")
+    assert "InstantiateSync(typeId)" in trade and "newSkyIslandIngredient(shellId,shellCost)" in trade, "trade must use the requested goods and price"
     assert trade.index("TryReserve(") < trade.index("TryDeliverToBackpack(") < trade.index("payment.Commit();"), "reserve, deliver, commit order"
     assert "payment.Dispose();" in trade, "failed trades must release reserved shells"
     require(BASE + "ReloadMetronomeShop.cs", "bool TryDeliverToBackpack(", "pack.AddItem(output);")

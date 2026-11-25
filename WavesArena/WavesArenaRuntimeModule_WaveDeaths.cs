@@ -197,7 +197,8 @@ namespace BossRush
                             maxHp = bossMain.Health.MaxHealth;
                         }
                         if (maxHp < 0f) maxHp = 0f;
-                        long reward = (long)Mathf.Round(maxHp * 10f);
+                        // 出征令战帖：先除掉战帖乘上去的生命，再乘战帖的奖金倍率（轻松 ×0.5 … 噩梦 ×1.5）
+                        long reward = (long)Mathf.Round(maxHp * 10f * ExpeditionHellCashFactor(bossMain));
                         if (reward < 0L) reward = 0L;
                         InfiniteHellCashPool += reward;
                         InfiniteHellWaveCashThisWave += reward;
@@ -445,9 +446,10 @@ namespace BossRush
                     return;
                 }
 
-                // 使用过滤后的 Boss 列表判断是否还有下一波
+                // 使用过滤后的 Boss 列表判断是否还有下一波（出征令短征 / 长征按队列）
                 var filteredPresets = owner.GetFilteredEnemyPresets();
-                int presetCount = (filteredPresets != null) ? filteredPresets.Count : 0;
+                var runPresets = filteredPresets != null ? ResolveRunPresets(filteredPresets) : null;
+                int presetCount = (runPresets != null) ? runPresets.Count : 0;
 
                 if (CurrentEnemyIndex >= presetCount)
                 {

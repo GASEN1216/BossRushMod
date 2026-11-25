@@ -81,6 +81,12 @@ namespace BossRush
                 "在[有点意思]难度成功撤离", "Complete BossRush on Normal difficulty",
                 AchievementCategory.Basic, 25000, 2);
 
+            // 出征令（2026-11-24）：噩梦战帖、全征（启用的首领全部登场）通关；短征 / 长征不算。
+            // ID 与 WavesArena/ArenaExpeditionTuning.NightmareClearAchievementId 一致。
+            Register("nightmare_clear", "噩梦通关", "Nightmare Cleared",
+                "以[噩梦]战帖、全征通关", "Clear a Full Campaign on the Nightmare challenge",
+                AchievementCategory.Basic, 800000, 5);
+
             Register("mode_d_clear", "白手起家", "From Scratch",
                 "在白手起家模式完成10波", "Complete 10 waves in From Scratch",
                 AchievementCategory.Basic, 30000, 2);

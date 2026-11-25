@@ -1,18 +1,21 @@
 ## Achievement List
 
 ### Overview
-This mod currently contains 45 achievements across 9 categories. Completing achievements grants cash rewards. Press L (default, configurable) to open the achievement panel and check your progress.
+This mod currently contains 46 achievements across 9 categories. Completing achievements grants cash rewards. Press L (default, configurable) to open the achievement panel and check your progress.
 
 ### Basic Completion
 - First Steps: Extract successfully from BossRush for the first time. Reward `$5,000`, difficulty `★`
 - Easy Peasy: Complete BossRush on Easy difficulty. Reward `$10,000`, difficulty `★`
 - Getting Serious: Complete BossRush on Normal difficulty. Reward `$25,000`, difficulty `★★`
+- Nightmare Cleared: Clear a Full Campaign on the Nightmare challenge. Reward `$800,000`, difficulty `★★★★★`
 - From Scratch: Complete 10 waves in From Scratch. Reward `$30,000`, difficulty `★★`
 - Hell Wave 10: Survive 10 waves in Infinite Hell mode. Reward `$50,000`, difficulty `★★★`
 - Hell Wave 25: Survive 25 waves in Infinite Hell mode. Reward `$150,000`, difficulty `★★★`
 - Hell Wave 50: Survive 50 waves in Infinite Hell mode. Reward `$350,000`, difficulty `★★★★`
 - Hell Wave 100: Survive 100 waves in Infinite Hell mode. Reward `$800,000`, difficulty `★★★★★`
 - Hell Wave 200: Survive 200 waves in Infinite Hell mode. Reward `$2,000,000`, difficulty `★★★★★`
+
+[tip] In the arena's War Writ, picking the Relaxed challenge or a Short or Long March means clear, flawless, speedrun and cumulative clear achievements don't count. On Infinite Hell, the Relaxed challenge doesn't count toward Hell wave achievements.
 
 ### Cumulative
 - Regular: Complete BossRush 10 times in total. Reward `$50,000`, difficulty `★★`

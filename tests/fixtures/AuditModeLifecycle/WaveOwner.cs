@@ -16,7 +16,10 @@ public static class SceneLoader { public static bool IsSceneLoading; }
 public sealed class CharacterMainControl:UnityEngine.Object { public static CharacterMainControl Main; public Health Health=new Health(); public bool dropBoxOnDead; public UnityEngine.GameObject gameObject=new UnityEngine.GameObject(); public CharacterMainControl(){gameObject.Components.Add(this);gameObject.Components.Add(Health);} }
 namespace BossRush {
  // This fixture links only the arena generation owner; loot event cleanup has its own guard.
- internal sealed partial class WavesArenaRuntimeModule { private void ReleaseBossRandomLootTrackingOnDestroy() {} }
+ internal sealed partial class WavesArenaRuntimeModule { private void ReleaseBossRandomLootTrackingOnDestroy() {} internal static int ExpeditionEnds; private static void EndExpeditionRun() { ExpeditionEnds++; } }
+ // 出征令快照与面板（WavesArenaRuntimeModule_Expedition.cs 等）由 ArenaExpeditionOrderGuard / ArenaHostRemainder 守；这里只记清理次数。
+ internal static class ArenaExpeditionState { internal static int Resets; internal static void ResetStaticCaches() { Resets++; } }
+ internal static class ArenaExpeditionOrderPanel { internal static int Resets; internal static void ResetStaticCaches() { Resets++; } }
  public class EnemyPresetInfo { public string name; }
  internal sealed class ModeDItemPool {}
  internal sealed partial class ModeDRuntimeModule {
@@ -50,13 +53,13 @@ namespace BossRush {
    SceneLoader.IsSceneLoading=false;
    host.IsActive=false;Check(!old(),"ended run rejected");host.IsActive=true;
    var current=WavesArenaRuntimeModule.CaptureValidity(host,true,true);Check(!old()&&current(),"new wave rejects old result");
-   module.OnSceneLoaded(new SceneRuntimeContext());Check(!current(),"same scene reload invalidates generation");
+   module.OnSceneLoaded(new SceneRuntimeContext());Check(!current(),"same scene reload invalidates generation");Check(WavesArenaRuntimeModule.ExpeditionEnds==1,"scene load ends the expedition run");
    current=WavesArenaRuntimeModule.CaptureValidity(host,true,true);
    CharacterMainControl.Main.Health.IsDead=true;Check(!current(),"death invalidates spawn");
    CharacterMainControl.Main=new CharacterMainControl();Check(!current(),"replacement player cannot receive old result");
    host.IsActive=false;var victory=WavesArenaRuntimeModule.CaptureValidity(host,false,false);Check(victory(),"victory continuation allowed with inactive combat");
    UnityEngine.SceneManagement.SceneManager.Handle++;Check(!victory(),"victory rejected after scene change");
-   victory=WavesArenaRuntimeModule.CaptureValidity(host,false,false);module.OnDestroy();Check(!victory(),"host cleanup invalidates continuation");
+   victory=WavesArenaRuntimeModule.CaptureValidity(host,false,false);module.OnDestroy();Check(!victory(),"host cleanup invalidates continuation");Check(WavesArenaRuntimeModule.ExpeditionEnds==2&&ArenaExpeditionState.Resets==1&&ArenaExpeditionOrderPanel.Resets==1,"host cleanup ends the run and resets expedition caches");
    var modeD=new ModeDRuntimeModule();modeD.OnAwake(host);modeD.modeDActive=true;modeD.modeDWaveIndex=1;
    host.IsModeDActive=false;host.ModeDWaveIndex=99;
    var oldD=ModeDRuntimeModule.CaptureValidity(host,true);Check(oldD(),"Mode D current dispatch accepted");

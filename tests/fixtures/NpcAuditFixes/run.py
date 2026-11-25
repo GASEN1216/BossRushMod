@@ -58,7 +58,7 @@ def build(name, files, generated=""):
 def main():
     affinity = ["Integration/Affinity/" + file for file in (
         "AffinityManager.cs", "AffinityManagerPersistenceAndDecay.cs", "AffinityManagerStaticCacheReset.cs",
-        "AffinityJsonSerializer.cs", "AffinityData.cs", "AffinityConfig.cs", "INPCAffinityConfig.cs", "NPCShopStockLedger.cs")]
+        "AffinityManagerGiftJournal.cs", "AffinityJsonSerializer.cs", "AffinityData.cs", "AffinityConfig.cs", "INPCAffinityConfig.cs", "NPCShopStockLedger.cs")]
     affinity += ["Utilities/SimpleJsonHelper.cs", "Common/Data/BossRushJsonValue.cs",
                  "Common/Lifecycle/BossRushSaveFileThrottle.cs"]
     daily = ["Integration/DailyReport/" + file for file in (

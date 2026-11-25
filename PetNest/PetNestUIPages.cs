@@ -155,6 +155,13 @@ namespace BossRush
         public string ChoicesTitle;
         public string ChoicesCaption;
         public List<PetNestActionData> Choices = new List<PetNestActionData>();
+        /// <summary>
+        /// 某个分区下面紧跟的一行（献魂，2026-11-24）：一颗内嵌按钮 + 一句说明，两样都空不画。
+        /// InlineAfterSection 是 Sections 的下标；-1 不画。底栏留给放生 / 治疤 / 远征 / 出战，不再往里挤。
+        /// </summary>
+        public int InlineAfterSection = -1;
+        public PetNestActionData InlineAction;
+        public string InlineCaption;
         /// <summary>名字旁的「收藏 / 取消收藏」；null 表示不画（审查 B-7）。</summary>
         public string FavoriteLabel;
         public Action OnFavorite;
@@ -185,6 +192,8 @@ namespace BossRush
         public Action CycleSort;
         /// <summary>就地播远征翻牌（审查 D-1）；null 时退回「关面板就揭晓」。</summary>
         public Action ShowResults;
+        /// <summary>「献魂」：先弹确认，确认后落档并在立绘上播魂火（PetNestUISoulFeed.cs）；null 时不挂。</summary>
+        public Action<string> FeedSouls;
     }
 
     /// <summary>一个动作按钮（巢页详情底栏、远征页的「出发」）。</summary>

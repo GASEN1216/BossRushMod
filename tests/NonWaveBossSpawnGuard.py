@@ -69,7 +69,9 @@ def main():
             errors.append("[Spawner] " + name + " must not mutate Arena state through collection views")
 
     arena = read(os.path.join(ROOT, "WavesArena", "WavesArenaRuntimeModule_BossAccess.cs"))
-    expected = "CurrentBoss=character;if(BossesPerWave>1&&!CurrentWaveBosses.Contains(character)){CurrentWaveBosses.Add(character);}"
+    # 2026-11-24 出征令：内容 Boss 登记时先乘战帖倍率（ApplyExpeditionTierToContentBoss），其余语义不变
+    expected = ("ApplyExpeditionTierToContentBoss(character);"
+                "CurrentBoss=character;if(BossesPerWave>1&&!CurrentWaveBosses.Contains(character)){CurrentWaveBosses.Add(character);}")
     if arena is None or compact(body(arena, "internal void RegisterContentWaveBoss(")) != expected:
         errors.append("[Arena] content registration must set current boss then conditionally append exactly once")
     host = read(os.path.join(ROOT, "Integration", "IntegrationHostCompatibility.cs"))

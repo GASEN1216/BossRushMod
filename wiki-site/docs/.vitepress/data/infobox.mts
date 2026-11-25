@@ -333,6 +333,21 @@ export const INFOBOX: Record<string, Infobox> = {
     ],
     links: ['/equipment/roll-call-ledger', '/systems/affinity-marriage'],
   },
+  '/equipment/silence-bell': {
+    eyebrowZh: '图腾',
+    eyebrowEn: 'Totem',
+    rows: [
+      { zh: '品质', en: 'Rarity', vz: '5', tier: 5 },
+      { zh: '重量', en: 'Weight', vz: '0.4' },
+      { zh: '基础价值', en: 'Base value', vz: '18,000' },
+      { zh: '护罩', en: 'Ward', vz: '80 点，先于生命吃敌方伤害', ve: '80 points, absorbs enemy damage before health' },
+      { zh: '回充', en: 'Refill', vz: '挨打 5 秒后每秒 20；打碎后至少 9 秒', ve: '20/s from 5 s after the last hit; at least 9 s after shattering' },
+      { zh: '不吃', en: 'Ignores', vz: '持续伤害、装备效果', ve: 'Damage over time, equipment effects' },
+      { zh: '来源', en: 'Source', vz: '钟守的铜钟罩（无声钟守好感 5 级，30 贝壳）', ve: "Bell Keeper's Bronze Ward (Silent Bell Keeper, affinity Lv.5, 30 seashells)" },
+      { zh: '物品 ID', en: 'Internal ID', vz: '500220' },
+    ],
+    links: ['/equipment/reload-metronome', '/equipment/energy-shield', '/systems/affinity-marriage'],
+  },
   '/equipment/empty-magazine-mine': {
     eyebrowZh: '图腾',
     eyebrowEn: 'Totem',
