@@ -1,12 +1,12 @@
 # Infinite Hell
 
-## What Is It?
+## How It Plays
 
 No end. No evacuation. Bosses get +2% stronger every wave, forever. **How long can you last?**
 
 ## Entry
 
-- **BossRush Ticket** + select "Infinite Hell" at the arena signpost
+- **BossRush Ticket** + open the **War Writ** at the arena signpost and pick the "Infinite Hell" lineup
 
 ## Core Rules
 

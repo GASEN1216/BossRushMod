@@ -5,11 +5,11 @@
 1. Buy a **BossRush Ticket** from the base merchant
 2. Grab the free **Achievement Medal** + buy the **Adventurer's Journal**
 3. Pick the **DEMO Ultimate Challenge** map (default, easiest)
-4. Choose **Easy** difficulty (1 Boss/wave)
+4. At the signpost, open the **War Writ** and pick the **A Snap** lineup (1 Boss/wave); keep the default Standard challenge and Full Campaign
 5. Beat everything, grab the reward crate, extract
 
 ::: tip
-You just unlocked "First Steps" and "Easy" achievements. Nice.
+You just unlocked "First Steps" and "Easy Peasy" achievements. Nice.
 :::
 
 ## Next: Spend 5000 on Foundations

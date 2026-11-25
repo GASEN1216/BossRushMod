@@ -1,6 +1,6 @@
 # Dragon Set
 
-## What Is It?
+## At a Glance
 
 Your first custom set. Dropped by Dragon Descendant. Equip both pieces and fire damage bites you, then refunds most of it a moment later, plus you get a dash. Yes, the stats have downsides, **but the survivability is worth it.**
 

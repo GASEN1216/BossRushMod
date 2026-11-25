@@ -1,6 +1,6 @@
 ## Viper Dagger
 
-### What Is It?
+### Role
 
 A **poison-element short blade** that stacks venom layers on every hit. Single-hit damage is modest, but landing 5 consecutive hits detonates them. Part of that detonation is a share of the damage those 5 hits actually dealt, and another part scales with the target's max HP, so the stronger the dagger and the tougher the target, the harder it bursts. Built for close-quarters rapid strikes.
 

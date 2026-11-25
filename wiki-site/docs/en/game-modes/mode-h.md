@@ -1,6 +1,6 @@
 # Black Market Duck Cup
 
-## What Is It?
+## How It Plays
 
 You don't fight. You bet.
 

@@ -2,7 +2,7 @@
 
 [tip] Now obtainable: Storm Zone bosses (Four Horsemen, Koko Koko and friends) drop it on vanilla maps and in BossRush runs alike, or buy it from Dingdang's Shop at affinity level 6 (limited stock).
 
-### What Is It?
+### At a Glance
 
 A **2-piece lightning set** composed of the **Thunder Horn** helmet and **Thunder Armor** body piece. Each item alone gives modest armor plus storm protection; equipping both activates **Thunder's Wrath**: shock damage heals you, normal hits arc to nearby foes, and you counter-shock attackers. It also gives you cyan flickering eyes and arcs crawling over your shoulders. An elemental defense and counter set, with lower clearing damage than the Dragon Descendant and Dragon King sets.
 

@@ -1,6 +1,6 @@
 ## Affix Forging
 
-### What is it
+### Overview
 
 Reforging changes **numbers**: a few more points of armor, a little more fire rate.
 Affix forging changes **behavior**: your gun detonates corpses on kill, your blade drinks

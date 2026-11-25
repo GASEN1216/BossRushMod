@@ -18,14 +18,14 @@
 #### enableRandomBossLoot
 - Default: true
 - Range: true/false
-- Whether to enable BossRush random Boss loot logic (when disabled, BossRush no longer takes over the vanilla Boss drop flow)
+- Whether to enable BossRush random Boss loot logic: tougher Bosses and faster kills roll better quality (when disabled, BossRush no longer takes over the vanilla Boss drop flow)
 
 #### useLegacyBossLootProbabilities
 - Default: true
 - Range: true/false
 - Quality distribution algorithm: `true` uses Legacy Probability Mode (per-quality independent probabilities + Q5+ guarantee), `false` uses Simplified Probability Mode (combined high-quality probability, no guarantee)
 - Scope:
-  - Standard BossRush: affects the quality distribution of Boss loot crates and keeps the Q5+ guarantee for high-HP Bosses
+  - Standard BossRush: affects the quality distribution of Boss loot crates and keeps the guarantee that adds one Q5+ when a Boss over 250 max HP leaves no Q5+ in its crate
   - From Scratch / Faction War / Blood Hunt: affects the quality distribution of regular on-death backpack bonus items, backpack refill items, and extra backpack ammo stacks
   - Does not affect drop counts, currently equipped weapons, equipped armor/helmets/accessories, melee weapons, current bullet type, or Blood Hunt bounty / extraction bonus rewards
 
@@ -49,7 +49,7 @@
 #### bossStatMultiplier
 - Default: 1.0
 - Range: 0.1-10
-- Global Boss stat multiplier (affects health and damage)
+- Global Boss stat multiplier (affects health, damage and reaction speed; damage caps at 3x)
 
 #### bossHealthPercent
 - Default: 100
@@ -83,9 +83,9 @@
 
 #### achievementHotkey
 - Default: L
-- ModConfig dropdown options: L / K / J / H / G / Y / U / O / P / F5 / F6 / F7 / F8
+- ModConfig dropdown options: L / K / J / H / G / Y / U / O / P / F5 / F6 / F7 / F8 / None
 - Config-file storage: integer value of the corresponding `KeyCode`
-- Achievement panel hotkey
+- Achievement panel hotkey; "None" stores `0` and the hotkey stops responding (right-click the Achievement Medal to open the panel instead)
 
 #### useWolfModelForWildHorn
 - Default: true
@@ -115,14 +115,14 @@
 #### randomEventsFrequency
 - Default: 2
 - Range: 1-3 (1 low / 2 mid / 3 high)
-- How many in-run random events can fire in a single run: `2` on low, `3` on mid, `5` on high
+- How many in-run random events can fire in a single run: `2` on low, `3` on mid, `5` on high; fireworks and parades don't count
 - It only changes that cap. The `45-75` second gap between events and the one-event-at-a-time
   rule are unaffected
 
 #### modeGAbandonHotkey
 - Default: K
 - ModConfig dropdown: same key set as the achievement hotkey
-- Hotkey to abandon a Fate Echo run partway through
+- Hotkey to abandon a Fate Echo run partway through; "None" stores `0` and the hotkey stops responding
 
 
 ### Recommended Adjustments

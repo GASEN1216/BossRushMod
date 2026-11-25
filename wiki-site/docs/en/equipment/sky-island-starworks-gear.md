@@ -4,7 +4,7 @@
 The Starforge Foreman wears the full Starworks set and always leaves one piece: helm 35%, harness 35%, pack 30%. The Overlook Stargazer separately has a 30% chance to drop its lens helm. The piece takes one slot in the loot box alongside ordinary supplies.
 :::
 
-## What Is It?
+## At a Glance
 
 **The gear worn by the Starforge Foreman, island lord of the Fallen Star Workshop, and the Overlook Stargazer, chief of the Starfall Overlook**: the Starbrass Visor Helm, Starfurnace Harness and Starfurnace Pack come from the Foreman; the Stargazer's Lens Helm comes from the Stargazer. Worn, they give the game's usual head armor / body armor / pack capacity; on the isles each also has a use: any two Starworks pieces make Fuzhou's dock workbench take one less Brass Scrap, and the lens helm spots nearby enemies for you while you stand still.
 

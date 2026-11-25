@@ -2,7 +2,7 @@
 
 [tip] Only found on two of Sky Island's island lords, the Hanging-Root Huntmaster and Grain Sickle: they wear their full set every raid, and when they fall they keep **just one piece** by weight, which takes one slot in the loot box; the rest of the box is whatever they were carrying.
 
-### What Is It?
+### At a Glance
 
 **The two sets worn by the Hanging-Root Huntmaster, island lord of the Hanging Root Wood, and Grain Sickle, island lord of the Green Terraces**: the Rootweave Mask, Vinewoven Cuirass and Hanging-Root Quiver are the rootweave hunting gear and come from the Huntmaster; the Greenear Straw Hat, Straw Raincoat and Grain Sack are the straw-cloak farm gear and come from Grain Sickle. Worn, they give the game's usual head armor / body armor / pack capacity; on the isles each set also has a use: any two rootweave pieces double the chance of an island good turning up in scavenging crates, and any two straw-cloak pieces add one sheaf to every cut of greenear. The Starforge Foreman's set is under "Starworks Gear", and the single pieces the chiefs wear are under "Island Chief Gear".
 

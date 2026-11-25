@@ -2,7 +2,7 @@
 
 [tip] Now obtainable: the "???" boss drops it on vanilla maps and in BossRush runs alike, or buy it from Dingdang's Shop at affinity level 6 (limited stock).
 
-### What Is It?
+### At a Glance
 
 A **2-piece ice set** composed of the **Frost Crown** helmet and **Ice Armor** body armor. Each piece gives modest armor plus cold protection on its own; equipping both activates **Frost Ward**: ice damage heals you, normal hits carry frostbite, and you freeze attackers. It also gives you pale-blue breathing eyes and frost mist at your feet. An elemental defense and counter set, with lower clearing damage than the Dragon Descendant and Dragon King sets.
 

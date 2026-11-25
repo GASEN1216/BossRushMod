@@ -6,16 +6,16 @@ This mod currently contains 46 achievements across 9 categories. Completing achi
 ## Basic Completion
 | Achievement | Requirement | Reward | Difficulty |
 | --- | --- | --- | --- |
-| First Steps | Extract successfully from BossRush for the first time | $5,000 | ★ |
-| Easy Peasy | Complete BossRush on Easy difficulty | $10,000 | ★ |
-| Getting Serious | Complete BossRush on Normal difficulty | $25,000 | ★★ |
+| First Steps | Clear a Full Campaign for the first time (Standard+) | $5,000 | ★ |
+| Easy Peasy | Clear a Full Campaign with the A Snap lineup (Standard+) | $10,000 | ★ |
+| Getting Serious | Clear a Full Campaign with the Getting Interesting lineup (Standard+) | $25,000 | ★★ |
 | Nightmare Cleared | Clear a Full Campaign on the Nightmare challenge | $800,000 | ★★★★★ |
 | From Scratch | Complete 10 waves in From Scratch | $30,000 | ★★ |
-| Hell Wave 10 | Survive 10 waves in Infinite Hell mode | $50,000 | ★★★ |
-| Hell Wave 25 | Survive 25 waves in Infinite Hell mode | $150,000 | ★★★ |
-| Hell Wave 50 | Survive 50 waves in Infinite Hell mode | $350,000 | ★★★★ |
-| Hell Wave 100 | Survive 100 waves in Infinite Hell mode | $800,000 | ★★★★★ |
-| Hell Wave 200 | Survive 200 waves in Infinite Hell mode | $2,000,000 | ★★★★★ |
+| Hell Wave 10 | Survive 10 waves in Infinite Hell (Standard+) | $50,000 | ★★★ |
+| Hell Wave 25 | Survive 25 waves in Infinite Hell (Standard+) | $150,000 | ★★★ |
+| Hell Wave 50 | Survive 50 waves in Infinite Hell (Standard+) | $350,000 | ★★★★ |
+| Hell Wave 100 | Survive 100 waves in Infinite Hell (Standard+) | $800,000 | ★★★★★ |
+| Hell Wave 200 | Survive 200 waves in Infinite Hell (Standard+) | $2,000,000 | ★★★★★ |
 
 ::: tip
 In the arena's War Writ, picking the Relaxed challenge or a Short or Long March means clear, flawless, speedrun and cumulative clear achievements don't count. On Infinite Hell, the Relaxed challenge doesn't count toward Hell wave achievements.
@@ -24,9 +24,9 @@ In the arena's War Writ, picking the Relaxed challenge or a Short or Long March 
 ## Cumulative
 | Achievement | Requirement | Reward | Difficulty |
 | --- | --- | --- | --- |
-| Regular | Complete BossRush 10 times in total | $50,000 | ★★ |
-| Seasoned Challenger | Complete BossRush 50 times in total | $250,000 | ★★★ |
-| Legendary Hunter | Complete BossRush 100 times in total | $800,000 | ★★★★ |
+| Regular | Clear 10 Full Campaigns in total (Standard+) | $50,000 | ★★ |
+| Seasoned Challenger | Clear 50 Full Campaigns in total (Standard+) | $250,000 | ★★★ |
+| Legendary Hunter | Clear 100 Full Campaigns in total (Standard+) | $800,000 | ★★★★ |
 | Novice Hunter | Defeat 50 bosses in total | $20,000 | ★ |
 | Veteran | Defeat 100 bosses in total | $80,000 | ★★ |
 | Five Hundred Down | Defeat 500 bosses in total | $500,000 | ★★★★ |
@@ -35,18 +35,18 @@ In the arena's War Writ, picking the Relaxed challenge or a Short or Long March 
 ## Flawless
 | Achievement | Requirement | Reward | Difficulty |
 | --- | --- | --- | --- |
-| Flawless Easy | Complete Easy difficulty without taking damage | $80,000 | ★★★ |
-| Flawless Normal | Complete Normal difficulty without taking damage | $250,000 | ★★★★ |
+| Flawless Easy | Clear a Full Campaign with the A Snap lineup without taking damage (Standard+) | $80,000 | ★★★ |
+| Flawless Normal | Clear a Full Campaign with the Getting Interesting lineup without taking damage (Standard+) | $250,000 | ★★★★ |
 | Flawless From Scratch | Complete 5 waves in From Scratch without taking damage | $350,000 | ★★★★ |
-| Iron Will | Survive 10 waves in Infinite Hell without taking damage | $500,000 | ★★★★★ |
+| Iron Will | Survive 10 waves in Infinite Hell without taking damage (Standard+) | $500,000 | ★★★★★ |
 
 ## Speedrun
 | Achievement | Requirement | Reward | Difficulty |
 | --- | --- | --- | --- |
-| Lightning Run | Clear Standard BossRush or complete wave 10 of Infinite Hell / From Scratch within 5 minutes | $30,000 | ★★ |
-| Speed Demon | Clear Standard BossRush or complete wave 10 of Infinite Hell / From Scratch within 3 minutes | $120,000 | ★★★★ |
-| Time Assassin | Clear Standard BossRush or complete wave 10 of Infinite Hell / From Scratch within 2 minutes | $400,000 | ★★★★★ |
-| Instant Kill (Hidden) | Clear Standard BossRush or complete wave 10 of Infinite Hell / From Scratch within 1 minute | $800,000 | ★★★★★ |
+| Lightning Run | Within 5 minutes, clear a Full Campaign or reach Infinite Hell wave 10 (Standard+), or clear From Scratch | $30,000 | ★★ |
+| Speed Demon | Within 3 minutes, clear a Full Campaign or reach Infinite Hell wave 10 (Standard+), or clear From Scratch | $120,000 | ★★★★ |
+| Time Assassin | Within 2 minutes, clear a Full Campaign or reach Infinite Hell wave 10 (Standard+), or clear From Scratch | $400,000 | ★★★★★ |
+| Instant Kill (Hidden) | Within 1 minute, clear a Full Campaign or reach Infinite Hell wave 10 (Standard+), or clear From Scratch | $800,000 | ★★★★★ |
 
 ::: tip
 "Instant Kill" is a hidden achievement and will not appear in the achievement panel until unlocked.
@@ -64,7 +64,7 @@ In the arena's War Writ, picking the Relaxed challenge or a Short or Long March 
 ## Special Challenges
 | Achievement | Requirement | Reward | Difficulty |
 | --- | --- | --- | --- |
-| Iron Man (Hidden) | Survive 10 waves in Infinite Hell without using healing items | $250,000 | ★★★★ |
+| Iron Man (Hidden) | Survive 10 waves in Infinite Hell without using healing items (Standard+) | $250,000 | ★★★★ |
 | Dragon Descendant Collector | Collect all exclusive drops from Dragon Descendant | $300,000 | ★★★ |
 | Dragon King Collector | Collect all exclusive drops from Skyburner Dragon Lord | $500,000 | ★★★★ |
 | Wind Rider | Take flight for the first time using Cloud Soar I | $50,000 | ★ |

@@ -2,7 +2,7 @@
 
 [tip] Found on seven Sky Islands chiefs, plus the Galebreaker Warden in Jeff's prelude: the Waylayer, the Rain Listener, the Gnat Piper and the Mirror Guest each wear one piece and leave it behind 30% of the time; the three Galebreakers each wear one piece of the Galebreaker set and leave it behind 40% of the time. The piece takes one slot in the loot box; the rest of the box is whatever the chief was carrying.
 
-### What Is It?
+### At a Glance
 
 **The single piece each of seven chiefs wears**: the Old Mailbag comes from the Waylayer at the Upturned Post Hut, the Rainhush Earmuffs from the Rain Listener in the Rainlisten Grotto, the Mossgauze Mask from the Gnat Piper at Frogsong Pool and the Mirrorgrain Plate from the Mirror Guest at Mirrorwater Temple; the Galebreaker Mantle, Galebreaker Pack and Galebreaker Hood make up the Galebreaker set and come from the Galebreaker Chaser, Stalker and Warden holding the three return relay platforms. Worn, they give the game's usual pack capacity, hearing, head armor or body armor; on the isles each also has a use: an extra pigeon letter, longer chief warnings, gnats that stop dodging, reconciling with Zheling without the old letter or route chart, and any two Galebreaker pieces make you quicker on bridges. The Overlook Stargazer's lens helm is under "Starworks Gear".
 

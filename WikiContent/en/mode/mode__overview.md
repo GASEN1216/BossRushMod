@@ -5,7 +5,7 @@
 ### At a Glance
 
 - **Standard BossRush** — Ticket / Limited waves / Classic Boss wave challenge / ★★☆☆☆
-- **Infinite Hell** — Ticket (select at signpost) / Unlimited waves / Bosses get stronger forever / ★★★★☆
+- **Infinite Hell** — Ticket + Infinite Hell lineup in the War Writ / Unlimited waves / Bosses get stronger forever / ★★★★☆
 - **From Scratch** — Naked + Ticket / Unlimited waves / Random start, grow from zero / ★★★☆☆
 - **Faction War** — Naked + Faction Flag / Sandbox / Multi-faction Boss brawl / ★★★☆☆
 - **Blood Hunt** — Naked + Ticket + Transponder / 4 phases / Constant bleed, kill to heal / ★★★★★

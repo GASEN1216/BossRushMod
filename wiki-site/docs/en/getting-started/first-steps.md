@@ -18,10 +18,10 @@ and you can see which direction a Boss is coming from).
 
 ## Step 3: Pick a Difficulty
 
-Interact with the arena signpost:
+Interact with the arena signpost to open the **War Writ** and pick a lineup (leave the challenge at Standard and the length at Full Campaign for now):
 
-- **Easy** — 1 Boss/wave, limited waves. Learn the ropes
-- **Normal** — 3 Bosses/wave, limited waves. The real deal
+- **A Snap** — 1 Boss/wave, limited waves. Learn the ropes
+- **Getting Interesting** — 3 Bosses/wave, limited waves. The real deal
 - **Infinite Hell** — 3 Bosses/wave (configurable), unlimited. They get stronger forever
 
 ## Step 4: Fight and Loot
@@ -61,7 +61,7 @@ Once you're comfortable:
   Bosses counter whatever you did last wave
 - **Black Market Duck Cup** — just a Ticket. You sit in the stands while two Boss teams, blue and red, brawl over six matches;
   you pick which team wins and ring the bell to call a disaster
-- **Infinite Hell** — pick the Infinite Hell difficulty and find your ceiling
+- **Infinite Hell** — pick the Infinite Hell lineup in the War Writ and find your ceiling
 
 ## Quick Tips
 

@@ -2,7 +2,7 @@
 
 ## 怎么装？
 
-四步搞定，比泡面还简单：
+装好就能玩，一共四步：
 
 - 1. 打开 Steam → Escape from Duckov 的创意工坊页面
 - 2. 搜 "BossRush"（或者直接点 Mod 页面链接）

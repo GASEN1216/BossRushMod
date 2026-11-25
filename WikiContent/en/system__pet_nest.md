@@ -1,6 +1,6 @@
 ## PetNest
 
-### What Is It?
+### Overview
 
 PetNest is a base-side raising and collection system: **kill bosses, bring their relics home, raise the cubs, take one along, or send them somewhere you would not go yourself.**
 

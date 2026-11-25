@@ -1,6 +1,6 @@
 ## Skyburner Dragon Cannon
 
-### What Is It?
+### Role
 
 The Skyburner Dragon Lord's personal firearm. It supports 17 ammo types that can be selected through the normal ammo-type UI; every one is rewritten into a distinct dragonfire barrage.
 

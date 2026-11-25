@@ -1,6 +1,6 @@
 ## Dragon King Set
 
-### What Is It?
+### At a Glance
 
 The Dragon Set, but **better in every way**. Dropped by Skyburner Dragon Lord. Keeps the fire refund, massively upgrades the dash, and removes the poison/FOV downsides. **Replace your Dragon Set immediately.**
 

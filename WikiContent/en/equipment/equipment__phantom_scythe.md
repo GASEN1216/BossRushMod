@@ -1,6 +1,6 @@
 ## Soulreaper's Requiem
 
-### What Is It?
+### Role
 
 The Phantom Witch's scythe. Ghost-element melee with **50% curse chance on every hit** and a right-click Curse Realm. All about mobility and crowd control.
 

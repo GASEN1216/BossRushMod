@@ -1,6 +1,6 @@
 # Random Events
 
-## What is it
+## Overview
 
 Mid-run, something just happens. A supply crate slams down out of the sky, the moon turns
 red, it starts raining money, or a Boss who isn't on tonight's card kicks the door in.

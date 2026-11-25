@@ -1,6 +1,6 @@
 ## From Scratch
 
-### What Is It?
+### How It Plays
 
 A lite roguelike run. You enter **completely naked**, get a random starter kit, and snowball by looting enemies. Enemies get tougher each wave, but so does their loot. Adapt or die.
 

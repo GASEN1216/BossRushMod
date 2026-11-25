@@ -1,6 +1,6 @@
 # Frost Spear
 
-## What Is It?
+## Role
 
 An **ice-element spear** with the longest attack range of all the new weapons. Every hit applies a guaranteed vanilla Cold slow. Steady mid-range damage, low crits. Built for fighting at arm's length.
 

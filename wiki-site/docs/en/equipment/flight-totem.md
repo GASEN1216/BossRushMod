@@ -1,6 +1,6 @@
 # Cloud Soar I
 
-## What Is It?
+## At a Glance
 
 Equip this totem and **you can fly**. Actual flight. Ascend, glide, and hop over ground attacks.
 

@@ -42,7 +42,7 @@ namespace BossRush
             // 检查 Boss 池是否为空
             if (filteredPresets == null || filteredPresets.Count == 0)
             {
-                owner.ShowMessage(L10n.T("Boss池为空！请至少启用一个Boss。(Ctrl+F10 打开设置)", "Boss pool is empty! Enable at least one Boss. (Ctrl+F10 to open settings)"));
+                owner.ShowMessage(L10n.T("一个 Boss 都没启用：按 Ctrl+F10 打开「Boss池设置」，至少启用一个再开战。", "No Boss enabled: press Ctrl+F10 to open Boss Pool Settings and enable at least one."));
                 ModBehaviour.DevLog("[BossRush] [WARNING] SpawnNextEnemy: Boss 池为空，无法生成敌人");
                 return;
             }

@@ -1,6 +1,6 @@
 # Death Wraith
 
-## What Is It?
+## Overview
 
 Wherever you died, something will be waiting for you when you go back.
 

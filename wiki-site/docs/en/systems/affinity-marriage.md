@@ -68,7 +68,7 @@ See individual Dingdang and Yu Zhi pages.
 
 - **Monogamy** — one spouse at a time
 - **Re-proposal**: Refused if already married; ring not consumed
-- **Cheating**: Give a ring to someone else = ring consumed, -120 Affinity, spouse scolds you next chat (+40 penalty per repeat offense)
+- **Cheating**: Give a ring to someone else while married = ring consumed, that NPC loses 120 Affinity, and your spouse scolds you next chat. From the second time on your spouse loses Affinity too, 40 more each time (-40 the second time, -80 the third...)
 
 ### Divorce
 

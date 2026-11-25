@@ -1,6 +1,6 @@
 # Dragon's Breath
 
-## What Is It?
+## Role
 
 Your first custom gun. Dropped by Dragon Descendant. Looks modest on paper, but the **% max HP burn** does the real work against high-HP bosses. Comes with its own fire muzzle flash and trailing sparks.
 

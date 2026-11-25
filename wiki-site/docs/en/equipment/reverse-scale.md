@@ -1,8 +1,8 @@
 # Reverse Scale
 
-## What Is It?
+## At a Glance
 
-Touch a dragon's reverse scale and it bites back. **A one-time lifesaver totem**: it triggers when you're about to die, heals you, fires counterattack bolts, then shatters.
+A palm-sized dragon scale that grows against the grain, warm as a held-back temper. **A one-time lifesaver totem**: it triggers when you're about to die, heals you, fires counterattack bolts, then shatters.
 
 ## Stats
 

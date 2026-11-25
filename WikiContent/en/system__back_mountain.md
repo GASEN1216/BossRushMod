@@ -1,6 +1,6 @@
 ## Arena Backyard
 
-### What is it
+### Overview
 
 - The Backyard is what you do **between runs**: grow a little food, show off some trophies,
   put on a new battle track.
@@ -35,7 +35,7 @@ tells you what just opened.
 - **Where seeds come from**, three ways:
   - **Starter seeds**: the first time you're back at base after the Garden opens, you get `2` of each of the three seeds in your backpack (once per save), so you can plant as soon as it's built.
   - **Base vendor**: once the Garden opens, the base's regular merchant (the one that sells tickets) stocks all three seeds, `3` of each per restock, for about `2700`–`3300` each.
-  - **Boss drops**: each of the three mod Bosses drops **an extra** seed of its own kind, roughly `25%` each. This works whether or not "Boss loot randomization (time bonus)" is on in the settings, and also in Faction War / Blood Hunt and Infinite Hell (Infinite Hell has no crate, so the seed lands next to the body). It's a bonus on top; it never takes the place of the Dragon set pieces or the Dragon Lord's exclusive drops.
+  - **Boss drops**: each of the three mod Bosses drops **an extra** seed of its own kind, roughly `25%` each. This works whether or not "Random Boss loot (tougher bosses and faster kills roll better)" is on in the settings, and also in Faction War / Blood Hunt and Infinite Hell (Infinite Hell has no crate, so the seed lands next to the body). It's a bonus on top; it never takes the place of the Dragon set pieces or the Dragon Lord's exclusive drops.
 - With a seed in hand, open the garden's normal planting screen and the mod seeds are simply there
   in the list alongside the vanilla crops.
 - A plant takes about `20` real-time minutes to ripen and yields `2` per harvest.

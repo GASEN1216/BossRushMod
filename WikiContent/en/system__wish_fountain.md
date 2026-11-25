@@ -1,6 +1,6 @@
 ## Dust-Covered StarWish Fountain
 
-### What Is It
+### Overview
 
 - The Dust-Covered StarWish Fountain is a buildable structure at base.
 - Write what you'd like to say or see added; the author can read it.

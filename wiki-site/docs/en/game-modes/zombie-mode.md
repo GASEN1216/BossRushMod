@@ -1,6 +1,6 @@
 # Zombie Mode
 
-## What Is It?
+## How It Plays
 
 A Roguelite survival mode in BossRush: you're dropped into a map with nothing, and the zombies keep coming. Clear each wave, pick a reward to grow stronger, but enemies scale up too. Survive long enough to extract and convert your Purification Points into cash; die and you lose everything.
 

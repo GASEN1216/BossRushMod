@@ -1,6 +1,6 @@
 ## Mutator System
 
-### What Is It?
+### Overview
 
 At the start of every run, the system draws a handful of mutators from a pool of 28 and applies them immediately for the entire run. **How many is fixed**, set by `mutatorCount` in the config (**3** by default, adjustable 1-10); what gets drawn is the random part. Mutators can buff enemies, buff the player, or change environment rules.
 

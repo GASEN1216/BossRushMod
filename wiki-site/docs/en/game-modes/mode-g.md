@@ -1,6 +1,6 @@
 # Fate Echo
 
-## What Is It?
+## How It Plays
 
 Fate Echo is a nine-wave challenge that **remembers how you fight**. Bring your own weapons and supplies into the arena. The run samples your range, ammo, and damage style, then turns those habits into the next questions. You can brute-force the counter, or change your approach and convert the break into Resolve.
 

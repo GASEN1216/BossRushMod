@@ -422,7 +422,7 @@ namespace BossRush
                 }
                 if (tier == ArenaExpeditionTier.Easy || partial)
                 {
-                    lines.Add(new KeyValuePair<string, bool>(L10n.T("不计通关成就", "No clear achievements"), true));
+                    lines.Add(new KeyValuePair<string, bool>(L10n.T("不计通关/无伤/速通成就", "No clear, flawless or speedrun achievements"), true));
                 }
                 else if (tier == ArenaExpeditionTier.Nightmare)
                 {

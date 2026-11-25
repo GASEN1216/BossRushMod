@@ -1,6 +1,6 @@
 # Duck King Campaign
 
-## What is it
+## Overview
 
 - The mod's first story campaign: six quests, each with a story beat, a line in the ledger, and a payout.
 - It **does not add a new mode**. You keep playing the modes you already play; there's just one

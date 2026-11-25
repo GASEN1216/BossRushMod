@@ -1,6 +1,6 @@
 # Thunder Ring
 
-## What Is It?
+## At a Glance
 
 A **totem-slot charge-up item**: the more hits you take, the harder your next strike. Every hit you take builds a lightning charge. At 5 charges, your next hit on an enemy releases a lightning burst: 40 flat damage plus 60% of that hit's actual damage. High-risk, high-reward.
 

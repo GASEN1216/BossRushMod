@@ -1,6 +1,6 @@
 ## Faction War
 
-### What Is It?
+### How It Plays
 
 Multi-faction sandbox chaos. Pick a faction, watch Bosses from different factions rip each other apart, and profit from the carnage. No waves, no win condition. Just mayhem.
 

@@ -1,6 +1,6 @@
 ## Standard BossRush
 
-### What Is It?
+### How It Plays
 
 The bread-and-butter mode. Buy a ticket, pick a map, walk into the arena, choose your difficulty at the signpost, and start fighting Bosses. Kill 'em all, grab your loot, and evacuate.
 
