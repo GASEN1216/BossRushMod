@@ -22,6 +22,12 @@
 //     噩梦叠了 Boss 回春，生命再 ×2 会变成磨血墙，杀戮尖塔的高进阶也是「更多事」而不是「更多血」。
 //   - 噩梦的己身是「伤口难愈 + 血之契约」：伤药只剩三成，亲手击杀回 16%——逼人压上去打，和 Boss 回春互相咬住。
 //   - 轻松的宽限不碰掉落，只让手残党能看到后半池；奖励仍按原规则减半。
+//
+// 2026-11-25 owner 第二次拍板「战规机制化」：困难 / 噩梦不再借变异词条，改成竞技场自己的机制（局内由 Trials/ArenaTrials 承担）。
+//   困难 6 条：磨刀 · 凶相 · 厄运 · 急行军 · 天象无常 · 天灾；
+//   噩梦 10 条：杀心 · 凶煞 · 失明 · 断补 · 血债 · 厄运（重）· 急行军 · 焚城 · 天翻地覆 · 天灾连环。
+//   撤掉神枪敌军、伤口难愈、Boss 回春、嗜血、血之契约、天降殉爆；盲战并入失明。轻松三条宽限不动（仍借 player_swift_heal）；
+//   轻松 / 标准另有「天色」轮换，只换画面、不列为战规。数值与理由见 Trials/ArenaTrialsTuning.cs。
 // ============================================================================
 
 using System;
@@ -156,7 +162,7 @@ namespace BossRush
         /// <summary>每 5 波的额外休整是否保留（急行军取消它）。</summary>
         internal static bool KeepsMilestoneRest(ArenaExpeditionTier tier) { return tier <= ArenaExpeditionTier.Standard; }
 
-        /// <summary>盲战：M 图上不显示竞技场首领的烽烟圈。</summary>
+        /// <summary>失明（原盲战）：M 图上不显示竞技场首领的烽烟圈。</summary>
         internal static bool HidesMapBeacons(ArenaExpeditionTier tier) { return tier == ArenaExpeditionTier.Nightmare; }
 
         /// <summary>战帖是否改动 Boss 数值（标准档不挂任何东西）。</summary>
@@ -181,15 +187,50 @@ namespace BossRush
         private static readonly ArenaExpeditionRule ForcedMarch = ArenaExpeditionRule.Own(ArenaExpeditionRuleKind.Field, false,
             "急行军", "Forced March", "波间休整减半，每 5 波的额外休整取消", "Rest between waves halved; no extra rest every 5 waves");
 
+        private static readonly ArenaTrialProfile HardTrials = ArenaTrialsTuning.ProfileFor(ArenaExpeditionTier.Hard);
+        private static readonly ArenaTrialProfile NightmareTrials = ArenaTrialsTuning.ProfileFor(ArenaExpeditionTier.Nightmare);
+
+        private static ArenaExpeditionRule Omens(string nameCn, string nameEn, ArenaTrialProfile profile)
+        {
+            return ArenaExpeditionRule.Own(ArenaExpeditionRuleKind.Omen, false, nameCn, nameEn,
+                "每 " + RangeCn(profile.OmenWavesMin, profile.OmenWavesMax) + " 波变天：暴雪、雷暴、血月、永夜、暴雨",
+                "Weather turns every " + RangeEn(profile.OmenWavesMin, profile.OmenWavesMax) + " waves: five omens");
+        }
+
+        private static ArenaExpeditionRule Calamity(string nameCn, string nameEn, ArenaTrialProfile profile)
+        {
+            string cn = "每 " + RangeCn((int)profile.HazardSecondsMin, (int)profile.HazardSecondsMax) + " 秒一阵天灾，敌我都伤";
+            string en = "A calamity every " + RangeEn((int)profile.HazardSecondsMin, (int)profile.HazardSecondsMax) + " s; it hurts both sides";
+            if (profile.HazardDoubleChance > 0f)
+            {
+                int percent = Mathf.RoundToInt(profile.HazardDoubleChance * 100f);
+                cn = "每 " + RangeCn((int)profile.HazardSecondsMin, (int)profile.HazardSecondsMax) + " 秒一阵，" + percent + "% 叠两种，敌我都伤";
+                en = "A calamity every " + RangeEn((int)profile.HazardSecondsMin, (int)profile.HazardSecondsMax) + " s, " + percent + "% double; hurts all";
+            }
+            return ArenaExpeditionRule.Own(ArenaExpeditionRuleKind.Omen, false, nameCn, nameEn, cn, en);
+        }
+
+        private static ArenaExpeditionRule Hex(bool heavy)
+        {
+            return heavy
+                ? ArenaExpeditionRule.Own(ArenaExpeditionRuleKind.Self, false, "厄运（重）", "Dire Hex",
+                    "每波一道重诅咒，下一波换一道", "A heavy curse each wave, swapped the next")
+                : ArenaExpeditionRule.Own(ArenaExpeditionRuleKind.Self, false, "厄运", "Hex",
+                    "每波一道轻诅咒，下一波换一道", "A light curse each wave, swapped the next");
+        }
+
         private static readonly ArenaExpeditionRule[] HardRules =
         {
             ArenaExpeditionRule.Own(ArenaExpeditionRuleKind.Foe, false, "磨刀", "Whetted Blades",
                 "首领生命 " + FormatMultiplier(HealthMultipliers[2]) + "，伤害 " + FormatMultiplier(DamageMultipliers[2]) + "，出手快一成半",
                 "Boss HP " + FormatMultiplier(HealthMultipliers[2]) + ", damage " + FormatMultiplier(DamageMultipliers[2]) + ", 15% quicker to act"),
-            ArenaExpeditionRule.Mutator(ArenaExpeditionRuleKind.Foe, false, "enemy_sharpshooter"),
-            ArenaExpeditionRule.Mutator(ArenaExpeditionRuleKind.Self, false, "heal_reduced"),
+            ArenaExpeditionRule.Own(ArenaExpeditionRuleKind.Foe, false, "凶相", "Fell Aspect",
+                "每只首领带 " + HardTrials.Affixes + " 条词缀，压轴带 " + HardTrials.FinaleAffixes + " 条",
+                "Each boss bears " + HardTrials.Affixes + " affix; the headliner " + HardTrials.FinaleAffixes),
+            Hex(false),
             ForcedMarch,
-            ArenaExpeditionRule.Mutator(ArenaExpeditionRuleKind.Omen, false, "lifesteal_on_kill"),
+            Omens("天象无常", "Fickle Skies", HardTrials),
+            Calamity("天灾", "Calamity", HardTrials),
         };
 
         private static readonly ArenaExpeditionRule[] NightmareRules =
@@ -197,15 +238,32 @@ namespace BossRush
             ArenaExpeditionRule.Own(ArenaExpeditionRuleKind.Foe, false, "杀心", "Killing Intent",
                 "首领生命 " + FormatMultiplier(HealthMultipliers[3]) + "，伤害 " + FormatMultiplier(DamageMultipliers[3]) + "，出手快五成",
                 "Boss HP " + FormatMultiplier(HealthMultipliers[3]) + ", damage " + FormatMultiplier(DamageMultipliers[3]) + ", 50% quicker to act"),
-            ArenaExpeditionRule.Mutator(ArenaExpeditionRuleKind.Foe, false, "enemy_sharpshooter"),
-            ArenaExpeditionRule.Mutator(ArenaExpeditionRuleKind.Foe, false, "boss_regen"),
-            ArenaExpeditionRule.Mutator(ArenaExpeditionRuleKind.Self, false, "heal_reduced"),
+            ArenaExpeditionRule.Own(ArenaExpeditionRuleKind.Foe, false, "凶煞", "Dread Aspect",
+                "每只首领 " + NightmareTrials.Affixes + " 条不同类词缀，压轴四类各一",
+                "Each boss bears " + NightmareTrials.Affixes + " affixes of different kinds; the headliner all 4"),
+            ArenaExpeditionRule.Own(ArenaExpeditionRuleKind.Self, false, "失明", "Blinded",
+                "视野收窄，首领血条只剩几格，M 图不标首领", "Narrow sight, coarse boss health bars, no boss beacons"),
+            ArenaExpeditionRule.Own(ArenaExpeditionRuleKind.Self, false, "断补", "Cut Supply",
+                "用药读条翻倍，不时禁药 " + (int)ArenaTrialsTuning.CutSupplyBanSeconds + " 秒，弹药掉落减半",
+                "Items take twice as long, sealed " + (int)ArenaTrialsTuning.CutSupplyBanSeconds + " s at times, half ammo drops"),
+            ArenaExpeditionRule.Own(ArenaExpeditionRuleKind.Self, false, "血债", "Blood Debt",
+                "只靠击杀回血；被首领打中上限降 " + ArenaTrialsTuning.FormatPercent(ArenaTrialsTuning.BloodDebtMaxHealthPerHit)
+                    + "，至多 " + ArenaTrialsTuning.FormatPercent(ArenaTrialsTuning.BloodDebtMaxHealthCap),
+                "Heal only by killing; boss hits cut max HP " + ArenaTrialsTuning.FormatPercent(ArenaTrialsTuning.BloodDebtMaxHealthPerHit)
+                    + " (up to " + ArenaTrialsTuning.FormatPercent(ArenaTrialsTuning.BloodDebtMaxHealthCap) + ")"),
+            Hex(true),
             ForcedMarch,
-            ArenaExpeditionRule.Own(ArenaExpeditionRuleKind.Field, false, "盲战", "Fighting Blind",
-                "M 图上不显示首领的烽烟圈，要自己找", "No boss beacons on the map; find them yourself"),
-            ArenaExpeditionRule.Mutator(ArenaExpeditionRuleKind.Omen, false, "blood_pact"),
-            ArenaExpeditionRule.Mutator(ArenaExpeditionRuleKind.Omen, false, "explode_on_death"),
+            ArenaExpeditionRule.Own(ArenaExpeditionRuleKind.Field, false, "焚城", "City Ablaze",
+                "开打 " + (int)ArenaTrialsTuning.FireRingStartDelay + " 秒后火墙收圈，圈外每秒掉 "
+                    + ArenaTrialsTuning.FormatPercent(ArenaTrialsTuning.FireRingDamagePerSecond) + " 生命",
+                (int)ArenaTrialsTuning.FireRingStartDelay + " s in, a fire wall closes; "
+                    + ArenaTrialsTuning.FormatPercent(ArenaTrialsTuning.FireRingDamagePerSecond) + " HP/s outside"),
+            Omens("天翻地覆", "Upheaval", NightmareTrials),
+            Calamity("天灾连环", "Chained Calamities", NightmareTrials),
         };
+
+        private static string RangeCn(int min, int max) { return min == max ? min.ToString() : min + " 到 " + max; }
+        private static string RangeEn(int min, int max) { return min == max ? min.ToString() : min + "-" + max; }
 
         internal static IList<ArenaExpeditionRule> RulesFor(ArenaExpeditionTier tier)
         {
@@ -405,9 +463,11 @@ namespace BossRush
                         break;
                     case ArenaExpeditionTier.Hard:
                         lines.Add(new KeyValuePair<string, bool>(L10n.T("通关箱品质 6 档起", "Victory chest quality 6+"), false));
+                        lines.Add(new KeyValuePair<string, bool>(L10n.T("带词缀的首领多掉 1 件", "Bosses with affixes drop 1 extra"), false));
                         break;
                     case ArenaExpeditionTier.Nightmare:
                         lines.Add(new KeyValuePair<string, bool>(L10n.T("通关箱多五成，品质 6 档起", "Victory chest +50%, quality 6+"), false));
+                        lines.Add(new KeyValuePair<string, bool>(L10n.T("带词缀的首领多掉 2 件", "Bosses with affixes drop 2 extra"), false));
                         break;
                     default:
                         lines.Add(new KeyValuePair<string, bool>(L10n.T("通关箱照旧", "Victory chest as usual"), false));

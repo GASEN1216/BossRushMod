@@ -19,6 +19,9 @@ namespace BossRush
 
         private static ArenaInkTitleCard instance;
 
+        /// <summary>标题幕还在演（出征令变天横扫等它收完再出，一次只说一件事）。</summary>
+        internal static bool Playing { get { return instance != null; } }
+
         private Canvas canvas;
 
         /// <param name="finale">压轴版（长、落印、战鼓）；否则噩梦缩短版。</param>

@@ -214,7 +214,7 @@ namespace BossRush
         internal WavesArenaRuntimeModule(ModBehaviour host) { OnAwake(host);enemyRecoveryMonitor=new EnemyRecoveryMonitor(); }
         private void ReleaseBossRandomLootTrackingOnDestroy() { Probe.Events.Add("cleanup-loot"); }
         // 出征令（WavesArenaRuntimeModule_Expedition.cs）：只记调用顺序，战帖倍率本身不在本夹具范围
-        private void ApplyExpeditionTierToSpawnedBoss(CharacterMainControl c) { Probe.Events.Add("tier"); }
+        private void ApplyExpeditionTierToSpawnedBoss(CharacterMainControl c, EnemyPresetInfo p) { Probe.Events.Add("tier"); }
         private static void EndExpeditionRun() { Probe.Events.Add("expedition-end"); }
         internal void RegisterBossRandomLootTracking(CharacterMainControl c,int count)
         { if(count!=3) throw new Exception("original loot count"); Probe.Events.Add("loot"); }

@@ -245,13 +245,16 @@ namespace BossRush
 
                     if (BossesInCurrentWaveRemaining <= 0)
                     {
+                        // 出征令词缀：分身 / 双生还有身体要打时先不收波，打完由战规交回来再推
+                        if (ExpeditionHoldsWaveEnd(bossMain)) return;
                         ProceedAfterWaveFinished();
                         return;
                     }
                 }
                 else
                 {
-                    // 单Boss模式：击杀后直接推进到下一波
+                    // 单Boss模式：击杀后直接推进到下一波（出征令词缀压着时同上）
+                    if (ExpeditionHoldsWaveEnd(bossMain)) return;
                     ProceedAfterWaveFinished();
                     return;
                 }
@@ -433,6 +436,9 @@ namespace BossRush
                 // 通知快递员 Boss 战结束
                 owner.NotifyCourierBossFightEnd();
 
+                // 出征令战规收波（天灾收掉、血债恢复、焚城退去）
+                EndExpeditionWave();
+
                 // 通知快递员当前没有Boss（召唤间隔期间）
                 owner.NotifyCourierNoBoss(true);
 
@@ -517,12 +523,15 @@ namespace BossRush
 
                     if (BossesInCurrentWaveRemaining <= 0)
                     {
+                        // 出征令：先倒下的首领留下的分身 / 双生还在，就压着等它们打完（与 HandleBossDeath 同一道闸）
+                        if (ExpeditionHoldsWaveEnd(null)) return;
                         ProceedAfterWaveFinished();
                     }
                 }
                 else
                 {
                     // 单Boss模式：视为跳过该敌人，直接进入下一波
+                    if (ExpeditionHoldsWaveEnd(null)) return;
                     ProceedAfterWaveFinished();
                 }
             }

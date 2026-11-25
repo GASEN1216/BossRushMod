@@ -72,7 +72,8 @@ namespace BossRush
                     SweepSilentWaveBossDeaths(deltaTime);
                     if (AdvanceWaveIntegrityCheck(deltaTime))
                     {
-                        owner.TryFixStuckWaveIfNoBossAlive();
+                        // 出征令词缀压着收波（首领已倒、分身 / 双生还在）时不强推
+                        if (!ExpeditionHoldsWave()) owner.TryFixStuckWaveIfNoBossAlive();
                     }
                 }
             }

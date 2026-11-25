@@ -1,5 +1,7 @@
 # 标准 BossRush 模式
 
+2026-11-25 出征令战规机制化（COMPAT，不改存档）：困难 / 噩梦的战规不再借变异词条，改由竞技场自己的局内服务对象 `ArenaTrials`（`WavesArena/Trials/`）承担。唯一 owner 是 `WavesArenaRuntimeModule_Expedition`：开局 Begin、收局 End，开波 / 收波 / 首领登记经 `ArenaTrials.Notify*` 转进去；不是出征令的局根本不建它，每帧零成本。各部分按固定顺序驱动：Sky（轻松 / 标准每 3–4 波换天色、只换画面；困难每 4–5 波、噩梦每 2–3 波变天——暴雪、雷暴、血月、永夜、暴雨，全部自绘，不调官方 WeatherManager，因为官方雨天会改元素系数）；Curses（厄运每波一道，困难轻、噩梦重；噩梦常驻失明 / 断补 / 血债）；Hazards（九种天灾与临时地形，困难 30–45 秒一阵，噩梦 15–25 秒且 25% 叠两种；伤害只经 `ArenaTrials.HurtNeutral`，首领只吃三成）；Affixes（凶相 / 凶煞：四类八种首领词缀，名缀经 `HealthBar.RefreshCharacterIcon` 后缀补丁写进血条名字。分裂 / 双生压着收波：`HandleBossDeath` 两处、`OnBossSpawnFailed` 两处与批量刷怪最终校验，推波前都先问 `ExpeditionHoldsWaveEnd`，压住的那一波由 `ArenaTrials.Update` 最后一句经 `ExpeditionReleaseHeldWave` 交回模块推波，10 秒自检压着时不强推，压收波上限 150 秒。词缀身体走 `SpawnExpeditionAffixBodyAsync`：过阵营安全网、解除距离休眠，不进本波座位、不登记掉落、死了不掉箱；血量在身体落地登记时按首领当时的生命上限折算（变异词条在入场通知之后才挂），狂暴以进入狂暴那刻的体型为底长大；双生拉起途中另一只也倒了就封住这一对，在路上的那只落地即散；带词缀的本体按条数多掉 1 / 2 件，从自己的掉落池出）；FireRing（噩梦焚城：圈心是刷新点重心贴 NavMesh，落不下改用最近刷新点；半径是最远刷新点 +10 米，下限 24 米。开打 30 秒起用 14 秒收到 60%，压轴 40%；收紧前 6 秒地上与 M 图先画落点圈。圈外每秒掉 4% 生命上限的火伤，只烧玩家，收波退去。表现在 `ArenaTrialsFireRingFx`，M 图用两枚官方区域 POI，屏幕热浪画在 `ArenaExpeditionHud` 色调层）。玩家与敌人身上的属性修饰都记在 `ArenaTrials` 的记录表里，Shutdown 逐条摘。结构不变式由 `tests/ArenaTrialsGuard.py` 守。Windows 编译、守卫与隔离回归已通过，局内表现、手感与数值仍需实机验收（人工清单见 FIX_TRACKER）。
+
 2026-10-22 custom 地图入场防护（COMPAT）：custom 使用独立请求槽位并复用现有 ArenaEntry 协程驱动，绑定 sceneLoaded 传入的实际目标 Scene，允许 Main 到目标图的正常激活过渡。官方 loader、MultiSceneCore、`LevelInited` 与 `AfterInit` 全部就绪后只绑定一次主玩家，加载等待也计入 30 秒上限；未就绪时取消。H / 丧尸接管、后继请求、切图、卸载、玩家替换或 owner 销毁后，旧任务停止，写位置前再次检查；GroundZero 后续任务受同一请求约束。正常 custom、Mode E / H、超时与跨局取消由现有入场夹具覆盖，真实 Unity 调度仍需实机验收。
 
 2026-10-08 DEMO 入场协程归属（COMPAT）：就绪等待只在场景、官方 loader、角色、相机与 LevelManager 全部就绪时派发；超时取消。`IntegrationRuntimeModule_ArenaEntry.cs` 持有原场景与角色绑定、后继请求替换、切图 / 卸载 / 销毁取消及任务释放。DEMO setup 每次恢复共用归属检查，Mode E 验证改为受 owner 递归驱动的子 IEnumerator，异步路牌补建也登记同一请求。普通子 IEnumerator 由显式栈推进并逆序释放；CustomYieldInstruction 与 Coroutine 保留 Unity 原生等待语义。Normal / D / E / F / G / H 的正常分支及取消路径由 `LegacyArenaEntry` 执行，实际 Unity 调度和地图画面仍需实机验收。
@@ -27,6 +29,12 @@
 - [LootAndRewards.cs](file://LootAndRewards/LootAndRewards.cs)
 - [Config.cs](file://Config/Config.cs)
 - [BossFilter.cs](file://BossFilter/BossFilter.cs)
+- [WavesArenaRuntimeModule_Expedition.cs](file://WavesArena/WavesArenaRuntimeModule_Expedition.cs)
+- [ArenaTrials.cs](file://WavesArena/Trials/ArenaTrials.cs)
+- [ArenaTrialsAffixes.cs](file://WavesArena/Trials/ArenaTrialsAffixes.cs)
+- [ArenaTrialsFireRing.cs](file://WavesArena/Trials/ArenaTrialsFireRing.cs)
+- [ArenaTrialsFireRingFx.cs](file://WavesArena/Trials/ArenaTrialsFireRingFx.cs)
+- [ArenaExpeditionHud.cs](file://WavesArena/ArenaExpeditionHud.cs)
 - [README.md](file://README.md)
 </cite>
 

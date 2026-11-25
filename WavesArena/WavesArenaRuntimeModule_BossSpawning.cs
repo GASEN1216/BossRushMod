@@ -101,6 +101,8 @@ namespace BossRush
 
                 // 压轴 / 噩梦：水墨标题幕（一次性演出，不影响生成）
                 PlayExpeditionTitleCard(preset);
+                // 出征令战规开波（天象换天、厄运换签、天灾计时从这里起）
+                BeginExpeditionWave();
 
                 Func<bool> isSpawnCurrent = WavesArenaRuntimeModule.CaptureValidity(owner, true, true);
                 if (BossesPerWave <= 1)
@@ -344,11 +346,11 @@ namespace BossRush
                 BossesInCurrentWaveTotal = liveBossCount;
                 BossesInCurrentWaveRemaining = liveBossCount;
 
-                // 如果全部失败，直接推进下一波
+                // 如果全部失败，直接推进下一波（出征令：已倒首领的分身 / 双生还在就压着，与 HandleBossDeath 同一道闸）
                 if (liveBossCount <= 0)
                 {
                     ModBehaviour.DevLog("[BossRush] [ERROR] 本波所有Boss生成失败，跳过本波");
-                    owner.ProceedAfterWaveFinished();
+                    if (!ExpeditionHoldsWaveEnd(null)) owner.ProceedAfterWaveFinished();
                 }
             }
             else

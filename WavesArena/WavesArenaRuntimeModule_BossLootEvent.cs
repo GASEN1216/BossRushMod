@@ -204,6 +204,8 @@ namespace BossRush
                     // 保持原版掉落 = 官方箱照建，pending 必须先还回去
                     owner.ReturnPendingExtraLootToCharacterItem(bossMain);
                     FinalizeBossRushLootboxPathTracking(bossMain);
+                    // 出征令断补：官方箱里的弹药减半
+                    ExpeditionAfterBossLoot(bossMain);
                     return; // 未启用随机掉落，保持原版掉落
                 }
 
@@ -243,6 +245,8 @@ namespace BossRush
                     baseCount = Mathf.RoundToInt(mapped);
                 }
                 baseCount = Mathf.Clamp(baseCount, 7, 15);
+                // 出征令词缀：1–2 条多掉 1 件、3–4 条多掉 2 件（在 [7,15] 夹取之后加，词缀奖励不被上限吃掉）
+                baseCount += ExpeditionAffixBonusLoot(bossMain);
 
                 // 每100血量增加的高品质概率加成
                 float lootHealthBonusRate = LOOT_HEALTH_BONUS_RATE;
@@ -271,6 +275,8 @@ namespace BossRush
                     modeFPlunderLootBonusCount,
                     modeFPlunderLootPenaltyCount);
 
+                // 出征令断补：随机掉落填完之后弹药减半
+                ExpeditionAfterBossLoot(bossMain);
             }
             catch (Exception e)
             {
