@@ -51,14 +51,15 @@
 - 守卫：新增 `tests/ArenaTrialsGuard.py`，覆盖 owner 与生命周期、补丁早返、各档开关、天象、诅咒、天灾、词缀、焚城与编译登记 11 组不变式；夹具 `ArenaHostRemainder/Stubs.cs` 跟着 `ApplyExpeditionTierToSpawnedBoss` 签名补。反向验证 112 条，全部实跑转红、按字节还原并核对 SHA-256：① 20、② 21、③ 28、④ 26、审查修复 17。
 - 验证（最后一轮，审查修复之后）：
   - `python tests/ArenaTrialsGuard.py` PASS；`python tools/run_guards.py --changed-only` PASS=475 NEW-FAIL=0 KNOWN-RED=0。
-  - Dev 真编译在隔离签出（HEAD 9d2f73ab + 本条文件，`GAME_PATH` 指 Managed 拷贝）上 0 错误；没有部署，游戏目录里仍是 15:19 的旧 Dev 包，不含本条改动。
+  - Dev 真编译在隔离签出（HEAD 9d2f73ab + 本条文件，`GAME_PATH` 指 Managed 拷贝）上 0 错误。
+  - 提交 dab03116 之后在主工作区正式构建并部署：0 错误，81 个资源包 SHA-256 校验通过；游戏目录 `BossRush.dll` SHA-256 `4139F1D5796FCBEEE2FA12AFDE37E89A129865B989E80352F87C212DC29596B7` 与 `Build/` 一致，`check_dll_identifiers --expect absent` PASS。主工作区里另一个会话未提交的 UI 水墨升级与 Wiki 插图改动也编进了这个包。
   - 本条涉及的文件：`WavesArena/Trials/`（13 个新文件）、`ArenaExpeditionHud.cs`、`ArenaExpeditionTuning.cs`、`ArenaInkTitleCard.cs`（只加 `Playing`，变天横扫等标题幕收完再出）、`WavesArenaRuntimeModule_` 的 BossLootEvent / BossSpawning / Expedition / LegacySpawn / Tick / WaveDeaths、`compile_official.bat` 的 13 行 Trials、`tests/ArenaTrialsGuard.py`、夹具 `ArenaHostRemainder/Stubs.cs`、Wiki 四页、repowiki 一篇。
   - 执行回归 15/15 PASS：ArenaHostRemainder、AuditModeLifecycle、LegacyArenaEntry、ModuleOwnerCleanup、HostMapArenaOwners、WavesArenaPresetWeight、BossRewardDelivery、ModeDEntryOwnership、ModeRuntimeDispatch、ModeDestroyLifecycle、EnemyRecoveryRuntime、AchievementRuntime、AudioRuntime、EclipseBloomRuntime、EntryAndReforgeCompatibility。
   - 文档：Wiki 中英「标准 BossRush 模式」新增「战规细则」节、各档条目改写，「变异词条」页改成只有轻松借妙手回春；`npm --prefix wiki-site run build` 通过（会重写受跟踪的生成页）。repowiki《标准 BossRush 模式》加 2026-11-25 一段和 6 个文件引用。
 - 遗留：
   - repowiki《难度级别系统》第 31 行的出征令描述已过时，但这份文件已被另一个会话暂存，本条没有动。
   - 局内表现、手感与数值都没有实机采样，性能也没测。
-- L3 待 owner（先正式构建并部署，跑 `check_dll_identifiers --expect absent`；全程看屏幕和 DevLog 文字，不需要截图）：
+- L3 待 owner（游戏目录已是上面那个正式包；正式包里没有 DevLog，全程看屏幕即可，不需要截图）：
   - T1 天象：标准档打 8 波，每 3–4 波天色换一次，数值不变。不合格：天色不换，或伤害 / 移速有变化。
   - T2 变天横扫：困难档变天时，屏幕上方出现墨色横扫（天象名 + 朱印 + 低钟），屏幕右侧中线偏上、战帖印下方的「天象 · 名」一行随之更新。不合格：横扫和标题卡叠在一起，或那一行没换。
   - T3 雾天：困难档遇到雾，雾里的敌人在玩家视野里被遮住，散雾后恢复。不合格：雾里的敌人照常清楚可见，或雾散后 AI 仍然半瞎。
