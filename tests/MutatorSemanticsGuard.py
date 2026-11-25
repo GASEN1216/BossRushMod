@@ -80,11 +80,11 @@ def main() -> int:
 
     if "MutatorManager.RollAndApply(player, count, null, modeTag, forcedIds);" not in runtime_flow:
         return fail("runtime bridge must pass modeTag into RollAndApply")
-    if 'owner.TryRollMutatorsForArena(InfiniteHellMode ? "InfiniteHell" : "BossRush", ExpeditionForcedMutators(expeditionOrder));' not in waves:
+    if 'owner.TryRollMutatorsForArena(InfiniteHellMode ? "InfiniteHell" : "BossRush", ExpeditionForcedMutators(expeditionOrder), expeditionOrder == null);' not in waves:
         return fail("standard BossRush mutators must pass an explicit modeTag")
     if "owner.TryRollMutatorsForArena(" not in waves:
         return fail("standard BossRush must roll a run mutator at StartFirstWave")
-    if "TryRollMutatorsForMode(mode, forcedIds);" not in WAVES_HOST.read_text(encoding="utf-8"):
+    if "TryRollMutatorsForMode(mode, forcedIds, allowRandom);" not in WAVES_HOST.read_text(encoding="utf-8"):
         return fail("arena mutator bridge must call the original run mutator entry")
     if "public bool enableMutators = true;" not in config:
         return fail("mutators must default on so every BossRush mode rolls a run mutator")

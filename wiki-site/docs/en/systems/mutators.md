@@ -76,7 +76,7 @@ At the start of every run, the system draws a handful of mutators from a pool of
 ## FAQ
 
 **Q: Are player boon mutators equally likely?**  
-Entries eligible for the current mode are drawn without repeats, regardless of whether they help you. Most entries are equally likely; Ratswarm is half as likely. Giants and Ratswarm both change body size, so a run gets at most one of them; Field Medic, Festering Wounds, Bloodlust and Blood Pact all change healing, so random rolls give at most one of those too. In the arena, the Relaxed, Hard and Nightmare challenges of the War Writ add a few mutators of their own; they carry a **Writ** tag in the mutator list, don't count toward the random roll, and apply even with random mutators turned off. Hemorrhage is eligible only in Blood Hunt. You might roll both "Giants" and "Glass Cannon" in the same run.
+Entries eligible for the current mode are drawn without repeats, regardless of whether they help you. Most entries are equally likely; Ratswarm is half as likely. Giants and Ratswarm both change body size, so a run gets at most one of them; Field Medic, Festering Wounds, Bloodlust and Blood Pact all change healing, so random rolls give at most one of those too. Arena runs started from the War Writ roll no random mutators; the Relaxed, Hard and Nightmare challenges borrow a few mutator effects as rules, which are listed on the notice rather than in the mutator list. Hemorrhage is eligible only in Blood Hunt. You might roll both "Giants" and "Glass Cannon" in the same run.
 
 **Q: Can I reroll or choose mutators?**  
 No. The draw is random and non-configurable mid-run.

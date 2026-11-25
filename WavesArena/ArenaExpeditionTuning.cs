@@ -138,10 +138,12 @@ namespace BossRush
         /// <summary>噩梦通关成就 ID（Achievement/BossRushAchievementManager 登记）。</summary>
         internal const string NightmareClearAchievementId = "nightmare_clear";
 
-        private static readonly float[] HealthMultipliers = { 0.6f, 1f, 1.3f, 1.6f };
-        private static readonly float[] DamageMultipliers = { 0.7f, 1f, 1.15f, 1.3f };
-        private static readonly float[] ReactionDivisors = { 1f, 1f, 1.15f, 1.3f };
-        private static readonly float[] HellCashMultipliers = { 0.5f, 1f, 1.25f, 1.5f };
+        // 噩梦 2026-11-25 owner：「噩梦加的倍率不是很多啊，你可以大胆加加」→ 生命 ×2.5、伤害 ×1.75、出手快五成，
+        // 无间奖金跟着 ×2（打得更久，按分钟算不该比标准少）。困难不动。
+        private static readonly float[] HealthMultipliers = { 0.6f, 1f, 1.3f, 2.5f };
+        private static readonly float[] DamageMultipliers = { 0.7f, 1f, 1.15f, 1.75f };
+        private static readonly float[] ReactionDivisors = { 1f, 1f, 1.15f, 1.5f };
+        private static readonly float[] HellCashMultipliers = { 0.5f, 1f, 1.25f, 2f };
         /// <summary>波间休整倍率：轻松从容 ×1.5，困难 / 噩梦急行军 ×0.5（每 5 波的额外休整也取消）。</summary>
         private static readonly float[] RestMultipliers = { 1.5f, 1f, 0.5f, 0.5f };
 
@@ -193,8 +195,8 @@ namespace BossRush
         private static readonly ArenaExpeditionRule[] NightmareRules =
         {
             ArenaExpeditionRule.Own(ArenaExpeditionRuleKind.Foe, false, "杀心", "Killing Intent",
-                "首领生命 " + FormatMultiplier(HealthMultipliers[3]) + "，伤害 " + FormatMultiplier(DamageMultipliers[3]) + "，出手快三成",
-                "Boss HP " + FormatMultiplier(HealthMultipliers[3]) + ", damage " + FormatMultiplier(DamageMultipliers[3]) + ", 30% quicker to act"),
+                "首领生命 " + FormatMultiplier(HealthMultipliers[3]) + "，伤害 " + FormatMultiplier(DamageMultipliers[3]) + "，出手快五成",
+                "Boss HP " + FormatMultiplier(HealthMultipliers[3]) + ", damage " + FormatMultiplier(DamageMultipliers[3]) + ", 50% quicker to act"),
             ArenaExpeditionRule.Mutator(ArenaExpeditionRuleKind.Foe, false, "enemy_sharpshooter"),
             ArenaExpeditionRule.Mutator(ArenaExpeditionRuleKind.Foe, false, "boss_regen"),
             ArenaExpeditionRule.Mutator(ArenaExpeditionRuleKind.Self, false, "heal_reduced"),

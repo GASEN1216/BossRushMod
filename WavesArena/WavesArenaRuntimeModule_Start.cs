@@ -79,9 +79,10 @@ namespace BossRush
                 owner.SetBossRushRuntimeActiveForArena(true);
                 WavesArenaRuntimeModule.ResetMilestones(owner);
 
-                // 抽取并应用本局变异词条（必须在生成第一个敌人之前，敌人增益才能作用到首波）；
-                // 出征令战帖指定的词条一起先上（不占随机条数，关掉随机词条也照样上）
-                owner.TryRollMutatorsForArena(InfiniteHellMode ? "InfiniteHell" : "BossRush", ExpeditionForcedMutators(expeditionOrder));
+                // 抽取并应用本局变异词条（必须在生成第一个敌人之前，敌人增益才能作用到首波）。
+                // 出征令开的局不抽随机词条（owner 2026-11-25「打出征令时不开变异词条吧，以免乱七八糟」）：
+                // 难度只由玩家自己选的战帖决定；战帖战规借用的词条照样先上，但它们是战规，不进变异词条栏
+                owner.TryRollMutatorsForArena(InfiniteHellMode ? "InfiniteHell" : "BossRush", ExpeditionForcedMutators(expeditionOrder), expeditionOrder == null);
 
                 CurrentEnemyIndex = 0;
                 DefeatedEnemies = 0;

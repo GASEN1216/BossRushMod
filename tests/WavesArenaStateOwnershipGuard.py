@@ -208,7 +208,7 @@ def main():
         "owner.BeginAchievementSessionForArena(InfiniteHellMode ? \"InfiniteHell\" : \"BossRush\");",
         "owner.SetBossRushRuntimeActiveForArena(true);",
         "WavesArenaRuntimeModule.ResetMilestones(owner);",
-        "owner.TryRollMutatorsForArena(InfiniteHellMode ? \"InfiniteHell\" : \"BossRush\", ExpeditionForcedMutators(expeditionOrder));",
+        "owner.TryRollMutatorsForArena(InfiniteHellMode ? \"InfiniteHell\" : \"BossRush\", ExpeditionForcedMutators(expeditionOrder), expeditionOrder == null);",
         "CurrentEnemyIndex = 0;",
         "CountedDeadBosses.Clear();",
         "owner.SubscribeArenaBossDeaths();",

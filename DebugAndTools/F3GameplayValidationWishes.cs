@@ -13,7 +13,7 @@
 //   WISH_FOUNTAIN_RULES                4 字下限（界面计数与提交同口径）、12 宿都对得上奖励类别、星灯清洗压重复 / 拦链接 / 去重
 //   PETNEST_SOUL_FEED_RULES            献魂花费 = 缺的经验 × 2、满级 0、当天献过的判定、日戳存档往返、旧档缺字段读成 0
 //   AFFINITY_GIFT_JOURNAL_ROUNDTRIP    心意簿两字段存档往返、旧档缺字段读成空、损坏字段整条拒收
-//   NPC_NAMEPLATE_SETTING              名牌：恒为走近显示（无配置项），场上只有一份画布；走近 8 米亮、走出 10 米灭；名牌里只有名字没有线
+//   NPC_NAMEPLATE_SETTING              名牌：恒为走近显示（无配置项），场上只有一份画布；走近 8 米亮、走出 10 米灭；名牌是官方血条那行名字（同字体同字号），别的图形不画
 //   MODCONFIG_OPTION_LABELS            ModConfig 下拉项标题：官方表里 Options_<配置键> 就是当前语言那句；切到另一种语言跟着变，切回原语言
 //                                      （用例体在 F3GameplayValidationModConfigLabels.cs）
 //   GOBLIN_POST_DIALOGUE_STAY          叮当关店后至少站 150 秒（过 10 秒仍在原地），召唤立刻打断停留
@@ -112,11 +112,12 @@ namespace BossRush
         private bool ValidateArenaExpeditionTuning(out string metrics, out string reason)
         {
             reason = null;
-            // 2026-11-25 难度改由战规叠出来，困难 / 噩梦的倍率回落；休整：轻松 ×1.5，困难 / 噩梦急行军 ×0.5。
-            float[] hp = { 0.6f, 1f, 1.3f, 1.6f };
-            float[] damage = { 0.7f, 1f, 1.15f, 1.3f };
-            float[] reaction = { 1f, 1f, 1.15f, 1.3f };
-            float[] hellCash = { 0.5f, 1f, 1.25f, 1.5f };
+            // 2026-11-25 难度由战规叠出来；噩梦按 owner「大胆加加」再抬到生命 ×2.5、伤害 ×1.75、出手快五成、无间奖金 ×2。
+            // 休整：轻松 ×1.5，困难 / 噩梦急行军 ×0.5。
+            float[] hp = { 0.6f, 1f, 1.3f, 2.5f };
+            float[] damage = { 0.7f, 1f, 1.15f, 1.75f };
+            float[] reaction = { 1f, 1f, 1.15f, 1.5f };
+            float[] hellCash = { 0.5f, 1f, 1.25f, 2f };
             float[] rest = { 1.5f, 1f, 0.5f, 0.5f };
             int[] ruleCounts = { 3, 0, 5, 8 };
             List<string> wrong = new List<string>();
@@ -385,7 +386,7 @@ namespace BossRush
 
         /// <summary>
         /// 名牌（owner 2026-11-25 定案：没有配置项，恒为走近显示，只显示名字）：基地里场上恰好一份名牌画布；
-        /// 距离回滞对；已经亮着的名牌里没有墨笔横条之类的图，只有一行名字。
+        /// 距离回滞对；已经亮着的名牌就是官方血条预制体那行名字（同字体同字号，owner 2026-11-25「样式和原版不一致」），名字以外的图形都不画。
         /// </summary>
         private static bool ValidateNpcNameplateSetting(out string metrics, out string reason)
         {
@@ -393,18 +394,17 @@ namespace BossRush
             FriendlyNpcNameplates[] roots = UnityEngine.Object.FindObjectsOfType<FriendlyNpcNameplates>();
             bool hysteresis = FriendlyNpcNameplates.NextShown(false, 8f) && !FriendlyNpcNameplates.NextShown(false, 8.5f)
                 && FriendlyNpcNameplates.NextShown(true, 9.5f) && !FriendlyNpcNameplates.NextShown(true, 10f);
-            int plates = 0, images = 0;
-            for (int i = 0; i < roots.Length; i++)
-            {
-                plates += roots[i].transform.childCount;
-                images += roots[i].GetComponentsInChildren<UnityEngine.UI.Image>(true).Length;
-            }
+            int plates, stray;
+            bool officialStyle;
+            FriendlyNpcNameplates.DescribeForValidation(out plates, out stray, out officialStyle);
             List<NpcNameplateTarget> targets = new List<NpcNameplateTarget>();
             NPCNameTagHelper.CopyNameplateTargets(targets);
-            metrics = "canvases=" + roots.Length + ",targets=" + targets.Count + ",plates=" + plates + ",images=" + images + ",hysteresis=" + hysteresis;
+            metrics = "canvases=" + roots.Length + ",targets=" + targets.Count + ",plates=" + plates + ",stray_graphics=" + stray
+                + ",official_style=" + officialStyle + ",hysteresis=" + hysteresis;
             if (roots.Length != 1) reason = "nameplate_canvas_count_wrong";
             else if (!hysteresis) reason = "nameplate_distance_rule_wrong";
-            else if (images > 0) reason = "nameplate_has_graphics_besides_name";
+            else if (stray > 0) reason = "nameplate_has_graphics_besides_name";
+            else if (!officialStyle) reason = "nameplate_not_official_name_style";
             return reason == null;
         }
 
@@ -913,7 +913,8 @@ namespace BossRush
             GameObject hudRoot = GameObject.Find(WishExpeditionHudName);
             Canvas hudCanvas = hudRoot != null ? hudRoot.GetComponent<Canvas>() : null;
             bool hudShown = hudCanvas != null && (hudCanvas.enabled || BossRushUI.IsOfficialHudHidden());
-            // 困难战规借用的三条词条（神枪敌军、伤口难愈、嗜血）随开波先上，并标成「战帖」词条。
+            // 困难战规借用的三条词条（神枪敌军、伤口难愈、嗜血）随开波先上；出征令开的局不抽随机词条（owner 2026-11-25），
+            // 所以场上的词条恰好就是这三条，变异词条栏也不出现。
             List<string> writIds = ArenaExpeditionTuning.ForcedMutatorIds(ArenaExpeditionTier.Hard);
             IReadOnlyList<MutatorDefinition> activeMutators = MutatorManager.GetActiveMutators();
             int writOn = 0;
@@ -933,6 +934,7 @@ namespace BossRush
             if (!scaled) return "hard_health_factor_missing";
             if (!hudShown) return "expedition_seal_missing";
             if (writOn != writWanted) return "writ_mutators_missing";
+            if (activeMutators.Count != writOn) return "random_mutators_rolled_in_expedition";
             return null;
         }
 

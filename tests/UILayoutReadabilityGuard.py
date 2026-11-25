@@ -10,7 +10,8 @@ import re
 ROOT = Path(__file__).resolve().parent.parent
 PATHS = [
     "Common/UI/BossRushUI.cs", "Common/UI/BossRushUIFoundation.cs", "ZombieMode/ZombieModeUIHelper.cs",
-    "PetNest/PetNestUI.cs", "PetNest/PetNestUILayout.cs", "ModeH/ModeHUI.cs", "ModeH/ModeHUIPages.cs",
+    "PetNest/PetNestUI.cs", "PetNest/PetNestUILayout.cs", "PetNest/PetNestUIMotion.cs", "Common/UI/BossRushInkSkin.cs",
+    "ModeH/ModeHUI.cs", "ModeH/ModeHUIPages.cs",
     "Integration/UI/ImageViewerUI.cs", "Achievement/SteamAchievementPopup.cs",
     "Achievement/AchievementView.cs", "Integration/Codex/CodexView.cs",
     "Common/Effects/RingParticleEffect.cs", "ModeH/ModeHRecoveryPanel.cs",
@@ -92,9 +93,23 @@ def check(sources):
     for name, pos, size in (("内容", content_pos, content_size), ("操作", actions_pos, actions_size)):
         require(abs(pos[1]) + size[1] / 2 <= panel[1] / 2 - 20,
                 "PetNest " + name + "区超出面板安全边距")
-    title_pos, title_size = vectors(call(pet, '"Title", parent,'))[-2:]
-    require(abs(title_pos[0]) + title_size[0] / 2 <= panel[0] / 2 - 24,
-            "PetNest 标题越过面板左边界")
+    # 2026-11-25 水墨统一：标题是墨笔大字（BossRushInkSkin.CreateBrushTitle）。按它的固定版式复算：
+    # 根节点 900 × 字号·2.4；英文小字中心在 -字号·0.98、框高 round(字号·0.36)·1.45+4。
+    ink = sources["Common/UI/BossRushInkSkin.cs"]
+    motion = sources["PetNest/PetNestUIMotion.cs"]
+    require("new Vector2(900f, fontSize * 2.4f)" in ink and "new Vector2(0f, -fontSize * 0.98f)" in ink
+            and "Mathf.Round(fontSize * 0.36f) * 1.45f + 4f" in ink,
+            "墨笔标题的版式变了：同步本守卫的标题几何复算")
+    brush = re.search(r'CreateBrushTitle\(parent, "[^"]+", "[^"]+", ([\d.]+)f\);\s*'
+                      r'title\.anchoredPosition = new Vector2\((-?[\d.]+)f, (-?[\d.]+)f\);', pet)
+    tab_y = const(motion, "TabStripY")
+    require(brush is not None and tab_y is not None, "PetNest 标题必须是显式定位的墨笔大字，页签行高度必须是 const")
+    if brush is not None and tab_y is not None:
+        font, title_x, title_y = (float(v) for v in brush.groups())
+        require(abs(title_x) + 450 <= panel[0] / 2 - 24, "PetNest 标题越过面板左右边界")
+        require(title_y + font * 1.2 <= panel[1] / 2, "PetNest 标题越过面板上边")
+        subtitle_bottom = title_y - font * 0.98 - (round(font * 0.36) * 1.45 + 4) / 2
+        require(subtitle_bottom >= tab_y + 22, "PetNest 标题的英文小字压到页签行")
     # 2026-09-24 交互重排：巢页「列表 + 详情」两栏与分区行画在 PetNestUILayout.cs
     layout = sources["PetNest/PetNestUILayout.cs"]
     names = ("NestListWidth", "NestListCenterX", "NestDetailWidth", "NestDetailCenterX",
@@ -230,9 +245,15 @@ def check(sources):
             "改按钮底色必须有共享入口，不能各自写 Image.color")
     require("scaler.matchWidthOrHeight" not in helper,
             "Expand 模式下 matchWidthOrHeight 是死参数，不要再赋值")
-    for path, label in (("PetNest/PetNestUI.cs", "遗种巢页签"), ("ModeH/ModeHUI.cs", "Mode H 拍铃")):
-        require("SetButtonBaseColor(" in sources[path],
-                label + "改底色必须走 SetButtonBaseColor，直接写 Image.color 会和 ColorTint 相乘")
+    require("SetButtonBaseColor(" in sources["ModeH/ModeHUI.cs"],
+            "Mode H 拍铃改底色必须走 SetButtonBaseColor，直接写 Image.color 会和 ColorTint 相乘")
+    # 遗种巢页签 2026-11-25 改成水墨一行字（常态透明、悬停淡金），三态色经共享 ColorBlock 入口 ApplyButtonColors。
+    tab_style = motion[motion.find("private static void ApplyTabStyle("):]
+    tab_style = tab_style[:tab_style.find("\n        }\n")]
+    require("ApplyTabStyle(pair.Value, selected);" in pet
+            and "ZombieModeUIHelper.ApplyButtonColors(tab," in tab_style
+            and ".color =" not in tab_style.replace("label.color =", ""),
+            "遗种巢页签改底色必须走共享 ColorBlock 入口，直接写 Image.color 会和 ColorTint 相乘")
 
     # 亮底阈值与设计 token 的余量：任一 token 贴到阈值上，配色微调就会静默翻转标签。
     threshold = LIGHT_THRESHOLD.search(lib)
@@ -266,6 +287,12 @@ def main():
     probes = [
         ("PetNest/PetNestUI.cs", "new Vector2(0f, 14f), new Vector2(1120f, 412f)",
          "new Vector2(0f, -20f), new Vector2(1120f, 520f)"),
+        # 2026-11-25 墨笔标题：上移越过面板上边、页签行上移压到英文小字、页签底色绕开共享入口，都必须转红。
+        ("PetNest/PetNestUI.cs", "title.anchoredPosition = new Vector2(0f, 334f);",
+         "title.anchoredPosition = new Vector2(0f, 352f);"),
+        ("PetNest/PetNestUIMotion.cs", "const float TabStripY = 262f;", "const float TabStripY = 276f;"),
+        ("PetNest/PetNestUIMotion.cs", "ZombieModeUIHelper.ApplyButtonColors(tab, clear,",
+         "tab.targetGraphic.color = clear; ZombieModeUIHelper.ApplyButtonColors(tab, clear,"),
         ("PetNest/PetNestUILayout.cs", "const float NestDetailCenterX = 228f;",
          "const float NestDetailCenterX = 180f;"),
         ("PetNest/PetNestUILayout.cs", "hasAction ? RowActionWidth + 30f", "hasAction ? RowActionWidth + 10f"),
@@ -284,8 +311,9 @@ def main():
          "progressFill.sprite = BossRushUI.GetSolidSprite();", ""),
         ("ZombieMode/ZombieModeUIHelper.cs", "Mathf.Max(0f, (size.x - textSize.x) * 0.5f)",
          "Mathf.Max(8f, (size.x - textSize.x) * 0.5f)"),
+        # 2026-11-25 水墨 token：石绿 / 赭石 / 朱砂的亮度都在 0.115 附近，阈值挪到 0.12 必须转红。
         ("Common/UI/BossRushUI.cs", "LightBackgroundLuminance = 0.30f",
-         "LightBackgroundLuminance = 0.18f"),
+         "LightBackgroundLuminance = 0.12f"),
         ("Common/Effects/RingParticleEffect.cs", "new GradientAlphaKey(1f, 0.18f)",
          "new GradientAlphaKey(alpha, 0.18f)"),
     ]

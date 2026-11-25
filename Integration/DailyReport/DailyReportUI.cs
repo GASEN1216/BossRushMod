@@ -53,9 +53,12 @@ namespace BossRush
         private static readonly Color CellTodayBright = new Color(1f, 0.87f, 0.52f, 1f);
         /// <summary>标题缎带上的字色。缎带是墨绿 / 炭灰 / 暖棕，字必须是浅色（对比度由 DailyReportPresentationGuard 复算）。</summary>
         private static readonly Color PillInk = new Color(0.97f, 0.95f, 0.91f, 1f);
-        /// <summary>签到按钮：深金棕底 + 白字（L 约 0.158，白字约 4.6:1）。旧的亮金底配白字只有约 3:1。</summary>
-        private static readonly Color ButtonIdle = new Color(0.53f, 0.415f, 0.215f, 1f);
-        private static readonly Color ButtonDisabled = new Color(0.47f, 0.42f, 0.34f, 1f);
+        /// <summary>
+        /// 签到按钮：深金棕底 + 宣纸字（L 约 0.137，约 4.7:1）。旧的亮金底配白字只有约 3:1；
+        /// 2026-11-25 全项目水墨主题把按钮字换成宣纸色（L≈0.821，比旧白字暗一档），铜底跟着压暗一点。
+        /// </summary>
+        private static readonly Color ButtonIdle = new Color(0.50f, 0.39f, 0.20f, 1f);
+        private static readonly Color ButtonDisabled = new Color(0.44f, 0.395f, 0.32f, 1f);
         /// <summary>签到按钮的暖金描边（参考图的按钮有一圈金边）。</summary>
         private static readonly Color ButtonEdge = new Color(0.86f, 0.70f, 0.34f, 0.9f);
         /// <summary>富文本里的次要墨色（标签、注脚）。预先转好，不每次刷新拼。</summary>

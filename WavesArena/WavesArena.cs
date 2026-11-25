@@ -94,7 +94,7 @@ namespace BossRush
         internal void ClearEnemiesForBossRushForArena() { ClearEnemiesForBossRush(); }
         internal void BeginAchievementSessionForArena(string mode) { BeginAchievementSession(mode); }
         internal void SetBossRushRuntimeActiveForArena(bool active) { SetBossRushRuntimeActive(active); }
-        internal void TryRollMutatorsForArena(string mode, System.Collections.Generic.IList<string> forcedIds = null) { TryRollMutatorsForMode(mode, forcedIds); }
+        internal void TryRollMutatorsForArena(string mode, System.Collections.Generic.IList<string> forcedIds = null, bool allowRandom = true) { TryRollMutatorsForMode(mode, forcedIds, allowRandom); }
         internal void SubscribeArenaBossDeaths()
         {
             Health.OnDead -= OnEnemyDiedWithDamageInfo;

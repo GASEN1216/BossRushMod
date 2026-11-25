@@ -103,11 +103,15 @@ namespace BossRush
             BossRushUISkinPart part = BossRushUISkinPart.Button;
             if (image.sprite == BossRushUISkin.GetInjected(BossRushUISkinPart.Card)) part = BossRushUISkinPart.Card;
             else if (image.sprite == BossRushUISkin.GetInjected(BossRushUISkinPart.Panel)) part = BossRushUISkinPart.Panel;
+            // 水墨主题：不挂投影 / 斜面，按按钮角色挂墨笔边（主操作金边、危险朱边、其余描边色）。
+            if (BossRushInkTheme.TryApplyButtonFrame(image, part, baseColor)) return;
             ApplyDepth(image, Mathf.RoundToInt(image.sprite.border.x), part, baseColor.a);
         }
 
         private static void ApplyDepth(Image surface, int radius, BossRushUISkinPart part, float surfaceAlpha)
         {
+            // 水墨主题（BossRushInkTheme）：圆角斜面高光压在崩边墨块上正是塑料感，挖空的圆角投影也对不上崩边，两层都不挂。
+            if (BossRushInkTheme.Active) return;
             Profile profile;
             if (!TryGetProfile(radius, part, out profile))
             {

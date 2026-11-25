@@ -13,7 +13,8 @@
 //
 //   【和质感层的关系】按钮仍然经过 ZombieModeUIHelper.SetButtonBaseColor，拿到官方 UI/hover、UI/click 音效、
 //   按下微缩与外投影；只把圆角矩形的「顶边斜面高光」换成墨笔边——圆角高光压在崩边墨块上正是塑料感的来源。
-//   面板不走 ApplyPanelStroke 的圆角描边，改由 ApplyInkPanel 套墨边与纤维；这是水墨主题对 ApplyPanelStroke 的替代入口。
+//   出征令这类专门的水墨面板用 ApplyInkPanel 套墨边与纤维。2026-11-25 起共享库整体走水墨主题（BossRushInkTheme）：
+//   ApplyPanelSkin / ApplyPanelStroke / 按钮质感 / 打开动效都换成这里的贴图，其余界面调用方一行不改。
 //
 //   【动效】只用 BossRushUI.EaseOut（位移、缩放）与 BossRushUI.SmoothStep（原地淡变），unscaled 时间，
 //   官方暂停菜单打开时冻结。慢而沉：0.35–0.6 秒，不回弹。
@@ -29,7 +30,11 @@ using Object = UnityEngine.Object;
 
 namespace BossRush
 {
-    /// <summary>水墨主题的设计 token。只在水墨界面里用；其余界面仍用 <see cref="BossRushUIColors"/>。</summary>
+    /// <summary>
+    /// 水墨主题的设计 token。2026-11-25 起全项目统一走水墨主题（BossRushInkTheme）：<see cref="BossRushUIColors"/> 的
+    /// 同名语义 token 与这里同值（Surface / SurfaceRaised / Paper→TextPrimary / PaperDim→TextSecondary / Gold→Accent /
+    /// CinnabarFill→AccentFill / Cinnabar→Danger / CinnabarText→DangerText），这里另有 Gold / GoldSoft / InkWash / Ember 等专用色。
+    /// </summary>
     internal static class BossRushInkColors
     {
         /// <summary>面板墨色底（#14110F 附近，略透出背后场景）。</summary>
@@ -38,8 +43,8 @@ namespace BossRush
         internal static readonly Color SurfaceRaised = new Color(0.125f, 0.105f, 0.088f, 0.94f);
         /// <summary>墨晕、笔触底衬：最深的墨。</summary>
         internal static readonly Color InkWash = new Color(0.018f, 0.014f, 0.012f, 1f);
-        /// <summary>正文：宣纸米色（#E8DCC4）。在 Surface 上约 13:1。</summary>
-        internal static readonly Color Paper = new Color(0.910f, 0.863f, 0.769f, 1f);
+        /// <summary>正文：宣纸色（#F1E9D6），与 BossRushUIColors.TextPrimary 同值。在 Surface 上约 15:1。</summary>
+        internal static readonly Color Paper = new Color(0.945f, 0.915f, 0.840f, 1f);
         /// <summary>次要文字：旧纸色。在 Surface 上约 6.5:1。</summary>
         internal static readonly Color PaperDim = new Color(0.690f, 0.640f, 0.560f, 1f);
         /// <summary>鎏金（#C9A24A）：细笔描边、选中、强调字。</summary>
@@ -50,8 +55,8 @@ namespace BossRush
         internal static readonly Color Cinnabar = new Color(0.690f, 0.188f, 0.165f, 1f);
         /// <summary>主操作填充：压深的朱砂，宣纸字在上面约 8:1。每屏最多一处。</summary>
         internal static readonly Color CinnabarFill = new Color(0.420f, 0.118f, 0.098f, 1f);
-        /// <summary>危险操作的字色：浅朱，在 Surface 上约 6:1。</summary>
-        internal static readonly Color CinnabarText = new Color(0.930f, 0.540f, 0.480f, 1f);
+        /// <summary>危险操作的字色：浅朱，在 Surface 上约 9:1；危险按钮悬停底上仍过 4.5:1（与 DangerText 同值）。</summary>
+        internal static readonly Color CinnabarText = new Color(0.960f, 0.620f, 0.550f, 1f);
         /// <summary>余烬：噩梦卡边缘、魂火、灯火。</summary>
         internal static readonly Color Ember = new Color(1f, 0.620f, 0.280f, 1f);
     }
@@ -181,7 +186,12 @@ namespace BossRush
         /// <summary>墨笔边框：沿四边的一道干笔，粗细起伏、有飞白断口，四角积墨。九宫格，border 40。</summary>
         internal static Sprite GetFrameSprite()
         {
-            if (frameSprite != null) return frameSprite;
+            if (frameSprite == null) frameSprite = BuildFrameSprite("BossRushInk_Frame");
+            return frameSprite;
+        }
+
+        private static Sprite BuildFrameSprite(string name)
+        {
             const int size = 128;
             const int border = 40;
             Color32[] pixels = new Color32[size * size];
@@ -209,8 +219,7 @@ namespace BossRush
                     pixels[y * size + x] = ToPixel(1f, Mathf.Clamp01(alpha * 1.15f));
                 }
             }
-            frameSprite = BuildSprite("BossRushInk_Frame", size, size, pixels, new Vector4(border, border, border, border));
-            return frameSprite;
+            return BuildSprite(name, size, size, pixels, new Vector4(border, border, border, border));
         }
 
         /// <summary>
@@ -617,6 +626,13 @@ namespace BossRush
             if (strokeMask == null) return;
             if (motion == null) motion = BossRushInkMotion.For(strokeMask.gameObject);
             float full = strokeMask.sizeDelta.x;
+            // 标题金笔可能被重播（面板复用再开、半途重开）：整笔宽度第一次写之前记下，之后都从它写起，不会越写越短。
+            BossRushInkRevealStroke marker = strokeMask.GetComponent<BossRushInkRevealStroke>();
+            if (marker != null)
+            {
+                if (marker.FullWidth < 0f) marker.FullWidth = full;
+                else full = marker.FullWidth;
+            }
             Vector2 pivot = strokeMask.pivot;
             float left = strokeMask.anchoredPosition.x - full * pivot.x;
             strokeMask.pivot = new Vector2(0f, pivot.y);
@@ -889,6 +905,8 @@ namespace BossRush
         /// <summary>释放程序化贴图（DontSave，必须显式销毁）。由 <see cref="BossRushUI.ResetStaticCaches"/> 调用。</summary>
         internal static void ResetStaticCaches()
         {
+            // 全局主题的 Sprite 壳引用这里的纹理，先清壳。
+            BossRushInkTheme.ResetStaticCaches();
             DestroySprite(ref surfaceSprite);
             DestroySprite(ref fiberSprite);
             DestroySprite(ref frameSprite);
@@ -901,9 +919,14 @@ namespace BossRush
         }
     }
 
-    /// <summary>标记：<see cref="BossRushInkSkin.PlayInkReveal"/> 时要「写」出来的墨笔。</summary>
+    /// <summary>
+    /// 标记：面板打开时要「写」出来的墨笔（<see cref="BossRushInkSkin.PlayInkReveal"/>，
+    /// 以及共享打开动效经 <see cref="BossRushInkTheme.WriteRevealStrokes"/>）。
+    /// </summary>
     internal sealed class BossRushInkRevealStroke : MonoBehaviour
     {
+        /// <summary>整笔宽度；小于 0 = 还没写过。</summary>
+        internal float FullWidth = -1f;
     }
 
     /// <summary>

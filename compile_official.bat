@@ -150,6 +150,7 @@ echo(Common\UI\BossRushUISlider.cs
 echo(Common\UI\BossRushUIAnimation.cs
 echo(Common\UI\BossRushUIFeel.cs
 echo(Common\UI\BossRushInkSkin.cs
+echo(Common\UI\BossRushInkTheme.cs
 echo(Common\UI\BossRushLocalPrefs.cs
 echo(Common\UI\BossRushUIFoundation.cs
 echo(Common\UI\BossRushUIHero.cs

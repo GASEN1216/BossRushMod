@@ -11,6 +11,9 @@
 - [ReflectionCache.cs](file://Common/Infrastructure/BossRushEagerReflectionCache.cs)
 - [BossRushUI.cs](file://Common/UI/BossRushUI.cs)
 - [MutatorUI.cs](file://Integration/Mutators/MutatorUI.cs)
+- [BossRushInkTheme.cs](file://Common/UI/BossRushInkTheme.cs)
+- [BossRushInkSkin.cs](file://Common/UI/BossRushInkSkin.cs)
+- [PetNestUIMotion.cs](file://PetNest/PetNestUIMotion.cs)
 </cite>
 
 ## 目录
@@ -589,3 +592,32 @@ BossRushUI.ApplyPanelStroke(surface, 18, BossRushUISkinPart.Panel, BossRushUICol
 `BossRushUI.cs` 没有行数余量，两份判定分开调用，不另加合并函数。
 
 **2026-11-21 模态租约每帧补占输入（COMPAT，L2，未实机）**：`BossRushUIKit.EnforceModalInputPause`（每帧 LateUpdate）在压 timeScale、开光标之后，把还没归还的租约 token 重新 `InputManager.DisableInput` 到当前 InputManager（官方 `blockInputSources` 是 HashSet，重复调用幂等），并记下实际挡住的 InputManager，归还时只在它身上 `ActiveInput`。原因：官方 `InputManager.UpdateCursor` 每帧按「输入是否被挡」重写 `Cursor.visible`，打开时还没有当前 InputManager 或关卡换了 InputManager 时 token 就丢了，光标和租约每帧来回拉扯，玩家看到收藏册开着却没有鼠标指针，要开一下地图才出来。执行回归 `SharedModalInput` 覆盖晚到的 InputManager、token 丢失后补占、已归还租约不补占，去掉补占调用时实跑转红。
+
+## 附录五：全项目统一水墨主题（2026-11-25，COMPAT，L2，未实机）
+
+owner 看过出征令后要求「项目已有的 UI……都改成出征令这种 UI……统一一下我们项目的风格……极简化，但是已有的功能都要有」。
+全项目的界面都经过共享库的几个入口，所以 `Common/UI/BossRushInkTheme.cs` 只接管入口，调用方一行不改：
+
+| 入口 | 水墨主题下 |
+| --- | --- |
+| `BossRushUISkin.GetInjected`（`ApplyPanelSkin`） | 面板 / 卡片 / 按钮三档是崩边墨块，同一张 `BossRushInkSkin` 程序化贴图按档换 pixelsPerUnit（100 / 160 / 240）；分隔线档是一笔淡金横笔；滚动滑块仍取图集胶囊 |
+| `ApplyPanelStroke` | `TryApplyFrame` 把描边 Image 换成墨笔边（外扩 4），面板档另铺宣纸纤维；水墨不管的档照旧画圆角描边环 |
+| `BossRushUIDepth.ApplyButtonDepth` / `ApplyDepth` | 不挂投影与顶边斜面；`TryApplyButtonFrame` 按角色挂墨笔边：`AccentFill` 底金边，危险墨底朱边，其余 `Stroke` 色；已被 `ApplyPanelStroke` 描过边的按钮不加第二道 |
+| `ZombieModeUIHelper.ApplyButtonColors` | `Danger` 实色底换成 `DangerFill`（近黑带朱），字色由 `GetButtonTextColor` 认出后给 `DangerText`；半透明的幽灵 Danger 不换 |
+| `CreateModalSurface` | 不画左侧强调竖条与顶边细条 |
+| `BossRushUIOpenAnimation` | 0.42 秒从 0.97 缓出、0.3 秒淡入；240×160 以上的面板背后墨晕洇开再散并自毁；`WriteRevealStrokes` 把面板里的墨笔标题金笔从左写出 |
+
+`BossRushUIColors` 换成与 `BossRushInkColors` 同色的水墨 token（宣纸字 #F1E9D6、鎏金强调、朱砂主操作与危险）。
+墨笔边的可见覆盖率由 `SkyIslandUiContrastGuard` 按生产贴图公式的 Python 移植复算，天空岛剧情面板压在亮插图上的选项行仍过非文本 3:1；
+日报面板的浅色纸张按钮因此压暗一档。
+
+旗舰界面再做一层：
+
+- **遗种巢**：标题是 `CreateBrushTitle`（「遗种巢」+ PET NEST）；四个页签居中，改成一行字——常态透明、悬停字后洇一小片淡金（三态色仍走共享 ColorBlock 入口
+  `ApplyButtonColors`，不直接写 `Image.color`），选中为宣纸粗字；页签下一笔鎏金切页时边滑边从左重写（`TickTabStroke` 每帧驱动，重复切页从头写），配翻纸声；
+  整排页签下托一道淡金横笔。`UILayoutReadabilityGuard` 按 `CreateBrushTitle` 的固定版式复算标题不越过面板上边、英文小字不压页签行。
+- **共享确认框、遗种巢改名框**：`BossRushInkTheme.AddTitleStroke` 按 TMP 实际字形边界在标题下配一笔金（幂等、`ignoreLayout`），返回伸出标题框的高度让竖排布局让位。
+  标题下已有分隔线的丧尸模式面板不加，分隔线本身已是淡金横笔。
+
+守卫 `tests/BossRushInkThemeGuard.py` 锁住全部接管点、动效时长与起始缩放（慢而沉、不回弹）、墨晕自毁、缓存清理链与色板同色，16 个内存反向检查。
+观感（墨笔边粗细、页签金笔节奏、确认框标题金笔位置）只有实机能看，待 owner 验收。

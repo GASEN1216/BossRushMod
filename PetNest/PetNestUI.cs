@@ -257,13 +257,9 @@ namespace BossRush
 
         private void BuildHeader(Transform parent)
         {
-            TextMeshProUGUI title = ZombieModeUIHelper.CreateText(
-                "Title", parent,
-                LocalizationHelper.GetLocalizedText(PetNestTuning.LocalizationPrefix + "SystemName"),
-                34f, new Vector2(-130f, 330f), new Vector2(860f, 52f),
-                TextAlignmentOptions.Left, BossRushUIColors.TextPrimary);
-            title.fontStyle = FontStyles.Bold;
-            BossRushUI.ApplyGameFont(title);
+            // 2026-11-25 水墨统一（与出征令同一套）：墨笔大字 + 英文小字，两种语言都看得到；面板打开时金笔从左写出
+            RectTransform title = BossRushInkSkin.CreateBrushTitle(parent, "遗种巢", "Pet Nest", 34f);
+            title.anchoredPosition = new Vector2(0f, 334f);
 
             // 「说明」：系统介绍、出战、扩建、保底、远征风险、放生，原来散在巢页 24 张卡的下面（交互重排 #5）
             _helpButton = ZombieModeUIHelper.CreateButton(
@@ -295,11 +291,10 @@ namespace BossRush
                 Button tab = ZombieModeUIHelper.CreateButton(
                     "Tab_" + page, parent, TabLabel(page),
                     new Vector2(0.5f, 0.5f),
-                    new Vector2(-420f + i * 200f, 268f), new Vector2(190f, 44f),
+                    new Vector2(TabX(page), TabStripY), new Vector2(190f, 44f),
                     BossRushUIColors.SurfaceRaised, 20f, new Vector2(180f, 40f),
                     delegate { SwitchPage(page); }, true);
-                // 页签描一圈边：未选中的深底页签对面板底只有约 1.03:1，不描边就是几行浮着的字
-                BossRushUIKit.StyleSecondaryButton(tab);
+                // 水墨页签是一行字（不描边）；底色、字色在 RefreshHeader → ApplyTabStyle（PetNestUIMotion.cs）
                 _tabs[page] = tab;
             }
             BuildTabIndicator(parent);
@@ -384,18 +379,15 @@ namespace BossRush
             foreach (KeyValuePair<PetNestUIPage, Button> pair in _tabs)
             {
                 bool selected = pair.Key == _page && !_showHelp;
-                // 2026-10-17（审查 A-2）：选中页签只压一点 Accent，下面一条指示条滑过来标出当前页；
-                // 整块 AccentFill 留给页面底栏唯一的主操作（§4.14 每屏最多一个）
-                Color color = TabColor(selected);
-                // 底色与标签色一起走共享入口；直接写 Image.color 会和 ColorTint 相乘，
-                // 选中的页签反而比未选中的更暗。
-                ZombieModeUIHelper.SetButtonBaseColor(pair.Value, color);
+                // 2026-10-17（审查 A-2）→ 2026-11-25 水墨统一：页签不铺底、不描边，选中 = 宣纸粗字 + 下面一笔金滑过来重写；
+                // 整块 AccentFill 留给页面底栏唯一的主操作（§4.14 每屏最多一个）。底色走共享 ColorBlock 入口
+                // （ApplyTabStyle → ZombieModeUIHelper.ApplyButtonColors）：直接写 Image.color 会和 ColorTint 相乘。
+                ApplyTabStyle(pair.Value, selected);
                 TextMeshProUGUI label = pair.Value.GetComponentInChildren<TextMeshProUGUI>();
                 if (label != null)
                 {
                     // 页签徽标（iOS 标签栏口径）：「孵化 ·2」= 有两件事能做，没事就只写名字
                     label.text = TabLabel(pair.Key) + (PetNestUIPages.DescribeTabBadge(pair.Key) ?? string.Empty);
-                    label.fontStyle = selected ? FontStyles.Bold : FontStyles.Normal;
                 }
             }
             MoveTabIndicator();

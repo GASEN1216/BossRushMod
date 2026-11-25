@@ -15,6 +15,9 @@
   `MODEL_PINS` 用审核报告复算表里的旧常量把模型钉住：谁把合成退回 sRGB，这里当场红。
 - **描边按真实覆盖率**。描边环是距离场画的，直边上最亮的那个纹素才有 `outer·inner` 的覆盖率；
   这里照抄生产 `BuildStrokeSprite` 的算式求它，再乘 `Stroke` 的 alpha。旧厚度 1.25 最亮只有 0.75（F-02）。
+- **水墨主题（2026-11-25 起全项目统一）的描边是墨笔边**（`BossRushInkTheme.TryApplyFrame`，贴图是
+  `BossRushInkSkin.BuildFrameSprite`，有飞白断口）。九宫格拉伸时，玩家看到的长直边就是贴图中段那几十列被拉长，
+  所以覆盖率取「中段每列横截面最亮纹素」的**中位数**、四条边里取最弱的一条——这里逐行照抄生产的噪声与笔画算式求出来。
 - **字幕按行首行尾算**。字幕压暗底按实测文字宽反算，行首行尾正好落在平台边上；旧版只算正中心（F-04）。
 
 ## 它证明什么、不证明什么
@@ -54,7 +57,9 @@ ART = "SkyIsland/SkyIslandUiArt.cs"
 HUD = "SkyIsland/SkyIslandHud.cs"
 CONTROLS = "SkyIsland/SkyIslandControls.cs"
 PANEL = "SkyIsland/SkyIslandStoryPresentation.cs"
-PATHS = [UI, ART, HUD, CONTROLS, PANEL]
+INK = "Common/UI/BossRushInkSkin.cs"
+THEME = "Common/UI/BossRushInkTheme.cs"
+PATHS = [UI, ART, HUD, CONTROLS, PANEL, INK, THEME]
 
 SCENE_P90 = 0.679
 SCENE_P99 = 0.839
@@ -120,6 +125,105 @@ def stroke_coverage(thickness):
     return best
 
 
+# ---------- 水墨墨笔边：逐行照抄 BossRushInkSkin 的噪声与 BuildFrameSprite ----------
+INK_SEED = 20261124
+_M32 = 0xFFFFFFFF
+
+
+def _ink_hash(x, y, seed):
+    h = (x * 374761393 + y * 668265263 + seed * 1442695041) & _M32
+    h = ((h ^ (h >> 13)) * 1274126177) & _M32
+    h ^= h >> 16
+    return (h & 0xFFFFFF) / 16777215.0
+
+
+def _ink_value_noise(x, y, seed):
+    import math
+    xi, yi = math.floor(x), math.floor(y)
+    fx, fy = x - xi, y - yi
+    sx, sy = fx * fx * (3 - 2 * fx), fy * fy * (3 - 2 * fy)
+    a, b = _ink_hash(xi, yi, seed), _ink_hash(xi + 1, yi, seed)
+    c, d = _ink_hash(xi, yi + 1, seed), _ink_hash(xi + 1, yi + 1, seed)
+    top, bottom = a + (b - a) * sx, c + (d - c) * sx
+    return top + (bottom - top) * sy
+
+
+def _ink_fbm(x, y, seed, octaves):
+    total, amp, norm = 0.0, 0.5, 0.0
+    for o in range(octaves):
+        total += amp * _ink_value_noise(x, y, seed + o * 31)
+        norm += amp
+        x *= 2.03
+        y *= 2.03
+        amp *= 0.5
+    return total / norm if norm > 0 else 0.0
+
+
+def _ink_smooth(t):
+    t = min(1.0, max(0.0, t))
+    return t * t * (3 - 2 * t)
+
+
+_INK_FRAME_CACHE = {}
+
+
+def ink_frame_coverage():
+    """墨笔边九宫格拉伸区（中段 40..87 列）每列横截面最亮纹素的中位数，四条边取最弱。"""
+    import math
+    import statistics
+    if "v" in _INK_FRAME_CACHE:
+        return _INK_FRAME_CACHE["v"]
+    size, border = 128, 40
+    alpha = [[0.0] * size for _ in range(size)]
+    for y in range(size):
+        for x in range(size):
+            left, bottom, right, top = x, y, size - 1 - x, size - 1 - y
+            d, edge, along = left, 0, y
+            if bottom < d:
+                d, edge, along = bottom, 1, x
+            if right < d:
+                d, edge, along = right, 2, y
+            if top < d:
+                d, edge, along = top, 3, x
+            center = 10 + 2.4 * (_ink_fbm(along * 0.03, edge * 5.1 + 11, INK_SEED + 6, 2) - 0.5)
+            width = 1.3 + 1.7 * _ink_fbm(along * 0.05, edge * 3.3, INK_SEED + 7, 2)
+            corner = 1 - min(1.0, max(0.0, (max(min(x, size - 1 - x), min(y, size - 1 - y)) - 6) / 22.0))
+            width *= 1 + 0.9 * corner
+            t = (d - center) / width
+            a = math.exp(-t * t)
+            gap = _ink_fbm(along * 0.11, edge * 7.9 + d * 0.35, INK_SEED + 8, 2)
+            a *= 0.18 + 0.82 * _ink_smooth((gap - 0.28) / 0.18)
+            a *= 0.72 + 0.28 * _ink_fbm(along * 0.6, d * 1.9, INK_SEED + 9, 1)
+            if d > border - 2:
+                a = 0.0
+            alpha[y][x] = min(1.0, max(0.0, a * 1.15))
+    edges = (lambda a, d: alpha[d][a], lambda a, d: alpha[size - 1 - d][a],
+             lambda a, d: alpha[a][d], lambda a, d: alpha[a][size - 1 - d])
+    value = min(statistics.median(max(get(a, d) for d in range(border)) for a in range(border, size - border))
+                for get in edges)
+    _INK_FRAME_CACHE["v"] = value
+    return value
+
+
+# 生产 BuildFrameSprite / 噪声的算式锚：改了这些，上面的移植就对不上生产，守卫当场红。
+INK_FORMULA_TOKENS = (
+    "private const int Seed = 20261124;",
+    "uint h = (uint)(x * 374761393 + y * 668265263 + seed * 1442695041);",
+    "h = (h ^ (h >> 13)) * 1274126177u;",
+    "x *= 2.03f;",
+    "float center = 10f + 2.4f * (Fbm(along * 0.03f, edge * 5.1f + 11f, Seed + 6, 2) - 0.5f);",
+    "float width = 1.3f + 1.7f * Fbm(along * 0.05f, edge * 3.3f, Seed + 7, 2);",
+    "float corner = 1f - Mathf.Clamp01((Mathf.Max(cornerX, cornerY) - 6f) / 22f);",
+    "width *= 1f + 0.9f * corner;",
+    "float gap = Fbm(along * 0.11f, edge * 7.9f + d * 0.35f, Seed + 8, 2);",
+    "alpha *= 0.18f + 0.82f * Smooth01((gap - 0.28f) / 0.18f);",
+    "alpha *= 0.72f + 0.28f * Fbm(along * 0.6f, d * 1.9f, Seed + 9, 1);",
+    "if (d > border - 2) alpha = 0f;",
+    "pixels[y * size + x] = ToPixel(1f, Mathf.Clamp01(alpha * 1.15f));",
+    "const int border = 40;",
+)
+
+
 def hover_color(rgb, lift, darken, cap, guarded):
     """BossRushUI.GetHoverColor 的复算：向白提亮 lift；白字底（Y ≤ cap）提亮会越过 cap 时改成压暗 darken。"""
     hover = lerp_white(rgb, lift)
@@ -165,7 +269,7 @@ def check(raw_sources):
             errors.append(message)
 
     # 常量与结构一律读剥掉注释的源码：注释里记着旧值（「旧值 0.72」一类），按原文读会读到注释。
-    ui, art, hud, controls, panel = (clean_source(raw_sources[p]) for p in PATHS)
+    ui, art, hud, controls, panel, ink, theme = (clean_source(raw_sources[p]) for p in PATHS)
 
     # ---------- 0. 合成模型钉 ----------
     for label, fg, scrim_rgb, alpha, scene, expected in MODEL_PINS:
@@ -193,6 +297,20 @@ def check(raw_sources):
                   "float inner = Mathf.Clamp01(StrokeThickness - depth + 0.5f);"):
         require(token in build_stroke, UI + " 的 BuildStrokeSprite 距离场算式变了（缺 " + token + "）：守卫复算的覆盖率对不上生产")
     coverage = stroke_coverage(const(ui, "StrokeThickness", UI))
+    # 水墨主题接管面板 / 卡片 / 按钮三档描边时，按墨笔边的覆盖率复算（右上卡片、模态外框、选项行边、焦点环都在这三档里）。
+    ink_active = "internal static readonly bool Active = true;" in theme
+    if ink_active:
+        stroke_body = body_of(ui, "internal static Image ApplyPanelStroke(")
+        require("BossRushInkTheme.TryApplyFrame(stroke, radius, part)" in stroke_body,
+                UI + " 的 ApplyPanelStroke 不再走水墨墨笔边：守卫按墨笔边复算的覆盖率对不上生产")
+        frame_body = body_of(theme, "private static Sprite GetFrame(BossRushUISkinPart part)")
+        for part in ("Panel", "Card", "Button"):
+            require(re.search(r"case BossRushUISkinPart\." + part + r": return Variant\(ref \w+, BossRushInkSkin\.GetFrameSprite\(\)",
+                              frame_body) is not None,
+                    THEME + " 的 " + part + " 档墨笔边不再是 BossRushInkSkin.GetFrameSprite()：守卫复算的贴图对不上生产")
+        for token in INK_FORMULA_TOKENS:
+            require(token in ink, INK + " 的墨笔边 / 噪声算式变了（缺 " + token + "）：守卫移植的覆盖率对不上生产")
+        coverage = ink_frame_coverage()
     stroke_alpha = tokens["Stroke"][3] * coverage
     accent_ring_alpha = tokens["Accent"][3] * coverage
 
@@ -413,6 +531,21 @@ def check(raw_sources):
         require(state_step >= 1.1,
                 "按钮底色 %s 的悬停与常态只差 %.2f 倍，几乎看不出悬停" % (name, state_step))
 
+    # ---------- 6b. 水墨主题的危险按钮：墨底 + 浅朱字（Danger 底被 ApplyButtonColors 换成 DangerFill） ----------
+    if ink_active:
+        m = re.search(r"Color DangerFill = new Color\(\s*([\d.]+)f\s*,\s*([\d.]+)f\s*,\s*([\d.]+)f", theme)
+        require(m is not None, THEME + " 缺少危险按钮墨底 DangerFill")
+        require("if (BossRushInkTheme.IsDangerFill(background)) return BossRushUIColors.DangerText;" in ui,
+                UI + " 的 GetButtonTextColor 不再给危险墨底配浅朱字：守卫复算的字色对不上生产")
+        if m is not None:
+            fill = tuple(float(v) for v in m.group(1, 2, 3))
+            fg = luminance(rgb("DangerText"))
+            hover = hover_color(fill, hover_lift, hover_darken, white_cap, guarded)
+            for state, bg in (("常态", fill), ("悬停", hover)):
+                value = ratio(fg, luminance(bg))
+                require(value >= 4.5, "水墨危险按钮%s时浅朱字（DangerText）只有 %.2f:1（需要 4.5:1）" % (state, value))
+            require(ratio(luminance(hover), luminance(fill)) >= 1.1, "水墨危险按钮的悬停与常态几乎分不开")
+
     # ---------- 7. 描边不许用 Divider ----------
     require("Color Stroke = new Color(" in ui,
             UI + " 缺少专用描边 token Stroke：直接用 Divider(a=0.32) 铺描边只有 1.54:1，画了等于没画")
@@ -450,14 +583,19 @@ def main():
         (HUD, "Color color = BossRushUIColors.Backdrop;", "Color color = BossRushUIColors.Header;"),
         (HUD, "CardSurfaceAlpha = 0.96f", "CardSurfaceAlpha = 0.60f"),        # 卡片底太透
         (CONTROLS, "BossRushUI.GetButtonTextColor(color)", "BossRushUIColors.TextPrimary"),
-        (UI, "Color Stroke = new Color(0.50f, 0.58f, 0.62f, 0.78f)",
-             "Color Stroke = new Color(0.50f, 0.58f, 0.62f, 0.32f)"),           # 描边退回 Divider 的透明度
-        (UI, "StrokeThickness = 1.5f", "StrokeThickness = 1.25f"),            # 直边没有满覆盖纹素（F-02）
+        (UI, "Color Stroke = new Color(0.788f, 0.635f, 0.290f, 0.70f)",
+             "Color Stroke = new Color(0.788f, 0.635f, 0.290f, 0.32f)"),        # 描边退回 Divider 的透明度
+        (INK, "alpha *= 0.18f + 0.82f * Smooth01((gap - 0.28f) / 0.18f);",
+              "alpha *= 0.05f + 0.95f * Smooth01((gap - 0.28f) / 0.18f);"),     # 飞白断口改了，移植对不上
+        (UI, "stroke.sprite = BossRushInkTheme.TryApplyFrame(stroke, radius, part) ? stroke.sprite : ",
+             "stroke.sprite = "),                                              # 描边不再走墨笔边
+        (THEME, "internal static readonly Color DangerFill = new Color(0.110f, 0.055f, 0.048f, 0.96f);",
+                "internal static readonly Color DangerFill = new Color(0.300f, 0.150f, 0.130f, 0.96f);"),  # 危险墨底太亮，浅朱字读不清
         (UI, "RelativeLuminance(background) <= WhiteLabelMaxLuminance", "false"),  # 悬停不再给白字底封顶
-        (UI, "Color Success = new Color(0.166f, 0.484f, 0.335f, 1f)",
-             "Color Success = new Color(0.18f, 0.52f, 0.36f, 1f)"),            # 白字标签跌回 4.15
-        (UI, "Color Warning = new Color(0.539f, 0.390f, 0.158f, 1f)",
-             "Color Warning = new Color(0.58f, 0.42f, 0.17f, 1f)"),
+        (UI, "Color Success = new Color(0.150f, 0.420f, 0.300f, 1f)",
+             "Color Success = new Color(0.166f, 0.484f, 0.335f, 1f)"),         # 宣纸字标签跌到 4.5 以下
+        (UI, "Color Warning = new Color(0.490f, 0.350f, 0.135f, 1f)",
+             "Color Warning = new Color(0.539f, 0.390f, 0.158f, 1f)"),
         (PANEL, "BackgroundTintAlpha = 0.82f", "BackgroundTintAlpha = 0.36f"),
         (PANEL, "ChoiceRowAlpha = 0.78f", "ChoiceRowAlpha = 0.30f"),
         (PANEL, "HeroTitleBandAlpha = 0.82f", "HeroTitleBandAlpha = 0.10f"),
@@ -493,9 +631,9 @@ def main():
     if errors:
         print("SkyIslandUiContrastGuard: FAIL\n  " + "\n  ".join(errors))
         return 1
-    print("SkyIslandUiContrastGuard: PASS（线性光合成 + 描边真实覆盖率 %.2f；大标题三行 / 字幕行首行尾 / 右上卡片 / "
-          "面板正文·选项·焦点环 / ESC 键帽 / 按钮悬停；%d 个反向检查；非 Unity 实机）"
-          % (stroke_coverage(const(clean_source(sources[UI]), "StrokeThickness", UI)), len(probes)))
+    print("SkyIslandUiContrastGuard: PASS（线性光合成 + 水墨墨笔边覆盖率 %.2f；大标题三行 / 字幕行首行尾 / 右上卡片 / "
+          "面板正文·选项·焦点环 / ESC 键帽 / 按钮悬停 / 水墨危险按钮；%d 个反向检查；非 Unity 实机）"
+          % (ink_frame_coverage(), len(probes)))
     return 0
 
 

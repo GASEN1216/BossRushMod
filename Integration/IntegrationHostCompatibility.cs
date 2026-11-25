@@ -624,9 +624,10 @@ namespace BossRush
 
         #region MutatorRuntimeBridge
 
-        internal void TryRollMutatorsForMode(string modeTag, System.Collections.Generic.IList<string> forcedIds = null)
+        /// <param name="allowRandom">false = 本局不抽随机词条（出征令开的局），只上 forcedIds。</param>
+        internal void TryRollMutatorsForMode(string modeTag, System.Collections.Generic.IList<string> forcedIds = null, bool allowRandom = true)
         {
-            MutatorModeFlow.TryRollMutatorsForMode(modeTag, config != null && config.enableMutators,
+            MutatorModeFlow.TryRollMutatorsForMode(modeTag, allowRandom && config != null && config.enableMutators,
                 config != null ? config.mutatorCount : 0, MutatorCountMin, MutatorCountMax, forcedIds);
         }
 

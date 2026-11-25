@@ -169,6 +169,10 @@ internal static partial class Program
         owner.config.enableMutators = true;
         Probe.Events.Clear(); owner.config.mutatorCount = 3; owner.TryRollMutatorsForMode("BossRush", new[] { "heal_reduced" }); Sequence("roll", "banner");
         Check(MutatorManager.Count == 3 && MutatorManager.Forced != null && MutatorManager.Forced.Count == 1, "writ mutators must ride along with the random roll");
+        // 出征令开的局（allowRandom = false）：随机词条开着也不抽，只上战帖词条；标准档没有战帖词条就整个不抽
+        Probe.Events.Clear(); owner.TryRollMutatorsForMode("BossRush", new[] { "heal_reduced", "lifesteal_on_kill" }, false); Sequence("roll", "banner");
+        Check(MutatorManager.Count == 0 && MutatorManager.Forced != null && MutatorManager.Forced.Count == 2, "expedition runs must not roll random mutators");
+        Probe.Events.Clear(); owner.TryRollMutatorsForMode("BossRush", null, false); Sequence();
         Probe.Events.Clear(); MutatorManager.Throw = true; owner.TryRollMutatorsForMode(null); Sequence("roll");
         Probe.Events.Clear(); owner.ClearMutatorsForMode("ModeD"); Sequence("remove");
         Probe.Events.Clear(); MutatorManager.Throw = false; owner.ClearMutatorsForMode("ModeD"); Sequence("remove", "hide");

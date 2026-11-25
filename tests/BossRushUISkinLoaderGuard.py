@@ -173,7 +173,7 @@ def check(sources):
     for part in SKIN_PARTS:
         require(re.search(r"\b" + part + r"\b", skin) is not None,
                 SKIN + " 的 BossRushUISkinPart 缺少分档 " + part)
-    resolve = extract_method(skin, "private static BossRushUISkinPart ResolvePart(")
+    resolve = extract_method(skin, "internal static BossRushUISkinPart ResolvePart(")   # 水墨主题（BossRushInkTheme）也按它落位
     require(bool(resolve), SKIN + " 找不到 Auto 分档的落位函数 ResolvePart")
     if resolve:
         # ≤3 必须落细条：3px 上任何一张图的 border 都会被压到中心区归零。
@@ -278,8 +278,8 @@ def main():
         (LOADER, '"panel_raised"', '"panel_surface"'),                       # 卡片图又取不出来
         (LOADER, "BossRushUISkin.InjectRuleSprite(null);", ""),              # Cleanup 漏一档 → 白板
         (SKIN, "if (radius <= 3) return BossRushUISkinPart.Hairline;", ""),  # 细条又落回按钮图
-        (SKIN, "stroke.sprite = GetStrokeSprite(GetSkinCornerRadius(radius, part));",
-               "stroke.sprite = GetStrokeSprite(radius);"),                  # 描边与底图圆角错位
+        (SKIN, "GetStrokeSprite(GetSkinCornerRadius(radius, part));",
+               "GetStrokeSprite(radius);"),                                  # 描边与底图圆角错位（水墨主题之外的细条档）
         (SKIN, "strokeSpriteCache.Clear();", ""),                            # 描边贴图泄漏
         (HUD, "ApplyPanelSkin(ruleImage, 2, BossRushUISkinPart.Rule)",
               "ApplyPanelSkin(ruleImage, 2, BossRushUISkinPart.Button)"),     # 细横线又穿按钮图

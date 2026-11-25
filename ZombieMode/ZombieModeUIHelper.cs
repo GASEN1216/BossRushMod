@@ -237,6 +237,11 @@ namespace BossRush
             Image surfaceImage = surface.AddComponent<Image>();
             surfaceImage.color = ModalSurfaceColor;
             BossRushUI.ApplyFramedPanelSkin(surfaceImage, 14, BossRushUISkinPart.Panel);
+            // 水墨主题：墨笔边已经勾出面板，左侧强调竖条与顶边细条会压在墨笔边上，不画。
+            if (BossRushInkTheme.Active)
+            {
+                return surface;
+            }
 
             GameObject accent = CreateRect(
                 name + "_AccentRail",
@@ -276,6 +281,15 @@ namespace BossRush
             if (button == null)
             {
                 return;
+            }
+
+            // 水墨主题的危险按钮不铺红块（和主操作的朱砂底分不开）：换成墨底，标签浅朱字、墨笔边朱色
+            // （GetButtonTextColor 与 ApplyButtonDepth 按 DangerFill 认出角色，见 BossRushInkTheme）。
+            if (BossRushInkTheme.IsDangerBase(normalColor))
+            {
+                normalColor = BossRushInkTheme.DangerFill;
+                highlightedColor = BossRushUI.GetHoverColor(normalColor);
+                disabledColor = BossRushUI.GetDisabledColor(normalColor);
             }
 
             // ColorTint 与 Graphic.color 相乘；两边都给深色会平方，悬停/禁用几乎看不清。

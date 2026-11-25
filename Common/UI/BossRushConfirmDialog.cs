@@ -142,7 +142,8 @@ namespace BossRush
             TextMeshProUGUI title = CreateBlock(surface.transform, "Title", o.Title, 28f,
                 BossRushUIColors.TextPrimary, ref y, 40f);
             if (title != null) title.fontStyle = FontStyles.Bold;
-            y += 6f;
+            // 水墨主题：标题下一笔金（随打开动效写出），让出它伸到标题框外的那一截
+            y += 6f + BossRushInkTheme.AddTitleStroke(title);
             TextMeshProUGUI target = CreateBlock(surface.transform, "Target", o.Target, 22f, BossRushUIColors.TextPrimary, ref y, 30f);
             if (target != null)
             {

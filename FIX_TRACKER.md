@@ -4,6 +4,43 @@
 
 **2026-11-20 · COMPAT · L1/L2**　玩家反馈退出重进后武器消失、仓库物品变问号。修复冷启动注册、分包手持模型绑定、部分失败重试和克隆/异步资源归属。角色和仓库合成档往返、重复 TypeID 与真实包来源已纳入自动回归。故障证据与玩家侧验证边界见 [CR-2026-11-20-001 至 003](CODE_REVIEW_FINDINGS.md)。随 v2.6.1 发版：`info.ini` 升 2.6.1，WikiContent 新增中英 `changelog__v2_6_1` 并补总览，工坊简介同步；L3 待玩家侧确认。
 
+## 2026-11-25 owner 实机反馈：名牌照原版、出征令不开变异词条、噩梦加码、全项目统一水墨 UI（COMPAT；L2 + Dev 真编译；L3 待 owner）
+
+- owner 原话：「名牌的样式和原版 NPC 的不一致」「打出征令时不开变异词条吧，以免乱七八糟」「噩梦加的倍率不是很多啊，你可以大胆加加」「我们项目已有的 UI，你觉得可以改的都改成出征令这种 UI……统一一下我们项目的风格……确保是最优方案并且符合人体直觉，高级高端大气感，极简化。但是已有的功能都要有」。
+- 名牌：`FriendlyNpcNameplates.CreatePlate` 克隆官方 `HealthBarManager.healthBarPrefab`，只留它的 `nameText`（同字体、字号、描边、颜色），其余图形都拆掉；画布缩放经新增的共享 `BossRushUIKit.MatchCanvasScaler` 照抄官方 HUD 画布。F3 用例 `NPC_NAMEPLATE_SETTING` 加 `official_style` 判据。
+- 出征令不开变异词条：`TryRollMutatorsForArena(…, ExpeditionForcedMutators(expeditionOrder), expeditionOrder == null)` 一路透传 `allowRandom` 到 `MutatorModeFlow`，出征令开的局不抽随机词条。战帖借用的战规（共享词条）照常强制加上，但不进变异词条栏；只有战规时词条栏不出现（`MutatorUI.ShowBanner`）。
+- 噩梦加码（`ArenaExpeditionTuning`）：首领生命 ×1.6 → ×2.5、伤害 ×1.3 → ×1.75、反应 ÷1.3 → ÷1.5、无间奖金 ×1.5 → ×2；轻松、标准、困难不变。理由：困难与噩梦之间的倍率台阶原来只有 0.3 / 0.15，叠上 8 条战规仍不够「噩梦」；奖金同步抬，不冲经济（只作用于无间奖金池，通关箱规则不变）。Wiki 中英标准模式页、变异词条页同步。
+- 全项目统一水墨 UI（新文件 `Common/UI/BossRushInkTheme.cs`，已登记编译清单）。只接管共享库入口，调用方不改，已有功能全在：
+  - 底图：`GetInjected` 的面板 / 卡片 / 按钮三档换成 `BossRushInkSkin` 的崩边墨块（按档换 pixelsPerUnit 的 Sprite 壳，不复制纹理），分隔线档换成淡金横笔；滚动滑块仍取图集。
+  - 描边：`ApplyPanelStroke` 先走 `TryApplyFrame` 画墨笔边，面板档另铺宣纸纤维。
+  - 按钮：不挂投影与斜面（`ApplyDepth` 早返）；`TryApplyButtonFrame` 按角色挂墨笔边——主操作金边；危险的 `Danger` 实色底在 `ApplyButtonColors` 里换成墨底 `DangerFill`，朱边、浅朱字（`GetButtonTextColor` 认出），与主操作的朱砂底分得开。
+  - `CreateModalSurface` 不画强调竖条与顶边细条；`CreateCard` 的强调竖条往里收。
+  - 打开动效：0.42 秒从 0.97 缓出、0.3 秒淡入，240×160 以上的面板背后墨晕洇开再散并自毁；`WriteRevealStrokes` 把面板里的墨笔标题金笔写出（`PlayBrushWrite` 记下整笔宽度，重播不越写越短）。
+  - `BossRushUIColors` 换成与 `BossRushInkColors` 同色的水墨 token；宣纸字提亮到 #F1E9D6，白字底判定上限 0.143。日报面板浅纸按钮压暗一档以保 4.5:1。
+- 旗舰界面：
+  - 遗种巢：标题换成 `CreateBrushTitle`（「遗种巢」+ PET NEST）；四个页签居中改成一行字（常态透明、悬停字后洇淡金，三态色经 `ApplyButtonColors`），选中为宣纸粗字；指示条换成一笔鎏金，切页时边滑边从左重写（`TickTabStroke`），配翻纸声；页签行下托一道淡金横笔。所有页、按钮、键位（Q / E、ESC、说明页）不变。
+  - 共享确认框、遗种巢改名框：`BossRushInkTheme.AddTitleStroke` 按 TMP 字形边界在标题下配一笔金，随打开动效写出；丧尸模式各面板标题下本来就有分隔线（现为淡金横笔），不加。
+- 守卫（§4.10 同步，反向验证均做）：
+  - 新增 `BossRushInkThemeGuard`：锁 10 类接管点、动效时长与起始缩放、墨晕自毁、缓存清理链、色板同色；16 个内存反向检查，另在磁盘上把 `Active` 改成 false 实跑转红、按字节还原。
+  - `SkyIslandUiContrastGuard`：墨笔边覆盖率按生产贴图公式的 Python 移植复算（拉伸边中位覆盖率取四边最小，0.83），新增危险角色（DangerText on DangerFill 常态 / 悬停 ≥ 4.5）一节，30 个反向检查。
+  - `UILayoutReadabilityGuard`：遗种巢标题按 `CreateBrushTitle` 固定版式复算不越过面板上边、英文小字不压页签行；页签底色必须经共享 ColorBlock 入口；17 个反向检查。
+  - `BossRushUISkinLoaderGuard`、`FriendlyNpcNameplateGuard`、`ArenaExpeditionOrderGuard`、`MutatorSemanticsGuard`、`WavesArenaStateOwnershipGuard` 跟着结构改；磁盘反向探针 7 处（allowRandom、噩梦倍率、词条栏过滤、宿主透传两处、名牌缩放、遗种巢标题高度）全部转红，sha 校验还原。
+  - 夹具：`AuditModeLifecycle/WaveOrdering.cs`、`IntegrationLeafOwners/Program.cs` 跟着 allowRandom 签名补。
+- 验证：
+  - 全量守卫：791/791 PASS（含新增 `BossRushInkThemeGuard`）。
+  - Dev 真编译 0 错误并部署，游戏目录 `BossRush.dll` SHA-256 `49FD8CCA2FF0D21C744D027DFB652B2A716ABA914B7CE9B640EFC5D5C07A01F6` 与 `Build/` 一致；`check_dll_identifiers --expect present` 30/30。
+  - 执行回归 13/13 PASS：SharedModalInput、IntegrationLeafOwners、AuditModeLifecycle、LegacyArenaEntry、WavesArenaPresetWeight、ArenaHostRemainder、F3ValidationExecution、SkyIslandInteraction、DailyReportHostUI、PetNestCare、PetNestGrowth、PetNestCompanionActivation、HostMapArenaOwners。
+  - Wiki 站点构建：`npm --prefix wiki-site run build` 通过。
+  - 文档：`Common/UI/AGENTS.md` 水墨主题一条改写、`docs/architecture/UI制作共识.md` §12 加「全局接管」、`docs/ai-docs-migration.md` 记一笔；repowiki《UI 系统集成》附录五、《遗种巢系统》同步。
+- 同一时段另一个会话在改冒险家日志（`Integration/WikiUIManager*.cs`、`WikiContentManager.cs` 与几条守卫），不属于本条，本条未动这些文件。
+- L3 待 owner（游戏目录现在是 Dev 包；交付前换正式构建并跑 `--expect absent`）：
+  1. 名牌：走近小明与叮当 / 羽织，对比头顶名字的字体、字号、描边、颜色；不合格 = 任何一项肉眼可分。
+  2. 出征令（ModConfig 变异词条保持打开）：四档各开一局，屏幕左上与开波横幅都不出现变异词条；困难 / 噩梦的战规照常生效。不合格 = 出现任何变异词条横幅或词条栏。
+  3. 噩梦：同一只 Boss 在困难与噩梦下的血条长度与挨打掉血明显不同（约 ×1.9 / ×1.5）。
+  4. 水墨 UI（遗种巢、确认框、改名框、图鉴、成就、日报、Mode H、丧尸模式面板、天空岛剧情面板）：面板是墨块 + 墨笔边，没有圆角高光与投影；主操作朱底金边、危险墨底朱边朱字；打开时背后一滴墨洇开再散、没有残留墨斑；所有按钮、页签、滚动、ESC 照常。不合格 = 文字看不清、墨斑留在屏幕上、按钮点不动或功能缺失。
+  5. 遗种巢页签：Q / E 与鼠标切页时金笔边滑边重写、配翻纸声；「说明」页里金笔藏起、返回后重写。不合格 = 金笔停在旧页签下或宽度异常。
+  6. 天空岛：剧情面板选项行在亮插图上仍看得出能点；右上 HUD 卡片可读。
+
 ## 2026-11-25 叮当重铸强度下调（COMPAT；旧装备读档压到新上限经 owner 同意；L2 + 正式真编译；L3 待验）
 
 - 起因：玩家反馈重铸太离谱。旧实现每次在当前值上累加，结果只夹在预制体值 30%~200%；倾向拉到 90% 只多收价值的一半，离线模拟 5 万价值、5 条属性的装备中位 8 次（约 20 万）全属性 ≥1.9 倍。

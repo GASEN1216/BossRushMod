@@ -9,6 +9,8 @@
 //   - A-1 巢页点选 / 勾选：行不动，只改新旧两行的选中描边（淡入 / 淡回），右栏详情单独重画并交叉淡入；
 //   - 其余同页重绘仍整页重建，但「刚被选中」的那一项（按 Key 判断）描边淡入，没变的不重播；
 //   - A-2 页签下一条指示条滑到选中页签，选中页签不再整块填 AccentFill（每屏只留一个主操作色块）；
+//     2026-11-25 水墨统一：页签改成一行字（不铺底、不描边，悬停字后洇一小片淡金），指示条换成一笔鎏金，
+//     边滑边从左重写，配翻纸声；整排页签下托一道淡金横笔；
 //   - A-3 进度条从上次的值平滑走到新值、在途远征的进度条跟着走表一起走，数字滚动；
 //   - A-4 成功操作弹底部轻提示 + 官方确认音；
 //   - G-1 官方翻页键（Q / E、手柄肩键）切页签；
@@ -35,6 +37,15 @@ namespace BossRush
         private const float SelectFadeSeconds = 0.14f;
         private const float DetailFadeSeconds = 0.16f;
         private const float TabSlideSeconds = 0.18f;
+        /// <summary>页签行的中心高度；标题墨笔字的英文小字压在它上面（UILayoutReadabilityGuard 复算间距）。</summary>
+        private const float TabStripY = 262f;
+        /// <summary>托住整排页签的淡金横笔；金笔指示条落在它上面一点。</summary>
+        private const float TabRuleY = 238f;
+        private const float TabStrokeWidth = 132f;
+        private const float TabWriteSeconds = 0.30f;
+        /// <summary>首开时等面板墨晕起来再写金笔。</summary>
+        private const float TabFirstWriteDelay = 0.30f;
+        private const float TabHoverWashAlpha = 0.12f;
 
         private PetNestSortMode _sortMode;
         /// <summary>下一次 Refresh 是巢页点选 / 勾选触发的，可以走局部刷新。</summary>
@@ -60,6 +71,12 @@ namespace BossRush
         private float _nextBarTick;
 
         private RectTransform _tabIndicator;
+        /// <summary>指示条里那一笔金（左端固定，宽度从 0 写到满）。</summary>
+        private RectTransform _tabStroke;
+        /// <summary>金笔开始写的时刻（unscaled）；小于 0 = 没在写。</summary>
+        private float _tabWriteStart = -1f;
+        /// <summary>金笔上一次写在哪个页签下；-1 = 藏着（「说明」页）或还没写过。</summary>
+        private int _tabStrokePage = -1;
         private PetNestToast _toast;
         private bool _revealWasOpen;
 
@@ -73,37 +90,75 @@ namespace BossRush
             PetNestPageKeys.Attach(_canvas.gameObject, StepPage, IsCoveredByChildWindow);
         }
 
-        /// <summary>页签下的指示条（审查 A-2）：Accent 细条（强调色；AccentFill 留给每屏唯一的主操作填充，§4.14），切页时滑过去。</summary>
+        /// <summary>
+        /// 页签下的金笔（审查 A-2；2026-11-25 水墨统一）：一道淡金横笔托住整排页签，选中页签下压一笔鎏金
+        /// （Accent 强调色；AccentFill 留给每屏唯一的主操作填充，§4.14）。切页时滑过去，同时从左重写。
+        /// </summary>
         private void BuildTabIndicator(Transform parent)
         {
-            GameObject bar = ZombieModeUIHelper.CreateRect("TabIndicator", parent, new Vector2(0.5f, 0.5f), new Vector2(120f, 3f));
-            _tabIndicator = bar.GetComponent<RectTransform>();
-            _tabIndicator.anchoredPosition = new Vector2(TabX(PetNestUIPage.Nest), 243f);
-            Image image = bar.AddComponent<Image>();
-            image.sprite = BossRushUI.GetSolidSprite();
-            image.color = BossRushUIColors.Accent;
-            image.raycastTarget = false;
+            BossRushInkSkin.CreateInkDivider(parent, 1100f, new Vector2(0f, TabRuleY));
+            GameObject holder = ZombieModeUIHelper.CreateRect("TabIndicator", parent, new Vector2(0.5f, 0.5f), new Vector2(TabStrokeWidth, 10f));
+            _tabIndicator = holder.GetComponent<RectTransform>();
+            _tabIndicator.anchoredPosition = new Vector2(TabX(PetNestUIPage.Nest), TabRuleY + 2f);
+            _tabStroke = BossRushInkSkin.CreateBrushStroke(holder.transform, "TabStroke", new Vector2(TabStrokeWidth, 10f), Vector2.zero, BossRushUIColors.Accent);
+            _tabStroke.pivot = new Vector2(0f, 0.5f);
+            _tabStroke.anchoredPosition = new Vector2(-TabStrokeWidth * 0.5f, 0f);
+            _tabStroke.sizeDelta = new Vector2(0f, 10f);
         }
 
+        /// <summary>四个页签居中排开，间距 200。</summary>
         private static float TabX(PetNestUIPage page)
         {
             int index = Array.IndexOf(PageOrder, page);
-            return -420f + Mathf.Max(0, index) * 200f;
+            return -300f + Mathf.Max(0, index) * 200f;
         }
 
-        /// <summary>选中页签的底色：只压一点 Accent，不整块填（主操作色块留给页面底栏）。</summary>
-        private static Color TabColor(bool selected)
+        /// <summary>
+        /// 水墨页签：一行字，不铺底、不描边。选中 = 宣纸粗字（下面那笔金由 <see cref="MoveTabIndicator"/> 管），
+        /// 未选中 = 淡字；悬停时字后洇出一小片淡金。底色走共享 ColorBlock 入口，不直接写 Image.color。
+        /// </summary>
+        private static void ApplyTabStyle(Button tab, bool selected)
         {
-            return selected
-                ? Color.Lerp(BossRushUIColors.SurfaceRaised, BossRushUIColors.Accent, 0.16f)
-                : BossRushUIColors.SurfaceRaised;
+            if (tab == null) return;
+            Color gold = BossRushUIColors.Accent;
+            Color clear = new Color(gold.r, gold.g, gold.b, 0f);
+            ZombieModeUIHelper.ApplyButtonColors(tab, clear, new Color(gold.r, gold.g, gold.b, TabHoverWashAlpha), clear);
+            // 共享入口按按钮角色补的那道墨笔边：一行字的页签不要
+            BossRushInkSkin.SetFrameColor(tab.targetGraphic, Color.clear);
+            TextMeshProUGUI label = tab.GetComponentInChildren<TextMeshProUGUI>();
+            if (label == null) return;
+            label.color = selected ? BossRushUIColors.TextPrimary : BossRushUIColors.TextSecondary;
+            label.fontStyle = selected ? FontStyles.Bold : FontStyles.Normal;
         }
 
         private void MoveTabIndicator()
         {
             if (_tabIndicator == null) return;
-            _tabIndicator.gameObject.SetActive(!_showHelp);
+            bool visible = !_showHelp;
+            _tabIndicator.gameObject.SetActive(visible);
             PetNestSlideX.Play(_tabIndicator, TabX(_page), TabSlideSeconds, !_hasRendered);
+            int shown = visible ? (int)_page : -1;
+            if (shown >= 0 && shown != _tabStrokePage)
+            {
+                // 换页、从「说明」回来：金笔边滑边从左重写，配一声翻纸；首开等面板墨晕起来再写。同页重绘不动。
+                _tabWriteStart = Time.unscaledTime + (_hasRendered ? 0f : TabFirstWriteDelay);
+                if (_tabStroke != null) _tabStroke.sizeDelta = new Vector2(0f, _tabStroke.sizeDelta.y);
+                if (_hasRendered) BossRushInkSkin.PlaySfx(BossRushInkSkin.SfxPaperTurn);
+            }
+            _tabStrokePage = shown;
+        }
+
+        /// <summary>每帧（TickMotion 里）：正在写的那笔金往右长，写满就停。</summary>
+        private void TickTabStroke()
+        {
+            if (_tabStroke == null)
+            {
+                _tabWriteStart = -1f;
+                return;
+            }
+            float t = (Time.unscaledTime - _tabWriteStart) / TabWriteSeconds;
+            _tabStroke.sizeDelta = new Vector2(TabStrokeWidth * BossRushUI.EaseOut(Mathf.Clamp01(t)), _tabStroke.sizeDelta.y);
+            if (t >= 1f) _tabWriteStart = -1f;
         }
 
         /// <summary>官方翻页键：在四个页签之间循环。「说明」页打开时先回到当前页。</summary>
@@ -118,6 +173,7 @@ namespace BossRush
         /// <summary>每帧入口（PetNestUI.Update 第一行调）：演出关闭后刷新一次、在途进度条一秒一次。</summary>
         private void TickMotion()
         {
+            if (_tabWriteStart >= 0f) TickTabStroke();
             bool revealOpen = PetNestHatchRevealView.IsOpen || PetNestExpeditionRevealView.IsOpen;
             if (_revealWasOpen && !revealOpen)
             {

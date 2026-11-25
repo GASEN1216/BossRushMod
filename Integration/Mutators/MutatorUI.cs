@@ -135,6 +135,8 @@ namespace BossRush
 
             for (int i = 0; i < mutators.Count; i++)
             {
+                // 出征令战帖借用的词条是战规（悬赏令上写着），不进变异词条栏（owner 2026-11-25：出征令不开变异词条）
+                if (MutatorManager.IsForcedMutator(mutators[i])) continue;
                 string displayName = mutators[i].GetDisplayName();
                 string description = mutators[i].GetDescription();
                 MutatorCategory category = mutators[i].Category;
@@ -144,10 +146,10 @@ namespace BossRush
                     Category = category,
                     DisplayName = displayName,
                     Description = description,
-                    // 出征令战帖指定的词条标「战帖」，和随机抽到的分开
-                    CategoryLabel = MutatorManager.IsForcedMutator(mutators[i]) ? L10n.T("战帖", "Writ") : GetCategoryLabel(category)
+                    CategoryLabel = GetCategoryLabel(category)
                 });
             }
+            if (_cachedInfos.Count == 0) return;
 
             _cornerVisible = true;
             DestroyCanvas();

@@ -158,6 +158,7 @@ namespace BossRush
                 TextAlignmentOptions.Center, BossRushUIColors.TextPrimary);
             title.fontStyle = FontStyles.Bold;
             BossRushUI.ApplyGameFont(title);
+            BossRushInkTheme.AddTitleStroke(title);
 
             TextMeshProUGUI hint = ZombieModeUIHelper.CreateText(
                 "Hint", surface.transform,

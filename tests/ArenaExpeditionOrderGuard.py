@@ -14,7 +14,9 @@
 6. 本局快照随切图与模块销毁收掉；`StartFirstWave` 第一件事取走面板放下的选择。
 7. 变异词条按权重不放回抽取，同互斥组只出一个；群鼠战术权重 0.5、与巨灵兵同在 `enemy_size` 组。
 8. 战帖战规（2026-11-25 难度多元化）：借用的变异词条由 `ExpeditionForcedMutators` 交给开波抽词条先上，
-   一路经宿主 → MutatorModeFlow → MutatorManager 透传，关掉随机词条也照样上，HUD 角标标「战帖」；
+   一路经宿主 → MutatorModeFlow → MutatorManager 透传，关掉随机词条也照样上；
+   出征令开的局不抽随机词条（owner 2026-11-25「打出征令时不开变异词条吧」：allowRandom = expeditionOrder == null），
+   战帖借用的词条是战规，不进变异词条栏；
    每条借用的词条都要在词条池里、不限模式；四条治疗类词条同在 `healing` 互斥组；标准档不加任何战规。
 9. 波间休整倍率进倒计时（两处）与每 5 波额外休整；盲战挡在烽烟圈的竞技场来源入口；两者都经
    `LiveExpeditionTier`，Mode D 借用本模块时不受影响。
@@ -87,8 +89,8 @@ def check_tuning(errors):
         errors.append("[Tuning] 缺少 WavesArena/ArenaExpeditionTuning.cs")
         return
     c = compact(tuning)
-    for name, values in (("HealthMultipliers", "0.6f,1f,1.3f,1.6f"), ("DamageMultipliers", "0.7f,1f,1.15f,1.3f"),
-                         ("ReactionDivisors", "1f,1f,1.15f,1.3f"), ("HellCashMultipliers", "0.5f,1f,1.25f,1.5f"),
+    for name, values in (("HealthMultipliers", "0.6f,1f,1.3f,2.5f"), ("DamageMultipliers", "0.7f,1f,1.15f,1.75f"),
+                         ("ReactionDivisors", "1f,1f,1.15f,1.5f"), ("HellCashMultipliers", "0.5f,1f,1.25f,2f"),
                          ("RestMultipliers", "1.5f,1f,0.5f,0.5f")):
         require(errors, ("float[]" + name + "={" + values + "}") in c,
                 "[Tuning] %s 与 owner 拍板的四档表不一致（应为 {%s}）：改数值先改方案与本守卫" % (name, values))
@@ -187,8 +189,8 @@ def check_run_wiring(errors):
     require(errors, "if(order==null||order.IsHell!=InfiniteHellMode||owner==null||owner.IsModeDActive)returnnull;" in forced
             and "returnArenaExpeditionTuning.ForcedMutatorIds(order.Tier);" in forced,
             "[Rules] ExpeditionForcedMutators 必须在出征令与模式对不上或 Mode D 借用时不指定词条")
-    require(errors, 'owner.TryRollMutatorsForArena(InfiniteHellMode?"InfiniteHell":"BossRush",ExpeditionForcedMutators(expeditionOrder));' in start,
-            "[Rules] 开波抽词条必须带上战帖指定的词条（ExpeditionForcedMutators）")
+    require(errors, 'owner.TryRollMutatorsForArena(InfiniteHellMode?"InfiniteHell":"BossRush",ExpeditionForcedMutators(expeditionOrder),expeditionOrder==null);' in start,
+            "[Rules] 开波抽词条必须带上战帖指定的词条（ExpeditionForcedMutators），且出征令开的局不抽随机词条（allowRandom = expeditionOrder == null）")
     rest = compact(body_of(expedition, "private float ExpeditionRestSeconds(float seconds)"))
     milestone = compact(body_of(expedition, "private float ExpeditionMilestoneRestSeconds(float seconds)"))
     require(errors, "returnseconds*ArenaExpeditionTuning.RestMultiplier(LiveExpeditionTier());" in rest
@@ -208,18 +210,21 @@ def check_run_wiring(errors):
             "[Rules] 盲战必须挡在烽烟圈竞技场来源的入口（CopyMapBeaconBossesTo 第一句）")
 
     arena_host = compact(read("WavesArena", "WavesArena.cs"))
-    require(errors, "internalvoidTryRollMutatorsForArena(stringmode,System.Collections.Generic.IList<string>forcedIds=null){TryRollMutatorsForMode(mode,forcedIds);}" in arena_host,
-            "[Rules] 宿主 TryRollMutatorsForArena 必须把战帖词条透传下去")
+    require(errors, "internalvoidTryRollMutatorsForArena(stringmode,System.Collections.Generic.IList<string>forcedIds=null,boolallowRandom=true){TryRollMutatorsForMode(mode,forcedIds,allowRandom);}" in arena_host,
+            "[Rules] 宿主 TryRollMutatorsForArena 必须把战帖词条与「本局抽不抽随机词条」透传下去")
     compat = compact(read("Integration", "IntegrationHostCompatibility.cs"))
-    require(errors, "config!=null?config.mutatorCount:0,MutatorCountMin,MutatorCountMax,forcedIds);" in compat,
-            "[Rules] 宿主 TryRollMutatorsForMode 必须把战帖词条透传给 MutatorModeFlow")
+    require(errors, "MutatorModeFlow.TryRollMutatorsForMode(modeTag,allowRandom&&config!=null&&config.enableMutators," in compat
+            and "config!=null?config.mutatorCount:0,MutatorCountMin,MutatorCountMax,forcedIds);" in compat,
+            "[Rules] 宿主 TryRollMutatorsForMode 必须把战帖词条透传给 MutatorModeFlow，allowRandom=false 时随机词条关掉")
     flow = compact(read("Integration", "Mutators", "MutatorModeFlow.cs"))
     require(errors, "boolhasForced=forcedIds!=null&&forcedIds.Count>0;if(!enabled&&!hasForced)return;" in flow
             and "intcount=enabled?Mathf.Clamp(requestedCount,minimumCount,maximumCount):0;MutatorManager.RollAndApply(player,count,null,modeTag,forcedIds);" in flow,
             "[Rules] 关掉随机词条时战帖词条照样上、随机条数为 0（MutatorModeFlow）")
-    ui = compact(read("Integration", "Mutators", "MutatorUI.cs"))
-    require(errors, 'MutatorManager.IsForcedMutator(mutators[i])?L10n.T("战帖","Writ")' in ui,
-            "[Rules] 词条 HUD 必须把战帖指定的词条标成「战帖」")
+    banner = compact(body_of(read("Integration", "Mutators", "MutatorUI.cs"), "public static void ShowBanner()"))
+    require(errors, "if(MutatorManager.IsForcedMutator(mutators[i]))continue;" in banner
+            and banner.find("if(_cachedInfos.Count==0)return;") < banner.find("_cornerVisible=true;")
+            and banner.find("if(_cachedInfos.Count==0)return;") >= 0,
+            "[Rules] 战帖借用的词条不进变异词条栏；只有战帖词条时词条栏不出现")
 
     panel = compact(read("WavesArena", "ArenaExpeditionOrderPanel.cs"))
     require(errors, 'L10n.T("等等","Wait")' in panel and 'L10n.T("立誓","Swear")' in panel and '"收起"' not in panel,

@@ -86,20 +86,21 @@ namespace BossRush
     }
 
     /// <summary>
-    /// 设计 token。数值沿用 ZombieModeUIHelper 已经在游戏里跑顺的那套深色调，
-    /// 并把散落各处的第二套遮罩色（0,0,0,0.7）统一到这里。
+    /// 设计 token。2026-11-25 起是水墨主题（owner：全项目统一成出征令的风格，见 BossRushInkTheme）：
+    /// 墨色底、宣纸字、鎏金强调、朱砂主操作，与 <see cref="BossRushInkColors"/> 同值。语义名不变，调用方不用改。
+    /// 对比度由 SkyIslandUiContrastGuard / UILayoutReadabilityGuard 按游戏的线性色彩空间复算。
     /// </summary>
     internal static class BossRushUIColors
     {
-        internal static readonly Color Backdrop = new Color(0.015f, 0.02f, 0.025f, 0.62f);
-        /// <summary>全屏看图/看视频用的强遮罩：正片内容需要压住背后的战斗画面，0.62 会透出干扰。</summary>
-        internal static readonly Color BackdropStrong = new Color(0.015f, 0.02f, 0.025f, 0.90f);
-        internal static readonly Color Surface = new Color(0.045f, 0.055f, 0.065f, 0.92f);
-        internal static readonly Color SurfaceRaised = new Color(0.075f, 0.09f, 0.105f, 0.95f);
-        internal static readonly Color Header = new Color(0.09f, 0.115f, 0.13f, 0.96f);
-        internal static readonly Color Divider = new Color(0.42f, 0.52f, 0.58f, 0.32f);
+        internal static readonly Color Backdrop = new Color(0.012f, 0.010f, 0.009f, 0.64f);
+        /// <summary>全屏看图/看视频用的强遮罩：正片内容需要压住背后的战斗画面，0.64 会透出干扰。</summary>
+        internal static readonly Color BackdropStrong = new Color(0.012f, 0.010f, 0.009f, 0.90f);
+        internal static readonly Color Surface = new Color(0.078f, 0.067f, 0.059f, 0.92f);
+        internal static readonly Color SurfaceRaised = new Color(0.125f, 0.105f, 0.088f, 0.95f);
+        internal static readonly Color Header = new Color(0.105f, 0.088f, 0.074f, 0.96f);
+        internal static readonly Color Divider = new Color(0.788f, 0.635f, 0.290f, 0.32f);
         /// <summary>
-        /// 面板 / 卡片 / 列表行的描边色。与 <see cref="Divider"/> 同一系蓝灰、更亮也更实。
+        /// 面板 / 卡片 / 列表行的描边色（水墨主题下是墨笔边的淡金）。与 <see cref="Divider"/> 同一系、更实。
         ///
         /// 【为什么不能直接用 Divider】Divider 自带 0.32 的 alpha，铺成一圈描边后对面板底
         /// 只有 **1.54:1**——低于 WCAG 1.4.11 对非文本的 3:1，画了等于没画。
@@ -112,30 +113,30 @@ namespace BossRush
         /// 卡片边、面板外框、选项行边在亮云海（相对亮度 p99=0.839）到暗地形之间最差 3.17:1
         /// （<c>tests/SkyIslandUiContrastGuard.py</c> 按线性混合复算）。
         /// </summary>
-        internal static readonly Color Stroke = new Color(0.50f, 0.58f, 0.62f, 0.78f);
-        internal static readonly Color TextPrimary = new Color(0.94f, 0.96f, 0.97f, 1f);
-        internal static readonly Color TextSecondary = new Color(0.67f, 0.72f, 0.75f, 1f);
-        internal static readonly Color Accent = new Color(0.20f, 0.72f, 0.67f, 1f);
+        internal static readonly Color Stroke = new Color(0.788f, 0.635f, 0.290f, 0.70f);
+        /// <summary>宣纸色（#F1E9D6，L≈0.821）。比出征令初版的 #E8DCC4 亮一档：天空岛 HUD 大标题、剧情正文压在亮场景上要过 4.5:1。</summary>
+        internal static readonly Color TextPrimary = new Color(0.945f, 0.915f, 0.840f, 1f);
+        /// <summary>旧纸色。</summary>
+        internal static readonly Color TextSecondary = new Color(0.690f, 0.640f, 0.560f, 1f);
+        /// <summary>鎏金（#C9A24A）：描边强调、选中、焦点环、强调字。亮度与旧薄荷青几乎相同（0.387 / 0.378）。</summary>
+        internal static readonly Color Accent = new Color(0.788f, 0.635f, 0.290f, 1f);
         /// <summary>
-        /// 主按钮的大面积填充色：Accent 压深、降一点饱和（2026-09-23 审美审查）。
-        /// Accent 本身是高饱和薄荷青，做描边、强调竖条、焦点环、强调字都合适，
-        /// 但铺满一整块按钮就是 owner 点名「太丑了」的那种平涂薄荷绿（Mode H 旧拍铃、选人卡五条绿杠）。
-        /// 相对亮度 ≈0.130：走白字，白字对比 ≈5.4:1；离亮底阈值 0.30 余量 57%（UILayoutReadabilityGuard 复算）。
+        /// 主操作的填充色：压深的朱砂（落印），每屏一处，水墨主题按它给金色墨笔边。
+        /// 相对亮度 ≈0.041：宣纸字对比 ≈8.5:1；离亮底阈值 0.30 很远（UILayoutReadabilityGuard 复算）。
         /// </summary>
-        internal static readonly Color AccentFill = new Color(0.14f, 0.44f, 0.41f, 1f);
-        // Success / Warning 压暗了约 7%（2026-09-13）：旧值上 GetButtonTextColor 会选白字，
-        // 而白字压在旧的 Success(L=0.180) 上只有 **4.15:1**、旧 Warning(L=0.170) 上 4.34:1，
-        // 两个都过不了正文 4.5:1。压到 L≈0.15 之后分别是 4.67:1 与 4.89:1；
-        // 色相与饱和度未动，亮底阈值余量反而从 40%/43% 升到 49%/52%。
-        internal static readonly Color Success = new Color(0.166f, 0.484f, 0.335f, 1f);
-        internal static readonly Color Warning = new Color(0.539f, 0.390f, 0.158f, 1f);
-        internal static readonly Color Danger = new Color(0.48f, 0.20f, 0.20f, 1f);
-        internal static readonly Color Disabled = new Color(0.16f, 0.17f, 0.17f, 0.82f);
-        // 状态底色用于承托白字；直接写在深色面板上的提示使用这些亮色。
-        internal static readonly Color SuccessText = new Color(0.50f, 0.86f, 0.66f, 1f);
+        internal static readonly Color AccentFill = new Color(0.420f, 0.118f, 0.098f, 1f);
+        // Success / Warning 承托宣纸字（L≈0.821），底色亮度要压在 WhiteLabelMaxLuminance（0.143）以下才过 4.5:1：
+        // 石绿 L≈0.115、赭石 L≈0.117，宣纸字分别 5.3:1 / 5.2:1。
+        internal static readonly Color Success = new Color(0.150f, 0.420f, 0.300f, 1f);
+        internal static readonly Color Warning = new Color(0.490f, 0.350f, 0.135f, 1f);
+        /// <summary>朱砂（#B0302A）。按钮上不铺红块：水墨主题把 Danger 底的按钮换成墨底 + 朱边 + 浅朱字（BossRushInkTheme）。</summary>
+        internal static readonly Color Danger = new Color(0.690f, 0.188f, 0.165f, 1f);
+        internal static readonly Color Disabled = new Color(0.140f, 0.125f, 0.110f, 0.82f);
+        // 状态底色用于承托宣纸字；直接写在深色面板上的提示使用这些亮色。
+        internal static readonly Color SuccessText = new Color(0.58f, 0.82f, 0.62f, 1f);
         internal static readonly Color WarningText = new Color(1f, 0.79f, 0.40f, 1f);
-        internal static readonly Color DangerText = new Color(1f, 0.61f, 0.59f, 1f);
-        internal static readonly Color TextOnAccent = new Color(0.025f, 0.055f, 0.06f, 1f);
+        internal static readonly Color DangerText = new Color(0.960f, 0.620f, 0.550f, 1f);
+        internal static readonly Color TextOnAccent = new Color(0.090f, 0.065f, 0.040f, 1f);
 
         /// <summary>稀有度描边，供奖励卡一类需要分级的构件使用。</summary>
         internal static readonly Color RarityCommon = new Color(0.55f, 0.60f, 0.64f, 0.9f);
@@ -226,6 +227,9 @@ namespace BossRush
         /// </summary>
         internal static Sprite GetInjected(BossRushUISkinPart part)
         {
+            // 水墨主题（2026-11-25 全项目统一）接管面板 / 卡片 / 按钮 / 分隔线四档；滚动滑块仍取图集的胶囊。
+            Sprite ink = BossRushInkTheme.GetSurface(part);
+            if (ink != null) return ink;
             switch (part)
             {
                 case BossRushUISkinPart.Panel: return injectedPanelSprite;
@@ -608,14 +612,15 @@ namespace BossRush
             Image stroke = obj.AddComponent<Image>();
             stroke.raycastTarget = false;   // 描边永远不吃点击，否则会盖住底图上的按钮
             stroke.color = color;
-            stroke.sprite = GetStrokeSprite(GetSkinCornerRadius(radius, part));
-            if (stroke.sprite != null)
+            // 水墨主题：面板 / 卡片 / 按钮三档换墨笔边（BossRushInkTheme）；细条档照旧画圆角描边环。
+            stroke.sprite = BossRushInkTheme.TryApplyFrame(stroke, radius, part) ? stroke.sprite : GetStrokeSprite(GetSkinCornerRadius(radius, part));
+            if (stroke.sprite != null && stroke.type != Image.Type.Sliced)
             {
                 stroke.type = Image.Type.Sliced;
                 stroke.fillCenter = false;   // 中心本来就透明，关掉可以少画一个整块四边形
                 stroke.pixelsPerUnitMultiplier = 1f;
             }
-            // 有边的面 = 立起来的面：外投影 + 顶边内高光（BossRushUIFeel.cs，2026-09-23「塑料感」验收）。幂等。
+            // 有边的面 = 立起来的面：外投影 + 顶边内高光（BossRushUIFeel.cs，2026-09-23「塑料感」验收）。幂等。水墨主题下不挂。
             BossRushUIDepth.ApplySurfaceDepth(surface, radius, part);
             // 之后加的全宽标题栏 / 页脚不能把框线盖掉：描边随层级变化挪回最上层（审美审查 UD-01）。
             BossRushStrokeOnTop.Track(surface, stroke);
@@ -737,7 +742,7 @@ namespace BossRush
         }
 
         /// <summary>Auto 档按 radius 落位；显式档原样返回。</summary>
-        private static BossRushUISkinPart ResolvePart(int radius, BossRushUISkinPart part)
+        internal static BossRushUISkinPart ResolvePart(int radius, BossRushUISkinPart part)
         {
             if (part != BossRushUISkinPart.Auto)
             {
@@ -822,6 +827,7 @@ namespace BossRush
         /// </summary>
         internal static Color GetButtonTextColor(Color background)
         {
+            if (BossRushInkTheme.IsDangerFill(background)) return BossRushUIColors.DangerText;   // 水墨危险按钮：浅朱字
             return RelativeLuminance(background) > LightBackgroundLuminance
                 ? BossRushUIColors.TextOnAccent
                 : BossRushUIColors.TextPrimary;
@@ -833,9 +839,9 @@ namespace BossRush
         private const float HoverDarken = 0.10f;
 
         /// <summary>
-        /// 白字标签（TextPrimary，相对亮度 ≈0.906）在 4.5:1 下允许的底色相对亮度上限：(0.906+0.05)/4.5−0.05 ≈ 0.162。
+        /// 白字标签（TextPrimary 宣纸色，相对亮度 ≈0.821）在 4.5:1 下允许的底色相对亮度上限：(0.821+0.05)/4.5−0.05 ≈ 0.1436，取 0.143。
         /// </summary>
-        internal const float WhiteLabelMaxLuminance = 0.162f;
+        internal const float WhiteLabelMaxLuminance = 0.143f;
 
         /// <summary>
         /// 由底色派生按钮三态。ColorTint 与 Graphic.color 相乘，所以调用方必须把
@@ -1118,8 +1124,8 @@ namespace BossRush
                     card.transform,
                     new Vector2(0f, 0f),
                     new Vector2(0f, 1f),
-                    new Vector2(3f, 0f),
-                    new Vector2(4f, -12f),
+                    new Vector2(BossRushInkTheme.Active ? 8f : 3f, 0f),   // 水墨主题：让开卡片的墨笔边
+                    new Vector2(BossRushInkTheme.Active ? 3f : 4f, BossRushInkTheme.Active ? -20f : -12f),
                     new Vector2(0f, 0.5f));
                 Image railImage = rail.AddComponent<Image>();
                 railImage.color = accentColor;

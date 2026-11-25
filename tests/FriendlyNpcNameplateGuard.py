@@ -5,7 +5,9 @@ owner 2026-11-25：不要配置项，直接默认「走近时显示」；名字�
 
 1. 没有配置项：不存在 FriendlyNpcNameplateSettings / ConfigFriendlyNpcNameplate.cs，Config.cs 与白名单里没有名牌键，
    名牌也不读任何选项（没有 Mode 常量、没有 CurrentMode）。
-2. 只显示名字：CreatePlate 只建一行文字，不建墨笔横条或其他图。
+2. 只显示名字，且样式与原版一致（owner 2026-11-25「名牌的样式和原版 NPC 的不一致」）：CreatePlate 克隆官方
+   HealthBarManager.healthBarPrefab，取它的 nameText，拆掉血条组件，名字以外的图形一律不画；不自己画字、不画线。
+   画布缩放照抄官方 HUD 画布；锚点高度与屏幕上抬照官方 HealthBar（头盔挂点 + 0.5 米、屏幕高 2%）。
 3. 每帧入口先过官方 HUD 显隐与暂停两道门；没有目标也没有残留名牌时直接返回。
    NPCNameTagHelper 的登记路径不碰名牌（登记本身不建任何东西）。
 4. 目标只读 NPCNameTagHelper.CopyNameplateTargets 的登记快照，不做场景查找。
@@ -109,9 +111,29 @@ def main():
 
     # 2. 只显示名字
     create = compact(body_of(plates_src, "private Plate CreatePlate(string name)"))
-    require("ZombieModeUIHelper.CreateText(\"Name\"" in create, "[外观] 名牌是一行名字")
-    for forbidden in ("CreateBrushStroke", "AddComponent<Image>", "CreateImage", "BossRushInkSkin."):
-        require(forbidden not in create, "[外观] 名牌只显示名字，不画线、不画底：" + forbidden)
+    require(ordered(create, ["HealthBarManagermanager=HealthBarManager.Instance;",
+                             "if(manager==null||manager.healthBarPrefab==null||NameTextField==null)returnnull;",
+                             "MatchOfficialScaler(manager);",
+                             "Object.Instantiate(manager.healthBarPrefab.gameObject,canvas.transform,false);",
+                             "NameTextField.GetValue(bar)asTextMeshProUGUI",
+                             "bar.enabled=false;", "Object.Destroy(bar);",
+                             "if(graphics[i]==label)continue;", "graphics[i].enabled=false;",
+                             "label.text=name;"]),
+            "[外观] 名牌克隆官方血条、只留官方那行名字（血条逻辑拆掉、别的图形不画）")
+    for forbidden in ("CreateBrushStroke", "AddComponent<Image>", "CreateImage", "BossRushInkSkin.", "ZombieModeUIHelper.CreateText",
+                      "ApplyGameFont", "fontSize="):
+        require(forbidden not in create, "[外观] 名牌用官方那行名字，不自己画字、不画线、不改字号：" + forbidden)
+    scaler = compact(body_of(plates_src, "private void MatchOfficialScaler(HealthBarManager manager)"))
+    foundation = compact(body_of(read("Common", "UI", "BossRushUIFoundation.cs"),
+                                 "internal static void MatchCanvasScaler(CanvasScaler target, CanvasScaler source)"))
+    require(ordered(scaler, ["manager.GetComponentInParent<Canvas>()", "official.rootCanvas",
+                             "BossRushUIKit.MatchCanvasScaler(canvas.GetComponent<CanvasScaler>(),from);"])
+            and ordered(foundation, ["target.uiScaleMode=source.uiScaleMode;", "target.referenceResolution=source.referenceResolution;",
+                                     "target.matchWidthOrHeight=source.matchWidthOrHeight;", "target.scaleFactor=source.scaleFactor;"]),
+            "[外观] 名牌画布缩放照抄官方 HUD 画布（经共享库 BossRushUIKit.MatchCanvasScaler）")
+    require("screen.y+=screenLift;" in tick and "privateconstfloatOfficialScreenYOffset=0.02f;" in plates
+            and "privateconstfloatOfficialHelmetLift=0.5f;" in plates,
+            "[位置] 名牌位置照官方 HealthBar：头盔挂点 + 0.5 米、屏幕上抬屏幕高的 2%")
 
     module_src = read("Integration", "NPCs", "Common", "CommonNpcRuntimeModule.cs")
     require("FriendlyNpcNameplates.Shutdown();" in compact(body_of(module_src, "public override void OnDestroy()")),

@@ -36,14 +36,14 @@ Each challenge is a stack of rules, and like roguelike ascensions every step add
   - Bloodlust (Omen): killing an enemy heals 8% max HP
   - Clear crate items start at tier 6, Hell cash ×1.25
 - **Nightmare** — 8 rules
-  - Killing Intent: Boss HP ×1.6, damage ×1.3, 30% quicker to act
+  - Killing Intent: Boss HP ×2.5, damage ×1.75, 50% quicker to act
   - Enemy Marksman, Festering Wounds and Forced March, as on Hard
   - Regenerating Bosses: Bosses regenerate 5% HP every 10s
   - Fighting Blind: no boss beacons on the map; find them yourself
   - Blood Pact (Omen): direct player kills heal 16% max HP, but healing another -30%
   - Volatile Remains (Omen): enemies explode on death
-  - Clear crate items ×1.5 starting at tier 6, Hell cash ×1.5; every Boss gets an ink banner on entry
-- Borrowed mutators carry a **Writ** tag in the mutator list and apply even with random mutators turned off; random rolls won't stack another healing mutator on top
+  - Clear crate items ×1.5 starting at tier 6, Hell cash ×2; every Boss gets an ink banner on entry
+- Runs started from the War Writ roll no random mutators; the challenge you picked is the only difficulty. Rule effects borrowed from mutators still apply, but they're listed on the notice, not in the mutator list
 - Each Boss's own drop crates are the same on every challenge, so Relaxed doesn't cost you loot
 
 **March** (fixed to the end on Infinite Hell)

@@ -140,6 +140,11 @@ namespace BossRush
         private const float DurationSeconds = 0.22f;
         private const float FadeSeconds = 0.16f;
         private const float StartScale = 0.94f;
+        // 水墨主题（2026-11-25 全项目统一，BossRushInkTheme）：慢而沉、不弹——与 BossRushInkSkin.PlayInkReveal 同口径，
+        // 背后一滴墨洇开再散。仍是 SmoothStep 淡入 + EaseOut 缩放两条曲线。
+        private const float InkDurationSeconds = 0.42f;
+        private const float InkFadeSeconds = 0.30f;
+        private const float InkStartScale = 0.97f;
 
         private CanvasGroup canvasGroup;
         private float elapsed;
@@ -164,7 +169,9 @@ namespace BossRush
             canvasGroup.alpha = 0f;
             if (scales)
             {
-                transform.localScale = Vector3.one * StartScale;
+                transform.localScale = Vector3.one * (BossRushInkTheme.Active ? InkStartScale : StartScale);
+                BossRushInkTheme.SpawnOpenBloom(transform as RectTransform);
+                BossRushInkTheme.WriteRevealStrokes(transform as RectTransform);
             }
         }
 
@@ -183,14 +190,15 @@ namespace BossRush
             }
 
             elapsed += Time.unscaledDeltaTime;
-            float t = Mathf.Clamp01(elapsed / DurationSeconds);
+            bool ink = BossRushInkTheme.Active;
+            float t = Mathf.Clamp01(elapsed / (ink ? InkDurationSeconds : DurationSeconds));
             if (canvasGroup != null)
             {
-                canvasGroup.alpha = BossRushUI.SmoothStep(elapsed / FadeSeconds);
+                canvasGroup.alpha = BossRushUI.SmoothStep(elapsed / (ink ? InkFadeSeconds : FadeSeconds));
             }
             if (scales)
             {
-                transform.localScale = Vector3.one * Mathf.Lerp(StartScale, 1f, BossRushUI.EaseOut(t));
+                transform.localScale = Vector3.one * Mathf.Lerp(ink ? InkStartScale : StartScale, 1f, BossRushUI.EaseOut(t));
             }
 
             if (t >= 1f)

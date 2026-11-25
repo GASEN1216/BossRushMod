@@ -261,6 +261,25 @@ namespace BossRush
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
         }
 
+        /// <summary>
+        /// 照抄另一块画布（官方 HUD）的缩放。只给贴着官方 HUD 元素画的东西用（友好 NPC 名牌克隆官方血条那行名字，
+        /// 字号要和原版 NPC 一样大）；本 Mod 自己的界面一律走 <see cref="ConfigureCanvasScaler"/>。
+        /// </summary>
+        internal static void MatchCanvasScaler(CanvasScaler target, CanvasScaler source)
+        {
+            if (target == null || source == null)
+            {
+                return;
+            }
+
+            target.uiScaleMode = source.uiScaleMode;
+            target.referenceResolution = source.referenceResolution;
+            target.screenMatchMode = source.screenMatchMode;
+            target.matchWidthOrHeight = source.matchWidthOrHeight;
+            target.scaleFactor = source.scaleFactor;
+            target.referencePixelsPerUnit = source.referencePixelsPerUnit;
+        }
+
         internal static readonly Vector2 ReferenceResolution = new Vector2(1920f, 1080f);
 
         /// <summary>与 Expand 缩放一致的逻辑视口，供 Canvas 创建前的面板尺寸计算。</summary>
