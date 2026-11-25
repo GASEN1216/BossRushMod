@@ -238,7 +238,10 @@ namespace BossRush
                 0.08f,
                 quality >= FlashMinQuality ? (Color?)BossRushInkColors.InkWash : null);
 
-            BossRushInkSkin.SpawnRing(stageRect, new Vector2(0f, 36f), 110f, qualityColor, 0.6f, 2.6f, 0.55f);
+            // 墨环套在中奖格上：停靠点带 ±0.3 格宽的随机偏移，柔光已按「轮带偏移 + 格子偏移」对位（PlayRevealSequence），
+            // 墨环取同一点；旧版固定 (0, 36)，左右偏几十像素、还往上偏 36（2026-11-25 复核）。
+            Vector2 ringCenter = winnerGlowImage != null ? winnerGlowImage.rectTransform.anchoredPosition : Vector2.zero;
+            BossRushInkSkin.SpawnRing(stageRect, ringCenter, 110f, qualityColor, 0.6f, 2.6f, 0.55f);
             if (stageEmbers != null)
             {
                 stageEmbers.SpawnBurst(quality >= FlashMinQuality ? 16 : 8);

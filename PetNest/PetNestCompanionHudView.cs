@@ -220,7 +220,8 @@ namespace BossRush
             GameObject expFill = ZombieModeUIHelper.CreateRect(
                 "ExpFill", expTrack.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0f, 0.5f));
             _expFill = expFill.AddComponent<Image>();
-            _expFill.sprite = BossRushInkSkin.GetBrushSprite();
+            // 2px 经验条用实心填充：横笔贴图压到这么细会断成虚线（2026-11-25 复核）
+            _expFill.sprite = BossRushUI.GetSolidSprite();
             _expFill.type = Image.Type.Filled;
             _expFill.fillMethod = Image.FillMethod.Horizontal;
             _expFill.fillOrigin = (int)Image.OriginHorizontal.Left;

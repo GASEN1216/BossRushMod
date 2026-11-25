@@ -266,8 +266,10 @@ namespace BossRush
                 fadeGroup.Show();
             }
 
-            PlayWishInkOpen();
+            // 先排版再放墨：首次打开时面板还没跑过布局（高 0、标题框是默认 200×50），先放墨会跳过墨晕、
+            // 标题金笔按折行后的旧框量宽和高度，落在标题下方约 23px（2026-11-25 复核）。
             AdjustPanelForResolution();
+            PlayWishInkOpen();
             RefreshDanmakuDisplay();
             StartCoroutine(FocusInputFieldNextFrame());
         }

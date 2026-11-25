@@ -426,7 +426,8 @@ namespace BossRush
                     Vector2.zero,
                     new Vector2(0.5f, 0.5f));
                 _progressFill = fillObj.AddComponent<Image>();
-                _progressFill.sprite = BossRushInkSkin.GetBrushSprite();
+                // 4px 细槽用实心填充：横笔贴图压到这么细会断成虚线（2026-11-25 复核）
+                _progressFill.sprite = BossRushUI.GetSolidSprite();
                 _progressFill.type = Image.Type.Filled;
                 _progressFill.fillMethod = Image.FillMethod.Horizontal;
                 _progressFill.fillOrigin = (int)Image.OriginHorizontal.Left;

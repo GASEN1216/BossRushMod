@@ -2,6 +2,32 @@
 
 更早记录见 `archive/`；月度归档索引保留在本文件正文。
 
+## 2026-11-25 owner 成就页截图 + 水墨 UI 复核（022–038 Fixed L1/L2，014 复开并改正；C4、C8 不成立；正式真编译通过，L3 待 owner）
+
+范围：owner 实机截图（成就页卡片左侧图标被切、右侧「已授」印与「√ 已领取」被切、统计栏一截金色胶囊浮着、卡与卡之间两道金线），加上随后三路只读复核（A / B / C 组）对 `1f24eec0` 全部水墨界面的排查。截图问题由像素几何与代码互证（图标露出约 27/54，正好左移 50）；其余由代码与坐标计算确认。证据（全节共用）：去掉 `BOSSRUSH_DEV_BUILD` 的正式真编译 0 错 0 警告，`Build\BossRush.dll` 与游戏目录 SHA-256 同为 `DF819996…0242`，两份 `check_dll_identifiers --expect absent` PASS；全量守卫 797 PASS；相关 17 个隔离执行回归 PASS；未进游戏。
+
+| ID / 状态 | 可复现条件与影响 | 修复与证据 |
+| --- | --- | --- |
+| CR-2026-11-25-022 · P1 / COMPAT · Fixed L1/L2 | 手搭的 ScrollRect 内容节点 `new GameObject` + `AddComponent<RectTransform>()` 默认 sizeDelta 100×100，横向拉伸锚点下比视口宽 100、左右各溢出 50：成就页图标被切一半，右侧印章与「√ 已领取」被切；卡片左右墨笔边被视口遮罩裁掉，只剩上下两道横线，卡与卡之间看着是两道金线。Boss 池列表、图鉴列表同病。 | `AchievementView`、`BossFilter`（`bossPoolContent`）、`CodexView` 内容节点 `sizeDelta = Vector2.zero`，高度仍交给 ContentSizeFitter。新增 `RectTransformDefaultSizeGuard`：新建物体上取到的 RectTransform 若锚点拉伸某一轴、之后 60 行内既不设 sizeDelta 也不设 offset 就报红，无白名单；删掉成就页那一行转红于 `AchievementView.cs:413`，按字节还原后 SHA-256 一致，Boss 池与图鉴的内存探针同样转红。 |
+| CR-2026-11-25-023 · P2 / COMPAT · Fixed L1/L2 | 进度底槽用 `Disabled` / `Surface` / `Header`，压在水墨深色面板上看不见，只剩一截填充，像一条浮着的金色胶囊（截图统计栏）。同样的底槽在成就条目、图鉴、收藏册、遗种巢、共享滑条、共享滚动条、Mode H 诊断条。 | 底槽统一改淡金 `Divider`：`AchievementView`、`AchievementEntryUI`、`CodexView`、`CollectionBookView`、`PetNestUILayout`、`BossRushUISlider`、`BossRushUI.ConfigureScrollRect` 滚动条槽、`ModeHUI` 诊断条。填充保持实心胶囊（试过横笔填充：右端收尖飞白，满格也像没满，已退回）。 |
+| CR-2026-11-25-024 · P2 / COMPAT · Fixed L1/L2 | 2–4 像素高的细条用横笔贴图做填充：贴图 512×64 无 mipmap、双线性采样，缩到这么细只采到一两行纹素，落在飞白缝里就断成虚线，换分辨率还会闪；节拍器指针同样。 | 细条填充改 `BossRushUI.GetSolidSprite()`：Mode H 钟窗口与选手详情、遗种巢伴宠经验、随机事件进度、Mode G HUD；节拍器指针改 `SolidBar`。 |
+| CR-2026-11-25-025 · P3 / COMPAT · Fixed L1/L2（014 复开） | CR-014 的修法不对：标题上移 16 后金笔在 275–283，仍低于卡顶 285，被后建的卡片整条盖住。 | 卡片改 224 见方、中心 y 152：卡顶 264，金笔（约 274–282）在卡顶之上；卡底 40 仍高于滚动名文本框顶 39。 |
+| CR-2026-11-25-026 · P3 / COMPAT · Fixed L1/L2 | 远征总结卷轴换成深色纸后，深木色的轴身既贴不上纸边也压不出墨底，只剩两头铜帽浮着；翻牌正面长名字一路排到右上角，压住结果印。 | 总结卷轴上下轴身换古铜（`RodWood` 与 `RodCap` 之间取 0.55）；名字框右侧让出 60、单行自动缩字 16–24、省略号兜底。 |
+| CR-2026-11-25-027 · P3 / COMPAT · Fixed L1/L2 | 天空岛 HUD 卡片的水墨强调竖条贴在 x 3–8，压在卡片墨笔边与蚀边上。 | 水墨分支把竖条挪到 x 9–14（中心 11.5），与共享 `CreateCard` 同位，文字列左缘 18.5 不受影响。 |
+| CR-2026-11-25-028 · P3 / COMPAT · Fixed L1/L2 | 丧尸投资页标题金笔 360 宽、居中锚顶，落在左对齐标题的右侧，右段伸到余额列下面。 | 金笔改 240 宽、左锚、左端对齐标题字左缘（x 28），止于余额列之前。 |
+| CR-2026-11-25-029 · P2 / COMPAT · Fixed L1/L2 | `StampSeal` 震动取 `shake.anchoredPosition` 当原点、结束时写回：入场动画还在推进时落印（Mode G 契约卡开场即点），取到的是半路位置，卡片永久停在那里；Steam 成就弹窗每帧由 `UpdateAllPopups` 写位置，震动写回的旧原点让弹窗跳一帧。 | 新增 `BossRushUIEntranceAnimation.IsPlaying`，入场没走完就不震；Steam 弹窗落印不再传震动目标。 |
+| CR-2026-11-25-030 · P2 / COMPAT · Fixed L1/L2 | 冒险家日志切篇时按旧金笔的 `anchoredPosition` 当新笔中心，可 `PlayBrushWrite` 已把旧笔改成左端轴心、x 为左端坐标：每切一篇左移半笔长 270，第四篇起整笔被遮罩裁掉。英文标题收窄金笔时只改遮罩不改内层笔身，右端写不到头；卷首分类名两侧朱笔固定 ±124，英文长分类名被压住字头字尾。 | 标题金笔位置取常量 `ArticleTitleStrokePos`，建笔与重建共用；`FitEnglishBrushTitle` 同步内层 `Brush` 宽度；新增 `LayoutKickerStrokes`，按分类名实际字宽让位（最窄仍是原来的 ±92 内端），换文字后调用，拆除时清引用。 |
+| CR-2026-11-25-031 · P3 / COMPAT · Fixed L1/L2 | 日志插图灯箱遮罩用 `CreateButton(..., interactable: false)` 建：不挂 onClick，点暗处关不掉；还被套了按钮墨笔边，整屏四边多一圈金线。 | 遮罩改成纯色铺满 Image + 无过渡 Button，点暗处关闭，关掉 Unity 导航。 |
+| CR-2026-11-25-032 · P3 / COMPAT · Fixed L1/L2 | 许愿台首次打开时面板还没排版（高 0、标题框默认 200×50）就放墨：墨晕被跳过，标题金笔按折行前的旧框量宽和高，落在标题下方约 23 像素。 | `OnOpen` 先 `AdjustPanelForResolution()` 再 `PlayWishInkOpen()`。 |
+| CR-2026-11-25-033 · P3 / COMPAT · Fixed L1/L2 | 许愿揭晓墨环固定在 (0, 36)，而停靠点带 ±0.3 格宽的随机偏移，墨环左右偏几十像素、还往上偏 36。 | 墨环中心取中奖柔光的实际 `anchoredPosition`（柔光已按轮带偏移 + 格子偏移对位）。 |
+| CR-2026-11-25-034 · P2 / COMPAT · Fixed L1/L2 | 邸报 issue / deadline / tip 三张图标是给浅色纸画的深色线稿（PIL 实测深色像素 88% / 84% / 63%），摆在水墨暗纸 `PaperBase` 上几乎看不见。 | 只给这三张图在身后垫一片浅宣纸墨晕（图标 1.45 倍、α 0.86），其余浅色图标不动、贴图不改。重画浅色版属美术后续。 |
+| CR-2026-11-25-035 · P3 / COMPAT · Fixed L1/L2 | `CreateSeal` 的英文字号是印宽×0.24，自动缩字下限却写死 9：36–40 像素的英文印（图鉴 SLAIN、成就 DONE、弹窗 RARE / FEAT）下限高于上限缩不下去，再被 `CreateText` 默认左右 4 像素边距挤掉，省略号截成「SL…」。 | 印章文字边距归零；自动缩字下限不超过上限，英文最低可到 7。 |
+| CR-2026-11-25-036 · P3 / COMPAT · Fixed L1/L2 | 邸报签到「阅」印 30 像素、中心落在格内 (−12, −12)，左半压住 18 号粗体天号右侧；面板开着跨期时旧印不收，空格上还盖着上一期的「阅」。 | 印改 24 像素、斜钤右上角 (−8, −8)，出格 4 像素落在 10 像素格缝里；`RefreshSignInGrid` 对未签格收走旧印。 |
+| CR-2026-11-25-037 · P3 / COMPAT · Fixed L1/L2 | 竖笔贴图上下九宫边共 168 像素，图鉴里程碑刻度与变异词条行强调笔按倍率 3 算边高 56，超过 16–24 像素的实际高度，首尾整体压扁。 | 两处倍率改按宽度换算（64/4、64/5），与 `CreateVerticalBrushStroke` 同口径。 |
+| CR-2026-11-25-038 · P3 / COMPAT · Fixed L1/L2 | Boss 池列表行底 `SurfaceRaised` 压在 `Surface` 面板上只差约 1.1:1，又没有边，几十行连成一片分不出边界。 | 行底补一道卡片档细边（`Stroke` 压到 α 0.3），描边子物体 ignoreLayout，不进行内 HLG；开关行三态只作用在行底，不影响细边。 |
+
+复核里不成立的两条：C4「远征总结印压住第 N 行」——远征最多 4 队、总结最多 6 行，印下沿够不到；C8「遗种巢满格改 Success 色变暗」——`Success` 是设计口径的完成色，在卡底上约 2.5:1 仍可辨，不改。
+
 ## 2026-11-25 水墨 UI 改动审查（62b03a57 + 未提交工作区；002、004–021 Fixed L1/L2，003 撤回；正式真编译通过，L3 待 owner）
 
 范围：已提交 `62b03a57` 的共享水墨库与调用方，加上未提交的冒险家日志墨卷 / 插图、各集成界面、模式 HUD 与面板。002 由 owner 截图与代码坐标互证；003 已对照本机游戏 Mod 目录逐文件核对；其余由代码与坐标计算确认。审查时另一会话正在同一工作区写这些文件，未改代码。
@@ -20,7 +46,7 @@
 | CR-2026-11-25-011 · P3 / COMPAT · Fixed L1/L2 | 打开面板时墨晕叠两层（峰值约 0.75），第一层按排版前尺寸画；`ImageViewerUI` 的 imageFrame 是拉伸锚点，墨晕被算成「父尺寸 + 1.22 倍」，成了全屏暗斑。 | 删掉 Mode G 入场 / 弃局、战报、Mode H 恢复页、Codex 详情的显式 `SpawnOpenBloom`，`PlayInkSurfaceOpen` 也不再另放；`SpawnOpenBloom` 固定中心锚点、按面板实际矩形定位（拉伸的看图器框不再成全屏暗斑）。证据：正式真编译 0 错、全量守卫通过；L3 待 owner。 |
 | CR-2026-11-25-012 · P3 / COMPAT · Fixed L1/L2 | `SpawnRing` 拿印章的 `anchoredPosition` 当中心锚点坐标，印章改成角锚点后墨环炸在卡片中部（成就领取、Steam 弹窗、邸报、宿命回响选中印与战报印）。 | 新增 `BossRushInkSkin.CenterInParent`；`StampSeal` 落印完成时按印章实际中心落环（调用方改锚点之后才算），成就领取波纹同样换算。证据：正式真编译 0 错、全量守卫通过；L3 待 owner。 |
 | CR-2026-11-25-013 · P3 / COMPAT · Fixed L1/L2 | `CreateCard` 强调竖条从 x 3–7 挪到 8–11（工作区又到 9–14），调用方仍按旧位置排：异色崽第二色条压住第一条只剩一色，且高度按建卡时 80 算死；伴宠 HUD 立绘框墨边压住身份色条。 | `AddIdentityRail` 读强调竖条实际贴图、宽度与位置，按槽位排在右侧并竖向拉伸，返回右沿；立绘与文字随右沿右移；伴宠 HUD 同步 `_portraitX`。证据：正式真编译 0 错、全量守卫通过；L3 待 owner。 |
-| CR-2026-11-25-014 · P3 / COMPAT · Fixed L1/L2 | 孵化揭晓标题框占 y 256–300，卡片顶边 285 且后建在上层，「遗种破壳」下沿与金笔被挡 15–29 像素。 | 标题 y 改 `SurfaceSize.y * 0.5 − 26`（上移 16），下沿与金笔不再被卡片挡。证据：正式真编译 0 错、全量守卫通过；L3 待 owner。 |
+| CR-2026-11-25-014 · P3 / COMPAT · Reopened → 025 | 孵化揭晓标题框占 y 256–300，卡片顶边 285 且后建在上层，「遗种破壳」下沿与金笔被挡 15–29 像素。 | 标题 y 改 `SurfaceSize.y * 0.5 − 26`（上移 16），下沿与金笔不再被卡片挡。（2026-11-25 复核：金笔仍低于卡顶、被盖住，改正见 CR-2026-11-25-025。）证据：正式真编译 0 错、全量守卫通过；L3 待 owner。 |
 | CR-2026-11-25-015 · P3 / COMPAT · Fixed L1/L2 | 远征翻牌共用一张卡，阵亡时挂上的余烬场不关，之后归巢的崽（连背面）也飘红灰余烬。 | 新增 `StopCardEmbers()`，翻到背面和非阵亡正面时熄火。证据：正式真编译 0 错、全量守卫通过；L3 待 owner。 |
 | CR-2026-11-25-016 · P3 / COMPAT · Fixed L1/L2 | 音效重复：一键领取 N 个成就同帧 N 声落印（注释写整批一次）；收藏册 `RebuildCards` 每次刷新都走 `SelectCard`，打开、切系列、状态变化自己出声和墨环；邸报落印音放两次。 | `StampSeal` 增 `playSfx`，一键领取只第一枚出落印声；收藏册 `SelectCard(byPlayer)` 只在点卡时出墨环与笔扫；邸报签到波纹不再带音效。证据：正式真编译 0 错、全量守卫通过；L3 待 owner。 |
 | CR-2026-11-25-017 · P3 / COMPAT · Fixed L1/L2 | 看图器「墨藏」印章比 MainImage 先建，被图盖住大半；看图器开着时换图在 `wasVisible` 早返，标题金笔还是旧标题宽度。 | 印章在 MainImage 建好后 `SetAsLastSibling`；`ShowRoot` 在 `wasVisible` 时也按新标题重画金笔（不重放书写）。证据：正式真编译 0 错、全量守卫通过；L3 待 owner。 |
@@ -369,44 +395,6 @@ CR-2026-10-29-002 同因入口已继续补齐：`DebugAndTools/F3GameplayValidat
 
 本轮未启动游戏、未访问玩家存档或部署；修复按 owner 要求纳入本地提交。未采集帧耗时；离线通过不代表玩家实机故障全部消失。
 
-## 2026-10-25 全模块重点链路审查（COMPAT；L1/L2 修复，L3 待验）
-
-本轮从干净工作区开始，四路并行检查宿主与共享持久层、各玩法模式、Integration 内容，以及世界/UI/音频链路，并交叉复核加载时宿主早返后的实际可达性。范围包括进入/退出、死亡、玩家销毁与替换、异步晚到、切图与切槽、重复回调、无效数值、交易和资源清理；这是按风险选择的生产链路审核，不代表全部源码逐行或全部状态组合已穷举。
-
-以下问题均已修复，兼容分类为 COMPAT，证据为生产接线 L1 与隔离执行 L2。有效配置、已发布 key、TypeID 和存档 schema 保持兼容；没有游戏内 L3 证据。
-
-- **CR-2026-10-25-001，P1：共享存档漏收切槽通知后可跨槽写入。** `Common/Lifecycle/BossRushSlotJsonStore.cs` 的 Store / FlushPending 原来只依赖读取入口检查槽位。官方 `SavesSystem.SetFile` 先切槽再调用普通多播事件，前置订阅者异常会截断后续通知；旧 pending 随协调器 flush 覆盖新槽。现两条写入口复核槽位，漂移时拒绝请求、清旧 pending 并通知 owner；首次直接 Store 也先加载 schema 并绑定槽位。`SaveFailureRecovery` 以真实 store 和内存宿主先复现红项，再验证通知中断、首次直接写入、高版本屏障和新槽恢复。
-- **CR-2026-10-25-002，P1：危险试用品委托迟到完成可写入新槽。** `Integration/FieldAdventures/Prototypes/DangerousPrototypeCommission.cs` 的异步对话原未绑定原玩家、关卡与存档槽。现提交时复核请求所有权，并在加载开始、切图、切槽、玩家失效和销毁时取消；旧回调不能重复收尾新对话。`PrototypeCommissionLifecycle` 完整执行生产模块，67 条断言通过；忽略取消的迟到回调、加载时不调用模块 Tick、NPC 复位与退订均覆盖，三项隔离反向探针按预期转红。
-- **CR-2026-10-25-003，P1：Mode D 的旧波次任务不绑定原玩家。** `ModeD/ModeDRuntimeModule.cs` 的 CaptureValidity 原只检查模式、波次及场景。死亡广播被截断、主角销毁或同图替换时仍可接受旧生成结果与自动开波。现捕获原玩家并检查身份和 Health；`AuditModeLifecycle` 在旧生产代码的死亡用例转红，修复后覆盖死亡、销毁、替换和重生后的旧请求失效。
-- **CR-2026-10-25-004，P2：加载开始至 sceneLoaded 之间旧生成任务仍有效。** `ModeD/ModeDRuntimeModule.cs` 与 `WavesArena/WavesArenaRuntimeModule.cs` 的 CaptureValidity 补充 SceneLoader 加载门。根 Update 早返不会终止已运行的协程和异步生成，单靠场景代数更新过晚。`AuditModeLifecycle` 覆盖仅改变 loading 标志、场景和玩家仍相同的两模式窗口，旧 Mode D 实跑失败。
-- **CR-2026-10-25-005，P2：Mode D 退出后可误结算第 0 波。** `ModeD/ModeDRuntimeModule_WaveResolution.cs` 的 TryResolveModeDWaveComplete 原可把退出后的空列表与零 pending 判为完成，迟到死亡回调可能改提示和路牌。现要求 modeDActive 且波次大于 0；真实入口的关停后再次结算用例先红后绿，现有连续波次回归仍通过。
-- **CR-2026-10-25-006，P2：霜之哀伤慢创建被正常收招取消。** `Integration/Frostmourne/FrostmourneAction.cs` 原在 1.5 秒动作结束时无条件取消生成代数，冷加载超过动作时长便销毁合法召唤物。现区分正常完成和主动中断，管理器在离手、停用、死亡、加载与销毁时仍拒绝旧请求。`ManualEquipmentRecovery` 合计 72 条断言通过，恢复旧正常收势取消行为的隔离探针按预期失败。
-- **CR-2026-10-25-007，P2：成就面板可跨加载或玩家失效残留。** `Achievement/AchievementRuntimeModule.cs` 与 `Achievement/AchievementView.cs` 统一检查关卡、主角与加载状态；View 自身 Update 负责关闭已开面板，独立于根宿主 gameplay gate。`AchievementRuntime` 执行真实宿主早退/模块分发及 View.Update，先证明加载时模块未被驱动，再证明面板自行关闭。实际 Unity 输入租约归还仍需 L3。
-- **CR-2026-10-25-008，P2：无效 Boss 倍率污染生命与 AI 数值。** `Utilities/BossStatScaling.cs` 原直接使用零、负数或非有限倍率，可生成零生命并除零计算 AI 时序。现优先回退有效全局倍率，否则使用中性值 1；无效生命比例也使用 1。`BossHealthScaling` 在旧版零生命用例转红，修复后覆盖五类无效值，保留正常倍率叠加、护卫减半和生命比例语义。
-- **CR-2026-10-25-009，P2：NaN 配置可拖住波次倒计时。** `Config/Config.cs` 的两个休息时间 getter 原仅用大小比较钳制，NaN 可穿透。现 NaN 沿用本地默认值，有限值与正负无穷沿用既有范围钳制。`BossHealthScaling` 链接真实 getter，旧版 NaN 断言转红，修复后默认值和上下限均通过。
-- **CR-2026-10-25-010，P2：JSON 浮点转 Int64 在上边界溢出。** `Common/Data/BossRushJsonValue.cs` 原将 double 与 long.MaxValue 比较，但后者转为 double 已舍入到 2^63，导致该越界值被转成负数。现排除上界并拒绝非有限整数转换，保留真正的 long.MaxValue 整数 token、long.MinValue 浮点边界和既有四舍五入。`AuditCoreParsing` 在旧版解析 `9223372036854775808` 时先红，修复后边界回归通过。
-
-首轮全量守卫为 751 PASS / 1 FAIL，唯一红项是 `architecture/modules.json` 漏登记既有 PromoRecording 两份源码，已补归属（SAFE）。首轮全量执行回归为 142 PASS / 2 环境失败；两组失败分别缺少显式 Managed / Harmony 环境变量，需补齐环境后重跑，不能计为通过。最终构建、门禁与重跑结果在同日 `FIX_TRACKER.md` 记录。
-
-其他已审查链路未形成新增 confirmed finding：Mode E 阵营退出与共享租约、Mode F 补怪和撤离、Mode G/H 生成与场景准备、丧尸波次与安全区及结算、征程与随机事件取消、里程碑奖励、装备启停、NPC 商店/好感/婚姻交易、天空岛返航/剧情/巡守、遗种巢晚到生成、共享确认框、地图选择及 BGM owner。未测实际帧耗时，不据静态门控宣称无性能问题；历史待实机条目不因本轮离线通过而关闭。
-
-人工验收记录建议文件名 `BossRush_Audit_20261025_smoke.txt`，以下是手工步骤 ID，并非新增 F3 自动用例：
-
-- `AUDIT-01`：Mode D 待刷怪或自动下一波期间死亡；观察死亡画面和波次提示，死亡后继续生成或提示新波即不合格。
-- `AUDIT-02`：标准竞技场批量生成、Mode D 自动下一波期间返基地；观察加载画面及入基地后的场景，不得有迟到敌人、下一波提示或“第 0 波完成”。
-- `AUDIT-03`：冷启动后持霜之哀伤右键召唤；观察玩家周围，慢加载仍应完成召唤。另在生成中切武器和切图，原请求不得留下迟到亡灵。
-- `AUDIT-04`：基地与加载、死亡期间分别按 L；观察屏幕中央成就面板、鼠标和移动控制，加载/死亡不得被面板遮挡，关闭后控制必须恢复。
-- `AUDIT-05`：接叮当危险试用品委托后中断对话并返基地；观察叮当交互选项与朝向，取消后应能重新交互，正常完成只记录当前槽一次。
-- `AUDIT-06`：使用独立测试槽正常切换两槽，核对图鉴、征程与日报各自进度；新槽出现另一槽进度或未知格式被覆盖即不合格。前置订阅者异常只在离线夹具注入，不要求修改真实玩家存档。
-
-本轮未启动游戏、未访问玩家存档；以上实机结果尚未采集。
-
-## 2026-10-24 龙息丧尸伤害修复（COMPAT / WIRE+；Fixed at L1/L2，L3 待验）
-
-CR-2026-10-24-001，P2：龙息资源及运行时配置缺少 `DamageFactorToZombie`，官方枪械读取缺项为 0，弹道送入 `Health.Hurt` 后对 isZombie 目标把直接伤害清零。现装 resources.assets 五种 Cname_Zombie 的该标记均为 1，当前 DLL 的创建状态机也明确复制 preset.isZombie 至 Health，故不是只由测试替身构造的靶子。玩家未提供“无法使用”的具体表现，不能据此认定所有无法开火/装弹反馈都同因。
-
-`Integration/DragonDescendant/DragonBreathWeaponConfig.cs` 为缺项补中性值 1，并刷新官方 StatCollection 的懒哈希缓存；`Integration/BossRushIntegrationRuntimeModule_Initialization.cs` 登记龙息专属恢复判据，使旧枪经初始化和手持入口补配，保留已有系数、重铸、磨损与运行时修饰。42 项回归直接执行生产恢复入口及完整官方枪械→弹道→DamageReceiver→Health 方法，旧行为直伤为 0、修复后恢复伤害，5 项负向探针均在预期断言转红。正式 Windows 隔离编译通过；无 L3。证据及宿主替身边界见 `Build/champion-dragonbreath-20261024/` 与夹具 README；待实机验收 BR 装弹、开火、旧枪重入场及普通/大体型丧尸伤害。
-
 ## 2026-10-23 CR-008 补充：吞咽动画受击外沿修复（COMPAT；Fixed at L1/L2，L3 待验）
 
 CR-2026-10-23-008 的动画外沿遗漏已补齐。`GreedyMimicVisual.cs:66、165、207` 缓存主箱身和两块箱盖网格包络，每帧变换 24 个角点；`GreedyMimicEncounter.cs:69、156、194` 在成长回调及动画后更新唯一 BoxCollider，通过 kinematic Rigidbody 发布姿态，保留胸口基点与一次成长缩放。吞咽正负相、呼吸、跳动与开盖均覆盖；不逐帧重建碰撞体或全局 SyncTransforms。官方爆炸和近战不为 simpleHealth 多 Collider 去重，因此保持单盒。
@@ -437,62 +425,12 @@ CR-2026-10-23-008 的动画外沿遗漏已补齐。`GreedyMimicVisual.cs:66、16
 
 本轮 533 项 changed-only 守卫、6 组 FieldAdventure 回归、共享迷雾回归与 Windows 正式隔离构建通过；未重跑上轮全部 20 项负探针及全量守卫。旧丧尸文件仍 1239 行。详细触发、锚点、替身边界、证据与 FA-A01～A08 实机清单见 [独立审核报告](Build/field-adventures-independent-audit-20261023/审核报告.md)。没有真实部署、游戏启动、存档访问或提交；其他任务原字节保留。
 
-## 2026-10-23 野外趣事六项修复与交叉复审（COMPAT；002～007 Fixed at L1/L2，L3 待验）
-
-本轮覆盖三个玩法的 17 份生产源码及直接调用链、宿主/资源登记与相关夹具；实际修改 6 份既有生产文件，无新增 TypeID、存档字段或生产源码文件。三个子代理均按用户要求使用 GPT-6.1 Sol / xhigh，分别修复后交叉审核其他模块，主审复核共享门、材质租约、官方 API、构建与测试边界。最终未发现新的 confirmed P0/P1/P2；不将未实机的观感或性能推测记为已确认问题。
-
-- **CR-2026-10-23-002，P2 / COMPAT / Fixed at L1/L2。** 原 `OnHurt` 仅累加 raw damageValue，30 × 2 暴击实扣 60 却无法达到 45 点回血打断。`Integration/FieldAdventures/Mimic/GreedyMimicEncounter.cs:159` 现使用官方已判定的 crit 倍率累计正伤害，保留主玩家过滤，零/负倍率和回血不计入。FieldAdventureMimicRuntime 完整执行生产 Encounter、Rules、官方 HealthSimpleBase 与 DamageReceiver，覆盖普通/暴击边界及累计、拒收、非主玩家和负伤害；恢复旧累计方式会在真实扣血归因断言转红。L3 验证：实际普通/暴击达到 45 时药瓶蓄力应中断。
-
-- **CR-2026-10-23-003，P2 / COMPAT / Fixed at L1/L2。** 原包裹按角色根 forward 摆放，官方按模型朝向检测，转身约 81° 后失去交互。`Integration/FieldAdventures/Delivery/OddParcelRuntimeModule.cs:350` 现沿 CurrentAimDirection 放在前方一米，抱起当刻同步；`:360` 的携带交互球退回玩家上方，放下/喷发成功落地时恢复中心，失败保持携带态。复审发现仅改朝向还不足以覆盖移动先于包裹更新，已补该帧序修复与回归；完整官方 CA_Interact 覆盖移动 0.5 米、任意转向与先搜索后更新。L3 验证：奔跑转身期间 F 交互持续可用，落地后须靠近包裹。
-
-- **CR-2026-10-23-004，P2 / COMPAT / Fixed at L1/L2。** 原 32 米舌长与 45 米攻击门不一致，40 米仍受击但舌尖差约 8 米。`Integration/FieldAdventures/Mimic/GreedyMimicVisual.cs:216` 现伸至实际锁定落点，独立十二段各有迷雾采样与清理；弹幕保留八段/32 米。真实 Unity Transform 检查 31.99/32.01/40/45 米的连续端点、每段长度及采样登记，恢复旧截断会在真实端点断言转红。官方迷雾后端仍为替身，L3 验证最大射程实体、预警、命中及远端迷雾是否一致。
-
-- **CR-2026-10-23-005，P2 / COMPAT / Fixed at L1/L2。** 原只更新本地化表，持续同一目标时压力/完整度文字不刷新。`Integration/FieldAdventures/Delivery/OddParcelInteractable.cs:62` 现仅在值/语言变化时刷新官方 HUD 已绑定行，不清目标、不重新选中；喷发当刻刷新。夹具执行完整官方 InteractHUD / InteractSelectionHUD，覆盖同目标变化、组选中与事件保留、语言切换；恢复只改本地化时按预期失败。L3 验证官方交互文字随搬运和喷发变化，组内选择不跳回。
-
-- **CR-2026-10-23-006，P2 / COMPAT / Fixed at L1/L2。** 原无条件用瞄点减枪口，近瞄点会使附加攻击和巨炮后坐反向。`Integration/FieldAdventures/Prototypes/DangerousPrototypeRuntimeModule.cs:316` 与官方基础方向一致：水平距离超过角色到枪口距离加 0.1 米且 Moveability > 0.5 时才取瞄点，否则保留枪口前向；OnShot 和后坐共用结果。`:296` 遇墙沿胸口检查段退回，避免切向/反向射击时沿射向退到墙后。310 场景/2316 断言比对抽取的真实生产与官方方向分支，并执行 OnShot、TraceBlast、TickRecoil；六项隔离旧行为均转红。墙面为解析平面替身，L3 仍需脚边/高差/薄墙/斜墙与实际接触验证；私有 OverrideShootPoint 和第三方改弹道不在官方基础方向合同内。
-
-- **CR-2026-10-23-007，P2 / COMPAT / Fixed at L1/L2。** 原 Unity 音源固定 0.7，不受官方 FMOD 设置影响。`Integration/FieldAdventures/Delivery/OddParcelVisual.cs:256` 现桥接 Master 与 Master/SFX 的 Volume、Mute；播放前及 runtime 暂停早返之前同步，AI 声源独立。运行时回归覆盖设置与暂停，真实 Unity AudioSource 检查实际音量属性；固定音量、漏 Mute、暂停后更新均被负探针抓到。L3 验证播放期间改主/音效音量或静音，叫声立即服从设置、敌人听觉不随玩家静音关闭。
-
-验证：中央 `python tools/run_runtime_regressions.py --filter FieldAdventure` **6 PASS / 0 FAIL**；规则/库存 1376、场景门 43、宝箱 199、快递 2993、试用品 2316 条断言通过，真实 Unity 六组 Deferred 视觉无引擎错误和粉色像素。新运行时负探针 15 项、舌头结构守卫负探针 4 项、原生舌头负探针 1 项全部在预期断言转红，隔离副本按字节还原，生产输入 SHA 未变。新夹具已登记中央入口，各 README 写明真实生产与替身边界，不能把整体生命周期都声称为 L2。
-
-全量 751 项守卫初跑 749 PASS / 2 FAIL：台账超限已把三节九月已闭环记录原字节追加至月档、正文留索引，LedgerSizeGuard 复测通过；唯一保留的是既有 ZombieModeRuntimeModule.cs 1239 > 1200，与本次无关。最终 FieldAdventureIntegrationGuard 与 533 项 changed-only 守卫全部通过。Windows 正式隔离构建通过、无 Dev 定义，只有两条既有 ModeH CS0649 警告；DLL SHA-256 `A38565E7B6B3E1848EAE4812CAFAB478D1C89714E568D010C32B3A3D7E02ABF8`。GAME_PATH 指向 Managed 实体拷贝，未部署、启动游戏、访问存档或提交。
-
-证据汇总与人工验收见 `Build/field-adventures-fixes-20261023/`：`final-evidence.json`、`runtime-final.log`、`windows-build-final.log`、`guards-full.log`、`guard-probes/results.json` 与 `验收与复审.md`。原生最终报告 `Build/FieldAdventureVisuals/run-arsh4p5k/baseline.json`，旧舌长反向报告 `run-9l2xui66/negative-short-tongue.json`；快递七项负探针 `Build/runtime-regressions/FieldAdventureDeliveryRuntime/source-9sjlupx2/result.json`，试用品六项 `Build/runtime-regressions/FieldAdventurePrototypeRuntime-negative/copy-t_2yc3ek/report.json`，宝箱负探针随中央夹具默认执行。
-
-剩余证据边界（非 confirmed finding）：反复切回借用枪会重建视觉对象，尚无帧耗采样，不能认定卡顿；宝箱直接 Health.Hurt 的载具保护路径未证实在普通出击可达；真实 PhysX、地形、迷雾遮挡、音量听感与操作手感仍待 L3。公开发布前按人工步骤检查，不能以编译/离线预览宣称游戏内已验证。
-
-## 2026-10-23 蚀日花冠粒子持续报错（COMPAT）
-
-CR-2026-10-23-001，P1 / COMPAT / Fixed at L1/L2，Needs runtime smoke：玩家日志中花冠生成后出现 239 次 `Particle Velocity curves must all be in the same mode`。`Integration/EclipseBloom/EclipseBloomBody.cs` 的 `BuildParticles` 只把线性 y 轴设为 TwoConstants，x/z 留为 Constant；现显式设置 x/z 零区间，保留 y 随机漂移与原轨道速度。真实 Unity 2022.3.62f3 播放模式的 94 次原生模拟零错误，三阶段/四瓣破碎/死亡清理均通过；隔离副本去掉 x/z 赋值后相同测试真实重现 112 次原报错，源码与资源 SHA 不变。此前静态预览和宿主替身未覆盖该约束，已新增 `EclipseBloomParticles` 中央执行入口。Windows 正式编译通过；修复后的游戏内复测待 owner。详见 [本轮报告](docs/reports/testing/蚀日花冠粒子报错与独立配乐-2026-10-23.md)。
-
-## 2026-10-22 蚀日花冠地图接入与正式资源审核（COMPAT / SCHEMA+ / WIRE+）
-
-CR-2026-10-22-003～009 已在 L1/L2 修复，L3 待验收。详见 [专题报告](docs/reports/testing/蚀日花冠官方地图与资源审核-2026-10-22.md)。
-
-- 003，P1：盾片早期缺独立完整三维资源；已接 Blender MCP 作者模型、同源 512 图标、地面/装备代理及缺资源拒绝。
-- 004，P2：日核旧网格接缝/极点退化；作者网格及最终包九个部件逐一验证闭合、绕序、各连通体积和包络。
-- 005，P2：平面预警在起伏地面可能埋入地表仍判伤；改为分帧贴地与真实绘制面判伤。
-- 006，P2：玩家同帧死亡使 owner 失效时可能吞已击杀 Boss 的专属掉落；以已提交实例实际死亡及 loaded 目标场景为准，发奖仍幂等。
-- 007，P2：迷雾 forceRenderingOff / Renderer 关闭仍通过预警覆盖门；补真实可绘制状态，执行隐藏/恢复回归。
-- 008，P2：死亡放弃拒写时销毁 flush 可能提交旧 accepted pending；共享保存采集受待放弃与交付事务门约束。
-- 009，P2：SpawnCore 再归一化抹掉花冠已缩放的伤害；仅花冠保留工厂倍率，其他 Boss 不变。
-
-全量 750 守卫为 749 PASS / 1 无关既有大文件预算 FAIL；Windows 正式隔离构建、相关中央回归与 108 项反向验证通过。已实读最终资源和离线 URP 预览；未部署、启动游戏或访问存档。
-
 ## 2026-10-22 Demo 丧尸入场与旧传送防护（COMPAT，CR-001/002 Fixed at L1/L2；未部署）
 
 - CR-2026-10-22-001，P2 / COMPAT / Fixed at L1/L2，Needs runtime smoke：custom 请求现归 IntegrationRuntimeModule，绑定实际目标 Scene 与官方 AfterInit 后的 Main；新入场、切图、卸载、角色替换 / 死亡、销毁及 H / 丧尸接管取消。写位置前复核归属，加载计入超时，GroundZero、持续清场与 Mode E 验证共用取消范围；正常与跨局路径由真实驱动隔离回归覆盖。
 - CR-2026-10-22-002，P2 / COMPAT / Fixed at L1/L2，Needs runtime smoke：目标图等待绑定本次入场身份，超时后完整复核场景 handle、loader、LevelInited 与 AfterInit；未就绪走原失败 / 退款协议，旧等待不清理或退款新局。真实等待、Begin / Initialize 与失败退款门覆盖 12 组场景，包含最终 yield 才 ready 和同图重新入场。
 
 461 项 changed-only 守卫、153 项 ZombieMode 守卫与 11 组相关执行回归通过；12 个隔离变异均在预期处转红并逐字还原。Windows 正式隔离编译通过、游戏 DLL 哈希未变，未部署 / 启动游戏 / 访问存档。官方资源与 DLL 未发现 Demo 自动回起点规则，玩家第 17 波现场原因仍 UNVERIFIED。产物与验证见 `Build/teleport-safety-20261022/`，原调查见 `Build/reviews/2026-10-22-zombie-demo-teleport/investigation.txt`；验收步骤见 FIX_TRACKER 同名条目。
-
-## 2026-10-21 自定义实体绕过迷雾隐藏（COMPAT / WIRE+）
-
-CR-2026-10-21-011，P2 / COMPAT / WIRE+ / Fixed at L1/L2，Needs runtime smoke：自定义装备 / 近战模型缺官方 CharacterSubVisuals，独立 NPC / 沙暴外形缺 FOW 接线，女巫技能恢复还会强制 Show 清除官方 Hidden。现在分别补齐原版组件、共享官方 hider 渲染绑定并移除跨职责 Show；友好 NPC 不改阵营，AI / 交互继续运行。真实资源与 DLL 链已核对，正式隔离编译、260 项 changed-only 守卫、38 条实链执行断言和相关回归通过；19 个隔离守卫变异及其中 15 个执行变异按预期失败、还原后通过。L3 待实机，验证与步骤见 FIX_TRACKER 同名条目。
-
-## 2026-10-21 自定义友好 NPC 常驻头顶姓名（COMPAT）
-
-CR-2026-10-21-003，P2 / COMPAT / Fixed at L1/L2，Needs runtime smoke：旧 `NPCNameTagHelper` 禁用原版名牌组件后手工投影、每帧强制打开姓名，俯视、第一和第三人称均常驻。原版基地友好 NPC 没有这类头顶名牌，姓名在对话 / 商店 / 交互界面中展示。现撤掉独立 UI，保留登记兼容与显式语言更新；不创建 actor / Health，不覆盖原版姓名键，普通刷新不重写延迟 actor 的当前语言。正式编译通过，L3 待实机；验证见 FIX_TRACKER 同名条目。
 
 ## 2026-10-21 丧尸模式专项审查（COMPAT，L1/L2；未部署、L3 待验）
 
@@ -524,35 +462,9 @@ CR-2026-10-21-003，P2 / COMPAT / Fixed at L1/L2，Needs runtime smoke：旧 `NP
 
 验证（2026-10-20）：全量守卫 747/747 通过；最终失败重试 / 层级排序补丁后 changed-only 114/114 通过。隔离反向验证 8 个变异全部按预期转红并还原；相关生产执行回归 12/12 通过（ZombieMode 七项、EnemyRecoveryRuntime、IntegrationThirdReviewFixes、SpawnPositionPolicy、EnemySpawnRuntime、ModeEFEnemySpawnRuntime），恢复夹具 117 条断言。Windows 正式编译退出码 0，无 Dev 定义，2 条既有 ModeHPageContent 未赋值警告；使用 Managed 实体拷贝，游戏目录 DLL SHA-256 未变。正式产物 `Build/BossRush.dll` SHA-256 `C0159A3BAED3DF957265B79D500D824DB1FD1677B7AB2876259CF6BB816AC7DC`，完整证据在 `Build/zombie-invincible-20261020/` 和 `Build/runtime-regressions/`。L3 待验证：正常入场打过 22→23→24 波，命中身体 / 头部应掉血、波次可推进；发生恢复时怪的剩余血量应保留。持续无敌、恢复后满血或重复 Collider NaN 均为不合格，不把编译与隔离回归写成实机通过。
 
-## 2026-10-13 推送后跨平台门禁修复（Fixed，COMPAT / SAFE，L2）
-
-- CR-2026-10-13-012，P2 / COMPAT：天空岛导航、道路与摆放审计将 Windows CRLF 原字节 SHA 带入公开仓库，Linux LF 签出误报布局/证据过期；生产 `apply_navigation` 同样误拒绝。复用 `sky_island_road_layout` 的纯函数，新签名只统一 CRLF→LF，读取兼容既有原字节、LF 和 CRLF。真实坐标、字段、空白、BOM 与字符串变化仍拒绝；不重写现有地图或审计 JSON。三项旧码在真实 Ubuntu LF 环境均复现，修后两种换行及生产拒绝路径完成反向验证。
-- CR-2026-10-13-013，P2 / SAFE：植物几何测试在公开源码 CI 强制读取私有 OBJ/MTL，干净签出必失败。源码模式改用公开摆放包络驱动真实细化算法，明确报告 `PARTIAL`；完整模式保留真实模型、原半径与拓扑检查，缺原件仍失败。公开 12 类 / 36 包络、本地 12 个真实模型及 4 类破坏/恢复检查通过，证据 `Build/ci-flora-20261013/probe-687b5c9a/evidence.json`。
-
-首推提交 `15439905` 的远端 Guards 失败由以上两类原因导致，共 4 项；Wiki 构建与部署通过。修后公开 LF 副本全量 736 PASS / 9 PARTIAL / 0 FAIL，日志 `Build/commit-20261013/source-only-final-outside-build.log`；指纹证据 `Build/ci-fingerprint-20261013/`。本次只改离线工具、测试与文档，1196 个已编译生产源哈希一致；不据门禁修复宣称实机或性能验证完成。
-
 ## 2026-10-13 玩家反馈实现全面复审与修复（归档索引；L3 待验）
 
 CR-001～011 已在 L1/L2 修复，完整根因、验证和手工验收原文见 [2026-10 月归档](archive/CODE_REVIEW_FINDINGS_2026-10.md)。REF / GIFT / MD / MH / PET / BR 实机体验与 PERF-01 帧耗仍待 L3；归档不关闭这些验收事项。
-
-## 2026-10-12 玩家反馈与 Player(1).log 全面修复（COMPAT / SCHEMA+，L1/L2）
-
-| ID | 等级 / 状态 / 分类 | 修复与验证边界 |
-| --- | --- | --- |
-| CR-2026-10-12-001 | P1 / Fixed / COMPAT | 天空岛合同把 `SpawnTomb` 当硬门槛，死亡不掉落类 Mod 让进岛必被拒（日志两次）。现只要求 `SaveCharacter`，`SpawnTomb=false` 记警告放行；夹具改为「墓碑关闭放行 / 保存关闭仍拒」，守卫禁止回退。 |
-| CR-2026-10-12-002 | P1 / Fixed / COMPAT | 官方狗子背包跨局保留，里面任何东西（含船票）都让白手起家静默回落普通模式，正式版无日志；出战遗种崽的独立背包又完全不查。裸装遍历带出拦截项并双语提示，船票放行，加载中不算空，补查崽背包。 |
-| CR-2026-10-12-003 | P2 / Fixed / COMPAT | `TryStartModeD` 恒返回 true，开局武器没发出时留下半激活状态；旧回归把这当预期。现以本次启动结论返回，失败回滚并提示；夹具三条断言反转并补重试。路牌晚于启动时重新布置 Mode D。 |
-| CR-2026-10-12-004 | P1 / Fixed / COMPAT | 第三方 `OnAfterLevelInitialized` 订阅者抛异常时官方 `afterInit` 永远为假，鸭王杯卡满 30 秒后中止退票。改认官方最终落点后写入的 `"Done!"`，顺序由真实 DLL IL 断言钉住（反向改值转红）。 |
-| CR-2026-10-12-005 | P2 / Fixed / COMPAT | 鸭王杯中止原因只写 DevLog；退票提示不看结果；退票失败即丢凭据；地图界面打不开时走直接传送丢 H 意图且不扣票；付票到目标场景之间无退款依据；意外场景静默清状态。退票迁 `ModeHTicketRefund`（NotPaid / Refunded / Owed，欠账入口补发），`OnCostPaid` 即登记，其余分支如实提示。 |
-| CR-2026-10-12-006 | P2 / Fixed / COMPAT | 航向仪入箱 / 入包后广播抛错被代码销毁；死亡提示无条件说「在箱子里」；任一模式激活时守卫被静默清掉。改用共享 `TryAddExtraItem` 与归属核对，提示按真实结果，冲突时明说一次。 |
-| CR-2026-10-12-007 | P1 / Fixed / COMPAT | 一击打到 1 血时孩儿护我与二阶段同时启动，二阶段收尾撤无敌、开组件。现互斥；二阶段被打断时补完收尾；召唤请求作废或龙裔消失时联动死亡收尾；宿命回响龙裔刷在龙皇旁。 |
-| CR-2026-10-12-008 | P2 / Fixed / COMPAT | 龙裔死后迟到的受伤回调仍起冰减速协程（日志 10 次 inactive 报错）。补存活 / 激活守门。 |
-| CR-2026-10-12-009 | P2 / Fixed / COMPAT | 擂台阵营模式下死目标仍算「有目标」，攻击循环空转、心跳照刷，看门狗不触发。清掉死目标逼官方 AI 重新索敌，`Resume` 不写回死目标。 |
-| CR-2026-10-12-010 | P1 / Fixed / COMPAT | 开局洗牌只改 `EnemyPresets`，出场读的过滤缓存不失效，顺序从未打乱，龙裔 / 龙皇 / 幽灵女巫固定最后一波。洗牌后失效缓存。 |
-| CR-2026-10-12-011 | P2 / Fixed / COMPAT | 无间炼狱关闭奖励箱后龙皇 / 龙裔专属装备整份丢失；单波现金三等分丢余数、超过单堆上限被截断、发放前先清账。专属抽签抽成纯函数落地掉落；现金按堆叠上限分堆、余额记账户、记不进滚入下一波。 |
-| CR-2026-10-12-012 | P2 / Fixed / COMPAT | 遗种巢风浪档卡面「不会真死」，实际 6% 删档。owner 定风浪档改不死、亡命档保留真死；在途旧记录经 `EffectiveDeathRate` 封顶，不改存档。 |
-
-均为 L1/L2：真实 DLL 合同、守卫与执行回归、Windows 正式编译；未启动游戏、未读写存档。验收清单与玩法新增（回火液 500108、毒蛇匕首厚血项、宠物行动方式 / 喂食 / 经验共享 / 伤害曲线）见 FIX_TRACKER 同日条目与本地 `docs/reports/testing/玩家反馈全面修复_2026-10-12.md`。
 
 ## 2026-09-29 Mode H 发布前审核第二轮（14 项 Fixed / COMPAT / L1+L2）
 CR-2026-09-29-013～015（P1）：看台退出回基地押注被误退、进程内换档后内容闸不重开、休眠原生敌人未清场；016～020（P2）：附加场景离场残留无敌中立、名人堂暂存失败重试误报成功、建页异常留下无按钮模态页、五处单行 TMP 框高不足、战斗每帧拼字符串；021～026（P3）六项。证伪 3、未证实 4；owner 拍板 2 项已落地（开战后退出 / 放弃押注按输结清、观战击杀不给经验），触发 / 修法 / 实机清单见[第二轮报告](docs/reports/reviews/2026-09-29-模式H发布前审核-第二轮.md)。
@@ -574,6 +486,15 @@ UNVERIFIED 不计入上述六项：嵌套 Sticky 押品需要 `AcceptSticky=true
 
 ## 归档索引
 
+- 2026-10-25 全模块重点链路审查（COMPAT；L1/L2 修复，L3 待验）（2026-11-25 台账将超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-10.md`
+- 2026-10-24 龙息丧尸伤害修复（COMPAT / WIRE+；Fixed at L1/L2，L3 待验）（2026-11-25 台账将超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-10.md`
+- 2026-10-23 野外趣事六项修复与交叉复审（COMPAT；002～007 Fixed at L1/L2，L3 待验）（2026-11-25 台账将超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-10.md`
+- 2026-10-23 蚀日花冠粒子持续报错（COMPAT）（2026-11-25 台账将超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-10.md`
+- 2026-10-22 蚀日花冠地图接入与正式资源审核（COMPAT / SCHEMA+ / WIRE+）（2026-11-25 台账将超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-10.md`
+- 2026-10-21 自定义实体绕过迷雾隐藏（COMPAT / WIRE+）（2026-11-25 台账将超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-10.md`
+- 2026-10-21 自定义友好 NPC 常驻头顶姓名（COMPAT）（2026-11-25 台账将超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-10.md`
+- 2026-10-13 推送后跨平台门禁修复（Fixed，COMPAT / SAFE，L2）（2026-11-25 台账将超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-10.md`
+- 2026-10-12 玩家反馈与 Player(1).log 全面修复（COMPAT / SCHEMA+，L1/L2）（2026-11-25 台账将超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-10.md`
 - 2026-10-18 v2.3.5 之后五个提交审查（001～023 全部 Fixed，COMPAT / OPERATIONAL，L1/L2，L3 待 owner）（2026-11-25 台账超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-10.md`
 - 2026-10-11 最近五次提交审查修复（COMPAT / SAFE，L1/L2）（Fixed，L3 待 owner；2026-11-19 台账超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-10.md`
 - 2026-10-10 提交前复核（COMPAT / SAFE / OPERATIONAL，L1/L2）（Fixed，L3 待 owner；2026-11-19 台账超 1200 行时逐字归档） → `archive/CODE_REVIEW_FINDINGS_2026-10.md`

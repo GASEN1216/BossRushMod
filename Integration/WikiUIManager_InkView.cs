@@ -18,6 +18,28 @@ namespace BossRush
         // 水墨双区界面构建（左墨底目录选单 + 右旧宣纸展开卷轴）
         // ============================================================================
 
+        /// <summary>正文标题下那道金笔的中心（建笔与切篇重建共用，切篇时不能读旧笔的位置）。</summary>
+        private static readonly Vector2 ArticleTitleStrokePos = new Vector2(0f, 276f);
+
+        /// <summary>卷首分类名两侧的朱笔（左、右）。</summary>
+        private RectTransform[] kickerStrokes;
+
+        /// <summary>
+        /// 卷首分类名两侧朱笔按字宽让位：固定在 ±124（内端 ±92）时，英文长分类名（EQUIPMENT &amp; POWERS 约 ±92）
+        /// 会被两道朱笔压住字头字尾（2026-11-25 复核）。最窄仍是原来的 ±92。
+        /// </summary>
+        private void LayoutKickerStrokes()
+        {
+            if (txtKicker == null || kickerStrokes == null) return;
+            float half = Mathf.Max(92f, txtKicker.GetPreferredValues(txtKicker.text).x * 0.5f + 12f);
+            for (int i = 0; i < kickerStrokes.Length; i++)
+            {
+                RectTransform stroke = kickerStrokes[i];
+                if (stroke == null) continue;
+                stroke.anchoredPosition = new Vector2((i == 0 ? -1f : 1f) * (half + 32f), stroke.anchoredPosition.y);
+            }
+        }
+
         private void BuildUI(Transform canvasTransform)
         {
             BossRushUI.CreateBackdrop(canvasTransform);
@@ -86,6 +108,9 @@ namespace BossRush
                 if (strokeRect != null)
                 {
                     strokeRect.sizeDelta = new Vector2(textWidth + 32f, strokeRect.sizeDelta.y);
+                    // 遮罩里的笔身左对齐、宽度是建笔时的原宽：一起改，不然英文标题下金笔右端写不到头、整笔偏左
+                    RectTransform brushRect = strokeRect.Find("Brush") as RectTransform;
+                    if (brushRect != null) brushRect.sizeDelta = new Vector2(textWidth + 32f, brushRect.sizeDelta.y);
                 }
             }
             Transform subNode = titleRoot.Find("Subtitle");
@@ -207,9 +232,10 @@ namespace BossRush
             txtKicker.rectTransform.sizeDelta = new Vector2(280f, 26f);
             txtKicker.rectTransform.anchoredPosition = new Vector2(0f, 360f);
 
+            kickerStrokes = new RectTransform[2];
             for (int side = -1; side <= 1; side += 2)
             {
-                BossRushInkSkin.CreateBrushStroke(writ, "KickerStroke", new Vector2(64f, 4f),
+                kickerStrokes[side < 0 ? 0 : 1] = BossRushInkSkin.CreateBrushStroke(writ, "KickerStroke", new Vector2(64f, 4f),
                     new Vector2(side * 124f, 360f), Fade(NoticeCinnabar, 0.68f));
             }
 
@@ -223,7 +249,7 @@ namespace BossRush
             txtArticleTitle.rectTransform.anchoredPosition = new Vector2(0f, 314f);
 
             titleStroke = BossRushInkSkin.CreateBrushStroke(writ, "TitleStroke", new Vector2(540f, 10f),
-                new Vector2(0f, 276f), Fade(NoticeInk, 0.85f));
+                ArticleTitleStrokePos, Fade(NoticeInk, 0.85f));
 
             // 书缝与双栏页面容器
             GameObject pagesObj = ZombieModeUIHelper.CreateRect("Pages", writ, new Vector2(0.5f, 0.5f), NoticeSize);
@@ -426,10 +452,11 @@ namespace BossRush
             if (titleStroke != null)
             {
                 RectTransform oldStroke = titleStroke;
-                Vector2 strokePos = oldStroke.anchoredPosition;
                 Color strokeColor = Fade(NoticeInk, 0.85f);
                 UnityEngine.Object.Destroy(oldStroke.gameObject);
-                titleStroke = BossRushInkSkin.CreateBrushStroke(writ, "TitleStroke", new Vector2(540f, 10f), strokePos, strokeColor);
+                // 位置取常量，不读旧笔：PlayBrushWrite 把旧笔的 pivot 改成左端、x 改成左端坐标，
+                // 拿它当新笔中心会每切一篇左移半笔长（270），第四篇起整笔被卷开遮罩裁掉（2026-11-25 复核）。
+                titleStroke = BossRushInkSkin.CreateBrushStroke(writ, "TitleStroke", new Vector2(540f, 10f), ArticleTitleStrokePos, strokeColor);
                 BossRushInkSkin.PlayBrushWrite(titleStroke, 0.04f, 0.34f, BossRushInkMotion.For(titleStroke.gameObject));
             }
         }

@@ -357,7 +357,8 @@ namespace BossRush
                 Image accentImage = accent.AddComponent<Image>();
                 accentImage.sprite = BossRushInkSkin.GetVerticalBrushSprite();
                 accentImage.type = Image.Type.Sliced;
-                accentImage.pixelsPerUnitMultiplier = 3f;
+                // 2026-11-25 复核：倍率 3 时竖笔首尾九宫边高 56，超过行高被压扁；与 CreateVerticalBrushStroke 同口径按宽度换算。
+                accentImage.pixelsPerUnitMultiplier = 64f / 5f;
                 accentImage.color = GetCategoryColor(info.Category);
                 accentImage.raycastTarget = false;
 

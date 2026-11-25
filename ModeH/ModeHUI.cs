@@ -326,7 +326,8 @@ namespace BossRush
                 new Vector2(0f, 0.5f));
             _bellWindowFill = fill.GetComponent<RectTransform>();
             _bellWindowFillImage = fill.AddComponent<Image>();
-            _bellWindowFillImage.sprite = BossRushInkSkin.GetBrushSprite();
+            // 3px 倒计时槽用实心填充：横笔贴图压到这么细会断成虚线（2026-11-25 复核）
+            _bellWindowFillImage.sprite = BossRushUI.GetSolidSprite();
             _bellWindowFillImage.type = Image.Type.Simple;
             _bellWindowFillImage.color = BossRushUIColors.SuccessText;
             _bellWindowFillImage.raycastTarget = false;
@@ -716,8 +717,9 @@ namespace BossRush
                 new Vector2(0f, 0.5f));
             _diagProgressFill = fill.GetComponent<RectTransform>();
             _diagProgressFillImage = fill.AddComponent<Image>();
+            // 墨槽用淡金 Divider：Header 深底压在 Surface 弹窗上约 1.04:1，未填满的那段看不见（2026-11-25 复核）
             BossRushInkWidgets.StyleInkBarPair(
-                trackImage, _diagProgressFillImage, BossRushUIColors.Header, BossRushUIColors.Accent);
+                trackImage, _diagProgressFillImage, BossRushUIColors.Divider, BossRushUIColors.Accent);
             _diagProgressShown = 0f;
             _diagProgressTarget = 0f;
             ApplyDiagnosticsFill(0f);

@@ -47,6 +47,13 @@ namespace BossRush
             animation.Restart(delay, duration, rise);
         }
 
+        /// <summary>这个物体上的入场动画是否还在推进（落印震动等借用 anchoredPosition 的动效要等它走完）。</summary>
+        internal static bool IsPlaying(GameObject go)
+        {
+            BossRushUIEntranceAnimation animation = go != null ? go.GetComponent<BossRushUIEntranceAnimation>() : null;
+            return animation != null && animation.playing;
+        }
+
         private void Restart(float delaySeconds, float durationSeconds, float riseUnits)
         {
             if (canvasGroup == null)

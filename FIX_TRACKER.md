@@ -4,6 +4,33 @@
 
 **2026-11-20 · COMPAT · L1/L2**　玩家反馈退出重进后武器消失、仓库物品变问号。修复冷启动注册、分包手持模型绑定、部分失败重试和克隆/异步资源归属。角色和仓库合成档往返、重复 TypeID 与真实包来源已纳入自动回归。故障证据与玩家侧验证边界见 [CR-2026-11-20-001 至 003](CODE_REVIEW_FINDINGS.md)。随 v2.6.1 发版：`info.ini` 升 2.6.1，WikiContent 新增中英 `changelog__v2_6_1` 并补总览，工坊简介同步；L3 待玩家侧确认。
 
+## 2026-11-25 成就页截图与水墨 UI 复核全修（CR-2026-11-25-022～038，014 复开改正；COMPAT；L2 + 正式真编译；L3 待 owner）
+
+- 依据：owner 成就页截图「你看还有这些问题，请你再次确保UI显示都正确的哈」。先按截图几何定根因，再分三路只读复核全部水墨界面，确认项全修，C4、C8 两条核实不成立（理由见 `CODE_REVIEW_FINDINGS.md` 同日节）。
+- 共享库：
+  - 内容节点宽度：成就、Boss 池、图鉴三处手搭 ScrollRect 的内容 `sizeDelta` 归零（022）；新守卫 `RectTransformDefaultSizeGuard` 拦住以后再漏设（反向验证三处转红，按字节还原）。
+  - 底槽与细条：共享滑条、共享滚动条槽改淡金 `Divider`（023）。
+  - `BossRushInkSkin.CreateSeal`：边距归零、自动缩字下限不超过上限，英文印最低 7（035）。
+  - `StampSeal` 入场动画没走完就不震（`BossRushUIEntranceAnimation.IsPlaying`，029）。
+- 调用方：成就 / 图鉴 / 收藏册 / 遗种巢 / Mode H 诊断条底槽改 `Divider`（023）；Mode H 钟窗口与选手详情、伴宠经验、随机事件、Mode G HUD 细条填充改纯色，节拍器指针改 `SolidBar`（024）；孵化卡 224 见方、中心 152（025）；远征总结轴身换古铜、正面名字让出结果印（026）；天空岛 HUD 竖条挪到 x 9–14（027）；丧尸投资标题金笔左对齐 240 宽（028）；Steam 成就弹窗落印不震弹窗（029）；日志标题金笔位置取常量、英文标题笔身同步收窄、卷首朱笔按字宽让位（030）；灯箱遮罩可点暗处关闭、去掉整屏金边（031）；许愿台先排版再放墨（032）；许愿墨环套在中奖格上（033）；邸报三张深色图标垫浅纸（034）、「阅」印缩到 24 斜钤右上角并随跨期收走（036）；图鉴刻度与变异词条强调笔倍率按宽度换算（037）；Boss 池行底补 α 0.3 细边（038）。
+- 台账：两本台账将超行数上限，先把已闭环旧节逐字归档——修复流水 11-05～11-06 潮闸镇八节 → `archive/FIX_TRACKER_2026-11.md`（新建），9 月四节 → `archive/FIX_TRACKER_2026-09.md`；审查台账 10 月九节 → `archive/CODE_REVIEW_FINDINGS_2026-10.md`。带 Open / UNVERIFIED 的节留在正文；「旧文件每一非空行要么在正文要么在归档」核对 0 丢失。
+- 验证：
+  - 守卫：全量 `python tools/run_guards.py` `PASS=797 NEW-FAIL=0 KNOWN-RED=0`（含新守卫）；回填台账后 `--changed-only` 与 `LedgerSize` 复跑。
+  - 正式编译：去掉 `BOSSRUSH_DEV_BUILD` 后 `& "$PWD\compile_official.bat"` 0 错误 0 警告，81 个资源包 SHA-256 校验通过；`Build\BossRush.dll` 与游戏目录同为 `DF819996F49A18A63D176A37DE791DA799D8FB7A401BC5510ADA8F31F7AA0242`，两份 `check_dll_identifiers --expect absent` PASS。
+  - 隔离执行回归：ManualSeptemberReview、AchievementRuntime、AchievementIcons、BossFilterRuntime、DailyReportHostUI、ModeGCombat、ModeHPlayerFlow、ModeHReviewFixes、PetNestCompanionActivation、RandomEventTempo、ReloadMetronome、SharedModalInput、SkyIslandHudPolicy 等 17 个 17 PASS。
+  - 未进游戏，以下为 L3 待 owner。
+- L3 实机清单（正式构建；不合格即记回本节）：
+  - [L3-INK-16] 成就页（L 键）：卡片左侧图标完整，右侧「已授」印与「√ 已领取」完整；每张卡四边墨笔边都在，卡与卡之间不再是两道孤立金线；统计栏进度条看得见淡金底槽，填充在槽里。不合格：图标或印章被切、统计栏只有一截金色胶囊。
+  - [L3-INK-17] Ctrl+F10 Boss 池：列表行左右不被切，行与行之间有一道淡淡的细边分开；勾选 / 悬停只改行底颜色。不合格：行越出面板、整片连成一块。
+  - [L3-INK-18] 图鉴与收藏册：进度条有淡金底槽；图鉴里程碑刻度是细竖笔，不是压扁的墨团；图鉴「已击败」英文印读得出 SLAIN，成就 DONE、成就弹窗 RARE / FEAT 不带省略号。
+  - [L3-INK-19] 遗种巢：孵化揭晓「遗种破壳」下的金笔完整露在卡片上方；远征总结卷轴上下轴身是古铜色；翻牌正面长名字不压右上角结果印；伴宠 HUD 经验细条连贯、不断成虚线。
+  - [L3-INK-20] HUD 细条：鸭王杯钟窗口与选手详情血条、随机事件进度、Mode G HUD 进度条、装填节拍器指针都是连贯实线，切分辨率不闪；天空岛 HUD 卡片左侧竖条不压卡片墨边。
+  - [L3-INK-21] 冒险家日志：连续切换 5 篇以上，标题下金笔始终在标题正下方、长度完整；切英文后长分类名（EQUIPMENT & POWERS）两侧朱笔不压字；点开插图后点暗处能关，屏幕四边没有一圈金线。
+  - [L3-INK-22] 许愿台：进游戏后第一次打开，标题金笔紧贴标题、有墨晕；许愿揭晓时墨环套在中奖格上。
+  - [L3-INK-23] Mode G 宿命回响入场页：开场动画没放完就点契约卡，卡片最终回到原位，不停在半路；Steam 式成就弹窗落印时弹窗不跳。
+  - [L3-INK-24] 邸报：期号、截止、提示三处图标看得清（身后有浅纸底）；签到后「阅」印斜钤在格子右上角，不压天号。
+  - [L3-INK-25] 丧尸投资页：标题下金笔从标题左缘起笔，不伸到余额下面；任一共享滚动条与滑条能看见淡金底槽。
+
 ## 2026-11-25 水墨 UI 审查全修（CR-2026-11-25-002～021 与线索、顺带项；COMPAT / SAFE；L2 + 正式真编译；L3 待 owner）
 
 - 依据：owner「等它停下就全修」。另一会话停下后改；只动本批的行，不碰别的会话同文件里的其它改动。
@@ -757,36 +784,6 @@ owner 新 L3 日志 `20261107_170000_978` 已确认上一版码头/镇区 P95 38
 - **验证**：反向探针 5 处（钥匙金圈、成套发牌、精品去重、私货替换、锁柜判据）均转红并按字节还原；用旧版 `TidegateLoot` 跑新断言转红。相关守卫与 Windows Dev / 正式真编译通过（各两条既有 Mode H CS0649），正式 DLL 已部署并核对 SHA-256，23 个 Dev 标识正式版全无、Dev 版齐全。Dev 复测 DLL 在 `Build/TidegateRound3/`。未启动游戏、未读写存档。
 - **另**：生成全彩赛璐璐信纸样张 `ArtSource/Tidegate/journal/samples/`（与现行三色版画风并排），未替换游戏内插画，待 owner 选。
 
-## 2026-11-06 潮闸镇五分钟体验复审（COMPAT / WIRE+）
-
-室内按建筑占地隐藏上层并保留投影，码头首次试闸停在头顶，泄洪先教横游。沙老大固定参照原版 BALeader，专属掉落 500116 用于测深找埋货。普通箱按模型容量与班次配套出货，五金店钥匙开码头二号仓库领班柜。按同样的 256 个种子，整图箱货平均标价上升 2.1%，普通点单格率从 38.1% 降至 6.9%。六幅手记改用同一张水渍信纸定稿作参考编辑。旧基地空引用定位到 F3 直接加载子场景；旧栈无实例名，最强静态候选为基地移动厕所箱。没有足以解释旧 55 ms 的逐帧数据，暂维持人数组成，用新 Dev 分项核对。参见 `docs/reports/testing/潮闸镇_2026-11-06_有趣度差距表.md` 及 `潮闸镇_2026-11-06_实机清单09-14.md`。旧日志是旧版 L3；本轮是 L1/L2。
-
-## 2026-11-06 潮闸镇高价值搜刮与装船货单（COMPAT）
-
-高价值地点提升已有的一格，所长与船长柜保底品质 6、可出售，不出跨图门票。普通民居与码头杂箱的对照点掉落不变。三个地区每局最多出两张封签，第一次成功开封才决定留下哪批，弃选点保留原货；重开无重复奖励。出击种子独立，日志可定位具体一局。使用本机 1,569 件官方物品目录，9 个代表点各跑 2,048 个种子；所长与船长精品分别抽到 10 种。48 趟真实目录货单均有两处可选。高品质误降与跨图票证误入均做了可转红的复现。数据与新版实机步骤见 `docs/reports/testing/潮闸镇_2026-11-06_高价值搜刮与装船货单.md` 的 `M_TIDEGATE_11`、`M_TIDEGATE_14`。L1/L2，未取得新版 L3。
-
-## 2026-11-06 潮闸镇路线、密度与工业危险（COMPAT / WIRE+）
-
-M 图按真实撤离状态更新；轻装能在涨退潮抓缆，货单提供可跳过的当趟目标，四页日志按线索串联。镇港由单哨改为首哨加错峰巡逻同伴，常规点最高 27 名、海堤另 3 名；普通狼、固定射手和有限投掷手替换原阵容名额，灯塔声源不替敌人锁定玩家。修正货单缺预制件时误报和海堤近身刷怪。实际吊机下的落货和泄洪中的吸水口为可绕开的一击致命环境事件；仅命中设施的主角在一次官方 Hurt 中按致死处理，避免同步回调导致双重死亡。场景位置、离线证据与实机步骤见 `docs/reports/testing/潮闸镇_2026-11-06_路线生态与危险设施.md`，`M_TIDEGATE_11`～`13`。未取得新版 L3，不据此宣称码头/镇街帧耗已解决。
-
-## 2026-11-06 潮闸镇首轮实机反馈（COMPAT / WIRE+）
-
-旧演练 `20261106_045339_716`：灯塔岬的岸哨进入深水，码头 / 老镇 P95 为 55.28 / 53.21 ms（基线 21.34 ms）；卷走 WARN 实际漏记了同行的另一名淘沙帮。新版调整区域守敌、干地落点、箱种与格数，取消自建 A* 对成功路径的逐条日志；演练记录真实卷走和站位、主线程 / 渲染 / GC 指标。闸伯移到距登筏感应点约 2 m 的岸道，竹筏与潮位站复用原版物品需求行。按视线裁切屋顶、M 图朝北沿岸淡出；六幅剧情插画只在阅读时加载。修前 L3、修后作者预览 / L2，实机帧耗与手感待新版复测。详见 `docs/reports/testing/潮闸镇_2026-11-06_实机反馈与复测.md`。
-
-## 2026-11-06 潮闸镇新内容审核 001–010 全部修复（COMPAT / OPERATIONAL，L1/L2；L3 待验）
-
-对应 `CODE_REVIEW_FINDINGS.md` 的 `CR-2026-11-06-001` 至 `010`。存档键、schema v1、TypeID 未变。
-
-- **001 / 002 水体**：首次就给海、湖设置物理顶面；高度图一次读入，按与材质相同的纹素中心和 Clamp 插值，从 G > 0.5 的范围生成互不重叠的水盒。当前包的 427 个盒（246 海、181 湖）只挂在两个对象上，潮位变化只改相应父节点。实包 G 通道与夹具输入 109,461 像素逐个相等；95,789 项离线断言覆盖首帧、涨退潮、开闸、岸点和两地同时查询。
-- **003 交还怀表 / 004 官方图鉴 / 008 专用槽清空**：交表、寄信、清空在物品变更和剧情同批进入缓存且剧情回读成功后才提交。缓存发布失败则撤销实物与事实；物理写盘失败保留完整新状态，由共享协调器重试。首次加载坏数据、未知版本或写故障时不增删官方笔记。清空只移除四类剧情物品，保留普通快递、容器内非目标子树、格位和变量。`TidegateStoryTransactions` 模拟独立刷盘、官方采集顺序、持续故障、漏收切槽、重载与重复清空。
-- **005 灯塔 / 006 敌人验收 / 007 迟到增援**：新敌人在登记角色后才挂灯塔标记；演练分别核对守卫、Boss 和刷怪距离，缺样本记 WARN。取消时先注销增援槽，异步创建迟到也销毁角色与克隆预设。四相和提示用例在快进前给淘沙帮留出撤回时间。
-- **009 缺失水体**：装配与四相均要求外海、泻湖两类水盒齐全，逐盒核对有限顶面；空集合、NaN、无穷或高度错误不能通过。
-- **010 作者导出**：只接受本机允许的 Host 和严格同源 Origin；临时 HTTP 服务既能保真写入二进制，也会拒绝跨站写入、域名重绑定及越界路径，拒绝后合法文件字节不变。
-- **反向验证**：副本中水体与灯塔 16 个守卫变异、6 个执行变异，F3 演练 7 个、剧情存储 7 个、导出服务 2 个探针均按预期转红，恢复原字节后通过。剧情事务最终 263 项断言包含回滚尚未完成时的宿主退出。
-- **存储边界**：持续写不进剧情 key 时，已覆盖外部写盘和官方采集，保留完整旧态。如果官方资产缓存连旧值也持续无法恢复，本模块会保留回滚待办并停止自己的后续发布；共享 ES3 没有多键原子写，其他模块此时自行落盘仍可能保存部分状态。
-- **验证**：最终全量守卫 **756/756**，相关执行回归 **16/16**。Windows Dev 与正式版均用 `compile_official.bat` 在游戏程序集副本上真编译；各有两条既有 Mode H CS0649，隔离部署 DLL 哈希一致，20 个 Dev 标识在正式版全无、Dev 版齐全。两包着色器、112 个低潮导航标记、7 个音效和 79 个部署资源包校验通过。完整日志与产物见 `Build/verification/tidegate-fixes-20261106/`。
-- **L3 待验**：开发版专用测试槽按 `M_TIDEGATE_09` 跑 F3 完整演练，再按 `M_TIDEGATE_10` 复核低潮岸点与内湖、灯塔期间新敌标记和取消增援、交表/清空后立即重载；ENEMIES 若为 WARN 仍需补测。PhysX 接缝与帧耗尚未实测，未启动游戏或访问玩家存档。
-
 ## 2026-11-06 死亡广播逐订阅者隔离 + 丧尸 Boss 死亡兜底（COMPAT；L1/L2，L3 待验）
 
 玩家反馈「末日丧尸第 10 波 Boss 不见了，卡关」→ owner「确保以后所有模式都不会出现类似问题，并且不会有性能问题」。根因（读码确认，玩家那局的具体抛异常者 UNVERIFIED，需 `Player.log`）：官方 `Health.Hurt` 致死时依次发 `OnDeadEvent` → `Health.OnDead` → `SetActive(false)` → `OnHurtEvent` → `Health.OnHurt`，全程无 try；前面的订阅者抛异常（击杀提示类 Mod 不判空攻击者，流血 / 毒区必抛）就截断后面的所有订阅者，而 `DestroyOnDelay` 已启动，尸体照常消失。丧尸 Boss 波只靠死亡回调扣 `CurrentWaveBossesRemaining`，于是永远不结束；10-16 只给宿命回响和标准竞技场补过轮询兜底。
@@ -797,62 +794,6 @@ M 图按真实撤离状态更新；轻装能在涨退潮抓缆，货单提供可
 - **守卫与回归**：新守卫 `DeathBroadcastIsolationGuard`（三个探针反向验证转红、按字节还原）；`ModeGSpawnTransactionGuard` 按精确路径 / 类名登记新 Hurt 补丁；新执行回归 `DeathBroadcastIsolation`（官方方法体 + 真实 Harmony，复现截断后验证隔离；现装 DLL 上 IL 各命中一次、真实 `UnityEvent` 逐监听器送达）；`ZombieModeWaveRuntime` 加第 10 波双 Boss 截断 / 销毁场景（83 场景 293 断言）。
 - **验证**：全量守卫 755/755；Windows 正式编译 0 错误、2 条既有 CS0649（隔离 worktree，`GAME_PATH` 指 Managed 拷贝，游戏目录 DLL 哈希不变）；全量执行回归 152/152（首轮 150/2，两条红是未设 `GAME_PATH` / `BOSSRUSH_HARMONY_DLL` 的环境缺失，设好后 `AuditCombatSeptember`、`SkyIslandCombatRuntime` 单跑通过）。
 - **L3 待验**：ZB-A 末日丧尸打到第 10 波，让 Boss 流血 / 毒死（装着击杀提示类 Mod 更好），Boss 倒下后 1 秒内本波不结算即不合格；`Player.log` 搜「订阅者抛异常，已隔离」核对抛异常者。WG-A 游戏加载日志出现「Health.Hurt 广播隔离只命中部分调用点」或「掉落广播隔离未命中」即补丁失配。
-
-## 2026-11-05 潮闸镇生产水准复审与全部修复（COMPAT / OPERATIONAL；L1/L2，L3 待验）
-
-owner「审核最新代码与 3D 场景是否达到生产水准、UI 交互逻辑特效够不够精致」→「开始全部修复」。复审登记 `CODE_REVIEW_FINDINGS.md` 的 `CR-2026-11-05-017`～`028`，当日全部修复；没有新增存档字段、TypeID 或官方任务，没有改官方存档键。
-
-- **P1 潮汐提示**：会话订阅 / 退订 `TidegateTide.PhaseChanged`，每相字幕（涨潮警示色 + 警报、高潮渡口汽笛）；纯规则 `TidegateTideRules.NoticeAt` 给低潮最后 15 秒涨潮警报、高潮最后 12 秒渡口要走，每轮各一次。
-- **P2**：HUD 目标行只放按进度变化的引导、潮位与怀表倒计时移到小标行；可玩区四边运行时补墙层碰撞（海侧原墙顶面低于高潮水位），越界兜底按可玩区外 8 m；灯塔灯头与入夜手电进灯数组（自研着色器不吃延迟光源）；新增 `TidegateSounds` 与程序化音效 `tools/gen_tidegate_sfx.py`（海浪、浮标钟、警报、汽笛、阀门、大闸、灯塔）；地形着色器去平铺；读条里预热物资池与武器池（新发现 028）。
-- **P3**：沉淀池静水波纹、水面接阴影、草地黄斑；被淹箱柜提示、缺手轮写进交互名、括号随语言、读信写不进存档的提示；地名到访半径与滞回；「带着怀表」三处按整棵物品树；剧情箱柜一张表并由导航检查脚本核对布局 `fixed`；沉船船长保险柜固定一件金库档值钱物；在建角色计数器；水厂与灯塔岬守卫精英档配枪；游泳时敌人发现距离减半。
-- **台账**：`4f9a1642` 让 `LedgerSizeGuard` 转红（发现 027）；两本台账的已闭环节逐字归档（`CODE_REVIEW_FINDINGS` 13 节、`FIX_TRACKER` 6 节，新建 `archive/FIX_TRACKER_2026-10.md`），核对零丢失。
-- **作者工程**（独立仓库，未提交）：`TidegateTerrain` / `TidegateWater` / `TidegateEnvironment` 三个着色器与构建器静水材质；`BuildAndExit` PASS，重打 `tidegate_raid` → **`fbee4ab5…1d07`**（51,044,931 字节，旧包 `dc3f558e…` 备份在会话 scratchpad）。竹筏包没重打。
-
-**验证（L2）**：
-- 全量守卫 **753 PASS / 0 NEW-FAIL / 0 KNOWN-RED**；`TidegateRaidGuard` 新增复审断言，**29 个变异全部转红**、红在预期那条，按字节还原（副本里做，工作区没动）。
-- 执行回归 `TidegateTideRules` **95,337 条断言 PASS**（新增换相前提示每轮一次）；`SkyIslandSceneReferenceBridge`、`LegacyArenaEntry`、`PermanentDuckNpcDialogue` PASS。未跑全量执行回归（改动只在 `Tidegate/` 与工具）。
-- `gen_tidegate_sfx.py --check` 七个文件 PASS；`build_tidegate_navigation.py --check` 通过且输出与原 `navigation.json` 同 sha（`c66c2a26…`），把布局里一只剧情箱柜改号后两个方向都报错。
-- 判包 `verify_tidegate_bundle_shaders.py` 两包 PASS；`verify_unity_resource_release.py` **79 包 0 错误**；作者预览前后对比：码头、水厂裂纹不再按网格重复，沉淀池看着是水。
-- Wiki 站点构建通过（只变两张潮闸镇页）。Windows 正式真编译成功（两条既有 Mode H CS0649），已部署：`BossRush.dll` **`CD006A90…7034`**，`tidegate_raid`、`tidegate_entry`、人工清单数据与 `Assets/Sounds/Tidegate` 按 SHA-256 与仓库一致。
-
-**未验证（L3）**：没进游戏。人工清单 `M_TIDEGATE_08`（九项：提示与警报、目标行不闪、游不出边界、灯塔照地与手电、声音、被淹箱柜提示与交互名、地名、守卫与游泳隐蔽、竹筏明暗与帧时间）。音效没人耳试听；水面阴影、灯数组与手电近似灯在作者预览里看不到；帧时间未采样。私有仓库未同步（`Assets/Sounds/Tidegate`、新场景包、`ArtSource` 说明都是 local-only）。
-
-## 2026-11-05 潮闸镇提交全面审查与全部修复（COMPAT；L1/L2，L3 待验）
-
-owner「全部审核一遍，确保没问题把代码提交了」。对 `bea44008` 做三路独立只读审查，主会话逐条复核后登记 `CODE_REVIEW_FINDINGS.md` 的 `CR-2026-11-05-001`～`016` 并当日全部修复；8 条未证实线索只登记不修。没有新增存档字段、TypeID 或官方任务。
-
-- **P1 丢信**：送过没读、信又哪儿都找不到时阿稳每个游戏日最多补寄一封；信不可出售。
-- **P2**：在竹筏边结婚的闸伯交给婚姻接管并挪回主场景，不再随下水道一起卸掉；三个落在实心碰撞盒里的刷怪点先吸到本图导航可走面；撤离返航时「刷新基地环境光」改看会话是否已收尾（天空岛同一写法一并修，不是本提交引入）。
-- **P3**：谢礼背包满了进仓库；图鉴镜像在存档读不了时保留原状态；契约补登存档键；Wiki 两处说法改正；箱子水退立刻放出；Boss 不卷走；撤离读条 HUD 文字兜底；导航只写变化的节点；泻湖放水跟游戏时间暂停；闸伯生成失败 30 秒后重试。
-- **两条按「好玩优先」拍板的数值 / 体验口径**：潮汐怀表身上带着一块时金库不再放（仍是主线回报，挡住白拿第二块去卖）；不再给敌人常驻透视（沙老大的 40 m 锁定去掉、灯塔引怪限时 40 秒后还原官方原值），理由是官方 AI 在这个距离内无视视线锁定，常驻就是透视。
-
-**验证（L2）**：
-- `TidegateRaidGuard` 新增 22 条审查修复断言，22 个变异全部转红、按字节还原；全量守卫 **753 PASS / 0 NEW-FAIL / 0 KNOWN-RED**。
-- 全量执行回归 **150 PASS / 0 FAIL**（这次没和 Unity 撞车，`FieldAdventureVisuals` 在聚合入口内通过）。
-- Wiki 站点构建通过、导航 80 项检查通过，只变两张潮闸镇页面。
-- Windows 正式真编译成功（两条既有 Mode H CS0649），已部署：`BossRush.dll` **`0F509D18…0E45`**（无 Dev 专属串、含 `LETTER_RESENT` / `ZHABO_HANDED_TO_MARRIAGE`），Wiki 页、人工清单数据与三个资源包按 SHA-256 一致。
-
-**未验证（L3）**：人工清单 `M_TIDEGATE_03`（三个刷怪点的敌人不卡在车里）与 `M_TIDEGATE_07`（丢信补寄、婚后配偶不消失）已补看点；撤离回基地后看日志里是否出现返航刷新环境光（天空岛为 `[SkyIsland] 返航进基地光照`）。导航只写变化后的帧时间未采样。
-
-## 2026-11-05 新地图「潮闸镇」接入游戏（COMPAT / SCHEMA+ / OPERATIONAL；L1/L2，L3 待验）
-
-owner 拍板方向与竹筏入口后，从 three.js 原型 → Blender → 作者工程 Unity → 游戏侧接入一路做完。结构与行为见 `.qoder/repowiki/zh/content/游戏模式系统/潮闸镇独立出击地图.md`，设计与剧情见 `docs/design/tidegate-town/README.md`，作者资源见 `ArtSource/Tidegate/README.md`。
-
-- **独立出击**：天空岛的官方加载状态机转译补丁抽成多图共用的 `Utilities/RaidScenes/ModRaidSceneBridge`（全仓只能装一份），天空岛只剩门面、常量不变；另有通用 `ModRaidLease` / `ModRaidOfficialContract`，天空岛自己的租约与合同还没迁。
-- **玩法**（`Tidegate/`）：潮汐挂官方时钟、负重决定能否游泳（官方 Water 层 + `CanSwim`）、四处撤离、搜刮、刷怪（`SetTeam(Teams.wolf)` 与距离休眠解除照旧）、淘沙帮跟潮走、三阀一闸、灯塔光束与叫船、地图标签。
-- **剧情与内容**（SCHEMA+）：阿稳快递湿包裹 → 闸伯的信 → 四页闸工日志 → 潮汐怀表交给闸伯；存档 `BossRush_Tidegate_Story_v1`（分槽 JSON），信与日志镜像进官方笔记图鉴；没有新增官方任务号。新物品 TypeID **500111–500115**（阀门手轮、潮汐怀表、防水袋、鸭蹼脚掌、闸伯的信），三处台账已更新，下一可用 500116。永久捏脸 NPC `tidegate_zhabo` 站在竹筏边，四段好感剧情，商店卖防水袋 / 鸭蹼脚掌。
-- **入口**：基地地堡下水道北端「闸伯的竹筏」，读过信才出现；竹筏是作者工程的正式模型（小包 `Assets/arenas/tidegate_entry`），包缺失或着色器被剥光时整个入口不开，不拿几何体顶替。
-- **顺带修复**：`SceneRuntimeGate.IsBaseHubSceneName` 曾把仓库区地下室当成基地下水道；正式版只从 `production_icons` 取图标，10-12 加的回火液图标一直没登记（正式版显示克隆源的图标），与五件新物品一起登记并重打包。
-- **宣传片会话报的潮汐 bug（已修）**：潮位原先读当天时刻（每天归零），24 不是 4.5 的整数倍，午夜会从低潮 −1.5 m 一步跳回高潮 +0.45 m（滩涂上的人当场被淹、没有涨潮过程）。改为跨天连续的「官方天数 × 86300 + 当天秒数」（`TidegateTideRules.ElapsedHours`），潮汐运行时与淘沙帮撤回计时同改。代价是每天同一钟点的潮相往后挪约 1.5 小时，这正是潮汐怀表「看准涨落」的用处，所以保留 4.5 小时一轮。
-
-**验证（L2）**：
-- 全量守卫 **753 PASS / 0 NEW-FAIL / 0 KNOWN-RED**（潮汐修复前）；潮汐修复后 `--changed-only` **250 PASS**。`TidegateRaidGuard` 本轮新增竹筏模型五条、潮汐时钟三条，八条变异全部转红、按字节还原。
-- 全量执行回归 **149 PASS / 1 FAIL**：唯一失败 `FieldAdventureVisuals` 超出聚合入口 600 秒（同时段 Unity 在打图标包），单独重跑 430 秒 **PASS**；未改 runner 时限。潮汐修复后 `TidegateTideRules` 重跑 **95327 条断言 PASS**；把跨天时钟改回只读当天时刻（两种变异）都转红。
-- 图标包 `IconsBuild` `BUILD PASS sprites=357`；新旧包逐张比对只多 6 张、原 351 张一致。`production_icons` `f6c70956…22d6` → **`affc0cfd…8e5b`**（旧包备份在本会话 scratchpad）。资源发布校验 **79 包 0 错误**；`verify_tidegate_bundle_shaders.py` 两个包 PASS。
-- Windows 正式真编译成功（只有两条既有 Mode H CS0649），已部署到 `D:\software\steam\...\Mods\BossRush`：`BossRush.dll` **`857497EE…D382`**（无 Dev 专属串），`tidegate_raid` `dc3f558e…`、`tidegate_entry` `b0e7e70e…`、`production_icons`、数据 JSON、图标与 Wiki 页按 SHA-256 与仓库一致。
-- 作者工程（独立仓库）里 `Assets/Tidegate/`、`Assets/Editor/TidegateBuilder.cs` 与图标构建写入的 `Assets/ProductionIcons/` 七个新源图都未提交。
-
-**未验证（L3）**：没进游戏。人工清单是 `Assets/Data/GameplayCoverage.json` 的 `M_TIDEGATE_01`～`07`；本轮补了竹筏外观、灯塔光束与五件物品图标三处不合格条件。竹筏站位、闸伯站位与井盖 / 钓鱼点的交互抢占都是离线读场景文件得出的，最需要实机看。宣传片成片在 `ArtSource/Tidegate/trailer/`（three.js 场景渲染，不是实录），未上传。
 
 ## 2026-10-21 丧尸模式专项审查与修复（COMPAT，L1/L2，未部署）
 
@@ -1029,16 +970,20 @@ L3 验收：Z1，单弹枪选三叉/散射后对同种敌人比较全中伤害�
 
 **L3 未做**：本轮没有启动游戏。owner 说不必再跑一轮；下次跑 F3 时看这几项：`SKY_GATE_REACHABILITY` 应 `gate_locked_blocked=1/1` 且 `Player.log` 无 `lost and re-applied`；`SKY_NIGHT_BOUNDARY_OFFICIAL` PASS 并读 `official_dawn`；`MAP_TOUR_*` 九张的 `points / grounded / nav` 与 `player_to_spawn_m`——导航阈值 3 m、传送阈值 4 m 是按生产逻辑定的，没实机标定，首轮若有个别刷新点红，先看 reason 里列出的点号再决定改数据还是改阈值。
 
-## 2026-09-26 模块解耦 P0–P6 离线完成（SAFE / COMPAT / OPERATIONAL，L3 待验收）
-
-检查点 `3323e33e`、`adef32ef`、`403a09a4`、P3/P4 至 `cae48e91`、P5 `6409a0f4`，本节所在提交完成 P6。宿主 202 文件 / 103,052 行降至 58 / 20,114；47 模块覆盖 1,091 编译源；自动导入 38,854 → 17,783 B。完整成员样本中四类源码读量上升，未宣称普遍降本；逐文件后测见 `architecture/CONTEXT_BASELINE.md`。
-
-修复 `CR-2026-09-26-001`：票 ID 字段迁属性后地图 GetField 失效，改读注册 owner；生产注册/费用回归先红后绿。最终 697 全量守卫 PASS（0 新红/基线红）、95 全量回归 PASS（0 FAIL），Windows 正式/Dev 构建、14 Dev 标识、72 bundle 哈希通过；P5 42 + 29 项结构变异命中原断言并按字节/SHA 恢复。历史与最终证据路径、全部检查点、两种构建 SHA 见 `architecture/MIGRATION_STATUS.md`。
-
-最终正式部署到真实游戏目录，源/目标 SHA-256 一致：`47F26AD82B1E67BFE1ECB0C728A8E97B40EBA80745790694B54AA7AD184A88B3`，Dev 标识 absent。未启动游戏或读写玩家存档；实机清单 `architecture/MIGRATION_ACCEPTANCE.md` 全部 MANUAL_PENDING，含 G 第二局、跨模式/异常退出、自然撤离、共享 UI、装备/建筑和 F3 看图项。没有 L3 或性能采样结论。
-
 ## 归档索引
 
+- 2026-11-06 潮闸镇五分钟体验复审（COMPAT / WIRE+）（2026-11-25 台账将超 1500 行时逐字归档） → `archive/FIX_TRACKER_2026-11.md`
+- 2026-11-06 潮闸镇高价值搜刮与装船货单（COMPAT）（2026-11-25 台账将超 1500 行时逐字归档） → `archive/FIX_TRACKER_2026-11.md`
+- 2026-11-06 潮闸镇路线、密度与工业危险（COMPAT / WIRE+）（2026-11-25 台账将超 1500 行时逐字归档） → `archive/FIX_TRACKER_2026-11.md`
+- 2026-11-06 潮闸镇首轮实机反馈（COMPAT / WIRE+）（2026-11-25 台账将超 1500 行时逐字归档） → `archive/FIX_TRACKER_2026-11.md`
+- 2026-11-06 潮闸镇新内容审核 001–010 全部修复（COMPAT / OPERATIONAL，L1/L2；L3 待验）（2026-11-25 台账将超 1500 行时逐字归档） → `archive/FIX_TRACKER_2026-11.md`
+- 2026-11-05 潮闸镇生产水准复审与全部修复（COMPAT / OPERATIONAL；L1/L2，L3 待验）（2026-11-25 台账将超 1500 行时逐字归档） → `archive/FIX_TRACKER_2026-11.md`
+- 2026-11-05 潮闸镇提交全面审查与全部修复（COMPAT；L1/L2，L3 待验）（2026-11-25 台账将超 1500 行时逐字归档） → `archive/FIX_TRACKER_2026-11.md`
+- 2026-11-05 新地图「潮闸镇」接入游戏（COMPAT / SCHEMA+ / OPERATIONAL；L1/L2，L3 待验）（2026-11-25 台账将超 1500 行时逐字归档） → `archive/FIX_TRACKER_2026-11.md`
+- 2026-09-26 模块解耦 P0–P6 离线完成（SAFE / COMPAT / OPERATIONAL，L3 待验收）（2026-11-25 台账将超 1500 行时逐字归档） → `archive/FIX_TRACKER_2026-09.md`
+- 2026-09-22 人工实测复核后的 12 项修复与正式交付（2026-11-25 台账将超 1500 行时逐字归档） → `archive/FIX_TRACKER_2026-09.md`
+- 2026-09-29 天空岛发布前生产级审查与修复（COMPAT / SAFE / OPERATIONAL）（2026-11-25 台账将超 1500 行时逐字归档） → `archive/FIX_TRACKER_2026-09.md`
+- 2026-09-30 天空岛摆放与阴影修复（COMPAT / SCHEMA+ / OPERATIONAL）（2026-11-25 台账将超 1500 行时逐字归档） → `archive/FIX_TRACKER_2026-09.md`
 - 2026-10-30 v2.3.9 正式发布包准备（COMPAT / OPERATIONAL；L1/L2，L3 待验）（2026-11-25 台账超 1500 行时逐字归档） → `archive/FIX_TRACKER_2026-10.md`
 - 2026-10-30 全面复审四项修复（COMPAT；L1/L2，L3 待验）（2026-11-25 台账超 1500 行时逐字归档） → `archive/FIX_TRACKER_2026-10.md`
 - 2026-10-29 最新代码审核与遗种崽名字/背包排查（COMPAT；L1/L2 修复，L3 待验）（2026-11-25 台账超 1500 行时逐字归档） → `archive/FIX_TRACKER_2026-10.md`
@@ -1425,46 +1370,3 @@ L3 验收：Z1，单弹枪选三叉/散射后对同种敌人比较全中伤害�
 
 
 <!-- MANUAL 17 FIXED 2026-09-22 -->
-
-## 2026-09-22 人工实测复核后的 12 项修复与正式交付
-
-分类：COMPAT / OPERATIONAL；注释/守卫文档 SAFE。承接 owner“请你全部以最佳代码形式进行修复”，完整说明见 [20260922 人工实测复核修复记录](docs/reports/testing/20260922人工实测复核修复记录.md)。
-
-| ID | 本轮状态 / 证据 |
-| --- | --- |
-| CR-2026-09-22-011 | Fixed / L1+L2；冰原掠夺者图鉴收录；L3 待 owner |
-| CR-2026-09-22-012 | Fixed / L1+L2；Mode H 入场与续赛时序；L3 待 owner |
-| CR-2026-09-22-013 | Fixed / L1+L2；派遣/放生后实体与光环回收；L3 待 owner |
-| CR-2026-09-22-014 | Fixed / L1+L2；当前 D 盘正式部署缺口；部署 72 包/531 文件已核验 |
-| CR-2026-09-22-015 | Fixed / L1+L2；套装旧协程清 pending 导致双发；L3 待 owner |
-| CR-2026-09-20-016 | Fixed / L1+L2；日报生产包仍烤旧动态控件；L3 待 owner |
-| CR-2026-09-20-017 | Fixed / L1+L2；日报正文两倍宽裁字；L3 待 owner |
-| CR-2026-09-20-019 | Fixed / L1+L2；旧在途彩宠死亡翻牌丢色；L3 待 owner |
-| CR-2026-09-21-034 | Fixed / L1+L2；FallbackItem 错误消耗奖励游标；L3 待 owner |
-| CR-2026-09-22-016 | Fixed / L1+L2；锁定宠仍进入必拒绝的派遣菜单；L3 待 owner |
-| CR-2026-09-22-017 | Fixed / L1+L2；远征翻牌暂停期间自动推进；L3 待 owner |
-| CR-2026-09-21-038 | Fixed / L1+L2；云蚋守卫断言旧复制语句；守卫闭环 |
-
-套装按代数释放 pending 并在结算再验冷却；图鉴以官方名单补足非 isBoss 身份；H 等 AfterInit 和目标子场景稳定、普通传送两处排除 H，退出/续赛使旧等待失效；遗种巢成功提交后同步实体、移除前补旧颜色、发奖前检查 prefab，派遣页与服务同判据，翻牌遵守暂停。日报修正 stretch 宽度，原图同步作者后重打 production_icons，并把实际 Sprite 像素纳入发布验证；云蚋守卫同步整树音效复制语义。
-
-最终验证：649 guards / 52 regressions 全绿，960 源 Windows 正式编译成功；DLL `40CCD683E27FD9F8524C3FF7E46A49B2F6893AE7F3CF3B6D553AD320363F3CD3`，14 个 Dev 标识缺席。正式目标 `D:\sofrware\steam\steamapps\common\Escape from Duckov\Duckov_Data\Mods\BossRush` 共 531 个文件与源一致，72 包三端 SHA 一致且部署包实际读取通过。35 个日报动态区域留白，其余图标纹理/别名/几何保持；霜冠根/子节点姿态已回读。各反向验证预期转红后按字节恢复。日志和回退备份见 `Build/manual-fix-20260922/`；天空岛部署记录已同步。
-
-未运行游戏或访问玩家存档，L3 待 owner 按报告 R01–R17 清单验收。第三分类/立绘方式、全玩法跨模式边界、任意 RGB 和画面满意度仍保留产品口径差距，未把 12 项修复写成 17 项全部验收。未提交、推送或发布创意工坊。
-
-
-## 2026-09-29 天空岛发布前生产级审查与修复（COMPAT / SAFE / OPERATIONAL）
-
-- 三切片只读审查（会话 / 存档 / 剧情；战斗 / Boss / 云蚋；UI / 世界 / 采集），主会话逐条对码后修 CR-2026-09-29-101～117（112 按 owner 拍板「首杀只认主角击杀」，口径同官方击杀计数）；C-03 refuted。未发现 P0 / P1。
-- 玩法数值只动一处：断风冲步停步距离 2.5 → 1.2 m（105，理由见 findings）；截信人伸手圈半径改为结算判定 2.9 m（106）；剧情挑战在 12 名上限外预留 3 名（108）。其余为健壮性、生命周期、文案与文档。
-- 新增源文件 `SkyIsland/SkyIslandSessionTick.cs`（已登记编译清单）；没有改 TypeID、存档 schema、本地化 key、官方任务。
-- 守卫同步：`SkyIslandFrameProfileGuard`（分段标记改按 `TickSubsystems` 核，新增 Update 必须调用它的反向探针）、`SkyIslandChatterGuard` / `ContentExpansionGuard` / `HudGuard` / `PlayabilityGuard` / `ResidentsGuard` 改读整个会话类；4 次反向验证按字节还原。
-- L2：全量守卫 717/717；`run_runtime_regressions --filter SkyIsland` 14/14（`SkyIslandHudPolicy` 42002 条断言含新增警示过期 3 条，`SkyIslandStory` 含冲步新断言）。
-- Windows 正式编译 0 错误（天空岛 CS0649 消失），`Build/BossRush.dll` 与游戏目录 SHA-256 一致 `EDBE0CF5609C961253A31EC984CD8F67B12C550D165BF3E8F3A47FB10D49BDD6`，Dev 独有串缺席。注意：该构建含另一会话同时在改、未提交的 ModeH 工作区改动。
-- 未做 / 待 owner：部署前 Dev 构建拦截（构建流水线改造）；头目自动组被远处未清敌群占满名额时整组不刷（需在性能预算与内容密度间取舍）。
-- L3 未做：没有启动游戏、读写存档。实机清单见 `docs/guides/sky-island/天空岛_待人工验证清单.md`「2026-09-29 发布前审查新增」。
-- 回退：各项彼此独立；105 / 106 / 108 是数值常量，单独回退即可。
-
-
-## 2026-09-30 天空岛摆放与阴影修复（COMPAT / SCHEMA+ / OPERATIONAL）
-
-道路改按登记模型真实包络绕行，连接全部桥口与建筑前缘；房前家具按实际朝向和道路摆放，修正长椅背板偏移，去除已替换地标的旧重复结构。修正级联阴影插值、反绕序共面贴图争抢和投影 bias，保留正常阴影与孤立双面薄片。完整证据与 POS-SHADOW-01～05 人工验收见 [本轮报告](docs/reports/sky-island/2026-09-30-天空岛摆放与阴影修复.md)；最终构建与部署结果在报告收口，不沿用上轮 L3 结果。

@@ -1035,7 +1035,8 @@ namespace BossRush
                 "Scrollbar", scroll.viewport, new Vector2(1f, 0f), new Vector2(1f, 1f),
                 new Vector2(-8f, 0f), new Vector2(12f, -8f), new Vector2(0.5f, 0.5f));
             Image trackImage = track.AddComponent<Image>();
-            trackImage.color = BossRushUIColors.Surface;
+            // 轨道用淡金 Divider：Surface 与水墨面板同色，只看得见滑块、看不出能滚多远（2026-11-25 复核）
+            trackImage.color = BossRushUIColors.Divider;
             // 轨道与滑块都用 scroll_handle（24×24 / border 8）：8+8 放不进 12px 宽，Unity 按比例把左右 border
             // 压成 6+6、中心区 0，两端的弧正好拼成胶囊——滚动条该有的形状。旧写法走按钮图（32×32 / border 10），
             // 同样压成 6+6，但按钮图的弧只占 border 的一部分，画出来是两个方角夹一段直边，不像一条轨。

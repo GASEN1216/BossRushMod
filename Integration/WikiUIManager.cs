@@ -321,6 +321,7 @@ namespace BossRush
             txtEntryCount = null;
             txtEmptyHint = null;
             txtKicker = null;
+            kickerStrokes = null;
             txtArticleTitle = null;
             txtLeft = null;
             txtRight = null;
@@ -540,6 +541,7 @@ namespace BossRush
             if (txtKicker != null)
             {
                 txtKicker.text = activeCat != null ? activeCat.GetTitle().ToUpperInvariant() : L10n.T("典　籍", "JOURNAL");
+                LayoutKickerStrokes();
             }
             UpdateCornerSeal(currentCategoryId);
 

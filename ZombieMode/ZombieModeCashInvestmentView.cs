@@ -149,10 +149,17 @@ namespace BossRush
             yPos += headerH;
 
             // ── 标题水墨笔触下划 ──
+            // 左端对齐标题字左缘（x=28），长 240 止于余额列（0.64×780≈499）之前；旧版 360 宽居中，
+            // 落在左对齐标题的右侧、右段伸到余额下面（2026-11-25 复核）。
             RectTransform cashBrush = BossRushInkSkin.CreateBrushStroke(
-                panel.transform, "AccentLine", new Vector2(360f, 5f), new Vector2(0f, -yPos),
+                panel.transform, "AccentLine", new Vector2(240f, 5f), Vector2.zero,
                 new Color(BossRushInkColors.Gold.r, BossRushInkColors.Gold.g, BossRushInkColors.Gold.b, 0.80f));
-            if (cashBrush != null) cashBrush.anchorMin = cashBrush.anchorMax = new Vector2(0.5f, 1f);
+            if (cashBrush != null)
+            {
+                cashBrush.anchorMin = cashBrush.anchorMax = new Vector2(0f, 1f);
+                cashBrush.pivot = new Vector2(0f, 0.5f);
+                cashBrush.anchoredPosition = new Vector2(28f, -yPos);
+            }
             yPos += 8f;
 
             // ── 正文说明 ──

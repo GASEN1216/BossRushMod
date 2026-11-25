@@ -375,7 +375,8 @@ namespace BossRush
             track.sprite = BossRushInkSkin.GetSurfaceSprite();
             track.type = Image.Type.Sliced;
             track.pixelsPerUnitMultiplier = 2f;
-            track.color = BossRushUIColors.Surface;
+            // 墨槽用淡金 Divider：Surface 深底压在卡片深底上看不见，只剩一截填充（2026-11-25）
+            track.color = BossRushUIColors.Divider;
             track.raycastTarget = false;
 
             GameObject fillObj = ZombieModeUIHelper.CreateRect("ProgressFill", progressTrack.transform,

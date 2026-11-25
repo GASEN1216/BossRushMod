@@ -783,6 +783,8 @@ namespace BossRush
             bossPoolContent.anchorMax = new Vector2(1f, 1f);
             bossPoolContent.pivot = new Vector2(0.5f, 1f);
             bossPoolContent.anchoredPosition = Vector2.zero;
+            // 宽度贴齐视口：AddComponent<RectTransform> 默认 sizeDelta 100×100，横向拉伸时每行左右各溢出 50 被裁
+            bossPoolContent.sizeDelta = Vector2.zero;
 
             VerticalLayoutGroup vlg = content.AddComponent<VerticalLayoutGroup>();
             vlg.spacing = 6f;

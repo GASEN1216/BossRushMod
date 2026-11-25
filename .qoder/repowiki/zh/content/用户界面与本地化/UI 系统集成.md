@@ -629,5 +629,13 @@ owner 看过出征令后要求「项目已有的 UI……都改成出征令这�
   - 选中 / 焦点描边一律 `WarningText`（UI 共识）：水墨主题下 `Accent` 与 `Stroke` 同为鎏金、只差透明度，约 1.35:1 分不出。
   - 主题皮肤（`ApplyInkPanel` / `StyleInkButton`）会改底色：页面自己的底色要在皮肤之后设，守卫复算对比度的才是屏幕上的颜色（邸报）。
   - 冒险家日志的游戏内插图从 `production_icons` 压缩包按原路径取（正式构建包在时不读散图）；新插图必须登记 `tools/production_icon_manifest.json` 并重打包，`WikiImageAssetGuard` 判据 5 守着。
+- **成就页截图复核后的补充约定（2026-11-25，CR-2026-11-25-022～038）**：
+  - 手搭 ScrollRect 的内容节点（`new GameObject` + `AddComponent<RectTransform>()`）默认 sizeDelta 是 100×100，横向拉伸时比视口宽 100、左右各溢出 50；锚点拉伸后必须显式设 `sizeDelta` 或 offset，`tests/RectTransformDefaultSizeGuard.py` 守着（成就、Boss 池、图鉴曾因此切掉图标和印章）。
+  - 进度条 / 滑条 / 滚动条的底槽在水墨深色面板上用淡金 `Divider`；`Surface`、`Disabled`、`Header` 压在深底上看不见，只剩一截填充像浮着的胶囊。填充保持实心胶囊，不用横笔贴图（右端收尖飞白，满格也像没满）。
+  - 4 像素以下的细条和指针填充用 `BossRushUI.GetSolidSprite()`：墨笔贴图无 mipmap，缩到两三像素高会断成虚线、换分辨率闪。
+  - 竖笔贴图做 Sliced 时倍率按宽度换算（`64 / 宽`，同 `CreateVerticalBrushStroke`）；固定倍率 2~3 在短竖笔上首尾九宫边比实际高度还高，整笔被压扁。
+  - `StampSeal` 的震动按落定位置写回：入场动画没走完（`BossRushUIEntranceAnimation.IsPlaying`）就不震；位置由别人每帧写的物体（Steam 式成就弹窗）不要传作震动目标。
+  - 写过 `PlayBrushWrite` 的金笔，轴心与 x 已改成左端：重建时位置取常量，不读旧笔的 `anchoredPosition`。
+  - 英文印章（SLAIN / DONE / RARE）字号是印宽×0.24，`CreateSeal` 已把边距归零、缩字下限压到不高于上限；新加的英文印不要再给 `CreateText` 默认边距。
 
 守卫 `tests/BossRushInkThemeGuard.py` 锁住全部接管点、动效时长与起始缩放（慢而沉、不回弹）、墨晕自毁、缓存清理链与色板同色，16 个内存反向检查；`tests/DailyReportPresentationGuard.py` 复算古宣邸报水墨对比度与结构契约。观感与动画节奏需在实机内由 owner 最终确认。

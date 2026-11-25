@@ -42,7 +42,7 @@ namespace BossRush
         private static readonly Color PanelBgColor = BossRushUIColors.Surface;
         private static readonly Color TitleColor = BossRushUIColors.TextPrimary;
         private static readonly Color StatsColor = BossRushUIColors.TextSecondary;
-        private static readonly Color ProgressBarBgColor = BossRushUIColors.Disabled;
+        private static readonly Color ProgressBarBgColor = BossRushUIColors.Divider;
         private static readonly Color ProgressBarFillColor = BossRushUIColors.Accent;
         private const float SideInset = 20f;
         // 字号只用三级（A-25）：标题 28 / 条目名字与奖励 18（AchievementEntryUI）/ 其余 15。
@@ -361,7 +361,9 @@ namespace BossRush
 
             Image progressBgImage = progressBgObj.AddComponent<Image>();
             BossRushUI.ApplyPanelSkin(progressBgImage, 4, BossRushUISkinPart.ScrollHandle);
+            // 底槽用淡金 Divider：旧的 Disabled 深底在水墨深色面板上看不见，只剩一截填充像浮着的金条（2026-11-25 实机）
             progressBgImage.color = ProgressBarBgColor;
+            progressBgImage.raycastTarget = false;
 
             // 进度条填充
             GameObject progressFillObj = new GameObject("ProgressBarFill");
@@ -375,8 +377,10 @@ namespace BossRush
             progressFillRect.offsetMax = Vector2.zero;
 
             progressBarFill = progressFillObj.AddComponent<Image>();
+            // 填充保持实心胶囊：横笔贴图拉满后右端是收尖的飞白，满格也像没满
             BossRushUI.ApplyPanelSkin(progressBarFill, 4, BossRushUISkinPart.ScrollHandle);
             progressBarFill.color = ProgressBarFillColor;
+            progressBarFill.raycastTarget = false;
 
             GameObject divider = ZombieModeUIHelper.CreateSeparator(
                 "StatsDivider",
@@ -416,6 +420,9 @@ namespace BossRush
             contentContainer.anchorMax = new Vector2(1f, 1f);
             contentContainer.pivot = new Vector2(0.5f, 1f);
             contentContainer.anchoredPosition = Vector2.zero;
+            // 宽度贴齐视口：AddComponent<RectTransform> 默认 sizeDelta 是 100×100，横向拉伸时会比视口宽 100、
+            // 左右各溢出 50（图标被裁半、右侧印章与「√ 已领取」被切，2026-11-25 实机）。高度交给 ContentSizeFitter。
+            contentContainer.sizeDelta = Vector2.zero;
 
             VerticalLayoutGroup vlg = contentObj.AddComponent<VerticalLayoutGroup>();
             vlg.spacing = 8f;

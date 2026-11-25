@@ -49,7 +49,8 @@ namespace BossRush
                 hud.trailImage = Art(track.transform, "NeedleTrail", ReloadMetronomeAssets.Trail, 22f, 12f);
                 hud.trailRect = hud.trailImage.rectTransform;
                 hud.trailImage.color = new Color(1f, 0.84f, 0.57f, 0.38f);
-                hud.marker = Bar(track.transform, "Needle", 2f, 11f, BossRushUIColors.TextPrimary).rectTransform;
+                // 指针 2px 宽用实心条：竖笔贴图压到这么细会闪、看不清对准了没有（2026-11-25 复核）
+                hud.marker = SolidBar(track.transform, "Needle", 2f, 11f, BossRushUIColors.TextPrimary).rectTransform;
                 Image cap = Bar(hud.marker, "NeedleCap", 4f, 2f, BossRushUIColors.TextPrimary);
                 cap.rectTransform.anchoredPosition = new Vector2(0f, 6f);
                 hud.glint = Art(track.transform, "BeatGlint", ReloadMetronomeAssets.Glint, 30f, 22f);

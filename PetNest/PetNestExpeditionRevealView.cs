@@ -354,6 +354,9 @@ namespace BossRush
                         RetintInkSummaryBorder(shell.Paper, "Border", new Color(0.76f, 0.62f, 0.34f, 0.55f));
                         RetintInkSummaryBorder(shell.Paper, "BorderInner", new Color(0.76f, 0.62f, 0.34f, 0.22f));
                         RetintInkSummaryBorder(shell.Paper, "Fiber", new Color(0.85f, 0.72f, 0.45f, 0.06f));
+                        // 纸面改深色后，深木色的轴既贴不上亮纸边、也压不出墨底，只剩两头铜帽浮着：轴身换古铜（2026-11-25 复核）
+                        RetintSummaryRod(shell.TopRod);
+                        RetintSummaryRod(shell.BottomRod);
                         _summaryText.rectTransform.SetParent(shell.Writ, false);
                         _summaryText.rectTransform.anchorMin = _summaryText.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
                         _summaryText.rectTransform.anchoredPosition = new Vector2(0f, -6f);
@@ -375,6 +378,16 @@ namespace BossRush
                 _summaryText.gameObject.SetActive(true);
             }
             Finish();
+        }
+
+        /// <summary>深色纸面上的卷轴轴身：深木与古铜帽之间取一档，压在 Surface 墨底上约 2:1 可辨。</summary>
+        private static readonly Color SummaryRodColor = Color.Lerp(
+            BossRushInkParchmentColors.RodWood, BossRushInkParchmentColors.RodCap, 0.55f);
+
+        private static void RetintSummaryRod(RectTransform rod)
+        {
+            Image wood = rod != null ? rod.GetComponent<Image>() : null;
+            if (wood != null) wood.color = SummaryRodColor;
         }
 
         private static void RetintInkSummaryBorder(RectTransform paper, string childName, Color color)
@@ -594,12 +607,19 @@ namespace BossRush
             }
 
             float textWidth = CardSize.x - textLeft - 20f;
+            // 名字行右侧让出结果印（印章占卡片右上约 56 见方、斜 9°，左缘离右边约 66）：长名字缩字不压印（2026-11-25 复核）
+            float nameWidth = textWidth - 60f;
             TextMeshProUGUI name = ZombieModeUIHelper.CreateText(
                 "FrontName", _frontFace.transform, BuildCardTitle(record), 24f,
                 new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
-                new Vector2(textLeft + textWidth * 0.5f, 28f), new Vector2(textWidth, 40f),
+                new Vector2(textLeft + nameWidth * 0.5f, 28f), new Vector2(nameWidth, 40f),
                 TextAlignmentOptions.Left, BossRushUIColors.TextPrimary);
             name.fontStyle = FontStyles.Bold;
+            name.enableWordWrapping = false;
+            name.enableAutoSizing = true;
+            name.fontSizeMin = 16f;
+            name.fontSizeMax = 24f;
+            name.overflowMode = TextOverflowModes.Ellipsis;
             BossRushUI.ApplyGameFont(name);
 
             TextMeshProUGUI result = ZombieModeUIHelper.CreateText(

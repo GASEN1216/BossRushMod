@@ -46,8 +46,10 @@ namespace BossRush
         #region 版式与动效
 
         private static readonly Vector2 SurfaceSize = new Vector2(760f, 640f);
-        private const float CardSize = 240f;
-        private const float CardCenterY = 165f;
+        // 卡片 224 见方、中心 y=152：卡顶 264（墨笔边外扩到约 268），标题金笔（约 274–282）在卡顶之上、不被后建的卡片盖住；
+        // 卡底 40 仍在「滚动名」文本框顶边 39 之上（2026-11-25 复核：旧值 240 / 165 卡顶 285，金笔整条压在卡片底下）。
+        private const float CardSize = 224f;
+        private const float CardCenterY = 152f;
         private const float DetailWidth = 520f;
         private const float DetailTop = -58f;
         private const float DetailMaxHeight = 186f;
@@ -227,7 +229,7 @@ namespace BossRush
                 surface.transform,
                 "HatchHeader",
                 L10n.T("遗种破壳", "Hatching"),
-                // 卡片顶边在 CardCenterY + CardSize/2 = 285 且后建在上层：标题中心放到 294，字底金笔（约 275–283）落在卡顶之上。
+                // 卡片后建在上层：标题中心放到 294，字底金笔（约 274–282）必须高于卡顶 CardCenterY + CardSize/2 = 264（见常量注释）。
                 new Vector2(0f, SurfaceSize.y * 0.5f - 26f),
                 new Vector2(SurfaceSize.x - 120f, 44f),
                 28f,

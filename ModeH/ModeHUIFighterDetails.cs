@@ -117,7 +117,8 @@ namespace BossRush
                 GameObject fill = ZombieModeUIHelper.CreateRect("Fill", track.transform,
                     Vector2.zero, new Vector2(fraction, 1f), Vector2.zero, Vector2.zero, new Vector2(0f, 0.5f));
                 Image fillImage = fill.AddComponent<Image>();
-                fillImage.sprite = BossRushInkSkin.GetBrushSprite();
+                // 3px 细条用实心填充：横笔贴图压到 2–4px 高只采到一两行纹素，落在飞白缝里会断成虚线（2026-11-25 复核）
+                fillImage.sprite = BossRushUI.GetSolidSprite();
                 fillImage.type = Image.Type.Simple;
                 fillImage.color = fillColor;
                 fillImage.raycastTarget = false;

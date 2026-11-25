@@ -431,13 +431,38 @@ namespace BossRush
         {
             float indent = 8f;
             Rect icon = DailyReportLayoutTable.GetIcon(iconId);
-            if (CreateArt("Icon_" + iconId, DailyReportBackground.LoadIcon(iconId), icon, panelRect) != null)
+            Image art = CreateArt("Icon_" + iconId, DailyReportBackground.LoadIcon(iconId), icon, panelRect);
+            if (art != null)
             {
                 indent = icon.xMax + DailyReportLayoutTable.IconTextGap - box.x;
+                if (IsDarkLineIcon(iconId)) AddIconPaperBacking(art);
             }
             Rect inset = new Rect(box.x + indent, box.y, box.width - indent - 8f, box.height);
             return CreateText(name, inset, topFraction, bottomFraction, fontSize,
                 TextAlignmentOptions.Left, color, wrap, scrollBody);
+        }
+
+        // 2026-11-25 复核：issue / deadline / tip 三张图是给浅色纸面画的深色线稿（实测深色像素 63%~88%），
+        // 摆在水墨暗纸上几乎看不见。图本身不改，在它身后垫一片浅宣纸墨晕，其余浅色图标不垫。
+        private static readonly Color IconPaperBacking = new Color(0.80f, 0.75f, 0.65f, 0.86f);
+
+        private static bool IsDarkLineIcon(string iconId)
+        {
+            return iconId == "issue" || iconId == "deadline" || iconId == "tip";
+        }
+
+        private static void AddIconPaperBacking(Image art)
+        {
+            RectTransform artRect = art.rectTransform;
+            GameObject backing = ZombieModeUIHelper.CreateRect(art.name + "_Paper", artRect.parent,
+                new Vector2(0.5f, 0.5f), artRect.sizeDelta * 1.45f);
+            RectTransform backingRect = backing.GetComponent<RectTransform>();
+            backingRect.anchoredPosition = artRect.anchoredPosition;
+            backingRect.SetSiblingIndex(artRect.GetSiblingIndex());
+            Image image = backing.AddComponent<Image>();
+            image.sprite = BossRushInkSkin.GetBlotSprite();
+            image.color = IconPaperBacking;
+            image.raycastTarget = false;
         }
 
         /// <summary>标题水墨横笔底衬 + 标题头图标 + 象牙宣纸字。</summary>

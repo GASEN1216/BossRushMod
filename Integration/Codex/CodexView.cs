@@ -590,7 +590,8 @@ namespace BossRush
             _progressTrack = track.GetComponent<RectTransform>();
 
             Image trackImage = track.AddComponent<Image>();
-            trackImage.color = BossRushUIColors.Disabled;
+            // 底槽用淡金 Divider：旧的 Disabled 深底在水墨深色面板上看不见，只剩一截浮着的金条（2026-11-25）
+            trackImage.color = BossRushUIColors.Divider;
             BossRushUI.ApplyPanelSkin(trackImage, 4, BossRushUISkinPart.ScrollHandle);
             trackImage.raycastTarget = false;
 
@@ -653,6 +654,8 @@ namespace BossRush
             _contentContainer.anchorMax = new Vector2(1f, 1f);
             _contentContainer.pivot = new Vector2(0.5f, 1f);
             _contentContainer.anchoredPosition = Vector2.zero;
+            // 宽度贴齐视口：AddComponent<RectTransform> 默认 sizeDelta 100×100，横向拉伸时比视口宽 100
+            _contentContainer.sizeDelta = Vector2.zero;
             _scrollRect.content = _contentContainer;
 
             RectTransform scrollRectTransform = scrollViewObj.GetComponent<RectTransform>();
@@ -808,7 +811,9 @@ namespace BossRush
             // 已达成的刻度点亮成 SuccessText（压在 Accent 填充上也分得清），未达成用 Stroke
             tickImage.sprite = BossRushInkSkin.GetVerticalBrushSprite();
             tickImage.type = Image.Type.Sliced;
-            tickImage.pixelsPerUnitMultiplier = 3f;
+            // 2026-11-25 复核：竖笔精灵上下九宫边共 168 px，倍率 3 时边高 56 超过刻度高，首尾被整体压扁；
+            // 与 BossRushInkSkin.CreateVerticalBrushStroke 同口径按宽度换算倍率。
+            tickImage.pixelsPerUnitMultiplier = 64f / 4f;
             tickImage.color = unlocked >= threshold
                 ? BossRushUIColors.SuccessText
                 : BossRushUIColors.Stroke;

@@ -292,7 +292,8 @@ namespace BossRush
             GameObject track = ZombieModeUIHelper.CreateRect("SeriesTrack", content.transform, new Vector2(0f, 1f), new Vector2(1f, 1f),
                 new Vector2(0f, -34f), new Vector2(0f, 6f), new Vector2(0.5f, 1f));
             Image trackImage = track.AddComponent<Image>();
-            trackImage.color = BossRushUIColors.Disabled;
+            // 底槽用淡金 Divider：旧的 Disabled 深底在水墨深色面板上看不见（2026-11-25）
+            trackImage.color = BossRushUIColors.Divider;
             BossRushUI.ApplyPanelSkin(trackImage, 4, BossRushUISkinPart.ScrollHandle);
             trackImage.raycastTarget = false;
             GameObject fill = ZombieModeUIHelper.CreateRect("SeriesFill", track.transform, Vector2.zero, new Vector2(0f, 1f), Vector2.zero, Vector2.zero, new Vector2(0f, 0.5f));

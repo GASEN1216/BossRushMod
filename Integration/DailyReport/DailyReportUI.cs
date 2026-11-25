@@ -80,6 +80,8 @@ namespace BossRush
         private const int HostSortingOrder = BossRushUILayers.Panel;
         /// <summary>今日可签格呼吸的半周期（秒）。</summary>
         private const float TodayPulseHalfPeriod = 0.6f;
+        private const string SignedSealName = "SignedCellSeal";
+        private const float SignedSealSize = 24f;
 
         #endregion
 
@@ -341,6 +343,12 @@ namespace BossRush
                 if (cell == null) continue;
 
                 bool signed = slot <= data.PeriodSignedCount;
+                if (!signed)
+                {
+                    // 面板开着跨期：签到格回到空格时，上一期落下的「阅」印一起收走。
+                    Transform staleSeal = cell.rectTransform.Find(SignedSealName);
+                    if (staleSeal != null) Destroy(staleSeal.gameObject);
+                }
                 int quality = DailyReportService.GetMilestoneQuality(data.PeriodIndex, slot);
                 bool isMilestone = quality > 0;
                 bool isToday = !signedToday && slot == data.PeriodSignedCount + 1;
@@ -464,16 +472,18 @@ namespace BossRush
             int index = data.PeriodSignedCount - 1;
             if (index < 0 || index >= signInCells.Count || signInCells[index] == null) return;
             RectTransform cellRect = signInCells[index].rectTransform;
-            Transform oldSeal = cellRect.Find("SignedCellSeal");
+            Transform oldSeal = cellRect.Find(SignedSealName);
             if (oldSeal != null) Destroy(oldSeal.gameObject);
+            // 2026-11-25 复核：旧印 30 px、中心落在格内 (-12,-12)，左半压住 18 号粗体天号的右侧。
+            // 改为 24 px 斜钤在右上角、略出格（出格 4 px 落在 10 px 格缝里），天号整块露出。
             RectTransform seal = BossRushInkWidgets.CreateSealBadge(
-                cellRect, L10n.T("阅", "OK"), 30f, BossRushInkColors.Cinnabar,
+                cellRect, L10n.T("阅", "OK"), SignedSealSize, BossRushInkColors.Cinnabar,
                 Vector2.zero, -10f, true, paperFrame, 0.02f);
             if (seal != null)
             {
-                seal.name = "SignedCellSeal";
+                seal.name = SignedSealName;
                 seal.anchorMin = seal.anchorMax = new Vector2(1f, 1f);
-                seal.anchoredPosition = new Vector2(-12f, -12f);
+                seal.anchoredPosition = new Vector2(-8f, -8f);
             }
             // 落印声由 StampSeal 放，墨环不再带一声。
             BossRushInkWidgets.PlayActionRipple(cellRect, Vector2.zero, 90f, BossRushInkColors.Gold, null);

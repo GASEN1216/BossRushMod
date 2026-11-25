@@ -155,12 +155,18 @@ namespace BossRush
             return button;
         }
 
+        private static readonly Color RowStrokeColor = new Color(
+            BossRushUIColors.Stroke.r, BossRushUIColors.Stroke.g, BossRushUIColors.Stroke.b, 0.3f);
+
         /// <summary>列表行底：Card 档圆角 + SurfaceRaised。开关行与因子行共用（UB-26）。</summary>
         private static Image AddBossPoolRowBackground(GameObject row)
         {
             Image background = row.AddComponent<Image>();
             background.color = BossRushUIColors.SurfaceRaised;
             BossRushUI.ApplyPanelSkin(background, 8, BossRushUISkinPart.Card);
+            // 2026-11-25 复核：SurfaceRaised 压在 Surface 面板上只差约 1.1:1，几十行连成一片分不出边界。
+            // 补一道卡片档细边，透明度压到 0.3，行与行分得开又不至于满屏金格；描边子物体 ignoreLayout，不进行内 HLG。
+            BossRushUI.ApplyPanelStroke(background, 8, BossRushUISkinPart.Card, RowStrokeColor);
             return background;
         }
 

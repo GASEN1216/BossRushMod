@@ -215,7 +215,8 @@ namespace BossRush
             _barFill.offsetMin = Vector2.zero;
             _barFill.offsetMax = Vector2.zero;
             _barFillImage = fill.AddComponent<Image>();
-            _barFillImage.sprite = BossRushInkSkin.GetBrushSprite();
+            // 4px 细条用实心填充：横笔贴图压到这么细会断成虚线，满格右端还收尖像没满（2026-11-25 复核）
+            _barFillImage.sprite = BossRushUI.GetSolidSprite();
             _barFillImage.type = Image.Type.Simple;
             _barFillImage.color = BossRushUIColors.WarningText;
             _barFillImage.raycastTarget = false;

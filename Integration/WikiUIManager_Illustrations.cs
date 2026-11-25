@@ -628,16 +628,18 @@ namespace BossRush
                 Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
             lightboxRoot = root;
 
-            Button backdropBtn = ZombieModeUIHelper.CreateButton("Backdrop", root.transform, string.Empty,
-                Vector2.zero, Vector2.zero, Vector2.zero, LightboxBackdropColor, 14f, new Vector2(1920f, 1080f),
-                () => CloseLightbox(), false);
-            RectTransform backRect = backdropBtn.GetComponent<RectTransform>();
-            backRect.anchorMin = Vector2.zero;
-            backRect.anchorMax = Vector2.one;
-            backRect.offsetMin = Vector2.zero;
-            backRect.offsetMax = Vector2.zero;
+            // 遮罩是一张纯色铺满的图 + 无过渡按钮：旧版走 CreateButton(..., interactable: false)，onClick 根本没挂上
+            // （点暗处关不掉），还被套了按钮的墨笔边与崩边——整屏四边多一圈金线（2026-11-25 复核）。
+            GameObject backdropObj = ZombieModeUIHelper.CreateRect("Backdrop", root.transform,
+                Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+            Image backdropImg = backdropObj.AddComponent<Image>();
+            backdropImg.color = LightboxBackdropColor;
+            backdropImg.raycastTarget = true;
+            Button backdropBtn = backdropObj.AddComponent<Button>();
+            backdropBtn.transition = Selectable.Transition.None;
+            backdropBtn.targetGraphic = backdropImg;
+            backdropBtn.onClick.AddListener(() => CloseLightbox());
             DisableUnityNavigation(backdropBtn);
-            ZombieModeUIHelper.SetButtonBaseColor(backdropBtn, LightboxBackdropColor);
 
             GameObject panelObj = ZombieModeUIHelper.CreateRect("LightboxPanel", root.transform,
                 new Vector2(0.5f, 0.5f), new Vector2(980f, 740f));

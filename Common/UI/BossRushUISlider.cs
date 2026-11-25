@@ -22,7 +22,8 @@ namespace BossRush
                 new Vector2(0f, 0.5f), new Vector2(1f, 0.5f),
                 Vector2.zero, new Vector2(0f, 8f), new Vector2(0.5f, 0.5f));
             Image trackImage = track.AddComponent<Image>();
-            trackImage.color = BossRushUIColors.Surface;
+            // 未填充段用淡金 Divider：Surface 深底压在水墨深色面板上看不见，玩家看不出滑条全长（2026-11-25）
+            trackImage.color = BossRushUIColors.Divider;
             BossRushUI.ApplyPanelSkin(trackImage, 4, BossRushUISkinPart.ScrollHandle);
             GameObject fillArea = ZombieModeUIHelper.CreateRect("FillArea", sliderObject.transform,
                 new Vector2(0f, 0.5f), new Vector2(1f, 0.5f),

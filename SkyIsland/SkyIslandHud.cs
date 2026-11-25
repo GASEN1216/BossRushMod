@@ -372,7 +372,10 @@ namespace BossRush
             BossRushUI.ApplyPanelSkin(barImage, 2, BossRushUISkinPart.Hairline);
             if (BossRushInkTheme.Active)
             {
-                bar.GetComponent<RectTransform>().sizeDelta = new Vector2(5f, -16f);
+                RectTransform barRect = bar.GetComponent<RectTransform>();
+                barRect.sizeDelta = new Vector2(5f, -16f);
+                // 与共享 CreateCard 的水墨竖条同位（x 9..14）：贴在 3..8 会压到卡片墨笔边与蚀边上；文字列左缘在 18.5
+                barRect.anchoredPosition = new Vector2(11.5f, 0f);
                 barImage.sprite = BossRushInkSkin.GetVerticalBrushSprite();
                 barImage.type = Image.Type.Sliced;
                 barImage.pixelsPerUnitMultiplier = 2f;

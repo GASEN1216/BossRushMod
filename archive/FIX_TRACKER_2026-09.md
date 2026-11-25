@@ -8658,3 +8658,52 @@ owner 决定继续用洛克王国原曲，只改显示名：`BgmTracks.json` 点
 - 第一次导出绕序全反（叉积与法线一致 0/1400）：世界那条链是 FBX 导入器替它翻的，自己写 Unity 网格要反转每个三角形；脚本已加自检（< 95% 一致即失败）。
 - 运行时：`SkyIslandLootCrateLook` 按名字取场景材质（`Sky_TripoCrateBarrel` / `Sky_TripoCoverCrates` / `Sky_TripoCrystalCluster`，已用 UnityPy 核对场景包里都有），只藏官方包渲染器（不碰交互气泡），三个候选朝向里挑不压墙的，不加实体碰撞，搜空不消失；缺网格或材质保留官方包。只作用于搜刮点，Boss 奖励箱与委托谢礼箱不变。
 - 验证：新守卫 `SkyIslandLootCrateLookGuard`（6 条反向探针）、`SkyIslandFxBundleGuard` 扩到三件网格（+2 条反向探针）；changed-only 守卫除缺 shapely 外全绿；`verify_sky_island_bundle_shaders.py` PASS；正式编译部署，`BossRush.dll` `B2CDF181…`、`skyisland_fx` `1699BADD…` 作者产物 / 仓库 / 游戏目录三份一致。未实机：箱子在 URP Deferred 下的明暗、贴图是否对位、朝向是否压墙要看。
+
+## 2026-09-26 模块解耦 P0–P6 离线完成（SAFE / COMPAT / OPERATIONAL，L3 待验收）
+
+检查点 `3323e33e`、`adef32ef`、`403a09a4`、P3/P4 至 `cae48e91`、P5 `6409a0f4`，本节所在提交完成 P6。宿主 202 文件 / 103,052 行降至 58 / 20,114；47 模块覆盖 1,091 编译源；自动导入 38,854 → 17,783 B。完整成员样本中四类源码读量上升，未宣称普遍降本；逐文件后测见 `architecture/CONTEXT_BASELINE.md`。
+
+修复 `CR-2026-09-26-001`：票 ID 字段迁属性后地图 GetField 失效，改读注册 owner；生产注册/费用回归先红后绿。最终 697 全量守卫 PASS（0 新红/基线红）、95 全量回归 PASS（0 FAIL），Windows 正式/Dev 构建、14 Dev 标识、72 bundle 哈希通过；P5 42 + 29 项结构变异命中原断言并按字节/SHA 恢复。历史与最终证据路径、全部检查点、两种构建 SHA 见 `architecture/MIGRATION_STATUS.md`。
+
+最终正式部署到真实游戏目录，源/目标 SHA-256 一致：`47F26AD82B1E67BFE1ECB0C728A8E97B40EBA80745790694B54AA7AD184A88B3`，Dev 标识 absent。未启动游戏或读写玩家存档；实机清单 `architecture/MIGRATION_ACCEPTANCE.md` 全部 MANUAL_PENDING，含 G 第二局、跨模式/异常退出、自然撤离、共享 UI、装备/建筑和 F3 看图项。没有 L3 或性能采样结论。
+
+## 2026-09-22 人工实测复核后的 12 项修复与正式交付
+
+分类：COMPAT / OPERATIONAL；注释/守卫文档 SAFE。承接 owner“请你全部以最佳代码形式进行修复”，完整说明见 [20260922 人工实测复核修复记录](docs/reports/testing/20260922人工实测复核修复记录.md)。
+
+| ID | 本轮状态 / 证据 |
+| --- | --- |
+| CR-2026-09-22-011 | Fixed / L1+L2；冰原掠夺者图鉴收录；L3 待 owner |
+| CR-2026-09-22-012 | Fixed / L1+L2；Mode H 入场与续赛时序；L3 待 owner |
+| CR-2026-09-22-013 | Fixed / L1+L2；派遣/放生后实体与光环回收；L3 待 owner |
+| CR-2026-09-22-014 | Fixed / L1+L2；当前 D 盘正式部署缺口；部署 72 包/531 文件已核验 |
+| CR-2026-09-22-015 | Fixed / L1+L2；套装旧协程清 pending 导致双发；L3 待 owner |
+| CR-2026-09-20-016 | Fixed / L1+L2；日报生产包仍烤旧动态控件；L3 待 owner |
+| CR-2026-09-20-017 | Fixed / L1+L2；日报正文两倍宽裁字；L3 待 owner |
+| CR-2026-09-20-019 | Fixed / L1+L2；旧在途彩宠死亡翻牌丢色；L3 待 owner |
+| CR-2026-09-21-034 | Fixed / L1+L2；FallbackItem 错误消耗奖励游标；L3 待 owner |
+| CR-2026-09-22-016 | Fixed / L1+L2；锁定宠仍进入必拒绝的派遣菜单；L3 待 owner |
+| CR-2026-09-22-017 | Fixed / L1+L2；远征翻牌暂停期间自动推进；L3 待 owner |
+| CR-2026-09-21-038 | Fixed / L1+L2；云蚋守卫断言旧复制语句；守卫闭环 |
+
+套装按代数释放 pending 并在结算再验冷却；图鉴以官方名单补足非 isBoss 身份；H 等 AfterInit 和目标子场景稳定、普通传送两处排除 H，退出/续赛使旧等待失效；遗种巢成功提交后同步实体、移除前补旧颜色、发奖前检查 prefab，派遣页与服务同判据，翻牌遵守暂停。日报修正 stretch 宽度，原图同步作者后重打 production_icons，并把实际 Sprite 像素纳入发布验证；云蚋守卫同步整树音效复制语义。
+
+最终验证：649 guards / 52 regressions 全绿，960 源 Windows 正式编译成功；DLL `40CCD683E27FD9F8524C3FF7E46A49B2F6893AE7F3CF3B6D553AD320363F3CD3`，14 个 Dev 标识缺席。正式目标 `D:\sofrware\steam\steamapps\common\Escape from Duckov\Duckov_Data\Mods\BossRush` 共 531 个文件与源一致，72 包三端 SHA 一致且部署包实际读取通过。35 个日报动态区域留白，其余图标纹理/别名/几何保持；霜冠根/子节点姿态已回读。各反向验证预期转红后按字节恢复。日志和回退备份见 `Build/manual-fix-20260922/`；天空岛部署记录已同步。
+
+未运行游戏或访问玩家存档，L3 待 owner 按报告 R01–R17 清单验收。第三分类/立绘方式、全玩法跨模式边界、任意 RGB 和画面满意度仍保留产品口径差距，未把 12 项修复写成 17 项全部验收。未提交、推送或发布创意工坊。
+
+## 2026-09-29 天空岛发布前生产级审查与修复（COMPAT / SAFE / OPERATIONAL）
+
+- 三切片只读审查（会话 / 存档 / 剧情；战斗 / Boss / 云蚋；UI / 世界 / 采集），主会话逐条对码后修 CR-2026-09-29-101～117（112 按 owner 拍板「首杀只认主角击杀」，口径同官方击杀计数）；C-03 refuted。未发现 P0 / P1。
+- 玩法数值只动一处：断风冲步停步距离 2.5 → 1.2 m（105，理由见 findings）；截信人伸手圈半径改为结算判定 2.9 m（106）；剧情挑战在 12 名上限外预留 3 名（108）。其余为健壮性、生命周期、文案与文档。
+- 新增源文件 `SkyIsland/SkyIslandSessionTick.cs`（已登记编译清单）；没有改 TypeID、存档 schema、本地化 key、官方任务。
+- 守卫同步：`SkyIslandFrameProfileGuard`（分段标记改按 `TickSubsystems` 核，新增 Update 必须调用它的反向探针）、`SkyIslandChatterGuard` / `ContentExpansionGuard` / `HudGuard` / `PlayabilityGuard` / `ResidentsGuard` 改读整个会话类；4 次反向验证按字节还原。
+- L2：全量守卫 717/717；`run_runtime_regressions --filter SkyIsland` 14/14（`SkyIslandHudPolicy` 42002 条断言含新增警示过期 3 条，`SkyIslandStory` 含冲步新断言）。
+- Windows 正式编译 0 错误（天空岛 CS0649 消失），`Build/BossRush.dll` 与游戏目录 SHA-256 一致 `EDBE0CF5609C961253A31EC984CD8F67B12C550D165BF3E8F3A47FB10D49BDD6`，Dev 独有串缺席。注意：该构建含另一会话同时在改、未提交的 ModeH 工作区改动。
+- 未做 / 待 owner：部署前 Dev 构建拦截（构建流水线改造）；头目自动组被远处未清敌群占满名额时整组不刷（需在性能预算与内容密度间取舍）。
+- L3 未做：没有启动游戏、读写存档。实机清单见 `docs/guides/sky-island/天空岛_待人工验证清单.md`「2026-09-29 发布前审查新增」。
+- 回退：各项彼此独立；105 / 106 / 108 是数值常量，单独回退即可。
+
+## 2026-09-30 天空岛摆放与阴影修复（COMPAT / SCHEMA+ / OPERATIONAL）
+
+道路改按登记模型真实包络绕行，连接全部桥口与建筑前缘；房前家具按实际朝向和道路摆放，修正长椅背板偏移，去除已替换地标的旧重复结构。修正级联阴影插值、反绕序共面贴图争抢和投影 bias，保留正常阴影与孤立双面薄片。完整证据与 POS-SHADOW-01～05 人工验收见 [本轮报告](docs/reports/sky-island/2026-09-30-天空岛摆放与阴影修复.md)；最终构建与部署结果在报告收口，不沿用上轮 L3 结果。

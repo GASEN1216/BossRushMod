@@ -611,8 +611,12 @@ namespace BossRush
                 Vector2.zero, new Vector2(size * 0.86f, size * 0.86f), TextAlignmentOptions.Center, BossRushInkColors.Paper);
             label.fontStyle = FontStyles.Bold;
             label.enableWordWrapping = false;
+            // 2026-11-25 复核：CreateText 默认左右各留 4 px 边距，36~40 px 的英文印（SLAIN / DONE / RARE）
+            // 只剩二十来像素可排，又因下限 9 大于上限 size×0.24 缩不下去，被省略号截成「SL…」。
+            // 印面本身就是边框，边距归零；下限不超过上限，英文允许缩到 7。
+            label.margin = Vector4.zero;
             label.enableAutoSizing = true;
-            label.fontSizeMin = Mathf.Max(9f, glyph * 0.55f);
+            label.fontSizeMin = Mathf.Min(glyph, Mathf.Max(BossRushInkWidgets.IsMostlyLatin(text) ? 7f : 9f, glyph * 0.55f));
             label.fontSizeMax = glyph;
             label.lineSpacing = -18f;
             label.characterSpacing = text.Length == 2 ? -4f : 0f;
@@ -741,7 +745,9 @@ namespace BossRush
                 Image sealImage = seal.GetComponent<Image>();
                 Color ringColor = sealImage != null && sealImage.color.a > 0.05f ? sealImage.color : BossRushInkColors.Cinnabar;
                 SpawnRing(seal.parent, CenterInParent(seal), seal.sizeDelta.x * 1.1f, ringColor, 0.42f, 1.7f, 0.42f);
-                if (shake != null)
+                // 震动按「落定时的位置」写回：入场动画还在推进时取到的是半路的位置，写回去卡片就永久沉在那里
+                // （Mode G 契约卡开场即点，2026-11-25 复核），所以入场没走完就不震。
+                if (shake != null && !BossRushUIEntranceAnimation.IsPlaying(shake.gameObject))
                 {
                     Vector2 origin = shake.anchoredPosition;
                     BossRushInkMotion.For(shake.gameObject).Add(0f, 0.16f, false, s =>

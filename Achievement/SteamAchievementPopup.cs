@@ -284,7 +284,8 @@ namespace BossRush
                 Vector2.zero,
                 -9f,
                 true,
-                popup.panelRect,
+                // 不震弹窗：UpdateAllPopups 每帧按滑入 / 堆叠写 panelRect 位置，落印震动写回的旧原点会让弹窗跳一帧（2026-11-25 复核）
+                null,
                 0.12f,
                 isRare ? (Color?)BossRushInkColors.InkWash : null);
             if (badge != null)
