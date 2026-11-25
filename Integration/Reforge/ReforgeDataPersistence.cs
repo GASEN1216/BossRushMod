@@ -193,7 +193,7 @@ namespace BossRush
                         }
 
                         float prefabValue = GetPrefabModifierValue(prefab, mod.Key);
-                        SaveReforgeData(item, mod.Key, prefabValue, mod.Value);
+                        SyncTrackedReforgeValue(item, MODIFIER_PREFIX, mod.Key, prefabValue, mod.Value);
                     }
                 }
 
@@ -217,7 +217,7 @@ namespace BossRush
                         }
 
                         float prefabValue = GetPrefabStatValue(prefab, stat.Key);
-                        SaveReforgeDataStat(item, stat.Key, prefabValue, stat.BaseValue);
+                        SyncTrackedReforgeValue(item, STAT_PREFIX, stat.Key, prefabValue, stat.BaseValue);
                     }
                 }
 
@@ -251,7 +251,7 @@ namespace BossRush
                         }
 
                         float prefabValue = GetPrefabVariableValue(prefab, variable.Key);
-                        SaveReforgeDataVariable(item, variable.Key, prefabValue, currentValue);
+                        SyncTrackedReforgeValue(item, VARIABLE_PREFIX, variable.Key, prefabValue, currentValue);
                     }
                 }
             }
@@ -410,8 +410,9 @@ namespace BossRush
                     continue;
                 }
 
-                // 覆盖模式：最终值 = 预制体原值 + delta
+                // 覆盖模式：最终值 = 预制体原值 + delta，并夹进当前重铸上下限（旧存档超限值按新上限生效）
                 float newValue = prefabValue + delta;
+                if (prefab != null) newValue = ReforgeSystem.ClampToReforgeBounds(modifierKey, prefabValue, newValue);
                 float currentValue = mod.Value;
                 ReforgeSystem.ApplyModifierValueChangePublic(mod, newValue);
                 ModBehaviour.DevLog($"[ReforgeData] 恢复Modifier: {item.DisplayName}.{modifierKey} = prefab({prefabValue:F2}) + delta({delta:F2}) = {newValue:F2} (当前值:{currentValue:F2})");
@@ -449,8 +450,9 @@ namespace BossRush
             {
                 if (stat.Key == statKey)
                 {
-                    // 覆盖模式：最终值 = 预制体原值 + delta
+                    // 覆盖模式：最终值 = 预制体原值 + delta，并夹进当前重铸上下限（旧存档超限值按新上限生效）
                     float newValue = prefabValue + delta;
+                    if (prefab != null) newValue = ReforgeSystem.ClampToReforgeBounds(statKey, prefabValue, newValue);
                     float currentValue = stat.BaseValue;
                     ReforgeSystem.ApplyStatValueChangePublic(stat, newValue);
                     ModBehaviour.DevLog($"[ReforgeData] 恢复Stat: {item.DisplayName}.{statKey} = prefab({prefabValue:F2}) + delta({delta:F2}) = {newValue:F2} (当前值:{currentValue:F2})");
@@ -478,8 +480,9 @@ namespace BossRush
                 {
                     try
                     {
-                        // 覆盖模式：最终值 = 预制体原值 + delta
+                        // 覆盖模式：最终值 = 预制体原值 + delta，并夹进当前重铸上下限（旧存档超限值按新上限生效）
                         float newValue = prefabValue + delta;
+                        if (prefab != null) newValue = ReforgeSystem.ClampToReforgeBounds(varKey, prefabValue, newValue);
                         float currentValue = variable.GetFloat();
                         variable.SetFloat(newValue);
                         ModBehaviour.DevLog($"[ReforgeData] 恢复Variable: {item.DisplayName}.{varKey} = prefab({prefabValue:F2}) + delta({delta:F2}) = {newValue:F2} (当前值:{currentValue:F2})");

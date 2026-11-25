@@ -4,6 +4,21 @@
 
 **2026-11-20 · COMPAT · L1/L2**　玩家反馈退出重进后武器消失、仓库物品变问号。修复冷启动注册、分包手持模型绑定、部分失败重试和克隆/异步资源归属。角色和仓库合成档往返、重复 TypeID 与真实包来源已纳入自动回归。故障证据与玩家侧验证边界见 [CR-2026-11-20-001 至 003](CODE_REVIEW_FINDINGS.md)。随 v2.6.1 发版：`info.ini` 升 2.6.1，WikiContent 新增中英 `changelog__v2_6_1` 并补总览，工坊简介同步；L3 待玩家侧确认。
 
+## 2026-11-25 叮当重铸强度下调（COMPAT；旧装备读档压到新上限经 owner 同意；L2 + 正式真编译；L3 待验）
+
+- 起因：玩家反馈重铸太离谱。旧实现每次在当前值上累加，结果只夹在预制体值 30%~200%；倾向拉到 90% 只多收价值的一半，离线模拟 5 万价值、5 条属性的装备中位 8 次（约 20 万）全属性 ≥1.9 倍。
+- 改动（`ReforgeSystem.cs`）：
+  - 每次以预制体原值为基准重抽，不再累加；单次幅度上限与最终上下限统一为预制体值 ±50%（`MAX_VALUE_OFFSET_PERCENT` 1.0 → 0.5）。下限因此从 30% 变为 50%。
+  - 预制体为 0 的属性 ±0.5 → ±0.25；护甲 ±1 不变。去掉「|值|≤1 用 0~1 绝对幅度」分支，小数值属性同样按 ±50%。
+  - 整数判定改为 |值| ≥ 2 且为整数；整数属性的上下限取到整数，Max/Min 标记与实际可抽值一致。1.0 倍率不再被取整成 0/2。
+  - 新增 `ClampToReforgeBounds`。倾向滑块、费用、投入曲线、冷淬液 / 回火液均不变。
+- 旧装备（owner 同意「读档恢复时压到新上限」）：`TryRestoreModifier/Stat/Variable` 把预制体值 + RF_ 差值夹进新上下限后生效；存档里的差值不改写。寄存 / 快递前的 `SyncCurrentReforgeState` 改走 `SyncTrackedReforgeValue`（在 `ReforgeDataPersistenceCleanup.cs`）：旧差值夹取后等于当前值时不写回，回退旧版本仍读回原值；玩家重新重铸的属性照常写新差值。
+- 守卫：`EntryAndReforgeCompatibilityGuard` 新增重抽基准、三处读档夹取、存档同步不改写旧差值；3 处破坏均转红，在 scratchpad 副本里做，生产文件未动。
+- 回归：`EntryAndReforgeCompatibility` 新增 8 组边界、3 条旧值夹取、12 组（三类属性 × 4 种预制体值）连续 30 次重铸不累加；scratchpad 副本里改回累加、改回 ±100%、改回 ±0.5、去掉夹取 4 处均转红。`DragonBreathZombieRuntime` 用例的 RF 差值从 +15 改为 +10（旧值 38 超出预制体 23 的新上限 34），桩补 `ClampToReforgeBounds`；其负向探针全部按预期转红。`NpcAuditFixes`、`ReforgeAssetTransactions`、`AffixSelectionUI`、`AffixCombat`、`DynamicItemInitialization`、`ManualEquipmentRecovery`、`ZombieModeRewardRuntime` 通过。
+- 编译与守卫：正式构建通过并部署，游戏目录 `BossRush.dll` 的 SHA-256 与 `Build/` 一致（`2c7f4c91…`）。全量守卫 790 条里唯一新红是 `LargeFileBudgetGuard`（`ReforgeDataPersistence.cs` 1207 > 1200），已把新增的 `SyncTrackedReforgeValue` 放进同一 partial 的 `ReforgeDataPersistenceCleanup.cs`，回到 1185 行。
+- 文档：Wiki 中英「重铸系统 · 属性变化范围」、repowiki「重铸系统」已更新。中英更新日志随下一次发版写（当前 `info.ini` 仍为 2.6.2）。
+- 实机清单见 `CODE_REVIEW_FINDINGS.md` CR-2026-11-25-001。
+
 ## 2026-11-25 owner 实机反馈五项：许愿台两行字、名牌去配置、止语钟罩金钟罩、出征令悬赏令 + 战规多元化、专项 F3 日志（COMPAT；L2 + Dev 真编译；L3 待 owner）
 
 - F3 专项报告 `BossRushValidation_20261125_004916_070.log`（这五项改动之前的 Dev 包）：pass=26、fail=0、skip=1。

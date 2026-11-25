@@ -42,9 +42,11 @@ For the full achievement list, see the "Achievement List" page.
 - Existing reforged values are preserved. This correction does not automatically reverse old values.
 
 #### Stat Change Range
-- Stat values will not exceed reasonable bounds (there are upper and lower limits).
+- Every Reforge rolls again from the item's **original value**. It does not build on the previous result, so rerolling many times does not keep pushing a stat higher.
+- Each stat stays within **50%-150%** of its original value. Stats that start at 0 stay within **±0.25**; armor stays within **±1** of its original value.
 - When a stat reaches its extreme value, a "Max" or "Min" tag is displayed.
-- Each unlocked stat attempts to change; rolling further toward a bound already reached leaves it at that bound.
+- Lock a value you like with Cold Quench Fluid, or the next Reforge will roll it again.
+- Values from older versions that are outside these ranges are brought within the new range when the save loads.
 
 ### Cold Quench Fluid Lock
 - Cold Quench Fluid is the most critical material in the Reforge system.

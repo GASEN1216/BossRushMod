@@ -25,14 +25,14 @@ internal static class Program
         foreach(float wear in new[]{0f,17f,99f})
         {
             var old=Complete();RemoveFactor(old);old.Durability=wear;old.DurabilityLoss=0.3f;
-            old.Stats.GetStat("Damage").BaseValue=38;old.Stats.GetStat("Damage").RuntimeBonus=7;
-            old.Variables.Add(new CustomData{Key="RF_STAT_Damage",Value=15});ReforgeDataPersistence.MarkAsRestored(old);
+            old.Stats.GetStat("Damage").BaseValue=33;old.Stats.GetStat("Damage").RuntimeBonus=7;
+            old.Variables.Add(new CustomData{Key="RF_STAT_Damage",Value=10});ReforgeDataPersistence.MarkAsRestored(old);
             Check(old.GetStatValue("DamageFactorToZombie".GetHashCode())==0,"old official hash cache records the missing factor before repair");
             Check(DragonBreathWeaponConfig.NeedsRuntimeConfig(old),"otherwise complete old gun is detected");
             ItemInitializeRestorePatch.Postfix(old);
             Check(old.GetStatValue("DamageFactorToZombie".GetHashCode())==1,"actual Item.Initialize postfix repairs old gun");
             Check(old.Durability==wear && old.DurabilityLoss==0.3f,"repair retains worn and broken durability");
-            Check(old.Stats.GetStat("Damage").BaseValue==38 && old.Stats.GetStat("Damage").RuntimeBonus==7,"repair retains real RF restore and runtime modifier");
+            Check(old.Stats.GetStat("Damage").BaseValue==33 && old.Stats.GetStat("Damage").RuntimeBonus==7,"repair retains real RF restore and runtime modifier");
             Check(!DragonBreathWeaponConfig.NeedsRuntimeConfig(old),"repair completes the dedicated predicate");
             Check(!CustomItemRuntimeStateHelper.RestoreRuntimeState(old,"repeat"),"repeat restoration neither configures nor reapplies RF");
         }
@@ -49,9 +49,9 @@ internal static class Program
         DragonBreathWeaponConfig.ConfigureWeapon(stale);
         Check(stale.GetStatValue("Damage".GetHashCode())==23 && stale.GetStatValue("DamageFactorToZombie".GetHashCode())==2.5f,"full configuration refreshes hash cache even with an existing legal zombie factor");
         var partial=Fresh();partial.Durability=12;partial.DurabilityLoss=0.2f;
-        partial.Variables.Add(new CustomData{Key="RF_STAT_Damage",Value=15});
+        partial.Variables.Add(new CustomData{Key="RF_STAT_Damage",Value=10});
         ItemInitializeRestorePatch.Postfix(partial);
-        Check(partial.Stats.GetStat("Damage").BaseValue==38 && partial.Durability==12 && partial.DurabilityLoss==0.2f,"missing basic stats take the full configuration path and restore RF/wear");
+        Check(partial.Stats.GetStat("Damage").BaseValue==33 && partial.Durability==12 && partial.DurabilityLoss==0.2f,"missing basic stats take the full configuration path and restore RF/wear");
         var unknown=Fresh(123);ItemInitializeRestorePatch.Postfix(unknown);
         Check(unknown.Stats.Count==0,"unregistered official weapon is untouched");
         var player=new CharacterMainControl{IsMainCharacter=true};CharacterMainControl.Main=player;LevelManager.Instance.MainCharacter=player;

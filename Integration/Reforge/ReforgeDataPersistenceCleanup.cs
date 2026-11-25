@@ -221,6 +221,28 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 存档前同步单个已追踪属性。若存档里的旧差值按当前上下限夹取后正好等于当前值
+        /// （即 2026-11-25 下调前刷出的超限值只是被读档夹住），保留原差值不改写，
+        /// 回退旧版本时仍能读回原数值；玩家重新重铸后照常写入新差值。
+        /// </summary>
+        private static void SyncTrackedReforgeValue(Item item, string prefix, string propertyKey, float prefabValue, float currentValue)
+        {
+            if (item == null || item.Variables == null) return;
+            try
+            {
+                float storedDelta = item.GetFloat(prefix + propertyKey, 0f);
+                float storedEffective = ReforgeSystem.ClampToReforgeBounds(propertyKey, prefabValue, prefabValue + storedDelta);
+                if (UnityEngine.Mathf.Abs(storedDelta) >= 0.001f && UnityEngine.Mathf.Abs(storedEffective - currentValue) < 0.001f)
+                {
+                    return;
+                }
+            }
+            catch { }
+
+            SaveReforgeDataInternal(item, prefix, propertyKey, prefabValue, currentValue);
+        }
+
+        /// <summary>
         /// 获取预制体的 Modifier 值
         /// </summary>
         private static float GetPrefabModifierValue(Item prefab, string key)

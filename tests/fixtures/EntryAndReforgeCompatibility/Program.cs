@@ -42,15 +42,55 @@ internal static class Program
         Check(ReforgeSystem.GetBeneficialValueDirection("RecoilControl") == 1, "no recoil substring inversion");
         Check(ReforgeSystem.GetBeneficialValueDirection(null) == 1, "unknown key preserves legacy direction");
         StatInfoDatabase.Throw = false;
-        var row = ReforgeUIManager.Reveal("RecoilScaleH", 5, 1.5f, -3.5f);
+        // 2026-11-25 下调：整数预制体 5 的上下限为 [3, 7]（±50% 取整）
+        var row = ReforgeUIManager.Reveal("RecoilScaleH", 5, 3, -2);
         Check(row[0] && row[1], "recoil lower bound is beneficial and gets best-bound reveal");
-        row = ReforgeUIManager.Reveal("RecoilScaleH", 5, 10, 5);
+        row = ReforgeUIManager.Reveal("RecoilScaleH", 5, 7, 2);
         Check(!row[0] && !row[1], "worse recoil upper bound is never celebrated");
-        row = ReforgeUIManager.Reveal("Damage", 5, 10, 5);
+        row = ReforgeUIManager.Reveal("Damage", 5, 7, 2);
         Check(row[0] && row[1], "damage upper bound keeps existing feedback");
-        Check(ReforgeUIManager.Bound("RecoilScaleH", 5, 1.5f, -3.5f).Contains("best>Min"), "recoil Min label uses best-bound colour");
-        Check(ReforgeUIManager.Bound("RecoilScaleH", 5, 10, 5).Contains("neutral>Max"), "recoil Max label is neutral");
-        Check(ReforgeUIManager.Bound("Damage", 5, 10, 5).Contains("best>Max"), "damage Max label keeps best-bound colour");
+        Check(ReforgeUIManager.Bound("RecoilScaleH", 5, 3, -2).Contains("best>Min"), "recoil Min label uses best-bound colour");
+        Check(ReforgeUIManager.Bound("RecoilScaleH", 5, 7, 2).Contains("neutral>Max"), "recoil Max label is neutral");
+        Check(ReforgeUIManager.Bound("Damage", 5, 7, 2).Contains("best>Max"), "damage Max label keeps best-bound colour");
+        ReforgeCaps();
+    }
+    private static void Bounds(string key, float prefab, float min, float max)
+    {
+        float lo, hi;
+        ReforgeSystem.GetPropertyValueBounds(key, prefab, out lo, out hi);
+        Check(Mathf.Abs(lo - min) < 0.0001f && Mathf.Abs(hi - max) < 0.0001f,
+            "bounds " + key + "@" + prefab + " = [" + lo + ", " + hi + "], expected [" + min + ", " + max + "]");
+    }
+    private static void ReforgeCaps()
+    {
+        Bounds("Damage", 10f, 5f, 15f);
+        Bounds("Damage", 5f, 3f, 7f);
+        Bounds("Damage", 1f, 0.5f, 1.5f);
+        Bounds("Damage", 0.2f, 0.1f, 0.3f);
+        Bounds("Damage", -4f, -6f, -2f);
+        Bounds("Damage", 0f, -0.25f, 0.25f);
+        Bounds("BodyArmor", 3f, 2f, 4f);
+        Bounds("BodyArmor", 0.5f, 0f, 1.5f);
+        Check(Mathf.Abs(ReforgeSystem.ClampToReforgeBounds("Damage", 10f, 20f) - 15f) < 0.0001f, "legacy 200% value clamps to the 150% cap");
+        Check(Mathf.Abs(ReforgeSystem.ClampToReforgeBounds("RecoilScaleV", 10f, 3f) - 5f) < 0.0001f, "legacy 30% recoil clamps to the 50% floor");
+        Check(Mathf.Abs(ReforgeSystem.ClampToReforgeBounds("Damage", 10f, 12f) - 12f) < 0.0001f, "in-range legacy value is untouched");
+
+        // 每次以预制体原值为基准重抽：同一随机序列反复重铸不能越刷越高（旧实现会累加到 200%）
+        foreach (var type in new[] { PropertyType.Stat, PropertyType.Modifier, PropertyType.Variable })
+        foreach (var prefabValue in new[] { 10f, 1f, 0.3f, 0f })
+        {
+            var item = Make("Damage", prefabValue, type); item.Prefab = Make("Damage", prefabValue, type);
+            float first = ReforgeSystem.Reforge(item, 100, "test", 1f).ModifiedStats[0].NewValue;
+            float lo, hi;
+            ReforgeSystem.GetPropertyValueBounds("Damage", prefabValue, out lo, out hi);
+            for (int n = 0; n < 30; n++)
+            {
+                var info = ReforgeSystem.Reforge(item, 100, "test", 1f).ModifiedStats[0];
+                Check(info.NewValue <= hi + 0.0001f && info.NewValue >= lo - 0.0001f, "rolled value stays in bounds");
+                // 抽到与当前值相同会被推开一个最小单位（整数 1、小数 0.01），只允许这一格的来回
+                Check(Mathf.Abs(info.NewValue - first) <= (prefabValue >= 2f ? 1.0101f : 0.0101f),"reforge must re-roll from the prefab value, not accumulate: " + prefabValue + " " + type);
+            }
+        }
     }
     private static void Entry()
     {

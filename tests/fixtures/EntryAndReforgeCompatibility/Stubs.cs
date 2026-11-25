@@ -33,6 +33,8 @@ namespace UnityEngine
     {
         public static float Abs(float v) { return Math.Abs(v); }
         public static float Round(float v) { return (float)Math.Round(v); }
+        public static float Ceil(float v) { return (float)Math.Ceiling(v); }
+        public static float Floor(float v) { return (float)Math.Floor(v); }
         public static float Pow(float a, float b) { return (float)Math.Pow(a, b); }
         public static float Max(float a, float b) { return Math.Max(a, b); }
         public static float Clamp(float v, float a, float b) { return Math.Max(a, Math.Min(v, b)); }

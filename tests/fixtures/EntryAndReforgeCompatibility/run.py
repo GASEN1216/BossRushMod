@@ -36,7 +36,7 @@ def main():
     code += re.findall(r"(?:public|private) const float \w+ = [^;]+;", source)
     code += [extract(core, sig) for sig in (
         "public static ReforgeResult Reforge(", "private static bool IsIntegerProperty(",
-        "public static void GetPropertyValueBounds(", "public static int RollSign(",
+        "public static void GetPropertyValueBounds(", "public static float ClampToReforgeBounds(", "public static int RollSign(",
         "public static float RollMagnitude(", "public static bool IsValueAtUpperBound(",
         "public static bool IsValueAtLowerBound(")]
     code += [extract(apply, sig) for sig in (

@@ -218,30 +218,26 @@ namespace BossRush
         public const float MONEY_BONUS_TIER3_MULTIPLIER = 1000f;
 
         /// <summary>
-        /// 每次重铸的最大改变量（绝对值0~1，用于小数值属性）
+        /// 护甲类（FORCE_ABSOLUTE_RANGE_KEYS）每次重铸的最大绝对改变量：预制体值 ±1 档
         /// </summary>
         private const float MAX_DELTA_ABSOLUTE = 1.0f;
 
         /// <summary>
-        /// 单次重铸相对预制体值的最大改变量（±100%）；最终值另由 GetPropertyValueBounds 夹在预制体值的 30%~200%
+        /// 重铸相对预制体值的最大偏移（±50%），既是单次幅度也是最终上下限（预制体值的 50%~150%）。
+        /// 2026-11-25 由 ±100% / 30%~200% 下调：玩家反馈重铸后全属性顶到 2 倍过强。
         /// </summary>
-        private const float MAX_VALUE_OFFSET_PERCENT = 1.0f;
+        private const float MAX_VALUE_OFFSET_PERCENT = 0.5f;
 
         /// <summary>
-        /// 当原值为0时，使用的固定绝对范围（防止0值永远不变）
+        /// 当原值为0时，使用的固定绝对范围（防止0值永远不变）；2026-11-25 由 ±0.5 下调
         /// </summary>
-        private const float ZERO_VALUE_RANGE = 0.5f;
+        private const float ZERO_VALUE_RANGE = 0.25f;
 
         /// <summary>
         /// 幅度指数范围：p=0时expo=3.5，p=1时expo=0.6
         /// </summary>
         private const float EXPO_MAX = 3.5f;
         private const float EXPO_MIN = 0.6f;
-
-        /// <summary>
-        /// 小数值属性阈值：预制体值≤此值时使用0~1范围，>此值时使用百分比范围
-        /// </summary>
-        private const float SMALL_VALUE_THRESHOLD = 1.0f;
 
         /// <summary>
         /// UI判定属性是否已贴近上下限时使用的容差
@@ -424,7 +420,8 @@ namespace BossRush
         /// </summary>
         private static bool IsIntegerProperty(float prefabValue)
         {
-            // 如果预制体值与其四舍五入值相等，则认为是整数属性
+            // |值|<2 按小数处理：1.0 这类倍率若按整数取整，只会在 0 和 2 之间跳
+            if (Mathf.Abs(prefabValue) < 2f) return false;
             return Mathf.Approximately(prefabValue, Mathf.Round(prefabValue));
         }
 
@@ -434,9 +431,6 @@ namespace BossRush
         /// </summary>
         public static void GetPropertyValueBounds(string key, float prefabValue, out float minValue, out float maxValue)
         {
-            bool isForceAbsolute = !string.IsNullOrEmpty(key) && FORCE_ABSOLUTE_RANGE_KEYS.Contains(key);
-            bool isSmallValue = Mathf.Abs(prefabValue) <= SMALL_VALUE_THRESHOLD || isForceAbsolute;
-
             if (Mathf.Approximately(prefabValue, 0f))
             {
                 minValue = -ZERO_VALUE_RANGE;
@@ -444,37 +438,35 @@ namespace BossRush
                 return;
             }
 
-            if (isSmallValue)
+            if (!string.IsNullOrEmpty(key) && FORCE_ABSOLUTE_RANGE_KEYS.Contains(key))
             {
-                if (isForceAbsolute)
-                {
-                    minValue = Mathf.Max(0f, prefabValue - MAX_DELTA_ABSOLUTE);
-                    maxValue = prefabValue + MAX_DELTA_ABSOLUTE;
-                }
-                else if (prefabValue > 0)
-                {
-                    minValue = 0f;
-                    maxValue = prefabValue * 2f;
-                }
-                else
-                {
-                    minValue = prefabValue * 2f;
-                    maxValue = 0f;
-                }
-
-                return;
-            }
-
-            if (prefabValue > 0)
-            {
-                minValue = prefabValue * 0.3f;
-                maxValue = prefabValue * 2.0f;
+                minValue = Mathf.Max(0f, prefabValue - MAX_DELTA_ABSOLUTE);
+                maxValue = prefabValue + MAX_DELTA_ABSOLUTE;
             }
             else
             {
-                minValue = prefabValue * 2.0f;
-                maxValue = prefabValue * 0.3f;
+                float span = Mathf.Abs(prefabValue) * MAX_VALUE_OFFSET_PERCENT;
+                minValue = prefabValue - span;
+                maxValue = prefabValue + span;
             }
+
+            // 整数属性的边界取到整数，保证 Max/Min 标记与实际能抽到的值一致
+            if (IsIntegerProperty(prefabValue))
+            {
+                minValue = Mathf.Ceil(minValue - BOUNDARY_EPSILON);
+                maxValue = Mathf.Floor(maxValue + BOUNDARY_EPSILON);
+            }
+        }
+
+        /// <summary>
+        /// 把属性值夹进当前重铸上下限。读档恢复旧 RF_ 数据时使用：
+        /// 下调前刷到 200% 的旧装备按新上限生效，存档里的原始差值不改写。
+        /// </summary>
+        public static float ClampToReforgeBounds(string key, float prefabValue, float value)
+        {
+            float minValue, maxValue;
+            GetPropertyValueBounds(key, prefabValue, out minValue, out maxValue);
+            return Mathf.Clamp(value, minValue, maxValue);
         }
 
         /// <summary>
@@ -813,8 +805,9 @@ namespace BossRush
         /// 3. （无保底：不按连续失败调整概率）
         /// 4. 触发后用 u^expo 抽幅度
         /// 5. 收益方向由 tendencyChance 控制（0~1），再按属性极性换算数值正负号
-        /// 6. 属性范围：预制体值≤1时用0~1，>1时用预制体值的30%~200%（针对非强制值）
-        /// 7. 整数属性保持整数
+        /// 6. 每次都以预制体原值为基准重新抽，不在当前值上累加；范围为预制体值 ±50%
+        ///    （原值为0时 ±0.25，护甲 ±1），想留住好结果要用冷淬液固定
+        /// 7. 整数属性（|值|≥2）保持整数
         /// 8. 投入金额只通过 FinalProbability 影响幅度
         /// </summary>
         public static ReforgeResult Reforge(Item item, int moneyInvested, string userId, float tendencyChance = 0.5f)
@@ -959,12 +952,9 @@ namespace BossRush
                 {
                     ReforgeableProperty prop = allProperties[i];
 
-                    // 获取预制体原始值（用于范围限制和整数判定）
+                    // 获取预制体原始值（用于范围限制、整数判定和重抽基准）
                     float prefabValue = GetPrefabPropertyValue(prefab, prop.Key, prop.Type, prop.Value);
                     bool isInteger = IsIntegerProperty(prefabValue);
-                    // 判断是否为小数值属性，或者是强制使用0~1范围的属性（如护甲值）
-                    bool isSmallValue = Mathf.Abs(prefabValue) <= SMALL_VALUE_THRESHOLD ||
-                                        FORCE_ABSOLUTE_RANGE_KEYS.Contains(prop.Key);
 
                     // Step 2: 抽幅度（使用概率baseP）
                     float mag01 = RollMagnitude(baseP, random);
@@ -973,29 +963,23 @@ namespace BossRush
                     float originalValue = prop.Value;
                     int sign = RollSign(tendencyChance) * GetBeneficialValueDirection(prop.Key);
 
-                    // Step 4: 计算delta和新值
-                    float delta, newValue;
+                    // Step 4: 以预制体原值为基准重新抽（不在当前值上累加），幅度上限即边界半宽
                     float minValue, maxValue;
                     GetPropertyValueBounds(prop.Key, prefabValue, out minValue, out maxValue);
-
+                    float rollRange;
                     if (Mathf.Approximately(prefabValue, 0f))
                     {
-                        delta = sign * mag01 * ZERO_VALUE_RANGE;
-                        newValue = originalValue + delta;
+                        rollRange = ZERO_VALUE_RANGE;
                     }
-                    else if (isSmallValue)
+                    else if (FORCE_ABSOLUTE_RANGE_KEYS.Contains(prop.Key))
                     {
-                        // 小数值属性或强制绝对范围属性：使用0~1绝对范围
-                        delta = sign * mag01 * MAX_DELTA_ABSOLUTE;
-                        newValue = originalValue + delta;
-
+                        rollRange = MAX_DELTA_ABSOLUTE;
                     }
                     else
                     {
-                        // 大数值属性（预制体值>1或<-1）：计算delta
-                        delta = sign * mag01 * MAX_VALUE_OFFSET_PERCENT * Mathf.Abs(prefabValue);
-                        newValue = originalValue + delta;
+                        rollRange = MAX_VALUE_OFFSET_PERCENT * Mathf.Abs(prefabValue);
                     }
+                    float newValue = prefabValue + sign * mag01 * rollRange;
 
                     // Step 5: 整数属性保持整数，且保证数值必定有变化
                     if (isInteger)

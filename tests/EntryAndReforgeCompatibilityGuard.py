@@ -58,6 +58,16 @@ def main():
     assert "pendingPrepaidTicketForCurrentEntry" in method(maps, "internal static void CancelUnstartedMapSelection("), "迟到的关闭回调不能取消已开始入場的预扣票所有权"
     reforge = method("Integration/Reforge/ReforgeSystem.cs", "public static ReforgeResult Reforge(")
     assert "int sign = RollSign(tendencyChance) * GetBeneficialValueDirection(prop.Key);" in reforge, "正向倾向必须换算属性极性"
+    # 2026-11-25 下调：每次以预制体原值为基准重抽，不在当前值上累加；读档把旧超限值夹进新上下限
+    assert "float newValue = prefabValue + sign * mag01 * rollRange;" in reforge, "重铸必须以预制体原值为基准重抽"
+    assert "originalValue + sign" not in reforge and "originalValue + delta" not in reforge, "重铸不能在当前值上累加"
+    persistence = read("Integration/Reforge/ReforgeDataPersistenceCleanup.cs")
+    for signature in ("private static bool TryRestoreModifier(", "private static bool TryRestoreStat(", "private static bool TryRestoreVariable("):
+        body = method("Integration/Reforge/ReforgeDataPersistence.cs", signature)
+        assert "if (prefab != null) newValue = ReforgeSystem.ClampToReforgeBounds(" in body, signature + " 读档恢复必须夹进当前上下限"
+    sync = method("Integration/Reforge/ReforgeDataPersistence.cs", "public static void SyncCurrentReforgeState(")
+    assert sync.count("SyncTrackedReforgeValue(item, ") == 3 and "SaveReforgeData" not in sync, "存档同步不能把被夹住的旧差值改写掉"
+    assert "ReforgeSystem.ClampToReforgeBounds(propertyKey, prefabValue, prefabValue + storedDelta)" in persistence
     for file, signature in (("ReforgeUIManager_ComparisonAndState.cs", "private static void ShowPropertyChanges("),
                             ("ReforgeUIManager_RuntimeAndCleanup.cs", "private static System.Collections.IEnumerator ModifyPropertyTextsDelayed(")):
         body = method("Integration/Reforge/" + file, signature)

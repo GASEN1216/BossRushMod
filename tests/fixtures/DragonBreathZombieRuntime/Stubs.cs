@@ -194,7 +194,9 @@ namespace BossRush
         private static bool TryRestoreModifier(Item item,string key,float delta) { throw new Exception("Unexpected modifier reforge branch"); }
         private static bool TryRestoreVariable(Item item,string key,float delta) { throw new Exception("Unexpected variable reforge branch"); }
     }
-    static class ReforgeSystem { public static void ApplyStatValueChangePublic(Stat stat,float value) { stat.BaseValue=value; } }
+    static class ReforgeSystem { public static void ApplyStatValueChangePublic(Stat stat,float value) { stat.BaseValue=value; }
+        // 上下限夹取由 EntryAndReforgeCompatibility 夹具逐字执行生产实现；本夹具只验证龙息补配不丢 RF，用例差值取新上限内的值
+        public static float ClampToReforgeBounds(string key,float prefabValue,float value) { return value; } }
     static partial class CustomItemRuntimeStateHelper { public static void RegisterMeleeRuntimeConfiguredItem(int id,Action<Item> apply,string name,Action<Item> restored=null,Action<GameObject> visual=null) { } }
     partial class IntegrationRuntimeModule
     {
