@@ -10,7 +10,7 @@
 ## Confirm It's Working
 
 - **BossRush Ticket** appears at the base merchant
-- Press **L** → achievement panel opens
+- Press **L** (default key, configurable) → achievement panel opens
 - **Dingdang** and **Yu Zhi** visible on normal maps
 
 ## Config

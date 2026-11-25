@@ -1,6 +1,6 @@
 # The Duckov Daily
 
-## What it is
+## Overview
 
 The Duckov Daily is a newspaper delivered to your base automatically, one issue per game day,
 writing up what you did yesterday as news.
