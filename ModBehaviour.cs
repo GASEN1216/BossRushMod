@@ -321,7 +321,7 @@ namespace BossRush
             Instance = this;
             DontDestroyOnLoad(gameObject);
             BossRushStartupGuard.BeginAwake(); // 先于任何 Harmony 类型预加载 0Harmony，之后逐段隔离
-            RegisterRuntimeModules();
+            try { RegisterRuntimeModules(); } catch (Exception e) { BossRushStartupGuard.FailStage("register-modules", e); }
             runtimeModuleHost.OnAwake(this); // 宿主已逐个模块 try，不再外包一层
 
             try { InitializeBootstrapRuntime(); } catch (Exception e) { BossRushStartupGuard.FailBootstrap(e); }
@@ -418,8 +418,9 @@ namespace BossRush
         }
         void Start()
         {
-            StartIntegrationRuntime();
-            runtimeModuleHost.OnStart();
+            try { StartIntegrationRuntime(); } catch (Exception e) { BossRushStartupGuard.FailStage("integration-start", e); }
+            runtimeModuleHost.OnStart(); // 宿主逐个模块 try；集成启动失败也照常分发
+            BossRushStartupGuard.CompleteStart(); // 启动自检覆盖 Awake 与 Start 全程
         }
 
         void OnDestroy()

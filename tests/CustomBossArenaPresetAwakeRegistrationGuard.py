@@ -60,7 +60,9 @@ def main():
         "[ConfiguredStart] BossFilter/BossFilter.cs 必须在 Start 重建预热过的池，恢复真实配置"
     host_source = clean_source((ROOT / "ModBehaviour.cs").read_text(encoding="utf-8-sig"))
     host_start = re.sub(r"\s+", "", body(host_source, "void Start()"))
-    assert host_start == "StartIntegrationRuntime();runtimeModuleHost.OnStart();", \
+    # 2026-11-26：集成启动改为单行隔离（失败只记阶段，模块 OnStart 照常分发），末尾打印启动自检；先后顺序不变。
+    assert host_start == ('try{StartIntegrationRuntime();}catch(Exceptione){BossRushStartupGuard.FailStage("integration-start",e);}'
+                          "runtimeModuleHost.OnStart();BossRushStartupGuard.CompleteStart();"), \
         "[HostStartOrder] ModBehaviour.Start 必须先完成配置装载，再分发模块 OnStart"
     print("CustomBossArenaPresetAwakeRegistrationGuard: PASS")
     return 0

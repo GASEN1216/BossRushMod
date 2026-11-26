@@ -6,12 +6,13 @@
 // 1. 0Harmony 不随本 Mod 分发，靠前置 HarmonyLib（创意工坊 3589088839）。官方按优先级激活 Mod，优先级相同的
 //    顺序并不稳定；本 Mod 一旦先于前置激活，Mono 第一次解析 0Harmony 失败后会把这条引用永久记为缺失
 //    （2026-11-26 用 Unity 2022.3 自带的 Mono 6.13 实测：之后再加载 0Harmony、再开关本 Mod 都救不回来）。
-//    所以先从前置目录预加载；前置不在时退到其它已安装 Mod 自带的副本（取最高版本）。Mono 对未签名程序集只按
-//    名字匹配、再次 LoadFrom 同一身份返回同一份（同日实测），前置之后自己加载时不会出现第二份。
-// 2. 宿主 Awake 逐段隔离：任何一段抛错（包括方法体 JIT 时程序集缺失）不再中断后面的阶段；
+//    所以先预加载：前置目录的副本排第一，其后是其它已安装 Mod 自带的副本（按版本从高到低），逐个尝试，
+//    一份读不出来（文件损坏、下载不全）就换下一份。Mono 对未签名程序集只按名字匹配、再次 LoadFrom 同一身份
+//    返回同一份（同日实测），前置之后自己加载时不会出现第二份。
+// 2. 宿主 Awake 与 Start 逐段隔离：任何一段抛错（包括方法体 JIT 时程序集缺失）不再中断后面的阶段；
 //    补丁层整段失败时，退回把全部 Mod 物品同步登记进官方动态表，读档仍能拿到真物品。
-// 3. 正式构建也输出一行启动自检：实际目录、激活时场景、是否迟到激活、Harmony 来源、关键补丁与失败阶段。
-//    玩家反馈「重进就加载不出来」时，这一行就能定位卡在哪一段。
+// 3. 正式构建也输出一行启动自检，在 Start 末尾打印，覆盖 Awake 与 Start 全程：实际目录、激活时场景、
+//    是否迟到激活、Harmony 来源、关键补丁与失败阶段。玩家反馈「重进就加载不出来」时，这一行就能定位卡在哪一段。
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -52,14 +53,16 @@ namespace BossRush
             catch { activationScene = "?"; }
             try
             {
-                LevelManager level = LevelManager.Instance;
-                lateActivation = level != null && level.MainCharacter != null;
+                // 只要激活时已经身处关卡场景（关卡还在加载也算）就是迟到激活。官方 CreateMainCharacterAsync
+                // 先 await 恢复角色物品树、再 await 生成角色、最后才写 mainCharacter（2026-11-26 用 ikdasm 核对 IL），
+                // 中间隔着好几帧；本 Mod 在这几帧里激活时，读档失败没有补丁记号，主角也还是空的。
+                lateActivation = LevelManager.Instance != null;
             }
             catch { lateActivation = false; }
             harmonySource = EnsureHarmonyLoaded();
         }
 
-        /// <summary>宿主 Awake 某一段抛错时调用：只记阶段名与异常，后面的阶段照常跑。</summary>
+        /// <summary>宿主 Awake / Start 某一段抛错时调用：只记阶段名与异常，后面的阶段照常跑。</summary>
         internal static void FailStage(string stage, Exception e)
         {
             failedStages.Add(stage);
@@ -79,8 +82,14 @@ namespace BossRush
             catch (Exception e) { FailStage(stage, e); }
         }
 
-        /// <summary>宿主 Awake 最后一行调用：输出启动自检，并接上读档装备抢救。</summary>
+        /// <summary>宿主 Awake 最后一行调用：接上读档装备抢救（订阅要赶在第一次关卡初始化之前）。</summary>
         internal static void CompleteAwake(ModBehaviour host)
+        {
+            RunStage("equipment-rescue", () => BossRushEquipmentRescue.Attach(host, lateActivation));
+        }
+
+        /// <summary>宿主 Start 最后一行调用：输出覆盖 Awake 与 Start 全程的启动自检。</summary>
+        internal static void CompleteStart()
         {
             int verified = criticalPatchesVerified;
             int total = criticalPatchesTotal;
@@ -92,8 +101,6 @@ namespace BossRush
                 + " failed=" + (failedStages.Count == 0 ? "none" : string.Join(",", failedStages.ToArray()));
             if (failedStages.Count > 0 || verified < 0 || verified != total) Debug.LogWarning(line);
             else Debug.Log(line);
-
-            RunStage("equipment-rescue", () => BossRushEquipmentRescue.Attach(host, lateActivation));
         }
 
         /// <summary>宿主 OnDestroy 调用。</summary>
@@ -106,22 +113,39 @@ namespace BossRush
 
         /// <summary>
         /// 第一次触碰 Harmony 之前确保 0Harmony 已在进程里。返回来源描述，只进启动自检日志。
+        /// 候选逐个 LoadFrom，一份抛错（如 BadImageFormatException）就换下一份。
         /// </summary>
         internal static string EnsureHarmonyLoaded()
         {
+            List<string> copies;
             try
             {
                 Assembly loaded = FindLoadedAssembly(HarmonyAssemblyName);
                 if (loaded != null) return "loaded:" + loaded.GetName().Version;
-                string path = FindHarmonyCopy();
-                if (path == null) return "missing";
-                Assembly preloaded = Assembly.LoadFrom(path);
-                return "preloaded:" + preloaded.GetName().Version + "@" + Path.GetFileName(Path.GetDirectoryName(path));
+                copies = FindHarmonyCopies();
             }
             catch (Exception e)
             {
                 return "error:" + e.GetType().Name;
             }
+            if (copies.Count == 0) return "missing";
+
+            string firstFailure = null;
+            for (int i = 0; i < copies.Count; i++)
+            {
+                string folder = SafeFolderName(copies[i]);
+                try
+                {
+                    Assembly preloaded = Assembly.LoadFrom(copies[i]);
+                    return "preloaded:" + preloaded.GetName().Version + "@" + folder
+                        + (firstFailure == null ? string.Empty : " skipped=" + firstFailure);
+                }
+                catch (Exception e)
+                {
+                    if (firstFailure == null) firstFailure = e.GetType().Name + "@" + folder;
+                }
+            }
+            return "error:" + firstFailure + " tried=" + copies.Count;
         }
 
         private static Assembly FindLoadedAssembly(string name)
@@ -140,10 +164,11 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 前置 HarmonyLib 自带的副本优先（与按顺序激活时加载的是同一个文件）；没有前置时取已安装 Mod 里版本最高的副本。
-        /// 只看本 Mod 所在目录的同级目录、游戏本地 Mods 目录与本游戏的创意工坊目录，启动时一次。
+        /// 预加载候选，按尝试顺序排好：前置 HarmonyLib 目录的副本第一（与按顺序激活时加载的是同一个文件），
+        /// 其余按版本从高到低。只收文件头读得出 0Harmony 身份的文件。只看本 Mod 所在目录的同级目录、
+        /// 游戏本地 Mods 目录与本游戏的创意工坊目录，启动时一次。
         /// </summary>
-        private static string FindHarmonyCopy()
+        private static List<string> FindHarmonyCopies()
         {
             string modDirectory = SafeModDirectory();
             List<string> roots = new List<string>();
@@ -162,9 +187,10 @@ namespace BossRush
                 catch { }
             }
 
-            string prerequisite = null, best = null;
-            Version bestVersion = null;
-            if (!string.IsNullOrEmpty(modDirectory)) Consider(Path.Combine(modDirectory, HarmonyFileName), ref best, ref bestVersion);
+            List<string> paths = new List<string>();
+            List<Version> versions = new List<Version>();
+            string prerequisite = null;
+            if (!string.IsNullOrEmpty(modDirectory)) Consider(Path.Combine(modDirectory, HarmonyFileName), paths, versions);
             for (int r = 0; r < roots.Count; r++)
             {
                 string[] directories;
@@ -174,12 +200,26 @@ namespace BossRush
                 {
                     string candidate = Path.Combine(directories[i], HarmonyFileName);
                     if (!File.Exists(candidate)) continue;
-                    if (prerequisite == null && string.Equals(Path.GetFileName(directories[i]), HarmonyPrerequisiteWorkshopId, StringComparison.Ordinal))
-                        prerequisite = candidate;
-                    Consider(candidate, ref best, ref bestVersion);
+                    string accepted = Consider(candidate, paths, versions);
+                    if (prerequisite == null && accepted != null
+                        && string.Equals(Path.GetFileName(directories[i]), HarmonyPrerequisiteWorkshopId, StringComparison.Ordinal))
+                        prerequisite = accepted;
                 }
             }
-            return prerequisite ?? best;
+
+            List<int> order = new List<int>();
+            for (int i = 0; i < paths.Count; i++) order.Add(i);
+            order.Sort((a, b) =>
+            {
+                bool aFirst = string.Equals(paths[a], prerequisite, StringComparison.OrdinalIgnoreCase);
+                bool bFirst = string.Equals(paths[b], prerequisite, StringComparison.OrdinalIgnoreCase);
+                if (aFirst != bFirst) return aFirst ? -1 : 1;
+                int byVersion = versions[b].CompareTo(versions[a]);
+                return byVersion != 0 ? byVersion : a.CompareTo(b);
+            });
+            List<string> ordered = new List<string>(order.Count);
+            for (int i = 0; i < order.Count; i++) ordered.Add(paths[order[i]]);
+            return ordered;
         }
 
         private static void AddRoot(List<string> roots, string path)
@@ -196,20 +236,31 @@ namespace BossRush
             catch { }
         }
 
-        private static void Consider(string path, ref string best, ref Version bestVersion)
+        /// <summary>文件头读得出 0Harmony 身份才收进候选（去重）；返回收下的完整路径，不收返回 null。</summary>
+        private static string Consider(string path, List<string> paths, List<Version> versions)
         {
             try
             {
-                if (!File.Exists(path)) return;
-                AssemblyName name = AssemblyName.GetAssemblyName(path);
-                if (name == null || !string.Equals(name.Name, HarmonyAssemblyName, StringComparison.Ordinal)) return;
-                if (bestVersion == null || (name.Version != null && name.Version > bestVersion))
-                {
-                    best = path;
-                    bestVersion = name.Version;
-                }
+                if (!File.Exists(path)) return null;
+                string full = Path.GetFullPath(path);
+                AssemblyName name = AssemblyName.GetAssemblyName(full);
+                if (name == null || !string.Equals(name.Name, HarmonyAssemblyName, StringComparison.Ordinal)) return null;
+                for (int i = 0; i < paths.Count; i++)
+                    if (string.Equals(paths[i], full, StringComparison.OrdinalIgnoreCase)) return full;
+                paths.Add(full);
+                versions.Add(name.Version ?? new Version(0, 0));
+                return full;
             }
-            catch { }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string SafeFolderName(string path)
+        {
+            try { return Path.GetFileName(Path.GetDirectoryName(path)); }
+            catch { return "?"; }
         }
 
         private static string SafeModDirectory()

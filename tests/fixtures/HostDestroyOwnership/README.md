@@ -7,3 +7,5 @@ Unity 对象替身实现销毁对象同时销毁组件和 fake-null 比较。模
 通过 `python tools/run_runtime_regressions.py --filter HostDestroyOwnership` 执行。产物和生产 SHA-256 写入 `Build/runtime-regressions/HostDestroyOwnership/`。
 
 2026-11-26：`BossRushStartupGuard` 用记录调用的替身，五个初始化阶段替身会记轨迹、可按 `ThrowStage` 抛错。执行真实 Awake，断言先 `BeginAwake` 再装配模块、最后 `CompleteAwake`；任一阶段抛错立即上报，后面的阶段与自检照常执行；OnDestroy 在语言退订之后调 `Shutdown`。0Harmony 预加载、目录搜索和日志内容不在这里，由 `tests/HostStartupIsolationGuard.py` 守结构，行为要 L3。
+
+2026-11-26 第二轮（外部复审）：`run.py` 另抽取真实 `Start()`。模块登记替身可按 `ThrowStage = "register"` 在登记完第一个模块后抛错，断言立即上报 `register-modules`、补丁层与后面各阶段照常执行；集成启动替身可按 `ThrowStage = "integration"` 抛错，断言上报 `integration-start` 后两个模块的 OnStart 都照常分发，启动自检（`CompleteStart`）排在 Start 最后。

@@ -4,6 +4,18 @@
 
 **2026-11-20 · COMPAT · L1/L2**　玩家反馈退出重进后武器消失、仓库物品变问号。修复冷启动注册、分包手持模型绑定、部分失败重试和克隆/异步资源归属。角色和仓库合成档往返、重复 TypeID 与真实包来源已纳入自动回归。故障证据与玩家侧验证边界见 [CR-2026-11-20-001 至 003](CODE_REVIEW_FINDINGS.md)。随 v2.6.1 发版：`info.ini` 升 2.6.1，WikiContent 新增中英 `changelog__v2_6_1` 并补总览，工坊简介同步；L3 待玩家侧确认。
 
+## 2026-11-26 外部复审第二轮四项（CR-2026-11-26-005～008；COMPAT；L2 + 正式真编译；L3 待 owner）
+
+- 依据：对 f32a1bd4 的外部复审四条，逐条核实成立；owner 原话「全部修复」。根因与证据见 `CODE_REVIEW_FINDINGS.md` 同日第二轮节。
+- 启动：宿主 Awake 的 `RegisterRuntimeModules`、Start 的 `StartIntegrationRuntime` 改为单行隔离；`BossRushStartupGuard.CompleteStart` 在 Start 末尾打印启动自检，`CompleteAwake` 只接装备抢救。
+- 迟到激活：`BeginAwake` 以 `LevelManager.Instance != null` 判迟到（关卡在加载也算）。
+- 装备抢救：重建完成后 `SameContext` 核对存档槽、关卡、主角、角色物品与原父物品，变了就作废；孤儿扫描改 `FindObjectsByType`（含未激活、不排序）。
+- Harmony：`FindHarmonyCopies` 验文件头、前置第一、版本从高到低；`EnsureHarmonyLoaded` 逐个尝试。
+- 守卫：`HostStartupIsolationGuard`（22 探针）、`EquipmentRescueEvidenceGuard`（18 探针）同步；`CustomBossArenaPresetAwakeRegistrationGuard` 的 Start 精确比较随写法更新，顺序不变式不变。
+- 夹具：新增 `EquipmentRescueTiming`（登记进 `tools/run_runtime_regressions.py`，五个用例，四种生产回退都红在预期断言）；`HostDestroyOwnership` 抽取真实 Start，加两种抛错用例，三种生产回退都转红。生产文件均按字节还原、SHA-256 一致。
+- 证据：正式真编译 0 错 0 警告，`Build\BossRush.dll` 与游戏目录 SHA-256 同为 `9C2236AE…4470`，Dev 标识缺席；全量守卫 800 PASS；22 个相关隔离回归 PASS；Mono 六种目录布局实测见台账。未进游戏，未读写玩家存档。
+- repowiki：《运行时模块系统》《物品注册表与动态加载》2026-11-26 节就地改为现行行为（不再写「RegisterRuntimeModules 保持直调」）。
+
 ## 2026-11-26 玩家反馈两项：重进加载不出来 / Mod 装备消失；「云上的坐标」交不了（CR-2026-11-26-001～004；COMPAT / OPERATIONAL；L2 + 正式真编译；L3 待 owner）
 
 - 依据：两条玩家反馈；owner 原话「问题1已经反复出现多次请你看看如何一次性解决？结合"鸭科夫源码"文件夹」。外部审查意见作参考：读档前就绪门控、保留原始物品树、奖金幂等可重试、修正 Harmony 前置 ID。根因与证据见 `CODE_REVIEW_FINDINGS.md` 同日节。

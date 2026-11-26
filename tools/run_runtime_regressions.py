@@ -72,6 +72,7 @@ PROJECT_FIXTURES = {
     "ReviewSeptember": "ReviewSeptember.csproj",
     "ModeHReviewFixes": "Review.csproj",
     "ModeHRecoverySecondReview": "Review.csproj",
+    "EquipmentRescueTiming": "EquipmentRescueTiming.csproj",
 }
 
 

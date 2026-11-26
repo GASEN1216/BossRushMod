@@ -30,6 +30,10 @@ internal static class Program
             "Awake must start the startup guard before any module or Harmony work and finish with the self-check");
         Check(ReferenceEquals(ModBehaviour.Instance, live), "Real Awake must establish the owning instance");
         Probe.Trace.Clear();
+        live.InvokeStart();
+        Check(Probe.Trace.SequenceEqual(new[] { "init.integration", "module.achievement.start", "module.tail.start", "startup.selfcheck" }),
+            "Start must load the integration runtime, dispatch module OnStart and print the self-check last");
+        Probe.Trace.Clear();
         var duplicate = new ModBehaviour();
         duplicate.InvokeAwake();
         Check(duplicate == null && duplicate.gameObject == null, "Duplicate Awake must destroy the object and its component");
@@ -62,6 +66,28 @@ internal static class Program
             "A late callback from the old instance must not tear down its replacement");
         DestroyHost(replacement, "Replacement owner");
 
+        ModBehaviour.ThrowStage = "register";
+        var halfRegistered = new ModBehaviour();
+        Probe.Trace.Clear();
+        halfRegistered.InvokeAwake();
+        Check(Probe.Trace.SequenceEqual(new[] {
+            "startup.begin", "modules.register", "startup.fail:register-modules", "init.bootstrap", "init.always",
+            "init.player", "init.debug", "init.achievement", "startup.complete" }),
+            "A throwing module registration must be reported and must not stop item registration or the later stages");
+        ModBehaviour.ThrowStage = null;
+        DestroyHost(halfRegistered, "Half-registered owner");
+
+        ModBehaviour.ThrowStage = "integration";
+        var startFailure = new ModBehaviour();
+        startFailure.InvokeAwake();
+        Probe.Trace.Clear();
+        startFailure.InvokeStart();
+        Check(Probe.Trace.SequenceEqual(new[] {
+            "init.integration", "startup.fail:integration-start", "module.achievement.start", "module.tail.start", "startup.selfcheck" }),
+            "A throwing integration start must be reported, every module must still get OnStart, and the self-check must come after");
+        ModBehaviour.ThrowStage = null;
+        DestroyHost(startFailure, "Start-failure owner");
+
         foreach (string failing in new[] { "bootstrap", "always", "achievement" })
         {
             ModBehaviour.ThrowStage = failing;
@@ -78,7 +104,7 @@ internal static class Program
             ModBehaviour.ThrowStage = null;
             DestroyHost(isolated, "Isolated owner");
         }
-        Console.WriteLine("HostDestroyOwnership: PASS (unawakened, duplicate, fake-null owner, repeated destroy, replacement, cleanup order, startup stage isolation)");
+        Console.WriteLine("HostDestroyOwnership: PASS (unawakened, duplicate, fake-null owner, repeated destroy, replacement, cleanup order, startup stage isolation, module registration and integration start failures)");
         return 0;
     }
 }

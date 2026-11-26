@@ -6,12 +6,15 @@ EquipmentRescueEvidenceGuard — 读档没装上的 Mod 装备：只按证据补
 空壳插不进装备槽，成了孤儿，官方下次 SaveMainCharacter 只写挂在角色身上的东西，这件装备就没了。
 
 不变式：
-1. 触发：注册失败交出空壳时（NeedsFallback 为真）记一笔，关卡初始化后检查一次；宿主迟到激活时检查一次。
+1. 触发：注册失败交出空壳时（NeedsFallback 为真）记一笔，关卡初始化后检查一次；宿主迟到激活时检查一次
+   （迟到 = 激活时已身处关卡场景，判定在 HostStartupIsolationGuard）。
 2. 记录源：只读官方角色记录 Item/MainCharacterItemData（与反编译源一致），要求开关 LevelConfig.SaveCharacter、
    记录根 TypeID 与活角色一致；本类型从不直接写存档、不调 SaveMainCharacter。
 3. 证据：只有「记录里是 Mod 物品、活角色对应槽为空、场景里有同 TypeID 的空壳孤儿」才处理；孤儿必须
-   不在任何父物品、背包或槽里。没证据的不碰，避免把玩家本局卸下或卖掉的装备再变出来。
-4. 处理顺序：从记录重建整棵子树 → 销毁旧孤儿（一份记录不留两份实物）→ 真物品先插回原槽（插得进且确实插上）、
+   不在任何父物品、背包或槽里。没证据的不碰，避免把玩家本局卸下或卖掉的装备再变出来。孤儿扫描覆盖已加载场景里
+   未激活的对象。
+4. 处理顺序：从记录重建整棵子树 → 核对存档槽、关卡、主角、角色物品都没变且原父物品还在（变了就销毁重建品、
+   整轮作废，不把旧档装备送给新档角色）→ 销毁旧孤儿（一份记录不留两份实物）→ 真物品先插回原槽（插得进且确实插上）、
    再进背包 → 空壳或放不回的进仓库（官方整棵序列化保存）。
 5. 生命周期：订阅幂等，Shutdown 退订并作废在途任务。玩家可见提示中英双语。
 每条断言都有内存变异探针，探针不转红本守卫自判失败。行为正确性仍以 Windows 编译与实机为准。
@@ -34,12 +37,14 @@ OFFICIAL = {
 
 RESCUE_ORDER = [
     "if (!LevelConfig.SaveCharacter) return;",
+    "int slot = SavesSystem.CurrentSlot;",
     "SavesSystem.Load<ItemTreeData>(CharacterItemSavePrefix, CharacterItemSaveKey)",
     "if (storedRoot == null || storedRoot.typeID != root.TypeID) return;",
     "CollectMissing(lookup, storedRoot, root, candidates, 0);",
     "Dictionary<int, List<Item>> orphans = FindOrphanShells();",
     "if (!orphans.TryGetValue(candidate.Entry.typeID, out pool) || pool.Count == 0) { skipped++; continue; }",
     "rebuilt = await ItemTreeData.InstantiateAsync(ExtractSubtree(lookup, candidate.Entry));",
+    "if (!Alive(host, gen) || !SameContext(slot, level, main, root, candidate.LiveParent)) { if (rebuilt != null) DestroyQuietly(rebuilt);",
     "if (rebuilt == null) { skipped++; continue; }",
     "DestroyQuietly(orphan);",
     "bool real = !IsFallbackShell(rebuilt);",
@@ -82,6 +87,18 @@ def check(raw):
     if "return item != null && item.name == FallbackNamePrefix + item.TypeID;" not in squash(
             method_body(rescue, "private static bool IsFallbackShell(Item item)")):
         errors.append("[证据] 空壳只认官方 FallbackItem_<TypeID> 命名")
+
+    if "FindObjectsByType<Item>(FindObjectsInactive.Include, FindObjectsSortMode.None);" not in orphans:
+        errors.append("[证据] 孤儿扫描必须覆盖已加载场景里未激活的对象")
+
+    same = squash(method_body(rescue, "private static bool SameContext(int slot, LevelManager level, CharacterMainControl main, Item root, Item liveParent)"))
+    for token in ("if (SavesSystem.CurrentSlot != slot) return false;",
+                  "if (level == null || !ReferenceEquals(LevelManager.Instance, level)) return false;",
+                  "if (main == null || !ReferenceEquals(level.MainCharacter, main)) return false;",
+                  "if (root == null || !ReferenceEquals(main.CharacterItem, root)) return false;",
+                  "return liveParent != null;"):
+        if token not in same:
+            errors.append("[身份] 重建完成后必须核对存档槽、关卡、主角、角色物品与原父物品: " + token)
 
     collect = squash(method_body(rescue, "private static void CollectMissing("))
     if "if (liveChild.TypeID == child.typeID) CollectMissing(lookup, child, liveChild, output, depth + 1); continue;" not in collect:
@@ -142,6 +159,11 @@ PROBES = [
      "slot.Plug(item, out unplugged); return true;", "插槽结果不核对", "[处理]"),
     ("rescue", "                bool real = !IsFallbackShell(rebuilt);\n",
      "                bool real = !IsFallbackShell(rebuilt);\n                SavesSystem.SaveFile(false);\n", "直接写存档", "[记录源]"),
+    ("rescue", " || !SameContext(slot, level, main, root, candidate.LiveParent)", "", "重建完成后不核对身份", "[顺序]"),
+    ("rescue", "if (SavesSystem.CurrentSlot != slot) return false;", "", "换了存档槽也照放", "[身份]"),
+    ("rescue", "if (main == null || !ReferenceEquals(level.MainCharacter, main)) return false;", "", "换了主角也照放", "[身份]"),
+    ("rescue", "return liveParent != null;", "return true;", "原父物品没了也照放", "[身份]"),
+    ("rescue", "FindObjectsInactive.Include", "FindObjectsInactive.Exclude", "孤儿扫描漏掉未激活对象", "[证据]"),
     ("rescue", "LevelManager.OnAfterLevelInitialized -= OnAfterLevelInitialized;", "", "不退订关卡事件", "[生命周期]"),
     ("rescue", 'if (characterAlreadyLoaded) Schedule("late-activation");', "", "迟到激活不检查", "[生命周期]"),
 ]

@@ -2,6 +2,19 @@
 
 更早记录见 `archive/`；月度归档索引保留在本文件正文。
 
+## 2026-11-26 外部复审第二轮：启动半途失败、迟到激活漏救、重建期间换档、Harmony 备用副本（005–008 Fixed L1/L2；正式真编译通过，L3 待 owner）
+
+范围：对 f32a1bd4 的外部复审（对方对真实入口注入故障、做隔离测试，未改仓库、未进游戏），四条逐条对照代码与官方 IL 核实成立。共用证据：去掉 `BOSSRUSH_DEV_BUILD` 的正式真编译 0 错 0 警告；`Build\BossRush.dll` 与游戏目录 SHA-256 同为 `9C2236AE…4470`；`check_dll_identifiers --expect absent` 两份 PASS；全量守卫 800 PASS；相关 22 个隔离执行回归 PASS；未进游戏，未读写玩家存档。
+
+| ID / 状态 | 可复现条件与影响 | 修复与证据 |
+| --- | --- | --- |
+| CR-2026-11-26-005 · P1 / COMPAT · Fixed L1/L2 | 宿主启动只隔离了一半：`RegisterRuntimeModules` 抛错时 `Instance` 已设，后面各阶段与启动自检都不跑；`StartIntegrationRuntime` 抛错时全部模块的 OnStart 被跳过，而自检早在 Awake 末尾写了 `failed=none`。表现为管理器显示已加载、进游戏像没加载。玩家说重新开关就恢复，这与 Harmony 永久缓存那条路径（开关救不回）不符，更像这一条（推断，待 Player.log）。 | 模块登记与集成启动各自单行隔离（`register-modules` / `integration-start`），模块 OnStart 照常分发（宿主逐个模块 try）；启动自检改由 `CompleteStart` 在 Start 末尾打印，覆盖全程。`HostStartupIsolationGuard` 增探针；`CustomBossArenaPresetAwakeRegistrationGuard` 的 `[HostStartOrder]` 按新写法精确比较，「先装配置、再分发 OnStart」不变；`HostDestroyOwnership` 夹具抽取真实 Start，加模块登记抛错、集成启动抛错两例；把生产改回旧写法（两处去隔离、去掉 CompleteStart）三种都转红。宿主 +1 行，partial 预算 19658/19659。 |
+| CR-2026-11-26-006 · P1 / COMPAT · Fixed L1/L2 | 迟到激活漏救：官方 `LevelManager.CreateMainCharacterAsync` 先 await `LoadOrCreateCharacterItemInstance`、再 await `CharacterCreator.CreateCharacter`、最后才写 `mainCharacter`（ikdasm 核对 `TeamSoda.Duckov.Core.dll`）。本 Mod 在这几帧里激活：读档失败发生在补丁装上前，没有记号；`BeginAwake` 又以 `MainCharacter != null` 判迟到，抢救 0 次，主武器槽仍空。反馈玩家是否命中未证实。 | 激活时 `LevelManager.Instance` 非空（关卡场景在加载或已加载）即算迟到，抢救照旧等关卡初始化完成再动手；主菜单激活不受影响。新夹具 `EquipmentRescueTiming` 执行生产 `BossRushStartupGuard` 与 `BossRushEquipmentRescue` 复现：判定改回旧写法时红在「生成主角期间激活必须抢救一次」；主菜单激活后正常读档不读存档、不扫场景、不重建。 |
+| CR-2026-11-26-007 · P1 / COMPAT · Fixed L1/L2 | 重建期间换档：`RescueMainCharacterAsync` 在 await `InstantiateAsync` 之后只核对宿主与代次，换了存档槽或关卡后仍调当前角色的背包 / 仓库接口，旧档装备进了新档。实际撞上的机会小（换档要先回主菜单），后果是跨档复制。 | 重建前记下存档槽、关卡、主角、角色物品；完成后全部一致且原父物品还在才放，否则销毁重建品、整轮作废、旧孤儿不动（`SameContext`）。孤儿扫描改为 `FindObjectsByType`（含未激活、不排序），不再连同物品预制体资源遍历。`EquipmentRescueEvidenceGuard` 增 5 个探针（共 18）；`EquipmentRescueTiming` 覆盖换槽换关卡、只换槽、都没变三例；去掉核对、去掉存档槽一项、扫描不含未激活对象，三种改法都红在预期断言。 |
+| CR-2026-11-26-008 · P2 / COMPAT · Fixed L1/L2 | 首选 Harmony 副本坏了不改试备用：`FindHarmonyCopy` 只要前置目录有这个文件就选它、不验文件头，`EnsureHarmonyLoaded` 只 LoadFrom 一次。 | `FindHarmonyCopies` 只收文件头读得出 0Harmony 身份的文件，前置第一、其余按版本从高到低；`EnsureHarmonyLoaded` 逐个 LoadFrom，抛错换下一份，自检写明跳过了哪份。Unity 2022.3 的 Mono 对真实 `0Harmony.dll` 跑六种目录布局：前置完好、前置截断 + 备用完好、前置不是程序集 + 备用完好、只有备用都载入可用的 Harmony；只有损坏前置、全无时报 `missing`。上一版在后两种「前置坏 + 备用好」里报 `BadImageFormatException`、Harmony 未载入。实测的截断和节表翻转都让文件头读取也失败，逐个重试是第二道兜底，这条分支只有守卫覆盖。`HostStartupIsolationGuard` 共 22 个探针。 |
+
+L3：`M_STARTUP_SELFCHECK_01` 不变，那一行现在在 Start 末尾打印，`failed=` 可能出现 `register-modules` 或 `integration-start`。迟到激活的那几帧人工难以复现，由 `EquipmentRescueTiming` 夹具覆盖；`M_EQUIP_RESCUE_01` 照旧。
+
 ## 2026-11-26 玩家反馈：重进加载不出来、Mod 装备消失；「云上的坐标」交不了（001–004 Fixed L1/L2；正式真编译通过，L3 待 owner）
 
 范围：两条玩家反馈，外加一份外部审查意见（对方未改仓库、未进游戏）。全节共用证据：去掉 `BOSSRUSH_DEV_BUILD` 的正式真编译 0 错 0 警告；`Build\BossRush.dll` 与游戏目录 SHA-256 同为 `F4AB0362…653E`；`check_dll_identifiers --expect absent` 两份 PASS；全量守卫 800 PASS；相关 20 个隔离执行回归 PASS；未进游戏，未读写玩家存档。玩家侧没有冷启动失败那次的 Player.log，问题 1 具体走的哪条路径仍未证实，下面是已证实的代码缺陷。

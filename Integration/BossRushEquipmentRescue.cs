@@ -14,12 +14,13 @@
 // 怎么处理：只看主角。读出存档里那份还没被覆盖的角色记录（Item/MainCharacterItemData），按槽位逐层对照
 // 活着的角色，找出「记录里有 Mod 装备、现在那个槽是空的」的位置。必须同时找得到读档留下的同 TypeID 空壳孤儿：
 // 孤儿只可能来自读档失败，以它为证据，避免把玩家本局主动卸下、卖掉的装备再变出一份。
-// 然后用官方 ItemTreeData.InstantiateAsync 从记录重建整棵子树（耐久、配件、背包内容都在记录里），插回原槽；
+// 然后用官方 ItemTreeData.InstantiateAsync 从记录重建整棵子树（耐久、配件、背包内容都在记录里）。重建要等几帧，
+// 等完先核对存档槽、关卡、主角与角色物品都没变，变了就销毁重建品、整轮作废，不把旧档装备送给新档角色。插回原槽；
 // 插不回就进背包，再不行进仓库。资源仍注册不上时，重建出的仍是空壳：送进仓库（官方 PlayerStorage 会把它
 // 整棵序列化保存），原记录随存档保住，下次资源就绪读档即恢复。旧孤儿随即销毁，避免一份记录两份实物。
 //
 // 成本：正常读档（全部注册成功、Mod 按时激活）一次都不跑；只在上面两种情况各跑一次，先查记录，
-// 有候选才扫一遍场景里的 Item。
+// 有候选才扫一遍已加载场景里的 Item（不含预制体资源）。
 using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
@@ -55,7 +56,10 @@ namespace BossRush
         private static bool running;
         private static int generation;
 
-        /// <summary>宿主 Awake 收尾时调用。characterAlreadyLoaded = 激活时角色已经在关卡里（迟到激活）。</summary>
+        /// <summary>
+        /// 宿主 Awake 收尾时调用。characterAlreadyLoaded = 激活时已经身处关卡场景（迟到激活，关卡还在加载也算）：
+        /// 读档可能在补丁装上之前就失败了，不会留下 NoteUnresolvedLoad 的记号，所以等关卡初始化完成后无条件查一次。
+        /// </summary>
         internal static void Attach(ModBehaviour host, bool characterAlreadyLoaded)
         {
             owner = host;
@@ -140,6 +144,7 @@ namespace BossRush
         private static async UniTask RescueMainCharacterAsync(ModBehaviour host, int gen, string reason)
         {
             if (!LevelConfig.SaveCharacter) return;
+            int slot = SavesSystem.CurrentSlot;
             LevelManager level = LevelManager.Instance;
             CharacterMainControl main = level != null ? level.MainCharacter : null;
             Item root = main != null ? main.CharacterItem : null;
@@ -174,9 +179,11 @@ namespace BossRush
                 Item rebuilt = null;
                 try { rebuilt = await ItemTreeData.InstantiateAsync(ExtractSubtree(lookup, candidate.Entry)); }
                 catch (Exception e) { Debug.LogWarning("[BossRush] 装备抢救重建失败 TypeID=" + candidate.Entry.typeID + ": " + e.Message); }
-                if (!Alive(host, gen))
+                // 重建要等几帧：期间换了存档槽、关卡或主角，这件装备就不属于眼前这个角色了，整轮作废。
+                if (!Alive(host, gen) || !SameContext(slot, level, main, root, candidate.LiveParent))
                 {
                     if (rebuilt != null) DestroyQuietly(rebuilt);
+                    Debug.LogWarning("[BossRush] 装备抢救中止 reason=" + reason + "：重建期间存档槽、关卡或主角已变");
                     return;
                 }
                 if (rebuilt == null) { skipped++; continue; }
@@ -202,6 +209,16 @@ namespace BossRush
             if (preserved > 0)
                 NotificationText.Push(string.Format(L10n.T("有 {0} 件 BossRush 装备这次读不出来，已原样放进仓库，下次进档会恢复。",
                     "{0} BossRush item(s) couldn't load this time. They were kept in storage as-is and will come back next time you load."), preserved));
+        }
+
+        /// <summary>开始重建时的存档槽、关卡、主角与角色物品都没变，原装备槽的父物品也还在。</summary>
+        private static bool SameContext(int slot, LevelManager level, CharacterMainControl main, Item root, Item liveParent)
+        {
+            if (SavesSystem.CurrentSlot != slot) return false;
+            if (level == null || !ReferenceEquals(LevelManager.Instance, level)) return false;
+            if (main == null || !ReferenceEquals(level.MainCharacter, main)) return false;
+            if (root == null || !ReferenceEquals(main.CharacterItem, root)) return false;
+            return liveParent != null;
         }
 
         private static Dictionary<int, ItemTreeData.DataEntry> IndexEntries(ItemTreeData data)
@@ -278,7 +295,8 @@ namespace BossRush
         private static Dictionary<int, List<Item>> FindOrphanShells()
         {
             Dictionary<int, List<Item>> result = new Dictionary<int, List<Item>>();
-            Item[] all = Resources.FindObjectsOfTypeAll<Item>();
+            // 只扫已加载场景里的对象（含未激活），不连同物品预制体资源一起过一遍；不排序。
+            Item[] all = UnityEngine.Object.FindObjectsByType<Item>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             for (int i = 0; i < all.Length; i++)
             {
                 Item item = all[i];

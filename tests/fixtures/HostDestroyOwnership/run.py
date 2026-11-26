@@ -28,7 +28,7 @@ def extract(source, signature):
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     sources = {
-        'ModBehaviour.cs': ['void Awake()', 'void OnDestroy()'],
+        'ModBehaviour.cs': ['void Awake()', 'void Start()', 'void OnDestroy()'],
         'Achievement/AchievementRuntimeHooks.cs': ['internal void CleanupAchievementRuntime()'],
     }
     hashes, methods = {}, []

@@ -43,11 +43,13 @@ namespace BossRush
     {
         public override string ModuleName { get { return "Achievement"; } }
         internal void CleanupAchievementRuntime() { Probe.Add("achievement.cleanup"); }
+        public override void OnStart() { Probe.Add("module.achievement.start"); }
         public override void OnDestroy() { Probe.Add("module.achievement.destroy"); }
     }
     internal sealed class TailModule : BossRushRuntimeModuleBase
     {
         public override string ModuleName { get { return "Tail"; } }
+        public override void OnStart() { Probe.Add("module.tail.start"); }
         public override void OnDestroy() { Probe.Add("module.tail.destroy"); }
     }
     internal static class SafeRuntime
@@ -69,6 +71,7 @@ namespace BossRush
         internal static void FailStage(string stage, Exception e) { Probe.Add("startup.fail:" + stage); }
         internal static void FailBootstrap(Exception e) { Probe.Add("startup.fail:harmony-bootstrap"); }
         internal static void CompleteAwake(ModBehaviour host) { Probe.Add("startup.complete"); }
+        internal static void CompleteStart() { Probe.Add("startup.selfcheck"); }
         internal static void Shutdown() { Probe.Add("startup.shutdown"); }
     }
 
@@ -87,6 +90,7 @@ namespace BossRush
             Probe.Add("modules.register");
             achievementRuntime = new AchievementRuntimeModule();
             runtimeModuleHost.Register(achievementRuntime);
+            if (ThrowStage == "register") throw new InvalidOperationException("register");
             runtimeModuleHost.Register(new TailModule());
         }
         internal static string ThrowStage;
@@ -96,6 +100,7 @@ namespace BossRush
         private void RegisterPlayerLifecycleRuntimeEvents() { Stage("player"); }
         private void InitializeDebugToolsRuntime() { Stage("debug"); }
         private void InitializeAchievementRuntime() { Stage("achievement"); }
+        internal void StartIntegrationRuntime() { Stage("integration"); }
         private void ShutdownLanguageChangeSubscription() { Probe.Add("language.cleanup"); }
         private void CleanupDebugToolsOnDestroy() { Probe.Add("debug.cleanup"); }
         private void CleanupPlayerLifecycleRuntimeEvents() { Probe.Add("player.cleanup"); }
@@ -104,6 +109,7 @@ namespace BossRush
         private void CleanupIntegrationRuntimeOnDestroy() { Probe.Add("integration.cleanup"); }
         private void CleanupModeRuntimeOnDestroy() { Probe.Add("modes.cleanup"); }
         internal void InvokeAwake() { Awake(); }
+        internal void InvokeStart() { Start(); }
         internal void InvokeDestroy() { OnDestroy(); }
         internal static void SetInstance(ModBehaviour value) { Instance = value; }
     }
