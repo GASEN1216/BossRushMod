@@ -358,7 +358,8 @@ namespace BossRush
         internal bool TryDeliverQuest(SkyIslandStoryAction action, int money, out string message)
         {
             message = L10n.T("奖金这会儿发不出去，稍后再试。", "The reward can't be paid out yet. Try again shortly.");
-            if (rewardCommitting || !CanWrite || SavesSystem.IsSaving || Duckov.Economy.EconomyManager.Instance == null) return false;
+            if (!CanWrite) { message = SaveStatus; return false; }
+            if (rewardCommitting || SavesSystem.IsSaving || Duckov.Economy.EconomyManager.Instance == null) return false;
             SkyIslandStoryData candidate;
             string appliedMessage;
             if (!SkyIslandStoryRules.TryApply(Current, action, out candidate, out appliedMessage)) { message = appliedMessage; return false; }
@@ -370,18 +371,18 @@ namespace BossRush
                 {
                     long before = Duckov.Economy.EconomyManager.Money;
                     if (money <= 0 || before > long.MaxValue - money) return false;
-                    try { Duckov.Economy.EconomyManager.Add(money); }
-                    catch (Exception e) { ModBehaviour.DevLog("[SkyIsland] 奖金通知异常: " + e.Message); }
-                    if (Duckov.Economy.EconomyManager.Money != before + money) return false;
+                    // 到账只认官方 Add 的结果，不要求余额恰好 +money：别的订阅者可能在通知里顺手改钱（BossRushMoneyTransfer 文件头）。
+                    if (!BossRushMoneyTransfer.TryAdd(money, "SkyIsland")) return false;
                     cashPaidPendingAction = action;
                     cashSnapshotRequired = true;
                 }
                 if (!store.Store(candidate))
                 {
-                    long before = Duckov.Economy.EconomyManager.Money;
-                    try { Duckov.Economy.EconomyManager.Pay(new Duckov.Economy.Cost((long)money), true, true); }
-                    catch (Exception e) { ModBehaviour.DevLog("[SkyIsland] 奖金回滚异常: " + e.Message); }
-                    if (Duckov.Economy.EconomyManager.Money == before - money) cashPaidPendingAction = null;
+                    bool refunded = BossRushMoneyTransfer.TryDebit(money, true, true, "SkyIsland");
+                    if (refunded) cashPaidPendingAction = null;
+                    message = refunded
+                        ? L10n.T("这笔没记上，奖金先收回了，稍后再交。", "That didn't get recorded, so the reward was taken back. Hand it in again shortly.")
+                        : L10n.T("奖金已经到手，这笔还没记上，稍后再交一次，不会再给钱。", "The reward is already yours but wasn't recorded. Hand it in again shortly; you won't be paid twice.");
                     return false;
                 }
                 cashPaidPendingAction = null;

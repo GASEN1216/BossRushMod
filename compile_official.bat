@@ -13,8 +13,8 @@ if defined BOSSRUSH_DEV_BUILD (
     set "BOSSRUSH_DEFINE_ARGS=/define:BOSSRUSH_DEV"
     echo [DEV] BOSSRUSH_DEV enabled: DevLog calls will be compiled in.
 )
-:: HarmonyLoadMod (Workshop ID: 3588386576)
-set HARMONY_MOD_ID=3588386576
+:: HarmonyLib prerequisite mod HarmonyLoadMod (Workshop ID: 3589088839)
+set HARMONY_MOD_ID=3589088839
 call :ensure_game_path
 if not defined GAME_PATH (
     echo [FAIL] GAME_PATH was not found.
@@ -137,6 +137,7 @@ echo(Localization\DailyReportLocalization.cs
 echo(Common\Lifecycle\IBossRushRuntimeModule.cs
 echo(Common\Lifecycle\SceneRuntimeContext.cs
 echo(Common\Lifecycle\BossRushRuntimeModuleHost.cs
+echo(Common\Lifecycle\BossRushStartupGuard.cs
 echo(Common\Lifecycle\BossRushRuntimeModuleBase.cs
 echo(Common\Lifecycle\ArchitectureSentinelRuntimeModule.cs
 echo(ModBehaviourRuntimeModules.cs
@@ -160,6 +161,7 @@ echo(Common\Effects\BossRushFxMaterials.cs
 echo(Common\Effects\BossRushFxKit.cs
 echo(Common\Effects\BossRushParticleTextures.cs
 echo(Common\Infrastructure\ObjectCache.cs
+echo(Common\Infrastructure\BossRushMoneyTransfer.cs
 echo(Common\Infrastructure\IHarmonyPatchGroup.cs
 echo(Common\Infrastructure\HarmonyPatchGroupRegistrar.cs
 echo(Common\Infrastructure\HarmonyBindingSelfCheck.cs
@@ -456,6 +458,7 @@ echo(DebugAndTools\F3GameplayValidationAutotestStory.cs
 echo(DebugAndTools\F3GameplayValidationAutotestReport.cs
 echo(DebugAndTools\NPCTeleportUI.cs
 echo(Integration\BossRushDynamicItemRegistry.cs
+echo(Integration\BossRushEquipmentRescue.cs
 echo(Integration\BossRushIntegrationRuntimeModule_AmmoShop.cs
 echo(Integration\BossRushIntegration.cs
 echo(Integration\IntegrationHostCompatibility.cs

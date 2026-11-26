@@ -24,6 +24,10 @@ internal static class Program
 
         var live = new ModBehaviour();
         live.InvokeAwake();
+        Check(Probe.Trace.SequenceEqual(new[] {
+            "startup.begin", "modules.register", "init.bootstrap", "init.always", "init.player", "init.debug",
+            "init.achievement", "startup.complete" }),
+            "Awake must start the startup guard before any module or Harmony work and finish with the self-check");
         Check(ReferenceEquals(ModBehaviour.Instance, live), "Real Awake must establish the owning instance");
         Probe.Trace.Clear();
         var duplicate = new ModBehaviour();
@@ -38,7 +42,7 @@ internal static class Program
         Check(live == null, "The normal owning instance must exercise Unity fake-null at destruction");
         DestroyHost(live, "Active fake-null owner");
         string[] expected = {
-            "modeg.prepare", "language.cleanup", "debug.cleanup", "player.cleanup", "achievement.cleanup",
+            "modeg.prepare", "language.cleanup", "startup.shutdown", "debug.cleanup", "player.cleanup", "achievement.cleanup",
             "BossRushAchievementManager.ResetStaticCaches", "AchievementIconLoader.ResetStaticCaches",
             "BossRushUI.ResetStaticCaches", "BossRushUISkinLoader.Cleanup", "BossBgmCoordinator.ResetStaticCaches",
             "MutatorUI.ResetStaticCaches", "affix.cleanup", "always.cleanup", "integration.cleanup", "modes.cleanup",
@@ -57,7 +61,24 @@ internal static class Program
         Check(Probe.Trace.Count == 0 && ReferenceEquals(ModBehaviour.Instance, replacement),
             "A late callback from the old instance must not tear down its replacement");
         DestroyHost(replacement, "Replacement owner");
-        Console.WriteLine("HostDestroyOwnership: PASS (unawakened, duplicate, fake-null owner, repeated destroy, replacement, cleanup order)");
+
+        foreach (string failing in new[] { "bootstrap", "always", "achievement" })
+        {
+            ModBehaviour.ThrowStage = failing;
+            var isolated = new ModBehaviour();
+            Probe.Trace.Clear();
+            isolated.InvokeAwake();
+            string reported = failing == "bootstrap" ? "startup.fail:harmony-bootstrap"
+                : failing == "always" ? "startup.fail:always-on" : "startup.fail:achievement";
+            int at = Probe.Trace.IndexOf("init." + failing);
+            Check(at >= 0 && Probe.Trace.Count > at + 1 && Probe.Trace[at + 1] == reported,
+                "A throwing startup stage must be reported right away: " + failing);
+            Check(Probe.Trace.Contains("init.achievement") && Probe.Trace.Last() == "startup.complete",
+                "Later startup stages and the self-check must still run after a failure: " + failing);
+            ModBehaviour.ThrowStage = null;
+            DestroyHost(isolated, "Isolated owner");
+        }
+        Console.WriteLine("HostDestroyOwnership: PASS (unawakened, duplicate, fake-null owner, repeated destroy, replacement, cleanup order, startup stage isolation)");
         return 0;
     }
 }

@@ -867,26 +867,33 @@ namespace BossRush
                         failureReasonId = "cash_bet_store_failed";
                         return false;
                     }
+                    // 动没动钱看两样：官方 Pay / Add 返回 true，或这次调用里账户余额确实变了。不要求净变化恰好等于 delta：
+                    // 别的订阅者可能在通知里顺手改钱，按净变化判失败会撤回账本而钱已经动了（BossRushMoneyTransfer 文件头）。
+                    bool moved = delta == 0;
                     try
                     {
                         if (delta < 0)
                         {
                             bool paid = EconomyManager.Pay(new Cost(-delta), true, false);
+                            moved = paid || EconomyManager.Money != before;
                             // 官方 Pay(Cost) 的 IsEnough 固定加上背包 Cash，极大钱包会在这一步溢出拒付。
                             // 仅当 Pay 明确拒绝且账户未变、确实发生该加法上溢时，用官方有符号 Add 扣账户。
                             if (!paid && EconomyManager.Money == before)
                             {
                                 long cash = EconomyManager.Cash;
                                 if (cash > 0 && before > long.MaxValue - cash) EconomyManager.Add(delta);
+                                moved = EconomyManager.Money != before;
                             }
                         }
-                        else if (delta > 0) EconomyManager.Add(delta);
+                        else if (delta > 0) moved = EconomyManager.Add(delta) || EconomyManager.Money != before;
                     }
                     catch (Exception e)
                     {
-                        ModBehaviour.DevLog("[ModeH] 押钱动钱通知异常: " + e.Message);
+                        // 官方先改余额再派发通知：通知里抛异常时钱已经动了。
+                        moved = EconomyManager.Instance != null && EconomyManager.Money != before;
+                        ModBehaviour.DevLog("[ModeH] 押钱动钱通知异常，已动钱=" + moved + ": " + e.Message);
                     }
-                    if (EconomyManager.Money != before + delta)
+                    if (!moved)
                     {
                         _store.Store(previous);
                         failureReasonId = "cash_bet_money_unchanged";

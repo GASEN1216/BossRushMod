@@ -48,7 +48,10 @@ namespace BossRush.Patches.ItemStatsSystem
         // 对已销毁的 dynamicEntry.prefab 调 Instantiate。两者都到不了官方 fallback。
         internal static bool NeedsFallback(int typeID)
         {
-            return BossRushDynamicItemRegistry.IsBossRushDynamicItemType(typeID) && !Ensure(typeID);
+            if (!BossRushDynamicItemRegistry.IsBossRushDynamicItemType(typeID) || Ensure(typeID)) return false;
+            // 读档只能交出空壳：装备槽插不进去，官方下次保存就会丢。关卡初始化后由装备抢救按存档记录补回或保住。
+            BossRushEquipmentRescue.NoteUnresolvedLoad();
+            return true;
         }
 
         // 非激活的运行时克隆 prefab 不执行 Awake；官方 InstantiateSync/Async 也只 Instantiate。
@@ -188,6 +191,7 @@ namespace BossRush.Patches.ItemStatsSystem
             }
 
             ModBehaviour.DevLog("[BossRushDynamicItemRegistry] 关键补丁验证完成: " + verified + "/" + specs.Length + ", 补装=" + repaired);
+            BossRushStartupGuard.NoteCriticalPatches(verified, specs.Length);
             return verified == specs.Length;
         }
 

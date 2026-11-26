@@ -166,9 +166,15 @@ def check(sources):
 
     # ---- 3. 资金顺序 ----
     commit = body(service, "private bool Commit(")
-    ordered(commit, ["_store.Store(candidate)", "EconomyManager.Pay(", "EconomyManager.Money != before + delta",
+    ordered(commit, ["_store.Store(candidate)", "EconomyManager.Pay(", "if (!moved)",
                      "_store.Store(previous)", "_coordinator.RequestFlush("],
             "[顺序] 先排账本、再动钱、钱没变就撤回账本、最后同批落盘")
+    # 2026-11-26：别的订阅者可能在官方 OnMoneyChanged 里顺手改钱；补丁过的 Pay 可能扣了钱却返回 false。
+    # 动没动钱看「官方返回 true 或账户余额确实变了」，不看净变化是否恰好等于 delta。
+    forbid(commit, "EconomyManager.Money != before + delta", "[钱包] 不得按余额净变化判定是否动了钱")
+    need(commit, "else if (delta > 0) moved = EconomyManager.Add(delta) || EconomyManager.Money != before;",
+         "[钱包] 赔付：官方 Add 返回 true 或余额已变都算到账")
+    need(commit, "moved = paid || EconomyManager.Money != before;", "[钱包] 押金：Pay 返回 false 但余额已变也算扣过，不能撤回账本")
     need(commit, "EconomyManager.Pay(new Cost(-delta), true, false)", "[钱包] 押金只从账户余额扣，不碰背包现金物品")
     need(commit, "if (!paid && EconomyManager.Money == before)", "[钱包] 官方拒付回退必须确认 Pay 失败且账户未变，不能重复扣款")
     need(commit, "if (cash > 0 && before > long.MaxValue - cash) EconomyManager.Add(delta);",
@@ -360,6 +366,9 @@ def main():
     errors = check(sources)
     probes = [
         ("service", "if (!paid && EconomyManager.Money == before)", "if (!paid)"),
+        ("service", "moved = paid || EconomyManager.Money != before;", "moved = paid;"),
+        ("service", "else if (delta > 0) moved = EconomyManager.Add(delta) || EconomyManager.Money != before;",
+         "else if (delta > 0) moved = EconomyManager.Add(delta);"),
         ("service", "if (cash > 0 && before > long.MaxValue - cash) EconomyManager.Add(delta);", "EconomyManager.Add(delta);"),
         ("service", "bool restoreAccepted = slot >= 0 && _slot == slot;", "bool restoreAccepted = true;"),
         ("service", "if (!TryRecoverFaultedStore()) return;", ""),

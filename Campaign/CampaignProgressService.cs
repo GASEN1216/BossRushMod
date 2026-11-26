@@ -366,15 +366,8 @@ namespace BossRush
                 if (def.RewardCash > 0 && !cashAlreadyPaid)
                 {
                     if (!CampaignSaveCoordinator.TryPrepareCashReward()) return false;
-                    bool paid = false;
-                    try
-                    {
-                        paid = EconomyManager.Add(def.RewardCash);
-                    }
-                    catch (Exception e)
-                    {
-                        LogFailure("reward_cash", e);
-                    }
+                    // 通知里抛异常时钱已到账，也要上闩挡住第二次发放（BossRushMoneyTransfer 文件头）。
+                    bool paid = BossRushMoneyTransfer.TryAdd(def.RewardCash, "Campaign");
                     if (!paid)
                     {
                         ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] 奖金发放失败，交付中止: " + chapterId);
@@ -392,8 +385,7 @@ namespace BossRush
                     bool refunded = def.RewardCash <= 0;
                     if (def.RewardCash > 0)
                     {
-                        try { refunded = EconomyManager.Pay(new Cost((long)def.RewardCash), true, true); }
-                        catch (Exception e) { LogFailure("reward_rollback", e); }
+                        refunded = BossRushMoneyTransfer.TryDebit(def.RewardCash, true, true, "Campaign");
                     }
                     // 退款成功 = 玩家手里没有这笔钱了，下次交付要正常重新发；
                     // 退款失败 = 钱还在玩家手里，闩必须留着挡住第二次发放。
@@ -443,9 +435,7 @@ namespace BossRush
                 if (rewardCash > 0 && !cashAlreadyPaid)
                 {
                     if (!CampaignSaveCoordinator.TryPrepareCashReward()) return false;
-                    bool paid = false;
-                    try { paid = EconomyManager.Add(rewardCash); }
-                    catch (Exception e) { LogFailure("guide_reward_cash", e); }
+                    bool paid = BossRushMoneyTransfer.TryAdd(rewardCash, "Campaign");
                     if (!paid) return false;
                     _cashPaidPendingGuideId = guideId;
                 }
@@ -454,8 +444,7 @@ namespace BossRush
                     bool refunded = rewardCash <= 0 || cashAlreadyPaid;
                     if (rewardCash > 0 && !cashAlreadyPaid)
                     {
-                        try { refunded = EconomyManager.Pay(new Cost((long)rewardCash), true, true); }
-                        catch (Exception e) { LogFailure("guide_reward_rollback", e); }
+                        refunded = BossRushMoneyTransfer.TryDebit(rewardCash, true, true, "Campaign");
                     }
                     if (refunded && !cashAlreadyPaid) _cashPaidPendingGuideId = null;
                     return false;

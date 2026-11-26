@@ -217,11 +217,15 @@ namespace Duckov.Economy
     {
         internal static EconomyManager Instance = new EconomyManager();
         internal static long Money = 100;
+        internal static long Cash;
         internal static bool RejectAdd, ThrowAfterAdd;
+        // 官方 Add 先改余额、再同步派发 OnMoneyChanged；别的订阅者（收益倍率 Mod 等）可能在通知里再改一次钱。
+        internal static Action AfterAdd;
         internal static bool Add(long amount)
         {
             if (Instance == null || RejectAdd) return false;
             Money += amount;
+            if (AfterAdd != null) AfterAdd();
             if (ThrowAfterAdd) throw new InvalidOperationException("observer failed");
             return true;
         }

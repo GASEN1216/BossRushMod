@@ -24,6 +24,7 @@ internal static class Program
         BossRushDynamicItemRegistry.ResetStaticCaches();
         ModBehaviour.Instance = new ModBehaviour();
         ModBehaviour.CriticalMessages.Clear();
+        BossRushEquipmentRescue.UnresolvedLoadNotes = 0;
         ModBehaviour.ConfiguratorRegistrations = 0;
         ModBehaviour.ConfiguratorsReady = false;
         ModItemIcons.BrokenIcon = 0;
@@ -86,6 +87,7 @@ internal static class Program
         ResetHost();
         Item character = CharacterTree().Instantiate();
         CheckCharacter(character);
+        Check(BossRushEquipmentRescue.UnresolvedLoadNotes == 0, "a fully registered restore does not schedule equipment rescue");
         Check(ModBehaviour.ConfiguratorRegistrations == 1 && EquipmentFactory.Loads == 1 && ItemFactory.Loads == 0,
             "first saved equipment query warms configuration before any item bundle or delayed bootstrap");
 
@@ -155,6 +157,8 @@ internal static class Program
         UniTask.AdvanceFrame();
         Check(operation.GetAwaiter().IsCompleted && operation.GetAwaiter().GetResult() == ItemAssetsCollection.LastFallback,
             "persistent absence returns the same fallback after one frame");
+        Check(BossRushEquipmentRescue.UnresolvedLoadNotes > 0,
+            "a fallback handed to the official item tree is reported so equipment rescue checks the saved record after the level loads");
 
         ResetHost();
         ItemAssetsCollection.DeclinedPublishType = typeId;

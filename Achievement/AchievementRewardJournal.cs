@@ -63,9 +63,8 @@ namespace BossRush
                 {
                     // Store 只排队；在钱真实变动前，BeforeCollectSaveData 拒绝发布收据。
                     if (!store.Store(candidate)) return false;
-                    try { if (amount > 0) EconomyManager.Add(amount); }
-                    catch (Exception e) { ModBehaviour.DevLog("[Achievement] 奖金通知异常: " + e.Message); }
-                    if (EconomyManager.Money != before + amount)
+                    // 只认官方 Add 的到账结果；余额净变化可能被别的订阅者改动（BossRushMoneyTransfer 文件头）。
+                    if (!BossRushMoneyTransfer.TryAdd(amount, "Achievement"))
                     {
                         store.Store(previous);
                         return false;

@@ -25,3 +25,5 @@
 更新最终发布包后，在安装了 UnityPy 的环境从仓库根目录运行 `python tools/item_bundle_inventory.py --root <发行包所在目录>`。默认读取当前目录的 `Assets`（从仓库根执行），也可用 `--output Build/item_bundle_inventory.json` 生成到临时文件比对。每个相对路径只记一次，快照内容来自包内导出的根 GameObject、Item 的 `typeID` 字段和模型根名称，并附实际文件 SHA-256。
 
 公开 CI 读取快照即可复算代码接线。夹具有包时比对 SHA-256，缺私有包时仍核查注册计划与快照。`python tools/verify_unity_resource_release.py --root <发行包所在目录> --report Build/resource-release-audit.json` 在本地用全部真实发行包复算根数据与哈希，过期快照使核验失败。范围是注册表直接引用的物品包及模型来源，不验证 Unity 运行时绑定、视觉、`FallbackLoader` 的传递依赖或玩家存档。
+
+2026-11-26：生产补丁 `NeedsFallback` 交出空壳前调用 `BossRushEquipmentRescue.NoteUnresolvedLoad()`，关键补丁核验结果交给 `BossRushStartupGuard.NoteCriticalPatches`。两者在 `Host.cs` 里是只计数的替身：真实装备抢救依赖关卡、存档与 UniTask，本夹具只证明「全部注册成功时不记、持续缺失交出空壳时记一笔」，不证明抢救本身。抢救的结构不变式由 `tests/EquipmentRescueEvidenceGuard.py` 守，行为要 L3。

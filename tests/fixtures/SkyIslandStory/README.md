@@ -31,3 +31,5 @@ SavesSystem、基地状态与每帧写盘节流是内存替身，不加载 Unity
 **直接 `dotnet run` 会在本目录生成 `bin/`、`obj/`，之后聚合执行器会把其中的 AssemblyInfo 再编一遍而报 CS0579**：请只用上面那条命令跑。
 
 2026-09-22：链接生产 AchievementRewardJournal，并执行 AuditRewardPersistenceRegression；内存替身分开模拟缓存与已落盘槽/全局数据，覆盖先缓存后物理失败、跨槽意向、重复领取、Add 拒绝/通知抛错，以及天空岛奖金与交付旗标的同批保存。官方实际 ES3/断电原子性仍需 L3。
+
+2026-11-26：链接生产 `Common/Infrastructure/BossRushMoneyTransfer.cs`。替身 `EconomyManager.AfterAdd` 模拟别的订阅者在官方 OnMoneyChanged 里再改一次钱：天空岛「云上的坐标」交付与成就奖金都必须一次记账、重试不再发钱（玩家反馈「奖金这会儿发不出去」）。把生产判定改回「余额恰好 +5000」时这两条转红。

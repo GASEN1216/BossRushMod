@@ -63,6 +63,14 @@ namespace BossRush
     internal static class BossBgmCoordinator { internal static void ResetStaticCaches() { } }
     internal static class MutatorUI { internal static void ResetStaticCaches() { } }
     internal static class BossRushSaveFileThrottle { internal static void ResetStaticCaches() { } }
+    internal static class BossRushStartupGuard
+    {
+        internal static void BeginAwake() { Probe.Add("startup.begin"); }
+        internal static void FailStage(string stage, Exception e) { Probe.Add("startup.fail:" + stage); }
+        internal static void FailBootstrap(Exception e) { Probe.Add("startup.fail:harmony-bootstrap"); }
+        internal static void CompleteAwake(ModBehaviour host) { Probe.Add("startup.complete"); }
+        internal static void Shutdown() { Probe.Add("startup.shutdown"); }
+    }
 
     public partial class ModBehaviour : UnityEngine.Object
     {
@@ -81,11 +89,13 @@ namespace BossRush
             runtimeModuleHost.Register(achievementRuntime);
             runtimeModuleHost.Register(new TailModule());
         }
-        private void InitializeBootstrapRuntime() { }
-        private void InitializeAlwaysOnRuntime() { }
-        private void RegisterPlayerLifecycleRuntimeEvents() { }
-        private void InitializeDebugToolsRuntime() { }
-        private void InitializeAchievementRuntime() { }
+        internal static string ThrowStage;
+        private static void Stage(string name) { Probe.Add("init." + name); if (ThrowStage == name) throw new InvalidOperationException(name); }
+        private void InitializeBootstrapRuntime() { Stage("bootstrap"); }
+        private void InitializeAlwaysOnRuntime() { Stage("always"); }
+        private void RegisterPlayerLifecycleRuntimeEvents() { Stage("player"); }
+        private void InitializeDebugToolsRuntime() { Stage("debug"); }
+        private void InitializeAchievementRuntime() { Stage("achievement"); }
         private void ShutdownLanguageChangeSubscription() { Probe.Add("language.cleanup"); }
         private void CleanupDebugToolsOnDestroy() { Probe.Add("debug.cleanup"); }
         private void CleanupPlayerLifecycleRuntimeEvents() { Probe.Add("player.cleanup"); }

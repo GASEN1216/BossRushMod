@@ -2,6 +2,24 @@
 
 更早记录见 `archive/`；月度归档索引保留在本文件正文。
 
+## 2026-11-26 玩家反馈：重进加载不出来、Mod 装备消失；「云上的坐标」交不了（001–004 Fixed L1/L2；正式真编译通过，L3 待 owner）
+
+范围：两条玩家反馈，外加一份外部审查意见（对方未改仓库、未进游戏）。全节共用证据：去掉 `BOSSRUSH_DEV_BUILD` 的正式真编译 0 错 0 警告；`Build\BossRush.dll` 与游戏目录 SHA-256 同为 `F4AB0362…653E`；`check_dll_identifiers --expect absent` 两份 PASS；全量守卫 800 PASS；相关 20 个隔离执行回归 PASS；未进游戏，未读写玩家存档。玩家侧没有冷启动失败那次的 Player.log，问题 1 具体走的哪条路径仍未证实，下面是已证实的代码缺陷。
+
+| ID / 状态 | 可复现条件与影响 | 修复与证据 |
+| --- | --- | --- |
+| CR-2026-11-26-001 · P1 / COMPAT · Fixed L1/L2 | 天空岛「云上的坐标」等交付：`TryDeliverQuest` 在 `EconomyManager.Add` 之后要求余额恰好 `+money`。官方 Add 先改余额、再同步派发 `OnMoneyChanged`，别的订阅者（其它 Mod、收益倍率补丁）在通知里再改一次钱，净变化对不上就判失败：不记账、不上闩，钱却已到账，提示「奖金这会儿发不出去」，玩家每点一次再到账一笔。成就奖金同病。 | 新增 `Common/Infrastructure/BossRushMoneyTransfer.cs`：官方返回 true，或这次调用里余额（扣钱时连同背包现金）确实变了，都算到账。天空岛到账即上闩；排队失败时退款成功才撤闩，两种提示分开写；存档不可写时显示存档状态。成就奖金、征程章节与引导奖金、鸭王杯押注同一口径，鸭王杯原有的「Pay 返回 false 但已扣」用例仍通过。`SkyIslandStory` 夹具加了替身 `AfterAdd` 和两条用例，把天空岛、成就的判定改回「恰好 +奖金」时都红在预期断言上。新守卫 `MoneyDeliveryNetDeltaGuard` 扫全部编译源（9 个变异探针）；征程三份守卫的锚点随调用同步，不变式不变，变异后转红。 |
+| CR-2026-11-26-002 · P1 / COMPAT · Fixed L1/L2 | 读档时 Mod 装备没注册上：官方 `ItemTreeData.InstantiateAsync` 造 `FallbackItem_<id>` 空壳，又丢弃 `Slot.Plug` 的返回值（ikdasm 核对 IL），空壳插不进装备槽就成了孤儿。官方下次 `SaveMainCharacter` 只写挂在身上的东西，装备连同配件、背包内容一起丢失；外部审查在隔离环境复现了同一路径。两种触发：Mod 激活晚于读档（创意工坊要等 Steam 回调）；读档时某件注册失败。 | 新增 `Integration/BossRushEquipmentRescue.cs`，只在上述两种情况各跑一次：读还没被覆盖的 `Item/MainCharacterItemData`，按槽位对照；必须有同 TypeID 的空壳孤儿作证据。从记录重建整棵子树，插回原槽或背包；仍是空壳的进仓库原样保住，下次资源就绪即恢复。旧孤儿销毁，不直接写存档。`NeedsFallback` 交出空壳前记一笔。新守卫 `EquipmentRescueEvidenceGuard`（13 个探针，另对照反编译源的存档键与空壳命名）；`DynamicItemInitialization` 夹具断言「注册成功不记、持续缺失记一笔」。抢救流程本身没在游戏里跑过，L3。 |
+| CR-2026-11-26-003 · P1 / COMPAT · Fixed L1/L2 | 宿主 Awake 没有隔离：任一初始化段抛错（含 JIT 时程序集缺失）都会中断后面所有阶段。本 Mod 先于前置 HarmonyLib 激活时，Mono 6.13 会把 0Harmony 引用永久记为缺失（同日用 Unity 2022.3 的 Mono 实测，之后再加载、再开关本 Mod 都救不回来）。正式构建里也没有任何启动诊断（DevLog 整条消失），玩家日志无从定位。 | 新增 `Common/Lifecycle/BossRushStartupGuard.cs`（不引用 HarmonyLib）。Awake 第一步预加载 0Harmony：前置目录优先，前置不在时用已安装 Mod 里版本最高的副本。五个初始化段各自单行 try/catch，记下失败阶段；补丁层失败时退回同步登记全部 Mod 物品。正式构建输出一行启动自检：目录、场景、是否迟到激活、Harmony 来源、关键补丁已核 / 总数、失败阶段。新守卫 `HostStartupIsolationGuard`（15 个探针）；`HostDestroyOwnership` 夹具执行真实 Awake，覆盖阶段顺序和三种阶段抛错。宿主 +9/−6 行，在 partial 预算内。 |
+| CR-2026-11-26-004 · P3 / OPERATIONAL · Fixed L1/L2 | `compile_official.bat` 把前置 HarmonyLib 的创意工坊 ID 写成 3588386576，工坊页标注的必需前置是 3589088839。本机两份 `0Harmony.dll` SHA-256 相同，编译产物不受影响，但注释和路径会误导人。 | 改为 3589088839（保持 CRLF 和 ASCII 注释）；`HostStartupIsolationGuard` 核对它与 `BossRushStartupGuard` 里的常量一致。五份 Harmony 类夹具 `run.py` 的本机默认路径仍指 3588386576（同一份 DLL），未改。 |
+
+挡不住的情况：读档时本 Mod 根本没在运行，玩家随后撤离或切场景，官方就已经把没有这件装备的角色写回存档，Mod 内补救不了。给玩家的建议：进游戏看到「Mod 变更」提示时点取消，等 Mod 加载完再继续，并保留 Player.log；已经丢的装备可用官方存档备份恢复。要证实问题 1 的真实原因，需要玩家冷启动失败那次的 Player.log（看启动自检那一行）；问题 2 需要第一次失败前后的余额，核对是否有别的 Mod 改钱。
+
+L3 清单（owner）：
+- `M_STARTUP_SELFCHECK_01`：正式构建进主菜单，在 Player.log 里搜 `[BossRush] 启动自检`。合格：只有一行，`harmony=loaded:` 或 `preloaded:`，`patches=N/N`，`failed=none`。不合格：没有这一行、`harmony=missing`、patches 两个数不等，或 failed 不是 none。
+- `M_EQUIP_RESCUE_01`（用测试档）：身上装 Mod 武器（带配件）进基地后退到桌面；在 Mod 管理器里关掉 BossRush，进档后不撤离、不切场景，直接退到主菜单；重新打开 BossRush 再进档。合格：Player.log 有 `[BossRush] 装备抢救` 且 restored≥1，武器回到原槽，配件和耐久不变，右上角提示「已经放回」；撤离后再读档，武器仍在。不合格：武器没回来、多出一份，或仓库里多出问号空壳。
+- `M_SKY_DELIVERY_01`：天空岛序章「云上的坐标」拿到航向仪后交付。合格：一次就成功，任务变成已完成，余额增加 5000（同时装了收益倍率类 Mod 时增加量可以不同）；再点不会再给钱。不合格：提示「奖金这会儿发不出去」，或每点一次钱多一笔。
+
 ## 2026-11-25 owner 成就页截图 + 水墨 UI 复核（022–038 Fixed L1/L2，014 复开并改正；C4、C8 不成立；正式真编译通过，L3 待 owner）
 
 范围：owner 实机截图（成就页卡片左侧图标被切、右侧「已授」印与「√ 已领取」被切、统计栏一截金色胶囊浮着、卡与卡之间两道金线），加上随后三路只读复核（A / B / C 组）对 `1f24eec0` 全部水墨界面的排查。截图问题由像素几何与代码互证（图标露出约 27/54，正好左移 50）；其余由代码与坐标计算确认。证据（全节共用）：去掉 `BOSSRUSH_DEV_BUILD` 的正式真编译 0 错 0 警告，`Build\BossRush.dll` 与游戏目录 SHA-256 同为 `DF819996…0242`，两份 `check_dll_identifiers --expect absent` PASS；全量守卫 797 PASS；相关 17 个隔离执行回归 PASS；未进游戏。

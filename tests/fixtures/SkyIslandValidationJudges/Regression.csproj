@@ -18,6 +18,7 @@
     <Compile Include="../../../SkyIsland/SkyIslandEnemyTier.cs" Link="Production/SkyIslandEnemyTier.cs" />
     <Compile Include="../../../SkyIsland/SkyIslandStoryCodec.cs" Link="Production/SkyIslandStoryCodec.cs" />
     <Compile Include="../../../SkyIsland/SkyIslandStoryService.cs" Link="Production/SkyIslandStoryService.cs" />
+    <Compile Include="../../../Common/Infrastructure/BossRushMoneyTransfer.cs" Link="Production/BossRushMoneyTransfer.cs" />
     <Compile Include="../../../SkyIsland/SkyIslandStoryResidentText.cs" Link="Production/SkyIslandStoryResidentText.cs" />
     <Compile Include="../../../SkyIsland/SkyIslandStorySaveRecovery.cs" Link="Production/SkyIslandStorySaveRecovery.cs" />
     <Compile Include="../../../SkyIsland/SkyIslandLetters.cs" Link="Production/SkyIslandLetters.cs" />

@@ -36,8 +36,8 @@ def main():
     assert 'CanWrite() && CampaignGuideTable.InBase() && CampaignProgressService.TryDeliverGuide(guideId, rewardCash)' in client, 'stale delivery callback needs same gate'
     guide_deliver = progress.split('internal static bool TryDeliverGuide(', 1)[1].split('#endregion', 1)[0]
     assert '!CampaignPersistence.IsGuideExperienced(guideId)' in guide_deliver, 'guide delivery must require the experienced fact'
-    assert 'CampaignSaveCoordinator.TryPrepareCashReward()' in guide_deliver and 'EconomyManager.Pay(new Cost((long)rewardCash), true, true)' in guide_deliver, 'guide cash must follow the chapter snapshot/refund pattern'
-    assert guide_deliver.index('EconomyManager.Add(rewardCash)') < guide_deliver.index('CampaignPersistence.TryAdvanceGuide(guideId, 3)'), 'pay before writing the delivery fact so a failed write can refund'
+    assert 'CampaignSaveCoordinator.TryPrepareCashReward()' in guide_deliver and 'BossRushMoneyTransfer.TryDebit(rewardCash, true, true, "Campaign")' in guide_deliver, 'guide cash must follow the chapter snapshot/refund pattern'
+    assert guide_deliver.index('BossRushMoneyTransfer.TryAdd(rewardCash, "Campaign")') < guide_deliver.index('CampaignPersistence.TryAdvanceGuide(guideId, 3)'), 'pay before writing the delivery fact so a failed write can refund'
     assert '_cashPaidPendingGuideId = guideId;' in guide_deliver, 'paid-but-unwritten retries must not pay twice'
     rewards = read('Campaign/CampaignRewardTable.cs')
     for name in ('ModeD','ModeE','ModeF','ModeG','ModeH','Zombie','PetNest','RandomEvents','SkyIslandGear','Garden','Trophy','AffixForge','Reforge','DailyReport'):

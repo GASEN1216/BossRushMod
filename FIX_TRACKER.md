@@ -4,6 +4,18 @@
 
 **2026-11-20 · COMPAT · L1/L2**　玩家反馈退出重进后武器消失、仓库物品变问号。修复冷启动注册、分包手持模型绑定、部分失败重试和克隆/异步资源归属。角色和仓库合成档往返、重复 TypeID 与真实包来源已纳入自动回归。故障证据与玩家侧验证边界见 [CR-2026-11-20-001 至 003](CODE_REVIEW_FINDINGS.md)。随 v2.6.1 发版：`info.ini` 升 2.6.1，WikiContent 新增中英 `changelog__v2_6_1` 并补总览，工坊简介同步；L3 待玩家侧确认。
 
+## 2026-11-26 玩家反馈两项：重进加载不出来 / Mod 装备消失；「云上的坐标」交不了（CR-2026-11-26-001～004；COMPAT / OPERATIONAL；L2 + 正式真编译；L3 待 owner）
+
+- 依据：两条玩家反馈；owner 原话「问题1已经反复出现多次请你看看如何一次性解决？结合"鸭科夫源码"文件夹」。外部审查意见作参考：读档前就绪门控、保留原始物品树、奖金幂等可重试、修正 Harmony 前置 ID。根因与证据见 `CODE_REVIEW_FINDINGS.md` 同日节。
+- 钱：新增 `BossRushMoneyTransfer`。天空岛 `TryDeliverQuest`、成就 `TryPay`、征程章节 / 引导的发钱与退款、鸭王杯 `Commit` 统一按「官方返回 true 或余额确实变了即到账」判定。
+- 装备：新增 `BossRushEquipmentRescue`；`NeedsFallback` 交出空壳前记一笔。
+- 启动：新增 `BossRushStartupGuard`。宿主 Awake 五段改成单行 try/catch，结尾 `CompleteAwake`，OnDestroy 调 `Shutdown`；`RegisterRuntimeModules`、`runtimeModuleHost.OnAwake`、Start 保持直调，以满足既有结构守卫。
+- 构建：`compile_official.bat` 的 HARMONY_MOD_ID 改为 3589088839；三个新 `.cs` 登记进编译清单。
+- 守卫：新增 `HostStartupIsolationGuard`、`EquipmentRescueEvidenceGuard`、`MoneyDeliveryNetDeltaGuard`，以及共用的 `tests/guard_mutation_util.py`（内存变异探针，要求红在预期的那条断言上，不碰工作区）。`ModeHCashBetGuard`、`CampaignGuideLifecycleGuard`、`CampaignSkeletonGuard`、`ContentCashSnapshotGuard` 的锚点随调用同步，不变式不变；在工作区变异后确认转红，再按字节还原，SHA-256 一致。
+- 夹具：`SkyIslandStory` 加 `AfterAdd` 两条用例；`HostDestroyOwnership` 覆盖启动顺序和三种阶段抛错；`DynamicItemInitialization` 断言「记一笔」；`ContentTransactions`、`F3AutotestJudges`、`SkyIslandValidationJudges` 补链接；README 写明替身边界。反向验证：天空岛、成就、鸭王杯 Pay-false 三条，把生产改回旧判定后都红在预期断言上。`TryDebit` 的「Pay 返回 false 但已扣」没有夹具经过，只有守卫覆盖。
+- 证据：正式真编译 0 错 0 警告，`Build\BossRush.dll` 与游戏目录 SHA-256 同为 `F4AB0362…653E`，Dev 标识缺席；全量守卫 800 PASS；20 个相关隔离回归 PASS。未进游戏，未读写玩家存档。L3 清单见 `CODE_REVIEW_FINDINGS.md` 同日节。
+- repowiki：《物品注册表与动态加载》《运行时模块系统》《天空岛剧情与持久化》《开发环境搭建》各补 2026-11-26 节。
+
 ## 2026-11-25 成就页截图与水墨 UI 复核全修（CR-2026-11-25-022～038，014 复开改正；COMPAT；L2 + 正式真编译；L3 待 owner）
 
 - 依据：owner 成就页截图「你看还有这些问题，请你再次确保UI显示都正确的哈」。先按截图几何定根因，再分三路只读复核全部水墨界面，确认项全修，C4、C8 两条核实不成立（理由见 `CODE_REVIEW_FINDINGS.md` 同日节）。

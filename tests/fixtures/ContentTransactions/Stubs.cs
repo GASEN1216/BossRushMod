@@ -104,6 +104,7 @@ namespace Duckov.Economy
     {
         public static EconomyManager Instance = new EconomyManager();
         public static long Money;
+        public static long Cash;
         public static int Adds;
         public static bool RejectAdd, RejectPay;
         public static Action AfterAdd;

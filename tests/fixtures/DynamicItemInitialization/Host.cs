@@ -437,6 +437,19 @@ namespace BossRush
         internal static string GetModPath() { return "fixture"; }
     }
 
+    // 生产 BossRushEquipmentRescue / BossRushStartupGuard 依赖关卡、存档与 UniTask，夹具只记补丁层的调用。
+    internal static class BossRushEquipmentRescue
+    {
+        internal static int UnresolvedLoadNotes;
+        internal static void NoteUnresolvedLoad() { UnresolvedLoadNotes++; }
+    }
+
+    internal static class BossRushStartupGuard
+    {
+        internal static int Verified = -1, Total = -1;
+        internal static void NoteCriticalPatches(int verified, int total) { Verified = verified; Total = total; }
+    }
+
     internal static class ResourceBundleLoader
     {
         internal static IDisposable BeginSynchronousRestore() { return new Restore(); }

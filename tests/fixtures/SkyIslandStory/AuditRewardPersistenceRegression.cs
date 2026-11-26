@@ -85,6 +85,33 @@ internal static class AuditRewardPersistenceRegression
         check(!story.TryDeliverQuest(SkyIslandStoryAction.UnlockRoute, 5000, out message) && EconomyManager.Money == 5100,
             "repeated quest delivery does not grant cash");
         check(story.TryClose(), "quest reward owner cleans up");
+
+        // 2026-11-26 玩家反馈：「云上的坐标」交不了，点完成就提示奖金发不出去。别的订阅者在官方 OnMoneyChanged 里
+        // 顺手改钱时，余额净变化不等于 5000；旧代码据此判失败、不记账，钱却已经到账，每点一次再发一笔。
+        SavesSystem.Switch(9911);
+        story = new SkyIslandStoryService(); story.Open();
+        check(story.TryApply(SkyIslandStoryAction.AcceptPrelude, out message)
+            && story.TryApply(SkyIslandStoryAction.RecoverPreludeInstrument, out message), "observer quest ready");
+        EconomyManager.Money = 100;
+        EconomyManager.AfterAdd = () => EconomyManager.Money += 500;
+        check(story.TryDeliverQuest(SkyIslandStoryAction.UnlockRoute, 5000, out message) && story.Current.SkyIslandRouteUnlocked,
+            "quest delivers when another money observer changes the balance again");
+        EconomyManager.AfterAdd = null;
+        check(EconomyManager.Money == 5600, "the official Add happened exactly once");
+        check(!story.TryDeliverQuest(SkyIslandStoryAction.UnlockRoute, 5000, out message) && EconomyManager.Money == 5600,
+            "a delivered quest never pays a second time after an observer changed the balance");
+        check(story.TryClose(), "observer quest owner cleans up");
+        SavesSystem.Switch(9912);
+        SavesSystem.Global.Clear();
+        EconomyManager.Money = 100;
+        journal = new AchievementRewardJournal();
+        EconomyManager.AfterAdd = () => EconomyManager.Money -= 1;
+        check(journal.TryPay("observer", 300, id => false) && EconomyManager.Money == 399,
+            "achievement cash is committed when an observer changes the balance again");
+        EconomyManager.AfterAdd = null;
+        check(journal.TryPay("observer", 300, id => false) && EconomyManager.Money == 399,
+            "achievement retry after an observer change does not pay twice");
+        journal.Complete(); journal.Shutdown();
         EconomyManager.Money = 100;
         SavesSystem.Global.Clear();
     }

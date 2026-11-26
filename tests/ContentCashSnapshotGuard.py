@@ -62,7 +62,7 @@ def main():
         errors.append("store: official collection must run BeforeCollectSaveData before FlushPending")
 
     for prefix, directory, grant in (
-        ("Campaign", "Campaign", "EconomyManager.Add(def.RewardCash)"),
+        ("Campaign", "Campaign", 'BossRushMoneyTransfer.TryAdd(def.RewardCash, "Campaign")'),
         ("DailyReport", "Integration/DailyReport", "DailyReportRewards.TryGrantBountyCash(amount, out reason)"),
     ):
         coordinator = strip_comments(read(f"{directory}/{prefix}SaveCoordinator.cs"))

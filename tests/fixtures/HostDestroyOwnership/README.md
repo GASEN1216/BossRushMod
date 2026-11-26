@@ -5,3 +5,5 @@
 Unity 对象替身实现销毁对象同时销毁组件和 fake-null 比较。模块装配及清理叶子用记录调用的替身，成就字段在真实 Awake 调用装配前保持 null；本夹具只证明宿主入口的归属门与调度，不证明叶子内部资源收尾。各叶子另由自己的生产执行回归覆盖，不启动游戏或访问玩家存档。
 
 通过 `python tools/run_runtime_regressions.py --filter HostDestroyOwnership` 执行。产物和生产 SHA-256 写入 `Build/runtime-regressions/HostDestroyOwnership/`。
+
+2026-11-26：`BossRushStartupGuard` 用记录调用的替身，五个初始化阶段替身会记轨迹、可按 `ThrowStage` 抛错。执行真实 Awake，断言先 `BeginAwake` 再装配模块、最后 `CompleteAwake`；任一阶段抛错立即上报，后面的阶段与自检照常执行；OnDestroy 在语言退订之后调 `Shutdown`。0Harmony 预加载、目录搜索和日志内容不在这里，由 `tests/HostStartupIsolationGuard.py` 守结构，行为要 L3。

@@ -66,6 +66,7 @@ def main():
         "Integration/BackMountain/ShowcaseService.cs",
         "Integration/BackMountain/ShowcaseDisplayJudges.cs",
         "Common/Lifecycle/BossRushSaveFileThrottle.cs",
+        "Common/Infrastructure/BossRushMoneyTransfer.cs",
         "Common/Lifecycle/BossRushSaveCoordinatorEngine.cs",
         "Common/Lifecycle/BossRushSlotJsonStore.cs",
         "Common/Data/BossRushJsonValue.cs",

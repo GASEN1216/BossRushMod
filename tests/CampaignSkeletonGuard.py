@@ -192,7 +192,8 @@ def main():
     token_at = progress.find("CampaignFacilityUnlocks.TryGrant(def.FacilityToken)", store_at)
     if store_at < 0 or token_at < store_at:
         return fail("交付必须先写完成 payload，再发布后山 token；写失败不能提前解锁")
-    if "reward_rollback" not in progress or "CloneSaveData" not in progress:
+    rollback_at = progress.find('BossRushMoneyTransfer.TryDebit(def.RewardCash, true, true, "Campaign")', store_at)
+    if rollback_at < 0 or "CloneSaveData" not in progress:
         return fail("交付写失败必须撤回本次奖金，且不得直接改写当前缓存对象")
 
     # ---- 7) 卸载接线：建筑注入器必须在 Mod 卸载路径上被清理 ----

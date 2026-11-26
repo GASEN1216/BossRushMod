@@ -320,18 +320,20 @@ namespace BossRush
             DevLog("[BossRush] 正在加载 Boss Rush Mod...");
             Instance = this;
             DontDestroyOnLoad(gameObject);
+            BossRushStartupGuard.BeginAwake(); // 先于任何 Harmony 类型预加载 0Harmony，之后逐段隔离
             RegisterRuntimeModules();
-            runtimeModuleHost.OnAwake(this);
+            runtimeModuleHost.OnAwake(this); // 宿主已逐个模块 try，不再外包一层
 
-            InitializeBootstrapRuntime();
-            InitializeAlwaysOnRuntime();
+            try { InitializeBootstrapRuntime(); } catch (Exception e) { BossRushStartupGuard.FailBootstrap(e); }
+            try { InitializeAlwaysOnRuntime(); } catch (Exception e) { BossRushStartupGuard.FailStage("always-on", e); }
 
-            RegisterPlayerLifecycleRuntimeEvents();
+            try { RegisterPlayerLifecycleRuntimeEvents(); } catch (Exception e) { BossRushStartupGuard.FailStage("player-lifecycle", e); }
 
-            InitializeDebugToolsRuntime();
+            try { InitializeDebugToolsRuntime(); } catch (Exception e) { BossRushStartupGuard.FailStage("debug-tools", e); }
 
             // 初始化成就系统和成就页面UI
-            InitializeAchievementRuntime();
+            try { InitializeAchievementRuntime(); } catch (Exception e) { BossRushStartupGuard.FailStage("achievement", e); }
+            BossRushStartupGuard.CompleteAwake(this);
         }
 
         void OnGUI()
@@ -435,6 +437,7 @@ namespace BossRush
             catch { }
 
             ShutdownLanguageChangeSubscription();
+            BossRushStartupGuard.Shutdown();
 
             CleanupDebugToolsOnDestroy();
 
