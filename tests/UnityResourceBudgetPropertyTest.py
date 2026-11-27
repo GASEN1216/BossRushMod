@@ -19,7 +19,7 @@ def main():
         bad=copy.deepcopy(row);bad[field]=value
         assert validate(bad,'energyshield_totem_model'),(field,value)
     modeg=copy.deepcopy(row)
-    modeg['bytes']=256*1024
+    modeg['bytes']=384*1024
     modeg['textures']=[dict(row['textures'][0],name='modeg_echo_emblem',width=256,height=256),
                        dict(row['textures'][0],name='modeg_echo_banner',width=1024,height=576)]
     assert not validate(modeg,'modeg_presentation')

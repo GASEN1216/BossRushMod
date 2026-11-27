@@ -143,6 +143,10 @@
       "maxSize": 512
     },
     {
+      "path": "Assets/achievement/nightmare_clear.png",
+      "maxSize": 512
+    },
+    {
       "path": "Assets/achievement/normal_clear.png",
       "maxSize": 512
     },

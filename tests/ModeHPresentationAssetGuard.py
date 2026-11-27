@@ -41,7 +41,7 @@ ART_MANIFEST = os.path.join(UNITY_PROJECT, "ArtSource", "ModeH", "asset-manifest
 BUNDLE_NAME = "modeh_presentation"
 EMBLEM_SHORT_NAME = "ModeH_BlackMarketCup_Emblem"
 BANNER_SHORT_NAME = "ModeH_BlackMarketCup_Banner"
-MAX_BUNDLE_BYTES = 256 * 1024
+MAX_BUNDLE_BYTES = 384 * 1024
 
 
 def check_cache(errors):
@@ -131,7 +131,7 @@ def check_builder(errors):
         (r'Assets/UI/ModeH/{}\.png'.format(BANNER_SHORT_NAME), "横幅完整 asset path"),
         (r'EmblemShortName = "{}"'.format(EMBLEM_SHORT_NAME), "徽记短名"),
         (r'BannerShortName = "{}"'.format(BANNER_SHORT_NAME), "横幅短名"),
-        (r"MaxBundleBytes = 256L \* 1024L", "256 KiB 上限"),
+        (r"MaxBundleBytes = 384L \* 1024L", "384 KiB 上限"),
         (r"BuildTarget\.StandaloneWindows64", "固定构建目标"),
         (r"ValidateDependencies", "空依赖断言"),
         (r"LoadAsset<Sprite>\(EmblemShortName\)", "实测徽记短名可取"),
@@ -170,7 +170,7 @@ def check_bundle_present(pending):
         pending.append("[PENDING-RESOURCE] bundle 为空文件")
         return
     if size > MAX_BUNDLE_BYTES:
-        pending.append("[PENDING-RESOURCE] bundle 超过 256 KiB: {}".format(size))
+        pending.append("[PENDING-RESOURCE] bundle 超过 384 KiB: {}".format(size))
         return
     with open(BUNDLE, "rb") as fh:
         header = fh.read(7)

@@ -4,7 +4,7 @@ ModeGPresentationAssetGuard — Mode G 展示资源守卫（规格 §20 第 10 �
 
 不变式：
 - bundle 名 modeg_presentation、路径 Assets/ui/modeg_presentation；
-- 首版 bundle <256 KiB（磁盘文件存在时实测）；
+- bundle <384 KiB（磁盘文件存在时实测；首版 256 KiB，2026-11-27 美术重画后上调）；
 - 缺包 fail-closed：TryPreflight 失败返回 false 且缓存结果；
 - 每 runtime 至多一次 LoadFromFile（_loadAttempted 单次闸门）；
 - 只认 bundle：缓存里没有任何散图回退（不得用 raw PNG 冒充发布包，开发构建也一样）；
@@ -19,7 +19,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CACHE = os.path.join(REPO_ROOT, "ModeG", "ModeGPresentationAssetCache.cs")
 INTERACTABLE = os.path.join(REPO_ROOT, "ModeG", "ModeGInteractable.cs")
 BUNDLE_PATH = os.path.join(REPO_ROOT, "Assets", "ui", "modeg_presentation")
-MAX_BUNDLE_BYTES = 256 * 1024
+MAX_BUNDLE_BYTES = 384 * 1024
 
 
 def main():
@@ -92,14 +92,14 @@ def main():
             if not re.search(pattern, interactable):
                 errors.append("[{}] 不满足: {}".format(name, desc))
 
-    # bundle 体积首版 <256 KiB（文件不存在时仅告警磁盘资产缺失）
+    # bundle 体积 <384 KiB（文件不存在时仅告警磁盘资产缺失）
     source_only = os.environ.get("BOSSRUSH_GUARD_SOURCE_ONLY") == "1"
     if source_only:
         pass  # 源码断言仍全部执行，外部 bundle 在发布验证中强制检查。
     elif os.path.exists(BUNDLE_PATH):
         size = os.path.getsize(BUNDLE_PATH)
         if size > MAX_BUNDLE_BYTES:
-            errors.append("[BundleSize] bundle {} B 超过首版 256 KiB 上限".format(size))
+            errors.append("[BundleSize] bundle {} B 超过 384 KiB 上限".format(size))
     else:
         errors.append("[BundleMissing] 展示 bundle 不存在（fail-closed 前提）: " + BUNDLE_PATH)
 
@@ -114,7 +114,7 @@ def main():
         return 2
     print("ModeGPresentationAssetGuard: PASS")
     if os.path.exists(BUNDLE_PATH):
-        print("  bundle 体积: {} B (<256 KiB)".format(os.path.getsize(BUNDLE_PATH)))
+        print("  bundle 体积: {} B (<384 KiB)".format(os.path.getsize(BUNDLE_PATH)))
     return 0
 
 

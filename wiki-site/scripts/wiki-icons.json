@@ -171,13 +171,13 @@
     "key": "eq-dragon-breath",
     "src": "/images/ui/eq-dragon-breath.webp",
     "zh": "龙息",
-    "en": "Dragon's Breath"
+    "en": "Dragon Breath"
   },
   {
     "key": "eq-dragon-cannon",
     "src": "/images/ui/eq-dragon-cannon.webp",
     "zh": "焚天龙铳",
-    "en": "Skyburner Dragon Cannon"
+    "en": "Dragon Cannon"
   },
   {
     "key": "eq-frostmourne",
@@ -279,7 +279,7 @@
     "key": "npc-nurse",
     "src": "/images/ui/npc-nurse.webp",
     "zh": "羽织",
-    "en": "Yu Zhi"
+    "en": "Yuori"
   },
   {
     "key": "npc-courier",

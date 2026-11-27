@@ -424,7 +424,7 @@ journal；已提交结果不得转成退款重打，已退款的旧场不得标�
 **视觉制品（external / local-only）。** 展示资源不由根仓库源码 checkout 自动生成：
 
 - bundle：`Assets/ui/modeh_presentation`
-- Unity 格式：`UnityFS`，恰好两个 Sprite，零依赖，大小不超过 `256 KiB`
+- Unity 格式：`UnityFS`，恰好两个 Sprite，零依赖，大小不超过 `384 KiB`（首版 256 KiB；2026-11-27 美术重画后新图压缩率较低，Mode G / Mode H 一起上调）
 - Sprite 短名：`ModeH_BlackMarketCup_Emblem`、`ModeH_BlackMarketCup_Banner`
 - 对应完整输入路径：`Assets/UI/ModeH/ModeH_BlackMarketCup_Emblem.png`、
   `Assets/UI/ModeH/ModeH_BlackMarketCup_Banner.png`

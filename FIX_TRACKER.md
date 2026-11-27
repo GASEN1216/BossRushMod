@@ -4,6 +4,30 @@
 
 **2026-11-20 · COMPAT · L1/L2**　玩家反馈退出重进后武器消失、仓库物品变问号。修复冷启动注册、分包手持模型绑定、部分失败重试和克隆/异步资源归属。角色和仓库合成档往返、重复 TypeID 与真实包来源已纳入自动回归。故障证据与玩家侧验证边界见 [CR-2026-11-20-001 至 003](CODE_REVIEW_FINDINGS.md)。随 v2.6.1 发版：`info.ini` 升 2.6.1，WikiContent 新增中英 `changelog__v2_6_1` 并补总览，工坊简介同步；L3 待玩家侧确认。
 
+## 2026-11-27 全项目 AI 味美术重画安装（COMPAT / OPERATIONAL；不改 Key / TypeID / 存档；L2 + 正式构建部署；L3 待 owner）
+
+- 依据：owner「全部检查一遍……都加进来重绘」→ 生图师交回 138 张 →「现在装」。说明与验收记录见 `docs/guides/images/codex-redraw/重绘说明.md`。
+- 验收：138 张齐全、规格合规；4 张无伤成就（38、39、40、53）的护罩在 60 像素下分不出，返修成玻璃钟罩后通过。
+- 安装：
+  - 138 张新图和 35 张 Wiki 复用图装进 `Assets/`，旧图备份在 `Build/ArtRedraw/OldBackup/`。
+  - `nightmare_clear.png` 是新图，已登记 `production_icon_manifest.json`。
+  - 重打 `codex_portraits`、`campaign_presentation`、`modeg_presentation`、`modeh_presentation`、`production_icons`（`BUILD PASS sprites=524`）。
+  - 用 UnityPy 逐个核对：贴图尺寸、格式和数量与旧包一致，被换的 186 张都是新图。
+- 修复 `tools/build_codex_bundle.ps1` 的假成功：个人版授权下图形界面模式的 Unity 在第一次脚本域加载后就以 0 退出，脚本把 9-20 的旧包拷回来并报成功。改成 `-batchmode -force-d3d11`，并核对导出文件比开跑前新；实跑通过，结果逐字节可复现。
+- 预算：
+  - 新图压缩率比旧的平涂图低，Mode G / H 展示包超出首版 256 KiB（新包 261 / 308 KiB）。上限一起调到 384 KiB，同步了打包器、`ModeG/ModeHPresentationAssetGuard`、`UnityResourceBudgetPropertyTest`、`verify_unity_resource_release.py`、`docs/contracts.md` 和 repowiki。
+  - Mode H 打包器写死徽记 256，但纹理策略和线上包都是 512，现改为 512。
+- 顺带：`gen_wiki_icons.py` 里叮当（是哥布林）、许愿台（是浮空星殿）的提示词改对。Wiki 产物、天空岛模糊底图与站标已重出。repowiki 图鉴、成就两篇的美术来源说明已更新。
+- 证据：
+  - 全量守卫 800 PASS。改过的守卫做了反向验证：改回 256、把包撑大都转红，还原后按字节一致。
+  - `verify_unity_resource_release.py`：81 个包 0 错误。vitepress 构建通过。
+  - 正式构建部署后，游戏目录里 116 个包和散图的 SHA-256 与仓库一致。
+  - 未进游戏，未读写玩家存档。
+- [L3-ART-01] 打开鸭皇图鉴，翻到焚天龙皇、龙裔遗族、幽灵女巫和 5 只丧尸 Boss。不合格：仍是旧的厚涂立绘，或卡片里出现方形底、裁切。
+- [L3-ART-02] 打开成就页，看噩梦通关和四个无伤成就。不合格：噩梦通关没有图标；无伤版和普通版看不出区别。
+- [L3-ART-03] 打开鸭王征程章节海报、Mode G 宿命回响、Mode H 黑市鸭王杯确认页，以及天空岛居民对话和区域横幅。不合格：仍是旧图、拉伸，或徽记模糊。
+- [L3-ART-04] 打开词缀熔炉和局内随机事件提示，看图标。不合格：仍是旧图标。
+
 ## 2026-11-27 v2.7.0 发版：文案润色收口、日志补齐（COMPAT；不改 Key / TypeID / 存档；L2 + 正式真编译；L3 待 owner）
 
 - 依据：owner「请你看看准备好没有，我们准备发版」，复核后「全部补齐再提交」。

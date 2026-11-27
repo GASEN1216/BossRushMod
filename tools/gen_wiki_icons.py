@@ -231,10 +231,16 @@ ICONS = [
           "motif, olive canvas and rusted steel palette.")),
 
     # ── NPC ──
+    # 叮当是哥布林、不是鸭（游戏里是 Meshy 的 Goblin Tinkerer 模型），不能套 duck_icon。
+    # 2026-11-27 起这四张 NPC / 系统图标由生图师按 docs/guides/images/codex-redraw/重绘说明.md 重画，
+    # 已有 PNG 会被断点续跑跳过；只有删图重跑才会用到这里的描述。
     ("npc-goblin", "叮当", "Dingdang",
-     duck_icon("a clever goblin-eared tinker in a leather apron and welding goggles pushed up on "
-               "its forehead, a smudge of soot on one cheek, holding a small smith hammer, "
-               "green skin tone with warm leather browns.")),
+     "Single game UI icon, one centered character bust on empty background. "
+     "The subject is a GOBLIN, not a duck and not a human: green skin, no beak, a pair of very long "
+     "pointed ears with small iron rings, messy dark purple hair, yellow eyes, welding goggles pushed "
+     "up on the forehead (one blue-grey lens, one red lens), a brown leather scarf, leather straps "
+     "and a tool pouch, a small iron hammer resting on one shoulder, green and leather brown palette. "
+     "Head-and-shoulders, front view, filling the frame." + STYLE),
     ("npc-nurse", "羽织", "Yuori",
      duck_icon("a calm field nurse in a white medical coat over a soft pink blouse, a red cross "
                "armband and a stethoscope around its neck, white and rose palette.")),
@@ -251,8 +257,11 @@ ICONS = [
      icon("A hooded spectral figure of pale smoke with two hollow glowing eyes, dissolving into "
           "wisps at the bottom, ghostly blue-white and charcoal palette.")),
     ("sys-fountain", "星愿许愿台", "StarWish Fountain",
-     icon("A small dusty stone wishing fountain basin with a single golden star hovering above "
-          "the water and a few coins at the bottom, weathered stone and gold palette.")),
+     # 许愿台在游戏里是浮空的白色星殿（Celestial Star Temple 模型），不是石头水盆。
+     icon("A small white marble star temple floating in mid-air: two or three tiers of round "
+          "colonnades, a silver-white star-shaped spire on top, a clear crystal orb in the middle, "
+          "thin streams of water trickling off the lowest rim, slightly weathered and dusty, "
+          "white, silver-grey and pale blue palette.")),
     ("sys-reforge", "重铸系统", "Reforge System",
      icon("A blacksmith hammer striking a glowing orange sword blank on an anvil, sparks flying, "
           "reforge motif, hot orange and dark iron palette.")),

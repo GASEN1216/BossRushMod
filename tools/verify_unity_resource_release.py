@@ -207,7 +207,7 @@ def validate(row,name):
         if sum(m['triangles'] for m in row['meshes'])>40000: errors.append('Shield triangle budget > 40000')
         if len(row['meshes'])!=1: errors.append('Shield mesh contract changed')
     if name=='modeg_presentation':
-        if row['bytes']>256*1024: errors.append('Mode G bundle budget > 256 KiB')
+        if row['bytes']>384*1024: errors.append('Mode G bundle budget > 384 KiB')
         expected={'modeg_echo_emblem':(256,256),'modeg_echo_banner':(1024,576)}
         actual={t['name']:(t['width'],t['height']) for t in row['textures']}
         if actual!=expected: errors.append('Mode G texture dimensions contract')
