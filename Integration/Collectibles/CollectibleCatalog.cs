@@ -87,7 +87,7 @@ namespace BossRush
             new CollectibleSeriesInfo(CollectibleSeries.Farm, "农场镇", "Farm Town", true, true),
             new CollectibleSeriesInfo(CollectibleSeries.JLab, "J-Lab 实验室", "J-Lab", true, true),
             new CollectibleSeriesInfo(CollectibleSeries.StormZone, "风暴区", "Storm Zone", true, true),
-            new CollectibleSeriesInfo(CollectibleSeries.TestArea37, "37 号实验区", "Test Area 37", true, true),
+            new CollectibleSeriesInfo(CollectibleSeries.TestArea37, "37 号实验区", "Experimental Area 37", true, true),
             new CollectibleSeriesInfo(CollectibleSeries.SkyIsland, "晴岚群岛", "Qinglan Archipelago", true, true),
             new CollectibleSeriesInfo(CollectibleSeries.Tidegate, "潮闸镇", "Tidegate", true, true),
             new CollectibleSeriesInfo(CollectibleSeries.LastShift, "末班编组站", "Last Shift Yard", true, true),

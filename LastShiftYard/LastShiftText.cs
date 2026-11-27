@@ -173,8 +173,8 @@ namespace BossRush
         {
             get
             {
-                return L10n.T("余响接过票根，翻过来看了很久。她从桌下摸出那把缺齿的打孔钳，打完最后一孔。孔边多了一个小豁口，和她自己那张疏散车票上的一模一样。\n「他说下一班他自己开出去。」她把票根夹进验票桌的抽屉，「那我就一直剪票，剪到有人来领。」",
-                    "Yu Xiang takes the stub and turns it over for a long time. From under the desk she brings out the punch with the missing tooth and makes the last hole. Its edge has a little notch, exactly like the one on her own evacuation ticket.\n\"He said he'd drive the next one out himself.\" She slips the stub into the desk drawer. \"Then I'll keep punching tickets until someone comes for it.\"");
+                return L10n.T("余响接过票根，翻过来看了很久。她从桌下摸出那把成对的缺齿打孔钳，打完最后一孔。孔边多了一个小豁口，和她自己那张疏散车票上的一模一样。\n「他说下一班他自己开出去。」她把票根夹进验票桌的抽屉，「那我就一直剪票，剪到有人来领。」",
+                    "Yu Xiang takes the stub and turns it over for a long time. From under the desk she brings out the matching punch with the missing tooth and makes the last hole. Its edge has a little notch, exactly like the one on her own evacuation ticket.\n\"He said he'd drive the next one out himself.\" She slips the stub into the desk drawer. \"Then I'll keep punching tickets until someone comes for it.\"");
             }
         }
 
@@ -237,7 +237,7 @@ namespace BossRush
                 case 0: return new[] { "悬车楼司机室，操纵台底下压着把钳子。缺了个齿，一看就是他的。", "Up in the suspended cab there's a punch under the console. Missing a tooth. That's his." };
                 case 1: return new[] { "维修棚那台录音机，他老在那儿对调度口令。磁带要是还在，你听听。", "He used to rehearse dispatch calls on the recorder in the repair shed. If the tape's still there, have a listen." };
                 case 2: return new[] { "押运库有本退件簿，没人领的东西都记在上头。库门口有押运员守着，当心。", "The bond store keeps a returns ledger, everything nobody came for. There's an escort on the door. Careful." };
-                default: return new[] { "钳子、磁带、退件簿……那张票还夹在簿子里吧。带出来给我。", "The punch, the tape, the ledger... The ticket's still in that ledger, isn't it. Bring it out to me." };
+                default: return new[] { "钳子、磁带、退件簿……那张票还夹在簿子里吧。带出来给我。", "The punch, the tape, the ledger... The ticket's still in that ledger, isn't it? Bring it out to me." };
             }
         }
 
@@ -285,8 +285,8 @@ namespace BossRush
 
         internal static readonly string[][] YuXiangBoarding =
         {
-            new[] { "上末班车去编组站？注意安全，那里可不是什么和平的仓库区。",
-                "Taking the last train to the yard? Watch yourself. It's nothing like the quiet old warehouse district out there." },
+            new[] { "上末班车去编组站？注意安全，那里可不是平时跑的仓库区。",
+                "Taking the last train to the yard? Watch yourself. It's nothing like the regular warehouse runs out there." },
         };
 
         internal static readonly string[] YuXiangBoardingStub =
@@ -314,8 +314,8 @@ namespace BossRush
 
         internal static readonly string[][] YuXiangEnding =
         {
-            new[] { "（余响把票根翻过来看了很久，从桌下摸出那把缺齿的打孔钳。）",
-                "(Yu Xiang turns the stub over for a long time, then takes the punch with the missing tooth from under the desk.)" },
+            new[] { "（余响把票根翻过来看了很久，从桌下摸出那把成对的缺齿打孔钳。）",
+                "(Yu Xiang turns the stub over for a long time, then takes the matching punch with the missing tooth from under the desk.)" },
             new[] { "（她打完最后一孔。孔边的豁口和她那张疏散车票上的一模一样。）",
                 "(She punches the last hole. It has the same little notch as the one on her own evacuation ticket.)" },
             new[] { "他说下一班他自己开出去。（她把票根夹进验票桌的抽屉。）",

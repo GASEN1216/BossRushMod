@@ -152,7 +152,7 @@ namespace BossRush
                     return;
                 }
                 FieldAdventureSupport.Notify("叮当的委托完成：危险试验台会随机出现在普通出击的地图里，地图上会标出来。",
-                    "Dingdang's commission complete: her prototype bench now turns up at random on ordinary raid maps, marked on the map.");
+                    "Dingdang's commission complete: his prototype bench now turns up at random on ordinary raid maps, marked on the map.");
             }
             catch (OperationCanceledException) { }
             catch (Exception e) { ModBehaviour.DevLog("[DangerousPrototypeCommission] 委托对话失败: " + e.Message); }
@@ -171,7 +171,7 @@ namespace BossRush
             }
         }
 
-        // 一句一屏；叮当自称「叮当」，和她的好感剧情口吻一致。
+        // 一句一屏；叮当自称「叮当」，和他的好感剧情口吻一致。
         private static readonly string[][] Story =
         {
             new[] { "你来得正好！叮当有个委托，只想拜托你一个人。", "Perfect timing! Dingdang has a commission, and only you will do." },

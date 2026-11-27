@@ -126,11 +126,11 @@ namespace BossRush
                 AchievementCategory.Ultimate, 2000000, 5);
 
             // ========== 无伤通关成就 ==========
-            Register("flawless_easy", "完美弹指", "Flawless Easy",
+            Register("flawless_easy", "完美弹指", "Flawless A Snap",
                 "以[弹指可灭]阵容无伤全征通关（标准及以上）", "Flawless Full Campaign with A Snap (Standard+)",
                 AchievementCategory.Flawless, 80000, 3);
 
-            Register("flawless_normal", "完美有点意思", "Flawless Normal",
+            Register("flawless_normal", "完美有点意思", "Flawless Getting Interesting",
                 "以[有点意思]阵容无伤全征通关（标准及以上）", "Flawless Full Campaign with Getting Interesting (Standard+)",
                 AchievementCategory.Flawless, 250000, 4);
 
@@ -164,15 +164,15 @@ namespace BossRush
                 "无伤击杀龙裔遗族", "Defeat the Dragon Descendant without taking damage",
                 AchievementCategory.BossKill, 200000, 4);
 
-            Register("kill_dragon_king", "弑龙者", "Kingslayer",
+            Register("kill_dragon_king", "弑龙者", "Dragonslayer",
                 "首次击杀焚天龙皇", "Defeat the Skyburner Dragon Lord for the first time",
                 AchievementCategory.BossKill, 100000, 3);
 
-            Register("kill_dragon_king_flawless", "完美弑龙", "Perfect Kingslayer",
+            Register("kill_dragon_king_flawless", "完美弑龙", "Flawless Dragonslayer",
                 "无伤击杀焚天龙皇", "Defeat the Skyburner Dragon Lord without taking damage",
                 AchievementCategory.BossKill, 500000, 5);
 
-            Register("dragon_slayer_master", "屠龙大师", "Dragon Slayer Master",
+            Register("dragon_slayer_master", "屠龙大师", "Master Dragonslayer",
                 "累计击杀焚天龙皇10次", "Defeat the Skyburner Dragon Lord 10 times in total",
                 AchievementCategory.BossKill, 600000, 4);
 
@@ -204,16 +204,16 @@ namespace BossRush
 
             // ========== 收藏类成就 ==========
             Register("collect_dragon_descendant_loot", "龙裔珍藏", "Dragon Descendant Collector",
-                "收集龙裔遗族的全部专属掉落物", "Collect all exclusive loot from Dragon Descendant",
+                "收集龙裔遗族的全部专属掉落物", "Collect all exclusive loot from the Dragon Descendant",
                 AchievementCategory.Special, 300000, 3);
 
-            Register("collect_dragon_king_loot", "龙王宝库", "Dragon King Collector",
+            Register("collect_dragon_king_loot", "龙王宝库", "Dragon Lord Collector",
                 "收集焚天龙皇的全部专属掉落物", "Collect all exclusive loot from the Skyburner Dragon Lord",
                 AchievementCategory.Special, 500000, 4);
 
             // ========== 装备能力成就 ==========
             Register("first_flight", "御风而行", "Wind Rider",
-                "首次使用腾云驾雾图腾飞天", "Take flight for the first time using Cloud Soar Totem",
+                "首次使用腾云驾雾图腾飞天", "Take flight for the first time using Cloud Soar I",
                 AchievementCategory.Special, 50000, 1);
 
             Register("reverse_scale_triggered", "触之必怒", "Dragon's Wrath",
@@ -222,7 +222,7 @@ namespace BossRush
 
             // ========== 驯养成就（遗种巢）==========
             Register("petnest_first_hatch", "第一声嘎", "First Hatch",
-                "在遗种巢孵出第一只幼体", "Hatch your first cub at the PetNest",
+                "在遗种巢孵出第一只幼崽", "Hatch your first hatchling at the Relic Nest",
                 AchievementCategory.Taming, 60000, 1);
 
             Register("petnest_lineage_10", "血脉收藏家", "Bloodline Collector",
@@ -234,7 +234,7 @@ namespace BossRush
                 AchievementCategory.Taming, 600000, 4);
 
             Register("petnest_shiny", "淡紫色的那只", "The Pale Purple One",
-                "孵出一只异色幼体", "Hatch a shiny cub",
+                "孵出一只异色幼崽", "Hatch a shiny hatchling",
                 AchievementCategory.Taming, 300000, 4);
 
             Register("petnest_memorial", "碑上有名", "A Name on the Stone",

@@ -479,7 +479,7 @@ namespace BossRush
             if (_startupTicketRefundable)
             {
                 fullyRefunded = _host.TryRefundModeGStartupItem(
-                    _host.GetModeGTicketTypeId(), L10n.T("船票", "Boss Rush Ticket"))
+                    _host.GetModeGTicketTypeId(), L10n.T("船票", "BossRush Ticket"))
                     && fullyRefunded;
             }
             if (_startupRelicRefundable)

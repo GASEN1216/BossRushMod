@@ -150,7 +150,7 @@ namespace BossRush
         private void RingBell()
         {
             timetable.RingBell();
-            status(L10n.T("拉了铃，铃声传遍站场。轨道车十几秒后到接客亭。", "You ring the bell and it carries across the yard. The railcar reaches the shelter in about fourteen seconds."), false);
+            status(L10n.T("拉了铃，铃声传遍站场。轨道车十几秒后到接客亭。", "You ring the bell and it carries across the yard. The railcar reaches the shelter in ten-odd seconds."), false);
             Ringing = true;
         }
 

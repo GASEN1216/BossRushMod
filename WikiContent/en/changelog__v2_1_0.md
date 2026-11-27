@@ -15,85 +15,85 @@
 - **Affinity line**: goblin affinity, gift UI, Diamond / Brick Stone, Dingdang Drawing, decay.
 
 ### Source Commit Subjects
-- 套装效果描述
-- 修复更新后枪模型的创建与查找
-- 修复boss预制体查找问题
-- 修复传送地图UI的问题
+- Set bonus descriptions
+- Fix gun model creation and lookup after game update
+- Fix Boss prefab lookup issues
+- Fix map teleport UI issue
 - Update LocalizationInjector.cs
-- 砖石注入售货机
-- 移除冗余
+- Inject Brick Stone into vending machine
+- Remove redundancy
 - Update DragonKingBoss.cs
-- 单例成就资源桶
-- 成就勋章
-- 只有 Float 类型才是数字类型
-- 物品钻石
+- Singleton achievement asset bucket
+- Achievement Medal
+- Only Float types count as numeric stats
+- Diamond item
 - Update DragonKingSetConfig.cs
-- 5/10级长对话持久化
-- 好感度大于8则每次对话都冒爱心
-- 自定义序列化与反序列化器
-- 护甲限制重铸范围
-- 使用游戏原生 Saves.SavesSystem保存
-- 修改逆鳞描述
-- 叮当喜欢和不喜欢的物品
-- NPC赠送礼物系统UI
-- 好感度衰减
-- 叮当涂鸦只可哥布林给予
-- 叮当涂鸦
-- 叮当涂鸦初步
-- feat(affinity): 哥布林好感度折扣优化
+- Persist Lv.5 / Lv.10 long dialogues
+- Spawn hearts on every chat above Affinity Lv.8
+- Custom serializer and deserializer
+- Clamp armor reforge range
+- Save via vanilla Saves.SavesSystem
+- Revise Reverse Scale description
+- Dingdang liked and disliked items
+- NPC gifting UI system
+- Affinity decay
+- Restrict Dingdang's Doodle to Dingdang's affinity gift
+- Dingdang's Doodle
+- Initial Dingdang's Doodle implementation
+- feat(affinity): Optimize goblin affinity discounts
 - Update .gitignore
-- feat(affinity): 实现NPC好感度系统
-- 急停bug修复
-- 心碎动画
-- 砖石召唤哥布林
-- 哥布林刷新场景
-- 重铸系统固定属性代码以及优化代码
-- 物品工厂，冷淬液物品
-- 只修改显示出来的属性值
-- 条目重铸保底
-- 重铸机制
-- 防止嵌套保存；覆盖重铸
-- 重铸代码优化
-- 支持Stat和Variable属性
-- 龙王背景音乐+哥布林音效
-- 哥布林待机动画
-- 重铸服务的UI
-- 持久化重铸属性
-- 重铸系统
-- 成就系统完善
+- feat(affinity): Implement NPC affinity system
+- Fix sudden-stop bug
+- Heartbreak animation
+- Summon goblin with Brick Stone
+- Goblin spawn scene rules
+- Fixed reforge stats code and cleanup
+- Item factory and Cold Quench Fluid item
+- Only modify visible stat attributes
+- Reforge stat pity safety net
+- Reforge mechanic
+- Prevent nested saves; overwrite reforge
+- Optimize reforge code
+- Support Stat and Variable attributes
+- Dragon Lord BGM + goblin sound effects
+- Goblin idle animations
+- Reforge service UI
+- Persist reforged attributes
+- Reforge system
+- Finalize achievement system
 - Update SteamAchievementPopup.cs
-- 成就系统demo完成
-- 成就页面优化
-- 成就系统
-- 龙王套装效果冲刺
-- 龙王代码以及掉落物
-- 逆鳞图腾
-- 增加图腾位
-- 为龙王穿上套装
-- 只作用红眼特效，后面自己加
-- 龙王套装也加上套装效果
-- 龙王装备不可被搜出
-- 龙王套装
-- 装备工厂自动添加DuckovItemAgent组件
-- bossrush期间死亡全掉落
-- 模式D也使用统一过滤黑名单
-- 添加龙王专属掉落物
-- 龙王三阶段
-- 优化云雾粒子效果，更新图腾装备显示
-- 抽象掉落物黑名单，加上飞行图腾
+- Achievement system demo complete
+- Polish achievement page UI
+- Achievement system
+- Dragon King Set dash effect
+- Dragon Lord logic and drops
+- Reverse Scale totem
+- Expand totem slot count
+- Equip Dragon Lord with its armor set
+- Restrict red-eye VFX scope for custom extension
+- Add set effect to Dragon King Set
+- Exclude Dragon King gear from random loot search
+- Dragon King Set
+- Auto-add DuckovItemAgent in EquipmentFactory
+- Drop all gear on death during BossRush
+- Share unified loot blacklist in Mode D
+- Add Dragon Lord exclusive drops
+- Dragon Lord phase 3
+- Refine cloud mist particles; update totem equipment visuals
+- Extract loot blacklist abstraction; add flight totem
 - Merge branch 'dragonKing'
-- 龙王音效
-- 微调爆率
-- 飞行时允许开枪
-- 项目简要
-- 腾云驾雾 I的本地化
-- 飞行1阶使用unity资源
-- 飞行加上云雾特效
-- 龙王代码优化2
-- 龙王代码优化
+- Dragon Lord sound effects
+- Fine-tune drop rates
+- Allow shooting while flying
+- Project brief notes
+- Cloud Soar I localization
+- Flight tier 1 Unity assets
+- Add cloud mist VFX to flight
+- Dragon Lord code polish 2
+- Dragon Lord code polish
 - Update .gitignore
-- 龙王代码初步完成
-- 飞行系统与飞行1阶
-- 子弹穿透
-- 龙王太阳舞技能测试
-- 版本号提交：2.1.0
+- Initial Dragon Lord code complete
+- Flight system and Cloud Soar I
+- Bullet penetration
+- Test Dragon Lord Solar Dance skill
+- Version commit: 2.1.0

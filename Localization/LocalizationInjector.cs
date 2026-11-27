@@ -23,8 +23,8 @@ namespace BossRush
         // ============================================================================
         // 船票本地化数据
         // ============================================================================
-        private const string TICKET_NAME_CN = "Boss Rush船票";
-        private const string TICKET_NAME_EN = "Boss Rush Ticket";
+        private const string TICKET_NAME_CN = "BossRush 船票";
+        private const string TICKET_NAME_EN = "BossRush Ticket";
         private const string TICKET_DESC_CN = "皱巴巴的单程票，上面有阿稳的签章。\n<color=#BBBBBB>带船票去路牌选图出发。空装入场为白手起家。</color>";
         private const string TICKET_DESC_EN = "A crumpled one-way ticket stamped by Awen.\n<color=#BBBBBB>Take it to the sign and choose a map. Enter empty-handed for From Scratch.</color>";
 
@@ -445,17 +445,17 @@ namespace BossRush
             new string[] { "押注的单我经手过，输的人签字比赢的人用力。", "I've handled bet slips. The losers sign harder than the winners." },
             new string[] { "鸭王征程归杰夫管，六章的单子都在他手上。", "Jeff runs the Duck King Campaign. All six chapters of jobs are on his desk." },
             new string[] { "杰夫的单子我送过，字比我的还小。", "Jeff's slips are written smaller than mine. I've read them." },
-            new string[] { "天空岛我没去过。云上没有邮路，我没法对账。", "Never been to Sky Island. No postal route up there. I couldn't balance the books." },
+            new string[] { "天空岛我没去过。云上没有邮路，我没法对账。", "Never been to the Sky Islands. No postal route up there. I couldn't balance the books." },
             new string[] { "杰夫托我留意的航向仪在零号区，找着了给他送去。", "Jeff wants that heading instrument. It's in Ground Zero. Bring it to him." },
             new string[] { "云上刮风，一张纸都留不住。", "Up in the clouds the wind won't let a single sheet of paper stay put." },
-            new string[] { "天空岛想返航，回登云码头找系泊桩。", "Heading home from Sky Island? Use Cloudrise Dock's mooring post." },
+            new string[] { "天空岛想返航，站进登云码头的撤离环就行。", "Heading home from the Sky Islands? Just step into the extraction ring at Cloudrise Dock." },
             new string[] { "听说岛上送信靠鸽子。同行，我不服。", "Heard they deliver mail by pigeon up on the islands. A rival. I'm not impressed." },
             new string[] { "岛上头目穿的装备能掉下来，看上哪件就盯紧谁。", "Island bosses can drop the gear they wear. Pick your target." },
             new string[] { "夜里的虫子专挑穿快递服的叮。我试过。", "Night bugs go for delivery jackets first. I tested it." },
-            new string[] { "Boss掉的遗种蛋别卖，带回基地遗种巢孵。", "Keep those Relic Eggs from bosses. Hatch them in a PetNest at base." },
+            new string[] { "Boss掉的遗种蛋别卖，带回基地遗种巢孵。", "Keep those Relic Eggs from bosses. Hatch them in a Relic Nest at base." },
             new string[] { "想添点新本事，去词缀锻造台看看。", "Want a new trick on your gear? Check the Affix Forge." },
             new string[] { "竞技场后山有地方整备，忙完一场再去转转。", "Check the arena's back mountain between fights. You can prepare there." },
-            new string[] { "图鉴上没我的名字，我挺满意。", "I'm not in the bestiary. Suits me fine." },
+            new string[] { "图鉴上没我的名字，我挺满意。", "I'm not in the Duckov Codex. Suits me fine." },
             new string[] { "基地能看鸭科夫日报，送报的可比我轻松。", "Read the Duckov Daily at base. Easier job than hauling crates." },
             new string[] { "毒蛇匕首找典狱长，召唤法杖找大兴兴。", "The Warden can drop Viper Dagger; Big Xing, the Summoning Staff." },
             new string[] { "呆头鹅我送货时见过一回，后来一直绕路。", "Met Goofy Goose on a delivery once. Been taking the long way since." },
@@ -823,7 +823,7 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Reward_TriggerCritBurst", "暴击时爆炸，本次伤害30%起（代价：承受伤害 +8%）", "Crits Explode for 30%+ Hit Damage (Cost: Damage Taken +8%)");
             InjectZombieModeString("BossRush_ZombieMode_Reward_TriggerPurificationSiphon", "击杀额外掉净化星（代价：污染 +1）", "Kills Drop Extra Purification Stars (Cost: Pollution +1)");
             InjectZombieModeString("BossRush_ZombieMode_Reward_TriggerSecondWind", "击杀回血，每层 2（代价：最大生命 -6%）", "Heal 2 per Stack on Kill (Cost: Max Health -6%)");
-            InjectZombieModeString("BossRush_ZombieMode_Reward_TriggerDoomPulse", "累计击杀触发 3 次爆炸（代价：承受伤害 +10%）", "Kill Streak Triggers 3 Explosions (Cost: Damage Taken +10%)");
+            InjectZombieModeString("BossRush_ZombieMode_Reward_TriggerDoomPulse", "累计击杀触发 3 次爆炸（代价：承受伤害 +10%）", "Cumulative Kills Trigger 3 Explosions (Cost: Damage Taken +10%)");
             InjectZombieModeString("BossRush_ZombieMode_Reward_MutatorBulletTime", "生命低于25%触发 1 秒子弹时间（代价：承受伤害 +12%）", "Below 25% HP Triggers 1s Bullet Time (Cost: Damage Taken +12%)");
             InjectZombieModeString("BossRush_ZombieMode_Reward_MutatorGuardianShield", "满血时物理伤害 -25%（代价：枪械伤害 -5%）", "At Full HP, Physical Damage -25% (Cost: Gun Damage -5%)");
             InjectZombieModeString("BossRush_ZombieMode_Reward_MutatorQuickReload", "换弹速度 +25%（代价：枪械伤害 -5%）", "Reload Speed +25% (Cost: Gun Damage -5%)");

@@ -8,7 +8,7 @@ Custom items cover entry, NPC services, consumables, mode tools, base progressio
 - **NPC Items** — Gifts, materials, special interaction items
 - **Consumables** — Healing, buffs, summoning
 - **Mode-Exclusive** — Faction War tactical items, Blood Hunt fortifications, the Fate Echo Relic, and Zombie Mode's Portable Safe-Zone Device (run reward, single use)
-- **Progression & Base** — Affix Forge Stones, relic eggs and relic souls (PetNest), and the Backyard's three seeds and three raid meals
+- **Progression & Base** — Affix Forge Stones, relic eggs and relic souls (Relic Nest), and the Backyard's three seeds and three raid meals
 
 - **Sky Islands Goods & Crafts** — Driftwood, cloudmoss, greenear, windcrystal and stardust support commissions, crafting, lamps, charms and night exploration
 

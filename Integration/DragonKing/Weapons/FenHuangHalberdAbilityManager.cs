@@ -352,7 +352,7 @@ namespace BossRush
                 if (player != null && player.transform != null)
                 {
                     Duckov.UI.DialogueBubbles.DialogueBubblesManager.Show(
-                        "这里过不去哦",
+                        L10n.T("前方受阻，无法跃击。", "Path blocked. Cannot leap there."),
                         player.transform,
                         2.5f,
                         false,

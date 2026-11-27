@@ -63,7 +63,7 @@ namespace BossRush
             LocalizationHelper.InjectLocalization(NameKey, L10n.T("雪原上的蚀日", "An Eclipse in the Snow"));
             LocalizationHelper.InjectLocalization(DescriptionKey, L10n.T(
                 "杰夫发现 37 号实验区有一株异常花冠。普通出击前往地图圈出的区域，击败蚀日花冠，再回基地向杰夫报告。残日盾片归你，不用交走。死亡会自动放弃本次任务，可回基地重新接取。",
-                "Jeff has located an unusual bloom in Test Area 37. Take a normal raid to the marked area, defeat the Eclipse Bloom, and report to Jeff at base. Keep the Residual Sun Shield. Death abandons this attempt; speak to Jeff again at base to retry."));
+                "Jeff located an unusual bloom out in Experimental Area 37. Head out on a normal raid to the marked zone, put down the Eclipse Bloom, and report back to Jeff at base. The Residual Sun Shield Shard is yours to keep. If you drop during the run, the commission resets; talk to Jeff again to pick it back up."));
             LocalizationHelper.InjectLocalization(ObjectiveKey, L10n.T("蚀日花冠出没区域", "Eclipse Bloom area"));
         }
 
@@ -82,15 +82,15 @@ namespace BossRush
                     | (data.Defeated && !abandonPending ? 2 : 0) | (data.Completed ? 4 : 0),
                 Accept = Accept, Deliver = Deliver, BeginDelivery = BeginDelivery, EndDelivery = EndDelivery,
                 DeliverBlocked = () => L10n.T("先在普通出击中击败 37 号实验区的蚀日花冠，再回基地找杰夫。",
-                    "Defeat the Eclipse Bloom during a normal raid to Test Area 37, then return to Jeff at base."),
+                    "Defeat the Eclipse Bloom during a normal raid to Experimental Area 37, then return to Jeff at base."),
                 Tasks = new[] { new OfficialQuestTaskBinding
                 {
                     TaskId = 1, Done = () => data != null && (data.Completed || data.Defeated) && !abandonPending,
                     Description = () => data != null && (data.Completed || data.Defeated) && !abandonPending
-                        ? L10n.T("回基地向杰夫报告；残日盾片留在你身上。", "Report to Jeff at base. Keep the Residual Sun Shield.")
-                        : L10n.T("普通出击前往 37 号实验区，击败蚀日花冠。", "Defeat the Eclipse Bloom in a normal raid to Test Area 37."),
-                    ExtraHint = () => L10n.T("进入 37 后打开地图查看目标圈。死亡自动放弃，可回基地重新接取。",
-                        "Open the map in Test Area 37 to find the objective ring. Death abandons this attempt; accept it again at base.")
+                        ? L10n.T("回基地向杰夫报告；残日盾片留在你身上。", "Report to Jeff at base. Keep the Residual Sun Shield Shard.")
+                        : L10n.T("普通出击前往 37 号实验区，击败蚀日花冠。", "Defeat the Eclipse Bloom in a normal raid to Experimental Area 37."),
+                    ExtraHint = () => L10n.T("进入 37 号实验区后打开地图查看目标圈。死亡自动放弃，可回基地重新接取。",
+                        "Open the map in Experimental Area 37 to find the objective ring. Death abandons this attempt; accept it again at base.")
                 } }
             };
         }
@@ -120,14 +120,14 @@ namespace BossRush
         {
             message = L10n.T("花冠任务暂时无法接取，请稍后再试。", "The bloom quest is unavailable. Please try again shortly.");
             if (!CanOffer() || !Commit(new EclipseBloomIntroductionData { Accepted = true })) return false;
-            message = L10n.T("普通出击前往 37 号实验区，打开地图寻找目标圈。", "Take a normal raid to Test Area 37 and open the map to find the objective ring.");
+            message = L10n.T("普通出击前往 37 号实验区，打开地图寻找目标圈。", "Take a normal raid to Experimental Area 37 and open the map to find the objective ring.");
             return true;
         }
         private bool Deliver(out string message)
         {
             message = L10n.T("还不能交付这项任务。", "This quest is not ready to turn in.");
             if (!CanDeliver() || !Commit(new EclipseBloomIntroductionData { Completed = true })) return false;
-            message = L10n.T("调查完成。今后普通出击前往 37 号实验区，仍可遇到蚀日花冠。", "Investigation complete. The Eclipse Bloom can appear in future normal raids to Test Area 37.");
+            message = L10n.T("调查完成。今后普通出击前往 37 号实验区，仍可遇到蚀日花冠。", "Investigation complete. The Eclipse Bloom can appear in future normal raids to Experimental Area 37.");
             return true;
         }
         private bool BeginDelivery(Func<bool> collectAssets, out string message)
@@ -167,7 +167,7 @@ namespace BossRush
                 || EclipseBloomRuntimeModule.Current == null || EclipseBloomRuntimeModule.Current.OtherModeActive()) return;
             if (value.Commit(new EclipseBloomIntroductionData { Accepted = true, Defeated = true }) && value.owner != null)
                 value.owner.ShowMessage(L10n.T("蚀日花冠已击败，回基地向杰夫报告。残日盾片不用交走。",
-                    "The Eclipse Bloom is defeated. Report to Jeff at base; keep the Residual Sun Shield."));
+                    "The Eclipse Bloom is defeated. Report to Jeff at base; keep the Residual Sun Shield Shard."));
         }
 
         private bool EnsureData()

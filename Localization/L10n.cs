@@ -129,8 +129,8 @@ namespace BossRush
         /// </summary>
         public static string DragonBreathDesc
         {
-            get { return T("龙裔遗族的改装MCX SUPER，命中敌人有50%概率施加龙焰灼烧效果", 
-                          "Modified MCX SUPER of Dragon Descendant, 50% chance to apply Dragon Burn on hit"); }
+            get { return T("J-Lab拿赤龙残骸改的MCX。扣一次扳机你就懂了：\"生存\"和\"撤离\"之外还有第三个选项，把路烤出来。\n<color=#FF7043>【龙焰灼烧】</color>命中有 50% 概率施加灼烧：每层每秒 0.1% 最大生命 + 1 点火焰伤害，最多 10 层，持续 10 秒。",
+                          "A J-Lab MCX rebuilt with Crimson Dragon scrap. One pull of the trigger teaches you there's a third option besides \"survive\" and \"extract\": roast a path through.\n<color=#FF7043>[Dragon Burn]</color> Hits have a 50% chance to apply Burn: 0.1% max HP + 1 fire damage/sec per stack, up to 10 stacks for 10s."); }
         }
         
         /// <summary>

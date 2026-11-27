@@ -439,7 +439,7 @@ namespace BossRush
                 {
                     if (ticketConsumed)
                     {
-                        TryRefundModeGEntryItem(GetBossRushTicketTypeId(), L10n.T("船票", "Boss Rush Ticket"));
+                        TryRefundModeGEntryItem(GetBossRushTicketTypeId(), L10n.T("船票", "BossRush Ticket"));
                     }
                     if (relicConsumed)
                     {
@@ -453,7 +453,7 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[ModeG] [ERROR] TryStartModeG 失败: " + e.Message);
-                if (ticketConsumed) TryRefundModeGEntryItem(GetBossRushTicketTypeId(), L10n.T("船票", "Boss Rush Ticket"));
+                if (ticketConsumed) TryRefundModeGEntryItem(GetBossRushTicketTypeId(), L10n.T("船票", "BossRush Ticket"));
                 if (relicConsumed) TryRefundModeGEntryItem(FateEchoRelicConfig.TYPE_ID, L10n.T("宿命回响信物", "Fate Echo Relic"));
                 return false;
             }
@@ -498,7 +498,7 @@ namespace BossRush
             if (!wasPrepaid) return false;
             return TryRefundModeGEntryItem(
                 GetBossRushTicketTypeId(),
-                L10n.T("船票", "Boss Rush Ticket"));
+                L10n.T("船票", "BossRush Ticket"));
         }
 
         internal void RollbackModeGStagedArenaEntry()

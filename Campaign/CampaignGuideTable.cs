@@ -48,9 +48,9 @@ namespace BossRush
             Make(ModeH, 2, "ModeH", "这回坐在看台上", "Your Turn in the Stands",
                 "换个位置，坐看台上看别人挨揍。码头那边有场黑市鸭王杯，一张船票就能进。两个斗士先比比身上的家伙和底子，再想押不押。押出去的，输了就归人家，头一回别押太狠。看完一场，回来告诉我谁赢了。",
                 "Swap seats for once and watch someone else take the hits. There's a Black Market Duck Cup off the dock; one ticket gets you in. Size up both fighters, their kit and their build, before you decide on a bet. Whatever you stake is theirs if you lose, so go light the first time. Watch one match, then tell me who won."),
-            Make(PetNest, 3, "PetNest", "给小家伙留个窝", "Room for a Cub",
+            Make(PetNest, 3, "PetNest", "给小家伙留个窝", "Room for a Hatchling",
                 "上回塞给你那枚蛋，还温着吧？别卖。回基地搭个遗种巢，把它放进去。等巢里钻出一只崽，或者你带它出过一趟门，领来给我瞧瞧。那些大家伙倒下时偶尔还会留一枚，捡的时候手轻点。",
-                "That egg I gave you, still warm? Don't sell it. Build a Pet Nest at base and settle it in. Once a cub crawls out, or you've taken one out on a run, bring it by so I can see. The big ones sometimes leave another when they drop, so pick it up gently."),
+                "That egg I gave you, still warm? Don't sell it. Build a Relic Nest at base and settle it in. Once a hatchling crawls out, or you've taken one out on a run, bring it by so I can see. The big ones sometimes leave another when they drop, so pick it up gently."),
             Make(RandomEvents, 4, "RandomEvents", "战场不照剧本走", "Expect a Surprise",
                 "竞技场不总照剧本走，打着打着场上会冒出点岔子。去打一场寻常的，碰上一回就回来。岔子来了先看一眼场边的告示，是规矩临时改了，不是你眼花。疫区那边的乱子自成一套，那个不算。",
                 "The arena doesn't always stick to the script. Mid-fight, something can go sideways. Play an ordinary run and come back once it happens. When it does, read the notice first; the rules changed on the fly, your eyes are fine. The quarantine zone has its own brand of chaos, and that doesn't count."),
@@ -76,11 +76,11 @@ namespace BossRush
                 "地方有了，战利品别老压在箱底。挑一件从头目身上扒下来的，挂上展示架或者套到假人身上，弄好了跟我说一声。看着自己打回来的东西，人扛得住更多，摆一件是一件。",
                 "You've got the space now, so stop burying trophies in a crate. Pick something you took off a boss, hang it on a display rack or put it on a mannequin, and tell me when it's up. Looking at what you won keeps you standing longer, and every piece counts."),
             Make(AffixForge, 12, "AffixForge", "给装备一点脾气", "Give Gear Some Character",
-                "哥布林那边能往装备里敲点脾气进去，上回给你那两颗熔石就是干这个的。挑件吃得住的，敲出一条来，背着穿着都行，带回来给我看。光留个空位不算。他收钱不手软，先问价。",
-                "The goblin can hammer a bit of temper into your gear. Those two forge stones I gave you are for that. Pick something that'll take it, get one trait on there and bring it back, packed or worn. An empty slot doesn't count. He charges plenty, so ask the price first."),
+                "叮当那边能往装备里敲点脾气进去，上回给你那两颗熔石就是干这个的。挑件吃得住的，敲出一条来，背着穿着都行，带回来给我看。光留个空位不算。他收钱不手软，先问价。",
+                "Dingdang can hammer a bit of temper into your gear. Those two forge stones I gave you are for that. Pick something that'll take it, get one trait on there and bring it back, packed or worn. An empty slot doesn't count. He charges plenty, so ask the price first."),
             Make(Reforge, 13, "Reforge", "旧装备也能再试试", "Give Old Gear a Chance",
-                "压箱底的旧货先别急着卖。拿一件去哥布林那儿回回炉，先问清价钱。上回给你那瓶冰手的淬液，能先把你看得上的那一条护住。回炉有好有坏，这回就是试试手，别跟它较劲。",
-                "Don't sell the old gear at the bottom of the crate yet. Take a piece to the goblin to be reworked, and ask the price first. That ice-cold quench I gave you can protect the one trait you like before he starts. Reworking can go either way. This time you're just trying it, so don't fight it for a perfect roll."),
+                "压箱底的旧货先别急着卖。拿一件去叮当那儿回回炉，先问清价钱。上回给你那瓶冰手的淬液，能先把你看得上的那一条护住。回炉有好有坏，这回就是试试手，别跟它较劲。",
+                "Don't sell the old gear at the bottom of the crate yet. Take a piece to Dingdang to be reworked, and ask the price first. That ice-cold quench I gave you can protect the one trait you like before he starts. Reworking can go either way. This time you're just trying it, so don't fight it for a perfect roll."),
             Make(DailyReport, 14, "DailyReport", "看看今天的报纸", "Read the Daily Paper",
                 "基地门口立个邮箱，报纸每天有人送。翻开在回执上签个名，顺手看看今天悬赏谁、你最近打得怎么样。签完过来一趟。",
                 "Put up a mailbox at base and the paper turns up every day. Open it, sign the receipt, and see who's got a bounty today and how you've been doing. Come by once you've signed."),
@@ -118,7 +118,7 @@ namespace BossRush
             {
                 case ModeG: objective = L10n.T("用船票和宿命回响信物开始一局宿命回响", "Start a Fate Echo run with a ticket and a Fate Echo Relic"); break;
                 case ModeH: objective = L10n.T("在黑市鸭王杯看完一场比赛", "Watch one Black Market Duck Cup match"); break;
-                case PetNest: objective = L10n.T("在基地搭建遗种巢，孵出一只崽（或带崽出击一次）", "Build a Pet Nest at base and hatch a cub (or take one on a raid)"); break;
+                case PetNest: objective = L10n.T("在基地搭建遗种巢，孵出一只崽（或带崽出击一次）", "Build a Relic Nest at base and hatch a hatchling (or take one on a raid)"); break;
                 case RandomEvents: objective = L10n.T("在普通 BossRush 中遇到一次随机事件", "Run into a random event in ordinary BossRush"); break;
                 case SkyIslandGear: objective = L10n.T("击败天空岛 Boss，把一件它的专属装备带回基地", "Beat a Sky Island boss and bring one of its gear pieces back to base"); break;
                 case ModeD: objective = L10n.T("清空装备，只带 BossRush 船票开始一局白手起家", "Empty your gear and start a From Scratch run with only a BossRush ticket"); break;
@@ -127,8 +127,8 @@ namespace BossRush
                 case Zombie: objective = L10n.T("用尸潮邀请函进图，选好开局流派", "Enter with a Zombie Tide Invitation and choose a starting build"); break;
                 case Garden: objective = L10n.T("在后山工地建成菜地", "Build the garden at the backyard site"); break;
                 case Trophy: objective = L10n.T("把一件 Boss 战利品摆上展示架或假人", "Put a Boss trophy on a display rack or mannequin"); break;
-                case AffixForge: objective = L10n.T("在哥布林处锻出一条词缀，带着该装备回基地", "Forge an affix at the goblin and bring that gear back to base"); break;
-                case Reforge: objective = L10n.T("在哥布林处重铸一件装备，带着它回基地", "Reforge a piece of gear at the goblin and bring it back to base"); break;
+                case AffixForge: objective = L10n.T("在叮当处锻出一条词缀，带着该装备回基地", "Forge an affix at Dingdang's and bring that gear back to base"); break;
+                case Reforge: objective = L10n.T("在叮当处重铸一件装备，带着它回基地", "Reforge a piece of gear at Dingdang's and bring it back to base"); break;
                 case DailyReport: objective = L10n.T("在基地邮箱打开日报并签到", "Open the daily paper at the base mailbox and sign in"); break;
                 default: return string.Empty;
             }

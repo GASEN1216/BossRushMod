@@ -194,7 +194,7 @@ namespace BossRush
                 case SkyIslandChatterMoment.Idle: return new[]
                 {
                     L10n.T("这堆残铜再翻翻，说不定还能卖。", "Dig the brass again. Might still be worth something."),
-                    L10n.T("风一停就冷。冷了就想下山。", "Cold when the wind drops. Makes you want to leave."),
+                    L10n.T("风一停就冷。冷了就想下岛回岸上。", "Cold when the wind drops. Makes you want back on shore."),
                     L10n.T("风晶在云海边上。谁敢去谁去。", "Crystal's out by the cloud sea. Go if you dare."),
                     L10n.T("这屋子住过人。锅还挂在墙上。", "Someone lived here. Pot's still on the wall."),
                     L10n.T("上头说下月来收货。上月也这么说。", "Collection's next month, they say. Said that last month."),

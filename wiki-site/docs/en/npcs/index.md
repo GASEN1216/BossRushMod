@@ -26,19 +26,20 @@ Custom NPCs follow vanilla visibility rules: names appear in dialogue, shops, an
 - **Yu Zhi** (Nurse) — Healing, debuff removal
 - **Awen** (Courier) — Item storage & retrieval
 
-## Sky Islands Residents
+## Sky Islands & Raid-Map Residents
 
-The Qinglan Archipelago has six residents — Qinghe, Weibai, Fuzhou, Miantai, Zheling, and the Silent Bell Keeper — all supporting chat, gifts, Lv.10 affinity, the Wedding Chapel, and single-spouse marriage (see Sky Islands · Qinglan Archipelago).
-
-- **Fuzhou** (Cloudrise Dock) — Affinity Lv.3 unlocks Fuzhou's Departure Supplies, selling **Headmaster's Roll-Call Ledger** (20,000; still available after marriage and at the dock workbench)
-- **Silent Bell Keeper** (Homecoming Bell Court) — Affinity Lv.5 trades seashells for **Bell Keeper's Metronome** and **Hushbell Ward** (also at base after marriage)
-- **Zheling** — Rests for the rest of that raid after a challenge; resumes next trip
+- **Qinglan Archipelago (six residents)** — Qinghe, Weibai, Fuzhou, Miantai, Zheling, and the Silent Bell Keeper all support chat, gifts, Lv.10 affinity, the Wedding Chapel, and single-spouse marriage (see Sky Islands · Qinglan Archipelago).
+  - **Fuzhou** (Cloudrise Dock) — Affinity Lv.3 unlocks Fuzhou's Departure Supplies, selling **Headmaster's Roll-Call Ledger** (20,000) and **License to Pass the Buck** (18,000; still available after marriage and at the dock workbench)
+  - **Silent Bell Keeper** (Homecoming Bell Court) — Affinity Lv.5 trades seashells for **Bell Keeper's Metronome** and **Hushbell Ward** (also at base after marriage)
+  - **Zheling** — Rests for the rest of that raid after a challenge; resumes next trip
+- **Tidegate · Old Zha** — The old gatekeeper of Tidegate; supports daily chat, gifts, Lv.10 affinity, and marriage (see Tidegate)
+- **Last Shift Yard · Yu Xiang** — Platform ticket inspector at Hidden Warehouse who advances the yard's timetable story (see Last Shift Yard)
 
 The spawn table below covers Dingdang, Yu Zhi, and Awen.
 
 ## Affinity System
 
-Dingdang and Yu Zhi have a full Affinity system (Awen doesn't — he's all business):
+Dingdang, Yu Zhi, the six Sky Islands residents, and Old Zha all have a full Affinity system (Awen doesn't — he's all business):
 
 - 10 levels, raised through daily chat + gifts
 - Each level unlocks services, discounts, or rewards
@@ -50,7 +51,7 @@ See Affinity and Marriage for details.
 ## Where Do They Show Up?
 
 - **Normal Maps** — All three √
-- **Wedding Chapel** — Dingdang √ / Yu Zhi √ (after marriage)
+- **Wedding Chapel** — Your spouse √ (after marriage)
 - **Standard / From Scratch** — Awen √ + one of Dingdang or Yu Zhi (random; married NPCs excluded)
 - **Faction War / Blood Hunt** — All three √
 

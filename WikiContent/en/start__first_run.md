@@ -64,7 +64,10 @@ Once you're comfortable:
   Bosses counter whatever you did last wave
 - **Black Market Duck Cup** — just a Ticket. You sit in the stands while two Boss teams, blue and red, brawl over six matches;
   you pick which team wins and ring the bell to call a disaster
+- **Zombie Mode** — Enter with a Zombie Tide Invitation from the base merchant; fight endless zombie waves naked in a separate Purification Point economy
 - **Infinite Hell** — pick the Infinite Hell lineup in the War Writ and find your ceiling
+- **Two More Standalone Raid Maps** — Pole out from the bunker sewer raft to **Tidegate**, or catch the final freight at **Last Shift Yard** from Hidden Warehouse
+- **Collectibles & Album** — 100 curios scattered across raids and crates; complete sets in the Album for milestone payouts
 
 ### Quick Tips
 
@@ -74,4 +77,4 @@ Once you're comfortable:
 
 [tip] Chat with Dingdang and Yu Zhi on normal maps to unlock more content. Beyond reforging, Dingdang also does **affix forging**: affixes that change how your gear behaves, like kill explosions, lifesteal on hit, or armor that throws damage back.
 
-[tip] Eligible Bosses in Standard BossRush, Infinite Hell, From Scratch, Faction War and Blood Hunt bank **relic souls** (tankier Bosses pay more), with about a 4% chance of dropping a **relic egg** outright. This accumulates whether or not you've built the PetNest yet, so it's all waiting for you when you do. The egg lands with the rest of the loot, so don't stop at the gear.
+[tip] Eligible Bosses in Standard BossRush, Infinite Hell, From Scratch, Faction War and Blood Hunt bank **relic souls** (tankier Bosses pay more), with about a 4% chance of dropping a **relic egg** outright. This accumulates whether or not you've built the Relic Nest yet, so it's all waiting for you when you do. The egg lands with the rest of the loot, so don't stop at the gear.

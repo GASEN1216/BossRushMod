@@ -761,14 +761,42 @@ namespace BossRush
         /// </summary>
         private static string[][] BuildMarriageCutsceneDialogues(string npcId)
         {
-            string npcName = AffinityManager.GetNPCConfig(npcId)?.DisplayName ?? npcId;
-            return new string[][]
+            switch (npcId)
             {
-                new string[] { "这枚钻石戒指...是送给我的吗？", "This diamond ring... is for me?" },
-                new string[] { npcName + "轻轻握住了你的手。", npcName + " gently holds your hand." },
-                new string[] { "从今天开始，我们一起走下去吧。", "From today on, it's you and me." },
-                new string[] { "我愿意。", "I do." }
-            };
+                case "sky_bellkeeper":
+                    return new string[][]
+                    {
+                        new string[] { "（他看着戒指，指尖轻轻停在盒沿上。）", "(He looks at the ring, fingertips resting lightly on the rim of the box.)" },
+                        new string[] { "（他把铜牌翻到背面，认真写了很久。）", "(He turns the brass plate over and writes for a long while.)" },
+                        new string[] { "（铜牌上只有一行字：你的名字，我刻在自己旁边了。）", "(The plate reads one line: Your name is carved beside mine.)" },
+                        new string[] { "（他轻轻握住你的手，敲响了身旁的小钟。）", "(He takes your hand and strikes the bell beside him once, softly.)" }
+                    };
+                case GoblinAffinityConfig.NPC_ID:
+                    return new string[][]
+                    {
+                        new string[] { "这……这颗比叮当砧子上最亮的矿石还亮。真是给叮当的？", "Th-this shines brighter than any ore on Dingdang's anvil. Really for Dingdang?" },
+                        new string[] { "（叮当把锤子搁在脚边，小心翼翼攥住你的袖口。）", "(Dingdang sets the hammer down and carefully catches your sleeve.)" },
+                        new string[] { "往后这间屋子……叮当给你留最好那块垫脚板。", "From now on, this place... Dingdang's saving you the best spot by the forge." },
+                        new string[] { "叮当愿意！这次不用刻，叮当是自己想笑。", "Dingdang says yes! Not carved this time—Dingdang really wants to smile." }
+                    };
+                case "tidegate_zhabo":
+                    return new string[][]
+                    {
+                        new string[] { "这么大岁数了，还接这玩意儿？", "Handing me one of these at my age?" },
+                        new string[] { "（闸伯在裤腿上蹭了蹭手心的水渍，接过戒指。）", "(Old Zha wipes his damp palms on his trousers and takes the ring.)" },
+                        new string[] { "往后潮大潮小，闸房里多双筷子就是了。", "High tide or low, there's a second pair of chopsticks in the sluice house now." },
+                        new string[] { "行，这趟船我跟你搭了。", "Alright. I'm riding this boat with you." }
+                    };
+                default:
+                    string npcName = AffinityManager.GetNPCConfig(npcId)?.DisplayName ?? npcId;
+                    return new string[][]
+                    {
+                        new string[] { "这枚钻石戒指...是送给我的吗？", "This diamond ring... is for me?" },
+                        new string[] { npcName + "轻轻握住了你的手。", npcName + " gently holds your hand." },
+                        new string[] { "从今天开始，我们一起走下去吧。", "From today on, it's you and me." },
+                        new string[] { "我愿意。", "I do." }
+                    };
+            }
         }
 
         /// <summary>

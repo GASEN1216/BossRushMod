@@ -6,7 +6,7 @@ A seaside town that rises and falls with the tide. At low tide the mudflats, a s
 
 - At base, with no mode running, Awen couriers a soaked parcel that drifted in from Tidegate into your storage. Inside is **Old Zha's Letter**.
 - Read the letter from your backpack to see Old Zha's illustrated letter and open the raft route in the bunker sewer. The letter is never used up, so you can read it again whenever you like. It can't be sold; if you lose it before reading it, Awen sends another one a day later.
-- Head north along the west walkway in the bunker sewer toward the water tanks. Old Zha stands beside the south end of the lantern-lit raft. Walk a couple of steps past him and choose "Go to Tidegate".
+- In the bunker sewer, follow the walkway beside the eastern canal all the way north to the water tanks. Old Zha stands beside the south end of the lantern-lit raft. Walk a couple of steps past him and choose "Go to Tidegate".
 - Leaving and coming back work like any other map: the loading screen stops at "Click to continue", and extracting shows the usual extraction summary before you return to base. Finish any running mode first; you cannot go while on a Sky Islands trip.
 
 ### Tides

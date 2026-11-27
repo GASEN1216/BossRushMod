@@ -246,7 +246,7 @@ namespace BossRush
             Add(map, "Anomaly_error", "控制权异常", "ERROR");
             Add(map, "Anomaly_error_Desc",
                 "每场有一次机会交换控制权：你操作选手，原身体在看台表演；结束后还原。此模式击杀不计入鸭皇图鉴。",
-                "Once per match, may swap control: you play the fighter while your body performs in the stands. Control is restored afterward. Black Market Duck Cup kills do not count toward the Duck Codex.");
+                "Once per match, may swap control: you play the fighter while your body performs in the stands. Control is restored afterward. Black Market Duck Cup kills do not count toward the Duckov Codex.");
 
             Add(map, "Injury_leg", "腿伤", "Leg Injury");
             Add(map, "Injury_leg_Desc", "追不远、转身慢。", "Cannot chase far; turns slowly.");
@@ -430,7 +430,7 @@ namespace BossRush
             AddFighter(map, "long_lens", "观测者", "Observer",
                 "技能攒到最后一刻，经常攒到比赛结束。",
                 "Saves its skill for the perfect moment, often past the final bell.");
-            AddFighter(map, "triple_tap", "三枪哥", "Three-Shot",
+            AddFighter(map, "triple_tap", "三枪哥", "Triple-Shot Man",
                 "三发之内解决问题，超过三发就开始自作主张。",
                 "Solves it in three rounds, or starts improvising.");
             AddFighter(map, "great_xing", "大兴兴", "Big Xing",
@@ -442,10 +442,10 @@ namespace BossRush
             AddFighter(map, "big_ice", "大冰冰", "Big Ice",
                 "遇强则怂，但怂之前会先砸塌半个场子。",
                 "Backs down from the strong, right after flattening half the ring.");
-            AddFighter(map, "bomb_maniac", "炸弹狂人", "Bomb Maniac",
+            AddFighter(map, "bomb_maniac", "炸弹狂人", "Mad Bomber",
                 "开场三十秒像在散步，之后整个擂台都是它的。",
                 "Strolls for the first thirty seconds, then owns the whole ring.");
-            AddFighter(map, "goose_leader", "呆头鹅", "Goose Leader",
+            AddFighter(map, "goose_leader", "呆头鹅", "Goofy Goose",
                 "人一多就慌，可它偏偏总带着一群人。",
                 "Panics in a crowd, yet always brings one.");
             AddFighter(map, "orion_hunter", "猎户", "Orion",
@@ -645,8 +645,8 @@ namespace BossRush
                 "Stake risk scan has not finished");
             Add(map, "Unavailable_modeh_external_asset_risk", "存在未终结的押品事务",
                 "An unfinished stake transaction is present");
-            Add(map, "Unavailable_modeh_recovery_only", "有赛季恢复壳待处理",
-                "A season recovery shell is still pending");
+            Add(map, "Unavailable_modeh_recovery_only", "上一赛季仍有未结事项待处理",
+                "A previous season still needs wrap-up");
             Add(map, "Unavailable_modeh_content_not_ready", "内容未就绪", "Content not ready");
             Add(map, "Unavailable_modeh_run_owner_active", "本模式已在进行中",
                 "The mode is already running");
@@ -654,8 +654,8 @@ namespace BossRush
                 "Another mode is already running");
             Add(map, "Unavailable_modeh_map_unsupported", "当前地图不支持本模式",
                 "This map does not support the mode");
-            Add(map, "Unavailable_modeh_presentation_missing", "展示资源缺失",
-                "Presentation assets missing");
+            Add(map, "Unavailable_modeh_presentation_missing", "赛场资源尚未备齐",
+                "Arena visual assets are missing");
             Add(map, "Unavailable_modeh_certification_failed", "选手热身没通过",
                 "The fighters' warm-up failed");
             Add(map, "Unavailable_modeh_owner_missing", "模式没能启动，回基地再试",
@@ -663,8 +663,8 @@ namespace BossRush
             Add(map, "Unavailable_TicketRefunded", "已退还船票", "Ticket refunded");
             Add(map, "Unavailable_TicketNotCharged", "这次没有扣船票", "No ticket was charged");
             Add(map, "Unavailable_TicketRefundOwed", "船票这次没退成，下次进鸭王杯入口时补给你",
-                "The ticket couldn't be returned right now; you'll get it at the Duck King Cup entrance next time");
-            Add(map, "Unavailable_TicketOwedReturned", "上次没退成的鸭王杯船票已补还", "Your unreturned Duck King Cup ticket has been given back");
+                "The ticket couldn't be returned right now; you'll get it at the Duck Cup entrance next time");
+            Add(map, "Unavailable_TicketOwedReturned", "上次没退成的鸭王杯船票已补还", "Your unreturned Duck Cup ticket has been given back");
 
             // 拍铃失败原因：key 由 ModeHCommandController.GetBellFailureLocalizationKey
             // 用 "BellFailed_" + failureReasonId 拼出，后缀必须与 TryRingBell 里的
@@ -693,8 +693,8 @@ namespace BossRush
             // 由 ModeHRuntimeModule.ResolveAbortMessageKey 归类到下面这几条，
             // 保证玩家被传回基地时永远看得到一句解释而不是静默（CR-2026-08-29-013）。
             Add(map, "Abort_Generic", "开局失败，已退回基地", "Setup failed; returned to base");
-            Add(map, "Abort_SceneNotReady", "地图迟迟没准备好，鸭王杯没能开局", "The map never finished getting ready, so the Duck King Cup couldn't start");
-            Add(map, "Abort_MapSelectionUnavailable", "地图界面没能打开，鸭王杯没出发，请再试一次", "The map screen failed to open, so the Duck King Cup didn't depart. Please try again");
+            Add(map, "Abort_SceneNotReady", "地图迟迟没准备好，鸭王杯没能开局", "The map never finished getting ready, so the Duck Cup couldn't start");
+            Add(map, "Abort_MapSelectionUnavailable", "地图界面没能打开，鸭王杯没出发，请再试一次", "The map screen failed to open, so the Duck Cup didn't depart. Please try again");
             Add(map, "Abort_MapUnsupported", "这张地图缺少本模式的点位",
                 "This map lacks the mode's spawn points");
             Add(map, "Abort_Lease", "无法接管擂台场地，已退回基地",
@@ -738,8 +738,8 @@ namespace BossRush
             Add(map, "RealStake_PlannedLosses", "预冻结损失清单", "Frozen loss list");
             Add(map, "RealStake_Escrowed", "临时托管中", "Held in escrow");
             Add(map, "RealStake_UniqueNotExempt", "唯一装备不豁免", "Your only copy is not exempt");
-            Add(map, "RealStake_Disabled", "当前存档槽无法证明资产安全，押品已禁用",
-                "This save slot cannot prove asset safety; staking is disabled");
+            Add(map, "RealStake_Disabled", "当前存档状态暂不适合启用押品，真实押注已禁用",
+                "Real-item staking is disabled on this save slot for safety");
             // 三条分因文案。旧的 RealStake_Disabled 只说「无法证明资产安全」，
             // 玩家会误以为存档坏了；实际最常见的原因是上一笔押品还没结算完。
             Add(map, "RealStake_Disabled_PendingTx",

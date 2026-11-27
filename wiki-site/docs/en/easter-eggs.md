@@ -47,9 +47,9 @@ Buy one particular ammo type **10 times** during a single visit to the arena amm
 
 - **Iron Man** — clear 10 waves of Infinite Hell without using a single healing item
 - **Instant Kill** — clear Standard BossRush or complete wave 10 of Infinite Hell / From Scratch inside 1 minute
-- **A Name on the Stone** — carve the first name into the PetNest memorial
+- **A Name on the Stone** — carve the first name into the Relic Nest memorial
 
-The first two are hardcore challenges. The last one… requires sending a cub off to die first.
+The first two are hardcore challenges. The last one… requires sending a hatchling off to die first.
 
 ## Dingdang and Yu Zhi already knew each other
 

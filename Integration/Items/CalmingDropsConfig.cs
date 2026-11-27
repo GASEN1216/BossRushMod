@@ -15,7 +15,7 @@ namespace BossRush
         public const string DISPLAY_NAME_EN = "Calming Drops";
         public const string DESCRIPTION_CN = "羽织配的药水，闻着有草药味。喝一口清掉大部分坏状态。";
         public const string DESCRIPTION_EN = "Yu Zhi's herbal potion. Drink it to clear most bad effects.";
-        public const string USE_DESC_CN = "使用：清除大部分负面buff";
+        public const string USE_DESC_CN = "使用：清除大部分负面状态";
         public const string USE_DESC_EN = "Use: Clear most negative status effects";
         public const float USE_TIME_SECONDS = 2.5f;
 

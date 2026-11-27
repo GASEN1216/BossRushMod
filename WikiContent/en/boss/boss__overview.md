@@ -44,8 +44,8 @@ Customize the pool via **Ctrl+F10**:
 
 - **Dragon Slayer** — First Dragon Descendant kill (30K)
 - **Perfect Dragon Hunt** — No-damage Dragon Descendant kill (200K)
-- **Kingslayer** — First Dragon Lord kill (100K)
-- **Perfect Kingslayer** — No-damage Dragon Lord kill (500K)
-- **Dragon Slayer Master** — 10 Dragon Lord kills (600K)
+- **Dragonslayer** — First Dragon Lord kill (100K)
+- **Flawless Dragonslayer** — No-damage Dragon Lord kill (500K)
+- **Master Dragonslayer** — 10 Dragon Lord kills (600K)
 - **Dragon Descendant Collector** — All Dragon Descendant drops (300K)
-- **Dragon King Collector** — All Dragon Lord drops (500K)
+- **Dragon Lord Collector** — All Dragon Lord drops (500K)

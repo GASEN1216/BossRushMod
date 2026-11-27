@@ -9,7 +9,7 @@
 - Fix for empty loot slot issues.
 
 ### Source Commit Subjects
-- 模式D增加箭
-- 模式D排除商人和宠物类型
-- 修复掉落空格子问题
+- Mode D adds arrows
+- Mode D excludes merchants and pet types
+- Fix empty loot slot issue
 - Initial commit

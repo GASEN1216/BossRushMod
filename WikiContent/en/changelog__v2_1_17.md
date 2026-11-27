@@ -7,4 +7,4 @@
 - Only the version-marker commit survives for this node in the current repository.
 
 ### Source Commit Subjects
-- 版本号提交：2.1.17
+- Version commit: 2.1.17

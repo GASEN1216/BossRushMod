@@ -31,7 +31,7 @@ A goblin created by J-Lab, way smarter than your average green dude. **Your go-t
 - **Neutral**: Other items (+20)
 - **Dislikes**: Brick Stone, the fake diamond (-40)
 
-[warn] Giving his Drawing back = -300 Affinity. He drew it for you. Don't.
+[warn] Giving Dingdang's Doodle back = -300 Affinity. He drew it for you. Don't.
 
 ### Reforge & Affix Forging
 

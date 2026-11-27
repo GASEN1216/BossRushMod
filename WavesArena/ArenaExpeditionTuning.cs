@@ -250,7 +250,7 @@ namespace BossRush
                 "Boss HP " + FormatMultiplier(HealthMultipliers[2]) + ", damage " + FormatMultiplier(DamageMultipliers[2]) + ", 15% quicker to act"),
             ArenaExpeditionRule.Own(ArenaExpeditionRuleKind.Foe, false, "凶相", "Fell Aspect",
                 "每只首领带 " + HardTrials.Affixes + " 条词缀，压轴带 " + HardTrials.FinaleAffixes + " 条",
-                "Each boss bears " + HardTrials.Affixes + " affix; the headliner " + HardTrials.FinaleAffixes),
+                "Each boss bears " + HardTrials.Affixes + (HardTrials.Affixes == 1 ? " affix" : " affixes") + "; the headliner bears " + HardTrials.FinaleAffixes),
             Hex(false),
             ForcedMarch,
             Omens("天象无常", "Fickle Skies", HardTrials),
@@ -266,10 +266,10 @@ namespace BossRush
                 "每只首领带 " + NightmareTrials.Affixes + " 条词缀，压轴带 " + NightmareTrials.FinaleAffixes + " 条",
                 "Each boss bears " + NightmareTrials.Affixes + " affixes; the headliner bears " + NightmareTrials.FinaleAffixes),
             ArenaExpeditionRule.Own(ArenaExpeditionRuleKind.Self, false, "失明", "Blinded",
-                "视野收窄，首领血条只剩几格，M 图不标首领", "Narrow sight, coarse boss health bars, no boss beacons"),
+                "视野收窄，首领血条只剩几格，地图不标首领", "Narrow sight, coarse boss health bars, no boss beacons on the map"),
             ArenaExpeditionRule.Own(ArenaExpeditionRuleKind.Self, false, "断补", "Cut Supply",
-                "用药读条翻倍，不时禁药 " + (int)ArenaTrialsTuning.CutSupplyBanSeconds + " 秒，弹药掉落减半",
-                "Items take twice as long, sealed " + (int)ArenaTrialsTuning.CutSupplyBanSeconds + " s at times, half ammo drops"),
+                "道具读条翻倍，不时禁用消耗品 " + (int)ArenaTrialsTuning.CutSupplyBanSeconds + " 秒，弹药掉落减半",
+                "Consumables take twice as long, sealed " + (int)ArenaTrialsTuning.CutSupplyBanSeconds + "s at times, half ammo drops"),
             ArenaExpeditionRule.Own(ArenaExpeditionRuleKind.Self, false, "血债", "Blood Debt",
                 "只靠击杀回血；被首领打中上限降 " + ArenaTrialsTuning.FormatPercent(ArenaTrialsTuning.BloodDebtMaxHealthPerHit)
                     + "，至多 " + ArenaTrialsTuning.FormatPercent(ArenaTrialsTuning.BloodDebtMaxHealthCap),
@@ -279,9 +279,9 @@ namespace BossRush
             ForcedMarch,
             ArenaExpeditionRule.Own(ArenaExpeditionRuleKind.Field, false, "焚城", "City Ablaze",
                 "开打 " + (int)ArenaTrialsTuning.FireRingStartDelay + " 秒后火墙收圈，圈外每秒掉 "
-                    + ArenaTrialsTuning.FormatPercent(ArenaTrialsTuning.FireRingDamagePerSecond) + " 生命",
-                (int)ArenaTrialsTuning.FireRingStartDelay + " s in, a fire wall closes; "
-                    + ArenaTrialsTuning.FormatPercent(ArenaTrialsTuning.FireRingDamagePerSecond) + " HP/s outside"),
+                    + ArenaTrialsTuning.FormatPercent(ArenaTrialsTuning.FireRingDamagePerSecond) + " 最大生命",
+                (int)ArenaTrialsTuning.FireRingStartDelay + "s in, a fire wall closes; "
+                    + ArenaTrialsTuning.FormatPercent(ArenaTrialsTuning.FireRingDamagePerSecond) + " max HP/s outside"),
             Omens("天翻地覆", "Upheaval", NightmareTrials),
             Calamity("天灾连环", "Chained Calamities", NightmareTrials),
         };
@@ -433,15 +433,15 @@ namespace BossRush
             }
         }
 
-        /// <summary>战帖名（中文两字，印章用）。</summary>
+        /// <summary>战帖印文（双语，印章用）。</summary>
         internal static string TierSeal(ArenaExpeditionTier tier)
         {
             switch (tier)
             {
-                case ArenaExpeditionTier.Easy: return "轻松";
-                case ArenaExpeditionTier.Hard: return "困难";
-                case ArenaExpeditionTier.Nightmare: return "噩梦";
-                default: return "标准";
+                case ArenaExpeditionTier.Easy: return L10n.T("轻松", "CHILL");
+                case ArenaExpeditionTier.Hard: return L10n.T("困难", "HARD");
+                case ArenaExpeditionTier.Nightmare: return L10n.T("噩梦", "DOOM");
+                default: return L10n.T("标准", "STD");
             }
         }
 

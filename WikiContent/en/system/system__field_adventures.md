@@ -45,7 +45,7 @@ You may accept two orders per raid. Cancelled orders, ruined parcels and leaving
 
 First, take Dingdang's commission. Once your affinity with Dingdang reaches **level 10**, he offers "Dingdang's commission: dangerous prototypes" at base. Choosing it accepts the commission; Dingdang tells you about the over-spec rigs he's been building out back, and the commission completes as soon as the conversation ends. You only do this once.
 
-After that, her prototype bench turns up **at random** on ordinary raids: roughly 45% of raids, at no fixed time, on open ground somewhere between a dozen and thirty metres from you, marked on the map as "Dingdang's prototype bench". Each bench holds **just one** prototype, also chosen at random. If Dingdang herself is on the map that raid, she lends the same rig.
+After that, his prototype bench turns up **at random** on ordinary raids: roughly 45% of raids, at no fixed time, on open ground somewhere between a dozen and thirty metres from you, marked on the map as "Dingdang's prototype bench". Each bench holds **just one** prototype, also chosen at random. If Dingdang himself is on the map that raid, he lends the same rig.
 
 Hold the gun you want to test; the rig attaches to it when borrowed. Once the pressure lights fill, **fire normally** to release an extra experimental attack. Your gun still fires and consumes ammo as usual.
 

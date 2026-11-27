@@ -99,7 +99,7 @@ namespace BossRush
                 if (seconds != bannedSecondsShown)
                 {
                     bannedSecondsShown = seconds;
-                    ArenaExpeditionHud.SetSealedLine(seconds > 0 ? L10n.T("禁药 ", "Sealed ") + seconds : string.Empty);
+                    ArenaExpeditionHud.SetSealedLine(seconds > 0 ? L10n.T("禁用道具 ", "Sealed ") + seconds + "s" : string.Empty);
                 }
                 return;
             }

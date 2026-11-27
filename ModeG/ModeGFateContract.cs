@@ -137,7 +137,7 @@ namespace BossRush
             new ContractDef(IdLastExecutioner, ModeGContractFamily.Execution, "LastExecutioner",
                 "终末行刑者", "Last Executioner",
                 "至少完成 2 次最后处决，并亲手（枪械或近战）击倒三阶宿敌。",
-                "Complete at least 2 final executions, and take down a third-rank nemesis with your own gun or blade."),
+                "Complete at least 2 final executions, and take down a third-rank nemesis with your own gun or melee."),
 
             new ContractDef(IdCounterflowChain, ModeGContractFamily.Tempo, "CounterflowChain",
                 "逆流连锁", "Counterflow Chain",
@@ -156,18 +156,18 @@ namespace BossRush
 
             new ContractDef(IdArsenalDiscipline, ModeGContractFamily.Style, "ArsenalDiscipline",
                 "武库戒律", "Arsenal Discipline",
-                "触发 2 次弹药点名和 1 次属性封锁；学习波至少有效开火 5 次，并换用没被点名的弹药。",
-                "Trigger 2 ammo bans and 1 attribute lock. Fire 5 valid shots per learning wave; use ammo not yet named."),
+                "触发 2 次弹药点名和 1 次属性封锁；每轮学习波（第 2、5、8 波）至少有效开火 5 次，并换用没被点名的弹药。",
+                "Trigger 2 ammo bans and 1 attribute lock. Fire 5 valid shots per learning wave (2/5/8) and use ammo not yet banned."),
 
             new ContractDef(IdFinalMinute, ModeGContractFamily.Execution, "FinalMinute",
                 "最终时刻", "Final Minute",
                 "完成 3 次最后处决（每个多 Boss 波各 1 次）。",
-                "Complete three final executions this run."),
+                "Complete three final executions this run (one per multi-boss wave)."),
 
             new ContractDef(IdNemesisDenied, ModeGContractFamily.Adaptation, "NemesisDenied",
                 "宿敌否定", "Nemesis Denied",
-                "第 3、6、9 波都触发弹药点名；每轮学习波换用没被点名的弹药，至少有效开火 5 次。",
-                "Trigger bans on waves 3/6/9: fire 5 valid shots with new, unnamed ammo in each learning wave."),
+                "第 3、6、9 波都触发弹药点名；每轮学习波（第 2、5、8 波）换用没被点名的弹药，至少有效开火 5 次。",
+                "Trigger bans on waves 3/6/9: fire 5 valid shots with new, unbanned ammo in each learning wave (2/5/8)."),
         };
 
         /// <summary>

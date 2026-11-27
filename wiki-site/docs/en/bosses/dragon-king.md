@@ -102,7 +102,7 @@ Do not ignore the "My child, protect me!" phase. Prioritize killing the Dragon D
 </div>
 
 
-On kill, **one item is chosen via weighted random** from these six (not six independent rolls). Infinite Hell has no loot box, so the item drops on the ground where the Dragon King falls:
+On kill, **one item is chosen via weighted random** from these six (not six independent rolls). Infinite Hell has no loot box, so the item drops on the ground where the Dragon Lord falls:
 
 - Reverse Scale (Totem): 39% drop rate
 - Cloud Soar I (Totem): 15% drop rate
@@ -156,7 +156,7 @@ See "Black Market Duck Cup" for the full match rules.
 - Black Market Duck Cup: one of the boss pool, at most one per team
 
 ## Related Achievements
-- **Kingslayer** — First kill (reward: 100,000)
-- **Perfect Kingslayer** — No-damage kill (reward: 500,000)
-- **Dragon Slayer Master** — 10 cumulative kills (reward: 600,000)
-- **Dragon King Collector** — Collect all exclusive drops (reward: 500,000)
+- **Dragonslayer** — First kill (reward: 100,000)
+- **Flawless Dragonslayer** — No-damage kill (reward: 500,000)
+- **Master Dragonslayer** — 10 cumulative kills (reward: 600,000)
+- **Dragon Lord Collector** — Collect all exclusive drops (reward: 500,000)

@@ -75,6 +75,6 @@ Present in: Normal Maps √ / Standard √ / From Scratch √ / Faction War √ 
 
 ## News from the road
 
-Awen talks about Fate Echo, the Black Market Duck Cup, the campaign and Sky Island. He also mentions Pet Nest, affix forging, the back-mountain garden and where to find new gear.
+Awen talks about Fate Echo, the Black Market Duck Cup, the campaign and Sky Island. He also mentions Relic Nest, affix forging, the back-mountain garden and where to find new gear.
 
 For Sky Island, start with Jeff's navigator quest. Awen's chatter offers hints; check the matching Wiki entry for full rules.

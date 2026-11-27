@@ -363,7 +363,7 @@ namespace BossRush
                         _summaryText.rectTransform.sizeDelta = new Vector2(676f, 290f);
                         BossRushInkWidgets.CreateSealBadge(
                             shell.Writ,
-                            anyDead ? L10n.T("铭记", "MEMORY") : L10n.T("凯旋", "REPORT"),
+                            anyDead ? L10n.T("铭记", "MEMORY") : L10n.T("凯旋", "TRIUMPH"),
                             68f,
                             anyDead ? BossRushInkColors.Cinnabar : BossRushInkColors.Gold,
                             new Vector2(286f, -104f),

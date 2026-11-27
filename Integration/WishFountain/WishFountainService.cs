@@ -386,7 +386,7 @@ namespace BossRush
 
         private static readonly WishRewardItemDefinition[] WishRewardCustomItems =
         {
-            CreateWishRewardItem(BossRushItemIds.BossRushTicket, "travel", "BossRush 船票", "Boss Rush Ticket", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
+            CreateWishRewardItem(BossRushItemIds.BossRushTicket, "travel", "BossRush 船票", "BossRush Ticket", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,
                 new string[] { "船票", "门票", "bossrush船票", "bossrush票" },
                 new string[] { "boss rush ticket", "bossrush ticket", "ticket" }),
             CreateWishRewardItem(BossRushItemIds.BirthdayCake, "gift", "生日蛋糕", "Birthday Cake", WISH_REWARD_MAX_HARDCODED_ITEM_BIAS_MULTIPLIER, true,

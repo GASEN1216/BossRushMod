@@ -55,12 +55,12 @@ namespace BossRush
         /// <summary>
         /// 物品描述（中文）
         /// </summary>
-        public const string DESCRIPTION_CN = "一颗切面锃亮的钻石，货真价实。哥布林见了这种东西，走不动道。";
+        public const string DESCRIPTION_CN = "一颗切面锃亮的钻石，货真价实。哥布林见了这种东西，走不动道。（使用：将叮当召唤到身边，也可作礼物赠送）";
         
         /// <summary>
         /// 物品描述（英文）
         /// </summary>
-        public const string DESCRIPTION_EN = "A brilliant-cut diamond, the real thing. Goblins can't walk past one.";
+        public const string DESCRIPTION_EN = "A brilliant-cut diamond, the real thing. Goblins can't walk past one. (Use: summons Dingdang nearby, or give as a gift)";
         
         /// <summary>
         /// 无哥布林提示（中文）

@@ -19,11 +19,12 @@
 - **2.4.x**: v2.4.0 (released 2026-11-08) adds Tidegate, a standalone raid map with tides, swimming, three valves and a sunken vault, a new NPC (Old Zha), a new boss (Leadline) and six new items. It also toughens the town's enemies and stops kill events from being cut off by errors in other mods.
 - **2.5.x**: v2.5.0 (released 2026-11-13) adds Last Shift Yard, a standalone raid map you board from the Hidden Warehouse: a train every two minutes, a switch that picks your battlefield, a cabinet to sign for at every stop and a yard that closes when the last train leaves. It also brings cargo guards, three squad leaders, a new boss (the Chief Escort), the story "The Ticket Nobody Came For" and two new items, and makes the edges and cover of the three home-made maps easier to read.
 - **2.6.x**: v2.6.0 (released 2026-11-19) adds Collectibles & the Album: 100 old objects that turn up in one extra crate slot, from their own pool so vanilla slots and odds are untouched; a new quest from Jeff hands you the album, and logging full sets pays cash and small permanent bonuses, or you can give them to NPCs who like them; v2.6.1 (released 2026-11-20) is a fix patch for mod weapons vanishing after quitting and coming back, storage items turning into question marks and some weapons loading without their models; v2.6.2 (released 2026-11-21) is a player feedback patch that fixes the missing cursor in the album, the cub backpack on raid maps saying it isn't ready over and over, and the register crate not popping up the first time, and it cuts the wish draw back hard with quality unlocking by play time.
+- **2.7.x**: v2.7.0 (released 2026-11-27) adds the War Writ: set your own lineup, challenge and march at the arena signpost, with Hard and Nightmare bringing full rule sets, weather shifts, calamities and Boss affixes, and Standard and Hard raisable level by level; the whole UI moves to an ink style, and there are constellations at the wish fountain, soul offerings, gift notes and a new totem, the Hushbell Ward. It also fixes "Coordinates Above the Clouds" not turning in, mod gear lost after reloading and startup failing partway.
 
 ### v2.3.8 (2026-10-24)
 
 - New Boss: the Eclipse Bloom (take Jeff's introduction quest, then head to Experimental Area 37), plus the Residual Sun Shield Shard totem it always drops.
-- Three field adventures on ordinary raids: the Gluttonous Mimic, Awen's Odd-Parcel Delivery and Dingdang's Dangerous Prototypes (five rigs that appear at random after her level-10 commission).
+- Three field adventures on ordinary raids: the Gluttonous Mimic, Awen's Odd-Parcel Delivery and Dingdang's Dangerous Prototypes (five rigs that appear at random after his level-10 commission).
 - The Shadow of the Champion joins the Boss pool, and Dragon's Breath no longer deals zero damage to zombies. See `v2.3.8` for the full list.
 
 ### v2.3.9 (2026-10-30)
@@ -55,4 +56,9 @@
 - Player feedback fixes: the cursor stays visible while the album is open, the cub backpack on raid maps no longer keeps saying it isn't ready, and the register crate pops up properly on your first collectible.
 - The wish draw is cut back hard: quality starts at tier 3, tier 8 is about 0.3%, and the highest tier you can draw unlocks with this save's play time. See `v2.6.2` for the full list.
 
-[tip] For fast historical context, start with `v2.1.0` and `v2.1.20`. For the latest major additions, see `v2.3.0`, `v2.3.1`, `v2.3.2`, `v2.3.3`, `v2.3.4`, `v2.3.5`, `v2.3.6`, `v2.3.7`, `v2.3.8`, `v2.3.9`, `v2.4.0`, `v2.5.0`, `v2.6.0`, `v2.6.1` and `v2.6.2`, which cover everything since the Qinglan Archipelago era, including Tidegate, Last Shift Yard and the new Collectibles & Album.
+### v2.7.0 (2026-11-27)
+
+- The War Writ: pick a lineup, a challenge (Relaxed / Standard / Hard / Nightmare) and a march (Short 12 waves / Long 24 waves / Full) at the arena signpost, with the rules and rewards on the notice; Hard and Nightmare bring weather shifts, calamities and four families of Boss affixes; Standard can be raised 5 levels and Hard 8, each level adding 5% to the rewards; War Writ runs no longer roll random mutators.
+- Ink UI, wish fountain constellations and lanterns, soul offerings, gift notes and the new Hushbell Ward totem; Dingdang's reforge now rolls from factory values. Fixes "Coordinates Above the Clouds" not turning in, mod gear lost after reloading and startup failing partway. See `v2.7.0` for the full list.
+
+[tip] For fast historical context, start with `v2.1.0` and `v2.1.20`. For the latest major additions, see `v2.3.0`, `v2.3.1`, `v2.3.2`, `v2.3.3`, `v2.3.4`, `v2.3.5`, `v2.3.6`, `v2.3.7`, `v2.3.8`, `v2.3.9`, `v2.4.0`, `v2.5.0`, `v2.6.0`, `v2.6.1`, `v2.6.2` and `v2.7.0`, which cover everything since the Qinglan Archipelago era, including Tidegate, Last Shift Yard, Collectibles & the Album and the new War Writ.

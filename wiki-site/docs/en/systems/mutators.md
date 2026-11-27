@@ -8,8 +8,8 @@ At the start of every run, the system draws a handful of mutators from a pool of
 
 ## Applicable Modes
 
-- **Standard BossRush** — Rolls mutators?: √
-- **Infinite Hell** — Rolls mutators?: √
+- **Standard BossRush** — Rolls mutators?: × (runs start from the War Writ, so your challenge sets the difficulty)
+- **Infinite Hell** — Rolls mutators?: × (same; it also starts from the War Writ)
 - **From Scratch** — Rolls mutators?: √
 - **Faction War** — Rolls mutators?: √
 - **Blood Hunt** — Rolls mutators?: √
@@ -19,7 +19,7 @@ At the start of every run, the system draws a handful of mutators from a pool of
 
 ## How to See Active Mutators
 
-- An **ACTIVE MUTATORS** list appears at the top left after the run starts and shows the total count; it sits below the random-event badge and the PetNest companion card, so it never covers your cub's HUD
+- An **ACTIVE MUTATORS** list appears at the top left after the run starts and shows the total count; it sits below the random-event badge and the Relic Nest companion card, so it never covers your hatchling's HUD
 - Every row is labeled **Enemy / Boon / Rule**, with category colors for quick scanning
 - Hover a row to open the full descriptions on the right; the row you are reading is highlighted
 - The detail panel scrolls when the list is long, and remains open while moving the pointer from the compact list into the details

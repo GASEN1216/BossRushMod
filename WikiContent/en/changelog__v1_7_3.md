@@ -9,12 +9,12 @@
 - Early interaction and aggro-flow polish.
 
 ### Source Commit Subjects
-- 生日蛋糕彩蛋
-- F6放置模式
-- 路牌可穿过
+- Birthday cake easter egg
+- F6 placement mode
+- Pass-through signpost
 - Update Integration.cs
-- 强制设置 AI 仇恨到玩家
-- 添加零号区场景
-- bossrush选项复用原版传送UI
-- 交互式输出交互信息
-- 版本号提交：1.7.3
+- Force AI aggro onto player
+- Add Ground Zero scene
+- BossRush options reuse vanilla transport UI
+- Interactive debug output for interactions
+- Version commit: 1.7.3

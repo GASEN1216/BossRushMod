@@ -55,7 +55,7 @@ const footerText = computed(() => theme.value.footer ?? {})
         <a :href="repo" target="_blank" rel="noopener">{{ ui.modName }}</a>
       </li>
       <li>
-        <a href="https://store.steampowered.com/app/2411430/" target="_blank" rel="noopener">
+        <a href="https://store.steampowered.com/app/3167020/" target="_blank" rel="noopener">
           Escape from Duckov
         </a>
       </li>

@@ -54,12 +54,12 @@ namespace BossRush
         /// <summary>
         /// 物品描述（中文）
         /// </summary>
-        public const string DESCRIPTION_CN = "一块轻飘飘的砖石。听说哥布林见了亮闪闪的东西就挪不动腿，用一下试试？";
+        public const string DESCRIPTION_CN = "一块轻飘飘的砖石。听说哥布林见了亮闪闪的东西就挪不动腿。（使用：尝试召唤叮当到身边）";
         
         /// <summary>
         /// 物品描述（英文）
         /// </summary>
-        public const string DESCRIPTION_EN = "A suspiciously light brick. Word is goblins can't walk past anything shiny. Try using it?";
+        public const string DESCRIPTION_EN = "A suspiciously light brick. Word is goblins can't walk past anything shiny. (Use: summons Dingdang nearby)";
         
         /// <summary>
         /// 无哥布林提示（中文）

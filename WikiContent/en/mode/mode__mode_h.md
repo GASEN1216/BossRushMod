@@ -123,7 +123,7 @@ After the sixth match, the season goes into the **Hall of Fame** and gets ranked
 - **Can I jump in myself?** No. You bet and you ring the bell.
 - **Can I bring a pet from the Nest?** No. This mode doesn't use Nest companions.
 - **Are there mutators?** No. The Duck Cup doesn't roll mutators or trigger random events.
-- **Do kills here count toward the Duck Emperor Codex?** No, and they give you no XP either. That's bosses fighting bosses, not you.
+- **Do kills here count toward the Duckov Codex?** No, and they give you no XP either. That's bosses fighting bosses, not you.
 - **Does a technical fault count as a loss?** No. The same match is retried automatically, up to 2 times, and doesn't count as a defeat; any bet carries over. If it keeps failing, the season is suspended and the recovery page at the boat takes over.
 - **The season is stuck: can't get in, can't play on. Now what?** Interact at the dock and you'll get a recovery page. **"Abandon season and settle stakes"** asks you to confirm first and spells out what happens; after that a bet on a match already under way counts as lost, a bet on an unstarted match is returned as-is, the stuck season is cleared, and you can start fresh. Not ready? **"Later"** closes it.
 

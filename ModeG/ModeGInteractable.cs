@@ -153,8 +153,8 @@ namespace BossRush
             try
             {
                 overrideInteractName = true;
-                _overrideInteractNameKey = "BossRush_ModeG_Preview";
-                InteractName = "BossRush_ModeG_Preview";
+                _overrideInteractNameKey = "BossRush_ModeG_Interact";
+                InteractName = "BossRush_ModeG_Interact";
                 interactCollider = GetComponent<Collider>();
             }
             catch { }
@@ -168,8 +168,8 @@ namespace BossRush
             try
             {
                 overrideInteractName = true;
-                _overrideInteractNameKey = "BossRush_ModeG_Preview";
-                InteractName = "BossRush_ModeG_Preview";
+                _overrideInteractNameKey = "BossRush_ModeG_Interact";
+                InteractName = "BossRush_ModeG_Interact";
             }
             catch { }
         }

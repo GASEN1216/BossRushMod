@@ -2,7 +2,7 @@
 
 ## Affinity System
 
-10 levels for Dingdang and Yu Zhi. Chat daily, give gifts, unlock services and story content.
+10 levels for Dingdang, Yu Zhi, the six Sky Islands residents, and Old Zha. Chat daily, give gifts, and unlock services, discounts, or story lines.
 
 ### Level Thresholds
 
@@ -11,7 +11,7 @@
 
 ### How to Gain Affinity
 
-- **Daily chat**: Dingdang +40 / Yu Zhi +30 (once/day)
+- **Daily chat**: Dingdang +40 / Yu Zhi, Sky Islands residents & Old Zha +30 (once/day)
 - **Liked gift**: +80 / **Neutral gift**: +20 / **Disliked**: -40 (Yu Zhi -60 for Brick Stone)
 - **Diamond Ring or Crown**: +500 / **Birthday Cake**: +150
 

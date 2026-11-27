@@ -10,7 +10,7 @@
 - **Residual Sun Shield Shard**: a totem the Eclipse Bloom always drops. Rolling raises a 0.65-second shield in the roll direction that catches one frontal attack and reduces it by 70%; a successful block adds the same amount to your next direct hit.
 - **Gluttonous Mimic**: about 35% of ordinary raids run into a hungry giant chest. Feed it up to three helpings of ammo, grenades or medicine and it grows matching cannons, bomb growths or a medicine bottle, getting bigger, tougher and more rewarding. Its iron shell takes only 45% damage while its mouth is shut, so hit it when it opens up.
 - **Awen's Odd-Parcel Delivery**: find Awen or his dispatch box on a raid and carry a squawking Quacking Egg or a ready-to-burst Angry Soda to the signing stand. A perfect delivery pays 2400 gold, up to two parcels per raid.
-- **Dingdang's Dangerous Prototypes**: once Dingdang's affinity reaches level 10, accept her one-time commission at base; it completes when the conversation ends. After that, about 45% of ordinary raids spawn her prototype bench at random (marked on the map), each holding one rig: Duckback Mk.I Overdrive, Ricochet Sun Unbound, Quackrail Cannon, Thunderbill or Grand Finale. It attaches to the gun in your hands; meet the target in time for 1 Cold Quench Fluid.
+- **Dingdang's Dangerous Prototypes**: once Dingdang's affinity reaches level 10, accept his one-time commission at base; it completes when the conversation ends. After that, about 45% of ordinary raids spawn his prototype bench at random (marked on the map), each holding one rig: Duckback Mk.I Overdrive, Ricochet Sun Unbound, Quackrail Cannon, Thunderbill or Grand Finale. It attaches to the gun in your hands; meet the target in time for 1 Cold Quench Fluid.
 
 ### Improved
 

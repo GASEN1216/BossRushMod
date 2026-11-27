@@ -377,7 +377,7 @@ namespace BossRush
                 case Weather.Rainy: return "rain - check supplies before leaving";
                 case Weather.Snow: return "snow - watch for hostiles";
                 case Weather.Stormy_I: return "storm warning (level 1) - stay in unless necessary";
-                case Weather.Stormy_II: return "storm warning (level 2) - going out is suicide";
+                case Weather.Stormy_II: return "storm warning (level 2) - step outside at your own peril";
                 default: return "unreadable";
             }
         }
@@ -426,8 +426,8 @@ namespace BossRush
                     "A reminder: sleeping won't rush the next issue. Our typesetters need their time."),
                 L10n.T("仓库小贴士：处理用不上的战利品，再给下一趟留点空间。",
                     "Storage tip: sell surplus loot to make room for the next run."),
-                L10n.T("调度处提示：百战留痕是选手的比赛，不计入你的日报悬赏。",
-                    "Dispatch: Black Market Cup matches belong to your fighters, so they do not advance your bounties."),
+                L10n.T("调度处提示：黑市鸭王杯是选手的比赛，不计入你的日报悬赏。",
+                    "Dispatch: Black Market Duck Cup matches belong to your fighters, so they do not advance your bounties."),
             });
         }
 

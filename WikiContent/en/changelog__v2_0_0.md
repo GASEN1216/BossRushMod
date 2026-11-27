@@ -9,13 +9,13 @@
 - Dragon burn and interactable / reward work expanded the project beyond a simple challenge add-on.
 
 ### Source Commit Subjects
-- 实例化模型工厂+自定义路牌模型
-- 增量更新
-- wiki书demo
+- Instanced model factory + custom signpost model
+- Incremental update
+- Wiki book demo
 - Update BossRushInteractables.cs
 - Update BossRushInteractables.cs
 - Update LootAndRewards.cs
-- 龙焰灼烧buff+龙裔持龙息枪
-- 优化龙息代码
-- 龙息
-- 版本号提交：2.0.0
+- Dragonflame burn debuff + Dragon Descendant armed with Dragon's Breath
+- Optimize Dragon's Breath code
+- Dragon's Breath
+- Version commit: 2.0.0

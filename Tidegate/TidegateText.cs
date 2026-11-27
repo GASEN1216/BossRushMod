@@ -98,16 +98,16 @@ namespace BossRush
                     "镇子空了以后，大闸一直关着。泻湖越涨越高，储蓄所整栋泡在水底下。\n" +
                     "所长临走前欠我一块怀表。表盘上那些潮位，是我一刀一刀刻的。他那天把柜子里的钱分了，偏偏把我的表锁进去了。你说图什么？\n" +
                     "我的交班记录有两份：一份在第三水厂控制室的保险箱，一份在镇区泵站的值班桌。去哪个都行；你要是认得闸，也用不着绕路。\n" +
-                    "你要是肯跑一趟，沿地堡下水道的西侧走道往北。走到水箱前，认那盏马灯，我的竹筏就停在旁边。\n" +
+                    "你要是肯跑一趟，沿地堡下水道东头的水道往最北走，走到水箱前，认那盏马灯，我的竹筏就停在旁边。\n" +
                     "三个阀门都拧开，大闸就提得起来。等退了潮，金库就露出来了。\n" +
                     "记着，背的东西太沉就别下深水，会沉底。\n" +
                     "——闸伯",
-                    "To whoever carries this:\n" +
+                    "To the duck carrying this:\n" +
                     "I kept the gates at Tidegate's No. 3 Waterworks. Folks call me Old Zha.\n" +
                     "Since the town emptied, the tide gate has stayed shut. The lagoon keeps rising and the savings bank sits under it.\n" +
                     "The manager left owing me a pocket watch. I cut the tide marks on that dial myself. His last day there, he gave away the money in the safe, then locked my watch inside. What do you make of that?\n" +
                     "I left shift notes in the safe in the No. 3 Waterworks control room and on the duty desk at the town pump station. Either will do. If you know the gates already, no need for the detour.\n" +
-                    "If you'll make the trip, take the west walkway north through the bunker sewer. At the water tanks, look for the lantern on my raft.\n" +
+                    "If you'll make the trip, head north along the eastern canal in the bunker sewer. At the water tanks, look for the lantern on my raft.\n" +
                     "Open all three valves and the gate will lift. Wait for low tide and the vault comes up.\n" +
                     "And mind your load. Carry too much into deep water and you'll sink.\n" +
                     "— Old Zha");
@@ -137,7 +137,7 @@ namespace BossRush
         {
             new[] { "闸工日志（一）· 大闸", "Gatekeeper's Log (I) · The Tide Gate",
                 "大闸三处阀门：第三水厂泵房、镇区泵站、潮位站。少一处，闸提到半截就卡死。全开，泻湖才跟着外海涨落。闸下水往里抽的时候，连空桶都会被拖走；想过对岸，走坝顶。\n镇区泵站的伙计送来半截拧弯的扳手。我问他阀门怎么开的，他指指自己的值班桌：「法子写那儿了。」",
-                "Three valves: the waterworks pump house, the town pump station and the tide gauge station. Miss one and the gate jams halfway. Open all three and the lagoon rises and falls with the sea. When the intake draws, it takes even an empty barrel. Cross along the dam.\nThe pump station hand brought me half a bent spanner. I asked how he'd got the valve open. He pointed at his duty desk. “Wrote it down for you.”" },
+                "Three valves: the waterworks pump house, the town pump station and the tide gauge station. Miss one and the gate jams halfway. Open all three and the lagoon rises and falls with the sea. When the intake draws, it takes even an empty barrel. Cross along the dam.\nThe pump station hand brought me half a bent spanner. I asked how he'd got the valve open. He pointed at his duty desk. \"Wrote it down for you.\"" },
             new[] { "闸工日志（二）· 泵站", "Gatekeeper's Log (II) · The Pump Station",
                 "镇区泵站的阀门又锈了。别松手，憋三口气让它转过死点。涨潮时水从排水暗渠那头先漫上来，过脚脖子就往高处走。\n昨夜潮位站报不出数。我叫值夜的把看见的事写下来，放进站里的记录柜，别在无线电里说。",
                 "Pump valve's rusted again. Hold on through three breaths to get it past the stiff spot. The flood comes up the drain culvert first. Once it's over your ankles, head for high ground.\nNo reading from the tide gauge last night. I told the night hand to put what he'd seen in the station records cabinet. Best keep it off the radio." },
@@ -187,7 +187,7 @@ namespace BossRush
         internal static string OptionalJournalObjective(int pages)
         {
             if (pages == 0) return L10n.T("可选：闸伯的交班记录留在第三水厂控制室和镇区泵站，任选一处调查",
-                "Optional: Look for Zha’s shift notes in the No. 3 Waterworks control room or at the town pump station");
+                "Optional: Look for Zha's shift notes in the No. 3 Waterworks control room or at the town pump station");
             int next = NextJournalLead(pages);
             return next >= 0 ? L10n.T("可选 · 日志中提到：", "Optional · From your notes: ") + JournalLeadPlace(next)
                 : L10n.T("四页日志已收齐。按潮水搜刮，从开放的出口撤离", "All four pages found. Loot with the tide and leave through an open exit");

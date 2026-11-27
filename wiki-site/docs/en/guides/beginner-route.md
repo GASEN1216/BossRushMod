@@ -32,7 +32,7 @@ Jeff's **Chapter 1, "Sign Us Up"** is practically written for your second run:
 - Clear one standard BossRush run
 - Take zero damage through wave 2
 
-That's 20,000, and it unlocks the **base garden** - after which the three custom Bosses start
+That's 20,000, and it unlocks the **base garden** - after which custom Bosses (Dragon Descendant, Dragon Lord, Phantom Witch) start
 dropping seeds you can grow into "raid meals" that buff the start of your next run.
 
 Each later chapter unlocks something else: chapter 2 opens the display bonus (Boss trophies on a
@@ -49,11 +49,11 @@ weapon rack or dummy), chapter 3 the jukebox tracks.
 ## Custom Bosses
 
 - Fight the **Dragon Descendant** → learn its two-phase trick
-- Get the Dragon Set (Crimson Helm + Flame Scale Armor) → fire immunity + dash
+- Get the Dragon Set (Crimson Helm + Flame Scale Armor) → 80% fire refund + dash
 - That set will carry you a long way
 
 Worth knowing: **relic souls** have been banking since your very first Boss kill. Save 240 in one
-bloodline and the PetNest lets you condense that Boss's egg on demand - the cub that hatches
+bloodline and the Relic Nest lets you condense that Boss's egg on demand - the hatchling that hatches
 fights alongside you.
 
 ## Gear Progression
@@ -76,6 +76,7 @@ By the official difficulty rating, lowest first:
   chapter 5 sends you here
 - **Fate Echo** ★★★★★ — Current gear + Ticket + Relic. Bosses counter whatever you did last wave
 - **Blood Hunt** ★★★★★ — Naked + Ticket + Transponder. The hardest challenge
+- **Standalone Raid Maps** — Accept Jeff's quest for **Sky Islands · Qinglan**, take the bunker sewer raft to **Tidegate**, or have Yu Xiang punch your ticket in Hidden Warehouse for **Last Shift Yard**—no BossRush ticket required
 
 ::: warning
 The Black Market Duck Cup is relaxed to play, but it lets you bet money or backpack items: you back the team you picked, a loss hands your stake to the house, and in the long run the house always wins. Nothing from your warehouse is ever staked. Betting is off by default and entirely optional, so you can play a full season without it. New players should not bet.

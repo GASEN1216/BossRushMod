@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """
-MoneyDeliveryNetDeltaGuard — Mod 发钱 / 收钱只认官方 Add / Pay 的结果，不按余额净变化判到账（2026-11-26 玩家反馈）。
+MoneyDeliveryNetDeltaGuard — Mod 发钱 / 收钱认官方 Add / Pay 的结果或余额确实变了，不按余额净变化判到账。
 
-玩家反馈「云上的坐标」交不了、点完成就提示奖金发不出去：旧代码在 EconomyManager.Add 之后要求余额「恰好 +5000」。
-官方 Add 先改余额再同步派发 OnMoneyChanged，别的订阅者（其它 Mod、收益倍率补丁）可能在通知里再改一次钱，
-净变化一不同就判失败、不记账，钱却已经到账，玩家每点一次就再发一笔。
+旧代码在 EconomyManager.Add 之后要求余额「恰好 +奖金」。官方 Add 先改余额再同步派发 OnMoneyChanged，
+别的订阅者（其它 Mod、收益倍率补丁）可能在通知里再改一次钱或直接抛异常，净变化一不同就判失败、不记账，
+钱却已经到账，玩家每点一次就再发一笔。2026-11-26 玩家反馈「云上的坐标」交不了时曾归因到这里；
+次日玩家确认根因是前置 HarmonyLib 排在本 Mod 后面（任务交付走 Harmony 补丁），这条判定仍防重复发钱。
 
 不变式：
 1. 全部编译源里不得出现 `EconomyManager.Money ==/!= x ± y` 这类按净变化判到账的写法。
-2. BossRushMoneyTransfer：TryAdd 返回官方 Add 的结果；只在 Add 抛异常时看余额是否已经变了（通知里抛异常 = 钱已到账）。
-   TryDebit 返回官方 Pay(Cost) 的结果，同样只在异常时看账户 / 现金。
+2. BossRushMoneyTransfer：TryAdd 认官方 Add 返回 true 或这次调用里余额已变；Add 抛异常时也看余额（通知里抛异常 = 钱已到账）。
+   TryDebit 认官方 Pay(Cost) 返回 true 或账户 / 现金已变，异常时同样看账户 / 现金。
 3. 天空岛交付：到账即上闩（cashPaidPendingAction），存档排队失败时退款成功才撤闩；退不回就保留闩，下次只记账不再发钱。
 4. 成就奖金：只认 TryAdd 结果，失败撤回账本。
 每条断言都有内存变异探针，探针不转红本守卫自判失败。

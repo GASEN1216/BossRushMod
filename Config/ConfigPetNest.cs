@@ -76,7 +76,7 @@ namespace BossRush
             {
                 if (addBoolMethod == null || config == null) return;
                 string key = ModName + PetNestModConfigKeySuffix;
-                string label = ModConfigOptionLocalization.Label(key, "遗种巢：养崽与天灾远征", "PetNest: Cub Raising and Expeditions");
+                string label = ModConfigOptionLocalization.Label(key, "遗种巢：养崽与天灾远征", "Relic Nest: Hatchling Care & Expeditions");
                 addBoolMethod.Invoke(null, new object[] { ModName, key, label, config.petNestEnabled });
                 DevLog("[BossRush] 遗种巢配置项注册成功");
             }

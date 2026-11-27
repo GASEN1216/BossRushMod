@@ -877,7 +877,7 @@ namespace BossRush
                         "The Starforge Foreman is down for the first time. It returns to the workshop every raid in its full Starworks set and leaves one piece behind each time it falls.");
                 case SkyIslandBossKind.Stargazer:
                     return L10n.T("第一次打倒瞭台观星手：它每趟都会回到瞭台，倒下时有三成机会留下观星镜盔。",
-                        "The overlook stargazer is down for the first time. It returns to the overlook every raid and leaves its lens helm behind three times in ten.");
+                        "The Overlook Stargazer is down for the first time. It returns to the Overlook every raid and leaves its lens helm behind three times in ten.");
                 case SkyIslandBossKind.RootHunter:
                     return L10n.T("第一次打倒悬根猎首：它每趟都会回到悬根林，每次都穿着全套悬根猎装，倒下时只留下其中一件。",
                         "The Hanging-Root Huntmaster is down for the first time. It returns to the Hanging Root Wood every raid in its full rootweave hunting gear and leaves one piece behind each time it falls.");

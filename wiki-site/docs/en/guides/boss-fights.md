@@ -12,7 +12,7 @@
 - **Don't celebrate.** It comes back harder: 1.1x dmg, 1.5x crit, 1.5x chase speed
 - Contact damage now active — don't let it touch you. Before each rush it kicks up dust, throws sparks and charges for about 0.3s: sidestep the moment you see it. Rolling through the rush takes no damage
 - Firebombs every 1s, always aimed at your feet; standing in its own fire doesn't hurt it
-- **Key: out-DPS the self-healing**
+- **Key: keep your distance and stay mobile after its 50% revival**
 
 ### Counters
 - Dragon Set / Dragon King Set = 80% of the fire damage you take comes back the next frame. The fight gets much easier
@@ -20,9 +20,9 @@
 - Reverse Scale as safety net
 
 ### No-Hit Tips
-- Phase 1: mid-range, dodge rockets + firebombs
+- Phase 1: mid-range (stay >5m to skip the 10-shot blast ring), dodge firebombs
 - Phase 2: dash to create distance, never let it close
-- Dragon Set = immune to fire, just dodge bullets + contact
+- Dragon Set refunds 80% of fire damage a moment later — avoid lingering fires at low HP, focus on bullets + contact
 - Boss Filter → solo it
 
 ---
@@ -53,7 +53,7 @@
 - **Kill the Descendant first**
 
 ### Recommended Gear
-- Dragon Set / Dragon King Set (fire immunity + dash)
+- Dragon Set / Dragon King Set (80% fire refund + dash)
 - High DPS guns (shorter fight = fewer mistakes)
 - Cloud Soar I (aerial evasion)
 - Reverse Scale (emergency save)

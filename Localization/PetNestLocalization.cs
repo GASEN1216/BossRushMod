@@ -48,7 +48,7 @@ namespace BossRush
 
         private static void AddCore(Dictionary<string, string> map)
         {
-            Add(map, "SystemName", "遗种巢", "PetNest");
+            Add(map, "SystemName", "遗种巢", "Relic Nest");
             Add(map, "SystemDesc",
                 "打过的 Boss 可能留下遗种。孵出来养着，带去打架或派去天灾区。",
                 "Bosses you defeat may leave relics. Hatch them, raise them, take them into fights, or send them into disaster zones.");
@@ -60,13 +60,13 @@ namespace BossRush
             Add(map, "Backpack", "背包", "Backpack");
 
             // 命名弹窗（SystemDesc 对玩家承诺过"起个名字"，入口在 PetNestRenameModal）
-            Add(map, "Rename_Title", "给它起个名字", "Name this cub");
+            Add(map, "Rename_Title", "给它起个名字", "Name this hatchling");
             Add(map, "Rename_Confirm", "就叫这个", "Confirm");
             Add(map, "Rename_Reset", "用回血脉名", "Use bloodline name");
 
             // 放生与巢扩建
-            Add(map, "Release_Action", "放生选中的崽", "Release selected cub");
-            Add(map, "Release_Title", "放生确认", "Release this cub?");
+            Add(map, "Release_Action", "放生选中的崽", "Release selected hatchling");
+            Add(map, "Release_Title", "放生确认", "Release this hatchling?");
             Add(map, "Release_Warn",
                 "放了就不回来了，也不进纪念碑。能收回一部分遗魂。",
                 "Let it go and it never comes back or enters the memorial. You get some relic souls back.");
@@ -110,24 +110,24 @@ namespace BossRush
         {
             // —— 巢 CRUD 与席位 ——
             Add(map, "Fail_nest_full", "巢已经满了", "The nest is full");
-            Add(map, "Fail_pet_not_found", "找不到这只崽", "That cub cannot be found");
-            Add(map, "Fail_pet_duplicate", "这只崽已经在巢里了", "That cub is already in the nest");
+            Add(map, "Fail_pet_not_found", "找不到这只崽", "That hatchling cannot be found");
+            Add(map, "Fail_pet_duplicate", "这只崽已经在巢里了", "That hatchling is already in the nest");
             Add(map, "Fail_pet_locked_by_expedition", "它正在远征途中", "It is away on an expedition");
             Add(map, "Fail_pet_downed", "它本局已经重伤退场", "It has already been carried off this run");
-            Add(map, "Fail_backpack_not_empty", "先取出这只崽背包里的物品，再放生或派去远征", "Empty this cub's backpack before releasing it or sending it on an expedition");
+            Add(map, "Fail_backpack_not_empty", "先取出这只崽背包里的物品，再放生或派去远征", "Empty this hatchling's backpack before releasing it or sending it on an expedition");
             Add(map, "Fail_backpack_unavailable", "背包暂时打不开，物品记录已保留，请稍后重试", "The backpack is unavailable. Its saved contents are intact; try again later");
             Add(map, "Fail_backpack_save_failed", "背包保存失败，请稍后重试", "The backpack could not be saved; try again later");
             Add(map, "Fail_pet_invalid", "这只崽的数据不完整，无法入巢",
-                "This cub's data is incomplete and cannot enter the nest");
+                "This hatchling's data is incomplete and cannot enter the nest");
             Add(map, "Fail_souls_insufficient", "遗魂不够", "Not enough relic souls");
-            Add(map, "Fail_no_scars", "它身上没有要治的战痕", "This cub has no scars to treat");
+            Add(map, "Fail_no_scars", "它身上没有要治的战痕", "This hatchling has no scars to treat");
             Add(map, "Fail_heal_scar_failed", "治疗未能保存", "The treatment could not be stored");
             Add(map, "Fail_pet_max_level", "它已经长成了，魂火添不进去", "It's fully grown; the soul fire won't take");
             Add(map, "Fail_soul_fed_today", "今日魂火已燃，明天再来", "Its soul fire already burned today; come back tomorrow");
             Add(map, "Fail_soul_feed_clock_missing", "此刻辨不清时辰，回基地再献", "Can't tell the hour right now; try again at base");
             Add(map, "Fail_soul_feed_failed", "献魂未能保存", "The offering could not be stored");
-            Add(map, "Fail_pet_favorite", "收藏的崽不能放生，先取消收藏", "Favorite cubs can't be released; unfavorite it first");
-            Add(map, "Fail_pet_favorite_desperate", "收藏的崽不走亡命档", "Favorite cubs don't take Desperate runs");
+            Add(map, "Fail_pet_favorite", "收藏的崽不能放生，先取消收藏", "Favorite hatchlings can't be released; unfavorite it first");
+            Add(map, "Fail_pet_favorite_desperate", "收藏的崽不走亡命档", "Favorite hatchlings don't take Desperate runs");
             Add(map, "Fail_favorite_failed", "收藏未能保存", "The favorite could not be stored");
             Add(map, "Fail_invalid_request", "这个操作的参数不对", "That request was not valid");
 
@@ -144,7 +144,7 @@ namespace BossRush
             Add(map, "Fail_hatch_stats_failed", "图鉴统计写入失败，本次孵化已撤销",
                 "Codex stats could not be written; this hatch was rolled back");
             Add(map, "Fail_add_pet_failed", "入巢失败，本次改动未保存",
-                "The cub could not enter the nest; nothing was saved");
+                "The hatchling could not enter the nest; nothing was saved");
 
             // —— 远征 ——
             Add(map, "Fail_destination_unknown", "没有这个远征目的地", "No such expedition destination");
@@ -160,23 +160,23 @@ namespace BossRush
 
             // —— 随从进局（模式门控与入场）——
             Add(map, "Fail_mode_g_banned", "宿命回响不能带崽：宿敌的账只算你自己打出来的伤害",
-                "No cubs in Fate Echo: the nemesis duel only counts damage you deal yourself");
+                "No hatchlings in Fate Echo: the nemesis duel only counts damage you deal yourself");
             Add(map, "Fail_zombie_mode_banned", "末日丧尸模式不能带崽：它有自己的一套局内奖励",
-                "No cubs in Zombie Mode: it runs its own in-run reward system");
-            Add(map, "Fail_mode_h_banned", "百战留痕是观战模式，你不下场，崽也不上场",
-                "Black Market Duck Cup is a spectator mode: you stay out of the ring, and so does your cub");
+                "No hatchlings in Zombie Mode: it runs its own in-run reward system");
+            Add(map, "Fail_mode_h_banned", "黑市鸭王杯是观战模式，你不下场，崽也不上场",
+                "Black Market Duck Cup is a spectator mode: you stay out of the ring, and so does your hatchling");
             Add(map, "Fail_no_run_active", "这张图不支持带崽出战",
-                "Cubs cannot be deployed on this map");
+                "Hatchlings cannot be deployed on this map");
             Add(map, "Fail_mode_query_failed", "没能判断当前模式，本局不带崽",
-                "Could not identify the current mode; the cub stays home this run");
+                "Could not identify the current mode; the hatchling stays home this run");
             Add(map, "Fail_pet_downed_this_run", "它本局已经重伤退场，回基地才会恢复",
                 "It was carried off this run and only recovers back at base");
             Add(map, "Fail_lineage_preset_missing", "这条血脉的角色模板不可用，本局不带崽",
-                "This bloodline's character preset is unavailable; the cub stays home this run");
+                "This bloodline's character preset is unavailable; the hatchling stays home this run");
             Add(map, "Fail_companion_handle_invalid", "随从生成失败，本局不带崽",
-                "The cub could not be created; it stays home this run");
+                "The hatchling could not be created; it stays home this run");
             Add(map, "Fail_companion_activate_failed", "随从入场失败，本局不带崽",
-                "The cub failed to enter the field; it stays home this run");
+                "The hatchling failed to enter the field; it stays home this run");
 
             // —— 存档 ——
             Add(map, "Fail_save_write_barrier", "存档暂时写不进去，本次改动没保存",
@@ -198,7 +198,7 @@ namespace BossRush
             Add(map, "Fail_rename_pet_failed", "改名未能保存", "The new name could not be stored");
             Add(map, "Fail_rename_failed", "改名未能保存", "The new name could not be stored");
             Add(map, "Fail_set_deployed_failed", "设为出战未能保存",
-                "Deploying the cub could not be stored");
+                "Deploying the hatchling could not be stored");
             Add(map, "Fail_clear_deployed_failed", "清空出战席位未能保存",
                 "Clearing the deploy slot could not be stored");
             Add(map, "Fail_spend_souls_failed", "扣除遗魂失败，本次改动未保存",
@@ -213,7 +213,7 @@ namespace BossRush
             Add(map, "Fail_key_flush_failed", "这次改动暂时没写进存档，稍后会自动再试",
                 "This change couldn't be written to the save yet; it will retry shortly");
             Add(map, "Fail_store_faulted", "遗种巢存档出了故障，改动会在游戏下次存档时一起保存",
-                "The PetNest save hit an error; this change will be stored with the game's next save");
+                "The Relic Nest save hit an error; this change will be stored with the game's next save");
             Add(map, "Fail_flush_exception", "存档时出了错，稍后会自动再试",
                 "Saving hit an error; it will retry shortly");
             Add(map, "Fail_snapshot_unavailable", "背包和仓库暂时没法存档，请稍后再试",
@@ -244,7 +244,7 @@ namespace BossRush
                 "Picks its fights and soaks more damage; slightly weaker with guns.");
             Add(map, "Personality_lazy_Desc",
                 "攻击欲最低、跑得慢；但多带一格独立背包。",
-                "Least eager to fight and slower on its feet; carries one extra cub backpack slot.");
+                "Least eager to fight and slower on its feet; carries one extra hatchling backpack slot.");
             Add(map, "Personality_loyal_Desc",
                 "贴着主人不乱跑，命也更硬。",
                 "Sticks close to you and is tougher to put down.");
@@ -272,7 +272,7 @@ namespace BossRush
             Add(map, "Stat_MeleeDamageMultiplier", "近战伤害", "Melee damage");
             Add(map, "Stat_BodyArmor", "护甲", "Body armor");
             Add(map, "Stat_GunScatterMultiplier", "枪械散布", "Gun spread");
-            Add(map, "Stat_PetCapcity", "独立背包格", "Cub backpack slots");
+            Add(map, "Stat_PetCapcity", "独立背包格", "Hatchling backpack slots");
 
             // 出身天赋名。id 与 PetNestHatchService.TalentPool 的第一列一一对应。
             Add(map, "Talent_swift", "轻步", "Light Step");
@@ -298,17 +298,17 @@ namespace BossRush
         {
             try
             {
-                string name = L10n.T("遗种巢", "PetNest");
+                string name = L10n.T("遗种巢", "Relic Nest");
                 string desc = L10n.T(
                     "把 Boss 留下的遗种孵成幼崽，带着打下一场，或者派去天灾区远征。",
-                    "Hatch the relics bosses leave behind, take a cub along for your next run, "
+                    "Hatch the relics bosses leave behind, take a hatchling along for your next run, "
                     + "or send it into a disaster you would not face yourself.");
 
                 LocalizationHelper.InjectLocalization("Building_petnest_relic_nest", name);
                 LocalizationHelper.InjectLocalization("Building_petnest_relic_nest_Desc", desc);
 
                 LocalizationHelper.InjectLocalization(
-                    "BossRush_PetNest_Interact", L10n.T("查看遗种巢", "Open PetNest"));
+                    "BossRush_PetNest_Interact", L10n.T("查看遗种巢", "Open Relic Nest"));
                 LocalizationHelper.InjectLocalization(
                     "BossRush_PetNest_Interact_Hatch", L10n.T("孵化遗种蛋", "Hatch Relic Egg"));
                 LocalizationHelper.InjectLocalization(

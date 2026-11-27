@@ -36,9 +36,9 @@ const stats = computed(() => {
   const count = (id: string) => categories.find((c) => c.id === id)?.entries.length ?? 0
   return [
     { n: String(count('game-modes') - 1), zh: '个游戏模式', en: 'game modes' },
-    { n: String(count('bosses') - 1), zh: '个竞技场原创 Boss', en: 'original arena bosses' },
+    { n: String(count('bosses') - 1), zh: '个原创 Boss', en: 'original bosses' },
     { n: String(count('equipment') - 1), zh: '篇装备指南', en: 'equipment guides' },
-    { n: String(wikiStats.achievements || 45), zh: '个成就', en: 'achievements' },
+    { n: String(wikiStats.achievements || 46), zh: '个成就', en: 'achievements' },
     { n: String(wikiStats.maps || 9), zh: '张竞技场地图', en: 'arena maps' },
   ]
 })
@@ -80,10 +80,10 @@ const firstSteps = computed(() => [
   {
     n: '02',
     path: '/getting-started/first-steps',
-    zh: '买第一张船票',
-    en: 'Buy your first ticket',
-    dz: '找基地商人，选张地图进场',
-    de: 'Find the base trader, pick a map',
+    zh: '买船票或出海',
+    en: 'Enter arena or raid',
+    dz: '买船票打竞技场，或前往独立出击地图',
+    de: 'Grab a ticket for the arena, or sail out on a raid',
   },
   {
     n: '03',
@@ -171,8 +171,8 @@ const firstSteps = computed(() => [
             <p>
               {{
                 t(
-                  'BossRush 把鸭科夫变成一座 Boss 竞技场：买张船票进场，打完撤离，带着战利品回来变强。',
-                  'BossRush turns Duckov into a boss arena: buy a ticket, fight, extract, come back stronger.'
+                  'BossRush 为鸭科夫带来八种竞技玩法、三张独立出击地图与基地养成：持票入场或出海探路，带着战利品回来变强。',
+                  'BossRush expands Duckov with eight modes, three standalone raid maps, and base progression: enter with a ticket or sail out, and bring loot home to grow stronger.'
                 )
               }}
             </p>

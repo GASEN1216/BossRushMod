@@ -252,8 +252,8 @@ namespace BossRush
                             "四行了，赏金到账。入册的手续费我垫了。",
                             "Four lines, bounties paid. I covered the listing fee." },
                         new string[] {
-                            "剩一行，疫区那场。签过的人没回来过，所以一直空着。",
-                            "One line left. The quarantine match. Nobody who signed it came back, so it stayed blank." },
+                            "前头就差疫区那场了。签过的人没回来过，所以一直空着。",
+                            "One fight left before the end: the quarantine match. Nobody who signed it came back, so it stayed blank." },
                         new string[] {
                             "菜地有收成，带一份再走。",
                             "Take something from the garden with you." },
@@ -265,8 +265,8 @@ namespace BossRush
                     return new string[][]
                     {
                         new string[] {
-                            "六行满了。账房把册子翻到我们那一页，让你签。",
-                            "Six lines full. The bookkeeper turned to our page for your name." },
+                            "五行齐了。账房把册子翻到我们那一页，最后一行归那个守擂的。",
+                            "Five lines down. The bookkeeper turned to our page; the final line belongs to the one holding the ring." },
                         new string[] {
                             "签之前有一场。守擂的那个穿着历任冠军留下的甲。",
                             "There's a bout first. The one holding the ring wears the old champions' armor." },

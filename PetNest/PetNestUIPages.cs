@@ -395,8 +395,8 @@ namespace BossRush
         internal static string DescribeScavengerBackpack(int bonus)
         {
             return L10n.T(
-                "这只崽有 " + bonus + " 格独立背包。在基地或出击时，靠近它选择头顶的「背包」，使用官方背包格子存取。物品跟着这只崽保存，切图、换崽或重伤退场后仍保留。放生或派去远征前先取空背包。",
-                "This cub has " + bonus + " backpack slots. Approach it in the base or on a raid and choose Backpack to use the official inventory grid. Contents stay with this cub across maps, deployment changes, and knockouts. Empty it before releasing the cub or sending it on an expedition.");
+                "这只崽有 " + bonus + " 格独立背包。在基地或出击时，靠近它选择头顶的「背包」，使用随身行囊格子存取。物品跟着这只崽保存，切图、换崽或重伤退场后仍保留。放生或派去远征前先取空背包。",
+                "This hatchling has " + bonus + " backpack slots. Approach it in the base or on a raid and choose Backpack to open its pack grid. Contents stay with this hatchling across maps, deployment changes, and knockouts. Empty it before releasing or sending it on an expedition.");
         }
 
         /// <summary>扩建提示：「解锁更多血脉可以扩建巢（3 / 5）」；已到上限返回 null。容量数字取自 Tuning，避免两套真相。</summary>
@@ -863,7 +863,7 @@ namespace BossRush
             }
             PetNestLineageInfo lineage;
             string own = PetNestLineageCatalog.TryGet(pet.lineageKey, out lineage) && lineage != null
-                ? L10n.T("这只崽是" + DescribeElement(lineage.Element) + "系。", "This cub is " + DescribeElement(lineage.Element) + ". ")
+                ? L10n.T("这只崽是" + DescribeElement(lineage.Element) + "系。", "Element: " + DescribeElement(lineage.Element) + ". ")
                 : string.Empty;
             where.Caption = own + (anyAffinity ? "★ " : string.Empty) + T("ElementAffinity")
                 + L10n.T("：契合时成功率 +", ": +") + FormatPercent(PetNestTuning.ElementAffinityBonus)

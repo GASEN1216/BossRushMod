@@ -235,7 +235,7 @@ namespace BossRush
                     return L10n.T("清剿 " + def.Target + " 名敌人",
                         "Eliminate " + def.Target + " enemies");
                 case DailyReportBountyKind.BossKills:
-                    return L10n.T("讨伐 " + def.Target + " 只首领",
+                    return L10n.T("讨伐 " + def.Target + " 名首领",
                         "Slay " + def.Target + " bosses");
                 case DailyReportBountyKind.Extractions:
                     return L10n.T("成功撤离 " + def.Target + " 次",

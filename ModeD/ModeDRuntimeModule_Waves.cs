@@ -750,7 +750,7 @@ namespace BossRush
 
                 if (useInteract)
                 {
-                    owner.ShowMessage(L10n.T("可以通过路牌开始下一波", "Use the signpost to start next wave"));
+                    owner.ShowMessage(L10n.T("可以通过路牌开始下一波", "Use the signpost to start the next wave"));
 
                     // 显示 Mode D 专用的"冲下一波"选项
                     ShowModeDNextWaveOption();

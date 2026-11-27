@@ -998,8 +998,8 @@
           ],
           "gift_normal_married": [
             {
-              "cn": "收着。手伸过来，指甲缝里全是泥。",
-              "en": "I'll keep it. Hands out. There's dirt under your nails."
+              "cn": "搁石臼边上晒着吧。你手背蹭破那块，回去自己敷点苔泥。",
+              "en": "Leave it by the mortar to dry. Put some moss paste on that scrape on your knuckles."
             }
           ]
         }
@@ -1877,6 +1877,48 @@
             {
               "cn": "这种事得办得像样。先把教堂盖起来。",
               "en": "If we're doing this, we do it properly. Build the chapel first."
+            }
+          ],
+          "marriage_divorce": [
+            {
+              "cn": "（老闸合上闸本，没多说什么。）",
+              "en": "(Old Zha closes his sluice logbook without a word.)"
+            }
+          ],
+          "marriage_bubble_date": [
+            {
+              "cn": "（闸本新翻的那页记着：{date}。）",
+              "en": "(A fresh page in the sluice log marks the date: {date}.)"
+            }
+          ],
+          "marriage_cheat_first": [
+            {
+              "cn": "（他把烟锅磕在石阶上，头也不抬。）",
+              "en": "(He taps out his pipe on the stone step without looking up.)"
+            }
+          ],
+          "marriage_cheat_repeat": [
+            {
+              "cn": "（潮水拍着闸墩，老闸看着外海，半天没回头。）",
+              "en": "(Tidewater laps the pier; Old Zha watches the outer sea without turning round.)"
+            }
+          ],
+          "marriage_follow_refused": [
+            {
+              "cn": "今天风向不对，我得守着这扇闸门。",
+              "en": "Wind's shifting today. Someone's got to watch the gate."
+            }
+          ],
+          "ring_cheater": [
+            {
+              "cn": "家里有人等着呢，这玩意别乱递。",
+              "en": "You've got somebody waiting at home. Don't hand that around."
+            }
+          ],
+          "ring_spouse_repeat": [
+            {
+              "cn": "手指上戴着呢，一只够沉了。",
+              "en": "Already wearing yours. One's heavy enough."
             }
           ]
         }

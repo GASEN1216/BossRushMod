@@ -35,8 +35,8 @@ In the arena's War Writ, picking the Relaxed challenge or a Short or Long March 
 ## Flawless
 | Achievement | Requirement | Reward | Difficulty |
 | --- | --- | --- | --- |
-| Flawless Easy | Clear a Full Campaign with the A Snap lineup without taking damage (Standard+) | $80,000 | ★★★ |
-| Flawless Normal | Clear a Full Campaign with the Getting Interesting lineup without taking damage (Standard+) | $250,000 | ★★★★ |
+| Flawless A Snap | Clear a Full Campaign with the A Snap lineup without taking damage (Standard+) | $80,000 | ★★★ |
+| Flawless Getting Interesting | Clear a Full Campaign with the Getting Interesting lineup without taking damage (Standard+) | $250,000 | ★★★★ |
 | Flawless From Scratch | Complete 5 waves in From Scratch without taking damage | $350,000 | ★★★★ |
 | Iron Will | Survive 10 waves in Infinite Hell without taking damage (Standard+) | $500,000 | ★★★★★ |
 
@@ -57,16 +57,16 @@ In the arena's War Writ, picking the Relaxed challenge or a Short or Long March 
 | --- | --- | --- | --- |
 | Dragon Slayer | Defeat the Dragon Descendant for the first time | $30,000 | ★★ |
 | Perfect Dragon Hunt | Defeat the Dragon Descendant without taking damage | $200,000 | ★★★★ |
-| Kingslayer | Defeat the Skyburner Dragon Lord for the first time | $100,000 | ★★★ |
-| Perfect Kingslayer | Defeat the Skyburner Dragon Lord without taking damage | $500,000 | ★★★★★ |
-| Dragon Slayer Master | Defeat the Skyburner Dragon Lord 10 times in total | $600,000 | ★★★★ |
+| Dragonslayer | Defeat the Skyburner Dragon Lord for the first time | $100,000 | ★★★ |
+| Flawless Dragonslayer | Defeat the Skyburner Dragon Lord without taking damage | $500,000 | ★★★★★ |
+| Master Dragonslayer | Defeat the Skyburner Dragon Lord 10 times in total | $600,000 | ★★★★ |
 
 ## Special Challenges
 | Achievement | Requirement | Reward | Difficulty |
 | --- | --- | --- | --- |
 | Iron Man (Hidden) | Survive 10 waves in Infinite Hell without using healing items (Standard+) | $250,000 | ★★★★ |
-| Dragon Descendant Collector | Collect all exclusive drops from Dragon Descendant | $300,000 | ★★★ |
-| Dragon King Collector | Collect all exclusive drops from Skyburner Dragon Lord | $500,000 | ★★★★ |
+| Dragon Descendant Collector | Collect all exclusive drops from the Dragon Descendant | $300,000 | ★★★ |
+| Dragon Lord Collector | Collect all exclusive drops from the Skyburner Dragon Lord | $500,000 | ★★★★ |
 | Wind Rider | Take flight for the first time using Cloud Soar I | $50,000 | ★ |
 | Dragon's Wrath | Trigger the Reverse Scale totem effect for the first time | $80,000 | ★★ |
 
@@ -74,13 +74,13 @@ In the arena's War Writ, picking the Relaxed challenge or a Short or Long March 
 "Iron Man" is a hidden achievement and will not appear in the achievement panel until unlocked.
 :::
 
-## Taming (PetNest)
+## Taming (Relic Nest)
 | Achievement | Requirement | Reward | Difficulty |
 | --- | --- | --- | --- |
-| First Hatch | Hatch your first cub at the PetNest | $60,000 | ★ |
+| First Hatch | Hatch your first hatchling at the Relic Nest | $60,000 | ★ |
 | Bloodline Collector | Unlock 10 bloodline entries | $200,000 | ★★★ |
 | Every Last One | Unlock 30 bloodline entries | $600,000 | ★★★★ |
-| The Pale Purple One | Hatch a shiny cub | $300,000 | ★★★★ |
+| The Pale Purple One | Hatch a shiny hatchling | $300,000 | ★★★★ |
 | A Name on the Stone (Hidden) | Carve the first name into the memorial | $120,000 | ★★ |
 
 ::: tip

@@ -10,11 +10,11 @@ A massive content expansion for Escape from Duckov (Steam Workshop). What starte
 - **9 Arena Maps + 3 Raid Maps** — Arena battles across the map pool, plus separate expeditions to the Qinglan Archipelago, Tidegate and Last Shift Yard
 - **3 Custom Arena Bosses** — Dragon Descendant, Skyburner Dragon Lord, Phantom Witch (unique skills + exclusive drops)
 - **3 Regular NPC Companions** — Dingdang (Smith), Yu Zhi (Nurse), Awen (Courier)
-- **42 Custom Equipment Pieces** (sets counted piece by piece) — 25 regular weapons, totems and armor pieces, plus 17 Sky Islands wearable pieces; see Equipment Overview for sources
+- **44 Custom Equipment Pieces** (sets counted piece by piece) — 27 regular weapons, totems and armor pieces, plus 17 Sky Islands wearable pieces; see Equipment Overview for sources
 - **Sky Islands Residents & Adventures** — Island quests, per-expedition commissions, lords and chiefs, gathering and crafting, and affinity and marriage with all six residents
 - **Custom Items** — Consumables, mode-exclusive props, functional items, forge stones, relic eggs, raid meals
 - **A Story Campaign** — Duck King Campaign: six chapters from Jeff that string the existing modes into one arena registration book, one line per chapter
-- **Base Buildings** — Wedding Chapel, Dust-Covered StarWish Fountain, PetNest, Daily mailbox; the garden, weapon rack and jukebox are vanilla buildings
+- **Base Buildings** — Wedding Chapel, Dust-Covered StarWish Fountain, Relic Nest, Daily mailbox; the garden, weapon rack and jukebox are vanilla buildings
 - **Reforge System** — Stat rerolling + Cold Quench Fluid to lock affixes
 - **Affix Forging** — Reforge changes numbers, affixes change behaviour: kill explosions, hit lifesteal, armor thorns
 - **Duckov Codex** — a Boss collection book that keeps its own ledger as you kill them

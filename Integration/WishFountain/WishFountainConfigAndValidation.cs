@@ -447,7 +447,7 @@ namespace BossRush
             // === 规则 1：空白检查 ===
             if (string.IsNullOrEmpty(text) || text.Trim().Length == 0)
             {
-                errorMsg = L10n.T("请输入有意义的内容哦~", "Please enter meaningful content~");
+                errorMsg = L10n.T("星灯不载空言，请写下实实在在的心愿。", "The star lantern needs real words. Write a proper wish.");
                 return false;
             }
 
@@ -519,7 +519,7 @@ namespace BossRush
 
             if (contentLen > 0 && (float)maxCount / contentLen > 0.7f)
             {
-                errorMsg = L10n.T("请输入有意义的内容哦~", "Please enter meaningful content~");
+                errorMsg = L10n.T("文字反复打转，换几句实在的话再祈愿吧。", "Too many repeated characters. Write a clearer wish.");
                 return false;
             }
 
@@ -552,7 +552,7 @@ namespace BossRush
 
             if (nonEmptyLines > 0 && (float)uniqueLines.Count / nonEmptyLines < 0.3f)
             {
-                errorMsg = L10n.T("请输入有意义的内容哦~", "Please enter meaningful content~");
+                errorMsg = L10n.T("同样的句子重复太多，挑一句真心的写下吧。", "Too many repeated lines. Keep just your real wish.");
                 return false;
             }
 
@@ -568,16 +568,16 @@ namespace BossRush
             // URL 检测
             if (lower.IndexOf("http://") >= 0 || lower.IndexOf("https://") >= 0 || lower.IndexOf("www.") >= 0)
             {
-                errorMsg = L10n.T("心愿里不能包含链接或联系方式哦~",
-                                  "Wishes cannot contain links or contact info~");
+                errorMsg = L10n.T("尘世的地址与链接，星泉传不过去。",
+                                  "Links and contact details do not belong on a star lantern.");
                 return false;
             }
 
             // 二维码引导词
             if (lower.IndexOf("扫码") >= 0 || lower.IndexOf("二维码") >= 0 || lower.IndexOf("qr code") >= 0)
             {
-                errorMsg = L10n.T("心愿里不能包含链接或联系方式哦~",
-                                  "Wishes cannot contain links or contact info~");
+                errorMsg = L10n.T("尘世的地址与链接，星泉传不过去。",
+                                  "Links and contact details do not belong on a star lantern.");
                 return false;
             }
 

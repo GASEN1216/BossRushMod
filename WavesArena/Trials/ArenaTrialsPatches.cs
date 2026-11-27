@@ -41,7 +41,7 @@ namespace BossRush
             if (Time.unscaledTime - lastNoticeAt > 1.2f)
             {
                 lastNoticeAt = Time.unscaledTime;
-                try { NotificationText.Push(L10n.T("药囊被封住了", "Your kit is sealed")); }
+                try { NotificationText.Push(L10n.T("随身消耗品被封住了", "Consumables are sealed")); }
                 catch (Exception) { }
             }
             return false;

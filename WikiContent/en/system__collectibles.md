@@ -8,7 +8,7 @@ You can sell them for their value, log them in the album to complete sets for ca
 
 ### Where they come from
 
-- Scene crates on the official raid maps (Ground Zero, Hidden Warehouse, Farm Town, J-Lab, Storm Zone, Test Area 37) and on the three mod maps (Qinglan Archipelago, Tidegate, Last Shift Yard).
+- Scene crates on the official raid maps (Ground Zero, Hidden Warehouse, Farm Town, J-Lab, Storm Zone, Experimental Area 37) and on the three mod maps (Qinglan Archipelago, Tidegate, Last Shift Yard).
 - A crate is checked **only the first time you open it**. On a hit it gets **one extra slot**, searched like any other item; rarer pieces take longer to reveal. Reopening the same crate never rolls again.
 - **Collectibles have their own pool. They never take a vanilla slot or vanilla odds, so vanilla items are not any harder to find.** They also stay out of the Wishing Fountain, the Daily and every random reward pool.
 - Ordinary crates give roughly one in 25; high-value crates (safes, weapon crates, tactical crates, computer cases, J-Lab crates, treasure chests) roughly one in 8. At most 3 per raid.
@@ -25,12 +25,12 @@ A map set only appears on its own map and has 8 pieces; a global set can turn up
 - **Farm Town**: Horseshoe, Straw Duck Doll, Heaviest Pumpkin Ribbon, Old Wu's Kazoo Score, Windmill Model, Market Bell, Heirloom Pickle Crock, Harvest Festival Trophy
 - **J-Lab**: "No Samples" Coffee Mug, Visitor Badge, Petri Dish Specimen, Glowing Reagent Vial, "Control Group" Specimen Jar, Half-Torn Lab Report, Centrifuge Desk Model, Lead Researcher's Gold Pen
 - **Storm Zone**: Bent Road Sign Shard, Windproof Lighter, Storm Glass, Anemometer Cups, Lightning Rod Tip, Weather Log, Eye of the Storm Photo, Brass Barometer
-- **Test Area 37**: Eclipse Viewing Card, "Zero Accidents" Hard Hat Sticker, Eclipse Bloom Petal, Broken Radiation Counter, Test Area 37 Badge, Scorched Eyepiece, Corona Amber, Waning Sun Relief
+- **Experimental Area 37**: Eclipse Viewing Card, "Zero Accidents" Hard Hat Sticker, Eclipse Bloom Petal, Broken Radiation Counter, Experimental Area 37 Badge, Scorched Eyepiece, Corona Amber, Waning Sun Relief
 - **Qinglan Archipelago**: Windchime Market Bell, Carrier Pigeon Band, Greenear Knot, Mirrorwater Temple Fortune Tube, Homecoming Registry Rubbing, Starlamp Shade Shard, Starworks Gear Badge, Bell Court Model Bell
 - **Tidegate**: Message in a Bottle, Harbor Shanty Record, Tide Gauge Plate, Savings Bank Passbook, No. 3 Waterworks Award, Dredger's Ship Bell, Lighthouse Lens Fragment, Director's Cigar Box
 - **Last Shift Yard**: "1,000 Safe Days" Enamel Mug, Platform Timetable, Red and Green Signal Flags, Escort Armband, "Night Run 08" Train Plate, Switch Lever Model, Locomotive Signal Lamp, Brass Ticket Punch
 - **Arena Legends** (global): Duck Cup Ticket Stub, Arena Glow Stick, Punched Ticket Card, Dragon Scale Rubbing, Phantom Witch's Candle Stub, Signed Sandstorm Sandbag, Infinite Hell Counter, Champion Belt Buckle, Soulreaper Crystal Ball, Skyburner's Broken Horn, Black Market Gold Belt
-- **Companions' Keepsakes** (global): Awen's Old Staff Badge, Daily First Issue, Wishing Fountain Coin, Yu Zhi's Nurse Cap Pin, Dingdang's First Hammer, Relic Nest Eggshell Fossil, Chapel Stained-Glass Shard, Jeff's Old Photo, Dingdang's Heirloom Anvil, Duckov Codex Manuscript, Starwish Star
+- **Companions' Keepsakes** (global): Awen's Old Staff Badge, Daily First Issue, Wishing Fountain Coin, Yu Zhi's Nurse Cap Pin, Dingdang's First Hammer, Relic Nest Eggshell Fossil, Chapel Stained-Glass Shard, Jeff's Old Photo, Dingdang's Pocket Anvil, Duckov Codex Manuscript, Starwish Star
 
 ### Treasures
 
@@ -59,7 +59,7 @@ Completing a set pays its cash at once and grants a small permanent bonus (appli
 - Farm Town: 30,000 cash, food and drink effects +5%
 - J-Lab: 30,000 cash, healing received +5%
 - Storm Zone: 30,000 cash, run speed +2%
-- Test Area 37: 30,000 cash, reload speed +3%
+- Experimental Area 37: 30,000 cash, reload speed +3%
 - Qinglan Archipelago: 30,000 cash, stamina recovery +5%
 - Tidegate: 30,000 cash, max hydration +5
 - Last Shift Yard: 30,000 cash, hearing +5%
@@ -75,6 +75,6 @@ Tiers 6 to 8 stand out more: their inventory slot gets a frame that turns more g
 
 ### Gifts
 
-Collectibles make good gifts. Several NPCs have favourites: Dingdang likes the first hammer and the heirloom anvil, Old Zha likes Tidegate's old things, Yu Zhi likes the nurse cap pin, and each Qinglan resident likes the island pieces tied to their own life. Rarer gifts raise affinity more.
+Collectibles make good gifts. Several NPCs have favourites: Dingdang likes the first hammer and his pocket anvil, Old Zha likes Tidegate's old things, Yu Zhi likes the nurse cap pin, and each Qinglan resident likes the island pieces tied to their own life. Rarer gifts raise affinity more.
 
 [tip] Unsure whether to sell, give or log something? Open the album first to see which set it belongs to and how many pieces that page still needs.

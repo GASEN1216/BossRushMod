@@ -7,5 +7,5 @@
 - Dragon's Breath model positioning was adjusted.
 
 ### Source Commit Subjects
-- 龙息模型位置调整
-- 版本号提交：2.1.12
+- Adjust Dragon's Breath model position
+- Version commit: 2.1.12

@@ -251,7 +251,7 @@ namespace BossRush
                 attemptedRefund = true;
                 refundedAny |= TryRefundModeFStartupEntryItem(
                     getTicketTypeId(),
-                    L10n.T("船票", "Boss Rush Ticket"));
+                    L10n.T("船票", "BossRush Ticket"));
             }
 
             if (refundTransponder)

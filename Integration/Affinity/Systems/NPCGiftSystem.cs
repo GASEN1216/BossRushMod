@@ -187,7 +187,10 @@ namespace BossRush
                 // 显示特殊伤心对话
                 if (npcTransform != null)
                 {
-                    string sadDialogue = L10n.T("诶，你不喜欢这个吗...", "Eh, you don't like this...");
+                    string sadDialogue = npcId == GoblinAffinityConfig.NPC_ID
+                        ? L10n.T("……这是叮当拿碳条蹲地上画了一晚上的。不要的话……还给叮当好了。",
+                            "...Dingdang spent all night crouching with charcoal to draw this. If you don't want it... just give it back to Dingdang.")
+                        : L10n.T("诶，你不喜欢这个吗...", "Eh, you don't like this...");
                     NPCDialogueSystem.ShowDialogue(npcId, npcTransform, sadDialogue);
                 }
                 

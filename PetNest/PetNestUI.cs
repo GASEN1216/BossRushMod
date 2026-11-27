@@ -258,7 +258,7 @@ namespace BossRush
         private void BuildHeader(Transform parent)
         {
             // 2026-11-25 水墨统一（与出征令同一套）：墨笔大字 + 英文小字，两种语言都看得到；面板打开时金笔从左写出
-            RectTransform title = BossRushInkSkin.CreateBrushTitle(parent, "遗种巢", "Pet Nest", 34f);
+            RectTransform title = BossRushInkSkin.CreateBrushTitle(parent, "遗种巢", "Relic Nest", 34f);
             title.anchoredPosition = new Vector2(0f, 334f);
 
             // 「说明」：系统介绍、出战、扩建、保底、远征风险、放生，原来散在巢页 24 张卡的下面（交互重排 #5）

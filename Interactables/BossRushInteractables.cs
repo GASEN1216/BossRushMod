@@ -119,9 +119,8 @@ namespace BossRush
             }
             else if (isInArena)
             {
-                string name = L10n.T("开始第一波", "Start First Wave");
-                this.InteractName = name;
-                this._overrideInteractNameKey = name;
+                this.InteractName = "BossRush_StartFirstWave";
+                this._overrideInteractNameKey = "BossRush_StartFirstWave";
             }
             else
             {

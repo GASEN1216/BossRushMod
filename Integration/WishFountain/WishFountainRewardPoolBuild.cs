@@ -159,8 +159,8 @@ namespace BossRush
             int remaining = GetWishRewardCooldownRemainingSeconds();
             string formatted = FormatWishRewardCooldownForBubble(remaining);
             ShowWishRewardBubble(L10n.T(
-                "星愿还在冷却：" + formatted,
-                "The stars are still cooling down: " + formatted));
+                "星泉余韵未散，还需片刻：" + formatted,
+                "The starlight is still recharging: " + formatted));
         }
 
         private static void ShowWishRewardResultBubble(string rewardDisplayName)

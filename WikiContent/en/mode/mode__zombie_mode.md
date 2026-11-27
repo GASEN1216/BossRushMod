@@ -26,7 +26,7 @@ Two exceptions are worth knowing:
   like any other Boss. There's no completing the codex without this mode.
 
 **What does not apply here**: mutators (this mode has its own in-run upgrades), random events,
-affix forging (the temporary goblin doesn't offer it), and relic soul/egg drops (PetNest cubs can accompany you as usual).
+affix forging (the temporary goblin doesn't offer it), and relic soul/egg drops (Relic Nest hatchlings can accompany you as usual).
 
 ### Starter Loadout Choice
 
@@ -291,7 +291,7 @@ Pollution is the difficulty scaling mechanic.
 #### Sources
 
 - +1 natural pollution per Boss Wave cleared
-- Some reward options add pollution (the Pact options, e.g. the one that costs Purification 80/150 for Pollution +1/+2)
+- Some reward options add pollution (the Pact options, which charge Purification Points and raise Pollution in exchange for healing or perks)
 
 #### Effects
 

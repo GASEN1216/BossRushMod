@@ -823,7 +823,7 @@ namespace BossRush
             button.interactable = canBuy;
             if (!gateFree)
             {
-                interactionText.text = L10n.T("交易处理中...", "Transaction in progress...");
+                interactionText.text = L10n.T("交易处理中...", "Processing...");
             }
             else if (!inStock)
             {

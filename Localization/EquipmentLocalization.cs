@@ -23,14 +23,14 @@ namespace BossRush
         // 赤龙首（原龙头）
         private static readonly string DragonHelmNameCN = "赤龙首";
         private static readonly string DragonHelmNameEN = "Crimson Dragon Helm";
-        private static readonly string DragonHelmDescCN = "火龙残骸锻成的头盔，摸着还热。\n<color=#FFD700>【龙之套装】</color>与焰鳞甲同时穿戴：\n双击方向键冲刺3米。火焰伤害转为治疗。";
-        private static readonly string DragonHelmDescEN = "A helm forged from fire dragon remains. Still warm to the touch.\n<color=#FFD700>[Dragon Set]</color> Wear with Flame Scale Armor:\nDouble-tap movement to dash 3m. Fire damage heals you.";
+        private static readonly string DragonHelmDescCN = "火龙残骸锻成的头盔，摸着还热。\n<color=#FFD700>【龙裔套装】</color>与焰鳞甲同时穿戴：\n双击方向键冲刺3米。80%火焰伤害转为治疗。";
+        private static readonly string DragonHelmDescEN = "A helm forged from fire dragon remains. Still warm to the touch.\n<color=#FFD700>[Dragon Set]</color> Wear with Flame Scale Armor:\nDouble-tap movement to dash 3m. 80% of fire damage taken heals you.";
         
         // 焰鳞甲（原龙甲）
         private static readonly string DragonArmorNameCN = "焰鳞甲";
         private static readonly string DragonArmorNameEN = "Flame Scale Armor";
-        private static readonly string DragonArmorDescCN = "护甲留着火龙胸鳞的弧度，贴身的一面总是温的。\n<color=#FFD700>【龙之套装】</color>与赤龙首同时穿戴：\n双击方向键冲刺3米。火焰伤害转为治疗。";
-        private static readonly string DragonArmorDescEN = "Armor shaped from a fire dragon's chest scales. Warm against the skin.\n<color=#FFD700>[Dragon Set]</color> Wear with Crimson Dragon Helm:\nDouble-tap movement to dash 3m. Fire damage heals you.";
+        private static readonly string DragonArmorDescCN = "护甲留着火龙胸鳞的弧度，贴身的一面总是温的。\n<color=#FFD700>【龙裔套装】</color>与赤龙首同时穿戴：\n双击方向键冲刺3米。80%火焰伤害转为治疗。";
+        private static readonly string DragonArmorDescEN = "Armor shaped from a fire dragon's chest scales. Warm against the skin.\n<color=#FFD700>[Dragon Set]</color> Wear with Crimson Dragon Helm:\nDouble-tap movement to dash 3m. 80% of fire damage taken heals you.";
         
         #endregion
         
@@ -62,14 +62,14 @@ namespace BossRush
         // 龙王之冕（龙王专属头盔）
         private static readonly string DragonKingHelmNameCN = "龙王之冕";
         private static readonly string DragonKingHelmNameEN = "Dragon King's Crown";
-        private static readonly string DragonKingHelmDescCN = "龙皇遗下的冠冕，额前的王印烫得碰不得。\n<color=#FFD700>【龙王套装】</color>与龙王鳞铠同时穿戴：\n双击方向键冲刺6米，可再接一次3米冲刺。\n冲刺留下熔浆灼烧敌人。火焰伤害转为治疗。";
-        private static readonly string DragonKingHelmDescEN = "The crown the Dragon Lord left behind. Its royal seal is too hot to touch.\n<color=#FFD700>[Dragon King Set]</color> Wear with Dragon King's Scale Mail:\nDouble-tap movement to dash 6m, then chain a 3m dash.\nDashes leave burning lava. Fire damage heals you.";
+        private static readonly string DragonKingHelmDescCN = "龙皇遗下的冠冕，额前的王印烫得碰不得。\n<color=#FFD700>【龙王套装】</color>与龙王鳞铠同时穿戴：\n双击方向键冲刺6米，可再接一次3米冲刺。\n冲刺留下熔浆灼烧敌人。80%火焰伤害转为治疗。";
+        private static readonly string DragonKingHelmDescEN = "The crown the Dragon Lord left behind. Its royal seal is too hot to touch.\n<color=#FFD700>[Dragon King Set]</color> Wear with Dragon King's Scale Mail:\nDouble-tap movement to dash 6m, then chain a 3m dash.\nDashes leave burning lava. 80% of fire damage taken heals you.";
         
         // 龙王鳞铠（龙王专属护甲）
         private static readonly string DragonKingArmorNameCN = "龙王鳞铠";
         private static readonly string DragonKingArmorNameEN = "Dragon King's Scale Mail";
-        private static readonly string DragonKingArmorDescCN = "龙皇心口的鳞甲锻成，贴近时能听到微弱的跳动。\n<color=#FFD700>【龙王套装】</color>与龙王之冕同时穿戴：\n双击方向键冲刺6米，可再接一次3米冲刺。\n冲刺留下熔浆灼烧敌人。火焰伤害转为治疗。";
-        private static readonly string DragonKingArmorDescEN = "Forged from scales over the Dragon Lord's heart. A faint beat remains.\n<color=#FFD700>[Dragon King Set]</color> Wear with Dragon King's Crown:\nDouble-tap movement to dash 6m, then chain a 3m dash.\nDashes leave burning lava. Fire damage heals you.";
+        private static readonly string DragonKingArmorDescCN = "龙皇心口的鳞甲锻成，贴近时能听到微弱的跳动。\n<color=#FFD700>【龙王套装】</color>与龙王之冕同时穿戴：\n双击方向键冲刺6米，可再接一次3米冲刺。\n冲刺留下熔浆灼烧敌人。80%火焰伤害转为治疗。";
+        private static readonly string DragonKingArmorDescEN = "Forged from scales over the Dragon Lord's heart. A faint beat remains.\n<color=#FFD700>[Dragon King Set]</color> Wear with Dragon King's Crown:\nDouble-tap movement to dash 6m, then chain a 3m dash.\nDashes leave burning lava. 80% of fire damage taken heals you.";
         
         #endregion
 

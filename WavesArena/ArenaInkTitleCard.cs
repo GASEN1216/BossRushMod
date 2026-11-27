@@ -114,15 +114,15 @@ namespace BossRush
 
             if (finale)
             {
-                TextMeshProUGUI sub = ZombieModeUIHelper.CreateText("Sub", center.transform, "HEADLINER", 18f,
+                TextMeshProUGUI sub = ZombieModeUIHelper.CreateText("Sub", center.transform, L10n.T("压轴登场", "HEADLINER"), 18f,
                     new Vector2(0f, -fontSize * 1.18f), new Vector2(600f, 30f), TextAlignmentOptions.Center, BossRushInkColors.GoldSoft);
                 BossRushUI.ApplyGameFont(sub);
-                sub.characterSpacing = 40f;
+                sub.characterSpacing = L10n.IsChinese ? 14f : 40f;
                 CanvasGroup subGroup = sub.gameObject.AddComponent<CanvasGroup>();
                 subGroup.alpha = 0f;
                 motion.Add(0.6f, 0.4f, false, t => { if (subGroup != null) subGroup.alpha = t; });
 
-                RectTransform seal = BossRushInkSkin.CreateSeal(center.transform, "压轴", fontSize * 1.15f);
+                RectTransform seal = BossRushInkSkin.CreateSeal(center.transform, L10n.T("压轴", "FINAL"), fontSize * 1.15f);
                 seal.anchoredPosition = new Vector2(textWidth * 0.5f + fontSize * 0.9f, fontSize * 0.1f);
                 seal.localRotation = Quaternion.Euler(0f, 0f, -6f);
                 BossRushInkSkin.StampSeal(seal, centerRect, 0.72f);

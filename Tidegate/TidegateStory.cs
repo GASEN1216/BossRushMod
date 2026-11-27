@@ -406,7 +406,7 @@ namespace BossRush
             // 第一次读才报竹筏；没写进存档就不说竹筏出现了（航线只认存档里的「读过」，CR-2026-11-05-024）。
             string warning = !first ? null : stored
                 ? L10n.T("地堡下水道东头，水道最北边，多了一只挂马灯的竹筏。",
-                    "A raft with a lantern now waits at the far north end of the bunker sewer canal.")
+                    "A raft with a lantern now waits at the far north end of the eastern bunker sewer canal.")
                 : L10n.T("存档暂时写不进去，竹筏航线这次没记上。稍后再读一次信。",
                     "The save can't be written right now, so the raft route wasn't recorded. Read the letter again shortly.");
             BossRushConfirmDialog.Show(new BossRushConfirmDialog.Options

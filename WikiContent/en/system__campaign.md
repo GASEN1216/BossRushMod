@@ -98,7 +98,7 @@ In-run objectives must be met **in the same run**; base-side objectives can be d
 - **Phase 1 (100%–50%) & Phase 2 (<50%)**: alternates 3–5 wall-free movement dashes with breakable sand bubbles (21 / 31) and **twin tornado seeds** (`3.4m` small tornadoes or `5.6m` large cyclones; walls block traveling rings cleanly). Stay mobile when dash lines lock in — dashes lead your movement!
 - **Below 15% HP (Sandstorm Ambush)**: fades into the storm with glowing eyes visible, weaving **wall-piercing 1/2/3-dash chains** between sand funnels and circling bubbles.
 - **Sand-Spirit Guards & Projectiles**: guards wield Astral Staffs using sweep, two-beat spin, and leaping slam telegraphs; tornado sharks and bubbles can both be shot or swung down to clear space.
-- **Bounds & Rewards**: stay inside the stone's arena ring to avoid enraging it. Victory guarantees the **Astral Staff** (drops on defeat? Never — retry free anytime via the sign-up stone). Starting another mode cleanly aborts an active bout.
+- **Bounds & Rewards**: stay inside the stone's arena ring to avoid enraging it. Victory guarantees the **Astral Staff** (if you lose, just interact with the sign-up stone to retry free anytime). Starting another mode cleanly aborts an active bout.
 
 ### What you walk away with
 
@@ -134,12 +134,12 @@ In-run objectives must be met **in the same run**; base-side objectives can be d
 Alongside the six main chapters, Jeff hands out **14 one-time introductory quests** one by one, paying **74,000 cash total** plus entry items for upcoming systems (backpack first, then storage).
 
 - **Garden, Display, and Sky Island gear introductions** wait for Campaign Ch.1, Ch.2, and *Coordinates Above the Clouds* respectively without blocking anything else
-- Existing cubs, built facilities, or matching forged gear already qualify — simply claim at Jeff
+- Existing hatchlings, built facilities, or matching forged gear already qualify — simply claim at Jeff
 - Handing in one unlocks the next; accepted and completed progress persists across reloads
 
 - **Bring Your Own Gear (Fate Echo)** — 3,000 + BossRush Ticket x2
 - **Your Turn in the Stands (Black Market Duck Cup)** — 3,000 + Relic Egg x1
-- **Room for a Cub (Pet Nest)** — 3,000 + BossRush Ticket x1
+- **Room for a Hatchling (Relic Nest)** — 3,000 + BossRush Ticket x1
 - **Expect a Surprise (random events)** — 5,000 + BossRush Ticket x1
 - **Something from the Clouds (Sky Island gear, hand in Brass Scrap x5)** — 10,000
 - **Start with Empty Hands (From Scratch)** — 5,000 + Random Flag x1
@@ -155,9 +155,9 @@ Alongside the six main chapters, Jeff hands out **14 one-time introductory quest
 What each one asks for:
 
 - **Modes**: From Scratch, Faction War, Blood Hunt, Fate Echo, Black Market Duck Cup and Zombie Mode. Each quest explains the entry items and preparation; starting a real run is enough, with no first-try victory required.
-- **Pet Nest and random events**: hatch or deploy a cub, or experience a random event in a supported mode.
+- **Relic Nest and random events**: hatch or deploy a hatchling, or experience a random event in a supported mode.
 - **Sky Island gear**: obtain exclusive gear from an island boss and bring it to base in your backpack or wear it. Visiting the island alone does not count. You also hand Jeff 5 Brass Scrap (mined from the island's brass veins). The route still follows Coordinates Above the Clouds.
 - **Base facilities**: finish the garden, display a Boss trophy, and open the daily report to sign in once.
 - **Equipment growth**: return with gear carrying a real affix or a reforge record. The quests point you to the goblin.
 
-[tip] A finished trial stays in your active quests until you return to Jeff at base and press Complete. Existing cubs, built facilities and qualifying gear count; you do not have to start them over.
+[tip] A finished trial stays in your active quests until you return to Jeff at base and press Complete. Existing hatchlings, built facilities and qualifying gear count; you do not have to start them over.

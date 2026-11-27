@@ -1,6 +1,6 @@
 ## Equipment Overview
 
-There are **42 obtainable custom equipment pieces** (sets counted piece by piece): 25 regular pieces plus 17 Sky Islands wearable pieces. Regular gear drops from custom Bosses, official Boss extra drops, and NPC shops; island gear mainly comes from island lords and chiefs (and the prelude Warden can drop a Galebreaker Hood).
+There are **44 obtainable custom equipment pieces** (sets counted piece by piece): 27 regular pieces plus 17 Sky Islands wearable pieces. Regular gear drops from custom Bosses, official Boss extra drops, and NPC shops; island gear mainly comes from island lords and chiefs (and the prelude Warden can drop a Galebreaker Hood).
 
 ### Full List
 
@@ -11,6 +11,7 @@ There are **42 obtainable custom equipment pieces** (sets counted piece by piece
 - **Residual Sun Shield Shard** — Totem; Eclipse Bloom always drops 1. Dodging opens a brief frontal guard, and blocking empowers your next direct hit with an afterglow riposte
 - **Empty-Mag Mine Box** — 20% extra drop from Mad Bomber; fire at least 6 times then empty the mag to leave a delayed mine at your feet
 - **Headmaster's Roll-Call Ledger** — Sold by Fuzhou at Cloudrise Dock at affinity Lv.3; directly hit 3 different enemies within 5s for a group strike
+- **License to Pass the Buck** — Sold by Fuzhou at Cloudrise Dock at affinity Lv.3 (18,000); plants a 5s bomb on enemies you hit that transfers to whoever they hit next (including you)
 - **Bell Keeper's Metronome** — 20% extra drop from Speedy, or trade 20 seashells at Silent Bell Keeper affinity Lv.5; time a second reload press to finish early (still traded at base after marriage)
 - **Hushbell Ward** — Trade 30 seashells at Silent Bell Keeper affinity Lv.5; an 80-point bronze ward blocks hits first and refills after 5 quiet seconds (still traded at base after marriage)
 - **Astral Staff** — Light melee staff guaranteed from the Shadow of the Champion in Campaign Chapter 6; builds Focus for three heavy finishers

@@ -6,7 +6,7 @@ No end. Bosses gain +2% stats per wave. **Survive as long as you can.**
 
 ### Prep
 - Best gear, best weapons, max ammo
-- Dragon King Set (dash + fire immunity) is critical late
+- Dragon King Set (dash + 80% fire refund) is critical late
 - Cloud Soar I for aerial dodging, Reverse Scale for emergency saves
 
 ### Pacing

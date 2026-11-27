@@ -188,7 +188,10 @@ namespace BossRush
             if (hud == null) return false;
             try
             {
-                hud.BuildSweep(omenName ?? string.Empty, string.IsNullOrEmpty(sealText) ? "天象" : sealText,
+                string resolvedSeal = string.IsNullOrEmpty(sealText) || sealText == "天象"
+                    ? L10n.T("天象", "OMEN")
+                    : (sealText == "战场" ? L10n.T("战场", "FIELD") : sealText);
+                hud.BuildSweep(omenName ?? string.Empty, resolvedSeal,
                     string.IsNullOrEmpty(sfx) ? BossRushInkSkin.SfxTempleBell : sfx);
                 return true;
             }

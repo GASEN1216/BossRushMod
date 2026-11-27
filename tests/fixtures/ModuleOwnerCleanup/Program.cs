@@ -117,9 +117,15 @@ namespace BossRush
         private void ApplyExpeditionTierToContentBoss(CharacterMainControl character) { ExpeditionTierCalls++; }
         // 噩梦盲战挡在烽烟圈来源入口（CopyMapBeaconBossesTo），本夹具不走它，只给编译用的替身。
         private ArenaExpeditionTier LiveExpeditionTier() { return ArenaExpeditionTier.Standard; }
+        private int LiveExpeditionRaise() { return 0; }
     }
     internal enum ArenaExpeditionTier { Easy, Standard, Hard, Nightmare }
-    internal static class ArenaExpeditionTuning { internal static bool HidesMapBeacons(ArenaExpeditionTier tier) { return tier == ArenaExpeditionTier.Nightmare; } }
+    internal static class ArenaExpeditionTuning
+    {
+        internal static bool HidesMapBeacons(ArenaExpeditionTier tier) { return tier == ArenaExpeditionTier.Nightmare; }
+        // 加码（97584f07）给烽烟圈入口加了级数参数；本夹具不走那条路，替身只求编译。
+        internal static bool HidesMapBeacons(ArenaExpeditionTier tier, int raise) { return HidesMapBeacons(tier); }
+    }
     public sealed class FlightConfig : Common.Equipment.EquipmentAbilityConfig { public static readonly FlightConfig Instance = new FlightConfig(); }
     public sealed class ReverseScaleConfig : Common.Equipment.EquipmentAbilityConfig { public static readonly ReverseScaleConfig Instance = new ReverseScaleConfig(); }
     public class FlightAbilityManager : MonoBehaviour

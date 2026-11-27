@@ -184,7 +184,7 @@ After clearing, an evacuation point opens. Interact to return to base.
 
 - **First Steps** — First clear on any difficulty
 - **Easy Peasy / Getting Serious** — Clear the respective difficulty
-- **Flawless Easy / Flawless Normal** — No-damage clears
+- **Flawless A Snap / Flawless Getting Interesting** — No-damage clears
 - **Lightning Run / Speed Demon / Time Assassin** — Speedrun achievements
 - **Nightmare Cleared** — Clear a Full Campaign on the Nightmare challenge
 - Clear achievements only count on a Full Campaign with Standard or harder

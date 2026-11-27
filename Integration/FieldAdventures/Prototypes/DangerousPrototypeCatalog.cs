@@ -33,7 +33,7 @@ namespace BossRush
                     return L10n.T("每 1.2 秒蓄满，下一枪劈出一道连锁闪电，最多连 7 个敌人，第一下 70 点，往后每跳少 6 点。150 秒内累计 12 跳。",
                         "Charges every 1.2 seconds. Your next shot cracks a chain of lightning through up to 7 enemies, 70 on the first and 6 less per jump. Rack up 12 jumps within 150 seconds.");
                 case DangerousPrototypeKind.GrandFinale:
-                    return L10n.T("每 3 秒蓄满，下一枪朝准星抛出一枚大烟花，落地炸 110 点，再分出 12 颗子弹各炸 45 点。150 秒内子弹或主弹命中 10 次。",
+                    return L10n.T("每 3 秒蓄满，下一枪朝准星抛出一枚大烟花，落地炸 110 点，再分出 12 颗子烟花各炸 45 点。150 秒内主弹或子烟花命中 10 次。",
                         "Charges every 3 seconds. Your next shot lobs a huge firework at your aim point: 110 on landing, then 12 bomblets for 45 each. Land 10 hits within 150 seconds.");
                 default: return string.Empty;
             }

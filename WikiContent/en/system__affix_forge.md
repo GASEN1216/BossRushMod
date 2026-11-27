@@ -43,7 +43,7 @@ below list **T1 / T2 / T3**, and you will usually get the leftmost number.
   Stones land wherever that boss's normal loot lands, same as relic eggs: the **loot crate** in
   standard arena and From Scratch, **on the ground** in Infinite Hell, and **on the boss itself**
   only in Faction War and Blood Hunt.
-  Covers the three standard difficulties, From Scratch, Faction War and Blood Hunt; Fate Echo, the Black Market Duck Cup and Zombie Mode do not drop them.
+  Covers War Writ's three lineups (A Snap, Getting Interesting, and Infinite Hell), From Scratch, Faction War and Blood Hunt; Fate Echo, the Black Market Duck Cup and Zombie Mode do not drop them.
 
 Neither line is generous enough to let you re-roll forever. That's deliberate: stones being
 tight is what makes "should I lock this one?" an actual question.

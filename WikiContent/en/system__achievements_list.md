@@ -27,8 +27,8 @@ This mod currently contains 46 achievements across 9 categories. Completing achi
 - Immortal Warlord: Defeat 1000 bosses in total. Reward `$1,500,000`, difficulty `★★★★★`
 
 ### Flawless
-- Flawless Easy: Clear a Full Campaign with the A Snap lineup without taking damage (Standard+). Reward `$80,000`, difficulty `★★★`
-- Flawless Normal: Clear a Full Campaign with the Getting Interesting lineup without taking damage (Standard+). Reward `$250,000`, difficulty `★★★★`
+- Flawless A Snap: Clear a Full Campaign with the A Snap lineup without taking damage (Standard+). Reward `$80,000`, difficulty `★★★`
+- Flawless Getting Interesting: Clear a Full Campaign with the Getting Interesting lineup without taking damage (Standard+). Reward `$250,000`, difficulty `★★★★`
 - Flawless From Scratch: Complete 5 waves in From Scratch without taking damage. Reward `$350,000`, difficulty `★★★★`
 - Iron Will: Survive 10 waves in Infinite Hell without taking damage (Standard+). Reward `$500,000`, difficulty `★★★★★`
 
@@ -43,24 +43,24 @@ This mod currently contains 46 achievements across 9 categories. Completing achi
 ### Boss Kill
 - Dragon Slayer: Defeat the Dragon Descendant for the first time. Reward `$30,000`, difficulty `★★`
 - Perfect Dragon Hunt: Defeat the Dragon Descendant without taking damage. Reward `$200,000`, difficulty `★★★★`
-- Kingslayer: Defeat the Skyburner Dragon Lord for the first time. Reward `$100,000`, difficulty `★★★`
-- Perfect Kingslayer: Defeat the Skyburner Dragon Lord without taking damage. Reward `$500,000`, difficulty `★★★★★`
-- Dragon Slayer Master: Defeat the Skyburner Dragon Lord 10 times in total. Reward `$600,000`, difficulty `★★★★`
+- Dragonslayer: Defeat the Skyburner Dragon Lord for the first time. Reward `$100,000`, difficulty `★★★`
+- Flawless Dragonslayer: Defeat the Skyburner Dragon Lord without taking damage. Reward `$500,000`, difficulty `★★★★★`
+- Master Dragonslayer: Defeat the Skyburner Dragon Lord 10 times in total. Reward `$600,000`, difficulty `★★★★`
 
 ### Special Challenges
 - Iron Man (Hidden): Survive 10 waves in Infinite Hell without using healing items (Standard+). Reward `$250,000`, difficulty `★★★★`
-- Dragon Descendant Collector: Collect all exclusive drops from Dragon Descendant. Reward `$300,000`, difficulty `★★★`
-- Dragon King Collector: Collect all exclusive drops from Skyburner Dragon Lord. Reward `$500,000`, difficulty `★★★★`
+- Dragon Descendant Collector: Collect all exclusive drops from the Dragon Descendant. Reward `$300,000`, difficulty `★★★`
+- Dragon Lord Collector: Collect all exclusive drops from the Skyburner Dragon Lord. Reward `$500,000`, difficulty `★★★★`
 - Wind Rider: Take flight for the first time using Cloud Soar I. Reward `$50,000`, difficulty `★`
 - Dragon's Wrath: Trigger the Reverse Scale totem effect for the first time. Reward `$80,000`, difficulty `★★`
 
 [tip] "Iron Man" is a hidden achievement and will not appear in the achievement panel until unlocked.
 
-### Taming (PetNest)
-- First Hatch: Hatch your first cub at the PetNest. Reward `$60,000`, difficulty `★`
+### Taming (Relic Nest)
+- First Hatch: Hatch your first hatchling at the Relic Nest. Reward `$60,000`, difficulty `★`
 - Bloodline Collector: Unlock 10 bloodline entries. Reward `$200,000`, difficulty `★★★`
 - Every Last One: Unlock 30 bloodline entries. Reward `$600,000`, difficulty `★★★★`
-- The Pale Purple One: Hatch a shiny cub. Reward `$300,000`, difficulty `★★★★`
+- The Pale Purple One: Hatch a shiny hatchling. Reward `$300,000`, difficulty `★★★★`
 - A Name on the Stone (Hidden): Carve the first name into the memorial. Reward `$120,000`, difficulty `★★`
 
 [tip] "A Name on the Stone" is a hidden achievement and will not appear in the achievement panel until unlocked.

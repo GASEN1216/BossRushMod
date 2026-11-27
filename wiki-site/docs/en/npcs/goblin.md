@@ -57,7 +57,7 @@ Reforging and affix forging are separate menu options and never interfere. One c
 - **Dislikes**: Brick Stone, the fake diamond (-40)
 
 ::: warning
-Giving his Drawing back = -300 Affinity. He drew it for you. Don't.
+Giving Dingdang's Doodle back = -300 Affinity. He drew it for you. Don't.
 :::
 
 ## Reforge & Affix Forging

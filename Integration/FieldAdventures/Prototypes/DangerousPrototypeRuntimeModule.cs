@@ -248,9 +248,7 @@ namespace BossRush
                 DialogueActorFactory.RefreshBilingualName("dangerous_prototype", "叮当的试验录音", "Dingdang's test recording");
                 if (rules.Completed)
                 {
-                    await DialogueManager.ShowDialogueSequenceBilingual(actor, new[] { new[] {
-                        "数据漂亮！能把鸭子往后推的枪，绝对不是设计失误。交还装置可领取一瓶冷淬液。",
-                        "Beautiful data! A gun that pushes ducks backwards is absolutely intentional. Return it for one Cold Quench Fluid." } },
+                    await DialogueManager.ShowDialogueSequenceBilingual(actor, new[] { PrototypeCompleteLine(offeredKind) },
                         "BossRush_Prototype_Complete", cancellation.Token);
                     int claim = await DialogueManager.ShowMultipleChoiceBilingual(actor, new[] {
                         new[] { "交还装置并领奖", "Return and claim reward" }, new[] { "稍后再来", "Come back later" } },
@@ -783,6 +781,42 @@ namespace BossRush
 #if BOSSRUSH_DEV
             if (DevCurrent == this) DevCurrent = null;
 #endif
+        }
+        private static string[] PrototypeCompleteLine(DangerousPrototypeKind kind)
+        {
+            switch (kind)
+            {
+                case DangerousPrototypeKind.JetCannon:
+                    return new[] {
+                        "哎呀，火道热得正旺，数据齐了！这「倒鸭一号·超载」没把你炸飞，算你臂力过关！把装置交还给叮当，拿一瓶冷淬液吧。",
+                        "Oh, the burner tubes ran piping hot and the logs are full! That Duckback Mk.I Overdrive didn't send you flying, so Dingdang is impressed! Hand it back to Dingdang for your Cold Quench Fluid."
+                    };
+                case DangerousPrototypeKind.RicochetSun:
+                    return new[] {
+                        "哇！镜片偏折角全录下来了，没烧成黑炭就算成功！把这「折射太阳·暴走」还给叮当，叮当给你换一瓶冷淬液。",
+                        "Whoa! Every bounce angle logged cleanly, and nobody got charred! Hand the Ricochet Sun Unbound back to Dingdang for a Cold Quench Fluid."
+                    };
+                case DangerousPrototypeKind.QuackRail:
+                    return new[] {
+                        "好家伙，一穿一大串的膛压读数全爆表了！快把这「嘎嘎轨道炮」拆下来给叮当，冷淬液已经备好啰。",
+                        "Look at those chamber spikes from punching straight through the line! Pass the Quackrail Cannon back to Dingdang, your Cold Quench Fluid is waiting."
+                    };
+                case DangerousPrototypeKind.Thunderbill:
+                    return new[] {
+                        "噼里啪啦的跳电波全记在管子里了！把「雷霆鸭嘴」还给叮当吧，拿这瓶冷淬液去降降温。",
+                        "Every crackle and arc-jump is right in the coil! Return the Thunderbill to Dingdang and take this Cold Quench Fluid to cool off."
+                    };
+                case DangerousPrototypeKind.GrandFinale:
+                    return new[] {
+                        "满天开花的声音叮当隔老远都听见了！数据圆满，把「压轴大烟花」的残壳交还给叮当，冷淬液归你啦！",
+                        "Dingdang heard those fireworks booming from clear across the yard! Data is complete—hand back the Grand Finale rig for your Cold Quench Fluid!"
+                    };
+                default:
+                    return new[] {
+                        "验收数据齐啦！把试用品交还给叮当，拿一瓶冷淬液吧。",
+                        "Test data is all logged! Hand the prototype back to Dingdang and take a Cold Quench Fluid."
+                    };
+            }
         }
 #if BOSSRUSH_DEV
         internal static DangerousPrototypeRuntimeModule DevCurrent { get; private set; }

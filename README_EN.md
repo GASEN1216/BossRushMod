@@ -16,7 +16,7 @@
 - **Subscribe**: [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3612465423)
 - **Contributing / AI collaboration**: read [AGENTS.md](AGENTS.md) first (written in Chinese)
 
-**v2.6.2** fixes the missing mouse cursor in the album, the cub backpack on raid maps saying it isn't ready over and over, and the register crate not popping up on your first collectible; the wish draw is also cut back hard. See the [v2.6.2 changelog](WikiContent/en/changelog__v2_6_2.md).
+**v2.7.0** adds the War Writ: choose your lineup, challenge and march at the arena signpost, with omens, calamities and Boss affixes on Hard and Nightmare. The whole UI moves to an ink style, alongside wish-fountain constellations, Relic Nest soul offerings, affinity gift notes and the Hushbell Ward totem; also fixes "Coordinates Above the Clouds" turn-in and post-reload Mod gear loss. See the [v2.7.0 changelog](WikiContent/en/changelog__v2_7_0.md).
 
 ## What's Inside
 
@@ -43,12 +43,12 @@
 ### Bosses, NPCs and Gear
 
 - **Original bosses**: Dragon Descendant, Skyburner Dragon Lord, Phantom Witch.
-- **NPCs**: Awen (courier), Dingdang (goblin smith, reforging), Yu Zhi (nurse), Old Zha in Tidegate, the ticket inspector Yu Xiang at Last Shift Yard, plus permanent NPCs such as the Sky Islands residents made with the duck-face NPC tool; affinity, gifts and marriage.
-- **Gear**: Dragon Set, Dragon King Set, Frost Set, Thunder Set, Cloud Soar I, Reverse Scale, Inferno Emperor's Realm-Breaking Halberd, Dragon Breath, Dragon Cannon, Soulreaper's Requiem, Frostmourne, Viper Dagger, Summoning Staff, Energy Shield, Frost Spear, Thunder Ring.
+- **NPCs**: Awen (courier), Dingdang (goblin smith, reforging), Yu Zhi (nurse), Old Zha in Tidegate, the ticket inspector Yu Xiang at Last Shift Yard, plus the Sky Islands' six permanent residents; supports affinity, gifts and marriage.
+- **Gear**: Dragon Set, Dragon King Set, Frost Set, Thunder Set, Cloud Soar I, Reverse Scale, Inferno Emperor's Realm-Breaking Halberd, Dragon's Breath, Dragon Cannon, Soulreaper's Requiem, Frostmourne, Viper Dagger, Summoning Staff, Energy Shield, Frost Spear, Thunder Ring.
 
 ### Systems
 
-Duck King Campaign (six-chapter story), War Writ (pick lineup, challenge and campaign length before an arena run), Arena Backyard (garden, trophy registry, jukebox), PetNest (raise boss hatchlings), collectibles and the album (100 old curios), Field Adventures (greedy chests, odd parcels and risky prototypes), The Duckov Daily, Duck King Codex, random events, affix forging, reforging, StarWish Fountain, death wraiths, mutators, achievements, boss filter, in-game wiki.
+Duck King Campaign (six-chapter story), War Writ (pick lineup, challenge and campaign length before an arena run), Arena Backyard (garden, trophy registry, jukebox), Relic Nest (hatch and raise boss hatchlings), collectibles and the album (100 old curios), Field Adventures (greedy chests, odd parcels and risky prototypes), The Duckov Daily, Duckov Codex, random events, affix forging, reforging, StarWish Fountain, death wraiths, mutators, achievements, boss filter, in-game wiki.
 
 Rules, numbers and how to get each item are on the online wiki.
 
@@ -101,7 +101,7 @@ BossRushMod/
 ├── ModeD/ ModeE/ ModeF/ ModeG/ ModeH/ game modes (ModeH = Black Market Duck Cup)
 ├── ZombieMode/                        Zombie Mode
 ├── Campaign/                          Duck King Campaign
-├── PetNest/  RandomEvents/            PetNest, random events
+├── PetNest/  RandomEvents/            Relic Nest, random events
 ├── Integration/                       items, gear, NPCs, shops, affinity, marriage, reforge, codex, daily, backyard…
 ├── SkyIsland/                         Sky Island production runtime
 ├── DebugAndTools/                     Debug tools and F3 validation

@@ -4,7 +4,7 @@
 
 The entry item for ticket-based arena modes. Faction War uses a Flag, Zombie Mode uses an invitation, and the unlocked Sky Islands route is free.
 
-- **Name in the shop**: `Boss Rush Ticket`
+- **Name in the shop**: `BossRush Ticket`
 - **Source**: Base merchant / **Stock**: 10
 - Required for: Standard, Infinite Hell, From Scratch, Blood Hunt, Fate Echo and the Black Market Duck Cup
 
@@ -50,17 +50,17 @@ See the Affix Forging page.
 
 ### Relic Egg
 
-An egg of one Boss bloodline. Take it to the PetNest to hatch a cub that fights alongside you.
+An egg of one Boss bloodline. Take it to the Relic Nest to hatch a hatchling that fights alongside you.
 
 - **Source**: about **4%** direct drop from arena Bosses (lands under the same rule as forge stones,
-  so it varies by mode); or condense one at the PetNest for **240** relic souls of that bloodline
+  so it varies by mode); or condense one at the Relic Nest for **240** relic souls of that bloodline
 - **Use**: consumed on hatching
 - **Stack**: **does not stack** - each egg carries its own bloodline, and stacking would lose that
-- **Expedition source**: after surviving a successful Desperate expedition, there is a further **20%** chance of an egg from that cub's bloodline; see PetNest.
+- **Expedition source**: after surviving a successful Desperate expedition, there is a further **20%** chance of an egg from that hatchling's bloodline; see Relic Nest.
 
 [tip] Keep eggs in the outer layer of your bag or stash. The hatch page can now find eggs tucked inside containers too, but the outer layer is easier to count.
 
-See the PetNest page.
+See the Relic Nest page.
 
 ---
 

@@ -58,7 +58,7 @@ Filtering out a collected boss never removes its record. Names use the current t
 
 ## Kill credit and timing
 
-- The **fatal blow must be attributed to the main player**. Ordinary pets, PetNest companions and environmental finishing blows do not count. Player deaths, friendly targets and base demonstration characters are excluded.
+- The **fatal blow must be attributed to the main player**. Ordinary pets, Relic Nest companions and environmental finishing blows do not count. Player deaths, friendly targets and base demonstration characters are excluded.
 - **Faction War exception**: that mode attributes kills by your hired bosses to you, so those kills can count.
 - **The Black Market Duck Cup is excluded throughout**. Qualifying kills in other modes and vanilla raids can count.
 - **Best time** measures from your first observed damaging hit until death, using game time. Pausing adds no time; dodging, reloading and healing during the fight do.

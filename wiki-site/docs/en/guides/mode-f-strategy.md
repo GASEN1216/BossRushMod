@@ -73,7 +73,7 @@ Hardest mode. You're **constantly bleeding out**. Kill Bosses to heal. Survive f
 ## Recommended Gear
 
 - **High DPS weapons** — Fast kills = sustain
-- **Dragon King Set** — Dash + fire immunity
+- **Dragon King Set** — Dash + 80% fire refund
 - **Cloud Soar I** — Fly to extraction fast
 - **Reverse Scale** — Last-resort save
 - **Max ammo** — Buy from Mystery Merchant

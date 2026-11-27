@@ -541,12 +541,12 @@ namespace BossRush
                 // 垃圾桶交互
                 { "BossRush_TrashCan", L10n.T("垃圾桶", "Trash Can") },
 
-                // Mode D 选项
-                { "BossRush_ModeG_Preview", L10n.T("查看宿命回响", "Inspect Fate Echo") },
+                // Mode G / D 选项
+                { "BossRush_ModeG_Interact", L10n.T("查看宿命回响", "Inspect Fate Echo") },
                 { "BossRush_ModeD_NextWave", L10n.T("冲！（下一波）", "Charge! (Next Wave)") },
 
                 // 弹药和维修
-                { "BossRush_AmmoShop", L10n.T("加油站", "Ammo Shop") },
+                { "BossRush_AmmoShop", L10n.T("弹药店", "Ammo Shop") },
                 { "BossRush_AmmoRefill", "加油站" },
                 { "BossRush_Repair", L10n.T("维修", "Repair") },
 

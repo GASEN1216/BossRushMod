@@ -4,6 +4,35 @@
 
 **2026-11-20 · COMPAT · L1/L2**　玩家反馈退出重进后武器消失、仓库物品变问号。修复冷启动注册、分包手持模型绑定、部分失败重试和克隆/异步资源归属。角色和仓库合成档往返、重复 TypeID 与真实包来源已纳入自动回归。故障证据与玩家侧验证边界见 [CR-2026-11-20-001 至 003](CODE_REVIEW_FINDINGS.md)。随 v2.6.1 发版：`info.ini` 升 2.6.1，WikiContent 新增中英 `changelog__v2_6_1` 并补总览，工坊简介同步；L3 待玩家侧确认。
 
+## 2026-11-27 v2.7.0 发版：文案润色收口、日志补齐（COMPAT；不改 Key / TypeID / 存档；L2 + 正式真编译；L3 待 owner）
+
+- 依据：owner「请你看看准备好没有，我们准备发版」，复核后「全部补齐再提交」。
+- 文案润色：别的会话留在工作区、没登记的一轮改动，本次逐项对过代码后并入。
+  - 叮当统一写男性「他 / his」：试用品委托提示、注释、Wiki 各页；本次补 v2.3.8 旧日志与英文 highlights。
+  - 结婚过场：叮当、闸伯（`tidegate_zhabo`）、无声钟守（`sky_bellkeeper`）各写一套四句，见 `NPCMarriageSystem.BuildMarriageCutsceneDialogues`；其余 NPC 仍用通用四句。闸伯在 `DuckNpcs.json` 补 7 类婚后台词。
+  - 叮当：送礼被嫌弃时换成专属台词，好感台词去掉傲娇口癖；五种危险试用品各有一句完成台词（`DangerousPrototypeRuntimeModule.PrototypeCompleteLine`）。
+  - 出征令：战帖印文、压轴横幅、天象 / 战场印改成双语（`ArenaExpeditionTuning`、`ArenaInkTitleCard`、`ArenaExpeditionHud`）；断补提示改写「消耗品」；悬赏令英文按单复数取词。
+  - 交互名：「开始第一波」「查看宿命回响」改走本地化键 `BossRush_StartFirstWave` / `BossRush_ModeG_Interact`，两个键已在 `LocalizationInjector_NpcUiAndItems` 注入；`BossRush_ModeG_Preview` 留给 HUD。
+  - 术语：英文 Pet Nest → Relic Nest、cub → hatchling、Test Area 37 → Experimental Area 37，成就英文名与「Residual Sun Shield Shard」等对齐物品名。船票改名「BossRush 船票 / BossRush Ticket」，本次补 Mode F / G 退款提示、许愿台奖励英文名、Wiki 关键物品页与 a.md 开头。
+  - 物品说明写实：平安符写明「生命低于 50% 受击、10% 概率回满、每图 1 次」，对照 `PeaceCharmConfig` / `PeaceCharmRuntime`；砖石、钻石写明「使用即召唤叮当」。
+  - 潮闸镇：闸伯的信和剧情提示把竹筏位置改成「下水道东头那条水道的最北头」，与 `TidegateEntryPoint` 注释一致（离线读官方场景）。本次同步 Wiki 潮闸镇页和 `GameplayCoverage.json` 人工步骤。
+  - 其余：英文旧版本日志 26 篇（v1.6.2 起）里残留的中文译成英文、术语对齐；README 中英更新到 v2.7.0；`BossRushMoneyTransfer` 与 `MoneyDeliveryNetDeltaGuard` 的注释改记 11-27 玩家确认的根因（前置 HarmonyLib 排在后面），判定逻辑不变。
+- 发版：
+  - `info.ini` 升 2.7.0，已在游戏目录。
+  - `changelog__v2_7_0` 中英补上加码、天象双刃与回响 / 沉疴 / 破绽。「云上的坐标」改写为前置排序这一根因，并注明发钱判定为何保留；highlights 中英同步。
+  - 上级目录 a.md / b.md 的 v2.7.0 条目加上加码，`workshop_description_budget.py`：a.md 7696、b.md 7695，均 OK。
+  - 生成页用 `npm --prefix wiki-site run build` 整站同步，比同步前后的 git status，只多出预期的 5 个生成页。
+- 夹具：`ModuleOwnerCleanup` 自 97584f07 起编译失败。原因是生产文件 `WavesArenaRuntimeModule_BossAccess.cs` 改调 `LiveExpeditionRaise()` 和两参数的 `HidesMapBeacons`，那一轮只跑了两项隔离回归，没发现。本次在 `tests/fixtures/ModuleOwnerCleanup/Program.cs` 补上这两个只供编译的替身，断言不变。
+- 证据：
+  - 全量守卫 800 PASS、0 新红。
+  - 正式真编译 0 错 0 警告，`Build/BossRush.dll` 与游戏目录 SHA-256 同为 `5971E5F5…713C`，Dev 标识缺席，81 个包核对通过。
+  - 执行回归：全量跑完，补夹具后 `ModuleOwnerCleanup` PASS。`FieldAdventureVisuals` 换到新证据目录后 PASS（含反向探针）。`Build/FieldAdventureVisuals/UnityProject/Library/SourceAssetDB` 已损坏（`MDB_INVALID`），这次没有删它。
+  - `npm --prefix wiki-site run build` 通过。
+  - 未进游戏，未读写玩家存档。
+- [L3-REL-01] 新档读闸伯的信，照信里写的「东头那条水道」走到竹筏。不合格：信里的方向和竹筏实际位置对不上（这条位置至今只有离线读场景的依据）。
+- [L3-REL-02] 中文、英文各进一次竞技场：路牌「开始第一波」和宿命回响的交互名都显示文字，不出现 `*BossRush_...*`；英文下战帖印显示 CHILL / STD / HARD / DOOM，压轴横幅显示 FINAL / HEADLINER，都不截字。
+- [L3-REL-03] 分别与叮当、闸伯、无声钟守结婚：各自播放专属的四句过场，不再是通用台词。
+
 ## 2026-11-27 出征令改进三批：补强、天象双刃与新诅咒、加码阶梯（COMPAT；本地偏好 SCHEMA+；L2 + Dev / 正式真编译；L3 待 owner）
 
 - 依据：复审后 owner 要改进方案，随后「都做，第三批搞成杀戮尖塔那种，战规简单到难排序，玩家自己选择加码。确保UI，交互逻辑，局内特效都是高端高级大气符合逻辑，具有史诗感」。

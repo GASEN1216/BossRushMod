@@ -1,5 +1,5 @@
 ---
-description: BossRush guide index covering the beginner route, phase-by-phase tactics for the three original bosses, and dedicated strategies for Infinite Hell, From Scratch, Faction War, Blood Hunt and Fate Echo.
+description: BossRush guide index covering the beginner route, phase-by-phase tactics for original bosses, and dedicated strategies for Infinite Hell, From Scratch, Faction War, Blood Hunt and Fate Echo.
 ---
 
 # Guides
@@ -14,6 +14,7 @@ This section is not about rules; it is about winning. Pick the guide for whereve
 
 - **Boss Fights** — Phase-by-phase tactics and gear advice for Dragon Descendant and Skyburner Dragon Lord
 - [Phantom Witch](/en/bosses/phantom-witch) — Blinks, Curse Realm and all three phases
+- [Eclipse Bloom](/en/bosses/eclipse-bloom) — Experimental Area 37 encounter, four-petal shields and phase 3
 
 ## A mode keeps beating you
 

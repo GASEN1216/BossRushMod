@@ -370,7 +370,7 @@ namespace BossRush
 
             if (isSelling || (modeEShellOwner != null && modeEShellOwner.IsModeEShellTransactionGateBusy))
             {
-                displayText = L10n.T("交易处理中...", "Transaction in progress...");
+                displayText = L10n.T("交易处理中...", "Processing...");
                 interactable = false;
             }
             else
