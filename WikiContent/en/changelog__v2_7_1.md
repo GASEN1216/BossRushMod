@@ -2,11 +2,14 @@
 
 ### Release date
 - 2026-11-27
-- A fix patch for Dingdang's Reforge: maxed weapons can roll Max again, every stat is guaranteed to hit its best limit within 100 Reforges, and the Reforge panel only looks at the item itself. The art for the Duckov Codex, achievements, the Duck King Campaign, Fate Echo, the Black Market Duck Cup and Sky Island has also been redrawn in the vanilla style.
+- A fix patch for Dingdang's Reforge: maxed weapons can roll Max again, the magnitude investment costs a tenth of what it did, enough money guarantees the best limit, Cold Quench Fluid and Tempering Solvent restock in larger amounts, and the Reforge panel only looks at the item itself. The art for the Duckov Codex, achievements, the Duck King Campaign, Fate Echo, the Black Market Duck Cup and Sky Island has also been redrawn in the vanilla style.
 
 ### Balance
 
-- **Reforge pity**: each stat keeps its own count of how many Reforges in a row missed its best limit (Max where higher is better, Min for stats like recoil where lower is better). The longer the streak, the better the odds that the next Reforge lands right on it, slowly at first and then faster: about 25% on the 50th, guaranteed on the 100th. The count restarts once it lands; stats locked with Cold Quench Fluid are skipped and their count stays put. Pity always gives the good end, whatever your benefit tendency, and on pity alone it comes about once every 27 Reforges.
+- **Reforge pity**: each stat builds its own pity progress (Max where higher is better, Min for stats like recoil where lower is better) from the money you invest. Once a stat's total reaches 20x the item's value it lands on its best limit; one Reforge adds at most a quarter, so it takes at least 4. Paying only the bench fee barely moves it, so Max there is mostly luck. Progress resets once it lands; stats locked with Cold Quench Fluid are skipped and their progress stays put. Pity always gives the good end, whatever your benefit tendency.
+- **Cheaper magnitude**: the whole investment curve now costs a tenth: 1x the item's value gives about +10%, 10x about +30%, 100x about +100% (it used to take 10x / 100x / 1000x). Maxing magnitude from 45% on a weapon worth 40,000 drops from 9.1 million to 910,000.
+- **What a full set costs**: investing 1x the item's value each time with benefit tendency maxed, a stat hits its best limit in about 8 Reforges. Maxing all 6 stats costs about 760,000 on a weapon worth 40,000 and about 9.4 million on gear worth 500,000, plus Cold Quench Fluid for the locks.
+- **More Cold Quench Fluid and Tempering Solvent**: Dingdang now restocks Cold Quench Fluid to 20 a day (was 5) and Tempering Solvent to 10 a day (was 3), so locking stats no longer means waiting for a delivery.
 
 ### Improvements
 
@@ -20,4 +23,4 @@
 - **One-step changes went unmarked**: a stat like a factory 0.02 rolled up to its 0.03 cap showed no change and lost its Max tag. It shows normally now.
 - **Flight totem costs crept up**: acceleration time and the three stamina costs on flight totems are better when lower, so Reforge tendency and pity now push them down, the same as recoil. Tendency used to push them up.
 
-[tip] This version keeps your existing saves and config and adds no new items. Pity progress is stored on each item; gear reforged before this update starts counting from 0 and keeps its current values and Max / Min tags.
+[tip] This version keeps your existing saves and config and adds no new items. Pity progress is stored on each item; gear reforged before this update starts from 0 and keeps its current values and Max / Min tags.

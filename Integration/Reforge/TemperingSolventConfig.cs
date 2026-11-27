@@ -29,9 +29,9 @@ namespace BossRush
         /// <summary>价格按冷淬液（5000）的 1.5 倍：解锁比锁定少用，但每次都是在纠正一次已经花过钱的选择。</summary>
         public const int ITEM_VALUE = 7500;
 
-        /// <summary>叮当商店解锁等级与库存：与冷淬液同为 4 级，库存 3（每个游戏日补一次，见 NPCShopStockLedger）。</summary>
+        /// <summary>叮当商店解锁等级与库存：与冷淬液同为 4 级，库存 10（每个游戏日补一次，见 NPCShopStockLedger；2026-11-27 由 3 上调）。</summary>
         public const int SHOP_UNLOCK_LEVEL = 4;
-        public const int SHOP_MAX_STOCK = 3;
+        public const int SHOP_MAX_STOCK = 10;
         /// <summary>叮当好感 6 级一次性赠送；已过门槛的老玩家下一次聊天补发。</summary>
         public const int GIFT_AFFINITY_LEVEL = 6;
         public const int GIFT_COUNT = 2;

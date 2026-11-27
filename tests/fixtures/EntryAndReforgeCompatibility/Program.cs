@@ -167,16 +167,22 @@ internal static class Program
         var entry = item.Variables.GetEntry(ReforgeSystem.GetPityKey(key, type));
         return entry == null ? -1f : entry.Value;
     }
-    private static ReforgeResult ReforgeOnce(Item item, float chance)
+    // 夹具物品价值恒为 100：投 20 = 100 × 20 / (20 × 100)，保底进度每次正好 +1
+    private static ReforgeResult ReforgeOnce(Item item, float chance, int money = 20)
     {
-        var result = ReforgeSystem.Reforge(item, 100, "test", chance);
+        var result = ReforgeSystem.Reforge(item, money, "test", chance);
         Check(result.Success, "reforge succeeds");
         return result;
     }
     private static void Pity()
     {
-        // 2026-11-27 顶格保底：第 k 次连续未顶格额外 (k/100)^2，第 100 次必中
-        Check(ReforgeSystem.PITY_GUARANTEE_REFORGES == 100, "pity guarantees within 100 reforges");
+        // 2026-11-27 顶格保底：进度按幅度投入推进（累计满物品价值 20 倍必中、单次最多 25），推进后为 x 时额外 (x/100)^2
+        Check(ReforgeSystem.PITY_GUARANTEE_PROGRESS == 100f && ReforgeSystem.PITY_GUARANTEE_VALUE_MULTIPLIER == 20f && ReforgeSystem.PITY_MAX_STEP == 25f, "pity constants");
+        Check(Math.Abs(ReforgeSystem.GetPityStep(400, 40000f) - 0.05f) < 1e-6f, "minimum price (1/100 of value) barely moves pity");
+        Check(Math.Abs(ReforgeSystem.GetPityStep(40000, 40000f) - 5f) < 1e-4f, "investing 1x value adds 5");
+        Check(ReforgeSystem.GetPityStep(200000, 40000f) == 25f && ReforgeSystem.GetPityStep(2000000, 40000f) == 25f, "step caps at 25 (at least 4 reforges)");
+        Check(ReforgeSystem.GetPityStep(0, 40000f) == 0f && ReforgeSystem.GetPityStep(-5, 40000f) == 0f, "no investment, no progress");
+        Check(ReforgeSystem.GetPityStep(100, 0f) == 0f && ReforgeSystem.GetPityStep(100, float.NaN) == 0f, "invalid item value adds nothing");
         Check(ReforgeSystem.GetPityKey("Damage", PropertyType.Stat) == "RF_PITY_STAT_Damage", "stat pity key");
         Check(ReforgeSystem.GetPityKey("Damage", PropertyType.Modifier) == "RF_PITY_MOD_Damage", "modifier pity key");
         Check(ReforgeSystem.GetPityKey("Damage", PropertyType.Variable) == "RF_PITY_VAR_Damage", "variable pity key");
@@ -187,25 +193,26 @@ internal static class Program
             foreach (var prefix in new[] { "RF_MOD_", "RF_STAT_", "RF_VAR_", "RF_LOCK_" })
                 Check(!key.StartsWith(prefix), "pity counter is not parsed as reforge delta or lock data: " + key);
         }
-        Check(Math.Abs(ReforgeSystem.GetPityChance(0) - 0.0001f) < 1e-7f, "first reforge adds only 0.01%");
-        Check(Math.Abs(ReforgeSystem.GetPityChance(49) - 0.25f) < 1e-6f, "50th reforge adds 25%");
-        Check(ReforgeSystem.GetPityChance(99) == 1f && ReforgeSystem.GetPityChance(500) == 1f, "100th reforge is guaranteed");
-        Check(ReforgeSystem.GetPityChance(-3) == ReforgeSystem.GetPityChance(0), "negative counts clamp to the first step");
-        for (int k = 1; k < 100; k++)
-            Check(ReforgeSystem.GetPityChance(k) > ReforgeSystem.GetPityChance(k - 1), "pity chance grows every reforge");
+        Check(Math.Abs(ReforgeSystem.GetPityChance(1f) - 0.0001f) < 1e-7f, "progress 1 adds only 0.01%");
+        Check(Math.Abs(ReforgeSystem.GetPityChance(50f) - 0.25f) < 1e-6f, "progress 50 adds 25%");
+        Check(ReforgeSystem.GetPityChance(100f) == 1f && ReforgeSystem.GetPityChance(500f) == 1f, "progress 100 is guaranteed");
+        Check(ReforgeSystem.GetPityChance(0f) == 0f && ReforgeSystem.GetPityChance(-3f) == 0f && ReforgeSystem.GetPityChance(float.NaN) == 0f, "no progress, no pity");
+        for (int k = 1; k <= 100; k++)
+            Check(ReforgeSystem.GetPityChance(k) > ReforgeSystem.GetPityChance(k - 1), "pity chance grows with progress");
 
-        // 旧存档没有计数条目、脏值：一律按 0 起算，上限 99
+        // 旧存档没有进度条目、脏值：一律按 0 起算，上限 99.99；首版的整数计数直接当进度读
         var old = Make("Damage", 10f, PropertyType.Stat);
         string statKey = ReforgeSystem.GetPityKey("Damage", PropertyType.Stat);
-        Check(ReforgeSystem.GetPityCount(old, statKey) == 0, "old saves without a counter start from 0");
-        Check(ReforgeSystem.GetPityCount(null, statKey) == 0, "null item reads 0");
+        Check(ReforgeSystem.GetPityProgress(old, statKey) == 0f, "old saves without progress start from 0");
+        Check(ReforgeSystem.GetPityProgress(null, statKey) == 0f, "null item reads 0");
         foreach (var dirty in new[] { float.NaN, float.PositiveInfinity, -5f })
         {
             old.SetFloat(statKey, dirty);
-            Check(ReforgeSystem.GetPityCount(old, statKey) == 0, "dirty counter reads 0: " + dirty);
+            Check(ReforgeSystem.GetPityProgress(old, statKey) == 0f, "dirty progress reads 0: " + dirty);
         }
-        old.SetFloat(statKey, 1e9f); Check(ReforgeSystem.GetPityCount(old, statKey) == 99, "oversized counter caps at 99");
-        old.SetFloat(statKey, 12.4f); Check(ReforgeSystem.GetPityCount(old, statKey) == 12, "counter rounds to an integer");
+        old.SetFloat(statKey, 1e9f); Check(Math.Abs(ReforgeSystem.GetPityProgress(old, statKey) - 99.99f) < 1e-4f, "oversized progress caps below the guarantee");
+        old.SetFloat(statKey, 12.4f); Check(Math.Abs(ReforgeSystem.GetPityProgress(old, statKey) - 12.4f) < 1e-6f, "fractional progress is kept");
+        old.SetFloat(statKey, 37f); Check(ReforgeSystem.GetPityProgress(old, statKey) == 37f, "first-release integer counters read as progress");
 
         int miss = FindSeed(0.30f, 0.60f, 0.99), top = FindSeed(0.95f, 1.01f);
         try
@@ -232,6 +239,17 @@ internal static class Program
                 Check(Math.Abs(r100.ModifiedStats[0].NewValue - 15f) < 0.0001f, "100th reforge lands on Max regardless of tendency: " + r100.ModifiedStats[0].NewValue);
                 Check(PityValue(item, "Damage", type) == 0, "pity hit resets the counter");
                 Check(ReforgeUIManager.Reveal("Damage", 10f, 15f, 5f)[1], "pity Max gets the same best-bound reveal");
+
+                // 钱花够：单次投满物品价值 5 倍推进 25，进度 75 时这一次必中；最低价只涨 0.05
+                var rich = Make("Damage", 10f, type); rich.Prefab = Make("Damage", 10f, type);
+                rich.SetFloat(ReforgeSystem.GetPityKey("Damage", type), 75f);
+                Check(Math.Abs(ReforgeOnce(rich, 0f, 500).ModifiedStats[0].NewValue - 15f) < 0.0001f, "big investment fills pity in 4 reforges");
+                Check(PityValue(rich, "Damage", type) == 0, "big-investment pity hit resets");
+                ReforgeOnce(rich, 1f, 1);
+                Check(Math.Abs(PityValue(rich, "Damage", type) - 0.05f) < 1e-6f, "minimum investment adds only 0.05: " + PityValue(rich, "Damage", type));
+                rich.SetFloat(ReforgeSystem.GetPityKey("Damage", type), 50f);
+                ReforgeOnce(rich, 1f, 250);
+                Check(PityValue(rich, "Damage", type) == 62.5f, "mid investment adds proportionally");
 
                 // 后坐力越低越好：保底给 Min
                 var recoil = Make("RecoilScaleV", 1.2f, type); recoil.Prefab = Make("RecoilScaleV", 1.2f, type);

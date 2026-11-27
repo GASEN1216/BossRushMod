@@ -13,8 +13,8 @@
 //   - 整数属性（|值|≥2）保持整数
 //   - 每次重铸改动全部未固定的可重铸属性（概率p只决定幅度，不决定改不改）
 //   - 基础重铸费用为物品价值的1/100（最低 MIN_REFORGE_COST，再按哥布林好感度打折）
-//   - 顶格保底（ReforgeSystem_Pity.cs）：每条属性记连续未顶格次数，第 k 次额外有 (k/100)^2
-//     概率直接取有利边界，第 100 次必中；顶格清零，固定的属性计数冻结
+//   - 顶格保底（ReforgeSystem_Pity.cs）：每条属性记一份进度，按幅度投入推进（累计满物品价值 20 倍必中，
+//     单次最多 1/4），推进后为 x 时额外有 (x/100)^2 概率直接取有利边界；顶格清零，固定的属性进度冻结
 // ============================================================================
 
 using System;
@@ -211,13 +211,13 @@ namespace BossRush
 
         /// <summary>
         /// 金钱增益分段阈值（基于物品价值的倍数）
-        /// 原始曲线阈值为 0.1 / 1 / 10。
-        /// 按需求将整条曲线整体放大 100 倍，变为 10 / 100 / 1000，
-        /// 保持形状不变，只放大达到同一加成所需的投入金额。
+        /// 原始曲线阈值为 0.1 / 1 / 10，2026-03 整体放大 100 倍到 10 / 100 / 1000（当时重铸在当前值上累加）。
+        /// 2026-11-27 降到 1 / 10 / 100：改成从出厂值重抽后，幅度 45% 拉到 50% 要投 5 倍物品价值、
+        /// 拉满要 200 多倍，玩家反馈几千万都洗不满。形状不变，同一加成所需投入为原来的 1/10。
         /// </summary>
-        public const float MONEY_BONUS_TIER1_MULTIPLIER = 10f;
-        public const float MONEY_BONUS_TIER2_MULTIPLIER = 100f;
-        public const float MONEY_BONUS_TIER3_MULTIPLIER = 1000f;
+        public const float MONEY_BONUS_TIER1_MULTIPLIER = 1f;
+        public const float MONEY_BONUS_TIER2_MULTIPLIER = 10f;
+        public const float MONEY_BONUS_TIER3_MULTIPLIER = 100f;
 
         /// <summary>
         /// 护甲类（FORCE_ABSOLUTE_RANGE_KEYS）每次重铸的最大绝对改变量：预制体值 ±1 档
@@ -325,9 +325,9 @@ namespace BossRush
 
         /// <summary>
         /// 计算金钱增益：基于物品价值的倍数
-        /// 10倍物品价值 → +10%
-        /// 100倍物品价值 → +30%
-        /// 1000倍物品价值 → +100%
+        /// 1倍物品价值 → +10%
+        /// 10倍物品价值 → +30%
+        /// 100倍物品价值 → +100%
         /// </summary>
         /// <param name="money">投入的金钱</param>
         /// <param name="itemValue">物品价值（用于计算动态阈值）</param>
@@ -340,9 +340,9 @@ namespace BossRush
             float B;
 
             // 动态阈值：基于物品价值的倍数
-            float tier1 = itemValue * MONEY_BONUS_TIER1_MULTIPLIER;  // 10倍物品价值
-            float tier2 = itemValue * MONEY_BONUS_TIER2_MULTIPLIER;  // 100倍物品价值
-            float tier3 = itemValue * MONEY_BONUS_TIER3_MULTIPLIER;  // 1000倍物品价值
+            float tier1 = itemValue * MONEY_BONUS_TIER1_MULTIPLIER;  // 1倍物品价值
+            float tier2 = itemValue * MONEY_BONUS_TIER2_MULTIPLIER;  // 10倍物品价值
+            float tier3 = itemValue * MONEY_BONUS_TIER3_MULTIPLIER;  // 100倍物品价值
 
             // 计算log阈值（用于分段计算）
             float logTier1 = Mathf.Log10(tier1);
@@ -351,24 +351,24 @@ namespace BossRush
 
             if (m <= tier1)
             {
-                // 0 ~ 10倍物品价值：线性 0 → 0.10
+                // 0 ~ 1倍物品价值：线性 0 → 0.10
                 B = 0.10f * (m / tier1);
             }
             else if (m <= tier2)
             {
-                // 10倍 ~ 100倍物品价值：log分段 0.10 → 0.30
+                // 1倍 ~ 10倍物品价值：log分段 0.10 → 0.30
                 float logM = Mathf.Log10(m);
                 B = 0.10f + 0.20f * (logM - logTier1) / (logTier2 - logTier1);
             }
             else if (m <= tier3)
             {
-                // 100倍 ~ 1000倍物品价值：log分段 0.30 → 1.00
+                // 10倍 ~ 100倍物品价值：log分段 0.30 → 1.00
                 float logM = Mathf.Log10(m);
                 B = 0.30f + 0.70f * (logM - logTier2) / (logTier3 - logTier2);
             }
             else
             {
-                // 超过1000倍物品价值：上限1.00
+                // 超过100倍物品价值：上限1.00
                 B = 1.00f;
             }
 
@@ -814,7 +814,7 @@ namespace BossRush
         /// 执行重铸 - 新概率系统
         /// 1. 检查基础费用（物品价值的1/100，含哥布林折扣）
         /// 2. 全部未固定的可重铸属性都会被修改
-        /// 3. 顶格保底：每条属性第 k 次连续未顶格时额外有 (k/100)^2 概率直接取有利边界，第 100 次必中
+        /// 3. 顶格保底：每条属性的进度按幅度投入推进，推进后为 x 时额外有 (x/100)^2 概率直接取有利边界，满 100 必中
         /// 4. 触发后用 u^expo 抽幅度
         /// 5. 收益方向由 tendencyChance 控制（0~1），再按属性极性换算数值正负号
         /// 6. 每次都以预制体原值为基准重新抽，不在当前值上累加；范围为预制体值 ±50%
@@ -962,8 +962,10 @@ namespace BossRush
                     selectedIndices.Add(i);
                 }
 
-                // 顶格保底：同键同类型的属性共用一个计数，读一次、整次重铸结束后写一次（ReforgeSystem_Pity.cs）
-                Dictionary<string, int> pityCounts = new Dictionary<string, int>();
+                // 顶格保底：同键同类型的属性共用一份进度，读一次、整次重铸结束后写一次（ReforgeSystem_Pity.cs）
+                // 进度按本次幅度投入推进，投得越多涨得越快；倾向费用不计
+                float pityStep = GetPityStep(moneyInvested, itemValue);
+                Dictionary<string, float> pityCounts = new Dictionary<string, float>();
                 Dictionary<string, bool> pityReached = new Dictionary<string, bool>();
 
                 // 对选中的属性执行修改
@@ -978,15 +980,15 @@ namespace BossRush
                     // Step 2: 抽幅度（使用概率baseP）
                     float mag01 = RollMagnitude(baseP, random);
 
-                    // Step 2b: 抽保底（排在幅度之后，第 100 次必中）
+                    // Step 2b: 抽保底（排在幅度之后，进度推进到 100 必中）
                     string pityKey = GetPityKey(prop.Key, prop.Type);
-                    int pityCount;
+                    float pityCount;
                     if (!pityCounts.TryGetValue(pityKey, out pityCount))
                     {
-                        pityCount = GetPityCount(item, pityKey);
+                        pityCount = GetPityProgress(item, pityKey);
                         pityCounts[pityKey] = pityCount;
                     }
-                    bool pityHit = RollPity(pityCount, random);
+                    bool pityHit = RollPity(pityCount, pityStep, random);
 
                     // Step 3: 先抽收益方向，再按官方属性极性转换成数值方向（后坐力越低越好）
                     float originalValue = prop.Value;
@@ -1073,15 +1075,15 @@ namespace BossRush
                     pityReached[pityKey] = (pityReached.TryGetValue(pityKey, out reachedBefore) && reachedBefore) || reachedBest;
                     if (pityHit)
                     {
-                        ModBehaviour.DevLog("[ReforgeSystem] 保底顶格: " + prop.Key + " 第 " + (pityCount + 1) + " 次");
+                        ModBehaviour.DevLog("[ReforgeSystem] 保底顶格: " + prop.Key + " 进度 " + (pityCount + pityStep).ToString("0.##"));
                     }
                 }
 
-                // 写回保底计数：顶格清零，没顶格 +1
+                // 写回保底进度：顶格清零，没顶格累加本次推进
                 foreach (var pity in pityCounts)
                 {
                     bool reached;
-                    RecordPityResult(item, pity.Key, pity.Value, pityReached.TryGetValue(pity.Key, out reached) && reached);
+                    RecordPityResult(item, pity.Key, pity.Value, pityStep, pityReached.TryGetValue(pity.Key, out reached) && reached);
                 }
 
                 // 标记物品已恢复，防止下面 ReapplyModifiers 触发 Harmony Prefix 时重复恢复

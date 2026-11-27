@@ -42,9 +42,9 @@ def main():
     # 顶格保底（2026-11-27）：常量与计数读写原样抽取
     pity = "Integration/Reforge/ReforgeSystem_Pity.cs"
     pity_source = (ROOT / pity).read_text(encoding="utf-8-sig")
-    code += re.findall(r"public const (?:int|string) \w+ = [^;]+;", pity_source)
+    code += re.findall(r"(?:public|private) const (?:int|float|string) \w+ = [^;]+;", pity_source)
     code += [extract(pity, sig) for sig in (
-        "public static string GetPityKey(", "public static int GetPityCount(", "public static float GetPityChance(",
+        "public static string GetPityKey(", "public static float GetPityProgress(", "public static float GetPityStep(", "public static float GetPityChance(",
         "public static bool RollPity(", "public static void RecordPityResult(")]
     code += [extract(apply, sig) for sig in (
         "public static int GetBeneficialValueDirection(", "public static bool IsBeneficialChange(",

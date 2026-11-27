@@ -4,6 +4,35 @@
 
 **2026-11-20 · COMPAT · L1/L2**　玩家反馈退出重进后武器消失、仓库物品变问号。修复冷启动注册、分包手持模型绑定、部分失败重试和克隆/异步资源归属。角色和仓库合成档往返、重复 TypeID 与真实包来源已纳入自动回归。故障证据与玩家侧验证边界见 [CR-2026-11-20-001 至 003](CODE_REVIEW_FINDINGS.md)。随 v2.6.1 发版：`info.ini` 升 2.6.1，WikiContent 新增中英 `changelog__v2_6_1` 并补总览，工坊简介同步；L3 待玩家侧确认。
 
+## 2026-11-27 重铸降价 + 保底按投入累计 + 冷淬液 / 回火液补货（并入 v2.7.1；COMPAT；L2 + 隔离正式真编译；L3 待验）
+
+- 依据：玩家反馈「几千万都重铸不出满配」「400 手续费的武器幅度 45% 拉到 50% 就是天文数字」「冷淬液、回火液希望无限买」；owner「其实还是不太希望轻易刷出最高词条，但是如果花了足够的钱还是可以刷的」「尽快，赶着上线」。改动并进还没上线的 v2.7.1。
+- 改动：
+  - 价格：`MONEY_BONUS_TIER*_MULTIPLIER` 10 / 100 / 1000 → 1 / 10 / 100。曲线形状不变，同一幅度所需投入为原来的 1/10；界面反推价格读同一组常量。
+  - 保底（`ReforgeSystem_Pity.cs`）：由「每次 +1、100 次必中」改为按幅度投入推进，累计投满物品价值 20 倍必中，单次最多 25（至少 4 次），推进后为 x 时额外 `(x/100)^2`。只付手续费每次 +0.05，顶格回到靠自然顶档。倾向费用不计。进度改存 float（上限 99.99），首版整数计数同刻度直接读，未上线，无旧档风险。
+  - 补货：叮当冷淬液每个游戏日 5 → 20 瓶，回火液 3 → 10 瓶（价格不变，5000 / 7500）。没改成无限：库存账本按数量补，20 / 10 已够一天洗满两三件，保留一点节奏。
+- 数值（按生产公式精确期望，单条 = 出一次 Max，6 条 = 出一条锁一条；v2.7.0 按出厂 4.5 的小数属性，三位小数属性在 v2.7.0 永远洗不出）：
+
+  | 场景 | v2.7.0（线上） | v2.7.1 首版（已推送未上线） | 本次 |
+  | --- | --- | --- | --- |
+  | 中档（价值 4 万）只付手续费、倾向居中 | 6 条 4836 次 / 193 万 | 37 次 / 1.5 万 | 166 次 / 6.6 万 |
+  | 中档 只付手续费、倾向拉满 | 6 条 2686 次 / 5480 万 | 35 次 / 72 万 | 109 次 / 222 万 |
+  | 中档 每次投 1 倍价值、倾向拉满 | 6 条 2651 次 / 1.6 亿 | 35 次 / 211 万 | 13 次 / 76 万 |
+  | 中档 每次投 5 倍价值、倾向拉满 | 6 条 2509 次 / 5.5 亿 | 35 次 / 767 万 | 4 次 / 85 万 |
+  | 高档（价值 50 万）只付手续费、倾向居中 | 6 条 3878 次 / 1939 万 | 37 次 / 18 万 | 144 次 / 72 万 |
+  | 高档 每次投 1 倍价值、倾向拉满 | 6 条 2119 次 / 15.9 亿 | 34 次 / 2543 万 | 12 次 / 935 万 |
+  | 高档 每次投 5 倍价值、倾向拉满 | 6 条 1977 次 / 54.4 亿 | 33 次 / 9208 万 | 4 次 / 1058 万 |
+
+  - 幅度拉到 100%：中档 910 万 → 91 万，高档 6947 万 → 695 万。另加锁 6 条的冷淬液 3 万。
+  - 结论：钱投得多，次数和总花费都比首版少；只付手续费仍是最省钱的路，但次数是首版的 4～5 倍、全靠运气（每条约 1%～2%）。要连这条路也卡住，得再动自然顶档（`BOUND_SNAP_MAGNITUDE`），未改，由 owner 定。
+- 守卫：`EntryAndReforgeCompatibilityGuard` 改断言步长在循环前按投入算、抽签与写回带步长、三个保底常量（100 / 20 / 25）、步长公式与封顶、抽签算上本次推进、价格分段 1 / 10 / 100。反向：去掉步长封顶、分段改回 1000、抽签不加本次推进，前两处守卫转红，第三处夹具转红后补了守卫断言；均按字节还原。
+- 回归：`EntryAndReforgeCompatibility` 抽取改为 `GetPityProgress` / `GetPityStep`（含 private const）。夹具价值恒 100，`ReforgeOnce` 默认投 20 使每次正好 +1，原有逐次、99→100、清零、冻结、共享、分布用例沿用；新增步长（手续费 0.05、1 倍 5、5 倍及以上 25、无投入或价值无效为 0）、进度读写（小数保留、首版整数照读、上限 99.99）、大额投入 75→100 必中、最低价只涨 0.05、按比例累加。`NpcAuditFixes` 回火液库存替身同步到 10。
+- 实机清单：
+  - [L3-REFORGE-PRICE-01] 选一把手续费约 400 的武器，把幅度滑块拉到 50%：显示的投入约 2 万（以前约 20 万）；拉满约 91 万。不合格：仍是几十万起步或上千万。
+  - [L3-REFORGE-PRICE-02] 同一把武器每次投 4 万左右、倾向拉满连续重铸：每条没固定的属性多数在 10 次内出金色 Max，最慢不超过约 20 次。只付手续费连洗 20 次，单条属性大多不出 Max。不合格：手续费档的单条属性也频繁出 Max，或大额投入 20 次还不出。
+  - [L3-REFORGE-PRICE-03] 叮当好感 4 级以上开店：冷淬液 20 瓶、回火液 10 瓶；买空后第二个游戏日补满。不合格：仍是 5 / 3 或买空不补。
+  - 上一节 [L3-REFORGE-PITY-02]（最低投入 100 次内必出 Max）已被本节取代，不再适用。
+
 ## 2026-11-27 v2.7.1 发版准备 + 发版前复审（COMPAT；L2 + 隔离正式真编译；L3 待验）
 
 - 依据：owner「确保没问题就准备发版吧」。发版内容为 66287e52、321fb22b 与本节修复，另一会话未提交的祝融火焰器 / 赞助物品不进本版。
@@ -1080,6 +1109,7 @@ L3 验收：Z1，单弹枪选三叉/散射后对同种敌人比较全中伤害�
 
 ## 归档索引
 
+- 2026-09-23 全 Mod UI / 交互 / 特效「塑料感」审查与修复（COMPAT / OPERATIONAL，少量 WIRE+）（2026-11-27 台账将超 1500 行时逐字归档） → `archive/FIX_TRACKER_2026-09.md`
 - 2026-09-29 玩家文案去人机味：全部修复（COMPAT）（2026-11-27 台账将超 1500 行时逐字归档） → `archive/FIX_TRACKER_2026-09.md`
 - 2026-11-06 潮闸镇五分钟体验复审（COMPAT / WIRE+）（2026-11-25 台账将超 1500 行时逐字归档） → `archive/FIX_TRACKER_2026-11.md`
 - 2026-11-06 潮闸镇高价值搜刮与装船货单（COMPAT）（2026-11-25 台账将超 1500 行时逐字归档） → `archive/FIX_TRACKER_2026-11.md`
@@ -1295,49 +1325,6 @@ L3 验收：Z1，单弹枪选三叉/散射后对同种敌人比较全中伤害�
 - 2026-08-30 三系统落地：鸭皇图鉴 / 局内随机事件 / 词缀锻造 → `archive/FIX_TRACKER_2026-08.md`
 - 2026-08-30 鸭王征程 / 竞技场后山 全面审核 → `archive/FIX_TRACKER_2026-08.md`
 - 2026-09-14 天空岛生产整合：朝向漂移、退化面与最终资源 → `archive/FIX_TRACKER_2026-09.md`
-
-
-## 2026-09-23 全 Mod UI / 交互 / 特效「塑料感」审查与修复（COMPAT / OPERATIONAL，少量 WIRE+）
-
-**起因**：owner「全面检查我们 mod 里的 UI 以及交互，确保符合审美，而不是塑料感，以及特效也是」，同时复核 20260922 人工实测 16 项。
-
-**审查**：8 个区域只读审查，约 280 条 finding（判据、逐条锚点与修法在本地 `docs/reports/reviews/2026-09-23-审美审查/`：`ui_A…E_findings.md`、`vfx_A/B_findings.md`、`verify16_findings.md`；各区修复报告 `fix_*_report.md`）。16 项独立复核：9 项已修、4 项部分修复（本轮补完，见下）、3 项只能实机判断。
-
-**共享层（主会话）**：
-- 新增 `Common/UI/BossRushUIFeel.cs`：按钮经 `ApplyButtonColors` 自动挂官方 `UI/hover` / `UI/click` 音效与按下回弹（常态零 Update）；面与卡片经 `ApplyPanelStroke` 自动加外投影与顶边高光，描边随层级变化置顶；`BossRushUIKit.PlayCloseAndDestroy`（关闭淡出）、`StyleSecondaryButton`、`StyleBackdrop`（遮罩暗角 + 淡入，整页重建不重播）、TMP 世界字描边材质。
-- 新 token `BossRushUIColors.AccentFill`（主按钮填充；Accent 不再整块平涂）；新层级 `BossRushUILayers.ScreenAmbience = -10`（血月暗角压在官方 HUD 之下）。
-- `PlayOpenAnimation` 改为 0.16 s SmoothStep 淡入 + 0.22 s EaseOut 从 0.94 放大；按下色统一 `GetPressedColor`；原地改色时鼠标在上落到悬停色；`CreateHighlightBar` 圆角。
-- 新增 `Common/Effects/BossRushFxMaterials.cs`：只用游戏里确认存在的 `Universal Render Pipeline/Particles/Unlit`（透明变体），兜底 Legacy Alpha Blended 以 `SetVector` 写中性 0.5 Tint。规则写进 AGENTS §4.14，守卫 `tests/BossRushUIFeelGuard.py`（10 个反向检查 + 磁盘反向验证）。
-
-**各区修复**（逐条表见各区报告；P1、P2 除明确延期项外全修）：Mode H 24 条（含复核 V6 七条）、Mode G/E/F 与波次提示 20 条、丧尸模式 35 条、遗种巢 / 征程 / 随机事件 / 阿稳寄存 29+3 条、集成面板 37+2 条、天空岛 UI 23 条、日报 7 条（重打 `production_icons`，14 个图标与吉祥物为 AI 插画）、特效 A 29 条、特效 B 21 条、幽灵女巫 10 条。
-
-**主会话补修**：
-- 复核第 2 项：基地建筑建预制体时把实体碰撞体参数写进 Player.log（`[BaseBuilding]`，正式构建也打）；遗种巢交互 trigger 2→2.6 m。报箱碰撞仍 UNVERIFIED，等 owner 按清单 R1 实测。
-- 复核第 15 项：菜地本趟开放时对在场售货机补挂种子（`BackMountainItems.TryInjectSeedsIntoLiveShops`）。
-- 幽灵女巫瞬移标记直接改 `sharedMaterials`（借来的霜之哀伤冰焰），会把玩家的冰焰与共享材质染紫：改走 MaterialPropertyBlock。
-- Wiki：保底措辞（连续 9 枚没出、第 10 枚必出）、炫彩 90 种（渐变有先后）、Mode G 中文「最后处决」、Mode H 打法标签。
-- 超 1200 行的文件按 §4.15 原样拆 partial：`SkyIslandHud_Layout.cs`、`SkyIslandStoryPresentation_Parts.cs`、`CourierPaidLootSweepDelivery.cs`，读它们的 6 个守卫与 2 个夹具同步读新文件。F3 `MODE_H_FULL_SEASON` 接受无报价时自动关窗的转会窗口。
-- `ModBehaviourInstanceClassificationGuard` 基线 410→404（Integration −6）；宿主 partial 预算 104499→103200（丧尸奖励面板迁出独立类）。
-
-**延期 / 需 owner 定**：UB-29（地图选择改 Harmony postfix，新增绑定不做）；UD-07（`CreateTMPText` 默认自动缩字不改，改默认会让大量窄框文本整串清空）；UD-43 叮当 / 羽织 / 阿稳立绘与 UA-27 随机事件 9–11 图标、UE-08 信鸽、UE-12 罗盘（都要出图 / 重打包）；UD-49 号角音效（无音频资源）；VB-06 女巫横扫视觉半径是判定 2 倍（owner 旧要求，守卫钉着）；怨灵拖斩刀光锁方向而判定跟随玩家（要么改玩法要么改守卫意图）；VB-19 焚皇戟特效池（纯性能）；遗种巢头顶名条显示血脉名（要改 preset nameKey，离线证不了安全）；异色实际约 1.2%（100 枚保底后）；Mode H 迷雾半径 50 m 未动；许愿揭晓后头顶气泡保留（确认到账）。
-
-**验证**（证据 L1 + L2，**没有 L3**）：
-- 全量守卫 662 PASS / 0 NEW-FAIL / 0 KNOWN-RED。
-- Windows 正式编译 `Build succeeded!`（1010 个源，无新警告）；`check_dll_identifiers --expect absent` PASS；DLL `842AEE45617B2C9AB5A85D199EF403DF86ECB1158B4ED3B9DF21DD5BB37216BC` 已部署并与 `Build/` 一致。
-- 执行回归 56/56 PASS（`AuditModeLifecycle`、`NpcAuditFixes` 两组写死 net10，本机临时改 net8 跑通后按字节还原 run.py）；本轮同步了 `SkyIslandInteraction`、`BackMountainLifecycle`、`ContentTransactions`、`ManualSeptemberReview`、`NpcAuditFixes` 五个夹具的抽取范围与替身。
-- `production_icons` 重打并部署（新 SHA-256 `230c07ce…62efe02`，旧包备份 `Build/resource-release-backups/20260923-094639-313/`），72 包发布校验 0 错误；作者工程 31 个未提交改动都是日报图。
-- owner 看图清单：`docs/reports/testing/2026-09-23-UI与特效审美-看图清单.md`（R1–R8 + 共享层 S1–S8 + 各区条目）。
-
-**owner 授权拍板（2026-09-23 同日，「照着你的感觉去决定」）**：
-- VB-06 女巫横扫刀光：跟模型放大，但上限 1.35 倍判定半径（`PhantomWitchConfig.ScytheSweepVisualScaleCap`）；判定不变。理由：2 倍刀光让玩家读错危险区。守卫 `PhantomWitchScytheSweepScaleGuard` 补断言并反向验证。回退：常量改 `float.MaxValue`。
-- 怨灵拖斩：两道刀光改用出手瞬间的朝向，与两段伤害、扇形预警一致；蓄力轮廓仍按起手方向。判定一字未改。`PhantomWitchSpecCompletionGuard` 规格同步并反向验证。回退：刀光改回 `lockedForward`、守卫正则还原。
-- 异色实际约 1.2%（天然 0.4% + 100 枚保底）：保持，不改。
-- 叮当 / 羽织 / 阿稳对话立绘：不做（自定义模型，AI 立绘对不上模型比没有更出戏；官方对话框立绘为空时整块隐藏，不留空框）。随机事件 9–11 图标：做了，`tools/gen_codex_art.py` 同风格出图（网关 3 次、0 失败），登记 `production_icon_manifest.json`，IconsBuild `BUILD PASS sprites=346`，`production_icons` → `a75b0a30b86a865541ebf2232b67cb08b3a7cf5051da6e98ba1c534c517341dc`，72 包发布校验 0 错误并已部署。
-- 重编正式 DLL `648FAE0E48C662AD3AD51F935D91CF6B72AADD0DDC3B3A0AC491CD8B04F112C1` 已部署；662 守卫全绿。注意：这次编译用的是工作区当前内容，**包含**另一会话进行中的「去掉 ——」文案改动（只改字符串，编译通过）。
-
-**工作区提醒**：同一时段另一会话在做「去掉 ——」的文案整理（`DebugAndTools/SkyIsland/*` 十余个文件、`WikiContent/*` 五十余篇），不属本轮；本轮部署的 DLL 编于 10:33，不含那些 10:38 之后的改动。提交时按文件分开暂存。
-
-<!-- END AESTHETIC AUDIT 2026-09-23 -->
 
 
 <!-- BEGIN SYNTAX PROBE COMPILE LIST PARITY 2026-09-23 -->

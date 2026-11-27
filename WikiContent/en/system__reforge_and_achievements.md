@@ -37,14 +37,14 @@ For the full achievement list, see the "Achievement List" page.
 On top of the bench fee you can **invest extra money** to favor larger changes. The
 curve scales with **multiples of the item's value**, not with an absolute amount:
 
-- Invest **10x** the item's value → roughly **+10%** to the magnitude factor
-- Invest **100x** → roughly **+30%**
-- Invest **1000x** → roughly **+100%**
+- Invest **1x** the item's value → roughly **+10%** to the magnitude factor
+- Invest **10x** → roughly **+30%**
+- Invest **100x** → roughly **+100%**
 
-So the returns fall off fast: going from 10x to 100x costs ten times the money and buys twenty
-percentage points.
+So the returns fall off fast: going from 1x to 10x costs ten times the money and buys twenty
+percentage points. The money you put in also builds pity progress, see "Stat Change Range" below.
 
-[tip] In practice: on cheap gear just throw 1000x at it, the base is small anyway. On valuable gear **100x** is usually the sweet spot - beyond that, your money buys more by funding extra attempts than by pushing one roll.
+[tip] In practice: to farm Max, put in 1x-5x the item's value each time with benefit tendency maxed, and a stat hits its best limit in about three to eight Reforges. Paying only the bench fee can still roll Max, but that is mostly luck and takes many tries.
 
 ### Reforge Results
 - Each Reforge changes all unlocked stats simultaneously. Results are influenced by:
@@ -59,7 +59,7 @@ percentage points.
 - Each stat stays within **50%-150%** of its original value. Stats that start at 0 stay within **±0.25**; armor stays within **±1** of its original value.
 - When a roll lands in the top magnitude band, the stat goes straight to its cap or floor and shows a "Max" or "Min" tag. The more money you invest, the more often that happens.
 - The numbers in the Reforge panel, the bracketed change and the Max / Min tags only look at the item itself. Bonuses or penalties from attachments on a gun are left out; the item details in your inventory still show the real value with attachments.
-- **Pity**: each stat keeps its own count of how many Reforges in a row missed its best limit (Max where higher is better, Min for stats like recoil where lower is better). The longer the streak, the better the odds that the next Reforge lands right on it, slowly at first and then faster: about 25% on the 50th, guaranteed on the 100th. The count restarts once it lands; locked stats are skipped and their count stays put. Pity always gives the good end, whatever your benefit tendency, and on pity alone it comes about once every 27 Reforges. Gear reforged before this update starts counting from 0 and keeps its current values.
+- **Pity**: each stat builds its own pity progress while it misses its best limit (Max where higher is better, Min for stats like recoil where lower is better). Progress comes from the money you invest: once a stat's total reaches **20x** the item's value, it lands on its best limit. One Reforge adds at most a quarter, so it takes at least 4; paying only the bench fee barely moves it. The higher the progress, the better the odds the next Reforge lands right on it, about 25% at the halfway mark. Progress resets once it lands; locked stats are skipped and their progress stays put. Pity always gives the good end, whatever your benefit tendency. Gear reforged before this update starts from 0 and keeps its current values.
 - Lock a value you like with Cold Quench Fluid, or the next Reforge will roll it again.
 
 ### Cold Quench Fluid Lock

@@ -76,21 +76,36 @@ def main():
     assert snap.start() < reforge.index("newValue = Mathf.Clamp(newValue, minValue, maxValue);"), "顶档之后仍要夹进上下限"
     snap_const = re.search(r"private const float BOUND_SNAP_MAGNITUDE = ([0-9.]+)f;", read("Integration/Reforge/ReforgeSystem.cs"))
     assert snap_const and 0.9 <= float(snap_const.group(1)) < 1.0, "顶档阈值必须落在 [0.9, 1)，等于或大于 1 就又抽不到 Max"
-    # 2026-11-27 顶格保底：幅度之后抽保底，命中取有利边界；按实际写入值判顶格，整次结束后写回计数
-    pity_roll = reforge.index("bool pityHit = RollPity(pityCount, random);")
+    # 2026-11-27 顶格保底：幅度之后抽保底，命中取有利边界；按实际写入值判顶格，整次结束后写回进度
+    # 进度按本次幅度投入推进（钱花够才刷得出），步长整次重铸只算一次
+    step_def = reforge.index("float pityStep = GetPityStep(moneyInvested, itemValue);")
+    pity_roll = reforge.index("bool pityHit = RollPity(pityCount, pityStep, random);")
+    assert step_def < pity_roll, "步长要在属性循环前按投入算好"
     assert reforge.index("float mag01 = RollMagnitude(baseP, random);") < pity_roll, "保底抽签排在幅度之后"
     assert "int bestDirection = GetBeneficialValueDirection(prop.Key);" in reforge
     pity_branch = re.search(r"if\s*\(pityHit\)\s*\{\s*newValue = bestDirection > 0 \? maxValue : minValue;\s*\}\s*else if\s*\(mag01 >= BOUND_SNAP_MAGNITUDE\)", reforge)
     assert pity_branch and pity_roll < pity_branch.start() < reforge.index("newValue = Mathf.Clamp(newValue, minValue, maxValue);"), "保底命中必须取有利边界，不看倾向"
     reached = re.search(r"bool reachedBest = bestDirection > 0\s*\?\s*IsValueAtUpperBound\(prop\.Key, prefabValue, appliedValue\)\s*:\s*IsValueAtLowerBound\(prop\.Key, prefabValue, appliedValue\);", reforge)
     assert reached and reached.start() > reforge.index("ApplyPropertyChange(prop, newValue, item, prefab);"), "顶格要按实际写入值、按有利方向判"
-    record = reforge.index("RecordPityResult(item, pity.Key, pity.Value,")
+    record = reforge.index("RecordPityResult(item, pity.Key, pity.Value, pityStep,")
     assert reached.start() < record < reforge.index("IncrementReforgeCount(item);"), "整次重铸结束后才写回计数"
     pity_file = "Integration/Reforge/ReforgeSystem_Pity.cs"
     pity_src = read(pity_file)
-    guarantee = re.search(r"public const int PITY_GUARANTEE_REFORGES = (\d+);", pity_src)
-    assert guarantee and int(guarantee.group(1)) == 100, "保底次数是 100"
-    assert "return ratio * ratio;" in method(pity_file, "public static float GetPityChance("), "保底概率按次数平方增长"
+    def pity_const(name):
+        found = re.search(r"public const float " + name + r" = ([0-9.]+)f;", pity_src)
+        assert found, name
+        return float(found.group(1))
+    assert pity_const("PITY_GUARANTEE_PROGRESS") == 100, "进度满 100 必中"
+    assert pity_const("PITY_GUARANTEE_VALUE_MULTIPLIER") == 20, "累计投满物品价值 20 倍必中"
+    assert pity_const("PITY_MAX_STEP") == 25, "单次最多推进 1/4，至少洗 4 次"
+    step_body = method(pity_file, "public static float GetPityStep(")
+    assert "PITY_GUARANTEE_PROGRESS * moneyInvested / (PITY_GUARANTEE_VALUE_MULTIPLIER * itemValue)" in step_body, "步长按投入占物品价值的比例算"
+    assert "Math.Min(step, PITY_MAX_STEP)" in step_body, "单次推进要封顶"
+    assert "return ratio * ratio;" in method(pity_file, "public static float GetPityChance("), "保底概率按进度平方增长"
+    assert "GetPityChance(progress + step)" in method(pity_file, "public static bool RollPity("), "抽签要算上本次推进，进度满 100 的这一次必中"
+    # 2026-11-27 价格曲线降到 1 / 10 / 100 倍物品价值（原 10 / 100 / 1000）
+    tiers = [re.search(r"public const float MONEY_BONUS_TIER%d_MULTIPLIER = ([0-9.]+)f;" % i, read("Integration/Reforge/ReforgeSystem.cs")) for i in (1, 2, 3)]
+    assert all(tiers) and [float(t.group(1)) for t in tiers] == [1, 10, 100], "幅度投入分段是 1 / 10 / 100 倍物品价值"
     prefixes = re.findall(r'public const string PITY_\w+_PREFIX = "([^"]+)";', pity_src)
     assert len(prefixes) == 3, "三类属性各有计数前缀"
     tracking = method("Integration/Reforge/ReforgeSystem.cs", "public static bool IsRuntimeTrackingVariableKey(")
