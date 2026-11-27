@@ -2,7 +2,7 @@
 
 更早记录见 `archive/`；月度归档索引保留在本文件正文。
 
-## 2026-11-27 玩家反馈：重铸后再也出不了 Max（004–007 Fixed L1/L2；正式真编译通过，L3 待验）
+## 2026-11-27 玩家反馈：重铸后再也出不了 Max（004–008 Fixed L1/L2；正式真编译通过，L3 待验）
 
 | ID / 状态 | 可复现条件与影响 | 修复与证据 |
 | --- | --- | --- |
@@ -10,6 +10,7 @@
 | CR-2026-11-27-005 · P2 / COMPAT · Fixed L1/L2 | 详情对比里 Stat 两边都取 `stat.Value`，而重铸核心与快照都取 `BaseValue`。枪装了配件时 `Value` 带着配件修正：配件的加减被当成重铸差值标出来；满值属性被配件往回拉就不显示 Max，没到上限的属性被配件推过上限反而显示 Max。 | `SetupDetailsWithPrefabComparison` 预制体与玩家 Stat 都取 `BaseValue`；没洗动的 Stat 行照旧显示玩家这件的实际读数（含配件），只是不带差值。守卫断言两处 `= stat.BaseValue;`、无 `= stat.Value;`，改回一处即转红。 |
 | CR-2026-11-27-006 · P3 / COMPAT · Fixed L1/L2 | 最终对比面板的差值阈值 `DIFF_THRESHOLD = 0.01` 等于结果舍入的一格：`0.06f - 0.05f` 只有 0.0099999，一格变化被当成没变；出厂 0.02 这类属性顶到上限 0.03 时整行不标，Max 也一起丢。 | 阈值改为 0.005（半格）；守卫要求 0 < 阈值 ≤ 0.005，改回 0.01 即转红。 |
 | CR-2026-11-27-007 · P3 / COMPAT · Fixed L1/L2 | 005 修完后，括号差值与 Max / Min 按 `BaseValue`，行里的数字仍是官方 `Value`（`TryGetCurrentItemPropertyDisplayText` 与重铸后即时揭晓 `ShowPropertyChanges` 里 `Setup(selectedItem)` 写的文本）。枪装了 +5 的枪口、伤害洗到上限 45 时，整行显示「50 (↑15.00) Max」，数字和 Max 对不上，玩家会以为上限是 50。owner 要求重铸只看、只显示原始值。 | 两处 Stat 文本改按 `BaseValue` 写，即时揭晓与之后的刷新同口径，没洗动的 Stat 行也换成原始值；背包等官方详情不动。`GetItemValue` 在自身价值为 0 时先回退预制体价值，物品自身 `GetTotalRawValue()`（这时只剩配件价值）挪到最后。守卫断言 `stat.BaseValue.ToString(...)`、揭晓走 `TryGetCurrentItemPropertyDisplayText`、预制体价值先于自身总价；三处分别改回即转红。 |
+| CR-2026-11-27-008 · P3 / COMPAT · Fixed L1/L2 | 发版前复审：`GetBeneficialValueDirection` 只认官方极性和两轴后坐力，Mod 自己的变量查不到极性按中性当成越高越好。飞行图腾的 `Flight_AccelerationTime`、`Flight_StartupStamina`、`Flight_FlightStaminaDrain`、`Flight_GlidingStaminaDrain` 是可重铸的 Float 变量，实际越低越好：倾向拉满会把体力消耗往高处推，007 的保底更会在 100 次内稳定把它推到最高并打金色 Max。这几个数只在物品详情里显示，飞行读的是 `FlightConfig.Instance`，不影响玩法，但玩家会以为越洗越差。 | `GetBeneficialValueDirection` 在查官方极性前把这四个键判为 -1（与后坐力同口径），倾向、保底、对比色与揭晓一起改向；`Flight_MaxUpwardSpeed` 等越高越好的不动。守卫按 `FlightConfig.VAR_*` 实值核对四个键都在查官方极性之前、最大向上速度不在其中；夹具断言四键为 -1、向上速度为 1。删掉一个键后守卫与夹具都转红，按字节还原。 |
 
 实机清单（L3，未执行；没有启动游戏、没有读写存档）：
 

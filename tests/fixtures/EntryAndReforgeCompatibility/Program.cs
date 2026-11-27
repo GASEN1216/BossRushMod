@@ -42,6 +42,12 @@ internal static class Program
         Check(ReforgeSystem.GetBeneficialValueDirection("RecoilControl") == 1, "no recoil substring inversion");
         Check(ReforgeSystem.GetBeneficialValueDirection(null) == 1, "unknown key preserves legacy direction");
         StatInfoDatabase.Throw = false;
+        // 飞行图腾的加速时间与体力消耗越低越好，官方极性表里没有这些键（替身返回中性）
+        foreach (string lowerBetter in new[] { "Flight_AccelerationTime", "Flight_StartupStamina", "Flight_FlightStaminaDrain", "Flight_GlidingStaminaDrain" })
+        {
+            Check(ReforgeSystem.GetBeneficialValueDirection(lowerBetter) == -1, "flight lower-is-better " + lowerBetter);
+        }
+        Check(ReforgeSystem.GetBeneficialValueDirection("Flight_MaxUpwardSpeed") == 1, "flight upward speed stays higher-is-better");
         // 2026-11-25 下调：整数预制体 5 的上下限为 [3, 7]（±50% 取整）
         var row = ReforgeUIManager.Reveal("RecoilScaleH", 5, 3, -2);
         Check(row[0] && row[1], "recoil lower bound is beneficial and gets best-bound reveal");

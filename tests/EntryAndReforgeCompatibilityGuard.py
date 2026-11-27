@@ -58,6 +58,14 @@ def main():
     assert "pendingPrepaidTicketForCurrentEntry" in method(maps, "internal static void CancelUnstartedMapSelection("), "迟到的关闭回调不能取消已开始入場的预扣票所有权"
     reforge = method("Integration/Reforge/ReforgeSystem.cs", "public static ReforgeResult Reforge(")
     assert "int sign = RollSign(tendencyChance) * GetBeneficialValueDirection(prop.Key);" in reforge, "正向倾向必须换算属性极性"
+    polarity = method("Integration/Reforge/ReforgeSystem_ApplyAndResults.cs", "public static int GetBeneficialValueDirection(")
+    flight = read("Integration/FlightTotem/FlightConfig.cs")
+    flight_key = lambda name: re.search(r'public const string ' + name + r' = "([^"]+)";', flight).group(1)
+    official_lookup = polarity.index("StatInfoDatabase.GetPolarity(")
+    for name in ("VAR_ACCELERATION_TIME", "VAR_STARTUP_STAMINA", "VAR_FLIGHT_STAMINA_DRAIN", "VAR_GLIDING_STAMINA_DRAIN"):
+        literal = 'key == "' + flight_key(name) + '"'
+        assert literal in polarity and polarity.index(literal) < official_lookup, "飞行图腾越低越好的变量必须在查官方极性前判为 -1：" + name
+    assert flight_key("VAR_MAX_UPWARD_SPEED") not in polarity, "最大向上速度越高越好，不能列进越低越好"
     # 2026-11-25 下调：每次以预制体原值为基准重抽，不在当前值上累加；读档把旧超限值夹进新上下限
     assert "newValue = prefabValue + sign * mag01 * rollRange;" in reforge, "重铸必须以预制体原值为基准重抽"
     assert "originalValue + sign" not in reforge and "originalValue + delta" not in reforge, "重铸不能在当前值上累加"

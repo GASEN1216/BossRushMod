@@ -19,6 +19,9 @@ namespace BossRush
         public static int GetBeneficialValueDirection(string key)
         {
             if (key == "RecoilScaleV" || key == "RecoilScaleH") return -1;
+            // 飞行图腾的加速时间与三项体力消耗越低越好（键同 FlightConfig.VAR_*）；官方极性表查不到 Mod 键，会按中性当成越高越好
+            if (key == "Flight_AccelerationTime" || key == "Flight_StartupStamina"
+                || key == "Flight_FlightStaminaDrain" || key == "Flight_GlidingStaminaDrain") return -1;
             if (!string.IsNullOrEmpty(key))
             {
                 try
