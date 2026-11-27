@@ -4,6 +4,24 @@
 
 **2026-11-20 · COMPAT · L1/L2**　玩家反馈退出重进后武器消失、仓库物品变问号。修复冷启动注册、分包手持模型绑定、部分失败重试和克隆/异步资源归属。角色和仓库合成档往返、重复 TypeID 与真实包来源已纳入自动回归。故障证据与玩家侧验证边界见 [CR-2026-11-20-001 至 003](CODE_REVIEW_FINDINGS.md)。随 v2.6.1 发版：`info.ini` 升 2.6.1，WikiContent 新增中英 `changelog__v2_6_1` 并补总览，工坊简介同步；L3 待玩家侧确认。
 
+## 2026-11-27 重铸顶格保底 + 面板只显示原始值（SCHEMA+ / COMPAT；L2 + 正式真编译；L3 待验）
+
+- 依据：owner「每次重铸都累加成功率……保底升到 max/min」「重铸只看和显示原始值，去掉配件的影响」「UI 不变」「平方，改成 100 次保底」「确保兼容旧存档」。
+- 保底（新文件 `Integration/Reforge/ReforgeSystem_Pity.cs`，已登记 `compile_official.bat`）：
+  - 每条属性单独记连续未顶到有利边界的次数（越高越好记 Max，后坐力这类记 Min）。第 k 次在幅度之后再抽一次，额外 `(k/100)^2` 概率直接取有利边界、不看倾向；第 100 次必中。
+  - 按实际写入值判顶格：自然顶格与保底都清零，顶到不利边界照常 +1；冷淬液固定的属性计数冻结；同键同类型共用一个计数，一次重铸只写一次。
+  - 数值理由：owner 选平方曲线、100 次封顶。只靠保底平均约 27 次、九成 40 次内；倾向中立叠自然顶档约 23 次。线性 100 次平均约 12 次，Max 会太常见。
+- 存档（SCHEMA+）：计数写物品 Variables `RF_PITY_MOD_` / `RF_PITY_STAT_` / `RF_PITY_VAR_` + 属性键，`Display=false`。旧物品无条目读 0 从头算，已有差值、锁定与 Max/Min 值不动；从没记过数的属性顶格不新建条目。`RF_` 前缀已被 `IsRuntimeTrackingVariableKey` 挡在重铸池和锁定列表外，`RF_PITY_` 不匹配差值（`RF_MOD_/RF_STAT_/RF_VAR_`）与锁定（`RF_LOCK_`）解析；v2.7.0 同样挡 `RF_`，降级读到新档也忽略。
+- 原始值：重铸面板 Stat 数字改按 `BaseValue`（刷新与即时揭晓两处），背包详情不动；`GetItemValue` 自身价值为 0 时先回退预制体价值，自身总价（只剩配件价值）挪到最后。见 CR-2026-11-27-007。UI 布局、文字不变。
+- 守卫：`EntryAndReforgeCompatibilityGuard` 新增保底抽签次序、命中取有利边界、按写入值判顶格、整次结束后写回、100 次与平方曲线、三类前缀与 `RF_` 挡池、计数隐藏、顶格不建空条目、面板原始值与价值回退次序。反向：去掉保底分支、曲线改线性、前缀改 `RF_MOD_PITY_`、`Display=true`、Stat 改回 `Value`、揭晓改回官方文本、价值回退改写七处均转红，按 SHA-256 还原。
+- 回归：`EntryAndReforgeCompatibility` 夹具补物品变量 API 替身，Variable 资格改为生产同口径（抽取 `IsRuntimeTrackingVariableKey`），新增保底用例：键格式与兼容前缀、曲线（0.01% / 25% / 100%、逐次递增）、旧档与脏值读 0 / 封顶 99、三类属性逐次 +1 且计数不被重抽、第 99 次可不中而第 100 次倾向负面也取 Max 并清零、后坐力取 Min、自然顶格清零、不利边界照常 +1、首次顶格不建条目、固定属性冻结、同键共用计数；生产路径实跑 60000 次重铸，有利边界全靠保底时平均间隔 27.37、最长 62。反向：保底取 `sign` 方向、曲线改线性、顶格时无条件建条目三处转红；去掉写入封顶 99 仍绿，读取已夹到 99，属等价变异。
+- 编译与验证：正式构建 0 错误 0 警告并部署，游戏目录 `BossRush.dll` 与 `Build/` 的 SHA-256 一致（`0f5cb024…`），DLL 内含 `RF_PITY_*` 键。全量守卫 800 条、`--changed-only` 125 条全过；`EntryAndReforgeCompatibility`、`NpcAuditFixes`、`ReforgeAssetTransactions`、`DragonBreathZombieRuntime`、`AffixSelectionUI`、`DynamicItemInitialization`、`ManualEquipmentRecovery`、`ZombieModeRewardRuntime` 回归通过；Wiki 站点构建通过。
+- 文档：Wiki 中英（WikiContent 与 wiki-site）「属性变化范围」补保底与面板只看原始值；repowiki「重铸系统」同步并登记新文件。
+- 实机清单见下方 [L3-REFORGE-PITY-01]～[L3-REFORGE-PITY-03] 与 `CODE_REVIEW_FINDINGS.md` `M_REFORGE_RAW_01`：
+  - [L3-REFORGE-PITY-01] 旧存档里重铸过的武器（更新前就有 Max 的那种）放进重铸页：数值与更新前一致，Max 标记仍在，详情页没有多出看不懂的条目。不合格：数值变了、Max 消失或出现 `RF_PITY_` 字样。
+  - [L3-REFORGE-PITY-02] 投入最低、倾向居中连续重铸同一件装备：每条没固定的属性在 100 次内都至少出一次金色 Max（后坐力为金色 Min），出的时候有 `UI/pop`。不合格：某条连续 100 次都没顶格。
+  - [L3-REFORGE-PITY-03] 用冷淬液固定一条属性后继续重铸，再用回火液解开：固定期间那一行不变；解开后照常参与。存档退出重进后继续洗，保底进度不清零（同一条属性不会比 100 次更久还不顶格）。不合格：固定的行被改，或重进后要重新洗满 100 次以上。
+
 ## 2026-11-27 重铸 Max / Min 抽不到与显示口径（COMPAT；L2 + 正式真编译；L3 待验）
 
 - 起因：玩家反馈原本满值的武器重铸后怎么洗都不显示 Max。显示用的上下限在 11-25 已同步成 ±50%，没漏改；问题在两处：

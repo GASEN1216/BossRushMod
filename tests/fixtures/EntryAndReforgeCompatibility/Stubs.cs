@@ -127,13 +127,17 @@ namespace ItemStatsSystem
     public enum Polarity { Negative = -1, Neutral, Positive }
     public class ModifierDescription { public string Key; public float Value; public bool Display = true; }
     public class Modifiers : List<ModifierDescription> { public void ReapplyModifiers() { } }
-    public class CustomData { public string Key; public float Value; public float GetFloat() { return Value; } }
+    public class CustomData { public string Key; public float Value; public bool Display = true; public float GetFloat() { return Value; } }
+    public class CustomDataCollection : List<CustomData> { public CustomData GetEntry(string key) { return Find(d => d.Key == key); } }
     public class Item
     {
         public int Quality = 3;
         public Modifiers Modifiers = new Modifiers();
         public List<Stat> Stats = new List<Stat>();
-        public List<CustomData> Variables = new List<CustomData>();
+        public CustomDataCollection Variables = new CustomDataCollection();
+        public float GetFloat(string key, float defaultResult = 0f) { var e = Variables.GetEntry(key); return e == null ? defaultResult : e.Value; }
+        public void SetFloat(string key, float value, bool createNewIfNotExist = true)
+        { var e = Variables.GetEntry(key); if (e == null) { if (!createNewIfNotExist) return; e = new CustomData { Key = key }; Variables.Add(e); } e.Value = value; }
         public HashSet<string> Locked = new HashSet<string>();
         public Item Prefab;
         public int GetInstanceID() { return 17; }
@@ -163,7 +167,8 @@ namespace BossRush
         private static bool IsModifierEligibleForReforge(Item i, Item p, ModifierDescription m) { return m.Display; }
         private static bool IsNativeModifier(Item i, Item p, ModifierDescription m) { return true; }
         private static bool IsStatEligibleForReforge(Stat s) { return true; }
-        private static bool IsVariableEligibleForReforge(CustomData d) { return true; }
+        // 与生产同口径：不显示的、系统跟踪前缀（RF_ / AFX_，含保底计数）的 Variable 不进重铸池
+        private static bool IsVariableEligibleForReforge(CustomData d) { return d.Display && !IsRuntimeTrackingVariableKey(d.Key); }
         private static float GetPrefabPropertyValue(Item item, string key, PropertyType type, float fallback)
         {
             if (type == PropertyType.Stat) return item.Stats.Find(s => s.Key == key).BaseValue;

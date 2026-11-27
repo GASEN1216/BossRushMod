@@ -62,7 +62,8 @@ In practice: on cheap gear just throw 1000x at it, the base is small anyway. On 
 - Every Reforge rolls again from the item's **original value**. It does not build on the previous result, so rerolling many times does not keep pushing a stat higher.
 - Each stat stays within **50%-150%** of its original value. Stats that start at 0 stay within **±0.25**; armor stays within **±1** of its original value.
 - When a roll lands in the top magnitude band, the stat goes straight to its cap or floor and shows a "Max" or "Min" tag. The more money you invest, the more often that happens.
-- The bracketed change and the Max / Min tags only count what the reforge rolled. Bonuses or penalties from attachments on a gun are left out.
+- The numbers in the Reforge panel, the bracketed change and the Max / Min tags only look at the item itself. Bonuses or penalties from attachments on a gun are left out; the item details in your inventory still show the real value with attachments.
+- **Pity**: each stat keeps its own count of how many Reforges in a row missed its best limit (Max where higher is better, Min for stats like recoil where lower is better). The longer the streak, the better the odds that the next Reforge lands right on it, slowly at first and then faster: about 25% on the 50th, guaranteed on the 100th. The count restarts once it lands; locked stats are skipped and their count stays put. Pity always gives the good end, whatever your benefit tendency, and on pity alone it comes about once every 27 Reforges. Gear reforged before this update starts counting from 0 and keeps its current values.
 - Lock a value you like with Cold Quench Fluid, or the next Reforge will roll it again.
 
 ## Cold Quench Fluid Lock

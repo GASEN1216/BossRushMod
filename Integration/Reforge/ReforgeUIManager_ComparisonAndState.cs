@@ -831,7 +831,8 @@ namespace BossRush
                             continue;
                         }
 
-                        displayText = stat.Value.ToString(StatInfoDatabase.Get(stat.Key).DisplayFormat);
+                        // 重铸面板只显示原始值：Value 叠着枪上配件等修正，重铸改的、上下限按的都是 BaseValue
+                        displayText = stat.BaseValue.ToString(StatInfoDatabase.Get(stat.Key).DisplayFormat);
                         return true;
                     }
                     break;
@@ -960,6 +961,22 @@ namespace BossRush
                                 continue;
                             }
 
+                            // 重铸面板只显示原始值：上面 Setup(selectedItem) 写的是官方 Value（叠着配件），与刷新后同口径换掉
+                            string baseText;
+                            if (!TryGetCurrentItemPropertyDisplayText(selectedItem, key, propType, entryOrdinal, out baseText))
+                            {
+                                baseText = valueText.text;
+                            }
+                            int colorTagIndex = baseText.IndexOf(" <color=");
+                            if (colorTagIndex > 0)
+                            {
+                                baseText = baseText.Substring(0, colorTagIndex);
+                            }
+                            if (propType == PropertyType.Stat)
+                            {
+                                valueText.text = baseText;
+                            }
+
                             PropertySnapshot oldSnapshot;
                             if (!oldProps.TryGetValue(BuildSnapshotKey(key, propType, entryOrdinal), out oldSnapshot))
                             {
@@ -975,13 +992,6 @@ namespace BossRush
                             float diff = newValue - oldSnapshot.Value;
                             if (Mathf.Abs(diff) > 0.001f)
                             {
-                                string baseText = valueText.text;
-                                int colorTagIndex = baseText.IndexOf(" <color=");
-                                if (colorTagIndex > 0)
-                                {
-                                    baseText = baseText.Substring(0, colorTagIndex);
-                                }
-
                                 string colorHex = ReforgeSystem.IsBeneficialChange(key, diff)
                                     ? IntegrationUIFeedback.SuccessHex : IntegrationUIFeedback.DangerHex;
                                 QueueReforgeReveal(key, propType, entryOrdinal, newValue, diff);   // UD-25：详情面板重建后逐行揭晓

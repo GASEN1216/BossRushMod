@@ -85,6 +85,8 @@ internal static class Program
             ReforgeSystem.GetPropertyValueBounds("Damage", prefabValue, out lo, out hi);
             for (int n = 0; n < 30; n++)
             {
+                // 只验「从原值重抽」：每轮清掉保底计数，免得保底在固定种子下把这一轮直接顶到 Max
+                item.Variables.RemoveAll(d => d.Key.StartsWith("RF_PITY_"));
                 var info = ReforgeSystem.Reforge(item, 100, "test", 1f).ModifiedStats[0];
                 Check(info.NewValue <= hi + 0.0001f && info.NewValue >= lo - 0.0001f, "rolled value stays in bounds");
                 // 抽到与当前值相同会被推开一个最小单位（整数 1、小数 0.01），只允许这一格的来回
@@ -92,16 +94,19 @@ internal static class Program
             }
         }
         BoundSnap();
+        Pity();
     }
-    private static int FindSeed(float lo, float hi)
+    private static int FindSeed(float lo, float hi, double pityDrawMin = 0.01)
     {
-        // 夹具 FinalProbability 恒为 0.5；按生产 RollMagnitude 实算第一次抽到的幅度挑种子
-        for (int seed = 0; seed < 200000; seed++)
+        // 夹具 FinalProbability 恒为 0.5；按生产 RollMagnitude 实算第一次抽到的幅度挑种子，
+        // 紧随其后的第二次是保底抽签，要求不小于 pityDrawMin（新物品保底只有 0.01%，默认 0.01 足够避开）
+        for (int seed = 0; seed < 2000000; seed++)
         {
-            float mag = ReforgeSystem.RollMagnitude(0.5f, new System.Random(seed));
-            if (mag >= lo && mag < hi) return seed;
+            var random = new System.Random(seed);
+            float mag = ReforgeSystem.RollMagnitude(0.5f, random);
+            if (mag >= lo && mag < hi && random.NextDouble() >= pityDrawMin) return seed;
         }
-        throw new Exception("no seed for magnitude window [" + lo + ", " + hi + ")");
+        throw new Exception("no seed for magnitude window [" + lo + ", " + hi + ") with pity draw >= " + pityDrawMin);
     }
     private static float RollOnce(string key, float prefabValue, PropertyType type, float chance, float current)
     {
@@ -145,6 +150,151 @@ internal static class Program
                 v = RollOnce("Damage", 30f, type, 1f, 30f);
                 Check(v > 30f && !ReforgeSystem.IsValueAtUpperBound("Damage", 30f, v), "integer below the top band stays under the cap: " + v);
             }
+        }
+        finally
+        {
+            ReforgeSystem.FixtureSeed = 123;
+        }
+    }
+    private static float PityValue(Item item, string key, PropertyType type)
+    {
+        var entry = item.Variables.GetEntry(ReforgeSystem.GetPityKey(key, type));
+        return entry == null ? -1f : entry.Value;
+    }
+    private static ReforgeResult ReforgeOnce(Item item, float chance)
+    {
+        var result = ReforgeSystem.Reforge(item, 100, "test", chance);
+        Check(result.Success, "reforge succeeds");
+        return result;
+    }
+    private static void Pity()
+    {
+        // 2026-11-27 顶格保底：第 k 次连续未顶格额外 (k/100)^2，第 100 次必中
+        Check(ReforgeSystem.PITY_GUARANTEE_REFORGES == 100, "pity guarantees within 100 reforges");
+        Check(ReforgeSystem.GetPityKey("Damage", PropertyType.Stat) == "RF_PITY_STAT_Damage", "stat pity key");
+        Check(ReforgeSystem.GetPityKey("Damage", PropertyType.Modifier) == "RF_PITY_MOD_Damage", "modifier pity key");
+        Check(ReforgeSystem.GetPityKey("Damage", PropertyType.Variable) == "RF_PITY_VAR_Damage", "variable pity key");
+        foreach (var type in new[] { PropertyType.Stat, PropertyType.Modifier, PropertyType.Variable })
+        {
+            string key = ReforgeSystem.GetPityKey("Damage", type);
+            Check(ReforgeSystem.IsRuntimeTrackingVariableKey(key), "pity counter never enters the reforge pool: " + key);
+            foreach (var prefix in new[] { "RF_MOD_", "RF_STAT_", "RF_VAR_", "RF_LOCK_" })
+                Check(!key.StartsWith(prefix), "pity counter is not parsed as reforge delta or lock data: " + key);
+        }
+        Check(Math.Abs(ReforgeSystem.GetPityChance(0) - 0.0001f) < 1e-7f, "first reforge adds only 0.01%");
+        Check(Math.Abs(ReforgeSystem.GetPityChance(49) - 0.25f) < 1e-6f, "50th reforge adds 25%");
+        Check(ReforgeSystem.GetPityChance(99) == 1f && ReforgeSystem.GetPityChance(500) == 1f, "100th reforge is guaranteed");
+        Check(ReforgeSystem.GetPityChance(-3) == ReforgeSystem.GetPityChance(0), "negative counts clamp to the first step");
+        for (int k = 1; k < 100; k++)
+            Check(ReforgeSystem.GetPityChance(k) > ReforgeSystem.GetPityChance(k - 1), "pity chance grows every reforge");
+
+        // 旧存档没有计数条目、脏值：一律按 0 起算，上限 99
+        var old = Make("Damage", 10f, PropertyType.Stat);
+        string statKey = ReforgeSystem.GetPityKey("Damage", PropertyType.Stat);
+        Check(ReforgeSystem.GetPityCount(old, statKey) == 0, "old saves without a counter start from 0");
+        Check(ReforgeSystem.GetPityCount(null, statKey) == 0, "null item reads 0");
+        foreach (var dirty in new[] { float.NaN, float.PositiveInfinity, -5f })
+        {
+            old.SetFloat(statKey, dirty);
+            Check(ReforgeSystem.GetPityCount(old, statKey) == 0, "dirty counter reads 0: " + dirty);
+        }
+        old.SetFloat(statKey, 1e9f); Check(ReforgeSystem.GetPityCount(old, statKey) == 99, "oversized counter caps at 99");
+        old.SetFloat(statKey, 12.4f); Check(ReforgeSystem.GetPityCount(old, statKey) == 12, "counter rounds to an integer");
+
+        int miss = FindSeed(0.30f, 0.60f, 0.99), top = FindSeed(0.95f, 1.01f);
+        try
+        {
+            foreach (var type in new[] { PropertyType.Stat, PropertyType.Modifier, PropertyType.Variable })
+            {
+                // 没顶格逐次 +1；计数条目不在详情里显示，也不被当成可重铸属性
+                ReforgeSystem.FixtureSeed = miss;
+                var item = Make("Damage", 10f, type); item.Prefab = Make("Damage", 10f, type);
+                for (int n = 1; n <= 5; n++)
+                {
+                    var r = ReforgeOnce(item, 1f);
+                    Check(r.ModifiedStats.Count == 1, "pity counter is never rerolled: " + type);
+                    Check(!ReforgeSystem.IsValueAtUpperBound("Damage", 10f, r.ModifiedStats[0].NewValue), "ordinary roll stays below Max");
+                    Check(PityValue(item, "Damage", type) == n, "miss increments the counter: " + n + " " + type);
+                }
+                Check(!item.Variables.GetEntry(ReforgeSystem.GetPityKey("Damage", type)).Display, "counter is hidden from item details");
+
+                // 第 99 次（98% 概率）这颗种子没中，计数到 99；第 100 次哪怕倾向拉到负面也必取 Max，并清零
+                item.SetFloat(ReforgeSystem.GetPityKey("Damage", type), 98f);
+                var r99 = ReforgeOnce(item, 1f);
+                Check(!ReforgeSystem.IsValueAtUpperBound("Damage", 10f, r99.ModifiedStats[0].NewValue) && PityValue(item, "Damage", type) == 99, "99th can still miss");
+                var r100 = ReforgeOnce(item, 0f);
+                Check(Math.Abs(r100.ModifiedStats[0].NewValue - 15f) < 0.0001f, "100th reforge lands on Max regardless of tendency: " + r100.ModifiedStats[0].NewValue);
+                Check(PityValue(item, "Damage", type) == 0, "pity hit resets the counter");
+                Check(ReforgeUIManager.Reveal("Damage", 10f, 15f, 5f)[1], "pity Max gets the same best-bound reveal");
+
+                // 后坐力越低越好：保底给 Min
+                var recoil = Make("RecoilScaleV", 1.2f, type); recoil.Prefab = Make("RecoilScaleV", 1.2f, type);
+                recoil.SetFloat(ReforgeSystem.GetPityKey("RecoilScaleV", type), 99f);
+                float rv = ReforgeOnce(recoil, 1f).ModifiedStats[0].NewValue;
+                Check(ReforgeSystem.IsValueAtLowerBound("RecoilScaleV", 1.2f, rv), "recoil pity lands on Min: " + rv);
+                Check(PityValue(recoil, "RecoilScaleV", type) == 0, "recoil pity resets");
+
+                // 自然顶到有利边界也清零；顶到不利边界（倾向负面的 Min）照常 +1
+                ReforgeSystem.FixtureSeed = top;
+                item.SetFloat(ReforgeSystem.GetPityKey("Damage", type), 40f);
+                Check(ReforgeSystem.IsValueAtUpperBound("Damage", 10f, ReforgeOnce(item, 1f).ModifiedStats[0].NewValue), "natural top band reaches Max");
+                Check(PityValue(item, "Damage", type) == 0, "natural Max resets the counter");
+                item.SetFloat(ReforgeSystem.GetPityKey("Damage", type), 40f);
+                Check(ReforgeSystem.IsValueAtLowerBound("Damage", 10f, ReforgeOnce(item, 0f).ModifiedStats[0].NewValue), "harmful top band reaches Min");
+                Check(PityValue(item, "Damage", type) == 41, "harmful bound is not a pity success");
+
+                // 从没记过数的属性顶格：不新建条目
+                var fresh = Make("Damage", 10f, type); fresh.Prefab = Make("Damage", 10f, type);
+                ReforgeOnce(fresh, 1f);
+                Check(PityValue(fresh, "Damage", type) == -1f, "a first-try Max does not create an empty counter");
+
+                // 冷淬液固定的属性不重抽，计数冻结；其余属性照常计
+                ReforgeSystem.FixtureSeed = miss;
+                var pair = Make("Damage", 10f, type); pair.Prefab = Make("Damage", 10f, type);
+                if (type == PropertyType.Stat) { pair.Stats.Add(new Stat { Key = "Speed", BaseValue = 4f }); pair.Prefab.Stats.Add(new Stat { Key = "Speed", BaseValue = 4f }); }
+                else if (type == PropertyType.Modifier) { pair.Modifiers.Add(new ModifierDescription { Key = "Speed", Value = 4f }); pair.Prefab.Modifiers.Add(new ModifierDescription { Key = "Speed", Value = 4f }); }
+                else { pair.Variables.Add(new CustomData { Key = "Speed", Value = 4f }); pair.Prefab.Variables.Add(new CustomData { Key = "Speed", Value = 4f }); }
+                pair.SetFloat(ReforgeSystem.GetPityKey("Damage", type), 30f);
+                pair.Locked.Add("Damage");
+                var locked = ReforgeOnce(pair, 1f);
+                Check(locked.ModifiedStats.Count == 1 && locked.ModifiedStats[0].StatKey == "Speed", "locked property is not rerolled");
+                Check(PityValue(pair, "Damage", type) == 30f, "locked property's counter stays frozen");
+                Check(PityValue(pair, "Speed", type) == 1f, "unlocked property keeps counting");
+            }
+
+            // 同键的两条 Modifier 共用一个计数，一次重铸只 +1（种子要让两条都落在普通幅度、保底都不中）
+            int dupSeed = -1;
+            for (int seed = 0; seed < 2000000 && dupSeed < 0; seed++)
+            {
+                var random = new System.Random(seed);
+                float m1 = ReforgeSystem.RollMagnitude(0.5f, random); double p1 = random.NextDouble();
+                float m2 = ReforgeSystem.RollMagnitude(0.5f, random); double p2 = random.NextDouble();
+                if (m1 >= 0.3f && m1 < 0.6f && m2 >= 0.3f && m2 < 0.6f && p1 >= 0.01 && p2 >= 0.01) dupSeed = seed;
+            }
+            Check(dupSeed >= 0, "seed for duplicate modifiers");
+            ReforgeSystem.FixtureSeed = dupSeed;
+            var dup = Make("Damage", 10f, PropertyType.Modifier); dup.Prefab = Make("Damage", 10f, PropertyType.Modifier);
+            dup.Modifiers.Add(new ModifierDescription { Key = "Damage", Value = 10f });
+            Check(ReforgeOnce(dup, 1f).ModifiedStats.Count == 2, "both duplicate modifiers reroll");
+            Check(PityValue(dup, "Damage", PropertyType.Modifier) == 1f, "duplicate keys share one counter");
+
+            // 生产路径实跑分布：倾向负面时自然只会顶到不利边界，有利边界全靠保底；间隔不超过 100、均值约 27
+            var dist = Make("Damage", 10f, PropertyType.Stat); dist.Prefab = Make("Damage", 10f, PropertyType.Stat);
+            var seeds = new System.Random(20261127);
+            int gap = 0, maxGap = 0, hits = 0; long total = 0;
+            for (int n = 0; n < 60000; n++)
+            {
+                ReforgeSystem.FixtureSeed = seeds.Next();
+                gap++;
+                if (ReforgeSystem.IsValueAtUpperBound("Damage", 10f, ReforgeOnce(dist, 0.3f).ModifiedStats[0].NewValue))
+                {
+                    hits++; total += gap; maxGap = Math.Max(maxGap, gap); gap = 0;
+                }
+            }
+            double mean = (double)total / hits;
+            Check(hits > 0 && maxGap <= 100, "best bound always arrives within 100 reforges: " + maxGap);
+            Check(mean > 25.0 && mean < 30.0, "pity-only mean gap matches the quadratic curve (~27.4): " + mean);
+            Console.WriteLine("pity distribution: hits=" + hits + " mean=" + mean.ToString("F2") + " maxGap=" + maxGap);
         }
         finally
         {

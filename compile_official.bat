@@ -1204,6 +1204,7 @@ echo(Integration\Reforge\ColdQuenchFluidConfig.cs
 echo(Integration\Reforge\TemperingSolventConfig.cs
 echo(Integration\Reforge\ReforgeSystem.cs
 echo(Integration\Reforge\ReforgeSystem_ApplyAndResults.cs
+echo(Integration\Reforge\ReforgeSystem_Pity.cs
 echo(Integration\Reforge\ReforgeUIManager.cs
 echo(Integration\Reforge\ReforgeUIManager_Feel.cs
 echo(Integration\Reforge\ReforgeUIManager_ComparisonAndState.cs

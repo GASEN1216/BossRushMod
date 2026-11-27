@@ -13,7 +13,8 @@
 //   - 整数属性（|值|≥2）保持整数
 //   - 每次重铸改动全部未固定的可重铸属性（概率p只决定幅度，不决定改不改）
 //   - 基础重铸费用为物品价值的1/100（最低 MIN_REFORGE_COST，再按哥布林好感度打折）
-//   - 没有保底机制：不记录连续失败次数，也不随失败提升概率
+//   - 顶格保底（ReforgeSystem_Pity.cs）：每条属性记连续未顶格次数，第 k 次额外有 (k/100)^2
+//     概率直接取有利边界，第 100 次必中；顶格清零，固定的属性计数冻结
 // ============================================================================
 
 using System;
@@ -751,7 +752,9 @@ namespace BossRush
         /// <summary>
         /// 获取物品价值。
         /// 优先读取物品自身 Value；对运行时补配的自定义武器，若 Value 缺失则回退到
-        /// GetTotalRawValue() 和已补配的 prefab 值，避免重铸 UI/费用读取到默认值。
+        /// 已补配的 prefab 值，避免重铸 UI/费用读取到默认值。
+        /// 物品自身的 GetTotalRawValue() 放到最后：自身 Value 为 0 时它只剩槽位里配件的价值，
+        /// 重铸只看物品本身，不该让配件抬费用和概率。
         /// </summary>
         public static float GetItemValue(Item item)
         {
@@ -777,16 +780,6 @@ namespace BossRush
 
             try
             {
-                int rawValue = item.GetTotalRawValue();
-                if (rawValue > 0)
-                {
-                    return rawValue;
-                }
-            }
-            catch { }
-
-            try
-            {
                 Item prefab = GetItemPrefab(item);
                 if (prefab != null)
                 {
@@ -804,6 +797,16 @@ namespace BossRush
             }
             catch { }
 
+            try
+            {
+                int rawValue = item.GetTotalRawValue();
+                if (rawValue > 0)
+                {
+                    return rawValue;
+                }
+            }
+            catch { }
+
             return BASE_ITEM_VALUE;
         }
 
@@ -811,7 +814,7 @@ namespace BossRush
         /// 执行重铸 - 新概率系统
         /// 1. 检查基础费用（物品价值的1/100，含哥布林折扣）
         /// 2. 全部未固定的可重铸属性都会被修改
-        /// 3. （无保底：不按连续失败调整概率）
+        /// 3. 顶格保底：每条属性第 k 次连续未顶格时额外有 (k/100)^2 概率直接取有利边界，第 100 次必中
         /// 4. 触发后用 u^expo 抽幅度
         /// 5. 收益方向由 tendencyChance 控制（0~1），再按属性极性换算数值正负号
         /// 6. 每次都以预制体原值为基准重新抽，不在当前值上累加；范围为预制体值 ±50%
@@ -959,6 +962,10 @@ namespace BossRush
                     selectedIndices.Add(i);
                 }
 
+                // 顶格保底：同键同类型的属性共用一个计数，读一次、整次重铸结束后写一次（ReforgeSystem_Pity.cs）
+                Dictionary<string, int> pityCounts = new Dictionary<string, int>();
+                Dictionary<string, bool> pityReached = new Dictionary<string, bool>();
+
                 // 对选中的属性执行修改
                 foreach (int i in selectedIndices)
                 {
@@ -971,8 +978,19 @@ namespace BossRush
                     // Step 2: 抽幅度（使用概率baseP）
                     float mag01 = RollMagnitude(baseP, random);
 
+                    // Step 2b: 抽保底（排在幅度之后，第 100 次必中）
+                    string pityKey = GetPityKey(prop.Key, prop.Type);
+                    int pityCount;
+                    if (!pityCounts.TryGetValue(pityKey, out pityCount))
+                    {
+                        pityCount = GetPityCount(item, pityKey);
+                        pityCounts[pityKey] = pityCount;
+                    }
+                    bool pityHit = RollPity(pityCount, random);
+
                     // Step 3: 先抽收益方向，再按官方属性极性转换成数值方向（后坐力越低越好）
                     float originalValue = prop.Value;
+                    int bestDirection = GetBeneficialValueDirection(prop.Key);
                     int sign = RollSign(tendencyChance) * GetBeneficialValueDirection(prop.Key);
 
                     // Step 4: 以预制体原值为基准重新抽（不在当前值上累加），幅度上限即边界半宽
@@ -992,7 +1010,12 @@ namespace BossRush
                         rollRange = MAX_VALUE_OFFSET_PERCENT * Mathf.Abs(prefabValue);
                     }
                     float newValue;
-                    if (mag01 >= BOUND_SNAP_MAGNITUDE)
+                    if (pityHit)
+                    {
+                        // Step 5p: 保底命中，直接取有利边界（越高越好取 Max，后坐力这类取 Min），不看倾向滑块
+                        newValue = bestDirection > 0 ? maxValue : minValue;
+                    }
+                    else if (mag01 >= BOUND_SNAP_MAGNITUDE)
                     {
                         // Step 5a: 幅度落进顶档直接取到上下限（Max/Min）。整数边界已在 GetPropertyValueBounds 取整；
                         // 小数边界不再舍入——0.525 舍到两位会掉到上限以下。已在该边界上时保持不变，不强行推开
@@ -1041,6 +1064,24 @@ namespace BossRush
                         : prop.Type == PropertyType.Stat ? ((Stat)prop.Source).BaseValue
                         : ((CustomData)prop.Source).GetFloat();
                     result.HasAppliedChanges |= !Mathf.Approximately(appliedValue, originalValue);
+
+                    // 按实际写入值判定是否顶到有利边界（自然顶格与保底顶格都算）
+                    bool reachedBest = bestDirection > 0
+                        ? IsValueAtUpperBound(prop.Key, prefabValue, appliedValue)
+                        : IsValueAtLowerBound(prop.Key, prefabValue, appliedValue);
+                    bool reachedBefore;
+                    pityReached[pityKey] = (pityReached.TryGetValue(pityKey, out reachedBefore) && reachedBefore) || reachedBest;
+                    if (pityHit)
+                    {
+                        ModBehaviour.DevLog("[ReforgeSystem] 保底顶格: " + prop.Key + " 第 " + (pityCount + 1) + " 次");
+                    }
+                }
+
+                // 写回保底计数：顶格清零，没顶格 +1
+                foreach (var pity in pityCounts)
+                {
+                    bool reached;
+                    RecordPityResult(item, pity.Key, pity.Value, pityReached.TryGetValue(pity.Key, out reached) && reached);
                 }
 
                 // 标记物品已恢复，防止下面 ReapplyModifiers 触发 Harmony Prefix 时重复恢复
