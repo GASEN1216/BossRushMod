@@ -42,9 +42,11 @@ namespace BossRush
             catch {}
             try
             {
+                // 作为路牌子选项只经交互组菜单出现：碰撞体必须关掉。开着时它和路牌碰撞体同点，
+                // 官方 CA_Interact 按距离挑目标会挑到这个非组交互，菜单只剩「哎哟~你干嘛~」、出征令消失。
                 if (this.interactCollider != null)
                 {
-                    this.interactCollider.enabled = true;
+                    this.interactCollider.enabled = false;
                 }
             }
             catch {}

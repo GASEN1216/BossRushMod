@@ -4,6 +4,15 @@
 
 **2026-11-20 · COMPAT · L1/L2**　玩家反馈退出重进后武器消失、仓库物品变问号。修复冷启动注册、分包手持模型绑定、部分失败重试和克隆/异步资源归属。角色和仓库合成档往返、重复 TypeID 与真实包来源已纳入自动回归。故障证据与玩家侧验证边界见 [CR-2026-11-20-001 至 003](CODE_REVIEW_FINDINGS.md)。随 v2.6.1 发版：`info.ini` 升 2.6.1，WikiContent 新增中英 `changelog__v2_6_1` 并补总览，工坊简介同步；L3 待玩家侧确认。
 
+## 2026-11-26 路牌出征令不见了，只剩「哎哟~你干嘛~」（COMPAT；L2 + 正式真编译；L3 待 owner）
+
+- 依据：owner 反馈「出征令选项现在没有在路牌上出现了，现在只有哎哟你干嘛了」。
+- 根因：`9d2f73ab` 把生小鸡 `BossRushEntryInteractable` 挂成路牌子选项，它的 Awake 沿用旧写法把自身碰撞体置为 `enabled = true`（其余子选项都关掉）。该碰撞体与路牌碰撞体同点、同在 Interactable 层；官方 `CA_Interact.SearchInteractableAround` 按碰撞体距离取最近、平局取先到，常选中这个非组交互，菜单只剩它一项，出征令主交互与交互组整体不可见，长按也走生小鸡。
+- 修复：`Interactables/BossRushSignOptionInteractables.cs` 生小鸡子选项改为关闭自身碰撞体，只经路牌交互组菜单出现。
+- 守卫：`ArenaExpeditionOrderGuard` 新增 `[Entry]` 断言；反向验证（改回 `true` 转红，按字节还原后转绿）。
+- 证据：`--changed-only` 守卫 PASS；正式真编译成功，`Build\BossRush.dll` 与游戏目录 SHA-256 同为 `D44FEE84…DEF2`。未进游戏。
+- [L3-SIGN-01] 进竞技场走到路牌：主交互名是「出征令」，切换可见「哎哟~你干嘛~」；长按主交互打开出征令面板。不合格：只有「哎哟~你干嘛~」一项，或长按直接下蛋。
+
 ## 2026-11-26 外部复审第二轮四项（CR-2026-11-26-005～008；COMPAT；L2 + 正式真编译；L3 待 owner）
 
 - 依据：对 f32a1bd4 的外部复审四条，逐条核实成立；owner 原话「全部修复」。根因与证据见 `CODE_REVIEW_FINDINGS.md` 同日第二轮节。

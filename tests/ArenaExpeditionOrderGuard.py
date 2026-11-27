@@ -271,6 +271,13 @@ def check_run_wiring(errors):
     interact = compact(read("Interactables", "BossRushInteractables.cs"))
     require(errors, "if(opensExpeditionOrder){ArenaExpeditionOrderPanel.Open(this);return;}" in interact,
             "[Entry] 竞技场路牌的出征令选项必须打开出征令面板")
+    # 2026-11-26：生小鸡子选项的碰撞体开着时，官方按距离挑交互目标会挑到它（与路牌同点），
+    # 路牌菜单只剩「哎哟~你干嘛~」、出征令主交互看不到。子选项一律关碰撞体。
+    egg_awake = compact(body_of(read("Interactables", "BossRushSignOptionInteractables.cs"),
+                                "public class BossRushEntryInteractable"))
+    require(errors, egg_awake is not None and "this.interactCollider.enabled=false;" in egg_awake
+            and "this.interactCollider.enabled=true;" not in egg_awake,
+            "[Entry] 生小鸡子选项必须关掉自身交互碰撞体，否则会抢走路牌交互组、出征令消失")
 
 
 def check_mutators(errors):
