@@ -1,12 +1,14 @@
 // ============================================================================
 // ArenaTrialsAffixes.cs - 出征令的首领词缀（凶相 / 凶煞：分身、护卫、身法、死相四类各两个）
 // ============================================================================
-// 困难每只首领 1 条（压轴 2 条），噩梦 3 条不同类（压轴四类各一），开波后首领登记进战规时当场抽：
+// 困难每只首领 1 条（压轴 2 条），噩梦 3 条（压轴 4 条），先每类取一个、取自不同类，开波后首领登记进战规时当场抽：
 //   分身类  分裂：倒下时裂成两只小分身；双生：开场带一只孪生，两只没在 10 秒内一起倒下，先倒的那只被拉起（一对最多拉起两次）。
 //   护卫类  护驾：身边三名亲卫，亲卫没清完时首领减伤八成；召唤：每 20 秒叫一批影从（同时最多 6 只）。
-//   身法类  闪现：冒烟半秒后落到玩家身后；狂暴：半血以下体型变大、移速大涨。
+//   身法类  闪现：冒烟半秒后落到玩家身后；狂暴：半血以下体型变大、移速大涨、伤害 +25%（2026-11-27 起，原先只长个子）。
+// 全场亲卫 + 影从（含正在叫的）最多 AffixMinionCap 只：三首领同台的噩梦不至于叫出二十多只，撞上官方 AI 重寻路饿死。
 //   死相类  亡魂：倒下后一缕亡魂追人 15 秒；殉爆：倒下 3 秒后原地炸开。
-// 内容 Boss（龙裔、龙皇、女巫、冠军之影、蚀日花冠）自带阶段与专属刷怪，只挂身法 / 死相两类，不另叫身体。
+// 内容 Boss（龙裔、龙皇、女巫、冠军之影、蚀日花冠）自带阶段与专属刷怪，只挂身法 / 死相两类，不另叫身体；
+// 噩梦要 3 / 4 条时两类不够，就在这两类里补另一个（压轴把闪现、狂暴、亡魂、殉爆挂全），条数与额外掉落照写的算。
 //
 // 身体（分身、双生、亲卫、影从）由竞技场模块照首领的角色预设刷出来（WavesArenaRuntimeModule.SpawnExpeditionAffixBodyAsync）：
 // 不进本波座位、不登记掉落、死了不掉箱；登记进战规后照样吃天象、天灾与诅咒。
@@ -141,6 +143,8 @@ namespace BossRush
         private EnemyPresetInfo pendingSource;
         /// <summary>正在叫出来、会压收波的身体数（分身、双生、拉起）。</summary>
         private int pendingHoldSpawns;
+        /// <summary>正在叫出来的亲卫 / 影从（全场上限要算上它们）。</summary>
+        private int pendingMinionSpawns;
         /// <summary>压满上限后加一：之前发出的压波刷怪回来时直接散掉，不再计数。</summary>
         private int holdGeneration;
         private bool waveHeld;
@@ -324,7 +328,8 @@ namespace BossRush
             {
                 bearer.GuardUp = true;
                 float offset = UnityEngine.Random.Range(0f, 360f);
-                for (int i = 0; i < ArenaTrialsTuning.EscortCount; i++)
+                int escorts = Mathf.Min(ArenaTrialsTuning.EscortCount, MinionRoom());
+                for (int i = 0; i < escorts; i++)
                 {
                     float angle = (offset + i * 360f / ArenaTrialsTuning.EscortCount) * Mathf.Deg2Rad;
                     Vector3 raw = foe.transform.position + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 2.6f;
@@ -340,39 +345,60 @@ namespace BossRush
 
         private void Roll(ArenaAffixBearer bearer, int count)
         {
-            kindScratch.Clear();
-            kindScratch.Add(ArenaAffixKind.Motion);
-            kindScratch.Add(ArenaAffixKind.Death);
-            if (bearer.Preset != null)
+            RollInto(bearer.Affixes, kindScratch, bearer.Preset != null, count, Trials.Profile.AffixDistinctKinds);
+        }
+
+        /// <summary>
+        /// 抽词缀（纯函数，F3 直接调来核对条数）：有预设的普通 Boss 四类都能抽，内容 Boss 只有身法 / 死相两类。
+        /// 要求不同类时先每类取一个；内容 Boss 类别不够（噩梦 3 条、压轴 4 条）就在已抽的类里补上另一个，
+        /// 条数始终等于悬赏令写的数，额外掉落也照条数算（CR-2026-11-27-003）。
+        /// </summary>
+        internal static void RollInto(List<ArenaAffix> output, List<ArenaAffixKind> scratch, bool hasPreset, int count, bool distinctKinds)
+        {
+            output.Clear();
+            scratch.Clear();
+            scratch.Add(ArenaAffixKind.Motion);
+            scratch.Add(ArenaAffixKind.Death);
+            if (hasPreset)
             {
-                kindScratch.Add(ArenaAffixKind.Clone);
-                kindScratch.Add(ArenaAffixKind.Guard);
+                scratch.Add(ArenaAffixKind.Clone);
+                scratch.Add(ArenaAffixKind.Guard);
             }
-            for (int i = kindScratch.Count - 1; i > 0; i--)
+            count = Mathf.Min(count, scratch.Count * 2);
+            for (int i = scratch.Count - 1; i > 0; i--)
             {
                 int j = UnityEngine.Random.Range(0, i + 1);
-                ArenaAffixKind swap = kindScratch[i];
-                kindScratch[i] = kindScratch[j];
-                kindScratch[j] = swap;
+                ArenaAffixKind swap = scratch[i];
+                scratch[i] = scratch[j];
+                scratch[j] = swap;
             }
-            if (Trials.Profile.AffixDistinctKinds)
+            if (distinctKinds)
             {
-                int take = Mathf.Min(count, kindScratch.Count);
+                int take = Mathf.Min(count, scratch.Count);
                 for (int i = 0; i < take; i++)
                 {
-                    bearer.Affixes.Add((ArenaAffix)((int)kindScratch[i] * 2 + UnityEngine.Random.Range(0, 2)));
+                    output.Add((ArenaAffix)((int)scratch[i] * 2 + UnityEngine.Random.Range(0, 2)));
+                }
+                // 类别不够时按打乱后的顺序补同类的另一个（殉爆配亡魂、闪现配狂暴）
+                for (int i = 0; i < scratch.Count && output.Count < count; i++)
+                {
+                    for (int k = 0; k < 2 && output.Count < count; k++)
+                    {
+                        ArenaAffix sibling = (ArenaAffix)((int)scratch[i] * 2 + k);
+                        if (!output.Contains(sibling)) output.Add(sibling);
+                    }
                 }
             }
             else
             {
-                for (int guard = 0; bearer.Affixes.Count < count && guard < 32; guard++)
+                for (int guard = 0; output.Count < count && guard < 32; guard++)
                 {
-                    ArenaAffixKind kind = kindScratch[UnityEngine.Random.Range(0, kindScratch.Count)];
+                    ArenaAffixKind kind = scratch[UnityEngine.Random.Range(0, scratch.Count)];
                     ArenaAffix affix = (ArenaAffix)((int)kind * 2 + UnityEngine.Random.Range(0, 2));
-                    if (!bearer.Affixes.Contains(affix)) bearer.Affixes.Add(affix);
+                    if (!output.Contains(affix)) output.Add(affix);
                 }
             }
-            bearer.Affixes.Sort();
+            output.Sort();
         }
 
         private static string BuildPrefix(List<ArenaAffix> affixes)
@@ -416,6 +442,17 @@ namespace BossRush
             return true;
         }
 
+        /// <summary>全场还能再叫几只亲卫 / 影从：活着的、符阵上等着起来的、正在刷的都算。</summary>
+        private int MinionRoom()
+        {
+            int count = portals.Count + pendingMinionSpawns;
+            for (int i = 0; i < bodies.Count; i++)
+            {
+                if (!bodies[i].Dead && !bodies[i].HoldsWave) count++;
+            }
+            return Mathf.Max(0, ArenaTrialsTuning.AffixMinionCap - count);
+        }
+
         /// <summary>首领的生命上限现读（变异词条在入场通知之后才挂）；本体已被官方销毁、读不到时用上次记下的。</summary>
         private static float MasterMaxHealth(ArenaAffixBearer bearer)
         {
@@ -437,6 +474,7 @@ namespace BossRush
             bool holds = role == ArenaAffixRole.Shard || role == ArenaAffixRole.Twin;
             int generation = holdGeneration;
             if (holds) pendingHoldSpawns++;
+            else pendingMinionSpawns++;
             ArenaTrials trials = Trials;
             CharacterMainControl body = null;
             try
@@ -448,6 +486,7 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[BossRush] [出征令战规] [WARNING] 词缀身体刷出失败: " + e.Message);
             }
+            if (!holds) pendingMinionSpawns = Mathf.Max(0, pendingMinionSpawns - 1);
             bool stale = generation != holdGeneration;
             if (holds && !stale) pendingHoldSpawns = Mathf.Max(0, pendingHoldSpawns - 1);
             if (body == null)
@@ -889,7 +928,7 @@ namespace BossRush
                     PruneDead(bearer.Shades);
                     int pendingForBearer = 0;
                     for (int i = 0; i < portals.Count; i++) if (portals[i].Bearer == bearer) pendingForBearer++;
-                    int room = ArenaTrialsTuning.SummonCap - bearer.Shades.Count - pendingForBearer;
+                    int room = Mathf.Min(ArenaTrialsTuning.SummonCap - bearer.Shades.Count - pendingForBearer, MinionRoom());
                     int batch = Mathf.Min(ArenaTrialsTuning.SummonBatch, room);
                     for (int i = 0; i < batch; i++)
                     {
@@ -1012,7 +1051,11 @@ namespace BossRush
             if (bearer != null && !bearer.DeathHandled)
             {
                 if (bearer.GuardUp && CountAlive(bearer.Guards) > 0) stats.Taken *= 1f - ArenaTrialsTuning.EscortDamageReduction;
-                if (bearer.Frenzied) stats.Move *= 1f + ArenaTrialsTuning.FrenzyBonus;
+                if (bearer.Frenzied)
+                {
+                    stats.Move *= 1f + ArenaTrialsTuning.FrenzyBonus;
+                    stats.Damage *= 1f + ArenaTrialsTuning.FrenzyDamageBonus;
+                }
                 return;
             }
             ArenaAffixBody body = FindBody(foe);

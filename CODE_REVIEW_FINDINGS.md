@@ -2,6 +2,18 @@
 
 更早记录见 `archive/`；月度归档索引保留在本文件正文。
 
+## 2026-11-27 出征令战规复审：F3 用例过期、血债白扣药、内容首领词缀不足（001–003 Fixed L1/L2；Dev 与正式真编译通过，L3 待 owner）
+
+范围：owner 要求审出征令改动「词条够不够有趣多变、是否都实装、效果好不好」。逐档对照 `ArenaTrialsTuning.ProfileFor`、Sky / Curses / Hazards / Affixes / FireRing 各部件、悬赏令文案与 Wiki，四档战规都有生产代码落地；下面三条成立，owner 原话「登记并全修」。共用证据：Dev 与正式真编译均 0 错 0 警告；正式 `Build\BossRush.dll` 与游戏目录 SHA-256 同为 `CAAB5CF7…582C`，`check_dll_identifiers --expect absent` 两份 PASS；`ArenaHostRemainder`、`LegacyArenaEntry` 隔离回归 PASS；守卫与反向验证见 FIX_TRACKER 同日节；未进游戏，未读写玩家存档。
+
+| ID / 状态 | 可复现条件与影响 | 修复与证据 |
+| --- | --- | --- |
+| CR-2026-11-27-001 · P2 / COMPAT（只在 Dev 构建） · Fixed L1/L2 | 2026-11-25 战规机制化后，困难 / 噩梦不再借变异词条（`ForcedMutatorIds` 只剩轻松的「妙手回春」），F3 仍按旧口径断言：`ARENA_EXPEDITION_TUNING` 要战规条数 {3,0,5,8}、除标准外都有强制词条；`ARENA_EXPEDITION_ORDER` 要场上恰好是三条困难战帖词条。owner 跑 F3 会得到 `forced_Hard`、`writ_mutators_missing` 这类假红，天象、诅咒、天灾、词缀、血债一项都没核。 | 条数改 {3,0,6,10}，强制词条只认轻松；新增逐档战规开关核对 `WishTrialProfileMismatch`，词缀抽取核对 `WishAffixRollMismatch`（40 轮 × 1–4 条 × 有无预设，直接跑生产 `RollInto`），两个血债补丁是否装上 `DescribeWishPrefix`；困难一局改核「不抽变异词条、战规对象在、有天象和诅咒、首领名牌带词缀前缀、额外掉落 1 件」；清理用例加「战规对象已自毁」。判定函数原样挪到新文件 `DebugAndTools/F3GameplayValidationExpeditionTrials.cs`（`LargeFileBudgetGuard` 1200 行），已登记编译清单。Dev 真编译通过；F3 实跑待 owner。 |
+| CR-2026-11-27-002 · P1 / COMPAT · Fixed L1/L2 | 噩梦「血债」只拦 `Health.AddHealth`。官方 `Drug.CanBeUsed` 只看生命是否未满，`CA_UseItem.OnFinish` 先 `item.Use` 再扣堆叠 / 耐久，所以血债下吃回血药读条照走、药照扣、一滴血不回，白丢一管药。断补只在封禁窗口里挡用药，挡不住这条。 | `ArenaTrialsBloodDebtDrugPatch` 前置 `Drug.CanBeUsed`：战规在、主玩家、血债正挡回血、`healValue > 0` 时判不可用，官方 `UseItem` 因此不起读条、不扣药；不回血的止血药与同件上的其它效果不受影响。`ArenaTrialsBloodDebtUseNoticePatch` 前置 `CharacterMainControl.UseItem`：只在「整件因此不可用、且含回血药」时改推「血债未清，伤药不灵」（1.2 秒节流）并截断，不与官方「无法使用」叠出。`ArenaTrialsGuard` 补补丁目标与门控断言。 |
+| CR-2026-11-27-003 · P2 / COMPAT · Fixed L1/L2 | 内容首领（龙裔、龙皇、女巫、冠军之影、蚀日花冠）没有可复制的预设，只能挂身法 / 死相两类；旧 `Roll` 在「不同类」档位只取 `min(条数, 类数)`，噩梦本该 3 条（压轴 4 条）实际只挂 2 条，额外掉落也从 2 件变成 1 件。悬赏令与 Wiki 写「压轴四类各一条」，内容首领做不到。 | 抽取提成静态 `RollInto`：先每类取一条，条数不够再在已取的类里补同类另一条；内容首领 3 条 = 两类各一再补一条，4 条 = 两类全挂；普通首领结果不变。悬赏令改为「每只首领带 3 条词缀，压轴带 4 条」（数字取自 `NightmareTrials`）；Wiki 中英源与站点生成页同步，并写明内容首领的补法。 |
+
+L3：见 FIX_TRACKER 同日节 [L3-TRIALS-01]～[L3-TRIALS-04]。
+
 ## 2026-11-26 外部复审第二轮：启动半途失败、迟到激活漏救、重建期间换档、Harmony 备用副本（005–008 Fixed L1/L2；正式真编译通过，L3 待 owner）
 
 范围：对 f32a1bd4 的外部复审（对方对真实入口注入故障、做隔离测试，未改仓库、未进游戏），四条逐条对照代码与官方 IL 核实成立。共用证据：去掉 `BOSSRUSH_DEV_BUILD` 的正式真编译 0 错 0 警告；`Build\BossRush.dll` 与游戏目录 SHA-256 同为 `9C2236AE…4470`；`check_dll_identifiers --expect absent` 两份 PASS；全量守卫 800 PASS；相关 22 个隔离执行回归 PASS；未进游戏，未读写玩家存档。

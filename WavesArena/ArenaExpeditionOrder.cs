@@ -27,12 +27,16 @@ namespace BossRush
         internal readonly ArenaExpeditionLineup Lineup;
         internal readonly ArenaExpeditionTier Tier;
         internal readonly ArenaExpeditionLength Length;
+        /// <summary>加码级数（2026-11-27，见 ArenaExpeditionRaise）；按这一档的梯子长度夹取，轻松 / 噩梦恒为 0。</summary>
+        internal readonly int Raise;
 
-        internal ArenaExpeditionOrder(ArenaExpeditionLineup lineup, ArenaExpeditionTier tier, ArenaExpeditionLength length)
+        internal ArenaExpeditionOrder(ArenaExpeditionLineup lineup, ArenaExpeditionTier tier, ArenaExpeditionLength length,
+            int raise = 0)
         {
             Lineup = lineup;
             Tier = tier;
             Length = lineup == ArenaExpeditionLineup.Hell ? ArenaExpeditionLength.Full : length;
+            Raise = ArenaExpeditionRaise.Clamp(tier, raise);
         }
 
         internal bool IsHell { get { return Lineup == ArenaExpeditionLineup.Hell; } }
@@ -51,10 +55,12 @@ namespace BossRush
             int lineup = BossRushLocalPrefs.GetInt(PrefLineup, (int)ArenaExpeditionLineup.Single);
             int tier = BossRushLocalPrefs.GetInt(PrefTier, (int)ArenaExpeditionTier.Standard);
             int length = BossRushLocalPrefs.GetInt(PrefLength, (int)ArenaExpeditionLength.Full);
+            ArenaExpeditionTier chosen = (ArenaExpeditionTier)Mathf.Clamp(tier, 0, 3);
             return new ArenaExpeditionOrder(
                 (ArenaExpeditionLineup)Mathf.Clamp(lineup, 0, 2),
-                (ArenaExpeditionTier)Mathf.Clamp(tier, 0, 3),
-                (ArenaExpeditionLength)Mathf.Clamp(length, 0, 2));
+                chosen,
+                (ArenaExpeditionLength)Mathf.Clamp(length, 0, 2),
+                ArenaExpeditionRaise.Remembered(chosen));
         }
 
         /// <summary>征程一栏上次停在哪一格（选无间时它是灰的，但仍记着）。</summary>
@@ -69,6 +75,7 @@ namespace BossRush
             BossRushLocalPrefs.SetInt(PrefTier, (int)Tier);
             // 选无间时征程一栏是灰的，记的是玩家最后看到的那一格，下次切回单挑 / 三连还在原处。
             BossRushLocalPrefs.SetInt(PrefLength, (int)shownLength);
+            ArenaExpeditionRaise.Remember(Tier, Raise);
         }
     }
 
@@ -178,6 +185,12 @@ namespace BossRush
         internal static ArenaExpeditionTier CurrentTier
         {
             get { return current != null ? current.Order.Tier : ArenaExpeditionTier.Standard; }
+        }
+
+        /// <summary>本局加码级数（没走出征令是 0）。</summary>
+        internal static int CurrentRaise
+        {
+            get { return current != null ? current.Order.Raise : 0; }
         }
 
         internal static void SetPending(ArenaExpeditionOrder order) { pending = order; }

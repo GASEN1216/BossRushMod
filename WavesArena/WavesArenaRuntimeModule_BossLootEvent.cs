@@ -245,7 +245,7 @@ namespace BossRush
                     baseCount = Mathf.RoundToInt(mapped);
                 }
                 baseCount = Mathf.Clamp(baseCount, 7, 15);
-                // 出征令词缀：1–2 条多掉 1 件、3–4 条多掉 2 件（在 [7,15] 夹取之后加，词缀奖励不被上限吃掉）
+                // 出征令词缀：1–2 条多掉 1 件、3–4 条多掉 2 件；血月下倒下的波次首领再多 1 件（在 [7,15] 夹取之后加，不被上限吃掉）
                 baseCount += ExpeditionAffixBonusLoot(bossMain);
 
                 // 每100血量增加的高品质概率加成

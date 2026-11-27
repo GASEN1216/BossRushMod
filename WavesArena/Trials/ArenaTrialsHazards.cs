@@ -3,7 +3,7 @@
 // ============================================================================
 // 九种（数值见 ArenaTrialsTuning）：
 //   陨火雨   6–10 个落点符环依次亮起，1.5 秒后火流星砸下（火）；
-//   落雷     三道依次锁定玩家（预判一点走位），每道提前 1 秒在脚下起银环（电）；
+//   落雷     三道依次锁定玩家（预判一点走位），每道提前 1 秒在脚下起银环（电）；雷暴下劈中敌人伤害翻倍（HitLightning）；
 //   毒雾     2–3 团贴地翻涌的瘴气，留 20 秒（毒）；暴雨减半；
 //   地裂熔缝 一道折线裂口由暗红烧到亮金后喷发，碰到就灼伤，15 秒后冷却闭合（火）；暴雨减半；
 //   墨潮横扫 先在起点聚起墨浪、用两道金线画出缺口那条路，再整排推过场地：击退 + 伤害，翻滚可穿，敌人也被卷；
@@ -341,6 +341,27 @@ namespace BossRush
         {
             List<Health> list = Victims(center, radius);
             for (int i = 0; i < list.Count; i++) HurtShare(list[i], fraction, center, element, dodgeable);
+        }
+
+        /// <summary>
+        /// 落雷结算：玩家照常吃满额；雷暴天象下劈中的敌方身体伤害翻倍（ThunderFoeLightningFactor），
+        /// 身上炸一圈冷银电弧（Smite）——看得出把首领引到雷下劈得更狠。平时敌人挨雷不另演。
+        /// </summary>
+        internal void HitLightning(Vector3 center, float radius)
+        {
+            bool storm = Trials.Sky != null && Trials.Sky.Omen == ArenaTrialOmen.Thunder;
+            List<Health> list = Victims(center, radius);
+            for (int i = 0; i < list.Count; i++)
+            {
+                Health health = list[i];
+                float fraction = ArenaTrialsTuning.LightningDamage;
+                if (storm && !health.IsMainCharacterHealth)
+                {
+                    fraction *= ArenaTrialsTuning.ThunderFoeLightningFactor;
+                    ArenaTrialsFx.Smite(PositionOf(health));
+                }
+                HurtShare(health, fraction, center, ElementTypes.electricity, false);
+            }
         }
 
         internal static Vector3 PositionOf(Health health)

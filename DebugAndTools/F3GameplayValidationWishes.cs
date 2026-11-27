@@ -8,7 +8,8 @@
 // 基地阶段（RunSuite 2/7，排在 2026-10-18 审查修复之后）：
 //   INK_SKIN_ASSETS                    水墨套件八张程序贴图都生成、十一声界面音效已部署、官方音效入口在
 //   ARENA_EXPEDITION_TUNING            战帖四档倍率与休整、战规 3/0/5/8 条（轻松全是宽限，借用的词条都在池里、竞技场可用）、
-//                                      急行军 / 盲战的档位、征程波数、通关箱件数与品质下限、噩梦通关成就已登记
+//                                      急行军 / 盲战的档位、征程波数、通关箱件数与品质下限、噩梦通关成就已登记；
+//                                      加码梯子 0/5/8/0、加满与下一档机制相同、逐级节点、奖励每级 +5%、厄运池 8 种（WishRaiseMismatch）
 //   MUTATOR_SWARM_WEIGHT               群鼠权重 0.5、与巨灵兵同一互斥组；生产加权抽取 20 万次，群鼠约为权重 1 词条的一半
 //   WISH_FOUNTAIN_RULES                4 字下限（界面计数与提交同口径）、12 宿都对得上奖励类别、星灯清洗压重复 / 拦链接 / 去重
 //   PETNEST_SOUL_FEED_RULES            献魂花费 = 缺的经验 × 2、满级 0、当天献过的判定、日戳存档往返、旧档缺字段读成 0
@@ -114,12 +115,13 @@ namespace BossRush
             reason = null;
             // 2026-11-25 难度由战规叠出来；噩梦按 owner「大胆加加」再抬到生命 ×2.5、伤害 ×1.75、出手快五成、无间奖金 ×2。
             // 休整：轻松 ×1.5，困难 / 噩梦急行军 ×0.5。
+            // 同日战规机制化：困难 6 条、噩梦 10 条都是竞技场自己的机制，只有轻松的「妙手回春」还借变异词条（CR-2026-11-27-001）。
             float[] hp = { 0.6f, 1f, 1.3f, 2.5f };
             float[] damage = { 0.7f, 1f, 1.15f, 1.75f };
             float[] reaction = { 1f, 1f, 1.15f, 1.5f };
             float[] hellCash = { 0.5f, 1f, 1.25f, 2f };
             float[] rest = { 1.5f, 1f, 0.5f, 0.5f };
-            int[] ruleCounts = { 3, 0, 5, 8 };
+            int[] ruleCounts = { 3, 0, 6, 10 };
             List<string> wrong = new List<string>();
             int borrowed = 0;
             for (int i = 0; i < 4; i++)
@@ -145,8 +147,18 @@ namespace BossRush
                     MutatorDefinition definition = rule.Definition();
                     if (definition == null || !definition.AllowsMode("BossRush") || !definition.AllowsMode("InfiniteHell")) wrong.Add("mutator_" + rule.MutatorId);
                 }
-                if ((ArenaExpeditionTuning.ForcedMutatorIds(tier) == null) != (tier == ArenaExpeditionTier.Standard)) wrong.Add("forced_" + tier);
+                if ((ArenaExpeditionTuning.ForcedMutatorIds(tier) != null) != (tier == ArenaExpeditionTier.Easy)) wrong.Add("forced_" + tier);
+                string profileWrong = WishTrialProfileMismatch(tier, ArenaTrialsTuning.ProfileFor(tier));
+                if (profileWrong != null) wrong.Add("trials_" + tier + "_" + profileWrong);
             }
+            string affixWrong = WishAffixRollMismatch();
+            if (affixWrong != null) wrong.Add("affix_roll_" + affixWrong);
+            string raiseWrong = WishRaiseMismatch();
+            if (raiseWrong != null) wrong.Add("raise_" + raiseWrong);
+            string drugPatch = DescribeWishPrefix(typeof(Duckov.ItemUsage.Drug), "CanBeUsed", typeof(ArenaTrialsBloodDebtDrugPatch));
+            string usePatch = DescribeWishPrefix(typeof(CharacterMainControl), "UseItem", typeof(ArenaTrialsBloodDebtUseNoticePatch));
+            if (drugPatch != "installed") wrong.Add("blood_debt_drug_patch_" + drugPatch);
+            if (usePatch != "installed") wrong.Add("blood_debt_notice_patch_" + usePatch);
             if (ArenaExpeditionTuning.WavesFor(ArenaExpeditionLength.Short, 40) != 12
                 || ArenaExpeditionTuning.WavesFor(ArenaExpeditionLength.Long, 40) != 24
                 || ArenaExpeditionTuning.WavesFor(ArenaExpeditionLength.Full, 40) != 40
@@ -172,6 +184,7 @@ namespace BossRush
                 + ",easy_floor=" + easyFloor + ",achievement=" + achievement + ",borrowed_mutators=" + borrowed + ",enabled_pool=" + poolCount
                 + ",short_waves=" + ArenaExpeditionTuning.WavesFor(ArenaExpeditionLength.Short, poolCount)
                 + ",long_waves=" + ArenaExpeditionTuning.WavesFor(ArenaExpeditionLength.Long, poolCount)
+                + ",blood_debt_patches=" + drugPatch + "/" + usePatch
                 + (wrong.Count > 0 ? ",wrong=" + string.Join("+", wrong.ToArray()) : string.Empty);
             if (wrong.Count > 0) reason = "expedition_tuning_mismatch";
             return reason == null;
@@ -854,88 +867,22 @@ namespace BossRush
                 GameObject hudRoot = GameObject.Find(WishExpeditionHudName);
                 Canvas hudCanvas = hudRoot != null ? hudRoot.GetComponent<Canvas>() : null;
                 bool hudHidden = hudCanvas == null || !hudCanvas.enabled;
-                string cleanupMetrics = "beacons_left=" + beaconsLeft + ",hud_hidden=" + hudHidden + ",mode_active=" + _host.IsActive;
-                string cleanupFailure = beaconsLeft > 0 ? "beacons_survive_cleanup" : (!hudHidden ? "expedition_seal_survives_cleanup" : null);
+                // 战规对象在竞技场停下的那一帧自毁（摘掉属性修饰、收掉天灾与词缀身体），这里早已过了那一帧
+                bool trialsGone = ArenaTrials.Active == null && GameObject.Find("BossRush_ArenaTrials") == null;
+                string cleanupMetrics = "beacons_left=" + beaconsLeft + ",hud_hidden=" + hudHidden + ",trials_gone=" + trialsGone
+                    + ",mode_active=" + _host.IsActive;
+                string cleanupFailure = beaconsLeft > 0 ? "beacons_survive_cleanup"
+                    : (!hudHidden ? "expedition_seal_survives_cleanup" : (!trialsGone ? "trials_survive_cleanup" : null));
                 Record("ARENA_EXPEDITION_CLEANUP", cleanupFailure == null ? "PASS" : "FAIL", cleanupWatch.ElapsedMilliseconds, cleanupMetrics, cleanupFailure);
             }
             finally
             {
                 // 与切图时 WavesArenaRuntimeModule.EndExpeditionRun 同一收尾：后面的用例按旧入口开局，不能带着困难战帖。
                 ArenaExpeditionState.End();
-                // 战帖词条随这一局走：清掉，后面的用例不带着困难战规跑。
+                // 变异词条随这一局走：清掉，后面的用例按旧入口开局、不带着出征令的残留跑。
                 try { _host.ClearMutatorsForMode("BossRush"); }
                 catch (Exception e) { ModBehaviour.DevLog("[Validation] 出征令词条清理失败: " + e.Message); }
             }
-        }
-
-        private string JudgeArenaExpeditionRun(List<EnemyPresetInfo> pool, CharacterMainControl boss, out string metrics)
-        {
-            ArenaExpeditionRun run = ArenaExpeditionState.Current;
-            if (run == null)
-            {
-                metrics = "active=" + _host.IsActive;
-                return "expedition_run_missing";
-            }
-            int expectedWaves = ArenaExpeditionTuning.WavesFor(ArenaExpeditionLength.Short, run.PoolCount);
-            bool queueExpected = expectedWaves >= 2 && expectedWaves < run.PoolCount;
-            bool orderOk = run.Order.Lineup == ArenaExpeditionLineup.Single && run.Order.Tier == ArenaExpeditionTier.Hard
-                && run.Order.Length == ArenaExpeditionLength.Short;
-            bool queueOk;
-            bool finaleOk = true;
-            string finaleName = run.Finale != null ? run.Finale.name : "none";
-            bool finaleStrong = run.Finale != null && WavesArenaRuntimeModule.EarlyWaveExcludedBosses.Contains(run.Finale.name);
-            if (!queueExpected) queueOk = !run.HasQueue;
-            else
-            {
-                queueOk = run.HasQueue && run.Queue.Count == expectedWaves && run.Finale != null
-                    && ReferenceEquals(run.Queue[run.Queue.Count - 1], run.Finale) && run.IsFinaleWave(expectedWaves - 1);
-                // 前面的波里没用到的启用 Boss 中有强 Boss，压轴就必须是强 Boss；一只都没有时退到血最厚的。
-                HashSet<string> usedBeforeFinale = new HashSet<string>(StringComparer.Ordinal);
-                for (int i = 0; queueOk && i < run.Queue.Count - 1; i++)
-                {
-                    if (run.Queue[i] != null && run.Queue[i].name != null) usedBeforeFinale.Add(run.Queue[i].name);
-                }
-                bool strongAvailable = false;
-                for (int i = 0; queueOk && pool != null && i < pool.Count; i++)
-                {
-                    EnemyPresetInfo preset = pool[i];
-                    if (preset == null || preset.name == null || usedBeforeFinale.Contains(preset.name)) continue;
-                    if (WavesArenaRuntimeModule.EarlyWaveExcludedBosses.Contains(preset.name)) strongAvailable = true;
-                }
-                for (int i = 0; queueOk && i < run.Queue.Count - 1; i++)
-                {
-                    if (ReferenceEquals(run.Queue[i], run.Finale)) queueOk = false;
-                }
-                finaleOk = !strongAvailable || finaleStrong;
-            }
-            float factor = boss != null ? ArenaExpeditionBossScaling.HealthFactorOf(boss) : 0f;
-            bool scaled = WishNear(factor, ArenaExpeditionTuning.HealthMultiplier(ArenaExpeditionTier.Hard), 0.01f);
-            GameObject hudRoot = GameObject.Find(WishExpeditionHudName);
-            Canvas hudCanvas = hudRoot != null ? hudRoot.GetComponent<Canvas>() : null;
-            bool hudShown = hudCanvas != null && (hudCanvas.enabled || BossRushUI.IsOfficialHudHidden());
-            // 困难战规借用的三条词条（神枪敌军、伤口难愈、嗜血）随开波先上；出征令开的局不抽随机词条（owner 2026-11-25），
-            // 所以场上的词条恰好就是这三条，变异词条栏也不出现。
-            List<string> writIds = ArenaExpeditionTuning.ForcedMutatorIds(ArenaExpeditionTier.Hard);
-            IReadOnlyList<MutatorDefinition> activeMutators = MutatorManager.GetActiveMutators();
-            int writOn = 0;
-            for (int i = 0; writIds != null && i < activeMutators.Count; i++)
-            {
-                if (activeMutators[i] != null && writIds.Contains(activeMutators[i].Id) && MutatorManager.IsForcedMutator(activeMutators[i])) writOn++;
-            }
-            int writWanted = writIds != null ? writIds.Count : -1;
-            metrics = "active=" + _host.IsActive + ",pool=" + run.PoolCount + ",waves=" + run.Waves + ",expected=" + expectedWaves
-                + ",queue=" + run.HasQueue + ",finale=" + finaleName + ",finale_strong=" + finaleStrong
-                + ",boss=" + (boss != null ? boss.name : "none") + ",hp_factor=" + factor.ToString("0.00", CultureInfo.InvariantCulture)
-                + ",seal_hud=" + hudShown + ",writ_mutators=" + writOn + "/" + writWanted + ",active_mutators=" + activeMutators.Count;
-            if (!orderOk) return "order_not_taken";
-            if (!queueOk) return queueExpected ? "short_queue_wrong" : "queue_built_when_pool_small";
-            if (!finaleOk) return "finale_not_strong";
-            if (boss == null) return "boss_not_spawned";
-            if (!scaled) return "hard_health_factor_missing";
-            if (!hudShown) return "expedition_seal_missing";
-            if (writOn != writWanted) return "writ_mutators_missing";
-            if (activeMutators.Count != writOn) return "random_mutators_rolled_in_expedition";
-            return null;
         }
 
         private static int CountWishBeacons()

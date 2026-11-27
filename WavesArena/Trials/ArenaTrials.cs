@@ -21,7 +21,7 @@ using UnityEngine;
 
 namespace BossRush
 {
-    /// <summary>玩家身上各条战规想要的属性倍数（乘法）与增量（加法）。</summary>
+    /// <summary>玩家身上各条战规想要的属性倍数（乘法）与增量（加法）。Taken 是受到的伤害倍数（破绽），落在官方各元素系数上。</summary>
     internal struct ArenaTrialPlayerStats
     {
         public float ViewDistance, ViewAngle, SenseRange;
@@ -30,6 +30,7 @@ namespace BossRush
         public float Stamina;
         public float Scatter;
         public float MaxHealth;
+        public float Taken;
 
         internal static ArenaTrialPlayerStats Identity
         {
@@ -37,7 +38,7 @@ namespace BossRush
             {
                 ArenaTrialPlayerStats s = new ArenaTrialPlayerStats();
                 s.ViewDistance = s.ViewAngle = s.SenseRange = 1f;
-                s.Move = s.Stamina = s.Scatter = s.MaxHealth = 1f;
+                s.Move = s.Stamina = s.Scatter = s.MaxHealth = s.Taken = 1f;
                 s.ReloadGain = 0f;
                 return s;
             }
@@ -160,7 +161,7 @@ namespace BossRush
             isLive = live;
             Run = run;
             Tier = run.Order.Tier;
-            Profile = ArenaTrialsTuning.ProfileFor(Tier);
+            Profile = ArenaTrialsTuning.ProfileFor(Tier, run.Order.Raise);
             Sky = new ArenaTrialsSky(this);
             Curses = new ArenaTrialsCurses(this);
             Hazards = new ArenaTrialsHazards(this);
@@ -182,7 +183,7 @@ namespace BossRush
                 try { parts[i].OnBegin(); }
                 catch (Exception e) { Debug.LogWarning(LogPrefix + parts[i].GetType().Name + " 启动失败: " + e.Message); }
             }
-            ModBehaviour.DevLog(LogPrefix + "开局：战帖=" + Tier + "，天象=" + Profile.HasOmens + "，天灾=" + Profile.HasHazards
+            ModBehaviour.DevLog(LogPrefix + "开局：战帖=" + Tier + "，加码=" + run.Order.Raise + "，天象=" + Profile.HasOmens + "，天灾=" + Profile.HasHazards
                 + "，词缀=" + Profile.Affixes + "/" + Profile.FinaleAffixes + "，厄运=" + Profile.CurseLevel);
         }
 
@@ -447,6 +448,8 @@ namespace BossRush
             Multiply(player, ZombieModeStatNames.StaminaRecoverRate, Mathf.Max(0.05f, stats.Stamina), playerRecords);
             Multiply(player, "GunScatterMultiplier", Mathf.Max(0.1f, stats.Scatter), playerRecords);
             Multiply(player, ZombieModeStatNames.MaxHealth, Mathf.Clamp(stats.MaxHealth, 0.3f, 1f), playerRecords);
+            float taken = Mathf.Clamp(stats.Taken, 1f, 2f);
+            for (int i = 0; i < ElementFactorStats.Length; i++) Multiply(player, ElementFactorStats[i], taken, playerRecords);
             if (Mathf.Abs(stats.ReloadGain) > 0.0001f)
             {
                 RuntimeStatModifierTracker.TryAdd(player, ZombieModeStatNames.ReloadSpeedGain, stats.ReloadGain, this,

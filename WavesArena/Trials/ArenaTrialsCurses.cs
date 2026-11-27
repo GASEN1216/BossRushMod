@@ -2,7 +2,9 @@
 // ArenaTrialsCurses.cs - 出征令的厄运（每波一个诅咒，下一波换）与噩梦三条常驻诅咒（失明、断补、血债）
 // ============================================================================
 // 厄运池（困难轻、噩梦重，数值见 ArenaTrialsTuning）：
-//   手滑（换弹慢）· 沉重（体力恢复慢）· 手抖（散射大）· 怕痛（被敌人打中后短暂减速）· 近视（视距短）。
+//   手滑（换弹慢）· 沉重（体力恢复慢）· 手抖（散射大）· 怕痛（被敌人打中后短暂减速）· 近视（视距短）·
+//   回响（被打中的地方隔一会儿再震，翻滚可躲）· 沉疴（挨打后伤口流血几秒，翻滚止住）· 破绽（受到伤害增加）。
+//   后三道 2026-11-27 加入，挨打后的结算与表现在 ArenaTrialsCurseActs.cs。
 // 失明：迷雾收窄；首领血条量化成几格、不显示单次掉血条（HealthBar 补丁读 BlindStepsFor）；M 图不标首领
 //   （沿用 ArenaExpeditionTuning.HidesMapBeacons，烽烟圈来源入口挡掉）。
 // 断补：用药读条 ×2、开波后不定时禁药 8 秒（CA_UseItem 补丁读 UseItemSealed / UseTimeScale），
@@ -13,6 +15,7 @@
 // ============================================================================
 
 using System;
+using System.Collections.Generic;
 using Duckov.Utilities;
 using ItemStatsSystem;
 using UnityEngine;
@@ -28,6 +31,10 @@ namespace BossRush
         private int bannedSecondsShown = -1;
         private int bloodDebtHits;
         private bool allowHeal;
+        /// <summary>血债：每只敌人上次记账的时刻（实例 ID → Time.time），收波清空。</summary>
+        private readonly Dictionary<int, float> debtLastHit = new Dictionary<int, float>(8);
+        /// <summary>回响 / 沉疴 / 破绽挨打之后的结算与表现。</summary>
+        private readonly ArenaTrialsCurseActs acts = new ArenaTrialsCurseActs();
 
         internal ArenaTrialsCurses(ArenaTrials trials) : base(trials) { }
 
@@ -46,6 +53,7 @@ namespace BossRush
             {
                 curse = PickCurse(curse);
                 flinchLeft = 0f;
+                acts.Clear();
                 ModBehaviour.DevLog("[BossRush] [出征令战规] 第 " + (wave + 1) + " 波厄运：" + curse);
             }
             RefreshHud(false);
@@ -53,6 +61,8 @@ namespace BossRush
 
         internal override void OnWaveEnd()
         {
+            debtLastHit.Clear();
+            acts.Clear();
             if (bloodDebtHits > 0)
             {
                 bloodDebtHits = 0;
@@ -74,6 +84,7 @@ namespace BossRush
 
         internal override void Tick(float deltaTime)
         {
+            acts.Tick(deltaTime);
             if (flinchLeft > 0f)
             {
                 flinchLeft -= deltaTime;
@@ -114,7 +125,15 @@ namespace BossRush
                 flinchLeft = ArenaTrialsTuning.FlinchSeconds(Level);
                 if (!wasFlinching) Trials.MarkPlayerStatsDirty();
             }
-            if (Trials.Profile.BloodDebt && Trials.IsFoe(from) && !Trials.Affixes.IsMinion(from))
+            if (curse == ArenaTrialCurse.Echo || curse == ArenaTrialCurse.Festering || curse == ArenaTrialCurse.Exposed)
+            {
+                CharacterMainControl self = health.TryGetCharacter();
+                Vector3 at = self != null ? self.transform.position : health.transform.position;
+                if (curse == ArenaTrialCurse.Echo) acts.Echo(at, Level);
+                else if (curse == ArenaTrialCurse.Festering) acts.Fester(Level);
+                else acts.Crack(at);
+            }
+            if (Trials.Profile.BloodDebt && Trials.IsFoe(from) && !Trials.Affixes.IsMinion(from) && CountsAsDebtHit(from))
             {
                 int cap = Mathf.RoundToInt(ArenaTrialsTuning.BloodDebtMaxHealthCap / ArenaTrialsTuning.BloodDebtMaxHealthPerHit);
                 if (bloodDebtHits < cap)
@@ -123,6 +142,17 @@ namespace BossRush
                     Trials.MarkPlayerStatsDirty();
                 }
             }
+        }
+
+        /// <summary>同一只敌人 BloodDebtHitWindow 秒内只记一次（2026-11-27 改进方案：原先霰弹每颗弹丸各算一次）。</summary>
+        private bool CountsAsDebtHit(CharacterMainControl from)
+        {
+            int id = from.GetInstanceID();
+            float now = Time.time;
+            float last;
+            if (debtLastHit.TryGetValue(id, out last) && now - last < ArenaTrialsTuning.BloodDebtHitWindow) return false;
+            debtLastHit[id] = now;
+            return true;
         }
 
         internal override void OnAnyDeath(Health health, DamageInfo info)
@@ -169,6 +199,9 @@ namespace BossRush
                 case ArenaTrialCurse.Nearsighted:
                     stats.ViewDistance *= ArenaTrialsTuning.NearsightedView(level);
                     break;
+                case ArenaTrialCurse.Exposed:
+                    stats.Taken *= 1f + ArenaTrialsTuning.ExposedTaken(level);
+                    break;
             }
             if (Trials.Profile.Blind)
             {
@@ -188,6 +221,8 @@ namespace BossRush
             banLeft = 0f;
             flinchLeft = 0f;
             bloodDebtHits = 0;
+            debtLastHit.Clear();
+            acts.Clear();
             allowHeal = false;
             ArenaExpeditionHud.SetSealedLine(string.Empty);
         }
@@ -222,8 +257,9 @@ namespace BossRush
 
         private ArenaTrialCurse PickCurse(ArenaTrialCurse previous)
         {
-            int pick = UnityEngine.Random.Range(1, 6);
-            if ((ArenaTrialCurse)pick == previous) pick = pick % 5 + 1;
+            int kinds = ArenaTrialsTuning.CurseKinds;
+            int pick = UnityEngine.Random.Range(1, kinds + 1);
+            if ((ArenaTrialCurse)pick == previous) pick = pick % kinds + 1;
             return (ArenaTrialCurse)pick;
         }
 

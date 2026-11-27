@@ -16,6 +16,9 @@
    降水粒子室内停掉（官方 WeatherFxControl 同样只在室外下雨）。
 7. 表现层：色调层画布挂在 ArenaExpeditionHud（已登记 PersistentHudVisibilityGuard），随角标一起过官方 HUD 显隐与暂停双门。
 8. 诅咒：血债只让击杀回血开闸（开闸在 finally 里关）；断补禁药挡在 CA_UseItem.OnStart；失明的血条量化只看本局敌方身体。
+   厄运池 8 种（2026-11-27 加回响 / 沉疴 / 破绽）：回响与沉疴的伤害只经 HurtNeutral、来源为空（不再触发厄运与血债），
+   回响翻滚可躲、沉疴翻滚即清；破绽经玩家元素系数加伤；换诅咒 / 收波 / 收尾都清掉在途的印与沉疴。
+   天象双刃（同日）：雷暴下落雷劈敌加倍；血月下倒下的波次首领多掉、问的同时演献祭；永夜压慢敌方反应与开火，换天 / 收尾按原值还原。
 9. 天灾：Tick 第一句按档早返、只在本波开打期间排程；收波 / 收尾当帧还原冰封减速、雾里 AI 视觉参数（记原值写回）与推力；
    推力每人每帧只下一次「自身输入 + 推力」、翻滚中不推；伤害只走 HurtNeutral；不放碰撞体；落点贴 NavMesh；
    九种都能起；暴雨减半毒雾 / 熔缝；墨潮翻滚可穿；瞬时灯淡入为 0（否则当帧自毁）。
@@ -177,7 +180,8 @@ def check_patches(errors):
         return
     targets = re.findall(r'\[HarmonyPatch\(typeof\((\w+)\),\s*"(\w+)"\)\]', patches)
     expected = [("CA_UseItem", "OnStart"), ("CA_UseItem", "OnUpdateAction"), ("HealthBar", "Refresh"),
-                ("HealthBar", "ShowDamageBar"), ("HealthBar", "RefreshCharacterIcon"), ("Health", "AddHealth")]
+                ("HealthBar", "ShowDamageBar"), ("HealthBar", "RefreshCharacterIcon"), ("Health", "AddHealth"),
+                ("Drug", "CanBeUsed"), ("CharacterMainControl", "UseItem")]
     require(errors, targets == expected, "[Patch] 战规补丁目标应为 %s（实际 %s）" % (expected, targets))
     heads = re.findall(r"\[Harmony(Prefix|Postfix)\]\s*internal static \w+ (?:Prefix|Postfix)\([^)]*\)\s*\{\s*([^\n]*)", patches)
     require(errors, len(heads) == len(expected) and all(h[1].startswith("if (ArenaTrials.Active == null") for h in heads),
@@ -185,6 +189,23 @@ def check_patches(errors):
     postfixes = [i for i, h in enumerate(heads) if h[0] == "Postfix"]
     require(errors, len(heads) == len(expected) and postfixes == [expected.index(("HealthBar", "RefreshCharacterIcon"))],
             "[Patch] 只有血条名缀用后缀（官方在方法里写名字，要接在它后面），其余一律前缀")
+
+    # CR-2026-11-27-002：官方 CA_UseItem.OnFinish 读完条照扣药，只挡 AddHealth 就是「药扣了、血没回」。
+    # 回血药在 CanBeUsed 就判不可用（只对主玩家、只在血债挡回血时、只管 healValue > 0 的那段），
+    # 用药入口只在「用不了且带回血药」时换成血债提示、不放行，其余照官方走。
+    drug = compact(body_of(patches, "internal static bool Prefix(Drug __instance, object user, ref bool __result)"))
+    require(errors, drug.startswith("if(ArenaTrials.Active==null||__instance==null||__instance.healValue<=0)returntrue;")
+            and "if(character==null||!character.IsMainCharacter||!ArenaTrialsCurses.HealBlocked(character.Health))returntrue;" in drug
+            and drug.endswith("__result=false;returnfalse;"),
+            "[Patch] 血债下回血药必须在 Drug.CanBeUsed 判成不可用（只对主玩家、只在回血被挡时），否则读完条照扣药")
+    notice = compact(body_of(patches, "private static bool OnlyHealsUnderBloodDebt(CharacterMainControl character, Item item)"))
+    require(errors, "if(!character.IsMainCharacter||!ArenaTrialsCurses.HealBlocked(character.Health))returnfalse;" in notice
+            and "if(usage==null||usage.IsUsable(item,character))returnfalse;" in notice
+            and "if(drug!=null&&drug.healValue>0)returntrue;" in notice,
+            "[Patch] 血债提示只替换「用不了、而且带回血药」的那次用药（还有别的用处的药照常能用）")
+    use = compact(body_of(patches, "internal static bool Prefix(CharacterMainControl __instance, Item item)"))
+    require(errors, "if(!OnlyHealsUnderBloodDebt(__instance,item))returntrue;" in use and use.endswith("returnfalse;"),
+            "[Patch] 用药入口只在血债挡下的那次不放行")
 
     curses = read(*TRIALS, "ArenaTrialsCurses.cs")
     death = compact(body_of(curses, "internal override void OnAnyDeath(Health health, DamageInfo info)"))
@@ -198,6 +219,49 @@ def check_patches(errors):
     blind = compact(body_of(curses, "internal static int BlindStepsFor(Health health)"))
     require(errors, "trials.IsFoe(character)?ArenaTrialsTuning.BlindHealthBarSteps:0" in blind and "!trials.Profile.Blind" in blind,
             "[Curse] 失明的血条量化只看本局敌方身体")
+    tuning = compact(read(*TRIALS, "ArenaTrialsTuning.cs"))
+    require(errors, "internalconstintCurseKinds=8;" in tuning and "intkinds=ArenaTrialsTuning.CurseKinds;" in compact(curses),
+            "[Curse] 厄运池应为 8 种，PickCurse 按 CurseKinds 抽（新增诅咒忘了改上限就永远抽不到）")
+    hurt = compact(body_of(curses, "internal override void OnAnyHurt(Health health, DamageInfo info)"))
+    require(errors, "if(from==null||from.IsMainCharacter)return;" in hurt
+            and "if(curse==ArenaTrialCurse.Echo)acts.Echo(at,Level);elseif(curse==ArenaTrialCurse.Festering)acts.Fester(Level);elseacts.Crack(at);" in hurt,
+            "[Curse] 回响 / 沉疴 / 破绽只在被敌方打中时起（来源为空的战规伤害不再连锁）")
+    require(errors, "caseArenaTrialCurse.Exposed:stats.Taken*=1f+ArenaTrialsTuning.ExposedTaken(level);" in compact(curses),
+            "[Curse] 破绽经玩家受伤系数加伤")
+    require(errors, compact(curses).count("acts.Clear();") >= 3,
+            "[Curse] 换诅咒、收波、收尾都必须清掉在途的回响印与沉疴")
+    acts = read(*TRIALS, "ArenaTrialsCurseActs.cs")
+    acts_flat = compact(acts)
+    require(errors, acts is not None and ".Hurt(" not in acts_flat
+            and "ArenaTrials.HurtNeutral(player.Health,ArenaTrials.ShareOfMaxHealth(player.Health,mark.Damage),mark.At,true);" in acts_flat
+            and "ArenaTrials.HurtNeutral(player.Health,ArenaTrials.ShareOfMaxHealth(player.Health,fraction),player.transform.position,false);" in acts_flat,
+            "[Curse] 回响（翻滚可躲）与沉疴（按跳结算）的伤害只经 HurtNeutral")
+    require(errors, acts is not None and "if(player.Dashing)" in acts_flat,
+            "[Curse] 沉疴翻滚即清")
+    require(errors, acts is not None and not re.search(r"AddComponent<\w*(Collider|Rigidbody|NavMeshObstacle)\w*>", acts),
+            "[Curse] 回响印 / 沉疴不许放碰撞体 / 刚体 / 挡路体")
+
+    sky = read(*TRIALS, "ArenaTrialsSky.cs")
+    claim = compact(body_of(sky, "internal int ClaimBloodMoonLoot(CharacterMainControl boss)"))
+    require(errors, claim.startswith("if(omen!=ArenaTrialOmen.BloodMoon||boss==null||!Trials.IsWaveBoss(boss))return0;")
+            and "ArenaTrialsFx.BloodOffering(boss.transform.position);" in claim,
+            "[Omen] 血月只给波次首领多掉，问到的同时演献祭（画面与多掉的那件对得上）")
+    expedition = compact(read("WavesArena", MODULE + "Expedition.cs"))
+    require(errors, "trials.Sky.ClaimBloodMoonLoot(boss)" in expedition, "[Omen] 血月多掉必须经掉落入口 ExpeditionAffixBonusLoot")
+    restore = compact(body_of(sky, "internal void Restore()"))
+    require(errors, "if(Mathf.Approximately(ai.baseReactionTime,dulledReaction))" in restore
+            and "if(Mathf.Approximately(ai.shootDelay,dulledShootDelay))ai.shootDelay=shootDelay;" in restore,
+            "[Omen] 永夜还原只在值仍是本战规写的那份时写回（别的系统改过就不碰）")
+    sky_shutdown = compact(body_of(sky, "internal override void Shutdown()"))
+    require(errors, sky_shutdown.startswith("RestoreNight();"), "[Omen] 收尾第一件事还原永夜压慢的 AI")
+    sky_flat = compact(sky)
+    require(errors, "if(previous==ArenaTrialOmen.EternalNight)RestoreNight();" in sky_flat,
+            "[Omen] 永夜换走的那一波必须还原敌方反应与开火")
+    hazards = compact(read(*TRIALS, "ArenaTrialsHazards.cs"))
+    runs = compact(read(*TRIALS, "ArenaTrialsHazardRuns.cs"))
+    require(errors, "fraction*=ArenaTrialsTuning.ThunderFoeLightningFactor;" in hazards and "Hazards.HitLightning(" in runs,
+            "[Omen] 雷暴下落雷劈敌加倍，落雷结算必须经 HitLightning")
+
     halve = compact(body_of(curses, "internal void HalveAmmo(CharacterMainControl boss)"))
     require(errors, "GameplayDataSettings.Tags.Bullet" in halve and "Mathf.Max(1," in halve and "!Trials.Profile.CutSupply" in halve,
             "[Curse] 断补减半只动带子弹标签的堆叠、至少留 1 发、只在断补下")
@@ -382,12 +446,23 @@ def check_affixes(errors):
     require(errors, compact(body_of(affix, "internal int BonusLootFor(CharacterMainControl boss)"))
             == "ArenaAffixBearerbearer=FindBearer(boss);returnbearer!=null?ArenaTrialsTuning.AffixBonusLoot(bearer.Affixes.Count):0;",
             "[Affix] 额外掉落只算挂词缀的波次首领本体（身体一律 0）")
-    roll = compact(body_of(affix, "private void Roll(ArenaAffixBearer bearer, int count)"))
-    require(errors, "if(bearer.Preset!=null){kindScratch.Add(ArenaAffixKind.Clone);kindScratch.Add(ArenaAffixKind.Guard);}" in roll,
+    require(errors, compact(body_of(affix, "private void Roll(ArenaAffixBearer bearer, int count)"))
+            == "RollInto(bearer.Affixes,kindScratch,bearer.Preset!=null,count,Trials.Profile.AffixDistinctKinds);",
+            "[Affix] Roll 只转交 RollInto（F3 直接调 RollInto 核对条数）")
+    roll = compact(body_of(affix, "internal static void RollInto(List<ArenaAffix> output, List<ArenaAffixKind> scratch, bool hasPreset, int count, bool distinctKinds)"))
+    require(errors, "if(hasPreset){scratch.Add(ArenaAffixKind.Clone);scratch.Add(ArenaAffixKind.Guard);}" in roll,
             "[Affix] 内容 Boss（不给预设）只挂身法 / 死相两类")
-    require(errors, "inttake=Mathf.Min(count,kindScratch.Count);" in roll
-            and "bearer.Affixes.Add((ArenaAffix)((int)kindScratch[i]*2+UnityEngine.Random.Range(0,2)));" in roll,
-            "[Affix] 几条词缀必须取自打乱后的不同类别（每类两个里随机一个）")
+    require(errors, "inttake=Mathf.Min(count,scratch.Count);" in roll
+            and "output.Add((ArenaAffix)((int)scratch[i]*2+UnityEngine.Random.Range(0,2)));" in roll,
+            "[Affix] 几条词缀必须先取自打乱后的不同类别（每类两个里随机一个）")
+    fill_at = roll.find("for(inti=0;i<scratch.Count&&output.Count<count;i++)")
+    require(errors, 0 <= roll.find("inttake=Mathf.Min(count,scratch.Count);") < fill_at
+            and "ArenaAffixsibling=(ArenaAffix)((int)scratch[i]*2+k);if(!output.Contains(sibling))output.Add(sibling);" in roll[fill_at:],
+            "[Affix] 类别不够（内容 Boss 噩梦 3 条、压轴 4 条）时要在已抽的类里补同类另一个，条数与额外掉落照悬赏令（CR-2026-11-27-003）")
+    expedition_tuning = read("WavesArena", "ArenaExpeditionTuning.cs") or ""
+    require(errors, "四类各一" not in expedition_tuning and "headliner all" not in expedition_tuning
+            and "NightmareTrials.FinaleAffixes" in compact(expedition_tuning),
+            "[Affix] 噩梦凶煞的压轴条数从 ProfileFor 取，不写「四类各一」（内容 Boss 只有两类）")
     require(errors, compact(re.search(r"internal bool HoldsWave \{[^}]*\}", affix).group(0) if re.search(r"internal bool HoldsWave \{[^}]*\}", affix) else "")
             == "internalboolHoldsWave{get{returnRole==ArenaAffixRole.Shard||Role==ArenaAffixRole.Twin;}",
             "[Affix] 只有分身 / 双生压收波（亲卫、影从不压）")

@@ -301,6 +301,81 @@ namespace BossRush
             go.AddComponent<ArenaTrialsBoltFade>().Build(material, target);
         }
 
+        /// <summary>
+        /// 雷暴下落雷劈中敌方身体：身上一圈冷银电弧往外炸开、一颗亮芯、一圈朝镜头的电环、一盏短灯。
+        /// 只在雷暴天象里出（平时敌人挨雷不另演），让玩家看得出「把首领引到雷下」劈得更狠。
+        /// </summary>
+        internal static void Smite(Vector3 at)
+        {
+            try
+            {
+                Vector3 body = at + Vector3.up * 0.9f;
+                BossRushFxBurst arcs = BossRushFxKit.Sparks(Silver, 14);
+                arcs.SpeedMin = 5f;
+                arcs.SpeedMax = 10f;
+                arcs.SizeMin = 0.05f;
+                arcs.SizeMax = 0.09f;
+                arcs.LifeMin = 0.12f;
+                arcs.LifeMax = 0.26f;
+                arcs.Stretch = 0.06f;
+                arcs.ShapeRadius = 0.35f;
+                BossRushFxKit.PlayBurst(body, arcs);
+                BossRushFxKit.PlayBurst(body, BossRushFxKit.Glint(Silver, 1.6f, 0.2f));
+                BossRushFxKit.PlayBurst(body, BossRushFxKit.Shockwave(new Color(Silver.r, Silver.g, Silver.b, 0.7f), 0.6f, 3.2f, 0.3f, false));
+                Flash(body + Vector3.up * 0.4f, Silver, 4.5f, 6f, 0.3f);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[BossRush] [WARNING] 出征令雷击表现失败: " + e.Message);
+            }
+        }
+
+        /// <summary>血月的暗朱（压低饱和，不是纯红）与余烬色。</summary>
+        internal static readonly Color BloodMoon = new Color(0.78f, 0.20f, 0.14f, 1f);
+        internal static readonly Color BloodEmber = new Color(0.98f, 0.52f, 0.34f, 1f);
+
+        /// <summary>
+        /// 血月下倒下的波次首领：贴地一圈暗朱血环慢慢撑开，一柱余烬从尸身缓缓升起，一盏暗红的灯，一声魂升——
+        /// 多掉的那一件就从这里来。慢而沉：环 1.1 秒、余烬 1.6–2.4 秒，不炸不闪。
+        /// </summary>
+        internal static void BloodOffering(Vector3 at)
+        {
+            try
+            {
+                Vector3 ground = at + Vector3.up * GroundLift;
+                BossRushFxKit.PlayBurst(ground, BossRushFxKit.Shockwave(new Color(BloodMoon.r, BloodMoon.g, BloodMoon.b, 0.8f),
+                    1.4f, 3.6f, 1.1f, true));
+                BossRushFxBurst rise = BossRushFxKit.Sparks(BloodEmber, 26);
+                rise.Cone = 12f;
+                rise.Direction = Vector3.up;
+                rise.SpeedMin = 1.6f;
+                rise.SpeedMax = 3.4f;
+                rise.SizeMin = 0.06f;
+                rise.SizeMax = 0.13f;
+                rise.LifeMin = 1.6f;
+                rise.LifeMax = 2.4f;
+                rise.Drag = 0.8f;
+                rise.Stretch = 0f;
+                rise.GrowTo = 0.3f;
+                rise.ShapeRadius = 0.5f;
+                rise.FadeIn = 0.12f;
+                rise.End = new Color(0.45f, 0.08f, 0.06f, 0f);
+                BossRushFxKit.PlayBurst(ground + Vector3.up * 0.2f, rise);
+                BossRushFxBurst mist = BossRushFxKit.Dust(new Color(0.36f, 0.06f, 0.05f, 0.5f), 6);
+                mist.SpeedMin = 1.2f;
+                mist.SpeedMax = 2.2f;
+                mist.LifeMin = 1.4f;
+                mist.LifeMax = 2f;
+                BossRushFxKit.PlayBurst(ground, mist);
+                Flash(ground + Vector3.up * 1.6f, BloodMoon, 3.6f, 7f, 1.4f);
+                SoundAt(BossRushInkSkin.SfxSoulRise, at);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[BossRush] [WARNING] 出征令血月表现失败: " + e.Message);
+            }
+        }
+
         /// <summary>符环与填充的预警淡入 / 收尾包络（两头缓）。</summary>
         internal static float Envelope(float age, float fadeIn, float remaining, float fadeOut)
         {

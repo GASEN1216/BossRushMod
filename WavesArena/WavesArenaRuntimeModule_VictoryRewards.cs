@@ -54,6 +54,7 @@ namespace BossRush
                 owner.CheckClearAchievementsForArena();
             }
             UnlockExpeditionNightmareClear();
+            RecordExpeditionRaiseCleared();
 
             // 通知快递员 BossRush 通关
             owner.NotifyCourierBossRushCompleted();

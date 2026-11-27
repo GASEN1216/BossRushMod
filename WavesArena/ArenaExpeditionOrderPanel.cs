@@ -10,6 +10,10 @@
 //   打开墨晕散开、标题金笔写出，悬赏令从上轴往下卷开；选中的卡金边 + 金笔下划，令上重新落一遍墨；
 //   噩梦卡转暗红、边缘燃金色余烬、响一声古钟，悬赏令纸色发焦、底边也燃起余烬；
 //   立誓时朱印落在悬赏令上，墨池收拢后开第一波。
+// 2026-11-27 owner：「第三批搞成杀戮尖塔那种，战规简单到难排序，玩家自己选择加码」——
+//   战帖卡下面加一排「加码」朱印台阶（ArenaExpeditionRaiseRow，每档各记一份级数）：标准 5 级、困难 8 级，由易到难；
+//   悬赏令里被加码换掉的那条档位战规不再列出，另起「加码」一节按级数列出背上的战规（级数朱字在前），
+//   战帖大字旁落一枚级数小印；立誓时先落档印、再落级数小印；战帖卡右上角标「+Ⅴ」。左边选单随之加高到与悬赏令同高。
 // 选择记在界面本地偏好（BossRushLocalPrefs），不进 ModConfig、不进存档。
 // 模态：独占输入租约，ESC / 手柄取消 = 等等；切图时画布随场景销毁，OnDestroy 归还租约。
 // ============================================================================
@@ -28,7 +32,7 @@ namespace BossRush
 
         // 整页 = 左边选单 + 右边悬赏令，一起墨晕淡入。
         private static readonly Vector2 SheetSize = new Vector2(1580f, 900f);
-        private static readonly Vector2 PanelSize = new Vector2(1000f, 720f);
+        private static readonly Vector2 PanelSize = new Vector2(1000f, 840f);
         private const float PanelCenterX = -270f;
         private const float CardsCenterX = 52f;
         private const float RowLabelX = -440f;
@@ -37,6 +41,7 @@ namespace BossRush
         private const float WideCardHeight = 112f;
         private const float TierCardWidth = 190f;
         private const float TierCardHeight = 200f;
+        private const float RaiseRowHeight = 100f;
 
         private static readonly Vector2 NoticeSize = new Vector2(480f, 840f);
         private const float NoticeCenterX = 518f;
@@ -75,6 +80,7 @@ namespace BossRush
             internal bool Selected;
             internal CanvasGroup Pips;
             internal ArenaExpeditionEmberField Embers;
+            internal TextMeshProUGUI RaiseMark;
         }
 
         private Canvas canvas;
@@ -101,6 +107,12 @@ namespace BossRush
         private readonly Card[] tierCards = new Card[4];
         private readonly Card[] lengthCards = new Card[3];
         private CanvasGroup lengthRow;
+        /// <summary>每档各记一份加码级数（换档再换回来还在原处）；立誓时只记所选那档。</summary>
+        private readonly int[] raiseByTier = new int[4];
+        private ArenaExpeditionRaiseRow raiseRow;
+        /// <summary>悬赏令上次写的是哪档、几级：级数变了战帖大字旁的小印才重新落一次。</summary>
+        private ArenaExpeditionTier noticeTier = (ArenaExpeditionTier)(-1);
+        private int noticeRaise = -1;
         private float lastBellTime = -100f;
         private float lastPaperTime = -100f;
 
@@ -162,6 +174,7 @@ namespace BossRush
             lineup = remembered.Lineup;
             tier = remembered.Tier;
             length = ArenaExpeditionOrder.LoadRememberedLength();
+            for (int i = 0; i < raiseByTier.Length; i++) raiseByTier[i] = ArenaExpeditionRaise.Remembered((ArenaExpeditionTier)i);
 
             BossRushUI.CreateBackdrop(canvas.transform);
             GameObject sheetObject = ZombieModeUIHelper.CreateRect("Sheet", canvas.transform, new Vector2(0.5f, 0.5f), SheetSize);
@@ -188,13 +201,24 @@ namespace BossRush
             BossRushInkSkin.ApplyInkPanel(surfaceImage, false);
 
             RectTransform title = BossRushInkSkin.CreateBrushTitle(surface.transform, "出征令", "War Writ", 48f);
-            title.anchoredPosition = new Vector2(0f, 266f);
+            title.anchoredPosition = new Vector2(0f, 319f);
 
-            BuildLineupRow(surface.transform, 130f);
-            BossRushInkSkin.CreateInkDivider(surface.transform, 860f, new Vector2(CardsCenterX, 58f));
-            BuildTierRow(surface.transform, -58f);
-            BossRushInkSkin.CreateInkDivider(surface.transform, 860f, new Vector2(CardsCenterX, -182f));
-            BuildLengthRow(surface.transform, -258f);
+            // 加码紧贴在战帖卡下面（它是战帖的细分，不另隔一道分隔笔）
+            BuildLineupRow(surface.transform, 194f);
+            BossRushInkSkin.CreateInkDivider(surface.transform, 860f, new Vector2(CardsCenterX, 120f));
+            BuildTierRow(surface.transform, 2f);
+            BuildRaiseRow(surface.transform, -164f);
+            BossRushInkSkin.CreateInkDivider(surface.transform, 860f, new Vector2(CardsCenterX, -228f));
+            BuildLengthRow(surface.transform, -300f);
+        }
+
+        private void BuildRaiseRow(Transform parent, float y)
+        {
+            GameObject row = ZombieModeUIHelper.CreateRect("RaiseRow", parent, new Vector2(0.5f, 0.5f), new Vector2(PanelSize.x, RaiseRowHeight));
+            RectTransform rect = row.GetComponent<RectTransform>();
+            rect.anchoredPosition = new Vector2(0f, y);
+            CreateRowLabel(row.transform, "加码", "RAISE", 0f);
+            raiseRow = new ArenaExpeditionRaiseRow(rect, CardsCenterX, PickRaise, () => closing);
         }
 
         private void BuildLineupRow(Transform parent, float y)
@@ -305,6 +329,12 @@ namespace BossRush
             card.UnderlineWidth = 96f;
             card.Underline = CreateUnderline(card.Rect, new Vector2(-48f, chinese ? 2f : 22f), card.UnderlineWidth);
             card.Pips = CreateRulePips(card.Rect, value, chinese ? -64f : -56f);
+            if (ArenaExpeditionRaise.MaxFor(value) > 0)
+            {
+                card.RaiseMark = CreateCardText(card.Rect, "Raise", string.Empty, 15f,
+                    new Vector2(TierCardWidth * 0.5f - 30f, TierCardHeight * 0.5f - 20f), new Vector2(52f, 26f), TextAlignmentOptions.Right, true);
+                card.RaiseMark.color = BossRushInkColors.CinnabarText;
+            }
             if (value == ArenaExpeditionTier.Nightmare)
             {
                 card.Embers = card.Rect.gameObject.AddComponent<ArenaExpeditionEmberField>();
@@ -553,6 +583,22 @@ namespace BossRush
             RectTransform stroke = BossRushInkSkin.CreateBrushStroke(writ, "TitleStroke", new Vector2(300f, 10f),
                 new Vector2(0f, strokeY), Fade(nightmare ? NoticeNightmare : NoticeInk, 0.85f));
 
+            // 加码：战帖大字右边一枚级数小印；级数变了（同档）才重新落印，换档 / 换阵容只静静写上
+            int raise = CurrentRaise;
+            bool restamp = animate && tier == noticeTier && raise != noticeRaise;
+            noticeTier = tier;
+            noticeRaise = raise;
+            if (raise > 0)
+            {
+                float titleHalf = Mathf.Min(170f, title.GetPreferredValues(title.text).x * 0.5f);
+                RectTransform raiseSeal = BossRushInkSkin.CreateSeal(writ, ArenaExpeditionRaise.Numeral(raise), 46f);
+                raiseSeal.anchoredPosition = new Vector2(titleHalf + 34f, title.rectTransform.anchoredPosition.y + 6f);
+                raiseSeal.localRotation = Quaternion.Euler(0f, 0f, -9f);
+                Image raiseImage = raiseSeal.GetComponent<Image>();
+                if (raiseImage != null) raiseImage.color = NoticeCinnabar;
+                if (restamp) BossRushInkSkin.StampSeal(raiseSeal, null, 0.12f, false);
+            }
+
             // 正文从上往下排，量着每段的实际高度；排不下就整段等比缩一点，不截字。
             float stackTop = strokeY - 16f;
             GameObject stackObject = ZombieModeUIHelper.CreateRect("Stack", writ, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
@@ -567,7 +613,7 @@ namespace BossRush
 
             y -= SectionHeader(stack, "战　规", "RULES", y) + 8f;
             IList<ArenaExpeditionRule> rules = ArenaExpeditionTuning.RulesFor(tier);
-            if (rules.Count == 0)
+            if (rules.Count == 0 && raise == 0)
             {
                 TextMeshProUGUI none = NoticeText(stack, "NoRules", L10n.T("照旧规矩，一条不加", "House rules. Nothing added."), 14f,
                     NoticeInkSoft, TextAlignmentOptions.Top, true);
@@ -576,13 +622,25 @@ namespace BossRush
             }
             for (int i = 0; i < rules.Count; i++)
             {
-                if (rules[i] == null) continue;
+                // 被加码换成更重一条的档位战规（天象无常 → 天翻地覆等）不再列出：两条都写像是都在生效
+                if (rules[i] == null || ArenaExpeditionTuning.IsSuperseded(tier, raise, rules[i])) continue;
                 y -= PlaceRule(stack, rules[i], y) + 4f;
+            }
+
+            if (raise > 0)
+            {
+                y -= 8f;
+                y -= SectionHeader(stack, "加　码", "RAISE", y) + 8f;
+                IList<ArenaExpeditionRung> ladder = ArenaExpeditionRaise.LadderFor(tier);
+                for (int i = 0; i < raise && i < ladder.Count; i++)
+                {
+                    y -= PlaceRule(stack, ArenaExpeditionTuning.RaiseRule(ladder[i]), y, ArenaExpeditionRaise.Numeral(i + 1)) + 4f;
+                }
             }
 
             y -= 8f;
             y -= SectionHeader(stack, "赏　格", "REWARDS", y) + 8f;
-            List<KeyValuePair<string, bool>> rewards = ArenaExpeditionTuning.RewardLines(tier, lineup, length, poolCount);
+            List<KeyValuePair<string, bool>> rewards = ArenaExpeditionTuning.RewardLines(tier, lineup, length, poolCount, raise);
             for (int i = 0; i < rewards.Count; i++)
             {
                 y -= PlaceReward(stack, rewards[i].Key, rewards[i].Value, y) + 3f;
@@ -606,8 +664,8 @@ namespace BossRush
             BossRushInkSkin.PlayBrushWrite(stroke, 0.04f, 0.34f, motion);
         }
 
-        /// <summary>一条战规：左边类别印（英文界面是一行朱字），右边名字粗体、说明在下。返回占用高度。</summary>
-        private static float PlaceRule(Transform parent, ArenaExpeditionRule rule, float top)
+        /// <summary>一条战规：左边类别印（英文界面是一行朱字），右边名字粗体、说明在下。加码那几条名字前带朱字级数。返回占用高度。</summary>
+        private static float PlaceRule(Transform parent, ArenaExpeditionRule rule, float top, string numeral = null)
         {
             bool chinese = L10n.IsChinese;
             float left = -StackWidth * 0.5f;
@@ -629,7 +687,9 @@ namespace BossRush
                 PlaceBlock(kind, left, top - 4f, indent - 6f);
             }
             float width = StackWidth - indent;
-            TextMeshProUGUI name = NoticeText(parent, "RuleName", rule.Name, 17f, NoticeInk, TextAlignmentOptions.Left, false);
+            string title = string.IsNullOrEmpty(numeral) ? rule.Name
+                : "<color=#" + ColorUtility.ToHtmlStringRGB(NoticeCinnabar) + ">" + numeral + "</color>  " + rule.Name;
+            TextMeshProUGUI name = NoticeText(parent, "RuleName", title, 17f, NoticeInk, TextAlignmentOptions.Left, false);
             name.fontStyle = FontStyles.Bold;
             PlaceBlock(name, left + indent, top + 3f, width);
             TextMeshProUGUI line = NoticeText(parent, "RuleLine", rule.Line, 13f, NoticeInkSoft, TextAlignmentOptions.TopLeft, true);
@@ -737,6 +797,18 @@ namespace BossRush
             RefreshAll(true);
         }
 
+        private int CurrentRaise { get { return ArenaExpeditionRaise.Clamp(tier, raiseByTier[(int)tier]); } }
+
+        /// <summary>加码台阶被点：加到这一级（0 = 不加）。</summary>
+        private void PickRaise(int level)
+        {
+            if (closing) return;
+            int clamped = ArenaExpeditionRaise.Clamp(tier, level);
+            if (raiseByTier[(int)tier] == clamped) return;
+            raiseByTier[(int)tier] = clamped;
+            RefreshAll(true);
+        }
+
         private void SelectLength(ArenaExpeditionLength value)
         {
             if (length == value || lineup == ArenaExpeditionLineup.Hell) return;
@@ -751,7 +823,14 @@ namespace BossRush
             for (int i = 0; i < tierCards.Length; i++)
             {
                 ApplyCardState(tierCards[i], i == (int)tier, i == (int)ArenaExpeditionTier.Nightmare, animate);
+                if (tierCards[i] != null && tierCards[i].RaiseMark != null)
+                {
+                    int raised = ArenaExpeditionRaise.Clamp((ArenaExpeditionTier)i, raiseByTier[i]);
+                    tierCards[i].RaiseMark.text = raised > 0 ? "+" + ArenaExpeditionRaise.Numeral(raised) : string.Empty;
+                    tierCards[i].RaiseMark.alpha = i == (int)tier ? 1f : 0.55f;
+                }
             }
+            if (raiseRow != null) raiseRow.Show(tier, CurrentRaise, animate);
             for (int i = 0; i < lengthCards.Length; i++)
             {
                 ApplyCardState(lengthCards[i], !hell && i == (int)length, false, animate);
@@ -812,7 +891,7 @@ namespace BossRush
         {
             if (closing) return;
             closing = true;
-            ArenaExpeditionOrder order = new ArenaExpeditionOrder(lineup, tier, length);
+            ArenaExpeditionOrder order = new ArenaExpeditionOrder(lineup, tier, length, CurrentRaise);
             order.Remember(length);
 
             // 朱印落在悬赏令的赏格上，落定后墨池收拢，再开第一波。
@@ -827,10 +906,21 @@ namespace BossRush
                     if (sealImage != null) sealImage.color = new Color(0.52f, 0.10f, 0.08f, 1f);
                 }
                 BossRushInkSkin.StampSeal(seal, notice, 0f);
+                // 加码：档印落定之后，右上再压一枚级数小印（先说档，再说码；一次只落一枚）
+                if (order.Raise > 0)
+                {
+                    RectTransform raiseSeal = BossRushInkSkin.CreateSeal(paper, ArenaExpeditionRaise.Numeral(order.Raise), 62f);
+                    raiseSeal.anchoredPosition = new Vector2(190f, -196f);
+                    raiseSeal.localRotation = Quaternion.Euler(0f, 0f, 8f);
+                    Image raiseImage = raiseSeal.GetComponent<Image>();
+                    if (raiseImage != null) raiseImage.color = NoticeCinnabar;
+                    BossRushInkSkin.StampSeal(raiseSeal, notice, 0.26f);
+                }
             }
 
             BossRushInteractable starter = source;
-            BossRushInkMotion.For(gameObject).Add(0.55f, 0.01f, false, t => { }, () =>
+            float settle = order.Raise > 0 ? 0.8f : 0.55f;
+            BossRushInkMotion.For(gameObject).Add(settle, 0.01f, false, t => { }, () =>
             {
                 ReleaseInput();
                 if (instance == this) instance = null;

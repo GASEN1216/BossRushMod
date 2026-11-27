@@ -8,6 +8,7 @@
 // 2026-11-25 战规机制化：角标下面再加两行——天象名、诅咒名（噩梦禁药时多一行读秒），变天时上方一道墨色横扫加一声低钟；
 // 另有一层压在官方 HUD 之下的屏幕色调（ScreenAmbience）：天色 / 天象的画面（雨雾的冷灰、黄昏的暖光、夜色、血月暗角、
 // 永夜的黑边、雷暴的闪光）都画在这里，同一个 Update 里跟着两道门一起收起。数值效果不在这里，见 WavesArena/Trials。
+// 2026-11-27 加码：战帖印右上角一枚小级数印（Ⅰ–Ⅷ），开波时随档印之后落下。
 // ============================================================================
 
 using TMPro;
@@ -234,6 +235,15 @@ namespace BossRush
             ApplyLines();
 
             BossRushInkSkin.StampSeal(seal, anchorRect, 0.25f);
+            // 加码（2026-11-27）：战帖印右上角再压一枚小级数印，档印落定后才落、不出第二声
+            if (run.Order.Raise > 0)
+            {
+                RectTransform raiseSeal = BossRushInkSkin.CreateSeal(anchor.transform, ArenaExpeditionRaise.Numeral(run.Order.Raise),
+                    L10n.IsChinese ? 30f : 34f);
+                raiseSeal.anchoredPosition = new Vector2(32f, 40f);
+                raiseSeal.localRotation = Quaternion.Euler(0f, 0f, -8f);
+                BossRushInkSkin.StampSeal(raiseSeal, null, 0.55f, false);
+            }
             BuildAmbience();
         }
 

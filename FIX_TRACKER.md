@@ -4,6 +4,41 @@
 
 **2026-11-20 · COMPAT · L1/L2**　玩家反馈退出重进后武器消失、仓库物品变问号。修复冷启动注册、分包手持模型绑定、部分失败重试和克隆/异步资源归属。角色和仓库合成档往返、重复 TypeID 与真实包来源已纳入自动回归。故障证据与玩家侧验证边界见 [CR-2026-11-20-001 至 003](CODE_REVIEW_FINDINGS.md)。随 v2.6.1 发版：`info.ini` 升 2.6.1，WikiContent 新增中英 `changelog__v2_6_1` 并补总览，工坊简介同步；L3 待玩家侧确认。
 
+## 2026-11-27 出征令改进三批：补强、天象双刃与新诅咒、加码阶梯（COMPAT；本地偏好 SCHEMA+；L2 + Dev / 正式真编译；L3 待 owner）
+
+- 依据：复审后 owner 要改进方案，随后「都做，第三批搞成杀戮尖塔那种，战规简单到难排序，玩家自己选择加码。确保UI，交互逻辑，局内特效都是高端高级大气符合逻辑，具有史诗感」。
+- 第一批（补强）：狂暴另加伤害 +25%；全场亲卫 + 影从共用上限 12；血债同一只敌人 0.6 秒内连中只记一次。`ArenaTrialsAffixes.cs`、`ArenaTrialsCurses.cs`、`ArenaTrialsTuning.cs`。
+- 第二批（天象双刃与新诅咒）：雷暴下落雷劈敌 ×2 并演银色电弧（`ArenaTrialsHazards.HitLightning`、`ArenaTrialsFx.Smite`）；血月下倒下的波次首领多掉 1 件，掉落入口问到时演血月献祭（`ArenaTrialsSky.ClaimBloodMoonLoot`、`ArenaTrialsFx.BloodOffering`）；永夜压慢敌方反应 ×1.5 / 开火间隔 ×1.35，换天与收尾只在值仍是本战规写的那份时写回（`ArenaTrialNightDull`）。厄运池 5 → 8：回响（紫印收缩后再震，翻滚可躲）、沉疴（墨絮随身流血，翻滚即清）、破绽（玩家元素系数 ×1.15 / ×1.25，朱砂火星），新文件 `WavesArena/Trials/ArenaTrialsCurseActs.cs`。
+- 第三批（加码）：新文件 `WavesArena/ArenaExpeditionRaise.cs`（梯子、`ApplyTo`、奖励、本地偏好两组键）与 `WavesArena/ArenaExpeditionRaiseRow.cs`（朱印台阶：逐枚落印、朱笔、褪印、加满燃余烬加金环与钟磬）；`ArenaExpeditionOrder` 带 `Raise`；`ArenaTrialsTuning.ProfileFor(tier, raise)` 复制后改；`ArenaExpeditionTuning` 加双参数休整 / 额外休整 / 烽烟圈 / 无间奖金 / 通关箱重载与 `RaiseRule`、`IsSuperseded`；模块经 `LiveExpeditionRaise`，通关记最高级、横幅写级数；面板左栏加高到 840、悬赏令加「加码」一节并略去被换掉的档位战规、立誓落级数小印；局内角标右上一枚级数小印。两个新 `.cs` 登记 `compile_official.bat`（CRLF 保持）。
+- 守卫：`ArenaExpeditionOrderGuard` 新增 `check_raise`（梯子顺序、`RaiseRule` 按名对表、`ApplyTo` 十二级、复制语义、`LiveExpeditionRaise`、奖励与通关记录、面板接线），休整 / 烽烟圈 / 赏格断言随双参数更新；`ArenaTrialsGuard` 补厄运 8 种、新诅咒只经 `HurtNeutral` 且翻滚可躲 / 可清、不放碰撞体、血月 / 永夜 / 雷暴三处。反向验证 10 种改法（梯子换序、`RaiseRule` 错下标、删 `Clone`、焚城级不生效、悬赏令不略去、`LiveExpeditionRaise` 不认 Mode D、`CurseKinds` 改 5、沉疴不认翻滚、永夜无条件写回、雷暴不加倍）全部转红，按字节还原、SHA-256 一致后转绿。
+- F3：`ARENA_EXPEDITION_TUNING` 加 `WishRaiseMismatch`（梯子 0/5/8/0、标准 +5 与困难 / 困难 +8 与噩梦机制逐项相同、共享配置未被改、急行军第 3 级与失明第 2 级、困难 +8 悬赏令 10 条、奖励、厄运 8 种都有名字）。
+- Wiki / repowiki：`WikiContent/{zh,en}/mode/mode__mode_a.md` 与受跟踪的 `wiki-site/docs/{,en/}game-modes/standard.md` 逐段手改（加码一节、天象双刃、三种新诅咒、狂暴 / 召唤 / 血债），没跑整站同步；《标准 BossRush 模式》《难度级别系统》补 2026-11-27 段。
+- 证据：全量守卫 800 PASS、0 新红；Dev 与正式真编译均 0 错 0 警告；正式 DLL 与游戏目录 SHA-256 同为 `C747A9EF…B1C9`，30 个 Dev 标识缺席；`ArenaHostRemainder`、`LegacyArenaEntry` 隔离回归 PASS；`vitepress build docs` 通过（未跑 sync）。未进游戏，未读写玩家存档。
+- 工作区：`ArenaExpeditionTuning.cs`、`ArenaTrialsCurses.cs`、`ArenaExpeditionHud.cs` 等与别的会话未提交的改动并存，本次只动上面列出的段落；编译含那些改动。
+- [L3-RAISE-01] 路牌打开出征令选标准：战帖卡下一排「不加 · Ⅰ–Ⅴ」，每枚下写战规名；点 Ⅲ，Ⅰ→Ⅲ 从左到右依次落印、只响一声、朱笔写到 Ⅲ；悬赏令出现「加码」一节列出三条、战帖大字旁落 Ⅲ 小印、赏格多一行「加码 Ⅲ：通关箱件数 +15%」；再点「不加」，印慢慢褪去。不合格：落印顺序乱、台阶与战帖卡或征程卡相叠、名字被截、悬赏令压到「等等 / 立誓」。
+- [L3-RAISE-02] 选困难点 Ⅷ：最高一级燃起余烬、外圈金环、一声古钟；悬赏令列磨刀、急行军与八条加码，不再出现天象无常 / 厄运 / 天灾 / 凶相，整张不截字。不合格：被换掉的那几条仍在，或正文缩到读不清。
+- [L3-RAISE-03] 选轻松、噩梦：加码一栏整体压暗，只写一句为什么不加码，点不动。
+- [L3-RAISE-04] 困难加 Ⅱ 立誓：档印之后再落一枚 Ⅱ 小印；开局右侧角标右上有 Ⅱ；M 图不标首领烽烟圈；每 2–3 波变天。不合格：小印与档印同时落下，或 M 图仍有烽烟圈。
+- [L3-RAISE-05] 标准加 Ⅰ 打短征通关：通关横幅带「加码 Ⅰ」；再开出征令，标准的 Ⅰ 上方有「最高」，并停在 Ⅰ。
+- [L3-OMEN-01] 雷暴下把首领引进落雷：首领身上炸开冷银电弧、掉血明显多于平时。血月下打死波次首领：尸身一圈血色余烬升起，掉落多 1 件。永夜下敌人开火变慢、换天后恢复。
+- [L3-CURSE-01] 回响：挨打处亮紫印、收缩约 1 秒后震一下，翻滚出圈不掉血。沉疴：挨打后身上墨絮跟随、按跳掉血，翻滚一次墨尘散开即止。破绽：挨打溅朱砂火星，同一下伤害明显变大。
+- [L3-RAISE-06] Dev 构建跑 F3 `ARENA_EXPEDITION_TUNING`：PASS，`wrong` 里没有 `raise_` 开头的码。
+
+## 2026-11-27 出征令战规复审三项（CR-2026-11-27-001～003；COMPAT；L2 + Dev / 正式真编译；L3 待 owner）
+
+- 依据：owner「请你审核一下我们出证令做的那些改动，看看是否词条什么的都足够有趣多变并且都实装了效果也好」，随后「登记并全修」。根因见 `CODE_REVIEW_FINDINGS.md` 同日节。
+- F3（001）：`DebugAndTools/F3GameplayValidationWishes.cs` 改战规条数、强制词条口径，加逐档战规开关、词缀抽取、血债补丁装上核对与清理后战规自毁；四个判定函数原样挪进新文件 `DebugAndTools/F3GameplayValidationExpeditionTrials.cs`，登记 `compile_official.bat`（CRLF 保持）。
+- 血债（002）：`WavesArena/Trials/ArenaTrialsPatches.cs` 新增 `Drug.CanBeUsed`、`CharacterMainControl.UseItem` 两个前置。
+- 词缀（003）：`WavesArena/Trials/ArenaTrialsAffixes.cs` 抽取提成 `RollInto`；`WavesArena/ArenaExpeditionTuning.cs` 凶煞一行改文案。
+- 守卫：`tests/ArenaTrialsGuard.py` 补两个补丁目标、药品前置门控、提示前置只截「因血债不可用且含回血药」、`Roll` 只委托 `RollInto`、补齐循环在取类之后、文案不再写「四类各一」。反向验证 10 种改法（药品前置不认主玩家、药品前置放行、删掉药品补丁、提示不看可用性、提示判反、提示对任何药都截、不补齐、无视预设、补齐挪到取类前、文案改回四类各一）全部红在预期断言，按字节还原、SHA-256 一致后转绿。
+- Wiki / repowiki：`WikiContent/{zh,en}/mode/mode__mode_a.md` 与受跟踪的 `wiki-site/docs/{,en/}game-modes/standard.md` 逐行手改（凶煞条数、血债不扣药、内容首领补法），没跑整站同步；《标准 BossRush 模式》补 2026-11-27 段。
+- 证据：台账写完后全量守卫 800 PASS、0 新红；Dev 与正式真编译均 0 错 0 警告；正式 DLL 与游戏目录 SHA-256 同为 `CAAB5CF7…582C`，Dev 标识缺席；`ArenaHostRemainder`、`LegacyArenaEntry` 隔离回归 PASS。未进游戏。
+- 工作区：`ArenaExpeditionHud.cs`、`ArenaExpeditionTuning.cs`、`ArenaInkTitleCard.cs`、`ArenaTrialsCurses.cs`、`ArenaTrialsPatches.cs` 与英文 Wiki 两份同时有别的会话未提交的改动，本次只动上面列出的行；本次两次编译都含那些改动。
+- [L3-TRIALS-01] 噩梦出征令，被 Boss 打掉血、血债生效时用医疗包 / 绷带：出「血债未清，伤药不灵」，读条不开始、药不少。不合格：读条走完药被扣，或官方「无法使用」与它叠出。再用只止血不回血的药：照常能用。
+- [L3-TRIALS-02] 噩梦出征令，Boss 池只开内容首领（如冠军之影）：普通波首领名牌前 3 个词缀前缀，压轴 4 个；压轴打死多掉 2 件。不合格：只有 2 个前缀，或压轴只多掉 1 件。
+- [L3-TRIALS-03] Dev 构建跑 F3 `ARENA_EXPEDITION_TUNING`、`ARENA_EXPEDITION_ORDER`、`ARENA_EXPEDITION_CLEANUP`：三条 PASS，TUNING 指标含 `blood_debt_patches=installed/installed`。不合格：任一 FAIL（附失败码）。
+- [L3-TRIALS-04] 路牌打开出征令选噩梦：悬赏令「凶煞」一行是「每只首领带 3 条词缀，压轴带 4 条」。
+
 ## 2026-11-26 路牌出征令不见了，只剩「哎哟~你干嘛~」（COMPAT；L2 + 正式真编译；L3 待 owner）
 
 - 依据：owner 反馈「出征令选项现在没有在路牌上出现了，现在只有哎哟你干嘛了」。

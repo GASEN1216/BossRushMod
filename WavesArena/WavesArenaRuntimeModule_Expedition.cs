@@ -3,6 +3,7 @@
 // 战帖战规（2026-11-25）：休整倍率进倒计时，失明挡掉烽烟圈来源；天色 / 天象、天灾、词缀、厄运与常驻诅咒、
 // 焚城由局内服务对象 ArenaTrials 承担（本文件是它唯一的 owner：开局 Begin、收局 End，开波 / 收波 / 首领登记转进去）；
 // 首领词缀的分身 / 双生压着收波（HandleBossDeath 推波前问、战规放开时交回来，推波仍在本模块）与词缀身体的刷怪；
+// 加码（2026-11-27，ArenaExpeditionRaise）：休整、烽烟圈、通关箱、无间奖金、横幅与通关记录读本局的加码级数；
 // 通关箱件数 / 品质、无间奖金，以及压轴 / 噩梦的水墨标题幕。规则与数值见 ArenaExpeditionTuning.cs、Trials/ArenaTrialsTuning.cs。
 using System;
 using System.Collections.Generic;
@@ -25,7 +26,7 @@ namespace BossRush
             ArenaExpeditionState.Begin(run);
             expeditionWaveHeld = false;
             ArenaTrials.Begin(this, run, IsExpeditionTrialLive);
-            ModBehaviour.DevLog("[BossRush] 出征令：阵容=" + order.Lineup + "，战帖=" + order.Tier + "，征程=" + order.Length
+            ModBehaviour.DevLog("[BossRush] 出征令：阵容=" + order.Lineup + "，战帖=" + order.Tier + "，加码=" + order.Raise + "，征程=" + order.Length
                 + "，波数=" + run.Waves + (run.Finale != null ? "，压轴=" + run.Finale.displayName : string.Empty));
         }
 
@@ -79,6 +80,13 @@ namespace BossRush
             return ArenaExpeditionState.CurrentTier;
         }
 
+        /// <summary>当前这局的加码级数（不在出征令局里、Mode D 借用本模块时是 0）。</summary>
+        private int LiveExpeditionRaise()
+        {
+            if (ArenaExpeditionState.Current == null || !IsActive || owner == null || owner.IsModeDActive) return 0;
+            return ArenaExpeditionState.CurrentRaise;
+        }
+
         /// <summary>
         /// 战帖指定的变异词条（开波抽词条时交给 MutatorManager 先上）。出征令与当前模式对不上（BeginExpeditionRun
         /// 会按旧模式补「标准」）或 Mode D 借用本模块时不指定。
@@ -89,16 +97,16 @@ namespace BossRush
             return ArenaExpeditionTuning.ForcedMutatorIds(order.Tier);
         }
 
-        /// <summary>波间休整：轻松 ×1.5，困难 / 噩梦急行军 ×0.5。</summary>
+        /// <summary>波间休整：轻松 ×1.5，困难 / 噩梦（以及标准加码到急行军）急行军 ×0.5。</summary>
         private float ExpeditionRestSeconds(float seconds)
         {
-            return seconds * ArenaExpeditionTuning.RestMultiplier(LiveExpeditionTier());
+            return seconds * ArenaExpeditionTuning.RestMultiplier(LiveExpeditionTier(), LiveExpeditionRaise());
         }
 
         /// <summary>每 5 波的额外休整：急行军取消。</summary>
         private float ExpeditionMilestoneRestSeconds(float seconds)
         {
-            return ArenaExpeditionTuning.KeepsMilestoneRest(LiveExpeditionTier()) ? seconds : 0f;
+            return ArenaExpeditionTuning.KeepsMilestoneRest(LiveExpeditionTier(), LiveExpeditionRaise()) ? seconds : 0f;
         }
 
         /// <summary>普通 Boss：全局倍率之后当场乘战帖。preset 交给战规，分身 / 双生 / 护卫照它再叫。</summary>
@@ -243,12 +251,12 @@ namespace BossRush
             }
         }
 
-        /// <summary>通关箱件数：按征程折算、按战帖增减（全征标准档与旧版一致）。</summary>
+        /// <summary>通关箱件数：按征程折算、按战帖增减、每级加码 +5%（全征标准档不加码与旧版一致）。</summary>
         private int ExpeditionVictoryChestCount(int baseCount)
         {
             ArenaExpeditionRun run = ArenaExpeditionState.Current;
             if (run == null) return baseCount;
-            return ArenaExpeditionTuning.VictoryChestCount(baseCount, run.Order.Tier, run.Waves, run.PoolCount);
+            return ArenaExpeditionTuning.VictoryChestCount(baseCount, run.Order.Tier, run.Waves, run.PoolCount, run.Order.Raise);
         }
 
         private int ExpeditionVictoryQualityMin(int baseMin)
@@ -260,7 +268,7 @@ namespace BossRush
         private float ExpeditionHellCashFactor(CharacterMainControl boss)
         {
             float healthFactor = ArenaExpeditionBossScaling.HealthFactorOf(boss);
-            float cash = ArenaExpeditionTuning.HellCashMultiplier(ArenaExpeditionState.CurrentTier);
+            float cash = ArenaExpeditionTuning.HellCashMultiplier(ArenaExpeditionState.CurrentTier, ArenaExpeditionState.CurrentRaise);
             return healthFactor > 0f ? cash / healthFactor : cash;
         }
 
@@ -271,11 +279,17 @@ namespace BossRush
             return healthFactor > 0f ? maxHealth / healthFactor : maxHealth;
         }
 
-        /// <summary>首领词缀的额外掉落件数（不是出征令、没挂词缀、分身 / 召唤物都是 0）。</summary>
+        /// <summary>
+        /// 战规的额外掉落件数：首领词缀（1–2 条 +1、3–4 条 +2）+ 血月下倒下的波次首领 +1（2026-11-27，尸身上演血月献祭）。
+        /// 不是出征令、分身 / 召唤物都是 0；只在填掉落时问一次。
+        /// </summary>
         private static int ExpeditionAffixBonusLoot(CharacterMainControl boss)
         {
             ArenaTrials trials = ArenaTrials.Active;
-            return trials != null && trials.Affixes != null ? trials.Affixes.BonusLootFor(boss) : 0;
+            if (trials == null) return 0;
+            int bonus = trials.Affixes != null ? trials.Affixes.BonusLootFor(boss) : 0;
+            if (trials.Sky != null) bonus += trials.Sky.ClaimBloodMoonLoot(boss);
+            return bonus;
         }
 
         /// <summary>首领掉落填完之后：断补把弹药堆叠减半。</summary>
@@ -302,13 +316,25 @@ namespace BossRush
             }
         }
 
-        /// <summary>通关横幅难度名后面补「 · 战帖 · 征程」（标准 · 全征不补，与旧版一致）。</summary>
+        /// <summary>通关一局（非无间）：记下这一档通关过的最高加码（本地偏好，出征令上标「最高」）。</summary>
+        private void RecordExpeditionRaiseCleared()
+        {
+            ArenaExpeditionRun run = ArenaExpeditionState.Current;
+            if (run == null || run.Order.IsHell || owner == null || owner.IsModeDActive) return;
+            if (ArenaExpeditionRaise.RecordCleared(run.Order.Tier, run.Order.Raise))
+            {
+                ModBehaviour.DevLog("[BossRush] 出征令：" + run.Order.Tier + " 最高加码记为 " + run.Order.Raise);
+            }
+        }
+
+        /// <summary>通关横幅难度名后面补「 · 战帖 · 加码 · 征程」（标准 · 不加码 · 全征不补，与旧版一致）。</summary>
         private string ExpeditionBannerSuffix()
         {
             ArenaExpeditionRun run = ArenaExpeditionState.Current;
             if (run == null) return string.Empty;
             string suffix = string.Empty;
             if (run.Order.Tier != ArenaExpeditionTier.Standard) suffix += " · " + ArenaExpeditionTuning.TierName(run.Order.Tier);
+            if (run.Order.Raise > 0) suffix += " · " + ArenaExpeditionRaise.Label(run.Order.Raise);
             if (run.HasQueue) suffix += " · " + ArenaExpeditionTuning.LengthName(run.Order.Length);
             return suffix;
         }

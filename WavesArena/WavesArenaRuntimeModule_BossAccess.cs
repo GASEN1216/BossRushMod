@@ -83,8 +83,8 @@ namespace BossRush
         /// </summary>
         internal void CopyMapBeaconBossesTo(ICollection<CharacterMainControl> destination)
         {
-            // 噩梦战帖「盲战」：竞技场首领不进烽烟圈（Mode D 借用本模块时 LiveExpeditionTier 退回标准档，不受影响）
-            if (ArenaExpeditionTuning.HidesMapBeacons(LiveExpeditionTier())) return;
+            // 噩梦战帖「失明」（困难加码到失明同样）：竞技场首领不进烽烟圈（Mode D 借用本模块时退回标准档、不加码，不受影响）
+            if (ArenaExpeditionTuning.HidesMapBeacons(LiveExpeditionTier(), LiveExpeditionRaise())) return;
             CopyTrackedBossCharactersTo(destination);
             AddMapBeaconBoss(destination, CurrentBoss as CharacterMainControl);
             for (int i = 0; i < CurrentWaveBosses.Count; i++)

@@ -22,6 +22,10 @@
 9. 波间休整倍率进倒计时（两处）与每 5 波额外休整；失明（原盲战）挡在烽烟圈的竞技场来源入口；两者都经
    `LiveExpeditionTier`，Mode D 借用本模块时不受影响。
 10. 面板：卡片下不再写结论，悬赏令列出战规与赏格，按钮是「等等 / 立誓」（「收起」改名），ESC = 等等。
+11. 加码（2026-11-27 owner「杀戮尖塔那种，战规简单到难排序，玩家自己选择加码」）：标准 5 级借困难战规、困难 8 级借噩梦战规，
+   轻松 / 噩梦不加；梯子顺序、每级取的是哪条战规（按名字核对）、每级奖励 +5% 钉死；局内机制由 ProfileFor(tier, raise)
+   改一份副本（共享配置不许被改），休整 / 额外休整 / 烽烟圈经 LiveExpeditionRaise（Mode D 借用时为 0）；
+   通关箱与无间奖金带上加码；面板立誓把加码带进出征令、悬赏令写出加码战规并略去被换掉的档位战规。
 
 文本守卫防不住「保留 token、杀掉执行路径」，行为正确性仍要靠实机清单。
 """
@@ -223,9 +227,9 @@ def check_run_wiring(errors):
             "[Rules] 开波抽词条必须带上战帖指定的词条（ExpeditionForcedMutators），且出征令开的局不抽随机词条（allowRandom = expeditionOrder == null）")
     rest = compact(body_of(expedition, "private float ExpeditionRestSeconds(float seconds)"))
     milestone = compact(body_of(expedition, "private float ExpeditionMilestoneRestSeconds(float seconds)"))
-    require(errors, "returnseconds*ArenaExpeditionTuning.RestMultiplier(LiveExpeditionTier());" in rest
-            and "returnArenaExpeditionTuning.KeepsMilestoneRest(LiveExpeditionTier())?seconds:0f;" in milestone,
-            "[Rules] 休整倍率与额外休整必须按 LiveExpeditionTier 取（Mode D 借用时退回标准档）")
+    require(errors, "returnseconds*ArenaExpeditionTuning.RestMultiplier(LiveExpeditionTier(),LiveExpeditionRaise());" in rest
+            and "returnArenaExpeditionTuning.KeepsMilestoneRest(LiveExpeditionTier(),LiveExpeditionRaise())?seconds:0f;" in milestone,
+            "[Rules] 休整倍率与额外休整必须按 LiveExpeditionTier / LiveExpeditionRaise 取（Mode D 借用时退回标准档、不加码）")
     countdown = compact(read("WavesArena", module + "Countdown.cs"))
     require(errors, "floatinterval=ExpeditionRestSeconds(owner.GetWaveIntervalSeconds());" in countdown
             and "floatmilestoneBonus=ExpeditionMilestoneRestSeconds(owner.GetMilestoneRestBonusSeconds());" in countdown,
@@ -236,7 +240,7 @@ def check_run_wiring(errors):
             "[Rules] Tick 里的波间间隔也必须乘战帖休整倍率")
     beacon = compact(body_of(read("WavesArena", module + "BossAccess.cs"),
                              "internal void CopyMapBeaconBossesTo(ICollection<CharacterMainControl> destination)"))
-    require(errors, beacon.startswith("if(ArenaExpeditionTuning.HidesMapBeacons(LiveExpeditionTier()))return;"),
+    require(errors, beacon.startswith("if(ArenaExpeditionTuning.HidesMapBeacons(LiveExpeditionTier(),LiveExpeditionRaise()))return;"),
             "[Rules] 失明必须挡在烽烟圈竞技场来源的入口（CopyMapBeaconBossesTo 第一句）")
 
     arena_host = compact(read("WavesArena", "WavesArena.cs"))
@@ -263,7 +267,7 @@ def check_run_wiring(errors):
             "[Panel] ESC / 手柄取消必须等同「等等」")
     notice = body_of(read("WavesArena", "ArenaExpeditionOrderPanel.cs"), "private void RebuildNotice(bool animate)")
     require(errors, notice is not None and "ArenaExpeditionTuning.RulesFor(tier)" in notice
-            and "ArenaExpeditionTuning.RewardLines(tier, lineup, length, poolCount)" in notice,
+            and "ArenaExpeditionTuning.RewardLines(tier, lineup, length, poolCount, raise)" in notice,
             "[Panel] 悬赏令必须列出这档的战规与赏格")
     refresh = compact(body_of(read("WavesArena", "ArenaExpeditionOrderPanel.cs"), "private void RefreshAll(bool animate)"))
     require(errors, refresh.endswith("RebuildNotice(animate);"), "[Panel] 选择一变悬赏令必须跟着重写（RefreshAll 收尾 RebuildNotice）")
@@ -278,6 +282,124 @@ def check_run_wiring(errors):
     require(errors, egg_awake is not None and "this.interactCollider.enabled=false;" in egg_awake
             and "this.interactCollider.enabled=true;" not in egg_awake,
             "[Entry] 生小鸡子选项必须关掉自身交互碰撞体，否则会抢走路牌交互组、出征令消失")
+
+
+RAISE_LADDERS = {
+    "StandardLadder": ["FickleSkies", "Hex", "ForcedMarch", "Calamity", "FellAspect"],
+    "HardLadder": ["Upheaval", "Blinded", "CutSupply", "ChainedCalamities", "DireHex", "CityAblaze", "BloodDebt", "DreadAspect"],
+}
+# 每级加码在悬赏令上就是下一档战规表里的那一条（名字与 check_tuning 里两张表一致）
+RAISE_RULE_NAMES = {
+    "FickleSkies": "天象无常", "Hex": "厄运", "ForcedMarch": "急行军", "Calamity": "天灾", "FellAspect": "凶相",
+    "Upheaval": "天翻地覆", "Blinded": "失明", "CutSupply": "断补", "ChainedCalamities": "天灾连环", "DireHex": "厄运（重）",
+    "CityAblaze": "焚城", "BloodDebt": "血债", "DreadAspect": "凶煞",
+}
+HARD_NAMES = ["磨刀", "凶相", "厄运", "急行军", "天象无常", "天灾"]
+NIGHTMARE_NAMES = ["杀心", "凶煞", "失明", "断补", "血债", "厄运（重）", "急行军", "焚城", "天翻地覆", "天灾连环"]
+
+
+def check_raise(errors):
+    raise_src = read("WavesArena", "ArenaExpeditionRaise.cs")
+    if raise_src is None:
+        errors.append("[Raise] 缺少 WavesArena/ArenaExpeditionRaise.cs")
+        return
+    c = compact(raise_src)
+    for array, rungs in RAISE_LADDERS.items():
+        body = body_of(raise_src, "private static readonly ArenaExpeditionRung[] " + array + " =")
+        found = re.findall(r"ArenaExpeditionRung\.(\w+)", body or "")
+        require(errors, found == rungs, "[Raise] %s 应由易到难为 %s（实际 %s）：改梯子先改方案与本守卫" % (array, rungs, found))
+    ladder_for = compact(body_of(raise_src, "internal static IList<ArenaExpeditionRung> LadderFor(ArenaExpeditionTier tier)"))
+    require(errors, ladder_for == "switch(tier){caseArenaExpeditionTier.Standard:returnStandardLadder;"
+            "caseArenaExpeditionTier.Hard:returnHardLadder;default:returnNoLadder;}",
+            "[Raise] 只有标准、困难能加码（轻松是宽限档、噩梦已是顶档）")
+    require(errors, "internalconstfloatRewardPerRung=0.05f;" in c, "[Raise] 每级加码奖励 +5%（改数值先改方案与本守卫）")
+    apply = compact(body_of(raise_src, "internal static void ApplyTo(ArenaTrialProfile profile, ArenaExpeditionTier tier, int raise)"))
+    for token in ("caseArenaExpeditionRung.FickleSkies:CopyOmens(profile,hard);", "caseArenaExpeditionRung.Upheaval:CopyOmens(profile,nightmare);",
+                  "caseArenaExpeditionRung.Calamity:CopyHazards(profile,hard);", "caseArenaExpeditionRung.ChainedCalamities:CopyHazards(profile,nightmare);",
+                  "caseArenaExpeditionRung.FellAspect:CopyAffixes(profile,hard);", "caseArenaExpeditionRung.DreadAspect:CopyAffixes(profile,nightmare);",
+                  "caseArenaExpeditionRung.Blinded:profile.Blind=true;", "caseArenaExpeditionRung.CutSupply:profile.CutSupply=true;",
+                  "caseArenaExpeditionRung.CityAblaze:profile.FireRing=true;", "caseArenaExpeditionRung.BloodDebt:profile.BloodDebt=true;"):
+        require(errors, token in apply, "[Raise] ApplyTo 缺少 %s：加码这一级写在悬赏令上却没在局内生效" % token)
+    require(errors, "profile.CurseLevel=Mathf.Max(profile.CurseLevel,hard.CurseLevel);" in apply
+            and "profile.CurseLevel=Mathf.Max(profile.CurseLevel,nightmare.CurseLevel);" in apply,
+            "[Raise] 厄运 / 厄运（重）两级必须把诅咒等级抬到困难 / 噩梦那一档")
+    for key in ('"arena.expedition.raise."', '"arena.expedition.raise_best."'):
+        require(errors, key in raise_src, "[Raise] 加码偏好键 %s 被改名：玩家上次的选择与「最高」标记会丢" % key)
+
+    tuning = read("WavesArena", "ArenaExpeditionTuning.cs")
+    rule_map = compact(body_of(tuning, "internal static ArenaExpeditionRule RaiseRule(ArenaExpeditionRung rung)"))
+    tables = {"HardRules": HARD_NAMES, "NightmareRules": NIGHTMARE_NAMES}
+    mapped = {}
+    for m in re.finditer(r"caseArenaExpeditionRung\.(\w+):return(HardRules|NightmareRules)\[(\d+)\];", rule_map or ""):
+        names = tables[m.group(2)]
+        index = int(m.group(3))
+        mapped[m.group(1)] = names[index] if index < len(names) else None
+    if "caseArenaExpeditionRung.ForcedMarch:returnForcedMarch;" in (rule_map or ""):
+        mapped["ForcedMarch"] = "急行军"
+    dm = re.search(r"default:return(HardRules|NightmareRules)\[(\d+)\];", rule_map or "")
+    if dm:
+        names = tables[dm.group(1)]
+        index = int(dm.group(2))
+        mapped["DreadAspect"] = names[index] if index < len(names) else None
+    for rung, name in RAISE_RULE_NAMES.items():
+        require(errors, mapped.get(rung) == name,
+                "[Raise] RaiseRule(%s) 应取战规「%s」（实际 %s）：战规表改了顺序要同步下标" % (rung, name, mapped.get(rung)))
+    tc = compact(tuning)
+    for token, why in (
+            ("returnArenaExpeditionRaise.Has(tier,raise,ArenaExpeditionRung.ForcedMarch)?RestMultipliers[(int)ArenaExpeditionTier.Hard]:RestMultiplier(tier);",
+             "标准加到急行军照困难的休整倍率"),
+            ("returnKeepsMilestoneRest(tier)&&!ArenaExpeditionRaise.Has(tier,raise,ArenaExpeditionRung.ForcedMarch);", "急行军一级取消额外休整"),
+            ("returnHidesMapBeacons(tier)||ArenaExpeditionRaise.Has(tier,raise,ArenaExpeditionRung.Blinded);", "困难加到失明 M 图不标首领"),
+            ("returnHellCashMultiplier(tier)*ArenaExpeditionRaise.RewardFactor(ArenaExpeditionRaise.Clamp(tier,raise));", "无间奖金乘加码倍率"),
+            ("intcount=VictoryChestCount(baseCount,tier,waves,poolCount);", "通关箱先按四参数版本算再乘加码"),
+    ):
+        require(errors, token in tc, "[Raise] ArenaExpeditionTuning：" + why)
+
+    trials_tuning = read("WavesArena", "Trials", "ArenaTrialsTuning.cs")
+    profile_for = compact(body_of(trials_tuning, "internal static ArenaTrialProfile ProfileFor(ArenaExpeditionTier tier, int raise)"))
+    require(errors, profile_for == "ArenaTrialProfileprofile=ProfileFor(tier);if(ArenaExpeditionRaise.Clamp(tier,raise)<=0)returnprofile;"
+            "profile=profile.Clone();ArenaExpeditionRaise.ApplyTo(profile,tier,raise);returnprofile;",
+            "[Raise] ProfileFor(tier, raise) 必须先复制再改（共享的困难 / 噩梦配置被改，下一局与悬赏令文案都会跟着变）")
+    trials = compact(read("WavesArena", "Trials", "ArenaTrials.cs"))
+    require(errors, "Profile=ArenaTrialsTuning.ProfileFor(Tier,run.Order.Raise);" in trials,
+            "[Raise] 局内战规必须按本局加码取配置")
+
+    expedition = read("WavesArena", "WavesArenaRuntimeModule_Expedition.cs")
+    live = compact(body_of(expedition, "private int LiveExpeditionRaise()"))
+    require(errors, live == "if(ArenaExpeditionState.Current==null||!IsActive||owner==null||owner.IsModeDActive)return0;"
+            "returnArenaExpeditionState.CurrentRaise;",
+            "[Raise] LiveExpeditionRaise 必须在没有本局快照、竞技场未激活或 Mode D 借用时为 0")
+    ec = compact(expedition)
+    require(errors, "ArenaExpeditionTuning.VictoryChestCount(baseCount,run.Order.Tier,run.Waves,run.PoolCount,run.Order.Raise);" in ec
+            and "ArenaExpeditionTuning.HellCashMultiplier(ArenaExpeditionState.CurrentTier,ArenaExpeditionState.CurrentRaise);" in ec,
+            "[Raise] 通关箱件数与无间奖金必须带上本局加码")
+    recorded = compact(body_of(expedition, "private void RecordExpeditionRaiseCleared()"))
+    require(errors, "if(run==null||run.Order.IsHell||owner==null||owner.IsModeDActive)return;" in recorded
+            and "ArenaExpeditionRaise.RecordCleared(run.Order.Tier,run.Order.Raise)" in recorded,
+            "[Raise] 通关记最高加码只认非无间、非 Mode D 借用的出征令局")
+    victory = compact(read("WavesArena", "WavesArenaRuntimeModule_VictoryRewards.cs"))
+    require(errors, "UnlockExpeditionNightmareClear();RecordExpeditionRaiseCleared();" in victory,
+            "[Raise] 通关结算必须记下这一档通关过的最高加码")
+
+    order = compact(read("WavesArena", "ArenaExpeditionOrder.cs"))
+    require(errors, "Raise=ArenaExpeditionRaise.Clamp(tier,raise);" in order and "ArenaExpeditionRaise.Remember(Tier,Raise);" in order,
+            "[Raise] 出征令构造时按档夹取加码级数，立誓时记下")
+
+    panel_src = read("WavesArena", "ArenaExpeditionOrderPanel.cs")
+    panel = compact(panel_src)
+    require(errors, "newArenaExpeditionOrder(lineup,tier,length,CurrentRaise);" in panel,
+            "[Raise] 立誓必须把所选加码带进出征令")
+    refresh = compact(body_of(panel_src, "private void RefreshAll(bool animate)"))
+    show_at = refresh.find("raiseRow.Show(tier,CurrentRaise,animate);")
+    require(errors, 0 <= show_at < refresh.find("RebuildNotice(animate);"),
+            "[Raise] RefreshAll 必须在重写悬赏令之前把加码台阶演到当前级")
+    notice = compact(body_of(panel_src, "private void RebuildNotice(bool animate)"))
+    require(errors, "ArenaExpeditionTuning.IsSuperseded(tier,raise,rules[i])" in notice
+            and "ArenaExpeditionTuning.RaiseRule(ladder[i])" in notice,
+            "[Raise] 悬赏令必须列出加码战规，并略去被加码换掉的档位战规")
+    row = read("WavesArena", "ArenaExpeditionRaiseRow.cs")
+    require(errors, row is not None and "if(blocked!=null&&blocked())return;" in compact(row),
+            "[Raise] 加码台阶在立誓 / 等等之后不再响应点击")
 
 
 def check_mutators(errors):
@@ -313,6 +435,7 @@ def main():
     errors = []
     check_tuning(errors)
     check_run_wiring(errors)
+    check_raise(errors)
     check_mutators(errors)
     if errors:
         print("ArenaExpeditionOrderGuard: FAIL (%d errors)" % len(errors))

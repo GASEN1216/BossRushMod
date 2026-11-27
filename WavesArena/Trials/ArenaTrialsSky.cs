@@ -8,14 +8,18 @@
 // 雷暴是天边一团冷银辉光亮两下再缓缓褪去，闷雷（战鼓）隔 0.5–1.4 秒才到。
 // 天象效果（数值见 ArenaTrialsTuning）：
 //   暴雪：双方移速 −15%，冰封地形权重加倍（天灾那边读 Omen）；
-//   雷暴：落雷权重加倍，远处时不时一道闪光；
-//   血月：首领移速 +25%、伤害 +20%（小兵不吃），复用鸭生无常血月的暗角色；
-//   永夜：玩家视距 / 视角 / 近身感知大幅缩短（官方战争迷雾读这三项）；
+//   雷暴：落雷权重加倍，远处时不时一道闪光；劈中敌方身体伤害翻倍、身上炸冷银电弧（Hazards.HitLightning）；
+//   血月：首领移速 +25%、伤害 +20%（小兵不吃），复用鸭生无常血月的暗角色；血月下倒下的波次首领多掉 1 件，
+//         尸身上升起一柱暗朱余烬（ClaimBloodMoonLoot，竞技场掉落入口填掉落时问）；
+//   永夜：玩家视距 / 视角 / 近身感知大幅缩短（官方战争迷雾读这三项）；敌人也看不清：官方 AI 反应耗时 ×1.5、
+//         开火间隔 ×1.35（记原值，变天 / 收尾时只在值仍是本战规写的那份才写回）；
 //   暴雨：玩家视距 −25%，熔缝、毒雾持续时间减半（天灾那边读 Omen）。
+// 2026-11-27 改进方案：雷暴、血月、永夜从单向加难改成双刃，每种天象都有可利用的一面（暴雪本就双方同减速，暴雨缩短天灾）。
 // 画面全部自绘：跟随玩家的降水粒子（室内子场景不下雨雪）+ ArenaExpeditionHud 的屏幕色调层。不碰官方天气（见 Tuning 文件头）。
 // ============================================================================
 
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace BossRush
@@ -31,6 +35,9 @@ namespace BossRush
         private float thunderIn = -1f;
         private bool sweepPending;
         private float sweepDelay;
+        /// <summary>永夜下被压慢的 AI（变天 / 收尾时逐只写回）。</summary>
+        private readonly Dictionary<CharacterMainControl, ArenaTrialNightDull> dulled =
+            new Dictionary<CharacterMainControl, ArenaTrialNightDull>();
 
         internal ArenaTrialsSky(ArenaTrials trials) : base(trials) { }
 
@@ -49,7 +56,10 @@ namespace BossRush
             started = true;
             if (profile.HasOmens)
             {
+                ArenaTrialOmen previous = omen;
                 omen = PickOmen(omen);
+                if (previous == ArenaTrialOmen.EternalNight) RestoreNight();
+                if (omen == ArenaTrialOmen.EternalNight) DullAll();
                 nextChangeWave = wave + UnityEngine.Random.Range(profile.OmenWavesMin, profile.OmenWavesMax + 1);
                 ArenaExpeditionHud.SetAmbience(AmbienceOf(omen));
                 if (fx != null) fx.SetAmbience(AmbienceOf(omen));
@@ -119,6 +129,11 @@ namespace BossRush
             }
         }
 
+        internal override void OnFoeJoined(CharacterMainControl foe, bool waveBoss)
+        {
+            if (omen == ArenaTrialOmen.EternalNight) Dull(foe);
+        }
+
         internal override void ContributeFoe(CharacterMainControl foe, ref ArenaTrialFoeStats stats)
         {
             if (omen == ArenaTrialOmen.Blizzard)
@@ -134,10 +149,53 @@ namespace BossRush
 
         internal override void Shutdown()
         {
+            RestoreNight();
             if (fx != null) fx.Release();
             fx = null;
             omen = ArenaTrialOmen.None;
             sky = ArenaTrialSky.Clear;
+        }
+
+        /// <summary>
+        /// 血月下倒下的波次首领多掉几件（竞技场掉落入口填掉落时问一次，只有走随机掉落漏斗的首领问得到）；
+        /// 问到的同时在尸身上演血月献祭，让多出来的那件有来由。分身 / 召唤物不是波次首领，得 0。
+        /// </summary>
+        internal int ClaimBloodMoonLoot(CharacterMainControl boss)
+        {
+            if (omen != ArenaTrialOmen.BloodMoon || boss == null || !Trials.IsWaveBoss(boss)) return 0;
+            ArenaTrialsFx.BloodOffering(boss.transform.position);
+            return ArenaTrialsTuning.BloodMoonBonusLoot;
+        }
+
+        private void DullAll()
+        {
+            List<CharacterMainControl> foes = Trials.Foes;
+            for (int i = 0; i < foes.Count; i++) Dull(foes[i]);
+        }
+
+        private void Dull(CharacterMainControl foe)
+        {
+            if (foe == null || foe.Health == null || foe.Health.IsDead || dulled.ContainsKey(foe)) return;
+            try
+            {
+                AICharacterController ai = foe.GetComponentInChildren<AICharacterController>();
+                if (ai != null) dulled[foe] = new ArenaTrialNightDull(ai);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[BossRush] [出征令战规] [WARNING] 永夜压慢 AI 失败: " + e.Message);
+            }
+        }
+
+        private void RestoreNight()
+        {
+            if (dulled.Count == 0) return;
+            foreach (KeyValuePair<CharacterMainControl, ArenaTrialNightDull> pair in dulled)
+            {
+                try { pair.Value.Restore(); }
+                catch (Exception) { }
+            }
+            dulled.Clear();
         }
 
         /// <summary>暴雨缩短熔缝 / 毒雾的持续时间。</summary>
@@ -183,6 +241,40 @@ namespace BossRush
                 case ArenaTrialSky.Night: return ArenaExpeditionAmbience.Night;
                 default: return ArenaExpeditionAmbience.None;
             }
+        }
+    }
+
+    /// <summary>
+    /// 永夜下一只 AI 原来的反应耗时与开火间隔。官方每秒按 baseReactionTime 重算 reactionTime（夜里室外再乘夜间系数），
+    /// 所以压的是 baseReactionTime，当前 reactionTime 同步乘一下免得等那一秒。
+    /// 写回时只在值仍是本战规写的那份时才还原：别的系统中途改过就不碰它。
+    /// </summary>
+    internal sealed class ArenaTrialNightDull
+    {
+        private readonly AICharacterController ai;
+        private readonly float reaction, shootDelay, dulledReaction, dulledShootDelay;
+
+        internal ArenaTrialNightDull(AICharacterController brain)
+        {
+            ai = brain;
+            reaction = brain.baseReactionTime;
+            shootDelay = brain.shootDelay;
+            dulledReaction = reaction * ArenaTrialsTuning.EternalNightFoeReaction;
+            dulledShootDelay = shootDelay * ArenaTrialsTuning.EternalNightFoeShootDelay;
+            brain.baseReactionTime = dulledReaction;
+            brain.reactionTime *= ArenaTrialsTuning.EternalNightFoeReaction;
+            brain.shootDelay = dulledShootDelay;
+        }
+
+        internal void Restore()
+        {
+            if (ai == null) return;
+            if (Mathf.Approximately(ai.baseReactionTime, dulledReaction))
+            {
+                ai.baseReactionTime = reaction;
+                ai.reactionTime /= ArenaTrialsTuning.EternalNightFoeReaction;
+            }
+            if (Mathf.Approximately(ai.shootDelay, dulledShootDelay)) ai.shootDelay = shootDelay;
         }
     }
 

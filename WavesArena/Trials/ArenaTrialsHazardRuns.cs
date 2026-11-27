@@ -289,7 +289,7 @@ namespace BossRush
             ArenaTrialsFx.Impact(strike.At, ArenaTrialsFx.Silver, radius, 10, Ash);
             ArenaTrialsFx.Flash(strike.At + Vector3.up * 3f, ArenaTrialsFx.Silver, 6f, 12f, 0.35f);
             ArenaExpeditionHud.FlashAmbience(0.42f);
-            Hazards.Hit(strike.At, radius, ArenaTrialsTuning.LightningDamage, ElementTypes.electricity, false);
+            Hazards.HitLightning(strike.At, radius);
             ArenaTrialsFx.SoundAt(BossRushInkSkin.SfxWarDrum, strike.At);
         }
     }

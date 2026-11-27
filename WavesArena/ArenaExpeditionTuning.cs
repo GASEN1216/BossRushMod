@@ -165,6 +165,30 @@ namespace BossRush
         /// <summary>失明（原盲战）：M 图上不显示竞技场首领的烽烟圈。</summary>
         internal static bool HidesMapBeacons(ArenaExpeditionTier tier) { return tier == ArenaExpeditionTier.Nightmare; }
 
+        // 加码（2026-11-27，ArenaExpeditionRaise）：标准加到「急行军」照困难的休整走；困难加到「失明」M 图同样不标首领；
+        // 每级加码通关箱件数与无间奖金 +5%。不加码时与上面四个单参数版本完全一致。
+
+        internal static float RestMultiplier(ArenaExpeditionTier tier, int raise)
+        {
+            return ArenaExpeditionRaise.Has(tier, raise, ArenaExpeditionRung.ForcedMarch)
+                ? RestMultipliers[(int)ArenaExpeditionTier.Hard] : RestMultiplier(tier);
+        }
+
+        internal static bool KeepsMilestoneRest(ArenaExpeditionTier tier, int raise)
+        {
+            return KeepsMilestoneRest(tier) && !ArenaExpeditionRaise.Has(tier, raise, ArenaExpeditionRung.ForcedMarch);
+        }
+
+        internal static bool HidesMapBeacons(ArenaExpeditionTier tier, int raise)
+        {
+            return HidesMapBeacons(tier) || ArenaExpeditionRaise.Has(tier, raise, ArenaExpeditionRung.Blinded);
+        }
+
+        internal static float HellCashMultiplier(ArenaExpeditionTier tier, int raise)
+        {
+            return HellCashMultiplier(tier) * ArenaExpeditionRaise.RewardFactor(ArenaExpeditionRaise.Clamp(tier, raise));
+        }
+
         /// <summary>战帖是否改动 Boss 数值（标准档不挂任何东西）。</summary>
         internal static bool ScalesBosses(ArenaExpeditionTier tier) { return tier != ArenaExpeditionTier.Standard; }
 
@@ -193,8 +217,8 @@ namespace BossRush
         private static ArenaExpeditionRule Omens(string nameCn, string nameEn, ArenaTrialProfile profile)
         {
             return ArenaExpeditionRule.Own(ArenaExpeditionRuleKind.Omen, false, nameCn, nameEn,
-                "每 " + RangeCn(profile.OmenWavesMin, profile.OmenWavesMax) + " 波变天：暴雪、雷暴、血月、永夜、暴雨",
-                "Weather turns every " + RangeEn(profile.OmenWavesMin, profile.OmenWavesMax) + " waves: five omens");
+                "每 " + RangeCn(profile.OmenWavesMin, profile.OmenWavesMax) + " 波变天：暴雪、雷暴、血月、永夜、暴雨，各有利弊",
+                "Weather turns every " + RangeEn(profile.OmenWavesMin, profile.OmenWavesMax) + " waves: Blizzard, Thunderstorm, Blood Moon, Endless Night, Downpour; each cuts both ways");
         }
 
         private static ArenaExpeditionRule Calamity(string nameCn, string nameEn, ArenaTrialProfile profile)
@@ -239,8 +263,8 @@ namespace BossRush
                 "首领生命 " + FormatMultiplier(HealthMultipliers[3]) + "，伤害 " + FormatMultiplier(DamageMultipliers[3]) + "，出手快五成",
                 "Boss HP " + FormatMultiplier(HealthMultipliers[3]) + ", damage " + FormatMultiplier(DamageMultipliers[3]) + ", 50% quicker to act"),
             ArenaExpeditionRule.Own(ArenaExpeditionRuleKind.Foe, false, "凶煞", "Dread Aspect",
-                "每只首领 " + NightmareTrials.Affixes + " 条不同类词缀，压轴四类各一",
-                "Each boss bears " + NightmareTrials.Affixes + " affixes of different kinds; the headliner all 4"),
+                "每只首领带 " + NightmareTrials.Affixes + " 条词缀，压轴带 " + NightmareTrials.FinaleAffixes + " 条",
+                "Each boss bears " + NightmareTrials.Affixes + " affixes; the headliner bears " + NightmareTrials.FinaleAffixes),
             ArenaExpeditionRule.Own(ArenaExpeditionRuleKind.Self, false, "失明", "Blinded",
                 "视野收窄，首领血条只剩几格，M 图不标首领", "Narrow sight, coarse boss health bars, no boss beacons"),
             ArenaExpeditionRule.Own(ArenaExpeditionRuleKind.Self, false, "断补", "Cut Supply",
@@ -261,6 +285,44 @@ namespace BossRush
             Omens("天翻地覆", "Upheaval", NightmareTrials),
             Calamity("天灾连环", "Chained Calamities", NightmareTrials),
         };
+
+        /// <summary>
+        /// 加码那一级在悬赏令上的战规：直接取困难 / 噩梦战规表里的那一条（文案只写一处）。
+        /// 下标与上面两张表一一对应，改表时同步这里（F3 ARENA_EXPEDITION_TUNING 与 ArenaExpeditionOrderGuard 按名字核对）。
+        /// </summary>
+        internal static ArenaExpeditionRule RaiseRule(ArenaExpeditionRung rung)
+        {
+            switch (rung)
+            {
+                case ArenaExpeditionRung.FickleSkies: return HardRules[4];
+                case ArenaExpeditionRung.Hex: return HardRules[2];
+                case ArenaExpeditionRung.ForcedMarch: return ForcedMarch;
+                case ArenaExpeditionRung.Calamity: return HardRules[5];
+                case ArenaExpeditionRung.FellAspect: return HardRules[1];
+                case ArenaExpeditionRung.Upheaval: return NightmareRules[8];
+                case ArenaExpeditionRung.Blinded: return NightmareRules[2];
+                case ArenaExpeditionRung.CutSupply: return NightmareRules[3];
+                case ArenaExpeditionRung.ChainedCalamities: return NightmareRules[9];
+                case ArenaExpeditionRung.DireHex: return NightmareRules[5];
+                case ArenaExpeditionRung.CityAblaze: return NightmareRules[7];
+                case ArenaExpeditionRung.BloodDebt: return NightmareRules[4];
+                default: return NightmareRules[1];
+            }
+        }
+
+        /// <summary>
+        /// 档位自带的这条战规是否已被加码换成了更重的一条（困难的天象无常 → 天翻地覆、厄运 → 厄运（重）、
+        /// 天灾 → 天灾连环、凶相 → 凶煞）：悬赏令上不再列出它，免得两条都像在生效。
+        /// </summary>
+        internal static bool IsSuperseded(ArenaExpeditionTier tier, int raise, ArenaExpeditionRule rule)
+        {
+            if (tier != ArenaExpeditionTier.Hard || rule == null) return false;
+            if (rule == HardRules[4]) return ArenaExpeditionRaise.Has(tier, raise, ArenaExpeditionRung.Upheaval);
+            if (rule == HardRules[2]) return ArenaExpeditionRaise.Has(tier, raise, ArenaExpeditionRung.DireHex);
+            if (rule == HardRules[5]) return ArenaExpeditionRaise.Has(tier, raise, ArenaExpeditionRung.ChainedCalamities);
+            if (rule == HardRules[1]) return ArenaExpeditionRaise.Has(tier, raise, ArenaExpeditionRung.DreadAspect);
+            return false;
+        }
 
         private static string RangeCn(int min, int max) { return min == max ? min.ToString() : min + " 到 " + max; }
         private static string RangeEn(int min, int max) { return min == max ? min.ToString() : min + "-" + max; }
@@ -313,6 +375,16 @@ namespace BossRush
             if (tier == ArenaExpeditionTier.Easy) count = (int)Math.Ceiling(count * 0.5);
             else if (tier == ArenaExpeditionTier.Nightmare) count = (int)Math.Ceiling(count * 1.5);
             return Math.Max(1, count);
+        }
+
+        /// <summary>加码之后的通关箱件数：上面的件数再乘每级 +5%，向上取整（不加码时与四参数版本一致）。</summary>
+        internal static int VictoryChestCount(int baseCount, ArenaExpeditionTier tier, int waves, int poolCount, int raise)
+        {
+            int count = VictoryChestCount(baseCount, tier, waves, poolCount);
+            int clamped = ArenaExpeditionRaise.Clamp(tier, raise);
+            if (baseCount <= 0 || clamped <= 0) return count;
+            // 减一点再取整：1.4f 这类浮点乘出来是 14.0000005，不该因此多给一件
+            return Math.Max(1, (int)Math.Ceiling(count * (double)ArenaExpeditionRaise.RewardFactor(clamped) - 0.0001));
         }
 
         /// <summary>通关箱品质下限：困难、噩梦从 6 档起。</summary>
@@ -443,12 +515,13 @@ namespace BossRush
 
         /// <summary>悬赏令「赏格」一栏：每行一句，第二项为 true 的是吃亏的那句（朱字）。</summary>
         internal static List<KeyValuePair<string, bool>> RewardLines(ArenaExpeditionTier tier, ArenaExpeditionLineup lineup,
-            ArenaExpeditionLength length, int poolCount)
+            ArenaExpeditionLength length, int poolCount, int raise)
         {
             List<KeyValuePair<string, bool>> lines = new List<KeyValuePair<string, bool>>();
+            raise = ArenaExpeditionRaise.Clamp(tier, raise);
             if (lineup == ArenaExpeditionLineup.Hell)
             {
-                string cash = FormatMultiplier(HellCashMultiplier(tier));
+                string cash = FormatMultiplier(HellCashMultiplier(tier, raise));
                 lines.Add(new KeyValuePair<string, bool>(L10n.T("无间奖金 " + cash, "Hell cash " + cash), tier == ArenaExpeditionTier.Easy));
                 lines.Add(tier == ArenaExpeditionTier.Easy
                     ? new KeyValuePair<string, bool>(L10n.T("不计无间成就", "No Hell achievements"), true)
@@ -463,15 +536,27 @@ namespace BossRush
                         break;
                     case ArenaExpeditionTier.Hard:
                         lines.Add(new KeyValuePair<string, bool>(L10n.T("通关箱品质 6 档起", "Victory chest quality 6+"), false));
-                        lines.Add(new KeyValuePair<string, bool>(L10n.T("带词缀的首领多掉 1 件", "Bosses with affixes drop 1 extra"), false));
                         break;
                     case ArenaExpeditionTier.Nightmare:
                         lines.Add(new KeyValuePair<string, bool>(L10n.T("通关箱多五成，品质 6 档起", "Victory chest +50%, quality 6+"), false));
-                        lines.Add(new KeyValuePair<string, bool>(L10n.T("带词缀的首领多掉 2 件", "Bosses with affixes drop 2 extra"), false));
                         break;
                     default:
-                        lines.Add(new KeyValuePair<string, bool>(L10n.T("通关箱照旧", "Victory chest as usual"), false));
+                        if (raise <= 0) lines.Add(new KeyValuePair<string, bool>(L10n.T("通关箱照旧", "Victory chest as usual"), false));
                         break;
+                }
+                if (raise > 0)
+                {
+                    string percent = ArenaTrialsTuning.FormatPercent(ArenaExpeditionRaise.RewardFactor(raise) - 1f);
+                    lines.Add(new KeyValuePair<string, bool>(L10n.T(ArenaExpeditionRaise.Label(raise) + "：通关箱件数 +" + percent,
+                        ArenaExpeditionRaise.Label(raise) + ": victory chest +" + percent), false));
+                }
+                // 带词缀的首领多掉几件：按加码之后的战规算（标准加到「凶相」也有，困难加到「凶煞」变 2 件）
+                ArenaTrialProfile trials = ArenaTrialsTuning.ProfileFor(tier, raise);
+                if (trials.HasAffixes)
+                {
+                    int extra = ArenaTrialsTuning.AffixBonusLoot(trials.Affixes);
+                    lines.Add(new KeyValuePair<string, bool>(L10n.T("带词缀的首领多掉 " + extra + " 件",
+                        "Bosses with affixes drop " + extra + " extra"), false));
                 }
                 int waves = WavesFor(length, poolCount);
                 bool partial = length != ArenaExpeditionLength.Full && waves < poolCount;

@@ -13,6 +13,8 @@
 //   - 永夜 / 暴雨 / 失明 / 近视的「看不远」挂在玩家的 ViewDistance / ViewAngle / SenseRange 上，官方战争迷雾读这三项；
 //     几条同时生效时按乘积合成一条修饰，并设下限（不至于整屏全黑）；
 //   - 天灾伤害按生命上限的百分比算：玩家吃满额，首领只吃一部分（把首领引进去有用，但不至于靠天灾磨死 Boss）。
+// 2026-11-27 owner「都做」（改进方案三批）：首领词缀与血债补强；雷暴 / 血月 / 永夜改双刃；厄运池加回响、沉疴、破绽；
+//   出征令加「加码」阶梯（杀戮尖塔进阶式，见 ArenaExpeditionRaise.cs），本档之上逐级借下一档的战规。
 // 精确数值只写在出征令悬赏令与 Wiki 上；局内只有天象名 / 诅咒名的角标，不出说明字幕。
 // ============================================================================
 
@@ -50,6 +52,9 @@ namespace BossRush
         Jitters = 3,
         Flinch = 4,
         Nearsighted = 5,
+        Echo = 6,
+        Festering = 7,
+        Exposed = 8,
     }
 
     /// <summary>天灾与临时地形。</summary>
@@ -113,6 +118,9 @@ namespace BossRush
         internal bool HasOmens { get { return OmenWavesMax > 0; } }
         internal bool HasHazards { get { return HazardSecondsMax > 0f; } }
         internal bool HasAffixes { get { return Affixes > 0; } }
+
+        /// <summary>加码用：改一份副本，不动各档的共享配置。</summary>
+        internal ArenaTrialProfile Clone() { return (ArenaTrialProfile)MemberwiseClone(); }
     }
 
     internal static class ArenaTrialsTuning
@@ -150,6 +158,16 @@ namespace BossRush
             }
         }
 
+        /// <summary>这一档加码 raise 级之后的局内机制（不加码时就是上面那份共享配置；加码时返回改过的副本）。</summary>
+        internal static ArenaTrialProfile ProfileFor(ArenaExpeditionTier tier, int raise)
+        {
+            ArenaTrialProfile profile = ProfileFor(tier);
+            if (ArenaExpeditionRaise.Clamp(tier, raise) <= 0) return profile;
+            profile = profile.Clone();
+            ArenaExpeditionRaise.ApplyTo(profile, tier, raise);
+            return profile;
+        }
+
         // ------------------------------------------------------------------
         // 天色（轻松 / 标准，只换画面）
         // ------------------------------------------------------------------
@@ -170,13 +188,23 @@ namespace BossRush
         internal const float BlizzardFrostWeight = 2f;
         /// <summary>雷暴：落雷出现权重的倍数。</summary>
         internal const float ThunderLightningWeight = 2f;
+        /// <summary>雷暴（双刃，2026-11-27）：落雷劈中敌方身体时的伤害倍数（敌方平时只吃 30%，雷暴下翻倍）——把首领引到雷下有回报。</summary>
+        internal const float ThunderFoeLightningFactor = 2f;
         /// <summary>血月：首领移速 / 伤害。</summary>
         internal const float BloodMoonBossMoveBonus = 0.25f;
         internal const float BloodMoonBossDamageBonus = 0.20f;
+        /// <summary>血月（双刃，2026-11-27）：血月下倒下的波次首领多掉几件。</summary>
+        internal const int BloodMoonBonusLoot = 1;
         /// <summary>永夜：视距 / 视角 / 近身感知倍数。</summary>
         internal const float EternalNightViewDistance = 0.45f;
         internal const float EternalNightViewAngle = 0.55f;
         internal const float EternalNightSenseRange = 0.6f;
+        /// <summary>
+        /// 永夜（双刃，2026-11-27）：敌人在黑里也看不清——官方 AI 的反应耗时 / 开火间隔倍数。
+        /// 反应倍数取官方夜里的 nightReactionTimeFactor（1.5），开火间隔另慢 35%。
+        /// </summary>
+        internal const float EternalNightFoeReaction = 1.5f;
+        internal const float EternalNightFoeShootDelay = 1.35f;
         /// <summary>暴雨：视距倍数；熔缝、毒雾持续时间倍数。</summary>
         internal const float DownpourViewDistance = 0.75f;
         internal const float DownpourHazardDuration = 0.5f;
@@ -196,6 +224,23 @@ namespace BossRush
         internal static float FlinchSeconds(int level) { return level >= 2 ? 1.8f : 1.2f; }
         /// <summary>近视：视距倍数。</summary>
         internal static float NearsightedView(int level) { return level >= 2 ? 0.6f : 0.75f; }
+        /// <summary>厄运池一共几种（PickCurse 在 1..CurseKinds 里抽，不与上一波重复）。</summary>
+        internal const int CurseKinds = 8;
+        /// <summary>
+        /// 回响（2026-11-27）：被敌人打中的地方隔一会儿再震一下（秒 / 生命上限比例），翻滚可躲；
+        /// 同一段时间只记一处，场上至多几处。逼人挨打后挪步，不是站桩对射。
+        /// </summary>
+        internal static float EchoDelay(int level) { return level >= 2 ? 1.0f : 1.25f; }
+        internal static float EchoDamage(int level) { return level >= 2 ? 0.08f : 0.05f; }
+        internal static float EchoCooldown(int level) { return level >= 2 ? 1.0f : 1.6f; }
+        internal const float EchoRadius = 2f;
+        internal const int EchoMaxMarks = 3;
+        /// <summary>沉疴（2026-11-27）：被敌人打中后伤口发作，FesterSeconds 秒内每秒流失生命上限的比例；再挨打续上，翻滚一次止住。</summary>
+        internal static float FesterPerSecond(int level) { return level >= 2 ? 0.015f : 0.01f; }
+        internal const float FesterSeconds = 4f;
+        internal const float FesterTickSeconds = 0.5f;
+        /// <summary>破绽（2026-11-27）：受到的伤害倍数增量（落在官方七个元素系数上，天灾、焚城也吃）。</summary>
+        internal static float ExposedTaken(int level) { return level >= 2 ? 0.25f : 0.15f; }
 
         /// <summary>失明：视距 / 视角倍数；首领血条只剩几格。</summary>
         internal const float BlindViewDistance = 0.8f;
@@ -217,6 +262,8 @@ namespace BossRush
         internal const float BloodDebtKillHeal = 0.08f;
         internal const float BloodDebtMaxHealthPerHit = 0.03f;
         internal const float BloodDebtMaxHealthCap = 0.30f;
+        /// <summary>血债按「一次挨打」记：同一只敌人这么多秒内再打中只算一次（霰弹一梭子、连射一串不再一口气扣满）。</summary>
+        internal const float BloodDebtHitWindow = 0.6f;
 
         // ------------------------------------------------------------------
         // 天灾与临时地形
@@ -320,8 +367,10 @@ namespace BossRush
         internal const int SummonBatch = 2, SummonCap = 6;
         /// <summary>闪现：冒烟前摇、间隔、落在玩家身后多远。</summary>
         internal const float BlinkWindup = 0.5f, BlinkIntervalMin = 7f, BlinkIntervalMax = 11f, BlinkBehind = 2.6f;
-        /// <summary>狂暴：触发血线、体型、移速加成。</summary>
-        internal const float FrenzyThreshold = 0.5f, FrenzyScale = 1.3f, FrenzyBonus = 0.40f;
+        /// <summary>狂暴：触发血线、体型、移速加成、伤害加成（2026-11-27：只长个子看着唬人、打起来一样，补上伤害）。</summary>
+        internal const float FrenzyThreshold = 0.5f, FrenzyScale = 1.3f, FrenzyBonus = 0.40f, FrenzyDamageBonus = 0.25f;
+        /// <summary>全场亲卫 + 影从同时最多几只（含正在叫的）：三首领同台各叫一批也不越过它。</summary>
+        internal const int AffixMinionCap = 12;
         /// <summary>亡魂：追击时长、速度、贴身伤害。</summary>
         internal const float WraithSeconds = 15f, WraithSpeed = 4.2f, WraithTouchRadius = 1.1f, WraithDamagePerSecond = 0.12f;
         /// <summary>殉爆：倒下后几秒炸、半径、伤害。</summary>
@@ -364,6 +413,9 @@ namespace BossRush
                 case ArenaTrialCurse.Jitters: return L10n.T("手抖", "Jitters");
                 case ArenaTrialCurse.Flinch: return L10n.T("怕痛", "Flinch");
                 case ArenaTrialCurse.Nearsighted: return L10n.T("近视", "Nearsighted");
+                case ArenaTrialCurse.Echo: return L10n.T("回响", "Echo");
+                case ArenaTrialCurse.Festering: return L10n.T("沉疴", "Festering");
+                case ArenaTrialCurse.Exposed: return L10n.T("破绽", "Exposed");
                 default: return string.Empty;
             }
         }

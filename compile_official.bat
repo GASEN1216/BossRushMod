@@ -417,6 +417,7 @@ echo(DebugAndTools\F3GameplayValidationZombie.cs
 echo(DebugAndTools\F3GameplayValidationReviewFixes.cs
 echo(DebugAndTools\F3GameplayValidationWishes.cs
 echo(DebugAndTools\F3GameplayValidationWishFocus.cs
+echo(DebugAndTools\F3GameplayValidationExpeditionTrials.cs
 echo(DebugAndTools\F3GameplayValidationModConfigLabels.cs
 echo(DebugAndTools\F3GameplayValidationModeHKits.cs
 echo(DebugAndTools\F3GameplayValidationModeHErrorSwap.cs
@@ -630,6 +631,8 @@ echo(WavesArena\WavesArenaRuntimeModule_VictoryRewards.cs
 echo(WavesArena\WavesArenaRuntimeModule_Expedition.cs
 echo(WavesArena\ArenaExpeditionTuning.cs
 echo(WavesArena\ArenaExpeditionOrder.cs
+echo(WavesArena\ArenaExpeditionRaise.cs
+echo(WavesArena\ArenaExpeditionRaiseRow.cs
 echo(WavesArena\ArenaExpeditionHud.cs
 echo(WavesArena\ArenaInkTitleCard.cs
 echo(WavesArena\ArenaExpeditionOrderPanel.cs
@@ -637,6 +640,7 @@ echo(WavesArena\Trials\ArenaTrialsTuning.cs
 echo(WavesArena\Trials\ArenaTrials.cs
 echo(WavesArena\Trials\ArenaTrialsSky.cs
 echo(WavesArena\Trials\ArenaTrialsCurses.cs
+echo(WavesArena\Trials\ArenaTrialsCurseActs.cs
 echo(WavesArena\Trials\ArenaTrialsHazards.cs
 echo(WavesArena\Trials\ArenaTrialsHazardRuns.cs
 echo(WavesArena\Trials\ArenaTrialsHazardFields.cs

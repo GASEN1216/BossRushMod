@@ -9,11 +9,17 @@
 //     词缀身体写「分身 / 双生 / 亲卫 / 影从」。官方只在血条挂上目标时写一次名字，所以用后缀接在它后面；
 //     词缀是首领登记后才抽的，抽完由 ArenaTrialsHealthBarName.Refresh 主动让已经挂着的血条再写一次；
 //   - Health.AddHealth：血债下主玩家的一切回血被挡下（药、食物、技能、别的 Mod 走官方入口的都算），
-//     只有击杀回血（ArenaTrialsCurses 自己开闸）能过。
+//     只有击杀回血（ArenaTrialsCurses 自己开闸）能过；
+//   - Drug.CanBeUsed：血债下回血药对主玩家判成不可用。官方 CA_UseItem.OnFinish 读完条照扣数量 / 耐久，
+//     不拦在这里就是「药扣了、血没回」（CR-2026-11-27-002）。同一件药还有别的用处（止血等）时照常能用，只是回血那一段跳过；
+//   - CharacterMainControl.UseItem：只剩回血一种用处、因此用不了的药，换成血债的提示（不弹官方笼统的「无法使用」）。
 // ============================================================================
 
 using System;
+using System.Collections.Generic;
+using Duckov.ItemUsage;
 using Duckov.UI;
+using ItemStatsSystem;
 using HarmonyLib;
 using TMPro;
 using UnityEngine;
@@ -130,6 +136,59 @@ namespace BossRush
         {
             if (ArenaTrials.Active == null || healthValue <= 0f) return true;
             return !ArenaTrialsCurses.HealBlocked(__instance);
+        }
+    }
+
+    [HarmonyPatch(typeof(Drug), "CanBeUsed")]
+    internal static class ArenaTrialsBloodDebtDrugPatch
+    {
+        [HarmonyPrefix]
+        internal static bool Prefix(Drug __instance, object user, ref bool __result)
+        {
+            if (ArenaTrials.Active == null || __instance == null || __instance.healValue <= 0) return true;
+            CharacterMainControl character = user as CharacterMainControl;
+            if (character == null || !character.IsMainCharacter || !ArenaTrialsCurses.HealBlocked(character.Health)) return true;
+            __result = false;
+            return false;
+        }
+    }
+
+    [HarmonyPatch(typeof(CharacterMainControl), "UseItem")]
+    internal static class ArenaTrialsBloodDebtUseNoticePatch
+    {
+        private static float lastNoticeAt = -10f;
+
+        [HarmonyPrefix]
+        internal static bool Prefix(CharacterMainControl __instance, Item item)
+        {
+            if (ArenaTrials.Active == null || __instance == null || item == null) return true;
+            if (!OnlyHealsUnderBloodDebt(__instance, item)) return true;
+            if (Time.unscaledTime - lastNoticeAt > 1.2f)
+            {
+                lastNoticeAt = Time.unscaledTime;
+                try { NotificationText.Push(L10n.T("血债未清，伤药不灵", "Blood Debt: medicine won't heal you")); }
+                catch (Exception) { }
+            }
+            return false;
+        }
+
+        /// <summary>血债下这件东西用不了、而且它带回血药（用不了正是因为回血被封）：冷路径，玩家每按一次用一次。</summary>
+        private static bool OnlyHealsUnderBloodDebt(CharacterMainControl character, Item item)
+        {
+            try
+            {
+                if (!character.IsMainCharacter || !ArenaTrialsCurses.HealBlocked(character.Health)) return false;
+                UsageUtilities usage = item.UsageUtilities;
+                if (usage == null || usage.IsUsable(item, character)) return false;
+                List<UsageBehavior> behaviors = usage.behaviors;
+                for (int i = 0; behaviors != null && i < behaviors.Count; i++)
+                {
+                    Drug drug = behaviors[i] as Drug;
+                    if (drug != null && drug.healValue > 0) return true;
+                }
+            }
+            catch (Exception) { }
+            return false;
         }
     }
 }
