@@ -799,8 +799,8 @@ namespace BossRush
             return new List<ShopItemEntry>
             {
                 new ShopItemEntry(DiamondConfig.TYPE_ID, DIAMOND_UNLOCK_LEVEL, 5),
-                // 冷淬液每个游戏日补到 20 瓶（2026-11-27 由 5 上调）：洗满一件装备要锁五六条，5 瓶总要等叮当进货
-                new ShopItemEntry(ColdQuenchFluidConfig.TYPE_ID, COLD_QUENCH_UNLOCK_LEVEL, 20),
+                // 冷淬液库存 9999、每个游戏日补满（2026-11-28 owner：不限量供应；原 5，11-27 曾改 20）：锁属性的材料不再卡进货
+                new ShopItemEntry(ColdQuenchFluidConfig.TYPE_ID, COLD_QUENCH_UNLOCK_LEVEL, 9999),
                 new ShopItemEntry(TemperingSolventConfig.TYPE_ID, TemperingSolventConfig.SHOP_UNLOCK_LEVEL, TemperingSolventConfig.SHOP_MAX_STOCK),
                 // 钻石戒指：7 级解锁，一次 1 枚（库存跟着好感存档，关店重开不再补）。已婚期间不补；
                 // 单身时距上次补货满 3 个游戏日补 1 枚，离婚、戒指丢了也还能再求婚（审查 CR-2026-10-18-004）
