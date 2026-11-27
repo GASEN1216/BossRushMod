@@ -5,11 +5,12 @@
 //   管理装备重铸的核心算法，包括：
 //   - 概率p同时影响：是否修改 + 幅度大小
 //   - 基础概率由稀有度和物品价值决定（基准r=8,v=10000时p=0.20）
-//   - 金钱增益：基于物品价值的倍数（1倍+10%，10倍+30%，100倍+100%）
+//   - 金钱增益：基于物品价值的倍数（10倍+10%，100倍+30%，1000倍+100%）
 //   - 幅度抽取：u^expo（p越大expo越小，幅度越大）
 //   - 正负号由倾向滑块决定（0=必定负，1=必定正，0.5=各50%）
-//   - 属性范围：预制体值≤1时用0~1，>1时用0~100%预制体值
-//   - 整数属性保持整数
+//   - 每次从预制体原值重抽：一般属性 ±50%，原值为0时 ±0.25，护甲 ±1（GetPropertyValueBounds）
+//   - 幅度落进顶档（≥ BOUND_SNAP_MAGNITUDE）直接取到上下限，显示 Max/Min
+//   - 整数属性（|值|≥2）保持整数
 //   - 每次重铸改动全部未固定的可重铸属性（概率p只决定幅度，不决定改不改）
 //   - 基础重铸费用为物品价值的1/100（最低 MIN_REFORGE_COST，再按哥布林好感度打折）
 //   - 没有保底机制：不记录连续失败次数，也不随失败提升概率
@@ -240,12 +241,20 @@ namespace BossRush
         private const float EXPO_MIN = 0.6f;
 
         /// <summary>
+        /// 幅度顶档：抽到的幅度不低于此值时直接取到上下限（Max/Min）。
+        /// 2026-11-25 改为从预制体原值重抽后，上限正好是连续分布的端点：小数属性抽中概率约万分之一，
+        /// 三位小数的上限（如 0.35 的 0.525）舍入到两位后更是永远够不着，Max 标记与金色揭晓等于失效。
+        /// 顶档 5% 在默认投入下每条约 2.5%、满投入约 8%（再乘倾向），只多给最多 2.5% 预制体值。
+        /// </summary>
+        private const float BOUND_SNAP_MAGNITUDE = 0.95f;
+
+        /// <summary>
         /// UI判定属性是否已贴近上下限时使用的容差
         /// </summary>
         private const float BOUNDARY_EPSILON = 0.001f;
 
         /// <summary>
-        /// 强制使用0~1绝对范围的属性Key列表（如护甲值）
+        /// 按绝对值 ±MAX_DELTA_ABSOLUTE（±1 档、不低于 0）取范围的属性Key列表（护甲值）
         /// </summary>
         private static readonly HashSet<string> FORCE_ABSOLUTE_RANGE_KEYS = new HashSet<string>
         {
@@ -807,7 +816,7 @@ namespace BossRush
         /// 5. 收益方向由 tendencyChance 控制（0~1），再按属性极性换算数值正负号
         /// 6. 每次都以预制体原值为基准重新抽，不在当前值上累加；范围为预制体值 ±50%
         ///    （原值为0时 ±0.25，护甲 ±1），想留住好结果要用冷淬液固定
-        /// 7. 整数属性（|值|≥2）保持整数
+        /// 7. 整数属性（|值|≥2）保持整数；幅度落进顶档直接取到上下限（Max/Min）
         /// 8. 投入金额只通过 FinalProbability 影响幅度
         /// </summary>
         public static ReforgeResult Reforge(Item item, int moneyInvested, string userId, float tendencyChance = 0.5f)
@@ -982,26 +991,36 @@ namespace BossRush
                     {
                         rollRange = MAX_VALUE_OFFSET_PERCENT * Mathf.Abs(prefabValue);
                     }
-                    float newValue = prefabValue + sign * mag01 * rollRange;
-
-                    // Step 5: 整数属性保持整数，且保证数值必定有变化
-                    if (isInteger)
+                    float newValue;
+                    if (mag01 >= BOUND_SNAP_MAGNITUDE)
                     {
-                        newValue = Mathf.Round(newValue);
-                        // 如果四舍五入后没有变化，则根据sign强行偏移1个单位
-                        if (Mathf.Approximately(newValue, originalValue))
-                        {
-                            newValue = originalValue + (sign != 0 ? sign : (random.Next(2) == 0 ? 1 : -1));
-                        }
+                        // Step 5a: 幅度落进顶档直接取到上下限（Max/Min）。整数边界已在 GetPropertyValueBounds 取整；
+                        // 小数边界不再舍入——0.525 舍到两位会掉到上限以下。已在该边界上时保持不变，不强行推开
+                        newValue = sign > 0 ? maxValue : minValue;
                     }
                     else
                     {
-                        newValue = (float)System.Math.Round(newValue, 2);
-                        // 如果舍入后没有变化，则强行偏移一个最小单位0.01
-                        if (Mathf.Approximately(newValue, originalValue))
+                        newValue = prefabValue + sign * mag01 * rollRange;
+
+                        // Step 5: 整数属性保持整数，且保证数值必定有变化
+                        if (isInteger)
                         {
-                            newValue = originalValue + (sign != 0 ? sign * 0.01f : (random.Next(2) == 0 ? 0.01f : -0.01f));
+                            newValue = Mathf.Round(newValue);
+                            // 如果四舍五入后没有变化，则根据sign强行偏移1个单位
+                            if (Mathf.Approximately(newValue, originalValue))
+                            {
+                                newValue = originalValue + (sign != 0 ? sign : (random.Next(2) == 0 ? 1 : -1));
+                            }
+                        }
+                        else
+                        {
                             newValue = (float)System.Math.Round(newValue, 2);
+                            // 如果舍入后没有变化，则强行偏移一个最小单位0.01
+                            if (Mathf.Approximately(newValue, originalValue))
+                            {
+                                newValue = originalValue + (sign != 0 ? sign * 0.01f : (random.Next(2) == 0 ? 0.01f : -0.01f));
+                                newValue = (float)System.Math.Round(newValue, 2);
+                            }
                         }
                     }
 

@@ -76,7 +76,8 @@ namespace BossRush
                         foreach (var stat in prefabItem.Stats)
                         {
                             if (stat == null || string.IsNullOrEmpty(stat.Key)) continue;
-                            cachedPrefabStats[BuildSnapshotKey(stat.Key, PropertyType.Stat, GetNextEntryOrdinal(prefabStatOrdinals, stat.Key))] = stat.Value;
+                            // 与 ReforgeSystem.GetPrefabPropertyValue 同口径取 BaseValue，Max/Min 才与实际边界一致
+                            cachedPrefabStats[BuildSnapshotKey(stat.Key, PropertyType.Stat, GetNextEntryOrdinal(prefabStatOrdinals, stat.Key))] = stat.BaseValue;
                         }
                     }
                     if (prefabItem.Variables != null)
@@ -116,7 +117,8 @@ namespace BossRush
                     foreach (var stat in playerItem.Stats)
                     {
                         if (stat == null || string.IsNullOrEmpty(stat.Key)) continue;
-                        _reusablePlayerStats[BuildSnapshotKey(stat.Key, PropertyType.Stat, GetNextEntryOrdinal(playerStatOrdinals, stat.Key))] = stat.Value;
+                        // 重铸只改 BaseValue；Value 还叠着配件（枪口、握把）的修正，拿它比会把配件算成重铸差值、Max/Min 判错
+                        _reusablePlayerStats[BuildSnapshotKey(stat.Key, PropertyType.Stat, GetNextEntryOrdinal(playerStatOrdinals, stat.Key))] = stat.BaseValue;
                     }
                 }
                 if (playerItem.Variables != null)
@@ -249,8 +251,6 @@ namespace BossRush
                     ModBehaviour.DevLog(string.Format("[ReforgeUI] 属性 {0}: player={1}, prefab={2}, diff={3}",
                         key, playerValue, prefabValue, diff));
 
-                    if (Mathf.Abs(diff) < DIFF_THRESHOLD) continue;
-
                     string baseText;
                     if (!TryGetCurrentItemPropertyDisplayText(playerItem, key, propType, entryOrdinal, out baseText))
                     {
@@ -261,6 +261,13 @@ namespace BossRush
                     if (colorTagIndex > 0)
                     {
                         baseText = baseText.Substring(0, colorTagIndex);
+                    }
+
+                    if (Mathf.Abs(diff) < DIFF_THRESHOLD)
+                    {
+                        // Stat 改按 BaseValue 比之后，没洗动但装了配件的行照旧显示这件的实际读数，只是不带差值标记
+                        if (propType == PropertyType.Stat) valueText.text = baseText;
+                        continue;
                     }
 
                     // 显示差异: 预制体值 (↑/↓ xx)，保留两位小数

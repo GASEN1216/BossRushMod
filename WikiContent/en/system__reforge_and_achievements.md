@@ -57,7 +57,8 @@ percentage points.
 #### Stat Change Range
 - Every Reforge rolls again from the item's **original value**. It does not build on the previous result, so rerolling many times does not keep pushing a stat higher.
 - Each stat stays within **50%-150%** of its original value. Stats that start at 0 stay within **±0.25**; armor stays within **±1** of its original value.
-- When a stat reaches its extreme value, a "Max" or "Min" tag is displayed.
+- When a roll lands in the top magnitude band, the stat goes straight to its cap or floor and shows a "Max" or "Min" tag. The more money you invest, the more often that happens.
+- The bracketed change and the Max / Min tags only count what the reforge rolled. Bonuses or penalties from attachments on a gun are left out.
 - Lock a value you like with Cold Quench Fluid, or the next Reforge will roll it again.
 
 ### Cold Quench Fluid Lock

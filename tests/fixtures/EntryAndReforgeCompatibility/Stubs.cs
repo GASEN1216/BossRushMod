@@ -156,7 +156,9 @@ namespace BossRush
         private static float GetItemValue(Item item) { return 100; }
         private static int GetDiscountedCost(Item item) { return 1; }
         private static float FinalProbability(int r, float v, int m) { return 0.5f; }
-        private static int GenerateRandomSeed(string u, int i) { return 123; }
+        // 顶档取边界的用例按 RollMagnitude 实算挑种子，用完复位成 123
+        public static int FixtureSeed = 123;
+        private static int GenerateRandomSeed(string u, int i) { return FixtureSeed; }
         private static Item GetItemPrefab(Item item) { return item.Prefab; }
         private static bool IsModifierEligibleForReforge(Item i, Item p, ModifierDescription m) { return m.Display; }
         private static bool IsNativeModifier(Item i, Item p, ModifierDescription m) { return true; }

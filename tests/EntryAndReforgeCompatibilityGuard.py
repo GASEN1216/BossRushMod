@@ -59,8 +59,20 @@ def main():
     reforge = method("Integration/Reforge/ReforgeSystem.cs", "public static ReforgeResult Reforge(")
     assert "int sign = RollSign(tendencyChance) * GetBeneficialValueDirection(prop.Key);" in reforge, "正向倾向必须换算属性极性"
     # 2026-11-25 下调：每次以预制体原值为基准重抽，不在当前值上累加；读档把旧超限值夹进新上下限
-    assert "float newValue = prefabValue + sign * mag01 * rollRange;" in reforge, "重铸必须以预制体原值为基准重抽"
+    assert "newValue = prefabValue + sign * mag01 * rollRange;" in reforge, "重铸必须以预制体原值为基准重抽"
     assert "originalValue + sign" not in reforge and "originalValue + delta" not in reforge, "重铸不能在当前值上累加"
+    # 2026-11-27：上限是重抽分布的端点，顶档幅度必须原样取到边界（不再舍入），否则 Max/Min 抽不到
+    snap = re.search(r"if\s*\(mag01 >= BOUND_SNAP_MAGNITUDE\)\s*\{\s*newValue = sign > 0 \? maxValue : minValue;\s*\}\s*else\s*\{", reforge)
+    assert snap, "顶档幅度必须直接取到上下限，且这一支不舍入"
+    assert snap.end() < reforge.index("newValue = prefabValue + sign * mag01 * rollRange;") < reforge.index("System.Math.Round(newValue, 2)"), "舍入只能在普通幅度那一支"
+    assert snap.start() < reforge.index("newValue = Mathf.Clamp(newValue, minValue, maxValue);"), "顶档之后仍要夹进上下限"
+    snap_const = re.search(r"private const float BOUND_SNAP_MAGNITUDE = ([0-9.]+)f;", read("Integration/Reforge/ReforgeSystem.cs"))
+    assert snap_const and 0.9 <= float(snap_const.group(1)) < 1.0, "顶档阈值必须落在 [0.9, 1)，等于或大于 1 就又抽不到 Max"
+    # 详情对比与重铸核心同口径：Stat 一律比 BaseValue；Value 叠着配件修正，会把配件算成重铸差值、Max/Min 判错
+    setup = method("Integration/Reforge/ReforgeUIManager_RuntimeAndCleanup.cs", "private static void SetupDetailsWithPrefabComparison(")
+    assert setup.count("= stat.BaseValue;") == 2 and "= stat.Value;" not in setup, "预制体与玩家 Stat 都要按 BaseValue 比"
+    threshold = re.search(r"private const float DIFF_THRESHOLD = ([0-9.]+)f;", read("Integration/Reforge/ReforgeUIManager.cs"))
+    assert threshold and 0 < float(threshold.group(1)) <= 0.005, "差值阈值必须小于 0.01 的一格，否则一格变化与小数值的 Max 会被吞"
     persistence = read("Integration/Reforge/ReforgeDataPersistenceCleanup.cs")
     for signature in ("private static bool TryRestoreModifier(", "private static bool TryRestoreStat(", "private static bool TryRestoreVariable("):
         body = method("Integration/Reforge/ReforgeDataPersistence.cs", signature)

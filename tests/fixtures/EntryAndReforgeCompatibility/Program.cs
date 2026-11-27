@@ -91,6 +91,65 @@ internal static class Program
                 Check(Mathf.Abs(info.NewValue - first) <= (prefabValue >= 2f ? 1.0101f : 0.0101f),"reforge must re-roll from the prefab value, not accumulate: " + prefabValue + " " + type);
             }
         }
+        BoundSnap();
+    }
+    private static int FindSeed(float lo, float hi)
+    {
+        // 夹具 FinalProbability 恒为 0.5；按生产 RollMagnitude 实算第一次抽到的幅度挑种子
+        for (int seed = 0; seed < 200000; seed++)
+        {
+            float mag = ReforgeSystem.RollMagnitude(0.5f, new System.Random(seed));
+            if (mag >= lo && mag < hi) return seed;
+        }
+        throw new Exception("no seed for magnitude window [" + lo + ", " + hi + ")");
+    }
+    private static float RollOnce(string key, float prefabValue, PropertyType type, float chance, float current)
+    {
+        var item = Make(key, current, type); item.Prefab = Make(key, prefabValue, type);
+        var result = ReforgeSystem.Reforge(item, 100, "test", chance);
+        Check(result.Success && result.ModifiedStats.Count == 1, "reforge succeeds: " + key + "@" + prefabValue);
+        return result.ModifiedStats[0].NewValue;
+    }
+    private static void BoundSnap()
+    {
+        // 2026-11-27：从预制体原值重抽后上限是连续分布的端点，顶档幅度必须取到边界，Max/Min 才抽得到
+        int top = FindSeed(0.95f, 1.01f), near = FindSeed(0.90f, 0.95f);
+        try
+        {
+            foreach (var type in new[] { PropertyType.Stat, PropertyType.Modifier, PropertyType.Variable })
+            {
+                ReforgeSystem.FixtureSeed = top;
+                // 0.35 的上限 0.525 是三位小数，舍入到两位只有 0.52：顶档必须原样取上限
+                float v = RollOnce("Damage", 0.35f, type, 1f, 0.35f);
+                Check(ReforgeSystem.IsValueAtUpperBound("Damage", 0.35f, v), "top band reaches Max on a 3-decimal cap: " + v + " " + type);
+                Check(ReforgeUIManager.Bound("Damage", 0.35f, v, v - 0.35f).Contains("best>Max"), "Max label shows for the snapped cap");
+                Check(ReforgeUIManager.Reveal("Damage", 0.35f, v, v - 0.35f)[1], "snapped cap gets the best-bound reveal");
+                v = RollOnce("Damage", 0.35f, type, 0f, 0.35f);
+                Check(ReforgeSystem.IsValueAtLowerBound("Damage", 0.35f, v), "top band reaches Min: " + v);
+                Check(ReforgeUIManager.Bound("Damage", 0.35f, v, v - 0.35f).Contains("neutral>Min"), "worse Min keeps the neutral label");
+                Check(Mathf.Abs(RollOnce("Damage", 30f, type, 1f, 30f) - 45f) < 0.0001f, "integer cap 45 for prefab 30");
+                Check(Mathf.Abs(RollOnce("Damage", 1.2f, type, 1f, 1.2f) - 1.8f) < 0.0001f, "decimal cap 1.8 for prefab 1.2");
+                float recoil = RollOnce("RecoilScaleV", 1.2f, type, 1f, 1.2f);
+                Check(ReforgeSystem.IsValueAtLowerBound("RecoilScaleV", 1.2f, recoil), "beneficial recoil snaps to its floor: " + recoil);
+                Check(ReforgeUIManager.Bound("RecoilScaleV", 1.2f, recoil, recoil - 1.2f).Contains("best>Min"), "recoil floor is the best bound");
+                Check(Mathf.Abs(RollOnce("Damage", 0f, type, 1f, 0f) - 0.25f) < 0.0001f, "zero prefab snaps to +0.25");
+                Check(Mathf.Abs(RollOnce("BodyArmor", 3f, type, 1f, 3f) - 4f) < 0.0001f, "armor snaps to prefab +1");
+                // 读档夹到上限的旧装备再抽到顶档：保持 Max，不被「必定变化」推开
+                float cap = ReforgeSystem.ClampToReforgeBounds("Damage", 0.35f, 1f);
+                v = RollOnce("Damage", 0.35f, type, 1f, cap);
+                Check(Mathf.Abs(v - cap) < 0.0001f && ReforgeSystem.IsValueAtUpperBound("Damage", 0.35f, v), "an item already at Max stays at Max");
+
+                ReforgeSystem.FixtureSeed = near;
+                v = RollOnce("Damage", 0.35f, type, 1f, 0.35f);
+                Check(v > 0.35f && !ReforgeSystem.IsValueAtUpperBound("Damage", 0.35f, v), "below the top band is an ordinary roll: " + v);
+                v = RollOnce("Damage", 30f, type, 1f, 30f);
+                Check(v > 30f && !ReforgeSystem.IsValueAtUpperBound("Damage", 30f, v), "integer below the top band stays under the cap: " + v);
+            }
+        }
+        finally
+        {
+            ReforgeSystem.FixtureSeed = 123;
+        }
     }
     private static void Entry()
     {

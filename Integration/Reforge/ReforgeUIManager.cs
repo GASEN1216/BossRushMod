@@ -286,7 +286,8 @@ namespace BossRush
         // 常量定义（避免魔法数字）
         // ============================================================================
         private const float UI_INIT_DELAY = 0.1f;
-        private const float DIFF_THRESHOLD = 0.01f;
+        // 重铸结果按 0.01 舍入，阈值取半格：0.06f - 0.05f 只有 0.0099999，用 0.01 会把一格变化（含小数值的 Max）吞掉
+        private const float DIFF_THRESHOLD = 0.005f;
 
         // 冷淬液UI常量（UD-26：计数从 32 号荧光绿降到 20 号正文色，图标随之缩到 40）
         private const float COLD_QUENCH_UI_OFFSET_Y = -10f;
