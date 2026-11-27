@@ -29,8 +29,12 @@ namespace BossRush
         /// <summary>保底进度满值：推进到这里本次必定顶格。</summary>
         public const float PITY_GUARANTEE_PROGRESS = 100f;
 
-        /// <summary>同一条属性累计投入满物品价值的这么多倍，保底必中（只算幅度投入，不含倾向费用）。</summary>
-        public const float PITY_GUARANTEE_VALUE_MULTIPLIER = 20f;
+        /// <summary>
+        /// 同一条属性累计投入满物品价值的这么多倍，保底必中（只算幅度投入，不含倾向费用）。
+        /// 2026-11-27 由 20 上调：20 倍时价值 4 万的武器约 76 万就能 6 条全满，owner 觉得太便宜；
+        /// 200 倍时每次投 1 倍价值约 61 次、370 万，投 10 倍约 13 次、550 万（对比见 FIX_TRACKER 同日一节）。
+        /// </summary>
+        public const float PITY_GUARANTEE_VALUE_MULTIPLIER = 200f;
 
         /// <summary>单次重铸最多推进的进度：投得再多也至少洗 4 次才必中，保留抽奖的节奏。</summary>
         public const float PITY_MAX_STEP = 25f;

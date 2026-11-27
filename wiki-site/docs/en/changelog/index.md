@@ -63,7 +63,7 @@
 
 ## v2.7.1 (2026-11-27)
 
-- Dingdang's Reforge: a roll in the top magnitude band goes straight to the cap or floor, so maxed weapons can roll Max again; pity builds from the money invested and a stat is guaranteed its best limit once its total reaches 20x the item's value (at most a quarter per Reforge), pity always gives the good end, and locked stats keep their progress; the magnitude investment costs a tenth, and Dingdang restocks 20 Cold Quench Fluid and 10 Tempering Solvent a day.
+- Dingdang's Reforge: a roll in the top magnitude band goes straight to the cap or floor, so maxed weapons can roll Max again; pity builds from the money invested and a stat is guaranteed its best limit once its total reaches 200x the item's value (at most a quarter per Reforge), pity always gives the good end, and locked stats keep their progress; the magnitude investment costs a tenth, and Dingdang restocks 20 Cold Quench Fluid and 10 Tempering Solvent a day.
 - The Reforge panel only looks at the item itself, so attachments no longer count toward the numbers or Max / Min; Codex, achievement, Campaign, Fate Echo, Duck Cup and Sky Island art is redrawn in the vanilla style. See `v2.7.1` for the full list.
 
 ::: tip

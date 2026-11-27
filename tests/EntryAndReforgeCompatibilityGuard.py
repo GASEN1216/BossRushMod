@@ -76,6 +76,8 @@ def main():
     assert snap.start() < reforge.index("newValue = Mathf.Clamp(newValue, minValue, maxValue);"), "顶档之后仍要夹进上下限"
     snap_const = re.search(r"private const float BOUND_SNAP_MAGNITUDE = ([0-9.]+)f;", read("Integration/Reforge/ReforgeSystem.cs"))
     assert snap_const and 0.9 <= float(snap_const.group(1)) < 1.0, "顶档阈值必须落在 [0.9, 1)，等于或大于 1 就又抽不到 Max"
+    # 2026-11-27 owner 定价：顶档 1%，只付手续费不能便宜刷满；改价位要同步 FIX_TRACKER 的花费对比
+    assert float(snap_const.group(1)) == 0.99, "顶档阈值是定价的一部分（0.99），改动先重算刷满花费"
     # 2026-11-27 顶格保底：幅度之后抽保底，命中取有利边界；按实际写入值判顶格，整次结束后写回进度
     # 进度按本次幅度投入推进（钱花够才刷得出），步长整次重铸只算一次
     step_def = reforge.index("float pityStep = GetPityStep(moneyInvested, itemValue);")
@@ -96,7 +98,7 @@ def main():
         assert found, name
         return float(found.group(1))
     assert pity_const("PITY_GUARANTEE_PROGRESS") == 100, "进度满 100 必中"
-    assert pity_const("PITY_GUARANTEE_VALUE_MULTIPLIER") == 20, "累计投满物品价值 20 倍必中"
+    assert pity_const("PITY_GUARANTEE_VALUE_MULTIPLIER") == 200, "累计投满物品价值 200 倍必中"
     assert pity_const("PITY_MAX_STEP") == 25, "单次最多推进 1/4，至少洗 4 次"
     step_body = method(pity_file, "public static float GetPityStep(")
     assert "PITY_GUARANTEE_PROGRESS * moneyInvested / (PITY_GUARANTEE_VALUE_MULTIPLIER * itemValue)" in step_body, "步长按投入占物品价值的比例算"
